@@ -44,6 +44,7 @@ public class ChatMarkdownWidget extends Composite {
     }
 
     public void appendMessage(SimpleChatMessage msg) {
+        //logger.debug(msg + "");
         try {
             browser.execute(
                 "appendMessage(" + mapper.writeValueAsString(msg) + ");"

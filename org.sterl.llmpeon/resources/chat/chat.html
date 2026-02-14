@@ -17,17 +17,49 @@ body {
 pre {
   position: relative;
 }
+
 .copy-btn {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 6px;
+  right: 6px;
+  z-index: 10;
+
+  padding: 4px;
+  border: none;
+  background: transparent;
+  color: #212529;
+  cursor: pointer;
+
+  opacity: 1;
+  transition: opacity 0.15s ease, color 0.15s ease;
 }
+
+.copy-btn:hover {
+  color: #4da3ff;
+}
+
+.copy-btn.copied {
+  color: #4caf50;
+}
+
 </style>
 
 <script src="markdown-it.min.js"></script>
 <script src="highlight.min.js"></script>
+<script src="markdown-it-emoji.min.js"></script>
 
 <script>
+    
+const COPY_ICON = `
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 24 24"
+     width="20"
+     height="20"
+     fill="currentColor"
+     aria-hidden="true">
+  <path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"/>
+</svg>`;
+
 const md = window.markdownit({
   highlight: function (str, lang) {
     if (lang && hljs.getLanguage(lang)) {
@@ -49,12 +81,17 @@ function appendMessage(message) {
 
 function enhanceCodeBlocks(root) {
   root.querySelectorAll("pre").forEach(pre => {
+    if (pre.querySelector(".copy-btn")) return;
+
     const btn = document.createElement("button");
-    btn.textContent = "Copy";
     btn.className = "copy-btn";
+    btn.innerHTML = COPY_ICON;
+    btn.title = "Copy code";
+
     btn.onclick = () => {
       navigator.clipboard.writeText(pre.innerText);
     };
+
     pre.appendChild(btn);
   });
 }

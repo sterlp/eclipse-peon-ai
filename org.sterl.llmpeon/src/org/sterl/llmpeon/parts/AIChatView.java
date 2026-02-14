@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.parts;
 
 import org.eclipse.e4.core.di.annotations.Optional;
+import org.eclipse.e4.core.services.log.Logger;
 import org.eclipse.e4.ui.di.Focus;
 import org.eclipse.e4.ui.services.IServiceConstants;
 import org.eclipse.jface.viewers.ISelection;
@@ -16,11 +17,14 @@ import jakarta.inject.Named;
 
 public class AIChatView {
     private ChatWidget chat;
+    @Inject Logger logger;
+    private ChatService chatService = new ChatService();
     
     @PostConstruct
     public void createPartControl(Composite parent) {
         parent.setLayout(new FillLayout()); 
-        chat = new ChatWidget(parent, SWT.NONE);
+        chat = new ChatWidget(chatService, parent, SWT.NONE);
+        if (logger != null) logger.info("We have a logger ...");
     }
 
     @Focus

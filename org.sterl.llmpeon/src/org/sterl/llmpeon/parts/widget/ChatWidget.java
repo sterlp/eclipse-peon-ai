@@ -5,6 +5,7 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -13,26 +14,17 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.ProgressBar;
 import org.eclipse.swt.widgets.Text;
+import org.sterl.llmpeon.parts.ChatService;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget.SimpleChatMessage;
-
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.ollama.OllamaChatModel;
 
 public class ChatWidget extends Composite {
 
+    private final ChatService chatService;
     private ChatMarkdownWidget chatHistory;
     private Text inputArea;
     private ProgressBar tokenUsage;
 
-    private final ChatMemory memory = MessageWindowChatMemory.withMaxMessages(100);
-    private final ChatModel model = OllamaChatModel.builder()
-            .baseUrl("http://localhost:11434")
-            .modelName("devstral-small-2:24b")
-            .build();
-    
+    private Button send;
 
     @Override
     public boolean setFocus() {
@@ -41,9 +33,10 @@ public class ChatWidget extends Composite {
         return super.setFocus();
     }
 
-    public ChatWidget(Composite parent, int style) {
+    public ChatWidget(ChatService chatService, Composite parent, int style) {
         super(parent, style);
         createLayout();
+        this.chatService = chatService;
     }
 
     private void createLayout() {
@@ -86,8 +79,14 @@ public class ChatWidget extends Composite {
         bar.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
         bar.setLayout(new GridLayout(3, false));
 
-        Button send = new Button(bar, SWT.PUSH);
-        send.setText("Send");
+        send = new Button(bar, SWT.PUSH);
+        Image image = new Image( parent.getDisplay(), getClass().getResourceAsStream("/icons/send.png"));
+        GridData gd = new GridData(SWT.CENTER, SWT.CENTER, false, false);
+        gd.widthHint = 28;
+        gd.heightHint = 28;
+        send.setLayoutData(gd);
+        send.setImage(image);
+        send.setToolTipText("Send...");
 
         tokenUsage = new ProgressBar(bar, SWT.NONE);
         tokenUsage.setMinimum(0);
@@ -102,7 +101,7 @@ public class ChatWidget extends Composite {
 
     private void refreshChat() {
         chatHistory.clear();
-        memory.messages().forEach(msg -> {
+        chatService.getMessages().forEach(msg -> {
             chatHistory.appendMessage(msg);
         });
     }
@@ -110,33 +109,33 @@ public class ChatWidget extends Composite {
     
     private void sendMessage() {
         String text = inputArea.getText().trim();
-        if (text.isEmpty())
-            return;
+        if (text.isEmpty()) return;
 
-        memory.add(UserMessage.from(text));
         inputArea.setText("");
+        send.setEnabled(false);
+        refreshChat();
 
         Job.create("LLM request", monitor -> {
             monitor.beginTask("Calling Ollama", IProgressMonitor.UNKNOWN);
 
             Exception ex = null;
             try {
-                var response = model.chat(memory.messages());
-                memory.add(response.aiMessage());
+                chatService.sendMessage(text);
             } catch (Exception e) {
                 ex = e;
             }
 
             Display.getDefault().asyncExec(() -> {
                 refreshChat();
-                tokenUsage.setSelection(memory.messages().size() / 50); // placeholder for now
+                tokenUsage.setSelection(chatService.getMessages().size() / 100); // placeholder for now
+                send.setEnabled(true);
             });
 
             return ex == null ? Status.OK_STATUS : new Status(IStatus.ERROR, "AIChat", ex.getMessage(), ex);
         }).schedule();
 
         // TODO: async LLM call
-        tokenUsage.setSelection(25);
+        // tokenUsage.setSelection(25);
     }
 
     public void append(String who, String what) {

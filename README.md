@@ -22,6 +22,11 @@ Build the project from the repository root:
 mvn clean verify
 ```
 
+### Clean start
+
+`-clean -clearPersistedState`
+
 ### Libs
 - https://github.com/markdown-it/markdown-it
+- https://cdnjs.com/libraries/markdown-it
 - https://highlightjs.org/
