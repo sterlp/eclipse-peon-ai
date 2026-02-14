@@ -13,8 +13,8 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.ProgressBar;
 import org.eclipse.swt.widgets.Text;
+import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget.SimpleChatMessage;
 
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -23,7 +23,7 @@ import dev.langchain4j.model.ollama.OllamaChatModel;
 
 public class ChatWidget extends Composite {
 
-    private Text chatHistory;
+    private ChatMarkdownWidget chatHistory;
     private Text inputArea;
     private ProgressBar tokenUsage;
 
@@ -56,7 +56,7 @@ public class ChatWidget extends Composite {
 
     // 1️ Chat history (top)
     private void createChatHistory(Composite parent) {
-        chatHistory = new Text(parent, SWT.BORDER | SWT.MULTI | SWT.V_SCROLL | SWT.WRAP | SWT.READ_ONLY);
+        chatHistory = new ChatMarkdownWidget(parent, SWT.BORDER);
         chatHistory.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
     }
 
@@ -101,20 +101,10 @@ public class ChatWidget extends Composite {
     }
 
     private void refreshChat() {
-        StringBuilder sb = new StringBuilder();
-
+        chatHistory.clear();
         memory.messages().forEach(msg -> {
-            if (msg instanceof UserMessage um) {
-                sb.append("You: ").append(um.singleText());
-            } else if (msg instanceof AiMessage am) {
-                sb.append("AI: ").append(am.text());
-            }
-            sb.append("\n\n");
+            chatHistory.appendMessage(msg);
         });
-
-        chatHistory.setText(sb.toString());
-        chatHistory.setSelection(chatHistory.getCharCount()); 
-        chatHistory.showSelection();
     }
 
     
@@ -150,6 +140,6 @@ public class ChatWidget extends Composite {
     }
 
     public void append(String who, String what) {
-        chatHistory.append(who + ":\n" + what + "\n\n");
+        chatHistory.appendMessage(new SimpleChatMessage(who, what));
     }
 }

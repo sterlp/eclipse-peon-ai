@@ -21,3 +21,7 @@ Build the project from the repository root:
 ```bash
 mvn clean verify
 ```
+
+### Libs
+- https://github.com/markdown-it/markdown-it
+- https://highlightjs.org/
