@@ -1,0 +1,43 @@
+### Eclipse / PDE ###
+.metadata/
+bin/
+tmp/
+*.tmp
+*.bak
+*.swp
+*.log
+
+# Eclipse project files (werden neu generiert)
+*.launch
+*.target
+*.prefs
+
+# Lokale Eclipse Settings
+.settings/
+
+### Maven ###
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+### Java ###
+*.class
+
+### OS-specific ###
+.DS_Store
+Thumbs.db
+
+### Tycho ###
+# Tycho erzeugt target-platform-Ordner
+**/target-platform/
+
+### Build artifacts ###
+*.jar
+*.war
+*.ear
+
+### IDE caches ###
+.project
+
+### Optional: falls du libs eincheckst, NICHT ignorieren
+lib/
+sources/
