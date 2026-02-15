@@ -20,11 +20,12 @@ pre {
 
 .copy-btn {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  top: 2px;
+  right: 2px;
   z-index: 10;
 
   padding: 4px;
+  z-index: 10;
   border: none;
   background: transparent;
   color: #212529;
@@ -47,6 +48,12 @@ pre {
 <script src="markdown-it.min.js"></script>
 <script src="highlight.min.js"></script>
 <script src="markdown-it-emoji.min.js"></script>
+
+</head>
+
+<body>
+  <div id="chat"></div>
+</body>
 
 <script>
     
@@ -99,10 +106,29 @@ function enhanceCodeBlocks(root) {
 function clearMessages() {
   document.getElementById("chat").innerHTML = "";
 }
-</script>
-</head>
+/*
+appendMessage({role: 'AI', message: `
+hello
 
-<body>
-  <div id="chat"></div>
-</body>
+\`\`\`java
+public class Foo() {
+  private String aaa;
+  private String aaa;
+  private String aaa;
+  private String aaa;
+}
+
+public class Foo() {
+  private String aaa;
+  private String aaa;
+  private String aaa;
+  private String aaa;
+}
+\`\`\`
+
+## Ja
+nein
+`})
+*/
+</script>
 </html>

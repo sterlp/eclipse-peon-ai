@@ -3,8 +3,7 @@ Bundle-ManifestVersion: 2
 Bundle-Name: lm-peon
 Bundle-SymbolicName: org.sterl.llmpeon;singleton:=true
 Bundle-Version: 1.0.0.qualifier
-Export-Package:
- org.sterl.llmpeon.parts
+Export-Package: org.sterl.llmpeon.parts
 Bundle-Vendor: Paul Sterl
 Require-Bundle: org.eclipse.jface,
  org.eclipse.e4.ui.model.workbench,
@@ -15,7 +14,8 @@ Require-Bundle: org.eclipse.jface,
  org.eclipse.e4.core.di.annotations,
  org.eclipse.core.runtime;bundle-version="[3.30.0,4.0.0)",
  org.eclipse.e4.core.contexts;bundle-version="[1.12.0,2.0.0)",
- org.eclipse.e4.core.services;bundle-version="[2.5.0,3.0.0)"
+ org.eclipse.e4.core.services;bundle-version="[2.5.0,3.0.0)",
+ org.eclipse.core.resources;bundle-version="[3.22.0,4.0.0)"
 Bundle-RequiredExecutionEnvironment: JavaSE-21
 Import-Package: jakarta.annotation;version="[2.1.0,3.0.0)",
  jakarta.inject;version="[2.0.0,3.0.0)",

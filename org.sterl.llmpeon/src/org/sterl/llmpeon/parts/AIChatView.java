@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.parts;
 
+import org.eclipse.core.resources.*;
 import org.eclipse.e4.core.di.annotations.Optional;
 import org.eclipse.e4.core.services.log.Logger;
 import org.eclipse.e4.ui.di.Focus;
@@ -9,6 +10,7 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
+import org.sterl.llmpeon.parts.tools.SelectedFileTool;
 import org.sterl.llmpeon.parts.widget.ChatWidget;
 
 import jakarta.annotation.PostConstruct;
@@ -75,6 +77,10 @@ public class AIChatView {
         // Test if label exists (inject methods are called before PostConstruct)
         if (chat != null)
             chat.append("Selection", "This is a selection of " + o.getClass());
+        
+        if (o instanceof IFile f) {
+            chatService.addTool(new SelectedFileTool(f));
+        }
     }
 
     /**
