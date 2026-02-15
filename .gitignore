@@ -9,7 +9,6 @@ tmp/
 
 # Eclipse project files (werden neu generiert)
 *.launch
-*.target
 *.prefs
 
 # Lokale Eclipse Settings

@@ -24,10 +24,5 @@
 	<classpathentry exported="true" kind="lib" path="lib/opennlp-tools-2.5.4.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/slf4j-api-2.0.17.jar"/>
 	<classpathentry exported="true" kind="lib" path="resources" sourcepath="resources"/>
-	<classpathentry kind="con" path="org.eclipse.m2e.MAVEN2_CLASSPATH_CONTAINER">
-		<attributes>
-			<attribute name="maven.pomderived" value="true"/>
-		</attributes>
-	</classpathentry>
-	<classpathentry kind="output" path="bin"/>
+<classpathentry kind="output" path="bin"/>
 </classpath>

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(xargs:*)",
+      "Bash(mvn dependency:tree:*)",
+      "Bash(mvn clean:*)"
+    ]
+  }
+}
