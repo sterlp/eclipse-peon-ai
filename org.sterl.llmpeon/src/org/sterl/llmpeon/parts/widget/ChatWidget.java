@@ -80,7 +80,8 @@ public class ChatWidget extends Composite {
         bar.setLayout(new GridLayout(3, false));
 
         send = new Button(bar, SWT.PUSH);
-        Image image = new Image( parent.getDisplay(), getClass().getResourceAsStream("/icons/send.png"));
+        Image image = new Image(parent.getDisplay(), getClass().getResourceAsStream("/icons/send.png"));
+        send.addDisposeListener(e -> image.dispose());
         GridData gd = new GridData(SWT.CENTER, SWT.CENTER, false, false);
         gd.widthHint = 28;
         gd.heightHint = 28;
