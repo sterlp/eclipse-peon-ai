@@ -14,6 +14,9 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
+import org.sterl.llmpeon.parts.llm.ChatService;
+import org.sterl.llmpeon.parts.tools.ReadFileTool;
+import org.sterl.llmpeon.parts.tools.SearchFilesTool;
 import org.sterl.llmpeon.parts.tools.SelectedFileTool;
 import org.sterl.llmpeon.parts.tools.UpdateFileTool;
 import org.sterl.llmpeon.parts.widget.ChatWidget;
@@ -26,7 +29,8 @@ import jakarta.inject.Named;
 public class AIChatView {
     private ChatWidget chat;
     private Composite parent;
-    @Inject Logger logger;
+    @Inject
+    Logger logger;
     private ChatService chatService;
     private final IPreferenceChangeListener prefListener = event -> {
         if (parent != null && !parent.isDisposed()) {
@@ -40,7 +44,8 @@ public class AIChatView {
         parent.setLayout(new FillLayout());
         chatService = new ChatService(LlmPreferenceInitializer.buildWithDefaults());
         chat = new ChatWidget(chatService, parent, SWT.NONE);
-        if (logger != null) logger.info("We have a logger ... " + chatService.getConfig());
+        if (logger != null)
+            logger.info("We have a logger ... " + chatService.getConfig());
 
         IEclipsePreferences prefs = InstanceScope.INSTANCE.getNode(LlmPreferenceConstants.PLUGIN_ID);
         prefs.addPreferenceChangeListener(prefListener);
@@ -48,8 +53,7 @@ public class AIChatView {
 
     @PreDestroy
     public void dispose() {
-        InstanceScope.INSTANCE.getNode(LlmPreferenceConstants.PLUGIN_ID)
-                .removePreferenceChangeListener(prefListener);
+        InstanceScope.INSTANCE.getNode(LlmPreferenceConstants.PLUGIN_ID).removePreferenceChangeListener(prefListener);
     }
 
     private void applyConfig() {
@@ -103,15 +107,10 @@ public class AIChatView {
 
         if (o instanceof IFile f) {
             chatService.addTool(new SelectedFileTool(f));
-            try {
-                chatService.addTool(new UpdateFileTool(f.getLocation().toPath(),
-                        java.nio.charset.Charset.forName(f.getCharset())));
-            } catch (Exception e) {
-                chatService.addTool(new UpdateFileTool(f.getLocation().toPath()));
-            }
+            chatService.addTool(new UpdateFileTool(f));
         } else {
-        	if (chat != null)
-        		chat.append("Selection", "This is a selection of " + o.getClass());        	
+            if (chat != null)
+                chat.append("Selection", "This is a selection of " + o.getClass());
         }
     }
 

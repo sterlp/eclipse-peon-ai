@@ -13,10 +13,13 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.ProgressBar;
 import org.eclipse.swt.widgets.Text;
-import org.sterl.llmpeon.parts.ChatService;
+import org.sterl.llmpeon.parts.llm.ChatService;
+import org.sterl.llmpeon.parts.llm.LlmObserver;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget.SimpleChatMessage;
 
-public class ChatWidget extends Composite {
+import dev.langchain4j.data.message.ChatMessageType;
+
+public class ChatWidget extends Composite implements LlmObserver {
 
     private final ChatService chatService;
     private ChatMarkdownWidget chatHistory;
@@ -36,6 +39,9 @@ public class ChatWidget extends Composite {
         super(parent, style);
         createLayout();
         this.chatService = chatService;
+        chatService.addObserver(this);
+        
+        addDisposeListener(e -> chatService.removeObserver(this));
     }
 
     private void createLayout() {
@@ -59,6 +65,7 @@ public class ChatWidget extends Composite {
         gd.heightHint = 80;
         inputArea.setLayoutData(gd);
 
+
         inputArea.addTraverseListener(e -> {
             if (e.detail == SWT.TRAVERSE_RETURN) {
                 boolean enter = (e.stateMask & SWT.CTRL) != 0 || (e.stateMask & SWT.COMMAND) != 0;
@@ -67,7 +74,6 @@ public class ChatWidget extends Composite {
                     e.doit = false; // prevent newline
                     sendMessage();
                 }
-                // plain Enter → newline
             }
         });
     }
@@ -102,31 +108,38 @@ public class ChatWidget extends Composite {
             chatHistory.appendMessage(msg);
         });
     }
-
     
+    public void onAction(String value) {
+        Display.getDefault().asyncExec(() -> {
+            chatHistory.appendMessage(new SimpleChatMessage("Tool", "`" + value + "`"));
+        });
+    }
+
     private void sendMessage() {
         String text = inputArea.getText().trim();
         if (text.isEmpty() && chatService.getMessages().isEmpty()) return;
         inputArea.setText("");
         send.setEnabled(false);
-        refreshChat();
+        if (text.length() > 0) chatHistory.appendMessage(
+                new SimpleChatMessage(ChatMessageType.USER.name(), text));
 
         Job.create("LLM request", monitor -> {
-            monitor.beginTask("Calling Ollama", IProgressMonitor.UNKNOWN);
-
+            monitor.beginTask("Calling LLM", IProgressMonitor.UNKNOWN);
+            
             Exception ex = null;
             try {
-                chatService.sendMessage(text);
+                var result = chatService.sendMessage(text);
+                
+                Display.getDefault().asyncExec(() -> {
+                    chatHistory.appendMessage(result.aiMessage());
+                    tokenUsage.setSelection(chatService.getMessages().size()); // placeholder for now
+                    send.setEnabled(true);
+                });
             } catch (Exception e) {
                 ex = e;
             }
-
-            Display.getDefault().asyncExec(() -> {
-                refreshChat();
-                tokenUsage.setSelection(chatService.getMessages().size()); // placeholder for now
-                send.setEnabled(true);
-            });
-
+            
+            monitor.done();
             return ex == null ? Status.OK_STATUS : new Status(IStatus.ERROR, "AIChat", ex.getMessage(), ex);
         }).schedule();
 

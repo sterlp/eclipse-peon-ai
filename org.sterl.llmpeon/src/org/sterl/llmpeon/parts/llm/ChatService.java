@@ -1,14 +1,15 @@
-package org.sterl.llmpeon.parts;
+package org.sterl.llmpeon.parts.llm;
 
+import java.lang.reflect.Method;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.sterl.llmpeon.parts.config.LlmConfig;
-
-import java.lang.reflect.Method;
-import java.time.Duration;
+import org.sterl.llmpeon.parts.tools.ReadFileTool;
+import org.sterl.llmpeon.parts.tools.SearchFilesTool;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -31,6 +32,7 @@ public class ChatService {
     private final LlmConfig config;
     private final ChatMemory memory = MessageWindowChatMemory.withMaxMessages(100);
     private ChatModel model;
+    private List<LlmObserver> observers = new ArrayList<LlmObserver>();
 
     SystemMessage system = SystemMessage.systemMessage("""
             You are a coding assistant helping developers solve technical tasks. Use available tools to access needed resources.
@@ -49,10 +51,23 @@ public class ChatService {
 
     private final List<ToolSpecification> toolSpecs = new ArrayList<>();
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
+    
+    public void addObserver(LlmObserver o) {
+        this.observers.add(o);
+    }
+    public void removeObserver(LlmObserver o) {
+        this.observers.remove(o);
+    }
+    
+    private void informObservers(String value) {
+        this.observers.forEach(o -> o.onAction(value));
+    }
 
     public ChatService(LlmConfig config) {
         this.config = config;
         updateConfig(config);
+        addTool(new SearchFilesTool());
+        addTool(new ReadFileTool());
     }
 
     public void updateConfig(LlmConfig config) {
@@ -103,6 +118,7 @@ public class ChatService {
                     var executor = toolExecutors.get(tr.name());
                     String result;
                     if (executor != null) {
+                        informObservers("Using " + tr.name() + " " + tr.arguments());
                         System.err.println("Using tool " + tr.name() + " with: " + tr.arguments());
                         result = executor.execute(tr, null);
                     } else {
@@ -133,6 +149,7 @@ public class ChatService {
             if (method.isAnnotationPresent(Tool.class)) {
                 var spec = ToolSpecifications.toolSpecificationFrom(method);
                 // remove old spec with same name if present
+                System.err.println("added tool " + spec);
                 toolSpecs.removeIf(s -> s.name().equals(spec.name()));
                 toolSpecs.add(spec);
                 toolExecutors.put(spec.name(), new DefaultToolExecutor(toolObject, method));
