@@ -26,6 +26,12 @@ mvn clean verify
 
 `-clean -clearPersistedState`
 
+### Known: Incremental Build Issue
+
+Eclipse 4.38 has a PDE/JDT bug where incremental builds produce broken `.class` files after the first launch. To work around this, do **Project > Clean** before re-launching the Eclipse Application.
+
+See [eclipse-build-issues.md](eclipse-build-issues.md) for details.
+
 ### Libs
 - https://github.com/markdown-it/markdown-it
 - https://cdnjs.com/libraries/markdown-it

@@ -47,6 +47,8 @@
                     <filesets>
                         <fileset>
                             <directory>${project.basedir}/lib</directory>
+                        </fileset>
+                        <fileset>
                             <directory>${project.basedir}/sources</directory>
                         </fileset>
                     </filesets>
