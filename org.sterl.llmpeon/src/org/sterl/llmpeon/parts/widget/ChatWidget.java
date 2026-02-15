@@ -5,7 +5,6 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -80,13 +79,10 @@ public class ChatWidget extends Composite {
         bar.setLayout(new GridLayout(3, false));
 
         send = new Button(bar, SWT.PUSH);
-        Image image = new Image(parent.getDisplay(), getClass().getResourceAsStream("/icons/send.png"));
-        send.addDisposeListener(e -> image.dispose());
+        send.setImage(org.eclipse.debug.ui.DebugUITools.getImage(
+                org.eclipse.debug.ui.IDebugUIConstants.IMG_ACT_RUN));
         GridData gd = new GridData(SWT.CENTER, SWT.CENTER, false, false);
-        gd.widthHint = 28;
-        gd.heightHint = 28;
         send.setLayoutData(gd);
-        send.setImage(image);
         send.setToolTipText("Send...");
 
         tokenUsage = new ProgressBar(bar, SWT.NONE);
@@ -128,7 +124,7 @@ public class ChatWidget extends Composite {
 
             Display.getDefault().asyncExec(() -> {
                 refreshChat();
-                tokenUsage.setSelection(chatService.getMessages().size() / 100); // placeholder for now
+                tokenUsage.setSelection(chatService.getMessages().size()); // placeholder for now
                 send.setEnabled(true);
             });
 
