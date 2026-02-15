@@ -25,10 +25,11 @@ public class UpdateFileTool {
     }
 
     @Tool("Replaces the complete content of the currently selected file with the provided new content. "
-            + "Use this after reading the file to apply your changes.")
+            + "Use this after reading the current by the developer selected file to apply your changes.")
     public String updateCurrentFile(
             @P("The complete new file content that will replace the existing content") String newContent) {
 
+        if (file == null) return "No file is currently selected";
         try {
             try {
                 Files.writeString(file.getFullPath().toPath(), newContent, Charset.forName(file.getCharset()));

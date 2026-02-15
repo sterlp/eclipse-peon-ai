@@ -11,7 +11,7 @@ public class SelectedFileTool extends AbstractEclipseFileTool {
         this.file = file;
     }
     
-    @Tool("Reads and returns the complete content of the currently selected file in the Eclipse workspace")
+    @Tool("Reads and returns the complete content of the currently selected file in the eclipse workspace")
     public String readCurrentFile() {
         if (file == null) {
             return "No file is currently selected";
