@@ -5,7 +5,8 @@
       "Bash(xargs:*)",
       "Bash(mvn dependency:tree:*)",
       "Bash(mvn clean:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(jar tf:*)"
     ]
   }
 }

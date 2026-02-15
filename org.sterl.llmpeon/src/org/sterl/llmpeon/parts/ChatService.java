@@ -1,11 +1,17 @@
 package org.sterl.llmpeon.parts;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.sterl.llmpeon.parts.config.LlmConfig;
-import org.sterl.llmpeon.parts.tools.SelectedFileTool;
 
+import java.lang.reflect.Method;
+import java.time.Duration;
+
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agent.tool.ToolSpecifications;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -17,6 +23,8 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.ollama.OllamaChatModel;
+import dev.langchain4j.service.tool.DefaultToolExecutor;
+import dev.langchain4j.service.tool.ToolExecutor;
 
 public class ChatService {
     private final LlmConfig config;
@@ -25,6 +33,9 @@ public class ChatService {
 
     SystemMessage system = SystemMessage.systemMessage("""
             You are a coding assistant helping developers solve technical tasks. Use available tools to access needed resources.
+            Tool usage:
+            - If a tool is available to do the job, use it
+
             When information is missing:
             - Ask the developer directly
             - If a tool doesn't exist, describe what's needed and what the developer should implement
@@ -34,18 +45,22 @@ public class ChatService {
             - Use dev-to-dev language
             - Keep responses short and actionable
             """);
-    SelectedFileTool selectedFileTool;
+
+    private final List<ToolSpecification> toolSpecs = new ArrayList<>();
+    private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
 
     public ChatService(LlmConfig config) {
         this.config = config;
         updateConfig(config);
     }
-    
+
     public void updateConfig(LlmConfig config) {
         this.model = OllamaChatModel.builder()
+                .timeout(Duration.ofMinutes(2))
                 .baseUrl(config.url())
                 .modelName(config.model())
-                .think(config.thinkingEnabled()).build();
+                .think(config.thinkingEnabled())
+                .build();
     }
 
     public LlmConfig getConfig() {
@@ -53,13 +68,9 @@ public class ChatService {
     }
 
     public ChatResponse sendMessage(String text) {
-        if (text == null)
-            return null;
-        text = text.trim();
-        if (text.isEmpty())
-            return null;
-
-        memory.add(UserMessage.from(text));
+        if (text != null && text.trim().length() > 0) {
+            memory.add(UserMessage.from(text));
+        }
 
         ChatResponse response;
 
@@ -70,17 +81,23 @@ public class ChatService {
             var request = ChatRequest.builder().messages(m);
 
             // https://github.com/langchain4j/langchain4j/blob/main/docs/docs/tutorials/tools.md
-            if (selectedFileTool != null) {
-                request.toolSpecifications(ToolSpecifications.toolSpecificationsFrom(selectedFileTool));
+            if (!toolSpecs.isEmpty()) {
+                request.toolSpecifications(toolSpecs);
             }
             response = model.chat(request.build());
             memory.add(response.aiMessage());
 
             if (response.aiMessage().hasToolExecutionRequests()) {
                 for (var tr : response.aiMessage().toolExecutionRequests()) {
-                    memory.add(ToolExecutionResultMessage.from(
-                            tr.id(), tr.name(), 
-                            selectedFileTool.readCurrentFile()));
+                    var executor = toolExecutors.get(tr.name());
+                    String result;
+                    if (executor != null) {
+                        System.err.println("Using tool " + tr.name() + " with: " + tr.arguments());
+                        result = executor.execute(tr, null);
+                    } else {
+                        result = "Error: unknown tool '" + tr.name() + "'";
+                    }
+                    memory.add(ToolExecutionResultMessage.from(tr.id(), tr.name(), result));
                 }
             }
 
@@ -96,7 +113,19 @@ public class ChatService {
         return memory.messages();
     }
 
-    public void addTool(SelectedFileTool selectedFileTool) {
-        this.selectedFileTool = selectedFileTool;
+    /**
+     * Registers any object that has methods annotated with {@link Tool}.
+     * Existing tools with the same name will be replaced.
+     */
+    public void addTool(Object toolObject) {
+        for (Method method : toolObject.getClass().getDeclaredMethods()) {
+            if (method.isAnnotationPresent(Tool.class)) {
+                var spec = ToolSpecifications.toolSpecificationFrom(method);
+                // remove old spec with same name if present
+                toolSpecs.removeIf(s -> s.name().equals(spec.name()));
+                toolSpecs.add(spec);
+                toolExecutors.put(spec.name(), new DefaultToolExecutor(toolObject, method));
+            }
+        }
     }
 }

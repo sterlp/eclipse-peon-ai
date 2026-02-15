@@ -106,8 +106,7 @@ public class ChatWidget extends Composite {
     
     private void sendMessage() {
         String text = inputArea.getText().trim();
-        if (text.isEmpty()) return;
-
+        if (text.isEmpty() && chatService.getMessages().isEmpty()) return;
         inputArea.setText("");
         send.setEnabled(false);
         refreshChat();
