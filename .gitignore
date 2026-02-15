@@ -40,3 +40,4 @@ Thumbs.db
 ### Optional: falls du libs eincheckst, NICHT ignorieren
 lib/
 sources/
+org.sterl.llmpeon.core/.classpath

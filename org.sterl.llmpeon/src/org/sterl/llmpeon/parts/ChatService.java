@@ -2,6 +2,7 @@ package org.sterl.llmpeon.parts;
 
 import java.util.List;
 
+import org.sterl.llmpeon.parts.config.LlmConfig;
 import org.sterl.llmpeon.parts.tools.SelectedFileTool;
 
 import dev.langchain4j.agent.tool.ToolSpecifications;
@@ -15,22 +16,32 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 
 public class ChatService {
+    private final LlmConfig config;
     private final ChatMemory memory = MessageWindowChatMemory.withMaxMessages(100);
-    private final ChatModel model = OllamaChatModel.builder()
-            .baseUrl("http://localhost:11434")
-            .modelName("devstral-small-2:24b")
-            .build();
+    private final ChatModel model;
 
     SelectedFileTool selectedFileTool;
+
+    public ChatService(LlmConfig config) {
+        this.config = config;
+        this.model = OllamaChatModel.builder()
+                .baseUrl(config.url())
+                .modelName(config.model())
+                .think(config.thinkingEnabled())
+                .build();
+    }
+
+    public LlmConfig getConfig() {
+        return config;
+    }
 
     public ChatResponse sendMessage(String text) {
         if (text == null) return null;
         text = text.trim();
         if (text.isEmpty()) return null;
 
-        
         memory.add(UserMessage.from(text));
-        
+
         var request = ChatRequest.builder()
                 .messages(memory.messages());
 
@@ -38,7 +49,7 @@ public class ChatService {
         if (selectedFileTool != null) {
             request.toolSpecifications(ToolSpecifications.toolSpecificationsFrom(selectedFileTool));
         }
-        
+
         var response = model.chat(request.build());
         memory.add(response.aiMessage());
         System.err.println(response.aiMessage());
@@ -46,7 +57,7 @@ public class ChatService {
 
         return response;
     }
-    
+
     public List<ChatMessage> getMessages() {
         return memory.messages();
     }

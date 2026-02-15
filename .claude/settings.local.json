@@ -4,7 +4,8 @@
       "Bash(ls:*)",
       "Bash(xargs:*)",
       "Bash(mvn dependency:tree:*)",
-      "Bash(mvn clean:*)"
+      "Bash(mvn clean:*)",
+      "Bash(find:*)"
     ]
   }
 }

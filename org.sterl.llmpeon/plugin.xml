@@ -11,4 +11,17 @@
       </fragment>
    </extension>
 
+
+   <extension point="org.eclipse.ui.preferencePages">
+      <page
+            id="org.sterl.llmpeon.prefs.AiConfig"
+            name="AI Configuration"
+            class="org.sterl.llmpeon.parts.config.AiConfigPreferenceView">
+      </page>
+   </extension>
+
+   <extension point="org.eclipse.core.runtime.preferences">
+      <initializer class="org.sterl.llmpeon.parts.config.LlmPreferenceInitializer"/>
+   </extension>
+
 </plugin>

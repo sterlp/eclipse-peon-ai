@@ -22,10 +22,13 @@ Bundle-RequiredExecutionEnvironment: JavaSE-21
 Import-Package: jakarta.annotation;version="[2.1.0,3.0.0)",
  jakarta.inject;version="[2.0.0,3.0.0)",
  org.osgi.framework;version="[1.10.0,2.0.0)",
+ org.eclipse.jface.preference,
  org.eclipse.jface.viewers,
- org.eclipse.swt.widgets, 
- org.eclipse.swt.layout, 
- org.eclipse.swt.events
+ org.eclipse.swt.widgets,
+ org.eclipse.swt.layout,
+ org.eclipse.swt.events,
+ org.eclipse.ui,
+ org.eclipse.ui.preferences
 Automatic-Module-Name: org.sterl.llmpeon
 Bundle-ClassPath: .,
  lib/jackson-annotations-2.20.jar,

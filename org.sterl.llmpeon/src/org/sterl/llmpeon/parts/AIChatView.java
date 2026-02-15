@@ -1,6 +1,9 @@
 package org.sterl.llmpeon.parts;
 
-import org.eclipse.core.resources.*;
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.runtime.preferences.IEclipsePreferences;
+import org.eclipse.core.runtime.preferences.IEclipsePreferences.IPreferenceChangeListener;
+import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.e4.core.di.annotations.Optional;
 import org.eclipse.e4.core.services.log.Logger;
 import org.eclipse.e4.ui.di.Focus;
@@ -10,23 +13,47 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
+import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.tools.SelectedFileTool;
 import org.sterl.llmpeon.parts.widget.ChatWidget;
 
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 
 public class AIChatView {
     private ChatWidget chat;
+    private Composite parent;
     @Inject Logger logger;
-    private ChatService chatService = new ChatService();
-    
+    private ChatService chatService;
+    private final IPreferenceChangeListener prefListener = event -> {
+        if (parent != null && !parent.isDisposed()) {
+            parent.getDisplay().asyncExec(this::applyConfig);
+        }
+    };
+
     @PostConstruct
     public void createPartControl(Composite parent) {
-        parent.setLayout(new FillLayout()); 
+        this.parent = parent;
+        parent.setLayout(new FillLayout());
+        chatService = new ChatService(LlmPreferenceInitializer.buildWithDefaults());
         chat = new ChatWidget(chatService, parent, SWT.NONE);
-        if (logger != null) logger.info("We have a logger ...");
+        if (logger != null) logger.info("We have a logger ... " + chatService.getConfig());
+
+        IEclipsePreferences prefs = InstanceScope.INSTANCE.getNode(LlmPreferenceConstants.PLUGIN_ID);
+        prefs.addPreferenceChangeListener(prefListener);
+    }
+
+    @PreDestroy
+    public void dispose() {
+        InstanceScope.INSTANCE.getNode(LlmPreferenceConstants.PLUGIN_ID)
+                .removePreferenceChangeListener(prefListener);
+    }
+
+    private void applyConfig() {
+        chatService = new ChatService(LlmPreferenceInitializer.buildWithDefaults());
+        chat.setChatService(chatService);
     }
 
     @Focus
@@ -39,7 +66,7 @@ public class AIChatView {
      * E3 and E4 code. <br/>
      * With E4 code you will set directly the selection in ESelectionService and you
      * do not receive a ISelection
-     * 
+     *
      * @param s the selection received from JFace (E3 mode)
      */
     @Inject
@@ -63,7 +90,7 @@ public class AIChatView {
      * <br/>
      * You should change the parameter type of your received Object to manage your
      * specific selection
-     * 
+     *
      * @param o : the current object received
      */
     @Inject
@@ -74,12 +101,11 @@ public class AIChatView {
         if (o instanceof ISelection) // Already captured
             return;
 
-        // Test if label exists (inject methods are called before PostConstruct)
-        if (chat != null)
-            chat.append("Selection", "This is a selection of " + o.getClass());
-        
         if (o instanceof IFile f) {
             chatService.addTool(new SelectedFileTool(f));
+        } else {
+        	if (chat != null)
+        		chat.append("Selection", "This is a selection of " + o.getClass());        	
         }
     }
 
@@ -87,7 +113,7 @@ public class AIChatView {
      * This method manages the multiple selection of your current objects. <br/>
      * You should change the parameter type of your array of Objects to manage your
      * specific selection
-     * 
+     *
      * @param o : the current array of objects received in case of multiple
      *          selection
      */

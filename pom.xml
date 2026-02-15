@@ -15,7 +15,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
     <build>
-<plugins>
+        <plugins>
             <plugin>
                 <groupId>org.eclipse.tycho</groupId>
                 <artifactId>tycho-maven-plugin</artifactId>
@@ -39,6 +39,9 @@
         </plugins>
     </build>
     <modules>
+        <!-- currently not used ... -->
+        <module>org.sterl.llmpeon.core</module>
+
         <module>releng/llmpeon-target</module>
         <module>org.sterl.llmpeon</module>
     </modules>

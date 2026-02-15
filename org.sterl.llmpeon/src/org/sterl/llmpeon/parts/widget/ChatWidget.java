@@ -18,7 +18,7 @@ import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget.SimpleChatMessage;
 
 public class ChatWidget extends Composite {
 
-    private final ChatService chatService;
+    private ChatService chatService;
     private ChatMarkdownWidget chatHistory;
     private Text inputArea;
     private ProgressBar tokenUsage;
@@ -133,6 +133,10 @@ public class ChatWidget extends Composite {
 
         // TODO: async LLM call
         // tokenUsage.setSelection(25);
+    }
+
+    public void setChatService(ChatService chatService) {
+        this.chatService = chatService;
     }
 
     public void append(String who, String what) {
