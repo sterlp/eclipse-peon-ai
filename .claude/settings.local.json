@@ -6,7 +6,8 @@
       "Bash(mvn dependency:tree:*)",
       "Bash(mvn clean:*)",
       "Bash(find:*)",
-      "Bash(jar tf:*)"
+      "Bash(jar tf:*)",
+      "Bash(mvn process-resources:*)"
     ]
   }
 }

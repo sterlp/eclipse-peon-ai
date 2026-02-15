@@ -23,6 +23,7 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.ollama.OllamaChatModel;
+import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.service.tool.DefaultToolExecutor;
 import dev.langchain4j.service.tool.ToolExecutor;
 
@@ -34,7 +35,7 @@ public class ChatService {
     SystemMessage system = SystemMessage.systemMessage("""
             You are a coding assistant helping developers solve technical tasks. Use available tools to access needed resources.
             Tool usage:
-            - If a tool is available to do the job, use it
+            - If a tool is available to do the job, automatically use it
 
             When information is missing:
             - Ask the developer directly
@@ -55,12 +56,22 @@ public class ChatService {
     }
 
     public void updateConfig(LlmConfig config) {
-        this.model = OllamaChatModel.builder()
-                .timeout(Duration.ofMinutes(2))
-                .baseUrl(config.url())
-                .modelName(config.model())
-                .think(config.thinkingEnabled())
-                .build();
+        if ("openai".equals(config.providerType())) {
+            var builder = OpenAiChatModel.builder()
+                    .timeout(Duration.ofMinutes(2))
+                    .baseUrl(config.url())
+                    .modelName(config.model())
+                    .apiKey(config.apiKey())
+                    .maxTokens(config.tokenWindow());
+            this.model = builder.build();
+        } else {
+            this.model = OllamaChatModel.builder()
+                    .timeout(Duration.ofMinutes(2))
+                    .baseUrl(config.url())
+                    .modelName(config.model())
+                    .think(config.thinkingEnabled())
+                    .build();
+        }
     }
 
     public LlmConfig getConfig() {

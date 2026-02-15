@@ -22,7 +22,7 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
     @Override
     public void createFieldEditors() {
         addField(new ComboFieldEditor(LlmPreferenceConstants.PREF_PROVIDER_TYPE, "Provider Type:",
-                new String[][] { { "Ollama", "ollama" } },
+                new String[][] { { "Ollama", "ollama" }, { "OpenAI-compatible (Perplexity, OpenAI, ...)", "openai" } },
                 getFieldEditorParent()));
         addField(new StringFieldEditor(LlmPreferenceConstants.PREF_MODEL, "Model:", getFieldEditorParent()));
         addField(new StringFieldEditor(LlmPreferenceConstants.PREF_URL, "URL (incl. port):", getFieldEditorParent()));
