@@ -15,8 +15,8 @@ import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.llm.ChatService;
-import org.sterl.llmpeon.parts.tools.SelectedFileTool;
-import org.sterl.llmpeon.parts.tools.UpdateFileTool;
+import org.sterl.llmpeon.parts.tools.ReadSelectedFileTool;
+import org.sterl.llmpeon.parts.tools.UpdateSelectedFileTool;
 import org.sterl.llmpeon.parts.widget.ChatWidget;
 
 import jakarta.annotation.PostConstruct;
@@ -104,8 +104,8 @@ public class AIChatView {
             return;
 
         if (o instanceof IFile f) {
-            chatService.addTool(new SelectedFileTool(f));
-            chatService.addTool(new UpdateFileTool(f));
+            chatService.addTool(new ReadSelectedFileTool(f));
+            chatService.addTool(new UpdateSelectedFileTool(f));
         } else {
             if (chat != null)
                 chat.append("Selection", "This is a selection of " + o.getClass());

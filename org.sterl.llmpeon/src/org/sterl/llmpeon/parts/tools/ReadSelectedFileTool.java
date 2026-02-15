@@ -4,10 +4,10 @@ import org.eclipse.core.resources.IFile;
 
 import dev.langchain4j.agent.tool.Tool;
 
-public class SelectedFileTool extends AbstractEclipseFileTool {
+public class ReadSelectedFileTool extends AbstractEclipseFileTool {
     private final IFile file;
     
-    public SelectedFileTool(IFile file) {
+    public ReadSelectedFileTool(IFile file) {
         this.file = file;
     }
     

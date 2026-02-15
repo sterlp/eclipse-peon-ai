@@ -16,11 +16,11 @@ import dev.langchain4j.agent.tool.Tool;
  * Receives a {@link Path} at construction time and lets the LLM
  * replace the full file content.
  */
-public class UpdateFileTool {
+public class UpdateSelectedFileTool {
 
     private final IFile file;
 
-    public UpdateFileTool(IFile file) {
+    public UpdateSelectedFileTool(IFile file) {
         this.file = file;
     }
 
