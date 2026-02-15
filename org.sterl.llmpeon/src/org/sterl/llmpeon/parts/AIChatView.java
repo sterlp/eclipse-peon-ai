@@ -52,8 +52,7 @@ public class AIChatView {
     }
 
     private void applyConfig() {
-        chatService = new ChatService(LlmPreferenceInitializer.buildWithDefaults());
-        chat.setChatService(chatService);
+        chatService.updateConfig(LlmPreferenceInitializer.buildWithDefaults());
     }
 
     @Focus

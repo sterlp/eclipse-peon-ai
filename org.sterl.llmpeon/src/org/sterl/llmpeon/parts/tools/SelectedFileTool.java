@@ -1,10 +1,9 @@
 package org.sterl.llmpeon.parts.tools;
 
-import org.eclipse.core.resources.*;
-import java.io.BufferedReader;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.stream.Collectors;
+
+import org.eclipse.core.resources.IFile;
+import org.sterl.llmpeon.parts.shared.IoUtils;
 
 import dev.langchain4j.agent.tool.Tool;
 
@@ -21,17 +20,14 @@ public class SelectedFileTool {
             return "No file is currently selected";
         }
         
-        try (InputStream contents = file.getContents();
-            var reader = new BufferedReader(new InputStreamReader(contents, file.getCharset()))) {
-            System.err.println("Readinmg " + file.getName());
-            return reader.lines().collect(Collectors.joining("\n"));
+        try (InputStream contents = file.getContents()) {
             
+            return getFileInfo() + "Content:\n" + IoUtils.toString(contents, file.getCharset());
         } catch (Exception e) {
             return "Error reading file: " + e.getMessage();
         }
     }
     
-    @Tool("Returns metadata about the currently selected file including name, path, size, and type")
     public String getFileInfo() {
         if (file == null) {
             return "No file is currently selected";
@@ -41,15 +37,13 @@ public class SelectedFileTool {
             return String.format("""
                 File: %s
                 Full path: %s
-                Location: %s
-                Size: %d bytes
-                Type: %s
+                Project path: %s
+                Extension: %s
                 Charset: %s
                 """,
                 file.getName(),
                 file.getFullPath().toString(),
-                file.getLocation() != null ? file.getLocation().toString() : "N/A",
-                file.getLocation() != null ? file.getLocation().toFile().length() : 0,
+                file.getProjectRelativePath().toString(),
                 file.getFileExtension(),
                 file.getCharset()
             );
