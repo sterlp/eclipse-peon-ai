@@ -53,6 +53,15 @@ The project uses a pragmatic setup with embedded third-party libraries (no p2 wr
 
 ---
 
+## Error Handling in Tools
+
+- **Throw exceptions** on real errors (IO failures, workspace corruption, charset issues). The ChatWidget catches these and displays the error to the user.
+- **Return error strings** only when the LLM can act on the information (e.g. "File not found" → LLM can retry with a different path, "No file is currently selected" → LLM can ask the user to select a file).
+- Never swallow exceptions silently or return `"Error: ..."` strings for failures that the LLM cannot recover from. Let them propagate.
+- ToolContext wraps checked exceptions (IOException, CoreException) in `RuntimeException`. Tools (`@Tool` methods) don't declare checked exceptions — the chat layer catches RuntimeException and displays the error.
+
+---
+
 ## Eclipse RCP Documentation
 
 When looking up how to develop e4 RCP widgets, views, or handlers, consult:

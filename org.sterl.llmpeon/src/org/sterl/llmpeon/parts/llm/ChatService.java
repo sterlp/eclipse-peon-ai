@@ -1,18 +1,12 @@
 package org.sterl.llmpeon.parts.llm;
 
-import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.sterl.llmpeon.parts.config.LlmConfig;
 import org.sterl.llmpeon.parts.tools.ToolService;
 
-import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.agent.tool.ToolSpecifications;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -24,11 +18,11 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
-import dev.langchain4j.service.tool.DefaultToolExecutor;
 import dev.langchain4j.service.tool.ToolExecutor;
 
 public class ChatService {
     private final LlmConfig config;
+    private final ToolService toolService;
     private final ChatMemory memory = MessageWindowChatMemory.withMaxMessages(100);
     private ChatModel model;
     private List<LlmObserver> observers = new ArrayList<LlmObserver>();
@@ -48,9 +42,6 @@ public class ChatService {
             - Keep responses short and actionable
             """);
 
-    private final List<ToolSpecification> toolSpecs = new ArrayList<>();
-    private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
-
     public void addObserver(LlmObserver o) {
         this.observers.add(o);
     }
@@ -64,10 +55,8 @@ public class ChatService {
 
     public ChatService(LlmConfig config, ToolService toolService) {
         this.config = config;
+        this.toolService = toolService;
         updateConfig(config);
-        for (Object tool : toolService.getTools()) {
-            addTool(tool);
-        }
     }
 
     public void updateConfig(LlmConfig config) {
@@ -106,7 +95,7 @@ public class ChatService {
             m.addAll(memory.messages());
             var request = ChatRequest.builder().messages(m);
 
-            // https://github.com/langchain4j/langchain4j/blob/main/docs/docs/tutorials/tools.md
+            var toolSpecs = toolService.getToolSpecs();
             if (!toolSpecs.isEmpty()) {
                 request.toolSpecifications(toolSpecs);
             }
@@ -115,7 +104,7 @@ public class ChatService {
 
             if (response.aiMessage().hasToolExecutionRequests()) {
                 for (var tr : response.aiMessage().toolExecutionRequests()) {
-                    var executor = toolExecutors.get(tr.name());
+                    ToolExecutor executor = toolService.getExecutor(tr.name());
                     String result;
                     if (executor != null) {
                         informObservers("Using " + tr.name() + " " + tr.arguments());
@@ -138,22 +127,5 @@ public class ChatService {
 
     public List<ChatMessage> getMessages() {
         return memory.messages();
-    }
-
-    /**
-     * Registers any object that has methods annotated with {@link Tool}.
-     * Existing tools with the same name will be replaced.
-     */
-    public void addTool(Object toolObject) {
-        for (Method method : toolObject.getClass().getDeclaredMethods()) {
-            if (method.isAnnotationPresent(Tool.class)) {
-                var spec = ToolSpecifications.toolSpecificationFrom(method);
-                // remove old spec with same name if present
-                System.err.println("added tool " + spec);
-                toolSpecs.removeIf(s -> s.name().equals(spec.name()));
-                toolSpecs.add(spec);
-                toolExecutors.put(spec.name(), new DefaultToolExecutor(toolObject, method));
-            }
-        }
     }
 }
