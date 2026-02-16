@@ -15,6 +15,7 @@ import org.eclipse.swt.widgets.ProgressBar;
 import org.eclipse.swt.widgets.Text;
 import org.sterl.llmpeon.parts.llm.ChatService;
 import org.sterl.llmpeon.parts.llm.LlmObserver;
+import org.sterl.llmpeon.parts.tools.ToolService;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget.SimpleChatMessage;
 
 import dev.langchain4j.data.message.ChatMessageType;
@@ -35,12 +36,15 @@ public class ChatWidget extends Composite implements LlmObserver {
         return super.setFocus();
     }
 
-    public ChatWidget(ChatService chatService, Composite parent, int style) {
+    public ChatWidget(ChatService chatService, ToolService toolService, Composite parent, int style) {
         super(parent, style);
         createLayout();
         this.chatService = chatService;
         chatService.addObserver(this);
-        
+        toolService.getContext().setDiffObserver(diff -> {
+            Display.getDefault().asyncExec(() -> chatHistory.showDiff(diff));
+        });
+
         addDisposeListener(e -> chatService.removeObserver(this));
     }
 

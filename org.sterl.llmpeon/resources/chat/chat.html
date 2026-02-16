@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
 
     <link rel="stylesheet" href="./atom-one-light.min.css">
+    <link rel="stylesheet" href="./diff2html.min.css">
 
     <style>
       body {
@@ -118,6 +119,7 @@
   <script src="./lang/xml.min.js"></script>
   <script src="./lang/yaml.min.js"></script>
   <script src="./markdown-it.min.js"></script>
+  <script src="./diff2html-ui.min.js"></script>
     
     <script>
       const COPY_ICON = `
@@ -168,6 +170,22 @@
         };
       }
 
+      function appendDiff(diffString) {
+        const container = document.getElementById("chat");
+        const div = document.createElement("div");
+        div.className = "message diff";
+        container.appendChild(div);
+
+        var diff2htmlUi = new Diff2HtmlUI(div, diffString, {
+          drawFileList: false,
+          outputFormat: 'line-by-line',
+          highlight: true,
+          matching: 'lines'
+        });
+        diff2htmlUi.draw();
+        window.scrollTo(0, document.body.scrollHeight);
+      }
+
       function clearMessages() {
         document.getElementById("chat").innerHTML = "";
       }
@@ -186,7 +204,7 @@
       }
     }
     initIt();
-
+/*
     appendMessage({role: "USER", message: "Write hello world"});
     appendMessage({
       role: 'AI',
@@ -212,5 +230,6 @@ yes and some xml
 \`\`\`
 `
     })
+*/
   </script>
 </html>

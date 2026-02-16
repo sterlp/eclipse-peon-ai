@@ -4,6 +4,8 @@ EclipseLLMPeon is an Eclipse RCP plugin that integrates a lightweight, context-a
 
 The project focuses on a pragmatic, embedded approach without p2 wrapping, keeping the setup simple and transparent.
 
+![Exsample](./exsample.png)
+
 ---
 
 ## Requirements
@@ -19,7 +21,7 @@ The project focuses on a pragmatic, embedded approach without p2 wrapping, keepi
 Build the project from the repository root:
 
 ```bash
-mvn clean verify
+mvn clean package
 ```
 
 ### Clean start

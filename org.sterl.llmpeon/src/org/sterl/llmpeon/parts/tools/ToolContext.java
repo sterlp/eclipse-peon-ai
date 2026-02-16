@@ -6,6 +6,7 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
@@ -15,6 +16,7 @@ import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.sterl.llmpeon.parts.shared.IoUtils;
+import org.sterl.llmpeon.parts.shared.SimpleDiff;
 
 /**
  * Mutable context that provides Eclipse workspace file operations.
@@ -29,6 +31,7 @@ public class ToolContext {
 
     private IProject currentProject;
     private String selectedFile; // workspace-relative path
+    private Consumer<String> diffObserver;
 
     public void setCurrentProject(IProject project) {
         this.currentProject = project;
@@ -44,6 +47,13 @@ public class ToolContext {
 
     public String getSelectedFile() {
         return selectedFile;
+    }
+
+    /**
+     * Sets a callback that receives unified diff strings after file writes.
+     */
+    public void setDiffObserver(Consumer<String> observer) {
+        this.diffObserver = observer;
     }
 
     /**
@@ -69,24 +79,47 @@ public class ToolContext {
     }
 
     public String writeFile(String path, String content) {
+        // capture old content for diff before writing
+        String oldContent = null;
+        try {
+            oldContent = readFile(path);
+            if (oldContent != null && oldContent.startsWith("File not found:")) {
+                oldContent = null; // new file
+            }
+        } catch (Exception e) {
+            // file doesn't exist yet, that's fine
+        }
+
         IFile file = resolveFile(path);
+        String result;
         if (file == null || !file.exists()) {
             try {
                 var fsPath = java.nio.file.Path.of(path);
                 Files.writeString(fsPath, content);
-                return "Successfully updated file: " + path;
+                result = "Successfully updated file: " + path;
             } catch (IOException e) {
                 throw new RuntimeException("Failed to write file: " + path, e);
             }
+        } else {
+            try {
+                String charset = file.getCharset();
+                Files.writeString(file.getLocation().toPath(), content, Charset.forName(charset));
+                file.refreshLocal(IResource.DEPTH_ZERO, null);
+                result = "Successfully updated file: " + file.getFullPath();
+            } catch (CoreException | IOException e) {
+                throw new RuntimeException("Failed to write " + file.getFullPath(), e);
+            }
         }
-        try {
-            String charset = file.getCharset();
-            Files.writeString(file.getLocation().toPath(), content, Charset.forName(charset));
-            file.refreshLocal(IResource.DEPTH_ZERO, null);
-            return "Successfully updated file: " + file.getFullPath();
-        } catch (CoreException | IOException e) {
-            throw new RuntimeException("Failed to write " + file.getFullPath(), e);
+
+        // notify diff observer
+        if (diffObserver != null) {
+            String diff = SimpleDiff.unifiedDiff(path, oldContent, content);
+            if (!diff.isEmpty()) {
+                diffObserver.accept(diff);
+            }
         }
+
+        return result;
     }
 
     public List<String> searchFiles(String query) {
@@ -116,7 +149,6 @@ public class ToolContext {
 
     public String readSelectedFile() {
         if (selectedFile == null) {
-            // LLM-actionable: it can ask the user to select a file
             return "No file is currently selected";
         }
         IFile file = resolveFile(selectedFile);

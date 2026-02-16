@@ -42,7 +42,7 @@ public class AIChatView {
         parent.setLayout(new FillLayout());
         toolService = new ToolService();
         chatService = new ChatService(LlmPreferenceInitializer.buildWithDefaults(), toolService);
-        chat = new ChatWidget(chatService, parent, SWT.NONE);
+        chat = new ChatWidget(chatService, toolService, parent, SWT.NONE);
         if (logger != null)
             logger.info("We have a logger ... " + chatService.getConfig());
 

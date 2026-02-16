@@ -72,6 +72,16 @@ public class ChatMarkdownWidget extends Composite {
         }
     }
 
+    public void showDiff(String unifiedDiff) {
+        try {
+            browser.execute(
+                "appendDiff(" + mapper.writeValueAsString(unifiedDiff) + ");"
+            );
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public void clear() {
         browser.execute("clearMessages();");
     }
