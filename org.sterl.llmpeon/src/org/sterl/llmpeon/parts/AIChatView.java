@@ -8,6 +8,7 @@ import org.eclipse.e4.core.di.annotations.Optional;
 import org.eclipse.e4.core.services.log.Logger;
 import org.eclipse.e4.ui.di.Focus;
 import org.eclipse.e4.ui.services.IServiceConstants;
+import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.swt.SWT;
@@ -84,13 +85,20 @@ public class AIChatView {
     public void setSelection(@Named(IServiceConstants.ACTIVE_SELECTION) Object o) {
         if (o instanceof ISelection) return;
 
-        if (o instanceof IFile f) {
+        if (o instanceof ICompilationUnit cu) {
+            IFile f = (IFile) cu.getResource();
+            var ctx = toolService.getContext();
+            if (f != null) {
+                ctx.setSelectedFile(f.getFullPath().toString());
+                ctx.setCurrentProject(f.getProject());
+            } else {
+                System.err.println("ICompilationUnit without a IFile " + cu.getPath().toOSString());
+                ctx.setSelectedFile(cu.getPath().toOSString());
+            }
+        } else if (o instanceof IFile f) {
             var ctx = toolService.getContext();
             ctx.setSelectedFile(f.getFullPath().toString());
             ctx.setCurrentProject(f.getProject());
-        } else {
-            if (chat != null)
-                chat.append("Selection", "This is a selection of " + o.getClass());
         }
     }
 

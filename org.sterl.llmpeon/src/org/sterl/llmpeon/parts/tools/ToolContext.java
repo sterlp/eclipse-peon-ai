@@ -149,7 +149,7 @@ public class ToolContext {
 
     public String readSelectedFile() {
         if (selectedFile == null) {
-            return "No file is currently selected";
+            return "No file is currently selected - you may use search file";
         }
         IFile file = resolveFile(selectedFile);
         if (file == null || !file.exists()) {

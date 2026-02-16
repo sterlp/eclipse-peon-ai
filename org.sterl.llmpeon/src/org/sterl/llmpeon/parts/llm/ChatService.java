@@ -21,6 +21,7 @@ import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.service.tool.ToolExecutor;
 
 // TODO OpenAiTokenCountEstimator
+// https://community.openai.com/t/what-is-the-openai-algorithm-to-calculate-tokens/58237/4
 public class ChatService {
     private final LlmConfig config;
     private final ToolService toolService;
