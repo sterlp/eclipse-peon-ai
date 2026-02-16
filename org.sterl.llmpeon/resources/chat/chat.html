@@ -1,63 +1,57 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-<meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
 
-<link rel="stylesheet" href="highlight.min.css">
+    <link rel="stylesheet" href="highlight.min.css" />
 
-<style>
-body {
-  font-family: system-ui;
-  margin: 0;
-  padding: 8px;
-}
-.message {
-  margin-bottom: 12px;
-}
-pre {
-  position: relative;
-}
+    <style>
+      body {
+        font-family: system-ui;
+        margin: 0;
+        padding: 8px;
+      }
+      .message {
+        margin-bottom: 12px;
+      }
+      pre {
+        position: relative;
+      }
 
-.copy-btn {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  z-index: 10;
+      .copy-btn {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        z-index: 10;
 
-  padding: 4px;
-  z-index: 10;
-  border: none;
-  background: transparent;
-  color: #212529;
-  cursor: pointer;
+        padding: 4px;
+        z-index: 10;
+        border: none;
+        background: transparent;
+        color: #212529;
+        cursor: pointer;
 
-  opacity: 1;
-  transition: opacity 0.15s ease, color 0.15s ease;
-}
+        opacity: 1;
+        transition:
+          opacity 0.15s ease,
+          color 0.15s ease;
+      }
 
-.copy-btn:hover {
-  color: #4da3ff;
-}
+      .copy-btn:hover {
+        color: #4da3ff;
+      }
 
-.copy-btn.copied {
-  color: #4caf50;
-}
+      .copy-btn.copied {
+        color: #4caf50;
+      }
+    </style>
 
-</style>
+    <script src="markdown-it.min.js"></script>
+    <script src="highlight.min.js"></script>
+    <script src="markdown-it-emoji.min.js"></script>
 
-<script src="markdown-it.min.js"></script>
-<script src="highlight.min.js"></script>
-<script src="markdown-it-emoji.min.js"></script>
-
-</head>
-
-<body>
-  <div id="chat"></div>
-</body>
-
-<script>
-    
-const COPY_ICON = `
+    <script>
+      const COPY_ICON = `
 <svg xmlns="http://www.w3.org/2000/svg"
      viewBox="0 0 24 24"
      width="20"
@@ -67,46 +61,66 @@ const COPY_ICON = `
   <path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"/>
 </svg>`;
 
-const md = window.markdownit({
-  highlight: function (str, lang) {
-    if (lang && hljs.getLanguage(lang)) {
-      return hljs.highlight(str, { language: lang }).value;
+      const md = window.markdownit({
+        highlight: function (str, lang) {
+          if (lang && hljs.getLanguage(lang)) {
+            return hljs.highlight(str, { language: lang }).value;
+          }
+          return hljs.highlightAuto(str).value;
+        },
+      });
+
+      function appendMessage(message) {
+        const container = document.getElementById("chat");
+        const div = document.createElement("div");
+        div.className = "message " + message.role;
+        div.innerHTML = md.render(message.message ?? "");
+        container.appendChild(div);
+        enhanceCodeBlocks(div);
+        window.scrollTo(0, document.body.scrollHeight);
+      }
+
+      function enhanceCodeBlocks(root) {
+        root.querySelectorAll("pre").forEach((pre) => {
+          if (pre.querySelector(".copy-btn")) return;
+
+          const btn = document.createElement("button");
+          btn.className = "copy-btn";
+          btn.innerHTML = COPY_ICON;
+          btn.title = "Copy code";
+
+          btn.onclick = () => {
+            navigator.clipboard.writeText(pre.innerText);
+          };
+
+          pre.appendChild(btn);
+        });
+      }
+
+      function clearMessages() {
+        document.getElementById("chat").innerHTML = "";
+      }
+    </script>
+  </head>
+
+  <body>
+    <div id="chat"></div>
+  </body>
+
+  <script>
+    function initIt() {
+      let message = 'Welcome';
+      if (!window.markdownit) {
+        message = 'Failed to load markdown-it';
+      }
+
+      const container = document.getElementById("chat");
+      const div = document.createElement("pre");
+      div.innerHTML = md.render(message ?? "");
+      container.appendChild(div);
     }
-    return hljs.highlightAuto(str).value;
-  }
-});
-
-function appendMessage(message) {
-  const container = document.getElementById("chat");
-  const div = document.createElement("div");
-  div.className = "message " + message.role;
-  div.innerHTML = md.render(message.message ?? '');
-  container.appendChild(div);
-  enhanceCodeBlocks(div);
-  window.scrollTo(0, document.body.scrollHeight);
-}
-
-function enhanceCodeBlocks(root) {
-  root.querySelectorAll("pre").forEach(pre => {
-    if (pre.querySelector(".copy-btn")) return;
-
-    const btn = document.createElement("button");
-    btn.className = "copy-btn";
-    btn.innerHTML = COPY_ICON;
-    btn.title = "Copy code";
-
-    btn.onclick = () => {
-      navigator.clipboard.writeText(pre.innerText);
-    };
-
-    pre.appendChild(btn);
-  });
-}
-
-function clearMessages() {
-  document.getElementById("chat").innerHTML = "";
-}
-/*
+    initIt();
+    /*
 appendMessage({role: 'AI', message: `
 hello
 
@@ -130,5 +144,5 @@ public class Foo() {
 nein
 `})
 */
-</script>
+  </script>
 </html>
