@@ -1,15 +1,13 @@
 package org.sterl.llmpeon.parts.widget;
 
 import java.io.IOException;
-import java.net.URL;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
-import org.eclipse.core.runtime.FileLocator;
-import org.eclipse.core.runtime.Path;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.browser.Browser;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
-import org.osgi.framework.FrameworkUtil;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,16 +28,13 @@ public class ChatMarkdownWidget extends Composite {
         setLayout(new FillLayout());
 
         browser = new Browser(this, SWT.NONE);
-        URL url = FileLocator.find(
-                FrameworkUtil.getBundle(getClass()),
-                new Path("resources/chat/chat.html"),
-                null
-            );
-
-        try {
-            browser.setUrl(FileLocator.toFileURL(url).toString());
+        try (InputStream is = getClass().getResourceAsStream("/resources/chat/chat.html")) {
+            if (is == null) {
+                throw new RuntimeException("chat.html not found on classpath");
+            }
+            browser.setText(new String(is.readAllBytes(), StandardCharsets.UTF_8));
         } catch (IOException e) {
-            throw new RuntimeException("Failed to load " + url, e);
+            throw new RuntimeException("Failed to load chat.html", e);
         }
     }
 
