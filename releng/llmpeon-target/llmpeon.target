@@ -9,6 +9,7 @@
             <unit id="org.eclipse.e4.rcp.feature.group" />
             <unit id="org.eclipse.equinox.executable.feature.group" />
             <unit id="org.eclipse.platform.feature.group" />
+            <unit id="org.eclipse.jdt.feature.group" />
 
         </location>
     </locations>
