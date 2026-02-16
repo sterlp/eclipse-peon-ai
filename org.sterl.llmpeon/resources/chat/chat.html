@@ -17,41 +17,112 @@
 
     <style>
       body {
-        font-family: system-ui;
+        font-family: system-ui, -apple-system, sans-serif;
         margin: 0;
         padding: 8px;
+        font-size: 14px;
+        line-height: 1.5;
+        color: #1a1a1a;
+        background: #fff;
       }
+
       .message {
-        margin-bottom: 12px;
+        padding: 2px 0 4px;
       }
+      .message::after {
+        content: "";
+        display: block;
+        border-bottom: 1px solid #e0e0e0;
+        margin-top: 4px;
+      }
+      .message:last-child::after {
+        border-bottom: none;
+      }
+
+      /* Role label */
+      .message::before {
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 4px;
+      }
+
+      /* Role-specific styling */
+      .message.USER::before {
+        content: "You";
+        color: #0969da;
+      }
+      .message.AI::before {
+        content: "Peon";
+        color: #8250df;
+      }
+      .message.SYSTEM::before {
+        content: "System";
+        color: #bf8700;
+      }
+      .message.TOOL_EXECUTION_RESULT::before {
+        content: "Tool Result";
+        color: #1a7f37;
+      }
+      .message.think {
+        font-size: 12px;
+        color: #888;
+        font-style: italic;
+        border-left: 3px solid #ccc;
+        padding-left: 12px;
+      }
+      .message.think::before {
+        content: "Thinking";
+        color: #999;
+        font-style: normal;
+      }
+
+      /* Inline code */
+      code:not(.hljs) {
+        background: #f0f0f0;
+        padding: 2px 5px;
+        border-radius: 3px;
+        font-size: 13px;
+      }
+
+      /* Code blocks */
       pre {
         position: relative;
+        border-radius: 6px;
+        border: 1px solid #e0e0e0;
+        margin: 6px 0;
       }
+      pre code.hljs {
+        border-radius: 6px;
+        background: transparent;
+      }
+
+      /* Paragraphs inside messages */
+      .message p:first-of-type { margin-top: 0; }
+      .message p:last-of-type { margin-bottom: 0; }
 
       .copy-btn {
         position: absolute;
-        top: 2px;
-        right: 2px;
+        top: 4px;
+        right: 4px;
         z-index: 10;
-
         padding: 4px;
         border: none;
-        background: transparent;
-        color: #212529;
+        background: rgba(255,255,255,0.7);
+        border-radius: 4px;
+        color: #555;
         cursor: pointer;
-
         opacity: 1;
-        transition:
-          opacity 0.15s ease,
-          color 0.15s ease;
       }
-
       .copy-btn:hover {
-        color: #4da3ff;
+        color: #0969da;
+        background: rgba(255,255,255,0.9);
       }
-
       .copy-btn.copied {
-        color: #4caf50;
+        color: #1a7f37;
+        opacity: 1;
       }
     </style>
 
@@ -1352,6 +1423,8 @@ return Pe}()
 
           btn.onclick = () => {
             navigator.clipboard.writeText(pre.innerText);
+            btn.classList.add('copied');
+            setTimeout(() => btn.classList.remove('copied'), 1500);
           };
 
           pre.appendChild(btn);
@@ -1370,16 +1443,29 @@ return Pe}()
 
   <script>
     function initIt() {
-      let message = 'Welcome';
       if (!window.markdownit) {
-        message = 'Failed to load markdown-it';
+        document.getElementById("chat").innerHTML =
+          '<div style="color:red">Failed to load markdown-it</div>';
       }
-
-      const container = document.getElementById("chat");
-      const div = document.createElement("pre");
-      div.innerHTML = md.render(message ?? "");
-      container.appendChild(div);
     }
     initIt();
+
+    appendMessage({
+      role: 'AI',
+      message: `
+      Here's a simple "Hello, World!" program in Java:
+
+\`\`\`java
+public class HelloWorld {
+    public static void main(String[] args) {
+        System.out.println("Hello, World!");
+    }
+}
+\`\`\`
+
+# some data
+\`data\`
+      `
+    })
   </script>
 </html>
