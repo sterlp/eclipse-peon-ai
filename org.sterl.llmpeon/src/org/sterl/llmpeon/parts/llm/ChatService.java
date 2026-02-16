@@ -20,6 +20,7 @@ import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.service.tool.ToolExecutor;
 
+// TODO OpenAiTokenCountEstimator
 public class ChatService {
     private final LlmConfig config;
     private final ToolService toolService;
