@@ -8,8 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.sterl.llmpeon.parts.config.LlmConfig;
-import org.sterl.llmpeon.parts.tools.ReadFileTool;
-import org.sterl.llmpeon.parts.tools.SearchFilesTool;
+import org.sterl.llmpeon.parts.tools.ToolService;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -51,23 +50,24 @@ public class ChatService {
 
     private final List<ToolSpecification> toolSpecs = new ArrayList<>();
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
-    
+
     public void addObserver(LlmObserver o) {
         this.observers.add(o);
     }
     public void removeObserver(LlmObserver o) {
         this.observers.remove(o);
     }
-    
+
     private void informObservers(String value) {
         this.observers.forEach(o -> o.onAction(value));
     }
 
-    public ChatService(LlmConfig config) {
+    public ChatService(LlmConfig config, ToolService toolService) {
         this.config = config;
         updateConfig(config);
-        addTool(new SearchFilesTool());
-        addTool(new ReadFileTool());
+        for (Object tool : toolService.getTools()) {
+            addTool(tool);
+        }
     }
 
     public void updateConfig(LlmConfig config) {

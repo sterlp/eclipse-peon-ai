@@ -1,27 +1,14 @@
 package org.sterl.llmpeon.parts.tools;
 
-import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Path;
-
-import org.eclipse.core.resources.IFile;
-import org.eclipse.core.runtime.CoreException;
-
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 
-/**
- * Generic file update tool – no Eclipse dependencies.
- * Receives a {@link Path} at construction time and lets the LLM
- * replace the full file content.
- */
 public class UpdateSelectedFileTool {
 
-    private final IFile file;
+    private final ToolContext context;
 
-    public UpdateSelectedFileTool(IFile file) {
-        this.file = file;
+    public UpdateSelectedFileTool(ToolContext context) {
+        this.context = context;
     }
 
     @Tool("Replaces the complete content of the currently selected file with the provided new content. "
@@ -29,17 +16,9 @@ public class UpdateSelectedFileTool {
     public String updateCurrentFile(
             @P("The complete new file content that will replace the existing content") String newContent) {
 
-        if (file == null) return "No file is currently selected";
-        try {
-            try {
-                Files.writeString(file.getFullPath().toPath(), newContent, Charset.forName(file.getCharset()));
-            } catch (CoreException e) {
-                System.err.println("Failed to get charset " + e.getMessage());
-                Files.writeString(file.getFullPath().toPath(), newContent);
-            }
-            return "Successfully updated file: " + file.getFullPath();
-        } catch (IOException e) {
-            return "Error writing file: " + e.getMessage();
-        }
+        String selected = context.getSelectedFile();
+        if (selected == null) return "No file is currently selected";
+
+        return context.writeFile(selected, newContent);
     }
 }
