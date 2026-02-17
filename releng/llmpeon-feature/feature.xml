@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feature
+      id="llmpeon-feature"
+      label="LLM Peon Feature"
+      version="1.0.0.qualifier"
+      provider-name="Paul Sterl">
+
+   <description url="https://github.com/sterl/llm-peon">
+      LLM Peon - A lightweight, context-aware LLM assistant for Eclipse
+   </description>
+
+   <copyright url="https://github.com/sterl/llm-peon">
+      Copyright 2025 Paul Sterl
+   </copyright>
+
+   <license url="">
+      All rights reserved
+   </license>
+
+   <plugin
+         id="org.sterl.llmpeon"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+</feature>
