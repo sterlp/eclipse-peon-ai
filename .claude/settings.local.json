@@ -17,7 +17,8 @@
       "Bash(git -C /d/dev/workset/llm-peon branch -a)",
       "Bash(git -C /d/dev/workset/llm-peon log --oneline -20)",
       "Bash(gh repo view:*)",
-      "WebFetch(domain:sterl.github.io)"
+      "WebFetch(domain:sterl.github.io)",
+      "WebFetch(domain:sterlp.github.io)"
     ]
   }
 }

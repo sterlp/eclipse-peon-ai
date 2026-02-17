@@ -11,7 +11,14 @@ The project uses a pragmatic setup with embedded third-party libraries (no p2 wr
 - **Parent POM** (`pom.xml`): Aggregator with Tycho 5.x, defines target platform
 - **`org.sterl.llmpeon`**: Main Eclipse plugin (e4), packaging `eclipse-plugin`
 - **`releng/llmpeon-target`**: Target platform definition (Eclipse 2025-12)
+- **`releng/llmpeon-feature`**: Eclipse feature wrapping the plugin
+- **`releng/llmpeon-update-site`**: p2 repository / update site (deployed to GitHub Pages)
 - **`org.sterl.llmpeon.core`**: Standalone Maven JAR module (not part of reactor, not an OSGi bundle)
+
+## Workflow
+
+- **The user commits and pushes themselves** — never create commits or push on behalf of the user
+- Signal "ready for review" when changes are complete
 
 ## Key Technical Decisions
 

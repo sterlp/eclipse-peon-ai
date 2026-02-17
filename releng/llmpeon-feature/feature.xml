@@ -5,11 +5,11 @@
       version="1.0.0.qualifier"
       provider-name="Paul Sterl">
 
-   <description url="https://github.com/sterl/eclipse-peon-ai">
+   <description url="https://github.com/sterlp/eclipse-peon-ai">
       Peon AI - An Eclipse plugin that brings a lightweight, context-aware LLM assistant directly into the Eclipse workbench
    </description>
 
-   <copyright url="https://github.com/sterl/eclipse-peon-ai">
+   <copyright url="https://github.com/sterlp/eclipse-peon-ai">
       Copyright 2025 Paul Sterl
    </copyright>
 

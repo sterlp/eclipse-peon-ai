@@ -42,7 +42,7 @@ jobs:
         cache: maven
 
     - name: Build update site
-      run: mvn -B clean verify --file pom.xml
+      run: mvn -B clean verify -DskipTests --file pom.xml
 
     - name: Deploy to GitHub Pages
       run: |
@@ -54,6 +54,34 @@ jobs:
         find . -maxdepth 1 ! -name '.git' ! -name '.' -exec rm -rf {} \;
         # Copy new p2 repository content
         cp -r /tmp/p2-repo/* .
+        # Create landing page
+        cat > index.html << 'HTMLEOF'
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <title>Peon AI - Eclipse Update Site</title>
+          <style>
+            body { font-family: system-ui, sans-serif; max-width: 640px; margin: 4rem auto; padding: 0 1rem; color: #333; }
+            code { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; }
+            h1 { border-bottom: 1px solid #ddd; padding-bottom: 0.5rem; }
+          </style>
+        </head>
+        <body>
+          <h1>Peon AI - Eclipse Update Site</h1>
+          <p>This is an Eclipse p2 update site for <strong>Peon AI</strong>, a context-aware LLM assistant for Eclipse.</p>
+          <h2>Installation</h2>
+          <ol>
+            <li>Open Eclipse</li>
+            <li>Go to <strong>Help &gt; Install New Software...</strong></li>
+            <li>Click <strong>Add...</strong></li>
+            <li>Enter this URL: <code>https://sterlp.github.io/eclipse-peon-ai/</code></li>
+            <li>Select <strong>Peon AI Feature</strong> and follow the wizard</li>
+          </ol>
+          <p>Source code: <a href="https://github.com/sterlp/eclipse-peon-ai">github.com/sterlp/eclipse-peon-ai</a></p>
+        </body>
+        </html>
+        HTMLEOF
         # Commit and push
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"

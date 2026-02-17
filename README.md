@@ -1,10 +1,18 @@
-# EclipseLLMPeon
+# Eclipse Peon AI
 
-EclipseLLMPeon is an Eclipse RCP plugin that integrates a lightweight, context-aware LLM assistant directly into the Eclipse workbench to support developers in their daily workflow.
+Eclipse Peon AI is an Eclipse RCP plugin that integrates a lightweight, context-aware LLM assistant directly into the Eclipse workbench to support developers in their daily workflow.
 
 The project focuses on a pragmatic, embedded approach without p2 wrapping, keeping the setup simple and transparent.
 
-![Exsample](./exsample.png)
+![Example](./example.png)
+
+# Install
+
+Use the update site:
+
+- https://sterl.github.io/eclipse-peon-ai/
+
+![Example](./install.png)
 
 ---
 
