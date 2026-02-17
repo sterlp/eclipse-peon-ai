@@ -1,6 +1,6 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
-Bundle-Name: lm-peon
+Bundle-Name: Peon AI
 Bundle-SymbolicName: org.sterl.llmpeon;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Export-Package: org.sterl.llmpeon.parts

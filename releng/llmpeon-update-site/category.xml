@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <site>
-   <category-def name="LLM Peon Update" label="LLM Peon Update">
+   <category-def name="Peon AI Update" label="Peon AI Update">
       <description>
-         LLM Peon - A lightweight, context-aware LLM assistant for Eclipse
+         Peon AI - An Eclipse plugin that brings a lightweight, context-aware LLM assistant directly into the Eclipse workbench
       </description>
    </category-def>
    <feature id="llmpeon-feature">
-      <category name="LLM Peon Update"/>
+      <category name="Peon AI Update"/>
    </feature>
 </site>

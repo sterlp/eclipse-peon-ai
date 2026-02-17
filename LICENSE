@@ -1,0 +1,233 @@
+Eclipse Public License - v 2.0
+
+THE ACCOMPANYING PROGRAM IS PROVIDED UNDER THE TERMS OF THIS ECLIPSE
+PUBLIC LICENSE ("AGREEMENT"). ANY USE, REPRODUCTION OR DISTRIBUTION
+OF THE PROGRAM CONSTITUTES RECIPIENT'S ACCEPTANCE OF THIS AGREEMENT.
+
+1. DEFINITIONS
+
+"Contribution" means:
+
+a) in the case of the initial Contributor, the initial content
+   Distributed under this Agreement, and
+
+b) in the case of each subsequent Contributor:
+    i) changes to the Program, and
+    ii) additions to the Program;
+
+where such changes and/or additions to the Program originate from
+and are Distributed by that particular Contributor. A Contribution
+"originates" from a Contributor if it was added to the Program by
+such Contributor itself or anyone acting on such Contributor's behalf.
+
+Contributions do not include changes or additions to the Program that
+are not Modified Works.
+
+"Contributor" means any person or entity that Distributes the Program.
+
+"Licensed Patents" mean patent claims licensable by a Contributor
+that are necessarily infringed by the use or sale of its Contribution
+alone or when combined with the Program.
+
+"Program" means the Contributions Distributed in accordance with this
+Agreement.
+
+"Recipient" means anyone who receives the Program under this Agreement,
+including all Contributors.
+
+2. GRANT OF RIGHTS
+
+a) Subject to the terms of this Agreement, each Contributor hereby
+grants Recipient a non-exclusive, worldwide, royalty-free copyright
+license to reproduce, prepare derivative works of, publicly display,
+publicly perform, Distribute and sublicense the Contribution of such
+Contributor, if any, and such derivative works, in source code and
+object code form.
+
+b) Subject to the terms of this Agreement, each Contributor hereby
+grants Recipient a non-exclusive, worldwide, royalty-free patent
+license under Licensed Patents to make, use, sell, offer for sale,
+import and otherwise transfer the Contribution of such Contributor,
+if any, in source code and object code form. This patent license
+shall apply to the combination of the Contribution and the Program
+if, at the time the Contribution is added by the Contributor, such
+addition of the Contribution causes such combination to be covered
+by the Licensed Patents. The patent license shall not apply to any
+other combinations which include the Contribution. No hardware per
+se is licensed hereunder.
+
+c) Recipient understands that although each Contributor grants the
+licenses to its Contributions set forth herein, no assurances are
+provided by any Contributor that the Program does not infringe the
+patent or other intellectual property rights of any other entity.
+Each Contributor disclaims any liability to Recipient for claims
+brought by any other entity based on infringement of intellectual
+property rights or otherwise. As a condition to exercising the
+rights and licenses granted hereunder, each Recipient hereby
+assumes sole responsibility to secure any other intellectual
+property rights needed, if any. For example, if a third party
+patent license is required to allow Recipient to Distribute the
+Program, it is Recipient's responsibility to acquire that license
+before distributing the Program.
+
+d) Each Contributor represents that to its knowledge it has sufficient
+copyright rights in its Contribution, if any, to grant the copyright
+license set forth in this Agreement.
+
+3. REQUIREMENTS
+
+A Contributor may choose to distribute the Program in any form under
+this Agreement either on a standalone basis or as part of its own
+Contributions or its Combined Work, but excluding combinations that
+are not Covered Works. For purposes of this Agreement, "Covered
+Works" means the combination of the Contribution and the Program
+that, when executed, perform the purpose intended by the
+Contributor. The Contributor must Distribute the Program in
+accordance with this Agreement. The Contributor must include a
+notice in each copy of the Program indicating that the Program is
+provided under this Agreement. The Contributor must add a notice
+stating that the Contributor has provided the Program under this
+Agreement. The Contributor must add the notices required under
+Exhibit A. A Contributor may add its own copyright notice to the
+Program for additions or changes. Any Covered Work that the
+Contributor Distributes must include a readable copy of the notice
+required under Exhibit A, in at least one of the following places:
+within the Program source code, in the license notice for the
+Program, or as part of a derivative work of the Program. For
+purposes of this Exhibit A, "notice" means the text of the notice
+contained in the Program as delivered by the Contributor under this
+Agreement, including any source code, and any documentation for the
+Program, whether in a particular file or otherwise.
+
+4. COMMERCIAL DISTRIBUTION
+
+Commercial distributors of software may accept certain
+responsibilities with respect to end users, business partners and
+the like. While this license is intended to facilitate the commercial
+use of the Program, a Contributor who includes the Program in a
+commercial product offering should do so in a manner which does
+not create potential liability for other Contributors. Therefore,
+if a Contributor includes the Program in a commercial product
+offering, such Contributor ("Commercial Contributor") hereby agrees
+to defend and indemnify every other Contributor ("Indemnified
+Contributor") against any losses, damages and costs (collectively
+"Losses") arising from claims, lawsuits and other legal actions
+brought by a third party against the Indemnified Contributor to
+the extent caused by the acts or omissions of such Commercial
+Contributor in connection with its distribution of the Program in
+a commercial product offering. The obligations in this section do
+not apply to any claims or Losses relating to any actual or alleged
+intellectual property infringement. In order to qualify, an
+Indemnified Contributor must: a) promptly notify the Commercial
+Contributor in writing of such claim, and b) allow the Commercial
+Contributor to control, and cooperate with the Commercial
+Contributor in, the defense and any related settlement
+negotiations. The Indemnified Contributor may participate in any
+such claim at its own expense.
+
+For example, a Contributor might include the Program in a commercial
+product offering, and use the Program to provide a graphical user
+interface to a third party. That Contributor must then make the
+Commercial Contributor's source code available to the recipients
+of that commercial product offering. The Commercial Contributor may
+choose to distribute the Program in a commercial product offering
+under this Agreement, but is not required to do so. If the Program
+is distributed as part of a Commercial Product Offering, the
+Commercial Contributor must make the source code of the Program
+available to the recipients of the commercial product offering in
+source code form. The Commercial Contributor must ensure that the
+source code remains available in exactly the form it received
+from the Contributor for the entire life of the commercial product
+offering.
+
+5. NO WARRANTY
+
+EXCEPT AS EXPRESSLY SET FORTH IN THIS AGREEMENT, AND TO THE EXTENT
+PERMITTED BY APPLICABLE LAW, THE PROGRAM IS PROVIDED ON AN "AS IS"
+BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, EITHER EXPRESS
+OR IMPLIED INCLUDING, WITHOUT LIMITATION, ANY WARRANTIES OR
+CONDITIONS OF TITLE, NON-INFRINGEMENT, MERCHANTABILITY OR FITNESS
+FOR A PARTICULAR PURPOSE. Each Recipient is solely responsible for
+determining the appropriateness of using and distributing the
+Program and assumes all risks associated with its exercise of
+rights under this Agreement, including but not limited to the risks
+and costs of program errors, compliance with applicable laws,
+damage to or loss of data, programs or equipment, and
+unavailability or interruption of operations.
+
+6. DISCLAIMER OF LIABILITY
+
+EXCEPT AS EXPRESSLY SET FORTH IN THIS AGREEMENT, AND TO THE EXTENT
+PERMITTED BY APPLICABLE LAW, NEITHER RECIPIENT NOR ANY CONTRIBUTORS
+SHALL HAVE ANY LIABILITY FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING WITHOUT
+LIMITATION LOST PROFITS), HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+USE OR DISTRIBUTION OF THE PROGRAM OR THE EXERCISE OF ANY RIGHTS
+GRANTED HEREUNDER, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
+DAMAGES.
+
+7. GENERAL
+
+If any provision of this Agreement is invalid or unenforceable
+under applicable law, it shall not affect the validity or
+enforceability of the remainder of the terms of this Agreement,
+and without further action by the parties hereto, such provision
+shall be reformed to the minimum extent necessary to make such
+provision valid and enforceable.
+
+If Recipient institutes patent litigation against any entity
+(including a cross-claim or counterclaim in a lawsuit) alleging
+that the Program itself (excluding combinations of the Program with
+other software or hardware) infringes such Recipient's patent(s),
+then such Recipient's rights granted under Section 2(b) shall
+terminate as of the date such litigation is filed.
+
+All Recipient's rights under this Agreement shall terminate if it
+fails to comply with any of the material terms or conditions of
+this Agreement and does not cure such failure in a reasonable
+period of time after becoming aware of such noncompliance. If all
+Recipient's rights under this Agreement terminate, Recipient agrees
+to cease use and distribution of the Program as soon as reasonably
+practicable. However, Recipient's obligations under this Agreement
+and any applicable licenses granted by Recipient relating to the
+Program shall continue and survive.
+
+Everyone is permitted to copy and distribute copies of this Agreement,
+but in order to avoid inconsistency the Agreement is copyrighted
+and may only be modified in the following manner. The Agreement
+stands for the Eclipse Public License, version 2.0. The Agreement
+can be found at https://www.eclipse.org/legal/epl-2.0/.
+
+As a special exception, the copyright holders of the Program give
+you permission to combine or link the Program with independent
+modules that produce an executable, regardless of the license terms
+of those independent modules, and to copy and distribute the
+resulting executable under terms of your choice, provided that you
+meet the requirements of this Agreement. You may act solely on
+your own behalf, solely on your own responsibility, on your own
+behalf and on your sole responsibility, to not duplicate,
+modify, publically display, publicly perform, sublicense and
+distribute the Program as it is, as a template, as a example,
+but not as part of a product. You may create a Larger Work by
+combining the Program with other code not covered by the terms
+of this Agreement and distribute the Larger Work as a single
+product. In such a case, you must make sure the requirements of
+this Agreement are fulfilled for the Program.
+
+The name of the Program may not be used to endorse or promote
+products derived from this Program without specific prior written
+permission.
+
+EXHIBIT A
+
+The notice contained in each Covered Work is:
+
+"This program includes the software Peon AI, which is provided under
+the terms of the Eclipse Public License version 2.0 (EPL-2.0).
+A copy of the EPL-2.0 is available at https://www.eclipse.org/legal/epl-2.0/"
+
+Copyright (c) 2025 Paul Sterl
+
+All rights reserved.
