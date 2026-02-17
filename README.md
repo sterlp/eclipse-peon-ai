@@ -34,14 +34,18 @@ Eclipse 4.38 has a PDE/JDT bug where incremental builds produce broken `.class` 
 
 See [eclipse-build-issues.md](eclipse-build-issues.md) for details.
 
-### Libs
+### Libs used
+- https://github.com/langchain4j/langchain4j
 - https://github.com/markdown-it/markdown-it
-- https://cdnjs.com/libraries/markdown-it
-- https://highlightjs.org/
+- https://highlightjs.org
+- https://diff2html.xyz
 
 ---
 
 ## Links
+
+### Alternatives
+- https://github.com/anomalyco/opencode
 
 ### Eclipse RCP / e4 Development
 - [Vogella Eclipse RCP Tutorial](https://www.vogella.com/tutorials/EclipseRCP/article.html) - comprehensive, regularly updated
