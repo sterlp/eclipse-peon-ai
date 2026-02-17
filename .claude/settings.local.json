@@ -12,7 +12,12 @@
       "Bash(for jar in *.jar)",
       "Bash(do echo \"=== $jar ===\")",
       "Bash(done)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(git -C /d/dev/workset/llm-peon remote -v)",
+      "Bash(git -C /d/dev/workset/llm-peon branch -a)",
+      "Bash(git -C /d/dev/workset/llm-peon log --oneline -20)",
+      "Bash(gh repo view:*)",
+      "WebFetch(domain:sterl.github.io)"
     ]
   }
 }
