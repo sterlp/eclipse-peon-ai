@@ -9,6 +9,7 @@ import org.eclipse.jface.preference.StringFieldEditor;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
 import org.eclipse.ui.preferences.ScopedPreferenceStore;
+import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.parts.LlmPreferenceConstants;
 
 public class AiConfigPreferenceView extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
@@ -22,7 +23,7 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
     @Override
     public void createFieldEditors() {
         addField(new ComboFieldEditor(LlmPreferenceConstants.PREF_PROVIDER_TYPE, "Provider Type:",
-                new String[][] { { "Ollama", "ollama" }, { "OpenAI-compatible (Perplexity, OpenAI, ...)", "openai" } },
+                new String[][] { { "Ollama", AiProvider.OLLAMA.name() }, { "OpenAI-compatible (Perplexity, OpenAI, ...)", AiProvider.OPEN_AI.name() } },
                 getFieldEditorParent()));
         addField(new StringFieldEditor(LlmPreferenceConstants.PREF_MODEL, "Model:", getFieldEditorParent()));
         addField(new StringFieldEditor(LlmPreferenceConstants.PREF_URL, "URL (incl. port):", getFieldEditorParent()));

@@ -24,6 +24,7 @@ Import-Package: jakarta.annotation;version="[2.1.0,3.0.0)",
  org.osgi.framework;version="[1.10.0,2.0.0)"
 Automatic-Module-Name: org.sterl.llmpeon
 Bundle-ClassPath: .,
+ lib/llmpeon-core-1.0.0-SNAPSHOT.jar,
  lib/jackson-annotations-2.20.jar,
  lib/jackson-core-2.20.1.jar,
  lib/jackson-databind-2.20.1.jar,

@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.parts.tools;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
@@ -8,7 +9,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
+import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IResourceVisitor;
@@ -17,9 +20,10 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.SimpleDiff;
+import org.sterl.llmpeon.tool.ToolContext;
 
 /**
- * Mutable context that provides Eclipse workspace file operations.
+ * Mutable contextFile that provides Eclipse workspace file operations.
  * All returned paths are workspace-relative (e.g. "/ProjectName/src/Foo.java")
  * so they can be used to locate files again.
  *
@@ -27,7 +31,7 @@ import org.sterl.llmpeon.parts.shared.SimpleDiff;
  * Only LLM-actionable conditions (e.g. "file not found") return error strings
  * so the LLM can retry with a different path.
  */
-public class ToolContext {
+public class EclipseToolContext implements ToolContext {
 
     private IProject currentProject;
     private String selectedFile; // workspace-relative path
@@ -108,6 +112,83 @@ public class ToolContext {
         }
 
         return "Successfully updated file: " + file.getFullPath();
+    }
+
+    /**
+     * Creates a new file or overwrites an existing one.
+     * Resolves the target project from the path, then falls back to currentProject.
+     * Returns an LLM-actionable error if no project can be determined.
+     */
+    public String createFile(String path, String content) {
+        // resolve which project and what project-relative sub-path to use
+        IProject targetProject = null;
+        String projectRelativePath = path;
+
+        for (IProject p : ResourcesPlugin.getWorkspace().getRoot().getProjects()) {
+            if (!p.isOpen()) continue;
+            String name = p.getName();
+            // match "projectname/..." or "/projectname/..."
+            if (path.startsWith(name + "/") || path.startsWith("/" + name + "/")) {
+                targetProject = p;
+                projectRelativePath = path.startsWith("/") ? path.substring(name.length() + 2) : path.substring(name.length() + 1);
+                break;
+            }
+        }
+
+        if (targetProject == null) {
+            if (currentProject != null && currentProject.isOpen()) {
+                targetProject = currentProject;
+                // strip leading slash if present
+                projectRelativePath = path.startsWith("/") ? path.substring(1) : path;
+            } else {
+                // list available projects for the LLM to choose from
+                var sb = new StringBuilder("No active project. Available projects: ");
+                for (IProject p : ResourcesPlugin.getWorkspace().getRoot().getProjects()) {
+                    if (p.isOpen()) sb.append(p.getName()).append(", ");
+                }
+                sb.append("Provide a path starting with one of these project names, or ask the developer which project to use.");
+                return sb.toString();
+            }
+        }
+
+        IFile file = targetProject.getFile(projectRelativePath);
+        String oldContent = file.exists() ? readEclipseFile(file) : "";
+
+        try {
+            // create missing parent folders
+            ensureFolders(file.getParent());
+
+            Charset charset = Charset.forName(targetProject.getDefaultCharset());
+            byte[] bytes = content.getBytes(charset);
+            if (file.exists()) {
+                file.setContents(new ByteArrayInputStream(bytes), IResource.FORCE, null);
+            } else {
+                file.create(new ByteArrayInputStream(bytes), IResource.FORCE, null);
+            }
+        } catch (CoreException e) {
+            throw new RuntimeException("Failed to create/write " + file.getFullPath(), e);
+        }
+
+        if (diffObserver != null) {
+            String diff = SimpleDiff.unifiedDiff(file.getFullPath().toString(), oldContent, content);
+            if (!diff.isEmpty()) {
+                diffObserver.accept(diff);
+            }
+        }
+
+        return (oldContent.isEmpty() ? "Created" : "Updated") + " file: " + file.getFullPath();
+    }
+
+    private void ensureFolders(IContainer container) throws CoreException {
+        if (container == null || container instanceof IProject) return;
+        if (container instanceof IFolder folder) {
+            ensureFolders(folder.getParent());
+            if (!folder.exists()) {
+                // force=true: handles the case where the directory exists on disk
+                // but is not yet registered in the workspace model (out-of-sync)
+                folder.create(IResource.FORCE, true, null);
+            }
+        }
     }
 
     public List<String> searchFiles(String query) {

@@ -7,9 +7,9 @@ import dev.langchain4j.agent.tool.Tool;
 
 public class SearchFilesTool {
 
-    private final ToolContext context;
+    private final EclipseToolContext context;
 
-    public SearchFilesTool(ToolContext context) {
+    public SearchFilesTool(EclipseToolContext context) {
         this.context = context;
     }
 

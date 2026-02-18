@@ -16,25 +16,9 @@
 
     <dependencies>
         <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-core</artifactId>
-            <version>1.11.0</version>
-        </dependency>
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-ollama</artifactId>
-            <version>1.11.0</version>
-        </dependency>
-
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j</artifactId>
-            <version>1.11.0</version>
-        </dependency>
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-open-ai</artifactId>
-            <version>1.11.0</version>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>llmpeon-core</artifactId>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 
@@ -75,6 +59,7 @@
                             else
                                  is provided by the Eclipse target platform -->
                             <includeGroupIds>
+                                org.sterl,
                                 dev.langchain4j,
                                 com.fasterxml.jackson.core,
                                 org.jspecify,

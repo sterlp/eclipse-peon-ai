@@ -25,7 +25,11 @@ public class ChatMarkdownWidget extends Composite {
     private final Browser browser;
     private final ObjectMapper mapper = new ObjectMapper();
     
-    public record SimpleChatMessage(String role, String message) {};
+    public record SimpleChatMessage(String role, String message) {
+        public static SimpleChatMessage tool(String m) {
+            return new SimpleChatMessage("TOOL", m);
+        }
+    };
 
     public ChatMarkdownWidget(Composite parent, int style) {
         super(parent, style);
@@ -87,14 +91,20 @@ public class ChatMarkdownWidget extends Composite {
     }
 
     public void appendMessage(ChatMessage msg) {
-        appendMessage(new SimpleChatMessage(getToolTipText(), getToolTipText()));
+        var role = msg.type() + "";
+        String text = "";
         if (msg instanceof UserMessage um) {
-            appendMessage(new SimpleChatMessage(msg.type() + "", um.singleText()));
+            text = um.singleText();
         } else if (msg instanceof AiMessage am) {
-            if (am.thinking() != null) {
-                appendMessage(new SimpleChatMessage("think", am.thinking()));
+            if (am.thinking() != null && am.thinking().length() > 1) {
+                text = am.thinking();
+                appendMessage(new SimpleChatMessage("THINK", am.thinking()));
             }
-            appendMessage(new SimpleChatMessage(msg.type() + "", am.text()));
+            text = am.text();
         }
+        if (text != null) text = text.trim();
+        else return;
+        
+        if (text.length() > 0) appendMessage(new SimpleChatMessage(role, text));
     }
 }

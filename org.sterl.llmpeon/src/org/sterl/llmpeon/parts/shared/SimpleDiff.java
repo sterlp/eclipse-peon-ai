@@ -11,7 +11,7 @@ public class SimpleDiff {
     private static final int CONTEXT = 3;
 
     /**
-     * Produces a unified diff string with compact hunks (3 lines of context) suitable for diff2html rendering.
+     * Produces a unified diff string with compact hunks (3 lines of contextFile) suitable for diff2html rendering.
      * @return empty string if no changes
      */
     public static String unifiedDiff(String fileName, String oldText, String newText) {
@@ -21,7 +21,7 @@ public class SimpleDiff {
         List<String> diffLines = lcsDiff(oldLines, newLines);
         if (diffLines.stream().allMatch(l -> l.startsWith(" "))) return "";
 
-        // Find indices of changed lines (non-context)
+        // Find indices of changed lines (non-contextFile)
         List<Integer> changeIndices = new ArrayList<>();
         for (int i = 0; i < diffLines.size(); i++) {
             if (!diffLines.get(i).startsWith(" ")) changeIndices.add(i);

@@ -12,21 +12,23 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
-import org.sterl.llmpeon.parts.llm.ChatService;
-import org.sterl.llmpeon.parts.llm.LlmObserver;
-import org.sterl.llmpeon.parts.tools.ToolService;
+import org.sterl.llmpeon.ai.ChatService;
+import org.sterl.llmpeon.parts.LlmPreferenceConstants;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget.SimpleChatMessage;
 
 import dev.langchain4j.data.message.ChatMessageType;
 
-public class ChatWidget extends Composite implements LlmObserver {
+public class ChatWidget extends Composite {
 
     private final ChatService chatService;
     private ChatMarkdownWidget chatHistory;
     private Text inputArea;
     private Label tokenLabel;
+    private Label fileLabel;
     private Button send;
     private Button compress;
+    
+    private boolean working = false;
 
     @Override
     public boolean setFocus() {
@@ -35,16 +37,10 @@ public class ChatWidget extends Composite implements LlmObserver {
         return super.setFocus();
     }
 
-    public ChatWidget(ChatService chatService, ToolService toolService, Composite parent, int style) {
+    public ChatWidget(ChatService chatService, Composite parent, int style) {
         super(parent, style);
         this.chatService = chatService;
         createLayout();
-        chatService.addObserver(this);
-        toolService.getContext().setDiffObserver(diff -> {
-            Display.getDefault().asyncExec(() -> chatHistory.showDiff(diff));
-        });
-
-        addDisposeListener(e -> chatService.removeObserver(this));
     }
 
     private void createLayout() {
@@ -53,6 +49,8 @@ public class ChatWidget extends Composite implements LlmObserver {
         createChatHistory(this);
         createInputArea(this);
         createCommandBar(this);
+        
+        Display.getDefault().asyncExec(() -> chatHistory.clear());
     }
 
     // 1️ Chat history (top)
@@ -70,6 +68,7 @@ public class ChatWidget extends Composite implements LlmObserver {
 
 
         inputArea.addTraverseListener(e -> {
+            if (working) return;
             if (e.detail == SWT.TRAVERSE_RETURN) {
                 boolean enter = (e.stateMask & SWT.CTRL) != 0 || (e.stateMask & SWT.COMMAND) != 0;
 
@@ -85,7 +84,7 @@ public class ChatWidget extends Composite implements LlmObserver {
     private void createCommandBar(Composite parent) {
         Composite bar = new Composite(parent, SWT.NONE);
         bar.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-        bar.setLayout(new GridLayout(3, false));
+        bar.setLayout(new GridLayout(4, false));
 
         send = new Button(bar, SWT.PUSH);
         send.setImage(org.eclipse.debug.ui.DebugUITools.getImage(
@@ -97,20 +96,30 @@ public class ChatWidget extends Composite implements LlmObserver {
         compress = new Button(bar, SWT.PUSH);
         compress.setText("Compress");
         compress.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
-        compress.setToolTipText("Compress conversation context");
+        compress.setToolTipText("Compress conversation contextFile");
         compress.addListener(SWT.Selection, e -> compressContext());
 
         tokenLabel = new Label(bar, SWT.NONE);
         tokenLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+        
+        fileLabel = new Label(bar, SWT.NONE);
+        fileLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+        fileLabel.setText("");
         updateTokenLabel();
     }
 
     private void updateTokenLabel() {
-        int used = chatService.getLastInputTokens();
+        int used = chatService.getTokenSize();
         int max = chatService.getTokenWindow();
         int pct = max > 0 ? (used * 100) / max : 0;
-        tokenLabel.setText(used + " / " + max + " - " + pct + "%");
+
+        tokenLabel.setText(used + " / " + max + " - " + pct + "%" );
         tokenLabel.getParent().layout();
+    }
+    
+    public void updateContextLabel(String value) {
+        fileLabel.setText(value != null ? value : "");
+        fileLabel.getParent().layout();
     }
 
     private void refreshChat() {
@@ -120,29 +129,29 @@ public class ChatWidget extends Composite implements LlmObserver {
         });
         updateTokenLabel();
     }
+    
+    void lockWhileWorking(boolean value) {
+        this.working = value;
+        compress.setEnabled(!this.working);
+        send.setEnabled(!this.working);
+    }
 
     private void compressContext() {
-        compress.setEnabled(false);
-        send.setEnabled(false);
-        Job.create("Compressing context", monitor -> {
+        lockWhileWorking(true);
+        Job.create("Compressing contextFile", monitor -> {
             monitor.beginTask("Compressing", IProgressMonitor.UNKNOWN);
             Exception ex = null;
             try {
-                String summary = chatService.compressContext();
-                Display.getDefault().asyncExec(() -> {
-                    refreshChat();
-                    compress.setEnabled(true);
-                    send.setEnabled(true);
+                chatService.compressContext(m -> {
+                    Display.getDefault().asyncExec(() -> chatHistory.appendMessage(SimpleChatMessage.tool(m)));
                 });
             } catch (Exception e) {
                 ex = e;
-                Display.getDefault().asyncExec(() -> {
-                    compress.setEnabled(true);
-                    send.setEnabled(true);
-                });
+            } finally {
+                Display.getDefault().asyncExec(() -> lockWhileWorking(false));
             }
             monitor.done();
-            return ex == null ? Status.OK_STATUS : new Status(IStatus.ERROR, "AIChat", ex.getMessage(), ex);
+            return ex == null ? Status.OK_STATUS : new Status(IStatus.ERROR, LlmPreferenceConstants.PLUGIN_ID, ex.getMessage(), ex);
         }).schedule();
     }
 
@@ -156,9 +165,8 @@ public class ChatWidget extends Composite implements LlmObserver {
         String text = inputArea.getText().trim();
         if (text.isEmpty() && chatService.getMessages().isEmpty()) return;
         inputArea.setText("");
-        send.setEnabled(false);
-        if (text.length() > 0) chatHistory.appendMessage(
-                new SimpleChatMessage(ChatMessageType.USER.name(), text));
+        lockWhileWorking(true);
+        if (text.length() > 0) chatHistory.appendMessage(new SimpleChatMessage(ChatMessageType.USER.name(), text));
 
         Job.create("LLM request", monitor -> {
             monitor.beginTask("Calling LLM", IProgressMonitor.UNKNOWN);
@@ -166,7 +174,9 @@ public class ChatWidget extends Composite implements LlmObserver {
             Exception ex = null;
             try {
                 int msgCountBefore = chatService.getMessages().size();
-                var result = chatService.sendMessage(text);
+                var result = chatService.call(text, m -> {
+                    Display.getDefault().asyncExec(() -> append("TOOL", m));
+                });
 
                 Display.getDefault().asyncExec(() -> {
                     // if auto-compress happened, memory was reset — refresh entire chat

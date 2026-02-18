@@ -1,4 +1,4 @@
-package org.sterl.llmpeon.parts.tools;
+package org.sterl.llmpeon.tool;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -18,23 +18,10 @@ import dev.langchain4j.service.tool.ToolExecutor;
  */
 public class ToolService {
 
-    private final ToolContext context = new ToolContext();
     private final List<ToolSpecification> toolSpecs = new ArrayList<>();
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
 
-    public ToolService() {
-        addTool(new SearchFilesTool(context));
-        addTool(new ReadFileTool(context));
-        addTool(new ReadSelectedFileTool(context));
-        addTool(new UpdateSelectedFileTool(context));
-        addTool(new UpdateFileTool(context));
-    }
-
-    public ToolContext getContext() {
-        return context;
-    }
-
-    public List<ToolSpecification> getToolSpecs() {
+    public List<ToolSpecification> toolSpecifications() {
         return toolSpecs;
     }
 
@@ -50,10 +37,11 @@ public class ToolService {
         for (Method method : toolObject.getClass().getDeclaredMethods()) {
             if (method.isAnnotationPresent(Tool.class)) {
                 var spec = ToolSpecifications.toolSpecificationFrom(method);
-                System.err.println("added tool " + spec);
-                toolSpecs.removeIf(s -> s.name().equals(spec.name()));
+                var removed = toolSpecs.removeIf(s -> s.name().equals(spec.name()));
+                if (removed) throw new RuntimeException("Tool with " + spec.name() + " already registered ...");
                 toolSpecs.add(spec);
                 toolExecutors.put(spec.name(), new DefaultToolExecutor(toolObject, method));
+                System.out.println("added tool " + spec);
             }
         }
     }

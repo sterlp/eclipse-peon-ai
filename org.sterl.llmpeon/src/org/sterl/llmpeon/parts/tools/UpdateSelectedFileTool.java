@@ -5,9 +5,9 @@ import dev.langchain4j.agent.tool.Tool;
 
 public class UpdateSelectedFileTool {
 
-    private final ToolContext context;
+    private final EclipseToolContext context;
 
-    public UpdateSelectedFileTool(ToolContext context) {
+    public UpdateSelectedFileTool(EclipseToolContext context) {
         this.context = context;
     }
 

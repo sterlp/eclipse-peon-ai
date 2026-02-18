@@ -5,9 +5,9 @@ import dev.langchain4j.agent.tool.Tool;
 
 public class ReadFileTool {
 
-    private final ToolContext context;
+    private final EclipseToolContext context;
 
-    public ReadFileTool(ToolContext context) {
+    public ReadFileTool(EclipseToolContext context) {
         this.context = context;
     }
 

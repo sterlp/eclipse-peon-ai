@@ -5,20 +5,25 @@ import dev.langchain4j.agent.tool.Tool;
 
 public class UpdateFileTool {
 
-    private final ToolContext context;
+    private final EclipseToolContext context;
 
-    public UpdateFileTool(ToolContext context) {
+    public UpdateFileTool(EclipseToolContext context) {
         this.context = context;
     }
 
-    @Tool("Replaces the complete content of a file given its path with the provided new content. "
-            + "Use searchFiles first to find the path of the file you want to update.")
+    @Tool("Updates the complete content of an existing workspace file. "
+            + "Only works for files that already exist — does not create new files. "
+            + "Use searchFiles first to find the correct workspace path. "
+            + "Returns an error if the file cannot be found.")
     public String updateFile(
-            @P("The path of the file to update, e.g. '/ProjectName/src/Main.java'") String filePath,
+            @P("The workspace-relative path of the file to update, e.g. '/ProjectName/src/Main.java' or 'src/Main.java'") String filePath,
             @P("The complete new file content that will replace the existing content") String newContent) {
 
         if (filePath == null || filePath.isBlank()) {
             return "Error: filePath must not be empty";
+        }
+        if (newContent == null || newContent.isBlank()) {
+            return "Error: newContent must not be empty";
         }
 
         return context.writeFile(filePath, newContent);
