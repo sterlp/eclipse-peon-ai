@@ -46,7 +46,7 @@ public class ChatService {
             - Greetings, filler, and pleasantries
 
             Format as a structured summary the developer can continue working from.
-            Be as short as possible while keeping all essential context.
+            Be as short but keeping all essential context.
             """);
 
     SystemMessage system = SystemMessage.systemMessage("""

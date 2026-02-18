@@ -78,48 +78,36 @@ public class ToolContext {
         return "File not found: " + path;
     }
 
+    /**
+     * Updates an existing workspace file. Returns an LLM-actionable error string if the
+     * file cannot be found — the LLM should retry using searchFiles to get the correct path.
+     * Does NOT create new files.
+     */
     public String writeFile(String path, String content) {
-        // capture old content for diff before writing
-        String oldContent = null;
-        try {
-            oldContent = readFile(path);
-            if (oldContent != null && oldContent.startsWith("File not found:")) {
-                oldContent = null; // new file
-            }
-        } catch (Exception e) {
-            // file doesn't exist yet, that's fine
-        }
-
         IFile file = resolveFile(path);
-        String result;
-        if (file == null || !file.exists()) {
-            try {
-                var fsPath = java.nio.file.Path.of(path);
-                Files.writeString(fsPath, content);
-                result = "Successfully updated file: " + path;
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to write file: " + path, e);
-            }
-        } else {
-            try {
-                String charset = file.getCharset();
-                Files.writeString(file.getLocation().toPath(), content, Charset.forName(charset));
-                file.refreshLocal(IResource.DEPTH_ZERO, null);
-                result = "Successfully updated file: " + file.getFullPath();
-            } catch (CoreException | IOException e) {
-                throw new RuntimeException("Failed to write " + file.getFullPath(), e);
-            }
+        if (file == null) {
+            return "File not found: " + path + ". Use searchFiles to find the correct workspace path.";
         }
 
-        // notify diff observer
+        // capture old content for diff
+        String oldContent = readEclipseFile(file);
+
+        try {
+            String charset = file.getCharset();
+            Files.writeString(file.getLocation().toPath(), content, Charset.forName(charset));
+            file.refreshLocal(IResource.DEPTH_ZERO, null);
+        } catch (CoreException | IOException e) {
+            throw new RuntimeException("Failed to write " + file.getFullPath(), e);
+        }
+
         if (diffObserver != null) {
-            String diff = SimpleDiff.unifiedDiff(path, oldContent, content);
+            String diff = SimpleDiff.unifiedDiff(file.getFullPath().toString(), oldContent, content);
             if (!diff.isEmpty()) {
                 diffObserver.accept(diff);
             }
         }
 
-        return result;
+        return "Successfully updated file: " + file.getFullPath();
     }
 
     public List<String> searchFiles(String query) {
@@ -158,15 +146,66 @@ public class ToolContext {
         return getFileInfo(file) + "Content:\n" + readEclipseFile(file);
     }
 
+    /**
+     * Resolves a path to an existing workspace IFile using the following order:
+     * 1. Exact workspace-relative path (e.g. "/ProjectName/src/Foo.java")
+     * 2. Project-relative path within currentProject (e.g. "src/Foo.java")
+     * 3. Filename match within currentProject
+     * 4. Filename match across all open workspace projects
+     */
     private IFile resolveFile(String path) {
         if (path == null) return null;
+        String name = IPath.fromOSString(path).lastSegment();
+
+        // 1. exact workspace-relative path
         try {
             IFile file = ResourcesPlugin.getWorkspace().getRoot().getFile(IPath.fromOSString(path));
             if (file.exists()) return file;
         } catch (Exception e) {
-            // not a valid workspace path, caller will try filesystem fallback
+            // not a valid workspace-absolute path, continue
         }
+
+        // 2. project-relative path within currentProject
+        if (currentProject != null && currentProject.isOpen()) {
+            try {
+                IFile file = currentProject.getFile(path);
+                if (file.exists()) return file;
+            } catch (Exception e) {
+                // not a valid project-relative path, continue
+            }
+        }
+
+        // 3. filename match within currentProject
+        if (currentProject != null && currentProject.isOpen() && name != null) {
+            IFile[] found = findByName(currentProject, name);
+            if (found.length > 0) return found[0];
+        }
+
+        // 4. filename match across all open workspace projects
+        if (name != null) {
+            for (IProject project : ResourcesPlugin.getWorkspace().getRoot().getProjects()) {
+                if (!project.isOpen() || project.equals(currentProject)) continue;
+                IFile[] found = findByName(project, name);
+                if (found.length > 0) return found[0];
+            }
+        }
+
         return null;
+    }
+
+    private IFile[] findByName(IProject project, String name) {
+        var result = new ArrayList<IFile>();
+        try {
+            project.accept(resource -> {
+                if (resource.getType() == IResource.FILE && resource.getName().equals(name)) {
+                    result.add((IFile) resource);
+                }
+                return true;
+            });
+        } catch (CoreException e) {
+            throw new RuntimeException(e);
+        }
+        return result.toArray(new IFile[0]);
     }
 
     private String readEclipseFile(IFile file) {
