@@ -76,6 +76,7 @@ public class ChatMarkdownWidget extends Composite {
         }
     }
 
+    // TODO lost the DIFF view!
     public void showDiff(String unifiedDiff) {
         try {
             browser.execute(

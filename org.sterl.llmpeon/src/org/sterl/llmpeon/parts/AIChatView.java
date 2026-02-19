@@ -127,6 +127,10 @@ public class AIChatView {
             ctx.setSelectedFile(f.getFullPath().toString());
             ctx.setCurrentProject(f.getProject());
             contextFile.set(f.getFullPath().toOSString());
+            
+            System.err.println(f.getFullPath().toOSString());
+            System.err.println(f.getFullPath().toString());
+            System.err.println(f.getFullPath().toFile().getAbsolutePath());
         }
         if (chat != null) Display.getDefault().asyncExec(() -> chat.updateContextLabel(contextFile.get()));
     }

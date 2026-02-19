@@ -1,131 +1,176 @@
 <!doctype html>
 <html>
-  <head>
+
+<head>
     <meta charset="UTF-8" />
 
     <link rel="stylesheet" href="./atom-one-light.min.css">
     <link rel="stylesheet" href="./diff2html.min.css">
 
     <style>
-      body {
-        font-family: system-ui, -apple-system, sans-serif;
-        margin: 0;
-        color: #1a1a1a;
-        background: #fff;
-      }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            color: #1a1a1a;
+            background: #fff;
+        }
 
-      .message {
-        padding: 2px 0 4px;
-      }
-      .message::after {
-        content: "";
-        display: block;
-        border-bottom: 1px solid #e0e0e0;
-        margin-top: 4px;
-      }
-      .message:last-child::after {
-        border-bottom: none;
-      }
-      .message hr {
-        display: none;
-      }
+        p {
+            margin: 4px;
+        }
 
-      /* Role label */
-      .message::before {
-        display: block;
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-bottom: 4px;
-      }
+        .message {
+            padding: 2px 8px 4px 8px;
+        }
 
-      /* Role-specific styling */
-      .message.USER::before {
-        content: "You";
-        color: #0969da;
-      }
-      .message.AI::before {
-        content: "Peon";
-        color: #8250df;
-      }
-      .message.SYSTEM::before {
-        content: "System";
-        color: #bf8700;
-      }
-      .message.TOOL_EXECUTION_RESULT::before {
-        content: "Tool Result";
-        color: #1a7f37;
-      }
-      .message.think {
-        font-size: 12px;
-        color: #888;
-        font-style: italic;
-        border-left: 3px solid #ccc;
-        padding-left: 12px;
-      }
+        .message::after {
+            content: "";
+            display: block;
+            border-bottom: 1px solid #e0e0e0;
+            margin-top: 4px;
+        }
 
-      .message.think::before {
-        content: "Thinking";
-        color: #999;
-        font-style: normal;
-      }
+        .message:last-child::after {
+            border-bottom: none;
+        }
 
-      .code-pre {
-        position: relative;
-      }
+        /* Role label */
+        .message::before {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+        }
 
-      .copy-btn {
-        position: absolute;
-        top: 4px;
-        right: 2px;
-        z-index: 10;
-        padding: 2px;
-        border: none;
-        background: transparent;
-        cursor: pointer;
-        line-height: 0;
-        opacity: 0.8;
-      }
-      .copy-btn:hover {
-        color: #0969da;
-        opacity: 1;
-      }
-      .copy-btn.copied {
-        color: #1a7f37;
-        opacity: 1;
-      }
+        /* Role-specific styling */
+        .message.USER::before {
+            content: "You";
+            color: #0969da;
+        }
+
+        .message.USER {
+            border-left: 3px solid #0969da;
+            padding-left: 8px;
+        }
+
+        .message.xx::before {
+            content: "xx";
+            color: #8250df;
+        }
+
+        .message.xx {
+            font-style: italic;
+            border-left: 3px solid #8250df;
+            padding-left: 8px;
+        }
+
+        .message.xx::before {
+            content: "xx";
+            color: #bf8700;
+        }
+
+        .message.xx {
+            border-left: 3px solid #bf8700;
+        }
+
+        .message.AI {
+            border-left: 3px solid #1a7f37;
+        }
+
+        .message.AI::before {
+            content: "Peon";
+            color: #1a7f37;
+        }
+
+        .message.TOOL {
+            font-size: 11px;
+            font-style: italic;
+            color: #888;
+            border-left: 3px solid #ccc;
+            padding-left: 12px;
+        }
+
+        .message.TOOL::before {
+            content: "Tool";
+            color: #999;
+        }
+
+        .TOOL p {
+            margin: 0px;
+        }
+
+        .message.THINK {
+            color: #888;
+            font-style: italic;
+            border-left: 3px solid #ccc;
+            padding-left: 12px;
+        }
+
+        .message.THINK::before {
+            content: "Thinking";
+            color: #999;
+            font-style: normal;
+        }
+
+        .code-pre {
+            position: relative;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 4px;
+            right: 2px;
+            z-index: 10;
+            padding: 2px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            line-height: 0;
+            opacity: 0.8;
+        }
+
+        .copy-btn:hover {
+            color: #0969da;
+            opacity: 1;
+        }
+
+        .copy-btn.copied {
+            color: #1a7f37;
+            opacity: 1;
+        }
     </style>
 
-  <script src="./highlight.min.js"></script>
-  <script src="./lang/css.min.js"></script>
-  <script src="./lang/dart.min.js"></script>
-  <script src="./lang/elixir.min.js"></script>
-  <script src="./lang/ini.min.js"></script>
-  <script src="./lang/java.min.js"></script>
-  <script src="./lang/kotlin.min.js"></script>
-  <script src="./lang/less.min.js"></script>
-  <script src="./lang/makefile.min.js"></script>
-  <script src="./lang/markdown.min.js"></script>
-  <script src="./lang/objectivec.min.js"></script>
-  <script src="./lang/php.min.js"></script>
-  <script src="./lang/plaintext.min.js"></script>
-  <script src="./lang/python.min.js"></script>
-  <script src="./lang/ruby.min.js"></script>
-  <script src="./lang/rust.min.js"></script>
-  <script src="./lang/sas.min.js"></script>
-  <script src="./lang/scss.min.js"></script>
-  <script src="./lang/shell.min.js"></script>
-  <script src="./lang/sql.min.js"></script>
-  <script src="./lang/typescript.min.js"></script>
-  <script src="./lang/wasm.min.js"></script>
-  <script src="./lang/xml.min.js"></script>
-  <script src="./lang/yaml.min.js"></script>
-  <script src="./markdown-it.min.js"></script>
-  <script src="./diff2html-ui.min.js"></script>
-    
+    <script src="./highlight.min.js"></script>
+    <script src="./lang/css.min.js"></script>
+    <script src="./lang/dart.min.js"></script>
+    <script src="./lang/elixir.min.js"></script>
+    <script src="./lang/ini.min.js"></script>
+    <script src="./lang/java.min.js"></script>
+    <script src="./lang/kotlin.min.js"></script>
+    <script src="./lang/less.min.js"></script>
+    <script src="./lang/makefile.min.js"></script>
+    <script src="./lang/markdown.min.js"></script>
+    <script src="./lang/objectivec.min.js"></script>
+    <script src="./lang/php.min.js"></script>
+    <script src="./lang/plaintext.min.js"></script>
+    <script src="./lang/python.min.js"></script>
+    <script src="./lang/ruby.min.js"></script>
+    <script src="./lang/rust.min.js"></script>
+    <script src="./lang/sas.min.js"></script>
+    <script src="./lang/scss.min.js"></script>
+    <script src="./lang/shell.min.js"></script>
+    <script src="./lang/sql.min.js"></script>
+    <script src="./lang/typescript.min.js"></script>
+    <script src="./lang/wasm.min.js"></script>
+    <script src="./lang/xml.min.js"></script>
+    <script src="./lang/yaml.min.js"></script>
+    <script src="./markdown-it.min.js"></script>
+    <script src="./diff2html-ui.min.js"></script>
+
     <script>
-      const COPY_ICON = `
+        const COPY_ICON = `
 <svg xmlns="http://www.w3.org/2000/svg"
      viewBox="0 0 24 24"
      width="20"
@@ -135,82 +180,82 @@
   <path d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"/>
 </svg>`;
 
-      const md = window.markdownit({
-        highlight: function (str, lang) {
-          if (lang && hljs.getLanguage(lang)) {
-            try {
-              return '<pre class="code-pre"><code class="hljs">' +
-                    hljs.highlight(str, { language: lang, ignoreIllegals: true }).value +
-                    '</code>' + 
-                    '<button class="copy-btn">' + COPY_ICON + '</button>' +
-                    '</pre>' ;
-            } catch (__) {}
-          }
+        const md = window.markdownit({
+            highlight: function (str, lang) {
+                if (lang && hljs.getLanguage(lang)) {
+                    try {
+                        return '<pre class="code-pre"><code class="hljs">' +
+                            hljs.highlight(str, {language: lang, ignoreIllegals: true}).value +
+                            '</code>' +
+                            '<button class="copy-btn">' + COPY_ICON + '</button>' +
+                            '</pre>';
+                    } catch (__) { }
+                }
 
-          return '<pre><code class="hljs">' + md.utils.escapeHtml(str) + '</code></pre>';
-        },
-      });
-
-      function appendMessage(message) {
-        const container = document.getElementById("chat");
-        const div = document.createElement("div");
-        div.className = "message " + message.role;
-        div.innerHTML = md.render(message.message ?? "");
-        container.appendChild(div);
-        enhanceCodeBlocks(div);
-        window.scrollTo(0, document.body.scrollHeight);
-      }
-
-      function enhanceCodeBlocks(root) {
-        const copyBtn = root.querySelector(".copy-btn");
-        const code = root.querySelector(".hljs");
-        if (!copyBtn || !code) return;
-
-        copyBtn.onclick = () => {
-            navigator.clipboard.writeText(code.innerText);
-            btn.classList.add('copied');
-            setTimeout(() => btn.classList.remove('copied'), 1500);
-        };
-      }
-
-      function appendDiff(diffString) {
-        const container = document.getElementById("chat");
-        const div = document.createElement("div");
-        div.className = "message diff";
-        container.appendChild(div);
-
-        var diff2htmlUi = new Diff2HtmlUI(div, diffString, {
-          drawFileList: false,
-          outputFormat: 'line-by-line',
-          highlight: true,
-          matching: 'lines'
+                return '<pre><code class="hljs">' + md.utils.escapeHtml(str) + '</code></pre>';
+            },
         });
-        diff2htmlUi.draw();
-        window.scrollTo(0, document.body.scrollHeight);
-      }
 
-      function clearMessages() {
-        document.getElementById("chat").innerHTML = "";
-      }
+        function appendMessage(message) {
+            const container = document.getElementById("chat");
+            const div = document.createElement("div");
+            div.className = "message " + message.role;
+            div.innerHTML = md.render(message.message ?? "");
+            container.appendChild(div);
+            enhanceCodeBlocks(div);
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+
+        function enhanceCodeBlocks(root) {
+            const copyBtn = root.querySelector(".copy-btn");
+            const code = root.querySelector(".hljs");
+            if (!copyBtn || !code) return;
+
+            copyBtn.onclick = () => {
+                navigator.clipboard.writeText(code.innerText);
+                btn.classList.add('copied');
+                setTimeout(() => btn.classList.remove('copied'), 1500);
+            };
+        }
+
+        function appendDiff(diffString) {
+            const container = document.getElementById("chat");
+            const div = document.createElement("div");
+            div.className = "message diff";
+            container.appendChild(div);
+
+            var diff2htmlUi = new Diff2HtmlUI(div, diffString, {
+                drawFileList: false,
+                outputFormat: 'line-by-line',
+                highlight: true,
+                matching: 'lines'
+            });
+            diff2htmlUi.draw();
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+
+        function clearMessages() {
+            document.getElementById("chat").innerHTML = "";
+        }
     </script>
-  </head>
+</head>
 
-  <body>
+<body>
     <div id="chat"></div>
-  </body>
+</body>
 
-  <script>
+<script>
     function initIt() {
-      if (!window.markdownit) {
-        document.getElementById("chat").innerHTML =
-          '<div style="color:red">Failed to load markdown-it</div>';
-      }
+        if (!window.markdownit) {
+            document.getElementById("chat").innerHTML =
+                '<div style="color:red">Failed to load markdown-it</div>';
+        }
     }
     initIt();
     appendMessage({role: "USER", message: "Write hello world"});
     appendMessage({
-      role: 'AI',
-      message: `Here's a simple \`Hello, World!\` program in Java:
+        role: 'AI',
+        message: `Here's a simple \`Hello, World!\` program in Java:
 
 \`\`\`java
 public class HelloWorld {
@@ -233,5 +278,9 @@ yes and some xml
 `
     })
     appendMessage({role: "USER", message: "Write hello world"});
-  </script>
+    appendMessage({role: "TOOL", message: "Loading foo.text"});
+    appendMessage({role: "TOOL", message: "Loading foo.text"});
+    appendMessage({role: "USER", message: "Faster ...!"});
+</script>
+
 </html>
