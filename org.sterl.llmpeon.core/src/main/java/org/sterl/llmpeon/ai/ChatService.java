@@ -17,7 +17,6 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.service.tool.ToolExecutor;
 
 public class ChatService {
     private LlmConfig config;
@@ -77,11 +76,10 @@ public class ChatService {
 
             if (response.aiMessage().hasToolExecutionRequests()) {
                 for (var tr : response.aiMessage().toolExecutionRequests()) {
-                    ToolExecutor executor = toolService.getExecutor(tr.name());
                     String result;
+                    var executor = toolService.getExecutor(tr.name());
                     if (executor != null) {
-                        monitor.onAction("Running " + tr.name() + " " + tr.arguments());
-                        result = executor.execute(tr, tr.id());
+                        result = executor.run(tr, monitor);
                     } else {
                         result = "Error: unknown tool '" + tr.name() + "'";
                     }

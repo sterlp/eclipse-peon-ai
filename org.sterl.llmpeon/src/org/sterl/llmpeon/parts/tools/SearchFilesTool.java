@@ -2,10 +2,12 @@ package org.sterl.llmpeon.parts.tools;
 
 import java.util.List;
 
+import org.sterl.llmpeon.tool.AbstractTool;
+
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 
-public class SearchFilesTool {
+public class SearchFilesTool extends AbstractTool {
 
     private final EclipseToolContext context;
 
@@ -22,6 +24,7 @@ public class SearchFilesTool {
             return "Error: query must not be empty";
         }
 
+        monitorMessage("Searching for " + query);
         List<String> matches = context.searchFiles(query);
 
         System.err.println("Searched file " + query + " found " + matches.size() + " files ...");
@@ -31,6 +34,7 @@ public class SearchFilesTool {
         }
 
         var result = "Found " + matches.size() + " file(s):\n" + String.join("\n", matches);
+        monitorMessage("Found " + matches.size() + " files");
         System.err.println(result);
         return result;
     }

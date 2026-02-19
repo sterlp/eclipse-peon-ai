@@ -1,9 +1,11 @@
 package org.sterl.llmpeon.parts.tools;
 
+import org.sterl.llmpeon.tool.AbstractTool;
+
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 
-public class UpdateSelectedFileTool {
+public class UpdateSelectedFileTool extends AbstractTool {
 
     private final EclipseToolContext context;
 
@@ -19,6 +21,12 @@ public class UpdateSelectedFileTool {
         String selected = context.getSelectedFile();
         if (selected == null) return "No file is currently selected";
 
+        monitorMessage("Writing " + selected);
         return context.writeFile(selected, newContent);
+    }
+    
+    @Override
+    public boolean isActive() {
+        return context.getSelectedFile() != null;
     }
 }

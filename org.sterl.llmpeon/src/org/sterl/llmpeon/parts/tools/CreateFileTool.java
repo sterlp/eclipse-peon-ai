@@ -1,9 +1,11 @@
 package org.sterl.llmpeon.parts.tools;
 
+import org.sterl.llmpeon.tool.AbstractTool;
+
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 
-public class CreateFileTool {
+public class CreateFileTool extends AbstractTool {
 
     private final EclipseToolContext context;
 
@@ -27,6 +29,7 @@ public class CreateFileTool {
             return "Error: newContent must not be empty";
         }
 
+        monitorMessage("Writing " + filePath);
         return context.createFile(filePath, newContent);
     }
 }
