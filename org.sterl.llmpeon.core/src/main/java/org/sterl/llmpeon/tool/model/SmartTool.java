@@ -1,4 +1,4 @@
-package org.sterl.llmpeon.tool;
+package org.sterl.llmpeon.tool.model;
 
 import org.sterl.llmpeon.agent.AiMonitor;
 

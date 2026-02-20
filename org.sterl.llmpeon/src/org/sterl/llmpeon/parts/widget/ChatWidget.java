@@ -23,12 +23,12 @@ public class ChatWidget extends Composite {
     private final ChatService chatService;
     private ChatMarkdownWidget chatHistory;
     private Text inputArea;
-    private Label tokenLabel;
-    private Label fileLabel;
+    private Label statusLabel;
     private Button send;
     private Button compress;
-    
+
     private boolean working = false;
+    private String contextFile;
 
     @Override
     public boolean setFocus() {
@@ -48,43 +48,47 @@ public class ChatWidget extends Composite {
 
         createChatHistory(this);
         createInputArea(this);
+        createStatusLine(this);
         createCommandBar(this);
-        
-        Display.getDefault().asyncExec(() -> chatHistory.clear());
     }
 
-    // 1️ Chat history (top)
+    // 1 Chat history (top)
     private void createChatHistory(Composite parent) {
         chatHistory = new ChatMarkdownWidget(parent, SWT.BORDER);
         chatHistory.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
     }
 
-    // 2️ Input area (middle, resizable)
+    // 2 Input area (middle)
     private void createInputArea(Composite parent) {
         inputArea = new Text(parent, SWT.BORDER | SWT.MULTI | SWT.WRAP | SWT.V_SCROLL);
         GridData gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
         gd.heightHint = 80;
         inputArea.setLayoutData(gd);
 
-
         inputArea.addTraverseListener(e -> {
-            if (working) return;
+            //if (working) return;
             if (e.detail == SWT.TRAVERSE_RETURN) {
                 boolean enter = (e.stateMask & SWT.CTRL) != 0 || (e.stateMask & SWT.COMMAND) != 0;
-
                 if (enter) {
-                    e.doit = false; // prevent newline
+                    e.doit = false;
                     sendMessage();
                 }
             }
         });
     }
 
-    // 3️ Command bar (bottom)
+    // 3 Status line (above command bar)
+    private void createStatusLine(Composite parent) {
+        statusLabel = new Label(parent, SWT.NONE);
+        statusLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+        statusLabel.setText("");
+    }
+
+    // 4 Command bar (bottom)
     private void createCommandBar(Composite parent) {
         Composite bar = new Composite(parent, SWT.NONE);
         bar.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-        bar.setLayout(new GridLayout(4, false));
+        bar.setLayout(new GridLayout(2, false));
 
         send = new Button(bar, SWT.PUSH);
         send.setImage(org.eclipse.debug.ui.DebugUITools.getImage(
@@ -96,30 +100,40 @@ public class ChatWidget extends Composite {
         compress = new Button(bar, SWT.PUSH);
         compress.setText("Compress");
         compress.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
-        compress.setToolTipText("Compress conversation contextFile");
+        compress.setToolTipText("Compress conversation context");
         compress.addListener(SWT.Selection, e -> compressContext());
-
-        tokenLabel = new Label(bar, SWT.NONE);
-        tokenLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-        
-        fileLabel = new Label(bar, SWT.NONE);
-        fileLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-        fileLabel.setText("");
-        updateTokenLabel();
     }
 
-    private void updateTokenLabel() {
+    /**
+     * Single method to refresh the status line.
+     * Call after config changes, file selection changes, or token updates.
+     */
+    public void refreshStatusLine() {
         int used = chatService.getTokenSize();
         int max = chatService.getTokenWindow();
         int pct = max > 0 ? (used * 100) / max : 0;
 
-        tokenLabel.setText(used + " / " + max + " - " + pct + "%" );
-        tokenLabel.getParent().layout();
+        int skillCount = chatService.getToolService().getSkills().size();
+
+        String fileName = "";
+        if (contextFile != null && !contextFile.isEmpty()) {
+            int sep = contextFile.lastIndexOf('/');
+            if (sep < 0) sep = contextFile.lastIndexOf('\\');
+            fileName = sep >= 0 ? contextFile.substring(sep + 1) : contextFile;
+        }
+
+        var sb = new StringBuilder();
+        sb.append(skillCount).append(" skill").append(skillCount != 1 ? "s" : "");
+        if (!fileName.isEmpty()) sb.append(" | ").append(fileName);
+        sb.append(" | ").append(used).append(" / ").append(max).append(" - ").append(pct).append("%");
+
+        statusLabel.setText(sb.toString());
+        statusLabel.getParent().layout();
     }
-    
-    public void updateContextLabel(String value) {
-        fileLabel.setText(value != null ? value : "");
-        fileLabel.getParent().layout();
+
+    public void updateContextFile(String value) {
+        this.contextFile = value;
+        refreshStatusLine();
     }
 
     private void refreshChat() {
@@ -127,9 +141,9 @@ public class ChatWidget extends Composite {
         chatService.getMessages().forEach(msg -> {
             chatHistory.appendMessage(msg);
         });
-        updateTokenLabel();
+        refreshStatusLine();
     }
-    
+
     void lockWhileWorking(boolean value) {
         this.working = value;
         compress.setEnabled(!this.working);
@@ -138,7 +152,7 @@ public class ChatWidget extends Composite {
 
     private void compressContext() {
         lockWhileWorking(true);
-        Job.create("Compressing contextFile", monitor -> {
+        Job.create("Compressing context", monitor -> {
             monitor.beginTask("Compressing", IProgressMonitor.UNKNOWN);
             Exception ex = null;
             try {
@@ -179,12 +193,11 @@ public class ChatWidget extends Composite {
                 });
 
                 Display.getDefault().asyncExec(() -> {
-                    // if auto-compress happened, memory was reset — refresh entire chat
                     if (chatService.getMessages().size() < msgCountBefore) {
                         refreshChat();
                     } else {
                         chatHistory.appendMessage(result.aiMessage());
-                        updateTokenLabel();
+                        refreshStatusLine();
                     }
                     send.setEnabled(true);
                 });

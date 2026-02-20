@@ -30,6 +30,7 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
         addField(new IntegerFieldEditor(LlmPreferenceConstants.PREF_TOKEN_WINDOW, "Token Window:", getFieldEditorParent()));
         addField(new BooleanFieldEditor(LlmPreferenceConstants.PREF_THINKING_ENABLED, "Supports Thinking", getFieldEditorParent()));
         addField(new StringFieldEditor(LlmPreferenceConstants.PREF_API_KEY, "API Key:", getFieldEditorParent()));
+        addField(new StringFieldEditor(LlmPreferenceConstants.PREF_SKILL_DIRECTORY, "Skills directory:", getFieldEditorParent()));
     }
 
     @Override

@@ -8,6 +8,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Stream;
 
 public class SkillService {
 
@@ -16,6 +18,13 @@ public class SkillService {
 
     public SkillService(Path skillsDirectory) {
         this.skillsDirectory = skillsDirectory;
+        if (!Files.exists(skillsDirectory)) {
+            try {
+                Files.createDirectories(skillsDirectory);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to create " + skillsDirectory, e);
+            }
+        }
     }
 
     public List<SkillRecord> getSkills() {
@@ -41,6 +50,7 @@ public class SkillService {
         }
 
         this.skills = Collections.unmodifiableList(result);
+        System.err.println("Loaded " + skills.size() + " skills in " + skillsDirectory);
     }
 
     static SkillRecord parseSkillFile(Path skillFile) throws IOException {
@@ -89,5 +99,9 @@ public class SkillService {
             value = value.substring(1, value.length() - 1);
         }
         return value.isEmpty() ? null : value;
+    }
+
+    public Optional<SkillRecord> get(String name) {
+        return skills.stream().filter(s -> s.name().equalsIgnoreCase(name)).findFirst();
     }
 }

@@ -55,6 +55,32 @@ boolean exists = file.exists(); // true
 
 `IPath.fromOSString()` accepts both forward slashes and backslashes, so all `getFullPath()` output formats resolve correctly.
 
+## Converting to java.nio.file.Path or java.io.File
+
+Use `getLocation()` to get a `java.nio.file.Path` for NIO operations:
+
+```java
+// IFile -> java.nio.file.Path
+java.nio.file.Path nioPath = file.getLocation().toPath();
+
+// Then use with NIO APIs:
+String content = Files.readString(nioPath);
+Files.writeString(nioPath, newContent, Charset.forName(file.getCharset()));
+
+// IFile -> java.io.File
+java.io.File ioFile = file.getLocation().toFile();
+```
+
+After writing via NIO/IO, refresh the workspace so Eclipse sees the change:
+
+```java
+file.refreshLocal(IResource.DEPTH_ZERO, null);
+```
+
+## Read file from the project root
+
+`ResourcesPlugin.getWorkspace().getRoot().getFile(IPath.fromOSString(path))`
+
 ## Common Pitfalls
 
 - **Do not use `getRawLocation()` with `getRoot().getFile()`** — it expects a workspace-relative path, not an absolute one.

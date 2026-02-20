@@ -19,7 +19,7 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.sterl.llmpeon.agent.AiMonitor.AiFileUpdate;
 import org.sterl.llmpeon.parts.shared.IoUtils;
-import org.sterl.llmpeon.tool.ToolContext;
+import org.sterl.llmpeon.tool.model.ToolContext;
 
 /**
  * Mutable contextFile that provides Eclipse workspace file operations.
@@ -34,6 +34,28 @@ public class EclipseToolContext implements ToolContext {
 
     private IProject currentProject;
     private String selectedFile; // workspace-relative path
+    
+    /**
+     * Resolves a path to a workspace resource (file or folder).
+     * Tries workspace-relative first, then project-relative in each open project.
+     */
+    public static IResource resolveInEclipse(String path) {
+        IPath ipath = IPath.fromOSString(path);
+        try {
+            // workspace-relative: works for both files and folders
+            var result = ResourcesPlugin.getWorkspace().getRoot().findMember(ipath);
+            if (result != null && result.exists()) return result;
+        } catch (Exception e) {
+            // invalid workspace path, continue
+        }
+        for (var p : ResourcesPlugin.getWorkspace().getRoot().getProjects()) {
+            if (!p.isOpen()) continue;
+            var result = p.findMember(ipath);
+            System.err.println(ipath + " -> " + p.findMember(ipath));
+            if (result != null && result.exists()) return result;
+        }
+        return null;
+    }
 
     public void setCurrentProject(IProject project) {
         this.currentProject = project;

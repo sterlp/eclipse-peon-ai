@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.ai;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.sterl.llmpeon.agent.AiCompressorAgent;
@@ -10,6 +11,7 @@ import org.sterl.llmpeon.tool.ToolService;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
@@ -40,6 +42,11 @@ public class ChatService {
         this.model = config.build();
         this.compressorAgent = new AiCompressorAgent(model);
         this.developerAgent = new AiDeveloperAgent(model);
+        this.toolService.updateSkillDirectory(config.getSkillDirectory());
+    }
+
+    public ToolService getToolService() {
+        return toolService;
     }
 
     public LlmConfig getConfig() {
@@ -47,7 +54,7 @@ public class ChatService {
     }
 
     public int getTokenWindow() {
-        return config.tokenWindow();
+        return config.getTokenWindow();
     }
 
     public int getTokenSize() {
@@ -57,7 +64,7 @@ public class ChatService {
     public ChatResponse call(String message, AiMonitor monitor) {
         
         // auto-compress at 95%
-        if (tokenSize >= config.tokenWindow() * 0.95) {
+        if (tokenSize >= config.getTokenWindow() * 0.95) {
             compressContext(monitor);
         }
         
@@ -65,8 +72,15 @@ public class ChatService {
         ChatResponse response;
 
         do {
+            var messages = new ArrayList<>(memory.messages());
+            var skills = toolService.skillMessage();
+            if (skills != null) {
+                System.err.println(((SystemMessage)skills).text());
+                messages.addFirst(skills);
+            }
+            
             ChatRequest request = ChatRequest.builder()
-                    .messages(memory.messages())
+                    .messages(messages)
                     .toolSpecifications(toolService.toolSpecifications())
                     .build();
 

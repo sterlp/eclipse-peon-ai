@@ -1,21 +1,26 @@
 package org.sterl.llmpeon.tool;
 
+import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
-import org.sterl.llmpeon.agent.AiMonitor;
+import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.skill.SkillRecord;
 import org.sterl.llmpeon.skill.SkillService;
+import org.sterl.llmpeon.tool.model.AgentSkillTool;
+import org.sterl.llmpeon.tool.model.SmartTool;
+import org.sterl.llmpeon.tool.model.ToolContext;
 
 import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agent.tool.ToolSpecifications;
-import dev.langchain4j.service.tool.DefaultToolExecutor;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
 
 /**
  * Owns all tools, the shared {@link ToolContext}, and the tool registry.
@@ -25,6 +30,13 @@ public class ToolService {
 
     private final Map<String, SmartToolExecutor> toolExecutors = new HashMap<>();
     private SkillService skillService;
+    private AgentSkillTool agentSkillTool;
+
+    public ToolService() {
+        super();
+        agentSkillTool = new AgentSkillTool(skillService);
+        //addTool(agentSkillTool);
+    }
 
     public List<ToolSpecification> toolSpecifications() {
         return toolExecutors.values().stream()
@@ -37,38 +49,10 @@ public class ToolService {
         return toolExecutors.get(toolName);
     }
     
-    public static class SmartToolExecutor extends DefaultToolExecutor {
-        private final SmartTool tool;
-        private final ToolSpecification spec;
-
-        public SmartToolExecutor(SmartTool tool, Method method, ToolSpecification spec) {
-            super(tool, method);
-            this.tool = tool;
-            this.spec = spec;
-        }
-        public SmartTool getTool() {
-            return tool;
-        }
-        public ToolSpecification getSpec() {
-            return spec;
-        }
-        public boolean isActive() {
-            return tool.isActive();
-        }
-        
-        public String run(ToolExecutionRequest request, AiMonitor monitor) {
-            try {
-                tool.withMonitor(monitor);
-                return execute(request, request.id());
-            } catch (IllegalArgumentException e) {
-                throw e;
-            } catch (RuntimeException e) {
-                if (monitor != null) monitor.onAction(spec.name() + " failed. " + e.getMessage());
-                throw e;
-            } finally {
-                tool.withMonitor(null);
-            }
-        }
+    public ChatMessage skillMessage() {
+        if (skillService  == null || skillService.getSkills().isEmpty()) return null;
+        var string = skillService.getSkills().stream().map(s -> s.toString()).collect(Collectors.joining("\n"));
+        return SystemMessage.from("Following skills can be accessed through the skill tool\n" + string);
     }
 
     /**
@@ -91,17 +75,17 @@ public class ToolService {
      * Called when config changes or a new project root is set.
      */
     public void updateSkillDirectory(String skillDirectory) {
-        if (skillDirectory == null || skillDirectory.isBlank()) {
+        if (StringUtil.hasNoValue(skillDirectory)) {
             this.skillService = null;
-            return;
-        }
-        try {
+        } else {
             this.skillService = new SkillService(Path.of(skillDirectory));
-            this.skillService.refresh();
-        } catch (Exception e) {
-            System.err.println("Failed to load skills from " + skillDirectory + ": " + e.getMessage());
-            this.skillService = null;
+            try {
+                this.skillService.refresh();
+            } catch (IOException e) {
+                throw new RuntimeException("Could not load skills from " + skillDirectory);
+            }
         }
+        this.agentSkillTool.setService(skillService);
     }
 
     public List<SkillRecord> getSkills() {

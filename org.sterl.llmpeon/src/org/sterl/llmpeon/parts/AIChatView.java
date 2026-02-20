@@ -1,5 +1,7 @@
 package org.sterl.llmpeon.parts;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.resources.IFile;
@@ -66,11 +68,10 @@ public class AIChatView {
         toolService.addTool(new UpdateFileTool(toolContext));
         toolService.addTool(new UpdateSelectedFileTool(toolContext));
         
-        
         chatService = new ChatService(LlmPreferenceInitializer.buildWithDefaults(), toolService);
-
         chat = new ChatWidget(chatService, parent, SWT.NONE);
-        chat.updateContextLabel(contextFile.get());
+        applyConfig();
+
         if (logger != null)
             logger.info("We have a logger ... " + chatService.getConfig());
 
@@ -84,7 +85,9 @@ public class AIChatView {
     }
 
     private void applyConfig() {
-        chatService.updateConfig(LlmPreferenceInitializer.buildWithDefaults());
+        var config = LlmPreferenceInitializer.buildWithDefaults();
+        chatService.updateConfig(config);
+        chat.refreshStatusLine();
     }
 
     @Focus
@@ -114,37 +117,24 @@ public class AIChatView {
 
         if (o instanceof ICompilationUnit cu) {
             IFile f = (IFile) cu.getResource();
-            var ctx = toolContext;
             if (f != null) {
-                ctx.setSelectedFile(f.getFullPath().toString());
-                ctx.setCurrentProject(f.getProject());
-                contextFile.set(f.getFullPath().toOSString());
+                toolContext.setSelectedFile(f.getFullPath().toPortableString());
+                toolContext.setCurrentProject(f.getProject());
+                contextFile.set(f.getFullPath().toPortableString());
             } else {
-                System.err.println("ICompilationUnit without a IFile " + cu.getPath().toOSString());
-                ctx.setSelectedFile(cu.getPath().toOSString());
-                contextFile.set(cu.getPath().toOSString());
+                System.err.println("ICompilationUnit without a IFile " + cu.getPath().toPortableString());
+                toolContext.setSelectedFile(cu.getPath().toPortableString());
+                contextFile.set(cu.getPath().toPortableString());
             }
         } else if (o instanceof IFile f) {
-            var ctx = toolContext;
-            ctx.setSelectedFile(f.getFullPath().toString());
-            ctx.setCurrentProject(f.getProject());
-            contextFile.set(f.getFullPath().toOSString());
+            toolContext.setSelectedFile(f.getFullPath().toPortableString());
+            toolContext.setCurrentProject(f.getProject());
+            contextFile.set(f.getFullPath().toPortableString());
             
-            System.err.println("toOSString");
-            System.err.println(f.getFullPath().toOSString());
-            System.err.println(ResourcesPlugin.getWorkspace().getRoot().getFile(IPath.fromOSString(f.getFullPath().toOSString())).exists());
-            System.err.println("getFullPath");
-            System.err.println(f.getFullPath().toString());
-            System.err.println(ResourcesPlugin.getWorkspace().getRoot().getFile(IPath.fromOSString(f.getFullPath().toString())).exists());
-            System.err.println("toPortableString");
-            System.err.println(f.getFullPath().toPortableString());
-            System.err.println(ResourcesPlugin.getWorkspace().getRoot().getFile(IPath.fromOSString(f.getFullPath().toPortableString())).exists());
-            
-            System.err.println("getRawLocation");
-            System.err.println(f.getRawLocation().toPortableString());
-            System.err.println(f.getRawLocation().toString());
         }
-        if (chat != null) Display.getDefault().asyncExec(() -> chat.updateContextLabel(contextFile.get()));
+        System.err.println(ResourcesPlugin.getWorkspace().getRoot().getLocation().toPortableString());
+        System.err.println(Files.exists(Path.of(ResourcesPlugin.getWorkspace().getRoot().getLocation().toPortableString())));
+        if (chat != null) Display.getDefault().asyncExec(() -> chat.updateContextFile(contextFile.get()));
     }
 
     @Inject

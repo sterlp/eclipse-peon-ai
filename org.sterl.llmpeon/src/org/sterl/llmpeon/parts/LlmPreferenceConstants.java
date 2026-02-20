@@ -8,4 +8,5 @@ public interface LlmPreferenceConstants {
     String PREF_TOKEN_WINDOW     = "llm.tokenWindow";
     String PREF_THINKING_ENABLED = "llm.thinkingEnabled";
     String PREF_API_KEY          = "llm.apiKey";
+    String PREF_SKILL_DIRECTORY  = "llm.skillDirectory";
 }

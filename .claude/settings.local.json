@@ -23,7 +23,8 @@
       "Bash(echo:*)",
       "Bash(mvn install:*)",
       "Bash(mvn package:*)",
-      "Bash(git rev-list:*)"
+      "Bash(git rev-list:*)",
+      "Bash(mvn test:*)"
     ]
   }
 }
