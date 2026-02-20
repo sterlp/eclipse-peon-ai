@@ -1,11 +1,10 @@
 package org.sterl.llmpeon.ai;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 
 import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.agent.AiCompressorAgent;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -18,7 +17,7 @@ import dev.langchain4j.model.chat.ChatModel;
  */
 @Tag("integtration")
 class AiCompressorAgentTest {
-    ChatModel model = new LlmConfig(AiProvider.OLLAMA, "devstral-small-2:24b", "http://192.168.178.87:11434", 5000, false, null)
+    ChatModel model = new LlmConfig(AiProvider.OLLAMA, "devstral-small-2:24b", "http://192.168.178.87:11434", 5000, false, null, null)
             .build();
     //@Test
     void test() {

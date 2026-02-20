@@ -12,7 +12,8 @@ public record LlmConfig(
     String url,
     int tokenWindow,
     boolean thinkingEnabled,
-    String apiKey
+    String apiKey,
+    String skillDirectory
 ) {
     public ChatModel build() {
         if (AiProvider.OPEN_AI == providerType()) {

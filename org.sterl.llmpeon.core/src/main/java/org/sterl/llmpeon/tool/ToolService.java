@@ -1,11 +1,15 @@
 package org.sterl.llmpeon.tool;
 
 import java.lang.reflect.Method;
+import java.nio.file.Path;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.sterl.llmpeon.agent.AiMonitor;
+import org.sterl.llmpeon.skill.SkillRecord;
+import org.sterl.llmpeon.skill.SkillService;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -20,6 +24,7 @@ import dev.langchain4j.service.tool.DefaultToolExecutor;
 public class ToolService {
 
     private final Map<String, SmartToolExecutor> toolExecutors = new HashMap<>();
+    private SkillService skillService;
 
     public List<ToolSpecification> toolSpecifications() {
         return toolExecutors.values().stream()
@@ -79,5 +84,28 @@ public class ToolService {
                 System.out.println("added tool " + spec);
             }
         }
+    }
+
+    /**
+     * Updates the skill directory and reloads all skills.
+     * Called when config changes or a new project root is set.
+     */
+    public void updateSkillDirectory(String skillDirectory) {
+        if (skillDirectory == null || skillDirectory.isBlank()) {
+            this.skillService = null;
+            return;
+        }
+        try {
+            this.skillService = new SkillService(Path.of(skillDirectory));
+            this.skillService.refresh();
+        } catch (Exception e) {
+            System.err.println("Failed to load skills from " + skillDirectory + ": " + e.getMessage());
+            this.skillService = null;
+        }
+    }
+
+    public List<SkillRecord> getSkills() {
+        if (skillService == null) return Collections.emptyList();
+        return skillService.getSkills();
     }
 }
