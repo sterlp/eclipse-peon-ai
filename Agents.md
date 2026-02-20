@@ -6,6 +6,10 @@ The project uses a pragmatic setup with embedded third-party libraries (no p2 wr
 
 ---
 
+## Skills
+
+All project custom skills area in the `skills` folder. Read only the header packed into "---" name and description and reference them as needed.
+
 ## Architecture
 
 - **Parent POM** (`pom.xml`): Aggregator with Tycho 5.x, defines target platform
