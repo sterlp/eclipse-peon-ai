@@ -7,7 +7,6 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
 
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
@@ -18,8 +17,8 @@ import org.eclipse.core.resources.IResourceVisitor;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
+import org.sterl.llmpeon.agent.AiMonitor.AiFileUpdate;
 import org.sterl.llmpeon.parts.shared.IoUtils;
-import org.sterl.llmpeon.parts.shared.SimpleDiff;
 import org.sterl.llmpeon.tool.ToolContext;
 
 /**
@@ -35,10 +34,10 @@ public class EclipseToolContext implements ToolContext {
 
     private IProject currentProject;
     private String selectedFile; // workspace-relative path
-    private Consumer<String> diffObserver;
 
     public void setCurrentProject(IProject project) {
         this.currentProject = project;
+        System.err.println("setCurrentProject: " + project);
     }
 
     public IProject getCurrentProject() {
@@ -47,17 +46,11 @@ public class EclipseToolContext implements ToolContext {
 
     public void setSelectedFile(String relativePath) {
         this.selectedFile = relativePath;
+        System.err.println("setCurrentProject: " + selectedFile);
     }
 
     public String getSelectedFile() {
         return selectedFile;
-    }
-
-    /**
-     * Sets a callback that receives unified diff strings after file writes.
-     */
-    public void setDiffObserver(Consumer<String> observer) {
-        this.diffObserver = observer;
     }
 
     /**
@@ -87,10 +80,10 @@ public class EclipseToolContext implements ToolContext {
      * file cannot be found — the LLM should retry using searchFiles to get the correct path.
      * Does NOT create new files.
      */
-    public String writeFile(String path, String content) {
+    public AiFileUpdate writeFile(String path, String content) {
         IFile file = resolveFile(path);
         if (file == null) {
-            return "File not found: " + path + ". Use searchFiles to find the correct workspace path.";
+            throw new IllegalArgumentException("File not found: " + path + ". Use searchFiles to find the correct workspace path.");
         }
 
         // capture old content for diff
@@ -104,14 +97,7 @@ public class EclipseToolContext implements ToolContext {
             throw new RuntimeException("Failed to write " + file.getFullPath(), e);
         }
 
-        if (diffObserver != null) {
-            String diff = SimpleDiff.unifiedDiff(file.getFullPath().toString(), oldContent, content);
-            if (!diff.isEmpty()) {
-                diffObserver.accept(diff);
-            }
-        }
-
-        return "Successfully updated file: " + file.getFullPath();
+        return new AiFileUpdate(file.getFullPath().toString(), oldContent, content);
     }
 
     /**
@@ -167,13 +153,6 @@ public class EclipseToolContext implements ToolContext {
             }
         } catch (CoreException e) {
             throw new RuntimeException("Failed to create/write " + file.getFullPath(), e);
-        }
-
-        if (diffObserver != null) {
-            String diff = SimpleDiff.unifiedDiff(file.getFullPath().toString(), oldContent, content);
-            if (!diff.isEmpty()) {
-                diffObserver.accept(diff);
-            }
         }
 
         return (oldContent.isEmpty() ? "Created" : "Updated") + " file: " + file.getFullPath();
@@ -260,15 +239,6 @@ public class EclipseToolContext implements ToolContext {
         if (currentProject != null && currentProject.isOpen() && name != null) {
             IFile[] found = findByName(currentProject, name);
             if (found.length > 0) return found[0];
-        }
-
-        // 4. filename match across all open workspace projects
-        if (name != null) {
-            for (IProject project : ResourcesPlugin.getWorkspace().getRoot().getProjects()) {
-                if (!project.isOpen() || project.equals(currentProject)) continue;
-                IFile[] found = findByName(project, name);
-                if (found.length > 0) return found[0];
-            }
         }
 
         return null;

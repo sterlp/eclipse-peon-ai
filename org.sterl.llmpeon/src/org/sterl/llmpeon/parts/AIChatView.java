@@ -3,6 +3,8 @@ package org.sterl.llmpeon.parts;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences.IPreferenceChangeListener;
 import org.eclipse.core.runtime.preferences.InstanceScope;
@@ -128,9 +130,19 @@ public class AIChatView {
             ctx.setCurrentProject(f.getProject());
             contextFile.set(f.getFullPath().toOSString());
             
+            System.err.println("toOSString");
             System.err.println(f.getFullPath().toOSString());
+            System.err.println(ResourcesPlugin.getWorkspace().getRoot().getFile(IPath.fromOSString(f.getFullPath().toOSString())).exists());
+            System.err.println("getFullPath");
             System.err.println(f.getFullPath().toString());
-            System.err.println(f.getFullPath().toFile().getAbsolutePath());
+            System.err.println(ResourcesPlugin.getWorkspace().getRoot().getFile(IPath.fromOSString(f.getFullPath().toString())).exists());
+            System.err.println("toPortableString");
+            System.err.println(f.getFullPath().toPortableString());
+            System.err.println(ResourcesPlugin.getWorkspace().getRoot().getFile(IPath.fromOSString(f.getFullPath().toPortableString())).exists());
+            
+            System.err.println("getRawLocation");
+            System.err.println(f.getRawLocation().toPortableString());
+            System.err.println(f.getRawLocation().toString());
         }
         if (chat != null) Display.getDefault().asyncExec(() -> chat.updateContextLabel(contextFile.get()));
     }

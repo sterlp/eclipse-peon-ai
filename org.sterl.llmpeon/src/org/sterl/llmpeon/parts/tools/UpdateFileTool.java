@@ -7,7 +7,7 @@ import dev.langchain4j.agent.tool.Tool;
 
 public class UpdateFileTool extends AbstractTool {
 
-    private final EclipseToolContext context;
+    protected final EclipseToolContext context;
 
     public UpdateFileTool(EclipseToolContext context) {
         this.context = context;
@@ -27,7 +27,8 @@ public class UpdateFileTool extends AbstractTool {
         if (newContent == null || newContent.isBlank()) {
             return "Error: newContent must not be empty";
         }
-        monitor.onAction("Writing " + filePath);
-        return context.writeFile(filePath, newContent);
+        var result = context.writeFile(filePath, newContent);
+        if (hasMonitor()) monitor.onFileUpdate(result);
+        return "File " + result.file() + " updated.";
     }
 }

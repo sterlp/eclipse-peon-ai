@@ -18,11 +18,12 @@ public class UpdateSelectedFileTool extends AbstractTool {
     public String updateCurrentFile(
             @P("The complete new file content that will replace the existing content") String newContent) {
 
-        String selected = context.getSelectedFile();
-        if (selected == null) return "No file is currently selected";
+        String filePath = context.getSelectedFile();
+        if (filePath == null) return "No file is currently selected";
 
-        monitorMessage("Writing " + selected);
-        return context.writeFile(selected, newContent);
+        var result = context.writeFile(filePath, newContent);
+        if (hasMonitor()) monitor.onFileUpdate(result);
+        return "Selected file " + result.file() + " updated.";
     }
     
     @Override

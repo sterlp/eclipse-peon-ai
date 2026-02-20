@@ -7,6 +7,7 @@ import org.sterl.llmpeon.agent.AiDeveloperAgent;
 import org.sterl.llmpeon.agent.AiMonitor;
 import org.sterl.llmpeon.tool.ToolService;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -76,13 +77,7 @@ public class ChatService {
 
             if (response.aiMessage().hasToolExecutionRequests()) {
                 for (var tr : response.aiMessage().toolExecutionRequests()) {
-                    String result;
-                    var executor = toolService.getExecutor(tr.name());
-                    if (executor != null) {
-                        result = executor.run(tr, monitor);
-                    } else {
-                        result = "Error: unknown tool '" + tr.name() + "'";
-                    }
+                    String result = runTool(monitor, tr);
                     memory.add(ToolExecutionResultMessage.from(tr.id(), tr.name(), result));
                 }
             }
@@ -93,6 +88,23 @@ public class ChatService {
         System.err.println(response.aiMessage().text());
 
         return response;
+    }
+
+    private String runTool(AiMonitor monitor, ToolExecutionRequest tr) {
+        String result;
+        var executor = toolService.getExecutor(tr.name());
+        if (executor != null) {
+            try {
+                result = executor.run(tr, monitor);
+            } catch (IllegalArgumentException e) {
+                result = e.getMessage();
+                if (monitor != null) monitor.onProblem(tr.name() + ": " + e.getMessage());
+            }
+        } else {
+            result = "Error: unknown tool '" + tr.name() + "' check spelling";
+            if (monitor != null) monitor.onProblem(result);
+        }
+        return result;
     }
     
     public static String trimArgs(String value) {

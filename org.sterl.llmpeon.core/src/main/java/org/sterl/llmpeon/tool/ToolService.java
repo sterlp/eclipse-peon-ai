@@ -55,6 +55,8 @@ public class ToolService {
             try {
                 tool.withMonitor(monitor);
                 return execute(request, request.id());
+            } catch (IllegalArgumentException e) {
+                throw e;
             } catch (RuntimeException e) {
                 if (monitor != null) monitor.onAction(spec.name() + " failed. " + e.getMessage());
                 throw e;

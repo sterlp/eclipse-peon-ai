@@ -11,8 +11,10 @@ public class AbstractTool implements SmartTool {
         this.monitor = monitor;
     }
     
+    protected boolean hasMonitor() { return monitor != null; }
+    
     protected void monitorMessage(String m) {
-        if (monitor != null) monitor.onAction(m);
+        if (hasMonitor()) monitor.onAction(m);
     }
 
 }

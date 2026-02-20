@@ -2,6 +2,10 @@ package org.sterl.llmpeon.tool;
 
 import org.sterl.llmpeon.agent.AiMonitor;
 
+/**
+ * Smart tools can tell if why are active furthermore throw an
+ * {@link IllegalArgumentException} to return to the LLM an error.
+ */
 public interface SmartTool {
 
     /**
