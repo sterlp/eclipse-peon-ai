@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.ai;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.sterl.llmpeon.agent.AiCompressorAgent;
@@ -11,7 +12,6 @@ import org.sterl.llmpeon.tool.ToolService;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
@@ -28,20 +28,22 @@ public class ChatService {
     private ChatModel model;
     private int tokenSize = 0;
     
-    private AiCompressorAgent compressorAgent;
-    private AiDeveloperAgent developerAgent;
-    
+    private List<ChatMessage> additions = Collections.emptyList();
+
     public ChatService(LlmConfig config, ToolService toolService) {
         this.config = config;
         this.toolService = toolService;
         updateConfig(config);
     }
     
+    public void setAdditionalChatMessages(List<ChatMessage> additions) {
+        if (additions == null) additions = Collections.emptyList();
+        this.additions = new ArrayList<>(additions);
+    }
+
     public void updateConfig(LlmConfig config) {
         this.config = config;
         this.model = config.build();
-        this.compressorAgent = new AiCompressorAgent(model);
-        this.developerAgent = new AiDeveloperAgent(model);
         this.toolService.updateSkillDirectory(config.getSkillDirectory());
     }
 
@@ -71,13 +73,16 @@ public class ChatService {
         if (message != null) memory.add(UserMessage.from(message));
         ChatResponse response;
 
+        var developerAgent = new AiDeveloperAgent(model);
         do {
-            var messages = new ArrayList<>(memory.messages());
+            var messages = new ArrayList<ChatMessage>(additions);
+            // any skills first
             var skills = toolService.skillMessage();
             if (skills != null) {
-                System.err.println(((SystemMessage)skills).text());
                 messages.addFirst(skills);
             }
+            // history
+            messages.addAll(memory.messages());
             
             ChatRequest request = ChatRequest.builder()
                     .messages(messages)
@@ -139,7 +144,9 @@ public class ChatService {
         var messages = memory.messages();
         if (messages.size() < 2) return;
 
+        var compressorAgent = new AiCompressorAgent(model);
         // send all messages with compress system prompt, no tools
+        if (monitor != null) monitor.onAction("Compressing conversation");
         var response = compressorAgent.call(messages, monitor);
 
         memory.clear();

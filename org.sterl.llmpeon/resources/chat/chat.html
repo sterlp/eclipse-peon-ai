@@ -200,9 +200,19 @@
             const container = document.getElementById("chat");
             const div = document.createElement("div");
             div.className = "message " + message.role;
-            div.innerHTML = md.render(message.message ?? "");
-            container.appendChild(div);
-            enhanceCodeBlocks(div);
+
+            // first try to merge
+            const lastMessage = container.lastElementChild;
+            if (lastMessage && lastMessage.classList.contains(message.role)) {
+                // Merge with previous TOOL message
+                lastMessage.innerHTML += md.render(message.message ?? "");
+            } else {
+                // Create new message
+                div.innerHTML = md.render(message.message ?? "");
+                container.appendChild(div);
+            }
+
+            if (message.message) enhanceCodeBlocks(div);
             window.scrollTo(0, document.body.scrollHeight);
         }
 
@@ -245,13 +255,12 @@
 </body>
 
 <script>
-    function initIt() {
-        if (!window.markdownit) {
-            document.getElementById("chat").innerHTML =
-                '<div style="color:red">Failed to load markdown-it</div>';
-        }
+    
+    if (!window.markdownit) {
+        document.getElementById("chat").innerHTML =
+            '<div style="color:red">Failed to load markdown-it</div>';
     }
-    initIt();
+    /*
     appendMessage({role: "USER", message: "Write hello world"});
     appendMessage({
         role: 'AI',
@@ -281,6 +290,7 @@ yes and some xml
     appendMessage({role: "TOOL", message: "Loading foo.text"});
     appendMessage({role: "TOOL", message: "Loading foo.text"});
     appendMessage({role: "USER", message: "Faster ...!"});
+    */
 </script>
 
 </html>

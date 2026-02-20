@@ -1,12 +1,9 @@
 package org.sterl.llmpeon.parts;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.ResourcesPlugin;
-import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences.IPreferenceChangeListener;
 import org.eclipse.core.runtime.preferences.InstanceScope;
@@ -23,15 +20,16 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.sterl.llmpeon.ai.ChatService;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
-import org.sterl.llmpeon.parts.tools.CreateFileTool;
 import org.sterl.llmpeon.parts.tools.EclipseToolContext;
-import org.sterl.llmpeon.parts.tools.ReadFileTool;
 import org.sterl.llmpeon.parts.tools.ReadSelectedFileTool;
-import org.sterl.llmpeon.parts.tools.SearchFilesTool;
-import org.sterl.llmpeon.parts.tools.UpdateFileTool;
 import org.sterl.llmpeon.parts.tools.UpdateSelectedFileTool;
 import org.sterl.llmpeon.parts.widget.ChatWidget;
 import org.sterl.llmpeon.tool.ToolService;
+import org.sterl.llmpeon.tool.file.CreateFileTool;
+import org.sterl.llmpeon.tool.file.DeleteFileTool;
+import org.sterl.llmpeon.tool.file.ReadFileTool;
+import org.sterl.llmpeon.tool.file.SearchFilesTool;
+import org.sterl.llmpeon.tool.file.UpdateFileTool;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -67,6 +65,7 @@ public class AIChatView {
         toolService.addTool(new SearchFilesTool(toolContext));
         toolService.addTool(new UpdateFileTool(toolContext));
         toolService.addTool(new UpdateSelectedFileTool(toolContext));
+        toolService.addTool(new DeleteFileTool(toolContext));
         
         chatService = new ChatService(LlmPreferenceInitializer.buildWithDefaults(), toolService);
         chat = new ChatWidget(chatService, parent, SWT.NONE);
@@ -128,12 +127,13 @@ public class AIChatView {
             }
         } else if (o instanceof IFile f) {
             toolContext.setSelectedFile(f.getFullPath().toPortableString());
+            contextFile.set(f.getFullPath().toPortableString());
+        } else if (o instanceof IResource f) {
             toolContext.setCurrentProject(f.getProject());
             contextFile.set(f.getFullPath().toPortableString());
-            
         }
-        System.err.println(ResourcesPlugin.getWorkspace().getRoot().getLocation().toPortableString());
-        System.err.println(Files.exists(Path.of(ResourcesPlugin.getWorkspace().getRoot().getLocation().toPortableString())));
+        //System.err.println(ResourcesPlugin.getWorkspace().getRoot().getLocation().toPortableString());
+        //System.err.println(Files.exists(Path.of(ResourcesPlugin.getWorkspace().getRoot().getLocation().toPortableString())));
         if (chat != null) Display.getDefault().asyncExec(() -> chat.updateContextFile(contextFile.get()));
     }
 

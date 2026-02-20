@@ -12,10 +12,7 @@ import java.util.stream.Collectors;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.skill.SkillRecord;
 import org.sterl.llmpeon.skill.SkillService;
-import org.sterl.llmpeon.tool.model.AgentSkillTool;
 import org.sterl.llmpeon.tool.model.SmartTool;
-import org.sterl.llmpeon.tool.model.ToolContext;
-
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agent.tool.ToolSpecifications;
@@ -23,19 +20,16 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 
 /**
- * Owns all tools, the shared {@link ToolContext}, and the tool registry.
+ * Owns all tools and the tool registry.
  * Tools are stable instances — only the context changes when the user selects a different file/project.
  */
 public class ToolService {
 
     private final Map<String, SmartToolExecutor> toolExecutors = new HashMap<>();
     private SkillService skillService;
-    private AgentSkillTool agentSkillTool;
 
     public ToolService() {
         super();
-        agentSkillTool = new AgentSkillTool(skillService);
-        //addTool(agentSkillTool);
     }
 
     public List<ToolSpecification> toolSpecifications() {
@@ -52,7 +46,7 @@ public class ToolService {
     public ChatMessage skillMessage() {
         if (skillService  == null || skillService.getSkills().isEmpty()) return null;
         var string = skillService.getSkills().stream().map(s -> s.toString()).collect(Collectors.joining("\n"));
-        return SystemMessage.from("Following skills can be accessed through the skill tool\n" + string);
+        return SystemMessage.from("Following skills are availble use load and use them as soon the nee arises\n" + string);
     }
 
     /**
@@ -85,7 +79,6 @@ public class ToolService {
                 throw new RuntimeException("Could not load skills from " + skillDirectory);
             }
         }
-        this.agentSkillTool.setService(skillService);
     }
 
     public List<SkillRecord> getSkills() {

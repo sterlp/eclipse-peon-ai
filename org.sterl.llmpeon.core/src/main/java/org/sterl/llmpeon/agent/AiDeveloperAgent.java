@@ -32,7 +32,8 @@ public class AiDeveloperAgent implements AiAgent {
             - Don't assume something which isn't clear from the tool result or developer input
             - Create a plan for complex task
             - Let the developer approve / review the plan for complex tasks
-            - Search also for an Agents.md or Rules.md as required.
+            - Search also for an AGENTS.md or Rules.md in case of a development task
+            - Check the project structure before creating files
             """);
     
     private final ChatModel chatModel;

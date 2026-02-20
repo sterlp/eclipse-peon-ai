@@ -1,5 +1,7 @@
 package org.sterl.llmpeon.parts.widget;
 
+import java.util.Arrays;
+
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
@@ -12,13 +14,16 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
+import org.sterl.llmpeon.agent.AiMonitor;
 import org.sterl.llmpeon.ai.ChatService;
 import org.sterl.llmpeon.parts.LlmPreferenceConstants;
+import org.sterl.llmpeon.parts.shared.SimpleDiff;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget.SimpleChatMessage;
 
 import dev.langchain4j.data.message.ChatMessageType;
+import dev.langchain4j.data.message.SystemMessage;
 
-public class ChatWidget extends Composite {
+public class ChatWidget extends Composite implements AiMonitor {
 
     private final ChatService chatService;
     private ChatMarkdownWidget chatHistory;
@@ -28,7 +33,7 @@ public class ChatWidget extends Composite {
     private Button compress;
 
     private boolean working = false;
-    private String contextFile;
+    private String selectedResource;
 
     @Override
     public boolean setFocus() {
@@ -116,10 +121,10 @@ public class ChatWidget extends Composite {
         int skillCount = chatService.getToolService().getSkills().size();
 
         String fileName = "";
-        if (contextFile != null && !contextFile.isEmpty()) {
-            int sep = contextFile.lastIndexOf('/');
-            if (sep < 0) sep = contextFile.lastIndexOf('\\');
-            fileName = sep >= 0 ? contextFile.substring(sep + 1) : contextFile;
+        if (selectedResource != null && !selectedResource.isEmpty()) {
+            int sep = selectedResource.lastIndexOf('/');
+            if (sep < 0) sep = selectedResource.lastIndexOf('\\');
+            fileName = sep >= 0 ? selectedResource.substring(sep + 1) : selectedResource;
         }
 
         var sb = new StringBuilder();
@@ -132,7 +137,7 @@ public class ChatWidget extends Composite {
     }
 
     public void updateContextFile(String value) {
-        this.contextFile = value;
+        this.selectedResource = value;
         refreshStatusLine();
     }
 
@@ -155,6 +160,7 @@ public class ChatWidget extends Composite {
         Job.create("Compressing context", monitor -> {
             monitor.beginTask("Compressing", IProgressMonitor.UNKNOWN);
             Exception ex = null;
+            
             try {
                 chatService.compressContext(m -> {
                     Display.getDefault().asyncExec(() -> chatHistory.appendMessage(SimpleChatMessage.tool(m)));
@@ -169,10 +175,24 @@ public class ChatWidget extends Composite {
         }).schedule();
     }
 
+    @Override
     public void onAction(String value) {
         Display.getDefault().asyncExec(() -> {
-            chatHistory.appendMessage(new SimpleChatMessage("Tool", "`" + value + "`"));
+            chatHistory.appendMessage(new SimpleChatMessage("TOOL", "`" + value + "`"));
         });
+    }
+    
+    @Override
+    public void onThink(String value) {
+        Display.getDefault().asyncExec(() -> {
+            chatHistory.appendMessage(new SimpleChatMessage("THINK", "`" + value + "`"));
+        });
+    }
+    
+    @Override
+    public void onFileUpdate(AiFileUpdate update) {
+        var diff = SimpleDiff.unifiedDiff(update.file(), update.oldContent(), update.newContent());
+        Display.getDefault().asyncExec(() -> chatHistory.showDiff(diff));
     }
 
     private void sendMessage() {
@@ -182,15 +202,18 @@ public class ChatWidget extends Composite {
         lockWhileWorking(true);
         if (text.length() > 0) chatHistory.appendMessage(new SimpleChatMessage(ChatMessageType.USER.name(), text));
 
-        Job.create("LLM request", monitor -> {
-            monitor.beginTask("Calling LLM", IProgressMonitor.UNKNOWN);
+        Job.create("Peon AI request", monitor -> {
+            monitor.beginTask("Arbeit, Arbeit!", IProgressMonitor.UNKNOWN);
 
             Exception ex = null;
             try {
                 int msgCountBefore = chatService.getMessages().size();
-                var result = chatService.call(text, m -> {
-                    Display.getDefault().asyncExec(() -> append("TOOL", m));
-                });
+                
+                if (selectedResource != null) {
+                    chatService.setAdditionalChatMessages(Arrays.asList(SystemMessage.from("Selected eclipse resource: " + selectedResource)));
+                }
+                
+                var result = chatService.call(text, this);
 
                 Display.getDefault().asyncExec(() -> {
                     if (chatService.getMessages().size() < msgCountBefore) {
@@ -203,10 +226,12 @@ public class ChatWidget extends Composite {
                 });
             } catch (Exception e) {
                 ex = e;
-                Display.getDefault().asyncExec(() -> send.setEnabled(true));
+            } finally {
+                Display.getDefault().asyncExec(() -> lockWhileWorking(false));
+                monitor.done();
+                chatService.setAdditionalChatMessages(null);
             }
 
-            monitor.done();
             return ex == null ? Status.OK_STATUS : new Status(IStatus.ERROR, "AIChat", ex.getMessage(), ex);
         }).schedule();
     }

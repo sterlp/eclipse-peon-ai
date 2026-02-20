@@ -1,5 +1,8 @@
 package org.sterl.llmpeon.tool.model;
 
-public interface ToolContext {
-
+/**
+ * @deprecated Use {@link FileContext} instead.
+ */
+@Deprecated(forRemoval = true)
+public interface ToolContext extends FileContext {
 }

@@ -46,7 +46,6 @@ public class ChatMarkdownWidget extends Composite {
         browser.addProgressListener(new ProgressListener() {
             @Override
             public void completed(ProgressEvent event) {
-                System.err.println("Web view read running " + pendingScripts.size());
                 pageReady = true;
                 for (String js : pendingScripts) {
                     browser.execute(js);

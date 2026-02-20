@@ -3,7 +3,6 @@ package org.sterl.llmpeon.parts.config;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.preferences.AbstractPreferenceInitializer;
 import org.eclipse.core.runtime.preferences.DefaultScope;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
@@ -32,17 +31,16 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
         
         var skillDir = prefs.get(LlmPreferenceConstants.PREF_SKILL_DIRECTORY, "");
         if (StringUtil.haValue(skillDir) && !Files.isDirectory(Path.of(skillDir))) {
-            IResource dir = EclipseToolContext.resolveInEclipse(skillDir);
-            if (dir != null) {
+            var dir = EclipseToolContext.resolveInEclipse(skillDir);
+            if (dir.isPresent()) {
+                // TODO maybe we should not do this, and allow dynamic skill folder
                 // save Eclipse workspace-relative path to prefs (portable)
-                prefs.put(LlmPreferenceConstants.PREF_SKILL_DIRECTORY, dir.getFullPath().toPortableString());
+                prefs.put(LlmPreferenceConstants.PREF_SKILL_DIRECTORY, dir.get().getFullPath().toPortableString());
                 // use absolute filesystem path for SkillService
 
-                System.err.println("Resolved skill dir " + skillDir + " as " + dir.getRawLocation().toPortableString());
-                skillDir = dir.getRawLocation().toPortableString();
+                System.err.println("Resolved skill dir " + skillDir + " as " + dir.get().getRawLocation().toPortableString());
+                skillDir = dir.get().getRawLocation().toPortableString();
             }
-        } else {
-            System.err.println(skillDir + " found at: " + Path.of(skillDir).toFile().getAbsolutePath());
         }
         
         var config = new LlmConfig(
