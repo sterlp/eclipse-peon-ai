@@ -48,10 +48,9 @@ jobs:
       run: |
         # Save built repository to temp
         cp -r releng/llmpeon-update-site/target/repository /tmp/p2-repo
-        # Switch to gh-pages branch
-        git checkout gh-pages
-        # Delete all existing files except .git
-        find . -maxdepth 1 ! -name '.git' ! -name '.' -exec rm -rf {} \;
+        # Create a fresh orphan branch (no history, keeps repo small)
+        git checkout --orphan gh-pages-tmp
+        git rm -rf . > /dev/null 2>&1 || true
         # Copy new p2 repository content
         cp -r /tmp/p2-repo/* .
         # Create landing page
@@ -87,4 +86,4 @@ jobs:
         git config --local user.name "github-actions[bot]"
         git add -A
         git commit -m "Update p2 repository" || echo "No changes to commit"
-        git push origin gh-pages --force
+        git push origin gh-pages-tmp:gh-pages --force
