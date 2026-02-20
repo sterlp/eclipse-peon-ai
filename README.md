@@ -1,66 +1,96 @@
 # Eclipse Peon AI
 
-Eclipse Peon AI is an Eclipse RCP plugin that integrates a lightweight, context-aware LLM assistant directly into the Eclipse workbench to support developers in their daily workflow.
+A lightweight, context-aware LLM assistant that integrates directly into your Eclipse workbench to support developers in their daily workflow.
 
-The project focuses on a pragmatic, embedded approach without p2 wrapping, keeping the setup simple and transparent.
+![Example](./doc/docs/assets/example.png)
 
-![Example](./example.png)
+## Features
 
-# Install
+- **Chat Interface** - Interactive AI chat with syntax-highlighted code blocks and markdown rendering
+- **File Operations** - Read, write, search, and modify files directly from the chat
+- **Context Awareness** - Understands your current workspace and selected files
+- **Local LLM Support** - Works with Ollama for privacy-focused local inference
+- **Multi-Provider** - Supports various LLM providers (OpenAI, Anthropic, Ollama, and more)
 
-Use the update site:
+## Installation
 
-- https://sterl.github.io/eclipse-peon-ai/
+### Update Site (Recommended)
 
-![Example](./install.png)
+1. Go to **Help > Install New Software**
+2. Add the update site: `https://github.com/sterlp/eclipse-peon-ai`
+3. Select "Eclipse Peon AI" and follow the installation wizard
+4. Restart Eclipse
+5. Open the view: **Window > Show View > Other...** > search "Peon AI"
 
----
+![Install](./doc/docs/assets/install.png)
+
+## Configuration
+
+Configure via **Window > Preferences > Peon AI**:
+
+| Provider | Model | Base URL |
+|----------|-------|----------|
+| Ollama | `llama3`, `codellama` | `http://localhost:11434` |
+| OpenAI | `gpt-4o` | `https://api.openai.com/v1` |
+| Anthropic | `claude-sonnet-4` | `https://api.anthropic.com` |
+
+## Usage
+
+The AI assistant has access to several tools:
+
+- **Read File** - Read contents of any file in your workspace
+- **Write File** - Create or modify files
+- **Search Files** - Search for text across your project
+- **Read Selected File** - Quick access to currently selected file
+
+Example workflows:
+- Select a file and ask "What does this code do?"
+- Ask "Write unit tests for the selected class"
+- Paste error messages and ask "What's causing this?"
 
 ## Requirements
 
 - Java 21
-- Maven (with Tycho)
-- Eclipse 2025-12 target platform
+- Eclipse 2025-12 or newer
 
----
-
-## Build
-
-Build the project from the repository root:
+## Building from Source
 
 ```bash
-mvn clean package
+mvn clean verify
 ```
 
-### Clean start
+For development, launch with: `-clean -clearPersistedState`
 
-`-clean -clearPersistedState`
+## Documentation
 
-### Known: Incremental Build Issue
+Detailed documentation is available in the [doc/](doc/) folder:
 
-Eclipse 4.38 has a PDE/JDT bug where incremental builds produce broken `.class` files after the first launch. To work around this, do **Project > Clean** before re-launching the Eclipse Application.
+- [Installation Guide](doc/setup/installation.md)
+- [Configuration](doc/setup/configuration.md)
+- [Chat Interface](doc/usage/chat-interface.md)
+- [Available Tools](doc/usage/available-tools.md)
+- [Building](doc/development/building.md)
+- [Architecture](doc/development/architecture.md)
 
-See [eclipse-build-issues.md](eclipse-build-issues.md) for details.
+To serve docs locally:
+```bash
+cd doc && pip install -r requirements.txt && mkdocs serve
+```
 
-### Libs used
-- https://github.com/langchain4j/langchain4j
-- https://github.com/markdown-it/markdown-it
-- https://highlightjs.org
-- https://diff2html.xyz
+## Dependencies
 
----
+- [LangChain4j](https://github.com/langchain4j/langchain4j) - Java LLM framework
+- [markdown-it](https://github.com/markdown-it/markdown-it) - Markdown parsing
+- [Highlight.js](https://highlightjs.org) - Syntax highlighting
+- [Diff2Html](https://diff2html.xyz) - Diff visualization
 
 ## Links
 
-### Alternatives
-- https://github.com/anomalyco/opencode
+- [GitHub](https://github.com/sterl/eclipse-peon-ai)
+- [Issue Tracker](https://github.com/sterl/eclipse-peon-ai/issues)
 
-### Eclipse RCP / e4 Development
-- [Vogella Eclipse RCP Tutorial](https://www.vogella.com/tutorials/EclipseRCP/article.html) - comprehensive, regularly updated
-- [Vogella e4 Development Practices](https://www.vogella.com/tutorials/Eclipse4DevelopmentPractises/article.html) - naming conventions, model elements
-- [Eclipse Wiki e4 Tutorials](https://wiki.eclipse.org/Eclipse4/Tutorials) - curated community tutorials
-- [EclipseSource e4 Tutorial (PDF)](https://eclipsesource.com/tutorial-downloads/Eclipse_4_Tutorial.pdf) - core concepts from scratch
+## Eclipse RCP Resources
 
-### LLM Integration
-- [LangChain4j](https://docs.langchain4j.dev/) - Java LLM framework used in this project
-- [Ollama](https://ollama.com/) - local LLM runtime
+- [Vogella Eclipse RCP Tutorial](https://www.vogella.com/tutorials/EclipseRCP/article.html)
+- [Vogella e4 Development Practices](https://www.vogella.com/tutorials/Eclipse4DevelopmentPractises/article.html)
+- [Eclipse Wiki e4 Tutorials](https://wiki.eclipse.org/Eclipse4/Tutorials)

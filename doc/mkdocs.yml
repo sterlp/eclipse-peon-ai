@@ -1,0 +1,59 @@
+site_name: Eclipse Peon AI
+site_description: An Eclipse plugin that brings a lightweight, context‑aware LLM assistant directly into the Eclipse workbench to support developers in their daily workflow.
+site_author: sterl
+docs_dir: docs
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/sterlp/eclipse-peon-ai
+
+theme:
+    name: material
+    language: en
+    palette:
+      - scheme: default
+        toggle:
+          icon: material/brightness-7
+          name: Switch to dark mode
+      - scheme: slate
+        toggle:
+          icon: material/brightness-4
+          name: Switch to light mode
+    features:
+      - content.code.copy
+      - content.code.annotate
+      - navigation.indexes
+      - navigation.path
+      - navigation.prune
+      - navigation.expand
+      - navigation.top
+      - search.suggest
+      - search.highlight
+      - toc.follow
+
+nav:
+  - Home: index.md
+  - Setup:
+      - Installation: setup/installation.md
+      - Configuration: setup/configuration.md
+  - Usage:
+      - Chat Interface: usage/chat-interface.md
+      - Available Tools: usage/available-tools.md
+  - Development:
+      - Building: development/building.md
+      - Architecture: development/architecture.md
+
+markdown_extensions:
+  - admonition
+  - codehilite:
+      css_class: highlight
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+
+repo_url: https://github.com/sterlp/eclipse-peon-ai
+repo_name: sterlp/eclipse-peon-ai
+edit_uri: edit/main/doc/docs/

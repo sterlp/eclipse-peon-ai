@@ -3,7 +3,7 @@
 ## Current Status
 
 ### Build Artifacts
-- **Update Site URL**: https://sterl.github.io/eclipse-peon-ai/
+- **Update Site URL**: https://github.com/sterlp/eclipse-peon-ai
 - **GitHub Pages Branch**: `gh-pages`
 - **Build Output**: `releng/llmpeon-update-site/target/repository/`
 
@@ -69,7 +69,7 @@ ls releng/llmpeon-update-site/target/repository/features/
 2. `Help > Install New Software`
 3. Click `Add > Archive`
 4. Download zip from: https://github.com/sterl/eclipse-peon-ai/releases
-5. Or use direct URL: `https://sterl.github.io/eclipse-peon-ai/`
+5. Or use direct URL: `https://github.com/sterlp/eclipse-peon-ai`
 
 ### Build Release
 ```bash
