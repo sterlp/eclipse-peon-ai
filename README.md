@@ -17,7 +17,7 @@ A lightweight, context-aware LLM assistant that integrates directly into your Ec
 ### Update Site (Recommended)
 
 1. Go to **Help > Install New Software**
-2. Add the update site: `https://github.com/sterlp/eclipse-peon-ai`
+2. Add the update site: [https://github.com/sterlp/eclipse-peon-ai](https://sterlp.github.io/eclipse-peon-ai/)
 3. Select "Eclipse Peon AI" and follow the installation wizard
 4. Restart Eclipse
 5. Open the view: **Window > Show View > Other...** > search "Peon AI"
