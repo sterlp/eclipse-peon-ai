@@ -3,9 +3,6 @@ nav:
   - Setup:
       - Installation: setup/installation.md
       - Configuration: setup/configuration.md
-  - Usage:
-      - Chat Interface: usage/chat-interface.md
-      - Available Tools: usage/available-tools.md
   - Development:
       - Building: development/building.md
       - Architecture: development/architecture.md

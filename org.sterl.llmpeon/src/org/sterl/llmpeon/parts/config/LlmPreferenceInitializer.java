@@ -47,7 +47,7 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
             AiProvider.parse(prefs.get(PeonConstants.PREF_PROVIDER_TYPE, AiProvider.OLLAMA.name())),
             prefs.get(PeonConstants.PREF_MODEL, "devstral-small-2:24b"),
             prefs.get(PeonConstants.PREF_URL, "http://localhost:11434"),
-            prefs.getInt(PeonConstants.PREF_TOKEN_WINDOW, 4096),
+            prefs.getInt(PeonConstants.PREF_TOKEN_WINDOW, 4000),
             prefs.getBoolean(PeonConstants.PREF_THINKING_ENABLED, false),
             prefs.get(PeonConstants.PREF_API_KEY, ""),
             skillDir

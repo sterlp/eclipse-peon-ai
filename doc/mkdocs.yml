@@ -1,7 +1,11 @@
 site_name: Eclipse Peon AI
+site_url: https://peon-ai-4e.sterl.org
 site_description: An Eclipse plugin that brings a lightweight, context‑aware LLM assistant directly into the Eclipse workbench to support developers in their daily workflow.
-site_author: sterl
+site_author: Paul Sterl
 docs_dir: docs
+
+extra_files:
+  - BingSiteAuth.xml
 
 extra:
   social:
