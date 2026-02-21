@@ -5,6 +5,8 @@ import java.nio.file.Path;
 import java.time.Duration;
 
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.googleai.GeminiThinkingConfig;
+import dev.langchain4j.model.googleai.GeminiThinkingConfig.GeminiThinkingLevel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
@@ -32,11 +34,19 @@ public record LlmConfig (
                     .maxTokens(tokenWindow())
                     .build();
         } else if (AiProvider.GOOGLE_GEMINI == providerType()) {
-            return GoogleAiGeminiChatModel.builder()
-                    .apiKey(apiKey())
-                    .modelName(model())
-                    .maxOutputTokens(tokenWindow())
+            var result = GoogleAiGeminiChatModel.builder()
+                .apiKey(apiKey())
+                .modelName(model());
+
+            if (thinkingEnabled) {
+                var think = GeminiThinkingConfig.builder()
+                    .thinkingLevel(GeminiThinkingLevel.MEDIUM)
                     .build();
+                result.thinkingConfig(think)
+                    .returnThinking(Boolean.TRUE);
+            }
+
+            return result.build();
         } else {
             return OllamaChatModel.builder()
                     .timeout(Duration.ofMinutes(2))
