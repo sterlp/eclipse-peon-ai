@@ -7,6 +7,7 @@ import java.util.List;
 import org.sterl.llmpeon.agent.AiCompressorAgent;
 import org.sterl.llmpeon.agent.AiDeveloperAgent;
 import org.sterl.llmpeon.agent.AiMonitor;
+import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolService;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -28,7 +29,7 @@ public class ChatService {
     private ChatModel model;
     private int tokenSize = 0;
     
-    private List<ChatMessage> additions = Collections.emptyList();
+    private List<ChatMessage> standingOrders = Collections.emptyList();
 
     public ChatService(LlmConfig config, ToolService toolService) {
         this.config = config;
@@ -36,9 +37,13 @@ public class ChatService {
         updateConfig(config);
     }
     
-    public void setAdditionalChatMessages(List<ChatMessage> additions) {
+    /**
+     * Sets a list of orders - which will not be added to the chat memory but are
+     * added an
+     */
+    public void setStandingOrders(List<ChatMessage> additions) {
         if (additions == null) additions = Collections.emptyList();
-        this.additions = new ArrayList<>(additions);
+        this.standingOrders = new ArrayList<>(additions);
     }
 
     public void updateConfig(LlmConfig config) {
@@ -75,7 +80,7 @@ public class ChatService {
 
         var developerAgent = new AiDeveloperAgent(model);
         do {
-            var messages = new ArrayList<ChatMessage>(additions);
+            var messages = new ArrayList<ChatMessage>(standingOrders);
             // any skills first
             var skills = toolService.skillMessage();
             if (skills != null) {
@@ -92,7 +97,8 @@ public class ChatService {
             response = developerAgent.call(request, monitor);
             updateTokenCount(response);
 
-            if (!isEmpty(response.aiMessage().text())) memory.add(response.aiMessage());
+            // add the AI message if it has any text
+            if (StringUtil.hasValue(response.aiMessage().text())) memory.add(response.aiMessage());
 
             if (response.aiMessage().hasToolExecutionRequests()) {
                 for (var tr : response.aiMessage().toolExecutionRequests()) {
@@ -186,10 +192,5 @@ public class ChatService {
 
     public List<ChatMessage> getMessages() {
         return memory.messages();
-    }
-    
-    private boolean isEmpty(String value) {
-        if (value == null || value.isBlank()) return true;
-        return value.strip().isBlank();
     }
 }

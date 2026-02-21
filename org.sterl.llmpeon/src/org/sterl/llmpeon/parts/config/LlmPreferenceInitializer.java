@@ -30,7 +30,7 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
         var prefs = InstanceScope.INSTANCE.getNode(LlmPreferenceConstants.PLUGIN_ID);
         
         var skillDir = prefs.get(LlmPreferenceConstants.PREF_SKILL_DIRECTORY, "");
-        if (StringUtil.haValue(skillDir) && !Files.isDirectory(Path.of(skillDir))) {
+        if (StringUtil.hasValue(skillDir) && !Files.isDirectory(Path.of(skillDir))) {
             var dir = EclipseToolContext.resolveInEclipse(skillDir);
             if (dir.isPresent()) {
                 // TODO maybe we should not do this, and allow dynamic skill folder

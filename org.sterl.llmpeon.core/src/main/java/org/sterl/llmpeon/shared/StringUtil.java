@@ -13,12 +13,12 @@ public class StringUtil {
         return value.strip();
     }
     
-    public static boolean haValue(String value) {
+    public static boolean hasValue(String value) {
         if (stripToNull(value) == null) return false;
         return true;
     }
     
     public static boolean hasNoValue(String value) {
-        return !haValue(value);
+        return !hasValue(value);
     }
 }

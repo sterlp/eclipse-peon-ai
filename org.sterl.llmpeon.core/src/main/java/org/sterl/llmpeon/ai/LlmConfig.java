@@ -10,7 +10,7 @@ import dev.langchain4j.model.openai.OpenAiChatModel;
 
 public class LlmConfig {
     
-    private AiProvider providerType =AiProvider.OLLAMA;
+    private AiProvider providerType = AiProvider.OLLAMA;
     private String model;
     private String url;
     private int tokenWindow = 4000;

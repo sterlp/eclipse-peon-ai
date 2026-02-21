@@ -16,6 +16,7 @@ import org.eclipse.swt.browser.ProgressListener;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.osgi.framework.FrameworkUtil;
+import org.sterl.llmpeon.shared.StringUtil;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -101,7 +102,6 @@ public class ChatMarkdownWidget extends Composite {
         }
     }
 
-    // TODO lost the DIFF view!
     public void showDiff(String unifiedDiff) {
         try {
             executeScript(
@@ -128,13 +128,14 @@ public class ChatMarkdownWidget extends Composite {
 
     public void appendMessage(ChatMessage msg) {
         var role = msg.type() + "";
+        if (role.contains("TOOL")) role = "TOOL";
+
         String text = "";
         if (msg instanceof UserMessage um) {
             text = um.singleText();
         } else if (msg instanceof AiMessage am) {
-            if (am.thinking() != null && am.thinking().length() > 1) {
-                text = am.thinking();
-                appendMessage(new SimpleChatMessage("THINK", am.thinking()));
+            if (am.thinking() != null && StringUtil.hasValue(am.thinking())) {
+                appendMessage(new SimpleChatMessage("THINK", text = am.thinking()));
             }
             text = am.text();
         }

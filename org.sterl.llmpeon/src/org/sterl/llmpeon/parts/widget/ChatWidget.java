@@ -158,13 +158,12 @@ public class ChatWidget extends Composite implements AiMonitor {
     private void compressContext() {
         lockWhileWorking(true);
         Job.create("Compressing context", monitor -> {
-            monitor.beginTask("Compressing", IProgressMonitor.UNKNOWN);
+            monitor.beginTask("Compressing chat", IProgressMonitor.UNKNOWN);
             Exception ex = null;
             
             try {
-                chatService.compressContext(m -> {
-                    Display.getDefault().asyncExec(() -> chatHistory.appendMessage(SimpleChatMessage.tool(m)));
-                });
+                chatService.compressContext(this);
+                Display.getDefault().asyncExec(this::refreshChat);
             } catch (Exception e) {
                 ex = e;
             } finally {
@@ -203,14 +202,14 @@ public class ChatWidget extends Composite implements AiMonitor {
         if (text.length() > 0) chatHistory.appendMessage(new SimpleChatMessage(ChatMessageType.USER.name(), text));
 
         Job.create("Peon AI request", monitor -> {
-            monitor.beginTask("Arbeit, Arbeit!", IProgressMonitor.UNKNOWN);
+            monitor.beginTask("Arbeit, Arbeit! " + chatService.getConfig().getUrl(), IProgressMonitor.UNKNOWN);
 
             Exception ex = null;
             try {
                 int msgCountBefore = chatService.getMessages().size();
                 
                 if (selectedResource != null) {
-                    chatService.setAdditionalChatMessages(Arrays.asList(SystemMessage.from("Selected eclipse resource: " + selectedResource)));
+                    chatService.setStandingOrders(Arrays.asList(SystemMessage.from("Selected eclipse resource: " + selectedResource)));
                 }
                 
                 var result = chatService.call(text, this);
@@ -220,16 +219,15 @@ public class ChatWidget extends Composite implements AiMonitor {
                         refreshChat();
                     } else {
                         chatHistory.appendMessage(result.aiMessage());
-                        refreshStatusLine();
                     }
-                    send.setEnabled(true);
+                    refreshStatusLine();
                 });
             } catch (Exception e) {
                 ex = e;
             } finally {
                 Display.getDefault().asyncExec(() -> lockWhileWorking(false));
                 monitor.done();
-                chatService.setAdditionalChatMessages(null);
+                chatService.setStandingOrders(null);
             }
 
             return ex == null ? Status.OK_STATUS : new Status(IStatus.ERROR, "AIChat", ex.getMessage(), ex);
