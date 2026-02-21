@@ -1,16 +1,12 @@
 package org.sterl.llmpeon.parts.widget;
 
-import java.net.URI;
 import java.util.Arrays;
 
-import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
-import org.eclipse.jface.text.IEditingSupport;
 import org.eclipse.jface.text.ITextSelection;
-import org.eclipse.jface.viewers.EditingSupport;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -28,7 +24,6 @@ import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget.SimpleChatMessage;
 
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
 
 public class ChatWidget extends Composite implements AiMonitor {
 
@@ -151,7 +146,7 @@ public class ChatWidget extends Composite implements AiMonitor {
     }
 
     private void refreshChat() {
-        chatHistory.clear();
+        chatHistory.clearMessages();
         chatService.getMessages().forEach(msg -> {
             chatHistory.appendMessage(msg);
         });

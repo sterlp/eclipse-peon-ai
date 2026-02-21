@@ -1,5 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
+	<classpathentry exported="true" kind="lib" path="lib/jsoup.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/flexmark.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/flexmark-ext-emoji.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/flexmark-ext-gfm-strikethrough.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/flexmark-ext-ins.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/flexmark-ext-superscript.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/flexmark-ext-tables.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/flexmark-ext-wikilink.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/flexmark-html2md-converter.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/flexmark-jira-converter.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/flexmark-util.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/flexmark-util-ast.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/flexmark-util-builder.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/flexmark-util-collection.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/flexmark-util-data.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/flexmark-util-dependency.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/flexmark-util-format.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/flexmark-util-html.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/flexmark-util-misc.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/flexmark-util-options.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/flexmark-util-sequence.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/flexmark-util-visitor.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER">
 		<attributes>
 			<attribute name="maven.pomderived" value="true"/>

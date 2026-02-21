@@ -14,10 +14,13 @@ import java.util.regex.Pattern;
 
 import com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter;
 
+import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
+
 /**
  * Simple tool to fetch a website and convert its content to Markdown.
  */
-public class WebFetchTool {
+public class WebFetchTool extends AbstractTool {
 
     private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(30);
@@ -41,9 +44,13 @@ public class WebFetchTool {
      * @throws IOException if a network error occurs
      * @throws InterruptedException if the request is interrupted
      */
-    public String fetchAsMarkdown(String url) throws IOException, InterruptedException {
+    @Tool("""
+          Fetches the content of the given URL and converts it to Markdown. USe it if you should read an URL.
+          e.g. read maven langchain version https://central.sonatype.com/artifact/<groupId>/<artifactId>
+          """)
+    public String fetchAsMarkdown(@P("url the URL to fetch") String url) throws IOException, InterruptedException {
         if (url == null || url.isBlank()) {
-            throw new IllegalArgumentException("URL cannot be null or empty");
+            return "URL cannot be null or empty";
         }
 
         HttpRequest request = HttpRequest.newBuilder()
@@ -54,8 +61,9 @@ public class WebFetchTool {
                 .GET()
                 .build();
 
+        monitorMessage("Fetching " + url);
+        
         HttpResponse<byte[]> response = this.httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
-
         Charset charset = extractCharset(response).orElse(StandardCharsets.UTF_8);
         String htmlContent = new String(response.body(), charset);
         

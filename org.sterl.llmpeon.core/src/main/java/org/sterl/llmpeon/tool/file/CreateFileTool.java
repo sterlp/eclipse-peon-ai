@@ -3,7 +3,7 @@ package org.sterl.llmpeon.tool.file;
 import java.nio.file.Path;
 
 import org.sterl.llmpeon.shared.StringUtil;
-import org.sterl.llmpeon.tool.model.AbstractTool;
+import org.sterl.llmpeon.tool.AbstractTool;
 import org.sterl.llmpeon.tool.model.FileContext;
 
 import dev.langchain4j.agent.tool.P;

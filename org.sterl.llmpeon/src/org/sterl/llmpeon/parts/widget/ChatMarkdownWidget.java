@@ -4,15 +4,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.browser.Browser;
-import org.eclipse.swt.browser.ProgressEvent;
-import org.eclipse.swt.browser.ProgressListener;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.osgi.framework.FrameworkUtil;
@@ -29,9 +25,7 @@ public class ChatMarkdownWidget extends Composite {
 
     private final Browser browser;
     private final ObjectMapper mapper = new ObjectMapper();
-    private final List<String> pendingScripts = new ArrayList<>();
     private String chatHtml = null;
-    private boolean pageReady = false;
     
     public record SimpleChatMessage(String role, String message) {
         public static SimpleChatMessage tool(String m) {
@@ -44,19 +38,16 @@ public class ChatMarkdownWidget extends Composite {
         setLayout(new FillLayout());
 
         browser = new Browser(this, SWT.NONE);
+        browser.setText(loadChatHtml());
+        /*
         browser.addProgressListener(new ProgressListener() {
             @Override
             public void completed(ProgressEvent event) {
-                pageReady = true;
-                for (String js : pendingScripts) {
-                    browser.execute(js);
-                }
-                browser.execute("clearMessages()");
             }
             @Override
             public void changed(ProgressEvent event) {}
         });
-        clear();
+        */
     }
 
     private String loadChatHtml() {
@@ -65,8 +56,8 @@ public class ChatMarkdownWidget extends Composite {
             if (is == null) {
                 throw new RuntimeException("chat.html not found on classpath");
             }
-            var chatHtml = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-            chatHtml = resolveResourcePaths(chatHtml);
+            var loaded = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+            chatHtml = resolveResourcePaths(loaded);
             return chatHtml;
         } catch (IOException e) {
             throw new RuntimeException("Failed to load chat.html", e);
@@ -93,7 +84,7 @@ public class ChatMarkdownWidget extends Composite {
 
     public void appendMessage(SimpleChatMessage msg) {
         try {
-            executeScript(
+            browser.execute(
                 "appendMessage(" + mapper.writeValueAsString(msg) + ");"
             );
         } catch (JsonProcessingException e) {
@@ -103,7 +94,7 @@ public class ChatMarkdownWidget extends Composite {
 
     public void showDiff(String unifiedDiff) {
         try {
-            executeScript(
+            browser.execute(
                 "appendDiff(" + mapper.writeValueAsString(unifiedDiff) + ");"
             );
         } catch (JsonProcessingException e) {
@@ -111,18 +102,8 @@ public class ChatMarkdownWidget extends Composite {
         }
     }
 
-    public void clear() {
-        pageReady = false;
-        pendingScripts.clear();
-        browser.setText(loadChatHtml());
-    }
-
-    private void executeScript(String js) {
-        if (pageReady) {
-            browser.execute(js);
-        } else {
-            pendingScripts.add(js);
-        }
+    public void clearMessages() {
+        browser.execute("clearMessages()");
     }
 
     public void appendMessage(ChatMessage msg) {

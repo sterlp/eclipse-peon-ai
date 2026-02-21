@@ -1,6 +1,6 @@
 package org.sterl.llmpeon.parts.tools;
 
-import org.sterl.llmpeon.tool.model.AbstractTool;
+import org.sterl.llmpeon.tool.AbstractTool;
 
 import dev.langchain4j.agent.tool.Tool;
 

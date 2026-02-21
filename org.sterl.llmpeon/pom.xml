@@ -57,15 +57,16 @@
                             <overWriteSnapshots>true</overWriteSnapshots>
                             <stripVersion>true</stripVersion>
                             <!-- Only include JARs we actually need; everything
-                            else
-                                 is provided by the Eclipse target platform -->
+                            else is provided by the Eclipse target platform -->
                             <includeGroupIds>
                                 org.sterl,
                                 dev.langchain4j,
                                 com.fasterxml.jackson.core,
                                 org.jspecify,
                                 org.apache.opennlp,
-                                org.slf4j
+                                org.slf4j,
+                                com.vladsch.flexmark,
+                                org.jsoup
                             </includeGroupIds>
                         </configuration>
                     </execution>

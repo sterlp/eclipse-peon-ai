@@ -2,7 +2,7 @@ package org.sterl.llmpeon.tool.file;
 
 import java.util.List;
 
-import org.sterl.llmpeon.tool.model.AbstractTool;
+import org.sterl.llmpeon.tool.AbstractTool;
 import org.sterl.llmpeon.tool.model.FileContext;
 
 import dev.langchain4j.agent.tool.P;
