@@ -2,7 +2,6 @@
 <classpath>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER">
 		<attributes>
-			<attribute name="module" value="true"/>
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
@@ -13,24 +12,25 @@
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry exported="true" kind="lib" path="lib/jackson-annotations-2.20.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/jackson-core-2.20.1.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/jackson-databind-2.20.1.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/jspecify-1.0.0.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/langchain4j-1.11.0.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/langchain4j-core-1.11.0.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/langchain4j-http-client-1.11.0.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/langchain4j-http-client-jdk-1.11.0.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/langchain4j-ollama-1.11.0.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/langchain4j-open-ai-1.11.0.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/opennlp-tools-2.5.4.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/slf4j-api-2.0.17.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/llmpeon-core.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/jackson-annotations.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/jackson-core.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/jackson-databind.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/jspecify.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/langchain4j.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/langchain4j-core.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/langchain4j-http-client.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/langchain4j-http-client-jdk.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/langchain4j-ollama.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/langchain4j-google-ai-gemini.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/langchain4j-open-ai.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/opennlp-tools.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/slf4j-api.jar"/>
 	<classpathentry exported="true" kind="lib" path="resources" sourcepath="resources"/>
 	<classpathentry kind="con" path="org.eclipse.m2e.MAVEN2_CLASSPATH_CONTAINER">
 		<attributes>
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry combineaccessrules="false" kind="src" path="/core"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

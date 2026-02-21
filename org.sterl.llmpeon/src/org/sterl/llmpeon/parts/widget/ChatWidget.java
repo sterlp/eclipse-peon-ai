@@ -16,7 +16,7 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
 import org.sterl.llmpeon.agent.AiMonitor;
 import org.sterl.llmpeon.ai.ChatService;
-import org.sterl.llmpeon.parts.LlmPreferenceConstants;
+import org.sterl.llmpeon.parts.PeonConstants;
 import org.sterl.llmpeon.parts.shared.SimpleDiff;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget.SimpleChatMessage;
 
@@ -170,7 +170,7 @@ public class ChatWidget extends Composite implements AiMonitor {
                 Display.getDefault().asyncExec(() -> lockWhileWorking(false));
             }
             monitor.done();
-            return ex == null ? Status.OK_STATUS : new Status(IStatus.ERROR, LlmPreferenceConstants.PLUGIN_ID, ex.getMessage(), ex);
+            return ex == null ? Status.OK_STATUS : new Status(IStatus.ERROR, PeonConstants.PLUGIN_ID, ex.getMessage(), ex);
         }).schedule();
     }
 
@@ -202,7 +202,7 @@ public class ChatWidget extends Composite implements AiMonitor {
         if (text.length() > 0) chatHistory.appendMessage(new SimpleChatMessage(ChatMessageType.USER.name(), text));
 
         Job.create("Peon AI request", monitor -> {
-            monitor.beginTask("Arbeit, Arbeit! " + chatService.getConfig().getUrl(), IProgressMonitor.UNKNOWN);
+            monitor.beginTask("Arbeit, Arbeit!", IProgressMonitor.UNKNOWN);
 
             Exception ex = null;
             try {
@@ -230,7 +230,7 @@ public class ChatWidget extends Composite implements AiMonitor {
                 chatService.setStandingOrders(null);
             }
 
-            return ex == null ? Status.OK_STATUS : new Status(IStatus.ERROR, "AIChat", ex.getMessage(), ex);
+            return PeonConstants.status("Peon AI\n" + chatService.getConfig(), ex);
         }).schedule();
     }
 

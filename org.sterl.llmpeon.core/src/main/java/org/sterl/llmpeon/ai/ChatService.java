@@ -49,7 +49,7 @@ public class ChatService {
     public void updateConfig(LlmConfig config) {
         this.config = config;
         this.model = config.build();
-        this.toolService.updateSkillDirectory(config.getSkillDirectory());
+        this.toolService.updateSkillDirectory(config.skillDirectory());
     }
 
     public ToolService getToolService() {
@@ -61,7 +61,7 @@ public class ChatService {
     }
 
     public int getTokenWindow() {
-        return config.getTokenWindow();
+        return config.tokenWindow();
     }
 
     public int getTokenSize() {
@@ -71,7 +71,7 @@ public class ChatService {
     public ChatResponse call(String message, AiMonitor monitor) {
         
         // auto-compress at 95%
-        if (tokenSize >= config.getTokenWindow() * 0.95) {
+        if (tokenSize >= config.tokenWindow() * 0.95) {
             compressContext(monitor);
         }
         
@@ -109,8 +109,8 @@ public class ChatService {
 
         } while (response.aiMessage().hasToolExecutionRequests());
 
-        System.err.println(response.metadata());
-        System.err.println(response.aiMessage().text());
+        System.out.println(response.metadata());
+        System.out.println(response.aiMessage().text());
 
         return response;
     }

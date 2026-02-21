@@ -55,6 +55,7 @@
                             <outputDirectory>${project.basedir}/lib</outputDirectory>
                             <overWriteReleases>false</overWriteReleases>
                             <overWriteSnapshots>true</overWriteSnapshots>
+                            <stripVersion>true</stripVersion>
                             <!-- Only include JARs we actually need; everything
                             else
                                  is provided by the Eclipse target platform -->

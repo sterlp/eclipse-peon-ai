@@ -22,7 +22,11 @@ A lightweight, context-aware LLM assistant that integrates directly into your Ec
 4. Restart Eclipse
 5. Open the view: **Window > Show View > Other...** > search "Peon AI"
 
+#### Ollama
 ![Install](./doc/docs/assets/install.png)
+
+#### Gemini
+![google gemnini](../assets/google-gemini.png)
 
 ## Configuration
 

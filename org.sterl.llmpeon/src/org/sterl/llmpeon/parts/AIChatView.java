@@ -74,13 +74,13 @@ public class AIChatView {
         if (logger != null)
             logger.info("We have a logger ... " + chatService.getConfig());
 
-        IEclipsePreferences prefs = InstanceScope.INSTANCE.getNode(LlmPreferenceConstants.PLUGIN_ID);
+        IEclipsePreferences prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
         prefs.addPreferenceChangeListener(prefListener);
     }
 
     @PreDestroy
     public void dispose() {
-        InstanceScope.INSTANCE.getNode(LlmPreferenceConstants.PLUGIN_ID).removePreferenceChangeListener(prefListener);
+        InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID).removePreferenceChangeListener(prefListener);
     }
 
     private void applyConfig() {

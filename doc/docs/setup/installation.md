@@ -5,7 +5,16 @@ description: How to install Eclipse Peon AI
 
 # Installation
 
-![install](../assets/install.png)
+## Ollama example
+
+![install ollama](../assets/install.png)
+
+### Googe Gemini exampe
+
+![install ollama](../assets/google-gemini.png)
+
+- Keys: https://aistudio.google.com/api-keys
+- Models: https://ai.google.dev/gemini-api/docs/models
 
 ## Update Site (Recommended)
 
