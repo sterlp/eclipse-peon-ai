@@ -51,7 +51,6 @@ public class ChatMarkdownWidget extends Composite {
                 for (String js : pendingScripts) {
                     browser.execute(js);
                 }
-                pendingScripts.clear();
                 browser.execute("clearMessages()");
             }
             @Override

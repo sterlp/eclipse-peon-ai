@@ -18,7 +18,7 @@ public class UpdateSelectedFileTool extends AbstractTool {
     public String updateCurrentFile(
             @P("The complete new file content that will replace the existing content") String newContent) {
 
-        String filePath = context.getSelectedFile();
+        var filePath = context.getSelectedFile();
         if (filePath == null) return "No file is currently selected";
 
         var result = context.writeFile(filePath, newContent);

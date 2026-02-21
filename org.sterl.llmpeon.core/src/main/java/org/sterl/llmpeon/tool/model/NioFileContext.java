@@ -92,7 +92,7 @@ public class NioFileContext implements FileContext {
         try (var walk = Files.walk(rootDir)) {
             walk.filter(Files::isRegularFile)
                 .filter(p -> p.getFileName().toString().toLowerCase().contains(lowerQuery))
-                .forEach(p -> matches.add(formatFileInfo(p)));
+                .forEach(p -> matches.add(p.toAbsolutePath().toString()));
         } catch (IOException e) {
             throw new RuntimeException("Failed to search in " + rootDir, e);
         }
@@ -104,10 +104,5 @@ public class NioFileContext implements FileContext {
         Path p = Path.of(path);
         if (p.isAbsolute()) return p.normalize();
         return rootDir.resolve(p).normalize();
-    }
-
-    private String formatFileInfo(Path file) {
-        return String.format("File: %s\nPath: %s",
-                file.getFileName(), rootDir.relativize(file));
     }
 }

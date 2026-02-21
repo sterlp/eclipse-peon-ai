@@ -1,11 +1,16 @@
 package org.sterl.llmpeon.parts.widget;
 
+import java.net.URI;
 import java.util.Arrays;
 
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.jface.text.IEditingSupport;
+import org.eclipse.jface.text.ITextSelection;
+import org.eclipse.jface.viewers.EditingSupport;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -17,11 +22,13 @@ import org.eclipse.swt.widgets.Text;
 import org.sterl.llmpeon.agent.AiMonitor;
 import org.sterl.llmpeon.ai.ChatService;
 import org.sterl.llmpeon.parts.PeonConstants;
+import org.sterl.llmpeon.parts.shared.EditorSelectionHelper;
 import org.sterl.llmpeon.parts.shared.SimpleDiff;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget.SimpleChatMessage;
 
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
 
 public class ChatWidget extends Composite implements AiMonitor {
 
@@ -29,10 +36,12 @@ public class ChatWidget extends Composite implements AiMonitor {
     private ChatMarkdownWidget chatHistory;
     private Text inputArea;
     private Label statusLabel;
-    private Button send;
-    private Button compress;
+    private Button btnSend;
+    private Button btnCompress;
 
     private boolean working = false;
+    
+    private ITextSelection textSelection;
     private String selectedResource;
 
     @Override
@@ -95,18 +104,18 @@ public class ChatWidget extends Composite implements AiMonitor {
         bar.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
         bar.setLayout(new GridLayout(2, false));
 
-        send = new Button(bar, SWT.PUSH);
-        send.setImage(org.eclipse.debug.ui.DebugUITools.getImage(
+        btnSend = new Button(bar, SWT.PUSH);
+        btnSend.setImage(org.eclipse.debug.ui.DebugUITools.getImage(
                 org.eclipse.debug.ui.IDebugUIConstants.IMG_ACT_RUN));
-        send.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
-        send.setToolTipText("Send...");
-        send.addListener(SWT.Selection, e -> sendMessage());
+        btnSend.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
+        btnSend.setToolTipText("Send...");
+        btnSend.addListener(SWT.Selection, e -> sendMessage());
 
-        compress = new Button(bar, SWT.PUSH);
-        compress.setText("Compress");
-        compress.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
-        compress.setToolTipText("Compress conversation context");
-        compress.addListener(SWT.Selection, e -> compressContext());
+        btnCompress = new Button(bar, SWT.PUSH);
+        btnCompress.setText("Compress");
+        btnCompress.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
+        btnCompress.setToolTipText("Compress conversation context");
+        btnCompress.addListener(SWT.Selection, e -> compressContext());
     }
 
     /**
@@ -151,8 +160,8 @@ public class ChatWidget extends Composite implements AiMonitor {
 
     void lockWhileWorking(boolean value) {
         this.working = value;
-        compress.setEnabled(!this.working);
-        send.setEnabled(!this.working);
+        btnCompress.setEnabled(!this.working);
+        btnSend.setEnabled(!this.working);
     }
 
     private void compressContext() {
@@ -199,8 +208,9 @@ public class ChatWidget extends Composite implements AiMonitor {
         if (text.isEmpty() && chatService.getMessages().isEmpty()) return;
         inputArea.setText("");
         lockWhileWorking(true);
+        
         if (text.length() > 0) chatHistory.appendMessage(new SimpleChatMessage(ChatMessageType.USER.name(), text));
-
+        
         Job.create("Peon AI request", monitor -> {
             monitor.beginTask("Arbeit, Arbeit!", IProgressMonitor.UNKNOWN);
 
@@ -211,8 +221,7 @@ public class ChatWidget extends Composite implements AiMonitor {
                 if (selectedResource != null) {
                     chatService.setStandingOrders(Arrays.asList(SystemMessage.from("Selected eclipse resource: " + selectedResource)));
                 }
-                
-                var result = chatService.call(text, this);
+                var result = chatService.call(text + getUserSelection(), this);
 
                 Display.getDefault().asyncExec(() -> {
                     if (chatService.getMessages().size() < msgCountBefore) {
@@ -234,7 +243,23 @@ public class ChatWidget extends Composite implements AiMonitor {
         }).schedule();
     }
 
+    private String getUserSelection() {
+        String userIn = "";
+        if (textSelection != null && !textSelection.isEmpty()) {
+            userIn += "\nSelected text:\n" + textSelection.getText();
+            userIn += "\nStart line: " + textSelection.getStartLine();
+            var file = EditorSelectionHelper.getOpenFile();
+            if (file.isPresent()) userIn += "\nFile: " + file.get().getFullPath().toPortableString();
+        }
+        return userIn;
+    }
+
     public void append(String who, String what) {
         chatHistory.appendMessage(new SimpleChatMessage(who, what));
     }
+
+    public void setTextSelection(ITextSelection ts) {
+        this.textSelection = ts;
+    }
 }
+

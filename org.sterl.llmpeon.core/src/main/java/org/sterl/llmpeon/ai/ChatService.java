@@ -80,17 +80,18 @@ public class ChatService {
 
         var developerAgent = new AiDeveloperAgent(model);
         do {
-            var messages = new ArrayList<ChatMessage>(standingOrders);
-            // any skills first
+            // orders
+            var messagesToSend = new ArrayList<ChatMessage>(standingOrders);
+            // any skills
             var skills = toolService.skillMessage();
             if (skills != null) {
-                messages.addFirst(skills);
+                messagesToSend.addFirst(skills);
             }
             // history
-            messages.addAll(memory.messages());
-            
+            messagesToSend.addAll(memory.messages());
+
             ChatRequest request = ChatRequest.builder()
-                    .messages(messages)
+                    .messages(messagesToSend)
                     .toolSpecifications(toolService.toolSpecifications())
                     .build();
 
@@ -144,21 +145,22 @@ public class ChatService {
     /**
      * Compresses the current conversation via CompressAgent, clears memory,
      * and adds only the compressed summary as a new starting point.
+     * @return 
      * @return the compressed summary text, or empty string if nothing to compress
      */
-    public void compressContext(AiMonitor monitor) {
+    public ChatResponse compressContext(AiMonitor monitor) {
         var messages = memory.messages();
-        if (messages.size() < 2) return;
 
         var compressorAgent = new AiCompressorAgent(model);
         // send all messages with compress system prompt, no tools
-        if (monitor != null) monitor.onAction("Compressing conversation");
         var response = compressorAgent.call(messages, monitor);
 
         memory.clear();
         memory.add(response.aiMessage());
 
         updateTokenCount(response);
+        
+        return response;
     }
 
     private void updateTokenCount(ChatResponse response) {

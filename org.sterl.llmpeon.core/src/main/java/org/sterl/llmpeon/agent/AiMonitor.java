@@ -15,6 +15,6 @@ public interface AiMonitor {
     }
 
     default void onProblem(String value) {
-        onAction("Problem with " + value);
+        onAction(value);
     }
 }

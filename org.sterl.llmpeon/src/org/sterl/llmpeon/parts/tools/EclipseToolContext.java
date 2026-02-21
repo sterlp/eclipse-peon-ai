@@ -38,7 +38,7 @@ import org.sterl.llmpeon.tool.model.FileContext;
 public class EclipseToolContext implements FileContext {
 
     private IProject currentProject;
-    private String selectedFile; // workspace-relative path
+    private IFile selectedFile;
     
     /**
      * Resolves a path to a workspace resource (file or folder).
@@ -61,23 +61,21 @@ public class EclipseToolContext implements FileContext {
         }
         return Optional.empty();
     }
+    
+    public IFile getSelectedFile() {
+        return selectedFile;
+    }
 
-    public void setCurrentProject(IProject project) {
-        this.currentProject = project;
-        System.err.println("setCurrentProject: " + project);
+    public void setSelection(IResource selection) {
+        if (selection == null) this.currentProject = null;
+        else this.currentProject = selection.getProject();
+
+        if (selection instanceof IFile f) selectedFile = f;
+        else selectedFile = null;
     }
 
     public IProject getCurrentProject() {
         return currentProject;
-    }
-
-    public void setSelectedFile(String relativePath) {
-        this.selectedFile = relativePath;
-        System.err.println("setCurrentProject: " + selectedFile);
-    }
-
-    public String getSelectedFile() {
-        return selectedFile;
     }
 
     /**
@@ -105,8 +103,8 @@ public class EclipseToolContext implements FileContext {
      */
     public AiFileUpdate writeFile(String path, String content) {
         var inFile = resolveInEclipse(path);
-        String oldContent;
         if (inFile.isEmpty() || !(inFile.get() instanceof IFile)) {
+            String oldContent;
             var f = Path.of(path);
             if (Files.isRegularFile(f)) {
                 oldContent = FileUtils.readString(f);
@@ -114,22 +112,23 @@ public class EclipseToolContext implements FileContext {
             } else {
                 throw new IllegalArgumentException("File not found: " + path + ". Use searchFiles to find the correct workspace path.");
             }
+            return new AiFileUpdate(path, oldContent, content);
         } else {
-            IFile file = (IFile)inFile.get();
-            
-            // capture old content for diff
-            oldContent = readEclipseFile(file);
-            path = file.getFullPath().toPortableString();
-            try {
-                var charset = Charset.forName(file.getCharset());
-                file.write(content.getBytes(charset), false, false, true, new NullProgressMonitor());
-                file.refreshLocal(IResource.DEPTH_ZERO, new NullProgressMonitor());
-            } catch (CoreException  e) {
-                throw new RuntimeException("Failed to write " + file.getFullPath(), e);
-            }
+            return writeFile((IFile)inFile.get(), content);
         }
-
-        return new AiFileUpdate(path, oldContent, content);
+    }
+    
+    public AiFileUpdate writeFile(IFile file, String content) {
+        // capture old content for diff
+        var oldContent = readEclipseFile(file);
+        try {
+            var charset = Charset.forName(file.getCharset());
+            file.write(content.getBytes(charset), false, false, true, new NullProgressMonitor());
+            file.refreshLocal(IResource.DEPTH_ZERO, new NullProgressMonitor());
+        } catch (CoreException  e) {
+            throw new RuntimeException("Failed to write " + file.getFullPath(), e);
+        }
+        return new AiFileUpdate(file.getFullPath().toPortableString(), oldContent, content);
     }
 
     /**
@@ -153,19 +152,30 @@ public class EclipseToolContext implements FileContext {
             }
         }
 
+        // okay file without project name
         if (targetProject == null) {
-            if (currentProject != null && currentProject.isOpen()) {
+            var writeTo = Path.of(path);
+            if (writeTo.isAbsolute() && Files.isDirectory(writeTo.getParent())) {
+                return createFileDirectly(content, writeTo);
+            } else if (currentProject != null && currentProject.isOpen()) {
                 targetProject = currentProject;
                 // strip leading slash if present
                 projectRelativePath = path.startsWith(File.separator) ? path.substring(1) : path;
             } else {
-                var writeTo = Path.of(path);
-                System.err.println("File " + writeTo + " exists: " + Files.exists(writeTo));
-                FileUtils.writeString(writeTo, content);
-                return "Created file: " + writeTo.toAbsolutePath();
+                return createFileDirectly(content, writeTo);
             }
         }
 
+        IFile file = writeFileToProject(targetProject, projectRelativePath, content);
+        return "Created file: " + file.getFullPath();
+    }
+
+    private String createFileDirectly(String content, Path writeTo) {
+        FileUtils.writeString(writeTo, content);
+        return "Created file: " + writeTo.toAbsolutePath();
+    }
+
+    private IFile writeFileToProject(IProject targetProject, String projectRelativePath, String content) {
         IFile file = targetProject.getFile(projectRelativePath);
 
         try {
@@ -184,7 +194,7 @@ public class EclipseToolContext implements FileContext {
         } catch (CoreException e) {
             throw new RuntimeException("Failed to create/write " + file.getFullPath(), e);
         }
-        return "Created file: " + file.getFullPath();
+        return file;
     }
 
     private void ensureFolders(IContainer container) throws CoreException {
@@ -202,7 +212,7 @@ public class EclipseToolContext implements FileContext {
     public List<String> searchFiles(String query) {
         var matches = new ArrayList<String>();
         if (query == null || query.isBlank()) return matches;
-
+        
         String lowerQuery = query.toLowerCase();
         for (IProject project : ResourcesPlugin.getWorkspace().getRoot().getProjects()) {
             if (!project.isOpen()) continue;
@@ -210,9 +220,14 @@ public class EclipseToolContext implements FileContext {
                 project.accept(new IResourceVisitor() {
                     @Override
                     public boolean visit(IResource resource) {
+                        // Skip derived folders (target/, bin/, .class outputs)
+                        if (resource.isDerived()) {
+                            return false; // false = don't recurse into this
+                        }
+                        
                         if (resource.getType() == IResource.FILE
                                 && resource.getName().toLowerCase().contains(lowerQuery)) {
-                            matches.add(getFileInfo((IFile) resource));
+                            matches.add(resource.getFullPath().toPortableString());
                         }
                         return true;
                     }
@@ -247,11 +262,7 @@ public class EclipseToolContext implements FileContext {
         if (selectedFile == null) {
             return "No file is currently selected - you may use search file";
         }
-        var file = resolveInEclipse(selectedFile);
-        if (file.isEmpty() || !(file.get() instanceof IFile)) {
-            return "Selected file not found: " + selectedFile;
-        }
-        return getFileInfo((IFile)file.get()) + "Content:\n" + readEclipseFile((IFile)file.get());
+        return selectedFile.getFullPath().toPortableString() + "\nContent:\n" + readEclipseFile(selectedFile);
     }
 
     private String readEclipseFile(IFile file) {
@@ -262,20 +273,16 @@ public class EclipseToolContext implements FileContext {
         }
     }
 
-    public static String getFileInfo(IFile file) {
+    public static String g_etFileInfo(IFile file) {
         if (file == null) return "No file selected";
         return String.format("""
-            File: %s
-            Full path: %s
-            Extension: %s
+            File path: %s
             Project name: %s
             Project path: %s
             """,
-            file.getName(),
-            file.getFullPath().toString(),
-            file.getFileExtension(),
+            file.getFullPath().toPortableString(),
             file.getProject().getName(),
-            file.getProjectRelativePath().toString()
+            file.getProjectRelativePath().toPortableString()
         );
     }
 }

@@ -48,7 +48,7 @@ public class AiCompressorAgent implements AiAgent {
             .messages(messages)
             .build();
 
-        if (monitor != null) monitor.onAction("Compressing chat ...");
+        if (monitor != null) monitor.onAction("Compressing conversation");
         return chatModel.chat(request);
     }
 }

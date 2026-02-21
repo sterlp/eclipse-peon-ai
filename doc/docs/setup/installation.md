@@ -13,6 +13,7 @@ description: How to install Eclipse Peon AI
 
 ![install ollama](../assets/google-gemini.png)
 
+- URL: https://generativelanguage.googleapis.com
 - Keys: https://aistudio.google.com/api-keys
 - Models: https://ai.google.dev/gemini-api/docs/models
 

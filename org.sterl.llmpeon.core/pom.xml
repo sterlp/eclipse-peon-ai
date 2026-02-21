@@ -47,6 +47,12 @@
             <artifactId>langchain4j-google-ai-gemini</artifactId>
             <version>1.11.0</version>
         </dependency>
+        
+        <dependency>
+            <groupId>com.vladsch.flexmark</groupId>
+            <artifactId>flexmark-html2md-converter</artifactId>
+            <version>0.64.8</version>
+        </dependency>
 
         <dependency>
             <groupId>org.junit.jupiter</groupId>
