@@ -10,7 +10,7 @@ import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.PeonConstants;
-import org.sterl.llmpeon.parts.tools.EclipseToolContext;
+import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 
 public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
@@ -31,13 +31,12 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
         
         var skillDir = prefs.get(PeonConstants.PREF_SKILL_DIRECTORY, "");
         if (StringUtil.hasValue(skillDir) && !Files.isDirectory(Path.of(skillDir))) {
-            var dir = EclipseToolContext.resolveInEclipse(skillDir);
+            var dir = EclipseUtil.resolveInEclipse(skillDir);
             if (dir.isPresent()) {
                 // TODO maybe we should not do this, and allow dynamic skill folder
                 // save Eclipse workspace-relative path to prefs (portable)
                 prefs.put(PeonConstants.PREF_SKILL_DIRECTORY, dir.get().getFullPath().toPortableString());
                 // use absolute filesystem path for SkillService
-
                 System.err.println("Resolved skill dir " + skillDir + " as " + dir.get().getRawLocation().toPortableString());
                 skillDir = dir.get().getRawLocation().toPortableString();
             }

@@ -21,7 +21,6 @@ import org.sterl.llmpeon.parts.PeonConstants;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.SimpleDiff;
-import org.sterl.llmpeon.parts.tools.EclipseToolContext;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget.SimpleChatMessage;
 
 import dev.langchain4j.data.message.ChatMessage;
@@ -133,7 +132,7 @@ public class ChatWidget extends Composite implements AiMonitor {
         this.selectedResource = value;
         this.agentsMdContent = null;
 
-        var resource = EclipseToolContext.resolveInEclipse(value);
+        var resource = EclipseUtil.resolveInEclipse(value);
         if (resource.isPresent()) {
             var project = resource.get().getProject();
             if (project != null && project.isOpen()) {

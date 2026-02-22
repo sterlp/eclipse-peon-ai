@@ -100,10 +100,11 @@ cd doc && pip install -r requirements.txt && mkdocs serve
 ## Eclipse RCP Resources
 
 - https://help.eclipse.org/latest/index.jsp?topic=%2Forg.eclipse.pde.doc.user%2Fguide%2Ftools%2Fviews%2Fimage_browser_view.htm
-- [Vogella Eclipse RCP Tutorial](https://www.vogella.com/tutorials/EclipseRCP/article.html)
-article.html)
+- https://help.eclipse.org/latest/index.jsp?topic=/org.eclipse.platform.doc.isv/reference/api/overview-summary.html
 - [Eclipse Wiki e4 Tutorials](https://wiki.eclipse.org/Eclipse4/Tutorials)
 
+- [Vogella Eclipse RCP Tutorial](https://www.vogella.com/tutorials/EclipseRCP/article.html)
+article.html)
 
 https://www.vogella.com/tutorials/Eclipse4Services/article.html
 https://www.vogella.com/tutorials/Eclipse4CSS/article.html

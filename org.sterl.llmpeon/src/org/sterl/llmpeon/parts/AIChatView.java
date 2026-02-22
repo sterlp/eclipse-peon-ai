@@ -4,6 +4,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences.IPreferenceChangeListener;
 import org.eclipse.core.runtime.preferences.InstanceScope;
@@ -21,18 +22,13 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.sterl.llmpeon.ai.ChatService;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
+import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.tools.EclipseBuildTool;
-import org.sterl.llmpeon.parts.tools.EclipseToolContext;
-import org.sterl.llmpeon.parts.tools.ReadSelectedFileTool;
-import org.sterl.llmpeon.parts.tools.UpdateSelectedFileTool;
+import org.sterl.llmpeon.parts.tools.EclipseWorkspaceFilesTool;
 import org.sterl.llmpeon.parts.widget.ChatWidget;
+import org.sterl.llmpeon.tool.DiskFilesTool;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.WebFetchTool;
-import org.sterl.llmpeon.tool.file.CreateFileTool;
-import org.sterl.llmpeon.tool.file.DeleteFileTool;
-import org.sterl.llmpeon.tool.file.ReadFileTool;
-import org.sterl.llmpeon.tool.file.SearchFilesTool;
-import org.sterl.llmpeon.tool.file.UpdateFileTool;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -46,8 +42,8 @@ public class AIChatView {
     Logger logger;
     private ChatService chatService;
     private final ToolService toolService = new ToolService();
-    private final EclipseToolContext toolContext = new EclipseToolContext();
-    
+    private final EclipseWorkspaceFilesTool workspaceFilesTool = new EclipseWorkspaceFilesTool();
+
     final AtomicReference<String> contextFile = new AtomicReference<String>();
 
     private final IPreferenceChangeListener prefListener = event -> {
@@ -60,17 +56,11 @@ public class AIChatView {
     public void createPartControl(Composite parent) {
         this.parent = parent;
         parent.setLayout(new FillLayout());
-        toolService.addTool(new CreateFileTool(toolContext));
-        toolService.addTool(new ReadFileTool(toolContext));
-        toolService.addTool(new ReadSelectedFileTool(toolContext));
-        toolService.addTool(new SearchFilesTool(toolContext));
-        toolService.addTool(new UpdateFileTool(toolContext));
-        toolService.addTool(new UpdateSelectedFileTool(toolContext));
-        toolService.addTool(new DeleteFileTool(toolContext));
+        toolService.addTool(workspaceFilesTool);
+        toolService.addTool(new DiskFilesTool(ResourcesPlugin.getWorkspace().getRoot().getRawLocation().toFile().toPath()));
         toolService.addTool(new WebFetchTool());
         toolService.addTool(new EclipseBuildTool());
-        
-        
+
         chatService = new ChatService(LlmPreferenceInitializer.buildWithDefaults(), toolService);
         chat = new ChatWidget(chatService, parent, SWT.NONE);
         applyConfig();
@@ -112,7 +102,7 @@ public class AIChatView {
                 setSelection(iss.toArray());
         }
     }
-    
+
     @Inject
     @Optional
     public void setTextSelection(
@@ -134,7 +124,7 @@ public class AIChatView {
             selection = f;
         }
         contextFile.set(selection == null ? null : selection.getFullPath().toPortableString());
-        toolContext.setSelection(selection);
+        workspaceFilesTool.setCurrentProject(EclipseUtil.resolveProject(selection));
         if (chat != null) Display.getDefault().asyncExec(() -> chat.updateContextFile(contextFile.get()));
     }
 

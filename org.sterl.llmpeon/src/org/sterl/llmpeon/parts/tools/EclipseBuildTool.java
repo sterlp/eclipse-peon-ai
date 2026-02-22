@@ -2,7 +2,6 @@ package org.sterl.llmpeon.parts.tools;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IProject;
@@ -23,8 +22,16 @@ public class EclipseBuildTool extends AbstractTool {
             """)
     public String listAllOpenEclipseProjects() {
         monitorMessage("Reading eclipse projects");
-        return "Known open projects are: " + EclipseUtil.openProjects().stream()
-                .map(p -> p.getFullPath().toPortableString()).collect(Collectors.joining(", "));
+        var result = "Known open projects are:\n ";
+        var projects = EclipseUtil.openProjects();
+        if (projects.isEmpty()) result += "No projects are open";
+        else {
+            for (IProject p : projects) {
+                result += "\nEclipse path: " + p.getFullPath().toPortableString()
+                        + "\nDisk path: " + p.getRawLocation();
+            }
+        }
+        return result;
     }
     
     @Tool("Reads all eclipse projects problem")
