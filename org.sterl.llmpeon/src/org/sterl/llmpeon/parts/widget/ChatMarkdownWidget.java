@@ -107,7 +107,6 @@ public class ChatMarkdownWidget extends Composite {
     }
 
     public void appendMessage(ChatMessage msg) {
-        System.out.println("Adding " + msg);
         var role = msg.type() + "";
         if (role.contains("TOOL")) role = "TOOL";
 

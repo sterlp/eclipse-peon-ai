@@ -25,7 +25,10 @@ import dev.langchain4j.model.output.TokenUsage;
 public class ChatService {
     private LlmConfig config;
     private final ToolService toolService;
-    private final ChatMemory memory = MessageWindowChatMemory.withMaxMessages(500000);
+    private final ChatMemory memory = MessageWindowChatMemory.builder()
+            .id(ChatService.class)
+            .maxMessages(500000)
+            .build();
     private ChatModel model;
     private int tokenSize = 0;
     
@@ -162,17 +165,14 @@ public class ChatService {
      * @return the compressed summary text, or empty string if nothing to compress
      */
     public ChatResponse compressContext(AiMonitor monitor) {
-        var messages = memory.messages();
-
         var compressorAgent = new AiCompressorAgent(model);
         // send all messages with compress system prompt, no tools
-        var response = compressorAgent.call(messages, monitor);
+        var response = compressorAgent.call(memory.messages(), monitor);
 
         memory.clear();
         memory.add(response.aiMessage());
 
         updateTokenCount(response);
-        
         return response;
     }
 

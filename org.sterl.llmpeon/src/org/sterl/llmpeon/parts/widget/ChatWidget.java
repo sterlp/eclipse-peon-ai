@@ -88,7 +88,7 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
                 boolean enter = (e.stateMask & SWT.CTRL) != 0 || (e.stateMask & SWT.COMMAND) != 0;
                 if (enter) {
                     e.doit = false;
-                    sendMessage();
+                    doSendMessage();
                 }
             }
         });
@@ -110,13 +110,13 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
                 org.eclipse.debug.ui.IDebugUIConstants.IMG_ACT_RUN));
         btnSend.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
         btnSend.setToolTipText("Send...");
-        btnSend.addListener(SWT.Selection, e -> sendMessage());
+        btnSend.addListener(SWT.Selection, e -> doSendMessage());
 
         btnCompress = new Button(bar, SWT.PUSH);
         btnCompress.setText("Compress");
         btnCompress.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
         btnCompress.setToolTipText("Compress conversation context");
-        btnCompress.addListener(SWT.Selection, e -> compressContext());
+        btnCompress.addListener(SWT.Selection, e -> doCompressContext());
     }
 
     /**
@@ -189,7 +189,7 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
         Display.getDefault().asyncExec(() -> chatHistory.showDiff(diff));
     }
     
-    private void compressContext() {
+    private void doCompressContext() {
         lockWhileWorking(true);
         Job.create("Compressing context", monitor -> {
             monitor.beginTask("Compressing chat", IProgressMonitor.UNKNOWN);
@@ -210,7 +210,7 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
         }).schedule();
     }
 
-    private void sendMessage() {
+    private void doSendMessage() {
         String text = inputArea.getText().trim();
         if (text.isEmpty() && chatService.getMessages().isEmpty()) return;
         inputArea.setText("");

@@ -2,8 +2,12 @@ package org.sterl.llmpeon.agent;
 
 import java.util.ArrayList;
 
+import org.sterl.llmpeon.shared.StringUtil;
+
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -22,6 +26,7 @@ public class AiCompressorAgent implements AiAgent {
             - Current task state and pending work
             - Important file paths and code references
             - Tool results that are still relevant
+            - The last implementation plan, if it was not executed till now
 
             Remove:
             - Duplicate information and redundant exchanges
@@ -41,14 +46,31 @@ public class AiCompressorAgent implements AiAgent {
     }
     
     public ChatResponse call(ChatRequest request, AiMonitor monitor) {
-        var messages = new ArrayList<ChatMessage>();
-        messages.add(COMPRESS_SYSTEM);
-        messages.addAll(request.messages());
-        request = request.toBuilder()
-            .messages(messages)
-            .build();
+        var msg = new StringBuilder();
+        request.messages().stream().forEach(m -> msg.append(toText(m)));
 
-        if (monitor != null) monitor.onAction("Compressing conversation");
-        return chatModel.chat(request);
+        if (monitor != null) monitor.onAction("Compressing conversation " + request.messages().size() + " messages");
+        return chatModel.chat(request.toBuilder()
+                .messages(COMPRESS_SYSTEM, UserMessage.from(msg.toString()))
+                .build());
+    }
+    
+    String toText(ChatMessage msg) {
+        var result = new StringBuilder();
+        if (msg instanceof UserMessage m && m.hasSingleText()) {
+            result.append(m.type()).append(":\n").append(m.singleText());
+        } else if (msg instanceof AiMessage m) {
+            if (StringUtil.hasValue(m.text())) {
+                result.append(m.type()).append(":\n").append(m.text());
+            }
+            if (m.hasToolExecutionRequests()) {
+                for (var tr : m.toolExecutionRequests()) {
+                    result.append("\n").append(m.type())
+                          .append(" tool call").append(tr.name()).append(":")
+                          .append(tr.arguments());
+                }
+            }
+        }
+        return result.toString();
     }
 }
