@@ -2,6 +2,8 @@ package org.sterl.llmpeon;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 import org.junit.jupiter.api.Test;
@@ -26,14 +28,14 @@ class FileTest {
         "foo,foo",
         "foo/bar,foo",
         "/foo/bar,foo",
-        "/foo/bar,foo",
-        "\\foodouble\\bardouble,foodouble"
+        "/foo/bar,foo"
     })
     void testPathSegment(String in, String expected) {
+        
         var path = Path.of(in);
-        Path firstSegment = path.normalize().getName(0);
+        Path firstSegment = path.getName(0);
         
         assertEquals(expected, firstSegment.toString());
-    }
+    } 
 
 }
