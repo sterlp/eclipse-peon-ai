@@ -1,0 +1,75 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<units size='2'>
+  <unit id='llmpeon-feature.feature.group' version='1.0.0.202602222202' singleton='false'>
+    <update id='llmpeon-feature.feature.group' range='[0.0.0,1.0.0.202602222202)' severity='0'/>
+    <properties size='9'>
+      <property name='org.eclipse.equinox.p2.name' value='Peon AI Feature'/>
+      <property name='org.eclipse.equinox.p2.description' value='Peon AI - An Eclipse plugin that brings a lightweight, context-aware LLM assistant directly into the Eclipse workbench'/>
+      <property name='org.eclipse.equinox.p2.description.url' value='https://github.com/sterlp/eclipse-peon-ai'/>
+      <property name='org.eclipse.equinox.p2.provider' value='Paul Sterl'/>
+      <property name='org.eclipse.equinox.p2.type.group' value='true'/>
+      <property name='maven-groupId' value='org.sterl'/>
+      <property name='maven-artifactId' value='llmpeon-feature'/>
+      <property name='maven-version' value='1.0.0-SNAPSHOT'/>
+      <property name='maven-type' value='eclipse-feature'/>
+    </properties>
+    <provides size='1'>
+      <provided namespace='org.eclipse.equinox.p2.iu' name='llmpeon-feature.feature.group' version='1.0.0.202602222202'/>
+    </provides>
+    <requires size='2'>
+      <required namespace='org.eclipse.equinox.p2.iu' name='org.sterl.llmpeon' range='[1.0.0.202602222202,1.0.0.202602222202]'/>
+      <required namespace='org.eclipse.equinox.p2.iu' name='llmpeon-feature.feature.jar' range='[1.0.0.202602222202,1.0.0.202602222202]'>
+        <filter>
+          (org.eclipse.update.install.features=true)
+        </filter>
+      </required>
+    </requires>
+    <licenses size='1'>
+      <license uri='https://www.eclipse.org/legal/epl-2.0/' url='https://www.eclipse.org/legal/epl-2.0/'>
+        EPL-2.0
+      </license>
+    </licenses>
+    <copyright uri='https://github.com/sterlp/eclipse-peon-ai' url='https://github.com/sterlp/eclipse-peon-ai'>
+      Copyright 2025 Paul Sterl
+    </copyright>
+  </unit>
+  <unit id='llmpeon-feature.feature.jar' version='1.0.0.202602222202'>
+    <properties size='8'>
+      <property name='org.eclipse.equinox.p2.name' value='Peon AI Feature'/>
+      <property name='org.eclipse.equinox.p2.description' value='Peon AI - An Eclipse plugin that brings a lightweight, context-aware LLM assistant directly into the Eclipse workbench'/>
+      <property name='org.eclipse.equinox.p2.description.url' value='https://github.com/sterlp/eclipse-peon-ai'/>
+      <property name='org.eclipse.equinox.p2.provider' value='Paul Sterl'/>
+      <property name='maven-groupId' value='org.sterl'/>
+      <property name='maven-artifactId' value='llmpeon-feature'/>
+      <property name='maven-version' value='1.0.0-SNAPSHOT'/>
+      <property name='maven-type' value='eclipse-feature'/>
+    </properties>
+    <provides size='3'>
+      <provided namespace='org.eclipse.equinox.p2.iu' name='llmpeon-feature.feature.jar' version='1.0.0.202602222202'/>
+      <provided namespace='org.eclipse.equinox.p2.eclipse.type' name='feature' version='1.0.0'/>
+      <provided namespace='org.eclipse.update.feature' name='llmpeon-feature' version='1.0.0.202602222202'/>
+    </provides>
+    <filter>
+      (org.eclipse.update.install.features=true)
+    </filter>
+    <artifacts size='1'>
+      <artifact classifier='org.eclipse.update.feature' id='llmpeon-feature' version='1.0.0.202602222202'/>
+    </artifacts>
+    <touchpoint id='org.eclipse.equinox.p2.osgi' version='1.0.0'/>
+    <touchpointData size='1'>
+      <instructions size='1'>
+        <instruction key='zipped'>
+          true
+        </instruction>
+      </instructions>
+    </touchpointData>
+    <licenses size='1'>
+      <license uri='https://www.eclipse.org/legal/epl-2.0/' url='https://www.eclipse.org/legal/epl-2.0/'>
+        EPL-2.0
+      </license>
+    </licenses>
+    <copyright uri='https://github.com/sterlp/eclipse-peon-ai' url='https://github.com/sterlp/eclipse-peon-ai'>
+      Copyright 2025 Paul Sterl
+    </copyright>
+  </unit>
+</units>

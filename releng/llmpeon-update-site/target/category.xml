@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<site>
+   <category-def name="Peon AI Update" label="Peon AI Update">
+      <description>
+         Peon AI - An Eclipse plugin that brings a lightweight, context-aware LLM assistant directly into the Eclipse workbench
+      </description>
+   </category-def>
+   <feature id="llmpeon-feature">
+      <category name="Peon AI Update"/>
+   </feature>
+</site>

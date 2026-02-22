@@ -1,0 +1,7 @@
+org/sterl/llmpeon/tool/file/DiskFilesToolTest.class
+org/sterl/llmpeon/FileTest.class
+org/sterl/llmpeon/ai/ChatServiceTest.class
+org/sterl/llmpeon/ai/AiCompressorAgentTest.class
+org/sterl/llmpeon/skill/SkillServiceTest.class
+org/sterl/llmpeon/shared/StringMatcherTest.class
+org/sterl/llmpeon/tool/WebFetchToolTest.class

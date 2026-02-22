@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feature
+      id="llmpeon-feature"
+      label="Peon AI Feature"
+      version="1.0.0.202602222202"
+      provider-name="Paul Sterl">
+
+   <description url="https://github.com/sterlp/eclipse-peon-ai">
+      Peon AI - An Eclipse plugin that brings a lightweight, context-aware LLM assistant directly into the Eclipse workbench
+   </description>
+
+   <copyright url="https://github.com/sterlp/eclipse-peon-ai">
+      Copyright 2025 Paul Sterl
+   </copyright>
+
+   <license url="https://www.eclipse.org/legal/epl-2.0/">
+      EPL-2.0
+   </license>
+
+   <plugin
+         id="org.sterl.llmpeon"
+         version="1.0.0.202602222202"/>
+
+</feature>

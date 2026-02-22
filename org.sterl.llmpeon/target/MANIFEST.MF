@@ -1,0 +1,35 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Peon AI
+Bundle-SymbolicName: org.sterl.llmpeon;singleton:=true
+Bundle-Version: 1.0.0.202602222202
+Export-Package: org.sterl.llmpeon.parts
+Bundle-Vendor: Paul Sterl
+Require-Bundle: org.eclipse.jface,org.eclipse.e4.ui.model.workbench,org.
+ eclipse.e4.ui.di,org.eclipse.e4.core.di,org.eclipse.e4.core.di.annotati
+ ons,org.eclipse.e4.ui.services,org.eclipse.core.runtime;bundle-version=
+ "[3.30.0,4.0.0)",org.eclipse.e4.core.contexts;bundle-version="[1.12.0,2
+ .0.0)",org.eclipse.e4.core.services;bundle-version="[2.5.0,3.0.0)",org.
+ eclipse.core.resources;bundle-version="[3.22.0,4.0.0)",org.eclipse.ui,o
+ rg.eclipse.debug.ui,org.eclipse.jdt.core;bundle-version="[3.44.0,4.0.0)
+ ",org.eclipse.jface.text;bundle-version="[3.29.0,4.0.0)"
+Import-Package: jakarta.annotation;version="[2.1.0,3.0.0)",jakarta.injec
+ t;version="[2.0.0,3.0.0)",org.osgi.framework;version="[1.10.0,2.0.0)"
+Automatic-Module-Name: org.sterl.llmpeon
+Bundle-ClassPath: .,lib/llmpeon-core.jar,lib/jackson-annotations.jar,lib
+ /jackson-core.jar,lib/jackson-databind.jar,lib/jspecify.jar,lib/langcha
+ in4j.jar,lib/langchain4j-core.jar,lib/langchain4j-http-client.jar,lib/l
+ angchain4j-http-client-jdk.jar,lib/langchain4j-ollama.jar,lib/langchain
+ 4j-google-ai-gemini.jar,lib/langchain4j-open-ai.jar,lib/opennlp-tools.j
+ ar,lib/slf4j-api.jar,resources/,lib/flexmark.jar,lib/flexmark-ext-emoji
+ .jar,lib/flexmark-ext-gfm-strikethrough.jar,lib/flexmark-ext-ins.jar,li
+ b/flexmark-ext-superscript.jar,lib/flexmark-ext-tables.jar,lib/flexmark
+ -ext-wikilink.jar,lib/flexmark-html2md-converter.jar,lib/flexmark-jira-
+ converter.jar,lib/flexmark-util.jar,lib/flexmark-util-ast.jar,lib/flexm
+ ark-util-builder.jar,lib/flexmark-util-collection.jar,lib/flexmark-util
+ -data.jar,lib/flexmark-util-dependency.jar,lib/flexmark-util-format.jar
+ ,lib/flexmark-util-html.jar,lib/flexmark-util-misc.jar,lib/flexmark-uti
+ l-options.jar,lib/flexmark-util-sequence.jar,lib/flexmark-util-visitor.
+ jar,lib/jsoup.jar
+Require-Capability: osgi.ee;filter:="(&(osgi.ee=JavaSE)(version=21))"
+

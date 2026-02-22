@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<units size='1'>
+  <unit id='org.sterl.llmpeon' version='1.0.0.202602222202' generation='2'>
+    <update id='org.sterl.llmpeon' range='[0.0.0,1.0.0.202602222202)' severity='0'/>
+    <properties size='6'>
+      <property name='org.eclipse.equinox.p2.name' value='Peon AI'/>
+      <property name='org.eclipse.equinox.p2.provider' value='Paul Sterl'/>
+      <property name='maven-groupId' value='org.sterl'/>
+      <property name='maven-artifactId' value='org.sterl.llmpeon'/>
+      <property name='maven-version' value='1.0.0-SNAPSHOT'/>
+      <property name='maven-type' value='eclipse-plugin'/>
+    </properties>
+    <provides size='5'>
+      <provided namespace='org.eclipse.equinox.p2.iu' name='org.sterl.llmpeon' version='1.0.0.202602222202'/>
+      <provided namespace='osgi.bundle' name='org.sterl.llmpeon' version='1.0.0.202602222202'/>
+      <provided namespace='java.package' name='org.sterl.llmpeon.parts' version='0.0.0'/>
+      <provided namespace='osgi.identity' name='org.sterl.llmpeon' version='1.0.0.202602222202'>
+        <properties size='1'>
+          <property name='type' value='osgi.bundle'/>
+        </properties>
+      </provided>
+      <provided namespace='org.eclipse.equinox.p2.eclipse.type' name='bundle' version='1.0.0'/>
+    </provides>
+    <requires size='19'>
+      <required namespace='osgi.bundle' name='org.eclipse.jface' range='0.0.0'/>
+      <required namespace='osgi.bundle' name='org.eclipse.e4.ui.model.workbench' range='0.0.0'/>
+      <required namespace='osgi.bundle' name='org.eclipse.e4.ui.di' range='0.0.0'/>
+      <required namespace='osgi.bundle' name='org.eclipse.e4.core.di' range='0.0.0'/>
+      <required namespace='osgi.bundle' name='org.eclipse.e4.core.di.annotations' range='0.0.0'/>
+      <required namespace='osgi.bundle' name='org.eclipse.e4.ui.services' range='0.0.0'/>
+      <required namespace='osgi.bundle' name='org.eclipse.core.runtime' range='[3.30.0,4.0.0)'/>
+      <required namespace='osgi.bundle' name='org.eclipse.e4.core.contexts' range='[1.12.0,2.0.0)'/>
+      <required namespace='osgi.bundle' name='org.eclipse.e4.core.services' range='[2.5.0,3.0.0)'/>
+      <required namespace='osgi.bundle' name='org.eclipse.core.resources' range='[3.22.0,4.0.0)'/>
+      <required namespace='osgi.bundle' name='org.eclipse.ui' range='0.0.0'/>
+      <required namespace='osgi.bundle' name='org.eclipse.debug.ui' range='0.0.0'/>
+      <required namespace='osgi.bundle' name='org.eclipse.jdt.core' range='[3.44.0,4.0.0)'/>
+      <required namespace='osgi.bundle' name='org.eclipse.jface.text' range='[3.29.0,4.0.0)'/>
+      <required namespace='java.package' name='jakarta.annotation' range='[2.1.0,3.0.0)'/>
+      <required namespace='java.package' name='jakarta.inject' range='[2.0.0,3.0.0)'/>
+      <required namespace='java.package' name='org.osgi.framework' range='[1.10.0,2.0.0)'/>
+      <requiredProperties namespace='osgi.ee' match='(&amp;(osgi.ee=JavaSE)(version=21))'>
+        <description>
+          org.sterl.llmpeon
+        </description>
+      </requiredProperties>
+      <required namespace='org.eclipse.equinox.p2.iu' name='org.sterl.llmpeon.source' range='[1.0.0.202602222202,1.0.0.202602222202]' optional='true'>
+        <filter>
+          (org.eclipse.update.install.sources=true)
+        </filter>
+      </required>
+    </requires>
+    <artifacts size='1'>
+      <artifact classifier='osgi.bundle' id='org.sterl.llmpeon' version='1.0.0.202602222202'/>
+    </artifacts>
+    <touchpoint id='org.eclipse.equinox.p2.osgi' version='1.0.0'/>
+    <touchpointData size='1'>
+      <instructions size='1'>
+        <instruction key='manifest'>
+          Bundle-SymbolicName: org.sterl.llmpeon;singleton:=true&#xA;Bundle-Version: 1.0.0.202602222202&#xA;
+        </instruction>
+      </instructions>
+    </touchpointData>
+  </unit>
+</units>
