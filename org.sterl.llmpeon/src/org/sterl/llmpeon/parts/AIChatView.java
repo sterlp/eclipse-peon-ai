@@ -29,6 +29,7 @@ import org.sterl.llmpeon.parts.tools.EclipseWorkspaceFilesTool;
 import org.sterl.llmpeon.parts.widget.ChatWidget;
 import org.sterl.llmpeon.tool.DiskFilesTool;
 import org.sterl.llmpeon.tool.ToolService;
+import org.sterl.llmpeon.tool.ShellTool;
 import org.sterl.llmpeon.tool.WebFetchTool;
 
 import jakarta.annotation.PostConstruct;
@@ -62,7 +63,7 @@ public class AIChatView {
         toolService.addTool(new WebFetchTool());
         toolService.addTool(new EclipseBuildTool());
         toolService.addTool(new EclipseGrepTool());
-        
+        toolService.addTool(new ShellTool());
 
         chatService = new ChatService(LlmPreferenceInitializer.buildWithDefaults(), toolService);
         chat = new ChatWidget(chatService, parent, SWT.NONE);
