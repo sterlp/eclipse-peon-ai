@@ -24,6 +24,7 @@ import org.sterl.llmpeon.ai.ChatService;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.tools.EclipseBuildTool;
+import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceFilesTool;
 import org.sterl.llmpeon.parts.widget.ChatWidget;
 import org.sterl.llmpeon.tool.DiskFilesTool;
@@ -60,6 +61,8 @@ public class AIChatView {
         toolService.addTool(new DiskFilesTool(ResourcesPlugin.getWorkspace().getRoot().getRawLocation().toFile().toPath()));
         toolService.addTool(new WebFetchTool());
         toolService.addTool(new EclipseBuildTool());
+        toolService.addTool(new EclipseGrepTool());
+        
 
         chatService = new ChatService(LlmPreferenceInitializer.buildWithDefaults(), toolService);
         chat = new ChatWidget(chatService, parent, SWT.NONE);
