@@ -21,6 +21,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.sterl.llmpeon.ai.ChatService;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
+import org.sterl.llmpeon.parts.tools.EclipseBuildTool;
 import org.sterl.llmpeon.parts.tools.EclipseToolContext;
 import org.sterl.llmpeon.parts.tools.ReadSelectedFileTool;
 import org.sterl.llmpeon.parts.tools.UpdateSelectedFileTool;
@@ -67,6 +68,8 @@ public class AIChatView {
         toolService.addTool(new UpdateSelectedFileTool(toolContext));
         toolService.addTool(new DeleteFileTool(toolContext));
         toolService.addTool(new WebFetchTool());
+        toolService.addTool(new EclipseBuildTool());
+        
         
         chatService = new ChatService(LlmPreferenceInitializer.buildWithDefaults(), toolService);
         chat = new ChatWidget(chatService, parent, SWT.NONE);

@@ -1,7 +1,6 @@
 package org.sterl.llmpeon.tool;
 
 import org.sterl.llmpeon.agent.AiMonitor;
-import org.sterl.llmpeon.tool.model.SmartTool;
 
 public class AbstractTool implements SmartTool {
 

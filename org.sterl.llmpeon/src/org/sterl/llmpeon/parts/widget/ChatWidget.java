@@ -1,7 +1,8 @@
 package org.sterl.llmpeon.parts.widget;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 
+import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
@@ -13,15 +14,17 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
 import org.sterl.llmpeon.agent.AiMonitor;
 import org.sterl.llmpeon.ai.ChatService;
 import org.sterl.llmpeon.parts.PeonConstants;
-import org.sterl.llmpeon.parts.shared.EditorSelectionHelper;
+import org.sterl.llmpeon.parts.shared.EclipseUtil;
+import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.SimpleDiff;
+import org.sterl.llmpeon.parts.tools.EclipseToolContext;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget.SimpleChatMessage;
 
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.SystemMessage;
 
@@ -29,15 +32,16 @@ public class ChatWidget extends Composite implements AiMonitor {
 
     private final ChatService chatService;
     private ChatMarkdownWidget chatHistory;
+    private StatusLineWidget statusLine;
     private Text inputArea;
-    private Label statusLabel;
     private Button btnSend;
     private Button btnCompress;
 
     private boolean working = false;
-    
+
     private ITextSelection textSelection;
     private String selectedResource;
+    private String agentsMdContent;
 
     @Override
     public boolean setFocus() {
@@ -88,9 +92,7 @@ public class ChatWidget extends Composite implements AiMonitor {
 
     // 3 Status line (above command bar)
     private void createStatusLine(Composite parent) {
-        statusLabel = new Label(parent, SWT.NONE);
-        statusLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-        statusLabel.setText("");
+        statusLine = new StatusLineWidget(parent, SWT.NONE);
     }
 
     // 4 Command bar (bottom)
@@ -118,30 +120,34 @@ public class ChatWidget extends Composite implements AiMonitor {
      * Call after config changes, file selection changes, or token updates.
      */
     public void refreshStatusLine() {
-        int used = chatService.getTokenSize();
-        int max = chatService.getTokenWindow();
-        int pct = max > 0 ? (used * 100) / max : 0;
-
-        int skillCount = chatService.getToolService().getSkills().size();
-
-        String fileName = "";
-        if (selectedResource != null && !selectedResource.isEmpty()) {
-            int sep = selectedResource.lastIndexOf('/');
-            if (sep < 0) sep = selectedResource.lastIndexOf('\\');
-            fileName = sep >= 0 ? selectedResource.substring(sep + 1) : selectedResource;
-        }
-
-        var sb = new StringBuilder();
-        sb.append(skillCount).append(" skill").append(skillCount != 1 ? "s" : "");
-        if (!fileName.isEmpty()) sb.append(" | ").append(fileName);
-        sb.append(" | ").append(used).append(" / ").append(max).append(" - ").append(pct).append("%");
-
-        statusLabel.setText(sb.toString());
-        statusLabel.getParent().layout();
+        statusLine.update(
+            chatService.getTokenSize(),
+            chatService.getTokenWindow(),
+            chatService.getToolService().getSkills().size(),
+            agentsMdContent != null,
+            selectedResource
+        );
     }
 
     public void updateContextFile(String value) {
         this.selectedResource = value;
+        this.agentsMdContent = null;
+
+        var resource = EclipseToolContext.resolveInEclipse(value);
+        if (resource.isPresent()) {
+            var project = resource.get().getProject();
+            if (project != null && project.isOpen()) {
+                IFile agentsFile = project.getFile("AGENTS.md");
+                if (!agentsFile.exists()) agentsFile = project.getFile("agents.md");
+                if (agentsFile.exists()) {
+                    try (var in = agentsFile.getContents()) {
+                        this.agentsMdContent = IoUtils.toString(in, agentsFile.getCharset());
+                    } catch (Exception e) {
+                        // ignore read failures
+                    }
+                }
+            }
+        }
         refreshStatusLine();
     }
 
@@ -213,9 +219,14 @@ public class ChatWidget extends Composite implements AiMonitor {
             try {
                 int msgCountBefore = chatService.getMessages().size();
                 
+                var orders = new ArrayList<ChatMessage>();
                 if (selectedResource != null) {
-                    chatService.setStandingOrders(Arrays.asList(SystemMessage.from("Selected eclipse resource: " + selectedResource)));
+                    orders.add(SystemMessage.from("Selected eclipse resource: " + selectedResource));
                 }
+                if (agentsMdContent != null) {
+                    orders.add(SystemMessage.from(agentsMdContent));
+                }
+                if (!orders.isEmpty()) chatService.setStandingOrders(orders);
                 var result = chatService.call(text + getUserSelection(), this);
 
                 Display.getDefault().asyncExec(() -> {
@@ -243,7 +254,7 @@ public class ChatWidget extends Composite implements AiMonitor {
         if (textSelection != null && !textSelection.isEmpty()) {
             userIn += "\nSelected text:\n" + textSelection.getText();
             userIn += "\nStart line: " + textSelection.getStartLine();
-            var file = EditorSelectionHelper.getOpenFile();
+            var file = EclipseUtil.getOpenFile();
             if (file.isPresent()) userIn += "\nFile: " + file.get().getFullPath().toPortableString();
         }
         return userIn;

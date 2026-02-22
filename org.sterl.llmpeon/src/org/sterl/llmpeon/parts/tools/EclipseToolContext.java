@@ -22,6 +22,7 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.sterl.llmpeon.agent.AiMonitor.AiFileUpdate;
+import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.shared.FileUtils;
 import org.sterl.llmpeon.tool.model.FileContext;
@@ -138,36 +139,28 @@ public class EclipseToolContext implements FileContext {
      */
     public String createFile(String path, String content) {
         // resolve which project and what project-relative sub-path to use
-        IProject targetProject = null;
+        Optional<IProject> targetProject = EclipseUtil.findOpenProject(content);
         String projectRelativePath = Path.of(path).toString(); // fix any separatorChar
 
-        for (IProject p : ResourcesPlugin.getWorkspace().getRoot().getProjects()) {
-            if (!p.isOpen()) continue;
-            String name = p.getName();
-            // match "projectname/..." or "/projectname/..."
-            if (path.startsWith(name + File.separatorChar) || path.startsWith(File.separatorChar + name + File.separatorChar)) {
-                targetProject = p;
-                projectRelativePath = path.startsWith(File.separator) ? path.substring(name.length() + 2) : path.substring(name.length() + 1);
-                break;
-            }
-        }
-
-        // okay file without project name
-        if (targetProject == null) {
-            var writeTo = Path.of(path);
+        var writeTo = Path.of(path);
+        if (targetProject.isEmpty()) {
             if (writeTo.isAbsolute() && Files.isDirectory(writeTo.getParent())) {
                 return createFileDirectly(content, writeTo);
             } else if (currentProject != null && currentProject.isOpen()) {
-                targetProject = currentProject;
+                targetProject = Optional.of(currentProject);
                 // strip leading slash if present
                 projectRelativePath = path.startsWith(File.separator) ? path.substring(1) : path;
-            } else {
-                return createFileDirectly(content, writeTo);
             }
         }
+        
+        if (targetProject.isPresent()) {
+            IFile file = writeFileToProject(targetProject.get(), projectRelativePath, content);
+            return "Created file: " + file.getFullPath();
+        } else {
+            // TODO needs to be removed - we should split between eclipse and os file system
+            return createFileDirectly(content, writeTo);
+        }
 
-        IFile file = writeFileToProject(targetProject, projectRelativePath, content);
-        return "Created file: " + file.getFullPath();
     }
 
     private String createFileDirectly(String content, Path writeTo) {

@@ -57,6 +57,10 @@ Example workflows:
 - Java 21
 - Eclipse 2025-12 or newer
 
+## Exclude gh-pages from pull
+
+`git config --add remote.origin.fetch '^refs/heads/gh-pages`
+
 ## Building from Source
 
 ```bash
@@ -95,6 +99,17 @@ cd doc && pip install -r requirements.txt && mkdocs serve
 
 ## Eclipse RCP Resources
 
+- https://help.eclipse.org/latest/index.jsp?topic=%2Forg.eclipse.pde.doc.user%2Fguide%2Ftools%2Fviews%2Fimage_browser_view.htm
 - [Vogella Eclipse RCP Tutorial](https://www.vogella.com/tutorials/EclipseRCP/article.html)
-- [Vogella e4 Development Practices](https://www.vogella.com/tutorials/Eclipse4DevelopmentPractises/article.html)
+article.html)
 - [Eclipse Wiki e4 Tutorials](https://wiki.eclipse.org/Eclipse4/Tutorials)
+
+
+https://www.vogella.com/tutorials/Eclipse4Services/article.html
+https://www.vogella.com/tutorials/Eclipse4CSS/article.html
+https://www.vogella.com/tutorials/Eclipse4EventSystem/article.html
+
+very old
+https://eclipsesource.com/blogs/2012/05/10/eclipse-4-final-sprint-part-1-the-e4-application-model/
+https://eclipsesource.com/blogs/2012/06/12/eclipse-4-e4-tutorial-part-2/
+https://eclipsesource.com/blogs/2012/06/26/eclipse-4-e4-tutorial-part-3-extending-the-application-model/

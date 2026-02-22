@@ -3,7 +3,6 @@ package org.sterl.llmpeon.tool;
 import java.lang.reflect.Method;
 
 import org.sterl.llmpeon.agent.AiMonitor;
-import org.sterl.llmpeon.tool.model.SmartTool;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
