@@ -69,16 +69,17 @@ public class ChatService {
     }
 
     public ChatResponse call(String message, AiMonitor monitor) {
-        
+        monitor = AiMonitor.nullSafty(monitor);
         // auto-compress at 95%
         if (tokenSize >= config.tokenWindow() * 0.95) {
             compressContext(monitor);
         }
         
         if (message != null) memory.add(UserMessage.from(message));
-        ChatResponse response;
+        ChatResponse response = null;
 
         var developerAgent = new AiDeveloperAgent(model);
+        boolean weHaveAnAiResponse = false;
         do {
             // orders
             var messagesToSend = new ArrayList<ChatMessage>(standingOrders);
@@ -95,25 +96,37 @@ public class ChatService {
                     .toolSpecifications(toolService.toolSpecifications())
                     .build();
 
+            weHaveAnAiResponse = false;
             response = developerAgent.call(request, monitor);
             updateTokenCount(response);
 
             // add the AI message if it has any text
-            if (StringUtil.hasValue(response.aiMessage().text())) memory.add(response.aiMessage());
-
-            if (response.aiMessage().hasToolExecutionRequests()) {
-                for (var tr : response.aiMessage().toolExecutionRequests()) {
-                    String result = runTool(monitor, tr);
-                    memory.add(ToolExecutionResultMessage.from(tr.id(), tr.name(), result));
-                }
+            memory.add(response.aiMessage());
+            if (StringUtil.hasValue(response.aiMessage().text())) {
+                weHaveAnAiResponse = true;
             }
 
-        } while (response.aiMessage().hasToolExecutionRequests());
+            runAllTools(monitor, response);
+            if (monitor.isCanceled()) break;
+        } while (response.aiMessage().hasToolExecutionRequests() || !weHaveAnAiResponse);
 
-        System.out.println(response.metadata());
-        System.out.println(response.aiMessage().text());
+        if (response != null) {
+            System.out.println(response.metadata());
+            System.out.println(response.aiMessage().text());
+        }
 
         return response;
+    }
+
+    private void runAllTools(AiMonitor monitor, ChatResponse response) {
+        if (response.aiMessage().hasToolExecutionRequests()) {
+            for (var tr : response.aiMessage().toolExecutionRequests()) {
+                String result = runTool(monitor, tr);
+                memory.add(ToolExecutionResultMessage.from(tr.id(), tr.name(), result));
+                
+                if (monitor.isCanceled()) return;
+            }
+        }
     }
 
     private String runTool(AiMonitor monitor, ToolExecutionRequest tr) {

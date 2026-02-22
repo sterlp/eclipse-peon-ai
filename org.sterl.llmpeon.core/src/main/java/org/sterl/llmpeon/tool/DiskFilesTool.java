@@ -150,7 +150,7 @@ public class DiskFilesTool extends AbstractTool {
         }
 
         if (matches.isEmpty()) {
-            return "No files found matching '" + query + "'";
+            return "No files found matching '" + query + "' adjust your query";
         }
         monitorMessage("Found " + matches.size() + " files");
         return "Found " + matches.size() + " file(s):\n" + String.join("\n", matches);

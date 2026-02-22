@@ -18,8 +18,9 @@ import dev.langchain4j.agent.tool.Tool;
 public class EclipseBuildTool extends AbstractTool {
 
     @Tool("""
-            Lists all open eclipse projects in the workspace
-            """)
+          Lists all open eclipse projects in the workspace - use this to find open developer projects.
+          The result 'Eclipse path' can be used together with listWorkspaceDirectory to list the file in an eclipse project.
+          """)
     public String listAllOpenEclipseProjects() {
         var result = "Known open projects are:\n ";
         var projects = EclipseUtil.openProjects();
@@ -34,7 +35,7 @@ public class EclipseBuildTool extends AbstractTool {
         return result;
     }
     
-    @Tool("Reads all eclipse projects problem")
+    @Tool("Reads all eclipse build problems of an eclipse code project - use this to check if where any problems or warning in the project.")
     public String readProjectProblems(@P("The project name or path") String projectName) {
         var project = EclipseUtil.findOpenProject(projectName);
         if (project.isEmpty()) {
@@ -58,8 +59,8 @@ public class EclipseBuildTool extends AbstractTool {
     }
 
     @Tool("""
-            Refresh cleans and builds an eclipse project in the worksspace and returns errors and warnings.
-            Run this tool to verify code modifications - after a clean project build.
+            Refresh cleans and builds an eclipse project in the worksspace and returns all build errors and warnings.
+            Run this tool to verify code modifications.
             This is the prefered way to build projects in eclipse.
             """)
     public String buildEclipseProject(@P("The project name or path to build") String projectName) {

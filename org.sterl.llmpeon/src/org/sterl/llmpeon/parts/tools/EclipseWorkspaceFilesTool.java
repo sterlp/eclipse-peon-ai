@@ -40,7 +40,8 @@ public class EclipseWorkspaceFilesTool extends AbstractTool {
     @Tool("Reads a file from the Eclipse workspace. "
             + "Accepts workspace-relative paths (e.g. '/MyProject/src/Foo.java') "
             + "or project-relative paths (e.g. 'src/Foo.java'). "
-            + "Use searchWorkspaceFiles first to find the correct path.")
+            + "Use searchWorkspaceFiles first to find the correct file path."
+            + "Use the disk tools as fallback.")
     public String readWorkspaceFile(
             @P("Workspace-relative or project-relative path or disk absolute path as fallback") String filePath) {
 
@@ -165,7 +166,8 @@ public class EclipseWorkspaceFilesTool extends AbstractTool {
     }
 
     @Tool("Searches for files whose name contains the given query string in the Eclipse workspace. "
-            + "Searches all open projects, skips derived resources (target/, bin/).")
+            + "Searches all open projects, skips derived resources (target/, bin/)."
+            + "Use this method first, before searching directly witg the disk tools.")
     public String searchWorkspaceFiles(
             @P("Part of the file name to search for, e.g. 'Controller' or '.xml'") String query) {
 
@@ -197,7 +199,7 @@ public class EclipseWorkspaceFilesTool extends AbstractTool {
         }
 
         if (matches.isEmpty()) {
-            return "No files found matching '" + query + "'";
+            return "No files found matching '" + query + "' adjust your query or use the disk tool or list listWorkspaceDirectory";
         }
         monitorMessage("Found " + matches.size() + " files");
         return "Found " + matches.size() + " file(s):\n" + String.join("\n", matches);

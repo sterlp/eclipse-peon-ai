@@ -35,7 +35,7 @@ public class EclipseUtil {
 
     public static Optional<IProject> findOpenProject(String path) {
         if (StringUtil.hasNoValue(path)) return Optional.empty();
-        var projectPath = Path.of(path).getName(0).toString();
+        var projectPath = Path.of(path).normalize().getName(0).toString();
 
         for (IProject p : ResourcesPlugin.getWorkspace().getRoot().getProjects()) {
             if (!p.isOpen()) continue;

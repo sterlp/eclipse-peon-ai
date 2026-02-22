@@ -4,6 +4,15 @@ package org.sterl.llmpeon.agent;
 public interface AiMonitor {
     record AiFileUpdate(String file, String oldContent, String newContent) {}
     
+    public static final AiMonitor NULL_MONITOR = new AiMonitor() {
+        @Override
+        public void onAction(String description) {}
+    };
+    
+    public static AiMonitor nullSafty(AiMonitor in) {
+        return in == null ? NULL_MONITOR : in;
+    }
+    
     void onAction(String description);
 
     default void onFileUpdate(AiFileUpdate update) {

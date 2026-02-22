@@ -1,10 +1,13 @@
 package org.sterl.llmpeon.parts.widget;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jface.text.ITextSelection;
@@ -15,9 +18,9 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Text;
-import org.sterl.llmpeon.agent.AiMonitor;
 import org.sterl.llmpeon.ai.ChatService;
 import org.sterl.llmpeon.parts.PeonConstants;
+import org.sterl.llmpeon.parts.monitor.EclipseAiMonitor;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.SimpleDiff;
@@ -27,7 +30,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.SystemMessage;
 
-public class ChatWidget extends Composite implements AiMonitor {
+public class ChatWidget extends Composite implements EclipseAiMonitor {
 
     private final ChatService chatService;
     private ChatMarkdownWidget chatHistory;
@@ -41,6 +44,8 @@ public class ChatWidget extends Composite implements AiMonitor {
     private ITextSelection textSelection;
     private String selectedResource;
     private String agentsMdContent;
+    
+    private final AtomicReference<IProgressMonitor> monitorRef = new AtomicReference<>();
 
     @Override
     public boolean setFocus() {
@@ -164,25 +169,6 @@ public class ChatWidget extends Composite implements AiMonitor {
         btnSend.setEnabled(!this.working);
     }
 
-    private void compressContext() {
-        lockWhileWorking(true);
-        Job.create("Compressing context", monitor -> {
-            monitor.beginTask("Compressing chat", IProgressMonitor.UNKNOWN);
-            Exception ex = null;
-            
-            try {
-                chatService.compressContext(this);
-                Display.getDefault().asyncExec(this::refreshChat);
-            } catch (Exception e) {
-                ex = e;
-            } finally {
-                Display.getDefault().asyncExec(() -> lockWhileWorking(false));
-            }
-            monitor.done();
-            return ex == null ? Status.OK_STATUS : new Status(IStatus.ERROR, PeonConstants.PLUGIN_ID, ex.getMessage(), ex);
-        }).schedule();
-    }
-
     @Override
     public void onAction(String value) {
         Display.getDefault().asyncExec(() -> {
@@ -202,6 +188,27 @@ public class ChatWidget extends Composite implements AiMonitor {
         var diff = SimpleDiff.unifiedDiff(update.file(), update.oldContent(), update.newContent());
         Display.getDefault().asyncExec(() -> chatHistory.showDiff(diff));
     }
+    
+    private void compressContext() {
+        lockWhileWorking(true);
+        Job.create("Compressing context", monitor -> {
+            monitor.beginTask("Compressing chat", IProgressMonitor.UNKNOWN);
+            monitorRef.set(monitor);
+            Exception ex = null;
+            
+            try {
+                chatService.compressContext(this);
+                Display.getDefault().asyncExec(this::refreshChat);
+            } catch (Exception e) {
+                ex = e;
+            } finally {
+                monitorRef.set(null);
+                Display.getDefault().asyncExec(() -> lockWhileWorking(false));
+            }
+            monitor.done();
+            return ex == null ? Status.OK_STATUS : new Status(IStatus.ERROR, PeonConstants.PLUGIN_ID, ex.getMessage(), ex);
+        }).schedule();
+    }
 
     private void sendMessage() {
         String text = inputArea.getText().trim();
@@ -213,6 +220,7 @@ public class ChatWidget extends Composite implements AiMonitor {
         
         Job.create("Peon AI request", monitor -> {
             monitor.beginTask("Arbeit, Arbeit!", IProgressMonitor.UNKNOWN);
+            monitorRef.set(monitor);
 
             Exception ex = null;
             try {
@@ -240,8 +248,9 @@ public class ChatWidget extends Composite implements AiMonitor {
                 ex = e;
             } finally {
                 Display.getDefault().asyncExec(() -> lockWhileWorking(false));
+                chatService.setStandingOrders(Collections.emptyList());
+                monitorRef.set(null);
                 monitor.done();
-                chatService.setStandingOrders(null);
             }
 
             return PeonConstants.status("Peon AI\n" + chatService.getConfig(), ex);
@@ -265,6 +274,16 @@ public class ChatWidget extends Composite implements AiMonitor {
 
     public void setTextSelection(ITextSelection ts) {
         this.textSelection = ts;
+    }
+
+    @Override
+    public IProgressMonitor getIProgressMonitor() {
+        return IProgressMonitor.nullSafe(monitorRef.get());
+    }
+    
+    @Override
+    public boolean isCanceled() {
+        return monitorRef.get() == null ? false : monitorRef.get().isCanceled();
     }
 }
 

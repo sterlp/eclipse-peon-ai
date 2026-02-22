@@ -27,7 +27,7 @@ class FileTest {
         "foo/bar,foo",
         "/foo/bar,foo",
         "/foo/bar,foo",
-        "\\foo\\bar,foo"
+        "\\foodouble\\bardouble,foodouble"
     })
     void testPathSegment(String in, String expected) {
         var path = Path.of(in);
