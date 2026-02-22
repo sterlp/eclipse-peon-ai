@@ -203,6 +203,47 @@ public class EclipseWorkspaceFilesTool extends AbstractTool {
         return "Found " + matches.size() + " file(s):\n" + String.join("\n", matches);
     }
 
+    @Tool("Lists files and folders directly in a workspace directory (non-recursive). "
+            + "Use this to navigate and explore the workspace structure. "
+            + "If the path is empty or root, lists all open Eclipse projects. "
+            + "Returns entries prefixed with [DIR] or [FILE].")
+    public String listWorkspaceDirectory(
+            @P("Workspace-relative path, e.g. '/MyProject/src'. Empty or '/' lists projects.") String path) {
+
+        // root: list open projects
+        if (path == null || path.isBlank() || path.length() == 1) {
+            var t = new EclipseBuildTool();
+            t.withMonitor(monitor);
+            return t.listAllOpenEclipseProjects();
+        }
+
+        var resource = EclipseUtil.resolveInEclipse(path);
+        if (resource.isEmpty()) {
+            onProblem("Listing " + path + " not found");
+            return "Directory not found: " + path;
+        }
+
+        var res = resource.get();
+        if (!(res instanceof IContainer container)) {
+            onProblem("Listing " + path + " is not a directory");
+            return path + " is a file, not a directory. Use readWorkspaceFile to read it.";
+        }
+
+        try {
+            var entries = new ArrayList<String>();
+            for (IResource member : container.members()) {
+                if (member.isDerived()) continue;
+                String prefix = (member.getType() == IResource.FILE) ? "[FILE] " : "[DIR]  ";
+                entries.add(prefix + member.getFullPath().toPortableString());
+            }
+            monitorMessage("Listing " + path + " found " + entries.size() + " elements");
+            if (entries.isEmpty()) return "Directory is empty: " + path;
+            return "Contents of " + res.getFullPath().toPortableString() + ":\n" + String.join("\n", entries);
+        } catch (CoreException e) {
+            throw new RuntimeException("Failed to list " + path, e);
+        }
+    }
+
     private AiFileUpdate writeEclipseFile(IFile file, String content) {
         var oldContent = readEclipseFile(file);
         try {

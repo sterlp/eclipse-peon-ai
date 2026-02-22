@@ -31,7 +31,7 @@ class FileTest {
     })
     void testPathSegment(String in, String expected) {
         var path = Path.of(in);
-        Path firstSegment = path.getName(0);
+        Path firstSegment = path.normalize().getName(0);
         
         assertEquals(expected, firstSegment.toString());
     }

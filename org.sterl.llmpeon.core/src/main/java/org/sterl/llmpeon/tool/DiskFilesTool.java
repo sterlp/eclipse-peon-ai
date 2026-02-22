@@ -156,6 +156,40 @@ public class DiskFilesTool extends AbstractTool {
         return "Found " + matches.size() + " file(s):\n" + String.join("\n", matches);
     }
 
+    @Tool("Lists files and folders directly in a directory on the disk filesystem (non-recursive). "
+            + "Use this to navigate and explore the directory structure. "
+            + "Returns entries prefixed with [DIR] or [FILE].")
+    public String listDiskDirectory(
+            @P("Relative or absolute directory path. Empty or '/' lists the working directory root.") String path) {
+
+        Path dir;
+        if (path == null || path.isBlank() || path.length() == 1) {
+            dir = workingDir;
+        } else {
+            dir = resolve(path);
+        }
+        if (dir == null || !Files.isDirectory(dir)) {
+            onProblem("Directory not found: " + path);
+            return "Directory not found: " + path;
+        }
+
+        var entries = new ArrayList<String>();
+        try (var stream = Files.list(dir)) {
+            stream.sorted().forEach(p -> {
+                String prefix = Files.isDirectory(p) ? "[DIR]  " : "[FILE] ";
+                entries.add(prefix + p.toAbsolutePath());
+            });
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to list " + dir, e);
+        }
+
+        monitorMessage("Listing " + dir + " " + entries.size());
+        if (entries.isEmpty()) {
+            return "Directory is empty: " + dir;
+        }
+        return "Contents of " + dir + ":\n" + String.join("\n", entries);
+    }
+
     private Path resolve(String path) {
         if (path == null) return null;
         Path p = Path.of(path);

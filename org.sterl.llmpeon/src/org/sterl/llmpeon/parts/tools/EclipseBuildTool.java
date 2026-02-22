@@ -21,9 +21,9 @@ public class EclipseBuildTool extends AbstractTool {
             Lists all open eclipse projects in the workspace
             """)
     public String listAllOpenEclipseProjects() {
-        monitorMessage("Reading eclipse projects");
         var result = "Known open projects are:\n ";
         var projects = EclipseUtil.openProjects();
+        monitorMessage("Reading eclipse projects " + projects.size());
         if (projects.isEmpty()) result += "No projects are open";
         else {
             for (IProject p : projects) {
@@ -70,7 +70,7 @@ public class EclipseBuildTool extends AbstractTool {
         }
         
         monitorMessage("Building " + projectName);
-        var projectRef = project.get();
+        IProject projectRef = project.get();
         try {
             // clear
             projectRef.deleteMarkers(IMarker.PROBLEM, true, IResource.DEPTH_INFINITE);

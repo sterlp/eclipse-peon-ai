@@ -17,4 +17,8 @@ public interface AiMonitor {
     default void onProblem(String value) {
         onAction(value);
     }
+    
+    default boolean isCanceled() {
+        return false;
+    }
 }
