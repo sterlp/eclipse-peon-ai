@@ -24,7 +24,8 @@
       "Bash(mvn install:*)",
       "Bash(mvn package:*)",
       "Bash(git rev-list:*)",
-      "Bash(mvn test:*)"
+      "Bash(mvn test:*)",
+      "WebFetch(domain:help.eclipse.org)"
     ]
   }
 }

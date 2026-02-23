@@ -40,17 +40,25 @@ Configure via **Window > Preferences > Peon AI**:
 
 ## Usage
 
-The AI assistant has access to several tools:
-
-- **Read File** - Read contents of any file in your workspace
-- **Write File** - Create or modify files
-- **Search Files** - Search for text across your project
-- **Read Selected File** - Quick access to currently selected file
-
 Example workflows:
 - Select a file and ask "What does this code do?"
 - Ask "Write unit tests for the selected class"
 - Paste error messages and ask "What's causing this?"
+
+## Tools
+
+- [x] **Edit File** - Targeted find-and-replace edits without rewriting the whole file
+- [x] **Read/Write/Create/Delete File** - Full file operations in workspace and on disk
+- [x] **Search Files** - Find files by name across the workspace
+- [x] **Grep** - Full-text content search across all open projects
+- [x] **Build Project** - Trigger Eclipse builds and report errors/warnings
+- [x] **Run Tests** - Execute JUnit 5 tests and report failures with stack traces
+- [x] **Shell Command** - Run OS commands (git, mvn, npm, etc.)
+- [x] **Web Fetch** - Fetch URLs and convert to markdown for reading docs
+- [x] **List Projects** - Discover open projects with their type (java, maven, gradle)
+- [ ] **Git Tool** - Dedicated git operations (status, diff, commit, log) with structured output
+- [ ] **Code Navigation** - Find references, go to definition, find implementations via Eclipse JDT
+- [ ] **Refactor** - Rename symbols, extract methods, and move classes using Eclipse refactoring
 
 ## Requirements
 

@@ -16,7 +16,8 @@ public class AiDeveloperAgent implements AiAgent {
 
             Tool usage:
             - If a tool is available to do the job, automatically use it
-            - Where is a tool to determine if the developer has currently a file selected 
+            - Where is a tool to determine if the developer has currently a file selected
+            - Verify your work by compiling and running the project tests, if possible
 
             When information is missing:
             - Ask the developer directly
@@ -37,6 +38,7 @@ public class AiDeveloperAgent implements AiAgent {
             - Let the developer approve / review the plan for complex tasks
             - Read SKILLs if they match the current work or task
             - Read the project structure before creating new files to ensure to put them into the right place
+            - Avoid repeated searches
             """);
     
     private final ChatModel chatModel;

@@ -29,7 +29,8 @@ public class EclipseBuildTool extends AbstractTool {
         else {
             for (IProject p : projects) {
                 result += "\nEclipse path: " + p.getFullPath().toPortableString()
-                        + "\nDisk path: " + p.getRawLocation();
+                        + "\nDisk path: " + p.getRawLocation()
+                        + "\nNatures: " + projectNatures(p);
             }
         }
         return result;
@@ -131,6 +132,29 @@ public class EclipseBuildTool extends AbstractTool {
         }
 
         return result;
+    }
+
+    private static String projectNatures(IProject project) {
+        try {
+            String[] ids = project.getDescription().getNatureIds();
+            if (ids.length == 0) return "none";
+            var sb = new StringBuilder();
+            for (String id : ids) {
+                if (!sb.isEmpty()) sb.append(", ");
+                // show short name for well-known natures, full id otherwise
+                sb.append(switch (id) {
+                    case "org.eclipse.jdt.core.javanature" -> "java";
+                    case "org.eclipse.pde.PluginNature" -> "pde-plugin";
+                    case "org.eclipse.m2e.core.maven2Nature" -> "maven";
+                    case "org.eclipse.buildship.core.gradleprojectnature" -> "gradle";
+                    default -> id;
+                });
+            }
+            return sb.toString();
+        } catch (CoreException e) {
+            System.err.println("projectNatures->" +e.getMessage());
+            return "unknown";
+        }
     }
 
     private static String markerToAiString(IMarker marker) {
