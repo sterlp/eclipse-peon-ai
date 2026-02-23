@@ -25,7 +25,8 @@
       "Bash(mvn package:*)",
       "Bash(git rev-list:*)",
       "Bash(mvn test:*)",
-      "WebFetch(domain:help.eclipse.org)"
+      "WebFetch(domain:help.eclipse.org)",
+      "WebFetch(domain:www.vogella.com)"
     ]
   }
 }

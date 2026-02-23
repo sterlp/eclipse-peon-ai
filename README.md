@@ -57,7 +57,7 @@ Example workflows:
 - [x] **Web Fetch** - Fetch URLs and convert to markdown for reading docs
 - [x] **List Projects** - Discover open projects with their type (java, maven, gradle)
 - [ ] **Git Tool** - Dedicated git operations (status, diff, commit, log) with structured output
-- [ ] **Code Navigation** - Find references, go to definition, find implementations via Eclipse JDT
+- [x] **Code Navigation** - Find types (supports `*`, `?` wildcards and camelCase e.g. `NPE`), find references, find implementations via Eclipse JDT
 - [ ] **Refactor** - Rename symbols, extract methods, and move classes using Eclipse refactoring
 
 ## Requirements
