@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.parts;
 
+import java.io.IOException;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.resources.IFile;
@@ -20,19 +21,20 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
-import org.sterl.llmpeon.ai.ChatService;
+import org.sterl.llmpeon.ChatService;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.tools.EclipseBuildTool;
-import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
 import org.sterl.llmpeon.parts.tools.EclipseCodeNavigationTool;
+import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
 import org.sterl.llmpeon.parts.tools.EclipseRunTestTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceFilesTool;
 import org.sterl.llmpeon.parts.widget.ChatWidget;
+import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.tool.DiskFilesTool;
-import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.EditTool;
 import org.sterl.llmpeon.tool.ShellTool;
+import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.WebFetchTool;
 
 import jakarta.annotation.PostConstruct;
@@ -47,9 +49,10 @@ public class AIChatView {
     Logger logger;
     private ChatService chatService;
     private final ToolService toolService = new ToolService();
+    private final SkillService skillService = new SkillService();
     private final EclipseWorkspaceFilesTool workspaceFilesTool = new EclipseWorkspaceFilesTool();
 
-    final AtomicReference<String> contextFile = new AtomicReference<String>();
+    final AtomicReference<IResource> contextFile = new AtomicReference<IResource>();
 
     private final IPreferenceChangeListener prefListener = event -> {
         if (parent != null && !parent.isDisposed()) {
@@ -71,7 +74,7 @@ public class AIChatView {
         toolService.addTool(new EclipseRunTestTool());
         toolService.addTool(new EclipseCodeNavigationTool());
 
-        chatService = new ChatService(LlmPreferenceInitializer.buildWithDefaults(), toolService);
+        chatService = new ChatService(LlmPreferenceInitializer.buildWithDefaults(), toolService, skillService);
         chat = new ChatWidget(chatService, parent, SWT.NONE);
         applyConfig();
 
@@ -89,6 +92,11 @@ public class AIChatView {
 
     private void applyConfig() {
         var config = LlmPreferenceInitializer.buildWithDefaults();
+        try {
+            skillService.refresh(config.skillDirectory());
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load " + config.skillDirectory());
+        }
         chatService.updateConfig(config);
         chat.refreshStatusLine();
     }
@@ -133,7 +141,7 @@ public class AIChatView {
         } else if (o instanceof IResource f) {
             selection = f;
         }
-        contextFile.set(selection == null ? null : selection.getFullPath().toPortableString());
+        contextFile.set(selection);
         workspaceFilesTool.setCurrentProject(EclipseUtil.resolveProject(selection));
         if (chat != null) Display.getDefault().asyncExec(() -> chat.updateContextFile(contextFile.get()));
     }

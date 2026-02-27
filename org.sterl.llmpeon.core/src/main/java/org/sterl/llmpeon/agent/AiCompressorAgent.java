@@ -1,6 +1,6 @@
 package org.sterl.llmpeon.agent;
 
-import java.util.ArrayList;
+import java.util.List;
 
 import org.sterl.llmpeon.shared.StringUtil;
 
@@ -9,7 +9,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
 public class AiCompressorAgent implements AiAgent {
@@ -45,14 +44,12 @@ public class AiCompressorAgent implements AiAgent {
         this.chatModel = chatModel;
     }
     
-    public ChatResponse call(ChatRequest request, AiMonitor monitor) {
+    public ChatResponse call(List<ChatMessage> messages, AiMonitor monitor) {
         var msg = new StringBuilder();
-        request.messages().stream().forEach(m -> msg.append(toText(m)));
+        messages.stream().forEach(m -> msg.append(toText(m)));
 
-        if (monitor != null) monitor.onAction("Compressing conversation " + request.messages().size() + " messages");
-        return chatModel.chat(request.toBuilder()
-                .messages(COMPRESS_SYSTEM, UserMessage.from(msg.toString()))
-                .build());
+        if (monitor != null) monitor.onAction("Compressing conversation " + messages.size() + " messages");
+        return chatModel.chat(COMPRESS_SYSTEM, UserMessage.from(msg.toString()));
     }
     
     String toText(ChatMessage msg) {

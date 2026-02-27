@@ -12,7 +12,7 @@
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry exported="true" kind="lib" path="lib/llmpeon-core.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/llmpeon-core.jar" sourcepath="/core"/>
 	<classpathentry exported="true" kind="lib" path="lib/jackson-annotations.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/jackson-core.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/jackson-databind.jar"/>

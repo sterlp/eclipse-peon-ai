@@ -38,7 +38,7 @@ public class ChatMarkdownWidget extends Composite {
         setLayout(new FillLayout());
 
         browser = new Browser(this, SWT.NONE);
-        browser.setText(loadChatHtml());
+        clear();
         /*
         browser.addProgressListener(new ProgressListener() {
             @Override
@@ -49,7 +49,7 @@ public class ChatMarkdownWidget extends Composite {
         });
         */
     }
-
+    
     private String loadChatHtml() {
         if (chatHtml != null) return chatHtml;
         try (InputStream is = getClass().getResourceAsStream("/resources/chat/chat.html")) {
@@ -101,7 +101,17 @@ public class ChatMarkdownWidget extends Composite {
             throw new RuntimeException(e);
         }
     }
+    
+    /**
+     * Reload the while view - clean everything away ....
+     */
+    public void clear() {
+        browser.setText(loadChatHtml());
+    }
 
+    /**
+     * Just removes the messages
+     */
     public void clearMessages() {
         browser.execute("clearMessages()");
     }

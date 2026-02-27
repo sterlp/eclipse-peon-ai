@@ -1,5 +1,6 @@
-package org.sterl.llmpeon.ai;
+package org.sterl.llmpeon;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -7,24 +8,28 @@ import java.util.List;
 import org.sterl.llmpeon.agent.AiCompressorAgent;
 import org.sterl.llmpeon.agent.AiDeveloperAgent;
 import org.sterl.llmpeon.agent.AiMonitor;
+import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.skill.SkillRecord;
+import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.tool.ToolService;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 
 public class ChatService {
     private LlmConfig config;
     private final ToolService toolService;
+    private final SkillService skillService;
     private final ChatMemory memory = MessageWindowChatMemory.builder()
             .id(ChatService.class)
             .maxMessages(500000)
@@ -32,10 +37,11 @@ public class ChatService {
     private ChatModel model;
     private int tokenSize = 0;
     
-    private List<ChatMessage> standingOrders = Collections.emptyList();
+    private List<SystemMessage> standingOrders = Collections.emptyList();
 
-    public ChatService(LlmConfig config, ToolService toolService) {
+    public ChatService(LlmConfig config, ToolService toolService, SkillService skillService) {
         this.config = config;
+        this.skillService = skillService;
         this.toolService = toolService;
         updateConfig(config);
     }
@@ -44,15 +50,19 @@ public class ChatService {
      * Sets a list of orders - which will not be added to the chat memory but are
      * added an
      */
-    public void setStandingOrders(List<ChatMessage> additions) {
+    public void setStandingOrders(List<SystemMessage> additions) {
         if (additions == null) additions = Collections.emptyList();
-        this.standingOrders = new ArrayList<>(additions);
+        this.standingOrders = additions.stream().filter(s -> StringUtil.hasValue(s.text())).toList();
     }
 
     public void updateConfig(LlmConfig config) {
         this.config = config;
         this.model = config.build();
-        this.toolService.updateSkillDirectory(config.skillDirectory());
+        try {
+            this.skillService.refresh(Path.of(config.skillDirectory()));
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to load skills from " + config.skillDirectory(), e);
+        }
     }
 
     public ToolService getToolService() {
@@ -82,36 +92,28 @@ public class ChatService {
         ChatResponse response = null;
 
         var developerAgent = new AiDeveloperAgent(model);
-        boolean weHaveAnAiResponse = false;
         do {
             // orders
             var messagesToSend = new ArrayList<ChatMessage>(standingOrders);
             // any skills
-            var skills = toolService.skillMessage();
-            if (skills != null) {
-                messagesToSend.addFirst(skills);
+            if (skillService.hasSkills()) {
+                messagesToSend.addFirst(skillService.skillMessage());
             }
             // history
             messagesToSend.addAll(memory.messages());
 
-            ChatRequest request = ChatRequest.builder()
-                    .messages(messagesToSend)
-                    .toolSpecifications(toolService.toolSpecifications())
-                    .build();
-
-            weHaveAnAiResponse = false;
-            response = developerAgent.call(request, monitor);
+            developerAgent.withTools(toolService.toolSpecifications()); // TODO filter edit / search
+            response = developerAgent.call(messagesToSend, monitor);
             updateTokenCount(response);
 
             // add the AI message if it has any text
             memory.add(response.aiMessage());
-            if (StringUtil.hasValue(response.aiMessage().text())) {
-                weHaveAnAiResponse = true;
-            }
 
             runAllTools(monitor, response);
+
             if (monitor.isCanceled()) break;
-        } while (response.aiMessage().hasToolExecutionRequests() || !weHaveAnAiResponse);
+        } while (response.aiMessage().hasToolExecutionRequests() 
+                || StringUtil.hasNoValue(response.aiMessage().text()));
 
         if (response != null) {
             System.out.println(response.metadata());
@@ -207,5 +209,9 @@ public class ChatService {
 
     public List<ChatMessage> getMessages() {
         return memory.messages();
+    }
+    
+    public List<SkillRecord> getSkills() {
+        return this.skillService.getSkills();
     }
 }

@@ -2,12 +2,12 @@ package org.sterl.llmpeon.parts.widget;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jface.text.ITextSelection;
@@ -18,15 +18,14 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Text;
-import org.sterl.llmpeon.ai.ChatService;
+import org.sterl.llmpeon.ChatService;
+import org.sterl.llmpeon.agents.AgentsMdService;
 import org.sterl.llmpeon.parts.PeonConstants;
 import org.sterl.llmpeon.parts.monitor.EclipseAiMonitor;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
-import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.SimpleDiff;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget.SimpleChatMessage;
 
-import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.SystemMessage;
 
@@ -38,12 +37,13 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
     private Text inputArea;
     private Button btnSend;
     private Button btnCompress;
+    private Button btnClear;
 
     private boolean working = false;
 
     private ITextSelection textSelection;
-    private String selectedResource;
-    private String agentsMdContent;
+    private IResource selectedResource;
+    private final AgentsMdService agentsMdService = new AgentsMdService();
     
     private final AtomicReference<IProgressMonitor> monitorRef = new AtomicReference<>();
 
@@ -117,6 +117,15 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
         btnCompress.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
         btnCompress.setToolTipText("Compress conversation context");
         btnCompress.addListener(SWT.Selection, e -> doCompressContext());
+        
+        btnClear = new Button(bar, SWT.PUSH);
+        btnClear.setText("Clear");
+        btnClear.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
+        btnClear.setToolTipText("Clear conversation context");
+        btnClear.addListener(SWT.Selection, e -> {
+            chatService.getMessages().clear();
+            chatHistory.clear();
+        });
     }
 
     /**
@@ -127,31 +136,16 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
         statusLine.update(
             chatService.getTokenSize(),
             chatService.getTokenWindow(),
-            chatService.getToolService().getSkills().size(),
-            agentsMdContent != null,
+            chatService.getSkills().size(),
+            agentsMdService.hasAgentFile(),
             selectedResource
         );
     }
 
-    public void updateContextFile(String value) {
+    public void updateContextFile(IResource value) {
+        if (Objects.equals(value, this.selectedResource)) return;
         this.selectedResource = value;
-        this.agentsMdContent = null;
-
-        var resource = EclipseUtil.resolveInEclipse(value);
-        if (resource.isPresent()) {
-            var project = resource.get().getProject();
-            if (project != null && project.isOpen()) {
-                IFile agentsFile = project.getFile("AGENTS.md");
-                if (!agentsFile.exists()) agentsFile = project.getFile("agents.md");
-                if (agentsFile.exists()) {
-                    try (var in = agentsFile.getContents()) {
-                        this.agentsMdContent = IoUtils.toString(in, agentsFile.getCharset());
-                    } catch (Exception e) {
-                        // ignore read failures
-                    }
-                }
-            }
-        }
+        this.agentsMdService.load(selectedResource.getProject().getRawLocation().toPortableString());
         refreshStatusLine();
     }
 
@@ -191,6 +185,7 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
     
     private void doCompressContext() {
         lockWhileWorking(true);
+        chatHistory.clear();
         Job.create("Compressing context", monitor -> {
             monitor.beginTask("Compressing chat", IProgressMonitor.UNKNOWN);
             monitorRef.set(monitor);
@@ -226,12 +221,12 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
             try {
                 int msgCountBefore = chatService.getMessages().size();
                 
-                var orders = new ArrayList<ChatMessage>();
+                var orders = new ArrayList<SystemMessage>();
                 if (selectedResource != null) {
                     orders.add(SystemMessage.from("Selected eclipse resource: " + selectedResource));
                 }
-                if (agentsMdContent != null) {
-                    orders.add(SystemMessage.from(agentsMdContent));
+                if (agentsMdService.hasAgentFile()) {
+                    orders.add(SystemMessage.from(agentsMdService.read()));
                 }
                 if (!orders.isEmpty()) chatService.setStandingOrders(orders);
                 var result = chatService.call(text + getUserSelection(), this);

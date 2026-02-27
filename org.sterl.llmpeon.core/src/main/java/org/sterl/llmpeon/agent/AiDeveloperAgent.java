@@ -1,7 +1,9 @@
 package org.sterl.llmpeon.agent;
 
 import java.util.ArrayList;
+import java.util.List;
 
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.model.chat.ChatModel;
@@ -42,19 +44,21 @@ public class AiDeveloperAgent implements AiAgent {
             """);
     
     private final ChatModel chatModel;
+    private final ChatRequest.Builder request = ChatRequest.builder();
 
     public AiDeveloperAgent(ChatModel chatModel) {
         super();
         this.chatModel = chatModel;
     }
     
-    public ChatResponse call(ChatRequest request, AiMonitor monitor) {
-        var messages = new ArrayList<ChatMessage>();
-        messages.add(system);
-        messages.addAll(request.messages());
-        request = request.toBuilder()
-            .messages(messages)
-            .build();
-        return chatModel.chat(request);
+    public ChatResponse call(List<ChatMessage> inMessages, AiMonitor monitor) {
+        var messages = new ArrayList<ChatMessage>(inMessages);
+        messages.addFirst(system);
+        return chatModel.chat(request.messages(messages).build());
+    }
+    
+    @Override
+    public void withTools(List<ToolSpecification> tools) {
+        request.toolSpecifications(tools);
     }
 }

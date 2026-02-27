@@ -3,6 +3,7 @@ package org.sterl.llmpeon.ai;
 import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.Test;
+import org.sterl.llmpeon.ChatService;
 
 class ChatServiceTest {
 

@@ -14,6 +14,6 @@ public record SkillRecord(String name, String description, Path skillFile) {
     }
     
     public String shortDescription() {
-        return "Skill[name="+ name + ",description=" + description + "]";
+        return "Skill[name="+ name + ", description=" + description + "]";
     }
 }

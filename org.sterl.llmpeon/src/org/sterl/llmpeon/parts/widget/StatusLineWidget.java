@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.parts.widget;
 
+import org.eclipse.core.resources.IResource;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.layout.GridData;
@@ -42,7 +43,7 @@ public class StatusLineWidget extends Composite {
 
         // Skills icon + label
         skillIcon = new Label(this, SWT.NONE);
-        skillIcon.setImage(images.getImage(ISharedImages.IMG_OBJ_ELEMENT));
+        skillIcon.setImage(images.getImage(ISharedImages.IMG_OBJ_FOLDER));
         skillIcon.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
 
         skillLabel = new Label(this, SWT.NONE);
@@ -54,7 +55,7 @@ public class StatusLineWidget extends Composite {
 
         // Agent icon + label
         agentIcon = new Label(this, SWT.NONE);
-        agentIcon.setImage(images.getImage(ISharedImages.IMG_OBJ_ELEMENT));
+        agentIcon.setImage(images.getImage(ISharedImages.IMG_OBJ_FILE));
         agentIcon.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
 
         agentLabel = new Label(this, SWT.NONE);
@@ -73,7 +74,7 @@ public class StatusLineWidget extends Composite {
         tokenLabel.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
     }
 
-    public void update(int tokenUsed, int tokenMax, int skillCount, boolean hasAgentsMd, String selectedResource) {
+    public void update(int tokenUsed, int tokenMax, int skillCount, boolean hasAgentsMd, IResource selectedResource) {
         // Skills
         skillIcon.setVisible(skillCount > 0);
         ((GridData) skillIcon.getLayoutData()).exclude = skillCount == 0;
@@ -104,11 +105,9 @@ public class StatusLineWidget extends Composite {
         layout(true);
     }
 
-    private static String extractFileName(String resource) {
-        if (resource == null || resource.isEmpty()) return "";
-        int sep = resource.lastIndexOf('/');
-        if (sep < 0) sep = resource.lastIndexOf('\\');
-        return sep >= 0 ? resource.substring(sep + 1) : resource;
+    private static String extractFileName(IResource resource) {
+        if (resource == null) return "";
+        return resource.getName();
     }
 
     private static GridData gridHeight(int height) {

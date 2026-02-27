@@ -7,6 +7,11 @@ import java.nio.file.StandardOpenOption;
 import java.util.Optional;
 
 public class FileUtils {
+    
+    public static Path toPath(String value) {
+        if (value == null) return null;
+        return Path.of(value).normalize();
+    }
 
     public static String readString(Path filePath) {
         try {

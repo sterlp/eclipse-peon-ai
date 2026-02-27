@@ -33,7 +33,6 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
         if (StringUtil.hasValue(skillDir) && !Files.isDirectory(Path.of(skillDir))) {
             var dir = EclipseUtil.resolveInEclipse(skillDir);
             if (dir.isPresent()) {
-                // TODO maybe we should not do this, and allow dynamic skill folder
                 // save Eclipse workspace-relative path to prefs (portable)
                 prefs.put(PeonConstants.PREF_SKILL_DIRECTORY, dir.get().getFullPath().toPortableString());
                 // use absolute filesystem path for SkillService

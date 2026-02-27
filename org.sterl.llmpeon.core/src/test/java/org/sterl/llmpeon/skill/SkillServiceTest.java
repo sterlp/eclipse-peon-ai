@@ -13,10 +13,8 @@ class SkillServiceTest {
 
     @Test
     void testRefreshLoadsSkills() throws Exception {
-        SkillService service = new SkillService(SKILLS_DIR);
-        assertEquals(0, service.getSkills().size());
-
-        service.refresh();
+        SkillService service = new SkillService();
+        service.refresh(SKILLS_DIR);
 
         assertTrue(service.getSkills().size() >= 1,
                 "Should find at least the eclipse-ifile-paths skill");
@@ -26,8 +24,8 @@ class SkillServiceTest {
 
     @Test
     void testEclipseIFilePathsSkill() throws Exception {
-        SkillService service = new SkillService(SKILLS_DIR);
-        service.refresh();
+        SkillService service = new SkillService();
+        service.refresh(SKILLS_DIR);
 
         SkillRecord skill = service.getSkills().stream()
                 .filter(s -> "eclipse-ifile-paths".equals(s.name()))
@@ -51,8 +49,8 @@ class SkillServiceTest {
 
     @Test
     void testEmptyDirectoryReturnsEmptyList() throws Exception {
-        SkillService service = new SkillService(Path.of("nonexistent-dir"));
-        service.refresh();
+        SkillService service = new SkillService();
+        service.refresh(Path.of("nonexistent-dir"));
         assertEquals(0, service.getSkills().size());
     }
 }
