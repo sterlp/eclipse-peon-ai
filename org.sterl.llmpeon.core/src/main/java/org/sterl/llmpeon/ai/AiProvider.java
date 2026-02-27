@@ -3,7 +3,8 @@ package org.sterl.llmpeon.ai;
 public enum AiProvider {
     OLLAMA,
     OPEN_AI,
-    GOOGLE_GEMINI;
+    GOOGLE_GEMINI,
+    MISTRAL;
 
     public static AiProvider parse(String string) {
         try {

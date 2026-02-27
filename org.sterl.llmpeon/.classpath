@@ -24,6 +24,7 @@
 	<classpathentry exported="true" kind="lib" path="lib/langchain4j-ollama.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/langchain4j-google-ai-gemini.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/langchain4j-open-ai.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/langchain4j-mistral-ai.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/opennlp-tools.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/slf4j-api.jar"/>
 	<classpathentry exported="true" kind="lib" path="resources" sourcepath="resources"/>

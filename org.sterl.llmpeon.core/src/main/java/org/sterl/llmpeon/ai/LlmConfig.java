@@ -8,6 +8,7 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.googleai.GeminiThinkingConfig;
 import dev.langchain4j.model.googleai.GeminiThinkingConfig.GeminiThinkingLevel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
+import dev.langchain4j.model.mistralai.MistralAiChatModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 
@@ -32,6 +33,12 @@ public record LlmConfig (
                     .modelName(model())
                     .apiKey(apiKey())
                     .maxTokens(tokenWindow())
+                    .build();
+        } else if (AiProvider.MISTRAL == providerType()) {
+            return MistralAiChatModel.builder()
+                    .timeout(Duration.ofMinutes(2))
+                    .modelName(model())
+                    .apiKey(apiKey())
                     .build();
         } else if (AiProvider.GOOGLE_GEMINI == providerType()) {
             var result = GoogleAiGeminiChatModel.builder()
