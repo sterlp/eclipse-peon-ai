@@ -19,8 +19,8 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Text;
 import org.sterl.llmpeon.ChatService;
-import org.sterl.llmpeon.agents.AgentsMdService;
 import org.sterl.llmpeon.parts.PeonConstants;
+import org.sterl.llmpeon.parts.agentsmd.AgentsMdService;
 import org.sterl.llmpeon.parts.monitor.EclipseAiMonitor;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.SimpleDiff;
@@ -145,7 +145,9 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
     public void updateContextFile(IResource value) {
         if (Objects.equals(value, this.selectedResource)) return;
         this.selectedResource = value;
-        this.agentsMdService.load(selectedResource.getProject().getRawLocation().toPortableString());
+        if (selectedResource != null) {
+            this.agentsMdService.load(selectedResource.getProject());
+        }
         refreshStatusLine();
     }
 
@@ -223,7 +225,7 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
                 
                 var orders = new ArrayList<SystemMessage>();
                 if (selectedResource != null) {
-                    orders.add(SystemMessage.from("Selected eclipse resource: " + selectedResource));
+                    orders.add(SystemMessage.from("Selected eclipse resource: " + selectedResource.getFullPath().toPortableString()));
                 }
                 if (agentsMdService.hasAgentFile()) {
                     orders.add(SystemMessage.from(agentsMdService.read()));

@@ -2,6 +2,7 @@ package org.sterl.llmpeon.tool;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.io.File;
 import java.nio.file.Path;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -24,6 +25,7 @@ class ShellToolTest {
     void runOsCommand_mvnVersion() {
         String result = tool.runOsCommand("mvn -version", tempDir.toString(), null, null);
         assertTrue(result.contains("Apache Maven"), "Expected maven version output, got: " + result);
+        
     }
 
     @Test

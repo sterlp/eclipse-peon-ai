@@ -1,11 +1,15 @@
 package org.sterl.llmpeon.tool;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import org.sterl.llmpeon.shared.StringUtil;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -60,15 +64,26 @@ public class ShellTool extends AbstractTool {
         monitorMessage("Running: " + command + " in " + effectiveDir);
 
         String[] shellCommand;
+        String extraPaths = "";
         String os = System.getProperty("os.name").toLowerCase();
         if (os.contains("win")) {
             shellCommand = new String[] { "cmd.exe", "/c", command };
-        } else {
-            shellCommand = new String[] { "/bin/bash", "-c", command };
+        } else if (Files.isRegularFile(Path.of("/bin/zsh"))) {
+            shellCommand = new String[] { "/bin/zsh", "-l", "-c", command };
         }
+        else {
+            shellCommand = new String[] { "/bin/bash", "-l", "-c", command };
+        }
+        // and brew by default
+        if (Files.isDirectory(Path.of("/opt/homebrew/bin"))) {
+            extraPaths += File.pathSeparatorChar + "/opt/homebrew/bin";
+        };
 
         try {
             ProcessBuilder pb = new ProcessBuilder(shellCommand);
+            Map<String, String> env = pb.environment();
+            env.put("PATH", StringUtil.stripToEmpty(System.getenv("PATH")) + extraPaths);
+
             pb.directory(effectiveDir.toFile());
             pb.redirectErrorStream(true); // merge stderr into stdout
             Process process = pb.start();

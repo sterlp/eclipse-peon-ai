@@ -21,4 +21,9 @@ public class StringUtil {
     public static boolean hasNoValue(String value) {
         return !hasValue(value);
     }
+
+    public static String stripToEmpty(String value) {
+        if (value == null) return "";
+        return value.strip();
+    }
 }

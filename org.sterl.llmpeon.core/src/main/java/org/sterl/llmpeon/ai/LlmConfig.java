@@ -51,6 +51,12 @@ public record LlmConfig (
                     .build();
                 result.thinkingConfig(think)
                     .returnThinking(Boolean.TRUE);
+            } else {
+                // Explicitly disable thinking (budget=0) to prevent thought_signature
+                // errors on models that have thinking enabled by default (e.g. gemini-*-flash-preview)
+                result.thinkingConfig(GeminiThinkingConfig.builder()
+                    .thinkingBudget(0)
+                    .build());
             }
 
             return result.build();
