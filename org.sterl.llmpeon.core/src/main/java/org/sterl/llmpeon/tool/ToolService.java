@@ -5,7 +5,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.sterl.llmpeon.agent.AiMonitor;
+
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agent.tool.ToolSpecifications;
 
@@ -32,6 +35,28 @@ public class ToolService {
 
     public SmartToolExecutor getExecutor(String toolName) {
         return toolExecutors.get(toolName);
+    }
+
+    /**
+     * Executes a tool by name and returns the result as a string.
+     * Unknown tools and all exceptions are caught and returned as error strings
+     * so the calling agent can see and react to them.
+     */
+    public String execute(ToolExecutionRequest tr, AiMonitor monitor) {
+        var executor = toolExecutors.get(tr.name());
+        if (executor == null) {
+            String error = "Error: unknown tool '" + tr.name() + "' check spelling";
+            AiMonitor.nullSafty(monitor).onProblem(error);
+            return error;
+        }
+        try {
+            return executor.run(tr, monitor);
+        } catch (IllegalArgumentException e) {
+            // user-facing argument error — return as-is so the LLM can correct itself
+            return e.getMessage();
+        } catch (Exception e) {
+            return "Tool error: " + e.getMessage();
+        }
     }
     
     /**

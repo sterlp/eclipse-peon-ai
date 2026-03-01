@@ -22,6 +22,7 @@ import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.sterl.llmpeon.ChatService;
+import org.sterl.llmpeon.agent.AgentService;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.tools.EclipseBuildTool;
@@ -31,8 +32,10 @@ import org.sterl.llmpeon.parts.tools.EclipseRunTestTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceFilesTool;
 import org.sterl.llmpeon.parts.widget.ChatWidget;
 import org.sterl.llmpeon.skill.SkillService;
+import org.sterl.llmpeon.tool.CompressorAgentTool;
 import org.sterl.llmpeon.tool.DiskFilesTool;
 import org.sterl.llmpeon.tool.EditTool;
+import org.sterl.llmpeon.tool.SearchAgentTool;
 import org.sterl.llmpeon.tool.ShellTool;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.WebFetchTool;
@@ -76,6 +79,17 @@ public class AIChatView {
 
         chatService = new ChatService(LlmPreferenceInitializer.buildWithDefaults(), toolService, skillService);
         chat = new ChatWidget(chatService, parent, SWT.NONE);
+
+        // agent-level tools — class simple name = tool name = registration key
+        AgentService agentService = chatService.getAgentService();
+        var searchTool = new SearchAgentTool(agentService, toolService);
+        agentService.registerAgentTool(SearchAgentTool.class.getSimpleName());
+        toolService.addTool(searchTool);
+
+        var compressorTool = new CompressorAgentTool(chatService);
+        agentService.registerAgentTool(CompressorAgentTool.class.getSimpleName());
+        toolService.addTool(compressorTool);
+
         applyConfig();
 
         if (logger != null)

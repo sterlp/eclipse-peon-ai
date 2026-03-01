@@ -5,8 +5,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.sterl.llmpeon.agent.AiCompressorAgent;
-import org.sterl.llmpeon.agent.AiDeveloperAgent;
+import org.sterl.llmpeon.agent.AgentService;
 import org.sterl.llmpeon.agent.AiMonitor;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.shared.StringUtil;
@@ -14,7 +13,6 @@ import org.sterl.llmpeon.skill.SkillRecord;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.tool.ToolService;
 
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -22,7 +20,6 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 
@@ -34,18 +31,19 @@ public class ChatService {
             .id(ChatService.class)
             .maxMessages(500000)
             .build();
-    private ChatModel model;
+    private final AgentService agentService;
     private int tokenSize = 0;
-    
+
     private List<SystemMessage> standingOrders = Collections.emptyList();
 
     public ChatService(LlmConfig config, ToolService toolService, SkillService skillService) {
         this.config = config;
         this.skillService = skillService;
         this.toolService = toolService;
+        this.agentService = new AgentService(null);
         updateConfig(config);
     }
-    
+
     /**
      * Sets a list of orders - which will not be added to the chat memory but are
      * added an
@@ -57,12 +55,16 @@ public class ChatService {
 
     public void updateConfig(LlmConfig config) {
         this.config = config;
-        this.model = config.build();
+        agentService.updateModel(config.build());
         try {
             this.skillService.refresh(Path.of(config.skillDirectory()));
         } catch (Exception e) {
             throw new RuntimeException("Failed to load skills from " + config.skillDirectory(), e);
         }
+    }
+
+    public AgentService getAgentService() {
+        return agentService;
     }
 
     public ToolService getToolService() {
@@ -87,11 +89,11 @@ public class ChatService {
         if (tokenSize >= config.tokenWindow() * 0.95) {
             compressContext(monitor);
         }
-        
+
         if (message != null) memory.add(UserMessage.from(message));
         ChatResponse response = null;
 
-        var developerAgent = new AiDeveloperAgent(model);
+        var developerAgent = agentService.newDeveloperAgent();
         do {
             // orders
             var messagesToSend = new ArrayList<ChatMessage>(standingOrders);
@@ -102,7 +104,7 @@ public class ChatService {
             // history
             messagesToSend.addAll(memory.messages());
 
-            developerAgent.withTools(toolService.toolSpecifications()); // TODO filter edit / search
+            developerAgent.withTools(toolService.toolSpecifications());
             response = developerAgent.call(messagesToSend, monitor);
             updateTokenCount(response);
 
@@ -112,7 +114,7 @@ public class ChatService {
             runAllTools(monitor, response);
 
             if (monitor.isCanceled()) break;
-        } while (response.aiMessage().hasToolExecutionRequests() 
+        } while (response.aiMessage().hasToolExecutionRequests()
                 || StringUtil.hasNoValue(response.aiMessage().text()));
 
         if (response != null) {
@@ -126,56 +128,40 @@ public class ChatService {
     private void runAllTools(AiMonitor monitor, ChatResponse response) {
         if (response.aiMessage().hasToolExecutionRequests()) {
             for (var tr : response.aiMessage().toolExecutionRequests()) {
-                String result = runTool(monitor, tr);
+                String result = toolService.execute(tr, monitor);
                 memory.add(ToolExecutionResultMessage.from(tr.id(), tr.name(), result));
-                
+
                 if (monitor.isCanceled()) return;
             }
         }
     }
 
-    private String runTool(AiMonitor monitor, ToolExecutionRequest tr) {
-        String result;
-        var executor = toolService.getExecutor(tr.name());
-        if (executor != null) {
-            try {
-                result = executor.run(tr, monitor);
-            } catch (IllegalArgumentException e) {
-                result = e.getMessage();
-                if (monitor != null) monitor.onProblem(tr.name() + ": " + e.getMessage());
-            }
-        } else {
-            result = "Error: unknown tool '" + tr.name() + "' check spelling";
-            if (monitor != null) monitor.onProblem(result);
-        }
-        return result;
-    }
-    
     public static String trimArgs(String value) {
         if (value == null) return "";
         value = value.strip();
         if (value.length() == 2) return "";
         else if (value.length() <= 150) return value.substring(1, value.length() - 1);
         return value.substring(1, 149);
-        
     }
 
     /**
-     * Compresses the current conversation via CompressAgent, clears memory,
-     * and adds only the compressed summary as a new starting point.
-     * @return 
-     * @return the compressed summary text, or empty string if nothing to compress
+     * Compresses the current conversation via CompressorAgent, clears memory,
+     * and replaces it with the compressed summary.
+     *
+     * @return the compressed summary response
      */
     public ChatResponse compressContext(AiMonitor monitor) {
-        var compressorAgent = new AiCompressorAgent(model);
-        // send all messages with compress system prompt, no tools
+        var compressorAgent = agentService.newCompressorAgent();
         var response = compressorAgent.call(memory.messages(), monitor);
-
-        memory.clear();
-        memory.add(response.aiMessage());
-
+        replaceMemory(response.aiMessage());
         updateTokenCount(response);
         return response;
+    }
+
+    /** Clears the current memory and replaces it with a single message. */
+    public void replaceMemory(AiMessage msg) {
+        memory.clear();
+        memory.add(msg);
     }
 
     private void updateTokenCount(ChatResponse response) {
@@ -210,7 +196,7 @@ public class ChatService {
     public List<ChatMessage> getMessages() {
         return memory.messages();
     }
-    
+
     public List<SkillRecord> getSkills() {
         return this.skillService.getSkills();
     }

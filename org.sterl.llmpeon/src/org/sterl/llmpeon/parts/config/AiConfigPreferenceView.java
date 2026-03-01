@@ -26,7 +26,8 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
                 new String[][] {
                     { "Ollama", AiProvider.OLLAMA.name() },
                     { "OpenAI-compatible (Perplexity, OpenAI, ...)", AiProvider.OPEN_AI.name() },
-                    { "Google Gemini", AiProvider.GOOGLE_GEMINI.name() }
+                    { "Google Gemini", AiProvider.GOOGLE_GEMINI.name() },
+                    { "Mistral", AiProvider.MISTRAL.name() }
                 },
                 getFieldEditorParent()));
         addField(new StringFieldEditor(PeonConstants.PREF_MODEL, "Model:", getFieldEditorParent()));

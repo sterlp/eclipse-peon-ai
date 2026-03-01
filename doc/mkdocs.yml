@@ -44,6 +44,7 @@ nav:
   - Usage:
       - Chat Interface: usage/chat-interface.md
       - Available Tools: usage/available-tools.md
+      - AGENTS.md & Skills: usage/agents-and-skills.md
   - Development:
       - Building: development/building.md
       - Architecture: development/architecture.md

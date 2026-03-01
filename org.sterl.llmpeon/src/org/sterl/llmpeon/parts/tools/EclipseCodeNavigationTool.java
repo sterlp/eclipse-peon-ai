@@ -38,12 +38,17 @@ public class EclipseCodeNavigationTool extends AbstractTool {
     private static final int MAX_REFERENCE_RESULTS = 50;
     private static final int MAX_IMPL_RESULTS = 30;
 
-    @Tool("Finds a Java type (class, interface, enum, record) by name in the Eclipse workspace. "
-            + "Returns its location, kind, Javadoc, superclass, interfaces, and source code. "
-            + "Accepts simple names ('Foo'), wildcard patterns ('Foo*'), camelCase ('NPE'), "
-            + "or fully qualified names ('com.example.Foo'). "
-            + "Use this to go to a class definition and read its code."
-            + "This is the prefered way to search code classes in an eclipse workspace try this first before falling back to a name or even file search.")
+    @Tool("""
+            Finds a Java type (class, interface, enum, record) by name in the Eclipse workspace.
+            Returns its location, kind, Javadoc, superclass, interfaces, and source code.
+            Accepts simple names ('Foo'), wildcard patterns ('Foo*'), camelCase ('NPE'),
+            or fully qualified names ('com.example.Foo').
+            Use this tool to go to a class definition and read its current code.
+            This is the preferred way to search code classes in an Eclipse workspace.
+            It returns the most recent/current version of the JDK or library used in the project,
+            ensuring you always work with the latest available implementation.
+            Try this first before falling back to a name or file search.
+            """)
     public String findJavaType(
             @P("Type name to find. Simple, wildcard (*), camelCase, or fully qualified.") String typeName,
             @P("Optional project name to limit search. Empty searches all projects.") String projectName,

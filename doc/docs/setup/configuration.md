@@ -56,7 +56,7 @@ Run models locally — no API key required.
 |---------|-------|
 | Provider | `MISTRAL` |
 | Model | `mistral-large-latest`, `mistral-small-latest`, `codestral-latest` |
-| Base URL | *(leave empty)* |
+| Base URL | *(leave empty)* or e.g. https://console.mistral.ai |
 | API Key | Your Mistral API key |
 
 - [Mistral model overview](https://docs.mistral.ai/getting-started/models/models_overview/)

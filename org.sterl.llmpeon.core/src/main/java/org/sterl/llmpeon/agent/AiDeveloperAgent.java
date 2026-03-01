@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.agent;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -12,9 +13,13 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 
 public class AiDeveloperAgent implements AiAgent {
 
-    final SystemMessage system = SystemMessage.systemMessage("""
+    private final String PROMT = """
             You are a coding assistant helping developers solve technical tasks. Use available tools to access needed resources.
             You are embedded in an Eclipse IDE.
+
+            Context:
+            - Your training data is likely outdated. Today's date is %s.
+            - Use this date to estimate how old your knowledge might be and prioritize verifying information with tools or the developer.
 
             Tool usage:
             - If a tool is available to do the job, automatically use it
@@ -41,7 +46,7 @@ public class AiDeveloperAgent implements AiAgent {
             - Read SKILLs if they match the current work or task
             - Read the project structure before creating new files to ensure to put them into the right place
             - Avoid repeated searches
-            """);
+            """;
     
     private final ChatModel chatModel;
     private final ChatRequest.Builder request = ChatRequest.builder();
@@ -53,7 +58,8 @@ public class AiDeveloperAgent implements AiAgent {
     
     public ChatResponse call(List<ChatMessage> inMessages, AiMonitor monitor) {
         var messages = new ArrayList<ChatMessage>(inMessages);
-        messages.addFirst(system);
+        messages.addFirst(SystemMessage.from(PROMT
+                .formatted(LocalDate.now().toString())));
         return chatModel.chat(request.messages(messages).build());
     }
     

@@ -103,7 +103,7 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
     private void createCommandBar(Composite parent) {
         Composite bar = new Composite(parent, SWT.NONE);
         bar.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-        bar.setLayout(new GridLayout(2, false));
+        bar.setLayout(new GridLayout(3, false));
 
         btnSend = new Button(bar, SWT.PUSH);
         btnSend.setImage(org.eclipse.debug.ui.DebugUITools.getImage(
