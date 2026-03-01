@@ -82,14 +82,13 @@ For development, launch with: `-clean -clearPersistedState`
 
 ## Documentation
 
-Detailed documentation is available in the [doc/](doc/) folder:
+Detailed documentation is available at [peon-ai-4e.sterl.org](https://peon-ai-4e.sterl.org):
 
-- [Installation Guide](doc/setup/installation.md)
-- [Configuration](doc/setup/configuration.md)
-- [Chat Interface](doc/usage/chat-interface.md)
-- [Available Tools](doc/usage/available-tools.md)
-- [Building](doc/development/building.md)
-- [Architecture](doc/development/architecture.md)
+- [Installation Guide](https://peon-ai-4e.sterl.org/setup/installation/)
+- [Configuration](https://peon-ai-4e.sterl.org/setup/configuration/)
+- [AGENTS.md & Skills](https://peon-ai-4e.sterl.org/usage/agents-and-skills/)
+- [Building](https://peon-ai-4e.sterl.org/development/building/)
+- [Architecture](https://peon-ai-4e.sterl.org/development/architecture/)
 
 To serve docs locally:
 ```bash

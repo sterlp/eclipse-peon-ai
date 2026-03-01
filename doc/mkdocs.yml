@@ -36,18 +36,6 @@ theme:
       - search.highlight
       - toc.follow
 
-nav:
-  - Home: index.md
-  - Setup:
-      - Installation: setup/installation.md
-      - Configuration: setup/configuration.md
-  - Usage:
-      - Chat Interface: usage/chat-interface.md
-      - Available Tools: usage/available-tools.md
-      - AGENTS.md & Skills: usage/agents-and-skills.md
-  - Development:
-      - Building: development/building.md
-      - Architecture: development/architecture.md
 
 markdown_extensions:
   - admonition

@@ -1,8 +1,0 @@
-nav:
-  - Home: index.md
-  - Setup:
-      - Installation: setup/installation.md
-      - Configuration: setup/configuration.md
-  - Development:
-      - Building: development/building.md
-      - Architecture: development/architecture.md
