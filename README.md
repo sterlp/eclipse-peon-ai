@@ -86,7 +86,7 @@ Detailed documentation is available at [peon-ai-4e.sterl.org](https://peon-ai-4e
 
 - [Installation Guide](https://peon-ai-4e.sterl.org/setup/installation/)
 - [Configuration](https://peon-ai-4e.sterl.org/setup/configuration/)
-- [AGENTS.md & Skills](https://peon-ai-4e.sterl.org/usage/agents-and-skills/)
+- [AGENTS.md & Skills](https://peon-ai-4e.sterl.org/setup/agents-and-skills/)
 - [Building](https://peon-ai-4e.sterl.org/development/building/)
 - [Architecture](https://peon-ai-4e.sterl.org/development/architecture/)
 
