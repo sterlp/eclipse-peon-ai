@@ -105,11 +105,7 @@ cd doc && pip install -r requirements.txt && mkdocs serve
 - [markdown-it](https://github.com/markdown-it/markdown-it) - Markdown parsing
 - [Highlight.js](https://highlightjs.org) - Syntax highlighting
 - [Diff2Html](https://diff2html.xyz) - Diff visualization
-
-## Links
-
-- [GitHub](https://github.com/sterl/eclipse-peon-ai)
-- [Issue Tracker](https://github.com/sterl/eclipse-peon-ai/issues)
+- [flexmark](https://github.com/vsch/flexmark-java)
 
 ## Eclipse RCP Resources
 
@@ -118,13 +114,12 @@ cd doc && pip install -r requirements.txt && mkdocs serve
 - [Eclipse Wiki e4 Tutorials](https://wiki.eclipse.org/Eclipse4/Tutorials)
 
 - [Vogella Eclipse RCP Tutorial](https://www.vogella.com/tutorials/EclipseRCP/article.html)
-article.html)
 
-https://www.vogella.com/tutorials/Eclipse4Services/article.html
-https://www.vogella.com/tutorials/Eclipse4CSS/article.html
-https://www.vogella.com/tutorials/Eclipse4EventSystem/article.html
+- https://www.vogella.com/tutorials/Eclipse4Services/article.html
+- https://www.vogella.com/tutorials/Eclipse4CSS/article.html
+- https://www.vogella.com/tutorials/Eclipse4EventSystem/article.html
 
-very old
+very old stuff
 https://eclipsesource.com/blogs/2012/05/10/eclipse-4-final-sprint-part-1-the-e4-application-model/
 https://eclipsesource.com/blogs/2012/06/12/eclipse-4-e4-tutorial-part-2/
 https://eclipsesource.com/blogs/2012/06/26/eclipse-4-e4-tutorial-part-3-extending-the-application-model/
