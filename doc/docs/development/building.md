@@ -15,7 +15,7 @@ description: How to build Eclipse Peon AI
 
 ```bash
 # Clone the repository
-git clone https://github.com/sterl/eclipse-peon-ai.git
+git clone https://github.com/sterlp/eclipse-peon-ai.git
 cd eclipse-peon-ai
 
 # Build the complete project

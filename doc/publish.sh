@@ -1,15 +1,15 @@
 #!/bin/bash
-pip install --upgrade -r requirements.txt
-mkdocs build
+npm install
+npm run docs:build
+
 # Configuration
 HOST="w0125542.kasserver.com"
 USER="f01810c9"
-# export LFTP_PASSWORD
 PASSWORD=$(security find-generic-password -a "$USER" -s "$HOST" -w)
-LOCAL_DIR="site"
+LOCAL_DIR=".vitepress/dist"
 REMOTE_DIR="."
 
-# Upload with mirror (reverse mirror from local to remote)
+# Upload with mirror
 lftp -u "$USER","$PASSWORD" "$HOST" <<EOF
 mirror --reverse \
        --delete \

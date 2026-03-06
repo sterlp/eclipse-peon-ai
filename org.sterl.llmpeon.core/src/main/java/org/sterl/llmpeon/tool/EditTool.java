@@ -17,6 +17,9 @@ public class EditTool extends AbstractTool {
         this.workingDir = workingDir.toAbsolutePath().normalize();
     }
 
+    @Override
+    public boolean isEditTool() { return true; }
+
     public void setWorkingDir(Path workingDir) {
         this.workingDir = workingDir.toAbsolutePath().normalize();
     }

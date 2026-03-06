@@ -16,9 +16,15 @@ public class AiCompressorAgent implements AiAgent {
     private static final SystemMessage COMPRESS_SYSTEM = SystemMessage.systemMessage("""
             You are a conversation compressor. Compress the conversation into a concise briefing. Structure the briefing into two parts:
             1. WHAT:  <Feature Name>
-            Contains a concise summary auf all instruction from the user. What should be achived and which requirements do we know?
+            Contains a concise summary auf all instruction from the user.
+            - What should be achived and which requirements do we know?
+            - What has be desided till now and how?
+
             2. HOW: <Design or Plan>
-            How does the soltion looks like? What has been done till now? Which files have been modifed and why? Which components do what?
+            - How does the soltion looks like? 
+            - What has been done till now? 
+            - Which files have been modifed and why? 
+            - Which components do what?
 
             Preserve:
             - Key decisions and their rationale
@@ -33,8 +39,8 @@ public class AiCompressorAgent implements AiAgent {
             - Superseded decisions (only keep the final decision)
             - Greetings, filler, and pleasantries
 
-            Format as a structured summary the developer can continue working from.
-            Be as short but keeping all essential context and information.
+            Format as a structured summary to continue working from.
+            Be short but keeping all essential contextual information.
             """);
     
     private final ChatModel chatModel;

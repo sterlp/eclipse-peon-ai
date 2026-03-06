@@ -1,6 +1,13 @@
+---
+title: Eclipse Peon AI
+description: An Eclipse plugin that brings a lightweight, context-aware LLM assistant directly into the Eclipse workbench to support developers in their daily workflow.
+---
+
 # Eclipse Peon AI
 
-Eclipse Peon AI is an Eclipse RCP plugin that integrates a lightweight, context-aware LLM assistant directly into your Eclipse workbench. It helps developers with coding tasks by providing AI-powered assistance while keeping full control over your code.
+[Get Started](/setup/installation) • [GitHub](https://github.com/sterlp/eclipse-peon-ai)
+
+Eclipse Peon AI is an Eclipse RCP plugin that integrates a lightweight, context-aware LLM assistant directly into your Eclipse workbench.
 
 ## Features
 
@@ -88,7 +95,7 @@ The AI assistant has access to several tools:
 
 ```bash
 # Clone the repository
-git clone https://github.com/sterl/eclipse-peon-ai.git
+git clone https://github.com/sterlp/eclipse-peon-ai.git
 cd eclipse-peon-ai
 
 # Build the project
@@ -104,7 +111,6 @@ mvn clean verify
 
 ## Links
 
-- [GitHub Repository](https://github.com/sterl/eclipse-peon-ai)
-- [Issue Tracker](https://github.com/sterl/eclipse-peon-ai/issues)
+- [GitHub Repository](https://github.com/sterlp/eclipse-peon-ai)
 - [LangChain4j Documentation](https://docs.langchain4j.dev/)
 - [Ollama](https://ollama.com/)

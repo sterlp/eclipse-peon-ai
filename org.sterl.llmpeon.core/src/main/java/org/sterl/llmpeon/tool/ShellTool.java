@@ -24,6 +24,9 @@ public class ShellTool extends AbstractTool {
     private static final int MAX_OUTPUT_LENGTH = 30_000;
     private static final int DEFAULT_TAIL_LINES = 50;
     
+    @Override
+    public boolean isEditTool() { return true; }
+
     @Tool("Returns operation system and user info os.name, user.name etc. use this if the operation system matters if command should be executed.")
     public String readOperationSystemInformation() {
         return "java.version: " + System.getProperty("java.version")

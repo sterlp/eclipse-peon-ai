@@ -13,7 +13,7 @@ description: How to install Eclipse Peon AI
 
 ![install ollama](../assets/install.png)
 
-### Googe Gemini exampe
+### Google Gemini example
 
 ![install ollama](../assets/google-gemini.png)
 

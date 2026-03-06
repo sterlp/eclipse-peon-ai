@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 
 public class ChatMarkdownWidget extends Composite {
@@ -128,6 +129,8 @@ public class ChatMarkdownWidget extends Composite {
                 appendMessage(new SimpleChatMessage("THINK", text = am.thinking()));
             }
             text = am.text();
+        } else if (msg instanceof ToolExecutionResultMessage tr) {
+            text = tr.text();
         }
         if (text != null) text = text.trim();
         else return;

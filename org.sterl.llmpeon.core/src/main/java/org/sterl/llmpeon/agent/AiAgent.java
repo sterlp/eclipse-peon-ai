@@ -19,6 +19,5 @@ public interface AiAgent {
         return call(Arrays.asList(message), monitor);
     }
     
-    default void withTools(List<ToolSpecification> tools) {
-    }
+    default void withTools(List<ToolSpecification> tools) {}
 }

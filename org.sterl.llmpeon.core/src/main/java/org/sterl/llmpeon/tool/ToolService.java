@@ -1,16 +1,21 @@
 package org.sterl.llmpeon.tool;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.sterl.llmpeon.agent.AgentService;
 import org.sterl.llmpeon.agent.AiMonitor;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agent.tool.ToolSpecifications;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.model.chat.response.ChatResponse;
 
 /**
  * Owns all tools and the tool registry.
@@ -28,7 +33,14 @@ public class ToolService {
 
     public List<ToolSpecification> toolSpecifications() {
         return toolExecutors.values().stream()
-                .filter(SmartToolExecutor::isActive)
+                .map(SmartToolExecutor::getSpec)
+                .toList();
+    }
+
+    /** Returns only tool specs for tools where {@link SmartTool#isEditTool()} is false. */
+    public List<ToolSpecification> readOnlyToolSpecifications() {
+        return toolExecutors.values().stream()
+                .filter(e -> !e.getTool().isEditTool())
                 .map(SmartToolExecutor::getSpec)
                 .toList();
     }
@@ -36,27 +48,52 @@ public class ToolService {
     public SmartToolExecutor getExecutor(String toolName) {
         return toolExecutors.get(toolName);
     }
+    
+    /** Returns true if AI-triggered compression was applied (caller should end the turn). */
+    public List<ChatMessage> runAllTools(ChatResponse response, AgentService agentService, AiMonitor monitor, List<ChatMessage> memory) {
+        if (!response.aiMessage().hasToolExecutionRequests()) {
+            // No tools to run — still add the final AI message to memory
+            var newMemory = new ArrayList<ChatMessage>(memory);
+            newMemory.add(response.aiMessage());
+            return newMemory;
+        }
 
-    /**
-     * Executes a tool by name and returns the result as a string.
-     * Unknown tools and all exceptions are caught and returned as error strings
-     * so the calling agent can see and react to them.
-     */
-    public String execute(ToolExecutionRequest tr, AiMonitor monitor) {
+        var toolResults = new ArrayList<ToolExecutionResultMessage>();
+        boolean clearMemory = false;
+
+        for (var tr : response.aiMessage().toolExecutionRequests()) {
+            var trResult = execute(tr, monitor, agentService, memory);
+            toolResults.add(trResult.message());
+            if (trResult.clearMemory()) clearMemory = true;
+            if (monitor.isCanceled()) break;
+        }
+
+        var newMemory = new ArrayList<ChatMessage>();
+        if (!clearMemory) newMemory.addAll(memory);
+        newMemory.add(response.aiMessage());
+        newMemory.addAll(toolResults);
+        return newMemory;
+    }
+
+    static record ToolResult(boolean clearMemory, ToolExecutionResultMessage message) {}
+    
+    public ToolResult execute(ToolExecutionRequest tr, AiMonitor monitor, AgentService agentService, List<ChatMessage> memory) {
         var executor = toolExecutors.get(tr.name());
+        String result;
         if (executor == null) {
-            String error = "Error: unknown tool '" + tr.name() + "' check spelling";
-            AiMonitor.nullSafty(monitor).onProblem(error);
-            return error;
+            result = "Error: unknown tool '" + tr.name() + "' check spelling";
+            AiMonitor.nullSafty(monitor).onProblem(result);
+        } else {
+            try {
+                result = executor.run(tr, monitor, agentService, memory);
+            } catch (IllegalArgumentException e) {
+                // user-facing argument error — return as-is so the LLM can correct itself
+                result = e.getMessage();
+            }
         }
-        try {
-            return executor.run(tr, monitor);
-        } catch (IllegalArgumentException e) {
-            // user-facing argument error — return as-is so the LLM can correct itself
-            return e.getMessage();
-        } catch (Exception e) {
-            return "Tool error: " + e.getMessage();
-        }
+        return new ToolResult(
+                executor == null ? false : executor.shouldClearMemory(), 
+                ToolExecutionResultMessage.from(tr.id(), tr.name(), result));
     }
     
     /**

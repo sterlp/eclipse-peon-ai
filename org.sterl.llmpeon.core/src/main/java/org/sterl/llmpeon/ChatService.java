@@ -7,6 +7,7 @@ import java.util.List;
 
 import org.sterl.llmpeon.agent.AgentService;
 import org.sterl.llmpeon.agent.AiMonitor;
+import org.sterl.llmpeon.agent.PeonMode;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.skill.SkillRecord;
@@ -35,6 +36,8 @@ public class ChatService {
     private int tokenSize = 0;
 
     private List<SystemMessage> standingOrders = Collections.emptyList();
+
+    private PeonMode mode = PeonMode.DEV;
 
     public ChatService(LlmConfig config, ToolService toolService, SkillService skillService) {
         this.config = config;
@@ -83,6 +86,43 @@ public class ChatService {
         return tokenSize;
     }
 
+    public PeonMode getMode() {
+        return mode;
+    }
+
+    /**
+     * Switches the agent mode. When switching from PLAN to DEV the plan is handed
+     * over automatically: the last AI message becomes the starting context of a
+     * fresh dev session.
+     */
+    public void setMode(PeonMode newMode) {
+        if (newMode == this.mode) return;
+        if (this.mode == PeonMode.PLAN && newMode == PeonMode.DEV) {
+            handoverPlanToDev();
+        }
+        this.mode = newMode;
+    }
+
+    /**
+     * Extracts the last AI message (the completed plan), clears memory, and adds
+     * the plan as the first user message for the dev agent to implement.
+     */
+    public void handoverPlanToDev() {
+        var messages = memory.messages();
+        String planText = null;
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            if (messages.get(i) instanceof AiMessage ai && StringUtil.hasValue(ai.text())) {
+                planText = ai.text();
+                break;
+            }
+        }
+        memory.clear();
+        if (planText != null) {
+            memory.add(AiMessage.from(planText));
+            memory.add(UserMessage.from("Please implement it the plan."));
+        }
+    }
+
     public ChatResponse call(String message, AiMonitor monitor) {
         monitor = AiMonitor.nullSafty(monitor);
         // auto-compress at 95%
@@ -93,25 +133,22 @@ public class ChatService {
         if (message != null) memory.add(UserMessage.from(message));
         ChatResponse response = null;
 
-        var developerAgent = agentService.newDeveloperAgent();
+        boolean isPlan = mode == PeonMode.PLAN;
+        var agent = isPlan ? agentService.newPlannerAgent() : agentService.newDeveloperAgent();
+        var toolSpecs = isPlan ? toolService.readOnlyToolSpecifications() : toolService.toolSpecifications();
+
         do {
-            // orders
             var messagesToSend = new ArrayList<ChatMessage>(standingOrders);
-            // any skills
             if (skillService.hasSkills()) {
                 messagesToSend.addFirst(skillService.skillMessage());
             }
-            // history
             messagesToSend.addAll(memory.messages());
 
-            developerAgent.withTools(toolService.toolSpecifications());
-            response = developerAgent.call(messagesToSend, monitor);
+            agent.withTools(toolSpecs);
+            response = agent.call(messagesToSend, monitor);
             updateTokenCount(response);
 
-            // add the AI message if it has any text
-            memory.add(response.aiMessage());
-
-            runAllTools(monitor, response);
+            memory.set(toolService.runAllTools(response, agentService, monitor, memory.messages()));
 
             if (monitor.isCanceled()) break;
         } while (response.aiMessage().hasToolExecutionRequests()
@@ -120,20 +157,11 @@ public class ChatService {
         if (response != null) {
             System.out.println(response.metadata());
             System.out.println(response.aiMessage().text());
+            
+            updateTokenCount(response);
         }
 
         return response;
-    }
-
-    private void runAllTools(AiMonitor monitor, ChatResponse response) {
-        if (response.aiMessage().hasToolExecutionRequests()) {
-            for (var tr : response.aiMessage().toolExecutionRequests()) {
-                String result = toolService.execute(tr, monitor);
-                memory.add(ToolExecutionResultMessage.from(tr.id(), tr.name(), result));
-
-                if (monitor.isCanceled()) return;
-            }
-        }
     }
 
     public static String trimArgs(String value) {
@@ -153,15 +181,10 @@ public class ChatService {
     public ChatResponse compressContext(AiMonitor monitor) {
         var compressorAgent = agentService.newCompressorAgent();
         var response = compressorAgent.call(memory.messages(), monitor);
-        replaceMemory(response.aiMessage());
+        memory.clear();
+        memory.add(response.aiMessage());
         updateTokenCount(response);
         return response;
-    }
-
-    /** Clears the current memory and replaces it with a single message. */
-    public void replaceMemory(AiMessage msg) {
-        memory.clear();
-        memory.add(msg);
     }
 
     private void updateTokenCount(ChatResponse response) {

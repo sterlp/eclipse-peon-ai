@@ -15,9 +15,11 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Text;
+import org.sterl.llmpeon.agent.PeonMode;
 import org.sterl.llmpeon.ChatService;
 import org.sterl.llmpeon.parts.PeonConstants;
 import org.sterl.llmpeon.parts.agentsmd.AgentsMdService;
@@ -38,6 +40,7 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
     private Button btnSend;
     private Button btnCompress;
     private Button btnClear;
+    private Combo modeCombo;
 
     private boolean working = false;
 
@@ -103,7 +106,18 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
     private void createCommandBar(Composite parent) {
         Composite bar = new Composite(parent, SWT.NONE);
         bar.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-        bar.setLayout(new GridLayout(3, false));
+        bar.setLayout(new GridLayout(4, false));
+
+        modeCombo = new Combo(bar, SWT.READ_ONLY);
+        modeCombo.setItems("Peon-Plan", "Peon-Dev");
+        modeCombo.select(1); // default: Peon-Dev
+        modeCombo.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+        modeCombo.setToolTipText("Select agent mode");
+        modeCombo.addListener(SWT.Selection, e -> {
+            PeonMode selected = modeCombo.getSelectionIndex() == 0 ? PeonMode.PLAN : PeonMode.DEV;
+            chatService.setMode(selected);
+            refreshChat();
+        });
 
         btnSend = new Button(bar, SWT.PUSH);
         btnSend.setImage(org.eclipse.debug.ui.DebugUITools.getImage(

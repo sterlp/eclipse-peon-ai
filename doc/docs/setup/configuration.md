@@ -34,9 +34,10 @@ Run models locally — no API key required.
 - [OpenAI model overview](https://platform.openai.com/docs/models)
 - [OpenAI API keys](https://platform.openai.com/api-keys)
 
-!!! tip "OpenAI-compatible APIs"
-    Any OpenAI-compatible server (LM Studio, OpenRouter, LocalAI, vLLM, …) works by changing the Base URL.
-    Set the API Key to a dummy value like `none` if the server does not require one.
+::: tip OpenAI-compatible APIs
+Any OpenAI-compatible server (LM Studio, OpenRouter, LocalAI, vLLM, …) works by changing the Base URL.
+Set the API Key to a dummy value like `none` if the server does not require one.
+:::
 
 ### Google Gemini
 

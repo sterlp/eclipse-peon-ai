@@ -43,7 +43,7 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
         addField(new StringFieldEditor(PeonConstants.PREF_SKILL_DIRECTORY, "Skills directory:", getFieldEditorParent()));
 
         Link link = new Link(getFieldEditorParent(), SWT.NONE);
-        link.setText("See <a href=\"https://peon-ai-4e.sterl.org/setup/configuration/\">online configuration guide</a> for help.");
+        link.setText("See <a href=\"https://peon-ai-4e.sterl.org/setup/configuration\">online configuration guide</a> for help.");
         GridData gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
         gd.horizontalSpan = 2;
         link.setLayoutData(gd);
