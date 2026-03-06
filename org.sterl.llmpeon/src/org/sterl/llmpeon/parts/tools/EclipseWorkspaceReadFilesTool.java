@@ -1,20 +1,16 @@
+
 package org.sterl.llmpeon.parts.tools;
 
-import java.io.ByteArrayInputStream;
-import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.util.ArrayList;
 
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IResourceVisitor;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.NullProgressMonitor;
-import org.sterl.llmpeon.agent.AiMonitor.AiFileUpdate;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.shared.FileUtils;
@@ -106,8 +102,8 @@ public class EclipseWorkspaceReadFilesTool extends AbstractTool {
         return "Found " + matches.size() + " file(s):\n" + String.join("\n", matches);
     }
 
-    @Tool("Lists files and folders directly in a workspace directory (non-recursive). "
-            + "Use this to navigate and explore the workspace structure. "
+    @Tool("Lists files and folders directly in eclipse workspace directory (non-recursive). "
+            + "Use this to navigate and explore the workspace and project structure in eclipse. "
             + "If the path is empty or root, lists all open Eclipse projects. "
             + "Returns entries prefixed with [DIR] or [FILE].")
     public String listWorkspaceDirectory(
