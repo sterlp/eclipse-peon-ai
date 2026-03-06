@@ -106,8 +106,6 @@ public class EclipseRunTestTool extends AbstractTool {
                 ILaunchConfiguration config = wc.doSave();
                 config.launch(ILaunchManager.RUN_MODE, new NullProgressMonitor());
 
-                // Wait for session to finish
-                monitorMessage("Waiting for tests to finish ...");
                 boolean completed = WaitUtil.awaitCondition(
                         finished::get, MAX_TEST_DURATION, POLL_INTERVAL_MS);
 
@@ -117,6 +115,7 @@ public class EclipseRunTestTool extends AbstractTool {
                             + failures.size() + " failures so far.";
                 }
 
+                monitorMessage("Reading test results ...");
                 return formatResults(sessionName[0], testCount[0], failures);
             } finally {
                 JUnitCore.removeTestRunListener(listener);
