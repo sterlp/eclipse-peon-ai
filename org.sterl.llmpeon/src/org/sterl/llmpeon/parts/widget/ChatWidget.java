@@ -40,6 +40,7 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
     private Button btnSend;
     private Button btnCompress;
     private Button btnClear;
+    private Button btnImplement;
     private Combo modeCombo;
 
     private boolean working = false;
@@ -106,7 +107,7 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
     private void createCommandBar(Composite parent) {
         Composite bar = new Composite(parent, SWT.NONE);
         bar.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-        bar.setLayout(new GridLayout(4, false));
+        bar.setLayout(new GridLayout(5, false));
 
         modeCombo = new Combo(bar, SWT.READ_ONLY);
         modeCombo.setItems("Peon-Plan", "Peon-Dev");
@@ -137,9 +138,37 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
         btnClear.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
         btnClear.setToolTipText("Clear conversation context");
         btnClear.addListener(SWT.Selection, e -> {
-            chatService.getMessages().clear();
+            chatService.clear();
             chatHistory.clear();
         });
+
+        btnImplement = new Button(bar, SWT.PUSH);
+        btnImplement.setText("Start Impl.");
+        GridData gdImpl = new GridData(SWT.CENTER, SWT.CENTER, false, false);
+        gdImpl.exclude = true;
+        btnImplement.setLayoutData(gdImpl);
+        btnImplement.setVisible(false);
+        btnImplement.setEnabled(false);
+        btnImplement.setToolTipText("Switch to Dev mode and start implementing the plan");
+        btnImplement.addListener(SWT.Selection, e -> {
+            modeCombo.select(1);
+            chatService.setMode(PeonMode.DEV);
+            refreshChat();
+            doSendMessage();
+        });
+    }
+
+    private void updateModeUI() {
+        boolean isPlan = chatService.getMode() == PeonMode.PLAN;
+        GridData gd = (GridData) btnImplement.getLayoutData();
+        gd.exclude = !isPlan;
+        btnImplement.setVisible(isPlan);
+        if (isPlan) {
+            boolean hasAiMessage = chatService.getMessages().stream()
+                    .anyMatch(m -> m.type() == ChatMessageType.AI);
+            btnImplement.setEnabled(hasAiMessage);
+        }
+        btnImplement.getParent().layout();
     }
 
     /**
@@ -171,12 +200,15 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
             chatHistory.appendMessage(msg);
         });
         refreshStatusLine();
+        updateModeUI();
     }
 
     void lockWhileWorking(boolean value) {
         this.working = value;
         btnCompress.setEnabled(!this.working);
         btnSend.setEnabled(!this.working);
+        btnClear.setEnabled(!this.working);
+        btnImplement.setEnabled(!this.working);
     }
 
     @Override
@@ -245,15 +277,17 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
                     orders.add(SystemMessage.from(agentsMdService.read()));
                 }
                 if (!orders.isEmpty()) chatService.setStandingOrders(orders);
-                var result = chatService.call(text + getUserSelection(), this);
+                String msg = text + getUserSelection();
+                var result = chatService.call(msg.isEmpty() ? null : msg, this);
 
                 Display.getDefault().asyncExec(() -> {
                     if (chatService.getMessages().size() < msgCountBefore) {
                         refreshChat();
                     } else {
                         chatHistory.appendMessage(result.aiMessage());
+                        refreshStatusLine();
+                        updateModeUI();
                     }
-                    refreshStatusLine();
                 });
             } catch (Exception e) {
                 ex = e;

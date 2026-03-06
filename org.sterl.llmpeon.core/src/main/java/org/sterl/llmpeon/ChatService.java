@@ -109,6 +109,8 @@ public class ChatService {
      */
     public void handoverPlanToDev() {
         var messages = memory.messages();
+        if (messages.size() < 5) return; // no need for compression
+
         String planText = null;
         for (int i = messages.size() - 1; i >= 0; i--) {
             if (messages.get(i) instanceof AiMessage ai && StringUtil.hasValue(ai.text())) {
@@ -118,8 +120,7 @@ public class ChatService {
         }
         memory.clear();
         if (planText != null) {
-            memory.add(AiMessage.from(planText));
-            memory.add(UserMessage.from("Please implement it the plan."));
+            memory.add(UserMessage.from(planText + "\n\nStart implementation on the given plan above."));
         }
     }
 
@@ -216,6 +217,10 @@ public class ChatService {
         return 0;
     }
 
+    public void clear() {
+        memory.clear();
+    }
+    
     public List<ChatMessage> getMessages() {
         return memory.messages();
     }
