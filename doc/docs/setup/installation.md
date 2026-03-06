@@ -5,6 +5,10 @@ description: How to install Eclipse Peon AI
 
 # Installation
 
+## Eclipse marketplace
+
+- [Peon AI on eclipse marketplace](https://marketplace.eclipse.org/content/peon-ai)
+
 ## Ollama example
 
 ![install ollama](../assets/install.png)

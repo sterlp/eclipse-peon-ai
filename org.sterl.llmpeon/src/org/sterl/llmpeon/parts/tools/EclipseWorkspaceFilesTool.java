@@ -1,8 +1,6 @@
 package org.sterl.llmpeon.parts.tools;
 
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -52,7 +50,7 @@ public class EclipseWorkspaceFilesTool extends AbstractTool {
         monitorMessage("Reading " + filePath);
         var file = EclipseUtil.resolveInEclipse(filePath);
         if (file.isPresent() && file.get() instanceof IFile f) {
-            return readEclipseFile(f);
+            return IoUtils.readFile(f);
         }
         // fallback to raw filesystem for absolute paths
         var fsPath = java.nio.file.Path.of(filePath);
@@ -247,7 +245,7 @@ public class EclipseWorkspaceFilesTool extends AbstractTool {
     }
 
     private AiFileUpdate writeEclipseFile(IFile file, String content) {
-        var oldContent = readEclipseFile(file);
+        var oldContent = IoUtils.readFile(file);
         try {
             var charset = Charset.forName(file.getCharset());
             file.write(content.getBytes(charset), false, false, true, new NullProgressMonitor());
@@ -279,18 +277,10 @@ public class EclipseWorkspaceFilesTool extends AbstractTool {
     private void ensureFolders(IContainer container) throws CoreException {
         if (container == null || container instanceof IProject) return;
         if (container instanceof IFolder folder) {
-            ensureFolders(folder.getParent());
             if (!folder.exists()) {
+                ensureFolders(folder.getParent());
                 folder.create(IResource.FORCE, true, null);
             }
-        }
-    }
-
-    private String readEclipseFile(IFile file) {
-        try (InputStream contents = file.getContents()) {
-            return IoUtils.toString(contents, file.getCharset());
-        } catch (CoreException | IOException e) {
-            throw new RuntimeException("Failed to read " + file.getFullPath(), e);
         }
     }
 }

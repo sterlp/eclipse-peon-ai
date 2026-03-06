@@ -204,19 +204,28 @@
             // first try to merge
             const lastMessage = container.lastElementChild;
             if (lastMessage && lastMessage.classList.contains(message.role)) {
-                // Merge with previous TOOL message
+                // Merge with previous messages
                 lastMessage.innerHTML += md.render(message.message ?? "");
+                
+                if (message.role === 'TOOL') handleToolMessages(lastMessage);
             } else {
                 // Create new message
                 div.innerHTML = md.render(message.message ?? "");
                 container.appendChild(div);
             }
 
-            if (message.message) enhanceCodeBlocks(div);
+            if (message.message) addCopyButton(div);
             window.scrollTo(0, document.body.scrollHeight);
         }
+        
+        function handleToolMessages(lastMessage) {
+            const toolMessages = container.querySelectorAll('.message.TOOL');
+            if (toolMessages && toolMessages.length > 10) {
+                toolMessages[0].remove();
+            }
+        }
 
-        function enhanceCodeBlocks(root) {
+        function addCopyButton(root) {
             const copyBtn = root.querySelector(".copy-btn");
             const code = root.querySelector(".hljs");
             if (!copyBtn || !code) return;
