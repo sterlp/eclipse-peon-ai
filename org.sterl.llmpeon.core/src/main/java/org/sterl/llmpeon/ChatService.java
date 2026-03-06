@@ -118,7 +118,8 @@ public class ChatService {
         }
         memory.clear();
         if (planText != null) {
-            memory.add(UserMessage.from("Implement the following plan:\n\n" + planText));
+            memory.add(AiMessage.from(planText));
+            memory.add(UserMessage.from("Please implement it the plan."));
         }
     }
 
