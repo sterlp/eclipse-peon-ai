@@ -33,6 +33,15 @@ public class ToolService {
                 .toList();
     }
 
+    /** Returns only tool specs for tools where {@link SmartTool#isEditTool()} is false. */
+    public List<ToolSpecification> readOnlyToolSpecifications() {
+        return toolExecutors.values().stream()
+                .filter(SmartToolExecutor::isActive)
+                .filter(e -> !e.getTool().isEditTool())
+                .map(SmartToolExecutor::getSpec)
+                .toList();
+    }
+
     public SmartToolExecutor getExecutor(String toolName) {
         return toolExecutors.get(toolName);
     }

@@ -48,6 +48,10 @@ public class AgentService {
         return new AiDeveloperAgent(model);
     }
 
+    public AiPlannerAgent newPlannerAgent() {
+        return new AiPlannerAgent(model);
+    }
+
     public AiSearchAgent newSearchAgent() {
         return new AiSearchAgent(model);
     }

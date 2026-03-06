@@ -29,11 +29,13 @@ import org.sterl.llmpeon.parts.tools.EclipseBuildTool;
 import org.sterl.llmpeon.parts.tools.EclipseCodeNavigationTool;
 import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
 import org.sterl.llmpeon.parts.tools.EclipseRunTestTool;
-import org.sterl.llmpeon.parts.tools.EclipseWorkspaceFilesTool;
+import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFilesTool;
+import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFilesTool;
 import org.sterl.llmpeon.parts.widget.ChatWidget;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.tool.CompressorAgentTool;
-import org.sterl.llmpeon.tool.DiskFilesTool;
+import org.sterl.llmpeon.tool.DiskFileReadTools;
+import org.sterl.llmpeon.tool.DiskFileWriteTools;
 import org.sterl.llmpeon.tool.EditTool;
 import org.sterl.llmpeon.tool.SearchAgentTool;
 import org.sterl.llmpeon.tool.ShellTool;
@@ -53,7 +55,8 @@ public class AIChatView {
     private ChatService chatService;
     private final ToolService toolService = new ToolService();
     private final SkillService skillService = new SkillService();
-    private final EclipseWorkspaceFilesTool workspaceFilesTool = new EclipseWorkspaceFilesTool();
+    private final EclipseWorkspaceWriteFilesTool workspaceWriteFilesTool = new EclipseWorkspaceWriteFilesTool();
+    private final EclipseWorkspaceReadFilesTool workspaceReadFilesTool = new EclipseWorkspaceReadFilesTool();
 
     final AtomicReference<IResource> contextFile = new AtomicReference<IResource>();
 
@@ -67,8 +70,10 @@ public class AIChatView {
     public void createPartControl(Composite parent) {
         this.parent = parent;
         parent.setLayout(new FillLayout());
-        toolService.addTool(workspaceFilesTool);
-        toolService.addTool(new DiskFilesTool(ResourcesPlugin.getWorkspace().getRoot().getRawLocation().toFile().toPath()));
+        toolService.addTool(workspaceWriteFilesTool);
+        toolService.addTool(workspaceReadFilesTool);
+        toolService.addTool(new DiskFileWriteTools(ResourcesPlugin.getWorkspace().getRoot().getRawLocation().toFile().toPath()));
+        toolService.addTool(new DiskFileReadTools(ResourcesPlugin.getWorkspace().getRoot().getRawLocation().toFile().toPath()));
         toolService.addTool(new WebFetchTool());
         toolService.addTool(new EclipseBuildTool());
         toolService.addTool(new EclipseGrepTool());
@@ -156,7 +161,8 @@ public class AIChatView {
             selection = f;
         }
         contextFile.set(selection);
-        workspaceFilesTool.setCurrentProject(EclipseUtil.resolveProject(selection));
+        workspaceWriteFilesTool.setCurrentProject(EclipseUtil.resolveProject(selection));
+        workspaceReadFilesTool.setCurrentProject(EclipseUtil.resolveProject(selection));
         if (chat != null) Display.getDefault().asyncExec(() -> chat.updateContextFile(contextFile.get()));
     }
 
