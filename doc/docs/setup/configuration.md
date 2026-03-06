@@ -50,6 +50,8 @@ Run models locally — no API key required.
 - [Gemini model overview](https://ai.google.dev/gemini-api/docs/models/gemini)
 - [Get a free API key](https://aistudio.google.com/apikey)
 
+![google gemnini](../assets/google-gemini.png)
+
 ### Mistral AI
 
 | Setting | Value |
@@ -61,6 +63,8 @@ Run models locally — no API key required.
 
 - [Mistral model overview](https://docs.mistral.ai/getting-started/models/models_overview/)
 - [Get a Mistral API key](https://console.mistral.ai/api-keys/)
+
+![google gemnini](../assets/mistral-setup.png)
 
 ## Testing the Connection
 

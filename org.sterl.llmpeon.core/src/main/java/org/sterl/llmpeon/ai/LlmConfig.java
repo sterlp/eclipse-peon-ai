@@ -30,6 +30,7 @@ public record LlmConfig (
             return OpenAiChatModel.builder()
                     .timeout(Duration.ofMinutes(2))
                     .baseUrl(url())
+                    .strictJsonSchema(true)
                     .modelName(model())
                     .apiKey(apiKey())
                     .maxTokens(tokenWindow())

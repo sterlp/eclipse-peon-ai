@@ -196,6 +196,9 @@
             },
         });
 
+        function toolMessage(message) {
+            if (message) appendMessage({role: 'TOOL', message})
+        }
         function appendMessage(message) {
             const container = document.getElementById("chat");
             const div = document.createElement("div");
@@ -207,18 +210,18 @@
                 // Merge with previous messages
                 lastMessage.innerHTML += md.render(message.message ?? "");
                 
-                if (message.role === 'TOOL') handleToolMessages(lastMessage);
+                if (message.role === 'TOOL') handleToolMessages(container, lastMessage);
             } else {
                 // Create new message
                 div.innerHTML = md.render(message.message ?? "");
                 container.appendChild(div);
             }
 
-            if (message.message) addCopyButton(div);
+            if (message.message) addCopyButton(lastMessage && lastMessage.classList.contains(message.role) ? lastMessage : div);
             window.scrollTo(0, document.body.scrollHeight);
         }
         
-        function handleToolMessages(lastMessage) {
+        function handleToolMessages(container, lastMessage) {
             const toolMessages = container.querySelectorAll('.message.TOOL');
             if (toolMessages && toolMessages.length > 10) {
                 toolMessages[0].remove();
@@ -231,9 +234,32 @@
             if (!copyBtn || !code) return;
 
             copyBtn.onclick = () => {
-                navigator.clipboard.writeText(code.innerText);
-                btn.classList.add('copied');
-                setTimeout(() => btn.classList.remove('copied'), 1500);
+                const text = code.innerText;
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        copyBtn.classList.add('copied');
+                        setTimeout(() => copyBtn.classList.remove('copied'), 1500);
+                    }).catch(err => {
+                        toolMessage('Failed to copy text: ' + err);
+                    });
+                } else {
+                    // Fallback for non-secure contexts (e.g. Eclipse WebView / file://)
+                    const ta = document.createElement('textarea');
+                    ta.value = text;
+                    ta.style.position = 'fixed';
+                    ta.style.opacity = '0';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    try {
+                        document.execCommand('copy');
+                        copyBtn.classList.add('copied');
+                        setTimeout(() => copyBtn.classList.remove('copied'), 1500);
+                    } catch (err) {
+                        toolMessage('Failed to copy text: ' + err);
+                    } finally {
+                        document.body.removeChild(ta);
+                    }
+                }
             };
         }
 
@@ -264,12 +290,12 @@
 </body>
 
 <script>
-    
+
     if (!window.markdownit) {
         document.getElementById("chat").innerHTML =
             '<div style="color:red">Failed to load markdown-it</div>';
     }
-    /*
+/*    
     appendMessage({role: "USER", message: "Write hello world"});
     appendMessage({
         role: 'AI',
@@ -299,7 +325,7 @@ yes and some xml
     appendMessage({role: "TOOL", message: "Loading foo.text"});
     appendMessage({role: "TOOL", message: "Loading foo.text"});
     appendMessage({role: "USER", message: "Faster ...!"});
-    */
+*/
 </script>
 
 </html>
