@@ -20,11 +20,11 @@ Use it for project-specific stuff:
 - Important conventions or constraints
 - Links to relevant specs or docs
 
-## Recommondations
+## Recommendations
 
 - Read https://www.sri.inf.ethz.ch/publications/gloaguen2026agentsmd
 - **Keep it short.** Every line gets sent on every request.
-- write it yourself
+- Write it yourself
 
 ```markdown
 # my-service

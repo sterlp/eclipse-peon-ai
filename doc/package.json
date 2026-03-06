@@ -1,0 +1,14 @@
+{
+  "name": "eclipse-peon-ai-docs",
+  "version": "1.0.0",
+  "scripts": {
+    "docs:dev": "vitepress dev",
+    "docs:build": "vitepress build",
+    "docs:preview": "vitepress preview"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.0.0",
+    "markdown-it-container": "^3.0.0",
+    "vitepress": "^2.0.0-alpha.16"
+  }
+}
