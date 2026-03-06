@@ -14,7 +14,11 @@ Eclipse Peon AI is an Eclipse RCP plugin that integrates a lightweight, context-
 
 ## Installation
 
-### Update Site (Recommended)
+### Eclipse marketplace
+
+- [Peon AI on eclipse marketplace](https://marketplace.eclipse.org/content/peon-ai)
+
+### Update Site
 
 Install directly from Eclipse:
 

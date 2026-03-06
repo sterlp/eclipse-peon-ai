@@ -6,6 +6,11 @@ import org.eclipse.jface.preference.ComboFieldEditor;
 import org.eclipse.jface.preference.FieldEditorPreferencePage;
 import org.eclipse.jface.preference.IntegerFieldEditor;
 import org.eclipse.jface.preference.StringFieldEditor;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.SelectionListener;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.program.Program;
+import org.eclipse.swt.widgets.Link;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
 import org.eclipse.ui.preferences.ScopedPreferenceStore;
@@ -36,6 +41,13 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
         addField(new BooleanFieldEditor(PeonConstants.PREF_THINKING_ENABLED, "Supports Thinking", getFieldEditorParent()));
         addField(new StringFieldEditor(PeonConstants.PREF_API_KEY, "API Key:", getFieldEditorParent()));
         addField(new StringFieldEditor(PeonConstants.PREF_SKILL_DIRECTORY, "Skills directory:", getFieldEditorParent()));
+
+        Link link = new Link(getFieldEditorParent(), SWT.NONE);
+        link.setText("See <a href=\"https://peon-ai-4e.sterl.org/setup/configuration/\">online configuration guide</a> for help.");
+        GridData gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+        gd.horizontalSpan = 2;
+        link.setLayoutData(gd);
+        link.addSelectionListener(SelectionListener.widgetSelectedAdapter(e -> Program.launch(e.text)));
     }
 
     @Override

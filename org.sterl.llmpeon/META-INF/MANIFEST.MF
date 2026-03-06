@@ -5,7 +5,8 @@ Bundle-SymbolicName: org.sterl.llmpeon;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Export-Package: org.sterl.llmpeon.parts
 Bundle-Vendor: Paul Sterl
-Require-Bundle: org.eclipse.jface,
+Require-Bundle: org.eclipse.swt,
+ org.eclipse.jface,
  org.eclipse.e4.ui.model.workbench,
  org.eclipse.e4.ui.di,
  org.eclipse.e4.core.di,
