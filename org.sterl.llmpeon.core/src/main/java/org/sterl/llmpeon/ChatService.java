@@ -36,6 +36,7 @@ public class ChatService {
     private int tokenSize = 0;
 
     private List<SystemMessage> standingOrders = Collections.emptyList();
+
     private PeonMode mode = PeonMode.DEV;
 
     public ChatService(LlmConfig config, ToolService toolService, SkillService skillService) {
@@ -146,9 +147,7 @@ public class ChatService {
             response = agent.call(messagesToSend, monitor);
             updateTokenCount(response);
 
-            memory.add(response.aiMessage());
-
-            runAllTools(monitor, response);
+            memory.set(toolService.runAllTools(response, agentService, monitor, memory.messages()));
 
             if (monitor.isCanceled()) break;
         } while (response.aiMessage().hasToolExecutionRequests()
@@ -157,20 +156,11 @@ public class ChatService {
         if (response != null) {
             System.out.println(response.metadata());
             System.out.println(response.aiMessage().text());
+            
+            updateTokenCount(response);
         }
 
         return response;
-    }
-
-    private void runAllTools(AiMonitor monitor, ChatResponse response) {
-        if (response.aiMessage().hasToolExecutionRequests()) {
-            for (var tr : response.aiMessage().toolExecutionRequests()) {
-                String result = toolService.execute(tr, monitor);
-                memory.add(ToolExecutionResultMessage.from(tr.id(), tr.name(), result));
-
-                if (monitor.isCanceled()) return;
-            }
-        }
     }
 
     public static String trimArgs(String value) {
@@ -190,15 +180,10 @@ public class ChatService {
     public ChatResponse compressContext(AiMonitor monitor) {
         var compressorAgent = agentService.newCompressorAgent();
         var response = compressorAgent.call(memory.messages(), monitor);
-        replaceMemory(response.aiMessage());
+        memory.clear();
+        memory.add(response.aiMessage());
         updateTokenCount(response);
         return response;
-    }
-
-    /** Clears the current memory and replaces it with a single message. */
-    public void replaceMemory(AiMessage msg) {
-        memory.clear();
-        memory.add(msg);
     }
 
     private void updateTokenCount(ChatResponse response) {

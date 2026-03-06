@@ -22,7 +22,6 @@ import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.sterl.llmpeon.ChatService;
-import org.sterl.llmpeon.agent.AgentService;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.tools.EclipseBuildTool;
@@ -81,19 +80,11 @@ public class AIChatView {
         toolService.addTool(new EditTool(ResourcesPlugin.getWorkspace().getRoot().getRawLocation().toFile().toPath()));
         toolService.addTool(new EclipseRunTestTool());
         toolService.addTool(new EclipseCodeNavigationTool());
+        toolService.addTool(new CompressorAgentTool());
+        toolService.addTool(new SearchAgentTool(toolService));
 
         chatService = new ChatService(LlmPreferenceInitializer.buildWithDefaults(), toolService, skillService);
         chat = new ChatWidget(chatService, parent, SWT.NONE);
-
-        // agent-level tools — class simple name = tool name = registration key
-        AgentService agentService = chatService.getAgentService();
-        var searchTool = new SearchAgentTool(agentService, toolService);
-        agentService.registerAgentTool(SearchAgentTool.class.getSimpleName());
-        toolService.addTool(searchTool);
-
-        var compressorTool = new CompressorAgentTool(chatService);
-        agentService.registerAgentTool(CompressorAgentTool.class.getSimpleName());
-        toolService.addTool(compressorTool);
 
         applyConfig();
 
