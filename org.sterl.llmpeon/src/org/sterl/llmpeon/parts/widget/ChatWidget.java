@@ -154,6 +154,7 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
             modeCombo.select(1);
             chatService.setMode(PeonMode.DEV);
             refreshChat();
+            inputArea.setText("Start Implementation");
             doSendMessage();
         });
     }
@@ -161,14 +162,16 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
     private void updateModeUI() {
         boolean isPlan = chatService.getMode() == PeonMode.PLAN;
         GridData gd = (GridData) btnImplement.getLayoutData();
-        gd.exclude = !isPlan;
-        btnImplement.setVisible(isPlan);
         if (isPlan) {
             boolean hasAiMessage = chatService.getMessages().stream()
                     .anyMatch(m -> m.type() == ChatMessageType.AI);
             btnImplement.setEnabled(hasAiMessage);
         }
-        btnImplement.getParent().layout();
+        if (btnImplement.getVisible() != isPlan) {
+            gd.exclude = !isPlan;
+            btnImplement.setVisible(isPlan);
+            btnImplement.getParent().layout();
+        }
     }
 
     /**
@@ -257,10 +260,9 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
         String text = inputArea.getText().trim();
         if (text.isEmpty() && chatService.getMessages().isEmpty()) return;
         inputArea.setText("");
-        lockWhileWorking(true);
-        
         if (text.length() > 0) chatHistory.appendMessage(new SimpleChatMessage(ChatMessageType.USER.name(), text));
-        
+
+        lockWhileWorking(true);
         Job.create("Peon AI request", monitor -> {
             monitor.beginTask("Arbeit, Arbeit!", IProgressMonitor.UNKNOWN);
             monitorRef.set(monitor);

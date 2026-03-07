@@ -111,16 +111,17 @@ public class ChatService {
         var messages = memory.messages();
         if (messages.size() < 5) return; // no need for compression
 
-        String planText = null;
+        AiMessage plan = null;
         for (int i = messages.size() - 1; i >= 0; i--) {
             if (messages.get(i) instanceof AiMessage ai && StringUtil.hasValue(ai.text())) {
-                planText = ai.text();
+                plan = ai;
                 break;
             }
         }
-        memory.clear();
-        if (planText != null) {
-            memory.add(UserMessage.from(planText + "\n\nStart implementation on the given plan above."));
+
+        if (plan != null) {
+            memory.clear();
+            memory.add(plan);
         }
     }
 
