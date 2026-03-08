@@ -16,6 +16,7 @@ public class CompressorAgentTool extends AbstractTool {
         var summary = agentService.newCompressorAgent().call(memory, monitor);
         return "Context compressed. Summary:\n" 
                 + summary.aiMessage().text()
+                + "\nDon't call me again, until the context has grown a again.\n"
                 + "\nPreserved:\n" + preserve;
     }
     

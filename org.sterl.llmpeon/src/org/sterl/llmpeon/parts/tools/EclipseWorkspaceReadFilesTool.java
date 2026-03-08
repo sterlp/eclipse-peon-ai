@@ -93,7 +93,9 @@ public class EclipseWorkspaceReadFilesTool extends AbstractTool {
         }
 
         if (matches.isEmpty()) {
-            return done("No files found matching '" + query + "' adjust your query or use the disk tool or list listWorkspaceDirectory");
+            return done("No files found matching '" + query + "'. "
+                    + "The file may not exist yet (needs to be created), or try a shorter/different query. "
+                    + "Use findJavaType for Java classes or listWorkspaceDirectory to explore the project structure.");
         }
         return done("Found " + matches.size() + " for: " + query, "Found file(s):\n" + String.join("\n", matches));
     }
