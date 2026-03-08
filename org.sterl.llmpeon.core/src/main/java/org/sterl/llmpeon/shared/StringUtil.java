@@ -10,7 +10,7 @@ public class StringUtil {
     public static String stripToNull(String value) {
         value = strip(value);
         if (value == null || value.length() == 0) return null;
-        return value.strip();
+        return value;
     }
     
     public static boolean hasValue(String value) {

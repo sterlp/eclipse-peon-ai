@@ -8,7 +8,6 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.Flags;
 import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
-import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.ITypeHierarchy;
@@ -26,6 +25,7 @@ import org.eclipse.jdt.core.search.TypeNameMatch;
 import org.eclipse.jdt.core.search.TypeNameMatchRequestor;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
+import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.AbstractTool;
 
 import dev.langchain4j.agent.tool.P;
@@ -33,52 +33,34 @@ import dev.langchain4j.agent.tool.Tool;
 
 public class EclipseCodeNavigationTool extends AbstractTool {
 
-    private static final int MAX_SOURCE_LINES = 200;
     private static final int MAX_TYPE_RESULTS = 10;
     private static final int MAX_REFERENCE_RESULTS = 50;
     private static final int MAX_IMPL_RESULTS = 30;
 
+    // -------------------------------------------------------------------------
+    // Tool 1: Find a type by name — returns metadata only, no source
+    // -------------------------------------------------------------------------
+
     @Tool("""
             Finds a Java type (class, interface, enum, record) by name in the Eclipse workspace.
-            Returns its location, kind, Javadoc, superclass, interfaces, and source code.
-            Accepts simple names ('Foo'), wildcard patterns ('Foo*'), camelCase ('NPE'),
-            or fully qualified names ('com.example.Foo').
-            Use this tool to go to a class definition and read its current code.
-            This is the preferred way to search code classes in an Eclipse workspace.
-            It returns the most recent/current version of the JDK or library used in the project,
-            ensuring you always work with the latest available implementation.
-            Try this first before falling back to a name or file search.
+            Returns location, kind, Javadoc, superclass and interfaces — no source code.
+            Accepts simple names ('Foo'), wildcard patterns ('Foo*'), or fully qualified names ('com.example.Foo').
+            Use getTypeSource afterwards to read the full source of a found type.
+            Try this first before falling back to a file search.
             """)
     public String findJavaType(
-            @P("Type name to find. Simple, wildcard (*), camelCase, or fully qualified.") String typeName,
-            @P("Optional project name to limit search. Empty searches all projects.") String projectName,
-            @P("Optional max lines of source code to include. Default is "
-                    + MAX_SOURCE_LINES + " lines.") String maxSourceLines) {
+            @P("Type name to find. Simple, wildcard (*), or fully qualified.") String typeName,
+            @P("Optional project name to limit search. Empty searches all projects.") String projectName) {
 
         if (typeName == null || typeName.isBlank()) {
             throw new IllegalArgumentException("typeName must not be empty");
-        }
-
-        int sourceLimit = MAX_SOURCE_LINES;
-        if (maxSourceLines != null && !maxSourceLines.isBlank()) {
-            try {
-                sourceLimit = Integer.parseInt(maxSourceLines.trim());
-            } catch (NumberFormatException e) {
-                // ignore, use default
-            }
         }
 
         monitorMessage("Eclipse finding type " + typeName);
 
         try {
             boolean isFqn = typeName.contains(".") && !typeName.contains("*");
-            List<IType> found;
-
-            if (isFqn) {
-                found = findByFqn(typeName, projectName);
-            } else {
-                found = findBySearch(typeName, projectName);
-            }
+            List<IType> found = isFqn ? findByFqn(typeName, projectName) : findBySearch(typeName, projectName);
 
             if (found.isEmpty()) {
                 return "No type found matching '" + typeName + "'. "
@@ -87,10 +69,8 @@ public class EclipseCodeNavigationTool extends AbstractTool {
 
             var sb = new StringBuilder();
             sb.append("Found ").append(found.size()).append(" type(s):\n\n");
-
             for (int i = 0; i < Math.min(found.size(), MAX_TYPE_RESULTS); i++) {
-                IType type = found.get(i);
-                appendTypeInfo(sb, type, i == 0 ? sourceLimit : 0);
+                appendTypeSummary(sb, found.get(i));
                 if (i < found.size() - 1) sb.append("\n---\n");
             }
             if (found.size() > MAX_TYPE_RESULTS) {
@@ -104,6 +84,65 @@ public class EclipseCodeNavigationTool extends AbstractTool {
             throw new RuntimeException("Search failed: " + e.getMessage(), e);
         }
     }
+
+    // -------------------------------------------------------------------------
+    // Tool 2: Read source — given a FQN, returns the full source
+    // -------------------------------------------------------------------------
+
+    @Tool("""
+            Returns the full source code of a Java type by its fully qualified name.
+            For binary types (JDK / library JARs without source), returns public field and method signatures.
+            Use findJavaType first to discover the correct fully qualified name.
+            """)
+    public String getTypeSource(
+            @P("Fully qualified type name, e.g. 'com.example.MyClass'") String fqn,
+            @P("Optional project name to limit search. Empty searches all projects.") String projectName) {
+
+        if (fqn == null || fqn.isBlank()) {
+            throw new IllegalArgumentException("fqn must not be empty");
+        }
+
+        try {
+            List<IType> found = findByFqn(fqn, projectName);
+            if (found.isEmpty()) {
+                monitorMessage("Source read not found " + fqn);
+                return "Type not found: " + fqn + ". Use findJavaType to get the correct fully qualified name.";
+            }
+
+            IType type = bestType(found);
+            var sb = new StringBuilder();
+            appendTypeSummary(sb, type);
+            
+            String javadoc = JdtUtil.javadoc(type);
+            if (!javadoc.isEmpty()) sb.append("Javadoc:\n").append(javadoc).append("\n");
+
+            String source = type.getSource();
+            if (source != null) {
+                sb.append("Source (").append(source.split("\n").length).append(" lines):\n");
+                sb.append(source);
+            } else {
+                appendBinarySignatures(sb, type);
+            }
+
+            monitorMessage("Source read " + fqn + " - " + sb.length() + " characters");
+            return sb.toString();
+        } catch (JavaModelException e) {
+            throw new RuntimeException("Read source failed: " + e.getMessage(), e);
+        }
+    }
+    
+    private IType bestType(List<IType> found) throws JavaModelException {
+        if (found.size() == 1) return found.getFirst();
+        IType result = found.get(0);
+        for (IType t : found) {
+            if (StringUtil.hasValue(t.getSource())) result = t;
+        }
+        return result;
+    }
+
+    // -------------------------------------------------------------------------
+    // Tool 3: Find references
+    // -------------------------------------------------------------------------
 
     @Tool("Finds all references/usages of a Java type or method across the workspace. "
             + "Returns file paths with line numbers where the element is referenced. "
@@ -128,7 +167,6 @@ public class EclipseCodeNavigationTool extends AbstractTool {
             }
             IType type = typeOpt.get();
 
-            // Determine element to search for
             IJavaElement target;
             if (methodName != null && !methodName.isBlank()) {
                 IMethod method = findMethodByName(type, methodName);
@@ -141,9 +179,7 @@ public class EclipseCodeNavigationTool extends AbstractTool {
                 target = type;
             }
 
-            // Search
-            SearchPattern pattern = SearchPattern.createPattern(
-                    target, IJavaSearchConstants.REFERENCES);
+            SearchPattern pattern = SearchPattern.createPattern(target, IJavaSearchConstants.REFERENCES);
             IJavaSearchScope scope = resolveScope(projectName);
 
             var matches = new ArrayList<SearchMatch>();
@@ -154,9 +190,7 @@ public class EclipseCodeNavigationTool extends AbstractTool {
                     new SearchRequestor() {
                         @Override
                         public void acceptSearchMatch(SearchMatch match) {
-                            if (matches.size() < MAX_REFERENCE_RESULTS) {
-                                matches.add(match);
-                            }
+                            if (matches.size() < MAX_REFERENCE_RESULTS) matches.add(match);
                         }
                     },
                     new NullProgressMonitor());
@@ -165,21 +199,17 @@ public class EclipseCodeNavigationTool extends AbstractTool {
                 return "No references found for " + target.getElementName() + ".";
             }
 
-            // Group by file
             var byFile = new LinkedHashMap<String, List<String>>();
             for (SearchMatch match : matches) {
                 String filePath = match.getResource() != null
-                        ? match.getResource().getFullPath().toPortableString()
-                        : "unknown";
+                        ? match.getResource().getFullPath().toPortableString() : "unknown";
                 String line = "?";
                 if (match.getElement() instanceof IJavaElement je) {
                     try {
                         var cu = je.getAncestor(IJavaElement.COMPILATION_UNIT);
                         if (cu instanceof org.eclipse.jdt.core.ICompilationUnit icu) {
                             String src = icu.getSource();
-                            if (src != null) {
-                                line = String.valueOf(JdtUtil.offsetToLine(src, match.getOffset()));
-                            }
+                            if (src != null) line = String.valueOf(JdtUtil.offsetToLine(src, match.getOffset()));
                         }
                     } catch (JavaModelException ignored) {}
                 }
@@ -203,6 +233,10 @@ public class EclipseCodeNavigationTool extends AbstractTool {
             throw new RuntimeException("Reference search failed: " + e.getMessage(), e);
         }
     }
+
+    // -------------------------------------------------------------------------
+    // Tool 4: Find implementations
+    // -------------------------------------------------------------------------
 
     @Tool("Finds all classes that implement a given interface or extend a given class. "
             + "Returns each implementing type with its file path and kind. "
@@ -234,14 +268,11 @@ public class EclipseCodeNavigationTool extends AbstractTool {
             var sb = new StringBuilder();
             sb.append("Found ").append(subtypes.length).append(" implementation(s) of ")
               .append(typeName).append(":\n\n");
-
-            int count = 0;
-            for (IType sub : subtypes) {
-                if (count >= MAX_IMPL_RESULTS) break;
+            for (int i = 0; i < Math.min(subtypes.length, MAX_IMPL_RESULTS); i++) {
+                IType sub = subtypes[i];
                 sb.append(JdtUtil.kindOf(sub)).append(" ")
                   .append(sub.getFullyQualifiedName())
                   .append(" @ ").append(JdtUtil.pathOf(sub)).append("\n");
-                count++;
             }
             if (subtypes.length > MAX_IMPL_RESULTS) {
                 sb.append("\n... ").append(subtypes.length - MAX_IMPL_RESULTS)
@@ -255,16 +286,15 @@ public class EclipseCodeNavigationTool extends AbstractTool {
         }
     }
 
-    // -- helpers --
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
 
-    private List<IType> findByFqn(String fqn, String projectName) throws JavaModelException {
+    private List<IType> findByFqn(String fqn, String projectName) {
         var results = new ArrayList<IType>();
         if (projectName != null && !projectName.isBlank()) {
-            var project = EclipseUtil.findOpenProject(projectName);
-            if (project.isPresent()) {
-                IJavaProject jp = JavaCore.create(project.get());
-                JdtUtil.findType(fqn, jp).ifPresent(results::add);
-            }
+            EclipseUtil.findOpenProject(projectName).ifPresent(p ->
+                JdtUtil.findType(fqn, JavaCore.create(p)).ifPresent(results::add));
         } else {
             JdtUtil.findType(fqn).ifPresent(results::add);
         }
@@ -273,29 +303,19 @@ public class EclipseCodeNavigationTool extends AbstractTool {
 
     private List<IType> findBySearch(String typeName, String projectName) throws JavaModelException {
         var results = new ArrayList<IType>();
-        IJavaSearchScope scope = resolveScope(projectName);
-
-        // Determine match rule
-        int matchRule;
-        if (typeName.contains("*") || typeName.contains("?")) {
-            matchRule = SearchPattern.R_PATTERN_MATCH;
-        } else if (typeName.equals(typeName.toUpperCase()) || hasIntermediateUpperCase(typeName)) {
-            matchRule = SearchPattern.R_CAMELCASE_MATCH;
-        } else {
-            matchRule = SearchPattern.R_PREFIX_MATCH | SearchPattern.R_CASE_SENSITIVE;
-        }
+        int matchRule = (typeName.contains("*") || typeName.contains("?"))
+                ? SearchPattern.R_PATTERN_MATCH
+                : SearchPattern.R_PREFIX_MATCH | SearchPattern.R_CASE_SENSITIVE;
 
         new SearchEngine().searchAllTypeNames(
                 null, SearchPattern.R_EXACT_MATCH,
                 typeName.toCharArray(), matchRule,
-                IJavaSearchConstants.CLASS_AND_INTERFACE,
-                scope,
+                IJavaSearchConstants.TYPE,
+                resolveScope(projectName),
                 new TypeNameMatchRequestor() {
                     @Override
                     public void acceptTypeNameMatch(TypeNameMatch match) {
-                        if (results.size() < MAX_TYPE_RESULTS + 10) {
-                            results.add(match.getType());
-                        }
+                        if (results.size() < MAX_TYPE_RESULTS + 10) results.add(match.getType());
                     }
                 },
                 IJavaSearchConstants.WAIT_UNTIL_READY_TO_SEARCH,
@@ -304,7 +324,7 @@ public class EclipseCodeNavigationTool extends AbstractTool {
         return results;
     }
 
-    private void appendTypeInfo(StringBuilder sb, IType type, int sourceLines) throws JavaModelException {
+    private static void appendTypeSummary(StringBuilder sb, IType type) throws JavaModelException {
         sb.append(JdtUtil.kindOf(type)).append(" ").append(type.getFullyQualifiedName()).append("\n");
         sb.append("Path: ").append(JdtUtil.pathOf(type)).append("\n");
 
@@ -315,37 +335,10 @@ public class EclipseCodeNavigationTool extends AbstractTool {
         if (ifaces != null && ifaces.length > 0) {
             sb.append("Implements: ").append(String.join(", ", ifaces)).append("\n");
         }
-
-        String javadoc = JdtUtil.javadoc(type);
-        if (!javadoc.isEmpty()) {
-            sb.append("Javadoc:\n").append(javadoc).append("\n");
-        }
-
-        if (sourceLines > 0) {
-            try {
-                String source = type.getSource();
-                if (source != null) {
-                    String[] lines = source.split("\n");
-                    int limit = Math.min(lines.length, sourceLines);
-                    sb.append("Source (").append(lines.length).append(" lines):\n");
-                    for (int i = 0; i < limit; i++) {
-                        sb.append(lines[i]).append("\n");
-                    }
-                    if (lines.length > limit) {
-                        sb.append("... truncated ").append(lines.length - limit).append(" more lines\n");
-                    }
-                } else {
-                    // Binary type — show signatures
-                    appendBinarySignatures(sb, type);
-                }
-            } catch (JavaModelException e) {
-                appendBinarySignatures(sb, type);
-            }
-        }
     }
 
-    private void appendBinarySignatures(StringBuilder sb, IType type) throws JavaModelException {
-        sb.append("Source not available. Signatures:\n");
+    private static void appendBinarySignatures(StringBuilder sb, IType type) throws JavaModelException {
+        sb.append("Source not available. Public signatures:\n");
         for (IField f : type.getFields()) {
             if (!Flags.isPrivate(f.getFlags())) {
                 sb.append("  ").append(Signature.toString(f.getTypeSignature()))
@@ -368,9 +361,7 @@ public class EclipseCodeNavigationTool extends AbstractTool {
         for (int i = 0; i < paramTypes.length; i++) {
             if (i > 0) sb.append(", ");
             sb.append(Signature.toString(paramTypes[i]));
-            if (paramNames != null && i < paramNames.length) {
-                sb.append(" ").append(paramNames[i]);
-            }
+            if (paramNames != null && i < paramNames.length) sb.append(" ").append(paramNames[i]);
         }
         sb.append(")");
         return sb.toString();
@@ -386,9 +377,7 @@ public class EclipseCodeNavigationTool extends AbstractTool {
     private static String listMethodNames(IType type) {
         try {
             var names = new ArrayList<String>();
-            for (IMethod m : type.getMethods()) {
-                names.add(m.getElementName());
-            }
+            for (IMethod m : type.getMethods()) names.add(m.getElementName());
             return names.isEmpty() ? "(none)" : String.join(", ", names);
         } catch (JavaModelException e) {
             return "(unable to list)";
@@ -399,17 +388,9 @@ public class EclipseCodeNavigationTool extends AbstractTool {
         if (projectName != null && !projectName.isBlank()) {
             var project = EclipseUtil.findOpenProject(projectName);
             if (project.isPresent()) {
-                IJavaProject jp = JavaCore.create(project.get());
-                return SearchEngine.createJavaSearchScope(new IJavaElement[]{ jp });
+                return SearchEngine.createJavaSearchScope(new IJavaElement[]{ JavaCore.create(project.get()) });
             }
         }
         return SearchEngine.createWorkspaceScope();
-    }
-
-    private static boolean hasIntermediateUpperCase(String s) {
-        for (int i = 1; i < s.length(); i++) {
-            if (Character.isUpperCase(s.charAt(i))) return true;
-        }
-        return false;
     }
 }
