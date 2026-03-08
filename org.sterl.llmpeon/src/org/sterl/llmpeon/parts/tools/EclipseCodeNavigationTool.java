@@ -31,12 +31,11 @@ import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.StringUtil;
-import org.sterl.llmpeon.tool.AbstractTool;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 
-public class EclipseCodeNavigationTool extends AbstractTool {
+public class EclipseCodeNavigationTool extends AbstractEclipseTool {
 
     private static final int MAX_TYPE_RESULTS = 25;
     private static final int MAX_REFERENCE_RESULTS = 50;
@@ -123,7 +122,6 @@ public class EclipseCodeNavigationTool extends AbstractTool {
                 if (!javadoc.isEmpty()) sb.append("Javadoc:\n").append(javadoc).append("\n");
                 appendTypeSummary(sb, type);
                 appendBinarySignatures(sb, type);
-                System.out.println(sb.toString());
             }
 
             return done("Type search for " + fqn + " found: " 

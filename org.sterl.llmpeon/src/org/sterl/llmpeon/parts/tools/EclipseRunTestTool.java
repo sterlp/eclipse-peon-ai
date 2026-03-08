@@ -6,7 +6,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.ILaunchConfigurationWorkingCopy;
@@ -22,12 +21,11 @@ import org.eclipse.jdt.junit.model.ITestRunSession;
 import org.eclipse.jdt.launching.IJavaLaunchConfigurationConstants;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.shared.WaitUtil;
-import org.sterl.llmpeon.tool.AbstractTool;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 
-public class EclipseRunTestTool extends AbstractTool {
+public class EclipseRunTestTool extends AbstractEclipseTool {
 
     private static final Duration MAX_TEST_DURATION = Duration.ofMinutes(10);
     private static final long POLL_INTERVAL_MS = 500;
@@ -113,7 +111,7 @@ public class EclipseRunTestTool extends AbstractTool {
                 }
 
                 ILaunchConfiguration config = wc.doSave();
-                config.launch(ILaunchManager.RUN_MODE, new NullProgressMonitor());
+                config.launch(ILaunchManager.RUN_MODE, getProgressMonitor());
 
                 boolean completed = WaitUtil.awaitCondition(
                         finished::get, MAX_TEST_DURATION, POLL_INTERVAL_MS);

@@ -1,6 +1,5 @@
 package org.sterl.llmpeon.parts.tools;
 
-import java.io.ByteArrayInputStream;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 
@@ -15,12 +14,11 @@ import org.sterl.llmpeon.agent.AiMonitor.AiFileUpdate;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.shared.FileUtils;
-import org.sterl.llmpeon.tool.AbstractTool;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 
-public class EclipseWorkspaceWriteFilesTool extends AbstractTool {
+public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
 
     private IProject currentProject;
 
@@ -152,12 +150,8 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractTool {
             ensureFolders(file.getParent());
             Charset charset = Charset.forName(targetProject.getDefaultCharset());
             byte[] bytes = content.getBytes(charset);
-            if (file.exists()) {
-                file.setContents(new ByteArrayInputStream(bytes), IResource.FORCE, new NullProgressMonitor());
-            } else {
-                file.create(new ByteArrayInputStream(bytes), IResource.FORCE, new NullProgressMonitor());
-            }
-            file.refreshLocal(IResource.DEPTH_ZERO, new NullProgressMonitor());
+            file.write(bytes, true, false, true, getProgressMonitor());
+            file.refreshLocal(IResource.DEPTH_ZERO, getProgressMonitor());
         } catch (CoreException e) {
             throw new RuntimeException("Failed to create/write " + file.getFullPath(), e);
         }

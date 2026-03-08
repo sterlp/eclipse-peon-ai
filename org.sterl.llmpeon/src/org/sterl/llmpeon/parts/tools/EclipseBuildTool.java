@@ -8,14 +8,12 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IncrementalProjectBuilder;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.NullProgressMonitor;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
-import org.sterl.llmpeon.tool.AbstractTool;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 
-public class EclipseBuildTool extends AbstractTool {
+public class EclipseBuildTool extends AbstractEclipseTool {
 
     @Tool("""
           Lists all open eclipse projects in the workspace - use this to find open developer projects.
@@ -74,9 +72,9 @@ public class EclipseBuildTool extends AbstractTool {
         try {
             monitorMessage("Building " + projectName);
             projectRef.deleteMarkers(IMarker.PROBLEM, true, IResource.DEPTH_INFINITE);
-            projectRef.refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
-            projectRef.build(IncrementalProjectBuilder.CLEAN_BUILD, new NullProgressMonitor());
-            projectRef.build(IncrementalProjectBuilder.FULL_BUILD, new NullProgressMonitor());
+            projectRef.refreshLocal(IResource.DEPTH_INFINITE, getProgressMonitor());
+            projectRef.build(IncrementalProjectBuilder.CLEAN_BUILD, getProgressMonitor());
+            projectRef.build(IncrementalProjectBuilder.FULL_BUILD, getProgressMonitor());
 
             return readProblems(projectRef);
         } catch (CoreException e) {

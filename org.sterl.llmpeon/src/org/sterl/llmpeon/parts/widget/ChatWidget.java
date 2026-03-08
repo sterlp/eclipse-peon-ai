@@ -5,10 +5,10 @@ import java.util.Collections;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.swt.SWT;
@@ -26,6 +26,7 @@ import org.sterl.llmpeon.parts.agentsmd.AgentsMdService;
 import org.sterl.llmpeon.parts.monitor.EclipseAiMonitor;
 import org.sterl.llmpeon.parts.shared.EclipseTemplateContext;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
+import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.shared.SimpleDiff;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget.SimpleChatMessage;
 
@@ -34,6 +35,7 @@ import dev.langchain4j.data.message.SystemMessage;
 
 public class ChatWidget extends Composite implements EclipseAiMonitor {
 
+    private static final NullProgressMonitor NULL_MONITOR = new NullProgressMonitor();
     private final ChatService<EclipseTemplateContext> chatService;
     private ChatMarkdownWidget chatHistory;
     private StatusLineWidget statusLine;
@@ -253,7 +255,7 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
             } catch (Exception e) {
                 ex = e;
             } finally {
-                monitorRef.set(null);
+                monitorRef.set(NULL_MONITOR);
                 Display.getDefault().asyncExec(() -> lockWhileWorking(false));
             }
             monitor.done();
@@ -283,7 +285,7 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
                 }
                 var orders = new ArrayList<SystemMessage>();
                 if (selectedResource != null) {
-                    orders.add(SystemMessage.from("Selected eclipse resource: " + selectedResource.getFullPath().toPortableString()));
+                    orders.add(SystemMessage.from("Selected eclipse resource: " + JdtUtil.pathOf(selectedResource)));
                 }
                 agentsMdService.agentMessage(templateContext).ifPresent(orders::add);
                 if (!orders.isEmpty()) chatService.setStandingOrders(orders);
@@ -304,7 +306,7 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
             } finally {
                 Display.getDefault().asyncExec(() -> lockWhileWorking(false));
                 chatService.setStandingOrders(Collections.emptyList());
-                monitorRef.set(null);
+                monitorRef.set(NULL_MONITOR);
                 monitor.done();
             }
 
