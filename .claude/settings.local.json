@@ -26,7 +26,9 @@
       "Bash(git rev-list:*)",
       "Bash(mvn test:*)",
       "WebFetch(domain:help.eclipse.org)",
-      "WebFetch(domain:www.vogella.com)"
+      "WebFetch(domain:www.vogella.com)",
+      "Bash(cat /Users/sterlp/dev/workset/eclipse-peon-ai/doc/.vitepress/config.*)",
+      "Bash(npm run docs:build)"
     ]
   }
 }

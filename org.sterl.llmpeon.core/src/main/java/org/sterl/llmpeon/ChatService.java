@@ -12,6 +12,7 @@ import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.skill.SkillRecord;
 import org.sterl.llmpeon.skill.SkillService;
+import org.sterl.llmpeon.template.TemplateContext;
 import org.sterl.llmpeon.tool.ToolService;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -24,7 +25,7 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 
-public class ChatService {
+public class ChatService<T extends TemplateContext> {
     private LlmConfig config;
     private final ToolService toolService;
     private final SkillService skillService;
@@ -36,15 +37,21 @@ public class ChatService {
     private int tokenSize = 0;
 
     private List<SystemMessage> standingOrders = Collections.emptyList();
+    private final T templateContext;
 
     private PeonMode mode = PeonMode.DEV;
 
-    public ChatService(LlmConfig config, ToolService toolService, SkillService skillService) {
+    public ChatService(LlmConfig config, ToolService toolService, SkillService skillService, T templateContext) {
         this.config = config;
         this.skillService = skillService;
         this.toolService = toolService;
+        this.templateContext = templateContext;
         this.agentService = new AgentService(null);
         updateConfig(config);
+    }
+
+    public T getTemplateContext() {
+        return templateContext;
     }
 
     /**
@@ -136,13 +143,13 @@ public class ChatService {
         ChatResponse response = null;
 
         boolean isPlan = mode == PeonMode.PLAN;
-        var agent = isPlan ? agentService.newPlannerAgent() : agentService.newDeveloperAgent();
+        var agent = isPlan ? agentService.newPlannerAgent(templateContext) : agentService.newDeveloperAgent(templateContext);
         var toolSpecs = isPlan ? toolService.readOnlyToolSpecifications() : toolService.toolSpecifications();
 
         do {
             var messagesToSend = new ArrayList<ChatMessage>(standingOrders);
             if (skillService.hasSkills()) {
-                messagesToSend.addFirst(skillService.skillMessage());
+                messagesToSend.addFirst(skillService.skillMessage(templateContext));
             }
             messagesToSend.addAll(memory.messages());
 

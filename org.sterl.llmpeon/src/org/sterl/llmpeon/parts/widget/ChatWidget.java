@@ -2,15 +2,12 @@ package org.sterl.llmpeon.parts.widget;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
-import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -19,11 +16,12 @@ import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Text;
-import org.sterl.llmpeon.agent.PeonMode;
 import org.sterl.llmpeon.ChatService;
+import org.sterl.llmpeon.agent.PeonMode;
 import org.sterl.llmpeon.parts.PeonConstants;
 import org.sterl.llmpeon.parts.agentsmd.AgentsMdService;
 import org.sterl.llmpeon.parts.monitor.EclipseAiMonitor;
+import org.sterl.llmpeon.parts.shared.EclipseTemplateContext;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.SimpleDiff;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget.SimpleChatMessage;
@@ -33,7 +31,7 @@ import dev.langchain4j.data.message.SystemMessage;
 
 public class ChatWidget extends Composite implements EclipseAiMonitor {
 
-    private final ChatService chatService;
+    private final ChatService<EclipseTemplateContext> chatService;
     private ChatMarkdownWidget chatHistory;
     private StatusLineWidget statusLine;
     private Text inputArea;
@@ -45,8 +43,6 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
 
     private boolean working = false;
 
-    private ITextSelection textSelection;
-    private IResource selectedResource;
     private final AgentsMdService agentsMdService = new AgentsMdService();
     
     private final AtomicReference<IProgressMonitor> monitorRef = new AtomicReference<>();
@@ -58,7 +54,7 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
         return super.setFocus();
     }
 
-    public ChatWidget(ChatService chatService, Composite parent, int style) {
+    public ChatWidget(ChatService<EclipseTemplateContext> chatService, Composite parent, int style) {
         super(parent, style);
         this.chatService = chatService;
         createLayout();
@@ -184,15 +180,14 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
             chatService.getTokenWindow(),
             chatService.getSkills().size(),
             agentsMdService.hasAgentFile(),
-            selectedResource
+            chatService.getTemplateContext().getSelectedResource()
         );
     }
 
-    public void updateContextFile(IResource value) {
-        if (Objects.equals(value, this.selectedResource)) return;
-        this.selectedResource = value;
-        if (selectedResource != null) {
-            this.agentsMdService.load(selectedResource.getProject());
+    public void onResourceSelected() {
+        var resource = chatService.getTemplateContext().getSelectedResource();
+        if (resource != null) {
+            agentsMdService.load(resource.getProject());
         }
         refreshStatusLine();
     }
@@ -225,6 +220,13 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
     public void onThink(String value) {
         Display.getDefault().asyncExec(() -> {
             chatHistory.appendMessage(new SimpleChatMessage("THINK", "`" + value + "`"));
+        });
+    }
+    
+    @Override
+    public void onProblem(String value) {
+        Display.getDefault().asyncExec(() -> {
+            chatHistory.appendMessage(new SimpleChatMessage("PROBLEM", "`" + value + "`"));
         });
     }
     
@@ -271,13 +273,16 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
             try {
                 int msgCountBefore = chatService.getMessages().size();
                 
+                var templateContext = chatService.getTemplateContext();
+                var selectedResource = templateContext.getSelectedResource();
+                if (selectedResource != null) {
+                    agentsMdService.load(selectedResource.getProject());
+                }
                 var orders = new ArrayList<SystemMessage>();
                 if (selectedResource != null) {
                     orders.add(SystemMessage.from("Selected eclipse resource: " + selectedResource.getFullPath().toPortableString()));
                 }
-                if (agentsMdService.hasAgentFile()) {
-                    orders.add(SystemMessage.from(agentsMdService.read()));
-                }
+                agentsMdService.agentMessage(templateContext).ifPresent(orders::add);
                 if (!orders.isEmpty()) chatService.setStandingOrders(orders);
                 String msg = text + getUserSelection();
                 var result = chatService.call(msg.isEmpty() ? null : msg, this);
@@ -305,6 +310,7 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
     }
 
     private String getUserSelection() {
+        var textSelection = chatService.getTemplateContext().getTextSelection();
         String userIn = "";
         if (textSelection != null && !textSelection.isEmpty()) {
             userIn += "\nSelected text:\n" + textSelection.getText();
@@ -317,10 +323,6 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
 
     public void append(String who, String what) {
         chatHistory.appendMessage(new SimpleChatMessage(who, what));
-    }
-
-    public void setTextSelection(ITextSelection ts) {
-        this.textSelection = ts;
     }
 
     @Override

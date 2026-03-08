@@ -20,6 +20,9 @@ Use it for project-specific stuff:
 - Important conventions or constraints
 - Links to relevant specs or docs
 
+You can embed dynamic context using `${variable}` placeholders —
+see [Template Variables](template-variables.md) for the full list.
+
 ## Recommendations
 
 - Read https://www.sri.inf.ethz.ch/publications/gloaguen2026agentsmd
@@ -69,6 +72,7 @@ Good for knowledge that isn't project-specific: Eclipse API patterns, framework 
 code-style rules.
 
 Skills follow the [agentskills.io](https://agentskills.io/specification) spec.
+The `description` field also supports [Template Variables](template-variables.md).
 
 ```yaml
 ---

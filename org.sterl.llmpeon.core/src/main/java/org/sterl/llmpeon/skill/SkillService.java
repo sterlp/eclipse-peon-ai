@@ -11,6 +11,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.sterl.llmpeon.template.TemplateContext;
+
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 
@@ -21,14 +23,16 @@ public class SkillService {
 
     public SkillService() {
     }
-    
+
     public SkillService(Path skillsDirectory) throws IOException {
         refresh(skillsDirectory);
     }
-    
-    public ChatMessage skillMessage() {
+
+    public ChatMessage skillMessage(TemplateContext context) {
         if (getSkills().isEmpty()) return null;
-        var string = getSkills().stream().map(s -> s.shortDescription()).collect(Collectors.joining("\n"));
+        var string = getSkills().stream()
+                .map(s -> context.process(s.shortDescription()))
+                .collect(Collectors.joining("\n"));
         return SystemMessage.from("""
                 Following skills are availble load and read them them if a user task maches the name or description.
                 """ + string);

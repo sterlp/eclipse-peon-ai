@@ -1,7 +1,6 @@
 package org.sterl.llmpeon.parts;
 
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
@@ -23,6 +22,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.sterl.llmpeon.ChatService;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
+import org.sterl.llmpeon.parts.shared.EclipseTemplateContext;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.tools.EclipseBuildTool;
 import org.sterl.llmpeon.parts.tools.EclipseCodeNavigationTool;
@@ -51,13 +51,12 @@ public class AIChatView {
     private Composite parent;
     @Inject
     Logger logger;
-    private ChatService chatService;
+    private final EclipseTemplateContext eclipseContext = new EclipseTemplateContext();
+    private ChatService<EclipseTemplateContext> chatService;
     private final ToolService toolService = new ToolService();
     private final SkillService skillService = new SkillService();
     private final EclipseWorkspaceWriteFilesTool workspaceWriteFilesTool = new EclipseWorkspaceWriteFilesTool();
     private final EclipseWorkspaceReadFilesTool workspaceReadFilesTool = new EclipseWorkspaceReadFilesTool();
-
-    final AtomicReference<IResource> contextFile = new AtomicReference<IResource>();
 
     private final IPreferenceChangeListener prefListener = event -> {
         if (parent != null && !parent.isDisposed()) {
@@ -83,7 +82,7 @@ public class AIChatView {
         toolService.addTool(new CompressorAgentTool());
         toolService.addTool(new SearchAgentTool(toolService));
 
-        chatService = new ChatService(LlmPreferenceInitializer.buildWithDefaults(), toolService, skillService);
+        chatService = new ChatService<>(LlmPreferenceInitializer.buildWithDefaults(), toolService, skillService, eclipseContext);
         chat = new ChatWidget(chatService, parent, SWT.NONE);
 
         applyConfig();
@@ -135,7 +134,7 @@ public class AIChatView {
     @Optional
     public void setTextSelection(
             @Named(IServiceConstants.ACTIVE_SELECTION) ITextSelection ts) {
-        if (chat != null) chat.setTextSelection(ts);
+        eclipseContext.setTextSelection(ts);
     }
 
     @Inject
@@ -143,18 +142,20 @@ public class AIChatView {
     public void setSelection(@Named(IServiceConstants.ACTIVE_SELECTION) Object o) {
         if (o instanceof ISelection) return;
 
-        IResource selection = null;
+        final IResource selection;
         if (o instanceof ICompilationUnit cu) {
             selection = cu.getResource();
         } else if (o instanceof IFile f) {
             selection = f;
         } else if (o instanceof IResource f) {
             selection = f;
+        } else {
+            selection = null;
         }
-        contextFile.set(selection);
+        eclipseContext.setSelectedResource(selection);
         workspaceWriteFilesTool.setCurrentProject(EclipseUtil.resolveProject(selection));
         workspaceReadFilesTool.setCurrentProject(EclipseUtil.resolveProject(selection));
-        if (chat != null) Display.getDefault().asyncExec(() -> chat.updateContextFile(contextFile.get()));
+        if (chat != null) Display.getDefault().asyncExec(chat::onResourceSelected);
     }
 
     @Inject

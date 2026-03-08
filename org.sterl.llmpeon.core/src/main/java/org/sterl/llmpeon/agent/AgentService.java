@@ -1,5 +1,7 @@
 package org.sterl.llmpeon.agent;
 
+import org.sterl.llmpeon.template.TemplateContext;
+
 import dev.langchain4j.model.chat.ChatModel;
 
 public class AgentService {
@@ -18,12 +20,12 @@ public class AgentService {
         return model;
     }
 
-    public AiDeveloperAgent newDeveloperAgent() {
-        return new AiDeveloperAgent(model);
+    public AiDeveloperAgent newDeveloperAgent(TemplateContext context) {
+        return new AiDeveloperAgent(model, context);
     }
 
-    public AiPlannerAgent newPlannerAgent() {
-        return new AiPlannerAgent(model);
+    public AiPlannerAgent newPlannerAgent(TemplateContext context) {
+        return new AiPlannerAgent(model, context);
     }
 
     public AiSearchAgent newSearchAgent() {
