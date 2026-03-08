@@ -14,33 +14,23 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 public class AiCompressorAgent implements AiAgent {
 
     private static final SystemMessage COMPRESS_SYSTEM = SystemMessage.systemMessage("""
-            You are a conversation compressor. Compress the conversation into a concise briefing. Structure the briefing into two parts:
-            1. WHAT:  <Feature Name>
-            Contains a concise summary auf all instruction from the user.
-            - What should be achived and which requirements do we know?
-            - What has be desided till now and how?
+            Compress the conversation into a structured briefing. Output exactly:
 
-            2. HOW: <Design or Plan>
-            - How does the soltion looks like? 
-            - What has been done till now? 
-            - Which files have been modifed and why? 
-            - Which components do what?
-
-            Preserve:
-            - Key decisions and their rationale
-            - Current task state and pending work
-            - Important file paths and code references
-            - Tool results that are still relevant
-            - The last implementation plan, if it was not executed till now
-
-            Remove:
-            - Duplicate information and redundant exchanges
-            - Verbose tool outputs (keep only the essential result)
-            - Superseded decisions (only keep the final decision)
-            - Greetings, filler, and pleasantries
-
-            Format as a structured summary to continue working from.
-            Be short but keeping all essential contextual information.
+            WHAT: <Feature Name>
+            - Goal and requirements
+            - Decisions made and their rationale
+            
+            HOW: <Design or Plan>
+            - Solution design
+            - Work done so far; files modified and why
+            - Component responsibilities
+            - Last implementation plan (if not yet executed)
+            
+            Preserve: key decisions + rationale, pending work, file paths, code references, relevant tool results.
+            Remove: duplicates, verbose tool output, superseded decisions, filler.
+            
+            Be short but complete enough to continue work without re-reading the conversation.
+            Preserve paths to key files - to avoid searches.
             """);
     
     private final ChatModel chatModel;
