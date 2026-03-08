@@ -111,7 +111,16 @@
         .message.THINK::before {
             content: "Thinking";
             color: #999;
-            font-style: normal;
+        }
+
+        .message.PROBLEM {
+            color: #d32f2f;
+            border-left: 3px solid #d32f2f;
+        }
+
+        .message.PROBLEM::before {
+            content: "Problem";
+            color: #d32f2f;
         }
 
         .code-pre {
@@ -209,7 +218,7 @@
             if (lastMessage && lastMessage.classList.contains(message.role)) {
                 // Merge with previous messages
                 lastMessage.innerHTML += md.render(message.message ?? "");
-                
+
                 if (message.role === 'TOOL') handleToolMessages(container, lastMessage);
             } else {
                 // Create new message
@@ -220,7 +229,7 @@
             if (message.message) addCopyButton(lastMessage && lastMessage.classList.contains(message.role) ? lastMessage : div);
             window.scrollTo(0, document.body.scrollHeight);
         }
-        
+
         function handleToolMessages(container, lastMessage) {
             const toolMessages = container.querySelectorAll('.message.TOOL');
             if (toolMessages && toolMessages.length > 10) {
@@ -293,38 +302,39 @@
 
     if (!window.markdownit) {
         document.getElementById("chat").innerHTML =
-            '<div style="color:red">Failed to load markdown-it</div>';
+            '<div class="message PROBLEM">Failed to load markdown-it</div>';
     }
-/*    
-    appendMessage({role: "USER", message: "Write hello world"});
-    appendMessage({
-        role: 'AI',
-        message: `Here's a simple \`Hello, World!\` program in Java:
+/*
+        appendMessage({role: "USER", message: "Write hello world"});
+        appendMessage({
+            role: 'AI',
+            message: `Here's a simple \`Hello, World!\` program in Java:
 
-\`\`\`java
-public class HelloWorld {
-    private String name;
-    public static void main(String[] args) {
-        System.out.println("Hello, World!");
+    \`\`\`java
+    public class HelloWorld {
+        private String name;
+        public static void main(String[] args) {
+            System.out.println("Hello, World!");
+        }
     }
-}
-\`\`\`
+    \`\`\`
 
-# some data
+    # some data
 
-\`data\`
+    \`data\`
 
-yes and some xml
+    yes and some xml
 
-\`\`\`xml
-<foo>hallo</bar>
-\`\`\`
-`
-    })
-    appendMessage({role: "USER", message: "Write hello world"});
-    appendMessage({role: "TOOL", message: "Loading foo.text"});
-    appendMessage({role: "TOOL", message: "Loading foo.text"});
-    appendMessage({role: "USER", message: "Faster ...!"});
+    \`\`\`xml
+    <foo>hallo</bar>
+    \`\`\`
+    `
+        })
+        appendMessage({role: "USER", message: "Write hello world"});
+        appendMessage({role: "TOOL", message: "Loading foo.text"});
+        appendMessage({role: "TOOL", message: "Loading foo.text"});
+        appendMessage({role: "USER", message: "Faster ...!"});
+        appendMessage({role: "PROBLEM", message: "unknown tool read_file"});
 */
 </script>
 
