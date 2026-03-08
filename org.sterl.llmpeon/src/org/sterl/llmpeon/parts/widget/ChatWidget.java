@@ -2,8 +2,11 @@ package org.sterl.llmpeon.parts.widget;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
@@ -313,9 +316,10 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
         var textSelection = chatService.getTemplateContext().getTextSelection();
         String userIn = "";
         if (textSelection != null && !textSelection.isEmpty()) {
-            userIn += "\nSelected text:\n" + textSelection.getText();
+            userIn += "\n\nSelected text:\n" + textSelection.getText();
             userIn += "\nStart line: " + textSelection.getStartLine();
-            var file = EclipseUtil.getOpenFile();
+            Optional<? extends IResource> file = EclipseUtil.getOpenFile();
+            if (file.isEmpty()) file = Optional.ofNullable(chatService.getTemplateContext().getSelectedResource());
             if (file.isPresent()) userIn += "\nFile: " + file.get().getFullPath().toPortableString();
         }
         return userIn;

@@ -3,6 +3,7 @@ package org.sterl.llmpeon.parts.shared;
 import java.util.Optional;
 
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IResource;
 import org.eclipse.jdt.core.Flags;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaProject;
@@ -82,6 +83,13 @@ public class JdtUtil {
      */
     public static String pathOf(IType type) {
         return type.getPath().toPortableString();
+    }
+    
+    /**
+     * Workspace-relative path for a type.
+     */
+    public static String pathOf(IResource value) {
+        return value.getFullPath().toPortableString();
     }
 
     /**

@@ -51,7 +51,6 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractTool {
             throw new IllegalArgumentException("newContent must not be empty");
         }
 
-        monitorMessage("Writing " + filePath);
         var inFile = EclipseUtil.resolveInEclipse(filePath);
         if (inFile.isEmpty() || !(inFile.get() instanceof IFile)) {
             // fallback to raw filesystem
@@ -59,16 +58,15 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractTool {
             if (Files.isRegularFile(f)) {
                 String oldContent = FileUtils.readString(f);
                 FileUtils.writeString(f, newContent);
-                var result = new AiFileUpdate(filePath, oldContent, newContent);
-                if (hasMonitor()) monitor.onFileUpdate(result);
-                return "File " + filePath + " updated.";
+                if (hasMonitor()) monitor.onFileUpdate(new AiFileUpdate(filePath, oldContent, newContent));
+                return done("File " + filePath + " updated.");
             }
             throw new IllegalArgumentException(
                     "File not found: " + filePath + ". Use searchWorkspaceFiles to find the correct path.");
         }
         var result = writeEclipseFile((IFile) inFile.get(), newContent);
         if (hasMonitor()) monitor.onFileUpdate(result);
-        return "File " + result.file() + " updated.";
+        return done("File " + result.file() + " updated.");
     }
 
     @Tool("Creates a new file or overwrites an existing one in the Eclipse workspace. "
@@ -84,8 +82,6 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractTool {
         if (content == null || content.isBlank()) {
             throw new IllegalArgumentException("content must not be empty");
         }
-
-        monitorMessage("Creating " + filePath);
 
         var targetProject = EclipseUtil.findOpenProject(filePath);
         String projectRelativePath = java.nio.file.Path.of(filePath).toString();
@@ -109,7 +105,7 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractTool {
         }
 
         IFile file = writeFileToProject(targetProject.get(), projectRelativePath, content);
-        return "Created file: " + file.getFullPath().toPortableString();
+        return done("Created file: " + file.getFullPath().toPortableString());
     }
 
     @Tool("Deletes a file in the Eclipse workspace. "
@@ -121,10 +117,9 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractTool {
             throw new IllegalArgumentException("filePath must not be empty");
         }
 
-        monitorMessage("Deleting " + filePath);
         var file = EclipseUtil.resolveInEclipse(filePath);
         if (file.isEmpty()) {
-            return "Not found: " + filePath;
+            return done("Not found: " + filePath);
         }
         String fullPath = file.get().getFullPath().toPortableString();
         try {
@@ -133,7 +128,7 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractTool {
             } catch (Exception e) {
                 file.get().delete(IResource.FORCE, new NullProgressMonitor());
             }
-            return "Deleted file: " + fullPath;
+            return done("Deleted file: " + fullPath);
         } catch (CoreException e) {
             throw new RuntimeException("Failed to delete " + fullPath, e);
         }

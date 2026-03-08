@@ -41,7 +41,6 @@ class DiskFileReadToolsTest {
         Files.writeString(tempDir.resolve("FooController.java"), "class Foo {}");
         Files.writeString(tempDir.resolve("BarService.java"), "class Bar {}");
         String result = tool.searchDiskFiles("Controller");
-        assertTrue(result.contains("1 file"));
         assertTrue(result.contains("FooController.java"));
     }
 

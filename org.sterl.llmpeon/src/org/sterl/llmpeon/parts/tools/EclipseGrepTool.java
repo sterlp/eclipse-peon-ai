@@ -12,6 +12,7 @@ import org.eclipse.core.resources.IResourceVisitor;
 import org.eclipse.core.runtime.CoreException;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.IoUtils;
+import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.AbstractTool;
 
@@ -34,7 +35,6 @@ public class EclipseGrepTool extends AbstractTool {
             throw new IllegalArgumentException("query must not be empty");
         }
         var allProjects = path == null || path.length() <= 1;
-        monitorMessage("Grep for '" + query + "' in " + (allProjects ? "all projects" : path) + (StringUtil.hasValue(extension) ? " type " + extension : ""));
         String lowerQuery = query.toLowerCase();
         var matches = new LinkedHashMap<String, Integer>(); // file path -> count
         final int MAX_FILES = 100;
@@ -46,20 +46,19 @@ public class EclipseGrepTool extends AbstractTool {
         } else {
             var resource = EclipseUtil.resolveInEclipse(path);
             if (resource.isEmpty()) {
-                return "Path not found: " + path;
+                return done("Path not found: " + path);
             }
             if (resource.get() instanceof IContainer c) {
                 containers.add(c);
             } else if (resource.get() instanceof IFile f) {
-                // single file grep
                 int count = countOccurrences(f, lowerQuery);
                 if (count > 0) {
-                    return "Found \"" + query + "\" in 1 file:\n"
-                            + f.getFullPath().toPortableString() + ": " + count + " occurrence(s)";
+                    return done("Found \"" + query + "\" in 1 file:\n"
+                            + JdtUtil.pathOf(f) + ": " + count + " occurrence(s)");
                 }
-                return "No occurrences of \"" + query + "\" in " + f.getFullPath().toPortableString();
+                return done("No occurrences of \"" + query + "\" in " + JdtUtil.pathOf(f));
             } else {
-                return path + " found but it can not be read.";
+                return done(path + " found but it couldn't be read.");
             }
         }
 
@@ -90,18 +89,17 @@ public class EclipseGrepTool extends AbstractTool {
         }
 
         if (matches.isEmpty()) {
-            return "No files contain \"" + query + "\" in the searched path.";
+            return done("No files contain '" + query + "' in the searched path.");
         }
 
         var sb = new StringBuilder();
         sb.append("Found \"").append(query).append("\" in ").append(matches.size()).append(" file(s):\n");
-        matches.forEach((filePath, count) ->
-            sb.append(filePath).append(": ").append(count).append(" occurrence(s)\n"));
+        matches.forEach((filePath, count) -> sb.append(filePath).append(": ").append(count).append(" occurrence(s)\n"));
+
         if (matches.size() >= MAX_FILES) {
             sb.append("... result capped at ").append(MAX_FILES).append(" files. Narrow your search path.");
         }
-        monitorMessage("Grep found " + matches.size() + " files");
-        return sb.toString().trim();
+        return done("Grep workspace for " + query + " in " + path + " found " + matches.size(), sb.toString().trim());
     }
 
     private static final Set<String> SKIP_DIRS = Set.of(

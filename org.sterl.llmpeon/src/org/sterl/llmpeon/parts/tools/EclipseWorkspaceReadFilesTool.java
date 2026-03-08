@@ -48,18 +48,16 @@ public class EclipseWorkspaceReadFilesTool extends AbstractTool {
             throw new IllegalArgumentException("filePath must not be empty");
         }
 
-        monitorMessage("Reading " + filePath);
         var file = EclipseUtil.resolveInEclipse(filePath);
         if (file.isPresent() && file.get() instanceof IFile f) {
-            return IoUtils.readFile(f);
+            return done(IoUtils.readFile(f));
         }
         // fallback to raw filesystem for absolute paths
         var fsPath = java.nio.file.Path.of(filePath);
         if (Files.exists(fsPath) && Files.isRegularFile(fsPath)) {
-            return FileUtils.readString(fsPath);
+            return done(FileUtils.readString(fsPath));
         }
-        onProblem("File not found: " + filePath);
-        return "File not found: " + filePath;
+        return done("File not found: " + filePath);
     }
 
     @Tool("Searches for files whose name contains the given query string in the Eclipse workspace. "
@@ -72,7 +70,6 @@ public class EclipseWorkspaceReadFilesTool extends AbstractTool {
             throw new IllegalArgumentException("query must not be empty");
         }
 
-        monitorMessage("Searching for " + query);
         String lowerQuery = query.toLowerCase();
         var matches = new ArrayList<String>();
 
@@ -96,10 +93,9 @@ public class EclipseWorkspaceReadFilesTool extends AbstractTool {
         }
 
         if (matches.isEmpty()) {
-            return "No files found matching '" + query + "' adjust your query or use the disk tool or list listWorkspaceDirectory";
+            return done("No files found matching '" + query + "' adjust your query or use the disk tool or list listWorkspaceDirectory");
         }
-        monitorMessage("Found " + matches.size() + " files");
-        return "Found " + matches.size() + " file(s):\n" + String.join("\n", matches);
+        return done("Found " + matches.size() + " for: " + query, "Found file(s):\n" + String.join("\n", matches));
     }
 
     @Tool("Lists files and folders directly in eclipse workspace directory (non-recursive). "
@@ -118,14 +114,12 @@ public class EclipseWorkspaceReadFilesTool extends AbstractTool {
 
         var resource = EclipseUtil.resolveInEclipse(path);
         if (resource.isEmpty()) {
-            onProblem("Listing " + path + " not found");
-            return "Directory not found: " + path;
+            return done("Directory not found: " + path);
         }
 
         var res = resource.get();
         if (!(res instanceof IContainer container)) {
-            onProblem("Listing " + path + " is not a directory");
-            return path + " is a file, not a directory. Use readWorkspaceFile to read it.";
+            return done(path + " is a file, not a directory. Use readWorkspaceFile to read it.");
         }
 
         try {
@@ -135,9 +129,9 @@ public class EclipseWorkspaceReadFilesTool extends AbstractTool {
                 String prefix = (member.getType() == IResource.FILE) ? "[FILE] " : "[DIR]  ";
                 entries.add(prefix + member.getFullPath().toPortableString());
             }
-            monitorMessage("Listing " + path + " found " + entries.size() + " elements");
-            if (entries.isEmpty()) return "Directory is empty: " + path;
-            return "Contents of " + res.getFullPath().toPortableString() + ":\n" + String.join("\n", entries);
+            if (entries.isEmpty()) return done("Directory is empty: " + path);
+            return done("List " + res.getFullPath() + " " + entries.size(), 
+                    "Contents of " + res.getFullPath().toPortableString() + ":\n" + String.join("\n", entries));
         } catch (CoreException e) {
             throw new RuntimeException("Failed to list " + path, e);
         }

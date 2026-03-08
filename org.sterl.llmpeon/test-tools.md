@@ -1,0 +1,1 @@
+test each tool in turn - stop on the first tool which works not as expected and return the tool name and the problem. The eclipse build tool may return an pom.xml copy dependency error - this one can be ignored.

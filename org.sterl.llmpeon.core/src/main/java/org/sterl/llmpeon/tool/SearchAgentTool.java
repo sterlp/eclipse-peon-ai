@@ -35,7 +35,6 @@ public class SearchAgentTool extends AbstractTool {
         if (prompt == null || prompt.isBlank()) return "Error: search prompt must not be empty";
 
         final AiMonitor m = AiMonitor.nullSafty(monitor);
-        m.onAction("SearchAgent: " + prompt);
 
         try {
             var searchAgent = agentService.newSearchAgent();
@@ -61,7 +60,7 @@ public class SearchAgentTool extends AbstractTool {
             } while (response.aiMessage().hasToolExecutionRequests()
                         || StringUtil.hasNoValue(response.aiMessage().text()));
 
-            m.onAction("SearchAgent done (" + iterations + " iterations)");
+            m.onAction("SearchAgent done (" + iterations + " iterations) for: " + prompt);
             String answer = response != null ? response.aiMessage().text() : null;
             return StringUtil.hasValue(answer) ? answer
                     : "Search completed but returned no result after " + iterations + " iterations.";

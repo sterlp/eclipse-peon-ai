@@ -17,11 +17,11 @@ public class SkillTool extends AbstractTool {
     }
     
     @Tool("Read the SKILL.md directly using the name of the skill.")
-    public String readSkill(@P("SKill name") String name) throws IOException, InterruptedException {
+    public String readSkill(@P("SKILL name") String name) throws IOException, InterruptedException {
         var skill = skillService.get(name);
         if (skill.isEmpty()) return "No skill with the name " + name + " found. Use one of: " 
                 + skillService.skillNames();
-        
+        monitorMessage("Read SKILL " + name);
         return skill.get().readFullContent();
     }
 }

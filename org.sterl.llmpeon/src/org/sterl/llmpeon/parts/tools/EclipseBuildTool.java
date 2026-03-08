@@ -22,76 +22,66 @@ public class EclipseBuildTool extends AbstractTool {
           The result 'Eclipse path' can be used together with listWorkspaceDirectory to list the file in an eclipse project.
           """)
     public String listAllOpenEclipseProjects() {
-        var result = "Known open projects are:\n ";
+        var sb = new StringBuilder("Known open projects are:\n ");
         var projects = EclipseUtil.openProjects();
-        monitorMessage("Reading eclipse projects " + projects.size());
-        if (projects.isEmpty()) result += "No projects are open";
+        if (projects.isEmpty()) sb.append("No projects are open");
         else {
             for (IProject p : projects) {
-                result += "\nEclipse path: " + p.getFullPath().toPortableString()
-                        + "\nDisk path: " + p.getRawLocation()
-                        + "\nNatures: " + projectNatures(p);
+                sb.append("\nProject name: ").append(p.getName())
+                  .append("\nEclipse path: ").append(p.getFullPath().toPortableString())
+                  .append("\nDisk path: ").append(p.getRawLocation().toPortableString())
+                  .append("\nNatures: ").append(projectNatures(p));
             }
         }
-        return result;
+        return done("List " + projects.size() + " open projects", sb.toString());
     }
     
     @Tool("Reads all eclipse build problems of an eclipse code project - use this to check if where any problems or warning in the project.")
     public String readProjectProblems(@P("The project name or path") String projectName) {
         var project = EclipseUtil.findOpenProject(projectName);
         if (project.isEmpty()) {
-            if (monitor != null) monitor.onProblem(projectName + " not found.");
-            return projectName + " not found. " + listAllOpenEclipseProjects();
+            return done(projectName + " not found", projectName + " not found. " + listAllOpenEclipseProjects());
         }
-        
-        monitorMessage("Reading problems of " + projectName);
         var projectRef = project.get();
+        return readProblems(projectRef);
+    }
+
+    private String readProblems(IProject projectRef) {
         try {
             var status = readProjectStatus(projectRef);
             if (status.hasProblems()) {
-                return "Project build " + projectRef.getName() + " results:\n" + status.toString();
+                return done("Project " + projectRef.getName() + " with problems: " + (status.errors.size() + status.warnings.size()), 
+                        "Project " + projectRef.getName() + " results:\n" + status.toString());
             } else {
-                return "Project " + projectRef.getName() + " has no errors or warning.";
+                return done("Project build " + projectRef.getName() + " has no errors or warning.");
             }
         } catch (CoreException e) {
             throw new RuntimeException("Filed to build " + projectRef.getName(), e);
         }
-
     }
 
     @Tool("""
-            Refresh cleans and builds an eclipse project in the worksspace and returns all build errors and warnings.
+            Builds an eclipse project in the worksspace and returns all build errors and warnings.
             Run this tool to verify code modifications.
             This is the prefered way to build projects in eclipse.
             """)
     public String buildEclipseProject(@P("The project name or path to build") String projectName) {
         var project = EclipseUtil.findOpenProject(projectName);
         if (project.isEmpty()) {
-            if (monitor != null) monitor.onProblem("Build: " + projectName + " not found.");
-            return projectName + " not found. " + listAllOpenEclipseProjects();
+            return done(projectName + " not found", projectName + " not found. " + listAllOpenEclipseProjects());
         }
-        
-        monitorMessage("Building " + projectName);
         IProject projectRef = project.get();
         try {
-            // clear
+            monitorMessage("Building " + projectName);
             projectRef.deleteMarkers(IMarker.PROBLEM, true, IResource.DEPTH_INFINITE);
             projectRef.refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
-            // build
             projectRef.build(IncrementalProjectBuilder.CLEAN_BUILD, new NullProgressMonitor());
             projectRef.build(IncrementalProjectBuilder.FULL_BUILD, new NullProgressMonitor());
 
-            var status = readProjectStatus(projectRef);
-
-            if (status.hasProblems()) {
-                return "Project build " + projectRef.getName() + " results:\n" + status.toString();
-            } else {
-                return "Project " + projectRef.getName() + " build with no errors or warning.";
-            }
+            return readProblems(projectRef);
         } catch (CoreException e) {
             throw new RuntimeException("Filed to build " + projectRef.getName(), e);
         }
-
     }
 
     static class Status {
@@ -108,7 +98,7 @@ public class EclipseBuildTool extends AbstractTool {
             for (IMarker m : errors) {
                 result.append(markerToAiString(m)).append("\n");
             }
-            for (IMarker m : errors) {
+            for (IMarker m : warnings) {
                 result.append(markerToAiString(m)).append("\n");
             }
             return result.toString();

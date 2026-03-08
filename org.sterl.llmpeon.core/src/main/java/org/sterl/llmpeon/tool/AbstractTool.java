@@ -23,7 +23,18 @@ public class AbstractTool implements SmartTool {
     protected void monitorMessage(String m) {
         if (hasMonitor()) monitor.onAction(m);
     }
-    
+
+    /** Sends the message as monitor action AND returns it as the tool result. */
+    protected String done(String message) {
+        monitorMessage(message);
+        return message;
+    }
+
+    protected String done(String message, String result) {
+        monitorMessage(message);
+        return result;
+    }
+
     protected void onProblem(String m) {
         if (hasMonitor()) monitor.onProblem(m);
     }
