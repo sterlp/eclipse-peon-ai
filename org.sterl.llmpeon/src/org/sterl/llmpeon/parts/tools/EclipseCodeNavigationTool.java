@@ -4,6 +4,10 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.Flags;
 import org.eclipse.jdt.core.IField;
@@ -24,6 +28,7 @@ import org.eclipse.jdt.core.search.SearchRequestor;
 import org.eclipse.jdt.core.search.TypeNameMatch;
 import org.eclipse.jdt.core.search.TypeNameMatchRequestor;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
+import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.AbstractTool;
@@ -42,7 +47,7 @@ public class EclipseCodeNavigationTool extends AbstractTool {
     // -------------------------------------------------------------------------
 
     @Tool("""
-            Finds a Java type (class, interface, enum, record) by name in the Eclipse workspace.
+            Java only: Finds a Java type (class, interface, enum, record) by name in the Eclipse workspace.
             Returns location, kind, Javadoc, superclass and interfaces — no source code.
             Accepts simple names ('Foo'), wildcard patterns ('Foo*'), or fully qualified names ('com.example.Foo').
             Use getTypeSource afterwards to read the full source of a found type.
@@ -56,15 +61,15 @@ public class EclipseCodeNavigationTool extends AbstractTool {
             throw new IllegalArgumentException("typeName must not be empty");
         }
 
-        monitorMessage("Eclipse finding type " + typeName);
-
         try {
             boolean isFqn = typeName.contains(".") && !typeName.contains("*");
             List<IType> found = isFqn ? findByFqn(typeName, projectName) : findBySearch(typeName, projectName);
 
             if (found.isEmpty()) {
-                return "No type found matching '" + typeName + "'. "
+                var result = "No type found matching '" + typeName + "'. "
                         + "Try a wildcard pattern like '*" + typeName + "*' or check the spelling.";
+                monitorMessage(result);
+                return result;
             }
 
             var sb = new StringBuilder();
@@ -78,7 +83,7 @@ public class EclipseCodeNavigationTool extends AbstractTool {
                   .append(" more results. Narrow your search.");
             }
 
-            monitorMessage("Found " + found.size() + " type(s)");
+            monitorMessage("Found " + found.size() + " type(s) for: " + typeName);
             return sb.toString();
         } catch (JavaModelException e) {
             throw new RuntimeException("Search failed: " + e.getMessage(), e);
@@ -90,7 +95,7 @@ public class EclipseCodeNavigationTool extends AbstractTool {
     // -------------------------------------------------------------------------
 
     @Tool("""
-            Returns the full source code of a Java type by its fully qualified name.
+            Java only: Returns the full source code of a Java type by its fully qualified name.
             For binary types (JDK / library JARs without source), returns public field and method signatures.
             Use findJavaType first to discover the correct fully qualified name.
             """)
@@ -105,8 +110,9 @@ public class EclipseCodeNavigationTool extends AbstractTool {
         try {
             List<IType> found = findByFqn(fqn, projectName);
             if (found.isEmpty()) {
-                monitorMessage("Source read not found " + fqn);
-                return "Type not found: " + fqn + ". Use findJavaType to get the correct fully qualified name.";
+                var result = "Type not found: " + fqn + ". Use findJavaType to get the correct fully qualified name.";
+                monitorMessage(result);
+                return result;
             }
 
             IType type = bestType(found);
@@ -144,7 +150,7 @@ public class EclipseCodeNavigationTool extends AbstractTool {
     // Tool 3: Find references
     // -------------------------------------------------------------------------
 
-    @Tool("Finds all references/usages of a Java type or method across the workspace. "
+    @Tool("Java only: Finds all references/usages of a Java type or method across the workspace. "
             + "Returns file paths with line numbers where the element is referenced. "
             + "Use findJavaType first to get the fully qualified type name.")
     public String findReferences(
@@ -157,13 +163,12 @@ public class EclipseCodeNavigationTool extends AbstractTool {
             throw new IllegalArgumentException("typeName must not be empty");
         }
 
-        monitorMessage("Finding references to " + typeName
-                + (methodName != null && !methodName.isBlank() ? "." + methodName : ""));
-
         try {
             var typeOpt = JdtUtil.findType(typeName);
             if (typeOpt.isEmpty()) {
-                return "Type not found: " + typeName + ". Use findJavaType to find the correct name.";
+                var result = "Type not found: " + typeName + ". Use findJavaType to find the correct name.";
+                monitorMessage(result);
+                return result;
             }
             IType type = typeOpt.get();
 
@@ -171,6 +176,7 @@ public class EclipseCodeNavigationTool extends AbstractTool {
             if (methodName != null && !methodName.isBlank()) {
                 IMethod method = findMethodByName(type, methodName);
                 if (method == null) {
+                    monitorMessage("Method not found: " + typeName + "." + methodName);
                     return "Method '" + methodName + "' not found on " + typeName
                             + ". Available methods: " + listMethodNames(type);
                 }
@@ -196,7 +202,8 @@ public class EclipseCodeNavigationTool extends AbstractTool {
                     new NullProgressMonitor());
 
             if (matches.isEmpty()) {
-                return "No references found for " + target.getElementName() + ".";
+                monitorMessage("No references found for: " + target.getElementName());
+                return "No references found for: " + target.getElementName() + ".";
             }
 
             var byFile = new LinkedHashMap<String, List<String>>();
@@ -227,7 +234,7 @@ public class EclipseCodeNavigationTool extends AbstractTool {
                   .append(" results. Narrow with a project name.");
             }
 
-            monitorMessage("Found " + matches.size() + " references");
+            monitorMessage("Found " + matches.size() + " references of method for: " + typeName + "." + methodName);
             return sb.toString();
         } catch (Exception e) {
             throw new RuntimeException("Reference search failed: " + e.getMessage(), e);
@@ -235,10 +242,100 @@ public class EclipseCodeNavigationTool extends AbstractTool {
     }
 
     // -------------------------------------------------------------------------
-    // Tool 4: Find implementations
+    // Tool 4: Find workspace resources by name pattern
     // -------------------------------------------------------------------------
 
-    @Tool("Finds all classes that implement a given interface or extend a given class. "
+    @Tool("Finds files and folders in the Eclipse workspace by name or glob pattern. "
+            + "Supports wildcards: '*' matches any sequence of characters, '?' matches one character. "
+            + "Example: '*.xml', 'application*.properties', 'pom.xml'. "
+            + "Use this for non-Java resources like XML, JSON, YAML, properties files.")
+    public String findResource(
+            @P("File name or glob pattern, e.g. '*.xml' or 'application.properties'") String namePattern,
+            @P("Optional project name to limit search. Empty searches all projects.") String projectName) {
+
+        if (namePattern == null || namePattern.isBlank()) {
+            throw new IllegalArgumentException("namePattern must not be empty");
+        }
+
+        // Normalize to always be a glob
+        String glob = namePattern.contains("*") || namePattern.contains("?")
+                ? namePattern : "*" + namePattern + "*";
+
+        var matches = new ArrayList<String>();
+        try {
+            var projects = projectName != null && !projectName.isBlank()
+                    ? EclipseUtil.findOpenProject(projectName).map(List::of).orElse(EclipseUtil.openProjects())
+                    : EclipseUtil.openProjects();
+
+            for (var project : projects) {
+                project.accept(resource -> {
+                    if (resource.getType() == IResource.FILE
+                            && matches(resource.getName(), glob)
+                            && matches.size() < MAX_REFERENCE_RESULTS) {
+                        matches.add(resource.getFullPath().toPortableString());
+                    }
+                    return true; // recurse into children
+                });
+            }
+        } catch (CoreException e) {
+            throw new RuntimeException("Resource search failed: " + e.getMessage(), e);
+        }
+
+        if (matches.isEmpty()) {
+            monitorMessage("No resources found for: " + namePattern);
+            return "No resources found matching '" + namePattern + "'.";
+        }
+
+        var sb = new StringBuilder();
+        sb.append("Found ").append(matches.size()).append(" resource(s):\n\n");
+        matches.forEach(p -> sb.append(p).append("\n"));
+        if (matches.size() >= MAX_REFERENCE_RESULTS) {
+            sb.append("\n... capped at ").append(MAX_REFERENCE_RESULTS)
+              .append(" results. Narrow with a project name or more specific pattern.");
+        }
+
+        monitorMessage("Found " + matches.size() + " resources for: " + namePattern);
+        return sb.toString();
+    }
+
+    // -------------------------------------------------------------------------
+    // Tool 5: Read content of any workspace resource
+    // -------------------------------------------------------------------------
+
+    @Tool("Reads the full content of any file in the Eclipse workspace by its workspace-relative path. "
+            + "Works for any file type: XML, JSON, YAML, properties, Java source, etc. "
+            + "Use findResource or findJavaType to get the workspace path first.")
+    public String getResourceContent(
+            @P("Workspace-relative path, e.g. '/my.project/src/main/resources/application.properties'") String path) {
+
+        if (path == null || path.isBlank()) {
+            throw new IllegalArgumentException("path must not be empty");
+        }
+
+        IFile file = ResourcesPlugin.getWorkspace().getRoot().getFile(
+                org.eclipse.core.runtime.Path.fromPortableString(path));
+
+        if (!file.exists()) {
+            monitorMessage("File not found: " + path);
+            return "File not found: " + path + ". Use findResource to get the correct workspace path.";
+        }
+
+        var content = IoUtils.readFile(file);
+        monitorMessage("Read " + path + " (" + content.length() + " chars)");
+        return content;
+    }
+
+    private static boolean matches(String name, String glob) {
+        // Convert glob to regex: escape dots, replace * and ?
+        String regex = glob.replace(".", "\\.").replace("*", ".*").replace("?", ".");
+        return name.matches("(?i)" + regex);
+    }
+
+    // -------------------------------------------------------------------------
+    // Tool 5: Find implementations
+    // -------------------------------------------------------------------------
+
+    @Tool("Java only: Finds all classes that implement a given interface or extend a given class. "
             + "Returns each implementing type with its file path and kind. "
             + "Use findJavaType first to get the fully qualified type name.")
     public String findImplementations(
@@ -249,12 +346,12 @@ public class EclipseCodeNavigationTool extends AbstractTool {
             throw new IllegalArgumentException("typeName must not be empty");
         }
 
-        monitorMessage("Finding implementations of " + typeName);
-
         try {
             var typeOpt = JdtUtil.findType(typeName);
             if (typeOpt.isEmpty()) {
-                return "Type not found: " + typeName + ". Use findJavaType to find the correct name.";
+                var result = "Type not found: " + typeName + ". Use findJavaType to find the correct name.";
+                monitorMessage(result);
+                return result;
             }
             IType type = typeOpt.get();
 
@@ -262,7 +359,9 @@ public class EclipseCodeNavigationTool extends AbstractTool {
             IType[] subtypes = hierarchy.getAllSubtypes(type);
 
             if (subtypes.length == 0) {
-                return "No implementations found for " + typeName + ".";
+                var result = "No implementations found for: " + typeName + ".";
+                monitorMessage(result);
+                return result;
             }
 
             var sb = new StringBuilder();
@@ -279,7 +378,7 @@ public class EclipseCodeNavigationTool extends AbstractTool {
                   .append(" more. Narrow with a project name.");
             }
 
-            monitorMessage("Found " + subtypes.length + " implementations");
+            monitorMessage("Found " + subtypes.length + " implementations for: " + typeName);
             return sb.toString();
         } catch (JavaModelException e) {
             throw new RuntimeException("Hierarchy search failed: " + e.getMessage(), e);
