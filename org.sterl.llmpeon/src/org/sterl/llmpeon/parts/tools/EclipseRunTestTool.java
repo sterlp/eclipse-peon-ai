@@ -12,6 +12,7 @@ import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.ILaunchConfigurationWorkingCopy;
 import org.eclipse.debug.core.ILaunchManager;
 import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.junit.JUnitCore;
 import org.eclipse.jdt.junit.TestRunListener;
@@ -55,7 +56,7 @@ public class EclipseRunTestTool extends AbstractTool {
                 ? "Run all tests in " + projectName
                 : "Run " + testClassName + " in " + projectName;
 
-
+        monitorMessage(launchName);
         try {
             // Collect failures directly in the listener
             var failures = Collections.synchronizedList(new ArrayList<String>());
@@ -97,7 +98,16 @@ public class EclipseRunTestTool extends AbstractTool {
                 wc.setAttribute("org.eclipse.jdt.junit.TEST_KIND",
                         "org.eclipse.jdt.junit.loader.junit5");
 
-                if (!runAll) {
+                if (runAll) {
+                    wc.setAttribute("org.eclipse.jdt.junit.CONTAINER",
+                            javaProject.getHandleIdentifier());
+                } else {
+                    IType testType = javaProject.findType(testClassName);
+                    if (testType == null || !testType.exists()) {
+                        throw new IllegalArgumentException("Test class not found in project '"
+                                + projectName + "': " + testClassName
+                                + ". Use a file search tool to find the correct class name and project.");
+                    }
                     wc.setAttribute(IJavaLaunchConfigurationConstants.ATTR_MAIN_TYPE_NAME,
                             testClassName);
                 }
@@ -114,7 +124,7 @@ public class EclipseRunTestTool extends AbstractTool {
                             + failures.size() + " failures so far.";
                 }
 
-                return done("Reading test results for " + launchName, formatResults(sessionName[0], testCount[0], failures));
+                return done("Checking test results of " + projectName, formatResults(sessionName[0], testCount[0], failures));
             } finally {
                 JUnitCore.removeTestRunListener(listener);
                 // clean up temp launch config
