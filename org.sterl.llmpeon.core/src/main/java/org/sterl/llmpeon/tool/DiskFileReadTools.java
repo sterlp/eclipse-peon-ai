@@ -38,10 +38,12 @@ public class DiskFileReadTools extends AbstractTool {
 
         Path resolved = resolve(filePath);
         if (resolved == null || !Files.isRegularFile(resolved)) {
-            return done("File not found: " + filePath);
+            onProblem("File not found: " + filePath);
+            return "File not found: " + filePath;
         }
         try {
-            return done("Read " + filePath, Files.readString(resolved));
+            monitorMessage("Reading " + filePath);
+            return Files.readString(resolved);
         } catch (IOException e) {
             throw new RuntimeException("Failed to read " + filePath, e);
         }
@@ -64,11 +66,11 @@ public class DiskFileReadTools extends AbstractTool {
             throw new RuntimeException("Failed to search in " + workingDir, e);
         }
 
+        monitorMessage("Found " + matches.size() + " for " + query);
         if (matches.isEmpty()) {
-            return done("No files found matching '" + query + "' adjust your query");
+            return "No files found matching '" + query + "' adjust your query";
         }
-        return done("Found " + matches.size() + " file(s)", 
-                "Found:\n" + String.join("\n", matches));
+        return String.join("\n", matches);
     }
 
     @Tool("Lists files and folders directly in a directory on the disk filesystem (non-recursive). "
@@ -84,23 +86,25 @@ public class DiskFileReadTools extends AbstractTool {
             dir = resolve(path);
         }
         if (dir == null || !Files.isDirectory(dir)) {
-            return done("Directory not found: " + path);
+            onProblem("Directory not found: " + path);
+            return "Directory not found: " + path;
         }
 
         var entries = new ArrayList<String>();
         try (var stream = Files.list(dir)) {
             stream.sorted().forEach(p -> {
-                String prefix = Files.isDirectory(p) ? "[DIR]  " : "[FILE] ";
+                String prefix = Files.isDirectory(p) ? "[DIR] " : "[FILE] ";
                 entries.add(prefix + p.toAbsolutePath());
             });
         } catch (IOException e) {
             throw new RuntimeException("Failed to list " + dir, e);
         }
 
+        monitorMessage("List directory " + path + " with " + entries.size() + " elements");
         if (entries.isEmpty()) {
-            return done("Directory is empty: " + dir);
+            return "Directory is empty: " + dir;
         }
-        return done("Content of " + path + " " + entries.size(), "Contents of " + dir + ":\n" + String.join("\n", entries));
+        return String.join("\n", entries);
     }
 
     private Path resolve(String path) {

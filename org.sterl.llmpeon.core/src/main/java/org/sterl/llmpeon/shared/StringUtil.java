@@ -26,4 +26,11 @@ public class StringUtil {
         if (value == null) return "";
         return value.strip();
     }
+
+    public static String offsetToLine(String value, int offset) {
+        if (value == null || offset < 0) return null;
+        var lines = value.split("\n");
+        if (offset > lines.length - 1) return null;
+        return lines[offset];
+    }
 }

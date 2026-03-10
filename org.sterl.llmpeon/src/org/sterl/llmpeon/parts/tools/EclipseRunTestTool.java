@@ -122,7 +122,8 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
                             + failures.size() + " failures so far.";
                 }
 
-                return done("Checking test results of " + projectName, formatResults(sessionName[0], testCount[0], failures));
+                monitorMessage("Reading test results of " + projectName);
+                return formatResults(sessionName[0], testCount[0], failures);
             } finally {
                 JUnitCore.removeTestRunListener(listener);
                 // clean up temp launch config

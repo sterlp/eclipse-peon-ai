@@ -28,6 +28,7 @@ import org.sterl.llmpeon.parts.shared.EclipseTemplateContext;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.shared.SimpleDiff;
+import org.sterl.llmpeon.parts.tools.EclipseCodeNavigationTool;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget.SimpleChatMessage;
 
 import dev.langchain4j.data.message.ChatMessageType;
@@ -141,6 +142,20 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
         btnClear.addListener(SWT.Selection, e -> {
             chatService.clear();
             chatHistory.clear();
+            
+            Job.create("findJavaType for **File", monitor -> {
+                var tool = new EclipseCodeNavigationTool();
+                var result = new EclipseCodeNavigationTool().findJavaType("java.io.File", getUserSelection());
+                Display.getDefault().asyncExec(() -> inputArea.setText(result));
+                
+                Display.getDefault().asyncExec(() -> {
+                    this.chatHistory.appendMessage(new SimpleChatMessage("AI", tool.getTypeSource("java.io.File", null)));
+                });
+                
+
+                monitor.done();
+                return Status.OK_STATUS;
+            }).schedule();
         });
 
         btnImplement = new Button(bar, SWT.PUSH);

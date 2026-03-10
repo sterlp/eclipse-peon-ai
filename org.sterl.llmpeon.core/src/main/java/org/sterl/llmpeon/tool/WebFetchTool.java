@@ -61,19 +61,20 @@ public class WebFetchTool extends AbstractTool {
                 .GET()
                 .build();
 
-        monitorMessage("Fetching " + url);
+        
         
         HttpResponse<byte[]> response = this.httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
         Charset charset = extractCharset(response).orElse(StandardCharsets.UTF_8);
         String htmlContent = new String(response.body(), charset);
         
         if (response.statusCode() >= 400) {
+            onProblem("Failed to fetch " + url + " - " + response.statusCode());
             return "Failed to fetch " + url + ". HTTP status code: " + response.statusCode()
                 + " Response: " + htmlContent;
         }
 
-        return "Content of " + url + "\n" 
-            + this.htmlToMarkdownConverter.convert(htmlContent);
+        monitorMessage("Reading " + url);
+        return this.htmlToMarkdownConverter.convert(htmlContent);
     }
 
     private Optional<Charset> extractCharset(HttpResponse<?> response) {

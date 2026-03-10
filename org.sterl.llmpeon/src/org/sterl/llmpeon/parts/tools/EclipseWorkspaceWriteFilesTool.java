@@ -13,6 +13,7 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.sterl.llmpeon.agent.AiMonitor.AiFileUpdate;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.IoUtils;
+import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.FileUtils;
 
 import dev.langchain4j.agent.tool.P;
@@ -57,14 +58,14 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
                 String oldContent = FileUtils.readString(f);
                 FileUtils.writeString(f, newContent);
                 if (hasMonitor()) monitor.onFileUpdate(new AiFileUpdate(filePath, oldContent, newContent));
-                return done("File " + filePath + " updated.");
+                return "File " + filePath + " updated.";
             }
             throw new IllegalArgumentException(
                     "File not found: " + filePath + ". Use searchWorkspaceFiles to find the correct path.");
         }
         var result = writeEclipseFile((IFile) inFile.get(), newContent);
         if (hasMonitor()) monitor.onFileUpdate(result);
-        return done("File " + result.file() + " updated.");
+        return "File " + result.file() + " updated.";
     }
 
     @Tool("Creates a new file or overwrites an existing one in the Eclipse workspace. "
@@ -103,7 +104,8 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
         }
 
         IFile file = writeFileToProject(targetProject.get(), projectRelativePath, content);
-        return done("Created file: " + file.getFullPath().toPortableString());
+        monitorMessage("Created file " + JdtUtil.pathOf(file));
+        return "Created file: " + JdtUtil.pathOf(file);
     }
 
     @Tool("Deletes a file in the Eclipse workspace. "
@@ -116,19 +118,18 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
         }
 
         var file = EclipseUtil.resolveInEclipse(filePath);
-        if (file.isEmpty()) {
-            return done("Not found: " + filePath);
-        }
-        String fullPath = file.get().getFullPath().toPortableString();
+        if (file.isEmpty()) throw new IllegalArgumentException("Not found: " + filePath);
+
+        var pathToDelete = JdtUtil.pathOf(file.get());
         try {
             try {
                 file.get().delete(IResource.KEEP_HISTORY, new NullProgressMonitor());
             } catch (Exception e) {
                 file.get().delete(IResource.FORCE, new NullProgressMonitor());
             }
-            return done("Deleted file: " + fullPath);
+            return "Deleted file: " + pathToDelete;
         } catch (CoreException e) {
-            throw new RuntimeException("Failed to delete " + fullPath, e);
+            throw new RuntimeException("Failed to delete " + pathToDelete, e);
         }
     }
 

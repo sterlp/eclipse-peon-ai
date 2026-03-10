@@ -6,7 +6,6 @@ import java.util.List;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
-import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.Flags;
@@ -65,12 +64,11 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
             List<IType> found = isFqn ? findByFqn(typeName, projectName) : findBySearch(typeName, projectName);
 
             if (found.isEmpty()) {
-                return done("No type found matching '" + typeName + "'. "
-                        + "Try a wildcard pattern like '*" + typeName + "*' or check the spelling.");
+                onProblem("No type found matching '" + typeName + "'. ");
+                return "Type '" + typeName + "' not found. Try a wildcard pattern like '*" + typeName + "*' or check the spelling.";
             }
 
             var sb = new StringBuilder();
-            sb.append("Found ").append(found.size()).append(" type(s):\n\n");
             for (int i = 0; i < Math.min(found.size(), MAX_TYPE_RESULTS); i++) {
                 appendTypeSummary(sb, found.get(i));
                 if (i < found.size() - 1) sb.append("\n---\n");
@@ -79,8 +77,8 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
                 sb.append("\n... ").append(found.size() - MAX_TYPE_RESULTS)
                   .append(" more results. Narrow your search.");
             }
-
-            return done("Searching " + typeName + " found " + found.size(), sb.toString());
+            monitorMessage("Found " + found.size() + " matching " + typeName);
+            return sb.toString();
         } catch (JavaModelException e) {
             throw new RuntimeException("Search failed: " + e.getMessage(), e);
         }
@@ -106,27 +104,27 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
         try {
             List<IType> found = findByFqn(fqn, projectName);
             if (found.isEmpty()) {
-                return done("Type not found: " + fqn + ". Use findJavaType to get the correct fully qualified name.");
+                onProblem("No type " + fqn + " found" + (StringUtil.hasValue(projectName) ? " in " + projectName : ""));
+                return "Type not found: " + fqn + ". Use findJavaType to get the correct fully qualified name.";
             }
 
             IType type = bestType(found);
             var sb = new StringBuilder();
-            sb.append("File: ").append(JdtUtil.pathOf(type)).append("\n");
 
-            String source = type.getSource();
+            String source = JdtUtil.getSource(type);
             if (StringUtil.hasValue(source)) {
                 sb.append(source);
             } else {
                 sb.append("Source code not available.\n");
+                sb.append("File: ").append(JdtUtil.pathOf(type)).append("\n");
                 String javadoc = JdtUtil.javadoc(type);
                 if (!javadoc.isEmpty()) sb.append("Javadoc:\n").append(javadoc).append("\n");
                 appendTypeSummary(sb, type);
                 appendBinarySignatures(sb, type);
             }
 
-            return done("Type search for " + fqn + " found: " 
-                    + type.getFullyQualifiedName() + (StringUtil.hasValue(source) ? " returned source " : " returned binary info"), 
-                    sb.toString());
+            monitorMessage("Reading type " + fqn + " " + (StringUtil.hasNoValue(source) ? " source" : " binary"));
+            return sb.toString();
         } catch (JavaModelException e) {
             throw new RuntimeException("Read source failed: " + e.getMessage(), e);
         }
@@ -136,6 +134,7 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
         IType result = found.get(0);
         for (IType t : found) {
             if (StringUtil.hasValue(t.getSource())) result = t;
+            else if (JdtUtil.getSource(result) != null) result = t;
         }
         return result;
     }
@@ -162,7 +161,8 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
         try {
             var typeOpt = JdtUtil.findType(typeName);
             if (typeOpt.isEmpty()) {
-                return done("Type not found: " + typeName + ". Use findJavaType to find the correct name.");
+                onProblem("Cannot read references of unknown type " + typeName);
+                return "Type not found: " + typeName + ". Use findJavaType to find the correct name.";
             }
             IType type = typeOpt.get();
 
@@ -170,8 +170,8 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
             if (methodName != null && !methodName.isBlank()) {
                 IMethod method = findMethodByName(type, methodName);
                 if (method == null) {
-                    return done("Method '" + methodName + "' not found on " + typeName
-                            + ". Available methods: " + listMethodNames(type));
+                    onProblem("Unknown method " + methodName + " of type " + typeName);
+                    return "Method '" + methodName + "' not found on " + typeName + ". Available methods: " + listMethodNames(type);
                 }
                 target = method;
             } else {
@@ -195,39 +195,39 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
                     new NullProgressMonitor());
 
             if (matches.isEmpty()) {
-                return done("No references found for: " + target.getElementName() + ".");
+                return "No references found for: " + target.getElementName() + ".";
             }
 
             var byFile = new LinkedHashMap<String, List<String>>();
             for (SearchMatch match : matches) {
-                String filePath = match.getResource() != null
-                        ? match.getResource().getFullPath().toPortableString() : "unknown";
-                String line = "?";
                 if (match.getElement() instanceof IJavaElement je) {
+                    String filePath = je.getElementName();
+                    if (match.getResource() != null) filePath = JdtUtil.pathOf(match.getResource());
+                    String line = "";
                     try {
-                        var cu = je.getAncestor(IJavaElement.COMPILATION_UNIT);
-                        if (cu instanceof org.eclipse.jdt.core.ICompilationUnit icu) {
-                            String src = icu.getSource();
-                            // TODO this looks wrong, it returnes not the code but an int
-                            if (src != null) line = String.valueOf(JdtUtil.offsetToLine(src, match.getOffset()));
+                        var src = JdtUtil.getSource(je);
+                        if (src != null && match.getOffset() > 0) {
+                            line = String.valueOf(JdtUtil.offsetToLine(src, match.getOffset()));
                         }
                     } catch (JavaModelException ignored) {}
+                    byFile.computeIfAbsent(filePath, k -> new ArrayList<>()).add(line);
+                } else {
+                    System.err.println("findReferences with no java source! " + match);
+                    continue;
                 }
-                byFile.computeIfAbsent(filePath, k -> new ArrayList<>()).add(line);
             }
 
             var sb = new StringBuilder();
-            sb.append("Found ").append(matches.size()).append(" reference(s):\n\n");
             for (var entry : byFile.entrySet()) {
-                sb.append(entry.getKey()).append(" @ lines ")
+                sb.append(entry.getKey()).append(" @ lines: ")
                   .append(String.join(", ", entry.getValue())).append("\n");
             }
             if (matches.size() >= MAX_REFERENCE_RESULTS) {
                 sb.append("\n... capped at ").append(MAX_REFERENCE_RESULTS)
                   .append(" results. Narrow with a project name.");
             }
-
-            return done("Find reference " + typeName + "." + methodName + " returned " + byFile.size(), sb.toString());
+            monitorMessage("Reading references of " + target.getElementName() + " found " + matches.size() + " matches.");
+            return sb.toString();
         } catch (Exception e) {
             throw new RuntimeException("Reference search failed: " + e.getMessage(), e);
         }
@@ -254,10 +254,10 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
                 ? namePattern : "*" + namePattern + "*";
 
         var matches = new ArrayList<String>();
+        var projects = projectName != null && !projectName.isBlank()
+                ? EclipseUtil.findOpenProject(projectName).map(List::of).orElse(EclipseUtil.openProjects())
+                        : EclipseUtil.openProjects();
         try {
-            var projects = projectName != null && !projectName.isBlank()
-                    ? EclipseUtil.findOpenProject(projectName).map(List::of).orElse(EclipseUtil.openProjects())
-                    : EclipseUtil.openProjects();
 
             for (var project : projects) {
                 project.accept(resource -> {
@@ -273,10 +273,11 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
             throw new RuntimeException("Resource search failed: " + e.getMessage(), e);
         }
 
+        monitorMessage("Search for " + glob + " in " + projects.size() + " projects.");
+        
         if (matches.isEmpty()) {
-            return done("No resources found matching '" + namePattern + "'.");
+            return "No resources found matching '" + namePattern + "' in following projects: " + projects.stream().map(p -> p.getName());
         }
-
         var sb = new StringBuilder();
         sb.append("Found ").append(matches.size()).append(" resource(s):\n\n");
         matches.forEach(p -> sb.append(p).append("\n"));
@@ -285,7 +286,7 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
               .append(" results. Narrow with a project name or more specific pattern.");
         }
 
-        return done("Find resource " + namePattern + " returned " + matches.size(), sb.toString());
+        return sb.toString();
     }
 
     // -------------------------------------------------------------------------
@@ -302,14 +303,14 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
             throw new IllegalArgumentException("path must not be empty");
         }
 
-        IFile file = ResourcesPlugin.getWorkspace().getRoot().getFile(
-                org.eclipse.core.runtime.Path.fromPortableString(path));
+        var file = EclipseUtil.resolveInEclipse(path);
 
-        if (!file.exists()) {
-            return done("File not found: " + path + ". Use findResource to get the correct workspace path.");
+        if (file.isEmpty() || !(file.get() instanceof IFile)) {
+            onProblem("Cannot read unknown resource " + path);
+            return "File not found: " + path + ". Use findResource to get the correct workspace path. " + file;
         }
-
-        return done("Reading resource: " + path, IoUtils.readFile(file));
+        monitorMessage("Reading resource " + path);
+        return IoUtils.readFile((IFile)file.get());
     }
 
     private static boolean matches(String name, String glob) {
@@ -334,19 +335,22 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
         }
 
         try {
-            var typeOpt = JdtUtil.findType(typeName);
+            var typeOpt = JdtUtil.findType(typeName, projectName);
+
             if (typeOpt.isEmpty()) {
-                return done("Type not found: " + typeName + ". Use findJavaType to find the correct name.");
+                onProblem("Cannot find implementation of unknown type " + typeName);
+                return "Type not found: " + typeName + ". Use findJavaType to find the correct name.";
             }
             IType type = typeOpt.get();
 
-            ITypeHierarchy hierarchy = type.newTypeHierarchy(new NullProgressMonitor());
+            ITypeHierarchy hierarchy = type.newTypeHierarchy(getProgressMonitor());
             IType[] subtypes = hierarchy.getAllSubtypes(type);
 
+            
+            monitorMessage("Reading implementations " + subtypes.length + " of " + typeName);
             if (subtypes.length == 0) {
-                return done("No implementations found for: " + typeName + ".");
+                return "No implementations found for: " + typeName + ".";
             }
-
             var sb = new StringBuilder();
             sb.append("Found ").append(subtypes.length).append(" implementation(s) of ")
               .append(typeName).append(":\n\n");
@@ -361,7 +365,7 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
                   .append(" more. Narrow with a project name.");
             }
 
-            return done("Search implementation of " + typeName + " found " + subtypes.length, sb.toString());
+            return sb.toString();
         } catch (JavaModelException e) {
             throw new RuntimeException("Hierarchy search failed: " + e.getMessage(), e);
         }
@@ -373,7 +377,7 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
 
     private List<IType> findByFqn(String fqn, String projectName) {
         var results = new ArrayList<IType>();
-        if (projectName != null && !projectName.isBlank()) {
+        if (StringUtil.hasValue(projectName)) {
             EclipseUtil.findOpenProject(projectName).ifPresent(p ->
                 JdtUtil.findType(fqn, JavaCore.create(p)).ifPresent(results::add));
         } else {
@@ -400,7 +404,7 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
                     }
                 },
                 IJavaSearchConstants.WAIT_UNTIL_READY_TO_SEARCH,
-                new NullProgressMonitor());
+                getProgressMonitor());
 
         return results;
     }
@@ -414,6 +418,11 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
         if (ifaces != null && ifaces.length > 0) {
             sb.append("Implements: ").append(String.join(", ", ifaces)).append("\n");
         }
+        sb.append("Project: ").append(type.getJavaProject().getProject().getName()).append("\n");
+        if (type.getResource() != null) {
+            sb.append("Path: ").append(JdtUtil.pathOf(type.getResource())).append("\n");
+        }
+        sb.append("Fully qualified type name for getTypeSource: ").append(type.getFullyQualifiedName());
     }
 
     private static void appendBinarySignatures(StringBuilder sb, IType type) throws JavaModelException {

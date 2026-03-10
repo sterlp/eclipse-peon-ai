@@ -64,7 +64,7 @@ public class EclipseUtil {
      */
     public static Optional<IResource> resolveInEclipse(String path) {
         if (path == null || path.isBlank()) return Optional.empty();
-        IPath ipath = IPath.fromOSString(path);
+        IPath ipath = IPath.fromPortableString(path);
         try {
             var result = ResourcesPlugin.getWorkspace().getRoot().findMember(ipath);
             if (result != null && result.exists()) return Optional.of(result);

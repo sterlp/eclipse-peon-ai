@@ -2,16 +2,19 @@ package org.sterl.llmpeon.parts.shared;
 
 import java.util.Optional;
 
+import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.jdt.core.Flags;
 import org.eclipse.jdt.core.ICompilationUnit;
+import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IMember;
 import org.eclipse.jdt.core.ISourceRange;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
+import org.sterl.llmpeon.shared.StringUtil;
 
 public class JdtUtil {
 
@@ -20,7 +23,7 @@ public class JdtUtil {
      */
     public static Optional<IType> findType(String fqn) {
         for (IProject p : EclipseUtil.openProjects()) {
-            IJavaProject jp = JavaCore.create(p);
+            var jp = JavaCore.create(p);
             if (jp == null || !jp.exists()) continue;
             try {
                 IType type = jp.findType(fqn);
@@ -43,6 +46,15 @@ public class JdtUtil {
             // ignore
         }
         return Optional.empty();
+    }
+    
+    /**
+     * Find a type scoped to a specific project.
+     */
+    public static Optional<IType> findType(String fqn, String project) {
+        var p = EclipseUtil.findOpenProject(project);
+        if (p.isPresent() && p.get() instanceof IJavaProject jp) return findType(fqn, jp);
+        return findType(fqn);
     }
 
     /**
@@ -106,5 +118,22 @@ public class JdtUtil {
         } catch (JavaModelException e) {
             return "type";
         }
+    }
+
+    public static String getSource(IJavaElement je) throws JavaModelException {
+        String result = null;
+        var cu = je.getAncestor(IJavaElement.COMPILATION_UNIT);
+        if (cu instanceof org.eclipse.jdt.core.ICompilationUnit icu) {
+            result = icu.getSource();
+        }
+        if (StringUtil.hasValue(result)) return result;
+        
+        // get the type source
+        if (je instanceof IType t) result = t.getSource();
+        if (StringUtil.hasValue(result)) return result;
+        
+        // check for the resource
+        if (je.getResource() instanceof IFile f) result = IoUtils.readFile(f); 
+        return result;
     }
 }

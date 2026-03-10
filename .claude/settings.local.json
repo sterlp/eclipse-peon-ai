@@ -28,7 +28,15 @@
       "WebFetch(domain:help.eclipse.org)",
       "WebFetch(domain:www.vogella.com)",
       "Bash(cat /Users/sterlp/dev/workset/eclipse-peon-ai/doc/.vitepress/config.*)",
-      "Bash(npm run docs:build)"
+      "Bash(npm run docs:build)",
+      "Bash(curl -s \"https://download.eclipse.org/releases/2025-12/202512101000/p2/content.jar\" -o /tmp/eclipse-content.jar)",
+      "Read(//private/tmp/**)",
+      "Bash(jar xf eclipse-content.jar content.xml)",
+      "Bash(curl -s \"https://download.eclipse.org/releases/2025-12/202512101000/p2/content.xml.xz\" -o /tmp/eclipse-content.xml.xz)",
+      "Bash(xz -d /tmp/eclipse-content.xml.xz)",
+      "Read(//tmp/**)",
+      "Bash(curl -s \"https://download.eclipse.org/releases/2025-12/202512101000/p2/compositeContent.xml\")",
+      "Bash(mvn verify -pl releng/llmpeon-target,org.sterl.llmpeon,org.sterl.llmpeon.test --also-make)"
     ]
   }
 }

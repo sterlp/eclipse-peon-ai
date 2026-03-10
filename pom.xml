@@ -49,5 +49,6 @@
         <module>releng/llmpeon-feature</module>
         <module>releng/llmpeon-update-site</module>
         <module>org.sterl.llmpeon</module>
+        <module>org.sterl.llmpeon.test</module>
     </modules>
 </project>

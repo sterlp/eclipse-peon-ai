@@ -2,7 +2,9 @@
 package org.sterl.llmpeon.parts.tools;
 
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.List;
 
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
@@ -13,13 +15,13 @@ import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.IoUtils;
+import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.FileUtils;
-import org.sterl.llmpeon.tool.AbstractTool;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 
-public class EclipseWorkspaceReadFilesTool extends AbstractTool {
+public class EclipseWorkspaceReadFilesTool extends AbstractEclipseTool {
 
     private IProject currentProject;
 
@@ -50,14 +52,17 @@ public class EclipseWorkspaceReadFilesTool extends AbstractTool {
 
         var file = EclipseUtil.resolveInEclipse(filePath);
         if (file.isPresent() && file.get() instanceof IFile f) {
-            return done(IoUtils.readFile(f));
+            monitorMessage("Reading eclipse file " + filePath);
+            return IoUtils.readFile(f);
         }
         // fallback to raw filesystem for absolute paths
-        var fsPath = java.nio.file.Path.of(filePath);
+        var fsPath = Path.of(filePath);
         if (Files.exists(fsPath) && Files.isRegularFile(fsPath)) {
-            return done(FileUtils.readString(fsPath));
+            monitorMessage("Full path found but not in eclipse, reading " + filePath);
+            return FileUtils.readString(fsPath);
         }
-        return done("File not found: " + filePath);
+        onProblem("Cannot read unknown file " + filePath);
+        return "File not found: " + filePath + " - try searchWorkspaceFiles or listWorkspaceDirectory first.";
     }
 
     @Tool("Searches for files whose name contains the given query string in the Eclipse workspace. "
@@ -71,7 +76,7 @@ public class EclipseWorkspaceReadFilesTool extends AbstractTool {
         }
 
         String lowerQuery = query.toLowerCase();
-        var matches = new ArrayList<String>();
+        List<String> matches = new ArrayList<>();
 
         for (IProject project : ResourcesPlugin.getWorkspace().getRoot().getProjects()) {
             if (!project.isOpen()) continue;
@@ -82,7 +87,8 @@ public class EclipseWorkspaceReadFilesTool extends AbstractTool {
                         if (resource.isDerived()) return false;
                         if (resource.getType() == IResource.FILE
                                 && resource.getName().toLowerCase().contains(lowerQuery)) {
-                            matches.add(resource.getFullPath().toPortableString());
+                            var file = JdtUtil.pathOf(resource);
+                            if (matches.isEmpty() || isNotDerived(file)) matches.add(file);
                         }
                         return true;
                     }
@@ -92,12 +98,13 @@ public class EclipseWorkspaceReadFilesTool extends AbstractTool {
             }
         }
 
+        monitorMessage("Search workspace for " + query + " returned " + matches.size() + " results.");
         if (matches.isEmpty()) {
-            return done("No files found matching '" + query + "'. "
+            return "No files found matching '" + query + "'. "
                     + "The file may not exist yet (needs to be created), or try a shorter/different query. "
-                    + "Use findJavaType for Java classes or listWorkspaceDirectory to explore the project structure.");
+                    + "Use findJavaType for Java classes or listWorkspaceDirectory to explore the project structure.";
         }
-        return done("Found " + matches.size() + " for: " + query, "Found file(s):\n" + String.join("\n", matches));
+        return String.join("\n", matches);
     }
 
     @Tool("Lists files and folders directly in eclipse workspace directory (non-recursive). "
@@ -116,24 +123,29 @@ public class EclipseWorkspaceReadFilesTool extends AbstractTool {
 
         var resource = EclipseUtil.resolveInEclipse(path);
         if (resource.isEmpty()) {
-            return done("Directory not found: " + path);
+            onProblem("Cannot list unknown directory " + path);
+            return "Directory not found: " + path;
         }
 
         var res = resource.get();
         if (!(res instanceof IContainer container)) {
-            return done(path + " is a file, not a directory. Use readWorkspaceFile to read it.");
+            onProblem("Cannot list a file " + path);
+            return path + " is a file, not a directory. Use readWorkspaceFile to read it.";
         }
 
         try {
             var entries = new ArrayList<String>();
             for (IResource member : container.members()) {
                 if (member.isDerived()) continue;
-                String prefix = (member.getType() == IResource.FILE) ? "[FILE] " : "[DIR]  ";
-                entries.add(prefix + member.getFullPath().toPortableString());
+                var pathToAdd = JdtUtil.pathOf(member);
+                if (entries.isEmpty() && isNotDerived(pathToAdd)) {
+                    String prefix = (member.getType() == IResource.FILE) ? "[FILE] " : "[DIR]  ";
+                    entries.add(prefix + pathToAdd);
+                }
             }
-            if (entries.isEmpty()) return done("Directory is empty: " + path);
-            return done("List " + res.getFullPath() + " " + entries.size(), 
-                    "Contents of " + res.getFullPath().toPortableString() + ":\n" + String.join("\n", entries));
+            monitorMessage("List directories for " + path + " found " + entries.size() + " elements.");
+            if (entries.isEmpty()) return "Directory is empty: " + path;
+            return String.join("\n", entries);
         } catch (CoreException e) {
             throw new RuntimeException("Failed to list " + path, e);
         }

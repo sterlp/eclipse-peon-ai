@@ -9,6 +9,7 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IncrementalProjectBuilder;
 import org.eclipse.core.runtime.CoreException;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
+import org.sterl.llmpeon.parts.shared.JdtUtil;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -20,25 +21,30 @@ public class EclipseBuildTool extends AbstractEclipseTool {
           The result 'Eclipse path' can be used together with listWorkspaceDirectory to list the file in an eclipse project.
           """)
     public String listAllOpenEclipseProjects() {
-        var sb = new StringBuilder("Known open projects are:\n ");
+        var sb = new StringBuilder();
         var projects = EclipseUtil.openProjects();
-        if (projects.isEmpty()) sb.append("No projects are open");
-        else {
+        if (projects.isEmpty()) {
+            sb.append("No eclipse projects are open - ask the developer to create one.");
+        } else {
+            sb.append("Known open eclipse projects are:\n");
             for (IProject p : projects) {
-                sb.append("\nProject name: ").append(p.getName())
-                  .append("\nEclipse path: ").append(p.getFullPath().toPortableString())
+                sb.append("Project name: ").append(p.getName())
+                  .append("\nEclipse path: ").append(JdtUtil.pathOf(p))
                   .append("\nDisk path: ").append(p.getRawLocation().toPortableString())
-                  .append("\nNatures: ").append(projectNatures(p));
+                  .append("\nNatures: ").append(projectNatures(p))
+                  .append("\n---");
             }
         }
-        return done("List " + projects.size() + " open projects", sb.toString());
+        monitorMessage("List workspace with " + projects.size() + " open projects");
+        return sb.toString();
     }
     
     @Tool("Reads all eclipse build problems of an eclipse code project - use this to check if where any problems or warning in the project.")
     public String readProjectProblems(@P("The project name or path") String projectName) {
         var project = EclipseUtil.findOpenProject(projectName);
         if (project.isEmpty()) {
-            return done(projectName + " not found", projectName + " not found. " + listAllOpenEclipseProjects());
+            onProblem("Cannot read problems of unknown project " + projectName);
+            return projectName + " not found. " + listAllOpenEclipseProjects();
         }
         var projectRef = project.get();
         return readProblems(projectRef);
@@ -47,14 +53,14 @@ public class EclipseBuildTool extends AbstractEclipseTool {
     private String readProblems(IProject projectRef) {
         try {
             var status = readProjectStatus(projectRef);
+            monitorMessage("Reading problems of " + projectRef.getName() + ": " + status.countProblems());
             if (status.hasProblems()) {
-                return done("Project " + projectRef.getName() + " with problems: " + (status.errors.size() + status.warnings.size()), 
-                        "Project " + projectRef.getName() + " results:\n" + status.toString());
+                return "Project " + projectRef.getName() + " problems:\n" + status.toString();
             } else {
-                return done("Project build " + projectRef.getName() + " has no errors or warning.");
+                return "Project build " + projectRef.getName() + " has no errors or warning.";
             }
         } catch (CoreException e) {
-            throw new RuntimeException("Filed to build " + projectRef.getName(), e);
+            throw new RuntimeException("Failed to build " + projectRef.getName(), e);
         }
     }
 
@@ -66,7 +72,8 @@ public class EclipseBuildTool extends AbstractEclipseTool {
     public String buildEclipseProject(@P("The project name or path to build") String projectName) {
         var project = EclipseUtil.findOpenProject(projectName);
         if (project.isEmpty()) {
-            return done(projectName + " not found", projectName + " not found. " + listAllOpenEclipseProjects());
+            onProblem("Cannot build unknown project " + projectName);
+            return projectName + " not found. " + listAllOpenEclipseProjects();
         }
         IProject projectRef = project.get();
         try {
@@ -88,6 +95,10 @@ public class EclipseBuildTool extends AbstractEclipseTool {
 
         boolean hasProblems() {
             return !errors.isEmpty() || !warnings.isEmpty();
+        }
+
+        public int countProblems() {
+            return errors.size() + warnings.size();
         }
 
         @Override
@@ -140,7 +151,6 @@ public class EclipseBuildTool extends AbstractEclipseTool {
             }
             return sb.toString();
         } catch (CoreException e) {
-            System.err.println("projectNatures->" +e.getMessage());
             return "unknown";
         }
     }

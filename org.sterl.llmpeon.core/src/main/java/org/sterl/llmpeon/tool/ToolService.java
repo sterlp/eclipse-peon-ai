@@ -89,6 +89,7 @@ public class ToolService {
             } catch (IllegalArgumentException e) {
                 // user-facing argument error — return as-is so the LLM can correct itself
                 result = e.getMessage();
+                AiMonitor.nullSafty(monitor).onProblem(tr.name() + ": " + result);
             }
         }
         return new ToolResult(
