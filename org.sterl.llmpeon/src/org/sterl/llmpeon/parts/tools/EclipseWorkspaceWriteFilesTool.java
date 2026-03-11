@@ -9,7 +9,6 @@ import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.NullProgressMonitor;
 import org.sterl.llmpeon.agent.AiMonitor.AiFileUpdate;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.IoUtils;
@@ -123,9 +122,9 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
         var pathToDelete = JdtUtil.pathOf(file.get());
         try {
             try {
-                file.get().delete(IResource.KEEP_HISTORY, new NullProgressMonitor());
+                file.get().delete(IResource.KEEP_HISTORY, getProgressMonitor());
             } catch (Exception e) {
-                file.get().delete(IResource.FORCE, new NullProgressMonitor());
+                file.get().delete(IResource.FORCE, getProgressMonitor());
             }
             return "Deleted file: " + pathToDelete;
         } catch (CoreException e) {
@@ -137,8 +136,8 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
         var oldContent = IoUtils.readFile(file);
         try {
             var charset = Charset.forName(file.getCharset());
-            file.write(content.getBytes(charset), false, false, true, new NullProgressMonitor());
-            file.refreshLocal(IResource.DEPTH_ZERO, new NullProgressMonitor());
+            file.write(content.getBytes(charset), false, false, true, getProgressMonitor());
+            file.refreshLocal(IResource.DEPTH_ZERO, getProgressMonitor());
         } catch (CoreException e) {
             throw new RuntimeException("Failed to write " + file.getFullPath(), e);
         }

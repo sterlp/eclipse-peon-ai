@@ -46,15 +46,16 @@ public record LlmConfig (
                 .apiKey(apiKey())
                 .modelName(model());
 
+            // returnThinking + sendThinking are always required: preview models return a
+            // thought_signature even when thinking is "disabled". Without sendThinking(true),
+            // the thought_signature is not re-sent with tool results → INVALID_ARGUMENT error.
+            result.returnThinking(Boolean.TRUE).sendThinking(Boolean.TRUE);
+
             if (thinkingEnabled) {
-                var think = GeminiThinkingConfig.builder()
+                result.thinkingConfig(GeminiThinkingConfig.builder()
                     .thinkingLevel(GeminiThinkingLevel.MEDIUM)
-                    .build();
-                result.thinkingConfig(think)
-                    .returnThinking(Boolean.TRUE);
+                    .build());
             } else {
-                // Explicitly disable thinking (budget=0) to prevent thought_signature
-                // errors on models that have thinking enabled by default (e.g. gemini-*-flash-preview)
                 result.thinkingConfig(GeminiThinkingConfig.builder()
                     .thinkingBudget(0)
                     .build());

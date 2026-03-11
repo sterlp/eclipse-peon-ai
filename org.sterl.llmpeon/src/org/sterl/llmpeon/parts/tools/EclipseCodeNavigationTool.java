@@ -7,7 +7,6 @@ import java.util.List;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.Flags;
 import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
@@ -123,7 +122,7 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
                 appendBinarySignatures(sb, type);
             }
 
-            monitorMessage("Reading type " + fqn + " " + (StringUtil.hasNoValue(source) ? " source" : " binary"));
+            monitorMessage("Reading type " + fqn + " " + projectName + (StringUtil.hasNoValue(source) ? " source" : " binary"));
             return sb.toString();
         } catch (JavaModelException e) {
             throw new RuntimeException("Read source failed: " + e.getMessage(), e);
@@ -192,7 +191,7 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
                             if (matches.size() < MAX_REFERENCE_RESULTS) matches.add(match);
                         }
                     },
-                    new NullProgressMonitor());
+                    getProgressMonitor());
 
             if (matches.isEmpty()) {
                 return "No references found for: " + target.getElementName() + ".";
