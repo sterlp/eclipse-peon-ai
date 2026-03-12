@@ -13,6 +13,7 @@ import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.skill.SkillRecord;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.template.TemplateContext;
+import org.sterl.llmpeon.tool.CompressorAgentTool;
 import org.sterl.llmpeon.tool.ToolService;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -139,14 +140,22 @@ public class ChatService<T extends TemplateContext> {
             compressContext(monitor);
         }
 
-        if (message != null) memory.add(UserMessage.from(message));
+        if (message != null) {
+            memory.add(UserMessage.from(message));
+        }
         ChatResponse response = null;
 
-        boolean isPlan = mode == PeonMode.PLAN;
-        var agent = isPlan ? agentService.newPlannerAgent(templateContext) : agentService.newDeveloperAgent(templateContext);
-        var toolSpecs = isPlan ? toolService.readOnlyToolSpecifications() : toolService.toolSpecifications();
+        final boolean isPlan = mode == PeonMode.PLAN;
+        final var agent = isPlan ? agentService.newPlannerAgent(templateContext) : agentService.newDeveloperAgent(templateContext);
 
         do {
+            var toolSpecs = toolService.toolSpecifications(t -> {
+                // some local LLMs keep compressing - so we don't always add it
+                if (t.getTool() instanceof CompressorAgentTool) {
+                    return tokenSize > config.tokenWindow() * 0.7 && memory.messages().size() > 5;
+                }
+                return !isPlan || !t.getTool().isEditTool();
+            });
             var messagesToSend = new ArrayList<ChatMessage>(standingOrders);
             if (skillService.hasSkills()) {
                 messagesToSend.addFirst(skillService.skillMessage(templateContext));

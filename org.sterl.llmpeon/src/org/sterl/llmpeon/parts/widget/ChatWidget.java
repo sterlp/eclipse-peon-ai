@@ -2,6 +2,7 @@ package org.sterl.llmpeon.parts.widget;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -29,7 +30,9 @@ import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.shared.SimpleDiff;
 import org.sterl.llmpeon.parts.tools.EclipseCodeNavigationTool;
+import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFilesTool;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget.SimpleChatMessage;
+import org.sterl.llmpeon.shared.StringUtil;
 
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.SystemMessage;
@@ -142,21 +145,21 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
         btnClear.addListener(SWT.Selection, e -> {
             chatService.clear();
             chatHistory.clear();
-            /*
-            Job.create("findJavaType for **File", monitor -> {
+
+            Job.create("findJavaType for ChatService", monitor -> {
                 var tool = new EclipseCodeNavigationTool();
-                var result = new EclipseCodeNavigationTool().findJavaType("java.io.File", getUserSelection());
+                var result = new EclipseCodeNavigationTool().findJavaType("ChatService", getUserSelection());
                 Display.getDefault().asyncExec(() -> inputArea.setText(result));
                 
                 Display.getDefault().asyncExec(() -> {
-                    this.chatHistory.appendMessage(new SimpleChatMessage("AI", tool.getTypeSource("java.io.File", null)));
+                    this.chatHistory.appendMessage(new SimpleChatMessage("AI", tool.getTypeSource("org.sterl.llmpeon.ChatService", null)));
                 });
                 
 
                 monitor.done();
                 return Status.OK_STATUS;
             }).schedule();
-            */
+
         });
 
         btnImplement = new Button(bar, SWT.PUSH);
@@ -280,11 +283,11 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
     }
 
     private void doSendMessage() {
-        String text = inputArea.getText().trim();
-        if (text.isEmpty() && chatService.getMessages().isEmpty()) return;
+        String text = StringUtil.strip(inputArea.getText().trim() + getUserSelection());
+        if (StringUtil.hasNoValue(text) && chatService.getMessages().isEmpty()) return;
+        if (StringUtil.hasValue(text)) chatHistory.appendMessage(new SimpleChatMessage(ChatMessageType.USER.name(), text));
         inputArea.setText("");
-        if (text.length() > 0) chatHistory.appendMessage(new SimpleChatMessage(ChatMessageType.USER.name(), text));
-
+        
         lockWhileWorking(true);
         Job.create("Peon AI request", monitor -> {
             monitor.beginTask("Arbeit, Arbeit!", IProgressMonitor.UNKNOWN);
@@ -293,20 +296,8 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
             Exception ex = null;
             try {
                 int msgCountBefore = chatService.getMessages().size();
-                
-                var templateContext = chatService.getTemplateContext();
-                var selectedResource = templateContext.getSelectedResource();
-                if (selectedResource != null) {
-                    agentsMdService.load(selectedResource.getProject());
-                }
-                var orders = new ArrayList<SystemMessage>();
-                if (selectedResource != null) {
-                    orders.add(SystemMessage.from("Selected eclipse resource: " + JdtUtil.pathOf(selectedResource)));
-                }
-                agentsMdService.agentMessage(templateContext).ifPresent(orders::add);
-                if (!orders.isEmpty()) chatService.setStandingOrders(orders);
-                String msg = text + getUserSelection();
-                var result = chatService.call(msg.isEmpty() ? null : msg, this);
+                chatService.setStandingOrders(buildStandingOrders());
+                var result = chatService.call(text.isEmpty() ? null : text, this);
 
                 Display.getDefault().asyncExec(() -> {
                     if (chatService.getMessages().size() < msgCountBefore) {
@@ -330,15 +321,31 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
         }).schedule();
     }
 
+    private List<SystemMessage> buildStandingOrders() {
+        var templateContext = chatService.getTemplateContext();
+        var selectedResource = templateContext.getSelectedResource();
+        if (selectedResource != null) {
+            agentsMdService.load(selectedResource.getProject());
+        }
+        var orders = new ArrayList<SystemMessage>();
+        if (selectedResource != null) {
+            orders.add(SystemMessage.from("Selected eclipse resource: " + JdtUtil.pathOf(selectedResource)));
+        }
+        agentsMdService.agentMessage(templateContext).ifPresent(orders::add);
+        return orders;
+    }
+
     private String getUserSelection() {
         var textSelection = chatService.getTemplateContext().getTextSelection();
         String userIn = "";
-        if (textSelection != null && !textSelection.isEmpty()) {
-            userIn += "\n\nSelected text:\n" + textSelection.getText();
-            userIn += "\nStart line: " + textSelection.getStartLine();
+        if (textSelection != null && StringUtil.hasValue(textSelection.getText())) {
+            userIn += "\n\nSelected:\n\n" + textSelection.getText();
+            userIn += "\n\nStart line: " + textSelection.getStartLine();
             Optional<? extends IResource> file = EclipseUtil.getOpenFile();
             if (file.isEmpty()) file = Optional.ofNullable(chatService.getTemplateContext().getSelectedResource());
-            if (file.isPresent()) userIn += "\nFile: " + file.get().getFullPath().toPortableString();
+            if (file.isPresent()) userIn += "\n\nEclipse resource use " 
+                    + EclipseWorkspaceReadFilesTool.READ_ECLIPSE_FILE_TOOL + " to read the whole file if needed: " 
+                    + JdtUtil.pathOf(file.get());
         }
         return userIn;
     }

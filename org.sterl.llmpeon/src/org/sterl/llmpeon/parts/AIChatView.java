@@ -72,15 +72,11 @@ public class AIChatView {
         toolService.addTool(workspaceReadFilesTool);
         toolService.addTool(new DiskFileWriteTools(ResourcesPlugin.getWorkspace().getRoot().getRawLocation().toFile().toPath()));
         toolService.addTool(new DiskFileReadTools(ResourcesPlugin.getWorkspace().getRoot().getRawLocation().toFile().toPath()));
-        toolService.addTool(new WebFetchTool());
+        toolService.addTool(new EditTool(ResourcesPlugin.getWorkspace().getRoot().getRawLocation().toFile().toPath()));
         toolService.addTool(new EclipseBuildTool());
         toolService.addTool(new EclipseGrepTool());
-        toolService.addTool(new ShellTool());
-        toolService.addTool(new EditTool(ResourcesPlugin.getWorkspace().getRoot().getRawLocation().toFile().toPath()));
         toolService.addTool(new EclipseRunTestTool());
         toolService.addTool(new EclipseCodeNavigationTool());
-        toolService.addTool(new CompressorAgentTool());
-        toolService.addTool(new SearchAgentTool(toolService));
 
         chatService = new ChatService<>(LlmPreferenceInitializer.buildWithDefaults(), toolService, skillService, eclipseContext);
         chat = new ChatWidget(chatService, parent, SWT.NONE);

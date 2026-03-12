@@ -4,8 +4,9 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 
 public class CompressorAgentTool extends AbstractTool {
+    public static final String NAME = "CompressorAgentTool";
 
-    @Tool(name = "CompressorAgentTool", value = """
+    @Tool(name = CompressorAgentTool.NAME, value = """
             Compresses the current conversation history to free up context space.
             Call this when the conversation is getting long and you want to preserve
             key information in a more compact form before continuing the task.

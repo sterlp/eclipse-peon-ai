@@ -38,7 +38,8 @@ public class EclipseWorkspaceReadFilesTool extends AbstractEclipseTool {
         return false;
     }
 
-    @Tool("Reads a file from the Eclipse workspace. "
+    public static final String READ_ECLIPSE_FILE_TOOL = "readWorkspaceFile";
+    @Tool(name = READ_ECLIPSE_FILE_TOOL, value = "Reads a file from the Eclipse workspace. "
             + "Accepts workspace-relative paths (e.g. '/MyProject/src/Foo.java') "
             + "or project-relative paths (e.g. 'src/Foo.java'). "
             + "Use searchWorkspaceFiles first to find the correct file path."

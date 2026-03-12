@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 
 import org.sterl.llmpeon.agent.AgentService;
 import org.sterl.llmpeon.agent.AiMonitor;
@@ -29,6 +30,10 @@ public class ToolService {
 
     public ToolService() {
         super();
+        addTool(new WebFetchTool());
+        addTool(new SearchAgentTool(this));
+        addTool(new ShellTool());
+        addTool(new CompressorAgentTool());
     }
 
     public List<ToolSpecification> toolSpecifications() {
@@ -41,6 +46,13 @@ public class ToolService {
     public List<ToolSpecification> readOnlyToolSpecifications() {
         return toolExecutors.values().stream()
                 .filter(e -> !e.getTool().isEditTool())
+                .map(SmartToolExecutor::getSpec)
+                .toList();
+    }
+    
+    public List<ToolSpecification> toolSpecifications(Predicate<SmartToolExecutor> filter) {
+        return toolExecutors.values().stream()
+                .filter(filter)
                 .map(SmartToolExecutor::getSpec)
                 .toList();
     }

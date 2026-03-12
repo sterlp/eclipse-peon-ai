@@ -35,6 +35,71 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
         return true;
     }
 
+    @Tool("Performs a targeted edit in a file by replacing an exact string match. "
+            + "Provide the old text to find and the new text to replace it with. "
+            + "The old_string must match exactly including whitespace and indentation. "
+            + "Use searchWorkspaceFiles and readWorkspaceFile first to verify the exact content.")
+    public String editWorkspaceFile(
+            @P("Workspace-relative or project-relative path") String filePath,
+            @P("The exact text to find and replace - must be unique in the file. "
+                    + "Include enough surrounding lines to make the match unique.") String oldString,
+            @P("The replacement text") String newString) {
+
+        if (filePath == null || filePath.isBlank()) {
+            throw new IllegalArgumentException("filePath must not be empty");
+        }
+        if (oldString == null || oldString.isBlank()) {
+            throw new IllegalArgumentException("oldString must not be empty");
+        }
+        if (newString == null) {
+            throw new IllegalArgumentException("newString must not be null");
+        }
+        if (oldString.equals(newString)) {
+            throw new IllegalArgumentException("oldString and newString are identical - nothing to change");
+        }
+
+        var inFile = EclipseUtil.resolveInEclipse(filePath);
+        if (inFile.isEmpty() || !(inFile.get() instanceof IFile eclipseFile)) {
+            // fallback to raw filesystem
+            var f = java.nio.file.Path.of(filePath);
+            if (java.nio.file.Files.isRegularFile(f)) {
+                String content = org.sterl.llmpeon.shared.FileUtils.readString(f);
+                String newContent = applyEdit(filePath, content, oldString, newString);
+                org.sterl.llmpeon.shared.FileUtils.writeString(f, newContent);
+                if (hasMonitor()) monitor.onFileUpdate(new AiFileUpdate(filePath, oldString, newString));
+                return "File " + filePath + " edited successfully.";
+            }
+            throw new IllegalArgumentException(
+                    "File not found: " + filePath + ". Use searchWorkspaceFiles to find the correct path.");
+        }
+
+        String content = IoUtils.readFile(eclipseFile);
+        String newContent = applyEdit(filePath, content, oldString, newString);
+        var result = writeEclipseFile(eclipseFile, newContent);
+        var editResult = new AiFileUpdate(result.file(), oldString, newString);
+        if (hasMonitor()) monitor.onFileUpdate(editResult);
+        return "File " + editResult.file() + " edited successfully.";
+    }
+
+    private static String applyEdit(String filePath, String content, String oldString, String newString) {
+        int count = 0;
+        int idx = 0;
+        while ((idx = content.indexOf(oldString, idx)) != -1) {
+            count++;
+            idx += oldString.length();
+        }
+        if (count == 0) {
+            throw new IllegalArgumentException(
+                    "old_string not found in " + filePath + ". Read the file first to verify the exact content.");
+        }
+        if (count > 1) {
+            throw new IllegalArgumentException(
+                    "old_string found " + count + " times in " + filePath
+                            + ". Include more surrounding context to make the match unique.");
+        }
+        return content.replace(oldString, newString);
+    }
+
     @Tool("Updates the complete content of an existing file in the Eclipse workspace. "
             + "Only works for files that already exist - does not create new files. "
             + "Use searchWorkspaceFiles first to find the correct path.")
