@@ -145,7 +145,7 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
         btnClear.addListener(SWT.Selection, e -> {
             chatService.clear();
             chatHistory.clear();
-
+/*
             Job.create("findJavaType for ChatService", monitor -> {
                 var tool = new EclipseCodeNavigationTool();
                 var result = new EclipseCodeNavigationTool().findJavaType("ChatService", getUserSelection());
@@ -159,7 +159,7 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
                 monitor.done();
                 return Status.OK_STATUS;
             }).schedule();
-
+*/
         });
 
         btnImplement = new Button(bar, SWT.PUSH);
