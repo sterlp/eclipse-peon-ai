@@ -28,7 +28,7 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
     
     public static LlmConfig buildWithDefaults() {
         var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
-        
+
         var skillDir = prefs.get(PeonConstants.PREF_SKILL_DIRECTORY, "");
         if (StringUtil.hasValue(skillDir) && !Files.isDirectory(Path.of(skillDir))) {
             var dir = EclipseUtil.resolveInEclipse(skillDir);
@@ -40,7 +40,7 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
                 skillDir = dir.get().getRawLocation().toPortableString();
             }
         }
-        
+
         var config = new LlmConfig(
             AiProvider.parse(prefs.get(PeonConstants.PREF_PROVIDER_TYPE, AiProvider.OLLAMA.name())),
             prefs.get(PeonConstants.PREF_MODEL, "devstral-small-2:24b"),
@@ -51,5 +51,16 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
             skillDir
         );
         return config;
+    }
+
+    public static void saveGitHubOAuthToken(String token) {
+        try {
+            var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
+            prefs.put(PeonConstants.PREF_API_KEY, token);
+            prefs.put(PeonConstants.PREF_PROVIDER_TYPE, AiProvider.GITHUB_COPILOT.name());
+            prefs.flush();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to save GitHub OAuth token", e);
+        }
     }
 }

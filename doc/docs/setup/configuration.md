@@ -67,6 +67,10 @@ Set the API Key to a dummy value like `none` if the server does not require one.
 
 ![google gemnini](../assets/mistral-setup.png)
 
+### Github Copilot
+
+- [Model overview](https://docs.github.com/en/copilot/reference/ai-models/supported-models)
+
 ## Testing the Connection
 
 1. Open the Peon AI chat view

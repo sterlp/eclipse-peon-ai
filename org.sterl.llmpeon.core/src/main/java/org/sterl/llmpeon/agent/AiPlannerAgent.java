@@ -27,6 +27,7 @@ public class AiPlannerAgent implements AiAgent {
             - Ask clarifying questions before proceeding — never assume
             - Explore structure iteratively: goal -> affected area -> constraints -> exact scope
             - Identify exact files, classes, and interfaces affected
+            - Use the Eclipse workspace tools to read files and project strucuture
             - Use SearchAgentTool for initial discovery to minimize context size
             - preserve the paths in the plan, to avoid searches during the implementation phase
 

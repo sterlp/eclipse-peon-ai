@@ -62,6 +62,18 @@ public record LlmConfig (
             }
 
             return result.build();
+        } else if (AiProvider.GITHUB_COPILOT == providerType()) {
+            // api.githubcopilot.com accepts the GitHub OAuth token directly as Bearer.
+            // The copilot_internal/v2/token exchange is VS Code's internal mechanism
+            // and produces a semicolon-delimited token that the chat API does not accept.
+            return OpenAiChatModel.builder()
+                    .timeout(Duration.ofMinutes(2))
+                    .baseUrl("https://api.githubcopilot.com")
+                    .apiKey(apiKey() != null && !apiKey().isBlank() ? apiKey() : "not-configured")
+                    .modelName(model())
+                    .maxTokens(tokenWindow())
+                    .customHeaders(java.util.Map.of("Copilot-Integration-Id", "eclipse-peon-ai"))
+                    .build();
         } else {
             return OllamaChatModel.builder()
                     .timeout(Duration.ofMinutes(2))

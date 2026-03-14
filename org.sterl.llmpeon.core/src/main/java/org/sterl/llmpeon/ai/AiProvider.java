@@ -4,7 +4,8 @@ public enum AiProvider {
     OLLAMA,
     OPEN_AI,
     GOOGLE_GEMINI,
-    MISTRAL;
+    MISTRAL,
+    GITHUB_COPILOT;
 
     public static AiProvider parse(String string) {
         try {
