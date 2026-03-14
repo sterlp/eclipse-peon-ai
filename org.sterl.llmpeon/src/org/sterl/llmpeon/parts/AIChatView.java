@@ -104,6 +104,7 @@ public class AIChatView {
         }
         chatService.updateConfig(config);
         chat.refreshStatusLine();
+        chat.onConfigChanged(config);
     }
 
     @Focus

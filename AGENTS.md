@@ -3,6 +3,8 @@
 - `mvn clean package`
 - in eclipse clean build
 
+run always after a code change `mvn clean package` to verify code changes.
+
 # Structure
 
 This is an eclipse plugin RCP project in java.

@@ -22,6 +22,7 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Text;
 import org.sterl.llmpeon.ChatService;
 import org.sterl.llmpeon.agent.PeonMode;
+import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.PeonConstants;
 import org.sterl.llmpeon.parts.agentsmd.AgentsMdService;
 import org.sterl.llmpeon.parts.monitor.EclipseAiMonitor;
@@ -29,7 +30,6 @@ import org.sterl.llmpeon.parts.shared.EclipseTemplateContext;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.shared.SimpleDiff;
-import org.sterl.llmpeon.parts.tools.EclipseCodeNavigationTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFilesTool;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget.SimpleChatMessage;
 import org.sterl.llmpeon.shared.StringUtil;
@@ -49,8 +49,11 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
     private Button btnClear;
     private Button btnImplement;
     private Combo modeCombo;
+    private Combo modelCombo;
 
     private boolean working = false;
+    private boolean noModelConfigured = false;
+    private LlmConfig lastListedConfig;
 
     private final AgentsMdService agentsMdService = new AgentsMdService();
     
@@ -67,6 +70,7 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
         super(parent, style);
         this.chatService = chatService;
         createLayout();
+        loadModelsInBackground(chatService.getConfig());
     }
 
     private void createLayout() {
@@ -112,7 +116,7 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
     private void createCommandBar(Composite parent) {
         Composite bar = new Composite(parent, SWT.NONE);
         bar.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-        bar.setLayout(new GridLayout(5, false));
+        bar.setLayout(new GridLayout(6, false));
 
         modeCombo = new Combo(bar, SWT.READ_ONLY);
         modeCombo.setItems("Peon-Plan", "Peon-Dev");
@@ -123,6 +127,18 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
             PeonMode selected = modeCombo.getSelectionIndex() == 0 ? PeonMode.PLAN : PeonMode.DEV;
             chatService.setMode(selected);
             refreshChat();
+        });
+
+        modelCombo = new Combo(bar, SWT.READ_ONLY);
+        GridData modelComboGd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
+        modelComboGd.widthHint = 100;
+        modelCombo.setLayoutData(modelComboGd);
+        modelCombo.setToolTipText("Select model (fetched from provider)");
+        modelCombo.addListener(SWT.Selection, e -> {
+            String selected = modelCombo.getText();
+            if (selected != null && !selected.isBlank()) {
+                chatService.updateConfig(chatService.getConfig().withModel(selected));
+            }
         });
 
         btnSend = new Button(bar, SWT.PUSH);
@@ -228,10 +244,76 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
     void lockWhileWorking(boolean value) {
         this.working = value;
         btnCompress.setEnabled(!this.working);
-        btnSend.setEnabled(!this.working);
+        btnSend.setEnabled(!this.working && !noModelConfigured);
         btnClear.setEnabled(!this.working);
         btnImplement.setEnabled(!this.working);
     }
+
+    /** Called when the active config changes (e.g. after Preferences save). */
+    public void onConfigChanged(LlmConfig config) {
+        if (lastListedConfig == null
+                || config.providerType() != lastListedConfig.providerType()
+                || !java.util.Objects.equals(config.url(), lastListedConfig.url())
+                || !java.util.Objects.equals(config.apiKey(), lastListedConfig.apiKey())) {
+            loadModelsInBackground(config);
+        } else {
+            // provider unchanged — just update the selection
+            Display.getDefault().asyncExec(() -> {
+                if (isDisposed()) return;
+                selectModel(config.model());
+            });
+        }
+    }
+
+    private void loadModelsInBackground(LlmConfig config) {
+        Job.create("Fetching available models", monitor -> {
+            var models = config.providerType().listModels(config);
+            lastListedConfig = config;
+            Display.getDefault().asyncExec(() -> {
+                if (isDisposed()) return;
+                applyModelList(models, config.model());
+            });
+            return org.eclipse.core.runtime.Status.OK_STATUS;
+        }).schedule();
+    }
+
+    private void applyModelList(java.util.List<String> models, String configuredModel) {
+        if (models.isEmpty()) {
+            noModelConfigured = true;
+            modelCombo.setEnabled(false);
+            modelCombo.setItems("No model — open Preferences");
+            modelCombo.select(0);
+            btnSend.setEnabled(false);
+        } else {
+            noModelConfigured = false;
+            modelCombo.setEnabled(true);
+            modelCombo.setItems(models.toArray(new String[0]));
+            selectModel(configuredModel);
+            if (!working) btnSend.setEnabled(true);
+        }
+    }
+
+    private void selectModel(String model) {
+        if (model == null || model.isBlank()) {
+            modelCombo.select(0);
+        } else {
+            int idx = -1;
+            String[] items = modelCombo.getItems();
+            for (int i = 0; i < items.length; i++) {
+                if (items[i].equals(model)) { idx = i; break; }
+            }
+            if (idx >= 0) {
+                modelCombo.select(idx);
+            } else {
+                // configured model not in list — use first and sync service
+                modelCombo.select(0);
+                if (items.length > 0) {
+                    chatService.updateConfig(chatService.getConfig().withModel(items[0]));
+                }
+            }
+        }
+    }
+
 
     @Override
     public void onAction(String value) {
