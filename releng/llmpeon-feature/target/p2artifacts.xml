@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<?artifactRepository version='1.1.0'?>
+<artifacts size='1'>
+  <artifact classifier='org.eclipse.update.feature' id='llmpeon-feature' version='1.0.0.202603142134'>
+    <properties size='9'>
+      <property name='artifact.size' value='761'/>
+      <property name='download.size' value='761'/>
+      <property name='download.checksum.sha-512' value='5095d889133f69722548f451cbcd8d84a0f7e31b27c24b20906e8bec53178ceb33df2a95af9a8a032f5a2c3e2e04a0cddff9a82b186e0b343c47fe6717fd9d42'/>
+      <property name='download.checksum.sha-256' value='2e92be499d7ccb0b4479983e8e3dee6432e88860a2e5063f79be1e44cfc5ac08'/>
+      <property name='maven-groupId' value='org.sterl'/>
+      <property name='maven-artifactId' value='llmpeon-feature'/>
+      <property name='maven-version' value='1.0.0-SNAPSHOT'/>
+      <property name='maven-type' value='eclipse-feature'/>
+      <property name='download.contentType' value='application/zip'/>
+    </properties>
+  </artifact>
+</artifacts>

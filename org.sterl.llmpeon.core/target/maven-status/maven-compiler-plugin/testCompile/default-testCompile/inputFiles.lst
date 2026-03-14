@@ -1,0 +1,12 @@
+/home/runner/work/eclipse-peon-ai/eclipse-peon-ai/org.sterl.llmpeon.core/src/test/java/org/sterl/llmpeon/FileTest.java
+/home/runner/work/eclipse-peon-ai/eclipse-peon-ai/org.sterl.llmpeon.core/src/test/java/org/sterl/llmpeon/ai/AiCompressorAgentTest.java
+/home/runner/work/eclipse-peon-ai/eclipse-peon-ai/org.sterl.llmpeon.core/src/test/java/org/sterl/llmpeon/ai/ChatServiceTest.java
+/home/runner/work/eclipse-peon-ai/eclipse-peon-ai/org.sterl.llmpeon.core/src/test/java/org/sterl/llmpeon/ai/ModelListingTest.java
+/home/runner/work/eclipse-peon-ai/eclipse-peon-ai/org.sterl.llmpeon.core/src/test/java/org/sterl/llmpeon/shared/StringMatcherTest.java
+/home/runner/work/eclipse-peon-ai/eclipse-peon-ai/org.sterl.llmpeon.core/src/test/java/org/sterl/llmpeon/shared/StringUtilTest.java
+/home/runner/work/eclipse-peon-ai/eclipse-peon-ai/org.sterl.llmpeon.core/src/test/java/org/sterl/llmpeon/skill/SkillServiceTest.java
+/home/runner/work/eclipse-peon-ai/eclipse-peon-ai/org.sterl.llmpeon.core/src/test/java/org/sterl/llmpeon/template/TemplateContextTest.java
+/home/runner/work/eclipse-peon-ai/eclipse-peon-ai/org.sterl.llmpeon.core/src/test/java/org/sterl/llmpeon/tool/ShellToolTest.java
+/home/runner/work/eclipse-peon-ai/eclipse-peon-ai/org.sterl.llmpeon.core/src/test/java/org/sterl/llmpeon/tool/WebFetchToolTest.java
+/home/runner/work/eclipse-peon-ai/eclipse-peon-ai/org.sterl.llmpeon.core/src/test/java/org/sterl/llmpeon/tool/file/DiskFileReadToolsTest.java
+/home/runner/work/eclipse-peon-ai/eclipse-peon-ai/org.sterl.llmpeon.core/src/test/java/org/sterl/llmpeon/tool/file/DiskFilesToolTest.java
