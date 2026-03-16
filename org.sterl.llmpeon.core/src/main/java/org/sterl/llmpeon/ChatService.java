@@ -16,9 +16,9 @@ import org.sterl.llmpeon.template.TemplateContext;
 import org.sterl.llmpeon.tool.CompressorAgentTool;
 import org.sterl.llmpeon.tool.ToolService;
 
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
@@ -37,7 +37,7 @@ public class ChatService<T extends TemplateContext> {
     private final AgentService agentService;
     private int tokenSize = 0;
 
-    private List<SystemMessage> standingOrders = Collections.emptyList();
+    private List<ChatMessage> standingOrders = Collections.emptyList();
     private final T templateContext;
 
     private PeonMode mode = PeonMode.DEV;
@@ -59,16 +59,18 @@ public class ChatService<T extends TemplateContext> {
      * Sets a list of orders - which will not be added to the chat memory but are
      * added an
      */
-    public void setStandingOrders(List<SystemMessage> additions) {
+    public void setStandingOrders(List<ChatMessage> additions) {
         if (additions == null) additions = Collections.emptyList();
-        this.standingOrders = additions.stream().filter(s -> StringUtil.hasValue(s.text())).toList();
+        this.standingOrders = new ArrayList<ChatMessage>(additions);
     }
 
     public void updateConfig(LlmConfig config) {
         this.config = config;
         agentService.updateModel(config.build());
         try {
-            this.skillService.refresh(Path.of(config.skillDirectory()));
+            if (config.skillDirectory() != null) {
+                this.skillService.refresh(Path.of(config.skillDirectory()));
+            }
         } catch (Exception e) {
             throw new RuntimeException("Failed to load skills from " + config.skillDirectory(), e);
         }
@@ -135,8 +137,8 @@ public class ChatService<T extends TemplateContext> {
 
     public ChatResponse call(String message, AiMonitor monitor) {
         monitor = AiMonitor.nullSafty(monitor);
-        // auto-compress at 95%
-        if (tokenSize >= config.tokenWindow() * 0.95) {
+        
+        if (tokenSize >= config.tokenWindow() * 0.8) {
             compressContext(monitor);
         }
 
@@ -149,18 +151,8 @@ public class ChatService<T extends TemplateContext> {
         final var agent = isPlan ? agentService.newPlannerAgent(templateContext) : agentService.newDeveloperAgent(templateContext);
 
         do {
-            var toolSpecs = toolService.toolSpecifications(t -> {
-                // some local LLMs keep compressing - so we don't always add it
-                if (t.getTool() instanceof CompressorAgentTool) {
-                    return tokenSize > config.tokenWindow() * 0.7 && memory.messages().size() > 5;
-                }
-                return !isPlan || !t.getTool().isEditTool();
-            });
-            var messagesToSend = new ArrayList<ChatMessage>(standingOrders);
-            if (skillService.hasSkills()) {
-                messagesToSend.addFirst(skillService.skillMessage(templateContext));
-            }
-            messagesToSend.addAll(memory.messages());
+            var toolSpecs = buildToolSpecs(isPlan);
+            var messagesToSend = buildMessagesToSend();
 
             agent.withTools(toolSpecs);
             response = agent.call(messagesToSend, monitor);
@@ -169,6 +161,7 @@ public class ChatService<T extends TemplateContext> {
             memory.set(toolService.runAllTools(response, agentService, monitor, memory.messages()));
 
             if (monitor.isCanceled()) break;
+
         } while (response.aiMessage().hasToolExecutionRequests()
                 || StringUtil.hasNoValue(response.aiMessage().text()));
 
@@ -180,6 +173,26 @@ public class ChatService<T extends TemplateContext> {
         }
 
         return response;
+    }
+
+    private List<ToolSpecification> buildToolSpecs(final boolean isPlan) {
+        var toolSpecs = toolService.toolSpecifications(t -> {
+            // some local LLMs keep compressing - so we don't always add it
+            if (t.getTool() instanceof CompressorAgentTool) {
+                return tokenSize > config.tokenWindow() * 0.7 && memory.messages().size() > 5;
+            }
+            return !isPlan || !t.getTool().isEditTool();
+        });
+        return toolSpecs;
+    }
+
+    private ArrayList<ChatMessage> buildMessagesToSend() {
+        var messagesToSend = new ArrayList<ChatMessage>(standingOrders);
+        if (skillService.hasSkills()) {
+            messagesToSend.add(skillService.skillMessage(templateContext));
+        }
+        messagesToSend.addAll(memory.messages());
+        return messagesToSend;
     }
 
     public static String trimArgs(String value) {

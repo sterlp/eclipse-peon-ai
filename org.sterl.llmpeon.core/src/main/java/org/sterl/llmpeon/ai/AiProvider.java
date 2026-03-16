@@ -9,8 +9,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.sterl.llmpeon.shared.StringUtil;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.googleai.GeminiThinkingConfig;
 import dev.langchain4j.model.googleai.GeminiThinkingConfig.GeminiThinkingLevel;
@@ -27,7 +32,7 @@ public enum AiProvider {
         @Override
         public ChatModel buildChatModel(LlmConfig c) {
             return OllamaChatModel.builder()
-                    .timeout(Duration.ofMinutes(2))
+                    .timeout(TIMEOUT)
                     .baseUrl(c.url())
                     .modelName(c.model())
                     .think(c.thinkingEnabled())
@@ -58,13 +63,46 @@ public enum AiProvider {
         @Override
         public ChatModel buildChatModel(LlmConfig c) {
             return OpenAiChatModel.builder()
-                    .timeout(Duration.ofMinutes(2))
+                    .timeout(TIMEOUT)
                     .baseUrl(c.url())
-                    .strictJsonSchema(true)
                     .modelName(c.model())
                     .apiKey(c.apiKey())
-                    .maxTokens(c.tokenWindow())
                     .build();
+        }
+    },
+
+    LM_STUDIO {
+        @Override
+        public ChatModel buildChatModel(LlmConfig c) {
+            var http1 = JdkHttpClient.builder()
+                    .httpClientBuilder(HttpClient.newBuilder()
+                            .version(HttpClient.Version.HTTP_1_1));
+            return OpenAiChatModel.builder()
+                    .timeout(TIMEOUT)
+                    .baseUrl(c.url())
+                    .modelName(c.model())
+                    .apiKey(c.apiKey() != null && !c.apiKey().isBlank() ? c.apiKey() : "lm-studio")
+                    .httpClientBuilder(http1)
+                    .build();
+        }
+
+        @Override
+        public List<String> listModels(LlmConfig c) {
+            if (c.url() == null || c.url().isBlank()) return fallback(c);
+            try {
+                var modelsUrl = c.url() + "/models";
+                var http = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
+                var request = HttpRequest.newBuilder()
+                        .uri(URI.create(modelsUrl))
+                        .GET()
+                        .build();
+                var response = http.send(request, HttpResponse.BodyHandlers.ofString());
+                if (response.statusCode() > 299) return fallback(c);
+                return extractedModels(c, response);
+            } catch (Exception e) {
+                e.printStackTrace();
+                return fallback(c);
+            }
         }
     },
 
@@ -97,7 +135,7 @@ public enum AiProvider {
         @Override
         public ChatModel buildChatModel(LlmConfig c) {
             return MistralAiChatModel.builder()
-                    .timeout(Duration.ofMinutes(2))
+                    .timeout(TIMEOUT)
                     .modelName(c.model())
                     .apiKey(c.apiKey())
                     .build();
@@ -125,17 +163,15 @@ public enum AiProvider {
 
     GITHUB_COPILOT {
         private static final String MODELS_URL = "https://api.githubcopilot.com/models";
-        private static final ObjectMapper MAPPER = new ObjectMapper();
 
         @Override
         public ChatModel buildChatModel(LlmConfig c) {
             // api.githubcopilot.com accepts the GitHub OAuth token directly as Bearer.
             return OpenAiChatModel.builder()
-                    .timeout(Duration.ofMinutes(2))
+                    .timeout(TIMEOUT)
                     .baseUrl("https://api.githubcopilot.com")
                     .apiKey(c.apiKey() != null && !c.apiKey().isBlank() ? c.apiKey() : "not-configured")
                     .modelName(c.model())
-                    .maxTokens(c.tokenWindow())
                     .customHeaders(java.util.Map.of("Copilot-Integration-Id", "eclipse-peon-ai"))
                     .build();
         }
@@ -152,25 +188,18 @@ public enum AiProvider {
                         .GET()
                         .build();
                 var response = http.send(request, HttpResponse.BodyHandlers.ofString());
-                if (response.statusCode() != 200) return fallback(c);
 
-                var json = MAPPER.readTree(response.body());
-                var data = json.get("data");
-                if (data == null || !data.isArray() || data.isEmpty()) return fallback(c);
+                if (response.statusCode() > 299) return fallback(c);
 
-                var ids = new ArrayList<String>(data.size());
-                for (var item : data) {
-                    var id = item.get("id");
-                    if (id != null) ids.add(id.asText());
-                }
-                Collections.sort(ids);
-                return ids.isEmpty() ? fallback(c) : ids;
+                return extractedModels(c, response);
             } catch (Exception e) {
                 e.printStackTrace();
                 return fallback(c);
             }
         }
     };
+    
+    private static final Duration TIMEOUT = Duration.ofMinutes(2);
 
     /** Builds the {@link ChatModel} for this provider using the given config. */
     public abstract ChatModel buildChatModel(LlmConfig config);
@@ -185,7 +214,7 @@ public enum AiProvider {
     }
 
     protected static List<String> fallback(LlmConfig config) {
-        return config.model() != null && !config.model().isBlank()
+        return StringUtil.hasValue(config.model())
                 ? List.of(config.model())
                 : List.of();
     }
@@ -197,5 +226,25 @@ public enum AiProvider {
             System.err.println("AiProvider: unknown " + string + " using " + OLLAMA);
             return OLLAMA;
         }
+    }
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+    
+    private static ArrayList<String> extractedModels(LlmConfig config, HttpResponse<String> response)
+            throws JsonProcessingException, JsonMappingException {
+        var json = MAPPER.readTree(response.body());
+        var data = json.get("data");
+        var ids = new ArrayList<String>();
+
+        if (data != null && data.isArray()) {
+            for (var item : data) {
+                var id = item.get("id");
+                if (id != null) ids.add(id.asText());
+            }
+        }
+
+        if (ids.isEmpty() && StringUtil.hasValue(config.model())) ids.add(config.model());
+        else Collections.sort(ids);
+        return ids;
     }
 }

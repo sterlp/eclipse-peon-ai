@@ -15,6 +15,8 @@ import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.layout.RowData;
+import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
@@ -34,6 +36,7 @@ import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFilesTool;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget.SimpleChatMessage;
 import org.sterl.llmpeon.shared.StringUtil;
 
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.SystemMessage;
 
@@ -116,12 +119,17 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
     private void createCommandBar(Composite parent) {
         Composite bar = new Composite(parent, SWT.NONE);
         bar.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-        bar.setLayout(new GridLayout(6, false));
+        RowLayout rowLayout = new RowLayout(SWT.HORIZONTAL);
+        rowLayout.wrap = true;
+        rowLayout.pack = true;
+        rowLayout.center = true;
+        rowLayout.marginTop = 2;
+        rowLayout.marginBottom = 2;
+        bar.setLayout(rowLayout);
 
         modeCombo = new Combo(bar, SWT.READ_ONLY);
         modeCombo.setItems("Peon-Plan", "Peon-Dev");
         modeCombo.select(1); // default: Peon-Dev
-        modeCombo.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
         modeCombo.setToolTipText("Select agent mode");
         modeCombo.addListener(SWT.Selection, e -> {
             PeonMode selected = modeCombo.getSelectionIndex() == 0 ? PeonMode.PLAN : PeonMode.DEV;
@@ -130,9 +138,7 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
         });
 
         modelCombo = new Combo(bar, SWT.READ_ONLY);
-        GridData modelComboGd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
-        modelComboGd.widthHint = 100;
-        modelCombo.setLayoutData(modelComboGd);
+        modelCombo.setLayoutData(new RowData(200, SWT.DEFAULT));
         modelCombo.setToolTipText("Select model (fetched from provider)");
         modelCombo.addListener(SWT.Selection, e -> {
             String selected = modelCombo.getText();
@@ -144,19 +150,16 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
         btnSend = new Button(bar, SWT.PUSH);
         btnSend.setImage(org.eclipse.debug.ui.DebugUITools.getImage(
                 org.eclipse.debug.ui.IDebugUIConstants.IMG_ACT_RUN));
-        btnSend.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
         btnSend.setToolTipText("Send...");
         btnSend.addListener(SWT.Selection, e -> doSendMessage());
 
         btnCompress = new Button(bar, SWT.PUSH);
         btnCompress.setText("Compress");
-        btnCompress.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
         btnCompress.setToolTipText("Compress conversation context");
         btnCompress.addListener(SWT.Selection, e -> doCompressContext());
-        
+
         btnClear = new Button(bar, SWT.PUSH);
         btnClear.setText("Clear");
-        btnClear.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
         btnClear.setToolTipText("Clear conversation context");
         btnClear.addListener(SWT.Selection, e -> {
             chatService.clear();
@@ -180,9 +183,9 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
 
         btnImplement = new Button(bar, SWT.PUSH);
         btnImplement.setText("Start Impl.");
-        GridData gdImpl = new GridData(SWT.CENTER, SWT.CENTER, false, false);
-        gdImpl.exclude = true;
-        btnImplement.setLayoutData(gdImpl);
+        RowData rdImpl = new RowData();
+        rdImpl.exclude = true;
+        btnImplement.setLayoutData(rdImpl);
         btnImplement.setVisible(false);
         btnImplement.setEnabled(false);
         btnImplement.setToolTipText("Switch to Dev mode and start implementing the plan");
@@ -197,14 +200,13 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
 
     private void updateModeUI() {
         boolean isPlan = chatService.getMode() == PeonMode.PLAN;
-        GridData gd = (GridData) btnImplement.getLayoutData();
         if (isPlan) {
             boolean hasAiMessage = chatService.getMessages().stream()
                     .anyMatch(m -> m.type() == ChatMessageType.AI);
             btnImplement.setEnabled(hasAiMessage);
         }
         if (btnImplement.getVisible() != isPlan) {
-            gd.exclude = !isPlan;
+            ((RowData) btnImplement.getLayoutData()).exclude = !isPlan;
             btnImplement.setVisible(isPlan);
             btnImplement.getParent().layout();
         }
@@ -392,6 +394,8 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
                 });
             } catch (Exception e) {
                 ex = e;
+                Display.getDefault().asyncExec(() -> chatHistory.appendMessage(
+                        new SimpleChatMessage("PROBLEM", e.getMessage())));
             } finally {
                 Display.getDefault().asyncExec(() -> lockWhileWorking(false));
                 chatService.setStandingOrders(Collections.emptyList());
@@ -403,13 +407,14 @@ public class ChatWidget extends Composite implements EclipseAiMonitor {
         }).schedule();
     }
 
-    private List<SystemMessage> buildStandingOrders() {
+    // TODO this is very messy from the AI and need a refactoring ...
+    private List<ChatMessage> buildStandingOrders() {
         var templateContext = chatService.getTemplateContext();
         var selectedResource = templateContext.getSelectedResource();
         if (selectedResource != null) {
             agentsMdService.load(selectedResource.getProject());
         }
-        var orders = new ArrayList<SystemMessage>();
+        var orders = new ArrayList<ChatMessage>();
         if (selectedResource != null) {
             orders.add(SystemMessage.from("Selected eclipse resource: " + JdtUtil.pathOf(selectedResource)));
         }

@@ -125,11 +125,12 @@ public class ChatMarkdownWidget extends Composite {
         if (msg instanceof UserMessage um) {
             text = um.singleText();
         } else if (msg instanceof AiMessage am) {
-            if (am.thinking() != null && StringUtil.hasValue(am.thinking())) {
+            if (StringUtil.hasValue(am.thinking())) {
                 appendMessage(new SimpleChatMessage("THINK", text = am.thinking()));
             }
             text = am.text();
         } else if (msg instanceof ToolExecutionResultMessage tr) {
+            role = "TOOL";
             text = tr.text();
         }
         if (text != null) text = text.trim();

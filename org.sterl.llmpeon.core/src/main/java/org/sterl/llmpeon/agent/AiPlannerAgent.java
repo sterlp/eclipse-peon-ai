@@ -53,7 +53,11 @@ public class AiPlannerAgent implements AiAgent {
     public ChatResponse call(List<ChatMessage> inMessages, AiMonitor monitor) {
         var messages = new ArrayList<ChatMessage>(inMessages);
         messages.addFirst(SystemMessage.from(context.process(PROMPT)));
-        return chatModel.chat(request.messages(messages).build());
+        
+        return chatModel.chat(request
+                .temperature(0.8)
+                .messages(toOneSystemMessage(messages))
+                .build());
     }
 
     @Override

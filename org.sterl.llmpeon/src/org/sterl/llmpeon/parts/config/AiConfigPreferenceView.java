@@ -5,6 +5,7 @@ import org.eclipse.jface.preference.BooleanFieldEditor;
 import org.eclipse.jface.preference.ComboFieldEditor;
 import org.eclipse.jface.preference.FieldEditorPreferencePage;
 import org.eclipse.jface.preference.IntegerFieldEditor;
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.preference.StringFieldEditor;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionListener;
@@ -16,11 +17,13 @@ import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
 import org.eclipse.ui.preferences.ScopedPreferenceStore;
 import org.sterl.llmpeon.ai.AiProvider;
+import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.PeonConstants;
 
 public class AiConfigPreferenceView extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
 
     private ComboFieldEditor providerEditor;
+    private StringFieldEditor urlEditor;
     private StringFieldEditor apiKeyEditor;
 
     public AiConfigPreferenceView() {
@@ -34,6 +37,7 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
         providerEditor = new ComboFieldEditor(PeonConstants.PREF_PROVIDER_TYPE, "Provider Type:",
                 new String[][] {
                     { "Ollama", AiProvider.OLLAMA.name() },
+                    { "LM Studio (OpenAI-compatible, HTTP/1.1)", AiProvider.LM_STUDIO.name() },
                     { "OpenAI-compatible (Perplexity, OpenAI, ...)", AiProvider.OPEN_AI.name() },
                     { "Google Gemini", AiProvider.GOOGLE_GEMINI.name() },
                     { "Mistral", AiProvider.MISTRAL.name() },
@@ -42,7 +46,26 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
                 getFieldEditorParent());
         addField(providerEditor);
         addField(new StringFieldEditor(PeonConstants.PREF_MODEL, "Model:", getFieldEditorParent()));
-        addField(new StringFieldEditor(PeonConstants.PREF_URL, "URL (incl. port):", getFieldEditorParent()));
+        urlEditor = new StringFieldEditor(PeonConstants.PREF_URL, "URL (incl. port):", getFieldEditorParent());
+        addField(urlEditor);
+
+        // Check URL button
+        Button btnCheckUrl = new Button(getFieldEditorParent(), SWT.PUSH);
+        btnCheckUrl.setText("Check Host and Port...");
+        btnCheckUrl.setToolTipText("Tests TCP connectivity to the configured URL (3s timeout)");
+        GridData checkGd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
+        checkGd.horizontalSpan = 2;
+        btnCheckUrl.setLayoutData(checkGd);
+        btnCheckUrl.addListener(SWT.Selection, e -> {
+            String urlValue = urlEditor.getStringValue();
+            boolean ok = LlmConfig.newConfig("", urlValue).isReachable(3000);
+            if (ok) {
+                MessageDialog.openInformation(getShell(), "Host Check", "Successfully connected to:\n" + urlValue);
+            } else {
+                MessageDialog.openError(getShell(), "Host Check", "Cannot reach:\n" + urlValue);
+            }
+        });
+
         addField(new IntegerFieldEditor(PeonConstants.PREF_TOKEN_WINDOW, "Token Window:", getFieldEditorParent()));
         addField(new BooleanFieldEditor(PeonConstants.PREF_THINKING_ENABLED, "Supports Thinking", getFieldEditorParent()));
         apiKeyEditor = new StringFieldEditor(PeonConstants.PREF_API_KEY, "API Key:", getFieldEditorParent());

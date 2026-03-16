@@ -11,10 +11,20 @@ class ModelListingTest {
 
     @Test
     void ollamaListsModels() {
-        var config = LlmConfig.newConfig("llama3", "http://localhost:11434");
+        var config = LlmConfig.newConfig("fooo", "http://localhost:11434");
         var models = AiProvider.OLLAMA.listModels(config);
         System.out.println("Ollama models: " + models);
         assertFalse(models.isEmpty(), "Expected at least one Ollama model");
+        assertFalse(models.contains("fooo"), "Foo should not be present " + models);
+    }
+    
+    @Test
+    void lmStudioListsModels() {
+        var config = LlmConfig.newConfig(AiProvider.LM_STUDIO, "fooo", "http://localhost:1234/v1");
+        var models = AiProvider.LM_STUDIO.listModels(config);
+        System.out.println("LM Studio models: " + models);
+        assertFalse(models.isEmpty(), "Expected at least one LM Studio model");
+        assertFalse(models.contains("fooo"), "Foo should not be present " + models);
     }
 
     @Test
