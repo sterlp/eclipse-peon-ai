@@ -225,7 +225,7 @@ triggered by an architectural change.
 - `src/auth/LoginService.java` — add token validation method
 
 ## Files to Add
-- `src/auth/TokenValidator.java` — new class
+- `src/auth/TokenValidator.java` — new class implements the validation and used by the service 
 
 ## Files Must Not Touch
 - `src/auth/SecurityConfig.java`
