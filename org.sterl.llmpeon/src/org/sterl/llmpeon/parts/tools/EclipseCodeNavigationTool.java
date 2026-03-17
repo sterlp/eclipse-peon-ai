@@ -82,7 +82,7 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
     @Tool("Eclipse/Java: Get full source of a type by FQN. Covers JDK and dependency libs — prefer over decompiling JARs.")
     public String getTypeSource(
             @P("fully qualified type name (FQN)") String fqn,
-            @P("optional project name") String projectName) {
+            @P("optional; narrows JDK/lib search scope") String projectName) {
 
         if (fqn == null || fqn.isBlank()) {
             throw new IllegalArgumentException("fqn must not be empty");

@@ -22,7 +22,7 @@ public class EclipseGrepTool extends AbstractEclipseTool {
     @Tool("Eclipse: Search workspace file contents.")
     public String grepWorkspaceFiles(
             @P("text to search for") String query,
-            @P("optional path, empty = all projects") String path,
+            @P("optional project or folder path") String path,
             @P("optional file extension, e.g. .java") String extension) {
 
         if (query == null || query.isBlank()) {

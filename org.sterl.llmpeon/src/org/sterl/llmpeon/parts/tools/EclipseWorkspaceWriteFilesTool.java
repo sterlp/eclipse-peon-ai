@@ -35,7 +35,7 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
         return true;
     }
 
-    @Tool("Eclipse: Replace exact string in workspace file. Match must be unique.")
+    @Tool("Eclipse: Replace exact string in workspace file. Errors if 0 or >1 matches.")
     public String editWorkspaceFile(
             @P("workspace-relative path") String filePath,
             @P("exact string to replace") String oldString,

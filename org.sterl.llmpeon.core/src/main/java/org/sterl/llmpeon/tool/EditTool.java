@@ -24,7 +24,7 @@ public class EditTool extends AbstractTool {
         this.workingDir = workingDir.toAbsolutePath().normalize();
     }
 
-    @Tool("Disk: Replace exact string. Match must be unique.")
+    @Tool("Disk: Replace exact string. Errors if 0 or >1 matches.")
     public String editDiskFile(@P("file path") String filePath, @P("exact string to replace") String oldString, @P("replacement text") String newString) {
 
         if (filePath == null || filePath.isBlank()) {
