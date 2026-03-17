@@ -30,12 +30,10 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
     private static final Duration MAX_TEST_DURATION = Duration.ofMinutes(10);
     private static final long POLL_INTERVAL_MS = 500;
 
-    @Tool("Run JUnit 5 tests in an Eclipse project.")
+    @Tool("Eclipse: Run JUnit 5 tests.")
     public String runTests(
-            @P("The Eclipse project name") 
-            String projectName,
-            @P("Optional: fully qualified test class name e.g. 'com.example.MyTest'.") 
-            String testClassName) {
+            @P("project name") String projectName,
+            @P("optional fully qualified test class, empty = all tests") String testClassName) {
 
         var project = EclipseUtil.findOpenProject(projectName);
         if (project.isEmpty()) {

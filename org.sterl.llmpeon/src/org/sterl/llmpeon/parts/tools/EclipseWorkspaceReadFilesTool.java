@@ -39,13 +39,8 @@ public class EclipseWorkspaceReadFilesTool extends AbstractEclipseTool {
     }
 
     public static final String READ_ECLIPSE_FILE_TOOL = "readWorkspaceFile";
-    @Tool(name = READ_ECLIPSE_FILE_TOOL, value = """
-            Read eclipse workspace file content. Supports workspace-relative or project-relative paths.
-            Accepts workspace-relative paths (e.g. '/MyProject/src/Foo.java')
-            Use searchWorkspaceFiles first to find the correct file path.
-            """)
-    public String readWorkspaceFile(
-            @P("Use searchWorkspaceFiles first to find the correct file path.") String filePath) {
+    @Tool(name = READ_ECLIPSE_FILE_TOOL, value = "Eclipse: Read workspace file (e.g. '/Project/src/Foo.java').")
+    public String readWorkspaceFile(@P("workspace-relative path") String filePath) {
 
         if (filePath == null || filePath.isBlank()) {
             throw new IllegalArgumentException("filePath must not be empty");
@@ -66,11 +61,9 @@ public class EclipseWorkspaceReadFilesTool extends AbstractEclipseTool {
         return "File not found: " + filePath + " - try searchWorkspaceFiles or listWorkspaceDirectory first.";
     }
 
-    @Tool("""
-          Search for files by name string in the eclipse workspace. Skips derived resources (target/, bin/).
-          """)
+    @Tool("Eclipse: Search workspace files by name. Skips derived (target/, bin/).")
     public String searchWorkspaceFiles(
-            @P("Part of the file name to search for.") String query) {
+            @P("file name query") String query) {
 
         if (query == null || query.isBlank()) {
             throw new IllegalArgumentException("query must not be empty");
@@ -108,10 +101,9 @@ public class EclipseWorkspaceReadFilesTool extends AbstractEclipseTool {
         return String.join("\n", matches);
     }
 
-    @Tool("Lists files and folders directly in eclipse workspace directory (non-recursive). "
-        + "Use this to navigate and explore the workspace and project structure in eclipse.")
+    @Tool("Eclipse: List workspace directory (non-recursive). Empty path lists all projects.")
     public String listWorkspaceDirectory(
-            @P("Optional workspace-relative path, e.g. '/MyProject/src'. Empty or '/' lists projects.") String path) {
+            @P("workspace-relative path, e.g. '/MyProject/src'") String path) {
 
         // root: list open projects
         if (path == null || path.isBlank() || path.length() == 1) {

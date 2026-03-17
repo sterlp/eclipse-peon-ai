@@ -21,11 +21,8 @@ public class SearchAgentTool extends AbstractTool {
         this.toolService = toolService;
     }
 
-    @Tool(name = "SearchAgentTool", value = """
-            Delegates complex search or research tasks to a sub-agent. 
-            Use for multi-step exploration of files, code, types, or web documentation.
-            """)
-    public String searchAgent(@P("Natural-language description of what to search for") String prompt) {
+    @Tool(name = "SearchAgentTool", value = "Sub-agent for complex multi-step search/research.")
+    public String searchAgent(@P("search prompt") String prompt) {
         if (prompt == null || prompt.isBlank()) return "Error: search prompt must not be empty";
 
         final AiMonitor m = AiMonitor.nullSafty(monitor);

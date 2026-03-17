@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.core.Flags;
@@ -26,7 +25,6 @@ import org.eclipse.jdt.core.search.SearchRequestor;
 import org.eclipse.jdt.core.search.TypeNameMatch;
 import org.eclipse.jdt.core.search.TypeNameMatchRequestor;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
-import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 
@@ -43,13 +41,10 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
     // Tool 1: Find a type by name — returns metadata only, no source
     // -------------------------------------------------------------------------
 
-    @Tool("""
-            Java only: Find types by name/wildcard. Returns metadata, no source. 
-            Use getTypeSource for source code with the result.
-            """)
+    @Tool("Eclipse/Java: Find types by name/wildcard. Searches also libs and JDK. Metadata only, no source.")
     public String findJavaType(
-            @P("Simple name, wildcard (*), or fully qualified names com.example.Foo.") String typeName,
-            @P("Optional project name to limit search.") String projectName) {
+            @P("simple name, wildcard (*) or FQN") String typeName,
+            @P("optional project name") String projectName) {
 
         if (typeName == null || typeName.isBlank()) {
             throw new IllegalArgumentException("typeName must not be empty");
@@ -84,10 +79,10 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
     // Tool 2: Read source — given a FQN, returns the full source
     // -------------------------------------------------------------------------
 
-    @Tool("Java only: Get full source of a Java type.")
+    @Tool("Eclipse/Java: Get full source of a type by FQN. Covers JDK and dependency libs — prefer over decompiling JARs.")
     public String getTypeSource(
-            @P("Fully qualified type name, e.g. 'com.example.MyClass'") String fqn,
-            @P("Optional project name to limit search.") String projectName) {
+            @P("fully qualified type name (FQN)") String fqn,
+            @P("optional project name") String projectName) {
 
         if (fqn == null || fqn.isBlank()) {
             throw new IllegalArgumentException("fqn must not be empty");
@@ -135,14 +130,11 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
     // Tool 3: Find references
     // -------------------------------------------------------------------------
 
-    @Tool("Java only: Find all usages of a type or method.")
+    @Tool("Eclipse/Java: Find all usages of a type or method.")
     public String findReferences(
-            @P("Fully qualified type name") 
-            String typeName,
-            @P("Optional method name to find references for.") 
-            String methodName,
-            @P("Optional project name to limit scope.") 
-            String projectName) {
+            @P("fully qualified type name (FQN)") String typeName,
+            @P("optional method name") String methodName,
+            @P("optional project name") String projectName) {
 
         if (typeName == null || typeName.isBlank()) {
             throw new IllegalArgumentException("typeName must not be empty");
@@ -227,12 +219,10 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
     // Tool 4: Find workspace resources by name pattern
     // -------------------------------------------------------------------------
 
-    @Tool("""
-          Find files/folders in the eclipse workspace by name or glob pattern (*, ?). Best for non-Java resources (XML, JSON, etc.) but works also for java classes.
-          """)
+    @Tool("Eclipse/JDT: Find workspace files/folders by name or glob (*, ?).")
     public String findResource(
-            @P("File name or glob pattern") String namePattern,
-            @P("Optional project name to limit search.") String projectName) {
+            @P("file name or glob pattern") String namePattern,
+            @P("optional project name") String projectName) {
 
         if (namePattern == null || namePattern.isBlank()) {
             throw new IllegalArgumentException("namePattern must not be empty");
@@ -278,30 +268,6 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
         return sb.toString();
     }
 
-    // -------------------------------------------------------------------------
-    // Tool 5: Read content of any workspace resource
-    // -------------------------------------------------------------------------
-
-    @Tool("Reads the full content of any file in the Eclipse workspace by its workspace-relative path. "
-            + "Works for any file type: XML, JSON, YAML, properties, Java source, etc. "
-            + "Use findResource or findJavaType to get the workspace path first.")
-    public String getResourceContent(
-            @P("Workspace-relative path, e.g. '/my.project/src/main/resources/application.properties'") String path) {
-
-        if (path == null || path.isBlank()) {
-            throw new IllegalArgumentException("path must not be empty");
-        }
-
-        var file = EclipseUtil.resolveInEclipse(path);
-
-        if (file.isEmpty() || !(file.get() instanceof IFile)) {
-            onProblem("Cannot read unknown resource " + path);
-            return "File not found: " + path + ". Use findResource to get the correct workspace path. " + file;
-        }
-        monitorMessage("Reading resource " + path);
-        return IoUtils.readFile((IFile)file.get());
-    }
-
     private static boolean matches(String name, String glob) {
         // Convert glob to regex: escape dots, replace * and ?
         String regex = glob.replace(".", "\\.").replace("*", ".*").replace("?", ".");
@@ -312,10 +278,10 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
     // Tool 5: Find implementations
     // -------------------------------------------------------------------------
 
-    @Tool("Java only: Find classes implementing an interface or extending a class.")
+    @Tool("Eclipse/Java: Find implementations/subclasses.")
     public String findImplementations(
-            @P("Fully qualified interface or class name") String typeName,
-            @P("Optional project name.") String projectName) {
+            @P("fully qualified interface or class name") String typeName,
+            @P("optional project name") String projectName) {
 
         if (typeName == null || typeName.isBlank()) {
             throw new IllegalArgumentException("typeName must not be empty");

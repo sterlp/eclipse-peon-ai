@@ -27,9 +27,8 @@ public class DiskFileReadTools extends AbstractTool {
         return workingDir;
     }
 
-    @Tool("Read file from disk. Use searchDiskFiles first to find the path.")
-    public String readDiskFile(
-            @P("Relative or absolute file path") String filePath) {
+    @Tool("Disk: Read file.")
+    public String readDiskFile(@P("file path") String filePath) {
 
         if (filePath == null || filePath.isBlank()) {
             throw new IllegalArgumentException("filePath must not be empty");
@@ -48,9 +47,8 @@ public class DiskFileReadTools extends AbstractTool {
         }
     }
 
-    @Tool("Searches for files whose name contains the given query string on the disk filesystem.")
-    public String searchDiskFiles(
-            @P("Part of the file name to search for, e.g. 'Controller' or '.xml'") String query) {
+    @Tool("Disk: Search files by name.")
+    public String searchDiskFiles(@P("file name query") String query) {
 
         if (query == null || query.isBlank()) {
             throw new IllegalArgumentException("query must not be empty");
@@ -72,10 +70,9 @@ public class DiskFileReadTools extends AbstractTool {
         return String.join("\n", matches);
     }
 
-    @Tool("Lists files and folders directly in a directory on the disk filesystem (non-recursive). "
-        + "Use this to navigate and explore the directory structure.")
+    @Tool("Disk: List directory (non-recursive).")
     public String listDiskDirectory(
-            @P("Optional relative or absolute directory path. Empty or '/' lists the working directory root.") String path) {
+            @P("Optional path. Empty or '/' lists working dir root.") String path) {
 
         Path dir;
         if (path == null || path.isBlank() || path.length() == 1) {

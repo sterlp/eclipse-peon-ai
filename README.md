@@ -18,7 +18,7 @@ A lightweight, context-aware LLM assistant that integrates directly into your Ec
 
 - [Peon AI on eclipse marketplace](https://marketplace.eclipse.org/content/peon-ai)
 
-### Update Site (Recommended)
+### Update Site
 
 1. Go to **Help > Install New Software**
 2. Add the update site: [https://sterlp.github.io/eclipse-peon-ai/](https://sterlp.github.io/eclipse-peon-ai/)

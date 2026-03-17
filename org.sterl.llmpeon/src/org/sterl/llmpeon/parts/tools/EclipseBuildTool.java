@@ -16,10 +16,7 @@ import dev.langchain4j.agent.tool.Tool;
 
 public class EclipseBuildTool extends AbstractEclipseTool {
 
-    @Tool("""
-          Lists all open eclipse projects in the workspace - use this to find open developer projects.
-          The result 'Eclipse path' can be used together with listWorkspaceDirectory to list the file in an eclipse project.
-          """)
+    @Tool("Eclipse: List all open workspace projects.")
     public String listAllOpenEclipseProjects() {
         var sb = new StringBuilder();
         var projects = EclipseUtil.openProjects();
@@ -39,8 +36,8 @@ public class EclipseBuildTool extends AbstractEclipseTool {
         return sb.toString();
     }
     
-    @Tool("Reads all eclipse build problems of an eclipse code project - use this to check if where any problems or warning in the project.")
-    public String readProjectProblems(@P("The project name or path") String projectName) {
+    @Tool("Eclipse: List build errors/warnings of a project.")
+    public String readProjectProblems(@P("project name") String projectName) {
         var project = EclipseUtil.findOpenProject(projectName);
         if (project.isEmpty()) {
             onProblem("Cannot read problems of unknown project " + projectName);
@@ -64,11 +61,8 @@ public class EclipseBuildTool extends AbstractEclipseTool {
         }
     }
 
-    @Tool("""
-            Builds an eclipse project in the worksspace and returns all build errors and warnings.
-            Preferred way to verify code changes.
-            """)
-    public String buildEclipseProject(@P("The project name or path to build") String projectName) {
+    @Tool("Eclipse: Build project and return errors/warnings. Preferred way to verify code changes.")
+    public String buildEclipseProject(@P("project name") String projectName) {
         var project = EclipseUtil.findOpenProject(projectName);
         if (project.isEmpty()) {
             onProblem("Cannot build unknown project " + projectName);

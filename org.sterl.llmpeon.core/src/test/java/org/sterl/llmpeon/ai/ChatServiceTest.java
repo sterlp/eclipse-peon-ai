@@ -6,6 +6,8 @@ import java.net.http.HttpClient;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -13,9 +15,6 @@ import org.sterl.llmpeon.ChatService;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.template.TemplateContext;
 import org.sterl.llmpeon.tool.ToolService;
-
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;

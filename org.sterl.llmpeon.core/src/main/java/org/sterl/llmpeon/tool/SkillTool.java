@@ -16,8 +16,8 @@ public class SkillTool extends AbstractTool {
         this.skillService = skillService;
     }
     
-    @Tool("Read the SKILL.md directly using the name of the skill.")
-    public String readSkill(@P("SKILL name") String name) throws IOException, InterruptedException {
+    @Tool("Read SKILL.md by name.")
+    public String readSkill(@P("skill name") String name) throws IOException, InterruptedException {
         var skill = skillService.get(name);
         if (skill.isEmpty()) return "No skill with the name " + name + " found. Use one of: " 
                 + skillService.skillNames();

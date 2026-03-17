@@ -44,11 +44,8 @@ public class WebFetchTool extends AbstractTool {
      * @throws IOException if a network error occurs
      * @throws InterruptedException if the request is interrupted
      */
-    @Tool("""
-          Fetches the content of the given URL and converts it to Markdown. USe it if you should read an URL.
-          e.g. read maven langchain version https://central.sonatype.com/artifact/<groupId>/<artifactId>
-          """)
-    public String fetchAsMarkdown(@P("url the URL to fetch") String url) throws IOException, InterruptedException {
+    @Tool("Fetch URL content as Markdown.")
+    public String fetchAsMarkdown(@P("URL") String url) throws IOException, InterruptedException {
         if (url == null || url.isBlank()) {
             return "URL cannot be null or empty";
         }

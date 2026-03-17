@@ -27,7 +27,7 @@ public class ShellTool extends AbstractTool {
     @Override
     public boolean isEditTool() { return true; }
 
-    @Tool("Returns operation system and user info os.name, user.name etc. use this if the operation system matters if command should be executed.")
+    @Tool("OS/user info (os.name, user.name, etc.).")
     public String readOperationSystemInformation() {
         return "java.version: " + System.getProperty("java.version")
             + "\nos.name: " + System.getProperty("os.name")
@@ -37,12 +37,12 @@ public class ShellTool extends AbstractTool {
             + "\nuser.name: " + System.getProperty("user.name");
     }
 
-    @Tool("Execute shell commands (mvn, git, npm, etc.). Do NOT use for file I/O.")
+    @Tool("Run shell command. (mvn, npm etc.) Not for file I/O.")
     public String runOsCommand(
-            @P("The shell command, e.g. 'mvn clean install'") String command,
-            @P("The working directory (disk path)") String workingDirectory,
-            @P("Optional timeout in milliseconds, default 120000") Long timeoutMs,
-            @P("Optional max lines to return, default 50 (-1 for all)") Integer tailLines) {
+            @P("shell command") String command,
+            @P("working dir") String workingDirectory,
+            @P("timeout ms, default 120000") Long timeoutMs,
+            @P("max tail lines, default 50 (-1 for all)") Integer tailLines) {
 
         if (command == null || command.isBlank()) {
             throw new IllegalArgumentException("command must not be empty");

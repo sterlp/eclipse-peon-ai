@@ -1,11 +1,11 @@
 package org.sterl.llmpeon.parts.config;
 
 import org.eclipse.core.runtime.preferences.InstanceScope;
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.preference.BooleanFieldEditor;
 import org.eclipse.jface.preference.ComboFieldEditor;
 import org.eclipse.jface.preference.FieldEditorPreferencePage;
 import org.eclipse.jface.preference.IntegerFieldEditor;
-import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.preference.StringFieldEditor;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionListener;

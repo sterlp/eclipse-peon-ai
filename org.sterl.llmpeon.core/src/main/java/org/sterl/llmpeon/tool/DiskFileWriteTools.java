@@ -28,11 +28,8 @@ public class DiskFileWriteTools extends AbstractTool {
         return workingDir;
     }
 
-    @Tool("Updates the complete content of an existing file on the disk filesystem. "
-        + "Only works for files that already exist - does not create new files.")
-    public String writeDiskFile(
-            @P("Relative or absolute file path") String filePath,
-            @P("The complete new file content") String newContent) {
+    @Tool("Disk: Overwrite existing file.")
+    public String writeDiskFile(@P("file path") String filePath, @P("new content") String newContent) {
 
         if (filePath == null || filePath.isBlank()) {
             throw new IllegalArgumentException("filePath must not be empty");
@@ -58,10 +55,8 @@ public class DiskFileWriteTools extends AbstractTool {
         }
     }
 
-    @Tool("Create/overwrite file on disk. Creates parent folders automatically.")
-    public String createDiskFile(
-            @P("Relative or absolute disk path. e.g. 'src/com/example/Foo.java'") String filePath,
-            @P("File content.") String content) {
+    @Tool("Disk: Create/overwrite file. Creates parent dirs.")
+    public String createDiskFile(@P("file path") String filePath, @P("file content") String content) {
 
         if (filePath == null || filePath.isBlank()) {
             throw new IllegalArgumentException("filePath must not be empty");
@@ -85,10 +80,8 @@ public class DiskFileWriteTools extends AbstractTool {
         }
     }
 
-    @Tool("Deletes a file at the given path on the disk filesystem. "
-            + "Use searchDiskFiles first to find the correct path.")
-    public String deleteDiskFile(
-            @P("Relative or absolute file path") String filePath) {
+    @Tool("Disk: Delete file.")
+    public String deleteDiskFile(@P("file path") String filePath) {
 
         if (filePath == null || filePath.isBlank()) {
             throw new IllegalArgumentException("filePath must not be empty");
