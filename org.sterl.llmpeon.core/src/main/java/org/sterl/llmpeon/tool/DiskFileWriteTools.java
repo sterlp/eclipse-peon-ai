@@ -29,8 +29,7 @@ public class DiskFileWriteTools extends AbstractTool {
     }
 
     @Tool("Updates the complete content of an existing file on the disk filesystem. "
-            + "Only works for files that already exist - does not create new files. "
-            + "Use searchDiskFiles first to find the correct path.")
+        + "Only works for files that already exist - does not create new files.")
     public String writeDiskFile(
             @P("Relative or absolute file path") String filePath,
             @P("The complete new file content") String newContent) {
@@ -59,11 +58,10 @@ public class DiskFileWriteTools extends AbstractTool {
         }
     }
 
-    @Tool("Creates a new file or overwrites an existing one on the disk filesystem. "
-            + "Missing parent folders are created automatically.")
+    @Tool("Create/overwrite file on disk. Creates parent folders automatically.")
     public String createDiskFile(
-            @P("Relative or absolute file path including file name, e.g. 'src/com/example/Foo.java'") String filePath,
-            @P("File content to write") String content) {
+            @P("Relative or absolute disk path. e.g. 'src/com/example/Foo.java'") String filePath,
+            @P("File content.") String content) {
 
         if (filePath == null || filePath.isBlank()) {
             throw new IllegalArgumentException("filePath must not be empty");

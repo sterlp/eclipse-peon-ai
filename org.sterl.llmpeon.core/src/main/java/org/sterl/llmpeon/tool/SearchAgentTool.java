@@ -22,14 +22,8 @@ public class SearchAgentTool extends AbstractTool {
     }
 
     @Tool(name = "SearchAgentTool", value = """
-            Delegates a search or research task to a dedicated search sub-agent.
-            Use when finding information requires multiple tool calls: exploring files,
-            reading source code, fetching documentation URLs, or navigating types.
-            Examples:
-              - "find all classes implementing SmartTool"
-              - "what does WebFetchTool do?"
-              - "search the web for langchain4j MistralAiChatModel API"
-            Returns a concise factual summary with relevant file paths and code excerpts.
+            Delegates complex search or research tasks to a sub-agent. 
+            Use for multi-step exploration of files, code, types, or web documentation.
             """)
     public String searchAgent(@P("Natural-language description of what to search for") String prompt) {
         if (prompt == null || prompt.isBlank()) return "Error: search prompt must not be empty";

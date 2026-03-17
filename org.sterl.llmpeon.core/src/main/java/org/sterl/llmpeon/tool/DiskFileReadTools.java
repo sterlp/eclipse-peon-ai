@@ -27,8 +27,7 @@ public class DiskFileReadTools extends AbstractTool {
         return workingDir;
     }
 
-    @Tool("Reads a file from the disk filesystem using the current working directory. "
-            + "Use searchDiskFiles first to find the file path.")
+    @Tool("Read file from disk. Use searchDiskFiles first to find the path.")
     public String readDiskFile(
             @P("Relative or absolute file path") String filePath) {
 
@@ -74,10 +73,9 @@ public class DiskFileReadTools extends AbstractTool {
     }
 
     @Tool("Lists files and folders directly in a directory on the disk filesystem (non-recursive). "
-            + "Use this to navigate and explore the directory structure. "
-            + "Returns entries prefixed with [DIR] or [FILE].")
+        + "Use this to navigate and explore the directory structure.")
     public String listDiskDirectory(
-            @P("Relative or absolute directory path. Empty or '/' lists the working directory root.") String path) {
+            @P("Optional relative or absolute directory path. Empty or '/' lists the working directory root.") String path) {
 
         Path dir;
         if (path == null || path.isBlank() || path.length() == 1) {

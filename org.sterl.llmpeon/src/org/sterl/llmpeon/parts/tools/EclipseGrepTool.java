@@ -19,15 +19,13 @@ import dev.langchain4j.agent.tool.Tool;
 
 public class EclipseGrepTool extends AbstractEclipseTool {
 
-    @Tool("Searches the content of all files in the Eclipse workspace for a given string. "
-            + "Returns matching files with occurrence count. "
-            + "If a path is '.' or '/' or empty, searches all open projects. "
-            + "Otherwise searches only within the given directory/project path. "
-            + "Skips derived resources (target/, bin/) and binary files.")
+    @Tool("""
+          Search file contents for a string in the eclipse workspace. Can filter by path or extension.
+          """)
     public String grepWorkspaceFiles(
             @P("Mandatory text string to search for in file contents") String query,
             @P("Optional directory path to search in. Use '.' or '/' to search all open projects.") String path,
-            @P("Optional file extension or suffix to search in e.g. .java, .css, .tsx") String extension) {
+            @P("Optional file extension or suffix to search in e.g. .java") String extension) {
 
         if (query == null || query.isBlank()) {
             throw new IllegalArgumentException("query must not be empty");

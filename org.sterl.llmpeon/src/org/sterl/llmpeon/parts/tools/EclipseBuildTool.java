@@ -66,8 +66,7 @@ public class EclipseBuildTool extends AbstractEclipseTool {
 
     @Tool("""
             Builds an eclipse project in the worksspace and returns all build errors and warnings.
-            Run this tool to verify code modifications.
-            This is the prefered way to build projects in eclipse.
+            Preferred way to verify code changes.
             """)
     public String buildEclipseProject(@P("The project name or path to build") String projectName) {
         var project = EclipseUtil.findOpenProject(projectName);

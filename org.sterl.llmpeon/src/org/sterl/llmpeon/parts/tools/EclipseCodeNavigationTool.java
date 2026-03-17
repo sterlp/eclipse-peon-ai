@@ -44,15 +44,12 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
     // -------------------------------------------------------------------------
 
     @Tool("""
-            Java only: Finds a Java type (class, interface, enum, record) by name in the Eclipse workspace.
-            Returns location, kind, Javadoc, superclass and interfaces — no source code.
-            Accepts simple names ('Foo'), wildcard patterns ('Foo*'), or fully qualified names ('com.example.Foo').
-            Use getTypeSource afterwards to read the full source of a found type.
-            Try this first before falling back to a file search.
+            Java only: Find types by name/wildcard. Returns metadata, no source. 
+            Use getTypeSource for source code with the result.
             """)
     public String findJavaType(
-            @P("Type name to find. Simple, wildcard (*), or fully qualified.") String typeName,
-            @P("Optional project name to limit search. Empty searches all projects.") String projectName) {
+            @P("Simple name, wildcard (*), or fully qualified names com.example.Foo.") String typeName,
+            @P("Optional project name to limit search.") String projectName) {
 
         if (typeName == null || typeName.isBlank()) {
             throw new IllegalArgumentException("typeName must not be empty");
@@ -87,14 +84,10 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
     // Tool 2: Read source — given a FQN, returns the full source
     // -------------------------------------------------------------------------
 
-    @Tool("""
-            Java only: Returns the full source code of a Java type by its fully qualified name.
-            For binary types (JDK / library JARs without source), returns public field and method signatures.
-            Use findJavaType first to discover the correct fully qualified name.
-            """)
+    @Tool("Java only: Get full source of a Java type.")
     public String getTypeSource(
             @P("Fully qualified type name, e.g. 'com.example.MyClass'") String fqn,
-            @P("Optional project name to limit search. Empty searches all projects.") String projectName) {
+            @P("Optional project name to limit search.") String projectName) {
 
         if (fqn == null || fqn.isBlank()) {
             throw new IllegalArgumentException("fqn must not be empty");
@@ -142,15 +135,13 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
     // Tool 3: Find references
     // -------------------------------------------------------------------------
 
-    @Tool("Java only: Finds all references/usages of a Java type or method across the workspace. "
-            + "Returns file paths with line numbers where the element is referenced. "
-            + "Use findJavaType first to get the fully qualified type name.")
+    @Tool("Java only: Find all usages of a type or method.")
     public String findReferences(
-            @P("Fully qualified type name, e.g. 'com.example.MyClass'") 
+            @P("Fully qualified type name") 
             String typeName,
-            @P("Optional method name to find references to that specific method. Empty finds references to the type itself.") 
+            @P("Optional method name to find references for.") 
             String methodName,
-            @P("Optional project name to limit scope. Empty searches all projects.") 
+            @P("Optional project name to limit scope.") 
             String projectName) {
 
         if (typeName == null || typeName.isBlank()) {
@@ -236,13 +227,12 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
     // Tool 4: Find workspace resources by name pattern
     // -------------------------------------------------------------------------
 
-    @Tool("Finds files and folders in the Eclipse workspace by name or glob pattern. "
-            + "Supports wildcards: '*' matches any sequence of characters, '?' matches one character. "
-            + "Example: '*.xml', 'application*.properties', 'pom.xml'. "
-            + "Use this for non-Java resources like XML, JSON, YAML, properties files.")
+    @Tool("""
+          Find files/folders in the eclipse workspace by name or glob pattern (*, ?). Best for non-Java resources (XML, JSON, etc.) but works also for java classes.
+          """)
     public String findResource(
-            @P("File name or glob pattern, e.g. '*.xml' or 'application.properties'") String namePattern,
-            @P("Optional project name to limit search. Empty searches all projects.") String projectName) {
+            @P("File name or glob pattern") String namePattern,
+            @P("Optional project name to limit search.") String projectName) {
 
         if (namePattern == null || namePattern.isBlank()) {
             throw new IllegalArgumentException("namePattern must not be empty");
@@ -322,12 +312,10 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
     // Tool 5: Find implementations
     // -------------------------------------------------------------------------
 
-    @Tool("Java only: Finds all classes that implement a given interface or extend a given class. "
-            + "Returns each implementing type with its file path and kind. "
-            + "Use findJavaType first to get the fully qualified type name.")
+    @Tool("Java only: Find classes implementing an interface or extending a class.")
     public String findImplementations(
-            @P("Fully qualified interface or class name, e.g. 'com.example.IService'") String typeName,
-            @P("Optional project name. Empty searches all projects.") String projectName) {
+            @P("Fully qualified interface or class name") String typeName,
+            @P("Optional project name.") String projectName) {
 
         if (typeName == null || typeName.isBlank()) {
             throw new IllegalArgumentException("typeName must not be empty");

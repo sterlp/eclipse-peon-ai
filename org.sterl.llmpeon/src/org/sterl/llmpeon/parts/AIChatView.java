@@ -32,14 +32,10 @@ import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFilesTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFilesTool;
 import org.sterl.llmpeon.parts.widget.ChatWidget;
 import org.sterl.llmpeon.skill.SkillService;
-import org.sterl.llmpeon.tool.CompressorAgentTool;
 import org.sterl.llmpeon.tool.DiskFileReadTools;
 import org.sterl.llmpeon.tool.DiskFileWriteTools;
 import org.sterl.llmpeon.tool.EditTool;
-import org.sterl.llmpeon.tool.SearchAgentTool;
-import org.sterl.llmpeon.tool.ShellTool;
 import org.sterl.llmpeon.tool.ToolService;
-import org.sterl.llmpeon.tool.WebFetchTool;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;

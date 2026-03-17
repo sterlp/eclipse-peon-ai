@@ -36,13 +36,10 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
     }
 
     @Tool("Performs a targeted edit in a file by replacing an exact string match. "
-            + "Provide the old text to find and the new text to replace it with. "
-            + "The old_string must match exactly including whitespace and indentation. "
-            + "Use searchWorkspaceFiles and readWorkspaceFile first to verify the exact content.")
+            + "Provide the old text to find and the new text to replace it with. ")
     public String editWorkspaceFile(
             @P("Workspace-relative or project-relative path") String filePath,
-            @P("The exact text to find and replace - must be unique in the file. "
-                    + "Include enough surrounding lines to make the match unique.") String oldString,
+            @P("Exact text to find (unique match).") String oldString,
             @P("The replacement text") String newString) {
 
         if (filePath == null || filePath.isBlank()) {
@@ -100,12 +97,10 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
         return content.replace(oldString, newString);
     }
 
-    @Tool("Updates the complete content of an existing file in the Eclipse workspace. "
-            + "Only works for files that already exist - does not create new files. "
-            + "Use searchWorkspaceFiles first to find the correct path.")
+    @Tool("Update existing workspace file content. Does not create new files.")
     public String writeWorkspaceFile(
             @P("Workspace-relative or project-relative path") String filePath,
-            @P("The complete new file content") String newContent) {
+            @P("The complete new content") String newContent) {
 
         if (filePath == null || filePath.isBlank()) {
             throw new IllegalArgumentException("filePath must not be empty");
@@ -132,12 +127,10 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
         return "File " + result.file() + " updated.";
     }
 
-    @Tool("Creates a new file or overwrites an existing one in the Eclipse workspace. "
-            + "The path can include the project name ('myproject/src/Foo.java') or be project-relative ('src/Foo.java'). "
-            + "Missing parent folders are created automatically.")
+    @Tool("Create/overwrite workspace file. Creates parent folders automatically.")
     public String createWorkspaceFile(
-            @P("File path including project name or project-relative") String filePath,
-            @P("File content to write") String content) {
+            @P("Workspace-relative or project-relative path.") String filePath,
+            @P("File content") String content) {
 
         if (filePath == null || filePath.isBlank()) {
             throw new IllegalArgumentException("filePath must not be empty");
@@ -172,9 +165,8 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
         return "Created file: " + JdtUtil.pathOf(file);
     }
 
-    @Tool("Deletes a file in the Eclipse workspace. "
-            + "Use searchWorkspaceFiles first to find the correct path.")
-    public String deleteWorkspaceFile(
+    @Tool("Deletes a file or directory recursively in the eclipse workspace.")
+    public String deleteWorkspaceResource(
             @P("Workspace-relative or project-relative path") String filePath) {
 
         if (filePath == null || filePath.isBlank()) {

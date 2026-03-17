@@ -37,15 +37,12 @@ public class ShellTool extends AbstractTool {
             + "\nuser.name: " + System.getProperty("user.name");
     }
 
-    @Tool("Executes a shell command (e.g. mvn, git, npm, gradle) in a given working directory and returns the output. "
-            + "Use this for build tools, version control, and other CLI operations. "
-            + "By default only the last 50 lines are returned to keep output concise. "
-            + "Do NOT use this for file reading or writing - use the file tools instead.")
+    @Tool("Execute shell commands (mvn, git, npm, etc.). Do NOT use for file I/O.")
     public String runOsCommand(
-            @P("The shell command to execute, e.g. 'mvn clean install' or 'git status'") String command,
-            @P("The working directory to run the command in, e.g. a project disk path") String workingDirectory,
-            @P("Optional timeout in milliseconds, default 120000 (2 min), max 600000 (10 min)") Long timeoutMs,
-            @P("Optional max number of lines to return from the end of the output, default 50. Use -1 for all output.") Integer tailLines) {
+            @P("The shell command, e.g. 'mvn clean install'") String command,
+            @P("The working directory (disk path)") String workingDirectory,
+            @P("Optional timeout in milliseconds, default 120000") Long timeoutMs,
+            @P("Optional max lines to return, default 50 (-1 for all)") Integer tailLines) {
 
         if (command == null || command.isBlank()) {
             throw new IllegalArgumentException("command must not be empty");

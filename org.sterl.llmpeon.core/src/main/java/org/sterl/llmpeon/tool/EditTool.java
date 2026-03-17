@@ -24,14 +24,10 @@ public class EditTool extends AbstractTool {
         this.workingDir = workingDir.toAbsolutePath().normalize();
     }
 
-    @Tool("Performs a targeted edit in a file by replacing an exact string match. "
-            + "Provide the old text to find and the new text to replace it with. "
-            + "The old_string must match exactly including whitespace and indentation. "
-            + "Use readDiskFile first to see the current content before editing.")
+    @Tool("Replace exact string match in disk file. Match must be unique.")
     public String editDiskFile(
-            @P("Relative or absolute file path") String filePath,
-            @P("The exact text to find and replace - must be unique in the file. "
-                    + "Include enough surrounding lines to make the match unique.") String oldString,
+            @P("Relative or absolute disk path") String filePath,
+            @P("Replace exact string match in disk file. Match must be unique.") String oldString,
             @P("The replacement text") String newString) {
 
         if (filePath == null || filePath.isBlank()) {

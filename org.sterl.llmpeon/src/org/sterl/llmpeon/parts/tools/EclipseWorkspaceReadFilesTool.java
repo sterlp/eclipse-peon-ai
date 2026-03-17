@@ -39,13 +39,13 @@ public class EclipseWorkspaceReadFilesTool extends AbstractEclipseTool {
     }
 
     public static final String READ_ECLIPSE_FILE_TOOL = "readWorkspaceFile";
-    @Tool(name = READ_ECLIPSE_FILE_TOOL, value = "Reads a file from the Eclipse workspace. "
-            + "Accepts workspace-relative paths (e.g. '/MyProject/src/Foo.java') "
-            + "or project-relative paths (e.g. 'src/Foo.java'). "
-            + "Use searchWorkspaceFiles first to find the correct file path."
-            + "Use the disk tools as fallback.")
+    @Tool(name = READ_ECLIPSE_FILE_TOOL, value = """
+            Read eclipse workspace file content. Supports workspace-relative or project-relative paths.
+            Accepts workspace-relative paths (e.g. '/MyProject/src/Foo.java')
+            Use searchWorkspaceFiles first to find the correct file path.
+            """)
     public String readWorkspaceFile(
-            @P("Workspace-relative or project-relative path or disk absolute path as fallback") String filePath) {
+            @P("Use searchWorkspaceFiles first to find the correct file path.") String filePath) {
 
         if (filePath == null || filePath.isBlank()) {
             throw new IllegalArgumentException("filePath must not be empty");
@@ -66,11 +66,11 @@ public class EclipseWorkspaceReadFilesTool extends AbstractEclipseTool {
         return "File not found: " + filePath + " - try searchWorkspaceFiles or listWorkspaceDirectory first.";
     }
 
-    @Tool("Searches for files whose name contains the given query string in the Eclipse workspace. "
-            + "Searches all open projects, skips derived resources (target/, bin/)."
-            + "Use this method first, before searching directly witg the disk tools.")
+    @Tool("""
+          Search for files by name string in the eclipse workspace. Skips derived resources (target/, bin/).
+          """)
     public String searchWorkspaceFiles(
-            @P("Part of the file name to search for, e.g. 'Controller' or '.xml'") String query) {
+            @P("Part of the file name to search for.") String query) {
 
         if (query == null || query.isBlank()) {
             throw new IllegalArgumentException("query must not be empty");
@@ -109,11 +109,9 @@ public class EclipseWorkspaceReadFilesTool extends AbstractEclipseTool {
     }
 
     @Tool("Lists files and folders directly in eclipse workspace directory (non-recursive). "
-            + "Use this to navigate and explore the workspace and project structure in eclipse. "
-            + "If the path is empty or root, lists all open Eclipse projects. "
-            + "Returns entries prefixed with [DIR] or [FILE].")
+        + "Use this to navigate and explore the workspace and project structure in eclipse.")
     public String listWorkspaceDirectory(
-            @P("Workspace-relative path, e.g. '/MyProject/src'. Empty or '/' lists projects.") String path) {
+            @P("Optional workspace-relative path, e.g. '/MyProject/src'. Empty or '/' lists projects.") String path) {
 
         // root: list open projects
         if (path == null || path.isBlank() || path.length() == 1) {
