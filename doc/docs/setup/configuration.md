@@ -9,9 +9,9 @@ After installation, configure the plugin via **Window > Preferences > Peon AI**.
 
 ## Provider Settings
 
-### Ollama (Recommended for local use)
+### Ollama
 
-Run models locally — no API key required.
+Run models locally e.g. windows.
 
 | Setting | Value |
 |---------|-------|
@@ -21,6 +21,18 @@ Run models locally — no API key required.
 
 - [Ollama documentation](https://ollama.com/library)
 - [Ollama model library](https://ollama.com/search)
+
+### LM Studio
+
+Run models locally — e.g. for MAC.
+
+| Setting | Value |
+|---------|-------|
+| Provider | `LM Studio / OpenAI HTTP 1.1` |
+| Model | `qwen/qwen3.5-9b` |
+| Base URL | `http://localhost:1234/v1` |
+
+![google gemnini](../assets/lm-studio-setup.png)
 
 ### OpenAI
 

@@ -5,13 +5,13 @@ description: How to install Eclipse Peon AI
 
 # Installation
 
-## Eclipse marketplace
+## Eclipse marketplace  (Recommended)
 
 - [Peon AI on eclipse marketplace](https://marketplace.eclipse.org/content/peon-ai)
 
-## Ollama example
+## LM Studio
 
-![install ollama](../assets/install.png)
+![LM Studio](./doc/docs/assets/lm-studio-setup.png)
 
 ### Google Gemini example
 
@@ -21,7 +21,7 @@ description: How to install Eclipse Peon AI
 - Keys: https://aistudio.google.com/api-keys
 - Models: https://ai.google.dev/gemini-api/docs/models
 
-## Update Site (Recommended)
+## Update Site
 
 Install directly from Eclipse:
 
@@ -31,6 +31,8 @@ Install directly from Eclipse:
 4. Select "Eclipse Peon AI" from the list
 5. Click **Next** and follow the installation wizard
 6. Restart Eclipse when prompted
+
+![Install](./doc/docs/assets/install.png)
 
 ## Requirements
 

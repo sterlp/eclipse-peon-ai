@@ -26,8 +26,11 @@ A lightweight, context-aware LLM assistant that integrates directly into your Ec
 4. Restart Eclipse
 5. Open the view: **Window > Show View > Other...** > search "Peon AI"
 
-#### Ollama
 ![Install](./doc/docs/assets/install.png)
+
+#### LM Studio
+
+![LM Studio](./doc/docs/assets/lm-studio-setup.png)
 
 #### Gemini
 ![google gemnini](./doc/docs/assets/google-gemini.png)
@@ -39,6 +42,7 @@ Configure via **Window > Preferences > Peon AI**:
 | Provider | Model | Base URL | API Key |
 |----------|-------|----------|---------|
 | `OLLAMA` | `llama3.2`, `codellama`, `qwen2.5-coder` | `http://localhost:11434` | — |
+| `LM Studio` | `qwen/qwen3.5-9b` | `http://localhost:1234/v1` | — |
 | `OPEN_AI` | `gpt-4o`, `gpt-4o-mini` | `https://api.openai.com/v1` | required |
 | `GOOGLE_GEMINI` | `gemini-2.0-flash`, `gemini-2.5-pro-preview-03-25` | *(leave empty)* | required |
 | `MISTRAL` | `mistral-large-latest`, `codestral-latest` | *(leave empty)* | required |
