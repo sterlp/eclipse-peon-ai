@@ -199,7 +199,7 @@ public enum AiProvider {
         }
     };
     
-    private static final Duration TIMEOUT = Duration.ofMinutes(2);
+    private static final Duration TIMEOUT = Duration.ofMinutes(3);
 
     /** Builds the {@link ChatModel} for this provider using the given config. */
     public abstract ChatModel buildChatModel(LlmConfig config);

@@ -1,10 +1,10 @@
 package org.sterl.llmpeon.parts;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.resources.IFile;
@@ -18,9 +18,9 @@ import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences.IPreferenceChangeListener;
 import org.eclipse.core.runtime.preferences.InstanceScope;
-import org.eclipse.e4.core.services.log.Logger;
 import org.eclipse.e4.ui.di.Focus;
 import org.eclipse.e4.ui.services.IServiceConstants;
+import org.eclipse.e4.core.services.log.Logger;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.jface.viewers.ISelection;
@@ -35,7 +35,6 @@ import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.agentsmd.AgentsMdService;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.monitor.EclipseAiMonitor;
-import org.sterl.llmpeon.parts.shared.EclipseTemplateContext;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.shared.SimpleDiff;
@@ -52,6 +51,7 @@ import org.sterl.llmpeon.parts.widget.ChatWidget;
 import org.sterl.llmpeon.parts.widget.StatusLineWidget;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.skill.SkillService;
+import org.sterl.llmpeon.template.TemplateContext;
 import org.sterl.llmpeon.tool.DiskFileReadTools;
 import org.sterl.llmpeon.tool.DiskFileWriteTools;
 import org.sterl.llmpeon.tool.EditTool;
@@ -72,8 +72,8 @@ public class AIChatView implements EclipseAiMonitor {
     @Inject
     Logger logger;
 
-    private final EclipseTemplateContext eclipseContext = new EclipseTemplateContext();
-    private ChatService<EclipseTemplateContext> chatService;
+    private final TemplateContext context = new TemplateContext(Path.of("./"));
+    private ChatService<TemplateContext> chatService;
     private final ToolService toolService = new ToolService();
     private final SkillService skillService = new SkillService();
     private final EclipseWorkspaceWriteFilesTool workspaceWriteFilesTool = new EclipseWorkspaceWriteFilesTool();
@@ -87,6 +87,9 @@ public class AIChatView implements EclipseAiMonitor {
     private StatusLineWidget statusLine;
     private ActionsBarWidget actionsBar;
     private Composite parent;
+    
+    private ITextSelection textSelection;
+    private IResource selectedResource;
 
     private final IPreferenceChangeListener prefListener = event -> {
         if (parent != null && !parent.isDisposed()) {
@@ -99,17 +102,18 @@ public class AIChatView implements EclipseAiMonitor {
         this.parent = parent;
         parent.setLayout(new GridLayout(1, false));
 
+        var rootPaht = ResourcesPlugin.getWorkspace().getRoot().getRawLocation().toFile().toPath();
         toolService.addTool(workspaceWriteFilesTool);
         toolService.addTool(workspaceReadFilesTool);
-        toolService.addTool(new DiskFileWriteTools(ResourcesPlugin.getWorkspace().getRoot().getRawLocation().toFile().toPath()));
-        toolService.addTool(new DiskFileReadTools(ResourcesPlugin.getWorkspace().getRoot().getRawLocation().toFile().toPath()));
-        toolService.addTool(new EditTool(ResourcesPlugin.getWorkspace().getRoot().getRawLocation().toFile().toPath()));
+        toolService.addTool(new DiskFileWriteTools(rootPaht));
+        toolService.addTool(new DiskFileReadTools(rootPaht));
+        toolService.addTool(new EditTool(rootPaht));
         toolService.addTool(new EclipseBuildTool());
         toolService.addTool(new EclipseGrepTool());
         toolService.addTool(new EclipseRunTestTool());
         toolService.addTool(new EclipseCodeNavigationTool());
 
-        chatService = new ChatService<>(LlmPreferenceInitializer.buildWithDefaults(), toolService, skillService, eclipseContext);
+        chatService = new ChatService<>(LlmPreferenceInitializer.buildWithDefaults(), toolService, skillService, context);
 
         chatHistory = new ChatMarkdownWidget(parent, SWT.BORDER);
         chatHistory.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
@@ -165,7 +169,7 @@ public class AIChatView implements EclipseAiMonitor {
     @Inject
     @org.eclipse.e4.core.di.annotations.Optional
     public void setTextSelection(@Named(IServiceConstants.ACTIVE_SELECTION) ITextSelection ts) {
-        eclipseContext.setTextSelection(ts);
+        textSelection = ts;
     }
 
     @Inject
@@ -180,13 +184,21 @@ public class AIChatView implements EclipseAiMonitor {
             selection = f;
         } else if (o instanceof IResource r) {
             selection = r;
+        } else if (o != null) {
+            System.out.println("Unknown selected type " + o.getClass());
+            selection = null;
         } else {
             selection = null;
         }
-        eclipseContext.setSelectedResource(selection);
-        workspaceWriteFilesTool.setCurrentProject(EclipseUtil.resolveProject(selection));
-        workspaceReadFilesTool.setCurrentProject(EclipseUtil.resolveProject(selection));
-        if (chatInput != null) Display.getDefault().asyncExec(this::onResourceSelected);
+        selectedResource = selection;
+
+        if (selection != null) {
+            agentsMdService.load(selection.getProject());
+            workspaceWriteFilesTool.setCurrentProject(EclipseUtil.resolveProject(selection));
+            workspaceReadFilesTool.setCurrentProject(EclipseUtil.resolveProject(selection));
+        }
+
+        if (chatInput != null) Display.getDefault().asyncExec(this::refreshStatusLine);
     }
 
     @Inject
@@ -243,14 +255,8 @@ public class AIChatView implements EclipseAiMonitor {
             chatService.getTokenWindow(),
             chatService.getSkills().size(),
             agentsMdService.hasAgentFile(),
-            chatService.getTemplateContext().getSelectedResource()
+            selectedResource
         );
-    }
-
-    private void onResourceSelected() {
-        var resource = chatService.getTemplateContext().getSelectedResource();
-        if (resource != null) agentsMdService.load(resource.getProject());
-        refreshStatusLine();
     }
 
     private void refreshChat() {
@@ -386,25 +392,35 @@ public class AIChatView implements EclipseAiMonitor {
     // TODO this is very messy from the AI and needs a refactoring ...
     private List<ChatMessage> buildStandingOrders() {
         var templateContext = chatService.getTemplateContext();
-        var selectedResource = templateContext.getSelectedResource();
-        if (selectedResource != null) agentsMdService.load(selectedResource.getProject());
         var orders = new ArrayList<ChatMessage>();
-        if (selectedResource != null)
-            orders.add(SystemMessage.from("Selected eclipse resource: " + JdtUtil.pathOf(selectedResource)));
-        agentsMdService.agentMessage(templateContext).ifPresent(orders::add);
+        if (selectedResource != null) {
+            orders.add(SystemMessage.from("Selected resource: " + JdtUtil.pathOf(selectedResource)));
+        }
+        if (agentsMdService.hasAgentFile()) {
+            agentsMdService.agentMessage(templateContext).ifPresent(orders::add);
+        }
         return orders;
     }
 
     private String getUserSelection() {
-        var textSelection = chatService.getTemplateContext().getTextSelection();
         if (textSelection == null || StringUtil.hasNoValue(textSelection.getText())) return "";
-        String userIn = "\n\nSelected:\n\n" + textSelection.getText();
+        var file = getSelectedFile();
+
+        var extentsion = "\n";
+        if (file != null) extentsion = file.getFileExtension() + "\n";
+
+        String userIn = "\n\nSelected:\n```" + extentsion + textSelection.getText() + "\n```";
         userIn += "\n\nStart line: " + textSelection.getStartLine();
-        Optional<? extends IResource> file = EclipseUtil.getOpenFile();
-        if (file.isEmpty()) file = Optional.ofNullable(chatService.getTemplateContext().getSelectedResource());
-        if (file.isPresent()) userIn += "\n\nEclipse resource use "
-                + EclipseWorkspaceReadFilesTool.READ_ECLIPSE_FILE_TOOL + " to read the whole file if needed: "
-                + JdtUtil.pathOf(file.get());
+
+        if (file != null) userIn += "\nFile: " + JdtUtil.pathOf(file) + " use "
+                + EclipseWorkspaceReadFilesTool.READ_ECLIPSE_FILE_TOOL + " to read whole file, if needed.";
         return userIn;
+    }
+    
+    private IFile getSelectedFile() {
+        if (selectedResource instanceof IFile rf) return rf;
+        var open = EclipseUtil.getOpenFile();
+        if (open.isPresent()) return open.get();
+        return null;
     }
 }
