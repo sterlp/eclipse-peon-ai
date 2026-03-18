@@ -94,9 +94,9 @@ public class StatusLineWidget extends Composite {
         int pct = tokenMax > 0 ? (tokenUsed * 100) / tokenMax : 0;
         tokenLabel.setText(tokenUsed + " / " + tokenMax + " - " + pct + "%");
 
-        if (pct >= 92) {
+        if (pct >= 90) {
             tokenLabel.setForeground(colorError);
-        } else if (pct >= 80) {
+        } else if (pct >= 70) {
             tokenLabel.setForeground(colorWarning);
         } else {
             tokenLabel.setForeground(null); // default
