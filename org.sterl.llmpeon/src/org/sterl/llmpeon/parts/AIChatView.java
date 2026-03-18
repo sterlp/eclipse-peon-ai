@@ -67,8 +67,6 @@ import jakarta.inject.Named;
 
 public class AIChatView implements EclipseAiMonitor {
 
-    private static final NullProgressMonitor NULL_MONITOR = new NullProgressMonitor();
-
     @Inject
     Logger logger;
 
@@ -79,7 +77,7 @@ public class AIChatView implements EclipseAiMonitor {
     private final EclipseWorkspaceWriteFilesTool workspaceWriteFilesTool = new EclipseWorkspaceWriteFilesTool();
     private final EclipseWorkspaceReadFilesTool workspaceReadFilesTool = new EclipseWorkspaceReadFilesTool();
     private final AgentsMdService agentsMdService = new AgentsMdService();
-    private final AtomicReference<IProgressMonitor> monitorRef = new AtomicReference<>();
+    private final AtomicReference<IProgressMonitor> monitorRef = new AtomicReference<>(new NullProgressMonitor());
     private LlmConfig lastListedConfig;
 
     private ChatMarkdownWidget chatHistory;
@@ -125,7 +123,7 @@ public class AIChatView implements EclipseAiMonitor {
 
         actionsBar = new ActionsBarWidget(parent, SWT.NONE,
             this::doSendMessage,
-            () -> { var m = monitorRef.get(); if (m != null) m.setCanceled(true); },
+            () ->  getIProgressMonitor().setCanceled(true),
             this::doCompressContext,
             () -> { chatService.clear(); chatHistory.clear(); },
             this::doStartImpl,
@@ -242,7 +240,7 @@ public class AIChatView implements EclipseAiMonitor {
 
     @Override
     public boolean isCanceled() {
-        return monitorRef.get() != null && monitorRef.get().isCanceled();
+        return getIProgressMonitor().isCanceled();
     }
 
     // -------------------------------------------------------------------------
@@ -338,7 +336,7 @@ public class AIChatView implements EclipseAiMonitor {
             } catch (Exception e) {
                 ex = e;
             } finally {
-                monitorRef.set(NULL_MONITOR);
+                monitorRef.set(new NullProgressMonitor());
                 Display.getDefault().asyncExec(() -> actionsBar.lockWhileWorking(false));
             }
             monitor.done();
@@ -382,7 +380,7 @@ public class AIChatView implements EclipseAiMonitor {
             } finally {
                 Display.getDefault().asyncExec(() -> actionsBar.lockWhileWorking(false));
                 chatService.setStandingOrders(Collections.emptyList());
-                monitorRef.set(NULL_MONITOR);
+                monitorRef.set(new NullProgressMonitor());
                 monitor.done();
             }
             return PeonConstants.status("Peon AI\n" + chatService.getConfig(), ex);
@@ -410,7 +408,7 @@ public class AIChatView implements EclipseAiMonitor {
         if (file != null) extentsion = file.getFileExtension() + "\n";
 
         String userIn = "\n\nSelected:\n```" + extentsion + textSelection.getText() + "\n```";
-        userIn += "\n\nStart line: " + textSelection.getStartLine();
+        userIn += "\n\nStart line: " + (textSelection.getStartLine() + 1);
 
         if (file != null) userIn += "\nFile: " + JdtUtil.pathOf(file) + " use "
                 + EclipseWorkspaceReadFilesTool.READ_ECLIPSE_FILE_TOOL + " to read whole file, if needed.";
