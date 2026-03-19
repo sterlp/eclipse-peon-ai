@@ -16,8 +16,11 @@ import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.template.TemplateContext;
 import org.sterl.llmpeon.tool.ToolService;
 
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
@@ -72,16 +75,23 @@ class ChatServiceTest {
         var jdkHttpClientBuilder = JdkHttpClient.builder().httpClientBuilder(httpClientBuilder);
 
         var subject = OpenAiStreamingChatModel.builder()
-            .timeout(Duration.ofMinutes(2))
-            .baseUrl("http://172.25.30.242:1234/v1")
+            .timeout(Duration.ofSeconds(60))
+            .baseUrl("http://localhost:1234/v1")
             .modelName("qwen/qwen3.5-9b")
             .httpClientBuilder(jdkHttpClientBuilder)
             .logRequests(true)
             .logResponses(true)
             .build();
 
-        var future = new CompletableFuture<String>();
-        subject.chat("say hello " + Instant.now(), new StreamingChatResponseHandler() {
+        var toolService = new ToolService();
+        var future = new CompletableFuture<AiMessage>();
+        var request = ChatRequest.builder()
+                .messages(UserMessage.from("Call the webfetchtool with http://localhost/v1"))
+                .toolSpecifications(toolService.toolSpecifications())
+                .build();
+        
+        subject.chat(request, 
+                new StreamingChatResponseHandler() {
             @Override
             public void onPartialResponse(String token) {
                 System.err.print(token);
@@ -89,7 +99,7 @@ class ChatServiceTest {
             @Override
             public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse response) {
                 System.err.println();
-                future.complete(response.aiMessage().text());
+                future.complete(response.aiMessage());
             }
             @Override
             public void onError(Throwable error) {
