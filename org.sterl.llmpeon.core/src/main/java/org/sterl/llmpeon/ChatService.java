@@ -69,11 +69,13 @@ public class ChatService<T extends TemplateContext> {
         agentService.updateModel(config.build());
         try {
             if (config.skillDirectory() != null) {
+                templateContext.setSkillDirectory(config.skillDirectory());
                 this.skillService.refresh(Path.of(config.skillDirectory()));
             }
         } catch (Exception e) {
             throw new RuntimeException("Failed to load skills from " + config.skillDirectory(), e);
         }
+        templateContext.setTokenWindow(config.tokenWindow());
     }
 
     public AgentService getAgentService() {
@@ -225,6 +227,7 @@ public class ChatService<T extends TemplateContext> {
         } else {
             tokenSize = estimateTokens();
         }
+        templateContext.setTokenSize(tokenSize);
     }
 
     /** Simple token estimation: ~4 characters per token */
@@ -253,6 +256,10 @@ public class ChatService<T extends TemplateContext> {
     
     public List<ChatMessage> getMessages() {
         return memory.messages();
+    }
+    
+    public void addMessage(ChatMessage message) {
+        this.memory.add(message);
     }
 
     public List<SkillRecord> getSkills() {
