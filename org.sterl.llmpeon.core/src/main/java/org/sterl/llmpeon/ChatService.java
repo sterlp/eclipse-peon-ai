@@ -19,6 +19,7 @@ import org.sterl.llmpeon.tool.ToolService;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
@@ -133,7 +134,7 @@ public class ChatService<T extends TemplateContext> {
 
         if (plan != null) {
             memory.clear();
-            memory.add(plan);
+            memory.add(SystemMessage.from(plan.text()));
         }
     }
 
@@ -197,14 +198,6 @@ public class ChatService<T extends TemplateContext> {
         return messagesToSend;
     }
 
-    public static String trimArgs(String value) {
-        if (value == null) return "";
-        value = value.strip();
-        if (value.length() == 2) return "";
-        else if (value.length() <= 150) return value.substring(1, value.length() - 1);
-        return value.substring(1, 149);
-    }
-
     /**
      * Compresses the current conversation via CompressorAgent, clears memory,
      * and replaces it with the compressed summary.
@@ -215,7 +208,7 @@ public class ChatService<T extends TemplateContext> {
         var compressorAgent = agentService.newCompressorAgent();
         var response = compressorAgent.call(memory.messages(), monitor);
         memory.clear();
-        memory.add(response.aiMessage());
+        memory.add(SystemMessage.from(response.aiMessage().text()));
         updateTokenCount(response);
         return response;
     }

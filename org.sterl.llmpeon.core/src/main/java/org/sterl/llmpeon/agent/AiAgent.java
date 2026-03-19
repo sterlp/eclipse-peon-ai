@@ -33,7 +33,7 @@ public interface AiAgent {
         var systemMessage = "";
         for (var m : messages) {
             if (m instanceof SystemMessage sm) {
-                systemMessage = sm.text() + "\n";
+                systemMessage += sm.text() + "\n";
             } else {
                 result.add(m);
             }

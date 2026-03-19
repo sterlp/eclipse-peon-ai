@@ -1,11 +1,8 @@
 package org.sterl.llmpeon.ai;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
 import java.net.http.HttpClient;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -27,12 +24,6 @@ import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 
 class ChatServiceTest {
 
-    @Test
-    void test() {
-        assertEquals("", ChatService.trimArgs("{}"));
-        assertEquals("args0: Fooobar.java", ChatService.trimArgs("{args0: Fooobar.java}"));
-    }
-    
     @Tag("integration")
     @Test
     void ping_lm_stutio_test() {
@@ -55,7 +46,7 @@ class ChatServiceTest {
             
         var subject = OpenAiChatModel.builder()
             .timeout(Duration.ofMinutes(2))
-            .baseUrl("http://172.25.30.242:1234/v1")
+            .baseUrl("http://localhost:1234/v1")
             .modelName("qwen/qwen3.5-9b")
             .httpClientBuilder(jdkHttpClientBuilder)
             .logRequests(true)
