@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html>
 
@@ -202,9 +203,25 @@
         });
 
         function toolMessage(message) {
-            if (message) appendMessage({role: 'TOOL', message})
+            if (!message) return;
+            const container = document.getElementById("chat");
+            const last = container.lastElementChild;
+            if (last && last.classList.contains('TOOL')) {
+                const lines = last.innerHTML.split('<br>').filter(l => l.trim());
+                lines.push(message);
+                if (lines.length > 10) lines.splice(0, lines.length - 10);
+                last.innerHTML = lines.join('<br>');
+            } else {
+                const div = document.createElement("div");
+                div.className = "message TOOL";
+                div.innerHTML = message;
+                container.appendChild(div);
+            }
+            window.scrollTo(0, document.body.scrollHeight);
         }
+
         function appendMessage(message) {
+            if (message.role === 'TOOL') { toolMessage(message.message); return; }
             const container = document.getElementById("chat");
             const div = document.createElement("div");
             div.className = "message " + message.role;
@@ -212,25 +229,14 @@
             // first try to merge
             const lastMessage = container.lastElementChild;
             if (lastMessage && lastMessage.classList.contains(message.role)) {
-                // Merge with previous messages
                 lastMessage.innerHTML += md.render(message.message ?? "");
-
-                if (message.role === 'TOOL') handleToolMessages(container, lastMessage);
             } else {
-                // Create new message
                 div.innerHTML = md.render(message.message ?? "");
                 container.appendChild(div);
             }
 
             if (message.message) addCopyButton(lastMessage && lastMessage.classList.contains(message.role) ? lastMessage : div);
             window.scrollTo(0, document.body.scrollHeight);
-        }
-
-        function handleToolMessages(container, lastMessage) {
-            const toolMessages = container.querySelectorAll('.message.TOOL');
-            if (toolMessages && toolMessages.length > 10) {
-                toolMessages[0].remove();
-            }
         }
 
         function addCopyButton(root) {
@@ -300,38 +306,38 @@
         document.getElementById("chat").innerHTML =
             '<div class="message PROBLEM">Failed to load markdown-it</div>';
     }
-/*
+
         appendMessage({role: "USER", message: "Write hello world"});
         appendMessage({
             role: 'AI',
             message: `Here's a simple \`Hello, World!\` program in Java:
 
-    \`\`\`java
-    public class HelloWorld {
-        private String name;
-        public static void main(String[] args) {
-            System.out.println("Hello, World!");
-        }
+\`\`\`java
+public class HelloWorld {
+    private String name;
+    public static void main(String[] args) {
+        System.out.println("Hello, World!");
     }
-    \`\`\`
+}
+\`\`\`
 
-    # some data
+# some data
 
-    \`data\`
+\`data\`
 
-    yes and some xml
+yes and some xml
 
-    \`\`\`xml
-    <foo>hallo</bar>
-    \`\`\`
-    `
+\`\`\`xml
+<foo>hallo</bar>
+\`\`\`
+`
         })
         appendMessage({role: "USER", message: "Write hello world"});
         appendMessage({role: "TOOL", message: "Loading foo.text"});
-        appendMessage({role: "TOOL", message: "Loading foo.text"});
+        appendMessage({role: "TOOL", message: "Loading bar.text"});
         appendMessage({role: "USER", message: "Faster ...!"});
         appendMessage({role: "PROBLEM", message: "unknown tool read_file"});
-*/
+
 </script>
 
 </html>

@@ -253,7 +253,7 @@ public class AIChatView implements EclipseAiMonitor {
             chatService.getTokenWindow(),
             chatService.getSkills().size(),
             agentsMdService.hasAgentFile(),
-            selectedResource
+            getSelectedFile()
         );
     }
 
