@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html>
 
@@ -56,26 +55,6 @@
             padding-left: 8px;
         }
 
-        .message.xx::before {
-            content: "xx";
-            color: #8250df;
-        }
-
-        .message.xx {
-            font-style: italic;
-            border-left: 3px solid #8250df;
-            padding-left: 8px;
-        }
-
-        .message.xx::before {
-            content: "xx";
-            color: #bf8700;
-        }
-
-        .message.xx {
-            border-left: 3px solid #bf8700;
-        }
-
         .message.AI {
             border-left: 3px solid #1a7f37;
         }
@@ -85,7 +64,8 @@
             color: #1a7f37;
         }
 
-        .message.TOOL {
+        .message.TOOL,
+        .message.THINK {
             font-size: 11px;
             font-style: italic;
             color: #888;
@@ -96,17 +76,6 @@
         .message.TOOL::before {
             content: "Tool";
             color: #999;
-        }
-
-        .TOOL p {
-            margin: 0px;
-        }
-
-        .message.THINK {
-            color: #888;
-            font-style: italic;
-            border-left: 3px solid #ccc;
-            padding-left: 12px;
         }
 
         .message.THINK::before {
@@ -221,58 +190,49 @@
         }
 
         function appendMessage(message) {
-            if (message.role === 'TOOL') { toolMessage(message.message); return; }
+            if (message.role === 'TOOL') {toolMessage(message.message); return;}
             const container = document.getElementById("chat");
-            const div = document.createElement("div");
-            div.className = "message " + message.role;
-
-            // first try to merge
             const lastMessage = container.lastElementChild;
             if (lastMessage && lastMessage.classList.contains(message.role)) {
-                lastMessage.innerHTML += md.render(message.message ?? "");
+                lastMessage.insertAdjacentHTML('beforeend', md.render(message.message ?? ""));
             } else {
+                const div = document.createElement("div");
+                div.className = "message " + message.role;
                 div.innerHTML = md.render(message.message ?? "");
                 container.appendChild(div);
             }
-
-            if (message.message) addCopyButton(lastMessage && lastMessage.classList.contains(message.role) ? lastMessage : div);
             window.scrollTo(0, document.body.scrollHeight);
         }
 
-        function addCopyButton(root) {
-            const copyBtn = root.querySelector(".copy-btn");
-            const code = root.querySelector(".hljs");
-            if (!copyBtn || !code) return;
-
-            copyBtn.onclick = () => {
-                const text = code.innerText;
-                if (navigator.clipboard) {
-                    navigator.clipboard.writeText(text).then(() => {
-                        copyBtn.classList.add('copied');
-                        setTimeout(() => copyBtn.classList.remove('copied'), 1500);
-                    }).catch(err => {
-                        toolMessage('Failed to copy text: ' + err);
-                    });
-                } else {
-                    // Fallback for non-secure contexts (e.g. Eclipse WebView / file://)
-                    const ta = document.createElement('textarea');
-                    ta.value = text;
-                    ta.style.position = 'fixed';
-                    ta.style.opacity = '0';
-                    document.body.appendChild(ta);
-                    ta.select();
-                    try {
-                        document.execCommand('copy');
-                        copyBtn.classList.add('copied');
-                        setTimeout(() => copyBtn.classList.remove('copied'), 1500);
-                    } catch (err) {
-                        toolMessage('Failed to copy text: ' + err);
-                    } finally {
-                        document.body.removeChild(ta);
-                    }
+        document.addEventListener("click", e => {
+            const btn = e.target.closest(".copy-btn");
+            if (!btn) return;
+            const code = btn.closest(".code-pre")?.querySelector(".hljs");
+            if (!code) return;
+            const text = code.innerText;
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(() => {
+                    btn.classList.add('copied');
+                    setTimeout(() => btn.classList.remove('copied'), 1500);
+                }).catch(err => toolMessage('Failed to copy: ' + err));
+            } else {
+                // Fallback for Eclipse WebView / file://
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.cssText = 'position:fixed;opacity:0';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    btn.classList.add('copied');
+                    setTimeout(() => btn.classList.remove('copied'), 1500);
+                } catch (err) {
+                    toolMessage('Failed to copy: ' + err);
+                } finally {
+                    document.body.removeChild(ta);
                 }
-            };
-        }
+            }
+        });
 
         function appendDiff(diffString) {
             const container = document.getElementById("chat");
@@ -306,11 +266,11 @@
         document.getElementById("chat").innerHTML =
             '<div class="message PROBLEM">Failed to load markdown-it</div>';
     }
-
-        appendMessage({role: "USER", message: "Write hello world"});
-        appendMessage({
-            role: 'AI',
-            message: `Here's a simple \`Hello, World!\` program in Java:
+/*
+    appendMessage({role: "USER", message: "Write hello world"});
+    appendMessage({
+        role: 'AI',
+        message: `Here's a simple \`Hello, World!\` program in Java:
 
 \`\`\`java
 public class HelloWorld {
@@ -331,13 +291,13 @@ yes and some xml
 <foo>hallo</bar>
 \`\`\`
 `
-        })
-        appendMessage({role: "USER", message: "Write hello world"});
-        appendMessage({role: "TOOL", message: "Loading foo.text"});
-        appendMessage({role: "TOOL", message: "Loading bar.text"});
-        appendMessage({role: "USER", message: "Faster ...!"});
-        appendMessage({role: "PROBLEM", message: "unknown tool read_file"});
-
+    })
+    appendMessage({role: "USER", message: "Write hello world"});
+    appendMessage({role: "TOOL", message: "Loading foo.text"});
+    appendMessage({role: "TOOL", message: "Loading bar.text"});
+    appendMessage({role: "USER", message: "Faster ...!"});
+    appendMessage({role: "PROBLEM", message: "unknown tool read_file"});
+*/
 </script>
 
 </html>

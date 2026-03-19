@@ -115,18 +115,23 @@ public class ActionsBarWidget extends Composite {
     /** Enable/disable the entire bar while a request is in flight. */
     public void lockWhileWorking(boolean value) {
         this.working = value;
-        setEnabled(!working);
-        btnStop.setEnabled(working);
-        if (!working) {
-            btnSend.setEnabled(!noModelConfigured);
-        }
+        // Do NOT disable the parent composite — that would also block btnStop from receiving events.
+        // Instead, disable each child individually.
+        modeCombo.setEnabled(!value);
+        modelCombo.setEnabled(!value);
+        btnSend.setEnabled(!value && !noModelConfigured);
+        btnStop.setEnabled(value);
+        btnCompress.setEnabled(!value);
+        btnClear.setEnabled(!value);
+        if (value) btnImplement.setEnabled(false); // re-enable is handled by updateModeUI
     }
 
     /** Show/hide the "Start Impl." button based on mode and whether an AI reply exists. */
     public void updateModeUI(PeonMode mode, boolean hasAiMessage) {
         boolean isPlan = mode == PeonMode.PLAN;
         if (isPlan) {
-            btnImplement.setEnabled(!working && hasAiMessage);
+            // lockWhileWorking(true) disables this; we re-enable here after the response arrives
+            btnImplement.setEnabled(hasAiMessage);
         }
         if (btnImplement.getVisible() != isPlan) {
             ((RowData) btnImplement.getLayoutData()).exclude = !isPlan;
