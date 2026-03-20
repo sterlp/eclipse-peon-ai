@@ -17,6 +17,7 @@ import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.FileUtils;
+import org.sterl.llmpeon.shared.StringMatcher;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -61,16 +62,17 @@ public class EclipseWorkspaceReadFilesTool extends AbstractEclipseTool {
         return "File not found: " + filePath + " - try searchWorkspaceFiles or listWorkspaceDirectory first.";
     }
 
-    @Tool("Eclipse: Search workspace files by name. Skips derived (target/, bin/).")
+    @Tool("Eclipse: Search workspace files by name")
     public String searchWorkspaceFiles(
-            @P("file name query") String query) {
+            @P("file name query - wildcard *, ? is supported.") String query) {
 
         if (query == null || query.isBlank()) {
             throw new IllegalArgumentException("query must not be empty");
         }
 
-        String lowerQuery = query.toLowerCase();
-        List<String> matches = new ArrayList<>();
+        final var matcher = new StringMatcher(query, true, false);
+        final var lowerCaseQuery = query;
+        final List<String> matches = new ArrayList<>();
 
         for (IProject project : ResourcesPlugin.getWorkspace().getRoot().getProjects()) {
             if (!project.isOpen()) continue;
@@ -79,10 +81,13 @@ public class EclipseWorkspaceReadFilesTool extends AbstractEclipseTool {
                     @Override
                     public boolean visit(IResource resource) {
                         if (resource.isDerived()) return false;
-                        if (resource.getType() == IResource.FILE
-                                && resource.getName().toLowerCase().contains(lowerQuery)) {
+                        if (resource.getType() == IResource.FILE) {
                             var file = JdtUtil.pathOf(resource);
-                            if (matches.isEmpty() || isNotDerived(file)) matches.add(file);
+                            var match = file.toLowerCase().contains(lowerCaseQuery) 
+                                    || matcher.match(file)
+                                    || matcher.match(resource.getName());
+
+                            if (match && (matches.isEmpty() || isNotDerived(file))) matches.add(file);
                         }
                         return true;
                     }

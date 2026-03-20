@@ -103,39 +103,8 @@ public class ChatService<T extends TemplateContext> {
         return mode;
     }
 
-    /**
-     * Switches the agent mode. When switching from PLAN to DEV the plan is handed
-     * over automatically: the last AI message becomes the starting context of a
-     * fresh dev session.
-     */
     public void setMode(PeonMode newMode) {
-        if (newMode == this.mode) return;
-        if (this.mode == PeonMode.PLAN && newMode == PeonMode.DEV) {
-            handoverPlanToDev();
-        }
         this.mode = newMode;
-    }
-
-    /**
-     * Extracts the last AI message (the completed plan), clears memory, and adds
-     * the plan as the first user message for the dev agent to implement.
-     */
-    public void handoverPlanToDev() {
-        var messages = memory.messages();
-        if (messages.size() < 5) return; // no need for compression
-
-        AiMessage plan = null;
-        for (int i = messages.size() - 1; i >= 0; i--) {
-            if (messages.get(i) instanceof AiMessage ai && StringUtil.hasValue(ai.text())) {
-                plan = ai;
-                break;
-            }
-        }
-
-        if (plan != null) {
-            memory.clear();
-            memory.add(SystemMessage.from(plan.text()));
-        }
     }
 
     public ChatResponse call(String message, AiMonitor monitor) {

@@ -31,6 +31,7 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.sterl.llmpeon.ChatService;
+import org.sterl.llmpeon.agent.PeonMode;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.agentsmd.AgentsMdService;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
@@ -57,7 +58,9 @@ import org.sterl.llmpeon.tool.DiskFileWriteTools;
 import org.sterl.llmpeon.tool.EditTool;
 import org.sterl.llmpeon.tool.ToolService;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.SystemMessage;
 import jakarta.annotation.PostConstruct;
@@ -127,7 +130,7 @@ public class AIChatView implements EclipseAiMonitor {
             this::doCompressContext,
             () -> { chatService.clear(); chatHistory.clear(); },
             this::doStartImpl,
-            mode -> { chatService.setMode(mode); refreshChat(); },
+            mode -> { chatService.setMode(mode); refreshStatusLine(); },
             model -> chatService.updateConfig(chatService.getConfig().withModel(model))
         );
 
@@ -319,13 +322,34 @@ public class AIChatView implements EclipseAiMonitor {
     // -------------------------------------------------------------------------
 
     private void doStartImpl() {
-        chatInput.setText("Start Implementation");
+        chatService.setMode(PeonMode.DEV);
+        actionsBar.updateModeUI(PeonMode.DEV, true);
+
+        boolean tooLarge = chatService.getMessages().size() > 4
+                && chatService.getTokenSize() > (chatService.getTokenWindow() * 0.4);
+
+        AiMessage plan = null;
+        if (tooLarge) {
+            var messages = chatService.getMessages();
+            for (int i = messages.size() - 1; i >= 0; i--) {
+                if (messages.get(i) instanceof AiMessage ai && StringUtil.hasValue(ai.text())) {
+                    plan = ai;
+                    break;
+                }
+            }
+        }
+
+        if (plan != null) chatService.clear();
+        chatService.addMessage(UserMessage.from("Start Implementation"));
+        if (plan != null) chatService.addMessage(plan);
+
+        refreshChat();
         doSendMessage();
     }
 
     private void doCompressContext() {
-        actionsBar.lockWhileWorking(true);
         chatHistory.clear();
+        actionsBar.lockWhileWorking(true);
         Job.create("Compressing context", monitor -> {
             monitor.beginTask("Compressing chat", IProgressMonitor.UNKNOWN);
             monitorRef.set(monitor);
@@ -348,9 +372,11 @@ public class AIChatView implements EclipseAiMonitor {
     private void doSendMessage() {
         String text = StringUtil.strip(chatInput.getText().trim() + getUserSelection());
         if (StringUtil.hasNoValue(text) && chatService.getMessages().isEmpty()) return;
-        if (StringUtil.hasValue(text))
+
+        if (StringUtil.hasValue(text)) {
             chatHistory.appendMessage(new SimpleChatMessage(ChatMessageType.USER.name(), text));
-        chatInput.clearText();
+            chatInput.clearText();
+        }
 
         actionsBar.lockWhileWorking(true);
         Job.create("Peon AI request", monitor -> {

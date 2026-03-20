@@ -19,12 +19,13 @@ import dev.langchain4j.model.chat.ChatModel;
 /**
  * https://github.com/langchain4j/langchain4j/blob/main/docs/docs/tutorials/agents.md
  */
-@Tag("integtration")
 class AiCompressorAgentTest {
     ChatModel model = new LlmConfig(AiProvider.OPEN_AI, 
             "qwen/qwen3.5-9b", "http://localhost:1234", 5000, false, null, null)
             .build();
+    
     @Test
+    @Tag("integration")
     void test_compressContext() {
         // GIVEN
         var config = LlmConfig.newConfig(AiProvider.LM_STUDIO, "qwen/qwen3.5-9b", "http://localhost:1234/v1");

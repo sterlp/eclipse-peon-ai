@@ -1,8 +1,10 @@
 package org.sterl.llmpeon.tool.file;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -33,8 +35,13 @@ class DiskFileReadToolsTest {
 
     @Test
     void readDiskFile_missingFile() {
-        String result = tool.readDiskFile("missing.txt");
-        assertTrue(result.contains("File not found"));
+        try {
+            tool.readDiskFile("missing.txt");
+            fail("Missing IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("File not found"));
+            assertTrue(e.getMessage().contains("missing.txt"));
+        }
     }
 
     @Test
@@ -43,6 +50,34 @@ class DiskFileReadToolsTest {
         Files.writeString(tempDir.resolve("BarService.java"), "class Bar {}");
         String result = tool.searchDiskFiles("Controller");
         assertTrue(result.contains("FooController.java"));
+    }
+
+    @Test
+    void searchDiskFiles_globExtension() throws IOException {
+        Files.writeString(tempDir.resolve("README.md"), "docs");
+        Files.writeString(tempDir.resolve("notes.md"), "notes");
+        Files.writeString(tempDir.resolve("Other.java"), "code");
+        String result = tool.searchDiskFiles("*.md");
+        assertTrue(result.contains("README.md"), "should find README.md");
+        assertTrue(result.contains("notes.md"), "should find notes.md");
+        assertFalse(result.contains("Other.java"), "should not find .java file");
+    }
+
+    @Test
+    void searchDiskFiles_globPrefix() throws IOException {
+        // GIVEN
+        Files.writeString(tempDir.resolve("FooController.java"), "");
+        Files.writeString(tempDir.resolve("FooService.java"), "");
+        Files.writeString(tempDir.resolve("BarHelper.java"), "");
+        // WHEN
+        String result = tool.searchDiskFiles("Foo*");
+        // THEN
+        assertTrue(result.contains("FooController.java"));
+        assertTrue(result.contains("FooService.java"));
+        assertFalse(result.contains("BarHelper.java"));
+        
+        // AND no error
+        tool.readDiskFile(result.split("\n")[0]);
     }
 
     @Test

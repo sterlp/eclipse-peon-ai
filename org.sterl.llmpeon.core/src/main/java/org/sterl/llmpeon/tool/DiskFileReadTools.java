@@ -5,6 +5,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 
+import org.sterl.llmpeon.shared.StringMatcher;
+import org.sterl.llmpeon.shared.StringUtil;
+
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 
@@ -27,17 +30,16 @@ public class DiskFileReadTools extends AbstractTool {
         return workingDir;
     }
 
-    @Tool("Disk: Read file.")
+    @Tool("Disk: Read file - not eclipse.")
     public String readDiskFile(@P("file path") String filePath) {
 
-        if (filePath == null || filePath.isBlank()) {
+        if (StringUtil.hasNoValue(filePath)) {
             throw new IllegalArgumentException("filePath must not be empty");
         }
 
         Path resolved = resolve(filePath);
         if (resolved == null || !Files.isRegularFile(resolved)) {
-            onProblem("File not found: " + filePath);
-            return "File not found: " + filePath;
+            throw new IllegalArgumentException("File not found: " + filePath + " also not in " + workingDir);
         }
         try {
             monitorMessage("Reading " + filePath);
@@ -53,11 +55,12 @@ public class DiskFileReadTools extends AbstractTool {
         if (query == null || query.isBlank()) {
             throw new IllegalArgumentException("query must not be empty");
         }
-        String lowerQuery = query.toLowerCase();
+        
+        var mather = new StringMatcher((query.contains("*") || query.contains("?")) ? query : "*" + query + "*", true, false);
         var matches = new ArrayList<String>();
         try (var walk = Files.walk(workingDir)) {
             walk.filter(Files::isRegularFile)
-                .filter(p -> p.getFileName().toString().toLowerCase().contains(lowerQuery))
+                .filter(p -> mather.match(p.getFileName().toString()))
                 .forEach(p -> matches.add(p.toAbsolutePath().toString()));
         } catch (IOException e) {
             throw new RuntimeException("Failed to search in " + workingDir, e);
@@ -105,7 +108,7 @@ public class DiskFileReadTools extends AbstractTool {
     private Path resolve(String path) {
         if (path == null) return null;
         Path p = Path.of(path);
-        if (p.isAbsolute()) return p.normalize();
-        return workingDir.resolve(p).normalize();
+        if (Files.exists(p)) return p;
+        return workingDir.resolve(p);
     }
 }

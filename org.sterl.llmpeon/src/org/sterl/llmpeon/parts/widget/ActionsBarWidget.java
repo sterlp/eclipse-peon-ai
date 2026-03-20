@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.parts.widget;
 
 import java.net.URI;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -50,12 +51,14 @@ public class ActionsBarWidget extends Composite {
         setLayout(rowLayout);
 
         modeCombo = new Combo(this, SWT.READ_ONLY);
-        modeCombo.setItems("Peon-Plan", "Peon-Dev");
+        
+        modeCombo.setItems(Arrays.asList(PeonMode.values()).stream()
+                .map(PeonMode::getLabel)
+                .toArray(String[]::new));
         modeCombo.select(1); // default: Peon-Dev
         modeCombo.setToolTipText("Select agent mode");
         modeCombo.addListener(SWT.Selection, e -> {
-            PeonMode selected = modeCombo.getSelectionIndex() == 0 ? PeonMode.PLAN : PeonMode.DEV;
-            onModeChange.accept(selected);
+            onModeChange.accept(PeonMode.values()[modeCombo.getSelectionIndex()]);
         });
 
         modelCombo = new Combo(this, SWT.READ_ONLY);
@@ -105,11 +108,7 @@ public class ActionsBarWidget extends Composite {
         btnImplement.setVisible(false);
         btnImplement.setEnabled(false);
         btnImplement.setToolTipText("Switch to Dev mode and start implementing the plan");
-        btnImplement.addListener(SWT.Selection, e -> {
-            modeCombo.select(1);
-            onModeChange.accept(PeonMode.DEV);
-            onImplement.run();
-        });
+        btnImplement.addListener(SWT.Selection, e -> onImplement.run());
     }
 
     /** Enable/disable the entire bar while a request is in flight. */
@@ -129,6 +128,7 @@ public class ActionsBarWidget extends Composite {
     /** Show/hide the "Start Impl." button based on mode and whether an AI reply exists. */
     public void updateModeUI(PeonMode mode, boolean hasAiMessage) {
         boolean isPlan = mode == PeonMode.PLAN;
+        modeCombo.select(mode.ordinal());
         if (isPlan) {
             // lockWhileWorking(true) disables this; we re-enable here after the response arrives
             btnImplement.setEnabled(hasAiMessage);

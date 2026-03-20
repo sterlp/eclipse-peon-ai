@@ -26,6 +26,7 @@ import org.eclipse.jdt.core.search.TypeNameMatch;
 import org.eclipse.jdt.core.search.TypeNameMatchRequestor;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
+import org.sterl.llmpeon.shared.StringMatcher;
 import org.sterl.llmpeon.shared.StringUtil;
 
 import dev.langchain4j.agent.tool.P;
@@ -238,10 +239,12 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
                         : EclipseUtil.openProjects();
         try {
 
+            var mather = new StringMatcher(glob, true, false);
+
             for (var project : projects) {
                 project.accept(resource -> {
                     if (resource.getType() == IResource.FILE
-                            && matches(resource.getName(), glob)
+                            && mather.match(resource.getName())
                             && matches.size() < MAX_REFERENCE_RESULTS) {
                         matches.add(resource.getFullPath().toPortableString());
                     }
@@ -266,12 +269,6 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
         }
 
         return sb.toString();
-    }
-
-    private static boolean matches(String name, String glob) {
-        // Convert glob to regex: escape dots, replace * and ?
-        String regex = glob.replace(".", "\\.").replace("*", ".*").replace("?", ".");
-        return name.matches("(?i)" + regex);
     }
 
     // -------------------------------------------------------------------------

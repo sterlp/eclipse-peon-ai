@@ -20,5 +20,15 @@ class StringMatcherTest {
         assertFalse(subject.match("/foo/bar/aa.xml"), "/foo/bar/aa.xml");
         assertFalse(subject.match("pom.xmll"), "pom.xmll");
     }
+    
+    @Test
+    void test_match_template_context() {
+        // GIVEN
+        var matcher = new StringMatcher("TemplateContext*", true, false);
+        
+        // WHEN & THEN
+        assertFalse(matcher.match("/foo/bar/TemplateContext.java"));
+        assertTrue(matcher.match("TemplateContext"));
+    }
 
 }
