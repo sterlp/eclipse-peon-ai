@@ -14,7 +14,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 
 public class AiPlannerAgent implements AiAgent {
 
-    private final String PROMPT = """
+    private static final String BASE_PROMPT = """
             Embedded in Eclipse IDE. Today: ${currentDate}. Working in: ${workPath}.
             Read-only agent — no file modifications, no shell edit commands, no state changes.
 
@@ -41,14 +41,32 @@ public class AiPlannerAgent implements AiAgent {
             The plan is the sole input to the implementation agent — omit nothing it will need.
             """;
 
+    private static final String AGENT_MODE_ADDITION = """
+
+            AGENT MODE — when your plan is complete, call savePlan with the full plan markdown.
+            Do not ask — call it automatically as the last action before your reply.
+            The plan file path is also available for incremental updates via disk tools.
+            If a problem was reported in the conversation, update the plan to address it before saving.
+            """;
+
+    private final String PROMPT;
+
     private final ChatModel chatModel;
     private final TemplateContext context;
     private final ChatRequest.Builder request = ChatRequest.builder();
 
     public AiPlannerAgent(ChatModel chatModel, TemplateContext context) {
+        this(chatModel, context, false);
+    }
+
+    public AiPlannerAgent(ChatModel chatModel, TemplateContext context, boolean agentMode) {
         this.chatModel = chatModel;
         this.context = context;
+        this.PROMPT = agentMode ? BASE_PROMPT + AGENT_MODE_ADDITION : BASE_PROMPT;
     }
+
+    @Override
+    public boolean isReadOnly() { return true; }
 
     public ChatResponse call(List<ChatMessage> inMessages, AiMonitor monitor) {
         var messages = new ArrayList<ChatMessage>(inMessages);

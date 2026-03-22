@@ -11,7 +11,7 @@ description: How to install Eclipse Peon AI
 
 ## LM Studio
 
-![LM Studio](./doc/docs/assets/lm-studio-setup.png)
+![LM Studio](../assets/lm-studio-setup.png)
 
 ### Google Gemini example
 
@@ -32,7 +32,7 @@ Install directly from Eclipse:
 5. Click **Next** and follow the installation wizard
 6. Restart Eclipse when prompted
 
-![Install](./doc/docs/assets/install.png)
+![Install](../assets/install.png)
 
 ## Requirements
 

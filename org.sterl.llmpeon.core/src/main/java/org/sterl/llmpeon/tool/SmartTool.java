@@ -2,10 +2,10 @@ package org.sterl.llmpeon.tool;
 
 import java.util.List;
 
-import org.sterl.llmpeon.agent.AgentService;
 import org.sterl.llmpeon.agent.AiMonitor;
 
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.chat.ChatModel;
 
 /**
  * Smart tools can tell if why are active furthermore throw an
@@ -27,7 +27,7 @@ public interface SmartTool {
      */
     void withMonitor(AiMonitor monitor);
 
-    void withAgentService(AgentService agentService);
+    void withChatModel(ChatModel chatModel);
     
     void withMemory(List<ChatMessage> memory);
 }

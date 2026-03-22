@@ -24,8 +24,16 @@ public class AgentService {
         return new AiDeveloperAgent(model, context);
     }
 
+    public AiDeveloperAgent newDeveloperAgent(TemplateContext context, boolean agentMode) {
+        return new AiDeveloperAgent(model, context, agentMode);
+    }
+
     public AiPlannerAgent newPlannerAgent(TemplateContext context) {
         return new AiPlannerAgent(model, context);
+    }
+
+    public AiPlannerAgent newPlannerAgent(TemplateContext context, boolean agentMode) {
+        return new AiPlannerAgent(model, context, agentMode);
     }
 
     public AiSearchAgent newSearchAgent() {

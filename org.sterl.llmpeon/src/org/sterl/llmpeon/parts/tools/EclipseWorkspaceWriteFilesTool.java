@@ -201,26 +201,6 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
     }
 
     private IFile writeFileToProject(IProject targetProject, String projectRelativePath, String content) {
-        IFile file = targetProject.getFile(projectRelativePath);
-        try {
-            ensureFolders(file.getParent());
-            Charset charset = Charset.forName(targetProject.getDefaultCharset());
-            byte[] bytes = content.getBytes(charset);
-            file.write(bytes, true, false, true, getProgressMonitor());
-            file.refreshLocal(IResource.DEPTH_ZERO, getProgressMonitor());
-        } catch (CoreException e) {
-            throw new RuntimeException("Failed to create/write " + file.getFullPath(), e);
-        }
-        return file;
-    }
-
-    private void ensureFolders(IContainer container) throws CoreException {
-        if (container == null || container instanceof IProject) return;
-        if (container instanceof IFolder folder) {
-            if (!folder.exists()) {
-                ensureFolders(folder.getParent());
-                folder.create(IResource.FORCE, true, null);
-            }
-        }
+        return IoUtils.writeProjectFile(targetProject, projectRelativePath, content, getProgressMonitor());
     }
 }
