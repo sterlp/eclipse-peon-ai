@@ -95,14 +95,14 @@ public class ToolService {
         String result;
         if (executor == null) {
             result = "Error: unknown tool '" + tr.name() + "' check spelling";
-            AiMonitor.nullSafty(monitor).onProblem(result);
+            AiMonitor.nullSafety(monitor).onProblem(result);
         } else {
             try {
                 result = executor.run(tr, monitor, agentService, memory);
             } catch (IllegalArgumentException e) {
                 // user-facing argument error — return as-is so the LLM can correct itself
                 result = e.getMessage();
-                AiMonitor.nullSafty(monitor).onProblem(tr.name() + ": " + result);
+                AiMonitor.nullSafety(monitor).onProblem(tr.name() + ": " + result);
             }
         }
         return new ToolResult(

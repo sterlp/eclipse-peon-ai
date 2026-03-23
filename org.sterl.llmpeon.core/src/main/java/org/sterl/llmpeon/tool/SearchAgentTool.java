@@ -26,7 +26,7 @@ public class SearchAgentTool extends AbstractTool {
     public String searchAgent(@P("search prompt") String prompt) {
         if (prompt == null || prompt.isBlank()) return "Error: search prompt must not be empty";
 
-        final AiMonitor m = AiMonitor.nullSafty(monitor);
+        final AiMonitor m = AiMonitor.nullSafety(monitor);
 
         try {
             var searchAgent = new AiSearchAgent(chatModel);

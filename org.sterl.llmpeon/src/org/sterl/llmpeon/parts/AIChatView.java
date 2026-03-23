@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IFolder;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -22,6 +24,7 @@ import org.eclipse.e4.core.services.log.Logger;
 import org.eclipse.e4.ui.di.Focus;
 import org.eclipse.e4.ui.services.IServiceConstants;
 import org.eclipse.jdt.core.ICompilationUnit;
+import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
@@ -30,6 +33,7 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.ui.IWorkingSet;
 import org.sterl.llmpeon.ChatService;
 import org.sterl.llmpeon.agent.AgentService;
 import org.sterl.llmpeon.agent.AiAgent;
@@ -90,6 +94,8 @@ public class AIChatView implements EclipseAiMonitor {
     private AgentModeService agentMode;
     private AgentModeTools agentModeTools;
     private LlmConfig lastListedConfig;
+    private IProject currentProject;
+    private boolean projectPinned = false;
 
     private ChatMarkdownWidget chatHistory;
     private ChatWidget chatInput;
@@ -134,7 +140,7 @@ public class AIChatView implements EclipseAiMonitor {
         chatInput = new ChatWidget(parent, SWT.NONE, this::doSendMessage);
         chatInput.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
-        statusLine = new StatusLineWidget(parent, SWT.NONE);
+        statusLine = new StatusLineWidget(parent, SWT.NONE, this::onPinChange);
 
         actionsBar = new ActionsBarWidget(parent, SWT.NONE,
             this::doSendMessage,
@@ -198,16 +204,29 @@ public class AIChatView implements EclipseAiMonitor {
             selection = f;
         } else if (o instanceof IResource r) {
             selection = r;
+        } else if (o instanceof IProject p) {
+            selection = p;
+        } else if (o instanceof IFolder f) {
+            selection = f;
+        } else if (o instanceof IJavaProject jp) {
+            selection = jp.getResource();
+        } else if (o instanceof IWorkingSet) {
+            // nothing
+            selection = selectedResource; 
         } else if (o != null) {
-            System.out.println("Unknown selected type " + o.getClass());
+            System.err.println("!!! Unknown resource type selected " + o.getClass());
             selection = null;
         } else {
             selection = null;
         }
         selectedResource = selection;
+        if (selectedResource != null) {
+            System.out.println("Selected " + selectedResource.getName());
+        }
 
         var project = selection != null ? EclipseUtil.resolveProject(selection) : null;
-        if (project != null) {
+        if (project != null && !projectPinned) {
+            currentProject = project;
             agentsMdService.load(selection.getProject());
             workspaceWriteFilesTool.setCurrentProject(project);
             workspaceReadFilesTool.setCurrentProject(project);
@@ -215,8 +234,8 @@ public class AIChatView implements EclipseAiMonitor {
         }
 
         if (chatInput != null) Display.getDefault().asyncExec(() -> {
-            actionsBar.setAgentModeAvailable(project != null && project.isOpen());
-            if (project == null && currentMode == PeonMode.AGENT) {
+            actionsBar.setAgentModeAvailable(currentProject != null && currentProject.isOpen());
+            if (currentProject == null && currentMode == PeonMode.AGENT) {
                 onModeChange(PeonMode.DEV);
             }
             refreshStatusLine();
@@ -227,6 +246,9 @@ public class AIChatView implements EclipseAiMonitor {
     @org.eclipse.e4.core.di.annotations.Optional
     public void setSelection(@Named(IServiceConstants.ACTIVE_SELECTION) Object[] selectedObjects) {
         // TODO what to do with multi-selection?
+        if (selectedObjects != null && selectedObjects.length > 0) {
+            setSelection(selectedObjects[0]);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -273,12 +295,12 @@ public class AIChatView implements EclipseAiMonitor {
 
     public void refreshStatusLine() {
         statusLine.update(
-            chatService.getTokenSize(),
-            chatService.getTokenWindow(),
             chatService.getSkills().size(),
             agentsMdService.hasAgentFile(),
+            currentProject,
             getSelectedFile()
         );
+        actionsBar.updateCompact(chatService.getTokenSize(), chatService.getTokenWindow());
     }
 
     private void refreshChat() {
@@ -407,6 +429,8 @@ public class AIChatView implements EclipseAiMonitor {
 
     private void doCompressContext() {
         chatHistory.clear();
+
+        if (chatService.getMessages().isEmpty()) return;
         actionsBar.lockWhileWorking(true);
         Job.create("Compressing context", monitor -> {
             monitor.beginTask("Compressing chat", IProgressMonitor.UNKNOWN);
@@ -469,6 +493,25 @@ public class AIChatView implements EclipseAiMonitor {
             }
             return PeonConstants.status("Peon AI\n" + chatService.getConfig(), ex);
         }).schedule();
+    }
+
+    private void onPinChange(boolean pinned) {
+        this.projectPinned = pinned;
+        if (!pinned && selectedResource != null) {
+            var project = EclipseUtil.resolveProject(selectedResource);
+            if (project != null) {
+                currentProject = project;
+                agentsMdService.load(selectedResource.getProject());
+                workspaceWriteFilesTool.setCurrentProject(project);
+                workspaceReadFilesTool.setCurrentProject(project);
+                agentMode.setProject(project);
+            }
+            actionsBar.setAgentModeAvailable(currentProject != null && currentProject.isOpen());
+        }
+        Display.getDefault().asyncExec(() -> {
+            statusLine.setPinned(pinned);
+            refreshStatusLine();
+        });
     }
 
     private AiAgent buildAgent() {

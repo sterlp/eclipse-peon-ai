@@ -5,7 +5,7 @@ public enum PeonMode {
     PLAN("Peon-Plan"),
     /** Full-access developer: implements the plan (the HOW). */
     DEV("Peon-Dev"),
-    /** Orchestrated plan→dev loop backed by .plan/overview.md. */
+    /** Orchestrated plan -> dev loop backed by .plan/overview.md. */
     AGENT("Peon-Agent");
     
     private final String label;

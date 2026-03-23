@@ -20,7 +20,7 @@ public class AgentModeService {
     public enum Phase { PLANNING, IMPLEMENTING }
 
     private static final int MAX_RETRIES = 3;
-    private static final String PLAN_DIR = ".plan";
+    private static final String PLAN_DIR = "peon-plan";
     private static final String OVERVIEW_FILE = PLAN_DIR + "/overview.md";
     private static final String PROBLEM_FILE = PLAN_DIR + "/problem.md";
 

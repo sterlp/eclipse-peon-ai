@@ -1,118 +1,130 @@
 package org.sterl.llmpeon.parts.widget;
 
+import java.net.URI;
+import java.util.function.Consumer;
+
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.layout.RowData;
+import org.eclipse.swt.layout.RowLayout;
+import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.PlatformUI;
 
 public class StatusLineWidget extends Composite {
 
+    private final Button btnPin;
+    private final Label projectLabel;
+    private final Label sep0;
     private final Label skillIcon;
     private final Label skillLabel;
     private final Label agentIcon;
     private final Label agentLabel;
     private final Label fileLabel;
-    private final Label tokenLabel;
 
-    private final Color colorWarning;
-    private final Color colorError;
-
-    public StatusLineWidget(Composite parent, int style) {
+    public StatusLineWidget(Composite parent, int style, Consumer<Boolean> onPinChange) {
         super(parent, style);
-
-        var layout = new GridLayout(8, false);
-        layout.marginHeight = 2;
-        layout.marginWidth = 4;
-        layout.horizontalSpacing = 4;
-        setLayout(layout);
         setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
-        colorWarning = new Color(180, 130, 0);
-        colorError = new Color(200, 0, 0);
-        addDisposeListener(e -> {
-            colorWarning.dispose();
-            colorError.dispose();
-        });
+        RowLayout rowLayout = new RowLayout(SWT.HORIZONTAL);
+        rowLayout.wrap = false;
+        rowLayout.pack = true;
+        rowLayout.center = true;
+        rowLayout.marginTop = 2;
+        rowLayout.marginBottom = 2;
+        rowLayout.spacing = 4;
+        setLayout(rowLayout);
+
+        // --- Pin button (hidden until a project is selected) ---
+        btnPin = new Button(this, SWT.TOGGLE);
+        btnPin.setToolTipText("Pin project — navigation won't change the active project");
+        btnPin.setEnabled(false);
+        try {
+            Image pinImage = ImageDescriptor
+                .createFromURL(URI.create(
+                    "platform:/plugin/org.eclipse.jdt.ui/icons/full/elcl16/pin_view.svg").toURL())
+                .createImage();
+            btnPin.setImage(pinImage);
+            btnPin.addDisposeListener(e -> pinImage.dispose());
+        } catch (Exception ex) {
+            btnPin.setText("Pin");
+        }
+        btnPin.addListener(SWT.Selection, e -> onPinChange.accept(btnPin.getSelection()));
+
+        // --- Project label (hidden until a project is selected) ---
+        projectLabel = new Label(this, SWT.NONE);
+        projectLabel.setVisible(false);
+
+        // --- Separator after project area (hidden when no project) ---
+        sep0 = new Label(this, SWT.SEPARATOR | SWT.VERTICAL);
+        sep0.setLayoutData(new RowData(SWT.DEFAULT, 16));
+        sep0.setVisible(false);
 
         var images = PlatformUI.getWorkbench().getSharedImages();
 
-        // Skills icon + label
+        // --- Skills icon (hidden when 0 skills) ---
         skillIcon = new Label(this, SWT.NONE);
         skillIcon.setImage(images.getImage(ISharedImages.IMG_OBJ_FOLDER));
-        skillIcon.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
+        skillIcon.setVisible(false);
 
         skillLabel = new Label(this, SWT.NONE);
-        skillLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
 
-        // Separator
+        // --- Separator ---
         var sep1 = new Label(this, SWT.SEPARATOR | SWT.VERTICAL);
-        sep1.setLayoutData(gridHeight(16));
+        sep1.setLayoutData(new RowData(SWT.DEFAULT, 16));
 
-        // Agent icon + label
+        // --- Agent icon + label (hidden when no AGENTS.md) ---
         agentIcon = new Label(this, SWT.NONE);
         agentIcon.setImage(images.getImage(ISharedImages.IMG_OBJ_FILE));
-        agentIcon.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
+        agentIcon.setVisible(false);
 
         agentLabel = new Label(this, SWT.NONE);
-        agentLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+        agentLabel.setVisible(false);
 
-        // Separator
+        // --- Separator ---
         var sep2 = new Label(this, SWT.SEPARATOR | SWT.VERTICAL);
-        sep2.setLayoutData(gridHeight(16));
+        sep2.setLayoutData(new RowData(SWT.DEFAULT, 16));
 
-        // File label
+        // --- File label ---
         fileLabel = new Label(this, SWT.NONE);
-        fileLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-
-        // Token label (right-aligned)
-        tokenLabel = new Label(this, SWT.RIGHT);
-        tokenLabel.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
     }
 
-    public void update(int tokenUsed, int tokenMax, int skillCount, boolean hasAgentsMd, IResource selectedResource) {
-        // Skills
-        skillIcon.setVisible(skillCount > 0);
-        ((GridData) skillIcon.getLayoutData()).exclude = skillCount == 0;
-        skillLabel.setText(skillCount + " skill" + (skillCount != 1 ? "s" : ""));
+    public void update(int skillCount, boolean hasAgentsMd, IProject project, IResource selectedResource) {
 
-        // Agent
-        agentIcon.setVisible(hasAgentsMd);
-        ((GridData) agentIcon.getLayoutData()).exclude = !hasAgentsMd;
-        agentLabel.setText(hasAgentsMd ? "AGENTS.md" : "");
-        agentLabel.setVisible(hasAgentsMd);
-        ((GridData) agentLabel.getLayoutData()).exclude = !hasAgentsMd;
-
-        // File
-        fileLabel.setText(extractFileName(selectedResource));
-
-        // Tokens
-        int pct = tokenMax > 0 ? (tokenUsed * 100) / tokenMax : 0;
-        tokenLabel.setText(tokenUsed + " / " + tokenMax + " - " + pct + "%");
-
-        if (pct >= 90) {
-            tokenLabel.setForeground(colorError);
-        } else if (pct >= 70) {
-            tokenLabel.setForeground(colorWarning);
-        } else {
-            tokenLabel.setForeground(null); // default
+        // --- Pin + project ---
+        boolean hasProject = project != null;
+        btnPin.setEnabled(hasProject);
+        projectLabel.setVisible(hasProject);
+        sep0.setVisible(hasProject);
+        if (hasProject) {
+            projectLabel.setText(project.getName());
         }
 
+        // --- Skills ---
+        skillIcon.setVisible(skillCount > 0);
+        skillLabel.setText(skillCount + " skill" + (skillCount != 1 ? "s" : ""));
+
+        // --- Agent ---
+        agentIcon.setVisible(hasAgentsMd);
+        agentLabel.setVisible(hasAgentsMd);
+        agentLabel.setText(hasAgentsMd ? "AGENTS.md" : "");
+
+        // --- File ---
+        fileLabel.setText(selectedResource != null ? selectedResource.getName() : "");
+
         layout(true);
+        getParent().layout(new Control[] { this });
     }
 
-    private static String extractFileName(IResource resource) {
-        if (resource == null) return "";
-        return resource.getName();
-    }
-
-    private static GridData gridHeight(int height) {
-        var gd = new GridData(SWT.CENTER, SWT.CENTER, false, false);
-        gd.heightHint = height;
-        return gd;
+    /** Sync the pin button state without firing the listener. */
+    public void setPinned(boolean pinned) {
+        if (!btnPin.isDisposed()) btnPin.setSelection(pinned);
     }
 }

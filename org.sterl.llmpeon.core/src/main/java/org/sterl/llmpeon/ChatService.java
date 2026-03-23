@@ -94,7 +94,7 @@ public class ChatService<T extends TemplateContext> {
     }
 
     public ChatResponse call(AiAgent agent, String message, AiMonitor monitor) {
-        monitor = AiMonitor.nullSafty(monitor);
+        monitor = AiMonitor.nullSafety(monitor);
 
         if (tokenSize >= config.tokenWindow() * 0.8) {
             compressContext(monitor);
@@ -121,9 +121,6 @@ public class ChatService<T extends TemplateContext> {
                 || StringUtil.hasNoValue(response.aiMessage().text()));
 
         if (response != null) {
-            System.out.println(response.metadata());
-            System.out.println(response.aiMessage().text());
-
             updateTokenCount(response);
         }
 

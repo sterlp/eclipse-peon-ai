@@ -32,14 +32,16 @@ export default defineConfig({
           items: [
             { text: 'Installation', link: '/setup/installation' },
             { text: 'Configuration', link: '/setup/configuration' },
-            { text: 'Agents & Skills', link: '/setup/agents-and-skills' }
+            { text: 'Agents & Skills', link: '/setup/agents-and-skills' },
+            { text: 'Agent Mode', link: '/setup/agent-mode' }
           ]
         },
         {
           text: 'Development',
           items: [
             { text: 'Architecture', link: '/development/architecture' },
-            { text: 'Building', link: '/development/building' }
+            { text: 'Building', link: '/development/building' },
+            { text: 'Plan/Dev/Agent Design (WIP)', link: '/plan-dev-agent-design' }
           ]
         }
       ]

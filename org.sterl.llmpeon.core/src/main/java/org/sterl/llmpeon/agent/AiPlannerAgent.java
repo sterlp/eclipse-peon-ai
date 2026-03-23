@@ -1,18 +1,10 @@
 package org.sterl.llmpeon.agent;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.sterl.llmpeon.template.TemplateContext;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.ChatResponse;
 
-public class AiPlannerAgent implements AiAgent {
+public class AiPlannerAgent extends AbstractPromptAgent {
 
     private static final String BASE_PROMPT = """
             Embedded in Eclipse IDE. Today: ${currentDate}. Working in: ${workPath}.
@@ -50,17 +42,14 @@ public class AiPlannerAgent implements AiAgent {
             """;
 
     private final String PROMPT;
-
-    private final ChatModel chatModel;
     private final TemplateContext context;
-    private final ChatRequest.Builder request = ChatRequest.builder();
 
     public AiPlannerAgent(ChatModel chatModel, TemplateContext context) {
         this(chatModel, context, false);
     }
 
     public AiPlannerAgent(ChatModel chatModel, TemplateContext context, boolean agentMode) {
-        this.chatModel = chatModel;
+        super(chatModel);
         this.context = context;
         this.PROMPT = agentMode ? BASE_PROMPT + AGENT_MODE_ADDITION : BASE_PROMPT;
     }
@@ -68,18 +57,13 @@ public class AiPlannerAgent implements AiAgent {
     @Override
     public boolean isReadOnly() { return true; }
 
-    public ChatResponse call(List<ChatMessage> inMessages, AiMonitor monitor) {
-        var messages = new ArrayList<ChatMessage>(inMessages);
-        messages.addFirst(SystemMessage.from(context.process(PROMPT)));
-        
-        return chatModel.chat(request
-                .temperature(0.8)
-                .messages(toOneSystemMessage(messages))
-                .build());
+    @Override
+    protected String getPrompt() {
+        return context.process(PROMPT);
     }
 
     @Override
-    public void withTools(List<ToolSpecification> tools) {
-        request.toolSpecifications(tools);
+    protected double getTemperature() {
+        return 0.8;
     }
 }

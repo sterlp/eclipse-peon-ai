@@ -55,7 +55,6 @@ public class ActionsBarWidget extends Composite {
         setLayout(rowLayout);
 
         modeCombo = new Combo(this, SWT.READ_ONLY);
-        
         modeCombo.setItems(Arrays.asList(PeonMode.values()).stream()
                 .map(PeonMode::getLabel)
                 .toArray(String[]::new));
@@ -102,8 +101,8 @@ public class ActionsBarWidget extends Composite {
         }
 
         btnCompress = new Button(this, SWT.PUSH);
-        btnCompress.setText("Compress");
-        btnCompress.setToolTipText("Compress conversation context");
+        btnCompress.setText("Compact");
+        btnCompress.setToolTipText("Compact conversation context");
         btnCompress.addListener(SWT.Selection, e -> onCompress.run());
 
         btnClear = new Button(this, SWT.PUSH);
@@ -129,6 +128,15 @@ public class ActionsBarWidget extends Composite {
         chkAutonomous.setLayoutData(rdAuto);
         chkAutonomous.setVisible(false);
         chkAutonomous.addListener(SWT.Selection, e -> onAutonomousChange.accept(chkAutonomous.getSelection()));
+    }
+
+    /** Update the Compact button label and tooltip with current token usage. */
+    public void updateCompact(int tokenUsed, int tokenMax) {
+        int pct = tokenMax > 0 ? (tokenUsed * 100) / tokenMax : 0;
+        btnCompress.setText("Compact " + pct + "%");
+        btnCompress.setToolTipText(tokenUsed + " / " + tokenMax + " tokens used (" + pct
+                + "%) — click to compact the conversation");
+        btnCompress.getParent().layout(false, false);
     }
 
     /** Enable/disable the entire bar while a request is in flight. */

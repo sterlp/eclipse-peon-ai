@@ -9,7 +9,7 @@ public interface AiMonitor {
         public void onAction(String description) {}
     };
     
-    public static AiMonitor nullSafty(AiMonitor in) {
+    public static AiMonitor nullSafety(AiMonitor in) {
         return in == null ? NULL_MONITOR : in;
     }
     

@@ -21,7 +21,7 @@ public class AgentModeTools extends AbstractEclipseTool {
 
     @Override
     public boolean isEditTool() {
-        return false;
+        return true;
     }
 
     @Tool("Save the implementation plan to .plan/overview.md in the current project. Call this when the plan is complete.")

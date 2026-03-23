@@ -70,7 +70,7 @@ public class SkillService {
             }
         }
 
-        System.out.println("Loaded " + skills.size() + " skills in " + skillsDirectory);
+        // skill count is visible in the status line
         return true;
     }
 

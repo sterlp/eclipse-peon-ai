@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 
+import org.sterl.llmpeon.shared.FileUtils;
 import org.sterl.llmpeon.shared.StringMatcher;
 import org.sterl.llmpeon.shared.StringUtil;
 
@@ -56,11 +57,11 @@ public class DiskFileReadTools extends AbstractTool {
             throw new IllegalArgumentException("query must not be empty");
         }
         
-        var mather = new StringMatcher((query.contains("*") || query.contains("?")) ? query : "*" + query + "*", true, false);
+        var matcher = StringMatcher.wildCardMatcher(query);
         var matches = new ArrayList<String>();
         try (var walk = Files.walk(workingDir)) {
             walk.filter(Files::isRegularFile)
-                .filter(p -> mather.match(p.getFileName().toString()))
+                .filter(p -> matcher.match(p.getFileName().toString()) || matcher.match(p.toAbsolutePath().toString()))
                 .forEach(p -> matches.add(p.toAbsolutePath().toString()));
         } catch (IOException e) {
             throw new RuntimeException("Failed to search in " + workingDir, e);
@@ -106,9 +107,6 @@ public class DiskFileReadTools extends AbstractTool {
     }
 
     private Path resolve(String path) {
-        if (path == null) return null;
-        Path p = Path.of(path);
-        if (Files.exists(p)) return p;
-        return workingDir.resolve(p);
+        return FileUtils.resolve(workingDir, path);
     }
 }

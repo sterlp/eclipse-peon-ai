@@ -20,6 +20,13 @@ import java.util.regex.Pattern;
 
 
 public final class StringMatcher {
+    
+    public static StringMatcher wildCardMatcher(String query) {
+        return new StringMatcher((query.contains("*") || query.contains("?")) 
+                ? query 
+                : "*" + query + "*", 
+                true, false);
+    }
 
     private static final Pattern NON_WORD = Pattern.compile("\\W+", Pattern.UNICODE_CHARACTER_CLASS); //$NON-NLS-1$
 
