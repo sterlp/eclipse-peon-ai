@@ -26,17 +26,6 @@ public class AgentModeTools extends AbstractEclipseTool {
         this.agentMode = agentMode;
     }
     
-    @Tool("Read the current plan for the project, if one exists.")
-    public String readPlan() {
-        var project = getProject();
-        var planFile = project.getFile(OVERVIEW_FILE);
-        if (planFile.exists()) {
-            monitorMessage("Reading plan overview ...");
-            return IoUtils.readFile(planFile);
-        }
-        return "No plan exists for " + JdtUtil.pathOf(project);
-    }
-
     @Tool("Save the implementation plan to peon-plan/overview.md in the current project. Call this when the plan is complete.")
     public String savePlan(@P("complete plan in markdown") String content) {
         if (content == null || content.isBlank()) {
@@ -45,7 +34,6 @@ public class AgentModeTools extends AbstractEclipseTool {
         var project = getProject();
         var f = IoUtils.writeProjectFile(project, OVERVIEW_FILE, content, getProgressMonitor());
         monitorMessage("Plan saved to " + JdtUtil.pathOf(f));
-        // TODO bug from the AI circle dependency
         agentMode.onPlanSaved();
         return "Plan saved to " + JdtUtil.pathOf(f);
     }
@@ -58,20 +46,8 @@ public class AgentModeTools extends AbstractEclipseTool {
         var project = getProject();
         var f = IoUtils.writeProjectFile(project, PROBLEM_FILE, content, getProgressMonitor());
         monitorMessage("Problem reported — returning to plan agent");
-        // TODO bug from the AI circle dependency
         agentMode.onProblemReported();
         return "Problem reported. Plan agent will review. " + JdtUtil.pathOf(f);
-    }
-    
-    @Tool("Read the current plan problem for the selected project, if one exists.")
-    public String readPlanProblems() {
-        var project = getProject();
-        var f = project.getFile(PROBLEM_FILE);
-        if (f.exists()) {
-            monitorMessage("Reading plan problems ...");
-            return IoUtils.readFile(f);
-        }
-        return "No plan problem file exists for " + JdtUtil.pathOf(project);
     }
     
     private IProject getProject() {

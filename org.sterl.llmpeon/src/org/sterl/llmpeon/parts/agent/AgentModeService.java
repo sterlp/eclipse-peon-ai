@@ -30,6 +30,7 @@ public class AgentModeService {
     private Phase phase = Phase.PLANNING;
     private boolean autonomous = false;
     private int retryCount = 0;
+    private volatile boolean implementationRequested = false;
 
     public AgentModeService(ChatService<?> chatService, Runnable sendTrigger) {
         this.chatService = chatService;
@@ -109,8 +110,20 @@ public class AgentModeService {
     public void onPlanSaved() {
         openInEditor(getOverviewFile());
         if (autonomous) {
-            Display.getDefault().asyncExec(this::startImplementation);
+            implementationRequested = true;
         }
+    }
+
+    /**
+     * Returns true if the planner saved a plan while autonomous mode was active.
+     * Consumed once by the job-completion handler in AIChatView — resets the flag.
+     */
+    public boolean consumeImplementationRequest() {
+        if (implementationRequested) {
+            implementationRequested = false;
+            return true;
+        }
+        return false;
     }
 
     /** Called by reportProblem tool after writing problem.md. */

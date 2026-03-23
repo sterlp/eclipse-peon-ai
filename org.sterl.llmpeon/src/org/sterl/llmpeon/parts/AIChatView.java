@@ -473,7 +473,10 @@ public class AIChatView implements EclipseAiMonitor {
 
                 Display.getDefault().asyncExec(() -> {
                     if (parent.isDisposed()) return;
-                    if (chatService.getMessages().size() < msgCountBefore) {
+                    if (agentMode.consumeImplementationRequest()) {
+                        agentMode.startImplementation();
+                        refreshChat();
+                    } else if (chatService.getMessages().size() < msgCountBefore) {
                         refreshChat();
                     } else {
                         chatHistory.appendMessage(result.aiMessage());
