@@ -9,6 +9,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.ChatService;
+import org.sterl.llmpeon.agent.AgentService;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.template.TemplateContext;
 import org.sterl.llmpeon.tool.ToolService;
@@ -30,7 +31,8 @@ class ChatServiceTest {
         var config = LlmConfig.newConfig(AiProvider.LM_STUDIO, "qwen/qwen3.5-9b", "http://localhost:1234/v1");
         var subject = new ChatService<TemplateContext>(config, new ToolService(), new SkillService(), new TemplateContext(Path.of(".")));
         
-        var result = subject.call("Ping", m -> System.err.println(m));
+        var agent = new AgentService(subject.getChatModel()).newDeveloperAgent(subject.getTemplateContext());
+        var result = subject.call(agent, "Ping", m -> System.err.println(m));
 
         System.err.println(result.aiMessage());
     }

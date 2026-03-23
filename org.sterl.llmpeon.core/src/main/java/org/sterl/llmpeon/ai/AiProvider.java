@@ -115,7 +115,7 @@ public enum AiProvider {
 
             // returnThinking + sendThinking are always required: preview models return a
             // thought_signature even when thinking is "disabled". Without sendThinking(true),
-            // the thought_signature is not re-sent with tool results → INVALID_ARGUMENT error.
+            // the thought_signature is not re-sent with tool results -> INVALID_ARGUMENT error.
             result.returnThinking(Boolean.TRUE).sendThinking(Boolean.TRUE);
 
             if (c.thinkingEnabled()) {

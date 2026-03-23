@@ -12,31 +12,22 @@ Variables are substituted at request time with live values from your Eclipse wor
 
 | Variable | Description | Example value |
 |---|---|---|
-| `${currentSelectedFile}` | Eclipse-portable path of the selected resource | `/my-project/src/Foo.java` |
-| `${currentProject}` | Name of the Eclipse project | `my-project` |
 | `${currentDate}` | Today's date (ISO 8601) | `2026-03-07` |
-| `${selectedText}` | Text currently highlighted in the editor | `public void foo() {…}` |
+| `${skillDirectory}` | Path to skills directory for agent/skill lookups | `/workspace/skills` |
+| `${tokenSize}` | Current configured token size limit (integer) | `12` |
+| `${tokenWindow}` | Maximum token window size for context processing (integer) | `20` |
 | `${workPath}` | Absolute file-system path to the workspace root | `/home/user/workspace` |
 
-Variables are split across two classes by scope:
-
-- Generic (available everywhere): [`TemplateContext.java`](https://github.com/sterlp/eclipse-peon-ai/blob/main/org.sterl.llmpeon.core/src/main/java/org/sterl/llmpeon/template/TemplateContext.java) — `${currentDate}`, `${workPath}`
-- Eclipse-specific: [`EclipseTemplateContext.java`](https://github.com/sterlp/eclipse-peon-ai/blob/main/org.sterl.llmpeon/src/org/sterl/llmpeon/parts/shared/EclipseTemplateContext.java) — all workspace/selection variables
+All template variables are provided by [`TemplateContext.java`](https://github.com/sterlp/eclipse-peon-ai/blob/main/org.sterl.llmpeon.core/src/main/java/org/sterl/llmpeon/template/TemplateContext.java). Variables are substituted at request time with live values from your Eclipse workspace.
 
 !!! info "Unknown variables are left as-is"
-    If a variable is not available (e.g. `${currentSelectedFile}` when no file is selected),
-    it is replaced with an empty string. Unrecognised `${names}` are left unchanged.
+    If a variable is not available it is replaced with an empty string. Unrecognised `${foo-bar}` are left unchanged.
 
 ## Usage in AGENTS.md
 
 ```markdown
-# ${currentProject}
-
-Project context — always kept up to date by Peon AI.
+# Project context — always kept up to date by Peon AI.
 Today: ${currentDate}
-
-## Current file
-Working on: ${currentSelectedFile}
 
 ## Conventions
 - Java 21, no field injection
@@ -52,8 +43,7 @@ This lets you make a skill context-aware without touching its body:
 ---
 name: my-skill
 description: >
-  Patterns for ${currentProject}. Use when working on Java files.
-  Current file: ${currentSelectedFile}
+  Patterns for Java projects. Use when working on code generation.
 ---
 
 # My Skill

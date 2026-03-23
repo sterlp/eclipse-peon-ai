@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.sterl.llmpeon.agent.AiMonitor;
+import org.sterl.llmpeon.agent.AiSearchAgent;
 import org.sterl.llmpeon.shared.StringUtil;
 
 import dev.langchain4j.agent.tool.P;
@@ -25,10 +26,10 @@ public class SearchAgentTool extends AbstractTool {
     public String searchAgent(@P("search prompt") String prompt) {
         if (prompt == null || prompt.isBlank()) return "Error: search prompt must not be empty";
 
-        final AiMonitor m = AiMonitor.nullSafty(monitor);
+        final AiMonitor m = AiMonitor.nullSafety(monitor);
 
         try {
-            var searchAgent = agentService.newSearchAgent();
+            var searchAgent = new AiSearchAgent(chatModel);
             searchAgent.withTools(toolService.readOnlyToolSpecifications());
 
             List<ChatMessage> messages = new ArrayList<>();
@@ -45,7 +46,7 @@ public class SearchAgentTool extends AbstractTool {
                 response = searchAgent.call(messages, m);
                 messages.add(response.aiMessage());
                 
-                messages = toolService.runAllTools(response, agentService, m, messages);
+                messages = toolService.runAllTools(response, chatModel, m, messages);
                 
                 if (m.isCanceled()) break;
             } while (response.aiMessage().hasToolExecutionRequests()

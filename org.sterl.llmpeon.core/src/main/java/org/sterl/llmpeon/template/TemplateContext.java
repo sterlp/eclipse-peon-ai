@@ -13,17 +13,42 @@ import java.util.Map;
  */
 public class TemplateContext {
 
-    /** Today's date in ISO format, e.g. {@code 2026-03-07} */
+    /**
+     * Constant defining TODAY'S DATE in ISO format (yyyy-MM-dd).
+     * Example value: {@code 2026-03-21}
+     */
     public static final String CURRENT_DATE = "currentDate";
+
+    /**
+     * Constant defining WORKSPACE PATH as absolute normalized file-system path.
+     * Example value: {@code /home/user/workspace}
+     */
     public static final String WORK_PATH = "workPath";
+
+    /**
+     * Constant defining TOKEN SIZE limit (integer converted to string).
+     * Used to configure token size limits for agent operations.
+     * Example value: {@code 12}
+     */
     public static final String TOKEN_SIZE = "tokenSize";
+
+    /**
+     * Constant defining TOKEN WINDOW maximum size (integer converted to string).
+     * Maximum token count allowed for context processing in prompts.
+     * Example value: {@code 20}
+     */
     public static final String TOKEN_WINDOW = "tokenWindow";
-    
+
+    /**
+     * Constant defining SKILL DIRECTORY path for agent/skill lookups.
+     * Relative or absolute path to the skills directory.
+     * Example value: {@code /workspace/skills}
+     */
     public static final String SKILL_DIRECTORY = "skillDirectory";
-    
+
     private final Map<String, String> ctx = new LinkedHashMap<String, String>();
     private final Path workingDir;
-    
+
     public TemplateContext(Path workingDir) {
         super();
         this.workingDir = workingDir;
@@ -34,7 +59,7 @@ public class TemplateContext {
         ctx.put(WORK_PATH, workingDir == null ? "" : workingDir.toAbsolutePath().normalize().toString());
         return ctx;
     }
-    
+
     public String process(String template) {
         if (template == null || template.isEmpty()) return template;
         var variables = build();

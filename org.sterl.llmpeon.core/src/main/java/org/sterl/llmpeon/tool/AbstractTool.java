@@ -2,15 +2,15 @@ package org.sterl.llmpeon.tool;
 
 import java.util.List;
 
-import org.sterl.llmpeon.agent.AgentService;
 import org.sterl.llmpeon.agent.AiMonitor;
 
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.chat.ChatModel;
 
 public class AbstractTool implements SmartTool {
 
     protected AiMonitor monitor;
-    protected AgentService agentService;
+    protected ChatModel chatModel;
     protected List<ChatMessage> memory;
     
     @Override
@@ -29,8 +29,8 @@ public class AbstractTool implements SmartTool {
     }
 
     @Override
-    public void withAgentService(AgentService agentService) {
-        this.agentService = agentService;
+    public void withChatModel(ChatModel chatModel) {
+        this.chatModel = chatModel;
     }
 
     @Override

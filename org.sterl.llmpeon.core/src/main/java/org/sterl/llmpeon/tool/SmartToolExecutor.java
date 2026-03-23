@@ -5,8 +5,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.sterl.llmpeon.agent.AgentService;
 import org.sterl.llmpeon.agent.AiMonitor;
+
+import dev.langchain4j.model.chat.ChatModel;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -33,10 +34,10 @@ public class SmartToolExecutor extends DefaultToolExecutor {
         return tool.clearMemory();
     }
 
-    public String run(ToolExecutionRequest request, AiMonitor monitor, AgentService agentService, List<ChatMessage> memory) {
+    public String run(ToolExecutionRequest request, AiMonitor monitor, ChatModel chatModel, List<ChatMessage> memory) {
         try {
             tool.withMonitor(monitor);
-            tool.withAgentService(agentService);
+            tool.withChatModel(chatModel);
             tool.withMemory(new ArrayList<ChatMessage>(memory)); // copy
             return execute(request, request.id());
         } catch (IllegalArgumentException e) {

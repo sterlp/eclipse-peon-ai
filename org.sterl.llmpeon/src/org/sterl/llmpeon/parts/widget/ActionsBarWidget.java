@@ -16,6 +16,7 @@ import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
 import org.sterl.llmpeon.agent.PeonMode;
 
 public class ActionsBarWidget extends Composite {
@@ -25,11 +26,13 @@ public class ActionsBarWidget extends Composite {
     private Button btnCompress;
     private Button btnClear;
     private Button btnImplement;
+    private Button chkAutonomous;
     private Combo modeCombo;
     private Combo modelCombo;
 
     private boolean working = false;
     private boolean noModelConfigured = false;
+    private boolean agentModeAvailable = false;
 
     public ActionsBarWidget(Composite parent, int style,
             Runnable onSend,
@@ -38,7 +41,8 @@ public class ActionsBarWidget extends Composite {
             Runnable onClear,
             Runnable onImplement,
             Consumer<PeonMode> onModeChange,
-            Consumer<String> onModelChange) {
+            Consumer<String> onModelChange,
+            Consumer<Boolean> onAutonomousChange) {
         super(parent, style);
         setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
@@ -51,14 +55,20 @@ public class ActionsBarWidget extends Composite {
         setLayout(rowLayout);
 
         modeCombo = new Combo(this, SWT.READ_ONLY);
-        
         modeCombo.setItems(Arrays.asList(PeonMode.values()).stream()
                 .map(PeonMode::getLabel)
                 .toArray(String[]::new));
         modeCombo.select(1); // default: Peon-Dev
         modeCombo.setToolTipText("Select agent mode");
         modeCombo.addListener(SWT.Selection, e -> {
-            onModeChange.accept(PeonMode.values()[modeCombo.getSelectionIndex()]);
+            PeonMode selected = PeonMode.values()[modeCombo.getSelectionIndex()];
+            if (selected == PeonMode.AGENT && !agentModeAvailable) {
+                modeCombo.select(PeonMode.DEV.ordinal());
+                modeCombo.setToolTipText("Peon-Agent requires a project to be selected");
+                return;
+            }
+            modeCombo.setToolTipText("Select agent mode");
+            onModeChange.accept(selected);
         });
 
         modelCombo = new Combo(this, SWT.READ_ONLY);
@@ -91,8 +101,8 @@ public class ActionsBarWidget extends Composite {
         }
 
         btnCompress = new Button(this, SWT.PUSH);
-        btnCompress.setText("Compress");
-        btnCompress.setToolTipText("Compress conversation context");
+        btnCompress.setText("Compact");
+        btnCompress.setToolTipText("Compact conversation context");
         btnCompress.addListener(SWT.Selection, e -> onCompress.run());
 
         btnClear = new Button(this, SWT.PUSH);
@@ -109,6 +119,24 @@ public class ActionsBarWidget extends Composite {
         btnImplement.setEnabled(false);
         btnImplement.setToolTipText("Switch to Dev mode and start implementing the plan");
         btnImplement.addListener(SWT.Selection, e -> onImplement.run());
+
+        chkAutonomous = new Button(this, SWT.CHECK);
+        chkAutonomous.setText("Auto");
+        chkAutonomous.setToolTipText("Automatically start implementation after the plan is saved");
+        RowData rdAuto = new RowData();
+        rdAuto.exclude = true;
+        chkAutonomous.setLayoutData(rdAuto);
+        chkAutonomous.setVisible(false);
+        chkAutonomous.addListener(SWT.Selection, e -> onAutonomousChange.accept(chkAutonomous.getSelection()));
+    }
+
+    /** Update the Compact button label and tooltip with current token usage. */
+    public void updateCompact(int tokenUsed, int tokenMax) {
+        int pct = tokenMax > 0 ? (tokenUsed * 100) / tokenMax : 0;
+        btnCompress.setText("Compact " + pct + "%");
+        btnCompress.setToolTipText(tokenUsed + " / " + tokenMax + " tokens used (" + pct
+                + "%) — click to compact the conversation");
+        btnCompress.getParent().layout(false, false);
     }
 
     /** Enable/disable the entire bar while a request is in flight. */
@@ -126,18 +154,37 @@ public class ActionsBarWidget extends Composite {
     }
 
     /** Show/hide the "Start Impl." button based on mode and whether an AI reply exists. */
-    public void updateModeUI(PeonMode mode, boolean hasAiMessage) {
-        boolean isPlan = mode == PeonMode.PLAN;
+    public void updateModeUI(PeonMode mode, boolean implEnabled) {
+        boolean isPlanLike = mode == PeonMode.PLAN || mode == PeonMode.AGENT;
+        boolean isAgent = mode == PeonMode.AGENT;
         modeCombo.select(mode.ordinal());
-        if (isPlan) {
-            // lockWhileWorking(true) disables this; we re-enable here after the response arrives
-            btnImplement.setEnabled(hasAiMessage);
+        btnImplement.setEnabled(!working && isPlanLike && implEnabled);
+        boolean implVisibilityChanged = btnImplement.getVisible() != isPlanLike;
+        if (implVisibilityChanged) {
+            ((RowData) btnImplement.getLayoutData()).exclude = !isPlanLike;
+            btnImplement.setVisible(isPlanLike);
         }
-        if (btnImplement.getVisible() != isPlan) {
-            ((RowData) btnImplement.getLayoutData()).exclude = !isPlan;
-            btnImplement.setVisible(isPlan);
-            layout();
+        boolean autoVisibilityChanged = chkAutonomous.getVisible() != isAgent;
+        if (autoVisibilityChanged) {
+            ((RowData) chkAutonomous.getLayoutData()).exclude = !isAgent;
+            chkAutonomous.setVisible(isAgent);
         }
+        if (implVisibilityChanged || autoVisibilityChanged) {
+            layout(true, true);
+            getParent().layout(new Control[]{this});
+        }
+    }
+
+    /** Allow or block selection of Peon-Agent mode. */
+    public void setAgentModeAvailable(boolean available) {
+        this.agentModeAvailable = available;
+        modeCombo.setToolTipText(available ? "Select agent mode"
+                : "Peon-Agent requires a project to be selected");
+    }
+
+    /** Set the autonomous checkbox state without firing the listener. */
+    public void setAutonomous(boolean value) {
+        chkAutonomous.setSelection(value);
     }
 
     /** Populate the model combo. Disables send if no models are available. */

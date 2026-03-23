@@ -1,20 +1,12 @@
 package org.sterl.llmpeon.agent;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.sterl.llmpeon.template.TemplateContext;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.ChatResponse;
 
-public class AiPlannerAgent implements AiAgent {
+public class AiPlannerAgent extends AbstractPromptAgent {
 
-    private final String PROMPT = """
+    private static final String BASE_PROMPT = """
             Embedded in Eclipse IDE. Today: ${currentDate}. Working in: ${workPath}.
             Read-only agent — no file modifications, no shell edit commands, no state changes.
 
@@ -41,27 +33,37 @@ public class AiPlannerAgent implements AiAgent {
             The plan is the sole input to the implementation agent — omit nothing it will need.
             """;
 
-    private final ChatModel chatModel;
+    private static final String AGENT_MODE_ADDITION = """
+
+            AGENT MODE — when your plan is complete, call savePlan with the full plan markdown.
+            Do not ask — call it automatically as the last action before your reply.
+            The plan file path is also available for incremental updates via disk tools.
+            If a problem was reported in the conversation, update the plan to address it before saving.
+            """;
+
+    private final String PROMPT;
     private final TemplateContext context;
-    private final ChatRequest.Builder request = ChatRequest.builder();
 
     public AiPlannerAgent(ChatModel chatModel, TemplateContext context) {
-        this.chatModel = chatModel;
-        this.context = context;
+        this(chatModel, context, false);
     }
 
-    public ChatResponse call(List<ChatMessage> inMessages, AiMonitor monitor) {
-        var messages = new ArrayList<ChatMessage>(inMessages);
-        messages.addFirst(SystemMessage.from(context.process(PROMPT)));
-        
-        return chatModel.chat(request
-                .temperature(0.8)
-                .messages(toOneSystemMessage(messages))
-                .build());
+    public AiPlannerAgent(ChatModel chatModel, TemplateContext context, boolean agentMode) {
+        super(chatModel);
+        this.context = context;
+        this.PROMPT = agentMode ? BASE_PROMPT + AGENT_MODE_ADDITION : BASE_PROMPT;
     }
 
     @Override
-    public void withTools(List<ToolSpecification> tools) {
-        request.toolSpecifications(tools);
+    public boolean isReadOnly() { return true; }
+
+    @Override
+    protected String getPrompt() {
+        return context.process(PROMPT);
+    }
+
+    @Override
+    protected double getTemperature() {
+        return 0.8;
     }
 }

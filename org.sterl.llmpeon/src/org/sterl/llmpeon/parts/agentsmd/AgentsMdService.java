@@ -61,7 +61,7 @@ public class AgentsMdService {
             "rules.md",
     };
     private Optional<IFile> resolve() {
-        if (project == null) return null;
+        if (project == null) return Optional.empty();
         for (String n : NAMES) {
             var r = EclipseUtil.findMember(project, n);
             if (r.isPresent()) return r;

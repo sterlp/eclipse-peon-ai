@@ -7,8 +7,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import org.sterl.llmpeon.agent.AgentService;
 import org.sterl.llmpeon.agent.AiMonitor;
+
+import dev.langchain4j.model.chat.ChatModel;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -62,7 +63,7 @@ public class ToolService {
     }
     
     /** Returns true if AI-triggered compression was applied (caller should end the turn). */
-    public List<ChatMessage> runAllTools(ChatResponse response, AgentService agentService, AiMonitor monitor, List<ChatMessage> memory) {
+    public List<ChatMessage> runAllTools(ChatResponse response, ChatModel agentService, AiMonitor monitor, List<ChatMessage> memory) {
         if (!response.aiMessage().hasToolExecutionRequests()) {
             // No tools to run — still add the final AI message to memory
             var newMemory = new ArrayList<ChatMessage>(memory);
@@ -89,19 +90,19 @@ public class ToolService {
 
     static record ToolResult(boolean clearMemory, ToolExecutionResultMessage message) {}
     
-    public ToolResult execute(ToolExecutionRequest tr, AiMonitor monitor, AgentService agentService, List<ChatMessage> memory) {
+    public ToolResult execute(ToolExecutionRequest tr, AiMonitor monitor, ChatModel agentService, List<ChatMessage> memory) {
         var executor = toolExecutors.get(tr.name());
         String result;
         if (executor == null) {
             result = "Error: unknown tool '" + tr.name() + "' check spelling";
-            AiMonitor.nullSafty(monitor).onProblem(result);
+            AiMonitor.nullSafety(monitor).onProblem(result);
         } else {
             try {
                 result = executor.run(tr, monitor, agentService, memory);
             } catch (IllegalArgumentException e) {
                 // user-facing argument error — return as-is so the LLM can correct itself
                 result = e.getMessage();
-                AiMonitor.nullSafty(monitor).onProblem(tr.name() + ": " + result);
+                AiMonitor.nullSafety(monitor).onProblem(tr.name() + ": " + result);
             }
         }
         return new ToolResult(
@@ -120,6 +121,17 @@ public class ToolService {
                 var old = toolExecutors.put(spec.name(), new SmartToolExecutor(toolObject, method, spec));
                 if (old != null) throw new RuntimeException("Tool with " + spec.name() + " already registered ...");
                 System.out.println("added tool " + spec);
+            }
+        }
+    }
+
+    /** Removes all tools registered from the given tool object. */
+    public void removeTool(SmartTool toolObject) {
+        for (Method method : toolObject.getClass().getDeclaredMethods()) {
+            if (method.isAnnotationPresent(Tool.class)) {
+                var spec = ToolSpecifications.toolSpecificationFrom(method);
+                toolExecutors.remove(spec.name());
+                System.out.println("removed tool " + spec.name());
             }
         }
     }

@@ -60,8 +60,8 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
             var f = java.nio.file.Path.of(filePath);
             if (java.nio.file.Files.isRegularFile(f)) {
                 String content = org.sterl.llmpeon.shared.FileUtils.readString(f);
-                String newContent = applyEdit(filePath, content, oldString, newString);
-                org.sterl.llmpeon.shared.FileUtils.writeString(f, newContent);
+                String newContent = FileUtils.applyEdit(filePath, content, oldString, newString);
+                FileUtils.writeString(f, newContent);
                 if (hasMonitor()) monitor.onFileUpdate(new AiFileUpdate(filePath, oldString, newString));
                 return "File " + filePath + " edited successfully.";
             }
@@ -70,30 +70,11 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
         }
 
         String content = IoUtils.readFile(eclipseFile);
-        String newContent = applyEdit(filePath, content, oldString, newString);
+        String newContent = FileUtils.applyEdit(filePath, content, oldString, newString);
         var result = writeEclipseFile(eclipseFile, newContent);
         var editResult = new AiFileUpdate(result.file(), oldString, newString);
         if (hasMonitor()) monitor.onFileUpdate(editResult);
         return "File " + editResult.file() + " edited successfully.";
-    }
-
-    private static String applyEdit(String filePath, String content, String oldString, String newString) {
-        int count = 0;
-        int idx = 0;
-        while ((idx = content.indexOf(oldString, idx)) != -1) {
-            count++;
-            idx += oldString.length();
-        }
-        if (count == 0) {
-            throw new IllegalArgumentException(
-                    "old_string not found in " + filePath + ". Read the file first to verify the exact content.");
-        }
-        if (count > 1) {
-            throw new IllegalArgumentException(
-                    "old_string found " + count + " times in " + filePath
-                            + ". Include more surrounding context to make the match unique.");
-        }
-        return content.replace(oldString, newString);
     }
 
     @Tool("Eclipse: Overwrite existing workspace file.")
@@ -201,26 +182,6 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
     }
 
     private IFile writeFileToProject(IProject targetProject, String projectRelativePath, String content) {
-        IFile file = targetProject.getFile(projectRelativePath);
-        try {
-            ensureFolders(file.getParent());
-            Charset charset = Charset.forName(targetProject.getDefaultCharset());
-            byte[] bytes = content.getBytes(charset);
-            file.write(bytes, true, false, true, getProgressMonitor());
-            file.refreshLocal(IResource.DEPTH_ZERO, getProgressMonitor());
-        } catch (CoreException e) {
-            throw new RuntimeException("Failed to create/write " + file.getFullPath(), e);
-        }
-        return file;
-    }
-
-    private void ensureFolders(IContainer container) throws CoreException {
-        if (container == null || container instanceof IProject) return;
-        if (container instanceof IFolder folder) {
-            if (!folder.exists()) {
-                ensureFolders(folder.getParent());
-                folder.create(IResource.FORCE, true, null);
-            }
-        }
+        return IoUtils.writeProjectFile(targetProject, projectRelativePath, content, getProgressMonitor());
     }
 }

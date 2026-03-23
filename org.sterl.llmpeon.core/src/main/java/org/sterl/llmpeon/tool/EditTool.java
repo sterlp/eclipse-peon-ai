@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import org.sterl.llmpeon.agent.AiMonitor.AiFileUpdate;
+import org.sterl.llmpeon.shared.FileUtils;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -49,26 +50,7 @@ public class EditTool extends AbstractTool {
         monitorMessage("Editing " + filePath);
         try {
             String content = Files.readString(resolved);
-
-            // Count occurrences
-            int count = 0;
-            int idx = 0;
-            while ((idx = content.indexOf(oldString, idx)) != -1) {
-                count++;
-                idx += oldString.length();
-            }
-
-            if (count == 0) {
-                throw new IllegalArgumentException(
-                        "old_string not found in " + filePath + ". Read the file first to verify the exact content.");
-            }
-            if (count > 1) {
-                throw new IllegalArgumentException(
-                        "old_string found " + count + " times in " + filePath
-                                + ". Include more surrounding context to make the match unique.");
-            }
-
-            String newContent = content.replace(oldString, newString);
+            String newContent = FileUtils.applyEdit(filePath, content, oldString, newString);
             Files.writeString(resolved, newContent);
 
             var result = new AiFileUpdate(workingDir.relativize(resolved).toString(), oldString, newString);
@@ -81,9 +63,6 @@ public class EditTool extends AbstractTool {
     }
 
     private Path resolve(String path) {
-        if (path == null) return null;
-        Path p = Path.of(path);
-        if (p.isAbsolute()) return p.normalize();
-        return workingDir.resolve(p).normalize();
+        return FileUtils.resolve(workingDir, path);
     }
 }

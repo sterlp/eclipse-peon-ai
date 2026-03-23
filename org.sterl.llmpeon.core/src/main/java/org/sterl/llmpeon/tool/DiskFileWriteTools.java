@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import org.sterl.llmpeon.agent.AiMonitor.AiFileUpdate;
+import org.sterl.llmpeon.shared.FileUtils;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -102,9 +103,6 @@ public class DiskFileWriteTools extends AbstractTool {
     }
 
     private Path resolve(String path) {
-        if (path == null) return null;
-        Path p = Path.of(path);
-        if (p.isAbsolute()) return p.normalize();
-        return workingDir.resolve(p).normalize();
+        return FileUtils.resolve(workingDir, path);
     }
 }

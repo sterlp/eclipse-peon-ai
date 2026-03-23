@@ -52,11 +52,14 @@ public class EclipseWorkspaceReadFilesTool extends AbstractEclipseTool {
             monitorMessage("Reading eclipse file " + filePath);
             return IoUtils.readFile(f);
         }
-        // fallback to raw filesystem for absolute paths
-        var fsPath = Path.of(filePath);
-        if (Files.exists(fsPath) && Files.isRegularFile(fsPath)) {
-            monitorMessage("Full path found but not in eclipse, reading " + filePath);
-            return FileUtils.readString(fsPath);
+        // fallback: try workspace root and current project
+        Path wsRoot = ResourcesPlugin.getWorkspace().getRoot().getRawLocation().toFile().toPath();
+        for (Path base : resolveBases(wsRoot)) {
+            Path fsPath = FileUtils.resolve(base, filePath);
+            if (fsPath != null && Files.isRegularFile(fsPath)) {
+                monitorMessage("Resolved outside Eclipse, reading " + filePath);
+                return FileUtils.readString(fsPath);
+            }
         }
         onProblem("Cannot read unknown file " + filePath);
         return "File not found: " + filePath + " - try searchWorkspaceFiles or listWorkspaceDirectory first.";
@@ -70,8 +73,7 @@ public class EclipseWorkspaceReadFilesTool extends AbstractEclipseTool {
             throw new IllegalArgumentException("query must not be empty");
         }
 
-        final var matcher = new StringMatcher(query, true, false);
-        final var lowerCaseQuery = query;
+        final var matcher = StringMatcher.wildCardMatcher(query);
         final List<String> matches = new ArrayList<>();
 
         for (IProject project : ResourcesPlugin.getWorkspace().getRoot().getProjects()) {
@@ -83,8 +85,7 @@ public class EclipseWorkspaceReadFilesTool extends AbstractEclipseTool {
                         if (resource.isDerived()) return false;
                         if (resource.getType() == IResource.FILE) {
                             var file = JdtUtil.pathOf(resource);
-                            var match = file.toLowerCase().contains(lowerCaseQuery) 
-                                    || matcher.match(file)
+                            var match = matcher.match(file)
                                     || matcher.match(resource.getName());
 
                             if (match && (matches.isEmpty() || isNotDerived(file))) matches.add(file);
@@ -133,8 +134,8 @@ public class EclipseWorkspaceReadFilesTool extends AbstractEclipseTool {
             var entries = new ArrayList<String>();
             for (IResource member : container.members()) {
                 if (member.isDerived()) continue;
-                var pathToAdd = JdtUtil.pathOf(member);
-                if (entries.isEmpty() && isNotDerived(pathToAdd)) {
+                String pathToAdd = JdtUtil.pathOf(member);
+                if (isNotDerived(pathToAdd)) {
                     String prefix = (member.getType() == IResource.FILE) ? "[FILE] " : "[DIR]  ";
                     entries.add(prefix + pathToAdd);
                 }
@@ -145,5 +146,16 @@ public class EclipseWorkspaceReadFilesTool extends AbstractEclipseTool {
         } catch (CoreException e) {
             throw new RuntimeException("Failed to list " + path, e);
         }
+    }
+
+    /** Returns candidate base paths: workspace root first, then current project (if set). */
+    private List<Path> resolveBases(Path wsRoot) {
+        var bases = new ArrayList<Path>();
+        bases.add(wsRoot);
+        if (currentProject != null && currentProject.isOpen()) {
+            var loc = currentProject.getRawLocation();
+            if (loc != null) bases.add(loc.toFile().toPath());
+        }
+        return bases;
     }
 }

@@ -14,6 +14,9 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 
 public interface AiAgent {
 
+    /** If true, ChatService will only supply read-only tool specs to this agent. */
+    default boolean isReadOnly() { return false; }
+
     ChatResponse call(List<ChatMessage> messages, AiMonitor monitor);
 
     default ChatResponse call(String messages, AiMonitor monitor) {

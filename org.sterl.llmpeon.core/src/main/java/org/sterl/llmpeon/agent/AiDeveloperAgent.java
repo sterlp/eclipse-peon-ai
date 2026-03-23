@@ -1,20 +1,12 @@
 package org.sterl.llmpeon.agent;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.sterl.llmpeon.template.TemplateContext;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.ChatResponse;
 
-public class AiDeveloperAgent implements AiAgent {
+public class AiDeveloperAgent extends AbstractPromptAgent {
 
-    private final String PROMT = """
+    private static final String BASE_PROMPT = """
             Embedded in Eclipse IDE. Today: ${currentDate}. Working in: ${workPath}.
 
             Tools:
@@ -32,27 +24,33 @@ public class AiDeveloperAgent implements AiAgent {
             - Ask when file placement or intent is ambiguous
             """;
 
-    private final ChatModel chatModel;
+    private static final String AGENT_MODE_ADDITION = """
+
+            AGENT MODE — if you cannot proceed after 2 attempts (build failure, missing context,
+            conflicting requirements), call reportProblem with a detailed description.
+            Do not retry indefinitely. Escalate early so the plan agent can revise the plan.
+            """;
+
+    private final String PROMPT;
     private final TemplateContext context;
-    private final ChatRequest.Builder request = ChatRequest.builder();
 
     public AiDeveloperAgent(ChatModel chatModel, TemplateContext context) {
-        this.chatModel = chatModel;
-        this.context = context;
+        this(chatModel, context, false);
     }
 
-    public ChatResponse call(List<ChatMessage> inMessages, AiMonitor monitor) {
-        var messages = new ArrayList<ChatMessage>(inMessages);
-        messages.addFirst(SystemMessage.from(context.process(PROMT)));
-        
-        return chatModel.chat(request
-                .temperature(0.2)
-                .messages(toOneSystemMessage(messages))
-                .build());
+    public AiDeveloperAgent(ChatModel chatModel, TemplateContext context, boolean agentMode) {
+        super(chatModel);
+        this.context = context;
+        this.PROMPT = agentMode ? BASE_PROMPT + AGENT_MODE_ADDITION : BASE_PROMPT;
     }
-    
+
     @Override
-    public void withTools(List<ToolSpecification> tools) {
-        request.toolSpecifications(tools);
+    protected String getPrompt() {
+        return context.process(PROMPT);
+    }
+
+    @Override
+    protected double getTemperature() {
+        return 0.2;
     }
 }
