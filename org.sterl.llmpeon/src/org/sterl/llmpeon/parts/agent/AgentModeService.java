@@ -8,6 +8,8 @@ import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.ide.IDE;
 import org.sterl.llmpeon.ChatService;
 import org.sterl.llmpeon.parts.shared.IoUtils;
+import org.sterl.llmpeon.parts.shared.JdtUtil;
+import org.sterl.llmpeon.parts.tools.AgentModeTools;
 
 import dev.langchain4j.data.message.UserMessage;
 
@@ -20,9 +22,6 @@ public class AgentModeService {
     public enum Phase { PLANNING, IMPLEMENTING }
 
     private static final int MAX_RETRIES = 3;
-    private static final String PLAN_DIR = "peon-plan";
-    private static final String OVERVIEW_FILE = PLAN_DIR + "/overview.md";
-    private static final String PROBLEM_FILE = PLAN_DIR + "/problem.md";
 
     private final ChatService<?> chatService;
     private final Runnable sendTrigger;
@@ -72,7 +71,7 @@ public class AgentModeService {
 
     public boolean overviewExists() {
         if (project == null || !project.isOpen()) return false;
-        return project.getFile(OVERVIEW_FILE).exists();
+        return project.getFile(AgentModeTools.OVERVIEW_FILE).exists();
     }
 
     public String readOverview() {
@@ -86,16 +85,16 @@ public class AgentModeService {
 
     public String planPathHint() {
         if (project == null) return "";
-        return "Plan file: /" + project.getName() + "/" + OVERVIEW_FILE
-                + " — use readWorkspaceFile / writeWorkspaceFile to read or update it.";
+        return "Plan file: " + JdtUtil.pathOf(getOverviewFile())
+                + " — use readPlan / savePlan to read or update it.";
     }
 
-    public IFile getOverviewFile() {
-        return project.getFile(OVERVIEW_FILE);
+    private IFile getOverviewFile() {
+        return project.getFile(AgentModeTools.OVERVIEW_FILE);
     }
 
-    public IFile getProblemFile() {
-        return project.getFile(PROBLEM_FILE);
+    private IFile getProblemFile() {
+        return project.getFile(AgentModeTools.PROBLEM_FILE);
     }
 
     public IProject getProject() {
@@ -121,7 +120,7 @@ public class AgentModeService {
             openInEditor(getProblemFile());
             chatService.addMessage(UserMessage.from(
                     "Max retries (" + MAX_RETRIES + ") reached. "
-                    + "Review `" + PROBLEM_FILE + "` — manual intervention required."));
+                    + "Review plan problem file `" + AgentModeTools.PROBLEM_FILE + "` — manual intervention required."));
             setPhase(Phase.PLANNING);
             retryCount = 0;
         } else {
@@ -141,6 +140,7 @@ public class AgentModeService {
 
     public void startImplementation() {
         setPhase(Phase.IMPLEMENTING);
+        retryCount = 0;
         chatService.clear();
         String plan = overviewExists() ? readOverview() : "(no plan file found)";
         chatService.addMessage(UserMessage.from("Start Implementation\n\n" + plan));
