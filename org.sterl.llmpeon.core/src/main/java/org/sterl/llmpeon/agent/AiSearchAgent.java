@@ -38,7 +38,10 @@ public class AiSearchAgent implements AiAgent {
     public ChatResponse call(List<ChatMessage> inMessages, AiMonitor monitor) {
         var messages = new ArrayList<ChatMessage>(inMessages);
         messages.addFirst(system);
-        return chatModel.chat(request.temperature(0.0).messages(messages).build());
+        return chatModel.chat(request
+                .temperature(0.0)
+                .messages(messages)
+                .build());
     }
 
     @Override

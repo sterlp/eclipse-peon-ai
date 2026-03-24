@@ -17,9 +17,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.googleai.GeminiThinkingConfig;
 import dev.langchain4j.model.googleai.GeminiThinkingConfig.GeminiThinkingLevel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
+import dev.langchain4j.model.anthropic.AnthropicChatModel;
 import dev.langchain4j.model.mistralai.MistralAiChatModel;
 import dev.langchain4j.model.mistralai.MistralAiModels;
 import dev.langchain4j.model.ollama.OllamaChatModel;
@@ -154,6 +159,77 @@ public enum AiProvider {
                 for (var m : models) ids.add(m.getId());
                 Collections.sort(ids);
                 return ids;
+            } catch (Exception e) {
+                e.printStackTrace();
+                return fallback(c);
+            }
+        }
+    },
+
+    ANTHROPIC {
+        private static final String MODELS_URL = "https://api.anthropic.com/v1/models";
+        private static final String ANTHROPIC_VERSION = "2023-06-01";
+
+        @Override
+        public ChatModel buildChatModel(LlmConfig c) {
+            var innerBuilder = AnthropicChatModel.builder()
+                    .timeout(TIMEOUT)
+                    .modelName(c.model())
+                    .apiKey(c.apiKey());
+            if (c.thinkingEnabled()) {
+                innerBuilder.thinkingType("enabled").thinkingBudgetTokens(16000);
+            }
+            final AnthropicChatModel inner = innerBuilder.build();
+            final String modelName = c.model();
+            final boolean thinking = c.thinkingEnabled();
+
+            // Workaround for langchain4j 1.12.x: AnthropicChatModel does not override
+            // defaultRequestParameters(), so the model name is lost during ChatModel.chat()'s
+            // merge step → Anthropic rejects with "model: Field required".
+            // Also: Anthropic requires temperature=1.0 when extended thinking is enabled,
+            // and max_tokens is always required (8192 is safe across all current Claude models).
+            return new ChatModel() {
+                private final ChatRequestParameters defaults =
+                        DefaultChatRequestParameters.builder()
+                                .modelName(modelName)
+                                .maxOutputTokens(8192)
+                                .build();
+
+                @Override
+                public ChatResponse doChat(ChatRequest request) {
+                    if (thinking) {
+                        request = ChatRequest.builder()
+                                .messages(request.messages())
+                                .parameters(DefaultChatRequestParameters.builder()
+                                        .overrideWith(request.parameters())
+                                        .temperature(1.0)
+                                        .build())
+                                .build();
+                    }
+                    return inner.doChat(request);
+                }
+
+                @Override
+                public ChatRequestParameters defaultRequestParameters() {
+                    return defaults;
+                }
+            };
+        }
+
+        @Override
+        public List<String> listModels(LlmConfig c) {
+            if (c.apiKey() == null || c.apiKey().isBlank()) return fallback(c);
+            try {
+                var http = HttpClient.newHttpClient();
+                var request = HttpRequest.newBuilder()
+                        .uri(URI.create(MODELS_URL))
+                        .header("x-api-key", c.apiKey())
+                        .header("anthropic-version", ANTHROPIC_VERSION)
+                        .GET()
+                        .build();
+                var response = http.send(request, HttpResponse.BodyHandlers.ofString());
+                if (response.statusCode() > 299) return fallback(c);
+                return extractedModels(c, response);
             } catch (Exception e) {
                 e.printStackTrace();
                 return fallback(c);

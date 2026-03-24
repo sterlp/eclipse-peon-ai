@@ -32,7 +32,6 @@ public class ActionsBarWidget extends Composite {
     private Combo modelCombo;
 
     private boolean working = false;
-    private boolean noModelConfigured = false;
     private boolean agentModeAvailable = false;
     
     private final Color colorWarning;
@@ -164,7 +163,7 @@ public class ActionsBarWidget extends Composite {
         // Instead, disable each child individually.
         modeCombo.setEnabled(!value);
         modelCombo.setEnabled(!value);
-        btnSend.setEnabled(!value && !noModelConfigured);
+        btnSend.setEnabled(!value);
         btnStop.setEnabled(value);
         btnCompress.setEnabled(!value);
         btnClear.setEnabled(!value);
@@ -205,21 +204,12 @@ public class ActionsBarWidget extends Composite {
         chkAutonomous.setSelection(value);
     }
 
-    /** Populate the model combo. Disables send if no models are available. */
+    /** Populate the model combo with the available models. */
     public void applyModelList(List<String> models, String configuredModel) {
-        if (models.isEmpty()) {
-            noModelConfigured = true;
-            modelCombo.setEnabled(false);
-            modelCombo.setItems("No model — open Preferences");
-            modelCombo.select(0);
-            btnSend.setEnabled(false);
-        } else {
-            noModelConfigured = false;
-            modelCombo.setEnabled(true);
-            modelCombo.setItems(models.toArray(new String[0]));
-            selectModel(configuredModel);
-            if (!working) btnSend.setEnabled(true);
-        }
+        modelCombo.setEnabled(true);
+        modelCombo.setItems(models.toArray(new String[0]));
+        selectModel(configuredModel);
+        if (!working) btnSend.setEnabled(true);
     }
 
     /** Select the given model in the combo (no-op if not found — caller handles fallback). */
@@ -241,5 +231,11 @@ public class ActionsBarWidget extends Composite {
     /** Returns the items currently listed in the model combo. */
     public String[] getModelItems() {
         return modelCombo.getItems();
+    }
+
+    /** Returns the currently selected model, or null if nothing is selected. */
+    public String getSelectedModel() {
+        String text = modelCombo.getText();
+        return text == null || text.isBlank() ? null : text;
     }
 }

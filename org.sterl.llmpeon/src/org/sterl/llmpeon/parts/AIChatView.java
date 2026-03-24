@@ -344,7 +344,15 @@ public class AIChatView implements EclipseAiMonitor {
         } else {
             Display.getDefault().asyncExec(() -> {
                 if (parent.isDisposed()) return;
-                actionsBar.selectModel(config.model());
+                // proper review needed
+                String[] items = actionsBar.getModelItems();
+                boolean inList = StringUtil.hasValue(config.model())
+                        && java.util.Arrays.stream(items).anyMatch(config.model()::equals);
+                if (!inList) {
+                    loadModelsInBackground(config);
+                } else {
+                    actionsBar.selectModel(config.model());
+                }
             });
         }
     }
@@ -361,6 +369,7 @@ public class AIChatView implements EclipseAiMonitor {
                     String[] items = actionsBar.getModelItems();
                     if (items.length > 0) {
                         chatService.updateConfig(config.withModel(items[0]));
+                        agentService.updateModel(chatService.getChatModel());
                     }
                 }
             });
@@ -452,6 +461,10 @@ public class AIChatView implements EclipseAiMonitor {
     }
 
     private void doSendMessage() {
+        if (StringUtil.hasNoValue(chatService.getConfig().model())) {
+            chatHistory.appendMessage(new SimpleChatMessage("PROBLEM", "No model configured — open Window > Preferences > Peon AI"));
+            return;
+        }
         String text = StringUtil.strip(chatInput.getText().trim() + getUserSelection());
         if (StringUtil.hasNoValue(text) && chatService.getMessages().isEmpty()) return;
 

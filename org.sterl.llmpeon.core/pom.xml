@@ -59,6 +59,12 @@
             <artifactId>langchain4j-mistral-ai</artifactId>
             <version>${langchain4j.version}</version>
         </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-anthropic</artifactId>
+            <version>${langchain4j.version}</version>
+        </dependency>
         
         <dependency>
             <groupId>com.vladsch.flexmark</groupId>
@@ -99,7 +105,7 @@
             </plugin>
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.4</version>
+                <version>3.5.5</version>
                 <configuration>
                     <excludedGroups>integration</excludedGroups>
                 </configuration>

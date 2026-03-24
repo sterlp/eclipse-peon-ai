@@ -41,6 +41,7 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
                     { "OpenAI-compatible (Perplexity, OpenAI, ...)", AiProvider.OPEN_AI.name() },
                     { "Google Gemini", AiProvider.GOOGLE_GEMINI.name() },
                     { "Mistral", AiProvider.MISTRAL.name() },
+                    { "Anthropic Claude", AiProvider.ANTHROPIC.name() },
                     { "GitHub Copilot", AiProvider.GITHUB_COPILOT.name() }
                 },
                 getFieldEditorParent());
