@@ -9,6 +9,7 @@ import org.eclipse.debug.ui.DebugUITools;
 import org.eclipse.debug.ui.IDebugUIConstants;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.RowData;
@@ -33,6 +34,10 @@ public class ActionsBarWidget extends Composite {
     private boolean working = false;
     private boolean noModelConfigured = false;
     private boolean agentModeAvailable = false;
+    
+    private final Color colorWarning;
+    private final Color colorError;
+
 
     public ActionsBarWidget(Composite parent, int style,
             Runnable onSend,
@@ -44,6 +49,14 @@ public class ActionsBarWidget extends Composite {
             Consumer<String> onModelChange,
             Consumer<Boolean> onAutonomousChange) {
         super(parent, style);
+        
+        colorWarning = new Color(180, 130, 0);
+        colorError = new Color(200, 0, 0);
+        addDisposeListener(e -> {
+            colorWarning.dispose();
+            colorError.dispose();
+        });
+
         setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
         RowLayout rowLayout = new RowLayout(SWT.HORIZONTAL);
@@ -121,7 +134,7 @@ public class ActionsBarWidget extends Composite {
         btnImplement.addListener(SWT.Selection, e -> onImplement.run());
 
         chkAutonomous = new Button(this, SWT.CHECK);
-        chkAutonomous.setText("Auto");
+        chkAutonomous.setText("autonomus");
         chkAutonomous.setToolTipText("Automatically start implementation after the plan is saved");
         RowData rdAuto = new RowData();
         rdAuto.exclude = true;
@@ -132,7 +145,12 @@ public class ActionsBarWidget extends Composite {
 
     /** Update the Compact button label and tooltip with current token usage. */
     public void updateCompact(int tokenUsed, int tokenMax) {
+
         int pct = tokenMax > 0 ? (tokenUsed * 100) / tokenMax : 0;
+        if (pct >= 70 ) btnCompress.setForeground(colorWarning);
+        else if (pct >= 88) btnCompress.setForeground(colorError);
+
+        else btnCompress.setForeground(null);
         btnCompress.setText("Compact " + pct + "%");
         btnCompress.setToolTipText(tokenUsed + " / " + tokenMax + " tokens used (" + pct
                 + "%) — click to compact the conversation");
