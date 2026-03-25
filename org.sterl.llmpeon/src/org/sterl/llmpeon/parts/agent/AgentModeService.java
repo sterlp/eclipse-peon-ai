@@ -6,12 +6,17 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.ide.IDE;
-import org.sterl.llmpeon.ChatService;
+import org.sterl.llmpeon.agent.AbstractChatService;
+import org.sterl.llmpeon.agent.AiDeveloperService;
+import org.sterl.llmpeon.agent.AiMonitor;
+import org.sterl.llmpeon.agent.AiPlannerService;
+import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.tools.AgentModeTools;
 
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.response.ChatResponse;
 
 /**
  * Orchestrates the AGENT mode plan→dev loop.
@@ -23,7 +28,8 @@ public class AgentModeService {
 
     private static final int MAX_RETRIES = 3;
 
-    private final ChatService<?> chatService;
+    private final AiPlannerService plannerService;
+    private final AiDeveloperService developerService;
     private final Runnable sendTrigger;
 
     private IProject project;
@@ -32,8 +38,10 @@ public class AgentModeService {
     private int retryCount = 0;
     private volatile boolean implementationRequested = false;
 
-    public AgentModeService(ChatService<?> chatService, Runnable sendTrigger) {
-        this.chatService = chatService;
+    public AgentModeService(AiPlannerService plannerService, AiDeveloperService developerService,
+            Runnable sendTrigger) {
+        this.plannerService = plannerService;
+        this.developerService = developerService;
         this.sendTrigger = sendTrigger;
     }
 
@@ -51,6 +59,19 @@ public class AgentModeService {
 
     public boolean currentAgentIsPlanning() {
         return phase == Phase.PLANNING;
+    }
+
+    public AbstractChatService getActiveService() {
+        return phase == Phase.PLANNING ? plannerService : developerService;
+    }
+
+    public ChatResponse call(String message, AiMonitor monitor) {
+        return getActiveService().call(message, monitor);
+    }
+
+    public void updateConfig(LlmConfig config) {
+        plannerService.updateConfig(config);
+        developerService.updateConfig(config);
     }
 
     public void setAutonomous(boolean autonomous) {
@@ -83,7 +104,7 @@ public class AgentModeService {
         IFile f = getProblemFile();
         return f.exists() ? IoUtils.readFile(f) : "";
     }
-    
+
     public boolean hasPlan() {
         return project != null && getOverviewFile().exists();
     }
@@ -135,18 +156,18 @@ public class AgentModeService {
         retryCount++;
         if (retryCount >= MAX_RETRIES) {
             openInEditor(getProblemFile());
-            chatService.addMessage(UserMessage.from(
+            plannerService.addMessage(UserMessage.from(
                     "Max retries (" + MAX_RETRIES + ") reached. "
                     + "Review plan problem file `" + AgentModeTools.PROBLEM_FILE + "` — manual intervention required."));
             setPhase(Phase.PLANNING);
             retryCount = 0;
         } else {
             setPhase(Phase.PLANNING);
-            chatService.clear();
+            plannerService.clear();
             String msg = "Plan review needed (attempt " + retryCount + "/" + MAX_RETRIES + ").\n\n"
                     + "## Current Plan\n" + readOverview() + "\n\n"
                     + "## Problem Reported\n" + readProblem();
-            chatService.addMessage(UserMessage.from(msg));
+            plannerService.addMessage(UserMessage.from(msg));
             Display.getDefault().asyncExec(sendTrigger);
         }
     }
@@ -158,9 +179,9 @@ public class AgentModeService {
     public void startImplementation() {
         setPhase(Phase.IMPLEMENTING);
         retryCount = 0;
-        chatService.clear();
+        developerService.clear();
         String plan = overviewExists() ? readOverview() : "(no plan file found)";
-        chatService.addMessage(UserMessage.from("Start Implementation\n\n" + plan));
+        developerService.addMessage(UserMessage.from("Start Implementation\n\n" + plan));
         sendTrigger.run();
     }
 

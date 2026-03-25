@@ -9,9 +9,10 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
-public class AiCompressorAgent implements AiAgent {
+public class AiCompressorAgent {
 
     private static final SystemMessage COMPRESS_SYSTEM = SystemMessage.systemMessage("""
             Compress the conversation into a structured briefing. Output exactly:
@@ -45,7 +46,10 @@ public class AiCompressorAgent implements AiAgent {
         messages.stream().forEach(m -> msg.append(toText(m)));
 
         if (monitor != null) monitor.onAction("Compressing conversation " + messages.size() + " messages");
-        return chatModel.chat(COMPRESS_SYSTEM, UserMessage.from(msg.toString()));
+        return chatModel.chat(ChatRequest.builder()
+                .temperature(0.1)
+                .messages(COMPRESS_SYSTEM, UserMessage.from(msg.toString()))
+                .build());
     }
     
     String toText(ChatMessage msg) {

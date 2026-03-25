@@ -15,7 +15,7 @@
    <extension point="org.eclipse.ui.preferencePages">
       <page
             id="org.sterl.llmpeon.prefs.AiConfig"
-            name="AI Configuration"
+            name="AI Peon Configuration"
             class="org.sterl.llmpeon.parts.config.AiConfigPreferenceView">
       </page>
    </extension>

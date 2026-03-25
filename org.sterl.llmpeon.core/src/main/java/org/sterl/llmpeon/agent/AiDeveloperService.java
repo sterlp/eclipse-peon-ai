@@ -1,10 +1,15 @@
 package org.sterl.llmpeon.agent;
 
+import java.util.function.Predicate;
+
+import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.template.TemplateContext;
+import org.sterl.llmpeon.tool.CompressorAgentTool;
+import org.sterl.llmpeon.tool.SmartToolExecutor;
+import org.sterl.llmpeon.tool.ToolService;
 
-import dev.langchain4j.model.chat.ChatModel;
-
-public class AiDeveloperAgent extends AbstractPromptAgent {
+public class AiDeveloperService extends AbstractChatService {
 
     private static final String BASE_PROMPT = """
             Embedded in Eclipse IDE. Today: ${currentDate}. Working in: ${workPath}.
@@ -31,26 +36,37 @@ public class AiDeveloperAgent extends AbstractPromptAgent {
             Do not retry indefinitely. Escalate early so the plan agent can revise the plan.
             """;
 
-    private final String PROMPT;
-    private final TemplateContext context;
+    private final String prompt;
 
-    public AiDeveloperAgent(ChatModel chatModel, TemplateContext context) {
-        this(chatModel, context, false);
+    public AiDeveloperService(LlmConfig config, ToolService toolService,
+            SkillService skillService, TemplateContext templateContext) {
+        this(config, toolService, skillService, templateContext, false);
     }
 
-    public AiDeveloperAgent(ChatModel chatModel, TemplateContext context, boolean agentMode) {
-        super(chatModel);
-        this.context = context;
-        this.PROMPT = agentMode ? BASE_PROMPT + AGENT_MODE_ADDITION : BASE_PROMPT;
+    public AiDeveloperService(LlmConfig config, ToolService toolService,
+            SkillService skillService, TemplateContext templateContext, boolean agentMode) {
+        super(config, toolService, skillService, templateContext);
+        this.prompt = agentMode ? BASE_PROMPT + AGENT_MODE_ADDITION : BASE_PROMPT;
     }
 
     @Override
-    protected String getPrompt() {
-        return context.process(PROMPT);
+    protected String getSystemPrompt() {
+        return templateContext.process(prompt);
     }
 
     @Override
     protected double getTemperature() {
         return 0.2;
+    }
+
+    @Override
+    protected Predicate<SmartToolExecutor> getToolFilter() {
+        return t -> {
+            if (t.getTool() instanceof CompressorAgentTool) {
+                return getTokenSize() > getConfig().tokenWindow() * 0.7
+                        && getMessages().size() > 5;
+            }
+            return true;
+        };
     }
 }

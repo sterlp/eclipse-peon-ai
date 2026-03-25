@@ -8,15 +8,18 @@ import java.util.Map;
 import java.util.function.Predicate;
 
 import org.sterl.llmpeon.agent.AiMonitor;
-
-import dev.langchain4j.model.chat.ChatModel;
+import org.sterl.llmpeon.shared.StringUtil;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agent.tool.ToolSpecifications;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
 /**
@@ -60,6 +63,53 @@ public class ToolService {
 
     public SmartToolExecutor getExecutor(String toolName) {
         return toolExecutors.get(toolName);
+    }
+
+    /**
+     * Runs the full tool loop: calls the model, executes any tools, repeats until
+     * the model produces a plain text response.
+     *
+     * @param staticMessages system prompt + standing orders + skills (prepended each iteration)
+     * @param memory         the conversation memory (mutated in-place)
+     * @param chatModel      the model to call
+     * @param monitor        cancellation/progress monitor
+     * @param toolFilter     decides which registered tools to expose this call
+     * @param temperature    sampling temperature for the model
+     */
+    public ChatResponse executeLoop(
+            List<ChatMessage> staticMessages,
+            ChatMemory memory,
+            ChatModel chatModel,
+            AiMonitor monitor,
+            Predicate<SmartToolExecutor> toolFilter,
+            double temperature) {
+        ChatResponse response = null;
+        do {
+            var toolSpecs = toolSpecifications(toolFilter);
+            var messages = new ArrayList<ChatMessage>(staticMessages);
+            messages.addAll(memory.messages());
+            var builder = ChatRequest.builder()
+                    .temperature(temperature)
+                    .messages(toOneSystemMessage(messages));
+            if (!toolSpecs.isEmpty()) builder.toolSpecifications(toolSpecs);
+            response = chatModel.chat(builder.build());
+            memory.set(runAllTools(response, chatModel, monitor, memory.messages()));
+            if (monitor.isCanceled()) break;
+        } while (response.aiMessage().hasToolExecutionRequests()
+                || StringUtil.hasNoValue(response.aiMessage().text()));
+        return response;
+    }
+
+    /** Merges all SystemMessages into one at the front (compatibility with local LLMs). */
+    private static List<ChatMessage> toOneSystemMessage(List<ChatMessage> messages) {
+        var result = new ArrayList<ChatMessage>();
+        var systemText = new StringBuilder();
+        for (var m : messages) {
+            if (m instanceof SystemMessage sm) systemText.append(sm.text()).append("\n");
+            else result.add(m);
+        }
+        if (systemText.length() > 0) result.addFirst(SystemMessage.from(systemText.toString()));
+        return result;
     }
     
     public List<ChatMessage> runAllTools(ChatResponse response, ChatModel agentService, AiMonitor monitor, List<ChatMessage> memory) {

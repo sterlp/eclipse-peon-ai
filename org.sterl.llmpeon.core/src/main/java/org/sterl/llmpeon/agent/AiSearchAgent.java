@@ -10,7 +10,7 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
-public class AiSearchAgent implements AiAgent {
+public class AiSearchAgent {
 
     final SystemMessage system = SystemMessage.systemMessage("""
             You are a focused search assistant. Your only job is to find information.
@@ -34,7 +34,6 @@ public class AiSearchAgent implements AiAgent {
         this.chatModel = chatModel;
     }
 
-    @Override
     public ChatResponse call(List<ChatMessage> inMessages, AiMonitor monitor) {
         var messages = new ArrayList<ChatMessage>(inMessages);
         messages.addFirst(system);
@@ -44,7 +43,6 @@ public class AiSearchAgent implements AiAgent {
                 .build());
     }
 
-    @Override
     public void withTools(List<ToolSpecification> tools) {
         request.toolSpecifications(tools);
     }

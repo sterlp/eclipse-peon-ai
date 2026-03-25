@@ -1,10 +1,14 @@
 package org.sterl.llmpeon.agent;
 
+import java.util.function.Predicate;
+
+import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.template.TemplateContext;
+import org.sterl.llmpeon.tool.SmartToolExecutor;
+import org.sterl.llmpeon.tool.ToolService;
 
-import dev.langchain4j.model.chat.ChatModel;
-
-public class AiPlannerAgent extends AbstractPromptAgent {
+public class AiPlannerService extends AbstractChatService {
 
     private static final String BASE_PROMPT = """
             Embedded in Eclipse IDE. Today: ${currentDate}. Working in: ${workPath}.
@@ -19,7 +23,7 @@ public class AiPlannerAgent extends AbstractPromptAgent {
             - Ask clarifying questions before proceeding — never assume
             - Explore structure iteratively: goal -> affected area -> constraints -> exact scope
             - Identify exact files, classes, and interfaces affected
-            - Use the Eclipse workspace tools to read files and project strucuture
+            - Use the Eclipse workspace tools to read files and project structure
             - Use SearchAgentTool for initial discovery to minimize context size
             - preserve the paths in the plan, to avoid searches during the implementation phase
 
@@ -41,29 +45,31 @@ public class AiPlannerAgent extends AbstractPromptAgent {
             If a problem was reported in the conversation, update the plan to address it before saving.
             """;
 
-    private final String PROMPT;
-    private final TemplateContext context;
+    private final String prompt;
 
-    public AiPlannerAgent(ChatModel chatModel, TemplateContext context) {
-        this(chatModel, context, false);
+    public AiPlannerService(LlmConfig config, ToolService toolService,
+            SkillService skillService, TemplateContext templateContext) {
+        this(config, toolService, skillService, templateContext, false);
     }
 
-    public AiPlannerAgent(ChatModel chatModel, TemplateContext context, boolean agentMode) {
-        super(chatModel);
-        this.context = context;
-        this.PROMPT = agentMode ? BASE_PROMPT + AGENT_MODE_ADDITION : BASE_PROMPT;
+    public AiPlannerService(LlmConfig config, ToolService toolService,
+            SkillService skillService, TemplateContext templateContext, boolean agentMode) {
+        super(config, toolService, skillService, templateContext);
+        this.prompt = agentMode ? BASE_PROMPT + AGENT_MODE_ADDITION : BASE_PROMPT;
     }
 
     @Override
-    public boolean isReadOnly() { return true; }
-
-    @Override
-    protected String getPrompt() {
-        return context.process(PROMPT);
+    protected String getSystemPrompt() {
+        return templateContext.process(prompt);
     }
 
     @Override
     protected double getTemperature() {
         return 0.8;
+    }
+
+    @Override
+    protected Predicate<SmartToolExecutor> getToolFilter() {
+        return t -> !t.getTool().isEditTool();
     }
 }
