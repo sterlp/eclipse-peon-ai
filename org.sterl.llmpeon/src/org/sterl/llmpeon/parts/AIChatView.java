@@ -417,7 +417,7 @@ public class AIChatView implements EclipseAiMonitor {
             return;
         }
 
-        // PLAN→DEV: extract last AI message and hand off to developer service
+        // PLAN -> DEV: extract last AI message and hand off to developer service
         currentMode = PeonMode.DEV;
         actionsBar.updateModeUI(PeonMode.DEV, true);
 

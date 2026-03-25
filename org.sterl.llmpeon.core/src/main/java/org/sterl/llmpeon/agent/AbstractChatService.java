@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.function.Predicate;
 
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.skill.SkillRecord;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.template.TemplateContext;
@@ -52,7 +53,8 @@ public abstract class AbstractChatService {
 
     public ChatResponse call(String message, AiMonitor monitor) {
         monitor = AiMonitor.nullSafety(monitor);
-        if (message != null && !message.isEmpty()) memory.add(UserMessage.from(message));
+        if (StringUtil.hasValue(message)) memory.add(UserMessage.from(message));
+
         var staticMessages = buildStaticMessages();
         var response = toolService.executeLoop(
                 staticMessages, memory, chatModel, monitor, getToolFilter(), getTemperature());
@@ -102,11 +104,13 @@ public abstract class AbstractChatService {
     public List<SkillRecord> getSkills() { return skillService.getSkills(); }
 
     private List<ChatMessage> buildStaticMessages() {
-        var messages = new ArrayList<ChatMessage>(standingOrders);
+        var messages = new ArrayList<ChatMessage>();
+        messages.add(SystemMessage.from(getSystemPrompt()));
+        
+        messages.addAll(standingOrders);
         if (skillService.hasSkills()) {
             messages.add(skillService.skillMessage(templateContext));
         }
-        messages.add(SystemMessage.from(getSystemPrompt()));
         return messages;
     }
 
