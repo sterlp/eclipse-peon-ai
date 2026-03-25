@@ -83,6 +83,10 @@ public class AgentModeService {
         IFile f = getProblemFile();
         return f.exists() ? IoUtils.readFile(f) : "";
     }
+    
+    public boolean hasPlan() {
+        return project != null && getOverviewFile().exists();
+    }
 
     public String planPathHint() {
         if (project == null) return "";

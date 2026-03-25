@@ -551,9 +551,8 @@ public class AIChatView implements EclipseAiMonitor {
         if (agentsMdService.hasAgentFile()) {
             agentsMdService.agentMessage(templateContext).ifPresent(orders::add);
         }
-        if (currentMode == PeonMode.AGENT) {
-            var hint = agentMode.planPathHint();
-            if (!hint.isBlank()) orders.add(SystemMessage.from(hint));
+        if (currentMode == PeonMode.AGENT && agentMode.hasPlan()) {
+            orders.add(SystemMessage.from(agentMode.planPathHint()));
         }
         return orders;
     }
