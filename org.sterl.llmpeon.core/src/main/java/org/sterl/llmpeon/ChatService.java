@@ -53,6 +53,14 @@ public class ChatService<T extends TemplateContext> {
     public T getTemplateContext() {
         return templateContext;
     }
+    
+    public void setTemplatedStandingOrders(List<String> messages) {
+        this.standingOrders.clear();
+        if (messages == null || messages.isEmpty()) return;
+        for (String m : messages) {
+            this.standingOrders.add(SystemMessage.from(templateContext.process(m)));
+        }
+    }
 
     public void setStandingOrders(List<ChatMessage> additions) {
         if (additions == null) additions = Collections.emptyList();
@@ -64,7 +72,7 @@ public class ChatService<T extends TemplateContext> {
         this.chatModel = config.build();
         try {
             if (config.skillDirectory() != null) {
-                templateContext.setSkillDirectory(config.skillDirectory());
+                this.templateContext.setSkillDirectory(config.skillDirectory());
                 this.skillService.refresh(Path.of(config.skillDirectory()));
             }
         } catch (Exception e) {

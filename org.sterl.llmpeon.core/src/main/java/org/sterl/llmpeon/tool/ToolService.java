@@ -62,7 +62,6 @@ public class ToolService {
         return toolExecutors.get(toolName);
     }
     
-    /** Returns true if AI-triggered compression was applied (caller should end the turn). */
     public List<ChatMessage> runAllTools(ChatResponse response, ChatModel agentService, AiMonitor monitor, List<ChatMessage> memory) {
         if (!response.aiMessage().hasToolExecutionRequests()) {
             // No tools to run — still add the final AI message to memory
