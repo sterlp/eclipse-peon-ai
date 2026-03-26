@@ -11,6 +11,7 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.browser.Browser;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
 import org.osgi.framework.FrameworkUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 
@@ -84,15 +85,17 @@ public class ChatMarkdownWidget extends Composite {
     }
 
     public void appendMessage(SimpleChatMessage msg) {
-        try {
-            browser.execute(
-                "appendMessage(" + mapper.writeValueAsString(msg) + ");"
-            );
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        Display.getDefault().asyncExec(() -> {
+            try {
+                browser.execute(
+                        "appendMessage(" + mapper.writeValueAsString(msg) + ");"
+                        );
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
-
+    
     public void showDiff(String unifiedDiff) {
         try {
             browser.execute(
@@ -126,7 +129,7 @@ public class ChatMarkdownWidget extends Composite {
             text = um.singleText();
         } else if (msg instanceof AiMessage am) {
             if (StringUtil.hasValue(am.thinking())) {
-                appendMessage(new SimpleChatMessage("THINK", text = am.thinking()));
+                appendMessage(new SimpleChatMessage("THINK", am.thinking()));
             }
             text = am.text();
         } else if (msg instanceof ToolExecutionResultMessage tr) {
@@ -136,6 +139,6 @@ public class ChatMarkdownWidget extends Composite {
         if (text != null) text = text.trim();
         else return;
         
-        if (text.length() > 0) appendMessage(new SimpleChatMessage(role, text));
+        if (StringUtil.hasValue(text)) appendMessage(new SimpleChatMessage(role, text));
     }
 }

@@ -36,7 +36,6 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IWorkingSet;
 import org.sterl.llmpeon.agent.AbstractChatService;
 import org.sterl.llmpeon.agent.AiDeveloperService;
-import org.sterl.llmpeon.agent.AiMonitor;
 import org.sterl.llmpeon.agent.AiPlannerService;
 import org.sterl.llmpeon.agent.PeonMode;
 import org.sterl.llmpeon.ai.LlmConfig;
@@ -514,10 +513,10 @@ public class AIChatView implements EclipseAiMonitor {
                 Display.getDefault().asyncExec(() ->
                     chatHistory.appendMessage(new SimpleChatMessage("PROBLEM", e.getMessage())));
             } finally {
+                monitor.done();
                 active.setStandingOrders(Collections.emptyList());
                 Display.getDefault().asyncExec(() -> actionsBar.lockWhileWorking(false));
                 monitorRef.set(new NullProgressMonitor());
-                monitor.done();
             }
             return PeonConstants.status("Peon AI\n" + developerService.getConfig(), ex);
         }).schedule();
@@ -529,7 +528,7 @@ public class AIChatView implements EclipseAiMonitor {
             var project = EclipseUtil.resolveProject(selectedResource);
             if (project != null) {
                 currentProject = project;
-                agentsMdService.load(selectedResource.getProject());
+                agentsMdService.load(project);
                 workspaceWriteFilesTool.setCurrentProject(project);
                 workspaceReadFilesTool.setCurrentProject(project);
                 agentMode.setProject(project);

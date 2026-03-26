@@ -84,19 +84,25 @@ public class ToolService {
             Predicate<SmartToolExecutor> toolFilter,
             double temperature) {
         ChatResponse response = null;
+
         do {
-            var toolSpecs = toolSpecifications(toolFilter);
             var messages = new ArrayList<ChatMessage>(staticMessages);
             messages.addAll(memory.messages());
             var builder = ChatRequest.builder()
                     .temperature(temperature)
                     .messages(toOneSystemMessage(messages));
+            
+            var toolSpecs = toolSpecifications(toolFilter);
             if (!toolSpecs.isEmpty()) builder.toolSpecifications(toolSpecs);
+            
             response = chatModel.chat(builder.build());
+
             memory.set(runAllTools(response, chatModel, monitor, memory.messages()));
+
             if (monitor.isCanceled()) break;
-        } while (response.aiMessage().hasToolExecutionRequests()
-                || StringUtil.hasNoValue(response.aiMessage().text()));
+            // TODO sometimes we get no response at all from the AI -> https://github.com/langchain4j/langchain4j/issues/4786
+        } while (response.aiMessage().hasToolExecutionRequests());
+
         return response;
     }
 

@@ -49,8 +49,9 @@ public class SearchAgentTool extends AbstractTool {
                 messages = toolService.runAllTools(response, chatModel, m, messages);
                 
                 if (m.isCanceled()) break;
-            } while (response.aiMessage().hasToolExecutionRequests()
-                        || StringUtil.hasNoValue(response.aiMessage().text()));
+                
+             // TODO sometimes we get no response at all from the AI -> https://github.com/langchain4j/langchain4j/issues/4786
+            } while (response.aiMessage().hasToolExecutionRequests());
 
             m.onAction("SearchAgent done (" + iterations + " iterations) for: " + prompt);
             String answer = response != null ? response.aiMessage().text() : null;

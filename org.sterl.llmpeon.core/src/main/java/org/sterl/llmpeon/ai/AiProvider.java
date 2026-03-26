@@ -67,12 +67,16 @@ public enum AiProvider {
     OPEN_AI {
         @Override
         public ChatModel buildChatModel(LlmConfig c) {
-            return OpenAiChatModel.builder()
+            var result = OpenAiChatModel.builder()
                     .timeout(TIMEOUT)
                     .baseUrl(c.url())
                     .modelName(c.model())
-                    .apiKey(c.apiKey())
-                    .build();
+                    .apiKey(c.apiKey());
+            
+            // no thinking "off" supported
+            result.returnThinking(Boolean.TRUE)
+                  .sendThinking(Boolean.TRUE);
+            return result.build();
         }
     },
 
@@ -82,13 +86,18 @@ public enum AiProvider {
             var http1 = JdkHttpClient.builder()
                     .httpClientBuilder(HttpClient.newBuilder()
                             .version(HttpClient.Version.HTTP_1_1));
-            return OpenAiChatModel.builder()
+            
+            var result = OpenAiChatModel.builder()
                     .timeout(TIMEOUT)
                     .baseUrl(c.url())
                     .modelName(c.model())
-                    .apiKey(c.apiKey() != null && !c.apiKey().isBlank() ? c.apiKey() : "lm-studio")
-                    .httpClientBuilder(http1)
-                    .build();
+                    .strictJsonSchema(true)
+                    .apiKey(StringUtil.hasValue(c.apiKey()) ? c.apiKey() : "lm-studio")
+                    .httpClientBuilder(http1);
+            // no thinking "off" supported
+            result.returnThinking(Boolean.TRUE)
+                  .sendThinking(Boolean.TRUE);
+            return result.build();
         }
 
         @Override
@@ -185,7 +194,7 @@ public enum AiProvider {
 
             // Workaround for langchain4j 1.12.x: AnthropicChatModel does not override
             // defaultRequestParameters(), so the model name is lost during ChatModel.chat()'s
-            // merge step → Anthropic rejects with "model: Field required".
+            // merge step -> Anthropic rejects with "model: Field required".
             // Also: Anthropic requires temperature=1.0 when extended thinking is enabled,
             // and max_tokens is always required (8192 is safe across all current Claude models).
             return new ChatModel() {
