@@ -1,4 +1,4 @@
-package org.sterl.llmpeon.tool;
+package org.sterl.llmpeon.tool.tools;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -12,11 +12,11 @@ import org.sterl.llmpeon.shared.StringUtil;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 
-public class DiskFileReadTools extends AbstractTool {
+public class DiskFileReadTool extends AbstractTool {
 
     private Path workingDir;
 
-    public DiskFileReadTools(Path workingDir) {
+    public DiskFileReadTool(Path workingDir) {
         this.workingDir = workingDir.toAbsolutePath().normalize();
     }
 
@@ -43,7 +43,7 @@ public class DiskFileReadTools extends AbstractTool {
             throw new IllegalArgumentException("File not found: " + filePath + " also not in " + workingDir);
         }
         try {
-            monitorMessage("Reading " + filePath);
+            onTool("Reading " + filePath);
             return Files.readString(resolved);
         } catch (IOException e) {
             throw new RuntimeException("Failed to read " + filePath, e);
@@ -67,7 +67,7 @@ public class DiskFileReadTools extends AbstractTool {
             throw new RuntimeException("Failed to search in " + workingDir, e);
         }
 
-        monitorMessage("Found " + matches.size() + " files on disk for " + query);
+        onTool("Found " + matches.size() + " files on disk for " + query);
         if (matches.isEmpty()) {
             return "No files found matching '" + query + "' adjust your query";
         }
@@ -99,7 +99,7 @@ public class DiskFileReadTools extends AbstractTool {
             throw new RuntimeException("Failed to list " + dir, e);
         }
 
-        monitorMessage("List directory " + path + " with " + entries.size() + " elements");
+        onTool("List directory " + dir + " with " + entries.size() + " elements");
         if (entries.isEmpty()) {
             return "Directory is empty: " + dir;
         }

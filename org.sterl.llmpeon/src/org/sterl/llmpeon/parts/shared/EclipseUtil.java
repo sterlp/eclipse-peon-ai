@@ -18,6 +18,13 @@ import org.sterl.llmpeon.shared.StringUtil;
 
 public class EclipseUtil {
 
+    public static IProject firstOpenOrSelectedProject() {
+        var openFile = getOpenFile();
+        if (openFile.isPresent()) return openFile.get().getProject();
+        var open = openProjects();
+        return open.isEmpty() ? null : open.getFirst();
+    }
+    
     public static Optional<IFile> getOpenFile() {
         if (PlatformUI.getWorkbench() == null) return Optional.empty();
         var aww = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
@@ -92,4 +99,5 @@ public class EclipseUtil {
         if (selection == null) return null;
         return selection.getProject();
     }
+
 }

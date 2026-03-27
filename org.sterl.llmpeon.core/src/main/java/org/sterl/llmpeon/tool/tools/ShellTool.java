@@ -1,4 +1,4 @@
-package org.sterl.llmpeon.tool;
+package org.sterl.llmpeon.tool.tools;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -61,7 +61,7 @@ public class ShellTool extends AbstractTool {
             timeout = Math.min(timeoutMs, MAX_TIMEOUT_MS);
         }
 
-        monitorMessage("Running: " + command + " in " + effectiveDir);
+        onTool("Running: " + command + " in " + effectiveDir);
 
         String[] shellCommand;
         String extraPaths = "";
@@ -122,7 +122,7 @@ public class ShellTool extends AbstractTool {
             if (exitCode != 0) {
                 result += "\nExit code: " + exitCode;
             }
-            monitorMessage("Command finished (exit " + exitCode + ")");
+            onTool("Command finished (exit " + exitCode + ")");
             return result;
 
         } catch (IOException e) {

@@ -1,4 +1,4 @@
-package org.sterl.llmpeon.tool;
+package org.sterl.llmpeon.tool.tools;
 
 import java.io.IOException;
 
@@ -21,7 +21,7 @@ public class SkillTool extends AbstractTool {
         var skill = skillService.get(name);
         if (skill.isEmpty()) return "No skill with the name " + name + " found. Use one of: " 
                 + skillService.skillNames();
-        monitorMessage("Read SKILL " + name);
+        onTool("Read SKILL " + name);
         return skill.get().readFullContent();
     }
 }

@@ -11,29 +11,20 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.browser.Browser;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Display;
 import org.osgi.framework.FrameworkUtil;
-import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.tool.model.SimpleMessage;
+import org.sterl.llmpeon.tool.model.ToSimpleMessage;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
 
 public class ChatMarkdownWidget extends Composite {
 
     private final Browser browser;
     private final ObjectMapper mapper = new ObjectMapper();
     private String chatHtml = null;
-    
-    public record SimpleChatMessage(String role, String message) {
-        public static SimpleChatMessage tool(String m) {
-            return new SimpleChatMessage("TOOL", m);
-        }
-    };
 
     public ChatMarkdownWidget(Composite parent, int style) {
         super(parent, style);
@@ -84,16 +75,14 @@ public class ChatMarkdownWidget extends Composite {
         return html.replace("./", basePath);
     }
 
-    public void appendMessage(SimpleChatMessage msg) {
-        Display.getDefault().asyncExec(() -> {
-            try {
-                browser.execute(
-                        "appendMessage(" + mapper.writeValueAsString(msg) + ");"
-                        );
-            } catch (JsonProcessingException e) {
-                throw new RuntimeException(e);
-            }
-        });
+    public void appendMessage(SimpleMessage msg) {
+        try {
+            browser.execute(
+                    "appendMessage(" + mapper.writeValueAsString(msg) + ");"
+                    );
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
     }
     
     public void showDiff(String unifiedDiff) {
@@ -121,24 +110,7 @@ public class ChatMarkdownWidget extends Composite {
     }
 
     public void appendMessage(ChatMessage msg) {
-        var role = msg.type() + "";
-        if (role.contains("TOOL")) role = "TOOL";
-
-        String text = "";
-        if (msg instanceof UserMessage um) {
-            text = um.singleText();
-        } else if (msg instanceof AiMessage am) {
-            if (StringUtil.hasValue(am.thinking())) {
-                appendMessage(new SimpleChatMessage("THINK", am.thinking()));
-            }
-            text = am.text();
-        } else if (msg instanceof ToolExecutionResultMessage tr) {
-            role = "TOOL";
-            text = tr.text();
-        }
-        if (text != null) text = text.trim();
-        else return;
-        
-        if (StringUtil.hasValue(text)) appendMessage(new SimpleChatMessage(role, text));
+        var toAdd = ToSimpleMessage.INSTANCE.convert(msg);
+        toAdd.forEach(this::appendMessage);
     }
 }

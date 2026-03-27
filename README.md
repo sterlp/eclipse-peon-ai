@@ -12,6 +12,10 @@ A lightweight, context-aware LLM assistant that integrates directly into your Ec
 - **Local LLM Support** - Works with Ollama for privacy-focused local inference
 - **Multi-Provider** - Supports Ollama, OpenAI (and compatible), Google Gemini, and Mistral AI
 
+## Known Issues
+
+- LM Studio Qwen 3.5 9B may never call tools: https://github.com/lmstudio-ai/lmstudio-bug-tracker/issues/1592
+
 ## Installation
 
 ### Eclipse marketplace

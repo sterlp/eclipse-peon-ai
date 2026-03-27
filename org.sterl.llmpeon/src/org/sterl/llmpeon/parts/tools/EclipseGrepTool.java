@@ -77,7 +77,7 @@ public class EclipseGrepTool extends AbstractEclipseTool {
             if (matches.size() >= MAX_FILES) break;
         }
 
-        monitorMessage("Grep " + query + " found " + matches.size() + " matches.");
+        onTool("Grep " + query + " found " + matches.size() + " matches.");
 
         if (matches.isEmpty()) {
             return "No files contain '" + query + "' in the searched path.";

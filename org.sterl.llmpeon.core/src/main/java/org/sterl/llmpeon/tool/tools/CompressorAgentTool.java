@@ -1,4 +1,4 @@
-package org.sterl.llmpeon.tool;
+package org.sterl.llmpeon.tool.tools;
 
 import org.sterl.llmpeon.agent.AiCompressorAgent;
 

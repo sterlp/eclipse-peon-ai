@@ -29,7 +29,7 @@ class TemplateContextTest {
     @Test
     void testWorkPathSubstituted() {
         var result = ctx.process("Dir: ${workPath}");
-        assertTrue(result.contains("some/work/dir"), "Expected workPath in: " + result);
+        assertTrue(result.contains(Path.of("/some/work/dir").toString()), "Expected workPath in: " + result);
     }
 
     @Test

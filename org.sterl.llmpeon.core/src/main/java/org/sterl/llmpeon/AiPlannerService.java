@@ -1,12 +1,12 @@
-package org.sterl.llmpeon.agent;
+package org.sterl.llmpeon;
 
 import java.util.function.Predicate;
 
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.template.TemplateContext;
-import org.sterl.llmpeon.tool.SmartToolExecutor;
 import org.sterl.llmpeon.tool.ToolService;
+import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
 public class AiPlannerService extends AbstractChatService {
 
@@ -26,6 +26,9 @@ public class AiPlannerService extends AbstractChatService {
             - Use the Eclipse workspace tools to read files and project structure
             - Use SearchAgentTool for initial discovery to minimize context size
             - preserve the paths in the plan, to avoid searches during the implementation phase
+            - Avoid reading files you already read in the chat history
+            - Remove every word that does not add meaning to keep the context small
+            - Call tools using JSON
 
             Final output (mandatory last message):
             A complete, self-contained implementation plan structured as:

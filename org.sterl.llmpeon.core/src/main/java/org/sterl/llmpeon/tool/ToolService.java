@@ -7,8 +7,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import org.sterl.llmpeon.agent.AiMonitor;
+import org.jspecify.annotations.NonNull;
+import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.tool.component.SmartToolExecutor;
+import org.sterl.llmpeon.tool.model.ToSimpleMessage;
+import org.sterl.llmpeon.tool.tools.CompressorAgentTool;
+import org.sterl.llmpeon.tool.tools.SearchAgentTool;
+import org.sterl.llmpeon.tool.tools.ShellTool;
+import org.sterl.llmpeon.tool.tools.WebFetchTool;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -70,11 +77,17 @@ public class ToolService {
      * @param toolFilter     decides which registered tools to expose this call
      * @param temperature    sampling temperature for the model
      */
+    @NonNull
     public ChatResponse executeLoop(
+            @NonNull
             List<ChatMessage> staticMessages,
+            @NonNull
             ChatMemory memory,
+            @NonNull
             ChatModel chatModel,
+            @NonNull
             AiMonitor monitor,
+            @NonNull
             Predicate<SmartToolExecutor> toolFilter,
             double temperature) {
         ChatResponse response = null;
@@ -87,22 +100,24 @@ public class ToolService {
 
             var builder = ChatRequest.builder()
                     .temperature(temperature)
+                    .presencePenalty(1.5)
                     .messages(toOneSystemMessage(messages));
             
             var toolSpecs = toolSpecifications(toolFilter);
             if (!toolSpecs.isEmpty()) builder.toolSpecifications(toolSpecs);
             
             response = chatModel.chat(builder.build());
-
+            ToSimpleMessage.INSTANCE.convert(response.aiMessage()).forEach(monitor::onMessage);
             memory.set(runAllTools(response, chatModel, monitor, memory.messages()));
 
             if (iterations++ >= MAX_ITERATIONS) {
                 monitor.onProblem("Tool loop reached max iterations - stopping after " + iterations);
                 break;
             }
-            // https://github.com/langchain4j/langchain4j/issues/4786
-            shouldLoop = !monitor.isCanceled()
-                    || response.aiMessage().hasToolExecutionRequests()
+            if (monitor.isCanceled()) break;
+
+            shouldLoop = response.aiMessage().hasToolExecutionRequests()
+                    // https://github.com/langchain4j/langchain4j/issues/4786
                     || (StringUtil.hasNoValue(response.aiMessage().text()) 
                             && StringUtil.hasValue(response.aiMessage().thinking())
                         );

@@ -2,7 +2,7 @@ package org.sterl.llmpeon.tool;
 
 import java.util.List;
 
-import org.sterl.llmpeon.agent.AiMonitor;
+import org.sterl.llmpeon.shared.AiMonitor;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatModel;

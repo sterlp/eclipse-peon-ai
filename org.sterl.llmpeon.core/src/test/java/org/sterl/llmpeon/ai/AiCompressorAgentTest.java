@@ -6,8 +6,8 @@ import java.nio.file.Path;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.sterl.llmpeon.agent.AiDeveloperService;
-import org.sterl.llmpeon.agent.AiMonitor;
+import org.sterl.llmpeon.AiDeveloperService;
+import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.template.TemplateContext;
 import org.sterl.llmpeon.tool.ToolService;

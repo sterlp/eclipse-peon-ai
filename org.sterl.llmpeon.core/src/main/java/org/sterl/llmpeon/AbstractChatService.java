@@ -1,4 +1,4 @@
-package org.sterl.llmpeon.agent;
+package org.sterl.llmpeon;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -6,13 +6,15 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Predicate;
 
+import org.sterl.llmpeon.agent.AiCompressorAgent;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.skill.SkillRecord;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.template.TemplateContext;
-import org.sterl.llmpeon.tool.SmartToolExecutor;
 import org.sterl.llmpeon.tool.ToolService;
+import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;

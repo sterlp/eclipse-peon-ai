@@ -34,10 +34,10 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IWorkingSet;
-import org.sterl.llmpeon.agent.AbstractChatService;
-import org.sterl.llmpeon.agent.AiDeveloperService;
-import org.sterl.llmpeon.agent.AiPlannerService;
-import org.sterl.llmpeon.agent.PeonMode;
+import org.sterl.llmpeon.AbstractChatService;
+import org.sterl.llmpeon.AiDeveloperService;
+import org.sterl.llmpeon.AiPlannerService;
+import org.sterl.llmpeon.PeonMode;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.agent.AgentModeService;
 import org.sterl.llmpeon.parts.agentsmd.AgentsMdService;
@@ -55,16 +55,16 @@ import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFilesTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFilesTool;
 import org.sterl.llmpeon.parts.widget.ActionsBarWidget;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget;
-import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget.SimpleChatMessage;
 import org.sterl.llmpeon.parts.widget.ChatWidget;
 import org.sterl.llmpeon.parts.widget.StatusLineWidget;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.template.TemplateContext;
-import org.sterl.llmpeon.tool.DiskFileReadTools;
-import org.sterl.llmpeon.tool.DiskFileWriteTools;
-import org.sterl.llmpeon.tool.EditTool;
 import org.sterl.llmpeon.tool.ToolService;
+import org.sterl.llmpeon.tool.model.SimpleMessage;
+import org.sterl.llmpeon.tool.model.SimpleMessage.Type;
+import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
+import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -122,9 +122,8 @@ public class AIChatView implements EclipseAiMonitor {
         var rootPath = ResourcesPlugin.getWorkspace().getRoot().getRawLocation().toFile().toPath();
         toolService.addTool(workspaceWriteFilesTool);
         toolService.addTool(workspaceReadFilesTool);
-        toolService.addTool(new DiskFileWriteTools(rootPath));
-        toolService.addTool(new DiskFileReadTools(rootPath));
-        toolService.addTool(new EditTool(rootPath));
+        toolService.addTool(new DiskFileWriteTool(rootPath));
+        toolService.addTool(new DiskFileReadTool(rootPath));
         toolService.addTool(new EclipseBuildTool());
         toolService.addTool(new EclipseGrepTool());
         toolService.addTool(new EclipseRunTestTool());
@@ -152,7 +151,7 @@ public class AIChatView implements EclipseAiMonitor {
             this::doSendMessage,
             () -> getIProgressMonitor().setCanceled(true),
             this::doCompressContext,
-            () -> { getActiveService().clear(); chatHistory.clear(); },
+            this::onClear,
             this::doStartImpl,
             this::onModeChange,
             model -> updateAllConfigs(developerService.getConfig().withModel(model)),
@@ -166,6 +165,14 @@ public class AIChatView implements EclipseAiMonitor {
 
         IEclipsePreferences prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
         prefs.addPreferenceChangeListener(prefListener);
+        
+        updateSelectedProject(EclipseUtil.firstOpenOrSelectedProject());
+    }
+    
+    private void onClear() {
+        getActiveService().clear(); 
+        chatHistory.clear();
+        actionsBar.updateCompact(getActiveService().getTokenSize(), getActiveService().getTokenWindow());
     }
 
     @PreDestroy
@@ -220,7 +227,7 @@ public class AIChatView implements EclipseAiMonitor {
             selection = selectedResource;
         } else if (o != null) {
             System.err.println("!!! Unknown resource type selected " + o.getClass());
-            selection = null;
+            selection = selectedResource;
         } else {
             selection = null;
         }
@@ -229,16 +236,20 @@ public class AIChatView implements EclipseAiMonitor {
             System.out.println("Selected " + selectedResource.getName());
         }
 
-        var project = selection != null ? EclipseUtil.resolveProject(selection) : null;
+        var project = EclipseUtil.resolveProject(selection);
+        updateSelectedProject(project);
+    }
+
+    private void updateSelectedProject(IProject project) {
         if (project != null && !projectPinned) {
             currentProject = project;
-            agentsMdService.load(selection.getProject());
+            agentsMdService.load(project);
             workspaceWriteFilesTool.setCurrentProject(project);
             workspaceReadFilesTool.setCurrentProject(project);
             agentMode.setProject(project);
         }
 
-        if (chatInput != null) Display.getDefault().asyncExec(() -> {
+        if (actionsBar != null) Display.getDefault().asyncExec(() -> {
             actionsBar.setAgentModeAvailable(currentProject != null && currentProject.isOpen());
             if (currentProject == null && currentMode == PeonMode.AGENT) {
                 onModeChange(PeonMode.DEV);
@@ -260,21 +271,11 @@ public class AIChatView implements EclipseAiMonitor {
     // -------------------------------------------------------------------------
 
     @Override
-    public void onAction(String value) {
-        Display.getDefault().asyncExec(() ->
-            chatHistory.appendMessage(new SimpleChatMessage("TOOL", "`" + value + "`")));
-    }
-
-    @Override
-    public void onThink(String value) {
-        Display.getDefault().asyncExec(() ->
-            chatHistory.appendMessage(new SimpleChatMessage("THINK", "`" + value + "`")));
-    }
-
-    @Override
-    public void onProblem(String value) {
-        Display.getDefault().asyncExec(() ->
-            chatHistory.appendMessage(new SimpleChatMessage("PROBLEM", "`" + value + "`")));
+    public void onMessage(SimpleMessage m) {
+        Display.getDefault().asyncExec(() -> {
+            chatHistory.appendMessage(m);
+            actionsBar.updateCompact(getActiveService().getTokenSize(), getActiveService().getTokenWindow());
+        });
     }
 
     @Override
@@ -469,7 +470,7 @@ public class AIChatView implements EclipseAiMonitor {
 
     private void doSendMessage() {
         if (StringUtil.hasNoValue(developerService.getConfig().model())) {
-            chatHistory.appendMessage(new SimpleChatMessage("PROBLEM", "No model configured — open Window > Preferences > Peon AI"));
+            chatHistory.appendMessage(new SimpleMessage(Type.PROBLEM, "No model configured — open Window > Preferences > Peon AI"));
             return;
         }
         String text = StringUtil.strip(chatInput.getText().trim() + getUserSelection());
@@ -477,19 +478,20 @@ public class AIChatView implements EclipseAiMonitor {
         if (StringUtil.hasNoValue(text) && active.getMessages().isEmpty()) return;
 
         if (StringUtil.hasValue(text)) {
-            chatHistory.appendMessage(new SimpleChatMessage(ChatMessageType.USER.name(), text));
+            chatHistory.appendMessage(new SimpleMessage(Type.USER, text));
             chatInput.clearText();
         }
 
         actionsBar.lockWhileWorking(true);
         Job.create("Peon AI request", monitor -> {
-            monitor.beginTask("Arbeit, Arbeit!", IProgressMonitor.UNKNOWN);
+            monitor.beginTask("Arbeit, Arbeit!", currentMode == PeonMode.AGENT ? ToolService.MAX_ITERATIONS * 2 : ToolService.MAX_ITERATIONS);
             monitorRef.set(monitor);
             Exception ex = null;
             try {
                 int msgCountBefore = active.getMessages().size();
                 active.setStandingOrders(buildStandingOrders());
-                var result = switch (currentMode) {
+
+                switch (currentMode) {
                     case DEV   -> developerService.call(text.isEmpty() ? null : text, this);
                     case PLAN  -> plannerService.call(text.isEmpty() ? null : text, this);
                     case AGENT -> agentMode.call(text.isEmpty() ? null : text, this);
@@ -503,15 +505,13 @@ public class AIChatView implements EclipseAiMonitor {
                     } else if (active.getMessages().size() < msgCountBefore) {
                         refreshChat();
                     } else {
-                        chatHistory.appendMessage(result.aiMessage());
                         refreshStatusLine();
                         actionsBar.updateModeUI(currentMode, isImplEnabled());
                     }
                 });
             } catch (Exception e) {
                 ex = e;
-                Display.getDefault().asyncExec(() ->
-                    chatHistory.appendMessage(new SimpleChatMessage("PROBLEM", e.getMessage())));
+                onMessage(new SimpleMessage(Type.PROBLEM, e.getMessage()));
             } finally {
                 monitor.done();
                 active.setStandingOrders(Collections.emptyList());

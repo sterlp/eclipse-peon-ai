@@ -1,9 +1,10 @@
-package org.sterl.llmpeon.tool;
+package org.sterl.llmpeon.tool.tools;
 
 import java.util.Collections;
 
-import org.sterl.llmpeon.agent.AiMonitor;
+import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.tool.ToolService;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -21,6 +22,7 @@ public class SearchAgentTool extends AbstractTool {
             - Use available tools to explore files, read source code, fetch documentation, or navigate types.
             - Prefer targeted searches over broad ones. Read only what is relevant to the question.
             - Stop using tools as soon as you have enough information to answer.
+            - Remove every word that does not add meaning to keep the context small
             - Try to read informations from the eclipse workspace class search first before reaching out to the web or mcp
 
             Output:
@@ -54,7 +56,7 @@ public class SearchAgentTool extends AbstractTool {
                     0.1);
 
 
-            m.onAction("SearchAgent done for: " + prompt);
+            onTool("SearchAgent done for: " + prompt);
             String answer = response != null ? response.aiMessage().text() : null;
             return StringUtil.hasValue(answer) ? answer
                     : "Search completed but returned no result after " + ToolService.MAX_ITERATIONS + " iterations.";

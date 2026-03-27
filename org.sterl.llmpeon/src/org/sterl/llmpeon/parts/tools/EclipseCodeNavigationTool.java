@@ -69,7 +69,7 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
                 sb.append("\n... ").append(found.size() - MAX_TYPE_RESULTS)
                   .append(" more results. Narrow your search.");
             }
-            monitorMessage("Found " + found.size() + " matching " + typeName);
+            onTool("Found " + found.size() + " matching " + typeName);
             return sb.toString();
         } catch (JavaModelException e) {
             throw new RuntimeException("Search failed: " + e.getMessage(), e);
@@ -111,7 +111,7 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
                 appendBinarySignatures(sb, type);
             }
 
-            monitorMessage("Reading type " + fqn + " " + projectName + (StringUtil.hasNoValue(source) ? " source" : " binary"));
+            onTool("Reading type " + fqn + " " + projectName + (StringUtil.hasNoValue(source) ? " source" : " binary"));
             return sb.toString();
         } catch (JavaModelException e) {
             throw new RuntimeException("Read source failed: " + e.getMessage(), e);
@@ -209,7 +209,7 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
                 sb.append("\n... capped at ").append(MAX_REFERENCE_RESULTS)
                   .append(" results. Narrow with a project name.");
             }
-            monitorMessage("Reading references of " + target.getElementName() + " found " + matches.size() + " matches.");
+            onTool("Reading references of " + target.getElementName() + " found " + matches.size() + " matches.");
             return sb.toString();
         } catch (Exception e) {
             throw new RuntimeException("Reference search failed: " + e.getMessage(), e);
@@ -255,7 +255,7 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
             throw new RuntimeException("Resource search failed: " + e.getMessage(), e);
         }
 
-        monitorMessage("Search for " + glob + " in " + projects.size() + " projects.");
+        onTool("Search for " + glob + " in " + projects.size() + " projects.");
         
         if (matches.isEmpty()) {
             return "No resources found matching '" + namePattern + "' in following projects: " + projects.stream().map(p -> p.getName());
@@ -297,7 +297,7 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
             IType[] subtypes = hierarchy.getAllSubtypes(type);
 
             
-            monitorMessage("Reading implementations " + subtypes.length + " of " + typeName);
+            onTool("Reading implementations " + subtypes.length + " of " + typeName);
             if (subtypes.length == 0) {
                 return "No implementations found for: " + typeName + ".";
             }

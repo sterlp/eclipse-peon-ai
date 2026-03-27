@@ -2,6 +2,7 @@ package org.sterl.llmpeon.agent;
 
 import java.util.List;
 
+import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -45,7 +46,7 @@ public class AiCompressorAgent {
         var msg = new StringBuilder();
         messages.stream().forEach(m -> msg.append(toText(m)));
 
-        if (monitor != null) monitor.onAction("Compressing conversation " + messages.size() + " messages");
+        if (monitor != null) monitor.onTool("Compressing conversation " + messages.size() + " messages");
         return chatModel.chat(ChatRequest.builder()
                 .temperature(0.1)
                 .messages(COMPRESS_SYSTEM, UserMessage.from(msg.toString()))

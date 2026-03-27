@@ -6,14 +6,14 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.ide.IDE;
-import org.sterl.llmpeon.agent.AbstractChatService;
-import org.sterl.llmpeon.agent.AiDeveloperService;
-import org.sterl.llmpeon.agent.AiMonitor;
-import org.sterl.llmpeon.agent.AiPlannerService;
+import org.sterl.llmpeon.AbstractChatService;
+import org.sterl.llmpeon.AiDeveloperService;
+import org.sterl.llmpeon.AiPlannerService;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.tools.AgentModeTools;
+import org.sterl.llmpeon.shared.AiMonitor;
 
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;

@@ -1,13 +1,13 @@
-package org.sterl.llmpeon.agent;
+package org.sterl.llmpeon;
 
 import java.util.function.Predicate;
 
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.template.TemplateContext;
-import org.sterl.llmpeon.tool.CompressorAgentTool;
-import org.sterl.llmpeon.tool.SmartToolExecutor;
 import org.sterl.llmpeon.tool.ToolService;
+import org.sterl.llmpeon.tool.component.SmartToolExecutor;
+import org.sterl.llmpeon.tool.tools.CompressorAgentTool;
 
 public class AiDeveloperService extends AbstractChatService {
 
@@ -27,6 +27,8 @@ public class AiDeveloperService extends AbstractChatService {
             - For complex tasks, create a plan and get developer approval before proceeding
             - If a needed tool doesn't exist, describe what the developer should implement
             - Ask when file placement or intent is ambiguous
+            - Remove every word that does not add meaning to keep the context small
+            - Call tools using JSON
             """;
 
     private static final String AGENT_MODE_ADDITION = """
@@ -56,7 +58,7 @@ public class AiDeveloperService extends AbstractChatService {
 
     @Override
     protected double getTemperature() {
-        return 0.2;
+        return 0.3;
     }
 
     @Override

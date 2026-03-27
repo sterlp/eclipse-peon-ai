@@ -5,7 +5,7 @@ import java.util.Set;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.sterl.llmpeon.parts.monitor.EclipseAiMonitor;
-import org.sterl.llmpeon.tool.AbstractTool;
+import org.sterl.llmpeon.tool.tools.AbstractTool;
 
 public class AbstractEclipseTool extends AbstractTool {
 
@@ -29,8 +29,9 @@ public class AbstractEclipseTool extends AbstractTool {
     }
     
     @Override
-    protected void monitorMessage(String m) {
-        super.monitorMessage(m);
+    protected void onTool(String m) {
+        super.onTool(m);
+        getProgressMonitor().worked(1);
         getProgressMonitor().subTask(m);
     }
 }

@@ -1,11 +1,12 @@
-package org.sterl.llmpeon.tool;
+package org.sterl.llmpeon.tool.component;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.sterl.llmpeon.agent.AiMonitor;
+import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.tool.SmartTool;
 
 import dev.langchain4j.model.chat.ChatModel;
 
@@ -43,7 +44,7 @@ public class SmartToolExecutor extends DefaultToolExecutor {
         } catch (IllegalArgumentException e) {
             throw e;
         } catch (RuntimeException e) {
-            if (monitor != null) monitor.onAction(spec.name() + " failed. " + e.getMessage());
+            if (monitor != null) monitor.onProblem(spec.name() + " failed: " + e.getMessage());
             throw e;
         } finally {
             tool.withMonitor(AiMonitor.NULL_MONITOR);

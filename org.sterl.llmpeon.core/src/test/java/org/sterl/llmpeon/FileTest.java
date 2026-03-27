@@ -7,6 +7,11 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.sterl.llmpeon.tool.model.SimpleMessage;
+import org.sterl.llmpeon.tool.model.SimpleMessage.Type;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 class FileTest {
 
@@ -33,6 +38,12 @@ class FileTest {
         Path firstSegment = path.getName(0);
         
         assertEquals(expected, firstSegment.toString());
-    } 
-
+    }
+    
+    @Test
+    void testFoo() throws JsonProcessingException {
+        var mapper = new ObjectMapper();
+        var msg = new SimpleMessage(Type.USER, "Hello");
+        System.out.println("appendMessage(" + mapper.writeValueAsString(msg) + ");");
+    }
 }

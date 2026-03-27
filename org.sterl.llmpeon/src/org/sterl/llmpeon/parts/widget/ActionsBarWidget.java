@@ -18,7 +18,7 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.sterl.llmpeon.agent.PeonMode;
+import org.sterl.llmpeon.PeonMode;
 
 public class ActionsBarWidget extends Composite {
 
@@ -148,12 +148,13 @@ public class ActionsBarWidget extends Composite {
         int pct = tokenMax > 0 ? (tokenUsed * 100) / tokenMax : 0;
         if (pct >= 70 ) btnCompress.setForeground(colorWarning);
         else if (pct >= 88) btnCompress.setForeground(colorError);
-
         else btnCompress.setForeground(null);
+
         btnCompress.setText("Compact " + pct + "%");
         btnCompress.setToolTipText(tokenUsed + " / " + tokenMax + " tokens used (" + pct
                 + "%) — click to compact the conversation");
         btnCompress.getParent().layout(false, false);
+        btnCompress.setEnabled(tokenUsed > 100 && !working);
     }
 
     /** Enable/disable the entire bar while a request is in flight. */

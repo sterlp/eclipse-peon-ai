@@ -51,7 +51,7 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
                 ? "Run all tests in " + projectName
                 : "Run " + testClassName + " in " + projectName;
 
-        monitorMessage(launchName);
+        onTool(launchName);
         try {
             // Collect failures directly in the listener
             var failures = Collections.synchronizedList(new ArrayList<String>());
@@ -119,7 +119,7 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
                             + failures.size() + " failures so far.";
                 }
 
-                monitorMessage("Reading test results of " + projectName);
+                onTool("Reading test results of " + projectName);
                 return formatResults(sessionName[0], testCount[0], failures);
             } finally {
                 JUnitCore.removeTestRunListener(listener);
