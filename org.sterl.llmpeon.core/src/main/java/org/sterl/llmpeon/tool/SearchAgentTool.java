@@ -1,21 +1,35 @@
 package org.sterl.llmpeon.tool;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Collections;
 
 import org.sterl.llmpeon.agent.AiMonitor;
-import org.sterl.llmpeon.agent.AiSearchAgent;
 import org.sterl.llmpeon.shared.StringUtil;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 
 public class SearchAgentTool extends AbstractTool {
+    
+    final SystemMessage system = SystemMessage.systemMessage("""
+            You are a focused search assistant. Your only job is to find information.
 
-    private static final int MAX_ITERATIONS = 50;
+            Strategy:
+            - Use available tools to explore files, read source code, fetch documentation, or navigate types.
+            - Prefer targeted searches over broad ones. Read only what is relevant to the question.
+            - Stop using tools as soon as you have enough information to answer.
+            - Try to read informations from the eclipse workspace class search first before reaching out to the web or mcp
+
+            Output:
+            - Return a concise, factual answer.
+            - Include the relevant file paths and only the minimal code excerpts that directly answer the question.
+            - Omit irrelevant detail.
+            - Do not ask follow-up questions. If you cannot find the answer, say so and explain what you tried.
+            """);
+
     private final ToolService toolService;
 
     public SearchAgentTool(ToolService toolService) {
@@ -29,34 +43,21 @@ public class SearchAgentTool extends AbstractTool {
         final AiMonitor m = AiMonitor.nullSafety(monitor);
 
         try {
-            var searchAgent = new AiSearchAgent(chatModel);
-            searchAgent.withTools(toolService.readOnlyToolSpecifications());
-
-            List<ChatMessage> messages = new ArrayList<>();
+            ChatMemory messages = MessageWindowChatMemory
+                    .withMaxMessages(ToolService.MAX_ITERATIONS + 10);
+            messages.add(system);
             messages.add(UserMessage.from(prompt));
 
-            ChatResponse response = null;
-            int iterations = 0;
+            var response = toolService.executeLoop(Collections.emptyList(), messages, 
+                    chatModel, m, 
+                    e -> !e.getTool().isEditTool() && !(e.getTool() instanceof SearchAgentTool), 
+                    0.1);
 
-            do {
-                if (iterations++ >= MAX_ITERATIONS) {
-                    m.onAction("SearchAgent: max iterations reached of " + MAX_ITERATIONS);
-                    break;
-                }
-                response = searchAgent.call(messages, m);
-                messages.add(response.aiMessage());
-                
-                messages = toolService.runAllTools(response, chatModel, m, messages);
-                
-                if (m.isCanceled()) break;
-                
-             // TODO sometimes we get no response at all from the AI -> https://github.com/langchain4j/langchain4j/issues/4786
-            } while (response.aiMessage().hasToolExecutionRequests());
 
-            m.onAction("SearchAgent done (" + iterations + " iterations) for: " + prompt);
+            m.onAction("SearchAgent done for: " + prompt);
             String answer = response != null ? response.aiMessage().text() : null;
             return StringUtil.hasValue(answer) ? answer
-                    : "Search completed but returned no result after " + iterations + " iterations.";
+                    : "Search completed but returned no result after " + ToolService.MAX_ITERATIONS + " iterations.";
 
         } catch (Exception e) {
             String msg = "SearchAgent error: " + e.getMessage();

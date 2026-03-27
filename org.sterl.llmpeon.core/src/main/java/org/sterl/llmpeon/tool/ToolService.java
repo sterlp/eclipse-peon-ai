@@ -29,6 +29,8 @@ import dev.langchain4j.model.chat.response.ChatResponse;
  * https://github.com/langchain4j/langchain4j/blob/main/docs/docs/tutorials/tools.md
  */
 public class ToolService {
+    
+    public static final int MAX_ITERATIONS = 75;
 
     private final Map<String, SmartToolExecutor> toolExecutors = new HashMap<>();
 
@@ -42,14 +44,6 @@ public class ToolService {
 
     public List<ToolSpecification> toolSpecifications() {
         return toolExecutors.values().stream()
-                .map(SmartToolExecutor::getSpec)
-                .toList();
-    }
-
-    /** Returns only tool specs for tools where {@link SmartTool#isEditTool()} is false. */
-    public List<ToolSpecification> readOnlyToolSpecifications() {
-        return toolExecutors.values().stream()
-                .filter(e -> !e.getTool().isEditTool())
                 .map(SmartToolExecutor::getSpec)
                 .toList();
     }
@@ -85,9 +79,12 @@ public class ToolService {
             double temperature) {
         ChatResponse response = null;
 
+        int iterations = 0;
+        boolean shouldLoop = true;
         do {
             var messages = new ArrayList<ChatMessage>(staticMessages);
             messages.addAll(memory.messages());
+
             var builder = ChatRequest.builder()
                     .temperature(temperature)
                     .messages(toOneSystemMessage(messages));
@@ -99,9 +96,17 @@ public class ToolService {
 
             memory.set(runAllTools(response, chatModel, monitor, memory.messages()));
 
-            if (monitor.isCanceled()) break;
-            // TODO sometimes we get no response at all from the AI -> https://github.com/langchain4j/langchain4j/issues/4786
-        } while (response.aiMessage().hasToolExecutionRequests());
+            if (iterations++ >= MAX_ITERATIONS) {
+                monitor.onProblem("Tool loop reached max iterations - stopping after " + iterations);
+                break;
+            }
+            // https://github.com/langchain4j/langchain4j/issues/4786
+            shouldLoop = !monitor.isCanceled()
+                    || response.aiMessage().hasToolExecutionRequests()
+                    || (StringUtil.hasNoValue(response.aiMessage().text()) 
+                            && StringUtil.hasValue(response.aiMessage().thinking())
+                        );
+        } while (shouldLoop);
 
         return response;
     }

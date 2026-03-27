@@ -83,8 +83,129 @@ Set the API Key to a dummy value like `none` if the server does not require one.
 
 - [Model overview](https://docs.github.com/en/copilot/reference/ai-models/supported-models)
 
+## Advanced Settings
+
+### Token Window
+
+The **Token Window** setting controls how many tokens of conversation history are sent to the AI model with each request. This is configured in the preference page as an integer field and stored in `LlmConfig.tokenWindow`.
+
+| Setting | Value |
+|---------|-------|
+| Preference Key | `llm.tokenWindow` (`PREF_TOKEN_WINDOW`) |
+| Default Value | `4000` tokens |
+| Type | Integer |
+| Editor Component | `IntegerFieldEditor` in `AiConfigPreferenceView` |
+
+---
+
+#### Configuration Flow
+
+```mermaid
+graph LR
+    A[User sets value in UI] --> B[Eclipse Preference Store<br/>ScopedPreferenceStore]
+    B --> C[LlmConfig.tokenWindow field]
+    C --> D1[Provider buildChatModel()<br/>limits context sent to LLM]
+    C --> D2[TemplateContext.setTokenWindow()<br/>available as ${tokenWindow}]
+```
+
+**Key Points:**
+1. Value is stored in Eclipse `ScopedPreferenceStore` with instance scope
+2. Retrieved by `LlmConfig.tokenWindow()` field (default: 4000)
+3. Used by provider's `buildChatModel()` for context window limits
+4. Also set in `TemplateContext` as template variable `${tokenWindow}`
+
+---
+
+#### Template Variable Integration
+
+The token window is available as a template variable `${tokenWindow}` in prompt templates, allowing dynamic reference to the configured limit:
+
+```java
+// Example usage in system prompts or instruction templates
+String systemPrompt = "Keep responses within ${tokenWindow} tokens.";
+```
+
+This enables agent personas and instruction templates to respect context boundaries defined by the user.
+
+---
+
+#### Important Distinction: Token Window vs Message Memory Buffer
+
+| Component | Purpose | Limit | Configurable |
+|-----------|---------|-------|--------------|
+| **Token Window** | Context sent to AI provider | ~4000 (configurable) | Yes - via this setting |
+| **Message Memory Buffer** | Internal conversation history storage | 500,000 messages | Fixed in `MessageWindowChatMemory` |
+
+**Explanation:** The token window limits what context is *sent to the LLM* for each request, while the message memory buffer stores conversation history internally. A user can have a large internal history but only send the most recent tokens within their configured window to the AI model.
+
+---
+
+#### How It Works
+
+1. User sets token window value in preferences
+2. Value stored in `ScopedPreferenceStore` under key `llm.tokenWindow`
+3. When chat service starts, `LlmConfig.newConfig()` initializes with default 4000 (or loaded from prefs)
+4. Each request includes up to `tokenWindow` tokens of conversation history
+5. AI provider may adjust based on their own limits
+
+---
+
+#### Practical Guidance
+
+**Recommended Values by Use Case:**
+
+| Value Range | Use Case | Trade-offs |
+|-------------|----------|------------|
+| **1000-2000** | Simple queries, coding tasks, one-off requests | Fast responses, lower costs, limited context awareness |
+| **2000-4000** | General conversation, most everyday use cases | Balanced approach, good context retention without excessive latency |
+| **4000-8192** | Complex multi-turn conversations, long discussions | Best for referencing earlier messages, may increase latency and costs |
+
+---
+
+#### Provider-Specific Context Limits
+
+Different AI providers have different maximum context window capabilities:
+
+| Provider | Typical Maximum | Notes |
+|----------|-----------------|-------|
+| **Ollama (local)** | 2048-4096 (model dependent) | Check specific model documentation; varies by quantization |
+| **OpenAI gpt-4o** | Up to 128,000 tokens | Generous limits; token window setting often irrelevant for these models |
+| **LM Studio** | Model-dependent | Depends on underlying model configuration in LM Studio UI |
+| **Google Gemini** | Up to 1M+ tokens (some models) | Check specific model documentation |
+| **Mistral AI** | Varies by model | Typically 32K-128K context windows |
+
+**Recommendation:** For local providers (Ollama, LM Studio), set token window close to their default. For cloud providers with large context windows (OpenAI, Gemini), you can set higher values if needed for long conversations.
+
+---
+
+#### Important Considerations
+
+1. **Token counting includes both directions**: The token window counts both user messages AND AI model responses in the conversation history.
+
+2. **Provider auto-truncation**: If you set a value larger than your provider supports, they may:
+   - Automatically truncate older messages (silently)
+   - Reject the request with an error
+   - Return degraded responses
+
+3. **Check provider documentation**: Before setting very high values, verify your specific model's maximum context window in the provider's documentation.
+
+4. **Testing recommended**: After changing token window, test with a longer conversation to ensure the AI can reference earlier messages correctly.
+
+5. **Token estimation vs actual tokens**: The value you set is an estimate; actual token counts vary by language and model encoding.
+
+### Thinking Support
+
+The **Supports Thinking** option enables models that support "thinking" or chain-of-thought reasoning, allowing them to show intermediate reasoning steps before generating final responses. This is useful for complex problem-solving tasks where you want to see the model's thought process.
+
 ## Testing the Connection
 
 1. Open the Peon AI chat view
 2. Type a test message like "Hello"
 3. If configured correctly, you should receive a response
+
+::: tip Troubleshooting
+If connection tests fail, verify:
+- The server is running and accessible at the specified URL
+- Firewall settings allow connections to the port
+- For local servers (Ollama, LM Studio), ensure they're started before testing
+:::
