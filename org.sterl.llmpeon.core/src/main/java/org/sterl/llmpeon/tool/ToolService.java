@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import org.jspecify.annotations.NonNull;
@@ -89,7 +90,8 @@ public class ToolService {
             AiMonitor monitor,
             @NonNull
             Predicate<SmartToolExecutor> toolFilter,
-            double temperature) {
+            double temperature,
+            Consumer<ChatResponse> onLoop) {
         ChatResponse response = null;
 
         int iterations = 0;
@@ -107,7 +109,16 @@ public class ToolService {
             if (!toolSpecs.isEmpty()) builder.toolSpecifications(toolSpecs);
             
             response = chatModel.chat(builder.build());
+
+            shouldLoop = response.aiMessage().hasToolExecutionRequests()
+                    // https://github.com/langchain4j/langchain4j/issues/4786
+                    || (StringUtil.hasNoValue(response.aiMessage().text()) 
+                            && StringUtil.hasValue(response.aiMessage().thinking())
+                        );
+            if (shouldLoop) onLoop.accept(response);
+
             ToSimpleMessage.INSTANCE.convert(response.aiMessage()).forEach(monitor::onMessage);
+
             memory.set(runAllTools(response, chatModel, monitor, memory.messages()));
 
             if (iterations++ >= MAX_ITERATIONS) {
@@ -115,12 +126,6 @@ public class ToolService {
                 break;
             }
             if (monitor.isCanceled()) break;
-
-            shouldLoop = response.aiMessage().hasToolExecutionRequests()
-                    // https://github.com/langchain4j/langchain4j/issues/4786
-                    || (StringUtil.hasNoValue(response.aiMessage().text()) 
-                            && StringUtil.hasValue(response.aiMessage().thinking())
-                        );
         } while (shouldLoop);
 
         return response;

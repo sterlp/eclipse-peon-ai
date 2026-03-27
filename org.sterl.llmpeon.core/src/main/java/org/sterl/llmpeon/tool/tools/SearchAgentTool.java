@@ -53,7 +53,8 @@ public class SearchAgentTool extends AbstractTool {
             var response = toolService.executeLoop(Collections.emptyList(), messages, 
                     chatModel, m, 
                     e -> !e.getTool().isEditTool() && !(e.getTool() instanceof SearchAgentTool), 
-                    0.1);
+                    0.1,
+                    r -> {});
 
 
             onTool("SearchAgent done for: " + prompt);

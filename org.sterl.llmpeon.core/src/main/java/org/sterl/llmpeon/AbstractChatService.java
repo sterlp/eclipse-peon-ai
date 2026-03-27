@@ -59,7 +59,11 @@ public abstract class AbstractChatService {
 
         var staticMessages = buildStaticMessages();
         var response = toolService.executeLoop(
-                staticMessages, memory, chatModel, monitor, getToolFilter(), getTemperature());
+                staticMessages, memory, chatModel, monitor, 
+                getToolFilter(), 
+                getTemperature(),
+                this::updateTokenCount);
+
         updateTokenCount(response);
         return response;
     }

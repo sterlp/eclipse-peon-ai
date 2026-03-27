@@ -35,7 +35,7 @@ class ToolServiceTest {
         var response = subject.executeLoop(Collections.emptyList(), 
                 memory,
                 cm, 
-                AiMonitor.NULL_MONITOR, t -> true, 0);
+                AiMonitor.NULL_MONITOR, t -> true, 0, r -> {});
         
         // THEN
         assertEquals("Hello", response.aiMessage().text());
@@ -58,7 +58,7 @@ class ToolServiceTest {
         var response = subject.executeLoop(Collections.emptyList(), 
                 memory,
                 cm, 
-                AiMonitor.NULL_MONITOR, t -> true, 0);
+                AiMonitor.NULL_MONITOR, t -> true, 0, r -> {});
         
         // THEN
         assertEquals("Hello", response.aiMessage().text());
