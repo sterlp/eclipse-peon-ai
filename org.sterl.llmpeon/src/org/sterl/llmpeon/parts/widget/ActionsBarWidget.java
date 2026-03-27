@@ -3,6 +3,7 @@ package org.sterl.llmpeon.parts.widget;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 import org.eclipse.debug.ui.DebugUITools;
@@ -31,7 +32,7 @@ public class ActionsBarWidget extends Composite {
     private Combo modeCombo;
     private Combo modelCombo;
 
-    private boolean working = false;
+    private final AtomicBoolean working = new AtomicBoolean(false);
     private boolean agentModeAvailable = false;
     
     private final Color colorWarning;
@@ -154,12 +155,12 @@ public class ActionsBarWidget extends Composite {
         btnCompress.setToolTipText(tokenUsed + " / " + tokenMax + " tokens used (" + pct
                 + "%) — click to compact the conversation");
         btnCompress.getParent().layout(false, false);
-        btnCompress.setEnabled(tokenUsed > 100 && !working);
+        btnCompress.setEnabled(tokenUsed > 100 && !this.working.get());
     }
 
     /** Enable/disable the entire bar while a request is in flight. */
     public void lockWhileWorking(boolean value) {
-        this.working = value;
+        this.working.set(value);
         // Do NOT disable the parent composite — that would also block btnStop from receiving events.
         // Instead, disable each child individually.
         modeCombo.setEnabled(!value);
@@ -170,13 +171,17 @@ public class ActionsBarWidget extends Composite {
         btnClear.setEnabled(!value);
         if (value) btnImplement.setEnabled(false); // re-enable is handled by updateModeUI
     }
+    
+    public boolean isWorking() {
+        return this.working.get();
+    }
 
     /** Show/hide the "Start Impl." button based on mode and whether an AI reply exists. */
     public void updateModeUI(PeonMode mode, boolean implEnabled) {
         boolean isPlanLike = mode == PeonMode.PLAN || mode == PeonMode.AGENT;
         boolean isAgent = mode == PeonMode.AGENT;
         modeCombo.select(mode.ordinal());
-        btnImplement.setEnabled(!working && isPlanLike && implEnabled);
+        btnImplement.setEnabled(!this.working.get() && isPlanLike && implEnabled);
         boolean implVisibilityChanged = btnImplement.getVisible() != isPlanLike;
         if (implVisibilityChanged) {
             ((RowData) btnImplement.getLayoutData()).exclude = !isPlanLike;
@@ -210,7 +215,7 @@ public class ActionsBarWidget extends Composite {
         modelCombo.setEnabled(true);
         modelCombo.setItems(models.toArray(new String[0]));
         selectModel(configuredModel);
-        if (!working) btnSend.setEnabled(true);
+        if (!this.working.get()) btnSend.setEnabled(true);
     }
 
     /** Select the given model in the combo (no-op if not found — caller handles fallback). */

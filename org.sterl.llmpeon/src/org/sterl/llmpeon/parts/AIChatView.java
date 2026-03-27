@@ -480,7 +480,14 @@ public class AIChatView implements EclipseAiMonitor {
         if (StringUtil.hasValue(text)) {
             chatHistory.appendMessage(new SimpleMessage(Type.USER, text));
             chatInput.clearText();
+            
+            // are already working -> we only append the text message to the current history ...
+            if (actionsBar.isWorking()) {
+                getActiveService().addMessage(UserMessage.from(text));
+                return;
+            }
         }
+        
 
         actionsBar.lockWhileWorking(true);
         Job.create("Peon AI request", monitor -> {
