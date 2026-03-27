@@ -35,7 +35,7 @@
                         <artifact>
                             <groupId>org.sterl</groupId>
                             <artifactId>llmpeon-target</artifactId>
-                            <version>1.0.0-SNAPSHOT</version>
+                            <version>${project.version}</version>
                         </artifact>
                     </target>
                 </configuration>
@@ -43,9 +43,7 @@
         </plugins>
     </build>
     <modules>
-        <!-- currently not used ... -->
         <module>org.sterl.llmpeon.core</module>
-
         <module>releng/llmpeon-target</module>
         <module>releng/llmpeon-feature</module>
         <module>releng/llmpeon-update-site</module>
