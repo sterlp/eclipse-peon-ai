@@ -109,9 +109,7 @@ public class AIChatView implements EclipseAiMonitor {
     private IResource selectedResource;
 
     private final IPreferenceChangeListener prefListener = event -> {
-        if (parent != null && !parent.isDisposed()) {
-            parent.getDisplay().asyncExec(this::applyConfig);
-        }
+        EclipseUtil.runInUiThread(parent, this::applyConfig);
     };
 
     @PostConstruct
@@ -249,13 +247,15 @@ public class AIChatView implements EclipseAiMonitor {
             agentMode.setProject(project);
         }
 
-        if (actionsBar != null) Display.getDefault().asyncExec(() -> {
-            actionsBar.setAgentModeAvailable(currentProject != null && currentProject.isOpen());
-            if (currentProject == null && currentMode == PeonMode.AGENT) {
-                onModeChange(PeonMode.DEV);
-            }
-            refreshStatusLine();
-        });
+        if (actionsBar != null) {
+            EclipseUtil.runInUiThread(parent, () -> {
+                actionsBar.setAgentModeAvailable(currentProject != null && currentProject.isOpen());
+                if (currentProject == null && currentMode == PeonMode.AGENT) {
+                    onModeChange(PeonMode.DEV);
+                }
+                refreshStatusLine();
+            });
+        }
     }
 
     @Inject
@@ -272,7 +272,7 @@ public class AIChatView implements EclipseAiMonitor {
 
     @Override
     public void onMessage(SimpleMessage m) {
-        Display.getDefault().asyncExec(() -> {
+        EclipseUtil.runInUiThread(parent, () -> {
             chatHistory.appendMessage(m);
             actionsBar.updateCompact(getActiveService().getTokenSize(), getActiveService().getTokenWindow());
         });
@@ -280,8 +280,9 @@ public class AIChatView implements EclipseAiMonitor {
 
     @Override
     public void onFileUpdate(AiFileUpdate update) {
+        if (parent.isDisposed()) return;
         var diff = SimpleDiff.unifiedDiff(update.file(), update.oldContent(), update.newContent());
-        Display.getDefault().asyncExec(() -> chatHistory.showDiff(diff));
+        EclipseUtil.runInUiThread(parent, () -> chatHistory.showDiff(diff));
     }
 
     @Override
@@ -353,7 +354,7 @@ public class AIChatView implements EclipseAiMonitor {
                 || !java.util.Objects.equals(config.apiKey(), lastListedConfig.apiKey())) {
             loadModelsInBackground(config);
         } else {
-            Display.getDefault().asyncExec(() -> {
+            EclipseUtil.runInUiThread(parent, () -> {
                 if (parent.isDisposed()) return;
                 String[] items = actionsBar.getModelItems();
                 boolean inList = StringUtil.hasValue(config.model())
@@ -371,8 +372,7 @@ public class AIChatView implements EclipseAiMonitor {
         Job.create("Fetching available models", monitor -> {
             var models = config.providerType().listModels(config);
             lastListedConfig = config;
-            Display.getDefault().asyncExec(() -> {
-                if (parent.isDisposed()) return;
+            EclipseUtil.runInUiThread(parent, () -> {
                 actionsBar.applyModelList(models, config.model());
                 if (!models.isEmpty() && !models.contains(config.model())) {
                     String[] items = actionsBar.getModelItems();
@@ -460,7 +460,7 @@ public class AIChatView implements EclipseAiMonitor {
                 ex = e;
             } finally {
                 monitorRef.set(new NullProgressMonitor());
-                Display.getDefault().asyncExec(() -> actionsBar.lockWhileWorking(false));
+                EclipseUtil.runInUiThread(parent, () -> actionsBar.lockWhileWorking(false));
             }
             monitor.done();
             return ex == null ? Status.OK_STATUS
@@ -498,14 +498,17 @@ public class AIChatView implements EclipseAiMonitor {
                 int msgCountBefore = active.getMessages().size();
                 active.setStandingOrders(buildStandingOrders());
 
+                // TODO: race condition if we switch to dev mode, as finally will maybe run later, so we lock one more time here ...
+                EclipseUtil.runInUiThread(parent, () -> actionsBar.lockWhileWorking(true));
                 switch (currentMode) {
                     case DEV   -> developerService.call(text.isEmpty() ? null : text, this);
                     case PLAN  -> plannerService.call(text.isEmpty() ? null : text, this);
                     case AGENT -> agentMode.call(text.isEmpty() ? null : text, this);
                 };
 
-                Display.getDefault().asyncExec(() -> {
-                    if (parent.isDisposed()) return;
+                EclipseUtil.runInUiThread(parent, () -> {
+                    actionsBar.lockWhileWorking(false);
+
                     if (agentMode.consumeImplementationRequest()) {
                         agentMode.startImplementation();
                         refreshChat();
@@ -520,9 +523,9 @@ public class AIChatView implements EclipseAiMonitor {
                 ex = e;
                 onMessage(new SimpleMessage(Type.PROBLEM, e.getMessage()));
             } finally {
+                EclipseUtil.runInUiThread(parent, () -> actionsBar.lockWhileWorking(false));
                 monitor.done();
                 active.setStandingOrders(Collections.emptyList());
-                Display.getDefault().asyncExec(() -> actionsBar.lockWhileWorking(false));
                 monitorRef.set(new NullProgressMonitor());
             }
             return PeonConstants.status("Peon AI\n" + developerService.getConfig(), ex);
@@ -542,7 +545,7 @@ public class AIChatView implements EclipseAiMonitor {
             }
             actionsBar.setAgentModeAvailable(currentProject != null && currentProject.isOpen());
         }
-        Display.getDefault().asyncExec(() -> {
+        EclipseUtil.runInUiThread(parent, () -> {
             statusLine.setPinned(pinned);
             refreshStatusLine();
         });

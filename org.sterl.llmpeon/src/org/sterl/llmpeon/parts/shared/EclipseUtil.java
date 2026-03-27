@@ -11,12 +11,21 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.PlatformUI;
 import org.sterl.llmpeon.shared.StringUtil;
 
 public class EclipseUtil {
+    
+    public static void runInUiThread(Composite parent, Runnable fn) {
+        if (parent == null || parent.isDisposed()) return;
+        parent.getDisplay().asyncExec(() -> {
+            if (parent.isDisposed()) return;
+            fn.run();
+        });
+    }
 
     public static IProject firstOpenOrSelectedProject() {
         var openFile = getOpenFile();

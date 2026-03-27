@@ -54,7 +54,7 @@ After installation, configure the plugin via **Window > Preferences > Peon AI**:
 ### Opening the Chat View
 
 1. Go to **Window > Show View > Other...**
-2. Search for "Peon AI" or "AI Chat"
+2. Search for "AI Peon" or "AI"
 3. The chat view will appear in your workbench
 
 ### Available Tools
@@ -73,6 +73,9 @@ The AI assistant has access to several tools:
 2. **Generate Tests**: Ask "Write unit tests for the selected class"
 3. **Refactor**: Select code and ask "How can I improve this?"
 4. **Debug**: Paste error messages and ask "What's causing this?"
+
+!!! info "CTRL+Enter"
+    You can also send messages with `CTRL+Enter` or `CMD+Enter` - if the AI is working, the message is added to the history - best effort to add message during a tool loop.
 
 ## Architecture
 
