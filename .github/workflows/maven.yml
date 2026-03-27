@@ -3,9 +3,14 @@ name: build and deploy Peon AI
 on:
   push:
     branches: [ "main" ]
+    paths-ignore:
+      - 'docs/**'
+      - 'skills/**'
   pull_request:
     branches: [ "main" ]
-
+    paths-ignore:
+      - 'docs/**'
+      - 'skills/**'
 jobs:
   build:
     runs-on: ubuntu-latest
