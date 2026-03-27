@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Peon AI
 Bundle-SymbolicName: org.sterl.llmpeon;singleton:=true
-Bundle-Version: 1.0.0.qualifier
+Bundle-Version: 1.1.0.qualifier
 Export-Package: org.sterl.llmpeon.parts
 Bundle-Vendor: Paul Sterl
 Require-Bundle: org.eclipse.swt,
@@ -43,6 +43,7 @@ Bundle-ClassPath: .,
  lib/langchain4j-google-ai-gemini.jar,
  lib/langchain4j-open-ai.jar,
  lib/langchain4j-mistral-ai.jar,
+ lib/langchain4j-anthropic.jar,
  lib/opennlp-tools.jar,
  lib/slf4j-api.jar,
  resources/,

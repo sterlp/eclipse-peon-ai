@@ -13,18 +13,18 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.sterl.llmpeon.tool.DiskFileReadTools;
+import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 
 class DiskFileReadToolsTest {
 
     @TempDir
     Path tempDir;
 
-    DiskFileReadTools tool;
+    DiskFileReadTool tool;
 
     @BeforeEach
     void setUp() {
-        tool = new DiskFileReadTools(tempDir);
+        tool = new DiskFileReadTool(tempDir);
     }
 
     @Test

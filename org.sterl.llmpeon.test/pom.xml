@@ -8,12 +8,21 @@
     <parent>
         <groupId>org.sterl</groupId>
         <artifactId>llmpeon-parent</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <version>1.1.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
     <artifactId>org.sterl.llmpeon.test</artifactId>
     <packaging>eclipse-test-plugin</packaging>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>${mockito.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
 
     <build>
         <plugins>
@@ -24,6 +33,9 @@
                 <configuration>
                     <useUIHarness>false</useUIHarness>
                     <useUIThread>false</useUIThread>
+                    <!-- Only needed when mocking final classes/methods/static:
+                    <argLine>-javaagent:${settings.localRepository}/net/bytebuddy/byte-buddy-agent/VERSION/byte-buddy-agent-VERSION.jar</argLine>
+                    Replace VERSION with the byte-buddy version pulled in transitively by mockito-core. -->
                 </configuration>
             </plugin>
         </plugins>

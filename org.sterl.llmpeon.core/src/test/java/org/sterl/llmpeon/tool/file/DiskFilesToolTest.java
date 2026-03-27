@@ -12,18 +12,18 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.sterl.llmpeon.tool.DiskFileWriteTools;
+import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 
 class DiskFilesToolTest {
 
     @TempDir
     Path tempDir;
 
-    DiskFileWriteTools tool;
+    DiskFileWriteTool tool;
 
     @BeforeEach
     void setUp() {
-        tool = new DiskFileWriteTools(tempDir);
+        tool = new DiskFileWriteTool(tempDir);
     }
 
     @Test

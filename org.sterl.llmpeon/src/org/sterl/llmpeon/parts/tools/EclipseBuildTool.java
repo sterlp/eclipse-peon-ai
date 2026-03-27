@@ -32,7 +32,7 @@ public class EclipseBuildTool extends AbstractEclipseTool {
                   .append("\n---");
             }
         }
-        monitorMessage("List workspace with " + projects.size() + " open projects");
+        onTool("List workspace with " + projects.size() + " open projects");
         return sb.toString();
     }
     
@@ -50,7 +50,7 @@ public class EclipseBuildTool extends AbstractEclipseTool {
     private String readProblems(IProject projectRef) {
         try {
             var status = readProjectStatus(projectRef);
-            monitorMessage("Reading problems of " + projectRef.getName() + ": " + status.countProblems());
+            onTool("Reading problems of " + projectRef.getName() + ": " + status.countProblems());
             if (status.hasProblems()) {
                 return "Project " + projectRef.getName() + " problems:\n" + status.toString();
             } else {
@@ -70,7 +70,7 @@ public class EclipseBuildTool extends AbstractEclipseTool {
         }
         IProject projectRef = project.get();
         try {
-            monitorMessage("Building " + projectName);
+            onTool("Building " + projectName);
             projectRef.deleteMarkers(IMarker.PROBLEM, true, IResource.DEPTH_INFINITE);
             projectRef.refreshLocal(IResource.DEPTH_INFINITE, getProgressMonitor());
             projectRef.build(IncrementalProjectBuilder.CLEAN_BUILD, getProgressMonitor());

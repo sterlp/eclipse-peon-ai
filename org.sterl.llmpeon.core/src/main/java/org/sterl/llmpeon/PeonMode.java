@@ -1,4 +1,4 @@
-package org.sterl.llmpeon.agent;
+package org.sterl.llmpeon;
 
 public enum PeonMode {
     /** Read-only analyst: clarifies requirements and produces a User-Story (the WHAT). */
@@ -6,7 +6,7 @@ public enum PeonMode {
     /** Full-access developer: implements the plan (the HOW). */
     DEV("Peon-Dev"),
     /** Orchestrated plan -> dev loop backed by .plan/overview.md. */
-    AGENT("Peon-Agent");
+    AGENT("Peon-Agent v0.1");
     
     private final String label;
 

@@ -1,4 +1,4 @@
-package org.sterl.llmpeon.tool;
+package org.sterl.llmpeon.tool.tools;
 
 import java.io.IOException;
 import java.net.URI;
@@ -70,7 +70,7 @@ public class WebFetchTool extends AbstractTool {
                 + " Response: " + htmlContent;
         }
 
-        monitorMessage("Reading " + url);
+        onTool("Reading " + url);
         return this.htmlToMarkdownConverter.convert(htmlContent);
     }
 

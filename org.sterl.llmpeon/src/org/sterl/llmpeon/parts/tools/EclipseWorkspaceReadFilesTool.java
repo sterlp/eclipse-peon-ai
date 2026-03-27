@@ -49,7 +49,7 @@ public class EclipseWorkspaceReadFilesTool extends AbstractEclipseTool {
 
         var file = EclipseUtil.resolveInEclipse(filePath);
         if (file.isPresent() && file.get() instanceof IFile f) {
-            monitorMessage("Reading eclipse file " + filePath);
+            onTool("Reading eclipse file " + filePath);
             return IoUtils.readFile(f);
         }
         // fallback: try workspace root and current project
@@ -57,7 +57,7 @@ public class EclipseWorkspaceReadFilesTool extends AbstractEclipseTool {
         for (Path base : resolveBases(wsRoot)) {
             Path fsPath = FileUtils.resolve(base, filePath);
             if (fsPath != null && Files.isRegularFile(fsPath)) {
-                monitorMessage("Resolved outside Eclipse, reading " + filePath);
+                onTool("Resolved outside Eclipse, reading " + filePath);
                 return FileUtils.readString(fsPath);
             }
         }
@@ -98,7 +98,7 @@ public class EclipseWorkspaceReadFilesTool extends AbstractEclipseTool {
             }
         }
 
-        monitorMessage("Search workspace for " + query + " returned " + matches.size() + " results.");
+        onTool("Search workspace for " + query + " returned " + matches.size() + " results.");
         if (matches.isEmpty()) {
             return "No files found matching '" + query + "'. "
                     + "The file may not exist yet (needs to be created), or try a shorter/different query. "
@@ -140,7 +140,7 @@ public class EclipseWorkspaceReadFilesTool extends AbstractEclipseTool {
                     entries.add(prefix + pathToAdd);
                 }
             }
-            monitorMessage("List directories for " + path + " found " + entries.size() + " elements.");
+            onTool("List directories for " + path + " found " + entries.size() + " elements.");
             if (entries.isEmpty()) return "Directory is empty: " + path;
             return String.join("\n", entries);
         } catch (CoreException e) {

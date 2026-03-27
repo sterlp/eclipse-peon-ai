@@ -9,6 +9,7 @@ import org.eclipse.debug.ui.DebugUITools;
 import org.eclipse.debug.ui.IDebugUIConstants;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.RowData;
@@ -17,7 +18,7 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.sterl.llmpeon.agent.PeonMode;
+import org.sterl.llmpeon.PeonMode;
 
 public class ActionsBarWidget extends Composite {
 
@@ -31,8 +32,11 @@ public class ActionsBarWidget extends Composite {
     private Combo modelCombo;
 
     private boolean working = false;
-    private boolean noModelConfigured = false;
     private boolean agentModeAvailable = false;
+    
+    private final Color colorWarning;
+    private final Color colorError;
+
 
     public ActionsBarWidget(Composite parent, int style,
             Runnable onSend,
@@ -44,6 +48,14 @@ public class ActionsBarWidget extends Composite {
             Consumer<String> onModelChange,
             Consumer<Boolean> onAutonomousChange) {
         super(parent, style);
+        
+        colorWarning = new Color(180, 130, 0);
+        colorError = new Color(200, 0, 0);
+        addDisposeListener(e -> {
+            colorWarning.dispose();
+            colorError.dispose();
+        });
+
         setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
         RowLayout rowLayout = new RowLayout(SWT.HORIZONTAL);
@@ -121,7 +133,7 @@ public class ActionsBarWidget extends Composite {
         btnImplement.addListener(SWT.Selection, e -> onImplement.run());
 
         chkAutonomous = new Button(this, SWT.CHECK);
-        chkAutonomous.setText("Auto");
+        chkAutonomous.setText("autonomus");
         chkAutonomous.setToolTipText("Automatically start implementation after the plan is saved");
         RowData rdAuto = new RowData();
         rdAuto.exclude = true;
@@ -132,11 +144,17 @@ public class ActionsBarWidget extends Composite {
 
     /** Update the Compact button label and tooltip with current token usage. */
     public void updateCompact(int tokenUsed, int tokenMax) {
+
         int pct = tokenMax > 0 ? (tokenUsed * 100) / tokenMax : 0;
+        if (pct >= 70 ) btnCompress.setForeground(colorWarning);
+        else if (pct >= 88) btnCompress.setForeground(colorError);
+        else btnCompress.setForeground(null);
+
         btnCompress.setText("Compact " + pct + "%");
         btnCompress.setToolTipText(tokenUsed + " / " + tokenMax + " tokens used (" + pct
                 + "%) — click to compact the conversation");
         btnCompress.getParent().layout(false, false);
+        btnCompress.setEnabled(tokenUsed > 100 && !working);
     }
 
     /** Enable/disable the entire bar while a request is in flight. */
@@ -146,7 +164,7 @@ public class ActionsBarWidget extends Composite {
         // Instead, disable each child individually.
         modeCombo.setEnabled(!value);
         modelCombo.setEnabled(!value);
-        btnSend.setEnabled(!value && !noModelConfigured);
+        btnSend.setEnabled(!value);
         btnStop.setEnabled(value);
         btnCompress.setEnabled(!value);
         btnClear.setEnabled(!value);
@@ -187,21 +205,12 @@ public class ActionsBarWidget extends Composite {
         chkAutonomous.setSelection(value);
     }
 
-    /** Populate the model combo. Disables send if no models are available. */
+    /** Populate the model combo with the available models. */
     public void applyModelList(List<String> models, String configuredModel) {
-        if (models.isEmpty()) {
-            noModelConfigured = true;
-            modelCombo.setEnabled(false);
-            modelCombo.setItems("No model — open Preferences");
-            modelCombo.select(0);
-            btnSend.setEnabled(false);
-        } else {
-            noModelConfigured = false;
-            modelCombo.setEnabled(true);
-            modelCombo.setItems(models.toArray(new String[0]));
-            selectModel(configuredModel);
-            if (!working) btnSend.setEnabled(true);
-        }
+        modelCombo.setEnabled(true);
+        modelCombo.setItems(models.toArray(new String[0]));
+        selectModel(configuredModel);
+        if (!working) btnSend.setEnabled(true);
     }
 
     /** Select the given model in the combo (no-op if not found — caller handles fallback). */
@@ -223,5 +232,11 @@ public class ActionsBarWidget extends Composite {
     /** Returns the items currently listed in the model combo. */
     public String[] getModelItems() {
         return modelCombo.getItems();
+    }
+
+    /** Returns the currently selected model, or null if nothing is selected. */
+    public String getSelectedModel() {
+        String text = modelCombo.getText();
+        return text == null || text.isBlank() ? null : text;
     }
 }

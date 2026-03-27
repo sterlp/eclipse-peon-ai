@@ -1,20 +1,20 @@
-package org.sterl.llmpeon.tool;
+package org.sterl.llmpeon.tool.tools;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import org.sterl.llmpeon.agent.AiMonitor.AiFileUpdate;
 import org.sterl.llmpeon.shared.FileUtils;
+import org.sterl.llmpeon.shared.AiMonitor.AiFileUpdate;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 
-public class DiskFileWriteTools extends AbstractTool {
+public class DiskFileWriteTool extends AbstractTool {
 
     private Path workingDir;
 
-    public DiskFileWriteTools(Path workingDir) {
+    public DiskFileWriteTool(Path workingDir) {
         this.workingDir = workingDir.toAbsolutePath().normalize();
     }
 
@@ -44,12 +44,13 @@ public class DiskFileWriteTools extends AbstractTool {
             throw new IllegalArgumentException(
                     "File not found: " + filePath + ". Use searchDiskFiles to find the correct path.");
         }
-        monitorMessage("Writing " + filePath);
+
         try {
             String oldContent = Files.readString(resolved);
             Files.writeString(resolved, newContent);
             var result = new AiFileUpdate(workingDir.relativize(resolved).toString(), oldContent, newContent);
-            if (hasMonitor()) monitor.onFileUpdate(result);
+            
+            monitor.onFileUpdate(result);
             return "File " + result.file() + " updated.";
         } catch (IOException e) {
             throw new RuntimeException("Failed to write " + filePath, e);
@@ -70,7 +71,8 @@ public class DiskFileWriteTools extends AbstractTool {
         if (resolved == null) {
             throw new IllegalArgumentException("Cannot resolve path: " + filePath);
         }
-        monitorMessage("Creating " + filePath);
+        
+        onTool("Creating " + filePath);
         try {
             boolean existed = Files.exists(resolved);
             Files.createDirectories(resolved.getParent());
@@ -93,12 +95,49 @@ public class DiskFileWriteTools extends AbstractTool {
             onProblem("File not found: " + filePath);
             return "File not found: " + filePath;
         }
-        monitorMessage("Deleting " + filePath);
+
+        onTool("Deleting " + filePath);
         try {
             Files.delete(resolved);
             return "Deleted file: " + workingDir.relativize(resolved);
         } catch (IOException e) {
             throw new RuntimeException("Failed to delete " + filePath, e);
+        }
+    }
+    
+    @Tool("Disk: Replace exact string. Errors if 0 or >1 matches.")
+    public String editDiskFile(@P("file path") String filePath, @P("exact string to replace") String oldString, @P("replacement text") String newString) {
+
+        if (filePath == null || filePath.isBlank()) {
+            throw new IllegalArgumentException("filePath must not be empty");
+        }
+        if (oldString == null || oldString.isBlank()) {
+            throw new IllegalArgumentException("oldString must not be empty");
+        }
+        if (newString == null) {
+            throw new IllegalArgumentException("newString must not be null");
+        }
+        if (oldString.equals(newString)) {
+            throw new IllegalArgumentException("oldString and newString are identical - nothing to change");
+        }
+
+        Path resolved = resolve(filePath);
+        if (resolved == null || !Files.isRegularFile(resolved)) {
+            throw new IllegalArgumentException(
+                    "File not found: " + filePath + ". Use searchDiskFiles to find the correct path.");
+        }
+
+        try {
+            String content = Files.readString(resolved);
+            String newContent = FileUtils.applyEdit(filePath, content, oldString, newString);
+            Files.writeString(resolved, newContent);
+
+            var result = new AiFileUpdate(workingDir.relativize(resolved).toString(), oldString, newString);
+            monitor.onFileUpdate(result);
+
+            return "File " + result.file() + " edited successfully.";
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to edit " + filePath, e);
         }
     }
 

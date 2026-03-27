@@ -33,7 +33,7 @@ public class AgentModeTools extends AbstractEclipseTool {
         }
         var project = getProject();
         var f = IoUtils.writeProjectFile(project, OVERVIEW_FILE, content, getProgressMonitor());
-        monitorMessage("Plan saved to " + JdtUtil.pathOf(f));
+        onTool("Plan saved to " + JdtUtil.pathOf(f));
         agentMode.onPlanSaved();
         return "Plan saved to " + JdtUtil.pathOf(f);
     }
@@ -45,7 +45,7 @@ public class AgentModeTools extends AbstractEclipseTool {
         }
         var project = getProject();
         var f = IoUtils.writeProjectFile(project, PROBLEM_FILE, content, getProgressMonitor());
-        monitorMessage("Problem reported — returning to plan agent");
+        onTool("Problem reported — returning to plan agent");
         agentMode.onProblemReported();
         return "Problem reported. Plan agent will review. " + JdtUtil.pathOf(f);
     }

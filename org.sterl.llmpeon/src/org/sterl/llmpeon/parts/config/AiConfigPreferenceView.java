@@ -41,6 +41,7 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
                     { "OpenAI-compatible (Perplexity, OpenAI, ...)", AiProvider.OPEN_AI.name() },
                     { "Google Gemini", AiProvider.GOOGLE_GEMINI.name() },
                     { "Mistral", AiProvider.MISTRAL.name() },
+                    { "Anthropic Claude", AiProvider.ANTHROPIC.name() },
                     { "GitHub Copilot", AiProvider.GITHUB_COPILOT.name() }
                 },
                 getFieldEditorParent());
@@ -49,7 +50,25 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
         urlEditor = new StringFieldEditor(PeonConstants.PREF_URL, "URL (incl. port):", getFieldEditorParent());
         addField(urlEditor);
 
-        // Check URL button
+        buildCheckUrl();
+
+        addField(new IntegerFieldEditor(PeonConstants.PREF_TOKEN_WINDOW, "Token Window:", getFieldEditorParent()));
+        addField(new BooleanFieldEditor(PeonConstants.PREF_THINKING_ENABLED, "Supports Thinking", getFieldEditorParent()));
+        apiKeyEditor = new StringFieldEditor(PeonConstants.PREF_API_KEY, "API Key:", getFieldEditorParent());
+        addField(apiKeyEditor);
+        addField(new StringFieldEditor(PeonConstants.PREF_SKILL_DIRECTORY, "Skills directory:", getFieldEditorParent()));
+
+        buildGithubLogin();
+
+        Link link = new Link(getFieldEditorParent(), SWT.NONE);
+        link.setText("See <a href=\"https://peon-ai-4e.sterl.org/setup/configuration\">online configuration guide</a> for help.");
+        GridData gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+        gd.horizontalSpan = 2;
+        link.setLayoutData(gd);
+        link.addSelectionListener(SelectionListener.widgetSelectedAdapter(e -> Program.launch(e.text)));
+    }
+
+    private void buildCheckUrl() {
         Button btnCheckUrl = new Button(getFieldEditorParent(), SWT.PUSH);
         btnCheckUrl.setText("Check Host and Port...");
         btnCheckUrl.setToolTipText("Tests TCP connectivity to the configured URL (3s timeout)");
@@ -65,13 +84,9 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
                 MessageDialog.openError(getShell(), "Host Check", "Cannot reach:\n" + urlValue);
             }
         });
+    }
 
-        addField(new IntegerFieldEditor(PeonConstants.PREF_TOKEN_WINDOW, "Token Window:", getFieldEditorParent()));
-        addField(new BooleanFieldEditor(PeonConstants.PREF_THINKING_ENABLED, "Supports Thinking", getFieldEditorParent()));
-        apiKeyEditor = new StringFieldEditor(PeonConstants.PREF_API_KEY, "API Key:", getFieldEditorParent());
-        addField(apiKeyEditor);
-        addField(new StringFieldEditor(PeonConstants.PREF_SKILL_DIRECTORY, "Skills directory:", getFieldEditorParent()));
-
+    private void buildGithubLogin() {
         // GitHub Copilot login button (spans both grid columns like the help link below)
         Button btnLogin = new Button(getFieldEditorParent(), SWT.PUSH);
         btnLogin.setText("Login with GitHub Copilot...");
@@ -86,13 +101,6 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
             providerEditor.load();
             apiKeyEditor.load();
         });
-
-        Link link = new Link(getFieldEditorParent(), SWT.NONE);
-        link.setText("See <a href=\"https://peon-ai-4e.sterl.org/setup/configuration\">online configuration guide</a> for help.");
-        GridData gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
-        gd.horizontalSpan = 2;
-        link.setLayoutData(gd);
-        link.addSelectionListener(SelectionListener.widgetSelectedAdapter(e -> Program.launch(e.text)));
     }
 
     @Override

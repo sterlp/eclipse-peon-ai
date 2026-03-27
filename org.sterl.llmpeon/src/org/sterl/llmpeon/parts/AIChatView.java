@@ -34,10 +34,10 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IWorkingSet;
-import org.sterl.llmpeon.ChatService;
-import org.sterl.llmpeon.agent.AgentService;
-import org.sterl.llmpeon.agent.AiAgent;
-import org.sterl.llmpeon.agent.PeonMode;
+import org.sterl.llmpeon.AbstractChatService;
+import org.sterl.llmpeon.AiDeveloperService;
+import org.sterl.llmpeon.AiPlannerService;
+import org.sterl.llmpeon.PeonMode;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.agent.AgentModeService;
 import org.sterl.llmpeon.parts.agentsmd.AgentsMdService;
@@ -55,16 +55,16 @@ import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFilesTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFilesTool;
 import org.sterl.llmpeon.parts.widget.ActionsBarWidget;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget;
-import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget.SimpleChatMessage;
 import org.sterl.llmpeon.parts.widget.ChatWidget;
 import org.sterl.llmpeon.parts.widget.StatusLineWidget;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.template.TemplateContext;
-import org.sterl.llmpeon.tool.DiskFileReadTools;
-import org.sterl.llmpeon.tool.DiskFileWriteTools;
-import org.sterl.llmpeon.tool.EditTool;
 import org.sterl.llmpeon.tool.ToolService;
+import org.sterl.llmpeon.tool.model.SimpleMessage;
+import org.sterl.llmpeon.tool.model.SimpleMessage.Type;
+import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
+import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -82,17 +82,19 @@ public class AIChatView implements EclipseAiMonitor {
     Logger logger;
 
     private final TemplateContext context = new TemplateContext(Path.of("./"));
-    private ChatService<TemplateContext> chatService;
-    private AgentService agentService;
-    private PeonMode currentMode = PeonMode.DEV;
-    private final ToolService toolService = new ToolService();
     private final SkillService skillService = new SkillService();
+    private final ToolService toolService = new ToolService();
     private final EclipseWorkspaceWriteFilesTool workspaceWriteFilesTool = new EclipseWorkspaceWriteFilesTool();
     private final EclipseWorkspaceReadFilesTool workspaceReadFilesTool = new EclipseWorkspaceReadFilesTool();
     private final AgentsMdService agentsMdService = new AgentsMdService();
     private final AtomicReference<IProgressMonitor> monitorRef = new AtomicReference<>(new NullProgressMonitor());
+
+    private AiDeveloperService developerService;
+    private AiPlannerService plannerService;
     private AgentModeService agentMode;
     private AgentModeTools agentModeTools;
+
+    private PeonMode currentMode = PeonMode.DEV;
     private LlmConfig lastListedConfig;
     private IProject currentProject;
     private boolean projectPinned = false;
@@ -102,7 +104,7 @@ public class AIChatView implements EclipseAiMonitor {
     private StatusLineWidget statusLine;
     private ActionsBarWidget actionsBar;
     private Composite parent;
-    
+
     private ITextSelection textSelection;
     private IResource selectedResource;
 
@@ -117,21 +119,24 @@ public class AIChatView implements EclipseAiMonitor {
         this.parent = parent;
         parent.setLayout(new GridLayout(1, false));
 
-        var rootPaht = ResourcesPlugin.getWorkspace().getRoot().getRawLocation().toFile().toPath();
+        var rootPath = ResourcesPlugin.getWorkspace().getRoot().getRawLocation().toFile().toPath();
         toolService.addTool(workspaceWriteFilesTool);
         toolService.addTool(workspaceReadFilesTool);
-        toolService.addTool(new DiskFileWriteTools(rootPaht));
-        toolService.addTool(new DiskFileReadTools(rootPaht));
-        toolService.addTool(new EditTool(rootPaht));
+        toolService.addTool(new DiskFileWriteTool(rootPath));
+        toolService.addTool(new DiskFileReadTool(rootPath));
         toolService.addTool(new EclipseBuildTool());
         toolService.addTool(new EclipseGrepTool());
         toolService.addTool(new EclipseRunTestTool());
         toolService.addTool(new EclipseCodeNavigationTool());
 
-        chatService = new ChatService<>(LlmPreferenceInitializer.buildWithDefaults(), toolService, skillService, context);
-        agentService = new AgentService(chatService.getChatModel());
+        var config = LlmPreferenceInitializer.buildWithDefaults();
+        developerService = new AiDeveloperService(config, toolService, skillService, context);
+        plannerService = new AiPlannerService(config, toolService, skillService, context);
 
-        agentMode = new AgentModeService(chatService, this::doSendMessage);
+        // Agent mode uses separate instances with agent-mode prompts and isolated memory
+        var agentDevService = new AiDeveloperService(config, toolService, skillService, context, true);
+        var agentPlanService = new AiPlannerService(config, toolService, skillService, context, true);
+        agentMode = new AgentModeService(agentPlanService, agentDevService, this::doSendMessage);
         agentModeTools = new AgentModeTools(agentMode);
 
         chatHistory = new ChatMarkdownWidget(parent, SWT.BORDER);
@@ -144,22 +149,30 @@ public class AIChatView implements EclipseAiMonitor {
 
         actionsBar = new ActionsBarWidget(parent, SWT.NONE,
             this::doSendMessage,
-            () ->  getIProgressMonitor().setCanceled(true),
+            () -> getIProgressMonitor().setCanceled(true),
             this::doCompressContext,
-            () -> { chatService.clear(); chatHistory.clear(); },
+            this::onClear,
             this::doStartImpl,
             this::onModeChange,
-            model -> { chatService.updateConfig(chatService.getConfig().withModel(model)); agentService.updateModel(chatService.getChatModel()); },
+            model -> updateAllConfigs(developerService.getConfig().withModel(model)),
             autonomous -> agentMode.setAutonomous(autonomous)
         );
 
         applyConfig();
 
         if (logger != null)
-            logger.info("AIChatView started: " + chatService.getConfig());
+            logger.info("AIChatView started: " + developerService.getConfig());
 
         IEclipsePreferences prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
         prefs.addPreferenceChangeListener(prefListener);
+        
+        updateSelectedProject(EclipseUtil.firstOpenOrSelectedProject());
+    }
+    
+    private void onClear() {
+        getActiveService().clear(); 
+        chatHistory.clear();
+        actionsBar.updateCompact(getActiveService().getTokenSize(), getActiveService().getTokenWindow());
     }
 
     @PreDestroy
@@ -211,11 +224,10 @@ public class AIChatView implements EclipseAiMonitor {
         } else if (o instanceof IJavaProject jp) {
             selection = jp.getResource();
         } else if (o instanceof IWorkingSet) {
-            // nothing
-            selection = selectedResource; 
+            selection = selectedResource;
         } else if (o != null) {
             System.err.println("!!! Unknown resource type selected " + o.getClass());
-            selection = null;
+            selection = selectedResource;
         } else {
             selection = null;
         }
@@ -224,16 +236,20 @@ public class AIChatView implements EclipseAiMonitor {
             System.out.println("Selected " + selectedResource.getName());
         }
 
-        var project = selection != null ? EclipseUtil.resolveProject(selection) : null;
+        var project = EclipseUtil.resolveProject(selection);
+        updateSelectedProject(project);
+    }
+
+    private void updateSelectedProject(IProject project) {
         if (project != null && !projectPinned) {
             currentProject = project;
-            agentsMdService.load(selection.getProject());
+            agentsMdService.load(project);
             workspaceWriteFilesTool.setCurrentProject(project);
             workspaceReadFilesTool.setCurrentProject(project);
             agentMode.setProject(project);
         }
 
-        if (chatInput != null) Display.getDefault().asyncExec(() -> {
+        if (actionsBar != null) Display.getDefault().asyncExec(() -> {
             actionsBar.setAgentModeAvailable(currentProject != null && currentProject.isOpen());
             if (currentProject == null && currentMode == PeonMode.AGENT) {
                 onModeChange(PeonMode.DEV);
@@ -245,7 +261,6 @@ public class AIChatView implements EclipseAiMonitor {
     @Inject
     @org.eclipse.e4.core.di.annotations.Optional
     public void setSelection(@Named(IServiceConstants.ACTIVE_SELECTION) Object[] selectedObjects) {
-        // TODO what to do with multi-selection?
         if (selectedObjects != null && selectedObjects.length > 0) {
             setSelection(selectedObjects[0]);
         }
@@ -256,21 +271,11 @@ public class AIChatView implements EclipseAiMonitor {
     // -------------------------------------------------------------------------
 
     @Override
-    public void onAction(String value) {
-        Display.getDefault().asyncExec(() ->
-            chatHistory.appendMessage(new SimpleChatMessage("TOOL", "`" + value + "`")));
-    }
-
-    @Override
-    public void onThink(String value) {
-        Display.getDefault().asyncExec(() ->
-            chatHistory.appendMessage(new SimpleChatMessage("THINK", "`" + value + "`")));
-    }
-
-    @Override
-    public void onProblem(String value) {
-        Display.getDefault().asyncExec(() ->
-            chatHistory.appendMessage(new SimpleChatMessage("PROBLEM", "`" + value + "`")));
+    public void onMessage(SimpleMessage m) {
+        Display.getDefault().asyncExec(() -> {
+            chatHistory.appendMessage(m);
+            actionsBar.updateCompact(getActiveService().getTokenSize(), getActiveService().getTokenWindow());
+        });
     }
 
     @Override
@@ -295,24 +300,25 @@ public class AIChatView implements EclipseAiMonitor {
 
     public void refreshStatusLine() {
         statusLine.update(
-            chatService.getSkills().size(),
+            skillService.getSkills().size(),
             agentsMdService.hasAgentFile(),
             currentProject,
             getSelectedFile()
         );
-        actionsBar.updateCompact(chatService.getTokenSize(), chatService.getTokenWindow());
+        var active = getActiveService();
+        actionsBar.updateCompact(active.getTokenSize(), active.getTokenWindow());
     }
 
     private void refreshChat() {
         chatHistory.clearMessages();
-        chatService.getMessages().forEach(chatHistory::appendMessage);
+        getActiveService().getMessages().forEach(chatHistory::appendMessage);
         refreshStatusLine();
         actionsBar.updateModeUI(currentMode, isImplEnabled());
     }
 
     private boolean isImplEnabled() {
         return switch (currentMode) {
-            case PLAN  -> chatService.getMessages().stream().anyMatch(m -> m.type() == ChatMessageType.AI);
+            case PLAN  -> plannerService.getMessages().stream().anyMatch(m -> m.type() == ChatMessageType.AI);
             case AGENT -> agentMode.overviewExists();
             default    -> false;
         };
@@ -329,10 +335,15 @@ public class AIChatView implements EclipseAiMonitor {
         } catch (IOException e) {
             throw new RuntimeException("Failed to load " + config.skillDirectory());
         }
-        chatService.updateConfig(config);
-        if (agentService != null) agentService.updateModel(chatService.getChatModel());
+        updateAllConfigs(config);
         refreshStatusLine();
         onConfigChanged(config);
+    }
+
+    private void updateAllConfigs(LlmConfig config) {
+        developerService.updateConfig(config);
+        plannerService.updateConfig(config);
+        agentMode.updateConfig(config);
     }
 
     private void onConfigChanged(LlmConfig config) {
@@ -344,7 +355,14 @@ public class AIChatView implements EclipseAiMonitor {
         } else {
             Display.getDefault().asyncExec(() -> {
                 if (parent.isDisposed()) return;
-                actionsBar.selectModel(config.model());
+                String[] items = actionsBar.getModelItems();
+                boolean inList = StringUtil.hasValue(config.model())
+                        && java.util.Arrays.stream(items).anyMatch(config.model()::equals);
+                if (!inList) {
+                    loadModelsInBackground(config);
+                } else {
+                    actionsBar.selectModel(config.model());
+                }
             });
         }
     }
@@ -356,11 +374,10 @@ public class AIChatView implements EclipseAiMonitor {
             Display.getDefault().asyncExec(() -> {
                 if (parent.isDisposed()) return;
                 actionsBar.applyModelList(models, config.model());
-                // if configured model wasn't in list, sync service to first available
                 if (!models.isEmpty() && !models.contains(config.model())) {
                     String[] items = actionsBar.getModelItems();
                     if (items.length > 0) {
-                        chatService.updateConfig(config.withModel(items[0]));
+                        updateAllConfigs(config.withModel(items[0]));
                     }
                 }
             });
@@ -379,13 +396,12 @@ public class AIChatView implements EclipseAiMonitor {
             agentMode.setAutonomous(true);
             actionsBar.setAutonomous(true);
             if (agentMode.overviewExists()) {
-                chatService.addMessage(UserMessage.from(
+                agentMode.getActiveService().addMessage(UserMessage.from(
                         "Existing plan found:\n\n" + agentMode.readOverview()));
                 agentMode.openOverviewInEditor();
                 refreshChat();
             }
         } else {
-            // Safe to call even if not currently registered
             try { toolService.removeTool(agentModeTools); } catch (Exception ignored) {}
             agentMode.reset();
         }
@@ -401,16 +417,16 @@ public class AIChatView implements EclipseAiMonitor {
             return;
         }
 
-        // Original PLAN→DEV logic
+        // PLAN -> DEV: extract last AI message and hand off to developer service
         currentMode = PeonMode.DEV;
         actionsBar.updateModeUI(PeonMode.DEV, true);
 
-        boolean tooLarge = chatService.getMessages().size() > 4
-                && chatService.getTokenSize() > (chatService.getTokenWindow() * 0.4);
+        boolean tooLarge = plannerService.getMessages().size() > 4
+                && plannerService.getTokenSize() > (plannerService.getTokenWindow() * 0.4);
 
         AiMessage plan = null;
         if (tooLarge) {
-            var messages = chatService.getMessages();
+            var messages = plannerService.getMessages();
             for (int i = messages.size() - 1; i >= 0; i--) {
                 if (messages.get(i) instanceof AiMessage ai && StringUtil.hasValue(ai.text())) {
                     plan = ai;
@@ -419,9 +435,9 @@ public class AIChatView implements EclipseAiMonitor {
             }
         }
 
-        if (plan != null) chatService.clear();
-        chatService.addMessage(UserMessage.from("Start Implementation"));
-        if (plan != null) chatService.addMessage(plan);
+        if (plan != null) developerService.clear();
+        developerService.addMessage(UserMessage.from("Start Implementation"));
+        if (plan != null) developerService.addMessage(plan);
 
         refreshChat();
         doSendMessage();
@@ -430,14 +446,15 @@ public class AIChatView implements EclipseAiMonitor {
     private void doCompressContext() {
         chatHistory.clear();
 
-        if (chatService.getMessages().isEmpty()) return;
+        var active = getActiveService();
+        if (active.getMessages().isEmpty()) return;
         actionsBar.lockWhileWorking(true);
         Job.create("Compressing context", monitor -> {
             monitor.beginTask("Compressing chat", IProgressMonitor.UNKNOWN);
             monitorRef.set(monitor);
             Exception ex = null;
             try {
-                chatService.compressContext(this);
+                active.compressContext(this);
                 Display.getDefault().asyncExec(this::refreshChat);
             } catch (Exception e) {
                 ex = e;
@@ -452,49 +469,56 @@ public class AIChatView implements EclipseAiMonitor {
     }
 
     private void doSendMessage() {
+        if (StringUtil.hasNoValue(developerService.getConfig().model())) {
+            chatHistory.appendMessage(new SimpleMessage(Type.PROBLEM, "No model configured — open Window > Preferences > Peon AI"));
+            return;
+        }
         String text = StringUtil.strip(chatInput.getText().trim() + getUserSelection());
-        if (StringUtil.hasNoValue(text) && chatService.getMessages().isEmpty()) return;
+        var active = getActiveService();
+        if (StringUtil.hasNoValue(text) && active.getMessages().isEmpty()) return;
 
         if (StringUtil.hasValue(text)) {
-            chatHistory.appendMessage(new SimpleChatMessage(ChatMessageType.USER.name(), text));
+            chatHistory.appendMessage(new SimpleMessage(Type.USER, text));
             chatInput.clearText();
         }
 
         actionsBar.lockWhileWorking(true);
         Job.create("Peon AI request", monitor -> {
-            monitor.beginTask("Arbeit, Arbeit!", IProgressMonitor.UNKNOWN);
+            monitor.beginTask("Arbeit, Arbeit!", currentMode == PeonMode.AGENT ? ToolService.MAX_ITERATIONS * 2 : ToolService.MAX_ITERATIONS);
             monitorRef.set(monitor);
             Exception ex = null;
             try {
-                int msgCountBefore = chatService.getMessages().size();
-                chatService.setStandingOrders(buildStandingOrders());
-                var agent = buildAgent();
-                var result = chatService.call(agent, text.isEmpty() ? null : text, this);
+                int msgCountBefore = active.getMessages().size();
+                active.setStandingOrders(buildStandingOrders());
+
+                switch (currentMode) {
+                    case DEV   -> developerService.call(text.isEmpty() ? null : text, this);
+                    case PLAN  -> plannerService.call(text.isEmpty() ? null : text, this);
+                    case AGENT -> agentMode.call(text.isEmpty() ? null : text, this);
+                };
 
                 Display.getDefault().asyncExec(() -> {
                     if (parent.isDisposed()) return;
                     if (agentMode.consumeImplementationRequest()) {
                         agentMode.startImplementation();
                         refreshChat();
-                    } else if (chatService.getMessages().size() < msgCountBefore) {
+                    } else if (active.getMessages().size() < msgCountBefore) {
                         refreshChat();
                     } else {
-                        chatHistory.appendMessage(result.aiMessage());
                         refreshStatusLine();
                         actionsBar.updateModeUI(currentMode, isImplEnabled());
                     }
                 });
             } catch (Exception e) {
                 ex = e;
-                Display.getDefault().asyncExec(() ->
-                    chatHistory.appendMessage(new SimpleChatMessage("PROBLEM", e.getMessage())));
+                onMessage(new SimpleMessage(Type.PROBLEM, e.getMessage()));
             } finally {
-                Display.getDefault().asyncExec(() -> actionsBar.lockWhileWorking(false));
-                chatService.setStandingOrders(Collections.emptyList());
-                monitorRef.set(new NullProgressMonitor());
                 monitor.done();
+                active.setStandingOrders(Collections.emptyList());
+                Display.getDefault().asyncExec(() -> actionsBar.lockWhileWorking(false));
+                monitorRef.set(new NullProgressMonitor());
             }
-            return PeonConstants.status("Peon AI\n" + chatService.getConfig(), ex);
+            return PeonConstants.status("Peon AI\n" + developerService.getConfig(), ex);
         }).schedule();
     }
 
@@ -504,7 +528,7 @@ public class AIChatView implements EclipseAiMonitor {
             var project = EclipseUtil.resolveProject(selectedResource);
             if (project != null) {
                 currentProject = project;
-                agentsMdService.load(selectedResource.getProject());
+                agentsMdService.load(project);
                 workspaceWriteFilesTool.setCurrentProject(project);
                 workspaceReadFilesTool.setCurrentProject(project);
                 agentMode.setProject(project);
@@ -517,30 +541,24 @@ public class AIChatView implements EclipseAiMonitor {
         });
     }
 
-    private AiAgent buildAgent() {
-        var ctx = chatService.getTemplateContext();
+    private AbstractChatService getActiveService() {
         return switch (currentMode) {
-            case PLAN  -> agentService.newPlannerAgent(ctx);
-            case DEV   -> agentService.newDeveloperAgent(ctx);
-            case AGENT -> agentMode.currentAgentIsPlanning()
-                          ? agentService.newPlannerAgent(ctx, true)
-                          : agentService.newDeveloperAgent(ctx, true);
+            case DEV   -> developerService;
+            case PLAN  -> plannerService;
+            case AGENT -> agentMode.getActiveService();
         };
     }
 
-    // TODO this is very messy from the AI and needs a refactoring ...
     private List<ChatMessage> buildStandingOrders() {
-        var templateContext = chatService.getTemplateContext();
         var orders = new ArrayList<ChatMessage>();
         if (selectedResource != null) {
             orders.add(SystemMessage.from("Selected resource: " + JdtUtil.pathOf(selectedResource)));
         }
         if (agentsMdService.hasAgentFile()) {
-            agentsMdService.agentMessage(templateContext).ifPresent(orders::add);
+            agentsMdService.agentMessage(context).ifPresent(orders::add);
         }
-        if (currentMode == PeonMode.AGENT) {
-            var hint = agentMode.planPathHint();
-            if (!hint.isBlank()) orders.add(SystemMessage.from(hint));
+        if (currentMode == PeonMode.AGENT && agentMode.hasPlan()) {
+            orders.add(SystemMessage.from(agentMode.planPathHint()));
         }
         return orders;
     }
@@ -549,17 +567,17 @@ public class AIChatView implements EclipseAiMonitor {
         if (textSelection == null || StringUtil.hasNoValue(textSelection.getText())) return "";
         var file = getSelectedFile();
 
-        var extentsion = "\n";
-        if (file != null) extentsion = file.getFileExtension() + "\n";
+        var extension = "\n";
+        if (file != null) extension = file.getFileExtension() + "\n";
 
-        String userIn = "\n\nSelected:\n```" + extentsion + textSelection.getText() + "\n```";
+        String userIn = "\n\nSelected:\n```" + extension + textSelection.getText() + "\n```";
         userIn += "\n\nStart line: " + (textSelection.getStartLine() + 1);
 
         if (file != null) userIn += "\nFile: " + JdtUtil.pathOf(file) + " use "
                 + EclipseWorkspaceReadFilesTool.READ_ECLIPSE_FILE_TOOL + " to read whole file, if needed.";
         return userIn;
     }
-    
+
     private IFile getSelectedFile() {
         if (selectedResource instanceof IFile rf) return rf;
         var open = EclipseUtil.getOpenFile();

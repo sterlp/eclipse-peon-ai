@@ -2,6 +2,7 @@ package org.sterl.llmpeon.parts.tools;
 
 import java.nio.charset.Charset;
 import java.nio.file.Files;
+import java.nio.file.Path;
 
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
@@ -9,11 +10,13 @@ import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
-import org.sterl.llmpeon.agent.AiMonitor.AiFileUpdate;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.FileUtils;
+import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
+import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
+import org.sterl.llmpeon.shared.AiMonitor.AiFileUpdate;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -56,25 +59,20 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
 
         var inFile = EclipseUtil.resolveInEclipse(filePath);
         if (inFile.isEmpty() || !(inFile.get() instanceof IFile eclipseFile)) {
-            // fallback to raw filesystem
-            var f = java.nio.file.Path.of(filePath);
-            if (java.nio.file.Files.isRegularFile(f)) {
-                String content = org.sterl.llmpeon.shared.FileUtils.readString(f);
-                String newContent = FileUtils.applyEdit(filePath, content, oldString, newString);
-                FileUtils.writeString(f, newContent);
-                if (hasMonitor()) monitor.onFileUpdate(new AiFileUpdate(filePath, oldString, newString));
-                return "File " + filePath + " edited successfully.";
-            }
-            throw new IllegalArgumentException(
-                    "File not found: " + filePath + ". Use searchWorkspaceFiles to find the correct path.");
+            var disk = new DiskFileWriteTool(currentProject == null ? Path.of("./") : currentProject.getRawLocation().toPath());
+            disk.withMemory(memory);
+            disk.withMonitor(monitor);
+            return disk.editDiskFile(filePath, oldString, newString);
+        } else {
+            String content = IoUtils.readFile(eclipseFile);
+            String newContent = FileUtils.applyEdit(filePath, content, oldString, newString);
+            var result = writeEclipseFile(eclipseFile, newContent);
+            var editResult = new AiFileUpdate(result.file(), oldString, newString);
+            
+            monitor.onFileUpdate(editResult);
+            return "File " + editResult.file() + " edited successfully.";
         }
 
-        String content = IoUtils.readFile(eclipseFile);
-        String newContent = FileUtils.applyEdit(filePath, content, oldString, newString);
-        var result = writeEclipseFile(eclipseFile, newContent);
-        var editResult = new AiFileUpdate(result.file(), oldString, newString);
-        if (hasMonitor()) monitor.onFileUpdate(editResult);
-        return "File " + editResult.file() + " edited successfully.";
     }
 
     @Tool("Eclipse: Overwrite existing workspace file.")
@@ -96,15 +94,18 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
             if (Files.isRegularFile(f)) {
                 String oldContent = FileUtils.readString(f);
                 FileUtils.writeString(f, newContent);
-                if (hasMonitor()) monitor.onFileUpdate(new AiFileUpdate(filePath, oldContent, newContent));
+                
+                monitor.onFileUpdate(new AiFileUpdate(filePath, oldContent, newContent));
                 return "File " + filePath + " updated.";
             }
             throw new IllegalArgumentException(
                     "File not found: " + filePath + ". Use searchWorkspaceFiles to find the correct path.");
+        } else {
+            var result = writeEclipseFile((IFile) inFile.get(), newContent);
+            
+            monitor.onFileUpdate(result);
+            return "File " + result.file() + " updated.";
         }
-        var result = writeEclipseFile((IFile) inFile.get(), newContent);
-        if (hasMonitor()) monitor.onFileUpdate(result);
-        return "File " + result.file() + " updated.";
     }
 
     @Tool("Eclipse: Create/overwrite workspace file. Creates parent dirs.")
@@ -141,7 +142,7 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
         }
 
         IFile file = writeFileToProject(targetProject.get(), projectRelativePath, content);
-        monitorMessage("Created file " + JdtUtil.pathOf(file));
+        onTool("Created file " + JdtUtil.pathOf(file));
         return "Created file: " + JdtUtil.pathOf(file);
     }
 
@@ -173,7 +174,7 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
         var oldContent = IoUtils.readFile(file);
         try {
             var charset = Charset.forName(file.getCharset());
-            file.write(content.getBytes(charset), false, false, true, getProgressMonitor());
+            file.write(content.getBytes(charset), true, false, true, getProgressMonitor());
             file.refreshLocal(IResource.DEPTH_ZERO, getProgressMonitor());
         } catch (CoreException e) {
             throw new RuntimeException("Failed to write " + file.getFullPath(), e);

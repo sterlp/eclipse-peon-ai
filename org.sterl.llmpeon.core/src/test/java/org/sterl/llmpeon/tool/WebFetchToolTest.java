@@ -2,6 +2,7 @@ package org.sterl.llmpeon.tool;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.sterl.llmpeon.tool.tools.WebFetchTool;
 
 class WebFetchToolTest {
 
