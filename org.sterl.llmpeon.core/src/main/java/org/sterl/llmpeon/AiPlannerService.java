@@ -1,8 +1,12 @@
 package org.sterl.llmpeon;
 
+import java.util.Optional;
 import java.util.function.Predicate;
 
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.shared.StringUtil;
+
+import dev.langchain4j.data.message.AiMessage;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.template.TemplateContext;
 import org.sterl.llmpeon.tool.ToolService;
@@ -20,6 +24,7 @@ public class AiPlannerService extends AbstractChatService {
             - Avoid repeated tool calls for the same information
 
             Rules:
+            - Think step by step before calling tools: goal -> scope -> exact files
             - Ask clarifying questions before proceeding — never assume
             - Explore structure iteratively: goal -> affected area -> constraints -> exact scope
             - Identify exact files, classes, and interfaces affected
@@ -74,5 +79,28 @@ public class AiPlannerService extends AbstractChatService {
     @Override
     protected Predicate<SmartToolExecutor> getToolFilter() {
         return t -> !t.getTool().isEditTool();
+    }
+
+    @Override
+    protected boolean includesMcpTools() {
+        return false;
+    }
+
+    /**
+     * Returns the last AI message if the context is large enough to warrant
+     * passing only the plan summary to the developer (rather than the full history).
+     * Used during PLAN → DEV handoff.
+     */
+    public Optional<AiMessage> extractLastPlan() {
+        boolean tooLarge = getMessages().size() > 4
+                && getTokenSize() > (getTokenWindow() * 0.4);
+        if (!tooLarge) return Optional.empty();
+        var messages = getMessages();
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            if (messages.get(i) instanceof AiMessage ai && StringUtil.hasValue(ai.text())) {
+                return Optional.of(ai);
+            }
+        }
+        return Optional.empty();
     }
 }

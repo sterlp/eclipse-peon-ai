@@ -12,6 +12,9 @@ public interface PeonConstants {
     String PREF_THINKING_ENABLED = "llm.thinkingEnabled";
     String PREF_API_KEY          = "llm.apiKey";
     String PREF_SKILL_DIRECTORY  = "llm.skillDirectory";
+
+    String PREF_MCP_SERVERS  = "mcp.servers";   // JSON: List<McpServerConfig>
+    String PREF_MCP_ENABLED  = "mcp.enabled";   // boolean
     
     
     public static IStatus okStatus(String message) {
@@ -23,6 +26,6 @@ public interface PeonConstants {
     
     public static IStatus status(String message, Exception e) {
         if (e == null) return okStatus(message);
-        return errorStatus(message, e);
+        return errorStatus(message + " " + e.getMessage(), e);
     }
 }

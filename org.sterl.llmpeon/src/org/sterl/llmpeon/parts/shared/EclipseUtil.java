@@ -14,6 +14,7 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
+import org.eclipse.ui.ide.IDE;
 import org.eclipse.ui.PlatformUI;
 import org.sterl.llmpeon.shared.StringUtil;
 
@@ -25,6 +26,21 @@ public class EclipseUtil {
             if (parent.isDisposed()) return;
             fn.run();
         });
+    }
+
+    /**
+     * Opens the given workspace file in the workbench editor.
+     * Must be called from the UI thread.
+     * Throws {@link RuntimeException} if the editor cannot be opened.
+     */
+    public static void openInEditor(IFile file) {
+        var page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
+        if (page == null || !file.exists()) return;
+        try {
+            IDE.openEditor(page, file, true);
+        } catch (Exception e) {
+            throw new RuntimeException("Could not open editor for " + file.getFullPath(), e);
+        }
     }
 
     public static IProject firstOpenOrSelectedProject() {

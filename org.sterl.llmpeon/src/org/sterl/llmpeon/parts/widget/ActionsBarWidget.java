@@ -29,6 +29,7 @@ public class ActionsBarWidget extends Composite {
     private Button btnClear;
     private Button btnImplement;
     private Button chkAutonomous;
+    private Button btnMcp;
     private Combo modeCombo;
     private Combo modelCombo;
 
@@ -47,7 +48,8 @@ public class ActionsBarWidget extends Composite {
             Runnable onImplement,
             Consumer<PeonMode> onModeChange,
             Consumer<String> onModelChange,
-            Consumer<Boolean> onAutonomousChange) {
+            Consumer<Boolean> onAutonomousChange,
+            Consumer<Boolean> onMcpToggle) {
         super(parent, style);
         
         colorWarning = new Color(180, 130, 0);
@@ -141,6 +143,11 @@ public class ActionsBarWidget extends Composite {
         chkAutonomous.setLayoutData(rdAuto);
         chkAutonomous.setVisible(false);
         chkAutonomous.addListener(SWT.Selection, e -> onAutonomousChange.accept(chkAutonomous.getSelection()));
+
+        btnMcp = new Button(this, SWT.TOGGLE);
+        btnMcp.setText("MCP");
+        btnMcp.setToolTipText("Enable MCP tools (configure via Window > Preferences > AI Peon MCP)");
+        btnMcp.addListener(SWT.Selection, e -> onMcpToggle.accept(btnMcp.getSelection()));
     }
 
     /** Update the Compact button label and tooltip with current token usage. */
@@ -208,6 +215,24 @@ public class ActionsBarWidget extends Composite {
     /** Set the autonomous checkbox state without firing the listener. */
     public void setAutonomous(boolean value) {
         chkAutonomous.setSelection(value);
+    }
+
+    /** Enable or disable the MCP button (disabled when no servers are configured). */
+    public void setMcpAvailable(boolean available) {
+        btnMcp.setEnabled(available);
+        if (!available) btnMcp.setSelection(false);
+    }
+
+    /** Set the MCP toggle button state without firing the listener. */
+    public void setMcpEnabled(boolean value) {
+        btnMcp.setSelection(value);
+        if (value) btnMcp.setText("MCP on");
+        else btnMcp.setText("MCP off");
+    }
+
+    /** Returns whether the MCP toggle is currently on. */
+    public boolean isMcpEnabled() {
+        return btnMcp.getSelection();
     }
 
     /** Populate the model combo with the available models. */

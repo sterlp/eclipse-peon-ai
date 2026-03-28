@@ -2,7 +2,6 @@ package org.sterl.llmpeon.parts;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -33,7 +32,10 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkingSet;
+import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.ide.IDE;
 import org.sterl.llmpeon.AbstractChatService;
 import org.sterl.llmpeon.AiDeveloperService;
 import org.sterl.llmpeon.AiPlannerService;
@@ -42,6 +44,8 @@ import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.agent.AgentModeService;
 import org.sterl.llmpeon.parts.agentsmd.AgentsMdService;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
+import org.sterl.llmpeon.parts.config.McpConnectionService;
+import org.sterl.llmpeon.parts.config.McpPreferenceInitializer;
 import org.sterl.llmpeon.parts.monitor.EclipseAiMonitor;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
@@ -66,10 +70,8 @@ import org.sterl.llmpeon.tool.model.SimpleMessage.Type;
 import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
-import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -93,6 +95,7 @@ public class AIChatView implements EclipseAiMonitor {
     private AiPlannerService plannerService;
     private AgentModeService agentMode;
     private AgentModeTools agentModeTools;
+    private McpConnectionService mcpConnectionService;
 
     private PeonMode currentMode = PeonMode.DEV;
     private LlmConfig lastListedConfig;
@@ -134,7 +137,8 @@ public class AIChatView implements EclipseAiMonitor {
         // Agent mode uses separate instances with agent-mode prompts and isolated memory
         var agentDevService = new AiDeveloperService(config, toolService, skillService, context, true);
         var agentPlanService = new AiPlannerService(config, toolService, skillService, context, true);
-        agentMode = new AgentModeService(agentPlanService, agentDevService, this::doSendMessage);
+        agentMode = new AgentModeService(agentPlanService, agentDevService, this::doSendMessage,
+                file -> EclipseUtil.runInUiThread(parent, () -> EclipseUtil.openInEditor(file)));
         agentModeTools = new AgentModeTools(agentMode);
 
         chatHistory = new ChatMarkdownWidget(parent, SWT.BORDER);
@@ -153,9 +157,11 @@ public class AIChatView implements EclipseAiMonitor {
             this::doStartImpl,
             this::onModeChange,
             model -> updateAllConfigs(developerService.getConfig().withModel(model)),
-            autonomous -> agentMode.setAutonomous(autonomous)
+            autonomous -> agentMode.setAutonomous(autonomous),
+            enabled -> mcpConnectionService.toggle(enabled)
         );
-
+        mcpConnectionService = new McpConnectionService(toolService,
+                enabled -> EclipseUtil.runInUiThread(parent, () -> actionsBar.setMcpEnabled(enabled)));
         applyConfig();
 
         if (logger != null)
@@ -176,6 +182,7 @@ public class AIChatView implements EclipseAiMonitor {
     @PreDestroy
     public void dispose() {
         InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID).removePreferenceChangeListener(prefListener);
+        mcpConnectionService.disconnect();
     }
 
     @Focus
@@ -337,8 +344,16 @@ public class AIChatView implements EclipseAiMonitor {
             throw new RuntimeException("Failed to load " + config.skillDirectory());
         }
         updateAllConfigs(config);
+        applyMcpConfig();
         refreshStatusLine();
         onConfigChanged(config);
+    }
+
+    private void applyMcpConfig() {
+        var servers = McpPreferenceInitializer.loadServers();
+        actionsBar.setMcpAvailable(!servers.isEmpty());
+        actionsBar.setMcpEnabled(!servers.isEmpty() && McpPreferenceInitializer.isMcpEnabled());
+        mcpConnectionService.applyConfig();
     }
 
     private void updateAllConfigs(LlmConfig config) {
@@ -402,7 +417,7 @@ public class AIChatView implements EclipseAiMonitor {
                 refreshChat();
             }
         } else {
-            try { toolService.removeTool(agentModeTools); } catch (Exception ignored) {}
+            toolService.removeTool(agentModeTools);
             agentMode.reset();
         }
         currentMode = mode;
@@ -421,23 +436,10 @@ public class AIChatView implements EclipseAiMonitor {
         currentMode = PeonMode.DEV;
         actionsBar.updateModeUI(PeonMode.DEV, true);
 
-        boolean tooLarge = plannerService.getMessages().size() > 4
-                && plannerService.getTokenSize() > (plannerService.getTokenWindow() * 0.4);
-
-        AiMessage plan = null;
-        if (tooLarge) {
-            var messages = plannerService.getMessages();
-            for (int i = messages.size() - 1; i >= 0; i--) {
-                if (messages.get(i) instanceof AiMessage ai && StringUtil.hasValue(ai.text())) {
-                    plan = ai;
-                    break;
-                }
-            }
-        }
-
-        if (plan != null) developerService.clear();
+        var plan = plannerService.extractLastPlan();
+        if (plan.isPresent()) developerService.clear();
         developerService.addMessage(UserMessage.from("Start Implementation"));
-        if (plan != null) developerService.addMessage(plan);
+        plan.ifPresent(developerService::addMessage);
 
         refreshChat();
         doSendMessage();
@@ -496,7 +498,8 @@ public class AIChatView implements EclipseAiMonitor {
             Exception ex = null;
             try {
                 int msgCountBefore = active.getMessages().size();
-                active.setStandingOrders(buildStandingOrders());
+                active.setStandingOrders(StandingOrdersBuilder.build(
+                        selectedResource, agentsMdService, context, currentMode, agentMode));
 
                 // TODO: race condition if we switch to dev mode, as finally will maybe run later, so we lock one more time here ...
                 EclipseUtil.runInUiThread(parent, () -> actionsBar.lockWhileWorking(true));
@@ -557,20 +560,6 @@ public class AIChatView implements EclipseAiMonitor {
             case PLAN  -> plannerService;
             case AGENT -> agentMode.getActiveService();
         };
-    }
-
-    private List<ChatMessage> buildStandingOrders() {
-        var orders = new ArrayList<ChatMessage>();
-        if (selectedResource != null) {
-            orders.add(SystemMessage.from("Selected resource: " + JdtUtil.pathOf(selectedResource)));
-        }
-        if (agentsMdService.hasAgentFile()) {
-            agentsMdService.agentMessage(context).ifPresent(orders::add);
-        }
-        if (currentMode == PeonMode.AGENT && agentMode.hasPlan()) {
-            orders.add(SystemMessage.from(agentMode.planPathHint()));
-        }
-        return orders;
     }
 
     private String getUserSelection() {

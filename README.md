@@ -74,6 +74,8 @@ Example workflows:
 - [ ] **Git Tool** - Dedicated git operations (status, diff, commit, log) with structured output
 - [x] **Code Navigation** - Find types (supports `*`, `?` wildcards and camelCase e.g. `NPE`), find references, find implementations via Eclipse JDT
 - [ ] **Refactor** - Rename symbols, extract methods, and move classes using Eclipse refactoring
+- [x] `v1.1.0` **Agent Mode** Preview of the agent mode
+- [x] `v1.2.0` **MCP** Support MCP servers using langchain4j MCP integration
 
 ## Requirements
 

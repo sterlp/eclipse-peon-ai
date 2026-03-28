@@ -14,14 +14,27 @@
 
    <extension point="org.eclipse.ui.preferencePages">
       <page
+            id="org.sterl.llmpeon.prefs.AiPeon"
+            name="AI Peon"
+            class="org.sterl.llmpeon.parts.config.AiPeonPreferencePage">
+      </page>
+      <page
             id="org.sterl.llmpeon.prefs.AiConfig"
             name="AI Peon Configuration"
+            category="org.sterl.llmpeon.prefs.AiPeon"
             class="org.sterl.llmpeon.parts.config.AiConfigPreferenceView">
+      </page>
+      <page
+            id="org.sterl.llmpeon.prefs.McpConfig"
+            name="AI Peon MCP"
+            category="org.sterl.llmpeon.prefs.AiPeon"
+            class="org.sterl.llmpeon.parts.config.McpPreferenceView">
       </page>
    </extension>
 
    <extension point="org.eclipse.core.runtime.preferences">
       <initializer class="org.sterl.llmpeon.parts.config.LlmPreferenceInitializer"/>
+      <initializer class="org.sterl.llmpeon.parts.config.McpPreferenceInitializer"/>
    </extension>
 
 </plugin>

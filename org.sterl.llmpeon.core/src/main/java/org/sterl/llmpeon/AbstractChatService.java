@@ -13,6 +13,7 @@ import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.skill.SkillRecord;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.template.TemplateContext;
+import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
@@ -29,6 +30,15 @@ import dev.langchain4j.model.output.TokenUsage;
 
 public abstract class AbstractChatService {
 
+    /**
+     * Conversation memory — holds only {@code UserMessage} and {@code AiMessage} entries.
+     * <p>
+     * {@code SystemMessage} must NOT be added here. The system prompt and standing orders
+     * (selected resource, AGENTS.md, plan hint) are assembled fresh on every call as
+     * {@link #buildStaticMessages()} and prepended to the request without touching memory.
+     * Keeping system messages out of memory ensures the compressor sees only real
+     * conversation turns and that compressed summaries survive subsequent compressions.
+     */
     protected final ChatMemory memory = MessageWindowChatMemory.builder()
             .id(this)
             .maxMessages(500000)
@@ -52,6 +62,7 @@ public abstract class AbstractChatService {
     protected abstract String getSystemPrompt();
     protected abstract double getTemperature();
     protected abstract Predicate<SmartToolExecutor> getToolFilter();
+    protected boolean includesMcpTools() { return true; }
 
     public ChatResponse call(String message, AiMonitor monitor) {
         monitor = AiMonitor.nullSafety(monitor);
@@ -59,10 +70,13 @@ public abstract class AbstractChatService {
 
         var staticMessages = buildStaticMessages();
         var response = toolService.executeLoop(
-                staticMessages, memory, chatModel, monitor, 
-                getToolFilter(), 
-                getTemperature(),
-                this::updateTokenCount);
+                new ToolLoopRequest(memory, chatModel)
+                        .staticMessages(staticMessages)
+                        .monitor(monitor)
+                        .toolFilter(getToolFilter())
+                        .includeMcpTools(includesMcpTools())
+                        .temperature(getTemperature())
+                        .onLoop(this::updateTokenCount));
 
         updateTokenCount(response);
         return response;
@@ -71,7 +85,7 @@ public abstract class AbstractChatService {
     public ChatResponse compressContext(AiMonitor monitor) {
         var response = new AiCompressorAgent(chatModel).call(memory.messages(), monitor);
         memory.clear();
-        memory.add(SystemMessage.from(response.aiMessage().text()));
+        memory.add(UserMessage.from("[Context summary]\n" + response.aiMessage().text()));
         updateTokenCount(response);
         return response;
     }
@@ -138,8 +152,8 @@ public abstract class AbstractChatService {
 
     private int charCount(ChatMessage msg) {
         if (msg instanceof UserMessage um) return um.singleText().length();
-        else if (msg instanceof AiMessage am) return am.text() != null ? am.text().length() : 0;
-        else if (msg instanceof ToolExecutionResultMessage tr) return tr.text().length();
+        if (msg instanceof AiMessage am) return am.text() != null ? am.text().length() : 0;
+        if (msg instanceof ToolExecutionResultMessage tr) return tr.text().length();
         return 0;
     }
 }

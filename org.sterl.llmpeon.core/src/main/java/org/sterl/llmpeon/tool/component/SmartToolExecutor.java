@@ -48,6 +48,7 @@ public class SmartToolExecutor extends DefaultToolExecutor {
             throw e;
         } finally {
             tool.withMonitor(AiMonitor.NULL_MONITOR);
+            tool.withChatModel(null);
             tool.withMemory(Collections.emptyList());
         }
     }

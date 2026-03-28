@@ -42,6 +42,12 @@ public class AiCompressorAgent {
         this.chatModel = chatModel;
     }
     
+    /**
+     * Compresses the given conversation messages into a structured briefing.
+     * {@code SystemMessage} entries are intentionally ignored — they represent the
+     * static system prompt and standing orders, which are injected fresh on every call
+     * and must not be stored in or read from memory.
+     */
     public ChatResponse call(List<ChatMessage> messages, AiMonitor monitor) {
         var msg = new StringBuilder();
         messages.stream().forEach(m -> msg.append(toText(m)));

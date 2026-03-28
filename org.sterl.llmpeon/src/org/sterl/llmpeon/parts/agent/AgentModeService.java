@@ -1,12 +1,12 @@
 package org.sterl.llmpeon.parts.agent;
 
+import java.util.function.Consumer;
+
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.swt.widgets.Display;
-import org.eclipse.ui.IWorkbenchPage;
-import org.eclipse.ui.PlatformUI;
-import org.eclipse.ui.ide.IDE;
 import org.sterl.llmpeon.AbstractChatService;
+import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFilesTool;
 import org.sterl.llmpeon.AiDeveloperService;
 import org.sterl.llmpeon.AiPlannerService;
 import org.sterl.llmpeon.ai.LlmConfig;
@@ -31,6 +31,7 @@ public class AgentModeService {
     private final AiPlannerService plannerService;
     private final AiDeveloperService developerService;
     private final Runnable sendTrigger;
+    private final Consumer<IFile> openInEditorCallback;
 
     private IProject project;
     private Phase phase = Phase.PLANNING;
@@ -40,9 +41,15 @@ public class AgentModeService {
 
     public AgentModeService(AiPlannerService plannerService, AiDeveloperService developerService,
             Runnable sendTrigger) {
+        this(plannerService, developerService, sendTrigger, null);
+    }
+
+    public AgentModeService(AiPlannerService plannerService, AiDeveloperService developerService,
+            Runnable sendTrigger, Consumer<IFile> openInEditorCallback) {
         this.plannerService = plannerService;
         this.developerService = developerService;
         this.sendTrigger = sendTrigger;
+        this.openInEditorCallback = openInEditorCallback;
     }
 
     // -------------------------------------------------------------------------
@@ -79,12 +86,8 @@ public class AgentModeService {
     }
 
     public void reset() {
-        setPhase(Phase.PLANNING);
+        this.phase = Phase.PLANNING;
         retryCount = 0;
-    }
-
-    private void setPhase(Phase newPhase) {
-        this.phase = newPhase;
     }
 
     // -------------------------------------------------------------------------
@@ -112,7 +115,8 @@ public class AgentModeService {
     public String planPathHint() {
         if (project == null) return "";
         return "Plan file: " + JdtUtil.pathOf(getOverviewFile())
-                + " — use readPlan / savePlan to read or update it.";
+                + " — use " + EclipseWorkspaceReadFilesTool.READ_ECLIPSE_FILE_TOOL
+                + " to read it, savePlan to update it.";
     }
 
     private IFile getOverviewFile() {
@@ -159,10 +163,10 @@ public class AgentModeService {
             plannerService.addMessage(UserMessage.from(
                     "Max retries (" + MAX_RETRIES + ") reached. "
                     + "Review plan problem file `" + AgentModeTools.PROBLEM_FILE + "` — manual intervention required."));
-            setPhase(Phase.PLANNING);
+            this.phase = Phase.PLANNING;
             retryCount = 0;
         } else {
-            setPhase(Phase.PLANNING);
+            this.phase = Phase.PLANNING;
             plannerService.clear();
             String msg = "Plan review needed (attempt " + retryCount + "/" + MAX_RETRIES + ").\n\n"
                     + "## Current Plan\n" + readOverview() + "\n\n"
@@ -177,7 +181,7 @@ public class AgentModeService {
     // -------------------------------------------------------------------------
 
     public void startImplementation() {
-        setPhase(Phase.IMPLEMENTING);
+        this.phase = Phase.IMPLEMENTING;
         retryCount = 0;
         developerService.clear();
         String plan = overviewExists() ? readOverview() : "(no plan file found)";
@@ -194,16 +198,6 @@ public class AgentModeService {
     // -------------------------------------------------------------------------
 
     private void openInEditor(IFile file) {
-        Display.getDefault().asyncExec(() -> {
-            try {
-                IWorkbenchPage page = PlatformUI.getWorkbench()
-                        .getActiveWorkbenchWindow().getActivePage();
-                if (page == null || !file.exists()) return;
-                IDE.openEditor(page, file, true);
-            } catch (Exception e) {
-                System.err.println("AgentModeService: could not open editor for "
-                        + file.getFullPath() + ": " + e.getMessage());
-            }
-        });
+        if (openInEditorCallback != null) openInEditorCallback.accept(file);
     }
 }

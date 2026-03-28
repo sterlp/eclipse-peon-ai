@@ -10,8 +10,9 @@ run always after a code change `mvn clean package` to verify code changes.
 This is an eclipse plugin RCP project in java.
 
 - doc - mkdocs defining the docs and spec of the project
-- org.sterl.llmpeon.core - non eclipse specific code
+- org.sterl.llmpeon.core - non eclipse specific code and tests
 - org.sterl.llmpeon - eclipse plugin code
+- org.sterl.llmpeon.test - eclipse plugin tests
 
 ## Dependency Management
 
@@ -22,4 +23,4 @@ This is an eclipse plugin RCP project in java.
 
 ## Error Handling in Tools
 
-- non eclipse IDEs cannot build the project
+- non eclipse IDEs cannot build the project use clean package

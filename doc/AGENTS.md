@@ -1,0 +1,1 @@
+new pages in docs require a menu change in `.vitepress/config.ts`

@@ -18,10 +18,10 @@ description: How to build Eclipse Peon AI
 git clone https://github.com/sterlp/eclipse-peon-ai.git
 cd eclipse-peon-ai
 
-# Build the complete project
+# Build the complete project and eclipse plugin tests
 mvn clean verify
 
-# Build without tests
+# Build with junit core tests
 mvn clean package
 ```
 

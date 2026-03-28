@@ -20,8 +20,9 @@ Variables are substituted at request time with live values from your Eclipse wor
 
 All template variables are provided by [`TemplateContext.java`](https://github.com/sterlp/eclipse-peon-ai/blob/main/org.sterl.llmpeon.core/src/main/java/org/sterl/llmpeon/template/TemplateContext.java). Variables are substituted at request time with live values from your Eclipse workspace.
 
-!!! info "Unknown variables are left as-is"
-    If a variable is not available it is replaced with an empty string. Unrecognised `${foo-bar}` are left unchanged.
+::: info "Unknown variables are left as-is"
+If a variable is not available it is replaced with an empty string. Unrecognised `${foo-bar}` are left unchanged.
+:::
 
 ## Usage in AGENTS.md
 
