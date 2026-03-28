@@ -18,6 +18,9 @@ import org.sterl.llmpeon.tool.tools.SearchAgentTool;
 import org.sterl.llmpeon.tool.tools.ShellTool;
 import org.sterl.llmpeon.tool.tools.WebFetchTool;
 
+import org.sterl.llmpeon.mcp.McpServerConfig;
+import org.sterl.llmpeon.mcp.McpService;
+
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -41,6 +44,9 @@ public class ToolService {
     public static final int MAX_ITERATIONS = 75;
 
     private final Map<String, SmartToolExecutor> toolExecutors = new HashMap<>();
+
+    private McpService mcpService;
+    private List<ToolSpecification> mcpToolSpecs = List.of();
 
     public ToolService() {
         super();
@@ -105,7 +111,8 @@ public class ToolService {
                     .presencePenalty(1.5)
                     .messages(toOneSystemMessage(messages));
             
-            var toolSpecs = toolSpecifications(toolFilter);
+            var toolSpecs = new ArrayList<>(toolSpecifications(toolFilter));
+            toolSpecs.addAll(mcpToolSpecs);
             if (!toolSpecs.isEmpty()) builder.toolSpecifications(toolSpecs);
             
             response = chatModel.chat(builder.build());
@@ -173,7 +180,10 @@ public class ToolService {
     public ToolResult execute(ToolExecutionRequest tr, AiMonitor monitor, ChatModel agentService, List<ChatMessage> memory) {
         var executor = toolExecutors.get(tr.name());
         String result;
-        if (executor == null) {
+        if (executor == null && mcpService != null && mcpService.hasTool(tr.name())) {
+            result = mcpService.executeTool(tr);
+            return new ToolResult(false, ToolExecutionResultMessage.from(tr.id(), tr.name(), result));
+        } else if (executor == null) {
             result = "Error: unknown tool '" + tr.name() + "' check spelling";
             AiMonitor.nullSafety(monitor).onProblem(result);
         } else {
@@ -190,6 +200,29 @@ public class ToolService {
                 ToolExecutionResultMessage.from(tr.id(), tr.name(), result));
     }
     
+    /**
+     * Connects to all given MCP servers and makes their tools available in the tool loop.
+     * Disconnects any previously active MCP connection first.
+     * Throws if any server fails to connect.
+     */
+    public void connectMcp(List<McpServerConfig> servers) {
+        disconnectMcp();
+        if (servers == null || servers.isEmpty()) return;
+        var service = new McpService(servers);
+        service.connect(); // throws on failure
+        this.mcpService = service;
+        this.mcpToolSpecs = service.getToolSpecifications();
+    }
+
+    /** Disconnects the active MCP service and removes its tools from the tool loop. */
+    public void disconnectMcp() {
+        this.mcpToolSpecs = List.of();
+        if (mcpService != null) {
+            mcpService.disconnect();
+            mcpService = null;
+        }
+    }
+
     /**
      * Registers any object that has methods annotated with {@link Tool}.
      * Existing tools with the same name will be replaced.

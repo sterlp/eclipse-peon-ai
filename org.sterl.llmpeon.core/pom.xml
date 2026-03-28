@@ -65,6 +65,12 @@
             <artifactId>langchain4j-anthropic</artifactId>
             <version>${langchain4j.version}</version>
         </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-mcp</artifactId>
+            <version>1.12.2-beta22</version>
+        </dependency>
         
         <dependency>
             <groupId>com.vladsch.flexmark</groupId>

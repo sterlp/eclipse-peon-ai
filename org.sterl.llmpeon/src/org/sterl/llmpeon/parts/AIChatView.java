@@ -42,6 +42,7 @@ import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.agent.AgentModeService;
 import org.sterl.llmpeon.parts.agentsmd.AgentsMdService;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
+import org.sterl.llmpeon.parts.config.McpPreferenceInitializer;
 import org.sterl.llmpeon.parts.monitor.EclipseAiMonitor;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
@@ -153,7 +154,8 @@ public class AIChatView implements EclipseAiMonitor {
             this::doStartImpl,
             this::onModeChange,
             model -> updateAllConfigs(developerService.getConfig().withModel(model)),
-            autonomous -> agentMode.setAutonomous(autonomous)
+            autonomous -> agentMode.setAutonomous(autonomous),
+            this::onMcpToggle
         );
 
         applyConfig();
@@ -176,6 +178,7 @@ public class AIChatView implements EclipseAiMonitor {
     @PreDestroy
     public void dispose() {
         InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID).removePreferenceChangeListener(prefListener);
+        disconnectMcp();
     }
 
     @Focus
@@ -337,8 +340,51 @@ public class AIChatView implements EclipseAiMonitor {
             throw new RuntimeException("Failed to load " + config.skillDirectory());
         }
         updateAllConfigs(config);
+        applyMcpConfig();
         refreshStatusLine();
         onConfigChanged(config);
+    }
+
+    private void applyMcpConfig() {
+        var servers = McpPreferenceInitializer.loadServers();
+        boolean hasMcpServers = !servers.isEmpty();
+        actionsBar.setMcpAvailable(hasMcpServers);
+        boolean enabled = hasMcpServers && McpPreferenceInitializer.isMcpEnabled();
+        actionsBar.setMcpEnabled(enabled);
+        if (enabled) {
+            connectMcp();
+        } else {
+            disconnectMcp();
+        }
+    }
+
+    private void onMcpToggle(boolean enabled) {
+        McpPreferenceInitializer.setMcpEnabled(enabled);
+        if (enabled) {
+            connectMcp();
+        } else {
+            disconnectMcp();
+        }
+    }
+
+    private void connectMcp() {
+        var servers = McpPreferenceInitializer.loadServers();
+        Job.create("Connecting MCP servers", monitor -> {
+            try {
+                toolService.connectMcp(servers);
+                return Status.OK_STATUS;
+            } catch (Exception e) {
+                EclipseUtil.runInUiThread(parent, () -> {
+                    McpPreferenceInitializer.setMcpEnabled(false);
+                    actionsBar.setMcpEnabled(false);
+                });
+                return PeonConstants.errorStatus("MCP failed to connect: " + e.getMessage(), e);
+            }
+        }).schedule();
+    }
+
+    private void disconnectMcp() {
+        toolService.disconnectMcp();
     }
 
     private void updateAllConfigs(LlmConfig config) {
