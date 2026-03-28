@@ -74,8 +74,9 @@ The AI assistant has access to several tools:
 3. **Refactor**: Select code and ask "How can I improve this?"
 4. **Debug**: Paste error messages and ask "What's causing this?"
 
-!!! info "CTRL+Enter"
-    You can also send messages with `CTRL+Enter` or `CMD+Enter` - if the AI is working, the message is added to the history - best effort to add message during a tool loop.
+::: info "CTRL+Enter"
+You can also send messages with `CTRL+Enter` or `CMD+Enter` - if the AI is working, the message is added to the history - best effort to add message during a tool loop.
+:::
 
 ## Architecture
 

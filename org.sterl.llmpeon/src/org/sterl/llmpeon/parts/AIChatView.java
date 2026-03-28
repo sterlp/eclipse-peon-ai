@@ -5,6 +5,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.resources.IFile;
@@ -157,7 +158,6 @@ public class AIChatView implements EclipseAiMonitor {
             autonomous -> agentMode.setAutonomous(autonomous),
             this::onMcpToggle
         );
-
         applyConfig();
 
         if (logger != null)
@@ -368,18 +368,25 @@ public class AIChatView implements EclipseAiMonitor {
     }
 
     private void connectMcp() {
-        var servers = McpPreferenceInitializer.loadServers();
         Job.create("Connecting MCP servers", monitor -> {
+            
+            final AtomicBoolean connected = new AtomicBoolean(false);
             try {
-                toolService.connectMcp(servers);
-                return Status.OK_STATUS;
+                var servers = McpPreferenceInitializer.loadServers();
+                if (!servers.isEmpty()) {
+                    toolService.connectMcp(servers);
+                    connected.set(true);
+                }
+                return PeonConstants.okStatus("MCP connected to " + servers.size() + " server(s)");
             } catch (Exception e) {
-                EclipseUtil.runInUiThread(parent, () -> {
-                    McpPreferenceInitializer.setMcpEnabled(false);
-                    actionsBar.setMcpEnabled(false);
-                });
                 return PeonConstants.errorStatus("MCP failed to connect: " + e.getMessage(), e);
+            } finally {
+                EclipseUtil.runInUiThread(parent, () -> {
+                    McpPreferenceInitializer.setMcpEnabled(connected.get());
+                    actionsBar.setMcpEnabled(connected.get());
+                });
             }
+            
         }).schedule();
     }
 

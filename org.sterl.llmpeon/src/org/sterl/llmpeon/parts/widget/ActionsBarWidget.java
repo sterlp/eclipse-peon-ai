@@ -226,6 +226,8 @@ public class ActionsBarWidget extends Composite {
     /** Set the MCP toggle button state without firing the listener. */
     public void setMcpEnabled(boolean value) {
         btnMcp.setSelection(value);
+        if (value) btnMcp.setText("MCP on");
+        else btnMcp.setText("MCP off");
     }
 
     /** Returns whether the MCP toggle is currently on. */

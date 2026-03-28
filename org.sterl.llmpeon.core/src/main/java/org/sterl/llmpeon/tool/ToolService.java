@@ -181,6 +181,7 @@ public class ToolService {
         var executor = toolExecutors.get(tr.name());
         String result;
         if (executor == null && mcpService != null && mcpService.hasTool(tr.name())) {
+            monitor.onTool("Running MCP tool " + tr.name());
             result = mcpService.executeTool(tr);
             return new ToolResult(false, ToolExecutionResultMessage.from(tr.id(), tr.name(), result));
         } else if (executor == null) {

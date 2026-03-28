@@ -1,4 +1,8 @@
-# Fehler
+# Build
+
+`mvn clean verify` or in eclipse clean build
+
+# Error
 Nicht verschlicken sondern zurückgeben - entweder als dialog, oder unter verwendung des Status objekt mit: PeonConstants
 
 ```java

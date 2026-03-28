@@ -24,16 +24,18 @@ export default defineConfig({
         {
           text: 'Introduction',
           items: [
-            { text: 'Overview', link: '/' }
+            { text: 'Overview', link: '/' },
+            { text: 'Agents & Skills', link: '/setup/agents-and-skills' },
+            { text: 'Template Variables', link: '/setup/template-variables' },
+            { text: 'Agent Mode', link: '/setup/agent-mode' }
           ]
         },
         {
           text: 'Setup',
           items: [
             { text: 'Installation', link: '/setup/installation' },
-            { text: 'Configuration', link: '/setup/configuration' },
-            { text: 'Agents & Skills', link: '/setup/agents-and-skills' },
-            { text: 'Agent Mode', link: '/setup/agent-mode' }
+            { text: 'Configuration', link: '/setup/configuration' }
+            
           ]
         },
         {
