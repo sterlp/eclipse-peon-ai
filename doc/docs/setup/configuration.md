@@ -7,6 +7,8 @@ description: Configure Eclipse Peon AI
 
 After installation, configure the plugin via **Window > Preferences > Peon AI**.
 
+![Peon AI Config](../assets/mcp-config.png)
+
 ## Provider Settings
 
 ### Ollama

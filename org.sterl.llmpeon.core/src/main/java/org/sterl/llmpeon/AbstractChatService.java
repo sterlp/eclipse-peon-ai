@@ -30,6 +30,15 @@ import dev.langchain4j.model.output.TokenUsage;
 
 public abstract class AbstractChatService {
 
+    /**
+     * Conversation memory — holds only {@code UserMessage} and {@code AiMessage} entries.
+     * <p>
+     * {@code SystemMessage} must NOT be added here. The system prompt and standing orders
+     * (selected resource, AGENTS.md, plan hint) are assembled fresh on every call as
+     * {@link #buildStaticMessages()} and prepended to the request without touching memory.
+     * Keeping system messages out of memory ensures the compressor sees only real
+     * conversation turns and that compressed summaries survive subsequent compressions.
+     */
     protected final ChatMemory memory = MessageWindowChatMemory.builder()
             .id(this)
             .maxMessages(500000)
@@ -76,7 +85,7 @@ public abstract class AbstractChatService {
     public ChatResponse compressContext(AiMonitor monitor) {
         var response = new AiCompressorAgent(chatModel).call(memory.messages(), monitor);
         memory.clear();
-        memory.add(SystemMessage.from(response.aiMessage().text()));
+        memory.add(UserMessage.from("[Context summary]\n" + response.aiMessage().text()));
         updateTokenCount(response);
         return response;
     }
