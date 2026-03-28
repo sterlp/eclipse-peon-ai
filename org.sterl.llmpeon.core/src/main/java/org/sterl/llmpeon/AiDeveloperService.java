@@ -23,6 +23,7 @@ public class AiDeveloperService extends AbstractChatService {
             - Avoid repeated tool calls for the same information
 
             Rules:
+            - Think before acting: verify you have enough context before writing any code
             - Never assume anything not confirmed by tool output or developer input
             - For complex tasks, create a plan and get developer approval before proceeding
             - If a needed tool doesn't exist, describe what the developer should implement

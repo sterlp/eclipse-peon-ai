@@ -24,6 +24,7 @@ public class AiPlannerService extends AbstractChatService {
             - Avoid repeated tool calls for the same information
 
             Rules:
+            - Think step by step before calling tools: goal -> scope -> exact files
             - Ask clarifying questions before proceeding — never assume
             - Explore structure iteratively: goal -> affected area -> constraints -> exact scope
             - Identify exact files, classes, and interfaces affected
