@@ -8,7 +8,6 @@ import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.TitleAreaDialog;
 import org.eclipse.jface.preference.PreferencePage;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -26,6 +25,7 @@ import org.eclipse.ui.preferences.ScopedPreferenceStore;
 import org.sterl.llmpeon.mcp.McpServerConfig;
 import org.sterl.llmpeon.mcp.McpService;
 import org.sterl.llmpeon.parts.PeonConstants;
+import org.sterl.llmpeon.shared.StringUtil;
 
 
 public class McpPreferenceView extends PreferencePage implements IWorkbenchPreferencePage {
@@ -117,7 +117,7 @@ public class McpPreferenceView extends PreferencePage implements IWorkbenchPrefe
         item.setText(0, s.name());
         item.setText(1, s.url());
         item.setText(2, s.protocolVersion());
-        item.setText(3, s.apiKey().isBlank() ? "" : "****");
+        item.setText(3, StringUtil.hasNoValue(s.apiKey()) ? "<no api key>" : "****");
     }
 
     private void updateButtonStates() {
@@ -218,10 +218,10 @@ public class McpPreferenceView extends PreferencePage implements IWorkbenchPrefe
             container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
             container.setLayout(new GridLayout(2, false));
 
-            addField(container, "Name:", initial != null ? initial.name() : "");
+            addField(container, "Name:", initial != null ? initial.name() : "context7");
             txtName = (Text) getLastControl(container);
 
-            addField(container, "URL (SSE endpoint):", initial != null ? initial.url() : "https://mcp.context7.com/sse");
+            addField(container, "URL (SSE endpoint):", initial != null ? initial.url() : "https://mcp.context7.com/mcp");
             txtUrl = (Text) getLastControl(container);
 
             addField(container, "API Key (optional):", initial != null ? initial.apiKey() : "");

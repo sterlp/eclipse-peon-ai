@@ -1,6 +1,8 @@
 # Build
-
 `mvn clean verify` or in eclipse clean build
+
+# Structure
+Read parent `AGENTS.md` if needed
 
 # Error
 Nicht verschlicken sondern zurückgeben - entweder als dialog, oder unter verwendung des Status objekt mit: PeonConstants

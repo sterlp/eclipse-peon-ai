@@ -1,10 +1,12 @@
 package org.sterl.llmpeon.mcp;
 
+import org.sterl.llmpeon.shared.StringUtil;
+
 /**
  * Configuration for a single MCP server.
  *
  * @param name            display name shown in the UI
- * @param url             SSE endpoint URL, e.g. https://mcp.context7.com/sse
+ * @param url             SSE endpoint URL, e.g. https://mcp.context7.com/mcp
  * @param apiKey          optional Bearer token; empty string means no auth
  * @param protocolVersion MCP protocol version to announce, e.g. "2024-11-05"
  */
@@ -20,6 +22,6 @@ public record McpServerConfig(
         if (name == null) name = "";
         if (url == null) url = "";
         if (apiKey == null) apiKey = "";
-        if (protocolVersion == null || protocolVersion.isBlank()) protocolVersion = DEFAULT_PROTOCOL_VERSION;
+        if (StringUtil.hasNoValue(protocolVersion)) protocolVersion = DEFAULT_PROTOCOL_VERSION;
     }
 }
