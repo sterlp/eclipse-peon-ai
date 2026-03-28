@@ -40,17 +40,17 @@ public class McpService implements AutoCloseable {
             return svc.getToolSpecifications().stream()
                     .map(ToolSpecification::name)
                     .toList();
-        } catch (RuntimeException e) {
-            throw e;
         } catch (Exception e) {
+            if (e instanceof RuntimeException re) throw re;
             throw new RuntimeException(e);
         }
     }
 
     /**
      * Opens connections to all configured servers, fetches their tool listings,
-     * and populates the internal tool registry. Errors per-server are logged but
-     * do not abort other servers.
+     * and populates the internal tool registry.
+     * If any server fails to connect, all successfully created clients are closed
+     * and a RuntimeException is thrown listing all failures.
      */
     public void connect() {
         disconnect();
@@ -79,8 +79,8 @@ public class McpService implements AutoCloseable {
                 clients.add(client);
                 toolSpecs.addAll(tools);
                 for (var spec : tools) {
-                    System.out.println("Connected MCP " + server.name() + " tool " + spec.name());
                     toolToClient.put(spec.name(), client);
+                    System.out.println("Connected MCP " + server.name() + " tool " + spec.name());
                 }
             } catch (Exception e) {
                 errors.add(server.name() + " (" + server.url() + "): " + e.getMessage());

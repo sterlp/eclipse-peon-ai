@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import org.jspecify.annotations.NonNull;
@@ -28,7 +27,6 @@ import dev.langchain4j.agent.tool.ToolSpecifications;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -40,7 +38,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
  * https://github.com/langchain4j/langchain4j/blob/main/docs/docs/tutorials/tools.md
  */
 public class ToolService {
-    
+
     public static final int MAX_ITERATIONS = 75;
 
     private final Map<String, SmartToolExecutor> toolExecutors = new HashMap<>();
@@ -76,63 +74,44 @@ public class ToolService {
     /**
      * Runs the full tool loop: calls the model, executes any tools, repeats until
      * the model produces a plain text response.
-     *
-     * @param staticMessages system prompt + standing orders + skills (prepended each iteration)
-     * @param memory         the conversation memory (mutated in-place)
-     * @param chatModel      the model to call
-     * @param monitor        cancellation/progress monitor
-     * @param toolFilter     decides which registered tools to expose this call
-     * @param temperature    sampling temperature for the model
      */
     @NonNull
-    public ChatResponse executeLoop(
-            @NonNull
-            List<ChatMessage> staticMessages,
-            @NonNull
-            ChatMemory memory,
-            @NonNull
-            ChatModel chatModel,
-            @NonNull
-            AiMonitor monitor,
-            @NonNull
-            Predicate<SmartToolExecutor> toolFilter,
-            double temperature,
-            Consumer<ChatResponse> onLoop) {
+    public ChatResponse executeLoop(@NonNull ToolLoopRequest req) {
         ChatResponse response = null;
 
         int iterations = 0;
         boolean shouldLoop = true;
         do {
-            var messages = new ArrayList<ChatMessage>(staticMessages);
-            messages.addAll(memory.messages());
+            var messages = new ArrayList<ChatMessage>(req.staticMessages);
+            messages.addAll(req.memory.messages());
 
             var builder = ChatRequest.builder()
-                    .temperature(temperature)
+                    .temperature(req.temperature)
                     .presencePenalty(1.5)
                     .messages(toOneSystemMessage(messages));
-            
-            var toolSpecs = new ArrayList<>(toolSpecifications(toolFilter));
-            toolSpecs.addAll(mcpToolSpecs);
+
+            var toolSpecs = new ArrayList<>(toolSpecifications(req.toolFilter));
+            if (req.includeMcpTools) toolSpecs.addAll(mcpToolSpecs);
             if (!toolSpecs.isEmpty()) builder.toolSpecifications(toolSpecs);
-            
-            response = chatModel.chat(builder.build());
+
+            response = req.chatModel.chat(builder.build());
 
             shouldLoop = response.aiMessage().hasToolExecutionRequests()
                     // https://github.com/langchain4j/langchain4j/issues/4786
-                    || (StringUtil.hasNoValue(response.aiMessage().text()) 
+                    || (StringUtil.hasNoValue(response.aiMessage().text())
                             && StringUtil.hasValue(response.aiMessage().thinking())
                         );
-            if (shouldLoop) onLoop.accept(response);
+            if (shouldLoop) req.onLoop.accept(response);
 
-            ToSimpleMessage.INSTANCE.convert(response.aiMessage()).forEach(monitor::onMessage);
+            ToSimpleMessage.INSTANCE.convert(response.aiMessage()).forEach(req.monitor::onMessage);
 
-            memory.set(runAllTools(response, chatModel, monitor, memory.messages()));
+            req.memory.set(runAllTools(response, req.chatModel, req.monitor, req.memory.messages()));
 
             if (iterations++ >= MAX_ITERATIONS) {
-                monitor.onProblem("Tool loop reached max iterations - stopping after " + iterations);
+                req.monitor.onProblem("Tool loop reached max iterations - stopping after " + iterations);
                 break;
             }
-            if (monitor.isCanceled()) break;
+            if (req.monitor.isCanceled()) break;
         } while (shouldLoop);
 
         return response;
@@ -226,7 +205,7 @@ public class ToolService {
 
     /**
      * Registers any object that has methods annotated with {@link Tool}.
-     * Existing tools with the same name will be replaced.
+     * Existing tools with the same name trigger an error.
      */
     public void addTool(SmartTool toolObject) {
         for (Method method : toolObject.getClass().getDeclaredMethods()) {

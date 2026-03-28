@@ -1,9 +1,8 @@
 package org.sterl.llmpeon.tool.tools;
 
-import java.util.Collections;
-
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
 
 import dev.langchain4j.agent.tool.P;
@@ -50,11 +49,12 @@ public class SearchAgentTool extends AbstractTool {
             messages.add(system);
             messages.add(UserMessage.from(prompt));
 
-            var response = toolService.executeLoop(Collections.emptyList(), messages, 
-                    chatModel, m, 
-                    e -> !e.getTool().isEditTool() && !(e.getTool() instanceof SearchAgentTool), 
-                    0.1,
-                    r -> {});
+            var response = toolService.executeLoop(
+                    new ToolLoopRequest(messages, chatModel)
+                            .monitor(m)
+                            .toolFilter(e -> !e.getTool().isEditTool() && !(e.getTool() instanceof SearchAgentTool))
+                            .includeMcpTools(true)
+                            .temperature(0.1));
 
 
             onTool("SearchAgent done for: " + prompt);

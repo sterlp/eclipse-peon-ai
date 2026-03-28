@@ -7,10 +7,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.Collections;
-
 import org.junit.jupiter.api.Test;
-import org.sterl.llmpeon.shared.AiMonitor;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -21,7 +18,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 
 class ToolServiceTest {
 
-    ToolService subject = new ToolService();
+    final ToolService subject = new ToolService();
 
     @Test
     void testLoopEndsWithTextMessageOnly() {
@@ -32,17 +29,15 @@ class ToolServiceTest {
         var memory = MessageWindowChatMemory.withMaxMessages(50);
         // WHEN
         memory.add(UserMessage.from("Hello"));
-        var response = subject.executeLoop(Collections.emptyList(), 
-                memory,
-                cm, 
-                AiMonitor.NULL_MONITOR, t -> true, 0, r -> {});
-        
+        var response = subject.executeLoop(
+                new ToolLoopRequest(memory, cm));
+
         // THEN
         assertEquals("Hello", response.aiMessage().text());
         // AND
         verify(cm, times(1)).chat(any(ChatRequest.class));
     }
-    
+
     @Test
     void testLoopsOnOnThinkOnly() {
         // GIVEN
@@ -55,11 +50,9 @@ class ToolServiceTest {
         var memory = MessageWindowChatMemory.withMaxMessages(50);
         // WHEN
         memory.add(UserMessage.from("Hello"));
-        var response = subject.executeLoop(Collections.emptyList(), 
-                memory,
-                cm, 
-                AiMonitor.NULL_MONITOR, t -> true, 0, r -> {});
-        
+        var response = subject.executeLoop(
+                new ToolLoopRequest(memory, cm));
+
         // THEN
         assertEquals("Hello", response.aiMessage().text());
         // AND
