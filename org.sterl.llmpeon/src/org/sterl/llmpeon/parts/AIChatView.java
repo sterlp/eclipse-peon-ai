@@ -381,6 +381,14 @@ public class AIChatView implements EclipseAiMonitor {
         refreshChat();
     }
 
+    // TODO 29.03.2026 
+    // currentMode should be moved to the aiService
+    // so this can all happen in aiService.startImplementation(); returning us the currentMode for the UI
+    // maybe we should even name the aiService AIChatViewController
+    // refreshChat(); here
+    // and sendTrigger.run(); from the AgentModeService can be maybe even be removed? not sure ...
+    // at least be moved to the AIChatViewController
+    // so doSendMessage(); here can be removed or better be reused? as we use this also as button action
     private void doStartImpl() {
         if (currentMode == PeonMode.AGENT) {
             aiService.getAgentMode().startImplementation();
@@ -388,15 +396,10 @@ public class AIChatView implements EclipseAiMonitor {
             return;
         }
 
-        // PLAN -> DEV: extract last AI message and hand off to developer service
+        // PLAN -> DEV: hand off the plan to the developer service
         currentMode = PeonMode.DEV;
         actionsBar.updateModeUI(PeonMode.DEV, true);
-
-        var plan = aiService.getPlannerService().extractLastPlan();
-        if (plan.isPresent()) aiService.getDeveloperService().clear();
-        aiService.getDeveloperService().addMessage(UserMessage.from("Start Implementation"));
-        plan.ifPresent(aiService.getDeveloperService()::addMessage);
-
+        aiService.startImplementation();
         refreshChat();
         doSendMessage();
     }

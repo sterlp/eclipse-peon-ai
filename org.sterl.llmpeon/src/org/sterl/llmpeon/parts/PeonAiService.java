@@ -8,6 +8,7 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.sterl.llmpeon.AiDeveloperService;
 import org.sterl.llmpeon.AiPlannerService;
+import dev.langchain4j.data.message.UserMessage;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.agent.AgentModeService;
 import org.sterl.llmpeon.parts.agentsmd.AgentsMdService;
@@ -61,6 +62,26 @@ public class PeonAiService {
 
     /** Written from preference-change listener, read during every LLM call setup. */
     private final AtomicReference<LlmConfig> currentConfig;
+
+    /**
+     * Package-private constructor for unit tests — accepts pre-built services to avoid
+     * hard Eclipse dependencies ({@code EclipseUtil.workspacePath()}, Eclipse tools, etc.).
+     */
+    PeonAiService(AiPlannerService plannerService, AiDeveloperService developerService) {
+        this.plannerService = plannerService;
+        this.developerService = developerService;
+        this.toolService = null;
+        this.skillService = null;
+        this.context = null;
+        this.agentsMdService = null;
+        this.agentMode = null;
+        this.agentModeTool = null;
+        this.mcpConnectionService = null;
+        this.workspaceWriteFilesTool = null;
+        this.diskFileWriteTool = null;
+        this.diskFileReadTool = null;
+        this.currentConfig = new AtomicReference<>(null);
+    }
 
     /**
      * Creates all AI services with defaults from the current Eclipse preferences.
@@ -140,6 +161,21 @@ public class PeonAiService {
                 throw new RuntimeException("Failed to load skills from " + config.skillDirectory(), e);
             }
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // Business logic
+    // -------------------------------------------------------------------------
+
+    /**
+     * Performs the PLAN → DEV handoff: clears the developer service, adds the
+     * "Start Implementation" trigger, and appends the last planner message (the
+     * self-contained implementation plan) if one exists.
+     */
+    public void startImplementation() {
+        developerService.clear();
+        developerService.addMessage(UserMessage.from("Start Implementation"));
+        plannerService.extractLastPlan().ifPresent(developerService::addMessage);
     }
 
     // -------------------------------------------------------------------------
