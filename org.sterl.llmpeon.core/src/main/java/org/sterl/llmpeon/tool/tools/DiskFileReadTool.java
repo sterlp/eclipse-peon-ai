@@ -17,7 +17,11 @@ public class DiskFileReadTool extends AbstractTool {
     private Path workingDir;
 
     public DiskFileReadTool(Path workingDir) {
-        this.workingDir = workingDir.toAbsolutePath().normalize();
+        setWorkingDir(workingDir);
+    }
+    
+    public DiskFileReadTool(String workingDir) {
+        setWorkingDir(workingDir);
     }
 
     @Override
@@ -25,6 +29,11 @@ public class DiskFileReadTool extends AbstractTool {
 
     public void setWorkingDir(Path workingDir) {
         this.workingDir = workingDir.toAbsolutePath().normalize();
+    }
+    
+    public void setWorkingDir(String workingDir) {
+        if (workingDir == null) return;
+        setWorkingDir(Path.of(workingDir));
     }
 
     public Path getWorkingDir() {

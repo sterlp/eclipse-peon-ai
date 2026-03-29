@@ -14,6 +14,7 @@ import org.sterl.llmpeon.parts.agentsmd.AgentsMdService;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.McpConnectionService;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
+import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.tools.AgentModeTool;
 import org.sterl.llmpeon.parts.tools.EclipseBuildTool;
 import org.sterl.llmpeon.parts.tools.EclipseCodeNavigationTool;
@@ -45,12 +46,15 @@ public class PeonAiService {
     private final SkillService skillService;
     private final TemplateContext context;
     private final AgentsMdService agentsMdService;
-    private final EclipseWorkspaceWriteFileTool workspaceWriteFilesTool;
     private final AiDeveloperService developerService;
     private final AiPlannerService plannerService;
     private final AgentModeService agentMode;
     private final AgentModeTool agentModeTool;
     private final McpConnectionService mcpConnectionService;
+    
+    private final EclipseWorkspaceWriteFileTool workspaceWriteFilesTool;
+    private final DiskFileWriteTool diskFileWriteTool;
+    private final DiskFileReadTool diskFileReadTool;
 
     /** Written from Eclipse DI thread, read from background LLM job threads. */
     private final AtomicReference<IProject> currentProject = new AtomicReference<>();
@@ -76,11 +80,16 @@ public class PeonAiService {
         skillService            = new SkillService();
         context                 = new TemplateContext(rootPath);
         agentsMdService         = new AgentsMdService();
-        workspaceWriteFilesTool = new EclipseWorkspaceWriteFileTool();
 
+        workspaceWriteFilesTool = new EclipseWorkspaceWriteFileTool();
         toolService.addTool(workspaceWriteFilesTool);
-        toolService.addTool(new DiskFileWriteTool(rootPath));
-        toolService.addTool(new DiskFileReadTool(rootPath));
+        toolService.addTool(new EclipseWorkspaceReadFileTool());
+        
+        diskFileWriteTool = new DiskFileWriteTool(rootPath);
+        toolService.addTool(diskFileWriteTool);
+        diskFileReadTool = new DiskFileReadTool(rootPath);
+        toolService.addTool(diskFileReadTool);
+
         toolService.addTool(new EclipseBuildTool());
         toolService.addTool(new EclipseGrepTool());
         toolService.addTool(new EclipseRunTestTool());
@@ -103,10 +112,16 @@ public class PeonAiService {
      * Safe to call from any thread — each downstream setter manages its own state.
      */
     public void setProject(IProject project) {
+        var projectPath = JdtUtil.pathOf(project);
         currentProject.set(project);
         agentsMdService.load(project);
-        workspaceWriteFilesTool.setCurrentProject(project);
         agentMode.setProject(project);  // volatile write inside AgentModeService
+        context.setWorkingDir(projectPath);
+        
+        workspaceWriteFilesTool.setCurrentProject(project);
+        
+        diskFileWriteTool.setWorkingDir(projectPath);
+        diskFileReadTool.setWorkingDir(projectPath);
     }
 
     /**

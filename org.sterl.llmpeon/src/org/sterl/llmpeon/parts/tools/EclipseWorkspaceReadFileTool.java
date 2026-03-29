@@ -15,7 +15,6 @@ import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.StringMatcher;
-import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -40,10 +39,8 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
             onTool("Reading eclipse file " + filePath);
             return IoUtils.readFile(f);
         }
-        // fallback: try workspace root and current project
-        var diskTool = new DiskFileReadTool(EclipseUtil.workspacePath());
-        onTool("Resolved outside Eclipse, reading " + filePath);
-        return diskTool.readDiskFile(filePath);
+        onTool("No eclipse file found for " + filePath);
+        return "No eclipse file found for " + filePath;
     }
 
     @Tool("Eclipse: Search workspace files by name")

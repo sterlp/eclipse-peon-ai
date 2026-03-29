@@ -70,7 +70,7 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
                 sb.append("\n... ").append(found.size() - MAX_TYPE_RESULTS)
                   .append(" more results. Narrow your search.");
             }
-            onTool("Found " + found.size() + " matching " + typeName);
+            onTool("Find type " + typeName + " reading " + found.size() + " results ...");
             return sb.toString();
         } catch (JavaModelException e) {
             throw new RuntimeException("Search failed: " + e.getMessage(), e);
@@ -255,7 +255,7 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
             throw new RuntimeException("Resource search failed: " + e.getMessage(), e);
         }
 
-        onTool("Search for " + namePattern + " in " + projects.size() + " projects.");
+        onTool("Search for " + namePattern + " found " + matches.size() + " matches in " + projects.size() + " projects ");
         
         if (matches.isEmpty()) {
             return "No resources found matching '" + namePattern + "' in following projects: " + projects.stream().map(p -> p.getName());

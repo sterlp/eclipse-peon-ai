@@ -14,8 +14,8 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
-import org.eclipse.ui.ide.IDE;
 import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.ide.IDE;
 import org.sterl.llmpeon.shared.StringUtil;
 
 public class EclipseUtil {

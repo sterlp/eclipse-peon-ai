@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.tool;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -8,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.Test;
+import org.sterl.llmpeon.tool.tools.WebFetchTool;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -19,6 +21,12 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 class ToolServiceTest {
 
     final ToolService subject = new ToolService();
+    
+    @Test
+    void test_getTool() {
+        var tool = subject.getTool(WebFetchTool.class);
+        assertTrue(tool.get() instanceof WebFetchTool);
+    }
 
     @Test
     void testLoopEndsWithTextMessageOnly() {

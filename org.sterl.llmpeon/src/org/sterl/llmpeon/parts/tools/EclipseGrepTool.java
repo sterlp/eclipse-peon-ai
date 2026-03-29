@@ -19,9 +19,9 @@ import dev.langchain4j.agent.tool.Tool;
 
 public class EclipseGrepTool extends AbstractEclipseTool {
 
-    @Tool("Eclipse: Search workspace file contents.")
+    @Tool("Eclipse: Search workspace file contents - not the file name.")
     public String grepWorkspaceFiles(
-            @P("text to search for") String query,
+            @P("text to search for in file") String query,
             @P("optional project or folder path") String path,
             @P("optional file extension, e.g. .java") String extension) {
 
@@ -77,7 +77,8 @@ public class EclipseGrepTool extends AbstractEclipseTool {
             if (matches.size() >= MAX_FILES) break;
         }
 
-        onTool("Grep " + query + " found " + matches.size() + " matches.");
+        onTool("Grep " + query + " found " + matches.size() + " matches for file types: " 
+                + StringUtil.getOrDefault(extension, "*"));
 
         if (matches.isEmpty()) {
             return "No files contain '" + query + "' in the searched path.";
