@@ -14,8 +14,8 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
-import org.eclipse.ui.ide.IDE;
 import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.ide.IDE;
 import org.sterl.llmpeon.shared.StringUtil;
 
 public class EclipseUtil {
@@ -26,6 +26,10 @@ public class EclipseUtil {
             if (parent.isDisposed()) return;
             fn.run();
         });
+    }
+    
+    public static Path workspacePath() {
+        return ResourcesPlugin.getWorkspace().getRoot().getRawLocation().toFile().toPath();
     }
 
     /**
@@ -103,8 +107,8 @@ public class EclipseUtil {
         } catch (Exception e) {
             // invalid workspace path, continue
         }
-        for (var p : ResourcesPlugin.getWorkspace().getRoot().getProjects()) {
-            if (!p.isOpen()) continue;
+        
+        for (var p : openProjects()) {
             var result = p.findMember(ipath);
             if (result != null && result.exists()) return Optional.of(result);
         }

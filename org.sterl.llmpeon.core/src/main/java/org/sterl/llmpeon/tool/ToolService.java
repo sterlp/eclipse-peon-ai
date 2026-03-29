@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Predicate;
 
 import org.jspecify.annotations.NonNull;
@@ -12,6 +13,7 @@ import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 import org.sterl.llmpeon.tool.model.ToSimpleMessage;
+import org.sterl.llmpeon.tool.tools.AbstractTool;
 import org.sterl.llmpeon.tool.tools.CompressorAgentTool;
 import org.sterl.llmpeon.tool.tools.SearchAgentTool;
 import org.sterl.llmpeon.tool.tools.ShellTool;
@@ -94,6 +96,8 @@ public class ToolService {
             if (req.includeMcpTools) toolSpecs.addAll(mcpToolSpecs);
             if (!toolSpecs.isEmpty()) builder.toolSpecifications(toolSpecs);
 
+            req.monitor.onChatMessage(iterations + 1, builder);
+
             response = req.chatModel.chat(builder.build());
 
             shouldLoop = response.aiMessage().hasToolExecutionRequests()
@@ -103,7 +107,7 @@ public class ToolService {
                         );
             if (shouldLoop) req.onLoop.accept(response);
 
-            ToSimpleMessage.INSTANCE.convert(response.aiMessage()).forEach(req.monitor::onMessage);
+            ToSimpleMessage.INSTANCE.convert(response.aiMessage()).forEach(req.monitor::onChatResponse);
 
             req.memory.set(runAllTools(response, req.chatModel, req.monitor, req.memory.messages()));
 
@@ -227,5 +231,14 @@ public class ToolService {
                 System.out.println("removed tool " + spec.name());
             }
         }
+    }
+    
+    @SuppressWarnings("unchecked")
+    public <T extends AbstractTool> Optional<T> getTool(Class<T> clazz) {
+        return toolExecutors.values().stream()
+            .map(SmartToolExecutor::getTool)
+            .filter(t -> t != null && clazz.isInstance(t))
+            .map(t -> (T)t)
+            .findFirst();
     }
 }

@@ -7,7 +7,7 @@ import org.junit.Test;
 import org.sterl.llmpeon.parts.tools.EclipseBuildTool;
 import org.sterl.llmpeon.parts.tools.EclipseCodeNavigationTool;
 import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
-import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFilesTool;
+import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 
 public class EclipseWorkspaceReadFilesToolTest extends AbstractTest {
 
@@ -41,7 +41,7 @@ public class EclipseWorkspaceReadFilesToolTest extends AbstractTest {
     public void searchAndReadSelf() throws Exception {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
 
-        var tool = new EclipseWorkspaceReadFilesTool();
+        var tool = new EclipseWorkspaceReadFileTool();
 
         // 1. find this file by name
         String searchResult = tool.searchWorkspaceFiles("EclipseWorkspaceReadFilesToolTest");

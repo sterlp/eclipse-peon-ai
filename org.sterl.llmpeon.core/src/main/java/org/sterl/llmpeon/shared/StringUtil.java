@@ -1,6 +1,11 @@
 package org.sterl.llmpeon.shared;
 
 public class StringUtil {
+    
+    public static String getOrDefault(String value, String defaultValue) {
+        if (hasValue(value)) return value;
+        return defaultValue;
+    }
 
     public static String strip(String value) {
         if (value == null || value.length() == 0) return value;

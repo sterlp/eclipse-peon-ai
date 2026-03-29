@@ -71,14 +71,10 @@ public class AiPlannerService extends AbstractChatService {
     }
 
     /**
-     * Returns the last AI message if the context is large enough to warrant
-     * passing only the plan summary to the developer (rather than the full history).
-     * Used during PLAN → DEV handoff.
+     * Returns the last AI message from the planner conversation.
+     * Used during PLAN → DEV handoff to pass the plan to the developer service.
      */
     public Optional<AiMessage> extractLastPlan() {
-        boolean tooLarge = getMessages().size() > 4
-                && getTokenSize() > (getTokenWindow() * 0.4);
-        if (!tooLarge) return Optional.empty();
         var messages = getMessages();
         for (int i = messages.size() - 1; i >= 0; i--) {
             if (messages.get(i) instanceof AiMessage ai && StringUtil.hasValue(ai.text())) {

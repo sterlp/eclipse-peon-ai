@@ -176,6 +176,7 @@ public class ActionsBarWidget extends Composite {
         btnStop.setEnabled(value);
         btnCompress.setEnabled(!value);
         btnClear.setEnabled(!value);
+        btnMcp.setEnabled(!value);
         if (value) btnImplement.setEnabled(false); // re-enable is handled by updateModeUI
     }
     

@@ -101,6 +101,7 @@ public class JdtUtil {
      * Workspace-relative path for a type.
      */
     public static String pathOf(IResource value) {
+        if (value == null) return null;
         return value.getFullPath().toPortableString();
     }
 

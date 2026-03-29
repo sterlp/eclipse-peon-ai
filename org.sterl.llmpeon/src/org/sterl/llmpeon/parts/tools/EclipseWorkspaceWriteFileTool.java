@@ -2,7 +2,6 @@ package org.sterl.llmpeon.parts.tools;
 
 import java.nio.charset.Charset;
 import java.nio.file.Files;
-import java.nio.file.Path;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
@@ -13,12 +12,11 @@ import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.AiMonitor.AiFileUpdate;
 import org.sterl.llmpeon.shared.FileUtils;
-import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 
-public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
+public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
 
     private IProject currentProject;
 
@@ -26,10 +24,6 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
         this.currentProject = project;
     }
 
-    public IProject getCurrentProject() {
-        return currentProject;
-    }
-    
     @Override
     public boolean isEditTool() {
         return true;
@@ -56,10 +50,7 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
 
         var inFile = EclipseUtil.resolveInEclipse(filePath);
         if (inFile.isEmpty() || !(inFile.get() instanceof IFile eclipseFile)) {
-            var disk = new DiskFileWriteTool(currentProject == null ? Path.of("./") : currentProject.getRawLocation().toPath());
-            disk.withMemory(memory);
-            disk.withMonitor(monitor);
-            return disk.editDiskFile(filePath, oldString, newString);
+            throw new IllegalArgumentException("Cannot write unknown file in eclipse " + filePath);
         } else {
             String content = IoUtils.readFile(eclipseFile);
             String newContent = FileUtils.applyEdit(filePath, content, oldString, newString);
@@ -174,9 +165,9 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
             file.write(content.getBytes(charset), true, false, true, getProgressMonitor());
             file.refreshLocal(IResource.DEPTH_ZERO, getProgressMonitor());
         } catch (CoreException e) {
-            throw new RuntimeException("Failed to write " + file.getFullPath(), e);
+            throw new RuntimeException("Failed to write " + JdtUtil.pathOf(file), e);
         }
-        return new AiFileUpdate(file.getFullPath().toPortableString(), oldContent, content);
+        return new AiFileUpdate(JdtUtil.pathOf(file), oldContent, content);
     }
 
     private IFile writeFileToProject(IProject targetProject, String projectRelativePath, String content) {

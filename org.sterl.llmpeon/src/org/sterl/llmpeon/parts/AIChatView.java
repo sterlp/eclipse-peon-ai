@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.parts;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -8,7 +9,6 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
-import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
@@ -40,7 +40,7 @@ import org.sterl.llmpeon.parts.monitor.EclipseAiMonitor;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.shared.SimpleDiff;
-import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFilesTool;
+import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.parts.widget.ActionsBarWidget;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget;
 import org.sterl.llmpeon.parts.widget.ChatWidget;
@@ -96,9 +96,6 @@ public class AIChatView implements EclipseAiMonitor {
     public void createPartControl(Composite parent) {
         this.parent = parent;
         parent.setLayout(new GridLayout(1, false));
-
-        var rootPath = ResourcesPlugin.getWorkspace().getRoot().getRawLocation().toFile().toPath();
-        aiService.registerWorkspaceTools(rootPath);
 
         chatHistory = new ChatMarkdownWidget(parent, SWT.BORDER);
         chatHistory.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
@@ -233,10 +230,22 @@ public class AIChatView implements EclipseAiMonitor {
     // -------------------------------------------------------------------------
 
     @Override
-    public void onMessage(SimpleMessage m) {
+    public void onChatResponse(SimpleMessage m) {
         EclipseUtil.runInUiThread(parent, () -> {
             chatHistory.appendMessage(m);
             actionsBar.updateCompact(getActiveService().getTokenSize(), getActiveService().getTokenWindow());
+        });
+    }
+
+    @Override
+    public void onCallCompleted(dev.langchain4j.model.chat.response.ChatResponse response, Duration duration) {
+        EclipseUtil.runInUiThread(parent, () -> {
+            actionsBar.lockWhileWorking(false);
+            if (aiService.getAgentMode().consumeImplementationRequest()) {
+                aiService.getAgentMode().startImplementation();
+            }
+            refreshStatusLine();
+            actionsBar.updateModeUI(currentMode, isImplEnabled());
         });
     }
 
@@ -372,6 +381,14 @@ public class AIChatView implements EclipseAiMonitor {
         refreshChat();
     }
 
+    // TODO 29.03.2026 
+    // currentMode should be moved to the aiService
+    // so this can all happen in aiService.startImplementation(); returning us the currentMode for the UI
+    // maybe we should even name the aiService AIChatViewController
+    // refreshChat(); here
+    // and sendTrigger.run(); from the AgentModeService can be maybe even be removed? not sure ...
+    // at least be moved to the AIChatViewController
+    // so doSendMessage(); here can be removed or better be reused? as we use this also as button action
     private void doStartImpl() {
         if (currentMode == PeonMode.AGENT) {
             aiService.getAgentMode().startImplementation();
@@ -379,15 +396,10 @@ public class AIChatView implements EclipseAiMonitor {
             return;
         }
 
-        // PLAN -> DEV: extract last AI message and hand off to developer service
+        // PLAN -> DEV: hand off the plan to the developer service
         currentMode = PeonMode.DEV;
         actionsBar.updateModeUI(PeonMode.DEV, true);
-
-        var plan = aiService.getPlannerService().extractLastPlan();
-        if (plan.isPresent()) aiService.getDeveloperService().clear();
-        aiService.getDeveloperService().addMessage(UserMessage.from("Start Implementation"));
-        plan.ifPresent(aiService.getDeveloperService()::addMessage);
-
+        aiService.startImplementation();
         refreshChat();
         doSendMessage();
     }
@@ -443,37 +455,19 @@ public class AIChatView implements EclipseAiMonitor {
             monitorRef.set(monitor);
             Exception ex = null;
             try {
-                int msgCountBefore = active.getMessages().size();
                 active.setStandingOrders(StandingOrdersBuilder.build(
                         selectedResource, aiService.getAgentsMdService(), aiService.getTemplateContext(),
                         currentMode, aiService.getAgentMode()));
-
-                // TODO: race condition if we switch to dev mode, as finally will maybe run later, so we lock one more time here ...
-                EclipseUtil.runInUiThread(parent, () -> actionsBar.lockWhileWorking(true));
                 switch (currentMode) {
                     case DEV   -> aiService.getDeveloperService().call(text.isEmpty() ? null : text, this);
                     case PLAN  -> aiService.getPlannerService().call(text.isEmpty() ? null : text, this);
                     case AGENT -> aiService.getAgentMode().call(text.isEmpty() ? null : text, this);
                 };
-
-                EclipseUtil.runInUiThread(parent, () -> {
-                    actionsBar.lockWhileWorking(false);
-
-                    if (aiService.getAgentMode().consumeImplementationRequest()) {
-                        aiService.getAgentMode().startImplementation();
-                        refreshChat();
-                    } else if (active.getMessages().size() < msgCountBefore) {
-                        refreshChat();
-                    } else {
-                        refreshStatusLine();
-                        actionsBar.updateModeUI(currentMode, isImplEnabled());
-                    }
-                });
             } catch (Exception e) {
                 ex = e;
-                onMessage(new SimpleMessage(Type.PROBLEM, e.getMessage()));
-            } finally {
+                onChatResponse(new SimpleMessage(Type.PROBLEM, e.getMessage()));
                 EclipseUtil.runInUiThread(parent, () -> actionsBar.lockWhileWorking(false));
+            } finally {
                 monitor.done();
                 active.setStandingOrders(Collections.emptyList());
                 monitorRef.set(new NullProgressMonitor());
@@ -517,7 +511,7 @@ public class AIChatView implements EclipseAiMonitor {
         userIn += "\n\nStart line: " + (textSelection.getStartLine() + 1);
 
         if (file != null) userIn += "\nFile: " + JdtUtil.pathOf(file) + " use "
-                + EclipseWorkspaceReadFilesTool.READ_ECLIPSE_FILE_TOOL + " to read whole file, if needed.";
+                + EclipseWorkspaceReadFileTool.READ_ECLIPSE_FILE_TOOL + " to read whole file, if needed.";
         return userIn;
     }
 

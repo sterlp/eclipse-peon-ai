@@ -8,18 +8,18 @@ import static org.junit.Assume.assumeTrue;
 import java.time.OffsetDateTime;
 
 import org.junit.Test;
-import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFilesTool;
-import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFilesTool;
+import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
+import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
 
 public class EclipseWorkspaceWriteFilesToolTest extends AbstractTest {
 
-    private final EclipseWorkspaceReadFilesTool readTool = new EclipseWorkspaceReadFilesTool();
+    private final EclipseWorkspaceReadFileTool readTool = new EclipseWorkspaceReadFileTool();
 
     @Test
     public void test_createWorkspaceFile() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
         // GIVEN
-        var tool = new EclipseWorkspaceWriteFilesTool();
+        var tool = new EclipseWorkspaceWriteFileTool();
         var fileName = "/org.sterl.llmpeon.test/foo.txt";
         var message = "Hello world " + OffsetDateTime.now();
         // WHEN
@@ -33,7 +33,7 @@ public class EclipseWorkspaceWriteFilesToolTest extends AbstractTest {
     @Test
     public void test_editWorkspaceFile() {
         // GIVEN
-        var tool = new EclipseWorkspaceWriteFilesTool();
+        var tool = new EclipseWorkspaceWriteFileTool();
         var fileName = "/org.sterl.llmpeon.test/foo.txt";
         var message = """
                     private void updateSelectedProject(IProject project) {
@@ -77,7 +77,7 @@ public class EclipseWorkspaceWriteFilesToolTest extends AbstractTest {
     @Test
     public void test_editWorkspaceFile_not_found() {
         // GIVEN
-        var tool = new EclipseWorkspaceWriteFilesTool();
+        var tool = new EclipseWorkspaceWriteFileTool();
         var fileName = "/org.sterl.llmpeon.test/foo.txt";
         var editString = "  " + OffsetDateTime.now().toString();
         var message = """

@@ -15,7 +15,11 @@ public class DiskFileWriteTool extends AbstractTool {
     private Path workingDir;
 
     public DiskFileWriteTool(Path workingDir) {
-        this.workingDir = workingDir.toAbsolutePath().normalize();
+        setWorkingDir(workingDir);
+    }
+    
+    public DiskFileWriteTool(String workingDir) {
+        setWorkingDir(workingDir);
     }
 
     @Override
@@ -23,6 +27,11 @@ public class DiskFileWriteTool extends AbstractTool {
 
     public void setWorkingDir(Path workingDir) {
         this.workingDir = workingDir.toAbsolutePath().normalize();
+    }
+    
+    public void setWorkingDir(String workingDir) {
+        if (workingDir == null) return;
+        setWorkingDir(Path.of(workingDir));
     }
 
     public Path getWorkingDir() {

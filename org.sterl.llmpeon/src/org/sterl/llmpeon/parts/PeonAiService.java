@@ -1,7 +1,6 @@
 package org.sterl.llmpeon.parts;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -9,18 +8,23 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.sterl.llmpeon.AiDeveloperService;
 import org.sterl.llmpeon.AiPlannerService;
+import org.sterl.llmpeon.PeonMode;
+
+import dev.langchain4j.data.message.UserMessage;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.agent.AgentModeService;
 import org.sterl.llmpeon.parts.agentsmd.AgentsMdService;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.McpConnectionService;
+import org.sterl.llmpeon.parts.shared.EclipseUtil;
+import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.tools.AgentModeTool;
 import org.sterl.llmpeon.parts.tools.EclipseBuildTool;
 import org.sterl.llmpeon.parts.tools.EclipseCodeNavigationTool;
 import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
 import org.sterl.llmpeon.parts.tools.EclipseRunTestTool;
-import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFilesTool;
-import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFilesTool;
+import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
+import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.template.TemplateContext;
 import org.sterl.llmpeon.tool.ToolService;
@@ -45,19 +49,41 @@ public class PeonAiService {
     private final SkillService skillService;
     private final TemplateContext context;
     private final AgentsMdService agentsMdService;
-    private final EclipseWorkspaceWriteFilesTool workspaceWriteFilesTool;
-    private final EclipseWorkspaceReadFilesTool workspaceReadFilesTool;
     private final AiDeveloperService developerService;
     private final AiPlannerService plannerService;
     private final AgentModeService agentMode;
     private final AgentModeTool agentModeTool;
     private final McpConnectionService mcpConnectionService;
+    
+    private final EclipseWorkspaceWriteFileTool workspaceWriteFilesTool;
+    private final DiskFileWriteTool diskFileWriteTool;
+    private final DiskFileReadTool diskFileReadTool;
 
     /** Written from Eclipse DI thread, read from background LLM job threads. */
     private final AtomicReference<IProject> currentProject = new AtomicReference<>();
 
     /** Written from preference-change listener, read during every LLM call setup. */
     private final AtomicReference<LlmConfig> currentConfig;
+
+    /**
+     * Package-private constructor for unit tests — accepts pre-built services to avoid
+     * hard Eclipse dependencies ({@code EclipseUtil.workspacePath()}, Eclipse tools, etc.).
+     */
+    PeonAiService(AiPlannerService plannerService, AiDeveloperService developerService) {
+        this.plannerService = plannerService;
+        this.developerService = developerService;
+        this.toolService = null;
+        this.skillService = null;
+        this.context = null;
+        this.agentsMdService = null;
+        this.agentMode = null;
+        this.agentModeTool = null;
+        this.mcpConnectionService = null;
+        this.workspaceWriteFilesTool = null;
+        this.diskFileWriteTool = null;
+        this.diskFileReadTool = null;
+        this.currentConfig = new AtomicReference<>(null);
+    }
 
     /**
      * Creates all AI services with defaults from the current Eclipse preferences.
@@ -72,15 +98,25 @@ public class PeonAiService {
         LlmConfig config = LlmPreferenceInitializer.buildWithDefaults();
         currentConfig = new AtomicReference<>(config);
 
+        var rootPath            = EclipseUtil.workspacePath();
         toolService             = new ToolService();
         skillService            = new SkillService();
-        context                 = new TemplateContext(Path.of("./"));
+        context                 = new TemplateContext(rootPath);
         agentsMdService         = new AgentsMdService();
-        workspaceWriteFilesTool = new EclipseWorkspaceWriteFilesTool();
-        workspaceReadFilesTool  = new EclipseWorkspaceReadFilesTool();
 
+        workspaceWriteFilesTool = new EclipseWorkspaceWriteFileTool();
         toolService.addTool(workspaceWriteFilesTool);
-        toolService.addTool(workspaceReadFilesTool);
+        toolService.addTool(new EclipseWorkspaceReadFileTool());
+        
+        diskFileWriteTool = new DiskFileWriteTool(rootPath);
+        toolService.addTool(diskFileWriteTool);
+        diskFileReadTool = new DiskFileReadTool(rootPath);
+        toolService.addTool(diskFileReadTool);
+
+        toolService.addTool(new EclipseBuildTool());
+        toolService.addTool(new EclipseGrepTool());
+        toolService.addTool(new EclipseRunTestTool());
+        toolService.addTool(new EclipseCodeNavigationTool());
 
         developerService = new AiDeveloperService(config, toolService, skillService, context);
         plannerService   = new AiPlannerService(config, toolService, skillService, context);
@@ -88,23 +124,10 @@ public class PeonAiService {
         // Agent mode uses separate instances with isolated memory
         var agentDev  = new AiDeveloperService(config, toolService, skillService, context);
         var agentPlan = new AiPlannerService(config, toolService, skillService, context);
-        agentMode      = new AgentModeService(agentPlan, agentDev, sendTrigger, openInEditorCallback);
+        agentMode     = new AgentModeService(agentPlan, agentDev, sendTrigger, openInEditorCallback);
         agentModeTool = new AgentModeTool(agentMode);
 
         mcpConnectionService = new McpConnectionService(toolService, mcpStateChange);
-    }
-
-    /**
-     * Registers workspace-path-dependent tools. Must be called once in
-     * {@code @PostConstruct} after the workspace root is known.
-     */
-    public void registerWorkspaceTools(Path workspaceRoot) {
-        toolService.addTool(new DiskFileWriteTool(workspaceRoot));
-        toolService.addTool(new DiskFileReadTool(workspaceRoot));
-        toolService.addTool(new EclipseBuildTool());
-        toolService.addTool(new EclipseGrepTool());
-        toolService.addTool(new EclipseRunTestTool());
-        toolService.addTool(new EclipseCodeNavigationTool());
     }
 
     /**
@@ -112,11 +135,16 @@ public class PeonAiService {
      * Safe to call from any thread — each downstream setter manages its own state.
      */
     public void setProject(IProject project) {
+        var projectPath = JdtUtil.pathOf(project);
         currentProject.set(project);
         agentsMdService.load(project);
-        workspaceWriteFilesTool.setCurrentProject(project);
-        workspaceReadFilesTool.setCurrentProject(project);
         agentMode.setProject(project);  // volatile write inside AgentModeService
+        context.setWorkingDir(projectPath);
+        
+        workspaceWriteFilesTool.setCurrentProject(project);
+        
+        diskFileWriteTool.setWorkingDir(projectPath);
+        diskFileReadTool.setWorkingDir(projectPath);
     }
 
     /**
@@ -135,6 +163,24 @@ public class PeonAiService {
                 throw new RuntimeException("Failed to load skills from " + config.skillDirectory(), e);
             }
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // Business logic
+    // -------------------------------------------------------------------------
+
+    /**
+     * Performs the PLAN → DEV handoff: clears the developer service, adds the
+     * "Start Implementation" trigger, and appends the last planner message (the
+     * self-contained implementation plan) if one exists.
+     */
+    public void startImplementation() {
+        developerService.clear();
+        // LM Studio is sometimes bugged, if the first message is no user message ... :-/
+        developerService.addMessage(UserMessage.from("Reading this plan:"));
+        plannerService.extractLastPlan().ifPresent(developerService::addMessage);
+        // some Qwen model need a use message as last message
+        developerService.addMessage(UserMessage.from("Start implementation"));
     }
 
     // -------------------------------------------------------------------------
@@ -191,14 +237,6 @@ public class PeonAiService {
 
     public AgentsMdService getAgentsMdService() {
         return agentsMdService;
-    }
-
-    public EclipseWorkspaceWriteFilesTool getWorkspaceWriteFilesTool() {
-        return workspaceWriteFilesTool;
-    }
-
-    public EclipseWorkspaceReadFilesTool getWorkspaceReadFilesTool() {
-        return workspaceReadFilesTool;
     }
 
     public McpConnectionService getMcpConnectionService() {

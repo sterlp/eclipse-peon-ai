@@ -46,10 +46,28 @@ class DiskFileReadToolsTest {
 
     @Test
     void searchDiskFiles_findsMatch() throws IOException {
-        Files.writeString(tempDir.resolve("FooController.java"), "class Foo {}");
-        Files.writeString(tempDir.resolve("BarService.java"), "class Bar {}");
-        String result = tool.searchDiskFiles("Controller");
+        // GIVEN
+        Files.createDirectories(tempDir.resolve("foo"));
+        Files.createDirectories(tempDir.resolve("bar"));
+        Files.writeString(tempDir.resolve("foo/FooController.java"), "class Foo {}");
+        Files.writeString(tempDir.resolve("bar/BarController.java"), "class Bar {}");
+        // WHEN
+        String result = tool.searchDiskFiles("FooController");
+        // THEN
         assertTrue(result.contains("FooController.java"));
+        assertFalse(result.contains("BarController.java"));
+        
+        // WHEN
+        result = tool.searchDiskFiles("*Controller*.java");
+        // THEN
+        assertTrue(result.contains("FooController.java"));
+        assertTrue(result.contains("BarController.java"));
+        
+        // WHEN
+        result = tool.searchDiskFiles("**/FooController.java");
+        // THEN
+        assertTrue(result.contains("FooController.java"));
+        assertFalse(result.contains("BarController.java"));
     }
 
     @Test
