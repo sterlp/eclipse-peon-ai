@@ -4,19 +4,16 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
-import org.sterl.llmpeon.shared.FileUtils;
-import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
-import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 import org.sterl.llmpeon.shared.AiMonitor.AiFileUpdate;
+import org.sterl.llmpeon.shared.FileUtils;
+import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -41,8 +38,8 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
     @Tool("Eclipse: Replace exact string in workspace file. Errors if 0 or >1 matches.")
     public String editWorkspaceFile(
             @P("workspace-relative path") String filePath,
-            @P("exact string to replace") String oldString,
-            @P("replacement text") String newString) {
+            @P("exact text to replace") String oldString,
+            @P("new replacement text") String newString) {
 
         if (filePath == null || filePath.isBlank()) {
             throw new IllegalArgumentException("filePath must not be empty");

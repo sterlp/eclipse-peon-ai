@@ -57,7 +57,9 @@ public class FileUtils {
         }
         if (count == 0) {
             throw new IllegalArgumentException(
-                    "old_string not found in " + filePath + ". Read the file first to verify the exact content.");
+                    "old_string: '" 
+                            + oldStr
+                            + "' not found in " + filePath + ". Read the file first to verify the exact content.");
         }
         if (count > 1) {
             throw new IllegalArgumentException(

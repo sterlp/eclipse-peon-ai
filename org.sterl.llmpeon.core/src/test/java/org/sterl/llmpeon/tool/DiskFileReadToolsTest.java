@@ -1,4 +1,4 @@
-package org.sterl.llmpeon.tool.file;
+package org.sterl.llmpeon.tool;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;

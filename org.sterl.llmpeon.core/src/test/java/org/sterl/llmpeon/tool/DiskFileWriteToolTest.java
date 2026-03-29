@@ -1,4 +1,4 @@
-package org.sterl.llmpeon.tool.file;
+package org.sterl.llmpeon.tool;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 
-class DiskFilesToolTest {
+class DiskFileWriteToolTest {
 
     @TempDir
     Path tempDir;
