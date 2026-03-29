@@ -175,11 +175,6 @@ public class PeonAiService {
      * self-contained implementation plan) if one exists.
      */
     public void startImplementation() {
-        if (currentMode == PeonMode.AGENT) {
-            aiService.getAgentMode().startImplementation();
-            refreshChat();
-            return;
-        }
         developerService.clear();
         // LM Studio is sometimes bugged, if the first message is no user message ... :-/
         developerService.addMessage(UserMessage.from("Reading this plan:"));
