@@ -33,7 +33,7 @@ public class AgentModeService {
     private final Runnable sendTrigger;
     private final Consumer<IFile> openInEditorCallback;
 
-    private IProject project;
+    private volatile IProject project;
     private Phase phase = Phase.PLANNING;
     private boolean autonomous = false;
     private int retryCount = 0;
