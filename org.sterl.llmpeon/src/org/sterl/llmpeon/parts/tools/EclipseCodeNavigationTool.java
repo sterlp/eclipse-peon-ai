@@ -2,6 +2,7 @@ package org.sterl.llmpeon.parts.tools;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 import org.eclipse.core.resources.IResource;
@@ -225,28 +226,27 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
             @P("file name or glob pattern") String namePattern,
             @P("optional project name") String projectName) {
 
-        if (namePattern == null || namePattern.isBlank()) {
-            throw new IllegalArgumentException("namePattern must not be empty");
+        if (StringUtil.hasNoValue(namePattern)) {
+            throw new IllegalArgumentException("file name or glob pattern must not be empty");
         }
 
-        // Normalize to always be a glob
-        String glob = namePattern.contains("*") || namePattern.contains("?")
-                ? namePattern : "*" + namePattern + "*";
-
-        var matches = new ArrayList<String>();
+        var matches = new LinkedHashSet<String>();
         var projects = projectName != null && !projectName.isBlank()
                 ? EclipseUtil.findOpenProject(projectName).map(List::of).orElse(EclipseUtil.openProjects())
                         : EclipseUtil.openProjects();
         try {
 
-            var mather = new StringMatcher(glob, true, false);
+            var mather = StringMatcher.wildCardMatcher(namePattern);
 
             for (var project : projects) {
                 project.accept(resource -> {
-                    if (resource.getType() == IResource.FILE
-                            && mather.match(resource.getName())
+                    if (resource.getType() == IResource.FILE 
+                            && !resource.isDerived()
                             && matches.size() < MAX_REFERENCE_RESULTS) {
-                        matches.add(resource.getFullPath().toPortableString());
+                        var path = JdtUtil.pathOf(resource);
+                        if (mather.match(resource.getName()) || mather.match(path)) {
+                            matches.add(path);
+                        }
                     }
                     return true; // recurse into children
                 });
@@ -255,13 +255,12 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
             throw new RuntimeException("Resource search failed: " + e.getMessage(), e);
         }
 
-        onTool("Search for " + glob + " in " + projects.size() + " projects.");
+        onTool("Search for " + namePattern + " in " + projects.size() + " projects.");
         
         if (matches.isEmpty()) {
             return "No resources found matching '" + namePattern + "' in following projects: " + projects.stream().map(p -> p.getName());
         }
         var sb = new StringBuilder();
-        sb.append("Found ").append(matches.size()).append(" resource(s):\n\n");
         matches.forEach(p -> sb.append(p).append("\n"));
         if (matches.size() >= MAX_REFERENCE_RESULTS) {
             sb.append("\n... capped at ").append(MAX_REFERENCE_RESULTS)
@@ -280,7 +279,7 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
             @P("fully qualified interface or class name") String typeName,
             @P("optional project name") String projectName) {
 
-        if (typeName == null || typeName.isBlank()) {
+        if (StringUtil.hasNoValue(typeName)) {
             throw new IllegalArgumentException("typeName must not be empty");
         }
 

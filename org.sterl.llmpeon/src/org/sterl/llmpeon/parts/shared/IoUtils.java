@@ -31,7 +31,7 @@ public class IoUtils {
         try {
             return file.readString();
         } catch (CoreException e) {
-            throw new RuntimeException("Failed to read " + file.getFullPath(), e);
+            throw new RuntimeException("Failed to read " + JdtUtil.pathOf(file), e);
         }
     }
 

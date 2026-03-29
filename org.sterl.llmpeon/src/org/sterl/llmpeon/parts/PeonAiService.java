@@ -1,7 +1,6 @@
 package org.sterl.llmpeon.parts;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -14,13 +13,14 @@ import org.sterl.llmpeon.parts.agent.AgentModeService;
 import org.sterl.llmpeon.parts.agentsmd.AgentsMdService;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.McpConnectionService;
+import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.tools.AgentModeTool;
 import org.sterl.llmpeon.parts.tools.EclipseBuildTool;
 import org.sterl.llmpeon.parts.tools.EclipseCodeNavigationTool;
 import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
 import org.sterl.llmpeon.parts.tools.EclipseRunTestTool;
-import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFilesTool;
-import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFilesTool;
+import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
+import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.template.TemplateContext;
 import org.sterl.llmpeon.tool.ToolService;
@@ -45,8 +45,7 @@ public class PeonAiService {
     private final SkillService skillService;
     private final TemplateContext context;
     private final AgentsMdService agentsMdService;
-    private final EclipseWorkspaceWriteFilesTool workspaceWriteFilesTool;
-    private final EclipseWorkspaceReadFilesTool workspaceReadFilesTool;
+    private final EclipseWorkspaceWriteFileTool workspaceWriteFilesTool;
     private final AiDeveloperService developerService;
     private final AiPlannerService plannerService;
     private final AgentModeService agentMode;
@@ -72,15 +71,20 @@ public class PeonAiService {
         LlmConfig config = LlmPreferenceInitializer.buildWithDefaults();
         currentConfig = new AtomicReference<>(config);
 
+        var rootPath            = EclipseUtil.workspacePath();
         toolService             = new ToolService();
         skillService            = new SkillService();
-        context                 = new TemplateContext(Path.of("./"));
+        context                 = new TemplateContext(rootPath);
         agentsMdService         = new AgentsMdService();
-        workspaceWriteFilesTool = new EclipseWorkspaceWriteFilesTool();
-        workspaceReadFilesTool  = new EclipseWorkspaceReadFilesTool();
+        workspaceWriteFilesTool = new EclipseWorkspaceWriteFileTool();
 
         toolService.addTool(workspaceWriteFilesTool);
-        toolService.addTool(workspaceReadFilesTool);
+        toolService.addTool(new DiskFileWriteTool(rootPath));
+        toolService.addTool(new DiskFileReadTool(rootPath));
+        toolService.addTool(new EclipseBuildTool());
+        toolService.addTool(new EclipseGrepTool());
+        toolService.addTool(new EclipseRunTestTool());
+        toolService.addTool(new EclipseCodeNavigationTool());
 
         developerService = new AiDeveloperService(config, toolService, skillService, context);
         plannerService   = new AiPlannerService(config, toolService, skillService, context);
@@ -88,23 +92,10 @@ public class PeonAiService {
         // Agent mode uses separate instances with isolated memory
         var agentDev  = new AiDeveloperService(config, toolService, skillService, context);
         var agentPlan = new AiPlannerService(config, toolService, skillService, context);
-        agentMode      = new AgentModeService(agentPlan, agentDev, sendTrigger, openInEditorCallback);
+        agentMode     = new AgentModeService(agentPlan, agentDev, sendTrigger, openInEditorCallback);
         agentModeTool = new AgentModeTool(agentMode);
 
         mcpConnectionService = new McpConnectionService(toolService, mcpStateChange);
-    }
-
-    /**
-     * Registers workspace-path-dependent tools. Must be called once in
-     * {@code @PostConstruct} after the workspace root is known.
-     */
-    public void registerWorkspaceTools(Path workspaceRoot) {
-        toolService.addTool(new DiskFileWriteTool(workspaceRoot));
-        toolService.addTool(new DiskFileReadTool(workspaceRoot));
-        toolService.addTool(new EclipseBuildTool());
-        toolService.addTool(new EclipseGrepTool());
-        toolService.addTool(new EclipseRunTestTool());
-        toolService.addTool(new EclipseCodeNavigationTool());
     }
 
     /**
@@ -115,7 +106,6 @@ public class PeonAiService {
         currentProject.set(project);
         agentsMdService.load(project);
         workspaceWriteFilesTool.setCurrentProject(project);
-        workspaceReadFilesTool.setCurrentProject(project);
         agentMode.setProject(project);  // volatile write inside AgentModeService
     }
 
@@ -191,14 +181,6 @@ public class PeonAiService {
 
     public AgentsMdService getAgentsMdService() {
         return agentsMdService;
-    }
-
-    public EclipseWorkspaceWriteFilesTool getWorkspaceWriteFilesTool() {
-        return workspaceWriteFilesTool;
-    }
-
-    public EclipseWorkspaceReadFilesTool getWorkspaceReadFilesTool() {
-        return workspaceReadFilesTool;
     }
 
     public McpConnectionService getMcpConnectionService() {

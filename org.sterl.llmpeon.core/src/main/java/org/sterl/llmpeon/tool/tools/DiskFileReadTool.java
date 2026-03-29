@@ -67,7 +67,7 @@ public class DiskFileReadTool extends AbstractTool {
             throw new RuntimeException("Failed to search in " + workingDir, e);
         }
 
-        onTool("Found " + matches.size() + " files on disk for " + query);
+        onTool("Found " + matches.size() + " files on disk " + workingDir + " for " + query);
         if (matches.isEmpty()) {
             return "No files found matching '" + query + "' adjust your query";
         }

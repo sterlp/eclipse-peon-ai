@@ -94,6 +94,8 @@ public class ToolService {
             if (req.includeMcpTools) toolSpecs.addAll(mcpToolSpecs);
             if (!toolSpecs.isEmpty()) builder.toolSpecifications(toolSpecs);
 
+            req.monitor.onChatMessage(iterations + 1, builder);
+
             response = req.chatModel.chat(builder.build());
 
             shouldLoop = response.aiMessage().hasToolExecutionRequests()
@@ -103,7 +105,7 @@ public class ToolService {
                         );
             if (shouldLoop) req.onLoop.accept(response);
 
-            ToSimpleMessage.INSTANCE.convert(response.aiMessage()).forEach(req.monitor::onMessage);
+            ToSimpleMessage.INSTANCE.convert(response.aiMessage()).forEach(req.monitor::onChatResponse);
 
             req.memory.set(runAllTools(response, req.chatModel, req.monitor, req.memory.messages()));
 

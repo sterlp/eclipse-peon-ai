@@ -27,6 +27,10 @@ public class EclipseUtil {
             fn.run();
         });
     }
+    
+    public static Path workspacePath() {
+        return ResourcesPlugin.getWorkspace().getRoot().getRawLocation().toFile().toPath();
+    }
 
     /**
      * Opens the given workspace file in the workbench editor.
@@ -103,8 +107,8 @@ public class EclipseUtil {
         } catch (Exception e) {
             // invalid workspace path, continue
         }
-        for (var p : ResourcesPlugin.getWorkspace().getRoot().getProjects()) {
-            if (!p.isOpen()) continue;
+        
+        for (var p : openProjects()) {
             var result = p.findMember(ipath);
             if (result != null && result.exists()) return Optional.of(result);
         }

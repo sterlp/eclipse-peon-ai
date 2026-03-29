@@ -13,7 +13,7 @@ import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.tools.AgentModeTool;
-import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFilesTool;
+import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.shared.AiMonitor;
 
 import dev.langchain4j.data.message.SystemMessage;
@@ -134,7 +134,7 @@ public class AgentModeService {
     public String planPathHint() {
         if (project == null) return "";
         return "Plan file: " + JdtUtil.pathOf(getOverviewFile())
-                + " — use " + EclipseWorkspaceReadFilesTool.READ_ECLIPSE_FILE_TOOL
+                + " — use " + EclipseWorkspaceReadFileTool.READ_ECLIPSE_FILE_TOOL
                 + " to read it, savePlan to update it.";
     }
 

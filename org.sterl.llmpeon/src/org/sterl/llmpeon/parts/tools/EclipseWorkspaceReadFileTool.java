@@ -1,8 +1,6 @@
 
 package org.sterl.llmpeon.parts.tools;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,24 +14,14 @@ import org.eclipse.core.runtime.CoreException;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
-import org.sterl.llmpeon.shared.FileUtils;
 import org.sterl.llmpeon.shared.StringMatcher;
+import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 
-public class EclipseWorkspaceReadFilesTool extends AbstractEclipseTool {
+public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
 
-    private IProject currentProject;
-
-    public void setCurrentProject(IProject project) {
-        this.currentProject = project;
-    }
-
-    public IProject getCurrentProject() {
-        return currentProject;
-    }
-    
     @Override
     public boolean isEditTool() {
         return false;
@@ -53,16 +41,9 @@ public class EclipseWorkspaceReadFilesTool extends AbstractEclipseTool {
             return IoUtils.readFile(f);
         }
         // fallback: try workspace root and current project
-        Path wsRoot = ResourcesPlugin.getWorkspace().getRoot().getRawLocation().toFile().toPath();
-        for (Path base : resolveBases(wsRoot)) {
-            Path fsPath = FileUtils.resolve(base, filePath);
-            if (fsPath != null && Files.isRegularFile(fsPath)) {
-                onTool("Resolved outside Eclipse, reading " + filePath);
-                return FileUtils.readString(fsPath);
-            }
-        }
-        onProblem("Cannot read unknown file " + filePath);
-        return "File not found: " + filePath + " - try searchWorkspaceFiles or listWorkspaceDirectory first.";
+        var diskTool = new DiskFileReadTool(EclipseUtil.workspacePath());
+        onTool("Resolved outside Eclipse, reading " + filePath);
+        return diskTool.readDiskFile(filePath);
     }
 
     @Tool("Eclipse: Search workspace files by name")
@@ -136,7 +117,7 @@ public class EclipseWorkspaceReadFilesTool extends AbstractEclipseTool {
                 if (member.isDerived()) continue;
                 String pathToAdd = JdtUtil.pathOf(member);
                 if (isNotDerived(pathToAdd)) {
-                    String prefix = (member.getType() == IResource.FILE) ? "[FILE] " : "[DIR]  ";
+                    String prefix = (member.getType() == IResource.FILE) ? "[FILE] " : "[DIR] ";
                     entries.add(prefix + pathToAdd);
                 }
             }
@@ -146,16 +127,5 @@ public class EclipseWorkspaceReadFilesTool extends AbstractEclipseTool {
         } catch (CoreException e) {
             throw new RuntimeException("Failed to list " + path, e);
         }
-    }
-
-    /** Returns candidate base paths: workspace root first, then current project (if set). */
-    private List<Path> resolveBases(Path wsRoot) {
-        var bases = new ArrayList<Path>();
-        bases.add(wsRoot);
-        if (currentProject != null && currentProject.isOpen()) {
-            var loc = currentProject.getRawLocation();
-            if (loc != null) bases.add(loc.toFile().toPath());
-        }
-        return bases;
     }
 }

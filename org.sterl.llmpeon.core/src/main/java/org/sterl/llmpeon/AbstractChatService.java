@@ -1,6 +1,8 @@
 package org.sterl.llmpeon;
 
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -66,8 +68,10 @@ public abstract class AbstractChatService {
 
     public ChatResponse call(String message, AiMonitor monitor) {
         monitor = AiMonitor.nullSafety(monitor);
+        monitor.onCallStart(message);
         if (StringUtil.hasValue(message)) memory.add(UserMessage.from(message));
 
+        var start = Instant.now();
         var staticMessages = buildStaticMessages();
         var response = toolService.executeLoop(
                 new ToolLoopRequest(memory, chatModel)
@@ -79,6 +83,7 @@ public abstract class AbstractChatService {
                         .onLoop(this::updateTokenCount));
 
         updateTokenCount(response);
+        monitor.onCallCompleted(response, Duration.between(start, Instant.now()));
         return response;
     }
 

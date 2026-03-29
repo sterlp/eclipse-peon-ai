@@ -18,7 +18,7 @@ import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 
-public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
+public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
 
     private IProject currentProject;
 
@@ -26,10 +26,6 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
         this.currentProject = project;
     }
 
-    public IProject getCurrentProject() {
-        return currentProject;
-    }
-    
     @Override
     public boolean isEditTool() {
         return true;
@@ -56,7 +52,7 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
 
         var inFile = EclipseUtil.resolveInEclipse(filePath);
         if (inFile.isEmpty() || !(inFile.get() instanceof IFile eclipseFile)) {
-            var disk = new DiskFileWriteTool(currentProject == null ? Path.of("./") : currentProject.getRawLocation().toPath());
+            var disk = new DiskFileWriteTool(EclipseUtil.workspacePath());
             disk.withMemory(memory);
             disk.withMonitor(monitor);
             return disk.editDiskFile(filePath, oldString, newString);
@@ -174,9 +170,9 @@ public class EclipseWorkspaceWriteFilesTool extends AbstractEclipseTool {
             file.write(content.getBytes(charset), true, false, true, getProgressMonitor());
             file.refreshLocal(IResource.DEPTH_ZERO, getProgressMonitor());
         } catch (CoreException e) {
-            throw new RuntimeException("Failed to write " + file.getFullPath(), e);
+            throw new RuntimeException("Failed to write " + JdtUtil.pathOf(file), e);
         }
-        return new AiFileUpdate(file.getFullPath().toPortableString(), oldContent, content);
+        return new AiFileUpdate(JdtUtil.pathOf(file), oldContent, content);
     }
 
     private IFile writeFileToProject(IProject targetProject, String projectRelativePath, String content) {
