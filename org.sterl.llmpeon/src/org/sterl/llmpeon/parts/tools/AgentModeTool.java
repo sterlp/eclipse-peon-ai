@@ -14,7 +14,7 @@ import dev.langchain4j.agent.tool.Tool;
  * Registered in ToolService only when the user switches to Peon-Agent mode.
  * Uses Eclipse IFile APIs so workspace history and refresh notifications are triggered.
  */
-public class AgentModeTools extends AbstractEclipseTool {
+public class AgentModeTool extends AbstractEclipseTool {
     
     public static final String PLAN_DIR = "peon-plan";
     public static final String OVERVIEW_FILE = PLAN_DIR + "/overview.md";
@@ -22,7 +22,7 @@ public class AgentModeTools extends AbstractEclipseTool {
 
     private final AgentModeService agentMode;
 
-    public AgentModeTools(AgentModeService agentMode) {
+    public AgentModeTool(AgentModeService agentMode) {
         this.agentMode = agentMode;
     }
     

@@ -104,6 +104,10 @@ public abstract class AbstractChatService {
         templateContext.setTokenWindow(config.tokenWindow());
     }
 
+    public List<ChatMessage> getStandingOrders() {
+        return Collections.unmodifiableList(standingOrders);
+    }
+
     public void setStandingOrders(List<ChatMessage> orders) {
         this.standingOrders = orders == null ? Collections.emptyList() : new ArrayList<>(orders);
     }

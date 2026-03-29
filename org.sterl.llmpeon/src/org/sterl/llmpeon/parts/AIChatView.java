@@ -363,15 +363,13 @@ public class AIChatView implements EclipseAiMonitor {
                 aiService.getAgentMode().getActiveService().addMessage(UserMessage.from(
                         "Existing plan found:\n\n" + aiService.getAgentMode().readOverview()));
                 aiService.getAgentMode().openOverviewInEditor();
-                refreshChat();
             }
         } else {
             aiService.getToolService().removeTool(aiService.getAgentModeTools());
             aiService.getAgentMode().reset();
         }
         currentMode = mode;
-        actionsBar.updateModeUI(currentMode, isImplEnabled());
-        refreshStatusLine();
+        refreshChat();
     }
 
     private void doStartImpl() {

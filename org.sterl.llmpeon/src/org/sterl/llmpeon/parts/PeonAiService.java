@@ -14,7 +14,7 @@ import org.sterl.llmpeon.parts.agent.AgentModeService;
 import org.sterl.llmpeon.parts.agentsmd.AgentsMdService;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.McpConnectionService;
-import org.sterl.llmpeon.parts.tools.AgentModeTools;
+import org.sterl.llmpeon.parts.tools.AgentModeTool;
 import org.sterl.llmpeon.parts.tools.EclipseBuildTool;
 import org.sterl.llmpeon.parts.tools.EclipseCodeNavigationTool;
 import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
@@ -50,7 +50,7 @@ public class PeonAiService {
     private final AiDeveloperService developerService;
     private final AiPlannerService plannerService;
     private final AgentModeService agentMode;
-    private final AgentModeTools agentModeTools;
+    private final AgentModeTool agentModeTool;
     private final McpConnectionService mcpConnectionService;
 
     /** Written from Eclipse DI thread, read from background LLM job threads. */
@@ -85,11 +85,11 @@ public class PeonAiService {
         developerService = new AiDeveloperService(config, toolService, skillService, context);
         plannerService   = new AiPlannerService(config, toolService, skillService, context);
 
-        // Agent mode uses separate instances with agent-mode prompts and isolated memory
-        var agentDev  = new AiDeveloperService(config, toolService, skillService, context, true);
-        var agentPlan = new AiPlannerService(config, toolService, skillService, context, true);
+        // Agent mode uses separate instances with isolated memory
+        var agentDev  = new AiDeveloperService(config, toolService, skillService, context);
+        var agentPlan = new AiPlannerService(config, toolService, skillService, context);
         agentMode      = new AgentModeService(agentPlan, agentDev, sendTrigger, openInEditorCallback);
-        agentModeTools = new AgentModeTools(agentMode);
+        agentModeTool = new AgentModeTool(agentMode);
 
         mcpConnectionService = new McpConnectionService(toolService, mcpStateChange);
     }
@@ -173,8 +173,8 @@ public class PeonAiService {
         return agentMode;
     }
 
-    public AgentModeTools getAgentModeTools() {
-        return agentModeTools;
+    public AgentModeTool getAgentModeTools() {
+        return agentModeTool;
     }
 
     public ToolService getToolService() {

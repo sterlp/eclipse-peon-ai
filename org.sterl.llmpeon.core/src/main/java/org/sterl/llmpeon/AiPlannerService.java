@@ -45,30 +45,14 @@ public class AiPlannerService extends AbstractChatService {
             The plan is the sole input to the implementation agent — omit nothing it will need.
             """;
 
-    private static final String AGENT_MODE_ADDITION = """
-
-            AGENT MODE — when your plan is complete, call savePlan with the full plan markdown.
-            Do not ask — call it automatically as the last action before your reply.
-            The plan file path is also available for incremental updates via disk tools.
-            If a problem was reported in the conversation, update the plan to address it before saving.
-            """;
-
-    private final String prompt;
-
     public AiPlannerService(LlmConfig config, ToolService toolService,
             SkillService skillService, TemplateContext templateContext) {
-        this(config, toolService, skillService, templateContext, false);
-    }
-
-    public AiPlannerService(LlmConfig config, ToolService toolService,
-            SkillService skillService, TemplateContext templateContext, boolean agentMode) {
         super(config, toolService, skillService, templateContext);
-        this.prompt = agentMode ? BASE_PROMPT + AGENT_MODE_ADDITION : BASE_PROMPT;
     }
 
     @Override
     protected String getSystemPrompt() {
-        return templateContext.process(prompt);
+        return templateContext.process(BASE_PROMPT);
     }
 
     @Override

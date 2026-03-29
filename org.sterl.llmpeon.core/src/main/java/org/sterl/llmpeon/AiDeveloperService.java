@@ -32,29 +32,14 @@ public class AiDeveloperService extends AbstractChatService {
             - Call tools using JSON
             """;
 
-    private static final String AGENT_MODE_ADDITION = """
-
-            AGENT MODE — if you cannot proceed after 2 attempts (build failure, missing context,
-            conflicting requirements), call reportProblem with a detailed description.
-            Do not retry indefinitely. Escalate early so the plan agent can revise the plan.
-            """;
-
-    private final String prompt;
-
     public AiDeveloperService(LlmConfig config, ToolService toolService,
             SkillService skillService, TemplateContext templateContext) {
-        this(config, toolService, skillService, templateContext, false);
-    }
-
-    public AiDeveloperService(LlmConfig config, ToolService toolService,
-            SkillService skillService, TemplateContext templateContext, boolean agentMode) {
         super(config, toolService, skillService, templateContext);
-        this.prompt = agentMode ? BASE_PROMPT + AGENT_MODE_ADDITION : BASE_PROMPT;
     }
 
     @Override
     protected String getSystemPrompt() {
-        return templateContext.process(prompt);
+        return templateContext.process(BASE_PROMPT);
     }
 
     @Override
