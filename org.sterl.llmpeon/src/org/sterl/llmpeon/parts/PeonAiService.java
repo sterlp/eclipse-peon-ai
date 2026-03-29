@@ -8,6 +8,8 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.sterl.llmpeon.AiDeveloperService;
 import org.sterl.llmpeon.AiPlannerService;
+import org.sterl.llmpeon.PeonMode;
+
 import dev.langchain4j.data.message.UserMessage;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.agent.AgentModeService;
@@ -173,9 +175,17 @@ public class PeonAiService {
      * self-contained implementation plan) if one exists.
      */
     public void startImplementation() {
+        if (currentMode == PeonMode.AGENT) {
+            aiService.getAgentMode().startImplementation();
+            refreshChat();
+            return;
+        }
         developerService.clear();
-        developerService.addMessage(UserMessage.from("Start Implementation"));
+        // LM Studio is sometimes bugged, if the first message is no user message ... :-/
+        developerService.addMessage(UserMessage.from("Reading this plan:"));
         plannerService.extractLastPlan().ifPresent(developerService::addMessage);
+        // some Qwen model need a use message as last message
+        developerService.addMessage(UserMessage.from("Start implementation"));
     }
 
     // -------------------------------------------------------------------------
