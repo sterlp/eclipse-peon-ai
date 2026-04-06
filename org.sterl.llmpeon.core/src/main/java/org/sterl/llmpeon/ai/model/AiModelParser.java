@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.sterl.llmpeon.shared.StringUtil;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -42,15 +44,12 @@ public class AiModelParser {
                 String modelId = idNode.asText();
                 int slash = modelId.indexOf('/');
                 if (slash >= 0) modelId = modelId.substring(slash + 1);
-
-                var nameNode = item.get("name");
-                String name = nameNode != null ? nameNode.asText() : modelId;
+                String name = getNodeString(item, "name", modelId);
 
                 Integer maxInputTokens = null;
                 var limits = item.get("limits");
                 if (limits != null) {
-                    var maxIn = limits.get("max_input_tokens");
-                    if (maxIn != null && !maxIn.isNull()) maxInputTokens = maxIn.asInt();
+                    maxInputTokens = getNodeNumber(limits, "max_input_tokens");
                 }
 
                 var model = AiModel.builder()
@@ -90,12 +89,8 @@ public class AiModelParser {
                 if (keyNode == null) continue;
                 String id = keyNode.asText();
 
-                var displayNameNode = item.get("display_name");
-                String name = displayNameNode != null ? displayNameNode.asText() : id;
-
-                Integer maxInputTokens = null;
-                var maxCtxNode = item.get("max_context_length");
-                if (maxCtxNode != null && !maxCtxNode.isNull()) maxInputTokens = maxCtxNode.asInt();
+                String name = getNodeString(item, "display_name", id);
+                Integer maxInputTokens = getNodeNumber(item, "max_context_length");
 
                 var model = AiModel.builder()
                         .id(id)
@@ -130,14 +125,9 @@ public class AiModelParser {
                 var idNode = item.get("id");
                 if (idNode == null) continue;
                 String id = idNode.asText();
+                String name = getNodeString(item, "name", id);
 
-                var nameNode = item.get("name");
-                String name = nameNode != null && !nameNode.isNull() ? nameNode.asText() : id;
-
-                Integer maxInputTokens = null;
-                var maxCtxNode = item.get("max_context_length");
-                if (maxCtxNode != null && !maxCtxNode.isNull()) maxInputTokens = maxCtxNode.asInt();
-
+                Integer maxInputTokens = getNodeNumber(item, "max_context_length");
                 var model = AiModel.builder()
                         .id(id)
                         .name(name)
@@ -173,12 +163,13 @@ public class AiModelParser {
                 if (idNode == null) continue;
                 String id = idNode.asText();
 
-                var nameNode = item.get("display_name");
-                String name = nameNode != null && !nameNode.isNull() ? nameNode.asText() : id;
+                String name = getNodeString(item, "display_name", id);
+                Integer maxToken = getNodeNumber(item, "max_input_tokens");
 
                 result.add(AiModel.builder()
                         .id(id)
                         .name(name)
+                        .maxInputTokens(maxToken)
                         .capabilities(Set.of(AiCapability.TOOL_CALLING))
                         .build());
             }
@@ -189,6 +180,28 @@ public class AiModelParser {
             e.printStackTrace();
             return List.of();
         }
+    }
+    
+    private static Integer getNodeNumber(JsonNode node, String path) {
+        var result = getNodeString(node, path);
+        if (result == null) return null;
+        try {
+            return Integer.parseInt(result);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+    
+    private static String getNodeString(JsonNode node, String path, String defaultValue) {
+        var result = getNodeString(node, path);
+        if (StringUtil.hasValue(result)) return result;
+        return defaultValue;
+    }
+    
+    private static String getNodeString(JsonNode node, String path) {
+        var result = node.get(path);
+        if (result == null || result.isNull()) return null;
+        return result.asText();
     }
 
     /** Parses a JSON array of capability strings (Copilot format). */

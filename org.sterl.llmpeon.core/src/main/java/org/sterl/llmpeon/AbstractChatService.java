@@ -65,11 +65,22 @@ public abstract class AbstractChatService {
     protected abstract double getTemperature();
     protected abstract Predicate<SmartToolExecutor> getToolFilter();
     protected boolean includesMcpTools() { return true; }
+    
+    public int tokenWindowUsedInPercent() {
+        float maxToken = config.getTokenWindow() > 4000 ? config.getTokenWindow() : 4000;
+        float used = tokenSize;
+        if (used < 100) return 0;
+        return Math.round(used / maxToken);
+    }
 
     public ChatResponse call(String message, AiMonitor monitor) {
         monitor = AiMonitor.nullSafety(monitor);
         monitor.onCallStart(message);
-        if (StringUtil.hasValue(message)) memory.add(UserMessage.from(message));
+        // auto compress if we are close to full
+        if (StringUtil.hasValue(message)) {
+            if (tokenWindowUsedInPercent() > 95) compressContext(monitor);
+            memory.add(UserMessage.from(message));
+        }
 
         var start = Instant.now();
         var staticMessages = buildStaticMessages();

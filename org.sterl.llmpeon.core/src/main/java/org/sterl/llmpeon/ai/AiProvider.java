@@ -28,6 +28,7 @@ import dev.langchain4j.model.googleai.GeminiThinkingConfig.GeminiThinkingLevel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import dev.langchain4j.model.mistralai.MistralAiChatModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
+import dev.langchain4j.model.ollama.OllamaModel;
 import dev.langchain4j.model.ollama.OllamaModels;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 
@@ -54,9 +55,8 @@ public enum AiProvider {
                         .content();
                 if (models == null || models.isEmpty()) return fallbackAiModels(c);
                 var result = new ArrayList<AiModel>(models.size());
-                for (var m : models) {
-                    String name = m.getName();
-                    result.add(AiModel.builder().id(name).name(name).build());
+                for (OllamaModel m : models) {
+                    result.add(AiModel.builder().id(m.getName()).name(m.getModel()).build());
                 }
                 Collections.sort(result, (a, b) -> a.getId().compareTo(b.getId()));
                 return result;
