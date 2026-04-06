@@ -87,9 +87,9 @@ public class ToolService {
             var messages = new ArrayList<ChatMessage>(req.staticMessages);
             messages.addAll(req.memory.messages());
 
+            // presencePenalty not
             var builder = ChatRequest.builder()
                     .temperature(req.temperature)
-                    .presencePenalty(1.5)
                     .messages(toOneSystemMessage(messages));
 
             var toolSpecs = new ArrayList<>(toolSpecifications(req.toolFilter));

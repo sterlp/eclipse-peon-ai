@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import org.sterl.llmpeon.ai.model.AiModel;
+import org.sterl.llmpeon.shared.StringUtil;
 
 import dev.langchain4j.model.chat.ChatModel;
 import lombok.AllArgsConstructor;
@@ -35,7 +36,7 @@ public class LlmConfig {
     @Default
     private final String url = null;
     @Default
-    private final int tokenWindow = 4000;
+    private final int tokenWindow = 8000;
     @Default
     private final boolean thinkingEnabled = true;
     @Default
@@ -81,8 +82,10 @@ public class LlmConfig {
      */
     public LlmConfig resolveModel(List<AiModel> models) {
         if (models.isEmpty()) return this;
+        if (StringUtil.hasNoValue(model)) return this;
+
         var effective = models.stream()
-                .filter(m -> m.getId().equals(model))
+                .filter(m -> model.equals(m.getId()) || model.equalsIgnoreCase(m.getName()))
                 .findFirst()
                 .orElse(models.get(0));
         return withModel(effective);
