@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
+import org.sterl.llmpeon.ai.model.AiModel;
+
 import org.eclipse.debug.ui.DebugUITools;
 import org.eclipse.debug.ui.IDebugUIConstants;
 import org.eclipse.jface.resource.ImageDescriptor;
@@ -35,6 +37,7 @@ public class ActionsBarWidget extends Composite {
 
     private final AtomicBoolean working = new AtomicBoolean(false);
     private boolean agentModeAvailable = false;
+    private List<AiModel> availableModels = List.of();
     
     private final Color colorWarning;
     private final Color colorError;
@@ -47,7 +50,7 @@ public class ActionsBarWidget extends Composite {
             Runnable onClear,
             Runnable onImplement,
             Consumer<PeonMode> onModeChange,
-            Consumer<String> onModelChange,
+            Consumer<AiModel> onModelChange,
             Consumer<Boolean> onAutonomousChange,
             Consumer<Boolean> onMcpToggle) {
         super(parent, style);
@@ -90,9 +93,9 @@ public class ActionsBarWidget extends Composite {
         modelCombo.setLayoutData(new RowData(200, SWT.DEFAULT));
         modelCombo.setToolTipText("Select model (fetched from provider)");
         modelCombo.addListener(SWT.Selection, e -> {
-            String selected = modelCombo.getText();
-            if (selected != null && !selected.isBlank()) {
-                onModelChange.accept(selected);
+            int idx = modelCombo.getSelectionIndex();
+            if (idx >= 0 && idx < availableModels.size()) {
+                onModelChange.accept(availableModels.get(idx));
             }
         });
 
@@ -236,23 +239,23 @@ public class ActionsBarWidget extends Composite {
         return btnMcp.getSelection();
     }
 
-    /** Populate the model combo with the available models. */
-    public void applyModelList(List<String> models, String configuredModel) {
+    /** Populate the model combo with the available models. Combo displays names; IDs are tracked internally. */
+    public void applyModelList(List<AiModel> models, String selectedModelId) {
+        availableModels = models;
         modelCombo.setEnabled(true);
-        modelCombo.setItems(models.toArray(new String[0]));
-        selectModel(configuredModel);
+        modelCombo.setItems(models.stream().map(AiModel::getName).toArray(String[]::new));
+        selectModel(selectedModelId);
         if (!this.working.get()) btnSend.setEnabled(true);
     }
 
-    /** Select the given model in the combo (no-op if not found — caller handles fallback). */
-    public void selectModel(String model) {
-        if (model == null || model.isBlank()) {
+    /** Select the model by its ID. Falls back to index 0 if not found. */
+    public void selectModel(String modelId) {
+        if (modelId == null || modelId.isBlank()) {
             modelCombo.select(0);
             return;
         }
-        String[] items = modelCombo.getItems();
-        for (int i = 0; i < items.length; i++) {
-            if (items[i].equals(model)) {
+        for (int i = 0; i < availableModels.size(); i++) {
+            if (availableModels.get(i).getId().equals(modelId)) {
                 modelCombo.select(i);
                 return;
             }
@@ -260,14 +263,15 @@ public class ActionsBarWidget extends Composite {
         modelCombo.select(0);
     }
 
-    /** Returns the items currently listed in the model combo. */
-    public String[] getModelItems() {
-        return modelCombo.getItems();
+    /** Returns true if the given model ID is in the current list. */
+    public boolean containsModelId(String modelId) {
+        return availableModels.stream().anyMatch(m -> m.getId().equals(modelId));
     }
 
-    /** Returns the currently selected model, or null if nothing is selected. */
+    /** Returns the ID of the currently selected model, or null if nothing is selected. */
     public String getSelectedModel() {
-        String text = modelCombo.getText();
-        return text == null || text.isBlank() ? null : text;
+        int idx = modelCombo.getSelectionIndex();
+        if (idx < 0 || idx >= availableModels.size()) return null;
+        return availableModels.get(idx).getId();
     }
 }

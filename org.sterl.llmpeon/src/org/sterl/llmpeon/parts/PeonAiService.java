@@ -155,11 +155,11 @@ public class PeonAiService {
         developerService.updateConfig(config);
         plannerService.updateConfig(config);
         agentMode.updateConfig(config);
-        if (config.skillDirectory() != null && !config.skillDirectory().isBlank()) {
+        if (config.getSkillDirectory() != null && !config.getSkillDirectory().isBlank()) {
             try {
-                skillService.refresh(config.skillDirectory());
+                skillService.refresh(config.getSkillDirectory());
             } catch (IOException e) {
-                throw new RuntimeException("Failed to load skills from " + config.skillDirectory(), e);
+                throw new RuntimeException("Failed to load skills from " + config.getSkillDirectory(), e);
             }
         }
     }

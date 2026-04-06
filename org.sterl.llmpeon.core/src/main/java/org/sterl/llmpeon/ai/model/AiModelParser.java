@@ -1,0 +1,218 @@
+package org.sterl.llmpeon.ai.model;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+public class AiModelParser {
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    /**
+     * Boolean-valued capability keys found in object-style capability blocks
+     * (LM Studio, Mistral). Maps each known key to its AiCapability value.
+     */
+    private static final Map<String, AiCapability> CAPABILITY_OBJECT_KEYS = Map.of(
+        "trained_for_tool_use", AiCapability.TOOL_CALLING,  // LM Studio
+        "function_calling",     AiCapability.TOOL_CALLING,  // Mistral
+        "vision",               AiCapability.VISION,
+        "reasoning",            AiCapability.REASONING
+    );
+
+    /**
+     * Parses the GitHub Copilot catalog API response (flat JSON array).
+     * Only returns models that support tool calling.
+     */
+    public static List<AiModel> parseCopilotModels(String json) {
+        try {
+            var root = MAPPER.readTree(json);
+            var result = new ArrayList<AiModel>();
+            if (!root.isArray()) return result;
+
+            for (var item : root) {
+                var idNode = item.get("id");
+                if (idNode == null) continue;
+
+                String modelId = idNode.asText();
+                int slash = modelId.indexOf('/');
+                if (slash >= 0) modelId = modelId.substring(slash + 1);
+
+                var nameNode = item.get("name");
+                String name = nameNode != null ? nameNode.asText() : modelId;
+
+                Integer maxInputTokens = null;
+                var limits = item.get("limits");
+                if (limits != null) {
+                    var maxIn = limits.get("max_input_tokens");
+                    if (maxIn != null && !maxIn.isNull()) maxInputTokens = maxIn.asInt();
+                }
+
+                var model = AiModel.builder()
+                        .id(modelId)
+                        .name(name)
+                        .maxInputTokens(maxInputTokens)
+                        .capabilities(parseCapabilityArray(item.get("capabilities")))
+                        .build();
+
+                if (model.supportsToolCalling()) result.add(model);
+            }
+
+            Collections.sort(result, (a, b) -> a.getId().compareTo(b.getId()));
+            return result;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return List.of();
+        }
+    }
+
+    /**
+     * Parses the LM Studio models API response ({ "models": [...] }).
+     * Only returns LLM models that support tool calling.
+     */
+    public static List<AiModel> parseLmStudioModels(String json) {
+        try {
+            var root = MAPPER.readTree(json);
+            var modelsNode = root.get("models");
+            var result = new ArrayList<AiModel>();
+            if (modelsNode == null || !modelsNode.isArray()) return result;
+
+            for (var item : modelsNode) {
+                var typeNode = item.get("type");
+                if (typeNode == null || !"llm".equals(typeNode.asText())) continue;
+
+                var keyNode = item.get("key");
+                if (keyNode == null) continue;
+                String id = keyNode.asText();
+
+                var displayNameNode = item.get("display_name");
+                String name = displayNameNode != null ? displayNameNode.asText() : id;
+
+                Integer maxInputTokens = null;
+                var maxCtxNode = item.get("max_context_length");
+                if (maxCtxNode != null && !maxCtxNode.isNull()) maxInputTokens = maxCtxNode.asInt();
+
+                var model = AiModel.builder()
+                        .id(id)
+                        .name(name)
+                        .maxInputTokens(maxInputTokens)
+                        .capabilities(parseCapabilityObject(item.get("capabilities")))
+                        .build();
+
+                if (model.supportsToolCalling()) result.add(model);
+            }
+
+            Collections.sort(result, (a, b) -> a.getId().compareTo(b.getId()));
+            return result;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return List.of();
+        }
+    }
+
+    /**
+     * Parses the Mistral AI models API response ({ "data": [...] }).
+     * Only returns models where capabilities.function_calling == true.
+     */
+    public static List<AiModel> parseMistralModels(String json) {
+        try {
+            var root = MAPPER.readTree(json);
+            var data = root.get("data");
+            var result = new ArrayList<AiModel>();
+            if (data == null || !data.isArray()) return result;
+
+            for (var item : data) {
+                var idNode = item.get("id");
+                if (idNode == null) continue;
+                String id = idNode.asText();
+
+                var nameNode = item.get("name");
+                String name = nameNode != null && !nameNode.isNull() ? nameNode.asText() : id;
+
+                Integer maxInputTokens = null;
+                var maxCtxNode = item.get("max_context_length");
+                if (maxCtxNode != null && !maxCtxNode.isNull()) maxInputTokens = maxCtxNode.asInt();
+
+                var model = AiModel.builder()
+                        .id(id)
+                        .name(name)
+                        .maxInputTokens(maxInputTokens)
+                        .capabilities(parseCapabilityObject(item.get("capabilities")))
+                        .build();
+
+                if (model.supportsToolCalling()) result.add(model);
+            }
+
+            Collections.sort(result, (a, b) -> a.getId().compareTo(b.getId()));
+            return result;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return List.of();
+        }
+    }
+
+    /**
+     * Parses the Anthropic models API response ({ "data": [...] }).
+     * Anthropic does not expose per-model capability metadata; all returned
+     * Claude models support tool use, so no filtering is applied.
+     */
+    public static List<AiModel> parseAnthropicModels(String json) {
+        try {
+            var root = MAPPER.readTree(json);
+            var data = root.get("data");
+            var result = new ArrayList<AiModel>();
+            if (data == null || !data.isArray()) return result;
+
+            for (var item : data) {
+                var idNode = item.get("id");
+                if (idNode == null) continue;
+                String id = idNode.asText();
+
+                var nameNode = item.get("display_name");
+                String name = nameNode != null && !nameNode.isNull() ? nameNode.asText() : id;
+
+                result.add(AiModel.builder()
+                        .id(id)
+                        .name(name)
+                        .capabilities(Set.of(AiCapability.TOOL_CALLING))
+                        .build());
+            }
+
+            Collections.sort(result, (a, b) -> a.getId().compareTo(b.getId()));
+            return result;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return List.of();
+        }
+    }
+
+    /** Parses a JSON array of capability strings (Copilot format). */
+    private static Set<AiCapability> parseCapabilityArray(JsonNode node) {
+        if (node == null || !node.isArray()) return Set.of();
+        var caps = EnumSet.noneOf(AiCapability.class);
+        for (var el : node) {
+            var cap = AiCapability.parse(el.asText());
+            if (cap != null) caps.add(cap);
+        }
+        return caps.isEmpty() ? Set.of() : Collections.unmodifiableSet(caps);
+    }
+
+    /**
+     * Parses a JSON object of boolean capability flags (LM Studio, Mistral format).
+     * Known keys are mapped via {@link #CAPABILITY_OBJECT_KEYS}.
+     */
+    private static Set<AiCapability> parseCapabilityObject(JsonNode node) {
+        if (node == null || !node.isObject()) return Set.of();
+        var caps = EnumSet.noneOf(AiCapability.class);
+        CAPABILITY_OBJECT_KEYS.forEach((key, cap) -> {
+            var field = node.get(key);
+            if (field != null && field.asBoolean()) caps.add(cap);
+        });
+        return caps.isEmpty() ? Set.of() : Collections.unmodifiableSet(caps);
+    }
+}
