@@ -51,7 +51,7 @@ public class AiDeveloperService extends AbstractChatService {
     protected Predicate<SmartToolExecutor> getToolFilter() {
         return t -> {
             if (t.getTool() instanceof CompressorAgentTool) {
-                return getTokenSize() > getConfig().tokenWindow() * 0.7
+                return getTokenSize() > getConfig().getTokenWindow() * 0.7
                         && getMessages().size() > 5;
             }
             return true;

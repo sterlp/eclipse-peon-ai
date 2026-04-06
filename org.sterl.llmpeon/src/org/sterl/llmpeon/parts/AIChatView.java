@@ -3,6 +3,7 @@ package org.sterl.llmpeon.parts;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.resources.IFile;
@@ -34,6 +35,7 @@ import org.eclipse.ui.IWorkingSet;
 import org.sterl.llmpeon.AbstractChatService;
 import org.sterl.llmpeon.PeonMode;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.ai.model.AiModel;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.McpPreferenceInitializer;
 import org.sterl.llmpeon.parts.monitor.EclipseAiMonitor;
@@ -303,9 +305,9 @@ public class AIChatView implements EclipseAiMonitor {
     private void applyConfig() {
         var config = LlmPreferenceInitializer.buildWithDefaults();
         try {
-            aiService.getSkillService().refresh(config.skillDirectory());
+            aiService.getSkillService().refresh(config.getSkillDirectory());
         } catch (IOException e) {
-            throw new RuntimeException("Failed to load " + config.skillDirectory());
+            throw new RuntimeException("Failed to load " + config.getSkillDirectory());
         }
         aiService.updateConfig(config);
         applyMcpConfig();
@@ -322,20 +324,17 @@ public class AIChatView implements EclipseAiMonitor {
 
     private void onConfigChanged(LlmConfig config) {
         if (lastListedConfig == null
-                || config.providerType() != lastListedConfig.providerType()
-                || !java.util.Objects.equals(config.url(), lastListedConfig.url())
-                || !java.util.Objects.equals(config.apiKey(), lastListedConfig.apiKey())) {
+                || config.getProviderType() != lastListedConfig.getProviderType()
+                || !java.util.Objects.equals(config.getUrl(), lastListedConfig.getUrl())
+                || !java.util.Objects.equals(config.getApiKey(), lastListedConfig.getApiKey())) {
             loadModelsInBackground(config);
         } else {
             EclipseUtil.runInUiThread(parent, () -> {
                 if (parent.isDisposed()) return;
-                String[] items = actionsBar.getModelItems();
-                boolean inList = StringUtil.hasValue(config.model())
-                        && java.util.Arrays.stream(items).anyMatch(config.model()::equals);
-                if (!inList) {
+                if (!actionsBar.containsModelId(config.getModel())) {
                     loadModelsInBackground(config);
                 } else {
-                    actionsBar.selectModel(config.model());
+                    actionsBar.selectModel(config.getModel());
                 }
             });
         }
@@ -343,16 +342,12 @@ public class AIChatView implements EclipseAiMonitor {
 
     private void loadModelsInBackground(LlmConfig config) {
         Job.create("Fetching available models", monitor -> {
-            var models = config.providerType().listModels(config);
+            List<AiModel> models = config.getProviderType().listAiModels(config);
             lastListedConfig = config;
             EclipseUtil.runInUiThread(parent, () -> {
-                actionsBar.applyModelList(models, config.model());
-                if (!models.isEmpty() && !models.contains(config.model())) {
-                    String[] items = actionsBar.getModelItems();
-                    if (items.length > 0) {
-                        aiService.updateConfig(config.withModel(items[0]));
-                    }
-                }
+                actionsBar.applyModelList(models, config.getModel());
+                var resolved = config.resolveModel(models);
+                if (!resolved.equals(config)) aiService.updateConfig(resolved);
             });
             return Status.OK_STATUS;
         }).schedule();
@@ -430,7 +425,7 @@ public class AIChatView implements EclipseAiMonitor {
     }
 
     private void doSendMessage() {
-        if (StringUtil.hasNoValue(aiService.getDeveloperService().getConfig().model())) {
+        if (StringUtil.hasNoValue(aiService.getDeveloperService().getConfig().getModel())) {
             chatHistory.appendMessage(new SimpleMessage(Type.PROBLEM, "No model configured — open Window > Preferences > Peon AI"));
             return;
         }

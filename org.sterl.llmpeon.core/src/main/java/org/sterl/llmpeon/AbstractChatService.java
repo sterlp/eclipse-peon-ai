@@ -65,11 +65,22 @@ public abstract class AbstractChatService {
     protected abstract double getTemperature();
     protected abstract Predicate<SmartToolExecutor> getToolFilter();
     protected boolean includesMcpTools() { return true; }
+    
+    public int tokenWindowUsedInPercent() {
+        float maxToken = config.getTokenWindow() > 4000 ? config.getTokenWindow() : 4000;
+        float used = tokenSize;
+        if (used < 100) return 0;
+        return Math.round(used / maxToken);
+    }
 
     public ChatResponse call(String message, AiMonitor monitor) {
         monitor = AiMonitor.nullSafety(monitor);
         monitor.onCallStart(message);
-        if (StringUtil.hasValue(message)) memory.add(UserMessage.from(message));
+        // auto compress if we are close to full
+        if (StringUtil.hasValue(message)) {
+            if (tokenWindowUsedInPercent() >= 95) compressContext(monitor);
+            memory.add(UserMessage.from(message));
+        }
 
         var start = Instant.now();
         var staticMessages = buildStaticMessages();
@@ -98,15 +109,15 @@ public abstract class AbstractChatService {
     public void updateConfig(LlmConfig config) {
         this.config = config;
         this.chatModel = config.build();
-        if (config.skillDirectory() != null) {
-            this.templateContext.setSkillDirectory(config.skillDirectory());
+        if (config.getSkillDirectory() != null) {
+            this.templateContext.setSkillDirectory(config.getSkillDirectory());
             try {
-                this.skillService.refresh(Path.of(config.skillDirectory()));
+                this.skillService.refresh(Path.of(config.getSkillDirectory()));
             } catch (Exception e) {
-                throw new RuntimeException("Failed to load skills from " + config.skillDirectory(), e);
+                throw new RuntimeException("Failed to load skills from " + config.getSkillDirectory(), e);
             }
         }
-        templateContext.setTokenWindow(config.tokenWindow());
+        templateContext.setTokenWindow(getTokenWindow());
     }
 
     public List<ChatMessage> getStandingOrders() {
@@ -126,7 +137,7 @@ public abstract class AbstractChatService {
     public void addMessage(ChatMessage message) { memory.add(message); }
     public List<ChatMessage> getMessages() { return memory.messages(); }
     public int getTokenSize() { return tokenSize; }
-    public int getTokenWindow() { return config.tokenWindow(); }
+    public int getTokenWindow() { return config.getTokenWindow(); }
     public LlmConfig getConfig() { return config; }
     public ChatModel getChatModel() { return chatModel; }
     public TemplateContext getTemplateContext() { return templateContext; }

@@ -53,11 +53,18 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
         return config;
     }
 
-    public static void saveGitHubOAuthToken(String token) {
+    public static void saveGitHubOAuthToken(String token, String enterpriseUrl) {
         try {
-            var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
+            IEclipsePreferences prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
             prefs.put(PeonConstants.PREF_API_KEY, token);
             prefs.put(PeonConstants.PREF_PROVIDER_TYPE, AiProvider.GITHUB_COPILOT.name());
+            if (enterpriseUrl != null && !enterpriseUrl.isBlank()) {
+                // Store as copilot-api.{domain} so LlmConfig.url is the ready-to-use base URL
+                String normalized = enterpriseUrl.replaceAll("^https?://", "").replaceAll("/+$", "");
+                prefs.put(PeonConstants.PREF_URL, "https://copilot-api." + normalized);
+            } else {
+                prefs.put(PeonConstants.PREF_URL, "");
+            }
             prefs.flush();
         } catch (Exception e) {
             throw new RuntimeException("Failed to save GitHub OAuth token", e);

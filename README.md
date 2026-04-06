@@ -39,6 +39,10 @@ A lightweight, context-aware LLM assistant that integrates directly into your Ec
 #### Gemini
 ![google gemnini](./doc/docs/assets/google-gemini.png)
 
+### Or find a free LLM
+
+- https://models.dev/
+
 ## Configuration
 
 Configure via **Window > Preferences > Peon AI**:

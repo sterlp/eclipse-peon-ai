@@ -5,32 +5,90 @@ import java.net.Socket;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+
+import org.sterl.llmpeon.ai.model.AiModel;
+import org.sterl.llmpeon.shared.StringUtil;
 
 import dev.langchain4j.model.chat.ChatModel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Builder.Default;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.NonNull;
+import lombok.ToString;
 
-public record LlmConfig (
-        AiProvider providerType,
-        String model,
-        String url,
-        int tokenWindow,
-        boolean thinkingEnabled,
-        String apiKey,
-        String skillDirectory) {
+@Builder(toBuilder = true)
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@EqualsAndHashCode
+@ToString(of = {"providerType", "url", "model"})
+public class LlmConfig {
+
+    @Default
+    @NonNull
+    private final AiProvider providerType = AiProvider.OLLAMA;
+    @Default
+    private final String model = null;
+    @Default
+    private final String url = null;
+    @Default
+    private final int tokenWindow = 8000;
+    @Default
+    private final boolean thinkingEnabled = true;
+    @Default
+    private final String apiKey = null;
+    @Default
+    private final String skillDirectory = null;
 
     public static LlmConfig newConfig(String model, String url) {
-        return newConfig(AiProvider.OLLAMA, model, url);
+        return LlmConfig.builder().model(model).url(url).build();
     }
-    
+
     public static LlmConfig newConfig(AiProvider provider, String model, String url) {
-        return new LlmConfig(provider, model, url, 4000, false, null, null);
+        return LlmConfig.builder()
+                .providerType(provider)
+                .model(model)
+                .url(url)
+                .build();
     }
 
     public ChatModel build() {
-        return providerType().buildChatModel(this);
+        return getProviderType().buildChatModel(this);
     }
 
     public LlmConfig withModel(String model) {
-        return new LlmConfig(providerType, model, url, tokenWindow, thinkingEnabled, apiKey, skillDirectory);
+        return this.toBuilder().model(model).build();
+    }
+
+    /**
+     * Returns a new config with the given model applied.
+     * If the model carries maxInputTokens, it is used as the tokenWindow.
+     */
+    public LlmConfig withModel(AiModel model) {
+        var builder = this.toBuilder().model(model.getId());
+        if (model.getMaxInputTokens() != null) builder.tokenWindow(model.getMaxInputTokens());
+        return builder.build();
+    }
+
+    /**
+     * Selects the best model from the list:
+     * - the currently configured model if present in the list, or
+     * - the first model in the list if the current model is null/missing.
+     * Returns this config unchanged if the list is empty.
+     */
+    public LlmConfig resolveModel(List<AiModel> models) {
+        if (models.isEmpty()) return this;
+        if (StringUtil.hasNoValue(model)) return this;
+
+        var effective = models.stream()
+                .filter(m -> model.equals(m.getId()) || model.equalsIgnoreCase(m.getName()))
+                .findFirst()
+                .orElse(models.get(0));
+        return withModel(effective);
     }
 
     public boolean skillFolderExisits() {

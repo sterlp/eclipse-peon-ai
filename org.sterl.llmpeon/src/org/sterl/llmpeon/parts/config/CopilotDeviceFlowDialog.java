@@ -34,9 +34,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class CopilotDeviceFlowDialog extends Dialog {
 
-    private static final String CLIENT_ID       = "Ov23livNVsEpHO448rzr";
-    private static final String DEVICE_CODE_URL = "https://github.com/login/device/code";
-    private static final String POLL_URL        = "https://github.com/login/oauth/access_token";
+    private static final String CLIENT_ID              = "Ov23livNVsEpHO448rzr";
+    private static final String DEFAULT_GITHUB_DOMAIN  = "github.com";
+    private static final String DEVICE_CODE_URL        = "https://github.com/login/device/code";
+    private static final String POLL_URL               = "https://github.com/login/oauth/access_token";
 
     private final HttpClient http     = HttpClient.newHttpClient();
     private final ObjectMapper mapper = new ObjectMapper();
@@ -44,9 +45,11 @@ public class CopilotDeviceFlowDialog extends Dialog {
     private String deviceCode;
     private String verificationUri;
     private int    intervalSeconds = 5;
+    private String enterpriseDomain; // null means standard github.com
 
     private Label  statusLabel;
     private Text   userCodeText;
+    private Text   enterpriseUrlText;
     private Button copyButton;
     private Link   browserLink;
     private Button okButton;
@@ -79,6 +82,16 @@ public class CopilotDeviceFlowDialog extends Dialog {
                 "  3. Authorize the app on GitHub.\n" +
                 "  4. Once authorized, click Done.");
         instructions.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+
+        // Optional: GitHub Enterprise Server domain
+        Composite enterpriseRow = new Composite(area, SWT.NONE);
+        enterpriseRow.setLayout(new GridLayout(2, false));
+        enterpriseRow.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+        Label enterpriseLabel = new Label(enterpriseRow, SWT.NONE);
+        enterpriseLabel.setText("GitHub Enterprise URL (optional):");
+        enterpriseUrlText = new Text(enterpriseRow, SWT.BORDER);
+        enterpriseUrlText.setMessage("company.ghe.com");
+        enterpriseUrlText.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
         new Label(area, SWT.SEPARATOR | SWT.HORIZONTAL)
                 .setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
@@ -152,11 +165,17 @@ public class CopilotDeviceFlowDialog extends Dialog {
     }
 
     private void startDeviceFlow() {
+        // Read enterprise domain from UI before leaving the UI thread (called on UI thread)
+        String entered = enterpriseUrlText.getText().trim();
+        enterpriseDomain = entered.isEmpty() ? null
+                : entered.replaceAll("^https?://", "").replaceAll("/+$", "");
         pollingJob = Job.create("GitHub Copilot login", (IProgressMonitor monitor) -> {
             try {
+                String domain = enterpriseDomain != null ? enterpriseDomain : DEFAULT_GITHUB_DOMAIN;
+                String deviceCodeUrl = "https://" + domain + "/login/device/code";
                 String body = "client_id=" + CLIENT_ID + "&scope=read:user";
                 var request = HttpRequest.newBuilder()
-                        .uri(URI.create(DEVICE_CODE_URL))
+                        .uri(URI.create(deviceCodeUrl))
                         .header("Accept", "application/json")
                         .header("Content-Type", "application/x-www-form-urlencoded")
                         .POST(HttpRequest.BodyPublishers.ofString(body))
@@ -220,7 +239,7 @@ public class CopilotDeviceFlowDialog extends Dialog {
 
             if (json.has("access_token")) {
                 String oauthToken = json.get("access_token").asText();
-                LlmPreferenceInitializer.saveGitHubOAuthToken(oauthToken);
+                LlmPreferenceInitializer.saveGitHubOAuthToken(oauthToken, enterpriseDomain);
                 asyncExec(() -> {
                     if (isDisposed()) return;
                     setStatus("Successfully authenticated! Click Done to finish.");

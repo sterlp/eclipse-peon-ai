@@ -8,9 +8,6 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.sterl.llmpeon.AiDeveloperService;
 import org.sterl.llmpeon.AiPlannerService;
-import org.sterl.llmpeon.PeonMode;
-
-import dev.langchain4j.data.message.UserMessage;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.agent.AgentModeService;
 import org.sterl.llmpeon.parts.agentsmd.AgentsMdService;
@@ -30,6 +27,8 @@ import org.sterl.llmpeon.template.TemplateContext;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
+
+import dev.langchain4j.data.message.UserMessage;
 
 /**
  * Bundles all AI services into a single eagerly-initialized object.
@@ -156,11 +155,11 @@ public class PeonAiService {
         developerService.updateConfig(config);
         plannerService.updateConfig(config);
         agentMode.updateConfig(config);
-        if (config.skillDirectory() != null && !config.skillDirectory().isBlank()) {
+        if (config.getSkillDirectory() != null && !config.getSkillDirectory().isBlank()) {
             try {
-                skillService.refresh(config.skillDirectory());
+                skillService.refresh(config.getSkillDirectory());
             } catch (IOException e) {
-                throw new RuntimeException("Failed to load skills from " + config.skillDirectory(), e);
+                throw new RuntimeException("Failed to load skills from " + config.getSkillDirectory(), e);
             }
         }
     }
