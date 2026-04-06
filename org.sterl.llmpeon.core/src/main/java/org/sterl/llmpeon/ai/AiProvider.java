@@ -247,36 +247,51 @@ public enum AiProvider {
     },
 
     GITHUB_COPILOT {
-        private static final String MODELS_URL = "https://api.githubcopilot.com/models";
+        private static final String DEFAULT_BASE_URL  = "https://api.githubcopilot.com";
+        private static final String CATALOG_URL       = "https://models.github.ai/catalog/models";
+        private static final String CATALOG_API_VERSION = "2026-03-10";
+
+        private String baseUrl(LlmConfig c) {
+            return (c.url() != null && !c.url().isBlank())
+                    ? c.url().replaceAll("/+$", "")
+                    : DEFAULT_BASE_URL;
+        }
 
         @Override
         public ChatModel buildChatModel(LlmConfig c) {
             // api.githubcopilot.com accepts the GitHub OAuth token directly as Bearer.
             return OpenAiChatModel.builder()
                     .timeout(TIMEOUT)
-                    .baseUrl("https://api.githubcopilot.com")
+                    .baseUrl(baseUrl(c))
                     .apiKey(c.apiKey() != null && !c.apiKey().isBlank() ? c.apiKey() : "not-configured")
                     .modelName(c.model())
-                    .customHeaders(java.util.Map.of("Copilot-Integration-Id", "eclipse-peon-ai"))
+                    .customHeaders(java.util.Map.of(
+                            "Copilot-Integration-Id", "eclipse-peon-ai",
+                            "Openai-Intent", "conversation-edits",
+                            "x-initiator", "user"))
                     .build();
         }
 
+        // https://docs.github.com/en/rest/models/catalog?apiVersion=2026-03-10#list-all-models
         @Override
         public List<String> listModels(LlmConfig c) {
             if (c.apiKey() == null || c.apiKey().isBlank()) return fallback(c);
             try {
                 var http = HttpClient.newHttpClient();
                 var request = HttpRequest.newBuilder()
-                        .uri(URI.create(MODELS_URL))
+                        .uri(URI.create(CATALOG_URL))
                         .header("Authorization", "Bearer " + c.apiKey())
-                        .header("Copilot-Integration-Id", "eclipse-peon-ai")
+                        .header("X-GitHub-Api-Version", CATALOG_API_VERSION)
                         .GET()
                         .build();
                 var response = http.send(request, HttpResponse.BodyHandlers.ofString());
 
-                if (response.statusCode() > 299) return fallback(c);
+                if (response.statusCode() > 299) {
+                    System.err.println("GITHUB_COPILOT listModels HTTP " + response.statusCode() + ": " + response.body());
+                    return fallback(c);
+                }
 
-                return extractedModels(c, response);
+                return extractedCatalogModels(c, response);
             } catch (Exception e) {
                 e.printStackTrace();
                 return fallback(c);
@@ -315,7 +330,35 @@ public enum AiProvider {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
     
+    /** Parses the GitHub Models Catalog API response (flat array, ids like "openai/gpt-4.1"). */
+    private static ArrayList<String> extractedCatalogModels(LlmConfig config, HttpResponse<String> response)
+            throws JsonProcessingException, JsonMappingException {
+        var json = MAPPER.readTree(response.body());
+        var ids = new ArrayList<String>();
+
+        if (json.isArray()) {
+            for (var item : json) {
+                var id = item.get("id");
+                if (id == null) continue;
+                // Strip publisher prefix: "openai/gpt-4.1" → "gpt-4.1"
+                String modelId = id.asText();
+                int slash = modelId.indexOf('/');
+                if (slash >= 0) modelId = modelId.substring(slash + 1);
+                ids.add(modelId);
+            }
+        }
+
+        if (ids.isEmpty() && StringUtil.hasValue(config.model())) ids.add(config.model());
+        else Collections.sort(ids);
+        return ids;
+    }
+
     private static ArrayList<String> extractedModels(LlmConfig config, HttpResponse<String> response)
+            throws JsonProcessingException, JsonMappingException {
+        return extractedModels(config, response, false);
+    }
+
+    private static ArrayList<String> extractedModels(LlmConfig config, HttpResponse<String> response, boolean filterByPolicy)
             throws JsonProcessingException, JsonMappingException {
         var json = MAPPER.readTree(response.body());
         var data = json.get("data");
@@ -324,7 +367,15 @@ public enum AiProvider {
         if (data != null && data.isArray()) {
             for (var item : data) {
                 var id = item.get("id");
-                if (id != null) ids.add(id.asText());
+                if (id == null) continue;
+                if (filterByPolicy) {
+                    var policy = item.get("policy");
+                    if (policy != null) {
+                        var state = policy.get("state");
+                        if (state != null && !state.asText().startsWith("enabled")) continue;
+                    }
+                }
+                ids.add(id.asText());
             }
         }
 
