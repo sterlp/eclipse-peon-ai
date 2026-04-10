@@ -45,6 +45,32 @@ public class FileLines {
         return sb.toString();
     }
 
+    /**
+     * Replaces lines [startLine, endLine] (1-based, inclusive) with {@code replacement}.
+     * start &gt; end is swapped. Out-of-range bounds are clamped to the file size.
+     */
+    public static String replaceLines(String content, int startLine, int endLine, String replacement) {
+        if (content == null) return replacement == null ? "" : replacement;
+
+        var lines = new java.util.ArrayList<>(java.util.Arrays.asList(content.split("\n", -1)));
+        int total = lines.size();
+
+        int s = startLine <= 0 ? 1 : startLine;
+        int e = endLine   <= 0 ? total : endLine;
+        if (s > e) { int tmp = s; s = e; e = tmp; }
+        s = Math.max(1, Math.min(s, total));
+        e = Math.max(1, Math.min(e, total));
+
+        for (int i = e; i >= s; i--) lines.remove(i - 1);
+
+        if (replacement != null && !replacement.isEmpty()) {
+            var incoming = replacement.split("\n", -1);
+            for (int i = incoming.length - 1; i >= 0; i--) lines.add(s - 1, incoming[i]);
+        }
+
+        return String.join("\n", lines);
+    }
+
     private static void appendLine(StringBuilder sb, int n, String line) {
         if      (n <    10) sb.append("   ");
         else if (n <   100) sb.append("  ");

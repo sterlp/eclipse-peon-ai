@@ -1,3 +1,5 @@
+Feel free to contribute.
+
 ## gemma4:e4b (9.6GB) - Ollama
 
 Practically useless for complex planning tasks it fails expanding the code base and working alone one tasks
@@ -5,6 +7,12 @@ Practically useless for complex planning tasks it fails expanding the code base 
 ## gemma-4-26b-a4b - LM Studio
 
 It is working much better - even if it is the same model; but much larger - expanding code and planing properly.
+
+LM Studio is unstable v0.4.10
+
+## gemma4:26b-a4b-it-q4_K_M - Ollama
+
+As good as `gemma-4-26b-a4b - LM Studio`, but faster and stable.
 
 ## Qwen 3.5 - LM Studio
 

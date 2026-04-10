@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import org.sterl.llmpeon.shared.FileLines;
 import org.sterl.llmpeon.shared.FileUtils;
 import org.sterl.llmpeon.shared.AiMonitor.AiFileUpdate;
 
@@ -101,7 +102,7 @@ public class DiskFileWriteTool extends AbstractTool {
 
         Path resolved = resolve(filePath);
         if (resolved == null || !Files.exists(resolved)) {
-            throw new IllegalArgumentException("File not found: " + filePath);
+            return "File not found: " + filePath;
         }
 
         onTool("Deleting " + filePath);
@@ -113,6 +114,31 @@ public class DiskFileWriteTool extends AbstractTool {
         }
     }
     
+    @Tool("Disk: Replace a single line by line number. newContent may span multiple lines.")
+    public String replaceDiskLine(
+            @P("file path") String filePath,
+            @P("line to replace (1-based)") int line,
+            @P("replacement text") String newContent) {
+
+        if (filePath == null || filePath.isBlank()) {
+            throw new IllegalArgumentException("filePath must not be empty");
+        }
+
+        Path resolved = resolve(filePath);
+        if (resolved == null || !Files.isRegularFile(resolved)) {
+            throw new IllegalArgumentException("File not found: " + filePath);
+        }
+        try {
+            String content = Files.readString(resolved);
+            String newFullContent = FileLines.replaceLines(content, line, line, newContent);
+            Files.writeString(resolved, newFullContent);
+            monitor.onFileUpdate(new AiFileUpdate(workingDir.relativize(resolved).toString(), content, newFullContent));
+            return "File " + filePath + " line " + line + " replaced.";
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to edit " + filePath, e);
+        }
+    }
+
     @Tool("Disk: Replace exact string. Errors if 0 or >1 matches.")
     public String editDiskFile(@P("file path") String filePath, @P("exact string to replace") String oldString, @P("replacement text") String newString) {
 

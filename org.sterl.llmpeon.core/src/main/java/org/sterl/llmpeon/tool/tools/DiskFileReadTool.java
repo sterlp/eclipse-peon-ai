@@ -85,7 +85,7 @@ public class DiskFileReadTool extends AbstractTool {
 
         onTool("Found " + matches.size() + " files on disk " + workingDir + " for " + query);
         if (matches.isEmpty()) {
-            return "No files found matching '" + query + "' adjust your query";
+            return "No files found matching '" + query + "'. Adjust your query.";
         }
         return String.join("\n", matches);
     }

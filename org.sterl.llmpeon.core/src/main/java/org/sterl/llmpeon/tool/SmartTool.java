@@ -8,7 +8,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
- * Smart tools can tell if why are active furthermore throw an
+ * Smart tools can tell if they are active furthermore throw an
  * {@link IllegalArgumentException} to return to the LLM an error.
  */
 public interface SmartTool {

@@ -11,6 +11,7 @@ import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.AiMonitor.AiFileUpdate;
+import org.sterl.llmpeon.shared.FileLines;
 import org.sterl.llmpeon.shared.FileUtils;
 
 import dev.langchain4j.agent.tool.P;
@@ -27,6 +28,27 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
     @Override
     public boolean isEditTool() {
         return true;
+    }
+
+    @Tool("Eclipse: Replace a single line by line number. newContent may span multiple lines.")
+    public String replaceWorkspaceLine(
+            @P("workspace-relative path") String filePath,
+            @P("line to replace (1-based)") int line,
+            @P("replacement text") String newContent) {
+
+        if (filePath == null || filePath.isBlank()) {
+            throw new IllegalArgumentException("filePath must not be empty");
+        }
+
+        var inFile = EclipseUtil.resolveInEclipse(filePath);
+        if (inFile.isEmpty() || !(inFile.get() instanceof IFile eclipseFile)) {
+            throw new IllegalArgumentException("Cannot write unknown file in eclipse " + filePath);
+        }
+        String content = IoUtils.readFile(eclipseFile);
+        String newFullContent = FileLines.replaceLines(content, line, line, newContent);
+        var result = writeEclipseFile(eclipseFile, newFullContent);
+        monitor.onFileUpdate(result);
+        return "File " + result.file() + " line " + line + " replaced.";
     }
 
     @Tool("Eclipse: Replace exact string in workspace file. Errors if 0 or >1 matches.")

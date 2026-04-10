@@ -74,7 +74,7 @@ public class ShellTool extends AbstractTool {
         else {
             shellCommand = new String[] { "/bin/bash", "-l", "-c", command };
         }
-        // and brew by default
+        // Includes brew by default
         if (Files.isDirectory(Path.of("/opt/homebrew/bin"))) {
             extraPaths += File.pathSeparatorChar + "/opt/homebrew/bin";
         };

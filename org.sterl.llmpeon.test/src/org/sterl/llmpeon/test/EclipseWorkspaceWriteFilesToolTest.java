@@ -74,6 +74,28 @@ public class EclipseWorkspaceWriteFilesToolTest extends AbstractTest {
     }
     
     @Test
+    public void test_replaceWorkspaceLine_middle() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        // GIVEN
+        var tool = new EclipseWorkspaceWriteFileTool();
+        var fileName = "/org.sterl.llmpeon.test/foo.txt";
+        tool.createWorkspaceFile(fileName, "line1\nline2\nline3\nline4\nline5");
+
+        // WHEN — replace middle line 3, expanding it to two lines
+        tool.replaceWorkspaceLine(fileName, 3, "replaced3a\nreplaced3b");
+
+        // THEN — surrounding lines untouched, middle replaced
+        var content = readTool.readWorkspaceFile(fileName, 0, 0);
+        assertTrue(content, content.contains("line1"));
+        assertTrue(content, content.contains("line2"));
+        assertTrue(content, content.contains("replaced3a"));
+        assertTrue(content, content.contains("replaced3b"));
+        assertTrue(content, content.contains("line4"));
+        assertTrue(content, content.contains("line5"));
+        assertTrue(content, !content.contains("line3\n"));
+    }
+
+    @Test
     public void test_editWorkspaceFile_not_found() {
         // GIVEN
         var tool = new EclipseWorkspaceWriteFileTool();
