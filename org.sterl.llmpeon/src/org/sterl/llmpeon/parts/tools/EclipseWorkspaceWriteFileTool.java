@@ -69,15 +69,15 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
             @P("new content") String newContent) {
 
         if (filePath == null || filePath.isBlank()) {
-            throw new IllegalArgumentException("filePath must not be empty");
+            throw new IllegalArgumentException("workspace-relative path must not be empty");
         }
         if (newContent == null || newContent.isBlank()) {
-            throw new IllegalArgumentException("newContent must not be empty");
+            throw new IllegalArgumentException("new content must not be empty");
         }
 
         var inFile = EclipseUtil.resolveInEclipse(filePath);
         if (inFile.isEmpty() || !(inFile.get() instanceof IFile)) {
-            // fallback to raw filesystem
+            // fallback to raw file system
             var f = java.nio.file.Path.of(filePath);
             if (Files.isRegularFile(f)) {
                 String oldContent = FileUtils.readString(f);

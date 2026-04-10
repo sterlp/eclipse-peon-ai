@@ -48,7 +48,7 @@ public class EclipseWorkspaceReadFilesToolTest extends AbstractTest {
         assertTrue("Expected to find the test file in workspace: " + searchResult,
                 searchResult.contains(this.getClass().getSimpleName() + ".java"));
 
-        String content = tool.readWorkspaceFile(searchResult.split("\n")[0]);
+        String content = tool.readWorkspaceFile(searchResult.split("\n")[0], 0, 0);
         assertTrue("Expected to read own source, got: " + content.substring(0, Math.min(200, content.length())),
                 content.contains("searchAndReadSelf"));
     }

@@ -101,8 +101,7 @@ public class DiskFileWriteTool extends AbstractTool {
 
         Path resolved = resolve(filePath);
         if (resolved == null || !Files.exists(resolved)) {
-            onProblem("File not found: " + filePath);
-            return "File not found: " + filePath;
+            throw new IllegalArgumentException("File not found: " + filePath);
         }
 
         onTool("Deleting " + filePath);

@@ -1,6 +1,5 @@
 package org.sterl.llmpeon.tool;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -30,13 +29,14 @@ class DiskFileReadToolsTest {
     @Test
     void readDiskFile_existingFile() throws IOException {
         Files.writeString(tempDir.resolve("hello.txt"), "world");
-        assertEquals("world", tool.readDiskFile("hello.txt"));
+        assertTrue(tool.readDiskFile("hello.txt", 0, 0).contains("world"),
+                tool.readDiskFile("hello.txt", 0, 0));
     }
 
     @Test
     void readDiskFile_missingFile() {
         try {
-            tool.readDiskFile("missing.txt");
+            tool.readDiskFile("missing.txt", 0, 0);
             fail("Missing IllegalArgumentException");
         } catch (IllegalArgumentException e) {
             assertTrue(e.getMessage().contains("File not found"));
@@ -95,7 +95,7 @@ class DiskFileReadToolsTest {
         assertFalse(result.contains("BarHelper.java"));
         
         // AND no error
-        tool.readDiskFile(result.split("\n")[0]);
+        tool.readDiskFile(result.split("\n")[0], 0, 0);
     }
 
     @Test
@@ -108,6 +108,7 @@ class DiskFileReadToolsTest {
     void readDiskFile_absolutePath() throws IOException {
         Path abs = tempDir.resolve("abs.txt");
         Files.writeString(abs, "absolute");
-        assertEquals("absolute", tool.readDiskFile(abs.toString()));
+        assertTrue(tool.readDiskFile(abs.toString(), 0, 0).contains("absolute"),
+                tool.readDiskFile(abs.toString(), 0, 0));
     }
 }

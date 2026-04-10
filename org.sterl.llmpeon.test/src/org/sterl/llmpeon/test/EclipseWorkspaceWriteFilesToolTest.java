@@ -1,7 +1,6 @@
 package org.sterl.llmpeon.test;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
@@ -27,7 +26,7 @@ public class EclipseWorkspaceWriteFilesToolTest extends AbstractTest {
         
         // THEN
         assertTrue(result, result.contains(fileName));
-        assertEquals(message, readTool.readWorkspaceFile(fileName));
+        assertEquals(message, readTool.readWorkspaceFile(fileName, 0, 0));
     }
     
     @Test
@@ -70,7 +69,7 @@ public class EclipseWorkspaceWriteFilesToolTest extends AbstractTest {
         // THEN
         assertTrue(result, result.contains("successfully"));
         
-        message = readTool.readWorkspaceFile(fileName);
+        message = readTool.readWorkspaceFile(fileName, 0, 0);
         assertTrue("Missing edit text in:\n" + message, message.contains(editMessage));
     }
     
@@ -93,7 +92,7 @@ public class EclipseWorkspaceWriteFilesToolTest extends AbstractTest {
         // THEN
         assertTrue(result, result.contains("successfully"));
         
-        message = readTool.readWorkspaceFile(fileName);
+        message = readTool.readWorkspaceFile(fileName, 0, 0);
         assertTrue(message, message.contains(editString));
         assertTrue(message, message.contains("Line to replace"));
         assertTrue(message, message.contains("foo"));

@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 
+import org.sterl.llmpeon.shared.FileLines;
 import org.sterl.llmpeon.shared.FileUtils;
 import org.sterl.llmpeon.shared.StringMatcher;
 import org.sterl.llmpeon.shared.StringUtil;
@@ -41,7 +42,10 @@ public class DiskFileReadTool extends AbstractTool {
     }
 
     @Tool("Disk: Read file - not eclipse.")
-    public String readDiskFile(@P("file path") String filePath) {
+    public String readDiskFile(
+            @P("file path") String filePath,
+            @P("Optional: first line to read (1-based). 0 = start of file.") int startLine,
+            @P("Optional: last line to read (1-based). 0 = end of file.") int endLine) {
 
         if (StringUtil.hasNoValue(filePath)) {
             throw new IllegalArgumentException("filePath must not be empty");
@@ -53,7 +57,10 @@ public class DiskFileReadTool extends AbstractTool {
         }
         try {
             onTool("Reading " + filePath);
-            return Files.readString(resolved);
+            String content = Files.readString(resolved);
+            return (startLine > 0 && endLine > 0)
+                    ? FileLines.extract(content, startLine, endLine)
+                    : FileLines.format(content);
         } catch (IOException e) {
             throw new RuntimeException("Failed to read " + filePath, e);
         }
@@ -94,8 +101,7 @@ public class DiskFileReadTool extends AbstractTool {
             dir = resolve(path);
         }
         if (dir == null || !Files.isDirectory(dir)) {
-            onProblem("Directory not found: " + path);
-            return "Directory not found: " + path;
+            throw new IllegalArgumentException("Directory not found: " + path);
         }
 
         var entries = new ArrayList<String>();

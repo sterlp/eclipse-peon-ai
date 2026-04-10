@@ -25,7 +25,7 @@ public class SearchAgentTool extends AbstractTool {
 
     @Tool(name = "SearchAgentTool", value = "Sub-agent for complex multi-step search/research.")
     public String searchAgent(@P("search prompt") String prompt) {
-        if (prompt == null || prompt.isBlank()) return "Error: search prompt must not be empty";
+        if (prompt == null || prompt.isBlank()) throw new IllegalArgumentException("search prompt must not be empty");
 
         final AiMonitor m = AiMonitor.nullSafety(monitor);
 

@@ -14,6 +14,7 @@ import org.eclipse.core.runtime.CoreException;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
+import org.sterl.llmpeon.shared.FileLines;
 import org.sterl.llmpeon.shared.StringMatcher;
 
 import dev.langchain4j.agent.tool.P;
@@ -28,7 +29,10 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
 
     public static final String READ_ECLIPSE_FILE_TOOL = "readWorkspaceFile";
     @Tool(name = READ_ECLIPSE_FILE_TOOL, value = "Eclipse: Read workspace file (e.g. '/Project/src/Foo.java').")
-    public String readWorkspaceFile(@P("workspace-relative path") String filePath) {
+    public String readWorkspaceFile(
+            @P("workspace-relative path") String filePath,
+            @P("Optional: first line to read (1-based). 0 = start of file.") int startLine,
+            @P("Optional: last line to read (1-based). 0 = end of file.") int endLine) {
 
         if (filePath == null || filePath.isBlank()) {
             throw new IllegalArgumentException("filePath must not be empty");
@@ -37,7 +41,10 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
         var file = EclipseUtil.resolveInEclipse(filePath);
         if (file.isPresent() && file.get() instanceof IFile f) {
             onTool("Reading eclipse file " + filePath);
-            return IoUtils.readFile(f);
+            String content = IoUtils.readFile(f);
+            return (startLine > 0 && endLine > 0)
+                    ? FileLines.extract(content, startLine, endLine)
+                    : FileLines.format(content);
         }
         onTool("No eclipse file found for " + filePath);
         return "No eclipse file found for " + filePath;
