@@ -27,8 +27,8 @@ export default defineConfig({
             { text: 'Overview', link: '/' },
             { text: 'Agents & Skills', link: '/setup/agents-and-skills' },
             { text: 'Template Variables', link: '/setup/template-variables' },
-            { text: 'Agent Mode', link: '/setup/agent-mode' }
-            { text: 'Model Comparison', link: '/model-checks.md' },
+            { text: 'Agent Mode', link: '/setup/agent-mode' },
+            { text: 'Model Comparison', link: '/model-checks.md' }
           ]
         },
         {

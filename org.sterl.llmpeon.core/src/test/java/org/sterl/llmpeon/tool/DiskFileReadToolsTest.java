@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.tool;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -110,5 +111,66 @@ class DiskFileReadToolsTest {
         Files.writeString(abs, "absolute");
         assertTrue(tool.readDiskFile(abs.toString(), 0, 0).contains("absolute"),
                 tool.readDiskFile(abs.toString(), 0, 0));
+    }
+
+    @Test
+    void readDiskFile_lineNumbersStartAtOne() throws IOException {
+        Files.writeString(tempDir.resolve("lines.txt"), "alpha\nbeta\ngamma\ndelta\nepsilon");
+        // full file - line numbers must start at 1
+        String result = tool.readDiskFile("lines.txt", 0, 0);
+        assertEquals(
+                "   1: alpha\n" +
+                "   2: beta\n" +
+                "   3: gamma\n" +
+                "   4: delta\n" +
+                "   5: epsilon\n",
+                result);
+    }
+
+    @Test
+    void readDiskFile_fromToPreservesActualLineNumbers() throws IOException {
+        Files.writeString(tempDir.resolve("lines.txt"), "alpha\nbeta\ngamma\ndelta\nepsilon");
+        // reading lines 3-5 must show line numbers 3, 4, 5 - not reset to 1
+        String result = tool.readDiskFile("lines.txt", 3, 5);
+        assertEquals(
+                "   3: gamma\n" +
+                "   4: delta\n" +
+                "   5: epsilon\n",
+                result);
+    }
+
+    @Test
+    void readDiskFile_fromToMiddleRange() throws IOException {
+        Files.writeString(tempDir.resolve("lines.txt"), "alpha\nbeta\ngamma\ndelta\nepsilon");
+        // reading lines 2-3 must show line numbers 2 and 3
+        String result = tool.readDiskFile("lines.txt", 2, 3);
+        assertEquals(
+                "   2: beta\n" +
+                "   3: gamma\n",
+                result);
+    }
+
+    @Test
+    void readDiskFile_endLineOutOfBoundsReturnsWholeFile() throws IOException {
+        Files.writeString(tempDir.resolve("lines.txt"), "alpha\nbeta\ngamma");
+        // end line 99 exceeds file length (3 lines) - must return whole file
+        String result = tool.readDiskFile("lines.txt", 1, 99);
+        assertEquals(
+                "   1: alpha\n" +
+                "   2: beta\n" +
+                "   3: gamma\n",
+                result);
+    }
+
+    @Test
+    void readDiskFile_startLineOutOfBoundsReturnsWholeFile() throws IOException {
+        Files.writeString(tempDir.resolve("lines.txt"), "alpha\nbeta\ngamma");
+        // start line 99 exceeds file length (3 lines) - must return whole file
+        String result = tool.readDiskFile("lines.txt", 99, 100);
+        assertEquals(
+                "   1: alpha\n" +
+                "   2: beta\n" +
+                "   3: gamma\n",
+                result);
     }
 }
