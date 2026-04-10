@@ -13,4 +13,5 @@ Tool usage:
 - Avoid repeated tool calls for the same information
 
 Code references:
+- File read tools return content with line numbers — use startLine/endLine to avoid reading large files fully
 - When referencing code, use file_path:line_number so the developer can navigate directly
