@@ -81,9 +81,65 @@ Set the API Key to a dummy value like `none` if the server does not require one.
 
 ![google gemnini](../assets/mistral-setup.png)
 
-### Github Copilot
+### GitHub (Marketplace)
 
-- [Model overview](https://docs.github.com/en/copilot/reference/ai-models/supported-models)
+Using the [GitHub Models marketplace](https://github.com/marketplace/models) with pay-per-use billing.
+
+| Setting | Value |
+|---------|-------|
+| Provider | `GitHub (PAT)` |
+| Model | Varies; use model picker to list available models |
+| Base URL | `https://models.inference.ai.azure.com` (default) or custom endpoint |
+| API Key | Your GitHub Personal Access Token (PAT) with `models:read` scope |
+
+**Authentication:**
+1. Generate a [GitHub PAT](https://github.com/settings/tokens) with `models:read` scope
+2. Paste the token in the API Key field
+3. Click "Check Host and Port..." to verify connectivity
+
+**Available models:** Use the **Model** picker to list all marketplace models you have access to. Models are filtered to those supporting tool calling only.
+
+---
+
+### GitHub Copilot (Subscription)
+
+Access Claude Sonnet, Claude Opus, Claude Haiku, GPT-5, and more as a [GitHub Copilot](https://github.com/copilot) subscriber.
+
+| Setting | Value |
+|---------|-------|
+| Provider | `GitHub Copilot (subscription)` |
+| Model | Claude Sonnet, Claude Opus, Claude Haiku, GPT-4o, GPT-5-mini, etc. |
+| Base URL | *(leave empty for github.com; enter custom domain for GitHub Enterprise)* |
+| API Key | *(leave empty; OAuth token obtained via login button)* |
+
+**Authentication:**
+1. Click **Login with GitHub Copilot...** button in the preferences
+2. Select GitHub deployment type (github.com or GitHub Enterprise)
+3. Complete the device flow authorization in your browser
+4. The plugin stores your OAuth token and auto-selects the `GITHUB_COPILOT` provider
+5. Use the **Model** picker to list available Copilot models (Sonnet, Opus, etc.)
+
+**Requirements:**
+- Active GitHub Copilot subscription (Individual $10/month, Business, or Enterprise)
+- Copilot access enabled on your GitHub account
+
+**Model availability:** Models listed depend on:
+- Your Copilot subscription tier
+- Regional availability
+- GitHub's current model catalog
+
+---
+
+### Difference: Marketplace vs. Subscription
+
+| | **Marketplace (PAT)** | **Copilot (OAuth)** |
+|---|---|---|
+| **Product** | GitHub Models marketplace | GitHub Copilot subscription |
+| **Auth method** | Personal Access Token | OAuth Device Flow |
+| **Billing** | Pay-per-use | Monthly subscription |
+| **Models** | Public marketplace catalog | Copilot subscriber models (Claude, GPT-5) |
+| **Provider name** | `GITHUB_MODELS` | `GITHUB_COPILOT` |
+| **Use case** | One-off testing, marketplace exploration | Primary AI assistant with Copilot benefits |
 
 ## Advanced Settings
 
