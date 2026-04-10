@@ -14,7 +14,7 @@ import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
 public class AiPlannerService extends AbstractChatService {
 
-    private static final String BASE_PROMPT = PromptLoader.load("planner.txt");
+    private static final String BASE_PROMPT = PromptLoader.loadWithDefault("planner.txt");
 
     public AiPlannerService(LlmConfig config, ToolService toolService,
             SkillService skillService, TemplateContext templateContext) {

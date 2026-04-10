@@ -15,9 +15,7 @@ Tool priority — follow this order:
 Strategy:
 - Prefer targeted searches over broad ones. Read only what is relevant to the question.
 - Stop as soon as you have enough information to answer.
-- Avoid re-reading files already covered in this search.
 
 Output:
-- Return a concise, factual answer.
 - Include relevant file paths and only the minimal code excerpts that directly answer the question.
 - Do not ask follow-up questions. If you cannot find the answer, say so and explain what you tried.

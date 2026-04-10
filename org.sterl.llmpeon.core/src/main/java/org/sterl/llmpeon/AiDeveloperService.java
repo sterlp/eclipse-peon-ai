@@ -11,7 +11,7 @@ import org.sterl.llmpeon.tool.tools.CompressorAgentTool;
 
 public class AiDeveloperService extends AbstractChatService {
 
-    private static final String BASE_PROMPT = PromptLoader.load("developer.txt");
+    private static final String BASE_PROMPT = PromptLoader.loadWithDefault("developer.txt");
 
     public AiDeveloperService(LlmConfig config, ToolService toolService,
             SkillService skillService, TemplateContext templateContext) {

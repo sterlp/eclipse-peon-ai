@@ -15,7 +15,7 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 
 public class SearchAgentTool extends AbstractTool {
     
-    final SystemMessage system = SystemMessage.systemMessage(PromptLoader.load("search-agent.txt"));
+    final SystemMessage system = SystemMessage.systemMessage(PromptLoader.loadWithDefault("search-agent.txt"));
 
     private final ToolService toolService;
 
