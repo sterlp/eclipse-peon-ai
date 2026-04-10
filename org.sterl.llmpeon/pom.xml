@@ -90,6 +90,7 @@
                                 org.sterl,
                                 dev.langchain4j,
                                 com.fasterxml.jackson.core,
+                                com.knuddels,
                                 org.jspecify,
                                 org.apache.opennlp,
                                 org.slf4j,
