@@ -2,6 +2,7 @@ package org.sterl.llmpeon.agent;
 
 import java.util.List;
 
+import org.sterl.llmpeon.PromptLoader;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
 
@@ -15,25 +16,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 
 public class AiCompressorAgent {
 
-    private static final SystemMessage COMPRESS_SYSTEM = SystemMessage.systemMessage("""
-            Compress the conversation into a structured briefing. Output exactly:
-
-            WHAT: <Feature Name>
-            - Goal and requirements
-            - Decisions made and their rationale
-            
-            HOW: <Design or Plan>
-            - Solution design
-            - Work done so far; files modified and why
-            - Component responsibilities
-            - Last implementation plan (if not yet executed)
-            
-            Preserve: key decisions + rationale, pending work, file paths, code references, relevant tool results.
-            Remove: duplicates, verbose tool output, superseded decisions, filler.
-            
-            Be short but complete enough to continue work without re-reading the conversation.
-            Preserve paths to key files - to avoid searches.
-            """);
+    private static final SystemMessage COMPRESS_SYSTEM = SystemMessage.systemMessage(PromptLoader.load("compressor.txt"));
     
     private final ChatModel chatModel;
 

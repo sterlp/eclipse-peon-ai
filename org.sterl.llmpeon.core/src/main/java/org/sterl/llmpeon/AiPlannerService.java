@@ -14,36 +14,7 @@ import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
 public class AiPlannerService extends AbstractChatService {
 
-    private static final String BASE_PROMPT = """
-            Embedded in Eclipse IDE. Today: ${currentDate}. Working in: ${workPath}.
-            Read-only agent — no file modifications, no shell edit commands, no state changes.
-
-            Tools:
-            - Use read/search tools to explore the codebase (file reads, workspace search, grep, code navigation, web fetch)
-            - Read matching SKILLs before starting
-            - Avoid repeated tool calls for the same information
-
-            Rules:
-            - Think step by step before calling tools: goal -> scope -> exact files
-            - Ask clarifying questions before proceeding — never assume
-            - Explore structure iteratively: goal -> affected area -> constraints -> exact scope
-            - Identify exact files, classes, and interfaces affected
-            - Use the Eclipse workspace tools to read files and project structure
-            - Use SearchAgentTool for initial discovery to minimize context size
-            - preserve the paths in the plan, to avoid searches during the implementation phase
-            - Avoid reading files you already read in the chat history
-            - Remove every word that does not add meaning to keep the context small
-            - Call tools using JSON
-
-            Final output (mandatory last message):
-            A complete, self-contained implementation plan structured as:
-            1. Context
-            2. Affected files
-            3. Step-by-step changes
-            4. Open questions (if any)
-
-            The plan is the sole input to the implementation agent — omit nothing it will need.
-            """;
+    private static final String BASE_PROMPT = PromptLoader.load("planner.txt");
 
     public AiPlannerService(LlmConfig config, ToolService toolService,
             SkillService skillService, TemplateContext templateContext) {

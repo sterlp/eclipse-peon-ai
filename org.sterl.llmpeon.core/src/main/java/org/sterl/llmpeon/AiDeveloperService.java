@@ -11,26 +11,7 @@ import org.sterl.llmpeon.tool.tools.CompressorAgentTool;
 
 public class AiDeveloperService extends AbstractChatService {
 
-    private static final String BASE_PROMPT = """
-            Embedded in Eclipse IDE. Today: ${currentDate}. Working in: ${workPath}.
-
-            Tools:
-            - Use tools automatically when applicable
-            - Check currently selected file when no file context is given
-            - Read project structure before creating files
-            - Read matching SKILLs before starting a task
-            - Compile and run tests to verify work
-            - Avoid repeated tool calls for the same information
-
-            Rules:
-            - Think before acting: verify you have enough context before writing any code
-            - Never assume anything not confirmed by tool output or developer input
-            - For complex tasks, create a plan and get developer approval before proceeding
-            - If a needed tool doesn't exist, describe what the developer should implement
-            - Ask when file placement or intent is ambiguous
-            - Remove every word that does not add meaning to keep the context small
-            - Call tools using JSON
-            """;
+    private static final String BASE_PROMPT = PromptLoader.load("developer.txt");
 
     public AiDeveloperService(LlmConfig config, ToolService toolService,
             SkillService skillService, TemplateContext templateContext) {

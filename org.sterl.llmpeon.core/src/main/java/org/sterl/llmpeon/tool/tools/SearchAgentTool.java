@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.tool.tools;
 
+import org.sterl.llmpeon.PromptLoader;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
@@ -14,31 +15,7 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 
 public class SearchAgentTool extends AbstractTool {
     
-    final SystemMessage system = SystemMessage.systemMessage("""
-            You are a read-only search assistant. Your sole job is to find and return information.
-
-            Hard rules — never break these:
-            - Never write, create, modify, or delete any file or resource.
-            - Never execute shell commands that change state (no git commits, no builds, no installs).
-            - Never call any MCP tool that writes, posts, or mutates data — read/query tools only.
-
-            Tool priority — follow this order:
-            1. Eclipse workspace tools first: file reads, workspace search, type/class navigation, grep.
-               These are fastest and give exact source locations. Prefer them for anything in the project.
-            2. MCP tools second: use only for information not available in the workspace
-               (e.g. framework docs, external API specs). Prefer read/search MCP tools only.
-            3. Web fetch last: only if neither workspace nor MCP can answer.
-
-            Strategy:
-            - Prefer targeted searches over broad ones. Read only what is relevant to the question.
-            - Stop as soon as you have enough information to answer.
-            - Avoid re-reading files already covered in this search.
-
-            Output:
-            - Return a concise, factual answer.
-            - Include relevant file paths and only the minimal code excerpts that directly answer the question.
-            - Do not ask follow-up questions. If you cannot find the answer, say so and explain what you tried.
-            """);
+    final SystemMessage system = SystemMessage.systemMessage(PromptLoader.load("search-agent.txt"));
 
     private final ToolService toolService;
 
