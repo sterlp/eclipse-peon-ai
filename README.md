@@ -10,7 +10,7 @@ A lightweight, context-aware LLM assistant that integrates directly into your Ec
 - **File Operations** - Read, write, search, and modify files directly from the chat
 - **Context Awareness** - Understands your current workspace and selected files
 - **Local LLM Support** - Works with Ollama for privacy-focused local inference
-- **Multi-Provider** - Supports Ollama, OpenAI (and compatible), Google Gemini, and Mistral AI
+- **Multi-Provider** - Supports Ollama, OpenAI (and compatible), Google Gemini, Mistral AI, Anthropic Claude, and GitHub Copilot
 
 ## Known Issues
 
@@ -54,8 +54,13 @@ Configure via **Window > Preferences > Peon AI**:
 | `OPEN_AI` | `gpt-4o`, `gpt-4o-mini` | `https://api.openai.com/v1` | required |
 | `GOOGLE_GEMINI` | `gemini-2.0-flash`, `gemini-2.5-pro-preview-03-25` | *(leave empty)* | required |
 | `MISTRAL` | `mistral-large-latest`, `codestral-latest` | *(leave empty)* | required |
+| `ANTHROPIC` | `claude-3-5-sonnet`, `claude-3-opus` | *(leave empty)* | required |
+| `GITHUB_MODELS` | Various (use model picker) | `https://models.inference.ai.azure.com` | GitHub PAT |
+| `GITHUB_COPILOT` | Claude Sonnet/Opus, GPT-5, etc. | *(leave empty)* | OAuth login |
 
-> **OpenAI-compatible APIs** (LM Studio, OpenRouter, vLLM, …): use `OPEN_AI` and set the custom base URL.
+> **OpenAI-compatible APIs** (LM Studio, OpenRouter, vLLM, GitHub Models, …): use appropriate provider or `OPEN_AI` with custom base URL.
+> 
+> **GitHub Copilot Subscription:** Click "Login with GitHub Copilot..." in preferences to authenticate and access Claude Sonnet/Opus, GPT-5, and other Copilot models.
 
 ## Usage
 
