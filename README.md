@@ -85,6 +85,7 @@ Example workflows:
 - [ ] **Refactor** - Rename symbols, extract methods, and move classes using Eclipse refactoring
 - [x] `v1.1.0` **Agent Mode** Preview of the agent mode
 - [x] `v1.2.0` **MCP** Support MCP servers using langchain4j MCP integration
+- [x] `v1.3.0` **Github Copilot** Support
 
 ## Requirements
 
