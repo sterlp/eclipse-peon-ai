@@ -250,8 +250,9 @@ public enum AiProvider {
         }
     },
 
-    GITHUB_COPILOT {
-        private static final String DEFAULT_BASE_URL    = "https://api.githubcopilot.com";
+    // GitHub Models marketplace — PAT-based, pay-per-use, models.github.ai
+    GITHUB_MODELS {
+        private static final String DEFAULT_BASE_URL    = "https://models.inference.ai.azure.com";
         private static final String CATALOG_URL         = "https://models.github.ai/catalog/models";
         private static final String CATALOG_API_VERSION = "2026-03-10";
 
@@ -268,10 +269,6 @@ public enum AiProvider {
                     .baseUrl(baseUrl(c))
                     .apiKey(c.getApiKey() != null && !c.getApiKey().isBlank() ? c.getApiKey() : "not-configured")
                     .modelName(c.getModel())
-                    .customHeaders(java.util.Map.of(
-                            "Copilot-Integration-Id", "eclipse-peon-ai",
-                            "Openai-Intent", "conversation-edits",
-                            "x-initiator", "user"))
                     .build();
         }
 
@@ -288,11 +285,54 @@ public enum AiProvider {
                         .build();
                 var response = cancelAndSend(request);
                 if (response == null || response.statusCode() > 299) {
+                    System.err.println("GITHUB_MODELS listAiModels HTTP "
+                            + (response != null ? response.statusCode() : "null"));
+                    return List.of();
+                }
+                return AiModelParser.parseGithubModels(response.body());
+            } catch (Exception e) {
+                e.printStackTrace();
+                return List.of();
+            }
+        }
+    },
+
+    // GitHub Copilot subscription — OAuth Device Flow, api.githubcopilot.com
+    GITHUB_COPILOT {
+        private static final String DEFAULT_BASE_URL = "https://api.githubcopilot.com";
+
+        private String baseUrl(LlmConfig c) {
+            return (c.getUrl() != null && !c.getUrl().isBlank())
+                    ? c.getUrl().replaceAll("/+$", "")
+                    : DEFAULT_BASE_URL;
+        }
+
+        @Override
+        public ChatModel buildChatModel(LlmConfig c) {
+            return OpenAiChatModel.builder()
+                    .timeout(TIMEOUT)
+                    .baseUrl(baseUrl(c))
+                    .apiKey(c.getApiKey() != null && !c.getApiKey().isBlank() ? c.getApiKey() : "not-configured")
+                    .modelName(c.getModel())
+                    .build();
+        }
+
+        @Override
+        public List<AiModel> listAiModels(LlmConfig c) {
+            if (c.getApiKey() == null || c.getApiKey().isBlank()) return List.of();
+            try {
+                var request = HttpRequest.newBuilder()
+                        .uri(URI.create(DEFAULT_BASE_URL + "/models"))
+                        .header("Authorization", "Bearer " + c.getApiKey())
+                        .GET()
+                        .build();
+                var response = cancelAndSend(request);
+                if (response == null || response.statusCode() > 299) {
                     System.err.println("GITHUB_COPILOT listAiModels HTTP "
                             + (response != null ? response.statusCode() : "null"));
                     return List.of();
                 }
-                return AiModelParser.parseCopilotModels(response.body());
+                return AiModelParser.parseCopilotApiModels(response.body());
             } catch (Exception e) {
                 e.printStackTrace();
                 return List.of();

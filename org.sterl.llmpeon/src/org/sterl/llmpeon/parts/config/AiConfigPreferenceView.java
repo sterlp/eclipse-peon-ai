@@ -42,7 +42,8 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
                     { "Google Gemini", AiProvider.GOOGLE_GEMINI.name() },
                     { "Mistral", AiProvider.MISTRAL.name() },
                     { "Anthropic Claude", AiProvider.ANTHROPIC.name() },
-                    { "GitHub Copilot", AiProvider.GITHUB_COPILOT.name() }
+                    { "GitHub Models (PAT)", AiProvider.GITHUB_MODELS.name() },
+                    { "GitHub Copilot (subscription)", AiProvider.GITHUB_COPILOT.name() }
                 },
                 getFieldEditorParent());
         addField(providerEditor);

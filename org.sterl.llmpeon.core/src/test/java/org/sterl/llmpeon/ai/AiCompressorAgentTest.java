@@ -20,11 +20,12 @@ import dev.langchain4j.data.message.UserMessage;
  */
 class AiCompressorAgentTest {
 
+    LlmConfig config = LlmConfig.newConfig(AiProvider.LM_STUDIO, "qwen3.5-9b", "http://localhost:1234/v1");
+    
     @Test
     @Tag("integration")
     void test_compressContext() {
         // GIVEN
-        var config = LlmConfig.newConfig(AiProvider.LM_STUDIO, "qwen/qwen3.5-9b", "http://localhost:1234/v1");
         var subject = new AiDeveloperService(config, new ToolService(), new SkillService(), new TemplateContext(Path.of(".")));
 
         subject.addMessage(UserMessage.from("Build be a Hello world"));

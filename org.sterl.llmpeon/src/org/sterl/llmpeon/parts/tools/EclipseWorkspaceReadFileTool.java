@@ -98,8 +98,7 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
 
         var resource = EclipseUtil.resolveInEclipse(path);
         if (resource.isEmpty()) {
-            onProblem("Cannot list unknown directory " + path);
-            return "Directory not found: " + path;
+            throw new IllegalArgumentException("Directory not found: " + path);
         }
 
         var res = resource.get();

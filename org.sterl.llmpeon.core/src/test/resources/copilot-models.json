@@ -1,1280 +1,1287 @@
-[
+{
+  "data": [
     {
-        "id": "openai/gpt-4.1",
-        "name": "OpenAI GPT-4.1",
-        "publisher": "OpenAI",
-        "summary": "gpt-4.1 outperforms gpt-4o across the board, with major gains in coding, instruction following, and long-context understanding",
-        "rate_limit_tier": "high",
-        "supported_input_modalities": [
-            "text",
-            "image"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "multipurpose",
-            "multilingual",
-            "multimodal"
-        ],
-        "registry": "azure-openai",
-        "version": "2025-04-14",
-        "capabilities": [
-            "agents",
-            "streaming",
-            "tool-calling",
-            "agentsV2"
-        ],
+      "capabilities": {
+        "family": "claude-opus-4.6",
         "limits": {
-            "max_input_tokens": 1048576,
-            "max_output_tokens": 32768
+          "max_context_window_tokens": 200000,
+          "max_non_streaming_output_tokens": 16000,
+          "max_output_tokens": 64000,
+          "max_prompt_tokens": 128000,
+          "vision": {
+            "max_prompt_image_size": 3145728,
+            "max_prompt_images": 1,
+            "supported_media_types": [
+              "image/jpeg",
+              "image/png",
+              "image/webp"
+            ]
+          }
         },
-        "html_url": "https://github.com/marketplace/models/azure-openai/gpt-4-1"
+        "object": "model_capabilities",
+        "supports": {
+          "adaptive_thinking": true,
+          "max_thinking_budget": 32000,
+          "min_thinking_budget": 1024,
+          "parallel_tool_calls": true,
+          "reasoning_effort": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "streaming": true,
+          "structured_outputs": true,
+          "tool_calls": true,
+          "vision": true
+        },
+        "tokenizer": "o200k_base",
+        "type": "chat"
+      },
+      "id": "claude-opus-4.6",
+      "model_picker_category": "powerful",
+      "model_picker_enabled": true,
+      "name": "Claude Opus 4.6",
+      "object": "model",
+      "policy": {
+        "state": "disabled",
+        "terms": "Enable access to the latest Claude Opus 4.6 model from Anthropic. [Learn more about how GitHub Copilot serves Claude Opus 4.6](https://gh.io/copilot-claude-opus)."
+      },
+      "preview": false,
+      "supported_endpoints": [
+        "/v1/messages",
+        "/chat/completions"
+      ],
+      "vendor": "Anthropic",
+      "version": "claude-opus-4.6"
     },
     {
-        "id": "openai/gpt-4.1-mini",
-        "name": "OpenAI GPT-4.1-mini",
-        "publisher": "OpenAI",
-        "summary": "gpt-4.1-mini outperform gpt-4o-mini across the board, with major gains in coding, instruction following, and long-context handling",
-        "rate_limit_tier": "low",
-        "supported_input_modalities": [
-            "text",
-            "image"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "multipurpose",
-            "multilingual",
-            "multimodal"
-        ],
-        "registry": "azure-openai",
-        "version": "2025-04-14",
-        "capabilities": [
-            "agents",
-            "streaming",
-            "tool-calling",
-            "agentsV2"
-        ],
+      "capabilities": {
+        "family": "claude-sonnet-4.6",
         "limits": {
-            "max_input_tokens": 1048576,
-            "max_output_tokens": 32768
+          "max_context_window_tokens": 200000,
+          "max_non_streaming_output_tokens": 16000,
+          "max_output_tokens": 32000,
+          "max_prompt_tokens": 128000,
+          "vision": {
+            "max_prompt_image_size": 3145728,
+            "max_prompt_images": 5,
+            "supported_media_types": [
+              "image/jpeg",
+              "image/png",
+              "image/webp"
+            ]
+          }
         },
-        "html_url": "https://github.com/marketplace/models/azure-openai/gpt-4-1-mini"
+        "object": "model_capabilities",
+        "supports": {
+          "adaptive_thinking": true,
+          "max_thinking_budget": 32000,
+          "min_thinking_budget": 1024,
+          "parallel_tool_calls": true,
+          "reasoning_effort": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "streaming": true,
+          "structured_outputs": true,
+          "tool_calls": true,
+          "vision": true
+        },
+        "tokenizer": "o200k_base",
+        "type": "chat"
+      },
+      "id": "claude-sonnet-4.6",
+      "model_picker_category": "versatile",
+      "model_picker_enabled": true,
+      "name": "Claude Sonnet 4.6",
+      "object": "model",
+      "policy": {
+        "state": "disabled",
+        "terms": "Enable access to the latest Claude Sonnet 4.6 model from Anthropic. [Learn more about how GitHub Copilot serves Claude Sonnet 4.6](https://gh.io/copilot-claude-opus)."
+      },
+      "preview": false,
+      "supported_endpoints": [
+        "/chat/completions",
+        "/v1/messages"
+      ],
+      "vendor": "Anthropic",
+      "version": "claude-sonnet-4.6"
     },
     {
-        "id": "openai/gpt-4.1-nano",
-        "name": "OpenAI GPT-4.1-nano",
-        "publisher": "OpenAI",
-        "summary": "gpt-4.1-nano provides gains in coding, instruction following, and long-context handling along with lower latency and cost",
-        "rate_limit_tier": "low",
-        "supported_input_modalities": [
-            "text",
-            "image"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "multipurpose",
-            "multilingual",
-            "multimodal"
-        ],
-        "registry": "azure-openai",
-        "version": "2025-04-14",
-        "capabilities": [
-            "agents",
-            "streaming",
-            "tool-calling",
-            "agentsV2"
-        ],
+      "capabilities": {
+        "family": "gemini-3.1-pro-preview",
         "limits": {
-            "max_input_tokens": 1048576,
-            "max_output_tokens": 32768
+          "max_context_window_tokens": 128000,
+          "max_output_tokens": 64000,
+          "max_prompt_tokens": 128000,
+          "vision": {
+            "max_prompt_image_size": 3145728,
+            "max_prompt_images": 10,
+            "supported_media_types": [
+              "image/jpeg",
+              "image/png",
+              "image/webp"
+            ]
+          }
         },
-        "html_url": "https://github.com/marketplace/models/azure-openai/gpt-4-1-nano"
+        "object": "model_capabilities",
+        "supports": {
+          "max_thinking_budget": 32000,
+          "min_thinking_budget": 256,
+          "parallel_tool_calls": true,
+          "reasoning_effort": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "streaming": true,
+          "tool_calls": true,
+          "vision": true
+        },
+        "tokenizer": "o200k_base",
+        "type": "chat"
+      },
+      "id": "gemini-3.1-pro-preview",
+      "model_picker_category": "powerful",
+      "model_picker_enabled": true,
+      "name": "Gemini 3.1 Pro",
+      "object": "model",
+      "policy": {
+        "state": "disabled",
+        "terms": "Enable access to the latest Gemini 3 Pro model from Google. [Learn more about how GitHub Copilot serves Gemini 3 Pro](https://docs.github.com/en/copilot/reference/ai-models/model-hosting#google-models)."
+      },
+      "preview": true,
+      "supported_endpoints": [
+        "/chat/completions"
+      ],
+      "vendor": "Google",
+      "version": "gemini-3.1-pro-preview"
     },
     {
-        "id": "openai/gpt-4o",
-        "name": "OpenAI GPT-4o",
-        "publisher": "OpenAI",
-        "summary": "OpenAI's most advanced multimodal model in the gpt-4o family. Can handle both text and image inputs.",
-        "rate_limit_tier": "high",
-        "supported_input_modalities": [
-            "text",
-            "image",
-            "audio"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "multipurpose",
-            "multilingual",
-            "multimodal"
-        ],
-        "registry": "azure-openai",
-        "version": "2024-11-20",
-        "capabilities": [
-            "agents",
-            "assistants",
-            "streaming",
-            "tool-calling",
-            "agentsV2"
-        ],
+      "capabilities": {
+        "family": "oswe-vscode-large",
         "limits": {
-            "max_input_tokens": 131072,
-            "max_output_tokens": 16384
+          "max_context_window_tokens": 400000,
+          "max_output_tokens": 128000,
+          "max_prompt_tokens": 272000,
+          "vision": {
+            "max_prompt_image_size": 3145728,
+            "max_prompt_images": 1,
+            "supported_media_types": [
+              "image/jpeg",
+              "image/png",
+              "image/webp",
+              "image/gif"
+            ]
+          }
         },
-        "html_url": "https://github.com/marketplace/models/azure-openai/gpt-4o"
+        "object": "model_capabilities",
+        "supports": {
+          "parallel_tool_calls": true,
+          "streaming": true,
+          "structured_outputs": true,
+          "tool_calls": true,
+          "vision": true
+        },
+        "tokenizer": "o200k_base",
+        "type": "chat"
+      },
+      "id": "goldeneye-free-auto",
+      "model_picker_enabled": false,
+      "name": "Goldeneye",
+      "object": "model",
+      "preview": true,
+      "supported_endpoints": [
+        "/responses"
+      ],
+      "vendor": "Azure OpenAI",
+      "version": "goldeneye-free-auto"
     },
     {
-        "id": "openai/gpt-4o-mini",
-        "name": "OpenAI GPT-4o mini",
-        "publisher": "OpenAI",
-        "summary": "An affordable, efficient AI solution for diverse text and image tasks.",
-        "rate_limit_tier": "low",
-        "supported_input_modalities": [
-            "text",
-            "image",
-            "audio"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "multipurpose",
-            "multilingual",
-            "multimodal"
-        ],
-        "registry": "azure-openai",
-        "version": "2024-07-18",
-        "capabilities": [
-            "agents",
-            "assistants",
-            "streaming",
-            "tool-calling",
-            "agentsV2"
-        ],
+      "capabilities": {
+        "family": "gpt-5.2-codex",
         "limits": {
-            "max_input_tokens": 131072,
-            "max_output_tokens": 4096
+          "max_context_window_tokens": 400000,
+          "max_output_tokens": 128000,
+          "max_prompt_tokens": 272000,
+          "vision": {
+            "max_prompt_image_size": 3145728,
+            "max_prompt_images": 1,
+            "supported_media_types": [
+              "image/jpeg",
+              "image/png",
+              "image/webp",
+              "image/gif"
+            ]
+          }
         },
-        "html_url": "https://github.com/marketplace/models/azure-openai/gpt-4o-mini"
+        "object": "model_capabilities",
+        "supports": {
+          "parallel_tool_calls": true,
+          "reasoning_effort": [
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ],
+          "streaming": true,
+          "structured_outputs": true,
+          "tool_calls": true,
+          "vision": true
+        },
+        "tokenizer": "o200k_base",
+        "type": "chat"
+      },
+      "id": "gpt-5.2-codex",
+      "model_picker_category": "powerful",
+      "model_picker_enabled": true,
+      "name": "GPT-5.2-Codex",
+      "object": "model",
+      "policy": {
+        "state": "disabled",
+        "terms": "Enable access to the latest GPT-5.2-Codex model from OpenAI. [Learn more about how GitHub Copilot serves GPT-5.2-Codex](https://gh.io/copilot-openai)."
+      },
+      "preview": false,
+      "supported_endpoints": [
+        "/responses",
+        "ws:/responses"
+      ],
+      "vendor": "OpenAI",
+      "version": "gpt-5.2-codex"
     },
     {
-        "id": "openai/gpt-5",
-        "name": "OpenAI gpt-5",
-        "publisher": "OpenAI",
-        "summary": "gpt-5 is designed for logic-heavy and multi-step tasks. ",
-        "rate_limit_tier": "custom",
-        "supported_input_modalities": [
-            "text",
-            "image"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "multipurpose",
-            "multilingual",
-            "multimodal"
-        ],
-        "registry": "azure-openai",
-        "version": "2025-08-07",
-        "capabilities": [
-            "agents",
-            "agentsV2",
-            "reasoning",
-            "tool-calling",
-            "streaming"
-        ],
+      "capabilities": {
+        "family": "gpt-5.4",
         "limits": {
-            "max_input_tokens": 200000,
-            "max_output_tokens": 100000
+          "max_context_window_tokens": 400000,
+          "max_output_tokens": 128000,
+          "max_prompt_tokens": 272000,
+          "vision": {
+            "max_prompt_image_size": 3145728,
+            "max_prompt_images": 1,
+            "supported_media_types": [
+              "image/jpeg",
+              "image/png",
+              "image/webp",
+              "image/gif"
+            ]
+          }
         },
-        "html_url": "https://github.com/marketplace/models/azure-openai/gpt-5"
+        "object": "model_capabilities",
+        "supports": {
+          "parallel_tool_calls": true,
+          "reasoning_effort": [
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ],
+          "streaming": true,
+          "structured_outputs": true,
+          "tool_calls": true,
+          "vision": true
+        },
+        "tokenizer": "o200k_base",
+        "type": "chat"
+      },
+      "id": "gpt-5.4",
+      "model_picker_category": "powerful",
+      "model_picker_enabled": true,
+      "name": "GPT-5.4",
+      "object": "model",
+      "policy": {
+        "state": "disabled",
+        "terms": "Enable access to the latest GPT-5.4 model from OpenAI. [Learn more about how GitHub Copilot serves GPT-5.4](https://gh.io/copilot-openai)."
+      },
+      "preview": false,
+      "supported_endpoints": [
+        "/responses",
+        "/chat/completions",
+        "ws:/responses"
+      ],
+      "vendor": "OpenAI",
+      "version": "gpt-5.4"
     },
     {
-        "id": "openai/gpt-5-chat",
-        "name": "OpenAI gpt-5-chat (preview)",
-        "publisher": "OpenAI",
-        "summary": "gpt-5-chat (preview) is an advanced, natural, multimodal, and context-aware conversations for enterprise applications.",
-        "rate_limit_tier": "custom",
-        "supported_input_modalities": [
-            "text",
-            "image"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "multipurpose",
-            "multilingual",
-            "multimodal"
-        ],
-        "registry": "azure-openai",
-        "version": "2025-10-03",
-        "capabilities": [
-            "agents",
-            "agentsV2",
-            "reasoning",
-            "tool-calling",
-            "streaming"
-        ],
+      "capabilities": {
+        "family": "minimax-m2p5-cb",
         "limits": {
-            "max_input_tokens": 200000,
-            "max_output_tokens": 100000
+          "max_context_window_tokens": 131000,
+          "max_output_tokens": 40000,
+          "max_prompt_tokens": 90000
         },
-        "html_url": "https://github.com/marketplace/models/azure-openai/gpt-5-chat"
+        "object": "model_capabilities",
+        "supports": {
+          "parallel_tool_calls": true,
+          "streaming": true,
+          "structured_outputs": true,
+          "tool_calls": true
+        },
+        "tokenizer": "o200k_base",
+        "type": "chat"
+      },
+      "id": "minimax-m2.5",
+      "model_picker_category": "powerful",
+      "model_picker_enabled": false,
+      "name": "MiniMax M2.5 (Fast)",
+      "object": "model",
+      "policy": {
+        "state": "enabled",
+        "terms": ""
+      },
+      "preview": true,
+      "supported_endpoints": [
+        "/chat/completions"
+      ],
+      "vendor": "Cerebras",
+      "version": "minimax-m2.5"
     },
     {
-        "id": "openai/gpt-5-mini",
-        "name": "OpenAI gpt-5-mini",
-        "publisher": "OpenAI",
-        "summary": "gpt-5-mini is a lightweight version for cost-sensitive applications.",
-        "rate_limit_tier": "custom",
-        "supported_input_modalities": [
-            "text",
-            "image"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "multipurpose",
-            "multilingual",
-            "multimodal"
-        ],
-        "registry": "azure-openai",
-        "version": "2025-08-07",
-        "capabilities": [
-            "agents",
-            "agentsV2",
-            "reasoning",
-            "tool-calling",
-            "streaming"
-        ],
+      "capabilities": {
+        "family": "minimax-m2p5-fw",
         "limits": {
-            "max_input_tokens": 200000,
-            "max_output_tokens": 100000
+          "max_context_window_tokens": 196608,
+          "max_output_tokens": 32000,
+          "max_prompt_tokens": 164000
         },
-        "html_url": "https://github.com/marketplace/models/azure-openai/gpt-5-mini"
+        "object": "model_capabilities",
+        "supports": {
+          "parallel_tool_calls": true,
+          "reasoning_effort": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "streaming": true,
+          "structured_outputs": true,
+          "tool_calls": true
+        },
+        "tokenizer": "o200k_base",
+        "type": "chat"
+      },
+      "id": "accounts/msft/routers/mp3yn0h7",
+      "model_picker_category": "powerful",
+      "model_picker_enabled": false,
+      "name": "MiniMax M2.5 (Copilot)",
+      "object": "model",
+      "policy": {
+        "state": "enabled",
+        "terms": ""
+      },
+      "preview": true,
+      "supported_endpoints": [
+        "/chat/completions"
+      ],
+      "vendor": "Fireworks",
+      "version": "accounts/msft/routers/mp3yn0h7"
     },
     {
-        "id": "openai/gpt-5-nano",
-        "name": "OpenAI gpt-5-nano",
-        "publisher": "OpenAI",
-        "summary": "gpt-5-nano is optimized for speed, ideal for applications requiring low latency. ",
-        "rate_limit_tier": "custom",
-        "supported_input_modalities": [
-            "text",
-            "image"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "multipurpose",
-            "multilingual",
-            "multimodal"
-        ],
-        "registry": "azure-openai",
-        "version": "2025-08-07",
-        "capabilities": [
-            "agents",
-            "agentsV2",
-            "reasoning",
-            "tool-calling",
-            "streaming"
-        ],
+      "capabilities": {
+        "family": "minimax-m2p5-fw",
         "limits": {
-            "max_input_tokens": 200000,
-            "max_output_tokens": 100000
+          "max_context_window_tokens": 196608,
+          "max_output_tokens": 32000,
+          "max_prompt_tokens": 164000
         },
-        "html_url": "https://github.com/marketplace/models/azure-openai/gpt-5-nano"
+        "object": "model_capabilities",
+        "supports": {
+          "parallel_tool_calls": true,
+          "reasoning_effort": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "streaming": true,
+          "structured_outputs": true,
+          "tool_calls": true
+        },
+        "tokenizer": "o200k_base",
+        "type": "chat"
+      },
+      "id": "accounts/msft/routers/yaqq2gxh",
+      "model_picker_category": "versatile",
+      "model_picker_enabled": false,
+      "name": "MiniMax M2.5",
+      "object": "model",
+      "policy": {
+        "state": "enabled",
+        "terms": ""
+      },
+      "preview": true,
+      "supported_endpoints": [
+        "/chat/completions"
+      ],
+      "vendor": "Fireworks",
+      "version": "accounts/msft/routers/yaqq2gxh"
     },
     {
-        "id": "openai/o1",
-        "name": "OpenAI o1",
-        "publisher": "OpenAI",
-        "summary": "Focused on advanced reasoning and solving complex problems, including math and science tasks. Ideal for applications that require deep contextual understanding and agentic workflows.",
-        "rate_limit_tier": "custom",
-        "supported_input_modalities": [
-            "text",
-            "image"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "reasoning",
-            "multilingual",
-            "coding"
-        ],
-        "registry": "azure-openai",
-        "version": "2024-12-17",
-        "capabilities": [
-            "agents",
-            "reasoning",
-            "tool-calling",
-            "agentsV2"
-        ],
+      "capabilities": {
+        "family": "oswe-vscode",
         "limits": {
-            "max_input_tokens": 200000,
-            "max_output_tokens": 100000
+          "max_context_window_tokens": 264000,
+          "max_output_tokens": 64000,
+          "max_prompt_tokens": 128000,
+          "vision": {
+            "max_prompt_image_size": 3145728,
+            "max_prompt_images": 1,
+            "supported_media_types": [
+              "image/jpeg",
+              "image/png",
+              "image/webp",
+              "image/gif"
+            ]
+          }
         },
-        "html_url": "https://github.com/marketplace/models/azure-openai/o1"
+        "object": "model_capabilities",
+        "supports": {
+          "parallel_tool_calls": true,
+          "streaming": true,
+          "structured_outputs": true,
+          "tool_calls": true,
+          "vision": true
+        },
+        "tokenizer": "o200k_base",
+        "type": "chat"
+      },
+      "id": "raptor-mini-tertiary",
+      "model_picker_category": "versatile",
+      "model_picker_enabled": false,
+      "name": "Raptor mini",
+      "object": "model",
+      "preview": true,
+      "supported_endpoints": [
+        "/chat/completions",
+        "/responses"
+      ],
+      "vendor": "Azure OpenAI",
+      "version": "raptor-mini"
     },
     {
-        "id": "openai/o1-mini",
-        "name": "OpenAI o1-mini",
-        "publisher": "OpenAI",
-        "summary": "Smaller, faster, and 80% cheaper than o1-preview, performs well at code generation and small context operations.",
-        "rate_limit_tier": "custom",
-        "supported_input_modalities": [
-            "text"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "reasoning",
-            "multilingual",
-            "coding"
-        ],
-        "registry": "azure-openai",
-        "version": "2024-09-12",
-        "capabilities": [
-            "reasoning",
-            "streaming",
-            "agentsV2"
-        ],
+      "capabilities": {
+        "family": "search-agent",
         "limits": {
-            "max_input_tokens": 128000,
-            "max_output_tokens": 65536
+          "max_context_window_tokens": 256000,
+          "max_output_tokens": 1024,
+          "max_prompt_tokens": 200000
         },
-        "html_url": "https://github.com/marketplace/models/azure-openai/o1-mini"
+        "object": "model_capabilities",
+        "supports": {
+          "parallel_tool_calls": true,
+          "streaming": true,
+          "tool_calls": true
+        },
+        "tokenizer": "o200k_base",
+        "type": "chat"
+      },
+      "id": "accounts/msft/routers/f185i3v4",
+      "model_picker_enabled": false,
+      "name": "Search Agent A",
+      "object": "model",
+      "preview": true,
+      "supported_endpoints": [
+        "/chat/completions"
+      ],
+      "vendor": "Fireworks",
+      "version": "accounts/msft/routers/f185i3v4"
     },
     {
-        "id": "openai/o1-preview",
-        "name": "OpenAI o1-preview",
-        "publisher": "OpenAI",
-        "summary": "Focused on advanced reasoning and solving complex problems, including math and science tasks. Ideal for applications that require deep contextual understanding and agentic workflows.",
-        "rate_limit_tier": "custom",
-        "supported_input_modalities": [
-            "text"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "reasoning",
-            "multilingual",
-            "coding"
-        ],
-        "registry": "azure-openai",
-        "version": "1",
-        "capabilities": [
-            "agentsV2",
-            "reasoning"
-        ],
+      "capabilities": {
+        "family": "search-agent",
         "limits": {
-            "max_input_tokens": 128000,
-            "max_output_tokens": 32768
+          "max_context_window_tokens": 256000,
+          "max_output_tokens": 1024,
+          "max_prompt_tokens": 200000
         },
-        "html_url": "https://github.com/marketplace/models/azure-openai/o1-preview"
+        "object": "model_capabilities",
+        "supports": {
+          "parallel_tool_calls": true,
+          "streaming": true,
+          "tool_calls": true
+        },
+        "tokenizer": "o200k_base",
+        "type": "chat"
+      },
+      "id": "accounts/msft/routers/fmfeto88",
+      "model_picker_enabled": false,
+      "name": "Search Agent B",
+      "object": "model",
+      "preview": true,
+      "supported_endpoints": [
+        "/chat/completions"
+      ],
+      "vendor": "Fireworks",
+      "version": "accounts/msft/routers/fmfeto88"
     },
     {
-        "id": "openai/o3",
-        "name": "OpenAI o3",
-        "publisher": "OpenAI",
-        "summary": "o3 includes significant improvements on quality and safety while supporting the existing features of o1 and delivering comparable or better performance.",
-        "rate_limit_tier": "custom",
-        "supported_input_modalities": [
-            "text",
-            "image"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "multipurpose",
-            "multilingual",
-            "multimodal"
-        ],
-        "registry": "azure-openai",
-        "version": "2025-04-16",
-        "capabilities": [
-            "agents",
-            "agentsV2",
-            "reasoning",
-            "streaming",
-            "tool-calling"
-        ],
+      "capabilities": {
+        "family": "search-agent",
         "limits": {
-            "max_input_tokens": 200000,
-            "max_output_tokens": 100000
+          "max_context_window_tokens": 256000,
+          "max_output_tokens": 1024,
+          "max_prompt_tokens": 200000
         },
-        "html_url": "https://github.com/marketplace/models/azure-openai/o3"
+        "object": "model_capabilities",
+        "supports": {
+          "parallel_tool_calls": true,
+          "streaming": true,
+          "tool_calls": true
+        },
+        "tokenizer": "o200k_base",
+        "type": "chat"
+      },
+      "id": "accounts/msft/routers/gdjv4v2v",
+      "model_picker_enabled": false,
+      "name": "Search Agent C",
+      "object": "model",
+      "preview": true,
+      "supported_endpoints": [
+        "/chat/completions"
+      ],
+      "vendor": "Fireworks",
+      "version": "accounts/msft/routers/gdjv4v2v"
     },
     {
-        "id": "openai/o3-mini",
-        "name": "OpenAI o3-mini",
-        "publisher": "OpenAI",
-        "summary": "o3-mini includes the o1 features with significant cost-efficiencies for scenarios requiring high performance.",
-        "rate_limit_tier": "custom",
-        "supported_input_modalities": [
-            "text"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "reasoning",
-            "multilingual",
-            "coding"
-        ],
-        "registry": "azure-openai",
-        "version": "2025-01-31",
-        "capabilities": [
-            "agents",
-            "reasoning",
-            "streaming",
-            "tool-calling",
-            "agentsV2"
-        ],
+      "capabilities": {
+        "family": "gpt-5-mini",
         "limits": {
-            "max_input_tokens": 200000,
-            "max_output_tokens": 100000
+          "max_context_window_tokens": 264000,
+          "max_output_tokens": 64000,
+          "max_prompt_tokens": 128000,
+          "vision": {
+            "max_prompt_image_size": 3145728,
+            "max_prompt_images": 1,
+            "supported_media_types": [
+              "image/jpeg",
+              "image/png",
+              "image/webp",
+              "image/gif"
+            ]
+          }
         },
-        "html_url": "https://github.com/marketplace/models/azure-openai/o3-mini"
+        "object": "model_capabilities",
+        "supports": {
+          "parallel_tool_calls": true,
+          "reasoning_effort": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "streaming": true,
+          "structured_outputs": true,
+          "tool_calls": true,
+          "vision": true
+        },
+        "tokenizer": "o200k_base",
+        "type": "chat"
+      },
+      "id": "gpt-5-mini",
+      "model_picker_category": "lightweight",
+      "model_picker_enabled": true,
+      "name": "GPT-5 mini",
+      "object": "model",
+      "policy": {
+        "state": "enabled",
+        "terms": "Enable access to the latest GPT-5 mini model from OpenAI. [Learn more about how GitHub Copilot serves GPT-5 mini](https://gh.io/copilot-openai)."
+      },
+      "preview": false,
+      "supported_endpoints": [
+        "/chat/completions",
+        "/responses",
+        "ws:/responses"
+      ],
+      "vendor": "Azure OpenAI",
+      "version": "gpt-5-mini"
     },
     {
-        "id": "openai/o4-mini",
-        "name": "OpenAI o4-mini",
-        "publisher": "OpenAI",
-        "summary": "o4-mini includes significant improvements on quality and safety while supporting the existing features of o3-mini and delivering comparable or better performance.",
-        "rate_limit_tier": "custom",
-        "supported_input_modalities": [
-            "text",
-            "image"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "multipurpose",
-            "multilingual",
-            "multimodal"
-        ],
-        "registry": "azure-openai",
-        "version": "2025-04-16",
-        "capabilities": [
-            "agents",
-            "agentsV2",
-            "reasoning",
-            "tool-calling",
-            "streaming"
-        ],
+      "capabilities": {
+        "family": "gpt-4o-mini",
         "limits": {
-            "max_input_tokens": 200000,
-            "max_output_tokens": 100000
+          "max_context_window_tokens": 128000,
+          "max_output_tokens": 4096,
+          "max_prompt_tokens": 12288
         },
-        "html_url": "https://github.com/marketplace/models/azure-openai/o4-mini"
+        "object": "model_capabilities",
+        "supports": {
+          "parallel_tool_calls": true,
+          "streaming": true,
+          "tool_calls": true
+        },
+        "tokenizer": "o200k_base",
+        "type": "chat"
+      },
+      "id": "gpt-4o-mini-2024-07-18",
+      "model_picker_enabled": false,
+      "name": "GPT-4o mini",
+      "object": "model",
+      "preview": false,
+      "vendor": "Azure OpenAI",
+      "version": "gpt-4o-mini-2024-07-18"
     },
     {
-        "id": "openai/text-embedding-3-large",
-        "name": "OpenAI Text Embedding 3 (large)",
-        "publisher": "OpenAI",
-        "summary": "Text-embedding-3 series models are the latest and most capable embedding model from OpenAI.",
-        "rate_limit_tier": "embeddings",
-        "supported_input_modalities": [
-            "text"
-        ],
-        "supported_output_modalities": [
-            "embeddings"
-        ],
-        "tags": [
-            "rag"
-        ],
-        "registry": "azure-openai",
-        "version": "1",
-        "capabilities": [],
+      "capabilities": {
+        "family": "gpt-4o",
         "limits": {
-            "max_input_tokens": 8191,
-            "max_output_tokens": null
+          "max_context_window_tokens": 128000,
+          "max_output_tokens": 16384,
+          "max_prompt_tokens": 64000,
+          "vision": {
+            "max_prompt_image_size": 3145728,
+            "max_prompt_images": 1,
+            "supported_media_types": [
+              "image/jpeg",
+              "image/png",
+              "image/webp",
+              "image/gif"
+            ]
+          }
         },
-        "html_url": "https://github.com/marketplace/models/azure-openai/text-embedding-3-large"
+        "object": "model_capabilities",
+        "supports": {
+          "parallel_tool_calls": true,
+          "streaming": true,
+          "tool_calls": true,
+          "vision": true
+        },
+        "tokenizer": "o200k_base",
+        "type": "chat"
+      },
+      "id": "gpt-4o-2024-11-20",
+      "model_picker_enabled": false,
+      "name": "GPT-4o",
+      "object": "model",
+      "preview": false,
+      "vendor": "Azure OpenAI",
+      "version": "gpt-4o-2024-11-20"
     },
     {
-        "id": "openai/text-embedding-3-small",
-        "name": "OpenAI Text Embedding 3 (small)",
-        "publisher": "OpenAI",
-        "summary": "Text-embedding-3 series models are the latest and most capable embedding model from OpenAI.",
-        "rate_limit_tier": "embeddings",
-        "supported_input_modalities": [
-            "text"
-        ],
-        "supported_output_modalities": [
-            "embeddings"
-        ],
-        "tags": [
-            "rag"
-        ],
-        "registry": "azure-openai",
-        "version": "1",
-        "capabilities": [],
+      "capabilities": {
+        "family": "gpt-4o",
         "limits": {
-            "max_input_tokens": 8191,
-            "max_output_tokens": null
+          "max_context_window_tokens": 128000,
+          "max_output_tokens": 16384,
+          "max_prompt_tokens": 64000
         },
-        "html_url": "https://github.com/marketplace/models/azure-openai/text-embedding-3-small"
+        "object": "model_capabilities",
+        "supports": {
+          "parallel_tool_calls": true,
+          "streaming": true,
+          "tool_calls": true
+        },
+        "tokenizer": "o200k_base",
+        "type": "chat"
+      },
+      "id": "gpt-4o-2024-08-06",
+      "model_picker_enabled": false,
+      "name": "GPT-4o",
+      "object": "model",
+      "preview": false,
+      "vendor": "Azure OpenAI",
+      "version": "gpt-4o-2024-08-06"
     },
     {
-        "id": "ai21-labs/ai21-jamba-1.5-large",
-        "name": "AI21 Jamba 1.5 Large",
-        "publisher": "AI21 Labs",
-        "summary": "A 398B parameters (94B active) multilingual model, offering a 256K long context window, function calling, structured output, and grounded generation.",
-        "rate_limit_tier": "high",
-        "supported_input_modalities": [
-            "text"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "rag",
-            "multilingual",
-            "large context"
-        ],
-        "registry": "azureml-ai21",
-        "version": "1",
-        "capabilities": [
-            "streaming",
-            "tool-calling"
-        ],
+      "capabilities": {
+        "family": "grok-code",
         "limits": {
-            "max_input_tokens": 262144,
-            "max_output_tokens": 4096
+          "max_context_window_tokens": 128000,
+          "max_output_tokens": 64000,
+          "max_prompt_tokens": 128000
         },
-        "html_url": "https://github.com/marketplace/models/azureml-ai21/AI21-Jamba-1-5-Large"
+        "object": "model_capabilities",
+        "supports": {
+          "streaming": true,
+          "structured_outputs": true,
+          "tool_calls": true
+        },
+        "tokenizer": "o200k_base",
+        "type": "chat"
+      },
+      "id": "grok-code-fast-1",
+      "model_picker_category": "lightweight",
+      "model_picker_enabled": false,
+      "name": "Grok Code Fast 1",
+      "object": "model",
+      "policy": {
+        "state": "enabled",
+        "terms": "Enable access to the latest Grok Code Fast 1 model from xAI. If enabled, you instruct GitHub Copilot to send data to xAI Grok Code Fast 1. [Learn more about how GitHub Copilot serves Grok Code Fast 1](https://docs.github.com/en/copilot/reference/ai-models/model-hosting#xai-models)."
+      },
+      "preview": false,
+      "vendor": "xAI",
+      "version": "grok-code-fast-1"
     },
     {
-        "id": "cohere/cohere-command-a",
-        "name": "Cohere Command A",
-        "publisher": "Cohere",
-        "summary": "Command A is a highly efficient generative model that excels at agentic and multilingual use cases.",
-        "rate_limit_tier": "low",
-        "supported_input_modalities": [
-            "text"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "rag",
-            "multilingual"
-        ],
-        "registry": "azureml-cohere",
-        "version": "3",
-        "capabilities": [],
+      "capabilities": {
+        "family": "text-embedding-3-small",
         "limits": {
-            "max_input_tokens": 131072,
-            "max_output_tokens": 4096
+          "max_inputs": 512
         },
-        "html_url": "https://github.com/marketplace/models/azureml-cohere/cohere-command-a"
+        "object": "model_capabilities",
+        "supports": {
+          "dimensions": true
+        },
+        "tokenizer": "cl100k_base",
+        "type": "embeddings"
+      },
+      "id": "text-embedding-3-small",
+      "model_picker_enabled": false,
+      "name": "Embedding V3 small",
+      "object": "model",
+      "preview": false,
+      "vendor": "Azure OpenAI",
+      "version": "text-embedding-3-small"
     },
     {
-        "id": "cohere/cohere-command-r-08-2024",
-        "name": "Cohere Command R 08-2024",
-        "publisher": "Cohere",
-        "summary": "Command R is a scalable generative model targeting RAG and Tool Use to enable production-scale AI for enterprise.",
-        "rate_limit_tier": "low",
-        "supported_input_modalities": [
-            "text"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "rag",
-            "multilingual"
-        ],
-        "registry": "azureml-cohere",
-        "version": "1",
-        "capabilities": [
-            "streaming"
-        ],
-        "limits": {
-            "max_input_tokens": 131072,
-            "max_output_tokens": 4096
+      "capabilities": {
+        "family": "text-embedding-3-small",
+        "object": "model_capabilities",
+        "supports": {
+          "dimensions": true
         },
-        "html_url": "https://github.com/marketplace/models/azureml-cohere/Cohere-command-r-08-2024"
+        "tokenizer": "cl100k_base",
+        "type": "embeddings"
+      },
+      "id": "text-embedding-3-small-inference",
+      "model_picker_enabled": false,
+      "name": "Embedding V3 small (Inference)",
+      "object": "model",
+      "preview": false,
+      "vendor": "Azure OpenAI",
+      "version": "text-embedding-3-small"
     },
     {
-        "id": "cohere/cohere-command-r-plus-08-2024",
-        "name": "Cohere Command R+ 08-2024",
-        "publisher": "Cohere",
-        "summary": "Command R+ is a state-of-the-art RAG-optimized model designed to tackle enterprise-grade workloads.",
-        "rate_limit_tier": "high",
-        "supported_input_modalities": [
-            "text"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "rag",
-            "multilingual"
-        ],
-        "registry": "azureml-cohere",
-        "version": "1",
-        "capabilities": [
-            "streaming",
-            "tool-calling"
-        ],
+      "capabilities": {
+        "family": "claude-haiku-4.5",
         "limits": {
-            "max_input_tokens": 131072,
-            "max_output_tokens": 4096
+          "max_context_window_tokens": 200000,
+          "max_non_streaming_output_tokens": 16000,
+          "max_output_tokens": 32000,
+          "max_prompt_tokens": 128000,
+          "vision": {
+            "max_prompt_image_size": 3145728,
+            "max_prompt_images": 5,
+            "supported_media_types": [
+              "image/jpeg",
+              "image/png",
+              "image/webp"
+            ]
+          }
         },
-        "html_url": "https://github.com/marketplace/models/azureml-cohere/Cohere-command-r-plus-08-2024"
+        "object": "model_capabilities",
+        "supports": {
+          "max_thinking_budget": 32000,
+          "min_thinking_budget": 1024,
+          "parallel_tool_calls": true,
+          "streaming": true,
+          "tool_calls": true,
+          "vision": true
+        },
+        "tokenizer": "o200k_base",
+        "type": "chat"
+      },
+      "id": "claude-haiku-4.5",
+      "model_picker_category": "versatile",
+      "model_picker_enabled": true,
+      "name": "Claude Haiku 4.5",
+      "object": "model",
+      "policy": {
+        "state": "enabled",
+        "terms": "Enable access to the latest Claude Haiku 4.5 model from Anthropic. [Learn more about how GitHub Copilot serves Claude Haiku 4.5](https://gh.io/copilot-anthropic)."
+      },
+      "preview": false,
+      "supported_endpoints": [
+        "/chat/completions",
+        "/v1/messages"
+      ],
+      "vendor": "Anthropic",
+      "version": "claude-haiku-4.5"
     },
     {
-        "id": "deepseek/deepseek-r1",
-        "name": "DeepSeek-R1",
-        "publisher": "DeepSeek",
-        "summary": "DeepSeek-R1 excels at reasoning tasks using a step-by-step training process, such as language, scientific reasoning, and coding tasks.",
-        "rate_limit_tier": "custom",
-        "supported_input_modalities": [
-            "text"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "reasoning",
-            "coding",
-            "agents"
-        ],
-        "registry": "azureml-deepseek",
-        "version": "1",
-        "capabilities": [
-            "reasoning",
-            "streaming",
-            "tool-calling"
-        ],
+      "capabilities": {
+        "family": "gpt-4.1",
         "limits": {
-            "max_input_tokens": 128000,
-            "max_output_tokens": 4096
+          "max_context_window_tokens": 128000,
+          "max_output_tokens": 16384,
+          "max_prompt_tokens": 128000,
+          "vision": {
+            "max_prompt_image_size": 3145728,
+            "max_prompt_images": 1,
+            "supported_media_types": [
+              "image/jpeg",
+              "image/png",
+              "image/webp",
+              "image/gif"
+            ]
+          }
         },
-        "html_url": "https://github.com/marketplace/models/azureml-deepseek/DeepSeek-R1"
+        "object": "model_capabilities",
+        "supports": {
+          "parallel_tool_calls": true,
+          "streaming": true,
+          "structured_outputs": true,
+          "tool_calls": true,
+          "vision": true
+        },
+        "tokenizer": "o200k_base",
+        "type": "chat"
+      },
+      "id": "gpt-4.1-2025-04-14",
+      "model_picker_enabled": false,
+      "name": "GPT-4.1",
+      "object": "model",
+      "policy": {
+        "state": "enabled",
+        "terms": "Enable access to the latest GPT-4.1 model from OpenAI. [Learn more about how GitHub Copilot serves GPT-4.1](https://docs.github.com/en/copilot/using-github-copilot/ai-models/choosing-the-right-ai-model-for-your-task#gpt-41)."
+      },
+      "preview": false,
+      "vendor": "Azure OpenAI",
+      "version": "gpt-4.1-2025-04-14"
     },
     {
-        "id": "deepseek/deepseek-r1-0528",
-        "name": "DeepSeek-R1-0528",
-        "publisher": "DeepSeek",
-        "summary": "The DeepSeek R1 0528 model has improved reasoning capabilities, this version also offers a reduced hallucination rate, enhanced support for function calling, and better experience for vibe coding.",
-        "rate_limit_tier": "custom",
-        "supported_input_modalities": [
-            "text"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "reasoning",
-            "coding",
-            "agents"
-        ],
-        "registry": "azureml-deepseek",
-        "version": "1",
-        "capabilities": [
-            "agentsV2",
-            "reasoning",
-            "streaming",
-            "tool-calling"
-        ],
+      "capabilities": {
+        "family": "oswe-vscode",
         "limits": {
-            "max_input_tokens": 128000,
-            "max_output_tokens": 4096
+          "max_context_window_tokens": 264000,
+          "max_output_tokens": 64000,
+          "max_prompt_tokens": 128000,
+          "vision": {
+            "max_prompt_image_size": 3145728,
+            "max_prompt_images": 1,
+            "supported_media_types": [
+              "image/jpeg",
+              "image/png",
+              "image/webp",
+              "image/gif"
+            ]
+          }
         },
-        "html_url": "https://github.com/marketplace/models/azureml-deepseek/DeepSeek-R1-0528"
+        "object": "model_capabilities",
+        "supports": {
+          "parallel_tool_calls": true,
+          "streaming": true,
+          "structured_outputs": true,
+          "tool_calls": true,
+          "vision": true
+        },
+        "tokenizer": "o200k_base",
+        "type": "chat"
+      },
+      "id": "oswe-vscode-prime",
+      "model_picker_category": "versatile",
+      "model_picker_enabled": true,
+      "name": "Raptor mini (Preview)",
+      "object": "model",
+      "policy": {
+        "state": "enabled",
+        "terms": "Enable access to the latest Raptor mini model from Microsoft. [Learn more about how GitHub Copilot serves Raptor mini](https://gh.io/copilot-openai-fine-tuned-by-microsoft)."
+      },
+      "preview": true,
+      "supported_endpoints": [
+        "/chat/completions",
+        "/responses"
+      ],
+      "vendor": "Azure OpenAI",
+      "version": "raptor-mini"
     },
     {
-        "id": "deepseek/deepseek-v3-0324",
-        "name": "DeepSeek-V3-0324",
-        "publisher": "DeepSeek",
-        "summary": "DeepSeek-V3-0324 demonstrates notable improvements over its predecessor, DeepSeek-V3, in several key aspects, including enhanced reasoning, improved function calling, and superior code generation capabilities.",
-        "rate_limit_tier": "high",
-        "supported_input_modalities": [
-            "text"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "coding",
-            "agents"
-        ],
-        "registry": "azureml-deepseek",
-        "version": "1",
-        "capabilities": [
-            "agentsV2",
-            "streaming",
-            "tool-calling"
-        ],
+      "capabilities": {
+        "family": "oswe-vscode",
         "limits": {
-            "max_input_tokens": 128000,
-            "max_output_tokens": 4096
+          "max_context_window_tokens": 264000,
+          "max_output_tokens": 64000,
+          "max_prompt_tokens": 128000,
+          "vision": {
+            "max_prompt_image_size": 3145728,
+            "max_prompt_images": 1,
+            "supported_media_types": [
+              "image/jpeg",
+              "image/png",
+              "image/webp",
+              "image/gif"
+            ]
+          }
         },
-        "html_url": "https://github.com/marketplace/models/azureml-deepseek/DeepSeek-V3-0324"
+        "object": "model_capabilities",
+        "supports": {
+          "parallel_tool_calls": true,
+          "streaming": true,
+          "structured_outputs": true,
+          "tool_calls": true,
+          "vision": true
+        },
+        "tokenizer": "o200k_base",
+        "type": "chat"
+      },
+      "id": "oswe-vscode-secondary",
+      "model_picker_category": "versatile",
+      "model_picker_enabled": false,
+      "name": "Raptor mini (Preview)",
+      "object": "model",
+      "policy": {
+        "state": "enabled",
+        "terms": "Enable access to the latest Raptor mini model from Microsoft. [Learn more about how GitHub Copilot serves Raptor mini](https://gh.io/copilot-openai-fine-tuned-by-microsoft)."
+      },
+      "preview": true,
+      "supported_endpoints": [
+        "/chat/completions",
+        "/responses"
+      ],
+      "vendor": "Azure OpenAI",
+      "version": "raptor-mini"
     },
     {
-        "id": "meta/llama-3.2-11b-vision-instruct",
-        "name": "Llama-3.2-11B-Vision-Instruct",
-        "publisher": "Meta",
-        "summary": "Excels in image reasoning capabilities on high-res images for visual understanding apps.",
-        "rate_limit_tier": "low",
-        "supported_input_modalities": [
-            "text",
-            "image",
-            "audio"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "multimodal",
-            "reasoning",
-            "conversation"
-        ],
-        "registry": "azureml-meta",
-        "version": "6",
-        "capabilities": [
-            "streaming"
-        ],
+      "capabilities": {
+        "family": "gpt-3.5-turbo",
         "limits": {
-            "max_input_tokens": 128000,
-            "max_output_tokens": 4096
+          "max_context_window_tokens": 16384,
+          "max_output_tokens": 4096,
+          "max_prompt_tokens": 12288
         },
-        "html_url": "https://github.com/marketplace/models/azureml-meta/Llama-3-2-11B-Vision-Instruct"
+        "object": "model_capabilities",
+        "supports": {
+          "streaming": true,
+          "tool_calls": true
+        },
+        "tokenizer": "cl100k_base",
+        "type": "chat"
+      },
+      "id": "gpt-3.5-turbo-0613",
+      "model_picker_enabled": false,
+      "name": "GPT 3.5 Turbo",
+      "object": "model",
+      "preview": false,
+      "vendor": "Azure OpenAI",
+      "version": "gpt-3.5-turbo-0613"
     },
     {
-        "id": "meta/llama-3.2-90b-vision-instruct",
-        "name": "Llama-3.2-90B-Vision-Instruct",
-        "publisher": "Meta",
-        "summary": "Advanced image reasoning capabilities for visual understanding agentic apps.",
-        "rate_limit_tier": "high",
-        "supported_input_modalities": [
-            "text",
-            "image",
-            "audio"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "multimodal",
-            "reasoning",
-            "conversation"
-        ],
-        "registry": "azureml-meta",
-        "version": "5",
-        "capabilities": [
-            "streaming"
-        ],
+      "capabilities": {
+        "family": "gpt-4",
         "limits": {
-            "max_input_tokens": 128000,
-            "max_output_tokens": 4096
+          "max_context_window_tokens": 32768,
+          "max_output_tokens": 4096,
+          "max_prompt_tokens": 32768
         },
-        "html_url": "https://github.com/marketplace/models/azureml-meta/Llama-3-2-90B-Vision-Instruct"
+        "object": "model_capabilities",
+        "supports": {
+          "streaming": true,
+          "tool_calls": true
+        },
+        "tokenizer": "cl100k_base",
+        "type": "chat"
+      },
+      "id": "gpt-4",
+      "model_picker_enabled": false,
+      "name": "GPT 4",
+      "object": "model",
+      "preview": false,
+      "vendor": "Azure OpenAI",
+      "version": "gpt-4-0613"
     },
     {
-        "id": "meta/llama-3.3-70b-instruct",
-        "name": "Llama-3.3-70B-Instruct",
-        "publisher": "Meta",
-        "summary": "Llama 3.3 70B Instruct offers enhanced reasoning, math, and instruction following with performance comparable to Llama 3.1 405B.",
-        "rate_limit_tier": "high",
-        "supported_input_modalities": [
-            "text"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "conversation"
-        ],
-        "registry": "azureml-meta",
-        "version": "8",
-        "capabilities": [
-            "agentsV2",
-            "streaming"
-        ],
+      "capabilities": {
+        "family": "gpt-4",
         "limits": {
-            "max_input_tokens": 128000,
-            "max_output_tokens": 4096
+          "max_context_window_tokens": 32768,
+          "max_output_tokens": 4096,
+          "max_prompt_tokens": 32768
         },
-        "html_url": "https://github.com/marketplace/models/azureml-meta/Llama-3-3-70B-Instruct"
+        "object": "model_capabilities",
+        "supports": {
+          "streaming": true,
+          "tool_calls": true
+        },
+        "tokenizer": "cl100k_base",
+        "type": "chat"
+      },
+      "id": "gpt-4-0613",
+      "model_picker_enabled": false,
+      "name": "GPT 4",
+      "object": "model",
+      "preview": false,
+      "vendor": "Azure OpenAI",
+      "version": "gpt-4-0613"
     },
     {
-        "id": "meta/llama-4-maverick-17b-128e-instruct-fp8",
-        "name": "Llama 4 Maverick 17B 128E Instruct FP8",
-        "publisher": "Meta",
-        "summary": "Llama 4 Maverick 17B 128E Instruct FP8 is great at precise image understanding and creative writing, offering high quality at a lower price compared to Llama 3.3 70B",
-        "rate_limit_tier": "high",
-        "supported_input_modalities": [
-            "text",
-            "image"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "multimodal",
-            "conversation",
-            "multilingual"
-        ],
-        "registry": "azureml-meta",
-        "version": "1",
-        "capabilities": [
-            "agents",
-            "agentsV2",
-            "assistants",
-            "streaming",
-            "tool-calling"
-        ],
+      "capabilities": {
+        "family": "gpt-4-turbo",
         "limits": {
-            "max_input_tokens": 1000000,
-            "max_output_tokens": 4096
+          "max_context_window_tokens": 128000,
+          "max_output_tokens": 4096,
+          "max_prompt_tokens": 64000
         },
-        "html_url": "https://github.com/marketplace/models/azureml-meta/Llama-4-Maverick-17B-128E-Instruct-FP8"
+        "object": "model_capabilities",
+        "supports": {
+          "parallel_tool_calls": true,
+          "streaming": true,
+          "tool_calls": true
+        },
+        "tokenizer": "cl100k_base",
+        "type": "chat"
+      },
+      "id": "gpt-4-0125-preview",
+      "model_picker_enabled": false,
+      "name": "GPT 4 Turbo",
+      "object": "model",
+      "preview": false,
+      "vendor": "Azure OpenAI",
+      "version": "gpt-4-0125-preview"
     },
     {
-        "id": "meta/llama-4-scout-17b-16e-instruct",
-        "name": "Llama 4 Scout 17B 16E Instruct",
-        "publisher": "Meta",
-        "summary": "Llama 4 Scout 17B 16E Instruct is great at multi-document summarization, parsing extensive user activity for personalized tasks, and reasoning over vast codebases.",
-        "rate_limit_tier": "high",
-        "supported_input_modalities": [
-            "text",
-            "image"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "multimodal",
-            "conversation",
-            "multilingual"
-        ],
-        "registry": "azureml-meta",
-        "version": "2",
-        "capabilities": [
-            "agents",
-            "assistants",
-            "streaming",
-            "tool-calling"
-        ],
+      "capabilities": {
+        "family": "gpt-4o",
         "limits": {
-            "max_input_tokens": 10000000,
-            "max_output_tokens": 4096
+          "max_context_window_tokens": 128000,
+          "max_output_tokens": 4096,
+          "max_prompt_tokens": 64000,
+          "vision": {
+            "max_prompt_image_size": 3145728,
+            "max_prompt_images": 1,
+            "supported_media_types": [
+              "image/jpeg",
+              "image/png",
+              "image/webp",
+              "image/gif"
+            ]
+          }
         },
-        "html_url": "https://github.com/marketplace/models/azureml-meta/Llama-4-Scout-17B-16E-Instruct"
+        "object": "model_capabilities",
+        "supports": {
+          "parallel_tool_calls": true,
+          "streaming": true,
+          "tool_calls": true,
+          "vision": true
+        },
+        "tokenizer": "o200k_base",
+        "type": "chat"
+      },
+      "id": "gpt-4o-2024-05-13",
+      "model_picker_enabled": false,
+      "name": "GPT-4o",
+      "object": "model",
+      "preview": false,
+      "vendor": "Azure OpenAI",
+      "version": "gpt-4o-2024-05-13"
     },
     {
-        "id": "meta/meta-llama-3.1-405b-instruct",
-        "name": "Meta-Llama-3.1-405B-Instruct",
-        "publisher": "Meta",
-        "summary": "The Llama 3.1 instruction tuned text only models are optimized for multilingual dialogue use cases and outperform many of the available open source and closed chat models on common industry benchmarks.",
-        "rate_limit_tier": "high",
-        "supported_input_modalities": [
-            "text"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "conversation"
-        ],
-        "registry": "azureml-meta",
-        "version": "1",
-        "capabilities": [
-            "agents"
-        ],
+      "capabilities": {
+        "family": "gpt-4o",
         "limits": {
-            "max_input_tokens": 131072,
-            "max_output_tokens": 4096
+          "max_context_window_tokens": 128000,
+          "max_output_tokens": 4096,
+          "max_prompt_tokens": 64000
         },
-        "html_url": "https://github.com/marketplace/models/azureml-meta/Meta-Llama-3-1-405B-Instruct"
+        "object": "model_capabilities",
+        "supports": {
+          "parallel_tool_calls": true,
+          "streaming": true,
+          "tool_calls": true
+        },
+        "tokenizer": "o200k_base",
+        "type": "chat"
+      },
+      "id": "gpt-4-o-preview",
+      "model_picker_enabled": false,
+      "name": "GPT-4o",
+      "object": "model",
+      "preview": false,
+      "vendor": "Azure OpenAI",
+      "version": "gpt-4o-2024-05-13"
     },
     {
-        "id": "meta/meta-llama-3.1-8b-instruct",
-        "name": "Meta-Llama-3.1-8B-Instruct",
-        "publisher": "Meta",
-        "summary": "The Llama 3.1 instruction tuned text only models are optimized for multilingual dialogue use cases and outperform many of the available open source and closed chat models on common industry benchmarks.",
-        "rate_limit_tier": "low",
-        "supported_input_modalities": [
-            "text"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "conversation"
-        ],
-        "registry": "azureml-meta",
-        "version": "5",
-        "capabilities": [
-            "streaming"
-        ],
+      "capabilities": {
+        "family": "gpt-4.1",
         "limits": {
-            "max_input_tokens": 131072,
-            "max_output_tokens": 4096
+          "max_context_window_tokens": 128000,
+          "max_output_tokens": 16384,
+          "max_prompt_tokens": 128000,
+          "vision": {
+            "max_prompt_image_size": 3145728,
+            "max_prompt_images": 1,
+            "supported_media_types": [
+              "image/jpeg",
+              "image/png",
+              "image/webp",
+              "image/gif"
+            ]
+          }
         },
-        "html_url": "https://github.com/marketplace/models/azureml-meta/Meta-Llama-3-1-8B-Instruct"
+        "object": "model_capabilities",
+        "supports": {
+          "parallel_tool_calls": true,
+          "streaming": true,
+          "structured_outputs": true,
+          "tool_calls": true,
+          "vision": true
+        },
+        "tokenizer": "o200k_base",
+        "type": "chat"
+      },
+      "id": "gpt-4.1",
+      "model_picker_category": "versatile",
+      "model_picker_enabled": true,
+      "name": "GPT-4.1",
+      "object": "model",
+      "policy": {
+        "state": "enabled",
+        "terms": "Enable access to the latest GPT-4.1 model from OpenAI. [Learn more about how GitHub Copilot serves GPT-4.1](https://docs.github.com/en/copilot/using-github-copilot/ai-models/choosing-the-right-ai-model-for-your-task#gpt-41)."
+      },
+      "preview": false,
+      "vendor": "Azure OpenAI",
+      "version": "gpt-4.1-2025-04-14"
     },
     {
-        "id": "mistral-ai/codestral-2501",
-        "name": "Codestral 25.01",
-        "publisher": "Mistral AI",
-        "summary": "Codestral 25.01 by Mistral AI is designed for code generation, supporting 80+ programming languages, and optimized for tasks like code completion and fill-in-the-middle",
-        "rate_limit_tier": "low",
-        "supported_input_modalities": [
-            "text"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "reasoning",
-            "coding"
-        ],
-        "registry": "azureml-mistral",
-        "version": "2",
-        "capabilities": [
-            "streaming"
-        ],
+      "capabilities": {
+        "family": "gpt-3.5-turbo",
         "limits": {
-            "max_input_tokens": 256000,
-            "max_output_tokens": 4096
+          "max_context_window_tokens": 16384,
+          "max_output_tokens": 4096,
+          "max_prompt_tokens": 12288
         },
-        "html_url": "https://github.com/marketplace/models/azureml-mistral/Codestral-2501"
+        "object": "model_capabilities",
+        "supports": {
+          "streaming": true,
+          "tool_calls": true
+        },
+        "tokenizer": "cl100k_base",
+        "type": "chat"
+      },
+      "id": "gpt-3.5-turbo",
+      "model_picker_enabled": false,
+      "name": "GPT 3.5 Turbo",
+      "object": "model",
+      "preview": false,
+      "vendor": "Azure OpenAI",
+      "version": "gpt-3.5-turbo-0613"
     },
     {
-        "id": "mistral-ai/ministral-3b",
-        "name": "Ministral 3B",
-        "publisher": "Mistral AI",
-        "summary": "Ministral 3B is a state-of-the-art Small Language Model (SLM) optimized for edge computing and on-device applications. As it is designed for low-latency and compute-efficient inference, it it also the perfect model for standard GenAI applications that have",
-        "rate_limit_tier": "low",
-        "supported_input_modalities": [
-            "text"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "low latency",
-            "agents",
-            "reasoning"
-        ],
-        "registry": "azureml-mistral",
-        "version": "1",
-        "capabilities": [
-            "streaming",
-            "tool-calling"
-        ],
+      "capabilities": {
+        "family": "gpt-4o-mini",
         "limits": {
-            "max_input_tokens": 131072,
-            "max_output_tokens": 4096
+          "max_context_window_tokens": 128000,
+          "max_output_tokens": 4096,
+          "max_prompt_tokens": 12288
         },
-        "html_url": "https://github.com/marketplace/models/azureml-mistral/Ministral-3B"
+        "object": "model_capabilities",
+        "supports": {
+          "parallel_tool_calls": true,
+          "streaming": true,
+          "tool_calls": true
+        },
+        "tokenizer": "o200k_base",
+        "type": "chat"
+      },
+      "id": "gpt-4o-mini",
+      "model_picker_enabled": false,
+      "name": "GPT-4o mini",
+      "object": "model",
+      "preview": false,
+      "vendor": "Azure OpenAI",
+      "version": "gpt-4o-mini-2024-07-18"
     },
     {
-        "id": "mistral-ai/mistral-medium-2505",
-        "name": "Mistral Medium 3 (25.05)",
-        "publisher": "Mistral AI",
-        "summary": "Mistral Medium 3 is an advanced Large Language Model (LLM) with state-of-the-art reasoning, knowledge, coding and vision capabilities.",
-        "rate_limit_tier": "low",
-        "supported_input_modalities": [
-            "text",
-            "image"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "multipurpose",
-            "vision"
-        ],
-        "registry": "azureml-mistral",
-        "version": "1",
-        "capabilities": [
-            "streaming",
-            "tool-calling"
-        ],
+      "capabilities": {
+        "family": "gpt-4",
         "limits": {
-            "max_input_tokens": 128000,
-            "max_output_tokens": 4096
+          "max_context_window_tokens": 32768,
+          "max_output_tokens": 4096,
+          "max_prompt_tokens": 32768
         },
-        "html_url": "https://github.com/marketplace/models/azureml-mistral/mistral-medium-2505"
+        "object": "model_capabilities",
+        "supports": {
+          "streaming": true,
+          "tool_calls": true
+        },
+        "tokenizer": "cl100k_base",
+        "type": "chat"
+      },
+      "id": "gpt-4",
+      "model_picker_enabled": false,
+      "name": "GPT 4",
+      "object": "model",
+      "preview": false,
+      "vendor": "Azure OpenAI",
+      "version": "gpt-4-0613"
     },
     {
-        "id": "mistral-ai/mistral-small-2503",
-        "name": "Mistral Small 3.1",
-        "publisher": "Mistral AI",
-        "summary": "Enhanced Mistral Small 3 with multimodal capabilities and a 128k context length.",
-        "rate_limit_tier": "low",
-        "supported_input_modalities": [
-            "text",
-            "image"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "multipurpose",
-            "vision",
-            "multimodal"
-        ],
-        "registry": "azureml-mistral",
-        "version": "1",
-        "capabilities": [
-            "agents",
-            "assistants",
-            "streaming",
-            "tool-calling"
-        ],
+      "capabilities": {
+        "family": "gpt-4o",
         "limits": {
-            "max_input_tokens": 128000,
-            "max_output_tokens": 4096
+          "max_context_window_tokens": 128000,
+          "max_output_tokens": 4096,
+          "max_prompt_tokens": 64000,
+          "vision": {
+            "max_prompt_image_size": 3145728,
+            "max_prompt_images": 1,
+            "supported_media_types": [
+              "image/jpeg",
+              "image/png",
+              "image/webp",
+              "image/gif"
+            ]
+          }
         },
-        "html_url": "https://github.com/marketplace/models/azureml-mistral/mistral-small-2503"
+        "object": "model_capabilities",
+        "supports": {
+          "parallel_tool_calls": true,
+          "streaming": true,
+          "tool_calls": true,
+          "vision": true
+        },
+        "tokenizer": "o200k_base",
+        "type": "chat"
+      },
+      "id": "gpt-4o",
+      "model_picker_category": "versatile",
+      "model_picker_enabled": true,
+      "name": "GPT-4o",
+      "object": "model",
+      "preview": false,
+      "vendor": "Azure OpenAI",
+      "version": "gpt-4o-2024-11-20"
     },
     {
-        "id": "xai/grok-3",
-        "name": "Grok 3",
-        "publisher": "xAI",
-        "summary": "Grok 3 is xAI's debut model, pretrained by Colossus at supermassive scale to excel in specialized domains like finance, healthcare, and the law.",
-        "rate_limit_tier": "custom",
-        "supported_input_modalities": [
-            "text"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "understanding",
-            "instruction",
-            "summarization"
-        ],
-        "registry": "azureml-xai",
-        "version": "1",
-        "capabilities": [
-            "agentsV2"
-        ],
+      "capabilities": {
+        "family": "gpt-4o",
         "limits": {
-            "max_input_tokens": 131072,
-            "max_output_tokens": 4096
+          "max_context_window_tokens": 128000,
+          "max_output_tokens": 4096,
+          "max_prompt_tokens": 64000
         },
-        "html_url": "https://github.com/marketplace/models/azureml-xai/grok-3"
+        "object": "model_capabilities",
+        "supports": {
+          "parallel_tool_calls": true,
+          "streaming": true,
+          "tool_calls": true
+        },
+        "tokenizer": "o200k_base",
+        "type": "chat"
+      },
+      "id": "gpt-4-o-preview",
+      "model_picker_enabled": false,
+      "name": "GPT-4o",
+      "object": "model",
+      "preview": false,
+      "vendor": "Azure OpenAI",
+      "version": "gpt-4o-2024-05-13"
     },
     {
-        "id": "xai/grok-3-mini",
-        "name": "Grok 3 Mini",
-        "publisher": "xAI",
-        "summary": "Grok 3 Mini is a lightweight model that thinks before responding. Trained on mathematic and scientific problems, it is great for logic-based tasks.",
-        "rate_limit_tier": "custom",
-        "supported_input_modalities": [
-            "text"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "agents",
-            "reasoning",
-            "coding"
-        ],
-        "registry": "azureml-xai",
-        "version": "1",
-        "capabilities": [
-            "agentsV2"
-        ],
+      "capabilities": {
+        "family": "text-embedding-ada-002",
         "limits": {
-            "max_input_tokens": 131072,
-            "max_output_tokens": 4096
+          "max_inputs": 512
         },
-        "html_url": "https://github.com/marketplace/models/azureml-xai/grok-3-mini"
-    },
-    {
-        "id": "microsoft/mai-ds-r1",
-        "name": "MAI-DS-R1",
-        "publisher": "Microsoft",
-        "summary": "MAI-DS-R1 is a DeepSeek-R1 reasoning model that has been post-trained by the Microsoft AI team to fill in information gaps in the previous version of the model and improve its harm protections while maintaining R1 reasoning capabilities.",
-        "rate_limit_tier": "custom",
-        "supported_input_modalities": [
-            "text"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "reasoning",
-            "coding",
-            "agents"
-        ],
-        "registry": "azureml",
-        "version": "1",
-        "capabilities": [
-            "agentsV2",
-            "reasoning",
-            "streaming"
-        ],
-        "limits": {
-            "max_input_tokens": 128000,
-            "max_output_tokens": 4096
-        },
-        "html_url": "https://github.com/marketplace/models/azureml/MAI-DS-R1"
-    },
-    {
-        "id": "microsoft/phi-4",
-        "name": "Phi-4",
-        "publisher": "Microsoft",
-        "summary": "Phi-4 14B, a highly capable model for low latency scenarios.",
-        "rate_limit_tier": "low",
-        "supported_input_modalities": [
-            "text"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "reasoning",
-            "understanding",
-            "low latency"
-        ],
-        "registry": "azureml",
-        "version": "8",
-        "capabilities": [],
-        "limits": {
-            "max_input_tokens": 16384,
-            "max_output_tokens": 16384
-        },
-        "html_url": "https://github.com/marketplace/models/azureml/Phi-4"
-    },
-    {
-        "id": "microsoft/phi-4-mini-instruct",
-        "name": "Phi-4-mini-instruct",
-        "publisher": "Microsoft",
-        "summary": "3.8B parameters Small Language Model outperforming larger models in reasoning, math, coding, and function-calling",
-        "rate_limit_tier": "low",
-        "supported_input_modalities": [
-            "text"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "reasoning",
-            "agents",
-            "multilingual"
-        ],
-        "registry": "azureml",
-        "version": "1",
-        "capabilities": [],
-        "limits": {
-            "max_input_tokens": 128000,
-            "max_output_tokens": 4096
-        },
-        "html_url": "https://github.com/marketplace/models/azureml/Phi-4-mini-instruct"
-    },
-    {
-        "id": "microsoft/phi-4-mini-reasoning",
-        "name": "Phi-4-mini-reasoning",
-        "publisher": "Microsoft",
-        "summary": "Lightweight math reasoning model optimized for multi-step problem solving",
-        "rate_limit_tier": "low",
-        "supported_input_modalities": [
-            "text"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "reasoning",
-            "large context",
-            "low latency"
-        ],
-        "registry": "azureml",
-        "version": "1",
-        "capabilities": [
-            "reasoning"
-        ],
-        "limits": {
-            "max_input_tokens": 128000,
-            "max_output_tokens": 4096
-        },
-        "html_url": "https://github.com/marketplace/models/azureml/Phi-4-mini-reasoning"
-    },
-    {
-        "id": "microsoft/phi-4-multimodal-instruct",
-        "name": "Phi-4-multimodal-instruct",
-        "publisher": "Microsoft",
-        "summary": "First small multimodal model to have 3 modality inputs (text, audio, image), excelling in quality and efficiency",
-        "rate_limit_tier": "low",
-        "supported_input_modalities": [
-            "audio",
-            "image",
-            "text"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "vision",
-            "audio",
-            "summarization"
-        ],
-        "registry": "azureml",
-        "version": "2",
-        "capabilities": [
-            "streaming"
-        ],
-        "limits": {
-            "max_input_tokens": 128000,
-            "max_output_tokens": 4096
-        },
-        "html_url": "https://github.com/marketplace/models/azureml/Phi-4-multimodal-instruct"
-    },
-    {
-        "id": "microsoft/phi-4-reasoning",
-        "name": "Phi-4-reasoning",
-        "publisher": "Microsoft",
-        "summary": "State-of-the-art open-weight reasoning model.",
-        "rate_limit_tier": "low",
-        "supported_input_modalities": [
-            "text"
-        ],
-        "supported_output_modalities": [
-            "text"
-        ],
-        "tags": [
-            "reasoning",
-            "large context",
-            "low latency"
-        ],
-        "registry": "azureml",
-        "version": "1",
-        "capabilities": [
-            "reasoning",
-            "streaming"
-        ],
-        "limits": {
-            "max_input_tokens": 32768,
-            "max_output_tokens": 4096
-        },
-        "html_url": "https://github.com/marketplace/models/azureml/Phi-4-reasoning"
+        "object": "model_capabilities",
+        "supports": {},
+        "tokenizer": "cl100k_base",
+        "type": "embeddings"
+      },
+      "id": "text-embedding-ada-002",
+      "model_picker_enabled": false,
+      "name": "Embedding V2 Ada",
+      "object": "model",
+      "preview": false,
+      "vendor": "Azure OpenAI",
+      "version": "text-embedding-3-small"
     }
-]
+  ],
+  "object": "list"
+}

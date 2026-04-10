@@ -31,7 +31,7 @@ public class AiModelParser {
      * Parses the GitHub Copilot catalog API response (flat JSON array).
      * Only returns models that support tool calling.
      */
-    public static List<AiModel> parseCopilotModels(String json) {
+    public static List<AiModel> parseGithubModels(String json) {
         try {
             var root = MAPPER.readTree(json);
             var result = new ArrayList<AiModel>();
@@ -60,6 +60,76 @@ public class AiModelParser {
                         .build();
 
                 if (model.supportsToolCalling()) result.add(model);
+            }
+
+            Collections.sort(result, (a, b) -> a.getId().compareTo(b.getId()));
+            return result;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return List.of();
+        }
+    }
+
+    /**
+     * Parses the GitHub Copilot subscriber API response ({ "data": [...] }).
+     * Only returns models where model_picker_enabled=true, tool_calls=true,
+     * and /chat/completions is listed in supported_endpoints (LangChain4j uses OpenAI-compatible calls).
+     */
+    public static List<AiModel> parseCopilotApiModels(String json) {
+        try {
+            var root = MAPPER.readTree(json);
+            var data = root.get("data");
+            var result = new ArrayList<AiModel>();
+            if (data == null || !data.isArray()) return result;
+
+            for (var item : data) {
+                var pickerEnabled = item.get("model_picker_enabled");
+                if (pickerEnabled == null || !pickerEnabled.asBoolean()) continue;
+
+                // LangChain4j OpenAiChatModel only calls /chat/completions
+                var endpoints = item.get("supported_endpoints");
+                if (endpoints != null && endpoints.isArray()) {
+                    boolean hasChatCompletions = false;
+                    for (var ep : endpoints) {
+                        if ("/chat/completions".equals(ep.asText())) { hasChatCompletions = true; break; }
+                    }
+                    if (!hasChatCompletions) continue;
+                }
+
+                var idNode = item.get("id");
+                if (idNode == null) continue;
+                String id = idNode.asText();
+                String name = getNodeString(item, "name", id);
+
+                // check policy
+                var policy = item.get("policy");
+                if (policy != null) {
+                    var state = policy.get("state");
+                    if (state != null) name += " (" + state.asText() + ")";
+                }
+
+                Integer maxInputTokens = null;
+                boolean toolCalls = false;
+                var caps = item.get("capabilities");
+                if (caps != null) {
+                    var limits = caps.get("limits");
+                    if (limits != null) {
+                        maxInputTokens = getNodeNumber(limits, "max_context_window_tokens");
+                    }
+                    var supports = caps.get("supports");
+                    if (supports != null) {
+                        var tc = supports.get("tool_calls");
+                        toolCalls = tc != null && tc.asBoolean();
+                    }
+                }
+                if (!toolCalls) continue;
+
+                result.add(AiModel.builder()
+                        .id(id)
+                        .name(name)
+                        .maxInputTokens(maxInputTokens)
+                        .capabilities(Set.of(AiCapability.TOOL_CALLING))
+                        .build());
             }
 
             Collections.sort(result, (a, b) -> a.getId().compareTo(b.getId()));

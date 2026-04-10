@@ -10,16 +10,16 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-class CopilotModelParserTest {
+class GithubModelParserTest {
 
     @Test
     void parseCopilotModels_onlyReturnsToolCallingModels() throws Exception {
         // GIVEN
         var json = Files.readString(
-                Path.of("src/test/resources/copilot-models.json"));
+                Path.of("src/test/resources/github-models.json"));
 
         // WHEN
-        List<AiModel> models = AiModelParser.parseCopilotApiModels(json);
+        List<AiModel> models = AiModelParser.parseGithubModels(json);
 
         // THEN
         assertFalse(models.isEmpty(), "Expected at least one tool-callable model");
@@ -39,10 +39,10 @@ class CopilotModelParserTest {
     void parseCopilotModels_excludesNonToolCapableModels() throws Exception {
         // GIVEN
         var json = Files.readString(
-                Path.of("src/test/resources/copilot-models.json"));
+                Path.of("src/test/resources/github-models.json"));
 
         // WHEN
-        List<AiModel> toolModels = AiModelParser.parseCopilotApiModels(json);
+        List<AiModel> toolModels = AiModelParser.parseGithubModels(json);
 
         // THEN - result must be a strict subset (some models lack tool-calling)
         assertTrue(toolModels.size() > 0, "Should have tool-capable models");
