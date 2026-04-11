@@ -53,19 +53,19 @@ class DiskFileReadToolsTest {
         Files.writeString(tempDir.resolve("foo/FooController.java"), "class Foo {}");
         Files.writeString(tempDir.resolve("bar/BarController.java"), "class Bar {}");
         // WHEN
-        String result = tool.searchDiskFiles("FooController");
+        String result = tool.searchDiskFiles("FooController", 0);
         // THEN
         assertTrue(result.contains("FooController.java"));
         assertFalse(result.contains("BarController.java"));
         
         // WHEN
-        result = tool.searchDiskFiles("*Controller*.java");
+        result = tool.searchDiskFiles("*Controller*.java", 0);
         // THEN
         assertTrue(result.contains("FooController.java"));
         assertTrue(result.contains("BarController.java"));
         
         // WHEN
-        result = tool.searchDiskFiles("**/FooController.java");
+        result = tool.searchDiskFiles("**/FooController.java", 0);
         // THEN
         assertTrue(result.contains("FooController.java"));
         assertFalse(result.contains("BarController.java"));
@@ -76,7 +76,7 @@ class DiskFileReadToolsTest {
         Files.writeString(tempDir.resolve("README.md"), "docs");
         Files.writeString(tempDir.resolve("notes.md"), "notes");
         Files.writeString(tempDir.resolve("Other.java"), "code");
-        String result = tool.searchDiskFiles("*.md");
+        String result = tool.searchDiskFiles("*.md", 0);
         assertTrue(result.contains("README.md"), "should find README.md");
         assertTrue(result.contains("notes.md"), "should find notes.md");
         assertFalse(result.contains("Other.java"), "should not find .java file");
@@ -89,7 +89,7 @@ class DiskFileReadToolsTest {
         Files.writeString(tempDir.resolve("FooService.java"), "");
         Files.writeString(tempDir.resolve("BarHelper.java"), "");
         // WHEN
-        String result = tool.searchDiskFiles("Foo*");
+        String result = tool.searchDiskFiles("Foo*", 0);
         // THEN
         assertTrue(result.contains("FooController.java"));
         assertTrue(result.contains("FooService.java"));
@@ -100,9 +100,26 @@ class DiskFileReadToolsTest {
     }
 
     @Test
+    void searchDiskFiles_limitRestrictsResults() throws IOException {
+        // GIVEN - three files
+        Files.writeString(tempDir.resolve("A.java"), "");
+        Files.writeString(tempDir.resolve("B.java"), "");
+        Files.writeString(tempDir.resolve("C.java"), "");
+
+        // unlimited returns all three
+        assertEquals(3, tool.searchDiskFiles("*.java", 0).split("\n").length);
+
+        // limit=1 returns exactly one
+        assertEquals(1, tool.searchDiskFiles("*.java", 1).split("\n").length);
+
+        // limit=2 returns exactly two
+        assertEquals(2, tool.searchDiskFiles("*.java", 2).split("\n").length);
+    }
+
+    @Test
     void searchDiskFiles_emptyQuery() {
-        assertThrows(IllegalArgumentException.class, () -> tool.searchDiskFiles(""));
-        assertThrows(IllegalArgumentException.class, () -> tool.searchDiskFiles(null));
+        assertThrows(IllegalArgumentException.class, () -> tool.searchDiskFiles("", 0));
+        assertThrows(IllegalArgumentException.class, () -> tool.searchDiskFiles(null, 0));
     }
 
     @Test

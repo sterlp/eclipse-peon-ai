@@ -66,19 +66,22 @@ public class DiskFileReadTool extends AbstractTool {
         }
     }
 
-    @Tool("Disk: Search files by name.")
-    public String searchDiskFiles(@P("file name query") String query) {
+    @Tool("Disk: Search files by name. Use '*' to list all files recursively.")
+    public String searchDiskFiles(
+            @P("file name query") String query,
+            @P("Optional: max results to return. 0 = unlimited.") int limit) {
 
         if (query == null || query.isBlank()) {
             throw new IllegalArgumentException("query must not be empty");
         }
-        
+
         var matcher = StringMatcher.wildCardMatcher(query);
         var matches = new ArrayList<String>();
         try (var walk = Files.walk(workingDir)) {
-            walk.filter(Files::isRegularFile)
-                .filter(p -> matcher.match(p.getFileName().toString()) || matcher.match(p.toAbsolutePath().toString()))
-                .forEach(p -> matches.add(p.toAbsolutePath().toString()));
+            var stream = walk.filter(Files::isRegularFile)
+                .filter(p -> matcher.match(p.getFileName().toString()) || matcher.match(p.toAbsolutePath().toString()));
+            if (limit > 0) stream = stream.limit(limit);
+            stream.forEach(p -> matches.add(p.toAbsolutePath().toString()));
         } catch (IOException e) {
             throw new RuntimeException("Failed to search in " + workingDir, e);
         }
