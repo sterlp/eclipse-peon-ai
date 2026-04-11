@@ -32,6 +32,7 @@ public class ActionsBarWidget extends Composite {
     private Button btnImplement;
     private Button chkAutonomous;
     private Button btnMcp;
+    private Button btnMic;
     private Combo modeCombo;
     private Combo modelCombo;
 
@@ -52,7 +53,8 @@ public class ActionsBarWidget extends Composite {
             Consumer<PeonMode> onModeChange,
             Consumer<AiModel> onModelChange,
             Consumer<Boolean> onAutonomousChange,
-            Consumer<Boolean> onMcpToggle) {
+            Consumer<Boolean> onMcpToggle,
+            Runnable onMicClick) {
         super(parent, style);
         
         colorWarning = new Color(180, 130, 0);
@@ -151,6 +153,15 @@ public class ActionsBarWidget extends Composite {
         btnMcp.setText("MCP");
         btnMcp.setToolTipText("Enable MCP tools (configure via Window > Preferences > AI Peon MCP)");
         btnMcp.addListener(SWT.Selection, e -> onMcpToggle.accept(btnMcp.getSelection()));
+
+        btnMic = new Button(this, SWT.PUSH);
+        btnMic.setText("Mic");
+        btnMic.setToolTipText("Click to start recording — click again to stop and transcribe");
+        btnMic.addListener(SWT.Selection, e -> onMicClick.run());
+        RowData rdMic = new RowData();
+        rdMic.exclude = true;
+        btnMic.setLayoutData(rdMic);
+        btnMic.setVisible(false);
     }
 
     /** Update the Compact button label and tooltip with current token usage. */
@@ -273,5 +284,24 @@ public class ActionsBarWidget extends Composite {
         int idx = modelCombo.getSelectionIndex();
         if (idx < 0 || idx >= availableModels.size()) return null;
         return availableModels.get(idx).getId();
+    }
+
+    /** Show or hide the microphone button based on voice config. */
+    public void setVoiceInputVisible(boolean visible) {
+        boolean changed = btnMic.getVisible() != visible;
+        if (changed) {
+            ((RowData) btnMic.getLayoutData()).exclude = !visible;
+            btnMic.setVisible(visible);
+            layout(true, true);
+            getParent().layout(new Control[]{this});
+        }
+    }
+
+    /** Toggle the mic button appearance between idle and recording states. */
+    public void setRecording(boolean recording) {
+        btnMic.setText(recording ? "[REC]" : "Mic");
+        btnMic.setToolTipText(recording
+            ? "Recording... click to stop and transcribe"
+            : "Click to start recording — click again to stop and transcribe");
     }
 }

@@ -36,8 +36,11 @@ import org.sterl.llmpeon.AbstractChatService;
 import org.sterl.llmpeon.PeonMode;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.ai.model.AiModel;
+import org.sterl.llmpeon.ai.voice.VoiceConfig;
+import org.sterl.llmpeon.ai.voice.VoiceInputService;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.McpPreferenceInitializer;
+import org.sterl.llmpeon.parts.config.VoicePreferenceInitializer;
 import org.sterl.llmpeon.parts.monitor.EclipseAiMonitor;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
@@ -77,6 +80,8 @@ public class AIChatView implements EclipseAiMonitor {
     );
 
     private final AtomicReference<IProgressMonitor> monitorRef = new AtomicReference<>(new NullProgressMonitor());
+    private final VoiceInputService voiceService = new VoiceInputService();
+    private boolean recording = false;
 
     private PeonMode currentMode = PeonMode.DEV;
     private LlmConfig lastListedConfig;
@@ -116,7 +121,8 @@ public class AIChatView implements EclipseAiMonitor {
             this::onModeChange,
             model -> aiService.updateConfig(aiService.getDeveloperService().getConfig().withModel(model)),
             autonomous -> aiService.getAgentMode().setAutonomous(autonomous),
-            enabled -> aiService.getMcpConnectionService().toggle(enabled)
+            enabled -> aiService.getMcpConnectionService().toggle(enabled),
+            this::onMicClick
         );
 
         applyConfig();
@@ -140,6 +146,7 @@ public class AIChatView implements EclipseAiMonitor {
     public void dispose() {
         InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID).removePreferenceChangeListener(prefListener);
         aiService.disconnectMcp();
+        voiceService.close();
     }
 
     @Focus
@@ -311,6 +318,7 @@ public class AIChatView implements EclipseAiMonitor {
         }
         aiService.updateConfig(config);
         applyMcpConfig();
+        actionsBar.setVoiceInputVisible(VoicePreferenceInitializer.buildWithDefaults().enabled());
         refreshStatusLine();
         onConfigChanged(config);
     }
@@ -485,6 +493,36 @@ public class AIChatView implements EclipseAiMonitor {
             statusLine.setPinned(pinned);
             refreshStatusLine();
         });
+    }
+
+    private void onMicClick() {
+        if (!recording) {
+            recording = true;
+            actionsBar.setRecording(true);
+            try {
+                voiceService.startRecording();
+            } catch (Exception e) {
+                recording = false;
+                actionsBar.setRecording(false);
+                onChatResponse(new SimpleMessage(Type.PROBLEM, "Cannot open microphone: " + e.getMessage()));
+            }
+        } else {
+            recording = false;
+            actionsBar.setRecording(false);
+            VoiceConfig voice = VoicePreferenceInitializer.buildWithDefaults();
+            var llm = aiService.getDeveloperService().getConfig();
+            Job.create("Transcribing audio", monitor -> {
+                try {
+                    String text = voiceService.stopAndTranscribe(voice, llm);
+                    EclipseUtil.runInUiThread(parent, () -> chatInput.setText(text));
+                } catch (Exception e) {
+                    Throwable cause = e.getCause() != null ? e.getCause() : e;
+                    onChatResponse(new SimpleMessage(Type.PROBLEM,
+                        "Transcription failed: " + cause.getClass().getSimpleName() + ": " + cause.getMessage()));
+                }
+                return Status.OK_STATUS;
+            }).schedule();
+        }
     }
 
     private AbstractChatService getActiveService() {
