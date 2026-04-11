@@ -150,7 +150,7 @@ The **Token Window** setting controls how many tokens of conversation history ar
 | Setting | Value |
 |---------|-------|
 | Preference Key | `llm.tokenWindow` (`PREF_TOKEN_WINDOW`) |
-| Default Value | `4000` tokens |
+| Default Value | `16000` tokens |
 | Type | Integer |
 | Editor Component | `IntegerFieldEditor` in `AiConfigPreferenceView` |
 
@@ -168,7 +168,7 @@ graph LR
 
 **Key Points:**
 1. Value is stored in Eclipse `ScopedPreferenceStore` with instance scope
-2. Retrieved by `LlmConfig.tokenWindow()` field (default: 4000)
+2. Retrieved by `LlmConfig.tokenWindow()` field (default: 16000)
 3. Used by provider's `buildChatModel()` for context window limits
 4. Also set in `TemplateContext` as template variable `${tokenWindow}`
 
@@ -191,7 +191,7 @@ This enables agent personas and instruction templates to respect context boundar
 
 | Component | Purpose | Limit | Configurable |
 |-----------|---------|-------|--------------|
-| **Token Window** | Context sent to AI provider | ~4000 (configurable) | Yes - via this setting |
+| **Token Window** | Context sent to AI provider | ~16000 (configurable) | Yes - via this setting |
 | **Message Memory Buffer** | Internal conversation history storage | 500,000 messages | Fixed in `MessageWindowChatMemory` |
 
 **Explanation:** The token window limits what context is *sent to the LLM* for each request, while the message memory buffer stores conversation history internally. A user can have a large internal history but only send the most recent tokens within their configured window to the AI model.
@@ -202,7 +202,7 @@ This enables agent personas and instruction templates to respect context boundar
 
 1. User sets token window value in preferences
 2. Value stored in `ScopedPreferenceStore` under key `llm.tokenWindow`
-3. When chat service starts, `LlmConfig.newConfig()` initializes with default 4000 (or loaded from prefs)
+3. When chat service starts, `LlmConfig.newConfig()` initializes with default 16000 (or loaded from prefs)
 4. Each request includes up to `tokenWindow` tokens of conversation history
 5. AI provider may adjust based on their own limits
 
@@ -215,8 +215,8 @@ This enables agent personas and instruction templates to respect context boundar
 | Value Range | Use Case | Trade-offs |
 |-------------|----------|------------|
 | **1000-2000** | Simple queries, coding tasks, one-off requests | Fast responses, lower costs, limited context awareness |
-| **2000-4000** | General conversation, most everyday use cases | Balanced approach, good context retention without excessive latency |
-| **4000-8192** | Complex multi-turn conversations, long discussions | Best for referencing earlier messages, may increase latency and costs |
+| **2000-16000** | General conversation, most everyday use cases | Balanced approach, good context retention without excessive latency |
+| **16000-8192** | Complex multi-turn conversations, long discussions | Best for referencing earlier messages, may increase latency and costs |
 
 ---
 

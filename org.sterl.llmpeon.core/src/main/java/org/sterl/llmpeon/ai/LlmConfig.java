@@ -36,13 +36,15 @@ public class LlmConfig {
     @Default
     private final String url = null;
     @Default
-    private final int tokenWindow = 8000;
+    private final int tokenWindow = 16000;
     @Default
     private final boolean thinkingEnabled = true;
     @Default
     private final String apiKey = null;
     @Default
     private final String skillDirectory = null;
+    @Default
+    private final boolean diskToolsEnabled = false;
 
     public static LlmConfig newConfig(String model, String url) {
         return LlmConfig.builder().model(model).url(url).build();
