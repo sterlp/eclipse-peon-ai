@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.test;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
@@ -44,7 +45,7 @@ public class EclipseWorkspaceReadFilesToolTest extends AbstractTest {
         var tool = new EclipseWorkspaceReadFileTool();
 
         // 1. find this file by name
-        String searchResult = tool.searchWorkspaceFiles("EclipseWorkspaceReadFilesToolTest");
+        String searchResult = tool.searchWorkspaceFiles("EclipseWorkspaceReadFilesToolTest", 0);
         assertTrue("Expected to find the test file in workspace: " + searchResult,
                 searchResult.contains(this.getClass().getSimpleName() + ".java"));
 
@@ -53,6 +54,21 @@ public class EclipseWorkspaceReadFilesToolTest extends AbstractTest {
                 content.contains("searchAndReadSelf"));
     }
     
+    @Test
+    public void searchWorkspaceFiles_limitRestrictsResults() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        var tool = new EclipseWorkspaceReadFileTool();
+
+        // unlimited should return multiple .java files
+        String all = tool.searchWorkspaceFiles("*.java", 0);
+        int allCount = all.split("\n").length;
+        assertTrue("Expected more than 1 .java file", allCount > 1);
+
+        // limit=1 must return exactly 1 result
+        String limited = tool.searchWorkspaceFiles("*.java", 1);
+        assertEquals("Expected exactly 1 result with limit=1", 1, limited.split("\n").length);
+    }
+
     @Test
     public void test_grepWorkspaceFiles() {
         // GIVEN

@@ -67,7 +67,7 @@ public abstract class AbstractChatService {
     protected boolean includesMcpTools() { return true; }
     
     public int tokenWindowUsedInPercent() {
-        float maxToken = config.getTokenWindow() > 4000 ? config.getTokenWindow() : 4000;
+        float maxToken = config.getTokenWindow() > 16000 ? config.getTokenWindow() : 16000;
         float used = tokenSize;
         if (used < 100) return 0;
         return Math.round(used / maxToken);

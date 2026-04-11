@@ -20,10 +20,11 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
         defaults.put(PeonConstants.PREF_PROVIDER_TYPE, AiProvider.OLLAMA.name());
         defaults.put(PeonConstants.PREF_MODEL, "devstral-small-2:24b");
         defaults.put(PeonConstants.PREF_URL, "http://localhost:11434");
-        defaults.putInt(PeonConstants.PREF_TOKEN_WINDOW, 4000);
+        defaults.putInt(PeonConstants.PREF_TOKEN_WINDOW, 16000);
         defaults.putBoolean(PeonConstants.PREF_THINKING_ENABLED, false);
         defaults.put(PeonConstants.PREF_API_KEY, "");
         defaults.put(PeonConstants.PREF_SKILL_DIRECTORY, "");
+        defaults.putBoolean(PeonConstants.PREF_DISK_TOOLS_ENABLED, false);
     }
     
     public static LlmConfig buildWithDefaults() {
@@ -41,16 +42,16 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
             }
         }
 
-        var config = new LlmConfig(
-            AiProvider.parse(prefs.get(PeonConstants.PREF_PROVIDER_TYPE, AiProvider.OLLAMA.name())),
-            prefs.get(PeonConstants.PREF_MODEL, "devstral-small-2:24b"),
-            prefs.get(PeonConstants.PREF_URL, "http://localhost:11434"),
-            prefs.getInt(PeonConstants.PREF_TOKEN_WINDOW, 4000),
-            prefs.getBoolean(PeonConstants.PREF_THINKING_ENABLED, false),
-            prefs.get(PeonConstants.PREF_API_KEY, ""),
-            skillDir
-        );
-        return config;
+        return LlmConfig.builder()
+            .providerType(AiProvider.parse(prefs.get(PeonConstants.PREF_PROVIDER_TYPE, AiProvider.OLLAMA.name())))
+            .model(prefs.get(PeonConstants.PREF_MODEL, "devstral-small-2:24b"))
+            .url(prefs.get(PeonConstants.PREF_URL, "http://localhost:11434"))
+            .tokenWindow(prefs.getInt(PeonConstants.PREF_TOKEN_WINDOW, 16000))
+            .thinkingEnabled(prefs.getBoolean(PeonConstants.PREF_THINKING_ENABLED, false))
+            .apiKey(prefs.get(PeonConstants.PREF_API_KEY, ""))
+            .skillDirectory(skillDir)
+            .diskToolsEnabled(prefs.getBoolean(PeonConstants.PREF_DISK_TOOLS_ENABLED, false))
+            .build();
     }
 
     public static void saveGitHubOAuthToken(String token, String enterpriseUrl) {

@@ -1,9 +1,9 @@
 # how to build
 
-- `mvn clean package`
 - in eclipse clean build
+- or non eclipse ide `mvn clean verify` in the shell
 
-run always after a code change `mvn clean package` to verify code changes.
+Verify your changes after code changes.
 
 # Structure
 

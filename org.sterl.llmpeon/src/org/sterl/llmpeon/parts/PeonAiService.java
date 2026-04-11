@@ -108,9 +108,11 @@ public class PeonAiService {
         toolService.addTool(new EclipseWorkspaceReadFileTool());
         
         diskFileWriteTool = new DiskFileWriteTool(rootPath);
-        toolService.addTool(diskFileWriteTool);
-        diskFileReadTool = new DiskFileReadTool(rootPath);
-        toolService.addTool(diskFileReadTool);
+        diskFileReadTool  = new DiskFileReadTool(rootPath);
+        if (config.isDiskToolsEnabled()) {
+            toolService.addTool(diskFileWriteTool);
+            toolService.addTool(diskFileReadTool);
+        }
 
         toolService.addTool(new EclipseBuildTool());
         toolService.addTool(new EclipseGrepTool());
@@ -155,6 +157,17 @@ public class PeonAiService {
         developerService.updateConfig(config);
         plannerService.updateConfig(config);
         agentMode.updateConfig(config);
+        if (config.isDiskToolsEnabled()) {
+            if (toolService.getTool(DiskFileWriteTool.class).isEmpty()) {
+                toolService.addTool(diskFileWriteTool);
+                toolService.addTool(diskFileReadTool);
+            }
+        } else {
+            if (toolService.getTool(DiskFileWriteTool.class).isPresent()) {
+                toolService.removeTool(diskFileWriteTool);
+                toolService.removeTool(diskFileReadTool);
+            }
+        }
         if (config.getSkillDirectory() != null && !config.getSkillDirectory().isBlank()) {
             try {
                 skillService.refresh(config.getSkillDirectory());

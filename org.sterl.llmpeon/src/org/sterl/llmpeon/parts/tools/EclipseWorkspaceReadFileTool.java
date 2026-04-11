@@ -50,9 +50,10 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
         return "No eclipse file found for " + filePath;
     }
 
-    @Tool("Eclipse: Search workspace files by name")
+    @Tool("Eclipse: Search workspace files by name. Use '*' to list all files recursively.")
     public String searchWorkspaceFiles(
-            @P("file name query - wildcard *, ? is supported.") String query) {
+            @P("file name query - wildcard *, ? is supported.") String query,
+            @P("Optional: max results to return. 0 = unlimited.") int limit) {
 
         if (query == null || query.isBlank()) {
             throw new IllegalArgumentException("query must not be empty");
@@ -67,6 +68,7 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
                 project.accept(new IResourceVisitor() {
                     @Override
                     public boolean visit(IResource resource) {
+                        if (limit > 0 && matches.size() >= limit) return false;
                         if (resource.isDerived()) return false;
                         if (resource.getType() == IResource.FILE) {
                             var file = JdtUtil.pathOf(resource);
@@ -78,6 +80,7 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
                         return true;
                     }
                 });
+                if (limit > 0 && matches.size() >= limit) break;
             } catch (CoreException e) {
                 throw new RuntimeException(e);
             }
