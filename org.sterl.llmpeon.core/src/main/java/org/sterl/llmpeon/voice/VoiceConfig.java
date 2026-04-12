@@ -1,4 +1,4 @@
-package org.sterl.llmpeon.ai.voice;
+package org.sterl.llmpeon.voice;
 
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.shared.StringUtil;

@@ -10,15 +10,16 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.ILog;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences.IPreferenceChangeListener;
 import org.eclipse.core.runtime.preferences.InstanceScope;
-import org.eclipse.e4.core.services.log.Logger;
 import org.eclipse.e4.ui.di.Focus;
 import org.eclipse.e4.ui.services.IServiceConstants;
 import org.eclipse.jdt.core.ICompilationUnit;
@@ -36,8 +37,6 @@ import org.sterl.llmpeon.AbstractChatService;
 import org.sterl.llmpeon.PeonMode;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.ai.model.AiModel;
-import org.sterl.llmpeon.ai.voice.VoiceConfig;
-import org.sterl.llmpeon.ai.voice.VoiceInputService;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.McpPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.VoicePreferenceInitializer;
@@ -54,6 +53,8 @@ import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.model.SimpleMessage.Type;
+import org.sterl.llmpeon.voice.VoiceConfig;
+import org.sterl.llmpeon.voice.VoiceInputService;
 
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.UserMessage;
@@ -64,8 +65,7 @@ import jakarta.inject.Named;
 
 public class AIChatView implements EclipseAiMonitor {
 
-    @Inject
-    Logger logger;
+	private static final ILog LOG = Platform.getLog(AIChatView.class);
 
     // Declared first so the aiService field initializer lambdas can capture them
     // without violating the Java forward-reference restriction.
@@ -126,9 +126,6 @@ public class AIChatView implements EclipseAiMonitor {
         );
 
         applyConfig();
-
-        if (logger != null)
-            logger.info("AIChatView started: " + aiService.getDeveloperService().getConfig());
 
         IEclipsePreferences prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
         prefs.addPreferenceChangeListener(prefListener);
@@ -195,14 +192,14 @@ public class AIChatView implements EclipseAiMonitor {
         } else if (o instanceof IWorkingSet) {
             selection = selectedResource;
         } else if (o != null) {
-            System.err.println("!!! Unknown resource type selected " + o.getClass());
+            LOG.info("!!! Unknown resource type selected " + o.getClass());
             selection = selectedResource;
         } else {
             selection = null;
         }
         selectedResource = selection;
         if (selectedResource != null) {
-            System.out.println("Selected " + selectedResource.getName());
+            LOG.info("Selected " + selectedResource.getName());
         }
 
         var project = EclipseUtil.resolveProject(selection);
@@ -500,7 +497,9 @@ public class AIChatView implements EclipseAiMonitor {
             recording = true;
             actionsBar.setRecording(true);
             try {
-                voiceService.startRecording(VoicePreferenceInitializer.buildWithDefaults().mixer());
+                VoiceConfig voice = VoicePreferenceInitializer.buildWithDefaults()
+                        .resolve(aiService.getConfig());
+                voiceService.startRecording(voice);
             } catch (Exception e) {
                 recording = false;
                 actionsBar.setRecording(false);
@@ -509,11 +508,9 @@ public class AIChatView implements EclipseAiMonitor {
         } else {
             recording = false;
             actionsBar.setRecording(false);
-            VoiceConfig voice = VoicePreferenceInitializer.buildWithDefaults()
-                    .resolve(aiService.getConfig());
             Job.create("Transcribing audio", monitor -> {
                 try {
-                    String text = voiceService.stopAndTranscribe(voice);
+                    String text = voiceService.stopAndTranscribe();
                     EclipseUtil.runInUiThread(parent, () -> {
                         chatInput.setText(text);
                         doSendMessage();

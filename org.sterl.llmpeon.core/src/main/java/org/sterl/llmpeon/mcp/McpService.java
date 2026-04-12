@@ -12,6 +12,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Manages connections to one or more MCP servers and exposes their tools.
@@ -19,6 +20,7 @@ import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
  * <p>Call {@link #connect()} to open connections to all configured servers.
  * Call {@link #disconnect()} or {@link #close()} to release them.
  */
+@Slf4j
 public class McpService implements AutoCloseable {
 
     private final List<McpServerConfig> servers;
@@ -80,7 +82,7 @@ public class McpService implements AutoCloseable {
                 toolSpecs.addAll(tools);
                 for (var spec : tools) {
                     toolToClient.put(spec.name(), client);
-                    System.out.println("Connected MCP " + server.name() + " tool " + spec.name());
+                    log.info("Connected MCP " + server.name() + " tool " + spec.name());
                 }
             } catch (Exception e) {
                 errors.add(server.name() + " (" + server.url() + "): " + e.getMessage());

@@ -4,8 +4,8 @@ import org.eclipse.core.runtime.preferences.AbstractPreferenceInitializer;
 import org.eclipse.core.runtime.preferences.DefaultScope;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.InstanceScope;
-import org.sterl.llmpeon.ai.voice.VoiceConfig;
 import org.sterl.llmpeon.parts.PeonConstants;
+import org.sterl.llmpeon.voice.VoiceConfig;
 
 public class VoicePreferenceInitializer extends AbstractPreferenceInitializer {
 

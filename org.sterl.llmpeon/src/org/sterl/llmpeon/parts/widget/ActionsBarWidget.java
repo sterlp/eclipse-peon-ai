@@ -19,6 +19,7 @@ import org.eclipse.swt.widgets.Control;
 import org.sterl.llmpeon.PeonMode;
 import org.sterl.llmpeon.ai.model.AiModel;
 import org.sterl.llmpeon.parts.shared.ImageUtil;
+import org.sterl.llmpeon.shared.StringUtil;
 
 public class ActionsBarWidget extends Composite {
 
@@ -167,9 +168,9 @@ public class ActionsBarWidget extends Composite {
         else if (pct >= 88) btnCompress.setForeground(colorError);
         else btnCompress.setForeground(null);
 
-        btnCompress.setText("Compact " + pct + "%");
+        btnCompress.setText("Compact " + StringUtil.toK(tokenUsed) + "/" + StringUtil.toK(tokenMax));
         btnCompress.setToolTipText(tokenUsed + " / " + tokenMax + " tokens used (" + pct
-                + "%) — click to compact the conversation");
+                + "%, " + StringUtil.toK(tokenUsed) + "/" + StringUtil.toK(tokenMax) + ") — click to compact the conversation");
         btnCompress.getParent().layout(false, false);
         btnCompress.setEnabled(tokenUsed > 100 && !this.working.get());
     }

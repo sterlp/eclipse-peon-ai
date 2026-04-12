@@ -3,6 +3,8 @@ package org.sterl.llmpeon.parts.config;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import org.eclipse.core.runtime.ILog;
+import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.preferences.AbstractPreferenceInitializer;
 import org.eclipse.core.runtime.preferences.DefaultScope;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
@@ -14,6 +16,8 @@ import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 
 public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
+    private static final ILog LOG = Platform.getLog(LlmPreferenceInitializer.class);
+
     @Override
     public void initializeDefaultPreferences() {
         IEclipsePreferences defaults = DefaultScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
@@ -37,7 +41,7 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
                 // save Eclipse workspace-relative path to prefs (portable)
                 prefs.put(PeonConstants.PREF_SKILL_DIRECTORY, dir.get().getFullPath().toPortableString());
                 // use absolute filesystem path for SkillService
-                System.err.println("Resolved skill dir " + skillDir + " as " + dir.get().getRawLocation().toPortableString());
+                LOG.info("Resolved skill dir " + skillDir + " as " + dir.get().getRawLocation().toPortableString());
                 skillDir = dir.get().getRawLocation().toPortableString();
             }
         }

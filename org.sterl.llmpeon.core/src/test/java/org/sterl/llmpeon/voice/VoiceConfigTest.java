@@ -1,10 +1,11 @@
-package org.sterl.llmpeon.ai.voice;
+package org.sterl.llmpeon.voice;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.voice.VoiceConfig;
 
 class VoiceConfigTest {
 

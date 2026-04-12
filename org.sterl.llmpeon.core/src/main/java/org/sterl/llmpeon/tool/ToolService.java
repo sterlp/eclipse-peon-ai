@@ -32,6 +32,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Owns all tools and the tool registry.
@@ -39,6 +40,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
  * 
  * https://github.com/langchain4j/langchain4j/blob/main/docs/docs/tutorials/tools.md
  */
+@Slf4j
 public class ToolService {
 
     public static final int MAX_ITERATIONS = 75;
@@ -166,6 +168,7 @@ public class ToolService {
         if (executor == null && mcpService != null && mcpService.hasTool(tr.name())) {
             monitor.onTool("Running MCP tool " + tr.name());
             result = mcpService.executeTool(tr);
+            log.debug("Tool {}:\n{}", tr.name(), result);
             return new ToolResult(false, ToolExecutionResultMessage.from(tr.id(), tr.name(), result));
         } else if (executor == null) {
             result = "Error: unknown tool '" + tr.name() + "' check spelling";
@@ -217,7 +220,7 @@ public class ToolService {
                 var spec = ToolSpecifications.toolSpecificationFrom(method);
                 var old = toolExecutors.put(spec.name(), new SmartToolExecutor(toolObject, method, spec));
                 if (old != null) throw new RuntimeException("Tool with " + spec.name() + " already registered ...");
-                System.out.println("added tool " + spec);
+                log.debug("added tool " + spec);
             }
         }
     }
@@ -228,7 +231,7 @@ public class ToolService {
             if (method.isAnnotationPresent(Tool.class)) {
                 var spec = ToolSpecifications.toolSpecificationFrom(method);
                 toolExecutors.remove(spec.name());
-                System.out.println("removed tool " + spec.name());
+                log.debug("removed tool " + spec.name());
             }
         }
     }

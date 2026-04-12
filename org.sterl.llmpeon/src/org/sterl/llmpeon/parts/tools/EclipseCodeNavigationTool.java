@@ -7,6 +7,8 @@ import java.util.List;
 
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.ILog;
+import org.eclipse.core.runtime.Platform;
 import org.eclipse.jdt.core.Flags;
 import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
@@ -34,6 +36,8 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 
 public class EclipseCodeNavigationTool extends AbstractEclipseTool {
+	
+	private static final ILog LOG = Platform.getLog(EclipseCodeNavigationTool.class);
 
     private static final int MAX_TYPE_RESULTS = 25;
     private static final int MAX_REFERENCE_RESULTS = 50;
@@ -196,7 +200,7 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
                     } catch (JavaModelException ignored) {}
                     byFile.computeIfAbsent(filePath, k -> new ArrayList<>()).add(line);
                 } else {
-                    System.err.println("findReferences with no java source! " + match);
+                    LOG.warn("findReferences with no java source! " + match);
                     continue;
                 }
             }

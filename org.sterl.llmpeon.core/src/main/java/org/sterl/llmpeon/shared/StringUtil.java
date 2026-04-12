@@ -32,6 +32,20 @@ public class StringUtil {
         return value.strip();
     }
 
+    /** Converts a token count to a "k" string, e.g. 131072 → "131k". */
+    public static String toK(int tokens) {
+        return (tokens / 1000) + "k";
+    }
+
+    /**
+     * Appends the context window size in "k" to the model name when maxInputTokens is known.
+     * E.g. "mistral-medium-latest" + 131072 → "mistral-medium-latest (131k)".
+     */
+    public static String formatModelName(String name, Integer maxInputTokens) {
+        if (maxInputTokens == null) return name;
+        return name + " (" + toK(maxInputTokens) + ")";
+    }
+
     public static String offsetToLine(String value, int offset) {
         if (value == null || offset < 0) return null;
         var lines = value.split("\n");
