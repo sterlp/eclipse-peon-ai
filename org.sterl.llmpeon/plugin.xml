@@ -30,11 +30,18 @@
             category="org.sterl.llmpeon.prefs.AiPeon"
             class="org.sterl.llmpeon.parts.config.McpPreferenceView">
       </page>
+      <page
+            id="org.sterl.llmpeon.prefs.VoiceConfig"
+            name="AI Peon Voice"
+            category="org.sterl.llmpeon.prefs.AiPeon"
+            class="org.sterl.llmpeon.parts.config.VoicePreferenceView">
+      </page>
    </extension>
 
    <extension point="org.eclipse.core.runtime.preferences">
       <initializer class="org.sterl.llmpeon.parts.config.LlmPreferenceInitializer"/>
       <initializer class="org.sterl.llmpeon.parts.config.McpPreferenceInitializer"/>
+      <initializer class="org.sterl.llmpeon.parts.config.VoicePreferenceInitializer"/>
    </extension>
 
 </plugin>

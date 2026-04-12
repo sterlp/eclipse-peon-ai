@@ -36,7 +36,6 @@ public class CopilotDeviceFlowDialog extends Dialog {
 
     private static final String CLIENT_ID              = "01ab8ac9400c4e429b23";
     private static final String DEFAULT_GITHUB_DOMAIN  = "github.com";
-    private static final String DEVICE_CODE_URL        = "https://github.com/login/device/code";
     private static final String POLL_URL               = "https://github.com/login/oauth/access_token";
 
     private final HttpClient http     = HttpClient.newHttpClient();

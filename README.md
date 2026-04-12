@@ -7,6 +7,7 @@ A lightweight, context-aware LLM assistant that integrates directly into your Ec
 ## Features
 
 - **Chat Interface** - Interactive AI chat with syntax-highlighted code blocks and markdown rendering
+- **Voice Chat**: Talk to your AI peon and tell him what todo - no more typing
 - **File Operations** - Read, write, search, and modify files directly from the chat
 - **Context Awareness** - Understands your current workspace and selected files
 - **Local LLM Support** - Works with Ollama for privacy-focused local inference
@@ -53,7 +54,7 @@ Configure via **Window > Preferences > Peon AI**:
 | `LM Studio` | `qwen/qwen3.5-9b` | `http://localhost:1234/v1` | — |
 | `OPEN_AI` | `gpt-4o`, `gpt-4o-mini` | `https://api.openai.com/v1` | required |
 | `GOOGLE_GEMINI` | `gemini-2.0-flash`, `gemini-2.5-pro-preview-03-25` | *(leave empty)* | required |
-| `MISTRAL` | `mistral-large-latest`, `codestral-latest` | *(leave empty)* | required |
+| `MISTRAL` | `mistral-large-latest`, `codestral-latest` | *(leave empty)* — `https://api.mistral.ai` for voice | required |
 | `ANTHROPIC` | `claude-3-5-sonnet`, `claude-3-opus` | *(leave empty)* | required |
 | `GITHUB_MODELS` | Various (use model picker) | `https://models.inference.ai.azure.com` | GitHub PAT |
 | `GITHUB_COPILOT` | Claude Sonnet/Opus, GPT-5, etc. | *(leave empty)* | OAuth login |

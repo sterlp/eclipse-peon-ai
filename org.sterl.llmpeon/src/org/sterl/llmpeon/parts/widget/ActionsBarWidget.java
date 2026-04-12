@@ -1,19 +1,14 @@
 package org.sterl.llmpeon.parts.widget;
 
-import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
-import org.sterl.llmpeon.ai.model.AiModel;
-
 import org.eclipse.debug.ui.DebugUITools;
 import org.eclipse.debug.ui.IDebugUIConstants;
-import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Color;
-import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.RowData;
 import org.eclipse.swt.layout.RowLayout;
@@ -22,6 +17,8 @@ import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.sterl.llmpeon.PeonMode;
+import org.sterl.llmpeon.ai.model.AiModel;
+import org.sterl.llmpeon.parts.shared.ImageUtil;
 
 public class ActionsBarWidget extends Composite {
 
@@ -32,6 +29,7 @@ public class ActionsBarWidget extends Composite {
     private Button btnImplement;
     private Button chkAutonomous;
     private Button btnMcp;
+    private Button btnMic;
     private Combo modeCombo;
     private Combo modelCombo;
 
@@ -52,7 +50,8 @@ public class ActionsBarWidget extends Composite {
             Consumer<PeonMode> onModeChange,
             Consumer<AiModel> onModelChange,
             Consumer<Boolean> onAutonomousChange,
-            Consumer<Boolean> onMcpToggle) {
+            Consumer<Boolean> onMcpToggle,
+            Runnable onMicClick) {
         super(parent, style);
         
         colorWarning = new Color(180, 130, 0);
@@ -98,6 +97,8 @@ public class ActionsBarWidget extends Composite {
                 onModelChange.accept(availableModels.get(idx));
             }
         });
+        
+        addMicButton(onMicClick);
 
         btnSend = new Button(this, SWT.PUSH);
         btnSend.setImage(DebugUITools.getImage(IDebugUIConstants.IMG_ACT_RUN));
@@ -108,15 +109,7 @@ public class ActionsBarWidget extends Composite {
         btnStop.setToolTipText("Cancel current request");
         btnStop.setEnabled(false);
         btnStop.addListener(SWT.Selection, e -> onStop.run());
-        try {
-            Image stopImage = ImageDescriptor
-                .createFromURL(URI.create("platform:/plugin/org.eclipse.jface/org/eclipse/jface/action/images/stop.svg").toURL())
-                .createImage();
-            btnStop.setImage(stopImage);
-            btnStop.addDisposeListener(e -> stopImage.dispose());
-        } catch (Exception ex) {
-            btnStop.setText("Stop");
-        }
+        btnStop.setImage(ImageUtil.loadImage(btnStop, ImageUtil.STOP));
 
         btnCompress = new Button(this, SWT.PUSH);
         btnCompress.setText("Compact");
@@ -151,6 +144,19 @@ public class ActionsBarWidget extends Composite {
         btnMcp.setText("MCP");
         btnMcp.setToolTipText("Enable MCP tools (configure via Window > Preferences > AI Peon MCP)");
         btnMcp.addListener(SWT.Selection, e -> onMcpToggle.accept(btnMcp.getSelection()));
+
+    }
+
+    private void addMicButton(Runnable onMicClick) {
+        btnMic = new Button(this, SWT.PUSH);
+        btnMic.setImage(ImageUtil.loadImage(btnMic, ImageUtil.MICROPHONE));
+        btnMic.setToolTipText("Click to start recording — click again to stop and transcribe");
+        btnMic.addListener(SWT.Selection, e -> onMicClick.run());
+        RowData rdMic = new RowData();
+        rdMic.exclude = true;
+        btnMic.setLayoutData(rdMic);
+        btnMic.setVisible(false);
+        btnMic.setBackground(colorError);
     }
 
     /** Update the Compact button label and tooltip with current token usage. */
@@ -273,5 +279,24 @@ public class ActionsBarWidget extends Composite {
         int idx = modelCombo.getSelectionIndex();
         if (idx < 0 || idx >= availableModels.size()) return null;
         return availableModels.get(idx).getId();
+    }
+
+    /** Show or hide the microphone button based on voice config. */
+    public void setVoiceInputVisible(boolean visible) {
+        boolean changed = btnMic.getVisible() != visible;
+        if (changed) {
+            ((RowData) btnMic.getLayoutData()).exclude = !visible;
+            btnMic.setVisible(visible);
+            layout(true, true);
+            getParent().layout(new Control[]{this});
+        }
+    }
+
+    /** Toggle the mic button appearance between idle and recording states. */
+    public void setRecording(boolean recording) {
+        btnMic.setBackground(recording ? colorError : null);
+        btnMic.setToolTipText(recording
+            ? "Recording... click to stop and transcribe"
+            : "Click to start recording — click again to stop and transcribe");
     }
 }

@@ -16,16 +16,24 @@ public interface PeonConstants {
 
     String PREF_MCP_SERVERS  = "mcp.servers";   // JSON: List<McpServerConfig>
     String PREF_MCP_ENABLED  = "mcp.enabled";   // boolean
-    
-    
+
+    String PREF_VOICE_ENABLED  = "voice.enabled";   // boolean, default false
+    String PREF_VOICE_MODEL    = "voice.model";      // e.g. "whisper-1", "whisper"
+    String PREF_VOICE_ENDPOINT = "voice.endpoint";   // default "/v1/audio/transcriptions"
+    String PREF_VOICE_BASE_URL = "voice.baseUrl";    // empty = use main provider URL
+    String PREF_VOICE_API_KEY  = "voice.apiKey";     // empty = use main provider API key
+    String PREF_VOICE_LANGUAGE = "voice.language";   // e.g. "en", "de" — empty = auto-detect
+
+
     public static IStatus okStatus(String message) {
         return new Status(IStatus.OK, PLUGIN_ID, message);
     }
-    public static IStatus errorStatus(String message, Exception e) {
-        return new Status(IStatus.ERROR, PLUGIN_ID, message, e);
+    public static IStatus errorStatus(String message, Throwable e) {
+        var cause = e.getCause();
+        return new Status(IStatus.ERROR, PLUGIN_ID, message, cause == null ? e : cause);
     }
     
-    public static IStatus status(String message, Exception e) {
+    public static IStatus status(String message, Throwable e) {
         if (e == null) return okStatus(message);
         return errorStatus(message + " " + e.getMessage(), e);
     }

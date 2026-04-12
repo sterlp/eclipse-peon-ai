@@ -73,13 +73,13 @@ Set the API Key to a dummy value like `none` if the server does not require one.
 |---------|-------|
 | Provider | `MISTRAL` |
 | Model | `mistral-large-latest`, `mistral-small-latest`, `codestral-latest` |
-| Base URL | *(leave empty)* or e.g. https://console.mistral.ai |
+| Base URL | *(leave empty)* — set `https://api.mistral.ai` in Voice preferences if using voice input |
 | API Key | Your Mistral API key |
 
 - [Mistral model overview](https://docs.mistral.ai/getting-started/models/models_overview/)
 - [Get a Mistral API key](https://console.mistral.ai/api-keys/)
 
-![google gemnini](../assets/mistral-setup.png)
+![mistral](../assets/mistral-setup.png)
 
 ### GitHub (Marketplace)
 
