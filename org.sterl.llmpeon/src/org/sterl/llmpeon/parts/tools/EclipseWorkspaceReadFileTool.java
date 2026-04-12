@@ -52,7 +52,7 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
 
     @Tool("Eclipse: Search workspace files by name. Use '*' to list all files recursively.")
     public String searchWorkspaceFiles(
-            @P("file name query - wildcard *, ? is supported.") String query,
+            @P("file name query - wildcard *, ? is supported. e.g. '*.java' for all java files") String query,
             @P("Optional: max results to return. 0 = unlimited.") int limit) {
 
         if (query == null || query.isBlank()) {

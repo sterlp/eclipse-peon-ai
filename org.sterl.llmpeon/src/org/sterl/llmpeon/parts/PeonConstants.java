@@ -23,6 +23,7 @@ public interface PeonConstants {
     String PREF_VOICE_BASE_URL = "voice.baseUrl";    // empty = use main provider URL
     String PREF_VOICE_API_KEY  = "voice.apiKey";     // empty = use main provider API key
     String PREF_VOICE_LANGUAGE = "voice.language";   // e.g. "en", "de" — empty = auto-detect
+    String PREF_VOICE_MIXER    = "voice.mixer";       // mixer name — empty = system default
 
 
     public static IStatus okStatus(String message) {

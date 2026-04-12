@@ -36,7 +36,8 @@ export default defineConfig({
           items: [
             { text: 'Installation', link: '/setup/installation' },
             { text: 'Configuration', link: '/setup/configuration' },
-            { text: 'MCP', link: '/setup/mcp-configuration' }
+            { text: 'MCP', link: '/setup/mcp-configuration' },
+            { text: 'Voice', link: '/setup/voice-config' }
             
           ]
         },

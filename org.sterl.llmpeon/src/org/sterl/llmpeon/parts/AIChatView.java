@@ -500,7 +500,7 @@ public class AIChatView implements EclipseAiMonitor {
             recording = true;
             actionsBar.setRecording(true);
             try {
-                voiceService.startRecording();
+                voiceService.startRecording(VoicePreferenceInitializer.buildWithDefaults().mixer());
             } catch (Exception e) {
                 recording = false;
                 actionsBar.setRecording(false);

@@ -1,13 +1,20 @@
 package org.sterl.llmpeon.parts.config;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.jface.preference.BooleanFieldEditor;
+import org.eclipse.jface.preference.ComboFieldEditor;
 import org.eclipse.jface.preference.FieldEditorPreferencePage;
 import org.eclipse.jface.preference.StringFieldEditor;
 import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.events.SelectionListener;
+import org.eclipse.swt.program.Program;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Link;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
 import org.eclipse.ui.preferences.ScopedPreferenceStore;
@@ -32,6 +39,9 @@ public class VoicePreferenceView extends FieldEditorPreferencePage implements IW
 
     @Override
     public void createFieldEditors() {
+        addField(new ComboFieldEditor(PeonConstants.PREF_VOICE_MIXER,
+                "Microphone:", buildMixerEntries(), getFieldEditorParent()));
+
         enabledEditor = new BooleanFieldEditor(PeonConstants.PREF_VOICE_ENABLED,
                 "Enable Voice Input", getFieldEditorParent());
         addField(enabledEditor);
@@ -72,6 +82,13 @@ public class VoicePreferenceView extends FieldEditorPreferencePage implements IW
         gd.horizontalSpan = 2;
         hint.setLayoutData(gd);
 
+        Link link = new Link(getFieldEditorParent(), SWT.NONE);
+        link.setText("Mac users: see <a href=\"https://peon-ai-4e.sterl.org/setup/voice-config#macos-microphone-permissions\">macOS microphone permission settings</a>.");
+        GridData linkGd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+        linkGd.horizontalSpan = 2;
+        link.setLayoutData(linkGd);
+        link.addSelectionListener(SelectionListener.widgetSelectedAdapter(e -> Program.launch(e.text)));
+
         // Defer until after initialize() loads saved values from the preference store
         hint.getDisplay().asyncExec(() -> updateFieldStates(
             InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID)
@@ -96,4 +113,19 @@ public class VoicePreferenceView extends FieldEditorPreferencePage implements IW
 
     @Override
     public void init(IWorkbench workbench) {}
+
+    /** Builds combo entries for all input mixers available on this system. */
+    private static String[][] buildMixerEntries() {
+        List<String[]> entries = new ArrayList<>();
+        entries.add(new String[]{"System Default", ""});
+        for (javax.sound.sampled.Mixer.Info info : javax.sound.sampled.AudioSystem.getMixerInfo()) {
+            javax.sound.sampled.Mixer mixer = javax.sound.sampled.AudioSystem.getMixer(info);
+            javax.sound.sampled.DataLine.Info targetInfo = new javax.sound.sampled.DataLine.Info(
+                javax.sound.sampled.TargetDataLine.class, null);
+            if (mixer.isLineSupported(targetInfo)) {
+                entries.add(new String[]{info.getName(), info.getName()});
+            }
+        }
+        return entries.toArray(new String[0][]);
+    }
 }

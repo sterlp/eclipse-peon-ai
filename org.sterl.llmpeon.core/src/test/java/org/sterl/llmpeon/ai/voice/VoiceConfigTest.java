@@ -104,6 +104,6 @@ class VoiceConfigTest {
     // --- helpers ---
 
     private VoiceConfig voice(String baseUrl, String apiKey) {
-        return new VoiceConfig(true, "voxtral-mini-latest", "/v1/audio/transcriptions", baseUrl, apiKey, "");
+        return new VoiceConfig(true, "voxtral-mini-latest", "/v1/audio/transcriptions", baseUrl, apiKey, null, null);
     }
 }

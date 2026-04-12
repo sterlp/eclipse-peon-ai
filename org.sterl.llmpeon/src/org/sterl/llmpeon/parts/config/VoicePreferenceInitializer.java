@@ -18,6 +18,7 @@ public class VoicePreferenceInitializer extends AbstractPreferenceInitializer {
         defaults.put(PeonConstants.PREF_VOICE_BASE_URL, "");
         defaults.put(PeonConstants.PREF_VOICE_API_KEY, "");
         defaults.put(PeonConstants.PREF_VOICE_LANGUAGE, "");
+        defaults.put(PeonConstants.PREF_VOICE_MIXER, "");
     }
 
     public static VoiceConfig buildWithDefaults() {
@@ -28,7 +29,8 @@ public class VoicePreferenceInitializer extends AbstractPreferenceInitializer {
             prefs.get(PeonConstants.PREF_VOICE_ENDPOINT, "/v1/audio/transcriptions"),
             prefs.get(PeonConstants.PREF_VOICE_BASE_URL, ""),
             prefs.get(PeonConstants.PREF_VOICE_API_KEY, ""),
-            prefs.get(PeonConstants.PREF_VOICE_LANGUAGE, "")
+            prefs.get(PeonConstants.PREF_VOICE_LANGUAGE, ""),
+            prefs.get(PeonConstants.PREF_VOICE_MIXER, "")
         );
     }
 }

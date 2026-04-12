@@ -13,20 +13,32 @@ import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.DataLine;
 import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.Mixer;
 import javax.sound.sampled.TargetDataLine;
 
 
 public class VoiceInputService implements AutoCloseable {
 
+	// mac native 44100
     private static final AudioFormat FORMAT = new AudioFormat(16000, 16, 1, true, false);
 
     private TargetDataLine line;
     private ByteArrayOutputStream buffer;
     private Thread readerThread;
 
-    public void startRecording() throws LineUnavailableException {
+    public void startRecording(String mixerName) throws LineUnavailableException {
         DataLine.Info info = new DataLine.Info(TargetDataLine.class, FORMAT);
-        line = (TargetDataLine) AudioSystem.getLine(info);
+        if (mixerName != null && !mixerName.isBlank()) {
+            for (Mixer.Info mi : AudioSystem.getMixerInfo()) {
+                if (mi.getName().equals(mixerName)) {
+                    line = (TargetDataLine) AudioSystem.getMixer(mi).getLine(info);
+                    break;
+                }
+            }
+        }
+        if (line == null) {
+            line = (TargetDataLine) AudioSystem.getLine(info); // fallback to system default
+        }
         line.open(FORMAT);
         line.start();
 
@@ -53,6 +65,11 @@ public class VoiceInputService implements AutoCloseable {
 
         byte[] pcm = buffer.toByteArray();
         buffer = null;
+        if (pcm.length == 0 || isSilent(pcm)) {
+            throw new RuntimeException(
+                "No audio captured — check microphone permissions: " +
+                "System Settings → Privacy & Security → Microphone → enable Eclipse/java");
+        }
         byte[] wav = toWav(pcm);
 
         String boundary = UUID.randomUUID().toString().replace("-", "");
@@ -136,6 +153,14 @@ public class VoiceInputService implements AutoCloseable {
         int start = json.indexOf('"', colon + 1) + 1;
         int end   = json.indexOf('"', start);
         return json.substring(start, end);
+    }
+
+    /** Returns true if all PCM bytes are zero — indicates denied mic permission on macOS. */
+    private boolean isSilent(byte[] pcm) {
+        for (byte b : pcm) {
+            if (b != 0) return false;
+        }
+        return true;
     }
 
     /** Wraps raw 16-bit PCM bytes in a standard WAV container. */
