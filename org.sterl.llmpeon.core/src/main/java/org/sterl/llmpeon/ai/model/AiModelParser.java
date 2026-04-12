@@ -3,6 +3,7 @@ package org.sterl.llmpeon.ai.model;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -54,7 +55,7 @@ public class AiModelParser {
 
                 var model = AiModel.builder()
                         .id(modelId)
-                        .name(name)
+                        .name(StringUtil.formatModelName(name, maxInputTokens))
                         .maxInputTokens(maxInputTokens)
                         .capabilities(parseCapabilityArray(item.get("capabilities")))
                         .build();
@@ -126,7 +127,7 @@ public class AiModelParser {
 
                 result.add(AiModel.builder()
                         .id(id)
-                        .name(name)
+                        .name(StringUtil.formatModelName(name, maxInputTokens))
                         .maxInputTokens(maxInputTokens)
                         .capabilities(Set.of(AiCapability.TOOL_CALLING))
                         .build());
@@ -164,7 +165,7 @@ public class AiModelParser {
 
                 var model = AiModel.builder()
                         .id(id)
-                        .name(name)
+                        .name(StringUtil.formatModelName(name, maxInputTokens))
                         .maxInputTokens(maxInputTokens)
                         .capabilities(parseCapabilityObject(item.get("capabilities")))
                         .build();
@@ -183,13 +184,16 @@ public class AiModelParser {
     /**
      * Parses the Mistral AI models API response ({ "data": [...] }).
      * Only returns models where capabilities.function_calling == true.
+     * Deduplicates by display name, preferring entries whose ID ends with "-latest".
      */
     public static List<AiModel> parseMistralModels(String json) {
         try {
             var root = MAPPER.readTree(json);
             var data = root.get("data");
-            var result = new ArrayList<AiModel>();
-            if (data == null || !data.isArray()) return result;
+            if (data == null || !data.isArray()) return List.of();
+
+            // name → best model seen so far; "-latest" IDs take priority
+            var byName = new LinkedHashMap<String, AiModel>();
 
             for (var item : data) {
                 var idNode = item.get("id");
@@ -200,14 +204,20 @@ public class AiModelParser {
                 Integer maxInputTokens = getNodeNumber(item, "max_context_length");
                 var model = AiModel.builder()
                         .id(id)
-                        .name(name)
+                        .name(StringUtil.formatModelName(name, maxInputTokens))
                         .maxInputTokens(maxInputTokens)
                         .capabilities(parseCapabilityObject(item.get("capabilities")))
                         .build();
 
-                if (model.supportsToolCalling()) result.add(model);
+                if (!model.supportsToolCalling()) continue;
+
+                var existing = byName.get(name);
+                if (existing == null || id.endsWith("-latest")) {
+                    byName.put(name, model);
+                }
             }
 
+            var result = new ArrayList<>(byName.values());
             Collections.sort(result, (a, b) -> a.getId().compareTo(b.getId()));
             return result;
         } catch (Exception e) {
@@ -238,7 +248,7 @@ public class AiModelParser {
 
                 result.add(AiModel.builder()
                         .id(id)
-                        .name(name)
+                        .name(StringUtil.formatModelName(name, maxToken))
                         .maxInputTokens(maxToken)
                         .capabilities(Set.of(AiCapability.TOOL_CALLING))
                         .build());

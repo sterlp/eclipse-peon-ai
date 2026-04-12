@@ -23,7 +23,7 @@ class LmStudioModelParserTest {
         assertEquals(1, models.size(), "Only 1 tool-capable LLM expected");
         var model = models.get(0);
         assertEquals("qwen3.5-9b-claude-4.6-opus-reasoning-distilled-v2", model.getId());
-        assertEquals("Qwen3.5 9B", model.getName());
+        assertEquals("Qwen3.5 9B (262k)", model.getName());
         assertEquals(262144, model.getMaxInputTokens());
         assertTrue(model.getCapabilities().contains(AiCapability.TOOL_CALLING));
         assertTrue(model.getCapabilities().contains(AiCapability.VISION));
