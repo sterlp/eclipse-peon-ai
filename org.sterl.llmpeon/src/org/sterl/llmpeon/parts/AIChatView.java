@@ -509,11 +509,11 @@ public class AIChatView implements EclipseAiMonitor {
         } else {
             recording = false;
             actionsBar.setRecording(false);
-            VoiceConfig voice = VoicePreferenceInitializer.buildWithDefaults();
-            var llm = aiService.getDeveloperService().getConfig();
+            VoiceConfig voice = VoicePreferenceInitializer.buildWithDefaults()
+                    .resolve(aiService.getConfig());
             Job.create("Transcribing audio", monitor -> {
                 try {
-                    String text = voiceService.stopAndTranscribe(voice, llm);
+                    String text = voiceService.stopAndTranscribe(voice);
                     EclipseUtil.runInUiThread(parent, () -> {
                         chatInput.setText(text);
                         doSendMessage();

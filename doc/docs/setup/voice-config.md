@@ -19,13 +19,14 @@ Enable **Enable Voice Input** — the microphone button will appear in the chat 
 
 | Field | Description | Default |
 |---|---|---|
-| **STT Model** | Model name sent to the endpoint | `whisper-1` |
+| **STT Model** | Model name sent to the endpoint | `voxtral-mini-latest` |
 | **Transcription Endpoint** | Path appended to the base URL | `/v1/audio/transcriptions` |
 | **Base URL** | Override the transcription host. Leave empty to reuse the main provider URL. | *(empty)* |
+| **API Key** | Override the API key for transcription. Leave empty to reuse the main provider API key. | *(empty)* |
 | **Language** | BCP-47 code for better accuracy (e.g. `en`, `de`). Leave empty for auto-detect. | *(empty)* |
 
-::: tip Base URL is required for most setups
-The main provider URL is often an API gateway that does not host a Whisper endpoint. Set **Base URL** explicitly unless your provider's chat and transcription endpoints share the same host.
+::: tip Base URL and API Key are only needed when your voice provider differs from your chat provider
+If you use OpenAI for chat and Mistral for transcription, set **Base URL** to `https://api.mistral.ai` and **API Key** to your Mistral key. If both are the same provider, leave both empty.
 :::
 
 ## Provider Examples

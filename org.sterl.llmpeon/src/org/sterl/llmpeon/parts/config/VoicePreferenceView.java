@@ -19,6 +19,7 @@ public class VoicePreferenceView extends FieldEditorPreferencePage implements IW
     private StringFieldEditor modelEditor;
     private StringFieldEditor endpointEditor;
     private StringFieldEditor baseUrlEditor;
+    private StringFieldEditor apiKeyEditor;
     private StringFieldEditor languageEditor;
 
     public VoicePreferenceView() {
@@ -53,6 +54,12 @@ public class VoicePreferenceView extends FieldEditorPreferencePage implements IW
                 .setToolTipText("Leave empty to use the main provider URL configured in AI Peon Configuration");
         addField(baseUrlEditor);
 
+        apiKeyEditor = new StringFieldEditor(PeonConstants.PREF_VOICE_API_KEY,
+                "API Key:", getFieldEditorParent());
+        apiKeyEditor.getLabelControl(getFieldEditorParent())
+                .setToolTipText("Leave empty to use the main provider API key configured in AI Peon Configuration");
+        addField(apiKeyEditor);
+
         languageEditor = new StringFieldEditor(PeonConstants.PREF_VOICE_LANGUAGE,
                 "Language:", getFieldEditorParent());
         languageEditor.getLabelControl(getFieldEditorParent())
@@ -83,6 +90,7 @@ public class VoicePreferenceView extends FieldEditorPreferencePage implements IW
         modelEditor.setEnabled(enabled, getFieldEditorParent());
         endpointEditor.setEnabled(enabled, getFieldEditorParent());
         baseUrlEditor.setEnabled(enabled, getFieldEditorParent());
+        apiKeyEditor.setEnabled(enabled, getFieldEditorParent());
         languageEditor.setEnabled(enabled, getFieldEditorParent());
     }
 

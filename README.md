@@ -53,7 +53,7 @@ Configure via **Window > Preferences > Peon AI**:
 | `LM Studio` | `qwen/qwen3.5-9b` | `http://localhost:1234/v1` | — |
 | `OPEN_AI` | `gpt-4o`, `gpt-4o-mini` | `https://api.openai.com/v1` | required |
 | `GOOGLE_GEMINI` | `gemini-2.0-flash`, `gemini-2.5-pro-preview-03-25` | *(leave empty)* | required |
-| `MISTRAL` | `mistral-large-latest`, `codestral-latest` | *(leave empty)* | required |
+| `MISTRAL` | `mistral-large-latest`, `codestral-latest` | *(leave empty)* — `https://api.mistral.ai` for voice | required |
 | `ANTHROPIC` | `claude-3-5-sonnet`, `claude-3-opus` | *(leave empty)* | required |
 | `GITHUB_MODELS` | Various (use model picker) | `https://models.inference.ai.azure.com` | GitHub PAT |
 | `GITHUB_COPILOT` | Claude Sonnet/Opus, GPT-5, etc. | *(leave empty)* | OAuth login |

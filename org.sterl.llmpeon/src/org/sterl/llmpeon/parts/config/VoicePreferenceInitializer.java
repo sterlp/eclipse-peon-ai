@@ -13,9 +13,10 @@ public class VoicePreferenceInitializer extends AbstractPreferenceInitializer {
     public void initializeDefaultPreferences() {
         IEclipsePreferences defaults = DefaultScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
         defaults.putBoolean(PeonConstants.PREF_VOICE_ENABLED, false);
-        defaults.put(PeonConstants.PREF_VOICE_MODEL, "whisper-1");
+        defaults.put(PeonConstants.PREF_VOICE_MODEL, "voxtral-mini-latest");
         defaults.put(PeonConstants.PREF_VOICE_ENDPOINT, "/v1/audio/transcriptions");
         defaults.put(PeonConstants.PREF_VOICE_BASE_URL, "");
+        defaults.put(PeonConstants.PREF_VOICE_API_KEY, "");
         defaults.put(PeonConstants.PREF_VOICE_LANGUAGE, "");
     }
 
@@ -23,9 +24,10 @@ public class VoicePreferenceInitializer extends AbstractPreferenceInitializer {
         var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
         return new VoiceConfig(
             prefs.getBoolean(PeonConstants.PREF_VOICE_ENABLED, false),
-            prefs.get(PeonConstants.PREF_VOICE_MODEL, "whisper-1"),
+            prefs.get(PeonConstants.PREF_VOICE_MODEL, "voxtral-mini-latest"),
             prefs.get(PeonConstants.PREF_VOICE_ENDPOINT, "/v1/audio/transcriptions"),
             prefs.get(PeonConstants.PREF_VOICE_BASE_URL, ""),
+            prefs.get(PeonConstants.PREF_VOICE_API_KEY, ""),
             prefs.get(PeonConstants.PREF_VOICE_LANGUAGE, "")
         );
     }

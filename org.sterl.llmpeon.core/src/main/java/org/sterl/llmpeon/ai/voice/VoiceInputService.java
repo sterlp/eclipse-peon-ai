@@ -15,7 +15,6 @@ import javax.sound.sampled.DataLine;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.TargetDataLine;
 
-import org.sterl.llmpeon.ai.LlmConfig;
 
 public class VoiceInputService implements AutoCloseable {
 
@@ -41,7 +40,7 @@ public class VoiceInputService implements AutoCloseable {
         });
     }
 
-    public String stopAndTranscribe(VoiceConfig voice, LlmConfig llm) throws Exception {
+    public String stopAndTranscribe(VoiceConfig voice) throws Exception {
         if (line != null) {
             line.stop();
             line.close();
@@ -57,7 +56,7 @@ public class VoiceInputService implements AutoCloseable {
         byte[] wav = toWav(pcm);
 
         String boundary = UUID.randomUUID().toString().replace("-", "");
-        String url = voice.resolveBaseUrl(llm) + voice.endpoint();
+        String url = voice.baseUrl() + voice.endpoint();
 
         byte[] body = buildMultipartBody(boundary, wav, voice);
 
@@ -66,7 +65,7 @@ public class VoiceInputService implements AutoCloseable {
                 .header("Content-Type", "multipart/form-data; boundary=" + boundary)
                 .POST(HttpRequest.BodyPublishers.ofByteArray(body));
 
-        String apiKey = llm.getApiKey();
+        String apiKey = voice.apiKey();
         if (apiKey != null && !apiKey.isBlank()) {
             req.header("Authorization", "Bearer " + apiKey);
         }

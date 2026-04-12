@@ -21,6 +21,7 @@ public interface PeonConstants {
     String PREF_VOICE_MODEL    = "voice.model";      // e.g. "whisper-1", "whisper"
     String PREF_VOICE_ENDPOINT = "voice.endpoint";   // default "/v1/audio/transcriptions"
     String PREF_VOICE_BASE_URL = "voice.baseUrl";    // empty = use main provider URL
+    String PREF_VOICE_API_KEY  = "voice.apiKey";     // empty = use main provider API key
     String PREF_VOICE_LANGUAGE = "voice.language";   // e.g. "en", "de" — empty = auto-detect
 
 
