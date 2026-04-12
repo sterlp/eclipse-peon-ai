@@ -31,7 +31,9 @@ import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.ollama.OllamaModel;
 import dev.langchain4j.model.ollama.OllamaModels;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public enum AiProvider {
 
     OLLAMA {
@@ -61,7 +63,7 @@ public enum AiProvider {
                 Collections.sort(result, (a, b) -> a.getId().compareTo(b.getId()));
                 return result;
             } catch (Exception e) {
-                e.printStackTrace();
+                log.warn("Failed to load models for {}", this, e);
                 return fallbackAiModels(c);
             }
         }
@@ -120,7 +122,7 @@ public enum AiProvider {
                 if (response == null || response.statusCode() > 299) return fallbackAiModels(c);
                 return AiModelParser.parseLmStudioModels(response.body());
             } catch (Exception e) {
-                e.printStackTrace();
+                log.warn("Failed to load models for {}", this, e);
                 return fallbackAiModels(c);
             }
         }
@@ -174,7 +176,7 @@ public enum AiProvider {
                 if (response == null || response.statusCode() > 299) return fallbackAiModels(c);
                 return AiModelParser.parseMistralModels(response.body());
             } catch (Exception e) {
-                e.printStackTrace();
+                log.warn("Failed to load models for {}", this, e);
                 return fallbackAiModels(c);
             }
         }
@@ -244,7 +246,7 @@ public enum AiProvider {
                 if (response == null || response.statusCode() > 299) return fallbackAiModels(c);
                 return AiModelParser.parseAnthropicModels(response.body());
             } catch (Exception e) {
-                e.printStackTrace();
+                log.warn("Failed to load models for {}", this, e);
                 return fallbackAiModels(c);
             }
         }
@@ -285,13 +287,13 @@ public enum AiProvider {
                         .build();
                 var response = cancelAndSend(request);
                 if (response == null || response.statusCode() > 299) {
-                    System.err.println("GITHUB_MODELS listAiModels HTTP "
+                    log.warn("GITHUB_MODELS listAiModels HTTP "
                             + (response != null ? response.statusCode() : "null"));
                     return List.of();
                 }
                 return AiModelParser.parseGithubModels(response.body());
             } catch (Exception e) {
-                e.printStackTrace();
+                log.warn("Failed to load models for {}", this, e);
                 return List.of();
             }
         }
@@ -328,13 +330,13 @@ public enum AiProvider {
                         .build();
                 var response = cancelAndSend(request);
                 if (response == null || response.statusCode() > 299) {
-                    System.err.println("GITHUB_COPILOT listAiModels HTTP "
+                    log.warn("GITHUB_COPILOT listAiModels HTTP "
                             + (response != null ? response.statusCode() : "null"));
                     return List.of();
                 }
                 return AiModelParser.parseCopilotApiModels(response.body());
             } catch (Exception e) {
-                e.printStackTrace();
+                log.warn("Failed to load models for {}", this, e);
                 return List.of();
             }
         }
