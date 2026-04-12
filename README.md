@@ -7,6 +7,7 @@ A lightweight, context-aware LLM assistant that integrates directly into your Ec
 ## Features
 
 - **Chat Interface** - Interactive AI chat with syntax-highlighted code blocks and markdown rendering
+- **Voice Chat**: Talk to your AI peon and tell him what todo - no more typing
 - **File Operations** - Read, write, search, and modify files directly from the chat
 - **Context Awareness** - Understands your current workspace and selected files
 - **Local LLM Support** - Works with Ollama for privacy-focused local inference
