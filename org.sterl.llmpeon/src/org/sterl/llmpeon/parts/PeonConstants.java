@@ -27,11 +27,12 @@ public interface PeonConstants {
     public static IStatus okStatus(String message) {
         return new Status(IStatus.OK, PLUGIN_ID, message);
     }
-    public static IStatus errorStatus(String message, Exception e) {
-        return new Status(IStatus.ERROR, PLUGIN_ID, message, e);
+    public static IStatus errorStatus(String message, Throwable e) {
+        var cause = e.getCause();
+        return new Status(IStatus.ERROR, PLUGIN_ID, message, cause == null ? e : cause);
     }
     
-    public static IStatus status(String message, Exception e) {
+    public static IStatus status(String message, Throwable e) {
         if (e == null) return okStatus(message);
         return errorStatus(message + " " + e.getMessage(), e);
     }

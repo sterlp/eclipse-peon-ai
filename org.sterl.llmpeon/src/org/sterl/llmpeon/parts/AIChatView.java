@@ -514,13 +514,14 @@ public class AIChatView implements EclipseAiMonitor {
             Job.create("Transcribing audio", monitor -> {
                 try {
                     String text = voiceService.stopAndTranscribe(voice, llm);
-                    EclipseUtil.runInUiThread(parent, () -> chatInput.setText(text));
+                    EclipseUtil.runInUiThread(parent, () -> {
+                        chatInput.setText(text);
+                        doSendMessage();
+                    });
                 } catch (Exception e) {
-                    Throwable cause = e.getCause() != null ? e.getCause() : e;
-                    onChatResponse(new SimpleMessage(Type.PROBLEM,
-                        "Transcription failed: " + cause.getClass().getSimpleName() + ": " + cause.getMessage()));
+                    return PeonConstants.errorStatus("Transcription failed", e);
                 }
-                return Status.OK_STATUS;
+                return PeonConstants.okStatus("Transcription finished.");
             }).schedule();
         }
     }

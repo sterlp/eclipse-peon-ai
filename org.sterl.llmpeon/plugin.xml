@@ -32,7 +32,7 @@
       </page>
       <page
             id="org.sterl.llmpeon.prefs.VoiceConfig"
-            name="AI Config Voice"
+            name="AI Peon Voice"
             category="org.sterl.llmpeon.prefs.AiPeon"
             class="org.sterl.llmpeon.parts.config.VoicePreferenceView">
       </page>
