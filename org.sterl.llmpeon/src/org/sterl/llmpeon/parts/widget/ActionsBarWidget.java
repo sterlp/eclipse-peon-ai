@@ -5,8 +5,6 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
-import org.eclipse.debug.ui.DebugUITools;
-import org.eclipse.debug.ui.IDebugUIConstants;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.layout.GridData;
@@ -18,19 +16,16 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.sterl.llmpeon.PeonMode;
 import org.sterl.llmpeon.ai.model.AiModel;
-import org.sterl.llmpeon.parts.shared.ImageUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 
 public class ActionsBarWidget extends Composite {
 
-    private Button btnSend;
-    private Button btnStop;
+    private SendOrStopButton sendOrStop;
     private Button btnCompress;
     private Button btnClear;
     private Button btnImplement;
     private Button chkAutonomous;
     private Button btnMcp;
-    private Button btnMic;
     private Combo modeCombo;
     private Combo modelCombo;
 
@@ -51,8 +46,7 @@ public class ActionsBarWidget extends Composite {
             Consumer<PeonMode> onModeChange,
             Consumer<AiModel> onModelChange,
             Consumer<Boolean> onAutonomousChange,
-            Consumer<Boolean> onMcpToggle,
-            Runnable onMicClick) {
+            Consumer<Boolean> onMcpToggle) {
         super(parent, style);
         
         colorWarning = new Color(180, 130, 0);
@@ -99,19 +93,6 @@ public class ActionsBarWidget extends Composite {
             }
         });
         
-        addMicButton(onMicClick);
-
-        btnSend = new Button(this, SWT.PUSH);
-        btnSend.setImage(DebugUITools.getImage(IDebugUIConstants.IMG_ACT_RUN));
-        btnSend.setToolTipText("Send...");
-        btnSend.addListener(SWT.Selection, e -> onSend.run());
-
-        btnStop = new Button(this, SWT.PUSH);
-        btnStop.setToolTipText("Cancel current request");
-        btnStop.setEnabled(false);
-        btnStop.addListener(SWT.Selection, e -> onStop.run());
-        btnStop.setImage(ImageUtil.loadImage(btnStop, ImageUtil.STOP));
-
         btnCompress = new Button(this, SWT.PUSH);
         btnCompress.setText("Compact");
         btnCompress.setToolTipText("Compact conversation context");
@@ -146,18 +127,7 @@ public class ActionsBarWidget extends Composite {
         btnMcp.setToolTipText("Enable MCP tools (configure via Window > Preferences > AI Peon MCP)");
         btnMcp.addListener(SWT.Selection, e -> onMcpToggle.accept(btnMcp.getSelection()));
 
-    }
-
-    private void addMicButton(Runnable onMicClick) {
-        btnMic = new Button(this, SWT.PUSH);
-        btnMic.setImage(ImageUtil.loadImage(btnMic, ImageUtil.MICROPHONE));
-        btnMic.setToolTipText("Click to start recording — click again to stop and transcribe");
-        btnMic.addListener(SWT.Selection, e -> onMicClick.run());
-        RowData rdMic = new RowData();
-        rdMic.exclude = true;
-        btnMic.setLayoutData(rdMic);
-        btnMic.setVisible(false);
-        btnMic.setBackground(colorError);
+        sendOrStop = new SendOrStopButton(this, SWT.NONE, onSend, onStop);
     }
 
     /** Update the Compact button label and tooltip with current token usage. */
@@ -178,16 +148,13 @@ public class ActionsBarWidget extends Composite {
     /** Enable/disable the entire bar while a request is in flight. */
     public void lockWhileWorking(boolean value) {
         this.working.set(value);
-        // Do NOT disable the parent composite — that would also block btnStop from receiving events.
-        // Instead, disable each child individually.
         modeCombo.setEnabled(!value);
         modelCombo.setEnabled(!value);
-        btnSend.setEnabled(!value);
-        btnStop.setEnabled(value);
         btnCompress.setEnabled(!value);
         btnClear.setEnabled(!value);
         btnMcp.setEnabled(!value);
         if (value) btnImplement.setEnabled(false); // re-enable is handled by updateModeUI
+        sendOrStop.setWorking(value);
     }
     
     public boolean isWorking() {
@@ -252,7 +219,7 @@ public class ActionsBarWidget extends Composite {
         modelCombo.setEnabled(true);
         modelCombo.setItems(models.stream().map(AiModel::getName).toArray(String[]::new));
         selectModel(selectedModelId);
-        if (!this.working.get()) btnSend.setEnabled(true);
+        // sendOrStop is always enabled — it acts as stop when working, send when idle
     }
 
     /** Select the model by its ID. Falls back to index 0 if not found. */
@@ -282,22 +249,4 @@ public class ActionsBarWidget extends Composite {
         return availableModels.get(idx).getId();
     }
 
-    /** Show or hide the microphone button based on voice config. */
-    public void setVoiceInputVisible(boolean visible) {
-        boolean changed = btnMic.getVisible() != visible;
-        if (changed) {
-            ((RowData) btnMic.getLayoutData()).exclude = !visible;
-            btnMic.setVisible(visible);
-            layout(true, true);
-            getParent().layout(new Control[]{this});
-        }
-    }
-
-    /** Toggle the mic button appearance between idle and recording states. */
-    public void setRecording(boolean recording) {
-        btnMic.setBackground(recording ? colorError : null);
-        btnMic.setToolTipText(recording
-            ? "Recording... click to stop and transcribe"
-            : "Click to start recording — click again to stop and transcribe");
-    }
 }

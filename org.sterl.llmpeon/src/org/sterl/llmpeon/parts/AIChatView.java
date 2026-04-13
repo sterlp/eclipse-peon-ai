@@ -48,7 +48,6 @@ import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.parts.widget.ActionsBarWidget;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget;
 import org.sterl.llmpeon.parts.widget.ChatWidget;
-import org.sterl.llmpeon.parts.widget.StatusLineWidget;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
@@ -90,7 +89,6 @@ public class AIChatView implements EclipseAiMonitor {
 
     private ChatMarkdownWidget chatHistory;
     private ChatWidget chatInput;
-    private StatusLineWidget statusLine;
 
     private ITextSelection textSelection;
     private IResource selectedResource;
@@ -107,10 +105,8 @@ public class AIChatView implements EclipseAiMonitor {
         chatHistory = new ChatMarkdownWidget(parent, SWT.BORDER);
         chatHistory.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-        chatInput = new ChatWidget(parent, SWT.NONE, this::doSendMessage);
+        chatInput = new ChatWidget(parent, SWT.NONE, this::doSendMessage, this::onMicClick, this::onPinChange);
         chatInput.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-
-        statusLine = new StatusLineWidget(parent, SWT.NONE, this::onPinChange);
 
         actionsBar = new ActionsBarWidget(parent, SWT.NONE,
             this::doSendMessage,
@@ -121,8 +117,7 @@ public class AIChatView implements EclipseAiMonitor {
             this::onModeChange,
             model -> aiService.updateConfig(aiService.getDeveloperService().getConfig().withModel(model)),
             autonomous -> aiService.getAgentMode().setAutonomous(autonomous),
-            enabled -> aiService.getMcpConnectionService().toggle(enabled),
-            this::onMicClick
+            enabled -> aiService.getMcpConnectionService().toggle(enabled)
         );
 
         applyConfig();
@@ -277,7 +272,7 @@ public class AIChatView implements EclipseAiMonitor {
     // -------------------------------------------------------------------------
 
     public void refreshStatusLine() {
-        statusLine.update(
+        chatInput.getStatusLine().update(
             aiService.getSkillService().getSkills().size(),
             aiService.getAgentsMdService().hasAgentFile(),
             currentProject,
@@ -315,7 +310,7 @@ public class AIChatView implements EclipseAiMonitor {
         }
         aiService.updateConfig(config);
         applyMcpConfig();
-        actionsBar.setVoiceInputVisible(VoicePreferenceInitializer.buildWithDefaults().enabled());
+        chatInput.setVoiceInputVisible(VoicePreferenceInitializer.buildWithDefaults().enabled());
         refreshStatusLine();
         onConfigChanged(config);
     }
@@ -434,7 +429,7 @@ public class AIChatView implements EclipseAiMonitor {
             chatHistory.appendMessage(new SimpleMessage(Type.PROBLEM, "No model configured — open Window > Preferences > Peon AI"));
             return;
         }
-        String text = StringUtil.strip(chatInput.getText().trim() + getUserSelection());
+        String text = StringUtil.strip(chatInput.getText().trim() + buildFileContext(chatInput.getAttachedFiles()) + getUserSelection());
         var active = getActiveService();
         if (StringUtil.hasNoValue(text) && active.getMessages().isEmpty()) return;
 
@@ -487,7 +482,7 @@ public class AIChatView implements EclipseAiMonitor {
             actionsBar.setAgentModeAvailable(currentProject != null && currentProject.isOpen());
         }
         EclipseUtil.runInUiThread(parent, () -> {
-            statusLine.setPinned(pinned);
+            chatInput.getStatusLine().setPinned(pinned);
             refreshStatusLine();
         });
     }
@@ -495,19 +490,19 @@ public class AIChatView implements EclipseAiMonitor {
     private void onMicClick() {
         if (!recording) {
             recording = true;
-            actionsBar.setRecording(true);
+            chatInput.setRecording(true);
             try {
                 VoiceConfig voice = VoicePreferenceInitializer.buildWithDefaults()
                         .resolve(aiService.getConfig());
                 voiceService.startRecording(voice);
             } catch (Exception e) {
                 recording = false;
-                actionsBar.setRecording(false);
+                chatInput.setRecording(false);
                 onChatResponse(new SimpleMessage(Type.PROBLEM, "Cannot open microphone: " + e.getMessage()));
             }
         } else {
             recording = false;
-            actionsBar.setRecording(false);
+            chatInput.setRecording(false);
             Job.create("Transcribing audio", monitor -> {
                 try {
                     String text = voiceService.stopAndTranscribe();
@@ -529,6 +524,22 @@ public class AIChatView implements EclipseAiMonitor {
             case PLAN  -> aiService.getPlannerService();
             case AGENT -> aiService.getAgentMode().getActiveService();
         };
+    }
+
+    private String buildFileContext(List<IFile> files) {
+        if (files.isEmpty()) return "";
+        var sb = new StringBuilder();
+        for (IFile f : files) {
+            try (var in = f.getContents()) {
+                sb.append("\n\nFile: ").append(f.getFullPath())
+                  .append("\n```").append(f.getFileExtension() != null ? f.getFileExtension() : "")
+                  .append("\n").append(new String(in.readAllBytes()))
+                  .append("\n```");
+            } catch (Exception e) {
+                LOG.warn("Could not read attached file: " + f.getFullPath(), e);
+            }
+        }
+        return sb.toString();
     }
 
     private String getUserSelection() {
