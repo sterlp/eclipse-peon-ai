@@ -69,14 +69,15 @@ public class AIChatView implements EclipseAiMonitor {
 
     // Declared first so the aiService field initializer lambdas can capture them
     // without violating the Java forward-reference restriction.
-    // Both are null until @PostConstruct runs; the lambdas are only ever invoked after that.
+    // All are null until @PostConstruct runs; the lambdas are only ever invoked after that.
     private Composite parent;
     private ActionsBarWidget actionsBar;
+    private StatusLineWidget statusLine;
 
     private final PeonAiService aiService = new PeonAiService(
         this::doSendMessage,
         file -> EclipseUtil.runInUiThread(parent, () -> EclipseUtil.openInEditor(file)),
-        enabled -> EclipseUtil.runInUiThread(parent, () -> actionsBar.setMcpEnabled(enabled))
+        enabled -> EclipseUtil.runInUiThread(parent, () -> statusLine.setMcpEnabled(enabled))
     );
 
     private final AtomicReference<IProgressMonitor> monitorRef = new AtomicReference<>(new NullProgressMonitor());
@@ -90,7 +91,6 @@ public class AIChatView implements EclipseAiMonitor {
 
     private ChatMarkdownWidget chatHistory;
     private ChatWidget chatInput;
-    private StatusLineWidget statusLine;
 
     private ITextSelection textSelection;
     private IResource selectedResource;
@@ -107,22 +107,34 @@ public class AIChatView implements EclipseAiMonitor {
         chatHistory = new ChatMarkdownWidget(parent, SWT.BORDER);
         chatHistory.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-        chatInput = new ChatWidget(parent, SWT.NONE, this::doSendMessage);
+        // Wrap input + action bar + status bar in one bordered block with white background
+        Composite inputBlock = new Composite(parent, SWT.BORDER);
+        GridLayout inputBlockLayout = new GridLayout(1, false);
+        inputBlockLayout.marginWidth = 0;
+        inputBlockLayout.marginHeight = 0;
+        inputBlockLayout.verticalSpacing = 0;
+        inputBlock.setLayout(inputBlockLayout);
+        inputBlock.setLayoutData(new GridData(SWT.FILL, SWT.BOTTOM, true, false));
+
+        chatInput = new ChatWidget(inputBlock, SWT.NONE, this::doSendMessage, this::onMicClick);
         chatInput.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
-        statusLine = new StatusLineWidget(parent, SWT.NONE, this::onPinChange);
-
-        actionsBar = new ActionsBarWidget(parent, SWT.NONE,
+        actionsBar = new ActionsBarWidget(inputBlock, SWT.NONE,
             this::doSendMessage,
             () -> getIProgressMonitor().setCanceled(true),
-            this::doCompressContext,
             this::onClear,
             this::doStartImpl,
             this::onModeChange,
             model -> aiService.updateConfig(aiService.getDeveloperService().getConfig().withModel(model)),
             autonomous -> aiService.getAgentMode().setAutonomous(autonomous),
+            this::onThinkToggle
+        );
+
+        statusLine = new StatusLineWidget(inputBlock, SWT.NONE,
+            this::onPinChange,
+            this::onSkillsToggle,
             enabled -> aiService.getMcpConnectionService().toggle(enabled),
-            this::onMicClick
+            this::doCompressContext
         );
 
         applyConfig();
@@ -136,7 +148,7 @@ public class AIChatView implements EclipseAiMonitor {
     private void onClear() {
         getActiveService().clear();
         chatHistory.clear();
-        actionsBar.updateCompact(getActiveService().getTokenSize(), getActiveService().getTokenWindow());
+        statusLine.updateCompact(getActiveService().getTokenSize(), getActiveService().getTokenWindow());
     }
 
     @PreDestroy
@@ -239,7 +251,7 @@ public class AIChatView implements EclipseAiMonitor {
     public void onChatResponse(SimpleMessage m) {
         EclipseUtil.runInUiThread(parent, () -> {
             chatHistory.appendMessage(m);
-            actionsBar.updateCompact(getActiveService().getTokenSize(), getActiveService().getTokenWindow());
+            statusLine.updateCompact(getActiveService().getTokenSize(), getActiveService().getTokenWindow());
         });
     }
 
@@ -278,13 +290,13 @@ public class AIChatView implements EclipseAiMonitor {
 
     public void refreshStatusLine() {
         statusLine.update(
-            aiService.getSkillService().getSkills().size(),
+            aiService.getSkillService().loadedSkillCount(),
             aiService.getAgentsMdService().hasAgentFile(),
             currentProject,
             getSelectedFile()
         );
         var active = getActiveService();
-        actionsBar.updateCompact(active.getTokenSize(), active.getTokenWindow());
+        statusLine.updateCompact(active.getTokenSize(), active.getTokenWindow());
     }
 
     private void refreshChat() {
@@ -314,16 +326,19 @@ public class AIChatView implements EclipseAiMonitor {
             throw new RuntimeException("Failed to load " + config.getSkillDirectory());
         }
         aiService.updateConfig(config);
+        // Sync the Think toggle to the config default. The user can override this per-session
+        // via the button; that override is stored in-memory only and not written to preferences.
+        actionsBar.setThinkEnabled(config.isThinkingEnabled());
         applyMcpConfig();
-        actionsBar.setVoiceInputVisible(VoicePreferenceInitializer.buildWithDefaults().enabled());
+        chatInput.setVoiceInputVisible(VoicePreferenceInitializer.buildWithDefaults().enabled());
         refreshStatusLine();
         onConfigChanged(config);
     }
 
     private void applyMcpConfig() {
         var servers = McpPreferenceInitializer.loadServers();
-        actionsBar.setMcpAvailable(!servers.isEmpty());
-        actionsBar.setMcpEnabled(!servers.isEmpty() && McpPreferenceInitializer.isMcpEnabled());
+        statusLine.setMcpAvailable(!servers.isEmpty());
+        statusLine.setMcpEnabled(!servers.isEmpty() && McpPreferenceInitializer.isMcpEnabled());
         aiService.applyMcpConfig();
     }
 
@@ -434,7 +449,7 @@ public class AIChatView implements EclipseAiMonitor {
             chatHistory.appendMessage(new SimpleMessage(Type.PROBLEM, "No model configured — open Window > Preferences > Peon AI"));
             return;
         }
-        String text = StringUtil.strip(chatInput.getText().trim() + getUserSelection());
+        String text = StringUtil.strip(chatInput.getText().trim() + buildFileContext(chatInput.getAttachedFiles()) + getUserSelection());
         var active = getActiveService();
         if (StringUtil.hasNoValue(text) && active.getMessages().isEmpty()) return;
 
@@ -492,22 +507,30 @@ public class AIChatView implements EclipseAiMonitor {
         });
     }
 
+    private void onThinkToggle(boolean enabled) {
+        aiService.updateConfig(aiService.getDeveloperService().getConfig().withThinking(enabled));
+    }
+
+    private void onSkillsToggle(boolean enabled) {
+        aiService.getSkillService().setEnabled(enabled);
+    }
+
     private void onMicClick() {
         if (!recording) {
             recording = true;
-            actionsBar.setRecording(true);
+            chatInput.setRecording(true);
             try {
                 VoiceConfig voice = VoicePreferenceInitializer.buildWithDefaults()
                         .resolve(aiService.getConfig());
                 voiceService.startRecording(voice);
             } catch (Exception e) {
                 recording = false;
-                actionsBar.setRecording(false);
+                chatInput.setRecording(false);
                 onChatResponse(new SimpleMessage(Type.PROBLEM, "Cannot open microphone: " + e.getMessage()));
             }
         } else {
             recording = false;
-            actionsBar.setRecording(false);
+            chatInput.setRecording(false);
             Job.create("Transcribing audio", monitor -> {
                 try {
                     String text = voiceService.stopAndTranscribe();
@@ -529,6 +552,22 @@ public class AIChatView implements EclipseAiMonitor {
             case PLAN  -> aiService.getPlannerService();
             case AGENT -> aiService.getAgentMode().getActiveService();
         };
+    }
+
+    private String buildFileContext(List<IFile> files) {
+        if (files.isEmpty()) return "";
+        var sb = new StringBuilder();
+        for (IFile f : files) {
+            try (var in = f.getContents()) {
+                sb.append("\n\nFile: ").append(f.getFullPath())
+                  .append("\n```").append(f.getFileExtension() != null ? f.getFileExtension() : "")
+                  .append("\n").append(new String(in.readAllBytes()))
+                  .append("\n```");
+            } catch (Exception e) {
+                LOG.warn("Could not read attached file: " + f.getFullPath(), e);
+            }
+        }
+        return sb.toString();
     }
 
     private String getUserSelection() {

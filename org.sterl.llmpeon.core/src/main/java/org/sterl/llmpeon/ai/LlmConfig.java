@@ -76,6 +76,10 @@ public class LlmConfig {
         return builder.build();
     }
 
+    public LlmConfig withThinking(boolean enabled) {
+        return this.toBuilder().thinkingEnabled(enabled).build();
+    }
+
     /**
      * Selects the best model from the list:
      * - the currently configured model if present in the list, or

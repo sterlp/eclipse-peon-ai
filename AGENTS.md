@@ -1,3 +1,12 @@
+# Doc
+In the `doc/docs` directory. 
+
+# Spec driven development
+The `doc/docs/design` contains the application design. The `HOW` 
+AI changes only allowed here with user approval!
+Read an consider the approprivate design pages in the plan mode.
+Verify after the implementation, if changes also have impact to the design. Point this out to the developer.
+
 # how to build
 
 - in eclipse clean build
@@ -23,4 +32,4 @@ This is an eclipse plugin RCP project in java.
 
 ## Error Handling in Tools
 
-- non eclipse IDEs cannot build the project use clean package
+- non eclipse IDEs cannot build the project use clean verify
