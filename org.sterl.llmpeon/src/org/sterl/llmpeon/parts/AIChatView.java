@@ -48,6 +48,7 @@ import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.parts.widget.ActionsBarWidget;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget;
 import org.sterl.llmpeon.parts.widget.ChatWidget;
+import org.sterl.llmpeon.parts.widget.StatusLineWidget;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
@@ -68,14 +69,15 @@ public class AIChatView implements EclipseAiMonitor {
 
     // Declared first so the aiService field initializer lambdas can capture them
     // without violating the Java forward-reference restriction.
-    // Both are null until @PostConstruct runs; the lambdas are only ever invoked after that.
+    // All are null until @PostConstruct runs; the lambdas are only ever invoked after that.
     private Composite parent;
     private ActionsBarWidget actionsBar;
+    private StatusLineWidget statusLine;
 
     private final PeonAiService aiService = new PeonAiService(
         this::doSendMessage,
         file -> EclipseUtil.runInUiThread(parent, () -> EclipseUtil.openInEditor(file)),
-        enabled -> EclipseUtil.runInUiThread(parent, () -> actionsBar.setMcpEnabled(enabled))
+        enabled -> EclipseUtil.runInUiThread(parent, () -> statusLine.setMcpEnabled(enabled))
     );
 
     private final AtomicReference<IProgressMonitor> monitorRef = new AtomicReference<>(new NullProgressMonitor());
@@ -105,19 +107,34 @@ public class AIChatView implements EclipseAiMonitor {
         chatHistory = new ChatMarkdownWidget(parent, SWT.BORDER);
         chatHistory.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-        chatInput = new ChatWidget(parent, SWT.NONE, this::doSendMessage, this::onMicClick, this::onPinChange);
+        // Wrap input + action bar + status bar in one bordered block with white background
+        Composite inputBlock = new Composite(parent, SWT.BORDER);
+        GridLayout inputBlockLayout = new GridLayout(1, false);
+        inputBlockLayout.marginWidth = 0;
+        inputBlockLayout.marginHeight = 0;
+        inputBlockLayout.verticalSpacing = 0;
+        inputBlock.setLayout(inputBlockLayout);
+        inputBlock.setLayoutData(new GridData(SWT.FILL, SWT.BOTTOM, true, false));
+
+        chatInput = new ChatWidget(inputBlock, SWT.NONE, this::doSendMessage, this::onMicClick);
         chatInput.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
-        actionsBar = new ActionsBarWidget(parent, SWT.NONE,
+        actionsBar = new ActionsBarWidget(inputBlock, SWT.NONE,
             this::doSendMessage,
             () -> getIProgressMonitor().setCanceled(true),
-            this::doCompressContext,
             this::onClear,
             this::doStartImpl,
             this::onModeChange,
             model -> aiService.updateConfig(aiService.getDeveloperService().getConfig().withModel(model)),
             autonomous -> aiService.getAgentMode().setAutonomous(autonomous),
-            enabled -> aiService.getMcpConnectionService().toggle(enabled)
+            this::onThinkToggle
+        );
+
+        statusLine = new StatusLineWidget(inputBlock, SWT.NONE,
+            this::onPinChange,
+            this::onSkillsToggle,
+            enabled -> aiService.getMcpConnectionService().toggle(enabled),
+            this::doCompressContext
         );
 
         applyConfig();
@@ -131,7 +148,7 @@ public class AIChatView implements EclipseAiMonitor {
     private void onClear() {
         getActiveService().clear();
         chatHistory.clear();
-        actionsBar.updateCompact(getActiveService().getTokenSize(), getActiveService().getTokenWindow());
+        statusLine.updateCompact(getActiveService().getTokenSize(), getActiveService().getTokenWindow());
     }
 
     @PreDestroy
@@ -234,7 +251,7 @@ public class AIChatView implements EclipseAiMonitor {
     public void onChatResponse(SimpleMessage m) {
         EclipseUtil.runInUiThread(parent, () -> {
             chatHistory.appendMessage(m);
-            actionsBar.updateCompact(getActiveService().getTokenSize(), getActiveService().getTokenWindow());
+            statusLine.updateCompact(getActiveService().getTokenSize(), getActiveService().getTokenWindow());
         });
     }
 
@@ -272,14 +289,14 @@ public class AIChatView implements EclipseAiMonitor {
     // -------------------------------------------------------------------------
 
     public void refreshStatusLine() {
-        chatInput.getStatusLine().update(
-            aiService.getSkillService().getSkills().size(),
+        statusLine.update(
+            aiService.getSkillService().loadedSkillCount(),
             aiService.getAgentsMdService().hasAgentFile(),
             currentProject,
             getSelectedFile()
         );
         var active = getActiveService();
-        actionsBar.updateCompact(active.getTokenSize(), active.getTokenWindow());
+        statusLine.updateCompact(active.getTokenSize(), active.getTokenWindow());
     }
 
     private void refreshChat() {
@@ -309,6 +326,9 @@ public class AIChatView implements EclipseAiMonitor {
             throw new RuntimeException("Failed to load " + config.getSkillDirectory());
         }
         aiService.updateConfig(config);
+        // Sync the Think toggle to the config default. The user can override this per-session
+        // via the button; that override is stored in-memory only and not written to preferences.
+        actionsBar.setThinkEnabled(config.isThinkingEnabled());
         applyMcpConfig();
         chatInput.setVoiceInputVisible(VoicePreferenceInitializer.buildWithDefaults().enabled());
         refreshStatusLine();
@@ -317,8 +337,8 @@ public class AIChatView implements EclipseAiMonitor {
 
     private void applyMcpConfig() {
         var servers = McpPreferenceInitializer.loadServers();
-        actionsBar.setMcpAvailable(!servers.isEmpty());
-        actionsBar.setMcpEnabled(!servers.isEmpty() && McpPreferenceInitializer.isMcpEnabled());
+        statusLine.setMcpAvailable(!servers.isEmpty());
+        statusLine.setMcpEnabled(!servers.isEmpty() && McpPreferenceInitializer.isMcpEnabled());
         aiService.applyMcpConfig();
     }
 
@@ -482,9 +502,17 @@ public class AIChatView implements EclipseAiMonitor {
             actionsBar.setAgentModeAvailable(currentProject != null && currentProject.isOpen());
         }
         EclipseUtil.runInUiThread(parent, () -> {
-            chatInput.getStatusLine().setPinned(pinned);
+            statusLine.setPinned(pinned);
             refreshStatusLine();
         });
+    }
+
+    private void onThinkToggle(boolean enabled) {
+        aiService.updateConfig(aiService.getDeveloperService().getConfig().withThinking(enabled));
+    }
+
+    private void onSkillsToggle(boolean enabled) {
+        aiService.getSkillService().setEnabled(enabled);
     }
 
     private void onMicClick() {

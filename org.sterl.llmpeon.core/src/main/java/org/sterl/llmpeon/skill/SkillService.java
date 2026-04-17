@@ -20,6 +20,7 @@ public class SkillService {
 
     private Path skillsDirectory;
     private final List<SkillRecord> skills = new LinkedList<>();
+    private boolean enabled = true;
 
     public SkillService() {
     }
@@ -38,8 +39,22 @@ public class SkillService {
                 """ + string);
     }
 
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    /** Total number of loaded skills regardless of enabled state. */
+    public int loadedSkillCount() {
+        return skills.size();
+    }
+
+    /** Returns loaded skills when enabled, empty list when disabled. */
     public List<SkillRecord> getSkills() {
-        return skills;
+        return enabled ? skills : List.of();
     }
     
     public boolean refresh(String newPath) throws IOException {

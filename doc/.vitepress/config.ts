@@ -45,8 +45,14 @@ export default defineConfig({
           text: 'Development',
           items: [
             { text: 'Architecture', link: '/development/architecture' },
-            { text: 'Building', link: '/development/building' },
-            { text: 'Plan/Dev/Agent Design (WIP)', link: '/plan-dev-agent-design' }
+            { text: 'Building', link: '/development/building' }
+          ]
+        },
+        {
+          text: 'Design',
+          items: [
+            { text: 'Interaction UI', link: '/design/interaction-design' },
+            { text: 'Plan/Dev/Agent Design (WIP)', link: '/design/plan-dev-agent-design' }
           ]
         }
       ]

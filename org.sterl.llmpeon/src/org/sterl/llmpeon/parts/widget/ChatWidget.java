@@ -2,7 +2,6 @@ package org.sterl.llmpeon.parts.widget;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
@@ -32,8 +31,7 @@ import org.sterl.llmpeon.parts.shared.ImageUtil;
 /**
  * Chat input area. Outer composite is transparent (no border). A single
  * bordered inputBox contains: file chips bar, auto-resizing StyledText (up
- * to MAX_ROWS rows), mic ToolItem, and the StatusLineWidget at the bottom.
- * Fires onSend on Ctrl+Enter / Cmd+Enter.
+ * to MAX_ROWS rows), and a mic ToolItem. Fires onSend on Ctrl+Enter / Cmd+Enter.
  */
 public class ChatWidget extends Composite {
 
@@ -44,12 +42,10 @@ public class ChatWidget extends Composite {
     private final Composite textRow;
     private ToolBar micBar;
     private ToolItem micItem;
-    private final StatusLineWidget statusLine;
     private final List<IFile> attachedFiles = new ArrayList<>();
     private final Color colorRecording;
 
-    public ChatWidget(Composite parent, int style, Runnable onSend, Runnable onMicClick,
-            Consumer<Boolean> onPinChange) {
+    public ChatWidget(Composite parent, int style, Runnable onSend, Runnable onMicClick) {
         super(parent, style); // no SWT.BORDER — outer is transparent
 
         colorRecording = new Color(200, 0, 0);
@@ -80,8 +76,8 @@ public class ChatWidget extends Composite {
         btnAttach.setToolTipText("Attach a workspace file to this message");
         btnAttach.addListener(SWT.Selection, e -> openFilePicker());
 
-        // --- Bordered input box (the visual "text field") ---
-        Composite inputBox = new Composite(this, SWT.BORDER);
+        // --- Input box (no own border — outer inputBlock in AIChatView owns the border) ---
+        Composite inputBox = new Composite(this, SWT.NONE);
         GridLayout inputBoxLayout = new GridLayout(1, false);
         inputBoxLayout.marginWidth = 0;
         inputBoxLayout.marginHeight = 0;
@@ -114,7 +110,9 @@ public class ChatWidget extends Composite {
             }
         }));
 
-        // Mic ToolBar (flat, transparent — hidden until voice is enabled)
+        // Mic ToolBar (flat — hidden until voice is enabled)
+        // ToolBar is a native widget; must set background explicitly since INHERIT_DEFAULT
+        // does not propagate into native controls.
         micBar = new ToolBar(textRow, SWT.FLAT | SWT.RIGHT);
         GridData micGd = new GridData(SWT.RIGHT, SWT.BOTTOM, false, false);
         micGd.exclude = true;
@@ -126,8 +124,20 @@ public class ChatWidget extends Composite {
         micItem.setToolTipText("Click to start recording — click again to stop and transcribe");
         micItem.addListener(SWT.Selection, e -> onMicClick.run());
 
-        // --- Status line at the bottom of the input box ---
-        statusLine = new StatusLineWidget(inputBox, SWT.NONE, onPinChange);
+    }
+
+    /**
+     * Flush layout caches and propagate a size change up two levels.
+     * ChatWidget lives inside inputBlock (one level up), which lives in the
+     * view's main composite (two levels up). Both levels must be notified.
+     */
+    private void requestReflow() {
+        layout(true, true);
+        Composite p = getParent();
+        if (p == null) return;
+        p.layout(new Control[]{ this });
+        Composite pp = p.getParent();
+        if (pp != null) pp.layout(new Control[]{ p });
     }
 
     private void refreshHeight() {
@@ -139,8 +149,7 @@ public class ChatWidget extends Composite {
         int newHint = Math.min(maxHeight, size.y);
         if (gd.heightHint != newHint) {
             gd.heightHint = newHint;
-            layout(true, true);
-            getParent().layout(new Control[]{ this });
+            requestReflow();
         }
     }
 
@@ -190,8 +199,7 @@ public class ChatWidget extends Composite {
 
         setChipsBarVisible(true);
         fileChipsBar.layout(true, true);
-        layout(true, true);
-        getParent().layout(new Control[]{ this });
+        requestReflow();
     }
 
     private void removeChip(Composite chip, IFile file) {
@@ -199,8 +207,7 @@ public class ChatWidget extends Composite {
         chip.dispose();
         if (attachedFiles.isEmpty()) setChipsBarVisible(false);
         else fileChipsBar.layout(true, true);
-        layout(true, true);
-        getParent().layout(new Control[]{ this });
+        requestReflow();
     }
 
     private void setChipsBarVisible(boolean visible) {
@@ -223,8 +230,7 @@ public class ChatWidget extends Composite {
         }
         attachedFiles.clear();
         setChipsBarVisible(false);
-        layout(true, true);
-        getParent().layout(new Control[]{ this });
+        requestReflow();
     }
 
     public void setText(String text) {
@@ -235,17 +241,12 @@ public class ChatWidget extends Composite {
         return List.copyOf(attachedFiles);
     }
 
-    public StatusLineWidget getStatusLine() {
-        return statusLine;
-    }
-
     public void setVoiceInputVisible(boolean visible) {
         boolean changed = micBar.getVisible() != visible;
         if (changed) {
             ((GridData) micBar.getLayoutData()).exclude = !visible;
             micBar.setVisible(visible);
-            layout(true, true);
-            getParent().layout(new Control[]{ this });
+            requestReflow();
         }
     }
 
