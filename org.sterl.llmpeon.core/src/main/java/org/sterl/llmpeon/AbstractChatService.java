@@ -148,9 +148,8 @@ public abstract class AbstractChatService {
         messages.add(SystemMessage.from(getSystemPrompt()));
         
         messages.addAll(standingOrders);
-        if (skillService.hasSkills()) {
-            messages.add(skillService.skillMessage(templateContext));
-        }
+        var skillMsg = skillService.skillMessage(templateContext);
+        if (skillMsg != null) messages.add(skillMsg);
         return messages;
     }
 
