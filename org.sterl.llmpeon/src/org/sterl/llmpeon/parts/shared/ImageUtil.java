@@ -9,8 +9,13 @@ import org.eclipse.swt.widgets.Widget;
 
 public class ImageUtil {
     
+    public static final String FILE = "platform:/plugin/org.eclipse.ui.editors/icons/full/obj16/file_obj.svg";
+    public static final String FILE_NAV = "platform:/plugin/org.eclipse.ui/icons/full/eview16/filenav_nav.svg";
     public static final String STOP = "platform:/plugin/org.eclipse.ui/icons/full/elcl16/stop.svg";
     public static final String MICROPHONE = "platform:/plugin/org.sterl.llmpeon/icons/microphone.svg";
+    
+    public static final String UNPINNED = "platform:/plugin/org.eclipse.gef/org/eclipse/gef/internal/icons/unpinned.svg";
+    public static final String PIN = "platform:/plugin/org.eclipse.gef/org/eclipse/gef/internal/icons/pinned.svg";
 
     public static Image loadImage(Widget forWidget, String path) {
         try {

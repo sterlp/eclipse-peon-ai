@@ -148,7 +148,7 @@ public class SkillService {
     }
 
     public boolean hasSkills() {
-        return !skills.isEmpty();
+        return enabled && !skills.isEmpty();
     }
 
     public String skillNames() {
