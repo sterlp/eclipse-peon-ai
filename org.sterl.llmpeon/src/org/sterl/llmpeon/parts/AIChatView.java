@@ -47,8 +47,8 @@ import org.sterl.llmpeon.parts.shared.SimpleDiff;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.parts.widget.ActionsBarWidget;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget;
-import org.sterl.llmpeon.parts.widget.ChatWidget;
 import org.sterl.llmpeon.parts.widget.StatusLineWidget;
+import org.sterl.llmpeon.parts.widget.UserInputWidget;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
@@ -90,7 +90,7 @@ public class AIChatView implements EclipseAiMonitor {
     private boolean projectPinned = false;
 
     private ChatMarkdownWidget chatHistory;
-    private ChatWidget chatInput;
+    private UserInputWidget chatInput;
 
     private ITextSelection textSelection;
     private IResource selectedResource;
@@ -116,12 +116,13 @@ public class AIChatView implements EclipseAiMonitor {
         inputBlock.setLayout(inputBlockLayout);
         inputBlock.setLayoutData(new GridData(SWT.FILL, SWT.BOTTOM, true, false));
 
-        chatInput = new ChatWidget(inputBlock, SWT.NONE, this::doSendMessage, this::onMicClick);
+        chatInput = new UserInputWidget(inputBlock, SWT.NONE,
+            this::doSendMessage,
+            () -> getIProgressMonitor().setCanceled(true),
+            this::onMicClick);
         chatInput.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
         actionsBar = new ActionsBarWidget(inputBlock, SWT.NONE,
-            this::doSendMessage,
-            () -> getIProgressMonitor().setCanceled(true),
             this::onClear,
             this::doStartImpl,
             this::onModeChange,
@@ -258,7 +259,7 @@ public class AIChatView implements EclipseAiMonitor {
     @Override
     public void onCallCompleted(dev.langchain4j.model.chat.response.ChatResponse response, Duration duration) {
         EclipseUtil.runInUiThread(parent, () -> {
-            actionsBar.lockWhileWorking(false);
+            lockWhileWorking(false);
             if (aiService.getAgentMode().consumeImplementationRequest()) {
                 aiService.getAgentMode().startImplementation();
             }
@@ -424,7 +425,7 @@ public class AIChatView implements EclipseAiMonitor {
 
         var active = getActiveService();
         if (active.getMessages().isEmpty()) return;
-        actionsBar.lockWhileWorking(true);
+        lockWhileWorking(true);
         Job.create("Compressing context", monitor -> {
             monitor.beginTask("Compressing chat", IProgressMonitor.UNKNOWN);
             monitorRef.set(monitor);
@@ -436,7 +437,7 @@ public class AIChatView implements EclipseAiMonitor {
                 ex = e;
             } finally {
                 monitorRef.set(new NullProgressMonitor());
-                EclipseUtil.runInUiThread(parent, () -> actionsBar.lockWhileWorking(false));
+                EclipseUtil.runInUiThread(parent, () -> lockWhileWorking(false));
             }
             monitor.done();
             return ex == null ? Status.OK_STATUS
@@ -464,7 +465,7 @@ public class AIChatView implements EclipseAiMonitor {
             }
         }
 
-        actionsBar.lockWhileWorking(true);
+        lockWhileWorking(true);
         Job.create("Peon AI request", monitor -> {
             monitor.beginTask("Arbeit, Arbeit!", currentMode == PeonMode.AGENT ? ToolService.MAX_ITERATIONS * 2 : ToolService.MAX_ITERATIONS);
             monitorRef.set(monitor);
@@ -481,7 +482,7 @@ public class AIChatView implements EclipseAiMonitor {
             } catch (Exception e) {
                 ex = e;
                 onChatResponse(new SimpleMessage(Type.PROBLEM, e.getMessage()));
-                EclipseUtil.runInUiThread(parent, () -> actionsBar.lockWhileWorking(false));
+                EclipseUtil.runInUiThread(parent, () -> lockWhileWorking(false));
             } finally {
                 monitor.done();
                 active.setStandingOrders(Collections.emptyList());
@@ -505,6 +506,11 @@ public class AIChatView implements EclipseAiMonitor {
             statusLine.setPinned(pinned);
             refreshStatusLine();
         });
+    }
+
+    private void lockWhileWorking(boolean value) {
+        actionsBar.lockWhileWorking(value);
+        chatInput.setWorking(value);
     }
 
     private void onThinkToggle(boolean enabled) {

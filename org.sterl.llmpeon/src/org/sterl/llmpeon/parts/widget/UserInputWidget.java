@@ -29,24 +29,24 @@ import org.eclipse.ui.dialogs.FilteredResourcesSelectionDialog;
 import org.sterl.llmpeon.parts.shared.ImageUtil;
 
 /**
- * Chat input area. Outer composite is transparent (no border). A single
- * bordered inputBox contains: file chips bar, auto-resizing StyledText (up
- * to MAX_ROWS rows), and a mic ToolItem. Fires onSend on Ctrl+Enter / Cmd+Enter.
+ * User input area: file chips bar (hidden until files attached), auto-resizing
+ * StyledText (min 2 / max 7 rows), mic ToolItem, and Send/Stop button — all in
+ * a single composite with no own border.
  */
-public class ChatWidget extends Composite {
+public class UserInputWidget extends Composite {
 
     private static final int MAX_ROWS = 7;
 
     private final StyledText styledText;
     private final Composite fileChipsBar;
-    private final Composite textRow;
+    private final SendOrStopButton sendOrStop;
     private ToolBar micBar;
     private ToolItem micItem;
     private final List<IFile> attachedFiles = new ArrayList<>();
     private final Color colorRecording;
 
-    public ChatWidget(Composite parent, int style, Runnable onSend, Runnable onMicClick) {
-        super(parent, style); // no SWT.BORDER — outer is transparent
+    public UserInputWidget(Composite parent, int style, Runnable onSend, Runnable onStop, Runnable onMicClick) {
+        super(parent, style);
 
         colorRecording = new Color(200, 0, 0);
         addDisposeListener(e -> colorRecording.dispose());
@@ -76,17 +76,8 @@ public class ChatWidget extends Composite {
         btnAttach.setToolTipText("Attach a workspace file to this message");
         btnAttach.addListener(SWT.Selection, e -> openFilePicker());
 
-        // --- Input box (no own border — outer inputBlock in AIChatView owns the border) ---
-        Composite inputBox = new Composite(this, SWT.NONE);
-        GridLayout inputBoxLayout = new GridLayout(1, false);
-        inputBoxLayout.marginWidth = 0;
-        inputBoxLayout.marginHeight = 0;
-        inputBoxLayout.verticalSpacing = 0;
-        inputBox.setLayout(inputBoxLayout);
-        inputBox.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-
-        // --- Text row: StyledText + mic ToolBar ---
-        textRow = new Composite(inputBox, SWT.NONE);
+        // --- Text row: StyledText | right button column ---
+        Composite textRow = new Composite(this, SWT.NONE);
         GridLayout textRowLayout = new GridLayout(2, false);
         textRowLayout.marginWidth = 2;
         textRowLayout.marginHeight = 2;
@@ -96,7 +87,6 @@ public class ChatWidget extends Composite {
 
         styledText = new StyledText(textRow, SWT.MULTI | SWT.WRAP | SWT.V_SCROLL);
         styledText.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-
         styledText.addModifyListener(e -> refreshHeight());
 
         // Ctrl/Cmd+Enter sends; plain Enter inserts newline
@@ -110,11 +100,18 @@ public class ChatWidget extends Composite {
             }
         }));
 
-        // Mic ToolBar (flat — hidden until voice is enabled)
-        // ToolBar is a native widget; must set background explicitly since INHERIT_DEFAULT
-        // does not propagate into native controls.
-        micBar = new ToolBar(textRow, SWT.FLAT | SWT.RIGHT);
-        GridData micGd = new GridData(SWT.RIGHT, SWT.BOTTOM, false, false);
+        // Right column: mic on top, send/stop at bottom
+        Composite buttonBar = new Composite(textRow, SWT.NONE);
+        GridLayout buttonBarLayout = new GridLayout(1, false);
+        buttonBarLayout.marginWidth = 0;
+        buttonBarLayout.marginHeight = 2;
+        buttonBarLayout.verticalSpacing = 2;
+        buttonBar.setLayout(buttonBarLayout);
+        buttonBar.setLayoutData(new GridData(SWT.RIGHT, SWT.FILL, false, true));
+
+        // Mic ToolBar — hidden until voice is configured
+        micBar = new ToolBar(buttonBar, SWT.FLAT);
+        GridData micGd = new GridData(SWT.CENTER, SWT.TOP, false, false);
         micGd.exclude = true;
         micBar.setLayoutData(micGd);
         micBar.setVisible(false);
@@ -124,13 +121,11 @@ public class ChatWidget extends Composite {
         micItem.setToolTipText("Click to start recording — click again to stop and transcribe");
         micItem.addListener(SWT.Selection, e -> onMicClick.run());
 
+        // Send/Stop — grabs remaining vertical space so it sits at the bottom
+        sendOrStop = new SendOrStopButton(buttonBar, SWT.NONE, onSend, onStop);
+        sendOrStop.setLayoutData(new GridData(SWT.CENTER, SWT.BOTTOM, false, true));
     }
 
-    /**
-     * Flush layout caches and propagate a size change up two levels.
-     * ChatWidget lives inside inputBlock (one level up), which lives in the
-     * view's main composite (two levels up). Both levels must be notified.
-     */
     private void requestReflow() {
         layout(true, true);
         Composite p = getParent();
@@ -145,8 +140,10 @@ public class ChatWidget extends Composite {
         if (width <= 0) return;
         Point size = styledText.computeSize(width, SWT.DEFAULT);
         GridData gd = (GridData) styledText.getLayoutData();
-        int maxHeight = styledText.getLineHeight() * MAX_ROWS;
-        int newHint = Math.min(maxHeight, size.y);
+        int lineH = styledText.getLineHeight();
+        int minHeight = lineH * 2;
+        int maxHeight = lineH * MAX_ROWS;
+        int newHint = Math.max(minHeight, Math.min(maxHeight, size.y));
         if (gd.heightHint != newHint) {
             gd.heightHint = newHint;
             requestReflow();
@@ -255,6 +252,11 @@ public class ChatWidget extends Composite {
         micItem.setToolTipText(recording
             ? "Recording... click to stop and transcribe"
             : "Click to start recording — click again to stop and transcribe");
+    }
+
+    /** Switch the Send/Stop button between idle and working state. */
+    public void setWorking(boolean working) {
+        sendOrStop.setWorking(working);
     }
 
     @Override
