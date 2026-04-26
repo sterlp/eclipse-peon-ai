@@ -12,7 +12,6 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.ILog;
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
@@ -47,8 +46,8 @@ import org.sterl.llmpeon.parts.shared.SimpleDiff;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.parts.widget.ActionsBarWidget;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget;
-import org.sterl.llmpeon.parts.widget.ChatWidget;
 import org.sterl.llmpeon.parts.widget.StatusLineWidget;
+import org.sterl.llmpeon.parts.widget.UserInputWidget;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
@@ -90,7 +89,7 @@ public class AIChatView implements EclipseAiMonitor {
     private boolean projectPinned = false;
 
     private ChatMarkdownWidget chatHistory;
-    private ChatWidget chatInput;
+    private UserInputWidget chatInput;
 
     private ITextSelection textSelection;
     private IResource selectedResource;
@@ -107,7 +106,8 @@ public class AIChatView implements EclipseAiMonitor {
         chatHistory = new ChatMarkdownWidget(parent, SWT.BORDER);
         chatHistory.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-        // Wrap input + action bar + status bar in one bordered block with white background
+        // inputBlock carries the single outer border for the entire input area (sections 2+3+4).
+        // No background manipulation needed — SWT native widgets render their own correct backgrounds.
         Composite inputBlock = new Composite(parent, SWT.BORDER);
         GridLayout inputBlockLayout = new GridLayout(1, false);
         inputBlockLayout.marginWidth = 0;
@@ -116,12 +116,13 @@ public class AIChatView implements EclipseAiMonitor {
         inputBlock.setLayout(inputBlockLayout);
         inputBlock.setLayoutData(new GridData(SWT.FILL, SWT.BOTTOM, true, false));
 
-        chatInput = new ChatWidget(inputBlock, SWT.NONE, this::doSendMessage, this::onMicClick);
+        chatInput = new UserInputWidget(inputBlock, SWT.NONE,
+            this::doSendMessage,
+            () -> getIProgressMonitor().setCanceled(true),
+            this::onMicClick);
         chatInput.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
         actionsBar = new ActionsBarWidget(inputBlock, SWT.NONE,
-            this::doSendMessage,
-            () -> getIProgressMonitor().setCanceled(true),
             this::onClear,
             this::doStartImpl,
             this::onModeChange,
@@ -258,7 +259,7 @@ public class AIChatView implements EclipseAiMonitor {
     @Override
     public void onCallCompleted(dev.langchain4j.model.chat.response.ChatResponse response, Duration duration) {
         EclipseUtil.runInUiThread(parent, () -> {
-            actionsBar.lockWhileWorking(false);
+            lockWhileWorking(false);
             if (aiService.getAgentMode().consumeImplementationRequest()) {
                 aiService.getAgentMode().startImplementation();
             }
@@ -424,7 +425,7 @@ public class AIChatView implements EclipseAiMonitor {
 
         var active = getActiveService();
         if (active.getMessages().isEmpty()) return;
-        actionsBar.lockWhileWorking(true);
+        lockWhileWorking(true);
         Job.create("Compressing context", monitor -> {
             monitor.beginTask("Compressing chat", IProgressMonitor.UNKNOWN);
             monitorRef.set(monitor);
@@ -436,11 +437,10 @@ public class AIChatView implements EclipseAiMonitor {
                 ex = e;
             } finally {
                 monitorRef.set(new NullProgressMonitor());
-                EclipseUtil.runInUiThread(parent, () -> actionsBar.lockWhileWorking(false));
+                EclipseUtil.runInUiThread(parent, () -> lockWhileWorking(false));
             }
             monitor.done();
-            return ex == null ? Status.OK_STATUS
-                : new Status(IStatus.ERROR, PeonConstants.PLUGIN_ID, ex.getMessage(), ex);
+            return PeonConstants.status("Compressed", ex);
         }).schedule();
     }
 
@@ -449,22 +449,28 @@ public class AIChatView implements EclipseAiMonitor {
             chatHistory.appendMessage(new SimpleMessage(Type.PROBLEM, "No model configured — open Window > Preferences > Peon AI"));
             return;
         }
-        String text = StringUtil.strip(chatInput.getText().trim() + buildFileContext(chatInput.getAttachedFiles()) + getUserSelection());
-        var active = getActiveService();
+
+        final var active = getActiveService();
+        final var selection = getUserSelection();
+        final var needsSelection = !active.hasUserText(selection);
+
+        final var text = StringUtil.strip(chatInput.getText().trim()) + (needsSelection ? selection : "");
         if (StringUtil.hasNoValue(text) && active.getMessages().isEmpty()) return;
 
         if (StringUtil.hasValue(text)) {
             chatHistory.appendMessage(new SimpleMessage(Type.USER, text));
             chatInput.clearText();
-
-            // are already working -> we only append the text message to the current history ...
+            
+            // already working -> we only append the current history ...
             if (actionsBar.isWorking()) {
-                getActiveService().addMessage(UserMessage.from(text));
+                active.addMessage(UserMessage.from(text));
                 return;
             }
+        } else if (actionsBar.isWorking()) { // no text and already working ...
+            return;
         }
 
-        actionsBar.lockWhileWorking(true);
+        lockWhileWorking(true);
         Job.create("Peon AI request", monitor -> {
             monitor.beginTask("Arbeit, Arbeit!", currentMode == PeonMode.AGENT ? ToolService.MAX_ITERATIONS * 2 : ToolService.MAX_ITERATIONS);
             monitorRef.set(monitor);
@@ -473,16 +479,14 @@ public class AIChatView implements EclipseAiMonitor {
                 active.setStandingOrders(StandingOrdersBuilder.build(
                         selectedResource, aiService.getAgentsMdService(), aiService.getTemplateContext(),
                         currentMode, aiService.getAgentMode()));
-                switch (currentMode) {
-                    case DEV   -> aiService.getDeveloperService().call(text.isEmpty() ? null : text, this);
-                    case PLAN  -> aiService.getPlannerService().call(text.isEmpty() ? null : text, this);
-                    case AGENT -> aiService.getAgentMode().call(text.isEmpty() ? null : text, this);
-                };
+                
+                active.call(text.isEmpty() ? null : text, this);
+
             } catch (Exception e) {
                 ex = e;
                 onChatResponse(new SimpleMessage(Type.PROBLEM, e.getMessage()));
-                EclipseUtil.runInUiThread(parent, () -> actionsBar.lockWhileWorking(false));
             } finally {
+                EclipseUtil.runInUiThread(parent, () -> lockWhileWorking(false));
                 monitor.done();
                 active.setStandingOrders(Collections.emptyList());
                 monitorRef.set(new NullProgressMonitor());
@@ -505,6 +509,11 @@ public class AIChatView implements EclipseAiMonitor {
             statusLine.setPinned(pinned);
             refreshStatusLine();
         });
+    }
+
+    private void lockWhileWorking(boolean value) {
+        actionsBar.lockWhileWorking(value);
+        chatInput.setWorking(value);
     }
 
     private void onThinkToggle(boolean enabled) {
@@ -554,22 +563,6 @@ public class AIChatView implements EclipseAiMonitor {
         };
     }
 
-    private String buildFileContext(List<IFile> files) {
-        if (files.isEmpty()) return "";
-        var sb = new StringBuilder();
-        for (IFile f : files) {
-            try (var in = f.getContents()) {
-                sb.append("\n\nFile: ").append(f.getFullPath())
-                  .append("\n```").append(f.getFileExtension() != null ? f.getFileExtension() : "")
-                  .append("\n").append(new String(in.readAllBytes()))
-                  .append("\n```");
-            } catch (Exception e) {
-                LOG.warn("Could not read attached file: " + f.getFullPath(), e);
-            }
-        }
-        return sb.toString();
-    }
-
     private String getUserSelection() {
         if (textSelection == null || StringUtil.hasNoValue(textSelection.getText())) return "";
         var file = getSelectedFile();
@@ -577,11 +570,14 @@ public class AIChatView implements EclipseAiMonitor {
         var extension = "\n";
         if (file != null) extension = file.getFileExtension() + "\n";
 
-        String userIn = "\n\nSelected:\n```" + extension + textSelection.getText() + "\n```";
-        userIn += "\n\nStart line: " + (textSelection.getStartLine() + 1);
+        String userIn = "\n\n```" + extension + textSelection.getText() + "\n```";
 
-        if (file != null) userIn += "\nFile: " + JdtUtil.pathOf(file) + " use "
-                + EclipseWorkspaceReadFileTool.READ_ECLIPSE_FILE_TOOL + " to read whole file, if needed.";
+        if (file != null) {
+            userIn += "\n\nStart line: " + (textSelection.getStartLine() + 1);
+            userIn += "\n\nFile: " + JdtUtil.pathOf(file) 
+                    + "\n\nUse tool `" + EclipseWorkspaceReadFileTool.READ_ECLIPSE_FILE_TOOL 
+                    + "` only if more context is needed.";
+        }
         return userIn;
     }
 

@@ -79,7 +79,7 @@ public enum AiProvider {
                     .apiKey(c.getApiKey());
             // no thinking "off" supported
             result.returnThinking(Boolean.TRUE)
-                  .sendThinking(Boolean.TRUE);
+                  .sendThinking(Boolean.FALSE);
             return result.build();
         }
     },
@@ -105,7 +105,7 @@ public enum AiProvider {
                     .httpClientBuilder(http1);
             // no thinking "off" supported
             result.returnThinking(Boolean.TRUE)
-                  .sendThinking(Boolean.TRUE);
+                  .sendThinking(Boolean.FALSE);
             return result.build();
         }
 

@@ -7,7 +7,6 @@ import java.util.function.Consumer;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.layout.RowData;
 import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.widgets.Button;
@@ -18,13 +17,11 @@ import org.sterl.llmpeon.PeonMode;
 import org.sterl.llmpeon.ai.model.AiModel;
 
 /**
- * Action bar below the chat input. Uses GridLayout(2):
- *  - left cell: wrapping RowLayout with mode/model/think/clear and conditional controls
- *  - right cell: SendOrStopButton pinned to the right
+ * Action bar below the user input. RowLayout (wrapping) with mode selector,
+ * model selector, Think toggle, Clear, and conditional controls.
  */
 public class ActionsBarWidget extends Composite {
 
-    private final SendOrStopButton sendOrStop;
     private Button btnClear;
     private Button btnImplement;
     private Button chkAutonomous;
@@ -37,8 +34,6 @@ public class ActionsBarWidget extends Composite {
     private List<AiModel> availableModels = List.of();
 
     public ActionsBarWidget(Composite parent, int style,
-            Runnable onSend,
-            Runnable onStop,
             Runnable onClear,
             Runnable onImplement,
             Consumer<PeonMode> onModeChange,
@@ -49,25 +44,72 @@ public class ActionsBarWidget extends Composite {
 
         setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
-        GridLayout outerLayout = new GridLayout(2, false);
-        outerLayout.marginWidth = 4;
-        outerLayout.marginHeight = 2;
-        outerLayout.horizontalSpacing = 0;
-        setLayout(outerLayout);
-
-        // --- Left cell: all controls in a wrapping RowLayout ---
-        Composite leftGroup = new Composite(this, SWT.NONE);
         RowLayout rowLayout = new RowLayout(SWT.HORIZONTAL);
         rowLayout.wrap = true;
         rowLayout.pack = true;
         rowLayout.center = true;
-        rowLayout.marginTop = 0;
-        rowLayout.marginBottom = 0;
+        rowLayout.marginTop = 2;
+        rowLayout.marginBottom = 2;
+        rowLayout.marginLeft = 4;
+        rowLayout.marginRight = 4;
         rowLayout.spacing = 4;
-        leftGroup.setLayout(rowLayout);
-        leftGroup.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+        setLayout(rowLayout);
 
-        agentCombo = new Combo(leftGroup, SWT.READ_ONLY);
+        buildAgentCombo(onModeChange);
+
+        buildModelCombo(onModelChange);
+
+        btnThink = new Button(this, SWT.TOGGLE);
+        btnThink.setText("\uD83E\uDDE0 Think");
+        btnThink.setToolTipText("Enable extended thinking for the next request");
+        btnThink.addListener(SWT.Selection, e -> onThinkToggle.accept(btnThink.getSelection()));
+
+        btnClear = new Button(this, SWT.PUSH);
+        btnClear.setText("Clear");
+        btnClear.setToolTipText("Clear conversation context");
+        btnClear.addListener(SWT.Selection, e -> onClear.run());
+
+        buildBtnImplement(onImplement);
+        buildChkAutonomous(onAutonomousChange);
+    }
+
+	private void buildBtnImplement(Runnable onImplement) {
+		btnImplement = new Button(this, SWT.PUSH);
+        btnImplement.setText("Start Impl.");
+        RowData rdImpl = new RowData();
+        rdImpl.exclude = true;
+        btnImplement.setLayoutData(rdImpl);
+        btnImplement.setVisible(false);
+        btnImplement.setEnabled(false);
+        btnImplement.setToolTipText("Switch to Dev mode and start implementing the plan");
+        btnImplement.addListener(SWT.Selection, e -> onImplement.run());
+	}
+
+	private void buildChkAutonomous(Consumer<Boolean> onAutonomousChange) {
+		chkAutonomous = new Button(this, SWT.CHECK);
+        chkAutonomous.setText("autonomous");
+        chkAutonomous.setToolTipText("Automatically start implementation after the plan is saved");
+        RowData rdAuto = new RowData();
+        rdAuto.exclude = true;
+        chkAutonomous.setLayoutData(rdAuto);
+        chkAutonomous.setVisible(false);
+        chkAutonomous.addListener(SWT.Selection, e -> onAutonomousChange.accept(chkAutonomous.getSelection()));
+	}
+
+	private void buildModelCombo(Consumer<AiModel> onModelChange) {
+		modelCombo = new Combo(this, SWT.READ_ONLY);
+        modelCombo.setLayoutData(new RowData(150, SWT.DEFAULT));
+        modelCombo.setToolTipText("Select model (fetched from provider)");
+        modelCombo.addListener(SWT.Selection, e -> {
+            int idx = modelCombo.getSelectionIndex();
+            if (idx >= 0 && idx < availableModels.size()) {
+                onModelChange.accept(availableModels.get(idx));
+            }
+        });
+	}
+
+	private void buildAgentCombo(Consumer<PeonMode> onModeChange) {
+		agentCombo = new Combo(this, SWT.READ_ONLY);
         agentCombo.setLayoutData(new RowData(100, SWT.DEFAULT));
         agentCombo.setItems(Arrays.asList(PeonMode.values()).stream()
                 .map(PeonMode::getLabel)
@@ -84,52 +126,9 @@ public class ActionsBarWidget extends Composite {
             agentCombo.setToolTipText("Select agent mode");
             onModeChange.accept(selected);
         });
+	}
 
-        modelCombo = new Combo(leftGroup, SWT.READ_ONLY);
-        modelCombo.setLayoutData(new RowData(100, SWT.DEFAULT));
-        modelCombo.setToolTipText("Select model (fetched from provider)");
-        modelCombo.addListener(SWT.Selection, e -> {
-            int idx = modelCombo.getSelectionIndex();
-            if (idx >= 0 && idx < availableModels.size()) {
-                onModelChange.accept(availableModels.get(idx));
-            }
-        });
-
-        btnThink = new Button(leftGroup, SWT.TOGGLE);
-        btnThink.setText("\uD83E\uDDE0 Think");
-        btnThink.setToolTipText("Enable extended thinking for the next request");
-        btnThink.addListener(SWT.Selection, e -> onThinkToggle.accept(btnThink.getSelection()));
-
-        btnClear = new Button(leftGroup, SWT.PUSH);
-        btnClear.setText("Clear");
-        btnClear.setToolTipText("Clear conversation context");
-        btnClear.addListener(SWT.Selection, e -> onClear.run());
-
-        btnImplement = new Button(leftGroup, SWT.PUSH);
-        btnImplement.setText("Start Impl.");
-        RowData rdImpl = new RowData();
-        rdImpl.exclude = true;
-        btnImplement.setLayoutData(rdImpl);
-        btnImplement.setVisible(false);
-        btnImplement.setEnabled(false);
-        btnImplement.setToolTipText("Switch to Dev mode and start implementing the plan");
-        btnImplement.addListener(SWT.Selection, e -> onImplement.run());
-
-        chkAutonomous = new Button(leftGroup, SWT.CHECK);
-        chkAutonomous.setText("autonomous");
-        chkAutonomous.setToolTipText("Automatically start implementation after the plan is saved");
-        RowData rdAuto = new RowData();
-        rdAuto.exclude = true;
-        chkAutonomous.setLayoutData(rdAuto);
-        chkAutonomous.setVisible(false);
-        chkAutonomous.addListener(SWT.Selection, e -> onAutonomousChange.accept(chkAutonomous.getSelection()));
-
-        // --- Right cell: SendOrStop pinned to the right ---
-        sendOrStop = new SendOrStopButton(this, SWT.NONE, onSend, onStop);
-        sendOrStop.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
-    }
-
-    /** Enable/disable the entire bar while a request is in flight. */
+    /** Enable/disable controls while a request is in flight. */
     public void lockWhileWorking(boolean value) {
         this.working.set(value);
         agentCombo.setEnabled(!value);
@@ -137,7 +136,6 @@ public class ActionsBarWidget extends Composite {
         btnClear.setEnabled(!value);
         btnThink.setEnabled(!value);
         if (value) btnImplement.setEnabled(false); // re-enable is handled by updateModeUI
-        sendOrStop.setWorking(value);
     }
 
     public boolean isWorking() {

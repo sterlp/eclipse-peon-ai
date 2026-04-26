@@ -15,6 +15,8 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.PlatformUI;
+import org.sterl.llmpeon.parts.shared.EclipseUiUtil;
+import org.sterl.llmpeon.parts.shared.ImageUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 
 /**
@@ -35,6 +37,8 @@ public class StatusLineWidget extends Composite {
 
     private final Color colorWarning;
     private final Color colorError;
+    
+    private final ISharedImages images = PlatformUI.getWorkbench().getSharedImages();
 
     public StatusLineWidget(Composite parent, int style,
             Consumer<Boolean> onPinChange,
@@ -62,26 +66,22 @@ public class StatusLineWidget extends Composite {
         setLayout(rowLayout);
 
         // --- Pin + project: single toggle button, hidden until a project is selected ---
+        final var imgPinned = ImageUtil.loadImage(this, ImageUtil.PIN);
         btnPin = new Button(this, SWT.TOGGLE);
+        btnPin.setImage(imgPinned);
         btnPin.setToolTipText("Pin project — navigation won't change the active project");
         RowData pinRd = new RowData();
         pinRd.exclude = true;
         btnPin.setLayoutData(pinRd);
         btnPin.setVisible(false);
         btnPin.addListener(SWT.Selection, e -> onPinChange.accept(btnPin.getSelection()));
+        
+        // --- File label ---
+        fileLabel = new Label(this, SWT.NONE);
 
-        // --- Skills toggle ---
-        btnSkills = new Button(this, SWT.TOGGLE);
-        btnSkills.setSelection(true);
-        btnSkills.setText("\u26A1 0 skills");
-        btnSkills.setToolTipText("Toggle skills on/off");
-        btnSkills.addListener(SWT.Selection, e -> onSkillsToggle.accept(btnSkills.getSelection()));
-
-        var sep1 = new Label(this, SWT.SEPARATOR | SWT.VERTICAL);
-        sep1.setLayoutData(new RowData(SWT.DEFAULT, 16));
+        EclipseUiUtil.newSeparator(this);
 
         // --- Agent icon + label ---
-        var images = PlatformUI.getWorkbench().getSharedImages();
         agentIcon = new Label(this, SWT.NONE);
         agentIcon.setImage(images.getImage(ISharedImages.IMG_OBJ_FILE));
         agentIcon.setVisible(false);
@@ -89,14 +89,16 @@ public class StatusLineWidget extends Composite {
         agentLabel = new Label(this, SWT.NONE);
         agentLabel.setVisible(false);
 
-        var sep2 = new Label(this, SWT.SEPARATOR | SWT.VERTICAL);
-        sep2.setLayoutData(new RowData(SWT.DEFAULT, 16));
+        EclipseUiUtil.newSeparator(this);
+        // --- Skills toggle ---
+        btnSkills = new Button(this, SWT.TOGGLE);
+        btnSkills.setSelection(true);
+        btnSkills.setImage(images.getImage(ISharedImages.IMG_OBJ_FOLDER));
+        btnSkills.setText("0 skills");
+        btnSkills.setToolTipText("Toggle skills on/off");
+        btnSkills.addListener(SWT.Selection, e -> onSkillsToggle.accept(btnSkills.getSelection()));
 
-        // --- File label ---
-        fileLabel = new Label(this, SWT.NONE);
-
-        var sep3 = new Label(this, SWT.SEPARATOR | SWT.VERTICAL);
-        sep3.setLayoutData(new RowData(SWT.DEFAULT, 16));
+        EclipseUiUtil.newSeparator(this);
 
         // --- MCP toggle ---
         btnMcp = new Button(this, SWT.TOGGLE);
@@ -122,7 +124,7 @@ public class StatusLineWidget extends Composite {
             btnPin.setVisible(hasProject);
         }
         if (hasProject) {
-            btnPin.setText("\uD83D\uDCCC " + project.getName()); // 📌 ProjectName
+            btnPin.setText(project.getName()); // 📌 ProjectName
         }
 
         // --- Agent ---
@@ -141,7 +143,7 @@ public class StatusLineWidget extends Composite {
 
     /** Update the skills toggle button text with the loaded skill count. */
     public void setSkillCount(int count) {
-        btnSkills.setText("\u26A1 " + count + " skill" + (count != 1 ? "s" : ""));
+        btnSkills.setText(count + " skill" + (count != 1 ? "s" : ""));
         btnSkills.getParent().layout(false, false);
     }
 

@@ -115,10 +115,6 @@ Detailed documentation is available at [peon-ai-4e.sterl.org](https://peon-ai-4e
 - [Building](https://peon-ai-4e.sterl.org/development/building/)
 - [Architecture](https://peon-ai-4e.sterl.org/development/architecture/)
 
-To serve docs locally:
-```bash
-cd doc && pip install -r requirements.txt && mkdocs serve
-```
 
 ## Dependencies
 

@@ -72,6 +72,14 @@ public abstract class AbstractChatService {
         if (used < 100) return 0;
         return Math.round(used / maxToken);
     }
+    
+    public boolean hasUserText(String message) {
+        if (StringUtil.hasNoValue(message)) return true;
+        return this.memory.messages().stream()
+            .filter(m -> m instanceof UserMessage)
+            .map(m -> (UserMessage)m)
+            .anyMatch(um -> um.hasSingleText() && um.singleText().contains(message));
+    }
 
     public ChatResponse call(String message, AiMonitor monitor) {
         monitor = AiMonitor.nullSafety(monitor);
