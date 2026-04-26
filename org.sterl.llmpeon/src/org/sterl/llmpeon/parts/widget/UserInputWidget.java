@@ -6,6 +6,8 @@ import java.util.List;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.debug.ui.DebugUITools;
+import org.eclipse.debug.ui.IDebugUIConstants;
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
@@ -21,17 +23,19 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
-import org.eclipse.swt.widgets.ToolBar;
-import org.eclipse.swt.widgets.ToolItem;
 import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.dialogs.FilteredResourcesSelectionDialog;
 import org.sterl.llmpeon.parts.shared.ImageUtil;
+import org.sterl.llmpeon.parts.shared.SwtUtil;
 
 /**
  * User input area: file chips bar (hidden until files attached), auto-resizing
- * StyledText (min 2 / max 7 rows), mic ToolItem, and Send/Stop button — all in
- * a single composite with no own border.
+ * StyledText (min 2 / max 7 rows), mic button, and Send/Stop button.
+ *
+ * <p>No backgrounds are set anywhere inside this widget — the StyledText keeps
+ * its native OS white, and the paint-based Buttons from {@link SwtUtil#createIconButton}
+ * inherit the same background so the whole area reads as one flat field.
  */
 public class UserInputWidget extends Composite {
 
@@ -39,17 +43,29 @@ public class UserInputWidget extends Composite {
 
     private final StyledText styledText;
     private final Composite fileChipsBar;
-    private final SendOrStopButton sendOrStop;
-    private ToolBar micBar;
-    private ToolItem micItem;
+    private final Composite rightColumn;
+    private final Button sendButton;
+    private Button micButton;   // null until voice is configured
+
+    private final Image micImage;
+    private final Image sendImage;  // shared registry — must NOT be disposed
+    private final Image stopImage;
+    private boolean working = false;
+    private final Runnable onMicClick;
+
     private final List<IFile> attachedFiles = new ArrayList<>();
     private final Color colorRecording;
 
     public UserInputWidget(Composite parent, int style, Runnable onSend, Runnable onStop, Runnable onMicClick) {
         super(parent, style);
+        this.onMicClick = onMicClick;
 
         colorRecording = new Color(200, 0, 0);
         addDisposeListener(e -> colorRecording.dispose());
+
+        micImage  = ImageUtil.loadImage(this, ImageUtil.MICROPHONE);
+        sendImage = DebugUITools.getImage(IDebugUIConstants.IMG_ACT_RUN);
+        stopImage = ImageUtil.loadImage(this, ImageUtil.STOP);
 
         GridLayout outerLayout = new GridLayout(1, false);
         outerLayout.marginWidth = 0;
@@ -65,6 +81,7 @@ public class UserInputWidget extends Composite {
         rowLayout.center = true;
         rowLayout.marginTop = 0;
         rowLayout.marginBottom = 2;
+        rowLayout.marginLeft = 0;
         fileChipsBar.setLayout(rowLayout);
         GridData chipsGd = new GridData(SWT.FILL, SWT.TOP, true, false);
         chipsGd.exclude = true;
@@ -76,12 +93,12 @@ public class UserInputWidget extends Composite {
         btnAttach.setToolTipText("Attach a workspace file to this message");
         btnAttach.addListener(SWT.Selection, e -> openFilePicker());
 
-        // --- Text row: StyledText | right button column ---
+        // --- Text row: StyledText | right icon column ---
         Composite textRow = new Composite(this, SWT.NONE);
         GridLayout textRowLayout = new GridLayout(2, false);
         textRowLayout.marginWidth = 2;
         textRowLayout.marginHeight = 2;
-        textRowLayout.horizontalSpacing = 2;
+        textRowLayout.horizontalSpacing = 0;
         textRow.setLayout(textRowLayout);
         textRow.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
@@ -100,30 +117,21 @@ public class UserInputWidget extends Composite {
             }
         }));
 
-        // Right column: mic on top, send/stop at bottom
-        Composite buttonBar = new Composite(textRow, SWT.NONE);
-        GridLayout buttonBarLayout = new GridLayout(1, false);
-        buttonBarLayout.marginWidth = 0;
-        buttonBarLayout.marginHeight = 2;
-        buttonBarLayout.verticalSpacing = 2;
-        buttonBar.setLayout(buttonBarLayout);
-        buttonBar.setLayoutData(new GridData(SWT.RIGHT, SWT.FILL, false, true));
+        // Right icon column — mic on top (optional), send/stop at bottom
+        rightColumn = new Composite(textRow, SWT.NONE);
+        GridLayout rcLayout = new GridLayout(1, false);
+        rcLayout.marginWidth = 0;
+        rcLayout.marginHeight = 0;
+        rcLayout.verticalSpacing = 0;
+        rightColumn.setLayout(rcLayout);
+        rightColumn.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, false, true));
 
-        // Mic ToolBar — hidden until voice is configured
-        micBar = new ToolBar(buttonBar, SWT.FLAT);
-        GridData micGd = new GridData(SWT.CENTER, SWT.TOP, false, false);
-        micGd.exclude = true;
-        micBar.setLayoutData(micGd);
-        micBar.setVisible(false);
-
-        micItem = new ToolItem(micBar, SWT.PUSH);
-        micItem.setImage(ImageUtil.loadImage(micBar, ImageUtil.MICROPHONE));
-        micItem.setToolTipText("Click to start recording — click again to stop and transcribe");
-        micItem.addListener(SWT.Selection, e -> onMicClick.run());
-
-        // Send/Stop — grabs remaining vertical space so it sits at the bottom
-        sendOrStop = new SendOrStopButton(buttonBar, SWT.NONE, onSend, onStop);
-        sendOrStop.setLayoutData(new GridData(SWT.CENTER, SWT.BOTTOM, false, true));
+        sendButton = SwtUtil.createIconButton(rightColumn, sendImage, "Send (Ctrl+Enter)");
+        sendButton.setLayoutData(new GridData(SWT.CENTER, SWT.BOTTOM, false, true));
+        sendButton.addListener(SWT.Selection, e -> {
+            if (working) onStop.run();
+            else onSend.run();
+        });
     }
 
     private void requestReflow() {
@@ -238,25 +246,47 @@ public class UserInputWidget extends Composite {
         return List.copyOf(attachedFiles);
     }
 
+    /** Show or hide the mic button. Created on first show, disposed on hide so the slot is truly empty. */
     public void setVoiceInputVisible(boolean visible) {
-        boolean changed = micBar.getVisible() != visible;
-        if (changed) {
-            ((GridData) micBar.getLayoutData()).exclude = !visible;
-            micBar.setVisible(visible);
+        if (visible && (micButton == null || micButton.isDisposed())) {
+            micButton = SwtUtil.createIconButton(rightColumn,
+                    micImage,
+                    "Click to start recording — click again to stop and transcribe");
+            // Place mic before sendButton and sit at the top
+            micButton.moveAbove(sendButton);
+            micButton.setLayoutData(new GridData(SWT.CENTER, SWT.TOP, false, false));
+            micButton.addListener(SWT.Selection, e -> onMicClick.run());
+            rightColumn.layout(true, true);
+            requestReflow();
+        } else if (!visible && micButton != null && !micButton.isDisposed()) {
+            micButton.dispose();
+            micButton = null;
+            rightColumn.layout(true, true);
             requestReflow();
         }
     }
 
     public void setRecording(boolean recording) {
-        micBar.setBackground(recording ? colorRecording : null);
-        micItem.setToolTipText(recording
-            ? "Recording... click to stop and transcribe"
-            : "Click to start recording — click again to stop and transcribe");
+        if (micButton != null && !micButton.isDisposed()) {
+            micButton.setBackground(recording ? colorRecording : null);
+            micButton.setToolTipText(recording
+                ? "Recording... click to stop and transcribe"
+                : "Click to start recording — click again to stop and transcribe");
+            micButton.redraw();
+        }
     }
 
     /** Switch the Send/Stop button between idle and working state. */
     public void setWorking(boolean working) {
-        sendOrStop.setWorking(working);
+        this.working = working;
+        if (working) {
+            sendButton.setImage(stopImage);
+            sendButton.setToolTipText("Cancel current request");
+        } else {
+            sendButton.setImage(sendImage);
+            sendButton.setToolTipText("Send (Ctrl+Enter)");
+        }
+        sendButton.redraw();
     }
 
     @Override

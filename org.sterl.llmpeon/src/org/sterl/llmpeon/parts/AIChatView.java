@@ -107,7 +107,8 @@ public class AIChatView implements EclipseAiMonitor {
         chatHistory = new ChatMarkdownWidget(parent, SWT.BORDER);
         chatHistory.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-        // Wrap input + action bar + status bar in one bordered block with white background
+        // inputBlock carries the single outer border for the entire input area (sections 2+3+4).
+        // No background manipulation needed — SWT native widgets render their own correct backgrounds.
         Composite inputBlock = new Composite(parent, SWT.BORDER);
         GridLayout inputBlockLayout = new GridLayout(1, false);
         inputBlockLayout.marginWidth = 0;

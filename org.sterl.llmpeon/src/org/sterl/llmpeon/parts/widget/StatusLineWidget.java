@@ -70,10 +70,13 @@ public class StatusLineWidget extends Composite {
         btnPin.setVisible(false);
         btnPin.addListener(SWT.Selection, e -> onPinChange.accept(btnPin.getSelection()));
 
+        var images = PlatformUI.getWorkbench().getSharedImages();
+        
         // --- Skills toggle ---
         btnSkills = new Button(this, SWT.TOGGLE);
         btnSkills.setSelection(true);
-        btnSkills.setText("\u26A1 0 skills");
+        btnSkills.setImage(images.getImage(ISharedImages.IMG_OBJ_FOLDER));
+        btnSkills.setText("0 skills");
         btnSkills.setToolTipText("Toggle skills on/off");
         btnSkills.addListener(SWT.Selection, e -> onSkillsToggle.accept(btnSkills.getSelection()));
 
@@ -81,7 +84,6 @@ public class StatusLineWidget extends Composite {
         sep1.setLayoutData(new RowData(SWT.DEFAULT, 16));
 
         // --- Agent icon + label ---
-        var images = PlatformUI.getWorkbench().getSharedImages();
         agentIcon = new Label(this, SWT.NONE);
         agentIcon.setImage(images.getImage(ISharedImages.IMG_OBJ_FILE));
         agentIcon.setVisible(false);
@@ -141,7 +143,7 @@ public class StatusLineWidget extends Composite {
 
     /** Update the skills toggle button text with the loaded skill count. */
     public void setSkillCount(int count) {
-        btnSkills.setText("\u26A1 " + count + " skill" + (count != 1 ? "s" : ""));
+        btnSkills.setText(count + " skill" + (count != 1 ? "s" : ""));
         btnSkills.getParent().layout(false, false);
     }
 
