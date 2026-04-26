@@ -1,15 +1,7 @@
 package org.sterl.llmpeon.parts.widget;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.IResource;
-import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.debug.ui.DebugUITools;
 import org.eclipse.debug.ui.IDebugUIConstants;
-import org.eclipse.jface.dialogs.Dialog;
-import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.events.KeyListener;
@@ -18,14 +10,9 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
-import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Label;
-import org.eclipse.ui.ISharedImages;
-import org.eclipse.ui.PlatformUI;
-import org.eclipse.ui.dialogs.FilteredResourcesSelectionDialog;
 import org.sterl.llmpeon.parts.shared.ImageUtil;
 import org.sterl.llmpeon.parts.shared.SwtUtil;
 
@@ -42,7 +29,6 @@ public class UserInputWidget extends Composite {
     private static final int MAX_ROWS = 7;
 
     private final StyledText styledText;
-    private final Composite fileChipsBar;
     private final Composite rightColumn;
     private final Button sendButton;
     private Button micButton;   // null until voice is configured
@@ -53,7 +39,6 @@ public class UserInputWidget extends Composite {
     private boolean working = false;
     private final Runnable onMicClick;
 
-    private final List<IFile> attachedFiles = new ArrayList<>();
     private final Color colorRecording;
 
     public UserInputWidget(Composite parent, int style, Runnable onSend, Runnable onStop, Runnable onMicClick) {
@@ -72,26 +57,6 @@ public class UserInputWidget extends Composite {
         outerLayout.marginHeight = 0;
         outerLayout.verticalSpacing = 2;
         setLayout(outerLayout);
-
-        // --- File chips bar (hidden until files are attached) ---
-        fileChipsBar = new Composite(this, SWT.NONE);
-        RowLayout rowLayout = new RowLayout(SWT.HORIZONTAL);
-        rowLayout.wrap = true;
-        rowLayout.pack = true;
-        rowLayout.center = true;
-        rowLayout.marginTop = 0;
-        rowLayout.marginBottom = 2;
-        rowLayout.marginLeft = 0;
-        fileChipsBar.setLayout(rowLayout);
-        GridData chipsGd = new GridData(SWT.FILL, SWT.TOP, true, false);
-        chipsGd.exclude = true;
-        fileChipsBar.setLayoutData(chipsGd);
-        fileChipsBar.setVisible(false);
-
-        Button btnAttach = new Button(fileChipsBar, SWT.PUSH | SWT.FLAT);
-        btnAttach.setText("+");
-        btnAttach.setToolTipText("Attach a workspace file to this message");
-        btnAttach.addListener(SWT.Selection, e -> openFilePicker());
 
         // --- Text row: StyledText | right icon column ---
         Composite textRow = new Composite(this, SWT.NONE);
@@ -158,67 +123,6 @@ public class UserInputWidget extends Composite {
         }
     }
 
-    private void openFilePicker() {
-        var dialog = new FilteredResourcesSelectionDialog(
-                getShell(), true,
-                ResourcesPlugin.getWorkspace().getRoot(),
-                IResource.FILE);
-        dialog.setTitle("Attach Files");
-        if (dialog.open() == Dialog.OK) {
-            for (Object result : dialog.getResult()) {
-                if (result instanceof IFile file && !attachedFiles.contains(file)) {
-                    attachedFiles.add(file);
-                    addFileChip(file);
-                }
-            }
-        }
-    }
-
-    private void addFileChip(IFile file) {
-        Composite chip = new Composite(fileChipsBar, SWT.NONE);
-        GridLayout chipLayout = new GridLayout(3, false);
-        chipLayout.marginWidth = 3;
-        chipLayout.marginHeight = 1;
-        chipLayout.horizontalSpacing = 2;
-        chip.setLayout(chipLayout);
-
-        Label icon = new Label(chip, SWT.NONE);
-        ImageDescriptor desc = PlatformUI.getWorkbench().getEditorRegistry()
-                .getImageDescriptor(file.getName());
-        if (desc == null) {
-            desc = PlatformUI.getWorkbench().getSharedImages()
-                    .getImageDescriptor(ISharedImages.IMG_OBJ_FILE);
-        }
-        Image fileImage = desc.createImage();
-        icon.setImage(fileImage);
-        icon.addDisposeListener(e -> fileImage.dispose());
-
-        Label name = new Label(chip, SWT.NONE);
-        name.setText(file.getName());
-        name.setToolTipText(file.getFullPath().toString());
-
-        Button remove = new Button(chip, SWT.PUSH | SWT.FLAT);
-        remove.setText("×");
-        remove.setToolTipText("Remove " + file.getName());
-        remove.addListener(SWT.Selection, e -> removeChip(chip, file));
-
-        setChipsBarVisible(true);
-        fileChipsBar.layout(true, true);
-        requestReflow();
-    }
-
-    private void removeChip(Composite chip, IFile file) {
-        attachedFiles.remove(file);
-        chip.dispose();
-        if (attachedFiles.isEmpty()) setChipsBarVisible(false);
-        else fileChipsBar.layout(true, true);
-        requestReflow();
-    }
-
-    private void setChipsBarVisible(boolean visible) {
-        ((GridData) fileChipsBar.getLayoutData()).exclude = !visible;
-        fileChipsBar.setVisible(visible);
-    }
 
     // -------------------------------------------------------------------------
     // Public API
@@ -230,20 +134,11 @@ public class UserInputWidget extends Composite {
 
     public void clearText() {
         styledText.setText("");
-        for (Control c : fileChipsBar.getChildren()) {
-            if (c instanceof Composite) c.dispose();
-        }
-        attachedFiles.clear();
-        setChipsBarVisible(false);
         requestReflow();
     }
 
     public void setText(String text) {
         styledText.setText(text != null ? text : "");
-    }
-
-    public List<IFile> getAttachedFiles() {
-        return List.copyOf(attachedFiles);
     }
 
     /** Show or hide the mic button. Created on first show, disposed on hide so the slot is truly empty. */

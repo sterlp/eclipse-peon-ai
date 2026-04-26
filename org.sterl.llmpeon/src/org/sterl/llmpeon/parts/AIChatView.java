@@ -12,7 +12,6 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.ILog;
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
@@ -441,8 +440,7 @@ public class AIChatView implements EclipseAiMonitor {
                 EclipseUtil.runInUiThread(parent, () -> lockWhileWorking(false));
             }
             monitor.done();
-            return ex == null ? Status.OK_STATUS
-                : new Status(IStatus.ERROR, PeonConstants.PLUGIN_ID, ex.getMessage(), ex);
+            return PeonConstants.status("Compressed", ex);
         }).schedule();
     }
 
@@ -451,19 +449,25 @@ public class AIChatView implements EclipseAiMonitor {
             chatHistory.appendMessage(new SimpleMessage(Type.PROBLEM, "No model configured — open Window > Preferences > Peon AI"));
             return;
         }
-        String text = StringUtil.strip(chatInput.getText().trim() + buildFileContext(chatInput.getAttachedFiles()) + getUserSelection());
-        var active = getActiveService();
+
+        final var active = getActiveService();
+        final var selection = getUserSelection();
+        final var needsSelection = !active.hasUserText(selection);
+
+        final var text = StringUtil.strip(chatInput.getText().trim()) + (needsSelection ? selection : "");
         if (StringUtil.hasNoValue(text) && active.getMessages().isEmpty()) return;
 
         if (StringUtil.hasValue(text)) {
             chatHistory.appendMessage(new SimpleMessage(Type.USER, text));
             chatInput.clearText();
-
-            // are already working -> we only append the text message to the current history ...
+            
+            // already working -> we only append the current history ...
             if (actionsBar.isWorking()) {
-                getActiveService().addMessage(UserMessage.from(text));
+                active.addMessage(UserMessage.from(text));
                 return;
             }
+        } else if (actionsBar.isWorking()) { // no text and already working ...
+            return;
         }
 
         lockWhileWorking(true);
@@ -475,16 +479,14 @@ public class AIChatView implements EclipseAiMonitor {
                 active.setStandingOrders(StandingOrdersBuilder.build(
                         selectedResource, aiService.getAgentsMdService(), aiService.getTemplateContext(),
                         currentMode, aiService.getAgentMode()));
-                switch (currentMode) {
-                    case DEV   -> aiService.getDeveloperService().call(text.isEmpty() ? null : text, this);
-                    case PLAN  -> aiService.getPlannerService().call(text.isEmpty() ? null : text, this);
-                    case AGENT -> aiService.getAgentMode().call(text.isEmpty() ? null : text, this);
-                };
+                
+                active.call(text.isEmpty() ? null : text, this);
+
             } catch (Exception e) {
                 ex = e;
                 onChatResponse(new SimpleMessage(Type.PROBLEM, e.getMessage()));
-                EclipseUtil.runInUiThread(parent, () -> lockWhileWorking(false));
             } finally {
+                EclipseUtil.runInUiThread(parent, () -> lockWhileWorking(false));
                 monitor.done();
                 active.setStandingOrders(Collections.emptyList());
                 monitorRef.set(new NullProgressMonitor());
@@ -561,22 +563,6 @@ public class AIChatView implements EclipseAiMonitor {
         };
     }
 
-    private String buildFileContext(List<IFile> files) {
-        if (files.isEmpty()) return "";
-        var sb = new StringBuilder();
-        for (IFile f : files) {
-            try (var in = f.getContents()) {
-                sb.append("\n\nFile: ").append(f.getFullPath())
-                  .append("\n```").append(f.getFileExtension() != null ? f.getFileExtension() : "")
-                  .append("\n").append(new String(in.readAllBytes()))
-                  .append("\n```");
-            } catch (Exception e) {
-                LOG.warn("Could not read attached file: " + f.getFullPath(), e);
-            }
-        }
-        return sb.toString();
-    }
-
     private String getUserSelection() {
         if (textSelection == null || StringUtil.hasNoValue(textSelection.getText())) return "";
         var file = getSelectedFile();
@@ -584,11 +570,14 @@ public class AIChatView implements EclipseAiMonitor {
         var extension = "\n";
         if (file != null) extension = file.getFileExtension() + "\n";
 
-        String userIn = "\n\nSelected:\n```" + extension + textSelection.getText() + "\n```";
-        userIn += "\n\nStart line: " + (textSelection.getStartLine() + 1);
+        String userIn = "\n\n```" + extension + textSelection.getText() + "\n```";
 
-        if (file != null) userIn += "\nFile: " + JdtUtil.pathOf(file) + " use "
-                + EclipseWorkspaceReadFileTool.READ_ECLIPSE_FILE_TOOL + " to read whole file, if needed.";
+        if (file != null) {
+            userIn += "\n\nStart line: " + (textSelection.getStartLine() + 1);
+            userIn += "\n\nFile: " + JdtUtil.pathOf(file) 
+                    + "\n\nUse tool `" + EclipseWorkspaceReadFileTool.READ_ECLIPSE_FILE_TOOL 
+                    + "` only if more context is needed.";
+        }
         return userIn;
     }
 

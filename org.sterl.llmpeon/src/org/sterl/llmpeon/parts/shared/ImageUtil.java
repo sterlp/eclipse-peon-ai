@@ -14,8 +14,7 @@ public class ImageUtil {
     public static final String STOP = "platform:/plugin/org.eclipse.ui/icons/full/elcl16/stop.svg";
     public static final String MICROPHONE = "platform:/plugin/org.sterl.llmpeon/icons/microphone.svg";
     
-    public static final String UNPINNED = "platform:/plugin/org.eclipse.gef/org/eclipse/gef/internal/icons/unpinned.svg";
-    public static final String PIN = "platform:/plugin/org.eclipse.gef/org/eclipse/gef/internal/icons/pinned.svg";
+    public static final String PIN = "platform:/plugin/org.eclipse.ui.console/icons/full/elcl16/pin.svg";
 
     public static Image loadImage(Widget forWidget, String path) {
         try {
