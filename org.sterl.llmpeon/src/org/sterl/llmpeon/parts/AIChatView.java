@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.resources.IFile;
@@ -57,6 +58,7 @@ import org.sterl.llmpeon.voice.VoiceInputService;
 
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.inject.Inject;
@@ -64,7 +66,8 @@ import jakarta.inject.Named;
 
 public class AIChatView implements EclipseAiMonitor {
 
-	private static final ILog LOG = Platform.getLog(AIChatView.class);
+    private static final ILog LOG = Platform.getLog(AIChatView.class);
+    private final AtomicBoolean debugLog = new AtomicBoolean();
 
     // Declared first so the aiService field initializer lambdas can capture them
     // without violating the Java forward-reference restriction.
@@ -334,6 +337,9 @@ public class AIChatView implements EclipseAiMonitor {
         chatInput.setVoiceInputVisible(VoicePreferenceInitializer.buildWithDefaults().enabled());
         refreshStatusLine();
         onConfigChanged(config);
+        
+        var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
+        debugLog.set(prefs.getBoolean(PeonConstants.PREF_LOG_RESPONSE, false));
     }
 
     private void applyMcpConfig() {
@@ -475,21 +481,25 @@ public class AIChatView implements EclipseAiMonitor {
             monitor.beginTask("Arbeit, Arbeit!", currentMode == PeonMode.AGENT ? ToolService.MAX_ITERATIONS * 2 : ToolService.MAX_ITERATIONS);
             monitorRef.set(monitor);
             Exception ex = null;
+            ChatResponse response = null;
             try {
                 active.setStandingOrders(StandingOrdersBuilder.build(
                         selectedResource, aiService.getAgentsMdService(), aiService.getTemplateContext(),
                         currentMode, aiService.getAgentMode()));
                 
-                active.call(text.isEmpty() ? null : text, this);
-
+                response = active.call(text.isEmpty() ? null : text, this);
             } catch (Exception e) {
                 ex = e;
+                LOG.warn("Failed to call LLM " + active.getConfig(), e);
                 onChatResponse(new SimpleMessage(Type.PROBLEM, e.getMessage()));
             } finally {
                 EclipseUtil.runInUiThread(parent, () -> lockWhileWorking(false));
                 monitor.done();
                 active.setStandingOrders(Collections.emptyList());
                 monitorRef.set(new NullProgressMonitor());
+            }
+            if (debugLog.get()) {
+                LOG.info("Peon AI Request:\n" + text + "\nResponse\n" + response);
             }
             return PeonConstants.status("Peon AI\n" + aiService.getDeveloperService().getConfig(), ex);
         }).schedule();
