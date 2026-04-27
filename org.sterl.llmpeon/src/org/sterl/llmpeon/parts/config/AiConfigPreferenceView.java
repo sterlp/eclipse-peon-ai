@@ -59,8 +59,11 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
         apiKeyEditor = new StringFieldEditor(PeonConstants.PREF_API_KEY, "API Key:", getFieldEditorParent());
         addField(apiKeyEditor);
         addField(new StringFieldEditor(PeonConstants.PREF_SKILL_DIRECTORY, "Skills directory:", getFieldEditorParent()));
-
+        
         buildGithubLogin();
+        // -- Debug stuff
+        addField(new BooleanFieldEditor(PeonConstants.PREF_LOG_RESPONSE, "Log response for debugging", getFieldEditorParent()));
+
 
         Link link = new Link(getFieldEditorParent(), SWT.NONE);
         link.setText("See <a href=\"https://peon-ai-4e.sterl.org/setup/configuration\">online configuration guide</a> for help.");

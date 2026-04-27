@@ -13,6 +13,8 @@ public interface PeonConstants {
     String PREF_API_KEY          = "llm.apiKey";
     String PREF_SKILL_DIRECTORY  = "llm.skillDirectory";
     String PREF_DISK_TOOLS_ENABLED = "llm.diskToolsEnabled";
+    
+    String PREF_LOG_RESPONSE    = "llm.logResponse";
 
     String PREF_MCP_SERVERS  = "mcp.servers";   // JSON: List<McpServerConfig>
     String PREF_MCP_ENABLED  = "mcp.enabled";   // boolean

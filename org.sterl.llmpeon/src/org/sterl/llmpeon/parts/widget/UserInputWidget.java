@@ -52,6 +52,12 @@ public class UserInputWidget extends Composite {
         sendImage = DebugUITools.getImage(IDebugUIConstants.IMG_ACT_RUN);
         stopImage = ImageUtil.loadImage(this, ImageUtil.STOP);
 
+        // Single white reference shared by StyledText, textRow, rightColumn so the
+        // entire input area renders as one uniform color. macOS quirk: explicitly
+        // setting StyledText's background is what wakes up the paint chain so the
+        // surrounding composite PaintListeners actually fire on resize.
+        final Color bgWhite = getDisplay().getSystemColor(SWT.COLOR_WHITE);
+
         GridLayout outerLayout = new GridLayout(1, false);
         outerLayout.marginWidth = 0;
         outerLayout.marginHeight = 0;
@@ -67,8 +73,10 @@ public class UserInputWidget extends Composite {
         textRow.setLayout(textRowLayout);
         textRow.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-        styledText = new StyledText(textRow, SWT.MULTI | SWT.WRAP | SWT.V_SCROLL);
+        styledText = new StyledText(textRow, SWT.MULTI | SWT.WRAP); // | SWT.V_SCROLL
+        // styledText.setAlwaysShowScrollBars(false);
         styledText.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+        styledText.setBackground(bgWhite);
         styledText.addModifyListener(e -> refreshHeight());
 
         // Ctrl/Cmd+Enter sends; plain Enter inserts newline
@@ -90,6 +98,12 @@ public class UserInputWidget extends Composite {
         rcLayout.verticalSpacing = 0;
         rightColumn.setLayout(rcLayout);
         rightColumn.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, false, true));
+        rightColumn.setBackground(bgWhite);
+        rightColumn.setBackgroundMode(SWT.INHERIT_DEFAULT);
+        rightColumn.addPaintListener(e -> {
+            e.gc.setBackground(bgWhite);
+            e.gc.fillRectangle(rightColumn.getClientArea());
+        });
 
         sendButton = SwtUtil.createIconButton(rightColumn, sendImage, "Send (Ctrl+Enter)");
         sendButton.setLayoutData(new GridData(SWT.CENTER, SWT.BOTTOM, false, true));
