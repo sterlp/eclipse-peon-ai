@@ -25,7 +25,7 @@ import lombok.ToString;
 @AllArgsConstructor
 @Getter
 @EqualsAndHashCode
-@ToString(of = {"providerType", "url", "model"})
+@ToString(of = {"providerType", "url", "model", "thinkingEnabled"})
 public class LlmConfig {
 
     @Default
@@ -88,7 +88,7 @@ public class LlmConfig {
      */
     public LlmConfig resolveModel(List<AiModel> models) {
         if (models.isEmpty()) return this;
-        if (StringUtil.hasNoValue(model)) return this;
+        if (StringUtil.hasNoValue(model)) return withModel(models.getFirst());
 
         var effective = models.stream()
                 .filter(m -> model.equals(m.getId()) || model.equalsIgnoreCase(m.getName()))

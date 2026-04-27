@@ -87,6 +87,7 @@ public class AIChatView implements EclipseAiMonitor {
     private boolean recording = false;
 
     private PeonMode currentMode = PeonMode.DEV;
+    @Deprecated
     private LlmConfig lastListedConfig;
     private IProject currentProject;
     private boolean projectPinned = false;
@@ -129,7 +130,10 @@ public class AIChatView implements EclipseAiMonitor {
             this::onClear,
             this::doStartImpl,
             this::onModeChange,
-            model -> aiService.updateConfig(aiService.getDeveloperService().getConfig().withModel(model)),
+            model -> {
+                aiService.updateConfig(aiService.getConfig().withModel(model));
+                LlmPreferenceInitializer.setModel(model.getId());
+            },
             autonomous -> aiService.getAgentMode().setAutonomous(autonomous),
             this::onThinkToggle
         );
@@ -357,7 +361,6 @@ public class AIChatView implements EclipseAiMonitor {
             loadModelsInBackground(config);
         } else {
             EclipseUtil.runInUiThread(parent, () -> {
-                if (parent.isDisposed()) return;
                 if (!actionsBar.containsModelId(config.getModel())) {
                     loadModelsInBackground(config);
                 } else {
@@ -370,11 +373,15 @@ public class AIChatView implements EclipseAiMonitor {
     private void loadModelsInBackground(LlmConfig config) {
         Job.create("Fetching available models", monitor -> {
             List<AiModel> models = config.getProviderType().listAiModels(config);
-            lastListedConfig = config;
             EclipseUtil.runInUiThread(parent, () -> {
                 actionsBar.applyModelList(models, config.getModel());
                 var resolved = config.resolveModel(models);
-                if (!resolved.equals(config)) aiService.updateConfig(resolved);
+                lastListedConfig = resolved;
+                if (!resolved.equals(config)) {
+                    LOG.info("Update config because of model change " + resolved);
+                    LlmPreferenceInitializer.setModel(resolved.getModel());
+                    aiService.updateConfig(resolved);
+                }
             });
             return Status.OK_STATUS;
         }).schedule();
