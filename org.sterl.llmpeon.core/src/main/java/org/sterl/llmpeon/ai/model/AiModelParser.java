@@ -142,6 +142,35 @@ public class AiModelParser {
     }
 
     /**
+     * Parses the OpenAI models API response ({ "data": [...] }).
+     */
+    public static List<AiModel> parseOpenApiModels(String json) {
+        try {
+            var root = MAPPER.readTree(json);
+            var data = root.get("data");
+            var result = new ArrayList<AiModel>();
+            if (data == null || !data.isArray()) return result;
+
+            for (var item : data) {
+                var idNode = item.get("id");
+                if (idNode == null) continue;
+                String id = idNode.asText();
+
+                result.add(AiModel.builder()
+                        .id(id)
+                        .name(id)
+                        .build());
+            }
+
+            Collections.sort(result, (a, b) -> a.getId().compareTo(b.getId()));
+            return result;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return List.of();
+        }
+    }
+
+    /**
      * Parses the LM Studio models API response ({ "models": [...] }).
      * Only returns LLM models that support tool calling.
      */
