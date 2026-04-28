@@ -82,6 +82,24 @@ public enum AiProvider {
                   .sendThinking(Boolean.FALSE);
             return result.build();
         }
+
+        @Override
+        public List<AiModel> listAiModels(LlmConfig c) {
+            if (c.getUrl() == null || c.getUrl().isBlank()) return fallbackAiModels(c);
+            try {
+                var request = HttpRequest.newBuilder()
+                        .uri(URI.create(c.getUrl() + "/models"))
+                        .header("Authorization", "Bearer " + c.getApiKey())
+                        .GET()
+                        .build();
+                var response = cancelAndSend(request);
+                if (response == null || response.statusCode() > 299) return fallbackAiModels(c);
+                return AiModelParser.parseOpenApiModels(response.body());
+            } catch (Exception e) {
+                log.warn("Failed to load models for {}", this, e);
+                return fallbackAiModels(c);
+            }
+        }
     },
 
     // model URL /api/v1/models
