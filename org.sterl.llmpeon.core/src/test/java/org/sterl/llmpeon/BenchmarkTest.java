@@ -19,6 +19,12 @@ public class BenchmarkTest {
             Zähle mir die letzten 5 Bundeskanzler der Bundesrepublik Deutschland auf und nenne zudem kurz in einer Tabelle, wie lange diese regiert haben und ihre am meisten gefeierte Leistung während ihrer Regierungszeit.
             Heute ist
             """ + Instant.now();
+    
+    @Test
+    void benchmark_lm_studio_gemma4_opus() {
+        runTest(AiProvider.LM_STUDIO, LlmConfig.newLmStudio("gemma-4-26b-a4b-it-claude-opus-distill"));
+    }
+    
     @Test
     void benchmark_lm_studio_gemma4() {
         runTest(AiProvider.LM_STUDIO, LlmConfig.newLmStudio("google/gemma-4-26b-a4b"));
