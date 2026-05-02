@@ -19,3 +19,24 @@ As good as `gemma-4-26b-a4b - LM Studio`, but faster and stable.
 Currently not working properly due to an LM Studio Bug
 
 https://github.com/lmstudio-ai/lmstudio-bug-tracker/issues/1592
+
+
+# Benchmarks
+
+Zähle mir die letzten 5 Bundeskanzler der Bundesrepublik Deutschland auf und nenne zudem kurz in einer Tabelle, wie lange diese regiert haben und ihre am meisten gefeierte Leistung während ihrer Regierungszeit.
+
+## AMD 7900 XT 20 GB on Windows
+
+| Model | Provider | Tokens | Speed | Time | Status |
+|-------|----------|--------|-------|------|--------|
+| gemma-4:26b-a4b-it-q4_K_M | Ollama | 1064 | 29.25 tok/s | 36.38s | ✅ Stable |
+| gemma-4-26b-a4b | LM Studio | 2460 | 50.72 tok/s | 48.5s | ⚠️ Unstable v0.4.10 |
+| qwen3.6-35b-a3b | LM Studio | 3974 | 33.56 tok/s | 118.4s | ✅ Stable |
+| qwen3.6-35b-a3b | Ollama | — | — | — | ❌ Timeout (>4 min) |
+| glm-4.7-flash-opus-4.5 | LM Studio | — | — | — | ❌ Instable (deadlock) |
+
+### Recommendations
+
+- **Qwen 3.6 via LM Studio** is the recommended choice for complex planning tasks. It is stable and handles code expansion properly, despite the slower generation time (~118s).
+- **Gemma 4 26B via Ollama** is recommended for speed and general usability.
+- Avoid Ollama for Qwen 3.6 on this hardware (timed out) and LM Studio v0.4.10 for Gemma (unstable).

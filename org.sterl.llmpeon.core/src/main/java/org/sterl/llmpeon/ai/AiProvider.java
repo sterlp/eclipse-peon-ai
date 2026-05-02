@@ -360,7 +360,7 @@ public enum AiProvider {
         }
     };
 
-    private static final Duration TIMEOUT = Duration.ofMinutes(3);
+    private static final Duration TIMEOUT = Duration.ofMinutes(4);
 
     // --- Per-instance HTTP client (lazy, reused) ---
 

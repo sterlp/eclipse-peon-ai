@@ -36,7 +36,7 @@ public class LlmConfig {
     @Default
     private final String url = null;
     @Default
-    private final int tokenWindow = 16000;
+    private final int tokenWindow = 128000;
     @Default
     private final boolean thinkingEnabled = true;
     @Default
@@ -48,6 +48,16 @@ public class LlmConfig {
 
     public static LlmConfig newConfig(String model, String url) {
         return LlmConfig.builder().model(model).url(url).build();
+    }
+    
+    public static LlmConfig newOllama(String model) {
+        return LlmConfig.builder().providerType(AiProvider.OLLAMA)
+                .model(model).url("http://localhost:11434").build();
+    }
+    
+    public static LlmConfig newLmStudio(String model) {
+        return LlmConfig.builder().providerType(AiProvider.LM_STUDIO)
+                .model(model).url("http://localhost:1234/v1").build();
     }
 
     public static LlmConfig newConfig(AiProvider provider, String model, String url) {

@@ -590,8 +590,8 @@ public class AIChatView implements EclipseAiMonitor {
         String userIn = "\n\n```" + extension + textSelection.getText() + "\n```";
 
         if (file != null) {
-            userIn += "\n\nStart line: " + (textSelection.getStartLine() + 1);
-            userIn += "\n\nFile: " + JdtUtil.pathOf(file) 
+            userIn += "\n\nStart line: `" + (textSelection.getStartLine() + 1) + "`";
+            userIn += "\n\nFile: `" + JdtUtil.pathOf(file) + "`"
                     + "\n\nUse tool `" + EclipseWorkspaceReadFileTool.READ_ECLIPSE_FILE_TOOL 
                     + "` only if more context is needed.";
         }
