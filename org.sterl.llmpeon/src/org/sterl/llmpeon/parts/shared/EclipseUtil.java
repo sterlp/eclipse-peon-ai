@@ -99,7 +99,7 @@ public class EclipseUtil {
      * Tries workspace-relative first, then project-relative in each open project.
      */
     public static Optional<IResource> resolveInEclipse(String path) {
-        if (path == null || path.isBlank()) return Optional.empty();
+        if (StringUtil.hasNoValue(path)) return Optional.empty();
         IPath ipath = IPath.fromPortableString(path);
         try {
             var result = ResourcesPlugin.getWorkspace().getRoot().findMember(ipath);
@@ -110,6 +110,9 @@ public class EclipseUtil {
         
         for (var p : openProjects()) {
             var result = p.findMember(ipath);
+            if (result != null && result.exists()) return Optional.of(result);
+            // java src fallback
+            result = p.findMember("src/" + ipath);
             if (result != null && result.exists()) return Optional.of(result);
         }
         return Optional.empty();

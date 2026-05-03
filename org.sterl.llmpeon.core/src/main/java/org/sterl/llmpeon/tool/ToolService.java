@@ -29,6 +29,7 @@ import dev.langchain4j.agent.tool.ToolSpecifications;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -103,7 +104,6 @@ public class ToolService {
             response = req.chatModel.chat(builder.build());
 
             shouldLoop = response.aiMessage().hasToolExecutionRequests()
-                    // https://github.com/langchain4j/langchain4j/issues/4786
                     || (StringUtil.hasNoValue(response.aiMessage().text())
                             && StringUtil.hasValue(response.aiMessage().thinking())
                         );
@@ -112,6 +112,16 @@ public class ToolService {
             ToSimpleMessage.INSTANCE.convert(response.aiMessage()).forEach(req.monitor::onChatResponse);
 
             req.memory.set(runAllTools(response, req.chatModel, req.monitor, req.memory.messages()));
+            
+            
+            // https://github.com/langchain4j/langchain4j/issues/4786
+            if (StringUtil.hasNoValue(response.aiMessage().text())
+                            && StringUtil.hasValue(response.aiMessage().thinking())) {
+                if (!response.aiMessage().hasToolExecutionRequests()) {
+                    req.memory.add(new UserMessage("Continue based on your thinking:\n"
+                            + response.aiMessage().thinking()));
+                }
+            }
 
             if (iterations++ >= MAX_ITERATIONS) {
                 req.monitor.onProblem("Tool loop reached max iterations - stopping after " + iterations);
@@ -160,7 +170,7 @@ public class ToolService {
         return newMemory;
     }
 
-    static record ToolResult(boolean clearMemory, ToolExecutionResultMessage message) {}
+    public static record ToolResult(boolean clearMemory, ToolExecutionResultMessage message) {}
     
     public ToolResult execute(ToolExecutionRequest tr, AiMonitor monitor, ChatModel agentService, List<ChatMessage> memory) {
         var executor = toolExecutors.get(tr.name());

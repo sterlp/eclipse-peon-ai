@@ -33,12 +33,13 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
     @Tool("Eclipse: Replace a single line by line number. newContent may span multiple lines.")
     public String replaceWorkspaceLine(
             @P("workspace-relative path") String filePath,
-            @P("line to replace (1-based)") int line,
+            @P("line to replace (1-based)") Integer line,
             @P("replacement text") String newContent) {
 
         if (filePath == null || filePath.isBlank()) {
-            throw new IllegalArgumentException("filePath must not be empty");
+            throw new IllegalArgumentException("workspace-relative pat must not be empty or null");
         }
+        if (line == null) throw new IllegalArgumentException("provide the line to replace");
 
         var inFile = EclipseUtil.resolveInEclipse(filePath);
         if (inFile.isEmpty() || !(inFile.get() instanceof IFile eclipseFile)) {

@@ -47,24 +47,25 @@ class ToolServiceTest {
     }
 
     @Test
-    void testLoopsOnOnThinkOnly() {
+    void testLoopsOn_result_think_only() {
         // GIVEN
         var cm = mock(ChatModel.class);
         when(cm.chat(any(ChatRequest.class))).thenAnswer(i -> {
             var cr = i.getArgument(0, ChatRequest.class);
             if (cr.messages().size() < 2) return ChatResponse.builder().aiMessage(AiMessage.builder().thinking("I think").build()).build();
-            return ChatResponse.builder().aiMessage(AiMessage.from("Hello")).build();
+            return ChatResponse.builder().aiMessage(AiMessage.from("Hello User")).build();
         });
         var memory = MessageWindowChatMemory.withMaxMessages(50);
         // WHEN
         memory.add(UserMessage.from("Hello"));
-        var response = subject.executeLoop(
+        subject.executeLoop(
                 new ToolLoopRequest(memory, cm));
 
         // THEN
-        assertEquals("Hello", response.aiMessage().text());
-        // AND
         verify(cm, times(2)).chat(any(ChatRequest.class));
+        // AND
+        assertTrue(((UserMessage)memory.messages().get(2)).singleText().contains("Continue"));
+        assertTrue(((UserMessage)memory.messages().get(2)).singleText().contains("I think"));
     }
 
 }

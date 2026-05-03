@@ -4,11 +4,19 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
+import java.util.ArrayList;
+
 import org.junit.Test;
 import org.sterl.llmpeon.parts.tools.EclipseBuildTool;
 import org.sterl.llmpeon.parts.tools.EclipseCodeNavigationTool;
 import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
+import org.sterl.llmpeon.tool.ToolService;
+import org.sterl.llmpeon.tool.component.SmartToolExecutor;
+
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.ChatMessage;
 
 public class EclipseWorkspaceReadFilesToolTest extends AbstractTest {
 
@@ -96,5 +104,24 @@ public class EclipseWorkspaceReadFilesToolTest extends AbstractTest {
         // THEN
         assertTrue("Should contain out test:\n" + content, content.contains(getClass().getSimpleName() + ".java"));
         assertTrue("Should contain out line:\n" + content, content.contains("76"));
+    }
+    
+    @Test
+    public void test_readWorkspaceFiles() {
+        // GIVEN
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        ToolService service = new ToolService();
+        service.addTool(new EclipseWorkspaceReadFileTool());
+
+        var tr = ToolExecutionRequest.builder().arguments("")
+            .name("readWorkspaceFile")
+            .arguments("{\"arg0\": \"" + this.getClass().getName().replace(".", "/") + ".java\"}")
+            .build();
+        
+        // WHEN
+        var content = service.execute(tr, null, null, new ArrayList<ChatMessage>());
+        
+        // THEN
+        assertTrue(content.message().text().contains("Hallo meine schöne datei wie geht es dir?"));
     }
 }

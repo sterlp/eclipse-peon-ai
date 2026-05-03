@@ -44,8 +44,9 @@ public class DiskFileReadTool extends AbstractTool {
     @Tool("Disk: Read file - not eclipse.")
     public String readDiskFile(
             @P("file path") String filePath,
-            @P("Optional: first line to read (1-based). 0 = start of file.") int startLine,
-            @P("Optional: last line to read (1-based). 0 = end of file.") int endLine) {
+            @P("Optional: first line to read (1-based). 0 = start of file.") Integer startLine,
+            @P("Optional: last line to read (1-based). 0 = end of file.") Integer endLine) {
+        
 
         if (StringUtil.hasNoValue(filePath)) {
             throw new IllegalArgumentException("filePath must not be empty");
@@ -55,12 +56,15 @@ public class DiskFileReadTool extends AbstractTool {
         if (resolved == null || !Files.isRegularFile(resolved)) {
             throw new IllegalArgumentException("File not found: " + filePath + " also not in " + workingDir);
         }
+
+        if (startLine == null) startLine = 0;
+        if (endLine == null) endLine = 0;
         try {
-            onTool("Reading " + filePath);
+            var lines = "";
+            if (startLine > 0 && endLine > 0) lines = " from " + startLine + " to " + endLine;
+            onTool("Reading " + lines + " file " + filePath);
             String content = Files.readString(resolved);
-            return (startLine > 0 && endLine > 0)
-                    ? FileLines.extract(content, startLine, endLine)
-                    : FileLines.format(content);
+            return FileLines.extract(content, startLine, endLine);
         } catch (IOException e) {
             throw new RuntimeException("Failed to read " + filePath, e);
         }
@@ -69,8 +73,9 @@ public class DiskFileReadTool extends AbstractTool {
     @Tool("Disk: Search files by name. Use '*' to list all files recursively.")
     public String searchDiskFiles(
             @P("file name query") String query,
-            @P("Optional: max results to return. 0 = unlimited.") int limit) {
+            @P("Optional: max results to return. 0 = unlimited.") Integer limit) {
 
+        if (limit == null) limit = 0;
         if (query == null || query.isBlank()) {
             throw new IllegalArgumentException("query must not be empty");
         }

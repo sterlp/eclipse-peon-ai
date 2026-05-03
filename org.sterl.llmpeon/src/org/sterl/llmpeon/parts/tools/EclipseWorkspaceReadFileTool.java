@@ -31,8 +31,11 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
     @Tool(name = READ_ECLIPSE_FILE_TOOL, value = "Eclipse: Read workspace file (e.g. '/Project/src/Foo.java').")
     public String readWorkspaceFile(
             @P("workspace-relative path") String filePath,
-            @P("Optional: first line to read (1-based). 0 = start of file.") int startLine,
-            @P("Optional: last line to read (1-based). 0 = end of file.") int endLine) {
+            @P("Optional: first line to read (1-based). 0 = start of file.") Integer startLine,
+            @P("Optional: last line to read (1-based). 0 = end of file.") Integer endLine) {
+        
+        if (startLine == null) startLine = 0;
+        if (endLine == null) endLine = 0;
 
         if (filePath == null || filePath.isBlank()) {
             throw new IllegalArgumentException("filePath must not be empty");
@@ -40,11 +43,11 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
 
         var file = EclipseUtil.resolveInEclipse(filePath);
         if (file.isPresent() && file.get() instanceof IFile f) {
-            onTool("Reading eclipse file " + filePath);
+            var lines = "";
+            if (startLine > 0 && endLine > 0) lines = " from " + startLine + " to " + endLine;
+            onTool("Reading eclipse" + lines + " file " + filePath);
             String content = IoUtils.readFile(f);
-            return (startLine > 0 && endLine > 0)
-                    ? FileLines.extract(content, startLine, endLine)
-                    : FileLines.format(content);
+            return  FileLines.extract(content, startLine, endLine);
         }
         onTool("No eclipse file found for " + filePath);
         return "No eclipse file found for " + filePath;
@@ -53,8 +56,9 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
     @Tool("Eclipse: Search workspace files by name. Use '*' to list all files recursively.")
     public String searchWorkspaceFiles(
             @P("file name query - wildcard *, ? is supported. e.g. '*.java' for all java files") String query,
-            @P("Optional: max results to return. 0 = unlimited.") int limit) {
+            @P("Optional: max results to return. 0 = unlimited.") Integer inLimit) {
 
+        final int limit = inLimit == null ? 0 : inLimit;
         if (query == null || query.isBlank()) {
             throw new IllegalArgumentException("query must not be empty");
         }

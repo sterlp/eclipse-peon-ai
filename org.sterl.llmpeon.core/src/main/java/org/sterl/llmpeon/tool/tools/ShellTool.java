@@ -43,6 +43,8 @@ public class ShellTool extends AbstractTool {
             @P("working dir") String workingDirectory,
             @P("timeout ms, default 120000") Long timeoutMs,
             @P("max tail lines, default 50 (-1 for all)") Integer tailLines) {
+        
+        if (tailLines == null || tailLines <= 0) tailLines = DEFAULT_TAIL_LINES;
 
         if (command == null || command.isBlank()) {
             throw new IllegalArgumentException("command must not be empty");
@@ -108,16 +110,14 @@ public class ShellTool extends AbstractTool {
                 if (!process.waitFor(5, TimeUnit.SECONDS)) {
                     process.destroyForcibly();
                 }
-                int maxLines = (tailLines != null && tailLines != 0) ? tailLines : DEFAULT_TAIL_LINES;
-                String partial = (maxLines < 0) ? output.toString() : tailLines(output.toString(), maxLines);
+                String partial = tailLines(output.toString(), tailLines);
                 return "Command timed out after " + timeout + "ms. Partial output:\n" + truncate(partial);
             }
 
             reader.join(2000);
             int exitCode = process.exitValue();
 
-            int maxLines = (tailLines != null && tailLines != 0) ? tailLines : DEFAULT_TAIL_LINES;
-            String result = (maxLines < 0) ? output.toString() : tailLines(output.toString(), maxLines);
+            String result = tailLines(output.toString(), tailLines);
             result = truncate(result);
             if (exitCode != 0) {
                 result += "\nExit code: " + exitCode;
@@ -134,7 +134,9 @@ public class ShellTool extends AbstractTool {
         }
     }
 
-    private static String tailLines(String output, int maxLines) {
+    private static String tailLines(String output, Integer maxLines) {
+        if (maxLines == null || maxLines <= 0) return output;
+
         String[] lines = output.split("\n", -1);
         if (lines.length <= maxLines) return output;
         int skipped = lines.length - maxLines;
