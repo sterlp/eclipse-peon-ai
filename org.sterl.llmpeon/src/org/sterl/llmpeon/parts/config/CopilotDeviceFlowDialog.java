@@ -30,6 +30,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 import org.sterl.llmpeon.parts.PeonConstants;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class CopilotDeviceFlowDialog extends Dialog {
@@ -39,7 +40,8 @@ public class CopilotDeviceFlowDialog extends Dialog {
     private static final String POLL_URL               = "https://github.com/login/oauth/access_token";
 
     private final HttpClient http     = HttpClient.newHttpClient();
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true);
 
     private String deviceCode;
     private String verificationUri;

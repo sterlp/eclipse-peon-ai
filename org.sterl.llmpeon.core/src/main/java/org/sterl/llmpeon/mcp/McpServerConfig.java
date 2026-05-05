@@ -13,7 +13,6 @@ import org.sterl.llmpeon.shared.StringUtil;
  * @param command         executable to launch — STDIO only, e.g. "uvx"
  * @param args            space-separated arguments — STDIO only, e.g. "duckduckgo-mcp-server"
  * @param envVars         KEY=VALUE lines passed as environment variables — STDIO only
- * @param description     optional hint for the AI describing what this server provides
  */
 public record McpServerConfig(
         String name,
@@ -23,27 +22,25 @@ public record McpServerConfig(
         String protocolVersion,
         String command,
         String args,
-        String envVars,
-        String description) {
+        String envVars) {
 
     public enum McpTransportType { HTTP, STDIO }
 
     public static final String DEFAULT_PROTOCOL_VERSION = "2024-11-05";
 
     public McpServerConfig {
-        if (type == null)            type = McpTransportType.HTTP;
-        if (name == null)            name = "";
-        if (url == null)             url = "";
-        if (apiKey == null)          apiKey = "";
-        if (command == null)         command = "";
-        if (args == null)            args = "";
-        if (envVars == null)         envVars = "";
-        if (description == null)     description = "";
+        if (type == null)   type = McpTransportType.HTTP;
+        if (name == null)   name = "";
+        if (url == null)    url = "";
+        if (apiKey == null) apiKey = "";
+        if (command == null) command = "";
+        if (args == null)   args = "";
+        if (envVars == null) envVars = "";
         if (StringUtil.hasNoValue(protocolVersion)) protocolVersion = DEFAULT_PROTOCOL_VERSION;
     }
 
     /** Convenience constructor for HTTP servers (backward-compatible with existing call sites). */
     public McpServerConfig(String name, String url, String apiKey, String protocolVersion) {
-        this(name, McpTransportType.HTTP, url, apiKey, protocolVersion, "", "", "", "");
+        this(name, McpTransportType.HTTP, url, apiKey, protocolVersion, "", "", "");
     }
 }

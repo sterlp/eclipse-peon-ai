@@ -206,7 +206,6 @@ public class McpPreferenceView extends PreferencePage implements IWorkbenchPrefe
 
         private Combo cmbType;
         private Text txtName;
-        private Text txtDescription;
         private Text txtProtocol;
 
         // HTTP fields
@@ -255,9 +254,6 @@ public class McpPreferenceView extends PreferencePage implements IWorkbenchPrefe
             // Common fields
             addLabel(container, "Name:");
             txtName = addText(container, initial != null ? initial.name() : "my-mcp");
-
-            addLabel(container, "Description (optional):");
-            txtDescription = addText(container, initial != null ? initial.description() : "");
 
             addLabel(container, "Protocol Version:");
             txtProtocol = addText(container, initial != null ? initial.protocolVersion() : McpServerConfig.DEFAULT_PROTOCOL_VERSION);
@@ -344,8 +340,7 @@ public class McpPreferenceView extends PreferencePage implements IWorkbenchPrefe
                     txtProtocol.getText().trim(),
                     stdio ? txtCommand.getText().trim() : "",
                     stdio ? txtArgs.getText().trim() : "",
-                    stdio ? txtEnvVars.getText() : "",
-                    txtDescription.getText().trim()
+                    stdio ? txtEnvVars.getText() : ""
             );
             super.okPressed();
         }

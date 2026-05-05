@@ -10,11 +10,13 @@ import org.sterl.llmpeon.mcp.McpServerConfig;
 import org.sterl.llmpeon.parts.PeonConstants;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class McpPreferenceInitializer extends AbstractPreferenceInitializer {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true);
     private static final TypeReference<List<McpServerConfig>> SERVER_LIST_TYPE = new TypeReference<>() {};
 
     @Override

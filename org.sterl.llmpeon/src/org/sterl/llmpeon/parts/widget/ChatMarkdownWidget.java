@@ -16,6 +16,7 @@ import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.model.ToSimpleMessage;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import dev.langchain4j.data.message.ChatMessage;
@@ -23,7 +24,8 @@ import dev.langchain4j.data.message.ChatMessage;
 public class ChatMarkdownWidget extends Composite {
 
     private final Browser browser;
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true);
     private String chatHtml = null;
 
     public ChatMarkdownWidget(Composite parent, int style) {

@@ -75,8 +75,8 @@ public class McpService implements AutoCloseable {
 
                 var tools = client.listTools();
                 clients.add(client);
-                toolSpecs.addAll(tools);
                 for (var spec : tools) {
+                    toolSpecs.add(spec);
                     toolToClient.put(spec.name(), client);
                     log.info("Connected MCP " + server.name() + " tool " + spec.name());
                 }
