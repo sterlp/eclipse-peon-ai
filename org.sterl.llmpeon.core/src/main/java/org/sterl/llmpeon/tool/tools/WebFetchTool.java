@@ -12,6 +12,8 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.sterl.llmpeon.shared.ArgsUtil;
+
 import com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter;
 
 import dev.langchain4j.agent.tool.P;
@@ -45,10 +47,8 @@ public class WebFetchTool extends AbstractTool {
      * @throws InterruptedException if the request is interrupted
      */
     @Tool("Fetch URL content as Markdown.")
-    public String fetchAsMarkdown(@P("URL") String url) throws IOException, InterruptedException {
-        if (url == null || url.isBlank()) {
-            return "URL cannot be null or empty";
-        }
+    public String fetchAsMarkdown(@P(name = "url") String url) throws IOException, InterruptedException {
+        ArgsUtil.requireNonBlank(url, "url");
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
@@ -58,8 +58,6 @@ public class WebFetchTool extends AbstractTool {
                 .GET()
                 .build();
 
-        
-        
         HttpResponse<byte[]> response = this.httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
         Charset charset = extractCharset(response).orElse(StandardCharsets.UTF_8);
         String htmlContent = new String(response.body(), charset);

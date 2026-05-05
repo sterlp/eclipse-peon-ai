@@ -12,6 +12,7 @@ import org.eclipse.core.runtime.CoreException;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
+import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 
 import dev.langchain4j.agent.tool.P;
@@ -19,15 +20,14 @@ import dev.langchain4j.agent.tool.Tool;
 
 public class EclipseGrepTool extends AbstractEclipseTool {
 
-    @Tool("Eclipse: Search workspace file contents - not the file name.")
+    @Tool("Eclipse: Search workspace file contents for text.")
     public String grepWorkspaceFiles(
-            @P("text to search for in file") String query,
-            @P("optional project or folder path") String path,
-            @P("optional file extension, e.g. .java") String extension) {
+            @P(description = "text to match with contains in content of any file", name = "query") String query,
+            @P(description = "project or folder path to search in", required = false, name = "path") String path,
+            @P(description = "file extension, e.g. .java", required = false, name = "extension") String extension) {
 
-        if (query == null || query.isBlank()) {
-            throw new IllegalArgumentException("query must not be empty");
-        }
+        ArgsUtil.requireNonBlank(query, "query");
+
         var allProjects = path == null || path.length() <= 1;
         String lowerQuery = query.toLowerCase();
         var matches = new LinkedHashMap<String, Integer>(); // file path -> count
@@ -77,7 +77,7 @@ public class EclipseGrepTool extends AbstractEclipseTool {
             if (matches.size() >= MAX_FILES) break;
         }
 
-        onTool("Grep " + query + " found " + matches.size() + " matches for file types: " 
+        onTool("Grep '" + query + "' found " + matches.size() + " matches for file types: " 
                 + StringUtil.getOrDefault(extension, "*"));
 
         if (matches.isEmpty()) {

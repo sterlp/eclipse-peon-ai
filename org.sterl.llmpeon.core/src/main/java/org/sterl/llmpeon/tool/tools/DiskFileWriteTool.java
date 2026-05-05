@@ -4,9 +4,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import org.sterl.llmpeon.shared.AiMonitor.AiFileUpdate;
+import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.FileLines;
 import org.sterl.llmpeon.shared.FileUtils;
-import org.sterl.llmpeon.shared.AiMonitor.AiFileUpdate;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -40,19 +41,14 @@ public class DiskFileWriteTool extends AbstractTool {
     }
 
     @Tool("Disk: Overwrite existing file.")
-    public String writeDiskFile(@P("file path") String filePath, @P("new content") String newContent) {
-
-        if (filePath == null || filePath.isBlank()) {
-            throw new IllegalArgumentException("filePath must not be empty");
-        }
-        if (newContent == null || newContent.isBlank()) {
-            throw new IllegalArgumentException("newContent must not be empty");
-        }
+    public String writeDiskFile(@P(name = "filePath") String filePath, @P(name = "newContent") String newContent) {
+        ArgsUtil.requireNonBlank(filePath, "filePath");
+        ArgsUtil.requireNonBlank(newContent, "newContent");
 
         Path resolved = resolve(filePath);
         if (resolved == null || !Files.isRegularFile(resolved)) {
             throw new IllegalArgumentException(
-                    "File not found: " + filePath + ". Use searchDiskFiles to find the correct path.");
+                    "File not found: `" + filePath + "`. Use searchDiskFiles to find the correct path.");
         }
 
         try {
@@ -68,47 +64,42 @@ public class DiskFileWriteTool extends AbstractTool {
     }
 
     @Tool("Disk: Create/overwrite file. Creates parent dirs.")
-    public String createDiskFile(@P("file path") String filePath, @P("file content") String content) {
-
-        if (filePath == null || filePath.isBlank()) {
-            throw new IllegalArgumentException("filePath must not be empty");
-        }
-        if (content == null || content.isBlank()) {
-            throw new IllegalArgumentException("content must not be empty");
-        }
+    public String createDiskFile(@P(name = "filePath") String filePath, @P(name = "content") String content) {
+        ArgsUtil.requireNonBlank(filePath, "filePath");
+        ArgsUtil.requireNonBlank(content, "newContent");
 
         Path resolved = resolve(filePath);
         if (resolved == null) {
-            throw new IllegalArgumentException("Cannot resolve path: " + filePath);
+            throw new IllegalArgumentException("Cannot resolve path: " + filePath + " got: " + resolved);
         }
         
-        onTool("Creating " + filePath);
         try {
             boolean existed = Files.exists(resolved);
             Files.createDirectories(resolved.getParent());
             Files.writeString(resolved, content);
-            return (existed ? "Updated" : "Created") + " file: " + workingDir.relativize(resolved);
+
+            var msg = (existed ? "Updated" : "Created") + " file: " + workingDir.relativize(resolved);
+            onTool(msg);
+            return msg;
         } catch (IOException e) {
             throw new RuntimeException("Failed to create " + filePath, e);
         }
     }
 
     @Tool("Disk: Delete file.")
-    public String deleteDiskFile(@P("file path") String filePath) {
-
-        if (filePath == null || filePath.isBlank()) {
-            throw new IllegalArgumentException("filePath must not be empty");
-        }
+    public String deleteDiskFile(@P(name = "filePath") String filePath) {
+        ArgsUtil.requireNonBlank(filePath, "filePath");
 
         Path resolved = resolve(filePath);
         if (resolved == null || !Files.exists(resolved)) {
-            return "File not found: " + filePath;
+            return "File not found: `" + filePath + "` maybe already deleted?";
         }
 
-        onTool("Deleting " + filePath);
         try {
             Files.delete(resolved);
-            return "Deleted file: " + workingDir.relativize(resolved);
+            var msg = "Deleted file: " + workingDir.relativize(resolved);
+            onTool(msg);
+            return msg;
         } catch (IOException e) {
             throw new RuntimeException("Failed to delete " + filePath, e);
         }
@@ -116,13 +107,13 @@ public class DiskFileWriteTool extends AbstractTool {
     
     @Tool("Disk: Replace a single line by line number. newContent may span multiple lines.")
     public String replaceDiskLine(
-            @P("file path") String filePath,
-            @P("line to replace (1-based)") int line,
-            @P("replacement text") String newContent) {
+            @P(name = "filePath") String filePath,
+            @P("line to replace (1-based)") Integer line,
+            @P(name = "newContent") String newContent) {
 
-        if (filePath == null || filePath.isBlank()) {
-            throw new IllegalArgumentException("filePath must not be empty");
-        }
+        ArgsUtil.requireNonBlank(filePath, "filePath");
+        ArgsUtil.requireNonNull(line, "line");
+        ArgsUtil.requireNonBlank(newContent, "newContent");
 
         Path resolved = resolve(filePath);
         if (resolved == null || !Files.isRegularFile(resolved)) {
@@ -140,17 +131,14 @@ public class DiskFileWriteTool extends AbstractTool {
     }
 
     @Tool("Disk: Replace exact string. Errors if 0 or >1 matches.")
-    public String editDiskFile(@P("file path") String filePath, @P("exact string to replace") String oldString, @P("replacement text") String newString) {
+    public String editDiskFile(@P(name = "filePath") String filePath, 
+            @P(description = "exact string to replace", name = "oldString") String oldString, 
+            @P(name = "newString") String newString) {
 
-        if (filePath == null || filePath.isBlank()) {
-            throw new IllegalArgumentException("filePath must not be empty");
-        }
-        if (oldString == null || oldString.isBlank()) {
-            throw new IllegalArgumentException("oldString must not be empty");
-        }
-        if (newString == null) {
-            throw new IllegalArgumentException("newString must not be null");
-        }
+        ArgsUtil.requireNonBlank(filePath, "filePath");
+        ArgsUtil.requireNonBlank(oldString, "oldString");
+        ArgsUtil.requireNonBlank(newString, "newString");
+
         if (oldString.equals(newString)) {
             throw new IllegalArgumentException("oldString and newString are identical - nothing to change");
         }

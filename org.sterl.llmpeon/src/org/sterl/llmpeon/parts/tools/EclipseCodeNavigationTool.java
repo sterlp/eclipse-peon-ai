@@ -29,6 +29,7 @@ import org.eclipse.jdt.core.search.TypeNameMatch;
 import org.eclipse.jdt.core.search.TypeNameMatchRequestor;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
+import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.StringMatcher;
 import org.sterl.llmpeon.shared.StringUtil;
 
@@ -49,12 +50,10 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
 
     @Tool("Eclipse/Java: Find types by name/wildcard. Searches also libs and JDK. Metadata only, no source.")
     public String findJavaType(
-            @P("simple name, wildcard (*) or FQN") String typeName,
-            @P("optional project name") String projectName) {
+            @P(description = "name, name with wildcard (*) or FQN", name = "typeName") String typeName,
+            @P(name = "projectName", required = false) String projectName) {
 
-        if (typeName == null || typeName.isBlank()) {
-            throw new IllegalArgumentException("typeName must not be empty");
-        }
+        ArgsUtil.requireNonBlank(typeName, "typeName");
 
         try {
             boolean isFqn = typeName.contains(".") && !typeName.contains("*");
@@ -87,12 +86,10 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
 
     @Tool("Eclipse/Java: Get full source of a type by FQN. Covers JDK and dependency libs — prefer over decompiling JARs.")
     public String getTypeSource(
-            @P("fully qualified type name (FQN)") String fqn,
-            @P("optional; narrows JDK/lib search scope") String projectName) {
+            @P(description = "fully qualified type name", name = "fqn") String fqn,
+            @P(description = "narrows JDK/lib search scope", required = false) String projectName) {
 
-        if (fqn == null || fqn.isBlank()) {
-            throw new IllegalArgumentException("fqn must not be empty");
-        }
+        ArgsUtil.requireNonBlank(fqn, "fqn");
 
         try {
             List<IType> found = findByFqn(fqn, projectName);
@@ -138,19 +135,17 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
 
     @Tool("Eclipse/Java: Find all usages of a type or method.")
     public String findReferences(
-            @P("fully qualified type name (FQN)") String typeName,
-            @P("optional method name") String methodName,
-            @P("optional project name") String projectName) {
+            @P(description = "fully qualified type name", name = "fqn") String fqn,
+            @P(name = "methodName", required = false) String methodName,
+            @P(name = "projectName", required = false) String projectName) {
 
-        if (typeName == null || typeName.isBlank()) {
-            throw new IllegalArgumentException("typeName must not be empty");
-        }
+        ArgsUtil.requireNonBlank(fqn, "fqn");
 
         try {
-            var typeOpt = JdtUtil.findType(typeName);
+            var typeOpt = JdtUtil.findType(fqn);
             if (typeOpt.isEmpty()) {
-                onProblem("Cannot read references of unknown type " + typeName);
-                return "Type not found: " + typeName + ". Use findJavaType to find the correct name.";
+                onProblem("Cannot read references of unknown type " + fqn);
+                return "Type not found: " + fqn + ". Use findJavaType to find the correct name.";
             }
             IType type = typeOpt.get();
 
@@ -158,8 +153,8 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
             if (methodName != null && !methodName.isBlank()) {
                 IMethod method = findMethodByName(type, methodName);
                 if (method == null) {
-                    onProblem("Unknown method " + methodName + " of type " + typeName);
-                    return "Method '" + methodName + "' not found on " + typeName + ". Available methods: " + listMethodNames(type);
+                    onProblem("Unknown method " + methodName + " of type " + fqn);
+                    return "Method '" + methodName + "' not found on " + fqn + ". Available methods: " + listMethodNames(type);
                 }
                 target = method;
             } else {
@@ -227,12 +222,10 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
 
     @Tool("Eclipse/JDT: Find workspace files/folders by name or glob (*, ?).")
     public String findResource(
-            @P("file name or glob pattern") String namePattern,
-            @P("optional project name") String projectName) {
+            @P(description = "file name or glob pattern", name = "namePattern") String namePattern,
+            @P(name = "projectName", required = false) String projectName) {
 
-        if (StringUtil.hasNoValue(namePattern)) {
-            throw new IllegalArgumentException("file name or glob pattern must not be empty");
-        }
+        ArgsUtil.requireNonBlank(namePattern, "namePattern");
 
         var matches = new LinkedHashSet<String>();
         var projects = projectName != null && !projectName.isBlank()
@@ -278,14 +271,12 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
     // Tool 5: Find implementations
     // -------------------------------------------------------------------------
 
-    @Tool("Eclipse/Java: Find implementations/subclasses.")
+    @Tool("Eclipse/Java: Find implementations/subclasses of a type - use this before glob.")
     public String findImplementations(
-            @P("fully qualified interface or class name") String typeName,
-            @P("optional project name") String projectName) {
+            @P(description = "fully qualified interface or class name", name = "typeName") String typeName,
+            @P(name = "projectName") String projectName) {
 
-        if (StringUtil.hasNoValue(typeName)) {
-            throw new IllegalArgumentException("typeName must not be empty");
-        }
+        ArgsUtil.requireNonBlank(typeName, "typeName");
 
         try {
             var typeOpt = JdtUtil.findType(typeName, projectName);

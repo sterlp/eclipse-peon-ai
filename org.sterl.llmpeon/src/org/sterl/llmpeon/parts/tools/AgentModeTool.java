@@ -5,6 +5,7 @@ import org.eclipse.core.runtime.CoreException;
 import org.sterl.llmpeon.parts.agent.AgentModeService;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
+import org.sterl.llmpeon.shared.ArgsUtil;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -27,10 +28,9 @@ public class AgentModeTool extends AbstractEclipseTool {
     }
     
     @Tool("Save the implementation plan to peon-plan/overview.md in the current project. Call this when the plan is complete.")
-    public String savePlan(@P("complete plan in markdown") String content) {
-        if (content == null || content.isBlank()) {
-            throw new IllegalArgumentException("content must not be empty");
-        }
+    public String savePlan(@P(description = "complete plan in markdown", name = "content") String content) {
+        ArgsUtil.requireNonBlank(content, "content");
+        
         var project = getProject();
         var f = IoUtils.writeProjectFile(project, OVERVIEW_FILE, content, getProgressMonitor());
         onTool("Plan saved to " + JdtUtil.pathOf(f));
@@ -39,10 +39,9 @@ public class AgentModeTool extends AbstractEclipseTool {
     }
 
     @Tool("Escalate an unresolvable problems to the plan agent. Call this after 2 failed attempts.")
-    public String reportPlanProblems(@P("detailed problem description in markdown") String content) {
-        if (content == null || content.isBlank()) {
-            throw new IllegalArgumentException("content must not be empty");
-        }
+    public String reportPlanProblems(@P(description = "detailed problem description in markdown", name = "content") String content) {
+        ArgsUtil.requireNonBlank(content, "content");
+        
         var project = getProject();
         var f = IoUtils.writeProjectFile(project, PROBLEM_FILE, content, getProgressMonitor());
         onTool("Problem reported — returning to plan agent");

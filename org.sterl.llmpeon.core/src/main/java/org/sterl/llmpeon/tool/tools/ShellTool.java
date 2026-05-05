@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 
 import dev.langchain4j.agent.tool.P;
@@ -39,19 +40,15 @@ public class ShellTool extends AbstractTool {
 
     @Tool("Run shell command. (mvn, npm etc.) Not for file I/O.")
     public String runOsCommand(
-            @P("shell command") String command,
-            @P("working dir") String workingDirectory,
-            @P("timeout ms, default 120000") Long timeoutMs,
-            @P("max tail lines, default 50 (-1 for all)") Integer tailLines) {
+            @P(description = "shell command", name = "command") String command,
+            @P(name = "workingDirectory") String workingDirectory,
+            @P(description = "timeout ms, default 120000", required = false) Long timeoutMs,
+            @P(description = "max tail lines, default 50 (-1 for all)", required = false, name = "tailLines") Integer tailLines) {
         
-        if (tailLines == null || tailLines <= 0) tailLines = DEFAULT_TAIL_LINES;
+        tailLines = ArgsUtil.getOrDefault(tailLines, DEFAULT_TAIL_LINES);
 
-        if (command == null || command.isBlank()) {
-            throw new IllegalArgumentException("command must not be empty");
-        }
-        if (workingDirectory == null || workingDirectory.isBlank()) {
-            throw new IllegalArgumentException("workingDirectory must not be empty");
-        }
+        ArgsUtil.requireNonBlank(command, "command");
+        ArgsUtil.requireNonBlank(workingDirectory, "workingDirectory");
 
         Path effectiveDir = Path.of(workingDirectory).toAbsolutePath().normalize();
         if (!effectiveDir.toFile().isDirectory()) {
@@ -63,7 +60,7 @@ public class ShellTool extends AbstractTool {
             timeout = Math.min(timeoutMs, MAX_TIMEOUT_MS);
         }
 
-        onTool("Running: " + command + " in " + effectiveDir);
+        onTool("Running: `" + command + "` in " + effectiveDir);
 
         String[] shellCommand;
         String extraPaths = "";

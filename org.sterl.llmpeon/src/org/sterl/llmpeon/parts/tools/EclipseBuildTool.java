@@ -10,6 +10,7 @@ import org.eclipse.core.resources.IncrementalProjectBuilder;
 import org.eclipse.core.runtime.CoreException;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
+import org.sterl.llmpeon.shared.ArgsUtil;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -37,11 +38,12 @@ public class EclipseBuildTool extends AbstractEclipseTool {
     }
     
     @Tool("Eclipse: List build errors/warnings of a project.")
-    public String readProjectProblems(@P("project name") String projectName) {
+    public String readProjectProblems(@P(name = "projectName") String projectName) {
+        ArgsUtil.requireNonBlank(projectName, "projectName");
         var project = EclipseUtil.findOpenProject(projectName);
         if (project.isEmpty()) {
             onProblem("Cannot read problems of unknown project " + projectName);
-            return projectName + " not found. " + listAllOpenEclipseProjects();
+            return projectName + " not found.\n" + listAllOpenEclipseProjects();
         }
         var projectRef = project.get();
         return readProblems(projectRef);
@@ -62,7 +64,9 @@ public class EclipseBuildTool extends AbstractEclipseTool {
     }
 
     @Tool("Eclipse: Build project and return errors/warnings. Preferred way to verify code changes.")
-    public String buildEclipseProject(@P("project name") String projectName) {
+    public String buildEclipseProject(@P(name ="projectName") String projectName) {
+        ArgsUtil.requireNonBlank(projectName, "projectName");
+
         var project = EclipseUtil.findOpenProject(projectName);
         if (project.isEmpty()) {
             onProblem("Cannot build unknown project " + projectName);

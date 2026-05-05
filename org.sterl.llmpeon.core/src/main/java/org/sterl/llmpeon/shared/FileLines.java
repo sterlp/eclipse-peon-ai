@@ -23,18 +23,22 @@ public class FileLines {
      *   <li>Either bound out of range → whole file returned</li>
      * </ul>
      */
+    // TODO: use LIST
     public static String extract(String content, int startLine, int endLine) {
         if (content == null) return "";
+        if (startLine <= 0 && endLine <= 0) return format(content);
 
         var lines = content.split("\n", -1);
         int total = lines.length;
 
         int s = startLine <= 0 ? 1 : startLine;
-        int e = endLine   <= 0 ? total : endLine;
+        int e = endLine   <= 0 ? total : Math.min(endLine, total);
 
+        // check order - end for start
         if (s > e) { int tmp = s; s = e; e = tmp; }
 
-        if (s > total || e > total || s < 1) {
+        // something is messy
+        if (s > total || e > total) {
             return format(content);
         }
 

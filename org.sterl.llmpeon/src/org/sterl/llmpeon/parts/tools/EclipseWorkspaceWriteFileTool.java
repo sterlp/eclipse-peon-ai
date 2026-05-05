@@ -11,6 +11,7 @@ import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.AiMonitor.AiFileUpdate;
+import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.FileLines;
 import org.sterl.llmpeon.shared.FileUtils;
 
@@ -32,14 +33,13 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
 
     @Tool("Eclipse: Replace a single line by line number. newContent may span multiple lines.")
     public String replaceWorkspaceLine(
-            @P("workspace-relative path") String filePath,
-            @P("line to replace (1-based)") Integer line,
-            @P("replacement text") String newContent) {
+            @P(description = "workspace-relative path", name = "filePath") String filePath,
+            @P(description = "line to replace (1-based)", name = "line") Integer line,
+            @P(description = "replacement text", name ="newContent") String newContent) {
 
-        if (filePath == null || filePath.isBlank()) {
-            throw new IllegalArgumentException("workspace-relative pat must not be empty or null");
-        }
-        if (line == null) throw new IllegalArgumentException("provide the line to replace");
+        ArgsUtil.requireNonBlank(filePath, "filePath");
+        ArgsUtil.requireNonNull(line, "line");
+        ArgsUtil.requireNonBlank(newContent, "newContent");
 
         var inFile = EclipseUtil.resolveInEclipse(filePath);
         if (inFile.isEmpty() || !(inFile.get() instanceof IFile eclipseFile)) {
@@ -54,22 +54,13 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
 
     @Tool("Eclipse: Replace exact string in workspace file. Errors if 0 or >1 matches.")
     public String editWorkspaceFile(
-            @P("workspace-relative path") String filePath,
-            @P("exact text to replace") String oldString,
-            @P("new replacement text") String newString) {
+            @P(description = "workspace-relative path", name = "filePath") String filePath,
+            @P(description = "exact text to replace", name = "oldString") String oldString,
+            @P(name = "newString") String newString) {
 
-        if (filePath == null || filePath.isBlank()) {
-            throw new IllegalArgumentException("filePath must not be empty");
-        }
-        if (oldString == null || oldString.isBlank()) {
-            throw new IllegalArgumentException("oldString must not be empty");
-        }
-        if (newString == null) {
-            throw new IllegalArgumentException("newString must not be null");
-        }
-        if (oldString.equals(newString)) {
-            throw new IllegalArgumentException("oldString and newString are identical - nothing to change");
-        }
+        ArgsUtil.requireNonBlank(filePath, "filePath");
+        ArgsUtil.requireNonBlank(filePath, "oldString");
+        ArgsUtil.requireNonBlank(filePath, "newString");
 
         var inFile = EclipseUtil.resolveInEclipse(filePath);
         if (inFile.isEmpty() || !(inFile.get() instanceof IFile eclipseFile)) {
@@ -88,15 +79,11 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
 
     @Tool("Eclipse: Overwrite existing workspace file.")
     public String writeWorkspaceFile(
-            @P("workspace-relative path") String filePath,
-            @P("new content") String newContent) {
+            @P(description = "workspace-relative path", name = "filePath") String filePath,
+            @P(name = "newContent") String newContent) {
 
-        if (filePath == null || filePath.isBlank()) {
-            throw new IllegalArgumentException("workspace-relative path must not be empty");
-        }
-        if (newContent == null || newContent.isBlank()) {
-            throw new IllegalArgumentException("new content must not be empty");
-        }
+        ArgsUtil.requireNonBlank(filePath, "filePath");
+        ArgsUtil.requireNonBlank(filePath, "newContent");
 
         var inFile = EclipseUtil.resolveInEclipse(filePath);
         if (inFile.isEmpty() || !(inFile.get() instanceof IFile)) {
@@ -121,15 +108,11 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
 
     @Tool("Eclipse: Create/overwrite workspace file. Creates parent dirs.")
     public String createWorkspaceFile(
-            @P("workspace-relative path") String filePath,
-            @P("file content") String content) {
+            @P(description = "workspace-relative path", name = "filePath") String filePath,
+            @P(name = "content") String content) {
 
-        if (filePath == null || filePath.isBlank()) {
-            throw new IllegalArgumentException("filePath must not be empty");
-        }
-        if (content == null || content.isBlank()) {
-            throw new IllegalArgumentException("content must not be empty");
-        }
+        ArgsUtil.requireNonBlank(filePath, "filePath");
+        ArgsUtil.requireNonBlank(filePath, "content");
 
         var targetProject = EclipseUtil.findOpenProject(filePath);
         String projectRelativePath = java.nio.file.Path.of(filePath).toString();
@@ -159,11 +142,9 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
 
     @Tool("Eclipse: Delete workspace file or directory recursively.")
     public String deleteWorkspaceResource(
-            @P("workspace-relative path") String filePath) {
+            @P(description = "workspace-relative path", name = "filePath") String filePath) {
 
-        if (filePath == null || filePath.isBlank()) {
-            throw new IllegalArgumentException("filePath must not be empty");
-        }
+        ArgsUtil.requireNonBlank(filePath, "filePath");
 
         var file = EclipseUtil.resolveInEclipse(filePath);
         if (file.isEmpty()) throw new IllegalArgumentException("Not found: " + filePath);

@@ -41,6 +41,7 @@ public enum AiProvider {
         public ChatModel buildChatModel(LlmConfig c) {
             return OllamaChatModel.builder()
                     .timeout(TIMEOUT)
+                    .maxRetries(1)
                     .baseUrl(c.getUrl())
                     .modelName(c.getModel())
                     .think(c.isThinkingEnabled())
@@ -116,6 +117,7 @@ public enum AiProvider {
                             .version(HttpClient.Version.HTTP_1_1));
             var result = OpenAiChatModel.builder()
                     .timeout(TIMEOUT)
+                    .maxRetries(1)
                     .baseUrl(c.getUrl())
                     .modelName(c.getModel())
                     .strictJsonSchema(true)
@@ -360,7 +362,7 @@ public enum AiProvider {
         }
     };
 
-    private static final Duration TIMEOUT = Duration.ofMinutes(4);
+    private static final Duration TIMEOUT = Duration.ofMinutes(6);
 
     // --- Per-instance HTTP client (lazy, reused) ---
 

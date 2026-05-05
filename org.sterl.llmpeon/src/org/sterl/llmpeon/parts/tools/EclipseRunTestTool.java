@@ -20,6 +20,7 @@ import org.eclipse.jdt.junit.model.ITestElement.Result;
 import org.eclipse.jdt.junit.model.ITestRunSession;
 import org.eclipse.jdt.launching.IJavaLaunchConfigurationConstants;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
+import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.WaitUtil;
 
 import dev.langchain4j.agent.tool.P;
@@ -32,9 +33,10 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
 
     @Tool("Eclipse: Run JUnit 5 tests.")
     public String runTests(
-            @P("project name") String projectName,
-            @P("optional fully qualified test class, empty = all tests") String testClassName) {
-
+            @P(name = "projectName") String projectName,
+            @P(description = "fully qualified test class, empty = all tests", required = false, name = "testClassName") String testClassName) {
+        
+        ArgsUtil.requireNonBlank(projectName, "projectName");
         var project = EclipseUtil.findOpenProject(projectName);
         if (project.isEmpty()) {
             throw new IllegalArgumentException("Project not found: " + projectName
@@ -103,8 +105,7 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
                                 + projectName + "': " + testClassName
                                 + ". Use a file search tool to find the correct class name and project.");
                     }
-                    wc.setAttribute(IJavaLaunchConfigurationConstants.ATTR_MAIN_TYPE_NAME,
-                            testClassName);
+                    wc.setAttribute(IJavaLaunchConfigurationConstants.ATTR_MAIN_TYPE_NAME, testClassName);
                 }
 
                 ILaunchConfiguration config = wc.doSave();

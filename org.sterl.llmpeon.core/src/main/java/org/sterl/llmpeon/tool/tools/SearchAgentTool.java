@@ -2,6 +2,7 @@ package org.sterl.llmpeon.tool.tools;
 
 import org.sterl.llmpeon.PromptLoader;
 import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
@@ -23,10 +24,9 @@ public class SearchAgentTool extends AbstractTool {
         this.toolService = toolService;
     }
 
-    @Tool(name = "SearchAgentTool", value = "Sub-agent for complex multi-step search/research.")
-    public String searchAgent(@P("search prompt") String prompt) {
-        if (prompt == null || prompt.isBlank()) throw new IllegalArgumentException("search prompt must not be empty");
-
+    @Tool(name = "SearchAgentTool", value = "Sub-agent for complex multi-step search/research - to save tokens.")
+    public String searchAgent(@P(name = "prompt") String prompt) {
+        ArgsUtil.requireNonBlank(prompt, "prompt");
         final AiMonitor m = AiMonitor.nullSafety(monitor);
 
         try {

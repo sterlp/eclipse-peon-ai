@@ -2,6 +2,7 @@ package org.sterl.llmpeon.tool.tools;
 
 import java.io.IOException;
 
+import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.skill.SkillService;
 
 import dev.langchain4j.agent.tool.P;
@@ -17,7 +18,8 @@ public class SkillTool extends AbstractTool {
     }
     
     @Tool("Read SKILL.md by name.")
-    public String readSkill(@P("skill name") String name) throws IOException, InterruptedException {
+    public String readSkill(@P(name = "name") String name) throws IOException, InterruptedException {
+        ArgsUtil.requireNonBlank(name, "name");
         var skill = skillService.get(name);
         if (skill.isEmpty()) return "No skill with the name " + name + " found. Use one of: " 
                 + skillService.skillNames();

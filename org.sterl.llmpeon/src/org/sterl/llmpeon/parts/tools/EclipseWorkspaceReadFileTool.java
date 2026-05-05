@@ -14,6 +14,7 @@ import org.eclipse.core.runtime.CoreException;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
+import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.FileLines;
 import org.sterl.llmpeon.shared.StringMatcher;
 
@@ -30,16 +31,14 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
     public static final String READ_ECLIPSE_FILE_TOOL = "readWorkspaceFile";
     @Tool(name = READ_ECLIPSE_FILE_TOOL, value = "Eclipse: Read workspace file (e.g. '/Project/src/Foo.java').")
     public String readWorkspaceFile(
-            @P("workspace-relative path") String filePath,
-            @P("Optional: first line to read (1-based). 0 = start of file.") Integer startLine,
-            @P("Optional: last line to read (1-based). 0 = end of file.") Integer endLine) {
+            @P(description = "workspace-relative path", name = "filePath") String filePath,
+            @P(description = "first line to read (1-based). 0 = start of file.", required = false, name = "startLine") Integer startLine,
+            @P(description = "last line to read (1-based). 0 = end of file.", required = false, name = "endLine") Integer endLine) {
+        
+        ArgsUtil.requireNonBlank(filePath, "filePath");
         
         if (startLine == null) startLine = 0;
         if (endLine == null) endLine = 0;
-
-        if (filePath == null || filePath.isBlank()) {
-            throw new IllegalArgumentException("filePath must not be empty");
-        }
 
         var file = EclipseUtil.resolveInEclipse(filePath);
         if (file.isPresent() && file.get() instanceof IFile f) {
@@ -49,19 +48,17 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
             String content = IoUtils.readFile(f);
             return  FileLines.extract(content, startLine, endLine);
         }
-        onTool("No eclipse file found for " + filePath);
-        return "No eclipse file found for " + filePath;
+        onProblem("No eclipse file found for " + filePath);
+        return "No eclipse file found for '" + filePath + "' use searchWorkspaceFiles to find the correct file name and path.";
     }
 
     @Tool("Eclipse: Search workspace files by name. Use '*' to list all files recursively.")
     public String searchWorkspaceFiles(
-            @P("file name query - wildcard *, ? is supported. e.g. '*.java' for all java files") String query,
-            @P("Optional: max results to return. 0 = unlimited.") Integer inLimit) {
+            @P(description = "file name query - wildcard *, ? is supported. e.g. '*.java' for all java files", name = "query") String query,
+            @P(description = "max results to return. 0 = unlimited.", required = false, name = "limit") Integer inLimit) {
 
         final int limit = inLimit == null ? 0 : inLimit;
-        if (query == null || query.isBlank()) {
-            throw new IllegalArgumentException("query must not be empty");
-        }
+        ArgsUtil.requireNonBlank(query, "query");
 
         final var matcher = StringMatcher.wildCardMatcher(query);
         final List<String> matches = new ArrayList<>();
@@ -101,7 +98,7 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
 
     @Tool("Eclipse: List workspace directory (non-recursive). Empty path lists all projects.")
     public String listWorkspaceDirectory(
-            @P("workspace-relative path, e.g. '/MyProject/src'") String path) {
+            @P(description = "workspace-relative path, e.g. '/MyProject/src'", required = false, name = "path") String path) {
 
         // root: list open projects
         if (path == null || path.isBlank() || path.length() == 1) {

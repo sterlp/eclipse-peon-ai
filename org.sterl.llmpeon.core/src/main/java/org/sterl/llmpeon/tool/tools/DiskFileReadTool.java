@@ -5,10 +5,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 
+import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.FileLines;
 import org.sterl.llmpeon.shared.FileUtils;
 import org.sterl.llmpeon.shared.StringMatcher;
-import org.sterl.llmpeon.shared.StringUtil;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -43,14 +43,11 @@ public class DiskFileReadTool extends AbstractTool {
 
     @Tool("Disk: Read file - not eclipse.")
     public String readDiskFile(
-            @P("file path") String filePath,
-            @P("Optional: first line to read (1-based). 0 = start of file.") Integer startLine,
-            @P("Optional: last line to read (1-based). 0 = end of file.") Integer endLine) {
-        
+            @P(name = "filePath") String filePath,
+            @P(description = "first line to read (1-based). 0 = start of file.", required = false, name = "startLine") Integer startLine,
+            @P(description = "last line to read (1-based). 0 = end of file.", required = false, name = "endLine") Integer endLine) {
 
-        if (StringUtil.hasNoValue(filePath)) {
-            throw new IllegalArgumentException("filePath must not be empty");
-        }
+        ArgsUtil.requireNonBlank(filePath, "filePath");
 
         Path resolved = resolve(filePath);
         if (resolved == null || !Files.isRegularFile(resolved)) {
