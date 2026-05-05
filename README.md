@@ -131,6 +131,7 @@ Detailed documentation is available at [peon-ai-4e.sterl.org](https://peon-ai-4e
 
 - https://github.com/nickclyde/duckduckgo-mcp-server
 - https://marianfoo.github.io/arc-1/
+- https://github.com/marianfoo/sap-ai-mcp-servers
 
 ## Usefull commands
 
