@@ -84,9 +84,10 @@ Example workflows:
 - [ ] **Git Tool** - Dedicated git operations (status, diff, commit, log) with structured output
 - [x] **Code Navigation** - Find types (supports `*`, `?` wildcards and camelCase e.g. `NPE`), find references, find implementations via Eclipse JDT
 - [ ] **Refactor** - Rename symbols, extract methods, and move classes using Eclipse refactoring
-- [x] `v1.1.0` **Agent Mode** Preview of the agent mode
-- [x] `v1.2.0` **MCP** Support MCP servers using langchain4j MCP integration
-- [x] `v1.3.0` **Github Copilot** Support
+- [x] `v1.1.x` **Agent Mode** Preview of the agent mode
+- [x] `v1.2.x` **MCP** Support MCP servers using langchain4j MCP integration
+- [x] `v1.3.x` **Github Copilot** Support
+- [x] `v1.4.x` **MCP stdio** support added using langchain4j
 
 ## Requirements
 
@@ -109,11 +110,11 @@ For development, launch with: `-clean -clearPersistedState`
 
 Detailed documentation is available at [peon-ai-4e.sterl.org](https://peon-ai-4e.sterl.org):
 
-- [Installation Guide](https://peon-ai-4e.sterl.org/setup/installation/)
-- [Configuration](https://peon-ai-4e.sterl.org/setup/configuration/)
-- [AGENTS.md & Skills](https://peon-ai-4e.sterl.org/setup/agents-and-skills/)
-- [Building](https://peon-ai-4e.sterl.org/development/building/)
-- [Architecture](https://peon-ai-4e.sterl.org/development/architecture/)
+- [Installation Guide](https://peon-ai-4e.sterl.org/setup/installation)
+- [Configuration](https://peon-ai-4e.sterl.org/setup/configuration)
+- [AGENTS.md & Skills](https://peon-ai-4e.sterl.org/setup/agents-and-skills)
+- [Building](https://peon-ai-4e.sterl.org/development/building)
+- [Architecture](https://peon-ai-4e.sterl.org/development/architecture)
 
 
 ## Dependencies
@@ -123,6 +124,13 @@ Detailed documentation is available at [peon-ai-4e.sterl.org](https://peon-ai-4e
 - [Highlight.js](https://highlightjs.org) - Syntax highlighting
 - [Diff2Html](https://diff2html.xyz) - Diff visualization
 - [flexmark](https://github.com/vsch/flexmark-java)
+
+## Links
+
+### MCP
+
+- https://github.com/nickclyde/duckduckgo-mcp-server
+- https://marianfoo.github.io/arc-1/
 
 ## Usefull commands
 
