@@ -3,25 +3,47 @@ package org.sterl.llmpeon.mcp;
 import org.sterl.llmpeon.shared.StringUtil;
 
 /**
- * Configuration for a single MCP server.
+ * Configuration for a single MCP server — either HTTP/SSE or a local STDIO subprocess.
  *
  * @param name            display name shown in the UI
- * @param url             SSE endpoint URL, e.g. https://mcp.context7.com/mcp
- * @param apiKey          optional Bearer token; empty string means no auth
+ * @param type            transport type: HTTP (SSE) or STDIO (local process)
+ * @param url             SSE endpoint URL — HTTP only, e.g. https://mcp.context7.com/mcp
+ * @param apiKey          optional Bearer token — HTTP only
  * @param protocolVersion MCP protocol version to announce, e.g. "2024-11-05"
+ * @param command         executable to launch — STDIO only, e.g. "uvx"
+ * @param args            space-separated arguments — STDIO only, e.g. "duckduckgo-mcp-server"
+ * @param envVars         KEY=VALUE lines passed as environment variables — STDIO only
+ * @param description     optional hint for the AI describing what this server provides
  */
 public record McpServerConfig(
         String name,
+        McpTransportType type,
         String url,
         String apiKey,
-        String protocolVersion) {
+        String protocolVersion,
+        String command,
+        String args,
+        String envVars,
+        String description) {
+
+    public enum McpTransportType { HTTP, STDIO }
 
     public static final String DEFAULT_PROTOCOL_VERSION = "2024-11-05";
 
     public McpServerConfig {
-        if (name == null) name = "";
-        if (url == null) url = "";
-        if (apiKey == null) apiKey = "";
+        if (type == null)            type = McpTransportType.HTTP;
+        if (name == null)            name = "";
+        if (url == null)             url = "";
+        if (apiKey == null)          apiKey = "";
+        if (command == null)         command = "";
+        if (args == null)            args = "";
+        if (envVars == null)         envVars = "";
+        if (description == null)     description = "";
         if (StringUtil.hasNoValue(protocolVersion)) protocolVersion = DEFAULT_PROTOCOL_VERSION;
+    }
+
+    /** Convenience constructor for HTTP servers (backward-compatible with existing call sites). */
+    public McpServerConfig(String name, String url, String apiKey, String protocolVersion) {
+        this(name, McpTransportType.HTTP, url, apiKey, protocolVersion, "", "", "", "");
     }
 }

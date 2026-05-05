@@ -11,8 +11,10 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Table;
@@ -23,6 +25,7 @@ import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
 import org.eclipse.ui.preferences.ScopedPreferenceStore;
 import org.sterl.llmpeon.mcp.McpServerConfig;
+import org.sterl.llmpeon.mcp.McpServerConfig.McpTransportType;
 import org.sterl.llmpeon.mcp.McpService;
 import org.sterl.llmpeon.parts.PeonConstants;
 import org.sterl.llmpeon.shared.StringUtil;
@@ -64,14 +67,17 @@ public class McpPreferenceView extends PreferencePage implements IWorkbenchPrefe
         var colName = new TableColumn(table, SWT.NONE);
         colName.setText("Name");
         colName.setWidth(120);
+        var colType = new TableColumn(table, SWT.NONE);
+        colType.setText("Type");
+        colType.setWidth(60);
         var colUrl = new TableColumn(table, SWT.NONE);
-        colUrl.setText("URL");
+        colUrl.setText("URL / Command");
         colUrl.setWidth(250);
         var colProtocol = new TableColumn(table, SWT.NONE);
         colProtocol.setText("Protocol");
         colProtocol.setWidth(90);
         var colKey = new TableColumn(table, SWT.NONE);
-        colKey.setText("API Key");
+        colKey.setText("API Key / Env");
         colKey.setWidth(100);
 
         table.addListener(SWT.Selection, e -> updateButtonStates());
@@ -115,9 +121,16 @@ public class McpPreferenceView extends PreferencePage implements IWorkbenchPrefe
 
     private void setItemData(TableItem item, McpServerConfig s) {
         item.setText(0, s.name());
-        item.setText(1, s.url());
-        item.setText(2, s.protocolVersion());
-        item.setText(3, StringUtil.hasNoValue(s.apiKey()) ? "<no api key>" : "****");
+        item.setText(1, s.type().name());
+        if (s.type() == McpTransportType.STDIO) {
+            item.setText(2, (s.command() + " " + s.args()).trim());
+            item.setText(3, s.protocolVersion());
+            item.setText(4, StringUtil.hasNoValue(s.envVars()) ? "" : "<env set>");
+        } else {
+            item.setText(2, s.url());
+            item.setText(3, s.protocolVersion());
+            item.setText(4, StringUtil.hasNoValue(s.apiKey()) ? "<no api key>" : "****");
+        }
     }
 
     private void updateButtonStates() {
@@ -191,10 +204,21 @@ public class McpPreferenceView extends PreferencePage implements IWorkbenchPrefe
 
     static class McpServerDialog extends TitleAreaDialog {
 
+        private Combo cmbType;
         private Text txtName;
+        private Text txtDescription;
+        private Text txtProtocol;
+
+        // HTTP fields
+        private Group grpHttp;
         private Text txtUrl;
         private Text txtApiKey;
-        private Text txtProtocol;
+
+        // STDIO fields
+        private Group grpStdio;
+        private Text txtCommand;
+        private Text txtArgs;
+        private Text txtEnvVars;
 
         private final McpServerConfig initial;
         private McpServerConfig result;
@@ -209,6 +233,8 @@ public class McpPreferenceView extends PreferencePage implements IWorkbenchPrefe
             super.create();
             setTitle(initial == null ? "Add MCP Server" : "Edit MCP Server");
             setMessage("Configure connection details for the MCP server.");
+            getShell().setMinimumSize(540, 420);
+            getShell().setSize(540, 420);
         }
 
         @Override
@@ -218,43 +244,108 @@ public class McpPreferenceView extends PreferencePage implements IWorkbenchPrefe
             container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
             container.setLayout(new GridLayout(2, false));
 
-            addField(container, "Name:", initial != null ? initial.name() : "context7");
-            txtName = (Text) getLastControl(container);
+            // Type selector
+            addLabel(container, "Type:");
+            cmbType = new Combo(container, SWT.READ_ONLY | SWT.DROP_DOWN);
+            cmbType.setItems("HTTP (SSE)", "STDIO (local process)");
+            cmbType.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+            boolean isStdio = initial != null && initial.type() == McpServerConfig.McpTransportType.STDIO;
+            cmbType.select(isStdio ? 1 : 0);
 
-            addField(container, "URL (SSE endpoint):", initial != null ? initial.url() : "https://mcp.context7.com/mcp");
-            txtUrl = (Text) getLastControl(container);
+            // Common fields
+            addLabel(container, "Name:");
+            txtName = addText(container, initial != null ? initial.name() : "my-mcp");
 
-            addField(container, "API Key (optional):", initial != null ? initial.apiKey() : "");
-            txtApiKey = (Text) getLastControl(container);
+            addLabel(container, "Description (optional):");
+            txtDescription = addText(container, initial != null ? initial.description() : "");
+
+            addLabel(container, "Protocol Version:");
+            txtProtocol = addText(container, initial != null ? initial.protocolVersion() : McpServerConfig.DEFAULT_PROTOCOL_VERSION);
+
+            // HTTP group
+            grpHttp = new Group(container, SWT.NONE);
+            grpHttp.setText("HTTP / SSE Settings");
+            grpHttp.setLayout(new GridLayout(2, false));
+            var grpHttpGd = new GridData(SWT.FILL, SWT.FILL, true, false);
+            grpHttpGd.horizontalSpan = 2;
+            grpHttp.setLayoutData(grpHttpGd);
+
+            addLabel(grpHttp, "URL (SSE endpoint):");
+            txtUrl = addText(grpHttp, initial != null ? initial.url() : "https://mcp.context7.com/mcp");
+
+            addLabel(grpHttp, "API Key (optional):");
+            txtApiKey = addText(grpHttp, initial != null ? initial.apiKey() : "");
             txtApiKey.setEchoChar('*');
 
-            addField(container, "Protocol Version:", initial != null ? initial.protocolVersion() : McpServerConfig.DEFAULT_PROTOCOL_VERSION);
-            txtProtocol = (Text) getLastControl(container);
+            // STDIO group
+            grpStdio = new Group(container, SWT.NONE);
+            grpStdio.setText("STDIO / Local Process Settings");
+            grpStdio.setLayout(new GridLayout(2, false));
+            var grpStdioGd = new GridData(SWT.FILL, SWT.FILL, true, false);
+            grpStdioGd.horizontalSpan = 2;
+            grpStdio.setLayoutData(grpStdioGd);
+
+            addLabel(grpStdio, "Command:");
+            txtCommand = addText(grpStdio, initial != null ? initial.command() : "uvx");
+
+            addLabel(grpStdio, "Arguments:");
+            txtArgs = addText(grpStdio, initial != null ? initial.args() : "");
+
+            addLabel(grpStdio, "Environment Variables:");
+            txtEnvVars = new Text(grpStdio, SWT.BORDER | SWT.MULTI | SWT.WRAP | SWT.V_SCROLL);
+            txtEnvVars.setText(initial != null ? initial.envVars() : "");
+            var envGd = new GridData(SWT.FILL, SWT.FILL, true, false);
+            envGd.heightHint = 70;
+            txtEnvVars.setLayoutData(envGd);
+            addLabel(grpStdio, "");
+            var envHint = new Label(grpStdio, SWT.NONE);
+            envHint.setText("One KEY=VALUE per line, e.g.  DDG_SAFE_SEARCH=STRICT");
+            envHint.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+
+            // Wire type toggle
+            cmbType.addListener(SWT.Selection, e -> applyTypeVisibility(container));
+            applyTypeVisibility(container);
 
             return area;
         }
 
-        private void addField(Composite parent, String label, String value) {
-            var lbl = new Label(parent, SWT.NONE);
-            lbl.setText(label);
-            lbl.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
-            var txt = new Text(parent, SWT.BORDER);
-            txt.setText(value);
-            txt.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+        private void applyTypeVisibility(Composite container) {
+            boolean stdio = cmbType.getSelectionIndex() == 1;
+            grpHttp.setVisible(!stdio);
+            ((GridData) grpHttp.getLayoutData()).exclude = stdio;
+            grpStdio.setVisible(stdio);
+            ((GridData) grpStdio.getLayoutData()).exclude = !stdio;
+            container.layout(true, true);
+            // Resize the shell to fit the new layout
+            getShell().pack();
         }
 
-        private Control getLastControl(Composite container) {
-            var children = container.getChildren();
-            return children[children.length - 1];
+        private void addLabel(Composite parent, String text) {
+            var lbl = new Label(parent, SWT.NONE);
+            lbl.setText(text);
+            lbl.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
+        }
+
+        private Text addText(Composite parent, String value) {
+            var txt = new Text(parent, SWT.BORDER);
+            txt.setText(value != null ? value : "");
+            txt.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+            return txt;
         }
 
         @Override
         protected void okPressed() {
+            boolean stdio = cmbType.getSelectionIndex() == 1;
             result = new McpServerConfig(
                     txtName.getText().trim(),
-                    txtUrl.getText().trim(),
-                    txtApiKey.getText(),
-                    txtProtocol.getText().trim()
+                    stdio ? McpServerConfig.McpTransportType.STDIO : McpServerConfig.McpTransportType.HTTP,
+                    stdio ? "" : txtUrl.getText().trim(),
+                    stdio ? "" : txtApiKey.getText(),
+                    txtProtocol.getText().trim(),
+                    stdio ? txtCommand.getText().trim() : "",
+                    stdio ? txtArgs.getText().trim() : "",
+                    stdio ? txtEnvVars.getText() : "",
+                    txtDescription.getText().trim()
             );
             super.okPressed();
         }
@@ -267,5 +358,6 @@ public class McpPreferenceView extends PreferencePage implements IWorkbenchPrefe
         protected boolean isResizable() {
             return true;
         }
+
     }
 }

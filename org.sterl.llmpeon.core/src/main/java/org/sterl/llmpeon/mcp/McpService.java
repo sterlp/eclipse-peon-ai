@@ -2,8 +2,10 @@ package org.sterl.llmpeon.mcp;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -11,7 +13,9 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.McpClient;
+import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
+import dev.langchain4j.mcp.client.transport.stdio.StdioMcpTransport;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -56,25 +60,17 @@ public class McpService implements AutoCloseable {
      */
     public void connect() {
         disconnect();
-        var errors = new ArrayList<String>();
         for (var server : servers) {
-            if (server.url() == null || server.url().isBlank()) continue;
             try {
-                var transportBuilder = StreamableHttpMcpTransport.builder()
-                        .url(server.url())
-                        .timeout(Duration.ofSeconds(30))
-                        .logRequests(false)
-                        .logResponses(false);
-                if (server.apiKey() != null && !server.apiKey().isBlank()) {
-                    transportBuilder.customHeaders(Map.of("Authorization", "Bearer " + server.apiKey()));
-                }
+                McpTransport transport = buildTransport(server);
+                if (transport == null) continue;
 
                 McpClient client = DefaultMcpClient.builder()
-                        .transport(transportBuilder.build())
+                        .transport(transport)
                         .protocolVersion(server.protocolVersion())
                         .key(server.name())
                         .initializationTimeout(Duration.ofSeconds(15))
-                        .toolExecutionTimeout(Duration.ofSeconds(30))
+                        .toolExecutionTimeout(Duration.ofSeconds(60))
                         .build();
 
                 var tools = client.listTools();
@@ -85,12 +81,61 @@ public class McpService implements AutoCloseable {
                     log.info("Connected MCP " + server.name() + " tool " + spec.name());
                 }
             } catch (Exception e) {
-                errors.add(server.name() + " (" + server.url() + "): " + e.getMessage());
+                var location = server.type() == McpServerConfig.McpTransportType.STDIO
+                        ? server.command() + " " + server.args()
+                        : server.url();
+                disconnect();
+                throw new RuntimeException("MCP failed to connect to: " + server.name() + " (" + location + "): " + e.getMessage());
             }
         }
-        if (!errors.isEmpty()) {
-            throw new RuntimeException("MCP failed to connect to:\n" + String.join("\n", errors));
+    }
+
+    private McpTransport buildTransport(McpServerConfig server) {
+        if (server.type() == McpServerConfig.McpTransportType.STDIO) {
+            return buildStdioMcp(server);
+        } else {
+            return buildWebMcp(server);
         }
+    }
+
+    private McpTransport buildStdioMcp(McpServerConfig server) {
+        if (server.command().isBlank()) {
+            throw new IllegalArgumentException(server.name() + ": STDIO server requires a command");
+        }
+        var cmd = new ArrayList<String>();
+        cmd.add(server.command().trim());
+        if (!server.args().isBlank()) {
+            Arrays.stream(server.args().trim().split("\\s+")).forEach(cmd::add);
+        }
+        var envMap = parseEnvVars(server.envVars());
+        var builder = StdioMcpTransport.builder()
+                .command(cmd)
+                .logEvents(false);
+        if (!envMap.isEmpty()) builder.environment(envMap);
+        return builder.build();
+    }
+
+    private McpTransport buildWebMcp(McpServerConfig server) {
+        if (server.url().isBlank()) return null;
+        var tb = StreamableHttpMcpTransport.builder()
+                .url(server.url())
+                .timeout(Duration.ofSeconds(30))
+                .logRequests(false)
+                .logResponses(false);
+        if (!server.apiKey().isBlank()) {
+            tb.customHeaders(Map.of("Authorization", "Bearer " + server.apiKey()));
+        }
+        return tb.build();
+    }
+
+    private static Map<String, String> parseEnvVars(String raw) {
+        var map = new LinkedHashMap<String, String>();
+        if (raw == null || raw.isBlank()) return map;
+        for (var line : raw.split("\\r?\\n")) {
+            var eq = line.indexOf('=');
+            if (eq > 0) map.put(line.substring(0, eq).trim(), line.substring(eq + 1));
+        }
+        return map;
     }
 
     /**
