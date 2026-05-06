@@ -246,10 +246,17 @@ public class McpPreferenceView extends PreferencePage implements IWorkbenchPrefe
             // Type selector
             addLabel(container, "Type:");
             cmbType = new Combo(container, SWT.READ_ONLY | SWT.DROP_DOWN);
-            cmbType.setItems("HTTP (SSE)", "STDIO (local process)");
+            cmbType.setItems("HTTP (Streamable)", "HTTP (legacy SSE)", "STDIO (local process)");
             cmbType.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-            boolean isStdio = initial != null && initial.type() == McpServerConfig.McpTransportType.STDIO;
-            cmbType.select(isStdio ? 1 : 0);
+            int idx = 0;
+            if (initial != null) {
+                idx = switch (initial.type()) {
+                    case HTTP -> 0;
+                    case HTTP_SSE -> 1;
+                    case STDIO -> 2;
+                };
+            }
+            cmbType.select(idx);
 
             // Common fields
             addLabel(container, "Name:");
@@ -306,7 +313,7 @@ public class McpPreferenceView extends PreferencePage implements IWorkbenchPrefe
         }
 
         private void applyTypeVisibility(Composite container) {
-            boolean stdio = cmbType.getSelectionIndex() == 1;
+            boolean stdio = cmbType.getSelectionIndex() == 2;
             grpHttp.setVisible(!stdio);
             ((GridData) grpHttp.getLayoutData()).exclude = stdio;
             grpStdio.setVisible(stdio);
@@ -331,10 +338,15 @@ public class McpPreferenceView extends PreferencePage implements IWorkbenchPrefe
 
         @Override
         protected void okPressed() {
-            boolean stdio = cmbType.getSelectionIndex() == 1;
+            McpTransportType type = switch (cmbType.getSelectionIndex()) {
+                case 1 -> McpTransportType.HTTP_SSE;
+                case 2 -> McpTransportType.STDIO;
+                default -> McpTransportType.HTTP;
+            };
+            boolean stdio = type == McpTransportType.STDIO;
             result = new McpServerConfig(
                     txtName.getText().trim(),
-                    stdio ? McpServerConfig.McpTransportType.STDIO : McpServerConfig.McpTransportType.HTTP,
+                    type,
                     stdio ? "" : txtUrl.getText().trim(),
                     stdio ? "" : txtApiKey.getText(),
                     txtProtocol.getText().trim(),

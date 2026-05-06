@@ -14,6 +14,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.client.transport.http.HttpMcpTransport;
 import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
 import dev.langchain4j.mcp.client.transport.stdio.StdioMcpTransport;
 import lombok.extern.slf4j.Slf4j;
@@ -85,7 +86,7 @@ public class McpService implements AutoCloseable {
                         ? server.command() + " " + server.args()
                         : server.url();
                 disconnect();
-                throw new RuntimeException("MCP failed to connect to: " + server.name() + " (" + location + "): " + e.getMessage());
+                throw new RuntimeException("MCP failed to connect to: " + server.name() + " (" + location + "): " + e.getMessage(), e);
             }
         }
     }
@@ -115,16 +116,28 @@ public class McpService implements AutoCloseable {
         return builder.build();
     }
 
+    @SuppressWarnings("removal")
     private McpTransport buildWebMcp(McpServerConfig server) {
         if (server.url().isBlank()) return null;
+        Map<String, String> headers = server.apiKey().isBlank()
+                ? null
+                : Map.of("Authorization", "Bearer " + server.apiKey());
+        if (server.type() == McpServerConfig.McpTransportType.HTTP_SSE) {
+            var tb = HttpMcpTransport.builder()
+                    .sseUrl(server.url())
+                    .timeout(Duration.ofSeconds(60))
+                    .logRequests(false)
+                    .logResponses(false);
+            if (headers != null) tb.customHeaders(headers);
+            return tb.build();
+        }
         var tb = StreamableHttpMcpTransport.builder()
                 .url(server.url())
-                .timeout(Duration.ofSeconds(30))
+                .timeout(Duration.ofSeconds(60))
                 .logRequests(false)
-                .logResponses(false);
-        if (!server.apiKey().isBlank()) {
-            tb.customHeaders(Map.of("Authorization", "Bearer " + server.apiKey()));
-        }
+                .logResponses(false)
+                .setHttpVersion1_1();
+        if (headers != null) tb.customHeaders(headers);
         return tb.build();
     }
 

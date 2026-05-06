@@ -8,7 +8,7 @@ Open **Window → Preferences → Peon AI → MCP Servers**.
 
 ![Peon AI MCP Config](../assets/mcp-config.png)
 
-Each server entry has a **Type** — either **HTTP (SSE)** or **STDIO (local process)** — plus common fields shared by both types.
+Each server entry has a **Type** — **HTTP (Streamable)**, **HTTP (legacy SSE)**, or **STDIO (local process)** — plus common fields shared by all types.
 
 ### Common fields
 
@@ -16,13 +16,20 @@ Each server entry has a **Type** — either **HTTP (SSE)** or **STDIO (local pro
 |---|---|
 | **Name** | Display name shown in the UI and used in log output. |
 | **Description** | Optional hint for the AI describing what this server provides (e.g. "Web search"). |
-| **Protocol Version** | MCP protocol version to announce. Defaults to `2024-11-05`. Only change this if the server requires a different version. |
+| **Protocol Version** | MCP protocol version to announce. Defaults to `2025-06-18` (latest stable spec). The server negotiates down if it only supports an older version — change this only if the server rejects the announced version. |
 
-### HTTP (SSE) fields
+### HTTP fields
+
+Two HTTP transports are supported:
+
+- **HTTP (Streamable)** — the current MCP transport. Single endpoint (typically `/mcp`) that accepts JSON-RPC over `POST` and may upgrade to SSE for streaming responses. Use this for new servers.
+- **HTTP (legacy SSE)** — the older transport from the `2024-11-05` spec. The client opens an SSE channel at `/sse` and posts messages back to a URL the server returns. Use this for servers that only expose `/sse` (e.g. `docs-mcp-server`).
+
+If you get `Unexpected status code: 405`, you are most likely pointing the wrong transport at the server — switch between Streamable and legacy SSE.
 
 | Field | Description |
 |---|---|
-| **URL** | Streamable HTTP endpoint of the MCP server, e.g. `https://mcp.context7.com/mcp`. |
+| **URL** | Endpoint of the MCP server. For Streamable, e.g. `https://mcp.context7.com/mcp`. For legacy SSE, e.g. `http://127.0.0.1:6280/sse`. |
 | **API Key** | Optional Bearer token. Leave empty if the server requires no authentication. |
 
 ### STDIO (local process) fields
@@ -66,5 +73,5 @@ Enable the **MCP** toggle in the chat toolbar to activate the configured servers
 |---|---|---|---|
 | [Context7](https://context7.com) | HTTP | Cloud (free) | Up-to-date docs for React, Spring, Vite and many other frameworks. No setup required. |
 | [DuckDuckGo MCP](https://github.com/nickclyde/duckduckgo-mcp-server) | STDIO (`uvx duckduckgo-mcp-server`) | Local | Privacy-friendly web search without an API key. |
-| [docs-mcp-server](https://github.com/arabold/docs-mcp-server) | HTTP | Self-hosted | Any documentation site you can crawl. Fully private — nothing leaves your machine. |
+| [docs-mcp-server](https://github.com/arabold/docs-mcp-server) | HTTP (Streamable or legacy SSE) | Self-hosted | Any documentation site you can crawl. Fully private — nothing leaves your machine. |
 | [openapi-mcp](https://github.com/janwilmake/openapi-mcp-server) | HTTP | Self-hosted | REST APIs with an OpenAPI 3.x spec. Exposes each endpoint as a callable tool. |
