@@ -135,6 +135,7 @@ public class ActionsBarWidget extends Composite {
         modelCombo.setEnabled(!value);
         btnClear.setEnabled(!value);
         btnThink.setEnabled(!value);
+        chkAutonomous.setEnabled(!value);
         if (value) btnImplement.setEnabled(false); // re-enable is handled by updateModeUI
     }
 
