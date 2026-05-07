@@ -3,11 +3,9 @@ package org.sterl.llmpeon.parts.widget;
 import org.eclipse.debug.ui.DebugUITools;
 import org.eclipse.debug.ui.IDebugUIConstants;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.events.KeyListener;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
-import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -26,9 +24,7 @@ import org.sterl.llmpeon.parts.shared.SwtUtil;
  */
 public class UserInputWidget extends Composite {
 
-    private static final int MAX_ROWS = 7;
-
-    private final StyledText styledText;
+    private final TextInputWidget textInput;
     private final Composite rightColumn;
     private final Button sendButton;
     private Button micButton;   // null until voice is configured
@@ -52,7 +48,7 @@ public class UserInputWidget extends Composite {
         sendImage = DebugUITools.getImage(IDebugUIConstants.IMG_ACT_RUN);
         stopImage = ImageUtil.loadImage(this, ImageUtil.STOP);
 
-        // Single white reference shared by StyledText, textRow, rightColumn so the
+        // Single white reference shared by TextInputWidget and rightColumn so the
         // entire input area renders as one uniform color. macOS quirk: explicitly
         // setting StyledText's background is what wakes up the paint chain so the
         // surrounding composite PaintListeners actually fire on resize.
@@ -64,7 +60,7 @@ public class UserInputWidget extends Composite {
         outerLayout.verticalSpacing = 2;
         setLayout(outerLayout);
 
-        // --- Text row: StyledText | right icon column ---
+        // --- Text row: TextInputWidget | right icon column ---
         Composite textRow = new Composite(this, SWT.NONE);
         GridLayout textRowLayout = new GridLayout(2, false);
         textRowLayout.marginWidth = 2;
@@ -73,14 +69,12 @@ public class UserInputWidget extends Composite {
         textRow.setLayout(textRowLayout);
         textRow.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-        styledText = new StyledText(textRow, SWT.MULTI | SWT.WRAP); // | SWT.V_SCROLL
-        // styledText.setAlwaysShowScrollBars(false);
-        styledText.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-        styledText.setBackground(bgWhite);
-        styledText.addModifyListener(e -> refreshHeight());
+        textInput = new TextInputWidget(textRow, SWT.NONE, 7, this::requestReflow);
+        textInput.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+        textInput.setTextBackground(bgWhite);
 
         // Ctrl/Cmd+Enter sends; plain Enter inserts newline
-        styledText.addKeyListener(KeyListener.keyPressedAdapter(e -> {
+        textInput.addKeyListener(KeyListener.keyPressedAdapter(e -> {
             if (e.keyCode == SWT.CR || e.keyCode == SWT.LF) {
                 boolean send = (e.stateMask & SWT.CTRL) != 0 || (e.stateMask & SWT.COMMAND) != 0;
                 if (send) {
@@ -122,37 +116,21 @@ public class UserInputWidget extends Composite {
         if (pp != null) pp.layout(new Control[]{ p });
     }
 
-    private void refreshHeight() {
-        int width = styledText.getSize().x;
-        if (width <= 0) return;
-        Point size = styledText.computeSize(width, SWT.DEFAULT);
-        GridData gd = (GridData) styledText.getLayoutData();
-        int lineH = styledText.getLineHeight();
-        int minHeight = lineH * 2;
-        int maxHeight = lineH * MAX_ROWS;
-        int newHint = Math.max(minHeight, Math.min(maxHeight, size.y));
-        if (gd.heightHint != newHint) {
-            gd.heightHint = newHint;
-            requestReflow();
-        }
-    }
-
-
     // -------------------------------------------------------------------------
     // Public API
     // -------------------------------------------------------------------------
 
     public String getText() {
-        return styledText.getText();
+        return textInput.getText();
     }
 
     public void clearText() {
-        styledText.setText("");
+        textInput.clearText();
         requestReflow();
     }
 
     public void setText(String text) {
-        styledText.setText(text != null ? text : "");
+        textInput.setText(text);
     }
 
     /** Show or hide the mic button. Created on first show, disposed on hide so the slot is truly empty. */
@@ -200,6 +178,6 @@ public class UserInputWidget extends Composite {
 
     @Override
     public boolean setFocus() {
-        return styledText.setFocus();
+        return textInput.setFocus();
     }
 }

@@ -30,18 +30,34 @@ public class AgentModeService {
 
     private static final int MAX_RETRIES = 3;
 
-    private static final SystemMessage PLANNER_AGENT_MESSAGE = SystemMessage.from("""
-            AGENT MODE — when your plan is complete, call savePlan with the full plan markdown.
-            Do not ask — call it automatically as the last action before your reply.
-            The plan file path is also available for incremental updates via disk tools.
-            If a problem was reported in the conversation, update the plan to address it before saving.
-            """);
+    private SystemMessage plannerAgentMessage() {
+        var sb = new StringBuilder("""
+                When your plan is complete, instead of presenting the plan, call savePlan automatically as your last action with:
+                1. Context
+                2. Design decisions
+                3. Affected files
+                4. Step-by-step changes
+                If a problem was reported in the conversation, update the plan to address it before saving.
+                """);
+        if (autonomous) sb.append("""
+                IN AUTONOMOUS MODE — the user is not at the keyboard. Do not ask clarifying questions.
+                Proceed only if you have sufficient context; use the codebase to fill gaps.
+                Document assumptions and any unresolved gaps in the Design decisions section.
+                """);
+        return SystemMessage.from(sb.toString());
+    }
 
-    private static final SystemMessage DEVELOPER_AGENT_MESSAGE = SystemMessage.from("""
-            AGENT MODE — if you cannot proceed after 2 attempts (build failure, missing context,
-            conflicting requirements), call reportProblem with a detailed description.
-            Do not retry indefinitely. Escalate early so the plan agent can revise the plan.
-            """);
+    private SystemMessage developerAgentMessage() {
+        var sb = new StringBuilder("""
+                If you cannot proceed after %d attempts (build failure, missing context,
+                conflicting requirements), call reportProblem with a detailed description.
+                Do not retry indefinitely. Escalate early so the plan agent can revise the plan.
+                """.formatted(MAX_RETRIES - 1));
+        if (autonomous) sb.append("""
+                IN AUTONOMOUS MODE — execute the plan without asking question, confirmation or approval.
+                """);
+        return SystemMessage.from(sb.toString());
+    }
 
     private final AiPlannerService plannerService;
     private final AiDeveloperService developerService;
@@ -90,7 +106,7 @@ public class AgentModeService {
     public ChatResponse call(String message, AiMonitor monitor) {
         var service = getActiveService();
         var orders = new ArrayList<>(service.getStandingOrders());
-        orders.add(0, phase == Phase.PLANNING ? PLANNER_AGENT_MESSAGE : DEVELOPER_AGENT_MESSAGE);
+        orders.add(0, phase == Phase.PLANNING ? plannerAgentMessage() : developerAgentMessage());
         service.setStandingOrders(orders);
         return service.call(message, monitor);
     }

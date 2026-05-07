@@ -10,8 +10,10 @@ HOW: <Design or Plan>
 - Component responsibilities
 - Last implementation plan (if not yet executed)
 
+NEXT: <What to do next>
+- Pending work, open decisions, blockers
+
 Preserve: key decisions + rationale, pending work, file paths, code references, relevant tool results.
 Remove: duplicates, verbose tool output, superseded decisions, filler.
 
 Be short but complete enough to continue work without re-reading the conversation.
-Preserve paths to key files - to avoid searches.

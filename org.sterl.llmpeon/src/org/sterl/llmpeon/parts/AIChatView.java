@@ -31,6 +31,7 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IWorkingSet;
 import org.sterl.llmpeon.AbstractChatService;
@@ -44,11 +45,13 @@ import org.sterl.llmpeon.parts.monitor.EclipseAiMonitor;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.shared.SimpleDiff;
+import org.sterl.llmpeon.parts.tools.AskUserTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.parts.widget.ActionsBarWidget;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget;
 import org.sterl.llmpeon.parts.widget.StatusLineWidget;
 import org.sterl.llmpeon.parts.widget.UserInputWidget;
+import org.sterl.llmpeon.parts.widget.UserQuestionWidget;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
@@ -93,7 +96,9 @@ public class AIChatView implements EclipseAiMonitor {
     private boolean projectPinned = false;
 
     private ChatMarkdownWidget chatHistory;
+    private Composite inputBlock;
     private UserInputWidget chatInput;
+    private UserQuestionWidget questionWidget;
 
     private ITextSelection textSelection;
     private IResource selectedResource;
@@ -112,7 +117,7 @@ public class AIChatView implements EclipseAiMonitor {
 
         // inputBlock carries the single outer border for the entire input area (sections 2+3+4).
         // No background manipulation needed — SWT native widgets render their own correct backgrounds.
-        Composite inputBlock = new Composite(parent, SWT.BORDER);
+        inputBlock = new Composite(parent, SWT.BORDER);
         GridLayout inputBlockLayout = new GridLayout(1, false);
         inputBlockLayout.marginWidth = 0;
         inputBlockLayout.marginHeight = 0;
@@ -125,6 +130,12 @@ public class AIChatView implements EclipseAiMonitor {
             () -> getIProgressMonitor().setCanceled(true),
             this::onMicClick);
         chatInput.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+
+        questionWidget = new UserQuestionWidget(inputBlock, SWT.NONE, this::hideQuestion);
+        GridData qgd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+        qgd.exclude = true;
+        questionWidget.setLayoutData(qgd);
+        questionWidget.setVisible(false);
 
         actionsBar = new ActionsBarWidget(inputBlock, SWT.NONE,
             this::onClear,
@@ -151,6 +162,10 @@ public class AIChatView implements EclipseAiMonitor {
         prefs.addPreferenceChangeListener(prefListener);
 
         updateSelectedProject(EclipseUtil.firstOpenOrSelectedProject());
+
+        aiService.getToolService().addTool(new AskUserTool(
+            (question, answers, onAnswer) -> showQuestion(question, answers, onAnswer)
+        ));
     }
 
     private void onClear() {
@@ -161,6 +176,7 @@ public class AIChatView implements EclipseAiMonitor {
 
     @PreDestroy
     public void dispose() {
+        if (questionWidget != null) questionWidget.cancelSilently();
         InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID).removePreferenceChangeListener(prefListener);
         aiService.disconnectMcp();
         voiceService.close();
@@ -168,7 +184,8 @@ public class AIChatView implements EclipseAiMonitor {
 
     @Focus
     public void setFocus() {
-        if (chatInput != null) chatInput.setFocus();
+        if (questionWidget != null && questionWidget.isVisible()) questionWidget.setFocus();
+        else if (chatInput != null) chatInput.setFocus();
     }
 
     // -------------------------------------------------------------------------
@@ -531,6 +548,35 @@ public class AIChatView implements EclipseAiMonitor {
     private void lockWhileWorking(boolean value) {
         actionsBar.lockWhileWorking(value);
         chatInput.setWorking(value);
+        if (!value && questionWidget != null && questionWidget.isVisible()) {
+            questionWidget.cancel();
+        }
+    }
+
+    private void showQuestion(String question, java.util.List<String> answers,
+            java.util.function.Consumer<String> onAnswer) {
+        EclipseUtil.runInUiThread(parent, () -> {
+            ((GridData) chatInput.getLayoutData()).exclude = true;
+            chatInput.setVisible(false);
+            ((GridData) questionWidget.getLayoutData()).exclude = false;
+            questionWidget.setVisible(true);
+            questionWidget.showQuestion(question, answers, a -> {
+                chatHistory.appendMessage(new SimpleMessage(Type.USER, a));
+                onAnswer.accept(a);
+            });
+            inputBlock.layout(true, true);
+            inputBlock.getParent().layout(new Control[]{ inputBlock });
+        });
+    }
+
+    private void hideQuestion() {
+        ((GridData) chatInput.getLayoutData()).exclude = false;
+        chatInput.setVisible(true);
+        ((GridData) questionWidget.getLayoutData()).exclude = true;
+        questionWidget.setVisible(false);
+        questionWidget.hideQuestion();
+        inputBlock.layout(true, true);
+        inputBlock.getParent().layout(new Control[]{ inputBlock });
     }
 
     private void onThinkToggle(boolean enabled) {
