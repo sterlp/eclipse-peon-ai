@@ -20,7 +20,7 @@ import dev.langchain4j.data.message.UserMessage;
  */
 class AiCompressorAgentTest {
 
-    LlmConfig config = LlmConfig.newConfig(AiProvider.LM_STUDIO, "qwen3.5-9b", "http://localhost:1234/v1");
+    LlmConfig config = LlmConfig.newConfig(AiProvider.LM_STUDIO, "qwen/qwen3.6-35b-a3b", "http://localhost:1234/v1");
     
     @Test
     @Tag("integration")

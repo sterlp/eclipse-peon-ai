@@ -24,9 +24,9 @@ public record McpServerConfig(
         String args,
         String envVars) {
 
-    public enum McpTransportType { HTTP, STDIO }
+    public enum McpTransportType { HTTP, HTTP_SSE, STDIO }
 
-    public static final String DEFAULT_PROTOCOL_VERSION = "2024-11-05";
+    public static final String DEFAULT_PROTOCOL_VERSION = "2025-06-18";
 
     public McpServerConfig {
         if (type == null)   type = McpTransportType.HTTP;
@@ -39,8 +39,7 @@ public record McpServerConfig(
         if (StringUtil.hasNoValue(protocolVersion)) protocolVersion = DEFAULT_PROTOCOL_VERSION;
     }
 
-    /** Convenience constructor for HTTP servers (backward-compatible with existing call sites). */
-    public McpServerConfig(String name, String url, String apiKey, String protocolVersion) {
-        this(name, McpTransportType.HTTP, url, apiKey, protocolVersion, "", "", "");
+    public McpServerConfig(String name, McpTransportType transport, String url) {
+        this(name, transport, url, "", DEFAULT_PROTOCOL_VERSION, "", "", "");
     }
 }

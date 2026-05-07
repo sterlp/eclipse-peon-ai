@@ -42,7 +42,7 @@ public class ShellTool extends AbstractTool {
     public String runOsCommand(
             @P(description = "shell command", name = "command") String command,
             @P(name = "workingDirectory") String workingDirectory,
-            @P(description = "timeout ms, default 120000", required = false) Long timeoutMs,
+            @P(description = "timeout ms, default 120000", required = false, name = "timeoutMs") Long timeoutMs,
             @P(description = "max tail lines, default 50 (-1 for all)", required = false, name = "tailLines") Integer tailLines) {
         
         tailLines = ArgsUtil.getOrDefault(tailLines, DEFAULT_TAIL_LINES);

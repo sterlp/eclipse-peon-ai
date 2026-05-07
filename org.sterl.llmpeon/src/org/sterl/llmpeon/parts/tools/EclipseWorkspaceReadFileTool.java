@@ -32,8 +32,8 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
     @Tool(name = READ_ECLIPSE_FILE_TOOL, value = "Eclipse: Read workspace file (e.g. '/Project/src/Foo.java').")
     public String readWorkspaceFile(
             @P(description = "workspace-relative path", name = "filePath") String filePath,
-            @P(description = "first line to read (1-based). 0 = start of file.", required = false, name = "startLine") Integer startLine,
-            @P(description = "last line to read (1-based). 0 = end of file.", required = false, name = "endLine") Integer endLine) {
+            @P(description = "first line, 1-based; 0 = file start", required = false, name = "startLine") Integer startLine,
+            @P(description = "last line, 1-based; 0 = file end", required = false, name = "endLine") Integer endLine) {
         
         ArgsUtil.requireNonBlank(filePath, "filePath");
         

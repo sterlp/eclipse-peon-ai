@@ -8,6 +8,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -322,6 +323,18 @@ public enum AiProvider {
     // GitHub Copilot subscription — OAuth Device Flow, api.githubcopilot.com
     GITHUB_COPILOT {
         private static final String DEFAULT_BASE_URL = "https://api.githubcopilot.com";
+        // Impersonate the official Microsoft Copilot Eclipse plugin so the API does not
+        // fall back to the "vscode-nl" integrator (which exposes only a tiny model whitelist).
+        private static final String INTEGRATION_ID = "copilot-eclipse";
+
+        private static Map<String, String> copilotHeaders() {
+            String eclipseVersion = System.getProperty(
+                    "org.eclipse.platform.version", System.getProperty("osgi.framework.version", "4.36.0"));
+            return Map.of(
+                    "Copilot-Integration-Id", INTEGRATION_ID,
+                    "Editor-Version",         "Eclipse/" + eclipseVersion,
+                    "Editor-Plugin-Version",  "copilot-eclipse/0.16.0");
+        }
 
         private String baseUrl(LlmConfig c) {
             return (c.getUrl() != null && !c.getUrl().isBlank())
@@ -336,6 +349,7 @@ public enum AiProvider {
                     .baseUrl(baseUrl(c))
                     .apiKey(c.getApiKey() != null && !c.getApiKey().isBlank() ? c.getApiKey() : "not-configured")
                     .modelName(c.getModel())
+                    .customHeaders(copilotHeaders())
                     .build();
         }
 
@@ -343,11 +357,11 @@ public enum AiProvider {
         public List<AiModel> listAiModels(LlmConfig c) {
             if (c.getApiKey() == null || c.getApiKey().isBlank()) return List.of();
             try {
-                var request = HttpRequest.newBuilder()
+                var builder = HttpRequest.newBuilder()
                         .uri(URI.create(DEFAULT_BASE_URL + "/models"))
-                        .header("Authorization", "Bearer " + c.getApiKey())
-                        .GET()
-                        .build();
+                        .header("Authorization", "Bearer " + c.getApiKey());
+                copilotHeaders().forEach(builder::header);
+                var request = builder.GET().build();
                 var response = cancelAndSend(request);
                 if (response == null || response.statusCode() > 299) {
                     log.warn("GITHUB_COPILOT listAiModels HTTP "

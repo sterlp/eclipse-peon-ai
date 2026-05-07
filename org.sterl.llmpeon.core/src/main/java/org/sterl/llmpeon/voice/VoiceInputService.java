@@ -1,7 +1,6 @@
 package org.sterl.llmpeon.voice;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -23,8 +22,6 @@ import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.Mixer;
 import javax.sound.sampled.TargetDataLine;
 
-import org.sterl.llmpeon.shared.FileUtils;
-
 public class VoiceInputService implements AutoCloseable {
 
     private static final java.util.logging.Logger LOG =
@@ -35,10 +32,8 @@ public class VoiceInputService implements AutoCloseable {
     // 15 seconds of 16 kHz, 16-bit, mono — flush and dispatch when reached
     private static final int MAX_BUFFER_BYTES = 16_000 * 2 * 15;
 
-    // HTTP/1.1 required: local servers (LM Studio / llama.cpp) mishandle HTTP/2 multipart uploads
-    private final HttpClient httpClient = HttpClient.newBuilder()
-            .version(HttpClient.Version.HTTP_1_1)
-            .build();
+    // LM Studio needs 1.1 - but it doesn't work anyway
+    private final HttpClient httpClient = HttpClient.newBuilder().build();
     private final List<CompletableFuture<String>> pendingChunks = new CopyOnWriteArrayList<>();
 
     private TargetDataLine line;

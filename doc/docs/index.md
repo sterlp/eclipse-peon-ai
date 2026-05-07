@@ -39,7 +39,7 @@ Install directly from Eclipse:
 
 - Eclipse 2025-12 or newer
 - Java 21
-- An LLM provider (Ollama recommended for local use)
+- An LLM provider ([LM Studio](https://lmstudio.ai/) or [Ollama](https://ollama.com/) recommended for local use)
 
 ## Configuration
 

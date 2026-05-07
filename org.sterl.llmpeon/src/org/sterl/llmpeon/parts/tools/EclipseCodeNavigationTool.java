@@ -48,7 +48,7 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
     // Tool 1: Find a type by name — returns metadata only, no source
     // -------------------------------------------------------------------------
 
-    @Tool("Eclipse/Java: Find types by name/wildcard. Searches also libs and JDK. Metadata only, no source.")
+    @Tool("Eclipse/Java: Find Java types by name/wildcard. Searches workspace, JDK and JARs. Java only — not ABAP/ADT. Metadata only.")
     public String findJavaType(
             @P(description = "name, name with wildcard (*) or FQN", name = "typeName") String typeName,
             @P(name = "projectName", required = false) String projectName) {
@@ -87,7 +87,7 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
     @Tool("Eclipse/Java: Get full source of a type by FQN. Covers JDK and dependency libs — prefer over decompiling JARs.")
     public String getTypeSource(
             @P(description = "fully qualified type name", name = "fqn") String fqn,
-            @P(description = "narrows JDK/lib search scope", required = false) String projectName) {
+            @P(description = "project name to limit search scope (optional)", required = false, name = "projectName") String projectName) {
 
         ArgsUtil.requireNonBlank(fqn, "fqn");
 
@@ -113,7 +113,7 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
                 appendBinarySignatures(sb, type);
             }
 
-            onTool("Reading type " + fqn + " " + projectName + (StringUtil.hasNoValue(source) ? " source" : " binary"));
+            onTool("Reading type " + fqn + " " + projectName + (StringUtil.hasValue(source) ? " source" : " binary"));
             return sb.toString();
         } catch (JavaModelException e) {
             throw new RuntimeException("Read source failed: " + e.getMessage(), e);
@@ -133,11 +133,11 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
     // Tool 3: Find references
     // -------------------------------------------------------------------------
 
-    @Tool("Eclipse/Java: Find all usages of a type or method.")
+    @Tool("Eclipse/Java: Find usages of a type, or a method when methodName is set.")
     public String findReferences(
             @P(description = "fully qualified type name", name = "fqn") String fqn,
-            @P(name = "methodName", required = false) String methodName,
-            @P(name = "projectName", required = false) String projectName) {
+            @P(description = "method name on the type; omit for type usages", required = false, name = "methodName") String methodName,
+            @P(description = "project name to limit search scope (optional)", required = false, name = "projectName") String projectName) {
 
         ArgsUtil.requireNonBlank(fqn, "fqn");
 
