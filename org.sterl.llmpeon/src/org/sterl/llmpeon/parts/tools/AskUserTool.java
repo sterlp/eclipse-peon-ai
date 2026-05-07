@@ -26,7 +26,8 @@ public class AskUserTool extends AbstractEclipseTool {
         this.presenter = presenter;
     }
 
-    @Tool("Ask the a clarifying question, ask one question at the time. "
+    @Tool("Ask the user a clarifying question, one at a time. "
+        + "Always include your recommended answer in the question. "
         + "Returns \"[cancelled]\" if the user dismissed the question.")
     public String askUser(
             @P(name = "question", description = "the question to present to the user") 

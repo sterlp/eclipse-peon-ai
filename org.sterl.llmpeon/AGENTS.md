@@ -18,7 +18,7 @@ Job.create("Connecting MCP servers", monitor -> {
         return PeonConstants.okStatus("xxxx");
     } catch (Exception e) {
         ex = e;
-    } finnaly {
+    } finally {
        // unlock ui if needed
     }
     return PeonConstants.status("xxxx", ex);

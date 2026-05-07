@@ -37,6 +37,7 @@ public class TextInputWidget extends Composite {
     }
 
     private void refreshHeight() {
+        if (styledText.isDisposed()) return;
         int width = styledText.getSize().x;
         if (width <= 0) return;
         Point size = styledText.computeSize(width, SWT.DEFAULT);
@@ -69,6 +70,7 @@ public class TextInputWidget extends Composite {
 
     @Override
     public boolean setFocus() {
+        if (styledText.isDisposed()) return false;
         return styledText.setFocus();
     }
 
