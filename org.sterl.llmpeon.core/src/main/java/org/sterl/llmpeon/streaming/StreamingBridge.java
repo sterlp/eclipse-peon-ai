@@ -2,6 +2,7 @@ package org.sterl.llmpeon.streaming;
 
 import java.time.Instant;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.sterl.llmpeon.shared.AiMonitor;
@@ -58,20 +59,20 @@ public class StreamingBridge implements StreamingChatResponseHandler {
         model.chat(request, this);
 
         try {
-            latch.await();
+            while (!latch.await(1500, TimeUnit.MILLISECONDS)) {
+                cancelAndRelease(handleRef.get());
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             StreamingHandle h = handleRef.get();
             if (h != null) h.cancel();
+            errorRef.compareAndSet(null, new RuntimeException("Interrupted"));
+            latch.countDown();
         }
 
         Throwable error = errorRef.get();
         if (error != null) throw new RuntimeException(error);
         return responseRef.get();
-    }
-
-    public Instant getStartedAt() {
-        return startedAt;
     }
 
     // -------------------------------------------------------------------------
@@ -81,22 +82,30 @@ public class StreamingBridge implements StreamingChatResponseHandler {
     @Override
     public void onPartialResponse(PartialResponse partialResponse, PartialResponseContext context) {
         handleRef.compareAndSet(null, context.streamingHandle());
-        if (monitor.isCanceled()) { context.streamingHandle().cancel(); return; }
+        if (cancelAndRelease(context.streamingHandle())) return;
         monitor.onStreamingChunk(new OnPartialAiResponse(Type.ANSWER, partialResponse.text(), startedAt));
     }
 
     @Override
     public void onPartialThinking(PartialThinking partialThinking, PartialThinkingContext context) {
         handleRef.compareAndSet(null, context.streamingHandle());
-        if (monitor.isCanceled()) { context.streamingHandle().cancel(); return; }
+        if (cancelAndRelease(context.streamingHandle())) return;
         monitor.onStreamingChunk(new OnPartialAiResponse(Type.THINK, partialThinking.text(), startedAt));
     }
 
     @Override
     public void onPartialToolCall(PartialToolCall partialToolCall, PartialToolCallContext context) {
         handleRef.compareAndSet(null, context.streamingHandle());
-        if (monitor.isCanceled()) { context.streamingHandle().cancel(); return; }
+        if (cancelAndRelease(context.streamingHandle())) return;
         monitor.onStreamingChunk(new OnPartialAiResponse(Type.TOOL, partialToolCall.name(), startedAt));
+    }
+
+    private boolean cancelAndRelease(StreamingHandle handle) {
+        if (!monitor.isCanceled()) return false;
+        if (handle != null) handle.cancel();
+        errorRef.compareAndSet(null, new RuntimeException("Cancelled"));
+        latch.countDown();
+        return true;
     }
 
     // -------------------------------------------------------------------------

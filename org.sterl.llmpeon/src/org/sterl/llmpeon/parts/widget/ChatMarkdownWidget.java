@@ -37,15 +37,6 @@ public class ChatMarkdownWidget extends Composite {
 
         browser = new Browser(this, SWT.NONE);
         clear();
-        /*
-        browser.addProgressListener(new ProgressListener() {
-            @Override
-            public void completed(ProgressEvent event) {
-            }
-            @Override
-            public void changed(ProgressEvent event) {}
-        });
-        */
     }
     
     private String loadChatHtml() {

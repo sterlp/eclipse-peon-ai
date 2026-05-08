@@ -296,9 +296,11 @@ public class AIChatView implements EclipseAiMonitor {
         });
     }
 
+    @Override
     public void onStreamingChunk(OnPartialAiResponse r) {
         long elapsed = Duration.between(r.startedAt(), Instant.now()).toSeconds();
-        long tokens = streamingTokenCount.incrementAndGet();
+        long tokens = r.type() != OnPartialAiResponse.Type.WAITING
+                ? streamingTokenCount.incrementAndGet() : 0;
         double tokPerSec = elapsed > 0 ? tokens / (double) elapsed : 0;
         EclipseUtil.runInUiThread(parent, () -> chatHistory.onStreamingChunk(r, elapsed, tokPerSec));
     }
@@ -531,9 +533,11 @@ public class AIChatView implements EclipseAiMonitor {
                 
                 response = active.call(text.isEmpty() ? null : text, this);
             } catch (Exception e) {
-                ex = e;
-                LOG.warn("Failed to call LLM " + active.getConfig(), e);
-                onChatResponse(new SimpleMessage(Type.PROBLEM, e.getMessage()));
+                if (!isCanceled()) {
+                    ex = e;
+                    LOG.warn("Failed to call LLM " + active.getConfig(), e);
+                    onChatResponse(new SimpleMessage(Type.PROBLEM, e.getMessage()));
+                }
             } finally {
                 EclipseUtil.runInUiThread(parent, () -> lockWhileWorking(false));
                 monitor.done();
