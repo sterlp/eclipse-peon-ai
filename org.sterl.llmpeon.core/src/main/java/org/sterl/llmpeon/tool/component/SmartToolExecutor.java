@@ -8,7 +8,7 @@ import java.util.List;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.tool.SmartTool;
 
-import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -42,7 +42,7 @@ public class SmartToolExecutor {
         return tool.clearMemory();
     }
 
-    public String run(ToolExecutionRequest request, AiMonitor monitor, ChatModel chatModel, List<ChatMessage> memory) {
+    public String run(ToolExecutionRequest request, AiMonitor monitor, StreamingChatModel chatModel, List<ChatMessage> memory) {
         try {
             tool.withMonitor(monitor);
             tool.withChatModel(chatModel);

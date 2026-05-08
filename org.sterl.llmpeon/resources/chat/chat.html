@@ -119,6 +119,27 @@
             color: #1a7f37;
             opacity: 1;
         }
+
+        #live-status {
+            display: none;
+            position: sticky;
+            bottom: 0;
+            background: #f6f8fa;
+            border-top: 1px solid #e0e0e0;
+            padding: 4px 10px;
+            font-size: 11px;
+            color: #555;
+        }
+
+        .live-state {
+            font-style: italic;
+        }
+
+        .live-chunk {
+            margin-top: 2px;
+            color: #888;
+            word-break: break-word;
+        }
     </style>
 
     <script src="./highlight.min.js"></script>
@@ -189,7 +210,27 @@
             window.scrollTo(0, document.body.scrollHeight);
         }
 
+        function updateLiveResponse(stateMessage, tokPerSec, thinkChunk) {
+            var el = document.getElementById("live-status");
+            if (!el) {
+                el = document.createElement("div");
+                el.id = "live-status";
+                el.className = "live-status";
+                document.body.appendChild(el);
+            }
+            var rate = tokPerSec > 0 ? " | " + tokPerSec.toFixed(1) + " tok/s" : "";
+            var chunk = thinkChunk ? "<div class='live-chunk'>" + thinkChunk + "</div>" : "";
+            el.innerHTML = "<span class='live-state'>" + stateMessage + rate + "</span>" + chunk;
+            el.style.display = "block";
+        }
+
+        function hideLiveStatus() {
+            var el = document.getElementById("live-status");
+            if (el) el.style.display = "none";
+        }
+
         function appendMessage(message) {
+            hideLiveStatus();
             if (message.role === 'TOOL') {toolMessage(message.message); return;}
             const container = document.getElementById("chat");
             const lastMessage = container.lastElementChild;

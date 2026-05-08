@@ -2,9 +2,11 @@ package org.sterl.llmpeon.parts;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.resources.IFile;
@@ -36,6 +38,7 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IWorkingSet;
 import org.sterl.llmpeon.AbstractChatService;
 import org.sterl.llmpeon.PeonMode;
+import org.sterl.llmpeon.shared.OnPartialAiResponse;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.ai.model.AiModel;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
@@ -86,6 +89,7 @@ public class AIChatView implements EclipseAiMonitor {
     );
 
     private final AtomicReference<IProgressMonitor> monitorRef = new AtomicReference<>(new NullProgressMonitor());
+    private final AtomicLong streamingTokenCount = new AtomicLong();
     private final VoiceInputService voiceService = new VoiceInputService();
     private boolean recording = false;
 
@@ -292,6 +296,13 @@ public class AIChatView implements EclipseAiMonitor {
         });
     }
 
+    public void onStreamingChunk(OnPartialAiResponse r) {
+        long elapsed = Duration.between(r.startedAt(), Instant.now()).toSeconds();
+        long tokens = streamingTokenCount.incrementAndGet();
+        double tokPerSec = elapsed > 0 ? tokens / (double) elapsed : 0;
+        EclipseUtil.runInUiThread(parent, () -> chatHistory.onStreamingChunk(r, elapsed, tokPerSec));
+    }
+
     @Override
     public void onFileUpdate(AiFileUpdate update) {
         if (parent.isDisposed()) return;
@@ -439,15 +450,21 @@ public class AIChatView implements EclipseAiMonitor {
         if (currentMode == PeonMode.AGENT) {
             aiService.getAgentMode().startImplementation();
             refreshChat();
-            return;
+        } else {
+            // PLAN -> DEV: hand off the plan to the developer service
+            currentMode = PeonMode.DEV;
+            actionsBar.updateModeUI(PeonMode.DEV, true);
+            if (aiService.startImplementation()) {
+                refreshChat();
+                if (StringUtil.hasNoValue(chatInput.getText())) {
+                    // some models e.g. Qwen need a use message as last message
+                    chatInput.setText("Start implementation");
+                }
+                doSendMessage();
+            } else {
+                onChatResponse(new SimpleMessage(Type.PROBLEM, "Plan missing ..."));
+            }
         }
-
-        // PLAN -> DEV: hand off the plan to the developer service
-        currentMode = PeonMode.DEV;
-        actionsBar.updateModeUI(PeonMode.DEV, true);
-        aiService.startImplementation();
-        refreshChat();
-        doSendMessage();
     }
 
     private void doCompressContext() {
@@ -475,12 +492,12 @@ public class AIChatView implements EclipseAiMonitor {
     }
 
     private void doSendMessage() {
-        if (StringUtil.hasNoValue(aiService.getDeveloperService().getConfig().getModel())) {
+        final var active = getActiveService();
+        if (StringUtil.hasNoValue(active.getConfig().getModel())) {
             chatHistory.appendMessage(new SimpleMessage(Type.PROBLEM, "No model configured — open Window > Preferences > Peon AI"));
             return;
         }
 
-        final var active = getActiveService();
         final var selection = getUserSelection();
         final var needsSelection = !active.hasUserText(selection);
 
@@ -500,6 +517,7 @@ public class AIChatView implements EclipseAiMonitor {
             return;
         }
 
+        streamingTokenCount.set(0);
         lockWhileWorking(true);
         Job.create("Peon AI request", monitor -> {
             monitor.beginTask("Arbeit, Arbeit!", currentMode == PeonMode.AGENT ? ToolService.MAX_ITERATIONS * 2 : ToolService.MAX_ITERATIONS);

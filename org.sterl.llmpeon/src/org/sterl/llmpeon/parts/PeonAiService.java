@@ -185,14 +185,18 @@ public class PeonAiService {
      * Performs the PLAN → DEV handoff: clears the developer service, adds the
      * "Start Implementation" trigger, and appends the last planner message (the
      * self-contained implementation plan) if one exists.
+     * @return <code>true</code> if plan is found
      */
-    public void startImplementation() {
-        developerService.clear();
+    public boolean startImplementation() {
         // LM Studio is sometimes bugged, if the first message is no user message ... :-/
-        developerService.addMessage(UserMessage.from("Reading this plan:"));
-        plannerService.extractLastPlan().ifPresent(developerService::addMessage);
-        // some Qwen model need a use message as last message
-        developerService.addMessage(UserMessage.from("Start implementation"));
+        var plan = plannerService.extractLastPlan();
+        if (plan.isPresent()) {
+            developerService.updateConfig(plannerService.getConfig()); // ensure same config
+            developerService.clear();
+            developerService.addMessage(UserMessage.from("Reading this plan:"));
+            plan.ifPresent(developerService::addMessage);
+        }
+        return plan.isPresent();
     }
 
     // -------------------------------------------------------------------------

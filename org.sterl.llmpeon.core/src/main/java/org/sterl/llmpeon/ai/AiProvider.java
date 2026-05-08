@@ -18,20 +18,16 @@ import org.sterl.llmpeon.ai.model.AiModelParser;
 import org.sterl.llmpeon.shared.StringUtil;
 
 import dev.langchain4j.http.client.jdk.JdkHttpClient;
-import dev.langchain4j.model.anthropic.AnthropicChatModel;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
-import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.googleai.GeminiThinkingConfig;
 import dev.langchain4j.model.googleai.GeminiThinkingConfig.GeminiThinkingLevel;
-import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
-import dev.langchain4j.model.mistralai.MistralAiChatModel;
-import dev.langchain4j.model.ollama.OllamaChatModel;
+import dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModel;
+import dev.langchain4j.model.mistralai.MistralAiStreamingChatModel;
 import dev.langchain4j.model.ollama.OllamaModel;
 import dev.langchain4j.model.ollama.OllamaModels;
-import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
+import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -39,13 +35,13 @@ public enum AiProvider {
 
     OLLAMA {
         @Override
-        public ChatModel buildChatModel(LlmConfig c) {
-            return OllamaChatModel.builder()
+        public StreamingChatModel buildChatModel(LlmConfig c) {
+            return OllamaStreamingChatModel.builder()
                     .timeout(TIMEOUT)
-                    .maxRetries(1)
                     .baseUrl(c.getUrl())
                     .modelName(c.getModel())
                     .think(c.isThinkingEnabled())
+                    .returnThinking(true)
                     .build();
         }
 
@@ -73,16 +69,14 @@ public enum AiProvider {
 
     OPEN_AI {
         @Override
-        public ChatModel buildChatModel(LlmConfig c) {
-            var result = OpenAiChatModel.builder()
+        public StreamingChatModel buildChatModel(LlmConfig c) {
+            return OpenAiStreamingChatModel.builder()
                     .timeout(TIMEOUT)
                     .baseUrl(c.getUrl())
                     .modelName(c.getModel())
-                    .apiKey(c.getApiKey());
-            // no thinking "off" supported
-            result.returnThinking(Boolean.TRUE)
-                  .sendThinking(Boolean.FALSE);
-            return result.build();
+                    .apiKey(c.getApiKey())
+                    .returnThinking(Boolean.TRUE)
+                    .build();
         }
 
         @Override
@@ -112,22 +106,18 @@ public enum AiProvider {
         }
 
         @Override
-        public ChatModel buildChatModel(LlmConfig c) {
+        public StreamingChatModel buildChatModel(LlmConfig c) {
             var http1 = JdkHttpClient.builder()
                     .httpClientBuilder(HttpClient.newBuilder()
                             .version(HttpClient.Version.HTTP_1_1));
-            var result = OpenAiChatModel.builder()
+            return OpenAiStreamingChatModel.builder()
                     .timeout(TIMEOUT)
-                    .maxRetries(1)
                     .baseUrl(c.getUrl())
                     .modelName(c.getModel())
-                    .strictJsonSchema(true)
                     .apiKey(StringUtil.hasValue(c.getApiKey()) ? c.getApiKey() : "lm-studio")
-                    .httpClientBuilder(http1);
-            // no thinking "off" supported
-            result.returnThinking(Boolean.TRUE)
-                  .sendThinking(Boolean.FALSE);
-            return result.build();
+                    .httpClientBuilder(http1)
+                    .returnThinking(Boolean.TRUE)
+                    .build();
         }
 
         @Override
@@ -151,8 +141,8 @@ public enum AiProvider {
 
     GOOGLE_GEMINI {
         @Override
-        public ChatModel buildChatModel(LlmConfig c) {
-            var result = GoogleAiGeminiChatModel.builder()
+        public StreamingChatModel buildChatModel(LlmConfig c) {
+            var result = GoogleAiGeminiStreamingChatModel.builder()
                     .apiKey(c.getApiKey())
                     .modelName(c.getModel());
             // returnThinking + sendThinking are always required: preview models return a
@@ -176,8 +166,8 @@ public enum AiProvider {
         private static final String MODELS_URL = "https://api.mistral.ai/v1/models";
 
         @Override
-        public ChatModel buildChatModel(LlmConfig c) {
-            return MistralAiChatModel.builder()
+        public StreamingChatModel buildChatModel(LlmConfig c) {
+            return MistralAiStreamingChatModel.builder()
                     .timeout(TIMEOUT)
                     .modelName(c.getModel())
                     .apiKey(c.getApiKey())
@@ -203,54 +193,22 @@ public enum AiProvider {
         }
     },
 
+    // Previously wrapped to fix missing modelName + temperature=1.0 for thinking (langchain4j <1.13);
+    // verify still needed if Anthropic calls regress.
     ANTHROPIC {
         private static final String MODELS_URL = "https://api.anthropic.com/v1/models";
         private static final String ANTHROPIC_VERSION = "2023-06-01";
 
         @Override
-        public ChatModel buildChatModel(LlmConfig c) {
-            var innerBuilder = AnthropicChatModel.builder()
+        public StreamingChatModel buildChatModel(LlmConfig c) {
+            var builder = AnthropicStreamingChatModel.builder()
                     .timeout(TIMEOUT)
                     .modelName(c.getModel())
                     .apiKey(c.getApiKey());
             if (c.isThinkingEnabled()) {
-                innerBuilder.thinkingType("enabled").thinkingBudgetTokens(16000);
+                builder.thinkingType("enabled").thinkingBudgetTokens(16000);
             }
-            final AnthropicChatModel inner = innerBuilder.build();
-            final String modelName = c.getModel();
-            final boolean thinking = c.isThinkingEnabled();
-
-            // Workaround for langchain4j 1.12.x: AnthropicChatModel does not override
-            // defaultRequestParameters(), so the model name is lost during ChatModel.chat()'s
-            // merge step -> Anthropic rejects with "model: Field required".
-            // Also: Anthropic requires temperature=1.0 when extended thinking is enabled,
-            // and max_tokens is always required (8192 is safe across all current Claude models).
-            return new ChatModel() {
-                private final ChatRequestParameters defaults =
-                        DefaultChatRequestParameters.builder()
-                                .modelName(modelName)
-                                .maxOutputTokens(8192)
-                                .build();
-
-                @Override
-                public ChatResponse doChat(ChatRequest request) {
-                    if (thinking) {
-                        request = ChatRequest.builder()
-                                .messages(request.messages())
-                                .parameters(DefaultChatRequestParameters.builder()
-                                        .overrideWith(request.parameters())
-                                        .temperature(1.0)
-                                        .build())
-                                .build();
-                    }
-                    return inner.doChat(request);
-                }
-
-                @Override
-                public ChatRequestParameters defaultRequestParameters() {
-                    return defaults;
-                }
-            };
+            return builder.build();
         }
 
         @Override
@@ -286,8 +244,8 @@ public enum AiProvider {
         }
 
         @Override
-        public ChatModel buildChatModel(LlmConfig c) {
-            return OpenAiChatModel.builder()
+        public StreamingChatModel buildChatModel(LlmConfig c) {
+            return OpenAiStreamingChatModel.builder()
                     .timeout(TIMEOUT)
                     .baseUrl(baseUrl(c))
                     .apiKey(c.getApiKey() != null && !c.getApiKey().isBlank() ? c.getApiKey() : "not-configured")
@@ -343,8 +301,8 @@ public enum AiProvider {
         }
 
         @Override
-        public ChatModel buildChatModel(LlmConfig c) {
-            return OpenAiChatModel.builder()
+        public StreamingChatModel buildChatModel(LlmConfig c) {
+            return OpenAiStreamingChatModel.builder()
                     .timeout(TIMEOUT)
                     .baseUrl(baseUrl(c))
                     .apiKey(c.getApiKey() != null && !c.getApiKey().isBlank() ? c.getApiKey() : "not-configured")
@@ -376,7 +334,8 @@ public enum AiProvider {
         }
     };
 
-    private static final Duration TIMEOUT = Duration.ofMinutes(6);
+    // Streaming only needs to cover time-to-first-token (connect + model warmup), not the full response duration.
+    private static final Duration TIMEOUT = Duration.ofSeconds(120);
 
     // --- Per-instance HTTP client (lazy, reused) ---
 
@@ -412,8 +371,8 @@ public enum AiProvider {
 
     // --- Public API ---
 
-    /** Builds the {@link ChatModel} for this provider using the given config. */
-    public abstract ChatModel buildChatModel(LlmConfig config);
+    /** Builds the {@link StreamingChatModel} for this provider using the given config. */
+    public abstract StreamingChatModel buildChatModel(LlmConfig config);
 
     /**
      * Returns a list of available {@link AiModel}s with metadata.

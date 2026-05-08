@@ -5,23 +5,25 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.streaming.StreamingBridge;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
 /**
  * Command object for {@link ToolService#executeLoop(ToolLoopRequest)}.
- * Required fields: {@code memory} and {@code chatModel}.
+ * Required fields: {@code memory}, {@code chatModel}, and {@code bridge}.
  * All other fields have sensible defaults.
  */
 public class ToolLoopRequest {
 
     // required
     public final ChatMemory memory;
-    public final ChatModel chatModel;
+    public final StreamingChatModel chatModel;
+    public final StreamingBridge bridge;
 
     // optional — with defaults
     public List<ChatMessage> staticMessages = List.of();
@@ -31,9 +33,10 @@ public class ToolLoopRequest {
     public double temperature = 0.8;
     public Consumer<ChatResponse> onLoop = r -> {};
 
-    public ToolLoopRequest(ChatMemory memory, ChatModel chatModel) {
+    public ToolLoopRequest(ChatMemory memory, StreamingChatModel chatModel, StreamingBridge bridge) {
         this.memory = memory;
         this.chatModel = chatModel;
+        this.bridge = bridge;
     }
 
     public ToolLoopRequest staticMessages(List<ChatMessage> staticMessages) {

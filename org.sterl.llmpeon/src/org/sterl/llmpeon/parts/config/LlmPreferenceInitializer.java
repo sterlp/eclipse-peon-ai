@@ -60,8 +60,13 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
     
     public static void setModel(String model) {
         if (model == null) return;
-        var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
-        prefs.put(PeonConstants.PREF_MODEL, model);
+        try {
+            var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
+            prefs.put(PeonConstants.PREF_MODEL, model);
+            prefs.flush();
+        } catch (Exception e) {
+            LOG.warn("Failed to save model preference", e);
+        }
     }
 
     public static void saveGitHubOAuthToken(String token, String enterpriseUrl) {

@@ -30,7 +30,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -38,7 +38,7 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * Owns all tools and the tool registry.
  * Tools are stable instances — only the context changes when the user selects a different file/project.
- * 
+ *
  * https://github.com/langchain4j/langchain4j/blob/main/docs/docs/tutorials/tools.md
  */
 @Slf4j
@@ -64,7 +64,7 @@ public class ToolService {
                 .map(SmartToolExecutor::getSpec)
                 .toList();
     }
-    
+
     public List<ToolSpecification> toolSpecifications(Predicate<SmartToolExecutor> filter) {
         return toolExecutors.values().stream()
                 .filter(filter)
@@ -77,7 +77,7 @@ public class ToolService {
     }
 
     /**
-     * Runs the full tool loop: calls the model, executes any tools, repeats until
+     * Runs the full tool loop: calls the model via streaming, executes any tools, repeats until
      * the model produces a plain text response.
      */
     @NonNull
@@ -90,7 +90,6 @@ public class ToolService {
             var messages = new ArrayList<ChatMessage>(req.staticMessages);
             messages.addAll(req.memory.messages());
 
-            // presencePenalty not
             var builder = ChatRequest.builder()
                     .temperature(req.temperature)
                     .messages(toOneSystemMessage(messages));
@@ -101,7 +100,7 @@ public class ToolService {
 
             req.monitor.onChatMessage(iterations + 1, builder);
 
-            response = req.chatModel.chat(builder.build());
+            response = req.bridge.call(req.chatModel, builder.build(), req.monitor);
 
             shouldLoop = response.aiMessage().hasToolExecutionRequests()
                     || (StringUtil.hasNoValue(response.aiMessage().text())
@@ -112,8 +111,8 @@ public class ToolService {
             ToSimpleMessage.INSTANCE.convert(response.aiMessage()).forEach(req.monitor::onChatResponse);
 
             req.memory.set(runAllTools(response, req.chatModel, req.monitor, req.memory.messages()));
-            
-            
+
+
             // https://github.com/langchain4j/langchain4j/issues/4786
             if (StringUtil.hasNoValue(response.aiMessage().text())
                             && StringUtil.hasValue(response.aiMessage().thinking())) {
@@ -144,8 +143,8 @@ public class ToolService {
         if (systemText.length() > 0) result.addFirst(SystemMessage.from(systemText.toString()));
         return result;
     }
-    
-    public List<ChatMessage> runAllTools(ChatResponse response, ChatModel agentService, AiMonitor monitor, List<ChatMessage> memory) {
+
+    public List<ChatMessage> runAllTools(ChatResponse response, StreamingChatModel agentService, AiMonitor monitor, List<ChatMessage> memory) {
         if (!response.aiMessage().hasToolExecutionRequests()) {
             // No tools to run — still add the final AI message to memory
             var newMemory = new ArrayList<ChatMessage>(memory);
@@ -171,8 +170,8 @@ public class ToolService {
     }
 
     public static record ToolResult(boolean clearMemory, ToolExecutionResultMessage message) {}
-    
-    public ToolResult execute(ToolExecutionRequest tr, AiMonitor monitor, ChatModel agentService, List<ChatMessage> memory) {
+
+    public ToolResult execute(ToolExecutionRequest tr, AiMonitor monitor, StreamingChatModel agentService, List<ChatMessage> memory) {
         var executor = toolExecutors.get(tr.name());
         String result;
         if (executor == null && mcpService != null && mcpService.hasTool(tr.name())) {
@@ -193,10 +192,10 @@ public class ToolService {
             }
         }
         return new ToolResult(
-                executor == null ? false : executor.shouldClearMemory(), 
+                executor == null ? false : executor.shouldClearMemory(),
                 ToolExecutionResultMessage.from(tr.id(), tr.name(), result));
     }
-    
+
     /**
      * Connects to all given MCP servers and makes their tools available in the tool loop.
      * Disconnects any previously active MCP connection first.
@@ -245,7 +244,7 @@ public class ToolService {
             }
         }
     }
-    
+
     @SuppressWarnings("unchecked")
     public <T extends AbstractTool> Optional<T> getTool(Class<T> clazz) {
         return toolExecutors.values().stream()

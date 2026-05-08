@@ -14,6 +14,7 @@ import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.skill.SkillRecord;
 import org.sterl.llmpeon.skill.SkillService;
+import org.sterl.llmpeon.streaming.StreamingBridge;
 import org.sterl.llmpeon.template.TemplateContext;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
@@ -26,7 +27,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 
@@ -45,7 +46,7 @@ public abstract class AbstractChatService {
             .id(this)
             .maxMessages(500000)
             .build();
-    protected ChatModel chatModel;
+    protected StreamingChatModel chatModel;
     protected LlmConfig config;
     protected final TemplateContext templateContext;
     protected final SkillService skillService;
@@ -65,14 +66,14 @@ public abstract class AbstractChatService {
     protected abstract double getTemperature();
     protected abstract Predicate<SmartToolExecutor> getToolFilter();
     protected boolean includesMcpTools() { return true; }
-    
+
     public int tokenWindowUsedInPercent() {
         float maxToken = config.getTokenWindow() > 16000 ? config.getTokenWindow() : 16000;
         float used = tokenSize;
         if (used < 100) return 0;
         return Math.round(used / maxToken);
     }
-    
+
     public boolean hasUserText(String message) {
         if (StringUtil.hasNoValue(message)) return true;
         return this.memory.messages().stream()
@@ -92,8 +93,9 @@ public abstract class AbstractChatService {
 
         var start = Instant.now();
         var staticMessages = buildStaticMessages();
+        var bridge = new StreamingBridge();
         var response = toolService.executeLoop(
-                new ToolLoopRequest(memory, chatModel)
+                new ToolLoopRequest(memory, chatModel, bridge)
                         .staticMessages(staticMessages)
                         .monitor(monitor)
                         .toolFilter(getToolFilter())
@@ -147,14 +149,14 @@ public abstract class AbstractChatService {
     public int getTokenSize() { return tokenSize; }
     public int getTokenWindow() { return config.getTokenWindow(); }
     public LlmConfig getConfig() { return config; }
-    public ChatModel getChatModel() { return chatModel; }
+    public StreamingChatModel getChatModel() { return chatModel; }
     public TemplateContext getTemplateContext() { return templateContext; }
     public List<SkillRecord> getSkills() { return skillService.getSkills(); }
 
     private List<ChatMessage> buildStaticMessages() {
         var messages = new ArrayList<ChatMessage>();
         messages.add(SystemMessage.from(getSystemPrompt()));
-        
+
         messages.addAll(standingOrders);
         var skillMsg = skillService.skillMessage(templateContext);
         if (skillMsg != null) messages.add(skillMsg);

@@ -10,7 +10,7 @@ import java.util.List;
 import org.sterl.llmpeon.ai.model.AiModel;
 import org.sterl.llmpeon.shared.StringUtil;
 
-import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Builder.Default;
@@ -68,7 +68,7 @@ public class LlmConfig {
                 .build();
     }
 
-    public ChatModel build() {
+    public StreamingChatModel build() {
         return getProviderType().buildChatModel(this);
     }
 

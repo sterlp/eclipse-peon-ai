@@ -5,7 +5,7 @@ import java.util.List;
 import org.sterl.llmpeon.shared.AiMonitor;
 
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 
 /**
  * Throw {@link IllegalArgumentException} to return to the LLM an error.
@@ -26,7 +26,7 @@ public interface SmartTool {
      */
     void withMonitor(AiMonitor monitor);
 
-    void withChatModel(ChatModel chatModel);
+    void withChatModel(StreamingChatModel chatModel);
     
     void withMemory(List<ChatMessage> memory);
 }

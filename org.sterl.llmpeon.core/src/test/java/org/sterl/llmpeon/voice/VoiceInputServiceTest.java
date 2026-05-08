@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.streaming.StreamingBridge;
 
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.message.AudioContent;
@@ -89,40 +90,40 @@ class VoiceInputServiceTest {
             .mimeType("audio/wav")
             .build();
 
-        var response = chatModel.chat(
+        var response = new StreamingBridge().call(chatModel,
                 new ChatRequest.Builder()
                     .messages(UserMessage.from(
                             AudioContent.from(audio),
                             TextContent.from("Write a transcription of this audio file")
                         )
-                    ).build()
+                    ).build(), null
             );
 
         // THEN
         System.err.println(response.aiMessage());
         System.err.println(response.tokenUsage());
     }
-    
+
     @Test
     @Tag("integration") // Langchain4j doesn't support it
     void testTestPing_Langchain_Ollama() throws Exception {
         // GIVEN
         var chatModel = AiProvider.OLLAMA.buildChatModel(LlmConfig.newConfig("gemma-4-e2b", "http://localhost:11434"));
-        
+
         // WHEN
         var audio = Audio.builder()
             .binaryData(wav)
             .base64Data(Base64.getEncoder().encodeToString(wav))
             .mimeType("audio/wav")
             .build();
-        
-        var response = chatModel.chat(
+
+        var response = new StreamingBridge().call(chatModel,
                 new ChatRequest.Builder()
                     .messages(UserMessage.from(
                             AudioContent.from(audio),
                             TextContent.from("Write a transcription of this audio file")
                         )
-                    ).build()
+                    ).build(), null
             );
 
         // THEN

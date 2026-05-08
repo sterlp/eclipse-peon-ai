@@ -4,6 +4,7 @@ import org.sterl.llmpeon.PromptLoader;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.streaming.StreamingBridge;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
 
@@ -15,7 +16,7 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 
 public class SearchAgentTool extends AbstractTool {
-    
+
     final SystemMessage system = SystemMessage.systemMessage(PromptLoader.loadWithDefault("search-agent.txt"));
 
     private final ToolService toolService;
@@ -36,12 +37,11 @@ public class SearchAgentTool extends AbstractTool {
             messages.add(UserMessage.from(prompt));
 
             var response = toolService.executeLoop(
-                    new ToolLoopRequest(messages, chatModel)
+                    new ToolLoopRequest(messages, chatModel, new StreamingBridge())
                             .monitor(m)
                             .toolFilter(e -> !e.getTool().isEditTool() && !(e.getTool() instanceof SearchAgentTool))
                             .includeMcpTools(true)
                             .temperature(0.1));
-
 
             onTool("SearchAgent done for: " + prompt);
             String answer = response != null ? response.aiMessage().text() : null;

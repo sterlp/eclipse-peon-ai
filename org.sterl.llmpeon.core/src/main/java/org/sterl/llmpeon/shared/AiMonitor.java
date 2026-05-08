@@ -20,6 +20,9 @@ public interface AiMonitor {
         return in == null ? NULL_MONITOR : in;
     }
 
+    /** Fired on every streaming token (thinking, answer, or tool). Default is a no-op. */
+    default void onStreamingChunk(OnPartialAiResponse r) {}
+
     /** Called once before the tool loop starts. userMessage may be null (autonomous re-trigger). */
     default void onCallStart(String userMessage) {}
 

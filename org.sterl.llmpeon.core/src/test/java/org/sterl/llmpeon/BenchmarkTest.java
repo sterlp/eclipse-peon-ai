@@ -1,15 +1,15 @@
 package org.sterl.llmpeon;
 
-import static org.mockito.ArgumentMatchers.contains;
-
 import java.time.Instant;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.streaming.StreamingBridge;
 
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
 @Tag("integration")
@@ -48,12 +48,12 @@ public class BenchmarkTest {
     void runTest(AiProvider provider, LlmConfig config) {
         // GIVEN
         var model = provider.buildChatModel(config);
-        model.chat(UserMessage.from("ping - return pong!"));
+        new StreamingBridge().call(model, ChatRequest.builder().messages(UserMessage.from("ping - return pong!")).build(), null);
         System.out.println("Loaded " + provider + " " + config.getModel());
 
         // WHEN
         double time = System.currentTimeMillis();
-        var result = model.chat(UserMessage.from(message));
+        var result = new StreamingBridge().call(model, ChatRequest.builder().messages(UserMessage.from(message)).build(), null);
         time = System.currentTimeMillis() - time;
         time = time / 1000;
         

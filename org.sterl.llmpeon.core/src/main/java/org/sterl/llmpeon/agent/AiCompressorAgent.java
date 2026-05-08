@@ -5,26 +5,27 @@ import java.util.List;
 import org.sterl.llmpeon.PromptLoader;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.streaming.StreamingBridge;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
 public class AiCompressorAgent {
 
     private static final SystemMessage COMPRESS_SYSTEM = SystemMessage.systemMessage(PromptLoader.load("compressor.txt"));
-    
-    private final ChatModel chatModel;
 
-    public AiCompressorAgent(ChatModel chatModel) {
+    private final StreamingChatModel chatModel;
+
+    public AiCompressorAgent(StreamingChatModel chatModel) {
         super();
         this.chatModel = chatModel;
     }
-    
+
     /**
      * Compresses the given conversation messages into a structured briefing.
      * {@code SystemMessage} entries are intentionally ignored — they represent the
@@ -36,12 +37,13 @@ public class AiCompressorAgent {
         messages.stream().forEach(m -> msg.append(toText(m)));
 
         if (monitor != null) monitor.onTool("Compressing conversation " + messages.size() + " messages");
-        return chatModel.chat(ChatRequest.builder()
+        var request = ChatRequest.builder()
                 .temperature(0.1)
                 .messages(COMPRESS_SYSTEM, UserMessage.from(msg.toString()))
-                .build());
+                .build();
+        return new StreamingBridge().call(chatModel, request, monitor);
     }
-    
+
     String toText(ChatMessage msg) {
         var result = new StringBuilder();
         if (msg instanceof UserMessage m && m.hasSingleText()) {

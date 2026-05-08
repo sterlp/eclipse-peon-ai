@@ -219,7 +219,8 @@ public class AgentModeService {
         this.phase = Phase.IMPLEMENTING;
         retryCount = 0;
         developerService.clear();
-        String plan = overviewExists() ? readOverview() : "(no plan file found)";
+        developerService.updateConfig(plannerService.getConfig()); // ensure same config
+        String plan = overviewExists() ? readOverview() : "no plan file found - stop!";
         developerService.addMessage(UserMessage.from("Start Implementation\n\n" + plan));
         sendTrigger.run();
     }
