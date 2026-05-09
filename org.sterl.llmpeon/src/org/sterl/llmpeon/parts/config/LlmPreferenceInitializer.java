@@ -29,6 +29,7 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
         defaults.put(PeonConstants.PREF_API_KEY, "");
         defaults.put(PeonConstants.PREF_SKILL_DIRECTORY, "");
         defaults.putBoolean(PeonConstants.PREF_DISK_TOOLS_ENABLED, false);
+        defaults.putBoolean(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, false);
     }
     
     public static LlmConfig buildWithDefaults() {

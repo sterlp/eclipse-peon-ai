@@ -45,6 +45,7 @@ public class LlmConfig {
     private final String skillDirectory = null;
     @Default
     private final boolean diskToolsEnabled = false;
+    private final boolean shellCommandConfirmationRequired = false;
 
     public static LlmConfig newConfig(String model, String url) {
         return LlmConfig.builder().model(model).url(url).build();

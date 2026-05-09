@@ -57,6 +57,7 @@ import org.sterl.llmpeon.parts.widget.UserInputWidget;
 import org.sterl.llmpeon.parts.widget.UserQuestionWidget;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolService;
+import org.sterl.llmpeon.tool.tools.ShellTool;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.model.SimpleMessage.Type;
 import org.sterl.llmpeon.voice.VoiceConfig;
@@ -374,6 +375,30 @@ public class AIChatView implements EclipseAiMonitor {
         
         var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
         debugLog.set(prefs.getBoolean(PeonConstants.PREF_LOG_RESPONSE, false));
+
+        if (prefs.getBoolean(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, false)) {
+            aiService.getToolService().getTool(ShellTool.class).ifPresent(shellTool -> {
+                shellTool.setConfirmationProvider((command, workingDirectory) -> {
+                    var latch = new java.util.concurrent.CountDownLatch(1);
+                    var answer = new java.util.concurrent.atomic.AtomicReference<>("No");
+                    showQuestion("Allow executing shell command in the \"" + workingDirectory + "\" directory? " +
+                            "(or you can enter a new command to execute below)\n\n" + command,
+                            java.util.List.of("Yes", "No"),
+                            a -> { answer.set(a); latch.countDown(); });
+                    try {
+                        latch.await();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                    return answer.get();
+                });
+            });
+
+        } else {
+            aiService.getToolService().getTool(ShellTool.class).ifPresent(shellTool -> {
+                shellTool.setConfirmationProvider(null);
+            });
+        }
     }
 
     private void applyMcpConfig() {

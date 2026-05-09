@@ -20,13 +20,24 @@ import dev.langchain4j.agent.tool.Tool;
  */
 public class ShellTool extends AbstractTool {
 
+	@FunctionalInterface
+    public interface ShellConfirmationProvider {
+        String confirm(String command, String workingDirectory);
+    }
+
     private static final long DEFAULT_TIMEOUT_MS = 120_000;
     private static final long MAX_TIMEOUT_MS = 600_000;
     private static final int MAX_OUTPUT_LENGTH = 30_000;
     private static final int DEFAULT_TAIL_LINES = 50;
-    
+
+    private ShellConfirmationProvider confirmationProvider = null;
+
     @Override
     public boolean isEditTool() { return true; }
+
+    public void setConfirmationProvider(ShellConfirmationProvider confirmationProvider) {
+        this.confirmationProvider = confirmationProvider;
+    }
 
     @Tool("OS/user info (os.name, user.name, etc.).")
     public String readOperationSystemInformation() {
@@ -49,6 +60,17 @@ public class ShellTool extends AbstractTool {
 
         ArgsUtil.requireNonBlank(command, "command");
         ArgsUtil.requireNonBlank(workingDirectory, "workingDirectory");
+
+        if (confirmationProvider != null) {
+            String updatedCommand = confirmationProvider.confirm(command, workingDirectory);
+
+            if ("No".equalsIgnoreCase(updatedCommand)) {
+                return "Shell command execution denied!";
+            }
+            if (!"Yes".equalsIgnoreCase(updatedCommand)) {
+                command = updatedCommand;
+            }
+        }
 
         Path effectiveDir = Path.of(workingDirectory).toAbsolutePath().normalize();
         if (!effectiveDir.toFile().isDirectory()) {
