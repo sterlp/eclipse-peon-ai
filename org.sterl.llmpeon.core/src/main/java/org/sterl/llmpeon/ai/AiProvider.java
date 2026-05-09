@@ -76,6 +76,7 @@ public enum AiProvider {
                     .modelName(c.getModel())
                     .apiKey(c.getApiKey())
                     .returnThinking(Boolean.TRUE)
+                    .sendThinking(Boolean.TRUE)
                     .build();
         }
 
