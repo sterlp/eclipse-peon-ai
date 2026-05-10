@@ -8,9 +8,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import org.sterl.llmpeon.ai.model.AiModel;
-import org.sterl.llmpeon.shared.StringUtil;
 
-import dev.langchain4j.model.chat.StreamingChatModel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Builder.Default;
@@ -40,12 +38,22 @@ public class LlmConfig {
     @Default
     private final boolean thinkingEnabled = true;
     @Default
+    private final boolean sendThinkingEnabled = false;
+    @Default
     private final String apiKey = null;
     @Default
     private final String skillDirectory = null;
     @Default
     private final boolean diskToolsEnabled = false;
     private final boolean shellCommandConfirmationRequired = false;
+    
+    /**
+     * Some LLMs needs this some not
+     * e.g. GOOGLE_GEMINI
+     */
+    public boolean shouldWeSendThinkingBackToLLM() {
+        return thinkingEnabled && sendThinkingEnabled;
+    }
 
     public static LlmConfig newConfig(String model, String url) {
         return LlmConfig.builder().model(model).url(url).build();
@@ -69,43 +77,12 @@ public class LlmConfig {
                 .build();
     }
 
-    public StreamingChatModel build() {
-        return getProviderType().buildChatModel(this);
+    public ConfiguredModel build() {
+        return new ConfiguredModel(this);
     }
 
     public LlmConfig withModel(String model) {
         return this.toBuilder().model(model).build();
-    }
-
-    /**
-     * Returns a new config with the given model applied.
-     * If the model carries maxInputTokens, it is used as the tokenWindow.
-     */
-    public LlmConfig withModel(AiModel model) {
-        var builder = this.toBuilder().model(model.getId());
-        if (model.getMaxInputTokens() != null) builder.tokenWindow(model.getMaxInputTokens());
-        return builder.build();
-    }
-
-    public LlmConfig withThinking(boolean enabled) {
-        return this.toBuilder().thinkingEnabled(enabled).build();
-    }
-
-    /**
-     * Selects the best model from the list:
-     * - the currently configured model if present in the list, or
-     * - the first model in the list if the current model is null/missing.
-     * Returns this config unchanged if the list is empty.
-     */
-    public LlmConfig resolveModel(List<AiModel> models) {
-        if (models.isEmpty()) return this;
-        if (StringUtil.hasNoValue(model)) return withModel(models.getFirst());
-
-        var effective = models.stream()
-                .filter(m -> model.equals(m.getId()) || model.equalsIgnoreCase(m.getName()))
-                .findFirst()
-                .orElse(models.get(0));
-        return withModel(effective);
     }
 
     public boolean skillFolderExisits() {
@@ -125,5 +102,17 @@ public class LlmConfig {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    public static LlmConfigBuilder of(AiProvider provider) {
+        return LlmConfig.builder().providerType(provider);
+    }
+
+    public List<AiModel> listAiModels() {
+        return getProviderType().listAiModels(this);
+    }
+    
+    public List<String> listModels() {
+        return getProviderType().listModels(this);
     }
 }

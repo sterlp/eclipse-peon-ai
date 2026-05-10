@@ -96,8 +96,8 @@ public class AIChatView implements EclipseAiMonitor {
     private boolean recording = false;
 
     private PeonMode currentMode = PeonMode.DEV;
-    @Deprecated
-    private LlmConfig lastListedConfig;
+    
+    private AtomicReference<LlmConfig> lastListedConfig = new AtomicReference<>();
     private IProject currentProject;
     private boolean projectPinned = false;
 
@@ -147,12 +147,9 @@ public class AIChatView implements EclipseAiMonitor {
             this::onClear,
             this::doStartImpl,
             this::onModeChange,
-            model -> {
-                aiService.updateConfig(aiService.getConfig().withModel(model));
-                LlmPreferenceInitializer.setModel(model.getId());
-            },
+            aiService::setModel,
             autonomous -> aiService.getAgentMode().setAutonomous(autonomous),
-            this::onThinkToggle
+            aiService::withThinking
         );
 
         statusLine = new StatusLineWidget(inputBlock, SWT.NONE,
@@ -372,7 +369,7 @@ public class AIChatView implements EclipseAiMonitor {
         applyMcpConfig();
         chatInput.setVoiceInputVisible(VoicePreferenceInitializer.buildWithDefaults().enabled());
         refreshStatusLine();
-        onConfigChanged(config);
+        reloadModelsIfNeeded(config); // TODO this is miss leading - we do the same here again
         
         var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
         debugLog.set(prefs.getBoolean(PeonConstants.PREF_LOG_RESPONSE, false));
@@ -381,7 +378,7 @@ public class AIChatView implements EclipseAiMonitor {
             aiService.getToolService().getTool(ShellTool.class).ifPresent(shellTool -> {
                 shellTool.setConfirmationProvider((command, workingDirectory) -> {
                     var latch = new java.util.concurrent.CountDownLatch(1);
-                    var answer = new java.util.concurrent.atomic.AtomicReference<>("No");
+                    var answer = new AtomicReference<>("No");
                     showQuestion("Allow executing shell command in the \"" + workingDirectory + "\" directory? " +
                             "(or you can enter a new command to execute below)\n\n" + command,
                             java.util.List.of("Yes", "No"),
@@ -409,11 +406,11 @@ public class AIChatView implements EclipseAiMonitor {
         aiService.applyMcpConfig();
     }
 
-    private void onConfigChanged(LlmConfig config) {
-        if (lastListedConfig == null
-                || config.getProviderType() != lastListedConfig.getProviderType()
-                || !java.util.Objects.equals(config.getUrl(), lastListedConfig.getUrl())
-                || !java.util.Objects.equals(config.getApiKey(), lastListedConfig.getApiKey())) {
+    private void reloadModelsIfNeeded(LlmConfig config) {
+        if (lastListedConfig.get() == null
+                || config.getProviderType() != lastListedConfig.get().getProviderType()
+                || !java.util.Objects.equals(config.getUrl(), lastListedConfig.get().getUrl())
+                || !java.util.Objects.equals(config.getApiKey(), lastListedConfig.get().getApiKey())) {
             loadModelsInBackground(config);
         } else {
             EclipseUtil.runInUiThread(parent, () -> {
@@ -424,20 +421,15 @@ public class AIChatView implements EclipseAiMonitor {
                 }
             });
         }
+        lastListedConfig.set(config);
     }
 
     private void loadModelsInBackground(LlmConfig config) {
         Job.create("Fetching available models", monitor -> {
             List<AiModel> models = config.getProviderType().listAiModels(config);
             EclipseUtil.runInUiThread(parent, () -> {
-                actionsBar.applyModelList(models, config.getModel());
-                var resolved = config.resolveModel(models);
-                lastListedConfig = resolved;
-                if (!resolved.equals(config)) {
-                    LOG.info("Update config because of model change " + resolved);
-                    LlmPreferenceInitializer.setModel(resolved.getModel());
-                    aiService.updateConfig(resolved);
-                }
+                aiService.resolveModel(models);
+                actionsBar.applyModelList(models, aiService.getConfig().getModel());
             });
             return Status.OK_STATUS;
         }).schedule();
@@ -520,12 +512,12 @@ public class AIChatView implements EclipseAiMonitor {
     }
 
     private void doSendMessage() {
-        final var active = getActiveService();
-        if (StringUtil.hasNoValue(active.getConfig().getModel())) {
+        if (StringUtil.hasNoValue(aiService.getModel())) {
             chatHistory.appendMessage(new SimpleMessage(Type.PROBLEM, "No model configured — open Window > Preferences > Peon AI"));
             return;
         }
 
+        final var active = getActiveService();
         final var selection = getUserSelection();
         final var needsSelection = !active.hasUserText(selection);
 
@@ -563,7 +555,7 @@ public class AIChatView implements EclipseAiMonitor {
                     onChatResponse(new SimpleMessage(Type.PROBLEM, "CANCLED: " + e.getMessage()));
                 } else {
                     ex = e;
-                    LOG.warn("Failed to call LLM " + active.getConfig(), e);
+                    LOG.warn("Failed to call LLM " + aiService.getConfig(), e);
                     onChatResponse(new SimpleMessage(Type.PROBLEM, e.getMessage()));
                 }
             } finally {
@@ -575,7 +567,7 @@ public class AIChatView implements EclipseAiMonitor {
             if (debugLog.get()) {
                 LOG.info("Peon AI Request:\n" + text + "\nResponse\n" + response);
             }
-            return PeonConstants.status("Peon AI\n" + aiService.getDeveloperService().getConfig(), ex);
+            return PeonConstants.status("Peon AI\n" + aiService.getConfig(), ex);
         }).schedule();
     }
 
@@ -627,10 +619,6 @@ public class AIChatView implements EclipseAiMonitor {
         questionWidget.hideQuestion();
         inputBlock.layout(true, true);
         inputBlock.getParent().layout(new Control[]{ inputBlock });
-    }
-
-    private void onThinkToggle(boolean enabled) {
-        aiService.updateConfig(aiService.getDeveloperService().getConfig().withThinking(enabled));
     }
 
     private void onSkillsToggle(boolean enabled) {

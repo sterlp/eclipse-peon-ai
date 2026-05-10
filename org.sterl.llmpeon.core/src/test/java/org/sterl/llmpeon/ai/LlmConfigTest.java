@@ -1,12 +1,11 @@
 package org.sterl.llmpeon.ai;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.util.Arrays;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import org.junit.jupiter.api.Test;
-import org.sterl.llmpeon.ai.model.AiModel;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -30,41 +29,4 @@ class LlmConfigTest {
         assertEquals("foo", read.getModel());
     }
     
-    @Test
-    void test_takes_model() throws Exception {
-        // GIVEN
-        var subject = LlmConfig.newConfig(null, "http://bar");
-        
-        // WHEN
-        subject = subject.resolveModel(Arrays.asList(AiModel.builder().id("foo").build()));
-        
-        // THEN
-        assertEquals("foo", subject.getModel());
-    }
-    
-    @Test
-    void test_model_keeps() throws Exception {
-        // GIVEN
-        var subject = LlmConfig.newConfig("foo", "http://bar");
-        
-        // WHEN
-        subject = subject.resolveModel(Arrays.asList(AiModel.builder().id("foo").build(),
-                AiModel.builder().id("bar").build()));
-        
-        // THEN
-        assertEquals("foo", subject.getModel());
-    }
-    
-    @Test
-    void test_overwrites_model() throws Exception {
-        // GIVEN
-        var subject = LlmConfig.newConfig("bar", "http://bar");
-        
-        // WHEN
-        subject = subject.resolveModel(Arrays.asList(AiModel.builder().id("foo").build()));
-        
-        // THEN
-        assertEquals("foo", subject.getModel());
-    }
-
 }

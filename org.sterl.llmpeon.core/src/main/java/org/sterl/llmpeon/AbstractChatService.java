@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.function.Predicate;
 
 import org.sterl.llmpeon.agent.AiCompressorAgent;
+import org.sterl.llmpeon.ai.ConfiguredModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
@@ -27,7 +28,6 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 
@@ -46,20 +46,22 @@ public abstract class AbstractChatService {
             .id(this)
             .maxMessages(500000)
             .build();
-    protected StreamingChatModel chatModel;
-    protected LlmConfig config;
+    protected final ConfiguredModel configuredModel;
+
     protected final TemplateContext templateContext;
+    @Deprecated // skills should be slash actions
     protected final SkillService skillService;
     protected final ToolService toolService;
     private List<ChatMessage> standingOrders = Collections.emptyList();
     private int tokenSize = 0;
 
-    protected AbstractChatService(LlmConfig config, ToolService toolService,
+    protected AbstractChatService(ConfiguredModel configuredModel, ToolService toolService,
             SkillService skillService, TemplateContext templateContext) {
         this.toolService = toolService;
         this.skillService = skillService;
         this.templateContext = templateContext;
-        updateConfig(config);
+        this.configuredModel = configuredModel;
+        updateConfig(configuredModel.getConfig());
     }
 
     protected abstract String getSystemPrompt();
@@ -68,10 +70,9 @@ public abstract class AbstractChatService {
     protected boolean includesMcpTools() { return true; }
 
     public int tokenWindowUsedInPercent() {
-        float maxToken = config.getTokenWindow() > 16000 ? config.getTokenWindow() : 16000;
         float used = tokenSize;
         if (used < 100) return 0;
-        return Math.round(used / maxToken);
+        return Math.round(used / Math.min(configuredModel.getTokenWindow(), 4000));
     }
 
     public boolean hasUserText(String message) {
@@ -95,7 +96,7 @@ public abstract class AbstractChatService {
         var staticMessages = buildStaticMessages();
         var bridge = new StreamingBridge();
         var response = toolService.executeLoop(
-                new ToolLoopRequest(memory, chatModel, bridge)
+                new ToolLoopRequest(memory, configuredModel.getChatModel(), bridge)
                         .staticMessages(staticMessages)
                         .monitor(monitor)
                         .toolFilter(getToolFilter())
@@ -109,16 +110,16 @@ public abstract class AbstractChatService {
     }
 
     public ChatResponse compressContext(AiMonitor monitor) {
-        var response = new AiCompressorAgent(chatModel).call(memory.messages(), monitor);
+        var response = new AiCompressorAgent(configuredModel.getChatModel()).call(memory.messages(), monitor);
         memory.clear();
         memory.add(UserMessage.from("[Context summary]\n" + response.aiMessage().text()));
         updateTokenCount(response);
         return response;
     }
 
+    @Deprecated
     public void updateConfig(LlmConfig config) {
-        this.config = config;
-        this.chatModel = config.build();
+        configuredModel.updateConfig(config);
         if (config.getSkillDirectory() != null) {
             this.templateContext.setSkillDirectory(config.getSkillDirectory());
             try {
@@ -147,9 +148,7 @@ public abstract class AbstractChatService {
     public void addMessage(ChatMessage message) { memory.add(message); }
     public List<ChatMessage> getMessages() { return memory.messages(); }
     public int getTokenSize() { return tokenSize; }
-    public int getTokenWindow() { return config.getTokenWindow(); }
-    public LlmConfig getConfig() { return config; }
-    public StreamingChatModel getChatModel() { return chatModel; }
+    public int getTokenWindow() { return configuredModel.getTokenWindow(); }
     public TemplateContext getTemplateContext() { return templateContext; }
     public List<SkillRecord> getSkills() { return skillService.getSkills(); }
 

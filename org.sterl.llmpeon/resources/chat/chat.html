@@ -120,24 +120,73 @@
             opacity: 1;
         }
 
+        @keyframes blink-cursor {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0; }
+        }
+        @keyframes fade-in-up {
+            from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+            to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
         #live-status {
             display: none;
-            position: sticky;
-            bottom: 0;
-            background: #303030;
-            padding: 8px 8px 8px 15px;
-            font-size: 11.5px;
-            color: #f5eff1;
+            position: fixed;
+            bottom: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 900px;
+            flex-direction: column;
+            gap: 4px;
+            background: rgba(15, 20, 32, 0.92);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 10px;
+            padding: 8px 14px 9px 14px;
+            font-size: 11px;
+            color: #a8c4cc;
+            box-shadow:
+                0 0 0 1px rgba(78, 160, 180, 0.3),
+                0 0 16px rgba(78, 160, 180, 0.08),
+                0 6px 24px rgba(0, 0, 0, 0.45);
+            z-index: 100;
+            font-family: 'Cascadia Code', 'Fira Code', 'Menlo', monospace;
+            letter-spacing: 0.02em;
+        }
+
+        /* Animation fires only when .visible is added for the first time */
+        #live-status.visible {
+            animation: fade-in-up 2500ms cubic-bezier(0.16, 1, 0.3, 1) both;
         }
 
         .live-state {
-            font-style: italic;
-         }
+            font-style: normal;
+            color: #7ec8d4;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .live-state::after {
+            content: "▊";
+            font-size: 9px;
+            color: #4da8b8;
+            animation: blink-cursor 1s step-end infinite;
+            flex-shrink: 0;
+        }
 
         .live-chunk {
             margin-top: 2px;
+            font-size: 10.5px;
+            color: #5a7880;
+            font-style: italic;
             word-break: break-word;
-            font-size: 11px;
+            line-height: 1.55;
+            max-height: calc(10 * 1.55 * 10.5px);
+            overflow: hidden;
+            -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+            mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
         }
     </style>
 
@@ -214,18 +263,26 @@
             if (!el) {
                 el = document.createElement("div");
                 el.id = "live-status";
-                el.className = "live-status";
                 document.body.appendChild(el);
             }
             var rate = tokPerSec > 0 ? " | " + tokPerSec.toFixed(1) + " tok/s" : "";
             var chunk = thinkChunk ? "<div class='live-chunk'>" + thinkChunk + "</div>" : "";
             el.innerHTML = "<span class='live-state'>" + stateMessage + rate + "</span>" + chunk;
-            el.style.display = "block";
+            
+            if (el.style.display !== "flex") {
+                el.style.display = "flex";
+                // Force reflow so animation triggers cleanly after display change
+                void el.offsetWidth;
+                el.classList.add("visible");
+            }
         }
 
         function hideLiveStatus() {
             var el = document.getElementById("live-status");
-            if (el) el.style.display = "none";
+            if (el) {
+                el.style.display = "none";
+                el.classList.remove("visible"); // reset so next show animates again
+            }
         }
 
         function appendMessage(message) {
@@ -306,7 +363,7 @@
         document.getElementById("chat").innerHTML =
             '<div class="message PROBLEM">Failed to load markdown-it</div>';
     }
-
+/*
     appendMessage({role: "USER", message: "Write hello world"});
     appendMessage({
         role: 'AI',
@@ -340,7 +397,8 @@
         
         
         updateLiveResponse('working since 2s | thinking...',
-            30, 'I think we alre all doomed!');
+            30, 'I think we alre all doomed!as dasd asd asd asda sdasadsasd asda sdasd asd asdas dasfas dg alskgj aosrigj pöaodigh piuas hgpöioadfnh güodsaj gtü9oi <br> adasd asds dfasdkjfnasdifhasdifh pisadf sa àsdnads`');
+            */
 </script>
 
 </html>

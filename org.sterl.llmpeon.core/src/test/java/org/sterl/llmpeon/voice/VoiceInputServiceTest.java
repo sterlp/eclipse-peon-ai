@@ -11,9 +11,7 @@ import java.util.Base64;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.LlmConfig;
-import org.sterl.llmpeon.streaming.StreamingBridge;
 
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.message.AudioContent;
@@ -81,7 +79,7 @@ class VoiceInputServiceTest {
     @Tag("integration") // doesn't work in LM Studio
     void testTestPing_Langchain_LM_Studio() throws Exception {
         // GIVEN
-        var chatModel = AiProvider.LM_STUDIO.buildChatModel(LlmConfig.newConfig("google/gemma-4-e2b", "http://localhost:1234"));
+        var chatModel = LlmConfig.newLmStudio("google/gemma-4-e2b").build();
         
         // WHEN
         var audio = Audio.builder()
@@ -90,7 +88,7 @@ class VoiceInputServiceTest {
             .mimeType("audio/wav")
             .build();
 
-        var response = new StreamingBridge().call(chatModel,
+        var response = chatModel.callBlocking(
                 new ChatRequest.Builder()
                     .messages(UserMessage.from(
                             AudioContent.from(audio),
@@ -108,7 +106,7 @@ class VoiceInputServiceTest {
     @Tag("integration") // Langchain4j doesn't support it
     void testTestPing_Langchain_Ollama() throws Exception {
         // GIVEN
-        var chatModel = AiProvider.OLLAMA.buildChatModel(LlmConfig.newConfig("gemma-4-e2b", "http://localhost:11434"));
+        var chatModel = LlmConfig.newOllama("gemma-4-e2b").build();
 
         // WHEN
         var audio = Audio.builder()
@@ -117,7 +115,7 @@ class VoiceInputServiceTest {
             .mimeType("audio/wav")
             .build();
 
-        var response = new StreamingBridge().call(chatModel,
+        var response = chatModel.callBlocking(
                 new ChatRequest.Builder()
                     .messages(UserMessage.from(
                             AudioContent.from(audio),

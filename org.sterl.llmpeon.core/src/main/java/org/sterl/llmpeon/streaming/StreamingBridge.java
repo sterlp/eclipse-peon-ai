@@ -34,7 +34,7 @@ import dev.langchain4j.model.chat.response.StreamingHandle;
  */
 public class StreamingBridge implements StreamingChatResponseHandler {
 
-    private Instant startedAt;
+    private Instant startedAt = Instant.now();
 
     // Per-call state — reset at the top of each call()
     private volatile CountDownLatch latch;
@@ -50,7 +50,7 @@ public class StreamingBridge implements StreamingChatResponseHandler {
      * @throws CancellationException if canceled
      */
     public ChatResponse call(StreamingChatModel model, ChatRequest request, AiMonitor monitor) {
-        if (startedAt == null) startedAt = Instant.now();
+        startedAt = Instant.now();
 
         this.latch = new CountDownLatch(1);
         this.responseRef = new AtomicReference<>();
@@ -111,7 +111,7 @@ public class StreamingBridge implements StreamingChatResponseHandler {
     private boolean cancelAndRelease(StreamingHandle handle) {
         if (!monitor.isCanceled()) return false;
         if (handle != null) handle.cancel();
-        errorRef.compareAndSet(null, new CancellationException("Cancelled by monitor"));
+        errorRef.compareAndSet(null, new CancellationException("AI call canceled ..."));
         latch.countDown();
         return true;
     }

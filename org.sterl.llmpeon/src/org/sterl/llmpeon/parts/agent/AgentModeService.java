@@ -111,6 +111,7 @@ public class AgentModeService {
         return service.call(message, monitor);
     }
 
+    @Deprecated
     public void updateConfig(LlmConfig config) {
         plannerService.updateConfig(config);
         developerService.updateConfig(config);
@@ -219,7 +220,6 @@ public class AgentModeService {
         this.phase = Phase.IMPLEMENTING;
         retryCount = 0;
         developerService.clear();
-        developerService.updateConfig(plannerService.getConfig()); // ensure same config
         String plan = overviewExists() ? readOverview() : "no plan file found - stop!";
         developerService.addMessage(UserMessage.from("Start Implementation\n\n" + plan));
         sendTrigger.run();
