@@ -39,7 +39,6 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IWorkingSet;
 import org.sterl.llmpeon.AbstractChatService;
 import org.sterl.llmpeon.PeonMode;
-import org.sterl.llmpeon.shared.OnPartialAiResponse;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.ai.model.AiModel;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
@@ -56,16 +55,18 @@ import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget;
 import org.sterl.llmpeon.parts.widget.StatusLineWidget;
 import org.sterl.llmpeon.parts.widget.UserInputWidget;
 import org.sterl.llmpeon.parts.widget.UserQuestionWidget;
+import org.sterl.llmpeon.shared.OnPartialAiResponse;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolService;
-import org.sterl.llmpeon.tool.tools.ShellTool;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.model.SimpleMessage.Type;
+import org.sterl.llmpeon.tool.tools.ShellTool;
 import org.sterl.llmpeon.voice.VoiceConfig;
 import org.sterl.llmpeon.voice.VoiceInputService;
 
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -374,6 +375,7 @@ public class AIChatView implements EclipseAiMonitor {
         var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
         debugLog.set(prefs.getBoolean(PeonConstants.PREF_LOG_RESPONSE, false));
 
+        // TODO move into own class?
         if (prefs.getBoolean(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, false)) {
             aiService.getToolService().getTool(ShellTool.class).ifPresent(shellTool -> {
                 shellTool.setConfirmationProvider((command, workingDirectory) -> {
@@ -381,12 +383,15 @@ public class AIChatView implements EclipseAiMonitor {
                     var answer = new AtomicReference<>("No");
                     showQuestion("Allow executing shell command in the \"" + workingDirectory + "\" directory? " +
                             "(or you can enter a new command to execute below)\n\n" + command,
-                            java.util.List.of("Yes", "No"),
+                            List.of("Yes", "No"),
                             a -> { answer.set(a); latch.countDown(); });
                     try {
                         latch.await();
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
+                    }
+                    if (UserQuestionWidget.CANCEL.equals(answer.get())) {
+                        throw new CancellationException("Canceled tool execution " + workingDirectory + " " + command);
                     }
                     return answer.get();
                 });
@@ -550,6 +555,14 @@ public class AIChatView implements EclipseAiMonitor {
                         currentMode, aiService.getAgentMode()));
                 
                 response = active.call(text.isEmpty() ? null : text, this);
+            } catch (ToolExecutionException e) {
+                if (!isCanceled()) {
+                    if (e.getCause() instanceof CancellationException) {
+                        // yes this is fine
+                    } else {
+                        throw e;
+                    }
+                }
             } catch (Exception e) {
                 if (!isCanceled() || !(e instanceof CancellationException)) {
                     ex = e;
