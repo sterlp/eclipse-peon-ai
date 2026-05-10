@@ -124,40 +124,47 @@
             0%, 100% { opacity: 1; }
             50%       { opacity: 0; }
         }
-        @keyframes fade-in-up {
-            from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+        @keyframes slide-in-up {
+            from { opacity: 0; transform: translateX(-50%) translateY(100%); }
             to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        @keyframes slide-out-down {
+            from { opacity: 1; transform: translateX(-50%) translateY(0); }
+            to   { opacity: 0; transform: translateX(-50%) translateY(100%); }
+        }
+        
+        #live-status.visible {
+            animation: slide-in-up 800ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        #live-status.hiding {
+            animation: slide-out-down 400ms cubic-bezier(0.4, 0, 1, 1) both;
         }
 
         #live-status {
             display: none;
             position: fixed;
-            bottom: 14px;
+            bottom: 0px;
             left: 50%;
             transform: translateX(-50%);
-            width: 90%;
-            max-width: 900px;
+            width: 80%;
+            max-width: 90%;
             flex-direction: column;
             gap: 4px;
             background: rgba(15, 20, 32, 0.92);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
-            border-radius: 10px;
+            border-radius: 10px 10px 0 0;
             padding: 8px 14px 9px 14px;
             font-size: 11px;
             color: #a8c4cc;
             box-shadow:
                 0 0 0 1px rgba(78, 160, 180, 0.3),
                 0 0 16px rgba(78, 160, 180, 0.08),
-                0 6px 24px rgba(0, 0, 0, 0.45);
+                0 -4px 24px rgba(0, 0, 0, 0.35);
             z-index: 100;
             font-family: 'Cascadia Code', 'Fira Code', 'Menlo', monospace;
             letter-spacing: 0.02em;
-        }
-
-        /* Animation fires only when .visible is added for the first time */
-        #live-status.visible {
-            animation: fade-in-up 2500ms cubic-bezier(0.16, 1, 0.3, 1) both;
         }
 
         .live-state {
@@ -272,17 +279,28 @@
             if (el.style.display !== "flex") {
                 el.style.display = "flex";
                 // Force reflow so animation triggers cleanly after display change
+                // https://www.harrytheo.com/blog/2021/02/restart-a-css-animation-with-javascript/
                 void el.offsetWidth;
                 el.classList.add("visible");
+                // wait for the next frame because of the animation
+                requestAnimationFrame(() => {
+                    window.scrollTo(0, document.body.scrollHeight);
+                });
             }
+            document.getElementById("chat").style.paddingBottom = el.offsetHeight + "px";
         }
 
         function hideLiveStatus() {
             var el = document.getElementById("live-status");
-            if (el) {
+            if (!el || el.style.display === "none") return;
+            el.classList.remove("visible");
+            el.classList.add("hiding");
+            el.addEventListener("animationend", function handler() {
                 el.style.display = "none";
-                el.classList.remove("visible"); // reset so next show animates again
-            }
+                el.classList.remove("hiding");
+                el.removeEventListener("animationend", handler);
+                document.getElementById("chat").style.paddingBottom = "0";
+            }, { once: true });
         }
 
         function appendMessage(message) {
@@ -332,6 +350,7 @@
         });
 
         function appendDiff(diffString) {
+            hideLiveStatus();
             const container = document.getElementById("chat");
             const div = document.createElement("div");
             div.className = "message diff";
@@ -363,7 +382,8 @@
         document.getElementById("chat").innerHTML =
             '<div class="message PROBLEM">Failed to load markdown-it</div>';
     }
-/*
+
+
     appendMessage({role: "USER", message: "Write hello world"});
     appendMessage({
         role: 'AI',
@@ -398,7 +418,8 @@
         
         updateLiveResponse('working since 2s | thinking...',
             30, 'I think we alre all doomed!as dasd asd asd asda sdasadsasd asda sdasd asd asdas dasfas dg alskgj aosrigj pöaodigh piuas hgpöioadfnh güodsaj gtü9oi <br> adasd asds dfasdkjfnasdifhasdifh pisadf sa àsdnads`');
-            */
+        //appendMessage({role: "USER", message: "Write hello world"});
+
 </script>
 
 </html>
