@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -558,7 +559,9 @@ public class AIChatView implements EclipseAiMonitor {
                 
                 response = active.call(text.isEmpty() ? null : text, this);
             } catch (Exception e) {
-                if (!isCanceled()) {
+                if (isCanceled() || e instanceof CancellationException) {
+                    onChatResponse(new SimpleMessage(Type.PROBLEM, "CANCLED: " + e.getMessage()));
+                } else {
                     ex = e;
                     LOG.warn("Failed to call LLM " + active.getConfig(), e);
                     onChatResponse(new SimpleMessage(Type.PROBLEM, e.getMessage()));

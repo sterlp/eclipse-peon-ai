@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.streaming;
 
 import java.time.Instant;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -45,6 +46,8 @@ public class StreamingBridge implements StreamingChatResponseHandler {
     /**
      * Executes one streaming LLM call and blocks until complete or error.
      * Sets {@code startedAt} on the first invocation only.
+     * 
+     * @throws CancellationException if canceled
      */
     public ChatResponse call(StreamingChatModel model, ChatRequest request, AiMonitor monitor) {
         if (startedAt == null) startedAt = Instant.now();
@@ -66,12 +69,17 @@ public class StreamingBridge implements StreamingChatResponseHandler {
             Thread.currentThread().interrupt();
             StreamingHandle h = handleRef.get();
             if (h != null) h.cancel();
-            errorRef.compareAndSet(null, new RuntimeException("Interrupted"));
+            errorRef.compareAndSet(null, new CancellationException("Thread interrupted"));
             latch.countDown();
         }
 
         Throwable error = errorRef.get();
-        if (error != null) throw new RuntimeException(error);
+        if (error != null) {
+            // if we are canceled - and have a response ...
+            if (error instanceof CancellationException && responseRef.get() != null) return responseRef.get();
+            if (error instanceof RuntimeException ex) throw ex;
+            throw new RuntimeException(error);
+        }
         return responseRef.get();
     }
 
@@ -103,7 +111,7 @@ public class StreamingBridge implements StreamingChatResponseHandler {
     private boolean cancelAndRelease(StreamingHandle handle) {
         if (!monitor.isCanceled()) return false;
         if (handle != null) handle.cancel();
-        errorRef.compareAndSet(null, new RuntimeException("Cancelled"));
+        errorRef.compareAndSet(null, new CancellationException("Cancelled by monitor"));
         latch.countDown();
         return true;
     }
