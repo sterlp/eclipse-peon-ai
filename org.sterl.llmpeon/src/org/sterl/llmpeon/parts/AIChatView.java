@@ -551,15 +551,14 @@ public class AIChatView implements EclipseAiMonitor {
                 
                 response = active.call(text.isEmpty() ? null : text, this);
             } catch (Exception e) {
-                if (isCanceled() || e instanceof CancellationException) {
-                    onChatResponse(new SimpleMessage(Type.PROBLEM, "CANCLED: " + e.getMessage()));
-                } else {
+                if (!isCanceled() || !(e instanceof CancellationException)) {
                     ex = e;
                     LOG.warn("Failed to call LLM " + aiService.getConfig(), e);
                     onChatResponse(new SimpleMessage(Type.PROBLEM, e.getMessage()));
                 }
             } finally {
                 EclipseUtil.runInUiThread(parent, () -> lockWhileWorking(false));
+                EclipseUtil.runInUiThread(parent, () -> chatHistory.hideLiveStatus());
                 monitor.done();
                 active.setStandingOrders(Collections.emptyList());
                 monitorRef.set(new NullProgressMonitor());

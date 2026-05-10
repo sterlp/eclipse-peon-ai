@@ -18,7 +18,8 @@ import org.sterl.llmpeon.shared.StringUtil;
 public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
     private static final ILog LOG = Platform.getLog(LlmPreferenceInitializer.class);
     
-    private static final LlmConfig DEFAULT = LlmConfig.newLmStudio("qwen/qwen3.6-35b-a3b");
+    private static final LlmConfig DEFAULT = LlmConfig.newOllama("gemma4:26b-a4b-it-q4_K_M");
+            //LlmConfig.newLmStudio("qwen/qwen3.6-35b-a3b");
 
     @Override
     public void initializeDefaultPreferences() {
@@ -44,7 +45,7 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
             if (dir.isPresent()) {
                 // save Eclipse workspace-relative path to prefs (portable)
                 prefs.put(PeonConstants.PREF_SKILL_DIRECTORY, dir.get().getFullPath().toPortableString());
-                // use absolute filesystem path for SkillService
+                // use absolute file system path for SkillService
                 LOG.info("Resolved skill dir " + skillDir + " as " + dir.get().getRawLocation().toPortableString());
                 skillDir = dir.get().getRawLocation().toPortableString();
             }

@@ -39,6 +39,10 @@ public class ChatMarkdownWidget extends Composite {
         clear();
     }
     
+    public void hideLiveStatus() {
+        browser.execute("hideLiveStatus();");
+    }
+
     private String loadChatHtml() {
         if (chatHtml != null) return chatHtml;
         try (InputStream is = getClass().getResourceAsStream("/resources/chat/chat.html")) {

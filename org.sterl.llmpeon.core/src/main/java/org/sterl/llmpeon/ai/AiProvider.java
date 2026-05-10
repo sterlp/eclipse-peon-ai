@@ -210,7 +210,7 @@ public enum AiProvider {
                     .modelName(c.getModel())
                     .apiKey(c.getApiKey());
             if (c.isThinkingEnabled()) {
-                builder.thinkingType("enabled").thinkingBudgetTokens(16000);
+                builder.thinkingType("enabled");
             }
             return builder.build();
         }
