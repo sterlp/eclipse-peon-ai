@@ -35,13 +35,13 @@ public enum AiProvider {
 
     OLLAMA {
         @Override
-        public StreamingChatModel buildChatModel(LlmConfig c) {
+        StreamingChatModel buildModel(LlmConfig c) {
             return OllamaStreamingChatModel.builder()
                     .timeout(TIMEOUT)
                     .baseUrl(c.getUrl())
                     .modelName(c.getModel())
                     .think(c.isThinkingEnabled())
-                    .returnThinking(true)
+                    .returnThinking(c.isThinkingEnabled())
                     .build();
         }
 
@@ -69,14 +69,14 @@ public enum AiProvider {
 
     OPEN_AI {
         @Override
-        public StreamingChatModel buildChatModel(LlmConfig c) {
+        StreamingChatModel buildModel(LlmConfig c) {
             return OpenAiStreamingChatModel.builder()
                     .timeout(TIMEOUT)
                     .baseUrl(c.getUrl())
                     .modelName(c.getModel())
                     .apiKey(c.getApiKey())
-                    .returnThinking(Boolean.TRUE)
-                    .sendThinking(Boolean.TRUE)
+                    .returnThinking(c.isThinkingEnabled())
+                    .sendThinking(c.shouldWeSendThinkingBackToLLM())
                     .build();
         }
 
@@ -107,7 +107,7 @@ public enum AiProvider {
         }
 
         @Override
-        public StreamingChatModel buildChatModel(LlmConfig c) {
+        StreamingChatModel buildModel(LlmConfig c) {
             var http1 = JdkHttpClient.builder()
                     .httpClientBuilder(HttpClient.newBuilder()
                             .version(HttpClient.Version.HTTP_1_1));
@@ -117,7 +117,8 @@ public enum AiProvider {
                     .modelName(c.getModel())
                     .apiKey(StringUtil.hasValue(c.getApiKey()) ? c.getApiKey() : "lm-studio")
                     .httpClientBuilder(http1)
-                    .returnThinking(Boolean.TRUE)
+                    .returnThinking(c.isThinkingEnabled())
+                    .sendThinking(c.shouldWeSendThinkingBackToLLM())
                     .build();
         }
 
@@ -142,7 +143,7 @@ public enum AiProvider {
 
     GOOGLE_GEMINI {
         @Override
-        public StreamingChatModel buildChatModel(LlmConfig c) {
+        StreamingChatModel buildModel(LlmConfig c) {
             var result = GoogleAiGeminiStreamingChatModel.builder()
                     .apiKey(c.getApiKey())
                     .modelName(c.getModel());
@@ -167,11 +168,13 @@ public enum AiProvider {
         private static final String MODELS_URL = "https://api.mistral.ai/v1/models";
 
         @Override
-        public StreamingChatModel buildChatModel(LlmConfig c) {
+        StreamingChatModel buildModel(LlmConfig c) {
             return MistralAiStreamingChatModel.builder()
                     .timeout(TIMEOUT)
                     .modelName(c.getModel())
                     .apiKey(c.getApiKey())
+                    .returnThinking(c.isThinkingEnabled())
+                    .sendThinking(c.shouldWeSendThinkingBackToLLM())
                     .build();
         }
 
@@ -201,13 +204,13 @@ public enum AiProvider {
         private static final String ANTHROPIC_VERSION = "2023-06-01";
 
         @Override
-        public StreamingChatModel buildChatModel(LlmConfig c) {
+        StreamingChatModel buildModel(LlmConfig c) {
             var builder = AnthropicStreamingChatModel.builder()
                     .timeout(TIMEOUT)
                     .modelName(c.getModel())
                     .apiKey(c.getApiKey());
             if (c.isThinkingEnabled()) {
-                builder.thinkingType("enabled").thinkingBudgetTokens(16000);
+                builder.thinkingType("enabled");
             }
             return builder.build();
         }
@@ -245,7 +248,7 @@ public enum AiProvider {
         }
 
         @Override
-        public StreamingChatModel buildChatModel(LlmConfig c) {
+        StreamingChatModel buildModel(LlmConfig c) {
             return OpenAiStreamingChatModel.builder()
                     .timeout(TIMEOUT)
                     .baseUrl(baseUrl(c))
@@ -302,7 +305,7 @@ public enum AiProvider {
         }
 
         @Override
-        public StreamingChatModel buildChatModel(LlmConfig c) {
+        StreamingChatModel buildModel(LlmConfig c) {
             return OpenAiStreamingChatModel.builder()
                     .timeout(TIMEOUT)
                     .baseUrl(baseUrl(c))
@@ -373,7 +376,7 @@ public enum AiProvider {
     // --- Public API ---
 
     /** Builds the {@link StreamingChatModel} for this provider using the given config. */
-    public abstract StreamingChatModel buildChatModel(LlmConfig config);
+    abstract StreamingChatModel buildModel(LlmConfig config);
 
     /**
      * Returns a list of available {@link AiModel}s with metadata.

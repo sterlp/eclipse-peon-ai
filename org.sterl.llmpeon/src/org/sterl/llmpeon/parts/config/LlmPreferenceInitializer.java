@@ -17,17 +17,21 @@ import org.sterl.llmpeon.shared.StringUtil;
 
 public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
     private static final ILog LOG = Platform.getLog(LlmPreferenceInitializer.class);
+    
+    private static final LlmConfig DEFAULT = LlmConfig.newOllama("gemma4:26b-a4b-it-q4_K_M");
+            //LlmConfig.newLmStudio("qwen/qwen3.6-35b-a3b");
 
     @Override
     public void initializeDefaultPreferences() {
         IEclipsePreferences defaults = DefaultScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
-        defaults.put(PeonConstants.PREF_PROVIDER_TYPE, AiProvider.OLLAMA.name());
-        defaults.put(PeonConstants.PREF_MODEL, "qwen3.6:latest");
-        defaults.put(PeonConstants.PREF_URL, "http://localhost:11434");
-        defaults.putInt(PeonConstants.PREF_TOKEN_WINDOW, 16000);
-        defaults.putBoolean(PeonConstants.PREF_THINKING_ENABLED, false);
-        defaults.put(PeonConstants.PREF_API_KEY, "");
-        defaults.put(PeonConstants.PREF_SKILL_DIRECTORY, "");
+        defaults.put(PeonConstants.PREF_PROVIDER_TYPE, DEFAULT.getProviderType().name());
+        defaults.put(PeonConstants.PREF_MODEL, StringUtil.stripToEmpty(DEFAULT.getModel()));
+        defaults.put(PeonConstants.PREF_URL, StringUtil.stripToEmpty(DEFAULT.getUrl()));
+        defaults.putInt(PeonConstants.PREF_TOKEN_WINDOW, DEFAULT.getTokenWindow());
+        defaults.putBoolean(PeonConstants.PREF_THINKING_ENABLED, DEFAULT.isThinkingEnabled());
+        defaults.putBoolean(PeonConstants.PREF_SEND_THINKING_ENABLED, DEFAULT.isSendThinkingEnabled());
+        defaults.put(PeonConstants.PREF_API_KEY, StringUtil.stripToEmpty(DEFAULT.getApiKey()));
+        defaults.put(PeonConstants.PREF_SKILL_DIRECTORY, StringUtil.stripToEmpty(DEFAULT.getSkillDirectory()));
         defaults.putBoolean(PeonConstants.PREF_DISK_TOOLS_ENABLED, false);
         defaults.putBoolean(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, false);
     }
@@ -41,18 +45,18 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
             if (dir.isPresent()) {
                 // save Eclipse workspace-relative path to prefs (portable)
                 prefs.put(PeonConstants.PREF_SKILL_DIRECTORY, dir.get().getFullPath().toPortableString());
-                // use absolute filesystem path for SkillService
+                // use absolute file system path for SkillService
                 LOG.info("Resolved skill dir " + skillDir + " as " + dir.get().getRawLocation().toPortableString());
                 skillDir = dir.get().getRawLocation().toPortableString();
             }
         }
 
         return LlmConfig.builder()
-            .providerType(AiProvider.parse(prefs.get(PeonConstants.PREF_PROVIDER_TYPE, AiProvider.OLLAMA.name())))
-            .model(prefs.get(PeonConstants.PREF_MODEL, "qwen3.6:latest"))
-            .url(prefs.get(PeonConstants.PREF_URL, "http://localhost:11434"))
-            .tokenWindow(prefs.getInt(PeonConstants.PREF_TOKEN_WINDOW, 16000))
-            .thinkingEnabled(prefs.getBoolean(PeonConstants.PREF_THINKING_ENABLED, false))
+            .providerType(AiProvider.parse(prefs.get(PeonConstants.PREF_PROVIDER_TYPE, DEFAULT.getProviderType().name())))
+            .model(prefs.get(PeonConstants.PREF_MODEL, DEFAULT.getModel()))
+            .url(prefs.get(PeonConstants.PREF_URL, DEFAULT.getUrl()))
+            .tokenWindow(prefs.getInt(PeonConstants.PREF_TOKEN_WINDOW, DEFAULT.getTokenWindow()))
+            .thinkingEnabled(prefs.getBoolean(PeonConstants.PREF_THINKING_ENABLED, DEFAULT.isThinkingEnabled()))
             .apiKey(prefs.get(PeonConstants.PREF_API_KEY, ""))
             .skillDirectory(skillDir)
             .diskToolsEnabled(prefs.getBoolean(PeonConstants.PREF_DISK_TOOLS_ENABLED, false))

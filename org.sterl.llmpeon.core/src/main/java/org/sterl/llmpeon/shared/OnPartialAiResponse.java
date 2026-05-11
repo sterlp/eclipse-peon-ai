@@ -4,5 +4,5 @@ import java.time.Instant;
 
 public record OnPartialAiResponse(Type type, String value, Instant startedAt) {
 
-    public enum Type { WAITING, THINK, ANSWER, TOOL }
+    public enum Type { START, THINK, ANSWER, TOOL, END }
 }

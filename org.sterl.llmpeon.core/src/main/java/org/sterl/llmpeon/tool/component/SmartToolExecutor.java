@@ -13,6 +13,7 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.service.tool.DefaultToolExecutor;
 
 public class SmartToolExecutor {
@@ -43,12 +44,20 @@ public class SmartToolExecutor {
     }
 
     public String run(ToolExecutionRequest request, AiMonitor monitor, StreamingChatModel chatModel, List<ChatMessage> memory) {
+        monitor = AiMonitor.nullSafety(monitor);
         try {
             tool.withMonitor(monitor);
             tool.withChatModel(chatModel);
             tool.withMemory(new ArrayList<ChatMessage>(memory)); // copy
             return executor.execute(request, request.id());
         } catch (IllegalArgumentException e) {
+            monitor.onProblem(request.name() + ": " + e.getMessage());
+            return e.getMessage();
+        } catch (ToolExecutionException e) {
+            if (e.getCause() instanceof IllegalArgumentException ex) {
+                monitor.onProblem(request.name() + ": " + ex.getMessage());
+                return ex.getMessage();
+            }
             throw e;
         } catch (RuntimeException e) {
             if (monitor != null) monitor.onProblem(spec.name() + " failed: " + e.getMessage());

@@ -4,6 +4,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.Path;
@@ -12,7 +15,9 @@ import org.eclipse.swt.browser.Browser;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.osgi.framework.FrameworkUtil;
+import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.shared.OnPartialAiResponse;
+import org.sterl.llmpeon.shared.OnPartialAiResponse.Type;
 import org.sterl.llmpeon.streaming.ThinkingBuffer;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.model.ToSimpleMessage;
@@ -30,9 +35,13 @@ public class ChatMarkdownWidget extends Composite {
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true);
     private final ThinkingBuffer thinkingBuffer = new ThinkingBuffer(10);
     private String chatHtml = null;
+    
+    private final AtomicInteger streamingTokenCount = new AtomicInteger(0);
+    private final Composite parent;
 
     public ChatMarkdownWidget(Composite parent, int style) {
         super(parent, style);
+        this.parent = parent;
         setLayout(new FillLayout());
 
         browser = new Browser(this, SWT.NONE);
@@ -73,32 +82,55 @@ public class ChatMarkdownWidget extends Composite {
 
     public void appendMessage(SimpleMessage msg) {
         try {
-            browser.execute(
-                    "appendMessage(" + mapper.writeValueAsString(msg) + ");"
-                    );
+            browser.execute("appendMessage(" + mapper.writeValueAsString(msg) + ");");
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
     }
-
-    public void onStreamingChunk(OnPartialAiResponse r, long elapsedSeconds, double tokPerSec) {
-        String state = switch (r.type()) {
-            case WAITING -> { thinkingBuffer.clear(); yield "waiting for AI..."; }
-            case THINK   -> "working since " + elapsedSeconds + "s | thinking...";
-            case ANSWER  -> "working since " + elapsedSeconds + "s | responding...";
-            case TOOL    -> "working since " + elapsedSeconds + "s | using tools...";
-        };
-        String thinkChunk = r.type() == OnPartialAiResponse.Type.THINK
-                ? thinkingBuffer.append(r.value()) : null;
-        updateLiveResponse(state, tokPerSec, thinkChunk);
+    
+    public void hideLiveStatus() {
+        browser.execute("hideLiveStatus();");
     }
 
-    private void updateLiveResponse(String stateMessage, double tokPerSec, String thinkChunk) {
-        String safeState = stateMessage == null ? "" : stateMessage.replace("'", "\\'");
-        String safeChunk = thinkChunk == null ? "" : thinkChunk.replace("'", "\\'").replace("\n", "<br>");
-        browser.execute("updateLiveResponse('" + safeState + "', " + tokPerSec + ", '" + safeChunk + "');");
+    public void onStreamingChunk(OnPartialAiResponse r) {
+        int tokens = 0;
+        if (r.type() == Type.START || r.type() ==  Type.END) {
+            streamingTokenCount.set(0);
+        } else {
+            tokens = streamingTokenCount.incrementAndGet();
+        }
+        
+        if (r.type() == Type.END) {
+            EclipseUtil.runInUiThread(parent, this::hideLiveStatus);
+        } else {
+            updateRunningChunk(r, tokens);
+        }
+    }
+
+    private void updateRunningChunk(OnPartialAiResponse r, int tokens) {
+        String safeChunk = "";
+        if (r.type() == Type.THINK) {
+            if (r.value() != null) safeChunk = thinkingBuffer.append(r.value().replace("'", "\\'").replace("\n", "<br>"));
+        } else {
+            thinkingBuffer.clear();
+        }
+        
+        long elapsed = Duration.between(r.startedAt(), Instant.now()).toSeconds();
+        String state = switch (r.type()) {
+            case START   -> "waiting for AI...";
+            case THINK   -> "working since " + elapsed + "s | thinking...";
+            case ANSWER  -> "working since " + elapsed + "s | responding...";
+            case TOOL    -> "working since " + elapsed + "s | using tools...";
+            case END     -> "done.";
+        };
+        double tokPerSec = elapsed > 0 ? tokens / (double) elapsed : 0;
+        updateLiveResponseInUIThread(state, tokPerSec, safeChunk);
     }
     
+    public void updateLiveResponseInUIThread(String state, double tokPerSec, String safeChunk) {
+        EclipseUtil.runInUiThread(parent, () -> browser.execute("updateLiveResponse('" + state + "', " + tokPerSec + ", '" + safeChunk + "');"));
+    }
+
     public void showDiff(String unifiedDiff) {
         try {
             browser.execute(
@@ -120,6 +152,7 @@ public class ChatMarkdownWidget extends Composite {
      * Just removes the messages
      */
     public void clearMessages() {
+        hideLiveStatus();
         browser.execute("clearMessages()");
     }
 

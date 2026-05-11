@@ -2,7 +2,7 @@ package org.sterl.llmpeon;
 
 import java.util.function.Predicate;
 
-import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.ai.ConfiguredModel;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.template.TemplateContext;
 import org.sterl.llmpeon.tool.ToolService;
@@ -13,9 +13,10 @@ public class AiDeveloperService extends AbstractChatService {
 
     private static final String BASE_PROMPT = PromptLoader.loadWithDefault("developer.txt");
 
-    public AiDeveloperService(LlmConfig config, ToolService toolService,
+    public AiDeveloperService(ConfiguredModel configuredModel,
+            ToolService toolService,
             SkillService skillService, TemplateContext templateContext) {
-        super(config, toolService, skillService, templateContext);
+        super(configuredModel, toolService, skillService, templateContext);
     }
 
     @Override
@@ -32,7 +33,7 @@ public class AiDeveloperService extends AbstractChatService {
     protected Predicate<SmartToolExecutor> getToolFilter() {
         return t -> {
             if (t.getTool() instanceof CompressorAgentTool) {
-                return getTokenSize() > getConfig().getTokenWindow() * 0.7
+                return getTokenSize() > configuredModel.getConfig().getTokenWindow() * 0.7
                         && getMessages().size() > 5;
             }
             return true;

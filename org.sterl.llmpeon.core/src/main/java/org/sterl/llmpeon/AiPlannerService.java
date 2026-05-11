@@ -3,22 +3,22 @@ package org.sterl.llmpeon;
 import java.util.Optional;
 import java.util.function.Predicate;
 
-import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.ai.ConfiguredModel;
 import org.sterl.llmpeon.shared.StringUtil;
-
-import dev.langchain4j.data.message.AiMessage;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.template.TemplateContext;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
+import dev.langchain4j.data.message.AiMessage;
+
 public class AiPlannerService extends AbstractChatService {
 
     private static final String BASE_PROMPT = PromptLoader.loadWithDefault("planner.txt");
 
-    public AiPlannerService(LlmConfig config, ToolService toolService,
+    public AiPlannerService(ConfiguredModel configuredModel, ToolService toolService,
             SkillService skillService, TemplateContext templateContext) {
-        super(config, toolService, skillService, templateContext);
+        super(configuredModel   , toolService, skillService, templateContext);
     }
 
     @Override

@@ -31,8 +31,9 @@ class ModelListingTest {
     void copilotListsModels() {
         var token = System.getenv("COPILOT_TOKEN");
         assumeTrue(token != null && !token.isBlank(), "COPILOT_TOKEN env var not set — skipping");
-        var config = new LlmConfig(AiProvider.GITHUB_COPILOT, "gpt-4o", null, 16000, false, token, null, false);
-        var models = AiProvider.GITHUB_COPILOT.listModels(config);
+
+        var config = LlmConfig.builder().providerType(AiProvider.GITHUB_COPILOT).model("gpt-4o").build();
+        var models = config.listAiModels();
         System.out.println("Copilot models: " + models);
         assertFalse(models.isEmpty(), "Expected at least one Copilot model");
     }
@@ -41,16 +42,16 @@ class ModelListingTest {
     void mistralListsModels() {
         var token = System.getenv("MISTRAL_TOKEN");
         assumeTrue(token != null && !token.isBlank(), "MISTRAL_TOKEN env var not set — skipping");
-        var config = new LlmConfig(AiProvider.MISTRAL, "mistral-small", null, 16000, false, token, null, false);
-        var models = AiProvider.MISTRAL.listModels(config);
+        var config = LlmConfig.of(AiProvider.MISTRAL).model("mistral-small").apiKey(token).build();
+        var models = config.listAiModels();
         System.out.println("Mistral models: " + models);
         assertFalse(models.isEmpty(), "Expected at least one Mistral model");
     }
 
     @Test
     void unsupportedProviderReturnsFallback() {
-        var config = new LlmConfig(AiProvider.OPEN_AI, "gpt-4o", "https://api.openai.com", 16000, false, "key", null, false);
-        var models = AiProvider.OPEN_AI.listModels(config);
+        var config = LlmConfig.of(AiProvider.OPEN_AI).model("gpt-4o").url("https://api.openai.com") .build();
+        var models = config.listModels();
         // should return single-element fallback list (the configured model)
         assertFalse(models.isEmpty());
         assert models.contains("gpt-4o");
@@ -58,8 +59,8 @@ class ModelListingTest {
 
     @Test
     void noModelConfiguredReturnsEmpty() {
-        var config = new LlmConfig(AiProvider.OPEN_AI, "", "https://api.openai.com", 16000, false, "key", null, false);
-        var models = AiProvider.OPEN_AI.listModels(config);
+        var config = LlmConfig.of(AiProvider.OPEN_AI).url("https://api.openai.com") .build();
+        var models = config.listAiModels();
         assert models.isEmpty() : "Empty model name should yield empty list";
     }
 }

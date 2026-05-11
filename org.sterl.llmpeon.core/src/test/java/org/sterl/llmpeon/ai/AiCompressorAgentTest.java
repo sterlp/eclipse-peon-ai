@@ -26,7 +26,7 @@ class AiCompressorAgentTest {
     @Tag("integration")
     void test_compressContext() {
         // GIVEN
-        var subject = new AiDeveloperService(config, new ToolService(), new SkillService(), new TemplateContext(Path.of(".")));
+        var subject = new AiDeveloperService(config.build(), new ToolService(), new SkillService(), new TemplateContext(Path.of(".")));
 
         subject.addMessage(UserMessage.from("Build be a Hello world"));
         subject.addMessage(AiMessage.from("In which language?"));

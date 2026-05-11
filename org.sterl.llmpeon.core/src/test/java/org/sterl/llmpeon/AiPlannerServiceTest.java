@@ -23,7 +23,7 @@ class AiPlannerServiceTest {
     @BeforeEach
     void setUp() {
         var config = LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", "http://localhost:9999");
-        subject = new AiPlannerService(config, new ToolService(), new SkillService(), new TemplateContext(Path.of(".")));
+        subject = new AiPlannerService(config.build(), new ToolService(), new SkillService(), new TemplateContext(Path.of(".")));
     }
 
     @Test

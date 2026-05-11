@@ -9,6 +9,8 @@ import java.util.Optional;
 import java.util.function.Predicate;
 
 import org.jspecify.annotations.NonNull;
+import org.sterl.llmpeon.mcp.McpServerConfig;
+import org.sterl.llmpeon.mcp.McpService;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
@@ -18,9 +20,6 @@ import org.sterl.llmpeon.tool.tools.CompressorAgentTool;
 import org.sterl.llmpeon.tool.tools.SearchAgentTool;
 import org.sterl.llmpeon.tool.tools.ShellTool;
 import org.sterl.llmpeon.tool.tools.WebFetchTool;
-
-import org.sterl.llmpeon.mcp.McpServerConfig;
-import org.sterl.llmpeon.mcp.McpService;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -173,6 +172,7 @@ public class ToolService {
 
     public ToolResult execute(ToolExecutionRequest tr, AiMonitor monitor, StreamingChatModel agentService, List<ChatMessage> memory) {
         var executor = toolExecutors.get(tr.name());
+        monitor = AiMonitor.nullSafety(monitor);
         String result;
         if (executor == null && mcpService != null && mcpService.hasTool(tr.name())) {
             monitor.onTool("Running MCP: " + tr.name() + " - " + tr.arguments());
@@ -181,15 +181,9 @@ public class ToolService {
             return new ToolResult(false, ToolExecutionResultMessage.from(tr.id(), tr.name(), result));
         } else if (executor == null) {
             result = "Error: unknown tool '" + tr.name() + "' check spelling";
-            AiMonitor.nullSafety(monitor).onProblem(result);
+            monitor.onProblem(result);
         } else {
-            try {
-                result = executor.run(tr, monitor, agentService, memory);
-            } catch (IllegalArgumentException e) {
-                // user-facing argument error — return as-is so the LLM can correct itself
-                result = e.getMessage();
-                AiMonitor.nullSafety(monitor).onProblem(tr.name() + ": " + result);
-            }
+            result = executor.run(tr, monitor, agentService, memory);
         }
         return new ToolResult(
                 executor == null ? false : executor.shouldClearMemory(),

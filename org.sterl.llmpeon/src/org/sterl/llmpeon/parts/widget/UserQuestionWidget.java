@@ -14,6 +14,7 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
+import org.sterl.llmpeon.parts.tools.AskUserTool;
 
 /**
  * Inline question widget shown in place of {@link UserInputWidget} while the LLM is waiting
@@ -26,6 +27,7 @@ import org.eclipse.swt.widgets.Label;
  */
 public class UserQuestionWidget extends Composite {
 
+    public static final String CANCEL = AskUserTool.CANCEL;
     private final Label questionLabel;
     private Composite radiosContainer;
     private final TextInputWidget textInput;
@@ -101,7 +103,7 @@ public class UserQuestionWidget extends Composite {
         Consumer<String> callback = pendingAnswer.getAndSet(null);
         if (callback != null) {
             onSubmitDone.run();
-            callback.accept(answer.isEmpty() ? "[cancelled]" : answer);
+            callback.accept(answer.isEmpty() ? CANCEL : answer);
         }
     }
 
@@ -152,24 +154,24 @@ public class UserQuestionWidget extends Composite {
     }
 
     /**
-     * Fires the pending answer callback with {@code "[cancelled]"} and resets the widget.
+     * Fires the pending answer callback with {@code "[canceled]"} and resets the widget.
      * Safe to call when no question is pending (no-op).
      */
     public void cancel() {
         Consumer<String> callback = pendingAnswer.getAndSet(null);
         if (callback != null) {
             onSubmitDone.run();
-            callback.accept("[cancelled]");
+            callback.accept(CANCEL);
         }
     }
 
     /**
-     * Releases the pending answer latch with {@code "[cancelled]"} without touching any SWT
+     * Releases the pending answer latch with {@code "[canceled]"} without touching any SWT
      * widgets. Safe to call from {@code @PreDestroy} when widgets may already be disposed.
      */
     public void cancelSilently() {
         Consumer<String> callback = pendingAnswer.getAndSet(null);
-        if (callback != null) callback.accept("[cancelled]");
+        if (callback != null) callback.accept(CANCEL);
     }
 
     public boolean setFocus() {

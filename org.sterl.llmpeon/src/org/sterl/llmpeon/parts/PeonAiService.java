@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.parts;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -8,7 +9,9 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.sterl.llmpeon.AiDeveloperService;
 import org.sterl.llmpeon.AiPlannerService;
+import org.sterl.llmpeon.ai.ConfiguredModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.ai.model.AiModel;
 import org.sterl.llmpeon.parts.agent.AgentModeService;
 import org.sterl.llmpeon.parts.agentsmd.AgentsMdService;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
@@ -44,6 +47,7 @@ import dev.langchain4j.data.message.UserMessage;
  */
 public class PeonAiService {
 
+    private final ConfiguredModel configuredModel;
     private final ToolService toolService;
     private final SkillService skillService;
     private final TemplateContext context;
@@ -61,14 +65,13 @@ public class PeonAiService {
     /** Written from Eclipse DI thread, read from background LLM job threads. */
     private final AtomicReference<IProject> currentProject = new AtomicReference<>();
 
-    /** Written from preference-change listener, read during every LLM call setup. */
-    private final AtomicReference<LlmConfig> currentConfig;
 
     /**
      * Package-private constructor for unit tests — accepts pre-built services to avoid
      * hard Eclipse dependencies ({@code EclipseUtil.workspacePath()}, Eclipse tools, etc.).
      */
-    PeonAiService(AiPlannerService plannerService, AiDeveloperService developerService) {
+    PeonAiService(ConfiguredModel configuredModel, AiPlannerService plannerService, AiDeveloperService developerService) {
+        this.configuredModel = configuredModel;
         this.plannerService = plannerService;
         this.developerService = developerService;
         this.toolService = null;
@@ -81,7 +84,6 @@ public class PeonAiService {
         this.workspaceWriteFilesTool = null;
         this.diskFileWriteTool = null;
         this.diskFileReadTool = null;
-        this.currentConfig = new AtomicReference<>(null);
     }
 
     /**
@@ -94,8 +96,8 @@ public class PeonAiService {
     public PeonAiService(Runnable sendTrigger,
                          Consumer<IFile> openInEditorCallback,
                          Consumer<Boolean> mcpStateChange) {
-        LlmConfig config = LlmPreferenceInitializer.buildWithDefaults();
-        currentConfig = new AtomicReference<>(config);
+
+        configuredModel = LlmPreferenceInitializer.buildWithDefaults().build();
 
         var rootPath            = EclipseUtil.workspacePath();
         toolService             = new ToolService();
@@ -109,7 +111,7 @@ public class PeonAiService {
         
         diskFileWriteTool = new DiskFileWriteTool(rootPath);
         diskFileReadTool  = new DiskFileReadTool(rootPath);
-        if (config.isDiskToolsEnabled()) {
+        if (configuredModel.getConfig().isDiskToolsEnabled()) {
             toolService.addTool(diskFileWriteTool);
             toolService.addTool(diskFileReadTool);
         }
@@ -119,12 +121,12 @@ public class PeonAiService {
         toolService.addTool(new EclipseRunTestTool());
         toolService.addTool(new EclipseCodeNavigationTool());
 
-        developerService = new AiDeveloperService(config, toolService, skillService, context);
-        plannerService   = new AiPlannerService(config, toolService, skillService, context);
+        developerService = new AiDeveloperService(configuredModel, toolService, skillService, context);
+        plannerService   = new AiPlannerService(configuredModel, toolService, skillService, context);
 
         // Agent mode uses separate instances with isolated memory
-        var agentDev  = new AiDeveloperService(config, toolService, skillService, context);
-        var agentPlan = new AiPlannerService(config, toolService, skillService, context);
+        var agentDev  = new AiDeveloperService(configuredModel, toolService, skillService, context);
+        var agentPlan = new AiPlannerService(configuredModel, toolService, skillService, context);
         agentMode     = new AgentModeService(agentPlan, agentDev, sendTrigger, openInEditorCallback);
         agentModeTool = new AgentModeTool(agentMode);
 
@@ -153,10 +155,12 @@ public class PeonAiService {
      * Safe to call from any thread.
      */
     public void updateConfig(LlmConfig config) {
-        currentConfig.set(config);
+        configuredModel.updateConfig(config);
+
         developerService.updateConfig(config);
         plannerService.updateConfig(config);
         agentMode.updateConfig(config);
+
         if (config.isDiskToolsEnabled()) {
             if (toolService.getTool(DiskFileWriteTool.class).isEmpty()) {
                 toolService.addTool(diskFileWriteTool);
@@ -191,7 +195,6 @@ public class PeonAiService {
         // LM Studio is sometimes bugged, if the first message is no user message ... :-/
         var plan = plannerService.extractLastPlan();
         if (plan.isPresent()) {
-            developerService.updateConfig(plannerService.getConfig()); // ensure same config
             developerService.clear();
             developerService.addMessage(UserMessage.from("Reading this plan:"));
             plan.ifPresent(developerService::addMessage);
@@ -220,7 +223,7 @@ public class PeonAiService {
     }
 
     public LlmConfig getConfig() {
-        return currentConfig.get();
+        return configuredModel.getConfig();
     }
 
     public AiDeveloperService getDeveloperService() {
@@ -257,5 +260,24 @@ public class PeonAiService {
 
     public McpConnectionService getMcpConnectionService() {
         return mcpConnectionService;
+    }
+
+    public void setModel(AiModel model) {
+        if (this.configuredModel.withModel(model)) {
+            LlmPreferenceInitializer.setModel(model.getId());
+        }
+    }
+
+    public ConfiguredModel resolveModel(List<AiModel> models) {
+        this.configuredModel.resolveModel(models);
+        return configuredModel;
+    }
+
+    public String getModel() {
+        return configuredModel.getModel();
+    }
+
+    public void withThinking(boolean enabled) {
+        configuredModel.withThinking(enabled);
     }
 }

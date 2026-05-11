@@ -2,11 +2,10 @@ package org.sterl.llmpeon.parts;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.resources.IFile;
@@ -38,7 +37,6 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IWorkingSet;
 import org.sterl.llmpeon.AbstractChatService;
 import org.sterl.llmpeon.PeonMode;
-import org.sterl.llmpeon.shared.OnPartialAiResponse;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.ai.model.AiModel;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
@@ -55,16 +53,18 @@ import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget;
 import org.sterl.llmpeon.parts.widget.StatusLineWidget;
 import org.sterl.llmpeon.parts.widget.UserInputWidget;
 import org.sterl.llmpeon.parts.widget.UserQuestionWidget;
+import org.sterl.llmpeon.shared.OnPartialAiResponse;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolService;
-import org.sterl.llmpeon.tool.tools.ShellTool;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.model.SimpleMessage.Type;
+import org.sterl.llmpeon.tool.tools.ShellTool;
 import org.sterl.llmpeon.voice.VoiceConfig;
 import org.sterl.llmpeon.voice.VoiceInputService;
 
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -90,13 +90,12 @@ public class AIChatView implements EclipseAiMonitor {
     );
 
     private final AtomicReference<IProgressMonitor> monitorRef = new AtomicReference<>(new NullProgressMonitor());
-    private final AtomicLong streamingTokenCount = new AtomicLong();
     private final VoiceInputService voiceService = new VoiceInputService();
     private boolean recording = false;
 
     private PeonMode currentMode = PeonMode.DEV;
-    @Deprecated
-    private LlmConfig lastListedConfig;
+    
+    private AtomicReference<LlmConfig> lastListedConfig = new AtomicReference<>();
     private IProject currentProject;
     private boolean projectPinned = false;
 
@@ -146,12 +145,9 @@ public class AIChatView implements EclipseAiMonitor {
             this::onClear,
             this::doStartImpl,
             this::onModeChange,
-            model -> {
-                aiService.updateConfig(aiService.getConfig().withModel(model));
-                LlmPreferenceInitializer.setModel(model.getId());
-            },
+            aiService::setModel,
             autonomous -> aiService.getAgentMode().setAutonomous(autonomous),
-            this::onThinkToggle
+            aiService::withThinking
         );
 
         statusLine = new StatusLineWidget(inputBlock, SWT.NONE,
@@ -280,6 +276,7 @@ public class AIChatView implements EclipseAiMonitor {
     @Override
     public void onChatResponse(SimpleMessage m) {
         EclipseUtil.runInUiThread(parent, () -> {
+            chatHistory.hideLiveStatus();
             chatHistory.appendMessage(m);
             statusLine.updateCompact(getActiveService().getTokenSize(), getActiveService().getTokenWindow());
         });
@@ -299,11 +296,7 @@ public class AIChatView implements EclipseAiMonitor {
 
     @Override
     public void onStreamingChunk(OnPartialAiResponse r) {
-        long elapsed = Duration.between(r.startedAt(), Instant.now()).toSeconds();
-        long tokens = r.type() != OnPartialAiResponse.Type.WAITING
-                ? streamingTokenCount.incrementAndGet() : 0;
-        double tokPerSec = elapsed > 0 ? tokens / (double) elapsed : 0;
-        EclipseUtil.runInUiThread(parent, () -> chatHistory.onStreamingChunk(r, elapsed, tokPerSec));
+        chatHistory.onStreamingChunk(r);
     }
 
     @Override
@@ -371,24 +364,28 @@ public class AIChatView implements EclipseAiMonitor {
         applyMcpConfig();
         chatInput.setVoiceInputVisible(VoicePreferenceInitializer.buildWithDefaults().enabled());
         refreshStatusLine();
-        onConfigChanged(config);
+        reloadModelsIfNeeded(config); // TODO this is miss leading - we do the same here again
         
         var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
         debugLog.set(prefs.getBoolean(PeonConstants.PREF_LOG_RESPONSE, false));
 
+        // TODO move into own class?
         if (prefs.getBoolean(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, false)) {
             aiService.getToolService().getTool(ShellTool.class).ifPresent(shellTool -> {
                 shellTool.setConfirmationProvider((command, workingDirectory) -> {
                     var latch = new java.util.concurrent.CountDownLatch(1);
-                    var answer = new java.util.concurrent.atomic.AtomicReference<>("No");
+                    var answer = new AtomicReference<>("No");
                     showQuestion("Allow executing shell command in the \"" + workingDirectory + "\" directory? " +
                             "(or you can enter a new command to execute below)\n\n" + command,
-                            java.util.List.of("Yes", "No"),
+                            List.of("Yes", "No"),
                             a -> { answer.set(a); latch.countDown(); });
                     try {
                         latch.await();
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
+                    }
+                    if (UserQuestionWidget.CANCEL.equals(answer.get())) {
+                        throw new CancellationException("Canceled tool execution " + workingDirectory + " " + command);
                     }
                     return answer.get();
                 });
@@ -408,11 +405,11 @@ public class AIChatView implements EclipseAiMonitor {
         aiService.applyMcpConfig();
     }
 
-    private void onConfigChanged(LlmConfig config) {
-        if (lastListedConfig == null
-                || config.getProviderType() != lastListedConfig.getProviderType()
-                || !java.util.Objects.equals(config.getUrl(), lastListedConfig.getUrl())
-                || !java.util.Objects.equals(config.getApiKey(), lastListedConfig.getApiKey())) {
+    private void reloadModelsIfNeeded(LlmConfig config) {
+        if (lastListedConfig.get() == null
+                || config.getProviderType() != lastListedConfig.get().getProviderType()
+                || !java.util.Objects.equals(config.getUrl(), lastListedConfig.get().getUrl())
+                || !java.util.Objects.equals(config.getApiKey(), lastListedConfig.get().getApiKey())) {
             loadModelsInBackground(config);
         } else {
             EclipseUtil.runInUiThread(parent, () -> {
@@ -423,20 +420,15 @@ public class AIChatView implements EclipseAiMonitor {
                 }
             });
         }
+        lastListedConfig.set(config);
     }
 
     private void loadModelsInBackground(LlmConfig config) {
         Job.create("Fetching available models", monitor -> {
             List<AiModel> models = config.getProviderType().listAiModels(config);
             EclipseUtil.runInUiThread(parent, () -> {
-                actionsBar.applyModelList(models, config.getModel());
-                var resolved = config.resolveModel(models);
-                lastListedConfig = resolved;
-                if (!resolved.equals(config)) {
-                    LOG.info("Update config because of model change " + resolved);
-                    LlmPreferenceInitializer.setModel(resolved.getModel());
-                    aiService.updateConfig(resolved);
-                }
+                aiService.resolveModel(models);
+                actionsBar.applyModelList(models, aiService.getConfig().getModel());
             });
             return Status.OK_STATUS;
         }).schedule();
@@ -519,12 +511,12 @@ public class AIChatView implements EclipseAiMonitor {
     }
 
     private void doSendMessage() {
-        final var active = getActiveService();
-        if (StringUtil.hasNoValue(active.getConfig().getModel())) {
+        if (StringUtil.hasNoValue(aiService.getModel())) {
             chatHistory.appendMessage(new SimpleMessage(Type.PROBLEM, "No model configured — open Window > Preferences > Peon AI"));
             return;
         }
 
+        final var active = getActiveService();
         final var selection = getUserSelection();
         final var needsSelection = !active.hasUserText(selection);
 
@@ -544,7 +536,6 @@ public class AIChatView implements EclipseAiMonitor {
             return;
         }
 
-        streamingTokenCount.set(0);
         lockWhileWorking(true);
         Job.create("Peon AI request", monitor -> {
             monitor.beginTask("Arbeit, Arbeit!", currentMode == PeonMode.AGENT ? ToolService.MAX_ITERATIONS * 2 : ToolService.MAX_ITERATIONS);
@@ -557,10 +548,18 @@ public class AIChatView implements EclipseAiMonitor {
                         currentMode, aiService.getAgentMode()));
                 
                 response = active.call(text.isEmpty() ? null : text, this);
-            } catch (Exception e) {
+            } catch (ToolExecutionException e) {
                 if (!isCanceled()) {
+                    if (e.getCause() instanceof CancellationException) {
+                        // yes this is fine
+                    } else {
+                        throw e;
+                    }
+                }
+            } catch (Exception e) {
+                if (!isCanceled() || !(e instanceof CancellationException)) {
                     ex = e;
-                    LOG.warn("Failed to call LLM " + active.getConfig(), e);
+                    LOG.warn("Failed to call LLM " + aiService.getConfig(), e);
                     onChatResponse(new SimpleMessage(Type.PROBLEM, e.getMessage()));
                 }
             } finally {
@@ -572,7 +571,7 @@ public class AIChatView implements EclipseAiMonitor {
             if (debugLog.get()) {
                 LOG.info("Peon AI Request:\n" + text + "\nResponse\n" + response);
             }
-            return PeonConstants.status("Peon AI\n" + aiService.getDeveloperService().getConfig(), ex);
+            return PeonConstants.status("Peon AI\n" + aiService.getConfig(), ex);
         }).schedule();
     }
 
@@ -586,10 +585,8 @@ public class AIChatView implements EclipseAiMonitor {
             }
             actionsBar.setAgentModeAvailable(currentProject != null && currentProject.isOpen());
         }
-        EclipseUtil.runInUiThread(parent, () -> {
-            statusLine.setPinned(pinned);
-            refreshStatusLine();
-        });
+        statusLine.setPinned(pinned);
+        refreshStatusLine();
     }
 
     private void lockWhileWorking(boolean value) {
@@ -602,6 +599,7 @@ public class AIChatView implements EclipseAiMonitor {
 
     private void showQuestion(String question, java.util.List<String> answers,
             java.util.function.Consumer<String> onAnswer) {
+        chatHistory.updateLiveResponseInUIThread("Wating for User...", 0, null);
         EclipseUtil.runInUiThread(parent, () -> {
             ((GridData) chatInput.getLayoutData()).exclude = true;
             chatInput.setVisible(false);
@@ -624,10 +622,6 @@ public class AIChatView implements EclipseAiMonitor {
         questionWidget.hideQuestion();
         inputBlock.layout(true, true);
         inputBlock.getParent().layout(new Control[]{ inputBlock });
-    }
-
-    private void onThinkToggle(boolean enabled) {
-        aiService.updateConfig(aiService.getDeveloperService().getConfig().withThinking(enabled));
     }
 
     private void onSkillsToggle(boolean enabled) {

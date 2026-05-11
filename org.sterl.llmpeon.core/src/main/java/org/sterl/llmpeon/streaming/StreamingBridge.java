@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.streaming;
 
 import java.time.Instant;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -33,7 +34,7 @@ import dev.langchain4j.model.chat.response.StreamingHandle;
  */
 public class StreamingBridge implements StreamingChatResponseHandler {
 
-    private Instant startedAt;
+    private Instant startedAt = Instant.now();
 
     // Per-call state — reset at the top of each call()
     private volatile CountDownLatch latch;
@@ -45,16 +46,18 @@ public class StreamingBridge implements StreamingChatResponseHandler {
     /**
      * Executes one streaming LLM call and blocks until complete or error.
      * Sets {@code startedAt} on the first invocation only.
+     * 
+     * @throws CancellationException if canceled
      */
     public ChatResponse call(StreamingChatModel model, ChatRequest request, AiMonitor monitor) {
-        if (startedAt == null) startedAt = Instant.now();
+        startedAt = Instant.now();
 
         this.latch = new CountDownLatch(1);
         this.responseRef = new AtomicReference<>();
         this.errorRef = new AtomicReference<>();
         this.handleRef = new AtomicReference<>();
         this.monitor = AiMonitor.nullSafety(monitor);
-        this.monitor.onStreamingChunk(new OnPartialAiResponse(Type.WAITING, null, startedAt));
+        this.monitor.onStreamingChunk(new OnPartialAiResponse(Type.START, null, startedAt));
 
         model.chat(request, this);
 
@@ -66,12 +69,17 @@ public class StreamingBridge implements StreamingChatResponseHandler {
             Thread.currentThread().interrupt();
             StreamingHandle h = handleRef.get();
             if (h != null) h.cancel();
-            errorRef.compareAndSet(null, new RuntimeException("Interrupted"));
+            errorRef.compareAndSet(null, new CancellationException("Thread interrupted"));
             latch.countDown();
         }
 
         Throwable error = errorRef.get();
-        if (error != null) throw new RuntimeException(error);
+        if (error != null) {
+            // if we are canceled - and have a response ...
+            if (error instanceof CancellationException && responseRef.get() != null) return responseRef.get();
+            if (error instanceof RuntimeException ex) throw ex;
+            throw new RuntimeException(error);
+        }
         return responseRef.get();
     }
 
@@ -103,7 +111,7 @@ public class StreamingBridge implements StreamingChatResponseHandler {
     private boolean cancelAndRelease(StreamingHandle handle) {
         if (!monitor.isCanceled()) return false;
         if (handle != null) handle.cancel();
-        errorRef.compareAndSet(null, new RuntimeException("Cancelled"));
+        errorRef.compareAndSet(null, new CancellationException("AI call canceled ..."));
         latch.countDown();
         return true;
     }
@@ -114,12 +122,14 @@ public class StreamingBridge implements StreamingChatResponseHandler {
 
     @Override
     public void onCompleteResponse(ChatResponse completeResponse) {
+        this.monitor.onStreamingChunk(new OnPartialAiResponse(Type.END, null, startedAt));
         responseRef.set(completeResponse);
         latch.countDown();
     }
 
     @Override
     public void onError(Throwable error) {
+        this.monitor.onStreamingChunk(new OnPartialAiResponse(Type.END, null, startedAt));
         errorRef.set(error);
         latch.countDown();
     }
