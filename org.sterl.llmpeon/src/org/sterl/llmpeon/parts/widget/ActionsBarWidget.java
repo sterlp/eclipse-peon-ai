@@ -186,6 +186,13 @@ public class ActionsBarWidget extends Composite {
     public boolean isThinkEnabled() {
         return btnThink.getSelection();
     }
+    
+    public void setModel(String model) {
+        availableModels = List.of(AiModel.builder().id(model).name(model).build());
+        modelCombo.setEnabled(true);
+        modelCombo.setItems(new String[] { model });
+        selectModel(model);
+    }
 
     /** Populate the model combo with the available models. */
     public void applyModelList(List<AiModel> models, String selectedModelId) {
@@ -217,6 +224,7 @@ public class ActionsBarWidget extends Composite {
 
     /** Returns the ID of the currently selected model, or null if nothing is selected. */
     public String getSelectedModel() {
+        if (availableModels.isEmpty()) return null;
         int idx = modelCombo.getSelectionIndex();
         if (idx < 0 || idx >= availableModels.size()) return null;
         return availableModels.get(idx).getId();
