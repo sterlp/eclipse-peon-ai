@@ -31,7 +31,10 @@ public class StandingOrdersBuilder {
 
         var orders = new ArrayList<ChatMessage>();
         if (selectedResource != null) {
-            orders.add(SystemMessage.from("Selected resource: " + JdtUtil.pathOf(selectedResource)));
+            orders.add(SystemMessage.from(
+                    "Selected file eclipse path: " + JdtUtil.pathOf(selectedResource) +
+                    "Disk path of project: " + selectedResource.getProject().getRawLocation().toOSString())
+                );
         }
         if (agentsMdService.hasAgentFile()) {
             agentsMdService.agentMessage(context).ifPresent(orders::add);

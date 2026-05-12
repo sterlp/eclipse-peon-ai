@@ -213,7 +213,7 @@ public class AIChatView implements EclipseAiMonitor {
     @org.eclipse.e4.core.di.annotations.Optional
     public void setSelection(@Named(IServiceConstants.ACTIVE_SELECTION) Object o) {
         if (o instanceof ISelection) return;
-
+        textSelection = null;
         final IResource selection;
         if (o instanceof ICompilationUnit cu) {
             selection = cu.getResource();
@@ -231,7 +231,7 @@ public class AIChatView implements EclipseAiMonitor {
             selection = selectedResource;
         } else if (o != null) {
             LOG.info("!!! Unknown resource type selected " + o.getClass());
-            selection = selectedResource;
+            selection = null;
         } else {
             selection = null;
         }
@@ -364,7 +364,7 @@ public class AIChatView implements EclipseAiMonitor {
         applyMcpConfig();
         chatInput.setVoiceInputVisible(VoicePreferenceInitializer.buildWithDefaults().enabled());
         refreshStatusLine();
-        reloadModelsIfNeeded(config); // TODO this is miss leading - we do the same here again
+        reloadModelsIfNeeded(); // TODO this is miss leading - we do the same here again
         
         var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
         debugLog.set(prefs.getBoolean(PeonConstants.PREF_LOG_RESPONSE, false));
@@ -405,7 +405,12 @@ public class AIChatView implements EclipseAiMonitor {
         aiService.applyMcpConfig();
     }
 
-    private void reloadModelsIfNeeded(LlmConfig config) {
+    private void reloadModelsIfNeeded() {
+        var config = aiService.getConfig();
+        if (StringUtil.hasNoValue(actionsBar.getSelectedModel())
+                && StringUtil.hasValue(config.getModel())) {
+            actionsBar.setModel(config.getModel());
+        }
         if (lastListedConfig.get() == null
                 || config.getProviderType() != lastListedConfig.get().getProviderType()
                 || !java.util.Objects.equals(config.getUrl(), lastListedConfig.get().getUrl())
@@ -544,8 +549,11 @@ public class AIChatView implements EclipseAiMonitor {
             ChatResponse response = null;
             try {
                 active.setStandingOrders(StandingOrdersBuilder.build(
-                        selectedResource, aiService.getAgentsMdService(), aiService.getTemplateContext(),
-                        currentMode, aiService.getAgentMode()));
+                        getSelectedFile(), 
+                        aiService.getAgentsMdService(), 
+                        aiService.getTemplateContext(),
+                        currentMode, 
+                        aiService.getAgentMode()));
                 
                 response = active.call(text.isEmpty() ? null : text, this);
             } catch (ToolExecutionException e) {
@@ -592,6 +600,7 @@ public class AIChatView implements EclipseAiMonitor {
     private void lockWhileWorking(boolean value) {
         actionsBar.lockWhileWorking(value);
         chatInput.setWorking(value);
+        if (!value) chatHistory.hideLiveStatus();
         if (!value && questionWidget != null && questionWidget.isVisible()) {
             questionWidget.cancel();
         }
