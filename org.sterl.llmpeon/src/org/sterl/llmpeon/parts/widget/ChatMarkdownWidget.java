@@ -18,7 +18,6 @@ import org.osgi.framework.FrameworkUtil;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.shared.OnPartialAiResponse;
 import org.sterl.llmpeon.shared.OnPartialAiResponse.Type;
-import org.sterl.llmpeon.streaming.ThinkingBuffer;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.model.ToSimpleMessage;
 
@@ -33,7 +32,6 @@ public class ChatMarkdownWidget extends Composite {
     private final Browser browser;
     private final ObjectMapper mapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true);
-    private final ThinkingBuffer thinkingBuffer = new ThinkingBuffer(10);
     private String chatHtml = null;
     
     private final AtomicInteger streamingTokenCount = new AtomicInteger(0);
@@ -108,13 +106,6 @@ public class ChatMarkdownWidget extends Composite {
     }
 
     private void updateRunningChunk(OnPartialAiResponse r, int tokens) {
-        String safeChunk = "";
-        if (r.type() == Type.THINK) {
-            if (r.value() != null) safeChunk = thinkingBuffer.append(r.value().replace("'", "\\'").replace("\n", "<br>"));
-        } else {
-            thinkingBuffer.clear();
-        }
-        
         long elapsed = Duration.between(r.startedAt(), Instant.now()).toSeconds();
         String state = switch (r.type()) {
             case START   -> "waiting for AI...";
@@ -123,8 +114,12 @@ public class ChatMarkdownWidget extends Composite {
             case TOOL    -> "working since " + elapsed + "s | using tools...";
             case END     -> "done.";
         };
-        double tokPerSec = elapsed > 0 ? tokens / (double) elapsed : 0;
-        updateLiveResponseInUIThread(state, tokPerSec, safeChunk);
+        if (r.type() == Type.START) {
+            updateLiveResponseInUIThread(state, 0, "");
+        } else if (tokens % 20 == 0) {
+            double tokPerSec = elapsed > 0 ? tokens / (double) elapsed : 0;
+            updateLiveResponseInUIThread(state, tokPerSec, tokens + " tokens generated");
+        }
     }
     
     public void updateLiveResponseInUIThread(String state, double tokPerSec, String safeChunk) {

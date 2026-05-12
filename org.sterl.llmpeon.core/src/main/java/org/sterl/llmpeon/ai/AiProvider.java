@@ -86,6 +86,7 @@ public enum AiProvider {
             try {
                 var request = HttpRequest.newBuilder()
                         .uri(URI.create(c.getUrl() + "/models"))
+                        .timeout(Duration.ofSeconds(20))
                         .header("Authorization", "Bearer " + c.getApiKey())
                         .GET()
                         .build();
@@ -129,6 +130,7 @@ public enum AiProvider {
                 var url = c.getUrl().replace("/v1", "/api/v1");
                 var request = HttpRequest.newBuilder()
                         .uri(URI.create(url + "/models"))
+                        .timeout(Duration.ofSeconds(20))
                         .GET()
                         .build();
                 var response = cancelAndSend(request);
@@ -184,6 +186,7 @@ public enum AiProvider {
             try {
                 var request = HttpRequest.newBuilder()
                         .uri(URI.create(MODELS_URL))
+                        .timeout(Duration.ofSeconds(20))
                         .header("X-API-Key", c.getApiKey())
                         .GET()
                         .build();
@@ -221,6 +224,7 @@ public enum AiProvider {
             try {
                 var request = HttpRequest.newBuilder()
                         .uri(URI.create(MODELS_URL))
+                        .timeout(Duration.ofSeconds(20))
                         .header("x-api-key", c.getApiKey())
                         .header("anthropic-version", ANTHROPIC_VERSION)
                         .GET()
@@ -264,6 +268,7 @@ public enum AiProvider {
             try {
                 var request = HttpRequest.newBuilder()
                         .uri(URI.create(CATALOG_URL))
+                        .timeout(Duration.ofSeconds(20))
                         .header("Authorization", "Bearer " + c.getApiKey())
                         .header("X-GitHub-Api-Version", CATALOG_API_VERSION)
                         .GET()
@@ -321,6 +326,7 @@ public enum AiProvider {
             try {
                 var builder = HttpRequest.newBuilder()
                         .uri(URI.create(DEFAULT_BASE_URL + "/models"))
+                        .timeout(Duration.ofSeconds(20))
                         .header("Authorization", "Bearer " + c.getApiKey());
                 copilotHeaders().forEach(builder::header);
                 var request = builder.GET().build();
@@ -403,7 +409,7 @@ public enum AiProvider {
     }
 
     protected static List<AiModel> fallbackAiModels(LlmConfig config) {
-        if (!StringUtil.hasValue(config.getModel())) return List.of();
+        if (StringUtil.hasNoValue(config.getModel())) return List.of();
         String id = config.getModel();
         return List.of(AiModel.builder().id(id).name(id).build());
     }

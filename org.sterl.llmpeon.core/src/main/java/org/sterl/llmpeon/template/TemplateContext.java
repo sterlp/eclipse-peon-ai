@@ -47,25 +47,26 @@ public class TemplateContext {
     public static final String SKILL_DIRECTORY = "skillDirectory";
 
     private final Map<String, String> ctx = new LinkedHashMap<String, String>();
-    private Path workingDir;
+    private String workingDir;
 
-    public TemplateContext(Path workingDir) {
+    public TemplateContext(String workingDir) {
         super();
         this.workingDir = workingDir;
     }
     
-    public void setWorkingDir(Path workingDir) {
-        this.workingDir = workingDir.toAbsolutePath().normalize();
+    public TemplateContext(Path workingDir) {
+        super();
+        this.workingDir = workingDir.toAbsolutePath().toString();
     }
     
     public void setWorkingDir(String workingDir) {
         if (workingDir == null) return;
-        setWorkingDir(Path.of(workingDir));
+        this.workingDir = workingDir;
     }
 
     public Map<String, String> build() {
         ctx.put(CURRENT_DATE, LocalDate.now().toString());
-        ctx.put(WORK_PATH, workingDir == null ? "" : workingDir.toAbsolutePath().normalize().toString());
+        ctx.put(WORK_PATH, workingDir == null ? "" : workingDir);
         return ctx;
     }
 
