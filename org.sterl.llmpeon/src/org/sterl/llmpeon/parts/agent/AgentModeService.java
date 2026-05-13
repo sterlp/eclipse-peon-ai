@@ -121,6 +121,10 @@ public class AgentModeService {
         this.autonomous = autonomous;
     }
 
+    public boolean getAutonomous() {
+        return this.autonomous;
+    }
+
     public void reset() {
         this.phase = Phase.PLANNING;
         retryCount = 0;

@@ -57,7 +57,15 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
         addField(new BooleanFieldEditor(PeonConstants.PREF_THINKING_ENABLED, "Supports Thinking", getFieldEditorParent()));
         addField(new BooleanFieldEditor(PeonConstants.PREF_SEND_THINKING_ENABLED, "Sends thinking back to the LLM - some needs this like mistral DeepSeek", getFieldEditorParent()));
         addField(new BooleanFieldEditor(PeonConstants.PREF_DISK_TOOLS_ENABLED, "Enable Disk File Tools (outside Eclipse workspace)", getFieldEditorParent()));
-        addField(new BooleanFieldEditor(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, "Require confirmation for shell commands before run", getFieldEditorParent()));
+
+        addField(new ComboFieldEditor(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, "Shell Command Confirmation:",
+                new String[][] {
+                    { "Not Required", "" },
+                    { "Always Required", "always" },
+                    { "Except when Autonomous", "not-autonomous" }
+                },
+                getFieldEditorParent()));
+
         apiKeyEditor = new StringFieldEditor(PeonConstants.PREF_API_KEY, "API Key:", getFieldEditorParent());
         addField(apiKeyEditor);
         addField(new StringFieldEditor(PeonConstants.PREF_SKILL_DIRECTORY, "Skills directory:", getFieldEditorParent()));
