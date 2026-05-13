@@ -14,6 +14,7 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.ILog;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
@@ -415,11 +416,11 @@ public class AIChatView implements EclipseAiMonitor {
                 || config.getProviderType() != lastListedConfig.get().getProviderType()
                 || !java.util.Objects.equals(config.getUrl(), lastListedConfig.get().getUrl())
                 || !java.util.Objects.equals(config.getApiKey(), lastListedConfig.get().getApiKey())) {
-            loadModelsInBackground(config);
+            loadModelsInBackground();
         } else {
             EclipseUtil.runInUiThread(parent, () -> {
                 if (!actionsBar.containsModelId(config.getModel())) {
-                    loadModelsInBackground(config);
+                    loadModelsInBackground();
                 } else {
                     actionsBar.selectModel(config.getModel());
                 }
@@ -428,14 +429,30 @@ public class AIChatView implements EclipseAiMonitor {
         lastListedConfig.set(config);
     }
 
-    private void loadModelsInBackground(LlmConfig config) {
+    private void loadModelsInBackground() {
         Job.create("Fetching available models", monitor -> {
-            List<AiModel> models = config.getProviderType().listAiModels(config);
-            EclipseUtil.runInUiThread(parent, () -> {
-                aiService.resolveModel(models);
-                actionsBar.applyModelList(models, aiService.getConfig().getModel());
-            });
-            return Status.OK_STATUS;
+            var config = aiService.getConfig();
+            try {
+                var models = config.listAiModels();
+                if (models.isEmpty()) {
+                    onChatResponse(new SimpleMessage(Type.PROBLEM, "No models returned by " + config.getUrl()));
+                } else {
+                    EclipseUtil.runInUiThread(parent, () -> {
+                        aiService.resolveModel(models);
+                        actionsBar.applyModelList(models, aiService.getConfig().getModel());
+                    });
+                }
+                return Status.OK_STATUS;
+            } catch (Exception e) {
+                onChatResponse(new SimpleMessage(Type.PROBLEM, e.getMessage()));
+                if (StringUtil.hasValue(aiService.getConfig().getModel())) {
+                    return new Status(IStatus.WARNING, PeonConstants.PLUGIN_ID, IStatus.OK, 
+                            "Failed to load models fallback to " + aiService.getConfig().getModel(), e);
+                } else {
+                    return new Status(IStatus.ERROR, PeonConstants.PLUGIN_ID, IStatus.OK, 
+                            "Failed to load models. " + e.getMessage() + " config:\n" + aiService.getConfig(), e);
+                }
+            }
         }).schedule();
     }
 
