@@ -19,7 +19,6 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
-import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences.IPreferenceChangeListener;
 import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.e4.ui.di.Focus;
@@ -39,7 +38,6 @@ import org.eclipse.ui.IWorkingSet;
 import org.sterl.llmpeon.AbstractChatService;
 import org.sterl.llmpeon.PeonMode;
 import org.sterl.llmpeon.ai.LlmConfig;
-import org.sterl.llmpeon.ai.model.AiModel;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.McpPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.VoicePreferenceInitializer;
@@ -160,9 +158,8 @@ public class AIChatView implements EclipseAiMonitor {
 
         applyConfig();
 
-        IEclipsePreferences prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
+        var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
         prefs.addPreferenceChangeListener(prefListener);
-
         updateSelectedProject(EclipseUtil.firstOpenOrSelectedProject());
 
         aiService.getToolService().addTool(new AskUserTool(
@@ -231,7 +228,7 @@ public class AIChatView implements EclipseAiMonitor {
         } else if (o instanceof IWorkingSet) {
             selection = selectedResource;
         } else if (o != null) {
-            LOG.info("!!! Unknown resource type selected " + o.getClass());
+            LOG.info("Unknown resource type selected " + o.getClass());
             selection = null;
         } else {
             selection = null;
@@ -241,8 +238,7 @@ public class AIChatView implements EclipseAiMonitor {
             LOG.info("Selected " + selectedResource.getName());
         }
 
-        var project = EclipseUtil.resolveProject(selection);
-        updateSelectedProject(project);
+        updateSelectedProject(EclipseUtil.resolveProject(selection));
     }
 
     private void updateSelectedProject(IProject project) {
@@ -250,7 +246,7 @@ public class AIChatView implements EclipseAiMonitor {
             currentProject = project;
             aiService.setProject(project);
         }
-
+        // TODO add check of project really changed
         if (actionsBar != null) {
             EclipseUtil.runInUiThread(parent, () -> {
                 actionsBar.setAgentModeAvailable(currentProject != null && currentProject.isOpen());
