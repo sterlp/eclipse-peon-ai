@@ -3,15 +3,11 @@ package org.sterl.llmpeon.ai;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.sterl.llmpeon.ai.model.AiModel;
 import org.sterl.llmpeon.ai.model.AiModelParser;
@@ -47,23 +43,18 @@ public enum AiProvider {
 
         @Override
         public List<AiModel> listAiModels(LlmConfig c) {
-            try {
-                var models = OllamaModels.builder()
-                        .baseUrl(c.getUrl())
-                        .build()
-                        .availableModels()
-                        .content();
-                if (models == null || models.isEmpty()) return fallbackAiModels(c);
-                var result = new ArrayList<AiModel>(models.size());
-                for (OllamaModel m : models) {
-                    result.add(AiModel.builder().id(m.getName()).name(m.getModel()).build());
-                }
-                Collections.sort(result, (a, b) -> a.getId().compareTo(b.getId()));
-                return result;
-            } catch (Exception e) {
-                log.warn("Failed to load models for {}", this, e);
-                return fallbackAiModels(c);
+            var models = OllamaModels.builder()
+                    .baseUrl(c.getUrl())
+                    .timeout(MODEL_TIMEOUT)
+                    .build()
+                    .availableModels()
+                    .content();
+            var result = new ArrayList<AiModel>(models.size());
+            for (OllamaModel m : models) {
+                result.add(AiModel.builder().id(m.getName()).name(m.getModel()).build());
             }
+            Collections.sort(result, (a, b) -> a.getId().compareTo(b.getId()));
+            return result;
         }
     },
 
@@ -82,31 +73,16 @@ public enum AiProvider {
 
         @Override
         public List<AiModel> listAiModels(LlmConfig c) {
-            if (c.getUrl() == null || c.getUrl().isBlank()) return fallbackAiModels(c);
-            try {
-                var request = HttpRequest.newBuilder()
-                        .uri(URI.create(c.getUrl() + "/models"))
-                        .timeout(Duration.ofSeconds(20))
-                        .header("Authorization", "Bearer " + c.getApiKey())
-                        .GET()
-                        .build();
-                var response = cancelAndSend(request);
-                if (response == null || response.statusCode() > 299) return fallbackAiModels(c);
-                return AiModelParser.parseOpenApiModels(response.body());
-            } catch (Exception e) {
-                log.warn("Failed to load models for {}", this, e);
-                return fallbackAiModels(c);
-            }
+            var request = HttpRequest.newBuilder()
+                    .uri(URI.create(c.getUrl() + "/models"))
+                    .header("Authorization", "Bearer " + c.getApiKey());
+            
+            return SharedHttpClient.cancelAndGet(request, AiModelParser::parseOpenApiModels);
         }
     },
 
     // model URL /api/v1/models
     LM_STUDIO {
-        @Override
-        protected HttpClient buildHttpClient() {
-            return HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build();
-        }
-
         @Override
         StreamingChatModel buildModel(LlmConfig c) {
             var http1 = JdkHttpClient.builder()
@@ -125,21 +101,10 @@ public enum AiProvider {
 
         @Override
         public List<AiModel> listAiModels(LlmConfig c) {
-            if (c.getUrl() == null || c.getUrl().isBlank()) return fallbackAiModels(c);
-            try {
-                var url = c.getUrl().replace("/v1", "/api/v1");
-                var request = HttpRequest.newBuilder()
-                        .uri(URI.create(url + "/models"))
-                        .timeout(Duration.ofSeconds(20))
-                        .GET()
-                        .build();
-                var response = cancelAndSend(request);
-                if (response == null || response.statusCode() > 299) return fallbackAiModels(c);
-                return AiModelParser.parseLmStudioModels(response.body());
-            } catch (Exception e) {
-                log.warn("Failed to load models for {}", this, e);
-                return fallbackAiModels(c);
-            }
+            var url = c.getUrl().replace("/v1", "/api/v1");
+            var request = HttpRequest.newBuilder()
+                    .uri(URI.create(url + "/models"));
+            return SharedHttpClient.cancelAndGet(request, AiModelParser::parseLmStudioModels);
         }
     },
 
@@ -182,21 +147,10 @@ public enum AiProvider {
 
         @Override
         public List<AiModel> listAiModels(LlmConfig c) {
-            if (c.getApiKey() == null || c.getApiKey().isBlank()) return fallbackAiModels(c);
-            try {
-                var request = HttpRequest.newBuilder()
-                        .uri(URI.create(MODELS_URL))
-                        .timeout(Duration.ofSeconds(20))
-                        .header("X-API-Key", c.getApiKey())
-                        .GET()
-                        .build();
-                var response = cancelAndSend(request);
-                if (response == null || response.statusCode() > 299) return fallbackAiModels(c);
-                return AiModelParser.parseMistralModels(response.body());
-            } catch (Exception e) {
-                log.warn("Failed to load models for {}", this, e);
-                return fallbackAiModels(c);
-            }
+            var request = HttpRequest.newBuilder()
+                    .uri(URI.create(MODELS_URL))
+                    .header("X-API-Key", c.getApiKey());
+            return SharedHttpClient.cancelAndGet(request, AiModelParser::parseMistralModels);
         }
     },
 
@@ -220,22 +174,12 @@ public enum AiProvider {
 
         @Override
         public List<AiModel> listAiModels(LlmConfig c) {
-            if (c.getApiKey() == null || c.getApiKey().isBlank()) return fallbackAiModels(c);
-            try {
-                var request = HttpRequest.newBuilder()
-                        .uri(URI.create(MODELS_URL))
-                        .timeout(Duration.ofSeconds(20))
-                        .header("x-api-key", c.getApiKey())
-                        .header("anthropic-version", ANTHROPIC_VERSION)
-                        .GET()
-                        .build();
-                var response = cancelAndSend(request);
-                if (response == null || response.statusCode() > 299) return fallbackAiModels(c);
-                return AiModelParser.parseAnthropicModels(response.body());
-            } catch (Exception e) {
-                log.warn("Failed to load models for {}", this, e);
-                return fallbackAiModels(c);
-            }
+            var request = HttpRequest.newBuilder()
+                    .uri(URI.create(MODELS_URL))
+                    .header("x-api-key", c.getApiKey())
+                    .header("anthropic-version", ANTHROPIC_VERSION);
+
+            return SharedHttpClient.cancelAndGet(request, AiModelParser::parseAnthropicModels);
         }
     },
 
@@ -264,26 +208,12 @@ public enum AiProvider {
         // https://docs.github.com/en/rest/models/catalog?apiVersion=2026-03-10#list-all-models
         @Override
         public List<AiModel> listAiModels(LlmConfig c) {
-            if (c.getApiKey() == null || c.getApiKey().isBlank()) return List.of();
-            try {
-                var request = HttpRequest.newBuilder()
-                        .uri(URI.create(CATALOG_URL))
-                        .timeout(Duration.ofSeconds(20))
-                        .header("Authorization", "Bearer " + c.getApiKey())
-                        .header("X-GitHub-Api-Version", CATALOG_API_VERSION)
-                        .GET()
-                        .build();
-                var response = cancelAndSend(request);
-                if (response == null || response.statusCode() > 299) {
-                    log.warn("GITHUB_MODELS listAiModels HTTP "
-                            + (response != null ? response.statusCode() : "null"));
-                    return List.of();
-                }
-                return AiModelParser.parseGithubModels(response.body());
-            } catch (Exception e) {
-                log.warn("Failed to load models for {}", this, e);
-                return List.of();
-            }
+            var request = HttpRequest.newBuilder()
+                    .uri(URI.create(CATALOG_URL))
+                    .header("Authorization", "Bearer " + c.getApiKey())
+                    .header("X-GitHub-Api-Version", CATALOG_API_VERSION);
+
+            return SharedHttpClient.cancelAndGet(request, AiModelParser::parseGithubModels);
         }
     },
 
@@ -322,62 +252,19 @@ public enum AiProvider {
 
         @Override
         public List<AiModel> listAiModels(LlmConfig c) {
-            if (c.getApiKey() == null || c.getApiKey().isBlank()) return List.of();
-            try {
-                var builder = HttpRequest.newBuilder()
-                        .uri(URI.create(DEFAULT_BASE_URL + "/models"))
-                        .timeout(Duration.ofSeconds(20))
-                        .header("Authorization", "Bearer " + c.getApiKey());
-                copilotHeaders().forEach(builder::header);
-                var request = builder.GET().build();
-                var response = cancelAndSend(request);
-                if (response == null || response.statusCode() > 299) {
-                    log.warn("GITHUB_COPILOT listAiModels HTTP "
-                            + (response != null ? response.statusCode() : "null"));
-                    return List.of();
-                }
-                return AiModelParser.parseCopilotApiModels(response.body());
-            } catch (Exception e) {
-                log.warn("Failed to load models for {}", this, e);
-                return List.of();
-            }
+            var request = HttpRequest.newBuilder()
+                    .uri(URI.create(DEFAULT_BASE_URL + "/models"))
+                    .timeout(Duration.ofSeconds(20))
+                    .header("Authorization", "Bearer " + c.getApiKey());
+            copilotHeaders().forEach(request::header);
+
+            return SharedHttpClient.cancelAndGet(request, AiModelParser::parseCopilotApiModels);
         }
     };
 
     // Streaming only needs to cover time-to-first-token (connect + model warmup), not the full response duration.
     private static final Duration TIMEOUT = Duration.ofSeconds(120);
-
-    // --- Per-instance HTTP client (lazy, reused) ---
-
-    private final AtomicReference<HttpClient> httpClient = new AtomicReference<HttpClient>(null);
-    private final AtomicReference<CompletableFuture<HttpResponse<String>>> pendingList
-            = new AtomicReference<>();
-
-    protected HttpClient buildHttpClient() {
-        return HttpClient.newHttpClient();
-    }
-
-    protected synchronized HttpClient getHttpClient() {
-        if (httpClient.get() == null) httpClient.set(buildHttpClient());
-        return httpClient.get();
-    }
-
-    /**
-     * Sends the request asynchronously, cancelling any previously pending list request.
-     * Returns null if the request was itself cancelled before completion.
-     */
-    protected HttpResponse<String> cancelAndSend(HttpRequest request) throws Exception {
-        var future = getHttpClient().sendAsync(request, HttpResponse.BodyHandlers.ofString());
-        var prev = pendingList.getAndSet(future);
-        if (prev != null) prev.cancel(true);
-        try {
-            return future.get(TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
-        } catch (java.util.concurrent.CancellationException e) {
-            return null;
-        } finally {
-            pendingList.compareAndSet(future, null);
-        }
-    }
+    private static final Duration MODEL_TIMEOUT = SharedHttpClient.MODEL_TIMEOUT;
 
     // --- Public API ---
 
@@ -391,7 +278,8 @@ public enum AiProvider {
      * Default: wraps the configured model ID as a single-element list.
      */
     public List<AiModel> listAiModels(LlmConfig config) {
-        return fallbackAiModels(config);
+        if (StringUtil.hasNoValue(config.getModel())) return Collections.emptyList();
+        return List.of(AiModel.builder().name(config.getModel()).id(config.getModel()).build());
     }
 
     /**
@@ -400,18 +288,6 @@ public enum AiProvider {
      */
     public final List<String> listModels(LlmConfig config) {
         return listAiModels(config).stream().map(AiModel::getId).toList();
-    }
-
-    protected static List<String> fallback(LlmConfig config) {
-        return StringUtil.hasValue(config.getModel())
-                ? List.of(config.getModel())
-                : List.of();
-    }
-
-    protected static List<AiModel> fallbackAiModels(LlmConfig config) {
-        if (StringUtil.hasNoValue(config.getModel())) return List.of();
-        String id = config.getModel();
-        return List.of(AiModel.builder().id(id).name(id).build());
     }
 
     public static AiProvider parse(String string) {

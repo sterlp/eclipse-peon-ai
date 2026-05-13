@@ -13,6 +13,7 @@ import org.eclipse.debug.core.ILaunchManager;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaCore;
+import org.eclipse.jdt.internal.junit.launcher.TestKindRegistry;
 import org.eclipse.jdt.junit.JUnitCore;
 import org.eclipse.jdt.junit.TestRunListener;
 import org.eclipse.jdt.junit.model.ITestCaseElement;
@@ -31,7 +32,7 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
     private static final Duration MAX_TEST_DURATION = Duration.ofMinutes(10);
     private static final long POLL_INTERVAL_MS = 500;
 
-    @Tool("Eclipse: Run JUnit 5 tests.")
+    @Tool("Eclipse: Run JUnit tests (auto-detects JUnit 3/4/5/6).")
     public String runTests(
             @P(name = "projectName") String projectName,
             @P(description = "fully qualified test class, empty = all tests", required = false, name = "testClassName") String testClassName) {
@@ -92,8 +93,7 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
                 ILaunchConfigurationWorkingCopy wc = type.newInstance(null, launchName);
                 wc.setAttribute(IJavaLaunchConfigurationConstants.ATTR_PROJECT_NAME,
                         javaProject.getElementName());
-                wc.setAttribute("org.eclipse.jdt.junit.TEST_KIND",
-                        "org.eclipse.jdt.junit.loader.junit5");
+                wc.setAttribute("org.eclipse.jdt.junit.TEST_KIND", TestKindRegistry.getContainerTestKindId(javaProject));
 
                 if (runAll) {
                     wc.setAttribute("org.eclipse.jdt.junit.CONTAINER",
@@ -134,6 +134,8 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
                     }
                 } catch (Exception ignore) {}
             }
+        } catch (IllegalArgumentException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException("Failed to run tests: " + e.getMessage(), e);
         }
