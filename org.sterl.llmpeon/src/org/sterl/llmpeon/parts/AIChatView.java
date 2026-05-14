@@ -14,11 +14,11 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.ILog;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
-import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences.IPreferenceChangeListener;
 import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.e4.ui.di.Focus;
@@ -38,7 +38,6 @@ import org.eclipse.ui.IWorkingSet;
 import org.sterl.llmpeon.AbstractChatService;
 import org.sterl.llmpeon.PeonMode;
 import org.sterl.llmpeon.ai.LlmConfig;
-import org.sterl.llmpeon.ai.model.AiModel;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.McpPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.VoicePreferenceInitializer;
@@ -159,9 +158,8 @@ public class AIChatView implements EclipseAiMonitor {
 
         applyConfig();
 
-        IEclipsePreferences prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
+        var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
         prefs.addPreferenceChangeListener(prefListener);
-
         updateSelectedProject(EclipseUtil.firstOpenOrSelectedProject());
 
         aiService.getToolService().addTool(new AskUserTool(
@@ -230,7 +228,7 @@ public class AIChatView implements EclipseAiMonitor {
         } else if (o instanceof IWorkingSet) {
             selection = selectedResource;
         } else if (o != null) {
-            LOG.info("!!! Unknown resource type selected " + o.getClass());
+            LOG.info("Unknown resource type selected " + o.getClass());
             selection = null;
         } else {
             selection = null;
@@ -240,8 +238,7 @@ public class AIChatView implements EclipseAiMonitor {
             LOG.info("Selected " + selectedResource.getName());
         }
 
-        var project = EclipseUtil.resolveProject(selection);
-        updateSelectedProject(project);
+        updateSelectedProject(EclipseUtil.resolveProject(selection));
     }
 
     private void updateSelectedProject(IProject project) {
@@ -249,7 +246,7 @@ public class AIChatView implements EclipseAiMonitor {
             currentProject = project;
             aiService.setProject(project);
         }
-
+        // TODO add check of project really changed
         if (actionsBar != null) {
             EclipseUtil.runInUiThread(parent, () -> {
                 actionsBar.setAgentModeAvailable(currentProject != null && currentProject.isOpen());
@@ -422,11 +419,11 @@ public class AIChatView implements EclipseAiMonitor {
                 || config.getProviderType() != lastListedConfig.get().getProviderType()
                 || !java.util.Objects.equals(config.getUrl(), lastListedConfig.get().getUrl())
                 || !java.util.Objects.equals(config.getApiKey(), lastListedConfig.get().getApiKey())) {
-            loadModelsInBackground(config);
+            loadModelsInBackground();
         } else {
             EclipseUtil.runInUiThread(parent, () -> {
                 if (!actionsBar.containsModelId(config.getModel())) {
-                    loadModelsInBackground(config);
+                    loadModelsInBackground();
                 } else {
                     actionsBar.selectModel(config.getModel());
                 }
@@ -435,14 +432,30 @@ public class AIChatView implements EclipseAiMonitor {
         lastListedConfig.set(config);
     }
 
-    private void loadModelsInBackground(LlmConfig config) {
+    private void loadModelsInBackground() {
         Job.create("Fetching available models", monitor -> {
-            List<AiModel> models = config.getProviderType().listAiModels(config);
-            EclipseUtil.runInUiThread(parent, () -> {
-                aiService.resolveModel(models);
-                actionsBar.applyModelList(models, aiService.getConfig().getModel());
-            });
-            return Status.OK_STATUS;
+            var config = aiService.getConfig();
+            try {
+                var models = config.listAiModels();
+                if (models.isEmpty()) {
+                    onChatResponse(new SimpleMessage(Type.PROBLEM, "No models returned by " + config.getUrl()));
+                } else {
+                    EclipseUtil.runInUiThread(parent, () -> {
+                        aiService.resolveModel(models);
+                        actionsBar.applyModelList(models, aiService.getConfig().getModel());
+                    });
+                }
+                return Status.OK_STATUS;
+            } catch (Exception e) {
+                onChatResponse(new SimpleMessage(Type.PROBLEM, e.getMessage()));
+                if (StringUtil.hasValue(aiService.getConfig().getModel())) {
+                    return new Status(IStatus.WARNING, PeonConstants.PLUGIN_ID, IStatus.OK, 
+                            "Failed to load models fallback to " + aiService.getConfig().getModel(), e);
+                } else {
+                    return new Status(IStatus.ERROR, PeonConstants.PLUGIN_ID, IStatus.OK, 
+                            "Failed to load models. " + e.getMessage() + " config:\n" + aiService.getConfig(), e);
+                }
+            }
         }).schedule();
     }
 
