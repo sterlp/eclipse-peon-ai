@@ -60,7 +60,7 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
 
         addField(new ComboFieldEditor(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, "Shell Command Confirmation:",
                 new String[][] {
-                    { "Not Required", "" },
+                    { "Not Required", "false" },
                     { "Always Required", "always" },
                     { "Except when Autonomous", "not-autonomous" }
                 },

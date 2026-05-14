@@ -380,8 +380,9 @@ public class AIChatView implements EclipseAiMonitor {
         var autonomous = aiService.getAgentMode().getAutonomous();
 
         // TODO move into own class?
-        if ("always".equals(prefs.get(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, "")) ||
-                (!autonomous && "not-autonomous".equals(prefs.get(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, "")))) {
+        if ("true".equalsIgnoreCase(prefs.get(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, "")) ||
+                "always".equalsIgnoreCase(prefs.get(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, "")) ||
+                (!autonomous && "not-autonomous".equalsIgnoreCase(prefs.get(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, "")))) {
             aiService.getToolService().getTool(ShellTool.class).ifPresent(shellTool -> {
                 shellTool.setConfirmationProvider((command, workingDirectory) -> {
                     var latch = new java.util.concurrent.CountDownLatch(1);
