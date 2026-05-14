@@ -8,6 +8,7 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IncrementalProjectBuilder;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.ArgsUtil;
@@ -26,9 +27,14 @@ public class EclipseBuildTool extends AbstractEclipseTool {
         } else {
             sb.append("Known open eclipse projects are:\n");
             for (IProject p : projects) {
+                IPath projectPath = p.getRawLocation();
+
+                if (projectPath == null)
+                    projectPath = p.getLocation();
+
                 sb.append("Project name: ").append(p.getName())
                   .append("\nEclipse path: ").append(JdtUtil.pathOf(p))
-                  .append("\nDisk path: ").append(p.getRawLocation().toPortableString())
+                  .append("\nDisk path: ").append(projectPath.toPortableString())
                   .append("\nNatures: ").append(projectNatures(p))
                   .append("\n---");
             }
