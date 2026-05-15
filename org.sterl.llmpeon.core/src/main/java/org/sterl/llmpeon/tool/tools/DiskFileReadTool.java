@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.tool.tools;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -73,6 +74,7 @@ public class DiskFileReadTool extends AbstractTool {
             @P(description = "file name query", name = "query") String query,
             @P(description = "Optional: max results to return. 0 = unlimited.", name = "limit") Integer limit) {
 
+        File.separatorChar // TODO normalisiere den path
         if (limit == null) limit = 0;
         if (query == null || query.isBlank()) {
             throw new IllegalArgumentException("query must not be empty");
