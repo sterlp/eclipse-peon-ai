@@ -1,6 +1,5 @@
 package org.sterl.llmpeon.tool.tools;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -74,22 +73,17 @@ public class DiskFileReadTool extends AbstractTool {
             @P(description = "file name query", name = "query") String query,
             @P(description = "Optional: max results to return. 0 = unlimited.", name = "limit") Integer limit) {
 
-        File.separatorChar // TODO normalisiere den path
         if (limit == null) limit = 0;
         if (query == null || query.isBlank()) {
             throw new IllegalArgumentException("query must not be empty");
         }
 
-        var matcher = StringMatcher.wildCardMatcher(query);
+        var matcher = StringMatcher.wildCardMatcher(FileUtils.normalizePath(query));
         var matches = new ArrayList<String>();
         try (var walk = Files.walk(workingDir)) {
             var stream = walk.filter(Files::isRegularFile)
-                .map(f ->  {
-                    System.err.println("-> " + f);
-                    return f;
-                })
                 .filter(p -> matcher.match(p.getFileName().toString()) 
-                        || matcher.match(p.toAbsolutePath().toString()));
+                        || matcher.match(FileUtils.normalizePath(p.toAbsolutePath().toString())));
             if (limit > 0) stream = stream.limit(limit);
             stream.forEach(p -> matches.add(p.toAbsolutePath().toString()));
         } catch (IOException e) {

@@ -18,7 +18,7 @@ import org.sterl.llmpeon.shared.StringUtil;
 public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
     private static final ILog LOG = Platform.getLog(LlmPreferenceInitializer.class);
     
-    private static final LlmConfig DEFAULT = LlmConfig.newOllama("gemma4:26b-a4b-it-q4_K_M");
+    private static final LlmConfig DEFAULT = LlmConfig.newOllama("qwen3.6:35b-a3b");
             //LlmConfig.newLmStudio("qwen/qwen3.6-35b-a3b");
 
     @Override

@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.shared;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.IOException;
@@ -8,11 +9,22 @@ import java.nio.file.Path;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 class FileUtilsTest {
 
     @TempDir
     Path tempDir;
+    
+    @ParameterizedTest
+    @CsvSource({
+        "\\foo\\bar    , /foo/bar",
+        "**/foo        , **/foo"
+    })
+    void test_normalizePath(String value, String expected) {
+        assertThat(FileUtils.normalizePath(value)).isEqualTo(expected);
+    }
 
     /** Bug 3: second write must fully replace the file content, not leave stale bytes. */
     @Test

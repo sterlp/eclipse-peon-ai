@@ -16,6 +16,7 @@ import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.FileLines;
+import org.sterl.llmpeon.shared.FileUtils;
 import org.sterl.llmpeon.shared.StringMatcher;
 import org.sterl.llmpeon.tool.AiReponseBuilder;
 
@@ -61,6 +62,7 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
         final int limit = inLimit == null ? 0 : inLimit;
         ArgsUtil.requireNonBlank(query, "query");
 
+        query = FileUtils.normalizePath(query);
         final var matcher = StringMatcher.wildCardMatcher(query);
         final List<String> matches = new ArrayList<>();
 
