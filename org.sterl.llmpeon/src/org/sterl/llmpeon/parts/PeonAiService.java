@@ -30,6 +30,7 @@ import org.sterl.llmpeon.template.TemplateContext;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
+import org.sterl.llmpeon.tool.tools.SkillTool;
 
 import dev.langchain4j.data.message.UserMessage;
 
@@ -120,6 +121,7 @@ public class PeonAiService {
         toolService.addTool(new EclipseGrepTool());
         toolService.addTool(new EclipseRunTestTool());
         toolService.addTool(new EclipseCodeNavigationTool());
+        toolService.addTool(new SkillTool(skillService));
 
         developerService = new AiDeveloperService(configuredModel, toolService, skillService, context);
         plannerService   = new AiPlannerService(configuredModel, toolService, skillService, context);

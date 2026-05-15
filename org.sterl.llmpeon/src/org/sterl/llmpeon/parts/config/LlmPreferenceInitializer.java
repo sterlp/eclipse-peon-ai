@@ -44,10 +44,10 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
             var dir = EclipseUtil.resolveInEclipse(skillDir);
             if (dir.isPresent()) {
                 // save Eclipse workspace-relative path to prefs (portable)
-                prefs.put(PeonConstants.PREF_SKILL_DIRECTORY, dir.get().getFullPath().toPortableString());
+                prefs.put(PeonConstants.PREF_SKILL_DIRECTORY, dir.get().getFullPath().toOSString());
                 // use absolute file system path for SkillService
-                LOG.info("Resolved skill dir " + skillDir + " as " + dir.get().getRawLocation().toPortableString());
-                skillDir = dir.get().getRawLocation().toPortableString();
+                LOG.info("Resolved skill dir " + skillDir + " as " + dir.get().getRawLocation().toOSString());
+                skillDir = dir.get().getRawLocation().toOSString();
             }
         }
 

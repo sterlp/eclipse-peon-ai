@@ -14,6 +14,7 @@ import org.eclipse.jdt.core.ISourceRange;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
+import org.jspecify.annotations.Nullable;
 import org.sterl.llmpeon.shared.StringUtil;
 
 public class JdtUtil {
@@ -93,16 +94,32 @@ public class JdtUtil {
     /**
      * Workspace-relative path for a type.
      */
+    @Nullable
     public static String pathOf(IType type) {
+        if (type == null || type.getPath() == null) return null;
         return type.getPath().toPortableString();
     }
     
     /**
      * Workspace-relative path for a type.
      */
+    @Nullable
     public static String pathOf(IResource value) {
-        if (value == null) return null;
+        if (value == null || value.getFullPath() == null) return null;
         return value.getFullPath().toPortableString();
+    }
+    
+    /**
+     * Workspace-relative path for a type.
+     */
+    @Nullable
+    public static String diskPathOf(IProject value) {
+        if (value == null) return null;
+        var projectPath = value.getRawLocation();
+        if (projectPath == null) projectPath = value.getLocation();
+        
+        if (projectPath == null) return null;
+        return projectPath.toOSString();
     }
 
     /**

@@ -17,12 +17,15 @@ public class SkillTool extends AbstractTool {
         this.skillService = skillService;
     }
     
-    @Tool("Read SKILL.md by name.")
+    @Tool("Read an available SKILL using its name.")
     public String readSkill(@P(name = "name") String name) throws IOException, InterruptedException {
         ArgsUtil.requireNonBlank(name, "name");
         var skill = skillService.get(name);
-        if (skill.isEmpty()) return "No skill with the name " + name + " found. Use one of: " 
-                + skillService.skillNames();
+        if (skill.isEmpty()) {
+            onProblem("No SKILL " + name + " found ...");
+            return "No skill with the name " + name 
+                    + " found. Use one of: " + skillService.skillNames();
+        }
         onTool("Read SKILL " + name);
         return skill.get().readFullContent();
     }

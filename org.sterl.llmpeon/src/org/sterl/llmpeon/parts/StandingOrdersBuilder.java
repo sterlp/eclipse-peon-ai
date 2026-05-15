@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.core.resources.IResource;
-import org.eclipse.core.runtime.IPath;
 import org.sterl.llmpeon.PeonMode;
 import org.sterl.llmpeon.parts.agent.AgentModeService;
 import org.sterl.llmpeon.parts.agentsmd.AgentsMdService;
@@ -32,14 +31,12 @@ public class StandingOrdersBuilder {
 
         var orders = new ArrayList<ChatMessage>();
         if (selectedResource != null) {
-            IPath projectPath = selectedResource.getProject().getRawLocation();
-
-            if (projectPath == null)
-                projectPath = selectedResource.getProject().getLocation();
-
+            var projectDiskPath = JdtUtil.diskPathOf(selectedResource.getProject());
             orders.add(SystemMessage.from(
-                    "Selected file eclipse path: " + JdtUtil.pathOf(selectedResource) +
-                    "Disk path of project: " + projectPath.toOSString())
+                    "Eclipse selected file filePath: " + JdtUtil.pathOf(selectedResource) +
+                    (projectDiskPath == null 
+                        ? "" 
+                        : "Disk path of project: " + projectDiskPath))
                 );
         }
         if (agentsMdService.hasAgentFile()) {

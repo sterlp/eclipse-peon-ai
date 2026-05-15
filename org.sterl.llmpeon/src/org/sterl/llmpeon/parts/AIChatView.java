@@ -234,10 +234,6 @@ public class AIChatView implements EclipseAiMonitor {
             selection = null;
         }
         selectedResource = selection;
-        if (selectedResource != null) {
-            LOG.info("Selected " + selectedResource.getName());
-        }
-
         updateSelectedProject(EclipseUtil.resolveProject(selection));
     }
 
