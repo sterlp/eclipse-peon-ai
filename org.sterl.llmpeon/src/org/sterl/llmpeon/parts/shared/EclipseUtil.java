@@ -29,7 +29,15 @@ public class EclipseUtil {
     }
     
     public static Path workspacePath() {
-        return ResourcesPlugin.getWorkspace().getRoot().getRawLocation().toFile().toPath();
+        var root = ResourcesPlugin.getWorkspace().getRoot();
+        IPath loc = root.getRawLocation();
+        if (loc == null) {
+            loc = root.getLocation();
+        }
+        if (loc == null) {
+            throw new IllegalStateException("Workspace root has no filesystem location");
+        }
+        return loc.toFile().toPath();
     }
 
     /**

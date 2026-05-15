@@ -13,6 +13,7 @@ import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.PeonConstants;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
+import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 
 public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
@@ -43,11 +44,17 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
         if (StringUtil.hasValue(skillDir) && !Files.isDirectory(Path.of(skillDir))) {
             var dir = EclipseUtil.resolveInEclipse(skillDir);
             if (dir.isPresent()) {
+                var resource = dir.get();
                 // save Eclipse workspace-relative path to prefs (portable)
-                prefs.put(PeonConstants.PREF_SKILL_DIRECTORY, dir.get().getFullPath().toOSString());
-                // use absolute file system path for SkillService
-                LOG.info("Resolved skill dir " + skillDir + " as " + dir.get().getRawLocation().toOSString());
-                skillDir = dir.get().getRawLocation().toOSString();
+                prefs.put(PeonConstants.PREF_SKILL_DIRECTORY, resource.getFullPath().toOSString());
+                var abs = JdtUtil.diskPathOf(resource);
+                if (abs != null) {
+                    LOG.info("Resolved skill dir " + skillDir + " as " + abs);
+                    skillDir = abs;
+                } else {
+                    LOG.warn("Could not resolve skill dir to a filesystem path for " + resource.getFullPath());
+                    skillDir = "";
+                }
             }
         }
 
