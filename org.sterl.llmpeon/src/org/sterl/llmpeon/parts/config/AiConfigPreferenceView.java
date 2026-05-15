@@ -54,8 +54,8 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
         buildCheckUrl();
 
         addField(new IntegerFieldEditor(PeonConstants.PREF_TOKEN_WINDOW, "Token Window:", getFieldEditorParent()));
-        addField(new BooleanFieldEditor(PeonConstants.PREF_THINKING_ENABLED, "Supports Thinking", getFieldEditorParent()));
-        addField(new BooleanFieldEditor(PeonConstants.PREF_SEND_THINKING_ENABLED, "Sends thinking back to the LLM - some needs this like mistral DeepSeek", getFieldEditorParent()));
+        addField(new BooleanFieldEditor(PeonConstants.PREF_THINKING_ENABLED, "Supports thinking", getFieldEditorParent()));
+        addField(new BooleanFieldEditor(PeonConstants.PREF_SEND_THINKING_ENABLED, "Sends thinking - needed by some LLMs like Qwen 3.6, Mistral, DeepSeek", getFieldEditorParent()));
         addField(new BooleanFieldEditor(PeonConstants.PREF_DISK_TOOLS_ENABLED, "Enable Disk File Tools (outside Eclipse workspace)", getFieldEditorParent()));
 
         addField(new ComboFieldEditor(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, "Shell Command Confirmation:",

@@ -38,7 +38,7 @@ public class LlmConfig {
     @Default
     private final boolean thinkingEnabled = true;
     @Default
-    private final boolean sendThinkingEnabled = false;
+    private final boolean sendThinkingEnabled = true;
     @Default
     private final String apiKey = null;
     @Default
