@@ -17,6 +17,7 @@ import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.FileLines;
 import org.sterl.llmpeon.shared.StringMatcher;
+import org.sterl.llmpeon.tool.AiReponseBuilder;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -88,16 +89,16 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
         }
 
         onTool("Search workspace for " + query + " returned " + matches.size() + " results.");
+        String suffix = null;
         if (matches.isEmpty()) {
-            return "No files found matching '" + query + "'. "
-                    + "The file may not exist yet (needs to be created), or try a shorter/different query. "
-                    + "Use findJavaType for Java classes or listWorkspaceDirectory to explore the project structure.";
+            suffix =  "Use findJavaType for Java classes or " + LIST_WORKSPACE_NAME + " to explore the project structure.";
         }
-        return String.join("\n", matches);
+        return AiReponseBuilder.searchComplete(matches, suffix);
     }
 
-    @Tool("Eclipse: List workspace directory (non-recursive). Empty path lists all projects.")
-    public String listWorkspaceDirectory(
+    public static final String LIST_WORKSPACE_NAME = "listWorkspace";
+    @Tool(name = LIST_WORKSPACE_NAME, value = "Eclipse: List workspace directory/projects (non-recursive). Empty path lists all projects.")
+    public String listWorkspac(
             @P(description = "workspace-relative path, e.g. '/MyProject/src'", required = false, name = "path") String path) {
 
         // root: list open projects

@@ -14,6 +14,7 @@ import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.tool.AiReponseBuilder;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -77,20 +78,16 @@ public class EclipseGrepTool extends AbstractEclipseTool {
             if (matches.size() >= MAX_FILES) break;
         }
 
-        onTool("Grep '" + query + "' found " + matches.size() + " matches for file types: " 
-                + StringUtil.getOrDefault(extension, "*"));
+        onTool("Grep '" + query + "' type '" + StringUtil.getOrDefault(extension, "*")
+                + " found " + matches.size() + " matches");
 
-        if (matches.isEmpty()) {
-            return "No files contain '" + query + "' in the searched path.";
-        }
-        var sb = new StringBuilder();
-        sb.append("Found \"").append(query).append("\" in ").append(matches.size()).append(" file(s):\n");
-        matches.forEach((filePath, count) -> sb.append(filePath).append(": ").append(count).append(" occurrence(s)\n"));
-
+        String suffix = null;
         if (matches.size() >= MAX_FILES) {
-            sb.append("... result capped at ").append(MAX_FILES).append(" files. Narrow your search path.");
+            suffix = "... result capped at " + MAX_FILES + " files. Narrow your search path.";
         }
-        return sb.toString();
+        return AiReponseBuilder.searchComplete(matches.entrySet().stream()
+                .map(e -> e.getKey() + ": " + e.getValue() + "occurrence(s)").toList(), 
+                suffix);
     }
 
     private static final Set<String> TEXT_EXTENSIONS = Set.of(
