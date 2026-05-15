@@ -23,7 +23,7 @@ import lombok.ToString;
 @AllArgsConstructor
 @Getter
 @EqualsAndHashCode
-@ToString(of = {"providerType", "url", "model", "thinkingEnabled"})
+@ToString(of = {"providerType", "url", "model", "thinkingEnabled", "sendThinkingEnabled"})
 public class LlmConfig {
 
     @Default
