@@ -9,6 +9,7 @@ import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.FileLines;
 import org.sterl.llmpeon.shared.FileUtils;
 import org.sterl.llmpeon.shared.StringMatcher;
+import org.sterl.llmpeon.tool.AiReponseBuilder;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -69,35 +70,39 @@ public class DiskFileReadTool extends AbstractTool {
 
     @Tool("Disk: Search files by name. Use '*' to list all files recursively.")
     public String searchDiskFiles(
-            @P("file name query") String query,
-            @P("Optional: max results to return. 0 = unlimited.") Integer limit) {
+            @P(description = "file name query", name = "query") String query,
+            @P(description = "Optional: max results to return. 0 = unlimited.", name = "limit") Integer limit) {
 
         if (limit == null) limit = 0;
         if (query == null || query.isBlank()) {
             throw new IllegalArgumentException("query must not be empty");
         }
 
-        var matcher = StringMatcher.wildCardMatcher(query);
+        var matcher = StringMatcher.wildCardMatcher(FileUtils.normalizePath(query));
         var matches = new ArrayList<String>();
         try (var walk = Files.walk(workingDir)) {
             var stream = walk.filter(Files::isRegularFile)
-                .filter(p -> matcher.match(p.getFileName().toString()) || matcher.match(p.toAbsolutePath().toString()));
+                .filter(p -> matcher.match(p.getFileName().toString()) 
+                        || matcher.match(FileUtils.normalizePath(p.toAbsolutePath().toString())));
             if (limit > 0) stream = stream.limit(limit);
             stream.forEach(p -> matches.add(p.toAbsolutePath().toString()));
         } catch (IOException e) {
             throw new RuntimeException("Failed to search in " + workingDir, e);
         }
 
-        onTool("Found " + matches.size() + " files on disk " + workingDir + " for " + query);
+        onTool("Found " + matches.size() + " files in " + workingDir + " for '" + query + "'.");
+        String suffix = null;
         if (matches.isEmpty()) {
-            return "No files found matching '" + query + "'. Adjust your query.";
+            suffix =  "Use " + LIST_DISK_NAME + " to explore the project structure.";
         }
-        return String.join("\n", matches);
+        System.err.println(workingDir + " " + query + " " + matches.size());
+        return AiReponseBuilder.searchComplete(matches, suffix);
     }
 
-    @Tool("Disk: List directory (non-recursive).")
+    public static final String LIST_DISK_NAME = "listDiskDirectory";
+    @Tool(name = LIST_DISK_NAME, value = "Disk: List directory (non-recursive).")
     public String listDiskDirectory(
-            @P("Optional path. Empty or '/' lists working dir root.") String path) {
+            @P(description = "Optional path. Empty or '/' lists working dir root.", name = "path") String path) {
 
         Path dir;
         if (path == null || path.isBlank() || path.length() == 1) {

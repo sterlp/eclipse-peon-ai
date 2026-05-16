@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.tool;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -67,8 +68,8 @@ class DiskFileReadToolsTest {
         // WHEN
         result = tool.searchDiskFiles("**/FooController.java", 0);
         // THEN
-        assertTrue(result.contains("FooController.java"));
-        assertFalse(result.contains("BarController.java"));
+        assertThat(result).contains("FooController.java");
+        assertThat(result).doesNotContain("BarController.java");
     }
 
     @Test
@@ -114,6 +115,14 @@ class DiskFileReadToolsTest {
 
         // limit=2 returns exactly two
         assertEquals(2, tool.searchDiskFiles("*.java", 2).split("\n").length);
+    }
+    
+    @Test
+    void searchDiskFiles_no_results() throws IOException {
+        // GIVEN - three files
+
+        // unlimited returns all three
+        System.err.println(tool.searchDiskFiles("FOObarNotexisting.java", 0));
     }
 
     @Test

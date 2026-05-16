@@ -48,9 +48,9 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
     // Tool 1: Find a type by name — returns metadata only, no source
     // -------------------------------------------------------------------------
 
-    @Tool("Eclipse/Java: Find Java types by name/wildcard. Searches workspace, JDK and JARs. Java only — not ABAP/ADT. Metadata only.")
+    @Tool("Eclipse/Java: Find Java types by name/wildcard. Searches in workspace, JDK and used JARs. Java type metadata only.")
     public String findJavaType(
-            @P(description = "name, name with wildcard (*) or FQN", name = "typeName") String typeName,
+            @P(description = "fully qualified type name, wildcard * or ? supported", name = "typeName") String typeName,
             @P(name = "projectName", required = false) String projectName) {
 
         ArgsUtil.requireNonBlank(typeName, "typeName");
@@ -84,7 +84,7 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
     // Tool 2: Read source — given a FQN, returns the full source
     // -------------------------------------------------------------------------
 
-    @Tool("Eclipse/Java: Get full source of a type by FQN. Covers JDK and dependency libs — prefer over decompiling JARs.")
+    @Tool("Eclipse/Java: Get full source of a type by FQN. Covers JDK and used JARs — prefer over decompiling JARs. Use this to read full source of e.g. java.io.File etc.")
     public String getTypeSource(
             @P(description = "fully qualified type name", name = "fqn") String fqn,
             @P(description = "project name to limit search scope (optional)", required = false, name = "projectName") String projectName) {
@@ -230,7 +230,7 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
         var matches = new LinkedHashSet<String>();
         var projects = projectName != null && !projectName.isBlank()
                 ? EclipseUtil.findOpenProject(projectName).map(List::of).orElse(EclipseUtil.openProjects())
-                        : EclipseUtil.openProjects();
+                : EclipseUtil.openProjects();
         try {
 
             var mather = StringMatcher.wildCardMatcher(namePattern);
@@ -322,8 +322,8 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
     private List<IType> findByFqn(String fqn, String projectName) {
         var results = new ArrayList<IType>();
         if (StringUtil.hasValue(projectName)) {
-            EclipseUtil.findOpenProject(projectName).ifPresent(p ->
-                JdtUtil.findType(fqn, JavaCore.create(p)).ifPresent(results::add));
+            EclipseUtil.findOpenProject(projectName)
+                       .ifPresent(p -> JdtUtil.findType(fqn, JavaCore.create(p)).ifPresent(results::add));
         } else {
             JdtUtil.findType(fqn).ifPresent(results::add);
         }

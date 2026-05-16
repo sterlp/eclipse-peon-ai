@@ -8,6 +8,14 @@ import java.util.Optional;
 
 public class FileUtils {
     
+    /**
+     * Normalize given path to an OS neutral path using <code>/</code> for path separations, like Eclipse.
+     */
+    public static String normalizePath(String value) {
+        if (value == null || value.length() == 0) return value;
+        return value.replace('\\', '/');
+    }
+    
     public static Path toPath(String value) {
         if (value == null) return null;
         return Path.of(value).normalize();

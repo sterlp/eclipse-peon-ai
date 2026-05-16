@@ -110,16 +110,17 @@ public class JdtUtil {
     }
     
     /**
-     * Workspace-relative path for a type.
+     * Best-effort absolute filesystem path for a workspace resource (project, folder, file).
+     * {@link IResource#getRawLocation()} may be {@code null} for some project layouts; falls back to
+     * {@link IResource#getLocation()}.
      */
     @Nullable
-    public static String diskPathOf(IProject value) {
+    public static String diskPathOf(@Nullable IResource value) {
         if (value == null) return null;
-        var projectPath = value.getRawLocation();
-        if (projectPath == null) projectPath = value.getLocation();
-        
-        if (projectPath == null) return null;
-        return projectPath.toOSString();
+        var path = value.getRawLocation();
+        if (path == null) path = value.getLocation();
+        if (path == null) return null;
+        return path.toOSString();
     }
 
     /**
