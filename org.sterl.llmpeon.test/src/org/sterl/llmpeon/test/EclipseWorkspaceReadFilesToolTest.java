@@ -12,13 +12,27 @@ import org.sterl.llmpeon.parts.tools.EclipseCodeNavigationTool;
 import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.tool.ToolService;
-import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 
 public class EclipseWorkspaceReadFilesToolTest extends AbstractTest {
+
+    @Test
+    public void test_findReferences() {
+        // GIVEN
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        
+        var tool = new EclipseCodeNavigationTool();
+        
+        // WHEN
+        var content = tool.findReferences(EclipseWorkspaceReadFilesToolTest.class.getPackageName(), 
+                EclipseWorkspaceReadFilesToolTest.class.getSimpleName(), null, null);
+        
+        // THEN
+        assertContains(content, getClass().getSimpleName() + ".java");
+        assertContains(content, "29");
+    }
 
     @Test
     public void testList() {
@@ -40,10 +54,29 @@ public class EclipseWorkspaceReadFilesToolTest extends AbstractTest {
         var tool = new EclipseCodeNavigationTool();
 
         // WHEN
-        var content = tool.getTypeSource(EclipseWorkspaceReadFilesToolTest.class.getName(), "org.sterl.llmpeon.test");
+        var content = tool.getTypeSource(
+                getClass().getPackageName(), 
+                getClass().getSimpleName(), 
+                "org.sterl.llmpeon.test");
         // THEN
-        assertTrue("Expected to read own source, got: " + content.substring(0, Math.min(200, content.length())),
-                content.contains("public void testTypeSearch()"));
+        assertContains(content, "public void test_getTypeSource()");
+        assertContains(content, " 1: ");
+        assertContains(content, getClass().getSimpleName() + ".java");
+    }
+    
+    @Test
+    public void test_getTypeSource_wrong_package() throws Exception {
+        // GIVEN
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        var tool = new EclipseCodeNavigationTool();
+
+        // WHEN
+        var content = tool.getTypeSource(
+                "foo.bar", 
+                getClass().getSimpleName(), 
+                "org.sterl.llmpeon.test");
+        // THEN should return a list
+        assertContains(content, getClass().getSimpleName() + ".java");
     }
 
     @Test
@@ -92,21 +125,6 @@ public class EclipseWorkspaceReadFilesToolTest extends AbstractTest {
     }
     
     @Test
-    public void test_findReferences() {
-        // GIVEN
-        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
-        
-        var tool = new EclipseCodeNavigationTool();
-        
-        // WHEN
-        var content = tool.findReferences(EclipseWorkspaceReadFilesToolTest.class.getName(), null, null);
-        
-        // THEN
-        assertTrue("Should contain out test:\n" + content, content.contains(getClass().getSimpleName() + ".java"));
-        assertTrue("Should contain out line:\n" + content, content.contains("76"));
-    }
-    
-    @Test
     public void test_readWorkspaceFiles() {
         // GIVEN
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
@@ -115,13 +133,14 @@ public class EclipseWorkspaceReadFilesToolTest extends AbstractTest {
 
         var tr = ToolExecutionRequest.builder().arguments("")
             .name("readWorkspaceFile")
-            .arguments("{\"arg0\": \"" + this.getClass().getName().replace(".", "/") + ".java\"}")
+            .arguments("{\"filePath\": \"" + this.getClass().getName().replace(".", "/") + ".java\"}")
             .build();
         
         // WHEN
         var content = service.execute(tr, null, null, new ArrayList<ChatMessage>());
         
         // THEN
-        assertTrue(content.message().text().contains("Hallo meine schöne datei wie geht es dir?"));
+        assertContains(content.message().text(), 
+                "Hallo meine schöne datei wie geht es dir?");
     }
 }

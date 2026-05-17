@@ -1,5 +1,7 @@
 package org.sterl.llmpeon.test;
 
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
 import java.io.File;
@@ -16,6 +18,15 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.junit.BeforeClass;
 
 public abstract class AbstractTest {
+    
+    public static void assertContains(String value, String expected) {
+        assertNotNull("Extected to find " + expected, value);
+        assertTrue("Expected:\n"
+                + value + "\n"
+                + "to contain:\n"
+                + expected,
+                value.contains(expected));
+    }
 
     @BeforeClass
     public static void importProjectIntoWorkspace() throws Exception {
@@ -61,8 +72,9 @@ public abstract class AbstractTest {
     protected static boolean isWorkspaceAvailable() {
         try {
             ResourcesPlugin.getWorkspace();
+            for (IProject p : ResourcesPlugin.getWorkspace().getRoot().getProjects()) p.open(new NullProgressMonitor());
             return true;
-        } catch (IllegalStateException e) {
+        } catch (IllegalStateException | CoreException e) {
             return false;
         }
     }

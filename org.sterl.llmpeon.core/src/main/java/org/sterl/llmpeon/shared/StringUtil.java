@@ -6,6 +6,11 @@ public class StringUtil {
         if (hasValue(value)) return value;
         return defaultValue;
     }
+    
+    public static String trimToEmpty(String value) {
+        if (value == null) return "";
+        return value.trim();
+    }
 
     public static String strip(String value) {
         if (value == null || value.length() == 0) return value;
