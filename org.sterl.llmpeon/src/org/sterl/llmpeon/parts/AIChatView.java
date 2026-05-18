@@ -165,6 +165,8 @@ public class AIChatView implements EclipseAiMonitor {
         aiService.getToolService().addTool(new AskUserTool(
             (question, answers, onAnswer) -> showQuestion(question, answers, onAnswer)
         ));
+
+        chatInput.enableSlashCommands(() -> aiService.getCommandService().getCommands());
     }
 
     private void onClear() {
@@ -349,6 +351,11 @@ public class AIChatView implements EclipseAiMonitor {
             aiService.getSkillService().refresh(config.getSkillDirectory());
         } catch (IOException e) {
             throw new RuntimeException("Failed to load " + config.getSkillDirectory());
+        }
+        try {
+            aiService.getCommandService().refresh(config.getCommandDirectory());
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load " + config.getCommandDirectory());
         }
         aiService.updateConfig(config);
         // Sync the Think toggle to the config default. The user can override this per-session
@@ -540,6 +547,8 @@ public class AIChatView implements EclipseAiMonitor {
         }
 
         final var active = getActiveService();
+        if (!applySlashCommandIfPresent(active)) return;
+
         final var selection = getUserSelection();
         final var needsSelection = !active.hasUserText(selection);
 
@@ -653,6 +662,45 @@ public class AIChatView implements EclipseAiMonitor {
 
     private void onSkillsToggle(boolean enabled) {
         aiService.getSkillService().setEnabled(enabled);
+    }
+
+    /**
+     * If the chat input starts with {@code /name}, looks up the command and installs its body as
+     * the one-shot system prompt on the active chat service. The slash token is stripped from the
+     * input so only the trailing user text is sent. Returns {@code false} and reports a problem
+     * when the name is unknown so the caller can abort the send.
+     */
+    private boolean applySlashCommandIfPresent(AbstractChatService active) {
+        var raw = chatInput.getText();
+        if (raw == null) return true;
+        var trimmed = raw.stripLeading();
+        if (!trimmed.startsWith("/")) return true;
+
+        int wsIdx = -1;
+        for (int i = 1; i < trimmed.length(); i++) {
+            if (Character.isWhitespace(trimmed.charAt(i))) { wsIdx = i; break; }
+        }
+        var name = wsIdx < 0 ? trimmed.substring(1) : trimmed.substring(1, wsIdx);
+        var rest = wsIdx < 0 ? "" : trimmed.substring(wsIdx).stripLeading();
+        if (name.isBlank()) return true;
+
+        var commandService = aiService.getCommandService();
+        var command = commandService.get(name);
+        if (command.isEmpty()) {
+            var available = commandService.commandNames();
+            var hint = available.isEmpty() ? "(no commands loaded)" : "Available: " + available;
+            chatHistory.appendMessage(new SimpleMessage(Type.PROBLEM,
+                    "Unknown command /" + name + ". " + hint));
+            return false;
+        }
+
+        var prompt = aiService.getTemplateContext().process(command.get().readBody());
+        active.setOneShotSystemPrompt(prompt);
+        // If only the slash token was entered, keep it visible as the user turn so the chat
+        // history clearly shows which command was invoked AND the LLM receives a non-empty turn.
+        chatInput.setText(rest.isEmpty() ? "/" + name : rest);
+        chatInput.dismissSlashMenu();
+        return true;
     }
 
     private void onMicClick() {

@@ -44,6 +44,8 @@ public class LlmConfig {
     @Default
     private final String skillDirectory = null;
     @Default
+    private final String commandDirectory = null;
+    @Default
     private final boolean diskToolsEnabled = false;
     private final boolean shellCommandConfirmationRequired = false;
     

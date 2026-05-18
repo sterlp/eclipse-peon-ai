@@ -55,6 +55,13 @@ public abstract class AbstractChatService {
     private List<ChatMessage> standingOrders = Collections.emptyList();
     private int tokenSize = 0;
 
+    /**
+     * One-shot system prompt set by a slash command invocation. When non-null the next call to
+     * {@link #buildStaticMessages()} uses this value as the system prompt instead of
+     * {@link #getSystemPrompt()} and clears the field. Subsequent calls revert to the base prompt.
+     */
+    private String oneShotSystemPrompt;
+
     protected AbstractChatService(ConfiguredModel configuredModel, ToolService toolService,
             SkillService skillService, TemplateContext templateContext) {
         this.toolService = toolService;
@@ -154,12 +161,33 @@ public abstract class AbstractChatService {
 
     private List<ChatMessage> buildStaticMessages() {
         var messages = new ArrayList<ChatMessage>();
-        messages.add(SystemMessage.from(getSystemPrompt()));
+        var override = consumeOneShotSystemPrompt();
+        messages.add(SystemMessage.from(override != null ? override : getSystemPrompt()));
 
         messages.addAll(standingOrders);
+        // Skills are still advertised even when a slash command overrode the base prompt; the
+        // command body and the skill catalog are orthogonal.
         var skillMsg = skillService.skillMessage(templateContext);
         if (skillMsg != null) messages.add(skillMsg);
         return messages;
+    }
+
+    /**
+     * Sets a one-shot system prompt that replaces {@link #getSystemPrompt()} for the very next
+     * {@link #call(String, AiMonitor)} only. Pass {@code null} to clear without consuming.
+     */
+    public void setOneShotSystemPrompt(String systemPrompt) {
+        this.oneShotSystemPrompt = (systemPrompt == null || systemPrompt.isBlank()) ? null : systemPrompt;
+    }
+
+    public boolean hasOneShotSystemPrompt() {
+        return oneShotSystemPrompt != null;
+    }
+
+    private String consumeOneShotSystemPrompt() {
+        var value = oneShotSystemPrompt;
+        oneShotSystemPrompt = null;
+        return value;
     }
 
     private void updateTokenCount(ChatResponse response) {

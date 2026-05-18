@@ -1,5 +1,8 @@
 package org.sterl.llmpeon.parts.widget;
 
+import java.util.List;
+import java.util.function.Supplier;
+
 import org.eclipse.debug.ui.DebugUITools;
 import org.eclipse.debug.ui.IDebugUIConstants;
 import org.eclipse.swt.SWT;
@@ -11,6 +14,7 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.sterl.llmpeon.command.CommandRecord;
 import org.sterl.llmpeon.parts.shared.ImageUtil;
 import org.sterl.llmpeon.parts.shared.SwtUtil;
 
@@ -36,6 +40,9 @@ public class UserInputWidget extends Composite {
     private final Runnable onMicClick;
 
     private final Color colorRecording;
+
+    private SlashMenuPopup slashPopup;
+    private Supplier<List<CommandRecord>> commandSupplier;
 
     public UserInputWidget(Composite parent, int style, Runnable onSend, Runnable onStop, Runnable onMicClick) {
         super(parent, style);
@@ -83,6 +90,42 @@ public class UserInputWidget extends Composite {
                 }
             }
         }));
+
+        // Refresh the slash popup on every modification so it tracks the current prefix.
+        textInput.addModifyListener(e -> refreshSlashPopup());
+
+        // Steal arrow / Enter / Escape ONLY while the slash popup is open. Plain Enter still
+        // produces a newline in StyledText when the popup is closed.
+        textInput.addVerifyKeyListener(e -> {
+            if (slashPopup == null || !slashPopup.isOpen()) return;
+            switch (e.keyCode) {
+            case SWT.ARROW_DOWN:
+                slashPopup.moveSelection(1);
+                e.doit = false;
+                break;
+            case SWT.ARROW_UP:
+                slashPopup.moveSelection(-1);
+                e.doit = false;
+                break;
+            case SWT.ESC:
+                slashPopup.hide();
+                e.doit = false;
+                break;
+            case SWT.CR:
+            case SWT.LF:
+            case SWT.KEYPAD_CR:
+                // Plain Enter commits the selection; Ctrl/Cmd+Enter still sends the message.
+                if ((e.stateMask & (SWT.CTRL | SWT.COMMAND)) == 0) {
+                    if (slashPopup.commitSelection()) e.doit = false;
+                }
+                break;
+            case SWT.TAB:
+                if (slashPopup.commitSelection()) e.doit = false;
+                break;
+            default:
+                break;
+            }
+        });
 
         // Right icon column — mic on top (optional), send/stop at bottom
         rightColumn = new Composite(textRow, SWT.NONE);
@@ -179,5 +222,84 @@ public class UserInputWidget extends Composite {
     @Override
     public boolean setFocus() {
         return textInput.setFocus();
+    }
+
+    /** Hides the slash-command popup if it is currently shown. Safe to call any time. */
+    public void dismissSlashMenu() {
+        if (slashPopup != null) slashPopup.hide();
+    }
+
+    /**
+     * Enables the slash-command popup. {@code commandSupplier} returns the currently loaded
+     * commands. Pass {@code null} to disable the popup.
+     */
+    public void enableSlashCommands(Supplier<List<CommandRecord>> commandSupplier) {
+        this.commandSupplier = commandSupplier;
+        if (commandSupplier == null) {
+            disposeSlashPopup();
+            return;
+        }
+        if (slashPopup == null) {
+            slashPopup = new SlashMenuPopup(this, this::applyCommandSelection);
+            addDisposeListener(e -> disposeSlashPopup());
+        }
+    }
+
+    private void refreshSlashPopup() {
+        if (commandSupplier == null || slashPopup == null) return;
+        var text = textInput.getText();
+        // Trigger policy: only while the user is still typing the FIRST token, which must
+        // start with '/' at offset 0. Once any whitespace appears, the popup hides — the user
+        // has moved on to the message body (e.g. "/foo extra text").
+        if (text == null || !text.startsWith("/")) {
+            slashPopup.hide();
+            return;
+        }
+        for (int i = 1; i < text.length(); i++) {
+            if (Character.isWhitespace(text.charAt(i))) {
+                slashPopup.hide();
+                return;
+            }
+        }
+        var prefix = extractPrefix(text);
+        var commands = commandSupplier.get();
+        if (commands == null || commands.isEmpty()) {
+            slashPopup.hide();
+            return;
+        }
+        var caret = textInput.getCaretDisplayLocation();
+        slashPopup.show(commands, prefix, caret);
+    }
+
+    private static String extractPrefix(String text) {
+        // Read characters after the leading '/' until whitespace.
+        var sb = new StringBuilder();
+        for (int i = 1; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (Character.isWhitespace(c)) break;
+            sb.append(c);
+        }
+        return sb.toString();
+    }
+
+    private void applyCommandSelection(CommandRecord cmd) {
+        var current = textInput.getText();
+        var afterToken = "";
+        if (current != null && current.startsWith("/")) {
+            int wsIdx = -1;
+            for (int i = 1; i < current.length(); i++) {
+                if (Character.isWhitespace(current.charAt(i))) { wsIdx = i; break; }
+            }
+            if (wsIdx >= 0) afterToken = current.substring(wsIdx);
+        }
+        textInput.setText("/" + cmd.name() + (afterToken.isEmpty() ? " " : afterToken));
+        textInput.setFocus();
+    }
+
+    private void disposeSlashPopup() {
+        if (slashPopup != null) {
+            slashPopup.dispose();
+            slashPopup = null;
+        }
     }
 }

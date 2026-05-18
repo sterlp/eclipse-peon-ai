@@ -12,6 +12,7 @@ import org.sterl.llmpeon.AiPlannerService;
 import org.sterl.llmpeon.ai.ConfiguredModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.ai.model.AiModel;
+import org.sterl.llmpeon.command.CommandService;
 import org.sterl.llmpeon.parts.agent.AgentModeService;
 import org.sterl.llmpeon.parts.agentsmd.AgentsMdService;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
@@ -51,6 +52,7 @@ public class PeonAiService {
     private final ConfiguredModel configuredModel;
     private final ToolService toolService;
     private final SkillService skillService;
+    private final CommandService commandService;
     private final TemplateContext context;
     private final AgentsMdService agentsMdService;
     private final AiDeveloperService developerService;
@@ -77,6 +79,7 @@ public class PeonAiService {
         this.developerService = developerService;
         this.toolService = null;
         this.skillService = null;
+        this.commandService = null;
         this.context = null;
         this.agentsMdService = null;
         this.agentMode = null;
@@ -103,6 +106,7 @@ public class PeonAiService {
         var rootPath            = EclipseUtil.workspacePath();
         toolService             = new ToolService();
         skillService            = new SkillService();
+        commandService          = new CommandService();
         context                 = new TemplateContext(rootPath);
         agentsMdService         = new AgentsMdService();
 
@@ -181,6 +185,11 @@ public class PeonAiService {
                 throw new RuntimeException("Failed to load skills from " + config.getSkillDirectory(), e);
             }
         }
+        try {
+            commandService.refresh(config.getCommandDirectory());
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load commands from " + config.getCommandDirectory(), e);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -250,6 +259,10 @@ public class PeonAiService {
 
     public SkillService getSkillService() {
         return skillService;
+    }
+
+    public CommandService getCommandService() {
+        return commandService;
     }
 
     public TemplateContext getTemplateContext() {

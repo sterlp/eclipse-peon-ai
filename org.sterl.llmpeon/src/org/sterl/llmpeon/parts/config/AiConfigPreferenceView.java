@@ -69,7 +69,8 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
         apiKeyEditor = new StringFieldEditor(PeonConstants.PREF_API_KEY, "API Key:", getFieldEditorParent());
         addField(apiKeyEditor);
         addField(new StringFieldEditor(PeonConstants.PREF_SKILL_DIRECTORY, "Skills directory:", getFieldEditorParent()));
-        
+        addField(new StringFieldEditor(PeonConstants.PREF_COMMAND_DIRECTORY, "Commands directory:", getFieldEditorParent()));
+
         buildGithubLogin();
         // -- Debug stuff
         addField(new BooleanFieldEditor(PeonConstants.PREF_LOG_RESPONSE, "Log response for debugging", getFieldEditorParent()));

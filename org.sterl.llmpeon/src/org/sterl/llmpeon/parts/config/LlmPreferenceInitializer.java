@@ -33,6 +33,7 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
         defaults.putBoolean(PeonConstants.PREF_SEND_THINKING_ENABLED, DEFAULT.isSendThinkingEnabled());
         defaults.put(PeonConstants.PREF_API_KEY, StringUtil.stripToEmpty(DEFAULT.getApiKey()));
         defaults.put(PeonConstants.PREF_SKILL_DIRECTORY, StringUtil.stripToEmpty(DEFAULT.getSkillDirectory()));
+        defaults.put(PeonConstants.PREF_COMMAND_DIRECTORY, StringUtil.stripToEmpty(DEFAULT.getCommandDirectory()));
         defaults.putBoolean(PeonConstants.PREF_DISK_TOOLS_ENABLED, false);
         defaults.put(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, "");
     }
@@ -40,23 +41,8 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
     public static LlmConfig buildWithDefaults() {
         var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
 
-        var skillDir = prefs.get(PeonConstants.PREF_SKILL_DIRECTORY, "");
-        if (StringUtil.hasValue(skillDir) && !Files.isDirectory(Path.of(skillDir))) {
-            var dir = EclipseUtil.resolveInEclipse(skillDir);
-            if (dir.isPresent()) {
-                var resource = dir.get();
-                // save Eclipse workspace-relative path to prefs (portable)
-                prefs.put(PeonConstants.PREF_SKILL_DIRECTORY, resource.getFullPath().toOSString());
-                var abs = JdtUtil.diskPathOf(resource);
-                if (abs != null) {
-                    LOG.info("Resolved skill dir " + skillDir + " as " + abs);
-                    skillDir = abs;
-                } else {
-                    LOG.warn("Could not resolve skill dir to a filesystem path for " + resource.getFullPath());
-                    skillDir = "";
-                }
-            }
-        }
+        var skillDir = resolveDirPreference(prefs, PeonConstants.PREF_SKILL_DIRECTORY, "skill");
+        var commandDir = resolveDirPreference(prefs, PeonConstants.PREF_COMMAND_DIRECTORY, "command");
 
         return LlmConfig.builder()
             .providerType(AiProvider.parse(prefs.get(PeonConstants.PREF_PROVIDER_TYPE, DEFAULT.getProviderType().name())))
@@ -67,8 +53,35 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
             .sendThinkingEnabled(prefs.getBoolean(PeonConstants.PREF_SEND_THINKING_ENABLED, DEFAULT.isSendThinkingEnabled()))
             .apiKey(prefs.get(PeonConstants.PREF_API_KEY, ""))
             .skillDirectory(skillDir)
+            .commandDirectory(commandDir)
             .diskToolsEnabled(prefs.getBoolean(PeonConstants.PREF_DISK_TOOLS_ENABLED, false))
             .build();
+    }
+
+    /**
+     * Returns an absolute filesystem path for the directory preference. If the stored value is
+     * not already an absolute directory, attempts to resolve it as an Eclipse workspace-relative
+     * resource and rewrites the preference to the portable workspace path on success.
+     */
+    private static String resolveDirPreference(org.eclipse.core.runtime.preferences.IEclipsePreferences prefs,
+            String key, String label) {
+        var dirValue = prefs.get(key, "");
+        if (StringUtil.hasValue(dirValue) && !Files.isDirectory(Path.of(dirValue))) {
+            var dir = EclipseUtil.resolveInEclipse(dirValue);
+            if (dir.isPresent()) {
+                var resource = dir.get();
+                prefs.put(key, resource.getFullPath().toOSString());
+                var abs = JdtUtil.diskPathOf(resource);
+                if (abs != null) {
+                    LOG.info("Resolved " + label + " dir " + dirValue + " as " + abs);
+                    dirValue = abs;
+                } else {
+                    LOG.warn("Could not resolve " + label + " dir to a filesystem path for " + resource.getFullPath());
+                    dirValue = "";
+                }
+            }
+        }
+        return dirValue;
     }
     
     public static void setModel(String model) {
