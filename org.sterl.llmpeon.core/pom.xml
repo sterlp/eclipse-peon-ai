@@ -12,6 +12,10 @@
 
     <artifactId>llmpeon-core</artifactId>
 
+    <properties>
+        <lombok.version>1.18.44</lombok.version>
+    </properties>
+
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -29,7 +33,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.44</version>
+            <version>${lombok.version}</version>
             <optional>true</optional>
         </dependency>
         
@@ -129,6 +133,13 @@
                 <version>3.15.0</version>
                 <configuration>
                     <release>${java.version}</release>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
             <plugin>
