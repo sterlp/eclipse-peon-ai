@@ -95,12 +95,18 @@
                                 org.sterl,
                                 dev.langchain4j,
                                 com.fasterxml.jackson.core,
+                                com.fasterxml.jackson.datatype,
                                 com.knuddels,
                                 org.jspecify,
                                 org.apache.opennlp,
                                 org.slf4j,
                                 com.vladsch.flexmark,
-                                org.jsoup
+                                org.jsoup,
+                                com.azure,
+                                org.reactivestreams,
+                                io.netty,
+                                io.projectreactor,
+                                io.projectreactor.netty
                             </includeGroupIds>
                         </configuration>
                     </execution>
@@ -118,14 +124,19 @@
                             <includeGroupIds>
                                 dev.langchain4j,
                                 com.fasterxml.jackson.core,
+                                com.fasterxml.jackson.datatype,
                                 org.jspecify,
                                 org.apache.opennlp,
-                                org.slf4j
+                                org.slf4j,
+                                com.azure,
+                                org.reactivestreams,
+                                io.netty,
+                                io.projectreactor,
+                                io.projectreactor.netty
                             </includeGroupIds>
                         </configuration>
                     </execution>
                 </executions>
-
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

@@ -15,6 +15,7 @@ import org.sterl.llmpeon.shared.StringUtil;
 
 import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
+import dev.langchain4j.model.azure.AzureOpenAiStreamingChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.googleai.GeminiThinkingConfig;
 import dev.langchain4j.model.googleai.GeminiThinkingConfig.GeminiThinkingLevel;
@@ -78,6 +79,20 @@ public enum AiProvider {
                     .header("Authorization", "Bearer " + c.getApiKey());
             
             return SharedHttpClient.cancelAndGet(request, AiModelParser::parseOpenApiModels);
+        }
+    },
+    
+    AZRUE_OPEN_AI {
+        @Override
+        StreamingChatModel buildModel(LlmConfig c) {
+            return AzureOpenAiStreamingChatModel.builder()
+                    .timeout(TIMEOUT)
+                    .endpoint(c.getUrl())
+                    .serviceVersion("2024-10-21")
+                    .deploymentName(c.getModel())
+                    .logRequestsAndResponses(true)
+                    .apiKey(c.getApiKey())
+                    .build();
         }
     },
 

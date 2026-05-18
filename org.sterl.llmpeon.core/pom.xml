@@ -32,7 +32,7 @@
             <version>1.18.44</version>
             <optional>true</optional>
         </dependency>
-        
+
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-ollama</artifactId>
@@ -76,8 +76,19 @@
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-azure-open-ai</artifactId>
+            <version>${langchain4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-codec-http2</artifactId>
+            <version>4.1.118.Final</version>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-mcp</artifactId>
-            <version>1.12.2-beta22</version>
+            <version>1.15.0-beta25</version>
         </dependency>
 
         <dependency>
@@ -85,7 +96,7 @@
             <artifactId>flexmark-html2md-converter</artifactId>
             <version>0.64.8</version>
         </dependency>
-        
+
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>

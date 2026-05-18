@@ -43,7 +43,8 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
                     { "Mistral", AiProvider.MISTRAL.name() },
                     { "Anthropic Claude", AiProvider.ANTHROPIC.name() },
                     { "GitHub Models (PAT)", AiProvider.GITHUB_MODELS.name() },
-                    { "GitHub Copilot (subscription)", AiProvider.GITHUB_COPILOT.name() }
+                    { "GitHub Copilot (subscription)", AiProvider.GITHUB_COPILOT.name() },
+                    { "Azure Open AI", AiProvider.AZRUE_OPEN_AI.name() },
                 },
                 getFieldEditorParent());
         addField(providerEditor);

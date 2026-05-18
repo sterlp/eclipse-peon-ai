@@ -1,5 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
+	<classpathentry exported="true" kind="lib" path="lib/jackson-datatype-jsr310.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/netty-buffer.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/netty-codec.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/netty-codec-dns.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/netty-codec-http.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/netty-codec-http2.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/netty-codec-socks.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/netty-handler-proxy.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/netty-resolver-dns.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/netty-tcnative-boringssl-static.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/netty-tcnative-boringssl-static-linux-aarch_64.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/netty-tcnative-boringssl-static-linux-x86_64.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/netty-tcnative-boringssl-static-osx-aarch_64.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/netty-tcnative-boringssl-static-osx-x86_64.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/netty-tcnative-boringssl-static-windows-x86_64.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/netty-tcnative-classes.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/netty-transport-classes-epoll.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/netty-transport-classes-kqueue.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/netty-transport-native-epoll-linux-x86_64.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/netty-transport-native-kqueue-osx-x86_64.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/netty-transport-native-unix-common.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/netty-resolver-dns-classes-macos.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/netty-resolver-dns-native-macos-osx-x86_64.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/reactor-core.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/reactor-netty-core.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/reactor-netty-http.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/netty-common.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/netty-handler.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/netty-transport.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/netty-resolver.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/reactive-streams.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/azure-ai-openai.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/azure-core.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/azure-core-http-netty.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/azure-json.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/azure-xml.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/langchain4j-azure-open-ai.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER">
 		<attributes>
 			<attribute name="maven.pomderived" value="true"/>
