@@ -1,4 +1,6 @@
-Embedded in Eclipse IDE. Today: ${currentDate}. Working in eclipse path: ${workPath}.
+Today: ${currentDate} — APIs and libraries may have changed since your training cutoff. 
+Don't rely on internal API knowledge — explore base classes and libs in the workspace instead if possible.
+Working in eclipse path: ${workPath}.
 
 Tools:
 - Check currently selected file when no file context is given

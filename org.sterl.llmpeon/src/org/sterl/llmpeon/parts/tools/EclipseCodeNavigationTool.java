@@ -53,10 +53,10 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
             String projectName) {
 
         ArgsUtil.requireNonBlank(typeName, "typeName");
+        if (pkg == null || pkg.length() == 0) pkg = "*";
 
         try {
-            boolean isFqn = pkg != null && pkg.contains(".") && !pkg.contains("*") 
-                    && !typeName.contains("*");
+            boolean isFqn = pkg.contains(".") && !pkg.contains("*") && !typeName.contains("*");
 
             List<IType> found = isFqn 
                     ? findByFqn(pkg, typeName, projectName) 
@@ -83,10 +83,10 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
         }
     }
 
-    @Tool("Eclipse/Java: Get full source of a type by FQN. Covers JDK and used JARs — prefer over decompiling JARs. Use this to read full source of e.g. java.io.File etc.")
+    @Tool("Eclipse/Java: Read current version of a used type. Covers JDK and used JARs — prefer over decompiling JARs. java.io.File etc.")
     public String getTypeSource(
-            @P(description = "package name for this type", name = "package") String pkg,
-            @P(description = "type name", name = "typeName") String typeName,
+            @P(description = "package name for this type e.g.: java.io", name = "package") String pkg,
+            @P(description = "type name e.g.: File", name = "typeName") String typeName,
             @P(description = "project name to limit search scope (optional)", required = false, name = "projectName") String projectName) {
 
         ArgsUtil.requireNonBlank(pkg, "package");
