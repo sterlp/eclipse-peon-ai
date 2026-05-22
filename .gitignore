@@ -37,6 +37,8 @@ Thumbs.db
 ### IDE caches ###
 .project
 
+.omc/
+
 ### Optional: falls du libs eincheckst, NICHT ignorieren
 lib/
 sources/
