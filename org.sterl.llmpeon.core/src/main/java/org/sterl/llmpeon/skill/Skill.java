@@ -3,13 +3,13 @@ package org.sterl.llmpeon.skill;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-public class SkillRecord {
+public class Skill {
     private final String name;
     private final String description;
     private final Path skillFile;
     private boolean enabled = true;
 
-    public SkillRecord(String name, String description, Path skillFile) {
+    public Skill(String name, String description, Path skillFile) {
         this.name = name;
         this.description = description;
         this.skillFile = skillFile;

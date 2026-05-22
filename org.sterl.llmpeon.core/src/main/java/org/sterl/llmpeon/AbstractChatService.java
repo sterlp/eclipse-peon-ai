@@ -13,7 +13,7 @@ import org.sterl.llmpeon.ai.ConfiguredModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
-import org.sterl.llmpeon.skill.SkillRecord;
+import org.sterl.llmpeon.skill.Skill;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.streaming.StreamingBridge;
 import org.sterl.llmpeon.template.TemplateContext;
@@ -157,7 +157,7 @@ public abstract class AbstractChatService {
     public int getTokenSize() { return tokenSize; }
     public int getTokenWindow() { return configuredModel.getTokenWindow(); }
     public TemplateContext getTemplateContext() { return templateContext; }
-    public List<SkillRecord> getSkills() { return skillService.getSkills(); }
+    public List<Skill> getSkills() { return skillService.getSkills(); }
 
     private List<ChatMessage> buildStaticMessages() {
         var messages = new ArrayList<ChatMessage>();

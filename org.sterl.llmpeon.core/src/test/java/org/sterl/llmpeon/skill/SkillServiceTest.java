@@ -29,7 +29,7 @@ class SkillServiceTest {
         SkillService service = new SkillService();
         service.refresh(SKILLS_DIR);
 
-        SkillRecord skill = service.getSkills().stream()
+        Skill skill = service.getSkills().stream()
                 .filter(s -> "eclipse-ifile-paths".equals(s.name()))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("eclipse-ifile-paths skill not found"));
@@ -65,7 +65,7 @@ class SkillServiceTest {
         var skills = service.getAllLoadedSkills();
         assertTrue(skills.size() >= 1, "Should have at least one skill");
 
-        SkillRecord firstSkill = skills.get(0);
+        Skill firstSkill = skills.get(0);
         assertTrue(firstSkill.isEnabled(), "Skills should be enabled by default");
 
         service.setSkillEnabled(firstSkill.name(), false);
@@ -89,11 +89,11 @@ class SkillServiceTest {
         assertTrue(allSkills.size() >= 1, "Should have at least one skill");
 
         service.setAllSkillsEnabled(false);
-        assertTrue(allSkills.stream().noneMatch(SkillRecord::isEnabled),
+        assertTrue(allSkills.stream().noneMatch(Skill::isEnabled),
                 "All skills should be disabled");
 
         service.setAllSkillsEnabled(true);
-        assertTrue(allSkills.stream().allMatch(SkillRecord::isEnabled),
+        assertTrue(allSkills.stream().allMatch(Skill::isEnabled),
                 "All skills should be enabled");
     }
 

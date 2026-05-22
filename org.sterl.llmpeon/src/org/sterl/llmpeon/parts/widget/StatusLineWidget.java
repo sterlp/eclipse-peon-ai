@@ -22,7 +22,7 @@ import org.eclipse.ui.PlatformUI;
 import org.sterl.llmpeon.parts.shared.EclipseUiUtil;
 import org.sterl.llmpeon.parts.shared.ImageUtil;
 import org.sterl.llmpeon.shared.StringUtil;
-import org.sterl.llmpeon.skill.SkillRecord;
+import org.sterl.llmpeon.skill.Skill;
 
 /**
  * Status bar below the action bar. Shows project pin, selected file, skills
@@ -42,7 +42,7 @@ public class StatusLineWidget extends Composite {
 
     private final Color colorWarning;
     private final Color colorError;
-    private Supplier<List<SkillRecord>> skillsProvider;
+    private Supplier<List<Skill>> skillsProvider;
     private Consumer<SkillMenuSelection> onSkillMenuChange;
 
     private final ISharedImages images = PlatformUI.getWorkbench().getSharedImages();
@@ -204,7 +204,7 @@ public class StatusLineWidget extends Composite {
     }
 
     /** Set the provider for loading skills and callback for menu changes. */
-    public void setSkillsMenuHandler(Supplier<List<SkillRecord>> provider, Consumer<SkillMenuSelection> onChange) {
+    public void setSkillsMenuHandler(Supplier<List<Skill>> provider, Consumer<SkillMenuSelection> onChange) {
         this.skillsProvider = provider;
         this.onSkillMenuChange = onChange;
     }
@@ -212,7 +212,7 @@ public class StatusLineWidget extends Composite {
     private void showSkillsMenu() {
         if (skillsProvider == null) return;
 
-        List<SkillRecord> skills = skillsProvider.get();
+        List<Skill> skills = skillsProvider.get();
         if (skills.isEmpty()) return;
 
         Menu menu = new Menu(btnSkills);
@@ -220,7 +220,7 @@ public class StatusLineWidget extends Composite {
         // "All" option at the top
         MenuItem allItem = new MenuItem(menu, SWT.CHECK);
         allItem.setText("All Skills");
-        boolean allEnabled = skills.stream().allMatch(SkillRecord::isEnabled);
+        boolean allEnabled = skills.stream().allMatch(Skill::isEnabled);
         allItem.setSelection(allEnabled);
         allItem.addListener(SWT.Selection, e -> {
             boolean enable = allItem.getSelection();
@@ -232,7 +232,7 @@ public class StatusLineWidget extends Composite {
         new MenuItem(menu, SWT.SEPARATOR);
 
         // Individual skill items
-        for (SkillRecord skill : skills) {
+        for (Skill skill : skills) {
             MenuItem item = new MenuItem(menu, SWT.CHECK);
             item.setText(skill.name());
             item.setSelection(skill.isEnabled());
