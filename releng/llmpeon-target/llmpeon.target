@@ -11,6 +11,7 @@
             <unit id="org.eclipse.platform.feature.group" />
             <unit id="org.eclipse.jdt.feature.group" />
 
+            <unit id="org.eclipse.egit.feature.group" />
         </location>
     </locations>
 </target>
