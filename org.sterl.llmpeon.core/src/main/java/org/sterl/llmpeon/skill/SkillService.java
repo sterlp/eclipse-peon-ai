@@ -47,6 +47,19 @@ public class SkillService {
         return enabled;
     }
 
+    /** Set enabled state for a specific skill by name. */
+    public void setSkillEnabled(String skillName, boolean enabled) {
+        skills.stream()
+            .filter(s -> s.name().equalsIgnoreCase(skillName))
+            .findFirst()
+            .ifPresent(s -> s.setEnabled(enabled));
+    }
+
+    /** Enable/disable all skills at once. */
+    public void setAllSkillsEnabled(boolean enabled) {
+        skills.forEach(s -> s.setEnabled(enabled));
+    }
+
     /** Total number of loaded skills regardless of enabled state. */
     public int loadedSkillCount() {
         return skills.size();
@@ -54,7 +67,12 @@ public class SkillService {
 
     /** Returns loaded skills when enabled, empty list when disabled. */
     public List<SkillRecord> getSkills() {
-        return enabled ? skills : List.of();
+        return enabled ? skills.stream().filter(SkillRecord::isEnabled).toList() : List.of();
+    }
+
+    /** Returns all loaded skills regardless of global enabled state. */
+    public List<SkillRecord> getAllLoadedSkills() {
+        return new LinkedList<>(skills);
     }
     
     public boolean refresh(String newPath) throws IOException {

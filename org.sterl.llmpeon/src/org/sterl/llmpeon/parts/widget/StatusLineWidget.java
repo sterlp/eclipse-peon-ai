@@ -1,6 +1,8 @@
 package org.sterl.llmpeon.parts.widget;
 
+import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
@@ -13,11 +15,14 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Menu;
+import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.PlatformUI;
 import org.sterl.llmpeon.parts.shared.EclipseUiUtil;
 import org.sterl.llmpeon.parts.shared.ImageUtil;
 import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.skill.SkillRecord;
 
 /**
  * Status bar below the action bar. Shows project pin, selected file, skills
@@ -37,7 +42,9 @@ public class StatusLineWidget extends Composite {
 
     private final Color colorWarning;
     private final Color colorError;
-    
+    private Supplier<List<SkillRecord>> skillsProvider;
+    private Consumer<SkillMenuSelection> onSkillMenuChange;
+
     private final ISharedImages images = PlatformUI.getWorkbench().getSharedImages();
 
     public StatusLineWidget(Composite parent, int style,
@@ -95,8 +102,15 @@ public class StatusLineWidget extends Composite {
         btnSkills.setSelection(true);
         btnSkills.setImage(images.getImage(ISharedImages.IMG_OBJ_FOLDER));
         btnSkills.setText("0 skills");
-        btnSkills.setToolTipText("Toggle skills on/off");
-        btnSkills.addListener(SWT.Selection, e -> onSkillsToggle.accept(btnSkills.getSelection()));
+        btnSkills.setToolTipText("Click to manage individual skills");
+        btnSkills.addListener(SWT.Selection, e -> {
+            if (skillsProvider != null) {
+                btnSkills.setSelection(!btnSkills.getSelection());
+                showSkillsMenu();
+            } else {
+                onSkillsToggle.accept(btnSkills.getSelection());
+            }
+        });
 
         EclipseUiUtil.newSeparator(this);
 
@@ -144,6 +158,7 @@ public class StatusLineWidget extends Composite {
     /** Update the skills toggle button text with the loaded skill count. */
     public void setSkillCount(int count) {
         btnSkills.setText(count + " skill" + (count != 1 ? "s" : ""));
+        btnSkills.setSelection(count > 0);
         btnSkills.getParent().layout(false, false);
     }
 
@@ -186,5 +201,61 @@ public class StatusLineWidget extends Composite {
                 + "%, " + StringUtil.toK(tokenUsed) + "/" + StringUtil.toK(tokenMax) + ") — click to compact the conversation");
         btnCompress.getParent().layout(false, false);
         btnCompress.setEnabled(tokenUsed > 100);
+    }
+
+    /** Set the provider for loading skills and callback for menu changes. */
+    public void setSkillsMenuHandler(Supplier<List<SkillRecord>> provider, Consumer<SkillMenuSelection> onChange) {
+        this.skillsProvider = provider;
+        this.onSkillMenuChange = onChange;
+    }
+
+    private void showSkillsMenu() {
+        if (skillsProvider == null) return;
+
+        List<SkillRecord> skills = skillsProvider.get();
+        if (skills.isEmpty()) return;
+
+        Menu menu = new Menu(btnSkills);
+
+        // "All" option at the top
+        MenuItem allItem = new MenuItem(menu, SWT.CHECK);
+        allItem.setText("All Skills");
+        boolean allEnabled = skills.stream().allMatch(SkillRecord::isEnabled);
+        allItem.setSelection(allEnabled);
+        allItem.addListener(SWT.Selection, e -> {
+            boolean enable = allItem.getSelection();
+            if (onSkillMenuChange != null) {
+                onSkillMenuChange.accept(new SkillMenuSelection(null, enable, true));
+            }
+        });
+
+        new MenuItem(menu, SWT.SEPARATOR);
+
+        // Individual skill items
+        for (SkillRecord skill : skills) {
+            MenuItem item = new MenuItem(menu, SWT.CHECK);
+            item.setText(skill.name());
+            item.setSelection(skill.isEnabled());
+            item.addListener(SWT.Selection, e -> {
+                if (onSkillMenuChange != null) {
+                    onSkillMenuChange.accept(new SkillMenuSelection(skill.name(), item.getSelection(), false));
+                }
+            });
+        }
+
+        menu.setVisible(true);
+    }
+
+    /** Encapsulates skill menu selection results. */
+    public static class SkillMenuSelection {
+        public final String skillName;      // null for "All"
+        public final boolean enabled;       // new state
+        public final boolean isAllSkills;   // true if "All" was selected
+
+        public SkillMenuSelection(String skillName, boolean enabled, boolean isAllSkills) {
+            this.skillName = skillName;
+            this.enabled = enabled;
+            this.isAllSkills = isAllSkills;
+        }
     }
 }
