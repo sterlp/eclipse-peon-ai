@@ -88,6 +88,7 @@ Example workflows:
 - [x] `v1.2.x` **MCP** Support MCP servers using langchain4j MCP integration
 - [x] `v1.3.x` **Github Copilot** Support
 - [x] `v1.4.x` **MCP stdio** support added using langchain4j
+- [x] `v1.7.5` **Peon Memory** added workspace memory to the LLM with keywords "remember this", "always do", "never do"
 
 ## Requirements
 
