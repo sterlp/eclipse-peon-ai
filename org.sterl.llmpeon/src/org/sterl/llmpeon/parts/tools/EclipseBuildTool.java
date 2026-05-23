@@ -17,7 +17,7 @@ import dev.langchain4j.agent.tool.Tool;
 
 public class EclipseBuildTool extends AbstractEclipseTool {
 
-    @Tool("Eclipse: List all open workspace projects.")
+    @Tool("List open workspace projects with their eclipse paths, disk paths, and natures.")
     public String listAllOpenEclipseProjects() {
         var sb = new StringBuilder();
         var projects = EclipseUtil.openProjects();
