@@ -52,10 +52,9 @@ public class WorkspaceMemoryTool extends AbstractEclipseTool implements MessageP
     // Tools for the LLM
     // ---------------------------------------------------------------------
 
-    @Tool("""
-            Store a brief, important workspace guideline or fact for future conversations.
-            Use this when the user says "remember this", "always do", "never do", or when you notice a recurring mistake.
-            You have only """ + MAX_ENTRIES + " memory slots, so use them for highly reusable and important information and self-learning.")
+    @Tool("Store brief, important self-corrections or personal guidelines that help you avoid repeating mistakes.\n" +
+          "For project-wide rules, conventions, or settings that all sessions should share, update AGENTS.md instead of using internal memory.\n" +
+          "You have only " + MAX_ENTRIES + " memory slots, use them for highly reusable and important information.")
     public void addToMemory(
             @P(name = "text", description = "One short brief important rule, preference, or fact.") String text) {
         ArgsUtil.requireNonBlank(text, "text");

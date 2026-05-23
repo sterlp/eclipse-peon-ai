@@ -28,3 +28,7 @@ If a question can be answered by exploring the codebase, explore the codebase in
 - `MANIFEST.MF` `Bundle-ClassPath`, `build.properties` `bin.includes`, and `.classpath` must all list the **same** JARs
 - Only whitelist needed groupIds via `includeGroupIds` - do NOT copy all transitive deps
 - Platform-provided JARs (jakarta, osgi, jna, asm, jetty, felix, etc.) must NOT be in `lib` - they come from the target platform
+
+# Docs
+
+- Always update `/doc/.vitepress/config.ts` sidebar/nav when adding new pages to `docs/`
