@@ -7,6 +7,7 @@ import java.util.Optional;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jdt.core.Flags;
 import org.eclipse.jdt.core.ICompilationUnit;
@@ -224,7 +225,11 @@ public class JdtUtil {
         if (StringUtil.hasValue(result)) return result;
         
         // check for the resource
-        if (je.getResource() instanceof IFile f) result = IoUtils.readFile(f); 
+        if (je.getResource() instanceof IFile f && f.exists()) {
+            try {
+                result = f.readString();
+            } catch (CoreException e) { throw new RuntimeException(e); }
+        }
         return result;
     }
 }

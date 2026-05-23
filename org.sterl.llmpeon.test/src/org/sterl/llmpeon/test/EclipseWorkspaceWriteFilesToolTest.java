@@ -15,14 +15,14 @@ public class EclipseWorkspaceWriteFilesToolTest extends AbstractTest {
     private final EclipseWorkspaceReadFileTool readTool = new EclipseWorkspaceReadFileTool();
 
     @Test
-    public void test_createWorkspaceFile() {
+    public void test_writeWorkspaceFile() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
         // GIVEN
         var tool = new EclipseWorkspaceWriteFileTool();
         var fileName = "/org.sterl.llmpeon.test/foo.txt";
         var message = "Hello world " + OffsetDateTime.now();
         // WHEN
-        var result = tool.createWorkspaceFile(fileName, message);
+        var result = tool.writeWorkspaceFile(fileName, message);
         
         // THEN
         assertTrue(result, result.contains(fileName));
@@ -60,7 +60,7 @@ public class EclipseWorkspaceWriteFilesToolTest extends AbstractTest {
                 // Guard against selection injection before createPartControl() initializes fields
                 if (agentMode == null || actionsBar == null) return;
         """;
-        tool.createWorkspaceFile(fileName, message);
+        tool.writeWorkspaceFile(fileName, message);
         
         // WHEN
         var result = tool.editWorkspaceFile(fileName, 
@@ -79,7 +79,7 @@ public class EclipseWorkspaceWriteFilesToolTest extends AbstractTest {
         // GIVEN
         var tool = new EclipseWorkspaceWriteFileTool();
         var fileName = "/org.sterl.llmpeon.test/foo.txt";
-        tool.createWorkspaceFile(fileName, "line1\nline2\nline3\nline4\nline5");
+        tool.writeWorkspaceFile(fileName, "line1\nline2\nline3\nline4\nline5");
 
         // WHEN — replace middle line 3, expanding it to two lines
         tool.replaceWorkspaceLine(fileName, 3, "replaced3a\nreplaced3b");
@@ -107,7 +107,7 @@ public class EclipseWorkspaceWriteFilesToolTest extends AbstractTest {
                   foo
                   This should stay
                 """ + OffsetDateTime.now();
-        tool.createWorkspaceFile(fileName, message);
+        tool.writeWorkspaceFile(fileName, message);
         
         // WHEN
         var result = tool.editWorkspaceFile(fileName, "  Line to replace\n  fooo", editString);

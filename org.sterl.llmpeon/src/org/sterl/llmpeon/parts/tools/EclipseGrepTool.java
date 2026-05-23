@@ -10,7 +10,6 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IResourceVisitor;
 import org.eclipse.core.runtime.CoreException;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
-import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.StringUtil;
@@ -107,13 +106,15 @@ public class EclipseGrepTool extends AbstractEclipseTool {
     }
 
     private int countOccurrences(IFile file, String lowerQuery) {
-        String content = IoUtils.readFile(file).toLowerCase();
-        int count = 0;
-        int idx = 0;
-        while ((idx = content.indexOf(lowerQuery, idx)) != -1) {
-            count++;
-            idx += lowerQuery.length();
-        }
-        return count;
+        try {
+            String content = file.readString().toLowerCase();
+            int count = 0;
+            int idx = 0;
+            while ((idx = content.indexOf(lowerQuery, idx)) != -1) {
+                count++;
+                idx += lowerQuery.length();
+            }
+            return count;
+        } catch (CoreException e) { return 0; }
     }
 }

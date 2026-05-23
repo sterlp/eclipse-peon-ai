@@ -12,7 +12,6 @@ import org.eclipse.core.resources.IResourceVisitor;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
-import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.FileLines;
@@ -47,7 +46,12 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
             var lines = "";
             if (startLine > 0 && endLine > 0) lines = " from " + startLine + " to " + endLine;
             onTool("Reading eclipse" + lines + " file " + filePath);
-            String content = IoUtils.readFile(f);
+            String content;
+            try {
+                content = f.readString();
+            } catch (CoreException e) {
+                throw new IllegalArgumentException(e.getMessage(), e);
+            }
             return  FileLines.extract(content, startLine, endLine);
         }
         onProblem("No eclipse file found for " + filePath);

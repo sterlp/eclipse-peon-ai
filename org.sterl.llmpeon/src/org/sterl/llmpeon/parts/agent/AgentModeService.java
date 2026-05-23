@@ -5,12 +5,12 @@ import java.util.function.Consumer;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.swt.widgets.Display;
 import org.sterl.llmpeon.AbstractChatService;
 import org.sterl.llmpeon.AiDeveloperService;
 import org.sterl.llmpeon.AiPlannerService;
 import org.sterl.llmpeon.ai.LlmConfig;
-import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.tools.AgentModeTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
@@ -140,12 +140,22 @@ public class AgentModeService {
     }
 
     public String readOverview() {
-        return IoUtils.readFile(getOverviewFile());
+        if (overviewExists())
+            try {
+                return getOverviewFile().readString();
+            } catch (CoreException e) {
+                throw new RuntimeException(e);
+            }
+        else return "";
     }
 
     public String readProblem() {
         IFile f = getProblemFile();
-        return f.exists() ? IoUtils.readFile(f) : "";
+        try {
+            return f.exists() ? f.readString() : "";
+        } catch (CoreException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public boolean hasPlan() {

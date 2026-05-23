@@ -40,49 +40,31 @@ public class DiskFileWriteTool extends AbstractTool {
         return workingDir;
     }
 
-    @Tool("Disk: Overwrite existing file.")
-    public String writeDiskFile(@P(name = "filePath") String filePath, @P(name = "newContent") String newContent) {
+    @Tool("Disk: Write file. Creates parent dirs and overwrites if exists.")
+    public String writeDiskFile(@P(name = "filePath") String filePath, @P(name = "content") String content) {
         ArgsUtil.requireNonBlank(filePath, "filePath");
-        ArgsUtil.requireNonNull(newContent, "newContent");
-
-        Path resolved = resolve(filePath);
-        if (resolved == null || !Files.isRegularFile(resolved)) {
-            throw new IllegalArgumentException(
-                    "File not found: `" + filePath + "`. Use searchDiskFiles to find the correct path.");
-        }
-
-        try {
-            String oldContent = Files.readString(resolved);
-            Files.writeString(resolved, newContent);
-            var result = new AiFileUpdate(workingDir.relativize(resolved).toString(), oldContent, newContent);
-            
-            monitor.onFileUpdate(result);
-            return "File " + result.file() + " updated.";
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to write " + filePath, e);
-        }
-    }
-
-    @Tool("Disk: Create/overwrite file. Creates parent dirs.")
-    public String createDiskFile(@P(name = "filePath") String filePath, @P(name = "content") String content) {
-        ArgsUtil.requireNonBlank(filePath, "filePath");
-        ArgsUtil.requireNonBlank(content, "newContent");
+        ArgsUtil.requireNonNull(content, "content");
 
         Path resolved = resolve(filePath);
         if (resolved == null) {
-            throw new IllegalArgumentException("Cannot resolve path: " + filePath + " got: " + resolved);
+            throw new IllegalArgumentException("Cannot resolve path: " + filePath);
         }
-        
+
         try {
             boolean existed = Files.exists(resolved);
+            String oldContent = existed ? Files.readString(resolved) : "";
             Files.createDirectories(resolved.getParent());
             Files.writeString(resolved, content);
 
+            if (existed) {
+                monitor.onFileUpdate(new AiFileUpdate(workingDir.relativize(resolved).toString(), oldContent, content));
+            }
+            
             var msg = (existed ? "Updated" : "Created") + " file: " + workingDir.relativize(resolved);
             onTool(msg);
             return msg;
         } catch (IOException e) {
-            throw new RuntimeException("Failed to create " + filePath, e);
+            throw new RuntimeException("Failed to write " + filePath, e);
         }
     }
 

@@ -27,14 +27,6 @@ public class IoUtils {
         return result.toString(charset);
     }
 
-    public static String readFile(IFile file) {
-        try {
-            return file.readString();
-        } catch (CoreException e) {
-            throw new RuntimeException("Failed to read " + JdtUtil.pathOf(file), e);
-        }
-    }
-
     /**
      * Writes content to a project-relative path, creating parent folders as needed.
      * Uses Eclipse IFile APIs so workspace history and refresh notifications are triggered.

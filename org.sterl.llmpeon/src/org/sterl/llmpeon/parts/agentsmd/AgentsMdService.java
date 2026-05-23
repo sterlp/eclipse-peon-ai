@@ -9,7 +9,6 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
 import org.sterl.llmpeon.parts.StandingOrdersBuilder.MessageProvider;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
-import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.template.TemplateContext;
 
@@ -30,13 +29,14 @@ public class AgentsMdService implements MessageProvider {
     
     @Override
     public ChatMessage apply(TemplateContext t) {
-        if (!enabled.get() && agentsMd.get() == null) return null;
+        if (!enabled.get() || agentsMd.get() == null || !agentsMd.get().exists()) return null;
         var f = agentsMd.get();
-        var text = t.process(IoUtils.readFile(f));
-        return UserMessage.from("AGENTS.md: " + JdtUtil.pathOf(f) +
-                "\nUse this file for critical, non-obvious, always-needed project settings — like workspace memory, but scoped to this project. Keep it very short, and update or clean up entries as work evolves so only current, always relevant rules remain.\n" +
-                "---\n\n" +
-                text);
+        try {
+            var text = t.process(f.readString());
+            return UserMessage.from(String.format(HEADER, JdtUtil.pathOf(f)) + "\n" + text);
+        } catch (CoreException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void setEnabled(boolean value) {
