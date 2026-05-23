@@ -7,12 +7,15 @@ import java.util.function.Consumer;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
+import org.sterl.llmpeon.AbstractChatService;
 import org.sterl.llmpeon.AiDeveloperService;
 import org.sterl.llmpeon.AiPlannerService;
+import org.sterl.llmpeon.PeonMode;
 import org.sterl.llmpeon.ai.ConfiguredModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.ai.model.AiModel;
 import org.sterl.llmpeon.command.CommandService;
+import org.sterl.llmpeon.parts.StandingOrdersBuilder.MessageProvider;
 import org.sterl.llmpeon.parts.agent.AgentModeService;
 import org.sterl.llmpeon.parts.agentsmd.AgentsMdService;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
@@ -34,6 +37,8 @@ import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 import org.sterl.llmpeon.tool.tools.SkillTool;
 
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 
 /**
@@ -48,7 +53,7 @@ import dev.langchain4j.data.message.UserMessage;
  * without requiring locks. The downstream setters on individual services are called from the
  * Eclipse DI thread and are inherently serialized by the single-threaded event dispatch.</p>
  */
-public class PeonAiService {
+public class PeonAiService implements MessageProvider {
 
     private final ConfiguredModel configuredModel;
     private final ToolService toolService;
@@ -68,8 +73,9 @@ public class PeonAiService {
 
     /** Written from Eclipse DI thread, read from background LLM job threads. */
     private final AtomicReference<IProject> currentProject = new AtomicReference<>();
-
-
+    
+    private volatile PeonMode mode = PeonMode.DEV;
+    
     /**
      * Package-private constructor for unit tests — accepts pre-built services to avoid
      * hard Eclipse dependencies ({@code EclipseUtil.workspacePath()}, Eclipse tools, etc.).
@@ -140,22 +146,35 @@ public class PeonAiService {
 
         mcpConnectionService = new McpConnectionService(toolService, mcpStateChange);
     }
+    
+    public AbstractChatService getActiveService() {
+        return switch (getPeonMode()) {
+            case DEV   -> getDeveloperService();
+            case PLAN  -> getPlannerService();
+            case AGENT -> getAgentMode().getActiveService();
+        };
+    }
 
     /**
      * Updates the active project across all project-aware services.
      * Safe to call from any thread — each downstream setter manages its own state.
      */
     public void setProject(IProject project) {
-        var projectPath = JdtUtil.pathOf(project);
         currentProject.set(project);
         agentsMdService.load(project);
         agentMode.setProject(project);  // volatile write inside AgentModeService
+
+        var projectPath = JdtUtil.pathOf(project);
         context.setWorkingDir(projectPath);
-        
+
         workspaceWriteFilesTool.setCurrentProject(project);
-        
-        diskFileWriteTool.setWorkingDir(projectPath);
-        diskFileReadTool.setWorkingDir(projectPath);
+
+        // disk tools work with the disk path not eclipse path
+        projectPath = JdtUtil.diskPathOf(project);
+        if (projectPath != null) {
+            diskFileWriteTool.setWorkingDir(projectPath);
+            diskFileReadTool.setWorkingDir(projectPath);
+        }
     }
 
     /**
@@ -296,5 +315,34 @@ public class PeonAiService {
 
     public void withThinking(boolean enabled) {
         configuredModel.withThinking(enabled);
+    }
+
+    public void setPeonMode(PeonMode mode) {
+        if (mode == PeonMode.AGENT) {
+            getToolService().addTool(getAgentModeTools());
+            getAgentMode().reset();
+            getAgentMode().setAutonomous(true);
+            if (getAgentMode().overviewExists()) {
+                getAgentMode().getActiveService().addMessage(UserMessage.from(
+                        "Existing plan found:\n\n" + getAgentMode().readOverview()));
+                getAgentMode().openOverviewInEditor();
+            }
+        } else {
+            getToolService().removeTool(getAgentModeTools());
+            getAgentMode().reset();
+        }
+    }
+    
+    public PeonMode getPeonMode() {
+        return mode;
+    }
+
+    @Override
+    public ChatMessage apply(TemplateContext t) {
+        var agentMode = getAgentMode();
+        if (getPeonMode() == PeonMode.AGENT && agentMode.hasPlan()) {
+            return SystemMessage.from(agentMode.planPathHint());
+        }
+        return null;
     }
 }

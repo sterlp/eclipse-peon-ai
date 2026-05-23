@@ -176,6 +176,10 @@ public class ActionsBarWidget extends Composite {
     public void setAutonomous(boolean value) {
         chkAutonomous.setSelection(value);
     }
+    
+    public boolean getAutonomous() {
+        return chkAutonomous.getSelection();
+    }
 
     /** Set the Think toggle state without firing the listener. */
     public void setThinkEnabled(boolean value) {

@@ -90,10 +90,14 @@ public class AIChatView implements EclipseAiMonitor {
     private final AtomicReference<IProgressMonitor> monitorRef = new AtomicReference<>(new NullProgressMonitor());
     private final VoiceInputService voiceService = new VoiceInputService();
     private final WorkspaceMemoryTool workspaceMemoryTool = WorkspaceMemoryTool.getInstance();
+    
+    private final StandingOrdersBuilder standingOrders = new StandingOrdersBuilder(aiService.getTemplateContext())
+            .add(aiService)
+            .add(workspaceMemoryTool)
+            .add(aiService.getAgentsMdService());
+    
     private volatile boolean recording = false;
 
-    private volatile PeonMode currentMode = PeonMode.DEV;
-    
     private AtomicReference<LlmConfig> lastListedConfig = new AtomicReference<>();
     private volatile IProject currentProject;
     private volatile boolean projectPinned = false;
@@ -179,9 +183,10 @@ public class AIChatView implements EclipseAiMonitor {
     }
 
     private void onClear() {
-        getActiveService().clear();
+        var s = aiService.getActiveService();
+        s.clear();
         chatHistory.clear();
-        statusLine.updateCompact(getActiveService().getTokenSize(), getActiveService().getTokenWindow());
+        statusLine.updateCompact(s.getTokenSize(), s.getTokenWindow());
     }
 
     @PreDestroy
@@ -257,7 +262,7 @@ public class AIChatView implements EclipseAiMonitor {
         if (actionsBar != null) {
             EclipseUtil.runInUiThread(parent, () -> {
                 actionsBar.setAgentModeAvailable(currentProject != null && currentProject.isOpen());
-                if (currentProject == null && currentMode == PeonMode.AGENT) {
+                if (currentProject == null && aiService.getPeonMode() == PeonMode.AGENT) {
                     onModeChange(PeonMode.DEV);
                 }
                 refreshStatusLine();
@@ -291,9 +296,10 @@ public class AIChatView implements EclipseAiMonitor {
     @Override
     public void onChatResponse(SimpleMessage m) {
         EclipseUtil.runInUiThread(parent, () -> {
+            var ai = aiService.getActiveService();
             chatHistory.hideLiveStatus();
             chatHistory.appendMessage(m);
-            statusLine.updateCompact(getActiveService().getTokenSize(), getActiveService().getTokenWindow());
+            statusLine.updateCompact(ai.getTokenSize(), ai.getTokenWindow());
         });
     }
 
@@ -305,7 +311,7 @@ public class AIChatView implements EclipseAiMonitor {
                 aiService.getAgentMode().startImplementation();
             }
             refreshStatusLine();
-            actionsBar.updateModeUI(currentMode, isImplEnabled());
+            actionsBar.updateModeUI(aiService.getPeonMode(), isImplEnabled());
         });
     }
 
@@ -343,8 +349,8 @@ public class AIChatView implements EclipseAiMonitor {
             currentProject,
             getSelectedFile()
         );
-        var active = getActiveService();
-        statusLine.updateCompact(active.getTokenSize(), active.getTokenWindow());
+        var ai = aiService.getActiveService();
+        statusLine.updateCompact(ai.getTokenSize(), ai.getTokenWindow());
     }
 
     private void syncAgentsMdToggle() {
@@ -356,13 +362,13 @@ public class AIChatView implements EclipseAiMonitor {
 
     private void refreshChat() {
         chatHistory.clearMessages();
-        getActiveService().getMessages().forEach(chatHistory::appendMessage);
+        aiService.getActiveService().getMessages().forEach(chatHistory::appendMessage);
         refreshStatusLine();
-        actionsBar.updateModeUI(currentMode, isImplEnabled());
+        actionsBar.updateModeUI(aiService.getPeonMode(), isImplEnabled());
     }
 
     private boolean isImplEnabled() {
-        return switch (currentMode) {
+        return switch (aiService.getPeonMode()) {
             case PLAN  -> aiService.getPlannerService().getMessages().stream().anyMatch(m -> m.type() == ChatMessageType.AI);
             case AGENT -> aiService.getAgentMode().overviewExists();
             default    -> false;
@@ -497,21 +503,8 @@ public class AIChatView implements EclipseAiMonitor {
     // -------------------------------------------------------------------------
 
     private void onModeChange(PeonMode mode) {
-        if (mode == PeonMode.AGENT) {
-            aiService.getToolService().addTool(aiService.getAgentModeTools());
-            aiService.getAgentMode().reset();
-            aiService.getAgentMode().setAutonomous(true);
-            actionsBar.setAutonomous(true);
-            if (aiService.getAgentMode().overviewExists()) {
-                aiService.getAgentMode().getActiveService().addMessage(UserMessage.from(
-                        "Existing plan found:\n\n" + aiService.getAgentMode().readOverview()));
-                aiService.getAgentMode().openOverviewInEditor();
-            }
-        } else {
-            aiService.getToolService().removeTool(aiService.getAgentModeTools());
-            aiService.getAgentMode().reset();
-        }
-        currentMode = mode;
+        aiService.getAgentMode().setAutonomous(actionsBar.getAutonomous());
+        aiService.setPeonMode(mode);
         refreshChat();
         applyShellCommandConfirmation();
     }
@@ -525,12 +518,12 @@ public class AIChatView implements EclipseAiMonitor {
     // at least be moved to the AIChatViewController
     // so doSendMessage(); here can be removed or better be reused? as we use this also as button action
     private void doStartImpl() {
-        if (currentMode == PeonMode.AGENT) {
+        if (aiService.getPeonMode() == PeonMode.AGENT) {
             aiService.getAgentMode().startImplementation();
             refreshChat();
         } else {
             // PLAN -> DEV: hand off the plan to the developer service
-            currentMode = PeonMode.DEV;
+            aiService.setPeonMode(PeonMode.DEV);
             actionsBar.updateModeUI(PeonMode.DEV, true);
             if (aiService.startImplementation()) {
                 refreshChat();
@@ -553,7 +546,7 @@ public class AIChatView implements EclipseAiMonitor {
     private void doCompressContext() {
         chatHistory.clear();
 
-        var active = getActiveService();
+        var active = aiService.getActiveService();
         if (active.getMessages().isEmpty()) return;
         lockWhileWorking(true);
         Job.create("Compressing context", monitor -> {
@@ -580,7 +573,7 @@ public class AIChatView implements EclipseAiMonitor {
             return;
         }
 
-        final var active = getActiveService();
+        var active = aiService.getActiveService();
         if (!applySlashCommandIfPresent(active)) return;
 
         final var selection = getUserSelection();
@@ -604,19 +597,13 @@ public class AIChatView implements EclipseAiMonitor {
 
         lockWhileWorking(true);
         Job.create("Peon AI request", monitor -> {
-            monitor.beginTask("Arbeit, Arbeit!", currentMode == PeonMode.AGENT ? ToolService.MAX_ITERATIONS * 2 : ToolService.MAX_ITERATIONS);
+            monitor.beginTask("Arbeit, Arbeit!", aiService.getPeonMode() == PeonMode.AGENT ? ToolService.MAX_ITERATIONS * 2 : ToolService.MAX_ITERATIONS);
             monitorRef.set(monitor);
             Exception ex = null;
             try {
-                var memoryMessage = workspaceMemoryTool.toChatMessage().orElse(null);
-
-                active.setStandingOrders(StandingOrdersBuilder.build(
-                        getSelectedFile(), 
-                        aiService.getAgentsMdService(), 
-                        aiService.getTemplateContext(),
-                        currentMode, 
-                        aiService.getAgentMode(),
-                        memoryMessage));
+                active.setStandingOrders(this.standingOrders.build(
+                        currentProject,
+                        getSelectedFile()));
                 
                 active.call(text.isEmpty() ? null : text, this);
             } catch (ToolExecutionException e) {
@@ -774,14 +761,6 @@ public class AIChatView implements EclipseAiMonitor {
                 return PeonConstants.okStatus("Transcription finished.");
             }).schedule();
         }
-    }
-
-    private AbstractChatService getActiveService() {
-        return switch (currentMode) {
-            case DEV   -> aiService.getDeveloperService();
-            case PLAN  -> aiService.getPlannerService();
-            case AGENT -> aiService.getAgentMode().getActiveService();
-        };
     }
 
     private String getUserSelection() {

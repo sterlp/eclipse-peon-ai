@@ -19,6 +19,8 @@ import org.junit.BeforeClass;
 
 public abstract class AbstractTest {
     
+    protected static IProject project;
+    
     public static void assertContains(String value, String expected) {
         assertNotNull("Extected to find " + expected, value);
         assertTrue("Expected:\n"
@@ -53,7 +55,7 @@ public abstract class AbstractTest {
         // Required for projects outside the runtime workspace directory
         desc.setLocation(IPath.fromOSString(projectDir.getAbsolutePath()));
 
-        IProject project = workspace.getRoot().getProject(desc.getName());
+        project = workspace.getRoot().getProject(desc.getName());
         workspace.run(monitor -> {
             // Remove stale registration from previous runs (does not delete files on disk)
             if (project.exists()) {

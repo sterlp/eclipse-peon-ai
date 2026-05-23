@@ -4,14 +4,15 @@ import static org.sterl.llmpeon.parts.PeonConstants.PLUGIN_ID;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
+import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.osgi.service.prefs.BackingStoreException;
+import org.sterl.llmpeon.parts.StandingOrdersBuilder.MessageProvider;
 import org.sterl.llmpeon.parts.tools.AbstractEclipseTool;
 import org.sterl.llmpeon.shared.ArgsUtil;
+import org.sterl.llmpeon.template.TemplateContext;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,7 +22,7 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 
-public class WorkspaceMemoryTool extends AbstractEclipseTool {
+public class WorkspaceMemoryTool extends AbstractEclipseTool implements MessageProvider {
 
     private static final String PREF_KEY = "workspaceGuidelineMemory";
     private static final int MAX_ENTRIES = 500;
@@ -122,29 +123,6 @@ public class WorkspaceMemoryTool extends AbstractEclipseTool {
     }
 
     // ---------------------------------------------------------------------
-    // For chat integration: build Memory ChatMessage
-    // ---------------------------------------------------------------------
-
-    public Optional<ChatMessage> toChatMessage() {
-        if (entries.isEmpty())
-            return Optional.empty();
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("Memory:\n");
-        sb.append("These workspace guidelines refine how you work here. ")
-                .append("Follow them whenever they apply.\n\n");
-
-        for (int i = 0; i < entries.size(); i++) {
-            WorkspaceGuideline g = entries.get(i);
-            int displayIndex = i + 1;
-            sb.append(displayIndex).append(". [").append(g.createdAt()).append("] ").append(g.text()).append("\n");
-        }
-
-        String content = sb.toString().trim();
-        return Optional.of(new AiMessage(content));
-    }
-
-    // ---------------------------------------------------------------------
     // Storage helpers (Jackson)
     // ---------------------------------------------------------------------
 
@@ -172,5 +150,22 @@ public class WorkspaceMemoryTool extends AbstractEclipseTool {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    public ChatMessage apply(TemplateContext t) {
+        if (entries.isEmpty()) return null;
+        
+        StringBuilder sb = new StringBuilder();
+        sb.append("Your memory of rules and guidelines and informations for your work:\n\n");
+        
+        for (int i = 0; i < entries.size(); i++) {
+            WorkspaceGuideline g = entries.get(i);
+            int displayIndex = i + 1;
+            sb.append(displayIndex).append(". [").append(g.createdAt()).append("] ").append(g.text()).append("\n");
+        }
+        
+        String content = sb.toString().trim();
+        return new AiMessage(content);
     }
 }

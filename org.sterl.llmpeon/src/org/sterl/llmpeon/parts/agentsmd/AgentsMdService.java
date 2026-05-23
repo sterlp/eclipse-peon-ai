@@ -7,13 +7,17 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
+import org.sterl.llmpeon.parts.StandingOrdersBuilder.MessageProvider;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
+import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.template.TemplateContext;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
 
-public class AgentsMdService {
+public class AgentsMdService implements MessageProvider {
 
     private static final String HEADER = 
             "AGENTS.md: %s\n" +
@@ -23,6 +27,17 @@ public class AgentsMdService {
     private IProject project;
     private final AtomicReference<IFile> agentsMd = new AtomicReference<>();
     private final AtomicBoolean enabled = new AtomicBoolean(true);
+    
+    @Override
+    public ChatMessage apply(TemplateContext t) {
+        if (!enabled.get() && agentsMd.get() == null) return null;
+        var f = agentsMd.get();
+        var text = t.process(IoUtils.readFile(f));
+        return UserMessage.from("AGENTS.md: " + JdtUtil.pathOf(f) +
+                "\nUse this file for critical, non-obvious, always-needed project settings — like workspace memory, but scoped to this project. Keep it very short, and update or clean up entries as work evolves so only current, always relevant rules remain.\n" +
+                "---\n\n" +
+                text);
+    }
 
     public void setEnabled(boolean value) {
         enabled.set(value);
@@ -56,7 +71,6 @@ public class AgentsMdService {
         }
         String processed = context.process(content);
         String fullText = String.format(HEADER, JdtUtil.pathOf(file)) + processed;
-        System.err.println(fullText);
         return Optional.of(AiMessage.from(fullText));
     }
 
@@ -70,14 +84,13 @@ public class AgentsMdService {
         return agentsMd.get() != null;
     }
 
-    // -------------------------------------------------------------------------
-
     static final String NAMES[] = {
             "AGENTS.MD",
             "AGENTS.md",
             "Agents.md",
             "agents.md",
             "rules.md",
+            "AGENT.md",
     };
     private Optional<IFile> resolveFile() {
         if (project == null) return Optional.empty();
