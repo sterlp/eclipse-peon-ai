@@ -1,4 +1,4 @@
-package org.sterl.llmpeon.parts.tools;
+package org.sterl.llmpeon.parts.tools.memory;
 
 import static org.sterl.llmpeon.parts.PeonConstants.PLUGIN_ID;
 
@@ -10,7 +10,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.osgi.service.prefs.BackingStoreException;
-import org.sterl.llmpeon.aimemory.WorkspaceGuideline;
+import org.sterl.llmpeon.parts.tools.AbstractEclipseTool;
 import org.sterl.llmpeon.shared.ArgsUtil;
 
 import com.fasterxml.jackson.core.type.TypeReference;

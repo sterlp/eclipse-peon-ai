@@ -46,7 +46,7 @@ import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.shared.SimpleDiff;
 import org.sterl.llmpeon.parts.tools.AskUserTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
-import org.sterl.llmpeon.parts.tools.WorkspaceMemoryTool;
+import org.sterl.llmpeon.parts.tools.memory.WorkspaceMemoryTool;
 import org.sterl.llmpeon.parts.widget.ActionsBarWidget;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget;
 import org.sterl.llmpeon.parts.widget.StatusLineWidget;
@@ -154,6 +154,7 @@ public class AIChatView implements EclipseAiMonitor {
             this::onPinChange,
             this::onSkillsToggle,
             enabled -> aiService.getMcpConnectionService().toggle(enabled),
+            this::onAgentsMdToggle,
             this::doCompressContext
         );
 
@@ -272,6 +273,17 @@ public class AIChatView implements EclipseAiMonitor {
         }
     }
 
+    private void onAgentsMdToggle(boolean enabled) {
+        try {
+            var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
+            prefs.putBoolean(PeonConstants.PREF_AGENTS_MD_ENABLED, enabled);
+            prefs.flush();
+        } catch (Exception e) {
+            LOG.warn("Failed to save agents.md preference", e);
+        }
+        aiService.getAgentsMdService().setEnabled(enabled);
+    }
+
     // -------------------------------------------------------------------------
     // EclipseAiMonitor
     // -------------------------------------------------------------------------
@@ -326,12 +338,20 @@ public class AIChatView implements EclipseAiMonitor {
     public void refreshStatusLine() {
         statusLine.update(
             aiService.getSkillService().getSkills().size(),
-            aiService.getAgentsMdService().hasAgentFile(),
+            aiService.getAgentsMdService().getAgentFileName(),
+            aiService.getAgentsMdService().isEnabled(),
             currentProject,
             getSelectedFile()
         );
         var active = getActiveService();
         statusLine.updateCompact(active.getTokenSize(), active.getTokenWindow());
+    }
+
+    private void syncAgentsMdToggle() {
+        var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
+        boolean enabled = prefs.getBoolean(PeonConstants.PREF_AGENTS_MD_ENABLED, true);
+        statusLine.setAgentsMdEnabled(enabled);
+        aiService.getAgentsMdService().setEnabled(enabled);
     }
 
     private void refreshChat() {
@@ -374,6 +394,7 @@ public class AIChatView implements EclipseAiMonitor {
         actionsBar.setThinkEnabled(config.isThinkingEnabled());
         applyMcpConfig();
         chatInput.setVoiceInputVisible(VoicePreferenceInitializer.buildWithDefaults().enabled());
+        syncAgentsMdToggle();
         refreshStatusLine();
         reloadModelsIfNeeded(); // TODO this is miss leading - we do the same here again
         applyShellCommandConfirmation();
@@ -515,7 +536,12 @@ public class AIChatView implements EclipseAiMonitor {
                 refreshChat();
                 if (StringUtil.hasNoValue(chatInput.getText())) {
                     // some models e.g. Qwen need a use message as last message
-                    chatInput.setText("Start implementation");
+                    chatInput.setText("""
+                            Start implementing this plan. Save larger plans in the plans/ directory using a sensible filename (for example, based on the title or main goal). 
+                            Treat that plan file as your long-term memory when needed. 
+                            Keep token usage low: when you switch to a different piece of work, 
+                            use the compressor tool to summarize this session and echo the key next steps plus the plan file path in the preserved instructions.
+                            """);
                 }
                 doSendMessage();
             } else {

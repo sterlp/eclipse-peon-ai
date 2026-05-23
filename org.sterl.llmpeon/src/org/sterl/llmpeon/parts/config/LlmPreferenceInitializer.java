@@ -42,6 +42,7 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
         defaults.put(PeonConstants.PREF_DEV_TEMPERATURE, String.valueOf(DEFAULT.getDevTemperature()));
         defaults.put(PeonConstants.PREF_QUERY_PARAMS, "");
         defaults.put(PeonConstants.PREF_HEADER_PARAMS, "");
+        defaults.putBoolean(PeonConstants.PREF_AGENTS_MD_ENABLED, true);
     }
     
     public static LlmConfig buildWithDefaults() {

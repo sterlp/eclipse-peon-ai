@@ -1,4 +1,4 @@
-package org.sterl.llmpeon.aimemory;
+package org.sterl.llmpeon.parts.tools.memory;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;

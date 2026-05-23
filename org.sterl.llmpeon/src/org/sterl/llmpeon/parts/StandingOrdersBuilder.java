@@ -40,9 +40,7 @@ public class StandingOrdersBuilder {
                         : "Disk path of eclipse project: " + projectDiskPath))
                 );
         }
-        if (agentsMdService.hasAgentFile()) {
-            agentsMdService.agentMessage(context).ifPresent(orders::add);
-        }
+        agentsMdService.agentMessage(context).ifPresent(orders::add);
         if (memoryMessage != null) {
             orders.add(memoryMessage);
         }

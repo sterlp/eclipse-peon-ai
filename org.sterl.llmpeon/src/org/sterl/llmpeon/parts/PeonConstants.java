@@ -37,6 +37,8 @@ public interface PeonConstants {
     String PREF_VOICE_MIXER    = "voice.mixer";       // mixer name — empty = system default
 
 
+    String PREF_AGENTS_MD_ENABLED  = "agentsMd.enabled";   // boolean, default true
+
     public static IStatus okStatus(String message) {
         return new Status(IStatus.OK, PLUGIN_ID, message);
     }
