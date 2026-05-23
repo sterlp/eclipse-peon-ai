@@ -65,9 +65,9 @@ public class AgentModeService {
     private final Consumer<IFile> openInEditorCallback;
 
     private volatile IProject project;
-    private Phase phase = Phase.PLANNING;
-    private boolean autonomous = false;
-    private int retryCount = 0;
+    private volatile Phase phase = Phase.PLANNING;
+    private volatile boolean autonomous = false;
+    private volatile int retryCount = 0;
     private volatile boolean implementationRequested = false;
 
     public AgentModeService(AiPlannerService plannerService, AiDeveloperService developerService,

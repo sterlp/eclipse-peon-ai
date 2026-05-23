@@ -9,13 +9,14 @@ import dev.langchain4j.agent.tool.Tool;
 public class CompressorAgentTool extends AbstractTool {
     public static final String NAME = "CompressorAgentTool";
 
-    @Tool(name = CompressorAgentTool.NAME, value = "Compress conversation history to free context.")
+    @Tool(name = CompressorAgentTool.NAME, value = "Compress the current conversation history to free context while preserving key instructions.")
     public String compressorAgent(
-            @P(description = "instructions to preserve / echo back as next steps or command to yourself", required = false, name = "preserve") String preserve) {
+            @P(description = "Short instructions or next steps to keep and echo back after compression.", required = false, name = "preserve") String preserve) {
         var summary = new AiCompressorAgent(chatModel).call(memory, monitor);
-        return "Context compressed. Summary:\n" 
-                + summary.aiMessage().text()
-                + "\nPreserved:\n" + StringUtil.stripToEmpty(preserve);
+        return summary.aiMessage().text() 
+                + (StringUtil.hasValue(preserve) 
+                        ? "\nPreserved:\n" + StringUtil.stripToEmpty(preserve)
+                        : "");
     }
     
     @Override

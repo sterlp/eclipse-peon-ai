@@ -1,0 +1,1 @@
+- run eclipse tests with tycho shell: `mvn clean verify`

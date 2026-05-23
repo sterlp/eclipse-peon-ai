@@ -1,4 +1,5 @@
-Changes in this project have to be build with maven - build the parent project - to update the plugin:
-
-- `mvn clean verify`
 - use lombok for Pojos
+- use eclipse tool to build test after code changes
+
+Build changes for /org.sterl.llmpeon:
+- `mvn clean verify`

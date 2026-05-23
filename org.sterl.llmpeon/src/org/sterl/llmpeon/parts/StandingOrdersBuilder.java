@@ -1,17 +1,18 @@
 package org.sterl.llmpeon.parts;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.function.Function;
 
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
-import org.sterl.llmpeon.PeonMode;
-import org.sterl.llmpeon.parts.agent.AgentModeService;
-import org.sterl.llmpeon.parts.agentsmd.AgentsMdService;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.template.TemplateContext;
 
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
 
 /**
  * Assembles the standing-orders system messages that are prepended each call.
@@ -20,35 +21,49 @@ import dev.langchain4j.data.message.SystemMessage;
  */
 public class StandingOrdersBuilder {
 
-    private StandingOrdersBuilder() {}
-
-    public static List<ChatMessage> build(
-            IResource selectedResource,
-            AgentsMdService agentsMdService,
-            TemplateContext context,
-            PeonMode currentMode,
-            AgentModeService agentMode,
-            ChatMessage memoryMessage) {
-
-        var orders = new ArrayList<ChatMessage>();
+    public interface MessageProvider extends Function<TemplateContext, ChatMessage> {}
+    
+    private final TemplateContext context;
+    private final Set<MessageProvider> providers = new LinkedHashSet<StandingOrdersBuilder.MessageProvider>();
+    
+    public StandingOrdersBuilder(TemplateContext context) {
+        super();
+        this.context = context;
+    }
+    public StandingOrdersBuilder add(MessageProvider provider) {
+        providers.add(provider);
+        return this;
+    }
+    
+    public List<ChatMessage> build(
+            IProject selectedProject,
+            IResource selectedResource) {
+        
+        var result = new ArrayList<ChatMessage>();
+        var msg = buildSelectedMessage(selectedProject, selectedResource);
+        if (msg != null) result.add(msg);
+        
+        for (var p : providers) {
+            msg = p.apply(context);
+            if (msg != null) result.add(msg);
+        }
+        
+        return result;
+    }
+    
+    ChatMessage buildSelectedMessage(IProject selectedProject,
+            IResource selectedResource) {
+        if (selectedProject == null && selectedResource == null) return null;
+        
+        String msg = "Selected:";
+        if (selectedProject != null) {
+            msg += "\nEclipse project: " + selectedProject.getName();
+            msg += "\nDisk path: " + JdtUtil.diskPathOf(selectedProject);
+        }
         if (selectedResource != null) {
-            var projectDiskPath = JdtUtil.diskPathOf(selectedResource.getProject());
-            orders.add(SystemMessage.from(
-                    "Eclipse selected file filePath: " + JdtUtil.pathOf(selectedResource) +
-                    (projectDiskPath == null 
-                        ? "" 
-                        : "Disk path of eclipse project: " + projectDiskPath))
-                );
+            msg += "\nFile selected: " + JdtUtil.pathOf(selectedResource);
+            msg += "\nDisk path: " + JdtUtil.diskPathOf(selectedResource);
         }
-        if (agentsMdService.hasAgentFile()) {
-            agentsMdService.agentMessage(context).ifPresent(orders::add);
-        }
-        if (memoryMessage != null) {
-            orders.add(memoryMessage);
-        }
-        if (currentMode == PeonMode.AGENT && agentMode.hasPlan()) {
-            orders.add(SystemMessage.from(agentMode.planPathHint()));
-        }
-        return orders;
+        return UserMessage.from(msg);
     }
 }
