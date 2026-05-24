@@ -522,7 +522,7 @@ public class AIChatView implements EclipseAiMonitor {
             aiService.getAgentMode().startImplementation();
             refreshChat();
         } else {
-            // PLAN -> DEV: hand off the plan to the developer service
+            // PLAN -> DEV: hand off the plan to the developer subject
             aiService.setPeonMode(PeonMode.DEV);
             actionsBar.updateModeUI(PeonMode.DEV, true);
             if (aiService.startImplementation()) {
@@ -695,7 +695,7 @@ public class AIChatView implements EclipseAiMonitor {
 
     /**
      * If the chat input starts with {@code /name}, looks up the command and installs its body as
-     * the one-shot system prompt on the active chat service. The slash token is stripped from the
+     * the one-shot system prompt on the active chat subject. The slash token is stripped from the
      * input so only the trailing user text is sent. Returns {@code false} and reports a problem
      * when the name is unknown so the caller can abort the send.
      */

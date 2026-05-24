@@ -1,29 +1,30 @@
 package org.sterl.llmpeon.skill;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Objects;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import org.sterl.llmpeon.shared.PromptYmlParser;
 import org.sterl.llmpeon.template.TemplateContext;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
+import lombok.NoArgsConstructor;
 
+@NoArgsConstructor
 public class SkillService {
 
-    private Path skillsDirectory;
-    private final List<Skill> skills = new LinkedList<>();
-    private boolean enabled = true;
-
-    public SkillService() {
-    }
+    private volatile Path skillsDirectory;
+    private final Map<String, Skill> skills = new ConcurrentHashMap<>();
+    private volatile boolean enabled = true;
 
     public SkillService(Path skillsDirectory) throws IOException {
         refresh(skillsDirectory);
@@ -49,15 +50,13 @@ public class SkillService {
 
     /** Set enabled state for a specific skill by name. */
     public void setSkillEnabled(String skillName, boolean enabled) {
-        skills.stream()
-            .filter(s -> s.name().equalsIgnoreCase(skillName))
-            .findFirst()
-            .ifPresent(s -> s.setEnabled(enabled));
+        var s = skills.get(skillName.toLowerCase(Locale.ROOT));
+        if (s != null) s.setEnabled(enabled);
     }
 
     /** Enable/disable all skills at once. */
     public void setAllSkillsEnabled(boolean enabled) {
-        skills.forEach(s -> s.setEnabled(enabled));
+        skills.values().forEach(s -> s.setEnabled(enabled));
     }
 
     /** Total number of loaded skills regardless of enabled state. */
@@ -67,109 +66,83 @@ public class SkillService {
 
     /** Returns loaded skills when enabled, empty list when disabled. */
     public List<Skill> getSkills() {
-        return enabled ? skills.stream().filter(Skill::isEnabled).toList() : List.of();
+        return enabled 
+                ? skills.values().stream()
+                    .filter(Skill::isEnabled)
+                    .toList() 
+                : List.of();
     }
 
     /** Returns all loaded skills regardless of global enabled state. */
     public List<Skill> getAllLoadedSkills() {
-        return new LinkedList<>(skills);
+        return new LinkedList<>(skills.values());
     }
-    
+
     public boolean refresh(String newPath) throws IOException {
         return this.refresh(newPath == null ? null : Path.of(newPath));
     }
 
     public boolean refresh(Path newPath) throws IOException {
         if (newPath == null && skillsDirectory == null) return false;
-        if (Objects.equals(newPath, skillsDirectory)) return false;
 
         this.skills.clear();
-        this.skillsDirectory = newPath;
-        // cleared
-        if (this.skillsDirectory == null) return true;
-        
+        if (newPath == null) {
+            this.skillsDirectory = null;
+            return true;
+        }
+
         this.skillsDirectory = newPath.toAbsolutePath().normalize();
         if (Files.isDirectory(skillsDirectory)) {
-            try (DirectoryStream<Path> dirs = Files.newDirectoryStream(skillsDirectory)) {
-                for (Path dir : dirs) {
-                    var skillFile = detectSkillFile(dir);
-                    if (Files.isRegularFile(skillFile)) {
-                        Skill skill = parseSkillFile(skillFile);
-                        if (skill != null) {
-                            skills.add(skill);
+            try (DirectoryStream<Path> entries = Files.newDirectoryStream(skillsDirectory)) {
+                for (Path entry : entries) {
+                    if (Files.isDirectory(entry)) {
+                        var skillFile = detectSkillFile(entry);
+                        if (skillFile != null && Files.isRegularFile(skillFile)) {
+                            Skill skill = PromptYmlParser.parseSkill(skillFile);
+                            if (skill != null) {
+                                skills.put(skill.getName().toLowerCase(Locale.ROOT), skill);
+                            }
+                        }
+                    } else if (Files.isRegularFile(entry)) {
+                        var fileName = entry.getFileName().toString();
+                        if (fileName.startsWith(".")) continue;
+                        if (fileName.endsWith(".md")) {
+                            Skill skill = PromptYmlParser.parseSkill(entry);
+                            if (skill != null) {
+                                skills.put(skill.getName().toLowerCase(Locale.ROOT), skill);
+                            }
                         }
                     }
                 }
             }
         }
 
-        // skill count is visible in the status line
         return true;
     }
 
     private Path detectSkillFile(Path dir) {
         var skillFile = dir.resolve("SKILL.md");
-        if (!Files.isRegularFile(skillFile)) skillFile = dir.resolve("skill.md");
-        return skillFile;
+        if (Files.isRegularFile(skillFile)) return skillFile;
+        skillFile = dir.resolve("skill.md");
+        return Files.isRegularFile(skillFile) ? skillFile : null;
     }
 
-    static Skill parseSkillFile(Path skillFile) throws IOException {
-        String name = null;
-        String description = null;
-        boolean inFrontmatter = false;
-
-        try (BufferedReader reader = Files.newBufferedReader(skillFile)) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String trimmed = line.trim();
-
-                if (!inFrontmatter) {
-                    if ("---".equals(trimmed)) {
-                        inFrontmatter = true;
-                    }
-                    continue;
-                }
-
-                // end of frontmatter
-                if ("---".equals(trimmed)) {
-                    break;
-                }
-
-                if (trimmed.startsWith("name:")) {
-                    name = stripYamlValue(trimmed.substring(5));
-                } else if (trimmed.startsWith("description:")) {
-                    description = stripYamlValue(trimmed.substring(12));
-                }
-            }
-        }
-
-        if (name != null && description != null) {
-            return new Skill(name, description, skillFile);
-        }
-        return null;
-    }
-
-    private static String stripYamlValue(String value) {
-        if (value == null) return null;
-        value = value.strip();
-        // remove surrounding quotes
-        if (value.length() >= 2
-                && ((value.startsWith("\"") && value.endsWith("\""))
-                 || (value.startsWith("'") && value.endsWith("'")))) {
-            value = value.substring(1, value.length() - 1);
-        }
-        return value.isEmpty() ? null : value;
-    }
-
+    /**
+     * Return the skill -- also the disabled ones
+     */
     public Optional<Skill> get(String name) {
-        return skills.stream().filter(s -> s.name().equalsIgnoreCase(name)).findFirst();
+        if (name == null || name.isBlank()) return Optional.empty();
+        return Optional.ofNullable(skills.get(name.toLowerCase(Locale.ROOT)));
     }
 
     public boolean hasSkills() {
         return enabled && !skills.isEmpty();
     }
 
+    /**
+     * Returns all active skill names
+     */
     public String skillNames() {
-        return this.skills.stream().map(Skill::name).collect(Collectors.joining(", "));
+        return getSkills().stream().map(Skill::name).collect(Collectors.joining(", "));
     }
 }

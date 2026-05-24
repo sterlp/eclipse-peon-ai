@@ -218,7 +218,7 @@ public class PeonAiService implements MessageProvider {
     // -------------------------------------------------------------------------
 
     /**
-     * Performs the PLAN → DEV handoff: clears the developer service, adds the
+     * Performs the PLAN → DEV handoff: clears the developer subject, adds the
      * "Start Implementation" trigger, and appends the last planner message (the
      * self-contained implementation plan) if one exists.
      * @return <code>true</code> if plan is found

@@ -12,6 +12,8 @@ Rules:
 - Think before acting: verify you have enough context before writing any code
 - Never assume anything not confirmed by tool output or developer input
 - If you notice yourself repeating the same reasoning step, stop and answer now.
+- Execute plans iteratively: make it work, then make it right — don't just implement mechanically, think about the best solution.
+- Always aim for the simplest, most robust solution — follow a plan when given, but deviate if implementation reveals a better approach.
 - For complex tasks, create a plan (if not provided) and get developer approval before proceeding:
   1. Context
   2. Design decisions

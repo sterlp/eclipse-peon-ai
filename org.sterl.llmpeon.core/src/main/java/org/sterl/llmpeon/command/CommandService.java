@@ -1,17 +1,21 @@
 package org.sterl.llmpeon.command;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+
+import org.sterl.llmpeon.shared.PromptYmlParser;
+
+import lombok.NoArgsConstructor;
 
 /**
  * Loads user-defined slash commands from a configured directory.
@@ -21,20 +25,50 @@ import java.util.stream.Collectors;
  * frontmatter is optional and only the {@code description} field is parsed.
  * Hidden files and files in subdirectories are ignored.</p>
  */
+@NoArgsConstructor
 public class CommandService {
 
-    private Path commandsDirectory;
-    private final List<CommandRecord> commands = new ArrayList<>();
-
-    public CommandService() {
-    }
+    private volatile Path commandsDirectory;
+    private final Map<String, CommandRecord> commands = new ConcurrentHashMap<>();
+    private volatile boolean enabled = true;
 
     public CommandService(Path commandsDirectory) throws IOException {
         refresh(commandsDirectory);
     }
 
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    /** Set enabled state for a specific command by name. */
+    public void setCommandEnabled(String commandName, boolean enabled) {
+        var cmd = commands.get(commandName.toLowerCase(Locale.ROOT));
+        if (cmd != null) cmd.setEnabled(enabled);
+    }
+
+    /** Enable/disable all commands at once. */
+    public void setAllCommandsEnabled(boolean enabled) {
+        commands.values().forEach(cmd -> cmd.setEnabled(enabled));
+    }
+
     public List<CommandRecord> getCommands() {
-        return List.copyOf(commands);
+        return enabled
+                ? commands.values().stream()
+                    .filter(CommandRecord::isEnabled)
+                    .sorted(Comparator.comparing(c -> c.name().toLowerCase(Locale.ROOT)))
+                    .toList()
+                : List.of();
+    }
+
+    /** Returns all loaded commands regardless of global enabled state. */
+    public List<CommandRecord> getAllLoadedCommands() {
+        return commands.values().stream()
+                .sorted(Comparator.comparing(c -> c.name().toLowerCase(Locale.ROOT)))
+                .toList();
     }
 
     public int loadedCommandCount() {
@@ -48,7 +82,6 @@ public class CommandService {
     public boolean refresh(Path newPath) throws IOException {
         if (newPath == null && commandsDirectory == null) return false;
         if (newPath != null && Objects.equals(newPath, commandsDirectory)) {
-            // path unchanged — still re-scan in case files were added/removed externally
             return reload();
         }
         this.commands.clear();
@@ -69,68 +102,28 @@ public class CommandService {
             for (Path file : stream) {
                 if (!Files.isRegularFile(file)) continue;
                 var fileName = file.getFileName().toString();
-                if (fileName.startsWith(".")) continue; // skip hidden files
-                CommandRecord cmd = parseCommandFile(file);
-                if (cmd != null) commands.add(cmd);
+                if (fileName.startsWith(".")) continue;
+                CommandRecord cmd = PromptYmlParser.parseCommand(file);
+                if (cmd != null) commands.put(cmd.name().toLowerCase(Locale.ROOT), cmd);
             }
         }
-        commands.sort(Comparator.comparing(c -> c.name().toLowerCase(Locale.ROOT)));
         return true;
-    }
-
-    static CommandRecord parseCommandFile(Path file) throws IOException {
-        if (!Files.isRegularFile(file)) return null;
-        var fileName = file.getFileName().toString();
-        if (!fileName.endsWith(".md")) return null;
-        var name = fileName.substring(0, fileName.length() - 3);
-        if (name.isBlank()) return null;
-
-        String description = readOptionalDescription(file);
-        return new CommandRecord(name, description, file);
-    }
-
-    private static String readOptionalDescription(Path file) throws IOException {
-        try (BufferedReader reader = Files.newBufferedReader(file)) {
-            String first = reader.readLine();
-            while (first != null && first.isBlank()) first = reader.readLine();
-            if (first == null || !"---".equals(first.trim())) return null;
-
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String trimmed = line.trim();
-                if ("---".equals(trimmed)) return null;
-                if (trimmed.startsWith("description:")) {
-                    return stripYamlValue(trimmed.substring("description:".length()));
-                }
-            }
-        }
-        return null;
-    }
-
-    private static String stripYamlValue(String value) {
-        if (value == null) return null;
-        value = value.strip();
-        if (value.length() >= 2
-                && ((value.startsWith("\"") && value.endsWith("\""))
-                 || (value.startsWith("'") && value.endsWith("'")))) {
-            value = value.substring(1, value.length() - 1);
-        }
-        return value.isEmpty() ? null : value;
     }
 
     public Optional<CommandRecord> get(String name) {
         if (name == null || name.isBlank()) return Optional.empty();
-        return commands.stream()
-                .filter(c -> c.name().equalsIgnoreCase(name))
-                .findFirst();
+        return Optional.ofNullable(commands.get(name.toLowerCase(Locale.ROOT)));
     }
 
     public boolean hasCommands() {
-        return !commands.isEmpty();
+        return enabled && !commands.isEmpty();
     }
 
+    /**
+     * Returns all active command names
+     */
     public String commandNames() {
-        return commands.stream().map(CommandRecord::name).collect(Collectors.joining(", "));
+        return getCommands().stream().map(CommandRecord::name).collect(Collectors.joining(", "));
     }
 
     public Path getCommandsDirectory() {
