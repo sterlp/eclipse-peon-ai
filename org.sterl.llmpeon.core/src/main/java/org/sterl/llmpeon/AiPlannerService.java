@@ -43,7 +43,7 @@ public class AiPlannerService extends AbstractChatService {
 
     /**
      * Returns the last AI message from the planner conversation.
-     * Used during PLAN → DEV handoff to pass the plan to the developer subject.
+     * Used during PLAN → DEV handoff to pass the plan to the developer service.
      */
     public Optional<AiMessage> extractLastPlan() {
         var messages = getMessages();

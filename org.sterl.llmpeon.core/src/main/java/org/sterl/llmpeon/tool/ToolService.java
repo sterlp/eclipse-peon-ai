@@ -204,7 +204,7 @@ public class ToolService {
         this.mcpToolSpecs = service.getToolSpecifications();
     }
 
-    /** Disconnects the active MCP subject and removes its tools from the tool loop. */
+    /** Disconnects the active MCP service and removes its tools from the tool loop. */
     public void disconnectMcp() {
         this.mcpToolSpecs = List.of();
         if (mcpService != null) {
