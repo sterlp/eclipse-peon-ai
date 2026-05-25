@@ -7,7 +7,7 @@ import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.template.TemplateContext;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
-import org.sterl.llmpeon.tool.tools.CompressorAgentTool;
+import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 
 public class AiDeveloperService extends AbstractChatService {
 
@@ -31,8 +31,8 @@ public class AiDeveloperService extends AbstractChatService {
     @Override
     protected Predicate<SmartToolExecutor> getToolFilter() {
         return t -> {
-            if (t.getTool() instanceof CompressorAgentTool) {
-                return getTokenSize() > configuredModel.getConfig().getTokenWindow() * 0.7
+            if (t.getTool() instanceof CompactSessionTool) {
+                return getTokenSize() > configuredModel.getConfig().getTokenWindow() * 0.4
                         && getMessages().size() > 5;
             }
             return true;

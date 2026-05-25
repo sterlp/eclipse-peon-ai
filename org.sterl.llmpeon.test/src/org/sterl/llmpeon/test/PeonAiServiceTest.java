@@ -4,7 +4,7 @@ import static org.junit.Assume.assumeTrue;
 
 import org.junit.Test;
 import org.sterl.llmpeon.parts.PeonAiService;
-import org.sterl.llmpeon.tool.tools.CompressorAgentTool;
+import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 import org.sterl.llmpeon.tool.tools.DiskGrepTool;
@@ -17,8 +17,14 @@ public class PeonAiServiceTest  extends AbstractTest {
     public void test_compact_tool() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
 
-        var compressor = aiService.getToolService().getTool(CompressorAgentTool.class);
+        var compressor = aiService.getToolService().getTool(CompactSessionTool.class);
         assertIsPresent(compressor);
+        
+        // AND
+        var comp = aiService.getToolService().toolSpecifications().stream()
+            .filter(t -> t.name().equalsIgnoreCase(CompactSessionTool.NAME))
+            .findAny();
+        assertIsPresent(comp);
     }
     
     @Test
@@ -38,7 +44,7 @@ public class PeonAiServiceTest  extends AbstractTest {
         assertIsEmpty(aiService.getToolService().getTool(DiskFileReadTool.class));
         assertIsEmpty(aiService.getToolService().getTool(DiskFileWriteTool.class));
         
-        assertIsPresent(aiService.getToolService().getTool(CompressorAgentTool.class));
+        assertIsPresent(aiService.getToolService().getTool(CompactSessionTool.class));
     }
 
 }

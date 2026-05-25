@@ -95,7 +95,7 @@ public abstract class AbstractChatService {
         monitor.onCallStart(message);
         // auto compress if we are close to full
         if (StringUtil.hasValue(message)) {
-            if (tokenWindowUsedInPercent() >= 95) compressContext(monitor);
+            if (tokenWindowUsedInPercent() >= 90) compressContext(monitor);
             memory.add(UserMessage.from(message));
         }
 

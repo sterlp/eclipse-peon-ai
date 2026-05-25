@@ -530,7 +530,7 @@ public class AIChatView implements EclipseAiMonitor {
                 if (StringUtil.hasNoValue(chatInput.getText())) {
                     // some models e.g. Qwen need a use message as last message
                     chatInput.setText("""
-                            Start implementing this plan. Save larger plans in the plans/ directory using a sensible filename (for example, based on the title or main goal). 
+                            Start implementing this plan. Save larger plans in the peon-plan/ directory using a sensible filename (for example, based on the title or main goal). 
                             Treat that plan file as your long-term memory when needed. 
                             Keep token usage low: when you switch to a different piece of work, 
                             use the compressor tool to summarize this session and echo the key next steps plus the plan file path in the preserved instructions.
