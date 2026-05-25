@@ -331,7 +331,7 @@ public enum AiProvider {
     };
 
     // Streaming only needs to cover time-to-first-token (connect + model warmup), not the full response duration.
-    private static final Duration TIMEOUT = Duration.ofSeconds(120);
+    private static final Duration TIMEOUT = Duration.ofMinutes(3);
     private static final Duration MODEL_TIMEOUT = SharedHttpClient.MODEL_TIMEOUT;
 
     // --- Public API ---

@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
@@ -16,7 +17,7 @@ import org.sterl.llmpeon.tool.ToolService;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.ChatMessage;
 
-public class EclipseWorkspaceReadFilesToolTest extends AbstractTest {
+public class EclipseWorkspaceReadFileToolTest extends AbstractTest {
 
     @Test
     public void test_findReferences() {
@@ -26,8 +27,8 @@ public class EclipseWorkspaceReadFilesToolTest extends AbstractTest {
         var tool = new EclipseCodeNavigationTool();
         
         // WHEN
-        var content = tool.findReferences(EclipseWorkspaceReadFilesToolTest.class.getPackageName(), 
-                EclipseWorkspaceReadFilesToolTest.class.getSimpleName(), null, null);
+        var content = tool.findReferences(EclipseWorkspaceReadFileToolTest.class.getPackageName(), 
+                EclipseWorkspaceReadFileToolTest.class.getSimpleName(), null, null);
         
         // THEN
         assertContains(content, getClass().getSimpleName() + ".java");
@@ -86,7 +87,7 @@ public class EclipseWorkspaceReadFilesToolTest extends AbstractTest {
         var tool = new EclipseWorkspaceReadFileTool();
 
         // 1. find this file by name
-        String searchResult = tool.searchWorkspaceFiles("EclipseWorkspaceReadFilesToolTest", 0);
+        String searchResult = tool.searchWorkspaceFiles("EclipseWorkspaceReadFileToolTest", 0);
         assertTrue("Expected to find the test file in workspace: " + searchResult,
                 searchResult.contains(this.getClass().getSimpleName() + ".java"));
 
@@ -123,6 +124,37 @@ public class EclipseWorkspaceReadFilesToolTest extends AbstractTest {
         // THEN
         assertTrue("Should contain out test:\n" + content, content.contains(getClass().getSimpleName() + ".java"));
     }
+
+    @Test
+    public void test_grepWorkspaceFiles_regexPattern() {
+        // GIVEN
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        
+        var tool = new EclipseGrepTool();
+        
+        // WHEN - regex pattern that should match class declarations like "class EclipseGrepTool"
+        var content = tool.grepWorkspaceFiles("class.*Tool", null, ".java");
+        
+        // THEN - should find files with class declarations matching the pattern
+        assertTrue("Regex pattern 'class.*Tool' should match class declarations:\n" + content, 
+                content.contains("EclipseGrepTool.java") || content.contains("EclipseWorkspaceReadFileTool.java"));
+    }
+
+    @Test
+    public void test_grepWorkspaceFiles_regexAlternation() {
+        // GIVEN
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        
+        var tool = new EclipseGrepTool();
+        
+        // WHEN - regex alternation pattern that should match multiple terms
+        var content = tool.grepWorkspaceFiles("EclipseGrepTool|EclipseWorkspaceReadFileTool", null, ".java");
+        
+        // THEN - should find files matching either term
+        assertTrue("Regex alternation should match:\n" + content, 
+                content.contains("EclipseGrepTool.java") || content.contains("EclipseWorkspaceReadFileTool.java"));
+    }
+
     
     @Test
     public void test_readWorkspaceFiles() {

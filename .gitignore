@@ -7,6 +7,8 @@ tmp/
 *.swp
 *.log
 
+copilot_src/
+
 # Eclipse project files (werden neu generiert)
 *.launch
 *.prefs

@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
 import org.jspecify.annotations.NonNull;
@@ -45,7 +46,7 @@ public class ToolService {
 
     public static final int MAX_ITERATIONS = 75;
 
-    private final Map<String, SmartToolExecutor> toolExecutors = new HashMap<>();
+    private final Map<String, SmartToolExecutor> toolExecutors = new ConcurrentHashMap<>();
 
     private McpService mcpService;
     private List<ToolSpecification> mcpToolSpecs = List.of();
