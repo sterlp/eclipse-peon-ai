@@ -10,6 +10,7 @@ import org.sterl.llmpeon.streaming.StreamingBridge;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -34,11 +35,10 @@ public class AiCompressorAgent {
      */
     public ChatResponse call(List<ChatMessage> messages, AiMonitor monitor) {
         var msg = new StringBuilder();
-        messages.stream().forEach(m -> msg.append(toText(m)));
+        messages.stream().forEach(m -> msg.append(toText(m)).append("\n\n"));
 
         if (monitor != null) monitor.onTool("Compressing conversation " + messages.size() + " messages");
         var request = ChatRequest.builder()
-                .temperature(0.1)
                 .messages(COMPRESS_SYSTEM, UserMessage.from(msg.toString()))
                 .build();
         return new StreamingBridge().call(chatModel, request, monitor);
@@ -46,19 +46,26 @@ public class AiCompressorAgent {
 
     String toText(ChatMessage msg) {
         var result = new StringBuilder();
+        result.append("\n").append(msg.type()).append(":\n");
         if (msg instanceof UserMessage m && m.hasSingleText()) {
-            result.append(m.type()).append(":\n").append(m.singleText());
+            result.append(m.singleText());
         } else if (msg instanceof AiMessage m) {
             if (StringUtil.hasValue(m.text())) {
-                result.append(m.type()).append(":\n").append(m.text());
+                result.append(m.text()).append("\n");
+            }
+            if (StringUtil.hasValue(m.thinking())) {
+                result.append("Think:\n").append(m.thinking()).append("\n");
             }
             if (m.hasToolExecutionRequests()) {
                 for (var tr : m.toolExecutionRequests()) {
-                    result.append("\n").append(m.type())
-                          .append(" tool call").append(tr.name()).append(":")
-                          .append(tr.arguments());
+                    result.append("\ntool name:  ").append(tr.name())
+                          .append("\ntool id:    ").append(tr.id())
+                          .append("\narguments:  ").append(tr.arguments());
                 }
             }
+        } else if (msg instanceof ToolExecutionResultMessage tr && tr.hasSingleText()) {
+            result.append("\ntool result for id: ").append(tr.id())
+                  .append("\n").append(tr.text()).append("\n");
         }
         return result.toString();
     }
