@@ -35,6 +35,7 @@ import org.sterl.llmpeon.template.TemplateContext;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
+import org.sterl.llmpeon.tool.tools.DiskGrepTool;
 import org.sterl.llmpeon.tool.tools.SkillTool;
 
 import dev.langchain4j.data.message.ChatMessage;
@@ -70,6 +71,7 @@ public class PeonAiService implements MessageProvider {
     private final EclipseWorkspaceWriteFileTool workspaceWriteFilesTool;
     private final DiskFileWriteTool diskFileWriteTool;
     private final DiskFileReadTool diskFileReadTool;
+    private final DiskGrepTool diskGrepTool;
 
     /** Written from Eclipse DI thread, read from background LLM job threads. */
     private final AtomicReference<IProject> currentProject = new AtomicReference<>();
@@ -95,6 +97,7 @@ public class PeonAiService implements MessageProvider {
         this.workspaceWriteFilesTool = null;
         this.diskFileWriteTool = null;
         this.diskFileReadTool = null;
+        this.diskGrepTool = null;
     }
 
     /**
@@ -123,10 +126,9 @@ public class PeonAiService implements MessageProvider {
         
         diskFileWriteTool = new DiskFileWriteTool(rootPath);
         diskFileReadTool  = new DiskFileReadTool(rootPath);
-        if (configuredModel.getConfig().isDiskToolsEnabled()) {
-            toolService.addTool(diskFileWriteTool);
-            toolService.addTool(diskFileReadTool);
-        }
+        diskGrepTool  = new DiskGrepTool(rootPath);
+        
+        updateActiveDiskTools(configuredModel.getConfig());
 
         toolService.addTool(new EclipseBuildTool());
         toolService.addTool(new EclipseGrepTool());
@@ -174,6 +176,7 @@ public class PeonAiService implements MessageProvider {
         if (projectPath != null) {
             diskFileWriteTool.setWorkingDir(projectPath);
             diskFileReadTool.setWorkingDir(projectPath);
+            diskGrepTool.setWorkingDir(projectPath);
         }
     }
 
@@ -188,17 +191,7 @@ public class PeonAiService implements MessageProvider {
         plannerService.updateConfig(config);
         agentMode.updateConfig(config);
 
-        if (config.isDiskToolsEnabled()) {
-            if (toolService.getTool(DiskFileWriteTool.class).isEmpty()) {
-                toolService.addTool(diskFileWriteTool);
-                toolService.addTool(diskFileReadTool);
-            }
-        } else {
-            if (toolService.getTool(DiskFileWriteTool.class).isPresent()) {
-                toolService.removeTool(diskFileWriteTool);
-                toolService.removeTool(diskFileReadTool);
-            }
-        }
+        updateActiveDiskTools(config);
         if (config.getSkillDirectory() != null && !config.getSkillDirectory().isBlank()) {
             try {
                 skillService.refresh(config.getSkillDirectory());
@@ -210,6 +203,22 @@ public class PeonAiService implements MessageProvider {
             commandService.refresh(config.getCommandDirectory());
         } catch (IOException e) {
             throw new RuntimeException("Failed to load commands from " + config.getCommandDirectory(), e);
+        }
+    }
+
+    private void updateActiveDiskTools(LlmConfig config) {
+        if (config.isDiskToolsEnabled()) {
+            if (toolService.getTool(DiskFileWriteTool.class).isEmpty()) {
+                toolService.addTool(diskFileWriteTool);
+                toolService.addTool(diskFileReadTool);
+                toolService.addTool(diskGrepTool);
+            }
+        } else {
+            if (toolService.getTool(DiskFileWriteTool.class).isPresent()) {
+                toolService.removeTool(diskFileWriteTool);
+                toolService.removeTool(diskFileReadTool);
+                toolService.removeTool(diskGrepTool);
+            }
         }
     }
 

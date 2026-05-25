@@ -37,7 +37,7 @@ Review the code and report any issues.
 
 1. In the chat interface, type `/` to see a list of available commands.
 2. Select a command to insert its name into the chat input.
-3. The command content is sent as part of the chat message to the LLM.
+3. The command body replaces the system prompt for that turn. Standing orders (project context, AGENTS.md) and the skill catalog are still appended after it.
 
 ### Example
 1. Create a file named `review.md` in the commands directory:
@@ -56,14 +56,14 @@ Review the code and report any issues.
 
 - Commands provide a quick way to insert predefined prompts or instructions into the chat.
 - They help standardize workflows and reduce repetitive typing.
-- The LLM processes the command content as part of the chat message, ensuring consistent responses.
+- The LLM processes the command body as the system prompt for that single turn, ensuring consistent responses.
 
 ## Implementation Details
 
 - **Preferences**: The "Commands directory" field in preferences allows you to configure the path to your command files.
 - **Core**: The `CommandService` scans the directory for `.md` files, parses optional frontmatter descriptions, and creates `CommandRecord` objects for each command.
 - **Chat UI**: A `SlashMenuPopup` appears while typing `/` to show available commands. The popup disappears once whitespace separates the command from the rest of the message.
-- **Invocation**: When a command is invoked, the `AIChatView` parses the command and sets the system prompt for the next turn using the command body. Unknown commands show an error and abort the send operation.
+- **Invocation**: When a command is invoked, the `AIChatView` parses the command name, reads the command body (with template variables processed), and sets a one-shot system prompt that replaces the base system prompt for the next LLM call only. Unknown commands show an error and abort the send operation.
 
 ## Notes
 

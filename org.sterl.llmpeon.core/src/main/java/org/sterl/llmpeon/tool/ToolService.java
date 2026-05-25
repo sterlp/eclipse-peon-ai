@@ -2,10 +2,10 @@ package org.sterl.llmpeon.tool;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
 import org.jspecify.annotations.NonNull;
@@ -16,7 +16,7 @@ import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 import org.sterl.llmpeon.tool.model.ToSimpleMessage;
 import org.sterl.llmpeon.tool.tools.AbstractTool;
-import org.sterl.llmpeon.tool.tools.CompressorAgentTool;
+import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 import org.sterl.llmpeon.tool.tools.SearchAgentTool;
 import org.sterl.llmpeon.tool.tools.ShellTool;
 import org.sterl.llmpeon.tool.tools.WebFetchTool;
@@ -45,7 +45,7 @@ public class ToolService {
 
     public static final int MAX_ITERATIONS = 75;
 
-    private final Map<String, SmartToolExecutor> toolExecutors = new HashMap<>();
+    private final Map<String, SmartToolExecutor> toolExecutors = new ConcurrentHashMap<>();
 
     private McpService mcpService;
     private List<ToolSpecification> mcpToolSpecs = List.of();
@@ -55,7 +55,7 @@ public class ToolService {
         addTool(new WebFetchTool());
         addTool(new SearchAgentTool(this));
         addTool(new ShellTool());
-        addTool(new CompressorAgentTool());
+        addTool(new CompactSessionTool());
     }
 
     public List<ToolSpecification> toolSpecifications() {
@@ -95,7 +95,10 @@ public class ToolService {
 
             var toolSpecs = new ArrayList<>(toolSpecifications(req.toolFilter));
             if (req.includeMcpTools) toolSpecs.addAll(mcpToolSpecs);
-            if (!toolSpecs.isEmpty()) builder.toolSpecifications(toolSpecs);
+            if (!toolSpecs.isEmpty()) {
+                toolSpecs.stream().map(t -> t.getClass().getSimpleName()).forEach(System.out::println);
+                builder.toolSpecifications(toolSpecs);
+            }
 
             req.monitor.onChatMessage(iterations + 1, builder);
 

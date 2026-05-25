@@ -5,6 +5,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
 import java.io.File;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 
 import org.eclipse.core.resources.IProject;
@@ -28,6 +29,14 @@ public abstract class AbstractTest {
                 + "to contain:\n"
                 + expected,
                 value.contains(expected));
+    }
+    
+    public static void assertIsEmpty(Optional<?> v) {
+        assertTrue("Expected optional to has a value", v.isEmpty());
+    }
+    
+    public static void assertIsPresent(Optional<?> v) {
+        assertTrue("Expected optional to have a value", v.isPresent());
     }
 
     @BeforeClass

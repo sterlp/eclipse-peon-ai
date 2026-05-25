@@ -27,6 +27,6 @@ public class SkillTool extends AbstractTool {
                     + " found. Use one of: " + skillService.skillNames();
         }
         onTool("Read SKILL " + name);
-        return skill.get().readFullContent();
+        return skill.get().readBody();
     }
 }

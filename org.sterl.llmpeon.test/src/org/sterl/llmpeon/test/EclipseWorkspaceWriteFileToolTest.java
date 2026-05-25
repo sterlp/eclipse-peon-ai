@@ -10,7 +10,7 @@ import org.junit.Test;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
 
-public class EclipseWorkspaceWriteFilesToolTest extends AbstractTest {
+public class EclipseWorkspaceWriteFileToolTest extends AbstractTest {
 
     private final EclipseWorkspaceReadFileTool readTool = new EclipseWorkspaceReadFileTool();
 

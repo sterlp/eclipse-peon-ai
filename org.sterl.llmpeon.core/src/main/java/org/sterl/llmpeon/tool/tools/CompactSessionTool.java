@@ -6,11 +6,11 @@ import org.sterl.llmpeon.shared.StringUtil;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 
-public class CompressorAgentTool extends AbstractTool {
-    public static final String NAME = "CompressorAgentTool";
+public class CompactSessionTool extends AbstractTool {
+    public static final String NAME = "compactSession";
 
-    @Tool(name = CompressorAgentTool.NAME, value = "Compress the current conversation history to free context while preserving key instructions.")
-    public String compressorAgent(
+    @Tool(name = CompactSessionTool.NAME, value = "Compress/compact the current conversation history to free context while preserving key instructions.")
+    public String compactSession(
             @P(description = "Short instructions or next steps to keep and echo back after compression.", required = false, name = "preserve") String preserve) {
         var summary = new AiCompressorAgent(chatModel).call(memory, monitor);
         return summary.aiMessage().text() 
