@@ -20,6 +20,7 @@ import org.sterl.llmpeon.template.TemplateContext;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
+import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -73,7 +74,17 @@ public abstract class AbstractChatService {
 
     protected abstract String getSystemPrompt();
     protected abstract double getTemperature();
-    protected abstract Predicate<SmartToolExecutor> getToolFilter();
+    
+    protected Predicate<SmartToolExecutor> getToolFilter() {
+        return t -> {
+            if (t.getTool() instanceof CompactSessionTool) {
+                return getTokenSize() > configuredModel.getConfig().getTokenWindow() * 0.4
+                        && getMessages().size() > 5;
+            }
+            return true;
+        };
+    }
+    
     protected boolean includesMcpTools() { return true; }
 
     public int tokenWindowUsedInPercent() {
