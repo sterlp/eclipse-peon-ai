@@ -96,7 +96,6 @@ public class ToolService {
             var toolSpecs = new ArrayList<>(toolSpecifications(req.toolFilter));
             if (req.includeMcpTools) toolSpecs.addAll(mcpToolSpecs);
             if (!toolSpecs.isEmpty()) {
-                toolSpecs.stream().map(t -> t.getClass().getSimpleName()).forEach(System.out::println);
                 builder.toolSpecifications(toolSpecs);
             }
 

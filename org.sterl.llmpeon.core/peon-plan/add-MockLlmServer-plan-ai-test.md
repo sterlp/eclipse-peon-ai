@@ -90,3 +90,27 @@ list models
 
 // THEN
 received error message using list models
+
+### 5.4
+
+The mock server should also be able to mock / support test tool calls - bit like:
+    @Test
+    public void test_readWorkspaceFiles() {
+        // GIVEN
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        ToolService service = new ToolService();
+        service.addTool(new EclipseWorkspaceReadFileTool());
+
+        var tr = ToolExecutionRequest.builder().arguments("")
+            .name("readWorkspaceFile")
+            .arguments("{\"filePath\": \"" + this.getClass().getName().replace(".", "/") + ".java\"}")
+            .build();
+        
+        // WHEN
+        var content = service.execute(tr, null, null, new ArrayList<ChatMessage>());
+        
+        // THEN
+        assertContains(content.message().text(), 
+                "Hallo meine schöne datei wie geht es dir?");
+    }
+    
