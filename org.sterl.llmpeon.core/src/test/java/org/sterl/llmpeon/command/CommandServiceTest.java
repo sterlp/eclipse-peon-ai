@@ -173,7 +173,7 @@ class CommandServiceTest {
 
         // THEN
         assertThat(service.getCommands())
-                .extracting(CommandRecord::name)
+                .extracting(CommandPromptFile::name)
                 .containsExactly("Alpha", "beta", "zebra");
     }
 

@@ -103,13 +103,13 @@ class SkillServiceTest {
         subject.setAllSkillsEnabled(false);
 
         // THEN
-        assertThat(allSkills).noneMatch(Skill::isEnabled);
+        assertThat(allSkills).noneMatch(SkillPromptFile::isEnabled);
 
         // WHEN
         subject.setAllSkillsEnabled(true);
 
         // THEN
-        assertThat(allSkills).allMatch(Skill::isEnabled);
+        assertThat(allSkills).allMatch(SkillPromptFile::isEnabled);
     }
 
     @Test

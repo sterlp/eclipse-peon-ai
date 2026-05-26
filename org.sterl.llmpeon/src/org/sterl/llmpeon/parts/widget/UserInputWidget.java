@@ -14,7 +14,7 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.sterl.llmpeon.command.CommandRecord;
+import org.sterl.llmpeon.command.CommandPromptFile;
 import org.sterl.llmpeon.parts.shared.ImageUtil;
 import org.sterl.llmpeon.parts.shared.SwtUtil;
 
@@ -42,7 +42,7 @@ public class UserInputWidget extends Composite {
     private final Color colorRecording;
 
     private SlashMenuPopup slashPopup;
-    private Supplier<List<CommandRecord>> commandSupplier;
+    private Supplier<List<CommandPromptFile>> commandSupplier;
 
     public UserInputWidget(Composite parent, int style, Runnable onSend, Runnable onStop, Runnable onMicClick) {
         super(parent, style);
@@ -233,7 +233,7 @@ public class UserInputWidget extends Composite {
      * Enables the slash-command popup. {@code commandSupplier} returns the currently loaded
      * commands. Pass {@code null} to disable the popup.
      */
-    public void enableSlashCommands(Supplier<List<CommandRecord>> commandSupplier) {
+    public void enableSlashCommands(Supplier<List<CommandPromptFile>> commandSupplier) {
         this.commandSupplier = commandSupplier;
         if (commandSupplier == null) {
             disposeSlashPopup();
@@ -282,7 +282,7 @@ public class UserInputWidget extends Composite {
         return sb.toString();
     }
 
-    private void applyCommandSelection(CommandRecord cmd) {
+    private void applyCommandSelection(CommandPromptFile cmd) {
         var current = textInput.getText();
         var afterToken = "";
         if (current != null && current.startsWith("/")) {
