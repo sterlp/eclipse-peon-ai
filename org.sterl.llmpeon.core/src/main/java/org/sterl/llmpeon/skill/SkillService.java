@@ -23,7 +23,7 @@ import lombok.NoArgsConstructor;
 public class SkillService {
 
     private volatile Path skillsDirectory;
-    private final Map<String, Skill> skills = new ConcurrentHashMap<>();
+    private final Map<String, SkillPromptFile> skills = new ConcurrentHashMap<>();
     private volatile boolean enabled = true;
 
     public SkillService(Path skillsDirectory) throws IOException {
@@ -65,16 +65,16 @@ public class SkillService {
     }
 
     /** Returns loaded skills when enabled, empty list when disabled. */
-    public List<Skill> getSkills() {
-        return enabled 
+    public List<SkillPromptFile> getSkills() {
+        return enabled
                 ? skills.values().stream()
-                    .filter(Skill::isEnabled)
-                    .toList() 
+                    .filter(SkillPromptFile::isEnabled)
+                    .toList()
                 : List.of();
     }
 
     /** Returns all loaded skills regardless of global enabled state. */
-    public List<Skill> getAllLoadedSkills() {
+    public List<SkillPromptFile> getAllLoadedSkills() {
         return new LinkedList<>(skills.values());
     }
 
@@ -98,7 +98,7 @@ public class SkillService {
                     if (Files.isDirectory(entry)) {
                         var skillFile = detectSkillFile(entry);
                         if (skillFile != null && Files.isRegularFile(skillFile)) {
-                            Skill skill = PromptYmlParser.parseSkill(skillFile);
+                            SkillPromptFile skill = PromptYmlParser.parseSkill(skillFile);
                             if (skill != null) {
                                 skills.put(skill.getName().toLowerCase(Locale.ROOT), skill);
                             }
@@ -107,7 +107,7 @@ public class SkillService {
                         var fileName = entry.getFileName().toString();
                         if (fileName.startsWith(".")) continue;
                         if (fileName.endsWith(".md")) {
-                            Skill skill = PromptYmlParser.parseSkill(entry);
+                            SkillPromptFile skill = PromptYmlParser.parseSkill(entry);
                             if (skill != null) {
                                 skills.put(skill.getName().toLowerCase(Locale.ROOT), skill);
                             }
@@ -130,7 +130,7 @@ public class SkillService {
     /**
      * Return the skill -- also the disabled ones
      */
-    public Optional<Skill> get(String name) {
+    public Optional<SkillPromptFile> get(String name) {
         if (name == null || name.isBlank()) return Optional.empty();
         return Optional.ofNullable(skills.get(name.toLowerCase(Locale.ROOT)));
     }
@@ -143,6 +143,6 @@ public class SkillService {
      * Returns all active skill names
      */
     public String skillNames() {
-        return getSkills().stream().map(Skill::name).collect(Collectors.joining(", "));
+        return getSkills().stream().map(SkillPromptFile::name).collect(Collectors.joining(", "));
     }
 }

@@ -17,7 +17,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
-import org.sterl.llmpeon.command.CommandRecord;
+import org.sterl.llmpeon.command.CommandPromptFile;
 
 /**
  * Lightweight popup that lists slash-commands matching the current prefix.
@@ -36,17 +36,17 @@ public class SlashMenuPopup {
     private static final int MAX_WIDTH = 520;
 
     private final Composite anchor;
-    private final Consumer<CommandRecord> onSelect;
+    private final Consumer<CommandPromptFile> onSelect;
     private final Listener anchorShellMoveListener;
     private final Shell anchorShell;
 
     private Shell popup;
     private Table table;
-    private List<CommandRecord> filtered = List.of();
-    private List<CommandRecord> source = List.of();
+    private List<CommandPromptFile> filtered = List.of();
+    private List<CommandPromptFile> source = List.of();
     private String currentPrefix = "";
 
-    public SlashMenuPopup(Composite anchor, Consumer<CommandRecord> onSelect) {
+    public SlashMenuPopup(Composite anchor, Consumer<CommandPromptFile> onSelect) {
         this.anchor = anchor;
         this.onSelect = onSelect;
         this.anchorShell = anchor.getShell();
@@ -77,7 +77,7 @@ public class SlashMenuPopup {
      * @param prefix       prefix already typed after the slash, may be empty
      * @param anchorScreen anchor position in display coordinates (typically the caret location)
      */
-    public void show(List<CommandRecord> commands, String prefix, Point anchorScreen) {
+    public void show(List<CommandPromptFile> commands, String prefix, Point anchorScreen) {
         this.source = commands == null ? List.of() : commands;
         this.currentPrefix = prefix == null ? "" : prefix;
         var matches = filter(this.source, this.currentPrefix);
@@ -162,7 +162,7 @@ public class SlashMenuPopup {
 
     private void rebuildItems() {
         table.removeAll();
-        for (CommandRecord cmd : filtered) {
+        for (CommandPromptFile cmd : filtered) {
             var item = new TableItem(table, SWT.NONE);
             item.setText(formatRow(cmd));
         }
@@ -196,14 +196,14 @@ public class SlashMenuPopup {
         popup.setBounds(bounds);
     }
 
-    private static String formatRow(CommandRecord cmd) {
+    private static String formatRow(CommandPromptFile cmd) {
         if (cmd.description() == null || cmd.description().isBlank()) {
             return "/" + cmd.name();
         }
         return "/" + cmd.name() + "  \u2014  " + cmd.description();
     }
 
-    private static List<CommandRecord> filter(List<CommandRecord> source, String prefix) {
+    private static List<CommandPromptFile> filter(List<CommandPromptFile> source, String prefix) {
         if (prefix == null || prefix.isEmpty()) return source;
         var lower = prefix.toLowerCase(Locale.ROOT);
         return source.stream()

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="Encoding">
+    <file url="file://$PROJECT_DIR$/org.sterl.llmpeon.core/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/org.sterl.llmpeon.core/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/org.sterl.llmpeon.test/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/org.sterl.llmpeon.test/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/org.sterl.llmpeon/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/org.sterl.llmpeon/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/releng/llmpeon-feature/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/releng/llmpeon-feature/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/releng/llmpeon-target/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/releng/llmpeon-target/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/releng/llmpeon-update-site/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/releng/llmpeon-update-site/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/src/main/resources" charset="UTF-8" />
+  </component>
+</project>

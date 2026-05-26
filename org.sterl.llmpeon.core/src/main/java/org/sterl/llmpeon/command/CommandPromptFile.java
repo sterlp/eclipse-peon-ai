@@ -4,9 +4,9 @@ import java.nio.file.Path;
 
 import org.sterl.llmpeon.shared.AbstractPromptFile;
 
-public class CommandRecord extends AbstractPromptFile {
+public class CommandPromptFile extends AbstractPromptFile {
 
-    public CommandRecord(String name, String description, Path promptFile) {
+    public CommandPromptFile(String name, String description, Path promptFile) {
         super(name, description, promptFile, true);
     }
 

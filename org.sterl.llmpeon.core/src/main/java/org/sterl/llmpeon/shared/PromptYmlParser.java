@@ -7,12 +7,12 @@ import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import org.sterl.llmpeon.command.CommandRecord;
-import org.sterl.llmpeon.skill.Skill;
+import org.sterl.llmpeon.command.CommandPromptFile;
+import org.sterl.llmpeon.skill.SkillPromptFile;
 
 public class PromptYmlParser {
 
-    public static Skill parseSkill(Path skillFile) throws IOException {
+    public static SkillPromptFile parseSkill(Path skillFile) throws IOException {
         if (!Files.isRegularFile(skillFile)) return null;
 
         String fileName = skillFile.getFileName().toString();
@@ -30,12 +30,12 @@ public class PromptYmlParser {
         String description = frontmatter.get("description");
 
         if (name != null && description != null) {
-            return new Skill(name, description, skillFile);
+            return new SkillPromptFile(name, description, skillFile);
         }
         return null;
     }
 
-    public static CommandRecord parseCommand(Path commandFile) throws IOException {
+    public static CommandPromptFile parseCommand(Path commandFile) throws IOException {
         if (!Files.isRegularFile(commandFile)) return null;
         var fileName = commandFile.getFileName().toString();
         if (!fileName.endsWith(".md")) return null;
@@ -46,7 +46,7 @@ public class PromptYmlParser {
         String name = frontmatter.getOrDefault("name", defaultName);
         String description = frontmatter.get("description");
 
-        return new CommandRecord(name, description, commandFile);
+        return new CommandPromptFile(name, description, commandFile);
     }
 
     static Map<String, String> parseFrontmatter(Path file) throws IOException {

@@ -21,7 +21,7 @@ import lombok.NoArgsConstructor;
  * Loads user-defined slash commands from a configured directory.
  *
  * <p>Each {@code <name>.md} file directly inside the directory becomes one
- * {@link CommandRecord}. Unlike {@link org.sterl.llmpeon.skill.SkillService}, the
+ * {@link CommandPromptFile}. Unlike {@link org.sterl.llmpeon.skill.SkillService}, the
  * frontmatter is optional and only the {@code description} field is parsed.
  * Hidden files and files in subdirectories are ignored.</p>
  */
@@ -29,7 +29,7 @@ import lombok.NoArgsConstructor;
 public class CommandService {
 
     private volatile Path commandsDirectory;
-    private final Map<String, CommandRecord> commands = new ConcurrentHashMap<>();
+    private final Map<String, CommandPromptFile> commands = new ConcurrentHashMap<>();
     private volatile boolean enabled = true;
 
     public CommandService(Path commandsDirectory) throws IOException {
@@ -55,17 +55,17 @@ public class CommandService {
         commands.values().forEach(cmd -> cmd.setEnabled(enabled));
     }
 
-    public List<CommandRecord> getCommands() {
+    public List<CommandPromptFile> getCommands() {
         return enabled
                 ? commands.values().stream()
-                    .filter(CommandRecord::isEnabled)
+                    .filter(CommandPromptFile::isEnabled)
                     .sorted(Comparator.comparing(c -> c.name().toLowerCase(Locale.ROOT)))
                     .toList()
                 : List.of();
     }
 
     /** Returns all loaded commands regardless of global enabled state. */
-    public List<CommandRecord> getAllLoadedCommands() {
+    public List<CommandPromptFile> getAllLoadedCommands() {
         return commands.values().stream()
                 .sorted(Comparator.comparing(c -> c.name().toLowerCase(Locale.ROOT)))
                 .toList();
@@ -103,14 +103,14 @@ public class CommandService {
                 if (!Files.isRegularFile(file)) continue;
                 var fileName = file.getFileName().toString();
                 if (fileName.startsWith(".")) continue;
-                CommandRecord cmd = PromptYmlParser.parseCommand(file);
+                CommandPromptFile cmd = PromptYmlParser.parseCommand(file);
                 if (cmd != null) commands.put(cmd.name().toLowerCase(Locale.ROOT), cmd);
             }
         }
         return true;
     }
 
-    public Optional<CommandRecord> get(String name) {
+    public Optional<CommandPromptFile> get(String name) {
         if (name == null || name.isBlank()) return Optional.empty();
         return Optional.ofNullable(commands.get(name.toLowerCase(Locale.ROOT)));
     }
@@ -123,7 +123,7 @@ public class CommandService {
      * Returns all active command names
      */
     public String commandNames() {
-        return getCommands().stream().map(CommandRecord::name).collect(Collectors.joining(", "));
+        return getCommands().stream().map(CommandPromptFile::name).collect(Collectors.joining(", "));
     }
 
     public Path getCommandsDirectory() {
