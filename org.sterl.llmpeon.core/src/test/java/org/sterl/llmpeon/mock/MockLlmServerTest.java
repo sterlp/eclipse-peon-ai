@@ -17,12 +17,13 @@ public class MockLlmServerTest {
 
     private MockLlmServer server;
     private HttpClient client;
-    private int port = 18080;
+    private int port;
 
     @BeforeEach
     void setUp() throws Exception {
-        server = new MockLlmServer(port);
+        server = new MockLlmServer(0);
         server.start();
+        port = server.getPort();
         client = HttpClient.newHttpClient();
     }
 
@@ -83,7 +84,7 @@ public class MockLlmServerTest {
         assertThat(body).startsWith("data:");
         assertThat(body).contains("Hello from");
         assertThat(body).contains(" mock");
-        assertThat(body).endsWith("data: [DONE]\n");
+        assertThat(body).endsWith("data: [DONE]\n\n");
     }
 
     @Test

@@ -25,6 +25,11 @@ public class MockLlmServer {
     private List<String> modelIds = List.of("gpt-4o", "mock-model");
     private AtomicReference<String> lastRequestBody = new AtomicReference<>(null);
     private boolean modelsEndpointError = false;
+    private boolean forceNonStreaming = false;
+
+    public void setNonStreaming(boolean nonStreaming) {
+        this.forceNonStreaming = nonStreaming;
+    }
 
     public MockLlmServer(int port) {
         this.port = port;
@@ -36,6 +41,10 @@ public class MockLlmServer {
         server.createContext("/v1/models", this::handleModels);
         server.setExecutor(java.util.concurrent.Executors.newCachedThreadPool());
         server.start();
+    }
+
+    public int getPort() {
+        return server.getAddress().getPort();
     }
 
     public void stop() {
@@ -74,7 +83,7 @@ public class MockLlmServer {
             response = "No queued response - default mock answer";
         }
 
-        boolean stream = isStreaming(requestBody);
+        boolean stream = !forceNonStreaming && isStreaming(requestBody);
 
         if (stream) {
             handleStreaming(exchange, response);
@@ -99,22 +108,21 @@ public class MockLlmServer {
 
         SseChunk firstChunk = new SseChunk();
         firstChunk.setChoices(List.of(new SseChunk.Choice(new SseChunk.Delta(""), null)));
-        String firstLine = "data: " + MAPPER.writeValueAsString(firstChunk) + "\n";
 
         List<String> chunks = splitIntoChunks(response, 10);
         StringBuilder sseData = new StringBuilder();
-        sseData.append(firstLine);
+        sseData.append("data: ").append(MAPPER.writeValueAsString(firstChunk)).append("\n\n");
 
         for (String chunk : chunks) {
             SseChunk dataChunk = new SseChunk();
             dataChunk.setChoices(List.of(new SseChunk.Choice(chunk, null)));
-            sseData.append("data: ").append(MAPPER.writeValueAsString(dataChunk)).append("\n");
+            sseData.append("data: ").append(MAPPER.writeValueAsString(dataChunk)).append("\n\n");
         }
 
         SseChunk finalChunk = new SseChunk();
         finalChunk.setChoices(List.of(new SseChunk.Choice(new SseChunk.Delta(""), "stop")));
-        sseData.append("data: ").append(MAPPER.writeValueAsString(finalChunk)).append("\n");
-        sseData.append("data: [DONE]\n");
+        sseData.append("data: ").append(MAPPER.writeValueAsString(finalChunk)).append("\n\n");
+        sseData.append("data: [DONE]\n\n");
 
         byte[] bytes = sseData.toString().getBytes(StandardCharsets.UTF_8);
         exchange.sendResponseHeaders(200, bytes.length);

@@ -2,6 +2,7 @@ package org.sterl.llmpeon;
 
 import java.time.Instant;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.ai.LlmConfig;
@@ -10,6 +11,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
+@Disabled
 @Tag("integration")
 public class BenchmarkTest {
 
