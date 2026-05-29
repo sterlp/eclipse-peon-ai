@@ -1,6 +1,5 @@
 package org.sterl.llmpeon;
 
-import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -13,7 +12,6 @@ import org.sterl.llmpeon.ai.ConfiguredModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
-import org.sterl.llmpeon.skill.SkillPromptFile;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.streaming.StreamingBridge;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
@@ -48,8 +46,6 @@ public abstract class AbstractChatService {
             .build();
     protected final ConfiguredModel configuredModel;
 
-    @Deprecated // skills should be slash actions
-    protected final SkillService skillService;
     protected final ToolService toolService;
     private final List<ChatMessage> userContextInformations = new ArrayList<>();
     private volatile int contextTokenSize = 0;
@@ -64,7 +60,6 @@ public abstract class AbstractChatService {
     protected AbstractChatService(ConfiguredModel configuredModel, ToolService toolService,
             SkillService skillService) {
         this.toolService = toolService;
-        this.skillService = skillService;
         this.configuredModel = configuredModel;
         updateConfig(configuredModel.getConfig());
     }
@@ -138,13 +133,6 @@ public abstract class AbstractChatService {
     @Deprecated
     public void updateConfig(LlmConfig config) {
         configuredModel.updateConfig(config);
-        if (config.getSkillDirectory() != null) {
-            try {
-                this.skillService.refresh(Path.of(config.getSkillDirectory()));
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to load skills from " + config.getSkillDirectory(), e);
-            }
-        }
     }
 
     public List<ChatMessage> getUserContextInformations() {
@@ -168,18 +156,11 @@ public abstract class AbstractChatService {
     public List<ChatMessage> getMessages() { return memory.messages(); }
     public int getContextSize() { return contextTokenSize; }
     public int getAutoCompactAfter() { return configuredModel.getAutoCompactAfter(); }
-    public List<SkillPromptFile> getSkills() { return skillService.getSkills(); }
 
     private List<ChatMessage> buildStaticMessages() {
         var messages = new ArrayList<ChatMessage>();
         var override = consumeOneShotSystemPrompt();
         messages.add(SystemMessage.from(override != null ? override : getSystemPrompt()));
-
-        // Skills are still advertised even when a slash command overrode the base prompt; the
-        // command body and the skill catalog are orthogonal.
-        var skillMsg = skillService.skillMessage();
-        if (skillMsg != null) messages.add(skillMsg);
-
         return messages;
     }
 

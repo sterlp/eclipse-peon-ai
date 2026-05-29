@@ -18,6 +18,9 @@ import dev.langchain4j.model.chat.response.ChatResponse;
  * Command object for {@link ToolService#executeLoop(ToolLoopRequest)}.
  * Required fields: {@code memory}, {@code chatModel}, and {@code bridge}.
  * All other fields have sensible defaults.
+ * 
+ * Keep in mind any change to the message history may kill the kv cache!!
+ * https://github.com/sterlp/eclipse-peon-ai/issues/60
  */
 public class ToolLoopRequest {
 
@@ -42,6 +45,10 @@ public class ToolLoopRequest {
         this.bridge = bridge;
     }
 
+    /**
+     * Pure static messages which never change
+     * Keep in mind any change to the message history may kill the kv cache!! 
+     */
     public ToolLoopRequest staticMessages(List<ChatMessage> staticMessages) {
         this.staticMessages = staticMessages;
         return this;

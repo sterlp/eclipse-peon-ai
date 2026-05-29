@@ -12,6 +12,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import org.sterl.llmpeon.StandingOrdersBuilder.MessageProvider;
 import org.sterl.llmpeon.shared.PromptYmlParser;
 
 import dev.langchain4j.data.message.ChatMessage;
@@ -19,7 +20,7 @@ import dev.langchain4j.data.message.UserMessage;
 import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
-public class SkillService {
+public class SkillService implements MessageProvider {
 
     private volatile Path skillsDirectory;
     private final Map<String, SkillPromptFile> skills = new ConcurrentHashMap<>();
@@ -29,7 +30,7 @@ public class SkillService {
         refresh(skillsDirectory);
     }
 
-    public ChatMessage skillMessage() {
+    public ChatMessage get() {
         if (getSkills().isEmpty()) return null;
         var string = getSkills().stream()
                 .map(s -> s.shortDescription())

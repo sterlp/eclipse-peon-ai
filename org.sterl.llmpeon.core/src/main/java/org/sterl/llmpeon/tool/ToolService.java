@@ -78,6 +78,8 @@ public class ToolService {
      * the model produces a plain text response.
      * 
      * TODO: https://github.com/sterlp/eclipse-peon-ai/issues/55
+     * Keep in mind any change to the message history may kill the kv cache!!
+     * https://github.com/sterlp/eclipse-peon-ai/issues/60
      */
     @NonNull
     public ChatResponse executeLoop(@NonNull ToolLoopRequest req) {

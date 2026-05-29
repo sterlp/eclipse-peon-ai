@@ -9,7 +9,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.osgi.service.prefs.BackingStoreException;
-import org.sterl.llmpeon.parts.StandingOrdersBuilder.MessageProvider;
+import org.sterl.llmpeon.StandingOrdersBuilder.MessageProvider;
 import org.sterl.llmpeon.parts.tools.AbstractEclipseTool;
 import org.sterl.llmpeon.shared.ArgsUtil;
 

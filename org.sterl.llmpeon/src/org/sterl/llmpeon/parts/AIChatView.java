@@ -2,7 +2,6 @@ package org.sterl.llmpeon.parts;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.atomic.AtomicReference;
@@ -36,16 +35,16 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IWorkingSet;
 import org.sterl.llmpeon.AbstractChatService;
 import org.sterl.llmpeon.PeonMode;
+import org.sterl.llmpeon.StandingOrdersBuilder;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.McpPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.VoicePreferenceInitializer;
+import org.sterl.llmpeon.parts.model.UserContext;
 import org.sterl.llmpeon.parts.monitor.EclipseAiMonitor;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
-import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.shared.SimpleDiff;
 import org.sterl.llmpeon.parts.tools.AskUserTool;
-import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.parts.tools.memory.WorkspaceMemoryTool;
 import org.sterl.llmpeon.parts.widget.ActionsBarWidget;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget;
@@ -91,16 +90,9 @@ public class AIChatView implements EclipseAiMonitor {
     private final VoiceInputService voiceService = new VoiceInputService();
     private final WorkspaceMemoryTool workspaceMemoryTool = WorkspaceMemoryTool.getInstance();
     
-    private final StandingOrdersBuilder standingOrders = new StandingOrdersBuilder()
-            .add(aiService)
-            .add(workspaceMemoryTool)
-            .add(aiService.getAgentsMdService());
-    
     private volatile boolean recording = false;
 
     private AtomicReference<LlmConfig> lastListedConfig = new AtomicReference<>();
-    private volatile IProject currentProject;
-    private volatile boolean projectPinned = false;
     private volatile LlmConfig lastAppliedConfig = null;
 
     private ChatMarkdownWidget chatHistory;
@@ -108,12 +100,18 @@ public class AIChatView implements EclipseAiMonitor {
     private UserInputWidget chatInput;
     private UserQuestionWidget questionWidget;
 
-    private volatile ITextSelection textSelection;
-    private volatile IResource selectedResource;
+    private final UserContext userContext = new UserContext();
 
     private final IPreferenceChangeListener prefListener = event -> {
         EclipseUtil.runInUiThread(parent, this::applyConfig);
     };
+    
+    private final StandingOrdersBuilder standingOrders = new StandingOrdersBuilder()
+            .add(aiService)
+            .add(workspaceMemoryTool)
+            .add(aiService.getAgentsMdService())
+            .add(aiService.getSkillService())
+            .add(userContext);
 
     @PostConstruct
     public void createPartControl(Composite parent) {
@@ -220,14 +218,14 @@ public class AIChatView implements EclipseAiMonitor {
     @Inject
     @org.eclipse.e4.core.di.annotations.Optional
     public void setTextSelection(@Named(IServiceConstants.ACTIVE_SELECTION) ITextSelection ts) {
-        textSelection = ts;
+        userContext.setTextSelection(ts);
     }
 
     @Inject
     @org.eclipse.e4.core.di.annotations.Optional
     public void setSelection(@Named(IServiceConstants.ACTIVE_SELECTION) Object o) {
         if (o instanceof ISelection) return;
-        textSelection = null;
+        userContext.setTextSelection(null);
         final IResource selection;
         if (o instanceof ICompilationUnit cu) {
             selection = cu.getResource();
@@ -242,25 +240,26 @@ public class AIChatView implements EclipseAiMonitor {
         } else if (o instanceof IJavaProject jp) {
             selection = jp.getResource();
         } else if (o instanceof IWorkingSet) {
-            selection = selectedResource;
+            selection = null;
         } else if (o != null) {
             LOG.info("Unknown resource type selected " + o.getClass());
             selection = null;
         } else {
             selection = null;
         }
-        selectedResource = selection;
+        userContext.setSelectedResource(selection);
         updateSelectedProject(EclipseUtil.resolveProject(selection));
     }
 
     private void updateSelectedProject(IProject project) {
-        if (project != null && !projectPinned) {
-            currentProject = project;
+        if (project != null && !userContext.isProjectPinned()) {
+            userContext.setCurrentProject(project);
             aiService.setProject(project);
         }
         // TODO add check of project really changed
         if (actionsBar != null) {
             EclipseUtil.runInUiThread(parent, () -> {
+                var currentProject = userContext.getCurrentProject();
                 actionsBar.setAgentModeAvailable(currentProject != null && currentProject.isOpen());
                 if (currentProject == null && aiService.getPeonMode() == PeonMode.AGENT) {
                     onModeChange(PeonMode.DEV);
@@ -346,8 +345,8 @@ public class AIChatView implements EclipseAiMonitor {
             aiService.getSkillService().getSkills().size(),
             aiService.getAgentsMdService().getAgentFileName(),
             aiService.getAgentsMdService().isEnabled(),
-            currentProject,
-            getSelectedFile()
+            userContext.getCurrentProject(),
+            userContext.getSelectedFile()
         );
         var ai = aiService.getActiveService();
         statusLine.updateCompact(ai.getContextSize(), ai.getAutoCompactAfter());
@@ -576,7 +575,7 @@ public class AIChatView implements EclipseAiMonitor {
         var active = aiService.getActiveService();
         if (!applySlashCommandIfPresent(active)) return;
 
-        final var selection = getUserSelection();
+        final var selection = userContext.getUserSelection();
         final var needsSelection = !active.hasUserText(selection);
 
         final var text = StringUtil.strip(chatInput.getText().trim()) + (needsSelection ? selection : "");
@@ -601,9 +600,7 @@ public class AIChatView implements EclipseAiMonitor {
             monitorRef.set(monitor);
             Exception ex = null;
             try {
-                active.setUserContextInformations(this.standingOrders.build(
-                        currentProject,
-                        getSelectedFile()));
+                active.setUserContextInformations(this.standingOrders.build());
                 
                 active.call(text.isEmpty() ? null : text, this);
             } catch (ToolExecutionException e) {
@@ -630,14 +627,14 @@ public class AIChatView implements EclipseAiMonitor {
     }
 
     private void onPinChange(boolean pinned) {
-        this.projectPinned = pinned;
-        if (!pinned && selectedResource != null) {
-            var project = EclipseUtil.resolveProject(selectedResource);
+        this.userContext.setProjectPinned(pinned);
+        if (!pinned && userContext.getSelectedResource() != null) {
+            var project = EclipseUtil.resolveProject(userContext.getSelectedResource());
             if (project != null) {
-                currentProject = project;
+                userContext.setCurrentProject(project);
                 aiService.setProject(project);
+                actionsBar.setAgentModeAvailable(project.isOpen());
             }
-            actionsBar.setAgentModeAvailable(currentProject != null && currentProject.isOpen());
         }
         statusLine.setPinned(pinned);
         refreshStatusLine();
@@ -760,30 +757,5 @@ public class AIChatView implements EclipseAiMonitor {
                 return PeonConstants.okStatus("Transcription finished.");
             }).schedule();
         }
-    }
-
-    private String getUserSelection() {
-        if (textSelection == null || StringUtil.hasNoValue(textSelection.getText())) return "";
-        var file = EclipseUtil.getOpenFile();
-
-        var extension = "\n";
-        if (file.isPresent()) extension = file.get().getFileExtension() + "\n";
-
-        String userIn = "\n\n```" + extension + textSelection.getText() + "\n```";
-
-        if (file.isPresent()) {
-            userIn += "\n\nStart line: `" + (textSelection.getStartLine() + 1) + "`";
-            userIn += "\n\nFile: `" + JdtUtil.pathOf(file.get()) + "`"
-                    + "\n\nUse tool `" + EclipseWorkspaceReadFileTool.READ_ECLIPSE_FILE_TOOL 
-                    + "` only if more context is needed.";
-        }
-        return userIn;
-    }
-
-    private IFile getSelectedFile() {
-        if (selectedResource instanceof IFile rf) return rf;
-        var open = EclipseUtil.getOpenFile();
-        if (open.isPresent()) return open.get();
-        return null;
     }
 }

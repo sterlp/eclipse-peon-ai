@@ -7,16 +7,15 @@ import java.util.function.Consumer;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
-import org.eclipse.jface.text.templates.TemplateContext;
 import org.sterl.llmpeon.AbstractChatService;
 import org.sterl.llmpeon.AiDeveloperService;
 import org.sterl.llmpeon.AiPlannerService;
 import org.sterl.llmpeon.PeonMode;
+import org.sterl.llmpeon.StandingOrdersBuilder.MessageProvider;
 import org.sterl.llmpeon.ai.ConfiguredModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.ai.model.AiModel;
 import org.sterl.llmpeon.command.CommandService;
-import org.sterl.llmpeon.parts.StandingOrdersBuilder.MessageProvider;
 import org.sterl.llmpeon.parts.agent.AgentModeService;
 import org.sterl.llmpeon.parts.agentsmd.AgentsMdService;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
