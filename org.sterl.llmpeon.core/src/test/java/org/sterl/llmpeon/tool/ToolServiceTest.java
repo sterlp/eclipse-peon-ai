@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.tool;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -7,6 +8,9 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.streaming.StreamingBridge;
@@ -54,16 +58,12 @@ class ToolServiceTest {
     @Test
     void testLoopsOn_result_think_only() {
         // GIVEN
-        var cm = mock(StreamingChatModel.class);
-        doAnswer(inv -> {
-            ChatRequest req = inv.getArgument(0, ChatRequest.class);
-            StreamingChatResponseHandler handler = inv.getArgument(1, StreamingChatResponseHandler.class);
+        var cm = mockWithHandler(req -> {
             ChatResponse cr = req.messages().size() < 2
                     ? ChatResponse.builder().aiMessage(AiMessage.builder().thinking("I think").build()).build()
                     : ChatResponse.builder().aiMessage(AiMessage.from("Hello User")).build();
-            handler.onCompleteResponse(cr);
-            return null;
-        }).when(cm).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+            return cr;
+        });
         var memory = MessageWindowChatMemory.withMaxMessages(50);
         // WHEN
         memory.add(UserMessage.from("Hello"));
@@ -77,4 +77,37 @@ class ToolServiceTest {
         assertTrue(((UserMessage)memory.messages().get(2)).singleText().contains("I think"));
     }
 
+    @Test
+    void test_adds_user_message() {
+        // GIVEN
+        var requestRef = new AtomicReference<ChatRequest>();
+        var cm = mockWithHandler(req -> {
+            requestRef.set(req);
+            return ChatResponse.builder().aiMessage(AiMessage.from("Hello from AI")).build();
+        });
+
+        var msg = UserMessage.from("Hello");
+        // WHEN
+        subject.executeLoop(
+                new ToolLoopRequest(MessageWindowChatMemory.withMaxMessages(50), cm, new StreamingBridge())
+                    .userMessage(msg)
+        );
+
+        // THEN
+        verify(cm, times(1)).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+        // AND
+        assertThat(requestRef.get().messages().getLast()).isEqualTo(msg);
+    }
+    
+    public StreamingChatModel mockWithHandler(Function<ChatRequest, ChatResponse> fn) {
+        var cm = mock(StreamingChatModel.class);
+        doAnswer(inv -> {
+            ChatRequest req = inv.getArgument(0, ChatRequest.class);
+            ChatResponse cr = fn.apply(req);
+            var handler = inv.getArgument(1, StreamingChatResponseHandler.class);
+            handler.onCompleteResponse(cr);
+            return null;
+        }).when(cm).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+        return cm;
+    }
 }
