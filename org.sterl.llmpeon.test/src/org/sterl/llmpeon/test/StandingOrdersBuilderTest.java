@@ -21,7 +21,7 @@ public class StandingOrdersBuilderTest extends AbstractTest {
         // GIVEN
         PeonAiService aiService = new PeonAiService(null, null, null);
         aiService.setProject(project);
-        StandingOrdersBuilder standingOrders = new StandingOrdersBuilder(aiService.getTemplateContext())
+        StandingOrdersBuilder standingOrders = new StandingOrdersBuilder()
                 .add(aiService)
                 .add(aiService.getAgentsMdService());
         

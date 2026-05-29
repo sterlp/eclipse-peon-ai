@@ -48,7 +48,7 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
                 getFieldEditorParent());
         addField(providerEditor);
         addField(new StringFieldEditor(PeonConstants.PREF_MODEL, "Model:", getFieldEditorParent()));
-        addField(new IntegerFieldEditor(PeonConstants.PREF_TOKEN_WINDOW, "Token Window:", getFieldEditorParent()));
+        addField(new IntegerFieldEditor(PeonConstants.PREF_TOKEN_WINDOW, "Auto compact after:", getFieldEditorParent()));
 
         addField(new BooleanFieldEditor(PeonConstants.PREF_THINKING_ENABLED, "Supports thinking", getFieldEditorParent()));
         addField(new BooleanFieldEditor(PeonConstants.PREF_SEND_THINKING_ENABLED, "Sends thinking - needed by some LLMs like Qwen 3.6, Mistral, DeepSeek", getFieldEditorParent()));
@@ -59,12 +59,7 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
         addField(urlEditor);
         buildCheckUrl();
         
-        var queryParamEditor = new StringFieldEditor(PeonConstants.PREF_QUERY_PARAMS, "Query Params (CSV: k=v,k2=v2):", getFieldEditorParent());
-        queryParamEditor.setStringValue("");
-        addField(queryParamEditor);
-        var headerParamEditor = new StringFieldEditor(PeonConstants.PREF_HEADER_PARAMS, "Header Params (CSV: k=v,k2=v2):", getFieldEditorParent());
-        headerParamEditor.setStringValue("");
-        addField(headerParamEditor);
+        addHeaderAndQueryParameter();
 
         apiKeyEditor = new StringFieldEditor(PeonConstants.PREF_API_KEY, "API Key:", getFieldEditorParent());
         addField(apiKeyEditor);
@@ -94,6 +89,15 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
         gd.horizontalSpan = 2;
         link.setLayoutData(gd);
         link.addSelectionListener(SelectionListener.widgetSelectedAdapter(e -> Program.launch(e.text)));
+    }
+
+    private void addHeaderAndQueryParameter() {
+        var queryParamEditor = new StringFieldEditor(PeonConstants.PREF_QUERY_PARAMS, "Query Params (CSV: k=v,k2=v2):", getFieldEditorParent());
+        queryParamEditor.setStringValue("");
+        addField(queryParamEditor);
+        var headerParamEditor = new StringFieldEditor(PeonConstants.PREF_HEADER_PARAMS, "Header Params (CSV: k=v,k2=v2):", getFieldEditorParent());
+        headerParamEditor.setStringValue("");
+        addField(headerParamEditor);
     }
 
     private void buildCheckUrl() {

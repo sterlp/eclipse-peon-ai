@@ -2,7 +2,6 @@ package org.sterl.llmpeon;
 
 import org.sterl.llmpeon.ai.ConfiguredModel;
 import org.sterl.llmpeon.skill.SkillService;
-import org.sterl.llmpeon.template.TemplateContext;
 import org.sterl.llmpeon.tool.ToolService;
 
 public class AiDeveloperService extends AbstractChatService {
@@ -11,13 +10,13 @@ public class AiDeveloperService extends AbstractChatService {
 
     public AiDeveloperService(ConfiguredModel configuredModel,
             ToolService toolService,
-            SkillService skillService, TemplateContext templateContext) {
-        super(configuredModel, toolService, skillService, templateContext);
+            SkillService skillService) {
+        super(configuredModel, toolService, skillService);
     }
 
     @Override
     protected String getSystemPrompt() {
-        return templateContext.process(BASE_PROMPT);
+        return BASE_PROMPT;
     }
 
     protected double getTemperature() {

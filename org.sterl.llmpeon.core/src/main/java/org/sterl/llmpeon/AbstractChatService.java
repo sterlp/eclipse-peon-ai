@@ -16,7 +16,6 @@ import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.skill.SkillPromptFile;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.streaming.StreamingBridge;
-import org.sterl.llmpeon.template.TemplateContext;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
@@ -49,12 +48,11 @@ public abstract class AbstractChatService {
             .build();
     protected final ConfiguredModel configuredModel;
 
-    protected final TemplateContext templateContext;
     @Deprecated // skills should be slash actions
     protected final SkillService skillService;
     protected final ToolService toolService;
-    private List<ChatMessage> standingOrders = Collections.emptyList();
-    private int tokenSize = 0;
+    private final List<ChatMessage> userContextInformations = new ArrayList<>();
+    private volatile int contextTokenSize = 0;
 
     /**
      * One-shot system prompt set by a slash command invocation. When non-null the next call to
@@ -64,10 +62,9 @@ public abstract class AbstractChatService {
     private String oneShotSystemPrompt;
 
     protected AbstractChatService(ConfiguredModel configuredModel, ToolService toolService,
-            SkillService skillService, TemplateContext templateContext) {
+            SkillService skillService) {
         this.toolService = toolService;
         this.skillService = skillService;
-        this.templateContext = templateContext;
         this.configuredModel = configuredModel;
         updateConfig(configuredModel.getConfig());
     }
@@ -78,7 +75,7 @@ public abstract class AbstractChatService {
     protected Predicate<SmartToolExecutor> getToolFilter() {
         return t -> {
             if (t.getTool() instanceof CompactSessionTool) {
-                return getTokenSize() > configuredModel.getConfig().getTokenWindow() * 0.4
+                return contextTokenSize > configuredModel.getConfig().getAutoCompactAfter() * 0.5
                         && getMessages().size() > 5;
             }
             return true;
@@ -87,10 +84,10 @@ public abstract class AbstractChatService {
     
     protected boolean includesMcpTools() { return true; }
 
-    public int tokenWindowUsedInPercent() {
-        float used = tokenSize;
+    public int tokenContextUsedInPercent() {
+        float used = contextTokenSize;
         if (used < 100) return 0;
-        return Math.round(used / Math.min(configuredModel.getTokenWindow(), 4000));
+        return Math.round(used / Math.min(configuredModel.getAutoCompactAfter(), 4000));
     }
 
     public boolean hasUserText(String message) {
@@ -104,10 +101,9 @@ public abstract class AbstractChatService {
     public ChatResponse call(String message, AiMonitor monitor) {
         monitor = AiMonitor.nullSafety(monitor);
         monitor.onCallStart(message);
-        // auto compress if we are close to full
+        // auto compress if we are close to full before we start
         if (StringUtil.hasValue(message)) {
-            if (tokenWindowUsedInPercent() >= 90) compressContext(monitor);
-            memory.add(UserMessage.from(message));
+            if (configuredModel.getAutoCompactAfter() < contextTokenSize) compressContext(monitor);
         }
 
         var start = Instant.now();
@@ -116,6 +112,8 @@ public abstract class AbstractChatService {
         var response = toolService.executeLoop(
                 new ToolLoopRequest(memory, configuredModel.getChatModel(), bridge)
                         .staticMessages(staticMessages)
+                        .userContextInformations(userContextInformations)
+                        .userMessage(message == null ? null : UserMessage.from(message))
                         .monitor(monitor)
                         .toolFilter(getToolFilter())
                         .includeMcpTools(includesMcpTools())
@@ -141,35 +139,35 @@ public abstract class AbstractChatService {
     public void updateConfig(LlmConfig config) {
         configuredModel.updateConfig(config);
         if (config.getSkillDirectory() != null) {
-            this.templateContext.setSkillDirectory(config.getSkillDirectory());
             try {
                 this.skillService.refresh(Path.of(config.getSkillDirectory()));
             } catch (Exception e) {
                 throw new RuntimeException("Failed to load skills from " + config.getSkillDirectory(), e);
             }
         }
-        templateContext.setTokenWindow(getTokenWindow());
     }
 
-    public List<ChatMessage> getStandingOrders() {
-        return Collections.unmodifiableList(standingOrders);
+    public List<ChatMessage> getUserContextInformations() {
+        return Collections.unmodifiableList(userContextInformations);
     }
 
-    public void setStandingOrders(List<ChatMessage> orders) {
-        this.standingOrders = orders == null ? Collections.emptyList() : new ArrayList<>(orders);
+    /**
+     * added directly above the user input to avoid cache invalidations
+     */
+    public void setUserContextInformations(List<ChatMessage> orders) {
+        this.userContextInformations.clear();
+        if (orders != null) this.userContextInformations.addAll(orders);
     }
 
     public void clear() {
         memory.clear();
-        tokenSize = 0;
-        templateContext.setTokenSize(0);
+        contextTokenSize = 0;
     }
 
     public void addMessage(ChatMessage message) { memory.add(message); }
     public List<ChatMessage> getMessages() { return memory.messages(); }
-    public int getTokenSize() { return tokenSize; }
-    public int getTokenWindow() { return configuredModel.getTokenWindow(); }
-    public TemplateContext getTemplateContext() { return templateContext; }
+    public int getContextSize() { return contextTokenSize; }
+    public int getAutoCompactAfter() { return configuredModel.getAutoCompactAfter(); }
     public List<SkillPromptFile> getSkills() { return skillService.getSkills(); }
 
     private List<ChatMessage> buildStaticMessages() {
@@ -177,11 +175,11 @@ public abstract class AbstractChatService {
         var override = consumeOneShotSystemPrompt();
         messages.add(SystemMessage.from(override != null ? override : getSystemPrompt()));
 
-        messages.addAll(standingOrders);
         // Skills are still advertised even when a slash command overrode the base prompt; the
         // command body and the skill catalog are orthogonal.
-        var skillMsg = skillService.skillMessage(templateContext);
+        var skillMsg = skillService.skillMessage();
         if (skillMsg != null) messages.add(skillMsg);
+
         return messages;
     }
 
@@ -206,11 +204,10 @@ public abstract class AbstractChatService {
     private void updateTokenCount(ChatResponse response) {
         TokenUsage usage = response.metadata() != null ? response.metadata().tokenUsage() : null;
         if (usage != null && usage.totalTokenCount() != null) {
-            tokenSize = usage.totalTokenCount();
+            contextTokenSize = usage.totalTokenCount();
         } else {
-            tokenSize = estimateTokens();
+            contextTokenSize = estimateTokens();
         }
-        templateContext.setTokenSize(tokenSize);
     }
 
     private int estimateTokens() {
@@ -221,7 +218,9 @@ public abstract class AbstractChatService {
 
     private int charCount(ChatMessage msg) {
         if (msg instanceof UserMessage um) return um.singleText().length();
-        if (msg instanceof AiMessage am) return am.text() != null ? am.text().length() : 0;
+        if (msg instanceof AiMessage am) {
+            return am.text() != null ? am.text().length() : 0;
+        }
         if (msg instanceof ToolExecutionResultMessage tr) return tr.text().length();
         return 0;
     }

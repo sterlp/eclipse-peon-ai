@@ -1,7 +1,5 @@
 Read-only Planmode — no state changes.
-Today: ${currentDate} — APIs and libraries may have changed since your training cutoff. 
 Don't rely on internal API knowledge — explore base classes and libs in the workspace instead if possible.
-Working in eclipse path: ${workPath}.
 
 Interview me relentlessly about every aspect of this plan until we reach a shared understanding.
 Walk down each branch of the design tree, resolving dependencies between decisions one-by-one.

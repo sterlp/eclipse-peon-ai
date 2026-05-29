@@ -3,14 +3,11 @@ package org.sterl.llmpeon;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.nio.file.Path;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.skill.SkillService;
-import org.sterl.llmpeon.template.TemplateContext;
 import org.sterl.llmpeon.tool.ToolService;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -23,7 +20,7 @@ class AiPlannerServiceTest {
     @BeforeEach
     void setUp() {
         var config = LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", "http://localhost:9999");
-        subject = new AiPlannerService(config.build(), new ToolService(), new SkillService(), new TemplateContext(Path.of(".")));
+        subject = new AiPlannerService(config.build(), new ToolService(), new SkillService());
     }
 
     @Test
@@ -41,8 +38,8 @@ class AiPlannerServiceTest {
         var plan = subject.extractLastPlan();
         assertTrue(plan.isPresent(), "Should return the plan even for small conversations");
         assertEquals("Here is the plan: 1. Context 2. Affected files 3. Steps", plan.get().text());
-    }
 
+    }
     @Test
     void extractLastPlan_returnsLastPlan_forLargeConversation() {
         // GIVEN: > 4 messages

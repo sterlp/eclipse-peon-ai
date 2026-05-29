@@ -13,10 +13,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import org.sterl.llmpeon.shared.PromptYmlParser;
-import org.sterl.llmpeon.template.TemplateContext;
 
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
 import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
@@ -30,13 +29,13 @@ public class SkillService {
         refresh(skillsDirectory);
     }
 
-    public ChatMessage skillMessage(TemplateContext context) {
+    public ChatMessage skillMessage() {
         if (getSkills().isEmpty()) return null;
         var string = getSkills().stream()
-                .map(s -> context.process(s.shortDescription()))
+                .map(s -> s.shortDescription())
                 .collect(Collectors.joining("\n"));
-        return SystemMessage.from("""
-                Following skills are availble load and read them them if a user task maches the name or description.
+        return UserMessage.from("""
+                Following skills are availble load and read them them if a task maches the name or description.
                 """ + string);
     }
 

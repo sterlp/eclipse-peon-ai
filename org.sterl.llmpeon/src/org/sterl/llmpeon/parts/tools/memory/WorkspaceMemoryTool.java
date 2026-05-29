@@ -12,7 +12,6 @@ import org.osgi.service.prefs.BackingStoreException;
 import org.sterl.llmpeon.parts.StandingOrdersBuilder.MessageProvider;
 import org.sterl.llmpeon.parts.tools.AbstractEclipseTool;
 import org.sterl.llmpeon.shared.ArgsUtil;
-import org.sterl.llmpeon.template.TemplateContext;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -152,7 +151,7 @@ public class WorkspaceMemoryTool extends AbstractEclipseTool implements MessageP
     }
 
     @Override
-    public ChatMessage apply(TemplateContext t) {
+    public ChatMessage get() {
         if (entries.isEmpty()) return null;
         
         StringBuilder sb = new StringBuilder();

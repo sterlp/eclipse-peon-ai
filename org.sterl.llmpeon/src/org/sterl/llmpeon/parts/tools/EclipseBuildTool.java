@@ -9,7 +9,6 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IncrementalProjectBuilder;
 import org.eclipse.core.runtime.CoreException;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
-import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.ArgsUtil;
 
 import dev.langchain4j.agent.tool.P;
@@ -26,10 +25,7 @@ public class EclipseBuildTool extends AbstractEclipseTool {
         } else {
             sb.append("Known open eclipse projects are:\n");
             for (IProject p : projects) {
-                sb.append("Project name: ").append(p.getName())
-                  .append("\nEclipse path: ").append(JdtUtil.pathOf(p))
-                  .append("\nDisk path: ").append(JdtUtil.diskPathOf(p))
-                  .append("\nNatures: ").append(projectNatures(p))
+                sb.append(EclipseUtil.projectInfo(p))
                   .append("\n---");
             }
         }
@@ -128,28 +124,6 @@ public class EclipseBuildTool extends AbstractEclipseTool {
         }
 
         return result;
-    }
-
-    private static String projectNatures(IProject project) {
-        try {
-            String[] ids = project.getDescription().getNatureIds();
-            if (ids.length == 0) return "none";
-            var sb = new StringBuilder();
-            for (String id : ids) {
-                if (!sb.isEmpty()) sb.append(", ");
-                // show short name for well-known natures, full id otherwise
-                sb.append(switch (id) {
-                    case "org.eclipse.jdt.core.javanature" -> "java";
-                    case "org.eclipse.pde.PluginNature" -> "pde-plugin";
-                    case "org.eclipse.m2e.core.maven2Nature" -> "maven";
-                    case "org.eclipse.buildship.core.gradleprojectnature" -> "gradle";
-                    default -> id;
-                });
-            }
-            return sb.toString();
-        } catch (CoreException e) {
-            return "unknown";
-        }
     }
 
     private static String markerToAiString(IMarker marker) {

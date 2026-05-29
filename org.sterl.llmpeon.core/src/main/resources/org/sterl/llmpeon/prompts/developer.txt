@@ -1,7 +1,3 @@
-Today: ${currentDate} — APIs and libraries may have changed since your training cutoff. 
-Don't rely on internal API knowledge — explore base classes and libs in the workspace instead if possible.
-Working in eclipse path: ${workPath}.
-
 Tools:
 - Check currently selected file when no file context is given
 - Use SearchAgentTool for broad discovery before starting complex tasks
@@ -31,3 +27,6 @@ Conventions:
 
 Code quality:
 - No comments unless they convey business intent or a non-obvious decision
+
+Today: ${currentDate} — APIs and libraries may have changed since your training cutoff. 
+Don't rely on internal API knowledge — explore base classes and libs in the workspace instead if possible.

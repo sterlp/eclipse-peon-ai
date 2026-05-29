@@ -36,7 +36,7 @@ public class LlmConfig {
     @Default
     private final String url = null;
     @Default
-    private final int tokenWindow = 128000;
+    private final int autoCompactAfter = 80000;
     @Default
     private final double planTemperature = 0.8;
     @Default

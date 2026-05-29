@@ -30,7 +30,7 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
         defaults.put(PeonConstants.PREF_PROVIDER_TYPE, DEFAULT.getProviderType().name());
         defaults.put(PeonConstants.PREF_MODEL, StringUtil.stripToEmpty(DEFAULT.getModel()));
         defaults.put(PeonConstants.PREF_URL, StringUtil.stripToEmpty(DEFAULT.getUrl()));
-        defaults.putInt(PeonConstants.PREF_TOKEN_WINDOW, DEFAULT.getTokenWindow());
+        defaults.putInt(PeonConstants.PREF_TOKEN_WINDOW, DEFAULT.getAutoCompactAfter());
         defaults.putBoolean(PeonConstants.PREF_THINKING_ENABLED, DEFAULT.isThinkingEnabled());
         defaults.putBoolean(PeonConstants.PREF_SEND_THINKING_ENABLED, DEFAULT.isSendThinkingEnabled());
         defaults.put(PeonConstants.PREF_API_KEY, StringUtil.stripToEmpty(DEFAULT.getApiKey()));
@@ -55,7 +55,7 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
             .providerType(AiProvider.parse(prefs.get(PeonConstants.PREF_PROVIDER_TYPE, DEFAULT.getProviderType().name())))
             .model(prefs.get(PeonConstants.PREF_MODEL, DEFAULT.getModel()))
             .url(prefs.get(PeonConstants.PREF_URL, DEFAULT.getUrl()))
-            .tokenWindow(prefs.getInt(PeonConstants.PREF_TOKEN_WINDOW, DEFAULT.getTokenWindow()))
+            .autoCompactAfter(prefs.getInt(PeonConstants.PREF_TOKEN_WINDOW, DEFAULT.getAutoCompactAfter()))
             .thinkingEnabled(prefs.getBoolean(PeonConstants.PREF_THINKING_ENABLED, DEFAULT.isThinkingEnabled()))
             .sendThinkingEnabled(prefs.getBoolean(PeonConstants.PREF_SEND_THINKING_ENABLED, DEFAULT.isSendThinkingEnabled()))
             .apiKey(prefs.get(PeonConstants.PREF_API_KEY, ""))

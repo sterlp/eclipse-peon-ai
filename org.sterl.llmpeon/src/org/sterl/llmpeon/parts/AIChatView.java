@@ -91,7 +91,7 @@ public class AIChatView implements EclipseAiMonitor {
     private final VoiceInputService voiceService = new VoiceInputService();
     private final WorkspaceMemoryTool workspaceMemoryTool = WorkspaceMemoryTool.getInstance();
     
-    private final StandingOrdersBuilder standingOrders = new StandingOrdersBuilder(aiService.getTemplateContext())
+    private final StandingOrdersBuilder standingOrders = new StandingOrdersBuilder()
             .add(aiService)
             .add(workspaceMemoryTool)
             .add(aiService.getAgentsMdService());
@@ -186,7 +186,7 @@ public class AIChatView implements EclipseAiMonitor {
         var s = aiService.getActiveService();
         s.clear();
         chatHistory.clear();
-        statusLine.updateCompact(s.getTokenSize(), s.getTokenWindow());
+        statusLine.updateCompact(s.getContextSize(), s.getAutoCompactAfter());
     }
 
     @PreDestroy
@@ -299,7 +299,7 @@ public class AIChatView implements EclipseAiMonitor {
             var ai = aiService.getActiveService();
             chatHistory.hideLiveStatus();
             chatHistory.appendMessage(m);
-            statusLine.updateCompact(ai.getTokenSize(), ai.getTokenWindow());
+            statusLine.updateCompact(ai.getContextSize(), ai.getAutoCompactAfter());
         });
     }
 
@@ -350,7 +350,7 @@ public class AIChatView implements EclipseAiMonitor {
             getSelectedFile()
         );
         var ai = aiService.getActiveService();
-        statusLine.updateCompact(ai.getTokenSize(), ai.getTokenWindow());
+        statusLine.updateCompact(ai.getContextSize(), ai.getAutoCompactAfter());
     }
 
     private void syncAgentsMdToggle() {
@@ -601,7 +601,7 @@ public class AIChatView implements EclipseAiMonitor {
             monitorRef.set(monitor);
             Exception ex = null;
             try {
-                active.setStandingOrders(this.standingOrders.build(
+                active.setUserContextInformations(this.standingOrders.build(
                         currentProject,
                         getSelectedFile()));
                 
@@ -623,7 +623,6 @@ public class AIChatView implements EclipseAiMonitor {
             } finally {
                 EclipseUtil.runInUiThread(parent, () -> lockWhileWorking(false));
                 monitor.done();
-                active.setStandingOrders(Collections.emptyList());
                 monitorRef.set(new NullProgressMonitor());
             }
             return PeonConstants.status("Peon AI\n" + aiService.getConfig(), ex);
@@ -723,7 +722,7 @@ public class AIChatView implements EclipseAiMonitor {
             return false;
         }
 
-        var prompt = aiService.getTemplateContext().process(command.get().readBody());
+        var prompt = command.get().readBody();
         active.setOneShotSystemPrompt(prompt);
         // If only the slash token was entered, keep it visible as the user turn so the chat
         // history clearly shows which command was invoked AND the LLM receives a non-empty turn.

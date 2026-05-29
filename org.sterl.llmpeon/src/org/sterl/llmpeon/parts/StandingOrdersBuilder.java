@@ -4,12 +4,12 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
+import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
-import org.sterl.llmpeon.template.TemplateContext;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -21,14 +21,12 @@ import dev.langchain4j.data.message.UserMessage;
  */
 public class StandingOrdersBuilder {
 
-    public interface MessageProvider extends Function<TemplateContext, ChatMessage> {}
+    public interface MessageProvider extends Supplier<ChatMessage> {}
     
-    private final TemplateContext context;
     private final Set<MessageProvider> providers = new LinkedHashSet<StandingOrdersBuilder.MessageProvider>();
     
-    public StandingOrdersBuilder(TemplateContext context) {
+    public StandingOrdersBuilder() {
         super();
-        this.context = context;
     }
     public StandingOrdersBuilder add(MessageProvider provider) {
         providers.add(provider);
@@ -44,26 +42,27 @@ public class StandingOrdersBuilder {
         if (msg != null) result.add(msg);
         
         for (var p : providers) {
-            msg = p.apply(context);
+            msg = p.get();
             if (msg != null) result.add(msg);
         }
         
         return result;
     }
     
-    ChatMessage buildSelectedMessage(IProject selectedProject,
+    ChatMessage buildSelectedMessage(
+            IProject selectedProject,
             IResource selectedResource) {
         if (selectedProject == null && selectedResource == null) return null;
         
-        String msg = "Selected:";
+        var sb = new StringBuilder();
         if (selectedProject != null) {
-            msg += "\nEclipse project: " + selectedProject.getName();
-            msg += "\nDisk path: " + JdtUtil.diskPathOf(selectedProject);
+            sb.append("Select in Eclipse:\n");
+            sb.append(EclipseUtil.projectInfo(selectedProject));
         }
         if (selectedResource != null) {
-            msg += "\nFile selected: " + JdtUtil.pathOf(selectedResource);
-            msg += "\nDisk path: " + JdtUtil.diskPathOf(selectedResource);
+            sb.append("\nFile selected: ").append(JdtUtil.pathOf(selectedResource));
+            sb.append("\nDisk path: ").append(JdtUtil.diskPathOf(selectedResource));
         }
-        return UserMessage.from(msg);
+        return UserMessage.from(sb.toString());
     }
 }

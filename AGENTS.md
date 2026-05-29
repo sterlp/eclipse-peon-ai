@@ -2,19 +2,6 @@
 The `doc/docs/design` contains the application design. The `HOW` 
 AI changes only allowed here with user approval!
 
-# Planmode
-Interview me relentlessly about every aspect of this plan until we reach a shared understanding. Flag any doc inconsistencies or conflicts for resolution during planning. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.
-
-Ask the questions one at a time.
-
-If a question can be answered by exploring the docs, explore `doc/docs/*.md` instead.
-If a question can be answered by exploring the codebase, explore the codebase instead.
-
-# how to build
-
-- in eclipse `clean build`
-- non eclipse IDE `mvn clean verify` in the shell
-
 # Global Rules
 
 - **Thread Safety**: All code changes must be thread-safe (`Atomic*` / `ReentrantLock`). No single-threaded assumptions.
@@ -29,7 +16,6 @@ Read these when working in specific modules:
 
 # Structure eclipse plugin RCP
 
-- `doc/docs` - mkdocs defining the docs and spec of the project
 - org.sterl.llmpeon.core - non eclipse specific code and tests
 - org.sterl.llmpeon - eclipse plugin code
 - org.sterl.llmpeon.test - eclipse plugin tests
@@ -43,4 +29,5 @@ Read these when working in specific modules:
 
 # Docs
 
+- `doc/docs` - VitePress defining the docs and spec of the project
 - Always update `/doc/.vitepress/config.ts` sidebar/nav when adding new pages to `docs/`

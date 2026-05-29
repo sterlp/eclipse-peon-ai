@@ -88,6 +88,8 @@ public class ToolService {
         do {
             var messages = new ArrayList<ChatMessage>(req.staticMessages);
             messages.addAll(req.memory.messages());
+            messages.addAll(req.userContextInformations); // keep it close to the user message to have the cache working
+            if (req.userMessage != null) messages.add(req.userMessage);
 
             var builder = ChatRequest.builder()
                     .temperature(req.temperature)

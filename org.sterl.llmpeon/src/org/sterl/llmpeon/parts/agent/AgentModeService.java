@@ -105,9 +105,9 @@ public class AgentModeService {
 
     public ChatResponse call(String message, AiMonitor monitor) {
         var service = getActiveService();
-        var orders = new ArrayList<>(service.getStandingOrders());
+        var orders = new ArrayList<>(service.getUserContextInformations());
         orders.add(0, phase == Phase.PLANNING ? plannerAgentMessage() : developerAgentMessage());
-        service.setStandingOrders(orders);
+        service.setUserContextInformations(orders);
         return service.call(message, monitor);
     }
 

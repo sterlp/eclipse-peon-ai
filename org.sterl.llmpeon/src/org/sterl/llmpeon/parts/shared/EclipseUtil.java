@@ -11,6 +11,7 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.IEditorInput;
@@ -105,6 +106,42 @@ public class EclipseUtil {
     
     public static String openProjectsNames() {
         return EclipseUtil.openProjects().stream().map(IProject::getName).collect(Collectors.joining(", "));
+    }
+    
+    public static String projectNatures(IProject project) {
+        try {
+            String[] ids = project.getDescription().getNatureIds();
+            if (ids.length == 0) return "none";
+            var sb = new StringBuilder();
+            for (String id : ids) {
+                if (!sb.isEmpty()) sb.append(", ");
+                // show short name for well-known natures, full id otherwise
+                sb.append(switch (id) {
+                    case "org.eclipse.jdt.core.javanature" -> "java";
+                    case "org.eclipse.pde.PluginNature" -> "pde-plugin";
+                    case "org.eclipse.m2e.core.maven2Nature" -> "maven";
+                    case "org.eclipse.buildship.core.gradleprojectnature" -> "gradle";
+                    default -> id;
+                });
+            }
+            return sb.toString();
+        } catch (CoreException e) {
+            return "unknown";
+        }
+    }
+    public static String projectInfo(IProject p) {
+        final var result = new StringBuilder();
+        result.append("Project name: ").append(p.getName())
+              .append("\nEclipse path: ").append(JdtUtil.pathOf(p))
+              .append("\nDisk path: ").append(JdtUtil.diskPathOf(p))
+              .append("\nNatures: ").append(projectNatures(p));
+        
+        var m = findMember(p, "pom.xml");
+        if (m.isPresent()) result.append(JdtUtil.pathOf(m.get()));
+        m = findMember(p, "package.json");
+        if (m.isPresent()) result.append(JdtUtil.pathOf(m.get()));
+              
+        return result.toString();
     }
 
     /**
