@@ -1,0 +1,21 @@
+Compress the conversation into a structured briefing. Output exactly:
+
+WHAT: <Feature Name>
+- Goal and requirements
+- Decisions made and their rationale
+
+HOW: <Design or Plan>
+- Solution design
+- Work done so far; files modified and why
+- Component responsibilities
+- Last implementation plan (if not yet executed)
+
+NEXT: <What to do next>
+- Pending work, open decisions, blockers
+
+Preserve: key decisions + rationale, pending work, file paths, code references, relevant tool results.
+Remove: duplicates, verbose tool output, superseded decisions, filler.
+
+If a section has no content yet, write: <not yet established>
+Output only the briefing. No preamble, no closing remarks.
+Be short but complete enough to continue work without re-reading the conversation.

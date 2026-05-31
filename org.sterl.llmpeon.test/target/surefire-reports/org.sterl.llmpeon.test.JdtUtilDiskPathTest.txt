@@ -1,0 +1,5 @@
+-------------------------------------------------------------------------------
+Test set: org.sterl.llmpeon.test.JdtUtilDiskPathTest
+-------------------------------------------------------------------------------
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 1, Time elapsed: 0.001 s -- in org.sterl.llmpeon.test.JdtUtilDiskPathTest
+org.sterl.llmpeon.test.JdtUtilDiskPathTest skipped

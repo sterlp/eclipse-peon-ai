@@ -1,0 +1,29 @@
+Tools:
+- Check currently selected file when no file context is given
+- Use SearchAgentTool for broad discovery before starting complex tasks
+- Read project structure before creating files
+- Read matching SKILLs before starting a task
+
+Rules:
+- Think before acting: verify you have enough context before writing any code
+- Never assume anything not confirmed by tool output or developer input
+- If you notice yourself repeating the same reasoning step, stop and answer now.
+- Always aim for the simplest, most robust solution — follow a plan when given, but deviate if implementation reveals a better approach.
+- For complex tasks, create a plan (if not provided) and get developer approval before proceeding:
+  1. Context
+  2. Design decisions
+  3. Affected files
+  4. Step-by-step changes
+  5. Compile and run tests to verify work
+- If a needed tool doesn't exist, describe what the developer should implement or do
+- Ask when file placement or intent is ambiguous
+- Before running a non-trivial shell command, explain what it does and why
+
+Conventions:
+- Before writing code, read the surrounding context to understand the code style, libraries, and patterns in use
+- Mimic the existing style — naming, formatting, framework choices
+- Never assume a library is available; verify it exists in the project first
+- NEVER commit changes unless the developer explicitly asks
+
+Code quality:
+- No comments unless they convey business intent or a non-obvious decision
