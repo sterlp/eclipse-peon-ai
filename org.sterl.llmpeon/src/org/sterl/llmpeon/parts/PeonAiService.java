@@ -36,7 +36,6 @@ import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 import org.sterl.llmpeon.tool.tools.DiskGrepTool;
-import org.sterl.llmpeon.tool.tools.SkillTool;
 
 import dev.langchain4j.data.message.UserMessage;
 
@@ -128,7 +127,7 @@ public class PeonAiService implements MessageProvider {
         toolService.addTool(new EclipseRunTestTool());
         toolService.addTool(new EclipseCodeNavigationTool());
         toolService.addTool(new EclipseConsoleLogTool());
-        toolService.addTool(new SkillTool(skillService));
+        toolService.addProvider(skillService);
 
         developerService = new AiDeveloperService(configuredModel, toolService);
         plannerService   = new AiPlannerService(configuredModel, toolService);

@@ -14,11 +14,13 @@ import java.util.stream.Collectors;
 
 import org.sterl.llmpeon.StandingOrdersBuilder.MessageProvider;
 import org.sterl.llmpeon.shared.PromptYmlParser;
+import org.sterl.llmpeon.tool.DynamicTool;
+import org.sterl.llmpeon.tool.DynamicToolProvider;
 
 import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
-public class SkillService implements MessageProvider {
+public class SkillService implements MessageProvider, DynamicToolProvider {
 
     private volatile Path skillsDirectory;
     private final Map<String, SkillPromptFile> skills = new ConcurrentHashMap<>();
@@ -142,5 +144,41 @@ public class SkillService implements MessageProvider {
      */
     public String skillNames() {
         return getSkills().stream().map(SkillPromptFile::name).collect(Collectors.joining(", "));
+    }
+
+    @Override
+    public List<DynamicTool> getTools() {
+        var tools = new java.util.ArrayList<DynamicTool>();
+        for (var skill : getSkills()) {
+            String name = skill.name();
+            String desc = skill.shortDescription();
+            var promptFile = skill;
+            tools.add(new DynamicTool() {
+                @Override
+                public String getName() {
+                    return "readSkill" + name.replace(" ", "");
+                }
+
+                @Override
+                public String getDescription() {
+                    return desc;
+                }
+
+                @Override
+                public String execute() {
+                    return promptFile.readBody();
+                }
+
+                @Override
+                public void withMonitor(org.sterl.llmpeon.shared.AiMonitor monitor) {}
+
+                @Override
+                public void withChatModel(dev.langchain4j.model.chat.StreamingChatModel chatModel) {}
+
+                @Override
+                public void withMemory(List<dev.langchain4j.data.message.ChatMessage> memory) {}
+            });
+        }
+        return tools;
     }
 }
