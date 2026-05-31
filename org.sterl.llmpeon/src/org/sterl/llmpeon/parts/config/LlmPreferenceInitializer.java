@@ -73,7 +73,7 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
     }
 
     /**
-     * Returns an absolute filesystem path for the directory preference. If the stored value is
+     * Returns an absolute file system path for the directory preference. If the stored value is
      * not already an absolute directory, attempts to resolve it as an Eclipse workspace-relative
      * resource and rewrites the preference to the portable workspace path on success.
      */
@@ -84,7 +84,7 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
             var dir = EclipseUtil.resolveInEclipse(dirValue);
             if (dir.isPresent()) {
                 var resource = dir.get();
-                prefs.put(key, resource.getFullPath().toOSString());
+                prefs.put(key, JdtUtil.diskPathOf(resource));
                 var abs = JdtUtil.diskPathOf(resource);
                 if (abs != null) {
                     LOG.info("Resolved " + label + " dir " + dirValue + " as " + abs);
