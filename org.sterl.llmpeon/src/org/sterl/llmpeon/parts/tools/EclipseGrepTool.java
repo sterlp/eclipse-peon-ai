@@ -10,9 +10,9 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IResourceVisitor;
 import org.eclipse.core.runtime.CoreException;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
-import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.ArgsUtil;
+import org.sterl.llmpeon.shared.RegexUtils;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.AiReponseBuilder;
 
@@ -30,7 +30,6 @@ public class EclipseGrepTool extends AbstractEclipseTool {
         ArgsUtil.requireNonBlank(query, "query");
 
         var allProjects = path == null || path.length() <= 1;
-        String lowerQuery = query.toLowerCase();
         var matches = new LinkedHashMap<String, Integer>(); // file path -> count
         final int MAX_FILES = 100;
 
@@ -46,7 +45,7 @@ public class EclipseGrepTool extends AbstractEclipseTool {
             if (resource.get() instanceof IContainer c) {
                 containers.add(c);
             } else if (resource.get() instanceof IFile f) {
-                int count = countOccurrences(f, lowerQuery);
+                int count = countOccurrences(f, query);
                 if (count > 0) matches.put(JdtUtil.pathOf(resource.get()), count);
             } else {
                 onProblem("Eclipse grep could not read " + JdtUtil.pathOf(resource.get()));
@@ -65,7 +64,7 @@ public class EclipseGrepTool extends AbstractEclipseTool {
 
                         if (resource.getType() == IResource.FILE && resource instanceof IFile file) {
                             if (isTextFile(file, extension)) {
-                                int count = countOccurrences(file, lowerQuery);
+                                int count = countOccurrences(file, query);
                                 if (count > 0) matches.put(JdtUtil.pathOf(file), count);
                             }
                         }
@@ -79,7 +78,7 @@ public class EclipseGrepTool extends AbstractEclipseTool {
         }
 
         onTool("Grep '" + query + "' type '" + StringUtil.getOrDefault(extension, "*")
-                + " found " + matches.size() + " matches");
+                + "' found " + matches.size() + " matches");
 
         String suffix = null;
         if (matches.size() >= MAX_FILES) {
@@ -106,14 +105,10 @@ public class EclipseGrepTool extends AbstractEclipseTool {
         return TEXT_EXTENSIONS.contains(name.substring(dot + 1));
     }
 
-    private int countOccurrences(IFile file, String lowerQuery) {
-        String content = IoUtils.readFile(file).toLowerCase();
-        int count = 0;
-        int idx = 0;
-        while ((idx = content.indexOf(lowerQuery, idx)) != -1) {
-            count++;
-            idx += lowerQuery.length();
-        }
-        return count;
+    private int countOccurrences(IFile file, String query) {
+        try {
+            String content = file.readString();
+            return RegexUtils.countOccurrences(content, query);
+        } catch (CoreException e) { return 0; }
     }
 }

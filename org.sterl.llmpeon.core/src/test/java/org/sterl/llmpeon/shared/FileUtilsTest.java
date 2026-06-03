@@ -2,6 +2,7 @@ package org.sterl.llmpeon.shared;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -40,5 +41,56 @@ class FileUtilsTest {
         Path file = tempDir.resolve("new.txt");
         FileUtils.writeString(file, "hello");
         assertEquals("hello", Files.readString(file));
+    }
+
+    @Test
+    void applyEdit_lfFileWithLfOldString() {
+        var result = FileUtils.applyEdit("test.txt", "one\ntwo\nthree", "two\nthree", "2\n3");
+
+        assertEquals("one\n2\n3", result);
+    }
+
+    @Test
+    void applyEdit_crlfFileWithCrlfOldString() {
+        var result = FileUtils.applyEdit("test.txt", "one\r\ntwo\r\nthree", "two\r\nthree", "2\r\n3");
+
+        assertEquals("one\r\n2\r\n3", result);
+    }
+
+    @Test
+    void applyEdit_crlfFileWithCrlfOldStringNormalizesLfNewString() {
+        var result = FileUtils.applyEdit("test.txt", "one\r\ntwo\r\nthree", "two\r\nthree", "2\n3");
+
+        assertEquals("one\r\n2\r\n3", result);
+    }
+
+    @Test
+    void applyEdit_crlfFileWithLfOldStringKeepsCrlf() {
+        var result = FileUtils.applyEdit("test.txt", "one\r\ntwo\r\nthree", "two\nthree", "2\n3");
+
+        assertEquals("one\r\n2\r\n3", result);
+    }
+
+    @Test
+    void applyEdit_lfFileWithCrlfOldStringKeepsLf() {
+        var result = FileUtils.applyEdit("test.txt", "one\ntwo\nthree", "two\r\nthree", "2\r\n3");
+
+        assertEquals("one\n2\n3", result);
+    }
+
+    @Test
+    void applyEdit_duplicateAfterLineEndingNormalizationFails() {
+        var error = assertThrows(IllegalArgumentException.class, () ->
+                FileUtils.applyEdit("test.txt", "one\r\ntwo\r\none\r\ntwo", "one\ntwo", "1\n2"));
+
+        assertThat(error.getMessage()).contains("old_string found 2 times");
+    }
+
+    @Test
+    void applyEdit_missingOldStringStillFails() {
+        var error = assertThrows(IllegalArgumentException.class, () ->
+                FileUtils.applyEdit("test.txt", "one\r\ntwo\r\nthree", "two\nmissing", "2\n3"));
+
+        assertThat(error.getMessage()).contains("old_string: 'two\nmissing' not found");
     }
 }

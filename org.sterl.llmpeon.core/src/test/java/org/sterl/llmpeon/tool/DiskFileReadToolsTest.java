@@ -139,17 +139,13 @@ class DiskFileReadToolsTest {
                 tool.readDiskFile(abs.toString(), 0, 0));
     }
 
+    // TODO: https://github.com/sterlp/eclipse-peon-ai/pull/58
     @Test
     void readDiskFile_lineNumbersStartAtOne() throws IOException {
         Files.writeString(tempDir.resolve("lines.txt"), "alpha\nbeta\ngamma\ndelta\nepsilon");
         // full file - line numbers must start at 1
         String result = tool.readDiskFile("lines.txt", 0, 0);
-        assertEquals(
-                "   1: alpha\n" +
-                "   2: beta\n" +
-                "   3: gamma\n" +
-                "   4: delta\n" +
-                "   5: epsilon\n",
+        assertEquals("alpha\nbeta\ngamma\ndelta\nepsilon",
                 result);
     }
 

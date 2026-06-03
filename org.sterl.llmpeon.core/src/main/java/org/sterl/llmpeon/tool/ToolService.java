@@ -2,11 +2,10 @@ package org.sterl.llmpeon.tool;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Predicate;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.jspecify.annotations.NonNull;
 import org.sterl.llmpeon.mcp.McpServerConfig;
@@ -16,7 +15,6 @@ import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 import org.sterl.llmpeon.tool.model.ToSimpleMessage;
 import org.sterl.llmpeon.tool.tools.AbstractTool;
-import org.sterl.llmpeon.tool.tools.CompressorAgentTool;
 import org.sterl.llmpeon.tool.tools.SearchAgentTool;
 import org.sterl.llmpeon.tool.tools.ShellTool;
 import org.sterl.llmpeon.tool.tools.WebFetchTool;
@@ -43,9 +41,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ToolService {
 
-    public static final int MAX_ITERATIONS = 75;
-
-    private final Map<String, SmartToolExecutor> toolExecutors = new HashMap<>();
+    private static final int MAX_STUCK_ITERATIONS = 10;
+    private final Map<String, SmartToolExecutor> toolExecutors = new ConcurrentHashMap<>();
 
     private McpService mcpService;
     private List<ToolSpecification> mcpToolSpecs = List.of();
@@ -55,7 +52,6 @@ public class ToolService {
         addTool(new WebFetchTool());
         addTool(new SearchAgentTool(this));
         addTool(new ShellTool());
-        addTool(new CompressorAgentTool());
     }
 
     public List<ToolSpecification> toolSpecifications() {
@@ -64,11 +60,15 @@ public class ToolService {
                 .toList();
     }
 
-    public List<ToolSpecification> toolSpecifications(Predicate<SmartToolExecutor> filter) {
-        return toolExecutors.values().stream()
-                .filter(filter)
+    List<ToolSpecification> toolSpecifications(ToolLoopRequest req) {
+        var result = new ArrayList<ToolSpecification>();
+        toolExecutors.values().stream()
+                .filter(req.toolFilter)
                 .map(SmartToolExecutor::getSpec)
-                .toList();
+                .forEach(result::add);
+        
+        if (req.includeMcpTools) result.addAll(mcpToolSpecs);
+        return result;
     }
 
     public SmartToolExecutor getExecutor(String toolName) {
@@ -78,6 +78,10 @@ public class ToolService {
     /**
      * Runs the full tool loop: calls the model via streaming, executes any tools, repeats until
      * the model produces a plain text response.
+     * 
+     * TODO: https://github.com/sterlp/eclipse-peon-ai/issues/55
+     * Keep in mind any change to the message history may kill the kv cache!!
+     * https://github.com/sterlp/eclipse-peon-ai/issues/60
      */
     @NonNull
     public ChatResponse executeLoop(@NonNull ToolLoopRequest req) {
@@ -85,72 +89,63 @@ public class ToolService {
 
         int iterations = 0;
         boolean shouldLoop = true;
+        int stuck = 0;
+
         do {
-            var messages = new ArrayList<ChatMessage>(req.staticMessages);
+            var messages = new ArrayList<ChatMessage>(toOneSystemMessage(req.staticMessages));
             messages.addAll(req.memory.messages());
 
             var builder = ChatRequest.builder()
-                    .temperature(req.temperature)
-                    .messages(toOneSystemMessage(messages));
+                    .messages(messages)
+                    .toolSpecifications(toolSpecifications(req));
+            if (req.temperature != null) builder.temperature(req.temperature);
 
-            var toolSpecs = new ArrayList<>(toolSpecifications(req.toolFilter));
-            if (req.includeMcpTools) toolSpecs.addAll(mcpToolSpecs);
-            if (!toolSpecs.isEmpty()) builder.toolSpecifications(toolSpecs);
-
-            req.monitor.onChatMessage(iterations + 1, builder);
-
+            req.monitor.onChatMessage(++iterations, builder);
             response = req.bridge.call(req.chatModel, builder.build(), req.monitor);
+            ToSimpleMessage.INSTANCE.convert(response.aiMessage()).forEach(req.monitor::onChatResponse);
+            if (req.monitor.isCanceled()) break;
 
-            shouldLoop = response.aiMessage().hasToolExecutionRequests()
-                    || (StringUtil.hasNoValue(response.aiMessage().text())
-                            && StringUtil.hasValue(response.aiMessage().thinking())
-                        );
+            var isToolrequest = response.aiMessage().hasToolExecutionRequests();
+            var hasResponseMessage = StringUtil.hasValue(response.aiMessage().text());
+            var hasThink = StringUtil.hasValue(response.aiMessage().thinking());
+            
+            shouldLoop = isToolrequest || (hasThink && !hasResponseMessage);
             if (shouldLoop) req.onLoop.accept(response);
 
-            ToSimpleMessage.INSTANCE.convert(response.aiMessage()).forEach(req.monitor::onChatResponse);
-
-            req.memory.set(runAllTools(response, req.chatModel, req.monitor, req.memory.messages()));
-
-
-            // https://github.com/langchain4j/langchain4j/issues/4786
-            if (StringUtil.hasNoValue(response.aiMessage().text())
-                            && StringUtil.hasValue(response.aiMessage().thinking())) {
-                if (!response.aiMessage().hasToolExecutionRequests()) {
-                    req.memory.add(new UserMessage("Continue based on your thinking:\n"
-                            + response.aiMessage().thinking()));
+            if (isToolrequest) {
+                stuck = 0; // reset on productive tool use
+                var tR = runAllTools(response, req.chatModel, req.monitor, req.memory.messages());
+                if (tR.clearMemory()) {
+                    req.memory.clear();
+                    req.memory.add(UserMessage.from("Session was cleared continue if you have enough informations."));
                 }
+                // it is possible that the tool fails - as so we have than no tool result, 
+                // which will cause issues with some models
+                // TODO should we add an info for the AI?
+                req.memory.add(response.aiMessage());
+                tR.result().forEach(req.memory::add);
+            } else if (hasResponseMessage) {
+                req.memory.add(response.aiMessage());
+                break; // done
+            } else if (hasThink) {
+                // https://github.com/langchain4j/langchain4j/issues/4786
+                ++stuck;
+                req.memory.add(response.aiMessage());
+                req.monitor.onProblem("AI hangs - only thinking returned times: " + stuck);
+                if (stuck > MAX_STUCK_ITERATIONS) break;
+                req.memory.add(new UserMessage("Your last response contained only internal reasoning with no output. " +
+                                "Stop thinking and take action now: either call a tool, ask a clarifying question, " +
+                                "or provide your answer directly."
+                            ));
             }
-
-            if (iterations++ >= MAX_ITERATIONS) {
-                req.monitor.onProblem("Tool loop reached max iterations - stopping after " + iterations);
-                break;
-            }
-            if (req.monitor.isCanceled()) break;
-        } while (shouldLoop);
+        } while (shouldLoop && !req.monitor.isCanceled());
 
         return response;
     }
 
-    /** Merges all SystemMessages into one at the front (compatibility with local LLMs). */
-    private static List<ChatMessage> toOneSystemMessage(List<ChatMessage> messages) {
-        var result = new ArrayList<ChatMessage>();
-        var systemText = new StringBuilder();
-        for (var m : messages) {
-            if (m instanceof SystemMessage sm) systemText.append(sm.text()).append("\n");
-            else result.add(m);
-        }
-        if (systemText.length() > 0) result.addFirst(SystemMessage.from(systemText.toString()));
-        return result;
-    }
+    record ToolLoopResult(ArrayList<ToolExecutionResultMessage> result, boolean clearMemory) {}
 
-    public List<ChatMessage> runAllTools(ChatResponse response, StreamingChatModel agentService, AiMonitor monitor, List<ChatMessage> memory) {
-        if (!response.aiMessage().hasToolExecutionRequests()) {
-            // No tools to run — still add the final AI message to memory
-            var newMemory = new ArrayList<ChatMessage>(memory);
-            newMemory.add(response.aiMessage());
-            return newMemory;
-        }
-
+    private ToolLoopResult runAllTools(ChatResponse response, StreamingChatModel agentService, AiMonitor monitor, List<ChatMessage> memory) {
         var toolResults = new ArrayList<ToolExecutionResultMessage>();
         boolean clearMemory = false;
 
@@ -161,11 +156,19 @@ public class ToolService {
             if (monitor.isCanceled()) break;
         }
 
-        var newMemory = new ArrayList<ChatMessage>();
-        if (!clearMemory) newMemory.addAll(memory);
-        newMemory.add(response.aiMessage());
-        newMemory.addAll(toolResults);
-        return newMemory;
+        return new ToolLoopResult(toolResults, clearMemory);
+    }
+    
+    /** Merges all SystemMessages into one at the front (compatibility with local LLMs). */
+    private static List<ChatMessage> toOneSystemMessage(List<ChatMessage> messages) {
+        var result = new ArrayList<ChatMessage>();
+        var systemText = new StringBuilder();
+        for (var m : messages) {
+            if (m instanceof SystemMessage sm) systemText.append(sm.text()).append("\n");
+            else result.add(m);
+        }
+        if (systemText.length() > 0) result.addFirst(SystemMessage.from(systemText.toString()));
+        return result;
     }
 
     public static record ToolResult(boolean clearMemory, ToolExecutionResultMessage message) {}
@@ -218,19 +221,35 @@ public class ToolService {
      * Existing tools with the same name trigger an error.
      */
     public void addTool(SmartTool toolObject) {
+        var old = replaceTool(toolObject);
+        if (old != null) throw new RuntimeException("Tool " + old.getSpec().name() + " already registered ...");
+    }
+    
+    public SmartToolExecutor replaceTool(SmartTool toolObject) {
+        SmartToolExecutor result = null;
         for (Method method : toolObject.getClass().getDeclaredMethods()) {
             if (method.isAnnotationPresent(Tool.class)) {
                 var spec = ToolSpecifications.toolSpecificationFrom(method);
                 var old = toolExecutors.put(spec.name(), new SmartToolExecutor(toolObject, method, spec));
-                if (old != null) throw new RuntimeException("Tool with " + spec.name() + " already registered ...");
-                log.debug("added tool " + spec);
+                if (old != null) {
+                    result = old;
+                    log.info("replaced tool " + spec);
+                } else {
+                    log.debug("added tool   " + spec);
+                }
             }
         }
+        return result;
     }
 
     /** Removes all tools registered from the given tool object. */
     public void removeTool(SmartTool toolObject) {
-        for (Method method : toolObject.getClass().getDeclaredMethods()) {
+        removeTool(toolObject.getClass());
+    }
+    
+    /** Removes all tools registered from the given tool object. */
+    public void removeTool(Class<? extends SmartTool> toolClass) {
+        for (Method method : toolClass.getDeclaredMethods()) {
             if (method.isAnnotationPresent(Tool.class)) {
                 var spec = ToolSpecifications.toolSpecificationFrom(method);
                 toolExecutors.remove(spec.name());

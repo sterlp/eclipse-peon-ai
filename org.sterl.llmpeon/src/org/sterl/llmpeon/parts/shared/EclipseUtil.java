@@ -4,12 +4,14 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.IEditorInput;
@@ -19,7 +21,7 @@ import org.eclipse.ui.ide.IDE;
 import org.sterl.llmpeon.shared.StringUtil;
 
 public class EclipseUtil {
-    
+    // TODO move to EclipseUiUtil
     public static void runInUiThread(Composite parent, Runnable fn) {
         if (parent == null || parent.isDisposed()) return;
         parent.getDisplay().asyncExec(() -> {
@@ -45,6 +47,7 @@ public class EclipseUtil {
      * Must be called from the UI thread.
      * Throws {@link RuntimeException} if the editor cannot be opened.
      */
+    // TODO move to EclipseUiUtil
     public static void openInEditor(IFile file) {
         var page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
         if (page == null || !file.exists()) return;
@@ -92,7 +95,6 @@ public class EclipseUtil {
         return Optional.empty();
     }
 
-
     public static List<IProject> openProjects() {
         var result = new ArrayList<IProject>();
         for (IProject p : ResourcesPlugin.getWorkspace().getRoot().getProjects()) {
@@ -100,6 +102,46 @@ public class EclipseUtil {
             result.add(p);
         }
         return result;
+    }
+    
+    public static String openProjectsNames() {
+        return EclipseUtil.openProjects().stream().map(IProject::getName).collect(Collectors.joining(", "));
+    }
+    
+    public static String projectNatures(IProject project) {
+        try {
+            String[] ids = project.getDescription().getNatureIds();
+            if (ids.length == 0) return "none";
+            var sb = new StringBuilder();
+            for (String id : ids) {
+                if (!sb.isEmpty()) sb.append(", ");
+                // show short name for well-known natures, full id otherwise
+                sb.append(switch (id) {
+                    case "org.eclipse.jdt.core.javanature" -> "java";
+                    case "org.eclipse.pde.PluginNature" -> "pde-plugin";
+                    case "org.eclipse.m2e.core.maven2Nature" -> "maven";
+                    case "org.eclipse.buildship.core.gradleprojectnature" -> "gradle";
+                    default -> id;
+                });
+            }
+            return sb.toString();
+        } catch (CoreException e) {
+            return "unknown";
+        }
+    }
+    public static String projectInfo(IProject p) {
+        final var result = new StringBuilder();
+        result.append("Project name:  ").append(p.getName())
+              .append("\nEclipse path: ").append(JdtUtil.pathOf(p))
+              .append("\nDisk path:    ").append(JdtUtil.diskPathOf(p))
+              .append("\nNatures:      ").append(projectNatures(p));
+
+        var m = findMember(p, "pom.xml");
+        if (m.isPresent()) result.append(JdtUtil.pathOf(m.get()));
+        m = findMember(p, "package.json");
+        if (m.isPresent()) result.append(JdtUtil.pathOf(m.get()));
+              
+        return result.toString();
     }
 
     /**

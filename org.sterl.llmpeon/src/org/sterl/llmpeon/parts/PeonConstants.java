@@ -15,10 +15,15 @@ public interface PeonConstants {
 
     String PREF_API_KEY                    = "llm.apiKey";
     String PREF_SKILL_DIRECTORY            = "llm.skillDirectory";
+    String PREF_COMMAND_DIRECTORY          = "llm.commandDirectory";
     String PREF_DISK_TOOLS_ENABLED         = "llm.diskToolsEnabled";
     String PREF_SHELL_CONFIRMATION_ENABLED = "llm.shellConfirmationEnabled";
     
     String PREF_LOG_RESPONSE    = "llm.logResponse";
+    String PREF_PLAN_TEMPERATURE   = "llm.planTemperature";
+    String PREF_DEV_TEMPERATURE    = "llm.devTemperature";
+    String PREF_QUERY_PARAMS       = "llm.queryParams";
+    String PREF_HEADER_PARAMS      = "llm.headerParams";
 
     String PREF_MCP_SERVERS  = "mcp.servers";   // JSON: List<McpServerConfig>
     String PREF_MCP_ENABLED  = "mcp.enabled";   // boolean
@@ -31,6 +36,8 @@ public interface PeonConstants {
     String PREF_VOICE_LANGUAGE = "voice.language";   // e.g. "en", "de" — empty = auto-detect
     String PREF_VOICE_MIXER    = "voice.mixer";       // mixer name — empty = system default
 
+
+    String PREF_AGENTS_MD_ENABLED  = "agentsMd.enabled";   // boolean, default true
 
     public static IStatus okStatus(String message) {
         return new Status(IStatus.OK, PLUGIN_ID, message);

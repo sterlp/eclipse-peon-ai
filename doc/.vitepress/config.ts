@@ -26,9 +26,9 @@ export default defineConfig({
           items: [
             { text: 'Overview', link: '/' },
             { text: 'Agents & Skills', link: '/setup/agents-and-skills' },
-            { text: 'Template Variables', link: '/setup/template-variables' },
+            { text: 'Commands', link: '/setup/commands' },
             { text: 'Agent Mode', link: '/setup/agent-mode' },
-            { text: 'Model Comparison', link: '/model-checks.md' }
+            { text: 'Memory', link: '/peon-memory' }
           ]
         },
         {
@@ -37,8 +37,10 @@ export default defineConfig({
             { text: 'Installation', link: '/setup/installation' },
             { text: 'Configuration', link: '/setup/configuration' },
             { text: 'MCP', link: '/setup/mcp-configuration' },
-            { text: 'Voice', link: '/setup/voice-config' }
-            
+            { text: 'Voice', link: '/setup/voice-config' },
+            { text: 'Which model?', link: '/model-checks' },
+            { text: 'Qwen tuning', link: '/setup/qwen3627b_lmstudio_optimization' },
+            { text: 'llama.cpp', link: '/setup/llama' }
           ]
         },
         {

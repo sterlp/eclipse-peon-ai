@@ -1,4 +1,6 @@
-Changes in this project have to be build with maven - build the parent project - to update the plugin:
+See parent: `/llmpeon-parent/AGENTS.md` (Global Rules).
+Alias for `org.sterl.llmpeon.core`.
 
-- `mvn clean verify`
-- use lombok for Pojos
+# Core Specifics
+- Use Lombok for POJOs.
+- Run tests using Eclipse tools (`runTests`).

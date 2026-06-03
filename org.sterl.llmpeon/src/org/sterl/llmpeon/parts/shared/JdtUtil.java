@@ -1,10 +1,14 @@
 package org.sterl.llmpeon.parts.shared;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jdt.core.Flags;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaElement;
@@ -14,24 +18,74 @@ import org.eclipse.jdt.core.ISourceRange;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.core.search.IJavaSearchConstants;
+import org.eclipse.jdt.core.search.IJavaSearchScope;
+import org.eclipse.jdt.core.search.SearchEngine;
+import org.eclipse.jdt.core.search.SearchPattern;
+import org.eclipse.jdt.core.search.TypeNameMatch;
+import org.eclipse.jdt.core.search.TypeNameMatchRequestor;
 import org.jspecify.annotations.Nullable;
 import org.sterl.llmpeon.shared.StringUtil;
 
+import jakarta.annotation.Nonnull;
+
 public class JdtUtil {
+    
+    public static IJavaSearchScope resolveScope(String projectName) {
+        if (projectName != null && !projectName.isBlank()) {
+            var project = EclipseUtil.findOpenProject(projectName);
+            if (project.isPresent()) {
+                return SearchEngine.createJavaSearchScope(new IJavaElement[]{ JavaCore.create(project.get()) });
+            }
+        }
+        return SearchEngine.createWorkspaceScope();
+    }
+    
+    public static List<IType> findBySearch(
+            @Nullable
+            String pkg,
+            @Nonnull
+            String typeName,
+            @Nullable
+            String projectName,
+            IProgressMonitor monitor) throws JavaModelException {
+        var results = new ArrayList<IType>();
+        
+        int matchRule = (typeName.contains("*") || typeName.contains("?"))
+                ? SearchPattern.R_PATTERN_MATCH
+                : SearchPattern.R_PREFIX_MATCH;
+
+        new SearchEngine().searchAllTypeNames(
+                pkg == null ? "*".toCharArray() : pkg.toCharArray(), 
+                SearchPattern.R_PATTERN_MATCH,
+                typeName.toCharArray(), matchRule,
+                IJavaSearchConstants.TYPE,
+                resolveScope(projectName),
+                new TypeNameMatchRequestor() {
+                    @Override
+                    public void acceptTypeNameMatch(TypeNameMatch match) {
+                        results.add(match.getType());
+                    }
+                },
+                IJavaSearchConstants.WAIT_UNTIL_READY_TO_SEARCH,
+                monitor);
+
+        return results;
+    }
 
     /**
      * Find a type by FQN across all open Java projects. Returns first match.
      */
-    public static Optional<IType> findType(String fqn) {
+    public static Optional<IType> findType(
+            String packageName, 
+            String typeQualifiedName, 
+            IProgressMonitor progressMonitor) {
+
         for (IProject p : EclipseUtil.openProjects()) {
             var jp = JavaCore.create(p);
             if (jp == null || !jp.exists()) continue;
-            try {
-                IType type = jp.findType(fqn);
-                if (type != null && type.exists()) return Optional.of(type);
-            } catch (JavaModelException e) {
-                // skip project
-            }
+            var result = findType(packageName, typeQualifiedName, progressMonitor, jp);
+            if (result.isPresent()) return result;
         }
         return Optional.empty();
     }
@@ -39,12 +93,22 @@ public class JdtUtil {
     /**
      * Find a type scoped to a specific project.
      */
-    public static Optional<IType> findType(String fqn, IJavaProject project) {
+    public static Optional<IType> findType(
+            @Nonnull
+            String packageName,
+            @Nonnull
+            String typeQualifiedName,
+            @Nonnull
+            IProgressMonitor progressMonitor,
+            @Nonnull
+            IJavaProject project) {
+        
+        packageName = StringUtil.stripToNull(packageName);
         try {
-            IType type = project.findType(fqn);
+            IType type = project.findType(packageName, typeQualifiedName, progressMonitor);
             if (type != null && type.exists()) return Optional.of(type);
         } catch (JavaModelException e) {
-            // ignore
+            throw new RuntimeException("findType failed for " + typeQualifiedName, e);
         }
         return Optional.empty();
     }
@@ -52,10 +116,19 @@ public class JdtUtil {
     /**
      * Find a type scoped to a specific project.
      */
-    public static Optional<IType> findType(String fqn, String project) {
+    public static Optional<IType> findType(
+            @Nonnull
+            String packageName,
+            @Nonnull
+            String typeQualifiedName,
+            @Nonnull
+            IProgressMonitor progressMonitor,
+            String project) {
         var p = EclipseUtil.findOpenProject(project);
-        if (p.isPresent() && p.get() instanceof IJavaProject jp) return findType(fqn, jp);
-        return findType(fqn);
+        if (p.isPresent() && p.get() instanceof IJavaProject jp) {
+            return findType(packageName, typeQualifiedName, progressMonitor, jp);
+        }
+        return findType(packageName, typeQualifiedName, progressMonitor);
     }
 
     /**
@@ -152,7 +225,11 @@ public class JdtUtil {
         if (StringUtil.hasValue(result)) return result;
         
         // check for the resource
-        if (je.getResource() instanceof IFile f) result = IoUtils.readFile(f); 
+        if (je.getResource() instanceof IFile f && f.exists()) {
+            try {
+                result = f.readString();
+            } catch (CoreException e) { throw new RuntimeException(e); }
+        }
         return result;
     }
 }

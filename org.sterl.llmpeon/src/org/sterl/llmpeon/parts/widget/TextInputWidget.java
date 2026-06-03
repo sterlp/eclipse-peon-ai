@@ -2,6 +2,7 @@ package org.sterl.llmpeon.parts.widget;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StyledText;
+import org.eclipse.swt.custom.VerifyKeyListener;
 import org.eclipse.swt.events.KeyListener;
 import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.graphics.Color;
@@ -86,8 +87,24 @@ public class TextInputWidget extends Composite {
         styledText.addKeyListener(listener);
     }
 
+    /**
+     * Adds a verify-key listener that runs BEFORE the StyledText consumes the key. Setting
+     * {@code event.doit = false} suppresses the default behavior (e.g. arrow navigation). This is
+     * the only reliable hook for stealing arrow / Enter keys to drive an external popup.
+     */
+    public void addVerifyKeyListener(VerifyKeyListener listener) {
+        styledText.addVerifyKeyListener(listener);
+    }
+
     /** Sets the background on the underlying StyledText (safe — not a Composite). */
     public void setTextBackground(Color color) {
         styledText.setBackground(color);
+    }
+
+    /** Display coordinates of the current caret, suitable for anchoring an external popup. */
+    public Point getCaretDisplayLocation() {
+        if (styledText.isDisposed()) return null;
+        var local = styledText.getLocationAtOffset(styledText.getCaretOffset());
+        return styledText.toDisplay(local.x, local.y);
     }
 }

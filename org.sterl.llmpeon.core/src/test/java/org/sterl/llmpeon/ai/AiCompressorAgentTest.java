@@ -2,14 +2,12 @@ package org.sterl.llmpeon.ai;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.nio.file.Path;
-
-import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.AiDeveloperService;
+import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.llmpeon.shared.AiMonitor;
-import org.sterl.llmpeon.skill.SkillService;
-import org.sterl.llmpeon.template.TemplateContext;
 import org.sterl.llmpeon.tool.ToolService;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -20,14 +18,27 @@ import dev.langchain4j.data.message.UserMessage;
  */
 class AiCompressorAgentTest {
 
-    LlmConfig config = LlmConfig.newConfig(AiProvider.LM_STUDIO, "qwen/qwen3.6-35b-a3b", "http://localhost:1234/v1");
-    
+    private MockLlmServer server;
+
+    @BeforeEach
+    void setUp() throws Exception {
+        server = new MockLlmServer(0);
+        server.start();
+    }
+
+    @AfterEach
+    void tearDown() {
+        server.stop();
+    }
+
     @Test
-    @Tag("integration")
     void test_compressContext() {
         // GIVEN
-        var subject = new AiDeveloperService(config.build(), new ToolService(), new SkillService(), 
-                new TemplateContext(Path.of(".")));
+        var config = LlmConfig.newConfig(AiProvider.OPEN_AI, "mock-model", 
+                String.format("http://localhost:%d/v1", server.getPort()));
+        server.queueResponse("WHAT: Build a Java Hello world application that displays the current time when executed.");
+
+        var subject = new AiDeveloperService(config.build(), new ToolService());
 
         subject.addMessage(UserMessage.from("Build be a Hello world"));
         subject.addMessage(AiMessage.from("In which language?"));

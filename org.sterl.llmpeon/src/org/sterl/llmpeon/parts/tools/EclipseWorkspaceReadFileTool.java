@@ -12,7 +12,6 @@ import org.eclipse.core.resources.IResourceVisitor;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
-import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.FileLines;
@@ -47,7 +46,12 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
             var lines = "";
             if (startLine > 0 && endLine > 0) lines = " from " + startLine + " to " + endLine;
             onTool("Reading eclipse" + lines + " file " + filePath);
-            String content = IoUtils.readFile(f);
+            String content;
+            try {
+                content = f.readString();
+            } catch (CoreException e) {
+                throw new IllegalArgumentException(e.getMessage(), e);
+            }
             return  FileLines.extract(content, startLine, endLine);
         }
         onProblem("No eclipse file found for " + filePath);
@@ -56,11 +60,13 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
 
     @Tool("Eclipse: Search workspace files by name. Use '*' to list all files recursively.")
     public String searchWorkspaceFiles(
-            @P(description = "file name query - wildcard *, ? is supported. e.g. '*.java' for all java files", name = "query") String query,
-            @P(description = "max results to return. 0 = unlimited.", required = false, name = "limit") Integer inLimit) {
+            @P(description = "file name query - only *, ? wildcard is supported.", name = "query") 
+            String query,
+            @P(description = "max results to return. 0 = unlimited.", required = false, name = "limit") 
+            Integer inLimit) {
 
-        final int limit = inLimit == null ? 0 : inLimit;
         ArgsUtil.requireNonBlank(query, "query");
+        final int limit = inLimit == null ? 0 : inLimit;
 
         query = FileUtils.normalizePath(query);
         final var matcher = StringMatcher.wildCardMatcher(query);
@@ -100,8 +106,9 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
 
     public static final String LIST_WORKSPACE_NAME = "listWorkspace";
     @Tool(name = LIST_WORKSPACE_NAME, value = "Eclipse: List workspace directory/projects (non-recursive). Empty path lists all projects.")
-    public String listWorkspac(
-            @P(description = "workspace-relative path, e.g. '/MyProject/src'", required = false, name = "path") String path) {
+    public String listWorkspace(
+            @P(description = "workspace-relative path, e.g. '/MyProject/src'", required = false, name = "path") 
+            String path) {
 
         // root: list open projects
         if (path == null || path.isBlank() || path.length() == 1) {

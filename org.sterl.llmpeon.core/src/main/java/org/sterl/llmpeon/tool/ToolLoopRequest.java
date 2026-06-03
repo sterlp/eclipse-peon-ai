@@ -17,6 +17,13 @@ import dev.langchain4j.model.chat.response.ChatResponse;
  * Command object for {@link ToolService#executeLoop(ToolLoopRequest)}.
  * Required fields: {@code memory}, {@code chatModel}, and {@code bridge}.
  * All other fields have sensible defaults.
+ * 
+ * Keep in mind any change to the message history may kill the kv cache!!
+ * https://github.com/sterlp/eclipse-peon-ai/issues/60
+ * 
+ * See also:
+ * https://github.com/ggml-org/llama.cpp/issues/22746
+ * https://github.com/ggml-org/llama.cpp/pull/13194#issuecomment-4586088278
  */
 public class ToolLoopRequest {
 
@@ -25,12 +32,12 @@ public class ToolLoopRequest {
     public final StreamingChatModel chatModel;
     public final StreamingBridge bridge;
 
-    // optional — with defaults
+    /** static messages which do not change */
     public List<ChatMessage> staticMessages = List.of();
     public AiMonitor monitor = AiMonitor.NULL_MONITOR;
     public Predicate<SmartToolExecutor> toolFilter = t -> true;
     public boolean includeMcpTools = true;
-    public double temperature = 0.8;
+    public Double temperature;
     public Consumer<ChatResponse> onLoop = r -> {};
 
     public ToolLoopRequest(ChatMemory memory, StreamingChatModel chatModel, StreamingBridge bridge) {
@@ -39,6 +46,10 @@ public class ToolLoopRequest {
         this.bridge = bridge;
     }
 
+    /**
+     * Pure static messages which never change
+     * Keep in mind any change to the message history may kill the kv cache!! 
+     */
     public ToolLoopRequest staticMessages(List<ChatMessage> staticMessages) {
         this.staticMessages = staticMessages;
         return this;

@@ -7,11 +7,15 @@ import java.util.function.Consumer;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
+import org.sterl.llmpeon.AbstractChatService;
 import org.sterl.llmpeon.AiDeveloperService;
 import org.sterl.llmpeon.AiPlannerService;
+import org.sterl.llmpeon.PeonMode;
+import org.sterl.llmpeon.StandingOrdersBuilder.MessageProvider;
 import org.sterl.llmpeon.ai.ConfiguredModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.ai.model.AiModel;
+import org.sterl.llmpeon.command.CommandService;
 import org.sterl.llmpeon.parts.agent.AgentModeService;
 import org.sterl.llmpeon.parts.agentsmd.AgentsMdService;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
@@ -21,15 +25,17 @@ import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.tools.AgentModeTool;
 import org.sterl.llmpeon.parts.tools.EclipseBuildTool;
 import org.sterl.llmpeon.parts.tools.EclipseCodeNavigationTool;
+import org.sterl.llmpeon.parts.tools.EclipseConsoleLogTool;
 import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
 import org.sterl.llmpeon.parts.tools.EclipseRunTestTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
 import org.sterl.llmpeon.skill.SkillService;
-import org.sterl.llmpeon.template.TemplateContext;
 import org.sterl.llmpeon.tool.ToolService;
+import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
+import org.sterl.llmpeon.tool.tools.DiskGrepTool;
 import org.sterl.llmpeon.tool.tools.SkillTool;
 
 import dev.langchain4j.data.message.UserMessage;
@@ -46,12 +52,12 @@ import dev.langchain4j.data.message.UserMessage;
  * without requiring locks. The downstream setters on individual services are called from the
  * Eclipse DI thread and are inherently serialized by the single-threaded event dispatch.</p>
  */
-public class PeonAiService {
+public class PeonAiService implements MessageProvider {
 
     private final ConfiguredModel configuredModel;
     private final ToolService toolService;
     private final SkillService skillService;
-    private final TemplateContext context;
+    private final CommandService commandService;
     private final AgentsMdService agentsMdService;
     private final AiDeveloperService developerService;
     private final AiPlannerService plannerService;
@@ -62,11 +68,13 @@ public class PeonAiService {
     private final EclipseWorkspaceWriteFileTool workspaceWriteFilesTool;
     private final DiskFileWriteTool diskFileWriteTool;
     private final DiskFileReadTool diskFileReadTool;
+    private final DiskGrepTool diskGrepTool;
 
     /** Written from Eclipse DI thread, read from background LLM job threads. */
     private final AtomicReference<IProject> currentProject = new AtomicReference<>();
-
-
+    
+    private volatile PeonMode mode = PeonMode.DEV;
+    
     /**
      * Package-private constructor for unit tests — accepts pre-built services to avoid
      * hard Eclipse dependencies ({@code EclipseUtil.workspacePath()}, Eclipse tools, etc.).
@@ -77,7 +85,7 @@ public class PeonAiService {
         this.developerService = developerService;
         this.toolService = null;
         this.skillService = null;
-        this.context = null;
+        this.commandService = null;
         this.agentsMdService = null;
         this.agentMode = null;
         this.agentModeTool = null;
@@ -85,6 +93,7 @@ public class PeonAiService {
         this.workspaceWriteFilesTool = null;
         this.diskFileWriteTool = null;
         this.diskFileReadTool = null;
+        this.diskGrepTool = null;
     }
 
     /**
@@ -103,7 +112,7 @@ public class PeonAiService {
         var rootPath            = EclipseUtil.workspacePath();
         toolService             = new ToolService();
         skillService            = new SkillService();
-        context                 = new TemplateContext(rootPath);
+        commandService          = new CommandService();
         agentsMdService         = new AgentsMdService();
 
         workspaceWriteFilesTool = new EclipseWorkspaceWriteFileTool();
@@ -112,46 +121,29 @@ public class PeonAiService {
         
         diskFileWriteTool = new DiskFileWriteTool(rootPath);
         diskFileReadTool  = new DiskFileReadTool(rootPath);
-        if (configuredModel.getConfig().isDiskToolsEnabled()) {
-            toolService.addTool(diskFileWriteTool);
-            toolService.addTool(diskFileReadTool);
-        }
-
+        diskGrepTool      = new DiskGrepTool(rootPath);
+        
         toolService.addTool(new EclipseBuildTool());
         toolService.addTool(new EclipseGrepTool());
         toolService.addTool(new EclipseRunTestTool());
         toolService.addTool(new EclipseCodeNavigationTool());
+        toolService.addTool(new EclipseConsoleLogTool());
         toolService.addTool(new SkillTool(skillService));
 
-        developerService = new AiDeveloperService(configuredModel, toolService, skillService, context);
-        plannerService   = new AiPlannerService(configuredModel, toolService, skillService, context);
+        developerService = new AiDeveloperService(configuredModel, toolService);
+        plannerService   = new AiPlannerService(configuredModel, toolService);
 
         // Agent mode uses separate instances with isolated memory
-        var agentDev  = new AiDeveloperService(configuredModel, toolService, skillService, context);
-        var agentPlan = new AiPlannerService(configuredModel, toolService, skillService, context);
+        var agentDev  = new AiDeveloperService(configuredModel, toolService);
+        var agentPlan = new AiPlannerService(configuredModel, toolService);
         agentMode     = new AgentModeService(agentPlan, agentDev, sendTrigger, openInEditorCallback);
         agentModeTool = new AgentModeTool(agentMode);
 
         mcpConnectionService = new McpConnectionService(toolService, mcpStateChange);
-    }
 
-    /**
-     * Updates the active project across all project-aware services.
-     * Safe to call from any thread — each downstream setter manages its own state.
-     */
-    public void setProject(IProject project) {
-        var projectPath = JdtUtil.pathOf(project);
-        currentProject.set(project);
-        agentsMdService.load(project);
-        agentMode.setProject(project);  // volatile write inside AgentModeService
-        context.setWorkingDir(projectPath);
-        
-        workspaceWriteFilesTool.setCurrentProject(project);
-        
-        diskFileWriteTool.setWorkingDir(projectPath);
-        diskFileReadTool.setWorkingDir(projectPath);
+        updateConfig(configuredModel.getConfig());
     }
-
+    
     /**
      * Propagates a new {@link LlmConfig} to all chat services and refreshes skills.
      * Safe to call from any thread.
@@ -159,27 +151,66 @@ public class PeonAiService {
     public void updateConfig(LlmConfig config) {
         configuredModel.updateConfig(config);
 
-        developerService.updateConfig(config);
-        plannerService.updateConfig(config);
-        agentMode.updateConfig(config);
+        toolService.replaceTool(new CompactSessionTool(config.getDevTemperature() < 1.0 ? 0.1 : null));
 
-        if (config.isDiskToolsEnabled()) {
-            if (toolService.getTool(DiskFileWriteTool.class).isEmpty()) {
-                toolService.addTool(diskFileWriteTool);
-                toolService.addTool(diskFileReadTool);
-            }
-        } else {
-            if (toolService.getTool(DiskFileWriteTool.class).isPresent()) {
-                toolService.removeTool(diskFileWriteTool);
-                toolService.removeTool(diskFileReadTool);
-            }
-        }
+        updateActiveDiskTools(config);
         if (config.getSkillDirectory() != null && !config.getSkillDirectory().isBlank()) {
             try {
                 skillService.refresh(config.getSkillDirectory());
             } catch (IOException e) {
                 throw new RuntimeException("Failed to load skills from " + config.getSkillDirectory(), e);
             }
+        }
+        try {
+            commandService.refresh(config.getCommandDirectory());
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load commands from " + config.getCommandDirectory(), e);
+        }
+    }
+
+    private void updateActiveDiskTools(LlmConfig config) {
+        if (config.isDiskToolsEnabled()) {
+            if (toolService.getTool(DiskFileWriteTool.class).isEmpty()) {
+                toolService.addTool(diskFileWriteTool);
+                toolService.addTool(diskFileReadTool);
+                toolService.addTool(diskGrepTool);
+            }
+        } else {
+            if (toolService.getTool(DiskFileWriteTool.class).isPresent()) {
+                toolService.removeTool(diskFileWriteTool);
+                toolService.removeTool(diskFileReadTool);
+                toolService.removeTool(diskGrepTool);
+            }
+        }
+    }
+    
+    public AbstractChatService getActiveService() {
+        return switch (getPeonMode()) {
+            case DEV   -> getDeveloperService();
+            case PLAN  -> getPlannerService();
+            case AGENT -> getAgentMode().getActiveService();
+        };
+    }
+
+    /**
+     * Updates the active project across all project-aware services.
+     * Safe to call from any thread — each downstream setter manages its own state.
+     */
+    public void setProject(IProject project) {
+        currentProject.set(project);
+        agentsMdService.load(project);
+        agentMode.setProject(project);  // volatile write inside AgentModeService
+
+        var projectPath = JdtUtil.pathOf(project);
+
+        workspaceWriteFilesTool.setCurrentProject(project);
+
+        // disk tools work with the disk path not eclipse path
+        projectPath = JdtUtil.diskPathOf(project);
+        if (projectPath != null) {
+            diskFileWriteTool.setWorkingDir(projectPath);
+            diskFileReadTool.setWorkingDir(projectPath);
+            diskGrepTool.setWorkingDir(projectPath);
         }
     }
 
@@ -252,8 +283,8 @@ public class PeonAiService {
         return skillService;
     }
 
-    public TemplateContext getTemplateContext() {
-        return context;
+    public CommandService getCommandService() {
+        return commandService;
     }
 
     public AgentsMdService getAgentsMdService() {
@@ -279,7 +310,38 @@ public class PeonAiService {
         return configuredModel.getModel();
     }
 
-    public void withThinking(boolean enabled) {
+    public void withThinking(Boolean enabled) {
+        if (enabled == null) enabled = Boolean.FALSE;
         configuredModel.withThinking(enabled);
+    }
+
+    public void setPeonMode(PeonMode mode) {
+        this.mode = mode;
+        if (mode == PeonMode.AGENT) {
+            getToolService().addTool(getAgentModeTools());
+            getAgentMode().reset();
+            if (getAgentMode().overviewExists()) {
+                getAgentMode().getActiveService().addMessage(UserMessage.from(
+                        "Existing plan found:\n\n" + getAgentMode().readOverview()));
+                getAgentMode().openOverviewInEditor();
+            }
+        } else {
+            getToolService().removeTool(getAgentModeTools());
+            getAgentMode().reset();
+        }
+    }
+    
+    public PeonMode getPeonMode() {
+        return mode;
+    }
+
+    // TODO do we provide this twice?
+    @Override
+    public String get() {
+        var agentMode = getAgentMode();
+        if (getPeonMode() == PeonMode.AGENT && agentMode.hasPlan()) {
+            return agentMode.planPathHint();
+        }
+        return null;
     }
 }

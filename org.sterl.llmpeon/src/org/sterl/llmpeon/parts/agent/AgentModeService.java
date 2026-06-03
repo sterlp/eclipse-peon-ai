@@ -5,18 +5,16 @@ import java.util.function.Consumer;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.swt.widgets.Display;
 import org.sterl.llmpeon.AbstractChatService;
 import org.sterl.llmpeon.AiDeveloperService;
 import org.sterl.llmpeon.AiPlannerService;
-import org.sterl.llmpeon.ai.LlmConfig;
-import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.tools.AgentModeTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.shared.AiMonitor;
 
-import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
@@ -30,7 +28,7 @@ public class AgentModeService {
 
     private static final int MAX_RETRIES = 3;
 
-    private SystemMessage plannerAgentMessage() {
+    private String plannerAgentMessage() {
         var sb = new StringBuilder("""
                 When your plan is complete, instead of presenting the plan, call savePlan automatically as your last action with:
                 1. Context
@@ -44,10 +42,10 @@ public class AgentModeService {
                 Proceed only if you have sufficient context; use the codebase to fill gaps.
                 Document assumptions and any unresolved gaps in the Design decisions section.
                 """);
-        return SystemMessage.from(sb.toString());
+        return sb.toString();
     }
 
-    private SystemMessage developerAgentMessage() {
+    private String developerAgentMessage() {
         var sb = new StringBuilder("""
                 If you cannot proceed after %d attempts (build failure, missing context,
                 conflicting requirements), call reportProblem with a detailed description.
@@ -56,7 +54,7 @@ public class AgentModeService {
         if (autonomous) sb.append("""
                 IN AUTONOMOUS MODE — execute the plan without asking question, confirmation or approval.
                 """);
-        return SystemMessage.from(sb.toString());
+        return sb.toString();
     }
 
     private final AiPlannerService plannerService;
@@ -65,9 +63,9 @@ public class AgentModeService {
     private final Consumer<IFile> openInEditorCallback;
 
     private volatile IProject project;
-    private Phase phase = Phase.PLANNING;
-    private boolean autonomous = false;
-    private int retryCount = 0;
+    private volatile Phase phase = Phase.PLANNING;
+    private volatile boolean autonomous = false;
+    private volatile int retryCount = 0;
     private volatile boolean implementationRequested = false;
 
     public AgentModeService(AiPlannerService plannerService, AiDeveloperService developerService,
@@ -105,16 +103,10 @@ public class AgentModeService {
 
     public ChatResponse call(String message, AiMonitor monitor) {
         var service = getActiveService();
-        var orders = new ArrayList<>(service.getStandingOrders());
-        orders.add(0, phase == Phase.PLANNING ? plannerAgentMessage() : developerAgentMessage());
-        service.setStandingOrders(orders);
+        var orders = new ArrayList<>(service.getUserContextInformations());
+        orders.add(phase == Phase.PLANNING ? plannerAgentMessage() : developerAgentMessage());
+        service.setUserContextInformations(orders);
         return service.call(message, monitor);
-    }
-
-    @Deprecated
-    public void updateConfig(LlmConfig config) {
-        plannerService.updateConfig(config);
-        developerService.updateConfig(config);
     }
 
     public void setAutonomous(boolean autonomous) {
@@ -140,12 +132,22 @@ public class AgentModeService {
     }
 
     public String readOverview() {
-        return IoUtils.readFile(getOverviewFile());
+        if (overviewExists())
+            try {
+                return getOverviewFile().readString();
+            } catch (CoreException e) {
+                throw new RuntimeException(e);
+            }
+        else return "";
     }
 
     public String readProblem() {
         IFile f = getProblemFile();
-        return f.exists() ? IoUtils.readFile(f) : "";
+        try {
+            return f.exists() ? f.readString() : "";
+        } catch (CoreException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public boolean hasPlan() {

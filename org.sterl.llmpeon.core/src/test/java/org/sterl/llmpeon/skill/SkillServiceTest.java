@@ -1,58 +1,128 @@
 package org.sterl.llmpeon.skill;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Path;
 
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.sterl.llmpeon.shared.PromptYmlParser;
 
 class SkillServiceTest {
 
-    // points to the project root skills/ folder
     private static final Path SKILLS_DIR = Path.of("../skills");
+
+    static final SkillService subject = new SkillService();
+
+    @BeforeAll
+    static void beforeAll() throws Exception {
+        subject.refresh(SKILLS_DIR);
+    }
+
+    @BeforeEach
+    void before() {
+        subject.setEnabled(true);
+        subject.setAllSkillsEnabled(true);
+    }
 
     @Test
     void testRefreshLoadsSkills() throws Exception {
-        SkillService service = new SkillService();
-        service.refresh(SKILLS_DIR);
+        // GIVEN skills directory with at least one skill
 
-        assertTrue(service.getSkills().size() >= 1,
-                "Should find at least the eclipse-ifile-paths skill");
-        
-        service.getSkills().forEach(r -> System.err.println(r));
+        // WHEN
+        var skills = subject.getSkills();
+
+        // THEN
+        assertThat(skills).isNotEmpty();
+        skills.forEach(r -> System.err.println(r));
     }
 
     @Test
     void testEclipseIFilePathsSkill() throws Exception {
-        SkillService service = new SkillService();
-        service.refresh(SKILLS_DIR);
+        // GIVEN expected skill name
+        var expectedName = "eclipse-ifile-paths";
 
-        SkillRecord skill = service.getSkills().stream()
-                .filter(s -> "eclipse-ifile-paths".equals(s.name()))
-                .findFirst()
-                .orElseThrow(() -> new AssertionError("eclipse-ifile-paths skill not found"));
+        // WHEN
+        var skill = subject.get(expectedName)
+                .orElseThrow(() -> new AssertionError(expectedName + " skill not found"));
 
-        assertEquals("eclipse-ifile-paths", skill.name());
-        assertTrue(skill.description().contains("Eclipse IFile"),
-                "Description should mention Eclipse IFile");
-
-        String content = skill.readFullContent();
-        assertTrue(content.contains("toPortableString"),
-                "Full content should contain toPortableString");
+        // THEN
+        assertThat(skill.name()).isEqualTo(expectedName);
+        assertThat(skill.description()).contains("Eclipse IFile");
+        assertThat(skill.readBody()).contains("toPortableString");
     }
 
     @Test
-    void testParseSkillFileThrowsForMissingFile() {
-        assertThrows(java.io.IOException.class, () ->
-                SkillService.parseSkillFile(SKILLS_DIR.resolve("nonexistent/SKILL.md")));
+    void testParseSkillFileReturnsNullForMissingFile() throws Exception {
+        // GIVEN a non-existent path
+
+        // WHEN
+        var result = PromptYmlParser.parseSkill(SKILLS_DIR.resolve("nonexistent/SKILL.md"));
+
+        // THEN
+        assertThat(result).isNull();
     }
 
     @Test
     void testEmptyDirectoryReturnsEmptyList() throws Exception {
-        SkillService service = new SkillService();
+        // GIVEN
+        var service = new SkillService();
+
+        // WHEN
         service.refresh(Path.of("nonexistent-dir"));
-        assertEquals(0, service.getSkills().size());
+
+        // THEN
+        assertThat(service.getSkills()).isEmpty();
+    }
+
+    @Test
+    void testIndividualSkillToggle() throws Exception {
+        // GIVEN
+        var skills = subject.getAllLoadedSkills();
+        assertThat(skills).isNotEmpty();
+        var firstSkill = skills.get(0);
+        assertThat(firstSkill.isEnabled()).isTrue();
+
+        // WHEN
+        subject.setSkillEnabled(firstSkill.name(), false);
+
+        // THEN
+        assertThat(subject.getSkills())
+                .noneMatch(s -> s.name().equals(firstSkill.name()) && !s.isEnabled());
+        assertThat(subject.skillNames()).doesNotContain(firstSkill.name());
+    }
+
+    @Test
+    void testSetAllSkillsEnabled() throws Exception {
+        // GIVEN
+        var allSkills = subject.getAllLoadedSkills();
+        assertThat(allSkills).isNotEmpty();
+
+        // WHEN
+        subject.setAllSkillsEnabled(false);
+
+        // THEN
+        assertThat(allSkills).noneMatch(SkillPromptFile::isEnabled);
+
+        // WHEN
+        subject.setAllSkillsEnabled(true);
+
+        // THEN
+        assertThat(allSkills).allMatch(SkillPromptFile::isEnabled);
+    }
+
+    @Test
+    void testGetAllLoadedSkillsIgnoresGlobalState() throws Exception {
+        // GIVEN
+        var loadedCount = subject.getAllLoadedSkills().size();
+        assertThat(loadedCount).isPositive();
+
+        // WHEN
+        subject.setEnabled(false);
+
+        // THEN
+        assertThat(subject.getSkills()).isEmpty();
+        assertThat(subject.getAllLoadedSkills()).hasSize(loadedCount);
     }
 }

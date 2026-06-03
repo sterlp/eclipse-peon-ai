@@ -251,8 +251,11 @@
             var rate = tokPerSec > 0 ? " | " + tokPerSec.toFixed(1) + " tok/s" : "";
             var chunk = thinkChunk && thinkChunk != "" && thinkChunk != "null" ? "<div class='live-chunk'>" + thinkChunk + "</div>" : "";
             el.innerHTML = "<span class='live-state'>" + stateMessage + rate + "</span>" + chunk;
-            el.style.display = "block";
-            window.scrollTo(0, document.body.scrollHeight);
+
+            if (el.style.display !== "block") {
+                el.style.display = "block";
+                window.scrollTo(0, document.body.scrollHeight);
+            }
         }
 
         function hideLiveStatus() {

@@ -1,10 +1,12 @@
 package org.sterl.llmpeon.mcp;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.mcp.McpServerConfig.McpTransportType;
 
 // run: npx @arabold/docs-mcp-server
+@Disabled
 class McpServiceTest {
 
     @Test

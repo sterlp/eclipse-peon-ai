@@ -27,14 +27,6 @@ public class IoUtils {
         return result.toString(charset);
     }
 
-    public static String readFile(IFile file) {
-        try {
-            return file.readString();
-        } catch (CoreException e) {
-            throw new RuntimeException("Failed to read " + JdtUtil.pathOf(file), e);
-        }
-    }
-
     /**
      * Writes content to a project-relative path, creating parent folders as needed.
      * Uses Eclipse IFile APIs so workspace history and refresh notifications are triggered.
@@ -54,7 +46,10 @@ public class IoUtils {
             byte[] bytes = content.getBytes(charset);
             ensureFolders(file.getParent(), monitor);
             file.write(bytes, true, false, true, monitor);
-            file.refreshLocal(IResource.DEPTH_ZERO, monitor);
+            // Refresh parent (folder or project) — DEPTH_ONE covers the file itself
+            if (file.getParent() != null) {
+                file.getParent().refreshLocal(IResource.DEPTH_ONE, monitor);
+            }
         } catch (CoreException e) {
             throw new RuntimeException("Failed to write " + file.getFullPath(), e);
         }

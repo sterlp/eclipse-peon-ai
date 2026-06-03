@@ -2,7 +2,6 @@ package org.sterl.llmpeon.tool;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -27,16 +26,16 @@ class DiskFileWriteToolTest {
     }
 
     @Test
-    void createDiskFile_newFile() {
-        String result = tool.createDiskFile("sub/dir/test.txt", "content");
+    void writeDiskFile_newFile() {
+        String result = tool.writeDiskFile("sub/dir/test.txt", "content");
         assertTrue(result.contains("Created"));
         assertTrue(Files.exists(tempDir.resolve("sub/dir/test.txt")));
     }
 
     @Test
-    void createDiskFile_overwriteExisting() throws IOException {
+    void writeDiskFile_overwriteExisting() throws IOException {
         Files.writeString(tempDir.resolve("existing.txt"), "old");
-        String result = tool.createDiskFile("existing.txt", "new");
+        String result = tool.writeDiskFile("existing.txt", "new");
         assertTrue(result.contains("Updated"));
         assertEquals("new", Files.readString(tempDir.resolve("existing.txt")));
     }
@@ -45,13 +44,16 @@ class DiskFileWriteToolTest {
     void writeDiskFile_existingFile() throws IOException {
         Files.writeString(tempDir.resolve("data.txt"), "before");
         String result = tool.writeDiskFile("data.txt", "after");
-        assertTrue(result.contains("updated"));
+        assertTrue(result.contains("Updated"));
         assertEquals("after", Files.readString(tempDir.resolve("data.txt")));
     }
 
     @Test
-    void writeDiskFile_missingFile_throws() {
-        assertThrows(IllegalArgumentException.class, () -> tool.writeDiskFile("nope.txt", "x"));
+    void writeDiskFile_emptyContentAllowed() throws IOException {
+        Files.writeString(tempDir.resolve("truncate.txt"), "before");
+        String result = tool.writeDiskFile("truncate.txt", "");
+        assertTrue(result.contains("Updated"));
+        assertEquals("", Files.readString(tempDir.resolve("truncate.txt")));
     }
 
     @Test

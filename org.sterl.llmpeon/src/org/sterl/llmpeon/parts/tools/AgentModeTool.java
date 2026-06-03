@@ -27,7 +27,7 @@ public class AgentModeTool extends AbstractEclipseTool {
         this.agentMode = agentMode;
     }
     
-    @Tool("Save the implementation plan to peon-plan/overview.md in the current project. Call this when the plan is complete.")
+    @Tool("Save the final implementation plan to peon-plan/overview.md. Call only after all design decisions are resolved.")
     public String savePlan(@P(description = "complete plan in markdown", name = "content") String content) {
         ArgsUtil.requireNonBlank(content, "content");
         
@@ -38,7 +38,7 @@ public class AgentModeTool extends AbstractEclipseTool {
         return "Plan saved to " + JdtUtil.pathOf(f);
     }
 
-    @Tool("Escalate an unresolvable problems to the plan agent. Call this after 2 failed attempts.")
+    @Tool("Escalate unresolvable blockers (build failures, missing context) to the planner agent. Use after 2 failed attempts.")
     public String reportPlanProblems(@P(description = "detailed problem description in markdown", name = "content") String content) {
         ArgsUtil.requireNonBlank(content, "content");
         

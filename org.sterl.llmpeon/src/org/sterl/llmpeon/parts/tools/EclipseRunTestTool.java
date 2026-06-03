@@ -35,13 +35,18 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
     @Tool("Eclipse: Run JUnit tests (auto-detects JUnit 3/4/5/6).")
     public String runTests(
             @P(name = "projectName") String projectName,
-            @P(description = "fully qualified test class, empty = all tests", required = false, name = "testClassName") String testClassName) {
+            @P(description = "fully qualified test class, empty = all tests in project", required = false, name = "testClassName") 
+            String testClassName,
+            @P(description = "how many errors to return - default 5 to save tokens", name = "errorCount", required = false) 
+            Integer errorCount) {
         
         ArgsUtil.requireNonBlank(projectName, "projectName");
+        if (errorCount == null) errorCount = 5;
+        
         var project = EclipseUtil.findOpenProject(projectName);
         if (project.isEmpty()) {
             throw new IllegalArgumentException("Project not found: " + projectName
-                    + ". Use listAllOpenEclipseProjects to find the correct name.");
+                    + ". Known: " + EclipseUtil.openProjectsNames());
         }
 
         IJavaProject javaProject = JavaCore.create(project.get());
@@ -57,7 +62,7 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
         onTool(launchName);
         try {
             // Collect failures directly in the listener
-            var failures = Collections.synchronizedList(new ArrayList<String>());
+            var failures = Collections.synchronizedList(new ArrayList<ITestCaseElement>());
             var testCount = new int[]{0};
             var finished = new AtomicBoolean(false);
             var sessionName = new String[]{launchName};
@@ -73,7 +78,7 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
                     testCount[0]++;
                     Result result = testCase.getTestResult(false);
                     if (result == Result.ERROR || result == Result.FAILURE) {
-                        failures.add(formatFailure(testCase));
+                        failures.add(testCase);
                     }
                 }
 
@@ -121,7 +126,7 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
                 }
 
                 onTool("Reading test results of " + projectName);
-                return formatResults(sessionName[0], testCount[0], failures);
+                return formatResults(sessionName[0], testCount[0], failures, errorCount);
             } finally {
                 JUnitCore.removeTestRunListener(listener);
                 // clean up temp launch config
@@ -145,44 +150,36 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
 
     private static String formatFailure(ITestCaseElement testCase) {
         var sb = new StringBuilder();
-        sb.append("FAIL: ").append(testCase.getTestClassName())
-          .append(".").append(testCase.getTestMethodName());
+        sb.append("testClassName: ").append(testCase.getTestClassName())
+          .append("\nmethod: ").append(testCase.getTestMethodName());
 
         var trace = testCase.getFailureTrace();
         if (trace != null) {
-            if (trace.getExpected() != null && trace.getActual() != null) {
+            if (trace.getExpected() != null) {
                 sb.append("\n  Expected: ").append(trace.getExpected());
+            }
+            if (trace.getActual() != null) {
                 sb.append("\n  Actual:   ").append(trace.getActual());
             }
             if (trace.getTrace() != null) {
-                String[] lines = trace.getTrace().split("\n");
-                int maxLines = Math.min(lines.length, 10);
-                sb.append("\n  Trace:");
-                for (int i = 0; i < maxLines; i++) {
-                    sb.append("\n    ").append(lines[i]);
-                }
-                if (lines.length > maxLines) {
-                    sb.append("\n    ... (").append(lines.length - maxLines)
-                      .append(" more lines)");
-                }
+                sb.append("\nTrace:\n").append(trace.getTrace());
             }
         }
         return sb.toString();
     }
 
-    private static String formatResults(String sessionName, int testCount, List<String> failures) {
+    private static String formatResults(String sessionName, int testCount, List<ITestCaseElement> failures, int errorCount) {
         var sb = new StringBuilder();
         sb.append("Test run: ").append(sessionName).append("\n");
-        sb.append("Tests: ").append(testCount).append("\n");
+        sb.append("Tests:    ").append(testCount).append("\n");
+        sb.append("Failures: ").append(failures.size()).append("\n");
 
-        if (failures.isEmpty()) {
-            sb.append("Result: OK\nAll tests passed.");
-        } else {
-            sb.append("Result: FAILURE\n");
-            sb.append("Failures: ").append(failures.size()).append("\n\n");
-            for (String f : failures) {
-                sb.append(f).append("\n");
-            }
+        for (int i = 0; i < Math.min(errorCount, failures.size()); ++i) {
+            var f = failures.get(i);
+            sb.append(formatFailure(f)).append("\n");
+        }
+        if (failures.size() > errorCount) {
+            sb.append("Errors capped — fix the first " + errorCount + " problems, or run a specific test class");
         }
         return sb.toString();
     }

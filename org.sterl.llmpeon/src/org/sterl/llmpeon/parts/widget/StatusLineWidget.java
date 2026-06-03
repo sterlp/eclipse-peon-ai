@@ -1,6 +1,8 @@
 package org.sterl.llmpeon.parts.widget;
 
+import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
@@ -13,11 +15,14 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Menu;
+import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.PlatformUI;
 import org.sterl.llmpeon.parts.shared.EclipseUiUtil;
 import org.sterl.llmpeon.parts.shared.ImageUtil;
 import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.skill.SkillPromptFile;
 
 /**
  * Status bar below the action bar. Shows project pin, selected file, skills
@@ -29,21 +34,23 @@ public class StatusLineWidget extends Composite {
     /** Single toggle button — hidden when no project is selected. Text: "📌 ProjectName". */
     private final Button btnPin;
     private final Button btnSkills;
-    private final Label agentIcon;
-    private final Label agentLabel;
+    private final Button btnAgentsMd;
     private final Label fileLabel;
     private final Button btnMcp;
     private final Button btnCompress;
 
     private final Color colorWarning;
     private final Color colorError;
-    
+    private Supplier<List<SkillPromptFile>> skillsProvider;
+    private Consumer<SkillMenuSelection> onSkillMenuChange;
+
     private final ISharedImages images = PlatformUI.getWorkbench().getSharedImages();
 
     public StatusLineWidget(Composite parent, int style,
             Consumer<Boolean> onPinChange,
             Consumer<Boolean> onSkillsToggle,
             Consumer<Boolean> onMcpToggle,
+            Consumer<Boolean> onAgentsMdToggle,
             Runnable onCompress) {
         super(parent, style);
         setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
@@ -81,13 +88,14 @@ public class StatusLineWidget extends Composite {
 
         EclipseUiUtil.newSeparator(this);
 
-        // --- Agent icon + label ---
-        agentIcon = new Label(this, SWT.NONE);
-        agentIcon.setImage(images.getImage(ISharedImages.IMG_OBJ_FILE));
-        agentIcon.setVisible(false);
-
-        agentLabel = new Label(this, SWT.NONE);
-        agentLabel.setVisible(false);
+        // --- AGENTS.md toggle button (disabled when no agent file found) ---
+        btnAgentsMd = new Button(this, SWT.TOGGLE);
+        btnAgentsMd.setImage(images.getImage(ISharedImages.IMG_OBJ_FILE));
+        btnAgentsMd.setText("AGENTS.md");
+        btnAgentsMd.setSelection(true);
+        btnAgentsMd.setEnabled(true);
+        btnAgentsMd.setToolTipText("Toggle AGENTS.md injection into standing orders");
+        btnAgentsMd.addListener(SWT.Selection, e -> onAgentsMdToggle.accept(btnAgentsMd.getSelection()));
 
         EclipseUiUtil.newSeparator(this);
         // --- Skills toggle ---
@@ -95,8 +103,15 @@ public class StatusLineWidget extends Composite {
         btnSkills.setSelection(true);
         btnSkills.setImage(images.getImage(ISharedImages.IMG_OBJ_FOLDER));
         btnSkills.setText("0 skills");
-        btnSkills.setToolTipText("Toggle skills on/off");
-        btnSkills.addListener(SWT.Selection, e -> onSkillsToggle.accept(btnSkills.getSelection()));
+        btnSkills.setToolTipText("Click to manage individual skills");
+        btnSkills.addListener(SWT.Selection, e -> {
+            if (skillsProvider != null) {
+                btnSkills.setSelection(!btnSkills.getSelection());
+                showSkillsMenu();
+            } else {
+                onSkillsToggle.accept(btnSkills.getSelection());
+            }
+        });
 
         EclipseUiUtil.newSeparator(this);
 
@@ -114,7 +129,9 @@ public class StatusLineWidget extends Composite {
         btnCompress.addListener(SWT.Selection, e -> onCompress.run());
     }
 
-    public void update(int skillCount, boolean hasAgentsMd, IProject project, IResource selectedResource) {
+    public void update(int skillCount, String agentFileName, boolean agentMdActive,
+            IProject project, 
+            IResource selectedResource) {
 
         // --- Pin: show/hide the button with project name ---
         boolean hasProject = project != null;
@@ -127,10 +144,18 @@ public class StatusLineWidget extends Composite {
             btnPin.setText(project.getName()); // 📌 ProjectName
         }
 
-        // --- Agent ---
-        agentIcon.setVisible(hasAgentsMd);
-        agentLabel.setVisible(hasAgentsMd);
-        agentLabel.setText(hasAgentsMd ? "AGENTS.md" : "");
+        // --- AGENTS.md toggle: enable/disable based on file presence, update label ---
+        if (agentFileName == null) {
+            btnAgentsMd.setEnabled(false);
+            btnAgentsMd.setSelection(false);
+            btnAgentsMd.setText("No agents.md");
+        } else {
+            btnAgentsMd.setSelection(agentMdActive);
+            btnAgentsMd.setEnabled(true);
+            String name = agentFileName;
+            if (!agentMdActive) name = agentFileName + " off";
+            btnAgentsMd.setText(name);
+        }
 
         // --- File ---
         fileLabel.setText(selectedResource != null ? selectedResource.getName() : "");
@@ -144,6 +169,7 @@ public class StatusLineWidget extends Composite {
     /** Update the skills toggle button text with the loaded skill count. */
     public void setSkillCount(int count) {
         btnSkills.setText(count + " skill" + (count != 1 ? "s" : ""));
+        btnSkills.setSelection(count > 0);
         btnSkills.getParent().layout(false, false);
     }
 
@@ -174,6 +200,16 @@ public class StatusLineWidget extends Composite {
         return btnMcp.getSelection();
     }
 
+    /** Sync the AGENTS.md button state without firing the listener. */
+    public void setAgentsMdEnabled(boolean enabled) {
+        btnAgentsMd.setSelection(enabled);
+    }
+
+    /** Returns whether the AGENTS.md toggle is currently on. */
+    public boolean isAgentsMdEnabled() {
+        return btnAgentsMd.getSelection();
+    }
+
     /** Update the Compact button label and tooltip with current token usage. */
     public void updateCompact(int tokenUsed, int tokenMax) {
         int pct = tokenMax > 0 ? (tokenUsed * 100) / tokenMax : 0;
@@ -186,5 +222,61 @@ public class StatusLineWidget extends Composite {
                 + "%, " + StringUtil.toK(tokenUsed) + "/" + StringUtil.toK(tokenMax) + ") — click to compact the conversation");
         btnCompress.getParent().layout(false, false);
         btnCompress.setEnabled(tokenUsed > 100);
+    }
+
+    /** Set the provider for loading skills and callback for menu changes. */
+    public void setSkillsMenuHandler(Supplier<List<SkillPromptFile>> provider, Consumer<SkillMenuSelection> onChange) {
+        this.skillsProvider = provider;
+        this.onSkillMenuChange = onChange;
+    }
+
+    private void showSkillsMenu() {
+        if (skillsProvider == null) return;
+
+        List<SkillPromptFile> skills = skillsProvider.get();
+        if (skills.isEmpty()) return;
+
+        Menu menu = new Menu(btnSkills);
+
+        // "All" option at the top
+        MenuItem allItem = new MenuItem(menu, SWT.CHECK);
+        allItem.setText("All Skills");
+        boolean allEnabled = skills.stream().allMatch(SkillPromptFile::isEnabled);
+        allItem.setSelection(allEnabled);
+        allItem.addListener(SWT.Selection, e -> {
+            boolean enable = allItem.getSelection();
+            if (onSkillMenuChange != null) {
+                onSkillMenuChange.accept(new SkillMenuSelection(null, enable, true));
+            }
+        });
+
+        new MenuItem(menu, SWT.SEPARATOR);
+
+        // Individual skill items
+        for (SkillPromptFile skill : skills) {
+            MenuItem item = new MenuItem(menu, SWT.CHECK);
+            item.setText(skill.name());
+            item.setSelection(skill.isEnabled());
+            item.addListener(SWT.Selection, e -> {
+                if (onSkillMenuChange != null) {
+                    onSkillMenuChange.accept(new SkillMenuSelection(skill.name(), item.getSelection(), false));
+                }
+            });
+        }
+
+        menu.setVisible(true);
+    }
+
+    /** Encapsulates skill menu selection results. */
+    public static class SkillMenuSelection {
+        public final String skillName;      // null for "All"
+        public final boolean enabled;       // new state
+        public final boolean isAllSkills;   // true if "All" was selected
+
+        public SkillMenuSelection(String skillName, boolean enabled, boolean isAllSkills) {
+            this.skillName = skillName;
+            this.enabled = enabled;
+            this.isAllSkills = isAllSkills;
+        }
     }
 }

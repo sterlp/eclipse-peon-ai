@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.Base64;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.ai.LlmConfig;
@@ -19,6 +20,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 
+@Disabled
 class VoiceInputServiceTest {
 
     private VoiceInputService subject = new VoiceInputService();

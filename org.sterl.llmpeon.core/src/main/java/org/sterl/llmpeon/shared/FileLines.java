@@ -1,16 +1,27 @@
 package org.sterl.llmpeon.shared;
 
+@Deprecated // NEEDS FIX REVIEW
+//https://github.com/sterlp/eclipse-peon-ai/pull/58
+//https://github.com/sterlp/eclipse-peon-ai/issues/57
 public class FileLines {
 
     /**
      * Returns the full file content with 1-based line numbers prefixed.
      */
     public static String format(String content) {
+        return format(content, 1);
+    }
+
+    /**
+     * Returns the file content with line numbers prefixed, starting from {@code startLine}.
+     */
+    public static String format(String content, int startLine) {
         if (content == null) return "";
-        var lines = content.split("\n", -1);
+        var lineEnding = FileUtils.dominantLineEnding(content);
+        var lines = content.split(lineEnding, -1);
         var sb = new StringBuilder();
         for (int i = 0; i < lines.length; i++) {
-            appendLine(sb, i + 1, lines[i]);
+            appendLine(sb, startLine + i, lines[i], lineEnding);
         }
         return sb.toString();
     }
@@ -26,9 +37,10 @@ public class FileLines {
     // TODO: use LIST
     public static String extract(String content, int startLine, int endLine) {
         if (content == null) return "";
-        if (startLine <= 0 && endLine <= 0) return format(content);
-
-        var lines = content.split("\n", -1);
+        if (startLine <= 0 && endLine <= 0) return content;
+        
+        var lineEnding = FileUtils.dominantLineEnding(content);
+        var lines = content.split(lineEnding, -1);
         int total = lines.length;
 
         int s = startLine <= 0 ? 1 : startLine;
@@ -44,7 +56,7 @@ public class FileLines {
 
         var sb = new StringBuilder();
         for (int i = s - 1; i < e; i++) {
-            appendLine(sb, i + 1, lines[i]);
+            appendLine(sb, i + 1, lines[i], lineEnding);
         }
         return sb.toString();
     }
@@ -56,7 +68,8 @@ public class FileLines {
     public static String replaceLines(String content, int startLine, int endLine, String replacement) {
         if (content == null) return replacement == null ? "" : replacement;
 
-        var lines = new java.util.ArrayList<>(java.util.Arrays.asList(content.split("\n", -1)));
+        var lineEnding = FileUtils.dominantLineEnding(content);
+        var lines = new java.util.ArrayList<>(java.util.Arrays.asList(content.split(lineEnding, -1)));
         int total = lines.size();
 
         int s = startLine <= 0 ? 1 : startLine;
@@ -68,17 +81,17 @@ public class FileLines {
         for (int i = e; i >= s; i--) lines.remove(i - 1);
 
         if (replacement != null && !replacement.isEmpty()) {
-            var incoming = replacement.split("\n", -1);
+            var incoming = replacement.split(lineEnding, -1);
             for (int i = incoming.length - 1; i >= 0; i--) lines.add(s - 1, incoming[i]);
         }
 
-        return String.join("\n", lines);
+        return String.join(lineEnding, lines);
     }
 
-    private static void appendLine(StringBuilder sb, int n, String line) {
+    private static void appendLine(StringBuilder sb, int n, String line, String lineEnding) {
         if      (n <    10) sb.append("   ");
         else if (n <   100) sb.append("  ");
         else if (n <  1000) sb.append(' ');
-        sb.append(n).append(": ").append(line).append('\n');
+        sb.append(n).append(": ").append(line).append(lineEnding);
     }
 }

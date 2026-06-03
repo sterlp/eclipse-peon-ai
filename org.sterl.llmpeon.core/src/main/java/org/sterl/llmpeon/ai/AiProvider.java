@@ -6,6 +6,7 @@ import java.net.http.HttpRequest;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -13,17 +14,24 @@ import org.sterl.llmpeon.ai.model.AiModel;
 import org.sterl.llmpeon.ai.model.AiModelParser;
 import org.sterl.llmpeon.shared.StringUtil;
 
+import com.openai.models.Reasoning;
+import com.openai.models.ReasoningEffort;
+
 import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
+import dev.langchain4j.model.catalog.ModelType;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.googleai.GeminiThinkingConfig;
 import dev.langchain4j.model.googleai.GeminiThinkingConfig.GeminiThinkingLevel;
+import dev.langchain4j.model.googleai.GoogleAiGeminiModelCatalog;
 import dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModel;
 import dev.langchain4j.model.mistralai.MistralAiStreamingChatModel;
 import dev.langchain4j.model.ollama.OllamaModel;
 import dev.langchain4j.model.ollama.OllamaModels;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesChatRequestParameters;
+import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -38,6 +46,9 @@ public enum AiProvider {
                     .modelName(c.getModel())
                     .think(c.isThinkingEnabled())
                     .returnThinking(c.isThinkingEnabled())
+                    .customHeaders(c.getHeaderParams())
+                    .logRequests(c.isDebugMode())
+                    .logResponses(c.isDebugMode())
                     .build();
         }
 
@@ -66,8 +77,14 @@ public enum AiProvider {
                     .baseUrl(c.getUrl())
                     .modelName(c.getModel())
                     .apiKey(c.getApiKey())
+                    .strictJsonSchema(true)
                     .returnThinking(c.isThinkingEnabled())
                     .sendThinking(c.shouldWeSendThinkingBackToLLM())
+                    .customHeaders(c.getHeaderParams())
+                    .customQueryParams(c.getQueryParams())
+                    .logRequests(c.isDebugMode())
+                    .logResponses(c.isDebugMode())
+                    .reasoningEffort(c.isThinkingEnabled() ? "high" : "low")
                     .build();
         }
 
@@ -76,6 +93,41 @@ public enum AiProvider {
             var request = HttpRequest.newBuilder()
                     .uri(URI.create(c.getUrl() + "/models"))
                     .header("Authorization", "Bearer " + c.getApiKey());
+            c.getHeaderParams().forEach(request::header);
+            
+            return SharedHttpClient.cancelAndGet(request, AiModelParser::parseOpenApiModels);
+        }
+    },
+    
+    OPEN_AI_OFFICIAL {
+        @Override
+        StreamingChatModel buildModel(LlmConfig c) {
+            var result = OpenAiOfficialResponsesStreamingChatModel.builder()
+                    .timeout(TIMEOUT)
+                    .baseUrl(c.getUrl())
+                    .modelName(c.getModel())
+                    .apiKey(c.getApiKey())
+                    .strictTools(true)
+                    .isMicrosoftFoundry(true)
+                    .customHeaders(c.getHeaderParams());
+            
+            if (c.isThinkingEnabled()) {
+                result.reasoningEffort(ReasoningEffort.HIGH);
+                result.reasoningSummary(Reasoning.Summary.DETAILED);
+                result.defaultRequestParameters(OpenAiOfficialResponsesChatRequestParameters.builder()
+                        .reasoningEffort(ReasoningEffort.HIGH)
+                        .reasoningSummary(Reasoning.Summary.DETAILED).build()
+                );
+            }
+            return result.build();
+        }
+
+        @Override
+        public List<AiModel> listAiModels(LlmConfig c) {
+            var request = HttpRequest.newBuilder()
+                    .uri(URI.create(c.getUrl() + "/models"))
+                    .header("Authorization", "Bearer " + c.getApiKey());
+            c.getHeaderParams().forEach(request::header);
             
             return SharedHttpClient.cancelAndGet(request, AiModelParser::parseOpenApiModels);
         }
@@ -96,6 +148,10 @@ public enum AiProvider {
                     .httpClientBuilder(http1)
                     .returnThinking(c.isThinkingEnabled())
                     .sendThinking(c.shouldWeSendThinkingBackToLLM())
+                    .customHeaders(c.getHeaderParams())
+                    .customQueryParams(c.getQueryParams())
+                    .logRequests(c.isDebugMode())
+                    .logResponses(c.isDebugMode())
                     .build();
         }
 
@@ -104,6 +160,7 @@ public enum AiProvider {
             var url = c.getUrl().replace("/v1", "/api/v1");
             var request = HttpRequest.newBuilder()
                     .uri(URI.create(url + "/models"));
+            c.getHeaderParams().forEach(request::header);
             return SharedHttpClient.cancelAndGet(request, AiModelParser::parseLmStudioModels);
         }
     },
@@ -120,14 +177,38 @@ public enum AiProvider {
             result.returnThinking(Boolean.TRUE).sendThinking(Boolean.TRUE);
             if (c.isThinkingEnabled()) {
                 result.thinkingConfig(GeminiThinkingConfig.builder()
-                        .thinkingLevel(GeminiThinkingLevel.MEDIUM)
+                        .thinkingLevel(GeminiThinkingLevel.HIGH)
                         .build());
             } else {
                 result.thinkingConfig(GeminiThinkingConfig.builder()
                         .thinkingBudget(0)
                         .build());
             }
-            return result.build();
+            return result
+                    .customHeaders(c.getHeaderParams())
+                    .logRequests(c.isDebugMode())
+                    .logResponses(c.isDebugMode())
+                    .build();
+        }
+        
+        @Override
+        public List<AiModel> listAiModels(LlmConfig config) {
+            var models = GoogleAiGeminiModelCatalog.builder()
+                .apiKey(config.getApiKey())
+                .build()
+                .listModels()
+                .stream().filter(m -> m.type() == ModelType.CHAT || m.type() == ModelType.OTHER)
+                .toList();
+
+            var result = new ArrayList<AiModel>();
+            for (var m : models) {
+                result.add(AiModel.builder()
+                        .id(m.name())
+                        .name(m.displayName())
+                        .maxInputTokens(m.maxInputTokens())
+                        .build());
+            }
+            return result;
         }
     },
 
@@ -142,6 +223,9 @@ public enum AiProvider {
                     .apiKey(c.getApiKey())
                     .returnThinking(c.isThinkingEnabled())
                     .sendThinking(c.shouldWeSendThinkingBackToLLM())
+                    .customHeaders(c.getHeaderParams())
+                    .logRequests(c.isDebugMode())
+                    .logResponses(c.isDebugMode())
                     .build();
         }
 
@@ -150,6 +234,7 @@ public enum AiProvider {
             var request = HttpRequest.newBuilder()
                     .uri(URI.create(MODELS_URL))
                     .header("X-API-Key", c.getApiKey());
+            c.getHeaderParams().forEach(request::header);
             return SharedHttpClient.cancelAndGet(request, AiModelParser::parseMistralModels);
         }
     },
@@ -166,10 +251,17 @@ public enum AiProvider {
                     .timeout(TIMEOUT)
                     .modelName(c.getModel())
                     .apiKey(c.getApiKey());
+            if (c.getUrl() != null && c.getUrl().length() > 4) {
+                builder.baseUrl(c.getUrl());
+            }
             if (c.isThinkingEnabled()) {
                 builder.thinkingType("enabled");
             }
-            return builder.build();
+            return builder
+                    .customHeaders(c.getHeaderParams())
+                    .logRequests(c.isDebugMode())
+                    .logResponses(c.isDebugMode())
+                    .build();
         }
 
         @Override
@@ -178,6 +270,7 @@ public enum AiProvider {
                     .uri(URI.create(MODELS_URL))
                     .header("x-api-key", c.getApiKey())
                     .header("anthropic-version", ANTHROPIC_VERSION);
+            c.getHeaderParams().forEach(request::header);
 
             return SharedHttpClient.cancelAndGet(request, AiModelParser::parseAnthropicModels);
         }
@@ -185,7 +278,7 @@ public enum AiProvider {
 
     // GitHub Models marketplace — PAT-based, pay-per-use, models.github.ai
     GITHUB_MODELS {
-        private static final String DEFAULT_BASE_URL    = "https://models.inference.ai.azure.com";
+        private static final String DEFAULT_BASE_URL    = "https://models.github.ai/inference";
         private static final String CATALOG_URL         = "https://models.github.ai/catalog/models";
         private static final String CATALOG_API_VERSION = "2026-03-10";
 
@@ -197,11 +290,14 @@ public enum AiProvider {
 
         @Override
         StreamingChatModel buildModel(LlmConfig c) {
-            return OpenAiStreamingChatModel.builder()
+            return OpenAiOfficialResponsesStreamingChatModel.builder()
                     .timeout(TIMEOUT)
                     .baseUrl(baseUrl(c))
                     .apiKey(c.getApiKey() != null && !c.getApiKey().isBlank() ? c.getApiKey() : "not-configured")
                     .modelName(c.getModel())
+                    .isGitHubModels(true)
+                    .strictTools(true)
+                    .customHeaders(c.getHeaderParams())
                     .build();
         }
 
@@ -212,6 +308,7 @@ public enum AiProvider {
                     .uri(URI.create(CATALOG_URL))
                     .header("Authorization", "Bearer " + c.getApiKey())
                     .header("X-GitHub-Api-Version", CATALOG_API_VERSION);
+            c.getHeaderParams().forEach(request::header);
 
             return SharedHttpClient.cancelAndGet(request, AiModelParser::parseGithubModels);
         }
@@ -241,12 +338,21 @@ public enum AiProvider {
 
         @Override
         StreamingChatModel buildModel(LlmConfig c) {
+            var headers = new HashMap<String, String>();
+            headers.putAll(copilotHeaders());
+            headers.putAll(c.getHeaderParams());
+            
             return OpenAiStreamingChatModel.builder()
                     .timeout(TIMEOUT)
                     .baseUrl(baseUrl(c))
                     .apiKey(c.getApiKey() != null && !c.getApiKey().isBlank() ? c.getApiKey() : "not-configured")
                     .modelName(c.getModel())
-                    .customHeaders(copilotHeaders())
+                    
+                    .customHeaders(headers)
+                    .customQueryParams(c.getQueryParams())
+                    .logRequests(c.isDebugMode())
+                    .logResponses(c.isDebugMode())
+
                     .build();
         }
 
@@ -256,14 +362,19 @@ public enum AiProvider {
                     .uri(URI.create(DEFAULT_BASE_URL + "/models"))
                     .timeout(Duration.ofSeconds(20))
                     .header("Authorization", "Bearer " + c.getApiKey());
-            copilotHeaders().forEach(request::header);
+            
+            var headers = new HashMap<String, String>();
+            headers.putAll(copilotHeaders());
+            headers.putAll(c.getHeaderParams());
+            
+            headers.forEach(request::header);
 
             return SharedHttpClient.cancelAndGet(request, AiModelParser::parseCopilotApiModels);
         }
     };
 
     // Streaming only needs to cover time-to-first-token (connect + model warmup), not the full response duration.
-    private static final Duration TIMEOUT = Duration.ofSeconds(120);
+    private static final Duration TIMEOUT = Duration.ofMinutes(3);
     private static final Duration MODEL_TIMEOUT = SharedHttpClient.MODEL_TIMEOUT;
 
     // --- Public API ---

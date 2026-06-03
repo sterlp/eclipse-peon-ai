@@ -45,18 +45,20 @@ public class DiskFileReadTool extends AbstractTool {
     @Tool("Disk: Read file - not eclipse.")
     public String readDiskFile(
             @P(name = "filePath") String filePath,
-            @P(description = "first line to read (1-based). 0 = start of file.", required = false, name = "startLine") Integer startLine,
-            @P(description = "last line to read (1-based). 0 = end of file.", required = false, name = "endLine") Integer endLine) {
+            @P(description = "first line to read (1-based). 0 = start of file.", required = false, name = "startLine") 
+            Integer startLine,
+            @P(description = "last line to read (1-based). 0 = end of file.", required = false, name = "endLine") 
+            Integer endLine) {
 
         ArgsUtil.requireNonBlank(filePath, "filePath");
+        if (startLine == null) startLine = 0;
+        if (endLine == null) endLine = 0;
 
         Path resolved = resolve(filePath);
         if (resolved == null || !Files.isRegularFile(resolved)) {
             throw new IllegalArgumentException("File not found: " + filePath + " also not in " + workingDir);
         }
 
-        if (startLine == null) startLine = 0;
-        if (endLine == null) endLine = 0;
         try {
             var lines = "";
             if (startLine > 0 && endLine > 0) lines = " from " + startLine + " to " + endLine;
@@ -70,13 +72,11 @@ public class DiskFileReadTool extends AbstractTool {
 
     @Tool("Disk: Search files by name. Use '*' to list all files recursively.")
     public String searchDiskFiles(
-            @P(description = "file name query", name = "query") String query,
+            @P(description = "file name query - only *, ? wildcard is supported.", name = "query") String query,
             @P(description = "Optional: max results to return. 0 = unlimited.", name = "limit") Integer limit) {
 
         if (limit == null) limit = 0;
-        if (query == null || query.isBlank()) {
-            throw new IllegalArgumentException("query must not be empty");
-        }
+        ArgsUtil.requireNonBlank(query, "query");
 
         var matcher = StringMatcher.wildCardMatcher(FileUtils.normalizePath(query));
         var matches = new ArrayList<String>();
@@ -95,14 +95,14 @@ public class DiskFileReadTool extends AbstractTool {
         if (matches.isEmpty()) {
             suffix =  "Use " + LIST_DISK_NAME + " to explore the project structure.";
         }
-        System.err.println(workingDir + " " + query + " " + matches.size());
         return AiReponseBuilder.searchComplete(matches, suffix);
     }
 
     public static final String LIST_DISK_NAME = "listDiskDirectory";
     @Tool(name = LIST_DISK_NAME, value = "Disk: List directory (non-recursive).")
     public String listDiskDirectory(
-            @P(description = "Optional path. Empty or '/' lists working dir root.", name = "path") String path) {
+            @P(description = "Empty or '/' lists working dir root.", name = "path", required = false) 
+            String path) {
 
         Path dir;
         if (path == null || path.isBlank() || path.length() == 1) {

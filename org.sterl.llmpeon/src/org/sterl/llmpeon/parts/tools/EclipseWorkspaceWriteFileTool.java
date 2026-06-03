@@ -1,7 +1,6 @@
 package org.sterl.llmpeon.parts.tools;
 
 import java.nio.charset.Charset;
-import java.nio.file.Files;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
@@ -32,87 +31,73 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
     }
 
     @Tool("Eclipse: Replace a single line by line number. newContent may span multiple lines.")
-    public String replaceWorkspaceLine(
+    public void replaceWorkspaceLine(
             @P(description = "workspace-relative path", name = "filePath") String filePath,
             @P(description = "line to replace (1-based)", name = "line") Integer line,
             @P(description = "replacement text", name ="newContent") String newContent) {
 
         ArgsUtil.requireNonBlank(filePath, "filePath");
         ArgsUtil.requireNonNull(line, "line");
-        ArgsUtil.requireNonBlank(newContent, "newContent");
+        ArgsUtil.requireNonNull(newContent, "newContent");
 
         var inFile = EclipseUtil.resolveInEclipse(filePath);
         if (inFile.isEmpty() || !(inFile.get() instanceof IFile eclipseFile)) {
             throw new IllegalArgumentException("Cannot write unknown file in eclipse " + filePath);
         }
-        String content = IoUtils.readFile(eclipseFile);
+        String content = readFile(eclipseFile);
         String newFullContent = FileLines.replaceLines(content, line, line, newContent);
         var result = writeEclipseFile(eclipseFile, newFullContent);
         monitor.onFileUpdate(result);
-        return "File " + result.file() + " line " + line + " replaced.";
+    }
+
+    private String readFile(IFile eclipseFile) {
+        try {
+            return eclipseFile.readString();
+        } catch (CoreException e) {
+            throw new IllegalArgumentException(e.getMessage(), e);
+        }
     }
 
     @Tool("Eclipse: Replace exact string in workspace file. Errors if 0 or >1 matches.")
-    public String editWorkspaceFile(
+    public void editWorkspaceFile(
             @P(description = "workspace-relative path", name = "filePath") String filePath,
             @P(description = "exact text to replace", name = "oldString") String oldString,
             @P(name = "newString") String newString) {
 
         ArgsUtil.requireNonBlank(filePath, "filePath");
-        ArgsUtil.requireNonBlank(filePath, "oldString");
-        ArgsUtil.requireNonBlank(filePath, "newString");
+        ArgsUtil.requireNonBlank(oldString, "oldString");
+        ArgsUtil.requireNonNull(newString, "newString");
 
         var inFile = EclipseUtil.resolveInEclipse(filePath);
         if (inFile.isEmpty() || !(inFile.get() instanceof IFile eclipseFile)) {
             throw new IllegalArgumentException("Cannot write unknown file in eclipse " + filePath);
         } else {
-            String content = IoUtils.readFile(eclipseFile);
+            String content = readFile(eclipseFile);
             String newContent = FileUtils.applyEdit(filePath, content, oldString, newString);
             var result = writeEclipseFile(eclipseFile, newContent);
             var editResult = new AiFileUpdate(result.file(), oldString, newString);
             
             monitor.onFileUpdate(editResult);
-            return "File " + editResult.file() + " edited successfully.";
         }
-
     }
 
-    @Tool("Eclipse: Overwrite existing workspace file.")
-    public String writeWorkspaceFile(
-            @P(description = "workspace-relative path", name = "filePath") String filePath,
-            @P(name = "newContent") String newContent) {
+    @Tool("Eclipse: Write file to workspace. Creates parent dirs and overwrites if exists.")
+    public void writeWorkspaceFile(
+            @P(description = "workspace-relative path", name = "filePath") 
+            String filePath,
+            @P(name = "content") 
+            String content) {
 
         ArgsUtil.requireNonBlank(filePath, "filePath");
-        ArgsUtil.requireNonBlank(filePath, "newContent");
+        ArgsUtil.requireNonNull(content, "content");
 
         var inFile = EclipseUtil.resolveInEclipse(filePath);
-        if (inFile.isEmpty() || !(inFile.get() instanceof IFile)) {
-            // fallback to raw file system
-            var f = java.nio.file.Path.of(filePath);
-            if (Files.isRegularFile(f)) {
-                String oldContent = FileUtils.readString(f);
-                FileUtils.writeString(f, newContent);
-                
-                monitor.onFileUpdate(new AiFileUpdate(filePath, oldContent, newContent));
-                return "File " + filePath + " updated.";
-            }
-            throw new IllegalArgumentException(
-                    "File not found: " + filePath + ". Use searchWorkspaceFiles to find the correct path.");
-        } else {
-            var result = writeEclipseFile((IFile) inFile.get(), newContent);
-            
+        if (inFile.isPresent() && inFile.get() instanceof IFile eclipseFile) {
+            var result = writeEclipseFile(eclipseFile, content);
             monitor.onFileUpdate(result);
-            return "File " + result.file() + " updated.";
+            onTool("Updated file " + JdtUtil.pathOf(eclipseFile));
+            return;
         }
-    }
-
-    @Tool("Eclipse: Create/overwrite workspace file. Creates parent dirs.")
-    public String createWorkspaceFile(
-            @P(description = "workspace-relative path", name = "filePath") String filePath,
-            @P(name = "content") String content) {
-
-        ArgsUtil.requireNonBlank(filePath, "filePath");
-        ArgsUtil.requireNonBlank(filePath, "content");
 
         var targetProject = EclipseUtil.findOpenProject(filePath);
         String projectRelativePath = java.nio.file.Path.of(filePath).toString();
@@ -130,18 +115,21 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         }
 
         if (targetProject.isEmpty()) {
+            String openProjects = EclipseUtil.openProjects().stream()
+                    .map(p -> "/" + p.getName())
+                    .collect(java.util.stream.Collectors.joining(", "));
+            onProblem("Create File: unknown path for file: " + filePath);
             throw new IllegalArgumentException(
-                    "Cannot determine target project for path: " + filePath
-                    + ". Use listAllOpenEclipseProjects to find available projects.");
+                    "Cannot determine target project for path: " + filePath 
+                    + ". Open projects: [" + openProjects + "]");
         }
 
         IFile file = writeFileToProject(targetProject.get(), projectRelativePath, content);
         onTool("Created file " + JdtUtil.pathOf(file));
-        return "Created file: " + JdtUtil.pathOf(file);
     }
 
     @Tool("Eclipse: Delete workspace file or directory recursively.")
-    public String deleteWorkspaceResource(
+    public void deleteWorkspaceResource(
             @P(description = "workspace-relative path", name = "filePath") String filePath) {
 
         ArgsUtil.requireNonBlank(filePath, "filePath");
@@ -149,21 +137,20 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         var file = EclipseUtil.resolveInEclipse(filePath);
         if (file.isEmpty()) throw new IllegalArgumentException("Not found: " + filePath);
 
-        var pathToDelete = JdtUtil.pathOf(file.get());
         try {
             try {
                 file.get().delete(IResource.KEEP_HISTORY, getProgressMonitor());
             } catch (Exception e) {
                 file.get().delete(IResource.FORCE, getProgressMonitor());
             }
-            return "Deleted file: " + pathToDelete;
+            onTool("Deleting " + JdtUtil.pathOf(file.get()));
         } catch (CoreException e) {
-            throw new RuntimeException("Failed to delete " + pathToDelete, e);
+            throw new RuntimeException("Failed to delete " + filePath, e);
         }
     }
 
     private AiFileUpdate writeEclipseFile(IFile file, String content) {
-        var oldContent = IoUtils.readFile(file);
+        var oldContent = readFile(file);
         try {
             var charset = Charset.forName(file.getCharset());
             file.write(content.getBytes(charset), true, false, true, getProgressMonitor());

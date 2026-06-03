@@ -12,6 +12,10 @@
 
     <artifactId>llmpeon-core</artifactId>
 
+    <properties>
+        <lombok.version>1.18.44</lombok.version>
+    </properties>
+
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -29,10 +33,10 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.44</version>
+            <version>${lombok.version}</version>
             <optional>true</optional>
         </dependency>
-        
+
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-ollama</artifactId>
@@ -77,7 +81,13 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-mcp</artifactId>
-            <version>1.12.2-beta22</version>
+            <version>1.15.1-beta25</version>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-open-ai-official</artifactId>
+            <version>1.15.1-beta25</version>
         </dependency>
 
         <dependency>
@@ -85,11 +95,11 @@
             <artifactId>flexmark-html2md-converter</artifactId>
             <version>0.64.8</version>
         </dependency>
-        
+
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
-            <version>2.0.17</version>
+            <version>2.0.18</version>
         </dependency>
 
         <dependency>
@@ -129,6 +139,13 @@
                 <version>3.15.0</version>
                 <configuration>
                     <release>${java.version}</release>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
             <plugin>

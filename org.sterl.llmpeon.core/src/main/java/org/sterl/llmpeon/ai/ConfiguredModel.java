@@ -22,13 +22,20 @@ public class ConfiguredModel {
     public ConfiguredModel(LlmConfig config) {
         updateConfig(config);
     }
+    
+    public ConfiguredModel(LlmConfig config, StreamingChatModel model) {
+        updateConfig(config);
+        this.chatModel.set(model);
+    }
 
     public ChatResponse callBlocking(ChatRequest req, AiMonitor monitor) {
         return new StreamingBridge().call(getChatModel(), req, monitor);
     }
     
     public StreamingChatModel getChatModel() {
-        if (chatModel.get() == null) chatModel.set(config.getProviderType().buildModel(config));
+        if (chatModel.get() == null) {
+            chatModel.set(config.getProviderType().buildModel(config));
+        }
         return chatModel.get();
     }
     
@@ -43,13 +50,20 @@ public class ConfiguredModel {
 
     /**
      * Returns a new config with the given model applied.
-     * If the model carries maxInputTokens, it is used as the tokenWindow.
+     * 
      * @return <code>true</code> if changed, otherwise <code>false</code>
      */
     public boolean withModel(AiModel aiModel) {
         if (aiModel.getId().equals(config.getModel())) return false;
+        
         var builder = config.toBuilder().model(aiModel.getId());
-        if (aiModel.getMaxInputTokens() != null) builder.tokenWindow(aiModel.getMaxInputTokens());
+        if (aiModel.getMaxInputTokens()  != null) {
+            int max = (int)(aiModel.getMaxInputTokens() * 0.9);
+            if (max < config.getAutoCompactAfter()) {
+                builder.autoCompactAfter(max);
+            }
+        }
+
         config = builder.build();
         chatModel.set(null); // rebuild
         return true;
@@ -83,13 +97,15 @@ public class ConfiguredModel {
         }
     }
     
-    public int getTokenWindow() {
-        return config.getTokenWindow();
+    public int getAutoCompactAfter() {
+        return config.getAutoCompactAfter();
     }
 
     public void updateConfig(LlmConfig newConfig) {
         if (newConfig == null) throw new NullPointerException("LlmConfig cannot be null!");
-        this.config = newConfig;
-        chatModel.set(null); // rebuild
+        if (this.config == null || !this.config.equals(newConfig)) {
+            this.config = newConfig;
+            chatModel.set(null); // rebuild
+        }
     }
 }

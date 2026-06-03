@@ -135,9 +135,6 @@ public class VoiceInputService implements AutoCloseable {
         VoiceConfig cfg = this.voiceConfig;
         pendingChunks.add(CompletableFuture.supplyAsync(() -> {
             try { 
-                Path.of("./record.wav").toFile().createNewFile();
-                Files.write(Path.of("./record.wav"), wav, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
-                System.err.println(Path.of("./record.wav").toAbsolutePath());
                 return transcribe(wav, cfg); 
             }
             catch (Exception e) {

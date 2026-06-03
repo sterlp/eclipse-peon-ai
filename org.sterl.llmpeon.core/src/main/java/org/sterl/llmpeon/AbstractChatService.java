@@ -1,25 +1,20 @@
 package org.sterl.llmpeon;
 
-import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.function.Predicate;
 
 import org.sterl.llmpeon.agent.AiCompressorAgent;
 import org.sterl.llmpeon.ai.ConfiguredModel;
-import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
-import org.sterl.llmpeon.skill.SkillRecord;
-import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.streaming.StreamingBridge;
-import org.sterl.llmpeon.template.TemplateContext;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
+import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -48,31 +43,44 @@ public abstract class AbstractChatService {
             .build();
     protected final ConfiguredModel configuredModel;
 
-    protected final TemplateContext templateContext;
-    @Deprecated // skills should be slash actions
-    protected final SkillService skillService;
     protected final ToolService toolService;
-    private List<ChatMessage> standingOrders = Collections.emptyList();
-    private int tokenSize = 0;
+    
+    private final List<ChatMessage> staticContext = new ArrayList<>();
+    // TODO needs re-thinking
+    private final List<String> userContextInformations = new ArrayList<>();
+    private volatile int contextTokenSize = 0;
 
-    protected AbstractChatService(ConfiguredModel configuredModel, ToolService toolService,
-            SkillService skillService, TemplateContext templateContext) {
+    /**
+     * One-shot system prompt set by a slash command invocation. When non-null the next call to
+     * {@link #buildStaticMessages()} uses this value as the system prompt instead of
+     * {@link #getSystemPrompt()} and clears the field. Subsequent calls revert to the base prompt.
+     */
+    private String oneShotSystemPrompt;
+
+    protected AbstractChatService(ConfiguredModel configuredModel, ToolService toolService) {
         this.toolService = toolService;
-        this.skillService = skillService;
-        this.templateContext = templateContext;
         this.configuredModel = configuredModel;
-        updateConfig(configuredModel.getConfig());
     }
 
     protected abstract String getSystemPrompt();
     protected abstract double getTemperature();
-    protected abstract Predicate<SmartToolExecutor> getToolFilter();
+    
+    protected Predicate<SmartToolExecutor> getToolFilter() {
+        return t -> {
+            if (t.getTool() instanceof CompactSessionTool) {
+                return contextTokenSize > configuredModel.getConfig().getAutoCompactAfter() * 0.5
+                        && getMessages().size() > 5;
+            }
+            return true;
+        };
+    }
+    
     protected boolean includesMcpTools() { return true; }
 
-    public int tokenWindowUsedInPercent() {
-        float used = tokenSize;
+    public int tokenContextUsedInPercent() {
+        float used = contextTokenSize;
         if (used < 100) return 0;
-        return Math.round(used / Math.min(configuredModel.getTokenWindow(), 4000));
+        return Math.round(used / Math.min(configuredModel.getAutoCompactAfter(), 4000));
     }
 
     public boolean hasUserText(String message) {
@@ -86,14 +94,21 @@ public abstract class AbstractChatService {
     public ChatResponse call(String message, AiMonitor monitor) {
         monitor = AiMonitor.nullSafety(monitor);
         monitor.onCallStart(message);
-        // auto compress if we are close to full
+        // auto compress if we are close to full before we start
+        if (configuredModel.getAutoCompactAfter() < contextTokenSize) compressContext(monitor);
+        
+        if (userContextInformations.size() > 0) {
+            userContextInformations.stream()
+                    .filter(m -> !hasUserText(m))
+                    .forEach(m -> memory.add(UserMessage.from(m)));
+        }
+
         if (StringUtil.hasValue(message)) {
-            if (tokenWindowUsedInPercent() >= 95) compressContext(monitor);
             memory.add(UserMessage.from(message));
         }
 
         var start = Instant.now();
-        var staticMessages = buildStaticMessages();
+        var staticMessages = buildStaticMessages(monitor);
         var bridge = new StreamingBridge();
         var response = toolService.executeLoop(
                 new ToolLoopRequest(memory, configuredModel.getChatModel(), bridge)
@@ -110,66 +125,81 @@ public abstract class AbstractChatService {
     }
 
     public ChatResponse compressContext(AiMonitor monitor) {
-        var response = new AiCompressorAgent(configuredModel.getChatModel()).call(memory.messages(), monitor);
+        var response = new AiCompressorAgent(
+                    configuredModel.getChatModel(), configuredModel.getConfig().getDevTemperature() < 1.0 ? 0.2 : null)
+                .call(memory.messages(), monitor);
         memory.clear();
-        memory.add(UserMessage.from("[Context summary]\n" + response.aiMessage().text()));
+        memory.add(AiMessage.from("[Context summary]\n" + response.aiMessage().text()));
         updateTokenCount(response);
         return response;
     }
 
-    @Deprecated
-    public void updateConfig(LlmConfig config) {
-        configuredModel.updateConfig(config);
-        if (config.getSkillDirectory() != null) {
-            this.templateContext.setSkillDirectory(config.getSkillDirectory());
-            try {
-                this.skillService.refresh(Path.of(config.getSkillDirectory()));
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to load skills from " + config.getSkillDirectory(), e);
-            }
-        }
-        templateContext.setTokenWindow(getTokenWindow());
+    /**
+     * Only context information which doesn't change - only if we clear!
+     * Otherwise we kill the KV-cache!
+     */
+    public void setStaticContext(List<ChatMessage> staticContext) {
+        this.staticContext.clear();
+        if (staticContext != null) this.staticContext.addAll(staticContext);
     }
-
-    public List<ChatMessage> getStandingOrders() {
-        return Collections.unmodifiableList(standingOrders);
+    
+    public void setUserContextInformations(List<String> userContextInformations) {
+        this.userContextInformations.clear();
+        if (userContextInformations != null) this.userContextInformations.addAll(userContextInformations);
     }
-
-    public void setStandingOrders(List<ChatMessage> orders) {
-        this.standingOrders = orders == null ? Collections.emptyList() : new ArrayList<>(orders);
+    
+    public List<String> getUserContextInformations() {
+        return new ArrayList<>(this.userContextInformations);
     }
 
     public void clear() {
         memory.clear();
-        tokenSize = 0;
-        templateContext.setTokenSize(0);
+        contextTokenSize = 0;
     }
 
     public void addMessage(ChatMessage message) { memory.add(message); }
     public List<ChatMessage> getMessages() { return memory.messages(); }
-    public int getTokenSize() { return tokenSize; }
-    public int getTokenWindow() { return configuredModel.getTokenWindow(); }
-    public TemplateContext getTemplateContext() { return templateContext; }
-    public List<SkillRecord> getSkills() { return skillService.getSkills(); }
+    public int getContextSize() { return contextTokenSize; }
+    public int getAutoCompactAfter() { return configuredModel.getAutoCompactAfter(); }
 
-    private List<ChatMessage> buildStaticMessages() {
+    private List<ChatMessage> buildStaticMessages(AiMonitor monitor) {
         var messages = new ArrayList<ChatMessage>();
-        messages.add(SystemMessage.from(getSystemPrompt()));
-
-        messages.addAll(standingOrders);
-        var skillMsg = skillService.skillMessage(templateContext);
-        if (skillMsg != null) messages.add(skillMsg);
+        var override = consumeOneShotSystemPrompt();
+        if (override == null) {
+            messages.add(SystemMessage.from(getSystemPrompt()));
+        } else {
+            monitor.onTool("Using command as system prompt");
+            messages.add(SystemMessage.from(override));
+        }
+        messages.addAll(staticContext);
         return messages;
+    }
+
+    /**
+     * Sets a one-shot system prompt that replaces {@link #getSystemPrompt()} for the very next
+     * {@link #call(String, AiMonitor)} only. Pass {@code null} to clear without consuming.
+     */
+    public void setOneShotSystemPrompt(String systemPrompt) {
+        this.oneShotSystemPrompt = (systemPrompt == null || systemPrompt.isBlank()) ? null : systemPrompt;
+    }
+
+    public boolean hasOneShotSystemPrompt() {
+        return oneShotSystemPrompt != null;
+    }
+
+    private String consumeOneShotSystemPrompt() {
+        var value = oneShotSystemPrompt;
+        oneShotSystemPrompt = null;
+        return value;
     }
 
     private void updateTokenCount(ChatResponse response) {
         TokenUsage usage = response.metadata() != null ? response.metadata().tokenUsage() : null;
         if (usage != null && usage.totalTokenCount() != null) {
-            tokenSize = usage.totalTokenCount();
+            contextTokenSize = usage.totalTokenCount();
         } else {
-            tokenSize = estimateTokens();
+            contextTokenSize = estimateTokens();
         }
-        templateContext.setTokenSize(tokenSize);
     }
 
     private int estimateTokens() {
@@ -180,7 +210,9 @@ public abstract class AbstractChatService {
 
     private int charCount(ChatMessage msg) {
         if (msg instanceof UserMessage um) return um.singleText().length();
-        if (msg instanceof AiMessage am) return am.text() != null ? am.text().length() : 0;
+        if (msg instanceof AiMessage am) {
+            return am.text() != null ? am.text().length() : 0;
+        }
         if (msg instanceof ToolExecutionResultMessage tr) return tr.text().length();
         return 0;
     }
