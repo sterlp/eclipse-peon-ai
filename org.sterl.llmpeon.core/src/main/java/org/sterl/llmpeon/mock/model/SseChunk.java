@@ -4,10 +4,12 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.PropertyAccessor;
+
+import lombok.Getter;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+@Getter
 public class SseChunk {
 
     private String id = "chatcmpl-mock";
@@ -25,6 +27,7 @@ public class SseChunk {
     public void setToolCalls(List<ToolCall> toolCalls) { this.tool_calls = toolCalls; }
 
     @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+    @Getter
     public static class Choice {
         private int index = 0;
         private Delta delta;
@@ -42,14 +45,18 @@ public class SseChunk {
     }
 
     @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+    @Getter
     public static class Delta {
         private String role = "assistant";
         private String content;
+        private List<ToolCall> tool_calls;
 
         public Delta(String content) { this.content = content; }
+        public void setToolCalls(List<ToolCall> toolCalls) { this.tool_calls = toolCalls; }
     }
 
     @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+    @Getter
     public static class ToolCall {
         private String id;
         private String type = "function";
@@ -62,6 +69,7 @@ public class SseChunk {
     }
 
     @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+    @Getter
     public static class Function {
         private String name;
         private String arguments;
