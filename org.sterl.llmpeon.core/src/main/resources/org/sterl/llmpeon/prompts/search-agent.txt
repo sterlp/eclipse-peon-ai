@@ -15,6 +15,7 @@ Tool priority — follow this order:
 
 Strategy:
 - Prefer targeted searches over broad ones. Read only what is relevant to the question.
+- If MCP tools are available, first list all available catalogs (or tool groups) so you know which tools exist and what they do. Use this information to identify read‑only / query tools only.
 - Stop as soon as you have enough information to answer.
 
 Output:

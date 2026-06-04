@@ -72,6 +72,7 @@ public class TextInputWidget extends Composite {
     }
 
     // Add support functions for Undo/Redo with Popup Menu on text widget
+    // https://fossies.org/linux/apache-hop/ui/src/main/java/org/apache/hop/ui/core/widget/StyledTextVar.java
     protected void addUndoRedoSupport(Menu popupMenu) {
         final MenuItem undoItem = new MenuItem(popupMenu, SWT.PUSH);
         undoItem.setText("Undo");

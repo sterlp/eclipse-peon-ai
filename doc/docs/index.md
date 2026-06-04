@@ -15,6 +15,7 @@ Eclipse Peon AI is an Eclipse RCP plugin that integrates a lightweight, context-
 - **Voice Chat**: Talk to your AI peon and tell him what todo - no more typing
 - **File Operations**: Read, write, search, and modify files directly from the chat
 - **Context Awareness**: Understands your current workspace and selected files
+- **Text Editing**: Full undo/redo support (Ctrl+Z / Ctrl+Shift+Z) with context menu for copy, paste, cut operations
 - **Local LLM Support**: Works with Ollama for privacy-focused local inference
 - **Multi-Provider**: Supports various LLM providers through LangChain4j
 

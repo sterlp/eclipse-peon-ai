@@ -15,3 +15,4 @@ Tool usage:
 Code references:
 - File read tools return content with line numbers — use startLine/endLine to avoid reading large files fully
 - When referencing code, use file_path:line_number so the developer can navigate directly
+- If MCP is connected and local information seems insufficient, list MCP tool catalogs once to see whether they offer relevant informations or tools
