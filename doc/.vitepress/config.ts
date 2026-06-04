@@ -44,6 +44,12 @@ export default defineConfig({
           ]
         },
         {
+          text: 'Usage',
+          items: [
+            { text: 'Context Selection', link: '/usage/selections' }
+          ]
+        },
+        {
           text: 'Development',
           items: [
             { text: 'Architecture', link: '/development/architecture' },
