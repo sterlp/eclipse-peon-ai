@@ -1,6 +1,5 @@
 package org.sterl.llmpeon.shared;
 
-@Deprecated // NEEDS FIX REVIEW
 //https://github.com/sterlp/eclipse-peon-ai/pull/58
 //https://github.com/sterlp/eclipse-peon-ai/issues/57
 public class FileLines {
