@@ -22,10 +22,9 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractTest {
         var fileName = "/org.sterl.llmpeon.test/foo.txt";
         var message = "Hello world " + OffsetDateTime.now();
         // WHEN
-        var result = tool.writeWorkspaceFile(fileName, message);
+        tool.writeWorkspaceFile(fileName, message);
         
         // THEN
-        assertTrue(result, result.contains(fileName));
         assertEquals(message, readTool.readWorkspaceFile(fileName, 0, 0));
     }
     
@@ -63,12 +62,10 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractTest {
         tool.writeWorkspaceFile(fileName, message);
         
         // WHEN
-        var result = tool.editWorkspaceFile(fileName, 
+        tool.editWorkspaceFile(fileName, 
                 "    private void updateSelectedProject(IProject project) {", 
                 editMessage);
         // THEN
-        assertTrue(result, result.contains("successfully"));
-        
         message = readTool.readWorkspaceFile(fileName, 0, 0);
         assertTrue("Missing edit text in:\n" + message, message.contains(editMessage));
     }
@@ -110,10 +107,8 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractTest {
         tool.writeWorkspaceFile(fileName, message);
         
         // WHEN
-        var result = tool.editWorkspaceFile(fileName, "  Line to replace\n  fooo", editString);
+        tool.editWorkspaceFile(fileName, "  Line to replace\n  fooo", editString);
         // THEN
-        assertTrue(result, result.contains("successfully"));
-        
         message = readTool.readWorkspaceFile(fileName, 0, 0);
         assertTrue(message, message.contains(editString));
         assertTrue(message, message.contains("Line to replace"));

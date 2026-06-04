@@ -118,7 +118,6 @@ public class ToolService {
 
             req.monitor.onChatMessage(++iterations, builder);
             response = req.bridge.call(req.chatModel, builder.build(), req.monitor);
-            req.memory.add(response.aiMessage());
             ToSimpleMessage.INSTANCE.convert(response.aiMessage()).forEach(req.monitor::onChatResponse);
             if (req.monitor.isCanceled()) break;
 
@@ -135,14 +134,19 @@ public class ToolService {
                 if (tR.clearMemory()) {
                     req.memory.clear();
                     req.memory.add(UserMessage.from("Session was cleared continue if you have enough informations."));
-                    req.memory.add(response.aiMessage());
                 }
+                // it is possible that the tool fails - as so we have than no tool result, 
+                // which will cause issues with some models
+                // TODO should we add an info for the AI?
+                req.memory.add(response.aiMessage());
                 tR.result().forEach(req.memory::add);
             } else if (hasResponseMessage) {
+                req.memory.add(response.aiMessage());
                 break; // done
             } else if (hasThink) {
                 // https://github.com/langchain4j/langchain4j/issues/4786
                 ++stuck;
+                req.memory.add(response.aiMessage());
                 req.monitor.onProblem("AI hangs - only thinking returned times: " + stuck);
                 if (stuck > MAX_STUCK_ITERATIONS) break;
                 req.memory.add(new UserMessage("Your last response contained only internal reasoning with no output. " +

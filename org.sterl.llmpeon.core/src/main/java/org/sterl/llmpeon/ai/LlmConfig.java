@@ -83,6 +83,11 @@ public class LlmConfig {
         return LlmConfig.builder().providerType(AiProvider.LM_STUDIO)
                 .model(model).url("http://localhost:1234/v1").build();
     }
+    
+    public static LlmConfig newOpenAi(String model) {
+        return LlmConfig.builder().providerType(AiProvider.OPEN_AI)
+                .model(model).url("http://localhost:1234/v1").build();
+    }
 
     public static LlmConfig newConfig(AiProvider provider, String model, String url) {
         return LlmConfig.builder()

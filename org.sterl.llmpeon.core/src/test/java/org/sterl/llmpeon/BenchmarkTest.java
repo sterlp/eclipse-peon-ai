@@ -55,7 +55,7 @@ public class BenchmarkTest {
      */
     @Test
     void benchmark_lm_studio_qwen36() {
-        runTest(LlmConfig.newLmStudio("qwen3.6-27b-uncensored-hauhaucs-balanced"));
+        runTest(LlmConfig.newOpenAi("qwen3.6-27b-uncensored-hauhaucs-balanced"));
     }
     
     @Test
@@ -97,7 +97,7 @@ public class BenchmarkTest {
         result = model.callBlocking(ChatRequest.builder().messages(UserMessage.from(message)).build(), null);
         messages.add(result.aiMessage());
         token += result.tokenUsage().totalTokenCount();
-
+        
         System.out.println("Sending question");
         result = model.callBlocking(ChatRequest.builder().messages(UserMessage.from("Are you sure - add the age. Today is " + LocalDate.now())).build(), null);
         token += result.tokenUsage().totalTokenCount();

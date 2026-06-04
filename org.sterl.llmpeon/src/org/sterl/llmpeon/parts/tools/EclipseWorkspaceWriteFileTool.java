@@ -31,7 +31,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
     }
 
     @Tool("Eclipse: Replace a single line by line number. newContent may span multiple lines.")
-    public String replaceWorkspaceLine(
+    public void replaceWorkspaceLine(
             @P(description = "workspace-relative path", name = "filePath") String filePath,
             @P(description = "line to replace (1-based)", name = "line") Integer line,
             @P(description = "replacement text", name ="newContent") String newContent) {
@@ -48,7 +48,6 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         String newFullContent = FileLines.replaceLines(content, line, line, newContent);
         var result = writeEclipseFile(eclipseFile, newFullContent);
         monitor.onFileUpdate(result);
-        return "File " + result.file() + " line " + line + " replaced.";
     }
 
     private String readFile(IFile eclipseFile) {
@@ -60,7 +59,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
     }
 
     @Tool("Eclipse: Replace exact string in workspace file. Errors if 0 or >1 matches.")
-    public String editWorkspaceFile(
+    public void editWorkspaceFile(
             @P(description = "workspace-relative path", name = "filePath") String filePath,
             @P(description = "exact text to replace", name = "oldString") String oldString,
             @P(name = "newString") String newString) {
@@ -79,13 +78,11 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
             var editResult = new AiFileUpdate(result.file(), oldString, newString);
             
             monitor.onFileUpdate(editResult);
-            return "File " + editResult.file() + " edited successfully.";
         }
-
     }
 
     @Tool("Eclipse: Write file to workspace. Creates parent dirs and overwrites if exists.")
-    public String writeWorkspaceFile(
+    public void writeWorkspaceFile(
             @P(description = "workspace-relative path", name = "filePath") 
             String filePath,
             @P(name = "content") 
@@ -94,15 +91,14 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         ArgsUtil.requireNonBlank(filePath, "filePath");
         ArgsUtil.requireNonNull(content, "content");
 
-        // Try to find existing file first
         var inFile = EclipseUtil.resolveInEclipse(filePath);
         if (inFile.isPresent() && inFile.get() instanceof IFile eclipseFile) {
             var result = writeEclipseFile(eclipseFile, content);
             monitor.onFileUpdate(result);
-            return "Updated file: " + result.file();
+            onTool("Updated file " + JdtUtil.pathOf(eclipseFile));
+            return;
         }
 
-        // File doesn't exist - attempt project resolution for new file creation
         var targetProject = EclipseUtil.findOpenProject(filePath);
         String projectRelativePath = java.nio.file.Path.of(filePath).toString();
 
@@ -130,11 +126,10 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
 
         IFile file = writeFileToProject(targetProject.get(), projectRelativePath, content);
         onTool("Created file " + JdtUtil.pathOf(file));
-        return "Created file: " + JdtUtil.pathOf(file);
     }
 
     @Tool("Eclipse: Delete workspace file or directory recursively.")
-    public String deleteWorkspaceResource(
+    public void deleteWorkspaceResource(
             @P(description = "workspace-relative path", name = "filePath") String filePath) {
 
         ArgsUtil.requireNonBlank(filePath, "filePath");
@@ -142,16 +137,15 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         var file = EclipseUtil.resolveInEclipse(filePath);
         if (file.isEmpty()) throw new IllegalArgumentException("Not found: " + filePath);
 
-        var pathToDelete = JdtUtil.pathOf(file.get());
         try {
             try {
                 file.get().delete(IResource.KEEP_HISTORY, getProgressMonitor());
             } catch (Exception e) {
                 file.get().delete(IResource.FORCE, getProgressMonitor());
             }
-            return "Deleted file: " + pathToDelete;
+            onTool("Deleting " + JdtUtil.pathOf(file.get()));
         } catch (CoreException e) {
-            throw new RuntimeException("Failed to delete " + pathToDelete, e);
+            throw new RuntimeException("Failed to delete " + filePath, e);
         }
     }
 

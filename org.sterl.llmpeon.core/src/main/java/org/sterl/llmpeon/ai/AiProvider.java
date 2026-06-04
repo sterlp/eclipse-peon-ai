@@ -14,6 +14,9 @@ import org.sterl.llmpeon.ai.model.AiModel;
 import org.sterl.llmpeon.ai.model.AiModelParser;
 import org.sterl.llmpeon.shared.StringUtil;
 
+import com.openai.models.Reasoning;
+import com.openai.models.ReasoningEffort;
+
 import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
 import dev.langchain4j.model.catalog.ModelType;
@@ -27,6 +30,8 @@ import dev.langchain4j.model.ollama.OllamaModel;
 import dev.langchain4j.model.ollama.OllamaModels;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesChatRequestParameters;
+import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -79,7 +84,42 @@ public enum AiProvider {
                     .customQueryParams(c.getQueryParams())
                     .logRequests(c.isDebugMode())
                     .logResponses(c.isDebugMode())
+                    .reasoningEffort(c.isThinkingEnabled() ? "high" : "low")
                     .build();
+        }
+
+        @Override
+        public List<AiModel> listAiModels(LlmConfig c) {
+            var request = HttpRequest.newBuilder()
+                    .uri(URI.create(c.getUrl() + "/models"))
+                    .header("Authorization", "Bearer " + c.getApiKey());
+            c.getHeaderParams().forEach(request::header);
+            
+            return SharedHttpClient.cancelAndGet(request, AiModelParser::parseOpenApiModels);
+        }
+    },
+    
+    OPEN_AI_OFFICIAL {
+        @Override
+        StreamingChatModel buildModel(LlmConfig c) {
+            var result = OpenAiOfficialResponsesStreamingChatModel.builder()
+                    .timeout(TIMEOUT)
+                    .baseUrl(c.getUrl())
+                    .modelName(c.getModel())
+                    .apiKey(c.getApiKey())
+                    .strictTools(true)
+                    .isMicrosoftFoundry(true)
+                    .customHeaders(c.getHeaderParams());
+            
+            if (c.isThinkingEnabled()) {
+                result.reasoningEffort(ReasoningEffort.HIGH);
+                result.reasoningSummary(Reasoning.Summary.DETAILED);
+                result.defaultRequestParameters(OpenAiOfficialResponsesChatRequestParameters.builder()
+                        .reasoningEffort(ReasoningEffort.HIGH)
+                        .reasoningSummary(Reasoning.Summary.DETAILED).build()
+                );
+            }
+            return result.build();
         }
 
         @Override
@@ -211,6 +251,9 @@ public enum AiProvider {
                     .timeout(TIMEOUT)
                     .modelName(c.getModel())
                     .apiKey(c.getApiKey());
+            if (c.getUrl() != null && c.getUrl().length() > 4) {
+                builder.baseUrl(c.getUrl());
+            }
             if (c.isThinkingEnabled()) {
                 builder.thinkingType("enabled");
             }
@@ -235,7 +278,7 @@ public enum AiProvider {
 
     // GitHub Models marketplace — PAT-based, pay-per-use, models.github.ai
     GITHUB_MODELS {
-        private static final String DEFAULT_BASE_URL    = "https://models.inference.ai.azure.com";
+        private static final String DEFAULT_BASE_URL    = "https://models.github.ai/inference";
         private static final String CATALOG_URL         = "https://models.github.ai/catalog/models";
         private static final String CATALOG_API_VERSION = "2026-03-10";
 
@@ -247,15 +290,14 @@ public enum AiProvider {
 
         @Override
         StreamingChatModel buildModel(LlmConfig c) {
-            return OpenAiStreamingChatModel.builder()
+            return OpenAiOfficialResponsesStreamingChatModel.builder()
                     .timeout(TIMEOUT)
                     .baseUrl(baseUrl(c))
                     .apiKey(c.getApiKey() != null && !c.getApiKey().isBlank() ? c.getApiKey() : "not-configured")
                     .modelName(c.getModel())
+                    .isGitHubModels(true)
+                    .strictTools(true)
                     .customHeaders(c.getHeaderParams())
-                    .customQueryParams(c.getQueryParams())
-                    .logRequests(c.isDebugMode())
-                    .logResponses(c.isDebugMode())
                     .build();
         }
 

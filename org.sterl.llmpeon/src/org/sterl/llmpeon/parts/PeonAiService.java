@@ -309,7 +309,8 @@ public class PeonAiService implements MessageProvider {
         return configuredModel.getModel();
     }
 
-    public void withThinking(boolean enabled) {
+    public void withThinking(Boolean enabled) {
+        if (enabled == null) enabled = Boolean.FALSE;
         configuredModel.withThinking(enabled);
     }
 

@@ -94,13 +94,16 @@
                             <includeGroupIds>
                                 org.sterl,
                                 dev.langchain4j,
-                                com.fasterxml.jackson.core,
+                                com.fasterxml.jackson,
                                 com.knuddels,
                                 org.jspecify,
                                 org.apache.opennlp,
                                 org.slf4j,
                                 com.vladsch.flexmark,
-                                org.jsoup
+                                org.jsoup,
+                                com.openai,
+                                com.squareup,
+                                org.jetbrains.kotlin
                             </includeGroupIds>
                         </configuration>
                     </execution>

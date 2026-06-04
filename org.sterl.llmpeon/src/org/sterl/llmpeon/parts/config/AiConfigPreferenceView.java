@@ -36,14 +36,15 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
     public void createFieldEditors() {
         providerEditor = new ComboFieldEditor(PeonConstants.PREF_PROVIDER_TYPE, "Provider Type:",
                 new String[][] {
-                    { "Ollama", AiProvider.OLLAMA.name() },
+                    { "OpenAI (llama.cpp, OpenAI, HTTP/2)", AiProvider.OPEN_AI.name() },
                     { "LM Studio (OpenAI-compatible, HTTP/1.1)", AiProvider.LM_STUDIO.name() },
-                    { "OpenAI-compatible (Perplexity, OpenAI, ...)", AiProvider.OPEN_AI.name() },
+                    { "Ollama", AiProvider.OLLAMA.name() },
+                    { "OpenAI-Official Azure Foundry", AiProvider.OPEN_AI_OFFICIAL.name() },
+                    { "OpenAI-GitHub Copilot (subscription)", AiProvider.GITHUB_COPILOT.name() },
                     { "Google Gemini", AiProvider.GOOGLE_GEMINI.name() },
                     { "Mistral", AiProvider.MISTRAL.name() },
                     { "Anthropic Claude", AiProvider.ANTHROPIC.name() },
-                    { "GitHub Models (PAT)", AiProvider.GITHUB_MODELS.name() },
-                    { "GitHub Copilot (subscription)", AiProvider.GITHUB_COPILOT.name() }
+                    { "GitHub Models (PAT)", AiProvider.GITHUB_MODELS.name() }
                 },
                 getFieldEditorParent());
         addField(providerEditor);

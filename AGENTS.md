@@ -35,3 +35,4 @@ Read these when working in specific modules:
 
 - `doc/docs` - VitePress defining the docs and spec of the project
 - Always update `/doc/.vitepress/config.ts` sidebar/nav when adding new pages to `docs/`
+- Docs: canonical interaction-design.md lives in `design/`; user docs go in `usage/`. Use tooltips for hidden behavior hints.

@@ -85,6 +85,7 @@ public class StatusLineWidget extends Composite {
         
         // --- File label ---
         fileLabel = new Label(this, SWT.NONE);
+        fileLabel.setToolTipText("Automatically included in chat context — the AI sees this file");
 
         EclipseUiUtil.newSeparator(this);
 

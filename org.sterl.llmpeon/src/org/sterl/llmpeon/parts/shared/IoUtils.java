@@ -46,7 +46,10 @@ public class IoUtils {
             byte[] bytes = content.getBytes(charset);
             ensureFolders(file.getParent(), monitor);
             file.write(bytes, true, false, true, monitor);
-            file.refreshLocal(IResource.DEPTH_ZERO, monitor);
+            // Refresh parent (folder or project) — DEPTH_ONE covers the file itself
+            if (file.getParent() != null) {
+                file.getParent().refreshLocal(IResource.DEPTH_ONE, monitor);
+            }
         } catch (CoreException e) {
             throw new RuntimeException("Failed to write " + file.getFullPath(), e);
         }

@@ -59,10 +59,6 @@ public class UserContext implements MessageProvider {
         return selectedResource;
     }
 
-    public void setSelectedResource(IFile selectedResource) {
-        this.selectedResource = selectedResource;
-    }
-
     public IProject getCurrentProject() {
         return currentProject;
     }

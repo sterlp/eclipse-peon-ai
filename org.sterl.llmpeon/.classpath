@@ -28,6 +28,7 @@
 	<classpathentry exported="true" kind="lib" path="lib/langchain4j-mistral-ai.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/langchain4j-anthropic.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/langchain4j-mcp.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/langchain4j-open-ai-official.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/opennlp-tools.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/slf4j-api.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/slf4j-simple.jar"/>
@@ -54,6 +55,20 @@
 	<classpathentry exported="true" kind="lib" path="lib/flexmark-util-sequence.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/flexmark-util-visitor.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/jsoup.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/openai-java.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/openai-java-client-okhttp.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/openai-java-core.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/kotlin-reflect.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/kotlin-stdlib.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/kotlin-stdlib-common.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/kotlin-stdlib-jdk8.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/jackson-module-kotlin.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/jackson-datatype-jdk8.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/jackson-datatype-jsr310.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/okhttp.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/okhttp-sse.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/okio.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/okio-jvm.jar"/>
 	<classpathentry kind="con" path="org.eclipse.m2e.MAVEN2_CLASSPATH_CONTAINER">
 		<attributes>
 			<attribute name="maven.pomderived" value="true"/>
