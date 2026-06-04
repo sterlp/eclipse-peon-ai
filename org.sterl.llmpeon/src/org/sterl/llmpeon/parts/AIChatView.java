@@ -67,6 +67,7 @@ import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.inject.Inject;
@@ -610,9 +611,10 @@ public class AIChatView implements EclipseAiMonitor {
             monitor.beginTask("Arbeit, Arbeit!", 100);
             monitorRef.set(monitor);
             Exception ex = null;
+            ChatResponse cr = null;
             try {
                 active.setUserContextInformations(this.standingOrders.build());
-                active.call(text.isEmpty() ? null : text, this);
+                cr = active.call(text.isEmpty() ? null : text, this);
             } catch (ToolExecutionException e) {
                 if (!isCanceled()) {
                     if (e.getCause() instanceof CancellationException) {
@@ -628,6 +630,9 @@ public class AIChatView implements EclipseAiMonitor {
                     onChatResponse(new SimpleMessage(Type.PROBLEM, e.getMessage()));
                 }
             } finally {
+                if (lastAppliedConfig != null && lastAppliedConfig.isDebugMode()) {
+                    LOG.info("Chatreponse: " + (cr == null ? "null" : cr.aiMessage()));
+                }
                 EclipseUtil.runInUiThread(parent, () -> lockWhileWorking(false));
                 monitor.done();
                 monitorRef.set(new NullProgressMonitor());
