@@ -36,6 +36,7 @@ public class StatusLineWidget extends Composite {
     private final Button btnSkills;
     private final Button btnAgentsMd;
     private final Label fileLabel;
+    private final Control fileSeparator;
     private final Button btnMcp;
     private final Button btnCompress;
 
@@ -85,8 +86,16 @@ public class StatusLineWidget extends Composite {
         
         // --- File label ---
         fileLabel = new Label(this, SWT.NONE);
+        RowData fileRd = new RowData();
+        fileRd.exclude = true;
+        fileLabel.setLayoutData(fileRd);
+        fileLabel.setVisible(false);
 
-        EclipseUiUtil.newSeparator(this);
+        fileSeparator = EclipseUiUtil.newSeparator(this);
+        RowData fileSeparatorRd = new RowData();
+        fileSeparatorRd.exclude = true;
+        fileSeparator.setLayoutData(fileSeparatorRd);
+        fileSeparator.setVisible(false);
 
         // --- AGENTS.md toggle button (disabled when no agent file found) ---
         btnAgentsMd = new Button(this, SWT.TOGGLE);
@@ -157,8 +166,9 @@ public class StatusLineWidget extends Composite {
             btnAgentsMd.setText(name);
         }
 
-        // --- File ---
-        fileLabel.setText(selectedResource != null ? selectedResource.getName() : "");
+        // Keep selectedResource available for prompt context, but do not show the
+        // selected/open file name in the status line.
+        fileLabel.setText("");
 
         setSkillCount(skillCount);
 
