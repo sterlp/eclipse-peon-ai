@@ -2,12 +2,10 @@ package org.sterl.llmpeon.tool;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.jspecify.annotations.NonNull;
 import org.sterl.llmpeon.mcp.McpServerConfig;
@@ -45,7 +43,6 @@ public class ToolService {
 
     private static final int MAX_STUCK_ITERATIONS = 10;
     private final Map<String, SmartToolExecutor> toolExecutors = new ConcurrentHashMap<>();
-    private final List<DynamicToolProvider> providers = new CopyOnWriteArrayList<>();
 
     private McpService mcpService;
     private List<ToolSpecification> mcpToolSpecs = List.of();
@@ -58,16 +55,9 @@ public class ToolService {
     }
 
     public List<ToolSpecification> toolSpecifications() {
-        var result = new ArrayList<ToolSpecification>();
-        toolExecutors.values().stream()
+        return toolExecutors.values().stream()
                 .map(SmartToolExecutor::getSpec)
-                .forEach(result::add);
-        for (DynamicToolProvider provider : providers) {
-            provider.getTools().stream()
-                    .map(DynamicTool::getToolSpecification)
-                    .forEach(result::add);
-        }
-        return result;
+                .toList();
     }
 
     List<ToolSpecification> toolSpecifications(ToolLoopRequest req) {
@@ -76,12 +66,6 @@ public class ToolService {
                 .filter(req.toolFilter)
                 .map(SmartToolExecutor::getSpec)
                 .forEach(result::add);
-        
-        for (DynamicToolProvider provider : providers) {
-            provider.getTools().stream()
-                    .map(DynamicTool::getToolSpecification)
-                    .forEach(result::add);
-        }
         
         if (req.includeMcpTools) result.addAll(mcpToolSpecs);
         return result;
@@ -199,49 +183,14 @@ public class ToolService {
             log.debug("Tool {}:\n{}", tr.name(), result);
             return new ToolResult(false, ToolExecutionResultMessage.from(tr.id(), tr.name(), result));
         } else if (executor == null) {
-            var dynamicTool = findDynamicTool(tr.name());
-            if (dynamicTool != null) {
-                result = executeDynamicTool(dynamicTool, monitor, agentService, memory);
-            } else {
-                result = "Error: unknown tool '" + tr.name() + "' check spelling";
-                monitor.onProblem(result);
-            }
+            result = "Error: unknown tool '" + tr.name() + "' check spelling";
+            monitor.onProblem(result);
         } else {
             result = executor.run(tr, monitor, agentService, memory);
         }
         return new ToolResult(
                 executor == null ? false : executor.shouldClearMemory(),
                 ToolExecutionResultMessage.from(tr.id(), tr.name(), result));
-    }
-
-    private DynamicTool findDynamicTool(String toolName) {
-        for (DynamicToolProvider provider : providers) {
-            for (DynamicTool tool : provider.getTools()) {
-                if (tool.getName().equals(toolName)) {
-                    return tool;
-                }
-            }
-        }
-        return null;
-    }
-
-    private String executeDynamicTool(DynamicTool tool, AiMonitor monitor, StreamingChatModel agentService, List<ChatMessage> memory) {
-        try {
-            tool.withMonitor(monitor);
-            tool.withChatModel(agentService);
-            tool.withMemory(new ArrayList<>(memory));
-            return tool.execute();
-        } catch (IllegalArgumentException e) {
-            monitor.onProblem(tool.getName() + ": " + e.getMessage());
-            return e.getMessage();
-        } catch (RuntimeException e) {
-            if (monitor != null) monitor.onProblem(tool.getName() + " failed: " + e.getMessage());
-            throw e;
-        } finally {
-            tool.withMonitor(AiMonitor.NULL_MONITOR);
-            tool.withChatModel(null);
-            tool.withMemory(Collections.emptyList());
-        }
     }
 
     /**
@@ -274,14 +223,6 @@ public class ToolService {
     public void addTool(SmartTool toolObject) {
         var old = replaceTool(toolObject);
         if (old != null) throw new RuntimeException("Tool " + old.getSpec().name() + " already registered ...");
-    }
-
-    /**
-     * Registers a provider of dynamically discovered tools.
-     * Tools are queried on every tool specification build — no caching.
-     */
-    public void addProvider(DynamicToolProvider provider) {
-        providers.add(provider);
     }
     
     public SmartToolExecutor replaceTool(SmartTool toolObject) {

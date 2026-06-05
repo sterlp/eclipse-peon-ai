@@ -7,6 +7,6 @@ import org.sterl.llmpeon.shared.AbstractPromptFile;
 public class CommandPromptFile extends AbstractPromptFile {
 
     public CommandPromptFile(String name, String description, Path promptFile) {
-        super(name, description, promptFile, true);
+        super(name, description, promptFile, true, null);
     }
 }

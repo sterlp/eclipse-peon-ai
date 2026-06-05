@@ -8,18 +8,26 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import org.junit.Test;
+import org.sterl.llmpeon.StandingOrdersBuilder;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.parts.PeonAiService;
+import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 import org.sterl.llmpeon.tool.tools.DiskGrepTool;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
 
 public class PeonAiServiceTest  extends AbstractTest {
 
     PeonAiService aiService = new PeonAiService(null, null, null);
+    
+    private final StandingOrdersBuilder standingOrders = new StandingOrdersBuilder()
+            .add(aiService)
+            .add(aiService.getAgentsMdService())
+            .add(aiService.getSkillService());
     
     @Test
     public void test_compact_tool() {
@@ -56,7 +64,7 @@ public class PeonAiServiceTest  extends AbstractTest {
     }
     
     @Test
-    public void test_skill_in_tools() throws IOException {
+    public void test_message_order() throws IOException {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
         aiService.updateConfig(aiService.getConfig().toBuilder()
                 .providerType(AiProvider.OPEN_AI)
@@ -66,15 +74,37 @@ public class PeonAiServiceTest  extends AbstractTest {
         aiService.getSkillService().refresh(Path.of("../skills"));
         
         // WHEN
-        System.err.println(aiService.getConfig());
-        System.err.println(mockLlmServer.getUrl());
         aiService.getDeveloperService().call("Ping", null);
         
         // THEN
-        //System.err.println(mockLlmServer.getLastRequestBody());
+        var msg = aiService.getDeveloperService().getMessages();
+        assertEquals(ChatMessageUtil.toString(msg.get(0)), "Ping");
+        assertEquals(ChatMessageUtil.toString(msg.get(1)), "Pong");
+    }
+    
+    @Test
+    public void test_has_skill_tool() throws IOException {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        aiService.updateConfig(aiService.getConfig().toBuilder()
+                .providerType(AiProvider.OPEN_AI)
+                .url(mockLlmServer.getUrl()).build());
+        mockLlmServer.queueResponse(AiMessage.aiMessage("Pong"));
+        assertTrue(Files.exists(Path.of("../skills")));
+        aiService.getSkillService().refresh(Path.of("../skills"));
         
-        var tools = mockLlmServer.getCapturedTools();
-        tools.forEach(t -> System.err.println(t.name() + "  -> " + t.description()));
+        // WHEN
+        aiService.getDeveloperService().setUserContextInformations(standingOrders.build());
+        aiService.getDeveloperService().call("Ping", null);
+        
+        // THEN
+        assertNotNull(mockLlmServer.getCapturedTool("readSkill"));
+        var userMessages = mockLlmServer.getCapturedMessages().stream()
+                .filter(m -> m instanceof UserMessage)
+                .map(m -> ((UserMessage)m)).toList();
+        
+        for (var s : aiService.getSkillService().getSkills()) {
+            assertContains(ChatMessageUtil.toString(userMessages.get(0)), s.name());
+        }
     }
     
     // TODO add tests concerning the message build -- check if it was properly constructed.

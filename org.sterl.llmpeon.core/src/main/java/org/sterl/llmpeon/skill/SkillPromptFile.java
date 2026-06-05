@@ -7,7 +7,7 @@ import org.sterl.llmpeon.shared.AbstractPromptFile;
 public class SkillPromptFile extends AbstractPromptFile {
 
     public SkillPromptFile(String name, String description, Path promptFile) {
-        super(name, description, promptFile, true);
+        super(name, description, promptFile, true, null);
     }
 
     @Override
