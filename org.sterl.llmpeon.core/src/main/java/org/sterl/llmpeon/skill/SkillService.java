@@ -12,7 +12,6 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import org.sterl.llmpeon.StandingOrdersBuilder.MessageProvider;
 import org.sterl.llmpeon.shared.PromptYmlParser;
 import org.sterl.llmpeon.tool.DynamicTool;
 import org.sterl.llmpeon.tool.DynamicToolProvider;
@@ -20,7 +19,7 @@ import org.sterl.llmpeon.tool.DynamicToolProvider;
 import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
-public class SkillService implements MessageProvider, DynamicToolProvider {
+public class SkillService implements DynamicToolProvider {
 
     private volatile Path skillsDirectory;
     private final Map<String, SkillPromptFile> skills = new ConcurrentHashMap<>();
@@ -28,16 +27,6 @@ public class SkillService implements MessageProvider, DynamicToolProvider {
 
     public SkillService(Path skillsDirectory) throws IOException {
         refresh(skillsDirectory);
-    }
-
-    public String get() {
-        if (getSkills().isEmpty()) return null;
-        var string = getSkills().stream()
-                .map(s -> s.shortDescription())
-                .collect(Collectors.joining("\n"));
-        return """
-                Following skills are availble load and read them if my task maches the name or description.
-                """ + string;
     }
 
     public void setEnabled(boolean enabled) {
@@ -151,12 +140,12 @@ public class SkillService implements MessageProvider, DynamicToolProvider {
         var tools = new java.util.ArrayList<DynamicTool>();
         for (var skill : getSkills()) {
             String name = skill.name();
-            String desc = skill.shortDescription();
+            String desc = skill.description();
             var promptFile = skill;
             tools.add(new DynamicTool() {
                 @Override
                 public String getName() {
-                    return "readSkill" + name.replace(" ", "");
+                    return "skill_" + name.replace(" ", "-");
                 }
 
                 @Override

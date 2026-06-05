@@ -14,9 +14,4 @@ public class SkillPromptFile extends AbstractPromptFile {
     public String readBody() {
         return "Path: " + getPromptFile().getParent() + "\n---\n" + super.readBody();
     }
-
-    @Override
-    public String shortDescription() {
-        return "Skill[name=" + name() + ", description=" + description() + "]";
-    }
 }

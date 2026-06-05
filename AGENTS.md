@@ -6,6 +6,7 @@ AI changes only allowed here with user approval!
 
 - **Thread Safety**: All code changes must be thread-safe (`Atomic*` / `ReentrantLock`). No single-threaded assumptions.
 - **Testing Strategy**: See module guidelines below for runner specifics (Eclipse vs Shell).
+- Write elegant, expressive code using modern Java (records, pattern matching, switch expressions) — readability like good prose; deduplicate via abstractions.
 
 # Build
 - command line `mvn clean verify` - use `verify` to run the eclipse plugin tests of org.sterl.llmpeon.test

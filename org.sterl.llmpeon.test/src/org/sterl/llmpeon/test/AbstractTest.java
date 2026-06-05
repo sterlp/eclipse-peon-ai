@@ -18,7 +18,8 @@ import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
-import org.junit.AfterClass;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.sterl.llmpeon.mock.MockLlmServer;
 
@@ -28,7 +29,7 @@ import dev.langchain4j.data.message.UserMessage;
 public abstract class AbstractTest {
     
     protected static IProject project;
-    protected static MockLlmServer mockLlmServer;
+    protected final MockLlmServer mockLlmServer = new MockLlmServer();
     
     public static void assertContains(String value, String expected) {
         assertNotNull("Extected to find " + expected, value);
@@ -59,14 +60,17 @@ public abstract class AbstractTest {
         } catch (CoreException e) {
             assumeTrue("Cannot import project (likely Maven/Tycho workspace overlap): " + e.getMessage(), false);
         }
-        mockLlmServer.start();
     }
     
-    @AfterClass
-    public static void stop() {
+    @After
+    public void after() {
         mockLlmServer.stop();
     }
     
+    @Before
+    public void before() {
+        mockLlmServer.start();
+    }
 
     protected static void importProject(File projectDir) throws Exception {
         final var latch = new CountDownLatch(1);

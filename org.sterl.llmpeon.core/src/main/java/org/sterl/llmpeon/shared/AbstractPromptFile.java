@@ -43,10 +43,6 @@ public abstract class AbstractPromptFile {
         return PromptYmlParser.stripFrontmatter(readFullContent());
     }
 
-    public String shortDescription() {
-        return getClass().getSimpleName() + "[name=" + name + (description == null ? "" : ", description=" + description) + "]";
-    }
-    
     @Override
     public String toString() {
         return getClass().getSimpleName() + "[name=" + name + ", promptFile: " + promptFile + "]";

@@ -9,11 +9,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.sterl.llmpeon.mock.model.CapturedTool;
 import org.sterl.llmpeon.mock.model.ModelListResponse;
 import org.sterl.llmpeon.mock.model.SseChunk;
 
@@ -49,7 +51,7 @@ public class MockLlmServer {
     // Lifecycle
     // -------------------------------------------------------------------------
 
-    public void start() throws IOException {
+    public void start() {
         if (port == 0) {
             try (var s = new ServerSocket(0)) {
                 port = s.getLocalPort();
@@ -57,11 +59,15 @@ public class MockLlmServer {
                 throw new UncheckedIOException(e);
             }
         }
-        server = HttpServer.create(new InetSocketAddress(port), 0);
-        server.createContext("/v1/chat/completions", this::handleChatCompletions);
-        server.createContext("/v1/models", this::handleModels);
-        server.setExecutor(Executors.newCachedThreadPool());
-        server.start();
+        try {
+            server = HttpServer.create(new InetSocketAddress(port), 0);
+            server.createContext("/v1/chat/completions", this::handleChatCompletions);
+            server.createContext("/v1/models", this::handleModels);
+            server.setExecutor(Executors.newCachedThreadPool());
+            server.start();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     public void stop() {
@@ -106,6 +112,45 @@ public class MockLlmServer {
 
     public List<ChatMessage> getCapturedMessages() {
         return capturedMessages;
+    }
+    
+    public List<CapturedTool> getCapturedTools() {
+        String body = lastRequestBody.get();
+        if (body == null) return List.of();
+        try {
+            var root = MAPPER.readTree(body);
+            var tools = root.path("tools");
+            if (tools.isMissingNode()) return List.of();
+
+            List<CapturedTool> result = new ArrayList<>();
+            for (var tool : tools) {
+                var fn = tool.path("function");
+                var props = fn.path("parameters").path("properties");
+                var required = fn.path("parameters").path("required");
+
+                List<String> allParams = new ArrayList<>();
+                props.fieldNames().forEachRemaining(allParams::add);
+
+                List<String> requiredParams = new ArrayList<>();
+                required.forEach(n -> requiredParams.add(n.asText()));
+
+                result.add(new CapturedTool(
+                        fn.path("name").asText(),
+                        fn.path("description").asText(null),
+                        requiredParams,
+                        allParams));
+            }
+            return result;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to parse captured tools", e);
+        }
+    }
+
+    // Convenience lookup by name
+    public Optional<CapturedTool> getCapturedTool(String name) {
+        return getCapturedTools().stream()
+                .filter(t -> name.equals(t.name()))
+                .findFirst();
     }
 
     // -------------------------------------------------------------------------
