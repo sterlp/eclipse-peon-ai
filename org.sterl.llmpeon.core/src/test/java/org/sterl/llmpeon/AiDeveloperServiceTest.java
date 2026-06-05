@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.ai.ConfiguredModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.tool.SmartTool;
 import org.sterl.llmpeon.tool.ToolService;
 
@@ -147,14 +148,12 @@ public class AiDeveloperServiceTest {
         // THEN
         verify(cm, times(1)).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
         // AND
-        requestRef.get().messages().forEach(System.err::println);
-        assertThat(((UserMessage)requestRef.get().messages().get(2)).singleText()).contains("We are all doomed!");
-        var wissenWir = requestRef.get().messages().stream().filter(m -> m instanceof UserMessage)
-            .filter(m -> ((UserMessage)m).singleText().contains("wissen wir schon"))
-            .count();
-        assertThat(wissenWir).isOne();
+        var d = requestRef.get().messages().stream().map(ChatMessageUtil::toString).filter(m -> m.contains("We are all doomed!")).count();
+        assertThat(d).isOne();
+        // AND
+        d = requestRef.get().messages().stream().map(ChatMessageUtil::toString).filter(m -> m.contains("wissen wir schon")).count();
+        assertThat(d).isOne();
     }
-    
     
     private StreamingChatModel mockWithHandler() {
         var cm = mock(StreamingChatModel.class);

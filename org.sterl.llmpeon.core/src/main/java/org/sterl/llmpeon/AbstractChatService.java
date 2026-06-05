@@ -9,21 +9,18 @@ import java.util.function.Predicate;
 import org.sterl.llmpeon.agent.AiCompressorAgent;
 import org.sterl.llmpeon.ai.ConfiguredModel;
 import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.streaming.StreamingBridge;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.data.message.*;
 
 public abstract class AbstractChatService {
 
@@ -85,7 +82,7 @@ public abstract class AbstractChatService {
         return this.memory.messages().stream()
             .filter(m -> m instanceof UserMessage)
             .map(m -> (UserMessage)m)
-            .anyMatch(um -> um.hasSingleText() && um.singleText().contains(message));
+            .anyMatch(um -> ChatMessageUtil.toString(um).contains(message));
     }
 
     public ChatResponse call(String message, AiMonitor monitor) {
@@ -94,15 +91,15 @@ public abstract class AbstractChatService {
         // auto compress if we are close to full before we start
         if (configuredModel.getAutoCompactAfter() < contextTokenSize) compressContext(monitor);
         
+        var contents = new ArrayList<Content>();
         if (userContextInformations.size() > 0) {
             userContextInformations.stream()
                     .filter(m -> !hasUserText(m))
-                    .forEach(m -> memory.add(UserMessage.from(m)));
+                    .forEach(m -> contents.add(new TextContent(m)));
         }
-
-        if (StringUtil.hasValue(message)) {
-            memory.add(UserMessage.from(message));
-        }
+        
+        if (StringUtil.hasValue(message)) contents.add(new TextContent(message));
+        if (!contents.isEmpty()) memory.add(UserMessage.from(contents));
 
         var start = Instant.now();
         var staticMessages = buildStaticMessages(monitor);
@@ -206,11 +203,6 @@ public abstract class AbstractChatService {
     }
 
     private int charCount(ChatMessage msg) {
-        if (msg instanceof UserMessage um) return um.singleText().length();
-        if (msg instanceof AiMessage am) {
-            return am.text() != null ? am.text().length() : 0;
-        }
-        if (msg instanceof ToolExecutionResultMessage tr) return tr.text().length();
-        return 0;
+        return ChatMessageUtil.toString(msg).length();
     }
 }
