@@ -18,6 +18,16 @@ public abstract class AbstractPromptFile {
     private final String description;
     private final Path promptFile;
     private volatile boolean enabled = true;
+    
+    StringBuilder info;
+    public String buildShortInfo() {
+        if (info == null) {
+            info = new StringBuilder();
+            info.append("---\nname: ").append(name)
+                .append("\ndescription: " + description);
+        }
+        return info.toString();
+    }
 
     public String name() {
         return getName();
@@ -38,15 +48,15 @@ public abstract class AbstractPromptFile {
             throw new RuntimeException("Failed to read " + promptFile, e);
         }
     }
+    
+    public boolean isEnabled() {
+        return enabled && Files.exists(promptFile);
+    }
 
     public String readBody() {
         return PromptYmlParser.stripFrontmatter(readFullContent());
     }
 
-    public String shortDescription() {
-        return getClass().getSimpleName() + "[name=" + name + (description == null ? "" : ", description=" + description) + "]";
-    }
-    
     @Override
     public String toString() {
         return getClass().getSimpleName() + "[name=" + name + ", promptFile: " + promptFile + "]";

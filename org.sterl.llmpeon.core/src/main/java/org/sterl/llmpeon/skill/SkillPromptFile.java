@@ -7,16 +7,14 @@ import org.sterl.llmpeon.shared.AbstractPromptFile;
 public class SkillPromptFile extends AbstractPromptFile {
 
     public SkillPromptFile(String name, String description, Path promptFile) {
-        super(name, description, promptFile, true);
+        super(name, description, promptFile, true, null);
     }
 
     @Override
     public String readBody() {
-        return "Path: " + getPromptFile().getParent() + "\n---\n" + super.readBody();
-    }
-
-    @Override
-    public String shortDescription() {
-        return "Skill[name=" + name() + ", description=" + description() + "]";
+        return "=== SKILL: " + getName() + " ===\n"
+                + getPromptFile() + "\n"
+                + "=== BODY ===\n"
+                + super.readBody();
     }
 }

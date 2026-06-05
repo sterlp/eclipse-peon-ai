@@ -18,7 +18,10 @@ import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.BeforeClass;
+import org.sterl.llmpeon.mock.MockLlmServer;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -26,6 +29,7 @@ import dev.langchain4j.data.message.UserMessage;
 public abstract class AbstractTest {
     
     protected static IProject project;
+    protected final MockLlmServer mockLlmServer = new MockLlmServer();
     
     public static void assertContains(String value, String expected) {
         assertNotNull("Extected to find " + expected, value);
@@ -58,6 +62,15 @@ public abstract class AbstractTest {
         }
     }
     
+    @After
+    public void after() {
+        mockLlmServer.stop();
+    }
+    
+    @Before
+    public void before() {
+        mockLlmServer.start();
+    }
 
     protected static void importProject(File projectDir) throws Exception {
         final var latch = new CountDownLatch(1);

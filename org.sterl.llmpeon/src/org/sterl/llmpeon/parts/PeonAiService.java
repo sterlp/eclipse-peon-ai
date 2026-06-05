@@ -114,6 +114,8 @@ public class PeonAiService implements MessageProvider {
         skillService            = new SkillService();
         commandService          = new CommandService();
         agentsMdService         = new AgentsMdService();
+        
+        toolService.addTool(new SkillTool(skillService));
 
         workspaceWriteFilesTool = new EclipseWorkspaceWriteFileTool();
         toolService.addTool(workspaceWriteFilesTool);
@@ -128,7 +130,6 @@ public class PeonAiService implements MessageProvider {
         toolService.addTool(new EclipseRunTestTool());
         toolService.addTool(new EclipseCodeNavigationTool());
         toolService.addTool(new EclipseConsoleLogTool());
-        toolService.addTool(new SkillTool(skillService));
 
         developerService = new AiDeveloperService(configuredModel, toolService);
         plannerService   = new AiPlannerService(configuredModel, toolService);

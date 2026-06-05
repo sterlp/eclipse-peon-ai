@@ -14,7 +14,6 @@ import org.sterl.llmpeon.streaming.StreamingBridge;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
-import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -65,14 +64,12 @@ public abstract class AbstractChatService {
     protected abstract String getSystemPrompt();
     protected abstract double getTemperature();
     
+    /**
+     * Apply only static filters to tools -- any change kills the KV cache!
+     * https://github.com/ggml-org/llama.cpp/issues/22746#issuecomment-4630455537
+     */
     protected Predicate<SmartToolExecutor> getToolFilter() {
-        return t -> {
-            if (t.getTool() instanceof CompactSessionTool) {
-                return contextTokenSize > configuredModel.getConfig().getAutoCompactAfter() * 0.5
-                        && getMessages().size() > 5;
-            }
-            return true;
-        };
+        return p -> true;
     }
     
     protected boolean includesMcpTools() { return true; }

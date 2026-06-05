@@ -4,13 +4,11 @@ import java.util.List;
 
 import org.sterl.llmpeon.PromptLoader;
 import org.sterl.llmpeon.shared.AiMonitor;
-import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.streaming.StreamingBridge;
 
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -55,26 +53,7 @@ public class AiCompressorAgent {
     String toText(ChatMessage msg) {
         var result = new StringBuilder();
         result.append("\n").append(msg.type()).append(":\n");
-        if (msg instanceof UserMessage m && m.hasSingleText()) {
-            result.append(m.singleText());
-        } else if (msg instanceof AiMessage m) {
-            if (StringUtil.hasValue(m.text())) {
-                result.append(m.text()).append("\n");
-            }
-            if (StringUtil.hasValue(m.thinking())) {
-                result.append("Think:\n").append(m.thinking()).append("\n");
-            }
-            if (m.hasToolExecutionRequests()) {
-                for (var tr : m.toolExecutionRequests()) {
-                    result.append("\ntool name:  ").append(tr.name())
-                          .append("\ntool id:    ").append(tr.id())
-                          .append("\narguments:  ").append(tr.arguments());
-                }
-            }
-        } else if (msg instanceof ToolExecutionResultMessage tr && tr.hasSingleText()) {
-            result.append("\ntool result for id: ").append(tr.id())
-                  .append("\n").append(tr.text()).append("\n");
-        }
+        result.append(ChatMessageUtil.toString(msg));
         return result.toString();
     }
 }
