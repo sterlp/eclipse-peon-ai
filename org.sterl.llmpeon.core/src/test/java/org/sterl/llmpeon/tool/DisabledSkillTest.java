@@ -9,7 +9,6 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.sterl.llmpeon.StandingOrdersBuilder;
 import org.sterl.llmpeon.skill.SkillService;
 
 class DisabledSkillTest {
@@ -17,17 +16,14 @@ class DisabledSkillTest {
     @TempDir
     Path tempDir;
 
-    StandingOrdersBuilder ordersBuilder;
     SkillService skillService;
 
     @BeforeEach
     void setUp() throws Exception {
-        ordersBuilder = new StandingOrdersBuilder();
         skillService = new SkillService();
         skillService.refresh(tempDir);
         skillService.setEnabled(true);
         skillService.setAllSkillsEnabled(true);
-        ordersBuilder.add(skillService);
     }
     
     @Test
@@ -38,11 +34,10 @@ class DisabledSkillTest {
 
         // WHEN
         skillService.refresh(tempDir);
-        var orders = ordersBuilder.build();
         
         // AND
-        assertThat(orders.getFirst()).contains("name: formatting");
-        assertThat(orders.getFirst()).contains("name: testing");
+        assertThat(skillService.skillNames()).contains("formatting");
+        assertThat(skillService.skillNames()).contains("testing");
     }
 
 
@@ -55,10 +50,9 @@ class DisabledSkillTest {
 
         // AND
         skillService.setEnabled(false);
-        var orders = ordersBuilder.build();
 
         // WHEN
-        assertThat(orders).isEmpty();
+        assertThat(skillService.skillNames()).isEmpty();
 
     }
 
@@ -70,11 +64,10 @@ class DisabledSkillTest {
 
         // WHEN
         skillService.setSkillEnabled("formatting", false);
-        var orders = ordersBuilder.build();
 
         // AND
-        assertThat(orders.getFirst()).doesNotContain("name: formatting");
-        assertThat(orders.getFirst()).contains("name: testing");
+        assertThat(skillService.skillNames()).doesNotContain("formatting");
+        assertThat(skillService.skillNames()).contains("testing");
     }
 
     @Test

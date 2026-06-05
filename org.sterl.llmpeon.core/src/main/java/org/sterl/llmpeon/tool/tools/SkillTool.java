@@ -25,16 +25,15 @@ public class SkillTool extends AbstractTool {
         ArgsUtil.requireNonBlank(name, "name");
         var skill = skillService.get(name);
         if (skill.isEmpty()) {
-            onProblem("SKILL " + name + " found ...");
+            onProblem("SKILL " + name + " not found ...");
             return "No skill with the name " + name 
                     + " found. Use one of: " + skillService.skillNames();
         }
         onTool("Read SKILL " + name);
-        return skill.get().getPromptFile() + "\n"
-                + skill.get().readBody();
+        return skill.get().readBody();
     }
     
-    @Tool("List all active SKILL - use it for complex tasks.")
+    @Tool("List all active SKILL - use it before complex tasks, to verify if a skill is available.")
     public String listSkill() throws IOException, InterruptedException {
         onTool("List SKILLs");
         List<SkillPromptFile> skills = skillService.getSkills();

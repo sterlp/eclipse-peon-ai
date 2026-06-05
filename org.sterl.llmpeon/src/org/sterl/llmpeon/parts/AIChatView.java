@@ -3,6 +3,7 @@ package org.sterl.llmpeon.parts;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CancellationException;
@@ -55,8 +56,10 @@ import org.sterl.llmpeon.parts.widget.StatusLineWidget;
 import org.sterl.llmpeon.parts.widget.StatusLineWidget.SkillMenuSelection;
 import org.sterl.llmpeon.parts.widget.UserInputWidget;
 import org.sterl.llmpeon.parts.widget.UserQuestionWidget;
+import org.sterl.llmpeon.shared.AbstractPromptFile;
 import org.sterl.llmpeon.shared.OnPartialAiResponse;
 import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.model.SimpleMessage.Type;
 import org.sterl.llmpeon.tool.tools.ShellTool;
@@ -114,7 +117,6 @@ public class AIChatView implements EclipseAiMonitor {
             .add(aiService)
             .add(workspaceMemoryTool)
             .add(aiService.getAgentsMdService())
-            .add(aiService.getSkillService())
             .add(userContext);
 
     @PostConstruct
@@ -189,7 +191,12 @@ public class AIChatView implements EclipseAiMonitor {
         aiService.getDeveloperService().setStaticContext(Arrays.asList(SystemMessage.from(dateInfo)));
         aiService.getPlannerService().setStaticContext(Arrays.asList(SystemMessage.from(dateInfo)));
 
-        chatInput.enableSlashCommands(() -> aiService.getCommandService().getCommands());
+        chatInput.enableSlashCommands(() -> {
+            var result = new ArrayList<AbstractPromptFile>();
+            result.addAll(aiService.getCommandService().getCommands());
+            result.addAll(aiService.getSkillService().getSkills());
+            return result;
+        });
     }
 
     private void onClear() {
@@ -585,7 +592,6 @@ public class AIChatView implements EclipseAiMonitor {
         }
 
         var active = aiService.getActiveService();
-        if (!applySlashCommandIfPresent(active)) return;
 
         final var selection = userContext.getUserSelection();
         final var needsSelection = !active.hasUserText(selection);
@@ -595,6 +601,7 @@ public class AIChatView implements EclipseAiMonitor {
 
         if (StringUtil.hasValue(text)) {
             chatHistory.appendMessage(new SimpleMessage(Type.USER, text));
+            applySlashCommandIfPresent(active);
             chatInput.clearText();
             
             // already working -> we only append the current history ...
@@ -710,11 +717,11 @@ public class AIChatView implements EclipseAiMonitor {
      * input so only the trailing user text is sent. Returns {@code false} and reports a problem
      * when the name is unknown so the caller can abort the send.
      */
-    private boolean applySlashCommandIfPresent(AbstractChatService active) {
+    private void applySlashCommandIfPresent(AbstractChatService active) {
         var raw = chatInput.getText();
-        if (raw == null) return true;
+        if (raw == null) return;
         var trimmed = raw.stripLeading();
-        if (!trimmed.startsWith("/")) return true;
+        if (!trimmed.startsWith("/")) return;
 
         int wsIdx = -1;
         for (int i = 1; i < trimmed.length(); i++) {
@@ -722,25 +729,31 @@ public class AIChatView implements EclipseAiMonitor {
         }
         var name = wsIdx < 0 ? trimmed.substring(1) : trimmed.substring(1, wsIdx);
         var rest = wsIdx < 0 ? "" : trimmed.substring(wsIdx).stripLeading();
-        if (name.isBlank()) return true;
+        if (name.isBlank()) return;
 
         var commandService = aiService.getCommandService();
         var command = commandService.get(name);
-        if (command.isEmpty()) {
-            var available = commandService.commandNames();
-            var hint = available.isEmpty() ? "(no commands loaded)" : "Available: " + available;
-            chatHistory.appendMessage(new SimpleMessage(Type.PROBLEM,
-                    "Unknown command /" + name + ". " + hint));
-            return false;
+        if (command.isPresent()) {
+            var prompt = command.get().readBody();
+            active.setOneShotSystemPrompt(prompt);
+        } else {
+            var skillService = aiService.getSkillService();
+            var skill = skillService.get(name);
+            if (skill.isPresent()) {
+                standingOrders.addOneTimeOrder(skill.get().readBody() + "\n\nExecute this skill on the following instruction - full body was loaded.");
+            } else {
+                if (!commandService.hasCommands() && !skillService.hasSkills()) return;
+                var available = commandService.commandNames() + ", " + skillService.skillNames();
+                chatHistory.appendMessage(new SimpleMessage(Type.PROBLEM,
+                        "Unknown command or SKILL /" + name + ". Available " + available));
+                
+                return;
+            }
         }
-
-        var prompt = command.get().readBody();
-        active.setOneShotSystemPrompt(prompt);
         // If only the slash token was entered, keep it visible as the user turn so the chat
         // history clearly shows which command was invoked AND the LLM receives a non-empty turn.
         chatInput.setText(rest.isEmpty() ? "/" + name : rest);
         chatInput.dismissSlashMenu();
-        return true;
     }
 
     private void onMicClick() {

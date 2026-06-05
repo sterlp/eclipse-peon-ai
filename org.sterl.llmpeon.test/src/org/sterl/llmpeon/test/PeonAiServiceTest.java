@@ -26,8 +26,7 @@ public class PeonAiServiceTest  extends AbstractTest {
     
     private final StandingOrdersBuilder standingOrders = new StandingOrdersBuilder()
             .add(aiService)
-            .add(aiService.getAgentsMdService())
-            .add(aiService.getSkillService());
+            .add(aiService.getAgentsMdService());
     
     @Test
     public void test_compact_tool() {
@@ -83,14 +82,29 @@ public class PeonAiServiceTest  extends AbstractTest {
     }
     
     @Test
-    public void test_has_skill_tool() throws IOException {
+    public void test_has_read_skill_tool() throws IOException {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
         aiService.updateConfig(aiService.getConfig().toBuilder()
                 .providerType(AiProvider.OPEN_AI)
                 .url(mockLlmServer.getUrl()).build());
         mockLlmServer.queueResponse(AiMessage.aiMessage("Pong"));
-        assertTrue(Files.exists(Path.of("../skills")));
-        aiService.getSkillService().refresh(Path.of("../skills"));
+        
+        // WHEN
+        aiService.getDeveloperService().call("Ping", null);
+        
+        // THEN
+        assertNotNull(mockLlmServer.getCapturedTool("readSkill"));
+    }
+    
+    @Test
+    public void test_has_agents_md() throws IOException {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        aiService.updateConfig(aiService.getConfig().toBuilder()
+                .providerType(AiProvider.OPEN_AI)
+                .url(mockLlmServer.getUrl()).build());
+        mockLlmServer.queueResponse(AiMessage.aiMessage("Pong"));
+        
+        aiService.getAgentsMdService().load(project);
         
         // WHEN
         aiService.getDeveloperService().setUserContextInformations(standingOrders.build());
@@ -102,9 +116,7 @@ public class PeonAiServiceTest  extends AbstractTest {
                 .filter(m -> m instanceof UserMessage)
                 .map(m -> ((UserMessage)m)).toList();
         
-        for (var s : aiService.getSkillService().getSkills()) {
-            assertContains(ChatMessageUtil.toString(userMessages.get(0)), s.name());
-        }
+        assertContains(ChatMessageUtil.toString(userMessages.get(0)), "Test Specifics");
     }
     
     // TODO add tests concerning the message build -- check if it was properly constructed.

@@ -12,6 +12,9 @@ public class SkillPromptFile extends AbstractPromptFile {
 
     @Override
     public String readBody() {
-        return "Path: " + getPromptFile().getParent() + "\n---\n" + super.readBody();
+        return "=== SKILL: " + getName() + " ===\n"
+                + getPromptFile() + "\n"
+                + "=== BODY ===\n"
+                + super.readBody();
     }
 }

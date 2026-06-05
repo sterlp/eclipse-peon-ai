@@ -12,13 +12,12 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import org.sterl.llmpeon.StandingOrdersBuilder.MessageProvider;
 import org.sterl.llmpeon.shared.PromptYmlParser;
 
 import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
-public class SkillService implements MessageProvider {
+public class SkillService {
 
     private volatile Path skillsDirectory;
     private final Map<String, SkillPromptFile> skills = new ConcurrentHashMap<>();
@@ -26,16 +25,6 @@ public class SkillService implements MessageProvider {
 
     public SkillService(Path skillsDirectory) throws IOException {
         refresh(skillsDirectory);
-    }
-    
-    public String get() {
-        if (getSkills().isEmpty()) return null;
-        var string = getSkills().stream()
-                .map(SkillPromptFile::buildShortInfo)
-                .collect(Collectors.joining("\n"));
-        return """
-               Following skills are availble load and read them if my task maches the name or description.
-               """ + string;
     }
 
     public void setEnabled(boolean enabled) {

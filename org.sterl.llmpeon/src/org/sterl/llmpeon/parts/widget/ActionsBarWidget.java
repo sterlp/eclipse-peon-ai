@@ -98,7 +98,7 @@ public class ActionsBarWidget extends Composite {
 
 	private void buildModelCombo(Consumer<AiModel> onModelChange) {
 		modelCombo = new Combo(this, SWT.READ_ONLY);
-        modelCombo.setLayoutData(new RowData(150, SWT.DEFAULT));
+        modelCombo.setLayoutData(new RowData(200, SWT.DEFAULT));
         modelCombo.setToolTipText("Select model (fetched from provider)");
         modelCombo.addListener(SWT.Selection, e -> {
             int idx = modelCombo.getSelectionIndex();
@@ -106,10 +106,10 @@ public class ActionsBarWidget extends Composite {
                 onModelChange.accept(availableModels.get(idx));
             }
         });
-	}
+    }
 
-	private void buildAgentCombo(Consumer<PeonMode> onModeChange) {
-		agentCombo = new Combo(this, SWT.READ_ONLY);
+    private void buildAgentCombo(Consumer<PeonMode> onModeChange) {
+        agentCombo = new Combo(this, SWT.READ_ONLY);
         agentCombo.setLayoutData(new RowData(100, SWT.DEFAULT));
         agentCombo.setItems(Arrays.asList(PeonMode.values()).stream()
                 .map(PeonMode::getLabel)
