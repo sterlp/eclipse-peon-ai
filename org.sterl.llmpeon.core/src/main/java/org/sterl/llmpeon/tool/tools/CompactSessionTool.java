@@ -10,7 +10,12 @@ import dev.langchain4j.data.message.UserMessage;
 public class CompactSessionTool extends AbstractTool {
     public static final String NAME = "compactSession";
 
-    @Tool(name = CompactSessionTool.NAME, value = "Compress/compact the current conversation history to free context while preserving key instructions.")
+    @Tool(name = CompactSessionTool.NAME,
+            value = """
+            Compress/compact conversation history to free context, keeping key instructions.
+            If files are also needed, batch this tool first with read tool calls in the same
+            response — load them fresh instead of preserving through the compact.
+            """)
     public String compactSession(
             @P(description = "Short instructions or next steps to keep and echo back after compression.", required = false, name = "preserve") String preserve) {
         var cfg = this.request.getModel().getConfig();
@@ -19,13 +24,14 @@ public class CompactSessionTool extends AbstractTool {
         var summary = new AiCompressorAgent(model, temp)
                 .call(this.request.getMemory().messages(), monitor);
 
-        // only if we have a result -- also ensure the first message is a user message, some LLMs need this ...
-        if (summary.aiMessage().text() != null && summary.aiMessage().text().length() > 5) {
+        // only if we have a valid result -- also ensure the first message is a user message, some LLMs need this ...
+        var aiMsg = summary.aiMessage();
+        if (aiMsg != null && aiMsg.text() != null && aiMsg.text().length() > 5) {
             request.getMemory().clear();
             request.getMemory().add(UserMessage.from("Session compacted. Resume the task using the preserved context."));
         }
-        return summary.aiMessage().text() 
-                + (StringUtil.hasValue(preserve) 
+        var summaryText = (aiMsg != null && aiMsg.text() != null) ? aiMsg.text() : "";
+        return summaryText + (StringUtil.hasValue(preserve) 
                         ? "\nPreserved:\n" + StringUtil.stripToEmpty(preserve)
                         : "");
     }

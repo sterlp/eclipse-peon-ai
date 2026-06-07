@@ -23,7 +23,7 @@ import lombok.NonNull;
 
 /**
  * Command object for {@link ToolService#executeLoop(ToolLoopRequest)}.
- * Required fields: {@code memory}, {@code chatModel}, and {@code bridge}.
+ * Required fields: {@code memory} and {@code model}. The {@code bridge} has a default value.
  * All other fields have sensible defaults.
  * 
  * Keep in mind any change to the message history may kill the kv cache!!
