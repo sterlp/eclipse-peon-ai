@@ -11,16 +11,18 @@ import org.sterl.llmpeon.ai.ConfiguredModel;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.shared.StringUtil;
-import org.sterl.llmpeon.streaming.StreamingBridge;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.data.message.*;
 
 public abstract class AbstractChatService {
 
@@ -109,15 +111,18 @@ public abstract class AbstractChatService {
 
         var start = Instant.now();
         var staticMessages = buildStaticMessages(monitor);
-        var bridge = new StreamingBridge();
         var response = toolService.executeLoop(
-                new ToolLoopRequest(memory, configuredModel.getChatModel(), bridge)
-                        .staticMessages(staticMessages)
-                        .monitor(monitor)
-                        .toolFilter(getToolFilter())
-                        .includeMcpTools(includesMcpTools())
-                        .temperature(getTemperature())
-                        .onLoop(this::updateTokenCount));
+                ToolLoopRequest.builder()
+                    .memory(memory)
+                    .model(configuredModel)
+                    .staticMessages(staticMessages)
+                    .monitor(monitor)
+                    .toolFilter(getToolFilter())
+                    .includeMcpTools(includesMcpTools())
+                    .temperature(getTemperature())
+                    .onLoop(this::updateTokenCount)
+                    .build()
+                );
 
         updateTokenCount(response);
         monitor.onCallCompleted(response, Duration.between(start, Instant.now()));
@@ -164,15 +169,7 @@ public abstract class AbstractChatService {
      * 4. Nach User/System darf KEIN Tool kommen!
      */
     public void addMessage(ChatMessage message) {
-        synchronized (memory) {
-            if (message instanceof UserMessage num 
-                    && (!memory.messages().isEmpty() && memory.messages().getLast() instanceof UserMessage lum)) {
-                var messages = memory.messages();
-                memory.set(UserMessage.replaceLast(messages, ChatMessageUtil.join(lum, num)));
-            } else {
-                memory.add(message); 
-            }
-        }
+        ChatMessageUtil.addMessageToMemory(memory, message);
     }
     public List<ChatMessage> getMessages() { return memory.messages(); }
     public int getContextSize() { return contextTokenSize; }
@@ -210,21 +207,6 @@ public abstract class AbstractChatService {
     }
 
     private void updateTokenCount(ChatResponse response) {
-        TokenUsage usage = response.metadata() != null ? response.metadata().tokenUsage() : null;
-        if (usage != null && usage.totalTokenCount() != null) {
-            contextTokenSize = usage.totalTokenCount();
-        } else {
-            contextTokenSize = estimateTokens();
-        }
-    }
-
-    private int estimateTokens() {
-        int chars = 0;
-        for (var msg : memory.messages()) chars += charCount(msg);
-        return chars / 4;
-    }
-
-    private int charCount(ChatMessage msg) {
-        return ChatMessageUtil.toString(msg).length();
+        contextTokenSize = ChatMessageUtil.getTokenCount(response, memory.messages());
     }
 }

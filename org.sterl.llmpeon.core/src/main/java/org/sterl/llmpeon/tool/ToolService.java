@@ -10,11 +10,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.jspecify.annotations.NonNull;
 import org.sterl.llmpeon.mcp.McpServerConfig;
 import org.sterl.llmpeon.mcp.McpService;
-import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 import org.sterl.llmpeon.tool.model.ToSimpleMessage;
 import org.sterl.llmpeon.tool.tools.AbstractTool;
+import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 import org.sterl.llmpeon.tool.tools.SearchAgentTool;
 import org.sterl.llmpeon.tool.tools.ShellTool;
 import org.sterl.llmpeon.tool.tools.WebFetchTool;
@@ -27,7 +28,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -43,6 +43,16 @@ public class ToolService {
 
     private static final int MAX_STUCK_ITERATIONS = 10;
     private final Map<String, SmartToolExecutor> toolExecutors = new ConcurrentHashMap<>();
+    
+    private static final String COMPACT_HINT =
+            "CONTEXT LIMIT WARNING: Call '" + CompactSessionTool.NAME + "' as your first tool call. " +
+            "In the 'preserve' field, summarize the critical next steps and any findings needed to continue. " +
+            "After compacting, proceed with the task — additional tool calls in this round are expected.";
+    
+    private static final String STUCK_MESSAGE = """
+            Your last response contained only internal reasoning with no output.
+            Stop thinking and take action now: either call a tool, ask a clarifying question,
+            or provide your answer directly.""";
 
     private McpService mcpService;
     private List<ToolSpecification> mcpToolSpecs = List.of();
@@ -52,6 +62,7 @@ public class ToolService {
         addTool(new WebFetchTool());
         addTool(new SearchAgentTool(this));
         addTool(new ShellTool());
+        addTool(new CompactSessionTool());
     }
 
     public List<ToolSpecification> toolSpecifications() {
@@ -93,17 +104,17 @@ public class ToolService {
 
         do {
             var messages = new ArrayList<ChatMessage>(toOneSystemMessage(req.staticMessages));
-            messages.addAll(req.memory.messages());
+            messages.addAll(req.getMemory().messages());
 
             var builder = ChatRequest.builder()
                     .messages(messages)
                     .toolSpecifications(toolSpecifications(req));
             if (req.temperature != null) builder.temperature(req.temperature);
 
-            req.monitor.onChatMessage(++iterations, builder);
-            response = req.bridge.call(req.chatModel, builder.build(), req.monitor);
+            req.getMonitor().onChatMessage(++iterations, builder);
+            response = req.call(builder.build());
             ToSimpleMessage.INSTANCE.convert(response.aiMessage()).forEach(req.monitor::onChatResponse);
-            if (req.monitor.isCanceled()) break;
+            if (req.getMonitor().isCanceled()) break; // TODO re-think this
 
             var isToolrequest = response.aiMessage().hasToolExecutionRequests();
             var hasResponseMessage = StringUtil.hasValue(response.aiMessage().text());
@@ -112,51 +123,64 @@ public class ToolService {
             shouldLoop = isToolrequest || (hasThink && !hasResponseMessage);
             if (shouldLoop) req.onLoop.accept(response);
 
+            // we always add the AI messages later
+            // 1. we may cancel and have tool request with no response -> error in next cycle
+            // 2. tools may clear the memory
             if (isToolrequest) {
                 stuck = 0; // reset on productive tool use
-                var tR = runAllTools(response, req.chatModel, req.monitor, req.memory.messages());
-                if (tR.clearMemory()) {
-                    req.memory.clear();
-                    req.memory.add(UserMessage.from("Session was cleared continue if you have enough informations."));
-                }
-                // it is possible that the tool fails - as so we have than no tool result, 
-                // which will cause issues with some models
-                // TODO should we add an info for the AI?
-                req.memory.add(response.aiMessage());
-                tR.result().forEach(req.memory::add);
+                var tR = runAllTools(response, req);
+                req.getMemory().add(response.aiMessage());
+                tR.forEach(req.getMemory()::add);
+                
+                addCompactHintIfNeeded(req, response, false);
             } else if (hasResponseMessage) {
-                req.memory.add(response.aiMessage());
+                req.getMemory().add(response.aiMessage());
                 break; // done
             } else if (hasThink) {
                 // https://github.com/langchain4j/langchain4j/issues/4786
                 ++stuck;
-                req.memory.add(response.aiMessage());
+                req.getMemory().add(response.aiMessage());
                 req.monitor.onProblem("AI hangs - only thinking returned times: " + stuck);
                 if (stuck > MAX_STUCK_ITERATIONS) break;
-                req.memory.add(new UserMessage("Your last response contained only internal reasoning with no output. " +
-                                "Stop thinking and take action now: either call a tool, ask a clarifying question, " +
-                                "or provide your answer directly."
-                            ));
+
+                if (stuck > MAX_STUCK_ITERATIONS / 2) addCompactHintIfNeeded(req, response, true);
+                else req.addMessage(new UserMessage(STUCK_MESSAGE));
             }
         } while (shouldLoop && !req.monitor.isCanceled());
 
         return response;
     }
 
-    record ToolLoopResult(ArrayList<ToolExecutionResultMessage> result, boolean clearMemory) {}
+    private void addCompactHintIfNeeded(ToolLoopRequest req, ChatResponse response, boolean force) {
+        var compactLimit = req.getModel().getConfig().getAutoCompactAfter();
+        if (compactLimit <= 0 && !force) return;
 
-    private ToolLoopResult runAllTools(ChatResponse response, StreamingChatModel agentService, AiMonitor monitor, List<ChatMessage> memory) {
+        var messages = req.getMemory().messages();
+        if (messages.size() < 10) return;
+        var totalUsed = ChatMessageUtil.getTokenCount(response, messages);
+        
+        if (force || totalUsed > compactLimit * 0.95) {
+            req.addMessage(new UserMessage(COMPACT_HINT + "\n" 
+                + totalUsed + " tokens of " + compactLimit + " used."));
+        }
+    }
+
+    private List<ToolExecutionResultMessage> runAllTools(ChatResponse response, ToolLoopRequest req) {
         var toolResults = new ArrayList<ToolExecutionResultMessage>();
-        boolean clearMemory = false;
 
         for (var tr : response.aiMessage().toolExecutionRequests()) {
-            var trResult = execute(tr, monitor, agentService, memory);
-            toolResults.add(trResult.message());
-            if (trResult.clearMemory()) clearMemory = true;
-            if (monitor.isCanceled()) break;
+            try {
+                var trResult = execute(tr, req);
+                toolResults.add(trResult);
+            } catch (Exception e) {
+                log.error("Tool {} with args {} failed", tr.name(), tr.arguments(), e);
+                req.getMonitor().onProblem(tr.name() + " failed: " + e.getMessage() + " details logged.");
+                toolResults.add(ToolExecutionResultMessage.from(tr.id(), tr.name(),
+                        "Tool failed - check why and inform user " + StringUtil.getStackTrace(e)));
+            }
         }
 
-        return new ToolLoopResult(toolResults, clearMemory);
+        return toolResults;
     }
     
     /** Merges all SystemMessages into one at the front (compatibility with local LLMs). */
@@ -173,24 +197,22 @@ public class ToolService {
 
     public static record ToolResult(boolean clearMemory, ToolExecutionResultMessage message) {}
 
-    public ToolResult execute(ToolExecutionRequest tr, AiMonitor monitor, StreamingChatModel agentService, List<ChatMessage> memory) {
+    public ToolExecutionResultMessage execute(ToolExecutionRequest tr, ToolLoopRequest req) {
         var executor = toolExecutors.get(tr.name());
-        monitor = AiMonitor.nullSafety(monitor);
+        var monitor = req.getMonitor();
         String result;
         if (executor == null && mcpService != null && mcpService.hasTool(tr.name())) {
             monitor.onTool("Running MCP: " + tr.name() + " - " + tr.arguments());
             result = mcpService.executeTool(tr);
-            log.debug("Tool {}:\n{}", tr.name(), result);
-            return new ToolResult(false, ToolExecutionResultMessage.from(tr.id(), tr.name(), result));
+            log.debug("MCP Tool {} result size: {}", tr.name(), result == null ? "null" : result.length());
+            return ToolExecutionResultMessage.from(tr.id(), tr.name(), result);
         } else if (executor == null) {
             result = "Error: unknown tool '" + tr.name() + "' check spelling";
             monitor.onProblem(result);
         } else {
-            result = executor.run(tr, monitor, agentService, memory);
+            result = executor.run(tr, req);
         }
-        return new ToolResult(
-                executor == null ? false : executor.shouldClearMemory(),
-                ToolExecutionResultMessage.from(tr.id(), tr.name(), result));
+        return ToolExecutionResultMessage.from(tr.id(), tr.name(), result);
     }
 
     /**

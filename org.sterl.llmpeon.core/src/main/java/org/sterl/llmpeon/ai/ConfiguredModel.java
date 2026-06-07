@@ -17,7 +17,7 @@ import lombok.Getter;
 @Getter
 public class ConfiguredModel {
 
-    private AtomicReference<StreamingChatModel> chatModel = new AtomicReference<>();
+    private final AtomicReference<StreamingChatModel> chatModel = new AtomicReference<>();
     private volatile LlmConfig config;
     
     public ConfiguredModel(LlmConfig config) {

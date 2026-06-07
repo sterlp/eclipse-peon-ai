@@ -9,8 +9,47 @@ import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.model.chat.response.ChatResponse;
 
 public class ChatMessageUtil {
+    
+    public static int getTokenCount(ChatResponse response, List<ChatMessage> messages) {
+        var tokenUsage = response.tokenUsage();
+        if (tokenUsage == null) tokenUsage = response.metadata() != null ? response.metadata().tokenUsage() : null;
+
+        if (tokenUsage != null && tokenUsage.totalTokenCount() != null) {
+            return tokenUsage.totalTokenCount();
+        } else {
+            return estimateTokens(messages);
+        }
+    }
+    private static int estimateTokens(List<ChatMessage> messages) {
+        int chars = 0;
+        for (var msg : messages) chars += charCount(msg);
+        return chars / 4;
+    }
+    private static int charCount(ChatMessage msg) {
+        return toString(msg).length();
+    }
+    
+    /**
+     * 1. System-Messages nur am Anfang erlaubt
+     * 2. Tool-Messages NUR nach Assistant-Messages MIT tool_calls erlaubt
+     * 3. Rollen müssen alternieren: user/assistant/user/assistant
+     * 4. Nach User/System darf KEIN Tool kommen!
+     */
+    public static void addMessageToMemory(ChatMemory memory, ChatMessage message) {
+        synchronized (memory) {
+            if (message instanceof UserMessage num 
+                    && (!memory.messages().isEmpty() && memory.messages().getLast() instanceof UserMessage lum)) {
+                var messages = memory.messages();
+                memory.set(UserMessage.replaceLast(messages, ChatMessageUtil.join(lum, num)));
+            } else {
+                memory.add(message); 
+            }
+        }
+    }
 
     public static UserMessage join(UserMessage m1, UserMessage m2) {
         List<Content> data = new LinkedList<>();

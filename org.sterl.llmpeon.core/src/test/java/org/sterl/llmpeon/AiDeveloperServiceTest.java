@@ -8,7 +8,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -17,15 +16,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.ai.ConfiguredModel;
 import org.sterl.llmpeon.ai.LlmConfig;
-import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.tool.SmartTool;
+import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
+import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -41,36 +40,30 @@ public class AiDeveloperServiceTest {
     StreamingChatModel cm;
     final AtomicReference<Function<ChatRequest, ChatResponse>> fn = new AtomicReference<>();
     
+    public static final AiMessage CALL_ME = AiMessage.builder()
+            .toolExecutionRequests(Arrays.asList(ToolExecutionRequest.builder().name(CompactSessionTool.NAME).build()))
+            .build();
+    /*
     class ClearMemoryTestTool implements SmartTool {
         public static final AiMessage CALL_ME = AiMessage.builder()
                 .toolExecutionRequests(Arrays.asList(ToolExecutionRequest.builder().name("clearMemory").build()))
                 .build();
-                
+        ToolLoopRequest request;
         @Tool(name = "clearMemory")
         public String hello() {
+            request.getMemory().clear();
             return "Hello from clearMemory";
         }
-        @Override
-        public void withMonitor(AiMonitor monitor) {
-        }
 
         @Override
-        public void withChatModel(StreamingChatModel chatModel) {
+        public void withToolRequest(ToolLoopRequest request) {
+            this.request = request;
         }
-
-        @Override
-        public void withMemory(List<ChatMessage> memory) {
-        }
-        
-        @Override
-        public boolean clearMemory() {
-            return true;
-        }
-    }
+    }*/
     
     @BeforeEach
     void beforeEach() {
-        toolService.replaceTool(new ClearMemoryTestTool());
+        toolService.replaceTool(new CompactSessionTool());
         cm = mockWithHandler();
         subject = new AiDeveloperService(new ConfiguredModel(LlmConfig.newOllama("foo"), cm), toolService);
     }
@@ -111,9 +104,9 @@ public class AiDeveloperServiceTest {
         fn.set(req -> {
             requestRef.set(req);
             if (clear.getAndSet(false)) return ChatResponse.builder()
-                    .aiMessage(ClearMemoryTestTool.CALL_ME)
+                    .aiMessage(CALL_ME)
                     .build();
-            
+
             return ChatResponse.builder().aiMessage(AiMessage.aiMessage("Okay thats good")).build();
         });
         
@@ -121,14 +114,14 @@ public class AiDeveloperServiceTest {
         subject.call("Foo", null);
 
         // THEN
-        verify(cm, times(2)).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+        verify(cm, times(3)).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
         // AND
         var mem = subject.getMessages();
         // many models require the first message being a user message
-        assertThat(((UserMessage)mem.get(0)).singleText()).contains("continue");
-        assertThat(mem.get(1)).isEqualTo(ClearMemoryTestTool.CALL_ME);
-        assertThat(((ToolExecutionResultMessage)mem.get(2)).text()).contains("clearMemory");
-        assertThat(((AiMessage)mem.get(3)).text()).contains("good");
+        assertThat(((UserMessage)mem.get(0)).singleText()).contains("Session compacted");
+        assertThat(mem.get(1)).isEqualTo(CALL_ME);
+        assertThat(mem.get(2)).isInstanceOf(ToolExecutionResultMessage.class);
+        assertThat(((ToolExecutionResultMessage)mem.get(2)).text()).contains("Okay thats good");
     }
     
     @Test

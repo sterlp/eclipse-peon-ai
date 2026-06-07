@@ -136,7 +136,7 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
         // root: list open projects
         if (path == null || path.isBlank() || path.length() == 1) {
             var t = new EclipseBuildTool();
-            t.withMonitor(monitor);
+            t.withToolRequest(request);
             return t.listAllOpenEclipseProjects();
         }
 

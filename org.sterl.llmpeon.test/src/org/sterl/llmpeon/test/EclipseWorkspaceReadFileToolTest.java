@@ -4,17 +4,18 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
-import java.util.ArrayList;
-
 import org.junit.Test;
+import org.sterl.llmpeon.ai.ConfiguredModel;
+import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.tools.EclipseBuildTool;
 import org.sterl.llmpeon.parts.tools.EclipseCodeNavigationTool;
 import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
+import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 
 public class EclipseWorkspaceReadFileToolTest extends AbstractTest {
 
@@ -168,10 +169,14 @@ public class EclipseWorkspaceReadFileToolTest extends AbstractTest {
             .build();
         
         // WHEN
-        var content = service.execute(tr, null, null, new ArrayList<ChatMessage>());
+        var content = service.execute(tr,
+                ToolLoopRequest.builder()
+                    .memory(MessageWindowChatMemory.withMaxMessages(10))
+                    .model(new ConfiguredModel(LlmConfig.newOpenAi("foo")))
+                    .build());
         
         // THEN
-        assertContains(content.message().text(), 
+        assertContains(content.text(), 
                 "Hallo meine schöne datei wie geht es dir?");
     }
 }
