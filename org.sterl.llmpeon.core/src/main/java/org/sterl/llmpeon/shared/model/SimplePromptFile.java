@@ -21,14 +21,23 @@ public class SimplePromptFile {
     @Default
     protected volatile boolean enabled = true;
     
-    StringBuilder info;
+    private String shortInfo; // Lazy-init with double-checked locking for thread safety
+    
     public String buildShortInfo() {
-        if (info == null) {
-            info = new StringBuilder();
-            info.append("---\nname: ").append(name)
-                .append("\ndescription: ").append(description);
+        String result = shortInfo;
+        if (result == null) {
+            synchronized (this) {
+                result = shortInfo;
+                if (result == null) {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("---\nname: ").append(name)
+                      .append("\ndescription: ").append(description);
+                    result = sb.toString();
+                    shortInfo = result;
+                }
+            }
         }
-        return info.toString();
+        return result;
     }
 
     public String name() {
