@@ -1,6 +1,18 @@
 package org.sterl.llmpeon.shared;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
+
 public class StringUtil {
+    
+    public static String getStackTrace(final Throwable throwable) {
+        if (throwable == null) {
+            return "";
+        }
+        final StringWriter sw = new StringWriter();
+        throwable.printStackTrace(new PrintWriter(sw, true));
+        return sw.toString();
+    }
     
     public static String getOrDefault(String value, String defaultValue) {
         if (hasValue(value)) return value;

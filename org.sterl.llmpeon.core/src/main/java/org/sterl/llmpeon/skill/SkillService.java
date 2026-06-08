@@ -12,13 +12,12 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import org.sterl.llmpeon.StandingOrdersBuilder.MessageProvider;
 import org.sterl.llmpeon.shared.PromptYmlParser;
 
 import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
-public class SkillService implements MessageProvider {
+public class SkillService {
 
     private volatile Path skillsDirectory;
     private final Map<String, SkillPromptFile> skills = new ConcurrentHashMap<>();
@@ -26,16 +25,6 @@ public class SkillService implements MessageProvider {
 
     public SkillService(Path skillsDirectory) throws IOException {
         refresh(skillsDirectory);
-    }
-
-    public String get() {
-        if (getSkills().isEmpty()) return null;
-        var string = getSkills().stream()
-                .map(s -> s.shortDescription())
-                .collect(Collectors.joining("\n"));
-        return """
-                Following skills are availble load and read them if my task maches the name or description.
-                """ + string;
     }
 
     public void setEnabled(boolean enabled) {
@@ -94,28 +83,36 @@ public class SkillService implements MessageProvider {
             try (DirectoryStream<Path> entries = Files.newDirectoryStream(skillsDirectory)) {
                 for (Path entry : entries) {
                     if (Files.isDirectory(entry)) {
-                        var skillFile = detectSkillFile(entry);
-                        if (skillFile != null && Files.isRegularFile(skillFile)) {
-                            SkillPromptFile skill = PromptYmlParser.parseSkill(skillFile);
-                            if (skill != null) {
-                                skills.put(skill.getName().toLowerCase(Locale.ROOT), skill);
-                            }
-                        }
+                        handleDirectorySkill(entry);
                     } else if (Files.isRegularFile(entry)) {
-                        var fileName = entry.getFileName().toString();
-                        if (fileName.startsWith(".")) continue;
-                        if (fileName.endsWith(".md")) {
-                            SkillPromptFile skill = PromptYmlParser.parseSkill(entry);
-                            if (skill != null) {
-                                skills.put(skill.getName().toLowerCase(Locale.ROOT), skill);
-                            }
-                        }
+                        handleFileSkill(entry);
                     }
                 }
             }
         }
 
         return true;
+    }
+    
+    private void handleFileSkill(Path entry) throws IOException {
+        var yml = PromptYmlParser.parseYml(entry);
+        if (yml != null) {
+            var skill = SkillPromptFile.from(yml).build();
+            skills.put(skill.getName().toLowerCase(Locale.ROOT), skill);
+        }
+    }
+
+    private void handleDirectorySkill(Path entry) throws IOException {
+        var skillFile = detectSkillFile(entry);
+        if (skillFile != null && Files.isRegularFile(skillFile)) {
+            var yml = PromptYmlParser.parseYml(skillFile);
+            if (yml != null) {
+                var skill = SkillPromptFile.from(yml)
+                        .skillDir(entry.getParent())
+                        .build();
+                skills.put(skill.getName().toLowerCase(Locale.ROOT), skill);
+            }
+        }
     }
 
     private Path detectSkillFile(Path dir) {

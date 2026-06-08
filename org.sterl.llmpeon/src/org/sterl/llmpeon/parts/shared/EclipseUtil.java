@@ -137,10 +137,10 @@ public class EclipseUtil {
               .append("\nNatures:      ").append(projectNatures(p));
 
         var m = findMember(p, "pom.xml");
-        if (m.isPresent()) result.append(JdtUtil.pathOf(m.get()));
+        if (m.isPresent()) result.append("\n").append(JdtUtil.pathOf(m.get()));
         m = findMember(p, "package.json");
-        if (m.isPresent()) result.append(JdtUtil.pathOf(m.get()));
-              
+        if (m.isPresent()) result.append("\n").append(JdtUtil.pathOf(m.get()));
+
         return result.toString();
     }
 

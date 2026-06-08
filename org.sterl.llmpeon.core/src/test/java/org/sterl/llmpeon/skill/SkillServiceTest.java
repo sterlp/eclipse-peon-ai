@@ -2,11 +2,14 @@ package org.sterl.llmpeon.skill;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.sterl.llmpeon.shared.PromptYmlParser;
 
 class SkillServiceTest {
@@ -24,6 +27,59 @@ class SkillServiceTest {
     void before() {
         subject.setEnabled(true);
         subject.setAllSkillsEnabled(true);
+    }
+
+    @Test
+    void parseYml_subdirectory(@TempDir Path tmp) throws Exception {
+        // GIVEN
+        var skillDir = Files.createDirectory(tmp.resolve("my-skill"));
+        Files.writeString(skillDir.resolve("SKILL.md"), """
+                ---
+                name: my-skill-name
+                description: Does something useful
+                ---
+                body
+                """);
+        
+        Files.writeString(skillDir.resolve("foo.md"), "Foo", StandardOpenOption.CREATE);
+        Files.createDirectories(skillDir.resolve("bar"));
+        Files.writeString(skillDir.resolve("bar/baaar.md"), "Bar", StandardOpenOption.CREATE);
+
+        // WHEN
+        var promt = PromptYmlParser.parseYml(skillDir.resolve("SKILL.md"));
+        var skill = SkillPromptFile.from(promt).skillDir(tmp.resolve("my-skill")).build();
+
+        // THEN
+        assertThat(skill).isNotNull();
+        assertThat(skill.name()).isEqualTo("my-skill-name");
+        assertThat(skill.description()).isEqualTo("Does something useful");
+        assertThat(skill.readBody()).contains(Path.of("foo.md").toString());
+        assertThat(skill.readBody()).contains(Path.of("bar", "baaar.md").toString());
+        
+        // AND
+        assertThat(skill.readRelativeFile(Path.of("foo.md").toString())).isEqualTo("Foo");
+        assertThat(skill.readRelativeFile(Path.of("bar/baaar.md").toString())).isEqualTo("Bar");
+    }
+
+    @Test
+    void parseYml_flatFile(@TempDir Path tmp) throws Exception {
+        // GIVEN
+        Files.writeString(tmp.resolve("my-skill.md"), """
+                ---
+                name: my-skill
+                description: Flat file skill
+                ---
+                body
+                """);
+
+        // WHEN
+        var skill = PromptYmlParser.parseYml(tmp.resolve("my-skill.md"));
+
+        // THEN
+        assertThat(skill).isNotNull();
+        assertThat(skill.name()).isEqualTo("my-skill");
+        assertThat(skill.description()).isEqualTo("Flat file skill");
+        assertThat(skill.readBody()).isEqualTo("body");
     }
 
     @Test
@@ -51,17 +107,6 @@ class SkillServiceTest {
         assertThat(skill.name()).isEqualTo(expectedName);
         assertThat(skill.description()).contains("Eclipse IFile");
         assertThat(skill.readBody()).contains("toPortableString");
-    }
-
-    @Test
-    void testParseSkillFileReturnsNullForMissingFile() throws Exception {
-        // GIVEN a non-existent path
-
-        // WHEN
-        var result = PromptYmlParser.parseSkill(SKILLS_DIR.resolve("nonexistent/SKILL.md"));
-
-        // THEN
-        assertThat(result).isNull();
     }
 
     @Test

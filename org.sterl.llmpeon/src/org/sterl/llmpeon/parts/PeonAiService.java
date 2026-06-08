@@ -32,7 +32,6 @@ import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.tool.ToolService;
-import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 import org.sterl.llmpeon.tool.tools.DiskGrepTool;
@@ -114,6 +113,8 @@ public class PeonAiService implements MessageProvider {
         skillService            = new SkillService();
         commandService          = new CommandService();
         agentsMdService         = new AgentsMdService();
+        
+        toolService.addTool(new SkillTool(skillService));
 
         workspaceWriteFilesTool = new EclipseWorkspaceWriteFileTool();
         toolService.addTool(workspaceWriteFilesTool);
@@ -128,7 +129,6 @@ public class PeonAiService implements MessageProvider {
         toolService.addTool(new EclipseRunTestTool());
         toolService.addTool(new EclipseCodeNavigationTool());
         toolService.addTool(new EclipseConsoleLogTool());
-        toolService.addTool(new SkillTool(skillService));
 
         developerService = new AiDeveloperService(configuredModel, toolService);
         plannerService   = new AiPlannerService(configuredModel, toolService);
@@ -150,8 +150,6 @@ public class PeonAiService implements MessageProvider {
      */
     public void updateConfig(LlmConfig config) {
         configuredModel.updateConfig(config);
-
-        toolService.replaceTool(new CompactSessionTool(config.getDevTemperature() < 1.0 ? 0.1 : null));
 
         updateActiveDiskTools(config);
         if (config.getSkillDirectory() != null && !config.getSkillDirectory().isBlank()) {

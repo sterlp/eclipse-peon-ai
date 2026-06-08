@@ -7,25 +7,25 @@ import java.nio.file.Path;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.sterl.llmpeon.shared.model.SimplePromptFile;
 
 class PromptYmlParserTest {
 
     @Test
-    void parseCommand_plainFileNoFrontmatter(@TempDir Path tmp) throws Exception {
+    void parseYml_plainFileNoFrontmatter(@TempDir Path tmp) throws Exception {
         // GIVEN
         Files.writeString(tmp.resolve("review.md"), "Review the code.");
 
         // WHEN
-        var cmd = PromptYmlParser.parseCommand(tmp.resolve("review.md"));
+        var prompt = PromptYmlParser.parseYml(tmp.resolve("review.md"));
 
         // THEN
-        assertThat(cmd).isNotNull();
-        assertThat(cmd.name()).isEqualTo("review");
-        assertThat(cmd.description()).isNull();
+        assertThat(prompt.name()).isEqualTo("review");
+        assertThat(prompt.description()).isNull();
     }
 
     @Test
-    void parseCommand_withDescription(@TempDir Path tmp) throws Exception {
+    void parseYml_withDescription(@TempDir Path tmp) throws Exception {
         // GIVEN
         Files.writeString(tmp.resolve("review.md"), """
                 ---
@@ -35,16 +35,15 @@ class PromptYmlParserTest {
                 """);
 
         // WHEN
-        var cmd = PromptYmlParser.parseCommand(tmp.resolve("review.md"));
+        var prompt = PromptYmlParser.parseYml(tmp.resolve("review.md"));
 
         // THEN
-        assertThat(cmd).isNotNull();
-        assertThat(cmd.name()).isEqualTo("review");
-        assertThat(cmd.description()).isEqualTo("Review changes");
+        assertThat(prompt.name()).isEqualTo("review");
+        assertThat(prompt.description()).isEqualTo("Review changes");
     }
 
     @Test
-    void parseCommand_withNameOverride(@TempDir Path tmp) throws Exception {
+    void parseYml_withNameOverride(@TempDir Path tmp) throws Exception {
         // GIVEN
         Files.writeString(tmp.resolve("file.md"), """
                 ---
@@ -55,16 +54,15 @@ class PromptYmlParserTest {
                 """);
 
         // WHEN
-        var cmd = PromptYmlParser.parseCommand(tmp.resolve("file.md"));
+        var prompt = PromptYmlParser.parseYml(tmp.resolve("file.md"));
 
         // THEN
-        assertThat(cmd).isNotNull();
-        assertThat(cmd.name()).isEqualTo("my-command");
-        assertThat(cmd.description()).isEqualTo("desc");
+        assertThat(prompt.name()).isEqualTo("my-command");
+        assertThat(prompt.description()).isEqualTo("desc");
     }
 
     @Test
-    void parseCommand_quotedValues(@TempDir Path tmp) throws Exception {
+    void parseYml_quotedValues(@TempDir Path tmp) throws Exception {
         // GIVEN
         Files.writeString(tmp.resolve("cmd.md"), """
                 ---
@@ -75,72 +73,30 @@ class PromptYmlParserTest {
                 """);
 
         // WHEN
-        var cmd = PromptYmlParser.parseCommand(tmp.resolve("cmd.md"));
+        var prompt = PromptYmlParser.parseYml(tmp.resolve("cmd.md"));
 
         // THEN
-        assertThat(cmd).isNotNull();
-        assertThat(cmd.name()).isEqualTo("quoted-name");
-        assertThat(cmd.description()).isEqualTo("quoted desc");
+        assertThat(prompt.name()).isEqualTo("quoted-name");
+        assertThat(prompt.description()).isEqualTo("quoted desc");
     }
 
     @Test
-    void parseSkill_subdirectory(@TempDir Path tmp) throws Exception {
+    void parseYml_plainFileWithBody(@TempDir Path tmp) throws Exception {
         // GIVEN
-        var skillDir = Files.createDirectory(tmp.resolve("my-skill"));
-        Files.writeString(skillDir.resolve("SKILL.md"), """
-                ---
-                name: my-skill
-                description: Does something useful
-                ---
-                body
-                """);
+        Files.writeString(tmp.resolve("only-body.md"), "just body, no frontmatter");
 
         // WHEN
-        var skill = PromptYmlParser.parseSkill(skillDir.resolve("SKILL.md"));
+        var prompt = PromptYmlParser.parseYml(tmp.resolve("only-body.md"));
 
         // THEN
-        assertThat(skill).isNotNull();
-        assertThat(skill.name()).isEqualTo("my-skill");
-        assertThat(skill.description()).isEqualTo("Does something useful");
-        assertThat(skill.readBody()).contains("Path: " + skillDir);
+        assertThat(prompt.name()).isEqualTo("only-body");
+        assertThat(prompt.readBody()).isEqualTo("just body, no frontmatter");
     }
 
     @Test
-    void parseSkill_flatFile(@TempDir Path tmp) throws Exception {
+    void parseYml_nameOnlyNoDescription(@TempDir Path tmp) throws Exception {
         // GIVEN
-        Files.writeString(tmp.resolve("my-skill.md"), """
-                ---
-                name: my-skill
-                description: Flat file skill
-                ---
-                body
-                """);
-
-        // WHEN
-        var skill = PromptYmlParser.parseSkill(tmp.resolve("my-skill.md"));
-
-        // THEN
-        assertThat(skill).isNotNull();
-        assertThat(skill.name()).isEqualTo("my-skill");
-        assertThat(skill.description()).isEqualTo("Flat file skill");
-    }
-
-    @Test
-    void parseSkill_missingNameAndDescription(@TempDir Path tmp) throws Exception {
-        // GIVEN
-        Files.writeString(tmp.resolve("bad.md"), "just body, no frontmatter");
-
-        // WHEN
-        var skill = PromptYmlParser.parseSkill(tmp.resolve("bad.md"));
-
-        // THEN
-        assertThat(skill).isNull();
-    }
-
-    @Test
-    void parseSkill_nameOnlyNoDescription(@TempDir Path tmp) throws Exception {
-        // GIVEN
-        Files.writeString(tmp.resolve("bad.md"), """
+        Files.writeString(tmp.resolve("only-name.md"), """
                 ---
                 name: only-name
                 ---
@@ -148,14 +104,15 @@ class PromptYmlParserTest {
                 """);
 
         // WHEN
-        var skill = PromptYmlParser.parseSkill(tmp.resolve("bad.md"));
+        var prompt = PromptYmlParser.parseYml(tmp.resolve("only-name.md"));
 
         // THEN
-        assertThat(skill).isNull();
+        assertThat(prompt.name()).isEqualTo("only-name");
+        assertThat(prompt.description()).isNull();
     }
 
     @Test
-    void parseSkill_nameFromDirectoryWhenSkillMd(@TempDir Path tmp) throws Exception {
+    void parseYml_nameFromDirectoryWhenSkillMd(@TempDir Path tmp) throws Exception {
         // GIVEN
         var skillDir = Files.createDirectory(tmp.resolve("eclipse-tool"));
         Files.writeString(skillDir.resolve("SKILL.md"), """
@@ -166,12 +123,11 @@ class PromptYmlParserTest {
                 """);
 
         // WHEN
-        var skill = PromptYmlParser.parseSkill(skillDir.resolve("SKILL.md"));
+        var prompt = PromptYmlParser.parseYml(skillDir.resolve("SKILL.md"));
 
         // THEN
-        assertThat(skill).isNotNull();
-        assertThat(skill.name()).isEqualTo("eclipse-tool");
-        assertThat(skill.description()).isEqualTo("Eclipse stuff");
+        assertThat(prompt.name()).isEqualTo("eclipse-tool");
+        assertThat(prompt.description()).isEqualTo("Eclipse stuff");
     }
 
     @Test
@@ -180,7 +136,7 @@ class PromptYmlParserTest {
         var raw = "---\ndesc: x\n---\nbody";
 
         // WHEN
-        var result = PromptYmlParser.stripFrontmatter(raw);
+        var result = SimplePromptFile.stripFrontmatter(raw);
 
         // THEN
         assertThat(result).isEqualTo("body");
@@ -192,7 +148,7 @@ class PromptYmlParserTest {
         var raw = "plain text";
 
         // WHEN
-        var result = PromptYmlParser.stripFrontmatter(raw);
+        var result = SimplePromptFile.stripFrontmatter(raw);
 
         // THEN
         assertThat(result).isEqualTo("plain text");
@@ -204,7 +160,7 @@ class PromptYmlParserTest {
         var raw = "\n\n---\ndesc: x\n---\nbody";
 
         // WHEN
-        var result = PromptYmlParser.stripFrontmatter(raw);
+        var result = SimplePromptFile.stripFrontmatter(raw);
 
         // THEN
         assertThat(result).isEqualTo("body");

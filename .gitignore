@@ -45,3 +45,5 @@ Thumbs.db
 lib/
 sources/
 org.sterl.llmpeon.core/.classpath
+/copilot_src/
+/graphify-out/

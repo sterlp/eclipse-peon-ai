@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.LlmConfig;
 
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -17,45 +18,30 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 
 /**
  * not a real benchmark of the server -- just checking stuff here.
+ * https://github.com/ggml-org/llama.cpp/issues/22746#issuecomment-4629561290
  */
 @Disabled
 @Tag("integration")
 public class BenchmarkTest {
 
-    private final SystemMessage system = SystemMessage.from("""
-            Response style:
-            - No preamble, no summary, no postamble
-            - Skip "I will...", "Here is...", "Based on...", "Done." intros and outros
-            - Answer directly; be concise — 1-4 lines unless detail is explicitly required
-            - Do not repeat what was already said in the conversation
-            - Remove every word that does not add meaning to keep the context small
-            """);
-    private final String message = """
-            Zähle mir die letzten 5 Bundeskanzler der Bundesrepublik Deutschland auf und nenne zudem kurz in einer Tabelle, wie lange diese regiert haben und ihre am meisten gefeierte Leistung während ihrer Regierungszeit.
-            Heute ist
-            """ + Instant.now();
-    
-    /**
-     *  Loaded OPEN_AI Qwen3.6-27B-Uncensored-HauhauCS-Balanced-IQ4_XS.gguf
-     *  36.77 tok/sec
-     *  4790 tokens
-     *  130.29s
-     */
+    private final SystemMessage system = SystemMessage.from(
+            PromptLoader.loadWithDefault("large-system-prompt.txt")
+            );
+
     @Test
     void benchmark_llama() {
         runTest(LlmConfig.newConfig(AiProvider.OPEN_AI, 
                 "Qwen3.6-27B-Uncensored-HauhauCS-Balanced-IQ4_XS.gguf", "http://0.0.0.0:1234"));
     }
     
-    /**
-     * Loaded LM_STUDIO qwen3.6-27b-uncensored-hauhaucs-balanced
-     * 35.72 tok/sec
-     * 3759 tokens
-     * 105.24s
-     */
     @Test
     void benchmark_lm_studio_qwen36() {
-        runTest(LlmConfig.newOpenAi("qwen3.6-27b-uncensored-hauhaucs-balanced"));
+        runTest(LlmConfig.newLmStudio("qwen3.6-27b-claude-opus"));
+    }
+    
+    @Test
+    void benchmark_lm_studio_gemma() {
+        runTest(LlmConfig.newLmStudio("google/gemma-4-12b"));
     }
     
     @Test
@@ -85,7 +71,8 @@ public class BenchmarkTest {
         var model = config.build();
         var messages = new ArrayList<ChatMessage>();
         messages.add(system);
-        
+        messages.add(UserMessage.from(PromptLoader.load("large-prompt.txt")));
+
         messages.add(UserMessage.from("ping - return pong!"));
         var result = model.callBlocking(ChatRequest.builder().messages(messages).build(), null);
         messages.add(result.aiMessage());
@@ -94,12 +81,26 @@ public class BenchmarkTest {
         // WHEN check the conversation and see if the KV cache works too
         double time = System.currentTimeMillis();
         int token = 0;
-        result = model.callBlocking(ChatRequest.builder().messages(UserMessage.from(message)).build(), null);
+        messages.add(UserMessage.from("Added tool - ignore it"));
+        messages.add(UserMessage.from("""
+                Zähle mir die letzten 5 Bundeskanzler der Bundesrepublik Deutschland auf und nenne zudem kurz in einer Tabelle, wie lange diese regiert haben und ihre am meisten gefeierte Leistung während ihrer Regierungszeit.
+                Heute ist
+                """ + Instant.now()));
+        // ADDED tool
+        result = model.callBlocking(ChatRequest.builder().messages(messages)
+                .toolSpecifications(ToolSpecification.builder()
+                        .name("test_tool")
+                        .description("Just ignore me don't use me")
+                        .addMetadata("arg1", "String")
+                        .build())
+                .build(), null);
         messages.add(result.aiMessage());
         token += result.tokenUsage().totalTokenCount();
         
         System.out.println("Sending question");
-        result = model.callBlocking(ChatRequest.builder().messages(UserMessage.from("Are you sure - add the age. Today is " + LocalDate.now())).build(), null);
+        messages.add(UserMessage.from("Removed tool - ignore it"));
+        messages.add(UserMessage.from("Are you sure - check your response. Today is " + LocalDate.now()));
+        result = model.callBlocking(ChatRequest.builder().messages(messages).build(), null);
         token += result.tokenUsage().totalTokenCount();
         messages.add(result.aiMessage());
 

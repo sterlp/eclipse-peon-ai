@@ -7,67 +7,49 @@ import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import org.sterl.llmpeon.command.CommandPromptFile;
-import org.sterl.llmpeon.skill.SkillPromptFile;
+import org.sterl.llmpeon.shared.model.SimplePromptFile;
 
 public class PromptYmlParser {
-
-    public static SkillPromptFile parseSkill(Path skillFile) throws IOException {
-        if (!Files.isRegularFile(skillFile)) return null;
-
+    
+    public static String defaultSkillName(Path skillFile) {
         String fileName = skillFile.getFileName().toString();
-        String defaultName;
         if ("SKILL.md".equalsIgnoreCase(fileName)) {
-            defaultName = skillFile.getParent().getFileName().toString();
-        } else if (fileName.endsWith(".md")) {
-            defaultName = fileName.substring(0, fileName.length() - 3);
-        } else {
-            return null;
+            return skillFile.getParent().getFileName().toString();
         }
-
-        Map<String, String> frontmatter = parseFrontmatter(skillFile);
-        String name = frontmatter.getOrDefault("name", defaultName);
-        String description = frontmatter.get("description");
-
-        if (name != null && description != null) {
-            return new SkillPromptFile(name, description, skillFile);
-        }
-        return null;
+        return fileName.substring(0, fileName.length() - 3);
     }
 
-    public static CommandPromptFile parseCommand(Path commandFile) throws IOException {
+    public static SimplePromptFile parseYml(Path commandFile) throws IOException {
         if (!Files.isRegularFile(commandFile)) return null;
         var fileName = commandFile.getFileName().toString();
-        if (!fileName.endsWith(".md")) return null;
-        var defaultName = fileName.substring(0, fileName.length() - 3);
-        if (defaultName.isBlank()) return null;
+        var fileNameLower = fileName.toLowerCase();
+        if (!fileNameLower.endsWith(".md")) return null;
+       
+        var frontmatter = parseFrontmatter(commandFile);
 
-        Map<String, String> frontmatter = parseFrontmatter(commandFile);
-        String name = frontmatter.getOrDefault("name", defaultName);
-        String description = frontmatter.get("description");
+        String name = frontmatter.getOrDefault("name", defaultSkillName(commandFile));
+        String description = frontmatter.getOrDefault("description", null);
 
-        return new CommandPromptFile(name, description, commandFile);
+        return new SimplePromptFile(name, description, commandFile);
     }
 
-    static Map<String, String> parseFrontmatter(Path file) throws IOException {
+    private static Map<String, String> parseFrontmatter(Path file) throws IOException {
         Map<String, String> result = new LinkedHashMap<>();
         try (BufferedReader reader = Files.newBufferedReader(file)) {
-            String first = reader.readLine();
-            while (first != null && first.isBlank()) first = reader.readLine();
-            if (first == null || !"---".equals(first.trim())) return result;
-
             String line;
-            while ((line = reader.readLine()) != null) {
-                String trimmed = line.trim();
-                if ("---".equals(trimmed)) break;
 
-                int colon = trimmed.indexOf(':');
+            // Skip blank leading lines
+            while ((line = reader.readLine()) != null && line.isBlank()) {}
+
+            // Frontmatter is optional — if no opening ---, return empty map
+            if (line == null || !"---".equals(line.trim())) return result;
+
+            while ((line = reader.readLine()) != null && !"---".equals(line.trim())) {
+                int colon = line.indexOf(':');
                 if (colon > 0) {
-                    String key = trimmed.substring(0, colon).trim();
-                    String value = stripYamlValue(trimmed.substring(colon + 1));
-                    if (value != null) {
-                        result.put(key, value);
-                    }
+                    String key = line.substring(0, colon).trim();
+                    String value = stripYamlValue(line.substring(colon + 1));
+                    if (value != null) result.put(key, value);
                 }
             }
         }
@@ -77,32 +59,10 @@ public class PromptYmlParser {
     public static String stripYamlValue(String value) {
         if (value == null) return null;
         value = value.strip();
-        if (value.length() >= 2
-                && ((value.startsWith("\"") && value.endsWith("\""))
-                 || (value.startsWith("'") && value.endsWith("'")))) {
+        if (value.length() > 2 && value.charAt(0) == value.charAt(value.length() - 1)
+                && (value.startsWith("\"") || value.startsWith("'"))) {
             value = value.substring(1, value.length() - 1);
         }
         return value.isEmpty() ? null : value;
-    }
-
-    public static String stripFrontmatter(String raw) {
-        if (raw == null) return "";
-        int start = 0;
-        while (start < raw.length() && (raw.charAt(start) == '\n' || raw.charAt(start) == '\r')) start++;
-        if (start >= raw.length() || !raw.startsWith("---", start)) return raw;
-        int idx = start + 3;
-        while (idx < raw.length() && raw.charAt(idx) != '\n') idx++;
-        if (idx >= raw.length()) return raw;
-        idx++;
-        while (idx < raw.length()) {
-            int lineEnd = raw.indexOf('\n', idx);
-            String line = lineEnd < 0 ? raw.substring(idx) : raw.substring(idx, lineEnd);
-            if (line.strip().equals("---")) {
-                return lineEnd < 0 ? "" : raw.substring(lineEnd + 1);
-            }
-            if (lineEnd < 0) break;
-            idx = lineEnd + 1;
-        }
-        return raw;
     }
 }

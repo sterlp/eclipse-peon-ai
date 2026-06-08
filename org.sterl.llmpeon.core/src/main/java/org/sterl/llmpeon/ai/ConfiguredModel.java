@@ -8,6 +8,7 @@ import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.streaming.StreamingBridge;
 
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -16,7 +17,7 @@ import lombok.Getter;
 @Getter
 public class ConfiguredModel {
 
-    private AtomicReference<StreamingChatModel> chatModel = new AtomicReference<>();
+    private final AtomicReference<StreamingChatModel> chatModel = new AtomicReference<>();
     private volatile LlmConfig config;
     
     public ConfiguredModel(LlmConfig config) {
@@ -26,6 +27,10 @@ public class ConfiguredModel {
     public ConfiguredModel(LlmConfig config, StreamingChatModel model) {
         updateConfig(config);
         this.chatModel.set(model);
+    }
+    
+    public ChatResponse callBlocking(ChatMessage req) {
+        return callBlocking(ChatRequest.builder().messages(req).build(), null);
     }
 
     public ChatResponse callBlocking(ChatRequest req, AiMonitor monitor) {

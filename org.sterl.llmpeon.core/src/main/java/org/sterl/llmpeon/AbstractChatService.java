@@ -9,22 +9,20 @@ import java.util.function.Predicate;
 import org.sterl.llmpeon.agent.AiCompressorAgent;
 import org.sterl.llmpeon.ai.ConfiguredModel;
 import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.shared.StringUtil;
-import org.sterl.llmpeon.streaming.StreamingBridge;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
-import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.output.TokenUsage;
 
 public abstract class AbstractChatService {
 
@@ -46,7 +44,6 @@ public abstract class AbstractChatService {
     protected final ToolService toolService;
     
     private final List<ChatMessage> staticContext = new ArrayList<>();
-    // TODO needs re-thinking
     private final List<String> userContextInformations = new ArrayList<>();
     private volatile int contextTokenSize = 0;
 
@@ -65,14 +62,12 @@ public abstract class AbstractChatService {
     protected abstract String getSystemPrompt();
     protected abstract double getTemperature();
     
+    /**
+     * Apply only static filters to tools -- any change kills the KV cache!
+     * https://github.com/ggml-org/llama.cpp/issues/22746#issuecomment-4630455537
+     */
     protected Predicate<SmartToolExecutor> getToolFilter() {
-        return t -> {
-            if (t.getTool() instanceof CompactSessionTool) {
-                return contextTokenSize > configuredModel.getConfig().getAutoCompactAfter() * 0.5
-                        && getMessages().size() > 5;
-            }
-            return true;
-        };
+        return p -> true;
     }
     
     protected boolean includesMcpTools() { return true; }
@@ -88,7 +83,7 @@ public abstract class AbstractChatService {
         return this.memory.messages().stream()
             .filter(m -> m instanceof UserMessage)
             .map(m -> (UserMessage)m)
-            .anyMatch(um -> um.hasSingleText() && um.singleText().contains(message));
+            .anyMatch(um -> ChatMessageUtil.toString(um).contains(message));
     }
 
     public ChatResponse call(String message, AiMonitor monitor) {
@@ -97,27 +92,37 @@ public abstract class AbstractChatService {
         // auto compress if we are close to full before we start
         if (configuredModel.getAutoCompactAfter() < contextTokenSize) compressContext(monitor);
         
+        var contents = new ArrayList<String>();
         if (userContextInformations.size() > 0) {
             userContextInformations.stream()
                     .filter(m -> !hasUserText(m))
-                    .forEach(m -> memory.add(UserMessage.from(m)));
+                    .forEach(m -> contents.add(m));
         }
-
-        if (StringUtil.hasValue(message)) {
-            memory.add(UserMessage.from(message));
+        
+        if (StringUtil.hasValue(message)) contents.add(message);
+        if (contents.size() == 1) {
+            addMessage(UserMessage.from(contents.getFirst()));
+        } else {
+            var m = contents.stream().map(dev.langchain4j.data.message.TextContent::new)
+                        .map(v -> ((Content)v))
+                        .toList();
+            addMessage(UserMessage.from(m));
         }
 
         var start = Instant.now();
         var staticMessages = buildStaticMessages(monitor);
-        var bridge = new StreamingBridge();
         var response = toolService.executeLoop(
-                new ToolLoopRequest(memory, configuredModel.getChatModel(), bridge)
-                        .staticMessages(staticMessages)
-                        .monitor(monitor)
-                        .toolFilter(getToolFilter())
-                        .includeMcpTools(includesMcpTools())
-                        .temperature(getTemperature())
-                        .onLoop(this::updateTokenCount));
+                ToolLoopRequest.builder()
+                    .memory(memory)
+                    .model(configuredModel)
+                    .staticMessages(staticMessages)
+                    .monitor(monitor)
+                    .toolFilter(getToolFilter())
+                    .includeMcpTools(includesMcpTools())
+                    .temperature(getTemperature())
+                    .onLoop(this::updateTokenCount)
+                    .build()
+                );
 
         updateTokenCount(response);
         monitor.onCallCompleted(response, Duration.between(start, Instant.now()));
@@ -157,7 +162,15 @@ public abstract class AbstractChatService {
         contextTokenSize = 0;
     }
 
-    public void addMessage(ChatMessage message) { memory.add(message); }
+    /**
+     * 1. System-Messages nur am Anfang erlaubt
+     * 2. Tool-Messages NUR nach Assistant-Messages MIT tool_calls erlaubt
+     * 3. Rollen müssen alternieren: user/assistant/user/assistant
+     * 4. Nach User/System darf KEIN Tool kommen!
+     */
+    public void addMessage(ChatMessage message) {
+        ChatMessageUtil.addMessageToMemory(memory, message);
+    }
     public List<ChatMessage> getMessages() { return memory.messages(); }
     public int getContextSize() { return contextTokenSize; }
     public int getAutoCompactAfter() { return configuredModel.getAutoCompactAfter(); }
@@ -194,26 +207,6 @@ public abstract class AbstractChatService {
     }
 
     private void updateTokenCount(ChatResponse response) {
-        TokenUsage usage = response.metadata() != null ? response.metadata().tokenUsage() : null;
-        if (usage != null && usage.totalTokenCount() != null) {
-            contextTokenSize = usage.totalTokenCount();
-        } else {
-            contextTokenSize = estimateTokens();
-        }
-    }
-
-    private int estimateTokens() {
-        int chars = 0;
-        for (var msg : memory.messages()) chars += charCount(msg);
-        return chars / 4;
-    }
-
-    private int charCount(ChatMessage msg) {
-        if (msg instanceof UserMessage um) return um.singleText().length();
-        if (msg instanceof AiMessage am) {
-            return am.text() != null ? am.text().length() : 0;
-        }
-        if (msg instanceof ToolExecutionResultMessage tr) return tr.text().length();
-        return 0;
+        contextTokenSize = ChatMessageUtil.getTokenCount(response, memory.messages());
     }
 }

@@ -174,18 +174,18 @@ public class TextInputWidget extends Composite {
             }
             UndoRedoStack redo =
                 new UndoRedoStack(
-                    undo.getCursorPosition(),
-                    undo.getReplacedText(),
+                    undo.cursorPosition(),
+                    undo.replacedText(),
                     getText(),
-                    undo.getEventLength(),
-                    undo.getType());
+                    undo.eventLength(),
+                    undo.type());
             fullSelection = false;
-            setText(undo.getReplacedText());
-            if (undo.getType() == UndoRedoStack.INSERT) {
-                styledText.setCaretOffset(undo.getCursorPosition());
-            } else if (undo.getType() == UndoRedoStack.DELETE) {
-                styledText.setCaretOffset(undo.getCursorPosition() + undo.getEventLength());
-                styledText.setSelection(undo.getCursorPosition(), undo.getCursorPosition() + undo.getEventLength());
+            setText(undo.replacedText());
+            if (undo.type() == UndoRedoStack.INSERT) {
+                styledText.setCaretOffset(undo.cursorPosition());
+            } else if (undo.type() == UndoRedoStack.DELETE) {
+                styledText.setCaretOffset(undo.cursorPosition() + undo.eventLength());
+                styledText.setSelection(undo.cursorPosition(), undo.cursorPosition() + undo.eventLength());
                 if (styledText.getSelectionCount() == styledText.getCharCount()) {
                     fullSelection = true;
                 }
@@ -202,18 +202,18 @@ public class TextInputWidget extends Composite {
             }
             UndoRedoStack undo =
                 new UndoRedoStack(
-                    redo.getCursorPosition(),
-                    redo.getReplacedText(),
+                    redo.cursorPosition(),
+                    redo.replacedText(),
                     getText(),
-                    redo.getEventLength(),
-                    redo.getType());
+                    redo.eventLength(),
+                    redo.type());
             fullSelection = false;
-            setText(redo.getReplacedText());
-            if (redo.getType() == UndoRedoStack.INSERT) {
-                styledText.setCaretOffset(redo.getCursorPosition());
-            } else if (redo.getType() == UndoRedoStack.DELETE) {
-                styledText.setCaretOffset(redo.getCursorPosition() + redo.getEventLength());
-                styledText.setSelection(redo.getCursorPosition(), redo.getCursorPosition() + redo.getEventLength());
+            setText(redo.replacedText());
+            if (redo.type() == UndoRedoStack.INSERT) {
+                styledText.setCaretOffset(redo.cursorPosition());
+            } else if (redo.type() == UndoRedoStack.DELETE) {
+                styledText.setCaretOffset(redo.cursorPosition() + redo.eventLength());
+                styledText.setSelection(redo.cursorPosition(), redo.cursorPosition() + redo.eventLength());
                 if (styledText.getSelectionCount() == styledText.getCharCount()) {
                     fullSelection = true;
                 }
@@ -232,6 +232,10 @@ public class TextInputWidget extends Composite {
 
     public void setText(String text) {
         styledText.setText(text != null ? text : "");
+    }
+    
+    public void setEditable(boolean editable) {
+        styledText.setEditable(editable);
     }
 
     public void clearText() {
@@ -276,44 +280,16 @@ public class TextInputWidget extends Composite {
         var local = styledText.getLocationAtOffset(styledText.getCaretOffset());
         return styledText.toDisplay(local.x, local.y);
     }
+    
+    public void setCaretOffset(int offset) {
+        if (styledText.isDisposed()) return;
+        int clamped = Math.max(0, Math.min(offset, styledText.getCharCount()));
+        styledText.setCaretOffset(clamped);
+    }
 
-    public class UndoRedoStack {
+    public static record UndoRedoStack (int cursorPosition, String newText, String replacedText, int eventLength, int type) {
         public static final int DELETE = 0;
         public static final int INSERT = 1;
 
-        private String strNewText;
-        private String strReplacedText;
-        private int iCursorPosition;
-        private int iEventLength;
-        private int iType;
-
-        public UndoRedoStack(
-            int iCursorPosition, String strNewText, String strReplacedText, int iEventLength, int iType) {
-            this.iCursorPosition = iCursorPosition;
-            this.strNewText = strNewText;
-            this.strReplacedText = strReplacedText;
-            this.iEventLength = iEventLength;
-            this.iType = iType;
-        }
-
-        public String getReplacedText() {
-          return this.strReplacedText;
-        }
-
-        public String getNewText() {
-          return this.strNewText;
-        }
-
-        public int getCursorPosition() {
-          return this.iCursorPosition;
-        }
-
-        public int getEventLength() {
-          return iEventLength;
-        }
-
-        public int getType() {
-          return iType;
-        }
     }
 }

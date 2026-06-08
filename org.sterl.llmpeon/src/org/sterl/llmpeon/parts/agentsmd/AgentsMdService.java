@@ -31,7 +31,7 @@ public class AgentsMdService implements MessageProvider {
         var f = agentsMd.get();
         try {
             var text = f.readString();
-            return String.format(HEADER, JdtUtil.pathOf(f)) + "\n" + text;
+            return String.format(HEADER, JdtUtil.pathOf(f)) + " full content:\n" + text;
         } catch (CoreException e) {
             throw new RuntimeException(e);
         }

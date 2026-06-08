@@ -1,24 +1,13 @@
 package org.sterl.llmpeon.tool.tools;
 
-import java.util.List;
-
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.tool.SmartTool;
-
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.model.chat.StreamingChatModel;
+import org.sterl.llmpeon.tool.ToolLoopRequest;
 
 public class AbstractTool implements SmartTool {
 
     protected AiMonitor monitor = AiMonitor.NULL_MONITOR;
-    protected StreamingChatModel chatModel;
-    // TODO 27.03.2026: not sure if this was really smart here - re-think later on
-    protected List<ChatMessage> memory;
-    
-    @Override
-    public void withMonitor(AiMonitor monitor) {
-        this.monitor = AiMonitor.nullSafety(monitor);
-    }
+    protected ToolLoopRequest request;
     
     protected void onTool(String m) {
         monitor.onTool(m);
@@ -29,13 +18,8 @@ public class AbstractTool implements SmartTool {
     }
 
     @Override
-    public void withChatModel(StreamingChatModel chatModel) {
-        this.chatModel = chatModel;
+    public void withToolRequest(ToolLoopRequest request) {
+        this.request = request;
+        this.monitor = request == null ? AiMonitor.NULL_MONITOR : AiMonitor.nullSafety(request.getMonitor());
     }
-
-    @Override
-    public void withMemory(List<ChatMessage> memory) {
-        this.memory = memory;
-    }
-
 }

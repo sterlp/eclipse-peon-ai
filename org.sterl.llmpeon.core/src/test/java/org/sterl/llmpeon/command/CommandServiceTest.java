@@ -7,6 +7,7 @@ import java.nio.file.Path;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.sterl.llmpeon.shared.model.SimplePromptFile;
 
 class CommandServiceTest {
 
@@ -173,7 +174,7 @@ class CommandServiceTest {
 
         // THEN
         assertThat(service.getCommands())
-                .extracting(CommandPromptFile::name)
+                .extracting(SimplePromptFile::name)
                 .containsExactly("Alpha", "beta", "zebra");
     }
 

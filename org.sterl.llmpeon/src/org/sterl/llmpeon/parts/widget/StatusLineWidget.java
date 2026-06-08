@@ -163,7 +163,7 @@ public class StatusLineWidget extends Composite {
             btnAgentsMd.setSelection(agentMdActive);
             btnAgentsMd.setEnabled(true);
             String name = agentFileName;
-            if (!agentMdActive) name = agentFileName + " off";
+            if (!agentMdActive) name = agentFileName;
             btnAgentsMd.setText(name);
         }
 

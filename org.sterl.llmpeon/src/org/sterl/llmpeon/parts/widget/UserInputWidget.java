@@ -14,9 +14,9 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.sterl.llmpeon.command.CommandPromptFile;
 import org.sterl.llmpeon.parts.shared.ImageUtil;
 import org.sterl.llmpeon.parts.shared.SwtUtil;
+import org.sterl.llmpeon.shared.model.SimplePromptFile;
 
 /**
  * User input area: file chips bar (hidden until files attached), auto-resizing
@@ -36,13 +36,13 @@ public class UserInputWidget extends Composite {
     private final Image micImage;
     private final Image sendImage;  // shared registry — must NOT be disposed
     private final Image stopImage;
-    private boolean working = false;
+    private volatile boolean working = false;
     private final Runnable onMicClick;
 
     private final Color colorRecording;
 
     private SlashMenuPopup slashPopup;
-    private Supplier<List<CommandPromptFile>> commandSupplier;
+    private Supplier<List<SimplePromptFile>> commandSupplier;
 
     public UserInputWidget(Composite parent, int style, Runnable onSend, Runnable onStop, Runnable onMicClick) {
         super(parent, style);
@@ -233,42 +233,34 @@ public class UserInputWidget extends Composite {
      * Enables the slash-command popup. {@code commandSupplier} returns the currently loaded
      * commands. Pass {@code null} to disable the popup.
      */
-    public void enableSlashCommands(Supplier<List<CommandPromptFile>> commandSupplier) {
+    public void enableSlashCommands(Supplier<List<SimplePromptFile>> commandSupplier) {
         this.commandSupplier = commandSupplier;
         if (commandSupplier == null) {
             disposeSlashPopup();
             return;
         }
-        if (slashPopup == null) {
+        if (slashPopup == null) {  // only enters here once...
             slashPopup = new SlashMenuPopup(this, this::applyCommandSelection);
-            addDisposeListener(e -> disposeSlashPopup());
+            addDisposeListener(e -> disposeSlashPopup()); // ...so this is safe
         }
     }
 
     private void refreshSlashPopup() {
         if (commandSupplier == null || slashPopup == null) return;
         var text = textInput.getText();
-        // Trigger policy: only while the user is still typing the FIRST token, which must
-        // start with '/' at offset 0. Once any whitespace appears, the popup hides — the user
-        // has moved on to the message body (e.g. "/foo extra text").
-        if (text == null || !text.startsWith("/")) {
+        if (text == null || !text.startsWith("/") || hasWhitespaceAfterSlash(text)) {
             slashPopup.hide();
             return;
         }
-        for (int i = 1; i < text.length(); i++) {
-            if (Character.isWhitespace(text.charAt(i))) {
-                slashPopup.hide();
-                return;
-            }
-        }
-        var prefix = extractPrefix(text);
         var commands = commandSupplier.get();
-        if (commands == null || commands.isEmpty()) {
-            slashPopup.hide();
-            return;
-        }
-        var caret = textInput.getCaretDisplayLocation();
-        slashPopup.show(commands, prefix, caret);
+        if (commands == null || commands.isEmpty()) { slashPopup.hide(); return; }
+        slashPopup.show(commands, extractPrefix(text), textInput.getCaretDisplayLocation());
+    }
+
+    private static boolean hasWhitespaceAfterSlash(String text) {
+        for (int i = 1; i < text.length(); i++)
+            if (Character.isWhitespace(text.charAt(i))) return true;
+        return false;
     }
 
     private static String extractPrefix(String text) {
@@ -282,17 +274,10 @@ public class UserInputWidget extends Composite {
         return sb.toString();
     }
 
-    private void applyCommandSelection(CommandPromptFile cmd) {
-        var current = textInput.getText();
-        var afterToken = "";
-        if (current != null && current.startsWith("/")) {
-            int wsIdx = -1;
-            for (int i = 1; i < current.length(); i++) {
-                if (Character.isWhitespace(current.charAt(i))) { wsIdx = i; break; }
-            }
-            if (wsIdx >= 0) afterToken = current.substring(wsIdx);
-        }
-        textInput.setText("/" + cmd.name() + (afterToken.isEmpty() ? " " : afterToken));
+    private void applyCommandSelection(SimplePromptFile cmd) {
+        String replacement = "/" + cmd.name() + " ";
+        textInput.setText(replacement);
+        textInput.setCaretOffset(replacement.length()); // cursor after the space
         textInput.setFocus();
     }
 

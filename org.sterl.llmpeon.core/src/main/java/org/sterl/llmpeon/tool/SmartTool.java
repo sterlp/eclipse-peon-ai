@@ -1,20 +1,10 @@
 package org.sterl.llmpeon.tool;
 
-import java.util.List;
-
-import org.sterl.llmpeon.shared.AiMonitor;
-
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.model.chat.StreamingChatModel;
-
 /**
  * Throw {@link IllegalArgumentException} to return to the LLM an error.
  */
 public interface SmartTool {
 
-    default boolean clearMemory() {
-        return false;
-    }
     /**
      * If true the tool can modify state (write files, run shell commands, etc.).
      * Plan agents should only receive tools where this returns false.
@@ -24,9 +14,5 @@ public interface SmartTool {
     /**
      * Adds a Monitor for the observation of the tool
      */
-    void withMonitor(AiMonitor monitor);
-
-    void withChatModel(StreamingChatModel chatModel);
-    
-    void withMemory(List<ChatMessage> memory);
+    void withToolRequest(ToolLoopRequest request);
 }

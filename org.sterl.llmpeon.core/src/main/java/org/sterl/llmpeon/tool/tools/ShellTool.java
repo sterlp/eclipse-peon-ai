@@ -39,14 +39,16 @@ public class ShellTool extends AbstractTool {
         this.confirmationProvider = confirmationProvider;
     }
 
-    @Tool("OS/user info (os.name, user.name, etc.).")
+    @Tool("OS/user info (os.name, user.name, path info etc.).")
     public String readOperationSystemInformation() {
         return "java.version: " + System.getProperty("java.version")
             + "\nos.name: " + System.getProperty("os.name")
             + "\nos.arch: " + System.getProperty("os.arch")
             + "\nuser.home: " + System.getProperty("user.home")
             + "\nuser.dir: " + System.getProperty("user.dir")
-            + "\nuser.name: " + System.getProperty("user.name");
+            + "\nuser.name: " + System.getProperty("user.name")
+            + "\nPATH: " + System.getenv("PATH")
+            + "\ntmpdir: " + System.getProperty("java.io.tmpdir");
     }
 
     @Tool("Run shell command. (mvn, npm etc.) Not for file I/O.")

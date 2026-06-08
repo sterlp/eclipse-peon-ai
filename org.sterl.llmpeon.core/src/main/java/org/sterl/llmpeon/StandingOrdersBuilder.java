@@ -6,8 +6,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
 
-import dev.langchain4j.data.message.SystemMessage;
-
 /**
  * Assembles the standing-orders system messages that are prepended each call.
  * Includes the selected resource context, any AGENTS.md content, and a plan
@@ -15,13 +13,10 @@ import dev.langchain4j.data.message.SystemMessage;
  */
 public class StandingOrdersBuilder {
 
-    /**
-     * Use {@link SystemMessage} only for static messages which do not change.
-     * Keep in mind any change to the message history may kill the kv cache!!
-     */
     public interface MessageProvider extends Supplier<String> {}
     
     private final Set<MessageProvider> providers = new LinkedHashSet<StandingOrdersBuilder.MessageProvider>();
+    private final List<String> oneTimeOrders = new ArrayList<String>();
     
     public StandingOrdersBuilder() {
         super();
@@ -29,6 +24,10 @@ public class StandingOrdersBuilder {
     public StandingOrdersBuilder add(MessageProvider provider) {
         providers.add(provider);
         return this;
+    }
+    
+    public void addOneTimeOrder(String order) {
+        this.oneTimeOrders.add(order);
     }
     
     public List<String> build() {
@@ -39,6 +38,9 @@ public class StandingOrdersBuilder {
             var msg = p.get();
             if (msg != null) result.add(msg);
         }
+        
+        result.addAll(oneTimeOrders);
+        oneTimeOrders.clear();
         
         return result;
     }

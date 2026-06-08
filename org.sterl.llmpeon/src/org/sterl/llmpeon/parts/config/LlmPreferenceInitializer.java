@@ -34,8 +34,8 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
         defaults.putBoolean(PeonConstants.PREF_THINKING_ENABLED, DEFAULT.isThinkingEnabled());
         defaults.putBoolean(PeonConstants.PREF_SEND_THINKING_ENABLED, DEFAULT.isSendThinkingEnabled());
         defaults.put(PeonConstants.PREF_API_KEY, StringUtil.stripToEmpty(DEFAULT.getApiKey()));
-        defaults.put(PeonConstants.PREF_SKILL_DIRECTORY, StringUtil.stripToEmpty(DEFAULT.getSkillDirectory()));
-        defaults.put(PeonConstants.PREF_COMMAND_DIRECTORY, StringUtil.stripToEmpty(DEFAULT.getCommandDirectory()));
+        defaults.put(PeonConstants.PREF_SKILL_DIRECTORY, Path.of(System.getProperty("user.home"), ".claude", "skills").toString());
+        defaults.put(PeonConstants.PREF_COMMAND_DIRECTORY, Path.of(System.getProperty("user.home"), ".claude", "commands").toString());
         defaults.putBoolean(PeonConstants.PREF_DISK_TOOLS_ENABLED, false);
         defaults.put(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, "");
         defaults.put(PeonConstants.PREF_PLAN_TEMPERATURE, String.valueOf(DEFAULT.getPlanTemperature()));
@@ -157,5 +157,4 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
             return fallback;
         }
     }
-
 }

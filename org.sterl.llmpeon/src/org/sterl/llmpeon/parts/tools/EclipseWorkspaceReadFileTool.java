@@ -11,6 +11,7 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IResourceVisitor;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.ui.PlatformUI;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.ArgsUtil;
@@ -27,6 +28,28 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
     @Override
     public boolean isEditTool() {
         return false;
+    }
+
+    @Tool("Eclipse: Open a workspace file, not directory, in the Eclipse editor to show it to the user e.g. a plan or summary.")
+    public String openFileInEclipseEditor(@P(description = "workspace-relative path", name = "filePath") String filePath) {
+        ArgsUtil.requireNonBlank(filePath, "filePath");
+        var resource = EclipseUtil.resolveInEclipse(filePath);
+        if (resource.isEmpty()) {
+            onProblem("No eclipse file found for " + filePath);
+            return "Cannot open: no file found at '" + filePath + "'. Use searchWorkspaceFiles to find the correct path.";
+        }
+        var r = resource.get();
+        if (!(r instanceof IFile file)) {
+            onProblem("Path is not a file: " + filePath);
+            return "Cannot open editor: '" + filePath + "' is a directory, not a file.";
+        }
+        try {
+            PlatformUI.getWorkbench().getDisplay().asyncExec(() -> EclipseUtil.openInEditor(file));
+            onTool("Opened file in editor: " + filePath);
+            return "Opened: " + filePath;
+        } catch (Exception e) {
+            throw new RuntimeException("Could not open editor for " + filePath, e);
+        }
     }
 
     public static final String READ_ECLIPSE_FILE_TOOL = "readWorkspaceFile";
@@ -113,7 +136,7 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
         // root: list open projects
         if (path == null || path.isBlank() || path.length() == 1) {
             var t = new EclipseBuildTool();
-            t.withMonitor(monitor);
+            t.withToolRequest(request);
             return t.listAllOpenEclipseProjects();
         }
 

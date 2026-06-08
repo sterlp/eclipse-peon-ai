@@ -31,7 +31,6 @@
 	<classpathentry exported="true" kind="lib" path="lib/langchain4j-open-ai-official.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/opennlp-tools.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/slf4j-api.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/slf4j-simple.jar"/>
 	<classpathentry exported="true" kind="lib" path="resources" sourcepath="resources"/>
 	<classpathentry exported="true" kind="lib" path="lib/flexmark.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/flexmark-ext-emoji.jar"/>

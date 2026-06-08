@@ -15,7 +15,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
-import org.sterl.llmpeon.streaming.StreamingBridge;
+import org.sterl.llmpeon.ai.ConfiguredModel;
+import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.tool.tools.WebFetchTool;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -50,7 +51,7 @@ class ToolServiceTest {
         // WHEN
         memory.add(UserMessage.from("Hello"));
         var response = subject.executeLoop(
-                new ToolLoopRequest(memory, cm, new StreamingBridge()));
+                ToolLoopRequest.builder().memory(memory).model(new ConfiguredModel(LlmConfig.newOpenAi("foo"), cm)).build());
 
         // THEN
         assertEquals("Hello", response.aiMessage().text());
@@ -73,7 +74,7 @@ class ToolServiceTest {
         var memory = MessageWindowChatMemory.withMaxMessages(50);
         // WHEN
         memory.add(UserMessage.from("Hello"));
-        subject.executeLoop(new ToolLoopRequest(memory, cm, new StreamingBridge()));
+        subject.executeLoop(ToolLoopRequest.builder().memory(memory).model(new ConfiguredModel(LlmConfig.newOpenAi("foo"), cm)).build());
 
         // THEN
         verify(cm, times(2)).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
@@ -100,21 +101,21 @@ class ToolServiceTest {
             return ChatResponse.builder().aiMessage(aiMessage).build();
         });
         
-        var mem = MessageWindowChatMemory.withMaxMessages(50);
-        mem.add(userMessage);
+        var memory = MessageWindowChatMemory.withMaxMessages(50);
+        memory.add(userMessage);
         // WHEN
-        subject.executeLoop(new ToolLoopRequest(mem, cm, new StreamingBridge())
-                .staticMessages(Arrays.asList(sys1, sys2)));
+        subject.executeLoop(ToolLoopRequest.builder().memory(memory).model(new ConfiguredModel(LlmConfig.newOpenAi("foo"), cm))
+                .staticMessages(Arrays.asList(sys1, sys2))
+                .build());
 
         // THEN
         verify(cm, times(1)).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
         assertThat(requestRef.get().messages().get(1)).isEqualTo(userMessage);
         assertThat(((SystemMessage)requestRef.get().messages().get(0)).text()).contains("sys1", "sys2");
         // AND
-        assertThat(mem.messages().get(0)).isEqualTo(userMessage);
-        assertThat(mem.messages().get(1)).isEqualTo(aiMessage);
+        assertThat(memory.messages().get(0)).isEqualTo(userMessage);
+        assertThat(memory.messages().get(1)).isEqualTo(aiMessage);
     }
-    
     
     public StreamingChatModel mockWithHandler(Function<ChatRequest, ChatResponse> fn) {
         var cm = mock(StreamingChatModel.class);

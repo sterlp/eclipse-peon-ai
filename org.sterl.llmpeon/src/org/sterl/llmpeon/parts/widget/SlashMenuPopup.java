@@ -17,7 +17,8 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
-import org.sterl.llmpeon.command.CommandPromptFile;
+import org.sterl.llmpeon.shared.model.SimplePromptFile;
+import org.sterl.llmpeon.skill.SkillPromptFile;
 
 /**
  * Lightweight popup that lists slash-commands matching the current prefix.
@@ -28,6 +29,8 @@ import org.sterl.llmpeon.command.CommandPromptFile;
  */
 public class SlashMenuPopup {
 
+    private static final int NAME_COL_WIDTH = 200;
+    
     /** Maximum rows shown without scrolling. */
     private static final int MAX_VISIBLE_ROWS = 8;
     /** Minimum popup width in pixels. */
@@ -36,17 +39,17 @@ public class SlashMenuPopup {
     private static final int MAX_WIDTH = 520;
 
     private final Composite anchor;
-    private final Consumer<CommandPromptFile> onSelect;
+    private final Consumer<SimplePromptFile> onSelect;
     private final Listener anchorShellMoveListener;
     private final Shell anchorShell;
 
     private Shell popup;
     private Table table;
-    private List<CommandPromptFile> filtered = List.of();
-    private List<CommandPromptFile> source = List.of();
+    private List<SimplePromptFile> filtered = List.of();
+    private List<SimplePromptFile> source = List.of();
     private String currentPrefix = "";
 
-    public SlashMenuPopup(Composite anchor, Consumer<CommandPromptFile> onSelect) {
+    public SlashMenuPopup(Composite anchor, Consumer<SimplePromptFile> onSelect) {
         this.anchor = anchor;
         this.onSelect = onSelect;
         this.anchorShell = anchor.getShell();
@@ -77,7 +80,7 @@ public class SlashMenuPopup {
      * @param prefix       prefix already typed after the slash, may be empty
      * @param anchorScreen anchor position in display coordinates (typically the caret location)
      */
-    public void show(List<CommandPromptFile> commands, String prefix, Point anchorScreen) {
+    public void show(List<SimplePromptFile> commands, String prefix, Point anchorScreen) {
         this.source = commands == null ? List.of() : commands;
         this.currentPrefix = prefix == null ? "" : prefix;
         var matches = filter(this.source, this.currentPrefix);
@@ -138,7 +141,7 @@ public class SlashMenuPopup {
     }
 
     private void ensurePopup() {
-        if (popup != null && !popup.isDisposed()) return;
+        if (popup != null && !popup.isDisposed()) return; 
 
         popup = new Shell(anchorShell, SWT.NO_TRIM | SWT.ON_TOP | SWT.TOOL);
         popup.setLayout(new FillLayout());
@@ -146,8 +149,12 @@ public class SlashMenuPopup {
         table = new Table(popup, SWT.SINGLE | SWT.FULL_SELECTION | SWT.V_SCROLL);
         table.setHeaderVisible(false);
         table.setLinesVisible(false);
-        var col = new TableColumn(table, SWT.LEFT);
-        col.setWidth(MAX_WIDTH);
+
+        var colName = new TableColumn(table, SWT.LEFT);
+        colName.setWidth(NAME_COL_WIDTH);
+
+        var colDesc = new TableColumn(table, SWT.LEFT);
+        colDesc.setWidth(MAX_WIDTH - 164);
 
         table.addListener(SWT.MouseDoubleClick, e -> commitSelection());
         table.addListener(SWT.DefaultSelection, e -> commitSelection());
@@ -162,13 +169,14 @@ public class SlashMenuPopup {
 
     private void rebuildItems() {
         table.removeAll();
-        for (CommandPromptFile cmd : filtered) {
+        for (var cmd : filtered) {
             var item = new TableItem(table, SWT.NONE);
-            item.setText(formatRow(cmd));
+            item.setText(0, "/" + cmd.name());
+            item.setText(1, cmd instanceof SkillPromptFile ? "SKILL" : "Command (replace system message)");
+            // optionally mute the description color:
+            item.setForeground(1, table.getDisplay().getSystemColor(SWT.COLOR_DARK_GRAY));
         }
-        if (!filtered.isEmpty()) {
-            table.setSelection(0);
-        }
+        if (!filtered.isEmpty()) table.setSelection(0);
     }
 
     private void layoutAt(Point anchorScreen) {
@@ -178,7 +186,8 @@ public class SlashMenuPopup {
         int height = rowHeight * rows + 6;
 
         int width = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, anchor.getSize().x));
-        table.getColumn(0).setWidth(width - 4);
+        table.getColumn(0).setWidth(NAME_COL_WIDTH);
+        table.getColumn(1).setWidth(width - NAME_COL_WIDTH - 4);
 
         var bounds = new Rectangle(0, 0, width, height);
         if (anchorScreen != null) {
@@ -196,14 +205,7 @@ public class SlashMenuPopup {
         popup.setBounds(bounds);
     }
 
-    private static String formatRow(CommandPromptFile cmd) {
-        if (cmd.description() == null || cmd.description().isBlank()) {
-            return "/" + cmd.name();
-        }
-        return "/" + cmd.name() + "  \u2014  " + cmd.description();
-    }
-
-    private static List<CommandPromptFile> filter(List<CommandPromptFile> source, String prefix) {
+    private static List<SimplePromptFile> filter(List<SimplePromptFile> source, String prefix) {
         if (prefix == null || prefix.isEmpty()) return source;
         var lower = prefix.toLowerCase(Locale.ROOT);
         return source.stream()
