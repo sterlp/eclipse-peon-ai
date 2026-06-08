@@ -26,5 +26,18 @@ class LlmConfigTest {
         assertEquals(subject, read);
         assertEquals("foo", read.getModel());
     }
+
+    @Test
+    void test_maxTokens_default_and_override() throws Exception {
+        // GIVEN
+        assertEquals(0, LlmConfig.newConfig("foo", "http://bar").getMaxTokens());
+        var subject = LlmConfig.builder().model("foo").maxTokens(8192).build();
+
+        // WHEN
+        var read = mapper.readValue(mapper.writeValueAsString(subject), LlmConfig.class);
+
+        // THEN
+        assertEquals(8192, read.getMaxTokens());
+    }
     
 }

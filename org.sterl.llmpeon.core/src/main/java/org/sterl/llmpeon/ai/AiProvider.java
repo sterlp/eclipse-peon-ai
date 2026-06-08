@@ -40,7 +40,7 @@ public enum AiProvider {
     OLLAMA {
         @Override
         StreamingChatModel buildModel(LlmConfig c) {
-            return OllamaStreamingChatModel.builder()
+            var builder = OllamaStreamingChatModel.builder()
                     .timeout(TIMEOUT)
                     .baseUrl(c.getUrl())
                     .modelName(c.getModel())
@@ -48,8 +48,9 @@ public enum AiProvider {
                     .returnThinking(c.isThinkingEnabled())
                     .customHeaders(c.getHeaderParams())
                     .logRequests(c.isDebugMode())
-                    .logResponses(c.isDebugMode())
-                    .build();
+                    .logResponses(c.isDebugMode());
+            if (c.getMaxTokens() > 0) builder.numPredict(c.getMaxTokens());
+            return builder.build();
         }
 
         @Override
@@ -72,7 +73,7 @@ public enum AiProvider {
     OPEN_AI {
         @Override
         StreamingChatModel buildModel(LlmConfig c) {
-            return OpenAiStreamingChatModel.builder()
+            var builder = OpenAiStreamingChatModel.builder()
                     .timeout(TIMEOUT)
                     .baseUrl(c.getUrl())
                     .modelName(c.getModel())
@@ -84,8 +85,9 @@ public enum AiProvider {
                     .customQueryParams(c.getQueryParams())
                     .logRequests(c.isDebugMode())
                     .logResponses(c.isDebugMode())
-                    .reasoningEffort(c.isThinkingEnabled() ? "high" : "low")
-                    .build();
+                    .reasoningEffort(c.isThinkingEnabled() ? "high" : "low");
+            if (c.getMaxTokens() > 0) builder.maxCompletionTokens(c.getMaxTokens());
+            return builder.build();
         }
 
         @Override
@@ -111,13 +113,16 @@ public enum AiProvider {
                     .isMicrosoftFoundry(true)
                     .customHeaders(c.getHeaderParams());
             
+            var params = OpenAiOfficialResponsesChatRequestParameters.builder();
             if (c.isThinkingEnabled()) {
                 result.reasoningEffort(ReasoningEffort.HIGH);
                 result.reasoningSummary(Reasoning.Summary.DETAILED);
-                result.defaultRequestParameters(OpenAiOfficialResponsesChatRequestParameters.builder()
-                        .reasoningEffort(ReasoningEffort.HIGH)
-                        .reasoningSummary(Reasoning.Summary.DETAILED).build()
-                );
+                params.reasoningEffort(ReasoningEffort.HIGH)
+                        .reasoningSummary(Reasoning.Summary.DETAILED);
+            }
+            if (c.getMaxTokens() > 0) params.maxOutputTokens(c.getMaxTokens());
+            if (c.isThinkingEnabled() || c.getMaxTokens() > 0) {
+                result.defaultRequestParameters(params.build());
             }
             return result.build();
         }
@@ -140,7 +145,7 @@ public enum AiProvider {
             var http1 = JdkHttpClient.builder()
                     .httpClientBuilder(HttpClient.newBuilder()
                             .version(HttpClient.Version.HTTP_1_1));
-            return OpenAiStreamingChatModel.builder()
+            var builder = OpenAiStreamingChatModel.builder()
                     .timeout(TIMEOUT)
                     .baseUrl(c.getUrl())
                     .modelName(c.getModel())
@@ -151,8 +156,9 @@ public enum AiProvider {
                     .customHeaders(c.getHeaderParams())
                     .customQueryParams(c.getQueryParams())
                     .logRequests(c.isDebugMode())
-                    .logResponses(c.isDebugMode())
-                    .build();
+                    .logResponses(c.isDebugMode());
+            if (c.getMaxTokens() > 0) builder.maxCompletionTokens(c.getMaxTokens());
+            return builder.build();
         }
 
         @Override
@@ -184,6 +190,7 @@ public enum AiProvider {
                         .thinkingBudget(0)
                         .build());
             }
+            if (c.getMaxTokens() > 0) result.maxOutputTokens(c.getMaxTokens());
             return result
                     .customHeaders(c.getHeaderParams())
                     .logRequests(c.isDebugMode())
@@ -217,7 +224,7 @@ public enum AiProvider {
 
         @Override
         StreamingChatModel buildModel(LlmConfig c) {
-            return MistralAiStreamingChatModel.builder()
+            var builder = MistralAiStreamingChatModel.builder()
                     .timeout(TIMEOUT)
                     .modelName(c.getModel())
                     .apiKey(c.getApiKey())
@@ -225,8 +232,9 @@ public enum AiProvider {
                     .sendThinking(c.shouldWeSendThinkingBackToLLM())
                     .customHeaders(c.getHeaderParams())
                     .logRequests(c.isDebugMode())
-                    .logResponses(c.isDebugMode())
-                    .build();
+                    .logResponses(c.isDebugMode());
+            if (c.getMaxTokens() > 0) builder.maxTokens(c.getMaxTokens());
+            return builder.build();
         }
 
         @Override
@@ -253,6 +261,9 @@ public enum AiProvider {
                     .apiKey(c.getApiKey());
             if (c.getUrl() != null && c.getUrl().length() > 4) {
                 builder.baseUrl(c.getUrl());
+            }
+            if (c.getMaxTokens() > 0) {
+                builder.maxTokens(c.getMaxTokens());
             }
             if (c.isThinkingEnabled()) {
                 builder.thinkingType("enabled");
@@ -290,15 +301,19 @@ public enum AiProvider {
 
         @Override
         StreamingChatModel buildModel(LlmConfig c) {
-            return OpenAiOfficialResponsesStreamingChatModel.builder()
+            var builder = OpenAiOfficialResponsesStreamingChatModel.builder()
                     .timeout(TIMEOUT)
                     .baseUrl(baseUrl(c))
                     .apiKey(c.getApiKey() != null && !c.getApiKey().isBlank() ? c.getApiKey() : "not-configured")
                     .modelName(c.getModel())
                     .isGitHubModels(true)
                     .strictTools(true)
-                    .customHeaders(c.getHeaderParams())
-                    .build();
+                    .customHeaders(c.getHeaderParams());
+            if (c.getMaxTokens() > 0) {
+                builder.defaultRequestParameters(OpenAiOfficialResponsesChatRequestParameters.builder()
+                        .maxOutputTokens(c.getMaxTokens()).build());
+            }
+            return builder.build();
         }
 
         // https://docs.github.com/en/rest/models/catalog?apiVersion=2026-03-10#list-all-models
@@ -342,7 +357,7 @@ public enum AiProvider {
             headers.putAll(copilotHeaders());
             headers.putAll(c.getHeaderParams());
             
-            return OpenAiStreamingChatModel.builder()
+            var builder = OpenAiStreamingChatModel.builder()
                     .timeout(TIMEOUT)
                     .baseUrl(baseUrl(c))
                     .apiKey(c.getApiKey() != null && !c.getApiKey().isBlank() ? c.getApiKey() : "not-configured")
@@ -351,9 +366,9 @@ public enum AiProvider {
                     .customHeaders(headers)
                     .customQueryParams(c.getQueryParams())
                     .logRequests(c.isDebugMode())
-                    .logResponses(c.isDebugMode())
-
-                    .build();
+                    .logResponses(c.isDebugMode());
+            if (c.getMaxTokens() > 0) builder.maxCompletionTokens(c.getMaxTokens());
+            return builder.build();
         }
 
         @Override

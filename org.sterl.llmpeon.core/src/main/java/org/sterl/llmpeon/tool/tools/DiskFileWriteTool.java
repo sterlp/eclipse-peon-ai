@@ -41,7 +41,7 @@ public class DiskFileWriteTool extends AbstractTool {
     }
 
     @Tool("Disk: Write file. Creates parent dirs and overwrites if exists.")
-    public String writeDiskFile(@P(name = "filePath") String filePath, @P(name = "content") String content) {
+    public void writeDiskFile(@P(name = "filePath") String filePath, @P(name = "content") String content) {
         ArgsUtil.requireNonBlank(filePath, "filePath");
         ArgsUtil.requireNonNull(content, "content");
 
@@ -60,35 +60,31 @@ public class DiskFileWriteTool extends AbstractTool {
                 monitor.onFileUpdate(new AiFileUpdate(workingDir.relativize(resolved).toString(), oldContent, content));
             }
             
-            var msg = (existed ? "Updated" : "Created") + " file: " + workingDir.relativize(resolved);
-            onTool(msg);
-            return msg;
+            onTool((existed ? "Updated" : "Created") + " file: " + workingDir.relativize(resolved));
         } catch (IOException e) {
             throw new RuntimeException("Failed to write " + filePath, e);
         }
     }
 
     @Tool("Disk: Delete file.")
-    public String deleteDiskFile(@P(name = "filePath") String filePath) {
+    public void deleteDiskFile(@P(name = "filePath") String filePath) {
         ArgsUtil.requireNonBlank(filePath, "filePath");
 
         Path resolved = resolve(filePath);
         if (resolved == null || !Files.exists(resolved)) {
-            return "File not found: `" + filePath + "` maybe already deleted?";
+            throw new IllegalArgumentException("File not found: `" + filePath + "` maybe already deleted?");
         }
 
         try {
             Files.delete(resolved);
-            var msg = "Deleted file: " + workingDir.relativize(resolved);
-            onTool(msg);
-            return msg;
+            onTool("Deleted file: " + workingDir.relativize(resolved));
         } catch (IOException e) {
             throw new RuntimeException("Failed to delete " + filePath, e);
         }
     }
     
     @Tool("Disk: Replace a single line by line number. newContent may span multiple lines.")
-    public String replaceDiskLine(
+    public void replaceDiskLine(
             @P(name = "filePath") String filePath,
             @P("line to replace (1-based)") Integer line,
             @P(name = "newContent") String newContent) {
@@ -106,14 +102,13 @@ public class DiskFileWriteTool extends AbstractTool {
             String newFullContent = FileLines.replaceLines(content, line, line, newContent);
             Files.writeString(resolved, newFullContent);
             monitor.onFileUpdate(new AiFileUpdate(workingDir.relativize(resolved).toString(), content, newFullContent));
-            return "File " + filePath + " line " + line + " replaced.";
         } catch (IOException e) {
             throw new RuntimeException("Failed to edit " + filePath, e);
         }
     }
 
     @Tool("Disk: Replace exact string. Errors if 0 or >1 matches.")
-    public String editDiskFile(@P(name = "filePath") String filePath, 
+    public void editDiskFile(@P(name = "filePath") String filePath, 
             @P(description = "exact string to replace", name = "oldString") String oldString, 
             @P(name = "newString") String newString) {
 
@@ -139,7 +134,58 @@ public class DiskFileWriteTool extends AbstractTool {
             var result = new AiFileUpdate(workingDir.relativize(resolved).toString(), oldString, newString);
             monitor.onFileUpdate(result);
 
-            return "File " + result.file() + " edited successfully.";
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to edit " + filePath, e);
+        }
+    }
+
+    @Tool("Disk: Rename or move a file or directory. Creates target parent folders.")
+    public void renameDiskResource(
+            @P(name = "sourcePath") String sourcePath,
+            @P(name = "targetPath") String targetPath) {
+
+        ArgsUtil.requireNonBlank(sourcePath, "sourcePath");
+        ArgsUtil.requireNonBlank(targetPath, "targetPath");
+
+        Path source = resolve(sourcePath);
+        if (source == null || !Files.exists(source)) {
+            throw new IllegalArgumentException("Not found: " + sourcePath);
+        }
+        Path target = resolve(targetPath);
+        if (target == null) {
+            throw new IllegalArgumentException("Cannot resolve path: " + targetPath);
+        }
+        if (Files.exists(target)) {
+            throw new IllegalArgumentException("Target already exists: " + targetPath);
+        }
+        try {
+            if (target.getParent() != null) Files.createDirectories(target.getParent());
+            Files.move(source, target);
+            onTool("Renamed " + workingDir.relativize(source) + " -> " + workingDir.relativize(target));
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to rename " + sourcePath + " -> " + targetPath, e);
+        }
+    }
+
+    @Tool("Disk: Insert text after a 1-based line. If afterLine is omitted/0, appends at end of file.")
+    public void insertDiskLines(
+            @P(name = "filePath") String filePath,
+            @P(description = "text to insert (may span multiple lines)", name = "newContent") String newContent,
+            @P(description = "1-based line to insert after; omit or 0 to append at end of file",
+               name = "afterLine", required = false) Integer afterLine) {
+
+        ArgsUtil.requireNonBlank(filePath, "filePath");
+        ArgsUtil.requireNonNull(newContent, "newContent");
+
+        Path resolved = resolve(filePath);
+        if (resolved == null || !Files.isRegularFile(resolved)) {
+            throw new IllegalArgumentException("File not found: " + filePath);
+        }
+        try {
+            String content = Files.readString(resolved);
+            String newFullContent = FileLines.insertLines(content, afterLine, newContent);
+            Files.writeString(resolved, newFullContent);
+            monitor.onFileUpdate(new AiFileUpdate(workingDir.relativize(resolved).toString(), content, newFullContent));
         } catch (IOException e) {
             throw new RuntimeException("Failed to edit " + filePath, e);
         }

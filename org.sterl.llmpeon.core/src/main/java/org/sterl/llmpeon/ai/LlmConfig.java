@@ -41,6 +41,13 @@ public class LlmConfig {
     private final double planTemperature = 0.8;
     @Default
     private final double devTemperature = 0.3;
+    /**
+     * Max output tokens per response. 0 = use the provider/library default.
+     * Anthropic's langchain4j default is only 1024, which truncates large
+     * tool-call JSON mid-stream; set a higher value to avoid this.
+     */
+    @Default
+    private final int maxTokens = 0;
     @Default
     private final boolean thinkingEnabled = true;
     @Default

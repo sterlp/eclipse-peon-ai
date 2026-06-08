@@ -1,16 +1,13 @@
 package org.sterl.llmpeon.tool.tools;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.sterl.llmpeon.shared.ArgsUtil;
-import org.sterl.llmpeon.shared.StringUtil;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -87,7 +84,6 @@ public class ShellTool extends AbstractTool {
         onTool("Running: `" + command + "` in " + effectiveDir);
 
         String[] shellCommand;
-        String extraPaths = "";
         String os = System.getProperty("os.name").toLowerCase();
         if (os.contains("win")) {
             shellCommand = new String[] { "cmd.exe", "/c", command };
@@ -97,16 +93,12 @@ public class ShellTool extends AbstractTool {
         else {
             shellCommand = new String[] { "/bin/bash", "-l", "-c", command };
         }
-        // Includes brew by default
-        if (Files.isDirectory(Path.of("/opt/homebrew/bin"))) {
-            extraPaths += File.pathSeparatorChar + "/opt/homebrew/bin";
-        };
 
         try {
+            // Do NOT set PATH here: the login shell (-l) rebuilds it from the user's
+            // rc files (SDKMAN, brew, mvn wrapper, etc.). Clobbering it with Eclipse's
+            // GUI-inherited PATH breaks tools like mvn when launched from Finder.
             ProcessBuilder pb = new ProcessBuilder(shellCommand);
-            Map<String, String> env = pb.environment();
-            env.put("PATH", StringUtil.stripToEmpty(System.getenv("PATH")) + extraPaths);
-
             pb.directory(effectiveDir.toFile());
             pb.redirectErrorStream(true); // merge stderr into stdout
             Process process = pb.start();

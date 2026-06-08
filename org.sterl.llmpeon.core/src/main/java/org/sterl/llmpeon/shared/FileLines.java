@@ -87,6 +87,30 @@ public class FileLines {
         return String.join(lineEnding, lines);
     }
 
+    /**
+     * Inserts {@code newContent} after the given 1-based {@code afterLine}.
+     * <ul>
+     *   <li>{@code afterLine} null, 0 or negative → append at end of file</li>
+     *   <li>{@code afterLine} &gt;= line count → append at end of file</li>
+     *   <li>{@code afterLine} == 0 semantics for "before first line" are not supported; use replaceLines</li>
+     * </ul>
+     */
+    public static String insertLines(String content, Integer afterLine, String newContent) {
+        if (newContent == null || newContent.isEmpty()) return content == null ? "" : content;
+        if (content == null || content.isEmpty()) return newContent;
+
+        var lineEnding = FileUtils.dominantLineEnding(content);
+        var lines = new java.util.ArrayList<>(java.util.Arrays.asList(content.split(lineEnding, -1)));
+        int total = lines.size();
+
+        int at = (afterLine == null || afterLine <= 0 || afterLine > total) ? total : afterLine;
+
+        var incoming = java.util.Arrays.asList(newContent.split(lineEnding, -1));
+        lines.addAll(at, incoming);
+
+        return String.join(lineEnding, lines);
+    }
+
     private static void appendLine(StringBuilder sb, int n, String line, String lineEnding) {
         if      (n <    10) sb.append("   ");
         else if (n <   100) sb.append("  ");

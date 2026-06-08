@@ -9,6 +9,7 @@ public interface PeonConstants {
     String PREF_MODEL            = "llm.model";
     String PREF_URL              = "llm.url";
     String PREF_TOKEN_WINDOW     = "llm.tokenWindow";
+    String PREF_MAX_TOKENS       = "llm.maxTokens";
 
     String PREF_THINKING_ENABLED        = "llm.thinkingEnabled";
     String PREF_SEND_THINKING_ENABLED   = "llm.sendThinkingEnabled";

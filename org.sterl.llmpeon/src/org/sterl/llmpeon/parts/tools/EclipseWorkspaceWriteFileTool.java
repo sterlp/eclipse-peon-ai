@@ -128,6 +128,61 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         onTool("Created file " + JdtUtil.pathOf(file));
     }
 
+    @Tool("Eclipse: Insert text after a 1-based line. If afterLine is omitted/0, appends at end of file.")
+    public void insertWorkspaceLines(
+            @P(description = "workspace-relative path", name = "filePath") String filePath,
+            @P(description = "text to insert (may span multiple lines)", name = "newContent") String newContent,
+            @P(description = "1-based line to insert after; omit or 0 to append at end of file",
+               name = "afterLine", required = false) Integer afterLine) {
+
+        ArgsUtil.requireNonBlank(filePath, "filePath");
+        ArgsUtil.requireNonNull(newContent, "newContent");
+
+        var inFile = EclipseUtil.resolveInEclipse(filePath);
+        if (inFile.isEmpty() || !(inFile.get() instanceof IFile eclipseFile)) {
+            throw new IllegalArgumentException("Cannot write unknown file in eclipse " + filePath);
+        }
+        String content = readFile(eclipseFile);
+        String newFullContent = FileLines.insertLines(content, afterLine, newContent);
+        var result = writeEclipseFile(eclipseFile, newFullContent);
+        monitor.onFileUpdate(result);
+    }
+
+    @Tool("Eclipse: Rename or move a workspace file or directory. Creates target parent folders.")
+    public void renameWorkspaceResource(
+            @P(description = "existing workspace-relative path", name = "sourcePath") String sourcePath,
+            @P(description = "new workspace-relative path", name = "targetPath") String targetPath) {
+
+        ArgsUtil.requireNonBlank(sourcePath, "sourcePath");
+        ArgsUtil.requireNonBlank(targetPath, "targetPath");
+
+        var source = EclipseUtil.resolveInEclipse(sourcePath);
+        if (source.isEmpty()) throw new IllegalArgumentException("Not found: " + sourcePath);
+
+        var resource = source.get();
+        if (EclipseUtil.resolveInEclipse(targetPath).isPresent()) {
+            throw new IllegalArgumentException("Target already exists: " + targetPath);
+        }
+
+        var workspaceRoot = resource.getWorkspace().getRoot();
+        org.eclipse.core.runtime.IPath destPath = resource.getFullPath()
+                .removeLastSegments(resource.getFullPath().segmentCount())
+                .append(org.eclipse.core.runtime.IPath.fromPortableString(
+                        targetPath.startsWith("/") ? targetPath.substring(1) : targetPath));
+
+        try {
+            var parent = workspaceRoot.getFolder(destPath.removeLastSegments(1));
+            if (!destPath.removeLastSegments(1).isEmpty() && !parent.exists()
+                    && destPath.segmentCount() > 2) {
+                IoUtils.ensureFolders(parent, getProgressMonitor());
+            }
+            resource.move(destPath, IResource.KEEP_HISTORY, getProgressMonitor());
+            onTool("Renamed " + sourcePath + " -> " + destPath.toPortableString());
+        } catch (CoreException e) {
+            throw new RuntimeException("Failed to rename " + sourcePath + " -> " + targetPath, e);
+        }
+    }
+
     @Tool("Eclipse: Delete workspace file or directory recursively.")
     public void deleteWorkspaceResource(
             @P(description = "workspace-relative path", name = "filePath") String filePath) {
