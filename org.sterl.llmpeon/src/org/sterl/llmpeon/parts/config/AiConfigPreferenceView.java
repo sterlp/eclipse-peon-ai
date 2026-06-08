@@ -49,7 +49,7 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
                 getFieldEditorParent());
         addField(providerEditor);
         addField(new StringFieldEditor(PeonConstants.PREF_MODEL, "Model:", getFieldEditorParent()));
-        addField(new IntegerFieldEditor(PeonConstants.PREF_MAX_TOKENS, "Max output tokens (default 8192, 0 to disable):", getFieldEditorParent()));
+        addField(new IntegerFieldEditor(PeonConstants.PREF_MAX_TOKENS, "Max output tokens (0 to disable):", getFieldEditorParent()));
         addField(new IntegerFieldEditor(PeonConstants.PREF_TOKEN_WINDOW, "Auto compact after:", getFieldEditorParent()));
 
         addField(new BooleanFieldEditor(PeonConstants.PREF_THINKING_ENABLED, "Supports thinking", getFieldEditorParent()));
