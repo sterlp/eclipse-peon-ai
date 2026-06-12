@@ -306,12 +306,6 @@ public class AIChatView implements EclipseAiMonitor {
     @org.eclipse.e4.core.di.annotations.Optional
     public void onSelection(@Named(IServiceConstants.ACTIVE_SELECTION) Object[] selectedObjects) {
         if (selectedObjects != null && selectedObjects.length > 0) {
-            for (var s : selectedObjects) {
-                if (s instanceof IResource) {
-                    onSelection(s);
-                    break;
-                }
-            }
             onSelection(selectedObjects[0]);
         }
     }
