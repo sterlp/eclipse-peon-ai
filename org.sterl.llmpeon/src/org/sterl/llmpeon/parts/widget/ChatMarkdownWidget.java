@@ -12,6 +12,7 @@ import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.browser.Browser;
+import org.eclipse.swt.browser.BrowserFunction;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.osgi.framework.FrameworkUtil;
@@ -36,6 +37,10 @@ public class ChatMarkdownWidget extends Composite {
     
     private final AtomicInteger streamingTokenCount = new AtomicInteger(0);
     private final Composite parent;
+    
+    private volatile boolean browserReady = false;
+    private final java.util.Queue<String> pendingExecutions = 
+        new java.util.concurrent.ConcurrentLinkedQueue<>();
 
     public ChatMarkdownWidget(Composite parent, int style) {
         super(parent, style);
@@ -43,6 +48,20 @@ public class ChatMarkdownWidget extends Composite {
         setLayout(new FillLayout());
 
         browser = new Browser(this, SWT.NONE);
+        new BrowserFunction(browser, "javaReady") {
+            @Override
+            public Object function(Object[] arguments) {
+                EclipseUtil.runInUiThread(parent, () -> {
+                    browserReady = true;
+                    String r;
+                    while ((r = pendingExecutions.poll()) != null) {
+                        browser.execute(r);
+                    }
+                });
+                return null;
+            }
+        };
+
         clear();
     }
     
@@ -77,17 +96,25 @@ public class ChatMarkdownWidget extends Composite {
         // all resources use ./ relative paths, so a single replace resolves everything
         return html.replace("./", basePath);
     }
+    
+    private void safeExecute(String js) {
+        if (browserReady) {
+            browser.execute(js);
+        } else {
+            pendingExecutions.add(js);
+        }
+    }
 
     public void appendMessage(SimpleMessage msg) {
         try {
-            browser.execute("appendMessage(" + mapper.writeValueAsString(msg) + ");");
+            safeExecute("appendMessage(" + mapper.writeValueAsString(msg) + ");");
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
     }
     
     public void hideLiveStatus() {
-        browser.execute("hideLiveStatus();");
+        safeExecute("hideLiveStatus();");
     }
 
     public void onStreamingChunk(OnPartialAiResponse r) {
@@ -128,7 +155,7 @@ public class ChatMarkdownWidget extends Composite {
 
     public void showDiff(String unifiedDiff) {
         try {
-            browser.execute(
+            safeExecute(
                 "appendDiff(" + mapper.writeValueAsString(unifiedDiff) + ");"
             );
         } catch (JsonProcessingException e) {
@@ -140,15 +167,9 @@ public class ChatMarkdownWidget extends Composite {
      * Reload the while view - clean everything away ....
      */
     public void clear() {
+        this.browserReady = false;
+        this.pendingExecutions.clear();
         browser.setText(loadChatHtml());
-    }
-
-    /**
-     * Just removes the messages
-     */
-    public void clearMessages() {
-        hideLiveStatus();
-        browser.execute("clearMessages()");
     }
 
     public void appendMessage(ChatMessage msg) {

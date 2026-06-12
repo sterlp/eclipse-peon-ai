@@ -40,6 +40,10 @@ public interface PeonConstants {
 
     String PREF_AGENTS_MD_ENABLED  = "agentsMd.enabled";   // boolean, default true
 
+    String PREF_SEARCH_MODEL = "llm.searchModel";
+    String PREF_PLAN_MODEL   = "llm.planModel";
+    String PREF_DEV_MODEL    = "llm.devModel";
+
     public static IStatus okStatus(String message) {
         return new Status(IStatus.OK, PLUGIN_ID, message);
     }

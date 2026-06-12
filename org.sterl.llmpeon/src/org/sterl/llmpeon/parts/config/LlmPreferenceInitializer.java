@@ -2,6 +2,7 @@ package org.sterl.llmpeon.parts.config;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -23,6 +24,9 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
     private static final ILog LOG = Platform.getLog(LlmPreferenceInitializer.class);
 
     private static final LlmConfig DEFAULT = LlmConfig.newOllama("qwen3.6-27b-i1");
+    
+    private static final Path PEON_HOME =  Path.of(System.getProperty("user.home"), ".claude");
+    private static final Path CALUDE_HOME =  Path.of(System.getProperty("user.home"), ".aipeon");
 
     @Override
     public void initializeDefaultPreferences() {
@@ -35,8 +39,10 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
         defaults.putBoolean(PeonConstants.PREF_THINKING_ENABLED, DEFAULT.isThinkingEnabled());
         defaults.putBoolean(PeonConstants.PREF_SEND_THINKING_ENABLED, DEFAULT.isSendThinkingEnabled());
         defaults.put(PeonConstants.PREF_API_KEY, StringUtil.stripToEmpty(DEFAULT.getApiKey()));
-        defaults.put(PeonConstants.PREF_SKILL_DIRECTORY, Path.of(System.getProperty("user.home"), ".claude", "skills").toString());
-        defaults.put(PeonConstants.PREF_COMMAND_DIRECTORY, Path.of(System.getProperty("user.home"), ".claude", "commands").toString());
+
+        defaults.put(PeonConstants.PREF_SKILL_DIRECTORY, resolveClaudeDefault("skills"));
+        defaults.put(PeonConstants.PREF_COMMAND_DIRECTORY, resolveClaudeDefault("commands"));
+
         defaults.putBoolean(PeonConstants.PREF_DISK_TOOLS_ENABLED, false);
         defaults.put(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, "");
         defaults.put(PeonConstants.PREF_PLAN_TEMPERATURE, String.valueOf(DEFAULT.getPlanTemperature()));
@@ -45,10 +51,22 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
         defaults.put(PeonConstants.PREF_HEADER_PARAMS, "");
         defaults.putBoolean(PeonConstants.PREF_AGENTS_MD_ENABLED, true);
     }
-    
+
+    private static String resolveClaudeDefault(String dir) {
+        var cD = CALUDE_HOME.resolve(dir); 
+        var pD = PEON_HOME.resolve(dir);
+
+        if (Files.isDirectory(cD)) return cD.toString();
+        try {
+            Files.createDirectories(pD);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to create " + pD, e);
+        }
+        return pD.toString();
+    }
+
     public static LlmConfig buildWithDefaults() {
         var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
-
         var skillDir = resolveDirPreference(prefs, PeonConstants.PREF_SKILL_DIRECTORY, "skill");
         var commandDir = resolveDirPreference(prefs, PeonConstants.PREF_COMMAND_DIRECTORY, "command");
 
@@ -71,6 +89,9 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
             .headerParams(parseCsvMap(prefs.get(PeonConstants.PREF_HEADER_PARAMS, "")))
             .shellCommandConfirmationRequired("always".equals(prefs.get(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, "")) ||
                     "not-autonomous".equals(prefs.get(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, "")))
+            .searchModel(prefs.get(PeonConstants.PREF_SEARCH_MODEL, null))
+            .planModel(prefs.get(PeonConstants.PREF_PLAN_MODEL, null))
+            .devModel(prefs.get(PeonConstants.PREF_DEV_MODEL, null))
             .build();
     }
 
@@ -99,7 +120,7 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
         }
         return dirValue;
     }
-    
+
     public static void setModel(String model) {
         if (model == null) return;
         try {

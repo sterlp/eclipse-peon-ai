@@ -61,7 +61,8 @@ export default defineConfig({
           text: 'Design',
           items: [
             { text: 'Interaction UI', link: '/design/interaction-design' },
-            { text: 'Plan/Dev/Agent Design (WIP)', link: '/design/plan-dev-agent-design' }
+            { text: 'Plan/Dev/Agent Design (WIP)', link: '/design/plan-dev-agent-design' },
+            { text: 'Advanced Configuration', link: '/design/advanced-configuration' }
           ]
         }
       ]

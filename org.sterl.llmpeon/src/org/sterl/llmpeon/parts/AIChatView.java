@@ -393,10 +393,10 @@ public class AIChatView implements EclipseAiMonitor {
     }
 
     private void refreshChat() {
-        chatHistory.clearMessages();
-        aiService.getActiveService().getMessages().forEach(chatHistory::appendMessage);
+        chatHistory.clear();
         refreshStatusLine();
         actionsBar.updateModeUI(aiService.getPeonMode());
+        aiService.getActiveService().getMessages().forEach(chatHistory::appendMessage);
     }
 
     // -------------------------------------------------------------------------
@@ -542,7 +542,6 @@ public class AIChatView implements EclipseAiMonitor {
     // at least be moved to the AIChatViewController
     // so doSendMessage(); here can be removed or better be reused? as we use this also as button action
     private void doStartImpl() {
-        chatHistory.clear();
         if (aiService.getPeonMode() == PeonMode.AGENT) {
             if (aiService.getAgentMode().startImplementation()) refreshChat();
             else onChatResponse(new SimpleMessage(Type.PROBLEM, "Plan missing ..."));
@@ -551,16 +550,16 @@ public class AIChatView implements EclipseAiMonitor {
             aiService.setPeonMode(PeonMode.DEV);
             actionsBar.updateModeUI(PeonMode.DEV);
             if (aiService.startImplementation()) {
-                refreshChat();
                 if (StringUtil.hasNoValue(chatInput.getText())) {
                     // some models e.g. Qwen need a use message as last message
                     chatInput.setText("""
-                            Start implementing this plan. Save larger plans in the peon-plan/ directory using a sensible filename (for example, based on the title or main goal). 
-                            Treat that plan file as your long-term memory when needed. 
-                            Keep token usage low: when you switch to a different piece of work, 
-                            use the compressor tool to summarize this session and echo the key next steps plus the plan file path in the preserved instructions.
-                            """);
+                        Start implementing this plan. Save larger plans in the peon-plan/ directory using a sensible filename (for example, based on the title or main goal). 
+                        Treat that plan file as your long-term memory when needed. 
+                        Keep token usage low: when you switch to a different piece of work, 
+                        use the compressor tool to summarize this session and echo the key next steps plus the plan file path in the preserved instructions.
+                        """);
                 }
+                this.refreshChat();
                 doSendMessage();
             } else {
                 onChatResponse(new SimpleMessage(Type.PROBLEM, "Plan missing ..."));

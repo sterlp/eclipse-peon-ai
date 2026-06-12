@@ -68,6 +68,12 @@ public class LlmConfig {
     private final Map<String, String> queryParams = new LinkedHashMap<>();
     @Default
     private final Map<String, String> headerParams = new LinkedHashMap<>();
+    @Default
+    private final String searchModel = null;
+    @Default
+    private final String planModel = null;
+    @Default
+    private final String devModel = null;
     
     /**
      * Some LLMs needs this some not
@@ -75,6 +81,18 @@ public class LlmConfig {
      */
     public boolean shouldWeSendThinkingBackToLLM() {
         return thinkingEnabled && sendThinkingEnabled;
+    }
+
+    public String getSearchModel() {
+        return searchModel != null && !searchModel.isBlank() ? searchModel : model;
+    }
+
+    public String getPlanModel() {
+        return planModel != null && !planModel.isBlank() ? planModel : model;
+    }
+
+    public String getDevModel() {
+        return devModel != null && !devModel.isBlank() ? devModel : model;
     }
 
     public static LlmConfig newConfig(String model, String url) {
