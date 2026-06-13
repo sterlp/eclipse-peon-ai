@@ -68,6 +68,7 @@ import org.sterl.llmpeon.voice.VoiceInputService;
 
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import jakarta.annotation.PostConstruct;
@@ -573,8 +574,6 @@ public class AIChatView implements EclipseAiMonitor {
     }
 
     private void doCompressContext() {
-        chatHistory.clear();
-
         var active = aiService.getActiveService();
         if (active.getMessages().isEmpty()) return;
         lockWhileWorking(true);
@@ -582,15 +581,14 @@ public class AIChatView implements EclipseAiMonitor {
             monitor.beginTask("Compressing chat", 1);
             monitorRef.set(monitor);
             Exception ex = null;
+            ChatResponse cr = null;
             try {
-                active.compressContext(this);
+                cr = active.compressContext(this);
                 Display.getDefault().asyncExec(this::refreshChat);
             } catch (Exception e) {
-                ex = e;
+                ex = handleChatException(e);
             } finally {
-                monitor.done();
-                monitorRef.set(new NullProgressMonitor());
-                EclipseUtil.runInUiThread(parent, () -> lockWhileWorking(false));
+                handleDoneChatResponse(cr, monitor);
             }
             return PeonConstants.status("Compressed", ex);
         }).schedule();
@@ -630,30 +628,39 @@ public class AIChatView implements EclipseAiMonitor {
             try {
                 active.setUserContextInformations(this.standingOrders.build());
                 cr = active.call(text.isEmpty() ? null : text, this);
-            } catch (ToolExecutionException e) {
-                if (!isCanceled()) {
-                    if (e.getCause() instanceof CancellationException) {
-                        // yes this is fine
-                    } else {
-                        throw e;
-                    }
-                }
             } catch (Exception e) {
-                if (!isCanceled() || !(e instanceof CancellationException)) {
-                    ex = e;
-                    LOG.warn("Failed to call LLM " + aiService.getConfig(), e);
-                    onChatResponse(new SimpleMessage(Type.PROBLEM, e.getMessage()));
-                }
+                ex = handleChatException(e);
             } finally {
-                if (lastAppliedConfig != null && lastAppliedConfig.isDebugMode()) {
-                    LOG.info("Chatreponse: " + (cr == null ? "null" : cr.aiMessage()));
-                }
-                monitor.done();
-                monitorRef.set(new NullProgressMonitor());
-                EclipseUtil.runInUiThread(parent, () -> lockWhileWorking(false));
+                handleDoneChatResponse(cr, monitor);
             }
             return PeonConstants.status("Peon AI\n" + aiService.getConfig(), ex);
         }).schedule();
+    }
+
+    private void handleDoneChatResponse(ChatResponse cr,
+            IProgressMonitor monitor) {
+        if (lastAppliedConfig != null && lastAppliedConfig.isDebugMode()) {
+            LOG.info("Chatreponse: " + (cr == null ? "null" : cr.aiMessage()));
+        }
+        monitor.done();
+        monitorRef.set(new NullProgressMonitor());
+        EclipseUtil.runInUiThread(parent, () -> lockWhileWorking(false));
+    }
+    
+    private Exception handleChatException(Exception e) {
+        if (e == null) return null;
+        if (isCanceled()) return null;
+        if (e instanceof CancellationException) return null;
+        var cause = e.getCause();
+        if (cause instanceof CancellationException) return null;
+        
+        if (e instanceof RateLimitException || cause instanceof RateLimitException) {
+            onChatResponse(new SimpleMessage(Type.PROBLEM, "API rate limit! " + e.getMessage()));
+            return null;
+        }
+        LOG.warn("Failed to call LLM " + aiService.getConfig(), e);
+        onChatResponse(new SimpleMessage(Type.PROBLEM, e.getMessage()));
+        return e;
     }
 
     private void onPinChange(boolean pinned) {
