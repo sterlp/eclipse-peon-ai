@@ -145,6 +145,35 @@ public class AiDeveloperServiceTest {
         assertThat(d).isOne();
     }
     
+    
+    @Test
+    void test_send_no_message() {
+        // GIVEN
+        var aiMessage = AiMessage.aiMessage("Okay thats good");
+        var userMessage = UserMessage.from("Some message");
+
+        var requestRef  = new AtomicReference<ChatRequest>();
+        subject.getMemory().add(UserMessage.from("Some message"));
+        fn.set(req -> {
+            requestRef.set(req);
+            return ChatResponse.builder().aiMessage(aiMessage).build();
+        });
+        
+        // WHEN
+        subject.call(null, null);
+        subject.call(null, null);
+
+        // THEN
+        verify(cm, times(2)).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+
+        // AND
+        var mem = subject.getMemory().getCopy();
+        assertThat(mem.size()).isEqualTo(3);
+        assertThat(mem.get(0)).isEqualTo(userMessage);
+        assertThat(mem.get(1)).isEqualTo(aiMessage);
+        assertThat(mem.get(2)).isEqualTo(aiMessage);
+    }
+    
     private StreamingChatModel mockWithHandler() {
         var cm = mock(StreamingChatModel.class);
         doAnswer(inv -> {

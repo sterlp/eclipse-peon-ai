@@ -611,8 +611,8 @@ public class AIChatView implements EclipseAiMonitor {
         if (StringUtil.hasNoValue(text) && active.getMemory().size() == 0) return;
 
         if (StringUtil.hasValue(text)) {
-            chatHistory.appendMessage(new SimpleMessage(Type.USER, text));
             applySlashCommandIfPresent(active);
+            chatHistory.appendMessage(new SimpleMessage(Type.USER, text));
             chatInput.clearText();
             
             // already working -> we only append the current history ...

@@ -5,7 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 
 class ThreadSafeMemoryTest {
@@ -49,6 +51,28 @@ class ThreadSafeMemoryTest {
         assertThat(ChatMessageUtil.toString(messages.getLast())).contains("U1", "U2");
         // AND
         assertThat(subject.messageFlow()).isEqualTo("AI->USER->AI->USER->AI->USER");
+    }
+    
+    
+    @Test
+    void test_trailing_tool_result() {
+        // GIVEN
+        var subject = new ThreadSafeMemory();
+        
+        subject.add(UserMessage.from("Foo"));
+        subject.add(AiMessage.from(ToolExecutionRequest.builder().id("1").name("foo").build()));
+        subject.add(ToolExecutionResultMessage.from("1", "foo", "bar"));
+        
+        // WHEN
+        subject.add(UserMessage.from("U1"));
+        
+        // THEN
+        assertThat(subject.size()).isEqualTo(5);
+        var messages = subject.getCopy();
+        // AND
+        assertThat(ChatMessageUtil.toString(messages.getLast())).contains("U1");
+        // AND
+        assertThat(subject.messageFlow()).isEqualTo("USER->TOOL_REQUEST->TOOL_EXECUTION_RESULT->AI->USER");
     }
 
 }

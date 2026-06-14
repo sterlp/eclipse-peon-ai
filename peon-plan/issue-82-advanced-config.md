@@ -1,5 +1,5 @@
 # Plan: Issue #82 - Advanced Configuration Page & Skills Directory Resolution
-
+https://github.com/sterlp/eclipse-peon-ai/issues/82
 ## Overview
 Split AI Peon configuration into simple and advanced views, add per-agent model selection (search, plan, dev), and ensure skills/commands directories resolve to either `.claude` or `.llmpeon` at first launch.
 

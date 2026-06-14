@@ -88,7 +88,9 @@ public abstract class AbstractChatService {
         }
         
         if (StringUtil.hasValue(message)) contents.add(message);
-        if (contents.size() == 1) {
+        if (contents.isEmpty()) {
+            // nothing
+        } else if (contents.size() == 1) {
             addMessage(UserMessage.from(contents.getFirst()));
         } else {
             var m = contents.stream().map(dev.langchain4j.data.message.TextContent::new)

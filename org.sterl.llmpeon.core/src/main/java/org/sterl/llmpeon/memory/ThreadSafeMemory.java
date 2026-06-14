@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.shared.StringUtil;
@@ -32,12 +31,21 @@ public class ThreadSafeMemory {
      * 2. Tool-Messages NUR nach Assistant-Messages MIT tool_calls erlaubt
      * 3. Rollen müssen alternieren: user/assistant/user/assistant
      * 4. Nach User/System darf KEIN Tool kommen!
+     * 
+     * https://developers.openai.com/api/docs/guides/function-calling
      */
     public synchronized ThreadSafeMemory add(ChatMessage message) {
         if (message instanceof UserMessage num 
                 && (!memory.isEmpty() && memory.getLast() instanceof UserMessage lum)) {
             memory.removeLast();
             memory.add(ChatMessageUtil.join(lum, num));
+        } else if (message instanceof UserMessage num 
+                && (!memory.isEmpty() && memory.getLast() instanceof ToolExecutionResultMessage tR)) {
+            // https://github.com/sterlp/eclipse-peon-ai/issues/87
+            // this can happen e.g. or rate limits or server errors...
+            log.warn("Detected tool result without AI response! {}", tR.id());
+            memory.add(AiMessage.from("ok"));
+            memory.add(num); 
         } else {
             memory.add(message); 
         }
@@ -76,9 +84,15 @@ public class ThreadSafeMemory {
 
     public synchronized String messageFlow() {
         String flow = memory.stream()
-                .map(m -> m.type().name())
+                .map(this::messageType)
                 .collect(Collectors.joining("->"));
         return flow;
+    }
+    
+    private String messageType(ChatMessage cm) {
+        if (cm == null) return "";
+        if (cm instanceof AiMessage ai && ai.hasToolExecutionRequests()) return "TOOL_REQUEST";
+        return cm.type().name();
     }
 
     public synchronized void addResult(ChatResponse response, List<ToolExecutionResultMessage> toolResult) {
