@@ -9,35 +9,30 @@ import java.util.function.Predicate;
 import org.sterl.llmpeon.agent.AiCompressorAgent;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.model.AiModel;
+import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
-import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import lombok.Getter;
 
 public abstract class AbstractChatService {
 
-    protected final ChatMemory memory = MessageWindowChatMemory.builder()
-            .id(this)
-            .maxMessages(500000)
-            .build();
+    @Getter
+    protected final ThreadSafeMemory memory = new ThreadSafeMemory();
     protected final ConfiguredChatModel configuredModel;
 
     protected final ToolService toolService;
     
     private final List<ChatMessage> staticContext = new ArrayList<>();
     private final List<String> userContextInformations = new ArrayList<>();
-    private volatile int contextTokenSize = 0;
 
     /**
      * One-shot system prompt set by a slash command invocation. When non-null the next call to
@@ -69,24 +64,21 @@ public abstract class AbstractChatService {
     }
 
     public int tokenContextUsedInPercent() {
-        float used = contextTokenSize;
+        float used = memory.getTotalTokenUsed();
         if (used < 100) return 0;
         return Math.round(used / Math.min(configuredModel.getAutoCompactAfter(), 4000));
     }
 
     public boolean hasUserText(String message) {
         if (StringUtil.hasNoValue(message)) return true;
-        return this.memory.messages().stream()
-            .filter(m -> m instanceof UserMessage)
-            .map(m -> (UserMessage)m)
-            .anyMatch(um -> ChatMessageUtil.toString(um).contains(message));
+        return this.memory.containsUserMessage(message);
     }
 
     public ChatResponse call(String message, AiMonitor monitor) {
         monitor = AiMonitor.nullSafety(monitor);
         monitor.onCallStart(message);
         // auto compress if we are close to full before we start
-        if (configuredModel.getAutoCompactAfter() < contextTokenSize) compressContext(monitor);
+        if (configuredModel.getAutoCompactAfter() < memory.getTotalTokenUsed()) compressContext(monitor);
         
         var contents = new ArrayList<String>();
         if (userContextInformations.size() > 0) {
@@ -116,11 +108,9 @@ public abstract class AbstractChatService {
                     .toolFilter(getToolFilter())
                     .includeMcpTools(includesMcpTools())
                     .temperature(getTemperature())
-                    .onLoop(this::updateTokenCount)
                     .build()
                 );
 
-        updateTokenCount(response);
         monitor.onCallCompleted(response, Duration.between(start, Instant.now()));
         return response;
     }
@@ -129,10 +119,10 @@ public abstract class AbstractChatService {
         var response = new AiCompressorAgent(
                     configuredModel.getChatModel(), 
                     configuredModel.getConfig().getDevTemperature() < 1.0 ? 0.2 : null)
-                .call(memory.messages(), monitor);
+                .call(memory.getCopy(), monitor);
+        
         memory.clear();
-        memory.add(AiMessage.from("[Context summary]\n" + response.aiMessage().text()));
-        updateTokenCount(response);
+        memory.addResult(response);
         return response;
     }
 
@@ -156,7 +146,6 @@ public abstract class AbstractChatService {
 
     public void clear() {
         memory.clear();
-        contextTokenSize = 0;
     }
 
     /**
@@ -166,10 +155,9 @@ public abstract class AbstractChatService {
      * 4. Nach User/System darf KEIN Tool kommen!
      */
     public void addMessage(ChatMessage message) {
-        ChatMessageUtil.addMessageToMemory(memory, message);
+        memory.add(message);
     }
-    public List<ChatMessage> getMessages() { return memory.messages(); }
-    public int getContextSize() { return contextTokenSize; }
+    public int getContextSize() { return memory.getTotalTokenUsed(); }
     public int getAutoCompactAfter() { return configuredModel.getAutoCompactAfter(); }
 
     private List<ChatMessage> buildStaticMessages(AiMonitor monitor) {
@@ -201,9 +189,5 @@ public abstract class AbstractChatService {
         var value = oneShotSystemPrompt;
         oneShotSystemPrompt = null;
         return value;
-    }
-
-    private void updateTokenCount(ChatResponse response) {
-        contextTokenSize = ChatMessageUtil.getTokenCount(response, memory.messages());
     }
 }

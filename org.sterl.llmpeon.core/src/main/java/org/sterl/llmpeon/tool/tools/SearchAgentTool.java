@@ -2,6 +2,7 @@ package org.sterl.llmpeon.tool.tools;
 
 import java.util.Arrays;
 
+import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.StringUtil;
@@ -11,7 +12,6 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 
 // TODO move to service/agent
 public class SearchAgentTool extends AbstractTool {
@@ -29,7 +29,7 @@ public class SearchAgentTool extends AbstractTool {
         ArgsUtil.requireNonBlank(prompt, "prompt");
 
         try {
-            var messages = MessageWindowChatMemory.withMaxMessages(5000);
+            var messages = new ThreadSafeMemory();
             messages.add(UserMessage.from(prompt));
 
             var devTemp = this.request.getConfig().getDevTemperature();

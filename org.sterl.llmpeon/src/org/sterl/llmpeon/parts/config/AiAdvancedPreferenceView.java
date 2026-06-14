@@ -20,6 +20,9 @@ public class AiAdvancedPreferenceView extends FieldEditorPreferencePage implemen
 
     @Override
     public void createFieldEditors() {
+        addField(new IntegerFieldEditor(PeonConstants.PREF_TIMEOUT, "Timeout in seconds (default 180s):",
+                getFieldEditorParent()));
+        
         addField(new StringFieldEditor(PeonConstants.PREF_MODEL, "Default Model:", getFieldEditorParent()));
         /*
         addField(new StringFieldEditor(PeonConstants.PREF_SEARCH_MODEL, "Search Model (leave empty to use default):", getFieldEditorParent()));

@@ -7,6 +7,7 @@ import static org.junit.Assume.assumeTrue;
 import org.junit.Test;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.parts.tools.EclipseBuildTool;
 import org.sterl.llmpeon.parts.tools.EclipseCodeNavigationTool;
 import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
@@ -15,7 +16,6 @@ import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 
 public class EclipseWorkspaceReadFileToolTest extends AbstractTest {
 
@@ -171,7 +171,7 @@ public class EclipseWorkspaceReadFileToolTest extends AbstractTest {
         // WHEN
         var content = service.execute(tr,
                 ToolLoopRequest.builder()
-                    .memory(MessageWindowChatMemory.withMaxMessages(10))
+                    .memory(new ThreadSafeMemory())
                     .chatModel(new ConfiguredChatModel(LlmConfig.newOpenAi("foo")))
                     .build());
         

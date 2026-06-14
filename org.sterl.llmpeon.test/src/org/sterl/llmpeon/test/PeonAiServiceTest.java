@@ -76,7 +76,7 @@ public class PeonAiServiceTest  extends AbstractTest {
         aiService.getDeveloperService().call("Ping", null);
         
         // THEN
-        var msg = aiService.getDeveloperService().getMessages();
+        var msg = aiService.getDeveloperService().getMemory().getCopy();
         assertEquals(ChatMessageUtil.toString(msg.get(0)), "Ping");
         assertEquals(ChatMessageUtil.toString(msg.get(1)), "Pong");
     }

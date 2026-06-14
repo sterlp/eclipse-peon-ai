@@ -57,6 +57,6 @@ class AiCompressorAgentTest {
         assertTrue(result.aiMessage().text().contains("WHAT"));
 
         // AND
-        assertTrue(subject.getMessages().size() <= 2, "Chat messages aren't reduced! Still " + subject.getMessages().size());
+        assertTrue(subject.getMemory().size() <= 2, "Chat messages aren't reduced! Still " + subject.getMemory().size());
     }
 }

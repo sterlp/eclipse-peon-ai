@@ -24,6 +24,7 @@ import org.eclipse.core.runtime.preferences.IEclipsePreferences.IPreferenceChang
 import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.e4.ui.di.Focus;
 import org.eclipse.e4.ui.services.IServiceConstants;
+import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jface.text.ITextSelection;
@@ -44,6 +45,7 @@ import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.McpPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.VoicePreferenceInitializer;
+import org.sterl.llmpeon.parts.log.EclipseSlf4jLogger;
 import org.sterl.llmpeon.parts.model.UserContext;
 import org.sterl.llmpeon.parts.monitor.EclipseAiMonitor;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
@@ -69,7 +71,6 @@ import org.sterl.llmpeon.voice.VoiceInputService;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.RateLimitException;
-import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -258,7 +259,7 @@ public class AIChatView implements EclipseAiMonitor {
             if (ss.isEmpty()) o = null;
             else o = ss.getFirstElement();
         }
-
+        userContext.setClassFile(null);
         final IResource selection;
         if (o instanceof ICompilationUnit cu) {
             selection = cu.getResource();
@@ -272,6 +273,9 @@ public class AIChatView implements EclipseAiMonitor {
             selection = f;
         } else if (o instanceof IJavaProject jp) {
             selection = jp.getResource();
+        } else if(o instanceof IClassFile cf) {
+            userContext.setClassFile(cf);
+            selection = cf.getResource();
         } else if (o instanceof IWorkingSet) {
             selection = null;
         } else if (o != null) {
@@ -397,7 +401,7 @@ public class AIChatView implements EclipseAiMonitor {
         chatHistory.clear();
         refreshStatusLine();
         actionsBar.updateModeUI(aiService.getPeonMode());
-        aiService.getActiveService().getMessages().forEach(chatHistory::appendMessage);
+        aiService.getActiveService().getMemory().forEach(chatHistory::appendMessage);
     }
 
     // -------------------------------------------------------------------------
@@ -429,6 +433,7 @@ public class AIChatView implements EclipseAiMonitor {
         refreshStatusLine();
         reloadModelsIfNeeded();
         applyShellCommandConfirmation();
+        EclipseSlf4jLogger.setDebug(config.isDebugMode());
     }
 
     private void applyMcpConfig() {
@@ -575,7 +580,7 @@ public class AIChatView implements EclipseAiMonitor {
 
     private void doCompressContext() {
         var active = aiService.getActiveService();
-        if (active.getMessages().isEmpty()) return;
+        if (active.getMemory().size() == 0) return;
         lockWhileWorking(true);
         Job.create("Compressing context", monitor -> {
             monitor.beginTask("Compressing chat", 1);
@@ -603,7 +608,7 @@ public class AIChatView implements EclipseAiMonitor {
         var active = aiService.getActiveService();
 
         final var text = StringUtil.strip(chatInput.getText().trim());
-        if (StringUtil.hasNoValue(text) && active.getMessages().isEmpty()) return;
+        if (StringUtil.hasNoValue(text) && active.getMemory().size() == 0) return;
 
         if (StringUtil.hasValue(text)) {
             chatHistory.appendMessage(new SimpleMessage(Type.USER, text));
@@ -639,7 +644,7 @@ public class AIChatView implements EclipseAiMonitor {
 
     private void handleDoneChatResponse(ChatResponse cr,
             IProgressMonitor monitor) {
-        if (lastAppliedConfig != null && lastAppliedConfig.isDebugMode()) {
+        if (aiService.getConfig().isDebugMode()) {
             LOG.info("Chatreponse: " + (cr == null ? "null" : cr.aiMessage()));
         }
         monitor.done();
@@ -659,6 +664,9 @@ public class AIChatView implements EclipseAiMonitor {
             return null;
         }
         LOG.warn("Failed to call LLM " + aiService.getConfig(), e);
+        if (aiService.getConfig().isDebugMode()) {
+            aiService.getActiveService().getMemory().printMessages();
+        }
         onChatResponse(new SimpleMessage(Type.PROBLEM, e.getMessage()));
         return e;
     }

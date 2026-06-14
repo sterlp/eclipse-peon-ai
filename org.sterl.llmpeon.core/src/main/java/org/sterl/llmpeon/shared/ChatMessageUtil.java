@@ -9,7 +9,6 @@ import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
 public class ChatMessageUtil {
@@ -32,24 +31,6 @@ public class ChatMessageUtil {
     private static int charCount(ChatMessage msg) {
         return toString(msg).length();
     }
-    
-    /**
-     * 1. System-Messages nur am Anfang erlaubt
-     * 2. Tool-Messages NUR nach Assistant-Messages MIT tool_calls erlaubt
-     * 3. Rollen müssen alternieren: user/assistant/user/assistant
-     * 4. Nach User/System darf KEIN Tool kommen!
-     */
-    public static void addMessageToMemory(ChatMemory memory, ChatMessage message) {
-        synchronized (memory) {
-            if (message instanceof UserMessage num 
-                    && (!memory.messages().isEmpty() && memory.messages().getLast() instanceof UserMessage lum)) {
-                var messages = memory.messages();
-                memory.set(UserMessage.replaceLast(messages, ChatMessageUtil.join(lum, num)));
-            } else {
-                memory.add(message); 
-            }
-        }
-    }
 
     public static UserMessage join(UserMessage m1, UserMessage m2) {
         List<Content> data = new LinkedList<>();
@@ -66,21 +47,22 @@ public class ChatMessageUtil {
     }
     
     public static String toString(ChatMessage msg) {
+        return toString(msg, true, true);
+    }
+    
+    public static String toString(ChatMessage msg, boolean includeToolResult, boolean includeThink) {
         var result = new StringBuilder();
         if (msg instanceof UserMessage m) {
             if (m.hasSingleText()) {
                 result.append(m.singleText());
             } else {
-                m.contents().stream()
-                    .filter(s -> s instanceof TextContent)
-                    .map(s -> ((TextContent)s))
-                    .forEach(s -> result.append(s.text()).append("\n"));
+                result.append(toString(m.contents()));
             }
         } else if (msg instanceof AiMessage m) {
             if (StringUtil.hasValue(m.text())) {
                 result.append(m.text()).append("\n");
             }
-            if (StringUtil.hasValue(m.thinking())) {
+            if (includeThink && StringUtil.hasValue(m.thinking())) {
                 result.append("AI thinking:\n").append(m.thinking()).append("\n");
             }
             if (m.hasToolExecutionRequests()) {
@@ -90,10 +72,21 @@ public class ChatMessageUtil {
                           .append("\narguments:  ").append(tr.arguments());
                 }
             }
-        } else if (msg instanceof ToolExecutionResultMessage tr && tr.hasSingleText()) {
+        } else if (includeToolResult && msg instanceof ToolExecutionResultMessage tr) {
+            var text = tr.hasSingleText() ? tr.text() : toString(tr.contents());
             result.append("\ntool result for id: ").append(tr.id())
-                  .append("\n").append(tr.text()).append("\n");
+                  .append("\n").append(text).append("\n");
         }
         return result.toString().strip();
+    }
+    
+    public static String toString(List<Content> contents) {
+        var result = new StringBuilder();
+        if (contents == null || contents.isEmpty()) return "";
+        contents.stream()
+            .filter(s -> s instanceof TextContent)
+            .map(s -> ((TextContent)s))
+            .forEach(s -> result.append(s.text()).append("\n"));
+        return result.toString();
     }
 }

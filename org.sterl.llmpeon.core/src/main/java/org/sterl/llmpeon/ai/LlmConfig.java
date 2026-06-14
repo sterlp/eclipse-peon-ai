@@ -5,12 +5,12 @@ import java.net.Socket;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.sterl.llmpeon.ai.model.AiModel;
-import org.sterl.llmpeon.shared.StringUtil;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,7 +26,7 @@ import lombok.ToString;
 @AllArgsConstructor
 @Getter
 @EqualsAndHashCode
-@ToString(of = {"providerType", "url", "model", "thinkingEnabled", "sendThinkingEnabled", "planTemperature", "devTemperature"})
+@ToString(exclude = {"apiKey", "headerParams"})
 public class LlmConfig {
 
     @Default
@@ -34,7 +34,9 @@ public class LlmConfig {
     private final AiProvider providerType = AiProvider.OLLAMA;
     @Default
     private final String model = null;
-
+    @NonNull
+    @Default
+    private final Duration timeout = Duration.ofMinutes(3);
     @Default
     private final String url = null;
     @Default

@@ -41,7 +41,7 @@ public enum AiProvider {
         @Override
         StreamingChatModel buildModel(LlmConfig c) {
             var builder = OllamaStreamingChatModel.builder()
-                    .timeout(TIMEOUT)
+                    .timeout(c.getTimeout())
                     .baseUrl(c.getUrl())
                     .modelName(c.getModel())
                     .think(c.isThinkingEnabled())
@@ -74,7 +74,7 @@ public enum AiProvider {
         @Override
         StreamingChatModel buildModel(LlmConfig c) {
             var builder = OpenAiStreamingChatModel.builder()
-                    .timeout(TIMEOUT)
+                    .timeout(c.getTimeout())
                     .baseUrl(c.getUrl())
                     .modelName(c.getModel())
                     .apiKey(c.getApiKey())
@@ -105,7 +105,7 @@ public enum AiProvider {
         @Override
         StreamingChatModel buildModel(LlmConfig c) {
             var result = OpenAiOfficialResponsesStreamingChatModel.builder()
-                    .timeout(TIMEOUT)
+                    .timeout(c.getTimeout())
                     .baseUrl(c.getUrl())
                     .modelName(c.getModel())
                     .apiKey(c.getApiKey())
@@ -146,7 +146,7 @@ public enum AiProvider {
                     .httpClientBuilder(HttpClient.newBuilder()
                             .version(HttpClient.Version.HTTP_1_1));
             var builder = OpenAiStreamingChatModel.builder()
-                    .timeout(TIMEOUT)
+                    .timeout(c.getTimeout())
                     .baseUrl(c.getUrl())
                     .modelName(c.getModel())
                     .apiKey(StringUtil.hasValue(c.getApiKey()) ? c.getApiKey() : "lm-studio")
@@ -226,7 +226,7 @@ public enum AiProvider {
         @Override
         StreamingChatModel buildModel(LlmConfig c) {
             var builder = MistralAiStreamingChatModel.builder()
-                    .timeout(TIMEOUT)
+                    .timeout(c.getTimeout())
                     .modelName(c.getModel())
                     .apiKey(c.getApiKey())
                     .returnThinking(c.isThinkingEnabled())
@@ -257,7 +257,7 @@ public enum AiProvider {
         @Override
         StreamingChatModel buildModel(LlmConfig c) {
             var builder = AnthropicStreamingChatModel.builder()
-                    .timeout(TIMEOUT)
+                    .timeout(c.getTimeout())
                     .modelName(c.getModel())
                     .apiKey(c.getApiKey());
             if (c.getUrl() != null && c.getUrl().length() > 4) {
@@ -312,7 +312,7 @@ public enum AiProvider {
         @Override
         StreamingChatModel buildModel(LlmConfig c) {
             var builder = OpenAiOfficialResponsesStreamingChatModel.builder()
-                    .timeout(TIMEOUT)
+                    .timeout(c.getTimeout())
                     .baseUrl(baseUrl(c))
                     .apiKey(c.getApiKey() != null && !c.getApiKey().isBlank() ? c.getApiKey() : "not-configured")
                     .modelName(c.getModel())
@@ -368,7 +368,7 @@ public enum AiProvider {
             headers.putAll(c.getHeaderParams());
             
             var builder = OpenAiStreamingChatModel.builder()
-                    .timeout(TIMEOUT)
+                    .timeout(c.getTimeout())
                     .baseUrl(baseUrl(c))
                     .apiKey(c.getApiKey() != null && !c.getApiKey().isBlank() ? c.getApiKey() : "not-configured")
                     .modelName(c.getModel())
@@ -399,7 +399,6 @@ public enum AiProvider {
     };
 
     // Streaming only needs to cover time-to-first-token (connect + model warmup), not the full response duration.
-    private static final Duration TIMEOUT = Duration.ofMinutes(3);
     private static final Duration MODEL_TIMEOUT = SharedHttpClient.MODEL_TIMEOUT;
 
     // --- Public API ---

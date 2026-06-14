@@ -3,6 +3,7 @@ package org.sterl.llmpeon.parts.config;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -34,6 +35,8 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
         defaults.put(PeonConstants.PREF_PROVIDER_TYPE, DEFAULT.getProviderType().name());
         defaults.put(PeonConstants.PREF_MODEL, StringUtil.stripToEmpty(DEFAULT.getModel()));
         defaults.put(PeonConstants.PREF_URL, StringUtil.stripToEmpty(DEFAULT.getUrl()));
+        defaults.putLong(PeonConstants.PREF_TIMEOUT, DEFAULT.getTimeout().toSeconds());
+        
         defaults.putInt(PeonConstants.PREF_MAX_TOKENS, 0);
         defaults.putInt(PeonConstants.PREF_TOKEN_WINDOW, DEFAULT.getAutoCompactAfter());
         defaults.putBoolean(PeonConstants.PREF_THINKING_ENABLED, DEFAULT.isThinkingEnabled());
@@ -74,6 +77,7 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
             .providerType(AiProvider.parse(prefs.get(PeonConstants.PREF_PROVIDER_TYPE, DEFAULT.getProviderType().name())))
             .model(prefs.get(PeonConstants.PREF_MODEL, DEFAULT.getModel()))
             .url(prefs.get(PeonConstants.PREF_URL, DEFAULT.getUrl()))
+            .timeout(Duration.ofSeconds(prefs.getLong(PeonConstants.PREF_TIMEOUT, 180)))
             .autoCompactAfter(prefs.getInt(PeonConstants.PREF_TOKEN_WINDOW, DEFAULT.getAutoCompactAfter()))
             .maxTokens(prefs.getInt(PeonConstants.PREF_MAX_TOKENS, 0))
             .thinkingEnabled(prefs.getBoolean(PeonConstants.PREF_THINKING_ENABLED, DEFAULT.isThinkingEnabled()))

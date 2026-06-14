@@ -10,7 +10,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.jspecify.annotations.NonNull;
 import org.sterl.llmpeon.mcp.McpServerConfig;
 import org.sterl.llmpeon.mcp.McpService;
-import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 import org.sterl.llmpeon.tool.model.ToSimpleMessage;
@@ -104,7 +103,7 @@ public class ToolService {
 
         do {
             var messages = new ArrayList<ChatMessage>(toOneSystemMessage(req.staticMessages));
-            messages.addAll(req.getMemory().messages());
+            req.getMemory().addMemoryTo(messages);
 
             var builder = ChatRequest.builder()
                     .messages(messages)
@@ -119,9 +118,7 @@ public class ToolService {
             var isToolrequest = response.aiMessage().hasToolExecutionRequests();
             var hasResponseMessage = StringUtil.hasValue(response.aiMessage().text());
             var hasThink = StringUtil.hasValue(response.aiMessage().thinking());
-            
             shouldLoop = isToolrequest || (hasThink && !hasResponseMessage);
-            if (shouldLoop) req.onLoop.accept(response);
 
             // we always add the AI messages later
             // 1. we may cancel and have tool request with no response -> error in next cycle
@@ -129,17 +126,17 @@ public class ToolService {
             if (isToolrequest) {
                 stuck = 0; // reset on productive tool use
                 var tR = runAllTools(response, req);
-                req.getMemory().add(response.aiMessage());
-                tR.forEach(req.getMemory()::add);
                 
+                //
+                req.getMemory().addResult(response, tR);
                 addCompactHintIfNeeded(req, response, false);
             } else if (hasResponseMessage) {
-                req.getMemory().add(response.aiMessage());
+                req.getMemory().addResult(response);
                 break; // done
             } else if (hasThink) {
                 // https://github.com/langchain4j/langchain4j/issues/4786
                 ++stuck;
-                req.getMemory().add(response.aiMessage());
+                req.getMemory().addResult(response);
                 req.monitor.onProblem("AI hangs - only thinking returned times: " + stuck);
                 if (stuck > MAX_STUCK_ITERATIONS) break;
 
@@ -155,13 +152,12 @@ public class ToolService {
         var compactLimit = req.getConfig().getAutoCompactAfter();
         if (compactLimit <= 0 && !force) return;
 
-        var messages = req.getMemory().messages();
-        if (messages.size() < 10) return;
-        var totalUsed = ChatMessageUtil.getTokenCount(response, messages);
+        var memory = req.getMemory();
+        if (memory.size() < 10) return;
         
-        if (force || totalUsed > compactLimit * 0.95) {
+        if (force || memory.getTotalTokenUsed() > compactLimit * 0.95) {
             req.addMessage(new UserMessage(COMPACT_HINT + "\n" 
-                + totalUsed + " tokens of " + compactLimit + " used."));
+                + memory.getTotalTokenUsed() + " tokens of " + compactLimit + " used."));
         }
     }
 

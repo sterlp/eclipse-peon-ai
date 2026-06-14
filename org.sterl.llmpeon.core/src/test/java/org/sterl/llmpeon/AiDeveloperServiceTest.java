@@ -17,12 +17,9 @@ import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
-import org.sterl.llmpeon.tool.SmartTool;
-import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 
-import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -84,7 +81,7 @@ public class AiDeveloperServiceTest {
 
         // THEN
         verify(cm, times(1)).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
-        var mem = subject.getMessages();
+        var mem = subject.getMemory().getCopy();
         assertThat(((UserMessage)mem.get(0)).singleText()).contains("Foo");
         assertThat(mem.get(1)).isEqualTo(aiMessage);
         // AND
@@ -116,7 +113,7 @@ public class AiDeveloperServiceTest {
         // THEN
         verify(cm, times(3)).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
         // AND
-        var mem = subject.getMessages();
+        var mem = subject.getMemory().getCopy();
         // many models require the first message being a user message
         assertThat(((UserMessage)mem.get(0)).singleText()).contains("Session compacted");
         assertThat(mem.get(1)).isEqualTo(CALL_ME);

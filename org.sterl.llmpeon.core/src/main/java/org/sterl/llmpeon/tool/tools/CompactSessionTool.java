@@ -21,8 +21,9 @@ public class CompactSessionTool extends AbstractTool {
         var cfg = this.request.getConfig();
         var model = this.request.getChatModel();
         var temp = cfg.getDevTemperature() < 1 ? Math.min(cfg.getDevTemperature() / 2, 0.3) : 1;
+
         var summary = new AiCompressorAgent(model, temp)
-                .call(this.request.getMemory().messages(), monitor);
+                .call(this.request.getMemory().getCopy(), monitor);
 
         // only if we have a valid result -- also ensure the first message is a user message, some LLMs need this ...
         var aiMsg = summary.aiMessage();

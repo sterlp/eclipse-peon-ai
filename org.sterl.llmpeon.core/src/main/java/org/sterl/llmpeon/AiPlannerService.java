@@ -5,7 +5,6 @@ import java.util.function.Predicate;
 
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.prompt.PromptLoader;
-import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
@@ -44,12 +43,7 @@ public class AiPlannerService extends AbstractChatService {
      * Used during PLAN -> DEV handoff to pass the plan to the developer service.
      */
     public Optional<AiMessage> extractLastPlan() {
-        var messages = getMessages();
-        for (int i = messages.size() - 1; i >= 0; i--) {
-            if (messages.get(i) instanceof AiMessage ai && StringUtil.hasValue(ai.text())) {
-                return Optional.of(ai);
-            }
-        }
-        return Optional.empty();
+        var message = memory.getLastOf(AiMessage.class); // getMessages();
+        return Optional.ofNullable(message);
     }
 }

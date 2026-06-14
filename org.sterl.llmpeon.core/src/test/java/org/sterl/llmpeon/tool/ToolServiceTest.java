@@ -17,12 +17,12 @@ import java.util.function.Function;
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.tool.tools.WebFetchTool;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -47,7 +47,7 @@ class ToolServiceTest {
             inv.getArgument(1, StreamingChatResponseHandler.class).onCompleteResponse(answer);
             return null;
         }).when(cm).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
-        var memory = MessageWindowChatMemory.withMaxMessages(50);
+        var memory = new ThreadSafeMemory();
         // WHEN
         memory.add(UserMessage.from("Hello"));
         var response = subject.executeLoop(
@@ -71,7 +71,7 @@ class ToolServiceTest {
             if (think.getAndSet(false)) return ChatResponse.builder().aiMessage(aiThinkMsg).build();
             return ChatResponse.builder().aiMessage(aiResponse).build();
         });
-        var memory = MessageWindowChatMemory.withMaxMessages(50);
+        var memory = new ThreadSafeMemory();
         // WHEN
         memory.add(UserMessage.from("Hello"));
         subject.executeLoop(ToolLoopRequest.builder().memory(memory).chatModel(new ConfiguredChatModel(LlmConfig.newOpenAi("foo"), cm)).build());
@@ -79,9 +79,10 @@ class ToolServiceTest {
         // THEN
         verify(cm, times(2)).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
         // AND
-        assertThat(memory.messages().get(1)).isEqualTo(aiThinkMsg);
-        assertThat(((UserMessage)memory.messages().get(2)).singleText()).contains("ask a clarifying question");
-        assertThat(memory.messages().get(3)).isEqualTo(aiResponse);
+        var messages = memory.getCopy();
+        assertThat(messages.get(1)).isEqualTo(aiThinkMsg);
+        assertThat(((UserMessage)messages.get(2)).singleText()).contains("ask a clarifying question");
+        assertThat(messages.get(3)).isEqualTo(aiResponse);
         // AND last request contains all our messages
         // 1 is the Hello
         assertThat(requestRef.get().messages().get(1)).isEqualTo(aiThinkMsg);
@@ -101,7 +102,7 @@ class ToolServiceTest {
             return ChatResponse.builder().aiMessage(aiMessage).build();
         });
         
-        var memory = MessageWindowChatMemory.withMaxMessages(50);
+        var memory = new ThreadSafeMemory();
         memory.add(userMessage);
         // WHEN
         subject.executeLoop(ToolLoopRequest.builder().memory(memory).chatModel(new ConfiguredChatModel(LlmConfig.newOpenAi("foo"), cm))
@@ -113,8 +114,9 @@ class ToolServiceTest {
         assertThat(requestRef.get().messages().get(1)).isEqualTo(userMessage);
         assertThat(((SystemMessage)requestRef.get().messages().get(0)).text()).contains("sys1", "sys2");
         // AND
-        assertThat(memory.messages().get(0)).isEqualTo(userMessage);
-        assertThat(memory.messages().get(1)).isEqualTo(aiMessage);
+        var messages = memory.getCopy();
+        assertThat(messages.get(0)).isEqualTo(userMessage);
+        assertThat(messages.get(1)).isEqualTo(aiMessage);
     }
     
     public StreamingChatModel mockWithHandler(Function<ChatRequest, ChatResponse> fn) {

@@ -4,6 +4,8 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.jdt.core.IClassFile;
+import org.eclipse.jdt.core.IOrdinaryClassFile;
 import org.eclipse.jface.text.ITextSelection;
 import org.sterl.llmpeon.StandingOrdersBuilder.MessageProvider;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
@@ -16,6 +18,7 @@ public class UserContext implements MessageProvider {
     private volatile boolean projectPinned = false;
 
     private volatile IResource selectedResource;
+    private volatile IClassFile clazz;
     private volatile ITextSelection textSelection;
 
     @Override
@@ -35,7 +38,8 @@ public class UserContext implements MessageProvider {
         if (hasTextSelection()) {
             if (selectedResource == null || !(selectedResource instanceof IFile)) {
                 sb.append("\n\n```\n" + FileLines.format(textSelection.getText(), textSelection.getStartLine() + 1) + "\n```");
-                sb.append("\n").append(selectedResource == null ? "selected content not in a file." : "In " + selectedResource.getName() + " not a file.");
+                if (clazz != null) sb.append("\n").append(getSelectedFile());
+                else sb.append("\nselected content not in a file.");
             } else {
                 sb.append("\n").append(JdtUtil.pathOf(selectedResource)).append(" full content. Selected lines ").append(lines(textSelection)).append(":\n");
                 try {
@@ -46,13 +50,19 @@ public class UserContext implements MessageProvider {
             }
         } else if (selectedResource != null) {
             sb.append("\nFile selected: ").append(JdtUtil.pathOf(selectedResource));
+        } else if (clazz != null) {
+            sb.append("\nJava type selected: ").append(getName(clazz));
         }
     }
     
     public String getSelectedFile() {
         var open = EclipseUtil.getOpenFile();
         if (hasTextSelection()) {
-            if (open.isEmpty()) return "Text line " + lines(textSelection);
+            if (open.isEmpty()) {
+                var name = "Text lines ";
+                if (clazz != null) name = getName(clazz);
+                return name + ":" + lines(textSelection);
+            }
             else {
                 selectedResource = open.get();
                 return open.get().getName() + ":" + lines(textSelection);
@@ -60,8 +70,20 @@ public class UserContext implements MessageProvider {
         } else {
             if (selectedResource == null && open.isPresent()) return open.get().getName();
             if (selectedResource instanceof IFile rf) return rf.getName();
+            if (clazz != null) return getName(clazz);
         }
         return null;
+    }
+    
+    private static String getName(IClassFile file) {
+        if (file instanceof IOrdinaryClassFile of) {
+            return of.getType().getFullyQualifiedName();
+        }
+        var parent = file.getParent();
+        var name = file.getElementName();
+        if (name == null) return "";
+        var parentName = parent == null ? "" : parent.getElementName() + ".";
+        return parentName + name.replace(".class", "");
     }
     
     public boolean hasTextSelection() {
@@ -71,7 +93,7 @@ public class UserContext implements MessageProvider {
     
     private static String lines(ITextSelection selection) {
         if (selection == null || selection.isEmpty()) return "";
-        return (selection.getStartLine() + 1) + " - " + (selection.getEndLine() + 1);
+        return (selection.getStartLine() + 1) + "-" + (selection.getEndLine() + 1);
     }
     
     public IResource getSelectedResource() {
@@ -96,6 +118,7 @@ public class UserContext implements MessageProvider {
 
     public void setSelectedResource(IResource selectedResource) {
         this.selectedResource = selectedResource;
+        if (this.selectedResource != null) this.clazz = null;
     }
 
     public boolean isProjectPinned() {
@@ -104,5 +127,9 @@ public class UserContext implements MessageProvider {
 
     public void setProjectPinned(boolean projectPinned) {
         this.projectPinned = projectPinned;
+    }
+
+    public void setClassFile(IClassFile cf) {
+        this.clazz = cf;
     }
 }

@@ -15,10 +15,13 @@ Rules
 - Always aim for the simplest, most robust solution.
 - Deviate from a given plan only if implementation reveals a clearly better approach — and flag it explicitly.
 - If you notice yourself repeating the same reasoning step, stop and answer now.
+- Never change test assertions to make tests pass — fix the implementation instead; only update tests when requirements explicitly change in a plan or instruction.
+- Never expose secrets, credentials, or internal paths in code, logs, or output.
 - If a needed tool doesn't exist, describe what the developer should implement or do.
 - Ask when file placement or intent is ambiguous.
 - Before running a non-trivial shell command, explain what it does and why.
-- Never mark a task complete without running compile and tests to verify.
+- Edit files directly; never show snippets unless explicitly asked — e.g. `explain this`.
+- After changes, run build and relevant tests — fix failures silently; only report done when both pass.
 
 Plan gate (required for complex tasks if no plan is provided)
 Present this plan and wait for developer approval before writing any code:
@@ -35,8 +38,9 @@ Conventions
 - No comments unless they convey business intent or a non-obvious decision.
 - Never commit changes unless the developer explicitly asks.
 
-SKILLS.md (auto-loaded project context)
-Contains only rules that apply to every session:
+SKILLS.md (auto-loaded by harness)
 - Remove outdated entries when encountered.
 - Correct wrong information when encountered.
 - Add only facts needed in every session — link to detail files instead of embedding them inline.
+- Load Linked AGENTS.md files in subprojects when needed. 
+- Add link to new created one

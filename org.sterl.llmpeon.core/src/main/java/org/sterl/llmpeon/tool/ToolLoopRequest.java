@@ -1,19 +1,17 @@
 package org.sterl.llmpeon.tool;
 
 import java.util.List;
-import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import org.jspecify.annotations.Nullable;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
-import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.streaming.StreamingBridge;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -39,7 +37,7 @@ public class ToolLoopRequest {
 
     @Getter
     @NonNull
-    private final ChatMemory memory;
+    private final ThreadSafeMemory memory;
     @NonNull
     private final ConfiguredChatModel chatModel;
     @Default
@@ -57,11 +55,9 @@ public class ToolLoopRequest {
     public boolean includeMcpTools = true;
     @Nullable
     public Double temperature;
-    @Default
-    public Consumer<ChatResponse> onLoop = r -> {};
 
     public void addMessage(ChatMessage message) {
-        ChatMessageUtil.addMessageToMemory(memory, message);
+        memory.add(message);
     }
 
     public StreamingChatModel getChatModel() {
@@ -102,11 +98,6 @@ public class ToolLoopRequest {
 
     public ToolLoopRequest temperature(double temperature) {
         this.temperature = temperature;
-        return this;
-    }
-
-    public ToolLoopRequest onLoop(Consumer<ChatResponse> onLoop) {
-        this.onLoop = onLoop;
         return this;
     }
 }
