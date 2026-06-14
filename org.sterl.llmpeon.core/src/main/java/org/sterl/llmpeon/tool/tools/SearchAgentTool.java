@@ -13,7 +13,6 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 
-// TODO move to service/agent
 public class SearchAgentTool extends AbstractTool {
 
     final SystemMessage system = SystemMessage.systemMessage(PromptLoader.loadWithDefault("search-agent.txt"));
@@ -33,6 +32,7 @@ public class SearchAgentTool extends AbstractTool {
             messages.add(UserMessage.from(prompt));
 
             var cfg = this.request.getConfig();
+            var modelName = cfg.getSearchModel();
             
             var request = this.request.toBuilder()
                 .staticMessages(Arrays.asList(system))
@@ -41,12 +41,14 @@ public class SearchAgentTool extends AbstractTool {
                 .memory(messages);
 
             if (cfg.getDevTemperature() < 1) request.temperature(0.3);
-            if (cfg.getSearchModel() != null) request.modelName(cfg.getSearchModel());
+            if (modelName != null) request.modelName(cfg.getSearchModel());
 
-            onTool("SearchAgent start: " + prompt);
+            onTool("SearchAgent " 
+                    + modelName == null ? "" : "(" + modelName + ")" 
+                    + " start:\n" + prompt);
             var response = toolService.executeLoop(request.build());
 
-            onTool("SearchAgent done for: " + prompt);
+            onTool("SearchAgent done.");
             String answer = response != null ? response.aiMessage().text() : null;
             return StringUtil.hasValue(answer) ? answer : "Search completed but returned no result";
 
