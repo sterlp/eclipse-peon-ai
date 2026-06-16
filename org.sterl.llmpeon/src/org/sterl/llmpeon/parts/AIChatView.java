@@ -190,7 +190,8 @@ public class AIChatView implements EclipseAiMonitor {
                 + EclipseCodeNavigationTool.GET_TYPE_SOURCE + " for java."
                 + "\nos.name: " + System.getProperty("os.name")
                 + "\nos file.separator: '" + System.getProperty("file.separator") + "'"
-                + "\nos line.separator: '" + System.lineSeparator() + "'";
+                + "\nos line.separator: '" + System.lineSeparator() + "'"
+                + "\nFile access: use workspace tools inside Eclipse. For paths outside the workspace a Disk-tool family exists; if it is not present this session, ask the user to enable it — never break out via shell for file I/O.";
 
         aiService.getDeveloperService().setStaticContext(Arrays.asList(SystemMessage.from(dateInfo)));
         aiService.getPlannerService().setStaticContext(Arrays.asList(SystemMessage.from(dateInfo)));

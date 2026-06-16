@@ -2,6 +2,7 @@
 package org.sterl.llmpeon.parts.tools;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 import org.eclipse.core.resources.IContainer;
@@ -12,12 +13,14 @@ import org.eclipse.core.resources.IResourceVisitor;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.ui.PlatformUI;
+import org.jspecify.annotations.NonNull;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.FileLines;
 import org.sterl.llmpeon.shared.FileUtils;
 import org.sterl.llmpeon.shared.StringMatcher;
+import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.AiReponseBuilder;
 
 import dev.langchain4j.agent.tool.P;
@@ -81,50 +84,63 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
         return "No eclipse file found for '" + filePath + "' use searchWorkspaceFiles to find the correct file name and path.";
     }
 
-    @Tool("Eclipse: Search workspace files by name. Use '*' to list all files recursively.")
+    @Tool("Eclipse: Find any files workspace-wide by name (*, ? wildcard supported). Default file-path finder.")
     public String searchWorkspaceFiles(
-            @P(description = "file name query - only *, ? wildcard is supported.", name = "query") 
+            @P(description = "file name query - only *, ? wildcard is supported.", name = "query")
             String query,
-            @P(description = "max results to return. 0 = unlimited.", required = false, name = "limit") 
+            @P(name = "projectName", required = false) 
+            String projectName,
+            @P(description = "max results to return. 0 = unlimited. Default 50.", required = false, name = "limit") 
             Integer inLimit) {
 
         ArgsUtil.requireNonBlank(query, "query");
-        final int limit = inLimit == null ? 0 : inLimit;
+        final int limit = inLimit == null ? 50 : inLimit;
 
         query = FileUtils.normalizePath(query);
         final var matcher = StringMatcher.wildCardMatcher(query);
-        final List<String> matches = new ArrayList<>();
-
-        for (IProject project : ResourcesPlugin.getWorkspace().getRoot().getProjects()) {
-            if (!project.isOpen()) continue;
-            try {
-                project.accept(new IResourceVisitor() {
-                    @Override
-                    public boolean visit(IResource resource) {
-                        if (limit > 0 && matches.size() >= limit) return false;
-                        if (resource.isDerived()) return false;
-                        if (resource.getType() == IResource.FILE) {
-                            var file = JdtUtil.pathOf(resource);
-                            var match = matcher.match(file)
-                                    || matcher.match(resource.getName());
-
-                            if (match && (matches.isEmpty() || isNotDerived(file))) matches.add(file);
-                        }
-                        return true;
-                    }
-                });
+        final List<String> matches = new LinkedList<>();
+        
+        var project = EclipseUtil.findOpenProject(projectName);
+        if (project.isPresent() && project.get().isOpen()) {
+            matches.addAll(searchProjectFor(project.get(), matcher, limit));
+        } else {
+            for (IProject p : ResourcesPlugin.getWorkspace().getRoot().getProjects()) {
+                if (!p.isOpen()) continue;
+                matches.addAll(searchProjectFor(p, matcher, limit - matches.size()));
                 if (limit > 0 && matches.size() >= limit) break;
-            } catch (CoreException e) {
-                throw new RuntimeException(e);
             }
         }
 
-        onTool("Search workspace for " + query + " returned " + matches.size() + " results.");
+        onTool("Search workspace " + StringUtil.trimToEmpty(projectName) + " for " + query + " returned " + matches.size() + " results.");
         String suffix = null;
         if (matches.isEmpty()) {
-            suffix =  "Use findJavaType for Java classes or " + LIST_WORKSPACE_NAME + " to explore the project structure.";
+            suffix =  "Use findJavaType for Java classes or " + LIST_WORKSPACE_NAME + " to explore the project structure. Try a wildcard e.g. *folder*FileName*.java or grepWorkspaceFiles for content search.";
         }
         return AiReponseBuilder.searchComplete(matches, suffix);
+    }
+
+    private @NonNull List<String> searchProjectFor(IProject project, final StringMatcher matcher, final int limit) {
+        var results = new LinkedList<String>();
+        try {
+            project.accept(new IResourceVisitor() {
+                @Override
+                public boolean visit(IResource resource) {
+                    if (limit > 0 && results.size() >= limit) return false;
+                    if (resource.isDerived()) return false;
+                    if (resource.getType() == IResource.FILE) {
+                        var file = JdtUtil.pathOf(resource);
+                        var match = matcher.match(file)
+                                || matcher.match(resource.getName());
+
+                        if (match && (results.isEmpty() || isNotDerived(file))) results.add(file);
+                    }
+                    return true;
+                }
+            });
+        } catch (CoreException e) {
+            throw new RuntimeException(e);
+        }
+        return results;
     }
 
     public static final String LIST_WORKSPACE_NAME = "listWorkspace";

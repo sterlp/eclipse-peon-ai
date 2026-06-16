@@ -21,6 +21,8 @@ import dev.langchain4j.agent.tool.Tool;
 
 public class EclipseGrepTool extends AbstractEclipseTool {
 
+    private static final int MAX_FILES = 100;
+
     @Tool("Eclipse: Search workspace file contents for text.")
     public String grepWorkspaceFiles(
             @P(description = "text to match with contains in content of any file", name = "query") String query,
@@ -31,7 +33,6 @@ public class EclipseGrepTool extends AbstractEclipseTool {
 
         var allProjects = path == null || path.length() <= 1;
         var matches = new LinkedHashMap<String, Integer>(); // file path -> count
-        final int MAX_FILES = 100;
 
         // Determine containers to search
         var containers = new ArrayList<IContainer>();

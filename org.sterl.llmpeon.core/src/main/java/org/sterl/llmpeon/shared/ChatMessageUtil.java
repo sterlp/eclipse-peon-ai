@@ -67,9 +67,7 @@ public class ChatMessageUtil {
             }
             if (m.hasToolExecutionRequests()) {
                 for (var tr : m.toolExecutionRequests()) {
-                    result.append("\ntool name:  ").append(tr.name())
-                          .append("\ntool id:    ").append(tr.id())
-                          .append("\narguments:  ").append(tr.arguments());
+                    result.append("\n").append(tr);
                 }
             }
         } else if (includeToolResult && msg instanceof ToolExecutionResultMessage tr) {

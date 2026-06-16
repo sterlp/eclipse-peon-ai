@@ -49,8 +49,8 @@ public class WorkspaceMemoryTool extends AbstractEclipseTool implements MessageP
     // Tools for the LLM
     // ---------------------------------------------------------------------
 
-    @Tool("Store brief, important self-corrections or personal guidelines that help you avoid repeating mistakes.\n" +
-          "For project-wide rules, conventions, or settings that all sessions should share, update AGENTS.md instead of using internal memory.\n" +
+    @Tool("Store a brief personal guideline or self-correction to keep ALWAYS, across all projects — private between you and the user.\n" +
+          "If a rule applies only to the CURRENT project and should be shared with any developer on it, put it in that project's AGENTS.md instead.\n" +
           "You have only " + MAX_ENTRIES + " memory slots, use them for highly reusable and important information.")
     public void addToMemory(
             @P(name = "text", description = "One short brief important rule, preference, or fact.") String text) {

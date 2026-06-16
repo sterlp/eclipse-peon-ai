@@ -226,7 +226,7 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
         }
     }
 
-    @Tool("Eclipse/JDT: Find workspace files/folders by name or glob (*, ?).")
+    @Tool("Eclipse/JDT: Find files by name/glob (*, ?), optionally scoped to one project. Workspace-wide or with limit: use searchWorkspaceFiles; for content: grepWorkspaceFiles.")
     public String findResource(
             @P(description = "file name or glob pattern", name = "namePattern") String namePattern,
             @P(name = "projectName", required = false) String projectName) {
