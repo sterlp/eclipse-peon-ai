@@ -12,7 +12,8 @@ import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.browser.Browser;
-import org.eclipse.swt.browser.BrowserFunction;
+import org.eclipse.swt.browser.TitleEvent;
+import org.eclipse.swt.browser.TitleListener;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.osgi.framework.FrameworkUtil;
@@ -48,19 +49,23 @@ public class ChatMarkdownWidget extends Composite {
         setLayout(new FillLayout());
 
         browser = new Browser(this, SWT.NONE);
-        new BrowserFunction(browser, "onChatViewReady") {
+
+        // BrowserFunction is not reliably supported by all SWT browser engines (e.g. WebKit2 on Linux/GTK),
+        // so we use title changes from JavaScript (document.title = "javaReady") as a ready signal instead.
+        browser.addTitleListener(new TitleListener() {
             @Override
-            public Object function(Object[] arguments) {
-                EclipseUtil.runInUiThread(parent, () -> {
-                    browserReady = true;
-                    String r;
-                    while ((r = pendingExecutions.poll()) != null) {
-                        browser.execute(r);
-                    }
-                });
-                return null;
+            public void changed(TitleEvent event) {
+                if ("javaReady".equals(event.title)) {
+                    EclipseUtil.runInUiThread(parent, () -> {
+                        browserReady = true;
+                        String r;
+                        while ((r = pendingExecutions.poll()) != null) {
+                            browser.execute(r);
+                        }
+                    });
+                }
             }
-        };
+        });
 
         clear();
     }
@@ -166,7 +171,7 @@ public class ChatMarkdownWidget extends Composite {
     }
     
     /**
-     * Reload the while view - clean everything away ....
+     * Reload the whole view - clean everything away ....
      */
     public void clear() {
         this.browserReady = false;

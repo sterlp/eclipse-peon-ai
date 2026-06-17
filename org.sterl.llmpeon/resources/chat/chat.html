@@ -381,7 +381,8 @@
         //appendMessage({role: "USER", message: "Write hello world"});
 */
 
-    if (typeof onChatViewReady === 'function') onChatViewReady();
+    // Signal to the Eclipse SWT browser that the page is ready
+    document.title = 'javaReady';
 </script>
 
 </html>
