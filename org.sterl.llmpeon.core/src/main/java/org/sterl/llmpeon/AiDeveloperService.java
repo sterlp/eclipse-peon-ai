@@ -1,6 +1,7 @@
 package org.sterl.llmpeon;
 
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
+import org.sterl.llmpeon.ai.model.AiModel;
 import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.tool.ToolService;
 
@@ -26,5 +27,9 @@ public class AiDeveloperService extends AbstractChatService {
     @Override
     public String getAgentModelName() {
         return configuredModel.getConfig().getModel();
+    }
+    
+    public boolean setModelName(AiModel modelName) {
+        return this.configuredModel.withModel(modelName);
     }
 }

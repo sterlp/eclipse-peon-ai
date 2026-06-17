@@ -4,6 +4,7 @@ import java.util.Optional;
 import java.util.function.Predicate;
 
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
+import org.sterl.llmpeon.ai.model.AiModel;
 import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
@@ -31,6 +32,23 @@ public class AiPlannerService extends AbstractChatService {
     @Override
     public String getAgentModelName() {
         return configuredModel.getConfig().getPlanModel();
+    }
+    
+    /**
+     * @return <code>true</code> if changed, <code>false</code> if already set
+     */
+    public boolean setModelName(AiModel modelName) {
+        var cfg = configuredModel.getConfig();
+        if (modelName == null || modelName.getId() == null) {
+            if (cfg.getPlanModel() == null) return false;
+            this.configuredModel.updateConfig(cfg.toBuilder().planModel(null).build());
+            return true;
+        }
+        if (!modelName.getId().equals(cfg.getPlanModel())) {
+            this.configuredModel.updateConfig(cfg.toBuilder().planModel(modelName.getId()).build());
+            return true;
+        }
+        return false;
     }
 
     @Override

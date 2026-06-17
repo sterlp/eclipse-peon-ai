@@ -54,6 +54,7 @@ public class ConfiguredChatModel {
      * 
      * @return <code>true</code> if changed, otherwise <code>false</code>
      */
+    @Deprecated
     public boolean withModel(AiModel aiModel) {
         if (StringUtil.hasNoValue(aiModel.getId())) {
             // Cannot compare — proceed to update
@@ -72,19 +73,6 @@ public class ConfiguredChatModel {
         config = builder.build();
         return true;
     }
-    
-    /**
-     * Returns a new config with the given model applied.
-     * 
-     * @return <code>true</code> if changed, otherwise <code>false</code>
-     */
-    public boolean withModelName(String aiModel) {
-        if (aiModel.equals(config.getModel())) return false;
-        
-        var builder = config.toBuilder().model(aiModel);
-        config = builder.build();
-        return true;
-    }
 
     public boolean withThinking(boolean enabled) {
         if (config.isThinkingEnabled() == enabled) return false;
@@ -100,6 +88,7 @@ public class ConfiguredChatModel {
      * 
      * @return <code>true</code> if config changed otherwise <code>false</code>
      */
+    @Deprecated
     public boolean resolveModel(List<AiModel> models) {
         if (models.isEmpty()) return false;
         var model = config.getModel();

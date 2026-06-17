@@ -482,11 +482,10 @@ public class AIChatView implements EclipseAiMonitor {
 
     private void reloadModelsIfNeeded() {
         var config = aiService.getConfig();
-        var modelName = aiService.getActiveModel();
-        
-        actionsBar.setModel(modelName);
+        var modelName = StringUtil.stripToNull(aiService.getActiveModel());
 
-        if (lastListedConfig.get() == null
+        if (modelName == null 
+                || lastListedConfig.get() == null
                 || config.getProviderType() != lastListedConfig.get().getProviderType()
                 || !java.util.Objects.equals(config.getUrl(), lastListedConfig.get().getUrl())
                 || !java.util.Objects.equals(config.getApiKey(), lastListedConfig.get().getApiKey())) {
@@ -494,6 +493,7 @@ public class AIChatView implements EclipseAiMonitor {
         } else {
             EclipseUtil.runInUiThread(parent, () -> {
                 if (!actionsBar.containsModelId(modelName)) {
+                    actionsBar.setModel(modelName);
                     loadModelsInBackground();
                 } else {
                     actionsBar.selectModel(modelName);
@@ -506,15 +506,19 @@ public class AIChatView implements EclipseAiMonitor {
     private void loadModelsInBackground() {
         Job.create("Fetching available models", monitor -> {
             var config = aiService.getConfig();
-            var modelName = aiService.getActiveModel();
+            var modelName = StringUtil.stripToNull(aiService.getActiveModel());
             try {
                 var models = config.listAiModels();
                 if (models.isEmpty()) {
                     onChatResponse(new SimpleMessage(Type.PROBLEM, "No models returned by " + config.getUrl()));
                 } else {
                     EclipseUtil.runInUiThread(parent, () -> {
-                        aiService.resolveModel(models);
-                        actionsBar.applyModelList(models, modelName);
+                        if (modelName == null) {
+                            aiService.getActiveService().setModelName(models.getFirst());
+                            actionsBar.applyModelList(models, aiService.getActiveModel());
+                        } else {
+                            actionsBar.applyModelList(models, modelName);
+                        }
                     });
                 }
                 return Status.OK_STATUS;
@@ -539,7 +543,7 @@ public class AIChatView implements EclipseAiMonitor {
         aiService.getAgentMode().setAutonomous(actionsBar.getAutonomous());
         aiService.setPeonMode(mode);
         refreshChat();
-        actionsBar.setModel(aiService.getActiveService().getAgentModelName());
+        reloadModelsIfNeeded();
         applyShellCommandConfirmation();
     }
 
