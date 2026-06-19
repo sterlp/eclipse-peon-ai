@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import org.sterl.llmpeon.agent.AiCompressorAgent;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
@@ -17,7 +18,6 @@ import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -98,9 +98,7 @@ public abstract class AbstractChatService {
         } else if (contents.size() == 1) {
             addMessage(UserMessage.from(contents.getFirst()));
         } else {
-            var m = contents.stream().map(dev.langchain4j.data.message.TextContent::new)
-                        .map(v -> ((Content)v))
-                        .toList();
+            var m = contents.stream().collect(Collectors.joining("\n\n"));
             addMessage(UserMessage.from(m));
         }
 

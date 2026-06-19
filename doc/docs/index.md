@@ -80,6 +80,8 @@ The AI assistant has access to several tools:
 You can also send messages with `CTRL+Enter` or `CMD+Enter` - if the AI is working, the message is added to the history - best effort to add message during a tool loop.
 :::
 
+- Drag-and-drop files from Eclipse Explorer or your file system directly into the chat input to attach them as `@path` references.
+
 ## Architecture
 
 - **Main Plugin** (`org.sterl.llmpeon`): Eclipse e4 plugin with UI components

@@ -45,3 +45,7 @@ If you navigate between files in different projects, the active project may chan
 - Click again to unpin — project follows your file selection
 
 This is useful when you want to keep working on one project while browsing files elsewhere.
+
+## Drag-and-Drop Files
+
+You can also drag and drop files from Eclipse Explorer or your file system directly into the chat input to include additional context as `@path` references.
