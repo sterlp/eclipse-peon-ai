@@ -64,4 +64,39 @@ class DiskFileWriteToolTest {
     void deleteDiskFile_missingFile() {
         assertThrows(IllegalArgumentException.class, () -> tool.deleteDiskFile("nope.txt"));
     }
+
+    @Test
+    void insertDiskLines_afterLine() throws IOException {
+        Files.writeString(tempDir.resolve("ins.txt"), "a\nb\nc");
+        tool.insertDiskLines("ins.txt", 2, "x\ny");
+        assertEquals("a\nb\nx\ny\nc", Files.readString(tempDir.resolve("ins.txt")));
+    }
+
+    @Test
+    void insertDiskLines_prepend() throws IOException {
+        Files.writeString(tempDir.resolve("ins.txt"), "a\nb");
+        tool.insertDiskLines("ins.txt", 0, "x");
+        assertEquals("x\na\nb", Files.readString(tempDir.resolve("ins.txt")));
+    }
+
+    @Test
+    void insertDiskLines_append() throws IOException {
+        Files.writeString(tempDir.resolve("ins.txt"), "a\nb");
+        tool.insertDiskLines("ins.txt", null, "x");
+        assertEquals("a\nb\nx", Files.readString(tempDir.resolve("ins.txt")));
+    }
+
+    @Test
+    void replaceDiskLines_basic() throws IOException {
+        Files.writeString(tempDir.resolve("rep.txt"), "line1\nline2\nline3");
+        tool.replaceDiskLines("rep.txt", 2, "replaced");
+        assertEquals("line1\nreplaced\nline3", Files.readString(tempDir.resolve("rep.txt")));
+    }
+
+    @Test
+    void replaceDiskLines_multiLine() throws IOException {
+        Files.writeString(tempDir.resolve("rep.txt"), "a\nb\nc\nd");
+        tool.replaceDiskLines("rep.txt", 2, "x\ny");
+        assertEquals("a\nx\ny\nc\nd", Files.readString(tempDir.resolve("rep.txt")));
+    }
 }

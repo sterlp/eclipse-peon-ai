@@ -7,6 +7,7 @@ import java.util.Optional;
 import org.eclipse.ui.console.ConsolePlugin;
 import org.eclipse.ui.console.IConsole;
 import org.eclipse.ui.console.TextConsole;
+import org.sterl.llmpeon.shared.FileLines;
 import org.sterl.llmpeon.shared.StringUtil;
 
 import dev.langchain4j.agent.tool.P;
@@ -17,9 +18,12 @@ public class EclipseConsoleLogTool extends AbstractEclipseTool {
     @Tool("Eclipse: Read the content of the active console log - available e.g. after a test run to read the test logs.")
     public String readConsoleLog(
             @P(description = "Name of the console to read. If empty, reads the active console.", required = false, name = "consoleName")
-            String consoleName) {
+            String consoleName,
+            @P(description = "Line count from the end of the log (like tail -n).", required = false, name = "lines")
+            Integer lines) {
 
         var consoles = consoles();
+        if (lines == null) lines = 50;
 
         if (consoles.isEmpty()) {
             return "No message consoles available.";
@@ -32,7 +36,8 @@ public class EclipseConsoleLogTool extends AbstractEclipseTool {
             return "Console not found. Available consoles:\n" + listAvailableConsoles();
         } else {
             String content = targetConsole.get().getDocument().get();
-            return targetConsole.get().getName() + ":\n" + (StringUtil.hasValue(content) ? content : "empty");
+            return targetConsole.get().getName() + ":\n" 
+                    + (StringUtil.hasValue(content) ? FileLines.tail(content, lines) : "empty");
         }
     }
 
@@ -67,7 +72,7 @@ public class EclipseConsoleLogTool extends AbstractEclipseTool {
 
         return result.toString().trim();
     }
-    
+
     private List<TextConsole> consoles() {
         return Arrays.asList(ConsolePlugin.getDefault().getConsoleManager().getConsoles())
             .stream()

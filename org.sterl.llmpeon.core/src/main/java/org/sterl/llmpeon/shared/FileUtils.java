@@ -64,6 +64,7 @@ public class FileUtils {
     private static Edit findEdit(String filePath, String content, String oldStr, String newStr) {
         int count = countMatches(content, oldStr);
         String lineEnding = dominantLineEnding(content);
+        // ensure the newStr has the proper line ending if we insert it
         if (count == 1) return new Edit(oldStr, normalizeLineEndings(newStr, lineEnding));
 
         if (count == 0) {
@@ -94,7 +95,19 @@ public class FileUtils {
     }
 
     public static String dominantLineEnding(String content) {
-        return content.contains("\r\n") ? "\r\n" : "\n";
+        int crlf = 0, lf = 0;
+        for (int i = 0; i < content.length(); i++) {
+            char c = content.charAt(i);
+            if (c == '\r') {
+                if (i + 1 < content.length() && content.charAt(i + 1) == '\n') {
+                    crlf++;
+                    i++;
+                }
+            } else if (c == '\n') {
+                lf++;
+            }
+        }
+        return crlf > lf ? "\r\n" : "\n";
     }
 
     private static String normalizeLineEndings(String value, String lineEnding) {

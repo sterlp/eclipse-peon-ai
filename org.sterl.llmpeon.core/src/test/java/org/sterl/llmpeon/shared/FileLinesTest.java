@@ -61,9 +61,14 @@ class FileLinesTest {
     }
 
     @Test
-    void testInsertZeroOrNegativeAppendsAtEnd() {
-        assertEquals("a\nb\nx", FileLines.insertLines("a\nb", 0, "x"));
-        assertEquals("a\nb\nx", FileLines.insertLines("a\nb", -5, "x"));
+    void testInsertZeroOrNegativePrepends() {
+        assertEquals("x\na\nb", FileLines.insertLines("a\nb", 0, "x"));
+        assertEquals("x\na\nb", FileLines.insertLines("a\nb", -5, "x"));
+    }
+
+    @Test
+    void testInsertIntoEmptyPrepend() {
+        assertEquals("x", FileLines.insertLines("", 0, "x"));
     }
 
     @Test
@@ -86,5 +91,20 @@ class FileLinesTest {
     @Test
     void testInsertPreservesCrlf() {
         assertEquals("a\r\nx\r\nb", FileLines.insertLines("a\r\nb", 1, "x"));
+    }
+
+    @Test
+    void testTailShorterThanRequested() {
+        assertEquals("a\nb", FileLines.tail("a\nb", 5));
+    }
+
+    @Test
+    void testTailExactMatch() {
+        assertEquals("a\nb\nc", FileLines.tail("a\nb\nc", 3));
+    }
+
+    @Test
+    void testTailLongerThanRequested() {
+        assertEquals("c\nd\ne", FileLines.tail("a\nb\nc\nd\ne", 3));
     }
 }

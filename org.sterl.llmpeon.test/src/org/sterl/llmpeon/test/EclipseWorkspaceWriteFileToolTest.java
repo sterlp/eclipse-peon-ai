@@ -79,7 +79,7 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractTest {
         tool.writeWorkspaceFile(fileName, "line1\nline2\nline3\nline4\nline5");
 
         // WHEN — replace middle line 3, expanding it to two lines
-        tool.replaceWorkspaceLine(fileName, 3, "replaced3a\nreplaced3b");
+        tool.replaceWorkspaceLines(fileName, 3, "replaced3a\nreplaced3b");
 
         // THEN — surrounding lines untouched, middle replaced
         var content = readTool.readWorkspaceFile(fileName, 0, 0);

@@ -4,6 +4,19 @@ package org.sterl.llmpeon.shared;
 //https://github.com/sterlp/eclipse-peon-ai/issues/57
 public class FileLines {
 
+    public static String tail(String content, int lines) {
+        String[] split = content.split("\n", -1);
+        if (split.length <= lines) {
+            return content;
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int i = split.length - lines; i < split.length; i++) {
+            if (i > split.length - lines) sb.append('\n');
+            sb.append(split[i]);
+        }
+        return sb.toString();
+    }
+
     /**
      * Returns the full file content with 1-based line numbers prefixed.
      */
@@ -90,9 +103,9 @@ public class FileLines {
     /**
      * Inserts {@code newContent} after the given 1-based {@code afterLine}.
      * <ul>
-     *   <li>{@code afterLine} null, 0 or negative → append at end of file</li>
+     *   <li>{@code afterLine} null → append at end of file</li>
+     *   <li>{@code afterLine} 0 or negative → insert before line 1 (prepend)</li>
      *   <li>{@code afterLine} &gt;= line count → append at end of file</li>
-     *   <li>{@code afterLine} == 0 semantics for "before first line" are not supported; use replaceLines</li>
      * </ul>
      */
     public static String insertLines(String content, Integer afterLine, String newContent) {
@@ -103,7 +116,7 @@ public class FileLines {
         var lines = new java.util.ArrayList<>(java.util.Arrays.asList(content.split(lineEnding, -1)));
         int total = lines.size();
 
-        int at = (afterLine == null || afterLine <= 0 || afterLine > total) ? total : afterLine;
+        int at = afterLine == null || afterLine > total ? total : Math.max(0, afterLine);
 
         var incoming = java.util.Arrays.asList(newContent.split(lineEnding, -1));
         lines.addAll(at, incoming);

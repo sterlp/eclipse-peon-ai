@@ -30,8 +30,8 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         return true;
     }
 
-    @Tool("Eclipse: Replace a single line by line number. newContent may span multiple lines.")
-    public void replaceWorkspaceLine(
+    @Tool("Eclipse: Replace lines by line number. newContent may span multiple lines.")
+    public void replaceWorkspaceLines(
             @P(description = "workspace-relative path", name = "filePath") String filePath,
             @P(description = "line to replace (1-based)", name = "line") Integer line,
             @P(description = "replacement text", name ="newContent") String newContent) {
@@ -128,12 +128,12 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         onTool("Created file " + JdtUtil.pathOf(file));
     }
 
-    @Tool("Eclipse: Insert text after a 1-based line. If afterLine is omitted/0, appends at end of file.")
+    @Tool("Eclipse: Insert text into a file at a specific position. Omit afterLine to append at end. 0 inserts before the first line (prepend). 1..n inserts after that line.")
     public void insertWorkspaceLines(
             @P(description = "workspace-relative path", name = "filePath") String filePath,
-            @P(description = "text to insert (may span multiple lines)", name = "newContent") String newContent,
-            @P(description = "1-based line to insert after; omit or 0 to append at end of file",
-               name = "afterLine", required = false) Integer afterLine) {
+            @P(description = "1-based line to insert after; omit to append, 0 to prepend",
+               name = "afterLine", required = false) Integer afterLine,
+            @P(description = "text to insert (may span multiple lines)", name = "newContent") String newContent) {
 
         ArgsUtil.requireNonBlank(filePath, "filePath");
         ArgsUtil.requireNonNull(newContent, "newContent");
