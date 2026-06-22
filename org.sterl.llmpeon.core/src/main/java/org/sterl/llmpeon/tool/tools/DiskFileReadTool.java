@@ -73,9 +73,9 @@ public class DiskFileReadTool extends AbstractTool {
     @Tool("Disk: Search files by name. Use '*' to list all files recursively.")
     public String searchDiskFiles(
             @P(description = "file name query - only *, ? wildcard is supported.", name = "query") String query,
-            @P(description = "Optional: max results to return. 0 = unlimited.", name = "limit") Integer limit) {
+            @P(description = "Optional: max results to return. 0 = unlimited. Default 50.", name = "limit") Integer limit) {
 
-        if (limit == null) limit = 0;
+        if (limit == null) limit = 50;
         ArgsUtil.requireNonBlank(query, "query");
 
         var matcher = StringMatcher.wildCardMatcher(FileUtils.normalizePath(query));
