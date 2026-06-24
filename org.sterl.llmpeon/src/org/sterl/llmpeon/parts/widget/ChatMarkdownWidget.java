@@ -74,7 +74,7 @@ public class ChatMarkdownWidget extends Composite {
         browser.addLocationListener(new LocationListener() {
             @Override
             public void changing(LocationEvent event) {
-                final String prefix = "peon-open:";
+                final String prefix = "open-in-editor:";
                 if (event.location == null || !event.location.startsWith(prefix)) return;
                 event.doit = false;
                 var path = URLDecoder.decode(

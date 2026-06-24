@@ -293,7 +293,7 @@
             const name = e.target.closest(".d2h-file-name");
             if (name) {
                 const path = (name.textContent || "").trim();
-                if (path) window.location.href = "peon-open:" + encodeURIComponent(path);
+                if (path) window.location.href = "open-in-editor:" + encodeURIComponent(path);
                 return;
             }
             const btn = e.target.closest(".copy-btn");
