@@ -171,6 +171,16 @@
             animation: blink-cursor 1s step-end infinite;
             margin-left: 4px;
         }
+
+        .message.diff .d2h-file-name {
+            cursor: pointer;
+            color: #0969da;
+            text-decoration: underline;
+        }
+
+        .message.diff .d2h-file-name:hover {
+            text-decoration: none;
+        }
     </style>
 
     <script src="./highlight.min.js"></script>
@@ -280,6 +290,12 @@
         }
 
         document.addEventListener("click", e => {
+            const name = e.target.closest(".d2h-file-name");
+            if (name) {
+                const path = (name.textContent || "").trim();
+                if (path) window.location.href = "open-in-editor:" + encodeURIComponent(path);
+                return;
+            }
             const btn = e.target.closest(".copy-btn");
             if (!btn) return;
             const code = btn.closest(".code-pre")?.querySelector(".hljs");

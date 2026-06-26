@@ -66,6 +66,15 @@ public class EclipseUtil {
         }
     }
 
+    /**
+     * Returns {@code true} when the given workspace file is the currently active editor.
+     * Must be called from the UI thread.
+     */
+    public static boolean isOpenInEditor(IFile file) {
+        if (file == null) return false;
+        return getOpenFile().map(file::equals).orElse(false);
+    }
+
     public static IProject firstOpenOrSelectedProject() {
         var openFile = getOpenFile();
         if (openFile.isPresent()) return openFile.get().getProject();

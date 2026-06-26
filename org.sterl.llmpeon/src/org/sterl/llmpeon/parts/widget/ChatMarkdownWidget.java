@@ -3,15 +3,19 @@ package org.sterl.llmpeon.parts.widget;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.browser.Browser;
+import org.eclipse.swt.browser.LocationEvent;
+import org.eclipse.swt.browser.LocationListener;
 import org.eclipse.swt.browser.TitleEvent;
 import org.eclipse.swt.browser.TitleListener;
 import org.eclipse.swt.layout.FillLayout;
@@ -64,6 +68,27 @@ public class ChatMarkdownWidget extends Composite {
                         }
                     });
                 }
+            }
+        });
+
+        browser.addLocationListener(new LocationListener() {
+            @Override
+            public void changing(LocationEvent event) {
+                final String prefix = "open-in-editor:";
+                if (event.location == null || !event.location.startsWith(prefix)) return;
+                event.doit = false;
+                var path = URLDecoder.decode(
+                        event.location.substring(prefix.length()), StandardCharsets.UTF_8);
+                EclipseUtil.resolveInEclipse(path)
+                        .filter(IFile.class::isInstance)
+                        .map(IFile.class::cast)
+                        .filter(f -> !EclipseUtil.isOpenInEditor(f))
+                        .ifPresent(EclipseUtil::openInEditor);
+            }
+
+            @Override
+            public void changed(LocationEvent event) {
+                // no-op
             }
         });
 
