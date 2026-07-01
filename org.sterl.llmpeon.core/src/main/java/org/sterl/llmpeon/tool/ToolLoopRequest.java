@@ -12,6 +12,7 @@ import org.sterl.llmpeon.streaming.StreamingBridge;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -52,6 +53,12 @@ public class ToolLoopRequest {
     public AiMonitor monitor = AiMonitor.NULL_MONITOR;
     @Default
     public Predicate<SmartToolExecutor> toolFilter = t -> true;
+    /**
+     * Filters tools by name — applied to MCP tool specs (which are not covered by
+     * {@link #toolFilter}). Lets a custom agent's allowlist govern MCP tools too. Default: allow all.
+     */
+    @Default
+    public Predicate<String> toolNameFilter = n -> true;
     @Default
     public boolean includeMcpTools = true;
     @Nullable
@@ -60,8 +67,30 @@ public class ToolLoopRequest {
     @Nullable
     public String modelName;
 
+    /**
+     * Standing orders (project context, AGENTS.md, active command/skill body) captured at loop
+     * start. Re-injected as user messages by {@link #clearMemory()} so they survive a
+     * {@code compactSession} tool call mid-loop.
+     */
+    @Default
+    @Getter
+    public List<String> standingOrders = List.of();
+
     public void addMessage(ChatMessage message) {
         memory.add(message);
+    }
+
+    /**
+     * Clears the conversation memory and re-injects the standing orders as user messages, so a
+     * command/skill keeps governing the task after a compaction. With no standing orders this
+     * behaves like {@code memory.clear()}.
+     */
+    public void clearMemory() {
+        memory.clear();
+        if (standingOrders == null) return;
+        for (var order : standingOrders) {
+            memory.add(UserMessage.from(order));
+        }
     }
 
     public LlmConfig getConfig() {

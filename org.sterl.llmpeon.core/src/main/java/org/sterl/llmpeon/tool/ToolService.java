@@ -70,14 +70,28 @@ public class ToolService {
                 .toList();
     }
 
+    /** All registered built-in tool executors (UI introspection). */
+    public java.util.Collection<SmartToolExecutor> getExecutors() {
+        return toolExecutors.values();
+    }
+
+    /** Names of the currently connected MCP tools (empty when no MCP server is connected). */
+    public List<String> mcpToolNames() {
+        return mcpToolSpecs.stream().map(ToolSpecification::name).toList();
+    }
+
     List<ToolSpecification> toolSpecifications(ToolLoopRequest req) {
         var result = new ArrayList<ToolSpecification>();
         toolExecutors.values().stream()
                 .filter(req.toolFilter)
                 .map(SmartToolExecutor::getSpec)
                 .forEach(result::add);
-        
-        if (req.includeMcpTools) result.addAll(mcpToolSpecs);
+
+        if (req.includeMcpTools) {
+            mcpToolSpecs.stream()
+                    .filter(spec -> req.toolNameFilter.test(spec.name()))
+                    .forEach(result::add);
+        }
         return result;
     }
 

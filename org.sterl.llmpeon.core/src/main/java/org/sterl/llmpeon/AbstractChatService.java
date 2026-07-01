@@ -34,13 +34,6 @@ public abstract class AbstractChatService {
     private final List<ChatMessage> staticContext = new ArrayList<>();
     private final List<String> userContextInformations = new ArrayList<>();
 
-    /**
-     * One-shot system prompt set by a slash command invocation. When non-null the next call to
-     * {@link #buildStaticMessages()} uses this value as the system prompt instead of
-     * {@link #getSystemPrompt()} and clears the field. Subsequent calls revert to the base prompt.
-     */
-    private String oneShotSystemPrompt;
-
     protected AbstractChatService(ConfiguredChatModel configuredModel, ToolService toolService) {
         this.toolService = toolService;
         this.configuredModel = configuredModel;
@@ -61,8 +54,26 @@ public abstract class AbstractChatService {
     protected Predicate<SmartToolExecutor> getToolFilter() {
         return p -> true;
     }
-    
+
+    /**
+     * Filters tools by name — applied to MCP tools, which {@link #getToolFilter()} cannot see.
+     * Default: allow all. Overridden by custom agents to enforce their tool allowlist.
+     */
+    protected Predicate<String> getToolNameFilter() {
+        return n -> true;
+    }
+
     protected boolean includesMcpTools() { return true; }
+
+    /** True if the given built-in tool is offered to the LLM for this agent (UI introspection). */
+    public boolean isToolActive(SmartToolExecutor exec) {
+        return getToolFilter().test(exec);
+    }
+
+    /** True if the given MCP tool name is offered to the LLM for this agent (UI introspection). */
+    public boolean isMcpToolActive(String toolName) {
+        return includesMcpTools() && getToolNameFilter().test(toolName);
+    }
     
     public boolean setModelName(AiModel modelName) {
         return this.configuredModel.withModel(modelName);
@@ -103,7 +114,7 @@ public abstract class AbstractChatService {
         }
 
         var start = Instant.now();
-        var staticMessages = buildStaticMessages(monitor);
+        var staticMessages = buildStaticMessages();
         var response = toolService.executeLoop(
                 ToolLoopRequest.builder()
                     .memory(memory)
@@ -111,9 +122,11 @@ public abstract class AbstractChatService {
                     .staticMessages(staticMessages)
                     .monitor(monitor)
                     .toolFilter(getToolFilter())
+                    .toolNameFilter(getToolNameFilter())
                     .includeMcpTools(includesMcpTools())
                     .temperature(getTemperature())
                     .modelName(getAgentModelName())
+                    .standingOrders(List.copyOf(userContextInformations))
                     .build()
                 );
 
@@ -164,34 +177,10 @@ public abstract class AbstractChatService {
     public int getContextSize() { return memory.getTotalTokenUsed(); }
     public int getAutoCompactAfter() { return configuredModel.getConfig().getAutoCompactAfter(); }
 
-    private List<ChatMessage> buildStaticMessages(AiMonitor monitor) {
+    private List<ChatMessage> buildStaticMessages() {
         var messages = new ArrayList<ChatMessage>();
-        var override = consumeOneShotSystemPrompt();
-        if (override == null) {
-            messages.add(SystemMessage.from(getSystemPrompt()));
-        } else {
-            monitor.onTool("Using command as system prompt");
-            messages.add(SystemMessage.from(override));
-        }
+        messages.add(SystemMessage.from(getSystemPrompt()));
         messages.addAll(staticContext);
         return messages;
-    }
-
-    /**
-     * Sets a one-shot system prompt that replaces {@link #getSystemPrompt()} for the very next
-     * {@link #call(String, AiMonitor)} only. Pass {@code null} to clear without consuming.
-     */
-    public void setOneShotSystemPrompt(String systemPrompt) {
-        this.oneShotSystemPrompt = (systemPrompt == null || systemPrompt.isBlank()) ? null : systemPrompt;
-    }
-
-    public boolean hasOneShotSystemPrompt() {
-        return oneShotSystemPrompt != null;
-    }
-
-    private String consumeOneShotSystemPrompt() {
-        var value = oneShotSystemPrompt;
-        oneShotSystemPrompt = null;
-        return value;
     }
 }

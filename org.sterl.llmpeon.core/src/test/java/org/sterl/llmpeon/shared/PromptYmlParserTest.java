@@ -190,4 +190,109 @@ class PromptYmlParserTest {
     void stripYamlValue_null() {
         assertThat(PromptYmlParser.stripYamlValue(null)).isNull();
     }
+
+    @Test
+    void parseFrontmatter_blockList(@TempDir Path tmp) throws Exception {
+        // GIVEN
+        var file = tmp.resolve("AGENT.md");
+        Files.writeString(file, """
+                ---
+                name: docs
+                tools:
+                  - grep
+                  - read_
+                  - "*"
+                ---
+                body
+                """);
+
+        // WHEN
+        var fm = PromptYmlParser.parseFrontmatter(file);
+
+        // THEN
+        assertThat(fm.get("name")).containsExactly("docs");
+        assertThat(fm.get("tools")).containsExactly("grep", "read_", "*");
+    }
+
+    @Test
+    void parseFrontmatter_inlineCsvTools(@TempDir Path tmp) throws Exception {
+        // GIVEN
+        var file = tmp.resolve("AGENT.md");
+        Files.writeString(file, """
+                ---
+                tools: grep, read_
+                ---
+                body
+                """);
+
+        // WHEN — inline value kept as one raw entry, split happens in toolAllowlist
+        var tools = PromptYmlParser.toolAllowlist(PromptYmlParser.parseFrontmatter(file).get("tools"));
+
+        // THEN
+        assertThat(tools).containsExactly("grep", "read_");
+    }
+
+    @Test
+    void toolAllowlist_absentMeansNull() {
+        assertThat(PromptYmlParser.toolAllowlist(null)).isNull();
+    }
+
+    @Test
+    void setFrontmatterValue_overwritesExistingKey(@TempDir Path tmp) throws Exception {
+        // GIVEN
+        var file = tmp.resolve("AGENT.md");
+        Files.writeString(file, """
+                ---
+                name: docs
+                model: old-model
+                ---
+                body text
+                """);
+
+        // WHEN
+        PromptYmlParser.setFrontmatterValue(file, "model", "new-model");
+
+        // THEN
+        var content = Files.readString(file);
+        assertThat(content).contains("model: new-model");
+        assertThat(content).doesNotContain("old-model");
+        assertThat(content).contains("name: docs");
+        assertThat(content).contains("body text");
+    }
+
+    @Test
+    void setFrontmatterValue_insertsMissingKey(@TempDir Path tmp) throws Exception {
+        // GIVEN
+        var file = tmp.resolve("AGENT.md");
+        Files.writeString(file, """
+                ---
+                name: docs
+                ---
+                body text
+                """);
+
+        // WHEN
+        PromptYmlParser.setFrontmatterValue(file, "model", "some-model");
+
+        // THEN
+        var fm = PromptYmlParser.parseFrontmatter(file);
+        assertThat(fm.get("model")).containsExactly("some-model");
+        assertThat(fm.get("name")).containsExactly("docs");
+        assertThat(Files.readString(file)).contains("body text");
+    }
+
+    @Test
+    void setFrontmatterValue_prependsBlockWhenNone(@TempDir Path tmp) throws Exception {
+        // GIVEN
+        var file = tmp.resolve("AGENT.md");
+        Files.writeString(file, "just a body");
+
+        // WHEN
+        PromptYmlParser.setFrontmatterValue(file, "model", "m1");
+
+        // THEN
+        var fm = PromptYmlParser.parseFrontmatter(file);
+        assertThat(fm.get("model")).containsExactly("m1");
+        assertThat(Files.readString(file)).contains("just a body");
+    }
 }

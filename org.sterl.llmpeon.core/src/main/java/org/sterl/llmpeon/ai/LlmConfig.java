@@ -69,6 +69,8 @@ public class LlmConfig {
     @Default
     private final String commandDirectory = null;
     @Default
+    private final String agentDirectory = null;
+    @Default
     private final boolean diskToolsEnabled = false;
     @Default
     private final boolean shellCommandConfirmationRequired = false;
