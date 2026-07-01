@@ -6,6 +6,7 @@ import java.util.function.Consumer;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.PaintListener;
+import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.FillLayout;
@@ -29,7 +30,7 @@ import org.sterl.llmpeon.skill.SkillPromptFile;
  */
 public class SlashMenuPopup {
 
-    private static final int NAME_COL_WIDTH = 200;
+    private static final int NAME_COL_WIDTH = 250;
     
     /** Maximum rows shown without scrolling. */
     private static final int MAX_VISIBLE_ROWS = 8;
@@ -45,6 +46,8 @@ public class SlashMenuPopup {
 
     private Shell popup;
     private Table table;
+    /** Larger, bold font for the command name column. Owned by this popup, disposed with it. */
+    private Font nameFont;
     private List<SimplePromptFile> filtered = List.of();
     private List<SimplePromptFile> source = List.of();
     private String currentPrefix = "";
@@ -135,6 +138,8 @@ public class SlashMenuPopup {
             popup.setVisible(false);
             popup.dispose();
         }
+        if (nameFont != null && !nameFont.isDisposed()) nameFont.dispose();
+        nameFont = null;
         popup = null;
         table = null;
         filtered = List.of();
@@ -150,11 +155,19 @@ public class SlashMenuPopup {
         table.setHeaderVisible(false);
         table.setLinesVisible(false);
 
+        // Name should stand out over the short COMMAND/SKILL tag: derive a larger, bold font.
+        var nameData = table.getFont().getFontData();
+        for (var fd : nameData) {
+            fd.setHeight(fd.getHeight() + 1);
+            fd.setStyle(fd.getStyle() | SWT.BOLD);
+        }
+        nameFont = new Font(table.getDisplay(), nameData);
+
         var colName = new TableColumn(table, SWT.LEFT);
         colName.setWidth(NAME_COL_WIDTH);
 
         var colDesc = new TableColumn(table, SWT.LEFT);
-        colDesc.setWidth(MAX_WIDTH - 164);
+        colDesc.setWidth(MAX_WIDTH - 114);
 
         table.addListener(SWT.MouseDoubleClick, e -> commitSelection());
         table.addListener(SWT.DefaultSelection, e -> commitSelection());
@@ -172,8 +185,9 @@ public class SlashMenuPopup {
         for (var cmd : filtered) {
             var item = new TableItem(table, SWT.NONE);
             item.setText(0, "/" + cmd.name());
-            item.setText(1, cmd instanceof SkillPromptFile ? "SKILL" : "Command (replace system message)");
-            // optionally mute the description color:
+            if (nameFont != null) item.setFont(0, nameFont);
+            item.setText(1, cmd instanceof SkillPromptFile ? "SKILL" : "COMMAND");
+            // mute the short type tag so the name stands out:
             item.setForeground(1, table.getDisplay().getSystemColor(SWT.COLOR_DARK_GRAY));
         }
         if (!filtered.isEmpty()) table.setSelection(0);

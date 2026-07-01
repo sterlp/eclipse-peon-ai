@@ -13,6 +13,7 @@ public class ImageUtil {
     public static final String FILE_NAV = "platform:/plugin/org.eclipse.ui/icons/full/eview16/filenav_nav.svg";
     public static final String STOP = "platform:/plugin/org.eclipse.ui/icons/full/elcl16/stop.svg";
     public static final String MICROPHONE = "platform:/plugin/org.sterl.llmpeon/icons/microphone.svg";
+    public static final String HAMMER = "platform:/plugin/org.sterl.llmpeon/icons/hammer.svg";
     
     public static final String PIN = "platform:/plugin/org.eclipse.ui.console/icons/full/elcl16/pin.svg";
 

@@ -48,13 +48,14 @@ Review the code and report any issues.
 
 1. In the chat interface, type `/` to see a list of available commands.
 2. Select a command to insert its name into the chat input.
-3. The command body replaces the system prompt for that turn. Standing orders (project context, AGENTS.md) and the skill catalog are still appended after it.
+3. The command body is added as a **standing order** — prepended to your message for the current task, alongside the project context and `AGENTS.md`.
 
 ## Effect
 
-- Commands provide a quick way to insert predefined prompts or instructions into the chat.
-- They help standardize workflows and reduce repetitive typing.
-- The LLM processes the command body as the system prompt for that single turn, ensuring consistent responses.
+- Commands are injected as **standing orders**: the command body is prepended to your message for the current task.
+- They **survive session compaction** — if the model compacts the chat mid-task, the command is re-injected automatically, so it keeps governing the work.
+- The command is consumed after that send and does **not** carry into your next message.
+- **Skills behave the same way** — the skill body is a one-time standing order that also survives compaction.
 
 ## Notes
 

@@ -2,6 +2,9 @@ package org.sterl.llmpeon.parts;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -10,8 +13,10 @@ import org.eclipse.core.resources.IProject;
 import org.sterl.llmpeon.AbstractChatService;
 import org.sterl.llmpeon.AiDeveloperService;
 import org.sterl.llmpeon.AiPlannerService;
+import org.sterl.llmpeon.CustomAgentService;
 import org.sterl.llmpeon.PeonMode;
 import org.sterl.llmpeon.StandingOrdersBuilder.MessageProvider;
+import org.sterl.llmpeon.agent.AgentService;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.ai.model.AiModel;
@@ -30,6 +35,7 @@ import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
 import org.sterl.llmpeon.parts.tools.EclipseRunTestTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
+import org.sterl.llmpeon.shared.PromptYmlParser;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.tool.ToolService;
@@ -58,7 +64,13 @@ public class PeonAiService implements MessageProvider {
     private final ToolService toolService;
     private final SkillService skillService;
     private final CommandService commandService;
+    private final AgentService agentService;
     private final AgentsMdService agentsMdService;
+
+    /** Lazily created chat service per custom agent (keyed by lower-case name), each own memory. */
+    private final Map<String, CustomAgentService> customAgents = new ConcurrentHashMap<>();
+    /** Non-null when a custom agent is selected; takes precedence over {@link #mode}. */
+    private volatile CustomAgentService activeCustomAgent;
     private final AiDeveloperService developerService;
     private final AiPlannerService plannerService;
     private final AgentModeService agentMode;
@@ -86,6 +98,7 @@ public class PeonAiService implements MessageProvider {
         this.toolService = null;
         this.skillService = null;
         this.commandService = null;
+        this.agentService = null;
         this.agentsMdService = null;
         this.agentMode = null;
         this.agentModeTool = null;
@@ -114,6 +127,7 @@ public class PeonAiService implements MessageProvider {
         toolService             = new ToolService();
         skillService            = new SkillService();
         commandService          = new CommandService();
+        agentService            = new AgentService();
         agentsMdService         = new AgentsMdService();
         
         toolService.addTool(new SkillTool(skillService));
@@ -165,6 +179,28 @@ public class PeonAiService implements MessageProvider {
         } catch (IOException e) {
             throw new RuntimeException("Failed to load commands from " + config.getCommandDirectory(), e);
         }
+        refreshCustomAgents(config);
+    }
+
+    /**
+     * Reloads the custom agent definitions and syncs the cached {@link CustomAgentService}s: updated
+     * definitions replace the snapshot, removed ones drop out of the cache (and are deselected).
+     */
+    private void refreshCustomAgents(LlmConfig config) {
+        try {
+            agentService.refresh(config.getAgentDirectory());
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load agents from " + config.getAgentDirectory(), e);
+        }
+        for (var name : List.copyOf(customAgents.keySet())) {
+            var def = agentService.get(name);
+            if (def.isPresent()) {
+                customAgents.get(name).setAgentFile(def.get());
+            } else {
+                var removed = customAgents.remove(name);
+                if (removed == activeCustomAgent) activeCustomAgent = null;
+            }
+        }
     }
 
     private void updateActiveDiskTools(LlmConfig config) {
@@ -184,6 +220,8 @@ public class PeonAiService implements MessageProvider {
     }
     
     public AbstractChatService getActiveService() {
+        var custom = activeCustomAgent;
+        if (custom != null) return custom;
         return switch (getPeonMode()) {
             case DEV   -> getDeveloperService();
             case PLAN  -> getPlannerService();
@@ -284,12 +322,38 @@ public class PeonAiService implements MessageProvider {
         return toolService;
     }
 
+    /** One tool with its active state for the currently selected agent/mode. */
+    public record ToolStatus(String name, boolean active, boolean mcp) {}
+
+    /**
+     * Lists every registered tool (built-in + connected MCP) with whether it is active for the
+     * currently active service. Sorted: active first, then by name. For UI introspection.
+     */
+    public List<ToolStatus> getToolStatus() {
+        var svc = getActiveService();
+        var result = new java.util.ArrayList<ToolStatus>();
+        for (var exec : toolService.getExecutors()) {
+            result.add(new ToolStatus(exec.getSpec().name(), svc.isToolActive(exec), false));
+        }
+        for (var name : toolService.mcpToolNames()) {
+            result.add(new ToolStatus(name, svc.isMcpToolActive(name), true));
+        }
+        result.sort(java.util.Comparator
+                .comparing(ToolStatus::active).reversed()
+                .thenComparing(ToolStatus::name, String.CASE_INSENSITIVE_ORDER));
+        return result;
+    }
+
     public SkillService getSkillService() {
         return skillService;
     }
 
     public CommandService getCommandService() {
         return commandService;
+    }
+
+    public AgentService getAgentService() {
+        return agentService;
     }
 
     public AgentsMdService getAgentsMdService() {
@@ -300,9 +364,27 @@ public class PeonAiService implements MessageProvider {
         return mcpConnectionService;
     }
 
+    /**
+     * Persists a model change for whichever agent is active: a built-in mode saves to the
+     * per-mode preference, a custom agent writes {@code model:} back into its {@code AGENT.md}.
+     */
     public void setModel(AiModel model) {
-        if (this.getActiveService().setModelName(model)) {
+        var active = getActiveService();
+        if (active instanceof CustomAgentService custom) {
+            if (custom.setModelName(model) && model != null && StringUtil.hasValue(model.getId())) {
+                persistCustomAgentModel(custom, model.getId());
+            }
+        } else if (active.setModelName(model)) {
             LlmPreferenceInitializer.setModel(model.getId(), getPeonMode());
+        }
+    }
+
+    private void persistCustomAgentModel(CustomAgentService custom, String modelId) {
+        var file = custom.getAgentFile().getPromptFile();
+        try {
+            PromptYmlParser.setFrontmatterValue(file, "model", modelId);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to persist model to " + file, e);
         }
     }
 
@@ -316,8 +398,24 @@ public class PeonAiService implements MessageProvider {
         configuredModel.withThinking(enabled);
     }
 
+    /**
+     * Selects a custom agent by name; subsequent requests use its service. Behaves like leaving
+     * AGENT mode (agent-mode tool removed, orchestration reset). No-op for an unknown name.
+     */
+    public void setActiveCustomAgent(String name) {
+        var def = agentService.get(name);
+        if (def.isEmpty()) return;
+        var svc = customAgents.computeIfAbsent(name.toLowerCase(Locale.ROOT),
+                k -> new CustomAgentService(configuredModel, toolService, def.get()));
+        svc.setAgentFile(def.get());
+        getToolService().removeTool(getAgentModeTools());
+        getAgentMode().reset();
+        activeCustomAgent = svc;
+    }
+
     public void setPeonMode(PeonMode mode) {
         this.mode = mode;
+        this.activeCustomAgent = null;
         if (mode == PeonMode.AGENT) {
             getToolService().addTool(getAgentModeTools());
             getAgentMode().reset();
@@ -334,6 +432,16 @@ public class PeonAiService implements MessageProvider {
     
     public PeonMode getPeonMode() {
         return mode;
+    }
+
+    public boolean isCustomAgentActive() {
+        return activeCustomAgent != null;
+    }
+
+    /** Display label of the active selection: the custom agent name or the built-in mode label. */
+    public String getActiveAgentLabel() {
+        var custom = activeCustomAgent;
+        return custom != null ? custom.getAgentFile().name() : mode.getLabel();
     }
 
     // TODO do we provide this twice?

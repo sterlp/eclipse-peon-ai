@@ -10,7 +10,6 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.resources.IProject;
-import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.ILog;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
@@ -27,13 +26,17 @@ import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Menu;
+import org.eclipse.swt.widgets.MenuItem;
+import org.eclipse.swt.widgets.ToolBar;
+import org.eclipse.swt.widgets.ToolItem;
 import org.eclipse.ui.IWorkingSet;
-import org.sterl.llmpeon.AbstractChatService;
 import org.sterl.llmpeon.PeonMode;
 import org.sterl.llmpeon.StandingOrdersBuilder;
 import org.sterl.llmpeon.ai.LlmConfig;
@@ -44,6 +47,7 @@ import org.sterl.llmpeon.parts.log.EclipseSlf4jLogger;
 import org.sterl.llmpeon.parts.model.UserContext;
 import org.sterl.llmpeon.parts.monitor.EclipseAiMonitor;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
+import org.sterl.llmpeon.parts.shared.ImageUtil;
 import org.sterl.llmpeon.parts.shared.SimpleDiff;
 import org.sterl.llmpeon.parts.tools.AskUserTool;
 import org.sterl.llmpeon.parts.tools.EclipseCodeNavigationTool;
@@ -120,6 +124,8 @@ public class AIChatView implements EclipseAiMonitor {
         this.parent = parent;
         parent.setLayout(new GridLayout(1, false));
 
+        buildHeaderToolbar(parent);
+
         chatHistory = new ChatMarkdownWidget(parent, SWT.BORDER);
         chatHistory.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
@@ -149,6 +155,7 @@ public class AIChatView implements EclipseAiMonitor {
             this::onClear,
             this::doStartImpl,
             this::onModeChange,
+            this::onCustomAgentChange,
             aiService::setModel,
             autonomous -> aiService.getAgentMode().setAutonomous(autonomous),
             aiService::withThinking
@@ -319,7 +326,7 @@ public class AIChatView implements EclipseAiMonitor {
                 aiService.getAgentMode().startImplementation();
             }
             refreshStatusLine();
-            actionsBar.updateModeUI(aiService.getPeonMode());
+            syncModeUI();
         });
     }
 
@@ -371,8 +378,47 @@ public class AIChatView implements EclipseAiMonitor {
     private void refreshChat() {
         chatHistory.clear();
         refreshStatusLine();
-        actionsBar.updateModeUI(aiService.getPeonMode());
+        syncModeUI();
         aiService.getActiveService().getMemory().forEach(chatHistory::appendMessage);
+    }
+
+    /** Top-right toolbar with the hammer button that reveals the tool activity popup. */
+    private void buildHeaderToolbar(Composite parent) {
+        ToolBar toolBar = new ToolBar(parent, SWT.FLAT | SWT.RIGHT);
+        toolBar.setLayoutData(new GridData(SWT.END, SWT.CENTER, true, false));
+
+        ToolItem hammer = new ToolItem(toolBar, SWT.PUSH);
+        hammer.setImage(ImageUtil.loadImage(toolBar, ImageUtil.HAMMER));
+        hammer.setToolTipText("Show which tools are active for the selected agent");
+        hammer.addListener(SWT.Selection, e -> showToolsMenu(toolBar, hammer));
+    }
+
+    /** Popup listing every tool with a ✓ for active and greyed-out for inactive tools. */
+    private void showToolsMenu(ToolBar toolBar, ToolItem item) {
+        var tools = aiService.getToolStatus();
+        Menu menu = new Menu(toolBar);
+
+        MenuItem header = new MenuItem(menu, SWT.PUSH);
+        header.setText("Tools for: " + aiService.getActiveAgentLabel());
+        header.setEnabled(false);
+        new MenuItem(menu, SWT.SEPARATOR);
+
+        for (var t : tools) {
+            MenuItem mi = new MenuItem(menu, SWT.PUSH);
+            String label = (t.active() ? "✓  " : "–  ") + t.name() + (t.mcp() ? "  (MCP)" : "");
+            mi.setText(label);
+            mi.setEnabled(t.active()); // inactive tools appear greyed out
+        }
+
+        Rectangle b = item.getBounds();
+        menu.setLocation(toolBar.toDisplay(b.x, b.y + b.height));
+        menu.setVisible(true);
+    }
+
+    /** Keeps the mode combo / impl controls in sync with the active built-in mode or custom agent. */
+    private void syncModeUI() {
+        if (aiService.isCustomAgentActive()) actionsBar.updateForCustomAgent();
+        else actionsBar.updateModeUI(aiService.getPeonMode());
     }
 
     // -------------------------------------------------------------------------
@@ -395,6 +441,7 @@ public class AIChatView implements EclipseAiMonitor {
             throw new RuntimeException("Failed to load " + config.getCommandDirectory());
         }
         aiService.updateConfig(config);
+        actionsBar.setCustomAgents(aiService.getAgentService().getAgents());
         // Sync the Think toggle to the config default. The user can override this per-session
         // via the button; that override is stored in-memory only and not written to preferences.
         actionsBar.setThinkEnabled(config.isThinkingEnabled());
@@ -481,9 +528,13 @@ public class AIChatView implements EclipseAiMonitor {
                 var models = config.listAiModels();
                 if (models.isEmpty()) {
                     onChatResponse(new SimpleMessage(Type.PROBLEM, "No models returned by " + config.getUrl()));
+                    showConfiguredModelFallback(modelName); // B1: keep the configured model visible
                 } else {
                     EclipseUtil.runInUiThread(parent, () -> {
-                        if (modelName == null) {
+                        boolean known = modelName != null
+                                && models.stream().anyMatch(m -> modelName.equals(m.getId()));
+                        if (!known) {
+                            // B2: configured model missing (or none) -> adopt the first from the list
                             aiService.getActiveService().setModelName(models.getFirst());
                             actionsBar.applyModelList(models, aiService.getActiveModel());
                         } else {
@@ -494,6 +545,7 @@ public class AIChatView implements EclipseAiMonitor {
                 return Status.OK_STATUS;
             } catch (Exception e) {
                 onChatResponse(new SimpleMessage(Type.PROBLEM, e.getMessage()));
+                showConfiguredModelFallback(modelName); // B1: keep the configured model visible
                 if (StringUtil.hasValue(modelName)) {
                     return new Status(IStatus.WARNING, PeonConstants.PLUGIN_ID, IStatus.OK, 
                             "Failed to load models fallback to " + modelName, e);
@@ -505,6 +557,16 @@ public class AIChatView implements EclipseAiMonitor {
         }).schedule();
     }
 
+    /**
+     * B1: when the model list is empty or failed to load, still show the model configured for the
+     * active agent instead of leaving the dropdown empty.
+     */
+    private void showConfiguredModelFallback(String modelName) {
+        if (StringUtil.hasValue(modelName)) {
+            EclipseUtil.runInUiThread(parent, () -> actionsBar.setModel(modelName));
+        }
+    }
+
     // -------------------------------------------------------------------------
     // Actions
     // -------------------------------------------------------------------------
@@ -512,6 +574,13 @@ public class AIChatView implements EclipseAiMonitor {
     private void onModeChange(PeonMode mode) {
         aiService.getAgentMode().setAutonomous(actionsBar.getAutonomous());
         aiService.setPeonMode(mode);
+        refreshChat();
+        reloadModelsIfNeeded();
+        applyShellCommandConfirmation();
+    }
+
+    private void onCustomAgentChange(org.sterl.llmpeon.agent.AgentPromptFile agent) {
+        aiService.setActiveCustomAgent(agent.name());
         refreshChat();
         reloadModelsIfNeeded();
         applyShellCommandConfirmation();
@@ -581,7 +650,7 @@ public class AIChatView implements EclipseAiMonitor {
         if (StringUtil.hasNoValue(text) && active.getMemory().size() == 0) return;
 
         if (StringUtil.hasValue(text)) {
-            applySlashCommandIfPresent(active);
+            applySlashCommandIfPresent();
             chatHistory.appendMessage(new SimpleMessage(Type.USER, text));
             chatInput.clearText();
             
@@ -706,12 +775,12 @@ public class AIChatView implements EclipseAiMonitor {
     }
 
     /**
-     * If the chat input starts with {@code /name}, looks up the command and installs its body as
-     * the one-shot system prompt on the active chat service. The slash token is stripped from the
-     * input so only the trailing user text is sent. Returns {@code false} and reports a problem
-     * when the name is unknown so the caller can abort the send.
+     * If the chat input starts with {@code /name}, looks up the command (or skill) and adds its body
+     * as a one-time standing order, so it is prepended to the message and re-injected if the session
+     * is compacted mid-task. The slash token is stripped so only the trailing user text is sent.
+     * Reports a problem when the name is unknown so the caller can abort the send.
      */
-    private void applySlashCommandIfPresent(AbstractChatService active) {
+    private void applySlashCommandIfPresent() {
         var raw = chatInput.getText();
         if (raw == null) return;
         var trimmed = raw.stripLeading();
@@ -727,8 +796,7 @@ public class AIChatView implements EclipseAiMonitor {
         var commandService = aiService.getCommandService();
         var command = commandService.get(name);
         if (command.isPresent()) {
-            var prompt = command.get().readBody();
-            active.setOneShotSystemPrompt(prompt);
+            standingOrders.addOneTimeOrder(command.get().readBody());
         } else {
             var skillService = aiService.getSkillService();
             var skill = skillService.get(name);

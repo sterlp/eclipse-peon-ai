@@ -3,7 +3,7 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   title: "Eclipse Peon AI",
   description: "An Eclipse plugin that brings a lightweight, context-aware LLM assistant directly into the Eclipse workbench",
-  srcDir: './docs',
+  srcDir: './src',
   base: '/',
   lastUpdated: true,
   cleanUrls: true,
@@ -26,6 +26,7 @@ export default defineConfig({
           items: [
             { text: 'Overview', link: '/' },
             { text: 'Agents & Skills', link: '/setup/agents-and-skills' },
+            { text: 'Custom Agents', link: '/setup/custom-agents' },
             { text: 'Commands', link: '/setup/commands' },
             { text: 'Agent Mode', link: '/setup/agent-mode' },
             { text: 'Memory', link: '/peon-memory' }
