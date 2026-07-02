@@ -29,7 +29,7 @@ public class StandingOrdersBuilderTest extends AbstractTest {
         assertHasMessageWith(messages, "/AGENTS.md");
         assertHasMessageWith(messages, "(Global Rules)");
         // AND no nulls ... 
-        assertHasMessageWith(messages, " null");
+        assertHasNoMessageWith(messages, " null");
     }
     
     @Test
