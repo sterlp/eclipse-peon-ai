@@ -27,8 +27,10 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
 
     private static final LlmConfig DEFAULT = LlmConfig.newOllama("qwen3.6-27b-i1");
     
-    private static final Path PEON_HOME =  Path.of(System.getProperty("user.home"), ".claude");
-    private static final Path CALUDE_HOME =  Path.of(System.getProperty("user.home"), ".aipeon");
+    /** Native peon config home. Preferred and created by default. */
+    private static final Path PEON_HOME =  Path.of(System.getProperty("user.home"), ".peon");
+    /** Claude config home — supported only for compatibility with Claude, never created here. */
+    private static final Path CLAUDE_HOME =  Path.of(System.getProperty("user.home"), ".claude");
 
     @Override
     public void initializeDefaultPreferences() {
@@ -44,8 +46,9 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
         defaults.putBoolean(PeonConstants.PREF_SEND_THINKING_ENABLED, DEFAULT.isSendThinkingEnabled());
         defaults.put(PeonConstants.PREF_API_KEY, StringUtil.stripToEmpty(DEFAULT.getApiKey()));
 
-        defaults.put(PeonConstants.PREF_SKILL_DIRECTORY, resolveClaudeDefault("skills"));
-        defaults.put(PeonConstants.PREF_COMMAND_DIRECTORY, resolveClaudeDefault("commands"));
+        defaults.put(PeonConstants.PREF_SKILL_DIRECTORY, resolveDefaultDir("skills"));
+        defaults.put(PeonConstants.PREF_COMMAND_DIRECTORY, resolveDefaultDir("commands"));
+        defaults.put(PeonConstants.PREF_AGENT_DIRECTORY, resolveDefaultDir("agents"));
 
         defaults.putBoolean(PeonConstants.PREF_DISK_TOOLS_ENABLED, false);
         defaults.put(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, "");
@@ -56,23 +59,31 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
         defaults.putBoolean(PeonConstants.PREF_AGENTS_MD_ENABLED, true);
     }
 
-    private static String resolveClaudeDefault(String dir) {
-        var cD = CALUDE_HOME.resolve(dir); 
-        var pD = PEON_HOME.resolve(dir);
+    /**
+     * Resolves the default location for a config sub-directory ({@code skills}, {@code commands},
+     * {@code agents}). The native {@code ~/.peon/<dir>} wins if it exists; otherwise an existing
+     * {@code ~/.claude/<dir>} is used for Claude compatibility; otherwise {@code ~/.peon/<dir>} is
+     * created and returned.
+     */
+    private static String resolveDefaultDir(String dir) {
+        var peon = PEON_HOME.resolve(dir);
+        var claude = CLAUDE_HOME.resolve(dir);
 
-        if (Files.isDirectory(cD)) return cD.toString();
+        if (Files.isDirectory(peon)) return peon.toString();
+        if (Files.isDirectory(claude)) return claude.toString();
         try {
-            Files.createDirectories(pD);
+            Files.createDirectories(peon);
         } catch (IOException e) {
-            throw new RuntimeException("Failed to create " + pD, e);
+            throw new RuntimeException("Failed to create " + peon, e);
         }
-        return pD.toString();
+        return peon.toString();
     }
 
     public static LlmConfig buildWithDefaults() {
         var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
         var skillDir = resolveDirPreference(prefs, PeonConstants.PREF_SKILL_DIRECTORY, "skill");
         var commandDir = resolveDirPreference(prefs, PeonConstants.PREF_COMMAND_DIRECTORY, "command");
+        var agentDir = resolveDirPreference(prefs, PeonConstants.PREF_AGENT_DIRECTORY, "agent");
 
         return LlmConfig.builder()
             .providerType(AiProvider.parse(prefs.get(PeonConstants.PREF_PROVIDER_TYPE, DEFAULT.getProviderType().name())))
@@ -93,6 +104,7 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
             .apiKey(prefs.get(PeonConstants.PREF_API_KEY, ""))
             .skillDirectory(skillDir)
             .commandDirectory(commandDir)
+            .agentDirectory(agentDir)
             .diskToolsEnabled(prefs.getBoolean(PeonConstants.PREF_DISK_TOOLS_ENABLED, false))
             .planTemperature(parseDoublePref(prefs, PeonConstants.PREF_PLAN_TEMPERATURE, DEFAULT.getPlanTemperature()))
             .devTemperature(parseDoublePref(prefs, PeonConstants.PREF_DEV_TEMPERATURE, DEFAULT.getDevTemperature()))

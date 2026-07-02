@@ -1,6 +1,6 @@
 package org.sterl.llmpeon.parts.widget;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -14,6 +14,7 @@ import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.sterl.llmpeon.PeonMode;
+import org.sterl.llmpeon.agent.AgentPromptFile;
 import org.sterl.llmpeon.ai.model.AiModel;
 
 /**
@@ -32,11 +33,14 @@ public class ActionsBarWidget extends Composite {
     private final AtomicBoolean working = new AtomicBoolean(false);
     private boolean agentModeAvailable = false;
     private List<AiModel> availableModels = List.of();
+    /** Custom agents shown after the built-in modes in the combo. */
+    private List<AgentPromptFile> customAgents = List.of();
 
     public ActionsBarWidget(Composite parent, int style,
             Runnable onClear,
             Runnable onImplement,
             Consumer<PeonMode> onModeChange,
+            Consumer<AgentPromptFile> onCustomAgentChange,
             Consumer<AiModel> onModelChange,
             Consumer<Boolean> onAutonomousChange,
             Consumer<Boolean> onThinkToggle) {
@@ -55,7 +59,7 @@ public class ActionsBarWidget extends Composite {
         rowLayout.spacing = 4;
         setLayout(rowLayout);
 
-        buildAgentCombo(onModeChange);
+        buildAgentCombo(onModeChange, onCustomAgentChange);
 
         buildModelCombo(onModelChange);
 
@@ -108,25 +112,53 @@ public class ActionsBarWidget extends Composite {
         });
     }
 
-    private void buildAgentCombo(Consumer<PeonMode> onModeChange) {
+    private void buildAgentCombo(Consumer<PeonMode> onModeChange,
+            Consumer<AgentPromptFile> onCustomAgentChange) {
         agentCombo = new Combo(this, SWT.READ_ONLY);
-        agentCombo.setLayoutData(new RowData(100, SWT.DEFAULT));
-        agentCombo.setItems(Arrays.asList(PeonMode.values()).stream()
-                .map(PeonMode::getLabel)
-                .toArray(String[]::new));
-        agentCombo.select(1); // default: Peon-Dev
+        agentCombo.setLayoutData(new RowData(120, SWT.DEFAULT));
+        rebuildAgentItems();
+        agentCombo.select(PeonMode.DEV.ordinal()); // default: Peon-Dev
         agentCombo.setToolTipText("Select agent mode");
         agentCombo.addListener(SWT.Selection, e -> {
-            PeonMode selected = PeonMode.values()[agentCombo.getSelectionIndex()];
-            if (selected == PeonMode.AGENT && !agentModeAvailable) {
-                agentCombo.select(PeonMode.DEV.ordinal());
-                agentCombo.setToolTipText("Peon-Agent requires a project to be selected");
-                return;
+            int idx = agentCombo.getSelectionIndex();
+            int builtinCount = PeonMode.values().length;
+            if (idx < 0) return;
+            if (idx < builtinCount) {
+                PeonMode selected = PeonMode.values()[idx];
+                if (selected == PeonMode.AGENT && !agentModeAvailable) {
+                    agentCombo.select(PeonMode.DEV.ordinal());
+                    agentCombo.setToolTipText("Peon-Agent requires a project to be selected");
+                    return;
+                }
+                agentCombo.setToolTipText("Select agent mode");
+                onModeChange.accept(selected);
+            } else {
+                AgentPromptFile agent = customAgents.get(idx - builtinCount);
+                agentCombo.setToolTipText("Custom agent: " + agent.name());
+                onCustomAgentChange.accept(agent);
             }
-            agentCombo.setToolTipText("Select agent mode");
-            onModeChange.accept(selected);
         });
 	}
+
+    private void rebuildAgentItems() {
+        var items = new ArrayList<String>();
+        for (PeonMode m : PeonMode.values()) items.add(m.getLabel());
+        for (AgentPromptFile a : customAgents) items.add(a.name());
+        agentCombo.setItems(items.toArray(String[]::new));
+    }
+
+    /** Replaces the custom agents in the combo, preserving the current selection by label. */
+    public void setCustomAgents(List<AgentPromptFile> agents) {
+        String previous = agentCombo.getText();
+        this.customAgents = agents == null ? List.of() : agents;
+        rebuildAgentItems();
+        String[] items = agentCombo.getItems();
+        int restore = PeonMode.DEV.ordinal();
+        for (int i = 0; i < items.length; i++) {
+            if (items[i].equals(previous)) { restore = i; break; }
+        }
+        agentCombo.select(restore);
+    }
 
     /** Enable/disable controls while a request is in flight. */
     public void lockWhileWorking(boolean value) {
@@ -148,6 +180,15 @@ public class ActionsBarWidget extends Composite {
         boolean isPlanLike = mode == PeonMode.PLAN || mode == PeonMode.AGENT;
         boolean isAgent = mode == PeonMode.AGENT;
         agentCombo.select(mode.ordinal());
+        applyImplAutonomousVisibility(isPlanLike, isAgent);
+    }
+
+    /** Custom agents have no plan/impl workflow — hide those controls, keep the combo selection. */
+    public void updateForCustomAgent() {
+        applyImplAutonomousVisibility(false, false);
+    }
+
+    private void applyImplAutonomousVisibility(boolean isPlanLike, boolean isAgent) {
         btnImplement.setEnabled(!this.working.get() && isPlanLike);
         boolean implVisibilityChanged = btnImplement.getVisible() != isPlanLike;
         if (implVisibilityChanged) {

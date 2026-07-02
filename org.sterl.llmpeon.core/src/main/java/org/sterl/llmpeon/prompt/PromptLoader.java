@@ -25,6 +25,11 @@ public class PromptLoader {
     }
 
     public static String loadWithDefault(String filename) {
-        return DEFAULT + "\n\n" + load(filename);
+        return withDefault(load(filename));
+    }
+
+    /** Prepends the shared default prompt to the given body (e.g. a custom agent's markdown). */
+    public static String withDefault(String body) {
+        return DEFAULT + "\n\n" + (body == null ? "" : body);
     }
 }

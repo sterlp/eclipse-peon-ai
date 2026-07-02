@@ -89,6 +89,7 @@ Example workflows:
 - [x] `v1.3.x` **Github Copilot** Support
 - [x] `v1.4.x` **MCP stdio** support added using langchain4j
 - [x] `v1.7.5` **Peon Memory** added workspace memory to the LLM with keywords "remember this", "always do", "never do"
+- [x] `v2.0.0` **Custom Agents** https://peon-ai-4e.sterl.org/setup/custom-agents
 
 ## Requirements
 

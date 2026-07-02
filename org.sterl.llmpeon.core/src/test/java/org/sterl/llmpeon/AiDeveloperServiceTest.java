@@ -147,6 +147,28 @@ public class AiDeveloperServiceTest {
     
     
     @Test
+    void test_command_as_standing_order() {
+        // GIVEN — a command body set as user context, no compaction
+        var requestRef = new AtomicReference<ChatRequest>();
+        fn.set(req -> {
+            requestRef.set(req);
+            return ChatResponse.builder()
+                    .aiMessage(AiMessage.aiMessage("Review complete — no issues found."))
+                    .build();
+        });
+
+        // WHEN
+        subject.setUserContextInformations(Arrays.asList("Review the code and report any issues."));
+        subject.call("Refactor this class", null);
+
+        // THEN — the command body is prepended to the user message
+        verify(cm, times(1)).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+        var userMsg = ((UserMessage)subject.getMemory().getCopy().get(0)).singleText();
+        assertThat(userMsg).contains("Review the code and report any issues.");
+        assertThat(userMsg).contains("Refactor this class");
+    }
+
+    @Test
     void test_send_no_message() {
         // GIVEN
         var aiMessage = AiMessage.aiMessage("Okay thats good");

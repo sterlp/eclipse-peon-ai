@@ -26,7 +26,7 @@ public class CompactSessionTool extends AbstractTool {
         // only if we have a valid result -- also ensure the first message is a user message, some LLMs need this ...
         var aiMsg = summary.aiMessage();
         if (aiMsg != null && aiMsg.text() != null && aiMsg.text().length() > 5) {
-            request.getMemory().clear();
+            request.clearMemory();
             request.getMemory().add(UserMessage.from("Session compacted. Resume the task using the preserved context."));
         }
         var summaryText = (aiMsg != null && aiMsg.text() != null) ? aiMsg.text() : "";

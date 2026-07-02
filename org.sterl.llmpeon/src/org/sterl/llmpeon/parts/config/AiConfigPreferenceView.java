@@ -74,6 +74,8 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
                 new StringFieldEditor(PeonConstants.PREF_SKILL_DIRECTORY, "Skills directory:", getFieldEditorParent()));
         addField(new StringFieldEditor(PeonConstants.PREF_COMMAND_DIRECTORY, "Commands directory:",
                 getFieldEditorParent()));
+        addField(new StringFieldEditor(PeonConstants.PREF_AGENT_DIRECTORY, "Agents directory:",
+                getFieldEditorParent()));
 
         Link link = new Link(getFieldEditorParent(), SWT.NONE);
         link.setText(
