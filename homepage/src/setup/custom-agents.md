@@ -3,7 +3,7 @@ title: Custom Agents
 description: Define your own agents with a system prompt and a tool allowlist
 ---
 
-# Custom Agents
+# Custom Agents (since v2.0.0)
 
 Next to the three built-in modes (**Peon-Plan**, **Peon-Dev**, **Peon-Agent**) you can define
 your own agents. Each agent has its own system prompt and its own set of allowed tools, and it
