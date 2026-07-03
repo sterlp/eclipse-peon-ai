@@ -48,7 +48,7 @@ public class StandingOrdersBuilderTest extends AbstractTest {
         assertHasMessageWith(messages, JdtUtil.diskPathOf(project));
 
         // AND no nulls ... 
-        assertHasMessageWith(messages, " null");
+        assertHasNoMessageWith(messages, " null");
     }
     
     @Test
@@ -106,6 +106,7 @@ public class StandingOrdersBuilderTest extends AbstractTest {
         var doc = new SimpleDocument("Hallo von Paul - das sollten wir nicht sehen");
         var mockTextSelection = new TextSelection(doc, 0, doc.getLength());
         userContext.setTextSelection(mockTextSelection);
+        userContext.setSelectedResource(pomResource);
         
         // WHEN
         var messages = standingOrders.build();

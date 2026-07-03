@@ -1,1 +1,5 @@
-Hello world 2026-04-10T15:06:58.851919100+02:00
+  Hello world
+  Line to replace
+  foo
+  This should stay
+  2026-07-03T11:26:37.817182+02:00

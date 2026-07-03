@@ -2,6 +2,7 @@ package org.sterl.llmpeon.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
 
 import java.time.OffsetDateTime;
@@ -103,13 +104,16 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractTest {
                   Line to replace
                   foo
                   This should stay
-                """ + OffsetDateTime.now();
+                """ + editString;
         tool.writeWorkspaceFile(fileName, message);
         
         // WHEN
-        tool.editWorkspaceFile(fileName, "  Line to replace\n  fooo", editString);
+        try {
+            tool.editWorkspaceFile(fileName, "  Line to replace\n  fooooooo", editString);
+            fail("Should throw IllegalArgumentException");
+        } catch (IllegalArgumentException e) {}
         // THEN
-        message = readTool.readWorkspaceFile(fileName, 0, 0);
+        message = readTool.readWorkspaceFile(fileName, null, null);
         assertTrue(message, message.contains(editString));
         assertTrue(message, message.contains("Line to replace"));
         assertTrue(message, message.contains("foo"));

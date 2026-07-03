@@ -141,7 +141,7 @@ public class EclipseWorkspaceReadFileToolTest extends AbstractTest {
         
         // THEN - should find files with class declarations matching the pattern
         assertTrue("Regex pattern 'class.*Tool' should match class declarations:\n" + content, 
-                content.contains("EclipseGrepTool.java") || content.contains("EclipseWorkspaceReadFileTool.java"));
+                content.contains("EclipseWorkspaceReadFileToolTest.java"));
     }
 
     @Test
@@ -152,11 +152,12 @@ public class EclipseWorkspaceReadFileToolTest extends AbstractTest {
         var tool = new EclipseGrepTool();
         
         // WHEN - regex alternation pattern that should match multiple terms
-        var content = tool.grepWorkspaceFiles("EclipseGrepTool|EclipseWorkspaceReadFileTool", null, ".java");
+        var content = tool.grepWorkspaceFiles("JdtUtilDiskPathTest|PeonAiServiceTest", null, ".java");
         
         // THEN - should find files matching either term
         assertTrue("Regex alternation should match:\n" + content, 
-                content.contains("EclipseGrepTool.java") || content.contains("EclipseWorkspaceReadFileTool.java"));
+                content.contains("JdtUtilDiskPathTest.java") 
+                && content.contains("PeonAiServiceTest.java"));
     }
 
     
