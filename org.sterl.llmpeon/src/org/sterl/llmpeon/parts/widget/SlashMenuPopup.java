@@ -18,7 +18,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
-import org.sterl.llmpeon.shared.model.SimplePromptFile;
+import org.sterl.llmpeon.prompt.model.SimplePromptFile;
 import org.sterl.llmpeon.skill.SkillPromptFile;
 
 /**
@@ -223,7 +223,7 @@ public class SlashMenuPopup {
         if (prefix == null || prefix.isEmpty()) return source;
         var lower = prefix.toLowerCase(Locale.ROOT);
         return source.stream()
-                .filter(c -> c.name().toLowerCase(Locale.ROOT).startsWith(lower))
+                .filter(c -> c.getName().toLowerCase(Locale.ROOT).startsWith(lower))
                 .toList();
     }
 

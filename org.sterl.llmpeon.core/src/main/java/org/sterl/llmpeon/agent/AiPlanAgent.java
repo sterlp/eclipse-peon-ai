@@ -1,4 +1,4 @@
-package org.sterl.llmpeon;
+package org.sterl.llmpeon.agent;
 
 import java.util.Optional;
 import java.util.function.Predicate;
@@ -11,21 +11,22 @@ import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
 import dev.langchain4j.data.message.AiMessage;
 
-public class AiPlannerService extends AbstractChatService {
+public class AiPlanAgent extends AbstractAgent {
 
+    public static final String NAME = "Peon-Plan";
     private static final String BASE_PROMPT = PromptLoader.loadWithDefault("planner.txt");
 
-    public AiPlannerService(ConfiguredChatModel configuredModel, ToolService toolService) {
+    public AiPlanAgent(ConfiguredChatModel configuredModel, ToolService toolService) {
         super(configuredModel, toolService);
     }
 
     @Override
-    protected String getSystemPrompt() {
+    public String getSystemPrompt() {
         return BASE_PROMPT;
     }
 
     @Override
-    public double getTemperature() {
+    public Double getTemperature() {
         return configuredModel.getConfig().getDevTemperature();
     }
 
@@ -56,11 +57,6 @@ public class AiPlannerService extends AbstractChatService {
         return super.getToolFilter().and(t -> !t.getTool().isEditTool());
     }
 
-    @Override
-    protected boolean includesMcpTools() {
-        return false;
-    }
-
     /**
      * Returns the last AI message from the planner conversation.
      * Used during PLAN -> DEV handoff to pass the plan to the developer service.
@@ -68,5 +64,10 @@ public class AiPlannerService extends AbstractChatService {
     public Optional<AiMessage> extractLastPlan() {
         var message = memory.getLastOf(AiMessage.class); // getMessages();
         return Optional.ofNullable(message);
+    }
+
+    @Override
+    public String getName() {
+        return NAME;
     }
 }

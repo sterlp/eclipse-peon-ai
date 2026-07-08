@@ -1,0 +1,172 @@
+package org.sterl.llmpeon;
+
+import java.io.IOException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.sterl.llmpeon.agent.AiAgent;
+import org.sterl.llmpeon.agent.AiDevAgent;
+import org.sterl.llmpeon.agent.AiPlanAgent;
+import org.sterl.llmpeon.agent.CustomAgent;
+import org.sterl.llmpeon.ai.ConfiguredChatModel;
+import org.sterl.llmpeon.prompt.PromptYmlParser;
+import org.sterl.llmpeon.prompt.model.SimplePromptFile;
+import org.sterl.llmpeon.tool.ToolService;
+
+import lombok.Getter;
+import lombok.Setter;
+
+/**
+ * Loads user-defined custom agents from a configured directory.
+ *
+ * <p>Each immediate subdirectory that contains an {@code AGENT.md} (case-insensitive) becomes one
+ * {@link AgentPromptFile}; the directory name is the default agent name. Mirrors
+ * {@link org.sterl.llmpeon.skill.SkillService}. Files are read on demand, so edits to an
+ * {@code AGENT.md} are picked up on the next {@link #refresh(Path)}.</p>
+ */
+public class AgentService {
+
+    private final ConfiguredChatModel configuredChatModel;
+    private final ToolService toolService;
+    
+    /** Lazily created chat service per custom agent (keyed by lower-case name), each own memory. */
+    private final Map<String, AiAgent> customAgents = new ConcurrentHashMap<>();
+    private volatile Path agentsDirectory;
+    
+    /** Non-null when a custom agent is selected; takes precedence over {@link #mode}. */
+    @Getter @Setter
+    private volatile AiAgent activeCustomAgent;
+    private final AiDevAgent devAgent;
+    private final AiPlanAgent planAgent;
+
+    public AgentService(
+            Path agentsDirectory, 
+            ToolService toolService,
+            ConfiguredChatModel configuredChatModel) {
+        this(false, agentsDirectory, toolService, configuredChatModel);
+    }
+    
+    public AgentService(
+            boolean withDefaultAgent,
+            Path agentsDirectory, 
+            ToolService toolService,
+            ConfiguredChatModel configuredChatModel) {
+        refresh(agentsDirectory);
+        this.configuredChatModel = configuredChatModel;
+        this.toolService = toolService;
+        if (withDefaultAgent) {
+            devAgent = new AiDevAgent(configuredChatModel, toolService);
+            planAgent = new AiPlanAgent(configuredChatModel, toolService);
+        } else {
+            devAgent = null;
+            planAgent = null;
+        }
+    }
+
+    public void clear() {
+        customAgents.clear();
+    }
+
+    /** Returns loaded agents when enabled, empty list when disabled, sorted by name. */
+    public List<AiAgent> getAgents() {
+        return customAgents.values().stream()
+                    .sorted(Comparator.comparing(a -> a.getName().toLowerCase()))
+                    .toList();
+    }
+
+    public int loadedAgentCount() {
+        return customAgents.size();
+    }
+    
+    public void addAgent(AiAgent agent) {
+        if (agent == null) return;
+        this.customAgents.put(agent.getName().toLowerCase(), agent);
+    }
+
+    public boolean refresh(String newPath) throws IOException {
+        return refresh(newPath == null || newPath.isBlank() ? null : Path.of(newPath));
+    }
+
+    /**
+     * Reloads using the new path
+     */
+    public boolean refresh(Path newPath) {
+        if (newPath == null && agentsDirectory == null) return false;
+
+        if (newPath == null) {
+            this.agentsDirectory = null;
+            this.customAgents.clear();
+            return true;
+        } else {
+            this.agentsDirectory = newPath.toAbsolutePath().normalize();
+            return refresh();
+        }
+    }
+
+    public boolean refresh() {
+        if (Files.isDirectory(agentsDirectory)) {
+            try {
+                reloadAgentConfig();
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to reload agents from: " + agentsDirectory, e);
+            }
+        }
+        return true;
+    }
+
+    private void reloadAgentConfig() throws IOException {
+        var newAgents = new ConcurrentHashMap<String, AiAgent>();
+        try (DirectoryStream<Path> entries = Files.newDirectoryStream(agentsDirectory)) {
+            for (Path entry : entries) {
+                var agentCfg = readAgentPrompt(entry);
+                if (agentCfg != null) {
+                    var agent = this.customAgents.get(agentCfg.getName().toLowerCase());
+                    if (agent == null) agent = new CustomAgent(agentCfg, configuredChatModel, toolService);
+                    else if (agent instanceof CustomAgent ca) ca.setPromptFile(agentCfg);
+                    newAgents.put(agent.getName().toLowerCase(), agent);
+                }
+            }
+        }
+        this.customAgents.clear();
+        if (planAgent != null) this.customAgents.put(planAgent.getName(), planAgent);
+        if (devAgent != null) this.customAgents.put(devAgent.getName(), devAgent);
+        this.customAgents.putAll(newAgents);
+        // clear active if gone
+        if (activeCustomAgent != null && !customAgents.containsKey(activeCustomAgent.getName().toLowerCase())) {
+            this.activeCustomAgent = customAgents.isEmpty() ? null : customAgents.values().iterator().next();
+        }
+    }
+
+    private SimplePromptFile readAgentPrompt(Path dir) throws IOException {
+        var agentFile = detectAgentFile(dir);
+        if (agentFile == null) return null;
+        return PromptYmlParser.parseYml(agentFile);
+    }
+
+    private Path detectAgentFile(Path dir) {
+        var file = dir.resolve("AGENT.md");
+        if (Files.isRegularFile(file)) return file;
+        file = dir.resolve("agent.md");
+        return Files.isRegularFile(file) ? file : null;
+    }
+
+    /** Returns the agent by name, including disabled ones. */
+    public Optional<AiAgent> get(String name) {
+        if (name == null || name.isBlank()) return Optional.empty();
+        return Optional.ofNullable(customAgents.get(name.toLowerCase()));
+    }
+
+    public boolean hasAgents() {
+        return !customAgents.isEmpty();
+    }
+
+    public Path getAgentsDirectory() {
+        return agentsDirectory;
+    }
+}

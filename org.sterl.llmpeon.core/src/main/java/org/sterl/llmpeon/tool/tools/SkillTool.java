@@ -30,7 +30,7 @@ public class SkillTool extends AbstractTool {
                     + " found. Use one of: " + skillService.skillNames();
         }
         onTool("Read SKILL " + name);
-        return skill.get().readBody();
+        return skill.get().renderBody();
     }
     
     @Tool("List all active SKILL - use it before complex tasks, to verify if a skill is available.")

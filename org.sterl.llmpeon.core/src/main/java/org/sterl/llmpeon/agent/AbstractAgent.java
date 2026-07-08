@@ -1,4 +1,4 @@
-package org.sterl.llmpeon;
+package org.sterl.llmpeon.agent;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -7,9 +7,7 @@ import java.util.List;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import org.sterl.llmpeon.agent.AiCompressorAgent;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
-import org.sterl.llmpeon.ai.model.AiModel;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
@@ -23,7 +21,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import lombok.Getter;
 
-public abstract class AbstractChatService {
+public abstract class AbstractAgent implements AiAgent {
 
     @Getter
     protected final ThreadSafeMemory memory = new ThreadSafeMemory();
@@ -34,17 +32,21 @@ public abstract class AbstractChatService {
     private final List<ChatMessage> staticContext = new ArrayList<>();
     private final List<String> userContextInformations = new ArrayList<>();
 
-    protected AbstractChatService(ConfiguredChatModel configuredModel, ToolService toolService) {
+    protected AbstractAgent(ConfiguredChatModel configuredModel, ToolService toolService) {
         this.toolService = toolService;
         this.configuredModel = configuredModel;
     }
 
-    protected abstract String getSystemPrompt();
-    public abstract double getTemperature();
+    public abstract Double getTemperature();
 
     /** Returns the configured model name for this agent type, or null to use default. */
+    @Override
     public String getAgentModelName() {
         return configuredModel.getConfig().getModel();
+    }
+    @Override
+    public boolean setAgentModelName(String modelName) {
+        return this.configuredModel.withModel(modelName);
     }
 
     /**
@@ -63,8 +65,6 @@ public abstract class AbstractChatService {
         return n -> true;
     }
 
-    protected boolean includesMcpTools() { return true; }
-
     /** True if the given built-in tool is offered to the LLM for this agent (UI introspection). */
     public boolean isToolActive(SmartToolExecutor exec) {
         return getToolFilter().test(exec);
@@ -72,12 +72,9 @@ public abstract class AbstractChatService {
 
     /** True if the given MCP tool name is offered to the LLM for this agent (UI introspection). */
     public boolean isMcpToolActive(String toolName) {
-        return includesMcpTools() && getToolNameFilter().test(toolName);
+        return getToolNameFilter().test(toolName);
     }
     
-    public boolean setModelName(AiModel modelName) {
-        return this.configuredModel.withModel(modelName);
-    }
 
     public int tokenContextUsedInPercent() {
         float used = memory.getTotalTokenUsed();
@@ -90,6 +87,7 @@ public abstract class AbstractChatService {
         return this.memory.containsUserMessage(message);
     }
 
+    @Override
     public ChatResponse call(String message, AiMonitor monitor) {
         monitor = AiMonitor.nullSafety(monitor);
         monitor.onCallStart(message);
@@ -123,7 +121,6 @@ public abstract class AbstractChatService {
                     .monitor(monitor)
                     .toolFilter(getToolFilter())
                     .toolNameFilter(getToolNameFilter())
-                    .includeMcpTools(includesMcpTools())
                     .temperature(getTemperature())
                     .modelName(getAgentModelName())
                     .standingOrders(List.copyOf(userContextInformations))

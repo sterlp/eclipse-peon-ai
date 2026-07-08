@@ -1,4 +1,4 @@
-package org.sterl.llmpeon;
+package org.sterl.llmpeon.agent;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -30,10 +30,10 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 
-public class AiDeveloperServiceTest {
+public class AiDeveloperAgentTest {
 
     final ToolService toolService = new ToolService();
-    AiDeveloperService subject;
+    AiDevAgent subject;
     StreamingChatModel cm;
     final AtomicReference<Function<ChatRequest, ChatResponse>> fn = new AtomicReference<>();
     
@@ -62,7 +62,7 @@ public class AiDeveloperServiceTest {
     void beforeEach() {
         toolService.replaceTool(new CompactSessionTool());
         cm = mockWithHandler();
-        subject = new AiDeveloperService(new ConfiguredChatModel(LlmConfig.newOllama("foo"), cm), toolService);
+        subject = new AiDevAgent(new ConfiguredChatModel(LlmConfig.newOllama("foo"), cm), toolService);
     }
     
     @Test

@@ -10,13 +10,13 @@ import java.util.function.Consumer;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
-import org.sterl.llmpeon.AbstractChatService;
-import org.sterl.llmpeon.AiDeveloperService;
-import org.sterl.llmpeon.AiPlannerService;
-import org.sterl.llmpeon.CustomAgentService;
+import org.sterl.llmpeon.AgentService;
 import org.sterl.llmpeon.PeonMode;
 import org.sterl.llmpeon.StandingOrdersBuilder.MessageProvider;
-import org.sterl.llmpeon.agent.AgentService;
+import org.sterl.llmpeon.agent.AbstractAgent;
+import org.sterl.llmpeon.agent.AiDevAgent;
+import org.sterl.llmpeon.agent.AiPlanAgent;
+import org.sterl.llmpeon.agent.CustomAgent;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.ai.model.AiModel;
@@ -35,7 +35,7 @@ import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
 import org.sterl.llmpeon.parts.tools.EclipseRunTestTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
-import org.sterl.llmpeon.shared.PromptYmlParser;
+import org.sterl.llmpeon.prompt.PromptYmlParser;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.tool.ToolService;
@@ -67,12 +67,6 @@ public class PeonAiService implements MessageProvider {
     private final AgentService agentService;
     private final AgentsMdService agentsMdService;
 
-    /** Lazily created chat service per custom agent (keyed by lower-case name), each own memory. */
-    private final Map<String, CustomAgentService> customAgents = new ConcurrentHashMap<>();
-    /** Non-null when a custom agent is selected; takes precedence over {@link #mode}. */
-    private volatile CustomAgentService activeCustomAgent;
-    private final AiDeveloperService developerService;
-    private final AiPlannerService plannerService;
     private final AgentModeService agentMode;
     private final AgentModeTool agentModeTool;
     private final McpConnectionService mcpConnectionService;
@@ -84,30 +78,6 @@ public class PeonAiService implements MessageProvider {
 
     /** Written from Eclipse DI thread, read from background LLM job threads. */
     private final AtomicReference<IProject> currentProject = new AtomicReference<>();
-    
-    private volatile PeonMode mode = PeonMode.DEV;
-    
-    /**
-     * Package-private constructor for unit tests — accepts pre-built services to avoid
-     * hard Eclipse dependencies ({@code EclipseUtil.workspacePath()}, Eclipse tools, etc.).
-     */
-    PeonAiService(ConfiguredChatModel configuredModel, AiPlannerService plannerService, AiDeveloperService developerService) {
-        this.configuredModel = configuredModel;
-        this.plannerService = plannerService;
-        this.developerService = developerService;
-        this.toolService = null;
-        this.skillService = null;
-        this.commandService = null;
-        this.agentService = null;
-        this.agentsMdService = null;
-        this.agentMode = null;
-        this.agentModeTool = null;
-        this.mcpConnectionService = null;
-        this.workspaceWriteFilesTool = null;
-        this.diskFileWriteTool = null;
-        this.diskFileReadTool = null;
-        this.diskGrepTool = null;
-    }
 
     /**
      * Creates all AI services with defaults from the current Eclipse preferences.
@@ -127,11 +97,9 @@ public class PeonAiService implements MessageProvider {
         toolService             = new ToolService();
         skillService            = new SkillService();
         commandService          = new CommandService();
-        agentService            = new AgentService();
         agentsMdService         = new AgentsMdService();
         
         toolService.addTool(new SkillTool(skillService));
-
         workspaceWriteFilesTool = new EclipseWorkspaceWriteFileTool();
         toolService.addTool(workspaceWriteFilesTool);
         toolService.addTool(new EclipseWorkspaceReadFileTool());
@@ -146,12 +114,12 @@ public class PeonAiService implements MessageProvider {
         toolService.addTool(new EclipseCodeNavigationTool());
         toolService.addTool(new EclipseConsoleLogTool());
 
-        developerService = new AiDeveloperService(configuredModel, toolService);
-        plannerService   = new AiPlannerService(configuredModel, toolService);
+        agentService  = new AgentService(true, 
+                config.getConfigDir().resolve(LlmConfig.AGENT_DIRECTORY), toolService, configuredModel);
 
         // Agent mode uses separate instances with isolated memory
-        var agentDev  = new AiDeveloperService(configuredModel, toolService);
-        var agentPlan = new AiPlannerService(configuredModel, toolService);
+        var agentDev  = new AiDevAgent(configuredModel, toolService);
+        var agentPlan = new AiPlanAgent(configuredModel, toolService);
         agentMode     = new AgentModeService(agentPlan, agentDev, sendTrigger, openInEditorCallback);
         agentModeTool = new AgentModeTool(agentMode);
 
@@ -167,41 +135,24 @@ public class PeonAiService implements MessageProvider {
     public void updateConfig(LlmConfig config) {
         configuredModel.updateConfig(config);
         updateActiveDiskTools(config);
-        if (config.getSkillDirectory() != null && !config.getSkillDirectory().isBlank()) {
-            try {
-                skillService.refresh(config.getSkillDirectory());
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to load skills from " + config.getSkillDirectory(), e);
-            }
-        }
+        
+        
+        var dir = config.getConfigDir().resolve(LlmConfig.SKILL_DIRECTORY);
         try {
-            commandService.refresh(config.getCommandDirectory());
+            skillService.refresh(dir);
         } catch (IOException e) {
-            throw new RuntimeException("Failed to load commands from " + config.getCommandDirectory(), e);
+            throw new RuntimeException("Failed to load skills from " + dir, e);
         }
-        refreshCustomAgents(config);
+        dir = config.getConfigDir().resolve(LlmConfig.COMMAND_DIRECTORY);
+        try {
+            commandService.refresh(dir);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load commands from " + dir, e);
+        }
+        dir = config.getConfigDir().resolve(LlmConfig.AGENT_DIRECTORY);
+        agentService.refresh(dir);
     }
 
-    /**
-     * Reloads the custom agent definitions and syncs the cached {@link CustomAgentService}s: updated
-     * definitions replace the snapshot, removed ones drop out of the cache (and are deselected).
-     */
-    private void refreshCustomAgents(LlmConfig config) {
-        try {
-            agentService.refresh(config.getAgentDirectory());
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to load agents from " + config.getAgentDirectory(), e);
-        }
-        for (var name : List.copyOf(customAgents.keySet())) {
-            var def = agentService.get(name);
-            if (def.isPresent()) {
-                customAgents.get(name).setAgentFile(def.get());
-            } else {
-                var removed = customAgents.remove(name);
-                if (removed == activeCustomAgent) activeCustomAgent = null;
-            }
-        }
-    }
 
     private void updateActiveDiskTools(LlmConfig config) {
         if (config.isDiskToolsEnabled()) {
@@ -219,7 +170,7 @@ public class PeonAiService implements MessageProvider {
         }
     }
     
-    public AbstractChatService getActiveService() {
+    public AbstractAgent getActiveService() {
         var custom = activeCustomAgent;
         if (custom != null) return custom;
         return switch (getPeonMode()) {
@@ -302,11 +253,11 @@ public class PeonAiService implements MessageProvider {
         return configuredModel.getConfig();
     }
 
-    public AiDeveloperService getDeveloperService() {
+    public AiDevAgent getDeveloperService() {
         return developerService;
     }
 
-    public AiPlannerService getPlannerService() {
+    public AiPlanAgent getPlannerService() {
         return plannerService;
     }
 
@@ -370,7 +321,7 @@ public class PeonAiService implements MessageProvider {
      */
     public void setModel(AiModel model) {
         var active = getActiveService();
-        if (active instanceof CustomAgentService custom) {
+        if (active instanceof CustomAgent custom) {
             if (custom.setModelName(model) && model != null && StringUtil.hasValue(model.getId())) {
                 persistCustomAgentModel(custom, model.getId());
             }
@@ -379,7 +330,7 @@ public class PeonAiService implements MessageProvider {
         }
     }
 
-    private void persistCustomAgentModel(CustomAgentService custom, String modelId) {
+    private void persistCustomAgentModel(CustomAgent custom, String modelId) {
         var file = custom.getAgentFile().getPromptFile();
         try {
             PromptYmlParser.setFrontmatterValue(file, "model", modelId);
@@ -406,7 +357,7 @@ public class PeonAiService implements MessageProvider {
         var def = agentService.get(name);
         if (def.isEmpty()) return;
         var svc = customAgents.computeIfAbsent(name.toLowerCase(Locale.ROOT),
-                k -> new CustomAgentService(configuredModel, toolService, def.get()));
+                k -> new CustomAgent(configuredModel, toolService, def.get()));
         svc.setAgentFile(def.get());
         getToolService().removeTool(getAgentModeTools());
         getAgentMode().reset();

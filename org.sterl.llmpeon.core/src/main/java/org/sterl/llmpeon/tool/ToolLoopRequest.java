@@ -13,7 +13,6 @@ import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import lombok.Builder;
@@ -59,8 +58,6 @@ public class ToolLoopRequest {
      */
     @Default
     public Predicate<String> toolNameFilter = n -> true;
-    @Default
-    public boolean includeMcpTools = true;
     @Nullable
     public Double temperature;
     /** Per-agent model override — null means use the configured default. */
@@ -117,11 +114,6 @@ public class ToolLoopRequest {
 
     public ToolLoopRequest toolFilter(Predicate<SmartToolExecutor> toolFilter) {
         this.toolFilter = toolFilter;
-        return this;
-    }
-
-    public ToolLoopRequest includeMcpTools(boolean includeMcpTools) {
-        this.includeMcpTools = includeMcpTools;
         return this;
     }
 

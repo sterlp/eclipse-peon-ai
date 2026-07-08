@@ -63,7 +63,7 @@ class ThreadSafeMemoryConcurrencyTest {
             
             boolean completed = latch.await(10, TimeUnit.SECONDS);
             if (!completed) {
-                System.err.println("Latch did not complete in time - possible deadlock or hang");
+                throw new RuntimeException("Latch did not complete in time - possible deadlock or hang");
             }
         }
         

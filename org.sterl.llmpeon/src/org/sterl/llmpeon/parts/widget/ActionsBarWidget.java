@@ -15,6 +15,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.sterl.llmpeon.PeonMode;
 import org.sterl.llmpeon.agent.AgentPromptFile;
+import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.ai.model.AiModel;
 
 /**
@@ -33,14 +34,12 @@ public class ActionsBarWidget extends Composite {
     private final AtomicBoolean working = new AtomicBoolean(false);
     private boolean agentModeAvailable = false;
     private List<AiModel> availableModels = List.of();
-    /** Custom agents shown after the built-in modes in the combo. */
-    private List<AgentPromptFile> customAgents = List.of();
 
     public ActionsBarWidget(Composite parent, int style,
             Runnable onClear,
             Runnable onImplement,
-            Consumer<PeonMode> onModeChange,
-            Consumer<AgentPromptFile> onCustomAgentChange,
+            Consumer<AiAgent> onAgentChange,
+            
             Consumer<AiModel> onModelChange,
             Consumer<Boolean> onAutonomousChange,
             Consumer<Boolean> onThinkToggle) {
@@ -59,7 +58,7 @@ public class ActionsBarWidget extends Composite {
         rowLayout.spacing = 4;
         setLayout(rowLayout);
 
-        buildAgentCombo(onModeChange, onCustomAgentChange);
+        buildAgentCombo(onAgentChange, onCustomAgentChange);
 
         buildModelCombo(onModelChange);
 
@@ -112,8 +111,7 @@ public class ActionsBarWidget extends Composite {
         });
     }
 
-    private void buildAgentCombo(Consumer<PeonMode> onModeChange,
-            Consumer<AgentPromptFile> onCustomAgentChange) {
+    private void buildAgentCombo(Consumer<AiAgent> onModeChange) {
         agentCombo = new Combo(this, SWT.READ_ONLY);
         agentCombo.setLayoutData(new RowData(120, SWT.DEFAULT));
         rebuildAgentItems();

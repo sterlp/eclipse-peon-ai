@@ -87,11 +87,9 @@ public class ToolService {
                 .map(SmartToolExecutor::getSpec)
                 .forEach(result::add);
 
-        if (req.includeMcpTools) {
-            mcpToolSpecs.stream()
-                    .filter(spec -> req.toolNameFilter.test(spec.name()))
-                    .forEach(result::add);
-        }
+        mcpToolSpecs.stream()
+                .filter(spec -> req.toolNameFilter.test(spec.name()))
+                .forEach(result::add);
         return result;
     }
 

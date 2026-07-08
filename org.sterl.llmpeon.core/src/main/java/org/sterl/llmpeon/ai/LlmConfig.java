@@ -21,6 +21,11 @@ import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.ToString;
 
+/**
+ * SKILL_DIRECTORY      = skill
+ * COMMAND_DIRECTORY    = command
+ * AGENT_DIRECTORY      = agent"
+ */
 @Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
@@ -28,6 +33,10 @@ import lombok.ToString;
 @EqualsAndHashCode
 @ToString(exclude = {"apiKey", "headerParams"})
 public class LlmConfig {
+    
+    public final static String SKILL_DIRECTORY      = "skill";
+    public final static String COMMAND_DIRECTORY    = "command";
+    public final static String AGENT_DIRECTORY      = "agent";
 
     @Default
     @NonNull
@@ -65,11 +74,8 @@ public class LlmConfig {
     @Default
     private final String apiKey = null;
     @Default
-    private final String skillDirectory = null;
-    @Default
-    private final String commandDirectory = null;
-    @Default
-    private final String agentDirectory = null;
+    private final Path configDir = null;
+
     @Default
     private final boolean diskToolsEnabled = false;
     @Default
@@ -129,7 +135,13 @@ public class LlmConfig {
     }
 
     public boolean skillFolderExisits() {
-        return Files.isDirectory(Path.of(skillDirectory));
+        return this.configDir != null && Files.exists(this.configDir.resolve(SKILL_DIRECTORY));
+    }
+    public boolean commandFolderExisits() {
+        return this.configDir != null && Files.exists(this.configDir.resolve(COMMAND_DIRECTORY));
+    }
+    public boolean agentFolderExisits() {
+        return this.configDir != null && Files.exists(this.configDir.resolve(AGENT_DIRECTORY));
     }
 
     public boolean isReachable(int timeoutMs) {

@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.sterl.llmpeon.AiDeveloperService;
+import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.tool.ToolService;
@@ -38,7 +38,7 @@ class AiCompressorAgentTest {
                 String.format("http://localhost:%d/v1", server.getPort()));
         server.queueResponse("WHAT: Build a Java Hello world application that displays the current time when executed.");
 
-        var subject = new AiDeveloperService(config.build(), new ToolService());
+        var subject = new AiDevAgent(config.build(), new ToolService());
 
         subject.addMessage(UserMessage.from("Build be a Hello world"));
         subject.addMessage(AiMessage.from("In which language?"));

@@ -13,7 +13,7 @@ import java.util.List;
  * </ul>
  *
  * <p>An empty allowlist enables nothing. The "absent {@code tools:} = all tools" rule is handled by
- * the caller ({@code CustomAgentService}), not here.</p>
+ * the caller ({@code CustomAgent}), not here.</p>
  */
 public final class ToolPolicy {
 
@@ -21,9 +21,8 @@ public final class ToolPolicy {
 
     public static boolean enables(List<String> allowlist, String toolName) {
         if (allowlist == null || toolName == null) return false;
-        for (String entry : allowlist) {
-            if (entry == null) continue;
-            String token = entry.trim();
+        for (String token : allowlist) {
+            if (token == null) continue;
             if (token.isEmpty()) continue;
             if (token.equals("*") || toolName.startsWith(token)) return true;
         }

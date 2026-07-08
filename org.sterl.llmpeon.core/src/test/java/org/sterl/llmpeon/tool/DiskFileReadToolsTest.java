@@ -116,14 +116,6 @@ class DiskFileReadToolsTest {
         // limit=2 returns exactly two
         assertEquals(2, tool.searchDiskFiles("*.java", 2).split("\n").length);
     }
-    
-    @Test
-    void searchDiskFiles_no_results() throws IOException {
-        // GIVEN - three files
-
-        // unlimited returns all three
-        System.err.println(tool.searchDiskFiles("FOObarNotexisting.java", 0));
-    }
 
     @Test
     void searchDiskFiles_emptyQuery() {

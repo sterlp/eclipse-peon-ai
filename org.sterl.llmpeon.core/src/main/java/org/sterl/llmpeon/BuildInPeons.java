@@ -1,6 +1,6 @@
 package org.sterl.llmpeon;
 
-public enum PeonMode {
+public enum BuildInPeons {
     /** Read-only analyst: clarifies requirements and produces a User-Story (the WHAT). */
     PLAN("Peon-Plan"),
     /** Full-access developer: implements the plan (the HOW). */
@@ -10,7 +10,7 @@ public enum PeonMode {
     
     private final String label;
 
-    private PeonMode(String label) {
+    private BuildInPeons(String label) {
         this.label = label;
     }
 

@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.sterl.llmpeon.agent.AiDevAgent;
+import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.tool.ToolService;
@@ -35,7 +37,7 @@ public class AiServicePerAgentModelTest {
         
         var cm = streamMock.buildMock(r -> ChatResponse.builder().aiMessage(AiMessage.aiMessage("done")).build());
         var configuredModel = new ConfiguredChatModel(config, cm);
-        var agent = new AiDeveloperService(configuredModel, toolService);
+        var agent = new AiDevAgent(configuredModel, toolService);
 
         // WHEN
         agent.call("test", null);
@@ -55,7 +57,7 @@ public class AiServicePerAgentModelTest {
 
         var cm = streamMock.buildMock(r -> ChatResponse.builder().aiMessage(AiMessage.aiMessage("done")).build());
         var configuredModel = new ConfiguredChatModel(config, cm);
-        var agent = new AiPlannerService(configuredModel, toolService);
+        var agent = new AiPlanAgent(configuredModel, toolService);
 
         // WHEN
         agent.call("test", null);
@@ -75,7 +77,7 @@ public class AiServicePerAgentModelTest {
 
         var cm = streamMock.buildMock(r -> ChatResponse.builder().aiMessage(AiMessage.aiMessage("done")).build());
         var configuredModel = new ConfiguredChatModel(config, cm);
-        var agent = new AiPlannerService(configuredModel, toolService);
+        var agent = new AiPlanAgent(configuredModel, toolService);
 
         // WHEN
         agent.call("test", null);

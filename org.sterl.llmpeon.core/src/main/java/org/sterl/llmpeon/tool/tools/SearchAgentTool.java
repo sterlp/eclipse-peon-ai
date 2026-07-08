@@ -36,7 +36,6 @@ public class SearchAgentTool extends AbstractTool {
             
             var request = this.request.toBuilder()
                 .staticMessages(Arrays.asList(system))
-                .includeMcpTools(true)
                 .toolFilter(e -> !e.getTool().isEditTool() && !(e.getTool() instanceof SearchAgentTool))
                 .memory(messages);
 

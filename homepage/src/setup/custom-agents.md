@@ -17,7 +17,7 @@ directory in **Window > Preferences > Peon AI > Agents directory**.
 
 ```
 ~/.peon/agents/
-├── docs-assistant/
+├── sap-coder/
 │   └── AGENT.md
 └── reviewer/
     └── AGENT.md

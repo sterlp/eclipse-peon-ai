@@ -50,28 +50,17 @@ public class ConfiguredChatModel {
     }
     
     /**
-     * Returns a new config with the given model applied.
-     * 
      * @return <code>true</code> if changed, otherwise <code>false</code>
      */
-    @Deprecated
-    public boolean withModel(AiModel aiModel) {
-        if (StringUtil.hasNoValue(aiModel.getId())) {
-            // Cannot compare — proceed to update
-        } else if (aiModel.getId().equals(config.getModel())) {
+    public boolean withModel(String aiModelId) {
+        if (StringUtil.hasNoValue(aiModelId)) {
             return false;
+        } else if (aiModelId.equals(config.getModel())) {
+            return false;
+        } else {
+            config = config.toBuilder().model(aiModelId).build();
+            return true;
         }
-        
-        var builder = config.toBuilder().model(aiModel.getId());
-        if (aiModel.getMaxInputTokens()  != null) {
-            int max = (int)(aiModel.getMaxInputTokens() * 0.9);
-            if (max < config.getAutoCompactAfter()) {
-                builder.autoCompactAfter(max);
-            }
-        }
-
-        config = builder.build();
-        return true;
     }
 
     public boolean withThinking(boolean enabled) {
@@ -93,13 +82,13 @@ public class ConfiguredChatModel {
         if (models.isEmpty()) return false;
         var model = config.getModel();
         if (StringUtil.hasNoValue(model)) {
-            return withModel(models.getFirst());
+            return withModel(models.getFirst().getId());
         } else {
             var effective = models.stream()
                     .filter(m -> model.equals(m.getId()) || model.equalsIgnoreCase(m.getName()))
                     .findFirst()
                     .orElse(models.get(0));
-            return withModel(effective);
+            return withModel(effective.getId());
         }
     }
     

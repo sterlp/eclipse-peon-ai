@@ -4,24 +4,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import org.sterl.llmpeon.AbstractMemoryFileTest;
 import org.sterl.llmpeon.skill.SkillService;
 
-class DisabledSkillTest {
-
-    @TempDir
-    Path tempDir;
+class DisabledSkillTest extends AbstractMemoryFileTest {
 
     SkillService skillService;
 
     @BeforeEach
     void setUp() throws Exception {
         skillService = new SkillService();
-        skillService.refresh(tempDir);
+        skillService.refresh(tmp);
         skillService.setEnabled(true);
         skillService.setAllSkillsEnabled(true);
     }
@@ -33,7 +29,7 @@ class DisabledSkillTest {
         createSkill("testing", "Unit test guidelines.");
 
         // WHEN
-        skillService.refresh(tempDir);
+        skillService.refresh(tmp);
         
         // AND
         assertThat(skillService.skillNames()).contains("formatting");
@@ -46,7 +42,7 @@ class DisabledSkillTest {
         // GIVEN
         createSkill("formatting", "Code formatting rules.");
         createSkill("testing", "Unit test guidelines.");
-        skillService.refresh(tempDir);
+        skillService.refresh(tmp);
 
         // AND
         skillService.setEnabled(false);
@@ -60,7 +56,7 @@ class DisabledSkillTest {
     void individuallyDisabledSkillDoesNotAppearAsTool() throws Exception {
         createSkill("formatting", "Code formatting rules.");
         createSkill("testing", "Unit test guidelines.");
-        skillService.refresh(tempDir);
+        skillService.refresh(tmp);
 
         // WHEN
         skillService.setSkillEnabled("formatting", false);
@@ -73,17 +69,17 @@ class DisabledSkillTest {
     @Test
     void disabledSkillServiceStillTracksLoadedSkills() throws Exception {
         createSkill("formatting", "Code formatting rules.");
-        skillService.refresh(tempDir);
+        skillService.refresh(tmp);
 
         skillService.setEnabled(false);
 
         assertThat(skillService.getSkills()).isEmpty();
         assertThat(skillService.getAllLoadedSkills()).hasSize(1);
-        assertThat(skillService.getAllLoadedSkills().get(0).name()).isEqualTo("formatting");
+        assertThat(skillService.getAllLoadedSkills().get(0).getName()).isEqualTo("formatting");
     }
 
     private void createSkill(String name, String description) throws IOException {
-        var skillDir = tempDir.resolve(name);
+        var skillDir = tmp.resolve(name);
         Files.createDirectories(skillDir);
         var skillFile = skillDir.resolve("SKILL.md");
         Files.writeString(skillFile, "---\nname: " + name + "\ndescription: " + description + "\n---\n\n# " + name + "\n\nBody content.");

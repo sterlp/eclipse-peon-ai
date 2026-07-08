@@ -1,18 +1,17 @@
-package org.sterl.llmpeon.shared;
+package org.sterl.llmpeon.prompt;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.sterl.llmpeon.shared.model.SimplePromptFile;
+import org.sterl.llmpeon.AbstractMemoryFileTest;
 
-class PromptYmlParserTest {
+class PromptYmlParserTest extends AbstractMemoryFileTest {
 
     @Test
-    void parseYml_plainFileNoFrontmatter(@TempDir Path tmp) throws Exception {
+    void parseYml_plainFileNoFrontmatter() throws Exception {
         // GIVEN
         Files.writeString(tmp.resolve("review.md"), "Review the code.");
 
@@ -20,30 +19,41 @@ class PromptYmlParserTest {
         var prompt = PromptYmlParser.parseYml(tmp.resolve("review.md"));
 
         // THEN
-        assertThat(prompt.name()).isEqualTo("review");
-        assertThat(prompt.description()).isNull();
+        assertThat(prompt.getName()).isEqualTo("review");
+        assertThat(prompt.getDescription()).isNull();
+        // AND
+        assertThat(prompt.getBody()).isEqualTo("Review the code.");
     }
 
     @Test
-    void parseYml_withDescription(@TempDir Path tmp) throws Exception {
+    void parseYml_withDescription() throws Exception {
         // GIVEN
         Files.writeString(tmp.resolve("review.md"), """
                 ---
                 description: Review changes
                 ---
                 body
+                and
+                even
+                more
                 """);
 
         // WHEN
         var prompt = PromptYmlParser.parseYml(tmp.resolve("review.md"));
 
         // THEN
-        assertThat(prompt.name()).isEqualTo("review");
-        assertThat(prompt.description()).isEqualTo("Review changes");
+        assertThat(prompt.getName()).isEqualTo("review");
+        assertThat(prompt.getDescription()).isEqualTo("Review changes");
+        // AND
+        assertThat(prompt.getBody()).isEqualTo("""
+                body
+                and
+                even
+                more""");
     }
 
     @Test
-    void parseYml_withNameOverride(@TempDir Path tmp) throws Exception {
+    void parseYml_withNameOverride() throws Exception {
         // GIVEN
         Files.writeString(tmp.resolve("file.md"), """
                 ---
@@ -57,12 +67,12 @@ class PromptYmlParserTest {
         var prompt = PromptYmlParser.parseYml(tmp.resolve("file.md"));
 
         // THEN
-        assertThat(prompt.name()).isEqualTo("my-command");
-        assertThat(prompt.description()).isEqualTo("desc");
+        assertThat(prompt.getName()).isEqualTo("my-command");
+        assertThat(prompt.getDescription()).isEqualTo("desc");
     }
 
     @Test
-    void parseYml_quotedValues(@TempDir Path tmp) throws Exception {
+    void parseYml_quotedValues() throws Exception {
         // GIVEN
         Files.writeString(tmp.resolve("cmd.md"), """
                 ---
@@ -76,12 +86,12 @@ class PromptYmlParserTest {
         var prompt = PromptYmlParser.parseYml(tmp.resolve("cmd.md"));
 
         // THEN
-        assertThat(prompt.name()).isEqualTo("quoted-name");
-        assertThat(prompt.description()).isEqualTo("quoted desc");
+        assertThat(prompt.getName()).isEqualTo("quoted-name");
+        assertThat(prompt.getDescription()).isEqualTo("quoted desc");
     }
 
     @Test
-    void parseYml_plainFileWithBody(@TempDir Path tmp) throws Exception {
+    void parseYml_plainFileWithBody() throws Exception {
         // GIVEN
         Files.writeString(tmp.resolve("only-body.md"), "just body, no frontmatter");
 
@@ -89,12 +99,12 @@ class PromptYmlParserTest {
         var prompt = PromptYmlParser.parseYml(tmp.resolve("only-body.md"));
 
         // THEN
-        assertThat(prompt.name()).isEqualTo("only-body");
-        assertThat(prompt.readBody()).isEqualTo("just body, no frontmatter");
+        assertThat(prompt.getName()).isEqualTo("only-body");
+        assertThat(prompt.getBody()).isEqualTo("just body, no frontmatter");
     }
 
     @Test
-    void parseYml_nameOnlyNoDescription(@TempDir Path tmp) throws Exception {
+    void parseYml_nameOnlyNoDescription() throws Exception {
         // GIVEN
         Files.writeString(tmp.resolve("only-name.md"), """
                 ---
@@ -107,12 +117,12 @@ class PromptYmlParserTest {
         var prompt = PromptYmlParser.parseYml(tmp.resolve("only-name.md"));
 
         // THEN
-        assertThat(prompt.name()).isEqualTo("only-name");
-        assertThat(prompt.description()).isNull();
+        assertThat(prompt.getName()).isEqualTo("only-name");
+        assertThat(prompt.getDescription()).isNull();
     }
 
     @Test
-    void parseYml_nameFromDirectoryWhenSkillMd(@TempDir Path tmp) throws Exception {
+    void parseYml_nameFromDirectoryWhenSkillMd() throws Exception {
         // GIVEN
         var skillDir = Files.createDirectory(tmp.resolve("eclipse-tool"));
         Files.writeString(skillDir.resolve("SKILL.md"), """
@@ -126,44 +136,44 @@ class PromptYmlParserTest {
         var prompt = PromptYmlParser.parseYml(skillDir.resolve("SKILL.md"));
 
         // THEN
-        assertThat(prompt.name()).isEqualTo("eclipse-tool");
-        assertThat(prompt.description()).isEqualTo("Eclipse stuff");
+        assertThat(prompt.getName()).isEqualTo("eclipse-tool");
+        assertThat(prompt.getDescription()).isEqualTo("Eclipse stuff");
     }
 
     @Test
-    void stripFrontmatter_withFrontmatter() {
+    void stripFrontmatter_withFrontmatter() throws IOException {
         // GIVEN
-        var raw = "---\ndesc: x\n---\nbody";
+        Files.writeString(tmp.resolve("foo.md"), "---\ndesc: x\n---\nbody");
 
         // WHEN
-        var result = SimplePromptFile.stripFrontmatter(raw);
+        var result = PromptYmlParser.parseYml(tmp.resolve("foo.md"));
 
         // THEN
-        assertThat(result).isEqualTo("body");
+        assertThat(result.getBody()).isEqualTo("body");
     }
 
     @Test
-    void stripFrontmatter_noFrontmatter() {
+    void stripFrontmatter_noFrontmatter() throws IOException {
         // GIVEN
-        var raw = "plain text";
+        Files.writeString(tmp.resolve("foo.md"), "plain text");
 
         // WHEN
-        var result = SimplePromptFile.stripFrontmatter(raw);
+        var result = PromptYmlParser.parseYml(tmp.resolve("foo.md"));
 
         // THEN
-        assertThat(result).isEqualTo("plain text");
+        assertThat(result.getBody()).isEqualTo("plain text");
     }
 
     @Test
-    void stripFrontmatter_leadingWhitespace() {
+    void stripFrontmatter_leadingWhitespace() throws IOException {
         // GIVEN
-        var raw = "\n\n---\ndesc: x\n---\nbody";
+        Files.writeString(tmp.resolve("foo.md"), "\n\n---\ndesc: x\n---\nbody");
 
         // WHEN
-        var result = SimplePromptFile.stripFrontmatter(raw);
+        var result = PromptYmlParser.parseYml(tmp.resolve("foo.md"));
 
         // THEN
-        assertThat(result).isEqualTo("body");
+        assertThat(result.getBody()).isEqualTo("body");
     }
 
     @Test
@@ -192,7 +202,7 @@ class PromptYmlParserTest {
     }
 
     @Test
-    void parseFrontmatter_blockList(@TempDir Path tmp) throws Exception {
+    void parseFrontmatter_blockList() throws Exception {
         // GIVEN
         var file = tmp.resolve("AGENT.md");
         Files.writeString(file, """
@@ -207,15 +217,35 @@ class PromptYmlParserTest {
                 """);
 
         // WHEN
-        var fm = PromptYmlParser.parseFrontmatter(file);
+        var fm = PromptYmlParser.parseYml(file);
 
         // THEN
         assertThat(fm.get("name")).containsExactly("docs");
         assertThat(fm.get("tools")).containsExactly("grep", "read_", "*");
     }
+    
+    @Test
+    void only_star_tools() throws Exception {
+        // GIVEN
+        var file = tmp.resolve("AGENT.md");
+        Files.writeString(file, """
+                ---
+                name: docs
+                tools: *
+                ---
+                foo bar
+                """);
+
+        // WHEN
+        var fm = PromptYmlParser.parseYml(file);
+
+        // THEN
+        assertThat(fm.get("name")).containsExactly("docs");
+        assertThat(fm.get("tools")).containsExactly("*");
+    }
 
     @Test
-    void parseFrontmatter_inlineCsvTools(@TempDir Path tmp) throws Exception {
+    void parseFrontmatter_inlineCsvTools() throws Exception {
         // GIVEN
         var file = tmp.resolve("AGENT.md");
         Files.writeString(file, """
@@ -226,7 +256,7 @@ class PromptYmlParserTest {
                 """);
 
         // WHEN — inline value kept as one raw entry, split happens in toolAllowlist
-        var tools = PromptYmlParser.toolAllowlist(PromptYmlParser.parseFrontmatter(file).get("tools"));
+        var tools = PromptYmlParser.toolAllowlist(PromptYmlParser.parseYml(file).get("tools"));
 
         // THEN
         assertThat(tools).containsExactly("grep", "read_");
@@ -238,7 +268,7 @@ class PromptYmlParserTest {
     }
 
     @Test
-    void setFrontmatterValue_overwritesExistingKey(@TempDir Path tmp) throws Exception {
+    void setFrontmatterValue_overwritesExistingKey() throws Exception {
         // GIVEN
         var file = tmp.resolve("AGENT.md");
         Files.writeString(file, """
@@ -250,7 +280,9 @@ class PromptYmlParserTest {
                 """);
 
         // WHEN
-        PromptYmlParser.setFrontmatterValue(file, "model", "new-model");
+        var cmd = PromptYmlParser.parseYml(file);
+        cmd.setValue("model", "new-model");
+        cmd.save();
 
         // THEN
         var content = Files.readString(file);
@@ -261,7 +293,7 @@ class PromptYmlParserTest {
     }
 
     @Test
-    void setFrontmatterValue_insertsMissingKey(@TempDir Path tmp) throws Exception {
+    void setFrontmatterValue_insertsMissingKey() throws Exception {
         // GIVEN
         var file = tmp.resolve("AGENT.md");
         Files.writeString(file, """
@@ -272,27 +304,35 @@ class PromptYmlParserTest {
                 """);
 
         // WHEN
-        PromptYmlParser.setFrontmatterValue(file, "model", "some-model");
+        var cmd = PromptYmlParser.parseYml(file);
+        cmd.setValue("model", "some-model");
+        cmd.save();
 
         // THEN
-        var fm = PromptYmlParser.parseFrontmatter(file);
-        assertThat(fm.get("model")).containsExactly("some-model");
-        assertThat(fm.get("name")).containsExactly("docs");
+        cmd = PromptYmlParser.parseYml(file);
+        assertThat(cmd.get("model")).containsExactly("some-model");
+        assertThat(cmd.get("name")).containsExactly("docs");
         assertThat(Files.readString(file)).contains("body text");
     }
 
     @Test
-    void setFrontmatterValue_prependsBlockWhenNone(@TempDir Path tmp) throws Exception {
+    void setFrontmatterValue_prependsBlockWhenNone() throws Exception {
         // GIVEN
         var file = tmp.resolve("AGENT.md");
         Files.writeString(file, "just a body");
 
         // WHEN
-        PromptYmlParser.setFrontmatterValue(file, "model", "m1");
+        var cmd = PromptYmlParser.parseYml(file);
+        cmd.setValue("model", "m1");
+        cmd.save();
 
         // THEN
-        var fm = PromptYmlParser.parseFrontmatter(file);
-        assertThat(fm.get("model")).containsExactly("m1");
+        cmd = PromptYmlParser.parseYml(file);
+        assertThat(cmd.get("model")).containsExactly("m1");
+        assertThat(cmd.getBody()).isEqualTo("just a body");
+        // AND
         assertThat(Files.readString(file)).contains("just a body");
+        assertThat(Files.readString(file)).contains("model: m1");
+        assertThat(Files.readString(file)).contains("---");
     }
 }

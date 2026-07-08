@@ -2,23 +2,36 @@ package org.sterl.llmpeon.agent;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.UUID;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import org.sterl.llmpeon.AbstractMemoryFileTest;
+import org.sterl.llmpeon.AgentService;
 
-class AgentServiceTest {
+class AgentServiceTest extends AbstractMemoryFileTest {
 
-    private Path writeAgent(Path agentsDir, String name, String content) throws Exception {
+    private static Path writeAgent(Path agentsDir, String name, String content) throws Exception {
         var dir = Files.createDirectories(agentsDir.resolve(name));
         var file = dir.resolve("AGENT.md");
         Files.writeString(file, content);
         return file;
     }
+    
+    private AgentService service;
+
+    @BeforeEach
+    void before() throws IOException {
+        tmp = fs.getPath("/" + UUID.randomUUID());
+        Files.createDirectory(tmp);
+        service = new AgentService(tmp, null, null);
+    }
 
     @Test
-    void discoversAgentDirsAndParsesFields(@TempDir Path tmp) throws Exception {
+    void discoversAgentDirsAndParsesFields() throws Exception {
         // GIVEN
         writeAgent(tmp, "docs", """
                 ---
@@ -34,21 +47,20 @@ class AgentServiceTest {
                 """);
 
         // WHEN
-        var service = new AgentService(tmp);
+        service.refresh();
         var agent = service.get("Docs-Assistent").orElseThrow();
 
         // THEN
         assertThat(service.getAgents()).hasSize(1);
         assertThat(agent.getName()).isEqualTo("Docs-Assistent");
-        assertThat(agent.getDescription()).isEqualTo("only from docs");
         assertThat(agent.isReadOnly()).isTrue();
-        assertThat(agent.getModel()).isEqualTo("qwen3");
+        assertThat(agent.getAgentModelName()).isEqualTo("qwen3");
         assertThat(agent.getTools()).containsExactly("grep", "read_");
-        assertThat(agent.readBody()).isEqualTo("You are the docs assistant.");
+        assertThat(agent.getSystemPrompt()).isEqualTo("You are the docs assistant.");
     }
 
     @Test
-    void absentToolsMeansAllTools(@TempDir Path tmp) throws Exception {
+    void absentToolsMeansAllTools() throws Exception {
         // GIVEN — no tools field, name derived from directory
         writeAgent(tmp, "free", """
                 ---
@@ -58,23 +70,24 @@ class AgentServiceTest {
                 """);
 
         // WHEN
-        var agent = new AgentService(tmp).get("free").orElseThrow();
+        service.refresh();
+        var agent = service.get("free").orElseThrow();
 
         // THEN
         assertThat(agent.getName()).isEqualTo("free");
         assertThat(agent.getTools()).isNull();
         assertThat(agent.isReadOnly()).isFalse();
-        assertThat(agent.getModel()).isNull();
+        assertThat(agent.getAgentModelName()).isNull();
     }
 
     @Test
-    void ignoresDirectoriesWithoutAgentMd(@TempDir Path tmp) throws Exception {
+    void ignoresDirectoriesWithoutAgentMd() throws Exception {
         // GIVEN
         Files.createDirectories(tmp.resolve("not-an-agent"));
         writeAgent(tmp, "real", "---\nname: real\n---\nbody");
 
         // WHEN
-        var service = new AgentService(tmp);
+        service.refresh();
 
         // THEN
         assertThat(service.getAgents()).hasSize(1);
@@ -82,17 +95,17 @@ class AgentServiceTest {
     }
 
     @Test
-    void refreshPicksUpEdits(@TempDir Path tmp) throws Exception {
+    void refreshPicksUpEdits() throws Exception {
         // GIVEN
         var file = writeAgent(tmp, "docs", "---\nname: docs\nmodel: a\n---\nbody");
-        var service = new AgentService(tmp);
-        assertThat(service.get("docs").orElseThrow().getModel()).isEqualTo("a");
+        service.refresh();
+        assertThat(service.get("docs").orElseThrow().getAgentModelName()).isEqualTo("a");
 
         // WHEN
         Files.writeString(file, "---\nname: docs\nmodel: b\n---\nbody");
         service.refresh(tmp);
 
         // THEN
-        assertThat(service.get("docs").orElseThrow().getModel()).isEqualTo("b");
+        assertThat(service.get("docs").orElseThrow().getAgentModelName()).isEqualTo("b");
     }
 }

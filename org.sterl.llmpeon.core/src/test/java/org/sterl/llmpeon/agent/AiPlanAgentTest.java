@@ -1,4 +1,4 @@
-package org.sterl.llmpeon;
+package org.sterl.llmpeon.agent;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -12,14 +12,14 @@ import org.sterl.llmpeon.tool.ToolService;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 
-class AiPlannerServiceTest {
+class AiPlanAgentTest {
 
-    AiPlannerService subject;
+    AiPlanAgent subject;
 
     @BeforeEach
     void setUp() {
         var config = LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", "http://localhost:9999");
-        subject = new AiPlannerService(config.build(), new ToolService());
+        subject = new AiPlanAgent(config.build(), new ToolService());
     }
 
     @Test

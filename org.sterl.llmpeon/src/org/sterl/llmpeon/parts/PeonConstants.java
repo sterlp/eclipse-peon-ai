@@ -1,7 +1,6 @@
 package org.sterl.llmpeon.parts;
 
 import org.eclipse.core.runtime.IStatus;
-import org.sterl.llmpeon.PeonMode;
 import org.eclipse.core.runtime.Status;
 
 public interface PeonConstants {
@@ -16,20 +15,18 @@ public interface PeonConstants {
     String PREF_SEND_THINKING_ENABLED   = "llm.sendThinkingEnabled";
 
     String PREF_API_KEY                    = "llm.apiKey";
-    String PREF_SKILL_DIRECTORY            = "llm.skillDirectory";
-    String PREF_COMMAND_DIRECTORY          = "llm.commandDirectory";
-    String PREF_AGENT_DIRECTORY            = "llm.agentDirectory";
+    String PREF_CONFIG_DIRECTORY           = "llm.configDirectory";
     String PREF_DISK_TOOLS_ENABLED         = "llm.diskToolsEnabled";
     String PREF_SHELL_CONFIRMATION_ENABLED = "llm.shellConfirmationEnabled";
     
-    String PREF_LOG_RESPONSE    = "llm.logResponse";
+    String PREF_LOG_RESPONSE       = "llm.logResponse";
     String PREF_PLAN_TEMPERATURE   = "llm.planTemperature";
     String PREF_DEV_TEMPERATURE    = "llm.devTemperature";
     String PREF_QUERY_PARAMS       = "llm.queryParams";
     String PREF_HEADER_PARAMS      = "llm.headerParams";
 
-    String PREF_MCP_SERVERS  = "mcp.servers";   // JSON: List<McpServerConfig>
-    String PREF_MCP_ENABLED  = "mcp.enabled";   // boolean
+    String PREF_MCP_SERVERS        = "mcp.servers";   // JSON: List<McpServerConfig>
+    String PREF_MCP_ENABLED        = "mcp.enabled";   // boolean
 
     String PREF_VOICE_ENABLED  = "voice.enabled";   // boolean, default false
     String PREF_VOICE_MODEL    = "voice.model";      // e.g. "whisper-1", "whisper"
@@ -42,16 +39,11 @@ public interface PeonConstants {
 
     String PREF_AGENTS_MD_ENABLED  = "agentsMd.enabled";   // boolean, default true
 
-    String PREF_MODEL            = "llm.model";
-    String PREF_PLAN_MODEL       = "llm.planModel";
     String PREF_SEARCH_MODEL     = "llm.searchModel";
     String PREF_COMPACT_MODEL    = "llm.compactModel";
 
-    static String modelPref(PeonMode mode) {
-        return switch (mode) {
-            case PLAN -> PREF_PLAN_MODEL;
-            default -> PREF_MODEL; // AGENT and fallback
-        };
+    static String modelPref(String agent) {
+        return "llm." + agent + ".model";
     }
 
     public static IStatus okStatus(String message) {
