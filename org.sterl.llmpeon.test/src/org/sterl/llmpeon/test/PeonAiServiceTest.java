@@ -9,6 +9,8 @@ import java.nio.file.Path;
 
 import org.junit.Test;
 import org.sterl.llmpeon.StandingOrdersBuilder;
+import org.sterl.llmpeon.agent.AiDevAgent;
+import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.parts.PeonAiService;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
@@ -20,7 +22,7 @@ import org.sterl.llmpeon.tool.tools.DiskGrepTool;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 
-public class PeonAiServiceTest  extends AbstractTest {
+public class PeonAiServiceTest extends AbstractTest {
 
     PeonAiService aiService = new PeonAiService(null, null, null);
     
@@ -42,6 +44,23 @@ public class PeonAiServiceTest  extends AbstractTest {
         assertIsPresent(comp);
     }
     
+    @Test
+    public void test_onHandoff() {
+        // GIVEN
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        aiService.setActiveAgent(aiService.getAgents().stream().filter(a -> a.getName().equals(AiPlanAgent.NAME)).findFirst().orElseThrow());
+        
+        // WHEN
+        assertFalse(aiService.onHandoff());
+        // AND
+        aiService.getActiveAgent().getMemory().add(AiMessage.from("Very good plan"));
+        assertTrue(aiService.onHandoff());
+        
+        // THEN
+        assertEquals(AiDevAgent.NAME, aiService.getActiveAgent().getName());
+        assertHasUserMessageWith(aiService.getActiveAgent().getMemory().getCopy(), "Very good plan");
+    }
+
     @Test
     public void test_switch_disk_off() {
         // GIVEN

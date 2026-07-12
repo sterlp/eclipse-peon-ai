@@ -21,7 +21,7 @@ import org.sterl.llmpeon.parts.config.McpConnectionService;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
-import org.sterl.llmpeon.parts.tools.AgentModeTool;
+import org.sterl.llmpeon.parts.tools.PlanTool;
 import org.sterl.llmpeon.parts.tools.EclipseBuildTool;
 import org.sterl.llmpeon.parts.tools.EclipseCodeNavigationTool;
 import org.sterl.llmpeon.parts.tools.EclipseConsoleLogTool;
@@ -29,6 +29,7 @@ import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
 import org.sterl.llmpeon.parts.tools.EclipseRunTestTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
+import org.sterl.llmpeon.parts.tools.memory.WorkspaceMemoryTool;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.tool.ToolService;
@@ -66,12 +67,14 @@ public class PeonAiService implements MessageProvider {
 
     private final McpConnectionService mcpConnectionService;
 
-    private final AgentModeTool agentModeTool;
+    private final PlanTool planTool;
     
     private final EclipseWorkspaceWriteFileTool workspaceWriteFilesTool;
     private final DiskFileWriteTool diskFileWriteTool;
     private final DiskFileReadTool diskFileReadTool;
     private final DiskGrepTool diskGrepTool;
+    
+    private final WorkspaceMemoryTool workspaceMemoryTool = WorkspaceMemoryTool.getInstance();
 
     private  volatile IProject currentProject = null;
     
@@ -106,14 +109,16 @@ public class PeonAiService implements MessageProvider {
         diskFileReadTool  = new DiskFileReadTool(rootPath);
         diskGrepTool      = new DiskGrepTool(rootPath);
         
+        
+        toolService.addTool(workspaceMemoryTool);
         toolService.addTool(new EclipseBuildTool());
         toolService.addTool(new EclipseGrepTool());
         toolService.addTool(new EclipseRunTestTool());
         toolService.addTool(new EclipseCodeNavigationTool());
         toolService.addTool(new EclipseConsoleLogTool());
         
-        agentModeTool = new AgentModeTool(this);
-        toolService.addTool(agentModeTool);
+        planTool = new PlanTool(this);
+        toolService.addTool(planTool);
 
         agentService  = new AgentService(true, 
                 config.getConfigDir().resolve(LlmConfig.AGENT_DIRECTORY), toolService, configuredModel);
@@ -213,14 +218,15 @@ public class PeonAiService implements MessageProvider {
         if (toAgent.isEmpty()) return false;
 
         boolean hasPlan;
-        if (agentModeTool.hasPlan()) {
+        if (planTool.hasPlan()) {
             
             toAgent.get().clear();
             toAgent.get().getMemory().add(UserMessage.from(get()));
             hasPlan = true;
         } else if (getActiveAgent() instanceof AiPlanAgent planAgent) {
             var chatPlan = planAgent.getMemory().getLastOf(AiMessage.class);
-            
+            if (chatPlan == null) return false;
+
             toAgent.get().clear();
             toAgent.get().getMemory().add(UserMessage.from(
                     "Handover from " + getActiveAgent().getName() + System.lineSeparator()
@@ -261,8 +267,8 @@ public class PeonAiService implements MessageProvider {
         return configuredModel.getConfig();
     }
 
-    public AgentModeTool getAgentModeTools() {
-        return agentModeTool;
+    public PlanTool getAgentModeTools() {
+        return planTool;
     }
 
     public ToolService getToolService() {
@@ -334,9 +340,9 @@ public class PeonAiService implements MessageProvider {
     private void preloadPlanIfNeeded() {
         var agent = this.agentService.getActiveAgent();
         if (agent instanceof AiPlanAgent planAgent) {
-            if (planAgent.getMemory().size() == 0 && agentModeTool.hasPlan()) {
-                this.plan = getProject().getFile(AgentModeTool.OVERVIEW_FILE);
-                planAgent.getMemory().add(UserMessage.from(agentModeTool.planRead()));
+            if (planAgent.getMemory().size() == 0 && planTool.hasPlan()) {
+                this.plan = getProject().getFile(PlanTool.OVERVIEW_FILE);
+                planAgent.getMemory().add(UserMessage.from(planTool.planRead()));
             }
         }
     }

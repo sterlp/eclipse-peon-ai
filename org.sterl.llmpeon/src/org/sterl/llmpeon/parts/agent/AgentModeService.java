@@ -13,7 +13,7 @@ import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
-import org.sterl.llmpeon.parts.tools.AgentModeTool;
+import org.sterl.llmpeon.parts.tools.PlanTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.shared.AiMonitor;
 
@@ -128,7 +128,7 @@ public class AgentModeService implements AiAgent {
 
     public boolean overviewExists() {
         if (project == null || !project.isOpen()) return false;
-        return project.getFile(AgentModeTool.OVERVIEW_FILE).exists();
+        return project.getFile(PlanTool.OVERVIEW_FILE).exists();
     }
 
     public String readOverview() {
@@ -162,11 +162,11 @@ public class AgentModeService implements AiAgent {
     }
 
     private IFile getOverviewFile() {
-        return project.getFile(AgentModeTool.OVERVIEW_FILE);
+        return project.getFile(PlanTool.OVERVIEW_FILE);
     }
 
     private IFile getProblemFile() {
-        return project.getFile(AgentModeTool.PROBLEM_FILE);
+        return project.getFile(PlanTool.PROBLEM_FILE);
     }
 
     public IProject getProject() {
@@ -174,7 +174,7 @@ public class AgentModeService implements AiAgent {
     }
 
     // -------------------------------------------------------------------------
-    // Tool callbacks (called from AgentModeTool, on background thread)
+    // Tool callbacks (called from PlanTool, on background thread)
     // -------------------------------------------------------------------------
 
     /** Called by savePlan tool after writing the file. 
@@ -205,7 +205,7 @@ public class AgentModeService implements AiAgent {
             openInEditor(getProblemFile());
             plannerService.addMessage(UserMessage.from(
                     "Max retries (" + MAX_RETRIES + ") reached. "
-                    + "Review plan problem file `" + AgentModeTool.PROBLEM_FILE + "` — manual intervention required."));
+                    + "Review plan problem file `" + PlanTool.PROBLEM_FILE + "` — manual intervention required."));
             this.phase = Phase.PLANNING;
             retryCount = 0;
         } else {

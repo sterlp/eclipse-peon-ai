@@ -17,7 +17,7 @@ import dev.langchain4j.agent.tool.Tool;
  * Registered in ToolService only when the user switches to Peon-Agent mode.
  * Uses Eclipse IFile APIs so workspace history and refresh notifications are triggered.
  */
-public class AgentModeTool extends AbstractEclipseTool {
+public class PlanTool extends AbstractEclipseTool {
     
     public static final String PLAN_DIR = "peon-plan";
     public static final String OVERVIEW_FILE = PLAN_DIR + "/overview.md";
@@ -25,11 +25,11 @@ public class AgentModeTool extends AbstractEclipseTool {
 
     private final PeonAiService peonAiService;
 
-    public AgentModeTool(PeonAiService peonAiService) {
+    public PlanTool(PeonAiService peonAiService) {
         this.peonAiService = peonAiService;
     }
     
-    @Tool("Read the current plan.")
+    @Tool("Reads the current saved plan.")
     public String planRead() {
         var project = getProject();
         var plan = project.getFile(OVERVIEW_FILE);
@@ -38,16 +38,18 @@ public class AgentModeTool extends AbstractEclipseTool {
     }
 
     @Tool("Save the final implementation plan to " + OVERVIEW_FILE + ". Call only after all design decisions are resolved.")
-    public void planSave(@P(description = "complete plan in markdown", name = "content") String content) {
+    public String planSave(@P(description = "complete plan in markdown", name = "content") String content) {
         ArgsUtil.requireNonBlank(content, "content");
         var project = getProject();
         var planFile = IoUtils.writeProjectFile(project, OVERVIEW_FILE, content, getProgressMonitor());
         onTool("Plan saved to " + JdtUtil.pathOf(planFile));
         peonAiService.onPlanSaved(planFile);
+        
+        return "Saved " + JdtUtil.pathOf(planFile); 
     }
 
     @Tool("Update the current plan.")
-    public void planUpdate(
+    public String planUpdate(
             @P(description = "exact text to replace", name = "oldString") String oldString,
             @P(name = "newString", required = false) String newString) {
         
@@ -62,6 +64,8 @@ public class AgentModeTool extends AbstractEclipseTool {
         monitor.onFileUpdate(editResult);
         
         peonAiService.onPlanSaved(planFile);
+        
+        return "Updated " + JdtUtil.pathOf(planFile);
     }
     
     public boolean hasPlan() {

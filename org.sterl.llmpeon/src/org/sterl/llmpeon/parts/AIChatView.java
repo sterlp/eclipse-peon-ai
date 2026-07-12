@@ -94,7 +94,6 @@ public class AIChatView implements EclipseAiMonitor {
 
     private final AtomicReference<IProgressMonitor> monitorRef = new AtomicReference<>(new NullProgressMonitor());
     private final VoiceInputService voiceService = new VoiceInputService();
-    private final WorkspaceMemoryTool workspaceMemoryTool = WorkspaceMemoryTool.getInstance();
     
     private volatile boolean recording = false;
 
@@ -113,8 +112,8 @@ public class AIChatView implements EclipseAiMonitor {
     };
     
     private final StandingOrdersBuilder standingOrders = new StandingOrdersBuilder()
+            .add(WorkspaceMemoryTool.getInstance())
             .add(aiService)
-            .add(workspaceMemoryTool)
             .add(aiService.getAgentsMdService())
             .add(userContext);
 
@@ -152,8 +151,8 @@ public class AIChatView implements EclipseAiMonitor {
 
         actionsBar = new ActionsBarWidget(inputBlock, SWT.NONE,
             this::onClear,
-            this::doStartImpl,
-            this::onModeChange,
+            this::onHandoff,
+            this::onAgentChange,
             aiService::setModel,
             aiService::withThinking
         );
@@ -182,8 +181,6 @@ public class AIChatView implements EclipseAiMonitor {
             (question, answers, onAnswer) -> showQuestion(question, answers, onAnswer)
         ));
 
-        aiService.getToolService().addTool(workspaceMemoryTool);
-        
         var dateInfo = "Today: " + LocalDate.now() 
                 + " — APIs and libraries may have changed since your training cutoff. "
                 + "Don't rely only on internal API knowledge — explore base classes and libs if possible with e.g. using "
@@ -538,17 +535,21 @@ public class AIChatView implements EclipseAiMonitor {
     // Actions
     // -------------------------------------------------------------------------
 
-    private void onModeChange(AiAgent mode) {
+    private void onAgentChange(AiAgent mode) {
         aiService.setActiveAgent(mode);
+        
+        if (!actionsBar.containsModelId(aiService.getActiveModel())) {
+            actionsBar.setModel(aiService.getActiveModel());
+        } else {
+            actionsBar.selectModel(aiService.getActiveModel());
+        }
+
         refreshChat();
-        reloadModelsIfNeeded();
-        applyShellCommandConfirmation();
     }
 
-    private void doStartImpl() {
-        AiAgent agent = aiService.getActiveAgent();
+    private void onHandoff() {
         if (aiService.onHandoff()) {
-            
+            AiAgent agent = aiService.getActiveAgent();
             actionsBar.updateModeUI(agent);
             this.refreshChat();
             this.refreshStatusLine();
@@ -570,7 +571,7 @@ public class AIChatView implements EclipseAiMonitor {
             doSendMessage();
 
         } else {
-            onChatResponse(new SimpleMessage(Type.PROBLEM, "Plan or Agent '" + agent.handoverTo() + "' missing ..."));
+            onChatResponse(new SimpleMessage(Type.PROBLEM, "Plan or Agent '" + aiService.getActiveAgent().handoverTo() + "' missing ..."));
         }
     }
 

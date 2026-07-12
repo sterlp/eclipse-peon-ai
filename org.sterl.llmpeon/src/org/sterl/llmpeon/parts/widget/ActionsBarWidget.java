@@ -30,7 +30,7 @@ public class ActionsBarWidget extends Composite {
 
     private final AtomicBoolean working = new AtomicBoolean(false);
     private List<AiModel> availableModels = List.of();
-    private List<AiAgent> agents = List.of();
+    private List<AiAgent> agents = new ArrayList<>();
 
     public ActionsBarWidget(Composite parent, int style,
             Runnable onClear,
@@ -54,7 +54,6 @@ public class ActionsBarWidget extends Composite {
         setLayout(rowLayout);
 
         buildAgentCombo(onAgentChange);
-
         buildModelCombo(onModelChange);
 
         btnThink = new Button(this, SWT.TOGGLE);
@@ -77,13 +76,12 @@ public class ActionsBarWidget extends Composite {
         rdImpl.exclude = true;
         btnImplement.setLayoutData(rdImpl);
         btnImplement.setVisible(false);
-        btnImplement.setEnabled(false);
-        btnImplement.setToolTipText("Switch to Dev mode and start implementing the plan");
+        btnImplement.setEnabled(true);
         btnImplement.addListener(SWT.Selection, e -> onImplement.run());
-	}
+    }
 
-	private void buildModelCombo(Consumer<AiModel> onModelChange) {
-		modelCombo = new Combo(this, SWT.READ_ONLY);
+    private void buildModelCombo(Consumer<AiModel> onModelChange) {
+        modelCombo = new Combo(this, SWT.READ_ONLY);
         modelCombo.setLayoutData(new RowData(200, SWT.DEFAULT));
         modelCombo.setToolTipText("Select model (fetched from provider)");
         modelCombo.addListener(SWT.Selection, e -> {
@@ -101,8 +99,9 @@ public class ActionsBarWidget extends Composite {
         agentCombo.select(0);
         agentCombo.setToolTipText("Select an Agent");
         agentCombo.addListener(SWT.Selection, e -> {
-            int idx = agentCombo.getSelectionIndex();
-            onModeChange.accept(this.agents.get(idx));
+            var agent = this.agents.get(agentCombo.getSelectionIndex());
+            onModeChange.accept(agent);
+            applyImplAutonomousVisibility(agent.handoverTo());
         });
     }
 
@@ -114,7 +113,8 @@ public class ActionsBarWidget extends Composite {
 
     /** Replaces the custom agents in the combo, preserving the current selection by label. */
     public void setAgents(List<AiAgent> agents) {
-        this.agents = agents;
+        this.agents.clear();
+        this.agents.addAll(agents);
         String previous = agentCombo.getText();
         rebuildAgentItems();
         String[] items = agentCombo.getItems();
@@ -147,16 +147,17 @@ public class ActionsBarWidget extends Composite {
     }
 
     private void applyImplAutonomousVisibility(String handOver) {
+        if (handOver != null) {
+            btnImplement.setText("Give " + handOver);
+            btnImplement.setToolTipText("Handover the plan or last AI message to " + handOver);
+        }
+        
         boolean hashandOver = handOver != null;
-        btnImplement.setText("Give " + handOver);
-        btnImplement.setEnabled(!this.working.get() && hashandOver);
         boolean implVisibilityChanged = btnImplement.getVisible() != hashandOver;
-
         if (implVisibilityChanged) {
             ((RowData) btnImplement.getLayoutData()).exclude = !hashandOver;
             btnImplement.setVisible(hashandOver);
-        }
-        if (implVisibilityChanged) {
+            btnImplement.setEnabled(hashandOver);
             layout(true, true);
             getParent().layout(new Control[]{this});
         }

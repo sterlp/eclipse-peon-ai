@@ -33,12 +33,14 @@ class AgentServiceTest extends AbstractMemoryFileTest {
     @Test
     void hasDefaultAgent() {
         // GIVEN
-        var subject = new AgentService(true, tmp, null, null);
+        var subject = new AgentService(true, tmp.resolve("any-foo"), null, null);
         assertThat(subject.getActiveAgent()).isNotNull();
+        assertThat(subject.getAgents()).hasSize(2);
         // WHEN
         subject.refresh(tmp.resolve("config"));
         // THEN
         assertThat(subject.getActiveAgent()).isNotNull();
+        assertThat(subject.getAgents()).hasSize(2);
     }
     
     @Test

@@ -104,12 +104,10 @@ public class AgentService {
 
         if (newPath == null) {
             this.agentsDirectory = null;
-            clearAgents();
-            return true;
         } else {
             this.agentsDirectory = newPath.toAbsolutePath().normalize();
-            return reloadAgents();
         }
+        return reloadAgents();
     }
 
     public boolean reloadAgents() {
@@ -119,6 +117,8 @@ public class AgentService {
             } catch (IOException e) {
                 throw new RuntimeException("Failed to reload agents from: " + agentsDirectory, e);
             }
+        } else {
+            clearAgents();
         }
         return true;
     }
