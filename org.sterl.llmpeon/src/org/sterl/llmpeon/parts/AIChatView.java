@@ -113,7 +113,6 @@ public class AIChatView implements EclipseAiMonitor {
     
     private final StandingOrdersBuilder standingOrders = new StandingOrdersBuilder()
             .add(WorkspaceMemoryTool.getInstance())
-            .add(aiService)
             .add(aiService.getAgentsMdService())
             .add(userContext);
 

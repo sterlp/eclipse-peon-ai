@@ -43,8 +43,8 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
     private static final int MAX_TYPE_RESULTS = 25;
     private static final int MAX_REFERENCE_RESULTS = 50;
 
-    @Tool("Eclipse/Java: Find Java types by name/wildcard. Searches in workspace, JDK and used JARs. Java type metadata only.")
-    public String findJavaType(
+    @Tool("Java: Find Java types by name/wildcard. Searches in workspace, JDK and used JARs. Java type metadata only.")
+    public String eclipseFindJavaType(
             @P(description = "type name, only * or ? wildcard supported", name = "typeName") 
             String typeName,
             @P(description = "type package, only * or ? wildcard supported", name = "package", required = false) 
@@ -85,8 +85,8 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
 
     public static final String GET_TYPE_SOURCE = "readTypeSource";
     @Tool(name = GET_TYPE_SOURCE, 
-          value = "Eclipse/Java: Read source or JavaDoc of the type. Covers JDK and used JARs — prefer over decompiling JARs. java.io.File etc.")
-    public String readTypeSource(
+          value = "Java: Read source or JavaDoc of the type. Covers JDK and used JARs — prefer over decompiling JARs. java.io.File etc.")
+    public String eclipseReadTypeSource(
             @P(description = "package name for this type e.g.: java.io", name = "package") String pkg,
             @P(description = "type name e.g.: File", name = "typeName") String typeName,
             @P(description = "project name to limit search scope (optional)", required = false, name = "projectName") String projectName) {
@@ -99,7 +99,7 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
             if (found.isEmpty()) {
                 onProblem("Type " + toFQN(pkg, projectName) + " not found" + (StringUtil.hasValue(projectName) ? " in " + projectName : ""));
                 return "Type not found. Check your parameters. findJavaType result for " + typeName + ":\n"
-                    + findJavaType(typeName, null, projectName);
+                    + eclipseFindJavaType(typeName, null, projectName);
             }
 
             IType type = bestType(found);
@@ -139,8 +139,8 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
         return result;
     }
 
-    @Tool("Eclipse/Java: Find usages of a type, or a method when methodName is set. Best way to find all java class usages.")
-    public String findReferences(
+    @Tool("Java: Find usages of a type, or a method when methodName is set. Best way to find all java class usages.")
+    public String eclipseFindReferences(
             @P(description = "Package name of the class e.g. java.io", name = "package") String pkg,
             @P(description = "type name e.g. File", name = "typeName") String typeName,
             @P(description = "method name on the type; omit for type usages", required = false, name = "methodName") String methodName,
@@ -155,7 +155,7 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
             if (typeOpt.isEmpty()) {
                 onProblem("Cannot read references of unknown type " + pkg + "." + typeName);
                 return "Type not found. Check your parameters. findJavaType result:\n"
-                    + findJavaType(typeName, null, projectName);
+                    + eclipseFindJavaType(typeName, null, projectName);
             }
             IType type = typeOpt.get();
 
@@ -226,8 +226,8 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
         }
     }
 
-    @Tool("Eclipse/JDT: Find files by name/glob (*, ?), optionally scoped to one project. Workspace-wide or with limit: use searchWorkspaceFiles; for content: grepWorkspaceFiles.")
-    public String findResource(
+    @Tool("JDT: Find files by name/glob (*, ?), optionally scoped to one project. Workspace-wide or with limit: use searchWorkspaceFiles; for content: grepWorkspaceFiles.")
+    public String eclipseFindResource(
             @P(description = "file name or glob pattern", name = "namePattern") String namePattern,
             @P(name = "projectName", required = false) String projectName) {
 
@@ -279,8 +279,8 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
     // -------------------------------------------------------------------------
 
     /*
-    @Tool("Eclipse/Java: Find implementations/subclasses of a type - use this before glob.")
-    public String findImplementations(
+    @Tool("Java: Find implementations/subclasses of a type - use this before glob.")
+    public String eclipseFindImplementations(
             @P(description = "fully qualified interface or class name", name = "typeName") String typeName,
             @P(name = "projectName") String projectName) {
 

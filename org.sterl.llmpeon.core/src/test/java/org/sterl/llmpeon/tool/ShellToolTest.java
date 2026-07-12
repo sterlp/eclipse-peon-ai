@@ -25,26 +25,26 @@ class ShellToolTest {
 
     @Test
     void runOsCommand_mvnVersion() {
-        String result = tool.runOsCommand("mvn -version", tempDir.toString(), null, null);
+        String result = tool.shellRunCommand("mvn -version", tempDir.toString(), null, null);
         assertTrue(result.contains("Apache Maven"), "Expected maven version output, got: " + result);
         
     }
 
     @Test
     void runOsCommand_emptyCommand_throws() {
-        assertThrows(IllegalArgumentException.class, () -> tool.runOsCommand("", tempDir.toString(), null, null));
-        assertThrows(IllegalArgumentException.class, () -> tool.runOsCommand(null, tempDir.toString(), null, null));
+        assertThrows(IllegalArgumentException.class, () -> tool.shellRunCommand("", tempDir.toString(), null, null));
+        assertThrows(IllegalArgumentException.class, () -> tool.shellRunCommand(null, tempDir.toString(), null, null));
     }
 
     @Test
     void runOsCommand_emptyWorkingDir_throws() {
-        assertThrows(IllegalArgumentException.class, () -> tool.runOsCommand("echo hi", "", null, null));
-        assertThrows(IllegalArgumentException.class, () -> tool.runOsCommand("echo hi", null, null, null));
+        assertThrows(IllegalArgumentException.class, () -> tool.shellRunCommand("echo hi", "", null, null));
+        assertThrows(IllegalArgumentException.class, () -> tool.shellRunCommand("echo hi", null, null, null));
     }
 
     @Test
     void runOsCommand_invalidWorkingDir_throws() {
-        assertThrows(IllegalArgumentException.class, () -> tool.runOsCommand("echo hi", "/no/such/dir", null, null));
+        assertThrows(IllegalArgumentException.class, () -> tool.shellRunCommand("echo hi", "/no/such/dir", null, null));
     }
 
     @Test
@@ -55,7 +55,7 @@ class ShellToolTest {
                 ? "for /L %i in (1,1,100) do @echo line %i"
                 : "for i in $(seq 1 100); do echo line $i; done";
 
-        String result = tool.runOsCommand(command, tempDir.toString(), null, null);
+        String result = tool.shellRunCommand(command, tempDir.toString(), null, null);
         assertTrue(result.contains("lines skipped"), "Should have skipped lines, got: " + result);
         // last line should be present
         assertTrue(result.contains("line 100"));
@@ -68,7 +68,7 @@ class ShellToolTest {
                 ? "for /L %i in (1,1,10) do @echo line %i"
                 : "for i in $(seq 1 10); do echo line $i; done";
 
-        String result = tool.runOsCommand(command, tempDir.toString(), null, -1);
+        String result = tool.shellRunCommand(command, tempDir.toString(), null, -1);
         assertFalse(result.contains("lines skipped"));
         assertTrue(result.contains("line 1"));
         assertTrue(result.contains("line 10"));
@@ -79,7 +79,7 @@ class ShellToolTest {
         String os = System.getProperty("os.name").toLowerCase();
         String command = os.contains("win") ? "cmd /c exit 42" : "exit 42";
 
-        String result = tool.runOsCommand(command, tempDir.toString(), null, null);
+        String result = tool.shellRunCommand(command, tempDir.toString(), null, null);
         assertTrue(result.contains("Exit code: 42"), "Expected exit code 42, got: " + result);
     }
 }

@@ -46,12 +46,12 @@ Developer / Designer
        │
        ▼
 ┌─────────────────────┐
-│  Elicitation Agent  │  temp: 0.8 — builds What + Architecture with the human
+│  Elicitation Agent  │  temp: 1.0 — builds What + Architecture with the human
 └─────────────────────┘
        │
        ▼
 ┌─────────────────────┐
-│  Task Design Agent  │  temp: 0.2 — breaks Architecture into task MDs
+│  Task Design Agent  │  temp: 0.6 — breaks Architecture into task MDs
 │  (reuses Dev Agent  │  Same model and tooling, planning-focused system prompt
 │   with plan focus)  │
 └─────────────────────┘

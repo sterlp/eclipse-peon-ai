@@ -1,6 +1,10 @@
 package org.sterl.llmpeon.parts.tools;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.sterl.llmpeon.parts.PeonAiService;
 import org.sterl.llmpeon.parts.shared.IoUtils;
@@ -29,15 +33,15 @@ public class PlanTool extends AbstractEclipseTool {
         this.peonAiService = peonAiService;
     }
     
-    @Tool("Reads the current saved plan.")
+    @Tool("Reads the current saved plan, if one exists.")
     public String planRead() {
         var project = getProject();
         var plan = project.getFile(OVERVIEW_FILE);
-        if (plan == null || !plan.exists()) return "No plan exisits yet for project: " + JdtUtil.pathOf(plan);
+        if (plan == null || !plan.exists()) return "No plan exists yet for project: " + JdtUtil.pathOf(plan);
         return IoUtils.readString(plan);
     }
 
-    @Tool("Save the final implementation plan to " + OVERVIEW_FILE + ". Call only after all design decisions are resolved.")
+    @Tool("Save/overwirte the final implementation plan to " + OVERVIEW_FILE + ". Call only after all design decisions are resolved.")
     public String planSave(@P(description = "complete plan in markdown", name = "content") String content) {
         ArgsUtil.requireNonBlank(content, "content");
         var project = getProject();
@@ -68,6 +72,24 @@ public class PlanTool extends AbstractEclipseTool {
         return "Updated " + JdtUtil.pathOf(planFile);
     }
     
+    @Tool("Mark a plan as done. E.g.: to begin a new plan and preserve old plans or as last tool call to complete/clear the plan.")
+    public void planDone() {
+        var plan = getProject().getFile(OVERVIEW_FILE);
+        if (plan == null || !plan.exists()) return;
+
+        try {
+            onTool("Plan finished.");
+            var stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm"));
+            plan.move(
+                getProject().findMember("/overview-done-" + stamp + ".md").getFullPath(),
+                IResource.KEEP_HISTORY,
+                getProgressMonitor()
+            );
+        } catch (CoreException e) {
+            throw new RuntimeException("Failed to mark file as done. " + JdtUtil.pathOf(plan), e);
+        }
+    }
+
     public boolean hasPlan() {
         if (peonAiService.getProject() == null) return false;
         var planFile = getProject().getFile(OVERVIEW_FILE);

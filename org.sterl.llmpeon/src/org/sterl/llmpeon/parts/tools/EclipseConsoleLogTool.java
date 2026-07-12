@@ -15,8 +15,8 @@ import dev.langchain4j.agent.tool.Tool;
 
 public class EclipseConsoleLogTool extends AbstractEclipseTool {
 
-    @Tool("Eclipse: Read the content of the active console log - available e.g. after a test run to read the test logs.")
-    public String readConsoleLog(
+    @Tool("Read the content of the active console log - available e.g. after a test run to read the test logs.")
+    public String eclipseReadConsoleLog(
             @P(description = "Name of the console to read. If empty, reads the active console.", required = false, name = "consoleName")
             String consoleName,
             @P(description = "Line count from the end of the log (like tail -n).", required = false, name = "lines")
@@ -33,7 +33,7 @@ public class EclipseConsoleLogTool extends AbstractEclipseTool {
 
         onTool("Reading console " + StringUtil.stripToEmpty(consoleName));
         if (targetConsole.isEmpty()) {
-            return "Console not found. Available consoles:\n" + listAvailableConsoles();
+            return "Console not found. Available consoles:\n" + eclipseListAvailableConsoles();
         } else {
             String content = targetConsole.get().getDocument().get();
             return targetConsole.get().getName() + ":\n" 
@@ -54,8 +54,8 @@ public class EclipseConsoleLogTool extends AbstractEclipseTool {
         return result;
     }
     
-    @Tool("Eclipse: List all available consoles - e.g. for eclipse logs console etc.")
-    public String listAvailableConsoles() {
+    @Tool("List all available consoles - e.g. for eclipse logs console etc.")
+    public String eclipseListAvailableConsoles() {
         var consoles = consoles();
 
         onTool("List available consoles " + consoles.size());

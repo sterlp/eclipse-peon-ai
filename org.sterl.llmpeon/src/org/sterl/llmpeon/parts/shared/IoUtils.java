@@ -14,6 +14,8 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.Platform;
+import org.sterl.llmpeon.parts.PeonConstants;
 
 public class IoUtils {
     
@@ -59,11 +61,13 @@ public class IoUtils {
             var charset = getCharset(file);
             ensureFolders(file.getParent(), monitor);
             file.write(content.getBytes(charset), true, false, true, monitor);
-            file.refreshLocal(IResource.DEPTH_ZERO, monitor);
-            // Refresh parent (folder or project) — DEPTH_ONE covers the file itself
-            if (file.getParent() != null) {
+            /* TODO I don't think this is really needed!
+            if (file.getParent() == null) {
+                file.refreshLocal(IResource.DEPTH_ZERO, monitor);
+            } else {
                 file.getParent().refreshLocal(IResource.DEPTH_ONE, monitor);
             }
+            */
         } catch (CoreException e) {
             throw new RuntimeException("Failed to write " + JdtUtil.pathOf(file), e);
         }
@@ -75,8 +79,11 @@ public class IoUtils {
         if (container instanceof IFolder folder && !folder.exists()) {
             ensureFolders(folder.getParent(), monitor);
             folder.create(IResource.FORCE, true, monitor);
+            
+            /* TODO I don't think this is really needed!
             if (folder.getParent() != null) folder.getParent().refreshLocal(IResource.DEPTH_ONE, monitor);
             else folder.refreshLocal(IResource.DEPTH_ZERO, monitor);
+            */
         }
     }
 
@@ -87,6 +94,7 @@ public class IoUtils {
             if (charset == null) return StandardCharsets.UTF_8;
             return Charset.forName(charset);
         } catch (Exception e) {
+            Platform.getLog(Platform.getBundle(PeonConstants.PLUGIN_ID)).error("Failed to get encoding of " + JdtUtil.pathOf(file), e);
             return StandardCharsets.UTF_8;
         }
     }

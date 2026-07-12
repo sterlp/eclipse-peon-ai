@@ -30,21 +30,21 @@ public class EclipseCodeNavigationToolTest extends AbstractTest {
         var name = this.getClass().getSimpleName();
         
         // WHEN
-        var result = subject.findJavaType(this.getClass().getSimpleName(), null, null);
+        var result = subject.eclipseFindJavaType(this.getClass().getSimpleName(), null, null);
         
         // THEN
         assertContains(result, name);
         assertContains(result, this.getClass().getPackageName());
         
         // WHEN
-        result = subject.findJavaType(this.getClass().getSimpleName(), this.getClass().getPackageName(), null);
+        result = subject.eclipseFindJavaType(this.getClass().getSimpleName(), this.getClass().getPackageName(), null);
         // THEN
         assertContains(result, name);
         assertContains(result, this.getClass().getPackageName());
         
         
         // WHEN
-        result = subject.findJavaType("*" 
+        result = subject.eclipseFindJavaType("*" 
                 + name.substring(2, name.length() - 2) + "*", null, null);
         // THEN
         assertContains(result, name);
@@ -56,7 +56,7 @@ public class EclipseCodeNavigationToolTest extends AbstractTest {
     public void test_type_pattern() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
         
-        var result = subject.findJavaType("EclipseCodeNavigationTool*", "org*", null);
+        var result = subject.eclipseFindJavaType("EclipseCodeNavigationTool*", "org*", null);
         
         System.err.println(result);
         

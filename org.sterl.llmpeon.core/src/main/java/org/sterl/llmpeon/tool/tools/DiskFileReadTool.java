@@ -42,8 +42,8 @@ public class DiskFileReadTool extends AbstractTool {
         return workingDir;
     }
 
-    @Tool("Disk: Read file - not eclipse.")
-    public String readDiskFile(
+    @Tool("Read file - not eclipse.")
+    public String diskReadFile(
             @P(name = "filePath") String filePath,
             @P(description = "first line to read (1-based). 0 = start of file.", required = false, name = "startLine") 
             Integer startLine,
@@ -70,8 +70,8 @@ public class DiskFileReadTool extends AbstractTool {
         }
     }
 
-    @Tool("Disk: Search files by name. Use '*' to list all files recursively.")
-    public String searchDiskFiles(
+    @Tool("Search files by name. Use '*' to list all files recursively.")
+    public String diskSearchFiles(
             @P(description = "file name query - only *, ? wildcard is supported.", name = "query") String query,
             @P(description = "Optional: max results to return. 0 = unlimited. Default 50.", name = "limit") Integer limit) {
 
@@ -98,9 +98,9 @@ public class DiskFileReadTool extends AbstractTool {
         return AiReponseBuilder.searchComplete(matches, suffix);
     }
 
-    public static final String LIST_DISK_NAME = "listDiskDirectory";
-    @Tool(name = LIST_DISK_NAME, value = "Disk: List directory (non-recursive).")
-    public String listDiskDirectory(
+    public static final String LIST_DISK_NAME = "diskListDirectory";
+    @Tool(name = LIST_DISK_NAME, value = "List directory (non-recursive).")
+    public String diskListDirectory(
             @P(description = "Empty or '/' lists working dir root.", name = "path", required = false) 
             String path) {
 

@@ -31,14 +31,14 @@ class DiskFileReadToolsTest {
     @Test
     void readDiskFile_existingFile() throws IOException {
         Files.writeString(tempDir.resolve("hello.txt"), "world");
-        assertTrue(tool.readDiskFile("hello.txt", 0, 0).contains("world"),
-                tool.readDiskFile("hello.txt", 0, 0));
+        assertTrue(tool.diskReadFile("hello.txt", 0, 0).contains("world"),
+                tool.diskReadFile("hello.txt", 0, 0));
     }
 
     @Test
     void readDiskFile_missingFile() {
         try {
-            tool.readDiskFile("missing.txt", 0, 0);
+            tool.diskReadFile("missing.txt", 0, 0);
             fail("Missing IllegalArgumentException");
         } catch (IllegalArgumentException e) {
             assertTrue(e.getMessage().contains("File not found"));
@@ -54,19 +54,19 @@ class DiskFileReadToolsTest {
         Files.writeString(tempDir.resolve("foo/FooController.java"), "class Foo {}");
         Files.writeString(tempDir.resolve("bar/BarController.java"), "class Bar {}");
         // WHEN
-        String result = tool.searchDiskFiles("FooController", 0);
+        String result = tool.diskSearchFiles("FooController", 0);
         // THEN
         assertTrue(result.contains("FooController.java"));
         assertFalse(result.contains("BarController.java"));
         
         // WHEN
-        result = tool.searchDiskFiles("*Controller*.java", 0);
+        result = tool.diskSearchFiles("*Controller*.java", 0);
         // THEN
         assertTrue(result.contains("FooController.java"));
         assertTrue(result.contains("BarController.java"));
         
         // WHEN
-        result = tool.searchDiskFiles("**/FooController.java", 0);
+        result = tool.diskSearchFiles("**/FooController.java", 0);
         // THEN
         assertThat(result).contains("FooController.java");
         assertThat(result).doesNotContain("BarController.java");
@@ -77,7 +77,7 @@ class DiskFileReadToolsTest {
         Files.writeString(tempDir.resolve("README.md"), "docs");
         Files.writeString(tempDir.resolve("notes.md"), "notes");
         Files.writeString(tempDir.resolve("Other.java"), "code");
-        String result = tool.searchDiskFiles("*.md", 0);
+        String result = tool.diskSearchFiles("*.md", 0);
         assertTrue(result.contains("README.md"), "should find README.md");
         assertTrue(result.contains("notes.md"), "should find notes.md");
         assertFalse(result.contains("Other.java"), "should not find .java file");
@@ -90,14 +90,14 @@ class DiskFileReadToolsTest {
         Files.writeString(tempDir.resolve("FooService.java"), "");
         Files.writeString(tempDir.resolve("BarHelper.java"), "");
         // WHEN
-        String result = tool.searchDiskFiles("Foo*", 0);
+        String result = tool.diskSearchFiles("Foo*", 0);
         // THEN
         assertTrue(result.contains("FooController.java"));
         assertTrue(result.contains("FooService.java"));
         assertFalse(result.contains("BarHelper.java"));
         
         // AND no error
-        tool.readDiskFile(result.split("\n")[0], 0, 0);
+        tool.diskReadFile(result.split("\n")[0], 0, 0);
     }
 
     @Test
@@ -108,27 +108,27 @@ class DiskFileReadToolsTest {
         Files.writeString(tempDir.resolve("C.java"), "");
 
         // unlimited returns all three
-        assertEquals(3, tool.searchDiskFiles("*.java", 0).split("\n").length);
+        assertEquals(3, tool.diskSearchFiles("*.java", 0).split("\n").length);
 
         // limit=1 returns exactly one
-        assertEquals(1, tool.searchDiskFiles("*.java", 1).split("\n").length);
+        assertEquals(1, tool.diskSearchFiles("*.java", 1).split("\n").length);
 
         // limit=2 returns exactly two
-        assertEquals(2, tool.searchDiskFiles("*.java", 2).split("\n").length);
+        assertEquals(2, tool.diskSearchFiles("*.java", 2).split("\n").length);
     }
 
     @Test
     void searchDiskFiles_emptyQuery() {
-        assertThrows(IllegalArgumentException.class, () -> tool.searchDiskFiles("", 0));
-        assertThrows(IllegalArgumentException.class, () -> tool.searchDiskFiles(null, 0));
+        assertThrows(IllegalArgumentException.class, () -> tool.diskSearchFiles("", 0));
+        assertThrows(IllegalArgumentException.class, () -> tool.diskSearchFiles(null, 0));
     }
 
     @Test
     void readDiskFile_absolutePath() throws IOException {
         Path abs = tempDir.resolve("abs.txt");
         Files.writeString(abs, "absolute");
-        assertTrue(tool.readDiskFile(abs.toString(), 0, 0).contains("absolute"),
-                tool.readDiskFile(abs.toString(), 0, 0));
+        assertTrue(tool.diskReadFile(abs.toString(), 0, 0).contains("absolute"),
+                tool.diskReadFile(abs.toString(), 0, 0));
     }
 
     // TODO: https://github.com/sterlp/eclipse-peon-ai/pull/58
@@ -136,7 +136,7 @@ class DiskFileReadToolsTest {
     void readDiskFile_lineNumbersStartAtOne() throws IOException {
         Files.writeString(tempDir.resolve("lines.txt"), "alpha\nbeta\ngamma\ndelta\nepsilon");
         // full file - line numbers must start at 1
-        String result = tool.readDiskFile("lines.txt", 0, 0);
+        String result = tool.diskReadFile("lines.txt", 0, 0);
         assertEquals("alpha\nbeta\ngamma\ndelta\nepsilon",
                 result);
     }
@@ -145,7 +145,7 @@ class DiskFileReadToolsTest {
     void readDiskFile_fromToPreservesActualLineNumbers() throws IOException {
         Files.writeString(tempDir.resolve("lines.txt"), "alpha\nbeta\ngamma\ndelta\nepsilon");
         // reading lines 3-5 must show line numbers 3, 4, 5 - not reset to 1
-        String result = tool.readDiskFile("lines.txt", 3, 5);
+        String result = tool.diskReadFile("lines.txt", 3, 5);
         assertEquals(
                 "   3: gamma\n" +
                 "   4: delta\n" +
@@ -157,7 +157,7 @@ class DiskFileReadToolsTest {
     void readDiskFile_fromToMiddleRange() throws IOException {
         Files.writeString(tempDir.resolve("lines.txt"), "alpha\nbeta\ngamma\ndelta\nepsilon");
         // reading lines 2-3 must show line numbers 2 and 3
-        String result = tool.readDiskFile("lines.txt", 2, 3);
+        String result = tool.diskReadFile("lines.txt", 2, 3);
         assertEquals(
                 "   2: beta\n" +
                 "   3: gamma\n",
@@ -168,7 +168,7 @@ class DiskFileReadToolsTest {
     void readDiskFile_endLineOutOfBoundsReturnsWholeFile() throws IOException {
         Files.writeString(tempDir.resolve("lines.txt"), "alpha\nbeta\ngamma");
         // end line 99 exceeds file length (3 lines) - must return whole file
-        String result = tool.readDiskFile("lines.txt", 1, 99);
+        String result = tool.diskReadFile("lines.txt", 1, 99);
         assertEquals(
                 "   1: alpha\n" +
                 "   2: beta\n" +
@@ -180,7 +180,7 @@ class DiskFileReadToolsTest {
     void readDiskFile_startLineOutOfBoundsReturnsWholeFile() throws IOException {
         Files.writeString(tempDir.resolve("lines.txt"), "alpha\nbeta\ngamma");
         // start line 99 exceeds file length (3 lines) - must return whole file
-        String result = tool.readDiskFile("lines.txt", 99, 100);
+        String result = tool.diskReadFile("lines.txt", 99, 100);
         assertEquals(
                 "   1: alpha\n" +
                 "   2: beta\n" +

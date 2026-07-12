@@ -132,7 +132,7 @@ public class ActionsBarWidget extends Composite {
         modelCombo.setEnabled(!value);
         btnClear.setEnabled(!value);
         btnThink.setEnabled(!value);
-        if (value) btnImplement.setEnabled(false); // re-enable is handled by updateModeUI
+        btnImplement.setEnabled(!value);
     }
 
     public boolean isWorking() {
@@ -147,17 +147,18 @@ public class ActionsBarWidget extends Composite {
     }
 
     private void applyImplAutonomousVisibility(String handOver) {
-        if (handOver != null) {
-            btnImplement.setText("Give " + handOver);
-            btnImplement.setToolTipText("Handover the plan or last AI message to " + handOver);
-        }
-        
         boolean hashandOver = handOver != null;
-        boolean implVisibilityChanged = btnImplement.getVisible() != hashandOver;
-        if (implVisibilityChanged) {
+        if (hashandOver) {
+            btnImplement.setText("Handoff → " + handOver);
+            btnImplement.setToolTipText("Handover the plan or last AI message to " + handOver);
+            btnImplement.setEnabled(true);
+        } else {
+            btnImplement.setEnabled(false);
+        }
+
+        if (btnImplement.getVisible() != hashandOver) {
             ((RowData) btnImplement.getLayoutData()).exclude = !hashandOver;
             btnImplement.setVisible(hashandOver);
-            btnImplement.setEnabled(hashandOver);
             layout(true, true);
             getParent().layout(new Control[]{this});
         }

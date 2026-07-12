@@ -8,7 +8,6 @@ import java.util.function.Consumer;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.sterl.llmpeon.AgentService;
-import org.sterl.llmpeon.StandingOrdersBuilder.MessageProvider;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
@@ -21,7 +20,6 @@ import org.sterl.llmpeon.parts.config.McpConnectionService;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
-import org.sterl.llmpeon.parts.tools.PlanTool;
 import org.sterl.llmpeon.parts.tools.EclipseBuildTool;
 import org.sterl.llmpeon.parts.tools.EclipseCodeNavigationTool;
 import org.sterl.llmpeon.parts.tools.EclipseConsoleLogTool;
@@ -29,6 +27,7 @@ import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
 import org.sterl.llmpeon.parts.tools.EclipseRunTestTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
+import org.sterl.llmpeon.parts.tools.PlanTool;
 import org.sterl.llmpeon.parts.tools.memory.WorkspaceMemoryTool;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.skill.SkillService;
@@ -54,7 +53,7 @@ import dev.langchain4j.data.message.UserMessage;
  * without requiring locks. The downstream setters on individual services are called from the
  * Eclipse DI thread and are inherently serialized by the single-threaded event dispatch.</p>
  */
-public class PeonAiService implements MessageProvider {
+public class PeonAiService {
 
     private final AgentService agentService;
     private final ConfiguredChatModel configuredModel;
@@ -217,30 +216,24 @@ public class PeonAiService implements MessageProvider {
         var toAgent = agentService.get(getActiveAgent().handoverTo());
         if (toAgent.isEmpty()) return false;
 
-        boolean hasPlan;
+        String plan;
         if (planTool.hasPlan()) {
-            
-            toAgent.get().clear();
-            toAgent.get().getMemory().add(UserMessage.from(get()));
-            hasPlan = true;
-        } else if (getActiveAgent() instanceof AiPlanAgent planAgent) {
-            var chatPlan = planAgent.getMemory().getLastOf(AiMessage.class);
-            if (chatPlan == null) return false;
-
+            plan = readPlan();
+        } else {
+            var chatPlan = getActiveAgent().getMemory().getLastOf(AiMessage.class);
+            if (chatPlan == null) plan = null;
+            else plan = chatPlan.text();
+        }
+        
+        if (plan != null) {
             toAgent.get().clear();
             toAgent.get().getMemory().add(UserMessage.from(
                     "Handover from " + getActiveAgent().getName() + System.lineSeparator()
-                    + chatPlan.text()));
-            hasPlan = true;
-        } else {
-            hasPlan = false;
-        }
-        
-        if (hasPlan) {
+                    + plan));
             this.agentService.setActiveAgent(toAgent.get());
         }
         
-        return hasPlan;
+        return plan != null;
     }
 
     // -------------------------------------------------------------------------
@@ -338,15 +331,23 @@ public class PeonAiService implements MessageProvider {
     }
 
     private void preloadPlanIfNeeded() {
-        var agent = this.agentService.getActiveAgent();
+        if (!planTool.hasPlan()) return;
+
+        var agent = getActiveAgent();
         if (agent instanceof AiPlanAgent planAgent) {
-            if (planAgent.getMemory().size() == 0 && planTool.hasPlan()) {
+            if (planAgent.getMemory().size() == 0) {
                 this.plan = getProject().getFile(PlanTool.OVERVIEW_FILE);
-                planAgent.getMemory().add(UserMessage.from(planTool.planRead()));
+                planAgent.getMemory().add(UserMessage.from(
+                        "Current active plan. Use plan* tools to change" + System.lineSeparator() + "---" + System.lineSeparator() + System.lineSeparator()
+                        + planTool.planRead()));
             }
+        } else if (agent.getMemory().size() == 0) {
+            agent.getMemory().add(UserMessage.from(
+                    "Plan found: " + JdtUtil.pathOf(getProject().getFile(PlanTool.OVERVIEW_FILE)) + System.lineSeparator()
+                    + "If plan* tools are available accessable by them too."));
         }
     }
-    
+
     public void onPlanSaved(IFile planFile) {
         this.plan = planFile;
     }
@@ -360,10 +361,9 @@ public class PeonAiService implements MessageProvider {
         return this.agentService.getAgents();
     }
 
-    @Override
-    public String get() {
+    private String readPlan() {
         if (this.plan == null) return "";
-        return "# Plan: " + JdtUtil.pathOf(plan) + System.lineSeparator() + System.lineSeparator()
+        return "Plan: " + JdtUtil.pathOf(plan) + System.lineSeparator() + "---" + System.lineSeparator() + System.lineSeparator()
             + IoUtils.readString(plan);
     }
 

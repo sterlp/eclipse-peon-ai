@@ -19,7 +19,6 @@ public class StandingOrdersBuilderTest extends AbstractTest {
         PeonAiService aiService = new PeonAiService(null, null, null);
         aiService.setProject(project);
         StandingOrdersBuilder standingOrders = new StandingOrdersBuilder()
-                .add(aiService)
                 .add(aiService.getAgentsMdService());
         
         // WHEN
@@ -74,7 +73,6 @@ public class StandingOrdersBuilderTest extends AbstractTest {
         PeonAiService aiService = new PeonAiService(null, null, null);
         aiService.setProject(project);
         var standingOrders = new StandingOrdersBuilder()
-                .add(aiService)
                 .add(aiService.getAgentsMdService());
         standingOrders.addOneTimeOrder("Review the code and report any issues.");
 
