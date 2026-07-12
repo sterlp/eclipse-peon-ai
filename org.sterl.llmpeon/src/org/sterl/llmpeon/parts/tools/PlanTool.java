@@ -72,21 +72,18 @@ public class PlanTool extends AbstractEclipseTool {
         return "Updated " + JdtUtil.pathOf(planFile);
     }
     
-    @Tool("Mark a plan as done. E.g.: to begin a new plan and preserve old plans or as last tool call to complete/clear the plan.")
-    public void planDone() {
+    @Tool("Archives the current plan with a timestamp once fully implemented. Call as the final tool call, or before starting a new plan to preserve the old one.")
+    public void planImplemented() {
         var plan = getProject().getFile(OVERVIEW_FILE);
         if (plan == null || !plan.exists()) return;
 
         try {
-            onTool("Plan finished.");
             var stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm"));
-            plan.move(
-                getProject().findMember("/overview-done-" + stamp + ".md").getFullPath(),
-                IResource.KEEP_HISTORY,
-                getProgressMonitor()
-            );
+            var newPath = getProject().getFile(PLAN_DIR + "/overview-done-" + stamp + ".md").getFullPath();
+            onTool("Plan finished: " + newPath);
+            plan.move(newPath, IResource.KEEP_HISTORY, getProgressMonitor());
         } catch (CoreException e) {
-            throw new RuntimeException("Failed to mark file as done. " + JdtUtil.pathOf(plan), e);
+            throw new RuntimeException("Failed to mark file as done. " + JdtUtil.pathOf(plan) + " " + e.getMessage(), e);
         }
     }
 

@@ -1,5 +1,7 @@
 package org.sterl.llmpeon.parts.config;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Collections;
@@ -30,6 +32,8 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
 
     @Override
     public void initializeDefaultPreferences() {
+        buildConfigDirs();
+
         IEclipsePreferences defaults = DefaultScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
         defaults.put(PeonConstants.PREF_PROVIDER_TYPE, DEFAULT.getProviderType().name());
         defaults.put(PeonConstants.PREF_MODEL, StringUtil.stripToEmpty(DEFAULT.getModel()));
@@ -55,6 +59,8 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
 
 
     public static LlmConfig buildWithDefaults() {
+        buildConfigDirs();
+
         var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
 
         return LlmConfig.builder()
@@ -86,6 +92,18 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
             .shellCommandConfirmationRequired("always".equals(prefs.get(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, "")) ||
                     "not-autonomous".equals(prefs.get(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, "")))
             .build();
+    }
+
+
+    private static void buildConfigDirs() {
+        try {
+            if (!Files.isDirectory(PEON_HOME)) Files.createDirectories(PEON_HOME);
+            if (!Files.isDirectory(PEON_HOME.resolve(LlmConfig.AGENT_DIRECTORY))) Files.createDirectories(PEON_HOME.resolve(LlmConfig.AGENT_DIRECTORY));
+            if (!Files.isDirectory(PEON_HOME.resolve(LlmConfig.COMMAND_DIRECTORY))) Files.createDirectories(PEON_HOME.resolve(LlmConfig.COMMAND_DIRECTORY));
+            if (!Files.isDirectory(PEON_HOME.resolve(LlmConfig.SKILL_DIRECTORY))) Files.createDirectories(PEON_HOME.resolve(LlmConfig.SKILL_DIRECTORY));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public static void saveModel(String model, AiAgent agent) {
