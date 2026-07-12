@@ -49,13 +49,26 @@ with your tools. Never answer from prior knowledge.
 |-------|---------|
 | `name` | Display name in the dropdown. Defaults to the directory name. |
 | `description` | Short summary. |
-| `readOnly` | `true` = only non-editing tools are offered (no file writes, no shell). |
+| `readOnly` | `true` = only non-editing tools are offered (no file writes, no shell). Hyphenated form: `read-only`. |
+| `include-default` | `false` = use only this agent's prompt (no built-in system prompt). Default: `true`. |
+| `temperature` | Override temperature for this agent. Float 0.0–2.0. |
+| `handover` | Agent name to hand off to after work is done. Shows "Give [name]" button when set. Enables workflow chains (e.g., plan → dev → review). |
 | `model` | Optional model override. Changing the model in the UI while this agent is active writes it back here. |
 | `tools` | Allowlist of tool-name prefixes. **Leave it out to allow all tools.** |
 
-## Tool allowlist
+## Workflow Handoff
 
-Each `tools` entry is matched against the tool name:
+A custom agent with `handover:` shows a **Give [Agent Name]** button in the status bar once its work is complete. Clicking it transfers control to another agent, passing the last AI message or saved plan as context.
+
+This enables multi-agent workflows without autonomous mode — for example:
+```
+planner/AGENT.md  →  handover: peon-dev
+dev-reviewer/AGENT.md  →  handover: planner   # cycle back if needed
+```
+
+The receiving agent picks up where the previous one left off with minimal context transfer.
+
+## Tool allowlist
 
 - `*` — allow every tool.
 - a **prefix** — `document_` enables `document_read`, `document_write`, …; a full name enables
@@ -73,3 +86,20 @@ read-only tool names.
 
 Pick your agent from the dropdown below the input, just like Peon-Dev or Peon-Plan. Each agent
 keeps its own conversation. Edits to an `AGENT.md` are picked up on the next config refresh.
+
+## Built-in Tool Names Reference
+
+Use these names in your tool allowlist. Prefix matching works — `disk_` enables all disk tools:
+
+| Tool Class | Method Name (allowlist prefix) | Category |
+|------------|-------------------------------|----------|
+| DiskFileReadTool | `diskReadFile`, `diskSearchFiles`, `diskListDirectory` | Read |
+| DiskGrepTool | `diskGrepFiles` | Search |
+| DiskFileWriteTool | `diskWriteFile`, `diskDeleteFile`, `diskReplaceLines`, `diskEditFile`, `diskRenameResource`, `diskInsertLines` | Write |
+| WebFetchTool | `webFetchAsMarkdown` | External |
+| ShellTool | `shellRunCommand`, `readOperationSystemInformation` | System |
+| SearchAgentTool | `searchAgent` | Agent |
+| CompactSessionTool | `compactSession` | Context |
+| SkillTool | `skillRead`, `skillList`, `skillReadFile` | Skills |
+
+For MCP tools, the prefix is `mcp__` (e.g. `mcp__docs__search`).

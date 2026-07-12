@@ -14,7 +14,10 @@ read-only-tool building blocks and adds prefix/wildcard tool filtering.
 ---
 name: Docs-Assistant          # optional, defaults to directory name
 description: ...              # optional
-readOnly: true               # optional, default false
+readOnly: true               # optional, default false (also accepts read-only)
+include-default: true        # optional; false = no built-in system prompt
+temperature: 0.8             # optional; override for this agent only
+handover: some-agent         # optional; shows "Give [agent]" button after work done
 model: qwen3.6-27b           # optional model override
 tools:                       # optional; absent = all tools
   - grep
@@ -26,14 +29,14 @@ tools:                       # optional; absent = all tools
 
 - `tools` accepts a YAML block list or inline CSV (`tools: grep, read_`).
 - Absent `tools` ⇒ `null` ⇒ **all** tools; empty list ⇒ nothing.
-- Keys are case-insensitive; `readOnly` and `read-only` both work.
+- Keys are lower-cased during parse. Hyphen variants accepted: `read-only` (canonical) and `readonly` resolve to the same key via fallback in `PromptYmlParser.getValue()`.
 
 ## Components (core module)
 
-- `agent/AgentPromptFile` — extends `SimplePromptFile`; adds `tools`, `readOnly`, `model`,
-  `agentDir`. Static `parse(Path)` builds it via the shared parser.
+- `prompt/model/SimplePromptFile` — base class for AGENT.md parsing; keys lowercased during parse.
+- `agent/CustomAgent` extends `AbstractAgent` — direct implementation (no separate service wrapper).
 - `agent/AgentService` — mirrors `SkillService`: scans the directory for subfolders containing
-  `AGENT.md`, keyed by lower-case name. Reloaded on config change.
+  `AGENT.md`, keyed by lower-case name. Returns `CustomAgent` instances. Reloaded on config change.
 - `tool/ToolPolicy.enables(allowlist, name)` — `*` / prefix / exact match. Empty/null ⇒ false.
 - `shared/PromptYmlParser` — extended: `parseFrontmatter` now returns `Map<String,List<String>>`
   with block-list + inline-CSV support; new `setFrontmatterValue(path, key, value)` writer;
