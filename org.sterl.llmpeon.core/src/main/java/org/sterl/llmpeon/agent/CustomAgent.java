@@ -18,7 +18,7 @@ import lombok.Setter;
  * Chat service backed by a user-defined {@link AgentPromptFile} ({@code AGENT.md}).
  *
  * <p>System prompt = shared default prompt + the agent's markdown body. Tools are restricted by the
- * agent's {@code tools} allowlist (absent = all) and, when {@code readOnly} is set, to non-edit
+ * agent's {@code tools} allowlist (absent = all) and, when {@code isReadOnly} is set, to non-edit
  * tools. An optional {@code model} in the frontmatter overrides the active model.</p>
  *
  * <p>The {@link AgentPromptFile} snapshot is replaceable so a config refresh can pick up edits;
