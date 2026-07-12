@@ -1,6 +1,5 @@
 package org.sterl.llmpeon.parts;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -37,8 +36,8 @@ import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.swt.widgets.ToolItem;
 import org.eclipse.ui.IWorkingSet;
-import org.sterl.llmpeon.PeonMode;
 import org.sterl.llmpeon.StandingOrdersBuilder;
+import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.McpPreferenceInitializer;
@@ -155,11 +154,10 @@ public class AIChatView implements EclipseAiMonitor {
             this::onClear,
             this::doStartImpl,
             this::onModeChange,
-            this::onCustomAgentChange,
             aiService::setModel,
-            autonomous -> aiService.getAgentMode().setAutonomous(autonomous),
             aiService::withThinking
         );
+        actionsBar.setModel(aiService.getActiveAgent().getAgentModelName());
 
         statusLine = new StatusLineWidget(inputBlock, SWT.NONE,
             this::onPinChange,
@@ -173,7 +171,7 @@ public class AIChatView implements EclipseAiMonitor {
             () -> aiService.getSkillService().getAllLoadedSkills(),
             this::onSkillMenuSelection
         );
-
+        
         applyConfig();
 
         var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
@@ -195,8 +193,7 @@ public class AIChatView implements EclipseAiMonitor {
                 + "\nos line.separator: '" + System.lineSeparator() + "'"
                 + "\nFile access: use workspace tools inside Eclipse. For paths outside the workspace a Disk-tool family exists; if it is not present this session, ask the user to enable it — never break out via shell for file I/O.";
 
-        aiService.getDeveloperService().setStaticContext(Arrays.asList(SystemMessage.from(dateInfo)));
-        aiService.getPlannerService().setStaticContext(Arrays.asList(SystemMessage.from(dateInfo)));
+        aiService.setStaticContext(Arrays.asList(SystemMessage.from(dateInfo)));
 
         chatInput.enableSlashCommands(() -> {
             var result = new ArrayList<SimplePromptFile>();
@@ -207,10 +204,9 @@ public class AIChatView implements EclipseAiMonitor {
     }
 
     private void onClear() {
-        var s = aiService.getActiveService();
-        s.clear();
+        aiService.clear();
         chatHistory.clear();
-        statusLine.updateCompact(s.getContextSize(), s.getAutoCompactAfter());
+        statusLine.updateCompact(0, aiService.getConfig().getAutoCompactAfter());
     }
 
     @PreDestroy
@@ -269,19 +265,9 @@ public class AIChatView implements EclipseAiMonitor {
 
     private void updateSelectedProject(IProject project) {
         if (project != null && !userContext.isProjectPinned()) {
-            userContext.setCurrentProject(project);
             aiService.setProject(project);
-        }
-        // TODO add check of project really changed
-        if (actionsBar != null) {
-            EclipseUtil.runInUiThread(parent, () -> {
-                var currentProject = userContext.getCurrentProject();
-                actionsBar.setAgentModeAvailable(currentProject != null && currentProject.isOpen());
-                if (currentProject == null && aiService.getPeonMode() == PeonMode.AGENT) {
-                    onModeChange(PeonMode.DEV);
-                }
-                refreshStatusLine();
-            });
+            var changed = userContext.setCurrentProject(project);
+            if (changed) refreshStatusLine();
         }
     }
 
@@ -311,10 +297,10 @@ public class AIChatView implements EclipseAiMonitor {
     @Override
     public void onChatResponse(SimpleMessage m) {
         EclipseUtil.runInUiThread(parent, () -> {
-            var ai = aiService.getActiveService();
+            var ai = aiService.getActiveAgent();
             chatHistory.hideLiveStatus();
             chatHistory.appendMessage(m);
-            statusLine.updateCompact(ai.getContextSize(), ai.getAutoCompactAfter());
+            statusLine.updateCompact(ai.getMemory().getTotalTokenUsed(), aiService.getConfig().getAutoCompactAfter());
         });
     }
 
@@ -322,11 +308,7 @@ public class AIChatView implements EclipseAiMonitor {
     public void onCallCompleted(dev.langchain4j.model.chat.response.ChatResponse response, Duration duration) {
         EclipseUtil.runInUiThread(parent, () -> {
             lockWhileWorking(false);
-            if (aiService.getAgentMode().consumeImplementationRequest()) {
-                aiService.getAgentMode().startImplementation();
-            }
             refreshStatusLine();
-            syncModeUI();
         });
     }
 
@@ -356,6 +338,7 @@ public class AIChatView implements EclipseAiMonitor {
     // UI refresh
     // -------------------------------------------------------------------------
 
+    // TODO: DOUBLE CHECK if refreshStatusLine and refreshChat are 2 methods!
     public void refreshStatusLine() {
         statusLine.update(
             aiService.getSkillService().getSkills().size(),
@@ -364,8 +347,13 @@ public class AIChatView implements EclipseAiMonitor {
             userContext.getCurrentProject(),
             userContext.getSelectedFile()
         );
-        var ai = aiService.getActiveService();
-        statusLine.updateCompact(ai.getContextSize(), ai.getAutoCompactAfter());
+        var ai = aiService.getActiveAgent();
+        statusLine.updateCompact(ai.getMemory().getTotalTokenUsed(), aiService.getConfig().getAutoCompactAfter());
+    }
+    private void refreshChat() {
+        chatHistory.clear();
+        refreshStatusLine();
+        aiService.getActiveAgent().getMemory().forEach(chatHistory::appendMessage);
     }
 
     private void syncAgentsMdToggle() {
@@ -373,13 +361,6 @@ public class AIChatView implements EclipseAiMonitor {
         boolean enabled = prefs.getBoolean(PeonConstants.PREF_AGENTS_MD_ENABLED, true);
         statusLine.setAgentsMdEnabled(enabled);
         aiService.getAgentsMdService().setEnabled(enabled);
-    }
-
-    private void refreshChat() {
-        chatHistory.clear();
-        refreshStatusLine();
-        syncModeUI();
-        aiService.getActiveService().getMemory().forEach(chatHistory::appendMessage);
     }
 
     /** Top-right toolbar with the hammer button that reveals the tool activity popup. */
@@ -399,7 +380,7 @@ public class AIChatView implements EclipseAiMonitor {
         Menu menu = new Menu(toolBar);
 
         MenuItem header = new MenuItem(menu, SWT.PUSH);
-        header.setText("Tools for: " + aiService.getActiveAgentLabel());
+        header.setText("Tools for: " + aiService.getActiveAgent().getName());
         header.setEnabled(false);
         new MenuItem(menu, SWT.SEPARATOR);
 
@@ -415,33 +396,20 @@ public class AIChatView implements EclipseAiMonitor {
         menu.setVisible(true);
     }
 
-    /** Keeps the mode combo / impl controls in sync with the active built-in mode or custom agent. */
-    private void syncModeUI() {
-        if (aiService.isCustomAgentActive()) actionsBar.updateForCustomAgent();
-        else actionsBar.updateModeUI(aiService.getPeonMode());
-    }
-
     // -------------------------------------------------------------------------
     // Config / model loading
     // -------------------------------------------------------------------------
 
     private void applyConfig() {
         var config = LlmPreferenceInitializer.buildWithDefaults();
+        EclipseSlf4jLogger.setDebug(config.isDebugMode());
+
         if (lastAppliedConfig != null && lastAppliedConfig.equals(config)) return;
         lastAppliedConfig = config;
         LOG.info("Set new config " + config);
-        try {
-            aiService.getSkillService().refresh(config.getSkillDirectory());
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to load " + config.getSkillDirectory());
-        }
-        try {
-            aiService.getCommandService().refresh(config.getCommandDirectory());
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to load " + config.getCommandDirectory());
-        }
         aiService.updateConfig(config);
-        actionsBar.setCustomAgents(aiService.getAgentService().getAgents());
+        EclipseUtil.runInUiThread(parent, () -> actionsBar.setAgents(aiService.getAgents()));
+        
         // Sync the Think toggle to the config default. The user can override this per-session
         // via the button; that override is stored in-memory only and not written to preferences.
         actionsBar.setThinkEnabled(config.isThinkingEnabled());
@@ -451,7 +419,6 @@ public class AIChatView implements EclipseAiMonitor {
         refreshStatusLine();
         reloadModelsIfNeeded();
         applyShellCommandConfirmation();
-        EclipseSlf4jLogger.setDebug(config.isDebugMode());
     }
 
     private void applyMcpConfig() {
@@ -463,7 +430,7 @@ public class AIChatView implements EclipseAiMonitor {
 
     private void applyShellCommandConfirmation() {
         var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
-        var autonomous = aiService.getAgentMode().getAutonomous();
+        var autonomous = false; // TODO restore autonomus mode
 
         // TODO move into own class?
         if ("true".equalsIgnoreCase(prefs.get(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, "")) ||
@@ -535,7 +502,7 @@ public class AIChatView implements EclipseAiMonitor {
                                 && models.stream().anyMatch(m -> modelName.equals(m.getId()));
                         if (!known) {
                             // B2: configured model missing (or none) -> adopt the first from the list
-                            aiService.getActiveService().setModelName(models.getFirst());
+                            aiService.setModel(models.getFirst());
                             actionsBar.applyModelList(models, aiService.getActiveModel());
                         } else {
                             actionsBar.applyModelList(models, modelName);
@@ -571,54 +538,44 @@ public class AIChatView implements EclipseAiMonitor {
     // Actions
     // -------------------------------------------------------------------------
 
-    private void onModeChange(PeonMode mode) {
-        aiService.getAgentMode().setAutonomous(actionsBar.getAutonomous());
-        aiService.setPeonMode(mode);
-        refreshChat();
-        reloadModelsIfNeeded();
-        applyShellCommandConfirmation();
-    }
-
-    private void onCustomAgentChange(org.sterl.llmpeon.agent.AgentPromptFile agent) {
-        aiService.setActiveCustomAgent(agent.name());
+    private void onModeChange(AiAgent mode) {
+        aiService.setActiveAgent(mode);
         refreshChat();
         reloadModelsIfNeeded();
         applyShellCommandConfirmation();
     }
 
     private void doStartImpl() {
-        if (aiService.getPeonMode() == PeonMode.AGENT) {
-            if (aiService.getAgentMode().startImplementation()) refreshChat();
-            else onChatResponse(new SimpleMessage(Type.PROBLEM, "Plan missing ..."));
-        } else {
-            // PLAN -> DEV: hand off the plan to the developer service
-            aiService.setPeonMode(PeonMode.DEV);
-            actionsBar.updateModeUI(PeonMode.DEV);
-            if (aiService.startImplementation()) {
-                if (StringUtil.hasNoValue(chatInput.getText())) {
-                    // some models e.g. Qwen need a use message as last message
-                    // compactSession
-                    chatInput.setText("""
-                        Implement the plan.
-                        
-                        If the plan is large, save it to plan/ using a filename derived from the feature name.
-                        Treat the plan file as long-term memory — update it as decisions are made or steps completed.
-                        
-                        When switching to a different piece of work:
-                        1. Batch in parallel: run compactSession on the current conversation + read the plan file + read any referenced files or prior plans.
-                        2. Pass into the preserve parameter: this handover instruction, the plan file path, and the next steps.
-                        """);
-                }
-                this.refreshChat();
-                doSendMessage();
-            } else {
-                onChatResponse(new SimpleMessage(Type.PROBLEM, "Plan missing ..."));
+        AiAgent agent = aiService.getActiveAgent();
+        if (aiService.onHandoff()) {
+            
+            actionsBar.updateModeUI(agent);
+            this.refreshChat();
+            this.refreshStatusLine();
+            
+            if (StringUtil.hasNoValue(chatInput.getText()) && !aiService.hasPlan()) {
+                // some models e.g. Qwen need a use message as last message
+                // compactSession
+                chatInput.setText("""
+                    Implement the plan.
+                    
+                    If the plan is large, save it to plan/ using a filename derived from the feature name.
+                    Treat the plan file as long-term memory — update it as decisions are made or steps completed.
+                    
+                    When switching to a different piece of work:
+                    1. Batch in parallel: run compactSession on the current conversation + read the plan file + read any referenced files or prior plans.
+                    2. Pass into the preserve parameter: this handover instruction, the plan file path, and the next steps.
+                    """);
             }
+            doSendMessage();
+
+        } else {
+            onChatResponse(new SimpleMessage(Type.PROBLEM, "Plan or Agent '" + agent.handoverTo() + "' missing ..."));
         }
     }
 
     private void doCompressContext() {
-        var active = aiService.getActiveService();
+        var active = aiService.getActiveAgent();
         if (active.getMemory().size() == 0) return;
         lockWhileWorking(true);
         Job.create("Compressing context", monitor -> {
@@ -644,7 +601,7 @@ public class AIChatView implements EclipseAiMonitor {
             return;
         }
 
-        var active = aiService.getActiveService();
+        var active = aiService.getActiveAgent();
 
         final var text = StringUtil.strip(chatInput.getText().trim());
         if (StringUtil.hasNoValue(text) && active.getMemory().size() == 0) return;
@@ -656,7 +613,7 @@ public class AIChatView implements EclipseAiMonitor {
             
             // already working -> we only append the current history ...
             if (actionsBar.isWorking()) {
-                active.addMessage(UserMessage.from(text));
+                active.getMemory().add(UserMessage.from(text));
                 return;
             }
         } else if (actionsBar.isWorking()) { // no text and already working ...
@@ -704,7 +661,7 @@ public class AIChatView implements EclipseAiMonitor {
         }
         LOG.warn("Failed to call LLM " + aiService.getConfig(), e);
         if (aiService.getConfig().isDebugMode()) {
-            aiService.getActiveService().getMemory().printMessages();
+            aiService.getActiveAgent().getMemory().printMessages();
         }
         onChatResponse(new SimpleMessage(Type.PROBLEM, e.getMessage()));
         return e;
@@ -717,7 +674,6 @@ public class AIChatView implements EclipseAiMonitor {
             if (project != null) {
                 userContext.setCurrentProject(project);
                 aiService.setProject(project);
-                actionsBar.setAgentModeAvailable(project.isOpen());
             }
         }
         statusLine.setPinned(pinned);
@@ -796,12 +752,12 @@ public class AIChatView implements EclipseAiMonitor {
         var commandService = aiService.getCommandService();
         var command = commandService.get(name);
         if (command.isPresent()) {
-            standingOrders.addOneTimeOrder(command.get().readBody());
+            standingOrders.addOneTimeOrder(command.get().getBody());
         } else {
             var skillService = aiService.getSkillService();
             var skill = skillService.get(name);
             if (skill.isPresent()) {
-                standingOrders.addOneTimeOrder(skill.get().readBody() + "\n\nExecute this skill on the following instruction - full body was loaded.");
+                standingOrders.addOneTimeOrder(skill.get().getBody() + "\n\nExecute this skill on the following instruction - full body was loaded.");
             } else {
                 if (!commandService.hasCommands() && !skillService.hasSkills()) return;
                 var available = commandService.commandNames() + ", " + skillService.skillNames();

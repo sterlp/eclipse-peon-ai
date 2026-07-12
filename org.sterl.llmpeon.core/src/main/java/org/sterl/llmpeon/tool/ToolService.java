@@ -125,7 +125,9 @@ public class ToolService {
 
             req.getMonitor().onChatMessage(++iterations, builder);
             response = req.call(builder.build());
+
             ToSimpleMessage.INSTANCE.convert(response.aiMessage()).forEach(req.monitor::onChatResponse);
+
             if (req.getMonitor().isCanceled()) break; // TODO re-think this
 
             var isToolrequest = response.aiMessage().hasToolExecutionRequests();
@@ -139,8 +141,6 @@ public class ToolService {
             if (isToolrequest) {
                 stuck = 0; // reset on productive tool use
                 var tR = runAllTools(response, req);
-                
-                //
                 req.getMemory().addResult(response, tR);
                 addCompactHintIfNeeded(req, response, false);
             } else if (hasResponseMessage) {
@@ -161,6 +161,7 @@ public class ToolService {
         return response;
     }
 
+    // TODO with custom tools the compact tools and custom agents is maybe not available, what now? We should check this.
     private void addCompactHintIfNeeded(ToolLoopRequest req, ChatResponse response, boolean force) {
         var compactLimit = req.getConfig().getAutoCompactAfter();
         if (compactLimit <= 0 && !force) return;
@@ -210,11 +211,12 @@ public class ToolService {
         var executor = toolExecutors.get(tr.name());
         var monitor = req.getMonitor();
         String result;
-        if (executor == null && mcpService != null && mcpService.hasTool(tr.name())) {
+        var isMcpTool = executor == null && mcpService != null && mcpService.hasTool(tr.name());
+        if (isMcpTool) {
             monitor.onTool("Running MCP: " + tr.name() + " - " + tr.arguments());
             result = mcpService.executeTool(tr);
             log.debug("MCP Tool {} result size: {}", tr.name(), result == null ? "null" : result.length());
-            return ToolExecutionResultMessage.from(tr.id(), tr.name(), result);
+            return ToolExecutionResultMessage.from(tr, result);
         } else if (executor == null) {
             result = "Error: unknown tool '" + tr.name() + "' check spelling";
             monitor.onProblem(result);

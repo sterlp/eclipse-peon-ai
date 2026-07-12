@@ -2,10 +2,12 @@ package org.sterl.llmpeon.parts.tools;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
-import org.sterl.llmpeon.parts.agent.AgentModeService;
+import org.sterl.llmpeon.parts.PeonAiService;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
+import org.sterl.llmpeon.shared.AiMonitor.AiFileUpdate;
 import org.sterl.llmpeon.shared.ArgsUtil;
+import org.sterl.llmpeon.shared.FileUtils;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -21,25 +23,61 @@ public class AgentModeTool extends AbstractEclipseTool {
     public static final String OVERVIEW_FILE = PLAN_DIR + "/overview.md";
     public static final String PROBLEM_FILE = PLAN_DIR + "/problem.md";
 
-    private final AgentModeService agentMode;
+    private final PeonAiService peonAiService;
 
-    public AgentModeTool(AgentModeService agentMode) {
-        this.agentMode = agentMode;
+    public AgentModeTool(PeonAiService peonAiService) {
+        this.peonAiService = peonAiService;
     }
     
-    @Tool("Save the final implementation plan to peon-plan/overview.md. Call only after all design decisions are resolved.")
-    public String savePlan(@P(description = "complete plan in markdown", name = "content") String content) {
-        ArgsUtil.requireNonBlank(content, "content");
-        
+    @Tool("Read the current plan.")
+    public String planRead() {
         var project = getProject();
-        var f = IoUtils.writeProjectFile(project, OVERVIEW_FILE, content, getProgressMonitor());
-        onTool("Plan saved to " + JdtUtil.pathOf(f));
-        agentMode.onPlanSaved();
-        return "Plan saved to " + JdtUtil.pathOf(f);
+        var plan = project.getFile(OVERVIEW_FILE);
+        if (plan == null || !plan.exists()) return "No plan exisits yet for project: " + JdtUtil.pathOf(plan);
+        return IoUtils.readString(plan);
     }
 
+    @Tool("Save the final implementation plan to " + OVERVIEW_FILE + ". Call only after all design decisions are resolved.")
+    public void planSave(@P(description = "complete plan in markdown", name = "content") String content) {
+        ArgsUtil.requireNonBlank(content, "content");
+        var project = getProject();
+        var planFile = IoUtils.writeProjectFile(project, OVERVIEW_FILE, content, getProgressMonitor());
+        onTool("Plan saved to " + JdtUtil.pathOf(planFile));
+        peonAiService.onPlanSaved(planFile);
+    }
+
+    @Tool("Update the current plan.")
+    public void planUpdate(
+            @P(description = "exact text to replace", name = "oldString") String oldString,
+            @P(name = "newString", required = false) String newString) {
+        
+        ArgsUtil.requireNonBlank(oldString, "oldString");
+        if (newString == null) newString = "";
+
+        var content = planRead();
+        var planFile = getProject().getFile(OVERVIEW_FILE);
+        String newContent = FileUtils.applyEdit(JdtUtil.pathOf(planFile), content, oldString, newString);
+        IoUtils.writeFile(planFile, newContent, getProgressMonitor());
+        var editResult = new AiFileUpdate(JdtUtil.pathOf(planFile), oldString, newString);
+        monitor.onFileUpdate(editResult);
+        
+        peonAiService.onPlanSaved(planFile);
+    }
+    
+    public boolean hasPlan() {
+        if (peonAiService.getProject() == null) return false;
+        var planFile = getProject().getFile(OVERVIEW_FILE);
+        return planFile != null && planFile.exists(); 
+    }
+/*
+    @Tool("Call this method to indicate that the plan is ready. Call only after all design decisions are resolved.")
+    public void planComplete() {
+        // TODO
+    }
+
+
     @Tool("Escalate unresolvable blockers (build failures, missing context) to the planner agent. Use after 2 failed attempts.")
-    public String reportPlanProblems(@P(description = "detailed problem description in markdown", name = "content") String content) {
+    public String planProblem(@P(description = "detailed problem description in markdown", name = "content") String content) {
         ArgsUtil.requireNonBlank(content, "content");
         
         var project = getProject();
@@ -48,11 +86,11 @@ public class AgentModeTool extends AbstractEclipseTool {
         agentMode.onProblemReported();
         return "Problem reported. Plan agent will review. " + JdtUtil.pathOf(f);
     }
-    
+*/
     private IProject getProject() {
-        var project = agentMode.getProject();
+        var project = peonAiService.getProject();
         if (project == null) {
-            throw new IllegalStateException("No Eclipse project selected. Developer has to select a project.");
+            throw new IllegalStateException("No Eclipse project selected. Ask user to select a project!");
         }
         try {
             project.open(getProgressMonitor());

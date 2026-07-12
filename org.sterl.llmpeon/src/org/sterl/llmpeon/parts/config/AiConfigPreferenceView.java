@@ -16,7 +16,6 @@ import org.eclipse.swt.widgets.Link;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
 import org.eclipse.ui.preferences.ScopedPreferenceStore;
-import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.PeonConstants;
@@ -46,7 +45,7 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
                         { "GitHub Models (PAT)", AiProvider.GITHUB_MODELS.name() } },
                 getFieldEditorParent());
         addField(providerEditor);
-        addField(new StringFieldEditor(PeonConstants.modelPref(AiDevAgent.NAME), "Model:", getFieldEditorParent()));
+        addField(new StringFieldEditor(PeonConstants.PREF_MODEL, "Model:", getFieldEditorParent()));
 
         addField(new IntegerFieldEditor(PeonConstants.PREF_TOKEN_WINDOW, "Auto compact after:", getFieldEditorParent()));
 

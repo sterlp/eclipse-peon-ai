@@ -12,6 +12,7 @@ import org.eclipse.core.runtime.preferences.AbstractPreferenceInitializer;
 import org.eclipse.core.runtime.preferences.DefaultScope;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.InstanceScope;
+import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.ai.AiProvider;
@@ -31,7 +32,7 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
     public void initializeDefaultPreferences() {
         IEclipsePreferences defaults = DefaultScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
         defaults.put(PeonConstants.PREF_PROVIDER_TYPE, DEFAULT.getProviderType().name());
-        defaults.put(PeonConstants.modelPref(AiDevAgent.NAME), StringUtil.stripToEmpty(DEFAULT.getModel()));
+        defaults.put(PeonConstants.PREF_MODEL, StringUtil.stripToEmpty(DEFAULT.getModel()));
         defaults.put(PeonConstants.PREF_URL, StringUtil.stripToEmpty(DEFAULT.getUrl()));
         defaults.putLong(PeonConstants.PREF_TIMEOUT, DEFAULT.getTimeout().toSeconds());
         
@@ -59,8 +60,8 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
         return LlmConfig.builder()
             .providerType(AiProvider.parse(prefs.get(PeonConstants.PREF_PROVIDER_TYPE, DEFAULT.getProviderType().name())))
 
-            .model(prefs.get(PeonConstants.modelPref(AiDevAgent.NAME), DEFAULT.getModel()))
-            .planModel(StringUtil.stripToNull(prefs.get(PeonConstants.modelPref(AiPlanAgent.NAME), null)))
+            .model(prefs.get(PeonConstants.PREF_MODEL, DEFAULT.getModel()))
+            .planModel(StringUtil.stripToNull(prefs.get(PeonConstants.PREF_PLAN_MODEL, null)))
             .compactModel(StringUtil.stripToNull(prefs.get(PeonConstants.PREF_COMPACT_MODEL, null)))
             .searchModel(StringUtil.stripToNull(prefs.get(PeonConstants.PREF_SEARCH_MODEL, null)))
 
@@ -87,13 +88,19 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
             .build();
     }
 
-    public static void setModel(String model, String agentName) {
+    public static void saveModel(String model, AiAgent agent) {
         if (model == null) return;
         try {
-            var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
-            String key = PeonConstants.modelPref(agentName);
-            prefs.put(key, model);
-            prefs.flush();
+            agent.setAgentModelName(model);
+            if (agent instanceof AiDevAgent) {
+                var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
+                prefs.put(PeonConstants.PREF_MODEL, model);
+                prefs.flush();
+            } else if (agent instanceof AiPlanAgent) {
+                var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
+                prefs.put(PeonConstants.PREF_PLAN_MODEL, model);
+                prefs.flush();
+            }
         } catch (Exception e) {
             LOG.warn("Failed to save model preference", e);
         }

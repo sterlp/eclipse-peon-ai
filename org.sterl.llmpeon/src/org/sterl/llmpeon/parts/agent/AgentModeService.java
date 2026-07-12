@@ -11,11 +11,13 @@ import org.eclipse.swt.widgets.Display;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
+import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.tools.AgentModeTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.shared.AiMonitor;
 
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
@@ -23,6 +25,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
  * Orchestrates the AGENT mode plan→dev loop.
  * Plan files live inside the current Eclipse project under .plan/.
  */
+@Deprecated
 public class AgentModeService implements AiAgent {
 
     public enum Phase { PLANNING, IMPLEMENTING }
@@ -30,7 +33,7 @@ public class AgentModeService implements AiAgent {
     private static final int MAX_RETRIES = 3;
 
     private static final String SYS_PLAN = """
-                When your plan is complete, instead of presenting the plan, call savePlan automatically as your last action with:
+                When your plan is complete, instead of presenting the plan, call planSave with the full plan automatically as your last action with:
                 1. Context
                 2. Design decisions
                 3. Affected files
@@ -174,9 +177,10 @@ public class AgentModeService implements AiAgent {
     // Tool callbacks (called from AgentModeTool, on background thread)
     // -------------------------------------------------------------------------
 
-    /** Called by savePlan tool after writing the file. */
-    public void onPlanSaved() {
-        openInEditor(getOverviewFile());
+    /** Called by savePlan tool after writing the file. 
+     * @param f */
+    public void onPlanSaved(IFile plan) {
+        openInEditor(plan);
         if (autonomous) {
             implementationRequested = true;
         }
@@ -259,11 +263,33 @@ public class AgentModeService implements AiAgent {
 
     @Override
     public void setUserContextInformations(List<String> userContextInformations) {
-        getActiveService().setUserContextInformations(userContextInformations);
+        this.developerService.setUserContextInformations(userContextInformations);
+        this.plannerService.setUserContextInformations(userContextInformations);
     }
 
     @Override
     public List<String> getUserContextInformations() {
         return getActiveService().getUserContextInformations();
+    }
+
+    @Override
+    public void clear() {
+        this.getActiveService().clear();
+    }
+
+    @Override
+    public ThreadSafeMemory getMemory() {
+        return getActiveService().getMemory();
+    }
+
+    @Override
+    public void setStaticContext(List<ChatMessage> staticContext) {
+        this.developerService.setStaticContext(staticContext);
+        this.plannerService.setStaticContext(staticContext);
+    }
+
+    @Override
+    public ChatResponse compressContext(AiMonitor monitor) {
+        return getActiveService().compressContext(monitor);
     }
 }

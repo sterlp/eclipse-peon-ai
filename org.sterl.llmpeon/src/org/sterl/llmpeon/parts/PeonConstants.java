@@ -39,12 +39,10 @@ public interface PeonConstants {
 
     String PREF_AGENTS_MD_ENABLED  = "agentsMd.enabled";   // boolean, default true
 
+    String PREF_MODEL            = "llm.model";
+    String PREF_PLAN_MODEL       = "llm.planModel";
     String PREF_SEARCH_MODEL     = "llm.searchModel";
     String PREF_COMPACT_MODEL    = "llm.compactModel";
-
-    static String modelPref(String agent) {
-        return "llm." + agent + ".model";
-    }
 
     public static IStatus okStatus(String message) {
         return new Status(IStatus.OK, PLUGIN_ID, message);

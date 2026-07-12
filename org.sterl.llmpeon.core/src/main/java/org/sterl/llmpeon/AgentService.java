@@ -34,14 +34,13 @@ public class AgentService {
 
     private final ConfiguredChatModel configuredChatModel;
     private final ToolService toolService;
-    
-    /** Lazily created chat service per custom agent (keyed by lower-case name), each own memory. */
-    private final Map<String, AiAgent> customAgents = new ConcurrentHashMap<>();
+
+    private final Map<String, AiAgent> agents = new ConcurrentHashMap<>();
     private volatile Path agentsDirectory;
-    
+
     /** Non-null when a custom agent is selected; takes precedence over {@link #mode}. */
     @Getter @Setter
-    private volatile AiAgent activeCustomAgent;
+    private volatile AiAgent activeAgent;
     private final AiDevAgent devAgent;
     private final AiPlanAgent planAgent;
 
@@ -51,7 +50,7 @@ public class AgentService {
             ConfiguredChatModel configuredChatModel) {
         this(false, agentsDirectory, toolService, configuredChatModel);
     }
-    
+
     public AgentService(
             boolean withDefaultAgent,
             Path agentsDirectory, 
@@ -60,33 +59,37 @@ public class AgentService {
         refresh(agentsDirectory);
         this.configuredChatModel = configuredChatModel;
         this.toolService = toolService;
+        
         if (withDefaultAgent) {
             devAgent = new AiDevAgent(configuredChatModel, toolService);
             planAgent = new AiPlanAgent(configuredChatModel, toolService);
+            this.activeAgent = devAgent;
         } else {
             devAgent = null;
             planAgent = null;
         }
+
+        reloadAgents();
     }
 
     public void clear() {
-        customAgents.clear();
+        agents.clear();
     }
 
     /** Returns loaded agents when enabled, empty list when disabled, sorted by name. */
     public List<AiAgent> getAgents() {
-        return customAgents.values().stream()
-                    .sorted(Comparator.comparing(a -> a.getName().toLowerCase()))
+        return agents.values().stream()
+                    .sorted(Comparator.comparing(a -> a.getName()))
                     .toList();
     }
 
     public int loadedAgentCount() {
-        return customAgents.size();
+        return agents.size();
     }
     
     public void addAgent(AiAgent agent) {
         if (agent == null) return;
-        this.customAgents.put(agent.getName().toLowerCase(), agent);
+        this.agents.put(agent.getName(), agent);
     }
 
     public boolean refresh(String newPath) throws IOException {
@@ -101,15 +104,15 @@ public class AgentService {
 
         if (newPath == null) {
             this.agentsDirectory = null;
-            this.customAgents.clear();
+            clearAgents();
             return true;
         } else {
             this.agentsDirectory = newPath.toAbsolutePath().normalize();
-            return refresh();
+            return reloadAgents();
         }
     }
 
-    public boolean refresh() {
+    public boolean reloadAgents() {
         if (Files.isDirectory(agentsDirectory)) {
             try {
                 reloadAgentConfig();
@@ -126,20 +129,32 @@ public class AgentService {
             for (Path entry : entries) {
                 var agentCfg = readAgentPrompt(entry);
                 if (agentCfg != null) {
-                    var agent = this.customAgents.get(agentCfg.getName().toLowerCase());
+                    var agent = this.agents.get(agentCfg.getName());
                     if (agent == null) agent = new CustomAgent(agentCfg, configuredChatModel, toolService);
                     else if (agent instanceof CustomAgent ca) ca.setPromptFile(agentCfg);
-                    newAgents.put(agent.getName().toLowerCase(), agent);
+                    newAgents.put(agent.getName(), agent);
                 }
             }
         }
-        this.customAgents.clear();
-        if (planAgent != null) this.customAgents.put(planAgent.getName(), planAgent);
-        if (devAgent != null) this.customAgents.put(devAgent.getName(), devAgent);
-        this.customAgents.putAll(newAgents);
+        clearAgents();
+        this.agents.putAll(newAgents);
         // clear active if gone
-        if (activeCustomAgent != null && !customAgents.containsKey(activeCustomAgent.getName().toLowerCase())) {
-            this.activeCustomAgent = customAgents.isEmpty() ? null : customAgents.values().iterator().next();
+        if (activeAgent != null && !agents.containsKey(activeAgent.getName())) {
+            this.activeAgent = agents.isEmpty() ? null : agents.values().iterator().next();
+        } else if (activeAgent == null && !agents.isEmpty()) {
+            this.activeAgent = agents.values().iterator().next();
+        }
+    }
+
+    private void clearAgents() {
+        this.agents.clear();
+        if (planAgent != null) {
+            this.agents.put(planAgent.getName(), planAgent);
+            if (activeAgent == null) activeAgent = planAgent;
+        }
+        if (devAgent != null) {
+            this.agents.put(devAgent.getName(), devAgent);
+            if (activeAgent == null) activeAgent = devAgent;
         }
     }
 
@@ -159,11 +174,11 @@ public class AgentService {
     /** Returns the agent by name, including disabled ones. */
     public Optional<AiAgent> get(String name) {
         if (name == null || name.isBlank()) return Optional.empty();
-        return Optional.ofNullable(customAgents.get(name.toLowerCase()));
+        return Optional.ofNullable(agents.get(name));
     }
 
     public boolean hasAgents() {
-        return !customAgents.isEmpty();
+        return !agents.isEmpty();
     }
 
     public Path getAgentsDirectory() {

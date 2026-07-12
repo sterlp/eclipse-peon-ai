@@ -73,10 +73,10 @@ public class PeonAiServiceTest  extends AbstractTest {
         aiService.getSkillService().refresh(Path.of("../skills"));
         
         // WHEN
-        aiService.getDeveloperService().call("Ping", null);
+        aiService.getActiveAgent().call("Ping", null);
         
         // THEN
-        var msg = aiService.getDeveloperService().getMemory().getCopy();
+        var msg = aiService.getActiveAgent().getMemory().getCopy();
         assertEquals(ChatMessageUtil.toString(msg.get(0)), "Ping");
         assertEquals(ChatMessageUtil.toString(msg.get(1)), "Pong");
     }
@@ -90,7 +90,7 @@ public class PeonAiServiceTest  extends AbstractTest {
         mockLlmServer.queueResponse(AiMessage.aiMessage("Pong"));
         
         // WHEN
-        aiService.getDeveloperService().call("Ping", null);
+        aiService.getActiveAgent().call("Ping", null);
         
         // THEN
         assertNotNull(mockLlmServer.getCapturedTool("readSkill"));
@@ -107,8 +107,8 @@ public class PeonAiServiceTest  extends AbstractTest {
         aiService.getAgentsMdService().load(project);
         
         // WHEN
-        aiService.getDeveloperService().setUserContextInformations(standingOrders.build());
-        aiService.getDeveloperService().call("Ping", null);
+        aiService.getActiveAgent().setUserContextInformations(standingOrders.build());
+        aiService.getActiveAgent().call("Ping", null);
         
         // THEN
         assertNotNull(mockLlmServer.getCapturedTool("readSkill"));
@@ -132,8 +132,7 @@ public class PeonAiServiceTest  extends AbstractTest {
 
         // THEN
         assertEquals(4000, aiService.getConfig().getAutoCompactAfter());
-        assertEquals(4000, aiService.getDeveloperService().getAutoCompactAfter());
-        assertEquals(4000, aiService.getPlannerService().getAutoCompactAfter());
+        assertEquals(4000, aiService.getConfig().getAutoCompactAfter());
     }
     
     // TODO add tests concerning the message build -- check if it was properly constructed.

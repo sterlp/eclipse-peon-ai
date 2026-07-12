@@ -1,5 +1,0 @@
-  Hello world
-  Line to replace
-  foo
-  This should stay
-  2026-07-03T11:26:37.817182+02:00

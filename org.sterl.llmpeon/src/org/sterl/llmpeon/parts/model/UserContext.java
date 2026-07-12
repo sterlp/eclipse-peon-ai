@@ -104,8 +104,12 @@ public class UserContext implements MessageProvider {
         return currentProject;
     }
 
-    public void setCurrentProject(IProject currentProject) {
-        this.currentProject = currentProject;
+    public boolean setCurrentProject(IProject currentProject) {
+        if (this.currentProject != currentProject) {
+            this.currentProject = currentProject;
+            return true;
+        }
+        return false;
     }
 
     public ITextSelection getTextSelection() {

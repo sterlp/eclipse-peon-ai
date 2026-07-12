@@ -8,7 +8,6 @@ import java.util.function.Predicate;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.prompt.model.SimplePromptFile;
-import org.sterl.llmpeon.tool.ToolPolicy;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
@@ -31,6 +30,8 @@ public class CustomAgent extends AbstractAgent {
     public static final String TEMPERATURE = "temperature";
     public static final String TOOLS = "tools";
     public static final String READ_ONLY = "read-only";
+    /** if an agent has a handover it gets the -> handover to button */
+    public static final String HANDOVER = "handover";
 
     @Getter @Setter
     private volatile SimplePromptFile promptFile;
@@ -87,6 +88,10 @@ public class CustomAgent extends AbstractAgent {
         return true;
     }
     
+    public String handoverTo() {
+        return promptFile.firstOrDefault(HANDOVER, null);
+    }
+    
     @Override
     public boolean isReadOnly() {
         return promptFile.isTrue(READ_ONLY);
@@ -98,12 +103,6 @@ public class CustomAgent extends AbstractAgent {
     }
     public void setTools(List<String> values) {
         this.promptFile.set(TOOLS, values);
-    }
-
-    /** True if the tool name passes the agent's allowlist. */
-    public boolean allowed(String toolName) {
-        var tools = promptFile.get(TOOLS);
-        return ToolPolicy.enables(tools, toolName);
     }
 
     @Override

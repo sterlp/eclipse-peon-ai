@@ -62,11 +62,11 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
     public void editWorkspaceFile(
             @P(description = "workspace-relative path", name = "filePath") String filePath,
             @P(description = "exact text to replace", name = "oldString") String oldString,
-            @P(name = "newString") String newString) {
+            @P(name = "newString", required = false) String newString) {
 
         ArgsUtil.requireNonBlank(filePath, "filePath");
         ArgsUtil.requireNonBlank(oldString, "oldString");
-        ArgsUtil.requireNonNull(newString, "newString");
+        if (newString == null) newString = "";
 
         var inFile = EclipseUtil.resolveInEclipse(filePath);
         if (inFile.isEmpty() || !(inFile.get() instanceof IFile eclipseFile)) {

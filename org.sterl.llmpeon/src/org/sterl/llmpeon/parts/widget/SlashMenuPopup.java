@@ -184,7 +184,7 @@ public class SlashMenuPopup {
         table.removeAll();
         for (var cmd : filtered) {
             var item = new TableItem(table, SWT.NONE);
-            item.setText(0, "/" + cmd.name());
+            item.setText(0, "/" + cmd.getName());
             if (nameFont != null) item.setFont(0, nameFont);
             item.setText(1, cmd instanceof SkillPromptFile ? "SKILL" : "COMMAND");
             // mute the short type tag so the name stands out:

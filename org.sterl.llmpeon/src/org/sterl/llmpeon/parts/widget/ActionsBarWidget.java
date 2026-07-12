@@ -13,8 +13,6 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.sterl.llmpeon.PeonMode;
-import org.sterl.llmpeon.agent.AgentPromptFile;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.ai.model.AiModel;
 
@@ -26,22 +24,19 @@ public class ActionsBarWidget extends Composite {
 
     private Button btnClear;
     private Button btnImplement;
-    private Button chkAutonomous;
     private Button btnThink;
     private Combo agentCombo;
     private Combo modelCombo;
 
     private final AtomicBoolean working = new AtomicBoolean(false);
-    private boolean agentModeAvailable = false;
     private List<AiModel> availableModels = List.of();
+    private List<AiAgent> agents = List.of();
 
     public ActionsBarWidget(Composite parent, int style,
             Runnable onClear,
             Runnable onImplement,
             Consumer<AiAgent> onAgentChange,
-            
             Consumer<AiModel> onModelChange,
-            Consumer<Boolean> onAutonomousChange,
             Consumer<Boolean> onThinkToggle) {
         super(parent, style);
 
@@ -58,7 +53,7 @@ public class ActionsBarWidget extends Composite {
         rowLayout.spacing = 4;
         setLayout(rowLayout);
 
-        buildAgentCombo(onAgentChange, onCustomAgentChange);
+        buildAgentCombo(onAgentChange);
 
         buildModelCombo(onModelChange);
 
@@ -73,11 +68,10 @@ public class ActionsBarWidget extends Composite {
         btnClear.addListener(SWT.Selection, e -> onClear.run());
 
         buildBtnImplement(onImplement);
-        buildChkAutonomous(onAutonomousChange);
     }
 
-	private void buildBtnImplement(Runnable onImplement) {
-		btnImplement = new Button(this, SWT.PUSH);
+    private void buildBtnImplement(Runnable onImplement) {
+        btnImplement = new Button(this, SWT.PUSH);
         btnImplement.setText("Start Impl.");
         RowData rdImpl = new RowData();
         rdImpl.exclude = true;
@@ -86,17 +80,6 @@ public class ActionsBarWidget extends Composite {
         btnImplement.setEnabled(false);
         btnImplement.setToolTipText("Switch to Dev mode and start implementing the plan");
         btnImplement.addListener(SWT.Selection, e -> onImplement.run());
-	}
-
-	private void buildChkAutonomous(Consumer<Boolean> onAutonomousChange) {
-		chkAutonomous = new Button(this, SWT.CHECK);
-        chkAutonomous.setText("autonomous");
-        chkAutonomous.setToolTipText("Automatically start implementation after the plan is saved");
-        RowData rdAuto = new RowData();
-        rdAuto.exclude = true;
-        chkAutonomous.setLayoutData(rdAuto);
-        chkAutonomous.setVisible(false);
-        chkAutonomous.addListener(SWT.Selection, e -> onAutonomousChange.accept(chkAutonomous.getSelection()));
 	}
 
 	private void buildModelCombo(Consumer<AiModel> onModelChange) {
@@ -115,43 +98,27 @@ public class ActionsBarWidget extends Composite {
         agentCombo = new Combo(this, SWT.READ_ONLY);
         agentCombo.setLayoutData(new RowData(120, SWT.DEFAULT));
         rebuildAgentItems();
-        agentCombo.select(PeonMode.DEV.ordinal()); // default: Peon-Dev
-        agentCombo.setToolTipText("Select agent mode");
+        agentCombo.select(0);
+        agentCombo.setToolTipText("Select an Agent");
         agentCombo.addListener(SWT.Selection, e -> {
             int idx = agentCombo.getSelectionIndex();
-            int builtinCount = PeonMode.values().length;
-            if (idx < 0) return;
-            if (idx < builtinCount) {
-                PeonMode selected = PeonMode.values()[idx];
-                if (selected == PeonMode.AGENT && !agentModeAvailable) {
-                    agentCombo.select(PeonMode.DEV.ordinal());
-                    agentCombo.setToolTipText("Peon-Agent requires a project to be selected");
-                    return;
-                }
-                agentCombo.setToolTipText("Select agent mode");
-                onModeChange.accept(selected);
-            } else {
-                AgentPromptFile agent = customAgents.get(idx - builtinCount);
-                agentCombo.setToolTipText("Custom agent: " + agent.name());
-                onCustomAgentChange.accept(agent);
-            }
+            onModeChange.accept(this.agents.get(idx));
         });
-	}
+    }
 
     private void rebuildAgentItems() {
         var items = new ArrayList<String>();
-        for (PeonMode m : PeonMode.values()) items.add(m.getLabel());
-        for (AgentPromptFile a : customAgents) items.add(a.name());
+        for (var a : agents) items.add(a.getName());
         agentCombo.setItems(items.toArray(String[]::new));
     }
 
     /** Replaces the custom agents in the combo, preserving the current selection by label. */
-    public void setCustomAgents(List<AgentPromptFile> agents) {
+    public void setAgents(List<AiAgent> agents) {
+        this.agents = agents;
         String previous = agentCombo.getText();
-        this.customAgents = agents == null ? List.of() : agents;
         rebuildAgentItems();
         String[] items = agentCombo.getItems();
-        int restore = PeonMode.DEV.ordinal();
+        int restore = 0;
         for (int i = 0; i < items.length; i++) {
             if (items[i].equals(previous)) { restore = i; break; }
         }
@@ -165,7 +132,6 @@ public class ActionsBarWidget extends Composite {
         modelCombo.setEnabled(!value);
         btnClear.setEnabled(!value);
         btnThink.setEnabled(!value);
-        chkAutonomous.setEnabled(!value);
         if (value) btnImplement.setEnabled(false); // re-enable is handled by updateModeUI
     }
 
@@ -174,50 +140,26 @@ public class ActionsBarWidget extends Composite {
     }
 
     /** Show/hide the "Start Impl." button based on mode and whether an AI reply exists. */
-    public void updateModeUI(PeonMode mode) {
-        boolean isPlanLike = mode == PeonMode.PLAN || mode == PeonMode.AGENT;
-        boolean isAgent = mode == PeonMode.AGENT;
-        agentCombo.select(mode.ordinal());
-        applyImplAutonomousVisibility(isPlanLike, isAgent);
+    public void updateModeUI(AiAgent agent) {
+        var index= this.agents.indexOf(agent);
+        agentCombo.select(index);
+        applyImplAutonomousVisibility(agent.handoverTo());
     }
 
-    /** Custom agents have no plan/impl workflow — hide those controls, keep the combo selection. */
-    public void updateForCustomAgent() {
-        applyImplAutonomousVisibility(false, false);
-    }
+    private void applyImplAutonomousVisibility(String handOver) {
+        boolean hashandOver = handOver != null;
+        btnImplement.setText("Give " + handOver);
+        btnImplement.setEnabled(!this.working.get() && hashandOver);
+        boolean implVisibilityChanged = btnImplement.getVisible() != hashandOver;
 
-    private void applyImplAutonomousVisibility(boolean isPlanLike, boolean isAgent) {
-        btnImplement.setEnabled(!this.working.get() && isPlanLike);
-        boolean implVisibilityChanged = btnImplement.getVisible() != isPlanLike;
         if (implVisibilityChanged) {
-            ((RowData) btnImplement.getLayoutData()).exclude = !isPlanLike;
-            btnImplement.setVisible(isPlanLike);
+            ((RowData) btnImplement.getLayoutData()).exclude = !hashandOver;
+            btnImplement.setVisible(hashandOver);
         }
-        boolean autoVisibilityChanged = chkAutonomous.getVisible() != isAgent;
-        if (autoVisibilityChanged) {
-            ((RowData) chkAutonomous.getLayoutData()).exclude = !isAgent;
-            chkAutonomous.setVisible(isAgent);
-        }
-        if (implVisibilityChanged || autoVisibilityChanged) {
+        if (implVisibilityChanged) {
             layout(true, true);
             getParent().layout(new Control[]{this});
         }
-    }
-
-    /** Allow or block selection of Peon-Agent mode. */
-    public void setAgentModeAvailable(boolean available) {
-        this.agentModeAvailable = available;
-        agentCombo.setToolTipText(available ? "Select agent mode"
-                : "Peon-Agent requires a project to be selected");
-    }
-
-    /** Set the autonomous checkbox state without firing the listener. */
-    public void setAutonomous(boolean value) {
-        chkAutonomous.setSelection(value);
-    }
-    
-    public boolean getAutonomous() {
-        return chkAutonomous.getSelection();
     }
 
     /** Set the Think toggle state without firing the listener. */

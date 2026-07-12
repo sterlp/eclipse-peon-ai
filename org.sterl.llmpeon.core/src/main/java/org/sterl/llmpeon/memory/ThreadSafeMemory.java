@@ -43,7 +43,7 @@ public class ThreadSafeMemory {
                 && (!memory.isEmpty() && memory.getLast() instanceof ToolExecutionResultMessage tR)) {
             // https://github.com/sterlp/eclipse-peon-ai/issues/87
             // this can happen e.g. or rate limits or server errors...
-            log.warn("Detected tool result without AI response! {}", tR.id());
+            log.warn("Detected tool result without AI response! {} - {}", tR.id(), tR.toolName());
             memory.add(AiMessage.from("ok"));
             memory.add(num); 
         } else {

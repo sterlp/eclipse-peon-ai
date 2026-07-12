@@ -24,7 +24,7 @@ class AiPlanAgentTest {
 
     @Test
     void extractLastPlan_returnsEmpty_whenNoMessages() {
-        assertTrue(subject.extractLastPlan().isEmpty());
+        assertTrue(subject.getMemory().getLastOf(AiMessage.class) == null);
     }
 
     @Test
@@ -34,9 +34,8 @@ class AiPlanAgentTest {
         subject.addMessage(AiMessage.from("Here is the plan: 1. Context 2. Affected files 3. Steps"));
 
         // WHEN / THEN
-        var plan = subject.extractLastPlan();
-        assertTrue(plan.isPresent(), "Should return the plan even for small conversations");
-        assertEquals("Here is the plan: 1. Context 2. Affected files 3. Steps", plan.get().text());
+        var plan = subject.getMemory().getLastOf(AiMessage.class);
+        assertEquals("Here is the plan: 1. Context 2. Affected files 3. Steps", plan.text());
 
     }
 
@@ -51,8 +50,7 @@ class AiPlanAgentTest {
         subject.addMessage(AiMessage.from("Final plan: 1. Context 2. Affected files 3. Steps"));
 
         // WHEN / THEN
-        var plan = subject.extractLastPlan();
-        assertTrue(plan.isPresent());
-        assertEquals("Final plan: 1. Context 2. Affected files 3. Steps", plan.get().text());
+        var plan = subject.getMemory().getLastOf(AiMessage.class);
+        assertEquals("Final plan: 1. Context 2. Affected files 3. Steps", plan.text());
     }
 }

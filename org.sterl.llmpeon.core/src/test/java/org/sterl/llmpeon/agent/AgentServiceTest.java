@@ -29,6 +29,37 @@ class AgentServiceTest extends AbstractMemoryFileTest {
         Files.createDirectory(tmp);
         service = new AgentService(tmp, null, null);
     }
+    
+    @Test
+    void hasDefaultAgent() {
+        // GIVEN
+        var subject = new AgentService(true, tmp, null, null);
+        assertThat(subject.getActiveAgent()).isNotNull();
+        // WHEN
+        subject.refresh(tmp.resolve("config"));
+        // THEN
+        assertThat(subject.getActiveAgent()).isNotNull();
+    }
+    
+    @Test
+    void loadsAgentsAutomatically() throws Exception {
+        // GIVEN
+        writeAgent(tmp, "foo", """
+                ---
+                model: qwen3
+                ---
+                You are the docs assistant.
+                """);
+
+        // WHEN
+        var subject = new AgentService(true, tmp, null, null);
+
+        // THEN
+        assertThat(subject.getAgents()).hasSize(3);
+        // AND
+        var agent = subject.get("foo").orElseThrow();
+        assertThat(agent.getAgentModelName()).isEqualTo("qwen3");
+    }
 
     @Test
     void discoversAgentDirsAndParsesFields() throws Exception {
@@ -47,11 +78,13 @@ class AgentServiceTest extends AbstractMemoryFileTest {
                 """);
 
         // WHEN
-        service.refresh();
-        var agent = service.get("Docs-Assistent").orElseThrow();
+        var subject = new AgentService(false, tmp, null, null);
+        var agent = subject.get("Docs-Assistent").orElseThrow();
 
         // THEN
-        assertThat(service.getAgents()).hasSize(1);
+        assertThat(subject.getAgents()).hasSize(1);
+        assertThat(subject.getActiveAgent()).isEqualTo(agent);
+        // AND
         assertThat(agent.getName()).isEqualTo("Docs-Assistent");
         assertThat(agent.isReadOnly()).isTrue();
         assertThat(agent.getAgentModelName()).isEqualTo("qwen3");
@@ -70,7 +103,7 @@ class AgentServiceTest extends AbstractMemoryFileTest {
                 """);
 
         // WHEN
-        service.refresh();
+        service.reloadAgents();
         var agent = service.get("free").orElseThrow();
 
         // THEN
@@ -87,7 +120,7 @@ class AgentServiceTest extends AbstractMemoryFileTest {
         writeAgent(tmp, "real", "---\nname: real\n---\nbody");
 
         // WHEN
-        service.refresh();
+        service.reloadAgents();
 
         // THEN
         assertThat(service.getAgents()).hasSize(1);
@@ -98,7 +131,7 @@ class AgentServiceTest extends AbstractMemoryFileTest {
     void refreshPicksUpEdits() throws Exception {
         // GIVEN
         var file = writeAgent(tmp, "docs", "---\nname: docs\nmodel: a\n---\nbody");
-        service.refresh();
+        service.reloadAgents();
         assertThat(service.get("docs").orElseThrow().getAgentModelName()).isEqualTo("a");
 
         // WHEN

@@ -31,7 +31,7 @@ public abstract class AbstractAgent implements AiAgent {
     
     private final List<ChatMessage> staticContext = new ArrayList<>();
     private final List<String> userContextInformations = new ArrayList<>();
-
+    
     protected AbstractAgent(ConfiguredChatModel configuredModel, ToolService toolService) {
         this.toolService = toolService;
         this.configuredModel = configuredModel;
@@ -171,8 +171,6 @@ public abstract class AbstractAgent implements AiAgent {
     public void addMessage(ChatMessage message) {
         memory.add(message);
     }
-    public int getContextSize() { return memory.getTotalTokenUsed(); }
-    public int getAutoCompactAfter() { return configuredModel.getConfig().getAutoCompactAfter(); }
 
     private List<ChatMessage> buildStaticMessages() {
         var messages = new ArrayList<ChatMessage>();
