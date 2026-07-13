@@ -2,7 +2,7 @@
 
 A lightweight, context-aware LLM assistant that integrates directly into your Eclipse workbench to support developers in their daily workflow.
 
-![Example](./doc/docs/assets/example.png)
+![Example](./homepage/src/assets/example.png)
 
 ## Features
 
@@ -31,14 +31,14 @@ A lightweight, context-aware LLM assistant that integrates directly into your Ec
 4. Restart Eclipse
 5. Open the view: **Window > Show View > Other...** > search "Peon AI"
 
-![Install](./doc/docs/assets/install.png)
+![Install](./homepage/src/assets/install.png)
 
 #### LM Studio
 
-![LM Studio](./doc/docs/assets/lm-studio-setup.png)
+![LM Studio](./homepage/src/assets/lm-studio-setup.png)
 
 #### Gemini
-![google gemnini](./doc/docs/assets/google-gemini.png)
+![google gemnini](./homepage/src/assets/google-gemini.png)
 
 ### Or find a free LLM
 
