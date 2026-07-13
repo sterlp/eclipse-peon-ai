@@ -32,8 +32,8 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
     private static final Duration MAX_TEST_DURATION = Duration.ofMinutes(10);
     private static final long POLL_INTERVAL_MS = 500;
 
-    @Tool("Eclipse: Run JUnit tests (auto-detects JUnit 3/4/5/6).")
-    public String runTests(
+    @Tool("Run JUnit tests (auto-detects JUnit 3/4/5/6).")
+    public String eclipseRunTests(
             @P(name = "projectName") String projectName,
             @P(description = "fully qualified test class, empty = all tests in project", required = false, name = "testClassName") 
             String testClassName,

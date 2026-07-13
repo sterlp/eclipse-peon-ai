@@ -32,6 +32,5 @@ public class AbstractEclipseTool extends AbstractTool {
     protected void onTool(String m) {
         super.onTool(m);
         getProgressMonitor().worked(1);
-        getProgressMonitor().subTask(m);
     }
 }

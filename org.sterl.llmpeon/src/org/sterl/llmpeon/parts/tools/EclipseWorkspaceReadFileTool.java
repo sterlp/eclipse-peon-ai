@@ -33,8 +33,8 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
         return false;
     }
 
-    @Tool("Eclipse: Open a workspace file, not directory, in the Eclipse editor to show it to the user e.g. a plan or summary.")
-    public String openFileInEclipseEditor(@P(description = "workspace-relative path", name = "filePath") String filePath) {
+    @Tool("Open a workspace file, not directory, in the Eclipse editor to show it to the user e.g. a plan or summary.")
+    public String eclipseOpenFileInEditor(@P(description = "workspace-relative path", name = "filePath") String filePath) {
         ArgsUtil.requireNonBlank(filePath, "filePath");
         var resource = EclipseUtil.resolveInEclipse(filePath);
         if (resource.isEmpty()) {
@@ -55,9 +55,9 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
         }
     }
 
-    public static final String READ_ECLIPSE_FILE_TOOL = "readWorkspaceFile";
-    @Tool(name = READ_ECLIPSE_FILE_TOOL, value = "Eclipse: Read workspace file (e.g. '/Project/src/Foo.java').")
-    public String readWorkspaceFile(
+    public static final String READ_ECLIPSE_FILE_TOOL = "eclipseReadFile";
+    @Tool(name = READ_ECLIPSE_FILE_TOOL, value = "Read workspace file (e.g. '/Project/src/Foo.java').")
+    public String eclipseReadFile(
             @P(description = "workspace-relative path", name = "filePath") String filePath,
             @P(description = "first line, 1-based; 0 = file start", required = false, name = "startLine") Integer startLine,
             @P(description = "last line, 1-based; 0 = file end", required = false, name = "endLine") Integer endLine) {
@@ -84,8 +84,8 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
         return "No eclipse file found for '" + filePath + "' use searchWorkspaceFiles to find the correct file name and path.";
     }
 
-    @Tool("Eclipse: Find any files workspace-wide by name (*, ? wildcard supported). Default file-path finder.")
-    public String searchWorkspaceFiles(
+    @Tool("Find any files workspace-wide by name (*, ? wildcard supported). Default file-path finder.")
+    public String eclipseSearchFiles(
             @P(description = "file name query - only *, ? wildcard is supported.", name = "query")
             String query,
             @P(name = "projectName", required = false) 
@@ -143,9 +143,9 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
         return results;
     }
 
-    public static final String LIST_WORKSPACE_NAME = "listWorkspace";
-    @Tool(name = LIST_WORKSPACE_NAME, value = "Eclipse: List workspace directory/projects (non-recursive). Empty path lists all projects.")
-    public String listWorkspace(
+    public static final String LIST_WORKSPACE_NAME = "eclipseList";
+    @Tool(name = LIST_WORKSPACE_NAME, value = "List workspace directory/projects (non-recursive). Empty path lists all projects.")
+    public String eclipseList(
             @P(description = "workspace-relative path, e.g. '/MyProject/src'", required = false, name = "path") 
             String path) {
 
@@ -153,7 +153,7 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
         if (path == null || path.isBlank() || path.length() == 1) {
             var t = new EclipseBuildTool();
             t.withToolRequest(request);
-            return t.listAllOpenEclipseProjects();
+            return t.eclipseListAllOpenProjects();
         }
 
         var resource = EclipseUtil.resolveInEclipse(path);

@@ -38,8 +38,8 @@ public class DiskGrepTool extends AbstractTool {
     @Override
     public boolean isEditTool() { return false; }
 
-    @Tool("Disk: Search file contents for text (not eclipse).")
-    public String grepDiskFiles(
+    @Tool("Search file contents for text (not eclipse).")
+    public String diskGrepFiles(
             @P(description = "text or regex to match in file contents", name = "query") String query,
             @P(description = "directory path to search in, defaults to working dir", required = false, name = "path") String path,
             @P(description = "file extension, e.g. .java", required = false, name = "extension") String extension) {

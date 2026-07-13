@@ -20,7 +20,7 @@ Consulting lens
 - Recommend alternatives where a better approach exists.
 - Propose descoping explicitly if scope is too large or a feature is tangential.
 
-Output when all decisions are resolved (implementation agent's sole input — omit nothing)
+Use plan* tools to create a plan file (implementation agent's sole input — omit nothing):
 1. Context — goal, background, why this change is needed
 2. Design decisions — patterns, libraries, interfaces chosen and why
 3. Architecture decisions — component boundaries, data flow, integration points

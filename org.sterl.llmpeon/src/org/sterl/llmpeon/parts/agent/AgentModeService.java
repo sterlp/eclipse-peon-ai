@@ -1,20 +1,23 @@
 package org.sterl.llmpeon.parts.agent;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.swt.widgets.Display;
-import org.sterl.llmpeon.AbstractChatService;
-import org.sterl.llmpeon.AiDeveloperService;
-import org.sterl.llmpeon.AiPlannerService;
+import org.sterl.llmpeon.agent.AiAgent;
+import org.sterl.llmpeon.agent.AiDevAgent;
+import org.sterl.llmpeon.agent.AiPlanAgent;
+import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
-import org.sterl.llmpeon.parts.tools.AgentModeTool;
+import org.sterl.llmpeon.parts.tools.PlanTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.shared.AiMonitor;
 
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
@@ -22,43 +25,39 @@ import dev.langchain4j.model.chat.response.ChatResponse;
  * Orchestrates the AGENT mode plan→dev loop.
  * Plan files live inside the current Eclipse project under .plan/.
  */
-public class AgentModeService {
+@Deprecated
+public class AgentModeService implements AiAgent {
 
     public enum Phase { PLANNING, IMPLEMENTING }
 
     private static final int MAX_RETRIES = 3;
 
-    private String plannerAgentMessage() {
-        var sb = new StringBuilder("""
-                When your plan is complete, instead of presenting the plan, call savePlan automatically as your last action with:
+    private static final String SYS_PLAN = """
+                When your plan is complete, instead of presenting the plan, call planSave with the full plan automatically as your last action with:
                 1. Context
                 2. Design decisions
                 3. Affected files
                 4. Step-by-step changes
                 If a problem was reported in the conversation, update the plan to address it before saving.
-                """);
-        if (autonomous) sb.append("""
+                """;
+    private static final String STANDING_ORDER_PLAN = """
                 IN AUTONOMOUS MODE — the user is not at the keyboard. Do not ask clarifying questions.
                 Proceed only if you have sufficient context; use the codebase to fill gaps.
                 Document assumptions and any unresolved gaps in the Design decisions section.
-                """);
-        return sb.toString();
-    }
+                """;
 
-    private String developerAgentMessage() {
-        var sb = new StringBuilder("""
+    private static final String SYS_DEV = """
                 If you cannot proceed after %d attempts (build failure, missing context,
                 conflicting requirements), call reportProblem with a detailed description.
                 Do not retry indefinitely. Escalate early so the plan agent can revise the plan.
-                """.formatted(MAX_RETRIES - 1));
-        if (autonomous) sb.append("""
+                """.formatted(MAX_RETRIES - 1);
+    
+    private static final String STANDING_ORDER_DEV = """
                 IN AUTONOMOUS MODE — execute the plan without asking question, confirmation or approval.
-                """);
-        return sb.toString();
-    }
+                """;
 
-    private final AiPlannerService plannerService;
-    private final AiDeveloperService developerService;
+    private final AiPlanAgent plannerService;
+    private final AiDevAgent developerService;
     private final Runnable sendTrigger;
     private final Consumer<IFile> openInEditorCallback;
 
@@ -68,12 +67,12 @@ public class AgentModeService {
     private volatile int retryCount = 0;
     private volatile boolean implementationRequested = false;
 
-    public AgentModeService(AiPlannerService plannerService, AiDeveloperService developerService,
+    public AgentModeService(AiPlanAgent plannerService, AiDevAgent developerService,
             Runnable sendTrigger) {
         this(plannerService, developerService, sendTrigger, null);
     }
 
-    public AgentModeService(AiPlannerService plannerService, AiDeveloperService developerService,
+    public AgentModeService(AiPlanAgent plannerService, AiDevAgent developerService,
             Runnable sendTrigger, Consumer<IFile> openInEditorCallback) {
         this.plannerService = plannerService;
         this.developerService = developerService;
@@ -97,14 +96,15 @@ public class AgentModeService {
         return phase == Phase.PLANNING;
     }
 
-    public AbstractChatService getActiveService() {
+    public AiAgent getActiveService() {
         return phase == Phase.PLANNING ? plannerService : developerService;
     }
 
     public ChatResponse call(String message, AiMonitor monitor) {
         var service = getActiveService();
         var orders = new ArrayList<>(service.getUserContextInformations());
-        orders.add(phase == Phase.PLANNING ? plannerAgentMessage() : developerAgentMessage());
+        orders.add(phase == Phase.PLANNING ? SYS_PLAN : SYS_DEV);
+        if (autonomous) orders.add(phase == Phase.PLANNING ? STANDING_ORDER_PLAN : STANDING_ORDER_DEV);
         service.setUserContextInformations(orders);
         return service.call(message, monitor);
     }
@@ -128,7 +128,7 @@ public class AgentModeService {
 
     public boolean overviewExists() {
         if (project == null || !project.isOpen()) return false;
-        return project.getFile(AgentModeTool.OVERVIEW_FILE).exists();
+        return project.getFile(PlanTool.OVERVIEW_FILE).exists();
     }
 
     public String readOverview() {
@@ -162,11 +162,11 @@ public class AgentModeService {
     }
 
     private IFile getOverviewFile() {
-        return project.getFile(AgentModeTool.OVERVIEW_FILE);
+        return project.getFile(PlanTool.OVERVIEW_FILE);
     }
 
     private IFile getProblemFile() {
-        return project.getFile(AgentModeTool.PROBLEM_FILE);
+        return project.getFile(PlanTool.PROBLEM_FILE);
     }
 
     public IProject getProject() {
@@ -174,12 +174,13 @@ public class AgentModeService {
     }
 
     // -------------------------------------------------------------------------
-    // Tool callbacks (called from AgentModeTool, on background thread)
+    // Tool callbacks (called from PlanTool, on background thread)
     // -------------------------------------------------------------------------
 
-    /** Called by savePlan tool after writing the file. */
-    public void onPlanSaved() {
-        openInEditor(getOverviewFile());
+    /** Called by savePlan tool after writing the file. 
+     * @param f */
+    public void onPlanSaved(IFile plan) {
+        openInEditor(plan);
         if (autonomous) {
             implementationRequested = true;
         }
@@ -204,7 +205,7 @@ public class AgentModeService {
             openInEditor(getProblemFile());
             plannerService.addMessage(UserMessage.from(
                     "Max retries (" + MAX_RETRIES + ") reached. "
-                    + "Review plan problem file `" + AgentModeTool.PROBLEM_FILE + "` — manual intervention required."));
+                    + "Review plan problem file `" + PlanTool.PROBLEM_FILE + "` — manual intervention required."));
             this.phase = Phase.PLANNING;
             retryCount = 0;
         } else {
@@ -248,5 +249,47 @@ public class AgentModeService {
 
     private void openInEditor(IFile file) {
         if (openInEditorCallback != null) openInEditorCallback.accept(file);
+    }
+
+    @Override
+    public String getName() {
+        return "Agent-Mode";
+    }
+
+    @Override
+    public String getSystemPrompt() {
+        return getActiveService().getSystemPrompt();
+    }
+
+    @Override
+    public void setUserContextInformations(List<String> userContextInformations) {
+        this.developerService.setUserContextInformations(userContextInformations);
+        this.plannerService.setUserContextInformations(userContextInformations);
+    }
+
+    @Override
+    public List<String> getUserContextInformations() {
+        return getActiveService().getUserContextInformations();
+    }
+
+    @Override
+    public void clear() {
+        this.getActiveService().clear();
+    }
+
+    @Override
+    public ThreadSafeMemory getMemory() {
+        return getActiveService().getMemory();
+    }
+
+    @Override
+    public void setStaticContext(List<ChatMessage> staticContext) {
+        this.developerService.setStaticContext(staticContext);
+        this.plannerService.setStaticContext(staticContext);
+    }
+
+    @Override
+    public ChatResponse compressContext(AiMonitor monitor) {
+        return getActiveService().compressContext(monitor);
     }
 }

@@ -49,10 +49,10 @@ public class WorkspaceMemoryTool extends AbstractEclipseTool implements MessageP
     // Tools for the LLM
     // ---------------------------------------------------------------------
 
-    @Tool("Store a brief personal guideline or self-correction to keep ALWAYS, across all projects — private between you and the user.\n" +
-          "If a rule applies only to the CURRENT project and should be shared with any developer on it, put it in that project's AGENTS.md instead.\n" +
-          "You have only " + MAX_ENTRIES + " memory slots, use them for highly reusable and important information.")
-    public void addToMemory(
+    @Tool("Store a durable fact, preference, self-correction, or operational constraint (e.g. agent permissions/limits) — kept ALWAYS across all projects and agents for this user, never shared outside their context. Use this proactively whenever you learn something worth remembering long-term.\n" +
+          "Project-only rules meant for any developer go in that project's AGENTS.md instead.\n" +
+          "There are " + MAX_ENTRIES + " slots; if full, merge/update the closest existing entry instead of skipping the write.")
+    public void memoryAdd(
             @P(name = "text", description = "One short brief important rule, preference, or fact.") String text) {
         ArgsUtil.requireNonBlank(text, "text");
 
@@ -72,7 +72,7 @@ public class WorkspaceMemoryTool extends AbstractEclipseTool implements MessageP
     }
 
     @Tool("Remove a guideline by its number as shown in the Memory block.")
-    public void removeMemory(@P(name = "index", description = "1-based index from the Memory block.") Integer index) {
+    public void memoryRemove(@P(name = "index", description = "1-based index from the Memory block.") Integer index) {
 
         ArgsUtil.requireNonNull(index, "index");
 
@@ -89,7 +89,7 @@ public class WorkspaceMemoryTool extends AbstractEclipseTool implements MessageP
     }
 
     @Tool("Replace the text of an existing guideline.")
-    public void replaceMemory(@P(name = "index", description = "1-based index from the Memory block.") Integer index,
+    public void memoryReplace(@P(name = "index", description = "1-based index from the Memory block.") Integer index,
             @P(name = "text", description = "New short sentence for this guideline.") String text) {
 
         ArgsUtil.requireNonNull(index, "index");

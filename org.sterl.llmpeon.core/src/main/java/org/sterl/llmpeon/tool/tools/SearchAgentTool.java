@@ -23,7 +23,7 @@ public class SearchAgentTool extends AbstractTool {
         this.toolService = toolService;
     }
 
-    @Tool(name = "SearchAgentTool", value = "Sub-agent for complex multi-step search/research - to save tokens.")
+    @Tool(name = "searchAgent", value = "Sub-agent for complex multi-step search/research - to save tokens.")
     public String searchAgent(@P(name = "prompt") String prompt) {
         ArgsUtil.requireNonBlank(prompt, "prompt");
 
@@ -36,19 +36,18 @@ public class SearchAgentTool extends AbstractTool {
             
             var request = this.request.toBuilder()
                 .staticMessages(Arrays.asList(system))
-                .includeMcpTools(true)
                 .toolFilter(e -> !e.getTool().isEditTool() && !(e.getTool() instanceof SearchAgentTool))
                 .memory(messages);
 
             if (cfg.getDevTemperature() < 1) request.temperature(0.3);
             if (modelName != null) request.modelName(cfg.getSearchModel());
 
-            onTool("SearchAgent "
+            onTool("Search agent "
                     + (modelName == null ? "" : "(" + modelName + ")")
                     + " start:\n" + prompt);
             var response = toolService.executeLoop(request.build());
 
-            onTool("SearchAgent done.");
+            onTool("Search agent done.");
             String answer = response != null ? response.aiMessage().text() : null;
             return StringUtil.hasValue(answer) ? answer : "Search completed but returned no result";
 

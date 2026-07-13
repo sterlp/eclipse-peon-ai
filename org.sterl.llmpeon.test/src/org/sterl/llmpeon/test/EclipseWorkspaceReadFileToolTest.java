@@ -27,7 +27,7 @@ public class EclipseWorkspaceReadFileToolTest extends AbstractTest {
         var tool = new EclipseCodeNavigationTool();
         
         // WHEN
-        var content = tool.findReferences(EclipseWorkspaceReadFileToolTest.class.getPackageName(), 
+        var content = tool.eclipseFindReferences(EclipseWorkspaceReadFileToolTest.class.getPackageName(), 
                 EclipseWorkspaceReadFileToolTest.class.getSimpleName(), null, null);
         
         // THEN
@@ -42,7 +42,7 @@ public class EclipseWorkspaceReadFileToolTest extends AbstractTest {
         var tool = new EclipseBuildTool();
         
         // WHEN
-        var result = tool.listAllOpenEclipseProjects();
+        var result = tool.eclipseListAllOpenProjects();
         
         // THEN
         assertTrue("Own project not found:\n" + result, result.contains("org.sterl.llmpeon.test"));
@@ -55,7 +55,7 @@ public class EclipseWorkspaceReadFileToolTest extends AbstractTest {
         var tool = new EclipseCodeNavigationTool();
 
         // WHEN
-        var content = tool.readTypeSource(
+        var content = tool.eclipseReadTypeSource(
                 getClass().getPackageName(), 
                 getClass().getSimpleName(), 
                 "org.sterl.llmpeon.test");
@@ -72,7 +72,7 @@ public class EclipseWorkspaceReadFileToolTest extends AbstractTest {
         var tool = new EclipseCodeNavigationTool();
 
         // WHEN
-        var content = tool.readTypeSource(
+        var content = tool.eclipseReadTypeSource(
                 "foo.bar", 
                 getClass().getSimpleName(), 
                 "org.sterl.llmpeon.test");
@@ -87,11 +87,11 @@ public class EclipseWorkspaceReadFileToolTest extends AbstractTest {
         var tool = new EclipseWorkspaceReadFileTool();
 
         // 1. find this file by name
-        String searchResult = tool.searchWorkspaceFiles("EclipseWorkspaceReadFileToolTest", null, 0);
+        String searchResult = tool.eclipseSearchFiles("EclipseWorkspaceReadFileToolTest", null, 0);
         assertTrue("Expected to find the test file in workspace: " + searchResult,
                 searchResult.contains(this.getClass().getSimpleName() + ".java"));
 
-        String content = tool.readWorkspaceFile(searchResult.split("\n")[0], 0, 0);
+        String content = tool.eclipseReadFile(searchResult.split("\n")[0], 0, 0);
         assertTrue("Expected to read own source, got: " + content.substring(0, Math.min(200, content.length())),
                 content.contains("searchAndReadSelf"));
     }
@@ -102,16 +102,16 @@ public class EclipseWorkspaceReadFileToolTest extends AbstractTest {
         var tool = new EclipseWorkspaceReadFileTool();
 
         // unlimited should return multiple .java files
-        String all = tool.searchWorkspaceFiles("*.java", null, 0);
+        String all = tool.eclipseSearchFiles("*.java", null, 0);
         int allCount = all.split("\n").length;
         assertTrue("Expected more than 1 .java file", allCount > 1);
         
-        all = tool.searchWorkspaceFiles("*.java", project.getName(), 0);
+        all = tool.eclipseSearchFiles("*.java", project.getName(), 0);
         allCount = all.split("\n").length;
         assertTrue("Expected more than 1 .java file", allCount > 1);
 
         // limit=1 must return exactly 1 result
-        String limited = tool.searchWorkspaceFiles("*.java", project.getName(), 1);
+        String limited = tool.eclipseSearchFiles("*.java", project.getName(), 1);
         assertEquals("Expected exactly 1 result with limit=1", 1, limited.split("\n").length);
     }
 
@@ -123,7 +123,7 @@ public class EclipseWorkspaceReadFileToolTest extends AbstractTest {
         var tool = new EclipseGrepTool();
         
         // WHEN
-        var content = tool.grepWorkspaceFiles("test_grepWorkspaceFiles()", null, ".java");
+        var content = tool.eclipseGrepFiles("test_grepWorkspaceFiles()", null, ".java");
         
         // THEN
         assertTrue("Should contain out test:\n" + content, content.contains(getClass().getSimpleName() + ".java"));
@@ -137,11 +137,11 @@ public class EclipseWorkspaceReadFileToolTest extends AbstractTest {
         var tool = new EclipseGrepTool();
         
         // WHEN - regex pattern that should match class declarations like "class EclipseGrepTool"
-        var content = tool.grepWorkspaceFiles("class.*Tool", null, ".java");
+        var content = tool.eclipseGrepFiles("class.*Tool", null, ".java");
         
         // THEN - should find files with class declarations matching the pattern
         assertTrue("Regex pattern 'class.*Tool' should match class declarations:\n" + content, 
-                content.contains("EclipseGrepTool.java") || content.contains("EclipseWorkspaceReadFileTool.java"));
+                content.contains("EclipseWorkspaceReadFileToolTest.java"));
     }
 
     @Test
@@ -152,11 +152,12 @@ public class EclipseWorkspaceReadFileToolTest extends AbstractTest {
         var tool = new EclipseGrepTool();
         
         // WHEN - regex alternation pattern that should match multiple terms
-        var content = tool.grepWorkspaceFiles("EclipseGrepTool|EclipseWorkspaceReadFileTool", null, ".java");
+        var content = tool.eclipseGrepFiles("JdtUtilDiskPathTest|PeonAiServiceTest", null, ".java");
         
         // THEN - should find files matching either term
         assertTrue("Regex alternation should match:\n" + content, 
-                content.contains("EclipseGrepTool.java") || content.contains("EclipseWorkspaceReadFileTool.java"));
+                content.contains("JdtUtilDiskPathTest.java") 
+                && content.contains("PeonAiServiceTest.java"));
     }
 
     
@@ -168,7 +169,7 @@ public class EclipseWorkspaceReadFileToolTest extends AbstractTest {
         service.addTool(new EclipseWorkspaceReadFileTool());
 
         var tr = ToolExecutionRequest.builder().arguments("")
-            .name("readWorkspaceFile")
+            .name("eclipseReadFile")
             .arguments("{\"filePath\": \"" + this.getClass().getName().replace(".", "/") + ".java\"}")
             .build();
         

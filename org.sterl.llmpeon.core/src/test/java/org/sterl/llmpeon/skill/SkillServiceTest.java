@@ -9,10 +9,10 @@ import java.nio.file.StandardOpenOption;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.sterl.llmpeon.shared.PromptYmlParser;
+import org.sterl.llmpeon.AbstractMemoryFileTest;
+import org.sterl.llmpeon.prompt.PromptYmlParser;
 
-class SkillServiceTest {
+class SkillServiceTest extends AbstractMemoryFileTest {
 
     private static final Path SKILLS_DIR = Path.of("../skills");
 
@@ -30,7 +30,7 @@ class SkillServiceTest {
     }
 
     @Test
-    void parseYml_subdirectory(@TempDir Path tmp) throws Exception {
+    void parseYml_subdirectory() throws Exception {
         // GIVEN
         var skillDir = Files.createDirectory(tmp.resolve("my-skill"));
         Files.writeString(skillDir.resolve("SKILL.md"), """
@@ -47,14 +47,14 @@ class SkillServiceTest {
 
         // WHEN
         var promt = PromptYmlParser.parseYml(skillDir.resolve("SKILL.md"));
-        var skill = SkillPromptFile.from(promt).skillDir(tmp.resolve("my-skill")).build();
+        var skill = SkillPromptFile.from(promt, tmp.resolve("my-skill"));
 
         // THEN
         assertThat(skill).isNotNull();
-        assertThat(skill.name()).isEqualTo("my-skill-name");
-        assertThat(skill.description()).isEqualTo("Does something useful");
-        assertThat(skill.readBody()).contains(Path.of("foo.md").toString());
-        assertThat(skill.readBody()).contains(Path.of("bar", "baaar.md").toString());
+        assertThat(skill.getName()).isEqualTo("my-skill-name");
+        assertThat(skill.getDescription()).isEqualTo("Does something useful");
+        assertThat(skill.renderBody()).contains(Path.of("foo.md").toString());
+        assertThat(skill.renderBody()).contains(Path.of("bar", "baaar.md").toString());
         
         // AND
         assertThat(skill.readRelativeFile(Path.of("foo.md").toString())).isEqualTo("Foo");
@@ -62,7 +62,7 @@ class SkillServiceTest {
     }
 
     @Test
-    void parseYml_flatFile(@TempDir Path tmp) throws Exception {
+    void parseYml_flatFile() throws Exception {
         // GIVEN
         Files.writeString(tmp.resolve("my-skill.md"), """
                 ---
@@ -77,9 +77,9 @@ class SkillServiceTest {
 
         // THEN
         assertThat(skill).isNotNull();
-        assertThat(skill.name()).isEqualTo("my-skill");
-        assertThat(skill.description()).isEqualTo("Flat file skill");
-        assertThat(skill.readBody()).isEqualTo("body");
+        assertThat(skill.getName()).isEqualTo("my-skill");
+        assertThat(skill.getDescription()).isEqualTo("Flat file skill");
+        assertThat(skill.getBody()).isEqualTo("body");
     }
 
     @Test
@@ -91,7 +91,6 @@ class SkillServiceTest {
 
         // THEN
         assertThat(skills).isNotEmpty();
-        skills.forEach(r -> System.err.println(r));
     }
 
     @Test
@@ -104,9 +103,9 @@ class SkillServiceTest {
                 .orElseThrow(() -> new AssertionError(expectedName + " skill not found"));
 
         // THEN
-        assertThat(skill.name()).isEqualTo(expectedName);
-        assertThat(skill.description()).contains("Eclipse IFile");
-        assertThat(skill.readBody()).contains("toPortableString");
+        assertThat(skill.getName()).isEqualTo(expectedName);
+        assertThat(skill.getDescription()).contains("Eclipse IFile");
+        assertThat(skill.renderBody()).contains("toPortableString");
     }
 
     @Test
@@ -130,12 +129,12 @@ class SkillServiceTest {
         assertThat(firstSkill.isEnabled()).isTrue();
 
         // WHEN
-        subject.setSkillEnabled(firstSkill.name(), false);
+        subject.setSkillEnabled(firstSkill.getName(), false);
 
         // THEN
         assertThat(subject.getSkills())
-                .noneMatch(s -> s.name().equals(firstSkill.name()) && !s.isEnabled());
-        assertThat(subject.skillNames()).doesNotContain(firstSkill.name());
+                .noneMatch(s -> s.getName().equals(firstSkill.getName()) && !s.isEnabled());
+        assertThat(subject.skillNames()).doesNotContain(firstSkill.getName());
     }
 
     @Test

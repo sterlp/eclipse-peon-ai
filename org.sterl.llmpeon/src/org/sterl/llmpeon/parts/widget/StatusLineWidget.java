@@ -255,11 +255,11 @@ public class StatusLineWidget extends Composite {
         // Individual skill items
         for (SkillPromptFile skill : skills) {
             MenuItem item = new MenuItem(menu, SWT.CHECK);
-            item.setText(skill.name());
+            item.setText(skill.getName());
             item.setSelection(skill.isEnabled());
             item.addListener(SWT.Selection, e -> {
                 if (onSkillMenuChange != null) {
-                    onSkillMenuChange.accept(new SkillMenuSelection(skill.name(), item.getSelection(), false));
+                    onSkillMenuChange.accept(new SkillMenuSelection(skill.getName(), item.getSelection(), false));
                 }
             });
         }

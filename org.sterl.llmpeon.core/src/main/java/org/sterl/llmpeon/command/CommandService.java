@@ -13,8 +13,8 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import org.sterl.llmpeon.shared.PromptYmlParser;
-import org.sterl.llmpeon.shared.model.SimplePromptFile;
+import org.sterl.llmpeon.prompt.PromptYmlParser;
+import org.sterl.llmpeon.prompt.model.SimplePromptFile;
 
 import lombok.NoArgsConstructor;
 
@@ -60,7 +60,7 @@ public class CommandService {
         return enabled
                 ? commands.values().stream()
                     .filter(SimplePromptFile::isEnabled)
-                    .sorted(Comparator.comparing(c -> c.name().toLowerCase(Locale.ROOT)))
+                    .sorted(Comparator.comparing(c -> c.getName().toLowerCase(Locale.ROOT)))
                     .toList()
                 : List.of();
     }
@@ -68,7 +68,7 @@ public class CommandService {
     /** Returns all loaded commands regardless of global enabled state. */
     public List<SimplePromptFile> getAllLoadedCommands() {
         return commands.values().stream()
-                .sorted(Comparator.comparing(c -> c.name().toLowerCase(Locale.ROOT)))
+                .sorted(Comparator.comparing(c -> c.getName().toLowerCase(Locale.ROOT)))
                 .toList();
     }
 
@@ -105,7 +105,7 @@ public class CommandService {
                 var fileName = file.getFileName().toString();
                 if (fileName.startsWith(".")) continue;
                 var cmd = PromptYmlParser.parseYml(file);
-                if (cmd != null) commands.put(cmd.name().toLowerCase(Locale.ROOT), cmd);
+                if (cmd != null) commands.put(cmd.getName().toLowerCase(Locale.ROOT), cmd);
             }
         }
         return true;
@@ -124,7 +124,7 @@ public class CommandService {
      * Returns all active command names
      */
     public String commandNames() {
-        return getCommands().stream().map(SimplePromptFile::name).collect(Collectors.joining(", "));
+        return getCommands().stream().map(SimplePromptFile::getName).collect(Collectors.joining(", "));
     }
 
     public Path getCommandsDirectory() {

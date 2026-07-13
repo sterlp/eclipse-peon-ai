@@ -23,8 +23,8 @@ public class EclipseGrepTool extends AbstractEclipseTool {
 
     private static final int MAX_FILES = 100;
 
-    @Tool("Eclipse: Search workspace file contents for text.")
-    public String grepWorkspaceFiles(
+    @Tool("Search workspace file contents for text.")
+    public String eclipseGrepFiles(
             @P(description = "text to match with contains in content of any file", name = "query") String query,
             @P(description = "project or folder path to search in", required = false, name = "path") String path,
             @P(description = "file extension, e.g. .java", required = false, name = "extension") String extension) {

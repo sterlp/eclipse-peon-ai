@@ -12,7 +12,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import org.sterl.llmpeon.shared.PromptYmlParser;
+import org.sterl.llmpeon.prompt.PromptYmlParser;
 
 import lombok.NoArgsConstructor;
 
@@ -97,7 +97,7 @@ public class SkillService {
     private void handleFileSkill(Path entry) throws IOException {
         var yml = PromptYmlParser.parseYml(entry);
         if (yml != null) {
-            var skill = SkillPromptFile.from(yml).build();
+            var skill = SkillPromptFile.from(yml);
             skills.put(skill.getName().toLowerCase(Locale.ROOT), skill);
         }
     }
@@ -107,9 +107,7 @@ public class SkillService {
         if (skillFile != null && Files.isRegularFile(skillFile)) {
             var yml = PromptYmlParser.parseYml(skillFile);
             if (yml != null) {
-                var skill = SkillPromptFile.from(yml)
-                        .skillDir(entry.getParent())
-                        .build();
+                var skill = SkillPromptFile.from(yml, entry.getParent());
                 skills.put(skill.getName().toLowerCase(Locale.ROOT), skill);
             }
         }
@@ -138,6 +136,6 @@ public class SkillService {
      * Returns all active skill names
      */
     public String skillNames() {
-        return getSkills().stream().map(SkillPromptFile::name).collect(Collectors.joining(", "));
+        return getSkills().stream().map(SkillPromptFile::getName).collect(Collectors.joining(", "));
     }
 }

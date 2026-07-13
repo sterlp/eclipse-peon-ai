@@ -40,8 +40,8 @@ public class DiskFileWriteTool extends AbstractTool {
         return workingDir;
     }
 
-    @Tool("Disk: Write file. Creates parent dirs and overwrites if exists.")
-    public void writeDiskFile(@P(name = "filePath") String filePath, @P(name = "content") String content) {
+    @Tool("Write file. Creates parent dirs and overwrites if exists.")
+    public void diskWriteFile(@P(name = "filePath") String filePath, @P(name = "content") String content) {
         ArgsUtil.requireNonBlank(filePath, "filePath");
         ArgsUtil.requireNonNull(content, "content");
 
@@ -66,8 +66,8 @@ public class DiskFileWriteTool extends AbstractTool {
         }
     }
 
-    @Tool("Disk: Delete file.")
-    public void deleteDiskFile(@P(name = "filePath") String filePath) {
+    @Tool("Delete file.")
+    public void diskDeleteFile(@P(name = "filePath") String filePath) {
         ArgsUtil.requireNonBlank(filePath, "filePath");
 
         Path resolved = resolve(filePath);
@@ -83,8 +83,8 @@ public class DiskFileWriteTool extends AbstractTool {
         }
     }
     
-    @Tool("Disk: Replace lines by line number. newContent may span multiple lines.")
-    public void replaceDiskLines(
+    @Tool("Replace lines by line number. newContent may span multiple lines.")
+    public void diskReplaceLines(
             @P(name = "filePath") String filePath,
             @P("line to replace (1-based)") Integer line,
             @P(name = "newContent") String newContent) {
@@ -107,8 +107,8 @@ public class DiskFileWriteTool extends AbstractTool {
         }
     }
 
-    @Tool("Disk: Replace exact string. Errors if 0 or >1 matches.")
-    public void editDiskFile(@P(name = "filePath") String filePath, 
+    @Tool("Replace exact string. Errors if 0 or >1 matches.")
+    public void diskEditFile(@P(name = "filePath") String filePath, 
             @P(description = "exact string to replace", name = "oldString") String oldString, 
             @P(name = "newString") String newString) {
 
@@ -139,8 +139,8 @@ public class DiskFileWriteTool extends AbstractTool {
         }
     }
 
-    @Tool("Disk: Rename or move a file or directory. Creates target parent folders.")
-    public void renameDiskResource(
+    @Tool("Rename or move a file or directory. Creates target parent folders.")
+    public void diskRenameResource(
             @P(name = "sourcePath") String sourcePath,
             @P(name = "targetPath") String targetPath) {
 
@@ -167,8 +167,8 @@ public class DiskFileWriteTool extends AbstractTool {
         }
     }
 
-    @Tool("Disk: Insert text into a file at a specific position. Omit afterLine to append at end. 0 inserts before the first line (prepend). 1..n inserts after that line.")
-    public void insertDiskLines(
+    @Tool("Insert text into a file at a specific position. Omit afterLine to append at end. 0 inserts before the first line (prepend). 1..n inserts after that line.")
+    public void diskInsertLines(
             @P(name = "filePath") String filePath,
             @P(description = "1-based line to insert after; omit to append, 0 to prepend",
                name = "afterLine", required = false) Integer afterLine,

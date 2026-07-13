@@ -2,64 +2,86 @@ package org.sterl.llmpeon.skill;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
-import org.sterl.llmpeon.shared.model.SimplePromptFile;
+import org.sterl.llmpeon.prompt.model.SimplePromptFile;
 
-import lombok.experimental.SuperBuilder;
+import lombok.Getter;
 
-@SuperBuilder(toBuilder = true)
 public class SkillPromptFile extends SimplePromptFile {
-
     @Nullable
-    private final Path skillDir;
-
-    public static SkillPromptFileBuilder from(SimplePromptFile yml) {
-        return SkillPromptFile.builder()
-            .name(yml.name())
-            .description(yml.description())
-            .promptFile(yml.promptFile());
+    @Getter
+    private volatile Path skillDir;
+    
+    public static SkillPromptFile from(SimplePromptFile yml) {
+        return new SkillPromptFile(yml.getFrontmatter(), yml.getBody(), yml.getPromptFile());
+    }
+    
+    public static SkillPromptFile from(SimplePromptFile yml, Path dir) {
+        return new SkillPromptFile(yml.getFrontmatter(), yml.getBody(), yml.getPromptFile(), dir);
     }
 
-    public SkillPromptFile(String name, String description, Path promptFile, Path skillDir) {
-        super(name, description, promptFile);
+    public SkillPromptFile(Map<String, List<String>> frontmatter, String body,
+            Path promptFile) {
+        this(frontmatter, body, promptFile, null);
+    }
+    
+    public SkillPromptFile(Map<String, List<String>> frontmatter, String body,
+            Path promptFile, Path skillDir) {
+        super(frontmatter, body, promptFile);
         this.skillDir = skillDir;
     }
 
-    @Override
-    public String readBody() {
+    public String buildShortInfo() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("---\nname: ").append(getName())
+          .append("\ndescription: ").append(getDescription());
+        return sb.toString();
+    }
+
+    public String renderBody() {
         var result = new StringBuilder();
-        result.append("=== SKILL: ").append(name).append(" ===\n");
+        result.append("=== SKILL: ").append(getName())
+                .append(" ===\n");
         if (skillDir == null) {
-            result.append(promptFile).append("\n");
+            result.append(getPromptFile()).append("\n");
             result.append("only a SKILL file.\n");
         } else {
-            result.append("Skill disk dir: ").append(skillDir).append("\n");
+            result.append("SKILL disk dir: ").append(skillDir).append("\n");
             try (var stream = Files.walk(skillDir)) {
-                stream.filter(Files::isRegularFile)
-                    .forEach(p -> result.append(skillDir.relativize(p)).append("\n"));
+                stream.filter(Files::isRegularFile).forEach(p -> result
+                        .append(skillDir.relativize(p)).append("\n"));
             } catch (java.io.IOException e) {
-                result.append("[unable to scan directory] ").append(e.getMessage()).append("\n");
+                result.append("[unable to scan directory] ")
+                        .append(e.getMessage()).append("\n");
             }
         }
-        result.append("Editing requires disk tools — ensure they are enabled or request access from the user, only if needed.\n");
+        result.append(
+                "Editing requires disk tools — ask access from the user if missing and needed.\n");
         result.append("=== BODY ===\n");
-        result.append(super.readBody());
+        result.append(getBody());
         return result.toString();
     }
 
     public String readRelativeFile(String relativePath) {
         if (skillDir == null) {
-            throw new IllegalStateException("Skill " + name + " has no files.");
+            throw new IllegalStateException(
+                    "SKILL " + getName() + " has no files.");
         }
         // Strip leading slashes to avoid absolute path resolution
-        String cleaned = relativePath.startsWith("/") ? relativePath.substring(1) : relativePath;
+        String cleaned = relativePath.startsWith("/")
+                ? relativePath.substring(1)
+                : relativePath;
         Path target = skillDir.resolve(cleaned).normalize();
         if (!target.startsWith(skillDir)) {
-            throw new IllegalArgumentException("Path traversal not allowed: " + relativePath);
+            throw new IllegalArgumentException(
+                    "Path traversal not allowed: " + relativePath);
         }
         if (!Files.exists(target)) {
-            throw new IllegalArgumentException("File not found in skill directory: " + relativePath);
+            throw new IllegalArgumentException(
+                    "File not found in skill directory: " + relativePath);
         }
         try {
             return Files.readString(target);

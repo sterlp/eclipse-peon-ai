@@ -3,17 +3,19 @@ package org.sterl.llmpeon.command;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Files;
-import java.nio.file.Path;
+import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.sterl.llmpeon.shared.model.SimplePromptFile;
+import org.sterl.llmpeon.AbstractMemoryFileTest;
+import org.sterl.llmpeon.prompt.model.SimplePromptFile;
 
-class CommandServiceTest {
-
+class CommandServiceTest extends AbstractMemoryFileTest {
+    
     @Test
-    void emptyDirectoryReturnsZeroCommands(@TempDir Path tmp) throws Exception {
+    void emptyDirectoryReturnsZeroCommands() throws Exception {
         // GIVEN
+        var tmp = fs.getPath("/" + UUID.randomUUID().toString());
+        Files.createDirectory(tmp);
         var service = new CommandService();
 
         // WHEN
@@ -25,7 +27,7 @@ class CommandServiceTest {
     }
 
     @Test
-    void nonExistingDirectoryReturnsZeroCommands(@TempDir Path tmp) throws Exception {
+    void nonExistingDirectoryReturnsZeroCommands() throws Exception {
         // GIVEN
         var service = new CommandService();
 
@@ -37,8 +39,10 @@ class CommandServiceTest {
     }
 
     @Test
-    void readsPlainMarkdownWithoutFrontmatter(@TempDir Path tmp) throws Exception {
+    void readsPlainMarkdownWithoutFrontmatter() throws Exception {
         // GIVEN
+        var tmp = fs.getPath("/" + UUID.randomUUID().toString());
+        Files.createDirectory(tmp);
         Files.writeString(tmp.resolve("review.md"),
                 "Review the code carefully and report findings.");
         var service = new CommandService();
@@ -49,14 +53,13 @@ class CommandServiceTest {
         // THEN
         assertThat(service.getCommands()).hasSize(1);
         var cmd = service.getCommands().get(0);
-        assertThat(cmd.name()).isEqualTo("review");
-        assertThat(cmd.description()).isNull();
-        assertThat(cmd.readFullContent()).contains("Review the code");
-        assertThat(cmd.readBody()).isEqualTo(cmd.readFullContent());
+        assertThat(cmd.getName()).isEqualTo("review");
+        assertThat(cmd.getDescription()).isNull();
+        assertThat(cmd.getBody()).isEqualTo("Review the code carefully and report findings.");
     }
 
     @Test
-    void parsesOptionalDescriptionFromFrontmatter(@TempDir Path tmp) throws Exception {
+    void parsesOptionalDescriptionFromFrontmatter() throws Exception {
         // GIVEN
         Files.writeString(tmp.resolve("plan.md"), """
                 ---
@@ -74,13 +77,13 @@ class CommandServiceTest {
 
         // THEN
         var cmd = service.get("plan").orElseThrow();
-        assertThat(cmd.name()).isEqualTo("plan");
-        assertThat(cmd.description()).isEqualTo("Build a high-level implementation plan");
-        assertThat(cmd.readBody().strip()).startsWith("# Plan");
+        assertThat(cmd.getName()).isEqualTo("plan");
+        assertThat(cmd.getDescription()).isEqualTo("Build a high-level implementation plan");
+        assertThat(cmd.getBody().strip()).startsWith("# Plan");
     }
 
     @Test
-    void readBodyStripsFrontmatterWhenPresent(@TempDir Path tmp) throws Exception {
+    void readBodyStripsFrontmatterWhenPresent() throws Exception {
         // GIVEN
         Files.writeString(tmp.resolve("doc.md"), """
                 ---
@@ -95,11 +98,11 @@ class CommandServiceTest {
 
         // THEN
         var cmd = service.get("doc").orElseThrow();
-        assertThat(cmd.readBody().strip()).isEqualTo("Hello body");
+        assertThat(cmd.getBody().strip()).isEqualTo("Hello body");
     }
 
     @Test
-    void caseInsensitiveLookup(@TempDir Path tmp) throws Exception {
+    void caseInsensitiveLookup() throws Exception {
         // GIVEN
         Files.writeString(tmp.resolve("Review.md"), "x");
         var service = new CommandService();
@@ -113,8 +116,11 @@ class CommandServiceTest {
     }
 
     @Test
-    void ignoresHiddenAndNonMarkdownFiles(@TempDir Path tmp) throws Exception {
+    void ignoresHiddenAndNonMarkdownFiles() throws Exception {
         // GIVEN
+        var tmp = fs.getPath("/" + UUID.randomUUID().toString());
+        Files.createDirectory(tmp);
+        
         Files.writeString(tmp.resolve(".secret.md"), "x");
         Files.writeString(tmp.resolve("notes.txt"), "x");
         Files.writeString(tmp.resolve("ok.md"), "y");
@@ -129,8 +135,11 @@ class CommandServiceTest {
     }
 
     @Test
-    void ignoresFilesInSubdirectories(@TempDir Path tmp) throws Exception {
+    void ignoresFilesInSubdirectories() throws Exception {
         // GIVEN
+        var tmp = fs.getPath("/" + UUID.randomUUID().toString());
+        Files.createDirectory(tmp);
+
         var sub = Files.createDirectory(tmp.resolve("sub"));
         Files.writeString(sub.resolve("nested.md"), "x");
         Files.writeString(tmp.resolve("flat.md"), "y");
@@ -146,8 +155,10 @@ class CommandServiceTest {
     }
 
     @Test
-    void refreshWithSameDirectoryReloadsContent(@TempDir Path tmp) throws Exception {
+    void refreshWithSameDirectoryReloadsContent() throws Exception {
         // GIVEN
+        var tmp = fs.getPath("/" + UUID.randomUUID().toString());
+        Files.createDirectory(tmp);
         Files.writeString(tmp.resolve("a.md"), "x");
         var service = new CommandService();
         service.refresh(tmp);
@@ -162,8 +173,10 @@ class CommandServiceTest {
     }
 
     @Test
-    void commandNamesAreSortedCaseInsensitive(@TempDir Path tmp) throws Exception {
+    void commandNamesAreSortedCaseInsensitive() throws Exception {
         // GIVEN
+        var tmp = fs.getPath("/" + UUID.randomUUID().toString());
+        Files.createDirectory(tmp);
         Files.writeString(tmp.resolve("zebra.md"), "x");
         Files.writeString(tmp.resolve("Alpha.md"), "x");
         Files.writeString(tmp.resolve("beta.md"), "x");
@@ -174,12 +187,12 @@ class CommandServiceTest {
 
         // THEN
         assertThat(service.getCommands())
-                .extracting(SimplePromptFile::name)
+                .extracting(SimplePromptFile::getName)
                 .containsExactly("Alpha", "beta", "zebra");
     }
 
     @Test
-    void clearingDirectoryRemovesAllCommands(@TempDir Path tmp) throws Exception {
+    void clearingDirectoryRemovesAllCommands() throws Exception {
         // GIVEN
         Files.writeString(tmp.resolve("a.md"), "x");
         var service = new CommandService();

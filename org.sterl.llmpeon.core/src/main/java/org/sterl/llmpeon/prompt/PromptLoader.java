@@ -3,6 +3,11 @@ package org.sterl.llmpeon.prompt;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
+/**
+ * Load build in text prompts.
+ * 
+ * Better use the {@link PromptYmlParser}
+ */
 public class PromptLoader {
 
     private static final String DEFAULT = load("default.txt");
@@ -25,6 +30,11 @@ public class PromptLoader {
     }
 
     public static String loadWithDefault(String filename) {
-        return DEFAULT + "\n\n" + load(filename);
+        return withDefault(load(filename));
+    }
+
+    /** Prepends the shared default prompt to the given body (e.g. a custom agent's markdown). */
+    public static String withDefault(String body) {
+        return DEFAULT + "\n\n" + (body == null ? "" : body);
     }
 }

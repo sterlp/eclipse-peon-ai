@@ -9,8 +9,11 @@ import java.nio.file.Path;
 
 import org.junit.Test;
 import org.sterl.llmpeon.StandingOrdersBuilder;
+import org.sterl.llmpeon.agent.AiDevAgent;
+import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.parts.PeonAiService;
+import org.sterl.llmpeon.parts.tools.PlanTool;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
@@ -20,12 +23,11 @@ import org.sterl.llmpeon.tool.tools.DiskGrepTool;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 
-public class PeonAiServiceTest  extends AbstractTest {
+public class PeonAiServiceTest extends AbstractTest {
 
     PeonAiService aiService = new PeonAiService(null, null, null);
     
     private final StandingOrdersBuilder standingOrders = new StandingOrdersBuilder()
-            .add(aiService)
             .add(aiService.getAgentsMdService());
     
     @Test
@@ -42,6 +44,23 @@ public class PeonAiServiceTest  extends AbstractTest {
         assertIsPresent(comp);
     }
     
+    @Test
+    public void test_onHandoff() {
+        // GIVEN
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        aiService.setActiveAgent(aiService.getAgents().stream().filter(a -> a.getName().equals(AiPlanAgent.NAME)).findFirst().orElseThrow());
+        
+        // WHEN
+        assertFalse(aiService.onHandoff());
+        // AND
+        aiService.getActiveAgent().getMemory().add(AiMessage.from("Very good plan"));
+        assertTrue(aiService.onHandoff());
+        
+        // THEN
+        assertEquals(AiDevAgent.NAME, aiService.getActiveAgent().getName());
+        assertHasUserMessageWith(aiService.getActiveAgent().getMemory().getCopy(), "Very good plan");
+    }
+
     @Test
     public void test_switch_disk_off() {
         // GIVEN
@@ -73,10 +92,10 @@ public class PeonAiServiceTest  extends AbstractTest {
         aiService.getSkillService().refresh(Path.of("../skills"));
         
         // WHEN
-        aiService.getDeveloperService().call("Ping", null);
+        aiService.getActiveAgent().call("Ping", null);
         
         // THEN
-        var msg = aiService.getDeveloperService().getMemory().getCopy();
+        var msg = aiService.getActiveAgent().getMemory().getCopy();
         assertEquals(ChatMessageUtil.toString(msg.get(0)), "Ping");
         assertEquals(ChatMessageUtil.toString(msg.get(1)), "Pong");
     }
@@ -90,7 +109,7 @@ public class PeonAiServiceTest  extends AbstractTest {
         mockLlmServer.queueResponse(AiMessage.aiMessage("Pong"));
         
         // WHEN
-        aiService.getDeveloperService().call("Ping", null);
+        aiService.getActiveAgent().call("Ping", null);
         
         // THEN
         assertNotNull(mockLlmServer.getCapturedTool("readSkill"));
@@ -107,8 +126,8 @@ public class PeonAiServiceTest  extends AbstractTest {
         aiService.getAgentsMdService().load(project);
         
         // WHEN
-        aiService.getDeveloperService().setUserContextInformations(standingOrders.build());
-        aiService.getDeveloperService().call("Ping", null);
+        aiService.getActiveAgent().setUserContextInformations(standingOrders.build());
+        aiService.getActiveAgent().call("Ping", null);
         
         // THEN
         assertNotNull(mockLlmServer.getCapturedTool("readSkill"));
@@ -132,8 +151,32 @@ public class PeonAiServiceTest  extends AbstractTest {
 
         // THEN
         assertEquals(4000, aiService.getConfig().getAutoCompactAfter());
-        assertEquals(4000, aiService.getDeveloperService().getAutoCompactAfter());
-        assertEquals(4000, aiService.getPlannerService().getAutoCompactAfter());
+        assertEquals(4000, aiService.getConfig().getAutoCompactAfter());
+    }
+
+    @Test
+    public void test_plan_handling() {
+        // GIVEN
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        aiService.setProject(project);
+        aiService.getAgent(AiDevAgent.NAME).get().getMemory().add(UserMessage.from("FOO BAR"));
+        aiService.setActiveAgent(AiPlanAgent.NAME);
+        aiService.getToolService().getTool(PlanTool.class).get().planSave("Das ist ein toller plan!");
+        
+        // WHEN
+        boolean handOff = aiService.onHandoff();
+        
+        // THEN
+        assertTrue("We have a plan - handoff should work.", handOff);
+        // AND
+        assertEquals(AiDevAgent.NAME, aiService.getActiveAgent().getName());
+        // AND
+        assertContains(aiService.getActiveAgent().getMemory().getLastOf(UserMessage.class).singleText(),
+                "Das ist ein toller plan!");
+        assertContains(aiService.getActiveAgent().getMemory().getLastOf(UserMessage.class).singleText(),
+                "Handover");
+        assertContains(aiService.getActiveAgent().getMemory().getLastOf(UserMessage.class).singleText(),
+                AiPlanAgent.NAME);
     }
     
     // TODO add tests concerning the message build -- check if it was properly constructed.

@@ -49,7 +49,7 @@ public class ShellTool extends AbstractTool {
     }
 
     @Tool("Run shell command. (mvn, npm etc.) Not for file I/O.")
-    public String runOsCommand(
+    public String shellRunCommand(
             @P(description = "shell command", name = "command") String command,
             @P(description = "use disk path not eclipse workspace path", name = "workingDirectory") String workingDirectory,
             @P(description = "timeout ms, default 120000", required = false, name = "timeoutMs") Long timeoutMs,

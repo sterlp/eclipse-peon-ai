@@ -2,6 +2,7 @@ package org.sterl.llmpeon.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
 
 import java.time.OffsetDateTime;
@@ -22,10 +23,10 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractTest {
         var fileName = "/org.sterl.llmpeon.test/foo.txt";
         var message = "Hello world " + OffsetDateTime.now();
         // WHEN
-        tool.writeWorkspaceFile(fileName, message);
+        tool.eclipseWriteFile(fileName, message);
         
         // THEN
-        assertEquals(message, readTool.readWorkspaceFile(fileName, 0, 0));
+        assertEquals(message, readTool.eclipseReadFile(fileName, 0, 0));
     }
     
     @Test
@@ -59,14 +60,14 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractTest {
                 // Guard against selection injection before createPartControl() initializes fields
                 if (agentMode == null || actionsBar == null) return;
         """;
-        tool.writeWorkspaceFile(fileName, message);
+        tool.eclipseWriteFile(fileName, message);
         
         // WHEN
-        tool.editWorkspaceFile(fileName, 
+        tool.eclipseEditFile(fileName, 
                 "    private void updateSelectedProject(IProject project) {", 
                 editMessage);
         // THEN
-        message = readTool.readWorkspaceFile(fileName, 0, 0);
+        message = readTool.eclipseReadFile(fileName, 0, 0);
         assertTrue("Missing edit text in:\n" + message, message.contains(editMessage));
     }
     
@@ -76,13 +77,13 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractTest {
         // GIVEN
         var tool = new EclipseWorkspaceWriteFileTool();
         var fileName = "/org.sterl.llmpeon.test/foo.txt";
-        tool.writeWorkspaceFile(fileName, "line1\nline2\nline3\nline4\nline5");
+        tool.eclipseWriteFile(fileName, "line1\nline2\nline3\nline4\nline5");
 
         // WHEN — replace middle line 3, expanding it to two lines
-        tool.replaceWorkspaceLines(fileName, 3, "replaced3a\nreplaced3b");
+        tool.eclipseReplaceLines(fileName, 3, "replaced3a\nreplaced3b");
 
         // THEN — surrounding lines untouched, middle replaced
-        var content = readTool.readWorkspaceFile(fileName, 0, 0);
+        var content = readTool.eclipseReadFile(fileName, 0, 0);
         assertTrue(content, content.contains("line1"));
         assertTrue(content, content.contains("line2"));
         assertTrue(content, content.contains("replaced3a"));
@@ -103,13 +104,16 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractTest {
                   Line to replace
                   foo
                   This should stay
-                """ + OffsetDateTime.now();
-        tool.writeWorkspaceFile(fileName, message);
+                """ + editString;
+        tool.eclipseWriteFile(fileName, message);
         
         // WHEN
-        tool.editWorkspaceFile(fileName, "  Line to replace\n  fooo", editString);
+        try {
+            tool.eclipseEditFile(fileName, "  Line to replace\n  fooooooo", editString);
+            fail("Should throw IllegalArgumentException");
+        } catch (IllegalArgumentException e) {}
         // THEN
-        message = readTool.readWorkspaceFile(fileName, 0, 0);
+        message = readTool.eclipseReadFile(fileName, null, null);
         assertTrue(message, message.contains(editString));
         assertTrue(message, message.contains("Line to replace"));
         assertTrue(message, message.contains("foo"));

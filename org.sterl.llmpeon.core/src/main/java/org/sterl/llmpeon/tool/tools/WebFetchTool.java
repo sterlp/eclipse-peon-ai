@@ -47,7 +47,7 @@ public class WebFetchTool extends AbstractTool {
      * @throws InterruptedException if the request is interrupted
      */
     @Tool("Fetch URL content as Markdown.")
-    public String fetchAsMarkdown(@P(name = "url") String url) throws IOException, InterruptedException {
+    public String webFetchAsMarkdown(@P(name = "url") String url) throws IOException, InterruptedException {
         ArgsUtil.requireNonBlank(url, "url");
 
         HttpRequest request = HttpRequest.newBuilder()

@@ -70,9 +70,7 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
                         { "Except when Autonomous", "not-autonomous" } },
                 getFieldEditorParent()));
 
-        addField(
-                new StringFieldEditor(PeonConstants.PREF_SKILL_DIRECTORY, "Skills directory:", getFieldEditorParent()));
-        addField(new StringFieldEditor(PeonConstants.PREF_COMMAND_DIRECTORY, "Commands directory:",
+        addField(new StringFieldEditor(PeonConstants.PREF_CONFIG_DIRECTORY, "Config directory:", 
                 getFieldEditorParent()));
 
         Link link = new Link(getFieldEditorParent(), SWT.NONE);

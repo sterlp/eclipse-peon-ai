@@ -1,0 +1,127 @@
+---
+title: Eclipse Peon AI
+description: An Eclipse plugin that brings a lightweight, context-aware LLM assistant directly into the Eclipse workbench to support developers in their daily workflow.
+---
+
+# Eclipse Peon AI
+
+[Get Started](/setup/installation) • [GitHub](https://github.com/sterlp/eclipse-peon-ai)
+
+Eclipse Peon AI is an Eclipse RCP plugin that integrates a lightweight, context-aware LLM assistant directly into your Eclipse workbench.
+
+## Features
+
+- **Chat Interface**: Interactive AI chat with syntax-highlighted code blocks and markdown rendering
+- **Voice Chat**: Talk to your AI peon and tell him what todo - no more typing
+- **File Operations**: Read, write, search, and modify files directly from the chat
+- **Context Awareness**: Understands your current workspace and selected files
+- **Text Editing**: Full undo/redo support (Ctrl+Z / Ctrl+Shift+Z) with context menu for copy, paste, cut operations
+- **Local LLM Support**: Works with Ollama for privacy-focused local inference
+- **Multi-Provider**: Supports various LLM providers through LangChain4j
+
+![example](./assets/example.png)
+
+## Installation
+
+### Eclipse marketplace
+
+- [Peon AI on eclipse marketplace](https://marketplace.eclipse.org/content/peon-ai)
+
+### Update Site
+
+Install directly from Eclipse:
+
+1. Go to **Help > Install New Software**
+2. Add the update site: `https://github.com/sterlp/eclipse-peon-ai`
+3. Select "Eclipse Peon AI" and follow the installation wizard
+4. Restart Eclipse
+
+### Requirements
+
+- Eclipse 2025-12 or newer
+- Java 21
+- An LLM provider ([LM Studio](https://lmstudio.ai/) or [Ollama](https://ollama.com/) recommended for local use)
+
+## Configuration
+
+After installation, configure the plugin via **Window > Preferences > AI Peon > Peon Configuration**:
+
+1. **Provider**: Select your LLM provider (Ollama, OpenAI, Anthropic, etc.)
+2. **Model**: Enter the model name (e.g., `qwen3-coder`, `qwen3.6-27b` for Ollama)
+3. **Base URL**: Set the API endpoint (e.g., `http://localhost:11434` for Ollama)
+4. **API Key**: Enter your API key if required
+
+## Usage
+
+### Opening the Chat View
+
+1. Go to **Window > Show View > Other...**
+2. Search for "AI Peon" or "AI"
+3. The chat view will appear in your workbench
+
+### Available Tools
+
+The AI assistant has access to several tools:
+
+- **Read / Write Files**: Read and modify files in your Eclipse workspace
+- **Search & Grep**: Search for files and text across your project
+- **Code Navigation**: Find Java types, references and implementations
+- **Build Project**: Trigger Eclipse builds and report errors/warnings
+- **Run Tests**: Execute JUnit tests and report failures with stack traces
+- **Plan**: Save and track an implementation plan (`peon-plan/overview.md`)
+- **Skills & Memory**: Load reusable skills and persist notes across sessions
+- **MCP**: Connect to MCP servers for extended tooling (e.g., web search, codebase indexing)
+
+### Example Workflows
+
+1. **Explain Code**: Select a file and ask "What does this code do?"
+2. **Generate Tests**: Ask "Write unit tests for the selected class"
+3. **Refactor**: Select code and ask "How can I improve this?"
+4. **Debug**: Paste error messages and ask "What's causing this?"
+
+::: info "CTRL+Enter"
+You can also send messages with `CTRL+Enter` or `CMD+Enter` - if the AI is working, the message is added to the history - best effort to add message during a tool loop.
+:::
+
+- Drag-and-drop files from Eclipse Explorer or your file system directly into the chat input to attach them as `@path` references.
+
+## Architecture
+
+- **Main Plugin** (`org.sterl.llmpeon`): Eclipse e4 plugin with UI components
+- **Core** (`org.sterl.llmpeon.core`): Standalone module for LLM integration
+- **Target Platform** (`releng/llmpeon-target`): Eclipse 2025-12 based target platform
+- **Features** (`releng/llmpeon-feature`): Eclipse feature definition
+
+### Technology Stack
+
+- Eclipse RCP / e4
+- Java 21
+- Maven + Tycho
+- LangChain4j for LLM integration
+- Markdown-it for markdown rendering
+- Highlight.js for syntax highlighting
+- Diff2Html for diff visualization
+
+## Building from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/sterlp/eclipse-peon-ai.git
+cd eclipse-peon-ai
+
+# Build the project
+mvn clean verify
+
+# Run in development mode
+# Use Eclipse Application launch with -clean -clearPersistedState
+```
+
+### Known Issues
+
+- **Incremental Build Bug**: Eclipse 4.38 has a PDE/JDT bug where incremental builds produce broken `.class` files. Use **Project > Clean** before re-launching.
+
+## Links
+
+- [GitHub Repository](https://github.com/sterlp/eclipse-peon-ai)
+- [LangChain4j Documentation](https://docs.langchain4j.dev/)
+- [Ollama](https://ollama.com/)

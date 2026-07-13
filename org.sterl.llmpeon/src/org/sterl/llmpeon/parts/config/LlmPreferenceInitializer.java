@@ -14,12 +14,12 @@ import org.eclipse.core.runtime.preferences.AbstractPreferenceInitializer;
 import org.eclipse.core.runtime.preferences.DefaultScope;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.InstanceScope;
+import org.sterl.llmpeon.agent.AiAgent;
+import org.sterl.llmpeon.agent.AiDevAgent;
+import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.LlmConfig;
-import org.sterl.llmpeon.PeonMode;
 import org.sterl.llmpeon.parts.PeonConstants;
-import org.sterl.llmpeon.parts.shared.EclipseUtil;
-import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 
 public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
@@ -27,11 +27,13 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
 
     private static final LlmConfig DEFAULT = LlmConfig.newOllama("qwen3.6-27b-i1");
     
-    private static final Path PEON_HOME =  Path.of(System.getProperty("user.home"), ".claude");
-    private static final Path CALUDE_HOME =  Path.of(System.getProperty("user.home"), ".aipeon");
+    /** Native peon config home. Preferred and created by default. */
+    private static final Path PEON_HOME =  Path.of(System.getProperty("user.home"), ".peon");
 
     @Override
     public void initializeDefaultPreferences() {
+        buildConfigDirs();
+
         IEclipsePreferences defaults = DefaultScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
         defaults.put(PeonConstants.PREF_PROVIDER_TYPE, DEFAULT.getProviderType().name());
         defaults.put(PeonConstants.PREF_MODEL, StringUtil.stripToEmpty(DEFAULT.getModel()));
@@ -44,8 +46,7 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
         defaults.putBoolean(PeonConstants.PREF_SEND_THINKING_ENABLED, DEFAULT.isSendThinkingEnabled());
         defaults.put(PeonConstants.PREF_API_KEY, StringUtil.stripToEmpty(DEFAULT.getApiKey()));
 
-        defaults.put(PeonConstants.PREF_SKILL_DIRECTORY, resolveClaudeDefault("skills"));
-        defaults.put(PeonConstants.PREF_COMMAND_DIRECTORY, resolveClaudeDefault("commands"));
+        defaults.put(PeonConstants.PREF_CONFIG_DIRECTORY, PEON_HOME.toString());
 
         defaults.putBoolean(PeonConstants.PREF_DISK_TOOLS_ENABLED, false);
         defaults.put(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, "");
@@ -56,23 +57,11 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
         defaults.putBoolean(PeonConstants.PREF_AGENTS_MD_ENABLED, true);
     }
 
-    private static String resolveClaudeDefault(String dir) {
-        var cD = CALUDE_HOME.resolve(dir); 
-        var pD = PEON_HOME.resolve(dir);
-
-        if (Files.isDirectory(cD)) return cD.toString();
-        try {
-            Files.createDirectories(pD);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to create " + pD, e);
-        }
-        return pD.toString();
-    }
 
     public static LlmConfig buildWithDefaults() {
+        buildConfigDirs();
+
         var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
-        var skillDir = resolveDirPreference(prefs, PeonConstants.PREF_SKILL_DIRECTORY, "skill");
-        var commandDir = resolveDirPreference(prefs, PeonConstants.PREF_COMMAND_DIRECTORY, "command");
 
         return LlmConfig.builder()
             .providerType(AiProvider.parse(prefs.get(PeonConstants.PREF_PROVIDER_TYPE, DEFAULT.getProviderType().name())))
@@ -91,8 +80,9 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
             .thinkingEnabled(prefs.getBoolean(PeonConstants.PREF_THINKING_ENABLED, DEFAULT.isThinkingEnabled()))
             .sendThinkingEnabled(prefs.getBoolean(PeonConstants.PREF_SEND_THINKING_ENABLED, DEFAULT.isSendThinkingEnabled()))
             .apiKey(prefs.get(PeonConstants.PREF_API_KEY, ""))
-            .skillDirectory(skillDir)
-            .commandDirectory(commandDir)
+            
+            .configDir(Path.of(prefs.get(PeonConstants.PREF_CONFIG_DIRECTORY, PEON_HOME.toString())))
+            
             .diskToolsEnabled(prefs.getBoolean(PeonConstants.PREF_DISK_TOOLS_ENABLED, false))
             .planTemperature(parseDoublePref(prefs, PeonConstants.PREF_PLAN_TEMPERATURE, DEFAULT.getPlanTemperature()))
             .devTemperature(parseDoublePref(prefs, PeonConstants.PREF_DEV_TEMPERATURE, DEFAULT.getDevTemperature()))
@@ -104,39 +94,31 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
             .build();
     }
 
-    /**
-     * Returns an absolute file system path for the directory preference. If the stored value is
-     * not already an absolute directory, attempts to resolve it as an Eclipse workspace-relative
-     * resource and rewrites the preference to the portable workspace path on success.
-     */
-    private static String resolveDirPreference(org.eclipse.core.runtime.preferences.IEclipsePreferences prefs,
-            String key, String label) {
-        var dirValue = prefs.get(key, "");
-        if (StringUtil.hasValue(dirValue) && !Files.isDirectory(Path.of(dirValue))) {
-            var dir = EclipseUtil.resolveInEclipse(dirValue);
-            if (dir.isPresent()) {
-                var resource = dir.get();
-                prefs.put(key, JdtUtil.diskPathOf(resource));
-                var abs = JdtUtil.diskPathOf(resource);
-                if (abs != null) {
-                    LOG.info("Resolved " + label + " dir " + dirValue + " as " + abs);
-                    dirValue = abs;
-                } else {
-                    LOG.warn("Could not resolve " + label + " dir to a filesystem path for " + resource.getFullPath());
-                    dirValue = "";
-                }
-            }
+
+    private static void buildConfigDirs() {
+        try {
+            if (!Files.isDirectory(PEON_HOME)) Files.createDirectories(PEON_HOME);
+            if (!Files.isDirectory(PEON_HOME.resolve(LlmConfig.AGENT_DIRECTORY))) Files.createDirectories(PEON_HOME.resolve(LlmConfig.AGENT_DIRECTORY));
+            if (!Files.isDirectory(PEON_HOME.resolve(LlmConfig.COMMAND_DIRECTORY))) Files.createDirectories(PEON_HOME.resolve(LlmConfig.COMMAND_DIRECTORY));
+            if (!Files.isDirectory(PEON_HOME.resolve(LlmConfig.SKILL_DIRECTORY))) Files.createDirectories(PEON_HOME.resolve(LlmConfig.SKILL_DIRECTORY));
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        return dirValue;
     }
 
-    public static void setModel(String model, PeonMode mode) {
+    public static void saveModel(String model, AiAgent agent) {
         if (model == null) return;
         try {
-            var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
-            String key = PeonConstants.modelPref(mode);
-            prefs.put(key, model);
-            prefs.flush();
+            agent.setAgentModelName(model);
+            if (agent instanceof AiDevAgent) {
+                var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
+                prefs.put(PeonConstants.PREF_MODEL, model);
+                prefs.flush();
+            } else if (agent instanceof AiPlanAgent) {
+                var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
+                prefs.put(PeonConstants.PREF_PLAN_MODEL, model);
+                prefs.flush();
+            }
         } catch (Exception e) {
             LOG.warn("Failed to save model preference", e);
         }

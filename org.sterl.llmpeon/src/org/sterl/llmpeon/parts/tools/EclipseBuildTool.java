@@ -17,7 +17,7 @@ import dev.langchain4j.agent.tool.Tool;
 public class EclipseBuildTool extends AbstractEclipseTool {
 
     @Tool("List open workspace projects with their eclipse paths, disk paths, and natures.")
-    public String listAllOpenEclipseProjects() {
+    public String eclipseListAllOpenProjects() {
         var sb = new StringBuilder();
         var projects = EclipseUtil.openProjects();
         if (projects.isEmpty()) {
@@ -33,13 +33,13 @@ public class EclipseBuildTool extends AbstractEclipseTool {
         return sb.toString();
     }
     
-    @Tool("Eclipse: List build errors/warnings of a project.")
-    public String readProjectProblems(@P(name = "projectName") String projectName) {
+    @Tool("List build errors/warnings of a project.")
+    public String eclipseReadProjectProblems(@P(name = "projectName") String projectName) {
         ArgsUtil.requireNonBlank(projectName, "projectName");
         var project = EclipseUtil.findOpenProject(projectName);
         if (project.isEmpty()) {
             onProblem("Cannot read problems of unknown project " + projectName);
-            return projectName + " not found.\n" + listAllOpenEclipseProjects();
+            return projectName + " not found.\n" + eclipseListAllOpenProjects();
         }
         var projectRef = project.get();
         return readProblems(projectRef);
@@ -59,14 +59,14 @@ public class EclipseBuildTool extends AbstractEclipseTool {
         }
     }
 
-    @Tool("Eclipse: Refresh and clean build the project. Returns errors/warnings. Preferred way to verify code changes or full refresh.")
-    public String buildEclipseProject(@P(name ="projectName") String projectName) {
+    @Tool("Refresh and clean build the project. Returns errors/warnings. Preferred way to verify code changes or full refresh.")
+    public String eclipseBuildProject(@P(name ="projectName") String projectName) {
         ArgsUtil.requireNonBlank(projectName, "projectName");
 
         var project = EclipseUtil.findOpenProject(projectName);
         if (project.isEmpty()) {
             onProblem("Cannot build unknown project " + projectName);
-            return projectName + " not found. " + listAllOpenEclipseProjects();
+            return projectName + " not found. " + eclipseListAllOpenProjects();
         }
         IProject projectRef = project.get();
         try {

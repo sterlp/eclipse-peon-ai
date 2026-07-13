@@ -1,7 +1,5 @@
 package org.sterl.llmpeon.parts.tools;
 
-import java.nio.charset.Charset;
-
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
@@ -30,8 +28,8 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         return true;
     }
 
-    @Tool("Eclipse: Replace lines by line number. newContent may span multiple lines.")
-    public void replaceWorkspaceLines(
+    @Tool("Replace lines by line number. newContent may span multiple lines.")
+    public void eclipseReplaceLines(
             @P(description = "workspace-relative path", name = "filePath") String filePath,
             @P(description = "line to replace (1-based)", name = "line") Integer line,
             @P(description = "replacement text", name ="newContent") String newContent) {
@@ -46,7 +44,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         }
         String content = readFile(eclipseFile);
         String newFullContent = FileLines.replaceLines(content, line, line, newContent);
-        var result = writeEclipseFile(eclipseFile, newFullContent);
+        var result = writeFile(eclipseFile, newFullContent);
         monitor.onFileUpdate(result);
     }
 
@@ -58,15 +56,15 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         }
     }
 
-    @Tool("Eclipse: Replace exact string in workspace file. Errors if 0 or >1 matches.")
-    public void editWorkspaceFile(
+    @Tool("Replace exact string in workspace file. Errors if 0 or >1 matches.")
+    public void eclipseEditFile(
             @P(description = "workspace-relative path", name = "filePath") String filePath,
             @P(description = "exact text to replace", name = "oldString") String oldString,
-            @P(name = "newString") String newString) {
+            @P(name = "newString", required = false) String newString) {
 
         ArgsUtil.requireNonBlank(filePath, "filePath");
         ArgsUtil.requireNonBlank(oldString, "oldString");
-        ArgsUtil.requireNonNull(newString, "newString");
+        if (newString == null) newString = "";
 
         var inFile = EclipseUtil.resolveInEclipse(filePath);
         if (inFile.isEmpty() || !(inFile.get() instanceof IFile eclipseFile)) {
@@ -74,15 +72,15 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         } else {
             String content = readFile(eclipseFile);
             String newContent = FileUtils.applyEdit(filePath, content, oldString, newString);
-            var result = writeEclipseFile(eclipseFile, newContent);
+            var result = writeFile(eclipseFile, newContent);
             var editResult = new AiFileUpdate(result.file(), oldString, newString);
             
             monitor.onFileUpdate(editResult);
         }
     }
 
-    @Tool("Eclipse: Write file to workspace. Creates parent dirs and overwrites if exists.")
-    public void writeWorkspaceFile(
+    @Tool("Write file to workspace. Creates parent dirs and overwrites if exists.")
+    public void eclipseWriteFile(
             @P(description = "workspace-relative path", name = "filePath") 
             String filePath,
             @P(name = "content") 
@@ -93,7 +91,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
 
         var inFile = EclipseUtil.resolveInEclipse(filePath);
         if (inFile.isPresent() && inFile.get() instanceof IFile eclipseFile) {
-            var result = writeEclipseFile(eclipseFile, content);
+            var result = writeFile(eclipseFile, content);
             monitor.onFileUpdate(result);
             onTool("Updated file " + JdtUtil.pathOf(eclipseFile));
             return;
@@ -128,8 +126,8 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         onTool("Created file " + JdtUtil.pathOf(file));
     }
 
-    @Tool("Eclipse: Insert text into a file at a specific position. Omit afterLine to append at end. 0 inserts before the first line (prepend). 1..n inserts after that line.")
-    public void insertWorkspaceLines(
+    @Tool("Insert text into a file at a specific position. Omit afterLine to append at end. 0 inserts before the first line (prepend). 1..n inserts after that line.")
+    public void eclipseInsertLines(
             @P(description = "workspace-relative path", name = "filePath") String filePath,
             @P(description = "1-based line to insert after; omit to append, 0 to prepend",
                name = "afterLine", required = false) Integer afterLine,
@@ -144,12 +142,12 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         }
         String content = readFile(eclipseFile);
         String newFullContent = FileLines.insertLines(content, afterLine, newContent);
-        var result = writeEclipseFile(eclipseFile, newFullContent);
+        var result = writeFile(eclipseFile, newFullContent);
         monitor.onFileUpdate(result);
     }
 
-    @Tool("Eclipse: Rename or move a workspace file or directory. Creates target parent folders.")
-    public void renameWorkspaceResource(
+    @Tool("Rename or move a workspace file or directory. Creates target parent folders.")
+    public void eclipseRenameResource(
             @P(description = "existing workspace-relative path", name = "sourcePath") String sourcePath,
             @P(description = "new workspace-relative path", name = "targetPath") String targetPath) {
 
@@ -183,8 +181,8 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         }
     }
 
-    @Tool("Eclipse: Delete workspace file or directory recursively.")
-    public void deleteWorkspaceResource(
+    @Tool("Delete workspace file or directory recursively.")
+    public void eclipseDeleteResource(
             @P(description = "workspace-relative path", name = "filePath") String filePath) {
 
         ArgsUtil.requireNonBlank(filePath, "filePath");
@@ -204,15 +202,9 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         }
     }
 
-    private AiFileUpdate writeEclipseFile(IFile file, String content) {
+    private AiFileUpdate writeFile(IFile file, String content) {
         var oldContent = readFile(file);
-        try {
-            var charset = Charset.forName(file.getCharset());
-            file.write(content.getBytes(charset), true, false, true, getProgressMonitor());
-            file.refreshLocal(IResource.DEPTH_ZERO, getProgressMonitor());
-        } catch (CoreException e) {
-            throw new RuntimeException("Failed to write " + JdtUtil.pathOf(file), e);
-        }
+        IoUtils.writeFile(file, content, getProgressMonitor());
         return new AiFileUpdate(JdtUtil.pathOf(file), oldContent, content);
     }
 

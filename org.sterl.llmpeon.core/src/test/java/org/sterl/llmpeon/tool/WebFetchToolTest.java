@@ -11,13 +11,13 @@ class WebFetchToolTest {
     @Test
     @Tag("integration")
     void test() throws Exception {
-        System.err.println(subject.fetchAsMarkdown("https://docs.oracle.com/en/java/javase/21/docs/api/index.html"));
+        System.err.println(subject.webFetchAsMarkdown("https://docs.oracle.com/en/java/javase/21/docs/api/index.html"));
     }
 
     @Test
     @Tag("integration")
     void testLoadSonar() throws Exception {
-        System.err.println(subject.fetchAsMarkdown("https://central.sonatype.com/artifact/dev.langchain4j/langchain4j"));
+        System.err.println(subject.webFetchAsMarkdown("https://central.sonatype.com/artifact/dev.langchain4j/langchain4j"));
     }
 
 }

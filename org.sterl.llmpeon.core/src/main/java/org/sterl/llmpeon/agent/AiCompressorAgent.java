@@ -6,6 +6,7 @@ import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
+import org.sterl.llmpeon.tool.model.ToSimpleMessage;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -47,7 +48,11 @@ public class AiCompressorAgent {
         if (chatModel.getConfig().getDevTemperature() < 1.0) request.temperature(0.2);
         if (modelName != null) request.modelName(chatModel.getConfig().getCompactModel());
 
-        return chatModel.callBlocking(request.build(), monitor);
+        monitor.onChatMessage(1, request);
+        var result = chatModel.callBlocking(request.build(), monitor);
+        ToSimpleMessage.INSTANCE.convert(result.aiMessage()).forEach(monitor::onChatResponse);
+        
+        return result;
     }
 
     String toText(ChatMessage msg) {

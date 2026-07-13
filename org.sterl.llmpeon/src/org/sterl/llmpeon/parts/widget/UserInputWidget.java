@@ -16,7 +16,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.sterl.llmpeon.parts.shared.ImageUtil;
 import org.sterl.llmpeon.parts.shared.SwtUtil;
-import org.sterl.llmpeon.shared.model.SimplePromptFile;
+import org.sterl.llmpeon.prompt.model.SimplePromptFile;
 
 /**
  * User input area: file chips bar (hidden until files attached), auto-resizing
@@ -275,7 +275,7 @@ public class UserInputWidget extends Composite {
     }
 
     private void applyCommandSelection(SimplePromptFile cmd) {
-        String replacement = "/" + cmd.name() + " ";
+        String replacement = "/" + cmd.getName() + " ";
         textInput.setText(replacement);
         textInput.setCaretOffset(replacement.length()); // cursor after the space
         textInput.setFocus();
