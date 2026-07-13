@@ -9,7 +9,7 @@ Peon AI supports speech-to-text via any Whisper-compatible transcription endpoin
 
 ## Setup
 
-Open **Window → Preferences → Peon AI → Voice Input**.
+Open **Window → Preferences → AI Peon → Peon Voice Configuration**.
 
 ![Voice Input preferences](../assets/voice-config.png)
 

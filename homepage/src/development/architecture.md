@@ -26,7 +26,8 @@ llm-peon/
 │   ├── llmpeon-target/             # Target platform (Eclipse 2025-12)
 │   ├── llmpeon-feature/           # Eclipse feature
 │   └── llmpeon-update-site/       # p2 repository
-└── doc/                           # Documentation
+├── docs/                          # Design docs / ADRs
+└── homepage/                      # VitePress user documentation (this site)
 ```
 
 ## Projects Overview

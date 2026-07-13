@@ -315,6 +315,44 @@ class PromptYmlParserTest extends AbstractMemoryFileTest {
         assertThat(Files.readString(file)).contains("body text");
     }
 
+    // -------------------------------------------------------------------------
+    // DOCUMENTED LIMITATION: trailing "# ..." comments in FRONTMATTER VALUES are
+    // NOT supported — they are kept literally as part of the value. See the
+    // "No # comments in the frontmatter" warning in homepage custom-agents.md.
+    // (The markdown body is never passed through stripYamlValue, so "#" headings
+    // in the body are always safe.)
+    // -------------------------------------------------------------------------
+
+    @Test
+    void stripYamlValue_keepsTrailingCommentLiterally() {
+        assertThat(PromptYmlParser.stripYamlValue("qwen3.6-27b   # my model"))
+                .isEqualTo("qwen3.6-27b   # my model");
+    }
+
+    @Test
+    void parseYml_frontmatterCommentKeptLiterally_bodyHashesUntouched() throws Exception {
+        // GIVEN a frontmatter value with a trailing "comment" and a "#" heading in the body
+        var file = tmp.resolve("AGENT.md");
+        Files.writeString(file, """
+                ---
+                name: docs
+                model: qwen3.6-27b   # optional override
+                ---
+                # Heading in body
+                text
+                """);
+
+        // WHEN
+        var prompt = PromptYmlParser.parseYml(file);
+
+        // THEN the frontmatter "comment" is NOT stripped (documented limitation)
+        assertThat(prompt.firstOrDefault("model", null)).isEqualTo("qwen3.6-27b   # optional override");
+        // AND the body keeps its markdown heading untouched
+        assertThat(prompt.getBody()).isEqualTo("""
+                # Heading in body
+                text""");
+    }
+
     @Test
     void setFrontmatterValue_prependsBlockWhenNone() throws Exception {
         // GIVEN

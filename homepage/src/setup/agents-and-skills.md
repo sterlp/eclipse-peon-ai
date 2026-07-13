@@ -10,8 +10,9 @@ Two ways to give Peon AI persistent context without repeating yourself every cha
 ## AGENTS.md
 
 Drop an `AGENTS.md` file into your Eclipse project root. As soon as you select any
-file in that project, Peon AI picks it up and injects the content into every prompt
-as a user context message.
+file in that project, Peon AI picks it up and injects the content as a **standing-order**
+context message — so it stays in effect across the conversation, even after the context is
+compacted.
 
 Use it for project-specific stuff:
 
@@ -45,12 +46,14 @@ Spring Boot REST API, Java 21.
 - API spec: [doc/api.md](doc/api.md)
 ```
 
-Both `AGENTS.md` and `agents.md` work.
+The first matching file in the project root is used, checked in this order:
+`AGENTS.md`, `Agents.md`, `agents.md`, `RULES.md`, `rules.md`, `AGENT.md`, `CLAUDE.md`, `claude.md`.
 
 ## Skills
 
 Skills are reusable instruction sets shared across all your projects.
-Configure the skills directory in **Window > Preferences > Peon AI**.
+They live in the `skill` subfolder of your config directory (default `~/.peon/skill`); set the
+base directory in **Window > Preferences > AI Peon > Peon Configuration** → *Config directory*.
 A separate Eclipse project works fine — just point the preference at the folder.
 
 Structure:

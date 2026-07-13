@@ -4,7 +4,7 @@ title: Advanced Configuration
 
 # Advanced Configuration
 
-The AI Peon plugin provides advanced configuration options accessible via **Window > Preferences > Peon AI > AI Peon Advanced**.
+The AI Peon plugin provides advanced configuration options accessible via **Window > Preferences > AI Peon > Peon Advanced Configuration**.
 
 ![AI Peon Advanced](../assets/ai-peon-advanced.png)
 
@@ -14,7 +14,7 @@ Different agents can use different models to optimize for cost, speed, or capabi
 
 | Agent | Purpose | Recommended Model Type |
 |-------|---------|----------------------|
-| **Dev (default)** | Creating task plans and strategies | Reasoning-capable models (e.g., `Sonnet`) |
+| **Dev (default)** | Implementing the plan / code generation | Reasoning-capable models (e.g., `Sonnet`) |
 | **Plan** | Creating task plans and strategies | Reasoning-capable models (e.g., `Opus`) |
 | **Search** | Finding relevant context and information | Fast, smaller models (e.g., `Haiku`) |
 | **Compact** | Conversation compression for context management | Fast, smaller models (e.g., `Haiku`) |

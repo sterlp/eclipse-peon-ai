@@ -1,30 +1,62 @@
 ---
 title: Agent Mode
-description: Let Peon AI plan and implement changes autonomously using your project files
+description: Let Peon AI plan a change, then hand it over for implementation
 ---
 
-# Agent Mode (v0.1.0)
+# Agent Mode
 
-Agent mode is a two-phase loop: the AI first writes a plan, then implements it — driven by a single chat message from you.
+Agent mode is a **plan → implement** workflow built from two cooperating built-in agents:
+
+- **Peon-Plan** — a read-only planner. It explores the project and writes a structured plan to
+  `peon-plan/overview.md`. Edit tools are filtered out, so it can never change your code.
+- **Peon-Dev** — the implementer. It reads the plan and makes the actual changes.
 
 ## How it works
 
 1. Select a project in Eclipse so Peon AI knows where to read and write files.
-2. Switch the mode combo to **Peon-Agent**.
-3. Describe what you want done and hit **Send** — the AI creates `peon-plan/overview.md` in your project.
-4. Review the plan. If it looks good, tick **Auto** and send your last message to kick off implementation.
+2. Pick **Peon-Plan** from the agent dropdown.
+3. Describe what you want done and hit **Send** — the planner explores the project and calls its
+   `planSave` tool to write `peon-plan/overview.md`.
+4. Review the plan. When it looks good, click the **Handoff → Peon-Dev** button next to the
+   input. Control transfers to Peon-Dev, seeded with the saved plan.
+5. Peon-Dev implements the plan. When finished it can archive the plan with `planImplemented`
+   (moves it to `peon-plan/overview-done-<timestamp>.md`).
 
-The planner writes `peon-plan/overview.md`. The developer agent picks it up and starts making changes. That's the whole loop.
+The handoff passes the saved `peon-plan/overview.md` if one exists, otherwise the planner's last
+message — prefixed with `Handover from Peon-Plan`.
 
-## Auto checkbox
+## The handoff button
 
-**Tick it only when you send your final message** — that's the trigger. Once checked and the message is sent, the developer agent starts immediately after the plan is saved. If you're not ready, leave it unchecked; you can always start implementation manually with **Start Impl.** after reviewing `peon-plan/overview.md`.
+Any agent whose configuration declares a handover target shows a **Handoff → [agent]** button.
+For Peon-Plan the target is hard-wired to Peon-Dev; [custom agents](./custom-agents.md) set it
+with the `handover:` frontmatter field, which lets you chain your own workflows
+(e.g. plan → dev → review).
+
+## Plan tools
+
+The plan lives in `peon-plan/overview.md` in the project root and is managed by dedicated tools
+(available to any agent that allowlists them):
+
+| Tool | Purpose |
+|------|---------|
+| `planRead` | Read the current plan, if one exists. |
+| `planSave` | Write/overwrite the final plan. |
+| `planUpdate` | Apply a targeted edit to the plan. |
+| `planImplemented` | Archive the plan with a timestamp once fully implemented. |
 
 ## Pin
 
-Use the pin button in the status line to lock the active project. Handy when you're navigating between files while the agent is working — the project binding won't follow your clicks.
+Use the pin button in the status line to lock the active project. Handy when you navigate
+between files while the agent works — the project binding won't follow your clicks.
 
-## Limitations (v0.1.0)
+## Autonomous mode (planned / WIP)
+
+Today the handoff is a manual button click. A **generic autonomous handoff** is planned: any
+agent (built-in or custom) will be able to signal completion through a tool call, and the run
+continues automatically to its handover target without you pressing the button. This replaces the
+older, hard-wired plan→dev orchestration.
+
+## Limitations
 
 - One project at a time.
 - The plan file is always `peon-plan/overview.md` in the project root.

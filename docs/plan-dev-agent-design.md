@@ -4,22 +4,34 @@
 
 ### Overview
 
-The plan/dev agent system uses a **two-phase, user-controlled workflow** with optional manual handoff.
+The plan/dev agent system uses a **two-phase, user-controlled workflow** driven by a generic
+handoff mechanism (`AiAgent.handoverTo()`), currently triggered by a manual button.
 
 ```mermaid
 graph LR
     A[User] -->|send| B(AiPlanAgent)
-    B -->|saves plan.md| C{handoff button}
-    C -->|click "Give Peon-Dev"| D(AiDevAgent)
+    B -->|planSave → peon-plan/overview.md| C{Handoff button}
+    C -->|click "Handoff → Peon-Dev"| D(AiDevAgent)
 ```
 
 ### Flow
 
-1. **Planning phase**: `AiPlanAgent` reads the project context and produces a structured plan in memory or saved to `plan.md`. Temperature: 0.3.
-2. **Handoff decision**:
-   - **Manual mode (default)**: A "Give Peon-Dev" button appears when the planning agent's work is complete. User clicks it → control transfers with context (last AI message + plan if saved).
-   - **Autonomous mode (checkbox in UI, currently disabled)**: If enabled, handoff happens automatically after plan save.
-3. **Implementation phase**: `AiDevAgent` receives the plan and implements it.
+1. **Planning phase**: `AiPlanAgent` (name `Peon-Plan`, read-only — edit tools filtered out) reads
+   the project context and calls `planSave` to write `peon-plan/overview.md`.
+2. **Handoff decision** — governed by `AiAgent.handoverTo()`:
+   - **Manual mode (current)**: the action bar shows a **Handoff → Peon-Dev** button
+     (`ActionsBarWidget`, wired to `PeonAiService.onHandoff()`). Clicking it clears the target
+     agent and seeds it with the saved `peon-plan/overview.md` (or the planner's last AI message
+     if no plan file exists), prefixed with `Handover from Peon-Plan`.
+   - **Autonomous mode (WIP)**: not wired yet (`AIChatView`: `autonomous = false // TODO`). The
+     target is a *generic* handoff for every agent: the agent signals completion via a tool call
+     and the run continues automatically to `handoverTo()`. This will replace the legacy
+     `AgentModeService` orchestrator, which is slated for removal.
+3. **Implementation phase**: `AiDevAgent` (name `Peon-Dev`) receives the plan and implements it;
+   `planImplemented` archives the plan to `peon-plan/overview-done-<timestamp>.md`.
+
+> The plan is managed by `PlanTool` (`planRead`, `planSave`, `planUpdate`, `planImplemented`),
+> registered globally in `ToolService` — not gated behind a separate "Agent mode" anymore.
 
 ### Key Components
 
@@ -38,15 +50,14 @@ graph LR
 }
 ```
 
-**When a plan exists**: Dev agent receives the saved `plan.md` content as context.
+**When a plan exists**: Dev agent receives the saved `peon-plan/overview.md` content as context.
 **When no plan**: Only the last AI message from planning phase is transferred (intentional — avoids bloating dev context with full conversation history).
 
 ### Temperature Settings
 
-| Agent | Temperature |
-|-------|-------------|
-| AiPlanAgent | 0.3 — deterministic for reliable structuring |
-| AiDevAgent | Configurable via `temperature:` frontmatter; defaults to global setting |
+Both built-in agents currently read `LlmConfig.devTemperature` (see `AiPlanAgent.getTemperature()`
+and `AiDevAgent.getTemperature()`). Custom agents can override it per-agent via the
+`temperature:` frontmatter field.
 
 ---
 

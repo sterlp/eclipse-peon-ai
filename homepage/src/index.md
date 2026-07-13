@@ -44,7 +44,7 @@ Install directly from Eclipse:
 
 ## Configuration
 
-After installation, configure the plugin via **Window > Preferences > Peon AI**:
+After installation, configure the plugin via **Window > Preferences > AI Peon > Peon Configuration**:
 
 1. **Provider**: Select your LLM provider (Ollama, OpenAI, Anthropic, etc.)
 2. **Model**: Enter the model name (e.g., `qwen3-coder`, `qwen3.6-27b` for Ollama)
@@ -63,13 +63,13 @@ After installation, configure the plugin via **Window > Preferences > Peon AI**:
 
 The AI assistant has access to several tools:
 
-- **Read File**: Read contents of any file in your workspace
-- **Write File**: Create or modify files
-- **Search Files**: Search for text across your project
-- **Read Selected File**: Quick access to the currently selected file
-- **Update Selected File**: Modify the currently selected file
+- **Read / Write Files**: Read and modify files in your Eclipse workspace
+- **Search & Grep**: Search for files and text across your project
+- **Code Navigation**: Find Java types, references and implementations
 - **Build Project**: Trigger Eclipse builds and report errors/warnings
 - **Run Tests**: Execute JUnit tests and report failures with stack traces
+- **Plan**: Save and track an implementation plan (`peon-plan/overview.md`)
+- **Skills & Memory**: Load reusable skills and persist notes across sessions
 - **MCP**: Connect to MCP servers for extended tooling (e.g., web search, codebase indexing)
 
 ### Example Workflows

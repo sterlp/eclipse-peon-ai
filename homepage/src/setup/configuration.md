@@ -5,7 +5,7 @@ description: Configure Eclipse Peon AI
 
 # Configuration
 
-After installation, configure the plugin via **Window > Preferences > Peon AI**.
+After installation, configure the plugin via **Window > Preferences > AI Peon > Peon Configuration**.
 
 ![Peon AI Config](../assets/mcp-config.png)
 
@@ -145,12 +145,14 @@ Access Claude Sonnet, Claude Opus, Claude Haiku, GPT-5, and more as a [GitHub Co
 
 ### Token Window
 
-The **Token Window** setting controls how many tokens of conversation history are sent to the AI model with each request. This is configured in the preference page as an integer field and stored in `LlmConfig.tokenWindow`.
+The **Token Window** setting controls how many tokens of conversation history are sent to the AI model with each request. In the preferences it is the **Auto compact after:** integer field, and it is stored in `LlmConfig.autoCompactAfter`.
 
 | Setting | Value |
 |---------|-------|
+| UI Label | `Auto compact after:` |
 | Preference Key | `llm.tokenWindow` (`PREF_TOKEN_WINDOW`) |
-| Default Value | `80.000` tokens |
+| Config Field | `LlmConfig.autoCompactAfter` |
+| Default Value | `80000` tokens |
 | Type | Integer |
 | Editor Component | `IntegerFieldEditor` in `AiConfigPreferenceView` |
 

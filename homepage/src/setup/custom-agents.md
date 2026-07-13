@@ -5,25 +5,25 @@ description: Define your own agents with a system prompt and a tool allowlist
 
 # Custom Agents (since v2.0.0)
 
-Next to the three built-in modes (**Peon-Plan**, **Peon-Dev**, **Peon-Agent**) you can define
+Next to the two built-in agents (**Peon-Plan**, **Peon-Dev**) you can define
 your own agents. Each agent has its own system prompt and its own set of allowed tools, and it
 shows up in the same agent dropdown right next to the built-ins.
 
 ## Where they live
 
-Each agent is a directory with an `AGENT.md` file. The default location is `~/.peon/agents`
-(the `~/.claude/agents` folder is also picked up for Claude compatibility). You can change the
-directory in **Window > Preferences > Peon AI > Agents directory**.
+Each agent is a directory with an `AGENT.md` file, living in the `agent` subfolder of your
+config directory (default `~/.peon/agent`). Change the base directory via
+**Window > Preferences > AI Peon > Peon Configuration** → *Config directory*.
 
 ```
-~/.peon/agents/
+~/.peon/agent/
 ├── sap-coder/
 │   └── AGENT.md
 └── reviewer/
     └── AGENT.md
 ```
 
-The directory name is the default agent name.
+The directory name is the default agent name (overridable with the `name:` frontmatter field).
 
 ## The AGENT.md file
 
@@ -34,72 +34,89 @@ system prompt:
 ---
 name: Docs-Assistant
 description: Answers only from the retrieved documents
-readOnly: true
-model: qwen3.6-27b        # optional — overrides the selected model for this agent
+read-only: true
+model: qwen3.6-27b
 tools:
-  - grep
-  - read_
+  - eclipseReadFile
+  - eclipseGrepFiles
   - mcp__docs__search
 ---
 You are the Docs-Assistant. Your only source of knowledge are the documents you find
 with your tools. Never answer from prior knowledge.
 ```
 
+::: warning No `#` comments in the frontmatter
+The frontmatter parser does **not** strip trailing `# ...` comments. A line like
+`model: qwen3.6-27b   # my model` is read as the literal value `qwen3.6-27b   # my model`
+and breaks. Keep frontmatter values comment-free.
+:::
+
 | Field | Meaning |
 |-------|---------|
 | `name` | Display name in the dropdown. Defaults to the directory name. |
 | `description` | Short summary. |
-| `readOnly` | `true` = only non-editing tools are offered (no file writes, no shell). Hyphenated form: `read-only`. |
-| `include-default` | `false` = use only this agent's prompt (no built-in system prompt). Default: `true`. |
+| `read-only` | `true` = only non-editing tools are offered (no file writes, no shell). `readOnly` is also accepted. Default: `false`. |
+| `include-default` | `true` = prepend the shared built-in system prompt to this agent's body. Default: `false` (body only). |
 | `temperature` | Override temperature for this agent. Float 0.0–2.0. |
-| `handover` | Agent name to hand off to after work is done. Shows "Give [name]" button when set. Enables workflow chains (e.g., plan → dev → review). |
+| `handover` | Agent name to hand off to after work is done. Shows a **Handoff → [name]** button when set. Enables workflow chains (e.g. plan → dev → review). |
 | `model` | Optional model override. Changing the model in the UI while this agent is active writes it back here. |
-| `tools` | Allowlist of tool-name prefixes. **Leave it out to allow all tools.** |
+| `tools` | Allowlist of tool-name prefixes. **Omit it and the agent gets _no_ tools** — use `- '*'` to allow all. |
 
 ## Workflow Handoff
 
-A custom agent with `handover:` shows a **Give [Agent Name]** button in the status bar once its work is complete. Clicking it transfers control to another agent, passing the last AI message or saved plan as context.
+A custom agent with a `handover:` value shows a **Handoff → [Agent Name]** button next to the
+input. Once the agent's work is done you click it and control transfers to the named agent. As
+context it passes the saved plan (`peon-plan/overview.md`) if one exists, otherwise the agent's
+last AI message — prefixed with `Handover from [previous agent]`.
 
 This enables multi-agent workflows without autonomous mode — for example:
 ```
-planner/AGENT.md  →  handover: peon-dev
-dev-reviewer/AGENT.md  →  handover: planner   # cycle back if needed
+planner/AGENT.md      →  handover: Peon-Dev
+dev-reviewer/AGENT.md →  handover: planner
 ```
 
-The receiving agent picks up where the previous one left off with minimal context transfer.
+The receiving agent starts a fresh conversation seeded with that handover message, so it picks
+up where the previous one left off with minimal context transfer.
+
+::: tip Same mechanism as the built-ins
+The built-in **Peon-Plan** agent uses exactly this: it hands over to **Peon-Dev**. A generic
+autonomous variant (the agent signals completion via a tool call and the run continues on its
+own) is planned — see [Agent Mode](./agent-mode.md).
+:::
 
 ## Tool allowlist
 
-- `*` — allow every tool.
-- a **prefix** — `document_` enables `document_read`, `document_write`, …; a full name enables
-  exactly that tool. Works for built-in **and** MCP tools (e.g. `mcp__docs__search`).
-- **field omitted** — all tools allowed (still limited by `readOnly`).
-- empty list — no tools.
+`tools` is an allowlist of tool-name **prefixes**:
 
-Inline form works too: `tools: grep, read_`.
+- `'*'` — allow every tool.
+- a **prefix** — `eclipseRead` enables `eclipseReadFile`, `eclipseReadProjectProblems`, …; a full
+  name enables exactly that tool. Works for built-in **and** MCP tools (e.g. `mcp__docs__search`).
+- **field omitted** — **no tools** (use `- '*'` if you want all of them).
 
-`readOnly` and `tools` combine: a read-only agent with `tools: [grep, write_file]` still won't
-get `write_file` because it edits. For MCP tools, restrict writes by only allowlisting the
-read-only tool names.
+Use the YAML block-list form (one `- entry` per line), as in the example above.
+
+`read-only` and `tools` combine: a read-only agent that allowlists a write tool still won't get
+it, because editing tools are filtered out first. For MCP tools, restrict writes by only
+allowlisting the read-only tool names.
 
 ## Selecting an agent
 
 Pick your agent from the dropdown below the input, just like Peon-Dev or Peon-Plan. Each agent
 keeps its own conversation. Edits to an `AGENT.md` are picked up on the next config refresh.
 
-## Built-in Tool Names Reference
+## Finding the exact tool names
 
-Use these names in your tool allowlist. Prefix matching works — `disk_` enables all disk tools:
+The authoritative, always-up-to-date list (including connected MCP tools) is behind the **🔨
+button** at the top-right of the chat view — it shows every registered tool and whether it is
+active for the selected agent.
 
-| Tool Class | Method Name (allowlist prefix) | Category |
-|------------|-------------------------------|----------|
-| DiskFileReadTool | `diskReadFile`, `diskSearchFiles`, `diskListDirectory` | Read |
-| DiskGrepTool | `diskGrepFiles` | Search |
-| DiskFileWriteTool | `diskWriteFile`, `diskDeleteFile`, `diskReplaceLines`, `diskEditFile`, `diskRenameResource`, `diskInsertLines` | Write |
-| WebFetchTool | `webFetchAsMarkdown` | External |
-| ShellTool | `shellRunCommand`, `readOperationSystemInformation` | System |
-| SearchAgentTool | `searchAgent` | Agent |
-| CompactSessionTool | `compactSession` | Context |
-| SkillTool | `skillRead`, `skillList`, `skillReadFile` | Skills |
+Common built-in prefixes:
 
-For MCP tools, the prefix is `mcp__` (e.g. `mcp__docs__search`).
+| Prefix | Tools |
+|--------|-------|
+| `eclipse` | Workspace file read/write/search/navigation, build, tests, console, project problems — the default toolset. E.g. `eclipseReadFile`, `eclipseWriteFile`, `eclipseGrepFiles`, `eclipseSearchFiles`, `eclipseBuildProject`, `eclipseRunTests`, `eclipseReadProjectProblems`, `eclipseFindReferences`. |
+| `skill` | `skillList`, `skillRead`, `skillReadFile` |
+| `memory` | `memoryAdd`, `memoryReplace`, `memoryRemove` |
+| `plan` | `planRead`, `planSave`, `planUpdate`, `planImplemented` |
+| `disk` | Optional file/grep tools that bypass the Eclipse workspace — only registered when **Enable disk tools** is on (see [Advanced Configuration](./advanced-configuration.md)). E.g. `diskReadFile`, `diskGrepFiles`, `diskWriteFile`. |
+| `mcp__` | Every tool from a connected MCP server, e.g. `mcp__docs__search`. |

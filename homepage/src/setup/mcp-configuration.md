@@ -4,7 +4,7 @@ MCP (Model Context Protocol) lets Peon AI connect to external tool servers — f
 
 ## Setup
 
-Open **Window → Preferences → Peon AI → MCP Servers**.
+Open **Window → Preferences → AI Peon → Peon MCP Configuration**.
 
 ![Peon AI MCP Config](../assets/mcp-config.png)
 

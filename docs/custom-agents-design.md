@@ -2,11 +2,14 @@
 
 ## Overview
 
-Beyond the three built-in modes (`PeonMode` PLAN/DEV/AGENT) users can define their own agents.
-Each agent is a directory with an `AGENT.md` (frontmatter + markdown body) under a configured
-directory (default `~/.peon/agents`, with `~/.claude/agents` supported for Claude compatibility).
-Ported from the ai-schulung project; reuses Peon's existing discovery, prompt-parser and
-read-only-tool building blocks and adds prefix/wildcard tool filtering.
+Beyond the two built-in agents (`AiPlanAgent` = **Peon-Plan**, `AiDevAgent` = **Peon-Dev**) users
+can define their own agents. Each agent is a directory with an `AGENT.md` (frontmatter + markdown
+body) under the `agent` subfolder of the config directory (default `~/.peon/agent`). Ported from
+the ai-schulung project; reuses Peon's discovery, prompt-parser and read-only-tool building blocks
+and adds prefix/wildcard tool filtering.
+
+A custom agent (`CustomAgent`) and the built-ins share one `AgentService` and one dropdown, so they
+are interchangeable at the call site (`AiAgent` interface).
 
 ## AGENT.md format
 
@@ -14,76 +17,89 @@ read-only-tool building blocks and adds prefix/wildcard tool filtering.
 ---
 name: Docs-Assistant          # optional, defaults to directory name
 description: ...              # optional
-readOnly: true               # optional, default false (also accepts read-only)
-include-default: true        # optional; false = no built-in system prompt
+read-only: true              # optional, default false (also accepts readOnly)
+include-default: false       # optional, default false; true = prepend the shared default prompt
 temperature: 0.8             # optional; override for this agent only
-handover: some-agent         # optional; shows "Give [agent]" button after work done
+handover: Peon-Dev           # optional; shows "Handoff → [agent]" button after work done
 model: qwen3.6-27b           # optional model override
-tools:                       # optional; absent = all tools
-  - grep
-  - read_
+tools:                       # optional; ABSENT = no tools, use '*' for all
+  - eclipseReadFile
+  - eclipseGrepFiles
   - mcp__docs__search
 ---
-<markdown body = system prompt, appended to the shared default prompt>
+<markdown body = system prompt>
 ```
 
-- `tools` accepts a YAML block list or inline CSV (`tools: grep, read_`).
-- Absent `tools` ⇒ `null` ⇒ **all** tools; empty list ⇒ nothing.
-- Keys are lower-cased during parse. Hyphen variants accepted: `read-only` (canonical) and `readonly` resolve to the same key via fallback in `PromptYmlParser.getValue()`.
+- System prompt = the markdown body **only**, unless `include-default: true`, which prepends the
+  shared default prompt (`PromptLoader.withDefault(body)`). See `CustomAgent.getSystemPrompt()`.
+- `tools` is parsed as a YAML **block list** (one `- entry` per line). Absent `tools` ⇒ `null` ⇒
+  **no** tools (`ToolPolicy.enables(null, …)` returns `false`); use `- '*'` to allow all.
+- Keys are lower-cased during parse. Hyphen variants resolve to the same key via the fallback in
+  `PromptYmlParser.getValue()` (`read-only`, `readonly`, `readOnly` all work).
 
 ## Components (core module)
 
-- `prompt/model/SimplePromptFile` — base class for AGENT.md parsing; keys lowercased during parse.
-- `agent/CustomAgent` extends `AbstractAgent` — direct implementation (no separate service wrapper).
-- `agent/AgentService` — mirrors `SkillService`: scans the directory for subfolders containing
-  `AGENT.md`, keyed by lower-case name. Returns `CustomAgent` instances. Reloaded on config change.
-- `tool/ToolPolicy.enables(allowlist, name)` — `*` / prefix / exact match. Empty/null ⇒ false.
-- `shared/PromptYmlParser` — extended: `parseFrontmatter` now returns `Map<String,List<String>>`
-  with block-list + inline-CSV support; new `setFrontmatterValue(path, key, value)` writer;
-  `toolAllowlist` / `firstOrDefault` helpers. (`parseAgent` lives in `AgentPromptFile` to keep
-  `shared` free of an `agent` dependency.)
-- `CustomAgentService` — extends `AbstractChatService`:
-  - system prompt = `PromptLoader.withDefault(agentFile.readBody())`.
-  - `getToolFilter()` = allowlist match **and** (`!readOnly || !isEditTool`) for built-in tools.
-  - `getToolNameFilter()` = allowlist match for MCP tools.
-  - `getAgentModelName()` = `agentFile.model` or the configured model.
-  - `setModelName()` pins the model onto the agent snapshot (not the shared config).
+- `prompt/model/SimplePromptFile` — parsed `AGENT.md`: `frontmatter` (`Map<String,List<String>>`) +
+  `body`. Accessors `firstOrDefault`, `get`, `isTrue`; writers `setValue`/`set` + `save()` re-render
+  the file (used to persist a model change back into the frontmatter).
+- `prompt/PromptYmlParser` — reads the leading `---` frontmatter (block list + scalar), lower-cases
+  keys, derives `name` from the directory when absent. `toolAllowlist(...)` splits inline CSV, but it
+  is a standalone helper (**not** wired into `CustomAgent.getTools()`).
+- `agent/AiAgent` — common interface for built-ins and custom agents (`getTools()`, `isReadOnly()`,
+  `handoverTo()`, `getAgentModelName()`/`setAgentModelName()`, `allowed(name)`).
+- `agent/AbstractAgent` — shared call loop, memory, static-context handling, KV-cache-safe filters.
+- `agent/CustomAgent extends AbstractAgent` — backed by a replaceable `SimplePromptFile` snapshot.
+- `AgentService` (in `org.sterl.llmpeon`) — mirrors `SkillService`: scans the directory for
+  subfolders containing `AGENT.md`, keyed by name; also holds the built-in `AiPlanAgent`/`AiDevAgent`
+  when constructed `withDefaultAgent`. Tracks the `activeAgent`. Reloaded on config change.
+- `tool/ToolPolicy.enables(allowlist, name)` — `*` / prefix / exact match. Empty/null ⇒ `false`.
 
 ## Tool filtering
 
-The tool loop already filtered built-in tools by `Predicate<SmartToolExecutor>`. MCP tool specs
-were appended wholesale. Added `ToolLoopRequest.toolNameFilter` (`Predicate<String>`, default all)
-applied to MCP specs in `ToolService.toolSpecifications`, wired from
-`AbstractChatService.getToolNameFilter()`. This lets a custom agent's allowlist govern MCP tools
-too. `readOnly` cannot see inside MCP tools, so read-only-ness for MCP is expressed by allowlisting
-only the read tool names.
+Built-in tools are filtered by `Predicate<SmartToolExecutor>` (`getToolFilter()`); MCP tool specs are
+filtered by `Predicate<String>` (`getToolNameFilter()`, wired into `ToolLoopRequest.toolNameFilter`
+and applied to MCP specs in `ToolService`). `CustomAgent` implements both from its allowlist:
 
-Filters stay constant within a tool loop (the `AgentPromptFile` snapshot is only swapped on config
-refresh) to preserve the KV cache.
+- `getToolFilter()` = allowlist match **and** (`!isReadOnly() || !isEditTool()`).
+- `getToolNameFilter()` = allowlist match.
+
+`read-only` cannot see inside MCP tools, so read-only-ness for MCP is expressed by allowlisting only
+the read tool names. Filters stay constant within a tool loop (the `SimplePromptFile` snapshot is only
+swapped on config refresh) to preserve the KV cache.
 
 ## UI & wiring
 
-- `ActionsBarWidget` builds the agent combo from `PeonMode` labels **plus** custom-agent names.
-  Selecting index `< PeonMode.values().length` fires the mode callback; higher indices fire a new
-  `Consumer<AgentPromptFile>` callback. `setCustomAgents(...)` rebuilds the combo preserving the
-  selection.
-- `PeonAiService` holds a per-agent `CustomAgentService` cache (own memory each) and a
-  `volatile activeCustomAgent`. `getActiveService()` returns it when set; `setPeonMode` clears it;
-  `setActiveCustomAgent(name)` selects it. `updateConfig` refreshes definitions and syncs cached
-  snapshots (dropping removed agents).
-- `setModel` branches: built-in ⇒ per-mode preference; custom agent ⇒ `AgentPromptFile.model` +
-  write `model:` back to the `AGENT.md` via `PromptYmlParser.setFrontmatterValue`.
+- `ActionsBarWidget` builds one agent combo from `AgentService.getAgents()` (built-ins + custom).
+  Selecting an agent fires `Consumer<AiAgent>`; the **Handoff → [agent]** button appears when the
+  selected agent's `handoverTo()` is non-null.
+- `PeonAiService.setActiveAgent(...)` switches the active agent and preloads the saved plan if one
+  exists (`preloadPlanIfNeeded()`). `getToolStatus()` powers the 🔨 tool popup (active tools per agent).
+- `setModel` branches: a built-in saves to its per-agent preference; a custom agent writes `model:`
+  back into its `AGENT.md` via `SimplePromptFile.save()`.
 
 ## Config
 
-- Preference `llm.agentDirectory`, `LlmConfig.agentDirectory`, default resolved by
-  `LlmPreferenceInitializer.resolveDefaultDir("agents")` (native `~/.peon`, Claude-compat
-  `~/.claude`). The `.aipeon` legacy name was retired in favour of `.peon`.
-- Directory editable in the Peon AI preferences page.
+- Single **Config directory** preference (`PREF_CONFIG_DIRECTORY` = `llm.configDirectory`), default
+  `~/.peon` (`LlmPreferenceInitializer.PEON_HOME`). Skills, commands and agents live in the
+  `skill` / `command` / `agent` subfolders (`LlmConfig.SKILL_DIRECTORY` / `COMMAND_DIRECTORY` /
+  `AGENT_DIRECTORY`, all singular).
+- Editable on the **AI Peon > Peon Configuration** preferences page.
+
+## Known gaps (code cleanup, not yet fixed)
+
+- Absent `tools` yields **no** tools, but the `CustomAgent` Javadoc and the `AgentServiceTest`
+  case name `absentToolsMeansAllTools` say "all" — the test only asserts `getTools() == null`, not
+  activation. Documented behaviour: absent = none.
+- Inline-CSV `tools: a, b` is **not** split by `CustomAgent.getTools()` (only the standalone
+  `PromptYmlParser.toolAllowlist` splits it), so only the block-list form works for agents.
+- `PromptYmlParser.stripYamlValue` does not strip trailing `# ...` comments, so a comment on a
+  frontmatter line becomes part of the value. **By design / documented limitation** — comments in
+  frontmatter values are unsupported (see the warning in `custom-agents.md`). The markdown body is
+  never passed through `stripYamlValue`, so `#` headings in the body are unaffected. Locked in by
+  `PromptYmlParserTest#stripYamlValue_keepsTrailingCommentLiterally`.
 
 ## Model dropdown (related fixes)
 
-- **B1** — model list empty/failed: show the agent's configured model instead of an empty combo
-  (`AIChatView.showConfiguredModelFallback`).
+- **B1** — model list empty/failed: show the agent's configured model instead of an empty combo.
 - **B2** — configured model not in the fetched list: adopt the first list entry.
 - **B3** — model change persisted for the active agent (per-mode pref, or the custom agent's YAML).
