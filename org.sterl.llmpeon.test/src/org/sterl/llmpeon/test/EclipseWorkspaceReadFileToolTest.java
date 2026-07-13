@@ -169,7 +169,7 @@ public class EclipseWorkspaceReadFileToolTest extends AbstractTest {
         service.addTool(new EclipseWorkspaceReadFileTool());
 
         var tr = ToolExecutionRequest.builder().arguments("")
-            .name("readWorkspaceFile")
+            .name("eclipseReadFile")
             .arguments("{\"filePath\": \"" + this.getClass().getName().replace(".", "/") + ".java\"}")
             .build();
         

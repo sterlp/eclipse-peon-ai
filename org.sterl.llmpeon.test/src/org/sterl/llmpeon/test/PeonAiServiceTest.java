@@ -13,6 +13,7 @@ import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.parts.PeonAiService;
+import org.sterl.llmpeon.parts.tools.PlanTool;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
@@ -151,6 +152,31 @@ public class PeonAiServiceTest extends AbstractTest {
         // THEN
         assertEquals(4000, aiService.getConfig().getAutoCompactAfter());
         assertEquals(4000, aiService.getConfig().getAutoCompactAfter());
+    }
+
+    @Test
+    public void test_plan_handling() {
+        // GIVEN
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        aiService.setProject(project);
+        aiService.getAgent(AiDevAgent.NAME).get().getMemory().add(UserMessage.from("FOO BAR"));
+        aiService.setActiveAgent(AiPlanAgent.NAME);
+        aiService.getToolService().getTool(PlanTool.class).get().planSave("Das ist ein toller plan!");
+        
+        // WHEN
+        boolean handOff = aiService.onHandoff();
+        
+        // THEN
+        assertTrue("We have a plan - handoff should work.", handOff);
+        // AND
+        assertEquals(AiDevAgent.NAME, aiService.getActiveAgent().getName());
+        // AND
+        assertContains(aiService.getActiveAgent().getMemory().getLastOf(UserMessage.class).singleText(),
+                "Das ist ein toller plan!");
+        assertContains(aiService.getActiveAgent().getMemory().getLastOf(UserMessage.class).singleText(),
+                "Handover");
+        assertContains(aiService.getActiveAgent().getMemory().getLastOf(UserMessage.class).singleText(),
+                AiPlanAgent.NAME);
     }
     
     // TODO add tests concerning the message build -- check if it was properly constructed.

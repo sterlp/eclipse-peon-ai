@@ -2,6 +2,7 @@ package org.sterl.llmpeon.parts;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -323,6 +324,18 @@ public class PeonAiService {
     public void withThinking(Boolean enabled) {
         if (enabled == null) enabled = Boolean.FALSE;
         configuredModel.withThinking(enabled);
+    }
+    
+    public Optional<AiAgent> getAgent(String agent) {
+        return this.agentService.get(agent);
+    }
+    
+    public boolean setActiveAgent(String agent) {
+        var a = this.agentService.get(agent);
+        if (a.isPresent()) {
+            setActiveAgent(a.get());
+        }
+        return a.isPresent();
     }
 
     public void setActiveAgent(AiAgent agent) {
