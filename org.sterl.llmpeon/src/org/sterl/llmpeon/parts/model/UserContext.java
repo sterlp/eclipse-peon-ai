@@ -27,7 +27,7 @@ public class UserContext implements MessageProvider {
         
         var sb = new StringBuilder();
         if (currentProject != null) {
-            sb.append("Select in Eclipse:\n");
+            sb.append("Select project:" + System.lineSeparator());
             sb.append(EclipseUtil.projectInfo(currentProject));
         }
         addUserSelection(sb);
@@ -41,7 +41,9 @@ public class UserContext implements MessageProvider {
                 if (clazz != null) sb.append("\n").append(getSelectedFile());
                 else sb.append("\nselected content not in a file.");
             } else {
-                sb.append("\n").append(JdtUtil.pathOf(selectedResource)).append(" full content. Selected lines ").append(lines(textSelection)).append(":\n");
+                sb.append(System.lineSeparator()).append(JdtUtil.pathOf(selectedResource)).append(" full content. Selected lines ")
+                  .append(lines(textSelection))
+                  .append(":").append(System.lineSeparator());
                 try {
                     sb.append(((IFile)selectedResource).readString());
                 } catch (CoreException e) {
@@ -49,9 +51,9 @@ public class UserContext implements MessageProvider {
                 }
             }
         } else if (selectedResource != null) {
-            sb.append("\nFile selected: ").append(JdtUtil.pathOf(selectedResource));
+            sb.append(System.lineSeparator()).append("File selected: ").append(JdtUtil.pathOf(selectedResource));
         } else if (clazz != null) {
-            sb.append("\nJava type selected: ").append(getName(clazz));
+            sb.append(System.lineSeparator()).append("Java type selected: ").append(getName(clazz));
         }
     }
     

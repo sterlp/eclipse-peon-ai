@@ -73,10 +73,31 @@ public class EclipseBuildTool extends AbstractEclipseTool {
             onTool("Building " + projectName);
             projectRef.deleteMarkers(IMarker.PROBLEM, true, IResource.DEPTH_INFINITE);
             projectRef.refreshLocal(IResource.DEPTH_INFINITE, getProgressMonitor());
+            // CLEAN
             projectRef.build(IncrementalProjectBuilder.CLEAN_BUILD, getProgressMonitor());
+            // BUILD
             projectRef.build(IncrementalProjectBuilder.FULL_BUILD, getProgressMonitor());
 
             return readProblems(projectRef);
+        } catch (CoreException e) {
+            throw new RuntimeException("Filed to build " + projectRef.getName(), e);
+        }
+    }
+    
+    @Tool("Refresh/sync a project with the disk status - if changes have been made outside eclipse e.g. with disk tools.")
+    public String eclipseRefreshProject(@P(name ="projectName") String projectName) {
+        ArgsUtil.requireNonBlank(projectName, "projectName");
+
+        var project = EclipseUtil.findOpenProject(projectName);
+        if (project.isEmpty()) {
+            onProblem("Cannot build unknown project " + projectName);
+            return projectName + " not found. " + eclipseListAllOpenProjects();
+        }
+        IProject projectRef = project.get();
+        try {
+            onTool("Refresh " + projectName);
+            projectRef.refreshLocal(IResource.DEPTH_INFINITE, getProgressMonitor());
+            return "Success";
         } catch (CoreException e) {
             throw new RuntimeException("Filed to build " + projectRef.getName(), e);
         }
