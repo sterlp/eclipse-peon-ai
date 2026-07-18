@@ -71,6 +71,11 @@ public interface AiAgent {
     default boolean isReadOnly() {
         return false;
     }
+
+    /** @return whether thinking is enabled for this agent (drives the chat brain toggle state). */
+    default boolean isThinkEnabled() {
+        return false;
+    }
     
     /**
      * If it is an agent just to be used as tool

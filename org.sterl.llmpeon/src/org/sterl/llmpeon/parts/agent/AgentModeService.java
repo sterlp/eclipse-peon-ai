@@ -292,4 +292,9 @@ public class AgentModeService implements AiAgent {
     public ChatResponse compressContext(AiMonitor monitor) {
         return getActiveService().compressContext(monitor);
     }
+
+    @Override
+    public boolean isThinkEnabled() {
+        return getActiveService().isThinkEnabled();
+    }
 }

@@ -26,6 +26,10 @@ import lombok.Setter;
  */
 public class CustomAgent extends AbstractAgent {
     public static final String MODEL = "model";
+    public static final String THINK = "think";                 // legacy alias for think_on_string
+    public static final String THINK_ENABLED = "think_enabled";
+    public static final String THINK_ON = "think_on_string";
+    public static final String THINK_OFF = "think_off_string";
     public static final String INCLUDE_DEFAULT = "include-default";
     public static final String TEMPERATURE = "temperature";
     public static final String TOOLS = "tools";
@@ -63,6 +67,24 @@ public class CustomAgent extends AbstractAgent {
     @Override
     public Double getTemperature() {
         return promptFile.firstOrDefaultNumber(TEMPERATURE, null);
+    }
+
+    @Override
+    public boolean isThinkEnabled() {
+        // explicit think_enabled wins; legacy `think:` implies enabled for an on-value
+        if (promptFile.firstOrDefault(THINK_ENABLED, null) != null) return promptFile.isTrue(THINK_ENABLED);
+        var legacy = promptFile.firstOrDefault(THINK, null);
+        return legacy != null && org.sterl.llmpeon.ai.ThinkResolver.isOn(legacy);
+    }
+
+    @Override
+    public org.sterl.llmpeon.ai.AgentConfig getConfig() {
+        // legacy `think:` is read as an alias for think_on_string (no inheritance between agents)
+        var on = promptFile.firstOrDefault(THINK_ON, promptFile.firstOrDefault(THINK, null));
+        var off = promptFile.firstOrDefault(THINK_OFF, null);
+        return configuredModel.getConfig().customAgentConfig(
+                promptFile.firstOrDefault(MODEL, null),
+                isThinkEnabled(), on, off, getTemperature());
     }
 
     @Override

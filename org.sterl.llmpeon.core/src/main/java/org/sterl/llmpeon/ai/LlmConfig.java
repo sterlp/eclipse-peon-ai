@@ -67,8 +67,23 @@ public class LlmConfig {
      */
     @Default
     private final int maxTokens = 0;
+    /** Dev == GLOBAL == DEFAULT think on/off. Boolean; drives build-time thinking too. */
     @Default
-    private final boolean thinkingEnabled = true;
+    private final boolean thinkEnabled = false;
+    /** Dev on-value. Empty -&gt; auto (heuristic). Setting on or off puts the agent in manual mode. */
+    @Default
+    private final String thinkOnString = null;
+    /** Dev off-value. Empty -&gt; send nothing. */
+    @Default
+    private final String thinkOffString = null;
+    /** Plan think on/off. */
+    @Default
+    private final boolean planThinkEnabled = false;
+    @Default
+    private final String planThinkOnString = null;
+    @Default
+    private final String planThinkOffString = null;
+    /** Global "send thinking back" (build-time). */
     @Default
     private final boolean sendThinkingEnabled = true;
     @Default
@@ -87,12 +102,19 @@ public class LlmConfig {
     @Default
     private final Map<String, String> headerParams = new LinkedHashMap<>();
     
-    /**
-     * Some LLMs needs this some not
-     * e.g. GOOGLE_GEMINI
-     */
+    /** Dev/global think on (drives build-time thinking for Gemini/Mistral and returnThinking). */
+    public boolean isThinkingOn() {
+        return thinkEnabled;
+    }
+
+    /** Return + show the model's own thinking. On when thinking is on OR send-back is on. */
+    public boolean shouldReturnThinking() {
+        return thinkEnabled || sendThinkingEnabled;
+    }
+
+    /** Resend prior thinking to the model. */
     public boolean shouldWeSendThinkingBackToLLM() {
-        return thinkingEnabled && sendThinkingEnabled;
+        return sendThinkingEnabled;
     }
 
     public static LlmConfig newConfig(String model, String url) {
@@ -128,6 +150,46 @@ public class LlmConfig {
 
     public ConfiguredChatModel build() {
         return new ConfiguredChatModel(this);
+    }
+
+    private AgentConfig.AgentConfigBuilder baseAgentConfig() {
+        return AgentConfig.builder()
+                .provider(providerType)
+                .url(url)
+                .apiKey(apiKey);
+    }
+
+    /** Dev agent (default model) — uses the dev think slot ({@code DEV == GLOBAL == DEFAULT}). */
+    public AgentConfig devAgentConfig() {
+        return baseAgentConfig().model(model)
+                .think(ThinkResolver.effectiveThink(thinkEnabled, thinkOnString, thinkOffString))
+                .temperature(devTemperature).build();
+    }
+
+    /** Plan agent — its own think slot; {@link #planModel} (null = provider default) and the dev temperature. */
+    public AgentConfig planAgentConfig() {
+        return baseAgentConfig().model(planModel)
+                .think(ThinkResolver.effectiveThink(planThinkEnabled, planThinkOnString, planThinkOffString))
+                .temperature(devTemperature).build();
+    }
+
+    /** Compactor — never thinks (nothing sent). Mirrors {@link org.sterl.llmpeon.agent.AiCompressorAgent}'s temperature. */
+    public AgentConfig compactAgentConfig() {
+        return baseAgentConfig().model(compactModel).think(null)
+                .temperature(devTemperature < 1.0 ? 0.2 : null).build();
+    }
+
+    /** Search sub-agent — never thinks (nothing sent). Mirrors {@link org.sterl.llmpeon.tool.tools.SearchAgentTool}'s temperature. */
+    public AgentConfig searchAgentConfig() {
+        return baseAgentConfig().model(searchModel).think(null)
+                .temperature(devTemperature < 1.0 ? 0.3 : null).build();
+    }
+
+    /** Custom agent — think from its own {@code AGENT.md} frontmatter (no inheritance), provider/url/key from here. */
+    public AgentConfig customAgentConfig(String agentModel, boolean enabled, String on, String off, Double temperature) {
+        return baseAgentConfig().model(agentModel)
+                .think(ThinkResolver.effectiveThink(enabled, on, off))
+                .temperature(temperature).build();
     }
 
     public LlmConfig withModel(String model) {

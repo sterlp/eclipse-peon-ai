@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import org.sterl.llmpeon.ai.AgentConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
@@ -38,6 +39,20 @@ public abstract class AbstractAgent implements AiAgent {
     }
 
     public abstract Double getTemperature();
+
+    /**
+     * Per-agent {@link AgentConfig} used for every request of this agent (provider, model, think,
+     * temperature). Default is the dev/base config; agents override to pick their model+think.
+     */
+    public AgentConfig getConfig() {
+        return configuredModel.getConfig().devAgentConfig();
+    }
+
+    /** Dev == GLOBAL == DEFAULT: the base think slot. Plan/Custom override. */
+    @Override
+    public boolean isThinkEnabled() {
+        return configuredModel.getConfig().isThinkingOn();
+    }
 
     /** Returns the configured model name for this agent type, or null to use default. */
     @Override
@@ -121,8 +136,7 @@ public abstract class AbstractAgent implements AiAgent {
                     .monitor(monitor)
                     .toolFilter(getToolFilter())
                     .toolNameFilter(getToolNameFilter())
-                    .temperature(getTemperature())
-                    .modelName(getAgentModelName())
+                    .agentConfig(getConfig())
                     .standingOrders(List.copyOf(userContextInformations))
                     .build()
                 );

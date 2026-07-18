@@ -1,0 +1,12 @@
+# Built-in think mapping for the OpenAI family (OPEN_AI, OPEN_AI_OFFICIAL, GITHUB_MODELS,
+# GITHUB_COPILOT). Consulted only when the resolved think value is a generic "true"/"on".
+# Format per line: model-pattern | on-value | off-value
+#   - pattern matches the model name case-insensitively (substring)
+#   - empty value = send nothing
+#   - first matching line wins; no match = send nothing
+# A concrete effort (high/medium/low/minimal) set by the user bypasses this file.
+
+gpt | high
+o1  | high
+o3  | high
+o4  | high

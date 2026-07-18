@@ -323,7 +323,13 @@ public class PeonAiService {
 
     public void withThinking(Boolean enabled) {
         if (enabled == null) enabled = Boolean.FALSE;
-        configuredModel.withThinking(enabled);
+        var active = getActiveAgent();
+        boolean prefChanged = LlmPreferenceInitializer.saveThinkEnabled(enabled, active);
+        if (prefChanged) {
+            // Dev/Plan live in LlmConfig -> reload so devAgentConfig()/planAgentConfig() pick it up
+            updateConfig(LlmPreferenceInitializer.buildWithDefaults());
+        }
+        // Custom reads its frontmatter live per request; nothing else to do.
     }
     
     public Optional<AiAgent> getAgent(String agent) {

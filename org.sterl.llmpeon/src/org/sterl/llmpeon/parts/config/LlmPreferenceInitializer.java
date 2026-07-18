@@ -42,8 +42,13 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
         
         defaults.putInt(PeonConstants.PREF_MAX_TOKENS, 0);
         defaults.putInt(PeonConstants.PREF_TOKEN_WINDOW, DEFAULT.getAutoCompactAfter());
-        defaults.putBoolean(PeonConstants.PREF_THINKING_ENABLED, DEFAULT.isThinkingEnabled());
+        defaults.putBoolean(PeonConstants.PREF_THINKING_ENABLED, DEFAULT.isThinkEnabled());
         defaults.putBoolean(PeonConstants.PREF_SEND_THINKING_ENABLED, DEFAULT.isSendThinkingEnabled());
+        defaults.put(PeonConstants.PREF_THINK_ON_STRING, "");
+        defaults.put(PeonConstants.PREF_THINK_OFF_STRING, "");
+        defaults.putBoolean(PeonConstants.PREF_PLAN_THINK_ENABLED, DEFAULT.isPlanThinkEnabled());
+        defaults.put(PeonConstants.PREF_PLAN_THINK_ON_STRING, "");
+        defaults.put(PeonConstants.PREF_PLAN_THINK_OFF_STRING, "");
         defaults.put(PeonConstants.PREF_API_KEY, StringUtil.stripToEmpty(DEFAULT.getApiKey()));
 
         defaults.put(PeonConstants.PREF_CONFIG_DIRECTORY, PEON_HOME.toString());
@@ -77,8 +82,13 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
             .autoCompactAfter(prefs.getInt(PeonConstants.PREF_TOKEN_WINDOW, DEFAULT.getAutoCompactAfter()))
             .maxTokens(prefs.getInt(PeonConstants.PREF_MAX_TOKENS, 0))
 
-            .thinkingEnabled(prefs.getBoolean(PeonConstants.PREF_THINKING_ENABLED, DEFAULT.isThinkingEnabled()))
+            .thinkEnabled(prefs.getBoolean(PeonConstants.PREF_THINKING_ENABLED, false))
             .sendThinkingEnabled(prefs.getBoolean(PeonConstants.PREF_SEND_THINKING_ENABLED, DEFAULT.isSendThinkingEnabled()))
+            .thinkOnString(StringUtil.stripToNull(prefs.get(PeonConstants.PREF_THINK_ON_STRING, null)))
+            .thinkOffString(StringUtil.stripToNull(prefs.get(PeonConstants.PREF_THINK_OFF_STRING, null)))
+            .planThinkEnabled(prefs.getBoolean(PeonConstants.PREF_PLAN_THINK_ENABLED, false))
+            .planThinkOnString(StringUtil.stripToNull(prefs.get(PeonConstants.PREF_PLAN_THINK_ON_STRING, null)))
+            .planThinkOffString(StringUtil.stripToNull(prefs.get(PeonConstants.PREF_PLAN_THINK_OFF_STRING, null)))
             .apiKey(prefs.get(PeonConstants.PREF_API_KEY, ""))
             
             .configDir(Path.of(prefs.get(PeonConstants.PREF_CONFIG_DIRECTORY, PEON_HOME.toString())))
@@ -122,6 +132,29 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
         } catch (Exception e) {
             LOG.warn("Failed to save model preference", e);
         }
+    }
+
+    /** Persist the brain-toggle state for the given agent. Returns true if a Dev/Plan pref changed. */
+    public static boolean saveThinkEnabled(boolean enabled, AiAgent agent) {
+        try {
+            if (agent instanceof AiDevAgent) {
+                var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
+                prefs.putBoolean(PeonConstants.PREF_THINKING_ENABLED, enabled);
+                prefs.flush();
+                return true;
+            } else if (agent instanceof AiPlanAgent) {
+                var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
+                prefs.putBoolean(PeonConstants.PREF_PLAN_THINK_ENABLED, enabled);
+                prefs.flush();
+                return true;
+            } else if (agent instanceof org.sterl.llmpeon.agent.CustomAgent custom) {
+                custom.getAgentFile().setValue(org.sterl.llmpeon.agent.CustomAgent.THINK_ENABLED, String.valueOf(enabled));
+                custom.getAgentFile().save();
+            }
+        } catch (Exception e) {
+            LOG.warn("Failed to save think enabled", e);
+        }
+        return false;
     }
 
     public static void saveGitHubOAuthToken(String token, String enterpriseUrl) {

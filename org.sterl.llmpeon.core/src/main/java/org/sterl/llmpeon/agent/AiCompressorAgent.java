@@ -38,15 +38,15 @@ public class AiCompressorAgent {
         var msg = new StringBuilder();
         messages.stream().forEach(m -> msg.append(toText(m)).append("\n\n"));
 
-        var modelName = chatModel.getConfig().getCompactModel();
-        if (monitor != null) monitor.onTool("Compressing conversation " + messages.size() 
+        var cfg = chatModel.getConfig();
+        var modelName = cfg.getCompactModel();
+        if (monitor != null) monitor.onTool("Compressing conversation " + messages.size()
             + " messages" + (modelName == null ? "" : " using " + modelName));
 
+        // Model, temperature and think come from the compact ModelConfig (no tools for compaction).
         var request = ChatRequest.builder()
-                .messages(COMPRESS_SYSTEM, UserMessage.from(msg.toString()));
-
-        if (chatModel.getConfig().getDevTemperature() < 1.0) request.temperature(0.2);
-        if (modelName != null) request.modelName(chatModel.getConfig().getCompactModel());
+                .messages(COMPRESS_SYSTEM, UserMessage.from(msg.toString()))
+                .parameters(cfg.compactAgentConfig().newRequestParameters(null));
 
         monitor.onChatMessage(1, request);
         var result = chatModel.callBlocking(request.build(), monitor);

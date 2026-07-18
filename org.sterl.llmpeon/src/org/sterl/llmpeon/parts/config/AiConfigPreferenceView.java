@@ -19,6 +19,7 @@ import org.eclipse.ui.preferences.ScopedPreferenceStore;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.PeonConstants;
+import org.sterl.llmpeon.parts.config.widgets.HorizontalRule;
 
 public class AiConfigPreferenceView extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
 
@@ -49,9 +50,11 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
 
         addField(new IntegerFieldEditor(PeonConstants.PREF_TOKEN_WINDOW, "Auto compact after:", getFieldEditorParent()));
 
-        addField(new BooleanFieldEditor(PeonConstants.PREF_THINKING_ENABLED, "Supports thinking", getFieldEditorParent()));
+        // Dev == global think toggle. Advanced page holds the on/off value strings + Plan.
+        addField(new BooleanFieldEditor(PeonConstants.PREF_THINKING_ENABLED,
+                "Model supports thinking", getFieldEditorParent()));
         addField(new BooleanFieldEditor(PeonConstants.PREF_SEND_THINKING_ENABLED,
-                "Sends thinking - needed by some LLMs like Qwen 3.6, Mistral, DeepSeek", getFieldEditorParent()));
+                "Send thinking back to model - needed by some LLMs like Qwen 3.6, Mistral, DeepSeek", getFieldEditorParent()));
 
         urlEditor = new StringFieldEditor(PeonConstants.PREF_URL, "URL (incl. port):", getFieldEditorParent());
         addField(urlEditor);

@@ -11,8 +11,15 @@ public interface PeonConstants {
     String PREF_MAX_TOKENS       = "llm.maxTokens";
     String PREF_TIMEOUT          = "llm.timeout";
 
-    String PREF_THINKING_ENABLED        = "llm.thinkingEnabled";
+    // Dev == GLOBAL == DEFAULT: thinkEnabled (boolean) + on/off strings. Kept historic enabled key.
+    String PREF_THINKING_ENABLED        = "llm.thinkingEnabled";   // boolean
     String PREF_SEND_THINKING_ENABLED   = "llm.sendThinkingEnabled";
+    String PREF_THINK_ON_STRING         = "llm.thinkOnString";
+    String PREF_THINK_OFF_STRING        = "llm.thinkOffString";
+    // Plan agent think.
+    String PREF_PLAN_THINK_ENABLED      = "llm.planThinkEnabled";  // boolean
+    String PREF_PLAN_THINK_ON_STRING    = "llm.planThinkOnString";
+    String PREF_PLAN_THINK_OFF_STRING   = "llm.planThinkOffString";
 
     String PREF_API_KEY                    = "llm.apiKey";
     String PREF_CONFIG_DIRECTORY           = "llm.configDirectory";

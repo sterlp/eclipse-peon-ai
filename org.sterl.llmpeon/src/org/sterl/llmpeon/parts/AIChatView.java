@@ -407,9 +407,9 @@ public class AIChatView implements EclipseAiMonitor {
         aiService.updateConfig(config);
         EclipseUtil.runInUiThread(parent, () -> actionsBar.setAgents(aiService.getAgents()));
         
-        // Sync the Think toggle to the config default. The user can override this per-session
-        // via the button; that override is stored in-memory only and not written to preferences.
-        actionsBar.setThinkEnabled(config.isThinkingEnabled());
+        // Sync the Think toggle to the selected agent's state (Dev/Plan from prefs, Custom from
+        // its AGENT.md). The brain button persists per agent; there is no cascade.
+        actionsBar.setThinkEnabled(aiService.getActiveAgent().isThinkEnabled());
         applyMcpConfig();
         chatInput.setVoiceInputVisible(VoicePreferenceInitializer.buildWithDefaults().enabled());
         syncAgentsMdToggle();
@@ -537,13 +537,15 @@ public class AIChatView implements EclipseAiMonitor {
 
     private void onAgentChange(AiAgent mode) {
         aiService.setActiveAgent(mode);
-        
+
         if (!actionsBar.containsModelId(aiService.getActiveModel())) {
             actionsBar.setModel(aiService.getActiveModel());
         } else {
             actionsBar.selectModel(aiService.getActiveModel());
         }
 
+        // brain toggle follows the newly selected agent (no cascade)
+        actionsBar.setThinkEnabled(aiService.getActiveAgent().isThinkEnabled());
         refreshChat();
     }
 
