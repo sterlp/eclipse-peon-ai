@@ -19,7 +19,6 @@ import org.eclipse.ui.preferences.ScopedPreferenceStore;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.PeonConstants;
-import org.sterl.llmpeon.parts.config.widgets.HorizontalRule;
 
 public class AiConfigPreferenceView extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
 

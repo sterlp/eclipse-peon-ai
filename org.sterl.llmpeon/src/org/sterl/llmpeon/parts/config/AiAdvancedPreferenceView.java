@@ -30,18 +30,18 @@ public class AiAdvancedPreferenceView extends FieldEditorPreferencePage implemen
         addField(new StringFieldEditor(PeonConstants.PREF_MODEL,                  "Default Model (dev):", getFieldEditorParent()));
         addField(new DoubleSliderFieldEditor(PeonConstants.PREF_DEV_TEMPERATURE,  "Dev temperature:", getFieldEditorParent()));
         addField(new BooleanFieldEditor(PeonConstants.PREF_THINKING_ENABLED,      "Dev: Supports thinking", getFieldEditorParent()));
-        addField(new StringFieldEditor(PeonConstants.PREF_THINK_ON_STRING,        "Dev: Thinking value (on, empty=auto):", getFieldEditorParent()));
-        addField(new StringFieldEditor(PeonConstants.PREF_THINK_OFF_STRING,       "Dev: Thinking value (off, empty=nothing):", getFieldEditorParent()));
         
-        new HorizontalRule(getFieldEditorParent());
+        var thinkDevString = new TitledGroup(getFieldEditorParent(), "Dev/Default reasoning String");
+        addField(new StringFieldEditor(PeonConstants.PREF_THINK_ON_STRING,        "On string  (empty=auto):", thinkDevString.getGroup()));
+        addField(new StringFieldEditor(PeonConstants.PREF_THINK_OFF_STRING,       "Off string (empty=nothing):", thinkDevString.getGroup()));
         
         addField(new StringFieldEditor(PeonConstants.PREF_PLAN_MODEL,             "Plan: Model (leave empty to use default):", getFieldEditorParent()));
         addField(new DoubleSliderFieldEditor(PeonConstants.PREF_PLAN_TEMPERATURE, "Plan temperature:", getFieldEditorParent()));
         addField(new BooleanFieldEditor(PeonConstants.PREF_PLAN_THINK_ENABLED,    "Plan: Supports thinking", getFieldEditorParent()));
-        addField(new StringFieldEditor(PeonConstants.PREF_PLAN_THINK_ON_STRING,   "Plan: Thinking value (on, empty=auto):", getFieldEditorParent()));
-        addField(new StringFieldEditor(PeonConstants.PREF_PLAN_THINK_OFF_STRING,  "Plan: Thinking value (off, empty=nothing):", getFieldEditorParent()));
-
-        new HorizontalRule(getFieldEditorParent());
+        
+        var thinkPlanString = new TitledGroup(getFieldEditorParent(), "Plan reasoning String");
+        addField(new StringFieldEditor(PeonConstants.PREF_PLAN_THINK_ON_STRING,   "On  (empty=auto):", thinkPlanString.getGroup()));
+        addField(new StringFieldEditor(PeonConstants.PREF_PLAN_THINK_OFF_STRING,  "Off (empty=nothing):", thinkPlanString.getGroup()));
 
         addField(new StringFieldEditor(PeonConstants.PREF_SEARCH_MODEL,           "Search Model (leave empty to use default):", getFieldEditorParent()));
         addField(new StringFieldEditor(PeonConstants.PREF_COMPACT_MODEL,          "Compact Model (leave empty to use default):", getFieldEditorParent()));
@@ -49,8 +49,6 @@ public class AiAdvancedPreferenceView extends FieldEditorPreferencePage implemen
         new HorizontalRule(getFieldEditorParent());
 
         addField(new IntegerFieldEditor(PeonConstants.PREF_MAX_TOKENS,            "Max output tokens (0 to disable):", getFieldEditorParent()));
-
-        addField(new BooleanFieldEditor(PeonConstants.PREF_LOG_RESPONSE,          "Debug mode (logs requests & responses)", getFieldEditorParent()));
 
         var queryParamEditor = new StringFieldEditor(PeonConstants.PREF_QUERY_PARAMS,
                 "Query Params (CSV: k=v,k2=v2):", getFieldEditorParent());
@@ -61,6 +59,8 @@ public class AiAdvancedPreferenceView extends FieldEditorPreferencePage implemen
                 "Header Params (CSV: k=v,k2=v2):", getFieldEditorParent());
         headerParamEditor.setStringValue("");
         addField(headerParamEditor);
+        
+        addField(new BooleanFieldEditor(PeonConstants.PREF_LOG_RESPONSE,          "Debug mode (logs requests & responses)", getFieldEditorParent()));
     }
 
     @Override

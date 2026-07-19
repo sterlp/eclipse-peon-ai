@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.RowData;
 import org.eclipse.swt.layout.RowLayout;
@@ -15,6 +16,8 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.ai.model.AiModel;
+import org.sterl.llmpeon.parts.shared.ImageUtil;
+import org.sterl.llmpeon.shared.StringUtil;
 
 /**
  * Action bar below the user input. RowLayout (wrapping) with mode selector,
@@ -25,20 +28,33 @@ public class ActionsBarWidget extends Composite {
     private Button btnClear;
     private Button btnImplement;
     private Button btnThink;
+    private final Button btnCompact;
     private Combo agentCombo;
     private Combo modelCombo;
 
     private final AtomicBoolean working = new AtomicBoolean(false);
     private List<AiModel> availableModels = List.of();
     private List<AiAgent> agents = new ArrayList<>();
+    
+    private final Color colorWarning;
+    private final Color colorError;
+
 
     public ActionsBarWidget(Composite parent, int style,
             Runnable onClear,
             Runnable onImplement,
             Consumer<AiAgent> onAgentChange,
             Consumer<AiModel> onModelChange,
-            Consumer<Boolean> onThinkToggle) {
+            Consumer<Boolean> onThinkToggle,
+            Runnable onCompress) {
         super(parent, style);
+        
+        colorWarning = new Color(180, 130, 0);
+        colorError = new Color(200, 0, 0);
+        addDisposeListener(e -> {
+            colorWarning.dispose();
+            colorError.dispose();
+        });
 
         setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
@@ -57,16 +73,27 @@ public class ActionsBarWidget extends Composite {
         buildModelCombo(onModelChange);
 
         btnThink = new Button(this, SWT.TOGGLE);
-        btnThink.setText("\uD83E\uDDE0 Think");
+        btnThink.setImage(ImageUtil.loadImage(this, ImageUtil.THINK));
+        //btnThink.setText("\uD83E\uDDE0 Think");
         btnThink.setToolTipText("Enable extended thinking for the next request");
         btnThink.addListener(SWT.Selection, e -> onThinkToggle.accept(btnThink.getSelection()));
 
+        btnCompact = new Button(this, SWT.PUSH);
+        buildCompact(onCompress);
+
         btnClear = new Button(this, SWT.PUSH);
-        btnClear.setText("Clear");
+        //btnClear.setText("Clear");
+        btnClear.setImage(ImageUtil.loadImage(this, ImageUtil.CLEAR));
         btnClear.setToolTipText("Clear conversation context");
         btnClear.addListener(SWT.Selection, e -> onClear.run());
-
+        
         buildBtnImplement(onImplement);
+    }
+    
+    private void buildCompact(Runnable onCompress) {
+        btnCompact.setImage(ImageUtil.loadImage(this, ImageUtil.COMPACT));
+        btnCompact.setToolTipText("Compact conversation context");
+        btnCompact.addListener(SWT.Selection, e -> onCompress.run());
     }
 
     private void buildBtnImplement(Runnable onImplement) {
@@ -110,6 +137,26 @@ public class ActionsBarWidget extends Composite {
         for (var a : agents) items.add(a.getName());
         agentCombo.setItems(items.toArray(String[]::new));
     }
+    
+    /** Update the Compact button label and tooltip with current token usage. */
+    public void updateCompact(int tokenUsed, int tokenMax) {
+        int pct = tokenMax > 0 ? (tokenUsed * 100) / tokenMax : 0;
+        if (pct >= 88) btnCompact.setForeground(colorError);
+        else if (pct >= 70) btnCompact.setForeground(colorWarning);
+        else btnCompact.setForeground(null);
+        
+        if (tokenUsed < 1000) {
+            btnCompact.setEnabled(false);
+        } else {
+            btnCompact.setVisible(btnClear.getEnabled());
+            btnCompact.setText(StringUtil.toK(tokenUsed) + "/" + StringUtil.toK(tokenMax));
+            btnCompact.setToolTipText(tokenUsed + " / " + tokenMax + " tokens used (" + pct
+                    + "%, " + StringUtil.toK(tokenUsed) + "/" + StringUtil.toK(tokenMax) + ") — click to compact the conversation");
+            btnCompact.getParent().layout(false, false);
+            btnCompact.setEnabled(tokenUsed > 100);
+        }
+
+    }
 
     /** Replaces the custom agents in the combo, preserving the current selection by label. */
     public void setAgents(List<AiAgent> agents) {
@@ -133,6 +180,7 @@ public class ActionsBarWidget extends Composite {
         btnClear.setEnabled(!value);
         btnThink.setEnabled(!value);
         btnImplement.setEnabled(!value);
+        btnCompact.setEnabled(!value);
     }
 
     public boolean isWorking() {

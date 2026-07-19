@@ -6,7 +6,6 @@ import java.util.function.Supplier;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.RowData;
 import org.eclipse.swt.layout.RowLayout;
@@ -20,7 +19,6 @@ import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.PlatformUI;
 import org.sterl.llmpeon.parts.shared.EclipseUiUtil;
 import org.sterl.llmpeon.parts.shared.ImageUtil;
-import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.skill.SkillPromptFile;
 
 /**
@@ -36,10 +34,7 @@ public class StatusLineWidget extends Composite {
     private final Button btnAgentsMd;
     private final Label fileLabel;
     private final Button btnMcp;
-    private final Button btnCompress;
 
-    private final Color colorWarning;
-    private final Color colorError;
     private Supplier<List<SkillPromptFile>> skillsProvider;
     private Consumer<SkillMenuSelection> onSkillMenuChange;
 
@@ -49,17 +44,9 @@ public class StatusLineWidget extends Composite {
             Consumer<Boolean> onPinChange,
             Consumer<Boolean> onSkillsToggle,
             Consumer<Boolean> onMcpToggle,
-            Consumer<Boolean> onAgentsMdToggle,
-            Runnable onCompress) {
+            Consumer<Boolean> onAgentsMdToggle) {
         super(parent, style);
         setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-
-        colorWarning = new Color(180, 130, 0);
-        colorError = new Color(200, 0, 0);
-        addDisposeListener(e -> {
-            colorWarning.dispose();
-            colorError.dispose();
-        });
 
         RowLayout rowLayout = new RowLayout(SWT.HORIZONTAL);
         rowLayout.wrap = true;
@@ -121,12 +108,6 @@ public class StatusLineWidget extends Composite {
         btnMcp.setToolTipText("Enable MCP tools (configure via Window > Preferences > AI Peon MCP)");
         btnMcp.addListener(SWT.Selection, e -> onMcpToggle.accept(btnMcp.getSelection()));
 
-        // --- Compact button ---
-        btnCompress = new Button(this, SWT.PUSH);
-        btnCompress.setText("Compact");
-        btnCompress.setToolTipText("Compact conversation context");
-        btnCompress.setEnabled(false);
-        btnCompress.addListener(SWT.Selection, e -> onCompress.run());
     }
 
     public void update(int skillCount, String agentFileName, boolean agentMdActive,
@@ -208,20 +189,6 @@ public class StatusLineWidget extends Composite {
     /** Returns whether the AGENTS.md toggle is currently on. */
     public boolean isAgentsMdEnabled() {
         return btnAgentsMd.getSelection();
-    }
-
-    /** Update the Compact button label and tooltip with current token usage. */
-    public void updateCompact(int tokenUsed, int tokenMax) {
-        int pct = tokenMax > 0 ? (tokenUsed * 100) / tokenMax : 0;
-        if (pct >= 88) btnCompress.setForeground(colorError);
-        else if (pct >= 70) btnCompress.setForeground(colorWarning);
-        else btnCompress.setForeground(null);
-
-        btnCompress.setText("Compact " + StringUtil.toK(tokenUsed) + "/" + StringUtil.toK(tokenMax));
-        btnCompress.setToolTipText(tokenUsed + " / " + tokenMax + " tokens used (" + pct
-                + "%, " + StringUtil.toK(tokenUsed) + "/" + StringUtil.toK(tokenMax) + ") — click to compact the conversation");
-        btnCompress.getParent().layout(false, false);
-        btnCompress.setEnabled(tokenUsed > 100);
     }
 
     /** Set the provider for loading skills and callback for menu changes. */

@@ -12,10 +12,7 @@ public class TitledGroup extends Composite {
 
     public TitledGroup(Composite parent, String title) {
         super(parent, SWT.NONE);
-        int numColumns = 1;
-        if (parent.getLayout() instanceof GridLayout gl) {
-            numColumns = gl.numColumns;
-        }
+        int numColumns = 2;
         setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, true, false, numColumns, 1));
         setLayout(new FillLayout());
 

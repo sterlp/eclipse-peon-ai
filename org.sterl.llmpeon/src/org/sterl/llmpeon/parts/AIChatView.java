@@ -153,7 +153,8 @@ public class AIChatView implements EclipseAiMonitor {
             this::onHandoff,
             this::onAgentChange,
             aiService::setModel,
-            aiService::withThinking
+            aiService::withThinking,
+            this::doCompressContext
         );
         actionsBar.setModel(aiService.getActiveAgent().getAgentModelName());
 
@@ -161,8 +162,7 @@ public class AIChatView implements EclipseAiMonitor {
             this::onPinChange,
             this::onSkillsToggle,
             enabled -> aiService.getMcpConnectionService().toggle(enabled),
-            this::onAgentsMdToggle,
-            this::doCompressContext
+            this::onAgentsMdToggle
         );
 
         statusLine.setSkillsMenuHandler(
@@ -203,7 +203,7 @@ public class AIChatView implements EclipseAiMonitor {
     private void onClear() {
         aiService.clear();
         chatHistory.clear();
-        statusLine.updateCompact(0, aiService.getConfig().getAutoCompactAfter());
+        actionsBar.updateCompact(0, aiService.getConfig().getAutoCompactAfter());
     }
 
     @PreDestroy
@@ -297,7 +297,7 @@ public class AIChatView implements EclipseAiMonitor {
             var ai = aiService.getActiveAgent();
             chatHistory.hideLiveStatus();
             chatHistory.appendMessage(m);
-            statusLine.updateCompact(ai.getMemory().getTotalTokenUsed(), aiService.getConfig().getAutoCompactAfter());
+            actionsBar.updateCompact(ai.getMemory().getTotalTokenUsed(), aiService.getConfig().getAutoCompactAfter());
         });
     }
 
@@ -345,7 +345,7 @@ public class AIChatView implements EclipseAiMonitor {
             userContext.getSelectedFile()
         );
         var ai = aiService.getActiveAgent();
-        statusLine.updateCompact(ai.getMemory().getTotalTokenUsed(), aiService.getConfig().getAutoCompactAfter());
+        actionsBar.updateCompact(ai.getMemory().getTotalTokenUsed(), aiService.getConfig().getAutoCompactAfter());
     }
     private void refreshChat() {
         chatHistory.clear();
