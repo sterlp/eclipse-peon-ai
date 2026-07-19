@@ -63,7 +63,8 @@ public enum AiProvider {
 
         @Override
         public ChatRequestParameters newRequestParameters(AgentConfig mc, List<ToolSpecification> tools) {
-            var b = applyBase(OllamaChatRequestParameters.builder(), mc, tools);
+            var b = OllamaChatRequestParameters.builder();
+            applyBase(b, mc, tools);
             // empty -> omit; explicit off-token -> think:false; else think:true
             var think = ThinkResolver.toOllamaThink(mc.getThink());
             if (think != null) b.think(think);
@@ -110,7 +111,8 @@ public enum AiProvider {
 
         @Override
         public ChatRequestParameters newRequestParameters(AgentConfig mc, List<ToolSpecification> tools) {
-            var b = applyBase(OpenAiChatRequestParameters.builder(), mc, tools);
+            var b = OpenAiChatRequestParameters.builder();
+            applyBase(b, mc, tools);
             var effort = effortFor(mc);
             if (effort != null) b.reasoningEffort(effort);
             return b.build();
@@ -189,7 +191,9 @@ public enum AiProvider {
 
         @Override
         public ChatRequestParameters newRequestParameters(AgentConfig mc, List<ToolSpecification> tools) {
-            var b = applyBase(OpenAiChatRequestParameters.builder(), mc, tools);
+            var b = OpenAiChatRequestParameters.builder();
+            // TODO this would need config too
+            applyBase(b, mc, tools);
             // LM Studio uses a custom body property "reasoning" with on/off (experimental —
             // not officially supported yet). Empty -> omit; explicit off-token -> "off"; else "on".
             var reasoning = ThinkResolver.toReasoning(mc.getThink());
@@ -222,7 +226,7 @@ public enum AiProvider {
             if (c.isThinkingOn()) {
                 var think = GeminiThinkingConfig.builder()
                     .thinkingLevel(GeminiThinkingLevel.HIGH)
-                    .thinkingBudget(c.getMaxTokens() > 0 ? c.getMaxTokens() / 2 : 2048);
+                    .thinkingBudget(c.getMaxTokens() > 0 ? c.getMaxTokens() : 4096);
                 result.thinkingConfig(think.build());
             } else {
                 result.thinkingConfig(GeminiThinkingConfig.builder()
@@ -316,13 +320,14 @@ public enum AiProvider {
 
         @Override
         public ChatRequestParameters newRequestParameters(AgentConfig mc, List<ToolSpecification> tools) {
-            var b = applyBase(AnthropicChatRequestParameters.builder(), mc, tools);
+            var b = AnthropicChatRequestParameters.builder();
+            applyBase(b, mc, tools);
             var type = anthropicThinkingType(mc);
             if (type != null) {
                 if ("adaptive".equals(type)) {
                     b.thinkingType("adaptive");
                 } else {
-                    b.thinkingType(type).thinkingBudgetTokens(2048);
+                    b.thinkingType(type).thinkingBudgetTokens(8000);
                 }
                 b.sendThinking(Boolean.TRUE).returnThinking(Boolean.TRUE);
             }
@@ -432,7 +437,8 @@ public enum AiProvider {
 
         @Override
         public ChatRequestParameters newRequestParameters(AgentConfig mc, List<ToolSpecification> tools) {
-            var b = applyBase(OpenAiChatRequestParameters.builder(), mc, tools);
+            var b = OpenAiChatRequestParameters.builder();
+            applyBase(b, mc, tools);
             var effort = effortFor(mc);
             if (effort != null) b.reasoningEffort(effort);
             return b.build();
@@ -473,16 +479,15 @@ public enum AiProvider {
      * thinking build-time (see the TODOs in their {@code buildModel}).</p>
      */
     public ChatRequestParameters newRequestParameters(AgentConfig mc, List<ToolSpecification> tools) {
-        var b = ChatRequestParameters.builder()
-                .modelName(mc.getModel())
-                .temperature(mc.getTemperature());
-        if (tools != null && !tools.isEmpty()) b.toolSpecifications(tools);
+        var b = ChatRequestParameters.builder();
+        applyBase(b, mc, tools);
         return b.build();
     }
 
     /** Shared reasoning-effort parameters for the OpenAI-official-based providers. */
     private static ChatRequestParameters openAiOfficialParameters(AgentConfig mc, List<ToolSpecification> tools) {
-        var b = applyBase(OpenAiOfficialResponsesChatRequestParameters.builder(), mc, tools);
+        var b = OpenAiOfficialResponsesChatRequestParameters.builder();
+        applyBase(b, mc, tools);
         var effort = effortFor(mc);
         if (effort != null) {
             b.reasoningEffort(ReasoningEffort.of(effort)).reasoningSummary(Reasoning.Summary.DETAILED);
@@ -491,11 +496,10 @@ public enum AiProvider {
     }
 
     /** Applies the neutral request fields (modelName, temperature, tools) onto any provider builder. */
-    private static <T extends DefaultChatRequestParameters.Builder<T>> T applyBase(
-            T b, AgentConfig mc, List<ToolSpecification> tools) {
-        b.modelName(mc.getModel()).temperature(mc.getTemperature());
+    private static void applyBase(DefaultChatRequestParameters.Builder<?> b, AgentConfig mc, List<ToolSpecification> tools) {
+        b.temperature(mc.getTemperature());
+        if (StringUtil.hasNoValue(mc.getModel())) b.modelName(mc.getModel());
         if (tools != null && !tools.isEmpty()) b.toolSpecifications(tools);
-        return b;
     }
 
     /**

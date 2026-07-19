@@ -144,11 +144,11 @@ public class ActionsBarWidget extends Composite {
         if (pct >= 88) btnCompact.setForeground(colorError);
         else if (pct >= 70) btnCompact.setForeground(colorWarning);
         else btnCompact.setForeground(null);
-        
+
         if (tokenUsed < 1000) {
             btnCompact.setEnabled(false);
         } else {
-            btnCompact.setVisible(btnClear.getEnabled());
+            btnCompact.setEnabled(btnClear.getEnabled());
             btnCompact.setText(StringUtil.toK(tokenUsed) + "/" + StringUtil.toK(tokenMax));
             btnCompact.setToolTipText(tokenUsed + " / " + tokenMax + " tokens used (" + pct
                     + "%, " + StringUtil.toK(tokenUsed) + "/" + StringUtil.toK(tokenMax) + ") — click to compact the conversation");

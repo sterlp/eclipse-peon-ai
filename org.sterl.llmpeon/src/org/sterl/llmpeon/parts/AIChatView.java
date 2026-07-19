@@ -511,7 +511,7 @@ public class AIChatView implements EclipseAiMonitor {
                 }
                 return Status.OK_STATUS;
             } catch (Exception e) {
-                onChatResponse(new SimpleMessage(Type.PROBLEM, e.getMessage()));
+                onChatResponse(new SimpleMessage(Type.PROBLEM, config.getProviderType().name() + ": " + e.getMessage()));
                 showConfiguredModelFallback(modelName); // B1: keep the configured model visible
                 if (StringUtil.hasValue(modelName)) {
                     return new Status(IStatus.WARNING, PeonConstants.PLUGIN_ID, IStatus.OK, 
