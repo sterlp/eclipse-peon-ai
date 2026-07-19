@@ -19,7 +19,9 @@ public class AgentsMdService implements MessageProvider {
     public String get() {
         if (agentsMd == null || !agentsMd.exists()) return null;
         var text = IoUtils.readString(agentsMd);
-        return  JdtUtil.pathOf(agentsMd) + " full content:\n" + text;
+        return  JdtUtil.pathOf(agentsMd) + ":" + System.lineSeparator()
+                + "---" + System.lineSeparator() +  System.lineSeparator()
+                + text;
     }
 
     public void setEnabled(boolean value) {

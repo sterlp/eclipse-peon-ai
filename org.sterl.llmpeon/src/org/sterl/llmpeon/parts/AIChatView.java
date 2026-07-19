@@ -405,7 +405,10 @@ public class AIChatView implements EclipseAiMonitor {
         lastAppliedConfig = config;
         LOG.info("Set new config " + config);
         aiService.updateConfig(config);
-        EclipseUtil.runInUiThread(parent, () -> actionsBar.setAgents(aiService.getAgents()));
+        EclipseUtil.runInUiThread(parent, () -> {
+            actionsBar.setAgents(aiService.getAgents());
+            actionsBar.updateModeUI(aiService.getActiveAgent());
+        });
         
         // Sync the Think toggle to the config default. The user can override this per-session
         // via the button; that override is stored in-memory only and not written to preferences.

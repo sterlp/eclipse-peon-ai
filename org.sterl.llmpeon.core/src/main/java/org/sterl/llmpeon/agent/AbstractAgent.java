@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
@@ -18,6 +17,7 @@ import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import lombok.Getter;
@@ -111,8 +111,10 @@ public abstract class AbstractAgent implements AiAgent {
         } else if (contents.size() == 1) {
             addMessage(UserMessage.from(contents.getFirst()));
         } else {
-            var m = contents.stream().collect(Collectors.joining("\n\n"));
-            addMessage(UserMessage.from(m));
+            var textContents = contents.stream()
+                    .map(TextContent::from)
+                    .toArray(TextContent[]::new);
+            addMessage(UserMessage.from(textContents));
         }
 
         var start = Instant.now();
