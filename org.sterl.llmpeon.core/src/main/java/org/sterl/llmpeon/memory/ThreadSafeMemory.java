@@ -121,4 +121,8 @@ public class ThreadSafeMemory {
         }
         return null;
     }
+
+    public synchronized ChatMessage get(int index) {
+        return this.memory.get(index);
+    }
 }

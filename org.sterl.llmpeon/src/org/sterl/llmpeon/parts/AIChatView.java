@@ -405,7 +405,10 @@ public class AIChatView implements EclipseAiMonitor {
         lastAppliedConfig = config;
         LOG.info("Set new config " + config);
         aiService.updateConfig(config);
-        EclipseUtil.runInUiThread(parent, () -> actionsBar.setAgents(aiService.getAgents()));
+        EclipseUtil.runInUiThread(parent, () -> {
+            actionsBar.setAgents(aiService.getAgents());
+            actionsBar.updateModeUI(aiService.getActiveAgent());
+        });
         
         // Sync the Think toggle to the selected agent's state (Dev/Plan from prefs, Custom from
         // its AGENT.md). The brain button persists per agent; there is no cascade.

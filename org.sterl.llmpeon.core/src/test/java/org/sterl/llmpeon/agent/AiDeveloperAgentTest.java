@@ -163,7 +163,7 @@ public class AiDeveloperAgentTest {
 
         // THEN — the command body is prepended to the user message
         verify(cm, times(1)).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
-        var userMsg = ((UserMessage)subject.getMemory().getCopy().get(0)).singleText();
+        var userMsg = ChatMessageUtil.toString(subject.getMemory().get(0));
         assertThat(userMsg).contains("Review the code and report any issues.");
         assertThat(userMsg).contains("Refactor this class");
     }
