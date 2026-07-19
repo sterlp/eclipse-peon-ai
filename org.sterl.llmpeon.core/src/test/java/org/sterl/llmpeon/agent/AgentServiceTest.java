@@ -9,8 +9,11 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.sterl.llmpeon.AbstractMemoryFileTest;
 import org.sterl.llmpeon.AgentService;
+import org.sterl.llmpeon.ai.ConfiguredChatModel;
+import org.sterl.llmpeon.tool.ToolService;
 
 class AgentServiceTest extends AbstractMemoryFileTest {
 
@@ -22,18 +25,20 @@ class AgentServiceTest extends AbstractMemoryFileTest {
     }
     
     private AgentService service;
+    private final ToolService toolService = Mockito.mock(ToolService.class);
+    private final ConfiguredChatModel chatModel = Mockito.mock(ConfiguredChatModel.class);
 
     @BeforeEach
     void before() throws IOException {
         tmp = fs.getPath("/" + UUID.randomUUID());
         Files.createDirectory(tmp);
-        service = new AgentService(tmp, null, null);
+        service = new AgentService(tmp, toolService, chatModel);
     }
     
     @Test
     void hasDefaultAgent() {
         // GIVEN
-        var subject = new AgentService(true, tmp.resolve("any-foo"), null, null);
+        var subject = new AgentService(true, tmp.resolve("any-foo"), toolService, chatModel);
         assertThat(subject.getActiveAgent()).isNotNull();
         assertThat(subject.getAgents()).hasSize(2);
         // WHEN
@@ -54,7 +59,7 @@ class AgentServiceTest extends AbstractMemoryFileTest {
                 """);
 
         // WHEN
-        var subject = new AgentService(true, tmp, null, null);
+        var subject = new AgentService(true, tmp, toolService, chatModel);
 
         // THEN
         assertThat(subject.getAgents()).hasSize(3);
@@ -80,7 +85,7 @@ class AgentServiceTest extends AbstractMemoryFileTest {
                 """);
 
         // WHEN
-        var subject = new AgentService(false, tmp, null, null);
+        var subject = new AgentService(false, tmp, toolService, chatModel);
         var agent = subject.get("Docs-Assistent").orElseThrow();
 
         // THEN
