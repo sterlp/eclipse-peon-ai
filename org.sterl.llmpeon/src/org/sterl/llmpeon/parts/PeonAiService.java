@@ -258,6 +258,9 @@ public class PeonAiService {
     }
 
     public LlmConfig getConfig() {
+        if (configuredModel == null) {
+            throw new IllegalStateException("configuredModel is not initialized");
+        }
         return configuredModel.getConfig();
     }
 

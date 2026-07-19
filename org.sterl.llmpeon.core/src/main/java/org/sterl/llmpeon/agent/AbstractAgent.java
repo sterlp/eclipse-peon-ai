@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -36,6 +37,9 @@ public abstract class AbstractAgent implements AiAgent {
     protected AbstractAgent(ConfiguredChatModel configuredModel, ToolService toolService) {
         this.toolService = toolService;
         this.configuredModel = configuredModel;
+        
+        Objects.requireNonNull(this.configuredModel, "ConfiguredChatModel cannot be null");
+        Objects.requireNonNull(this.toolService, "ToolService cannot be null");
     }
 
     public abstract Double getTemperature();

@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -32,7 +33,7 @@ import lombok.Setter;
  */
 public class AgentService {
 
-    private final ConfiguredChatModel configuredChatModel;
+    private final ConfiguredChatModel chatModel;
     private final ToolService toolService;
 
     private final Map<String, AiAgent> agents = new ConcurrentHashMap<>();
@@ -56,19 +57,22 @@ public class AgentService {
             Path agentsDirectory, 
             ToolService toolService,
             ConfiguredChatModel configuredChatModel) {
-        refresh(agentsDirectory);
-        this.configuredChatModel = configuredChatModel;
+        this.chatModel = configuredChatModel;
         this.toolService = toolService;
         
+        Objects.requireNonNull(this.chatModel, "ConfiguredChatModel cannot be null");
+        Objects.requireNonNull(this.toolService, "ToolService cannot be null");
+
         if (withDefaultAgent) {
-            devAgent = new AiDevAgent(configuredChatModel, toolService);
-            planAgent = new AiPlanAgent(configuredChatModel, toolService);
+            devAgent = new AiDevAgent(chatModel, toolService);
+            planAgent = new AiPlanAgent(chatModel, toolService);
             this.activeAgent = devAgent;
         } else {
             devAgent = null;
             planAgent = null;
         }
 
+        refresh(agentsDirectory);
         reloadAgents();
     }
 
@@ -130,7 +134,7 @@ public class AgentService {
                 var agentCfg = readAgentPrompt(entry);
                 if (agentCfg != null) {
                     var agent = this.agents.get(agentCfg.getName());
-                    if (agent == null) agent = new CustomAgent(agentCfg, configuredChatModel, toolService);
+                    if (agent == null) agent = new CustomAgent(agentCfg, chatModel, toolService);
                     else if (agent instanceof CustomAgent ca) ca.setPromptFile(agentCfg);
                     newAgents.put(agent.getName(), agent);
                 }
