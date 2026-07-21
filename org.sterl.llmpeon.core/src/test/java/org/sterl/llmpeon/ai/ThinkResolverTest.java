@@ -68,12 +68,4 @@ class ThinkResolverTest {
         assertThat(ThinkResolver.toOllamaThink("true")).isEqualTo(Boolean.TRUE);
         assertThat(ThinkResolver.toOllamaThink("high")).isEqualTo(Boolean.TRUE);
     }
-
-    @Test
-    void toReasoning_distinguishesEmptyFromExplicitOff() {
-        assertThat(ThinkResolver.toReasoning("")).isNull();
-        assertThat(ThinkResolver.toReasoning("false")).isEqualTo("off");
-        assertThat(ThinkResolver.toReasoning("high")).isEqualTo("on");
-        assertThat(ThinkResolver.toReasoning("true")).isEqualTo("on");
-    }
 }

@@ -23,6 +23,14 @@ public final class ThinkResolver {
     private static final Set<String> ON = Set.of("true", "on", "yes");
 
     private ThinkResolver() {}
+    
+    public static boolean isTrue(String think) {
+        return "true".equals(think);
+    }
+    
+    public static boolean isFalse(String think) {
+        return "false".equals(think);
+    }
 
     private static String norm(String think) {
         return think == null ? "" : think.trim().toLowerCase();
@@ -85,11 +93,13 @@ public final class ThinkResolver {
         if (v.isEmpty()) return null;
         return OFF.contains(v) ? Boolean.FALSE : Boolean.TRUE;
     }
-
+    
     /** LM Studio custom {@code reasoning}: {@code null} (omit) when empty; {@code "off"} for an explicit off-token; else {@code "on"}. */
     public static String toReasoning(String think) {
         var v = norm(think);
         if (v.isEmpty()) return null;
-        return OFF.contains(v) ? "off" : "on";
+        if (isTrue(think)) return "on";
+        if (isFalse(think)) return "off";
+        return think;
     }
 }

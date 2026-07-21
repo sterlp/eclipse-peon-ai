@@ -110,7 +110,7 @@ class AiProviderRequestParametersTest {
 
         var on = (OpenAiChatRequestParameters)
                 AiProvider.LM_STUDIO.newRequestParameters(mc(AiProvider.LM_STUDIO, "high"), List.of());
-        assertThat(on.customParameters()).containsEntry("reasoning", "on");
+        assertThat(on.customParameters()).containsEntry("reasoning", "high");
     }
 
     @Test

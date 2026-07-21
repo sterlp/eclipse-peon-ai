@@ -192,9 +192,10 @@ public enum AiProvider {
         @Override
         public ChatRequestParameters newRequestParameters(AgentConfig mc, List<ToolSpecification> tools) {
             var b = OpenAiChatRequestParameters.builder();
-            // TODO this would need config too
             applyBase(b, mc, tools);
-            if (StringUtil.hasValue(mc.getThink())) b.customParameters(Map.of("reasoning", mc.getThink()));
+            if (StringUtil.hasValue(mc.getThink())) {
+                b.customParameters(Map.of("reasoning", ThinkResolver.toReasoning(mc.getThink())));
+            }
             return b.build();
         }
 
@@ -495,7 +496,7 @@ public enum AiProvider {
     /** Applies the neutral request fields (modelName, temperature, tools) onto any provider builder. */
     private static void applyBase(DefaultChatRequestParameters.Builder<?> b, AgentConfig mc, List<ToolSpecification> tools) {
         b.temperature(mc.getTemperature());
-        if (StringUtil.hasNoValue(mc.getModel())) b.modelName(mc.getModel());
+        if (StringUtil.hasValue(mc.getModel())) b.modelName(mc.getModel());
         if (tools != null && !tools.isEmpty()) b.toolSpecifications(tools);
     }
 
