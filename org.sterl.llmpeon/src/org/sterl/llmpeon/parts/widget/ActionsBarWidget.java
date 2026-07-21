@@ -150,8 +150,8 @@ public class ActionsBarWidget extends Composite {
         } else {
             btnCompact.setEnabled(btnClear.getEnabled());
             btnCompact.setText(StringUtil.toK(tokenUsed) + "/" + StringUtil.toK(tokenMax));
-            btnCompact.setToolTipText(tokenUsed + " / " + tokenMax + " tokens used (" + pct
-                    + "%, " + StringUtil.toK(tokenUsed) + "/" + StringUtil.toK(tokenMax) + ") — click to compact the conversation");
+            btnCompact.setToolTipText(pct+ "% used, " 
+                    + StringUtil.toK(tokenUsed) + "/" + StringUtil.toK(tokenMax) + " — click to compact the conversation");
             btnCompact.getParent().layout(false, false);
             btnCompact.setEnabled(tokenUsed > 100);
         }

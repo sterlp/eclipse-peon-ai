@@ -59,6 +59,13 @@ result-size`.
 The session totals keep updating while the user switches to a plan/review agent during a running dev
 agent (agent dropdown no longer locked). Out of scope now; the design stays compatible.
 
+## Test coverage
+
+R1 (accumulation, real-usage-only) and R2 (via the shared choke point) are covered by
+`TokenStatsTest` and `TokenUsageAccumulationTest` (core). R3 (never reset) and R4 (header display)
+are SWT/UI behaviours — this repo unit-tests core only, so they are verified by the build + live use,
+not an automated test.
+
 ## Non-goals
 
 - **Current context size is not duplicated in the header.** It stays on the **Compact button**

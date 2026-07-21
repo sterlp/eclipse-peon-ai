@@ -20,7 +20,7 @@ import org.sterl.llmpeon.prompt.model.SimplePromptFile;
 
 /**
  * User input area: file chips bar (hidden until files attached), auto-resizing
- * StyledText (min 2 / max 7 rows), mic button, and Send/Stop button.
+ * StyledText, mic button, and Send/Stop button.
  *
  * <p>No backgrounds are set anywhere inside this widget — the StyledText keeps
  * its native OS white, and the paint-based Buttons from {@link SwtUtil#createIconButton}
@@ -76,7 +76,7 @@ public class UserInputWidget extends Composite {
         textRow.setLayout(textRowLayout);
         textRow.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-        textInput = new TextInputWidget(textRow, SWT.NONE, 15, this::requestReflow);
+        textInput = new TextInputWidget(textRow, SWT.NONE, 4, 10, this::requestReflow);
         textInput.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
         textInput.setTextBackground(bgWhite);
 

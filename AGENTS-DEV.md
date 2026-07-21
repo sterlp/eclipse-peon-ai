@@ -52,6 +52,9 @@ The 3-bundle layout and the per-module `AGENTS.md` links live in the always-on `
 ### Build
 - `mvn clean verify` — `verify` runs the Eclipse plugin tests in `org.sterl.llmpeon.test`.
 - Core module tests: `mvn -pl org.sterl.llmpeon.core test`. Other tests via the Eclipse test runner.
+- Compile-checking the UI plugin against local core changes: build with `-am`
+  (`mvn -o -pl org.sterl.llmpeon -am package`). Without `-am` Tycho resolves core from the target
+  platform (a stale copy) and reports phantom "cannot be resolved" errors for brand-new core symbols.
 
 ### Dependency management
 - External JARs copied to `lib/` via `maven-dependency-plugin`; `MANIFEST.MF` `Bundle-ClassPath`,

@@ -17,13 +17,15 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 
 /**
- * Reusable auto-growing StyledText widget. The text area grows from a minimum of
- * 2 rows up to {@code maxRows}, then scrolls. Height changes are propagated by
- * calling the {@code onReflow} callback so the parent controls layout propagation.
+ * Reusable auto-growing StyledText widget. The text area grows from {@code minRows} up to
+ * {@code maxRows}, then scrolls. The minimum is applied immediately at construction (so the field
+ * starts at {@code minRows} even while empty) and re-applied on every edit. Height changes are
+ * propagated by calling the {@code onReflow} callback so the parent controls layout propagation.
  */
 public class TextInputWidget extends Composite {
 
     private final StyledText styledText;
+    private final int minRows;
     private final int maxRows;
     private final Runnable onReflow;
 
@@ -34,8 +36,9 @@ public class TextInputWidget extends Composite {
     private final Menu popupMenu;
     private boolean fullSelection = false;
 
-    public TextInputWidget(Composite parent, int style, int maxRows, Runnable onReflow) {
+    public TextInputWidget(Composite parent, int style, int minRows, int maxRows, Runnable onReflow) {
         super(parent, style);
+        this.minRows = minRows;
         this.maxRows = maxRows;
         this.onReflow = onReflow;
 
@@ -48,7 +51,11 @@ public class TextInputWidget extends Composite {
         setLayout(layout);
 
         styledText = new StyledText(this, SWT.MULTI | SWT.WRAP);
-        styledText.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+        GridData textData = new GridData(SWT.FILL, SWT.FILL, true, true);
+        // Apply the minimum height up front so the field starts at minRows while still empty —
+        // refreshHeight() only runs on edits (and bails while width == 0), so it can't do it.
+        textData.heightHint = styledText.getLineHeight() * minRows;
+        styledText.setLayoutData(textData);
         styledText.addModifyListener(e -> refreshHeight());
         FileDropSupport.install(this, styledText);
         FileDropSupport.install(styledText, styledText);
@@ -64,7 +71,7 @@ public class TextInputWidget extends Composite {
         Point size = styledText.computeSize(width, SWT.DEFAULT);
         GridData gd = (GridData) styledText.getLayoutData();
         int lineH = styledText.getLineHeight();
-        int minHeight = lineH * 4;
+        int minHeight = lineH * minRows;
         int maxHeight = lineH * maxRows;
         int newHint = Math.max(minHeight, Math.min(maxHeight, size.y));
         if (gd.heightHint != newHint) {

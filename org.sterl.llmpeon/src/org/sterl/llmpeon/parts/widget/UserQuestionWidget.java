@@ -63,7 +63,7 @@ public class UserQuestionWidget extends Composite {
         inputRow.setLayout(inputRowLayout);
         inputRow.setLayoutData(new GridData(SWT.FILL, SWT.BOTTOM, true, false));
 
-        textInput = new TextInputWidget(inputRow, SWT.NONE, 7, this::requestReflow);
+        textInput = new TextInputWidget(inputRow, SWT.NONE, 2, 7, this::requestReflow);
         textInput.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
         textInput.setBackground(bgWhite);
 
