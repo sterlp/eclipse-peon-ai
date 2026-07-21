@@ -280,10 +280,10 @@ public class PeonAiService {
         var svc = getActiveAgent();
         var result = new java.util.ArrayList<ToolStatus>();
         for (var exec : toolService.getExecutors()) {
-            result.add(new ToolStatus(exec.getSpec().name(), svc.allowed(exec.getSpec().name()), false));
+            result.add(new ToolStatus(exec.getSpec().name(), svc.isToolActive(exec), false));
         }
         for (var name : toolService.mcpToolNames()) {
-            result.add(new ToolStatus(name, svc.allowed(name), true));
+            result.add(new ToolStatus(name, svc.isMcpToolActive(name), true));
         }
         result.sort(java.util.Comparator
                 .comparing(ToolStatus::active).reversed()

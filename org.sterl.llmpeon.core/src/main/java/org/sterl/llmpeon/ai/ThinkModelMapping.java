@@ -5,9 +5,11 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -46,6 +48,21 @@ public final class ThinkModelMapping {
     /** Mapped off-value for the provider/model, or {@code null} when nothing should be sent. */
     public static String resolveOff(AiProvider provider, String model) {
         return find(provider, model, false);
+    }
+
+    /**
+     * All distinct, non-null <em>on</em>-values across every provider's built-in mapping file, in
+     * declaration order (e.g. OpenAI's {@code high}, Anthropic's {@code adaptive}/{@code enabled}).
+     * Used to seed UI reasoning-value pickers so they track the mapping resources automatically.
+     */
+    public static Set<String> allOnValues() {
+        var out = new LinkedHashSet<String>();
+        for (var provider : AiProvider.values()) {
+            for (var e : entries(provider)) {
+                if (e.on() != null) out.add(e.on());
+            }
+        }
+        return out;
     }
 
     private static String find(AiProvider provider, String model, boolean on) {

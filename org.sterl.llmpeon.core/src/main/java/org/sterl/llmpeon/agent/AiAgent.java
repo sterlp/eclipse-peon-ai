@@ -4,7 +4,7 @@ import java.util.List;
 
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
-import org.sterl.llmpeon.tool.ToolPolicy;
+import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -89,11 +89,17 @@ public interface AiAgent {
     default List<String> getTools() {
         return List.of("*");
     }
-    
-    /** 
-     * @return <code>true</code> if the tool name passes the agent's allowlist. 
+
+    /**
+     * Whether the given built-in tool is offered to the LLM for this agent. Reflects the agent's
+     * full tool filter (allowlist <em>and</em> the read-only "no edit tools" rule), so it matches
+     * exactly what the agent sends at runtime. For UI introspection (e.g. the tool activity popup).
      */
-    default boolean allowed(String toolName) {
-        return ToolPolicy.enables(getTools(), toolName);
-    }
+    boolean isToolActive(SmartToolExecutor exec);
+
+    /**
+     * Whether the given MCP tool name is offered to the LLM for this agent (name allowlist).
+     * For UI introspection.
+     */
+    boolean isMcpToolActive(String toolName);
 }

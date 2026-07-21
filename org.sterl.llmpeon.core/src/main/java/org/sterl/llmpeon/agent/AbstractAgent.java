@@ -84,12 +84,14 @@ public abstract class AbstractAgent implements AiAgent {
         return n -> true;
     }
 
-    /** True if the given built-in tool is offered to the LLM for this agent (UI introspection). */
+    /** Reuses {@link #getToolFilter()} so it matches exactly what the agent sends at runtime. */
+    @Override
     public boolean isToolActive(SmartToolExecutor exec) {
         return getToolFilter().test(exec);
     }
 
-    /** True if the given MCP tool name is offered to the LLM for this agent (UI introspection). */
+    /** Reuses {@link #getToolNameFilter()} (the MCP name allowlist). */
+    @Override
     public boolean isMcpToolActive(String toolName) {
         return getToolNameFilter().test(toolName);
     }

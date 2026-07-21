@@ -61,6 +61,13 @@ only the read tool names.
 Filters stay constant within a tool loop (the `AgentPromptFile` snapshot is only swapped on config
 refresh) to preserve the KV cache.
 
+UI introspection reuses the very same filters: `AiAgent.isToolActive(SmartToolExecutor)` delegates
+to `getToolFilter()` and `isMcpToolActive(String)` to `getToolNameFilter()`. The tool activity popup
+(`PeonAiService.getToolStatus` → `AIChatView.showToolsMenu`) is built from these, so it shows exactly
+what the agent sends — including a read-only agent's edit tools appearing as inactive. The name-only
+`ToolPolicy.enables` check is a `private` helper on `CustomAgent`; it is deliberately **not** on the
+`AiAgent` interface, since on its own it ignores the read-only rule.
+
 ## UI & wiring
 
 - `ActionsBarWidget` builds the agent combo from `PeonMode` labels **plus** custom-agent names.

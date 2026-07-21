@@ -8,6 +8,7 @@ import java.util.function.Predicate;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.prompt.model.SimplePromptFile;
+import org.sterl.llmpeon.tool.ToolPolicy;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
@@ -136,6 +137,11 @@ public class CustomAgent extends AbstractAgent {
     @Override
     protected Predicate<String> getToolNameFilter() {
         return this::allowed;
+    }
+
+    /** @return {@code true} if the tool name passes this agent's {@code tools} allowlist. */
+    private boolean allowed(String toolName) {
+        return ToolPolicy.enables(getTools(), toolName);
     }
     
     @Override

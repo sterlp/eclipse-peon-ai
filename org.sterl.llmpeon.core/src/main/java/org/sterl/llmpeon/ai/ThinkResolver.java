@@ -23,6 +23,16 @@ public final class ThinkResolver {
     private static final Set<String> ON = Set.of("true", "on", "yes");
 
     private ThinkResolver() {}
+
+    /** Generic <em>on</em> tokens the resolver understands ({@code true}/{@code on}/{@code yes}). */
+    public static Set<String> onTokens() {
+        return ON;
+    }
+
+    /** Generic <em>off</em> tokens the resolver understands ({@code ""}/{@code false}/{@code off}/{@code no}/{@code none}). */
+    public static Set<String> offTokens() {
+        return OFF;
+    }
     
     public static boolean isTrue(String think) {
         return "true".equals(think);

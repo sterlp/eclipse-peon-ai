@@ -49,6 +49,15 @@ Each agent — **Dev** (the default), **Plan**, and every [custom agent](./custo
 | **Thinking value (on)** | Sent when thinking is on. **Empty → auto** (the [built-in model mapping](#built-in-model-mapping) picks the value for your provider/model). |
 | **Thinking value (off)** | Sent when thinking is off. **Empty → send nothing.** Set e.g. `false` for Ollama to force `think:false`. |
 
+The two value fields are an **editable dropdown**: pick a common preset or type any value your provider accepts. Which tokens make sense depends on the provider:
+
+| Provider | Reasoning value |
+|----------|-----------------|
+| **OpenAI family** | `high` / `medium` / `low` / `minimal` (`reasoning.effort`) |
+| **Claude (Anthropic)** | `enabled` / `adaptive` (extended thinking) |
+| **Ollama** | `true` / `false` (the `think` flag) |
+| **LM Studio** | any value — sent as the custom `reasoning` body property |
+
 Dev and Plan have their own checkbox + on/off fields on this page; custom agents set the same via [`AGENT.md` frontmatter](./custom-agents.md). **Nothing is inherited between agents** — each resolves independently, so the GPT-plan / DeepSeek-dev case just works.
 
 ### Auto vs. manual
