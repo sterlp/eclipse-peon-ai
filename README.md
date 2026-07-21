@@ -91,6 +91,30 @@ Example workflows:
 - [x] `v1.7.5` **Peon Memory** added workspace memory to the LLM with keywords "remember this", "always do", "never do"
 - [x] `v2.0.0` **Custom Agents** https://peon-ai-4e.sterl.org/setup/custom-agents
 
+## .peon Config Directory (`~/.peon`)
+
+Customize Peon AI with agents, commands, and skills — change the base directory via
+**Window > Preferences > Peon AI**:
+
+```text
+~/.peon/
+├── agents/               # Custom agents (each a folder with AGENT.md)
+│   ├── planner/          →  AGENT.md    (name, model, tools, handover: …)
+│   └── reviewer/         →  AGENT.md
+├── commands/             # Slash-commands (/review, /plan, …)
+│   ├── review.md
+│   └── plan.md
+└── skills/               # Reusable skill definitions (sub-folder per skill)
+    ├── spring-boot-patterns/   →  SKILL.md
+    └── eclipse-rcp-tips/       →  SKILL.md
+```
+
+- **Agents** — full system prompt + tool allowlist, shown in the agent dropdown. See [Custom Agents](https://peon-ai-4e.sterl.org/setup/custom-agents).
+- **Commands** — quick one-shot standing orders triggered with `/`. See [Commands](https://peon-ai-4e.sterl.org/setup/commands).
+- **Skills** — reusable cross-project instruction sets, loaded on-demand by the LLM. Follows the [agentskills.io](https://agentskills.io/specification) spec. Browse ready-made skills at [ai-skill-codex](https://github.com/sterlp/ai-skill-codex).
+
+> Quickstart by cloning https://github.com/sterlp/ai-skill-codex
+
 ## Requirements
 
 - Java 21

@@ -52,7 +52,7 @@ The first matching file in the project root is used, checked in this order:
 ## Skills
 
 Skills are reusable instruction sets shared across all your projects.
-They live in the `skill` subfolder of your config directory (default `~/.peon/skill`); set the
+They live in the `skills` subfolder of your config directory (default `~/.peon/skills`); set the
 base directory in **Window > Preferences > AI Peon > Peon Configuration** → *Config directory*.
 A separate Eclipse project works fine — just point the preference at the folder.
 
@@ -81,10 +81,3 @@ name: spring-boot-patterns
 description: Spring Boot patterns for REST APIs, JPA, and testing. Use when
   working on Spring Boot projects or when the user asks about Spring conventions.
 ---
-
-# Spring Boot Patterns
-
-...
-```
-
-See the bundled `writing-skills` skill for the full authoring guide.

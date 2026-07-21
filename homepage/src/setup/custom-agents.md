@@ -12,11 +12,11 @@ shows up in the same agent dropdown right next to the built-ins.
 ## Where they live
 
 Each agent is a directory with an `AGENT.md` file, living in the `agent` subfolder of your
-config directory (default `~/.peon/agent`). Change the base directory via
+config directory (default `~/.peon/agents`). Change the base directory via
 **Window > Preferences > AI Peon > Peon Configuration** → *Config directory*.
 
 ```
-~/.peon/agent/
+~/.peon/agents/
 ├── sap-coder/
 │   └── AGENT.md
 └── reviewer/
@@ -24,6 +24,10 @@ config directory (default `~/.peon/agent`). Change the base directory via
 ```
 
 The directory name is the default agent name (overridable with the `name:` frontmatter field).
+
+::: tip
+Changes to the `.peon` config require a restart of eclipse to be picked up.
+:::
 
 ## The AGENT.md file
 

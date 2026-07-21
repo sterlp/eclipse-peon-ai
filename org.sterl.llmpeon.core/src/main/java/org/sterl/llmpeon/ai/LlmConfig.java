@@ -34,9 +34,9 @@ import lombok.ToString;
 @ToString(exclude = {"apiKey", "headerParams"})
 public class LlmConfig {
     
-    public final static String SKILL_DIRECTORY      = "skill";
-    public final static String COMMAND_DIRECTORY    = "command";
-    public final static String AGENT_DIRECTORY      = "agent";
+    public final static String SKILL_DIRECTORY      = "skills";
+    public final static String COMMAND_DIRECTORY    = "commands";
+    public final static String AGENT_DIRECTORY      = "agents";
 
     @Default
     @NonNull

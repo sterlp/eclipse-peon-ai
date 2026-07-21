@@ -14,7 +14,7 @@ Commands are basically `SKILLS` light for common stuff you don't want repeat you
 ## Configuration
 
 ### Directory Setup
-1. Commands live in the `command` subfolder of your config directory (default `~/.peon/command`):
+1. Commands live in the `command` subfolder of your config directory (default `~/.peon/commands`):
    - Navigate to **Window > Preferences > AI Peon > Peon Configuration** and set the *Config directory* field.
    - Drop your command `.md` files into the `command` subfolder of that directory.
    - Path resolution matches the skills (`skill`) and agents (`agent`) subfolders, including support for workspace-relative paths.
