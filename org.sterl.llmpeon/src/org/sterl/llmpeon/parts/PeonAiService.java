@@ -49,10 +49,6 @@ import dev.langchain4j.data.message.UserMessage;
  * services are non-null from the moment the view object is constructed — before Eclipse DI
  * has a chance to call any {@code @Inject} methods.</p>
  *
- * <p>Mutable state ({@code currentProject}, {@code currentConfig}) is held in
- * {@link AtomicReference} so that reads on background threads always see the latest values
- * without requiring locks. The downstream setters on individual services are called from the
- * Eclipse DI thread and are inherently serialized by the single-threaded event dispatch.</p>
  */
 public class PeonAiService {
 
@@ -185,6 +181,7 @@ public class PeonAiService {
      * Safe to call from any thread — each downstream setter manages its own state.
      */
     public void setProject(IProject project) {
+        this.plan = null; // stale reference — restore on next agent activation if needed
         currentProject = project;
         agentsMdService.load(project);
 
@@ -217,7 +214,7 @@ public class PeonAiService {
         if (toAgent.isEmpty()) return false;
 
         String plan;
-        if (planTool.hasPlan()) {
+        if (hasPlan()) { // this.plan — not disk, avoids stale project reference
             plan = readPlan();
         } else {
             var chatPlan = getActiveAgent().getMemory().getLastOf(AiMessage.class);

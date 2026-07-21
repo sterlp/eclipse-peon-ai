@@ -97,6 +97,8 @@ public class AIChatView implements EclipseAiMonitor {
     
     private volatile boolean recording = false;
 
+    private Menu toolsMenu; // popup menu for hammer button — disposed on next open to avoid leak
+
     private AtomicReference<LlmConfig> lastListedConfig = new AtomicReference<>();
     private volatile LlmConfig lastAppliedConfig = null;
 
@@ -209,6 +211,7 @@ public class AIChatView implements EclipseAiMonitor {
     @PreDestroy
     public void dispose() {
         if (questionWidget != null) questionWidget.cancelSilently();
+        if (toolsMenu != null && !toolsMenu.isDisposed()) toolsMenu.dispose();
         InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID).removePreferenceChangeListener(prefListener);
         aiService.disconnectMcp();
         voiceService.close();
@@ -373,8 +376,14 @@ public class AIChatView implements EclipseAiMonitor {
 
     /** Popup listing every tool with a ✓ for active and greyed-out for inactive tools. */
     private void showToolsMenu(ToolBar toolBar, ToolItem item) {
+        // Dispose previous popup to avoid native resource leak.
+        if (toolsMenu != null && !toolsMenu.isDisposed()) {
+            toolsMenu.dispose();
+        }
+
         var tools = aiService.getToolStatus();
         Menu menu = new Menu(toolBar);
+        toolsMenu = menu;
 
         MenuItem header = new MenuItem(menu, SWT.PUSH);
         header.setText("Tools for: " + aiService.getActiveAgent().getName());
