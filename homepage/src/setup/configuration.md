@@ -186,7 +186,11 @@ The **Token Window** setting controls how many tokens of conversation history ar
 
 ### Thinking Support
 
-The **Supports Thinking** option enables models that support "thinking" or chain-of-thought reasoning, allowing them to show intermediate reasoning steps before generating final responses. This is useful for complex problem-solving tasks where you want to see the model's thought process.
+The **Thinking** checkbox turns "thinking" / chain-of-thought reasoning on or off for the **Dev** agent (which is the global default). The brain button in the chat toolbar is the same switch for whichever agent you have selected.
+
+Thinking is sent **per request**, so each agent decides on its own. With the checkbox on and no custom value set, Peon picks the right value for your provider and model via a built-in table (e.g. an unknown OpenAI model sends nothing, so non-reasoning models work out of the box). To take manual control — or to plan with one provider and implement with another — set explicit on/off strings per agent on the [Advanced Configuration](./advanced-configuration.md#per-agent-think) page. **Search** and **Compact** never think.
+
+The separate **Send thinking back to model** checkbox controls whether the model's own reasoning is shown and sent back on the next turn (needed by some LLMs like Qwen, Mistral, DeepSeek). It is independent of the Thinking toggle.
 
 ## Testing the Connection
 

@@ -49,10 +49,6 @@ import dev.langchain4j.data.message.UserMessage;
  * services are non-null from the moment the view object is constructed — before Eclipse DI
  * has a chance to call any {@code @Inject} methods.</p>
  *
- * <p>Mutable state ({@code currentProject}, {@code currentConfig}) is held in
- * {@link AtomicReference} so that reads on background threads always see the latest values
- * without requiring locks. The downstream setters on individual services are called from the
- * Eclipse DI thread and are inherently serialized by the single-threaded event dispatch.</p>
  */
 public class PeonAiService {
 
@@ -185,6 +181,7 @@ public class PeonAiService {
      * Safe to call from any thread — each downstream setter manages its own state.
      */
     public void setProject(IProject project) {
+        this.plan = null; // stale reference — restore on next agent activation if needed
         currentProject = project;
         agentsMdService.load(project);
 
@@ -212,13 +209,12 @@ public class PeonAiService {
      * @return <code>true</code> if plan is found
      */
     public boolean onHandoff() {
-        // LM Studio is sometimes bugged, if the first message is no user message ... :-/
-        
+        if (getActiveAgent() == null) return false;
         var toAgent = agentService.get(getActiveAgent().handoverTo());
         if (toAgent.isEmpty()) return false;
 
         String plan;
-        if (planTool.hasPlan()) {
+        if (hasPlan()) { // this.plan — not disk, avoids stale project reference
             plan = readPlan();
         } else {
             var chatPlan = getActiveAgent().getMemory().getLastOf(AiMessage.class);
@@ -228,6 +224,7 @@ public class PeonAiService {
         
         if (plan != null) {
             toAgent.get().clear();
+            // LM Studio is sometimes bugged, if the first message is no user message ... :-/
             toAgent.get().getMemory().add(UserMessage.from(
                     "Handover from " + getActiveAgent().getName() + System.lineSeparator()
                     + plan));
@@ -283,10 +280,10 @@ public class PeonAiService {
         var svc = getActiveAgent();
         var result = new java.util.ArrayList<ToolStatus>();
         for (var exec : toolService.getExecutors()) {
-            result.add(new ToolStatus(exec.getSpec().name(), svc.allowed(exec.getSpec().name()), false));
+            result.add(new ToolStatus(exec.getSpec().name(), svc.isToolActive(exec), false));
         }
         for (var name : toolService.mcpToolNames()) {
-            result.add(new ToolStatus(name, svc.allowed(name), true));
+            result.add(new ToolStatus(name, svc.isMcpToolActive(name), true));
         }
         result.sort(java.util.Comparator
                 .comparing(ToolStatus::active).reversed()
@@ -326,7 +323,13 @@ public class PeonAiService {
 
     public void withThinking(Boolean enabled) {
         if (enabled == null) enabled = Boolean.FALSE;
-        configuredModel.withThinking(enabled);
+        var active = getActiveAgent();
+        boolean prefChanged = LlmPreferenceInitializer.saveThinkEnabled(enabled, active);
+        if (prefChanged) {
+            // Dev/Plan live in LlmConfig -> reload so devAgentConfig()/planAgentConfig() pick it up
+            updateConfig(LlmPreferenceInitializer.buildWithDefaults());
+        }
+        // Custom reads its frontmatter live per request; nothing else to do.
     }
     
     public Optional<AiAgent> getAgent(String agent) {

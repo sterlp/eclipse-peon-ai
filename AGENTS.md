@@ -21,12 +21,14 @@ Maven multi-module, each module prefixed with the project key (e.g. `<project>-a
 - **One feature = one name** across its `docs/` page and the module's package/folder.
 - `…-api` — code shared between modules. `…-backend` — config + wiring. `…-shared` —
   dependency-free shared code (a backend-only shared stays backend-specific).
-- **A module is doc-self-contained.** Every Maven module owns a skeleton — `CONTEXT.md`, `docs/`,
-  `adr/` (+ `adr/README.md`) and a `README.md` — created empty up-front, filled as you touch. Root
-  `CONTEXT.md` **links** to each module and the module **links back**; root keeps only **cross-cutting**
-  docs + ADRs, module-specific ADRs live in the **module's** `adr/` (no re-summarising the module in
-  root → no drift). A feature spanning modules: doc + ADR live with the **owning** module, glue only
-  links. Exception: `*-test`/support modules get no skeleton.
+- **A module is doc-self-contained.** Every Maven module owns `docs/` (+ `docs/adr/`), each with an
+  `index.md` map — created empty up-front, filled as you touch. `index.md` is the reserved registry
+  filename of its folder (portable — Azure DevOps wiki / VitePress render it as the folder landing
+  page). When the repo has more than one `docs/` folder, a repo-root `index.md` **links** to each
+  module's `docs/index.md` and each module **links back**; the root keeps only **cross-cutting** docs
+  + ADRs, module-specific ADRs live in the module's `docs/adr/` (no re-summarising the module in root
+  → no drift). A feature spanning modules: doc + ADR live with the **owning** module, glue only links.
+  Exception: `*-test`/support modules get no skeleton.
 
 ### Docs-first — the docs are the SOLL/WIE
 - **Plan in the docs together; joint planning IS the approval.** Rules, BDD use-cases
@@ -34,74 +36,44 @@ Maven multi-module, each module prefixed with the project key (e.g. `<project>-a
   Check for conflicts with existing rules, fit with current docs.
 - **At the end, reconcile the docs with what was built — and compress** (only what helps, never
   echo the code).
-- **Capture every rule/decision in the docs** (`adr/` for technical ones), never only in chat.
-  `CONTEXT.md` = map/vision + feature registry;
+- **Capture every rule/decision in the docs** (`docs/adr/` for technical ones), never only in chat.
+  `docs/index.md` = map/vision + story registry;
   `docs/<feature>.md` = business requirements + BDD;
-  `adr/` = decisions + README.md registry.
-- **Broad sweep → find and read every `CONTEXT.md` at once** (root + per-module) to get the full map
+  `docs/adr/` = decisions + `index.md` registry.
+- **Broad sweep → find and read every `index.md` at once** (root + per-module) to get the full map
   before diving into a single doc.
 
-### Testing
-- **Tests are mandatory** — a rule without a test isn't "done".
-- **BDD via JUnit** — Given/When/Then through the service or REST endpoint; single components as
-  Mockito unit tests.
-- **Every bug gets a regression test, preferably end-to-end/blackbox** via the real entry point
-  (e.g. MockMvc): fails without the fix, passes with it.
-
-### Logging
-- **Log OR throw, never both** (except facades where the exception leaves the context).
-- **Always include context:** the ID/object, the problem, and any known workaround/bugfix.
-- **Never test logging** — don't assert on log output or levels.
-
-### Code
-- **Lombok** for logging (`@Slf4j`) and constructors (`@RequiredArgsConstructor`).
-- **>3 method args -> pass a command object.** A larger command object = plain POJO with Lombok
-  `@Builder` (especially when there are default values).
-- **Shared code lives in the shared module/package** and stays dependency-free.
-- **Dependencies flow one way, never in a circle.**
-- Keep units small and well-named; apply Clean Code & SOLID (esp. Open/Closed) where it aids
-  maintainability.
+### Phase files — read the one for your phase
+This `AGENTS.md` is the **always-on base** (shared by every phase). Phase-specific rules live in
+sibling files with **no duplication** between them. The Peon plugin auto-loads the right one per mode;
+**any other tool must open it manually:**
+- **Planning → `AGENTS-PLAN.md`** — the WHAT: story + ADRs, how to capture the plan as docs.
+- **Implementing → `AGENTS-DEV.md`** — the HOW: code, testing, logging, build, dependencies,
+  thread-safety, project specifics.
+- **After each iteration → `AGENTS-SESSION-END.md`** — the retro + how these guidance files are
+  structured and maintained.
 <!-- COMMON RULES END -->
 
-# Global Rules
+# Repo layout — Eclipse plugin RCP
 
-- **Thread Safety**: All code changes must be thread-safe (`Atomic*` / `ReentrantLock`). No single-threaded assumptions.
-- **Testing Strategy**: See module guidelines below for runner specifics (Eclipse vs Shell).
-- Write elegant, expressive code using modern Java (records, pattern matching, switch expressions) — readability like good prose.
+This is the real module layout — it **overrides** the generic Common `Module structure`: no
+`-api/-backend/-shared` split and no per-module docs skeleton — the story `docs/` (with `docs/adr/`,
+each carrying its `index.md`) lives at the root. A feature is a **package with the same name across
+the three fixed OSGi bundles**, each bundle with its own `AGENTS.md`:
 
-# Build
-- command line `mvn clean verify` - use `verify` to run the eclipse plugin tests of org.sterl.llmpeon.test
-- all other tests can be executed using the eclipse test tool runner
+- `org.sterl.llmpeon.core` — non-Eclipse code and tests
+- `org.sterl.llmpeon` — Eclipse plugin code
+- `org.sterl.llmpeon.test` — Eclipse plugin tests
 
-# Module Guidelines (Links)
-
-Read these when working in specific modules:
-- `/org.sterl.llmpeon/AGENTS.md` — Plugin UI & Logic (Error handling patterns, Job usage).
+Module guides (read when working in one):
+- `/org.sterl.llmpeon/AGENTS.md` — Plugin UI & Logic (error handling patterns, Job usage).
 - `/org.sterl.llmpeon.core/AGENTS.md` — Core logic (Lombok conventions).
 - `/org.sterl.llmpeon.test/AGENTS.md` — Test execution specifics.
 
-# Structure eclipse plugin RCP
-
-This is the real module layout — it **overrides** the generic Common `Module structure`: no
-`-api/-backend/-shared` split and no per-module `CONTEXT.md`/`docs/`/`adr/` skeleton. Three fixed
-OSGi bundles, each with its own `AGENTS.md`:
-
-- org.sterl.llmpeon.core - non eclipse specific code and tests
-- org.sterl.llmpeon - eclipse plugin code
-- org.sterl.llmpeon.test - eclipse plugin tests
-
-# Dependency Management
-
-- External JARsare copied to `lib/` via `maven-dependency-plugin`
-- `MANIFEST.MF` `Bundle-ClassPath`, `build.properties` `bin.includes`, and `.classpath` must all list the **same** JARs
-- Only whitelist needed groupIds via `includeGroupIds` - do NOT copy all transitive deps
-- Platform-provided JARs (jakarta, osgi, jna, asm, jetty, felix, etc.) must NOT be in `lib` - they come from the target platform
-
 # Docs
-- Two doc trees, kept separate:
-  - `docs/` — application design & dev spec (the HOW / system reference). **Not** linked to VitePress.
-  - `homepage/` — the published VitePress user documentation ("how to use the plugin").
-- In plan mode, always plan the matching `docs/` design update too.
-- plan also the user-facing doc changes in `homepage/src` - keep it short and explain how to use it.
-- VitePress source lives in `homepage/src` (`srcDir` in `homepage/.vitepress/config.ts`); build via `homepage/build-docs.sh`.
-- Always update `homepage/.vitepress/config.ts` sidebar/nav when adding new pages to `homepage/src/`.
+
+Two doc trees, kept separate — start at `docs/index.md`:
+- `docs/` — application design & dev spec (the HOW / system reference). **Not** linked to VitePress;
+  ADRs in `docs/adr/` (`docs/adr/index.md` registry).
+- `homepage/` — the published VitePress user documentation ("how to use the plugin"). Build/config
+  details are in `AGENTS-DEV.md`.

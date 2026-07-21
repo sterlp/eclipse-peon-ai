@@ -12,6 +12,7 @@ import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
+import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.tools.PlanTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
@@ -291,5 +292,20 @@ public class AgentModeService implements AiAgent {
     @Override
     public ChatResponse compressContext(AiMonitor monitor) {
         return getActiveService().compressContext(monitor);
+    }
+
+    @Override
+    public boolean isThinkEnabled() {
+        return getActiveService().isThinkEnabled();
+    }
+
+    @Override
+    public boolean isToolActive(SmartToolExecutor exec) {
+        return getActiveService().isToolActive(exec);
+    }
+
+    @Override
+    public boolean isMcpToolActive(String toolName) {
+        return getActiveService().isMcpToolActive(toolName);
     }
 }

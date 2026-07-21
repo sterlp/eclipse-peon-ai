@@ -25,16 +25,11 @@ import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.Menu;
-import org.eclipse.swt.widgets.MenuItem;
-import org.eclipse.swt.widgets.ToolBar;
-import org.eclipse.swt.widgets.ToolItem;
 import org.eclipse.ui.IWorkingSet;
 import org.sterl.llmpeon.StandingOrdersBuilder;
 import org.sterl.llmpeon.agent.AiAgent;
@@ -46,13 +41,13 @@ import org.sterl.llmpeon.parts.log.EclipseSlf4jLogger;
 import org.sterl.llmpeon.parts.model.UserContext;
 import org.sterl.llmpeon.parts.monitor.EclipseAiMonitor;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
-import org.sterl.llmpeon.parts.shared.ImageUtil;
 import org.sterl.llmpeon.parts.shared.SimpleDiff;
 import org.sterl.llmpeon.parts.tools.AskUserTool;
 import org.sterl.llmpeon.parts.tools.EclipseCodeNavigationTool;
 import org.sterl.llmpeon.parts.tools.memory.WorkspaceMemoryTool;
 import org.sterl.llmpeon.parts.widget.ActionsBarWidget;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget;
+import org.sterl.llmpeon.parts.widget.HeaderBarWidget;
 import org.sterl.llmpeon.parts.widget.StatusLineWidget;
 import org.sterl.llmpeon.parts.widget.StatusLineWidget.SkillMenuSelection;
 import org.sterl.llmpeon.parts.widget.UserInputWidget;
@@ -97,6 +92,8 @@ public class AIChatView implements EclipseAiMonitor {
     
     private volatile boolean recording = false;
 
+    private HeaderBarWidget headerBar;
+
     private AtomicReference<LlmConfig> lastListedConfig = new AtomicReference<>();
     private volatile LlmConfig lastAppliedConfig = null;
 
@@ -119,11 +116,18 @@ public class AIChatView implements EclipseAiMonitor {
     @PostConstruct
     public void createPartControl(Composite parent) {
         this.parent = parent;
-        parent.setLayout(new GridLayout(1, false));
+        // No gap between header and chat history — they read as one surface.
+        GridLayout rootLayout = new GridLayout(1, false);
+        rootLayout.verticalSpacing = 0;
+        parent.setLayout(rootLayout);
 
-        buildHeaderToolbar(parent);
+        headerBar = new HeaderBarWidget(parent, SWT.NONE,
+                () -> aiService.getActiveAgent().getName(),
+                aiService::getToolStatus);
+        headerBar.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
-        chatHistory = new ChatMarkdownWidget(parent, SWT.BORDER);
+        // Borderless — a border's top edge would read as a divider against the flush header.
+        chatHistory = new ChatMarkdownWidget(parent, SWT.NONE);
         chatHistory.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
         // inputBlock carries the single outer border for the entire input area (sections 2+3+4).
@@ -134,7 +138,10 @@ public class AIChatView implements EclipseAiMonitor {
         inputBlockLayout.marginHeight = 0;
         inputBlockLayout.verticalSpacing = 0;
         inputBlock.setLayout(inputBlockLayout);
-        inputBlock.setLayoutData(new GridData(SWT.FILL, SWT.BOTTOM, true, false));
+        // Restore the gap above the input block only (root verticalSpacing is 0).
+        GridData inputBlockData = new GridData(SWT.FILL, SWT.BOTTOM, true, false);
+        inputBlockData.verticalIndent = 5;
+        inputBlock.setLayoutData(inputBlockData);
 
         chatInput = new UserInputWidget(inputBlock, SWT.NONE,
             this::doSendMessage,
@@ -153,7 +160,8 @@ public class AIChatView implements EclipseAiMonitor {
             this::onHandoff,
             this::onAgentChange,
             aiService::setModel,
-            aiService::withThinking
+            aiService::withThinking,
+            this::doCompressContext
         );
         actionsBar.setModel(aiService.getActiveAgent().getAgentModelName());
 
@@ -161,8 +169,7 @@ public class AIChatView implements EclipseAiMonitor {
             this::onPinChange,
             this::onSkillsToggle,
             enabled -> aiService.getMcpConnectionService().toggle(enabled),
-            this::onAgentsMdToggle,
-            this::doCompressContext
+            this::onAgentsMdToggle
         );
 
         statusLine.setSkillsMenuHandler(
@@ -203,7 +210,7 @@ public class AIChatView implements EclipseAiMonitor {
     private void onClear() {
         aiService.clear();
         chatHistory.clear();
-        statusLine.updateCompact(0, aiService.getConfig().getAutoCompactAfter());
+        actionsBar.updateCompact(0, aiService.getConfig().getAutoCompactAfter());
     }
 
     @PreDestroy
@@ -297,7 +304,7 @@ public class AIChatView implements EclipseAiMonitor {
             var ai = aiService.getActiveAgent();
             chatHistory.hideLiveStatus();
             chatHistory.appendMessage(m);
-            statusLine.updateCompact(ai.getMemory().getTotalTokenUsed(), aiService.getConfig().getAutoCompactAfter());
+            actionsBar.updateCompact(ai.getMemory().getTotalTokenUsed(), aiService.getConfig().getAutoCompactAfter());
         });
     }
 
@@ -307,6 +314,11 @@ public class AIChatView implements EclipseAiMonitor {
             lockWhileWorking(false);
             refreshStatusLine();
         });
+    }
+
+    @Override
+    public void onTokenUsage(dev.langchain4j.model.output.TokenUsage usage) {
+        EclipseUtil.runInUiThread(parent, () -> headerBar.addTokenUsage(usage));
     }
 
     @Override
@@ -345,7 +357,7 @@ public class AIChatView implements EclipseAiMonitor {
             userContext.getSelectedFile()
         );
         var ai = aiService.getActiveAgent();
-        statusLine.updateCompact(ai.getMemory().getTotalTokenUsed(), aiService.getConfig().getAutoCompactAfter());
+        actionsBar.updateCompact(ai.getMemory().getTotalTokenUsed(), aiService.getConfig().getAutoCompactAfter());
     }
     private void refreshChat() {
         chatHistory.clear();
@@ -360,38 +372,6 @@ public class AIChatView implements EclipseAiMonitor {
         aiService.getAgentsMdService().setEnabled(enabled);
     }
 
-    /** Top-right toolbar with the hammer button that reveals the tool activity popup. */
-    private void buildHeaderToolbar(Composite parent) {
-        ToolBar toolBar = new ToolBar(parent, SWT.FLAT | SWT.RIGHT);
-        toolBar.setLayoutData(new GridData(SWT.END, SWT.CENTER, true, false));
-
-        ToolItem hammer = new ToolItem(toolBar, SWT.PUSH);
-        hammer.setImage(ImageUtil.loadImage(toolBar, ImageUtil.HAMMER));
-        hammer.setToolTipText("Show which tools are active for the selected agent");
-        hammer.addListener(SWT.Selection, e -> showToolsMenu(toolBar, hammer));
-    }
-
-    /** Popup listing every tool with a ✓ for active and greyed-out for inactive tools. */
-    private void showToolsMenu(ToolBar toolBar, ToolItem item) {
-        var tools = aiService.getToolStatus();
-        Menu menu = new Menu(toolBar);
-
-        MenuItem header = new MenuItem(menu, SWT.PUSH);
-        header.setText("Tools for: " + aiService.getActiveAgent().getName());
-        header.setEnabled(false);
-        new MenuItem(menu, SWT.SEPARATOR);
-
-        for (var t : tools) {
-            MenuItem mi = new MenuItem(menu, SWT.PUSH);
-            String label = (t.active() ? "✓  " : "–  ") + t.name() + (t.mcp() ? "  (MCP)" : "");
-            mi.setText(label);
-            mi.setEnabled(t.active()); // inactive tools appear greyed out
-        }
-
-        Rectangle b = item.getBounds();
-        menu.setLocation(toolBar.toDisplay(b.x, b.y + b.height));
-        menu.setVisible(true);
-    }
 
     // -------------------------------------------------------------------------
     // Config / model loading
@@ -410,9 +390,9 @@ public class AIChatView implements EclipseAiMonitor {
             actionsBar.updateModeUI(aiService.getActiveAgent());
         });
         
-        // Sync the Think toggle to the config default. The user can override this per-session
-        // via the button; that override is stored in-memory only and not written to preferences.
-        actionsBar.setThinkEnabled(config.isThinkingEnabled());
+        // Sync the Think toggle to the selected agent's state (Dev/Plan from prefs, Custom from
+        // its AGENT.md). The brain button persists per agent; there is no cascade.
+        actionsBar.setThinkEnabled(aiService.getActiveAgent().isThinkEnabled());
         applyMcpConfig();
         chatInput.setVoiceInputVisible(VoicePreferenceInitializer.buildWithDefaults().enabled());
         syncAgentsMdToggle();
@@ -511,7 +491,7 @@ public class AIChatView implements EclipseAiMonitor {
                 }
                 return Status.OK_STATUS;
             } catch (Exception e) {
-                onChatResponse(new SimpleMessage(Type.PROBLEM, e.getMessage()));
+                onChatResponse(new SimpleMessage(Type.PROBLEM, config.getProviderType().name() + ": " + e.getMessage()));
                 showConfiguredModelFallback(modelName); // B1: keep the configured model visible
                 if (StringUtil.hasValue(modelName)) {
                     return new Status(IStatus.WARNING, PeonConstants.PLUGIN_ID, IStatus.OK, 
@@ -540,13 +520,15 @@ public class AIChatView implements EclipseAiMonitor {
 
     private void onAgentChange(AiAgent mode) {
         aiService.setActiveAgent(mode);
-        
+
         if (!actionsBar.containsModelId(aiService.getActiveModel())) {
             actionsBar.setModel(aiService.getActiveModel());
         } else {
             actionsBar.selectModel(aiService.getActiveModel());
         }
 
+        // brain toggle follows the newly selected agent (no cascade)
+        actionsBar.setThinkEnabled(aiService.getActiveAgent().isThinkEnabled());
         refreshChat();
     }
 

@@ -10,18 +10,28 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.TokenUsage;
 
 public class ChatMessageUtil {
     
     public static int getTokenCount(ChatResponse response, List<ChatMessage> messages) {
-        var tokenUsage = response.tokenUsage();
-        if (tokenUsage == null) tokenUsage = response.metadata() != null ? response.metadata().tokenUsage() : null;
-
+        var tokenUsage = tokenUsage(response);
         if (tokenUsage != null && tokenUsage.totalTokenCount() != null) {
             return tokenUsage.totalTokenCount();
         } else {
             return estimateTokens(messages);
         }
+    }
+
+    /**
+     * The real provider {@link TokenUsage} of a response, checking the response and its metadata,
+     * or {@code null} when the provider returned none. Never estimates.
+     */
+    public static TokenUsage tokenUsage(ChatResponse response) {
+        if (response == null) return null;
+        var tokenUsage = response.tokenUsage();
+        if (tokenUsage == null) tokenUsage = response.metadata() != null ? response.metadata().tokenUsage() : null;
+        return tokenUsage;
     }
     private static int estimateTokens(List<ChatMessage> messages) {
         int chars = 0;

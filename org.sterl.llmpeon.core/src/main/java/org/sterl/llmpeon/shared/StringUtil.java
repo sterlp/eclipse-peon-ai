@@ -54,6 +54,11 @@ public class StringUtil {
         return (tokens / 1000) + "k";
     }
 
+    /** Converts a token count to a "k" string, e.g. 131072 → "131k". */
+    public static String toK(long tokens) {
+        return (tokens / 1000) + "k";
+    }
+
     /**
      * Appends the context window size in "k" to the model name when maxInputTokens is known.
      * E.g. "mistral-medium-latest" + 131072 → "mistral-medium-latest (131k)".

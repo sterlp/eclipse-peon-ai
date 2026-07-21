@@ -17,18 +17,24 @@ import org.sterl.llmpeon.shared.StringUtil;
 import com.openai.models.Reasoning;
 import com.openai.models.ReasoningEffort;
 
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.http.client.jdk.JdkHttpClient;
+import dev.langchain4j.model.anthropic.AnthropicChatRequestParameters;
 import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
 import dev.langchain4j.model.catalog.ModelType;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.googleai.GeminiThinkingConfig;
 import dev.langchain4j.model.googleai.GeminiThinkingConfig.GeminiThinkingLevel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiModelCatalog;
 import dev.langchain4j.model.googleai.GoogleAiGeminiStreamingChatModel;
 import dev.langchain4j.model.mistralai.MistralAiStreamingChatModel;
+import dev.langchain4j.model.ollama.OllamaChatRequestParameters;
 import dev.langchain4j.model.ollama.OllamaModel;
 import dev.langchain4j.model.ollama.OllamaModels;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
+import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesChatRequestParameters;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChatModel;
@@ -40,17 +46,29 @@ public enum AiProvider {
     OLLAMA {
         @Override
         StreamingChatModel buildModel(LlmConfig c) {
+            // Thinking is now set per request (see newRequestParameters). returnThinking stays
+            // build-time (langchain4j has no per-request setter) and is always on so thinking is
+            // parsed whenever a per-agent think value enables it.
             var builder = OllamaStreamingChatModel.builder()
                     .timeout(c.getTimeout())
                     .baseUrl(c.getUrl())
                     .modelName(c.getModel())
-                    .think(c.isThinkingEnabled())
-                    .returnThinking(c.isThinkingEnabled())
+                    .returnThinking(Boolean.TRUE)
                     .customHeaders(c.getHeaderParams())
                     .logRequests(c.isDebugMode())
                     .logResponses(c.isDebugMode());
             if (c.getMaxTokens() > 0) builder.numPredict(c.getMaxTokens());
             return builder.build();
+        }
+
+        @Override
+        public ChatRequestParameters newRequestParameters(AgentConfig mc, List<ToolSpecification> tools) {
+            var b = OllamaChatRequestParameters.builder();
+            applyBase(b, mc, tools);
+            // empty -> omit; explicit off-token -> think:false; else think:true
+            var think = ThinkResolver.toOllamaThink(mc.getThink());
+            if (think != null) b.think(think);
+            return b.build();
         }
 
         @Override
@@ -79,16 +97,25 @@ public enum AiProvider {
                     .modelName(c.getModel())
                     .apiKey(c.getApiKey())
                     .strictJsonSchema(true)
-                    .returnThinking(c.isThinkingEnabled())
+                    .returnThinking(c.shouldReturnThinking())
                     .sendThinking(c.shouldWeSendThinkingBackToLLM())
                     .customHeaders(c.getHeaderParams())
                     .customQueryParams(c.getQueryParams())
                     .logRequests(c.isDebugMode())
                     .logResponses(c.isDebugMode());
 
-            if (c.isThinkingEnabled()) builder.reasoningEffort("high");
+            // reasoning.effort is now set per request (see newRequestParameters).
             if (c.getMaxTokens() > 0) builder.maxCompletionTokens(c.getMaxTokens());
             return builder.build();
+        }
+
+        @Override
+        public ChatRequestParameters newRequestParameters(AgentConfig mc, List<ToolSpecification> tools) {
+            var b = OpenAiChatRequestParameters.builder();
+            applyBase(b, mc, tools);
+            var effort = effortFor(mc);
+            if (effort != null) b.reasoningEffort(effort);
+            return b.build();
         }
 
         @Override
@@ -97,11 +124,11 @@ public enum AiProvider {
                     .uri(URI.create(c.getUrl() + "/models"))
                     .header("Authorization", "Bearer " + c.getApiKey());
             c.getHeaderParams().forEach(request::header);
-            
+
             return SharedHttpClient.cancelAndGet(request, AiModelParser::parseOpenApiModels);
         }
     },
-    
+
     OPEN_AI_OFFICIAL {
         @Override
         StreamingChatModel buildModel(LlmConfig c) {
@@ -113,19 +140,19 @@ public enum AiProvider {
                     .strictTools(true)
                     .isMicrosoftFoundry(true)
                     .customHeaders(c.getHeaderParams());
-            
-            var params = OpenAiOfficialResponsesChatRequestParameters.builder();
-            if (c.isThinkingEnabled()) {
-                result.reasoningEffort(ReasoningEffort.HIGH);
-                result.reasoningSummary(Reasoning.Summary.DETAILED);
-                params.reasoningEffort(ReasoningEffort.HIGH)
-                        .reasoningSummary(Reasoning.Summary.DETAILED);
-            }
-            if (c.getMaxTokens() > 0) params.maxOutputTokens(c.getMaxTokens());
-            if (c.isThinkingEnabled() || c.getMaxTokens() > 0) {
-                result.defaultRequestParameters(params.build());
+
+            // reasoning.effort is now set per request (see newRequestParameters); only the
+            // maxOutputTokens default stays baked into the model.
+            if (c.getMaxTokens() > 0) {
+                result.defaultRequestParameters(OpenAiOfficialResponsesChatRequestParameters.builder()
+                        .maxOutputTokens(c.getMaxTokens()).build());
             }
             return result.build();
+        }
+
+        @Override
+        public ChatRequestParameters newRequestParameters(AgentConfig mc, List<ToolSpecification> tools) {
+            return openAiOfficialParameters(mc, tools);
         }
 
         @Override
@@ -134,7 +161,7 @@ public enum AiProvider {
                     .uri(URI.create(c.getUrl() + "/models"))
                     .header("Authorization", "Bearer " + c.getApiKey());
             c.getHeaderParams().forEach(request::header);
-            
+
             return SharedHttpClient.cancelAndGet(request, AiModelParser::parseOpenApiModels);
         }
     },
@@ -152,7 +179,7 @@ public enum AiProvider {
                     .modelName(c.getModel())
                     .apiKey(StringUtil.hasValue(c.getApiKey()) ? c.getApiKey() : "lm-studio")
                     .httpClientBuilder(http1)
-                    .returnThinking(c.isThinkingEnabled())
+                    .returnThinking(c.shouldReturnThinking())
                     .sendThinking(c.shouldWeSendThinkingBackToLLM())
                     .customHeaders(c.getHeaderParams())
                     .customQueryParams(c.getQueryParams())
@@ -160,6 +187,16 @@ public enum AiProvider {
                     .logResponses(c.isDebugMode());
             if (c.getMaxTokens() > 0) builder.maxCompletionTokens(c.getMaxTokens());
             return builder.build();
+        }
+
+        @Override
+        public ChatRequestParameters newRequestParameters(AgentConfig mc, List<ToolSpecification> tools) {
+            var b = OpenAiChatRequestParameters.builder();
+            applyBase(b, mc, tools);
+            if (StringUtil.hasValue(mc.getThink())) {
+                b.customParameters(Map.of("reasoning", ThinkResolver.toReasoning(mc.getThink())));
+            }
+            return b.build();
         }
 
         @Override
@@ -182,10 +219,12 @@ public enum AiProvider {
             // thought_signature even when thinking is "disabled". Without sendThinking(true),
             // the thought_signature is not re-sent with tool results -> INVALID_ARGUMENT error.
             result.returnThinking(Boolean.TRUE).sendThinking(Boolean.TRUE);
-            if (c.isThinkingEnabled()) {
+            // TODO per-agent think: Gemini has no per-request thinking parameter subtype in this
+            // langchain4j version, so thinking stays build-time via the global thinkingEnabled toggle.
+            if (c.isThinkingOn()) {
                 var think = GeminiThinkingConfig.builder()
                     .thinkingLevel(GeminiThinkingLevel.HIGH)
-                    .thinkingBudget(c.getMaxTokens() > 0 ? c.getMaxTokens() / 2 : 2048);
+                    .thinkingBudget(c.getMaxTokens() > 0 ? c.getMaxTokens() : 4096);
                 result.thinkingConfig(think.build());
             } else {
                 result.thinkingConfig(GeminiThinkingConfig.builder()
@@ -226,11 +265,13 @@ public enum AiProvider {
 
         @Override
         StreamingChatModel buildModel(LlmConfig c) {
+            // TODO per-agent think: Mistral has no per-request thinking parameter subtype in this
+            // langchain4j version, so thinking stays build-time via the global thinkingEnabled toggle.
             var builder = MistralAiStreamingChatModel.builder()
                     .timeout(c.getTimeout())
                     .modelName(c.getModel())
                     .apiKey(c.getApiKey())
-                    .returnThinking(c.isThinkingEnabled())
+                    .returnThinking(c.shouldReturnThinking())
                     .sendThinking(c.shouldWeSendThinkingBackToLLM())
                     .customHeaders(c.getHeaderParams())
                     .logRequests(c.isDebugMode())
@@ -267,23 +308,28 @@ public enum AiProvider {
             if (c.getMaxTokens() > 0) {
                 builder.maxTokens(c.getMaxTokens());
             }
-            if (c.isThinkingEnabled()) {
-                var model = c.getModel() == null ? "" : c.getModel();
-                var adaptive = model.contains("opus-4-8")
-                            || model.contains("opus-4-7")
-                            || model.contains("mythos");
-                if (adaptive) {
-                    builder.thinkingType("adaptive");
-                } else {
-                    builder.thinkingType("enabled")
-                           .thinkingBudgetTokens(c.getMaxTokens() > 0 ? c.getMaxTokens() / 2 : 2048);
-                }
-            }
+            // thinkingType/budget are now set per request (see newRequestParameters).
             return builder
                     .customHeaders(c.getHeaderParams())
                     .logRequests(c.isDebugMode())
                     .logResponses(c.isDebugMode())
                     .build();
+        }
+
+        @Override
+        public ChatRequestParameters newRequestParameters(AgentConfig mc, List<ToolSpecification> tools) {
+            var b = AnthropicChatRequestParameters.builder();
+            applyBase(b, mc, tools);
+            var type = anthropicThinkingType(mc);
+            if (type != null) {
+                if ("adaptive".equals(type)) {
+                    b.thinkingType("adaptive");
+                } else {
+                    b.thinkingType(type).thinkingBudgetTokens(8000);
+                }
+                b.sendThinking(Boolean.TRUE).returnThinking(Boolean.TRUE);
+            }
+            return b.build();
         }
 
         @Override
@@ -325,6 +371,11 @@ public enum AiProvider {
                         .maxOutputTokens(c.getMaxTokens()).build());
             }
             return builder.build();
+        }
+
+        @Override
+        public ChatRequestParameters newRequestParameters(AgentConfig mc, List<ToolSpecification> tools) {
+            return openAiOfficialParameters(mc, tools);
         }
 
         // https://docs.github.com/en/rest/models/catalog?apiVersion=2026-03-10#list-all-models
@@ -383,6 +434,15 @@ public enum AiProvider {
         }
 
         @Override
+        public ChatRequestParameters newRequestParameters(AgentConfig mc, List<ToolSpecification> tools) {
+            var b = OpenAiChatRequestParameters.builder();
+            applyBase(b, mc, tools);
+            var effort = effortFor(mc);
+            if (effort != null) b.reasoningEffort(effort);
+            return b.build();
+        }
+
+        @Override
         public List<AiModel> listAiModels(LlmConfig c) {
             var request = HttpRequest.newBuilder()
                     .uri(URI.create(DEFAULT_BASE_URL + "/models"))
@@ -406,6 +466,65 @@ public enum AiProvider {
 
     /** Builds the {@link StreamingChatModel} for this provider using the given config. */
     abstract StreamingChatModel buildModel(LlmConfig config);
+
+    /**
+     * Builds the per-request {@link ChatRequestParameters} for this provider from a {@link AgentConfig}.
+     * This is where the per-agent {@code think} value becomes a real request parameter.
+     *
+     * <p>Default: only the neutral fields (modelName, temperature, toolSpecifications) — no thinking.
+     * Providers whose langchain4j version supports per-request thinking override this. Gemini and
+     * Mistral have no per-request thinking parameter subtype, so they use this default and keep
+     * thinking build-time (see the TODOs in their {@code buildModel}).</p>
+     */
+    public ChatRequestParameters newRequestParameters(AgentConfig mc, List<ToolSpecification> tools) {
+        var b = ChatRequestParameters.builder();
+        applyBase(b, mc, tools);
+        return b.build();
+    }
+
+    /** Shared reasoning-effort parameters for the OpenAI-official-based providers. */
+    private static ChatRequestParameters openAiOfficialParameters(AgentConfig mc, List<ToolSpecification> tools) {
+        var b = OpenAiOfficialResponsesChatRequestParameters.builder();
+        applyBase(b, mc, tools);
+        var effort = effortFor(mc);
+        if (effort != null) {
+            b.reasoningEffort(ReasoningEffort.of(effort)).reasoningSummary(Reasoning.Summary.DETAILED);
+        }
+        return b.build();
+    }
+
+    /** Applies the neutral request fields (modelName, temperature, tools) onto any provider builder. */
+    private static void applyBase(DefaultChatRequestParameters.Builder<?> b, AgentConfig mc, List<ToolSpecification> tools) {
+        b.temperature(mc.getTemperature());
+        if (StringUtil.hasValue(mc.getModel())) b.modelName(mc.getModel());
+        if (tools != null && !tools.isEmpty()) b.toolSpecifications(tools);
+    }
+
+    /**
+     * OpenAI-family {@code reasoning.effort} for the agent's think value (3-stage schema):
+     * off -&gt; {@code null} (send nothing); a concrete level -&gt; used verbatim; a generic on
+     * ({@code true}/{@code on}) -&gt; the {@link ThinkModelMapping} for the OpenAI family and this
+     * model (no known reasoning model -&gt; {@code null}, send nothing).
+     */
+    private static String effortFor(AgentConfig mc) {
+        var think = mc.getThink();
+        if (ThinkResolver.isOff(think)) return null;
+        if (ThinkResolver.isGenericOn(think)) return ThinkModelMapping.resolveOn(OPEN_AI, mc.getModel());
+        return ThinkResolver.toReasoningEffort(think);
+    }
+
+    /**
+     * Anthropic {@code thinkingType} for the agent's think value (3-stage schema):
+     * off -&gt; {@code null}; a concrete value ({@code adaptive}/{@code enabled}) -&gt; used verbatim;
+     * a generic on -&gt; the {@link ThinkModelMapping} for Anthropic and this model (no match -&gt;
+     * {@code null}, send nothing).
+     */
+    private static String anthropicThinkingType(AgentConfig mc) {
+        var think = mc.getThink();
+        if (ThinkResolver.isOff(think)) return null;
+        if (ThinkResolver.isGenericOn(think)) return ThinkModelMapping.resolveOn(ANTHROPIC, mc.getModel());
+        return think.trim().toLowerCase();
+    }
 
     /**
      * Returns a list of available {@link AiModel}s with metadata.

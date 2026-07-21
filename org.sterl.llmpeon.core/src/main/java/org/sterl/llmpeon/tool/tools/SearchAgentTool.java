@@ -33,14 +33,12 @@ public class SearchAgentTool extends AbstractTool {
 
             var cfg = this.request.getConfig();
             var modelName = cfg.getSearchModel();
-            
+
             var request = this.request.toBuilder()
                 .staticMessages(Arrays.asList(system))
                 .toolFilter(e -> !e.getTool().isEditTool() && !(e.getTool() instanceof SearchAgentTool))
-                .memory(messages);
-
-            if (cfg.getDevTemperature() < 1) request.temperature(0.3);
-            if (modelName != null) request.modelName(cfg.getSearchModel());
+                .memory(messages)
+                .agentConfig(cfg.searchAgentConfig());
 
             onTool("Search agent "
                     + (modelName == null ? "" : "(" + modelName + ")")

@@ -28,6 +28,16 @@ public class AiPlanAgent extends AbstractAgent {
     }
 
     @Override
+    public org.sterl.llmpeon.ai.AgentConfig getConfig() {
+        return configuredModel.getConfig().planAgentConfig();
+    }
+
+    @Override
+    public boolean isThinkEnabled() {
+        return configuredModel.getConfig().isPlanThinkEnabled();
+    }
+
+    @Override
     public String getAgentModelName() {
         return configuredModel.getConfig().getPlanModel();
     }

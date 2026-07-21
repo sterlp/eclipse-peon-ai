@@ -8,6 +8,7 @@ import java.util.function.Predicate;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.prompt.model.SimplePromptFile;
+import org.sterl.llmpeon.tool.ToolPolicy;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
@@ -26,6 +27,10 @@ import lombok.Setter;
  */
 public class CustomAgent extends AbstractAgent {
     public static final String MODEL = "model";
+    public static final String THINK = "think";                 // legacy alias for think_on_string
+    public static final String THINK_ENABLED = "think_enabled";
+    public static final String THINK_ON = "think_on_string";
+    public static final String THINK_OFF = "think_off_string";
     public static final String INCLUDE_DEFAULT = "include-default";
     public static final String TEMPERATURE = "temperature";
     public static final String TOOLS = "tools";
@@ -63,6 +68,24 @@ public class CustomAgent extends AbstractAgent {
     @Override
     public Double getTemperature() {
         return promptFile.firstOrDefaultNumber(TEMPERATURE, null);
+    }
+
+    @Override
+    public boolean isThinkEnabled() {
+        // explicit think_enabled wins; legacy `think:` implies enabled for an on-value
+        if (promptFile.firstOrDefault(THINK_ENABLED, null) != null) return promptFile.isTrue(THINK_ENABLED);
+        var legacy = promptFile.firstOrDefault(THINK, null);
+        return legacy != null && org.sterl.llmpeon.ai.ThinkResolver.isOn(legacy);
+    }
+
+    @Override
+    public org.sterl.llmpeon.ai.AgentConfig getConfig() {
+        // legacy `think:` is read as an alias for think_on_string (no inheritance between agents)
+        var on = promptFile.firstOrDefault(THINK_ON, promptFile.firstOrDefault(THINK, null));
+        var off = promptFile.firstOrDefault(THINK_OFF, null);
+        return configuredModel.getConfig().customAgentConfig(
+                promptFile.firstOrDefault(MODEL, null),
+                isThinkEnabled(), on, off, getTemperature());
     }
 
     @Override
@@ -114,6 +137,11 @@ public class CustomAgent extends AbstractAgent {
     @Override
     protected Predicate<String> getToolNameFilter() {
         return this::allowed;
+    }
+
+    /** @return {@code true} if the tool name passes this agent's {@code tools} allowlist. */
+    private boolean allowed(String toolName) {
+        return ToolPolicy.enables(getTools(), toolName);
     }
     
     @Override

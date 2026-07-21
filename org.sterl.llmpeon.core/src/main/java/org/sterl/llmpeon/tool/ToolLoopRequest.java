@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.function.Predicate;
 
 import org.jspecify.annotations.Nullable;
+import org.sterl.llmpeon.ai.AgentConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
@@ -58,11 +59,13 @@ public class ToolLoopRequest {
      */
     @Default
     public Predicate<String> toolNameFilter = n -> true;
+    /**
+     * Per-agent config (provider, model, think, temperature). Set by every agent via
+     * {@link org.sterl.llmpeon.agent.AbstractAgent#getConfig()}. When unset (e.g. a bare
+     * builder in a test), {@link #getAgentConfig()} falls back to the dev config.
+     */
     @Nullable
-    public Double temperature;
-    /** Per-agent model override — null means use the configured default. */
-    @Nullable
-    public String modelName;
+    public AgentConfig agentConfig;
 
     /**
      * Standing orders (project context, AGENTS.md, active command/skill body) captured at loop
@@ -93,6 +96,11 @@ public class ToolLoopRequest {
     public LlmConfig getConfig() {
         return chatModel.getConfig();
     }
+
+    /** Per-agent config for this loop; falls back to the dev config when not explicitly set. */
+    public AgentConfig getAgentConfig() {
+        return agentConfig != null ? agentConfig : chatModel.getConfig().devAgentConfig();
+    }
     
     public ChatResponse call(ChatRequest chatRequest) {
         return bridge.call(chatModel.getChatModel(), chatRequest, monitor);
@@ -117,13 +125,8 @@ public class ToolLoopRequest {
         return this;
     }
 
-    public ToolLoopRequest temperature(double temperature) {
-        this.temperature = temperature;
-        return this;
-    }
-
-    public ToolLoopRequest modelName(String modelName) {
-        this.modelName = modelName;
+    public ToolLoopRequest agentConfig(AgentConfig agentConfig) {
+        this.agentConfig = agentConfig;
         return this;
     }
 }

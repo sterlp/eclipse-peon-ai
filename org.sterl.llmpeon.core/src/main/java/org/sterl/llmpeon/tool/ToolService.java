@@ -117,11 +117,10 @@ public class ToolService {
             var messages = new ArrayList<ChatMessage>(toOneSystemMessage(req.staticMessages));
             req.getMemory().addMemoryTo(messages);
 
+            var agentConfig = req.getAgentConfig();
             var builder = ChatRequest.builder()
                     .messages(messages)
-                    .toolSpecifications(toolSpecifications(req));
-            if (req.temperature != null) builder.temperature(req.temperature);
-            if (StringUtil.hasValue(req.modelName)) builder.modelName(req.modelName);
+                    .parameters(agentConfig.newRequestParameters(toolSpecifications(req)));
 
             req.getMonitor().onChatMessage(++iterations, builder);
             response = req.call(builder.build());

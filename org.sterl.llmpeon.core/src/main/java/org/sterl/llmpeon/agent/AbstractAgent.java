@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
 
+import org.sterl.llmpeon.ai.AgentConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
@@ -43,6 +44,20 @@ public abstract class AbstractAgent implements AiAgent {
 
     public abstract Double getTemperature();
 
+    /**
+     * Per-agent {@link AgentConfig} used for every request of this agent (provider, model, think,
+     * temperature). Default is the dev/base config; agents override to pick their model+think.
+     */
+    public AgentConfig getConfig() {
+        return configuredModel.getConfig().devAgentConfig();
+    }
+
+    /** Dev == GLOBAL == DEFAULT: the base think slot. Plan/Custom override. */
+    @Override
+    public boolean isThinkEnabled() {
+        return configuredModel.getConfig().isThinkingOn();
+    }
+
     /** Returns the configured model name for this agent type, or null to use default. */
     @Override
     public String getAgentModelName() {
@@ -69,12 +84,14 @@ public abstract class AbstractAgent implements AiAgent {
         return n -> true;
     }
 
-    /** True if the given built-in tool is offered to the LLM for this agent (UI introspection). */
+    /** Reuses {@link #getToolFilter()} so it matches exactly what the agent sends at runtime. */
+    @Override
     public boolean isToolActive(SmartToolExecutor exec) {
         return getToolFilter().test(exec);
     }
 
-    /** True if the given MCP tool name is offered to the LLM for this agent (UI introspection). */
+    /** Reuses {@link #getToolNameFilter()} (the MCP name allowlist). */
+    @Override
     public boolean isMcpToolActive(String toolName) {
         return getToolNameFilter().test(toolName);
     }
@@ -127,8 +144,7 @@ public abstract class AbstractAgent implements AiAgent {
                     .monitor(monitor)
                     .toolFilter(getToolFilter())
                     .toolNameFilter(getToolNameFilter())
-                    .temperature(getTemperature())
-                    .modelName(getAgentModelName())
+                    .agentConfig(getConfig())
                     .standingOrders(List.copyOf(userContextInformations))
                     .build()
                 );

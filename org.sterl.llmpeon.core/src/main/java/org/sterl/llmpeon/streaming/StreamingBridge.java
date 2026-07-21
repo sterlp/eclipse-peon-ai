@@ -7,6 +7,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.shared.OnPartialAiResponse;
 import org.sterl.llmpeon.shared.OnPartialAiResponse.Type;
 
@@ -124,6 +125,10 @@ public class StreamingBridge implements StreamingChatResponseHandler {
     public void onCompleteResponse(ChatResponse completeResponse) {
         this.monitor.onStreamingChunk(new OnPartialAiResponse(Type.END, null, startedAt));
         responseRef.set(completeResponse);
+        // Single accumulation trigger for the whole app (main loop, search sub-agent, compaction).
+        // Only real provider usage — no estimate. See docs/adr/0004-session-token-accounting.md.
+        var usage = ChatMessageUtil.tokenUsage(completeResponse);
+        if (usage != null) this.monitor.onTokenUsage(usage);
         latch.countDown();
     }
 
