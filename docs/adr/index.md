@@ -13,3 +13,4 @@ isn't clear from a rule/BDD.
 | [0003](0003-send-thinking-independent.md) | `think_send` is independent of the think toggle (and stays global, build-time) | Accepted |
 | [0004](0004-session-token-accounting.md) | Session token totals accumulate at the StreamingBridge choke point, real-usage-only, never reset | Accepted |
 | [0005](0005-widget-owns-state-view-routes.md) | UI widgets own their state/logic (HeaderBarWidget + TokenHeaderWidget); AIChatView only routes monitor events | Accepted |
+| [0006](0006-swt-reflow-parent-on-size-change.md) | SWT: when a control's content changes size, re-layout the parent chain, not just the control | Accepted |

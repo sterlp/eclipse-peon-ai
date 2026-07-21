@@ -116,7 +116,11 @@ public class AIChatView implements EclipseAiMonitor {
     @PostConstruct
     public void createPartControl(Composite parent) {
         this.parent = parent;
-        parent.setLayout(new GridLayout(1, false));
+        // verticalSpacing = 0 so the header strip sits flush on the chat history — no gap, they
+        // read as one surface (see docs/token-usage.md R4 / interaction-design.md).
+        GridLayout rootLayout = new GridLayout(1, false);
+        rootLayout.verticalSpacing = 0;
+        parent.setLayout(rootLayout);
 
         headerBar = new HeaderBarWidget(parent, SWT.NONE,
                 () -> aiService.getActiveAgent().getName(),
@@ -134,7 +138,11 @@ public class AIChatView implements EclipseAiMonitor {
         inputBlockLayout.marginHeight = 0;
         inputBlockLayout.verticalSpacing = 0;
         inputBlock.setLayout(inputBlockLayout);
-        inputBlock.setLayoutData(new GridData(SWT.FILL, SWT.BOTTOM, true, false));
+        // Root layout has verticalSpacing = 0 (header flush on chat); restore the gap above the
+        // input block only, so just the header↔chat seam closes.
+        GridData inputBlockData = new GridData(SWT.FILL, SWT.BOTTOM, true, false);
+        inputBlockData.verticalIndent = 5;
+        inputBlock.setLayoutData(inputBlockData);
 
         chatInput = new UserInputWidget(inputBlock, SWT.NONE,
             this::doSendMessage,

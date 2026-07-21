@@ -55,7 +55,8 @@ public class HeaderBarWidget extends Composite {
         });
 
         tokens = new TokenHeaderWidget(this, SWT.NONE);
-        tokens.setLayoutData(new GridData(SWT.END, SWT.CENTER, true, false));
+        // FILL the left column so the readout always has width (its Label right-aligns inside).
+        tokens.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
         Button hammer = SwtUtil.createIconButton(this,
                 ImageUtil.loadImage(this, ImageUtil.HAMMER),

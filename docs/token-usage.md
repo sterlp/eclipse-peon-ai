@@ -39,11 +39,13 @@ The totals persist for the life of the chat view.
 - A fresh chat view (close/reopen) starts at zero.
 
 ### R4 — Header display ✅
-- **GIVEN** `sent == 0` and `received == 0` (fresh session) **WHEN** the header renders
-  **THEN** no token readout is shown.
-- **GIVEN** `sent > 0` or `received > 0` **WHEN** a response arrives **THEN** the header shows
-  `↑ <sent>  ↓ <received>` left of the hammer icon, updated live. `received` = output/generated
-  tokens.
+The readout is **always visible** (kept simple — no show/hide logic).
+
+- **GIVEN** a fresh session **WHEN** the header renders **THEN** it shows `↑ 0k  ↓ 0k` left of the
+  hammer icon.
+- **GIVEN** a response arrives with usage **WHEN** the totals change **THEN** the header updates live
+  to `↑ <sent>  ↓ <received>` and reflows so the wider text is visible. `received` =
+  output/generated tokens.
 
 ### R5 — Per-agent stats ❌
 Each `AiAgent` owns its own `TokenStats` (its own `sent`/`received`), so a future UI can break spend
