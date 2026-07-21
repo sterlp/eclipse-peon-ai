@@ -1,7 +1,8 @@
 # Dev Phase — the HOW
 
 Load this while implementing. The plan (story + ADRs) is already agreed; here are the code and
-project-specific conventions.
+project-specific conventions. **If your tool didn't auto-load it, read the always-on base
+`AGENTS.md` first** — this file only adds the dev-phase rules on top.
 
 ## Handover in
 - You implement a **concrete dev-plan** — a coherent slice of **❌** rules from the story.
@@ -43,18 +44,9 @@ project-specific conventions.
   assumptions.
 - Write elegant, expressive modern Java (records, pattern matching, switch expressions).
 
-### Structure — 3 fixed OSGi bundles
-Overrides the generic `-api/-backend/-shared` split: **no** per-module `CONTEXT.md`/`docs/`/`adr/`
-skeleton — the story `docs/` and `adr/` live at the **root**. A feature is a **package** with the same
-name across the bundles:
-- `org.sterl.llmpeon.core` — non-Eclipse code and its JUnit tests.
-- `org.sterl.llmpeon` — Eclipse plugin (UI & logic).
-- `org.sterl.llmpeon.test` — Eclipse plugin tests.
-
-Module guidelines (read when working in one):
-- `/org.sterl.llmpeon/AGENTS.md` — Plugin UI & logic (error handling, Job usage).
-- `/org.sterl.llmpeon.core/AGENTS.md` — Core logic (Lombok conventions).
-- `/org.sterl.llmpeon.test/AGENTS.md` — test execution specifics.
+### Structure & module guides
+The 3-bundle layout and the per-module `AGENTS.md` links live in the always-on `AGENTS.md`
+(Repo layout) — not repeated here.
 
 ### Build
 - `mvn clean verify` — `verify` runs the Eclipse plugin tests in `org.sterl.llmpeon.test`.

@@ -194,10 +194,7 @@ public enum AiProvider {
             var b = OpenAiChatRequestParameters.builder();
             // TODO this would need config too
             applyBase(b, mc, tools);
-            // LM Studio uses a custom body property "reasoning" with on/off (experimental —
-            // not officially supported yet). Empty -> omit; explicit off-token -> "off"; else "on".
-            var reasoning = ThinkResolver.toReasoning(mc.getThink());
-            if (reasoning != null) b.customParameters(Map.of("reasoning", reasoning));
+            if (StringUtil.hasValue(mc.getThink())) b.customParameters(Map.of("reasoning", mc.getThink()));
             return b.build();
         }
 

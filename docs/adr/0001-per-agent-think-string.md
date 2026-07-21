@@ -14,4 +14,4 @@ every provider; the request parameters are built per agent from its `AgentConfig
 
 **Consequences:** No global think enum. Adding a provider means adding one translation branch, not a
 new config axis. The value is computed fresh for each request, so mixed-provider setups never share a
-think value (no inheritance — see the story's rules in [docs/per-agent-think.md](../docs/per-agent-think.md)).
+think value (no inheritance — see the story's rules in [per-agent-think.md](../per-agent-think.md)).

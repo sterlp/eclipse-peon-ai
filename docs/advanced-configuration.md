@@ -4,14 +4,10 @@
 
 AI Peon configuration is split into two preference pages:
 
-The preference category is **AI Peon**, split into pages:
-
 | Page | Purpose |
 |------|--------|
-| **Peon Configuration** | Provider, model, URL, config directory, token/auto-compact settings for everyday use |
-| **Peon Advanced Configuration** | Per-agent models, temperatures, debug mode, query/header parameters |
-| **Peon MCP Configuration** | MCP server definitions |
-| **Peon Voice Configuration** | Speech-to-text endpoint |
+| **AI Peon Configuration** | Basic provider, model, URL settings for everyday use |
+| **AI Peon Advanced** | Per-agent models, temperatures, debug mode, query/header parameters |
 
 This separation keeps the default configuration simple while providing power users access to fine-grained controls.
 
@@ -26,8 +22,10 @@ This separation keeps the default configuration simple while providing power use
 ### Data Flow
 
 ```
-AiAgent.getAgentModelName()          // e.g. AiPlanAgent → config.getPlanModel()
-  → AbstractAgent.call() sets ToolLoopRequest.builder().modelName(...)
+AiPlannerService.resolveAgentModel()
+  → returns configuredModel.getConfig().getPlanModel()
+  → ToolLoopRequest.builder().modelName(planModel)
+  → AbstractChatService.call() passes modelName to ToolLoopRequest
   → ToolService builds ChatRequest with modelName set
   → Provider receives request with agent-specific model
 ```
@@ -54,17 +52,13 @@ AiAgent.getAgentModelName()          // e.g. AiPlanAgent → config.getPlanModel
 3. **Native support**: LangChain4j supports per-request model override directly
 4. **Lower overhead**: Avoids building and maintaining multiple `ConfiguredChatModel` wrappers
 
-## Config Directory
+## First-Launch Directory Resolution
 
-There is a single **Config directory** preference (`PREF_CONFIG_DIRECTORY = llm.configDirectory`),
-defaulting to `~/.peon` (`LlmPreferenceInitializer.PEON_HOME`). Skills, commands and agents are
-loaded from its subfolders:
+On first launch, AI Peon resolves skills and commands directories:
 
-| Subfolder | Constant | Contents |
-|-----------|----------|----------|
-| `skill`   | `LlmConfig.SKILL_DIRECTORY`   | `SKILL.md` skill directories |
-| `command` | `LlmConfig.COMMAND_DIRECTORY` | `*.md` slash commands |
-| `agent`   | `LlmConfig.AGENT_DIRECTORY`   | `AGENT.md` custom-agent directories |
+1. Check if `~/.claude/skills` exists → use it (Claude Desktop compatibility)
+2. Otherwise create and use `~/.llmpeon/skills`
 
-The subfolder names are singular. There is no `~/.claude` fallback and no legacy `~/.llmpeon` /
-`~/.aipeon` resolution — those were removed.
+Same logic applies to commands directory (`~/.claude/commands` → `~/.llmpeon/commands`).
+
+This one-time resolution ensures deterministic behavior without filesystem I/O on every config load.

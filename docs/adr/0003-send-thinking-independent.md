@@ -17,4 +17,4 @@ only on the **model builder** (build time) — there is no per-request setter.
 **Consequences:** A reasoning model may think and have its thinking shown even when the attribute is
 omitted. Per-agent `think_send` is **not** wired per request (langchain4j limit); the custom-agent
 `think_send` frontmatter key is parsed but **reserved** for a future per-request wiring — see the
-Known gaps in [docs/per-agent-think.md](../docs/per-agent-think.md).
+Known gaps in [per-agent-think.md](../per-agent-think.md).

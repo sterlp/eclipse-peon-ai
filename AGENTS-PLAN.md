@@ -3,6 +3,9 @@
 Read-only mindset: produce the plan (story + ADRs) as the sole input for the dev phase. It is the
 durable second brain — a future session must rebuild the intent from the docs alone.
 
+**If your tool didn't auto-load it, read the always-on base `AGENTS.md` first** — this file only adds
+the plan-phase rules on top.
+
 **Docs-first holds for bugfixes too** — never let a code-first skill (systematic-debugging/TDD)
 reorder plan→code; clear any deviation with the user first, and the end-of-iteration reconcile +
 compress runs unprompted.
@@ -23,7 +26,7 @@ compress runs unprompted.
 
 ## Explore before deciding
 - Scan descriptors first (`*.md`, then `pom.xml` / `package.json` / `build.gradle`); broad sweep =
-  read every `CONTEXT.md`.
+  read every `index.md`.
 - Broad context via search; narrow lookups by reading files directly.
 - Traverse goal → affected area → constraints → architecture → exact files/classes.
 - Cache file paths in the plan — never re-search during implementation.
@@ -32,8 +35,8 @@ compress runs unprompted.
 - **Story = the WHAT** (`docs/<feature>.md`, no `-design` suffix): a short **goal** (why), then
   **business rules**, each with **BDD use-cases** (GIVEN/WHEN/THEN — happy path, edge, failure; each
   maps to a concrete test name).
-- **ADRs = *your* memory** (`adr/NNNN-<slug>.md` + `adr/README.md` registry): the technical notes a
-  future session needs to stay efficient — decisions/usages (libraries, storage, mechanisms,
+- **ADRs = *your* memory** (`docs/adr/NNNN-<slug>.md` + `docs/adr/index.md` registry): the technical
+  notes a future session needs to stay efficient — decisions/usages (libraries, storage, mechanisms,
   constraints) so you don't re-ask or re-derive. Body: **Status · Context · Decision · Consequences**.
   **The docs are *our* shared memory** of what we planned; the ADRs are yours.
 - **Only add an ADR when it isn't clear from the rule/BDD.** If it's obvious from the story, no ADR.
@@ -43,6 +46,18 @@ compress runs unprompted.
   **ADR** (technical) so it isn't repeated.
 - **One feature = one name** across `docs/<feature>.md`, its ADRs and its package/module.
 - Open questions the implementer must decide inline → note them in the story.
+
+### `index.md` — the map of every doc folder
+- **`index.md` is the reserved registry filename** of its folder — portable (Azure DevOps wiki,
+  VitePress both render it as the folder landing page).
+- `docs/index.md` = the **story registry** (business memory); `docs/adr/index.md` = the **ADR
+  registry** (your long-term memory). Each entry is `* [Title](file.md) - one sentence` — the same
+  one-line description as the story's goal, for progressive disclosure.
+- **Add/rename a story or ADR → update its `index.md` in the same step.** An unlisted doc is a lint
+  finding (see AGENTS-SESSION-END.md).
+- **A repo-root `index.md` appears only when the repo has more than one `docs/` folder** (multiple
+  Maven modules, each with own docs): it links to each module's `docs/index.md` with 1–3 lines on
+  what that module is for, and each module links back. A single-`docs/` repo skips the root index.
 
 ## Rule status & the backlog
 - Every rule carries a status: **✅ done** (its BDD use-case has a green test) or **❌ not done**.
@@ -69,9 +84,9 @@ When a story is too big for one session (the code won't fit):
 - **No homeless implementation:** if a story doesn't cleanly extend linked features, make it its **own
   component** — own package + service. Always consider a **Java service** that bundles the feature's
   business logic and uses the lower-level components — the home for the rules' behaviour.
-- A component that grows into a set of features becomes its own Maven **module** with its own `docs/` +
-  `adr/`. Where a project's module layout is fixed (see its AGENTS-DEV.md), components stay packages and
-  the story + ADRs live at the root.
+- A component that grows into a set of features becomes its own Maven **module** with its own `docs/`
+  (+ `docs/adr/`, each with its `index.md`). Where a project's module layout is fixed (see its
+  AGENTS-DEV.md), components stay packages and the story + ADRs live in the root `docs/`.
 
 ## Also plan
 - The user-facing docs change (how to use the feature), kept short.
