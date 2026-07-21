@@ -25,16 +25,11 @@ import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.Menu;
-import org.eclipse.swt.widgets.MenuItem;
-import org.eclipse.swt.widgets.ToolBar;
-import org.eclipse.swt.widgets.ToolItem;
 import org.eclipse.ui.IWorkingSet;
 import org.sterl.llmpeon.StandingOrdersBuilder;
 import org.sterl.llmpeon.agent.AiAgent;
@@ -46,13 +41,13 @@ import org.sterl.llmpeon.parts.log.EclipseSlf4jLogger;
 import org.sterl.llmpeon.parts.model.UserContext;
 import org.sterl.llmpeon.parts.monitor.EclipseAiMonitor;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
-import org.sterl.llmpeon.parts.shared.ImageUtil;
 import org.sterl.llmpeon.parts.shared.SimpleDiff;
 import org.sterl.llmpeon.parts.tools.AskUserTool;
 import org.sterl.llmpeon.parts.tools.EclipseCodeNavigationTool;
 import org.sterl.llmpeon.parts.tools.memory.WorkspaceMemoryTool;
 import org.sterl.llmpeon.parts.widget.ActionsBarWidget;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget;
+import org.sterl.llmpeon.parts.widget.HeaderBarWidget;
 import org.sterl.llmpeon.parts.widget.StatusLineWidget;
 import org.sterl.llmpeon.parts.widget.StatusLineWidget.SkillMenuSelection;
 import org.sterl.llmpeon.parts.widget.UserInputWidget;
@@ -97,7 +92,7 @@ public class AIChatView implements EclipseAiMonitor {
     
     private volatile boolean recording = false;
 
-    private Menu toolsMenu; // popup menu for hammer button — disposed on next open to avoid leak
+    private HeaderBarWidget headerBar;
 
     private AtomicReference<LlmConfig> lastListedConfig = new AtomicReference<>();
     private volatile LlmConfig lastAppliedConfig = null;
@@ -123,7 +118,10 @@ public class AIChatView implements EclipseAiMonitor {
         this.parent = parent;
         parent.setLayout(new GridLayout(1, false));
 
-        buildHeaderToolbar(parent);
+        headerBar = new HeaderBarWidget(parent, SWT.NONE,
+                () -> aiService.getActiveAgent().getName(),
+                aiService::getToolStatus);
+        headerBar.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
         chatHistory = new ChatMarkdownWidget(parent, SWT.BORDER);
         chatHistory.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
@@ -211,7 +209,6 @@ public class AIChatView implements EclipseAiMonitor {
     @PreDestroy
     public void dispose() {
         if (questionWidget != null) questionWidget.cancelSilently();
-        if (toolsMenu != null && !toolsMenu.isDisposed()) toolsMenu.dispose();
         InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID).removePreferenceChangeListener(prefListener);
         aiService.disconnectMcp();
         voiceService.close();
@@ -313,6 +310,11 @@ public class AIChatView implements EclipseAiMonitor {
     }
 
     @Override
+    public void onTokenUsage(dev.langchain4j.model.output.TokenUsage usage) {
+        EclipseUtil.runInUiThread(parent, () -> headerBar.addTokenUsage(usage));
+    }
+
+    @Override
     public void onStreamingChunk(OnPartialAiResponse r) {
         chatHistory.onStreamingChunk(r);
     }
@@ -363,44 +365,6 @@ public class AIChatView implements EclipseAiMonitor {
         aiService.getAgentsMdService().setEnabled(enabled);
     }
 
-    /** Top-right toolbar with the hammer button that reveals the tool activity popup. */
-    private void buildHeaderToolbar(Composite parent) {
-        ToolBar toolBar = new ToolBar(parent, SWT.FLAT | SWT.RIGHT);
-        toolBar.setLayoutData(new GridData(SWT.END, SWT.CENTER, true, false));
-
-        ToolItem hammer = new ToolItem(toolBar, SWT.PUSH);
-        hammer.setImage(ImageUtil.loadImage(toolBar, ImageUtil.HAMMER));
-        hammer.setToolTipText("Show which tools are active for the selected agent");
-        hammer.addListener(SWT.Selection, e -> showToolsMenu(toolBar, hammer));
-    }
-
-    /** Popup listing every tool with a ✓ for active and greyed-out for inactive tools. */
-    private void showToolsMenu(ToolBar toolBar, ToolItem item) {
-        // Dispose previous popup to avoid native resource leak.
-        if (toolsMenu != null && !toolsMenu.isDisposed()) {
-            toolsMenu.dispose();
-        }
-
-        var tools = aiService.getToolStatus();
-        Menu menu = new Menu(toolBar);
-        toolsMenu = menu;
-
-        MenuItem header = new MenuItem(menu, SWT.PUSH);
-        header.setText("Tools for: " + aiService.getActiveAgent().getName());
-        header.setEnabled(false);
-        new MenuItem(menu, SWT.SEPARATOR);
-
-        for (var t : tools) {
-            MenuItem mi = new MenuItem(menu, SWT.PUSH);
-            String label = (t.active() ? "✓  " : "–  ") + t.name() + (t.mcp() ? "  (MCP)" : "");
-            mi.setText(label);
-            mi.setEnabled(t.active()); // inactive tools appear greyed out
-        }
-
-        Rectangle b = item.getBounds();
-        menu.setLocation(toolBar.toDisplay(b.x, b.y + b.height));
-        menu.setVisible(true);
-    }
 
     // -------------------------------------------------------------------------
     // Config / model loading

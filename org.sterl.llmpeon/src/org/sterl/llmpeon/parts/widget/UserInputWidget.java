@@ -76,7 +76,7 @@ public class UserInputWidget extends Composite {
         textRow.setLayout(textRowLayout);
         textRow.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-        textInput = new TextInputWidget(textRow, SWT.NONE, 7, this::requestReflow);
+        textInput = new TextInputWidget(textRow, SWT.NONE, 15, this::requestReflow);
         textInput.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
         textInput.setTextBackground(bgWhite);
 

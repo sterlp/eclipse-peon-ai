@@ -64,7 +64,7 @@ public class TextInputWidget extends Composite {
         Point size = styledText.computeSize(width, SWT.DEFAULT);
         GridData gd = (GridData) styledText.getLayoutData();
         int lineH = styledText.getLineHeight();
-        int minHeight = lineH * 2;
+        int minHeight = lineH * 4;
         int maxHeight = lineH * maxRows;
         int newHint = Math.max(minHeight, Math.min(maxHeight, size.y));
         if (gd.heightHint != newHint) {

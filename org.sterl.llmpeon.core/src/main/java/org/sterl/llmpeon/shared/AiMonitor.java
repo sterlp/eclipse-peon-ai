@@ -7,6 +7,7 @@ import org.sterl.llmpeon.tool.model.SimpleMessage.Type;
 
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.TokenUsage;
 
 public interface AiMonitor {
     record AiFileUpdate(String file, String oldContent, String newContent) {}
@@ -34,6 +35,13 @@ public interface AiMonitor {
 
     /** Called once after the tool loop ends — includes the final response and total duration. */
     default void onCallCompleted(ChatResponse response, Duration duration) {}
+
+    /**
+     * Fired for every completed LLM response that carried real token usage — main loop, search
+     * sub-agent and compaction all funnel through here. Never fired for estimated/missing usage.
+     * Default is a no-op.
+     */
+    default void onTokenUsage(TokenUsage usage) {}
 
     default void onTool(String message) {
         onChatResponse(new SimpleMessage(Type.TOOL, message));
