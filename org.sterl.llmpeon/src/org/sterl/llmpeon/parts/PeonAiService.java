@@ -212,8 +212,7 @@ public class PeonAiService {
      * @return <code>true</code> if plan is found
      */
     public boolean onHandoff() {
-        // LM Studio is sometimes bugged, if the first message is no user message ... :-/
-        
+        if (getActiveAgent() == null) return false;
         var toAgent = agentService.get(getActiveAgent().handoverTo());
         if (toAgent.isEmpty()) return false;
 
@@ -228,6 +227,7 @@ public class PeonAiService {
         
         if (plan != null) {
             toAgent.get().clear();
+            // LM Studio is sometimes bugged, if the first message is no user message ... :-/
             toAgent.get().getMemory().add(UserMessage.from(
                     "Handover from " + getActiveAgent().getName() + System.lineSeparator()
                     + plan));

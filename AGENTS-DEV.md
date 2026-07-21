@@ -33,9 +33,10 @@ project-specific conventions. **If your tool didn't auto-load it, read the alway
 - **Dependencies flow one way, never in a circle.**
 - Keep units small and well-named; apply Clean Code & SOLID (esp. Open/Closed) where it aids
   maintainability.
-- **Comments earn their tokens.** Link from code to the docs/ADRs, and explain the non-obvious *why*
-  (domain rules, invariants, gotchas). Never restate what the code already makes clear — such comments
-  are only noise and waste tokens.
+- **Comments earn their tokens — don't duplicate the docs.** Prefer a link to the docs/ADRs; state
+  only what isn't obvious from the code (domain rules, invariants, gotchas); never justify or narrate
+  what changed. When you touch code, delete orphaned/stale comments and fix broken doc links.
+  (Regression tests may name the bug/ticket they lock down.)
 <!-- COMMON CODE END -->
 
 ## Project specifics — Eclipse Peon (RCP)
