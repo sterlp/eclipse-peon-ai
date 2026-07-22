@@ -2,7 +2,6 @@ package org.sterl.llmpeon.parts.widget;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 import org.eclipse.swt.SWT;
@@ -32,7 +31,7 @@ public class ActionsBarWidget extends Composite {
     private Combo agentCombo;
     private Combo modelCombo;
 
-    private final AtomicBoolean working = new AtomicBoolean(false);
+    private volatile boolean working = false;
     private List<AiModel> availableModels = List.of();
     private List<AiAgent> agents = new ArrayList<>();
     
@@ -141,14 +140,14 @@ public class ActionsBarWidget extends Composite {
     /** Update the Compact button label and tooltip with current token usage. */
     public void updateCompact(int tokenUsed, int tokenMax) {
         int pct = tokenMax > 0 ? (tokenUsed * 100) / tokenMax : 0;
-        if (pct >= 88) btnCompact.setForeground(colorError);
+        if (pct >= 85) btnCompact.setForeground(colorError);
         else if (pct >= 70) btnCompact.setForeground(colorWarning);
         else btnCompact.setForeground(null);
 
         if (tokenUsed < 1000) {
             btnCompact.setEnabled(false);
         } else {
-            btnCompact.setEnabled(btnClear.getEnabled());
+            btnCompact.setEnabled(!working);
             btnCompact.setText(StringUtil.toK(tokenUsed) + "/" + StringUtil.toK(tokenMax));
             btnCompact.setToolTipText(pct+ "% used, " 
                     + StringUtil.toK(tokenUsed) + "/" + StringUtil.toK(tokenMax) + " — click to compact the conversation");
@@ -173,17 +172,17 @@ public class ActionsBarWidget extends Composite {
 
     /** Enable/disable controls while a request is in flight. */
     public void lockWhileWorking(boolean value) {
-        this.working.set(value);
-        agentCombo.setEnabled(!value);
-        modelCombo.setEnabled(!value);
-        btnClear.setEnabled(!value);
-        btnThink.setEnabled(!value);
-        btnImplement.setEnabled(!value);
-        btnCompact.setEnabled(!value);
+        working = value;
+        agentCombo.setEnabled(!working);
+        modelCombo.setEnabled(!working);
+        btnClear.setEnabled(!working);
+        btnThink.setEnabled(!working);
+        btnImplement.setEnabled(!working);
+        btnCompact.setEnabled(!working);
     }
 
     public boolean isWorking() {
-        return this.working.get();
+        return working;
     }
 
     /** Show/hide the "Start Impl." button based on mode and whether an AI reply exists. */
