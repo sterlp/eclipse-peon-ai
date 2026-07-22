@@ -153,7 +153,6 @@ public class ActionsBarWidget extends Composite {
             btnCompact.setToolTipText(pct+ "% used, " 
                     + StringUtil.toK(tokenUsed) + "/" + StringUtil.toK(tokenMax) + " — click to compact the conversation");
             btnCompact.getParent().layout(false, false);
-            btnCompact.setEnabled(tokenUsed > 100);
         }
 
     }
