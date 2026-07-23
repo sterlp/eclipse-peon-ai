@@ -33,7 +33,7 @@ public class HeaderBarWidget extends Composite {
     private final Supplier<String> activeAgentName;
     private final Supplier<List<ToolStatus>> toolStatus;
     private final TokenHeaderWidget tokens;
-    private Menu toolsMenu; // disposed on next open / widget dispose to avoid a native resource leak
+    private volatile Menu toolsMenu; // disposed on next open / widget dispose to avoid a native resource leak
 
     public HeaderBarWidget(Composite parent, int style,
             Supplier<String> activeAgentName,
@@ -68,6 +68,12 @@ public class HeaderBarWidget extends Composite {
             if (toolsMenu != null && !toolsMenu.isDisposed()) toolsMenu.dispose();
         });
     }
+    
+    @Override
+    public void dispose() {
+        super.dispose();
+        if (toolsMenu != null && !toolsMenu.isDisposed()) toolsMenu.dispose();
+    }
 
     /** Accumulates one LLM response's real usage into the session readout. UI-thread only. */
     public void addTokenUsage(TokenUsage usage) {
@@ -76,24 +82,24 @@ public class HeaderBarWidget extends Composite {
 
     /** Popup listing every tool with a ✓ for active and greyed-out for inactive tools. */
     private void showToolsMenu(Control anchor) {
-        // Dispose previous popup to avoid native resource leak.
         if (toolsMenu != null && !toolsMenu.isDisposed()) toolsMenu.dispose();
+        toolsMenu = new Menu(anchor);
 
-        Menu menu = new Menu(anchor);
-        toolsMenu = menu;
+        MenuItem header = new MenuItem(toolsMenu, SWT.PUSH);
+        new MenuItem(toolsMenu, SWT.SEPARATOR);
 
-        MenuItem header = new MenuItem(menu, SWT.PUSH);
-        header.setText("Tools for: " + activeAgentName.get());
-        header.setEnabled(false);
-        new MenuItem(menu, SWT.SEPARATOR);
-
-        for (var t : toolStatus.get()) {
-            MenuItem mi = new MenuItem(menu, SWT.PUSH);
+        var activeCount = 0;
+        var tools = toolStatus.get();
+        for (var t : tools) {
+            MenuItem mi = new MenuItem(toolsMenu, SWT.PUSH);
             mi.setText((t.active() ? "✓  " : "–  ") + t.name() + (t.mcp() ? "  (MCP)" : ""));
             mi.setEnabled(t.active()); // inactive tools appear greyed out
+            if (t.active()) ++activeCount;
         }
+        header.setText("Tools for: " + activeAgentName.get() 
+            + " (" + activeCount + "/" + tools.size() + ")");
 
-        menu.setLocation(anchor.toDisplay(0, anchor.getSize().y));
-        menu.setVisible(true);
+        toolsMenu.setLocation(anchor.toDisplay(0, anchor.getSize().y));
+        toolsMenu.setVisible(true);
     }
 }
