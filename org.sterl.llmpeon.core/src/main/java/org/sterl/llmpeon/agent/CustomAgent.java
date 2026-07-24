@@ -49,11 +49,11 @@ public class CustomAgent extends AbstractAgent {
             ToolService toolService) {
         super(configuredModel, toolService);
         this.promptFile = promptFile;
-        migrateLegacy();
     }
 
-    /** Auto-migrates legacy frontmatter keys to their canonical names on first load. */
-    private void migrateLegacy() {
+    /** Migrates legacy frontmatter keys to their canonical names. Called before any write to avoid
+     * eager file mutation on load — the file is only modified when a write operation occurs. */
+    public void migrateIfNeeded() {
         try {
             boolean changed = false;
             // think_enabled → think_supported
@@ -137,6 +137,7 @@ public class CustomAgent extends AbstractAgent {
     public boolean setAgentModelName(String modelName) {
         if (modelName == null) return false;
         if (Objects.equals(modelName, getAgentModelName())) return false;
+        migrateIfNeeded();
         promptFile.setValue(MODEL, modelName);
         try {
             promptFile.save();

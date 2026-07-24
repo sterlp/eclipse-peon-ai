@@ -149,6 +149,7 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
                 prefs.flush();
                 return true;
             } else if (agent instanceof org.sterl.llmpeon.agent.CustomAgent custom) {
+                custom.migrateIfNeeded();
                 custom.getAgentFile().setValue(org.sterl.llmpeon.agent.CustomAgent.THINK_SUPPORTED, String.valueOf(enabled));
                 custom.getAgentFile().save();
             }

@@ -14,7 +14,7 @@ only on the **model builder** (build time) — there is no per-request setter.
 - Because the switches are build-time, `think_send` is a **single global** preference
   (`PREF_SEND_THINKING_ENABLED`), driven by the Dev/global config.
 
-**TODO:** Remove `think_enabled` backward compat (kept in `CustomAgent.THINK_ENABLED` for reading old AGENT.md files) in a future major version. Auto-migration on load converts `think_enabled` → `think_supported` and `think` → `think_on_string` immediately.
+**TODO:** Remove `think_enabled` backward compat (kept in `CustomAgent.THINK_ENABLED` for reading old AGENT.md files) in a future major version. Auto-migration happens on the first write operation (e.g. model change, think toggle) — the file is not modified on load, only when a write occurs.
 
 **Consequences:** A reasoning model may think and have its thinking shown even when the attribute is
 omitted. Per-agent `think_send` is **not** wired per request (langchain4j limit); the custom-agent

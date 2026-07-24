@@ -68,7 +68,7 @@ and breaks. Keep frontmatter values comment-free.
 | `think_on_string` | Value sent when enabled. A level `high`/`medium`/`low`/`minimal` (OpenAI), `true` (Ollama/Anthropic), etc. **Empty → auto** ([built-in model mapping](./advanced-configuration.md#built-in-model-mapping)). Setting it (or `think_off_string`) switches the mapping off. |
 | `think_off_string` | Value sent when disabled. **Empty → send nothing.** Set e.g. `false` for Ollama to force `think:false`. |
 | `think_send` | *(reserved)* Show the model's reasoning and resend it next turn (Qwen, Mistral, DeepSeek). Currently the global **Send thinking back to model** setting applies to all agents; this per-agent key is parsed but not yet wired per request. |
-| `think` | *(legacy alias, auto-migrated)* Read as `think_on_string` and implies `think_supported` for on-values. Old files are auto-migrated on first load. Prefer the `think_*` keys above. |
+| `think` | *(legacy alias, auto-migrated)* Read as `think_on_string` and implies `think_supported` for on-values. Old files are auto-migrated on the first write operation (e.g. model change, think toggle). Prefer the `think_*` keys above. |
 | `tools` | Allowlist of tool-name prefixes. **Omit it and the agent gets _no_ tools** — use `- '*'` to allow all. |
 
 ## Workflow Handoff
