@@ -235,6 +235,20 @@ public class ActionsBarWidget extends Composite {
         selectModel(selectedModelId);
     }
 
+    /** Appends a model to the existing list if not already present, then selects it. */
+    public void addAndSelectModel(String modelId) {
+        if (containsModelId(modelId)) {
+            selectModel(modelId);
+            return;
+        }
+        var model = AiModel.builder().id(modelId).name(modelId).build();
+        var list = new ArrayList<AiModel>(availableModels);
+        list.add(model);
+        availableModels = list;
+        modelCombo.setItems(list.stream().map(AiModel::getName).toArray(String[]::new));
+        selectModel(modelId);
+    }
+
     /** Select the model by its ID. Falls back to index 0 if not found. */
     public void selectModel(String modelId) {
         if (modelId == null || modelId.isBlank()) {

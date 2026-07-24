@@ -111,7 +111,8 @@ public class AIChatView implements EclipseAiMonitor {
     private final StandingOrdersBuilder standingOrders = new StandingOrdersBuilder()
             .add(WorkspaceMemoryTool.getInstance())
             .add(aiService.getAgentsMdService())
-            .add(userContext);
+            .add(userContext)
+            .add(aiService);
 
     @PostConstruct
     public void createPartControl(Composite parent) {
@@ -183,7 +184,7 @@ public class AIChatView implements EclipseAiMonitor {
         prefs.addPreferenceChangeListener(prefListener);
         updateSelectedProject(EclipseUtil.firstOpenOrSelectedProject());
 
-        aiService.getToolService().addTool(new AskUserTool(
+        aiService.getSharedToolService().addTool(new AskUserTool(
             (question, answers, onAnswer) -> showQuestion(question, answers, onAnswer)
         ));
 
@@ -417,7 +418,7 @@ public class AIChatView implements EclipseAiMonitor {
                 "always".equalsIgnoreCase(prefs.get(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, "")) ||
                 (!autonomous && "not-autonomous".equalsIgnoreCase(prefs.get(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, "")))) {
             // TODO is this always needed??!?
-            aiService.getToolService().getTool(ShellTool.class).ifPresent(shellTool -> {
+            aiService.getSharedToolService().getTool(ShellTool.class).ifPresent(shellTool -> {
                 shellTool.setConfirmationProvider((command, workingDirectory) -> {
                     var latch = new java.util.concurrent.CountDownLatch(1);
                     var answer = new AtomicReference<>("No");
@@ -438,7 +439,7 @@ public class AIChatView implements EclipseAiMonitor {
             });
 
         } else {
-            aiService.getToolService().getTool(ShellTool.class).ifPresent(shellTool -> {
+            aiService.getSharedToolService().getTool(ShellTool.class).ifPresent(shellTool -> {
                 shellTool.setConfirmationProvider(null);
             });
         }
@@ -522,13 +523,20 @@ public class AIChatView implements EclipseAiMonitor {
         aiService.setActiveAgent(mode);
 
         if (!actionsBar.containsModelId(aiService.getActiveModel())) {
-            actionsBar.setModel(aiService.getActiveModel());
+            actionsBar.addAndSelectModel(aiService.getActiveModel());
         } else {
             actionsBar.selectModel(aiService.getActiveModel());
         }
 
         // brain toggle follows the newly selected agent (no cascade)
         actionsBar.setThinkEnabled(aiService.getActiveAgent().isThinkEnabled());
+
+        // Show scaffold tutorial on first activation
+        var tutorial = aiService.getScaffoldTutorial();
+        if (tutorial != null) {
+            onChatResponse(new SimpleMessage(Type.AI, tutorial));
+        }
+
         refreshChat();
     }
 
@@ -545,8 +553,9 @@ public class AIChatView implements EclipseAiMonitor {
                 chatInput.setText("""
                     Implement the plan.
                     
-                    If the plan is large, save it to plan/ using a filename derived from the feature name.
+                    If the plan is large, save it using a filename derived from the feature name (if not already done).
                     Treat the plan file as long-term memory — update it as decisions are made or steps completed.
+                    Create separete task file for each individual feature you implement and work on them individually.
                     
                     When switching to a different piece of work:
                     1. Batch in parallel: run compactSession on the current conversation + read the plan file + read any referenced files or prior plans.

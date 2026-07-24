@@ -57,35 +57,36 @@ public class ChatMessageUtil {
     }
     
     public static String toString(ChatMessage msg) {
-        return toString(msg, true, true);
+        return toString(msg, true, 6000);
     }
     
-    public static String toString(ChatMessage msg, boolean includeToolResult, boolean includeThink) {
+    public static String toString(ChatMessage msg, boolean includeThink, int toolMessageSize) {
         var result = new StringBuilder();
         if (msg instanceof UserMessage m) {
-            if (m.hasSingleText()) {
-                result.append(m.singleText());
-            } else {
-                result.append(toString(m.contents()));
-            }
+            result.append(m.toString()).append(System.lineSeparator());
         } else if (msg instanceof AiMessage m) {
+            result.append(AiMessage.class.getSimpleName()).append("{ ");
+
             if (StringUtil.hasValue(m.text())) {
-                result.append(m.text()).append("\n");
+                result.append("text = ").append(m.text()).append(System.lineSeparator());
             }
             if (includeThink && StringUtil.hasValue(m.thinking())) {
-                result.append("AI thinking:\n").append(m.thinking()).append("\n");
+                result.append("thinking = ").append(m.thinking()).append(System.lineSeparator());
             }
-            if (m.hasToolExecutionRequests()) {
+
+            if (toolMessageSize > 0 && m.hasToolExecutionRequests()) {
                 for (var tr : m.toolExecutionRequests()) {
-                    result.append("\n").append(tr);
+                    result.append(StringUtil.trimToLength(tr.toString(), toolMessageSize))
+                          .append(System.lineSeparator());
                 }
             }
-        } else if (includeToolResult && msg instanceof ToolExecutionResultMessage tr) {
-            var text = tr.hasSingleText() ? tr.text() : toString(tr.contents());
-            result.append("\ntool result for id: ").append(tr.id())
-                  .append("\n").append(text).append("\n");
+
+            result.append("}").append(System.lineSeparator());
+        } else if (toolMessageSize > 0 && msg instanceof ToolExecutionResultMessage tr) {
+            result.append(StringUtil.trimToLength(tr.toString(), toolMessageSize))
+                  .append(System.lineSeparator());
         }
-        return result.toString().strip();
+        return result.toString();
     }
     
     public static String toString(List<Content> contents) {

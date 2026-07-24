@@ -4,6 +4,7 @@ WHAT: <Feature Name>
 - Goal and requirements
 - Decisions made and their rationale
 - Preserve always: paths to plan files, spec files, task files
+- Preserve always: the most recent user instruction on how the agent should behave, overriding any earlier conflicting behavioral instruction
 
 HOW: <Design or Plan>
 - Solution design

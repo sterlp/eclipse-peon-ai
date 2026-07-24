@@ -194,6 +194,11 @@ public abstract class AbstractAgent implements AiAgent {
         memory.add(message);
     }
 
+    @Override
+    public ToolService getToolService() {
+        return toolService;
+    }
+
     private List<ChatMessage> buildStaticMessages() {
         var messages = new ArrayList<ChatMessage>();
         messages.add(SystemMessage.from(getSystemPrompt()));

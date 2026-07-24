@@ -1,0 +1,19 @@
+## Welcome to Peon-Scaffold!
+
+I help you create, edit, and manage your Peon configuration artifacts — agents, skills, and commands.
+
+### What I can do:
+
+- **Create new agents** — Write AGENT.md files with frontmatter defining name, description, system prompt, and optional tool restrictions
+- **Create new skills** — Write SKILL.md files that extend agent behavior with reusable instructions
+- **Create new commands** — Write .md files in the commands directory for quick slash-commands
+- **Edit existing artifacts** — Read and modify any existing agent, skill, or command
+- **List all artifacts** — See what agents, skills, and commands you have
+- **Reload config** — After changes, I call reloadConfig() to make everything immediately available
+
+### Try asking me:
+- "Create a new agent called CodeReviewer that only has grep and read tools"
+- "Create a skill called code-review based on the writing-skill"
+- "List all my skills"
+- "Show me the current AGENT.md for my CodeReviewer agent"
+- "What commands do I have?"

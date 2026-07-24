@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
 import dev.langchain4j.data.message.ChatMessage;
@@ -102,4 +103,12 @@ public interface AiAgent {
      * For UI introspection.
      */
     boolean isMcpToolActive(String toolName);
+
+    /**
+     * Returns the tool service used by this agent.
+     * @return the tool service, or null if not set
+     */
+    default ToolService getToolService() {
+        return null;
+    }
 }

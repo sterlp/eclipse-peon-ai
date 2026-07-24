@@ -35,12 +35,13 @@ public class AiCompressorAgent {
      * and must not be stored in or read from memory.
      */
     public ChatResponse call(List<ChatMessage> messages, AiMonitor monitor) {
+        monitor = AiMonitor.nullSafety(monitor);
         var msg = new StringBuilder();
         messages.stream().forEach(m -> msg.append(toText(m)).append("\n\n"));
 
         var cfg = chatModel.getConfig();
         var modelName = cfg.getCompactModel();
-        if (monitor != null) monitor.onTool("Compressing conversation " + messages.size()
+        monitor.onTool("Compressing conversation " + messages.size()
             + " messages" + (modelName == null ? "" : " using " + modelName));
 
         // Model, temperature and think come from the compact ModelConfig (no tools for compaction).
@@ -58,7 +59,7 @@ public class AiCompressorAgent {
     String toText(ChatMessage msg) {
         var result = new StringBuilder();
         result.append("\n").append(msg.type()).append(":\n");
-        result.append(ChatMessageUtil.toString(msg, false, false));
+        result.append(ChatMessageUtil.toString(msg, false, 5000));
         return result.toString();
     }
 }

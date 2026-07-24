@@ -57,11 +57,19 @@ public class ToolService {
     private List<ToolSpecification> mcpToolSpecs = List.of();
 
     public ToolService() {
-        super();
-        addTool(new WebFetchTool());
-        addTool(new SearchAgentTool(this));
-        addTool(new ShellTool());
-        addTool(new CompactSessionTool());
+        this(true);
+    }
+
+    /**
+     * @param withDefaults if true, auto-registers WebFetchTool, SearchAgentTool, ShellTool, CompactSessionTool
+     */
+    public ToolService(boolean withDefaults) {
+        if (withDefaults) {
+            addTool(new WebFetchTool());
+            addTool(new SearchAgentTool(this));
+            addTool(new ShellTool());
+            addTool(new CompactSessionTool());
+        }
     }
 
     public List<ToolSpecification> toolSpecifications() {
