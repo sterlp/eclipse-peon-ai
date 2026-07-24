@@ -172,6 +172,120 @@ class CustomAgentServiceTest extends AbstractMemoryFileTest {
     }
 
     @Test
+    void legacyKeysNotMigratedOnLoadOnlyOnWrite() throws Exception {
+        // GIVEN an AGENT.md with legacy `think_enabled: true` in frontmatter
+        var file = tmp.resolve("AGENT.md");
+        String original = "---\nname: t\nthink_enabled: true\n---\nbody";
+        Files.writeString(file, original);
+
+        // WHEN the agent is loaded (no write operation)
+        var agent = newAgent(file);
+
+        // THEN the file is NOT modified on load
+        String afterLoad = Files.readString(file);
+        assertThat(afterLoad).isEqualTo(original);
+        // AND the agent still reads the legacy key correctly
+        assertThat(agent.isThinkEnabled()).isTrue();
+    }
+
+    @Test
+    void legacyKeysMigratedOnWrite() throws Exception {
+        // GIVEN an AGENT.md with legacy `think_enabled: true` in frontmatter
+        var file = tmp.resolve("AGENT.md");
+        Files.writeString(file, "---\nname: t\nthink_enabled: true\n---\nbody");
+
+        // WHEN the agent is loaded and a write operation occurs
+        var agent = newAgent(file);
+        agent.setAgentModelName("m1");
+
+        // THEN the file is migrated with new keys
+        String saved = Files.readString(file);
+        assertThat(saved).contains("think_supported: true");
+        assertThat(saved).doesNotContain("think_enabled");
+        // AND the model change is also persisted
+        assertThat(saved).contains("model: m1");
+    }
+
+
+    @Test
+    void legacyThinkReadsCorrectlyBeforeMigration() throws Exception {
+        // GIVEN an AGENT.md with legacy `think: high` in frontmatter
+        var file = tmp.resolve("AGENT.md");
+        Files.writeString(file, "---\nname: t\nthink: high\n---\nbody");
+
+        // WHEN the agent is loaded (no write)
+        var agent = newAgent(file);
+
+        // THEN the legacy key is read correctly via backward compat
+        assertThat(agent.getConfig().getThink()).isEqualTo("high");
+        assertThat(agent.isThinkEnabled()).isTrue();
+    }
+
+    @Test
+    void legacyThinkMigratesOnWrite() throws Exception {
+        // GIVEN an AGENT.md with legacy `think: high` in frontmatter
+        var file = tmp.resolve("AGENT.md");
+        Files.writeString(file, "---\nname: t\nthink: high\n---\nbody");
+
+        // WHEN the agent is loaded and a write operation occurs
+        var agent = newAgent(file);
+        agent.setAgentModelName("m1");
+
+        // THEN the file is saved with the new keys (think implies enabled)
+        String saved = Files.readString(file);
+        assertThat(saved).contains("think_on_string: high");
+        assertThat(saved).contains("think_supported: true");
+        assertThat(saved).doesNotContain("think:");
+    }
+
+    @Test
+    void legacyThinkEnabledReadsCorrectlyBeforeMigration() throws Exception {
+        // GIVEN an AGENT.md with legacy `think_enabled: true` in frontmatter
+        var file = tmp.resolve("AGENT.md");
+        Files.writeString(file, "---\nname: t\nthink_enabled: true\n---\nbody");
+
+        // WHEN the agent is loaded (no write)
+        var agent = newAgent(file);
+
+        // THEN the legacy key is read correctly via backward compat
+        assertThat(agent.isThinkEnabled()).isTrue();
+    }
+
+    @Test
+    void legacyThinkEnabledMigratesOnWrite() throws Exception {
+        // GIVEN an AGENT.md with legacy `think_enabled: true` in frontmatter
+        var file = tmp.resolve("AGENT.md");
+        Files.writeString(file, "---\nname: t\nthink_enabled: true\n---\nbody");
+
+        // WHEN the agent is loaded and a write operation occurs
+        var agent = newAgent(file);
+        agent.setAgentModelName("m1");
+
+        // THEN the file is saved with the new key
+        String saved = Files.readString(file);
+        assertThat(saved).contains("think_supported: true");
+        assertThat(saved).doesNotContain("think_enabled");
+    }
+
+    @Test
+    void legacyThinkAndEnabledMigrateTogetherOnWrite() throws Exception {
+        // GIVEN an AGENT.md with both legacy keys
+        var file = tmp.resolve("AGENT.md");
+        Files.writeString(file, "---\nname: t\nthink: high\nthink_enabled: true\n---\nbody");
+
+        // WHEN the agent is loaded and a write operation occurs
+        var agent = newAgent(file);
+        agent.setAgentModelName("m1");
+
+        // THEN both are migrated
+        String saved = Files.readString(file);
+        assertThat(saved).contains("think_supported: true");
+        assertThat(saved).contains("think_on_string: high");
+        assertThat(saved).doesNotContain("think:");
+        assertThat(saved).doesNotContain("think_enabled");
+    }
+
+    @Test
     void setModelNamePinsToAgentAndPersistsYaml() throws Exception {
         // GIVEN — B3 building blocks: pin model in memory + write back to AGENT.md
         var file = tmp.resolve("AGENT.md");

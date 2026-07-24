@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.agent;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -52,5 +53,35 @@ class AiPlanAgentTest {
         // WHEN / THEN
         var plan = subject.getMemory().getLastOf(AiMessage.class);
         assertEquals("Final plan: 1. Context 2. Affected files 3. Steps", plan.text());
+    }
+
+    // -------------------------------------------------------------------------
+    // Bug 6: Agent model save asymmetry
+    // -------------------------------------------------------------------------
+
+    @Test
+    void setAgentModelName_updatesPlanModel_notGlobalModel() {
+        // GIVEN
+        var config = LlmConfig.newConfig(AiProvider.OLLAMA, "qwen3", "http://localhost:9999");
+        var subject = new AiPlanAgent(config.build(), new ToolService());
+
+        // WHEN
+        var changed = subject.setAgentModelName("gpt-4");
+
+        // THEN
+        assertThat(changed).isTrue();
+        assertThat(subject.getAgentModelName()).isEqualTo("gpt-4");
+        // AND global model is unchanged
+        assertThat(subject.configuredModel.getConfig().getModel()).isEqualTo("qwen3");
+    }
+
+    @Test
+    void getAgentModelName_returnsNull_whenNoPlanModelSet() {
+        // GIVEN
+        var config = LlmConfig.newConfig(AiProvider.OLLAMA, "qwen3", "http://localhost:9999");
+        var subject = new AiPlanAgent(config.build(), new ToolService());
+
+        // WHEN / THEN
+        assertThat(subject.getAgentModelName()).isNull();
     }
 }

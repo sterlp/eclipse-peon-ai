@@ -118,4 +118,22 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractTest {
         assertTrue(message, message.contains("Line to replace"));
         assertTrue(message, message.contains("foo"));
     }
+
+    @Test
+    public void test_deleteResource_recursiveDirectory() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        // GIVEN
+        var tool = new EclipseWorkspaceWriteFileTool();
+        var dirName = "/org.sterl.llmpeon.test/testDeleteDir/nested/child";
+        tool.eclipseWriteFile(dirName + "/file1.txt", "a");
+        tool.eclipseWriteFile(dirName + "/file2.txt", "b");
+        tool.eclipseWriteFile("/org.sterl.llmpeon.test/testDeleteDir/parentFile.txt", "c");
+
+        // WHEN
+        tool.eclipseDeleteResource("/org.sterl.llmpeon.test/testDeleteDir");
+
+        // THEN — entire directory tree gone
+        var result = readTool.eclipseReadFile("/org.sterl.llmpeon.test/testDeleteDir/parentFile.txt", 0, 0);
+        assertTrue("Directory should be deleted, but parentFile.txt still exists", result.contains("No eclipse file found"));
+    }
 }

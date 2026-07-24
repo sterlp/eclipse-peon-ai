@@ -16,7 +16,7 @@ public class StandingOrdersBuilderTest extends AbstractTest {
     @Test
     public void test_AgentsMdService() {
         // GIVEN
-        PeonAiService aiService = new PeonAiService(null, null, null);
+        PeonAiService aiService = new PeonAiService(null, null, null, null);
         aiService.setProject(project);
         StandingOrdersBuilder standingOrders = new StandingOrdersBuilder()
                 .add(aiService.getAgentsMdService());
@@ -70,7 +70,7 @@ public class StandingOrdersBuilderTest extends AbstractTest {
     @Test
     public void test_one_time_order_appended_after_providers() {
         // GIVEN — providers plus a command one-time order
-        PeonAiService aiService = new PeonAiService(null, null, null);
+        PeonAiService aiService = new PeonAiService(null, null, null, null);
         aiService.setProject(project);
         var standingOrders = new StandingOrdersBuilder()
                 .add(aiService.getAgentsMdService());

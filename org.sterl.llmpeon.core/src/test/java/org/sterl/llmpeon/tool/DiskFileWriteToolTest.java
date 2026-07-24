@@ -66,6 +66,18 @@ class DiskFileWriteToolTest {
     }
 
     @Test
+    void deleteDiskFile_recursiveDirectory() throws IOException {
+        Path dir = tempDir.resolve("nested/parent/child");
+        Files.createDirectories(dir);
+        Files.writeString(dir.resolve("file1.txt"), "a");
+        Files.writeString(dir.resolve("file2.txt"), "b");
+        Files.writeString(tempDir.resolve("nested/parent/file3.txt"), "c");
+
+        tool.diskDeleteFile("nested");
+        assertFalse(Files.exists(tempDir.resolve("nested")));
+    }
+
+    @Test
     void insertDiskLines_afterLine() throws IOException {
         Files.writeString(tempDir.resolve("ins.txt"), "a\nb\nc");
         tool.diskInsertLines("ins.txt", 2, "x\ny");

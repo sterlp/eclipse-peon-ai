@@ -29,7 +29,8 @@ public class AiDevAgent extends AbstractAgent {
         return configuredModel.getConfig().getModel();
     }
     
-    public boolean setModelName(String modelName) {
+    @Override
+    public boolean setAgentModelName(String modelName) {
         return this.configuredModel.withModel(modelName);
     }
 

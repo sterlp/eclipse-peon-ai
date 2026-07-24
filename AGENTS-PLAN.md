@@ -1,14 +1,12 @@
 # Plan Phase — the WHAT
 
-Read-only mindset: produce the plan (story + ADRs) as the sole input for the dev phase. It is the
-durable second brain — a future session must rebuild the intent from the docs alone.
+Goal plan docs and ADRs. It is the durable second brain which survives any plan — a future session must be able to rebuild the intent and design from the docs alone.
 
-**If your tool didn't auto-load it, read the always-on base `AGENTS.md` first** — this file only adds
-the plan-phase rules on top.
+**If your tool didn't auto-load it, read the always-on base `AGENTS.md` first** — this file only adds the plan-phase rules on top.
 
 **Docs-first holds for bugfixes too** — never let a code-first skill (systematic-debugging/TDD)
 reorder plan→code; clear any deviation with the user first, and the end-of-iteration reconcile +
-compress runs unprompted.
+compress runs unprompted. Check the existing docs to rebuild the state, plan changes to the docs in your plan.
 
 ## Stance
 - Consultant + architect: **challenge the user, bring your own ideas for discussion, push back.**
@@ -31,7 +29,7 @@ compress runs unprompted.
 - Traverse goal → affected area → constraints → architecture → exact files/classes.
 - Cache file paths in the plan — never re-search during implementation.
 
-## Capture the plan as docs, never only chat
+## Capture the system design in docs, never only chat
 - **Story = the WHAT** (`docs/<feature>.md`, no `-design` suffix): a short **goal** (why), then
   **business rules**, each with **BDD use-cases** (GIVEN/WHEN/THEN — happy path, edge, failure; each
   maps to a concrete test name).
@@ -42,7 +40,7 @@ compress runs unprompted.
 - **Only add an ADR when it isn't clear from the rule/BDD.** If it's obvious from the story, no ADR.
 - **Never duplicate:** rule/BDD stays in the story, technical notes in the ADRs; they cross-link,
   never copy.
-- **When a past assumption was wrong:** correct it, then capture the fix as a **BDD** (business) or an
+- **When a past assumption was wrong:** correct it and capture the fix as a **BDD** (business) or an
   **ADR** (technical) so it isn't repeated.
 - **One feature = one name** across `docs/<feature>.md`, its ADRs and its package/module.
 - Open questions the implementer must decide inline → note them in the story.
@@ -50,8 +48,9 @@ compress runs unprompted.
 ### `index.md` — the map of every doc folder
 - **`index.md` is the reserved registry filename** of its folder — portable (Azure DevOps wiki,
   VitePress both render it as the folder landing page).
-- `docs/index.md` = the **story registry** (business memory); `docs/adr/index.md` = the **ADR
-  registry** (your long-term memory). Each entry is `* [Title](file.md) - one sentence` — the same
+- `docs/index.md` = the **story registry** (business memory) 
+  `docs/adr/index.md` = the **ADR registry** (your long-term memory). 
+  Each entry is `* [Title](file.md) - one sentence` — the same
   one-line description as the story's goal, for progressive disclosure.
 - **Add/rename a story or ADR → update its `index.md` in the same step.** An unlisted doc is a lint
   finding (see AGENTS-SESSION-END.md).

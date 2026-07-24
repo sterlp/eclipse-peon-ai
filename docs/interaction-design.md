@@ -16,7 +16,7 @@
 │  │                                           [▶/■] │ │
 │  ├─────────────────────────────────────────────────┤ │
 │  │ [Plan▾] [Model▾] [🧠 Think] [Clear]      [▶/■] │ │
-│  │ [Start Impl.] [☐ autonomous]  (conditional)     │ │
+│  │ [Start Impl.]                        (conditional) │ │
 │  ├─────────────────────────────────────────────────┤ │
 │  │ [📌 ProjectName] [⚡ N skills] [AGENTS.md]      │ │
 │  │ [file.java] [MCP on/off] [Compact 45K/100K]     │ │
@@ -49,7 +49,6 @@ Layout: `GridLayout(2)` — left cell is a wrapping `RowLayout` composite, right
 | Left | **Clear** | clears conversation history |
 | Right (pinned) | **Send / Stop** | always rightmost; icon swaps while working |
 | Conditional | **Start Impl.** | visible in Plan/Agent mode when AI has replied |
-| Conditional | **☐ autonomous** | checkbox, visible in Agent mode only |
 
 ### 4 — Status Bar (StatusLineWidget)
 

@@ -3,12 +3,12 @@ package org.sterl.llmpeon.parts;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.sterl.llmpeon.AgentService;
+import org.sterl.llmpeon.StandingOrdersBuilder.MessageProvider;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
@@ -30,6 +30,8 @@ import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
 import org.sterl.llmpeon.parts.tools.PlanTool;
 import org.sterl.llmpeon.parts.tools.memory.WorkspaceMemoryTool;
+import org.sterl.llmpeon.scaffold.AiScaffoldAgent;
+import org.sterl.llmpeon.scaffold.ReloadConfigTool;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.tool.ToolService;
@@ -50,12 +52,15 @@ import dev.langchain4j.data.message.UserMessage;
  * has a chance to call any {@code @Inject} methods.</p>
  *
  */
-public class PeonAiService {
+public class PeonAiService implements MessageProvider {
 
     private final AgentService agentService;
     private final ConfiguredChatModel configuredModel;
 
-    private final ToolService toolService;
+    /** Shared tool service used by dev/plan/custom agents (MCP, AskUserTool, ShellTool, workspace disk tools). */
+    private final ToolService sharedToolService;
+    private final AiScaffoldAgent scaffoldAgent;
+
     private final SkillService skillService;
     private final CommandService commandService;
     
@@ -70,6 +75,8 @@ public class PeonAiService {
     private final DiskFileReadTool diskFileReadTool;
     private final DiskGrepTool diskGrepTool;
     
+    private final ReloadConfigTool reloadConfigTool;
+    
     private final WorkspaceMemoryTool workspaceMemoryTool = WorkspaceMemoryTool.getInstance();
 
     private  volatile IProject currentProject = null;
@@ -82,45 +89,56 @@ public class PeonAiService {
      * @param sendTrigger         callback to re-trigger the send loop (agent autonomous mode)
      * @param openInEditorCallback callback to open a file in the Eclipse editor
      * @param mcpStateChange      callback notified when MCP connected/disconnected
+     * @param onAgentReload       callback invoked after agents are reloaded (e.g. to refresh the UI)
      */
     public PeonAiService(Runnable sendTrigger,
                          Consumer<IFile> openInEditorCallback,
-                         Consumer<Boolean> mcpStateChange) {
+                         Consumer<Boolean> mcpStateChange,
+                         Runnable onAgentReload) {
 
         var config = LlmPreferenceInitializer.buildWithDefaults();
         configuredModel = config.build();
 
         var rootPath            = EclipseUtil.workspacePath();
-        toolService             = new ToolService();
+        sharedToolService       = new ToolService();
         skillService            = new SkillService();
         commandService          = new CommandService();
         agentsMdService         = new AgentsMdService();
-        
-        toolService.addTool(new SkillTool(skillService));
+
+        sharedToolService.addTool(new SkillTool(skillService));
         workspaceWriteFilesTool = new EclipseWorkspaceWriteFileTool();
-        toolService.addTool(workspaceWriteFilesTool);
-        toolService.addTool(new EclipseWorkspaceReadFileTool());
-        
+        sharedToolService.addTool(workspaceWriteFilesTool);
+        sharedToolService.addTool(new EclipseWorkspaceReadFileTool());
+
         diskFileWriteTool = new DiskFileWriteTool(rootPath);
         diskFileReadTool  = new DiskFileReadTool(rootPath);
         diskGrepTool      = new DiskGrepTool(rootPath);
-        
-        
-        toolService.addTool(workspaceMemoryTool);
-        toolService.addTool(new EclipseBuildTool());
-        toolService.addTool(new EclipseGrepTool());
-        toolService.addTool(new EclipseRunTestTool());
-        toolService.addTool(new EclipseCodeNavigationTool());
-        toolService.addTool(new EclipseConsoleLogTool());
-        
+
+
+        sharedToolService.addTool(workspaceMemoryTool);
+        sharedToolService.addTool(new EclipseBuildTool());
+        sharedToolService.addTool(new EclipseGrepTool());
+        sharedToolService.addTool(new EclipseRunTestTool());
+        sharedToolService.addTool(new EclipseCodeNavigationTool());
+        sharedToolService.addTool(new EclipseConsoleLogTool());
+
         planTool = new PlanTool(this);
-        toolService.addTool(planTool);
+        sharedToolService.addTool(planTool);
 
-        agentService  = new AgentService(true, 
-                config.getConfigDir().resolve(LlmConfig.AGENT_DIRECTORY), toolService, configuredModel);
+        agentService  = new AgentService(true,
+                config.getConfigDir().resolve(LlmConfig.AGENT_DIRECTORY), sharedToolService, configuredModel);
+
+        scaffoldAgent = new AiScaffoldAgent(configuredModel);
+        scaffoldAgent.addTool(new SkillTool(skillService));
+        // ReloadConfigTool needs agentService (already created) + skillService + commandService + config
+        reloadConfigTool = new ReloadConfigTool(agentService, skillService, commandService, config, onAgentReload);
+        scaffoldAgent.addTool(reloadConfigTool);
+
+        // Add scaffold as persistent agent (survives clearAgents on reload)
+        agentService.addPersistentAgent(scaffoldAgent);
 
 
-        mcpConnectionService = new McpConnectionService(toolService, mcpStateChange);
+        mcpConnectionService = new McpConnectionService(sharedToolService, mcpStateChange);
 
         updateConfig(configuredModel.getConfig());
     }
@@ -131,6 +149,7 @@ public class PeonAiService {
      */
     public void updateConfig(LlmConfig config) {
         configuredModel.updateConfig(config);
+        reloadConfigTool.updateConfig(config);
         updateActiveDiskTools(config);
         
         var dir = config.getConfigDir().resolve(LlmConfig.SKILL_DIRECTORY);
@@ -152,16 +171,16 @@ public class PeonAiService {
 
     private void updateActiveDiskTools(LlmConfig config) {
         if (config.isDiskToolsEnabled()) {
-            if (toolService.getTool(DiskFileWriteTool.class).isEmpty()) {
-                toolService.addTool(diskFileWriteTool);
-                toolService.addTool(diskFileReadTool);
-                toolService.addTool(diskGrepTool);
+            if (sharedToolService.getTool(DiskFileWriteTool.class).isEmpty()) {
+                sharedToolService.addTool(diskFileWriteTool);
+                sharedToolService.addTool(diskFileReadTool);
+                sharedToolService.addTool(diskGrepTool);
             }
         } else {
-            if (toolService.getTool(DiskFileWriteTool.class).isPresent()) {
-                toolService.removeTool(diskFileWriteTool);
-                toolService.removeTool(diskFileReadTool);
-                toolService.removeTool(diskGrepTool);
+            if (sharedToolService.getTool(DiskFileWriteTool.class).isPresent()) {
+                sharedToolService.removeTool(diskFileWriteTool);
+                sharedToolService.removeTool(diskFileReadTool);
+                sharedToolService.removeTool(diskGrepTool);
             }
         }
     }
@@ -266,7 +285,16 @@ public class PeonAiService {
     }
 
     public ToolService getToolService() {
-        return toolService;
+        var active = getActiveAgent();
+        if (active != null && active.getToolService() != null) {
+            return active.getToolService();
+        }
+        return sharedToolService;
+    }
+
+    /** Returns the shared tool service used by dev/plan/custom agents (MCP, AskUserTool, ShellTool). */
+    public ToolService getSharedToolService() {
+        return sharedToolService;
     }
 
     /** One tool with its active state for the currently selected agent/mode. */
@@ -279,10 +307,11 @@ public class PeonAiService {
     public List<ToolStatus> getToolStatus() {
         var svc = getActiveAgent();
         var result = new java.util.ArrayList<ToolStatus>();
-        for (var exec : toolService.getExecutors()) {
+        var ts = getToolService();
+        for (var exec : ts.getExecutors()) {
             result.add(new ToolStatus(exec.getSpec().name(), svc.isToolActive(exec), false));
         }
-        for (var name : toolService.mcpToolNames()) {
+        for (var name : ts.mcpToolNames()) {
             result.add(new ToolStatus(name, svc.isMcpToolActive(name), true));
         }
         result.sort(java.util.Comparator
@@ -349,6 +378,14 @@ public class PeonAiService {
         preloadPlanIfNeeded();
     }
 
+    /** Returns the tutorial text for the scaffold agent (null if already shown in this session). */
+    public String getScaffoldTutorial() {
+        var agent = getActiveAgent();
+        if (!(agent instanceof AiScaffoldAgent)) return null;
+        if (agent.getMemory().size() > 0) return null;
+        return org.sterl.llmpeon.prompt.PromptLoader.load("scaffold-tutorial.txt");
+    }
+
     private void preloadPlanIfNeeded() {
         if (!planTool.hasPlan()) return;
 
@@ -392,5 +429,40 @@ public class PeonAiService {
 
     public void setStaticContext(List<ChatMessage> content) {
         this.agentService.getAgents().forEach(a -> a.setStaticContext(content));
+    }
+
+    @Override
+    public String get() {
+        var agent = getActiveAgent();
+        if (!(agent instanceof AiScaffoldAgent)) return null;
+
+        var configDir = getConfig().getConfigDir();
+        if (configDir == null) return null;
+
+        var orders = new StringBuilder();
+        try {
+            var readTool = scaffoldAgent.getToolService().getTool(DiskFileReadTool.class);
+            orders.append(System.lineSeparator()).append("Parent folder of disk tools set to the config dir you should work with relative paths directly in this folder only.");
+            orders.append("Directory listing of the config dir ").append(configDir).append(":").append(System.lineSeparator());
+            if (readTool.isPresent()) {
+                orders.append(readTool.get().diskListDirectory(null)).append(System.lineSeparator());
+                
+                orders.append(readTool.get().diskListDirectory(LlmConfig.AGENT_DIRECTORY)).append(System.lineSeparator());
+                orders.append(readTool.get().diskListDirectory(LlmConfig.COMMAND_DIRECTORY)).append(System.lineSeparator());
+                orders.append(readTool.get().diskListDirectory(LlmConfig.SKILL_DIRECTORY)).append(System.lineSeparator());
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        // Available tools from sharedToolService
+        orders.append(System.lineSeparator()).append("Available tools:").append(System.lineSeparator());
+        for (var spec : sharedToolService.toolSpecifications()) {
+            orders.append("- ").append(spec.name()).append(": ").append(spec.description()).append(System.lineSeparator());
+        }
+        
+        System.err.println(orders.toString());
+
+        return orders.toString();
     }
 }

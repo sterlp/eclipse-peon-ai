@@ -373,4 +373,46 @@ class PromptYmlParserTest extends AbstractMemoryFileTest {
         assertThat(Files.readString(file)).contains("model: m1");
         assertThat(Files.readString(file)).contains("---");
     }
+
+    // -------------------------------------------------------------------------
+    // Bidirectional key fallback: hyphen ↔ underscore ↔ stripped
+    // -------------------------------------------------------------------------
+
+    @Test
+    void getValue_underscoreKey_resolvedByHyphenLookup() throws Exception {
+        // GIVEN an AGENT.md with read_only (underscore) in frontmatter
+        var file = tmp.resolve("AGENT.md");
+        Files.writeString(file, """
+                ---
+                read_only: true
+                ---
+                body
+                """);
+
+        // WHEN code looks up the key with a hyphen
+        var fm = PromptYmlParser.parseYml(file);
+        var value = PromptYmlParser.firstOrDefault(fm.getFrontmatter(), "read-only", null);
+
+        // THEN the value is found via fallback
+        assertThat(value).isEqualTo("true");
+    }
+
+    @Test
+    void getValue_hyphenKey_resolvedByUnderscoreLookup() throws Exception {
+        // GIVEN an AGENT.md with read-only (hyphen) in frontmatter
+        var file = tmp.resolve("AGENT.md");
+        Files.writeString(file, """
+                ---
+                read-only: true
+                ---
+                body
+                """);
+
+        // WHEN code looks up the key with an underscore
+        var fm = PromptYmlParser.parseYml(file);
+        var value = PromptYmlParser.firstOrDefault(fm.getFrontmatter(), "read_only", null);
+
+        // THEN the value is found via fallback
+        assertThat(value).isEqualTo("true");
+    }
 }

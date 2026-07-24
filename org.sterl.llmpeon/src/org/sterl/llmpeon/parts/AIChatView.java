@@ -84,7 +84,8 @@ public class AIChatView implements EclipseAiMonitor {
     private final PeonAiService aiService = new PeonAiService(
         this::doSendMessage,
         file -> EclipseUtil.runInUiThread(parent, () -> EclipseUtil.openInEditor(file)),
-        enabled -> EclipseUtil.runInUiThread(parent, () -> statusLine.setMcpEnabled(enabled))
+        enabled -> EclipseUtil.runInUiThread(parent, () -> statusLine.setMcpEnabled(enabled)),
+        () -> EclipseUtil.runInUiThread(parent, this::refreshAgentUI)
     );
 
     private final AtomicReference<IProgressMonitor> monitorRef = new AtomicReference<>(new NullProgressMonitor());
@@ -111,7 +112,8 @@ public class AIChatView implements EclipseAiMonitor {
     private final StandingOrdersBuilder standingOrders = new StandingOrdersBuilder()
             .add(WorkspaceMemoryTool.getInstance())
             .add(aiService.getAgentsMdService())
-            .add(userContext);
+            .add(userContext)
+            .add(aiService);
 
     @PostConstruct
     public void createPartControl(Composite parent) {
@@ -183,7 +185,7 @@ public class AIChatView implements EclipseAiMonitor {
         prefs.addPreferenceChangeListener(prefListener);
         updateSelectedProject(EclipseUtil.firstOpenOrSelectedProject());
 
-        aiService.getToolService().addTool(new AskUserTool(
+        aiService.getSharedToolService().addTool(new AskUserTool(
             (question, answers, onAnswer) -> showQuestion(question, answers, onAnswer)
         ));
 
@@ -351,19 +353,19 @@ public class AIChatView implements EclipseAiMonitor {
 
     // TODO: DOUBLE CHECK if refreshStatusLine and refreshChat are 2 methods!
     public void refreshStatusLine() {
-        if (statusLine != null) {
-            statusLine.update(
-                aiService.getSkillService().getSkills().size(),
-                aiService.getAgentsMdService().getAgentFileName(),
-                aiService.getAgentsMdService().isEnabled(),
-                userContext.getCurrentProject(),
-                userContext.getSelectedFile()
-            );
-        }
+        if (statusLine == null) return;
+        if (actionsBar == null) return;
+
+        statusLine.update(
+            aiService.getSkillService().getSkills().size(),
+            aiService.getAgentsMdService().getAgentFileName(),
+            aiService.getAgentsMdService().isEnabled(),
+            userContext.getCurrentProject(),
+            userContext.getSelectedFile()
+        );
+
         var ai = aiService.getActiveAgent();
-        if (actionsBar != null) {
-            actionsBar.updateCompact(ai.getMemory().getTotalTokenUsed(), aiService.getConfig().getAutoCompactAfter());
-        }
+        actionsBar.updateCompact(ai.getMemory().getTotalTokenUsed(), aiService.getConfig().getAutoCompactAfter());
     }
     private void refreshChat() {
         chatHistory.clear();
@@ -382,6 +384,14 @@ public class AIChatView implements EclipseAiMonitor {
     // -------------------------------------------------------------------------
     // Config / model loading
     // -------------------------------------------------------------------------
+
+    /** Refresh agent combo and status after a config reload. */
+    private void refreshAgentUI() {
+        actionsBar.setAgents(aiService.getAgents());
+        actionsBar.updateModeUI(aiService.getActiveAgent());
+        actionsBar.setThinkEnabled(aiService.getActiveAgent().isThinkEnabled());
+        refreshStatusLine();
+    }
 
     private void applyConfig() {
         var config = LlmPreferenceInitializer.buildWithDefaults();
@@ -423,7 +433,7 @@ public class AIChatView implements EclipseAiMonitor {
                 "always".equalsIgnoreCase(prefs.get(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, "")) ||
                 (!autonomous && "not-autonomous".equalsIgnoreCase(prefs.get(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, "")))) {
             // TODO is this always needed??!?
-            aiService.getToolService().getTool(ShellTool.class).ifPresent(shellTool -> {
+            aiService.getSharedToolService().getTool(ShellTool.class).ifPresent(shellTool -> {
                 shellTool.setConfirmationProvider((command, workingDirectory) -> {
                     var latch = new java.util.concurrent.CountDownLatch(1);
                     var answer = new AtomicReference<>("No");
@@ -444,7 +454,7 @@ public class AIChatView implements EclipseAiMonitor {
             });
 
         } else {
-            aiService.getToolService().getTool(ShellTool.class).ifPresent(shellTool -> {
+            aiService.getSharedToolService().getTool(ShellTool.class).ifPresent(shellTool -> {
                 shellTool.setConfirmationProvider(null);
             });
         }
@@ -528,13 +538,20 @@ public class AIChatView implements EclipseAiMonitor {
         aiService.setActiveAgent(mode);
 
         if (!actionsBar.containsModelId(aiService.getActiveModel())) {
-            actionsBar.setModel(aiService.getActiveModel());
+            actionsBar.addAndSelectModel(aiService.getActiveModel());
         } else {
             actionsBar.selectModel(aiService.getActiveModel());
         }
 
         // brain toggle follows the newly selected agent (no cascade)
         actionsBar.setThinkEnabled(aiService.getActiveAgent().isThinkEnabled());
+
+        // Show scaffold tutorial on first activation
+        var tutorial = aiService.getScaffoldTutorial();
+        if (tutorial != null) {
+            onChatResponse(new SimpleMessage(Type.AI, tutorial));
+        }
+
         refreshChat();
     }
 
@@ -551,8 +568,9 @@ public class AIChatView implements EclipseAiMonitor {
                 chatInput.setText("""
                     Implement the plan.
                     
-                    If the plan is large, save it to plan/ using a filename derived from the feature name.
+                    If the plan is large, save it using a filename derived from the feature name (if not already done).
                     Treat the plan file as long-term memory — update it as decisions are made or steps completed.
+                    Create separete task file for each individual feature you implement and work on them individually.
                     
                     When switching to a different piece of work:
                     1. Batch in parallel: run compactSession on the current conversation + read the plan file + read any referenced files or prior plans.

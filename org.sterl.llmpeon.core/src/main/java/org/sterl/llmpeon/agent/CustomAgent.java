@@ -27,8 +27,11 @@ import lombok.Setter;
  */
 public class CustomAgent extends AbstractAgent {
     public static final String MODEL = "model";
-    public static final String THINK = "think";                 // legacy alias for think_on_string
-    public static final String THINK_ENABLED = "think_enabled";
+    @Deprecated
+    public static final String THINK = "think";                       // legacy alias for think_on_string
+    @Deprecated
+    public static final String THINK_ENABLED = "think_enabled";       // deprecated, kept for backward compat
+    public static final String THINK_SUPPORTED = "think_supported";   // canonical name
     public static final String THINK_ON = "think_on_string";
     public static final String THINK_OFF = "think_off_string";
     public static final String INCLUDE_DEFAULT = "include-default";
@@ -41,11 +44,42 @@ public class CustomAgent extends AbstractAgent {
     @Getter @Setter
     private volatile SimplePromptFile promptFile;
 
-    public CustomAgent(SimplePromptFile promptFile, 
-            ConfiguredChatModel configuredModel, 
+    public CustomAgent(SimplePromptFile promptFile,
+            ConfiguredChatModel configuredModel,
             ToolService toolService) {
         super(configuredModel, toolService);
         this.promptFile = promptFile;
+    }
+
+    /** Migrates legacy frontmatter keys to their canonical names. Called before any write to avoid
+     * eager file mutation on load — the file is only modified when a write operation occurs. */
+    public void migrateIfNeeded() {
+        try {
+            boolean changed = false;
+            // think_enabled → think_supported
+            String thinkEnabled = promptFile.firstOrDefault(THINK_ENABLED, null);
+            if (thinkEnabled != null) {
+                promptFile.setValue(THINK_SUPPORTED, thinkEnabled);
+                promptFile.remove(THINK_ENABLED);
+                changed = true;
+            }
+            // think → think_on_string (also implies enabled if an on-value)
+            String think = promptFile.firstOrDefault(THINK, null);
+            if (think != null) {
+                promptFile.setValue(THINK_ON, think);
+                promptFile.remove(THINK);
+                // `think: high` implies enabled; set think_supported if not already present
+                if (org.sterl.llmpeon.ai.ThinkResolver.isOn(think) && promptFile.firstOrDefault(THINK_SUPPORTED, null) == null) {
+                    promptFile.setValue(THINK_SUPPORTED, "true");
+                }
+                changed = true;
+            }
+            if (changed) {
+                promptFile.save();
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to migrate legacy frontmatter for agent " + getName(), e);
+        }
     }
 
     public SimplePromptFile getAgentFile() {
@@ -72,7 +106,8 @@ public class CustomAgent extends AbstractAgent {
 
     @Override
     public boolean isThinkEnabled() {
-        // explicit think_enabled wins; legacy `think:` implies enabled for an on-value
+        // THINK_SUPPORTED (canonical) takes precedence; THINK_ENABLED (deprecated) as fallback; legacy `think:` implies enabled for an on-value
+        if (promptFile.firstOrDefault(THINK_SUPPORTED, null) != null) return promptFile.isTrue(THINK_SUPPORTED);
         if (promptFile.firstOrDefault(THINK_ENABLED, null) != null) return promptFile.isTrue(THINK_ENABLED);
         var legacy = promptFile.firstOrDefault(THINK, null);
         return legacy != null && org.sterl.llmpeon.ai.ThinkResolver.isOn(legacy);
@@ -102,6 +137,7 @@ public class CustomAgent extends AbstractAgent {
     public boolean setAgentModelName(String modelName) {
         if (modelName == null) return false;
         if (Objects.equals(modelName, getAgentModelName())) return false;
+        migrateIfNeeded();
         promptFile.setValue(MODEL, modelName);
         try {
             promptFile.save();

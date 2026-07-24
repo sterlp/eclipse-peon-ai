@@ -78,7 +78,7 @@ public class EclipseGrepTool extends AbstractEclipseTool {
             if (matches.size() >= MAX_FILES) break;
         }
 
-        onTool("Grep '" + query + "' type '" + StringUtil.getOrDefault(extension, "*")
+        onTool("Eclipse grep '" + query + "' type '" + StringUtil.getOrDefault(extension, "*")
                 + "' found " + matches.size() + " matches");
 
         String suffix = null;

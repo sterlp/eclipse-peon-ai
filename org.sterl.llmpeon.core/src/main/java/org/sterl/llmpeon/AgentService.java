@@ -37,6 +37,10 @@ public class AgentService {
     private final ToolService toolService;
 
     private final Map<String, AiAgent> agents = new ConcurrentHashMap<>();
+
+    /** Agents added via {@link #addPersistentAgent(AiAgent)} — survive {@link #clearAgents()}. */
+    private final Map<String, AiAgent> persistentAgents = new ConcurrentHashMap<>();
+
     private volatile Path agentsDirectory;
 
     /** Non-null when a custom agent is selected; takes precedence over {@link #mode}. */
@@ -65,7 +69,9 @@ public class AgentService {
 
         if (withDefaultAgent) {
             devAgent = new AiDevAgent(chatModel, toolService);
+            this.persistentAgents.put(devAgent.getName(), devAgent);
             planAgent = new AiPlanAgent(chatModel, toolService);
+            this.persistentAgents.put(planAgent.getName(), planAgent);
             this.activeAgent = devAgent;
         } else {
             devAgent = null;
@@ -82,7 +88,9 @@ public class AgentService {
 
     /** Returns loaded agents when enabled, empty list when disabled, sorted by name. */
     public List<AiAgent> getAgents() {
-        return agents.values().stream()
+        var all = new java.util.LinkedHashSet<AiAgent>(agents.values());
+        all.addAll(persistentAgents.values());
+        return all.stream()
                     .sorted(Comparator.comparing(a -> a.getName()))
                     .toList();
     }
@@ -90,7 +98,21 @@ public class AgentService {
     public int loadedAgentCount() {
         return agents.size();
     }
-    
+
+    /**
+     * Adds an agent that survives {@link #clearAgents()} on reload.
+     * Used for built-in agents like the scaffold agent that must persist across reloads.
+     */
+    public void addPersistentAgent(AiAgent agent) {
+        if (agent == null) return;
+        this.persistentAgents.put(agent.getName(), agent);
+    }
+
+    /** Returns true if the agent is a persistent agent (survives clearAgents). */
+    public boolean isPersistentAgent(String name) {
+        return persistentAgents.containsKey(name);
+    }
+
     public void addAgent(AiAgent agent) {
         if (agent == null) return;
         this.agents.put(agent.getName(), agent);
@@ -152,13 +174,10 @@ public class AgentService {
 
     private void clearAgents() {
         this.agents.clear();
-        if (planAgent != null) {
-            this.agents.put(planAgent.getName(), planAgent);
-            if (activeAgent == null) activeAgent = planAgent;
-        }
-        if (devAgent != null) {
-            this.agents.put(devAgent.getName(), devAgent);
-            if (activeAgent == null) activeAgent = devAgent;
+        // Re-add persistent agents (survive reloads)
+        for (var agent : persistentAgents.values()) {
+            this.agents.put(agent.getName(), agent);
+            if (activeAgent == null) activeAgent = agent;
         }
     }
 

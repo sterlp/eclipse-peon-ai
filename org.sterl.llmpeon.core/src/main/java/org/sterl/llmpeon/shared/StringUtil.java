@@ -14,6 +14,11 @@ public class StringUtil {
         return sw.toString();
     }
     
+    public static String trimToLength(String value, int size) {
+        if (value == null || value.length() <= size) return value;
+        return value.substring(0, size);
+    }
+    
     public static String getOrDefault(String value, String defaultValue) {
         if (hasValue(value)) return value;
         return defaultValue;
