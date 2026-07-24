@@ -353,19 +353,19 @@ public class AIChatView implements EclipseAiMonitor {
 
     // TODO: DOUBLE CHECK if refreshStatusLine and refreshChat are 2 methods!
     public void refreshStatusLine() {
-        if (statusLine != null) {
-            statusLine.update(
-                aiService.getSkillService().getSkills().size(),
-                aiService.getAgentsMdService().getAgentFileName(),
-                aiService.getAgentsMdService().isEnabled(),
-                userContext.getCurrentProject(),
-                userContext.getSelectedFile()
-            );
-        }
+        if (statusLine == null) return;
+        if (actionsBar == null) return;
+
+        statusLine.update(
+            aiService.getSkillService().getSkills().size(),
+            aiService.getAgentsMdService().getAgentFileName(),
+            aiService.getAgentsMdService().isEnabled(),
+            userContext.getCurrentProject(),
+            userContext.getSelectedFile()
+        );
+
         var ai = aiService.getActiveAgent();
-        if (actionsBar != null) {
-            actionsBar.updateCompact(ai.getMemory().getTotalTokenUsed(), aiService.getConfig().getAutoCompactAfter());
-        }
+        actionsBar.updateCompact(ai.getMemory().getTotalTokenUsed(), aiService.getConfig().getAutoCompactAfter());
     }
     private void refreshChat() {
         chatHistory.clear();
