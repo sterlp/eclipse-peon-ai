@@ -49,13 +49,6 @@ The plan lives in `peon-plan/overview.md` in the project root and is managed by 
 Use the pin button in the status line to lock the active project. Handy when you navigate
 between files while the agent works — the project binding won't follow your clicks.
 
-## Autonomous mode (planned / WIP)
-
-Today the handoff is a manual button click. A **generic autonomous handoff** is planned: any
-agent (built-in or custom) will be able to signal completion through a tool call, and the run
-continues automatically to its handover target without you pressing the button. This replaces the
-older, hard-wired plan→dev orchestration.
-
 ## Limitations
 
 - One project at a time.

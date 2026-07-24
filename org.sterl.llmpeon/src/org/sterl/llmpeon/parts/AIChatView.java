@@ -84,7 +84,8 @@ public class AIChatView implements EclipseAiMonitor {
     private final PeonAiService aiService = new PeonAiService(
         this::doSendMessage,
         file -> EclipseUtil.runInUiThread(parent, () -> EclipseUtil.openInEditor(file)),
-        enabled -> EclipseUtil.runInUiThread(parent, () -> statusLine.setMcpEnabled(enabled))
+        enabled -> EclipseUtil.runInUiThread(parent, () -> statusLine.setMcpEnabled(enabled)),
+        () -> EclipseUtil.runInUiThread(parent, this::refreshAgentUI)
     );
 
     private final AtomicReference<IProgressMonitor> monitorRef = new AtomicReference<>(new NullProgressMonitor());
@@ -377,6 +378,14 @@ public class AIChatView implements EclipseAiMonitor {
     // -------------------------------------------------------------------------
     // Config / model loading
     // -------------------------------------------------------------------------
+
+    /** Refresh agent combo and status after a config reload. */
+    private void refreshAgentUI() {
+        actionsBar.setAgents(aiService.getAgents());
+        actionsBar.updateModeUI(aiService.getActiveAgent());
+        actionsBar.setThinkEnabled(aiService.getActiveAgent().isThinkEnabled());
+        refreshStatusLine();
+    }
 
     private void applyConfig() {
         var config = LlmPreferenceInitializer.buildWithDefaults();

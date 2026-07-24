@@ -3,7 +3,6 @@ package org.sterl.llmpeon.agent;
 import java.util.function.Predicate;
 
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
-import org.sterl.llmpeon.ai.model.AiModel;
 import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
@@ -60,13 +59,6 @@ public class AiPlanAgent extends AbstractAgent {
             return true;
         }
         return false;
-    }
-
-    /**
-     * @return <code>true</code> if changed, <code>false</code> if already set
-     */
-    public boolean setModelName(AiModel modelName) {
-        return setAgentModelName(modelName == null ? null : modelName.getId());
     }
 
     @Override

@@ -21,6 +21,7 @@ import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.PeonConstants;
 import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.scaffold.AiScaffoldAgent;
 
 public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
     private static final ILog LOG = Platform.getLog(LlmPreferenceInitializer.class);
@@ -120,7 +121,7 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
         if (model == null) return;
         try {
             agent.setAgentModelName(model);
-            if (agent instanceof AiDevAgent) {
+            if (agent instanceof AiDevAgent || agent instanceof AiScaffoldAgent) {
                 var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
                 prefs.put(PeonConstants.PREF_MODEL, model);
                 prefs.flush();

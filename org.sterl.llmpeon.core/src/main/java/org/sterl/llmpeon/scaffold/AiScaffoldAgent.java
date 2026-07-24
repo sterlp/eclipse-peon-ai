@@ -74,9 +74,4 @@ public class AiScaffoldAgent extends org.sterl.llmpeon.agent.AbstractAgent {
     public org.sterl.llmpeon.ai.AgentConfig getConfig() {
         return configuredModel.getConfig().devAgentConfig();
     }
-
-    @Override
-    public String getAgentModelName() {
-        return configuredModel.getConfig().getModel();
-    }
 }

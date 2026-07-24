@@ -135,6 +135,9 @@ public class PromptYmlParser {
             @NonNull String key) {
         var values = frontmatter.get(key);
         if (values == null) values = frontmatter.get(key.replace("-", ""));
+        if (values == null) values = frontmatter.get(key.replace("_", ""));
+        if (values == null) values = frontmatter.get(key.replace("-", "_"));
+        if (values == null) values = frontmatter.get(key.replace("_", "-"));
         return values;
     }
 

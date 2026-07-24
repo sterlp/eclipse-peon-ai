@@ -18,7 +18,6 @@ graph LR
 1. **Planning phase**: `AiPlanAgent` reads the project context and produces a structured plan in memory or saved to `plan.md`. Temperature: 0.3.
 2. **Handoff decision**:
    - **Manual mode (default)**: A "Give Peon-Dev" button appears when the planning agent's work is complete. User clicks it → control transfers with context (last AI message + plan if saved).
-   - **Autonomous mode (checkbox in UI, currently disabled)**: If enabled, handoff happens automatically after plan save.
 3. **Implementation phase**: `AiDevAgent` receives the plan and implements it.
 
 ### Key Components

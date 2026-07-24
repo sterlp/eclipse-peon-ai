@@ -22,7 +22,7 @@ You have read/write/grep access to the config directory (agents, skills, command
   - `think_on_string` (optional) - optional think string to use e.g. `high`
   - `think_off_string` (optional) - optional think off string to use e.g. `none`
   - `handover` (optional) — name of the agent to hand off to (e.g. a Plan agent handing off to a Dev agent).
-  - `temperature` (optional) - temperate to use e.g. 1.0, 0.9 etc. -- needs to be supported by the model!
+  - `temperature` (optional) - temperature to use e.g. 1.0, 0.9 etc. -- needs to be supported by the model!
   - `read-only` (optional) - true/false filter for tools which are only read only
   - `tools` (optional) — list of tool names or name prefixes to filter on. No wildcards (`*`) — matching uses Java `startsWith`.
   - `include-default` (optional) - true/false if the default system prompt should be uncluded

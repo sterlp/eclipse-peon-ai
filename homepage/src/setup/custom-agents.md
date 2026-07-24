@@ -88,9 +88,7 @@ The receiving agent starts a fresh conversation seeded with that handover messag
 up where the previous one left off with minimal context transfer.
 
 ::: tip Same mechanism as the built-ins
-The built-in **Peon-Plan** agent uses exactly this: it hands over to **Peon-Dev**. A generic
-autonomous variant (the agent signals completion via a tool call and the run continues on its
-own) is planned — see [Agent Mode](./agent-mode.md).
+The built-in **Peon-Plan** agent uses exactly this: it hands over to **Peon-Dev**.
 :::
 
 ## Tool allowlist

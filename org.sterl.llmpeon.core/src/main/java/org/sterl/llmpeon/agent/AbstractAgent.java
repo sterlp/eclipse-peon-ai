@@ -58,16 +58,6 @@ public abstract class AbstractAgent implements AiAgent {
         return configuredModel.getConfig().isThinkingOn();
     }
 
-    /** Returns the configured model name for this agent type, or null to use default. */
-    @Override
-    public String getAgentModelName() {
-        return configuredModel.getConfig().getModel();
-    }
-    @Override
-    public boolean setAgentModelName(String modelName) {
-        return this.configuredModel.withModel(modelName);
-    }
-
     /**
      * Apply only static filters to tools -- any change kills the KV cache!
      * https://github.com/ggml-org/llama.cpp/issues/22746#issuecomment-4630455537

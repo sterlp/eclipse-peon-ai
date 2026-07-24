@@ -89,10 +89,12 @@ public class PeonAiService implements MessageProvider {
      * @param sendTrigger         callback to re-trigger the send loop (agent autonomous mode)
      * @param openInEditorCallback callback to open a file in the Eclipse editor
      * @param mcpStateChange      callback notified when MCP connected/disconnected
+     * @param onAgentReload       callback invoked after agents are reloaded (e.g. to refresh the UI)
      */
     public PeonAiService(Runnable sendTrigger,
                          Consumer<IFile> openInEditorCallback,
-                         Consumer<Boolean> mcpStateChange) {
+                         Consumer<Boolean> mcpStateChange,
+                         Runnable onAgentReload) {
 
         var config = LlmPreferenceInitializer.buildWithDefaults();
         configuredModel = config.build();
@@ -130,6 +132,7 @@ public class PeonAiService implements MessageProvider {
         scaffoldAgent.addTool(new SkillTool(skillService));
         // ReloadConfigTool needs agentService (already created) + skillService + commandService + config
         reloadConfigTool = new ReloadConfigTool(agentService, skillService, commandService, config);
+        reloadConfigTool.setOnReload(onAgentReload);
         scaffoldAgent.addTool(reloadConfigTool);
 
         // Add scaffold as persistent agent (survives clearAgents on reload)

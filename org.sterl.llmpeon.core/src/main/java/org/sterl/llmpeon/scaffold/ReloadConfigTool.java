@@ -20,6 +20,7 @@ public class ReloadConfigTool extends AbstractTool {
     private final SkillService skillService;
     private final CommandService commandService;
     private volatile LlmConfig config;
+    private volatile Runnable onReload;
 
     public ReloadConfigTool(AgentService agentService,
                             SkillService skillService,
@@ -35,6 +36,10 @@ public class ReloadConfigTool extends AbstractTool {
         this.config = config;
     }
 
+    public void setOnReload(Runnable onReload) {
+        this.onReload = onReload;
+    }
+
     @Tool("Reload all configuration (agents, skills, commands) — call after creating/editing artifacts so they become immediately available.")
     public String reloadConfig() throws IOException {
         var configDir = config.getConfigDir();
@@ -43,7 +48,7 @@ public class ReloadConfigTool extends AbstractTool {
         }
 
         // Reload agents
-        agentService.reloadAgents();
+        agentService.reloadAgents(onReload);
 
         // Reload skills
         var skillDir = configDir.resolve(LlmConfig.SKILL_DIRECTORY);
