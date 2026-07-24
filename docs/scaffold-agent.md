@@ -84,6 +84,13 @@ THEN SkillService.refresh() picks up the new SKILL.md
 AND Peon-Scaffold is still in the agents map
 ```
 
+::: tip Observer migration point
+The reload notification currently uses a `Runnable` callback wired through `ReloadConfigTool` →
+`PeonAiService` → `AIChatView`. If more than one consumer needs to react to config reload events
+(e.g. status bar, model list), replace with an Observer pattern: services fire `ReloadEvent` on
+success/failure; interested parties subscribe via listener registration in their lifecycle.
+:::
+
 ### R6: Config Must Be Re-Read Per Call ✅
 The scaffold agent reads `configDir` from `configuredModel.getConfig()` on every `call()` and updates its disk tools' `workingDir` accordingly. The config can change at runtime (user changes `.peon` directory in preferences). `ConfiguredChatModel.updateConfig()` replaces the config object on every preference change, so the scaffold agent always sees the latest path.
 

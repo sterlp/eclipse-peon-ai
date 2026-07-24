@@ -27,6 +27,7 @@ export default defineConfig({
             { text: 'Overview', link: '/' },
             { text: 'Agents & Skills', link: '/setup/agents-and-skills' },
             { text: 'Custom Agents', link: '/setup/custom-agents' },
+            { text: 'Scaffold Agent', link: '/setup/scaffold-agent' },
             { text: 'Commands', link: '/setup/commands' },
             { text: 'Agent Mode', link: '/setup/agent-mode' },
             { text: 'Memory', link: '/peon-memory' }

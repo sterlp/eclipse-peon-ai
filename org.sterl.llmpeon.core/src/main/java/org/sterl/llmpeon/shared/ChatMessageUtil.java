@@ -49,29 +49,31 @@ public class ChatMessageUtil {
         return UserMessage.from(data);
     }
 
-    private static List<Content> toContent(UserMessage m1) {
+    private static List<Content> toContent(UserMessage message) {
         List<Content> data = new LinkedList<Content>();
-        if (m1.hasSingleText()) data.add(new TextContent(m1.singleText()));
-        else data.addAll(m1.contents());
+        if (message.hasSingleText()) data.add(TextContent.from(message.singleText()));
+        else data.addAll(message.contents());
         return data;
     }
     
     public static String toString(ChatMessage msg) {
-        return toString(msg, true, 6000);
+        return toString(msg, true, 4000);
     }
     
     public static String toString(ChatMessage msg, boolean includeThink, int toolMessageSize) {
         var result = new StringBuilder();
-        if (msg instanceof UserMessage m) {
-            result.append(m.toString()).append(System.lineSeparator());
+        result.append(msg.type()).append(": ");
+        if (msg instanceof UserMessage um) {
+            um.contents().stream().filter(m -> m instanceof TextContent)
+                .map(m -> (TextContent)m)
+                .forEach(c -> result.append(c.text()).append(System.lineSeparator()));
         } else if (msg instanceof AiMessage m) {
-            result.append(AiMessage.class.getSimpleName()).append("{ ");
 
             if (StringUtil.hasValue(m.text())) {
-                result.append("text = ").append(m.text()).append(System.lineSeparator());
+                result.append(m.text()).append(System.lineSeparator());
             }
             if (includeThink && StringUtil.hasValue(m.thinking())) {
-                result.append("thinking = ").append(m.thinking()).append(System.lineSeparator());
+                result.append("AI think: ").append(m.thinking()).append(System.lineSeparator());
             }
 
             if (toolMessageSize > 0 && m.hasToolExecutionRequests()) {
@@ -81,7 +83,7 @@ public class ChatMessageUtil {
                 }
             }
 
-            result.append("}").append(System.lineSeparator());
+            result.append(System.lineSeparator());
         } else if (toolMessageSize > 0 && msg instanceof ToolExecutionResultMessage tr) {
             result.append(StringUtil.trimToLength(tr.toString(), toolMessageSize))
                   .append(System.lineSeparator());
@@ -95,7 +97,7 @@ public class ChatMessageUtil {
         contents.stream()
             .filter(s -> s instanceof TextContent)
             .map(s -> ((TextContent)s))
-            .forEach(s -> result.append(s.text()).append("\n"));
+            .forEach(s -> result.append(s.text()).append(System.lineSeparator()));
         return result.toString();
     }
 }

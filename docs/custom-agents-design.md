@@ -80,12 +80,22 @@ sends — including a read-only agent's edit tools appearing as inactive. The na
 
 ## Config reload callback
 
-When the scaffold agent calls `reloadConfig()`, the `AgentService.reloadAgents(Runnable)` callback
-notifies the UI so the agent combo refreshes immediately. The callback chain:
+`ReloadConfigTool.reloadConfig()` orchestrates refresh of all three services (agents, skills,
+commands). The UI callback (`onReload`) is injected via constructor, held as a `final` field, and
+fired **after** all three services succeed — not mid-way during agent reload.
 
-`ReloadConfigTool.reloadConfig()` → `agentService.reloadAgents(onReload)` → callback →
-`PeonAiService` (wired in constructor) → `AIChatView.refreshAgentUI()` →
-`actionsBar.setAgents()` + `updateModeUI()` + `setThinkEnabled()` + `refreshStatusLine()`.
+`ReloadConfigTool.reloadConfig()` → `agentService.reloadAgents()` → `skillService.refresh()` →
+`commandService.refresh()` → `onReload.run()` → `PeonAiService` → `AIChatView.refreshAgentUI()`.
+
+`AgentService.reloadAgents()` takes **no** callback parameter — it is pure business logic
+(reload + return boolean). The callback lives only in `ReloadConfigTool`.
+
+::: tip Observer migration point
+This uses a simple `Runnable` callback wired through `ReloadConfigTool` → `PeonAiService` →
+`AIChatView`. If more than one consumer needs to react to config reload events (e.g. status bar,
+model list), replace with an Observer pattern: services fire `ReloadEvent` on success/failure;
+interested parties subscribe via listener registration in their lifecycle.
+:::
 
 ## Config
 

@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -45,7 +47,7 @@ class ReloadConfigToolTest extends AbstractMemoryFileTest {
                 configDir.resolve(LlmConfig.AGENT_DIRECTORY),
                 new ToolService(), chatModel);
 
-        tool = new ReloadConfigTool(agentService, skillService, commandService, config);
+        tool = new ReloadConfigTool(agentService, skillService, commandService, config, null);
     }
 
     @Test
@@ -73,12 +75,62 @@ class ReloadConfigToolTest extends AbstractMemoryFileTest {
     void reloadConfigReturnsErrorWhenConfigDirIsNull() throws Exception {
         // GIVEN — no config directory
         var noDirConfig = LlmConfig.builder().configDir(null).build();
-        var noDirTool = new ReloadConfigTool(agentService, skillService, commandService, noDirConfig);
+        var noDirTool = new ReloadConfigTool(agentService, skillService, commandService, noDirConfig, null);
 
         // WHEN
         var result = noDirTool.reloadConfig();
 
         // THEN
         assertThat(result).contains("Error: config directory is not set");
+    }
+
+    @Test
+    void onReloadFiresAfterAllServicesSucceed() throws Exception {
+        // GIVEN — track invocation order
+        List<String> order = new ArrayList<>();
+        var mockAgentService = Mockito.mock(AgentService.class);
+        Mockito.when(mockAgentService.reloadAgents()).thenAnswer(inv -> {
+            order.add("agents");
+            return true;
+        });
+        var mockSkillService = Mockito.mock(SkillService.class);
+        Mockito.when(mockSkillService.refresh(Mockito.any(Path.class))).thenAnswer(inv -> {
+            order.add("skills");
+            return true;
+        });
+        var mockCommandService = Mockito.mock(CommandService.class);
+        Mockito.when(mockCommandService.refresh(Mockito.any(Path.class))).thenAnswer(inv -> {
+            order.add("commands");
+            return true;
+        });
+
+        var tool = new ReloadConfigTool(mockAgentService, mockSkillService, mockCommandService, config, () -> {
+            order.add("onReload");
+        });
+
+        // WHEN
+        tool.reloadConfig();
+
+        // THEN — callback fires AFTER all three services
+        assertThat(order).containsExactly("agents", "skills", "commands", "onReload");
+    }
+
+    @Test
+    void onReloadDoesNotFireWhenSkillServiceFails() throws Exception {
+        // GIVEN — skill service throws IOException
+        var mockAgentService = Mockito.mock(AgentService.class);
+        Mockito.when(mockAgentService.reloadAgents()).thenReturn(true);
+        var mockSkillService = Mockito.mock(SkillService.class);
+        Mockito.when(mockSkillService.refresh(Mockito.any(Path.class))).thenThrow(new java.io.IOException("disk error"));
+        var mockCommandService = Mockito.mock(CommandService.class);
+        boolean[] callbackFired = {false};
+
+        var tool = new ReloadConfigTool(mockAgentService, mockSkillService, mockCommandService, config, () -> {
+            callbackFired[0] = true;
+        });
+
+        // WHEN + THEN
+        assertThatThrownBy(() -> tool.reloadConfig()).isInstanceOf(java.io.IOException.class);
+        assertThat(callbackFired[0]).isFalse(); // callback must NOT fire
     }
 }

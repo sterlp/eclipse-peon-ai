@@ -22,6 +22,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.sterl.llmpeon.mock.MockLlmServer;
+import org.sterl.llmpeon.shared.ChatMessageUtil;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -114,10 +115,10 @@ public abstract class AbstractTest {
         latch.await();
     }
     
-    public static void assertHasUserMessageWith(Collection<ChatMessage> messages, String content) {
+    public static void assertHasUserMessageWith(Collection<? extends ChatMessage> messages, String content) {
         var textMessages = messages.stream()
             .filter(m -> m instanceof UserMessage)
-            .map(m -> ((UserMessage)m).singleText())
+            .map(m -> ChatMessageUtil.toString(m))
             .toList();
         assertHasMessageWith(textMessages, content);
     }

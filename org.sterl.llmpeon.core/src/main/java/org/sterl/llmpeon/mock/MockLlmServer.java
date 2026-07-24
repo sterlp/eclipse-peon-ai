@@ -306,7 +306,10 @@ public class MockLlmServer {
             var root = MAPPER.readTree(requestBody);
             for (var msg : root.path("messages")) {
                 String role = msg.path("role").asText();
-                String content = msg.path("content").asText(null);
+                var contentNode = msg.path("content");
+                String content = contentNode.isTextual()
+                        ? contentNode.asText()
+                        : extractTextFromArray(contentNode);
                 switch (role) {
                     case "user" -> capturedMessages.add(UserMessage.from(content));
                     case "tool" -> capturedMessages.add(new ToolExecutionResultMessage(
@@ -314,6 +317,17 @@ public class MockLlmServer {
                 }
             }
         } catch (Exception ignored) {}
+    }
+
+    private String extractTextFromArray(com.fasterxml.jackson.databind.JsonNode contentNode) {
+        if (!contentNode.isArray()) return null;
+        var sb = new StringBuilder();
+        for (var item : contentNode) {
+            if ("text".equals(item.path("type").asText())) {
+                sb.append(item.path("text").asText());
+            }
+        }
+        return sb.toString().isEmpty() ? null : sb.toString();
     }
 
     private boolean isStreaming(String requestBody) {

@@ -1,6 +1,9 @@
 package org.sterl.llmpeon.test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
 import java.io.IOException;
@@ -14,7 +17,6 @@ import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.parts.PeonAiService;
 import org.sterl.llmpeon.parts.tools.PlanTool;
-import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
@@ -25,7 +27,7 @@ import dev.langchain4j.data.message.UserMessage;
 
 public class PeonAiServiceTest extends AbstractTest {
 
-    PeonAiService aiService = new PeonAiService(null, null, null);
+    PeonAiService aiService = new PeonAiService(null, null, null, null);
     
     private final StandingOrdersBuilder standingOrders = new StandingOrdersBuilder()
             .add(aiService.getAgentsMdService());
@@ -96,8 +98,8 @@ public class PeonAiServiceTest extends AbstractTest {
         
         // THEN
         var msg = aiService.getActiveAgent().getMemory().getCopy();
-        assertEquals(ChatMessageUtil.toString(msg.get(0)), "Ping");
-        assertEquals(ChatMessageUtil.toString(msg.get(1)), "Pong");
+        assertEquals("Ping", ((UserMessage)msg.get(0)).singleText());
+        assertEquals("Pong", ((AiMessage)msg.get(1)).text());
     }
     
     @Test
@@ -120,7 +122,8 @@ public class PeonAiServiceTest extends AbstractTest {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
         aiService.updateConfig(aiService.getConfig().toBuilder()
                 .providerType(AiProvider.OPEN_AI)
-                .url(mockLlmServer.getUrl()).build());
+                .url(mockLlmServer.getUrl())
+                .build());
         mockLlmServer.queueResponse(AiMessage.aiMessage("Pong"));
         
         aiService.getAgentsMdService().load(project);
@@ -130,12 +133,15 @@ public class PeonAiServiceTest extends AbstractTest {
         aiService.getActiveAgent().call("Ping", null);
         
         // THEN
+        assertHasMessageWith(standingOrders.build(), "# Test Specifics");
+        
+        // AND
         assertNotNull(mockLlmServer.getCapturedTool("readSkill"));
         var userMessages = mockLlmServer.getCapturedMessages().stream()
                 .filter(m -> m instanceof UserMessage)
                 .map(m -> ((UserMessage)m)).toList();
         
-        assertContains(ChatMessageUtil.toString(userMessages.get(0)), "Test Specifics");
+        assertHasUserMessageWith(userMessages, "# Test Specifics");
     }
     
     @Test

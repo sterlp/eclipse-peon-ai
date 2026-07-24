@@ -22,3 +22,4 @@ isn't clear from a rule/BDD.
 | [0011](0011-agent-template-system-prompt.md) | Agent template as system prompt resource for scaffold | Accepted |
 | [0012](0012-toolservice-boolean-constructor.md) | ToolService(boolean withDefaults) constructor | Accepted |
 | [0013](0013-persistent-agents.md) | Persistent agents in AgentService survive clearAgents | Accepted |
+| [0015](0015-eclipse-sandbox-boundary.md) | Eclipse VFS as AI sandbox boundary — disk tools are opt-in override | Accepted |

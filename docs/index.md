@@ -5,6 +5,8 @@ notes live in [adr/](adr/index.md). Not published — user-facing docs are in `h
 
 ## Stories
 
+* [Disk File Write Tool](disk-file-write-tool.md) - real filesystem write/edit tools, configurable workingDir, disabled by default.
+* [Eclipse Workspace Write Tool](eclipse-workspace-write-file-tool.md) - Eclipse VFS write/edit tools, project-scoped sandbox, always available.
 * [Advanced Configuration](advanced-configuration.md) - the two-page preference split and per-agent model resolution via `ChatRequest.modelName()`.
 * [Custom Agents](custom-agents-design.md) - user-defined `AGENT.md` agents with tool allowlists, read-only mode and per-agent model.
 * [Interaction Design](interaction-design.md) - the chat view layout: history, input block, action bar and status line.

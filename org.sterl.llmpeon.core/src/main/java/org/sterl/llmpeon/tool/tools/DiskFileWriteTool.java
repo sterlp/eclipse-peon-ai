@@ -66,7 +66,7 @@ public class DiskFileWriteTool extends AbstractTool {
         }
     }
 
-    @Tool("Delete file.")
+    @Tool("Delete file or directory recursively.")
     public void diskDeleteFile(@P(name = "filePath") String filePath) {
         ArgsUtil.requireNonBlank(filePath, "filePath");
 
@@ -76,8 +76,16 @@ public class DiskFileWriteTool extends AbstractTool {
         }
 
         try {
-            Files.delete(resolved);
-            onTool("Deleted file: " + workingDir.relativize(resolved));
+            if (Files.isDirectory(resolved)) {
+                Files.walk(resolved)
+                    .sorted((a, b) -> b.compareTo(a)) // children before parents
+                    .forEach(path -> {
+                        try { Files.delete(path); } catch (IOException e) { /* skip */ }
+                    });
+            } else {
+                Files.delete(resolved);
+            }
+            onTool("Deleted: " + workingDir.relativize(resolved));
         } catch (IOException e) {
             throw new RuntimeException("Failed to delete " + filePath, e);
         }

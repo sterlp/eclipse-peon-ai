@@ -19,7 +19,7 @@ import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import lombok.Getter;
 
@@ -105,23 +105,18 @@ public abstract class AbstractAgent implements AiAgent {
         // auto compress if we are close to full before we start
         if (configuredModel.getConfig().getAutoCompactAfter() < memory.getTotalTokenUsed()) compressContext(monitor);
         
-        var contents = new ArrayList<String>();
+        var contents = new ArrayList<Content>();
         if (userContextInformations.size() > 0) {
             userContextInformations.stream()
                     .filter(m -> !hasUserText(m))
-                    .forEach(m -> contents.add(m));
+                    .forEach(m -> contents.add(TextContent.from(m)));
         }
         
-        if (StringUtil.hasValue(message)) contents.add(message);
+        if (StringUtil.hasValue(message)) contents.add(TextContent.from(message));
         if (contents.isEmpty()) {
             // nothing
-        } else if (contents.size() == 1) {
-            addMessage(UserMessage.from(contents.getFirst()));
         } else {
-            var textContents = contents.stream()
-                    .map(TextContent::from)
-                    .toArray(TextContent[]::new);
-            addMessage(UserMessage.from(textContents));
+            addMessage(UserMessage.from(contents));
         }
 
         var start = Instant.now();

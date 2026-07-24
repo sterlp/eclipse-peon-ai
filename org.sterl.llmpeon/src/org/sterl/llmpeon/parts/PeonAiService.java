@@ -131,8 +131,7 @@ public class PeonAiService implements MessageProvider {
         scaffoldAgent = new AiScaffoldAgent(configuredModel);
         scaffoldAgent.addTool(new SkillTool(skillService));
         // ReloadConfigTool needs agentService (already created) + skillService + commandService + config
-        reloadConfigTool = new ReloadConfigTool(agentService, skillService, commandService, config);
-        reloadConfigTool.setOnReload(onAgentReload);
+        reloadConfigTool = new ReloadConfigTool(agentService, skillService, commandService, config, onAgentReload);
         scaffoldAgent.addTool(reloadConfigTool);
 
         // Add scaffold as persistent agent (survives clearAgents on reload)

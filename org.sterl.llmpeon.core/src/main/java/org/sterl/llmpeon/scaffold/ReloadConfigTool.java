@@ -20,24 +20,22 @@ public class ReloadConfigTool extends AbstractTool {
     private final SkillService skillService;
     private final CommandService commandService;
     private volatile LlmConfig config;
-    private volatile Runnable onReload;
+    private final Runnable onReload;
 
     public ReloadConfigTool(AgentService agentService,
                             SkillService skillService,
                             CommandService commandService,
-                            LlmConfig config) {
+                            LlmConfig config,
+                            Runnable onReload) {
         this.agentService = agentService;
         this.skillService = skillService;
         this.commandService = commandService;
         this.config = config;
-    }
-    
-    public void updateConfig(LlmConfig config) {
-        this.config = config;
+        this.onReload = onReload;
     }
 
-    public void setOnReload(Runnable onReload) {
-        this.onReload = onReload;
+    public void updateConfig(LlmConfig config) {
+        this.config = config;
     }
 
     @Tool("Reload all configuration (agents, skills, commands) — call after creating/editing artifacts so they become immediately available.")
@@ -47,8 +45,8 @@ public class ReloadConfigTool extends AbstractTool {
             return "Error: config directory is not set";
         }
 
-        // Reload agents
-        agentService.reloadAgents(onReload);
+        // Reload agents — pure business logic, no callback
+        agentService.reloadAgents();
 
         // Reload skills
         var skillDir = configDir.resolve(LlmConfig.SKILL_DIRECTORY);
@@ -59,9 +57,15 @@ public class ReloadConfigTool extends AbstractTool {
         commandService.refresh(commandDir);
 
         onTool("Reloaded config from " + configDir);
-        return "Reloaded config from " + configDir + ":" + System.lineSeparator() +
+        String result = "Reloaded config from " + configDir + ":" + System.lineSeparator() +
                 "  Agents: " + agentService.loadedAgentCount() + " loaded" + System.lineSeparator() +
                 "  Skills: " + skillService.loadedSkillCount() + " loaded" + System.lineSeparator() +
                 "  Commands: " + commandService.loadedCommandCount() + " loaded";
+
+        // Fire callback after ALL services succeeded
+        if (onReload != null) {
+            try { onReload.run(); } catch (Exception e) { /* reload succeeded, callback failure is non-critical */ }
+        }
+        return result;
     }
 }

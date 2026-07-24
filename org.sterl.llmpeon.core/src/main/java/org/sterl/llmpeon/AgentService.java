@@ -137,10 +137,6 @@ public class AgentService {
     }
 
     public boolean reloadAgents() {
-        return reloadAgents(null);
-    }
-
-    public boolean reloadAgents(Runnable onReload) {
         if (Files.isDirectory(agentsDirectory)) {
             try {
                 reloadAgentConfig();
@@ -149,9 +145,6 @@ public class AgentService {
             }
         } else {
             clearAgents();
-        }
-        if (onReload != null) {
-            try { onReload.run(); } catch (Exception e) { /* reload succeeded, callback failure is non-critical */ }
         }
         return true;
     }

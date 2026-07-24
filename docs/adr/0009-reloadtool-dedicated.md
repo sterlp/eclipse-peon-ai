@@ -12,3 +12,7 @@ New `ReloadConfigTool` class in `org.sterl.llmpeon.scaffold` package, injected w
 Tight coupling between tool and services, but acceptable for a dedicated scaffold-only tool.
 
 **Constraint:** The tool holds a direct `LlmConfig` reference. If config changes at runtime (e.g., user changes `.peon` directory), the tool must read from `configuredModel.getConfig()` at call time — never use the constructor-injected config instance. Same pattern as the disk tools' `workingDir` refresh in `AiScaffoldAgent.call()`.
+
+**Refinement (2026-07-24):** `onReload` callback is injected via constructor (final field, no
+setter). Fired after all three service refreshes succeed — not during `agentService.reloadAgents()`.
+`AgentService.reloadAgents()` takes no callback parameter.
