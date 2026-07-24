@@ -46,22 +46,27 @@ public class AiPlanAgent extends AbstractAgent {
     public String handoverTo() {
         return AiDevAgent.NAME;
     }
+    
+    @Override
+    public boolean setAgentModelName(String modelName) {
+        var cfg = configuredModel.getConfig();
+        if (modelName == null) {
+            if (cfg.getPlanModel() == null) return false;
+            this.configuredModel.updateConfig(cfg.toBuilder().planModel(null).build());
+            return true;
+        }
+        if (!modelName.equals(cfg.getPlanModel())) {
+            this.configuredModel.updateConfig(cfg.toBuilder().planModel(modelName).build());
+            return true;
+        }
+        return false;
+    }
 
     /**
      * @return <code>true</code> if changed, <code>false</code> if already set
      */
     public boolean setModelName(AiModel modelName) {
-        var cfg = configuredModel.getConfig();
-        if (modelName == null || modelName.getId() == null) {
-            if (cfg.getPlanModel() == null) return false;
-            this.configuredModel.updateConfig(cfg.toBuilder().planModel(null).build());
-            return true;
-        }
-        if (!modelName.getId().equals(cfg.getPlanModel())) {
-            this.configuredModel.updateConfig(cfg.toBuilder().planModel(modelName.getId()).build());
-            return true;
-        }
-        return false;
+        return setAgentModelName(modelName == null ? null : modelName.getId());
     }
 
     @Override
