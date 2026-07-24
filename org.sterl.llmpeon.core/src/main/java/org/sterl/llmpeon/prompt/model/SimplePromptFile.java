@@ -75,6 +75,9 @@ public class SimplePromptFile {
     public void set(String name, List<String> values) {
         frontmatter.put(name, values);
     }
+    public void remove(String name) {
+        frontmatter.remove(name);
+    }
     
     public void save() throws IOException {
         if (promptFile == null) {

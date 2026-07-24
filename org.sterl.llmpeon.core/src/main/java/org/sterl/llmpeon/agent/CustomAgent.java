@@ -27,8 +27,9 @@ import lombok.Setter;
  */
 public class CustomAgent extends AbstractAgent {
     public static final String MODEL = "model";
-    public static final String THINK = "think";                 // legacy alias for think_on_string
-    public static final String THINK_ENABLED = "think_enabled";
+    public static final String THINK = "think";                       // legacy alias for think_on_string
+    public static final String THINK_ENABLED = "think_enabled";       // deprecated, kept for backward compat
+    public static final String THINK_SUPPORTED = "think_supported";   // canonical name
     public static final String THINK_ON = "think_on_string";
     public static final String THINK_OFF = "think_off_string";
     public static final String INCLUDE_DEFAULT = "include-default";
@@ -72,7 +73,8 @@ public class CustomAgent extends AbstractAgent {
 
     @Override
     public boolean isThinkEnabled() {
-        // explicit think_enabled wins; legacy `think:` implies enabled for an on-value
+        // THINK_SUPPORTED (canonical) takes precedence; THINK_ENABLED (deprecated) as fallback; legacy `think:` implies enabled for an on-value
+        if (promptFile.firstOrDefault(THINK_SUPPORTED, null) != null) return promptFile.isTrue(THINK_SUPPORTED);
         if (promptFile.firstOrDefault(THINK_ENABLED, null) != null) return promptFile.isTrue(THINK_ENABLED);
         var legacy = promptFile.firstOrDefault(THINK, null);
         return legacy != null && org.sterl.llmpeon.ai.ThinkResolver.isOn(legacy);

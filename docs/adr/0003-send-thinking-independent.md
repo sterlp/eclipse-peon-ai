@@ -9,10 +9,12 @@ ask the model to think. Separately, the bundled langchain4j exposes `returnThink
 only on the **model builder** (build time) — there is no per-request setter.
 
 **Decision:**
-- `returnThinking` (parse + show) = `think_enabled` **OR** `think_send`.
+- `returnThinking` (parse + show) = `think_supported` **OR** `think_send`.
 - `sendThinking` (resend prior thinking) = `think_send`.
 - Because the switches are build-time, `think_send` is a **single global** preference
   (`PREF_SEND_THINKING_ENABLED`), driven by the Dev/global config.
+
+**TODO:** Remove `think_enabled` backward compat (kept in `CustomAgent.THINK_ENABLED` for reading old AGENT.md files) in a future major version.
 
 **Consequences:** A reasoning model may think and have its thinking shown even when the attribute is
 omitted. Per-agent `think_send` is **not** wired per request (langchain4j limit); the custom-agent

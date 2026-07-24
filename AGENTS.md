@@ -1,4 +1,3 @@
-<!-- COMMON RULES START -->
 ## Common Rules
 
 - **Be concise.** Short, direct chat answers — no filler, no restating the known. The docs still
@@ -18,7 +17,7 @@ sibling files with **no duplication** between them. The Peon plugin auto-loads t
 - **After each iteration → `AGENTS-SESSION-END.md`** — the retro + how these guidance files are
   structured and maintained.
   
-  ### Docs-first — the docs are the SOLL/WIE
+### Docs-first — the docs are the SOLL/WIE
 - **Plan in the docs together; joint planning IS the approval.** Rules, BDD use-cases
   (GIVEN/WHEN/THEN) and ADRs are captured first as the target. While planning decide: new module?
   Check for conflicts with existing rules, fit with current docs.
@@ -46,7 +45,6 @@ Maven multi-module, each module prefixed with the project key (e.g. `<project>-a
   + ADRs, module-specific ADRs live in the module's `docs/adr/` (no re-summarising the module in root
   → no drift). A feature spanning modules: doc + ADR live with the **owning** module, glue only links.
   Exception: `*-test`/support modules get no skeleton.
-<!-- COMMON RULES END -->
 
 # Repo layout — Eclipse plugin RCP
 
@@ -59,12 +57,14 @@ the three fixed OSGi bundles**, each bundle with its own `AGENTS.md`:
 - `org.sterl.llmpeon` — Eclipse plugin code
 - `org.sterl.llmpeon.test` — Eclipse plugin tests
 
+changes in core need shell `mvn clean verify` to be picked up in llmpeon or llmpeon.test
+
 Module guides (read when working in one):
 - `/org.sterl.llmpeon/AGENTS.md` — Plugin UI & Logic (error handling patterns, Job usage).
 - `/org.sterl.llmpeon.core/AGENTS.md` — Core logic (Lombok conventions).
 - `/org.sterl.llmpeon.test/AGENTS.md` — Test execution specifics.
 
-# Docs
+## Docs
 
 Two doc trees, kept separate — start at `docs/index.md`:
 - `docs/` — application design & dev spec (the HOW / system reference). **Not** linked to VitePress;

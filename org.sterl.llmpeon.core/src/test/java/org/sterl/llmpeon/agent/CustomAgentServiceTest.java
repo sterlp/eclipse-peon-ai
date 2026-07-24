@@ -172,6 +172,38 @@ class CustomAgentServiceTest extends AbstractMemoryFileTest {
     }
 
     @Test
+    void oldThinkEnabledNameIsReadCorrectly() throws Exception {
+        // GIVEN an AGENT.md with think_enabled: true (old name)
+        var file = tmp.resolve("AGENT.md");
+        Files.writeString(file, "---\nname: t\nthink_enabled: true\n---\nbody");
+        var agent = newAgent(file);
+
+        // WHEN
+        boolean result = agent.isThinkEnabled();
+
+        // THEN
+        assertThat(result).isTrue();
+    }
+
+    @Test
+    void oldNameMigratesToNewOnSave() throws Exception {
+        // GIVEN an AGENT.md with think_enabled: true (old name)
+        var file = tmp.resolve("AGENT.md");
+        Files.writeString(file, "---\nname: t\nthink_enabled: true\n---\nbody");
+        var agent = newAgent(file);
+
+        // WHEN — simulate what saveThinkEnabled does: write think_supported, remove think_enabled
+        agent.getAgentFile().setValue(CustomAgent.THINK_SUPPORTED, "true");
+        agent.getAgentFile().remove(CustomAgent.THINK_ENABLED);
+        agent.getAgentFile().save();
+        String saved = Files.readString(file);
+
+        // THEN
+        assertThat(saved).contains("think_supported: true");
+        assertThat(saved).doesNotContain("think_enabled");
+    }
+
+    @Test
     void setModelNamePinsToAgentAndPersistsYaml() throws Exception {
         // GIVEN — B3 building blocks: pin model in memory + write back to AGENT.md
         var file = tmp.resolve("AGENT.md");
