@@ -244,6 +244,7 @@ public class AIChatView implements EclipseAiMonitor {
     @Inject
     @org.eclipse.e4.core.di.annotations.Optional
     public void onTextSelection(@Named(IServiceConstants.ACTIVE_SELECTION) ITextSelection ts) {
+        if (parent == null || parent.isDisposed()) return;
         EclipseUtil.runInUiThread(parent, () -> {
             userContext.setTextSelection(ts);
             refreshStatusLine();
@@ -254,7 +255,8 @@ public class AIChatView implements EclipseAiMonitor {
     @org.eclipse.e4.core.di.annotations.Optional
     public void onSelection(@Named(IServiceConstants.ACTIVE_SELECTION) Object o) {
         if (o instanceof ITextSelection) return;
-        
+        if (parent == null || parent.isDisposed()) return;
+
         userContext.setClassFile(null);
         var selectionElement = EclipseUtil.selectionElement(o).orElse(null);
         if (selectionElement instanceof IClassFile classFile) userContext.setClassFile(classFile);
@@ -349,15 +351,19 @@ public class AIChatView implements EclipseAiMonitor {
 
     // TODO: DOUBLE CHECK if refreshStatusLine and refreshChat are 2 methods!
     public void refreshStatusLine() {
-        statusLine.update(
-            aiService.getSkillService().getSkills().size(),
-            aiService.getAgentsMdService().getAgentFileName(),
-            aiService.getAgentsMdService().isEnabled(),
-            userContext.getCurrentProject(),
-            userContext.getSelectedFile()
-        );
+        if (statusLine != null) {
+            statusLine.update(
+                aiService.getSkillService().getSkills().size(),
+                aiService.getAgentsMdService().getAgentFileName(),
+                aiService.getAgentsMdService().isEnabled(),
+                userContext.getCurrentProject(),
+                userContext.getSelectedFile()
+            );
+        }
         var ai = aiService.getActiveAgent();
-        actionsBar.updateCompact(ai.getMemory().getTotalTokenUsed(), aiService.getConfig().getAutoCompactAfter());
+        if (actionsBar != null) {
+            actionsBar.updateCompact(ai.getMemory().getTotalTokenUsed(), aiService.getConfig().getAutoCompactAfter());
+        }
     }
     private void refreshChat() {
         chatHistory.clear();
