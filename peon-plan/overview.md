@@ -1,90 +1,81 @@
-# File Write Tools — Design & Behavior Sync
+# Rename `think_enabled` → `think_supported`
 
 ## Context
 
-Two parallel tool classes provide file write/edit operations:
-- **DiskFileWriteTool** (`org.sterl.llmpeon.tool.tools`) — real filesystem via NIO, configurable workingDir, can be disabled in config
-- **EclipseWorkspaceWriteFileTool** (`org.sterl.llmpeon.parts.tools`) — Eclipse virtual filesystem via IResource API, workspace-scoped, always available
+`think_enabled` reads like a runtime toggle ("is thinking currently on?") but it's actually a static capability declaration in the AGENT.md frontmatter — "does this agent support thinking?". The brain button in the UI provides the runtime toggle. Renaming to `think_supported` makes the semantic distinction clear: the frontmatter declares *capability*, the UI controls *state*.
 
-## Goal
+## Design Decisions
 
-Document both tool classes' design and sync their delete behavior — `diskDeleteFile` currently only deletes single files, while `eclipseDeleteResource` deletes recursively. Both should delete recursively for consistent agent expectations.
-
-## Business Rules
-
-### R1: Recursive Delete Behavior ✅
-Both delete tools must delete recursively — files and non-empty directories.
-
-**BDD:**
-```
-GIVEN a directory with files exists at /path/to/dir
-WHEN diskDeleteFile("/path/to/dir") is called
-THEN the directory and all its contents are deleted
-
-GIVEN a directory with files exists at /Project/src/foo
-WHEN eclipseDeleteResource("/Project/src/foo") is called
-THEN the directory and all its contents are deleted
-```
-
-### R2: Eclipse Tools as Safe Sandbox ✅
-Eclipse workspace tools operate within the Eclipse virtual file system, providing a bounded sandbox — the AI agent can only access files within open Eclipse projects. This is the safer default mode.
-
-**BDD:**
-```
-GIVEN EclipseWorkspaceWriteFileTool is active
-WHEN the agent tries to write to a path outside any open project
-THEN the tool throws an IllegalArgumentException with open project list
-```
-
-### R3: Disk Tools as Configurable Override ✅
-Disk tools can be disabled in global config. When enabled, they operate on the real filesystem with a configurable workingDir. When disabled, only Eclipse tools are available — enforcing the sandbox.
-
-**BDD:**
-```
-GIVEN disk tools are disabled in the global config
-WHEN the agent is active with default tool service
-THEN no disk tools (DiskFileWriteTool, DiskFileReadTool, DiskGrepTool) are in the tool service
-AND only Eclipse workspace tools are available
-
-GIVEN disk tools are enabled and workingDir is set to /some/path
-WHEN diskWriteFile("/some/path/file.txt", "content") is called
-THEN the file is written to the real filesystem at /some/path/file.txt
-```
-
-## Tool Comparison
-
-| Operation | Disk | Eclipse | Notes |
-|-----------|------|---------|-------|
-| Write/Update File | `diskWriteFile` | `eclipseWriteFile` | Both create parent dirs |
-| Delete | `diskDeleteFile` | `eclipseDeleteResource` | **Both recursive** (R1) |
-| Replace Lines | `diskReplaceLines` | `eclipseReplaceLines` | Same interface |
-| Edit (string replace) | `diskEditFile` | `eclipseEditFile` | Same interface; Eclipse allows null newString |
-| Rename/Move | `diskRenameResource` | `eclipseRenameResource` | Both create parent dirs |
-| Insert Lines | `diskInsertLines` | `eclipseInsertLines` | Same interface |
+- **New name:** `think_supported` (capability declaration)
+- **Backward compat:** Read both `think_enabled` and `think_supported` — old key takes precedence so existing AGENT.md files work without migration
+- **Auto-migrate on write:** Always write `think_supported`; existing files get migrated the next time the agent config is saved (e.g. model change, brain toggle)
+- **Homepage docs:** Use only the new name — no mention of the old
+- **Internal docs:** Mention the old name as deprecated with a TODO to remove in a future major version
 
 ## Affected Files
 
-### Design docs (new)
-- `docs/disk-file-write-tool.md` — DiskFileWriteTool design + sandbox rationale
-- `docs/eclipse-workspace-write-file-tool.md` — EclipseWorkspaceWriteFileTool design
+### Code (org.sterl.llmpeon.core)
 
-### Code changes
-- `org.sterl.llmpeon.core/src/main/java/org/sterl/llmpeon/tool/tools/DiskFileWriteTool.java` — fix `diskDeleteFile` to delete recursively
+1. **`/llmpeon-core/src/main/java/org/sterl/llmpeon/agent/CustomAgent.java`**
+   - Add `THINK_SUPPORTED = "think_supported"` constant
+   - `isThinkEnabled()`: read `THINK_SUPPORTED` first; fall back to `THINK_ENABLED` for backward compat
+   - No change to write path — writes happen via `LlmPreferenceInitializer.saveThinkEnabled()`
 
-### ADR
-- `docs/adr/0015-eclipse-sandbox-boundary.md` — Eclipse VFS as AI sandbox boundary
+2. **`/llmpeon-core/src/main/resources/org/sterl/llmpeon/prompts/scaffold-agent.txt`**
+   - Replace `think_enabled` → `think_supported` in the artifact spec and example
 
-### Registry
-- `docs/index.md` — add both new design doc entries
-- `docs/adr/index.md` — add ADR-0015
+3. **`/llmpeon-parent/org.sterl.llmpeon.core/src/test/java/org/sterl/llmpeon/agent/CustomAgentServiceTest.java`**
+   - Add two BDD test methods (see below)
 
-## Steps
+### Plugin (org.sterl.llmpeon)
 
-1. Create ADR-0015: Eclipse VFS as sandbox boundary
-2. Create `docs/disk-file-write-tool.md` design doc
-3. Create `docs/eclipse-workspace-write-file-tool.md` design doc
-4. Update `docs/index.md` and `docs/adr/index.md` registries
-5. Fix `DiskFileWriteTool.diskDeleteFile` to use `Files.walk` + recursive delete
-6. Add/update tests for recursive delete behavior
-7. Build + run tests
+4. **`/org.sterl.llmpeon/src/org/sterl/llmpeon/parts/config/LlmPreferenceInitializer.java`**
+   - `saveThinkEnabled()` for CustomAgent: write `THINK_SUPPORTED` instead of `THINK_ENABLED`
 
+5. **`/org.sterl.llmpeon/src/org/sterl/llmpeon/parts/config/AiAdvancedPreferenceView.java`**
+   - No change needed — the label "Dev: Supports thinking" is already semantically correct; it references `PREF_THINKING_ENABLED` which is the global preference key, not the frontmatter key
+
+6. **`/org.sterl.llmpeon/src/org/sterl/llmpeon/parts/PeonConstants.java`**
+   - No change — `PREF_THINKING_ENABLED` is the Eclipse preference key for the global Dev/Plan think toggle, not the AGENT.md frontmatter key
+
+### Docs
+
+7. **`/llmpeon-parent/homepage/src/setup/custom-agents.md`**
+   - Replace `think_enabled` → `think_supported` in the field table and description
+
+8. **`/llmpeon-parent/docs/adr/0003-send-thinking-independent.md`**
+   - Replace `think_enabled` → `think_supported` in the Decision section
+   - Add TODO: remove `think_enabled` backward compat in a future major version
+
+### Not touched
+
+- `/llmpeon-parent/homepage/.vitepress/dist/` — build artifact, regenerated from source
+- `PREF_THINKING_ENABLED` / `PREF_PLAN_THINK_ENABLED` — Eclipse preference keys, not frontmatter keys
+
+## BDD Use Cases
+
+### Test 1: Old name works (backward compat)
+**Test:** `CustomAgentServiceTest.oldThinkEnabledNameIsReadCorrectly`
+- **GIVEN** an AGENT.md with `think_enabled: true` in frontmatter
+- **WHEN** the agent is loaded and `isThinkEnabled()` is called
+- **THEN** it returns `true`
+- **Type:** unit
+
+### Test 2: Auto-migration on save
+**Test:** `CustomAgentServiceTest.oldNameMigratesToNewOnSave`
+- **GIVEN** an AGENT.md with `think_enabled: true` in frontmatter
+- **WHEN** the agent is loaded, the model is changed via `setAgentModelName()`, and the file is saved
+- **THEN** the saved file contains `think_supported: true` (not `think_enabled`)
+- **AND** the model change is also persisted
+- **Type:** unit (file I/O)
+
+## Rules & Constraints
+
+- The `THINK_ENABLED` constant stays in `CustomAgent.java` for backward compat reads — do not remove
+- The `THINK_SUPPORTED` constant is the canonical name going forward
+- `SimplePromptFile.setValue()` writes the key it's given — no special handling needed, just pass the right constant
+- The `saveThinkEnabled()` in `LlmPreferenceInitializer` is the only code path that writes the think flag for CustomAgent (the brain button in the UI)
+
+## Open Questions
+
+- None — the scope is clear and contained.

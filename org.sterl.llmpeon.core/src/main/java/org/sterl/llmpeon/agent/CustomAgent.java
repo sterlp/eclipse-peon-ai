@@ -27,7 +27,9 @@ import lombok.Setter;
  */
 public class CustomAgent extends AbstractAgent {
     public static final String MODEL = "model";
+    @Deprecated
     public static final String THINK = "think";                       // legacy alias for think_on_string
+    @Deprecated
     public static final String THINK_ENABLED = "think_enabled";       // deprecated, kept for backward compat
     public static final String THINK_SUPPORTED = "think_supported";   // canonical name
     public static final String THINK_ON = "think_on_string";
@@ -42,11 +44,42 @@ public class CustomAgent extends AbstractAgent {
     @Getter @Setter
     private volatile SimplePromptFile promptFile;
 
-    public CustomAgent(SimplePromptFile promptFile, 
-            ConfiguredChatModel configuredModel, 
+    public CustomAgent(SimplePromptFile promptFile,
+            ConfiguredChatModel configuredModel,
             ToolService toolService) {
         super(configuredModel, toolService);
         this.promptFile = promptFile;
+        migrateLegacy();
+    }
+
+    /** Auto-migrates legacy frontmatter keys to their canonical names on first load. */
+    private void migrateLegacy() {
+        try {
+            boolean changed = false;
+            // think_enabled → think_supported
+            String thinkEnabled = promptFile.firstOrDefault(THINK_ENABLED, null);
+            if (thinkEnabled != null) {
+                promptFile.setValue(THINK_SUPPORTED, thinkEnabled);
+                promptFile.remove(THINK_ENABLED);
+                changed = true;
+            }
+            // think → think_on_string (also implies enabled if an on-value)
+            String think = promptFile.firstOrDefault(THINK, null);
+            if (think != null) {
+                promptFile.setValue(THINK_ON, think);
+                promptFile.remove(THINK);
+                // `think: high` implies enabled; set think_supported if not already present
+                if (org.sterl.llmpeon.ai.ThinkResolver.isOn(think) && promptFile.firstOrDefault(THINK_SUPPORTED, null) == null) {
+                    promptFile.setValue(THINK_SUPPORTED, "true");
+                }
+                changed = true;
+            }
+            if (changed) {
+                promptFile.save();
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to migrate legacy frontmatter for agent " + getName(), e);
+        }
     }
 
     public SimplePromptFile getAgentFile() {

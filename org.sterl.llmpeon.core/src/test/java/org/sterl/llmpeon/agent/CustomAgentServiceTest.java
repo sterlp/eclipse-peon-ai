@@ -172,34 +172,57 @@ class CustomAgentServiceTest extends AbstractMemoryFileTest {
     }
 
     @Test
-    void oldThinkEnabledNameIsReadCorrectly() throws Exception {
-        // GIVEN an AGENT.md with think_enabled: true (old name)
+    void legacyThinkMigratesToThinkOnStringOnLoad() throws Exception {
+        // GIVEN an AGENT.md with legacy `think: high` in frontmatter
         var file = tmp.resolve("AGENT.md");
-        Files.writeString(file, "---\nname: t\nthink_enabled: true\n---\nbody");
+        Files.writeString(file, "---\nname: t\nthink: high\n---\nbody");
+
+        // WHEN the agent is loaded
         var agent = newAgent(file);
 
-        // WHEN
-        boolean result = agent.isThinkEnabled();
-
-        // THEN
-        assertThat(result).isTrue();
+        // THEN the config auto-migrates to think_on_string
+        assertThat(agent.getConfig().getThink()).isEqualTo("high");
+        // AND the file is saved with the new keys (think implies enabled)
+        String saved = Files.readString(file);
+        assertThat(saved).contains("think_on_string: high");
+        assertThat(saved).contains("think_supported: true");
+        assertThat(saved).doesNotContain("think:");
     }
 
     @Test
-    void oldNameMigratesToNewOnSave() throws Exception {
-        // GIVEN an AGENT.md with think_enabled: true (old name)
+    void legacyThinkEnabledMigratesToThinkSupportedOnLoad() throws Exception {
+        // GIVEN an AGENT.md with legacy `think_enabled: true` in frontmatter
         var file = tmp.resolve("AGENT.md");
         Files.writeString(file, "---\nname: t\nthink_enabled: true\n---\nbody");
+
+        // WHEN the agent is loaded
         var agent = newAgent(file);
 
-        // WHEN — simulate what saveThinkEnabled does: write think_supported, remove think_enabled
-        agent.getAgentFile().setValue(CustomAgent.THINK_SUPPORTED, "true");
-        agent.getAgentFile().remove(CustomAgent.THINK_ENABLED);
-        agent.getAgentFile().save();
+        // THEN the config auto-migrates to think_supported
+        assertThat(agent.isThinkEnabled()).isTrue();
+        // AND the file is saved with the new key
         String saved = Files.readString(file);
-
-        // THEN
         assertThat(saved).contains("think_supported: true");
+        assertThat(saved).doesNotContain("think_enabled");
+    }
+
+    @Test
+    void legacyThinkAndEnabledMigrateTogetherOnLoad() throws Exception {
+        // GIVEN an AGENT.md with both legacy keys
+        var file = tmp.resolve("AGENT.md");
+        Files.writeString(file, "---\nname: t\nthink: high\nthink_enabled: true\n---\nbody");
+
+        // WHEN the agent is loaded
+        var agent = newAgent(file);
+
+        // THEN both are migrated
+        assertThat(agent.isThinkEnabled()).isTrue();
+        assertThat(agent.getConfig().getThink()).isEqualTo("high");
+        // AND the file is saved with the new keys
+        String saved = Files.readString(file);
+        assertThat(saved).contains("think_supported: true");
+        assertThat(saved).contains("think_on_string: high");
+        assertThat(saved).doesNotContain("think:");
         assertThat(saved).doesNotContain("think_enabled");
     }
 

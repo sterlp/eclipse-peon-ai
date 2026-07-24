@@ -149,10 +149,8 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
                 prefs.flush();
                 return true;
             } else if (agent instanceof org.sterl.llmpeon.agent.CustomAgent custom) {
-                var file = custom.getAgentFile();
-                file.setValue(org.sterl.llmpeon.agent.CustomAgent.THINK_SUPPORTED, String.valueOf(enabled));
-                file.remove(org.sterl.llmpeon.agent.CustomAgent.THINK_ENABLED); // auto-migrate old key
-                file.save();
+                custom.getAgentFile().setValue(org.sterl.llmpeon.agent.CustomAgent.THINK_SUPPORTED, String.valueOf(enabled));
+                custom.getAgentFile().save();
             }
         } catch (Exception e) {
             LOG.warn("Failed to save think enabled", e);
