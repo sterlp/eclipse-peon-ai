@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.List;
 
 import org.junit.Test;
 import org.sterl.llmpeon.StandingOrdersBuilder;
@@ -213,7 +214,7 @@ public class PeonAiServiceTest extends AbstractTest {
     }
     
     @Test
-    public void test_dedup_messages() throws IOException {
+    public void test_dedup_messages() {
         // GIVEN
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
         var config = aiService.getConfig().toBuilder()
@@ -230,39 +231,34 @@ public class PeonAiServiceTest extends AbstractTest {
         aiService.getActiveAgent().call("Text 1", null);
         
         // THEN
-        var msg = mockLlmServer.getLastRequestBody();
-        // AND
-        var root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(msg);
-        var messages = root.path("messages");
-        var lastUserMsg = messages.get(messages.size() - 1);
-        var contentArray = lastUserMsg.path("content");
+        var captured = mockLlmServer.getCapturedMessages();
+        var lastUserMsg = captured.stream()
+                .filter(m -> m instanceof UserMessage)
+                .map(m -> (UserMessage)m)
+                .reduce((a, b) -> b)
+                .orElseThrow();
+        
+        var textContents = lastUserMsg.contents().stream()
+                .filter(c -> c instanceof dev.langchain4j.data.message.TextContent)
+                .map(c -> ((dev.langchain4j.data.message.TextContent)c).text())
+                .toList();
         
         // Text 1 appears twice: once from userContextInformations (not filtered because memory
         // check happens before the new message is added) and once from the call message
-        var text1Count = countText(contentArray, "Text 1");
-        assertEquals("Text 1 should appear twice (context + call)", 2, text1Count);
+        assertEquals("Text 1 should appear twice (context + call)", 2, countText(textContents, "Text 1"));
         
         // Text 2 appears once from userContextInformations
-        var text2Count = countText(contentArray, "Text 2");
-        assertEquals("Text 2 should appear once", 1, text2Count);
+        assertEquals("Text 2 should appear once", 1, countText(textContents, "Text 2"));
         
         // Text 3 was dedupped: only one occurrence despite being in userContextInformations twice
-        var text3Count = countText(contentArray, "Text 3");
-        assertEquals("Text 3 should appear once (dedupped)", 1, text3Count);
+        assertEquals("Text 3 should appear once (dedupped)", 1, countText(textContents, "Text 3"));
         
         // Unique appears once
-        var uniqueCount = countText(contentArray, "Unique");
-        assertEquals("Unique should appear once", 1, uniqueCount);
+        assertEquals("Unique should appear once", 1, countText(textContents, "Unique"));
     }
     
-    private int countText(com.fasterxml.jackson.databind.JsonNode contentArray, String text) {
-        int count = 0;
-        for (var item : contentArray) {
-            if (text.equals(item.path("text").asText())) {
-                count++;
-            }
-        }
-        return count;
+    private int countText(List<String> texts, String text) {
+        return (int) texts.stream().filter(t -> text.equals(t)).count();
     }
     
     // TODO add tests concerning the message build -- check if it was properly constructed.

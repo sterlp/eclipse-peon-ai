@@ -307,16 +307,30 @@ public class MockLlmServer {
             for (var msg : root.path("messages")) {
                 String role = msg.path("role").asText();
                 var contentNode = msg.path("content");
-                String content = contentNode.isTextual()
-                        ? contentNode.asText()
-                        : extractTextFromArray(contentNode);
                 switch (role) {
-                    case "user" -> capturedMessages.add(UserMessage.from(content));
+                    case "user" -> {
+                        if (contentNode.isTextual()) {
+                            capturedMessages.add(UserMessage.from(contentNode.asText()));
+                        } else {
+                            capturedMessages.add(extractUserMessageFromArray(contentNode));
+                        }
+                    }
                     case "tool" -> capturedMessages.add(new ToolExecutionResultMessage(
-                            msg.path("tool_call_id").asText(), "", content));
+                            msg.path("tool_call_id").asText(), "", extractTextFromArray(contentNode)));
                 }
             }
         } catch (Exception ignored) {}
+    }
+
+    private UserMessage extractUserMessageFromArray(com.fasterxml.jackson.databind.JsonNode contentNode) {
+        if (!contentNode.isArray()) return UserMessage.from((String) null);
+        var contents = new java.util.ArrayList<dev.langchain4j.data.message.Content>();
+        for (var item : contentNode) {
+            if ("text".equals(item.path("type").asText())) {
+                contents.add(dev.langchain4j.data.message.TextContent.from(item.path("text").asText()));
+            }
+        }
+        return contents.isEmpty() ? UserMessage.from((String) null) : UserMessage.from(contents);
     }
 
     private String extractTextFromArray(com.fasterxml.jackson.databind.JsonNode contentNode) {

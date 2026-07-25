@@ -95,6 +95,7 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
                 var type = launchManager.getLaunchConfigurationType(
                         "org.eclipse.jdt.junit.launchconfig");
 
+                
                 ILaunchConfigurationWorkingCopy wc = type.newInstance(null, launchName);
                 wc.setAttribute(IJavaLaunchConfigurationConstants.ATTR_PROJECT_NAME,
                         javaProject.getElementName());
