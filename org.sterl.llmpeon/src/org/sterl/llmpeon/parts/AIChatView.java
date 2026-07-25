@@ -5,7 +5,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -34,9 +33,9 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IWorkingSet;
 import org.sterl.llmpeon.StandingOrdersBuilder;
 import org.sterl.llmpeon.agent.AiAgent;
+import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.command.SlashCommandResolver;
 import org.sterl.llmpeon.command.SlashCommandResolver.SlashResult;
-import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.McpPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.VoicePreferenceInitializer;
@@ -608,6 +607,11 @@ public class AIChatView implements EclipseAiMonitor {
         }).schedule();
     }
 
+    private sealed interface SendDecision {
+        record Skip() implements SendDecision {}
+        record Submit(String messageOrNull) implements SendDecision {}
+    }
+
     private void doSendMessage() {
         if (StringUtil.hasNoValue(aiService.getActiveModel())) {
             chatHistory.appendMessage(new SimpleMessage(Type.PROBLEM, "No model configured — open Window > Preferences > Peon AI"));
@@ -621,9 +625,9 @@ public class AIChatView implements EclipseAiMonitor {
         String messageToSend = null;
 
         if (StringUtil.hasValue(text)) {
-            var outgoing = resolveOutgoingMessage(text, active);
-            if (outgoing.isEmpty()) return;
-            messageToSend = outgoing.get();
+            var decision = resolveOutgoingMessage(text, active);
+            if (decision instanceof SendDecision.Skip) return;
+            messageToSend = ((SendDecision.Submit) decision).messageOrNull();
         } else if (actionsBar.isWorking()) {
             return;
         }
@@ -631,7 +635,7 @@ public class AIChatView implements EclipseAiMonitor {
         submitAiJob(active, messageToSend);
     }
 
-    private Optional<String> resolveOutgoingMessage(String text, AiAgent active) {
+    private SendDecision resolveOutgoingMessage(String text, AiAgent active) {
         var resolver = new SlashCommandResolver();
         var result = resolver.resolve(text, aiService.getCommandService(), aiService.getSkillService());
 
@@ -640,7 +644,7 @@ public class AIChatView implements EclipseAiMonitor {
             SlashResult r = result.get();
             standingOrders.addOneTimeOrder(r.body());
             chatHistory.appendMessage(new SimpleMessage(Type.TOOL,
-                    r.isSkill() ? "🔧 Using SKILL: " + r.name() : "🔧 Using COMMAND: " + r.name()));
+                    r.isSkill() ? "Using 📦: " + r.name() : "Using 🪄: " + r.name()));
             trailing = StringUtil.hasValue(r.trailingText()) ? r.trailingText() : null;
             if (trailing != null) {
                 chatHistory.appendMessage(new SimpleMessage(Type.USER, trailing));
@@ -653,12 +657,10 @@ public class AIChatView implements EclipseAiMonitor {
         chatInput.clearText();
 
         if (actionsBar.isWorking()) {
-            if (trailing != null) {
-                active.getMemory().add(UserMessage.from(trailing));
-            }
-            return Optional.empty();
+            if (trailing != null) active.getMemory().add(UserMessage.from(trailing));
+            return new SendDecision.Skip();
         }
-        return Optional.ofNullable(trailing);
+        return new SendDecision.Submit(trailing);
     }
 
     private void submitAiJob(AiAgent active, String messageToSend) {
@@ -670,7 +672,7 @@ public class AIChatView implements EclipseAiMonitor {
             ChatResponse cr = null;
             try {
                 active.setUserContextInformations(this.standingOrders.build());
-                cr = active.call(StringUtil.hasValue(messageToSend) ? messageToSend : null, this);
+                cr = active.call(messageToSend, this);
             } catch (Exception e) {
                 ex = handleChatException(e);
             } finally {

@@ -165,6 +165,12 @@ Detailed documentation is available at [peon-ai-4e.sterl.org](https://peon-ai-4e
 
 `mvn org.eclipse.tycho:tycho-versions-plugin:set-version -DnewVersion=1.1.0-SNAPSHOT`
 
+## Links
+- https://utilitytools.net/text/symbols-copy-paste
+
+🪄 📦 🔧
+✅ ❌
+
 ## Eclipse RCP Resources
 
 - https://help.eclipse.org/latest/index.jsp?topic=%2Forg.eclipse.pde.doc.user%2Fguide%2Ftools%2Fviews%2Fimage_browser_view.htm
