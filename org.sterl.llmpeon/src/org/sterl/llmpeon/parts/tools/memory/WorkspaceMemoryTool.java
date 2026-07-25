@@ -149,18 +149,18 @@ public class WorkspaceMemoryTool extends AbstractEclipseTool implements MessageP
     }
 
     @Override
-    public String get() {
-        if (entries.isEmpty()) return null;
-        
+    public List<String> get() {
+        if (entries.isEmpty()) return List.of();
+
         StringBuilder sb = new StringBuilder();
         sb.append("Your memory of rules and guidelines and informations for your work:\n\n");
-        
+
         for (int i = 0; i < entries.size(); i++) {
             WorkspaceGuideline g = entries.get(i);
             int displayIndex = i + 1;
             sb.append(displayIndex).append(". [").append(g.createdAt()).append("] ").append(g.text()).append("\n");
         }
-        
-        return sb.toString().trim();
+
+        return List.of(sb.toString().trim());
     }
 }

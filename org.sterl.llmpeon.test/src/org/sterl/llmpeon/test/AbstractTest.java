@@ -6,7 +6,9 @@ import static org.junit.Assume.assumeTrue;
 
 import java.io.File;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
 
@@ -22,6 +24,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.sterl.llmpeon.mock.MockLlmServer;
+import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 
 import dev.langchain4j.data.message.ChatMessage;
@@ -31,7 +34,35 @@ public abstract class AbstractTest {
     
     protected static IProject project;
     protected final MockLlmServer mockLlmServer = new MockLlmServer();
+    private final EclipseWorkspaceWriteFileTool writeTool = new EclipseWorkspaceWriteFileTool();
+    private final Set<String> toDelete = new HashSet<String>();
     
+    @After
+    public void after() {
+        mockLlmServer.stop();
+        
+        writeTool.setCurrentProject(project);
+        toDelete.forEach(f -> writeTool.eclipseDeleteResource(f));
+        toDelete.clear();
+    }
+    
+    @Before
+    public void before() {
+        mockLlmServer.start();
+    }
+    
+    protected void eclipseWriteFile(String file, String content) {
+        writeTool.setCurrentProject(project);
+        writeTool.eclipseWriteFile(file, content);
+        toDelete.add(file);
+    }
+    
+    protected void eclipseDeleteResource(String file) {
+        writeTool.setCurrentProject(project);
+        writeTool.eclipseDeleteResource(file);
+        toDelete.remove(file);
+    }
+
     public static void assertContains(String value, String expected) {
         assertNotNull("Extected to find " + expected, value);
         assertTrue("Expected:\n"
@@ -79,16 +110,6 @@ public abstract class AbstractTest {
         }
     }
     
-    @After
-    public void after() {
-        mockLlmServer.stop();
-    }
-    
-    @Before
-    public void before() {
-        mockLlmServer.start();
-    }
-
     protected static void importProject(File projectDir) throws Exception {
         final var latch = new CountDownLatch(1);
 

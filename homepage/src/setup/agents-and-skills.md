@@ -7,7 +7,7 @@ description: Project context and reusable skill instructions for Eclipse Peon AI
 
 Two ways to give Peon AI persistent context without repeating yourself every chat.
 
-## AGENTS.md
+## AGENTS.md — Project-Wide Rules
 
 Drop an `AGENTS.md` file into your Eclipse project root. As soon as you select any
 file in that project, Peon AI picks it up and injects the content as a **standing-order**
@@ -20,6 +20,29 @@ Use it for project-specific stuff:
 - Key commands — build, test, run
 - Important conventions or constraints
 - Links to relevant specs or docs
+
+## AGENTS-<agent>.md — Agent-Specific Rules
+
+For rules that apply only to a specific agent, create an `AGENTS-<agent>.md` file alongside
+your `AGENTS.md`. Both files are loaded when that agent is active.
+
+| Agent | File | Example |
+|-------|------|---------|
+| Peon-Dev | `AGENTS-DEV.md` | coding conventions, test patterns |
+| Peon-Plan | `AGENTS-PLAN.md` | BDD format, planning style |
+| Custom agent "Docs-Assistant" | `AGENTS-Docs-Assistant.md` | documentation style guide |
+
+The agent name key is derived from the agent's display name:
+- **Built-in agents:** the part after "Peon-", uppercased. "Peon-Dev" → "DEV".
+- **Custom agents:** the display name as-is.
+
+The file name is case-insensitive with fallbacks: `AGENTS-DEV.md` is tried first, then
+`AGENTS-dev.md`, then title case and hyphenated variants.
+
+**Deduplication:** if both AGENTS.md and AGENTS-<agent>.md contain the same text, it appears
+only once in the standing orders.
+
+**Agent switching:** the right file is loaded automatically when you switch agents — no restart needed.
 
 ## Recommendations
 

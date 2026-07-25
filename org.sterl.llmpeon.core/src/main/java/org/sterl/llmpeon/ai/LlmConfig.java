@@ -57,9 +57,9 @@ public class LlmConfig {
     @Default
     private final int autoCompactAfter = 80000;
     @Default
-    private final double planTemperature = 0.8;
+    private final double planTemperature = 1.0;
     @Default
-    private final double devTemperature = 0.3;
+    private final double devTemperature = 0.6;
     /**
      * Max output tokens per response. 0 = use the provider/library default.
      * Anthropic's langchain4j default is only 1024, which truncates large

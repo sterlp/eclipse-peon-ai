@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
+import org.eclipse.core.internal.resources.ResourceException;
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
@@ -68,6 +69,8 @@ public class IoUtils {
                 file.getParent().refreshLocal(IResource.DEPTH_ONE, monitor);
             }
             */
+        } catch (ResourceException e) {
+            throw new IllegalArgumentException(e.getMessage(), e);
         } catch (CoreException e) {
             throw new RuntimeException("Failed to write " + JdtUtil.pathOf(file), e);
         }

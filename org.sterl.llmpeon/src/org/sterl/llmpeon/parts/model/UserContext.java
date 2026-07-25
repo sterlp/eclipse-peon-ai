@@ -1,5 +1,7 @@
 package org.sterl.llmpeon.parts.model;
 
+import java.util.List;
+
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
@@ -22,16 +24,16 @@ public class UserContext implements MessageProvider {
     private volatile ITextSelection textSelection;
 
     @Override
-    public String get() {
-        if (currentProject == null && selectedResource == null) return null;
-        
+    public List<String> get() {
+        if (currentProject == null && selectedResource == null) return List.of();
+
         var sb = new StringBuilder();
         if (currentProject != null) {
             sb.append("Select project:" + System.lineSeparator());
             sb.append(EclipseUtil.projectInfo(currentProject));
         }
         addUserSelection(sb);
-        return sb.toString();
+        return List.of(sb.toString());
     }
 
     private void addUserSelection(StringBuilder sb) {

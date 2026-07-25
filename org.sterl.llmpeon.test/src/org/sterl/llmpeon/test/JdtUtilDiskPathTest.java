@@ -35,7 +35,7 @@ public class JdtUtilDiskPathTest extends AbstractTest {
         IFolder srcFolder = project.getFolder("src");
         if (!srcFolder.exists()) {
             // Try commands folder from ai-skill-codex if it exists
-            return; // Skip if folder doesn't exist
+            return; // Skip if folder doesn'writeTool exist
         }
         
         // THEN - diskPathOf should return non-null for sub-folder

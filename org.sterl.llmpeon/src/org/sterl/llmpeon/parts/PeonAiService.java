@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.parts;
 
 import java.io.IOException;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -104,6 +105,7 @@ public class PeonAiService implements MessageProvider {
         skillService            = new SkillService();
         commandService          = new CommandService();
         agentsMdService         = new AgentsMdService();
+        agentsMdService.setAgentNameSupplier(() -> getActiveAgent().getName());
 
         sharedToolService.addTool(new SkillTool(skillService));
         workspaceWriteFilesTool = new EclipseWorkspaceWriteFileTool();
@@ -432,37 +434,39 @@ public class PeonAiService implements MessageProvider {
     }
 
     @Override
-    public String get() {
+    public List<String> get() {
         var agent = getActiveAgent();
-        if (!(agent instanceof AiScaffoldAgent)) return null;
+        if (!(agent instanceof AiScaffoldAgent)) return List.of();
 
         var configDir = getConfig().getConfigDir();
-        if (configDir == null) return null;
+        if (configDir == null) return List.of();
+
+        var result = new LinkedList<String>();
+        result.add("Parent folder of disk tools set to the config dir you should work with relative paths directly in this folder only.");
 
         var orders = new StringBuilder();
         try {
             var readTool = scaffoldAgent.getToolService().getTool(DiskFileReadTool.class);
-            orders.append(System.lineSeparator()).append("Parent folder of disk tools set to the config dir you should work with relative paths directly in this folder only.");
-            orders.append("Directory listing of the config dir ").append(configDir).append(":").append(System.lineSeparator());
             if (readTool.isPresent()) {
-                orders.append(readTool.get().diskListDirectory(null)).append(System.lineSeparator());
-                
+                orders.append("Directory listing of the config dir ").append(configDir).append(":").append(System.lineSeparator());
                 orders.append(readTool.get().diskListDirectory(LlmConfig.AGENT_DIRECTORY)).append(System.lineSeparator());
                 orders.append(readTool.get().diskListDirectory(LlmConfig.COMMAND_DIRECTORY)).append(System.lineSeparator());
                 orders.append(readTool.get().diskListDirectory(LlmConfig.SKILL_DIRECTORY)).append(System.lineSeparator());
             }
+            result.add(orders.toString());
+            orders.setLength(0);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
 
         // Available tools from sharedToolService
-        orders.append(System.lineSeparator()).append("Available tools:").append(System.lineSeparator());
+        orders.append("Available tools:").append(System.lineSeparator());
         for (var spec : sharedToolService.toolSpecifications()) {
             orders.append("- ").append(spec.name()).append(": ").append(spec.description()).append(System.lineSeparator());
         }
-        
-        System.err.println(orders.toString());
+        result.add(orders.toString());
+        orders.setLength(0);
 
-        return orders.toString();
+        return result;
     }
 }

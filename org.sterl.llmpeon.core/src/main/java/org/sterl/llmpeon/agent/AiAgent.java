@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.agent;
 
+import java.util.Collection;
 import java.util.List;
 
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
@@ -30,14 +31,14 @@ public interface AiAgent {
      * 
      * @param staticContext attached as system message.
      */
-    public void setStaticContext(List<ChatMessage> staticContext);
+    public void setStaticContext(Collection<ChatMessage> staticContext);
 
     /**
      * Addition prompt information which should stay until changed -- added to the user message
      * 
      * @param userContextInformations addition prompt
      */
-    void setUserContextInformations(List<String> userContextInformations);
+    void setUserContextInformations(Collection<String> userContextInformations);
     /**
      * addition prompt information which should stay until changed
      */

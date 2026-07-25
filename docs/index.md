@@ -14,6 +14,8 @@ notes live in [adr/](adr/index.md). Not published — user-facing docs are in `h
 * [Session Token Usage](token-usage.md) - cumulative ↑/↓ token spend in the header, fed from the StreamingBridge choke point.
 * [Scaffold Agent](scaffold-agent.md) - built-in agent for creating/editing Peon config artifacts (agents, skills, commands) with config-scoped disk tools.
 * [Standing Orders](standing-orders-design.md) - context lines (project, AGENTS.md, active command/skill) that survive mid-loop compaction.
+* [AGENTS.md Support](agents-md-support.md) - base AGENTS.md loading: purpose, file name resolution, toggle.
+* [Agent-Specific AGENTS-<agent>.md](agent-specific-agentsmd.md) - AGENTS-<agent>.md: agent name resolution, case-insensitive fallback, deduplication.
 * [SWT Integrated Input Buttons](swt-integrated-input-buttons.md) - flat icon buttons beside a `StyledText` that read as one white field on macOS + Windows.
 * [Ask User Tool](user-question-tool-design.md) - the LLM pausing mid-task to ask a clarifying question inline in the chat.
 

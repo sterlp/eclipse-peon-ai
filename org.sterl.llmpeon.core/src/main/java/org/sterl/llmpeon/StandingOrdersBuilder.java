@@ -1,10 +1,13 @@
 package org.sterl.llmpeon;
 
-import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Supplier;
+
+import org.jspecify.annotations.NonNull;
+import org.sterl.llmpeon.shared.StringUtil;
 
 /**
  * Assembles the standing-orders system messages that are prepended each call.
@@ -13,10 +16,10 @@ import java.util.function.Supplier;
  */
 public class StandingOrdersBuilder {
 
-    public interface MessageProvider extends Supplier<String> {}
+    public interface MessageProvider extends Supplier<List<String>> {}
     
-    private final Set<MessageProvider> providers = new LinkedHashSet<StandingOrdersBuilder.MessageProvider>();
-    private final List<String> oneTimeOrders = new ArrayList<String>();
+    private final List<MessageProvider> providers = new LinkedList<>();
+    private final List<String> oneTimeOrders = new LinkedList<>();
     
     public StandingOrdersBuilder() {
         super();
@@ -30,18 +33,22 @@ public class StandingOrdersBuilder {
         this.oneTimeOrders.add(order);
     }
     
-    public List<String> build() {
-        
-        var result = new ArrayList<String>();
-        
-        for (var p : providers) {
-            var msg = p.get();
-            if (msg != null) result.add(msg);
-        }
-        
-        result.addAll(oneTimeOrders);
+    public Collection<String> build() {
+
+        var result = new LinkedHashSet<String>();
+
+        for (var p : providers) addTo(result, p.get());
+
+        addTo(result, oneTimeOrders);
         oneTimeOrders.clear();
-        
+
         return result;
+    }
+    private void addTo(@NonNull LinkedHashSet<String> result,
+            Collection<String> messages) {
+        if (messages == null || messages.isEmpty()) return;
+        
+        messages.stream().filter(StringUtil::hasValue)
+            .forEach(e -> result.add(e));
     }
 }

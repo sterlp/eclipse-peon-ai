@@ -65,8 +65,9 @@ public class ChatMessageUtil {
         result.append(msg.type()).append(": ");
         if (msg instanceof UserMessage um) {
             um.contents().stream().filter(m -> m instanceof TextContent)
-                .map(m -> (TextContent)m)
-                .forEach(c -> result.append(c.text()).append(System.lineSeparator()));
+              .map(m -> (TextContent)m)
+              .forEach(c -> result.append(c.text()).append(System.lineSeparator()));
+
         } else if (msg instanceof AiMessage m) {
 
             if (StringUtil.hasValue(m.text())) {

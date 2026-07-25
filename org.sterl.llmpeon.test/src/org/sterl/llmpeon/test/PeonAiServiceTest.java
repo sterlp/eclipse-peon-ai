@@ -9,6 +9,8 @@ import static org.junit.Assume.assumeTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.LinkedList;
 
 import org.junit.Test;
 import org.sterl.llmpeon.StandingOrdersBuilder;
@@ -17,6 +19,7 @@ import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.parts.PeonAiService;
 import org.sterl.llmpeon.parts.tools.PlanTool;
+import org.sterl.llmpeon.scaffold.AiScaffoldAgent;
 import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
@@ -30,6 +33,7 @@ public class PeonAiServiceTest extends AbstractTest {
     PeonAiService aiService = new PeonAiService(null, null, null, null);
     
     private final StandingOrdersBuilder standingOrders = new StandingOrdersBuilder()
+            .add(aiService)
             .add(aiService.getAgentsMdService());
     
     @Test
@@ -183,6 +187,53 @@ public class PeonAiServiceTest extends AbstractTest {
                 "Handover");
         assertContains(aiService.getActiveAgent().getMemory().getLastOf(UserMessage.class).singleText(),
                 AiPlanAgent.NAME);
+    }
+    
+    @Test
+    public void test_AiScaffoldAgent_tools() {
+        // GIVEN
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        var config = aiService.getConfig().toBuilder()
+                .providerType(AiProvider.OPEN_AI)
+                .url(mockLlmServer.getUrl()).build();
+        aiService.updateConfig(config);
+        aiService.setActiveAgent(AiScaffoldAgent.NAME);
+        
+        // WHEN
+        aiService.getActiveAgent().setUserContextInformations(standingOrders.build());
+        aiService.getActiveAgent().call("hello", null);
+        
+        // THEN
+        assertTrue(standingOrders.build().size() > 1);
+        var msg = mockLlmServer.getLastRequestBody();
+        assertContains(msg, "- memoryAdd:");
+        // AND
+        var um = aiService.getActiveAgent().getMemory().getLastOf(UserMessage.class);
+        assertTrue(um.contents().size() > 2);
+        assertHasUserMessageWith(Arrays.asList(um), "- memoryAdd:");
+    }
+    
+    @Test
+    public void test_dedup_messages() {
+        // GIVEN
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        var config = aiService.getConfig().toBuilder()
+                .providerType(AiProvider.OPEN_AI)
+                .url(mockLlmServer.getUrl()).build();
+
+        aiService.updateConfig(config);
+        aiService.setActiveAgent(AiDevAgent.NAME);
+        aiService.getActiveAgent().getMemory().add(UserMessage.from("Text 1"));
+        aiService.getActiveAgent().getMemory().add(UserMessage.from("Text 2"));
+
+        // WHEN
+        aiService.getActiveAgent().setUserContextInformations(Arrays.asList("Text 1", "Text 2", "Text 3", "Text 3", "Unique"));
+        aiService.getActiveAgent().call("Text 1", null);
+        
+        // THEN
+        var msg = mockLlmServer.getLastRequestBody();
+        // AND
+        System.err.println(msg);
     }
     
     // TODO add tests concerning the message build -- check if it was properly constructed.

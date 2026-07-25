@@ -182,13 +182,13 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
     }
 
     @Tool("Delete workspace file or directory recursively.")
-    public void eclipseDeleteResource(
+    public String eclipseDeleteResource(
             @P(description = "workspace-relative path", name = "filePath") String filePath) {
 
         ArgsUtil.requireNonBlank(filePath, "filePath");
 
         var file = EclipseUtil.resolveInEclipse(filePath);
-        if (file.isEmpty()) throw new IllegalArgumentException("Not found: " + filePath);
+        if (file.isEmpty()) return "Not found: " + filePath;
 
         try {
             try {
@@ -197,6 +197,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
                 file.get().delete(IResource.FORCE, getProgressMonitor());
             }
             onTool("Deleting " + JdtUtil.pathOf(file.get()));
+            return "Deleted";
         } catch (CoreException e) {
             throw new RuntimeException("Failed to delete " + filePath, e);
         }

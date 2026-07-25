@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.parts.agent;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -263,7 +264,7 @@ public class AgentModeService implements AiAgent {
     }
 
     @Override
-    public void setUserContextInformations(List<String> userContextInformations) {
+    public void setUserContextInformations(Collection<String> userContextInformations) {
         this.developerService.setUserContextInformations(userContextInformations);
         this.plannerService.setUserContextInformations(userContextInformations);
     }
@@ -284,7 +285,7 @@ public class AgentModeService implements AiAgent {
     }
 
     @Override
-    public void setStaticContext(List<ChatMessage> staticContext) {
+    public void setStaticContext(Collection<ChatMessage> staticContext) {
         this.developerService.setStaticContext(staticContext);
         this.plannerService.setStaticContext(staticContext);
     }

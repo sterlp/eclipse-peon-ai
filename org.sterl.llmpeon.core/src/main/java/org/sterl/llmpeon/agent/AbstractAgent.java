@@ -3,6 +3,8 @@ package org.sterl.llmpeon.agent;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
@@ -17,9 +19,10 @@ import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import lombok.Getter;
 
@@ -31,8 +34,8 @@ public abstract class AbstractAgent implements AiAgent {
 
     protected final ToolService toolService;
     
-    private final List<ChatMessage> staticContext = new ArrayList<>();
-    private final List<String> userContextInformations = new ArrayList<>();
+    private final LinkedHashSet<ChatMessage> staticContext = new LinkedHashSet<>();
+    private final LinkedHashSet<String> userContextInformations = new LinkedHashSet<>();
     
     protected AbstractAgent(ConfiguredChatModel configuredModel, ToolService toolService) {
         this.toolService = toolService;
@@ -151,12 +154,12 @@ public abstract class AbstractAgent implements AiAgent {
      * Only context information which doesn't change - only if we clear!
      * Otherwise we kill the KV-cache!
      */
-    public void setStaticContext(List<ChatMessage> staticContext) {
+    public void setStaticContext(Collection<ChatMessage> staticContext) {
         this.staticContext.clear();
         if (staticContext != null) this.staticContext.addAll(staticContext);
     }
     
-    public void setUserContextInformations(List<String> userContextInformations) {
+    public void setUserContextInformations(Collection<String> userContextInformations) {
         this.userContextInformations.clear();
         if (userContextInformations != null) this.userContextInformations.addAll(userContextInformations);
     }

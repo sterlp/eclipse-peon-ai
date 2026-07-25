@@ -1,7 +1,10 @@
 package org.sterl.llmpeon.parts.agentsmd;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
@@ -13,15 +16,86 @@ import org.sterl.llmpeon.parts.shared.JdtUtil;
 public class AgentsMdService implements MessageProvider {
 
     private volatile IFile agentsMd;
+    private volatile IProject currentProject;
     private final AtomicBoolean enabled = new AtomicBoolean(true);
+    private volatile Supplier<String> agentNameSupplier;
     
     @Override
-    public String get() {
-        if (agentsMd == null || !agentsMd.exists()) return null;
-        var text = IoUtils.readString(agentsMd);
-        return  JdtUtil.pathOf(agentsMd) + ":" + System.lineSeparator()
-                + "---" + System.lineSeparator() +  System.lineSeparator()
+    public List<String> get() {
+        if (!enabled.get()) return List.of();
+
+        var result = new ArrayList<String>();
+
+        // Base AGENTS.md
+        if (agentsMd != null && agentsMd.exists()) {
+            result.add(loadAgentMd(agentsMd));
+        }
+
+        // Agent-specific AGENTS-<agent>.md
+        if (agentNameSupplier != null && currentProject != null) {
+            String agentName = agentNameSupplier.get();
+            if (agentName != null && !agentName.isBlank()) {
+                String key = resolveAgentKey(agentName);
+                IFile file = resolveAgentSpecificFile(currentProject, key);
+                if (file != null && file.exists()) {
+                    result.add(loadAgentMd(file));
+                }
+            }
+        }
+
+        return result;
+    }
+    
+    private String loadAgentMd(IFile file) {
+        var text = IoUtils.readString(file);
+        return JdtUtil.pathOf(file) + ":" + System.lineSeparator()
+                + "---" + System.lineSeparator() + System.lineSeparator()
                 + text;
+    }
+    
+
+    /**
+     * Resolves the agent name key for file lookup.
+     * Built-in agents: "Peon-Dev" → "DEV", "Peon-Plan" → "PLAN".
+     * Custom agents: use the display name as-is.
+     */
+    private String resolveAgentKey(String agentName) {
+        if (agentName.startsWith("Peon-")) {
+            return agentName.substring(5).toUpperCase();
+        }
+        return agentName;
+    }
+
+    /**
+     * Resolves the agent-specific AGENTS-<key>.md file with case-insensitive fallback.
+     */
+    private IFile resolveAgentSpecificFile(IProject project, String key) {
+        // Build fallback names in priority order
+        var names = new ArrayList<String>();
+        names.add("AGENTS-" + key + ".md");
+        names.add("agents-" + key.toLowerCase() + ".md");
+
+        // Title case (only if different from uppercase and lowercase)
+        String titleCase = Character.toUpperCase(key.charAt(0)) + key.substring(1).toLowerCase();
+        if (!titleCase.equals(key) && !titleCase.equals(key.toLowerCase())) {
+            names.add("AGENTS-" + titleCase + ".md");
+        }
+
+        // Blanks replaced with hyphens
+        String hyphenatedUpper = key.replace(' ', '-').toUpperCase();
+        if (!hyphenatedUpper.equals(key)) {
+            names.add("AGENTS-" + hyphenatedUpper + ".md");
+        }
+        String hyphenatedLower = key.replace(' ', '-').toLowerCase();
+        if (!hyphenatedLower.equals(key.toLowerCase())) {
+            names.add("agents-" + hyphenatedLower + ".md");
+        }
+
+        for (String n : names) {
+            var r = EclipseUtil.findMember(project, n);
+            if (r.isPresent()) return r.get();
+        }
+        return null;
     }
 
     public void setEnabled(boolean value) {
@@ -32,13 +106,23 @@ public class AgentsMdService implements MessageProvider {
         return enabled.get();
     }
 
+    /**
+     * Sets the callback that provides the currently active agent name.
+     * Evaluated at {@link #get()} time, so agent switches are reflected immediately.
+     */
+    public void setAgentNameSupplier(Supplier<String> agentNameSupplier) {
+        this.agentNameSupplier = agentNameSupplier;
+    }
+
     /** Loads the AGENTS.md / agents.md content for the given path. */
     public boolean load(IProject inProject) {
         if (inProject == null) {
             agentsMd = null;
+            currentProject = null;
             return false;
         }
         agentsMd = resolveFile(inProject).orElse(null);
+        currentProject = inProject;
 
         return hasAgentFile();
     }
