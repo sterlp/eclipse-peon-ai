@@ -315,8 +315,11 @@ public class MockLlmServer {
                             capturedMessages.add(extractUserMessageFromArray(contentNode));
                         }
                     }
-                    case "tool" -> capturedMessages.add(new ToolExecutionResultMessage(
-                            msg.path("tool_call_id").asText(), "", extractTextFromArray(contentNode)));
+                    case "tool" -> {
+                        String text = contentNode.isTextual() ? contentNode.asText() : extractTextFromArray(contentNode);
+                        capturedMessages.add(new ToolExecutionResultMessage(
+                                msg.path("tool_call_id").asText(), "", text));
+                    }
                 }
             }
         } catch (Exception ignored) {}
