@@ -43,7 +43,7 @@ llama-server.exe ^
   --cache-type-v q8_0 ^
   --kv-unified ^
   --parallel 2 ^
-  --temp 0.6 ^
+  --temp 0.9 ^
   --top-p 0.95 ^
   --top-k 20 ^
   --host 0.0.0.0 ^

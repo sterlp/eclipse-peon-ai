@@ -33,9 +33,10 @@ Temperature controls the randomness of model outputs:
 | Setting | Range | Effect |
 |---------|-------|--------|
 | **Plan Temperature** | 0.6 - 1.0 | Higher = more creative plans; Lower = more deterministic |
-| **Dev Temperature**  | 0.2 - 0.6 | Controls code generation creativity (uses base model) |
+| **Dev Temperature**  | 0.4 - 1.0 | Controls code generation creativity (uses base model) |
 
 - Claude and some other models only accept 1.0.
+- Qwen 3.6 27B usually works best with 1.0 and 0.9
 
 ## Per-Agent Think
 

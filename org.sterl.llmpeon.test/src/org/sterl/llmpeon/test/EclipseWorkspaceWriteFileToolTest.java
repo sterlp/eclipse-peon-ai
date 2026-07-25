@@ -14,16 +14,18 @@ import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
 public class EclipseWorkspaceWriteFileToolTest extends AbstractTest {
 
     private final EclipseWorkspaceReadFileTool readTool = new EclipseWorkspaceReadFileTool();
+    EclipseWorkspaceWriteFileTool tool = new EclipseWorkspaceWriteFileTool();
 
     @Test
     public void test_writeWorkspaceFile() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
         // GIVEN
-        var tool = new EclipseWorkspaceWriteFileTool();
         var fileName = "/org.sterl.llmpeon.test/foo.txt";
         var message = "Hello world " + OffsetDateTime.now();
+        tool.setCurrentProject(project);
+
         // WHEN
-        tool.eclipseWriteFile(fileName, message);
+        eclipseWriteFile(fileName, message);
         
         // THEN
         assertEquals(message, readTool.eclipseReadFile(fileName, 0, 0));
@@ -32,7 +34,7 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractTest {
     @Test
     public void test_editWorkspaceFile() {
         // GIVEN
-        var tool = new EclipseWorkspaceWriteFileTool();
+        tool.setCurrentProject(project);
         var fileName = "/org.sterl.llmpeon.test/foo.txt";
         var message = """
                     private void updateSelectedProject(IProject project) {
@@ -60,7 +62,7 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractTest {
                 // Guard against selection injection before createPartControl() initializes fields
                 if (agentMode == null || actionsBar == null) return;
         """;
-        tool.eclipseWriteFile(fileName, message);
+        eclipseWriteFile(fileName, message);
         
         // WHEN
         tool.eclipseEditFile(fileName, 
@@ -75,9 +77,9 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractTest {
     public void test_replaceWorkspaceLine_middle() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
         // GIVEN
-        var tool = new EclipseWorkspaceWriteFileTool();
+        tool.setCurrentProject(project);
         var fileName = "/org.sterl.llmpeon.test/foo.txt";
-        tool.eclipseWriteFile(fileName, "line1\nline2\nline3\nline4\nline5");
+        eclipseWriteFile(fileName, "line1\nline2\nline3\nline4\nline5");
 
         // WHEN — replace middle line 3, expanding it to two lines
         tool.eclipseReplaceLines(fileName, 3, "replaced3a\nreplaced3b");
@@ -96,7 +98,7 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractTest {
     @Test
     public void test_editWorkspaceFile_not_found() {
         // GIVEN
-        var tool = new EclipseWorkspaceWriteFileTool();
+        tool.setCurrentProject(project);
         var fileName = "/org.sterl.llmpeon.test/foo.txt";
         var editString = "  " + OffsetDateTime.now().toString();
         var message = """
@@ -105,7 +107,7 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractTest {
                   foo
                   This should stay
                 """ + editString;
-        tool.eclipseWriteFile(fileName, message);
+        eclipseWriteFile(fileName, message);
         
         // WHEN
         try {
@@ -123,11 +125,11 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractTest {
     public void test_deleteResource_recursiveDirectory() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
         // GIVEN
-        var tool = new EclipseWorkspaceWriteFileTool();
+        tool.setCurrentProject(project);
         var dirName = "/org.sterl.llmpeon.test/testDeleteDir/nested/child";
-        tool.eclipseWriteFile(dirName + "/file1.txt", "a");
-        tool.eclipseWriteFile(dirName + "/file2.txt", "b");
-        tool.eclipseWriteFile("/org.sterl.llmpeon.test/testDeleteDir/parentFile.txt", "c");
+        eclipseWriteFile(dirName + "/file1.txt", "a");
+        eclipseWriteFile(dirName + "/file2.txt", "b");
+        eclipseWriteFile("/org.sterl.llmpeon.test/testDeleteDir/parentFile.txt", "c");
 
         // WHEN
         tool.eclipseDeleteResource("/org.sterl.llmpeon.test/testDeleteDir");
