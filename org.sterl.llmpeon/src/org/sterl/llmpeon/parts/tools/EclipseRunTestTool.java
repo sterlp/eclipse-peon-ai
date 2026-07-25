@@ -105,14 +105,13 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
         IJavaElement launchElement = runAll ? javaProject : testType;
 
         String launchType = pluginTest ? "Plug-in Test" : "JUnit";
-        String launchName = runAll
+        String description = runAll
                 ? "Run all " + launchType + " tests in " + projectName
                 : "Run " + launchType + " " + testClassName + " in " + projectName;
 
-        onTool(launchName);
+        onTool(description);
 
         var launchManager = DebugPlugin.getDefault().getLaunchManager();
-        boolean isTemporaryConfig = false;
         ILaunchConfiguration config;
 
         try {
@@ -128,25 +127,22 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
 
             if (existing != null) {
                 config = existing;
-                onTool("Reusing existing launch configuration: " + existing.getName());
+                onTool(description + " (reusing existing launch config)");
             } else {
                 // 2) Fall back to Eclipse's own shortcut logic so all required
                 //    attributes (incl. PDE bundles/application) are populated correctly
                 ILaunchConfigurationWorkingCopy wc = new ConfigurableJUnitShortcut(configTypeId)
                         .createConfig(launchElement);
-                wc.rename(launchName);
+                String namePrefix = runAll ? javaProject.getElementName() : testType.getFullyQualifiedName();
+                String uniqueName = launchManager.generateLaunchConfigurationName(namePrefix);
+                wc.rename(uniqueName);
                 config = wc.doSave();
-                isTemporaryConfig = true;
             }
 
             try {
-                return runAndCollect(config, launchName, errorCount);
+                return runAndCollect(config, description, errorCount);
             } finally {
-                if (isTemporaryConfig) {
-                    try {
-                        config.delete();
-                    } catch (Exception ignore) {}
-                }
+                // Don't delete — keep config so it can be reused on next run
             }
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw e;
