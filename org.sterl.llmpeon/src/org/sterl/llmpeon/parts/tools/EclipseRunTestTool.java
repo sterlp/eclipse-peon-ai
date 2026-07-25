@@ -4,8 +4,10 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.ILaunchConfiguration;
@@ -47,10 +49,9 @@ import dev.langchain4j.agent.tool.Tool;
  */
 public class EclipseRunTestTool extends AbstractEclipseTool {
 
-    private static final Duration MAX_TEST_DURATION = Duration.ofMinutes(10);
-    private static final long POLL_INTERVAL_MS = 500;
+    private static final Duration MAX_TEST_DURATION = Duration.ofMinutes(5);
+    private static final long POLL_INTERVAL_MS = 800;
 
-    private static final String JDT_JUNIT_LAUNCH_TYPE = "org.eclipse.jdt.junit.launchconfig";
     private static final String PDE_JUNIT_LAUNCH_TYPE = "org.eclipse.pde.ui.JunitLaunchConfig";
 
     @Tool("Run JUnit tests (auto-detects JUnit 3/4/5/6). For Eclipse plugin projects, usePluginTest=true starts the OSGi framework.")
@@ -78,14 +79,7 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
         }
 
         boolean runAll = testClassName == null || testClassName.isBlank();
-
-        boolean hasPdeNature;
-        try {
-            hasPdeNature = project.get().isNatureEnabled("org.eclipse.pde.PluginNature");
-        } catch (Exception e) {
-            hasPdeNature = false;
-        }
-        boolean pluginTest = usePluginTest != null ? usePluginTest : hasPdeNature;
+        boolean pluginTest = isPluginTest(usePluginTest, project);
 
         IType testType = null;
         if (!runAll) {
@@ -115,7 +109,11 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
         ILaunchConfiguration config;
 
         try {
-            String configTypeId = pluginTest ? PDE_JUNIT_LAUNCH_TYPE : JDT_JUNIT_LAUNCH_TYPE;
+            // Create shortcut first — it knows the correct type ID (JDT default or PDE override)
+            ConfigurableJUnitShortcut shortcut = new ConfigurableJUnitShortcut(
+                    pluginTest ? PDE_JUNIT_LAUNCH_TYPE : null);
+            String configTypeId = shortcut.typeId();
+
             ILaunchConfigurationType type = launchManager.getLaunchConfigurationType(configTypeId);
             if (type == null) {
                 throw new IllegalStateException("Launch configuration type not found: " + configTypeId
@@ -131,8 +129,7 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
             } else {
                 // 2) Fall back to Eclipse's own shortcut logic so all required
                 //    attributes (incl. PDE bundles/application) are populated correctly
-                ILaunchConfigurationWorkingCopy wc = new ConfigurableJUnitShortcut(configTypeId)
-                        .createConfig(launchElement);
+                ILaunchConfigurationWorkingCopy wc = shortcut.createConfig(launchElement);
                 String namePrefix = runAll ? javaProject.getElementName() : testType.getFullyQualifiedName();
                 String uniqueName = launchManager.generateLaunchConfigurationName(namePrefix);
                 wc.rename(uniqueName);
@@ -149,6 +146,18 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
         } catch (Exception e) {
             throw new RuntimeException("Failed to run tests: " + e.getMessage(), e);
         }
+    }
+
+    private boolean isPluginTest(Boolean usePluginTest,
+            Optional<IProject> project) {
+        boolean hasPdeNature;
+        try {
+            hasPdeNature = project.get().isNatureEnabled("org.eclipse.pde.PluginNature");
+        } catch (Exception e) {
+            hasPdeNature = false;
+        }
+        boolean pluginTest = usePluginTest != null ? usePluginTest : hasPdeNature;
+        return pluginTest;
     }
 
     private ILaunchConfiguration findExistingConfig(ILaunchManager launchManager, ILaunchConfigurationType type,
@@ -173,15 +182,23 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
         var testCount = new int[]{0};
         var finished = new AtomicBoolean(false);
         var sessionName = new String[]{launchName};
+        var ourSession = new ITestRunSession[]{null};
 
         TestRunListener listener = new TestRunListener() {
             @Override
             public void sessionStarted(ITestRunSession session) {
+                // Capture the first session — this is ours (launched just above).
+                // If another session started before ours (user ran a test first),
+                // it was already captured, so we skip it.
+                if (ourSession[0] != null) return;
+                if (!isOurSession(session, config)) return;
+                ourSession[0] = session;
                 sessionName[0] = session.getTestRunName();
             }
 
             @Override
             public void testCaseFinished(ITestCaseElement testCase) {
+                if (!isOurSession(testCase.getTestRunSession(), config)) return;
                 testCount[0]++;
                 Result result = testCase.getTestResult(false);
                 if (result == Result.ERROR || result == Result.FAILURE) {
@@ -191,6 +208,7 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
 
             @Override
             public void sessionFinished(ITestRunSession session) {
+                if (!isOurSession(session, config)) return;
                 finished.set(true);
             }
         };
@@ -214,20 +232,53 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
     }
 
     /**
+     * Checks whether a session belongs to our launch configuration.
+     * Filters out events from concurrent test runs (e.g. user manually running
+     * tests while the LLM's run is in progress).
+     *
+     * ITestRunSession lacks getLaunch(), so we match by project + config name.
+     * This is good enough for the edge case — same-project concurrent runs are
+     * extremely unlikely in practice.
+     */
+    private static boolean isOurSession(ITestRunSession session, ILaunchConfiguration ourConfig) {
+        try {
+            // Match by project
+            var project = session.getLaunchedProject();
+            if (project == null) return true; // can't determine, accept
+            String cProject = ourConfig.getAttribute(IJavaLaunchConfigurationConstants.ATTR_PROJECT_NAME, "");
+            if (!project.getElementName().equals(cProject)) return false;
+
+            // Match by config name (launch configs have unique names via generateLaunchConfigurationName)
+            String cName = ourConfig.getName();
+            return cName.equals(session.getTestRunName());
+        } catch (CoreException e) {
+            // If we can't determine the session's identity, accept it —
+            // better to count extra events than miss our own.
+            return true;
+        }
+    }
+
+    /**
      * Subclass of {@link JUnitLaunchShortcut} that allows specifying the launch configuration type
-     * at runtime. Overrides {@link JUnitLaunchShortcut#getLaunchConfigurationTypeId()} to return
-     * the given type ID — this is the officially supported pattern per the Javadoc.
+     * at runtime. Only overrides {@link JUnitLaunchShortcut#getLaunchConfigurationTypeId()} when
+     * a PDE type ID is needed; otherwise the superclass default (JDT) kicks in.
+     * This avoids hardcoding the JDT type ID, which tracks Eclipse releases automatically.
      */
     private static class ConfigurableJUnitShortcut extends JUnitLaunchShortcut {
-        private final String typeId;
+        private final String overrideTypeId; // null = use JDT default from superclass
 
-        ConfigurableJUnitShortcut(String typeId) {
-            this.typeId = typeId;
+        ConfigurableJUnitShortcut(String overrideTypeId) {
+            this.overrideTypeId = overrideTypeId;
         }
 
         @Override
         protected String getLaunchConfigurationTypeId() {
-            return typeId;
+            return overrideTypeId != null ? overrideTypeId : super.getLaunchConfigurationTypeId();
+        }
+
+        /** Exposes the type ID for launch config type lookup before config creation. */
+        String typeId() {
+            return getLaunchConfigurationTypeId();
         }
 
         ILaunchConfigurationWorkingCopy createConfig(IJavaElement element) throws CoreException {
