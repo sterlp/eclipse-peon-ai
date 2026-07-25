@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
@@ -108,18 +109,22 @@ public abstract class AbstractAgent implements AiAgent {
         // auto compress if we are close to full before we start
         if (configuredModel.getConfig().getAutoCompactAfter() < memory.getTotalTokenUsed()) compressContext(monitor);
         
-        var contents = new ArrayList<Content>();
-        if (userContextInformations.size() > 0) {
-            userContextInformations.stream()
+        LinkedList<String> standingOrders;
+        synchronized (userContextInformations) {
+            standingOrders = new LinkedList<>(userContextInformations);
+        }
+        var userMessages = new ArrayList<Content>();
+        if (standingOrders.size() > 0) {
+            standingOrders.stream()
                     .filter(m -> !hasUserText(m))
-                    .forEach(m -> contents.add(TextContent.from(m)));
+                    .forEach(m -> userMessages.add(TextContent.from(m)));
         }
         
-        if (StringUtil.hasValue(message)) contents.add(TextContent.from(message));
-        if (contents.isEmpty()) {
+        if (StringUtil.hasValue(message)) userMessages.add(TextContent.from(message));
+        if (userMessages.isEmpty()) {
             // nothing
         } else {
-            addMessage(UserMessage.from(contents));
+            addMessage(UserMessage.from(userMessages));
         }
 
         var start = Instant.now();
@@ -133,7 +138,7 @@ public abstract class AbstractAgent implements AiAgent {
                     .toolFilter(getToolFilter())
                     .toolNameFilter(getToolNameFilter())
                     .agentConfig(getConfig())
-                    .standingOrders(List.copyOf(userContextInformations))
+                    .standingOrders(standingOrders)
                     .build()
                 );
 
@@ -160,8 +165,10 @@ public abstract class AbstractAgent implements AiAgent {
     }
     
     public void setUserContextInformations(Collection<String> userContextInformations) {
-        this.userContextInformations.clear();
-        if (userContextInformations != null) this.userContextInformations.addAll(userContextInformations);
+        synchronized (userContextInformations) {
+            this.userContextInformations.clear();
+            if (userContextInformations != null) this.userContextInformations.addAll(userContextInformations);
+        }
     }
     
     public List<String> getUserContextInformations() {

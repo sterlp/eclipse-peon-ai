@@ -1,5 +1,6 @@
 package org.sterl.llmpeon;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
@@ -30,7 +31,9 @@ public class StandingOrdersBuilder {
     }
     
     public void addOneTimeOrder(String order) {
-        this.oneTimeOrders.add(order);
+        synchronized (oneTimeOrders) {
+            this.oneTimeOrders.add(order);
+        }
     }
     
     public Collection<String> build() {
@@ -39,8 +42,13 @@ public class StandingOrdersBuilder {
 
         for (var p : providers) addTo(result, p.get());
 
-        addTo(result, oneTimeOrders);
-        oneTimeOrders.clear();
+        // Atomic snapshot-and-clear: drainTo removes all elements and adds them to the target list
+        var snapshot = new ArrayList<String>();
+        synchronized (oneTimeOrders) {
+            snapshot.addAll(oneTimeOrders);
+            oneTimeOrders.clear();
+        }
+        addTo(result, snapshot);
 
         return result;
     }
