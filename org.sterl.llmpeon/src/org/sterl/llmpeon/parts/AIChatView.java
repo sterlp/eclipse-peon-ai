@@ -660,6 +660,7 @@ public class AIChatView implements EclipseAiMonitor {
                     chatHistory.appendMessage(new SimpleMessage(Type.AI,
                             "Noted, I will respond as soon as I finished..."));
                 }
+                chatHistory.updateLiveResponseInUIThread("Noted user message ...", 0, "");
             }
             return new SendDecision.Skip();
         }

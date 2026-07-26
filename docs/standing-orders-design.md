@@ -13,17 +13,72 @@ path and are re-injected after compaction.
 
 ## Use cases (BDD)
 
-```
-GIVEN a /command is active
-WHEN the model calls the compactSession tool
-THEN the command body is re-injected so it keeps governing the continuation
+### 1. Happy Path — Combined User Message ✅
 
-GIVEN a /skill is active
-WHEN the model calls the compactSession tool (same as command)
-THEN the skill body is re-injected
+**Rule:** Standing orders are prepended to the user message if they aren't already in memory (`hasUserText()` check). Consecutive UserMessages merge into one via `ThreadSafeMemory.add()`.
+
 ```
+GIVEN we have standing orders from the StandingOrdersBuilder
+AND the user also adds a message
+AND all messages are new to the history (not already present)
+WHEN the user hits send
+THEN one user message is added containing both the standing orders and the user text
+```
+
+**Test:** Covered by `AbstractAgent.doCall()` integration; explicit unit test in `StandingOrdersBuilderTest`.
+
+### 2. Command/Skill Case ✅
+
+**Rule:** A slash command or skill body is added as a *one-time* standing order via `addOneTimeOrder()`. Any trailing text after the `/command` is sent as user message. Both are joined into one UserMessage in memory, so the command context survives any subsequent compaction.
+
+```
+GIVEN the user selects a slash command (e.g., /review)
+WHEN we add this as a standing order via addOneTimeOrder()
+AND we add any trailing text after the command as user message to the chat
+THEN the command body and trailing text are joined together into one UserMessage
+
+GIVEN a command was active when compaction runs mid-turn
+WHEN compactSession is called by the AI
+THEN the command context survives in memory (it was already part of the combined UserMessage)
+AND the standing orders snapshot re-injects it after clearMemory()
+
+GIVEN a /skill is used instead of a /command
+WHEN the same flow runs
+THEN the skill body behaves identically — joined with trailing text, survives compaction
+```
+
+**Test:** `StandingOrdersBuilderTest.testOneTimeOrderClearedAfterBuild()` + compact survival tests. Commands/skills share one path via `addOneTimeOrder()`.
+
+### 3. Compaction Survival ✅ (existing: `testStandingOrdersSurviveCompaction`)
+
+**Rule:** When compaction runs mid-AI-turn, standing orders are re-injected as UserMessages before the resume message, forming one merged message with the summary at the end. The snapshot of standing orders was captured at loop start (`List.copyOf`), so it includes any commands/skills from that turn.
+
+```
+GIVEN we have a long user session and an ongoing AI turn
+WHEN the AI calls the compactSession tool
+THEN the standing orders are re-injected as the first UserMessage after memory.clear()
+AND the compact result (resume message) is added as another UserMessage
+AND ThreadSafeMemory joins them into one big UserMessage where the summary is the last part
+```
+
+**Test:** `CompactSessionToolTest.testStandingOrdersSurviveCompaction()` + `testMultipleStandingOrdersSurviveCompaction()`
+
+### 4. Plan Handover ❌ (no test yet)
+
+**Rule:** When plan→dev handover is triggered, the plan file path and handover instruction are added to standing orders so they govern the dev agent's first turn. The plan content itself becomes a UserMessage in the new agent's memory.
+
+```
+GIVEN we completed a planning turn and a plan was created (saved to disk)
+WHEN the user triggers handover to the dev agent
+THEN the plan file path with handover instruction is added to standing orders
+AND the plan content is added as a UserMessage ("chat") to the next handover agent's memory
+```
+
+**Test:** `PeonAiServiceTest.testHandoffWithPlan()` — needs new test for standing orders integration during handover.
 
 ## Data flow
+
+### Normal send (no compaction)
 
 ```
 AIChatView.applySlashCommandIfPresent()
@@ -32,13 +87,32 @@ AIChatView.doSendMessage()
   → standingOrders.build()                                // providers + one-time orders, then cleared
   → active.setUserContextInformations(orders)
   → active.call(message)
-      → orders (not already in memory) prepended to the user message
+      → orders (not already in memory via hasUserText()) prepended to the user message
       → ToolLoopRequest.builder().standingOrders(List.copyOf(userContextInformations))...
       → toolService.executeLoop(req)
-          → CompactSessionTool.compactSession()
-              → AiCompressorAgent summarizes memory
-              → request.clearMemory()      // memory.clear() + re-inject each order as UserMessage
-              → memory.add("Session compacted. Resume the task using the preserved context.")
+```
+
+### Compaction mid-turn
+
+```
+toolService.executeLoop(req)
+  → CompactSessionTool.compactSession()
+      → AiCompressorAgent summarizes memory (compressor untouched — mechanical re-injection)
+      → request.clearMemory()
+          → memory.clear()
+          → for each order in standingOrders: memory.add(order as UserMessage)   // re-inject
+      → memory.add("Session compacted. Resume the task using the preserved context.")
+      → ThreadSafeMemory merges all consecutive UserMessages into one (KV-cache friendly)
+```
+
+### Queued Messages (Payload, not Standing Orders)
+
+```
+// Queue consumption stays in the tool loop — outside of standing orders
+AbstractAgent.call():
+  → loop { doCall(msg) → pollNext() } while next && success && !canceled
+  // After clearMemory() restores context, loop polls queued message as standard payload UserMessage
+  // No mutable standing orders list required — immutable snapshot is sufficient
 ```
 
 ## Components
@@ -59,6 +133,14 @@ messages, not system messages.
 
 ### `CompactSessionTool`
 Delegates the clear to `request.clearMemory()` — it knows nothing about standing orders.
+
+## Resolved Design Decisions
+
+1. **Per-turn semantics:** Each `ToolLoopRequest` = one AI turn. Standing orders are added at turn start, deduplicated via `hasUserText()` (substring `.contains()` check). If compaction happens mid-turn, `clearMemory()` re-injects them so processing continues correctly.
+2. **KV-cache trade-off:** Merging standing orders + user text into one `UserMessage` prevents role-alternation breaks (critical for strict LLM parsers) and keeps the static prefix contiguous for cache reuse. Slight token-reuse penalty vs separate messages is accepted for stability.
+3. **Snapshot staleness:** Standing orders are snapshotted once per turn (`List.copyOf`). Mid-turn context changes won't reflect until next user send, which rebuilds via `StandingOrdersBuilder`. This avoids race conditions during a single AI reasoning step.
+4. **Queued Messages = Payload (Not Context):** Queue consumption stays in the tool loop. Queued messages survive compaction naturally by residing in `UserMessageQueue` (outside memory). After `clearMemory()` restores context, the loop simply polls and adds the next queued message as a standard payload UserMessage. No mutable standing orders list required — immutable snapshot is sufficient.
+5. **Scope clarification:** Docs capture target behavior. Code/test alignment follows this plan; ❌ status marks pending implementation/tests, not doc gaps.
 
 ## Notes / constraints
 

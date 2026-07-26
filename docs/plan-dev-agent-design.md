@@ -28,7 +28,7 @@ graph LR
 | `AiDevAgent` | core/agent/ | Built-in implementation agent; receives plan context on handoff. |
 | `CustomAgent` | core/agent/ | User-defined agents with optional `handover: some-agent-name` frontmatter field.
 
-### Handoff Mechanics (from code)
+### Handoff Mechanics
 
 ```java
 // AiPlanAgent.handoverTo() — hardcoded target
@@ -37,7 +37,12 @@ graph LR
 }
 ```
 
-**When a plan exists**: Dev agent receives the saved `plan.md` content as context.
+**When a plan exists:**
+1. The **plan file path with handover instruction** is added to standing orders (governs dev agent's first turn). ✅
+2. The **plan content** itself is added as a `UserMessage` ("chat") to the new handover agent's memory.
+
+Standing orders ensure the plan path + "Handover from Peon-Plan" directive survive any compaction in the dev agent's first turn, while the full plan content provides detailed implementation guidance as payload.
+
 **When no plan**: Only the last AI message from planning phase is transferred (intentional — avoids bloating dev context with full conversation history).
 
 ### Temperature Settings

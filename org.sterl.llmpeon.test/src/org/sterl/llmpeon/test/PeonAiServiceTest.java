@@ -147,6 +147,31 @@ public class PeonAiServiceTest extends AbstractTest {
         
         assertHasUserMessageWith(userMessages, "# Test Specifics");
     }
+
+    @Test
+    public void testHandoffStandingOrder() {
+        // GIVEN: plan agent with a saved plan
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        aiService.setProject(project);
+        aiService.setActiveAgent(AiPlanAgent.NAME);
+        aiService.getToolService().getTool(PlanTool.class).get().planSave("# Test Plan");
+
+        // WHEN: handoff occurs
+        boolean handedOff = aiService.onHandoff();
+
+        // THEN: handoff succeeded and agent switched
+        assertTrue("handoff should succeed with a plan", handedOff);
+        assertEquals(AiDevAgent.NAME, aiService.getActiveAgent().getName());
+
+        // AND: first get() returns the handoff standing order
+        var orders = aiService.get();
+        assertEquals(1, orders.size());
+        assertContains(orders.get(0), "Handover from ");
+
+        // AND: second get() returns empty (handoff line consumed once)
+        var orders2 = aiService.get();
+        assertTrue("second call should return empty after consumption", orders2.isEmpty());
+    }
     
     @Test
     public void test_update_token_limit() throws IOException {
@@ -160,7 +185,6 @@ public class PeonAiServiceTest extends AbstractTest {
         aiService.updateConfig(config.toBuilder().autoCompactAfter(4000).build());
 
         // THEN
-        assertEquals(4000, aiService.getConfig().getAutoCompactAfter());
         assertEquals(4000, aiService.getConfig().getAutoCompactAfter());
     }
 
@@ -260,7 +284,4 @@ public class PeonAiServiceTest extends AbstractTest {
     private int countText(List<String> texts, String text) {
         return (int) texts.stream().filter(t -> text.equals(t)).count();
     }
-    
-    // TODO add tests concerning the message build -- check if it was properly constructed.
-
 }

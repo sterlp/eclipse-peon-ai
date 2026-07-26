@@ -87,6 +87,24 @@ WHEN the message exceeds the window or length cap, forcing a new queue entry
 THEN exactly one "Noted, I will respond as soon as I finished..." acknowledgment appears
 ```
 
+### 7. Standing Orders Interaction
+
+- **Rule:** Queued messages are *payload*, not standing orders. They survive compaction by residing in `UserMessageQueue` (outside memory), not via the standing-orders re-injection mechanism. After `clearMemory()` restores context, the tool loop polls and adds the next queued message as a standard payload UserMessage.
+
+**Conditional Add Strategy:** Standing orders use `hasUserText()` substring check for deduplication — if the order text is already in memory, it's not added again. This prevents duplicates within the same turn. Queued messages are always fresh payloads with no dedup needed.
+
+```
+GIVEN standing orders exist and queued messages are waiting
+WHEN compactSession runs mid-turn
+THEN standing orders are re-injected via clearMemory() (context)
+AND queued messages survive in UserMessageQueue untouched (payload)
+AND after clearMemory(), the loop polls the next queued message as a standard payload UserMessage
+
+GIVEN a queued message contains text already present from standing orders
+WHEN it's added to memory after compaction
+THEN it is still added — no dedup across context vs. payload boundaries
+```
+
 ## Data Flow
 ```
 AIChatView.resolveOutgoingMessage() → active.queueMessage(trailing) [batching in core]
