@@ -172,8 +172,10 @@ public class ShellTool extends AbstractTool {
 
     /** crude but effective: catches `| tail`, `|tail`, `| head`, `|head` as a trailing/mid pipe stage */
     private static boolean commandUsesShellTail(String command) {
-        return command.matches("(?s).*\\|\\s*(tail|head)\\b.*");
+        return (command.contains("| tail") || command.contains("|tail")) 
+            || (command.contains("| head") || command.contains("|head"));
     }
+
 
     private static String tailLines(List<String> lines, Integer maxLines) {
         if (maxLines == null) maxLines = MAX_OUTPUT_LENGTH;
