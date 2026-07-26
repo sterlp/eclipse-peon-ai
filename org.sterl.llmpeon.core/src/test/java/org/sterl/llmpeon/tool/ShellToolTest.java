@@ -37,14 +37,15 @@ class ShellToolTest {
     }
 
     @Test
-    void runOsCommand_emptyWorkingDir_throws() {
-        assertThrows(IllegalArgumentException.class, () -> tool.shellRunCommand("echo hi", "", null, null));
-        assertThrows(IllegalArgumentException.class, () -> tool.shellRunCommand("echo hi", null, null, null));
+    void runOsCommand_nullWorkingDir_usesCurrentDir() {
+        // Null working directory is allowed - defaults to current dir
+        String result = tool.shellRunCommand("echo hi", null, null, null);
+        assertTrue(result.contains("hi"));
     }
 
     @Test
     void runOsCommand_invalidWorkingDir_throws() {
-        assertThrows(IllegalArgumentException.class, () -> tool.shellRunCommand("echo hi", "/no/such/dir", null, null));
+        assertThrows(IllegalArgumentException.class, () -> tool.shellRunCommand("echo hi", "/no/such/dir/xyz", null, null));
     }
 
     @Test
@@ -72,6 +73,17 @@ class ShellToolTest {
         assertFalse(result.contains("lines skipped"));
         assertTrue(result.contains("line 1"));
         assertTrue(result.contains("line 10"));
+    }
+    
+    //@Test
+    void foo() {
+        String result = tool.shellRunCommand(
+                "cd /Users/sterlp/dev/workset/peon-ai && mvn clean verify 2>&1", 
+                null, null, 50);
+        
+        System.err.println();
+        System.err.println("Done");
+        System.err.println(result);
     }
 
     @Test
