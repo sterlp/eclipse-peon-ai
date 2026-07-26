@@ -25,7 +25,7 @@ public class ShellTool extends AbstractTool {
         String confirm(String command, String workingDirectory);
     }
 
-    private static final long DEFAULT_TIMEOUT_S = 30;
+    private static final int DEFAULT_TIMEOUT_S = 60;
     private static final int MAX_OUTPUT_LENGTH = 3000;
     private static final int DEFAULT_TAIL_LINES = 50;
 
@@ -56,9 +56,9 @@ public class ShellTool extends AbstractTool {
             String command,
             @P(description = "use disk path not eclipse workspace path", name = "workingDirectory", required = false) 
             String workingDirectory,
-            @P(description = "timeout in seconds, default " + DEFAULT_TIMEOUT_S + "s", required = false, name = "timeout") 
-            Long timeout,
-            @P(description = "max tail lines, default " + DEFAULT_TAIL_LINES + " (-1 for all); use this instead of `| tail -50`", required = false, name = "tailLines") 
+            @P(description = "timeout in seconds, default=" + DEFAULT_TIMEOUT_S, required = false, name = "timeout") 
+            Integer timeout,
+            @P(description = "max tail lines, default=" + DEFAULT_TAIL_LINES + " (-1 for all/max); use this instead of `| tail -50`", required = false, name = "tailLines") 
             Integer tailLines) {
 
         ArgsUtil.requireNonBlank(command, "command");
@@ -137,7 +137,7 @@ public class ShellTool extends AbstractTool {
                     partial = "No output captured - the command pipes through `tail`/`head`, which buffers "
                         + "everything internally and only flushes on normal completion. Killing the process "
                         + "on timeout discarded that buffer. Use the `tailLines` parameter instead of "
-                        + "`| tail -N` so output is available even on timeout.";
+                        + "`| tail -N` so output is available even on timeout. Consider a longer timeout.";
                 } else {
                     partial = tailLines(lines, tailLines);
                 }

@@ -35,6 +35,8 @@ WHEN the LLM processes them sequentially
 THEN each is consumed individually, not batched into a single prompt
 ```
 
+**Tests:** `AbstractAgentTest.testQueuedMessagesChainedFifo()` — verifies FIFO chaining end-to-end through `AbstractAgent.call()`.
+
 ### 3. Display in UI ✅
 - **Rule:** A dedicated Stop button appears while working; Send/Mic remain active. `active.isWorking()` drives all UI state (no separate `actionsBar.isWorking()`).
 ```
@@ -63,6 +65,8 @@ WHEN the drain completes
 THEN a TOOL message shows "N queued message(s) preserved for your next request." in the chat history
 ```
 
+**Tests:** `AbstractAgentTest.testAbortAddsMessageBeforeThrowing()` + `testAbortDrainsRemainingQueue()` — verifies abort drain behavior and TOOL notification end-to-end.
+
 ### 5. Compaction Survival & Clear Reset ✅
 - **Rule:** Queue survives compaction; `agent.clear()` empties it.
 ```
@@ -87,7 +91,7 @@ WHEN the message exceeds the window or length cap, forcing a new queue entry
 THEN exactly one "Noted, I will respond as soon as I finished..." acknowledgment appears
 ```
 
-### 7. Standing Orders Interaction
+### 7. Standing Orders Interaction ✅
 
 - **Rule:** Queued messages are *payload*, not standing orders. They survive compaction by residing in `UserMessageQueue` (outside memory), not via the standing-orders re-injection mechanism. After `clearMemory()` restores context, the tool loop polls and adds the next queued message as a standard payload UserMessage.
 
@@ -104,6 +108,8 @@ GIVEN a queued message contains text already present from standing orders
 WHEN it's added to memory after compaction
 THEN it is still added — no dedup across context vs. payload boundaries
 ```
+
+**Tests:** `AbstractAgentTest.testQueuedMessagesChainedFifo()` demonstrates queue chaining through doCall (standing orders handled separately via ToolLoopRequest).
 
 ## Data Flow
 ```

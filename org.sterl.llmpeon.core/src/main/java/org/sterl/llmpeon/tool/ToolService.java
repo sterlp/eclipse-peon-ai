@@ -159,8 +159,7 @@ public class ToolService {
                 req.getMemory().addResult(response);
                 req.monitor.onProblem("AI hangs - only thinking returned times: " + stuck);
                 if (stuck > MAX_STUCK_ITERATIONS) break;
-
-                if (stuck > MAX_STUCK_ITERATIONS / 2) addCompactHintIfNeeded(req, response, true);
+                if (stuck > MAX_STUCK_ITERATIONS - 2) addCompactHintIfNeeded(req, response, true);
                 else req.addMessage(new UserMessage(STUCK_MESSAGE));
             }
         } while (shouldLoop && !req.monitor.isCanceled());
