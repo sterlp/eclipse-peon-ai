@@ -63,7 +63,7 @@ AND ThreadSafeMemory joins them into one big UserMessage where the summary is th
 
 **Test:** `CompactSessionToolTest.testStandingOrdersSurviveCompaction()` + `testMultipleStandingOrdersSurviveCompaction()`
 
-### 4. Plan Handover ❌ (no test yet)
+### 4. Plan Handover ✅
 
 **Rule:** When plan→dev handover is triggered, the plan file path and handover instruction are added to standing orders so they govern the dev agent's first turn. The plan content itself becomes a UserMessage in the new agent's memory.
 
@@ -74,7 +74,7 @@ THEN the plan file path with handover instruction is added to standing orders
 AND the plan content is added as a UserMessage ("chat") to the next handover agent's memory
 ```
 
-**Test:** `PeonAiServiceTest.testHandoffWithPlan()` — needs new test for standing orders integration during handover.
+**Test:** `PeonAiServiceTest.testHandoffStandingOrder()` — verifies `_handoffLine` is set on handoff, consumed once by `get()`, then cleared.
 
 ## Data flow
 
@@ -140,7 +140,7 @@ Delegates the clear to `request.clearMemory()` — it knows nothing about standi
 2. **KV-cache trade-off:** Merging standing orders + user text into one `UserMessage` prevents role-alternation breaks (critical for strict LLM parsers) and keeps the static prefix contiguous for cache reuse. Slight token-reuse penalty vs separate messages is accepted for stability.
 3. **Snapshot staleness:** Standing orders are snapshotted once per turn (`List.copyOf`). Mid-turn context changes won't reflect until next user send, which rebuilds via `StandingOrdersBuilder`. This avoids race conditions during a single AI reasoning step.
 4. **Queued Messages = Payload (Not Context):** Queue consumption stays in the tool loop. Queued messages survive compaction naturally by residing in `UserMessageQueue` (outside memory). After `clearMemory()` restores context, the loop simply polls and adds the next queued message as a standard payload UserMessage. No mutable standing orders list required — immutable snapshot is sufficient.
-5. **Scope clarification:** Docs capture target behavior. Code/test alignment follows this plan; ❌ status marks pending implementation/tests, not doc gaps.
+5. **All BDD use cases implemented and tested.** See `PeonAiServiceTest`, `CompactSessionToolTest`, `StandingOrdersBuilderTest`.
 
 ## Notes / constraints
 
