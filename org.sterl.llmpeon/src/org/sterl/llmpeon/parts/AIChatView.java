@@ -33,6 +33,7 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IWorkingSet;
 import org.sterl.llmpeon.StandingOrdersBuilder;
 import org.sterl.llmpeon.agent.AiAgent;
+import org.sterl.llmpeon.queuedmessages.UserMessageQueue;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.command.SlashCommandResolver;
 import org.sterl.llmpeon.command.SlashCommandResolver.SlashResult;
@@ -92,7 +93,11 @@ public class AIChatView implements EclipseAiMonitor {
 
     private final AtomicReference<IProgressMonitor> monitorRef = new AtomicReference<>(new NullProgressMonitor());
     private final VoiceInputService voiceService = new VoiceInputService();
-    
+
+    private final UserMessageQueue waitingMessages = new UserMessageQueue();
+    private volatile boolean acknowledgedPendingBatch = false;
+    private volatile boolean isChaining = false; // prevents Stop button flicker during queue chaining
+
     private volatile boolean recording = false;
 
     private HeaderBarWidget headerBar;
@@ -214,6 +219,8 @@ public class AIChatView implements EclipseAiMonitor {
     private void onClear() {
         aiService.clear();
         chatHistory.clear();
+        waitingMessages.clear();
+        acknowledgedPendingBatch = false;
         actionsBar.updateCompact(0, aiService.getConfig().getAutoCompactAfter());
     }
 
@@ -317,7 +324,10 @@ public class AIChatView implements EclipseAiMonitor {
     @Override
     public void onCallCompleted(dev.langchain4j.model.chat.response.ChatResponse response, Duration duration) {
         EclipseUtil.runInUiThread(parent, () -> {
-            lockWhileWorking(false);
+            // Don't unlock if queue chaining is active — handleDoneChatResponse manages the lock/unlock cycle
+            if (!isChaining) {
+                lockWhileWorking(false);
+            }
             refreshStatusLine();
         });
     }
@@ -601,7 +611,7 @@ public class AIChatView implements EclipseAiMonitor {
             } catch (Exception e) {
                 ex = handleChatException(e);
             } finally {
-                handleDoneChatResponse(cr, monitor);
+                handleDoneChatResponse(cr, monitor, ex);
             }
             return PeonConstants.status("Compressed", ex);
         }).schedule();
@@ -657,7 +667,14 @@ public class AIChatView implements EclipseAiMonitor {
         chatInput.clearText();
 
         if (actionsBar.isWorking()) {
-            if (trailing != null) active.getMemory().add(UserMessage.from(trailing));
+            if (trailing != null) {
+                waitingMessages.add(trailing);
+                if (!acknowledgedPendingBatch) {
+                    chatHistory.appendMessage(new SimpleMessage(Type.AI,
+                            "Noted, I will respond to this as soon as I finished this task …"));
+                    acknowledgedPendingBatch = true;
+                }
+            }
             return new SendDecision.Skip();
         }
         return new SendDecision.Submit(trailing);
@@ -676,20 +693,64 @@ public class AIChatView implements EclipseAiMonitor {
             } catch (Exception e) {
                 ex = handleChatException(e);
             } finally {
-                handleDoneChatResponse(cr, monitor);
+                handleDoneChatResponse(cr, monitor, ex);
             }
             return PeonConstants.status("Peon AI\n" + aiService.getConfig(), ex);
         }).schedule();
     }
 
-    private void handleDoneChatResponse(ChatResponse cr,
-            IProgressMonitor monitor) {
+    private void submitFollowUpJob(String message) {
+        lockWhileWorking(true);
+        chatHistory.appendMessage(new SimpleMessage(Type.TOOL, "Looking in the User message queue: " + message));
+        Job.create("Peon AI follow-up", monitor -> {
+            monitor.beginTask("Follow-up request", 100);
+            monitorRef.set(monitor);
+            Exception ex = null;
+            ChatResponse cr = null;
+            try {
+                var active = aiService.getActiveAgent();
+                active.setUserContextInformations(this.standingOrders.build());
+                cr = active.call(message, this);
+            } catch (Exception e) {
+                ex = handleChatException(e);
+            } finally {
+                handleDoneChatResponse(cr, monitor, ex);
+            }
+            return PeonConstants.status("Follow-up", ex);
+        }).schedule();
+    }
+
+    private void handleDoneChatResponse(ChatResponse cr, IProgressMonitor monitor, Exception ex) {
+        boolean wasCanceled = monitor.isCanceled(); // Capture BEFORE resetting monitorRef
         if (aiService.getConfig().isDebugMode()) {
             LOG.info("Chatreponse: " + (cr == null ? "null" : cr.aiMessage()));
         }
         monitor.done();
         monitorRef.set(new NullProgressMonitor());
-        EclipseUtil.runInUiThread(parent, () -> lockWhileWorking(false));
+        EclipseUtil.runInUiThread(parent, () -> {
+            // Only auto-fire on genuine success (cr != null), never on abort/rate-limit/error
+            if (ex == null && cr != null && !wasCanceled) {
+                String next = waitingMessages.pollNext();
+                if (next != null) {
+                    isChaining = true; // Set BEFORE unlock to prevent onCallCompleted from hiding Stop button
+                    acknowledgedPendingBatch = false;
+                    lockWhileWorking(false);
+                    submitFollowUpJob(next);
+                    return; // skip the else branch
+                }
+            }
+            // Covers: no more queue items, real errors, rate limits, and cancellation
+            isChaining = false;
+            int preservedCount = waitingMessages.size();
+            String combined = waitingMessages.drainAll();
+            if (combined != null) {
+                aiService.getActiveAgent().getMemory().add(UserMessage.from(combined));
+                chatHistory.appendMessage(new SimpleMessage(Type.TOOL,
+                        preservedCount + " queued message(s) preserved for your next request."));
+            }
+            acknowledgedPendingBatch = false;
+            lockWhileWorking(false);
+        });
     }
     
     private Exception handleChatException(Exception e) {
@@ -727,7 +788,7 @@ public class AIChatView implements EclipseAiMonitor {
     private void lockWhileWorking(boolean value) {
         if (parent == null || parent.isDisposed()) return;
         actionsBar.lockWhileWorking(value);
-        chatInput.setWorking(value);
+        chatInput.setStopButtonVisible(value);
         if (!value) chatHistory.hideLiveStatus();
         if (!value && questionWidget != null && questionWidget.isVisible()) {
             questionWidget.cancel();

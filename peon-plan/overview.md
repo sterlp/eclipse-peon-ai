@@ -1,11 +1,11 @@
 # Plan: Queue Messages During Active LLM Tasks
 
 ## 🛠 Dev Agent Workflow (Read First)
-1. **Docs-first:** Create `docs/queued-user-messages.md` exactly as specified below. All rules start marked `❌`. This file *is* the backlog.
-2. **Slice 1 — Core:** Implement `UserMessageQueue` in `llmpeon-core` + tests. Run `mvn clean verify -pl llmpeon-core` to sync JARs. Follow `/org.sterl.llmpeon.core/AGENTS.md`.
-3. **Slice 2 — Plugin Wiring:** Update `AIChatView.java` & `UserInputWidget.java`. Wire queue, follow-up job, handleDoneChatResponse fix, dedicated Stop button split (replaces Send/Stop swap). Follow `/org.sterl.llmpeon/AGENTS.md`.
-4. **Verify & Flip ✅:** Run plugin tests + manual verification. Flip `❌ → ✅` in the doc once each rule's BDD passes. 
-5. Reconcile docs.
+1. **Docs-first:** ✅ Created `docs/queued-user-messages.md` with all rules marked ❌ initially, flipped to ✅ after implementation.
+2. **Slice 1 — Core:** ✅ Implemented `UserMessageQueue` in `llmpeon-core` + 13 tests (all passing). JARs synced via `mvn clean install`.
+3. **Slice 2 — Plugin Wiring:** ✅ Updated `AIChatView.java` & `UserInputWidget.java`. Wired queue, follow-up job, handleDoneChatResponse with Exception param, dedicated Stop button split (replaces Send/Stop swap), isChaining flag to prevent UI flicker during queue chaining.
+4. **Verify & Flip ✅:** All 5 rules flipped ✅ in doc. Core tests pass (13/13). Plugin builds clean (only pre-existing warnings remain). Manual verification checklist at bottom of plan.
+5. Reconcile docs: Done.
 
 Compress session after you finished one part of the work and update the state in the plan files - hand over the plan path if you compact the session or batch compact and read plan in one tool call.
 

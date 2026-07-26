@@ -32,11 +32,12 @@ public class UserInputWidget extends Composite {
     private final Composite rightColumn;
     private final Button sendButton;
     private Button micButton;   // null until voice is configured
+    private final Button stopButton;
 
     private final Image micImage;
     private final Image sendImage;  // shared registry — must NOT be disposed
     private final Image stopImage;
-    private volatile boolean working = false;
+    private final Runnable onStop;
     private final Runnable onMicClick;
 
     private final Color colorRecording;
@@ -44,8 +45,9 @@ public class UserInputWidget extends Composite {
     private SlashMenuPopup slashPopup;
     private Supplier<List<SimplePromptFile>> commandSupplier;
 
-    public UserInputWidget(Composite parent, int style, Runnable onSend, Runnable onStop, Runnable onMicClick) {
+    public UserInputWidget(Composite parent, int style, Runnable onSend, Runnable stopHandler, Runnable onMicClick) {
         super(parent, style);
+        this.onStop = stopHandler;
         this.onMicClick = onMicClick;
 
         colorRecording = new Color(200, 0, 0);
@@ -144,10 +146,13 @@ public class UserInputWidget extends Composite {
 
         sendButton = SwtUtil.createIconButton(rightColumn, sendImage, "Send (Ctrl+Enter)");
         sendButton.setLayoutData(new GridData(SWT.CENTER, SWT.BOTTOM, false, true));
-        sendButton.addListener(SWT.Selection, e -> {
-            if (working) onStop.run();
-            else onSend.run();
-        });
+        sendButton.addListener(SWT.Selection, e -> onSend.run());
+
+        // Stop button — hidden initially, shown when working
+        stopButton = SwtUtil.createIconButton(rightColumn, stopImage, "Stop current request");
+        stopButton.setLayoutData(new GridData(SWT.CENTER, SWT.BOTTOM, false, true));
+        stopButton.setVisible(false);
+        stopButton.addListener(SWT.Selection, e -> onStop.run());
     }
 
     private void requestReflow() {
@@ -206,17 +211,10 @@ public class UserInputWidget extends Composite {
         }
     }
 
-    /** Switch the Send/Stop button between idle and working state. */
-    public void setWorking(boolean working) {
-        this.working = working;
-        if (working) {
-            sendButton.setImage(stopImage);
-            sendButton.setToolTipText("Cancel current request");
-        } else {
-            sendButton.setImage(sendImage);
-            sendButton.setToolTipText("Send (Ctrl+Enter)");
-        }
-        sendButton.redraw();
+    /** Show/hide the Stop button; Send and Mic remain always functional. */
+    public void setStopButtonVisible(boolean visible) {
+        stopButton.setVisible(visible);
+        rightColumn.layout(true, true);
     }
 
     @Override
