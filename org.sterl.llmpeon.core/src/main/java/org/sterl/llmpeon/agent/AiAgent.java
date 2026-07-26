@@ -78,6 +78,30 @@ public interface AiAgent {
     default boolean isThinkEnabled() {
         return false;
     }
+
+    /** @return true if the agent is currently processing a call (including internal queue chaining). */
+    default boolean isWorking() {
+        return false;
+    }
+
+    /**
+     * Queue a message for follow-up while the agent is working.
+     * @param msg the message to queue
+     * @return true if a new queue entry was created, false if silently merged into existing batch
+     */
+    default boolean queueMessage(String msg) {
+        return false;
+    }
+
+    /** @return the number of queued messages waiting to be processed. Default 0 for agents without queues. */
+    default int getQueuedMessageCount() {
+        return 0;
+    }
+
+    /** Drain remaining queue on abort, returning null if empty. Default no-op. */
+    default String drainQueue() {
+        return null;
+    }
     
     /**
      * If it is an agent just to be used as tool

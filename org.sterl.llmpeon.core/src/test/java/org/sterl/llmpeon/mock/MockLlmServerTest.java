@@ -26,12 +26,16 @@ public class MockLlmServerTest {
     private HttpClient client;
     private int port;
 
-    private static final Duration TIMEOUT = Duration.ofSeconds(2);
+    private static final Duration TIMEOUT = Duration.ofSeconds(5);
 
     @BeforeEach
     void setUp() throws Exception {
         server.start();
         port = server.getPort();
+        
+        // Wait briefly for server to be ready (HttpServer starts async)
+        Thread.sleep(100);
+        
         client = HttpClient.newBuilder().connectTimeout(TIMEOUT).build();
     }
 

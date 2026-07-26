@@ -1,9 +1,5 @@
 package org.sterl.llmpeon;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
-
 import java.util.function.Function;
 
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -12,24 +8,23 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import lombok.Getter;
 
+/**
+ * Test helper that creates real StreamingChatModel implementations to avoid Mockito mocking issues on Java 26.
+ */
 public class StreamMock {
 
     @Getter
     private ChatRequest lastRequest;
 
-    @SuppressWarnings("null")
+    /** Create a test StreamingChatModel that captures requests and returns predefined responses. */
     public StreamingChatModel buildMock(Function<ChatRequest, ChatResponse> fn) {
-        var cm = mock(StreamingChatModel.class);
-        doAnswer(inv -> {
-            ChatRequest req = inv.getArgument(0, ChatRequest.class);
-            lastRequest = req;
-            
-            var cr = fn.apply(req);
-            
-            var handler = inv.getArgument(1, StreamingChatResponseHandler.class);
-            handler.onCompleteResponse(cr);
-            return null;
-        }).when(cm).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
-        return cm;
+        return new StreamingChatModel() {
+            @Override
+            public void chat(ChatRequest request, StreamingChatResponseHandler handler) {
+                lastRequest = request;
+                ChatResponse response = fn.apply(request);
+                handler.onCompleteResponse(response);
+            }
+        };
     }
 }

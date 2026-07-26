@@ -7,12 +7,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.sterl.llmpeon.AbstractMemoryFileTest;
 import org.sterl.llmpeon.AgentService;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
+import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.llmpeon.tool.ToolService;
 
 class AgentServiceTest extends AbstractMemoryFileTest {
@@ -25,14 +27,26 @@ class AgentServiceTest extends AbstractMemoryFileTest {
     }
     
     private AgentService service;
-    private final ToolService toolService = Mockito.mock(ToolService.class);
-    private final ConfiguredChatModel chatModel = Mockito.mock(ConfiguredChatModel.class);
+    private final ToolService toolService = new ToolService();
+    private ConfiguredChatModel chatModel;
+    private MockLlmServer mockServer;
 
     @BeforeEach
     void before() throws IOException {
         tmp = fs.getPath("/" + UUID.randomUUID());
         Files.createDirectory(tmp);
+        
+        mockServer = new MockLlmServer();
+        mockServer.start();
+        LlmConfig config = LlmConfig.builder().model("test").url(mockServer.getUrl()).build();
+        chatModel = config.build();
+
         service = new AgentService(tmp, toolService, chatModel);
+    }
+
+    @AfterEach
+    void after() {
+        if (mockServer != null) mockServer.stop();
     }
     
     @Test

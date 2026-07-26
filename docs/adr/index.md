@@ -23,3 +23,6 @@ isn't clear from a rule/BDD.
 | [0012](0012-toolservice-boolean-constructor.md) | ToolService(boolean withDefaults) constructor | Accepted |
 | [0013](0013-persistent-agents.md) | Persistent agents in AgentService survive clearAgents | Accepted |
 | [0015](0015-eclipse-sandbox-boundary.md) | Eclipse VFS as AI sandbox boundary — disk tools are opt-in override | Accepted |
+| [0016](0016-async-state-safety.md) | Always capture state before resetting references in async callbacks | Accepted |
+| [0017](0017-atomic-ui-chaining.md) | Move queue ownership and chaining into core agent — eliminates UI flicker and race windows | Accepted |
+| [0018](0018-abort-path-parity.md) | Explicitly distinguish success from abort; drain queues safely to memory on failure | Accepted |

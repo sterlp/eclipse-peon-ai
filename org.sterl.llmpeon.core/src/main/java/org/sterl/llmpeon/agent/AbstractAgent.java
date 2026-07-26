@@ -8,11 +8,13 @@ import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 
 import org.sterl.llmpeon.ai.AgentConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
+import org.sterl.llmpeon.queuedmessages.UserMessageQueue;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
@@ -34,7 +36,10 @@ public abstract class AbstractAgent implements AiAgent {
     protected final ConfiguredChatModel configuredModel;
 
     protected final ToolService toolService;
-    
+
+    private final UserMessageQueue messageQueue = new UserMessageQueue();
+    private final AtomicBoolean working = new AtomicBoolean(false);
+
     private final LinkedHashSet<ChatMessage> staticContext = new LinkedHashSet<>();
     private final LinkedHashSet<String> userContextInformations = new LinkedHashSet<>();
     
@@ -89,12 +94,26 @@ public abstract class AbstractAgent implements AiAgent {
     public boolean isMcpToolActive(String toolName) {
         return getToolNameFilter().test(toolName);
     }
-    
+
+    @Override
+    public boolean isWorking() {
+        return working.get();
+    }
+
+    /**
+     * Queue a message for follow-up while the agent is working.
+     * @return true if a new queue entry was created, false if silently merged into existing batch
+     */
+    @Override
+    public boolean queueMessage(String msg) {
+        return messageQueue.add(msg);
+    }
+
 
     public int tokenContextUsedInPercent() {
         float used = memory.getTotalTokenUsed();
         if (used < 100) return 0;
-        return Math.round(used / Math.min(configuredModel.getConfig().getAutoCompactAfter(), 4000));
+        return Math.round(100f * used / Math.min(configuredModel.getConfig().getAutoCompactAfter(), 4000));
     }
 
     public boolean hasUserText(String message) {
@@ -103,12 +122,66 @@ public abstract class AbstractAgent implements AiAgent {
     }
 
     @Override
-    public ChatResponse call(String message, AiMonitor monitor) {
+    public ChatResponse call(String initialMessage, AiMonitor monitor) {
+        monitor = AiMonitor.nullSafety(monitor);
+        // Self-enforcing guard: prevents concurrent invocations regardless of caller thread
+        if (!working.compareAndSet(false, true)) {
+            messageQueue.add(initialMessage); // already running: queue it and bail
+            return null;
+        }
+        try {
+            String next = initialMessage;
+            ChatResponse lastResponse = null;
+
+            do {
+                try {
+                    lastResponse = doCall(next, monitor);
+                    next = messageQueue.pollNext(); // FIFO drain
+                } catch (Exception e) {
+                    handleAbortAndDrain(monitor);
+                    throw e;
+                }
+            } while (next != null && lastResponse != null && !monitor.isCanceled());
+
+            // Drain remaining queue on cancellation exit from loop
+            if (monitor.isCanceled()) {
+                handleAbortAndDrain(monitor);
+            }
+
+            return lastResponse;
+        } finally {
+            working.set(false);
+        }
+    }
+
+    /** Drain remaining queued messages into memory on abort/error. */
+    private void handleAbortAndDrain(AiMonitor monitor) {
+        int preservedCount = messageQueue.size();
+        String preserved = messageQueue.drainAll();
+        if (preserved != null) {
+            memory.add(UserMessage.from(preserved));
+            monitor.onTool(preservedCount + " queued message(s) preserved for your next request.");
+        }
+    }
+
+    @Override
+    public String drainQueue() {
+        return messageQueue.drainAll();
+    }
+
+    /** @return the number of queued messages waiting to be processed. */
+    @Override
+    public int getQueuedMessageCount() {
+        return messageQueue.size();
+    }
+
+    /** Execute a single LLM+tool turn for the given message. */
+    protected ChatResponse doCall(String message, AiMonitor monitor) {
         monitor = AiMonitor.nullSafety(monitor);
         monitor.onCallStart(message);
         // auto compress if we are close to full before we start
         if (configuredModel.getConfig().getAutoCompactAfter() < memory.getTotalTokenUsed()) compressContext(monitor);
-        
+
         LinkedList<String> standingOrders;
         synchronized (userContextInformations) {
             standingOrders = new LinkedList<>(userContextInformations);
@@ -119,7 +192,7 @@ public abstract class AbstractAgent implements AiAgent {
                     .filter(m -> !hasUserText(m))
                     .forEach(m -> userMessages.add(TextContent.from(m)));
         }
-        
+
         if (StringUtil.hasValue(message)) userMessages.add(TextContent.from(message));
         if (userMessages.isEmpty()) {
             // nothing
@@ -155,28 +228,29 @@ public abstract class AbstractAgent implements AiAgent {
         return response;
     }
 
-    /**
-     * Only context information which doesn't change - only if we clear!
-     * Otherwise we kill the KV-cache!
-     */
+    /** Set once at startup before concurrent call()s begin — no sync needed. */
     public void setStaticContext(Collection<ChatMessage> staticContext) {
         this.staticContext.clear();
         if (staticContext != null) this.staticContext.addAll(staticContext);
     }
     
     public void setUserContextInformations(Collection<String> userContextInformations) {
-        synchronized (userContextInformations) {
+        synchronized (this.userContextInformations) { // Fixed: was locking on the parameter!
             this.userContextInformations.clear();
             if (userContextInformations != null) this.userContextInformations.addAll(userContextInformations);
         }
     }
     
     public List<String> getUserContextInformations() {
-        return new ArrayList<>(this.userContextInformations);
+        synchronized (this.userContextInformations) {
+            return new ArrayList<>(this.userContextInformations);
+        }
     }
 
+    @Override
     public void clear() {
         memory.clear();
+        messageQueue.clear();
     }
 
     /**

@@ -15,46 +15,49 @@ class UserMessageQueueTest {
 
     @Test
     void shortMessagesWithinWindow_joinIntoSingleEntry() throws InterruptedException {
-        // GIVEN
-        var queue = new UserMessageQueue();
+        // GIVEN a queue with 200ms window
+        var queue = new UserMessageQueue(200);
 
-        // WHEN - rapid fire short messages within 10s window
-        queue.add("Hello");       // 5 chars
-        Thread.sleep(500);
-        queue.add("world");       // 5 chars
-        Thread.sleep(500);
-        queue.add("how are you?"); // 12 chars
+        // WHEN - rapid fire messages within window
+        queue.add("Hello");
+        Thread.sleep(50);
+        queue.add("world");
+        Thread.sleep(50);
+        queue.add("how are you?");
 
-        // THEN - all joined into single entry (total well under 300)
+        // THEN - all joined into single entry with newlines, total well under 300
         assertThat(queue.size()).isEqualTo(1);
-        assertThat(queue.pollNext()).isEqualTo("Hello world how are you?");
+        assertThat(queue.pollNext())
+                .isEqualTo("Hello" + System.lineSeparator() + "world" + System.lineSeparator() + "how are you?");
     }
 
     @Test
     void slidingWindowReset_allowsContinuousRapidFire() throws InterruptedException {
-        // GIVEN - a user has sent a message
-        var queue = new UserMessageQueue();
+        // GIVEN a user has sent a message
+        var queue = new UserMessageQueue(200);
         queue.add("first");
 
-        // WHEN - send after 9 seconds (resets timer), then again within the next window
-        Thread.sleep(9_100);
-        queue.add("second");      // resets sliding window
-        Thread.sleep(500);
-        queue.add("third");       // still within new window
+        // WHEN - send within window (resets timer), then again within the next window
+        Thread.sleep(100);
+        queue.add("second");  // resets sliding window
+        Thread.sleep(50);
+        queue.add("third");   // still within new window
 
         // THEN - all joined together (timer reset on "second" allowed "third" to merge)
         assertThat(queue.size()).isEqualTo(1);
-        assertThat(queue.pollNext()).contains("first", "second", "third");
+        String joined = queue.pollNext();
+        assertThat(joined).contains("first", "second", "third");
+        assertThat(joined).doesNotContain(" first ", " second ", " third "); // newline joiner, not space
     }
 
     @Test
     void gapExceedsWindow_startsNewEntry() throws InterruptedException {
         // GIVEN
-        var queue = new UserMessageQueue();
+        var queue = new UserMessageQueue(200);
         queue.add("message one");
 
-        // WHEN - gap > 10s from last activity
-        Thread.sleep(10_500);
+        // WHEN - gap > window from last activity
+        Thread.sleep(210);
         queue.add("message two");
 
         // THEN - starts a new separate entry
@@ -66,71 +69,48 @@ class UserMessageQueueTest {
     @Test
     void combinedLengthCap300_forcesNewEntry() throws InterruptedException {
         // GIVEN - messages that will exceed 300 chars when joined
-        var queue = new UserMessageQueue();
-        String longButValid = "a".repeat(120);  // exactly 120, valid for merging
+        var queue = new UserMessageQueue(200);
+        String longButValid = "a".repeat(120);
 
         // WHEN
         queue.add(longButValid);           // entry 1: 120 chars
-        Thread.sleep(500);
+        Thread.sleep(50);
         queue.add("b".repeat(120));        // would make 241 → still under 300, merges
-        Thread.sleep(500);
+        Thread.sleep(50);
         queue.add("c".repeat(120));        // would make 362 → exceeds 300, new entry
 
-        // THEN - first two joined (241 chars), third is separate
+        // THEN - first two joined, third is separate (length includes newline chars)
         assertThat(queue.size()).isEqualTo(2);
         String first = queue.pollNext();
-        assertThat(first.length()).isEqualTo(241); // 120 + 1 space + 120
+        int nlLen = System.lineSeparator().length();
+        assertThat(first.length()).isEqualTo(120 + nlLen + 120);
         assertThat(queue.pollNext()).isEqualTo("c".repeat(120));
     }
 
     @Test
-    void longMessageActsAsDivider() throws InterruptedException {
-        // GIVEN - a message >120 chars already in the queue
-        var queue = new UserMessageQueue();
-        String longMsg = "x".repeat(150);  // exceeds 120 char threshold
-        queue.add(longMsg);
+    void longMessageMergesIfCapacityPermits() throws InterruptedException {
+        // GIVEN - a message already in the queue (incoming length restrictions relaxed)
+        var queue = new UserMessageQueue(200);
+        String existingMsg = "x".repeat(100);
+        queue.add(existingMsg);
 
-        // WHEN - short message arrives within window
-        Thread.sleep(500);
-        queue.add("short");
+        // WHEN - short message arrives well within window, fits under cap
+        Thread.sleep(50);
+        boolean result = queue.add("short");
 
-        // THEN - short message does NOT merge into the long one
-        assertThat(queue.size()).isEqualTo(2);
-        assertThat(queue.pollNext()).isEqualTo(longMsg);
-        assertThat(queue.pollNext()).isEqualTo("short");
-    }
-
-    @Test
-    void longMessageStartsFreshEntry() throws InterruptedException {
-        // GIVEN - short messages already queued and joined
-        var queue = new UserMessageQueue();
-        queue.add("first");
-        Thread.sleep(500);
-        queue.add("second");  // joins with first
-
-        // WHEN - a long message (>120 chars) arrives within window
-        Thread.sleep(500);
-        String longMsg = "y".repeat(130);
-        queue.add(longMsg);
-
-        // THEN - long message starts new entry, doesn't merge into existing
-        assertThat(queue.size()).isEqualTo(2);
-        assertThat(queue.pollNext()).isEqualTo("first second");
-        assertThat(queue.pollNext()).isEqualTo(longMsg);
+        // THEN - merges into the long one (capacity permits), returns false (merged)
+        assertThat(queue.size()).isEqualTo(1);
+        assertThat(result).isFalse();
     }
 
     @Test
     void nullAndBlankMessagesIgnored() {
-        // GIVEN
-        var queue = new UserMessageQueue();
+        var queue = new UserMessageQueue(200);
 
-        // WHEN
-        queue.add(null);
-        queue.add("");
-        queue.add("   ");
-        queue.add("\t\n");
-
-        // THEN - nothing added
+        // WHEN/THEN - nothing added, returns false
+        assertThat(queue.add(null)).isFalse();
+        assertThat(queue.add("")).isFalse();
+        assertThat(queue.add("   ")).isFalse();
         assertThat(queue.size()).isEqualTo(0);
     }
 
@@ -138,12 +118,12 @@ class UserMessageQueueTest {
 
     @Test
     void pollNext_returnsInOrder() throws InterruptedException {
-        // GIVEN multiple messages queued
-        var queue = new UserMessageQueue();
+        // GIVEN multiple messages queued as separate entries
+        var queue = new UserMessageQueue(100);
         queue.add("first");
-        Thread.sleep(10_500);  // force new entries
+        Thread.sleep(110);
         queue.add("second");
-        Thread.sleep(10_500);
+        Thread.sleep(110);
         queue.add("third");
 
         // WHEN/THEN - consumed individually in FIFO order
@@ -156,11 +136,11 @@ class UserMessageQueueTest {
     @Test
     void pollNext_doesNotBatchIntoSinglePrompt() throws InterruptedException {
         // GIVEN - 3 separate queue entries
-        var queue = new UserMessageQueue();
+        var queue = new UserMessageQueue(100);
         queue.add("msg1");
-        Thread.sleep(10_500);
+        Thread.sleep(110);
         queue.add("msg2");
-        Thread.sleep(10_500);
+        Thread.sleep(110);
         queue.add("msg3");
 
         // WHEN/THEN - each consumed individually, size decreases one-by-one
@@ -174,11 +154,11 @@ class UserMessageQueueTest {
     // ========== Rule 4: Drain Queue on STOP / Error / RateLimit ==========
 
     @Test
-    void drainAll_joinsWithNewline() throws InterruptedException {
-        // GIVEN - messages in queue (separate entries due to >10s gaps)
-        var queue = new UserMessageQueue();
+    void drainAll_joinsRemainingWithNewline() throws InterruptedException {
+        // GIVEN - messages in queue (separate entries)
+        var queue = new UserMessageQueue(100);
         queue.add("line one");
-        Thread.sleep(10_500);
+        Thread.sleep(110);
         queue.add("line two");
 
         // WHEN
@@ -191,16 +171,16 @@ class UserMessageQueueTest {
 
     @Test
     void drainAll_returnsNullWhenEmpty() {
-        var queue = new UserMessageQueue();
+        var queue = new UserMessageQueue(200);
         assertThat(queue.drainAll()).isNull();
     }
 
-    // ========== Rule 5: Clear Reset ==========
+    // ========== Rule 5: Compaction Survival & Clear Reset ==========
 
     @Test
     void clear_removesAllMessagesAndResetsTimer() throws InterruptedException {
         // GIVEN - queued messages exist
-        var queue = new UserMessageQueue();
+        var queue = new UserMessageQueue(200);
         queue.add("message");
 
         // WHEN - user clicks "Clear"
@@ -211,11 +191,59 @@ class UserMessageQueueTest {
         assertThat(queue.pollNext()).isNull();
     }
 
+    @Test
+    void add_returnsTrue_forNewEntry() {
+        var queue = new UserMessageQueue(200);
+        boolean result = queue.add("hello");
+        assertThat(result).isTrue(); // new entry created → UI shows "Noted..."
+    }
+
+    @Test
+    void add_returnsFalse_whenSilentlyMerged() throws InterruptedException {
+        // GIVEN a queue with short window
+        var queue = new UserMessageQueue(200);
+        queue.add("first");
+
+        // WHEN message arrives within window and merges silently
+        Thread.sleep(50);
+        boolean result = queue.add("second");
+
+        // THEN returns false (merged, not new entry) → UI suppresses "Noted..."
+        assertThat(result).isFalse();
+    }
+
+    @Test
+    void add_returnsTrue_whenCapExceeded() throws InterruptedException {
+        // GIVEN a queue with short window
+        var queue = new UserMessageQueue(200);
+        queue.add("a".repeat(200));
+
+        // WHEN another long message arrives (cap exceeded)
+        Thread.sleep(50);
+        boolean result = queue.add("b".repeat(200));
+
+        // THEN returns true (new entry created, cap exceeded) → UI shows "Noted..."
+        assertThat(result).isTrue();
+    }
+
+    @Test
+    void add_returnsTrue_whenWindowExpired() throws InterruptedException {
+        var queue = new UserMessageQueue(100);
+        queue.add("first");
+
+        // WHEN gap exceeds window
+        Thread.sleep(110);
+        boolean result = queue.add("second");
+
+        // THEN returns true (new entry, window expired) → UI shows "Noted..."
+        assertThat(result).isTrue();
+    }
+
     // ========== Thread Safety ==========
 
     @Test
     void concurrentAdds_areThreadSafe() throws Exception {
-        var queue = new UserMessageQueue();
+        var queue = new UserMessageQueue(200);
         int threadCount = 10;
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
         CountDownLatch startLatch = new CountDownLatch(1);

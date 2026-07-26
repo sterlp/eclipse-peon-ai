@@ -24,6 +24,9 @@ class AiCompressorAgentTest {
     void setUp() throws Exception {
         server = new MockLlmServer(0);
         server.start();
+        
+        // Wait briefly for server to be ready (HttpServer starts async)
+        Thread.sleep(100);
     }
 
     @AfterEach
