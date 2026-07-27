@@ -64,8 +64,8 @@ import org.sterl.llmpeon.voice.VoiceConfig;
 import org.sterl.llmpeon.voice.VoiceInputService;
 
 import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.RateLimitException;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -306,10 +306,19 @@ public class AIChatView implements EclipseAiMonitor {
     // -------------------------------------------------------------------------
 
     @Override
+    public void onChatMessage(int iteration, ChatRequest.Builder request) {
+        chatHistory.updateLiveResponseInUIThread("waiting for AI...", 0, null);
+    }
+
+    @Override
     public void onChatResponse(SimpleMessage m) {
         EclipseUtil.runInUiThread(parent, () -> {
             var ai = aiService.getActiveAgent();
-            chatHistory.hideLiveStatus();
+            if (m.role() == Type.TOOL) {
+                chatHistory.updateLiveResponseInUIThread(m.message(), 0, "");
+            } else {
+                chatHistory.hideLiveStatus();
+            }
             chatHistory.appendMessage(m);
             actionsBar.updateCompact(ai.getMemory().getTotalTokenUsed(), aiService.getConfig().getAutoCompactAfter());
         });
@@ -560,24 +569,7 @@ public class AIChatView implements EclipseAiMonitor {
             actionsBar.updateModeUI(agent);
             this.refreshChat();
             this.refreshStatusLine();
-            
-            if (StringUtil.hasNoValue(chatInput.getText()) && !aiService.hasPlan()) {
-                // some models e.g. Qwen need a use message as last message
-                // compactSession
-                chatInput.setText("""
-                    Implement the plan.
-                    
-                    If the plan is large, save it using a filename derived from the feature name (if not already done).
-                    Treat the plan file as long-term memory — update it as decisions are made or steps completed.
-                    Create separete task file for each individual feature you implement and work on them individually.
-                    
-                    When switching to a different piece of work:
-                    1. Batch in parallel: run compactSession on the current conversation + read the plan file + read any referenced files or prior plans.
-                    2. Pass into the preserve parameter: this handover instruction, the plan file path, and the next steps.
-                    """);
-            }
             doSendMessage();
-
         } else {
             onChatResponse(new SimpleMessage(Type.PROBLEM, "Plan or Agent '" + aiService.getActiveAgent().handoverTo() + "' missing ..."));
         }
@@ -653,6 +645,7 @@ public class AIChatView implements EclipseAiMonitor {
         }
         chatInput.clearText();
 
+        // TODO can we move this to the chat service?
         if (active.isWorking()) {
             if (trailing != null) {
                 boolean isNewEntry = active.queueMessage(trailing); // delegates to agent's queue
@@ -687,24 +680,13 @@ public class AIChatView implements EclipseAiMonitor {
     }
 
     private void handleDoneChatResponse(ChatResponse cr, IProgressMonitor monitor, Exception ex) {
-        boolean wasCanceled = monitor.isCanceled(); // Capture BEFORE resetting monitorRef (async-state-safety)
         if (aiService.getConfig().isDebugMode()) {
             LOG.info("Chatreponse: " + (cr == null ? "null" : cr.aiMessage()));
         }
         monitor.done();
         monitorRef.set(new NullProgressMonitor());
         EclipseUtil.runInUiThread(parent, () -> {
-            // Internal chaining in core handles success paths — only drain remaining queue on abort/error
-            if (ex != null || wasCanceled) {
-                var active = aiService.getActiveAgent();
-                int preservedCount = active.getQueuedMessageCount();
-                String combined = active.drainQueue();
-                if (combined != null) {
-                    active.getMemory().add(UserMessage.from(combined));
-                    chatHistory.appendMessage(new SimpleMessage(Type.TOOL,
-                            preservedCount + " queued message(s) preserved for your next request."));
-                }
-            }
+            // Queue drain on abort is handled in core by AbstractAgent.handleAbortAndDrain() — ADR-0017
             lockWhileWorking(false);
         });
     }
@@ -753,7 +735,7 @@ public class AIChatView implements EclipseAiMonitor {
 
     private void showQuestion(String question, java.util.List<String> answers,
             java.util.function.Consumer<String> onAnswer) {
-        chatHistory.updateLiveResponseInUIThread("Waiting for user answer...", 0, null);
+        chatHistory.updateLiveResponseInUIThread("waiting for User answer...", 0, null);
         EclipseUtil.runInUiThread(parent, () -> {
             ((GridData) chatInput.getLayoutData()).exclude = true;
             chatInput.setVisible(false);

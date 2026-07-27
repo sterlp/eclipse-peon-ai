@@ -169,12 +169,12 @@ public class ChatMarkdownWidget extends Composite {
             case THINK   -> "working since " + elapsed + "s | thinking...";
             case ANSWER  -> "working since " + elapsed + "s | responding...";
             case TOOL    -> "working since " + elapsed + "s | using tools...";
-            case END     -> "done.";
+            case END     -> "AI done.";
         };
         if (r.type() == Type.START) {
             updateLiveResponseInUIThread(state, 0, "");
-        } else if (tokens % 20 == 0) {
-            double tokPerSec = elapsed > 0 ? tokens / (double) elapsed : 0;
+        } else if (tokens > 0 && tokens % 20 == 0) {
+            double tokPerSec = tokens / (double) elapsed;
             updateLiveResponseInUIThread(state, tokPerSec, tokens + " tokens generated");
         }
     }

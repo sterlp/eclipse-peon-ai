@@ -60,9 +60,11 @@ public class StreamingBridge implements StreamingChatResponseHandler {
         this.monitor = AiMonitor.nullSafety(monitor);
         this.monitor.onStreamingChunk(new OnPartialAiResponse(Type.START, null, startedAt));
 
-        model.chat(request, this);
 
+        Throwable error = null;
         try {
+            model.chat(request, this);
+
             while (!latch.await(1500, TimeUnit.MILLISECONDS)) {
                 cancelAndRelease(handleRef.get());
             }
@@ -72,11 +74,13 @@ public class StreamingBridge implements StreamingChatResponseHandler {
             if (h != null) h.cancel();
             errorRef.compareAndSet(null, new CancellationException("Thread interrupted"));
             latch.countDown();
+        } catch (Exception e) {
+            error = e;
         }
 
-        Throwable error = errorRef.get();
+        error = errorRef.get() == null ? error : errorRef.get();
         if (error != null) {
-            // if we are canceled - and have a response ...
+            // if we are canceled - and have a response use it
             if (error instanceof CancellationException && responseRef.get() != null) return responseRef.get();
             if (error instanceof RuntimeException ex) throw ex;
             throw new RuntimeException(error);

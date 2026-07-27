@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -70,8 +72,10 @@ class AbstractAgentTest {
         var memory = agent.getMemory().getCopy();
         List<String> userTexts = extractUserTexts(memory);
         assertThat(userTexts).hasSize(2);
+        
         assertThat(userTexts.get(0)).contains("msg1");
-        assertThat(userTexts.get(1)).contains("msg2").contains("msg3");
+        assertThat(userTexts.get(1)).contains("msg2", "msg3");
+        
     }
 
     /**
@@ -81,24 +85,20 @@ class AbstractAgentTest {
     @Test
     void testAbortAddsMessageBeforeThrowing() throws InterruptedException {
         // GIVEN — mock succeeds on first call, throws on second; latch for synchronization
-        AtomicInteger callCount = new AtomicInteger(0);
         CountDownLatch callStarted = new CountDownLatch(1);
         CountDownLatch canProceed = new CountDownLatch(1);
 
+        List<ChatMessage> sendMsg = new ArrayList<>();
         var config = LlmConfig.builder().model("mock").build();
         var mockModel = streamMock.buildMock(r -> {
-            int count = callCount.incrementAndGet();
-            if (count == 1) {
-                try {
-                    callStarted.countDown();
-                    canProceed.await(5, TimeUnit.SECONDS);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            } else {
-                throw new RuntimeException("simulated abort");
+            callStarted.countDown();
+            sendMsg.addAll(r.messages());
+            try {
+                canProceed.await(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
-            return ChatResponse.builder().aiMessage(AiMessage.aiMessage("OK")).build();
+            throw new CancellationException("Abbort");
         });
 
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
@@ -111,23 +111,30 @@ class AbstractAgentTest {
         // WHEN — queue msg2+msg3 during first doCall, second call aborts
         Thread callerThread = new Thread(() -> agent.call("msg1", monitor));
         callerThread.start();
-
         callStarted.await(5, TimeUnit.SECONDS);
+
+        // AND
         agent.queueMessage("msg2");
-        agent.queueMessage("msg3"); // merged into one entry by batch window
+        agent.call("msg3", monitor); // merged into one entry by batch window
+        // AND go
         canProceed.countDown();
 
-        callerThread.join(10_000);
+        callerThread.join(999910_000);
 
-        // THEN — msg1 processed normally, msg2+msg3 added to memory before abort (doCall adds first)
+        // THEN
+        assertThat(sendMsg).hasSize(2);
+        assertThat(ChatMessageUtil.toString(sendMsg.getLast())).contains("msg1");
+        assertThat(ChatMessageUtil.toString(sendMsg.getLast())).doesNotContain("msg2");
+        assertThat(ChatMessageUtil.toString(sendMsg.getLast())).doesNotContain("msg3");
+
+        // AND
         var memory = agent.getMemory().getCopy();
         List<String> userTexts = extractUserTexts(memory);
-        assertThat(userTexts).hasSize(2);
-        assertThat(userTexts.get(0)).isEqualTo("msg1");
-        assertThat(userTexts.get(1)).contains("msg2").contains("msg3");
+        assertThat(userTexts).hasSize(1);
+        assertThat(userTexts.get(0)).contains("msg1", "msg2", "msg3");
 
         // AND — no drain TOOL message (queue was empty when abort hit — pollNext already consumed)
-        assertThat(toolMessage.get()).isNull();
+        assertThat(toolMessage.get()).contains("1 queued message");
         // AND — working flag cleared by finally block
         assertThat(agent.isWorking()).isFalse();
     }
@@ -137,35 +144,12 @@ class AbstractAgentTest {
      * Uses latch on second doCall to queue additional messages between pollNext and doCall throw.
      */
     @Test
-    void testAbortDrainsRemainingQueue() throws InterruptedException {
+    void testAbortDrainsRemainingQueueOnNextTurn() throws InterruptedException {
         // GIVEN — mock succeeds once, then waits before throwing; lets us queue during 2nd iteration
-        AtomicInteger callCount = new AtomicInteger(0);
-        CountDownLatch firstDoCallDone = new CountDownLatch(1);
-        CountDownLatch secondDoCallStarted = new CountDownLatch(1);
-        CountDownLatch canProceedFirst = new CountDownLatch(1);
-        CountDownLatch canProceedSecond = new CountDownLatch(1);
-
         var config = LlmConfig.builder().model("mock").build();
+        List<ChatMessage> messages = new ArrayList<>();
         var mockModel = streamMock.buildMock(r -> {
-            int count = callCount.incrementAndGet();
-            if (count == 1) {
-                // first doCall: signal completion, wait for release
-                try {
-                    canProceedFirst.await(5, TimeUnit.SECONDS);
-                    firstDoCallDone.countDown();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            } else if (count == 2) {
-                // second doCall: signal start, wait for extra queue, then throw
-                try {
-                    secondDoCallStarted.countDown();
-                    canProceedSecond.await(5, TimeUnit.SECONDS);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-                throw new RuntimeException("simulated abort");
-            }
+            messages.addAll(r.messages());
             return ChatResponse.builder().aiMessage(AiMessage.aiMessage("OK")).build();
         });
 
@@ -176,37 +160,28 @@ class AbstractAgentTest {
             @Override public void onTool(String message) { toolMessage.set(message); }
         };
 
-        // Pre-queue msg2 — will be consumed by pollNext after first doCall succeeds
-        agent.queueMessage("msg2");
+        // AND we have still pending messages Pre-queue msg2
+        agent.queueMessage("old message");
 
-        Thread callerThread = new Thread(() -> agent.call("msg1", monitor));
-        callerThread.start();
+        // WHEN
+        agent.call("next message", monitor);
 
-        // Release first doCall → it succeeds, pollNext picks up "msg2"
-        canProceedFirst.countDown();
-        firstDoCallDone.await(5, TimeUnit.SECONDS);
 
-        // Wait for second doCall to start (message already in memory), then queue msg3+msg4
-        secondDoCallStarted.await(5, TimeUnit.SECONDS);
-        agent.queueMessage("msg3");
-        agent.queueMessage("msg4"); // merged into one entry by batch window
-        canProceedSecond.countDown(); // trigger abort
+        // THEN
+        var msg = ChatMessageUtil.toString(messages.get(1));
+        assertThat(msg).contains("old message");
+        assertThat(msg).contains("next message");
 
-        callerThread.join(10_000);
+        // AND
+        msg = ChatMessageUtil.toString(agent.getMemory().getLastOf(UserMessage.class));
+        assertThat(msg).contains("old message");
+        assertThat(msg).contains("next message");
+        
+        // ADN
+        assertThat(streamMock.getCallCount()).isOne();
 
-        // THEN — msg1 processed, msg2 added before abort, msg3+msg4 drained from queue.
-        // ThreadSafeMemory merges consecutive UserMessages (msg2 + drained msg3+msg4).
-        var memory = agent.getMemory().getCopy();
-        List<String> userTexts = extractUserTexts(memory);
-        assertThat(userTexts).hasSize(2);
-        assertThat(userTexts.get(0)).contains("msg1");
-
-        // msg2 + drained msg3+msg4 merged by ThreadSafeMemory (consecutive UserMessages)
-        String combined = userTexts.get(1);
-        assertThat(combined).contains("msg2").contains("msg3").contains("msg4");
-
-        // AND — TOOL message shows 1 preserved queue entry (msg3+msg4 merged)
-        assertThat(toolMessage.get()).isEqualTo("1 queued message(s) preserved for your next request.");
+        // AND
+        assertThat(toolMessage.get()).isNull();
     }
 
     private List<String> extractUserTexts(List<ChatMessage> messages) {

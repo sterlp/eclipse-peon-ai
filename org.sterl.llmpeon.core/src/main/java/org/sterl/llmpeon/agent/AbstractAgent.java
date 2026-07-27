@@ -124,19 +124,23 @@ public abstract class AbstractAgent implements AiAgent {
     @Override
     public ChatResponse call(String initialMessage, AiMonitor monitor) {
         monitor = AiMonitor.nullSafety(monitor);
-        // Self-enforcing guard: prevents concurrent invocations regardless of caller thread
-        if (!working.compareAndSet(false, true)) {
-            messageQueue.add(initialMessage); // already running: queue it and bail
-            return null;
-        }
         try {
-            String next = initialMessage;
-            ChatResponse lastResponse = null;
+            // Self-enforcing guard: prevents concurrent invocations regardless of caller thread
+            if (!working.compareAndSet(false, true)) {
+                messageQueue.add(initialMessage); // already running: queue it
+                return null;
+            }
 
+            var stillQueued = messageQueue.drainAll();
+            String next = stillQueued == null ? initialMessage : stillQueued + System.lineSeparator() + initialMessage;
+
+            ChatResponse lastResponse = null;
             do {
                 try {
                     lastResponse = doCall(next, monitor);
+                    
                     next = messageQueue.pollNext(); // FIFO drain
+                    if (next != null) monitor.onTool("Reading queued User message: " + next);
                 } catch (Exception e) {
                     handleAbortAndDrain(monitor);
                     throw e;

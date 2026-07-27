@@ -237,27 +237,27 @@ public class PeonAiService implements MessageProvider {
         var toAgent = agentService.get(getActiveAgent().handoverTo());
         if (toAgent.isEmpty()) return false;
 
-        String plan;
-        if (hasPlan()) { // this.plan — not disk, avoids stale project reference
-            plan = readPlan();
-            _handoffLine = "Handover from " + getActiveAgent().getName() + " " + JdtUtil.pathOf(this.plan);
+        String planText;
+        if (this.plan != null) { // this.plan — not disk, avoids stale project reference
+            planText = readPlan();
         } else {
             var chatPlan = getActiveAgent().getMemory().getLastOf(AiMessage.class);
-            if (chatPlan == null) plan = null;
-            else plan = chatPlan.text();
+            if (chatPlan == null) planText = null;
+            else planText = chatPlan.text();
         }
 
-        if (plan != null) {
+        if (planText != null) {
+            if (this.plan != null) _handoffLine = "Handover from " + getActiveAgent().getName() + " " + JdtUtil.pathOf(this.plan);
+
             toAgent.get().clear();
-            // LM Studio is sometimes bugged, if the first message is no user message ... :-/
             toAgent.get().getMemory().add(UserMessage.from(
                     "Handover from " + getActiveAgent().getName() + System.lineSeparator()
-                    + plan));
+                    + planText));
 
             this.agentService.setActiveAgent(toAgent.get());
         }
         
-        return plan != null;
+        return planText != null;
     }
 
     // -------------------------------------------------------------------------
@@ -428,10 +428,6 @@ public class PeonAiService implements MessageProvider {
         if (this.plan == null) return "";
         return "Plan: " + JdtUtil.pathOf(plan) + System.lineSeparator() + "---" + System.lineSeparator() + System.lineSeparator()
             + IoUtils.readString(plan);
-    }
-
-    public boolean hasPlan() {
-        return this.plan != null;
     }
 
     public void setStaticContext(List<ChatMessage> content) {
