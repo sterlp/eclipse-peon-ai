@@ -26,6 +26,7 @@ public interface PeonConstants {
     String PREF_SHELL_CONFIRMATION_ENABLED = "llm.shellConfirmationEnabled";
     
     String PREF_LOG_RESPONSE       = "llm.logResponse";
+    String PREF_SHOW_REALTIME_AI_RESPONSE = "llm.showRealtimeAiResponse";
     String PREF_PLAN_TEMPERATURE   = "llm.planTemperature";
     String PREF_DEV_TEMPERATURE    = "llm.devTemperature";
     String PREF_QUERY_PARAMS       = "llm.queryParams";

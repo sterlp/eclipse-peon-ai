@@ -98,6 +98,7 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
             .planTemperature(parseDoublePref(prefs, PeonConstants.PREF_PLAN_TEMPERATURE, DEFAULT.getPlanTemperature()))
             .devTemperature(parseDoublePref(prefs, PeonConstants.PREF_DEV_TEMPERATURE, DEFAULT.getDevTemperature()))
             .debugMode(prefs.getBoolean(PeonConstants.PREF_LOG_RESPONSE, false))
+            .showRealtimeAiResponse(prefs.getBoolean(PeonConstants.PREF_SHOW_REALTIME_AI_RESPONSE, false))
             .queryParams(parseCsvMap(prefs.get(PeonConstants.PREF_QUERY_PARAMS, "")))
             .headerParams(parseCsvMap(prefs.get(PeonConstants.PREF_HEADER_PARAMS, "")))
             .shellCommandConfirmationRequired("always".equals(prefs.get(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, "")) ||

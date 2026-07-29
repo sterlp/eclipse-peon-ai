@@ -67,6 +67,7 @@ public class AiAdvancedPreferenceView extends FieldEditorPreferencePage implemen
         addField(headerParamEditor);
         
         addField(new BooleanFieldEditor(PeonConstants.PREF_LOG_RESPONSE,          "Debug mode (logs requests & responses)", getFieldEditorParent()));
+        addField(new BooleanFieldEditor(PeonConstants.PREF_SHOW_REALTIME_AI_RESPONSE, "Show real-time AI response in chat", getFieldEditorParent()));
     }
 
     /**

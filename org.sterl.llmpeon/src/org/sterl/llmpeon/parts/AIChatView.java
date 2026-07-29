@@ -319,7 +319,11 @@ public class AIChatView implements EclipseAiMonitor {
             } else {
                 chatHistory.hideLiveStatus();
             }
-            chatHistory.appendMessage(m);
+
+            // show message, but suppress live updated message when it is already shown
+            if ((m.role() != SimpleMessage.Type.THINK && m.role() != SimpleMessage.Type.AI) || !chatHistory.isShowRealtimeAiResponse()) {
+                chatHistory.appendMessage(m);
+            }
             actionsBar.updateCompact(ai.getMemory().getTotalTokenUsed(), aiService.getConfig().getAutoCompactAfter());
         });
     }
@@ -411,6 +415,7 @@ public class AIChatView implements EclipseAiMonitor {
         if (lastAppliedConfig != null && lastAppliedConfig.equals(config)) return;
         lastAppliedConfig = config;
         aiService.updateConfig(config);
+        chatHistory.setShowRealtimeAiResponse(config.isShowRealtimeAiResponse());
 
         actionsBar.setAgents(aiService.getAgents());
         actionsBar.updateModeUI(aiService.getActiveAgent());
