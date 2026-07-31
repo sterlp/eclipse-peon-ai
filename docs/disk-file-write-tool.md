@@ -23,7 +23,7 @@ Delete a file or directory **recursively**. Works on both files and non-empty di
 Replace lines by 1-based line number. Reads entire file, replaces, writes back.
 
 ### `diskEditFile(filePath, oldString, newString)`
-Replace exact string. Errors if 0 or >1 matches. Errors if oldString equals newString.
+Replace exact string. Errors if 0 matches. Errors if oldString equals newString.
 
 ### `diskRenameResource(sourcePath, targetPath)`
 Rename or move. Creates target parent directories. Errors if target exists.

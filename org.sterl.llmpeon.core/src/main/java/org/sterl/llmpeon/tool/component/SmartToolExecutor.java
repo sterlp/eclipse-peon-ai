@@ -38,7 +38,9 @@ public class SmartToolExecutor {
             tool.withToolRequest(req);
             return executor.execute(request, request.id());
         } catch (IllegalArgumentException e) {
-            req.getMonitor().onProblem(request.name() + ": " + e.getMessage());
+            var msg = e.getMessage();
+            if (msg != null && msg.length() > 200) msg = msg.substring(0, 180) + "...";
+            req.getMonitor().onProblem(request.name() + ": " + msg);
             return e.getMessage();
         } catch (ToolExecutionException e) {
             if (e.getCause() instanceof IllegalArgumentException ex) {

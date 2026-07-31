@@ -115,7 +115,7 @@ public class DiskFileWriteTool extends AbstractTool {
         }
     }
 
-    @Tool("Replace exact string. Errors if 0 or >1 matches.")
+    @Tool("Replace the exact string in a file.")
     public void diskEditFile(@P(name = "filePath") String filePath, 
             @P(description = "exact string to replace", name = "oldString") String oldString, 
             @P(name = "newString") String newString) {
@@ -139,7 +139,7 @@ public class DiskFileWriteTool extends AbstractTool {
             String newContent = FileUtils.applyEdit(filePath, content, oldString, newString);
             Files.writeString(resolved, newContent);
 
-            var result = new AiFileUpdate(workingDir.relativize(resolved).toString(), oldString, newString);
+            var result = new AiFileUpdate(workingDir.relativize(resolved).toString(), content, newContent);
             monitor.onFileUpdate(result);
 
         } catch (IOException e) {

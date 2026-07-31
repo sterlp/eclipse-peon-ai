@@ -79,18 +79,21 @@ class FileUtilsTest {
     }
 
     @Test
-    void applyEdit_duplicateAfterLineEndingNormalizationFails() {
-        var error = assertThrows(IllegalArgumentException.class, () ->
-                FileUtils.applyEdit("test.txt", "one\r\ntwo\r\none\r\ntwo", "one\ntwo", "1\n2"));
-
-        assertThat(error.getMessage()).contains("old_string found 2 times");
+    void applyEdit_replacesMultipleOccurrences() {
+        // GIVEN
+        String content = "one\r\ntwo\r\none\r\ntwo";
+        // WHEN
+        var result = FileUtils.applyEdit("test.txt", content, "one\ntwo", "1\n2");
+        // THEN
+        assertThat(result).isEqualTo("1\r\n2\r\n1\r\n2");
     }
 
     @Test
     void applyEdit_missingOldStringStillFails() {
+        // WHEN
         var error = assertThrows(IllegalArgumentException.class, () ->
                 FileUtils.applyEdit("test.txt", "one\r\ntwo\r\nthree", "two\nmissing", "2\n3"));
-
-        assertThat(error.getMessage()).contains("old_string: 'two\nmissing' not found");
+        // THEN
+        assertThat(error.getMessage()).contains("test.txt");
     }
 }

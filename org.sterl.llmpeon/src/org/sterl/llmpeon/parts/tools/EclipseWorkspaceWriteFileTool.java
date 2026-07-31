@@ -56,7 +56,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         }
     }
 
-    @Tool("Replace exact string in workspace file. Errors if 0 or >1 matches.")
+    @Tool("Replace exact string in workspace file.")
     public void eclipseEditFile(
             @P(description = "workspace-relative path", name = "filePath") String filePath,
             @P(description = "exact text to replace", name = "oldString") String oldString,
@@ -73,7 +73,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
             String content = readFile(eclipseFile);
             String newContent = FileUtils.applyEdit(filePath, content, oldString, newString);
             var result = writeFile(eclipseFile, newContent);
-            var editResult = new AiFileUpdate(result.file(), oldString, newString);
+            var editResult = new AiFileUpdate(result.file(), content, newContent);
             
             monitor.onFileUpdate(editResult);
         }

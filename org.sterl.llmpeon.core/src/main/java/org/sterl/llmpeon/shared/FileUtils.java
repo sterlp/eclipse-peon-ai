@@ -6,6 +6,9 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Optional;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public class FileUtils {
     
     /**
@@ -64,41 +67,30 @@ public class FileUtils {
      * Throws {@link IllegalArgumentException} if there are zero or more than one match.
      */
     public static String applyEdit(String filePath, String content, String oldStr, String newStr) {
-        var edit = findEdit(filePath, content, oldStr, newStr);
-        return content.replace(edit.oldStr(), edit.newStr());
-    }
+        if (oldStr.equals(newStr)) throw new IllegalArgumentException("Old and new string is the same.");
 
-    private static Edit findEdit(String filePath, String content, String oldStr, String newStr) {
-        int count = countMatches(content, oldStr);
-        String lineEnding = dominantLineEnding(content);
-        // ensure the newStr has the proper line ending if we insert it
-        if (count == 1) return new Edit(oldStr, normalizeLineEndings(newStr, lineEnding));
-
-        if (count == 0) {
-            String normalizedOld = normalizeLineEndings(oldStr, lineEnding);
-            if (!oldStr.equals(normalizedOld)) {
-                int normalizedCount = countMatches(content, normalizedOld);
-                if (normalizedCount == 1) {
-                    return new Edit(normalizedOld, normalizeLineEndings(newStr, lineEnding));
-                }
-                if (normalizedCount > 1) {
-                    throw tooManyMatches(filePath, normalizedCount);
-                }
-            }
-            throw notFound(filePath, oldStr, hasLineEndingMismatch(content, oldStr));
+        String fileLineEnding = dominantLineEnding(content);
+        // fix endings
+        var oldE = dominantLineEnding(oldStr);
+        if (oldE != fileLineEnding) {
+            oldStr = oldStr.replace(oldE, fileLineEnding);
+            log.warn("Bad file endings by LLM for old string in {} -- expected {} but got {}", filePath, ending(fileLineEnding), ending(oldE));
+        }
+        var newE = dominantLineEnding(newStr);
+        if (newE != fileLineEnding) {
+            newStr = newStr.replace(newE, fileLineEnding);
+            log.warn("Bad file endings by LLM for new string in {} -- expected {} but got {}", filePath, ending(fileLineEnding), ending(newE));
         }
 
-        throw tooManyMatches(filePath, count);
-    }
-
-    private static int countMatches(String content, String oldStr) {
-        int count = 0;
-        int idx = 0;
-        while ((idx = content.indexOf(oldStr, idx)) != -1) {
-            count++;
-            idx += oldStr.length();
+        if (content.contains(oldStr)) {
+            return content.replace(oldStr, newStr);
+        } else {
+            throw new IllegalArgumentException(
+                    "Bad replace in file: " + filePath + " oldStr: " + fileLineEnding
+                            + oldStr + fileLineEnding + fileLineEnding
+                            + "=> not found! Please check your replace. Current content of the file:" + fileLineEnding
+                            + content);
         }
-        return count;
     }
 
     public static String dominantLineEnding(String content) {
@@ -117,34 +109,6 @@ public class FileUtils {
         return crlf > lf ? "\r\n" : "\n";
     }
 
-    private static String normalizeLineEndings(String value, String lineEnding) {
-        return value.replace("\r\n", "\n").replace('\r', '\n').replace("\n", lineEnding);
-    }
-
-    private static boolean hasLineEndingMismatch(String content, String oldStr) {
-        return content.contains("\r\n") && oldStr.contains("\n") && !oldStr.contains("\r\n")
-                || !content.contains("\r\n") && oldStr.contains("\r\n");
-    }
-
-    private static IllegalArgumentException notFound(String filePath, String oldStr, boolean lineEndingMismatch) {
-        String suffix = lineEndingMismatch
-                ? " The file and old_string use different line endings; line endings were normalized but the text still did not match."
-                : "";
-        return new IllegalArgumentException(
-                "old_string: '" 
-                        + oldStr
-                        + "' not found in " + filePath + ". Read the file first to verify the exact content."
-                        + suffix);
-    }
-
-    private static IllegalArgumentException tooManyMatches(String filePath, int count) {
-        return new IllegalArgumentException(
-                "old_string found " + count + " times in " + filePath
-                        + ". Include more surrounding context to make the match unique.");
-    }
-
-    private record Edit(String oldStr, String newStr) {}
-
     public static void writeString(Path f, String content) {
         try {
             Files.createDirectories(f.getParent());
@@ -152,5 +116,11 @@ public class FileUtils {
         } catch (IOException e) {
             throw new RuntimeException("Failed to write " + f, e);
         }
+    }
+    
+    private static String ending(String v) {
+        if (v == "\n") return "'n'";
+        if (v == "\r\n") return "'rn'";
+        return "<unknown " + v + ">";
     }
 }
