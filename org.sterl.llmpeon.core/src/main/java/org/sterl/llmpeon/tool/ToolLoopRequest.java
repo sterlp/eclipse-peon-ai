@@ -9,6 +9,7 @@ import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.streaming.ApiRetry;
 import org.sterl.llmpeon.streaming.StreamingBridge;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
@@ -44,6 +45,9 @@ public class ToolLoopRequest {
     private final ConfiguredChatModel chatModel;
     @Default
     private final StreamingBridge bridge = new StreamingBridge();
+    /** Earned-patience retry around the AI call; fresh per turn (this object is rebuilt per message). */
+    @Default
+    private final ApiRetry retry = new ApiRetry();
 
     /** static messages which do not change */
     @Default
@@ -59,6 +63,13 @@ public class ToolLoopRequest {
      */
     @Default
     public Predicate<String> toolNameFilter = n -> true;
+    /**
+     * Per-agent write-path validator. Set by every agent via {@code AiAgent.getWriteValidator()}.
+     * Default: allow all — only Peon-PO (Jon) restricts it.
+     */
+    @Default
+    @Getter
+    public WriteValidator writeValidator = WriteValidator.ALLOW_ALL;
     /**
      * Per-agent config (provider, model, think, temperature). Set by every agent via
      * {@link org.sterl.llmpeon.agent.AbstractAgent#getConfig()}. When unset (e.g. a bare
@@ -103,7 +114,7 @@ public class ToolLoopRequest {
     }
     
     public ChatResponse call(ChatRequest chatRequest) {
-        return bridge.call(chatModel.getChatModel(), chatRequest, monitor);
+        return retry.call(monitor, () -> bridge.call(chatModel.getChatModel(), chatRequest, monitor));
     }
 
     /**

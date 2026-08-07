@@ -6,6 +6,7 @@ import java.util.List;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.tool.ToolService;
+import org.sterl.llmpeon.tool.WriteValidator;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
 import dev.langchain4j.data.message.ChatMessage;
@@ -34,6 +35,14 @@ public interface AiAgent {
     public void setStaticContext(Collection<ChatMessage> staticContext);
 
     /**
+     * The static context previously set via {@link #setStaticContext(Collection)} (date/OS/file rules).
+     * Mirrors {@link #getUserContextInformations()}. Default empty for agents that hold none.
+     */
+    default List<ChatMessage> getStaticContext() {
+        return List.of();
+    }
+
+    /**
      * Addition prompt information which should stay until changed -- added to the user message
      * 
      * @param userContextInformations addition prompt
@@ -55,6 +64,14 @@ public interface AiAgent {
 
     default Double getTemperature() {
         return null;
+    }
+
+    /**
+     * The write-path validator this agent applies to every write tool call. Default: no restriction.
+     * Peon-PO (Jon) overrides this to scope writes to docs. Provided per request, like the tool filter.
+     */
+    default WriteValidator getWriteValidator() {
+        return WriteValidator.ALLOW_ALL;
     }
 
     /**

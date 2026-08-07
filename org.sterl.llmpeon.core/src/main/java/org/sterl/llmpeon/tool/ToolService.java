@@ -47,6 +47,7 @@ public class ToolService {
     private static final String COMPACT_HINT =
             "CONTEXT LIMIT WARNING: Call '" + CompactSessionTool.NAME + "' as your first tool call. " +
             "In the 'preserve' field, summarize the critical next steps and any findings needed to continue. " +
+            "Include hard-won facts that are expensive to rediscover — exact file:line locations and key decisions with their rationale (the why) — not just what to do next. " +
             "After compacting, proceed with the task — additional tool calls in this round are expected.";
     
     private static final String STUCK_MESSAGE = """

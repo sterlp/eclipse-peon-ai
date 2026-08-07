@@ -200,6 +200,7 @@ public class DiskFileWriteTool extends AbstractTool {
     }
 
     private Path resolve(String path) {
+        validateWrite(path);
         return FileUtils.resolve(workingDir, path);
     }
 }

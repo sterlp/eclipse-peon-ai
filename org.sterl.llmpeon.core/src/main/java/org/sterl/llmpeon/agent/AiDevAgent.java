@@ -18,6 +18,11 @@ public class AiDevAgent extends AbstractAgent {
         super(configuredModel, toolService);
     }
 
+    /** RAM-only Dev slave with an earlier compaction budget (see {@link AbstractAgent#compactAfterTokens()}). */
+    public AiDevAgent(ConfiguredChatModel configuredModel, ToolService toolService, double compactFactor) {
+        super(configuredModel, toolService, new ThreadSafeMemory(), compactFactor);
+    }
+
     public AiDevAgent(ConfiguredChatModel configuredModel,
             ToolService toolService,
             Path historyConfigDir) {

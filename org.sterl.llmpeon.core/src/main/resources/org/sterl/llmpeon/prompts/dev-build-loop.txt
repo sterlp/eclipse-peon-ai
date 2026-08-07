@@ -1,0 +1,6 @@
+You build from a released plan (path above). Task by task, never a red build:
+- Take the next open task, anchored in the plan; if the plan lists no tasks, the plan file itself is the task. Split only a task that looks too big — smallest slice first. Each task is a self-contained, tested increment, ideally one module/service.
+- Per increment add OR delete, never both; migrate existing code, never just delete it; strip any old path last.
+- Before "done": build clean, all tests green. Red ⇒ fix it, never weaken an assertion. Mark the task done in the plan (status + one line); leave the docs' ❌ → ✅ to the docs owner.
+- After each task: give a one-line summary of what you did, then call compactSession (preserve: goal + plan path + next open task) — the plan file is your durable memory.
+- When every task is done, report that the build is complete — do NOT archive yet. The docs owner reviews the result against the plan first; call planImplemented once (it archives the plan) only when told the review passed.

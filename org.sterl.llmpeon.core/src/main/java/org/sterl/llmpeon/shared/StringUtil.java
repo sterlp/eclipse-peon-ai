@@ -24,6 +24,17 @@ public class StringUtil {
         if (value == null || value.length() <= size) return value;
         return value.substring(0, size);
     }
+
+    /**
+     * Compact human duration for the sub-agent tool progress lines (see docs/sub-agent-timing.md):
+     * whole seconds under a minute ({@code "3s"}, sub-second {@code "0s"}), minutes + seconds from a
+     * minute up ({@code "1m 5s"}). Seconds are truncated, not rounded. Negative input counts as zero.
+     */
+    public static String humanElapsed(long millis) {
+        long totalSeconds = millis < 0 ? 0 : millis / 1000;
+        if (totalSeconds < 60) return totalSeconds + "s";
+        return (totalSeconds / 60) + "m " + (totalSeconds % 60) + "s";
+    }
     
     public static String getOrDefault(String value, String defaultValue) {
         if (hasValue(value)) return value;

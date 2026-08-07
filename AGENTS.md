@@ -82,6 +82,7 @@ Module guides (read when working in one):
 ## Docs
 
 Two doc trees, kept separate — start at `docs/index.md`:
-- `docs/` — application design & dev spec (the HOW / system reference). **Not** linked to VitePress;
-  ADRs in `docs/adr/` (`docs/adr/index.md` registry).
-- `homepage/` — the published VitePress user documentation ("how to use the plugin") to any user.
+- `docs/` — application design & dev spec (the HOW / system reference), ADRs in `docs/adr/`
+  (`docs/adr/index.md` registry). This is the tree Jon owns.
+- `homepage/` — the published user documentation ("how to use the plugin") for end users; build
+  mechanics live in `AGENTS-DEV.md` ("User docs").

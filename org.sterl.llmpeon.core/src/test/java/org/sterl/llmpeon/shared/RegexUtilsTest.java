@@ -2,6 +2,7 @@ package org.sterl.llmpeon.shared;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -45,5 +46,26 @@ public class RegexUtilsTest {
     @Test
     void testCountOccurrencesInvalidRegex() {
         assertEquals(0, RegexUtils.countOccurrences("some text", "[invalid"));
+    }
+
+    @Test
+    void globToPattern_matchesDocsAtDepth() {
+        var p = RegexUtils.globToPattern("*/docs/*");
+        assertTrue(p.matcher("MyProject/docs/feature.md").matches());
+        assertTrue(p.matcher("a/b/docs/x/y.md").matches());
+        assertFalse(p.matcher("src/main/Foo.java").matches());
+    }
+
+    @Test
+    void globToPattern_matchesMarkdownAnywhere() {
+        var p = RegexUtils.globToPattern("*.md");
+        assertTrue(p.matcher("docs/feature.md").matches());
+        assertTrue(p.matcher("README.md").matches());
+        assertFalse(p.matcher("docs/notes.txt").matches());
+    }
+
+    @Test
+    void globToPattern_isCachedPerGlob() {
+        assertSame(RegexUtils.globToPattern("*.md"), RegexUtils.globToPattern("*.md"));
     }
 }

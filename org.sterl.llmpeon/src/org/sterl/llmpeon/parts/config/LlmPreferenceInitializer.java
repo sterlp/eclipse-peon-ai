@@ -17,6 +17,7 @@ import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
+import org.sterl.llmpeon.agent.AiPoAgent;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.PeonConstants;
@@ -128,7 +129,8 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
                 var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
                 prefs.put(PeonConstants.PREF_MODEL, model);
                 prefs.flush();
-            } else if (agent instanceof AiPlanAgent) {
+            } else if (agent instanceof AiPlanAgent || agent instanceof AiPoAgent) {
+                // Jon (Peon-PO) shares the plan model slot (see AiPoAgent#setAgentModelName)
                 var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
                 prefs.put(PeonConstants.PREF_PLAN_MODEL, model);
                 prefs.flush();
@@ -146,7 +148,8 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
                 prefs.putBoolean(PeonConstants.PREF_THINK_SUPPORTED, supported);
                 prefs.flush();
                 return true;
-            } else if (agent instanceof AiPlanAgent) {
+            } else if (agent instanceof AiPlanAgent || agent instanceof AiPoAgent) {
+                // Jon (Peon-PO) reuses the plan think slot (see AiPoAgent#isThinkSupported)
                 var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
                 prefs.putBoolean(PeonConstants.PREF_PLAN_THINK_SUPPORTED, supported);
                 prefs.flush();

@@ -12,6 +12,9 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.sterl.llmpeon.ai.AiProvider;
+import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 
 class DiskFileWriteToolTest {
@@ -110,5 +113,35 @@ class DiskFileWriteToolTest {
         Files.writeString(tempDir.resolve("rep.txt"), "a\nb\nc\nd");
         tool.diskReplaceLines("rep.txt", 2, "x\ny");
         assertEquals("a\nx\ny\nc\nd", Files.readString(tempDir.resolve("rep.txt")));
+    }
+
+    private ToolLoopRequest docsRequest() {
+        var model = LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", "http://localhost:9999").build();
+        return ToolLoopRequest.builder()
+                .memory(new ThreadSafeMemory())
+                .chatModel(model)
+                .writeValidator(WriteValidator.DOCS)
+                .build();
+    }
+
+    @Test
+    void write_allowedInsideDocs() {
+        tool.withToolRequest(docsRequest());
+        tool.diskWriteFile("proj/docs/feature.md", "hello");
+        assertTrue(Files.exists(tempDir.resolve("proj/docs/feature.md")));
+    }
+
+    @Test
+    void write_rejectedOutsideDocs() {
+        tool.withToolRequest(docsRequest());
+        assertThrows(IllegalArgumentException.class,
+                () -> tool.diskWriteFile("src/main/java/Foo.java", "x"));
+        assertFalse(Files.exists(tempDir.resolve("src/main/java/Foo.java")));
+    }
+
+    @Test
+    void write_withoutRequest_isUnrestricted() {
+        tool.diskWriteFile("anywhere/file.txt", "x"); // no withToolRequest -> request == null
+        assertTrue(Files.exists(tempDir.resolve("anywhere/file.txt")));
     }
 }

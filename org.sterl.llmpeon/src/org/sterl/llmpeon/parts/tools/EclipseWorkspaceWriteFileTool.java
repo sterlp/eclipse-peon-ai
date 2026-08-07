@@ -37,6 +37,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         ArgsUtil.requireNonBlank(filePath, "filePath");
         ArgsUtil.requireNonNull(line, "line");
         ArgsUtil.requireNonNull(newContent, "newContent");
+        validateWrite(filePath);
 
         var inFile = EclipseUtil.resolveInEclipse(filePath);
         if (inFile.isEmpty() || !(inFile.get() instanceof IFile eclipseFile)) {
@@ -64,6 +65,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
 
         ArgsUtil.requireNonBlank(filePath, "filePath");
         ArgsUtil.requireNonBlank(oldString, "oldString");
+        validateWrite(filePath);
         if (newString == null) newString = "";
 
         var inFile = EclipseUtil.resolveInEclipse(filePath);
@@ -88,6 +90,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
 
         ArgsUtil.requireNonBlank(filePath, "filePath");
         ArgsUtil.requireNonNull(content, "content");
+        validateWrite(filePath);
 
         var inFile = EclipseUtil.resolveInEclipse(filePath);
         if (inFile.isPresent() && inFile.get() instanceof IFile eclipseFile) {
@@ -135,6 +138,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
 
         ArgsUtil.requireNonBlank(filePath, "filePath");
         ArgsUtil.requireNonNull(newContent, "newContent");
+        validateWrite(filePath);
 
         var inFile = EclipseUtil.resolveInEclipse(filePath);
         if (inFile.isEmpty() || !(inFile.get() instanceof IFile eclipseFile)) {
@@ -153,6 +157,8 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
 
         ArgsUtil.requireNonBlank(sourcePath, "sourcePath");
         ArgsUtil.requireNonBlank(targetPath, "targetPath");
+        validateWrite(sourcePath);
+        validateWrite(targetPath);
 
         var source = EclipseUtil.resolveInEclipse(sourcePath);
         if (source.isEmpty()) throw new IllegalArgumentException("Not found: " + sourcePath);
@@ -186,6 +192,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
             @P(description = "workspace-relative path", name = "filePath") String filePath) {
 
         ArgsUtil.requireNonBlank(filePath, "filePath");
+        validateWrite(filePath);
 
         var file = EclipseUtil.resolveInEclipse(filePath);
         if (file.isEmpty()) return "Not found: " + filePath;

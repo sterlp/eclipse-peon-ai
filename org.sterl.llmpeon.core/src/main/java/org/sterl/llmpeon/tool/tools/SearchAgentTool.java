@@ -40,12 +40,20 @@ public class SearchAgentTool extends AbstractTool {
                 .memory(messages)
                 .agentConfig(cfg.searchAgentConfig());
 
-            onTool("Search agent "
+            onTool("Da Sniffa "
                     + (modelName == null ? "" : "(" + modelName + ")")
                     + " start:\n" + prompt);
-            var response = toolService.executeLoop(request.build());
+            long startNanos = System.nanoTime();
+            dev.langchain4j.model.chat.response.ChatResponse response;
+            monitor.onSubAgent("Search", true); // header roster: light the transient Search chip
+            try {
+                response = toolService.executeLoop(request.build());
+            } finally {
+                monitor.onSubAgent("Search", false);
+            }
+            long elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000;
 
-            onTool("Search agent done.");
+            onTool("Da Sniffa done. (" + StringUtil.humanElapsed(elapsedMillis) + ")");
             String answer = response != null ? response.aiMessage().text() : null;
             return StringUtil.hasValue(answer) ? answer : "Search completed but returned no result";
 

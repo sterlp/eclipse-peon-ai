@@ -1,0 +1,94 @@
+PHASENWEISE ARBEITEN — die Methode, die funktioniert
+=====================================================
+
+Festgehalten am 2026-08-06, nach dem MVP-Neubau "Agenten-Status im Header".
+Diese Session lief ungewöhnlich glatt: kein Big-Bang, kein Debugging-Sumpf, jeder
+Zwischenstand grün und /compact-fest. Warum? Weil wir konsequent phasenweise
+gearbeitet haben. Dieses File beschreibt die Methode, damit sie wiederholbar wird
+(und danach in Jons Prompt einfließt).
+
+
+DAS GRUNDMUSTER (in Reihenfolge)
+--------------------------------
+
+1. KLEINER PLAN ZUERST — nicht die ganze Lösung, sondern ein MVP in wenige
+   Inkremente zerlegt. Jedes Inkrement ist FÜR SICH baubar und grün. Das ist keine
+   Kosmetik: ein grüner Zwischenstand übersteht /compact verlustfrei, ist jederzeit
+   stopp- und übergabefähig, und ein Fehler bleibt auf ein Inkrement begrenzt statt
+   sich über einen 800-Zeilen-Diff zu verteilen.
+
+2. ARCHITEKTUR VORAB ABSPRECHEN — bevor eine Zeile Code entsteht, wird das WIE
+   entschieden und als ADR festgehalten (hier ADR-0025: Pull/MVC statt Observer).
+   Die Entscheidung lebt auf Papier, nicht im Kopf. Der Effekt: der Bug wurde
+   KONSTRUKTIV gekillt — das neue Design macht die Doppel-Anzeige unmöglich, statt
+   sie zu flicken. "Fix the class of bug, not the instance."
+
+3. DEN PLAN-AGENTEN NACH DER EINFACHEN LÖSUNG SUCHEN LASSEN — nicht selbst
+   drauflosbauen. Der Plan-Sklave bekommt den expliziten Auftrag: finde die
+   SIMPELSTE Lösung, die das Ziel erfüllt. "Kleinste Änderung, die den Nutzer
+   zufriedenstellt." Komplexität ist Bringschuld, nicht Default.
+
+4. DISKUTIEREN / REVIEW VOR DEM BAU — den Plan challengen, bevor er gebaut wird:
+   - Ist er korrekt? Deckt er die BDD-Fälle ab?
+   - Wo sind die Edge-Cases? (Diese Session: der Inc-1-Ordering-Bug wurde BEIM
+     REVIEW gefunden — das Löschen von peek*Slave() in Inc 1 hätte das noch lebende
+     getRoster() gebrochen. Fix: Inc 1 fügt nur hinzu, gelöscht wird erst in Inc 5.
+     Nie gebaut, nie ein roter Build.)
+   - Offene Fragen: eine Frage pro Nachricht, jede mit einer Empfehlung.
+   Erst wenn der Plan sauber ist, wird gebaut.
+
+5. PHASENWEISE BAUEN — Inkrement für Inkrement:
+   - Ein Inkrement bauen → VOLLER Build grün → Doc-Status nachziehen
+     ("✅ gebaut, grün") → erst dann das nächste.
+   - Nach jedem Inkrement kurz an den Nutzer zurück ("weiter?"), nicht fünf
+     Schritte am Stück durchrattern.
+
+
+DIE DISZIPLIN-REGELN (was jeden Schritt grün hält)
+--------------------------------------------------
+
+- NUR-HINZUFÜGEN ODER NUR-LÖSCHEN pro Inkrement, nie beides gemischt. Das neue
+  System wird additiv aufgebaut, während das alte weiterläuft; erst wenn das neue
+  komplett steht, wird das alte in EINEM eigenen Cleanup-Inkrement rausgerissen.
+  (Diese Session: Inc 1–4 bauten den Pull/MVC-Pfad neben dem alten Observer-Pfad
+  auf; Inc 5 löschte den Observer-Pfad komplett.)
+
+- ALT-PFAD ZULETZT ENTFERNEN. Solange das Neue nicht steht und grün ist, bleibt das
+  Alte unangetastet — auch wenn es "hässlich" nebenherläuft (deprecated peek*Slave()
+  wurde geduldet bis Inc 5). Zwei lebende Pfade für kurze Zeit sind billiger als ein
+  roter Build.
+
+- TESTBAREN KERN HERAUSZIEHEN. Die Logik in eine SWT-/IO-freie, pure Funktion, die
+  headless testbar ist (hier AiAgentStatusModel.build(List<Row>)). Die
+  unvermeidliche UI-Randschicht (setText) wird NICHT getestet. So ist die eigentliche
+  Regel deterministisch abgesichert, ohne Live-Agenten.
+
+- JEDER BUG WIRD EIN REGRESSIONSTEST. Auch beim Umbau: die alten Roster-Tests wurden
+  nicht ersatzlos gelöscht, sondern ihre Intention ("folgt Wechsel ohne Stale-State")
+  in einen neuen Test auf dem neuen Choke-Point übersetzt.
+
+- DIE DOKU IST DIE WAHRHEIT, LAUFEND GEPFLEGT. Status-Marker (🚧 / ❌ / ✅) und
+  Inkrement-Häkchen werden im selben Schritt gesetzt, in dem gebaut wird — nie nur im
+  Chat. Der Plan bleibt so /compact-fest.
+
+
+WARUM DAS GEWINNT
+-----------------
+
+- Kein Big-Bang: ein Fehler ist auf ein kleines Inkrement lokalisiert.
+- /compact-fest: jeder Zwischenstand ist grün und dokumentiert, ein Kontextverlust
+  kostet nichts.
+- Konstruktive Bugfixes: die Architektur-vorab-Phase killt ganze Bug-Klassen statt
+  Symptome.
+- Einfachheit als Default: der Plan-Agent sucht aktiv das Simpelste; Komplexität muss
+  sich rechtfertigen.
+- Vertrauen durch grüne Schritte: nach jedem Inkrement ein prüfbarer Stand, an dem
+  der Nutzer aussteigen, korrigieren oder weitergehen kann.
+
+
+DER EINE SATZ
+-------------
+
+Kleiner Plan → Architektur als ADR abgesprochen → Plan-Sklave sucht die einfachste
+Lösung → Review challengt den Plan BEVOR gebaut wird → dann Inkrement für Inkrement
+bauen, jedes voll grün, additiv aufbauen und den Alt-Pfad zuletzt entfernen.

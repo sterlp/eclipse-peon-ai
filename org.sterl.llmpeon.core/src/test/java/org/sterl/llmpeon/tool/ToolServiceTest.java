@@ -9,17 +9,25 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
+import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.tools.WebFetchTool;
 
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -119,6 +127,57 @@ class ToolServiceTest {
         assertThat(messages.get(1)).isEqualTo(aiMessage);
     }
     
+    /** A tool whose execution always throws — used to prove tool errors don't trigger the AI retry. */
+    static class BoomTool implements SmartTool {
+        @Tool("always fails")
+        public String boom() { throw new RuntimeException("tool boom"); }
+        @Override public void withToolRequest(ToolLoopRequest request) {}
+    }
+
+    /**
+     * A throwing tool goes through the tool-loop feedback path (onProblem + error result fed back to
+     * the model), NOT through {@link org.sterl.llmpeon.streaming.ApiRetry} — the retry wraps only the
+     * AI call. So the model is called once per loop round, never re-called to "retry" the tool.
+     */
+    @Test
+    @Timeout(10)
+    void tool_error_is_not_retried() {
+        // GIVEN — round 1: model asks for the boom tool; round 2: model answers
+        var boom = new BoomTool();
+        subject.replaceTool(boom);
+        var round = new AtomicInteger();
+        var cm = mockWithHandler(req -> {
+            if (round.incrementAndGet() == 1) {
+                return ChatResponse.builder().aiMessage(AiMessage.builder()
+                        .toolExecutionRequests(List.of(ToolExecutionRequest.builder()
+                                .id("1").name("boom").arguments("{}").build()))
+                        .build()).build();
+            }
+            return ChatResponse.builder().aiMessage(AiMessage.from("done")).build();
+        });
+        var problems = new ArrayList<String>();
+        var monitor = new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onProblem(String message) { problems.add(message); }
+        };
+        var memory = new ThreadSafeMemory();
+        memory.add(UserMessage.from("go"));
+
+        // WHEN
+        var response = subject.executeLoop(ToolLoopRequest.builder()
+                .memory(memory)
+                .chatModel(new ConfiguredChatModel(LlmConfig.newOpenAi("foo"), cm))
+                .monitor(monitor)
+                .build());
+
+        // THEN — loop recovered to a text answer; tool failure surfaced via the feedback path
+        assertThat(response.aiMessage().text()).isEqualTo("done");
+        assertThat(problems).anyMatch(p -> p.contains("boom failed"));
+        // AND — NOT retried: no ApiRetry message, and exactly two model rounds (tool-call + answer)
+        assertThat(problems).noneMatch(p -> p.contains("API error — attempt"));
+        assertThat(round.get()).isEqualTo(2);
+    }
+
     public StreamingChatModel mockWithHandler(Function<ChatRequest, ChatResponse> fn) {
         var cm = mock(StreamingChatModel.class);
         doAnswer(inv -> {

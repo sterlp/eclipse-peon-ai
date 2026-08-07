@@ -5,13 +5,17 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.sterl.llmpeon.AgentService;
 import org.sterl.llmpeon.StandingOrdersBuilder.MessageProvider;
 import org.sterl.llmpeon.agent.AiAgent;
+import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
+import org.sterl.llmpeon.agent.AiPoAgent;
+import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.ai.model.AiModel;
@@ -29,6 +33,7 @@ import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
 import org.sterl.llmpeon.parts.tools.EclipseRunTestTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
+import org.sterl.llmpeon.parts.tools.PlanReadTool;
 import org.sterl.llmpeon.parts.tools.PlanTool;
 import org.sterl.llmpeon.parts.tools.memory.WorkspaceMemoryTool;
 import org.sterl.llmpeon.scaffold.AiScaffoldAgent;
@@ -36,9 +41,12 @@ import org.sterl.llmpeon.scaffold.ReloadConfigTool;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.tool.ToolService;
+import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
+import org.sterl.llmpeon.tool.tools.JonDelegateTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 import org.sterl.llmpeon.tool.tools.DiskGrepTool;
+import org.sterl.llmpeon.tool.tools.SearchAgentTool;
 import org.sterl.llmpeon.tool.tools.SkillTool;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -55,12 +63,17 @@ import dev.langchain4j.data.message.UserMessage;
  */
 public class PeonAiService implements MessageProvider {
 
+    /** Jon's RAM-only slaves compact at 70% of the shared budget so their throw-away context stays lean. */
+    private static final double SLAVE_COMPACT_FACTOR = 0.7;
+
     private final AgentService agentService;
     private final ConfiguredChatModel configuredModel;
 
     /** Shared tool service used by dev/plan/custom agents (MCP, AskUserTool, ShellTool, workspace disk tools). */
     private final ToolService sharedToolService;
     private final AiScaffoldAgent scaffoldAgent;
+    /** Jon's delegate tool — the header roster peeks its Plan/Dev slaves when Jon is the active agent. */
+    private final JonDelegateTool jonDelegateTool;
 
     private final SkillService skillService;
     private final CommandService commandService;
@@ -72,6 +85,8 @@ public class PeonAiService implements MessageProvider {
     private final PlanTool planTool;
     
     private final EclipseWorkspaceWriteFileTool workspaceWriteFilesTool;
+    private final EclipseWorkspaceReadFileTool workspaceReadFilesTool;
+    private final EclipseGrepTool eclipseGrepTool;
     private final DiskFileWriteTool diskFileWriteTool;
     private final DiskFileReadTool diskFileReadTool;
     private final DiskGrepTool diskGrepTool;
@@ -113,7 +128,8 @@ public class PeonAiService implements MessageProvider {
         sharedToolService.addTool(new SkillTool(skillService));
         workspaceWriteFilesTool = new EclipseWorkspaceWriteFileTool();
         sharedToolService.addTool(workspaceWriteFilesTool);
-        sharedToolService.addTool(new EclipseWorkspaceReadFileTool());
+        workspaceReadFilesTool = new EclipseWorkspaceReadFileTool();
+        sharedToolService.addTool(workspaceReadFilesTool);
 
         diskFileWriteTool = new DiskFileWriteTool(rootPath);
         diskFileReadTool  = new DiskFileReadTool(rootPath);
@@ -122,7 +138,8 @@ public class PeonAiService implements MessageProvider {
 
         sharedToolService.addTool(workspaceMemoryTool);
         sharedToolService.addTool(new EclipseBuildTool());
-        sharedToolService.addTool(new EclipseGrepTool());
+        eclipseGrepTool = new EclipseGrepTool();
+        sharedToolService.addTool(eclipseGrepTool);
         sharedToolService.addTool(new EclipseRunTestTool());
         sharedToolService.addTool(new EclipseCodeNavigationTool());
         sharedToolService.addTool(new EclipseConsoleLogTool());
@@ -141,6 +158,56 @@ public class PeonAiService implements MessageProvider {
 
         // Add scaffold as persistent agent (survives clearAgents on reload)
         agentService.addPersistentAgent(scaffoldAgent);
+
+        // Peon-PO (Jon): own curated tool set — docs read/write/grep only (no shell/build/test/plan).
+        // Reuses the shared Eclipse tool instances so project updates + the per-request write validator
+        // (WriteValidator.DOCS from AiPoAgent) apply automatically.
+        var poToolService = new ToolService(false);
+        poToolService.addTool(workspaceReadFilesTool);
+        poToolService.addTool(workspaceWriteFilesTool);
+        poToolService.addTool(eclipseGrepTool);
+        // Jon curates the shared memory (write) — he knows it is shared by all agents, so writing it
+        // steers his slaves and the other agents (they only ever READ it, via standing-order injection).
+        poToolService.addTool(workspaceMemoryTool);
+        // Read-only plan access: hasPlan (returns the path) + planRead. Jon reviews & hands the path
+        // to buildWithAgent but never writes the plan himself — that is his Peon-Plan agent's job.
+        poToolService.addTool(new PlanReadTool(planTool));
+        // Jon's Plan/Dev slaves: RAM-only (2-arg ctor — no history file, ADR-0024), reusing the shared
+        // Eclipse tool set. Lazy singletons via the factory so Jon-in-core stays testable headless.
+        // Slaves may READ the shared memory (injected as a standing order) but never WRITE it — strip the
+        // memory-write tool from their effective set; only Jon curates the shared memory.
+        Predicate<SmartToolExecutor> noMemoryWrite = t -> !(t.getTool() instanceof WorkspaceMemoryTool);
+        // Eager shared slaves (ADR-0025): created once here and handed — as the same NamedAgent objects —
+        // to both the delegate tool (which drives them) and AiPoAgent (which exposes them via getTeam()).
+        AiAgent planSlave = new AiPlanAgent(configuredModel, sharedToolService, SLAVE_COMPACT_FACTOR) {
+            @Override protected Predicate<SmartToolExecutor> getToolFilter() {
+                return super.getToolFilter().and(noMemoryWrite);
+            }
+        };
+        AiAgent devSlave = new AiDevAgent(configuredModel, sharedToolService, SLAVE_COMPACT_FACTOR) {
+            @Override protected Predicate<SmartToolExecutor> getToolFilter() {
+                return super.getToolFilter().and(noMemoryWrite);
+            }
+        };
+        var thinka = new NamedAgent("Da Thinka", planSlave);
+        var mek = new NamedAgent("Da Mek", devSlave);
+        // Slaves also need the same relevant context as the active agent (Jon gets it via userContext;
+        // they get it folded into their injected standing orders — read-only, like the shared memory):
+        // the shared memory, the base AGENTS.md ground rules, and the selected project.
+        jonDelegateTool = new JonDelegateTool(thinka, mek, () -> {
+            var orders = new java.util.ArrayList<String>(workspaceMemoryTool.get());
+            var agentsMd = agentsMdService.getBaseAgentsMd();
+            if (agentsMd != null) orders.add(agentsMd);
+            if (currentProject != null) orders.add("Selected project:" + System.lineSeparator()
+                    + EclipseUtil.projectInfo(currentProject));
+            return orders;
+        });
+        poToolService.addTool(jonDelegateTool);
+        // Jon's own throw-away research sub-agent (Da Sniffa) — searches with his read/grep tools to
+        // save his context; stateless one-shot, not one of his persistent slaves.
+        poToolService.addTool(new SearchAgentTool(poToolService));
+        var poAgent = new AiPoAgent(configuredModel, poToolService, config.getConfigDir(), List.of(thinka, mek));
+        agentService.addPersistentAgent(poAgent);
 
 
         mcpConnectionService = new McpConnectionService(sharedToolService, mcpStateChange);
@@ -308,6 +375,17 @@ public class PeonAiService implements MessageProvider {
     public record ToolStatus(String name, boolean active, boolean mcp) {}
 
     /**
+     * The agents shown in the header status widget: when Jon (Peon-PO) is active, his
+     * {@link AiPoAgent#getTeam() team} (Da Boss + the two orks Da Thinka/Da Mek); for every other
+     * agent an empty list — they show nothing. This is the <b>single</b> {@code instanceof AiPoAgent}
+     * choke-point (ADR-0025): the widget pulls this list and stays type-agnostic, the {@code AiAgent}
+     * interface stays lean.
+     */
+    public List<NamedAgent> getStatusAgents() {
+        return getActiveAgent() instanceof AiPoAgent po ? po.getTeam() : List.of();
+    }
+
+    /**
      * Lists every registered tool (built-in + connected MCP) with whether it is active for the
      * currently active service. Sorted: active first, then by name. For UI introspection.
      */
@@ -393,6 +471,26 @@ public class PeonAiService implements MessageProvider {
         return org.sterl.llmpeon.prompt.PromptLoader.load("scaffold-tutorial.txt");
     }
 
+    /**
+     * A one-time Jon intro shown as a chat message when there is nothing to onboard from yet — Jon
+     * active, empty memory, and no {@code docs/index.md}. The clean complement to
+     * {@link #docsIndexSeedForFirstMessage()} (which fires when the index <em>exists</em>): if there is
+     * a map, Jon navigates it; if there is none, we greet the user and explain how Jon works. Returns
+     * {@code null} otherwise. Shown on activation like {@link #getScaffoldTutorial()}, not sent to the LLM.
+     */
+    public String getPoTutorial() {
+        var agent = getActiveAgent();
+        if (!(agent instanceof AiPoAgent)) return null;
+        if (agent.getMemory().size() > 0) return null;
+        var project = getProject();
+        if (project == null) return null;
+
+        var index = project.getFile("docs/index.md");
+        if (index != null && index.exists()) return null; // there is a map -> the seed handles it
+
+        return org.sterl.llmpeon.prompt.PromptLoader.load("po-tutorial.txt");
+    }
+
     private void preloadPlanIfNeeded() {
         if (!planTool.hasPlan()) return;
 
@@ -406,6 +504,28 @@ public class PeonAiService implements MessageProvider {
                         + planTool.planRead()));
             }
         }
+    }
+
+    /**
+     * The {@code docs/index.md} seed text for Jon's <b>first</b> user message, or {@code null} when it
+     * does not apply. The caller attaches it as a <b>one-time standing order</b> so it is folded into
+     * the same {@code UserMessage} as the user's question (which stays the last {@code TextContent}) —
+     * unlike the Plan agent, whose plan is shown as its own chat message. Guarded on empty memory so
+     * only the first message is seeded, and read fresh at send time (not on activation / project-set).
+     */
+    public String docsIndexSeedForFirstMessage() {
+        var agent = getActiveAgent();
+        if (!(agent instanceof AiPoAgent)) return null;
+        if (agent.getMemory().size() != 0) return null;
+        var project = getProject();
+        if (project == null) return null;
+
+        var index = project.getFile("docs/index.md");
+        if (index == null || !index.exists()) return null;
+
+        return "Docs index (docs/index.md) — the map of all feature docs. Use it to navigate; no need to re-read it."
+                + System.lineSeparator() + "---" + System.lineSeparator() + System.lineSeparator()
+                + IoUtils.readString(index);
     }
 
     public void onPlanSaved(IFile planFile) {
@@ -429,6 +549,10 @@ public class PeonAiService implements MessageProvider {
 
     public void setStaticContext(List<ChatMessage> content) {
         this.agentService.getAgents().forEach(a -> a.setStaticContext(content));
+        // Jon's RAM slaves are not registered in agentService, so give them the same static context
+        // (date/OS + file-access rules) directly — Inc 2, docs/sklaven-kontext-plan.md.
+        jonDelegateTool.getPlanSlave().setStaticContext(content);
+        jonDelegateTool.getDevSlave().setStaticContext(content);
     }
 
     @Override

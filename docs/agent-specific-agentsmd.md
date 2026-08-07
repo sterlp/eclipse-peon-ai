@@ -12,6 +12,7 @@ The system derives the agent name key from the active agent's display name:
 |-------|----------|-------------|
 | Peon-Dev | `DEV` | `AGENTS-DEV.md` |
 | Peon-Plan | `PLAN` | `AGENTS-PLAN.md` |
+| Peon-PO | `PO` | `AGENTS-PO.md` |
 | Custom (name="Docs-Assistant") | `Docs-Assistant` | `AGENTS-Docs-Assistant.md` |
 
 - **Built-in agents:** the key is the part after "Peon-", uppercased. "Peon-Dev" → "DEV", "Peon-Plan" → "PLAN".

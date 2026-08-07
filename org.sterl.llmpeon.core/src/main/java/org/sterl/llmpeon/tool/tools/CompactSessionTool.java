@@ -20,8 +20,11 @@ public class CompactSessionTool extends AbstractTool {
             @P(description = "Short instructions or next steps to keep and echo back after compression.", required = false, name = "preserve") String preserve) {
         var model = this.request.getChatModel();
 
+        long startNanos = System.nanoTime();
         var summary = new AiCompressorAgent(model)
                 .call(this.request.getMemory().getCopy(), monitor);
+        long elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000;
+        onTool("Da Scribe done. (" + StringUtil.humanElapsed(elapsedMillis) + ")");
 
         // only if we have a valid result -- also ensure the first message is a user message, some LLMs need this ...
         var aiMsg = summary.aiMessage();

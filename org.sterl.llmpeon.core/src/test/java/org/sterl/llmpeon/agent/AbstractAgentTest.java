@@ -208,6 +208,32 @@ class AbstractAgentTest {
         assertThat(Files.exists(planStore.historyFile())).isTrue();
     }
 
+    /** By default an agent compacts at the full shared budget (compactFactor 1.0). */
+    @Test
+    void compactAfterTokens_defaultsToFullBudget() {
+        var config = LlmConfig.builder().model("mock").autoCompactAfter(80000).build();
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, streamMock.buildMock(r -> null)), new ToolService());
+        assertThat(agent.compactAfterTokens()).isEqualTo(80000);
+    }
+
+    /** Jon's slaves are constructed with a lower compactFactor so they compact earlier (R10). */
+    @Test
+    void compactAfterTokens_scaledByCompactFactor() {
+        var config = LlmConfig.builder().model("mock").autoCompactAfter(80000).build();
+        var model = new ConfiguredChatModel(config, streamMock.buildMock(r -> null));
+        assertThat(new AiDevAgent(model, new ToolService(), 0.7).compactAfterTokens()).isEqualTo(56000);
+        assertThat(new AiPlanAgent(model, new ToolService(), 0.7).compactAfterTokens()).isEqualTo(56000);
+    }
+
+    /** A nonsense factor (<=0 or >1) falls back to the full budget rather than compacting forever. */
+    @Test
+    void compactAfterTokens_nonsenseFactor_fallsBackToFullBudget() {
+        var config = LlmConfig.builder().model("mock").autoCompactAfter(80000).build();
+        var model = new ConfiguredChatModel(config, streamMock.buildMock(r -> null));
+        assertThat(new AiDevAgent(model, new ToolService(), 0).compactAfterTokens()).isEqualTo(80000);
+        assertThat(new AiDevAgent(model, new ToolService(), 1.5).compactAfterTokens()).isEqualTo(80000);
+    }
+
     private List<String> extractUserTexts(List<ChatMessage> messages) {
         return messages.stream()
                 .filter(m -> m instanceof UserMessage)

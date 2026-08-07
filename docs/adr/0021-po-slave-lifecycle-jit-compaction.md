@@ -1,32 +1,56 @@
 # ADR-0021: Peon-PO slave lifecycle & just-in-time compaction
 
-**Status** · Proposed
+**Status** · Accepted
 
 ## Context
-Jon's slaves (Peon-Plan, Peon-Dev) carry a real conversation across many `jonAsk*` turns, so they must
-**keep their context** between calls — unlike the stateless one-shot SearchAgent. Long-running slaves
-will eventually overflow their context window, but compacting eagerly (or on every turn) wastes tokens
-and can drop the very instruction Jon is about to send.
+Jon's slaves (Peon-Plan "Da Thinka", Peon-Dev "Da Mek") carry a real conversation across many `jonAsk*`
+turns, so they must **keep their context** between calls — unlike the stateless one-shot SearchAgent.
+Long-running slaves will eventually overflow their window, but compacting eagerly (or on every turn)
+wastes tokens and can drop the very instruction Jon is about to send. Slaves should also run leaner than
+the durable active agent: their context is throw-away, so they can afford to compact earlier.
 
 ## Decision
-- **Lazy persistent singletons:** the first Plan-side call (`jonCreateDevPlan` / `jonAskQuestion`) or
-  `jonAskDev` call creates the instance; it
-  is then kept alive and reused for the whole Jon session, holding its context. SearchAgent stays
-  one-shot/stateless. These are **dedicated, Jon-owned instances with their own history files**, not
-  the user-selectable Peon-Plan/Peon-Dev from `AgentService` (sharing would corrupt the user's memory/
-  history and dead-queue the nested `call()` via the `working` guard).
-- **Just-in-time compaction:** a slave is compacted **only immediately before Jon sends it the next
-  message** (via `slave.compressContext(monitor)`), and only when its context exceeds a **single
-  constant threshold (default 60 %,** to be fine-tuned later). The threshold needs its own explicit
-  base — `AbstractAgent.tokenContextUsedInPercent()` caps its denominator at `min(autoCompactAfter,
-  4000)`, so that value is too fuzzy to key "60 %" on directly.
+- **Eager shared singletons, RAM-only:** the two slaves are created once and reused for the whole Jon
+  session, holding their in-RAM context across calls; they use no history file (see
+  [ADR-0024](0024-po-slaves-ram-only.md)). This supersedes the original "lazy, own-history-file"
+  sketch — the durable hand-off is the plan file, not the slave's memory.
+- **Per-agent compaction budget via `compactFactor`:** `AbstractAgent` carries a `compactFactor`
+  (double, clamped to `(0,1]`, **default `1.0` = the full shared budget**). `compactAfterTokens()`
+  returns `round(LlmConfig.autoCompactAfter × compactFactor)`. Jon's slaves are constructed with
+  **`compactFactor = 0.7`** (the `AiPlanAgent`/`AiDevAgent` 3-arg ctor; wired in `PeonAiService` as
+  `SLAVE_COMPACT_FACTOR`), so they auto-compact at 70 % of the budget while every other agent stays at
+  100 %. The factor scales with the shared budget rather than pinning an absolute token count.
+- **Hard trigger only:** `compactAfterTokens()` gates the **pre-turn** auto-compaction in
+  `AbstractAgent.doCall` (compact before starting a turn once the context exceeds the budget). This is
+  the single place the per-agent factor takes effect.
+- **Jon opts out of the hard trigger entirely (`isAutoCompact()` → `false`).** `AbstractAgent` carries an
+  `isAutoCompact()` flag (default `true`); `AiPoAgent` overrides it to `false`, so the pre-turn guard in
+  `doCall` never force-compacts Jon. He owns the docs *and* the shared memory, so he must keep the turn in
+  which the soft 95 % hint reaches him — that turn is his chance to persist to `memory.md` (and the
+  cross-session `memory*` tools) and *then* self-compact via `compactSession` on his own terms. The slaves
+  keep the hard trigger (they are throw-away workers); the per-task `compactSession` discipline Jon hands
+  the Dev slave with the plan (`dev-build-loop.txt`) is unaffected. Accepted trade-off: if Jon ignores the
+  hint his context can grow to the real model limit — that is his call as "the boss".
+- **The 95 % in-loop hint stays global — deliberately unchanged.** While a slave *works*, its context
+  grows within one turn; `ToolService.addCompactHintIfNeeded` nudges it to self-compact
+  (`compactSession`) at 95 % of the budget. A working slave needs that hint (and the compact tools) and
+  keeps them. We intentionally leave that hint keyed to the **global** `LlmConfig.autoCompactAfter`, not
+  to the per-agent factor: the pre-turn hard trigger already resets each turn to a lean starting point,
+  a single turn rarely grows the whole remaining budget, and threading per-agent state through
+  `ToolLoopRequest` for that marginal gain is not worth the added coupling.
 - **Standing-order survival:** Jon's outgoing message is delivered to the slave as a **standing order**
-  (like a `/` command), so it survives the compaction and is inserted **before** the compact result —
-  the slave never compacts away the instruction it is about to act on.
+  (like a `/` command), so it survives compaction and is inserted **before** the compact result — the
+  slave never compacts away the instruction it is about to act on (see
+  [ADR-0010](0010-standing-orders-setactiveagent-hook.md)).
 
 ## Consequences
-- Exactly two long-lived slave contexts per Jon session → the header can show `peon-plan(context-size)`
-  and `peon-dev(context-size)` with a status ball each.
-- The 60 % threshold is one named constant, expected to need tuning.
-- Reuses the existing standing-orders mechanism ([ADR-0010](0010-standing-orders-setactiveagent-hook.md))
-  and compaction tooling rather than inventing a new pre-compaction channel.
+- Exactly two long-lived slave contexts per Jon session; the header shows each with its live token count
+  and a status ball ([ADR-0025](0025-po-status-widget-named-agents.md)).
+- `compactFactor` is one clamped constructor knob; `0.7` is expected to need tuning and is easy to move.
+- The pre-turn trigger and the in-loop hint now use **different** bases for slaves (hard trigger at
+  `0.7 × budget`, hint at `0.95 × budget`). That is accepted: the hint firing later than the hard
+  trigger for a slave is harmless because the hard trigger keeps turn-start lean.
+- `AbstractAgent.tokenContextUsedInPercent()` still caps its denominator at `min(autoCompactAfter,
+  4000)` — a pre-existing UI-percent oddity, left untouched; it does not feed the compaction trigger.
+- Reuses the existing standing-orders mechanism and compaction tooling rather than inventing a new
+  pre-compaction channel.

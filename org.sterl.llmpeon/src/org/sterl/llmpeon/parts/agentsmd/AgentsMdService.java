@@ -46,6 +46,18 @@ public class AgentsMdService implements MessageProvider {
         return result;
     }
     
+    /**
+     * The <b>base</b> {@code AGENTS.md} ground rules only — deliberately <b>without</b> the
+     * agent-specific {@code AGENTS-<agent>.md}, which is keyed to the active agent name and would be
+     * the wrong file for a delegated slave (Jon's key is {@code PO}, not his slaves'). Used to inject
+     * the shared ground rules into Jon's RAM slaves. Returns {@code null} when disabled or no base file.
+     */
+    public String getBaseAgentsMd() {
+        if (!enabled.get()) return null;
+        if (agentsMd != null && agentsMd.exists()) return loadAgentMd(agentsMd);
+        return null;
+    }
+
     private String loadAgentMd(IFile file) {
         var text = IoUtils.readString(file);
         return JdtUtil.pathOf(file) + ":" + System.lineSeparator()

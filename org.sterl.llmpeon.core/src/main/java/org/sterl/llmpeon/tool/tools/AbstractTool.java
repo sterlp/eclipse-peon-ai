@@ -17,6 +17,16 @@ public class AbstractTool implements SmartTool {
         monitor.onProblem(m);
     }
 
+    /**
+     * Enforce the current request's {@link org.sterl.llmpeon.tool.WriteValidator} on a raw write path.
+     * No-op when the tool is invoked without a request (e.g. direct unit-test calls).
+     *
+     * @throws IllegalArgumentException if the agent may not write to {@code path}
+     */
+    protected void validateWrite(String path) {
+        if (request != null) request.getWriteValidator().validate(path);
+    }
+
     @Override
     public void withToolRequest(ToolLoopRequest request) {
         this.request = request;

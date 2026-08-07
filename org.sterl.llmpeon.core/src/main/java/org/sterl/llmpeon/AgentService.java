@@ -14,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
+import org.sterl.llmpeon.agent.AiPoAgent;
 import org.sterl.llmpeon.agent.CustomAgent;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.prompt.PromptYmlParser;
@@ -105,12 +106,13 @@ public class AgentService {
         agents.clear();
     }
 
-    /** Returns loaded agents when enabled, empty list when disabled, sorted by name. */
+    /** Returns loaded agents when enabled, empty list when disabled: Peon-PO (Jon) first, rest by name. */
     public List<AiAgent> getAgents() {
         var all = new java.util.LinkedHashSet<AiAgent>(agents.values());
         all.addAll(persistentAgents.values());
         return all.stream()
-                    .sorted(Comparator.comparing(a -> a.getName()))
+                    .sorted(Comparator.<AiAgent>comparingInt(a -> a instanceof AiPoAgent ? 0 : 1)
+                            .thenComparing(AiAgent::getName))
                     .toList();
     }
 

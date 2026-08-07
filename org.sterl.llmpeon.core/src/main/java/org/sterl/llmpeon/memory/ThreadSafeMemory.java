@@ -67,6 +67,11 @@ public class ThreadSafeMemory {
         return this;
     }
     
+    /** @return true if this memory is backed by a history store (durable), false if RAM-only. */
+    public boolean isPersistent() {
+        return store != null;
+    }
+
     public synchronized boolean containsUserMessage(String message) {
         if (StringUtil.hasNoValue(message)) return true;
         return memory.stream()

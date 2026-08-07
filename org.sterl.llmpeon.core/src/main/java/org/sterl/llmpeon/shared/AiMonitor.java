@@ -47,6 +47,16 @@ public interface AiMonitor {
         onChatResponse(new SimpleMessage(Type.TOOL, message));
     }
 
+    /**
+     * A sub-agent that the active agent drives as a tool started ({@code active=true}) or finished
+     * ({@code active=false}) working — Jon's RAM-only Plan/Dev slaves (which are not registered
+     * agents) and the search agent (which is not an {@link org.sterl.llmpeon.agent.AiAgent} at all).
+     * Lets the header roster highlight the real worker instead of the orchestrating agent. The
+     * {@code displayName} matches a registered roster row (e.g. {@code "Peon-Dev"}) to light that
+     * row, or is a standalone label (e.g. {@code "Search"}) shown as a transient chip. Default no-op.
+     */
+    default void onSubAgent(String displayName, boolean active) {}
+
     default void onFileUpdate(AiFileUpdate update) {
         onChatResponse(new SimpleMessage(Type.TOOL, "Updated: " + update.file()));
     }
