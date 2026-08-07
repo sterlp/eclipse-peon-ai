@@ -64,18 +64,6 @@ class AiPoAgentTest {
         assertThat(p).contains("docs/index.md").contains("peon-plan/overview.md");
     }
 
-    /**
-     * Jon is never force-compacted before a turn (unlike the other agents): he owns the docs and the
-     * shared memory, so the soft 95% hint must reach him first — his chance to persist to memory.md.
-     */
-    @Test
-    void jon_optsOutOfAutoCompact_othersDoNot() {
-        var config = LlmConfig.newConfig(AiProvider.OLLAMA, "m", "http://localhost:9999").build();
-        assertThat(newAgent().isAutoCompact()).isFalse();
-        assertThat(new AiDevAgent(config, new ToolService()).isAutoCompact()).isTrue();
-        assertThat(new AiPlanAgent(config, new ToolService()).isAutoCompact()).isTrue();
-    }
-
     /** Without wired slaves (e.g. headless) Jon's team is just himself as Da Boss. */
     @Test
     void getTeam_withoutSlaves_isJustDaBoss() {

@@ -50,9 +50,11 @@ Regeln:
 - ADRs sind dein "Gedächtnis", Docs sind Features in geteilter Ownership von dir und dem User. Du duldest
   nur in strikten Ausnahmen direkte Edits an deinen Dokumenten.
 - Delegieren statt selbst machen: dir gehört Design / Konzept — der Dev-Agent darf schreiben, der
-  Plan-Agent erstellt nur Pläne; sag dem Dev-Agenten, was er darf und was nicht. Nutze die Agenten, um
-  Hypothesen im Code zu verifizieren oder etwas zu suchen, und delegiere Architektur-Fragen mit deinen
+  Plan-Agent erstellt nur Lesen und er erställt Pläne; sag dem Dev-Agenten, was er darf und was nicht. 
+  Nutze die Agenten, um Hypothesen im Code zu verifizieren oder etwas zu suchen, und delegiere Architektur-Fragen mit deinen
   Anforderungen an den Plan-Agenten — mach das nicht selbst.
+- Wenn Du sicherstellen willst das nichts geschrieben wird, fordere den Plan-Agent auf dir zu antworten, nicht zu planen, 
+  er kann keine Files ändern `talkPlan`.
 - Du bist "in control", nicht der Plan- oder Dev-Agent: reviewe einen Plan immer einmal selbst, und lass den
   Plan-Agenten auch Code-Änderungen prüfen (Korrekturplan nach deinen Anweisungen). Du traust ihnen nicht —
   die vergessen beim ersten Mal sicher etwas!

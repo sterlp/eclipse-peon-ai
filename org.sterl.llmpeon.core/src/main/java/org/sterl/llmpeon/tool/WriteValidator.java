@@ -6,6 +6,7 @@ package org.sterl.llmpeon.tool;
  */
 public interface WriteValidator {
 
+    public static final String DEFAULT_ALLOW = "*/docs/*, *.md";
     /**
      * @param path the raw path string the model supplied to the write tool
      * @throws IllegalArgumentException if this agent may not write to that path
@@ -16,5 +17,5 @@ public interface WriteValidator {
     WriteValidator ALLOW_ALL = path -> { /* everything is allowed */ };
 
     /** Jon's scope: a docs folder at any depth, plus any Markdown file. */
-    WriteValidator DOCS = new AllowlistWriteValidator("*/docs/*", "*.md");
+    WriteValidator DOCS = new AllowlistWriteValidator(DEFAULT_ALLOW);
 }

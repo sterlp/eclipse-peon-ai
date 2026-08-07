@@ -209,7 +209,6 @@ public class PeonAiService implements MessageProvider {
         var poAgent = new AiPoAgent(configuredModel, poToolService, config.getConfigDir(), List.of(thinka, mek));
         agentService.addPersistentAgent(poAgent);
 
-
         mcpConnectionService = new McpConnectionService(sharedToolService, mcpStateChange);
 
         updateConfig(configuredModel.getConfig());

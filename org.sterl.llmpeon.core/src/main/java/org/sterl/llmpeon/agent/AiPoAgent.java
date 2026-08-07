@@ -68,21 +68,14 @@ public class AiPoAgent extends AbstractAgent {
 
     @Override
     public String getSystemPrompt() {
-        return BASE_PROMPT + System.lineSeparator() + System.lineSeparator() + DELEGATION_PROMPT;
+        return BASE_PROMPT + System.lineSeparator()
+            + System.lineSeparator() + "- Your path white list " + WriteValidator.DEFAULT_ALLOW
+            + System.lineSeparator() + DELEGATION_PROMPT;
     }
 
     @Override
     public WriteValidator getWriteValidator() {
         return WriteValidator.DOCS;
-    }
-
-    /**
-     * Jon is never force-compacted before a turn: he owns the docs and the shared memory, so he must keep
-     * the turn where the soft 95% hint lands to first update memory.md, then compact himself. See ADR-0021.
-     */
-    @Override
-    protected boolean isAutoCompact() {
-        return false;
     }
 
     @Override

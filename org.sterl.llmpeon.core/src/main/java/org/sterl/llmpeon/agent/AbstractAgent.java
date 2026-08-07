@@ -155,16 +155,6 @@ public abstract class AbstractAgent implements AiAgent {
         return (int) Math.round(configuredModel.getConfig().getAutoCompactAfter() * compactFactor);
     }
 
-    /**
-     * Whether this agent is force-compacted before a turn once {@link #compactAfterTokens()} is exceeded.
-     * Default {@code true}. Jon (Peon-PO) opts out: he owns his own context and the shared memory, so he
-     * must keep the turn where the soft 95% hint reaches him — that is his chance to persist to memory.md
-     * before he decides to compact himself. See ADR-0021.
-     */
-    protected boolean isAutoCompact() {
-        return true;
-    }
-
     public boolean hasUserText(String message) {
         if (StringUtil.hasNoValue(message)) return true;
         return this.memory.containsUserMessage(message);
@@ -233,8 +223,7 @@ public abstract class AbstractAgent implements AiAgent {
         monitor = AiMonitor.nullSafety(monitor);
         monitor.onCallStart(message);
         // auto compress if we are close to full before we start (slaves trigger earlier via compactFactor;
-        // Jon opts out via isAutoCompact() so the soft 95% hint reaches him first — see ADR-0021)
-        if (isAutoCompact() && compactAfterTokens() < memory.getTotalTokenUsed()) compressContext(monitor);
+        if (compactAfterTokens() < memory.getTotalTokenUsed()) compressContext(monitor);
 
         LinkedList<String> standingOrders;
         synchronized (userContextInformations) {
