@@ -1,6 +1,6 @@
 # Tool Descriptions — Inventory & Optimization Plan
 
-**Status:** ✅ **done** — 25/25 `@Tool`-Descriptions optimiert (Runde 2: kurze Version 10-17 Wörter), build grün, verifiziert.
+**Status:** ✅ **done** — 25/25 `@Tool`-Descriptions optimiert (Runde 2: kurze Version 10-17 Wörter), `buildWithAgent` → `buildWithDev` rename, static tool-name constants in JonDelegateTool, Test auf structural checks umgestellt. Build grün, verifiziert.
 
 ## IST
 
@@ -82,7 +82,7 @@ Alle `@Tool`-Beschreibungen folgen einem einheitlichen Muster:
 | 16 | `talkPlan` | *(1 line, ausführlich)* | ✅ gut | *(kein Change)* | - |
 | 17 | `planWithPlanAgent` | *(1 line, ausführlich)* | ✅ gut | *(kein Change)* | - |
 | 18 | `askDev` | *(1 line, ausführlich)* | ✅ gut | *(kein Change)* | - |
-| 19 | `buildWithAgent` | *(1 line, ausführlich)* | ✅ gut | *(kein Change)* | - |
+| 19 | `buildWithDev` | *(1 line, ausführlich)* | ✅ gut | *(kein Change)* | - |
 
 ### SkillTool (`org.sterl.llmpeon.tool.tools`)
 
@@ -154,7 +154,7 @@ Alle `@Tool`-Beschreibungen folgen einem einheitlichen Muster:
 | # | Method | Current Description | Rating | New Description | Why |
 |---|--------|---------------------|--------|-----------------|-----|
 | 45 | `planRead` | `"Reads the current saved plan (peon-plan/overview.md), if one exists."` | ✅ gut | *(kein Change)* | - |
-| 46 | `hasPlan` | `"Checks whether a saved plan exists; returns its path (peon-plan/overview.md) to hand to buildWithAgent, or states that none exists yet."` | ✅ gut | *(kein Change)* | - |
+| 46 | `hasPlan` | `"Checks whether a saved plan exists; returns its path (peon-plan/overview.md) to hand to buildWithDev, or states that none exists yet."` | ✅ gut | *(kein Change)* | - |
 
 ### PlanTool (`org.sterl.llmpeon.parts.tools`)
 

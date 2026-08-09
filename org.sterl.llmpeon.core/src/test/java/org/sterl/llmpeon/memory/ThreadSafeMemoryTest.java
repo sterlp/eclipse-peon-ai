@@ -147,8 +147,8 @@ class ThreadSafeMemoryTest extends AbstractMemoryFileTest {
         // WHEN
         var subject = new ThreadSafeMemory(store);
 
-        // THEN — estimateTokens = chars/4 (25000/4=6250), then /3 ≈ 2083
-        assertThat(subject.getTotalTokenUsed()).isGreaterThan(0).isBetween(2000, 2200);
+        // THEN — estimateTokens = chars/3 (25000/3≈8333), then /3 ≈ 2778
+        assertThat(subject.getTotalTokenUsed()).isGreaterThan(0).isBetween(2700, 2900);
     }
 
     private static class RecordingStore extends FileAgentHistoryStore {

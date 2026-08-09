@@ -22,7 +22,7 @@ public class PlanReadTool extends AbstractTool {
         return planTool.planRead();
     }
 
-    @Tool("Checks whether a saved plan exists; returns its path (" + PlanTool.OVERVIEW_FILE + ") to hand to buildWithAgent, or states that none exists yet.")
+    @Tool("Checks whether a saved plan exists; returns its path (" + PlanTool.OVERVIEW_FILE + ") to hand to buildWithDev, or states that none exists yet.")
     public String hasPlan() {
         return planTool.hasPlan() ? PlanTool.OVERVIEW_FILE : "No plan exists yet.";
     }

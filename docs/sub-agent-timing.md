@@ -12,7 +12,7 @@ Exactly the tools that dispatch a nested agent get the timing; ordinary tools do
 
 | Tool | Sub-agent | UI display name | Done line |
 | --- | --- | --- | --- |
-| `JonDelegateTool` (`talkPlan` / `planWithPlanAgent` / `askDev` / `buildWithAgent`) | Jon's Da Thinka / Da Mek | **Da Thinka** / **Da Mek** | `Da Thinka done. (3s)` / `Da Mek done. (12s)` |
+| `JonDelegateTool` (`talkPlan` / `planWithPlanAgent` / `askDev` / `buildWithDev`) | Jon's Da Thinka / Da Mek | **Da Thinka** / **Da Mek** | `Da Thinka done. (3s)` / `Da Mek done. (12s)` |
 | `SearchAgentTool` (`searchAgent`) | the search sub-agent | **Da Sniffa** | `Da Sniffa done. (12s)` |
 | `CompactSessionTool` (`compactSession`) | the `AiCompressorAgent` | **Da Scribe** | `Da Scribe done. (1m 5s)` |
 
@@ -23,7 +23,7 @@ Exactly the tools that dispatch a nested agent get the timing; ordinary tools do
 
 The Ork-flavoured names live **only** in the `onTool` progress lines, for a nicer chat. They are **not**
 tool names and **not** part of any LLM-facing text: the `@Tool` names stay functional
-(`talkPlan`/`planWithPlanAgent`/`askDev`/`buildWithAgent`/`searchAgent`/`compactSession`), and the fallback/error results the model
+(`talkPlan`/`planWithPlanAgent`/`askDev`/`buildWithDev`/`searchAgent`/`compactSession`), and the fallback/error results the model
 reads keep the plain role names (`Da Thinka returned no result`, `Search agent failed …`). So the
 names can be re-flavoured freely without touching model behaviour — and the timing tests assert the
 `done. (Ns)` suffix, not the name.

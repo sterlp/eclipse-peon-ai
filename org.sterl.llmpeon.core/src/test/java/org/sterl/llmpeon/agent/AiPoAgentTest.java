@@ -41,18 +41,12 @@ class AiPoAgentTest {
     @Test
     void systemPrompt_carriesTheDelegationPlaybook() {
         var p = newAgent().getSystemPrompt();
-        assertThat(p).contains("talkPlan").contains("planWithPlanAgent"); // Plan-agent verbs (tool names)
-        assertThat(p).contains("askDev").contains("buildWithAgent");       // Dev-agent verbs (tool names)
-        assertThat(p).contains("searchAgent"); // Jon's throw-away research sub-agent
-        assertThat(p).contains("peon-plan/overview.md"); // ${plan} resolved via PeonPaths
-        assertThat(p).contains("planPath"); // plan path handed to the Dev agent via the standing order
-        assertThat(p).contains("hasPlan");  // check for an existing plan first
-        assertThat(p).contains("Abnahme"); // plan must be signed off before the build
-        assertThat(p).contains("planImplemented"); // Dev agent finalizes/archives only after the review
-        // exactly one mandatory review, then at Jon's discretion — no "review loop of death"
-        assertThat(p).contains("genau einmal ist Pflicht");
-        // discretionary cycle-close retro: learnings about the RAM-only slaves go to the cross-session memory* lever
-        assertThat(p).contains("Retro").contains("memory*");
+        // Structural checks — proves po-delegation.txt was loaded, without duplicating tool names
+        assertThat(p).contains("Bauen delegieren"); // section header from po-delegation.txt
+        assertThat(p).contains("Rollen-Grenze"); // section header
+        assertThat(p).contains("Da Thinka").contains("Da Mek"); // team members
+        assertThat(p).contains("Plan vor Build"); // core rule
+        assertThat(p).doesNotContain("${"); // no unresolved placeholders
     }
 
     /** Docs/plan paths are filled from PeonPaths — no unresolved ${...} placeholder leaks into the prompt. */

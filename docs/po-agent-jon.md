@@ -87,7 +87,7 @@ result** — verbatim back to Jon.
   slice into small green increments, plan continuously, ask one question when unclear — never guess).
 - `askDev(prompt)` → ask Da Mek (Peon-Dev) a question about the code / its progress; **nothing is
   built**.
-- `buildWithAgent(prompt, planPath?)` → have Da Mek (Peon-Dev) **implement** the released plan. `planPath`
+- `buildWithDev(prompt, planPath?)` → have Da Mek (Peon-Dev) **implement** the released plan. `planPath`
   is **optional**: when given, the path is set as a Da Mek **standing order** so it **survives the
   slave's own compaction** (see I2.6), and the `dev-build-loop.txt` standing order is injected.
 
@@ -107,7 +107,7 @@ These display names are UI-only; the tool names and model-facing text stay funct
 **BDD:**
 ```
 GIVEN the user switches to Peon-PO
-THEN Jon's ToolService has talkPlan, planWithPlanAgent, askDev, buildWithAgent and searchAgent
+THEN Jon's ToolService has talkPlan, planWithPlanAgent, askDev, buildWithDev and searchAgent
 
 GIVEN Jon calls talkPlan / askDev with a prompt
 THEN the slave runs one turn and its reply text is returned to Jon, and no plan is written / no build runs
@@ -115,7 +115,7 @@ THEN the slave runs one turn and its reply text is returned to Jon, and no plan 
 GIVEN Jon calls planWithPlanAgent
 THEN the plan-write standing order is injected and the Plan slave writes/refines peon-plan/overview.md
 
-GIVEN Jon calls buildWithAgent
+GIVEN Jon calls buildWithDev
 THEN the Dev slave runs one turn against the released plan and its reply text is returned to Jon
 ```
 
@@ -179,7 +179,7 @@ Happy-path flow, chat-driven end to end:
 2. Jon **reads and reviews** the plan (via his read tools) and, if unhappy, sends change requests back
    via `planWithPlanAgent` (or clarifies via `talkPlan`).
 3. Once satisfied — his **sign-off** — Jon hands the **plan path** (`peon-plan/overview.md`) to Da Mek (Peon-Dev)
-   via `buildWithAgent` — the durable artefact is the file, so the path is all Dev needs.
+   via `buildWithDev` — the durable artefact is the file, so the path is all Dev needs.
 
 Flow order is **plan → sign-off → build → review → retro** (see the appended delegation playbook, I2.3).
 Three refinements over the earlier sketch:
@@ -210,7 +210,7 @@ GIVEN Jon has an approved feature and calls planWithPlanAgent
 THEN the Plan slave produces a plan at peon-plan/overview.md and reports back to Jon
 
 GIVEN Jon has reviewed and released the plan
-WHEN Jon calls buildWithAgent
+WHEN Jon calls buildWithDev
 THEN he passes the plan path peon-plan/overview.md and the Dev slave implements against it
 ```
 
@@ -248,7 +248,7 @@ onto `PlanTool`:
 - `planRead()` → returns the current plan's content.
 - He does **not** get `planSave` / `planUpdate` / `planImplemented` — those stay with Da Thinka and Da Mek.
 
-The path from `hasPlan` is exactly what Jon feeds to `buildWithAgent(prompt, planPath)` (I2.1): it is set as
+The path from `hasPlan` is exactly what Jon feeds to `buildWithDev(prompt, planPath)` (I2.1): it is set as
 a Da Mek standing order and is **sticky**, so it is re-injected on every later dispatch and survives
 Da Mek's compaction — the plan path is never lost mid-build.
 
@@ -258,9 +258,9 @@ GIVEN a saved plan exists
 WHEN Jon calls hasPlan
 THEN it returns the path peon-plan/overview.md (and planRead returns its content)
 
-GIVEN Jon calls buildWithAgent with a planPath
+GIVEN Jon calls buildWithDev with a planPath
 THEN the plan path is set as the Dev slave's standing order
-AND a later prompt-only buildWithAgent call still carries that plan path (sticky, survives compaction)
+AND a later prompt-only buildWithDev call still carries that plan path (sticky, survives compaction)
 ```
 
 ## Business Rules

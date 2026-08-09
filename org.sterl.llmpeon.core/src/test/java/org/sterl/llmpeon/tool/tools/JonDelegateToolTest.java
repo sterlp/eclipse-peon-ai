@@ -161,11 +161,11 @@ class JonDelegateToolTest {
     }
 
     /**
-     * The build discipline (dev-build-loop.txt) rides only with buildWithAgent — never on a plain askDev
+     * The build discipline (dev-build-loop.txt) rides only with buildWithDev — never on a plain askDev
      * question and never on the Plan slave.
      */
     @Test
-    void devBuildLoop_injectedOnlyByBuildWithAgent() {
+    void devBuildLoop_injectedOnlyByBuildWithDev() {
         var tool = newTool();
 
         // plain dev question: no build-loop directive
@@ -174,7 +174,7 @@ class JonDelegateToolTest {
                 .noneMatch(s -> s.contains("Task by task, never a red build"));
 
         // build call with a plan: the build loop rides along with the path
-        tool.buildWithAgent("implement it", "peon-plan/overview.md");
+        tool.buildWithDev("implement it", "peon-plan/overview.md");
         assertThat(tool.getDevSlave().getUserContextInformations())
                 .anyMatch(s -> s.contains("Task by task, never a red build"))
                 .anyMatch(s -> s.contains("peon-plan/overview.md"));
@@ -185,17 +185,17 @@ class JonDelegateToolTest {
                 .noneMatch(s -> s.contains("Task by task, never a red build"));
     }
 
-    /** buildWithAgent planPath goes into the Dev slave's standing orders and stays sticky across calls. */
+    /** buildWithDev planPath goes into the Dev slave's standing orders and stays sticky across calls. */
     @Test
-    void buildWithAgent_planPath_becomesStickyStandingOrder() {
+    void buildWithDev_planPath_becomesStickyStandingOrder() {
         var tool = newTool();
 
-        tool.buildWithAgent("start", "peon-plan/overview.md");
+        tool.buildWithDev("start", "peon-plan/overview.md");
         assertThat(tool.getDevSlave().getUserContextInformations())
                 .anyMatch(s -> s.contains("peon-plan/overview.md"));
 
         // a later plan-less build call must keep the plan path (survives compaction)
-        tool.buildWithAgent("continue", null);
+        tool.buildWithDev("continue", null);
         assertThat(tool.getDevSlave().getUserContextInformations())
                 .anyMatch(s -> s.contains("peon-plan/overview.md"));
     }

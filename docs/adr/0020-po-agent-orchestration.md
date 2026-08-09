@@ -5,7 +5,7 @@
 [ADR-0021](0021-po-slave-lifecycle-jit-compaction.md). The tool set below (`jonCreateDevPlan`,
 `jonAskQuestion`, `jonAskDev`, `jonAskScaffold` + `planComplete`/`planImplemented` latches) was **not
 built as written**: it became four intent-named delegate tools — `talkPlan`, `planWithPlanAgent`,
-`askDev`, `buildWithAgent` — plus `searchAgent`, with Da Mek (Peon-Dev) owning `planImplemented` and Jon
+`askDev`, `buildWithDev` — plus `searchAgent`, with Da Mek (Peon-Dev) owning `planImplemented` and Jon
 deciding done-ness from the reply text. This ADR is kept as the original proposal record.
 
 ## Context

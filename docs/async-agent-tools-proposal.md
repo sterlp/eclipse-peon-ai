@@ -6,16 +6,16 @@
 ## Problem
 
 Aktuell sind alle Agent-Tools synchron/blockierend:
-- `askDev`, `buildWithAgent`, `talkPlan`, `planWithPlanAgent` warten auf das Tool-Result
+- `askDev`, `buildWithDev`, `talkPlan`, `planWithPlanAgent` warten auf das Tool-Result
 - Während eines Tool-Calls kann die Queue nicht verarbeitet werden
 - Neue Messages von Paul landen in der Queue → bei Fehler gehen Messages verloren (Bug gefixt, aber Symptom bleibt)
-- Lange Tool-Calls (buildWithAgent) blockieren die gesamte Interaktion
+- Lange Tool-Calls (buildWithDev) blockieren die gesamte Interaktion
 
 ## IST
 
 ```java
-@Tool(name = "buildWithAgent")
-public String buildWithAgent(@P String prompt, @P String planPath) {
+@Tool(name = "buildWithDev")
+public String buildWithDev(@P String prompt, @P String planPath) {
     // ... synchroner call, wartet auf Antwort ...
     ChatResponse response = slave.call(prompt, this.monitor);
     return response.aiMessage().text();
@@ -54,8 +54,8 @@ void onAgentDone(String jobId, String result) {
 ### Option B: Non-Blocking + Polling
 
 ```java
-@Tool(name = "buildWithAgent")
-public String buildWithAgent(@P String prompt, @P String planPath) {
+@Tool(name = "buildWithDev")
+public String buildWithDev(@P String prompt, @P String planPath) {
     // Startet async, gibt sofort Status zurück
     return "Job #42 started. Use getStatus(#42) to check progress.";
 }
@@ -72,8 +72,8 @@ public String getStatus(@P String jobId) {
 ### Option C: Queue-basiert (Empfohlen)
 
 ```java
-@Tool(name = "buildWithAgent")
-public String buildWithAgent(@P String prompt, @P String planPath) {
+@Tool(name = "buildWithDev")
+public String buildWithDev(@P String prompt, @P String planPath) {
     // Startet async im Hintergrund
     // Ergebnis wird als "synthetische Queue-Message" injiziert
     return "Da Mek gestartet. Ergebnis folgt als Queue-Message.";
@@ -98,7 +98,7 @@ memory.add(UserMessage.from("[Agent-Done] Da Mek: " + result));
 ## BDD
 
 ```
-GIVEN Jon startet buildWithAgent
+GIVEN Jon startet buildWithDev
 WHEN der Agent arbeitet im Hintergrund
 THEN das Tool gibt sofort zurück mit Job-Status
 AND die Queue kann neue Messages von Paul verarbeiten

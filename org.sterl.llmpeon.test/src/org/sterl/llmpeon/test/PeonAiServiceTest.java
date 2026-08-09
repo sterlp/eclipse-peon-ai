@@ -388,7 +388,7 @@ public class PeonAiServiceTest extends AbstractTest {
         assertTrue("talkPlan expected", names.contains("talkPlan"));
         assertTrue("planWithPlanAgent expected", names.contains("planWithPlanAgent"));
         assertTrue("askDev expected", names.contains("askDev"));
-        assertTrue("buildWithAgent expected", names.contains("buildWithAgent"));
+        assertTrue("buildWithDev expected", names.contains("buildWithDev"));
         assertTrue("searchAgent expected", names.contains("searchAgent"));
     }
 

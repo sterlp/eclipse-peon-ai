@@ -458,8 +458,10 @@ public class AIChatView implements EclipseAiMonitor {
                 shellTool.setConfirmationProvider((command, workingDirectory) -> {
                     var latch = new java.util.concurrent.CountDownLatch(1);
                     var answer = new AtomicReference<>("No");
-                    showQuestion("Allow executing shell command in the \"" + workingDirectory + "\" directory? " +
-                            "(or you can enter a new command to execute below)\n\n" + command,
+                    showQuestion("Approve execution of:"
+                            + "\n\n`" + command + "`"
+                            + "\n in **" + workingDirectory + "**? \n\n"
+                            + "or enter a new command to execute:",
                             List.of("Yes", "No"),
                             a -> { answer.set(a); latch.countDown(); });
                     try {

@@ -48,7 +48,6 @@ import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 import org.sterl.llmpeon.tool.tools.DiskGrepTool;
 import org.sterl.llmpeon.tool.tools.JonDelegateTool;
 import org.sterl.llmpeon.tool.tools.SearchAgentTool;
-import org.sterl.llmpeon.tool.tools.ShellTool;
 import org.sterl.llmpeon.tool.tools.SkillTool;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -126,9 +125,9 @@ public class PeonAiService implements MessageProvider {
         commandService          = new CommandService();
         agentsMdService         = new AgentsMdService();
         agentsMdService.setAgentNameSupplier(() -> getActiveAgent().getName());
-        // todo
-        var sa = sharedToolService.getTool(SearchAgentTool.class)
-            .get();
+        
+        // filter eclipse tools from the search agents ...
+        var sa = sharedToolService.getTool(SearchAgentTool.class).get();
         sa.setFilter(sa.getFilter().and(e -> !(e.getTool() instanceof AskUserTool)
                        && !(e.getTool() instanceof WorkspaceMemoryTool)));
 
@@ -177,7 +176,7 @@ public class PeonAiService implements MessageProvider {
         // steers his slaves and the other agents (they only ever READ it, via standing-order injection).
         poToolService.addTool(workspaceMemoryTool);
         // Read-only plan access: hasPlan (returns the path) + planRead. Jon reviews & hands the path
-        // to buildWithAgent but never writes the plan himself — that is his Peon-Plan agent's job.
+        // to buildWithDev but never writes the plan himself — that is his Peon-Plan agent's job.
         poToolService.addTool(new PlanReadTool(planTool));
         // Jon's Plan/Dev slaves: RAM-only (2-arg ctor — no history file, ADR-0024), reusing the shared
         // Eclipse tool set. Lazy singletons via the factory so Jon-in-core stays testable headless.
