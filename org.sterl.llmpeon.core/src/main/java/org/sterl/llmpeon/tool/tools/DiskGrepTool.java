@@ -38,7 +38,7 @@ public class DiskGrepTool extends AbstractTool {
     @Override
     public boolean isEditTool() { return false; }
 
-    @Tool("Search file contents for text (not eclipse).")
+    @Tool("Search file contents on disk for text or regex. Scope to directory and extension.")
     public String diskGrepFiles(
             @P(description = "text or regex to match in file contents", name = "query") String query,
             @P(description = "directory path to search in, defaults to working dir", required = false, name = "path") String path,

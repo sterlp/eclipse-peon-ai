@@ -91,7 +91,7 @@ public class DiskFileWriteTool extends AbstractTool {
         }
     }
     
-    @Tool("Precise, line-targeted updates/insert lines by line number. newContent may span multiple lines.")
+    @Tool("Replace a single line by 1-based line number. newContent may span multiple lines.")
     public void diskReplaceLines(
             @P(name = "filePath") String filePath,
             @P("line to replace (1-based)") Integer line,
@@ -115,7 +115,7 @@ public class DiskFileWriteTool extends AbstractTool {
         }
     }
 
-    @Tool("Replace the exact string in a file.")
+    @Tool("Replace the first occurrence of an exact string. Error if not found or identical.")
     public void diskEditFile(@P(name = "filePath") String filePath, 
             @P(description = "exact string to replace", name = "oldString") String oldString, 
             @P(name = "newString") String newString) {

@@ -41,7 +41,7 @@ public class PlanTool extends AbstractEclipseTool {
         return IoUtils.readString(plan);
     }
 
-    @Tool("Save/overwirte the final implementation plan to " + OVERVIEW_FILE + ". Call only after all design decisions are resolved.")
+    @Tool("Save or overwrite the implementation plan to " + OVERVIEW_FILE + ". Call only after all design decisions are resolved.")
     public String planSave(@P(description = "complete plan in markdown", name = "content") String content) {
         ArgsUtil.requireNonBlank(content, "content");
         var project = getProject();
@@ -52,7 +52,7 @@ public class PlanTool extends AbstractEclipseTool {
         return "Saved " + JdtUtil.pathOf(planFile); 
     }
 
-    @Tool("Update the current plan.")
+    @Tool("Update the plan by replacing an exact text substring. For incremental refinements.")
     public String planUpdate(
             @P(description = "exact text to replace", name = "oldString") String oldString,
             @P(name = "newString", required = false) String newString) {

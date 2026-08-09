@@ -20,7 +20,7 @@ public class SkillTool extends AbstractTool {
         this.skillService = skillService;
     }
     
-    @Tool("Load/read an SKILL using its name.")
+    @Tool("Read a skill's prompt by name. See skillList for available skills.")
     public String skillRead(@P(name = "name") String name) throws IOException, InterruptedException {
         ArgsUtil.requireNonBlank(name, "name");
         var skill = skillService.get(name);
@@ -33,7 +33,7 @@ public class SkillTool extends AbstractTool {
         return skill.get().renderBody();
     }
     
-    @Tool("List all active SKILL - use it before complex tasks, to verify if a skill is available.")
+    @Tool("List all available skills with short descriptions. Call before complex tasks to discover relevant skills.")
     public String skillList() throws IOException, InterruptedException {
         List<SkillPromptFile> skills = skillService.getSkills();
         onTool("List SKILLs 🧩: " + skills.size());
@@ -42,7 +42,7 @@ public class SkillTool extends AbstractTool {
                 : skills.stream().map(SkillPromptFile::buildShortInfo).collect(Collectors.joining("\n"));
     }
 
-    @Tool("Read a file from a SKILL directory using its relative path.")
+    @Tool("Read a file from a skill's directory by relative path. For templates and configs.")
     public String skillReadFile(@P(name = "name", description = "skill name") String name, @P(name = "path") String path) throws IOException {
         ArgsUtil.requireNonBlank(name, "name");
         ArgsUtil.requireNonBlank(path, "path");

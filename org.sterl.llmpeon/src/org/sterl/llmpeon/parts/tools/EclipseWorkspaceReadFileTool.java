@@ -56,7 +56,7 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
     }
 
     public static final String READ_ECLIPSE_FILE_TOOL = "eclipseReadFile";
-    @Tool(name = READ_ECLIPSE_FILE_TOOL, value = "Read workspace file (e.g. '/Project/src/Foo.java').")
+    @Tool(name = READ_ECLIPSE_FILE_TOOL, value = "Read a file from the Eclipse workspace (not disk). startLine/endLine for partial reads.")
     public String eclipseReadFile(
             @P(description = "workspace-relative path", name = "filePath") String filePath,
             @P(description = "first line, 1-based; 0 = file start", required = false, name = "startLine") Integer startLine,

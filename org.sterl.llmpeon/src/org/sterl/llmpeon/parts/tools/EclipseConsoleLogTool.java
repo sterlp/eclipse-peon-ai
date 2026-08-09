@@ -15,7 +15,7 @@ import dev.langchain4j.agent.tool.Tool;
 
 public class EclipseConsoleLogTool extends AbstractEclipseTool {
 
-    @Tool("Read the content of the active console log - available e.g. after a test run to read the test logs.")
+    @Tool("Read Eclipse console output. consoleName targets a specific console; lines tails output.")
     public String eclipseReadConsoleLog(
             @P(description = "Name of the console to read. If empty, reads the active console.", required = false, name = "consoleName")
             String consoleName,
@@ -54,7 +54,7 @@ public class EclipseConsoleLogTool extends AbstractEclipseTool {
         return result;
     }
     
-    @Tool("List all available consoles - e.g. for eclipse logs console etc.")
+    @Tool("List open Eclipse consoles by name. Use to find names for reading console output.")
     public String eclipseListAvailableConsoles() {
         var consoles = consoles();
 

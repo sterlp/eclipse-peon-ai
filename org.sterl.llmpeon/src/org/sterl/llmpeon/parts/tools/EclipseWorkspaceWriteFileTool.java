@@ -28,7 +28,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         return true;
     }
 
-    @Tool("Replace lines by line number. newContent may span multiple lines.")
+    @Tool("Replace a single line in a workspace file by 1-based line number. newContent may span multiple lines.")
     public void eclipseReplaceLines(
             @P(description = "workspace-relative path", name = "filePath") String filePath,
             @P(description = "line to replace (1-based)", name = "line") Integer line,
@@ -57,7 +57,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         }
     }
 
-    @Tool("Replace exact string in workspace file.")
+    @Tool("Replace the first occurrence of an exact string in a workspace file. newString=null deletes the match.")
     public void eclipseEditFile(
             @P(description = "workspace-relative path", name = "filePath") String filePath,
             @P(description = "exact text to replace", name = "oldString") String oldString,

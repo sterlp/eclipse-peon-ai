@@ -88,7 +88,7 @@ public class WorkspaceMemoryTool extends AbstractEclipseTool implements MessageP
         }
     }
 
-    @Tool("Replace the text of an existing guideline.")
+    @Tool("Replace a guideline by its 1-based index. Refine stored facts without losing the slot.")
     public void memoryReplace(@P(name = "index", description = "1-based index from the Memory block.") Integer index,
             @P(name = "text", description = "New short sentence for this guideline.") String text) {
 

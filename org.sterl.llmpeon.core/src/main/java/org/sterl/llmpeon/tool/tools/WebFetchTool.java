@@ -46,7 +46,7 @@ public class WebFetchTool extends AbstractTool {
      * @throws IOException if a network error occurs
      * @throws InterruptedException if the request is interrupted
      */
-    @Tool("Fetch URL content as Markdown.")
+    @Tool("Fetch a URL and convert HTML to Markdown. Handles redirects and charset.")
     public String webFetchAsMarkdown(@P(name = "url") String url) throws IOException, InterruptedException {
         ArgsUtil.requireNonBlank(url, "url");
 

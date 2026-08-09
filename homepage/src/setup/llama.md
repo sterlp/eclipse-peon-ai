@@ -75,7 +75,7 @@ llama-server.exe `
   --prio 3 `
   -ts 1,1 `
   -sm layer `
-  -c 160000 `
+  -c 150000 `
   -fa on `
   -ctk q8_0 `
   -ctv q8_0 `

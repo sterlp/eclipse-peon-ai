@@ -42,7 +42,7 @@ public class ShellTool extends AbstractTool {
         this.confirmationProvider = confirmationProvider;
     }
 
-    @Tool("OS/user info (os.name, user.name, path info etc.).")
+    @Tool("Read OS and environment info: name, Java version, user home, PATH, temp dir.")
     public String readOperationSystemInformation() {
         return "java.version: " + System.getProperty("java.version")
             + "\nos.name: " + System.getProperty("os.name")
@@ -54,7 +54,7 @@ public class ShellTool extends AbstractTool {
             + "\ntmpdir: " + System.getProperty("java.io.tmpdir");
     }
 
-    @Tool("Run shell command. (mvn, npm etc.) Not for file I/O.")
+    @Tool("Run a shell command (mvn, npm, git). Not for file I/O — use read/write tools.")
     public String shellRunCommand(
             @P(description = "shell command", name = "command") 
             String command,

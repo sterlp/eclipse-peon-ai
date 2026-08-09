@@ -33,7 +33,7 @@ public class EclipseBuildTool extends AbstractEclipseTool {
         return sb.toString();
     }
     
-    @Tool("List build errors/warnings of a project.")
+    @Tool("List compile errors and warnings for an Eclipse project with file and line numbers.")
     public String eclipseReadProjectProblems(@P(name = "projectName") String projectName) {
         ArgsUtil.requireNonBlank(projectName, "projectName");
         var project = EclipseUtil.findOpenProject(projectName);

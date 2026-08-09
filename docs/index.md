@@ -36,6 +36,8 @@ notes live in [adr/](adr/index.md). Not published — user-facing docs are in `h
 * [Sklaven-Kontext](sklaven-kontext-plan.md) - Jons RAM-Sklaven (Da Thinka/Da Mek) bekommen denselben relevanten Kontext wie der aktive Agent: gewähltes Projekt + `AGENTS.md`-Basis (`getBaseAgentsMd`) + Static-Context Datum/OS/File-Regeln (`setStaticContext` auch auf die Sklaven) — **alle ✅ gebaut, grün, NICHT committed**; Editor-Selektion bewusst nicht, `AGENTS-DEV/PLAN.md` per Sklave = Backlog (Inc 3).
 * [Async Agent Tools](async-agent-tools-proposal.md) - **Proposal.** Sync Agent-Tools blockieren Queue. 3 Optionen, Option C (Queue-basiert) empfohlen.
 
+* [Tool Descriptions Inventory](tool-descriptions-inventory.md) - **✅ done.** 21/55 `@Tool`-Descriptions optimiert (Konsistenz, Token-Effizienz, LLM-Tool-Auswahl).
+
 ## Notes
 
 * [Open to Discuss](open-to-discuss.md) - ambiguous items not clear as bugs or features yet; reviewed end-of-cycle.
