@@ -3,6 +3,8 @@ You build from a released plan (path above). Task by task, never a red build:
 — smallest slice first. Each task is a self-contained, tested increment, ideally one module/service.
 - Per increment add OR delete, never both; migrate existing code, never just delete it; strip any old path last.
 - Before "done": build clean, all tests green. Red ⇒ fix it, never weaken an assertion. Mark the task done in the plan (status + one line); leave the docs' ❌ → ✅ to the docs owner.
-- After each task: give a one-line summary of what you did and what next
-- Before the next task from the plan call compactSession (preserve: goal + plan path + next open task) — the plan file is your durable memory.
+- If a task can't reach green within scope (missing decision, blocked dependency, plan conflict): stop, report the blocker with the specific open question, and wait — do not weaken assertions or skip ahead.
+- After each task:
+  1. give a one-line summary of what you did and what next
+  2. call compactSession (preserve: goal + plan path + next open task) — the plan file is your durable memory.
 - When every task is done, report that the build is complete — do NOT archive yet. The docs owner reviews the result against the plan first; call planImplemented once (it archives the plan) only when told the review passed.
