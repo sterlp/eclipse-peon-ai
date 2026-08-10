@@ -170,7 +170,7 @@
             diff += '+            .filter(u -> !u.startsWith("deleted:"))\n';
             diff += '+            .collect(Collectors.toList());\n';
             diff += '     }\n';
-            send({type: 'appendDiff', diff: diff});
+            send({type: 'appendDiff', diff: diff, colorScheme: 'light'});
         }
 
         function clearAll() {

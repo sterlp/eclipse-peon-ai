@@ -18,6 +18,7 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences.IPreferenceChangeListener;
 import org.eclipse.core.runtime.preferences.InstanceScope;
+import org.eclipse.e4.core.contexts.IEclipseContext;
 import org.eclipse.e4.ui.di.Focus;
 import org.eclipse.e4.ui.services.IServiceConstants;
 import org.eclipse.jdt.core.IClassFile;
@@ -33,11 +34,11 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IWorkingSet;
 import org.sterl.llmpeon.StandingOrdersBuilder;
 import org.sterl.llmpeon.agent.AiAgent;
-import org.sterl.llmpeon.exception.ExceptionUtil;
 import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.command.SlashCommandResolver;
 import org.sterl.llmpeon.command.SlashCommandResolver.SlashResult;
+import org.sterl.llmpeon.exception.ExceptionUtil;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.McpPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.VoicePreferenceInitializer;
@@ -77,6 +78,8 @@ public class AIChatView implements EclipseAiMonitor {
 
     private static final ILog LOG = Platform.getLog(AIChatView.class);
 
+    @Inject IEclipseContext context;
+
     // Declared first so the aiService field initializer lambdas can capture them
     // without violating the Java forward-reference restriction.
     // All are null until @PostConstruct runs; the lambdas are only ever invoked after that.
@@ -111,7 +114,7 @@ public class AIChatView implements EclipseAiMonitor {
     private final IPreferenceChangeListener prefListener = event -> {
         EclipseUtil.runInUiThread(parent, this::applyConfig);
     };
-    
+
     private final StandingOrdersBuilder standingOrders = new StandingOrdersBuilder()
             .add(WorkspaceMemoryTool.getInstance())
             .add(aiService.getAgentsMdService())
@@ -129,11 +132,12 @@ public class AIChatView implements EclipseAiMonitor {
         headerBar = new HeaderBarWidget(parent, SWT.NONE,
                 () -> aiService.getActiveAgent().getName(),
                 aiService::getToolStatus,
-                aiService::getStatusAgents);
+                aiService::getStatusAgents,
+                context);
         headerBar.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
         // Borderless — a border's top edge would read as a divider against the flush header.
-        chatHistory = new ChatMarkdownWidget(parent, SWT.NONE);
+        chatHistory = new ChatMarkdownWidget(parent, SWT.NONE, context);
         chatHistory.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
         // inputBlock carries the single outer border for the entire input area (sections 2+3+4).
@@ -182,7 +186,7 @@ public class AIChatView implements EclipseAiMonitor {
             () -> aiService.getSkillService().getAllLoadedSkills(),
             this::onSkillMenuSelection
         );
-        
+
         applyConfig();
         refreshChat();
 
@@ -194,7 +198,7 @@ public class AIChatView implements EclipseAiMonitor {
             (question, answers, onAnswer) -> showQuestion(question, answers, onAnswer)
         ));
 
-        var dateInfo = "Today: " + LocalDate.now() 
+        var dateInfo = "Today: " + LocalDate.now()
                 + " — APIs and libraries may have changed since your training cutoff. "
                 + "Don't rely only on internal API knowledge — explore base classes and libs if possible with e.g. using "
                 + EclipseCodeNavigationTool.GET_TYPE_SOURCE + " for java projects."
@@ -487,7 +491,7 @@ public class AIChatView implements EclipseAiMonitor {
         var config = aiService.getConfig();
         var modelName = StringUtil.stripToNull(aiService.getActiveModel());
 
-        if (modelName == null 
+        if (modelName == null
                 || lastListedConfig.get() == null
                 || config.getProviderType() != lastListedConfig.get().getProviderType()
                 || !java.util.Objects.equals(config.getUrl(), lastListedConfig.get().getUrl())
@@ -533,10 +537,10 @@ public class AIChatView implements EclipseAiMonitor {
                 onChatResponse(new SimpleMessage(Type.PROBLEM, config.getProviderType().name() + ": " + e.getMessage()));
                 showConfiguredModelFallback(modelName); // B1: keep the configured model visible
                 if (StringUtil.hasValue(modelName)) {
-                    return new Status(IStatus.WARNING, PeonConstants.PLUGIN_ID, IStatus.OK, 
+                    return new Status(IStatus.WARNING, PeonConstants.PLUGIN_ID, IStatus.OK,
                             "Failed to load models fallback to " + modelName, e);
                 } else {
-                    return new Status(IStatus.ERROR, PeonConstants.PLUGIN_ID, IStatus.OK, 
+                    return new Status(IStatus.ERROR, PeonConstants.PLUGIN_ID, IStatus.OK,
                             "Failed to load models. " + e.getMessage() + " config:\n" + aiService.getConfig(), e);
                 }
             }
@@ -717,11 +721,11 @@ public class AIChatView implements EclipseAiMonitor {
             // Queue drain on abort is handled in core by AbstractAgent.handleAbortAndDrain() — ADR-0017
             lockWhileWorking(false);
             actionsBar.updateCompact(
-                    aiService.getActiveAgent().getMemory().getTotalTokenUsed(), 
+                    aiService.getActiveAgent().getMemory().getTotalTokenUsed(),
                     aiService.getConfig().getAutoCompactAfter());
         });
     }
-    
+
     private Exception handleChatException(Exception e) {
         if (e == null) return null;
         if (isCanceled()) return null;

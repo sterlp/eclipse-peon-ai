@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.e4.core.contexts.IEclipseContext;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.browser.Browser;
 import org.eclipse.swt.browser.LocationEvent;
@@ -21,6 +22,7 @@ import org.eclipse.swt.browser.TitleListener;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.osgi.framework.FrameworkUtil;
+import org.sterl.llmpeon.parts.shared.EclipseUiUtil;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.shared.OnPartialAiResponse;
 import org.sterl.llmpeon.shared.OnPartialAiResponse.Type;
@@ -45,13 +47,16 @@ public class ChatMarkdownWidget extends Composite {
     private boolean showRealtimeAiResponse = false;
     private final StringBuilder thinkText = new StringBuilder();
     private final StringBuilder answerText = new StringBuilder();
+    private final IEclipseContext context;
 
     private volatile boolean browserReady = false;
     private final java.util.Queue<String> pendingExecutions = new java.util.concurrent.ConcurrentLinkedQueue<>();
+    private volatile String currentTheme = "light";
 
-    public ChatMarkdownWidget(Composite parent, int style) {
+    public ChatMarkdownWidget(Composite parent, int style, IEclipseContext context) {
         super(parent, style);
         this.parent = parent;
+        this.context = context;
         setLayout(new FillLayout());
 
         browser = new Browser(this, SWT.NONE);
@@ -118,6 +123,7 @@ public class ChatMarkdownWidget extends Composite {
 
         clear();
     }
+
 
     private String loadChatHtml() {
         if (chatHtml != null)
@@ -232,8 +238,7 @@ public class ChatMarkdownWidget extends Composite {
         }
     }
 
-    public void updateLiveResponseInUIThread(String state, double tokPerSec,
-            String safeChunk) {
+    public void updateLiveResponseInUIThread(String state, double tokPerSec, String safeChunk) {
         EclipseUtil.runInUiThread(parent, () -> {
             try {
                 browser.execute("updateLiveResponse("
@@ -249,6 +254,9 @@ public class ChatMarkdownWidget extends Composite {
         try {
             safeExecute("appendDiff(" + mapper.writeValueAsString(unifiedDiff)
                     + ");");
+            safeExecute(
+                "appendDiff(" + mapper.writeValueAsString(unifiedDiff) + ", '" + currentTheme + "');"
+            );
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -258,6 +266,8 @@ public class ChatMarkdownWidget extends Composite {
         this.browserReady = false;
         this.pendingExecutions.clear();
         browser.setText(loadChatHtml());
+        currentTheme = EclipseUiUtil.resolveTheme(context);
+        safeExecute("setTheme('" + currentTheme + "');");
     }
 
     public void appendMessage(ChatMessage msg) {

@@ -4,10 +4,11 @@
 <head>
     <meta charset="UTF-8" />
 
-    <link rel="stylesheet" href="./atom-one-light.min.css">
+    <link id="atom-syntax-css" rel="stylesheet" href="./atom-one-light.min.css">
     <link rel="stylesheet" href="./diff2html.min.css">
 
     <style>
+        /* Light theme (default) */
         body {
             font-family: system-ui, -apple-system, sans-serif;
             margin: 0;
@@ -167,13 +168,18 @@
             max-height: 300px;
             overflow-y: auto;
         }
-        
+
         .live-chunk::after {
             content: "▊";
             font-size: 10px;
             color: #7a9aa4;
             animation: blink-cursor 1s step-end infinite;
             margin-left: 4px;
+        }
+
+        .message.diff {
+            background: #fff;
+            color: #1a1a1a;
         }
 
         .message.diff .d2h-file-name {
@@ -184,6 +190,94 @@
 
         .message.diff .d2h-file-name:hover {
             text-decoration: none;
+        }
+
+        /* Dark theme overrides */
+        body[data-peon-theme="dark"] {
+            color: #d4d4d4;
+            background: #1e1e1e;
+        }
+
+        [data-peon-theme="dark"] .message::after {
+            border-bottom-color: #3e3e42;
+        }
+
+        [data-peon-theme="dark"] .message.USER::before {
+            color: #58a6ff;
+        }
+
+        [data-peon-theme="dark"] .message.USER {
+            border-left-color: #58a6ff;
+        }
+
+        [data-peon-theme="dark"] .message.AI {
+            border-left-color: #7ee787;
+        }
+
+        [data-peon-theme="dark"] .message.AI::before {
+            color: #7ee787;
+        }
+
+        [data-peon-theme="dark"] .message.TOOL,
+        [data-peon-theme="dark"] .message.THINK {
+            color: #9ca3af;
+            border-left-color: #4a4a4a;
+        }
+
+        [data-peon-theme="dark"] .message.TOOL::before {
+            color: #9ca3af;
+        }
+
+        [data-peon-theme="dark"] .message.THINK::before {
+            color: #9ca3af;
+        }
+
+        [data-peon-theme="dark"] .message.PROBLEM {
+            color: #f85149;
+            border-left-color: #f85149;
+        }
+
+        [data-peon-theme="dark"] .message.PROBLEM::before {
+            color: #f85149;
+        }
+
+        [data-peon-theme="dark"] .copy-btn:hover {
+            color: #58a6ff;
+        }
+
+        [data-peon-theme="dark"] .copy-btn.copied {
+            color: #7ee787;
+        }
+
+        [data-peon-theme="dark"] #live-status {
+            background: rgba(20, 25, 35, 0.95);
+            border-top-color: rgba(78, 160, 180, 0.3);
+            color: #cdd6e0;
+        }
+
+        [data-peon-theme="dark"] .live-state {
+            color: #a0b0c0;
+        }
+
+        [data-peon-theme="dark"] .live-state::after {
+            color: #6a9aaa;
+        }
+
+        [data-peon-theme="dark"] .live-chunk {
+            color: #a0b0c0;
+        }
+
+        [data-peon-theme="dark"] .live-chunk::after {
+            color: #a0b0c0;
+        }
+
+        [data-peon-theme="dark"] .message.diff {
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+
+        [data-peon-theme="dark"] .message.diff .d2h-file-name {
+            color: #58a6ff;
         }
     </style>
 
@@ -321,7 +415,7 @@
             }
             window.scrollTo(0, document.body.scrollHeight);
         }
-        
+
         document.addEventListener("click", e => {
             const name = e.target.closest(".d2h-file-name");
             if (name) {
@@ -358,7 +452,18 @@
             }
         });
 
-        function appendDiff(diffString) {
+        function setTheme(theme) {
+            document.body.setAttribute('data-peon-theme', theme);
+            window._peonDiffColorScheme = theme;
+            // Load the appropriate syntax highlighting CSS based on theme
+            const cssFile = theme === 'dark' ? './atom-one-dark.min.css' : './atom-one-light.min.css';
+            const link = document.getElementById('atom-syntax-css');
+            if (link) {
+                link.href = cssFile;
+            }
+        }
+
+        function appendDiff(diffString, colorScheme) {
             hideLiveStatus();
             const container = document.getElementById("chat");
             const div = document.createElement("div");
@@ -369,7 +474,8 @@
                 drawFileList: false,
                 outputFormat: 'line-by-line',
                 highlight: true,
-                matching: 'lines'
+                matching: 'lines',
+                colorScheme: colorScheme || window._peonDiffColorScheme || 'light'
             });
             diff2htmlUi.draw();
             window.scrollTo(0, document.body.scrollHeight);
@@ -395,7 +501,7 @@
                         hideLiveStatus();
                         break;
                     case "appendDiff":
-                        appendDiff(event.data.diff);
+                        appendDiff(event.data.diff, event.data.colorScheme);
                         break;
                     case "clearMessages":
                         clearMessages();
@@ -448,8 +554,8 @@
         appendMessage({role: "TOOL", message: "Loading bar.text"});
         appendMessage({role: "USER", message: "Faster ...!"});
         appendMessage({role: "PROBLEM", message: "unknown tool read_file"});
-        
-        
+
+
         updateLiveResponse('working since 2s | thinking...',
             30, 'I think we alre all doomed!as dasd asd asd asda sdasadsasd asda sdasd asd asdas dasfas dg alskgj aosrigj pÃƒÂ¶aodigh piuas hgpÃƒÂ¶ioadfnh gÃƒÂ¼odsaj gtÃƒÂ¼9oi <br> adasd asds dfasdkjfnasdifhasdifh pisadf sa ÃƒÂ sdnads`');
         //appendMessage({role: "USER", message: "Write hello world"});

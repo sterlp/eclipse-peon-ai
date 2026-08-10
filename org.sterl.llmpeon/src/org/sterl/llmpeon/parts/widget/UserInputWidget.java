@@ -5,6 +5,7 @@ import java.util.function.Supplier;
 
 import org.eclipse.debug.ui.DebugUITools;
 import org.eclipse.debug.ui.IDebugUIConstants;
+import org.eclipse.e4.ui.css.swt.CSSSWTConstants;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.KeyListener;
 import org.eclipse.swt.graphics.Color;
@@ -15,6 +16,7 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
+import org.sterl.llmpeon.parts.shared.EclipseUiUtil;
 import org.sterl.llmpeon.parts.shared.ImageUtil;
 import org.sterl.llmpeon.parts.shared.SwtUtil;
 import org.sterl.llmpeon.prompt.model.SimplePromptFile;
@@ -59,13 +61,6 @@ public class UserInputWidget extends Composite {
         sendImage = DebugUITools.getImage(IDebugUIConstants.IMG_ACT_RUN);
         stopImage = ImageUtil.loadImage(this, ImageUtil.STOP);
 
-        // Single white reference shared by TextInputWidget and rightColumn so the
-        // entire input area renders as one uniform color. macOS quirk: explicitly
-        // setting StyledText's background is what wakes up the paint chain so the
-        // surrounding composite PaintListeners actually fire on resize.
-        final Color bgWhite = getDisplay().getSystemColor(SWT.COLOR_WHITE);
-        setBackground(bgWhite);
-
         GridLayout outerLayout = new GridLayout(1, false);
         outerLayout.marginWidth = 0;
         outerLayout.marginHeight = 0;
@@ -83,7 +78,7 @@ public class UserInputWidget extends Composite {
 
         textInput = new TextInputWidget(textRow, SWT.NONE, 3, 10, this::requestReflow);
         textInput.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
-        textInput.setTextBackground(bgWhite);
+        textInput.setData(CSSSWTConstants.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_USER_QUESTION_RESPONSE_WIDGET);
 
         // Ctrl/Cmd+Enter sends; plain Enter inserts newline
         textInput.addKeyListener(KeyListener.keyPressedAdapter(e -> {
@@ -140,12 +135,8 @@ public class UserInputWidget extends Composite {
         rcLayout.verticalSpacing = 0;
         rightColumn.setLayout(rcLayout);
         rightColumn.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, false, true));
-        rightColumn.setBackground(bgWhite);
+        rightColumn.setData(CSSSWTConstants.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_USER_QUESTION_RESPONSE_WIDGET);
         rightColumn.setBackgroundMode(SWT.INHERIT_DEFAULT);
-        rightColumn.addPaintListener(e -> {
-            e.gc.setBackground(bgWhite);
-            e.gc.fillRectangle(rightColumn.getClientArea());
-        });
 
         // Mic button — created lazily by setVoiceInputVisible(), disposed when hidden.
 
@@ -154,11 +145,11 @@ public class UserInputWidget extends Composite {
         GridData fillerData = new GridData(SWT.FILL, SWT.FILL, false, true);
         fillerData.heightHint = 0;
         filler.setLayoutData(fillerData);
-        filler.setBackground(bgWhite);
+        filler.setData(CSSSWTConstants.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_USER_QUESTION_RESPONSE_WIDGET);
         // Stop button — hidden initially, shown when working (sits at top above filler)
         stopButton = SwtUtil.createIconButton(rightColumn, stopImage, "Stop current request");
         stopButton.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, false, false));
-        stopButton.setEnabled(false); 
+        stopButton.setEnabled(false);
         stopButton.addListener(SWT.Selection, e -> onStop.run());
 
         sendButton = SwtUtil.createIconButton(rightColumn, sendImage, "Send (Ctrl+Enter)");
