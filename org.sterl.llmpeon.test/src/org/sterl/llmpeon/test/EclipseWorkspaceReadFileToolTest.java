@@ -8,6 +8,7 @@ import org.junit.Test;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
+import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.tools.EclipseBuildTool;
 import org.sterl.llmpeon.parts.tools.EclipseCodeNavigationTool;
 import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
@@ -94,6 +95,30 @@ public class EclipseWorkspaceReadFileToolTest extends AbstractTest {
         String content = tool.eclipseReadFile(searchResult.split("\n")[0], 0, 0);
         assertTrue("Expected to read own source, got: " + content.substring(0, Math.min(200, content.length())),
                 content.contains("searchAndReadSelf"));
+    }
+    
+    @Test
+    public void readUtf8() throws Exception {
+        // GIVEN
+        var tool = new EclipseWorkspaceReadFileTool();
+
+        // WHEN
+        var c = tool.eclipseReadFile(JdtUtil.pathOf(project) + "/utf-8-test.txt", null, null);
+
+        // THEN
+        assertEquals("äüß Ö ⚡", c);
+    }
+    
+    @Test
+    public void readIso() throws Exception {
+        // GIVEN
+        var tool = new EclipseWorkspaceReadFileTool();
+
+        // WHEN
+        var c = tool.eclipseReadFile(JdtUtil.pathOf(project) + "/iso-test.txt", null, null);
+
+        // THEN
+        assertEquals("äüß Ö", c);
     }
     
     @Test

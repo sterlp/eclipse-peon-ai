@@ -8,6 +8,7 @@ import static org.junit.Assume.assumeTrue;
 import java.time.OffsetDateTime;
 
 import org.junit.Test;
+import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
 
@@ -72,7 +73,18 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractTest {
         message = readTool.eclipseReadFile(fileName, 0, 0);
         assertTrue("Missing edit text in:\n" + message, message.contains(editMessage));
     }
-    
+
+    @Test
+    public void writeUtf8() throws Exception {
+        // GIVEN
+        // WHEN
+        eclipseWriteFile("foo.java", "äüß Ö ⚡");
+
+        // THEN
+        var c = new EclipseWorkspaceReadFileTool().eclipseReadFile(JdtUtil.pathOf(project) + "/foo.java", null, null);
+        assertEquals("äüß Ö ⚡", c);
+    }
+
     @Test
     public void test_replaceWorkspaceLine_middle() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
