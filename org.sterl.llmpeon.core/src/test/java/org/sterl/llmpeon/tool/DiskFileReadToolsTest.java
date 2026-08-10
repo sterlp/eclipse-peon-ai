@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -186,5 +187,17 @@ class DiskFileReadToolsTest {
                 "   2: beta\n" +
                 "   3: gamma\n",
                 result);
+    }
+    
+    @Test
+    void testUtf8() throws IOException, URISyntaxException {
+        // GIVEN
+        Path resource = Path.of(getClass().getClassLoader().getResource("utf-8-test.txt").toURI());
+
+        // WHEN
+        var result = tool.diskReadFile(resource.normalize().toString(), null, null);
+
+        // THEN
+        assertThat(result).isEqualTo("äüß Ö ⚡");
     }
 }

@@ -1,0 +1,7 @@
+Tool test schreibe mit in ein test-sonderzeichen.txt
+1. folgendes rein: "ü ß ⚡"
+2. lies es wieder und prüfe ob das geklappt hat
+
+Mach das mit den eclipse* und wenn verfügbar auch mit den disk* tools
+Wenn es geklappt hat lösche die Datei wieder. 
+Wenn es nicht geklappt hat, las die Datei stehen, damit man es verifzieren kann.
