@@ -36,6 +36,7 @@ notes live in [adr/](adr/index.md). Not published — user-facing docs are in `h
 * [Async Agent Tools](async-agent-tools-proposal.md) - **Proposal.** Sync Agent-Tools blockieren Queue. 3 Optionen, Option C (Queue-basiert) empfohlen.
 
 * [Tool Descriptions Inventory](tool-descriptions-inventory.md) - **✅ done.** 21/55 `@Tool`-Descriptions optimiert (Konsistenz, Token-Effizienz, LLM-Tool-Auswahl).
+* [Chat Markdown Links](chat-markdown-links.md) - **✅ done.** Klickbare Dateiverweise im Chat öffnen im Eclipse Editor (Workspace-Pfade, relative Doc-Links, Fallback-Suche, externe URLs im Browser).
 
 ## Notes
 

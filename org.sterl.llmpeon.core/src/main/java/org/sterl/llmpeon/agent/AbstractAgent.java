@@ -226,7 +226,10 @@ public abstract class AbstractAgent implements AiAgent {
         monitor = AiMonitor.nullSafety(monitor);
         monitor.onCallStart(message);
         // auto compress if we are close to full before we start (slaves trigger earlier via compactFactor;
-        if (compactAfterTokens() < memory.getTotalTokenUsed()) compressContext(monitor);
+        if (compactAfterTokens() < memory.getTotalTokenUsed()) {
+            monitor.onTool("Auto Compact before execution, context to full " + compactAfterTokens() + "/" + memory.getTotalTokenUsed());
+            compressContext(monitor);
+        }
 
         LinkedList<String> standingOrders;
         synchronized (userContextInformations) {

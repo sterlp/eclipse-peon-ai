@@ -39,16 +39,15 @@ public class ChatMarkdownWidget extends Composite {
     private final ObjectMapper mapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true);
     private String chatHtml = null;
-    
+
     private final AtomicInteger streamingTokenCount = new AtomicInteger(0);
     private final Composite parent;
     private boolean showRealtimeAiResponse = false;
     private final StringBuilder thinkText = new StringBuilder();
     private final StringBuilder answerText = new StringBuilder();
-    
+
     private volatile boolean browserReady = false;
-    private final java.util.Queue<String> pendingExecutions = 
-        new java.util.concurrent.ConcurrentLinkedQueue<>();
+    private final java.util.Queue<String> pendingExecutions = new java.util.concurrent.ConcurrentLinkedQueue<>();
 
     public ChatMarkdownWidget(Composite parent, int style) {
         super(parent, style);
@@ -57,8 +56,10 @@ public class ChatMarkdownWidget extends Composite {
 
         browser = new Browser(this, SWT.NONE);
 
-        // BrowserFunction is not reliably supported by all SWT browser engines (e.g. WebKit2 on Linux/GTK),
-        // so we use title changes from JavaScript (document.title = "javaReady") as a ready signal instead.
+        // BrowserFunction is not reliably supported by all SWT browser engines
+        // (e.g. WebKit2 on Linux/GTK),
+        // so we use title changes from JavaScript (document.title =
+        // "javaReady") as a ready signal instead.
         browser.addTitleListener(new TitleListener() {
             @Override
             public void changed(TitleEvent event) {
@@ -78,15 +79,35 @@ public class ChatMarkdownWidget extends Composite {
             @Override
             public void changing(LocationEvent event) {
                 final String prefix = "open-in-editor:";
-                if (event.location == null || !event.location.startsWith(prefix)) return;
+                if (event.location == null
+                        || !event.location.startsWith(prefix))
+                    return;
                 event.doit = false;
                 var path = URLDecoder.decode(
-                        event.location.substring(prefix.length()), StandardCharsets.UTF_8);
-                EclipseUtil.resolveInEclipse(path)
-                        .filter(IFile.class::isInstance)
+                        event.location.substring(prefix.length()),
+                        StandardCharsets.UTF_8);
+                var resolved = EclipseUtil.resolveInEclipse(path);
+                if (resolved.filter(IFile.class::isInstance)
                         .map(IFile.class::cast)
                         .filter(f -> !EclipseUtil.isOpenInEditor(f))
-                        .ifPresent(EclipseUtil::openInEditor);
+                        .isPresent()) {
+                    EclipseUtil.openInEditor((IFile) resolved.get());
+                } else {
+                    // Fallback: search by filename
+                    var fileName = java.nio.file.Path.of(path).getFileName()
+                            .toString();
+                    EclipseUtil.searchWorkspaceFiles(fileName)
+                            .ifPresent(file -> {
+                                if (!EclipseUtil.isOpenInEditor(file))
+                                    EclipseUtil.openInEditor(file);
+                            });
+                    if (!EclipseUtil.searchWorkspaceFiles(fileName)
+                            .isPresent()) {
+                        safeExecute(
+                                "appendMessage({role:'PROBLEM',message:'File not found: "
+                                        + fileName.replace("'", "\\'") + "'})");
+                    }
+                }
             }
 
             @Override
@@ -97,10 +118,12 @@ public class ChatMarkdownWidget extends Composite {
 
         clear();
     }
-    
+
     private String loadChatHtml() {
-        if (chatHtml != null) return chatHtml;
-        try (InputStream is = getClass().getResourceAsStream("/resources/chat/chat.html")) {
+        if (chatHtml != null)
+            return chatHtml;
+        try (InputStream is = getClass()
+                .getResourceAsStream("/resources/chat/chat.html")) {
             if (is == null) {
                 throw new RuntimeException("chat.html not found on classpath");
             }
@@ -113,23 +136,22 @@ public class ChatMarkdownWidget extends Composite {
     }
 
     /**
-     * Replaces all relative {@code ./} paths in the HTML with absolute file:// URLs
-     * so the embedded browser can load CSS, JS, and language files.
+     * Replaces all relative {@code ./} paths in the HTML with absolute file://
+     * URLs so the embedded browser can load CSS, JS, and language files.
      */
     private String resolveResourcePaths(String html) throws IOException {
-        URL chatDir = FileLocator.find(
-                FrameworkUtil.getBundle(getClass()),
-                new Path("resources/chat/"),
-                null
-        );
+        URL chatDir = FileLocator.find(FrameworkUtil.getBundle(getClass()),
+                new Path("resources/chat/"), null);
         if (chatDir == null) {
-            throw new IOException("resources/chat/ directory not found in bundle");
+            throw new IOException(
+                    "resources/chat/ directory not found in bundle");
         }
         String basePath = FileLocator.toFileURL(chatDir).toString();
-        // all resources use ./ relative paths, so a single replace resolves everything
+        // all resources use ./ relative paths, so a single replace resolves
+        // everything
         return html.replace("./", basePath);
     }
-    
+
     private void safeExecute(String js) {
         if (browserReady) {
             browser.execute(js);
@@ -148,12 +170,13 @@ public class ChatMarkdownWidget extends Composite {
 
     public void appendMessage(SimpleMessage msg) {
         try {
-            safeExecute("appendMessage(" + mapper.writeValueAsString(msg) + ");");
+            safeExecute(
+                    "appendMessage(" + mapper.writeValueAsString(msg) + ");");
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
     }
-    
+
     public void hideLiveStatus() {
         safeExecute("hideLiveStatus();");
     }
@@ -165,7 +188,7 @@ public class ChatMarkdownWidget extends Composite {
         } else {
             tokens = streamingTokenCount.incrementAndGet();
         }
-        
+
         if (r.type() == Type.END) {
             EclipseUtil.runInUiThread(parent, this::hideLiveStatus);
         } else {
@@ -179,13 +202,14 @@ public class ChatMarkdownWidget extends Composite {
     }
 
     private void updateRunningChunk(OnPartialAiResponse r, int tokens) {
-        long elapsed = Duration.between(r.startedAt(), Instant.now()).toSeconds();
+        long elapsed = Duration.between(r.startedAt(), Instant.now())
+                .toSeconds();
         String state = switch (r.type()) {
-            case START   -> "waiting for AI...";
-            case THINK   -> "working since " + elapsed + "s | thinking...";
-            case ANSWER  -> "working since " + elapsed + "s | responding...";
-            case TOOL    -> "working since " + elapsed + "s | using tools...";
-            case END     -> "AI done.";
+            case START -> "waiting for AI...";
+            case THINK -> "working since " + elapsed + "s | thinking...";
+            case ANSWER -> "working since " + elapsed + "s | responding...";
+            case TOOL -> "working since " + elapsed + "s | using tools...";
+            case END -> "AI done.";
         };
         if (r.type() == Type.START) {
             thinkText.setLength(0);
@@ -193,8 +217,12 @@ public class ChatMarkdownWidget extends Composite {
             updateLiveResponseInUIThread(state, 0, "");
         } else {
             String accumulatedText = switch (r.type()) {
-                case THINK -> showRealtimeAiResponse ? thinkText.toString() : tokens + " tokens";
-                case ANSWER -> showRealtimeAiResponse ? answerText.toString() : tokens + " tokens";
+                case THINK -> showRealtimeAiResponse
+                        ? thinkText.toString()
+                        : tokens + " tokens";
+                case ANSWER -> showRealtimeAiResponse
+                        ? answerText.toString()
+                        : tokens + " tokens";
                 default -> tokens + " tokens";
             };
             if (tokens == 1 || (tokens > 0 && tokens % 20 == 0)) {
@@ -203,11 +231,14 @@ public class ChatMarkdownWidget extends Composite {
             }
         }
     }
-    
-    public void updateLiveResponseInUIThread(String state, double tokPerSec, String safeChunk) {
+
+    public void updateLiveResponseInUIThread(String state, double tokPerSec,
+            String safeChunk) {
         EclipseUtil.runInUiThread(parent, () -> {
             try {
-                browser.execute("updateLiveResponse(" + mapper.writeValueAsString(state) + ", " + tokPerSec + ", " + mapper.writeValueAsString(safeChunk) + ");");
+                browser.execute("updateLiveResponse("
+                        + mapper.writeValueAsString(state) + ", " + tokPerSec
+                        + ", " + mapper.writeValueAsString(safeChunk) + ");");
             } catch (JsonProcessingException e) {
                 // ignore
             }
@@ -216,14 +247,13 @@ public class ChatMarkdownWidget extends Composite {
 
     public void showDiff(String unifiedDiff) {
         try {
-            safeExecute(
-                "appendDiff(" + mapper.writeValueAsString(unifiedDiff) + ");"
-            );
+            safeExecute("appendDiff(" + mapper.writeValueAsString(unifiedDiff)
+                    + ");");
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
     }
-    
+
     public void clear() {
         this.browserReady = false;
         this.pendingExecutions.clear();

@@ -237,6 +237,20 @@
             },
         });
 
+        // Detect workspace links — false for URLs with schemes (https://, mailto:, etc.)
+        function isWorkspaceLink(href) {
+            return !href.includes('://');
+        }
+
+        // Convert workspace file links to open-in-editor: protocol
+        md.renderer.rules.link_open = function(tokens, idx, options, env, self) {
+            const token = tokens[idx];
+            const hrefAttr = token.attrs.find(a => a[0] === 'href');
+            if (hrefAttr && isWorkspaceLink(hrefAttr[1])) {
+                hrefAttr[1] = 'open-in-editor:' + encodeURIComponent(hrefAttr[1]);
+            }
+            return self.renderToken(tokens, idx, options, env);
+        };
         function toolMessage(message) {
             if (!message) return;
             const container = document.getElementById("chat");
@@ -437,7 +451,7 @@
         
         
         updateLiveResponse('working since 2s | thinking...',
-            30, 'I think we alre all doomed!as dasd asd asd asda sdasadsasd asda sdasd asd asdas dasfas dg alskgj aosrigj pöaodigh piuas hgpöioadfnh güodsaj gtü9oi <br> adasd asds dfasdkjfnasdifhasdifh pisadf sa àsdnads`');
+            30, 'I think we alre all doomed!as dasd asd asd asda sdasadsasd asda sdasd asd asdas dasfas dg alskgj aosrigj pÃƒÂ¶aodigh piuas hgpÃƒÂ¶ioadfnh gÃƒÂ¼odsaj gtÃƒÂ¼9oi <br> adasd asds dfasdkjfnasdifhasdifh pisadf sa ÃƒÂ sdnads`');
         //appendMessage({role: "USER", message: "Write hello world"});
 */
 
