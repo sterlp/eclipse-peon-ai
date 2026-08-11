@@ -1,6 +1,6 @@
 # Agent-API-Retry (Mini)
 
-> **Status: GEBAUT & grün (NICHT committed).** Umgesetzt als eigene Klasse
+> **Status: ✅ done (released).** Umgesetzt als eigene Klasse
 > `org.sterl.llmpeon.streaming.ApiRetry` + `ApiRetryTest` (7) + struktureller Test in `ToolServiceTest`;
 > voller Reactor grün. Löst den alten Skizzen-Entwurf ab (fixes N=3 → jetzt aufladbares Retry-Budget).
 >

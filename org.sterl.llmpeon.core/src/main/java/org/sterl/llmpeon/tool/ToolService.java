@@ -48,9 +48,8 @@ public class ToolService {
     private static final String COMPACT_HINT =
             "CONTEXT LIMIT WARNING: Call '" + CompactSessionTool.NAME + "' as your first tool call. " +
             "In the 'preserve' field, summarize the critical next steps and any findings needed to continue. " +
-            "Include hard-won facts that are expensive to rediscover — exact file:line locations and key decisions with their rationale (the why) — not just what to do next. " +
-            "After compacting, proceed with the task — additional tool calls in this round are expected.";
-    
+            "Include hard-won facts that are expensive to rediscover — exact file:line locations and key decisions with their rationale (the why) — not just what to do next. ";
+
     private static final String STUCK_MESSAGE = """
             Your last response contained only internal reasoning with no output.
             Stop thinking and take action now: either call a tool, ask a clarifying question,
@@ -176,8 +175,10 @@ public class ToolService {
         return response;
     }
 
-    // TODO with custom tools the compact tools and custom agents is maybe not available, what now? We should check this.
     private void addCompactHintIfNeeded(ToolLoopRequest req, ChatResponse response, boolean force) {
+        // if we have too compact session, a hint doesn't really help
+        if (getTool(CompactSessionTool.class).isEmpty()) return;
+
         var compactLimit = req.getConfig().getAutoCompactAfter();
         if (compactLimit <= 0 && !force) return;
 
