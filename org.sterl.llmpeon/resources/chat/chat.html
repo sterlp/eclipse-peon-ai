@@ -454,16 +454,25 @@
 
         function setTheme(theme) {
             document.body.setAttribute('data-peon-theme', theme);
-            window._peonDiffColorScheme = theme;
             // Load the appropriate syntax highlighting CSS based on theme
             const cssFile = theme === 'dark' ? './atom-one-dark.min.css' : './atom-one-light.min.css';
             const link = document.getElementById('atom-syntax-css');
             if (link) {
                 link.href = cssFile;
             }
+            updateThemeOnExistingDiffs(theme);
         }
 
-        function appendDiff(diffString, colorScheme) {
+        function updateThemeOnExistingDiffs(theme) {
+            const isDark = theme === 'dark';
+            Array.from(document.getElementsByClassName("d2h-wrapper")).forEach(el => {
+                const oldClass = isDark ? "d2h-light-color-scheme" : "d2h-dark-color-scheme";
+                const newClass = isDark ? "d2h-dark-color-scheme" : "d2h-light-color-scheme";
+                el.classList.replace(oldClass, newClass);
+            });
+        }
+
+        function appendDiff(diffString) {
             hideLiveStatus();
             const container = document.getElementById("chat");
             const div = document.createElement("div");
@@ -475,7 +484,7 @@
                 outputFormat: 'line-by-line',
                 highlight: true,
                 matching: 'lines',
-                colorScheme: colorScheme || window._peonDiffColorScheme || 'light'
+                colorScheme: document.body.getAttribute('data-peon-theme') || 'light'
             });
             diff2htmlUi.draw();
             window.scrollTo(0, document.body.scrollHeight);
@@ -501,7 +510,7 @@
                         hideLiveStatus();
                         break;
                     case "appendDiff":
-                        appendDiff(event.data.diff, event.data.colorScheme);
+                        appendDiff(event.data.diff);
                         break;
                     case "clearMessages":
                         clearMessages();

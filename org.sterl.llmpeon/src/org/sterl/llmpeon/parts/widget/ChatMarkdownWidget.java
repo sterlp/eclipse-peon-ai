@@ -14,7 +14,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.Path;
-import org.eclipse.e4.core.contexts.IEclipseContext;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.browser.Browser;
 import org.eclipse.swt.browser.LocationEvent;
@@ -49,16 +48,14 @@ public class ChatMarkdownWidget extends Composite {
     private boolean showRealtimeAiResponse = false;
     private final StringBuilder thinkText = new StringBuilder();
     private final StringBuilder answerText = new StringBuilder();
-    private final IEclipseContext context;
 
     private volatile boolean browserReady = false;
     private final java.util.Queue<String> pendingMessages = new java.util.concurrent.ConcurrentLinkedQueue<>();
     private volatile String currentTheme = "light";
 
-    public ChatMarkdownWidget(Composite parent, int style, IEclipseContext context) {
+    public ChatMarkdownWidget(Composite parent, int style) {
         super(parent, style);
         this.parent = parent;
-        this.context = context;
         setLayout(new FillLayout());
 
         browser = new Browser(this, SWT.NONE);
@@ -122,6 +119,15 @@ public class ChatMarkdownWidget extends Composite {
             public void changed(LocationEvent event) {
                 // no-op
             }
+        });
+
+        EclipseUiUtil.addThemeChangeListener(theme -> {
+            currentTheme = theme;
+
+            var payload = new LinkedHashMap<String, Object>();
+            payload.put("type", "setTheme");
+            payload.put("theme", theme);
+            postMessage(payload);
         });
 
         clear();
@@ -261,7 +267,6 @@ public class ChatMarkdownWidget extends Composite {
         var payload = new LinkedHashMap<String, Object>();
         payload.put("type", "appendDiff");
         payload.put("diff", unifiedDiff);
-        payload.put("colorScheme", currentTheme);
         postMessage(payload);
     }
 
@@ -269,7 +274,7 @@ public class ChatMarkdownWidget extends Composite {
         this.browserReady = false;
         this.pendingMessages.clear();
         browser.setText(loadChatHtml());
-        currentTheme = EclipseUiUtil.resolveTheme(context);
+        currentTheme = EclipseUiUtil.resolveTheme();
         var payload = new LinkedHashMap<String, Object>();
         payload.put("type", "setTheme");
         payload.put("theme", currentTheme);

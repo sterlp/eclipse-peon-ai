@@ -172,7 +172,7 @@
             diff += '+            .filter(u -> !u.startsWith("deleted:"))\n';
             diff += '+            .collect(Collectors.toList());\n';
             diff += '     }\n';
-            send({type: 'appendDiff', diff: diff, colorScheme: 'light'});
+            send({type: 'appendDiff', diff: diff});
         }
 
         function testSetTheme(theme) {

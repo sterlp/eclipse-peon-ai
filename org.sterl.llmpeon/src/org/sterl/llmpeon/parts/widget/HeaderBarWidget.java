@@ -3,7 +3,6 @@ package org.sterl.llmpeon.parts.widget;
 import java.util.List;
 import java.util.function.Supplier;
 
-import org.eclipse.e4.core.contexts.IEclipseContext;
 import org.eclipse.e4.ui.css.swt.CSSSWTConstants;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
@@ -43,8 +42,7 @@ public class HeaderBarWidget extends Composite {
     public HeaderBarWidget(Composite parent, int style,
             Supplier<String> activeAgentName,
             Supplier<List<ToolStatus>> toolStatus,
-            Supplier<List<NamedAgent>> statusAgents,
-            IEclipseContext context) {
+            Supplier<List<NamedAgent>> statusAgents) {
         super(parent, style);
         this.activeAgentName = activeAgentName;
         this.toolStatus = toolStatus;
@@ -73,7 +71,7 @@ public class HeaderBarWidget extends Composite {
 
         Button hammer = SwtUtil.createIconButton(this,
                 ImageUtil.loadImage(this,
-                        EclipseUiUtil.DARK_THEME_NAME.equals(EclipseUiUtil.resolveTheme(context)) ? ImageUtil.HAMMER_DARK
+                        EclipseUiUtil.DARK_THEME_NAME.equals(EclipseUiUtil.resolveTheme()) ? ImageUtil.HAMMER_DARK
                                 : ImageUtil.HAMMER),
                 "Show which tools are active for the selected agent");
         hammer.setLayoutData(new GridData(SWT.END, SWT.CENTER, false, false));
