@@ -25,8 +25,10 @@ Key decisions:
 1. `@Service` + `@Transactional(timeout=10_000)` only if persistence is needed
 2. Service returns Entity (persistence) or DTO (connectors), Resource converts
 3. Service starts Transaction (TRX, 10s) if needed, Component participates (MANDATORY)
-4. Extract to Component: >10 lines, reused, testable
-5. Exception patterns live in [ERROR-HANDLING.md](ERROR-HANDLING.md)
+4. Extract to Component: >20 lines, reused, private, testable -- or in long Service classes
+5. Clean code and SOLID principals apply where useful
+    a) Flow of dependency flows always into one direction
+    b) never have circular dependencies
 
 ---
 
@@ -36,8 +38,8 @@ Key decisions:
 
 | Layer | Package | Suffix | Annotation | Access Rules |
 |-------|---------|--------|------------|--------------|
-| Service | root | `*Service` | `@Service` (+ `@Transactional` if persistence) | Public API |
-| Component | `component` | `*Component` | `@Component` (+ MANDATORY TX) | Private, called by Service |
+| Service | root | `*Service` | `@Service` (+ `@Transactional` if persistence) | Public API between the components |
+| Component | `component` | `*Component` | `@Component` (+ MANDATORY TX) | Private, called by service or other components in the module |
 | Repository | `repository` | `*Repository` | `@Repository` | Called by Service/Component in same module |
 | Entity | `model` | `*Entity` | `@Entity` | Shared across components (read-only) |
 | API Model | `api.<module>.model` | No suffix | - | External representation |
@@ -47,75 +49,14 @@ Key decisions:
 **Flow:** Service starts → Component participates (Transaction) → Repository operates  
 **Conversion:** Service returns Entity → Resource converts → API model
 
----
+A module contains:
+1. Always a service and an own purpose / business functionality
+2. own components if needed
+3. own model classes which this service is responsible for
+4. and so on-
 
-### Custom Annotations
 
-#### Component with mandatory transaction
 
-```java
-@Transactional(propagation = Propagation.MANDATORY)
-@Component
-@Target(ElementType.TYPE)
-@Retention(RetentionPolicy.RUNTIME)
-public @interface FooComponent {}
-```
-
-The name of the component is usually like a method name e.g:
-- CreateBillComponent
-- ReadPdfComponent
-
-**Why MANDATORY?**
-A component usually doesn't handle DB transactions. If a transaction is required by default it should be managed by the Service and be requested as `MANDATORY` to avoid many small transactions (or even a wrong transaction scope).
-Think: "private method" extracted from Service.
-
----
-
-### Transaction Management
-
-#### Service Transaction (TRX)
-
-`@Transactional(timeout = 10_000)` - starts transaction, 10s timeout
-
-**Use only when Service does persistence operations.** Services without DB access (REST/SOAP connectors, facades) don't need `@Transactional`.
-
-Use `@Transactional(readOnly = true)` for queries - Hibernate optimizes flush.
-
-```java
-// Persistence Service - needs TX
-@Service
-@Transactional(timeout = 10_000)  // writes
-public class PersonService { }
-
-@Service
-@Transactional(readOnly = true)   // reads
-public class PersonQueryService { }
-
-// Connector Service - NO Transaction
-@Service
-public class SoapSender {  // HTTP calls, no persistence
-    public void send(String data) { }
-}
-```
-
-#### Component Transaction (TRX)
-
-Is managed by the service.
-
-```java
-// ✅ Correct - called from Service with transaction
-@Service
-@Transactional(timeout = 10_000)
-public class PersonService {
-    private final CreatePersonComponent createPersonComponent;
-
-    public PersonEntity createPerson(String firstName, String lastName) {
-        return createPersonComponent.call(firstName, lastName); // Works - transaction exists
-    }
-}
-```
-
----
 
 ### Timer classes
 
@@ -207,7 +148,7 @@ void shouldFindPersonByEmail() {
 ## Package Structure
 
 ```
-de.netze.utilities.sap.us4g_adapter.person/
+org.sterl.foo.person/
 ├── PersonService.java           # Public API (root package)
 ├── api/
 │   ├── PersonResource.java      # REST endpoint
@@ -308,10 +249,10 @@ public class PersonResource {
 - Cross-cutting: Transaction (TRX, if persistence), auth, caching, policies
 - Generic method names (`savePerson()`, `findPerson()`)
 - No private methods → extract to Component (except trivial helpers)
-- Returns Entities (not API models) - or DTOs for non-persistence Services
+- Returns Entities (not API models) - or Pojos for non-persistence Services
 
-**May call:** Services (other components), Components, Repositories  
-**JavaDoc:** Short responsibility statement required
+**May call:** Services (other components), own Components, own Repositories
+**JavaDoc:** Short responsibility statement required what it is managing
 
 ```java
 @Service
@@ -376,6 +317,53 @@ public class DeletePersonComponent {
 
 ---
 
+
+## Transaction Management
+
+### Service Transaction (TRX)
+
+`@Transactional(timeout = 10_000)` - starts transaction, 10s timeout
+
+**Use only when Service does persistence operations.** Services without DB access (REST/SOAP connectors, facades) don't need `@Transactional`.
+
+Use `@Transactional(readOnly = true)` for queries - Hibernate optimizes flush.
+
+```java
+// Persistence Service - needs TX
+@Service
+@Transactional(timeout = 10_000)  // writes
+public class PersonService { }
+
+@Service
+@Transactional(readOnly = true, timeout = 10_000)   // reads
+public class PersonQueryService { }
+
+// Connector Service - NO Transaction
+@Service
+public class SoapSender {  // HTTP calls, no persistence
+    public void send(String data) { }
+}
+```
+
+### Component Transaction (TRX)
+
+Is managed by the service.
+
+```java
+// ✅ Correct - called from Service with transaction
+@Service
+@Transactional(timeout = 10_000)
+public class PersonService {
+    private final CreatePersonComponent createPersonComponent;
+
+    public PersonEntity createPerson(String firstName, String lastName) {
+        return createPersonComponent.call(firstName, lastName); // Works - transaction exists
+    }
+}
+```
+
+---
+
 ## Repositories
 
 **Package:** `repository`  
@@ -418,3 +406,38 @@ public class PersonEntity {
 - **Columns:** Lowercase, snake_case
 - **Test DB:** H2 in-memory
 - **Hibernate:** `create-drop` (dev/test)
+
+
+---
+
+### Custom Annotations
+
+#### Component with mandatory transaction
+
+```java
+@Transactional(propagation = Propagation.MANDATORY)
+@Component
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface FooComponent {}
+```
+
+The name of the component is usually like a method name e.g:
+- CreateBillComponent
+- ReadPdfComponent
+
+**Why MANDATORY?**
+A component usually doesn't handle DB transactions. If a transaction is required by default it should be managed by the Service and be requested as `MANDATORY` to avoid many small transactions (or even a wrong transaction scope).
+Think: "private method" extracted from Service.
+
+---
+
+## Comments rules
+
+1. Always try to explain yourself in code
+2. Don't be redundant
+3. Don't add obvious noise
+4. Use as explanation of intent
+5. Use as clarification of code
+6. Use as warning of consequences
+7. Don't duplicate docs, link to it
