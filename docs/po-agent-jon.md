@@ -57,6 +57,31 @@ green** (`org.sterl.llmpeon.core`/`.test`):
   GIVEN/WHEN/THEN, ADR = memory, `index.md` registries, one-question interview) plus the three status
   markers above (test `AiPoAgentTest.systemPrompt_carriesTheMethodology`).
 
+- **ContextItem + Auto-Load (memory.md, docs/index.md).** ✅ done. `ContextItem` Interface (core)
+  + `EclipseFileContextItem` (plugin) laden Dateien effizient: Header
+  `Static loaded file <path>:\n---\n<content>`, lastModified-Cache. Jon nutzt `setPersistentContext()`
+  für memory.md + docs/index.md (gerendert in System-Prompt) und `setTurnContextSupplier()` für
+  AGENTS.md + Project-Info (nach Compact via contains-Check in Memory injiziert).
+  `StaticContentLoader` + Callback-Mechanismus entfernt (Inc 4 Cleanup).
+
+**BDD:**
+```
+GIVEN ein Projekt mit docs/memory.md
+WHEN Jon eine neue Session startet
+THEN wird memory.md automatisch als PersistentContextItem in den System-Prompt gerendert
+
+GIVEN memory.md existiert nicht
+WHEN Jon eine neue Session startet
+THEN passiert nichts (kein Error)
+
+GIVEN Jon compactSession aufruft
+THEN wird der System-Prompt neu aufgebaut (persistentContext) und Turn-Context nach Memory injiziert
+
+GIVEN memory.md wird automatisch geladen
+WHEN der Plan-Agent (Da Thinka) startet
+THEN bekommt er memory.md NICHT automatisch injiziert
+```
+
 ## Increment 2 — chat-based delegation (happy path) ✅
 
 **Built & green** (core `JonDelegateToolTest` + `AiPoAgentTest`; the plugin wiring asserts in

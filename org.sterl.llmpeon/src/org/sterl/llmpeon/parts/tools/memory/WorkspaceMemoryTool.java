@@ -9,7 +9,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.osgi.service.prefs.BackingStoreException;
-import org.sterl.llmpeon.StandingOrdersBuilder.MessageProvider;
+import org.sterl.llmpeon.StandingOrdersBuilder.ContextItemProvider;
+import org.sterl.llmpeon.context.ContextItem;
+import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.parts.tools.AbstractEclipseTool;
 import org.sterl.llmpeon.shared.ArgsUtil;
 
@@ -19,7 +21,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 
-public class WorkspaceMemoryTool extends AbstractEclipseTool implements MessageProvider {
+public class WorkspaceMemoryTool extends AbstractEclipseTool implements ContextItemProvider {
 
     private static final String PREF_KEY = "workspaceGuidelineMemory";
     private static final int MAX_ENTRIES = 500;
@@ -149,7 +151,7 @@ public class WorkspaceMemoryTool extends AbstractEclipseTool implements MessageP
     }
 
     @Override
-    public List<String> get() {
+    public List<ContextItem> get() {
         if (entries.isEmpty()) return List.of();
 
         StringBuilder sb = new StringBuilder();
@@ -161,6 +163,6 @@ public class WorkspaceMemoryTool extends AbstractEclipseTool implements MessageP
             sb.append(displayIndex).append(". [").append(g.createdAt()).append("] ").append(g.text()).append("\n");
         }
 
-        return List.of(sb.toString().trim());
+        return List.of(new SimpleContextItem(sb.toString().trim()));
     }
 }

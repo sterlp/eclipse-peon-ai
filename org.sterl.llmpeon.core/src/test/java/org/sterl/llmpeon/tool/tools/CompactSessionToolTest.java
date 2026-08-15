@@ -3,15 +3,19 @@ package org.sterl.llmpeon.tool.tools;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.StreamMock;
+import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
+import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
+import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -209,5 +213,88 @@ class CompactSessionToolTest {
 
         // THEN — memory is cleared with no extra messages added
         assertThat(memory.getCopy()).isEmpty();
+    }
+
+    @Test
+    void testCompactSessionDelegatesToAgent() {
+        // GIVEN — a request with an agent set
+        var memory = new ThreadSafeMemory();
+        memory.add(UserMessage.from("Test message"));
+        memory.add(AiMessage.from("AI response"));
+
+        var config = LlmConfig.builder().model("test").build();
+        var cm = streamMock.buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("WHAT: Compressed summary"))
+                .build());
+        var configuredModel = new ConfiguredChatModel(config, cm);
+
+        AtomicBoolean compressCalled = new AtomicBoolean(false);
+        AiAgent mockAgent = new AiAgent() {
+            @Override public String getName() { return "test-agent"; }
+            @Override public String getSystemPrompt() { return "system"; }
+            @Override public ChatResponse call(String message, AiMonitor monitor) { return null; }
+            @Override public ChatResponse compressContext(AiMonitor monitor) {
+                compressCalled.set(true);
+                return ChatResponse.builder().aiMessage(AiMessage.aiMessage("WHAT: Compressed summary")).build();
+            }
+            @Override public ThreadSafeMemory getMemory() { return memory; }
+            @Override public void clear() {}
+            @Override public void setStaticContext(java.util.Collection<dev.langchain4j.data.message.ChatMessage> ctx) {}
+            @Override public void setUserContextInformations(java.util.Collection<String> info) {}
+            @Override public List<String> getUserContextInformations() { return List.of(); }
+            @Override public boolean isToolActive(SmartToolExecutor exec) { return true; }
+            @Override public boolean isMcpToolActive(String toolName) { return true; }
+        };
+
+        var toolRequest = ToolLoopRequest.builder()
+                .chatModel(configuredModel)
+                .memory(memory)
+                .agent(mockAgent)
+                .build();
+
+        var subject = new CompactSessionTool();
+        subject.withToolRequest(toolRequest);
+
+        // WHEN
+        String result = subject.compactSession(null);
+
+        // THEN — agent.compressContext was called
+        assertThat(compressCalled).isTrue();
+        // AND — tool returns the summary text (no fallback resume message injected by the tool)
+        assertThat(result).contains("WHAT: Compressed summary");
+    }
+
+    @Test
+    void testCompactSessionFallbackWithoutAgent() {
+        // GIVEN — a request with agent == null (explicitly)
+        var config = LlmConfig.builder().model("default-model").build();
+        var cm = streamMock.buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("WHAT: Fallback summary"))
+                .build());
+        var configuredModel = new ConfiguredChatModel(config, cm);
+
+        var memory = new ThreadSafeMemory();
+        memory.add(UserMessage.from("Test message"));
+        memory.add(AiMessage.from("AI response"));
+
+        var toolRequest = ToolLoopRequest.builder()
+                .chatModel(configuredModel)
+                .memory(memory)
+                .agent(null)
+                .build();
+
+        var subject = new CompactSessionTool();
+        subject.withToolRequest(toolRequest);
+
+        // WHEN
+        String result = subject.compactSession(null);
+
+        // THEN — inline fallback runs: memory cleared + resume message injected
+        var compactedMemory = memory.getCopy();
+        assertThat(compactedMemory).hasSize(1);
+        assertThat(((UserMessage)compactedMemory.get(0)).singleText())
+                .isEqualTo("Session compacted. Resume the task using the preserved context.");
+        // AND — tool returns summary text
+        assertThat(result).contains("WHAT: Fallback summary");
     }
 }

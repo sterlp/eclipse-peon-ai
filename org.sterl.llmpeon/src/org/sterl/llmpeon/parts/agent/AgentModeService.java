@@ -12,6 +12,8 @@ import org.eclipse.swt.widgets.Display;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
+import org.sterl.llmpeon.context.ContextItem;
+import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
@@ -107,7 +109,10 @@ public class AgentModeService implements AiAgent {
         var orders = new ArrayList<>(service.getUserContextInformations());
         orders.add(phase == Phase.PLANNING ? SYS_PLAN : SYS_DEV);
         if (autonomous) orders.add(phase == Phase.PLANNING ? STANDING_ORDER_PLAN : STANDING_ORDER_DEV);
-        service.setUserContextInformations(orders);
+        List<ContextItem> items = new ArrayList<>(orders.size());
+        for (String text : orders) items.add(new SimpleContextItem(text));
+        List<ContextItem> captured = items;
+        service.setTurnContextSupplier(() -> captured);
         return service.call(message, monitor);
     }
 

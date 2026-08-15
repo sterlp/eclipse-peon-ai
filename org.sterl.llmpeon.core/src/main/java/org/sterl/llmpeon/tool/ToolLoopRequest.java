@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.function.Predicate;
 
 import org.jspecify.annotations.Nullable;
+import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.ai.AgentConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
@@ -79,10 +80,18 @@ public class ToolLoopRequest {
     public AgentConfig agentConfig;
 
     /**
-     * Standing orders (project context, AGENTS.md, active command/skill body) captured at loop
-     * start. Re-injected as user messages by {@link #clearMemory()} so they survive a
-     * {@code compactSession} tool call mid-loop.
+     * Owning agent for this tool loop. Set by {@link org.sterl.llmpeon.agent.AbstractAgent#doCall(String, AiMonitor)}
+     * so tools can delegate back to the agent (e.g. {@code compactSession}).
      */
+    @Nullable
+    @Getter
+    public AiAgent agent;
+
+    /**
+     * @deprecated Replaced by {@link #agent}. Standing orders are now managed by the agent's
+     * {@code compressContext()} method directly. Kept for legacy fallback when {@code agent == null}.
+     */
+    @Deprecated
     @Default
     @Getter
     public List<String> standingOrders = List.of();
@@ -138,6 +147,11 @@ public class ToolLoopRequest {
 
     public ToolLoopRequest agentConfig(AgentConfig agentConfig) {
         this.agentConfig = agentConfig;
+        return this;
+    }
+
+    public ToolLoopRequest agent(AiAgent agent) {
+        this.agent = agent;
         return this;
     }
 }

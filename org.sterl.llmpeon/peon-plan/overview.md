@@ -1,67 +1,111 @@
-# Delta-Plan: Add Missing JS `link_open` Renderer to chat.html ✅ Done
+# Plan: Context Message Konzept
 
-## 1. Context
+**Ziel:** Typ-basierte ContextMessages (`ContextItem` Interface) ersetzen StaticContentLoader + Callback-Mechanismus. Agent besitzt Compact-Ablauf autonom.
 
-The Chat Markdown Links feature is fully implemented. JS link renderer + Java fallback search + problem display all verified. Build clean.
+**Design:** `/llmpeon-parent/docs/context-message-concept.md`
 
-## 2. Affected File
+---
 
-| File | Location | Change |
-|------|----------|--------|
-| `/org.sterl.llmpeon/resources/chat/chat.html` | After line 238 (after `md` initialization closing `});`) | Insert `isWorkspaceLink` function + `link_open` rule (~10 lines) |
+## Increment 1: ContextItem Interface + Implementierungen (core)
 
-**No other files changed.** Java side is complete and verified.
+**Pfad:** `llmpeon-core`
 
-## 3. Code to Insert
+**Neu:**
+- `org/sterl/llmpeon/context/ContextItem.java` — Functional Interface: `String render()`
+- `org/sterl/llmpeon/context/DiskFileContextItem.java` — Disk-basiert, mit Header `"Static loaded file <path>:\n---\n<content>"`, lastModified-Cache
+- `org/sterl/llmpeon/context/SimpleContextItem.java` — Plain-Text (für Standing Orders)
 
-Insert after line 238 (`});` closing `md` initialization):
+**Tests:**
+- `ContextItemTest` — DiskFileContextItem render() + Cache + lastModified-Invalidation
+- `SimpleContextItemTest` — Plain-Text render()
 
-```javascript
+**Grün:** `mvn clean verify -pl llmpeon-core`
 
-        // Detect workspace links — false for URLs with schemes (https://, mailto:, etc.)
-        function isWorkspaceLink(href) {
-            return !href.includes('://');
-        }
+---
 
-        // Convert workspace file links to open-in-editor: protocol
-        md.renderer.rules.link_open = function(tokens, idx, options, env, self) {
-            const token = tokens[idx];
-            const hrefAttr = token.attrs.find(a => a[0] === 'href');
-            if (hrefAttr && isWorkspaceLink(hrefAttr[1])) {
-                hrefAttr[1] = 'open-in-editor:' + encodeURIComponent(hrefAttr[1]);
-            }
-            return self.renderToken(tokens, idx, options);
-        };
-```
+## Increment 2: AbstractAgent Compact-Ablauf
 
-## 4. What This Does
+**Pfad:** `llmpeon-core`
 
-- **`isWorkspaceLink(href)`**: Returns `false` for any href containing `://` — covers `https://`, `http://`, `mailto:`, `tel:`, etc. All other links return `true` (workspace paths, relative paths, filenames).
-- **`link_open` rule**: Intercepts every `<a>` tag rendered by markdown-it. Workspace links get converted to `open-in-editor:encoded-path`. External URLs pass through as standard `<a>` elements.
-- **Delegates to default renderer** via `self.renderToken` — no custom HTML generation needed.
+**Änderung:**
+- `AbstractAgent.java`:
+  - `private volatile String systemMessage = null` — Guard für rebuild
+  - `private List<ContextItem> persistentContext` — Persistent Context (Session-Start)
+  - `private Supplier<List<ContextItem>> turnContextSupplier` — Turn-scoped Context
+  - `setPersistentContext(List<ContextItem>)` — Setter
+  - `setTurnContextSupplier(Supplier<List<ContextItem>>)` — Setter
+  - `compactContext(AiMonitor)`:
+    1. Komprimierung via AiCompressorAgent (wie heute)
+    2. `memory.clear()`
+    3. `systemMessage = null` (Force rebuild)
+    4. `restoreTurnContext()` — contains-Check, nur einmal injizieren
+    5. `memory.addResult(summary)`
+  - `call()`: `if (systemMessage == null) systemMessage = buildSystemPrompt()`
 
-## 5. BDD Coverage (verified by existing Java implementation)
+**Tests:**
+- `AbstractAgentTest.test_compactContext_clearsMemoryAndRestoresTurnContext()`
+- `AbstractAgentTest.test_call_rebuildsSystemMessageAfterClear()`
+- `AbstractAgentTest.test_restoreTurnContext_skipsDuplicates()`
 
-| Scenario | JS Behavior | Java Behavior |
-|----------|-------------|---------------|
-| R1: `/project/src/File.java` | → `open-in-editor:%2Fproject%2Fsrc%2FFile.java` | `resolveInEclipse()` opens editor |
-| R2: `../docs/adr.md` | → `open-in-editor:%2E%2Edocs%2Fadr.md` | `resolveInEclipse()` opens editor |
-| R3: `EclipseWorkspaceReadFileTool.java` | → `open-in-editor:EclipseWorkspaceReadFileTool.java` | Fallback search opens first hit |
-| R4: `https://docs.example.com` | → `<a href="https://docs.example.com">` | No intercept, browser handles it |
+**Grün:** `mvn clean verify -pl llmpeon-core`
 
-## 6. Test Strategy
+---
 
-Manual verification only — load Eclipse, send a chat message with mixed links:
-- `[workspace file](/org.sterl.llmpeon/src/.../EclipseUtil.java)` → should open editor
-- `[external](https://www.google.com)` → should open browser
-- `[relative](../README.md)` → should attempt editor open
+## Increment 3: Eclipse-Integration + Migration
 
-## 7. Rules & Constraints
+**Pfad:** `org.sterl.llmpeon` (plugin)
 
-- **Do not touch** anything else in chat.html — diff click handler, copy-btn, appendMessage, etc. are untouched.
-- **Keep it minimal** — 10 lines of JS, no new dependencies.
-- **No changes** to `open-in-editor:` protocol format or Java-side handling.
+**Neu:**
+- `org/sterl/llmpeon/context/EclipseFileContextItem.java` — Eclipse-VFS-basiert
 
-## 8. Open Questions
+**Änderung:**
+- `PeonAiService.java`:
+  - Weg: `StaticContentLoader`, `loadStaticContent()`, Callback-Setup
+  - Neu: `setPersistentContext(List.of(new EclipseFileContextItem("docs/memory.md"), ...))`
+  - Neu: `setTurnContextSupplier()` — AGENTS.md, Project, etc.
+- `AIChatView.java`:
+  - Weg: Session-Start `loadStaticContent()` Aufruf
+  - Neu: Persistent Context wird automatisch am Session-Start via `call()` injected (systemMessage==null)
+- `AiPoAgent.java`:
+  - Weg: `compressCallbackSupplier`, `setCompressCallbackSupplier()`
+  - `getCompressCallback()` — bleibt (für Backward-Kompatibilität, gibt null)
 
-None.
+**Tests:**
+- `EclipseFileContextItemTest` — plugin-Test (Eclipse VFS)
+- `PeonAiServiceTest.test_persistentContext_setOnPoAgent()`
+
+**Grün:** `mvn clean verify` (vollständig, inkl. core)
+
+---
+
+## Increment 4: Cleanup + Verify
+
+**Pfad:** `llmpeon-core` + `org.sterl.llmpeon`
+
+**Löschen:**
+- `StaticContentLoader.java`
+- `StaticContentMessage.java`
+- `StaticContentLoaderTest.java`
+- Callback aus `AiCompressorAgent.java` (Konstruktor-Parameter `Runnable onCompacted`, Aufruf in `call()`)
+- Callback aus `AbstractAgent.java` (`getCompressCallback()` — nur wenn nicht mehr verwendet)
+
+**Änderung:**
+- `docs/po-agent-jon.md` — StaticContentMessage Teil auf ✅ done, ContextItem erwähnt
+
+**Grün:** `mvn clean verify` im `/llmpeon-parent` (vollständig)
+
+**369+ Tests grün** (neue Tests + bestehende Tests intakt)
+
+---
+
+## Risiken
+
+- **AiCompressorAgent Callback:** Wird von anderen Agenten verwendet? (Nur Jon nutzt's heute.) → Safe zu entfernen.
+- **getCompressCallback():** Bleibt als deprecated (Backward-Kompatibilität für Custom Agents).
+- **System-Prompt Rebuild:** `buildSystemPrompt()` muss persistent Context Items rendern. Heute: `staticContext` (String) wird angehängt. Neu: `persistentContext` (List<ContextItem>) wird gerendert und angehängt.
+
+## Abgrenzung zu po-agent-jon.md
+
+- po-agent-jon.md: Feature-Spezifikation (Business Rules, BDD)
+- Dieser Plan: Technische Umsetzung (Code, Tests, Migration)
+- nach Build: po-agent-jon.md auf ✅ done aktualisieren

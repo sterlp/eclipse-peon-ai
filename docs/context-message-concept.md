@@ -1,0 +1,174 @@
+# Context Message Konzept — Typ-basiert, OCP
+
+**Status:** ✅ done · **Datum:** 2026-08-14
+
+## Problem
+
+Aktuell mischen wir drei Dinge ohne klare Typisierung:
+- **Static Context** (`String`) — Datum/OS/Regeln, wird an System-Prompt angehängt
+- **Static Content Messages** — Dateien (`docs/memory.md`), werden als UserMessage geladen
+- **Standing Orders** — Kontext-Strings, werden an UserMessage angehängt
+
+`compactSession()` (Tool) muss heute verstehen, was "persistent" ist — Responsibility Bleed.
+System-Prompt rebuild nach Clear fehlt (KV Cache Invalidate + Rebuild).
+
+## Ziel
+
+1. **Agent besitzt den Compact-Ablauf** — Tool ruft nur `agent.compactContext()` auf. Fertig.
+2. **Typ-basiert, OCP** — `ContextItem` Interface; Implementierungen (DiskFile/EclipseFile) austauschbar.
+3. **System-Prompt rebuild nach Clear** — `systemMessage = null` Guard; nächste Nachricht baut neu.
+4. **Standing Orders contains-Check** — Nur injizieren, wenn noch nicht in History.
+
+---
+
+## Interface (Core)
+
+```java
+@FunctionalInterface
+interface ContextItem {
+    /** Renders the text content of this context item. */
+    String render();
+}
+```
+
+## Implementierungen
+
+```java
+// Core — Disk-basiert (headless-testbar)
+class DiskFileContextItem implements ContextItem {
+    private final Path path;
+    @Override String render() {
+        return Files.readString(path);
+    }
+}
+
+// Plugin — Eclipse-VFS-basiert
+class EclipseFileContextItem implements ContextItem {
+    private final String relativePath;
+    private final IProject project;
+    @Override String render() {
+        IFile file = project.getFile(relativePath);
+        return new String(file.getContents());
+    }
+}
+```
+
+## Agent
+
+```java
+class AbstractAgent {
+    private volatile String systemMessage = null; // null = noch nicht aufgebaut ODER nach clear
+    
+    // Persistent: Session-Start einmalig an System-Prompt
+    private List<ContextItem> persistentContext;
+    
+    // Turn-Scoped: Pro Turn (und nach Clear) als UserMessage in Memory
+    private Supplier<List<ContextItem>> turnContextSupplier;
+
+    // Session-Start
+    void injectPersistentContext() {
+        //一次性: persistentContext rendern → systemMessage aufbauen
+    }
+
+    ChatResponse call(String userMessage, AiMonitor monitor) {
+        if (systemMessage == null) {
+            systemMessage = buildSystemPrompt(); // Erster Aufruf ODER nach Clear
+        }
+        // ... call-Logik
+    }
+
+    ChatResponse compactContext(AiMonitor monitor) {
+        // 1. Komprimierung (via Compressor)
+        var summary = compressor.call(memory.getCopy(), monitor);
+        
+        // 2. Clear
+        memory.clear();
+        systemMessage = null; // Force rebuild bei nächste Nachricht
+        
+        // 3. Standing Orders wiederherstellen (contains-Check)
+        restoreTurnContext();
+        
+        // 4. Summary injizieren
+        memory.addResult(summary);
+        
+        return summary;
+    }
+
+    void restoreTurnContext() {
+        if (turnContextSupplier == null) return;
+        for (var item : turnContextSupplier.get()) {
+            String text = item.render();
+            if (!memory.containsUserMessage(text)) {
+                memory.add(UserMessage.from(text));
+            }
+        }
+    }
+}
+```
+
+## Compact Tool (Delegiert)
+
+Das Tool kennt den Agenten direkt über den `ToolLoopRequest` und delegiert komplett.
+
+```java
+class CompactSessionTool {
+    @Tool(name = "compactSession")
+    String compactSession() {
+        // Request wird von AbstractAgent.doCall() mit dem Agenten befüllt
+        AiAgent agent = request.getAgent();
+        if (agent != null) return agent.compressContext(monitor);
+        
+        // Fallback (Legacy/Tests ohne Agent)
+        var summary = new AiCompressorAgent(request.getChatModel()).call(request.getMemory().getCopy(), monitor);
+        request.clearMemory();
+        request.getMemory().add(UserMessage.from(summary));
+        return summary;
+    }
+}
+```
+
+## BDD
+
+```
+GIVEN ein Agent mit persistenten ContextItems (docs/memory.md, docs/index.md)
+     und turn-scoped ContextItems (Project, AGENTS.md)
+WHEN compactSession aufgerufen (Tool oder UI-Button)
+THEN
+  1. Memory wird komprimiert (Summary erzeugt)
+  2. Memory.clear() wird aufgerufen
+  3. systemMessage auf null gesetzt (Force rebuild)
+  4. Turn-scoped ContextItems werden wiederhergestellt (contains-Check)
+  5. Summary wird in Memory injiziert
+
+GIVEN systemMessage ist null (nach Clear)
+WHEN nächste Benutzer-Nachricht gesendet (call())
+THEN System-Prompt wird neu aufgebaut (persistent ContextItems gerendert)
+
+GIVEN turn-scoped ContextItems sind bereits in Memory (contains-Check)
+WHEN restoreTurnContext aufgerufen
+THEN Items werden NICHT doppelt injiziert
+
+GIVEN ein DiskFileContextItem (core)
+WHEN render() aufgerufen
+THEN Datei-Inhalt vom Dateisystem gelesen
+
+GIVEN ein EclipseFileContextItem (plugin)
+WHEN render() aufgerufen
+THEN Datei-Inhalt aus Eclipse VFS gelesen
+```
+
+## Migration
+
+| Heute | Ziel |
+|-------|------|
+| `setStaticContext(String)` | `setPersistentContext(List<ContextItem>)` |
+| `setStandingOrders(Supplier<String>)` | `setTurnContextSupplier(Supplier<List<ContextItem>>)` |
+| `StaticContentLoader` (eigenständig) | Fällt weg — `ContextItem.render()` macht's |
+| `AiCompressorAgent` Callback | Fällt weg — Agent macht `clear() + restore()` selbst |
+| `compactSession()` Tool weiß über Persistence | Tool delegiert an `ToolLoopRequest.getAgent().compressContext()` |
+
+## Entscheidungen (abgeschlossen)
+
+- **Header:** Ja — `render()` gibt `"Static loaded file <path>:\n---\n<content>"` zurück. Dient als contains-Check-Marker und Token-Transparenz.
+- **Caching:** Ja — `lastModified`-Check im ContextItem. Cache nur einmal pro Turn / am Anfang. Invalidation via file-timestamp (DiskFile) / Eclipse IResourceChangeListener (EclipseFile, low prio MVP: timestamp reicht).
+- **Standing Orders:** `List<ContextItem>` — gleiche Abstraction. Contains-Check (`memory.containsUserMessage(render())`); nur einmal injiziert, nie nachträglich angepasst (KV Cache!).

@@ -20,11 +20,7 @@ public class AiCompressorAgent {
 
     private final ConfiguredChatModel chatModel;
 
-    /**
-     * Not every model supports a different temperature -- leave empty to use model defaults.
-     */
     public AiCompressorAgent(ConfiguredChatModel chatModel) {
-        super();
         this.chatModel = chatModel;
     }
 
@@ -55,7 +51,7 @@ public class AiCompressorAgent {
             throw new IllegalStateException("AI call returned null — streaming failed without a response");
         }
         ToSimpleMessage.INSTANCE.convert(result.aiMessage()).forEach(monitor::onChatResponse);
-        
+
         return result;
     }
 

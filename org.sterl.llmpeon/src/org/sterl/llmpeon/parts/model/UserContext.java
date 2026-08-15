@@ -9,13 +9,15 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.IOrdinaryClassFile;
 import org.eclipse.jface.text.ITextSelection;
-import org.sterl.llmpeon.StandingOrdersBuilder.MessageProvider;
+import org.sterl.llmpeon.StandingOrdersBuilder.ContextItemProvider;
+import org.sterl.llmpeon.context.ContextItem;
+import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.FileLines;
 import org.sterl.llmpeon.shared.StringUtil;
 
-public class UserContext implements MessageProvider {
+public class UserContext implements ContextItemProvider {
     private volatile IProject currentProject;
     private volatile boolean projectPinned = false;
 
@@ -24,7 +26,7 @@ public class UserContext implements MessageProvider {
     private volatile ITextSelection textSelection;
 
     @Override
-    public List<String> get() {
+    public List<ContextItem> get() {
         if (currentProject == null && selectedResource == null) return List.of();
 
         var sb = new StringBuilder();
@@ -33,7 +35,7 @@ public class UserContext implements MessageProvider {
             sb.append(EclipseUtil.projectInfo(currentProject));
         }
         addUserSelection(sb);
-        return List.of(sb.toString());
+        return List.of(new SimpleContextItem(sb.toString()));
     }
 
     private void addUserSelection(StringBuilder sb) {

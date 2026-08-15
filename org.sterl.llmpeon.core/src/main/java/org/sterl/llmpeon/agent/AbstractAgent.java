@@ -6,14 +6,16 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 import org.sterl.llmpeon.ai.AgentConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
+import org.sterl.llmpeon.context.ContextItem;
+import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.queuedmessages.UserMessageQueue;
 import org.sterl.llmpeon.shared.AiMonitor;
@@ -42,7 +44,10 @@ public abstract class AbstractAgent implements AiAgent {
     private final AtomicBoolean working = new AtomicBoolean(false);
 
     private final LinkedHashSet<ChatMessage> staticContext = new LinkedHashSet<>();
-    private final LinkedHashSet<String> userContextInformations = new LinkedHashSet<>();
+
+    private volatile String systemMessage = null;
+    private List<ContextItem> persistentContext;
+    private Supplier<List<ContextItem>> turnContextSupplier;
 
     /**
      * Fraction of the shared auto-compact budget at which THIS agent compacts (1.0 = the full
@@ -170,6 +175,9 @@ public abstract class AbstractAgent implements AiAgent {
                 return null;
             }
 
+            // Rebuild system prompt after compact or on first call
+            if (systemMessage == null) buildSystemPrompt();
+
             var stillQueued = messageQueue.drainAll();
             String next = stillQueued == null ? initialMessage : stillQueued + System.lineSeparator() + initialMessage;
 
@@ -231,17 +239,7 @@ public abstract class AbstractAgent implements AiAgent {
             compressContext(monitor);
         }
 
-        LinkedList<String> standingOrders;
-        synchronized (userContextInformations) {
-            standingOrders = new LinkedList<>(userContextInformations);
-        }
         var userMessages = new ArrayList<Content>();
-        if (standingOrders.size() > 0) {
-            standingOrders.stream()
-                    .filter(m -> !hasUserText(m))
-                    .forEach(m -> userMessages.add(TextContent.from(m)));
-        }
-
         if (StringUtil.hasValue(message)) userMessages.add(TextContent.from(message));
         if (userMessages.isEmpty()) {
             // nothing
@@ -261,7 +259,7 @@ public abstract class AbstractAgent implements AiAgent {
                     .toolNameFilter(getToolNameFilter())
                     .writeValidator(getWriteValidator())
                     .agentConfig(getConfig())
-                    .standingOrders(standingOrders)
+                    .agent(this)
                     .build()
                 );
 
@@ -269,16 +267,34 @@ public abstract class AbstractAgent implements AiAgent {
         return response;
     }
 
+    /**
+     * @deprecated Replaced by {@link #setPersistentContext(List)} and {@link #setTurnContextSupplier(java.util.function.Supplier)}.
+     * Context is now managed autonomously by the agent via ContextItem instances.
+     */
+    @Deprecated
+    public Runnable getCompressCallback(ThreadSafeMemory memory, AiMonitor monitor) {
+        return null;
+    }
+
     public ChatResponse compressContext(AiMonitor monitor) {
         var response = new AiCompressorAgent(configuredModel)
                 .call(memory.getCopy(), monitor);
-        
+
         memory.clear();
+        this.systemMessage = null;
+        // Restore turn-scoped context
+        restoreTurnContext();
+        // Ensure memory starts with a user message (many LLMs require this)
+        memory.add(UserMessage.from("Session compacted. Resume the task using the preserved context."));
         memory.addResult(response);
         return response;
     }
 
-    /** Set once at startup before concurrent call()s begin — no sync needed. */
+    /**
+     * @deprecated Replaced by {@link #setPersistentContext(List)}.
+     * Static context is now managed via {@link ContextItem} instances.
+     */
+    @Deprecated
     public void setStaticContext(Collection<ChatMessage> staticContext) {
         this.staticContext.clear();
         if (staticContext != null) this.staticContext.addAll(staticContext);
@@ -289,17 +305,49 @@ public abstract class AbstractAgent implements AiAgent {
         return new ArrayList<>(staticContext);
     }
     
+    /**
+     * @deprecated Shimmed to {@link #setTurnContextSupplier(Supplier)}. 
+     * Strings are wrapped as {@link SimpleContextItem} instances.
+     */
+    @Deprecated
     public void setUserContextInformations(Collection<String> userContextInformations) {
-        synchronized (this.userContextInformations) { // Fixed: was locking on the parameter!
-            this.userContextInformations.clear();
-            if (userContextInformations != null) this.userContextInformations.addAll(userContextInformations);
+        if (userContextInformations == null || userContextInformations.isEmpty()) {
+            this.turnContextSupplier = null;
+            return;
         }
+        List<ContextItem> items = new ArrayList<>(userContextInformations.size());
+        for (String text : userContextInformations) {
+            items.add(new SimpleContextItem(text));
+        }
+        List<ContextItem> captured = items;
+        this.turnContextSupplier = () -> captured;
+    }
+
+    /** Set persistent context items rendered into the system prompt on every rebuild. */
+    public void setPersistentContext(List<ContextItem> context) {
+        this.persistentContext = context;
+        this.systemMessage = null;
+    }
+
+    /** Set turn-scoped context supplier — items injected after compact or on first call. */
+    public void setTurnContextSupplier(Supplier<List<ContextItem>> supplier) {
+        this.turnContextSupplier = supplier;
     }
     
+    /**
+     * @deprecated Renders items from {@link #turnContextSupplier} as strings.
+     * @return rendered context item texts, or empty list if no supplier set.
+     */
+    @Deprecated
     public List<String> getUserContextInformations() {
-        synchronized (this.userContextInformations) {
-            return new ArrayList<>(this.userContextInformations);
+        if (turnContextSupplier == null) return List.of();
+        List<ContextItem> items = turnContextSupplier.get();
+        if (items == null || items.isEmpty()) return List.of();
+        var result = new ArrayList<String>(items.size());
+        for (var item : items) {
+            result.add(item.render());
         }
+        return result;
     }
 
     @Override
@@ -325,8 +373,40 @@ public abstract class AbstractAgent implements AiAgent {
 
     private List<ChatMessage> buildStaticMessages() {
         var messages = new ArrayList<ChatMessage>();
-        messages.add(SystemMessage.from(getSystemPrompt()));
+        messages.add(SystemMessage.from(buildSystemPrompt()));
         messages.addAll(staticContext);
         return messages;
+    }
+
+    /**
+     * Builds the full system prompt by appending rendered persistent context items
+     * to the agent's base system prompt. Cached until invalidated (e.g. after compact).
+     */
+    private String buildSystemPrompt() {
+        if (systemMessage != null) return systemMessage;
+
+        var prompt = getSystemPrompt();
+        if (persistentContext != null) {
+            for (var item : persistentContext) {
+                prompt = prompt + System.lineSeparator() + System.lineSeparator() + item.render();
+            }
+        }
+        this.systemMessage = prompt;
+        return prompt;
+    }
+
+    /** Restore turn-scoped context into memory after compact, skipping duplicates. */
+    private void restoreTurnContext() {
+        if (turnContextSupplier == null) return;
+
+        List<ContextItem> items = turnContextSupplier.get();
+        if (items == null || items.isEmpty()) return;
+
+        for (var item : items) {
+            String rendered = item.render();
+            if (!memory.containsUserMessage(rendered)) {
+                memory.add(UserMessage.from(rendered));
+            }
+        }
     }
 }

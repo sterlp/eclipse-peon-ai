@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.function.Supplier;
 
 import org.sterl.llmpeon.agent.AiAgent;
+import org.sterl.llmpeon.context.ContextItem;
+import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.prompt.PeonPaths;
 import org.sterl.llmpeon.prompt.PromptLoader;
@@ -149,7 +151,10 @@ public class JonDelegateTool extends AbstractTool {
             List<String> orders) {
         ArgsUtil.requireNonBlank(prompt, "prompt");
         AiAgent slave = target.agent();
-        slave.setUserContextInformations(orders);
+        List<ContextItem> items = new ArrayList<>(orders.size());
+        for (String text : orders) items.add(new SimpleContextItem(text));
+        List<ContextItem> captured = items;
+        slave.setTurnContextSupplier(() -> captured);
 
         onTool(target.uiName() + " start:\n" + prompt);
         long startNanos = System.nanoTime();

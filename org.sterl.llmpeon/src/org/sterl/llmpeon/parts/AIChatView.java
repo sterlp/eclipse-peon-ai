@@ -696,7 +696,7 @@ public class AIChatView implements EclipseAiMonitor {
                 // so it rides in the same UserMessage and the user's text stays the last TextContent.
                 String indexSeed = aiService.docsIndexSeedForFirstMessage();
                 if (indexSeed != null) this.standingOrders.addOneTimeOrder(indexSeed);
-                active.setUserContextInformations(this.standingOrders.build());
+                active.setTurnContextSupplier(this.standingOrders::buildItems);
                 cr = active.call(messageToSend, this);
             } catch (Exception e) {
                 ex = handleChatException(e);

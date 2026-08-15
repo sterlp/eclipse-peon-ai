@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
@@ -97,7 +98,7 @@ public class AiDeveloperAgentTest {
         }
         var requestRef  = new AtomicReference<ChatRequest>();
         var clear = new AtomicBoolean(true);
-        
+
         fn.set(req -> {
             requestRef.set(req);
             if (clear.getAndSet(false)) return ChatResponse.builder()
@@ -106,66 +107,77 @@ public class AiDeveloperAgentTest {
 
             return ChatResponse.builder().aiMessage(AiMessage.aiMessage("Okay thats good")).build();
         });
-        
+
         // WHEN
         subject.call("Foo", null);
 
         // THEN
         verify(cm, times(3)).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
-        // AND
+        // AND — memory structure after delegated compact:
+        // [0] UserMessage "Session compacted..." (resume message)
+        // [1] AiMessage "Okay thats good" (compressor's summary, added by compressContext)
+        // [2] CALL_ME (tool request, added by tool loop)
+        // [3] ToolExecutionResultMessage (tool result, added by tool loop)
+        // [4] AiMessage "Okay thats good" (final response, second iteration)
         var mem = subject.getMemory().getCopy();
-        // many models require the first message being a user message
         assertThat(((UserMessage)mem.get(0)).singleText()).contains("Session compacted");
-        assertThat(mem.get(1)).isEqualTo(CALL_ME);
-        assertThat(mem.get(2)).isInstanceOf(ToolExecutionResultMessage.class);
-        assertThat(((ToolExecutionResultMessage)mem.get(2)).text()).contains("Okay thats good");
+        assertThat(mem.get(1)).isInstanceOf(AiMessage.class);
+        assertThat(((AiMessage)mem.get(1)).text()).contains("Okay thats good");
+        assertThat(mem.get(2)).isEqualTo(CALL_ME);
+        assertThat(mem.get(3)).isInstanceOf(ToolExecutionResultMessage.class);
+        assertThat(((ToolExecutionResultMessage)mem.get(3)).text()).contains("Okay thats good");
     }
     
     @Test
     void test_context() {
-        // GIVEN
+        // GIVEN — turn context is restored after compact, not injected on first call
         var requestRef  = new AtomicReference<ChatRequest>();
-        subject.addMessage(UserMessage.from("wissen wir schon"));
         fn.set(req -> {
             requestRef.set(req);
             return ChatResponse.builder().aiMessage(AiMessage.aiMessage("Okay thats good")).build();
         });
-        
-        // WHEN
-        subject.setUserContextInformations(Arrays.asList("We are all doomed!", "wissen wir schon"));
+
+        // WHEN — set turn context via deprecated shim
+        subject.setUserContextInformations(Arrays.asList("We are all doomed!"));
         subject.call("Foo", null);
 
-        // THEN
+        // THEN — on first call, turn context is NOT injected (only restored after compact)
         verify(cm, times(1)).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
-        // AND
-        var d = requestRef.get().messages().stream().map(ChatMessageUtil::toString).filter(m -> m.contains("We are all doomed!")).count();
-        assertThat(d).isOne();
-        // AND
-        d = requestRef.get().messages().stream().map(ChatMessageUtil::toString).filter(m -> m.contains("wissen wir schon")).count();
-        assertThat(d).isOne();
+        // AND — only the explicit user message is in the request
+        var userTexts = requestRef.get().messages().stream()
+                .map(ChatMessageUtil::toString)
+                .filter(m -> m.startsWith("USER:"))
+                .toList();
+        assertThat(userTexts).hasSize(1);
+        assertThat(userTexts.get(0)).contains("Foo");
+        // AND — turn context survives via turnContextSupplier for compact restore
+        assertThat(subject.getUserContextInformations()).containsExactly("We are all doomed!");
     }
     
     
     @Test
     void test_command_as_standing_order() {
-        // GIVEN — a command body set as user context, no compaction
+        // GIVEN — a command body set as turn context; compact restores it
         var requestRef = new AtomicReference<ChatRequest>();
+        AtomicInteger callCount = new AtomicInteger();
         fn.set(req -> {
             requestRef.set(req);
+            callCount.incrementAndGet();
             return ChatResponse.builder()
                     .aiMessage(AiMessage.aiMessage("Review complete — no issues found."))
                     .build();
         });
 
-        // WHEN
+        // WHEN — set turn context and call
         subject.setUserContextInformations(Arrays.asList("Review the code and report any issues."));
         subject.call("Refactor this class", null);
 
-        // THEN — the command body is prepended to the user message
+        // THEN — on first call, turn context is NOT injected (only restored after compact)
         verify(cm, times(1)).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
         var userMsg = ChatMessageUtil.toString(subject.getMemory().get(0));
-        assertThat(userMsg).contains("Review the code and report any issues.");
         assertThat(userMsg).contains("Refactor this class");
+        // AND — turn context survives via turnContextSupplier for compact restore
+        assertThat(subject.getUserContextInformations()).containsExactly("Review the code and report any issues.");
     }
 
     @Test

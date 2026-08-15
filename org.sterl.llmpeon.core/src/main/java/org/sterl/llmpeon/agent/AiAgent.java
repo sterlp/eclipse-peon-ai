@@ -2,7 +2,9 @@ package org.sterl.llmpeon.agent;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Supplier;
 
+import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.tool.ToolService;
@@ -43,15 +45,28 @@ public interface AiAgent {
     }
 
     /**
+     * @deprecated Shimmed to {@code setTurnContextSupplier()} in {@link AbstractAgent}.
+     * Use {@code setTurnContextSupplier()} directly on agents that support it.
      * Addition prompt information which should stay until changed -- added to the user message
      * 
      * @param userContextInformations addition prompt
      */
+    @Deprecated
     void setUserContextInformations(Collection<String> userContextInformations);
     /**
+     * @deprecated Renders items from {@code turnContextSupplier} as strings.
      * addition prompt information which should stay until changed
      */
+    @Deprecated
     List<String> getUserContextInformations();
+
+    /** Set persistent context items rendered into the system prompt on every rebuild. */
+    default void setPersistentContext(List<ContextItem> context) {
+    }
+
+    /** Set turn-scoped context supplier — items injected after compact or on first call. */
+    default void setTurnContextSupplier(Supplier<List<ContextItem>> supplier) {
+    }
     
     /**
      * If a handover is available show the button

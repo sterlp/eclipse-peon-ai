@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.function.Supplier;
 
 import org.jspecify.annotations.NonNull;
+import org.sterl.llmpeon.context.ContextItem;
+import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.shared.StringUtil;
 
 /**
@@ -17,16 +19,29 @@ import org.sterl.llmpeon.shared.StringUtil;
  */
 public class StandingOrdersBuilder {
 
+    /** @deprecated Replaced by {@link ContextItemProvider}. */
+    @Deprecated
     public interface MessageProvider extends Supplier<List<String>> {}
+
+    public interface ContextItemProvider extends Supplier<List<ContextItem>> {}
     
-    private final List<MessageProvider> providers = new LinkedList<>();
+    private final List<MessageProvider> messageProviders = new LinkedList<>();
+    private final List<ContextItemProvider> itemProviders = new LinkedList<>();
     private final List<String> oneTimeOrders = new LinkedList<>();
     
     public StandingOrdersBuilder() {
         super();
     }
+
+    /** @deprecated Replaced by {@link #add(ContextItemProvider)}. */
+    @Deprecated
     public StandingOrdersBuilder add(MessageProvider provider) {
-        providers.add(provider);
+        messageProviders.add(provider);
+        return this;
+    }
+
+    public StandingOrdersBuilder add(ContextItemProvider provider) {
+        itemProviders.add(provider);
         return this;
     }
     
@@ -36,11 +51,51 @@ public class StandingOrdersBuilder {
         }
     }
     
-    public Collection<String> build() {
+    /**
+     * Builds the standing orders as a list of {@link ContextItem} instances.
+     * One-time orders and legacy {@link MessageProvider} strings are wrapped as
+     * {@link SimpleContextItem} for backward compatibility.
+     */
+    public List<ContextItem> buildItems() {
+        var result = new ArrayList<ContextItem>();
 
+        for (var p : itemProviders) {
+            var items = p.get();
+            if (items != null) {
+                items.stream().filter(item -> StringUtil.hasValue(item.render()))
+                    .forEach(result::add);
+            }
+        }
+
+        // Legacy MessageProviders — wrap their strings as SimpleContextItem
+        for (var p : messageProviders) {
+            var strings = p.get();
+            if (strings != null) {
+                strings.stream().filter(StringUtil::hasValue)
+                    .map(SimpleContextItem::new)
+                    .forEach(result::add);
+            }
+        }
+
+        // Atomic snapshot-and-clear for one-time orders
+        var snapshot = new ArrayList<String>();
+        synchronized (oneTimeOrders) {
+            snapshot.addAll(oneTimeOrders);
+            oneTimeOrders.clear();
+        }
+        snapshot.stream().filter(StringUtil::hasValue)
+            .map(SimpleContextItem::new)
+            .forEach(result::add);
+
+        return result;
+    }
+
+    /** @deprecated Replaced by {@link #buildItems()}. */
+    @Deprecated
+    public Collection<String> build() {
         var result = new LinkedHashSet<String>();
 
-        for (var p : providers) addTo(result, p.get());
+        for (var p : messageProviders) addTo(result, p.get());
 
         // Atomic snapshot-and-clear: drainTo removes all elements and adds them to the target list
         var snapshot = new ArrayList<String>();
@@ -55,7 +110,7 @@ public class StandingOrdersBuilder {
     private void addTo(@NonNull LinkedHashSet<String> result,
             Collection<String> messages) {
         if (messages == null || messages.isEmpty()) return;
-        
+
         messages.stream().filter(StringUtil::hasValue)
             .forEach(e -> result.add(e));
     }

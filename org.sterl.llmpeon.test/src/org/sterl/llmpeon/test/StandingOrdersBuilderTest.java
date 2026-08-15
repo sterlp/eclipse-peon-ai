@@ -2,6 +2,9 @@ package org.sterl.llmpeon.test;
 
 import static org.junit.Assert.assertNotNull;
 
+import java.util.Collection;
+import java.util.stream.Collectors;
+
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.internal.core.util.SimpleDocument;
@@ -9,6 +12,7 @@ import org.eclipse.jface.text.TextSelection;
 import org.junit.Before;
 import org.junit.Test;
 import org.sterl.llmpeon.StandingOrdersBuilder;
+import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.parts.PeonAiService;
 import org.sterl.llmpeon.parts.agentsmd.AgentsMdService;
 import org.sterl.llmpeon.parts.model.UserContext;
@@ -20,6 +24,10 @@ public class StandingOrdersBuilderTest extends AbstractTest {
     UserContext userContext;
     StandingOrdersBuilder standingOrders;
     AgentsMdService agentsMdService;
+
+    private Collection<String> render(Collection<ContextItem> items) {
+        return items.stream().map(ContextItem::render).collect(Collectors.toList());
+    }
     
     @Before
     public void beforeEach() {
@@ -42,8 +50,8 @@ public class StandingOrdersBuilderTest extends AbstractTest {
         
         // WHEN
         agentsMdService.load(project);
-        var messages = standingOrders.build();
-        
+        var messages = render(standingOrders.buildItems());
+
         // THAN agents md
         assertHasMessageWith(messages, "/AGENTS.md");
         assertHasMessageWith(messages, "(Global Rules)");
@@ -56,8 +64,8 @@ public class StandingOrdersBuilderTest extends AbstractTest {
         // GIVEN
         
         // WHEN
-        var messages = standingOrders.build();
-        
+        var messages = render(standingOrders.buildItems());
+
         // THEN
         assertHasMessageWith(messages, project.getName());
         assertHasMessageWith(messages, JdtUtil.diskPathOf(project));
@@ -72,13 +80,13 @@ public class StandingOrdersBuilderTest extends AbstractTest {
         standingOrders.addOneTimeOrder("Review the code and report any issues.");
 
         // WHEN
-        var messages = standingOrders.build();
+        var messages = render(standingOrders.buildItems());
 
         // THEN — the one-time order is part of the built standing orders
         assertHasMessageWith(messages, "Review the code and report any issues.");
 
         // AND — it is consumed: a second build no longer contains it
-        var second = standingOrders.build();
+        var second = render(standingOrders.buildItems());
         assertHasNoMessageWith(second, "Review the code and report any issues.");
     }
 
@@ -90,14 +98,14 @@ public class StandingOrdersBuilderTest extends AbstractTest {
 
         // WHEN
         agentsMdService.load(project);
-        var messages = standingOrders.build();
+        var messages = render(standingOrders.buildItems());
 
         // THEN — provider content and the command body both present
         assertHasMessageWith(messages, "/AGENTS.md");
         assertHasMessageWith(messages, "Review the code and report any issues.");
 
         // AND — the one-time order is consumed
-        var second = standingOrders.build();
+        var second = render(standingOrders.buildItems());
         assertHasNoMessageWith(second, "Review the code and report any issues.");
     }
 
@@ -116,7 +124,7 @@ public class StandingOrdersBuilderTest extends AbstractTest {
         userContext.setSelectedResource(pomResource);
 
         // WHEN
-        var messages = standingOrders.build();
+        var messages = render(standingOrders.buildItems());
 
         // THEN - should contain path to pom.xml
         assertHasMessageWith(messages, "pom.xml");
@@ -147,7 +155,7 @@ public class StandingOrdersBuilderTest extends AbstractTest {
         agentsMdService.setAgentNameSupplier(() -> "Peon-Dev");
 
         // WHEN standing orders are built
-        var messages = standingOrders.build();
+        var messages = render(standingOrders.buildItems());
 
         // THEN both AGENTS.md and AGENTS-DEV.md content is included
         assertHasMessageWith(messages, "AGENTS.md");
@@ -167,7 +175,7 @@ public class StandingOrdersBuilderTest extends AbstractTest {
         agentsMdService.setAgentNameSupplier(() -> "Peon-Dev");
 
         // WHEN standing orders are built
-        var messages = standingOrders.build();
+        var messages = render(standingOrders.buildItems());
 
         // THEN only AGENTS.md content is included
         assertHasMessageWith(messages, "AGENTS.md");
@@ -186,7 +194,7 @@ public class StandingOrdersBuilderTest extends AbstractTest {
         agentsMdService.setAgentNameSupplier(() -> "Peon-Plan");
 
         // WHEN standing orders are built
-        var messages = standingOrders.build();
+        var messages = render(standingOrders.buildItems());
 
         // THEN only AGENTS-PLAN.md content is included
         assertHasMessageWith(messages, "AGENTS-PLAN.md");
@@ -205,7 +213,7 @@ public class StandingOrdersBuilderTest extends AbstractTest {
         agentsMdService.setAgentNameSupplier(() -> "Peon-Dev");
 
         // WHEN standing orders are built with Peon-Dev
-        var messages = standingOrders.build();
+        var messages = render(standingOrders.buildItems());
 
         // THEN AGENTS-DEV.md content is included
         assertHasMessageWith(messages, "AGENTS-DEV.md");
@@ -213,7 +221,7 @@ public class StandingOrdersBuilderTest extends AbstractTest {
 
         // WHEN the agent is switched to Peon-Plan
         agentsMdService.setAgentNameSupplier(() -> "Peon-Plan");
-        messages = standingOrders.build();
+        messages = render(standingOrders.buildItems());
 
         // THEN AGENTS-PLAN.md content is included instead
         assertHasMessageWith(messages, "AGENTS-PLAN.md");
@@ -232,7 +240,7 @@ public class StandingOrdersBuilderTest extends AbstractTest {
         agentsMdService.setAgentNameSupplier(() -> "Peon-Dev");
 
         // WHEN standing orders are built
-        var messages = standingOrders.build();
+        var messages = render(standingOrders.buildItems());
 
         // THEN both AGENTS.md and agents-dev.md content is included
         assertHasMessageWith(messages, "AGENTS.md");
@@ -252,7 +260,7 @@ public class StandingOrdersBuilderTest extends AbstractTest {
         agentsMdService.setAgentNameSupplier(() -> "Docs-Assistant");
 
         // WHEN standing orders are built
-        var messages = standingOrders.build();
+        var messages = render(standingOrders.buildItems());
 
         // THEN both AGENTS.md and AGENTS-Docs-Assistant.md content is included
         assertHasMessageWith(messages, "AGENTS.md");

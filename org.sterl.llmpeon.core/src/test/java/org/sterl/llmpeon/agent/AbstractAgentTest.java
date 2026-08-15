@@ -9,7 +9,9 @@ import java.util.List;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,6 +19,8 @@ import org.junit.jupiter.api.io.TempDir;
 import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.context.ContextItem;
+import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.memory.FileAgentHistoryStore;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.tool.ToolService;
@@ -240,5 +244,185 @@ class AbstractAgentTest {
                 .map(UserMessage.class::cast)
                 .map(u -> ChatMessageUtil.toString(u.contents()).stripTrailing())
                 .toList();
+    }
+
+    /** compactContext clears memory, invalidates systemMessage, restores turn context, then adds summary. */
+    @Test
+    void test_compactContext_clearsMemoryAndRestoresTurnContext() {
+        var config = LlmConfig.builder().model("mock").build();
+        var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("compressed summary")).build());
+
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        agent.addMessage(UserMessage.from("old message"));
+
+        // Set turn context supplier
+        List<ContextItem> turnContext = List.of(new SimpleContextItem("turn context item"));
+        agent.setTurnContextSupplier(() -> turnContext);
+
+        // WHEN
+        agent.compressContext(monitor -> {});
+
+        // THEN — memory cleared, turn context restored, summary added
+        var memory = agent.getMemory().getCopy();
+        assertThat(memory).hasSize(2);
+        assertThat(memory.get(0)).isInstanceOf(UserMessage.class);
+        assertThat(ChatMessageUtil.toString(memory.get(0))).contains("turn context item");
+        assertThat(memory.get(1)).isInstanceOf(AiMessage.class);
+        assertThat(ChatMessageUtil.toString(memory.get(1))).contains("compressed summary");
+    }
+
+    /** call() rebuilds systemMessage after compact cleared it. */
+    @Test
+    void test_call_rebuildsSystemMessageAfterClear() {
+        var config = LlmConfig.builder().model("mock").build();
+        AtomicInteger callCount = new AtomicInteger();
+        var mockModel = streamMock.buildMock(r -> {
+            callCount.incrementAndGet();
+            return ChatResponse.builder().aiMessage(AiMessage.aiMessage("OK")).build();
+        });
+
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        agent.setPersistentContext(List.of(new SimpleContextItem("persistent context")));
+
+        // First call — builds systemMessage
+        agent.call("first", monitor -> {});
+
+        // Compact — clears systemMessage (compressor also makes a call)
+        agent.compressContext(monitor -> {});
+
+        // Second call — rebuilds systemMessage
+        agent.call("second", monitor -> {});
+
+        // 3 calls total: first call + compressor + second call
+        assertThat(callCount.get()).isEqualTo(3);
+    }
+
+    /** restoreTurnContext skips items already in memory (contains-check). */
+    @Test
+    void test_restoreTurnContext_skipsDuplicates() {
+        var config = LlmConfig.builder().model("mock").build();
+        var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("compressed")).build());
+
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+
+        // Pre-add turn context item to memory
+        String turnContextText = "unique turn context";
+        agent.addMessage(UserMessage.from(turnContextText));
+
+        // Set turn context supplier with the same item
+        agent.setTurnContextSupplier(() -> List.of(new SimpleContextItem(turnContextText)));
+
+        // WHEN — compress triggers restoreTurnContext
+        agent.compressContext(monitor -> {});
+
+        // THEN — turn context appears only once (skipped on restore), plus compressed AI message
+        var memory = agent.getMemory().getCopy();
+        List<String> userTexts = extractUserTexts(memory);
+        assertThat(userTexts).hasSize(1);
+        assertThat(userTexts.get(0)).contains("unique turn context");
+        // AND the AI summary is present
+        assertThat(memory).anyMatch(m -> m instanceof AiMessage ai
+                && ChatMessageUtil.toString(ai).contains("compressed"));
+    }
+
+    /** setUserContextInformations shims to turnContextSupplier — last call wins (replaces supplier). */
+    @Test
+    void test_shimRoundTrip() {
+        var config = LlmConfig.builder().model("mock").build();
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, streamMock.buildMock(r -> null)), new ToolService());
+
+        // WHEN — set via deprecated API
+        agent.setUserContextInformations(List.of("order1: be concise", "order2: no filler"));
+
+        // THEN — round-trip via deprecated getter returns the same strings
+        var result = agent.getUserContextInformations();
+        assertThat(result).containsExactly("order1: be concise", "order2: no filler");
+    }
+
+    /** setUserContextInformations shims to turnContextSupplier — subsequent setTurnContextSupplier replaces it. */
+    @Test
+    void test_shimReplacedByDirectSupplier() {
+        var config = LlmConfig.builder().model("mock").build();
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, streamMock.buildMock(r -> null)), new ToolService());
+
+        // Set via shim first
+        agent.setUserContextInformations(List.of("old order"));
+        // Then override with direct supplier
+        agent.setTurnContextSupplier(() -> List.of(new SimpleContextItem("new item")));
+
+        // THEN — only the direct supplier survives
+        assertThat(agent.getUserContextInformations()).containsExactly("new item");
+    }
+
+    /** compressContext restores only turnContextSupplier (userContextInformations shimmed, no double-restore). */
+    @Test
+    void test_compressContext_noUserContextRestore() {
+        var config = LlmConfig.builder().model("mock").build();
+        var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("compressed summary")).build());
+
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        agent.addMessage(UserMessage.from("old message"));
+
+        // Set via shim — goes to turnContextSupplier
+        agent.setUserContextInformations(List.of("AGENTS.md: Rule 1 — be concise"));
+
+        // WHEN
+        agent.compressContext(monitor -> {});
+
+        // THEN — memory has the shimmed item (via turnContextSupplier), resume message, AI summary
+        var memory = agent.getMemory().getCopy();
+        List<String> userTexts = extractUserTexts(memory);
+        assertThat(userTexts).hasSize(1);
+        var mergedUserText = userTexts.get(0);
+        assertThat(mergedUserText).contains("AGENTS.md: Rule 1 — be concise");
+        assertThat(mergedUserText).contains("Session compacted");
+        // AND the AI summary is present
+        assertThat(memory).anyMatch(m -> m instanceof AiMessage ai
+                && ChatMessageUtil.toString(ai).contains("compressed summary"));
+    }
+
+    /** compressContext skips duplicates in turnContextSupplier (contains-check). */
+    @Test
+    void test_compressContext_skipsDuplicatesInTurnContext() {
+        var config = LlmConfig.builder().model("mock").build();
+        var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("compressed")).build());
+
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+
+        // Pre-add context item to memory (simulating it was already injected)
+        String turnContextText = "existing turn context";
+        agent.addMessage(UserMessage.from(turnContextText));
+
+        // Set via shim with the same item
+        agent.setUserContextInformations(List.of(turnContextText));
+
+        // WHEN
+        agent.compressContext(monitor -> {});
+
+        // THEN — context item appears only once (skipped on restore), plus resume message
+        var memory = agent.getMemory().getCopy();
+        List<String> userTexts = extractUserTexts(memory);
+        assertThat(userTexts).hasSize(1);
+        var mergedText = userTexts.get(0);
+        // Count occurrences — should appear exactly once
+        assertThat(countOccurrences(mergedText, "existing turn context")).isOne();
+        assertThat(mergedText).contains("Session compacted");
+        // AND the AI summary is present
+        assertThat(memory).anyMatch(m -> m instanceof AiMessage ai
+                && ChatMessageUtil.toString(ai).contains("compressed"));
+    }
+
+    private int countOccurrences(String text, String substring) {
+        int count = 0;
+        int index = 0;
+        while ((index = text.indexOf(substring, index)) != -1) {
+            count++;
+            index += substring.length();
+        }
+        return count;
     }
 }

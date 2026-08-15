@@ -10,7 +10,7 @@ import java.util.function.Predicate;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.sterl.llmpeon.AgentService;
-import org.sterl.llmpeon.StandingOrdersBuilder.MessageProvider;
+import org.sterl.llmpeon.StandingOrdersBuilder.ContextItemProvider;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
@@ -37,6 +37,9 @@ import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
 import org.sterl.llmpeon.parts.tools.PlanReadTool;
 import org.sterl.llmpeon.parts.tools.PlanTool;
 import org.sterl.llmpeon.parts.tools.memory.WorkspaceMemoryTool;
+import org.sterl.llmpeon.context.ContextItem;
+import org.sterl.llmpeon.context.EclipseFileContextItem;
+import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.scaffold.AiScaffoldAgent;
 import org.sterl.llmpeon.scaffold.ReloadConfigTool;
 import org.sterl.llmpeon.shared.StringUtil;
@@ -62,7 +65,7 @@ import dev.langchain4j.data.message.UserMessage;
  * has a chance to call any {@code @Inject} methods.</p>
  *
  */
-public class PeonAiService implements MessageProvider {
+public class PeonAiService implements ContextItemProvider {
 
     /** Jon's RAM-only slaves compact at 70% of the shared budget so their throw-away context stays lean. */
     private static final double SLAVE_COMPACT_FACTOR = 0.7;
@@ -202,7 +205,8 @@ public class PeonAiService implements MessageProvider {
         // they get it folded into their injected standing orders — read-only, like the shared memory):
         // the shared memory, the base AGENTS.md ground rules, and the selected project.
         jonDelegateTool = new JonDelegateTool(thinka, mek, () -> {
-            var orders = new java.util.ArrayList<String>(workspaceMemoryTool.get());
+            var orders = new java.util.ArrayList<String>();
+            for (ContextItem item : workspaceMemoryTool.get()) orders.add(item.render());
             var agentsMd = agentsMdService.getBaseAgentsMd();
             if (agentsMd != null) orders.add(agentsMd);
             if (currentProject != null) orders.add("Selected project:" + System.lineSeparator()
@@ -214,6 +218,25 @@ public class PeonAiService implements MessageProvider {
         // save his context; stateless one-shot, not one of his persistent slaves.
         poToolService.addTool(new SearchAgentTool(poToolService));
         var poAgent = new AiPoAgent(configuredModel, poToolService, config.getConfigDir(), List.of(thinka, mek));
+        // Persistent context: memory.md + docs/index.md rendered into system prompt
+        poAgent.setPersistentContext(List.of(
+                new EclipseFileContextItem("docs/memory.md"),
+                new EclipseFileContextItem("docs/index.md")
+        ));
+        // Turn-scoped context: AGENTS.md + project info, restored after compact
+        poAgent.setTurnContextSupplier(() -> {
+            var items = new java.util.ArrayList<org.sterl.llmpeon.context.ContextItem>();
+            var agentsMd = agentsMdService.getBaseAgentsMd();
+            if (agentsMd != null) {
+                items.add(() -> agentsMd);
+            }
+            IProject project = currentProject;
+            if (project != null) {
+                items.add(() -> "Selected project:" + System.lineSeparator()
+                        + EclipseUtil.projectInfo(project));
+            }
+            return items;
+        });
         agentService.addPersistentAgent(poAgent);
 
         mcpConnectionService = new McpConnectionService(sharedToolService, mcpStateChange);
@@ -534,6 +557,8 @@ public class PeonAiService implements MessageProvider {
                 + IoUtils.readString(index);
     }
 
+
+
     public void onPlanSaved(IFile planFile) {
         this.plan = planFile;
     }
@@ -562,16 +587,16 @@ public class PeonAiService implements MessageProvider {
     }
 
     @Override
-    public List<String> get() {
-        var result = new LinkedList<String>();
-        
+    public List<ContextItem> get() {
+        var result = new LinkedList<ContextItem>();
+
         var agent = getActiveAgent();
         if ((agent instanceof AiScaffoldAgent)) {
             var configDir = getConfig().getConfigDir();
-            if (configDir == null) return List.of("No config dir set -- inform the user to check the config");
-            
-            result.add("Parent folder of disk tools set to the config dir you should work with relative paths directly in this folder only.");
-            
+            if (configDir == null) return List.of(new SimpleContextItem("No config dir set -- inform the user to check the config"));
+
+            result.add(new SimpleContextItem("Parent folder of disk tools set to the config dir you should work with relative paths directly in this folder only."));
+
             var orders = new StringBuilder();
             try {
                 var readTool = scaffoldAgent.getToolService().getTool(DiskFileReadTool.class);
@@ -581,32 +606,32 @@ public class PeonAiService implements MessageProvider {
                     orders.append(readTool.get().diskListDirectory(LlmConfig.COMMAND_DIRECTORY)).append(System.lineSeparator());
                     orders.append(readTool.get().diskListDirectory(LlmConfig.SKILL_DIRECTORY)).append(System.lineSeparator());
                 }
-                result.add(orders.toString());
+                result.add(new SimpleContextItem(orders.toString()));
                 orders.setLength(0);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
-            
+
             // Available tools from sharedToolService
             orders.append("Available tools:").append(System.lineSeparator());
             for (var spec : sharedToolService.toolSpecifications()) {
                 orders.append("- ").append(spec.name()).append(": ").append(spec.description()).append(System.lineSeparator());
             }
-            result.add(orders.toString());
+            result.add(new SimpleContextItem(orders.toString()));
             orders.setLength(0);
-            
+
             return result;
         }
 
         if (_handoffLine != null) {
              // Consume handoff line once (set by onHandoff, survives compaction)
-            result.add(_handoffLine);
+            result.add(new SimpleContextItem(_handoffLine));
             _handoffLine = null;
         }
 
         if (planTool.hasPlan()) {
-            result.add("Plan found: " + JdtUtil.pathOf(getProject().getFile(PlanTool.OVERVIEW_FILE)) + System.lineSeparator()
-                    + "If plan* tools are available accessable by them too.");
+            result.add(new SimpleContextItem("Plan found: " + JdtUtil.pathOf(getProject().getFile(PlanTool.OVERVIEW_FILE)) + System.lineSeparator()
+                    + "If plan* tools are available accessable by them too."));
         }
         return result;
 

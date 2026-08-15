@@ -8,12 +8,14 @@ import java.util.function.Supplier;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
-import org.sterl.llmpeon.StandingOrdersBuilder.MessageProvider;
+import org.sterl.llmpeon.StandingOrdersBuilder.ContextItemProvider;
+import org.sterl.llmpeon.context.ContextItem;
+import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 
-public class AgentsMdService implements MessageProvider {
+public class AgentsMdService implements ContextItemProvider {
 
     private volatile IFile agentsMd;
     private volatile IProject currentProject;
@@ -21,14 +23,14 @@ public class AgentsMdService implements MessageProvider {
     private volatile Supplier<String> agentNameSupplier;
     
     @Override
-    public List<String> get() {
+    public List<ContextItem> get() {
         if (!enabled.get()) return List.of();
 
-        var result = new ArrayList<String>();
+        var result = new ArrayList<ContextItem>();
 
         // Base AGENTS.md
         if (agentsMd != null && agentsMd.exists()) {
-            result.add(loadAgentMd(agentsMd));
+            result.add(new SimpleContextItem(loadAgentMd(agentsMd)));
         }
 
         // Agent-specific AGENTS-<agent>.md
@@ -38,7 +40,7 @@ public class AgentsMdService implements MessageProvider {
                 String key = resolveAgentKey(agentName);
                 IFile file = resolveAgentSpecificFile(currentProject, key);
                 if (file != null && file.exists()) {
-                    result.add(loadAgentMd(file));
+                    result.add(new SimpleContextItem(loadAgentMd(file)));
                 }
             }
         }
