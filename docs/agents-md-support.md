@@ -1,5 +1,9 @@
 # AGENTS.md Support
 
+> **Hinweis 2026-08-15:** AGENTS.md wird jetzt als **Static Context** (System-Prompt) geladen
+> via `AgentsMdContextItem` — siehe [context-architecture.md](context-architecture.md).
+> Diese Doc beschreibt nur die File-Resolution (welcher Name, Fallback-Reihenfolge).
+
 ## Purpose
 
 AGENTS.md files provide standing orders — rules and context that are automatically prepended to every AI request. They are loaded once per project and persist across all agent modes.

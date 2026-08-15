@@ -5,6 +5,8 @@ notes live in [adr/](adr/index.md). Not published — user-facing docs are in `h
 
 ## Stories
 
+* [Architecture — Component Rules](architecture.md) - Service/Component/View/Widget layering, extraction rules, base packages.
+* [Context Architecture](context-architecture.md) - static (System-Prompt) vs dynamic (Chat History) — wer bekommt was, lazy-loading, UI reporting.
 * [Disk File Write Tool](disk-file-write-tool.md) - real filesystem write/edit tools, configurable workingDir, disabled by default.
 * [Eclipse Workspace Write Tool](eclipse-workspace-write-file-tool.md) - Eclipse VFS write/edit tools, project-scoped sandbox, always available.
 * [Write-Path Validator](write-path-validator.md) - per-agent `WriteValidator` (agent-provided like the tool filter) that vets the raw write path at the tool choke-point; scopes Jon to `*/docs/*` + `*.md`.

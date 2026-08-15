@@ -207,12 +207,10 @@ public class PeonAiService implements ContextItemProvider {
         var mek = new NamedAgent("Da Mek", devSlave);
         // Slaves also need the same relevant context as the active agent (Jon gets it via userContext;
         // they get it folded into their injected standing orders — read-only, like the shared memory):
-        // the shared memory, the base AGENTS.md ground rules, and the selected project.
+        // the shared memory and the selected project. AGENTS.md is in their persistentContext (system prompt).
         jonDelegateTool = new JonDelegateTool(thinka, mek, () -> {
             var orders = new java.util.ArrayList<String>();
             for (ContextItem item : workspaceMemoryTool.get()) orders.add(item.render());
-            var agentsMd = agentsMdService.getBaseAgentsMd();
-            if (agentsMd != null) orders.add(agentsMd);
             if (currentProject != null) orders.add("Selected project:" + System.lineSeparator()
                     + EclipseUtil.projectInfo(currentProject));
             return orders;
@@ -223,13 +221,9 @@ public class PeonAiService implements ContextItemProvider {
         poToolService.addTool(new SearchAgentTool(poToolService));
         poToolService.addTool(new CompactSessionTool());
         var poAgent = new AiPoAgent(configuredModel, poToolService, config.getConfigDir(), List.of(thinka, mek));
-        // Turn-scoped context: AGENTS.md + project info, restored after compact
+        // Turn-scoped context: only dynamic project info. AGENTS.md is in persistentContext (system prompt).
         poAgent.setTurnContextSupplier(() -> {
             var items = new java.util.ArrayList<org.sterl.llmpeon.context.ContextItem>();
-            var agentsMd = agentsMdService.getBaseAgentsMd();
-            if (agentsMd != null) {
-                items.add(() -> agentsMd);
-            }
             IProject project = currentProject;
             if (project != null) {
                 items.add(() -> "Selected project:" + System.lineSeparator()

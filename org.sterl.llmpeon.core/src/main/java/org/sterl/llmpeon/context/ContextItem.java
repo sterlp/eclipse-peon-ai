@@ -6,4 +6,12 @@ package org.sterl.llmpeon.context;
 @FunctionalInterface
 public interface ContextItem {
     String render();
+
+    /**
+     * Short human-readable label for loading reports ({@code "Loading 📋 <label>"}).
+     * Default is empty — items without a label load silently.
+     */
+    default String label() {
+        return "";
+    }
 }

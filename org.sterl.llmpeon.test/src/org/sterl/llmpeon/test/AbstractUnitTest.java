@@ -43,7 +43,7 @@ public abstract class AbstractUnitTest {
     public static void assertHasNoUserMessageWith(Collection<ChatMessage> messages, String content) {
         var textMessages = messages.stream()
                 .filter(m -> m instanceof UserMessage)
-                .map(m -> ((UserMessage) m).singleText())
+                .map(m -> ChatMessageUtil.toString(m))
                 .toList();
         assertHasNoMessageWith(textMessages, content);
     }

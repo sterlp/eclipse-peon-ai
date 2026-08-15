@@ -2,6 +2,10 @@
 
 **Status:** ✅ done · **Datum:** 2026-08-14
 
+> **Siehe auch:** [context-architecture.md](context-architecture.md) — die Abgrenzung
+> static (System-Prompt) vs dynamic (Chat History) ist dort dokumentiert.
+> Diese Doc beschreibt nur die technische Implementierung (ContextItem, AbstractAgent).
+
 ## Problem
 
 Aktuell mischen wir drei Dinge ohne klare Typisierung:

@@ -170,7 +170,7 @@ public abstract class AbstractAgent implements AiAgent {
             }
 
             // Rebuild system prompt after compact or on first call
-            if (systemMessage == null) buildSystemPrompt();
+            if (systemMessage == null) buildSystemPrompt(monitor);
 
             var stillQueued = messageQueue.drainAll();
             String next = stillQueued == null ? initialMessage : stillQueued + System.lineSeparator() + initialMessage;
@@ -234,7 +234,7 @@ public abstract class AbstractAgent implements AiAgent {
         }
 
         // Inject turn-scoped context on every turn (idempotent via contains-check)
-        restoreTurnContext();
+        restoreTurnContext(monitor);
 
         var userMessages = new ArrayList<Content>();
         if (StringUtil.hasValue(message)) userMessages.add(TextContent.from(message));
@@ -245,7 +245,7 @@ public abstract class AbstractAgent implements AiAgent {
         }
 
         var start = Instant.now();
-        var staticMessages = buildStaticMessages();
+        var staticMessages = buildStaticMessages(monitor);
         var response = toolService.executeLoop(
                 ToolLoopRequest.builder()
                     .memory(memory)
@@ -266,13 +266,14 @@ public abstract class AbstractAgent implements AiAgent {
 
 
     public ChatResponse compressContext(AiMonitor monitor) {
+        monitor = AiMonitor.nullSafety(monitor);
         var response = new AiCompressorAgent(configuredModel)
                 .call(memory.getCopy(), monitor);
 
         memory.clear();
         this.systemMessage = null;
         // Restore turn-scoped context
-        restoreTurnContext();
+        restoreTurnContext(monitor);
         // Ensure memory starts with a user message (many LLMs require this)
         memory.add(UserMessage.from("Session compacted. Resume the task using the preserved context."));
         memory.addResult(response);
@@ -324,9 +325,9 @@ public abstract class AbstractAgent implements AiAgent {
         return toolService;
     }
 
-    private List<ChatMessage> buildStaticMessages() {
+    private List<ChatMessage> buildStaticMessages(AiMonitor monitor) {
         var messages = new ArrayList<ChatMessage>();
-        messages.add(SystemMessage.from(buildSystemPrompt()));
+        messages.add(SystemMessage.from(buildSystemPrompt(monitor)));
         return messages;
     }
 
@@ -334,12 +335,15 @@ public abstract class AbstractAgent implements AiAgent {
      * Builds the full system prompt by appending rendered persistent context items
      * to the agent's base system prompt. Cached until invalidated (e.g. after compact).
      */
-    private String buildSystemPrompt() {
+    private String buildSystemPrompt(AiMonitor monitor) {
         if (systemMessage != null) return systemMessage;
 
         var prompt = getSystemPrompt();
         if (persistentContext != null) {
             for (var item : persistentContext) {
+                if (StringUtil.hasValue(item.label())) {
+                    monitor.onTool("Loading 📋 " + item.label());
+                }
                 prompt = prompt + System.lineSeparator() + System.lineSeparator() + item.render();
             }
         }
@@ -348,7 +352,7 @@ public abstract class AbstractAgent implements AiAgent {
     }
 
     /** Restore turn-scoped context into memory after compact, skipping duplicates. */
-    private void restoreTurnContext() {
+    private void restoreTurnContext(AiMonitor monitor) {
         if (turnContextSupplier == null) return;
 
         List<ContextItem> items = turnContextSupplier.get();
@@ -357,6 +361,9 @@ public abstract class AbstractAgent implements AiAgent {
         for (var item : items) {
             String rendered = item.render();
             if (!memory.containsUserMessage(rendered)) {
+                if (StringUtil.hasValue(item.label())) {
+                    monitor.onTool("Loading 📋 " + item.label());
+                }
                 memory.add(UserMessage.from(rendered));
             }
         }

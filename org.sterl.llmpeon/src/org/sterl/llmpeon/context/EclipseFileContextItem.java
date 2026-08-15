@@ -25,6 +25,11 @@ public class EclipseFileContextItem implements ContextItem {
     }
 
     @Override
+    public String label() {
+        return relativePath;
+    }
+
+    @Override
     public String render() {
         IProject project = EclipseUtil.firstOpenOrSelectedProject();
         if (project == null || !project.isAccessible()) {

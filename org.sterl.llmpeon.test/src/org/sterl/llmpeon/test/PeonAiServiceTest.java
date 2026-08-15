@@ -528,9 +528,9 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         assertTrue("Memory should have at least 2 messages", memory.size() >= 2);
     }
 
-    /** Turn context supplier provides AGENTS.md + project info after compact. */
+    /** Turn context supplier provides only dynamic project info after compact (AGENTS.md is in system prompt). */
     @Test
-    public void test_turnContextSupplier_providesAgentsMdAndProject() {
+    public void test_turnContextSupplier_providesOnlyProjectInfo() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
         aiService.setActiveAgent(AiPoAgent.NAME);
         aiService.getActiveAgent().getMemory().clear();
@@ -548,10 +548,10 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         // WHEN: compact triggers restoreTurnContext
         aiService.getActiveAgent().compressContext(null);
 
-        // THEN: turn context restored (AGENTS.md + project info)
+        // THEN: turn context restored (only project info, AGENTS.md is in persistentContext/system prompt)
         var memory = aiService.getActiveAgent().getMemory().getCopy();
-        assertHasUserMessageWith(memory, "# Test Specifics");
         assertHasUserMessageWith(memory, "Selected project:");
+        assertHasNoUserMessageWith(memory, "# Test Specifics");
     }
 
     // --- ADR-0028: Compact-Delegation Integration Tests -------------------------
@@ -581,10 +581,10 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         // WHEN: Compact via Agent
         aiService.getActiveAgent().compressContext(null);
 
-        // THEN: Turn-Context (AGENTS.md + Project) überlebt als UserMessage in Memory
+        // THEN: Turn-Context (Project) überlebt als UserMessage in Memory (AGENTS.md ist im System-Prompt)
         var memory = aiService.getActiveAgent().getMemory().getCopy();
-        assertHasUserMessageWith(memory, "# Test Specifics");
         assertHasUserMessageWith(memory, "Selected project:");
+        assertHasNoUserMessageWith(memory, "# Test Specifics");
 
         // AND: Summary ist in Memory (als AiMessage)
         assertTrue("AI summary should be in memory", memory.stream()
@@ -697,9 +697,10 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         // WHEN: Compact via agent (the tool delegates to this path via request.getAgent())
         aiService.getActiveAgent().compressContext(null);
 
-        // THEN: Memory enthält Kontext + Summary
+        // THEN: Memory enthält Project-Info + Summary (AGENTS.md ist im System-Prompt)
         var memory = aiService.getActiveAgent().getMemory().getCopy();
-        assertHasUserMessageWith(memory, "# Delegation Test");
+        assertHasUserMessageWith(memory, "Selected project:");
+        assertHasNoUserMessageWith(memory, "# Delegation Test");
         assertTrue("AI summary should be in memory", memory.stream()
                 .anyMatch(m -> m instanceof AiMessage ai && ai.text().contains("WHAT: Delegated summary")));
     }

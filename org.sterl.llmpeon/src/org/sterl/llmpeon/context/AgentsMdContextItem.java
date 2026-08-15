@@ -23,6 +23,11 @@ public class AgentsMdContextItem implements ContextItem {
     }
 
     @Override
+    public String label() {
+        return "AGENTS.md";
+    }
+
+    @Override
     public String render() {
         IProject project = EclipseUtil.firstOpenOrSelectedProject();
         if (project == null || !project.isAccessible()) return "";

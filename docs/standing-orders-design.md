@@ -1,5 +1,11 @@
 # Standing Orders Design
 
+> **Hinweis 2026-08-15:** Der Dynamic-Context-Flow (was in die Chat History injiziert wird,
+> contains-Check, lazy-loading) ist jetzt in [context-architecture.md](context-architecture.md)
+> dokumentiert. Diese Doc beschreibt den historischen Design und die Compaction-Survival-Mechanik.
+> Potenzial zum Aufräumen: `ToolLoopRequest.standingOrders` ist deprecated, der neue Flow läuft
+> über `turnContextSupplier`.
+
 ## Purpose
 
 **Standing orders** are the context lines prepended to every user message: the selected
