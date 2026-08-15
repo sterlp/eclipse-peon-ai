@@ -22,6 +22,7 @@ import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.memory.FileAgentHistoryStore;
+import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.tool.ToolService;
 
@@ -238,6 +239,49 @@ class AbstractAgentTest {
         assertThat(new AiDevAgent(model, new ToolService(), 1.5).compactAfterTokens()).isEqualTo(80000);
     }
 
+    /** tokenContextUsedInPercent() calculates percentage relative to autoCompactAfter budget. */
+    @Test
+    void tokenContextUsedInPercent_calculatesCorrectly() {
+        // GIVEN — 50% of 8000 budget used
+        var config = LlmConfig.builder().model("mock").autoCompactAfter(8000).build();
+        var model = new ConfiguredChatModel(config, streamMock.buildMock(r -> null));
+        ThreadSafeMemory testMemory = new ThreadSafeMemory() {
+            @Override public int getTotalTokenUsed() { return 4000; }
+        };
+        
+        var agent = new AbstractAgent(model, new ToolService(), testMemory, 1.0) {
+            @Override public String getName() { return "test"; }
+            @Override public String getSystemPrompt() { return "test"; }
+            @Override public Double getTemperature() { return 0.7; }
+        };
+        
+        // WHEN
+        int percent = agent.tokenContextUsedInPercent();
+        
+        // THEN
+        assertThat(percent).isEqualTo(50);
+    }
+
+    /** tokenContextUsedInPercent() returns 0 for very small context (<100 tokens). */
+    @Test
+    void tokenContextUsedInPercent_returnsZeroForSmallContext() {
+        // GIVEN
+        var config = LlmConfig.builder().model("mock").autoCompactAfter(8000).build();
+        var model = new ConfiguredChatModel(config, streamMock.buildMock(r -> null));
+        ThreadSafeMemory testMemory = new ThreadSafeMemory() {
+            @Override public int getTotalTokenUsed() { return 50; }
+        };
+        
+        var agent = new AbstractAgent(model, new ToolService(), testMemory, 1.0) {
+            @Override public String getName() { return "test"; }
+            @Override public String getSystemPrompt() { return "test"; }
+            @Override public Double getTemperature() { return 0.7; }
+        };
+        
+        // WHEN & THEN
+        assertThat(agent.tokenContextUsedInPercent()).isZero();
+    }
+
     private List<String> extractUserTexts(List<ChatMessage> messages) {
         return messages.stream()
                 .filter(m -> m instanceof UserMessage)
@@ -327,36 +371,7 @@ class AbstractAgentTest {
                 && ChatMessageUtil.toString(ai).contains("compressed"));
     }
 
-    /** setUserContextInformations shims to turnContextSupplier — last call wins (replaces supplier). */
-    @Test
-    void test_shimRoundTrip() {
-        var config = LlmConfig.builder().model("mock").build();
-        var agent = new AiDevAgent(new ConfiguredChatModel(config, streamMock.buildMock(r -> null)), new ToolService());
-
-        // WHEN — set via deprecated API
-        agent.setUserContextInformations(List.of("order1: be concise", "order2: no filler"));
-
-        // THEN — round-trip via deprecated getter returns the same strings
-        var result = agent.getUserContextInformations();
-        assertThat(result).containsExactly("order1: be concise", "order2: no filler");
-    }
-
-    /** setUserContextInformations shims to turnContextSupplier — subsequent setTurnContextSupplier replaces it. */
-    @Test
-    void test_shimReplacedByDirectSupplier() {
-        var config = LlmConfig.builder().model("mock").build();
-        var agent = new AiDevAgent(new ConfiguredChatModel(config, streamMock.buildMock(r -> null)), new ToolService());
-
-        // Set via shim first
-        agent.setUserContextInformations(List.of("old order"));
-        // Then override with direct supplier
-        agent.setTurnContextSupplier(() -> List.of(new SimpleContextItem("new item")));
-
-        // THEN — only the direct supplier survives
-        assertThat(agent.getUserContextInformations()).containsExactly("new item");
-    }
-
-    /** compressContext restores only turnContextSupplier (userContextInformations shimmed, no double-restore). */
+    /** compressContext restores only turnContextSupplier (no double-restore). */
     @Test
     void test_compressContext_noUserContextRestore() {
         var config = LlmConfig.builder().model("mock").build();
@@ -366,8 +381,8 @@ class AbstractAgentTest {
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
         agent.addMessage(UserMessage.from("old message"));
 
-        // Set via shim — goes to turnContextSupplier
-        agent.setUserContextInformations(List.of("AGENTS.md: Rule 1 — be concise"));
+        // Set via turnContextSupplier
+        agent.setTurnContextSupplier(() -> List.of(new SimpleContextItem("AGENTS.md: Rule 1 — be concise")));
 
         // WHEN
         agent.compressContext(monitor -> {});
@@ -397,8 +412,8 @@ class AbstractAgentTest {
         String turnContextText = "existing turn context";
         agent.addMessage(UserMessage.from(turnContextText));
 
-        // Set via shim with the same item
-        agent.setUserContextInformations(List.of(turnContextText));
+        // Set via turnContextSupplier with the same item
+        agent.setTurnContextSupplier(() -> List.of(new SimpleContextItem(turnContextText)));
 
         // WHEN
         agent.compressContext(monitor -> {});

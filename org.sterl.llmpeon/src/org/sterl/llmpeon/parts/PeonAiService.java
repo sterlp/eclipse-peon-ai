@@ -13,6 +13,7 @@ import org.sterl.llmpeon.AgentService;
 import org.sterl.llmpeon.StandingOrdersBuilder.ContextItemProvider;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
+import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.agent.AiPoAgent;
 import org.sterl.llmpeon.agent.NamedAgent;
@@ -581,11 +582,14 @@ public class PeonAiService implements ContextItemProvider {
     }
 
     public void setStaticContext(List<ChatMessage> content) {
-        this.agentService.getAgents().forEach(a -> a.setStaticContext(content));
+        List<ContextItem> items = content.stream()
+                .map(msg -> (ContextItem) new SimpleContextItem(ChatMessageUtil.toString(msg)))
+                .toList();
+        this.agentService.getAgents().forEach(a -> a.setPersistentContext(items));
         // Jon's RAM slaves are not registered in agentService, so give them the same static context
         // (date/OS + file-access rules) directly — Inc 2, docs/sklaven-kontext-plan.md.
-        jonDelegateTool.getPlanSlave().setStaticContext(content);
-        jonDelegateTool.getDevSlave().setStaticContext(content);
+        jonDelegateTool.getPlanSlave().setPersistentContext(items);
+        jonDelegateTool.getDevSlave().setPersistentContext(items);
     }
 
     @Override

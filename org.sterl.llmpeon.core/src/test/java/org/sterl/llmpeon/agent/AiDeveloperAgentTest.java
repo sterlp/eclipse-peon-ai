@@ -8,6 +8,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.tools.CompactSessionTool;
@@ -137,8 +139,8 @@ public class AiDeveloperAgentTest {
             return ChatResponse.builder().aiMessage(AiMessage.aiMessage("Okay thats good")).build();
         });
 
-        // WHEN — set turn context via deprecated shim
-        subject.setUserContextInformations(Arrays.asList("We are all doomed!"));
+        // WHEN — set turn context via turnContextSupplier
+        subject.setTurnContextSupplier(() -> List.of(new SimpleContextItem("We are all doomed!")));
         subject.call("Foo", null);
 
         // THEN — on first call, turn context is NOT injected (only restored after compact)
@@ -151,7 +153,7 @@ public class AiDeveloperAgentTest {
         assertThat(userTexts).hasSize(1);
         assertThat(userTexts.get(0)).contains("Foo");
         // AND — turn context survives via turnContextSupplier for compact restore
-        assertThat(subject.getUserContextInformations()).containsExactly("We are all doomed!");
+        assertThat(subject.getRenderedTurnContext()).containsExactly("We are all doomed!");
     }
     
     
@@ -169,7 +171,7 @@ public class AiDeveloperAgentTest {
         });
 
         // WHEN — set turn context and call
-        subject.setUserContextInformations(Arrays.asList("Review the code and report any issues."));
+        subject.setTurnContextSupplier(() -> List.of(new SimpleContextItem("Review the code and report any issues.")));
         subject.call("Refactor this class", null);
 
         // THEN — on first call, turn context is NOT injected (only restored after compact)
@@ -177,7 +179,7 @@ public class AiDeveloperAgentTest {
         var userMsg = ChatMessageUtil.toString(subject.getMemory().get(0));
         assertThat(userMsg).contains("Refactor this class");
         // AND — turn context survives via turnContextSupplier for compact restore
-        assertThat(subject.getUserContextInformations()).containsExactly("Review the code and report any issues.");
+        assertThat(subject.getRenderedTurnContext()).containsExactly("Review the code and report any issues.");
     }
 
     @Test

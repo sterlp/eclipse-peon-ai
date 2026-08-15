@@ -239,9 +239,6 @@ class CompactSessionToolTest {
             }
             @Override public ThreadSafeMemory getMemory() { return memory; }
             @Override public void clear() {}
-            @Override public void setStaticContext(java.util.Collection<dev.langchain4j.data.message.ChatMessage> ctx) {}
-            @Override public void setUserContextInformations(java.util.Collection<String> info) {}
-            @Override public List<String> getUserContextInformations() { return List.of(); }
             @Override public boolean isToolActive(SmartToolExecutor exec) { return true; }
             @Override public boolean isMcpToolActive(String toolName) { return true; }
             @Override public int tokenContextUsedInPercent() { return 0; }

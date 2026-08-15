@@ -4,8 +4,6 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -15,7 +13,6 @@ import java.util.function.Supplier;
 import org.sterl.llmpeon.ai.AgentConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.context.ContextItem;
-import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.queuedmessages.UserMessageQueue;
 import org.sterl.llmpeon.shared.AiMonitor;
@@ -42,8 +39,6 @@ public abstract class AbstractAgent implements AiAgent {
 
     private final UserMessageQueue messageQueue = new UserMessageQueue();
     private final AtomicBoolean working = new AtomicBoolean(false);
-
-    private final LinkedHashSet<ChatMessage> staticContext = new LinkedHashSet<>();
 
     private volatile String systemMessage = null;
     private List<ContextItem> persistentContext;
@@ -147,7 +142,7 @@ public abstract class AbstractAgent implements AiAgent {
     public int tokenContextUsedInPercent() {
         float used = memory.getTotalTokenUsed();
         if (used < 100) return 0;
-        return Math.round(100f * used / Math.min(configuredModel.getConfig().getAutoCompactAfter(), 4000));
+        return Math.round(100f * used / configuredModel.getConfig().getAutoCompactAfter());
     }
 
     /**
@@ -266,14 +261,6 @@ public abstract class AbstractAgent implements AiAgent {
         return response;
     }
 
-    /**
-     * @deprecated Replaced by {@link #setPersistentContext(List)} and {@link #setTurnContextSupplier(java.util.function.Supplier)}.
-     * Context is now managed autonomously by the agent via ContextItem instances.
-     */
-    @Deprecated
-    public Runnable getCompressCallback(ThreadSafeMemory memory, AiMonitor monitor) {
-        return null;
-    }
 
     public ChatResponse compressContext(AiMonitor monitor) {
         var response = new AiCompressorAgent(configuredModel)
@@ -289,39 +276,6 @@ public abstract class AbstractAgent implements AiAgent {
         return response;
     }
 
-    /**
-     * @deprecated Replaced by {@link #setPersistentContext(List)}.
-     * Static context is now managed via {@link ContextItem} instances.
-     */
-    @Deprecated
-    public void setStaticContext(Collection<ChatMessage> staticContext) {
-        this.staticContext.clear();
-        if (staticContext != null) this.staticContext.addAll(staticContext);
-    }
-
-    @Override
-    public List<ChatMessage> getStaticContext() {
-        return new ArrayList<>(staticContext);
-    }
-    
-    /**
-     * @deprecated Shimmed to {@link #setTurnContextSupplier(Supplier)}. 
-     * Strings are wrapped as {@link SimpleContextItem} instances.
-     */
-    @Deprecated
-    public void setUserContextInformations(Collection<String> userContextInformations) {
-        if (userContextInformations == null || userContextInformations.isEmpty()) {
-            this.turnContextSupplier = null;
-            return;
-        }
-        List<ContextItem> items = new ArrayList<>(userContextInformations.size());
-        for (String text : userContextInformations) {
-            items.add(new SimpleContextItem(text));
-        }
-        List<ContextItem> captured = items;
-        this.turnContextSupplier = () -> captured;
-    }
-
     /** Set persistent context items rendered into the system prompt on every rebuild. */
     public void setPersistentContext(List<ContextItem> context) {
         this.persistentContext = context;
@@ -333,20 +287,12 @@ public abstract class AbstractAgent implements AiAgent {
         this.turnContextSupplier = supplier;
     }
     
-    /**
-     * @deprecated Renders items from {@link #turnContextSupplier} as strings.
-     * @return rendered context item texts, or empty list if no supplier set.
-     */
-    @Deprecated
-    public List<String> getUserContextInformations() {
+    @Override
+    public List<String> getRenderedTurnContext() {
         if (turnContextSupplier == null) return List.of();
         List<ContextItem> items = turnContextSupplier.get();
         if (items == null || items.isEmpty()) return List.of();
-        var result = new ArrayList<String>(items.size());
-        for (var item : items) {
-            result.add(item.render());
-        }
-        return result;
+        return items.stream().map(ContextItem::render).toList();
     }
 
     @Override
@@ -373,7 +319,6 @@ public abstract class AbstractAgent implements AiAgent {
     private List<ChatMessage> buildStaticMessages() {
         var messages = new ArrayList<ChatMessage>();
         messages.add(SystemMessage.from(buildSystemPrompt()));
-        messages.addAll(staticContext);
         return messages;
     }
 
