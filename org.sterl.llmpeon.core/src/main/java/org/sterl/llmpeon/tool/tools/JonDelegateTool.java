@@ -77,11 +77,22 @@ public class JonDelegateTool extends AbstractTool {
      */
     private String devPlanPath;
 
+    /**
+     * Additional context items (e.g. {@code EclipseFileContextItem} for the plan file)
+     * merged into every dispatch's turn context. Set by the plugin layer.
+     */
+    private Supplier<List<ContextItem>> additionalContext = () -> List.of();
+
     public JonDelegateTool(NamedAgent plan, NamedAgent dev,
             Supplier<List<String>> memoryProvider) {
         this.plan = plan;
         this.dev = dev;
         this.memoryProvider = memoryProvider;
+    }
+
+    /** Sets additional context items merged into every dispatch's turn context (e.g. plan file). */
+    public void setAdditionalContext(Supplier<List<ContextItem>> supplier) {
+        this.additionalContext = supplier;
     }
 
     @Tool(name = JonDelegateTool.TALK_PLAN, value = "Ask your Peon-Plan team member (Da Thinka) a direct question or discuss an approach — no plan is written. Use planWithPlanAgent when you want the plan itself. Returns the team member's reply.")
@@ -175,6 +186,7 @@ public class JonDelegateTool extends AbstractTool {
         AiAgent slave = target.agent();
         List<ContextItem> items = new ArrayList<>(orders.size());
         for (String text : orders) items.add(new SimpleContextItem(text));
+        items.addAll(additionalContext.get());
         List<ContextItem> captured = items;
         slave.setTurnContextSupplier(() -> captured);
 

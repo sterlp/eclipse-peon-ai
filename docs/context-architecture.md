@@ -115,6 +115,10 @@ AND beim nächsten call() wird System-Prompt neu gebaut (AGENTS.md frisch gelade
 > `AGENTS-da-thinka.md` / `AGENTS-da-mek.md` funktionieren erst wenn die Slaves direkt benannt
 > sind (Side Quest, Backlog).
 
+> **`docs/handovers-and-plans.md` (BETA):** Die Handover-/Plan-Doku ist noch im BETA-Status.
+> Sobald sie stabil ist, muss sie in die Context-Architektur integriert werden (als
+> `EclipseFileContextItem` im `turnContextSupplier` oder als `persistentContext`-Item).
+
 ## Potenzial zum Aufräumen
 
 > **Notiz 2026-08-15:** Die aktuelle Implementierung hat Redundanzen:

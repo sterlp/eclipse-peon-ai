@@ -73,4 +73,19 @@ class ContextItemTest {
             .isInstanceOf(RuntimeException.class)
             .hasMessageContaining("Failed to read file");
     }
+
+    @Test
+    void label_defaultReturnsEmpty() {
+        ContextItem item = () -> "content";
+        assertThat(item.label()).isEmpty();
+    }
+
+    @Test
+    void label_overrideReturnsCustomValue() {
+        ContextItem item = new ContextItem() {
+            @Override public String render() { return "content"; }
+            @Override public String label() { return "my-label"; }
+        };
+        assertThat(item.label()).isEqualTo("my-label");
+    }
 }

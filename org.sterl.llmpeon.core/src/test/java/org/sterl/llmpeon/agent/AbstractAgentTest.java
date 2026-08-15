@@ -470,4 +470,83 @@ class AbstractAgentTest {
                 .count();
         assertThat(contextCount).isOne();
     }
+
+    /** buildSystemPrompt fires monitor.onTool("Loading 📋 <label>") for labeled persistent context items. */
+    @Test
+    void test_buildSystemPrompt_reportsLabeledItems() {
+        var config = LlmConfig.builder().model("mock").autoCompactAfter(80000).build();
+        var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("OK")).build());
+
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        ContextItem labeled = new ContextItem() {
+            @Override public String render() { return "labeled content"; }
+            @Override public String label() { return "docs/memory.md"; }
+        };
+        ContextItem unlabeled = new SimpleContextItem("unlabeled content");
+        agent.setPersistentContext(List.of(labeled, unlabeled));
+
+        List<String> toolMessages = new ArrayList<>();
+        AiMonitor monitor = new AiMonitor() {
+            @Override public void onChatResponse(org.sterl.llmpeon.tool.model.SimpleMessage m) {}
+            @Override public void onTool(String message) { toolMessages.add(message); }
+        };
+
+        // WHEN
+        agent.call("test", monitor);
+
+        // THEN — onTool called for labeled item only
+        assertThat(toolMessages).contains("Loading 📋 docs/memory.md");
+        assertThat(toolMessages).noneMatch(m -> m.contains("unlabeled"));
+    }
+
+    /** restoreTurnContext fires monitor.onTool("Loading 📋 <label>") for labeled turn context items. */
+    @Test
+    void test_restoreTurnContext_reportsLabeledItems() {
+        var config = LlmConfig.builder().model("mock").autoCompactAfter(80000).build();
+        var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("OK")).build());
+
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        ContextItem labeled = new ContextItem() {
+            @Override public String render() { return "turn labeled content"; }
+            @Override public String label() { return "peon-plan/overview.md"; }
+        };
+        agent.setTurnContextSupplier(() -> List.of(labeled));
+
+        List<String> toolMessages = new ArrayList<>();
+        AiMonitor monitor = new AiMonitor() {
+            @Override public void onChatResponse(org.sterl.llmpeon.tool.model.SimpleMessage m) {}
+            @Override public void onTool(String message) { toolMessages.add(message); }
+        };
+
+        // WHEN
+        agent.call("test", monitor);
+
+        // THEN — onTool called for labeled turn context item
+        assertThat(toolMessages).contains("Loading 📋 peon-plan/overview.md");
+    }
+
+    /** restoreTurnContext does NOT fire onTool for unlabeled items (SimpleContextItem). */
+    @Test
+    void test_restoreTurnContext_silentForUnlabeledItems() {
+        var config = LlmConfig.builder().model("mock").autoCompactAfter(80000).build();
+        var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("OK")).build());
+
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        agent.setTurnContextSupplier(() -> List.of(new SimpleContextItem("silent content")));
+
+        List<String> toolMessages = new ArrayList<>();
+        AiMonitor monitor = new AiMonitor() {
+            @Override public void onChatResponse(org.sterl.llmpeon.tool.model.SimpleMessage m) {}
+            @Override public void onTool(String message) { toolMessages.add(message); }
+        };
+
+        // WHEN
+        agent.call("test", monitor);
+
+        // THEN — no onTool calls for unlabeled items
+        assertThat(toolMessages).noneMatch(m -> m.startsWith("Loading 📋"));
+    }
 }

@@ -215,6 +215,9 @@ public class PeonAiService implements ContextItemProvider {
                     + EclipseUtil.projectInfo(currentProject));
             return orders;
         });
+        jonDelegateTool.setAdditionalContext(() -> planTool.hasPlan()
+                ? List.of(new EclipseFileContextItem(PlanTool.OVERVIEW_FILE))
+                : List.of());
         poToolService.addTool(jonDelegateTool);
         // Jon's own throw-away research sub-agent (Da Sniffa) — searches with his read/grep tools to
         // save his context; stateless one-shot, not one of his persistent slaves.
@@ -518,14 +521,8 @@ public class PeonAiService implements ContextItemProvider {
         if (!planTool.hasPlan()) return;
 
         var agent = getActiveAgent();
-        if (agent instanceof AiPlanAgent planAgent) {
+        if (agent instanceof AiPlanAgent) {
             if (this.plan == null) this.plan = getProject().getFile(PlanTool.OVERVIEW_FILE);
-
-            if (planAgent.getMemory().size() == 0) {
-                planAgent.getMemory().add(UserMessage.from(
-                        "Current active plan. Use plan* tools to change" + System.lineSeparator() + "---" + System.lineSeparator() + System.lineSeparator()
-                        + planTool.planRead()));
-            }
         }
     }
 
@@ -647,8 +644,7 @@ public class PeonAiService implements ContextItemProvider {
         }
 
         if (planTool.hasPlan()) {
-            result.add(new SimpleContextItem("Plan found: " + JdtUtil.pathOf(getProject().getFile(PlanTool.OVERVIEW_FILE)) + System.lineSeparator()
-                    + "If plan* tools are available accessable by them too."));
+            result.add(new EclipseFileContextItem(PlanTool.OVERVIEW_FILE));
         }
         return result;
 
