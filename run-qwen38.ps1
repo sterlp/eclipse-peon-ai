@@ -1,0 +1,34 @@
+# powershell.exe -ExecutionPolicy Bypass -File "C:\Users\pauls\dev\projekte\eclipse-peon-ai\run-qwen.ps1"
+cd C:\Users\pauls\dev\projekte\eclipse-peon-ai
+llama-server.exe `
+  -m "..\..\..\.lmstudio\models\unsloth\Qwen3.8-27B-GGUF\Qwen3.8-27B-UD-Q5_K_XL.gguf" `
+  --alias "Qwen3.6-27B" `
+  -ngl 999 `
+  --prio 3 `
+  -ts 1,1 `
+  -sm layer `
+  -c 150000 `
+  -fa on `
+  -ctk q8_0 `
+  -ctv q8_0 `
+  --kv-unified `
+  -b 2048 `
+  -ub 1024 `
+  -np -1 `
+  --threads-http 2 `
+  --cache-reuse 256 `
+  --cache-ram 16000 `
+  --ctx-checkpoints 32 `
+  --temp 0.6 `
+  --top-p 0.95 `
+  --top-k 20 `
+  --min-p 0.0 `
+  --reasoning-preserve `
+  --chat-template-kwargs '{\"preserve_thinking\": true}' `
+  --jinja `
+  --chat-template-file qwen-fixed.jinja `
+  --host 0.0.0.0 `
+  --port 1234 `
+  --spec-type draft-mtp `
+  --spec-draft-n-max 4 `
+  --spec-draft-p-min 0.8
