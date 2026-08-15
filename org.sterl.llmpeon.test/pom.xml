@@ -16,12 +16,6 @@
     <packaging>eclipse-test-plugin</packaging>
 
     <dependencies>
-        <dependency>
-            <groupId>org.assertj</groupId>
-            <artifactId>assertj-core</artifactId>
-            <version>3.27.3</version>
-            <scope>test</scope>
-        </dependency>
 
         <dependency>
             <groupId>org.mockito</groupId>
@@ -42,10 +36,33 @@
                     <useUIThread>false</useUIThread>
                     <!-- Only needed when mocking final classes/methods/static:
                     <argLine>-javaagent:${settings.localRepository}/net/bytebuddy/byte-buddy-agent/VERSION/byte-buddy-agent-VERSION.jar</argLine>
-                    Replace VERSION with the byte-buddy version pulled in transitively by mockito-core. -->
+                    Replace VERSION with the byte-buddy version pulled in transitively by
+                    mockito-core. -->
                 </configuration>
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>macos-swt-test-fix</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                </os>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.eclipse.tycho</groupId>
+                        <artifactId>tycho-surefire-plugin</artifactId>
+                        <configuration>
+                            <argLine>-XstartOnFirstThread</argLine>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>

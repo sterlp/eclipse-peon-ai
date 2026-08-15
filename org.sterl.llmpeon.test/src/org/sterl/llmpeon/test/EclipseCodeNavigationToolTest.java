@@ -8,7 +8,7 @@ import org.junit.Test;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.tools.EclipseCodeNavigationTool;
 
-public class EclipseCodeNavigationToolTest extends AbstractTest {
+public class EclipseCodeNavigationToolTest extends AbstractIntegrationTest {
 
     private EclipseCodeNavigationTool subject = new EclipseCodeNavigationTool();
     

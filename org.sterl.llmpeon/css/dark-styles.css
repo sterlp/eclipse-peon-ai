@@ -1,0 +1,20 @@
+.org-sterl-llmpeon-parts-widget-header-bar-widget {
+    background-color: #1E1E1E;
+}
+
+Button.org-sterl-llmpeon-parts-widget-header-bar-widget {
+    background-color: #1E1E1E;
+}
+
+Label.org-sterl-llmpeon-parts-widget-header-bar-widget {
+    background-color: #1E1E1E;
+    color: #D4D4D4;
+}
+
+.org-sterl-llmpeon-parts-widget-user-question-response-widget {
+    background-color: #1E1E1E;
+}
+
+StyledText.org-sterl-llmpeon-parts-widget-text-input-widget {
+    background-color:  #1E1E1E;
+}

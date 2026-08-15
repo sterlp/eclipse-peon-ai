@@ -8,5 +8,6 @@ public record SimpleMessage(Type role, String message) {
         TOOL,
         THINK,
         QUESTION,
+        DIFF,
     }
 }

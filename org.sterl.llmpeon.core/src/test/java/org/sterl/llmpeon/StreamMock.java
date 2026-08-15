@@ -27,9 +27,7 @@ public class StreamMock {
                 callCount.incrementAndGet();
                 lastRequest = request;
                 try {
-                    System.err.println("StreamingChatModel: before apply");
                     ChatResponse response = fn.apply(request);
-                    System.err.println("StreamingChatModel: after apply");
                     handler.onCompleteResponse(response);
                 } catch (Exception e) {
                     handler.onError(e);

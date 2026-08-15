@@ -244,6 +244,7 @@ class CompactSessionToolTest {
             @Override public List<String> getUserContextInformations() { return List.of(); }
             @Override public boolean isToolActive(SmartToolExecutor exec) { return true; }
             @Override public boolean isMcpToolActive(String toolName) { return true; }
+            @Override public int tokenContextUsedInPercent() { return 0; }
         };
 
         var toolRequest = ToolLoopRequest.builder()

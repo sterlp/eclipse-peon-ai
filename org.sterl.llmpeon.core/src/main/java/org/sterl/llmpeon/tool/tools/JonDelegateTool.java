@@ -88,6 +88,17 @@ public class JonDelegateTool extends AbstractTool {
     public String talkPlan(@P(name = "prompt") String prompt) {
         return dispatch(plan, prompt, baseOrders());
     }
+    
+    @Tool("Wipes all stored memory/chat-history of the Peon-Plan (Da Thinka) agent back to a blank state.")
+    public void resetPlan() {
+        plan.agent().getMemory().clear();
+    }
+    
+    @Tool("Compact the session of Peon-Plan (Da Thinka), e.g. before creating a new plan - if the old context still matters.")
+    public String compactPlan() {
+        return plan.agent().compressContext(monitor).aiMessage().text()
+                + System.lineSeparator() + contextUsed(plan.agent());
+    }
 
     @Tool(name = JonDelegateTool.PLAN_WITH_PLAN_AGENT, value = "Have your Peon-Plan team member (Da Thinka) write/refine the plan into "
             + PeonPaths.PLAN_FILE
@@ -121,6 +132,17 @@ public class JonDelegateTool extends AbstractTool {
             orders.add(DEV_BUILD_LOOP);
         }
         return dispatch(dev, prompt, orders);
+    }
+    
+    @Tool("Wipes all stored memory/chat-history of the Peon-Dev (Da Mek) agent back to a blank state.")
+    public void resetDev() {
+        dev.agent().getMemory().clear();
+    }
+    
+    @Tool("Compact the session of Peon-Dev (Da Mek), e.g. before implementing a new plan - if the old context still matters.")
+    public String compactDev() {
+        return dev.agent().compressContext(monitor).aiMessage().text()
+                + System.lineSeparator() + contextUsed(dev.agent());
     }
 
     /**
@@ -171,11 +193,15 @@ public class JonDelegateTool extends AbstractTool {
                     ? response.aiMessage().text()
                     : null;
             return StringUtil.hasValue(answer)
-                    ? answer
+                    ? answer + System.lineSeparator() + contextUsed(slave)
                     : slave.getName() + " team member returned no result";
         } catch (IllegalStateException e) {
             onProblem(target.uiName() + " " + e.getMessage());
             return "Failed: " + target.uiName() + e.getMessage();
         }
+    }
+    
+    private String contextUsed(AiAgent agent) {
+        return "Context: " + agent.getMemory().getTotalTokenUsed() + " token - " + agent.tokenContextUsedInPercent() + "% used."; 
     }
 }

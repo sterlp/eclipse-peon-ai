@@ -120,3 +120,40 @@ Both expose `getPartialAiMessage()` (thinking + text) so the caller can append i
 - **Tag:** core (verify `StreamingBridge` accumulators; verify dedicated exceptions thrown only when partial content exists)
 
 **Context:** Currently only the UI monitor sees partial chunks. On cancel/error, the already-streamed text is lost. Dedicated exceptions make the partial result first-class: clean abort paths, resume after rate-limit, and future "save partial on error" without monitor-hacks.
+
+### R14 — Diff wird genau einmal mit korrektem Theme gerendert ✅
+
+Ein Diff wird exakt einmal in den Chat eingefügt und verwendet das aktuelle Farbschema.
+
+- **GIVEN** a diff is provided **WHEN** `showDiff` is called **THEN** the diff is appended exactly once using the current theme
+- **Tag:** unit (verify `ChatMarkdownWidget.showDiff` calls `postMessage` exactly once with theme parameter)
+
+### R15 — UI Message Bridge aligned with Test Harness (postMessage) ✅
+
+Java und Test Harness verwenden identische `postMessage`-Verdrahtung. Content und Steuerimpulse sind strikt getrennt:
+- **Chat-Content:** wird als `SimpleMessage` (`role` + `message`) direkt durchgereicht. `chat.html` rendert diese standardmäßig.
+- **Steuerimpulse:** werden als dedizierte, typsichere Java-Klassen (`UiCommand`-Hierarchie) serialisiert. Jede Klasse repräsentiert exakt ein Kommando (z. B. `SetThemeCommand`, `HideLiveStatusCommand`).
+
+- **GIVEN** a chat message needs to be sent **WHEN** Java calls the widget **THEN** it posts a `SimpleMessage` JSON payload
+- **GIVEN** a UI control signal is needed **WHEN** Java calls the widget **THEN** it posts a typed `UiCommand` JSON payload (e.g., `SetThemeCommand`)
+- **GIVEN** a `SetThemeCommand` is used **WHEN** the theme needs to change **THEN** one of two static instances (`LIGHT`, `DARK`) is sent (private constructor, enum-like)
+- **Tag:** integration (verify test-chat.html covers all `UiCommand` types Java sends)
+
+Java und Test Harness verwenden identische `postMessage`-Verdrahtung für alle UI-Kommunikation.
+
+- **GIVEN** a message or diff needs to be sent to the UI **WHEN** Java calls the widget **THEN** it uses `browser.postMessage()` (via MessageEvent dispatch) with a JSON payload, identical to the test harness approach
+- **GIVEN** a typed command (setTheme, hideLiveStatus, clearMessages) is sent **WHEN** the message arrives **THEN** `chat.html` dispatches it via the `message` event listener using the `type` field
+- **GIVEN** a SimpleMessage (with `role` field) is sent **WHEN** the message arrives **THEN** it is routed to `appendMessage` directly
+- **Tag:** integration (verify test-chat.html covers all message types Java sends)
+
+
+### R16 — Message Queue prevents loss during HTML load & agent switch ✅
+
+Alle UI-Nachrichten werden in einer Queue gepuffert, bis die HTML-Seite vollständig geladen und bereit ist (`browserReady = true`). Dies verhindert den Verlust von Aufrufen und Nachrichten, insbesondere beim Agentenwechsel oder nach `clear()`.
+
+- **GIVEN** the HTML page is not yet loaded (`browserReady == false`) **WHEN** a message is sent to the widget **THEN** the JSON payload is added to `pendingMessages` queue
+- **GIVEN** messages are queued and the HTML page finishes loading **WHEN** the `javaReady` title event fires **THEN** all queued messages are dispatched to the browser in order
+- **GIVEN** the chat is cleared during an agent switch **WHEN** `clear()` is called **THEN** the `pendingMessages` queue is cleared to prevent stale messages from the previous agent
+- **Tag:** unit (verify `ChatMarkdownWidget.postMessage` queues when not ready; verify `TitleListener` flushes queue)
+
+**Context:** Ohne Queue gehen Nachrichten beim Agentenwechsel oder nach einem `clear()` verloren, da die HTML-Seite kurzzeitig nicht empfangsbereit ist. Die Queue garantiert, dass jede Nachricht exakt einmal und in der richtigen Reihenfolge ankommt.

@@ -24,7 +24,8 @@ isn't clear from a rule/BDD.
 | [0016](0016-async-state-safety.md) | Always capture state before resetting references in async callbacks | Accepted |
 | [0017](0017-atomic-ui-chaining.md) | Move queue ownership and chaining into core agent — eliminates UI flicker and race windows | Accepted |
 | [0018](0018-abort-path-parity.md) | Explicitly distinguish success from abort; drain queues safely to memory on failure | Accepted |
-| [0019](0019-jsonl-agent-history-store.md) | Persist agent chat history as one JSONL file per agent under config state | Accepted |
+| [0026](0026-extract-question-shell-approval.md) | QuestionOrchestrator + ShellApprovalService aus AIChatView extrahieren — ~70 Zeilen weniger, testbar ohne SWT | Accepted |
+| [0027](0027-osgi-plugin-test-constraints.md) | OSGi Plugin-Tests nutzen JUnit 4 (Eclipse-Runtime); AssertJ bleibt im Maven-core — OSGi-Klassenpfad & Workbench-Startup beachten | Accepted |
 | [0020](0020-po-agent-orchestration.md) | Peon-PO orchestrates Plan/Dev as sub-agents via jon* tools with planComplete/planImplemented completion signals | Proposed |
 | [0021](0021-po-slave-lifecycle-jit-compaction.md) | Peon-PO slave lifecycle (lazy persistent singletons) & just-in-time compaction | Proposed |
 | [0022](0022-write-path-allowlist-decorator.md) | Scope an agent's writes via a write-path-allowlist decorator (comma-separated glob config) | Proposed |

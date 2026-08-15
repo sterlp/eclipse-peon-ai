@@ -172,7 +172,7 @@ Alle `@Tool`-Beschreibungen folgen einem einheitlichen Muster:
 | 51 | `memoryAdd` | *(2 lines)* | ✅ gut | *(kein Change)* | Multi-line gerechtfertigt — wichtige Cross-Project-Funktion |
 | 52 | `memoryRemove` | `"Remove a guideline by its number as shown in the Memory block."` | ✅ gut | *(kein Change)* | - |
 | 53 | `memoryReplace` | `"Replace the text of an existing guideline."` | ⚠️ zu kurz | `"Replace the text of an existing guideline by its 1-based index. Use this to refine or correct stored facts without losing the slot."` | Index-Erwähnung + Use-Case |
-| 54 | `resetMemory` | `"Clear all workspace guidelines. Use only if the user explicitly asks to reset memory."` | ✅ gut | *(kein Change)* | - |
+| 54 | `memoryReset` | `"Clear all workspace guidelines. Use only if the user explicitly asks to reset memory."` | ✅ gut | *(kein Change)* | - |
 
 ### ReloadConfigTool (`org.sterl.llmpeon.scaffold`)
 

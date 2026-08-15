@@ -144,7 +144,6 @@ public abstract class AbstractAgent implements AiAgent {
         return messageQueue.add(msg);
     }
 
-
     public int tokenContextUsedInPercent() {
         float used = memory.getTotalTokenUsed();
         if (used < 100) return 0;

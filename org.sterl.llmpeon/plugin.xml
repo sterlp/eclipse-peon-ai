@@ -51,4 +51,15 @@
       <initializer class="org.sterl.llmpeon.parts.config.VoicePreferenceInitializer"/>
    </extension>
 
+   <extension point="org.eclipse.e4.ui.css.swt.theme">
+      <!-- Apply stylesheet to the Eclipse default/light theme -->
+      <stylesheet uri="css/default-styles.css">
+         <themeid refid="org.eclipse.e4.ui.css.theme.e4_default" />
+      </stylesheet>
+      <!-- Apply stylesheet to the Eclipse dark theme -->
+      <stylesheet uri="css/dark-styles.css">
+         <themeid refid="org.eclipse.e4.ui.css.theme.e4_dark" />
+      </stylesheet>
+   </extension>
+
 </plugin>

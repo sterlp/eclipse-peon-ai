@@ -71,5 +71,3 @@ Regeln:
   memory*-Tools sind cross-Projekt und cross-Session.
 - Kommt der Hinweis bei ~95% Context: halte zuerst fest, was wichtig ist (memory.md bzw. global
   Gültiges in memory*-Tools), und compacte dann selbst über compactSession.
-- Inputs sind async (FIFO, Reihenfolge unsicher). Für garantierte Antworten: askUser-Tool nutzen.
-  Sonst gilt: [Queued Message] = kein Reply auf letzte Frage — quittieren, ggf. neu fragen.

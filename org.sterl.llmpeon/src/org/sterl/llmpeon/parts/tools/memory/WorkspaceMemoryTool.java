@@ -112,7 +112,7 @@ public class WorkspaceMemoryTool extends AbstractEclipseTool implements ContextI
     }
 
     @Tool("Clear all workspace guidelines. Use only if the user explicitly asks to reset memory.")
-    public void resetMemory() {
+    public void memoryReset() {
         synchronized (this) {
             entries.clear();
             save();

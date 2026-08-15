@@ -4,9 +4,9 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import org.eclipse.e4.ui.css.swt.CSSSWTConstants;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.KeyListener;
-import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.layout.RowLayout;
@@ -14,6 +14,7 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
+import org.sterl.llmpeon.parts.shared.EclipseUiUtil;
 import org.sterl.llmpeon.parts.tools.AskUserTool;
 
 /**
@@ -43,8 +44,6 @@ public class UserQuestionResponseWidget extends Composite {
         layout.marginHeight = 4;
         layout.verticalSpacing = 4;
         setLayout(layout);
-        
-        final Color bgWhite = getDisplay().getSystemColor(SWT.COLOR_WHITE);
 
         // radiosContainer placeholder — rebuilt on each showQuestion() call
         radiosContainer = new Composite(this, SWT.NONE);
@@ -62,7 +61,7 @@ public class UserQuestionResponseWidget extends Composite {
 
         textInput = new TextInputWidget(inputRow, SWT.NONE, 2, 7, this::requestReflow);
         textInput.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
-        textInput.setTextBackground(bgWhite);
+        textInput.setData(CSSSWTConstants.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_USER_QUESTION_RESPONSE_WIDGET);
 
         // Ctrl/Cmd+Enter submits
         textInput.addKeyListener(KeyListener.keyPressedAdapter(e -> {
@@ -83,12 +82,8 @@ public class UserQuestionResponseWidget extends Composite {
         rcLayout.verticalSpacing = 4;
         rightColumn.setLayout(rcLayout);
         rightColumn.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, false, true));
-        rightColumn.setBackground(bgWhite);
         rightColumn.setBackgroundMode(SWT.INHERIT_DEFAULT);
-        rightColumn.addPaintListener(e -> {
-            e.gc.setBackground(bgWhite);
-            e.gc.fillRectangle(rightColumn.getClientArea());
-        });
+        rightColumn.setData(CSSSWTConstants.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_USER_QUESTION_RESPONSE_WIDGET);
 
         Button cancelButton = new Button(rightColumn, SWT.PUSH);
         cancelButton.setText("Cancel");
@@ -99,7 +94,7 @@ public class UserQuestionResponseWidget extends Composite {
         GridData fillerData = new GridData(SWT.FILL, SWT.FILL, false, true);
         fillerData.heightHint = 0;
         filler.setLayoutData(fillerData);
-        filler.setBackground(bgWhite);
+        filler.setData(CSSSWTConstants.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_USER_QUESTION_RESPONSE_WIDGET);
 
         Button submitButton = new Button(rightColumn, SWT.PUSH);
         submitButton.setText("Answer");

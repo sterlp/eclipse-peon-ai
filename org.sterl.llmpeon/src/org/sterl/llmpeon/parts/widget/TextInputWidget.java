@@ -3,6 +3,7 @@ package org.sterl.llmpeon.parts.widget;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.eclipse.e4.ui.css.swt.CSSSWTConstants;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.custom.VerifyKeyListener;
@@ -15,6 +16,7 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
+import org.sterl.llmpeon.parts.shared.EclipseUiUtil;
 
 /**
  * Reusable auto-growing StyledText widget. The text area grows from {@code minRows} up to
@@ -58,12 +60,12 @@ public class TextInputWidget extends Composite {
         textData.heightHint = styledText.getLineHeight() * minRows;
         styledText.setLayoutData(textData);
         styledText.addModifyListener(e -> refreshHeight());
+        styledText.setData(CSSSWTConstants.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_TEXT_INPUT_WIDGET);
         FileDropSupport.install(this, styledText);
         FileDropSupport.install(styledText, styledText);
 
         popupMenu = new Menu(parent.getShell(), SWT.POP_UP);
         addUndoRedoSupport(popupMenu);
-
     }
 
     private void refreshHeight() {
@@ -123,7 +125,7 @@ public class TextInputWidget extends Composite {
                 }
             });
 
-		styledText.addListener(
+        styledText.addListener(
             SWT.KeyDown,
             event -> {
                 if (event.keyCode == 'z'
@@ -244,7 +246,7 @@ public class TextInputWidget extends Composite {
     public void setText(String text) {
         styledText.setText(text != null ? text : "");
     }
-    
+
     public void setEditable(boolean editable) {
         styledText.setEditable(editable);
     }
@@ -291,7 +293,7 @@ public class TextInputWidget extends Composite {
         var local = styledText.getLocationAtOffset(styledText.getCaretOffset());
         return styledText.toDisplay(local.x, local.y);
     }
-    
+
     public void setCaretOffset(int offset) {
         if (styledText.isDisposed()) return;
         int clamped = Math.max(0, Math.min(offset, styledText.getCharCount()));

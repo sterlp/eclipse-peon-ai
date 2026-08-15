@@ -21,9 +21,13 @@ import org.eclipse.swt.browser.TitleListener;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.osgi.framework.FrameworkUtil;
+import org.sterl.llmpeon.parts.shared.EclipseUiUtil;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.shared.OnPartialAiResponse;
 import org.sterl.llmpeon.shared.OnPartialAiResponse.Type;
+import org.sterl.llmpeon.parts.widget.model.HideLiveStatusCommand;
+import org.sterl.llmpeon.parts.widget.model.LiveStatusCommand;
+import org.sterl.llmpeon.parts.widget.model.SetThemeCommand;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.model.ToSimpleMessage;
 
@@ -47,7 +51,8 @@ public class ChatMarkdownWidget extends Composite {
     private final StringBuilder answerText = new StringBuilder();
 
     private volatile boolean browserReady = false;
-    private final java.util.Queue<String> pendingExecutions = new java.util.concurrent.ConcurrentLinkedQueue<>();
+    private final java.util.Queue<String> pendingMessages = new java.util.concurrent.ConcurrentLinkedQueue<>();
+    private volatile String currentTheme = "light";
 
     public ChatMarkdownWidget(Composite parent, int style) {
         super(parent, style);
@@ -66,9 +71,9 @@ public class ChatMarkdownWidget extends Composite {
                 if ("javaReady".equals(event.title)) {
                     EclipseUtil.runInUiThread(parent, () -> {
                         browserReady = true;
-                        String r;
-                        while ((r = pendingExecutions.poll()) != null) {
-                            browser.execute(r);
+                        String json;
+                        while ((json = pendingMessages.poll()) != null) {
+                            browser.execute("window.dispatchEvent(new MessageEvent('message', {data: " + json + "}));");
                         }
                     });
                 }
@@ -103,9 +108,7 @@ public class ChatMarkdownWidget extends Composite {
                             });
                     if (!EclipseUtil.searchWorkspaceFiles(fileName)
                             .isPresent()) {
-                        safeExecute(
-                                "appendMessage({role:'PROBLEM',message:'File not found: "
-                                        + fileName.replace("'", "\\'") + "'})");
+                        postMessage(new SimpleMessage(SimpleMessage.Type.PROBLEM, "File not found: " + fileName));
                     }
                 }
             }
@@ -114,6 +117,11 @@ public class ChatMarkdownWidget extends Composite {
             public void changed(LocationEvent event) {
                 // no-op
             }
+        });
+
+        EclipseUiUtil.addThemeChangeListener(theme -> {
+            currentTheme = theme;
+            postMessage("light".equals(theme) ? SetThemeCommand.LIGHT : SetThemeCommand.DARK);
         });
 
         clear();
@@ -152,11 +160,17 @@ public class ChatMarkdownWidget extends Composite {
         return html.replace("./", basePath);
     }
 
-    private void safeExecute(String js) {
-        if (browserReady) {
-            browser.execute(js);
-        } else {
-            pendingExecutions.add(js);
+    /** Send JSON payload to the browser via MessageEvent — identical to test harness approach. */
+    private void postMessage(Object payload) {
+        try {
+            String json = mapper.writeValueAsString(payload);
+            if (browserReady) {
+                browser.execute("window.dispatchEvent(new MessageEvent('message', {data: " + json + "}));");
+            } else {
+                pendingMessages.add(json);
+            }
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -169,16 +183,11 @@ public class ChatMarkdownWidget extends Composite {
     }
 
     public void appendMessage(SimpleMessage msg) {
-        try {
-            safeExecute(
-                    "appendMessage(" + mapper.writeValueAsString(msg) + ");");
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        postMessage(msg);
     }
 
     public void hideLiveStatus() {
-        safeExecute("hideLiveStatus();");
+        postMessage(HideLiveStatusCommand.INSTANCE);
     }
 
     public void onStreamingChunk(OnPartialAiResponse r) {
@@ -232,32 +241,22 @@ public class ChatMarkdownWidget extends Composite {
         }
     }
 
-    public void updateLiveResponseInUIThread(String state, double tokPerSec,
-            String safeChunk) {
+    public void updateLiveResponseInUIThread(String state, double tokPerSec, String safeChunk) {
         EclipseUtil.runInUiThread(parent, () -> {
-            try {
-                browser.execute("updateLiveResponse("
-                        + mapper.writeValueAsString(state) + ", " + tokPerSec
-                        + ", " + mapper.writeValueAsString(safeChunk) + ");");
-            } catch (JsonProcessingException e) {
-                // ignore
-            }
+            postMessage(new LiveStatusCommand(state, tokPerSec, safeChunk));
         });
     }
 
     public void showDiff(String unifiedDiff) {
-        try {
-            safeExecute("appendDiff(" + mapper.writeValueAsString(unifiedDiff)
-                    + ");");
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        postMessage(new SimpleMessage(SimpleMessage.Type.DIFF, unifiedDiff));
     }
 
     public void clear() {
         this.browserReady = false;
-        this.pendingExecutions.clear();
+        this.pendingMessages.clear();
         browser.setText(loadChatHtml());
+        currentTheme = EclipseUiUtil.resolveTheme();
+        postMessage("light".equals(currentTheme) ? SetThemeCommand.LIGHT : SetThemeCommand.DARK);
     }
 
     public void appendMessage(ChatMessage msg) {

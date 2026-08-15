@@ -12,7 +12,7 @@ import org.sterl.llmpeon.parts.shared.JdtUtil;
 /**
  * Test for Issue #66: diskPathOf returns null for sub-resources (folders/files inside projects)
  */
-public class JdtUtilDiskPathTest extends AbstractTest {
+public class JdtUtilDiskPathTest extends AbstractIntegrationTest {
 
     @Test
     public void testDiskPathOfProject() {

@@ -1,12 +1,13 @@
 package org.sterl.llmpeon.parts.widget;
 
+import org.eclipse.e4.ui.css.swt.CSSSWTConstants;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
+import org.sterl.llmpeon.parts.shared.EclipseUiUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.shared.TokenStats;
 
@@ -27,16 +28,15 @@ public class TokenHeaderWidget extends Composite {
 
     public TokenHeaderWidget(Composite parent, int style) {
         super(parent, style);
-        Color bgWhite = getDisplay().getSystemColor(SWT.COLOR_WHITE);
         GridLayout layout = new GridLayout(1, false);
         layout.marginHeight = 0;
         layout.marginWidth = 0;
         setLayout(layout);
-        setBackground(bgWhite);
         setBackgroundMode(SWT.INHERIT_DEFAULT);
 
         label = new Label(this, SWT.NONE);
         label.setLayoutData(new GridData(SWT.END, SWT.CENTER, true, true));
+        label.setData(CSSSWTConstants.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_HEADER_BAR_WIDGET);
         refresh();
     }
 

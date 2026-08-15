@@ -92,7 +92,7 @@ public class IoUtils {
 
     private static Charset getCharset(IFile file) {
         try {
-            var charset = file.getCharset();
+            var charset = file.getCharset(true);
             if (charset == null) charset = file.getProject().getDefaultCharset();
             if (charset == null) return StandardCharsets.UTF_8;
             return Charset.forName(charset);

@@ -19,7 +19,7 @@ import org.sterl.llmpeon.parts.model.UserContext;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 
-public class StandingOrdersBuilderTest extends AbstractTest {
+public class StandingOrdersBuilderTest extends AbstractIntegrationTest {
     PeonAiService aiService ;
     UserContext userContext;
     StandingOrdersBuilder standingOrders;

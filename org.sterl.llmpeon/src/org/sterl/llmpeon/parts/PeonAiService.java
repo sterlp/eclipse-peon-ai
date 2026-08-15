@@ -46,6 +46,7 @@ import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
+import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 import org.sterl.llmpeon.tool.tools.DiskGrepTool;
@@ -217,6 +218,7 @@ public class PeonAiService implements ContextItemProvider {
         // Jon's own throw-away research sub-agent (Da Sniffa) — searches with his read/grep tools to
         // save his context; stateless one-shot, not one of his persistent slaves.
         poToolService.addTool(new SearchAgentTool(poToolService));
+        poToolService.addTool(new CompactSessionTool());
         var poAgent = new AiPoAgent(configuredModel, poToolService, config.getConfigDir(), List.of(thinka, mek));
         // Persistent context: memory.md + docs/index.md rendered into system prompt
         poAgent.setPersistentContext(List.of(
