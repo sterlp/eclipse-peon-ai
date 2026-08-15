@@ -32,6 +32,11 @@ public interface AiAgent {
     default void setPersistentContext(List<ContextItem> context) {
     }
 
+    /** @return persistent context items, or empty list if none set. */
+    default List<ContextItem> getPersistentContext() {
+        return List.of();
+    }
+
     /** Set turn-scoped context supplier — items injected after compact or on first call. */
     default void setTurnContextSupplier(Supplier<List<ContextItem>> supplier) {
     }

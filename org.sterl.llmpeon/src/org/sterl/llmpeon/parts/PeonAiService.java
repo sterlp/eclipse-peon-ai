@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.parts;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -38,6 +39,7 @@ import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
 import org.sterl.llmpeon.parts.tools.PlanReadTool;
 import org.sterl.llmpeon.parts.tools.PlanTool;
 import org.sterl.llmpeon.parts.tools.memory.WorkspaceMemoryTool;
+import org.sterl.llmpeon.context.AgentsMdContextItem;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.EclipseFileContextItem;
 import org.sterl.llmpeon.context.SimpleContextItem;
@@ -221,11 +223,6 @@ public class PeonAiService implements ContextItemProvider {
         poToolService.addTool(new SearchAgentTool(poToolService));
         poToolService.addTool(new CompactSessionTool());
         var poAgent = new AiPoAgent(configuredModel, poToolService, config.getConfigDir(), List.of(thinka, mek));
-        // Persistent context: memory.md + docs/index.md rendered into system prompt
-        poAgent.setPersistentContext(List.of(
-                new EclipseFileContextItem("docs/memory.md"),
-                new EclipseFileContextItem("docs/index.md")
-        ));
         // Turn-scoped context: AGENTS.md + project info, restored after compact
         poAgent.setTurnContextSupplier(() -> {
             var items = new java.util.ArrayList<org.sterl.llmpeon.context.ContextItem>();
@@ -582,14 +579,34 @@ public class PeonAiService implements ContextItemProvider {
     }
 
     public void setStaticContext(List<ChatMessage> content) {
-        List<ContextItem> items = content.stream()
+        List<ContextItem> baseItems = content.stream()
                 .map(msg -> (ContextItem) new SimpleContextItem(ChatMessageUtil.toString(msg)))
                 .toList();
-        this.agentService.getAgents().forEach(a -> a.setPersistentContext(items));
+
+        // Apply to all managed agents (Dev, Plan, Custom, Scaffold)
+        for (var agent : this.agentService.getAgents()) {
+            List<ContextItem> items = new ArrayList<>(baseItems);
+            items.add(new AgentsMdContextItem(agent.getName()));
+            agent.setPersistentContext(items);
+        }
+
         // Jon's RAM slaves are not registered in agentService, so give them the same static context
         // (date/OS + file-access rules) directly — Inc 2, docs/sklaven-kontext-plan.md.
-        jonDelegateTool.getPlanSlave().setPersistentContext(items);
-        jonDelegateTool.getDevSlave().setPersistentContext(items);
+        for (var slave : List.of(jonDelegateTool.getPlanSlave(), jonDelegateTool.getDevSlave())) {
+            List<ContextItem> items = new ArrayList<>(baseItems);
+            items.add(new AgentsMdContextItem(slave.getName()));
+            slave.setPersistentContext(items);
+        }
+
+        // Jon additionally gets memory.md + index.md in persistent context
+        var poAgent = this.agentService.getAgents().stream()
+                .filter(a -> a instanceof AiPoAgent).findFirst().orElse(null);
+        if (poAgent != null) {
+            var jonItems = new ArrayList<>(poAgent.getPersistentContext());
+            jonItems.add(new EclipseFileContextItem("docs/memory.md"));
+            jonItems.add(new EclipseFileContextItem("docs/index.md"));
+            poAgent.setPersistentContext(jonItems);
+        }
     }
 
     @Override

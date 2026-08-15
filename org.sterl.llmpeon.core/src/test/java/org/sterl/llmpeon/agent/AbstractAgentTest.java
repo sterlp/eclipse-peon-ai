@@ -440,4 +440,34 @@ class AbstractAgentTest {
         }
         return count;
     }
+
+    /** doCall() injects turn context on Turn 1 (no compact required) and skips duplicates on Turn 2. */
+    @Test
+    void test_doCall_injectsTurnContextOnFirstTurn_noDuplicatesOnSecond() {
+        var config = LlmConfig.builder().model("mock").autoCompactAfter(80000).build();
+        var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("OK")).build());
+
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        agent.setTurnContextSupplier(() -> List.of(new SimpleContextItem("turn context item")));
+
+        // WHEN — Turn 1
+        agent.call("first", monitor -> {});
+
+        // THEN — Turn 1 injected context into memory
+        var memory1 = agent.getMemory().getCopy();
+        List<String> userTexts1 = extractUserTexts(memory1);
+        assertThat(userTexts1).anyMatch(t -> t.contains("turn context item"));
+
+        // WHEN — Turn 2 (no compact triggered)
+        agent.call("second", monitor -> {});
+
+        // THEN — Turn 2 did NOT duplicate the context
+        var memory2 = agent.getMemory().getCopy();
+        List<String> userTexts2 = extractUserTexts(memory2);
+        long contextCount = userTexts2.stream()
+                .filter(t -> t.contains("turn context item"))
+                .count();
+        assertThat(contextCount).isOne();
+    }
 }

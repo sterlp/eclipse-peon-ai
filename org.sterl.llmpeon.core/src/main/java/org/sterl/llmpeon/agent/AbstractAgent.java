@@ -233,6 +233,9 @@ public abstract class AbstractAgent implements AiAgent {
             compressContext(monitor);
         }
 
+        // Inject turn-scoped context on every turn (idempotent via contains-check)
+        restoreTurnContext();
+
         var userMessages = new ArrayList<Content>();
         if (StringUtil.hasValue(message)) userMessages.add(TextContent.from(message));
         if (userMessages.isEmpty()) {
@@ -280,6 +283,11 @@ public abstract class AbstractAgent implements AiAgent {
     public void setPersistentContext(List<ContextItem> context) {
         this.persistentContext = context;
         this.systemMessage = null;
+    }
+
+    @Override
+    public List<ContextItem> getPersistentContext() {
+        return persistentContext != null ? persistentContext : List.of();
     }
 
     /** Set turn-scoped context supplier — items injected after compact or on first call. */
