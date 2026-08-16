@@ -58,6 +58,10 @@ keine Exception, kein Status-Eintrag.
 
 ## Bugfix: "Loading 📋"-Zeilen (2026-08-16, 🚧 in design)
 
+**Status 2026-08-16:** Header-Vertrag (dedupKey = exakter Header `<pfad>:\n---\n`) in **allen**
+File-Items umgesetzt ✅ (Core: DiskFileContextItem; Plugin: EclipseFileContextItem,
+AgentsMdContextItem) — Review OK, alle Tests grün. R2(a) = IST-Fix oben. Offen: R1 → R2(b).
+
 **Befund:**
 - **Sticky Status nach Compact:** der Compress-Pfad hat das Live-Status nie
   ausgeblendet → das letzte `onTool` ("Loading 📋 …") blieb im Live-Status kleben.

@@ -44,10 +44,13 @@ ADR-0028 legte Datei-Context (AGENTS.md, memory.md, index.md) in den **System-Pr
 
 Der Substring-Check lief auf den **bloßen Pfad** (dedupKey) → **False-Positive**: eine
 Compact-Summary erwähnt den Pfad ("loaded /proj/AGENTS.md …") → Datei wurde nach Compact
-nicht re-injiziert. Fix: Dedup prüft **`ContextItem.label()`** — der exakte Header
-`<pfad>:\n---\n` (mit Trenner). Eine Summary kann den Pfad erwähnen, aber praktisch nie
-den exakten Header. `dedupKey()` als drittes Interface-Method ist gefallen
-(KISS: Label = Dedup-Identifier, eine Größe).
+nicht re-injiziert. Fix: Dedup prüft **`ContextItem.dedupKey()`** = exakter Header
+`<pfad>:\n---\n` (mit Trenner, `System.lineSeparator()`). `label()` = bloßer Pfad für den
+"Loading 📋"-Status. Drei Methods: `render()` / `label()` / `dedupKey()` (Default null →
+Content-Dedup). Eine Summary kann den Pfad erwähnen, aber praktisch nie den exakten Header.
+
+**Umgesetzt ✅ (2026-08-16):** Core (3 Inkremente) + Plugin-Delta (EclipseFileContextItem,
+AgentsMdContextItem) — Review OK, alle Tests grün (Core 418/0, Plugin grün).
 
 ## Verwandt
 

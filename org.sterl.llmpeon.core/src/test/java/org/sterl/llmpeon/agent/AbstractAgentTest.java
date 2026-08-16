@@ -125,7 +125,7 @@ class AbstractAgentTest {
         // AND go
         canProceed.countDown();
 
-        callerThread.join(999910_000);
+        callerThread.join(10_000);
 
         // THEN
         assertThat(sendMsg).hasSize(2);
@@ -651,6 +651,44 @@ class AbstractAgentTest {
         assertThat(renderCount.get()).isZero();
         var userTexts = extractUserTexts(agent.getMemory().getCopy());
         assertThat(countOccurrences(userTexts.get(0), "file content body")).isOne();
+    }
+
+    /** Header-Dedup (Bugfix 2026-08-16): a Memory message that only mentions the bare path
+        (e.g. a Compact message) does NOT dedupe — the exact header is missing →
+        the item is still injected. */
+    @Test
+    void test_restoreTurnContext_barePathInHistory_stillInjects() {
+        var config = LlmConfig.builder().model("mock").build();
+        var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("OK")).build());
+
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+
+        AtomicInteger renderCount = new AtomicInteger();
+        String header = "C:/x/memory.md" + ":" + System.lineSeparator() + "---" + System.lineSeparator();
+        ContextItem keyed = new ContextItem() {
+            @Override public String render() {
+                renderCount.incrementAndGet();
+                return header + "file content body";
+            }
+            @Override public String dedupKey() { return header; }
+        };
+
+        // GIVEN — history only mentions the bare path (e.g. a Compact message), no exact header
+        agent.addMessage(UserMessage.from("During the previous session we loaded C:/x/memory.md."));
+        agent.setTurnContextSupplier(() -> List.of(keyed));
+
+        // WHEN — a turn runs restoreTurnContext
+        agent.call("hi", monitor -> {});
+
+        // THEN — the item was injected (render called), content is in memory
+        assertThat(renderCount.get()).isOne();
+        assertThat(extractUserTexts(agent.getMemory().getCopy()))
+                .anyMatch(t -> t.contains("file content body"));
+
+        // AND — second call: the exact header is now in history → no re-injection
+        agent.call("again", monitor -> {});
+        assertThat(renderCount.get()).isOne();
     }
 
     /** S4: after compact the key is gone from history → the keyed item is re-injected. */

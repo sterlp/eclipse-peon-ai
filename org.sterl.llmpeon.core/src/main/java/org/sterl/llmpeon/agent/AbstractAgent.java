@@ -28,7 +28,9 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public abstract class AbstractAgent implements AiAgent {
 
     @Getter
@@ -367,8 +369,7 @@ public abstract class AbstractAgent implements AiAgent {
 
         for (var item : items) {
             var key = item.dedupKey();
-            // TODO das sollte eigentlich ein starts with sein ... hmpf
-            if (key == null || !memory.containsUserMessage(item.dedupKey())) {
+            if (key == null || !memory.containsUserMessage(key)) {
                 String rendered = item.render();
                 if (rendered == null) continue;
                 if (memory.containsUserMessage(rendered)) continue;
@@ -377,7 +378,7 @@ public abstract class AbstractAgent implements AiAgent {
                 }
                 memory.add(UserMessage.from(rendered));
             } else {
-                System.err.println("Already loaded " + item.dedupKey());
+                log.debug("Turn context already loaded: {}", key);
             }
         }
     }

@@ -15,9 +15,10 @@ import org.sterl.llmpeon.parts.shared.JdtUtil;
  * Context item that renders the base {@code AGENTS.md} and agent-specific {@code AGENTS-<agent>.md}
  * files. A missing project/file renders {@code null} (nothing to inject, no exception).
  * <p>
- * {@link #label()} and {@link #dedupKey()} are the full workspace path of the <b>base</b> file
- * (a substring of the rendered text); when the base file is missing, {@code dedupKey()} is
- * {@code null} and dedup falls back to rendered content.
+ * {@link #label()} is the full workspace path of the <b>base</b> file; {@link #dedupKey()}
+ * is that path as the exact ADR-0029 header ({@code <path>:<line-separator>---<line-separator>}).
+ * When the base file is missing, {@code dedupKey()} is {@code null} and dedup falls back
+ * to rendered content.
  */
 public class AgentsMdContextItem implements ContextItem {
 
@@ -37,7 +38,9 @@ public class AgentsMdContextItem implements ContextItem {
     @Override
     @Nullable
     public String dedupKey() {
-        return baseFile().map(JdtUtil::pathOf).orElse(null);
+        return baseFile()
+                .map(f -> JdtUtil.pathOf(f) + ":" + System.lineSeparator() + "---" + System.lineSeparator())
+                .orElse(null);
     }
 
     @Override
@@ -68,7 +71,8 @@ public class AgentsMdContextItem implements ContextItem {
         for (String name : names) {
             var file = EclipseUtil.findMember(project, name);
             if (file.isPresent() && file.get().exists()) {
-                return Optional.of(JdtUtil.pathOf(file.get()) + ":\n---\n" + IoUtils.readString(file.get()));
+                return Optional.of(JdtUtil.pathOf(file.get()) + ":" + System.lineSeparator() + "---" + System.lineSeparator()
+                        + IoUtils.readString(file.get()));
             }
         }
         return Optional.empty();

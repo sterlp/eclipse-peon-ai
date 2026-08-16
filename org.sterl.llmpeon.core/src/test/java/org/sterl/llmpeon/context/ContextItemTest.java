@@ -23,7 +23,7 @@ class ContextItemTest {
         String rendered = item.render();
 
         assertThat(rendered)
-            .startsWith(file.toAbsolutePath().normalize() + ":\n---\n")
+            .startsWith(file.toAbsolutePath().normalize() + ":" + System.lineSeparator() + "---" + System.lineSeparator())
             .endsWith("hello world");
     }
 
@@ -62,13 +62,14 @@ class ContextItemTest {
     }
 
     @Test
-    void dedupKey_returnsAbsolutePath() throws IOException {
+    void dedupKey_returnsHeader() throws IOException {
         Path file = tempDir.resolve("keyed.txt");
         Files.writeString(file, "content");
 
         DiskFileContextItem item = new DiskFileContextItem(file);
 
-        assertThat(item.dedupKey()).isEqualTo(file.toAbsolutePath().normalize().toString());
+        assertThat(item.dedupKey()).isEqualTo(
+            item.label() + ":" + System.lineSeparator() + "---" + System.lineSeparator());
     }
 
     @Test
@@ -79,9 +80,9 @@ class ContextItemTest {
     }
 
     @Test
-    void label_defaultReturnsEmpty() {
+    void label_defaultReturnsNull() {
         ContextItem item = () -> "content";
-        assertThat(item.label()).isEmpty();
+        assertThat(item.label()).isNull();
     }
 
     @Test

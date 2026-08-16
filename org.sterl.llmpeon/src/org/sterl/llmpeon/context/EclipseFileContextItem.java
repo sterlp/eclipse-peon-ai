@@ -32,7 +32,9 @@ public class EclipseFileContextItem implements ContextItem {
 
     @Override
     public String dedupKey() {
-        return key();
+        String key = key();
+        if (key == null) return null;
+        return key + ":" + System.lineSeparator() + "---" + System.lineSeparator();
     }
 
     @Override
@@ -44,7 +46,7 @@ public class EclipseFileContextItem implements ContextItem {
         Path path = file.getLocation().toFile().toPath();
         try {
             String content = Files.readString(path);
-            return key + ":\n---\n" + content;
+            return key + ":" + System.lineSeparator() + "---" + System.lineSeparator() + content;
         } catch (IOException e) {
             return null;
         }

@@ -21,9 +21,9 @@ public class EclipseFileContextItemTest extends AbstractIntegrationTest {
         var item = new EclipseFileContextItem("docs/test-memory.md", project);
         var workspacePath = "/" + project.getName() + "/docs/test-memory.md";
 
-        assertEquals(workspacePath + ":\n---\nmemory content", item.render());
+        assertEquals(workspacePath + ":" + System.lineSeparator() + "---" + System.lineSeparator() + "memory content", item.render());
         assertEquals(workspacePath, item.label());
-        assertEquals(workspacePath, item.dedupKey());
+        assertEquals(workspacePath + ":" + System.lineSeparator() + "---" + System.lineSeparator(), item.dedupKey());
     }
 
     @Test

@@ -32,19 +32,23 @@ interface ContextItem {
     /** Renders the full text (header + content). Null = nothing to inject → skip. */
     String render();
 
+    /** "Loading 📋" status label — File-Items: voller Pfad. Default: null (lädt still). */
+    default String label() { return null; }
+
     /**
-     * Dedup- + Label-Identifier. Default: render().
-     * File-Items überladen: "<voller Pfad>:\n---\n" (Header, ohne Content).
-     * Dedup prüft NUR label() — nie render() (eine Summary kann den Pfad erwähnen,
-     * aber praktisch nie exakt den Header mit Trenner).
+     * Dedup-Identifier, contains-Check über UserMessages, VOR dem Read.
+     * File-Items: exakter Header "<voller Pfad>:\n---\n" (System.lineSeparator()) —
+     * eine Summary kann den Pfad erwähnen, aber praktisch nie exakt den Header.
+     * Default: null → Dedup über den gerenderten Content.
      */
-    default String label() { return render(); }
+    default String dedupKey() { return null; }
 }
 ```
 
-**Zwei Methoden, kein dedupKey** (2026-08-16): Dedup- und "Loading 📋"-Label sind dieselbe
-Größe (`label()`). Ein drittes `dedupKey()` war Over-Engineering und Source eines Bugs
-(contains-Check auf den bloßen Pfad → False-Positive gegen Compact-Summaries).
+**Drei Methods** (2026-08-16): `label()` = Pfad für den "Loading 📋"-Status,
+`dedupKey()` = Header (mit Trenner) für die Dedup — zwei Größen, zwei Aufgaben.
+Der alte Bug: contains-Check auf den bloßen Pfad → False-Positive gegen
+Compact-Summaries.
 
 ## Implementierungen
 
@@ -182,13 +186,12 @@ Request) + Stale-Projects-Bug (System-Prompt/`lastModified`-Cache überlebten de
 
 1. **Datei fehlt → `null` → übersprungen.** `render()` gibt bei fehlender Datei/Projekt `null`
    zurück; es wird nichts injiziert, kein "Loading"-Eintrag, keine Exception.
-2. **Dedup nach `label()`, nie nach Content — Header-Check vor dem Read.** Der Injektions-Check
-   prüft **zuerst** nur `label()` = Header (`<voller Pfad>:\n---\n`) in der History: Header da →
+2. **Dedup nach `dedupKey()`, nie nach Content — Header-Check vor dem Read.** Der Injektions-Check
+   prüft **zuerst** nur `dedupKey()` = Header (`<voller Pfad>:\n---\n`) in der History: Header da →
    übersprungen. Der Check ist exakt auf den **Header-String mit Trenner** — eine Compact-Summary
    kann den Pfad *erwähnen*, aber nicht den exakten Header → kein False-Positive (Bugfix
    2026-08-16, vorher: contains-Check auf den bloßen Pfad).
-   Pfad da → übersprungen,
-   die Datei wird **gar nicht erst gelesen** (kein Payload-Load, kein `render()`). Content-Änderungen
+   Die Datei wird **gar nicht erst gelesen** (kein Payload-Load, kein `render()`). Content-Änderungen
    an der Datei lösen **keine** Neu-Injection aus — die Änderungen stehen ohnehin als Tool-Messages
    in der History. Neu injiziert (und dann erst gelesen) wird nur bei **anderem Pfad**
    (Projektwechsel) oder **nach Compact**.
@@ -239,5 +242,6 @@ THEN nichts wird injiziert (kein Error, kein Status-Eintrag)
 - **Caching:** Nein — `lastModified`-Cache entfernt (SOLL 2026-08-16); Dedup happens in der History
   nach vollem Pfad, nie nach Content.
 - **Standing Orders:** `List<ContextItem>` — gleiche Abstraction. Dedup-Check
-  (`memory.containsUserMessage(item.label())` — Files: Header `<pfad>:\n---\n`, sonst Content);
-  nur einmal injiziert, nie nachträglich angepasst (KV Cache!).
+  (`memory.containsUserMessage(item.dedupKey())` — Files: exakter Header `<pfad>:\n---\n`,
+  sonst gerendeter Content bei `dedupKey() = null`); nur einmal injiziert, nie nachträglich
+  angepasst (KV Cache!).

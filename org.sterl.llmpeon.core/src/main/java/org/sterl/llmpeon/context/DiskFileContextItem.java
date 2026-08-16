@@ -18,10 +18,15 @@ public class DiskFileContextItem implements ContextItem {
     @Override
     public String render() {
         try {
-            String content = Files.readString(path);
-            return dedupKey() + content;
+            if (Files.isRegularFile(path)) {
+                String content = Files.readString(path);
+                return dedupKey() + content;
+            } else {
+                log.debug("Context file not present, skipping: {}", path);
+                return null;
+            }
         } catch (IOException e) {
-            log.error("Failed to load {}", path, e);
+            log.error("Failed to load context file: {}", path, e);
             return null;
         }
     }
