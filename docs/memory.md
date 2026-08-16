@@ -7,4 +7,6 @@
 Abgeschlossen im Zyklus: po-agent-jon.md STALE-Marker aufgeräumt (R1–R3, R6–R7, R9 → ✅,
 Tool-Namen I2.1), `EclipseFileContextItemTest` läuft grün (OOMPH-Startfehler im Log =
 Workbench-Runtime, nicht unser Code), Plugin-Delta (EclipseFileContextItem + AgentsMdContextItem
-→ Header dedupKey) gebaut + Review ✅.
+→ Header dedupKey) gebaut + Review ✅, R1+R2 (AgentsMdContextItem → itemsFor() mit
+2× EclipseFileContextItem) gebaut + Review ✅, Core-Delta `StandingOrdersBuilder.buildItems()`
+→ `List<ContextItem>` (Agent-Vertrag, Shell-mvn-Gate).
