@@ -56,6 +56,48 @@ Duplikate. File-Items werden **einmal pro vollem Pfad** injiziert: nie bei Datei
 (Projektwechsel) oder **nach Compact** (Memory geleert). Fehlende Datei → `null` → übersprungen,
 keine Exception, kein Status-Eintrag.
 
+## Bugfix: "Loading 📋"-Zeilen (2026-08-16, 🚧 in design)
+
+**Befund:**
+- **Sticky Status nach Compact:** der Compress-Pfad hat das Live-Status nie
+  ausgeblendet → das letzte `onTool` ("Loading 📋 …") blieb im Live-Status kleben.
+  **IST-Fix 2026-08-16:** `handleDoneChatResponse` → `chatHistory.hideLiveStatus()`
+  (`AIChatView`). Die "Loading 📋"-Zeile ist bereits eine TOOL-Message im Chat
+  (live-Append via `onChatResponse`) — das ist der eine, persistente Kanal.
+- **Keine AGENTS-\<agent\>.md-Zeile:** `AgentsMdContextItem` = **ein** Item (Base +
+  Agent-Datei joined) mit **Base-Pfad** als Dedup-Key und Label → die Agent-Datei
+  hat nie eigene "Loading 📋"-Zeile; ist die Base schon deduppt, wird das ganze
+  Item inkl. Agent-Datei übersprungen.
+
+**SOLL:**
+- **R1 🚧:** `AgentsMdContextItem` → **zwei** Items (Base `AGENTS.md` +
+  `AGENTS-<agent>.md`), je voller Pfad als Dedup-Key + je eigene "Loading 📋"-Zeile.
+  Dedup bleibt Memory-Pflicht, greift je Item (ADR-0029: Dedup nach vollem Pfad).
+- **R2 🚧:** Regression: (a) nach Compact ist das Live-Status ausgeblendet und die
+  "Loading 📋"-Zeilen im Chat sichtbar; (b) je Item (Base + Agent-Datei) eine eigene
+  "Loading 📋"-Zeile.
+
+**Gestrichen (YAGNI):** ToSimpleMessage-Voll-Render + onTool-Entfernung — nicht
+nötig, die TOOL-Message ist schon der Kanal.
+
+**BDD:**
+```
+GIVEN ein neuer Chat mit AGENTS.md + AGENTS-DEV.md
+WHEN der erste Turn beginnt
+THEN je Datei eine "Loading 📋 <voller Pfad>"-Zeile im Chat (Base und Agent-Datei je eine)
+
+GIVEN ein Compact (clear + Re-Injektion + Summary) ist abgeschlossen
+WHEN die Compress-Operation fertig ist
+THEN das Live-Status ist ausgeblendet
+AND die "Loading 📋"-Zeilen sind im Chat sichtbar
+
+GIVEN die Base AGENTS.md ist bereits in der History (Dedup-Treffer)
+AND AGENTS-DEV.md noch nicht
+WHEN der nächste Turn beginnt
+THEN AGENTS-DEV.md wird injiziert (eigener Dedup-Key)
+AND ihre "Loading 📋"-Zeile ist sichtbar
+```
+
 ## UI Reporting (SOLL)
 
 Der Status-Line/Token-Header zeigt, was geladen ist:

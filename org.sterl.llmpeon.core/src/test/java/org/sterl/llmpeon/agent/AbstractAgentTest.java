@@ -11,7 +11,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Supplier;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,13 +23,13 @@ import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.memory.FileAgentHistoryStore;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.tool.ToolService;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import org.sterl.llmpeon.shared.ChatMessageUtil;
 
 class AbstractAgentTest {
 
@@ -479,10 +478,7 @@ class AbstractAgentTest {
                 .aiMessage(AiMessage.aiMessage("OK")).build());
 
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
-        ContextItem labeled = new ContextItem() {
-            @Override public String render() { return "labeled content"; }
-            @Override public String label() { return "docs/memory.md"; }
-        };
+        ContextItem labeled = new SimpleContextItem("docs/memory.md", "labeled content");
         ContextItem unlabeled = new SimpleContextItem("unlabeled content");
         agent.setPersistentContext(List.of(labeled, unlabeled));
 
@@ -508,10 +504,7 @@ class AbstractAgentTest {
                 .aiMessage(AiMessage.aiMessage("OK")).build());
 
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
-        ContextItem labeled = new ContextItem() {
-            @Override public String render() { return "turn labeled content"; }
-            @Override public String label() { return "peon-plan/overview.md"; }
-        };
+        ContextItem labeled = new SimpleContextItem("peon-plan/overview.md", "turn labeled content");
         agent.setTurnContextSupplier(() -> List.of(labeled));
 
         List<String> toolMessages = new ArrayList<>();

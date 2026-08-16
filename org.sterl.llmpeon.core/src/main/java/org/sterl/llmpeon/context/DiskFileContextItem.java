@@ -4,14 +4,13 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
-/**
- * Disk-based context item.
- * Renders as: "&lt;absolute path&gt;:\n---\n&lt;content&gt;".
- * A missing file or read error renders {@code null} (nothing to inject).
- */
 @RequiredArgsConstructor
+@EqualsAndHashCode(of = "path")
+@Slf4j
 public class DiskFileContextItem implements ContextItem {
 
     private final Path path;
@@ -20,23 +19,21 @@ public class DiskFileContextItem implements ContextItem {
     public String render() {
         try {
             String content = Files.readString(path);
-            return key() + ":\n---\n" + content;
+            return dedupKey() + content;
         } catch (IOException e) {
+            log.error("Failed to load {}", path, e);
             return null;
         }
     }
 
     @Override
-    public String label() {
-        return key();
+    public String dedupKey() {
+        return label() 
+                + ":" + System.lineSeparator() + "---" + System.lineSeparator();
     }
 
     @Override
-    public String dedupKey() {
-        return key();
-    }
-
-    private String key() {
+    public String label() {
         return path.toAbsolutePath().normalize().toString();
     }
 }

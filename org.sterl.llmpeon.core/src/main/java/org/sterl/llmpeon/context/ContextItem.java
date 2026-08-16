@@ -26,6 +26,6 @@ public interface ContextItem {
      * Default is empty — items without a label load silently.
      */
     default String label() {
-        return "";
+        return null;
     }
 }

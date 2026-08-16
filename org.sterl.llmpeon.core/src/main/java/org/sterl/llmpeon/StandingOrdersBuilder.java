@@ -19,25 +19,13 @@ import org.sterl.llmpeon.shared.StringUtil;
  */
 public class StandingOrdersBuilder {
 
-    /** @deprecated Replaced by {@link ContextItemProvider}. */
-    @Deprecated
-    public interface MessageProvider extends Supplier<List<String>> {}
-
+    /** provide a context - return <code>null</code> to skipp */
     public interface ContextItemProvider extends Supplier<List<ContextItem>> {}
-    
-    private final List<MessageProvider> messageProviders = new LinkedList<>();
     private final List<ContextItemProvider> itemProviders = new LinkedList<>();
     private final List<String> oneTimeOrders = new LinkedList<>();
     
     public StandingOrdersBuilder() {
         super();
-    }
-
-    /** @deprecated Replaced by {@link #add(ContextItemProvider)}. */
-    @Deprecated
-    public StandingOrdersBuilder add(MessageProvider provider) {
-        messageProviders.add(provider);
-        return this;
     }
 
     public StandingOrdersBuilder add(ContextItemProvider provider) {
@@ -56,23 +44,14 @@ public class StandingOrdersBuilder {
      * One-time orders and legacy {@link MessageProvider} strings are wrapped as
      * {@link SimpleContextItem} for backward compatibility.
      */
-    public List<ContextItem> buildItems() {
-        var result = new ArrayList<ContextItem>();
+    public Collection<ContextItem> buildItems() {
+        var result = new LinkedHashSet<ContextItem>();
 
         for (var p : itemProviders) {
             var items = p.get();
             if (items != null) {
-                items.stream().filter(item -> StringUtil.hasValue(item.render()))
-                    .forEach(result::add);
-            }
-        }
-
-        // Legacy MessageProviders — wrap their strings as SimpleContextItem
-        for (var p : messageProviders) {
-            var strings = p.get();
-            if (strings != null) {
-                strings.stream().filter(StringUtil::hasValue)
-                    .map(SimpleContextItem::new)
+                items.stream()
+                    .filter(item -> item != null)
                     .forEach(result::add);
             }
         }
@@ -94,8 +73,6 @@ public class StandingOrdersBuilder {
     @Deprecated
     public Collection<String> build() {
         var result = new LinkedHashSet<String>();
-
-        for (var p : messageProviders) addTo(result, p.get());
 
         // Atomic snapshot-and-clear: drainTo removes all elements and adds them to the target list
         var snapshot = new ArrayList<String>();

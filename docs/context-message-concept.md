@@ -28,12 +28,23 @@ System-Prompt rebuild nach Clear fehlt (KV Cache Invalidate + Rebuild).
 ## Interface (Core)
 
 ```java
-@FunctionalInterface
 interface ContextItem {
-    /** Renders the text content of this context item. */
+    /** Renders the full text (header + content). Null = nothing to inject → skip. */
     String render();
+
+    /**
+     * Dedup- + Label-Identifier. Default: render().
+     * File-Items überladen: "<voller Pfad>:\n---\n" (Header, ohne Content).
+     * Dedup prüft NUR label() — nie render() (eine Summary kann den Pfad erwähnen,
+     * aber praktisch nie exakt den Header mit Trenner).
+     */
+    default String label() { return render(); }
 }
 ```
+
+**Zwei Methoden, kein dedupKey** (2026-08-16): Dedup- und "Loading 📋"-Label sind dieselbe
+Größe (`label()`). Ein drittes `dedupKey()` war Over-Engineering und Source eines Bugs
+(contains-Check auf den bloßen Pfad → False-Positive gegen Compact-Summaries).
 
 ## Implementierungen
 
@@ -171,8 +182,12 @@ Request) + Stale-Projects-Bug (System-Prompt/`lastModified`-Cache überlebten de
 
 1. **Datei fehlt → `null` → übersprungen.** `render()` gibt bei fehlender Datei/Projekt `null`
    zurück; es wird nichts injiziert, kein "Loading"-Eintrag, keine Exception.
-2. **Dedup nach vollem Pfad, nie nach Content — Header-Check vor dem Read.** Der Injektions-Check
-   prüft **zuerst** nur den Header (voller Workspace-Pfad) in der History: Pfad da → übersprungen,
+2. **Dedup nach `label()`, nie nach Content — Header-Check vor dem Read.** Der Injektions-Check
+   prüft **zuerst** nur `label()` = Header (`<voller Pfad>:\n---\n`) in der History: Header da →
+   übersprungen. Der Check ist exakt auf den **Header-String mit Trenner** — eine Compact-Summary
+   kann den Pfad *erwähnen*, aber nicht den exakten Header → kein False-Positive (Bugfix
+   2026-08-16, vorher: contains-Check auf den bloßen Pfad).
+   Pfad da → übersprungen,
    die Datei wird **gar nicht erst gelesen** (kein Payload-Load, kein `render()`). Content-Änderungen
    an der Datei lösen **keine** Neu-Injection aus — die Änderungen stehen ohnehin als Tool-Messages
    in der History. Neu injiziert (und dann erst gelesen) wird nur bei **anderem Pfad**
@@ -223,5 +238,6 @@ THEN nichts wird injiziert (kein Error, kein Status-Eintrag)
   Pfad-Dedup-Marker und Token-Transparenz (SOLL 2026-08-16: voller Pfad statt "Static loaded file <relativ>").
 - **Caching:** Nein — `lastModified`-Cache entfernt (SOLL 2026-08-16); Dedup happens in der History
   nach vollem Pfad, nie nach Content.
-- **Standing Orders:** `List<ContextItem>` — gleiche Abstraction. Dedup-Check (`memory.containsUserMessage(dedupKey)` —
-  Files: voller Pfad, sonst Content); nur einmal injiziert, nie nachträglich angepasst (KV Cache!).
+- **Standing Orders:** `List<ContextItem>` — gleiche Abstraction. Dedup-Check
+  (`memory.containsUserMessage(item.label())` — Files: Header `<pfad>:\n---\n`, sonst Content);
+  nur einmal injiziert, nie nachträglich angepasst (KV Cache!).

@@ -40,6 +40,15 @@ ADR-0028 legte Datei-Context (AGENTS.md, memory.md, index.md) in den **System-Pr
 - Supersedet den "persistentContext für Dateien"-Teil von ADR-0028; das ContextItem-Konzept
   (Interface, Agent-besitzter Compact-Flow) bleibt unverändert gültig.
 
+## Korrektur (2026-08-16)
+
+Der Substring-Check lief auf den **bloßen Pfad** (dedupKey) → **False-Positive**: eine
+Compact-Summary erwähnt den Pfad ("loaded /proj/AGENTS.md …") → Datei wurde nach Compact
+nicht re-injiziert. Fix: Dedup prüft **`ContextItem.label()`** — der exakte Header
+`<pfad>:\n---\n` (mit Trenner). Eine Summary kann den Pfad erwähnen, aber praktisch nie
+den exakten Header. `dedupKey()` als drittes Interface-Method ist gefallen
+(KISS: Label = Dedup-Identifier, eine Größe).
+
 ## Verwandt
 
 - [Context Message Konzept](../context-message-concept.md) — Regeln + BDD

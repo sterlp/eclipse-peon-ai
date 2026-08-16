@@ -603,6 +603,7 @@ public class AIChatView implements EclipseAiMonitor {
         var active = aiService.getActiveAgent();
         if (active.getMemory().size() == 0) return;
         lockWhileWorking(true);
+        chatHistory.clear();
         Job.create("Compressing context", monitor -> {
             monitor.beginTask("Compressing chat", 1);
             monitorRef.set(monitor);
@@ -610,10 +611,14 @@ public class AIChatView implements EclipseAiMonitor {
             ChatResponse cr = null;
             try {
                 cr = active.compressContext(this);
-                Display.getDefault().asyncExec(this::refreshChat);
             } catch (Exception e) {
                 ex = handleChatException(e);
             } finally {
+                // own refresh to ensure the onTool messages are preserved after compact
+                Display.getDefault().asyncExec(() -> {
+                    refreshStatusLine();
+                    aiService.getActiveAgent().getMemory().forEach(chatHistory::appendMessage);
+                });
                 handleDoneChatResponse(cr, monitor, ex);
             }
             return PeonConstants.status("Compressed", ex);
@@ -715,6 +720,7 @@ public class AIChatView implements EclipseAiMonitor {
             actionsBar.updateCompact(
                     aiService.getActiveAgent().getMemory().getTotalTokenUsed(),
                     aiService.getConfig().getAutoCompactAfter());
+            chatHistory.hideLiveStatus();
         });
     }
 

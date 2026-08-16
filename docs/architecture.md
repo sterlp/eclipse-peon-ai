@@ -75,6 +75,24 @@ org.sterl.llmpeon.parts/
 5. **One Component = one responsibility** — name it after what it does (`HandoffComponent`,
    `AgentContextComponent`, `ToolWiringComponent`).
 
+## Error Handling (Exceptions) — ❌ specified (2026-08-16)
+
+- **Niemals still swallowen:** ein `catch`, der ohne Log und ohne Rethrow einen
+  Default-Wert zurückgibt (`catch (e) { return null; }`) ist ein Bug.
+- **Log OR throw — nie beides** (Facade except, da die Exception den Kontext verlässt):
+  - Exception wird **gehändelt** (Domain-Result wie `null`/skip ist valide) →
+    **log mit Kontext** (Pfad/ID, das Problem) + Domain-Result zurückgeben.
+  - Exception wird **delegiert** → **throwen**, nicht loggen.
+- Log-Text trägt immer Kontext: ID/Pfad, das Problem, ggf. Workaround.
+
+```
+GIVEN eine Komponente fängt ein IOException beim Datei-Laden
+AND "Datei fehlt → skip" (null) ist ein valides Domain-Result
+WHEN die Exception auftritt
+THEN wird mit Pfad und Cause geloggt
+AND die Komponente gibt das Domain-Result zurück — nicht still
+```
+
 ## BDD
 
 ```

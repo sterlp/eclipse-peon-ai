@@ -342,11 +342,12 @@ public abstract class AbstractAgent implements AiAgent {
         if (persistentContext != null) {
             for (var item : persistentContext) {
                 String rendered = item.render();
-                if (rendered == null) continue;
-                if (StringUtil.hasValue(item.label())) {
-                    monitor.onTool("Loading 📋 " + item.label());
+                if (rendered != null) {
+                    if (StringUtil.hasValue(item.label())) {
+                        monitor.onTool("Loading 📋 " + item.label());
+                    }
+                    prompt = prompt + System.lineSeparator() + System.lineSeparator() + rendered;
                 }
-                prompt = prompt + System.lineSeparator() + System.lineSeparator() + rendered;
             }
         }
         this.systemMessage = prompt;
@@ -365,15 +366,19 @@ public abstract class AbstractAgent implements AiAgent {
         if (items == null || items.isEmpty()) return;
 
         for (var item : items) {
-            String key = item.dedupKey();
-            if (key != null && memory.containsUserMessage(key)) continue;
-            String rendered = item.render();
-            if (rendered == null) continue;
-            if (key == null && memory.containsUserMessage(rendered)) continue;
-            if (StringUtil.hasValue(item.label())) {
-                monitor.onTool("Loading 📋 " + item.label());
+            var key = item.dedupKey();
+            // TODO das sollte eigentlich ein starts with sein ... hmpf
+            if (key == null || !memory.containsUserMessage(item.dedupKey())) {
+                String rendered = item.render();
+                if (rendered == null) continue;
+                if (memory.containsUserMessage(rendered)) continue;
+                if (StringUtil.hasValue(item.label())) {
+                    monitor.onTool("Loading 📋 " + item.label());
+                }
+                memory.add(UserMessage.from(rendered));
+            } else {
+                System.err.println("Already loaded " + item.dedupKey());
             }
-            memory.add(UserMessage.from(rendered));
         }
     }
 }
