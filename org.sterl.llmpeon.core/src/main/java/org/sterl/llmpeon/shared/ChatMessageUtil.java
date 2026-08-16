@@ -38,6 +38,7 @@ public class ChatMessageUtil {
         for (var msg : messages) chars += charCount(msg);
         return chars / 3;
     }
+
     private static int charCount(ChatMessage msg) {
         return toString(msg).length();
     }

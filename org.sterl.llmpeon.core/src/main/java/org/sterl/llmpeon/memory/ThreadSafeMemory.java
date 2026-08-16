@@ -36,7 +36,8 @@ public class ThreadSafeMemory {
         this.store = store;
         if (store != null) {
             memory.addAll(store.load());
-            totalTokenUsed = ChatMessageUtil.getTokenCount(null, new ArrayList<>(memory)) / 3;
+            // getTokenCount(null, …) already returns the chars/3 estimate — no second /3
+            totalTokenUsed = ChatMessageUtil.getTokenCount(null, new ArrayList<>(memory));
         }
     }
 

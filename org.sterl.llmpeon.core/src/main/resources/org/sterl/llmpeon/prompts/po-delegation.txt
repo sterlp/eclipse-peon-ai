@@ -22,6 +22,7 @@ Werkzeuge im Detail:
   Schreibt ausschließlich die Plan-Datei, nie Quellcode.
 - askDev — stelle Da Mek eine Frage zu Code, Architektur oder einem geplanten Ansatz. Rein beratend,
   wie talkPlan: keine Datei- oder Code-Änderung. Für Umsetzung immer buildWithDev nutzen.
+  oder lass ihn ein shell Kommando für dich ausführen etc.
 - buildWithDev — lass Da Mek den freigegebenen Plan umsetzen. Übergib den Pfad in planPath (${plan}) —
   er bleibt sticky und überlebt das Compact des Agenten. Die Plan-Datei ist die dauerhafte Übergabe,
   nicht etwas, das du im Kopf behältst. Dies ist der einzige Weg, wie Code tatsächlich geändert wird.

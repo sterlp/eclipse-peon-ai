@@ -58,17 +58,16 @@ keine Exception, kein Status-Eintrag.
 
 ## Bugfix: "Loading 📋"-Zeilen (2026-08-16, ✅ done)
 
-**Status 2026-08-16:** Header-Vertrag (dedupKey = exakter Header `<pfad>:\n---\n`) in **allen**
-File-Items umgesetzt ✅ (Core: DiskFileContextItem; Plugin: EclipseFileContextItem,
-AgentsMdContextItem) — Review OK, alle Tests grün, Smoke Test (Paul) ✅: AGENTS.md +
-AGENTS-DEV.md beide im Kontext, Nachladen nach Neustart klappt (früher korrupter Stand).
-R2(a) = IST-Fix oben. R1+R2 gebaut ✅ (2026-08-16, Review OK, alle Tests grün).
+**Status 2026-08-16:** Alle Items gebaut + Review OK + alle Tests grün + Smoke Test (Paul) ✅:
+Header-Vertrag (dedupKey = exakter Header `<pfad>:\n---\n`) in allen File-Items
+(Core: DiskFileContextItem; Plugin: EclipseFileContextItem, AgentsMdContextItem),
+AGENTS.md + AGENTS-DEV.md beide im Kontext mit je eigener "Loading 📋"-Zeile,
+Live-Status nach Compact sauber ausgeblendet.
 
 **Befund:**
 - **Sticky Status nach Compact:** der Compress-Pfad hat das Live-Status nie
   ausgeblendet → das letzte `onTool` ("Loading 📋 …") blieb im Live-Status kleben.
-  **IST-Fix 2026-08-16:** `handleDoneChatResponse` → `chatHistory.hideLiveStatus()`
-  (`AIChatView`). Die "Loading 📋"-Zeile ist bereits eine TOOL-Message im Chat
+  Fix in R2(a). Die "Loading 📋"-Zeile ist bereits eine TOOL-Message im Chat
   (live-Append via `onChatResponse`) — das ist der eine, persistente Kanal.
 - **Keine AGENTS-\<agent\>.md-Zeile:** `AgentsMdContextItem` = **ein** Item (Base +
   Agent-Datei joined) mit **Base-Pfad** als Dedup-Key und Label → die Agent-Datei
@@ -80,8 +79,12 @@ R2(a) = IST-Fix oben. R1+R2 gebaut ✅ (2026-08-16, Review OK, alle Tests grün)
   `AGENTS-<agent>.md`), je voller Pfad als Dedup-Key + je eigene "Loading 📋"-Zeile.
   Dedup bleibt Memory-Pflicht, greift je Item (ADR-0029: Dedup nach vollem Pfad).
 - **R2 ✅:** Regression: (a) nach Compact ist das Live-Status ausgeblendet und die
-  "Loading 📋"-Zeilen im Chat sichtbar; (b) je Item (Base + Agent-Datei) eine eigene
-  "Loading 📋"-Zeile.
+  "Loading 📋"-Zeilen im Chat sichtbar — `doCompressContext`: `hideLiveStatus()` steht
+  **nach** dem Replay-`forEach` (letztes Command des Compact-Pfads, `AIChatView`);
+  das TOOL→Live-Mapping in `onChatResponse` bleibt bewusst erhalten (Feature: hebt das
+  letzte Tool hervor, während die AI arbeitet); Rest-Race (spät gelieferter
+  Monitor-Callback) nur theoretisch — beobachten. (b) je Item (Base + Agent-Datei)
+  eine eigene "Loading 📋"-Zeile.
 
 **Gestrichen (YAGNI):** ToSimpleMessage-Voll-Render + onTool-Entfernung — nicht
 nötig, die TOOL-Message ist schon der Kanal.

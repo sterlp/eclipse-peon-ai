@@ -388,6 +388,7 @@ public class AIChatView implements EclipseAiMonitor {
         var ai = aiService.getActiveAgent();
         actionsBar.updateCompact(ai.getMemory().getTotalTokenUsed(), aiService.getConfig().getAutoCompactAfter());
     }
+
     private void refreshChat() {
         chatHistory.clear();
         refreshStatusLine();
@@ -618,6 +619,7 @@ public class AIChatView implements EclipseAiMonitor {
                 Display.getDefault().asyncExec(() -> {
                     refreshStatusLine();
                     aiService.getActiveAgent().getMemory().forEach(chatHistory::appendMessage);
+                    chatHistory.hideLiveStatus();
                 });
                 handleDoneChatResponse(cr, monitor, ex);
             }
