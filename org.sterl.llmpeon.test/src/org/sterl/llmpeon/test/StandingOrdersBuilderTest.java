@@ -2,7 +2,6 @@ package org.sterl.llmpeon.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Collection;
@@ -15,7 +14,6 @@ import org.eclipse.jface.text.TextSelection;
 import org.junit.Before;
 import org.junit.Test;
 import org.sterl.llmpeon.StandingOrdersBuilder;
-import org.sterl.llmpeon.context.AgentsMdContextItem;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.parts.PeonAiService;
 import org.sterl.llmpeon.parts.agentsmd.AgentsMdService;
@@ -274,48 +272,66 @@ public class StandingOrdersBuilderTest extends AbstractIntegrationTest {
     }
 
     // ---------------------------------------------------------------------
-    // AgentsMdContextItem header contract (ADR-0029)
+    // AgentsMdContextItem.itemsFor — 2 items, own label + ADR-0029 header each
     // ---------------------------------------------------------------------
 
     @Test
-    public void test_AgentsMdContextItem_dedupKey_isHeader_whenBaseFileExists() {
-        // GIVEN a project with AGENTS.md
+    public void test_agentsMd_itemsFor_baseAndAgent_ownLabelAndDedupKeyEach() {
+        // GIVEN a project with AGENTS.md and AGENTS-DEV.md
         eclipseWriteFile("AGENTS.md", "(Global Rules)");
+        eclipseWriteFile("AGENTS-DEV.md", "Dev agent content");
+
+        // AND Peon-Dev is the active agent
+        agentsMdService.load(project);
+        agentsMdService.setAgentNameSupplier(() -> "Peon-Dev");
 
         // WHEN
-        var item = new AgentsMdContextItem(null, project);
-        var workspacePath = "/" + project.getName() + "/AGENTS.md";
+        var items = agentsMdService.get();
 
-        // THEN dedupKey is the exact ADR-0029 header
-        assertEquals(workspacePath + ":" + System.lineSeparator() + "---" + System.lineSeparator(), item.dedupKey());
+        // THEN two items — base + agent file, each with its own full path as label
+        assertEquals(2, items.size());
+        var basePath = "/" + project.getName() + "/AGENTS.md";
+        var agentPath = "/" + project.getName() + "/AGENTS-DEV.md";
+        assertEquals(basePath, items.get(0).label());
+        assertEquals(agentPath, items.get(1).label());
+
+        // AND each dedupKey is the exact ADR-0029 header of its own label
+        assertEquals(basePath + ":" + System.lineSeparator() + "---" + System.lineSeparator(), items.get(0).dedupKey());
+        assertEquals(agentPath + ":" + System.lineSeparator() + "---" + System.lineSeparator(), items.get(1).dedupKey());
     }
 
     @Test
-    public void test_AgentsMdContextItem_dedupKey_null_whenNoBaseFile() {
-        // GIVEN a project without AGENTS.md
+    public void test_agentsMd_itemsFor_agentFileMissing_onlyBase() {
+        // GIVEN a project with only AGENTS.md (no AGENTS-DEV.md)
+        eclipseWriteFile("AGENTS.md", "(Global Rules)");
+        eclipseDeleteResource("AGENTS-DEV.md");
+
+        // AND Peon-Dev is the active agent
+        agentsMdService.load(project);
+        agentsMdService.setAgentNameSupplier(() -> "Peon-Dev");
+
+        // WHEN
+        var items = agentsMdService.get();
+
+        // THEN only the base item
+        assertEquals(1, items.size());
+        assertEquals("/" + project.getName() + "/AGENTS.md", items.get(0).label());
+    }
+
+    @Test
+    public void test_agentsMd_itemsFor_noBase_empty() {
+        // GIVEN a project without AGENTS.md (and without the agent file)
         eclipseDeleteResource("AGENTS.md");
+        eclipseDeleteResource("AGENTS-DEV.md");
+
+        // AND Peon-Dev is the active agent
+        agentsMdService.load(project);
+        agentsMdService.setAgentNameSupplier(() -> "Peon-Dev");
 
         // WHEN
-        var item = new AgentsMdContextItem(null, project);
+        var items = agentsMdService.get();
 
-        // THEN dedup falls back to rendered content
-        assertNull(item.dedupKey());
-    }
-
-    @Test
-    public void test_AgentsMdContextItem_render_containsHeaderAndContent_whenBaseFileExists() {
-        // GIVEN a project with AGENTS.md
-        eclipseWriteFile("AGENTS.md", "(Global Rules)");
-
-        // WHEN
-        var item = new AgentsMdContextItem(null, project);
-        var workspacePath = "/" + project.getName() + "/AGENTS.md";
-        var header = workspacePath + ":" + System.lineSeparator() + "---" + System.lineSeparator();
-
-        // THEN rendered text contains header + content
-        var rendered = item.render();
-        assertNotNull(rendered);
-        assertTrue(rendered.contains(header));
-        assertTrue(rendered.contains("(Global Rules)"));
+        // THEN no items at all
+        assertTrue(items.isEmpty());
     }
 }

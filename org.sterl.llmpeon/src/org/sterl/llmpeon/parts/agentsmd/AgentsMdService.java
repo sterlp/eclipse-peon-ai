@@ -27,7 +27,7 @@ public class AgentsMdService implements ContextItemProvider {
     public List<ContextItem> get() {
         if (!enabled.get() || currentProject == null) return List.of();
         String agentName = agentNameSupplier == null ? null : agentNameSupplier.get();
-        return List.of(new AgentsMdContextItem(agentName, currentProject));
+        return AgentsMdContextItem.itemsFor(agentName, currentProject);
     }
 
     public void setEnabled(boolean value) {

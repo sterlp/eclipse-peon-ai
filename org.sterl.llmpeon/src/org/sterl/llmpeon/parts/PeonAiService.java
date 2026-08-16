@@ -219,7 +219,7 @@ public class PeonAiService implements ContextItemProvider {
         });
         jonDelegateTool.setAdditionalContext(agentName -> {
             var items = new java.util.ArrayList<ContextItem>();
-            items.add(new AgentsMdContextItem(agentName, currentProject));
+            items.addAll(AgentsMdContextItem.itemsFor(agentName, currentProject));
             if (planTool.hasPlan()) items.add(new EclipseFileContextItem(PlanTool.OVERVIEW_FILE, currentProject));
             return items;
         });

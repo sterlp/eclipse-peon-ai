@@ -1,65 +1,43 @@
 package org.sterl.llmpeon.context;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
-import org.jspecify.annotations.Nullable;
 
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
-import org.sterl.llmpeon.parts.shared.IoUtils;
-import org.sterl.llmpeon.parts.shared.JdtUtil;
 
 /**
- * Context item that renders the base {@code AGENTS.md} and agent-specific {@code AGENTS-<agent>.md}
- * files. A missing project/file renders {@code null} (nothing to inject, no exception).
- * <p>
- * {@link #label()} is the full workspace path of the <b>base</b> file; {@link #dedupKey()}
- * is that path as the exact ADR-0029 header ({@code <path>:<line-separator>---<line-separator>}).
- * When the base file is missing, {@code dedupKey()} is {@code null} and dedup falls back
- * to rendered content.
+ * Resolver for the AGENTS.md context items: returns up to two {@link EclipseFileContextItem}s —
+ * the base {@code AGENTS.md} and the agent-specific {@code AGENTS-<agent>.md} — each carrying its
+ * own full workspace path as label and the exact ADR-0029 header as dedup key.
+ * A missing project/file simply yields no item (nothing to inject, no status line).
  */
-public class AgentsMdContextItem implements ContextItem {
+public final class AgentsMdContextItem {
 
-    private final String agentName;
-    private final IProject project;
-
-    public AgentsMdContextItem(String agentName, IProject project) {
-        this.agentName = agentName;
-        this.project = project;
+    private AgentsMdContextItem() {
     }
 
-    @Override
-    public String label() {
-        return baseFile().map(JdtUtil::pathOf).orElse("AGENTS.md");
-    }
+    /**
+     * Resolves the AGENTS.md context items for the given agent and project.
+     * @return 0, 1 or 2 items — the base file and/or the agent file; missing files are absent.
+     */
+    public static List<ContextItem> itemsFor(String agentName, IProject project) {
+        if (project == null || !project.isAccessible()) return List.of();
 
-    @Override
-    @Nullable
-    public String dedupKey() {
-        return baseFile()
-                .map(f -> JdtUtil.pathOf(f) + ":" + System.lineSeparator() + "---" + System.lineSeparator())
-                .orElse(null);
-    }
-
-    @Override
-    @Nullable
-    public String render() {
-        if (project == null || !project.isAccessible()) return null;
-
-        var parts = new ArrayList<String>();
-        loadAgentFile(resolveBaseNames()).ifPresent(parts::add);
+        var items = new ArrayList<ContextItem>();
+        baseFile(project).ifPresent(f -> items.add(new EclipseFileContextItem(relativePath(f), project)));
         if (agentName != null && !agentName.isBlank()) {
-            loadAgentFile(resolveAgentNames(resolveAgentKey(agentName))).ifPresent(parts::add);
+            agentFile(project, resolveAgentNames(resolveAgentKey(agentName)))
+                    .ifPresent(f -> items.add(new EclipseFileContextItem(relativePath(f), project)));
         }
-        if (parts.isEmpty()) return null;
-        return String.join("\n\n", parts);
+        return items;
     }
 
-    /** The base AGENTS.md file (first matching name), without reading its content. */
-    private Optional<IFile> baseFile() {
-        if (project == null || !project.isAccessible()) return Optional.empty();
+    /** The base AGENTS.md file (first matching name that exists), without reading its content. */
+    private static Optional<IFile> baseFile(IProject project) {
         for (String name : resolveBaseNames()) {
             var file = EclipseUtil.findMember(project, name);
             if (file.isPresent() && file.get().exists()) return file;
@@ -67,23 +45,25 @@ public class AgentsMdContextItem implements ContextItem {
         return Optional.empty();
     }
 
-    private Optional<String> loadAgentFile(String[] names) {
+    /** The agent-specific file (first matching name that exists), without reading its content. */
+    private static Optional<IFile> agentFile(IProject project, String[] names) {
         for (String name : names) {
             var file = EclipseUtil.findMember(project, name);
-            if (file.isPresent() && file.get().exists()) {
-                return Optional.of(JdtUtil.pathOf(file.get()) + ":" + System.lineSeparator() + "---" + System.lineSeparator()
-                        + IoUtils.readString(file.get()));
-            }
+            if (file.isPresent() && file.get().exists()) return file;
         }
         return Optional.empty();
     }
 
-    private String[] resolveBaseNames() {
+    private static String relativePath(IFile file) {
+        return file.getFullPath().removeFirstSegments(1).toString();
+    }
+
+    private static String[] resolveBaseNames() {
         return new String[] { "AGENTS.MD", "AGENTS.md", "Agents.md", "agents.md",
                               "RULES.md", "rules.md", "AGENT.md", "CLAUDE.md", "claude.md" };
     }
 
-    private String[] resolveAgentNames(String key) {
+    private static String[] resolveAgentNames(String key) {
         var names = new ArrayList<String>();
         names.add("AGENTS-" + key + ".md");
         names.add("agents-" + key.toLowerCase() + ".md");
@@ -101,7 +81,7 @@ public class AgentsMdContextItem implements ContextItem {
         return names.toArray(String[]::new);
     }
 
-    private String resolveAgentKey(String agentName) {
+    private static String resolveAgentKey(String agentName) {
         if (agentName.startsWith("Peon-")) {
             return agentName.substring(5).toUpperCase();
         }

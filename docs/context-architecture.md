@@ -56,11 +56,13 @@ Duplikate. File-Items werden **einmal pro vollem Pfad** injiziert: nie bei Datei
 (Projektwechsel) oder **nach Compact** (Memory geleert). Fehlende Datei → `null` → übersprungen,
 keine Exception, kein Status-Eintrag.
 
-## Bugfix: "Loading 📋"-Zeilen (2026-08-16, 🚧 in design)
+## Bugfix: "Loading 📋"-Zeilen (2026-08-16, ❌ specified)
 
 **Status 2026-08-16:** Header-Vertrag (dedupKey = exakter Header `<pfad>:\n---\n`) in **allen**
 File-Items umgesetzt ✅ (Core: DiskFileContextItem; Plugin: EclipseFileContextItem,
-AgentsMdContextItem) — Review OK, alle Tests grün. R2(a) = IST-Fix oben. Offen: R1 → R2(b).
+AgentsMdContextItem) — Review OK, alle Tests grün, Smoke Test (Paul) ✅: AGENTS.md +
+AGENTS-DEV.md beide im Kontext, Nachladen nach Neustart klappt (früher korrupter Stand).
+R2(a) = IST-Fix oben. Offen: R1 → R2(b).
 
 **Befund:**
 - **Sticky Status nach Compact:** der Compress-Pfad hat das Live-Status nie
@@ -74,10 +76,10 @@ AgentsMdContextItem) — Review OK, alle Tests grün. R2(a) = IST-Fix oben. Offe
   Item inkl. Agent-Datei übersprungen.
 
 **SOLL:**
-- **R1 🚧:** `AgentsMdContextItem` → **zwei** Items (Base `AGENTS.md` +
+- **R1 ❌:** `AgentsMdContextItem` → **zwei** Items (Base `AGENTS.md` +
   `AGENTS-<agent>.md`), je voller Pfad als Dedup-Key + je eigene "Loading 📋"-Zeile.
   Dedup bleibt Memory-Pflicht, greift je Item (ADR-0029: Dedup nach vollem Pfad).
-- **R2 🚧:** Regression: (a) nach Compact ist das Live-Status ausgeblendet und die
+- **R2 ❌:** Regression: (a) nach Compact ist das Live-Status ausgeblendet und die
   "Loading 📋"-Zeilen im Chat sichtbar; (b) je Item (Base + Agent-Datei) eine eigene
   "Loading 📋"-Zeile.
 
