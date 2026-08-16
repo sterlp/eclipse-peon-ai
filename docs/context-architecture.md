@@ -1,6 +1,6 @@
 # Context Architecture — Static vs Dynamic
 
-**Status:** ❌ specified · **Datum:** 2026-08-15
+**Status:** ✅ done (2026-08-16) · **Datum:** 2026-08-15 · offen: UI-Reporting (❌ specified)
 
 ## Purpose
 
@@ -24,13 +24,12 @@ Geladen als `persistentContext: List<ContextItem>` → gerendert in `buildSystem
 | Item | Wer | Quelle |
 |------|-----|--------|
 | OS/Date-Regeln (Datum, OS, File-Access) | Alle | `PeonAiService.setStaticContext()` |
-| AGENTS.md | Alle | `AgentsMdContextItem(agentName)` |
-| AGENTS-\<agent\>.md | Alle (falls existiert) | `AgentsMdContextItem(agentName)` |
-| docs/memory.md | Jon | `EclipseFileContextItem("docs/memory.md")` |
-| docs/index.md | Jon | `EclipseFileContextItem("docs/index.md")` |
 
 **Lazy-Verhalten:** `systemMessage = null` → nächster `call()` baut System-Prompt neu.
 Nach `compressContext()` wird `systemMessage = null` gesetzt → rebuild beim nächsten Turn.
+**Dateien gehören NICHT hierher** (SOLL 2026-08-16, ✅ 2026-08-16): alles Datei-basierte wandert in die
+Chat History (Dynamic) — der System-Prompt bleibt komplett statisch (KV-Cache) und veraltet bei
+Projektwechsel nicht mehr. Siehe [ADR-0029](adr/0029-file-context-in-history.md).
 
 ## Dynamic Context — Chat History
 
@@ -43,13 +42,19 @@ mit contains-Check (`memory.containsUserMessage(rendered)`).
 | Selektierte Datei | Aktiver Agent | `turnContextSupplier` |
 | Active Command (`/command`) | Aktiver Agent | One-time via `addOneTimeOrder()` |
 | Active Skill | Aktiver Agent | One-time via `addOneTimeOrder()` |
+| AGENTS.md | Alle | `AgentsMdContextItem(agentName)` |
+| AGENTS-\<agent\>.md | Alle (falls existiert) | `AgentsMdContextItem(agentName)` |
+| docs/memory.md | Jon | `EclipseFileContextItem("docs/memory.md")` |
+| docs/index.md | Jon | `EclipseFileContextItem("docs/index.md")` |
 | Shared Memory (memory.md Content) | Slaves | `JonDelegateTool` supplier |
 | Plan-Path (sticky) | Dev Slave | `JonDelegateTool` |
 | Handoff-Line (einmalig) | Dev Agent | `PeonAiService.get()` |
-| Docs-Index-Seed (einmalig) | Jon | `docsIndexSeedForFirstMessage()` |
 
-**Lazy-Verhalten:** `restoreTurnContext()` läuft bei jedem `doCall()` — contains-Check verhindert
-Duplikate. Nur bei leerer Memory (first call / nach compact) wird tatsächlich injiziert.
+**Lazy-Verhalten:** `restoreTurnContext()` läuft bei jedem `doCall()` — Dedup-Check verhindert
+Duplikate. File-Items werden **einmal pro vollem Pfad** injiziert: nie bei Datei-Änderung
+(Änderungen stehen ohnehin als Tool-Messages in der History), nur bei **anderem Pfad**
+(Projektwechsel) oder **nach Compact** (Memory geleert). Fehlende Datei → `null` → übersprungen,
+keine Exception, kein Status-Eintrag.
 
 ## UI Reporting (SOLL)
 
@@ -80,7 +85,7 @@ compressContext()
 ## BDD
 
 ```
-GIVEN ein Agent mit persistentContext [AGENTS.md, OS-Regeln]
+GIVEN ein Agent mit persistentContext [OS/Date-Regeln]
 AND systemMessage ist null (first call oder nach compact)
 WHEN call() aufgerufen
 THEN buildSystemPrompt() rendert alle persistentContext Items in den System-Prompt
@@ -96,10 +101,17 @@ AND Memory enthält bereits Project-Info (contains-Check true)
 WHEN restoreTurnContext() aufgerufen
 THEN Project-Info wird NICHT erneut injiziert
 
-GIVEN ein Agent mit persistentContext [AGENTS.md]
-WHEN compressContext() aufgerufen
-THEN systemMessage wird null gesetzt
-AND beim nächsten call() wird System-Prompt neu gebaut (AGENTS.md frisch geladen)
+GIVEN AGENTS.md ist bereits im Chat (Pfad-Dedup)
+WHEN die Datei geändert wird (z. B. von Jon)
+THEN AGENTS.md wird NICHT erneut injiziert
+
+GIVEN das ausgewählte Projekt wechselt (AGENTS.md hat dann einen anderen vollen Pfad)
+WHEN der nächste Turn beginnt
+THEN die AGENTS.md des neuen Projekts wird injiziert (anderer Pfad → kein Dup)
+
+GIVEN ein File-ContextItem zeigt auf eine nicht existierende Datei
+WHEN restoreTurnContext() aufgerufen
+THEN nichts wird injiziert und keine Exception / kein Status-Eintrag
 ```
 
 ## Relationship to Other Docs

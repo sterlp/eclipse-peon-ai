@@ -12,7 +12,7 @@ representing the **SOLL** and clearly separated from the **IST**, and uses Plan/
 lifting. A question he cannot answer from the docs he **escalates to the user** rather than guessing
 (R13).
 
-This story is the design; nothing is built yet, so every rule is **❌**.
+This story is the design; rules are marked **✅** where built, **❌** where still backlog.
 
 **100 % additive.** Peon-PO only *adds* — a new agent, the `jon*` tools, the slave-side completion
 signals (`planComplete` / `planImplemented`) and the write-allowlist decorator. It changes **nothing** in the standalone Peon-Plan / Peon-Dev /
@@ -45,37 +45,41 @@ green** (`org.sterl.llmpeon.core`/`.test`):
   cause: `AiPoAgent` used to inherit the no-op `setAgentModelName` default, so the auto-selected
   model was dropped (test `test_po_model_uses_plan_slot_and_defaults_to_dev_model`,
   [ADR-0023](adr/0023-po-model-plan-slot.md)).
-- **docs/index.md folded into the first message.** On Jon's **first user message** (empty memory) —
-  not on activation or project-set — `docs/index.md` (the story map) is attached as a **one-time
-  standing order** (`AIChatView.submitAiJob` → `PeonAiService.docsIndexSeedForFirstMessage`), so
-  `AbstractAgent.doCall` folds it into the **same `UserMessage`** as the user's question, which stays
-  the **last `TextContent`**. Unlike the Plan agent — whose plan is shown as its own chat message —
-  the index rides *inside* Jon's first turn. Read fresh at send time; the empty-memory guard makes it
-  a one-shot (test `test_po_docs_index_seed_only_for_first_message`).
+- **docs/index.md via History (SOLL 2026-08-16, ✅ 2026-08-16).** ~~First-message-Seeding~~ wird ersetzt:
+  `docs/index.md` (und `docs/memory.md`) kommen als **Dynamic Context** in Jons Chat History via
+  `turnContextSupplier` — einmal pro vollem Pfad, als eigene Message **vor** der User-Message, neu
+  nach Compact / Projektwechsel, nie bei Datei-Änderung. `docsIndexSeedForFirstMessage` fällt weg
+  (redundant) → [ADR-0029](adr/0029-file-context-in-history.md).
 - **Prompt derived from the AGENTS conventions.** `po.txt` makes Jon the guardian of the docs and
   encodes the plan-phase working style (docs-first, IST/SOLL/WEIL, story = goal + rules + BDD
   GIVEN/WHEN/THEN, ADR = memory, `index.md` registries, one-question interview) plus the three status
   markers above (test `AiPoAgentTest.systemPrompt_carriesTheMethodology`).
 
-- **ContextItem + Auto-Load (memory.md, docs/index.md).** ✅ done. `ContextItem` Interface (core)
-  + `EclipseFileContextItem` (plugin) laden Dateien effizient: Header
-  `Static loaded file <path>:\n---\n<content>`, lastModified-Cache. Jon nutzt `setPersistentContext()`
-  für memory.md + docs/index.md (gerendert in System-Prompt) und `setTurnContextSupplier()` für
-  AGENTS.md + Project-Info (nach Compact via contains-Check in Memory injiziert).
-  `StaticContentLoader` + Callback-Mechanismus entfernt (Inc 4 Cleanup).
+- **ContextItem + Auto-Load (memory.md, docs/index.md, AGENTS.md) — SOLL 2026-08-16 (✅ 2026-08-16): History
+  statt System-Prompt.** `ContextItem` Interface (core) + `EclipseFileContextItem` (plugin) bleiben;
+  die Datei-Items wandern in den `turnContextSupplier`: fehlende Datei → `render() = null` →
+  übersprungen (kein Crash, kein Status-Eintrag), Dedup nach **vollem Workspace-Pfad** (nie nach
+  Content — Datei-Änderungen kommen als Tool-Messages in die History), Header = voller Pfad,
+  `lastModified`-Cache weg. **AGENTS.md** (+ AGENTS-\<agent\>.md) folgt allen Agenten inkl. Slaven —
+  der System-Prompt bleibt komplett statisch. Siehe [context-message-concept.md](context-message-concept.md)
+  und [ADR-0029](adr/0029-file-context-in-history.md).
 
 **BDD:**
 ```
 GIVEN ein Projekt mit docs/memory.md
-WHEN Jon eine neue Session startet
-THEN wird memory.md automatisch als PersistentContextItem in den System-Prompt gerendert
+WHEN Jon eine neue Session startet (erster Turn)
+THEN wird memory.md als UserMessage in die Chat History injiziert (vor der User-Message) mit vollem Pfad im Header
 
 GIVEN memory.md existiert nicht
 WHEN Jon eine neue Session startet
-THEN passiert nichts (kein Error)
+THEN passiert nichts (kein Error, kein Status-Eintrag)
 
 GIVEN Jon compactSession aufruft
-THEN wird der System-Prompt neu aufgebaut (persistentContext) und Turn-Context nach Memory injiziert
+THEN werden die File-Items (memory.md, docs/index.md, AGENTS.md) nach dem Memory-Clear neu injiziert (Pfad-Dedup schlägt fehl)
+
+GIVEN memory.md ist bereits in der History
+WHEN Jon die memory.md ändert
+THEN wird sie NICHT erneut injiziert (Dedup nach Pfad, nicht nach Content)
 
 GIVEN memory.md wird automatisch geladen
 WHEN der Plan-Agent (Da Thinka) startet
@@ -290,7 +294,7 @@ AND a later prompt-only buildWithDev call still carries that plan path (sticky, 
 
 ## Business Rules
 
-### R1: Registration & Naming ❌
+### R1: Registration & Naming ✅
 Built-in agent alongside Peon-Dev, Peon-Plan and Peon-Scaffold. **The default entry agent stays
 Peon-Dev** — Peon-PO is opt-in.
 
@@ -314,8 +318,9 @@ THEN Peon-PO is in the list alongside Peon-Dev, Peon-Plan and Peon-Scaffold
 AND the default active agent is still Peon-Dev
 ```
 
-### R2: ToolService — reuse existing file tools behind a write-allowlist ❌
+### R2: ToolService — reuse existing file tools behind a write-allowlist ✅
 Jon has his own `ToolService(false)` (no default-tool leakage, like Peon-Scaffold) holding:
+(Tool-Names heute: `talkPlan` / `planWithPlanAgent`, `askDev` / `buildWithDev`, `searchAgent` — I2.1.)
 
 - `jonCreateDevPlan`, `jonAskQuestion` — both drive the **same** persistent Da Thinka (Peon-Plan) (R9),
   distinct tool names for distinct intent: `jonCreateDevPlan` runs the full planning workflow (the plan
@@ -339,7 +344,7 @@ THEN the ToolService has jonCreateDevPlan, jonAskQuestion, jonAskDev, SearchAgen
 AND no plan*, shell or compact tools are available
 ```
 
-### R3: Docs ownership via a write-path allowlist ❌
+### R3: Docs ownership via a write-path allowlist ✅
 Jon writes **only** where a configurable allowlist permits — his docs are his single source of truth,
 kept coherent and always expressing the SOLL vs. the IST. He treats plan/task artefacts as delegated
 work he does not own. **Reading is not gated** — he must see the IST (code included) to keep the docs
@@ -408,7 +413,8 @@ GIVEN a delegated slice returns green and is accepted
 THEN Jon flips the affected rules from ❌ to ✅ in the story
 ```
 
-### R6: Delegate to Plan — `jonCreateDevPlan` (build) & `jonAskQuestion` (Q&A) ❌
+### R6: Delegate to Plan — `planWithPlanAgent` (build) & `talkPlan` (Q&A) ✅
+(Tool-Names I2.1: `jonCreateDevPlan` → `planWithPlanAgent`, `jonAskQuestion` → `talkPlan`.)
 Both tools drive the **same** persistent Da Thinka (Peon-Plan) (R9), lazily created on first use and run for
 **one turn** via `slave.call(prompt, monitor)` (modeled on `SearchAgentTool`, but against the
 persistent Da Thinka — so its memory, auto-compact and standing orders are reused). They differ only in
@@ -438,13 +444,15 @@ GIVEN Jon calls jonAskQuestion with "Question: <text>. Just directly respond."
 THEN the Plan agent answers directly, does NOT call planComplete(), and the answer is the tool result
 ```
 
-### R7: Delegate to Dev via `jonAskDev` ❌
-After releasing the plan Jon calls `jonAskDev`.
+### R7: Delegate to Dev via `askDev` / `buildWithDev` ✅
+(Tool-Names I2.1: `jonAskDev` → `askDev` (Beratung) + `buildWithDev` (Vollzug).)
+After releasing the plan Jon calls `buildWithDev`.
 
 **Jon owns his own standing-order logic.** With Jon in **core**, the Eclipse-only `onHandoff` /
 `_handoffLine` path (it uses `JdtUtil.pathOf(IFile)`) is unavailable — so Jon does **not** reuse it.
-Instead, on every dispatch Jon feeds Da Thinka and Da Mek context as **standing orders** through the core
-`AiAgent.setUserContextInformations` hook, while his actual prompt rides in as a normal **chat
+Instead, on every dispatch Jon feeds Da Thinka and Da Mek context as **standing orders** through the
+`JonDelegateTool` additional-context supplier (`setAdditionalContext`), while his actual prompt rides
+in as a normal **chat
 message**. The key standing order is the **plan link**, once a plan exists. **Da Thinka and Da Mek** are handled
 the same way: `plan link` (standing order) **+** Jon's question (chat message).
 
@@ -464,7 +472,7 @@ small changes Jon reviews inline; the dedicated Reviewer agent stays a future ex
 **BDD:**
 ```
 GIVEN Jon calls jonAskDev with a released plan
-THEN Jon sets a standing order (via setUserContextInformations) carrying the plan link plus the instruction to call planImplemented() when done, and his prompt arrives as a chat message
+THEN Jon sets a standing order (via the JonDelegateTool additional-context supplier) carrying the plan link plus the instruction to call planImplemented() when done, and his prompt arrives as a chat message
 AND Jon's own AGENTS-PO.md standing orders are NOT forwarded to the Dev slave
 
 GIVEN the Dev agent calls planImplemented()
@@ -533,13 +541,13 @@ WHEN Jon calls the same slave again
 THEN the latch reads Optional.empty() and the stale "done" is not re-consumed
 ```
 
-### R9: Slave lifecycle — eager persistent singletons ❌
+### R9: Slave lifecycle — persistent singletons ✅
 Per Jon session there is **exactly one** Peon-Plan and **one** Peon-Dev instance. Each is created
-**eagerly** on Jon activation (empty/0k until first delegation) and **kept alive**, holding its context across calls.
+**lazily on first delegation** and **kept alive**, holding its context across calls.
 Peon-Search stays a stateless **one-shot** agent.
 
 These are **dedicated, Jon-owned instances** — **not** the user-selectable Peon-Plan/Peon-Dev from
-`AgentService`, and with **their own history files**. Sharing the *instance* would make `jonAsk*` mutate
+`AgentService`, and are **RAM-only — no history files** ([ADR-0024](adr/0024-po-slaves-ram-only.md)). Sharing the *instance* would make the `ask*`/`buildWithDev` tools mutate
 the very memory/history the user sees, and the per-agent `working` guard would silently **queue** the
 nested `call()` (returning `null`) — so Da Thinka and Da Mek must be distinct instances.
 

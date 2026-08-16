@@ -43,16 +43,20 @@ project-specific conventions. **If your tool didn't auto-load it, read the alway
 
 ## Project specifics — Eclipse Peon (RCP)
 
-- **Thread safety:** all code must be thread-safe (`Atomic*` / `ReentrantLock`). No single-threaded
+- **Thread safety:** all code must be thread-safe (`volatile` / `Atomic*` / `ReentrantLock`). No single-threaded
   assumptions.
-- Write elegant, expressive modern Java (records, pattern matching, switch expressions).
+- Write elegant, expressive modern Java (records, pattern matching, switch expressions, lombok).
 
 ### Structure & module guides
 The 3-bundle layout and the per-module `AGENTS.md` links live in the always-on `AGENTS.md`
 (Repo layout) — not repeated here.
 
 ### Build
-- `mvn clean verify` — `verify` runs the Eclipse plugin tests in `org.sterl.llmpeon.test`.
+- `mvn clean verify` in the project route /llmpeon-parent (requires a refresh & clean build in eclipse later on)
+- runs the Eclipse plugin tests in `org.sterl.llmpeon.test`.
+   NOTE: a new test class needs a manual workspace approval by the user and may timeout if he is not watching the tests
+         prefere run all tests - which already have a approved workspace configuration 
+   - before a test run call `eclipseBuildProject` to avoid class not found exceptions
 - Core module tests: `mvn -pl org.sterl.llmpeon.core test`. Other tests via the Eclipse test runner.
 - Compile-checking the UI plugin against local core changes: build with `-am`
   (`mvn -o -pl org.sterl.llmpeon -am package`). Without `-am` Tycho resolves core from the target

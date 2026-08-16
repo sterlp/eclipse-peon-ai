@@ -14,6 +14,7 @@ import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
@@ -152,6 +153,22 @@ class JonDelegateToolTest {
 
         assertThat(tool.getPlanSlave().getRenderedTurnContext()).contains("AGENTS.md:\n---\n\nAlways build green.");
         assertThat(tool.getDevSlave().getRenderedTurnContext()).contains("AGENTS.md:\n---\n\nAlways build green.");
+    }
+
+    /** S5: additionalContext is applied per slave agent name — each slave gets its own items. */
+    @Test
+    void additionalContext_appliedPerAgentName() {
+        var tool = newTool();
+        tool.setAdditionalContext(name -> List.of(
+                new SimpleContextItem("AGENTS-" + name + ".md:\n---\n" + name + " rules")));
+
+        tool.talkPlan("go");
+        tool.askDev("go");
+
+        assertThat(tool.getPlanSlave().getRenderedTurnContext())
+                .anyMatch(s -> s.contains("Peon-Plan rules"));
+        assertThat(tool.getDevSlave().getRenderedTurnContext())
+                .anyMatch(s -> s.contains("Peon-Dev rules"));
     }
 
     /**

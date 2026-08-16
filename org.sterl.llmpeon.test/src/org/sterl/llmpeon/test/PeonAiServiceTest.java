@@ -35,10 +35,18 @@ import dev.langchain4j.data.message.UserMessage;
 public class PeonAiServiceTest extends AbstractIntegrationTest {
 
     PeonAiService aiService = new PeonAiService(null, null, null, null);
-    
+
+    // Mirrors AIChatView's standing orders: the service (handoff, Jon's docs, plan) + AGENTS.md +
+    // the selected project.
     private final StandingOrdersBuilder standingOrders = new StandingOrdersBuilder()
             .add(aiService)
-            .add(aiService.getAgentsMdService());
+            .add(aiService.getAgentsMdService())
+            .add(() -> {
+                var p = aiService.getProject();
+                if (p == null) return List.of();
+                return List.of(new org.sterl.llmpeon.context.SimpleContextItem("Selected project:" + System.lineSeparator()
+                        + org.sterl.llmpeon.parts.shared.EclipseUtil.projectInfo(p)));
+            });
     
     @Test
     public void test_compact_tool() {
@@ -322,38 +330,10 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
     }
 
     /**
-     * The docs/index.md seed is offered only for Jon's FIRST user message (empty memory) and never
-     * mutates memory itself — the view folds it into the first message as a one-time standing order.
-     * Activation / project-set must not seed. Regression for the seeding-timing change.
-     */
-    @Test
-    public void test_po_docs_index_seed_only_for_first_message() throws IOException {
-        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
-        eclipseWriteFile("docs/index.md", "# Docs Index" + System.lineSeparator() + "- feature-x");
-        aiService.setProject(project);
-        aiService.setActiveAgent(AiPoAgent.NAME);
-        aiService.getActiveAgent().getMemory().clear();
-
-        // Activating Jon / (re)setting the project must NOT seed memory
-        aiService.setProject(project);
-        assertEquals(0, aiService.getActiveAgent().getMemory().size());
-
-        // WHEN the first message is about to be sent: the seed text is offered (view attaches it)
-        var seed = aiService.docsIndexSeedForFirstMessage();
-        assertNotNull(seed);
-        assertContains(seed, "feature-x");
-        // reading the seed does not mutate memory — the fold happens in call() via the standing order
-        assertEquals(0, aiService.getActiveAgent().getMemory().size());
-
-        // AND once Jon has state, no more seed is offered (empty-memory guard)
-        aiService.getActiveAgent().getMemory().add(UserMessage.from("hi"));
-        assertNull(aiService.docsIndexSeedForFirstMessage());
-    }
-
-    /**
      * "Die Info": on an empty workspace with no docs/index.md, Jon greets the user with a one-time chat
-     * tutorial. It is the clean complement of the docs-index seed — never shown once an index exists (the
-     * seed handles that) and never once Jon has state. Regression for the getPoTutorial trigger.
+     * tutorial. It is the clean complement of the docs index (which rides in his turn context,
+     * ADR-0029) — never shown once an index exists and never once Jon has state.
+     * Regression for the getPoTutorial trigger.
      */
     @Test
     public void test_po_tutorial_only_without_docs_index() {
@@ -372,7 +352,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         aiService.getActiveAgent().getMemory().add(UserMessage.from("hi"));
         assertNull(aiService.getPoTutorial());
 
-        // and when an index exists, the seed owns onboarding -> no intro even with empty memory
+        // and when an index exists, Jon navigates it -> no intro even with empty memory
         aiService.getActiveAgent().getMemory().clear();
         eclipseWriteFile("docs/index.md", "# Docs Index");
         assertNull(aiService.getPoTutorial());
@@ -501,36 +481,35 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
 
     // --- Inc 3: ContextItem Integration Tests ---------------------------------
 
-    /** Jon has persistent context set on startup (memory.md + docs/index.md). */
+    /** ADR-0029: the system prompt is 100% static (OS/date rules) — no file items, on any agent. */
     @Test
-    public void test_persistentContext_setOnPoAgent() {
+    public void test_persistentContext_isStaticOnly() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
         aiService.setProject(project);
         aiService.setActiveAgent(AiPoAgent.NAME);
 
-        // GIVEN: memory.md + docs/index.md exist
+        // GIVEN: memory.md + docs/index.md exist (they must NOT land in the persistent context)
         eclipseWriteFile("docs/memory.md", "# Memory\n- project context");
         eclipseWriteFile("docs/index.md", "# Docs Index\n- feature-x");
 
-        // AND mock server configured
-        aiService.updateConfig(aiService.getConfig().toBuilder()
-                .providerType(AiProvider.OPEN_AI)
-                .url(mockLlmServer.getUrl()).build());
-        mockLlmServer.queueResponse(AiMessage.aiMessage("pong"));
+        // WHEN
+        var ctx = dev.langchain4j.data.message.SystemMessage.from("Today is 2026-08-06; prefer eclipse* over disk*.");
+        aiService.setStaticContext(List.of(ctx));
 
-        // WHEN: call() triggers system prompt rebuild with persistent context
-        aiService.getActiveAgent().call("ping", null);
+        // THEN: Jon's persistent context is the static base item only
+        var jon = aiService.getActiveAgent();
+        assertEquals(1, jon.getPersistentContext().size());
+        assertContains(jon.getPersistentContext().get(0).render(), "prefer eclipse*");
 
-        // THEN: persistent context is rendered into the system prompt
-        // (verified via the fact that the agent can process the call without errors)
-        var memory = aiService.getActiveAgent().getMemory().getCopy();
-        // Memory has user message ("ping") + AI response ("pong")
-        assertTrue("Memory should have at least 2 messages", memory.size() >= 2);
+        // AND: the slaves' persistent context is static only, too
+        var delegate = jon.getToolService().getTool(JonDelegateTool.class).orElseThrow();
+        assertEquals(1, delegate.getPlanSlave().getPersistentContext().size());
+        assertEquals(1, delegate.getDevSlave().getPersistentContext().size());
     }
 
-    /** Turn context supplier provides only dynamic project info after compact (AGENTS.md is in system prompt). */
+    /** ADR-0029: the turn context carries the project info AND AGENTS.md (no longer in the system prompt). */
     @Test
-    public void test_turnContextSupplier_providesOnlyProjectInfo() {
+    public void test_turnContextSupplier_providesProjectInfoAndAgentsMd() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
         aiService.setActiveAgent(AiPoAgent.NAME);
         aiService.getActiveAgent().getMemory().clear();
@@ -538,6 +517,9 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         // GIVEN: AGENTS.md exists (write before setProject so agentsMdService.load picks it up)
         eclipseWriteFile("AGENTS.md", "# Test Specifics");
         aiService.setProject(project);
+
+        // AND the turn context supplier is the standing orders builder (like AIChatView sets it)
+        aiService.getActiveAgent().setTurnContextSupplier(() -> standingOrders.buildItems());
 
         // AND mock server configured
         aiService.updateConfig(aiService.getConfig().toBuilder()
@@ -548,15 +530,78 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         // WHEN: compact triggers restoreTurnContext
         aiService.getActiveAgent().compressContext(null);
 
-        // THEN: turn context restored (only project info, AGENTS.md is in persistentContext/system prompt)
+        // THEN: turn context restored — project info AND AGENTS.md
         var memory = aiService.getActiveAgent().getMemory().getCopy();
         assertHasUserMessageWith(memory, "Selected project:");
-        assertHasNoUserMessageWith(memory, "# Test Specifics");
+        assertHasUserMessageWith(memory, "# Test Specifics");
+    }
+
+    /** S2 (ADR-0029): Jon's docs/memory.md + docs/index.md ride in his turn context (history). */
+    @Test
+    public void test_turnContext_providesJonFiles() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        aiService.setActiveAgent(AiPoAgent.NAME);
+        aiService.getActiveAgent().getMemory().clear();
+
+        // GIVEN: Jon's docs exist
+        eclipseWriteFile("docs/memory.md", "# Memory\n- project context");
+        eclipseWriteFile("docs/index.md", "# Docs Index\n- feature-x");
+        aiService.setProject(project);
+
+        // AND the turn context supplier is the standing orders builder (like AIChatView sets it)
+        aiService.getActiveAgent().setTurnContextSupplier(() -> standingOrders.buildItems());
+
+        aiService.updateConfig(aiService.getConfig().toBuilder()
+                .providerType(AiProvider.OPEN_AI)
+                .url(mockLlmServer.getUrl()).build());
+        mockLlmServer.queueResponse(AiMessage.aiMessage("compressed"));
+
+        // WHEN: compact triggers restoreTurnContext
+        aiService.getActiveAgent().compressContext(null);
+
+        // THEN: both files are injected as history messages (header + content)
+        var memory = aiService.getActiveAgent().getMemory().getCopy();
+        assertHasUserMessageWith(memory, "docs/memory.md");
+        assertHasUserMessageWith(memory, "# Memory");
+        assertHasUserMessageWith(memory, "docs/index.md");
+        assertHasUserMessageWith(memory, "# Docs Index");
+
+        // AND missing files -> nothing injected, no error
+        eclipseDeleteResource("docs/memory.md");
+        eclipseDeleteResource("docs/index.md");
+        aiService.getActiveAgent().getMemory().clear();
+        aiService.getActiveAgent().compressContext(null);
+        memory = aiService.getActiveAgent().getMemory().getCopy();
+        assertHasNoUserMessageWith(memory, "# Memory");
+        assertHasNoUserMessageWith(memory, "# Docs Index");
+    }
+
+    /** S5 (ADR-0029): the slaves get AGENTS.md in their turn context via additionalContext. */
+    @Test
+    public void test_slaves_getAgentsMdInTurnContext() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        eclipseWriteFile("AGENTS.md", "# Slave Test Specifics");
+        aiService.setProject(project);
+        aiService.setActiveAgent(AiPoAgent.NAME);
+
+        // AND mock server configured for the slave's call
+        aiService.updateConfig(aiService.getConfig().toBuilder()
+                .providerType(AiProvider.OPEN_AI)
+                .url(mockLlmServer.getUrl()).build());
+        mockLlmServer.queueResponse(AiMessage.aiMessage("plan done"));
+
+        var delegate = aiService.getActiveAgent().getToolService().getTool(JonDelegateTool.class).orElseThrow();
+
+        // WHEN: Jon delegates to his plan slave
+        delegate.talkPlan("make a plan");
+
+        // THEN: the plan slave's memory contains the AGENTS.md content (via the additionalContext function)
+        assertHasUserMessageWith(delegate.getPlanSlave().getMemory().getCopy(), "# Slave Test Specifics");
     }
 
     // --- ADR-0028: Compact-Delegation Integration Tests -------------------------
 
-    /** Compact restores turn context for Po agent (AGENTS.md + Project-Info survive). */
+    /** ADR-0029: compact restores the turn context for Jon (project + AGENTS.md + his docs survive). */
     @Test
     public void test_compactDelegatesToPoAgent() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
@@ -568,6 +613,9 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         aiService.setProject(project);
         aiService.setActiveAgent(AiPoAgent.NAME);
         aiService.getActiveAgent().getMemory().clear();
+
+        // AND the turn context supplier is the standing orders builder (like AIChatView sets it)
+        aiService.getActiveAgent().setTurnContextSupplier(() -> standingOrders.buildItems());
 
         // Memory füllen (simuliert Konversation vor Compact)
         aiService.getActiveAgent().getMemory().add(UserMessage.from("Talk 1"));
@@ -581,10 +629,12 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         // WHEN: Compact via Agent
         aiService.getActiveAgent().compressContext(null);
 
-        // THEN: Turn-Context (Project) überlebt als UserMessage in Memory (AGENTS.md ist im System-Prompt)
+        // THEN: Turn-Context (Project + AGENTS.md + Jons Docs) überlebt als UserMessage in Memory
         var memory = aiService.getActiveAgent().getMemory().getCopy();
         assertHasUserMessageWith(memory, "Selected project:");
-        assertHasNoUserMessageWith(memory, "# Test Specifics");
+        assertHasUserMessageWith(memory, "# Test Specifics");
+        assertHasUserMessageWith(memory, "# Memory");
+        assertHasUserMessageWith(memory, "# Docs Index");
 
         // AND: Summary ist in Memory (als AiMessage)
         assertTrue("AI summary should be in memory", memory.stream()
@@ -686,6 +736,9 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         aiService.getActiveAgent().getMemory().add(UserMessage.from("pre-compact talk"));
         aiService.getActiveAgent().getMemory().add(AiMessage.from("pre-compact reply"));
 
+        // AND the turn context supplier is the standing orders builder (like AIChatView sets it)
+        aiService.getActiveAgent().setTurnContextSupplier(() -> standingOrders.buildItems());
+
         aiService.updateConfig(aiService.getConfig().toBuilder()
                 .providerType(AiProvider.OPEN_AI)
                 .url(mockLlmServer.getUrl()).build());
@@ -697,10 +750,10 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         // WHEN: Compact via agent (the tool delegates to this path via request.getAgent())
         aiService.getActiveAgent().compressContext(null);
 
-        // THEN: Memory enthält Project-Info + Summary (AGENTS.md ist im System-Prompt)
+        // THEN: Memory enthält Project-Info + AGENTS.md + Summary (ADR-0029)
         var memory = aiService.getActiveAgent().getMemory().getCopy();
         assertHasUserMessageWith(memory, "Selected project:");
-        assertHasNoUserMessageWith(memory, "# Delegation Test");
+        assertHasUserMessageWith(memory, "# Delegation Test");
         assertTrue("AI summary should be in memory", memory.stream()
                 .anyMatch(m -> m instanceof AiMessage ai && ai.text().contains("WHAT: Delegated summary")));
     }

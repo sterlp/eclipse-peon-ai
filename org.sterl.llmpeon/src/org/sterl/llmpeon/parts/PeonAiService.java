@@ -59,6 +59,7 @@ import org.sterl.llmpeon.tool.tools.SkillTool;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 
 /**
@@ -207,7 +208,8 @@ public class PeonAiService implements ContextItemProvider {
         var mek = new NamedAgent("Da Mek", devSlave);
         // Slaves also need the same relevant context as the active agent (Jon gets it via userContext;
         // they get it folded into their injected standing orders — read-only, like the shared memory):
-        // the shared memory and the selected project. AGENTS.md is in their persistentContext (system prompt).
+        // the shared memory and the selected project. AGENTS-<agent>.md + the plan file ride in via
+        // additionalContext as turn context (ADR-0029).
         jonDelegateTool = new JonDelegateTool(thinka, mek, () -> {
             var orders = new java.util.ArrayList<String>();
             for (ContextItem item : workspaceMemoryTool.get()) orders.add(item.render());
@@ -215,16 +217,20 @@ public class PeonAiService implements ContextItemProvider {
                     + EclipseUtil.projectInfo(currentProject));
             return orders;
         });
-        jonDelegateTool.setAdditionalContext(() -> planTool.hasPlan()
-                ? List.of(new EclipseFileContextItem(PlanTool.OVERVIEW_FILE))
-                : List.of());
+        jonDelegateTool.setAdditionalContext(agentName -> {
+            var items = new java.util.ArrayList<ContextItem>();
+            items.add(new AgentsMdContextItem(agentName, currentProject));
+            if (planTool.hasPlan()) items.add(new EclipseFileContextItem(PlanTool.OVERVIEW_FILE, currentProject));
+            return items;
+        });
         poToolService.addTool(jonDelegateTool);
         // Jon's own throw-away research sub-agent (Da Sniffa) — searches with his read/grep tools to
         // save his context; stateless one-shot, not one of his persistent slaves.
         poToolService.addTool(new SearchAgentTool(poToolService));
         poToolService.addTool(new CompactSessionTool());
         var poAgent = new AiPoAgent(configuredModel, poToolService, config.getConfigDir(), List.of(thinka, mek));
-        // Turn-scoped context: only dynamic project info. AGENTS.md is in persistentContext (system prompt).
+        // Turn-scoped context fallback for non-UI/test paths — AIChatView overrides it with the
+        // standing-orders builder (which also carries AGENTS.md, ADR-0029).
         poAgent.setTurnContextSupplier(() -> {
             var items = new java.util.ArrayList<org.sterl.llmpeon.context.ContextItem>();
             IProject project = currentProject;
@@ -499,10 +505,10 @@ public class PeonAiService implements ContextItemProvider {
 
     /**
      * A one-time Jon intro shown as a chat message when there is nothing to onboard from yet — Jon
-     * active, empty memory, and no {@code docs/index.md}. The clean complement to
-     * {@link #docsIndexSeedForFirstMessage()} (which fires when the index <em>exists</em>): if there is
-     * a map, Jon navigates it; if there is none, we greet the user and explain how Jon works. Returns
-     * {@code null} otherwise. Shown on activation like {@link #getScaffoldTutorial()}, not sent to the LLM.
+     * active, empty memory, and no {@code docs/index.md}: if there is a map, Jon navigates it (it
+     * lands in his turn context, ADR-0029); if there is none, we greet the user and explain how Jon
+     * works. Returns {@code null} otherwise. Shown on activation like {@link #getScaffoldTutorial()},
+     * not sent to the LLM.
      */
     public String getPoTutorial() {
         var agent = getActiveAgent();
@@ -512,7 +518,7 @@ public class PeonAiService implements ContextItemProvider {
         if (project == null) return null;
 
         var index = project.getFile("docs/index.md");
-        if (index != null && index.exists()) return null; // there is a map -> the seed handles it
+        if (index != null && index.exists()) return null; // there is a map -> Jon navigates it
 
         return org.sterl.llmpeon.prompt.PromptLoader.load("po-tutorial.txt");
     }
@@ -525,30 +531,6 @@ public class PeonAiService implements ContextItemProvider {
             if (this.plan == null) this.plan = getProject().getFile(PlanTool.OVERVIEW_FILE);
         }
     }
-
-    /**
-     * The {@code docs/index.md} seed text for Jon's <b>first</b> user message, or {@code null} when it
-     * does not apply. The caller attaches it as a <b>one-time standing order</b> so it is folded into
-     * the same {@code UserMessage} as the user's question (which stays the last {@code TextContent}) —
-     * unlike the Plan agent, whose plan is shown as its own chat message. Guarded on empty memory so
-     * only the first message is seeded, and read fresh at send time (not on activation / project-set).
-     */
-    public String docsIndexSeedForFirstMessage() {
-        var agent = getActiveAgent();
-        if (!(agent instanceof AiPoAgent)) return null;
-        if (agent.getMemory().size() != 0) return null;
-        var project = getProject();
-        if (project == null) return null;
-
-        var index = project.getFile("docs/index.md");
-        if (index == null || !index.exists()) return null;
-
-        return "Docs index (docs/index.md) — the map of all feature docs. Use it to navigate; no need to re-read it."
-                + System.lineSeparator() + "---" + System.lineSeparator() + System.lineSeparator()
-                + IoUtils.readString(index);
-    }
-
-
 
     public void onPlanSaved(IFile planFile) {
         this.plan = planFile;
@@ -569,35 +551,36 @@ public class PeonAiService implements ContextItemProvider {
             + IoUtils.readString(plan);
     }
 
+    /**
+     * Sets the 100% static system prompt (OS/date rules only, ADR-0029) on all managed agents and
+     * Jon's RAM slaves. File context (AGENTS.md, memory.md, index.md, plan) lives in the turn
+     * context (history), not here.
+     */
     public void setStaticContext(List<ChatMessage> content) {
         List<ContextItem> baseItems = content.stream()
-                .map(msg -> (ContextItem) new SimpleContextItem(ChatMessageUtil.toString(msg)))
+                .map(msg -> (ContextItem) new SimpleContextItem(staticText(msg)))
                 .toList();
 
         // Apply to all managed agents (Dev, Plan, Custom, Scaffold)
         for (var agent : this.agentService.getAgents()) {
-            List<ContextItem> items = new ArrayList<>(baseItems);
-            items.add(new AgentsMdContextItem(agent.getName()));
-            agent.setPersistentContext(items);
+            agent.setPersistentContext(new ArrayList<>(baseItems));
         }
 
         // Jon's RAM slaves are not registered in agentService, so give them the same static context
         // (date/OS + file-access rules) directly — Inc 2, docs/sklaven-kontext-plan.md.
         for (var slave : List.of(jonDelegateTool.getPlanSlave(), jonDelegateTool.getDevSlave())) {
-            List<ContextItem> items = new ArrayList<>(baseItems);
-            items.add(new AgentsMdContextItem(slave.getName()));
-            slave.setPersistentContext(items);
+            slave.setPersistentContext(new ArrayList<>(baseItems));
         }
+    }
 
-        // Jon additionally gets memory.md + index.md in persistent context
-        var poAgent = this.agentService.getAgents().stream()
-                .filter(a -> a instanceof AiPoAgent).findFirst().orElse(null);
-        if (poAgent != null) {
-            var jonItems = new ArrayList<>(poAgent.getPersistentContext());
-            jonItems.add(new EclipseFileContextItem("docs/memory.md"));
-            jonItems.add(new EclipseFileContextItem("docs/index.md"));
-            poAgent.setPersistentContext(jonItems);
-        }
+    /**
+     * The text of a static prompt message. {@code ChatMessageUtil.toString()} only renders
+     * User/Ai/Tool messages — a SystemMessage's text would be silently dropped, so extract it
+     * directly (SystemMessage is the only type AIChatView passes).
+     */
+    private static String staticText(ChatMessage msg) {
+        if (msg instanceof SystemMessage sm) return sm.text();
+        return ChatMessageUtil.toString(msg);
     }
 
     @Override
@@ -643,8 +626,15 @@ public class PeonAiService implements ContextItemProvider {
             _handoffLine = null;
         }
 
+        // Jon's own docs ride in his turn context (history, ADR-0029) — missing files render null
+        // and are skipped silently.
+        if (agent instanceof AiPoAgent) {
+            result.add(new EclipseFileContextItem("docs/memory.md", getProject()));
+            result.add(new EclipseFileContextItem("docs/index.md", getProject()));
+        }
+
         if (planTool.hasPlan()) {
-            result.add(new EclipseFileContextItem(PlanTool.OVERVIEW_FILE));
+            result.add(new EclipseFileContextItem(PlanTool.OVERVIEW_FILE, getProject()));
         }
         return result;
 

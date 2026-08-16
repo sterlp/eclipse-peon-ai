@@ -2,6 +2,7 @@ package org.sterl.llmpeon.tool.tools;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.sterl.llmpeon.agent.AiAgent;
@@ -78,10 +79,10 @@ public class JonDelegateTool extends AbstractTool {
     private String devPlanPath;
 
     /**
-     * Additional context items (e.g. {@code EclipseFileContextItem} for the plan file)
-     * merged into every dispatch's turn context. Set by the plugin layer.
+     * Additional context items (e.g. AGENTS-&lt;agent&gt;.md, the plan file) merged into
+     * every dispatch's turn context, applied per slave agent name. Set by the plugin layer.
      */
-    private Supplier<List<ContextItem>> additionalContext = () -> List.of();
+    private Function<String, List<ContextItem>> additionalContext = name -> List.of();
 
     public JonDelegateTool(NamedAgent plan, NamedAgent dev,
             Supplier<List<String>> memoryProvider) {
@@ -90,9 +91,9 @@ public class JonDelegateTool extends AbstractTool {
         this.memoryProvider = memoryProvider;
     }
 
-    /** Sets additional context items merged into every dispatch's turn context (e.g. plan file). */
-    public void setAdditionalContext(Supplier<List<ContextItem>> supplier) {
-        this.additionalContext = supplier;
+    /** Sets additional context items merged into every dispatch's turn context, applied per slave agent name (e.g. AGENTS-&lt;agent&gt;.md, plan file). */
+    public void setAdditionalContext(Function<String, List<ContextItem>> function) {
+        this.additionalContext = function;
     }
 
     @Tool(name = JonDelegateTool.TALK_PLAN, value = "Ask your Peon-Plan team member (Da Thinka) a direct question or discuss an approach — no plan is written. Use planWithPlanAgent when you want the plan itself. Returns the team member's reply.")
@@ -186,7 +187,7 @@ public class JonDelegateTool extends AbstractTool {
         AiAgent slave = target.agent();
         List<ContextItem> items = new ArrayList<>(orders.size());
         for (String text : orders) items.add(new SimpleContextItem(text));
-        items.addAll(additionalContext.get());
+        items.addAll(additionalContext.apply(slave.getName()));
         List<ContextItem> captured = items;
         slave.setTurnContextSupplier(() -> captured);
 

@@ -692,10 +692,6 @@ public class AIChatView implements EclipseAiMonitor {
             Exception ex = null;
             ChatResponse cr = null;
             try {
-                // Jon only: fold docs/index.md into his FIRST user message as a one-time standing order,
-                // so it rides in the same UserMessage and the user's text stays the last TextContent.
-                String indexSeed = aiService.docsIndexSeedForFirstMessage();
-                if (indexSeed != null) this.standingOrders.addOneTimeOrder(indexSeed);
                 active.setTurnContextSupplier(this.standingOrders::buildItems);
                 cr = active.call(messageToSend, this);
             } catch (Exception e) {

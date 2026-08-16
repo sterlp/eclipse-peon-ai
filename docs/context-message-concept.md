@@ -161,6 +161,52 @@ WHEN render() aufgerufen
 THEN Datei-Inhalt aus Eclipse VFS gelesen
 ```
 
+## File-Context in der History (SOLL 2026-08-16, ✅ done)
+
+Ersetzt den "Dateien im System-Prompt"-Teil von ADR-0028 → [ADR-0029](adr/0029-file-context-in-history.md).
+Auslöser: Crash `RuntimeException: File not found: docs/memory.md` (optionale Datei killte die
+Request) + Stale-Projects-Bug (System-Prompt/`lastModified`-Cache überlebten den Projektwechsel).
+
+### Regeln
+
+1. **Datei fehlt → `null` → übersprungen.** `render()` gibt bei fehlender Datei/Projekt `null`
+   zurück; es wird nichts injiziert, kein "Loading"-Eintrag, keine Exception.
+2. **Dedup nach vollem Pfad, nie nach Content — Header-Check vor dem Read.** Der Injektions-Check
+   prüft **zuerst** nur den Header (voller Workspace-Pfad) in der History: Pfad da → übersprungen,
+   die Datei wird **gar nicht erst gelesen** (kein Payload-Load, kein `render()`). Content-Änderungen
+   an der Datei lösen **keine** Neu-Injection aus — die Änderungen stehen ohnehin als Tool-Messages
+   in der History. Neu injiziert (und dann erst gelesen) wird nur bei **anderem Pfad**
+   (Projektwechsel) oder **nach Compact**.
+3. **Header = voller Workspace-Pfad.** File-Items rendern als `<voller Pfad>:\n---\n<content>`
+   (wie `AgentsMdContextItem`); der "Loading 📋"-Status zeigt denselben Pfad — so ist im Status
+   erkennbar, aus welchem Projekt eine Datei kommt.
+4. **Datei-Items leben im `turnContextSupplier`.** AGENTS.md + AGENTS-\<agent\>.md (alle Agenten
+   inkl. Slaven), Jons `docs/memory.md` + `docs/index.md`, Plan-Datei. Der System-Prompt hält nur
+   noch die statischen OS/Date-Regeln.
+5. **`lastModified`-Cache fällt weg.** Ein Datei-Read pro Session/Projekt (first turn / nach
+   Compact / Projektwechsel) ist billig — der Cache war Over-Engineering und die Quelle des
+   Stale-Projects-Bugs.
+6. **`docsIndexSeedForFirstMessage` fällt weg.** Redundant — `docs/index.md` kommt jetzt als eigene
+   History-Message bei Jons erstem Turn (vor der User-Message).
+
+### BDD
+
+```
+GIVEN wir haben eine memory.md bereits einmal eingefügt in den chat
+WHEN jon ändert die memory.md
+THEN die memory.md wird nicht einfügt, obwohl diese so in der history noch nicht vorhanden ist
+
+GIVEN wir haben eine memory.md noch nicht geladen im chat
+WHEN turn beginnt mit user message
+THEN die memory.md wird eingefügt
+AND wir sehen die onTool Nachricht das diese eingefügt wird
+AND die user message wird danach eingefügt
+
+GIVEN die Datei existiert nicht
+WHEN turn beginnt
+THEN nichts wird injiziert (kein Error, kein Status-Eintrag)
+```
+
 ## Migration
 
 | Heute | Ziel |
@@ -173,6 +219,9 @@ THEN Datei-Inhalt aus Eclipse VFS gelesen
 
 ## Entscheidungen (abgeschlossen)
 
-- **Header:** Ja — `render()` gibt `"Static loaded file <path>:\n---\n<content>"` zurück. Dient als contains-Check-Marker und Token-Transparenz.
-- **Caching:** Ja — `lastModified`-Check im ContextItem. Cache nur einmal pro Turn / am Anfang. Invalidation via file-timestamp (DiskFile) / Eclipse IResourceChangeListener (EclipseFile, low prio MVP: timestamp reicht).
-- **Standing Orders:** `List<ContextItem>` — gleiche Abstraction. Contains-Check (`memory.containsUserMessage(render())`); nur einmal injiziert, nie nachträglich angepasst (KV Cache!).
+- **Header:** Ja — `render()` gibt `"<voller Workspace-Pfad>:\n---\n<content>"` zurück. Dient als
+  Pfad-Dedup-Marker und Token-Transparenz (SOLL 2026-08-16: voller Pfad statt "Static loaded file <relativ>").
+- **Caching:** Nein — `lastModified`-Cache entfernt (SOLL 2026-08-16); Dedup happens in der History
+  nach vollem Pfad, nie nach Content.
+- **Standing Orders:** `List<ContextItem>` — gleiche Abstraction. Dedup-Check (`memory.containsUserMessage(dedupKey)` —
+  Files: voller Pfad, sonst Content); nur einmal injiziert, nie nachträglich angepasst (KV Cache!).

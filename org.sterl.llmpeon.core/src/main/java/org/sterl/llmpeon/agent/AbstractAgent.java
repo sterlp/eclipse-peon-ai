@@ -301,7 +301,7 @@ public abstract class AbstractAgent implements AiAgent {
         if (turnContextSupplier == null) return List.of();
         List<ContextItem> items = turnContextSupplier.get();
         if (items == null || items.isEmpty()) return List.of();
-        return items.stream().map(ContextItem::render).toList();
+        return items.stream().map(ContextItem::render).filter(StringUtil::hasValue).toList();
     }
 
     @Override
@@ -341,17 +341,23 @@ public abstract class AbstractAgent implements AiAgent {
         var prompt = getSystemPrompt();
         if (persistentContext != null) {
             for (var item : persistentContext) {
+                String rendered = item.render();
+                if (rendered == null) continue;
                 if (StringUtil.hasValue(item.label())) {
                     monitor.onTool("Loading 📋 " + item.label());
                 }
-                prompt = prompt + System.lineSeparator() + System.lineSeparator() + item.render();
+                prompt = prompt + System.lineSeparator() + System.lineSeparator() + rendered;
             }
         }
         this.systemMessage = prompt;
         return prompt;
     }
 
-    /** Restore turn-scoped context into memory after compact, skipping duplicates. */
+    /**
+     * Restore turn-scoped context into memory after compact, skipping duplicates.
+     * Keyed items ({@link ContextItem#dedupKey()}) are deduped by key BEFORE rendering;
+     * unkeyed items fall back to rendered-content dedup.
+     */
     private void restoreTurnContext(AiMonitor monitor) {
         if (turnContextSupplier == null) return;
 
@@ -359,13 +365,15 @@ public abstract class AbstractAgent implements AiAgent {
         if (items == null || items.isEmpty()) return;
 
         for (var item : items) {
+            String key = item.dedupKey();
+            if (key != null && memory.containsUserMessage(key)) continue;
             String rendered = item.render();
-            if (!memory.containsUserMessage(rendered)) {
-                if (StringUtil.hasValue(item.label())) {
-                    monitor.onTool("Loading 📋 " + item.label());
-                }
-                memory.add(UserMessage.from(rendered));
+            if (rendered == null) continue;
+            if (key == null && memory.containsUserMessage(rendered)) continue;
+            if (StringUtil.hasValue(item.label())) {
+                monitor.onTool("Loading 📋 " + item.label());
             }
+            memory.add(UserMessage.from(rendered));
         }
     }
 }

@@ -527,6 +527,193 @@ class AbstractAgentTest {
         assertThat(toolMessages).contains("Loading 📋 peon-plan/overview.md");
     }
 
+    /** S1: keyed item — file content change does not re-inject; the key check skips rendering entirely. */
+    @Test
+    void test_restoreTurnContext_fileContentChange_doesNotReinject() {
+        var config = LlmConfig.builder().model("mock").autoCompactAfter(80000).build();
+        var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("OK")).build());
+
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+
+        AtomicInteger renderCount = new AtomicInteger();
+        AtomicReference<String> content = new AtomicReference<>("memory v1");
+        ContextItem keyed = new ContextItem() {
+            @Override public String render() {
+                renderCount.incrementAndGet();
+                return "C:/x/memory.md:\n---\n" + content.get();
+            }
+            @Override public String dedupKey() { return "C:/x/memory.md"; }
+        };
+        agent.setTurnContextSupplier(() -> List.of(keyed));
+
+        // WHEN — Turn 1 injects v1
+        agent.call("hi", monitor -> {});
+
+        // THEN — rendered once, v1 in memory
+        assertThat(renderCount.get()).isOne();
+        assertThat(extractUserTexts(agent.getMemory().getCopy())).anyMatch(t -> t.contains("memory v1"));
+
+        // AND — the file changed to v2
+        content.set("memory v2");
+
+        // WHEN — Turn 2 (no compact)
+        agent.call("again", monitor -> {});
+
+        // THEN — not re-injected; key was in history so render was never called
+        assertThat(renderCount.get()).isOne();
+        assertThat(extractUserTexts(agent.getMemory().getCopy())).noneMatch(t -> t.contains("memory v2"));
+    }
+
+    /** S2: file context is injected before the user message, with a loading status. */
+    @Test
+    void test_doCall_injectsFileContextBeforeUserMessage_withStatus() {
+        var config = LlmConfig.builder().model("mock").autoCompactAfter(80000).build();
+        var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("OK")).build());
+
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        ContextItem keyed = new ContextItem() {
+            @Override public String render() { return "/proj/docs/memory.md:\n---\nmemory content"; }
+            @Override public String label() { return "/proj/docs/memory.md"; }
+            @Override public String dedupKey() { return "/proj/docs/memory.md"; }
+        };
+        agent.setTurnContextSupplier(() -> List.of(keyed));
+
+        List<String> toolMessages = new ArrayList<>();
+        AiMonitor monitor = new AiMonitor() {
+            @Override public void onChatResponse(org.sterl.llmpeon.tool.model.SimpleMessage m) {}
+            @Override public void onTool(String message) { toolMessages.add(message); }
+        };
+
+        // WHEN
+        agent.call("hi", monitor);
+
+        // THEN — file content merged into the same user message, BEFORE "hi"
+        var userTexts = extractUserTexts(agent.getMemory().getCopy());
+        assertThat(userTexts).hasSize(1);
+        var text = userTexts.get(0);
+        assertThat(text.indexOf("memory content")).isNotNegative().isLessThan(text.indexOf("hi"));
+        // AND — loading status reported
+        assertThat(toolMessages).contains("Loading 📋 /proj/docs/memory.md");
+    }
+
+    /** S3: render() = null → nothing injected, no loading status, no exception. */
+    @Test
+    void test_restoreTurnContext_nullRender_noInjectionNoStatus() {
+        var config = LlmConfig.builder().model("mock").autoCompactAfter(80000).build();
+        var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("OK")).build());
+
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        ContextItem missing = new ContextItem() {
+            @Override public String render() { return null; }
+            @Override public String label() { return "/proj/docs/missing.md"; }
+            @Override public String dedupKey() { return "/proj/docs/missing.md"; }
+        };
+        agent.setTurnContextSupplier(() -> List.of(missing));
+
+        List<String> toolMessages = new ArrayList<>();
+        AiMonitor monitor = new AiMonitor() {
+            @Override public void onChatResponse(org.sterl.llmpeon.tool.model.SimpleMessage m) {}
+            @Override public void onTool(String message) { toolMessages.add(message); }
+        };
+
+        // WHEN
+        agent.call("hi", monitor);
+
+        // THEN — memory holds only the user message, no loading status
+        var userTexts = extractUserTexts(agent.getMemory().getCopy());
+        assertThat(userTexts).hasSize(1);
+        assertThat(userTexts.get(0)).isEqualTo("hi");
+        assertThat(toolMessages).noneMatch(m -> m.startsWith("Loading 📋"));
+    }
+
+    /** S4: keyed dedup — render is never called when the key is already in history. */
+    @Test
+    void test_restoreTurnContext_keyedDedup_skipsRenderWhenKeyInHistory() {
+        var config = LlmConfig.builder().model("mock").build();
+        var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("compressed")).build());
+
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+
+        AtomicInteger renderCount = new AtomicInteger();
+        ContextItem keyed = new ContextItem() {
+            @Override public String render() {
+                renderCount.incrementAndGet();
+                return "/proj/docs/memory.md:\n---\nfile content body";
+            }
+            @Override public String dedupKey() { return "/proj/docs/memory.md"; }
+        };
+
+        // Pre-add the keyed content to memory (already injected before)
+        agent.addMessage(UserMessage.from("/proj/docs/memory.md:\n---\nfile content body"));
+        agent.setTurnContextSupplier(() -> List.of(keyed));
+
+        // WHEN — a turn runs restoreTurnContext without clearing memory
+        agent.call("hi", monitor -> {});
+
+        // THEN — render was never called, content appears only once
+        assertThat(renderCount.get()).isZero();
+        var userTexts = extractUserTexts(agent.getMemory().getCopy());
+        assertThat(countOccurrences(userTexts.get(0), "file content body")).isOne();
+    }
+
+    /** S4: after compact the key is gone from history → the keyed item is re-injected. */
+    @Test
+    void test_restoreTurnContext_keyedItem_reinjectedAfterCompact() {
+        var config = LlmConfig.builder().model("mock").build();
+        var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("compressed")).build());
+
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        ContextItem keyed = new ContextItem() {
+            @Override public String render() { return "/proj/docs/memory.md:\n---\nfile content body"; }
+            @Override public String dedupKey() { return "/proj/docs/memory.md"; }
+        };
+        agent.setTurnContextSupplier(() -> List.of(keyed));
+
+        // GIVEN — first call injected the file
+        agent.call("hi", monitor -> {});
+
+        // WHEN — compact clears memory, then restores turn context
+        agent.compressContext(monitor -> {});
+
+        // THEN — file content is back in memory
+        assertThat(extractUserTexts(agent.getMemory().getCopy()))
+                .anyMatch(t -> t.contains("file content body"));
+    }
+
+    /** S4: project switch — old key in history, item now returns a new key → re-injected. */
+    @Test
+    void test_restoreTurnContext_keyedItem_reinjectedOnProjectSwitch() {
+        var config = LlmConfig.builder().model("mock").autoCompactAfter(80000).build();
+        var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("OK")).build());
+
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        AtomicReference<String> key = new AtomicReference<>("/projA/docs/memory.md");
+        ContextItem keyed = new ContextItem() {
+            @Override public String render() { return key.get() + ":\n---\nfile content body"; }
+            @Override public String dedupKey() { return key.get(); }
+        };
+        agent.setTurnContextSupplier(() -> List.of(keyed));
+
+        // GIVEN — first call injected the file from project A
+        agent.call("hi", monitor -> {});
+
+        // AND — the project switched
+        key.set("/projB/docs/memory.md");
+
+        // WHEN — next call
+        agent.call("again", monitor -> {});
+
+        // THEN — the new project's file was injected
+        assertThat(extractUserTexts(agent.getMemory().getCopy()))
+                .anyMatch(t -> t.contains("/projB/docs/memory.md"));
+    }
+
     /** restoreTurnContext does NOT fire onTool for unlabeled items (SimpleContextItem). */
     @Test
     void test_restoreTurnContext_silentForUnlabeledItems() {

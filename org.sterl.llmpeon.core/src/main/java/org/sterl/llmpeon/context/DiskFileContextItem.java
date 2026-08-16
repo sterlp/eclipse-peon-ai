@@ -3,40 +3,40 @@ package org.sterl.llmpeon.context;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributes;
 
 import lombok.RequiredArgsConstructor;
 
 /**
- * Disk-based context item with lastModified cache.
- * Renders as: "Static loaded file <path>:\n---\n<content>"
+ * Disk-based context item.
+ * Renders as: "&lt;absolute path&gt;:\n---\n&lt;content&gt;".
+ * A missing file or read error renders {@code null} (nothing to inject).
  */
 @RequiredArgsConstructor
 public class DiskFileContextItem implements ContextItem {
 
     private final Path path;
-    private volatile String cachedContent;
-    private volatile long lastModified = -1;
 
     @Override
     public String render() {
         try {
-            BasicFileAttributes attrs = Files.readAttributes(path, BasicFileAttributes.class);
-            long modified = attrs.lastModifiedTime().toMillis();
-
-            if (modified == lastModified && cachedContent != null) {
-                return cachedContent;
-            }
-
             String content = Files.readString(path);
-            String rendered = "Static loaded file " + path + ":\n---\n" + content;
-
-            this.cachedContent = rendered;
-            this.lastModified = modified;
-
-            return rendered;
+            return key() + ":\n---\n" + content;
         } catch (IOException e) {
-            throw new RuntimeException("Failed to read file: " + path, e);
+            return null;
         }
+    }
+
+    @Override
+    public String label() {
+        return key();
+    }
+
+    @Override
+    public String dedupKey() {
+        return key();
+    }
+
+    private String key() {
+        return path.toAbsolutePath().normalize().toString();
     }
 }

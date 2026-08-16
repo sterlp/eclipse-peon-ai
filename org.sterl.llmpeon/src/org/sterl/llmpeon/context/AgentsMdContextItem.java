@@ -5,6 +5,7 @@ import java.util.Optional;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
+import org.jspecify.annotations.Nullable;
 
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.IoUtils;
@@ -12,47 +13,62 @@ import org.sterl.llmpeon.parts.shared.JdtUtil;
 
 /**
  * Context item that renders the base {@code AGENTS.md} and agent-specific {@code AGENTS-<agent>.md}
- * files. Silently skips missing files. Agent name is evaluated lazily at render time.
+ * files. A missing project/file renders {@code null} (nothing to inject, no exception).
+ * <p>
+ * {@link #label()} and {@link #dedupKey()} are the full workspace path of the <b>base</b> file
+ * (a substring of the rendered text); when the base file is missing, {@code dedupKey()} is
+ * {@code null} and dedup falls back to rendered content.
  */
 public class AgentsMdContextItem implements ContextItem {
 
     private final String agentName;
+    private final IProject project;
 
-    public AgentsMdContextItem(String agentName) {
+    public AgentsMdContextItem(String agentName, IProject project) {
         this.agentName = agentName;
+        this.project = project;
     }
 
     @Override
     public String label() {
-        return "AGENTS.md";
+        return baseFile().map(JdtUtil::pathOf).orElse("AGENTS.md");
     }
 
     @Override
+    @Nullable
+    public String dedupKey() {
+        return baseFile().map(JdtUtil::pathOf).orElse(null);
+    }
+
+    @Override
+    @Nullable
     public String render() {
-        IProject project = EclipseUtil.firstOpenOrSelectedProject();
-        if (project == null || !project.isAccessible()) return "";
+        if (project == null || !project.isAccessible()) return null;
 
         var parts = new ArrayList<String>();
-
-        // Base AGENTS.md
-        loadAgentFile(project, resolveBaseNames()).ifPresent(parts::add);
-
-        // Agent-specific AGENTS-<agent>.md
+        loadAgentFile(resolveBaseNames()).ifPresent(parts::add);
         if (agentName != null && !agentName.isBlank()) {
-            String key = resolveAgentKey(agentName);
-            loadAgentFile(project, resolveAgentNames(key)).ifPresent(parts::add);
+            loadAgentFile(resolveAgentNames(resolveAgentKey(agentName))).ifPresent(parts::add);
         }
-
-        if (parts.isEmpty()) return "";
+        if (parts.isEmpty()) return null;
         return String.join("\n\n", parts);
     }
 
-    private Optional<String> loadAgentFile(IProject project, String[] names) {
+    /** The base AGENTS.md file (first matching name), without reading its content. */
+    private Optional<IFile> baseFile() {
+        if (project == null || !project.isAccessible()) return Optional.empty();
+        for (String name : resolveBaseNames()) {
+            var file = EclipseUtil.findMember(project, name);
+            if (file.isPresent() && file.get().exists()) return file;
+        }
+        return Optional.empty();
+    }
+
+    private Optional<String> loadAgentFile(String[] names) {
         for (String name : names) {
-            Optional<IFile> file = EclipseUtil.findMember(project, name);
+            var file = EclipseUtil.findMember(project, name);
             if (file.isPresent() && file.get().exists()) {
-                String text = IoUtils.readString(file.get());
-                return Optional.of(JdtUtil.pathOf(file.get()) + ":\n---\n" + text);
+                return Optional.of(JdtUtil.pathOf(file.get()) + ":\n---\n" + IoUtils.readString(file.get()));
             }
         }
         return Optional.empty();

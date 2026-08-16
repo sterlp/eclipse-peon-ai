@@ -1,12 +1,17 @@
 # AGENTS.md Support
 
-> **Hinweis 2026-08-15:** AGENTS.md wird jetzt als **Static Context** (System-Prompt) geladen
-> via `AgentsMdContextItem` — siehe [context-architecture.md](context-architecture.md).
+> **Hinweis 2026-08-16:** AGENTS.md (+ AGENTS-\<agent\>.md) wird als **Dynamic Context** in die
+> Chat History injiziert via `AgentsMdContextItem` (✅ 2026-08-16): einmal pro vollem Pfad, neu bei
+> Projektwechsel (anderer Pfad) oder nach Compact, nie bei Datei-Änderung — fehlende Datei →
+> übersprungen. Siehe [context-architecture.md](context-architecture.md) und
+> [ADR-0029](adr/0029-file-context-in-history.md).
 > Diese Doc beschreibt nur die File-Resolution (welcher Name, Fallback-Reihenfolge).
 
 ## Purpose
 
-AGENTS.md files provide standing orders — rules and context that are automatically prepended to every AI request. They are loaded once per project and persist across all agent modes.
+AGENTS.md files provide standing orders — rules and context that are injected into the chat history
+once per full path (Dynamic Context: re-injected after Compact or project switch, never on file change
+— see [context-architecture.md](context-architecture.md)). They apply to all agent modes.
 
 ## File Name Resolution
 
