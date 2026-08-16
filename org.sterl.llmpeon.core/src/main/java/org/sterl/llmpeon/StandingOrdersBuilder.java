@@ -43,8 +43,10 @@ public class StandingOrdersBuilder {
      * Builds the standing orders as a list of {@link ContextItem} instances.
      * One-time orders and legacy {@link MessageProvider} strings are wrapped as
      * {@link SimpleContextItem} for backward compatibility.
+     * Returns a {@link List} because the agent contract
+     * ({@code setTurnContextSupplier(Supplier<List<ContextItem>>)}) requires one.
      */
-    public Collection<ContextItem> buildItems() {
+    public List<ContextItem> buildItems() {
         var result = new LinkedHashSet<ContextItem>();
 
         for (var p : itemProviders) {
@@ -66,7 +68,7 @@ public class StandingOrdersBuilder {
             .map(SimpleContextItem::new)
             .forEach(result::add);
 
-        return result;
+        return new ArrayList<>(result);
     }
 
     /** @deprecated Replaced by {@link #buildItems()}. */
