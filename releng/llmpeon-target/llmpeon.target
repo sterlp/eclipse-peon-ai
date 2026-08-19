@@ -10,6 +10,7 @@
             <unit id="org.eclipse.equinox.executable.feature.group" />
             <unit id="org.eclipse.platform.feature.group" />
             <unit id="org.eclipse.jdt.feature.group" />
+            <unit id="org.eclipse.ui.workbench.texteditor" />
 
         </location>
     </locations>

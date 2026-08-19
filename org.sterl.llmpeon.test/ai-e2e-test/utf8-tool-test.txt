@@ -1,11 +1,11 @@
 Tool test schreibe mit in ein test-sonderzeichen.txt
 1. folgendes rein: "ü ß ⚡"
 2. lies es wieder und prüfe ob das geklappt hat
-3. führe ein update aus mit UTF-8 Zeichen
+3. führe ein update aus mit UTF-8 Zeichen - mit edit line und mit replace!
 4. lies es wieder und prüfe ob das geklappt hat
 
 Use a write counter, 1, 2, 3 ... for each wirte to ensure it was this write you read
 Mach das mit den eclipse* und wenn verfügbar auch mit den disk* tools - unabhängig und einmal im kreuz test
-Info: nach einem disk write brauchst du ein eclipse refresh um es zu sehen mit den eclipse tools
+Info: nach einem disk write brauchst du ein eclipse refresh um die änderung zu sehen - eclipse cached die files und disk edits unsichtbar sein
 Wenn es geklappt hat lösche die Datei wieder. 
 Wenn es nicht geklappt hat, las die Datei stehen, damit man es verifzieren kann.

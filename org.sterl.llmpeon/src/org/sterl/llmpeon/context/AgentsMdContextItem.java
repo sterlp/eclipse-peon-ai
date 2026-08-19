@@ -1,13 +1,11 @@
 package org.sterl.llmpeon.context;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
+import java.util.function.Supplier;
 
-import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
-
-import org.sterl.llmpeon.parts.shared.EclipseUtil;
 
 /**
  * Resolver for the AGENTS.md context items: returns up to two {@link EclipseFileContextItem}s —
@@ -24,47 +22,20 @@ public final class AgentsMdContextItem {
      * Resolves the AGENTS.md context items for the given agent and project.
      * @return 0, 1 or 2 items — the base file and/or the agent file; missing files are absent.
      */
-    public static List<ContextItem> itemsFor(String agentName, IProject project) {
-        if (project == null || !project.isAccessible()) return List.of();
+    public static List<ContextItem> itemsFor(String agentName, Supplier<IProject> project) {
+        if (project == null) return List.of();
+        
+        ContextItem agentMd = new EclipseFileContextItem(new String[] { "AGENTS.MD", "AGENTS.md", "Agents.md", "agents.md",
+            "RULES.md", "rules.md", "AGENT.md", "CLAUDE.md", "claude.md" }, project);
+        ContextItem forAgent = new EclipseFileContextItem(resolveAgentNames(agentName), project);
+        
+        return Arrays.asList(agentMd, forAgent);
 
-        var items = new ArrayList<ContextItem>();
-        baseFile(project).ifPresent(f -> items.add(new EclipseFileContextItem(relativePath(f), project)));
-        if (agentName != null && !agentName.isBlank()) {
-            agentFile(project, resolveAgentNames(resolveAgentKey(agentName)))
-                    .ifPresent(f -> items.add(new EclipseFileContextItem(relativePath(f), project)));
-        }
-        return items;
-    }
-
-    /** The base AGENTS.md file (first matching name that exists), without reading its content. */
-    private static Optional<IFile> baseFile(IProject project) {
-        for (String name : resolveBaseNames()) {
-            var file = EclipseUtil.findMember(project, name);
-            if (file.isPresent() && file.get().exists()) return file;
-        }
-        return Optional.empty();
-    }
-
-    /** The agent-specific file (first matching name that exists), without reading its content. */
-    private static Optional<IFile> agentFile(IProject project, String[] names) {
-        for (String name : names) {
-            var file = EclipseUtil.findMember(project, name);
-            if (file.isPresent() && file.get().exists()) return file;
-        }
-        return Optional.empty();
-    }
-
-    private static String relativePath(IFile file) {
-        return file.getFullPath().removeFirstSegments(1).toString();
-    }
-
-    private static String[] resolveBaseNames() {
-        return new String[] { "AGENTS.MD", "AGENTS.md", "Agents.md", "agents.md",
-                              "RULES.md", "rules.md", "AGENT.md", "CLAUDE.md", "claude.md" };
     }
 
     private static String[] resolveAgentNames(String key) {
         var names = new ArrayList<String>();
+        key = resolveAgentKey(key);
         names.add("AGENTS-" + key + ".md");
         names.add("agents-" + key.toLowerCase() + ".md");
 
@@ -80,7 +51,7 @@ public final class AgentsMdContextItem {
 
         return names.toArray(String[]::new);
     }
-
+    
     private static String resolveAgentKey(String agentName) {
         if (agentName.startsWith("Peon-")) {
             return agentName.substring(5).toUpperCase();

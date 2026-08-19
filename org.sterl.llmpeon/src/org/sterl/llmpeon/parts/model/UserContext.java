@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.parts.model;
 
+import java.util.LinkedList;
 import java.util.List;
 
 import org.eclipse.core.resources.IFile;
@@ -29,23 +30,27 @@ public class UserContext implements ContextItemProvider {
     public List<ContextItem> get() {
         if (currentProject == null && selectedResource == null) return List.of();
 
-        var sb = new StringBuilder();
+        var result = new LinkedList<ContextItem>();
         if (currentProject != null) {
-            sb.append("Select project:" + System.lineSeparator());
-            sb.append(EclipseUtil.projectInfo(currentProject));
+            result.add(new SimpleContextItem("Project info " + currentProject.getName(),
+                    "Select project:" + System.lineSeparator() + EclipseUtil.projectInfo(currentProject)
+                )
+            );
         }
-        addUserSelection(sb);
-        return List.of(new SimpleContextItem(sb.toString()));
+        addUserSelection(result);
+        return result;
     }
 
-    private void addUserSelection(StringBuilder sb) {
+    private void addUserSelection(List<ContextItem> result) {
         if (hasTextSelection()) {
+            var sb = new StringBuilder();
+            String path = JdtUtil.pathOf(selectedResource);
             if (selectedResource == null || !(selectedResource instanceof IFile)) {
                 sb.append("\n\n```\n" + FileLines.format(textSelection.getText(), textSelection.getStartLine() + 1) + "\n```");
                 if (clazz != null) sb.append("\n").append(getSelectedFile());
                 else sb.append("\nselected content not in a file.");
             } else {
-                sb.append(System.lineSeparator()).append(JdtUtil.pathOf(selectedResource)).append(" full content. Selected lines ")
+                sb.append(System.lineSeparator()).append(path).append(" full content. Selected lines ")
                   .append(lines(textSelection))
                   .append(":").append(System.lineSeparator());
                 try {
@@ -54,10 +59,11 @@ public class UserContext implements ContextItemProvider {
                     throw new RuntimeException(e);
                 }
             }
+            result.add(new SimpleContextItem("User text selection", sb.toString()));
         } else if (selectedResource != null) {
-            sb.append(System.lineSeparator()).append("File selected: ").append(JdtUtil.pathOf(selectedResource));
+            result.add(new SimpleContextItem("File selected: " + JdtUtil.pathOf(selectedResource)));
         } else if (clazz != null) {
-            sb.append(System.lineSeparator()).append("Java type selected: ").append(getName(clazz));
+            result.add(new SimpleContextItem("Java type selected: " + getName(clazz)));
         }
     }
     

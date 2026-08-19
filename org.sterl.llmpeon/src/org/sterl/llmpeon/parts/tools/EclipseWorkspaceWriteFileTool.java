@@ -1,9 +1,16 @@
 package org.sterl.llmpeon.parts.tools;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.jface.text.IDocument;
+import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.texteditor.IDocumentProvider;
+import org.eclipse.ui.texteditor.ITextEditor;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
@@ -27,6 +34,62 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
     public boolean isEditTool() {
         return true;
     }
+    
+    @Tool("Updates the content of current open eclipse workspace file by the user - using the user access")
+    public String eclipseUpdateOpenFile(
+            @P(description = "exact text to replace", name = "oldString", required = false) String inOldString,
+            @P(name = "newString", required = false) String inNewString) {
+        
+        final CompletableFuture<String> result = new CompletableFuture<String>();
+
+        if (inNewString == null && inOldString == null) throw new IllegalArgumentException("Provide a now or old string!");
+
+        PlatformUI.getWorkbench().getDisplay().asyncExec(() -> {
+            var newString = inNewString == null ? "" : inNewString;
+            var oldString = inOldString == null ? "" : inOldString;
+            
+
+            onTool("Edit in editor");
+            
+            var e = EclipseUtil.getOpenEditor();
+            if (e.isEmpty()) {
+                result.complete("Nothing currently open.");
+            } else {
+                var editor = e.get();
+                if (editor instanceof ITextEditor text) {
+                    var openFile = EclipseUtil.getOpenFile();
+                    var path = openFile.isPresent() ? JdtUtil.pathOf(openFile.get()) : "Open in editor";
+                    validateWrite(path);
+                    
+                    IDocumentProvider provider = text.getDocumentProvider();
+                    IDocument document = provider.getDocument(text.getEditorInput());
+                    
+                    var oldDoc = document.get();
+                    var newDoc = FileUtils.applyEdit(path, document.get(), oldString, newString);
+                    document.set(newDoc);
+                    
+                    var success = "Saved!";
+                    if (!PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().saveEditor(editor, false)) {
+                        if (!PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().saveEditor(editor, true)) {
+                            success = "Save failed! Ask user to save editor.";
+                        }
+                    }
+                    monitor.onFileUpdate(new AiFileUpdate(path, oldDoc, newDoc));
+                    result.complete(openFile.isPresent() ? success + " of " + JdtUtil.pathOf(openFile.get()) : success);
+                    
+                } else {
+                    throw new IllegalArgumentException("Cannot read from unknown editor " + editor.getClass().getName());
+                }
+            }
+        });
+        
+        try {
+            return result.get(2, TimeUnit.MINUTES);
+        } catch (Exception e) {
+            throw new IllegalStateException("Timeout during eclipse editor read", e);
+        }
+
+    }
 
     @Tool("Replace a single line in a workspace file by 1-based line number. newContent may span multiple lines.")
     public void eclipseReplaceLines(
@@ -45,8 +108,9 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         }
         String content = readFile(eclipseFile);
         String newFullContent = FileLines.replaceLines(content, line, line, newContent);
-        var result = writeFile(eclipseFile, newFullContent);
-        monitor.onFileUpdate(result);
+
+        IoUtils.writeFile(eclipseFile, newFullContent, getProgressMonitor());
+        monitor.onFileUpdate(new AiFileUpdate(JdtUtil.pathOf(eclipseFile), content, newFullContent));
     }
 
     private String readFile(IFile eclipseFile) {
@@ -60,24 +124,24 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
     @Tool("Replace the first occurrence of an exact string in a workspace file. newString=null deletes the match.")
     public void eclipseEditFile(
             @P(description = "workspace-relative path", name = "filePath") String filePath,
-            @P(description = "exact text to replace", name = "oldString") String oldString,
+            @P(description = "exact text to replace", name = "oldString", required = false) String oldString,
             @P(name = "newString", required = false) String newString) {
 
-        ArgsUtil.requireNonBlank(filePath, "filePath");
-        ArgsUtil.requireNonBlank(oldString, "oldString");
+        if (newString == null && oldString == null) throw new IllegalArgumentException("Provide a now or old string!");
+
         validateWrite(filePath);
         if (newString == null) newString = "";
+        if (oldString == null) oldString = "";
 
         var inFile = EclipseUtil.resolveInEclipse(filePath);
         if (inFile.isEmpty() || !(inFile.get() instanceof IFile eclipseFile)) {
             throw new IllegalArgumentException("Cannot write unknown file in eclipse " + filePath);
         } else {
             String content = readFile(eclipseFile);
-            String newContent = FileUtils.applyEdit(filePath, content, oldString, newString);
-            var result = writeFile(eclipseFile, newContent);
-            var editResult = new AiFileUpdate(result.file(), content, newContent);
-            
-            monitor.onFileUpdate(editResult);
+            String newFullContent = FileUtils.applyEdit(filePath, content, oldString, newString);
+
+            IoUtils.writeFile(eclipseFile, newFullContent, getProgressMonitor());
+            monitor.onFileUpdate(new AiFileUpdate(JdtUtil.pathOf(eclipseFile), content, newFullContent));
         }
     }
 
@@ -94,9 +158,8 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
 
         var inFile = EclipseUtil.resolveInEclipse(filePath);
         if (inFile.isPresent() && inFile.get() instanceof IFile eclipseFile) {
-            var result = writeFile(eclipseFile, content);
-            monitor.onFileUpdate(result);
-            onTool("Updated file " + JdtUtil.pathOf(eclipseFile));
+            IoUtils.writeFile(eclipseFile, content, getProgressMonitor());
+            onTool("Overwrite file " + JdtUtil.pathOf(eclipseFile));
             return;
         }
 
@@ -119,7 +182,6 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
             String openProjects = EclipseUtil.openProjects().stream()
                     .map(p -> "/" + p.getName())
                     .collect(java.util.stream.Collectors.joining(", "));
-            onProblem("Create File: unknown path for file: " + filePath);
             throw new IllegalArgumentException(
                     "Cannot determine target project for path: " + filePath 
                     + ". Open projects: [" + openProjects + "]");
@@ -146,8 +208,9 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         }
         String content = readFile(eclipseFile);
         String newFullContent = FileLines.insertLines(content, afterLine, newContent);
-        var result = writeFile(eclipseFile, newFullContent);
-        monitor.onFileUpdate(result);
+        
+        IoUtils.writeFile(eclipseFile, newFullContent, getProgressMonitor());
+        monitor.onFileUpdate(new AiFileUpdate(JdtUtil.pathOf(eclipseFile), content, newFullContent));
     }
 
     @Tool("Rename or move a workspace file or directory. Creates target parent folders.")
@@ -208,12 +271,6 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         } catch (CoreException e) {
             throw new RuntimeException("Failed to delete " + filePath, e);
         }
-    }
-
-    private AiFileUpdate writeFile(IFile file, String content) {
-        var oldContent = readFile(file);
-        IoUtils.writeFile(file, content, getProgressMonitor());
-        return new AiFileUpdate(JdtUtil.pathOf(file), oldContent, content);
     }
 
     private IFile writeFileToProject(IProject targetProject, String projectRelativePath, String content) {

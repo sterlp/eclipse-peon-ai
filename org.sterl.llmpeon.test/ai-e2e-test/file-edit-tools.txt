@@ -8,4 +8,5 @@ Please create simple text file in the root -- with around 500 tokens and execute
 
 Use a write counter, 1, 2, 3 ... for each wirte to ensure it was this write you read
 do/repeat this once with the disk and eclipse tools -- delete the file in between and at the end.
+Test woth edit line und mit replace line!
 Give a report if both tools behave similar and as expected.

@@ -14,7 +14,6 @@ import org.sterl.llmpeon.AgentService;
 import org.sterl.llmpeon.StandingOrdersBuilder.ContextItemProvider;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
-import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.agent.AiPoAgent;
 import org.sterl.llmpeon.agent.NamedAgent;
@@ -22,7 +21,10 @@ import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.ai.model.AiModel;
 import org.sterl.llmpeon.command.CommandService;
-import org.sterl.llmpeon.parts.agentsmd.AgentsMdService;
+import org.sterl.llmpeon.context.AgentsMdContextItem;
+import org.sterl.llmpeon.context.ContextItem;
+import org.sterl.llmpeon.context.EclipseFileContextItem;
+import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.McpConnectionService;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
@@ -39,12 +41,9 @@ import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
 import org.sterl.llmpeon.parts.tools.PlanReadTool;
 import org.sterl.llmpeon.parts.tools.PlanTool;
 import org.sterl.llmpeon.parts.tools.memory.WorkspaceMemoryTool;
-import org.sterl.llmpeon.context.AgentsMdContextItem;
-import org.sterl.llmpeon.context.ContextItem;
-import org.sterl.llmpeon.context.EclipseFileContextItem;
-import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.scaffold.AiScaffoldAgent;
 import org.sterl.llmpeon.scaffold.ReloadConfigTool;
+import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.tool.ToolService;
@@ -86,8 +85,6 @@ public class PeonAiService implements ContextItemProvider {
 
     private final SkillService skillService;
     private final CommandService commandService;
-    
-    private final AgentsMdService agentsMdService;
 
     private final McpConnectionService mcpConnectionService;
 
@@ -109,7 +106,7 @@ public class PeonAiService implements ContextItemProvider {
     private IFile plan;
 
     /** Transient standing-order line set on handoff, consumed once by {@link #get()}. */
-    private volatile String _handoffLine;
+    private volatile SimpleContextItem _handoffLine;
 
     /**
      * Creates all AI services with defaults from the current Eclipse preferences.
@@ -131,8 +128,6 @@ public class PeonAiService implements ContextItemProvider {
         sharedToolService       = new ToolService();
         skillService            = new SkillService();
         commandService          = new CommandService();
-        agentsMdService         = new AgentsMdService();
-        agentsMdService.setAgentNameSupplier(() -> getActiveAgent().getName());
         
         // filter eclipse tools from the search agents ...
         var sa = sharedToolService.getTool(SearchAgentTool.class).get();
@@ -219,8 +214,8 @@ public class PeonAiService implements ContextItemProvider {
         });
         jonDelegateTool.setAdditionalContext(agentName -> {
             var items = new java.util.ArrayList<ContextItem>();
-            items.addAll(AgentsMdContextItem.itemsFor(agentName, currentProject));
-            if (planTool.hasPlan()) items.add(new EclipseFileContextItem(PlanTool.OVERVIEW_FILE, currentProject));
+            items.addAll(AgentsMdContextItem.itemsFor(agentName, this::getProject));
+            items.add(new EclipseFileContextItem(PlanTool.OVERVIEW_FILE, this::getProject));
             return items;
         });
         poToolService.addTool(jonDelegateTool);
@@ -306,7 +301,6 @@ public class PeonAiService implements ContextItemProvider {
     public void setProject(IProject project) {
         this.plan = null; // stale reference — restore on next agent activation if needed
         currentProject = project;
-        agentsMdService.load(project);
 
         var projectPath = JdtUtil.pathOf(project);
 
@@ -346,7 +340,10 @@ public class PeonAiService implements ContextItemProvider {
         }
 
         if (planText != null) {
-            if (this.plan != null) _handoffLine = "Handover from " + getActiveAgent().getName() + " " + JdtUtil.pathOf(this.plan);
+            if (this.plan != null) {
+                _handoffLine = new SimpleContextItem("Handover " + getActiveAgent().getName(), 
+                        "Handover from " + getActiveAgent().getName() + " " + JdtUtil.pathOf(this.plan));
+            }
 
             toAgent.get().clear();
             toAgent.get().getMemory().add(UserMessage.from(
@@ -447,10 +444,6 @@ public class PeonAiService implements ContextItemProvider {
 
     public AgentService getAgentService() {
         return agentService;
-    }
-
-    public AgentsMdService getAgentsMdService() {
-        return agentsMdService;
     }
 
     public McpConnectionService getMcpConnectionService() {
@@ -603,7 +596,7 @@ public class PeonAiService implements ContextItemProvider {
                     orders.append(readTool.get().diskListDirectory(LlmConfig.COMMAND_DIRECTORY)).append(System.lineSeparator());
                     orders.append(readTool.get().diskListDirectory(LlmConfig.SKILL_DIRECTORY)).append(System.lineSeparator());
                 }
-                result.add(new SimpleContextItem(orders.toString()));
+                result.add(new SimpleContextItem("Scaffold env. info", orders.toString()));
                 orders.setLength(0);
             } catch (Exception e) {
                 throw new RuntimeException(e);
@@ -614,29 +607,27 @@ public class PeonAiService implements ContextItemProvider {
             for (var spec : sharedToolService.toolSpecifications()) {
                 orders.append("- ").append(spec.name()).append(": ").append(spec.description()).append(System.lineSeparator());
             }
-            result.add(new SimpleContextItem(orders.toString()));
-            orders.setLength(0);
-
+            
+            result.add(new SimpleContextItem("Scaffold tool names", orders.toString()));
+            return result;
+        } else {
+            if (_handoffLine != null) {
+                // Consume handoff line once (set by onHandoff, survives compaction)
+                result.add(_handoffLine);
+                _handoffLine = null;
+            }
+            
+            // Jon's own docs ride in his turn context (history, ADR-0029) — missing files render null
+            // and are skipped silently.
+            if (agent instanceof AiPoAgent) {
+                result.add(new EclipseFileContextItem("docs/memory.md", this::getProject));
+                result.add(new EclipseFileContextItem("docs/index.md", this::getProject));
+            }
+            // TODO this can be moved to the agent itself
+            result.addAll(AgentsMdContextItem.itemsFor(getActiveAgent().getName(), this::getProject));
+            result.add(new EclipseFileContextItem(PlanTool.OVERVIEW_FILE, this::getProject));
+            
             return result;
         }
-
-        if (_handoffLine != null) {
-             // Consume handoff line once (set by onHandoff, survives compaction)
-            result.add(new SimpleContextItem(_handoffLine));
-            _handoffLine = null;
-        }
-
-        // Jon's own docs ride in his turn context (history, ADR-0029) — missing files render null
-        // and are skipped silently.
-        if (agent instanceof AiPoAgent) {
-            result.add(new EclipseFileContextItem("docs/memory.md", getProject()));
-            result.add(new EclipseFileContextItem("docs/index.md", getProject()));
-        }
-
-        if (planTool.hasPlan()) {
-            result.add(new EclipseFileContextItem(PlanTool.OVERVIEW_FILE, getProject()));
-        }
-        return result;
-
     }
 }

@@ -44,8 +44,6 @@ public interface PeonConstants {
     String PREF_VOICE_MIXER    = "voice.mixer";       // mixer name — empty = system default
 
 
-    String PREF_AGENTS_MD_ENABLED  = "agentsMd.enabled";   // boolean, default true
-
     String PREF_MODEL            = "llm.model";
     String PREF_PLAN_MODEL       = "llm.planModel";
     String PREF_SEARCH_MODEL     = "llm.searchModel";

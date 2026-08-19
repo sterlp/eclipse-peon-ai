@@ -16,12 +16,21 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Platform;
-import org.eclipse.core.runtime.QualifiedName;
+import org.eclipse.jface.text.IDocument;
+import org.eclipse.ui.IEditorPart;
+import org.eclipse.ui.IWorkbenchPage;
+import org.eclipse.ui.IWorkbenchWindow;
+import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.ide.IDE;
 import org.sterl.llmpeon.parts.PeonConstants;
+
+import jakarta.annotation.Nullable;
 
 public class IoUtils {
     
+    @Nullable
     public static String readString(IFile file) {
+        if (file == null) return null;
         try {
             return file.readString();
         } catch (CoreException e) {
@@ -58,15 +67,8 @@ public class IoUtils {
         return file;
     }
     
-    public static void writeFile(IFile file, String content,IProgressMonitor monitor ) {
+    public static void writeFile(IFile file, String content, IProgressMonitor monitor ) {
         try {
-            var path = JdtUtil.pathOf(file);
-            if (path != null && path.endsWith(".aclass")) {
-                file.setPersistentProperty(
-                        new QualifiedName("com.sap.adt", "editable"), 
-                        "true"
-                    );
-            }
             var charset = getCharset(file);
             ensureFolders(file.getParent(), monitor);
             file.write(content.getBytes(charset), true, false, true, monitor);

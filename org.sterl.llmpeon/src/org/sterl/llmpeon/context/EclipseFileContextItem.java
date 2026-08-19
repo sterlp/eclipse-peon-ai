@@ -1,60 +1,72 @@
 package org.sterl.llmpeon.context;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.function.Supplier;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.jspecify.annotations.Nullable;
-
+import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 
 /**
- * Eclipse-VFS-based context item.
- * Renders as: "&lt;full workspace path&gt;:\n---\n&lt;content&gt;".
- * A missing project/file or read error renders {@code null} (nothing to inject).
+ * Dynamically loads the first found file into the context.
  */
 public class EclipseFileContextItem implements ContextItem {
 
-    private final String relativePath;
-    private final IProject project;
+    private final String[] relativePaths;
+    private final Supplier<IProject> project;
 
-    public EclipseFileContextItem(String relativePath, IProject project) {
-        this.relativePath = relativePath;
+    public EclipseFileContextItem(String relativePath, Supplier<IProject> project) {
+        this.relativePaths = new String[] { relativePath };
+        this.project = project;
+    }
+
+    public EclipseFileContextItem(String[] relativePaths, Supplier<IProject> project) {
+        this.relativePaths = relativePaths;
         this.project = project;
     }
 
     @Override
     public String label() {
-        return key();
+        var file = exists();
+        if (file == null) return null;
+        return JdtUtil.pathOf(file);
     }
 
     @Override
     public String dedupKey() {
-        String key = key();
+        String key = label();
         if (key == null) return null;
-        return key + ":" + System.lineSeparator() + "---" + System.lineSeparator();
+        return IoUtils.readString(exists());
     }
 
     @Override
     public String render() {
-        String key = key();
+        var key = label();
+        var file = exists();
         if (key == null) return null;
-        IFile file = project.getFile(relativePath);
-        if (!file.exists()) return null;
-        Path path = file.getLocation().toFile().toPath();
-        try {
-            String content = Files.readString(path);
-            return key + ":" + System.lineSeparator() + "---" + System.lineSeparator() + content;
-        } catch (IOException e) {
-            return null;
-        }
+        if (file == null) return null;
+
+        return key + ":" + System.lineSeparator() + "---" + System.lineSeparator() 
+            + IoUtils.readString(file);
     }
 
     @Nullable
-    private String key() {
-        if (project == null || !project.isAccessible()) return null;
-        return JdtUtil.pathOf(project.getFile(relativePath));
+    private IFile exists() {
+        if (project == null) return null;
+        if (project.get() == null) return null;
+        if (!project.get().isAccessible()) return null;
+        // select the first found
+        for (String relativePath : relativePaths) {
+            IFile file = project.get().getFile(relativePath);
+            if (file != null && file.exists()) return file;
+        }
+        return null;
+    }
+    
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName() + " [" + Arrays.toString(relativePaths) + "]";
     }
 }

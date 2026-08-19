@@ -40,7 +40,6 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
     // the selected project.
     private final StandingOrdersBuilder standingOrders = new StandingOrdersBuilder()
             .add(aiService)
-            .add(aiService.getAgentsMdService())
             .add(() -> {
                 var p = aiService.getProject();
                 if (p == null) return List.of();
@@ -183,12 +182,12 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         assertEquals(AiDevAgent.NAME, aiService.getActiveAgent().getName());
 
         // AND: first get() returns the handoff standing order (rendered)
-        var orders = aiService.get().stream().map(item -> item.render()).toList();
+        var orders = aiService.get().stream().map(item -> item.render()).filter(i -> i != null).toList();
         assertEquals(2, orders.size());
         assertContains(orders.get(0), "Handover from ");
 
         // AND: second get() contains still the reference to the plan
-        var orders2 = aiService.get().stream().map(item -> item.render()).toList();
+        var orders2 = aiService.get().stream().map(item -> item.render()).filter(i -> i != null).toList();
         assertContains(orders2.getFirst(), "peon-plan/overview.md");
     }
     

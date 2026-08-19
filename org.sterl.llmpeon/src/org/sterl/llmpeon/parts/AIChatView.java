@@ -114,7 +114,6 @@ public class AIChatView implements EclipseAiMonitor {
 
     private final StandingOrdersBuilder standingOrders = new StandingOrdersBuilder()
             .add(WorkspaceMemoryTool.getInstance())
-            .add(aiService.getAgentsMdService())
             .add(userContext)
             .add(aiService);
 
@@ -174,8 +173,7 @@ public class AIChatView implements EclipseAiMonitor {
         statusLine = new StatusLineWidget(inputBlock, SWT.NONE,
             this::onPinChange,
             this::onSkillsToggle,
-            enabled -> aiService.getMcpConnectionService().toggle(enabled),
-            this::onAgentsMdToggle
+            enabled -> aiService.getMcpConnectionService().toggle(enabled)
         );
 
         statusLine.setSkillsMenuHandler(
@@ -294,17 +292,6 @@ public class AIChatView implements EclipseAiMonitor {
         }
     }
 
-    private void onAgentsMdToggle(boolean enabled) {
-        try {
-            var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
-            prefs.putBoolean(PeonConstants.PREF_AGENTS_MD_ENABLED, enabled);
-            prefs.flush();
-        } catch (Exception e) {
-            LOG.warn("Failed to save agents.md preference", e);
-        }
-        aiService.getAgentsMdService().setEnabled(enabled);
-    }
-
     // -------------------------------------------------------------------------
     // EclipseAiMonitor
     // -------------------------------------------------------------------------
@@ -379,8 +366,6 @@ public class AIChatView implements EclipseAiMonitor {
 
         statusLine.update(
             aiService.getSkillService().getSkills().size(),
-            aiService.getAgentsMdService().getAgentFileName(),
-            aiService.getAgentsMdService().isEnabled(),
             userContext.getCurrentProject(),
             userContext.getSelectedFile()
         );
@@ -394,14 +379,6 @@ public class AIChatView implements EclipseAiMonitor {
         refreshStatusLine();
         aiService.getActiveAgent().getMemory().forEach(chatHistory::appendMessage);
     }
-
-    private void syncAgentsMdToggle() {
-        var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
-        boolean enabled = prefs.getBoolean(PeonConstants.PREF_AGENTS_MD_ENABLED, true);
-        statusLine.setAgentsMdEnabled(enabled);
-        aiService.getAgentsMdService().setEnabled(enabled);
-    }
-
 
     // -------------------------------------------------------------------------
     // Config / model loading
@@ -432,7 +409,6 @@ public class AIChatView implements EclipseAiMonitor {
         // Sync thinking support to the selected agent (Dev/Plan from prefs, Custom from AGENT.md).
         actionsBar.setThinkSupported(aiService.getActiveAgent().isThinkSupported());
         applyMcpConfig();
-        syncAgentsMdToggle();
         refreshStatusLine();
         reloadModelsIfNeeded();
         applyShellCommandConfirmation();

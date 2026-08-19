@@ -20,15 +20,20 @@ import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.ITreeSelection;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
-import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.IWorkingSet;
+import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.ide.IDE;
+import org.sterl.llmpeon.shared.AiMonitor.AiFileUpdate;
+import org.sterl.llmpeon.shared.FileUtils;
 import org.sterl.llmpeon.shared.StringUtil;
+import org.eclipse.ui.texteditor.*;
+import org.jspecify.annotations.NonNull;
 
 public class EclipseUtil {
     // TODO move to EclipseUiUtil
@@ -54,24 +59,55 @@ public class EclipseUtil {
         }
         return loc.toFile().toPath();
     }
+    
+    public static Optional<IEditorPart> getOpenEditor() {
+        if (PlatformUI.getWorkbench() == null) return Optional.empty();
+
+        var aww = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
+        if (aww == null) return Optional.empty();
+        var ap = aww.getActivePage();
+        if (ap == null) return Optional.empty();
+        return Optional.ofNullable(ap.getActiveEditor());
+    }
 
     /**
      * Opens the given workspace file in the workbench editor. Must be called
      * from the UI thread. Throws {@link RuntimeException} if the editor cannot
      * be opened.
+     * @return the open {@link IEditorPart}, <code>null</code> if failed to open
      */
-    // TODO move to EclipseUiUtil
-    public static void openInEditor(IFile file) {
-        var page = PlatformUI.getWorkbench().getActiveWorkbenchWindow()
-                .getActivePage();
-        if (page == null || !file.exists())
-            return;
+    public static IEditorPart openInEditor(IFile file) {
+        if (PlatformUI.getWorkbench() == null) return null;
+        if (PlatformUI.getWorkbench().getActiveWorkbenchWindow() == null) return null;
+
+        var page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
+        if (page == null || !file.exists()) return null;
         try {
-            IDE.openEditor(page, file, true);
+            return IDE.openEditor(page, file, true);
         } catch (Exception e) {
             throw new RuntimeException(
                     "Could not open editor for " + file.getFullPath(), e);
         }
+    }
+    @NonNull
+    public AiFileUpdate editInEditor(IFile resource, String oldContent, String newContent) {
+        IEditorPart editor = openInEditor(resource);
+        var path = JdtUtil.pathOf(resource);
+        if (editor == null) throw new IllegalArgumentException("Could not open " + path + " no open workbench.");
+
+        IDocumentProvider provider = ((ITextEditor) editor).getDocumentProvider();
+        IDocument document = provider.getDocument(editor.getEditorInput());
+        
+        var oldDoc = document.get();
+        var newDoc = FileUtils.applyEdit(path, oldDoc, oldContent, newContent);
+        document.set(newDoc);
+
+        if (!PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().saveEditor(editor, false)) {
+            if (!PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().saveEditor(editor, true)) {
+                throw new IllegalStateException("Failed to save " + path);
+            }
+        }
+        return new AiFileUpdate(path, oldDoc, newDoc);
     }
 
     /**
@@ -86,35 +122,25 @@ public class EclipseUtil {
 
     public static IProject firstOpenOrSelectedProject() {
         var openFile = getOpenFile();
-        if (openFile.isPresent())
-            return openFile.get().getProject();
+        if (openFile.isPresent()) return openFile.get().getProject();
         var open = openProjects();
         return open.isEmpty() ? null : open.getFirst();
     }
 
     public static Optional<IFile> getOpenFile() {
-        if (PlatformUI.getWorkbench() == null)
-            return Optional.empty();
-        var aww = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
-        if (aww == null)
-            return Optional.empty();
-        var ap = aww.getActivePage();
-        if (ap == null)
-            return Optional.empty();
-        IEditorPart editor = ap.getActiveEditor();
+        var e = getOpenEditor();
 
-        if (editor != null) {
-            IEditorInput input = editor.getEditorInput();
+        if (e.isPresent()) {
+            IEditorInput input = e.get().getEditorInput();
 
             // Fast path: direct IFile adapter (works for all standard workspace
             // editors)
             var file = input.getAdapter(IFile.class);
-            if (file != null)
-                return Optional.of(file);
+            if (file != null) return Optional.of(file);
 
             // Fallback: JDT compilation unit (handles linked resources, derived
             // sources, etc.)
-            ICompilationUnit cu = editor.getAdapter(ICompilationUnit.class);
+            ICompilationUnit cu = e.get().getAdapter(ICompilationUnit.class);
             if (cu != null && cu.getResource() instanceof IFile f) {
                 return Optional.of(f);
             }
@@ -126,16 +152,13 @@ public class EclipseUtil {
      * Returns the selected element for common structured Eclipse selections.
      */
     public static Optional<Object> selectionElement(Object value) {
-        if (value == null)
-            return Optional.empty();
+        if (value == null) return Optional.empty();
         if (value instanceof ITreeSelection selection) {
-            if (selection.isEmpty())
-                return Optional.empty();
+            if (selection.isEmpty()) return Optional.empty();
             return Optional.ofNullable(selection.getFirstElement());
         }
         if (value instanceof IStructuredSelection selection) {
-            if (selection.isEmpty())
-                return Optional.empty();
+            if (selection.isEmpty()) return Optional.empty();
             return Optional.ofNullable(selection.getFirstElement());
         }
         return Optional.of(value);
@@ -151,10 +174,8 @@ public class EclipseUtil {
             return Optional.empty();
         value = element.get();
 
-        if (value instanceof IWorkingSet)
-            return Optional.empty();
-        if (value instanceof IResource resource)
-            return Optional.of(resource);
+        if (value instanceof IWorkingSet) return Optional.empty();
+        if (value instanceof IResource resource) return Optional.of(resource);
         if (value instanceof ICompilationUnit compilationUnit) {
             return Optional.ofNullable(compilationUnit.getResource());
         }
@@ -169,11 +190,9 @@ public class EclipseUtil {
         }
         if (value instanceof IAdaptable adaptable) {
             var resource = adaptable.getAdapter(IResource.class);
-            if (resource != null)
-                return Optional.of(resource);
+            if (resource != null) return Optional.of(resource);
             var javaElement = adaptable.getAdapter(IJavaElement.class);
-            if (javaElement != null)
-                return Optional.ofNullable(javaElement.getResource());
+            if (javaElement != null) return Optional.ofNullable(javaElement.getResource());
         }
         return Optional.empty();
     }

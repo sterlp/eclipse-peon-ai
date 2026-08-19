@@ -24,7 +24,7 @@ import dev.langchain4j.agent.tool.Tool;
 public class WorkspaceMemoryTool extends AbstractEclipseTool implements ContextItemProvider {
 
     private static final String PREF_KEY = "workspaceGuidelineMemory";
-    private static final int MAX_ENTRIES = 500;
+    private static final int MAX_ENTRIES = 200;
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final TypeReference<List<WorkspaceGuideline>> LIST_TYPE = new TypeReference<>() {
@@ -163,6 +163,6 @@ public class WorkspaceMemoryTool extends AbstractEclipseTool implements ContextI
             sb.append(displayIndex).append(". [").append(g.createdAt()).append("] ").append(g.text()).append("\n");
         }
 
-        return List.of(new SimpleContextItem(sb.toString().trim()));
+        return List.of(new SimpleContextItem("Agent Memory", sb.toString().trim()));
     }
 }

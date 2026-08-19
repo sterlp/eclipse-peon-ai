@@ -18,19 +18,19 @@ public class EclipseFileContextItemTest extends AbstractIntegrationTest {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
         eclipseWriteFile("docs/test-memory.md", "memory content");
 
-        var item = new EclipseFileContextItem("docs/test-memory.md", project);
+        var item = new EclipseFileContextItem("docs/test-memory.md", () -> project);
         var workspacePath = "/" + project.getName() + "/docs/test-memory.md";
 
         assertEquals(workspacePath + ":" + System.lineSeparator() + "---" + System.lineSeparator() + "memory content", item.render());
         assertEquals(workspacePath, item.label());
-        assertEquals(workspacePath + ":" + System.lineSeparator() + "---" + System.lineSeparator(), item.dedupKey());
+        assertEquals("memory content", item.dedupKey());
     }
 
     @Test
     public void render_returnsNull_whenFileMissing() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
 
-        var item = new EclipseFileContextItem("docs/does-not-exist.md", project);
+        var item = new EclipseFileContextItem("docs/does-not-exist.md", () -> project);
 
         assertNull(item.render());
     }

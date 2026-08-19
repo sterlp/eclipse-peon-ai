@@ -31,7 +31,6 @@ public class StatusLineWidget extends Composite {
     /** Single toggle button — hidden when no project is selected. Text: "📌 ProjectName". */
     private final Button btnPin;
     private final Button btnSkills;
-    private final Button btnAgentsMd;
     private final Label fileLabel;
     private final Button btnMcp;
 
@@ -43,8 +42,7 @@ public class StatusLineWidget extends Composite {
     public StatusLineWidget(Composite parent, int style,
             Consumer<Boolean> onPinChange,
             Consumer<Boolean> onSkillsToggle,
-            Consumer<Boolean> onMcpToggle,
-            Consumer<Boolean> onAgentsMdToggle) {
+            Consumer<Boolean> onMcpToggle) {
         super(parent, style);
         setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
@@ -75,15 +73,6 @@ public class StatusLineWidget extends Composite {
 
         EclipseUiUtil.newSeparator(this);
 
-        // --- AGENTS.md toggle button (disabled when no agent file found) ---
-        btnAgentsMd = new Button(this, SWT.TOGGLE);
-        btnAgentsMd.setImage(images.getImage(ISharedImages.IMG_OBJ_FILE));
-        btnAgentsMd.setText("AGENTS.md");
-        btnAgentsMd.setSelection(true);
-        btnAgentsMd.setEnabled(true);
-        btnAgentsMd.setToolTipText("Toggle AGENTS.md injection into standing orders");
-        btnAgentsMd.addListener(SWT.Selection, e -> onAgentsMdToggle.accept(btnAgentsMd.getSelection()));
-
         EclipseUiUtil.newSeparator(this);
         // --- Skills toggle ---
         btnSkills = new Button(this, SWT.TOGGLE);
@@ -110,9 +99,7 @@ public class StatusLineWidget extends Composite {
 
     }
 
-    public void update(int skillCount, String agentFileName, boolean agentMdActive,
-            IProject project, 
-            String selected) {
+    public void update(int skillCount, IProject project, String selected) {
 
         // --- Pin: show/hide the button with project name ---
         boolean hasProject = project != null;
@@ -123,19 +110,6 @@ public class StatusLineWidget extends Composite {
         }
         if (hasProject) {
             btnPin.setText(project.getName()); // 📌 ProjectName
-        }
-
-        // --- AGENTS.md toggle: enable/disable based on file presence, update label ---
-        if (agentFileName == null) {
-            btnAgentsMd.setEnabled(false);
-            btnAgentsMd.setSelection(false);
-            btnAgentsMd.setText("No AGENTS.md");
-        } else {
-            btnAgentsMd.setSelection(agentMdActive);
-            btnAgentsMd.setEnabled(true);
-            String name = agentFileName;
-            if (!agentMdActive) name = agentFileName;
-            btnAgentsMd.setText(name);
         }
 
         // --- File ---
@@ -179,16 +153,6 @@ public class StatusLineWidget extends Composite {
     /** Returns whether the MCP toggle is currently on. */
     public boolean isMcpEnabled() {
         return btnMcp.getSelection();
-    }
-
-    /** Sync the AGENTS.md button state without firing the listener. */
-    public void setAgentsMdEnabled(boolean enabled) {
-        btnAgentsMd.setSelection(enabled);
-    }
-
-    /** Returns whether the AGENTS.md toggle is currently on. */
-    public boolean isAgentsMdEnabled() {
-        return btnAgentsMd.getSelection();
     }
 
     /** Set the provider for loading skills and callback for menu changes. */
