@@ -108,7 +108,7 @@ public enum AiProvider {
                     .customQueryParams(c.getQueryParams())
                     .logRequests(c.isDebugMode())
                     .logResponses(c.isDebugMode());
-
+            
             // reasoning.effort is now set per request (see newRequestParameters).
             if (c.getMaxTokens() > 0) builder.maxCompletionTokens(c.getMaxTokens());
             return builder.build();
@@ -120,6 +120,12 @@ public enum AiProvider {
             applyBase(b, mc, tools);
             var effort = effortFor(mc);
             if (effort != null) b.reasoningEffort(effort);
+            
+            if (mc.getModel() != null && mc.getModel().startsWith("claude")) {
+                b.customParameters(Map.of("cache_control", Map.of("type", "ephemeral")));
+            }
+            // TODO for "gpt" based on the agent prompt_cache_key
+
             return b.build();
         }
 
@@ -301,7 +307,12 @@ public enum AiProvider {
             var builder = AnthropicStreamingChatModel.builder()
                     .timeout(c.getTimeout())
                     .modelName(c.getModel())
-                    .apiKey(c.getApiKey());
+                    .apiKey(c.getApiKey())
+                    .defaultRequestParameters(AnthropicChatRequestParameters.builder()
+                        .cacheSystemMessages(true)
+                        .cacheTools(true)
+                        .build());
+
             if (c.getUrl() != null && c.getUrl().length() > 4) {
                 builder.baseUrl(c.getUrl());
             }
@@ -490,6 +501,7 @@ public enum AiProvider {
         if (effort != null) {
             b.reasoningEffort(ReasoningEffort.of(effort)).reasoningSummary(Reasoning.Summary.DETAILED);
         }
+        // TODO promt cache key based on the agents ...
         return b.build();
     }
 
