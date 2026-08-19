@@ -13,20 +13,16 @@ import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.ILog;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Platform;
-import org.eclipse.jface.text.IDocument;
-import org.eclipse.ui.IEditorPart;
-import org.eclipse.ui.IWorkbenchPage;
-import org.eclipse.ui.IWorkbenchWindow;
-import org.eclipse.ui.PlatformUI;
-import org.eclipse.ui.ide.IDE;
 import org.sterl.llmpeon.parts.PeonConstants;
 
 import jakarta.annotation.Nullable;
 
 public class IoUtils {
+    private static final ILog LOG = Platform.getLog(IoUtils.class);
     
     @Nullable
     public static String readString(IFile file) {
@@ -80,8 +76,10 @@ public class IoUtils {
             }
             */
         } catch (ResourceException e) {
+            LOG.warn("Failed to edit " + JdtUtil.pathOf(file) + e.getMessage(), e);
             throw new IllegalArgumentException(e.getMessage(), e);
         } catch (CoreException e) {
+            LOG.warn("Failed to edit " + JdtUtil.pathOf(file) + e.getMessage(), e);
             throw new RuntimeException("Failed to write " + JdtUtil.pathOf(file), e);
         }
     }
