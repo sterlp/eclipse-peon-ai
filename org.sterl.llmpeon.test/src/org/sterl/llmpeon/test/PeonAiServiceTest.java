@@ -439,8 +439,8 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         var ctx = dev.langchain4j.data.message.SystemMessage.from("Today is 2026-08-06; prefer eclipse* over disk*.");
         aiService.setStaticContext(List.of(ctx));
 
-        assertTrue("Plan slave got the static context", !delegate.getPlanSlave().getPersistentContext().isEmpty());
-        assertTrue("Dev slave got the static context", !delegate.getDevSlave().getPersistentContext().isEmpty());
+        assertTrue("Plan slave got the static context", !delegate.getPlanSlave().getStaticContext().isEmpty());
+        assertTrue("Dev slave got the static context", !delegate.getDevSlave().getStaticContext().isEmpty());
     }
 
     // --- Header status widget MVP (agenten-status-im-header-mvp-plan.md, ADR-0025) -------------
@@ -497,13 +497,13 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
 
         // THEN: Jon's persistent context is the static base item only
         var jon = aiService.getActiveAgent();
-        assertEquals(1, jon.getPersistentContext().size());
-        assertContains(jon.getPersistentContext().get(0).render(), "prefer eclipse*");
+        assertEquals(1, jon.getStaticContext().size());
+        assertContains(jon.getStaticContext().get(0).render(), "prefer eclipse*");
 
         // AND: the slaves' persistent context is static only, too
         var delegate = jon.getToolService().getTool(JonDelegateTool.class).orElseThrow();
-        assertEquals(1, delegate.getPlanSlave().getPersistentContext().size());
-        assertEquals(1, delegate.getDevSlave().getPersistentContext().size());
+        assertEquals(1, delegate.getPlanSlave().getStaticContext().size());
+        assertEquals(1, delegate.getDevSlave().getStaticContext().size());
     }
 
     /** ADR-0029: the turn context carries the project info AND AGENTS.md (no longer in the system prompt). */

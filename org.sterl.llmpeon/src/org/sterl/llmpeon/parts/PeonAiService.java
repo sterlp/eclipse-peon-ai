@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.parts;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -212,36 +213,70 @@ public class PeonAiService implements ContextItemProvider {
                     + EclipseUtil.projectInfo(currentProject));
             return orders;
         });
-        jonDelegateTool.setAdditionalContext(agentName -> {
-            var items = new java.util.ArrayList<ContextItem>();
-            items.addAll(AgentsMdContextItem.itemsFor(agentName, this::getProject));
-            items.add(new EclipseFileContextItem(PlanTool.OVERVIEW_FILE, this::getProject));
-            return items;
-        });
         poToolService.addTool(jonDelegateTool);
         // Jon's own throw-away research sub-agent (Da Sniffa) — searches with his read/grep tools to
         // save his context; stateless one-shot, not one of his persistent slaves.
         poToolService.addTool(new SearchAgentTool(poToolService));
         poToolService.addTool(new CompactSessionTool());
         var poAgent = new AiPoAgent(configuredModel, poToolService, config.getConfigDir(), List.of(thinka, mek));
-        // Turn-scoped context fallback for non-UI/test paths — AIChatView overrides it with the
-        // standing-orders builder (which also carries AGENTS.md, ADR-0029).
-        poAgent.setTurnContextSupplier(() -> {
-            var items = new java.util.ArrayList<org.sterl.llmpeon.context.ContextItem>();
-            IProject project = currentProject;
-            if (project != null) {
-                items.add(() -> "Selected project:" + System.lineSeparator()
-                        + EclipseUtil.projectInfo(project));
-            }
-            return items;
-        });
+
         agentService.addPersistentAgent(poAgent);
 
         mcpConnectionService = new McpConnectionService(sharedToolService, mcpStateChange);
-
         updateConfig(configuredModel.getConfig());
+
+        initStaticContext();
     }
     
+    
+    private void initStaticContext() {
+        var env = new ContextItem() {
+            @Override
+            public String render() {
+                return "Today: " + LocalDate.now()
+                + " — APIs and libraries may have changed since your training cutoff. "
+                + "Don't rely only on internal API knowledge — explore base classes and libs if possible with e.g. using "
+                + EclipseCodeNavigationTool.GET_TYPE_SOURCE + " for java projects."
+                + "\nos.name: " + System.getProperty("os.name")
+                + "\nos file.separator: '" + System.getProperty("file.separator") + "'"
+                + "\nos line.separator: '" + System.lineSeparator() + "'"
+                + "\nFile access: prefer eclipse* over disk* tools. After disk* writes, call eclipseRefreshProject (refresh only) or eclipseBuildProject (refresh + build check) to sync Eclipse."
+                + "\nOutside the workspace, use Disk-tools if available; if not, ask the user to enable them. Never use shell/terminal for file I/O.";
+            }
+            @Override
+            public String label() {
+                return "Static system info";
+            }
+        };
+        
+        
+        for (var agent : this.getAgents()) {
+            var context = new ArrayList<ContextItem>();
+            context.add(env);
+
+            // Jon's own docs ride in his turn context (history, ADR-0029) — missing files render null
+            // and are skipped silently.
+            if (agent instanceof AiPoAgent) {
+                context.add(new EclipseFileContextItem("docs/memory.md", this::getProject));
+                context.add(new EclipseFileContextItem("docs/index.md", this::getProject));
+            } else if (!(agent instanceof AiScaffoldAgent)) {
+                context.addAll(AgentsMdContextItem.itemsFor(getActiveAgent().getName(), this::getProject));
+            } else {
+                jonDelegateTool.getDevSlave().setStaticContext(context);
+                jonDelegateTool.getPlanSlave().setStaticContext(context);
+            }
+
+            agent.setStaticContext(context);
+        }
+        
+        jonDelegateTool.setAdditionalContext(agentName -> {
+            var items = new java.util.ArrayList<ContextItem>();
+            items.addAll(AgentsMdContextItem.itemsFor(agentName, this::getProject));
+            items.add(new EclipseFileContextItem(PlanTool.OVERVIEW_FILE, this::getProject));
+            return items;
+        });
+    }
+
     /**
      * Propagates a new {@link LlmConfig} to all chat services and refreshes skills.
      * Safe to call from any thread.
@@ -556,13 +591,13 @@ public class PeonAiService implements ContextItemProvider {
 
         // Apply to all managed agents (Dev, Plan, Custom, Scaffold)
         for (var agent : this.agentService.getAgents()) {
-            agent.setPersistentContext(new ArrayList<>(baseItems));
+            agent.setStaticContext(new ArrayList<>(baseItems));
         }
 
         // Jon's RAM slaves are not registered in agentService, so give them the same static context
         // (date/OS + file-access rules) directly — Inc 2, docs/sklaven-kontext-plan.md.
         for (var slave : List.of(jonDelegateTool.getPlanSlave(), jonDelegateTool.getDevSlave())) {
-            slave.setPersistentContext(new ArrayList<>(baseItems));
+            slave.setStaticContext(new ArrayList<>(baseItems));
         }
     }
 
@@ -611,22 +646,16 @@ public class PeonAiService implements ContextItemProvider {
             result.add(new SimpleContextItem("Scaffold tool names", orders.toString()));
             return result;
         } else {
-            if (_handoffLine != null) {
+            if (_handoffLine == null) {
+                var plan = getProject().getFile(PlanTool.PROBLEM_FILE);
+                if (plan != null && plan.exists()) {
+                    result.add(new SimpleContextItem("Plan reference", "Existing plan: " + JdtUtil.pathOf(plan)));
+                }
+            } else {
                 // Consume handoff line once (set by onHandoff, survives compaction)
                 result.add(_handoffLine);
                 _handoffLine = null;
             }
-            
-            // Jon's own docs ride in his turn context (history, ADR-0029) — missing files render null
-            // and are skipped silently.
-            if (agent instanceof AiPoAgent) {
-                result.add(new EclipseFileContextItem("docs/memory.md", this::getProject));
-                result.add(new EclipseFileContextItem("docs/index.md", this::getProject));
-            }
-            // TODO this can be moved to the agent itself
-            result.addAll(AgentsMdContextItem.itemsFor(getActiveAgent().getName(), this::getProject));
-            result.add(new EclipseFileContextItem(PlanTool.OVERVIEW_FILE, this::getProject));
-            
             return result;
         }
     }

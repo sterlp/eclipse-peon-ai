@@ -43,7 +43,10 @@ public abstract class AbstractAgent implements AiAgent {
     private final AtomicBoolean working = new AtomicBoolean(false);
 
     private volatile String systemMessage = null;
-    private List<ContextItem> persistentContext;
+    /**
+     * Build only once
+     */
+    private List<ContextItem> staticContext;
     private Supplier<List<ContextItem>> turnContextSupplier;
 
     /**
@@ -282,15 +285,15 @@ public abstract class AbstractAgent implements AiAgent {
         return response;
     }
 
-    /** Set persistent context items rendered into the system prompt on every rebuild. */
-    public void setPersistentContext(List<ContextItem> context) {
-        this.persistentContext = context;
+    /** Set static context items rendered into the system prompt on every rebuild. */
+    public void setStaticContext(List<ContextItem> context) {
+        this.staticContext = context;
         this.systemMessage = null;
     }
 
     @Override
-    public List<ContextItem> getPersistentContext() {
-        return persistentContext != null ? persistentContext : List.of();
+    public List<ContextItem> getStaticContext() {
+        return staticContext != null ? staticContext : List.of();
     }
 
     /** Set turn-scoped context supplier — items injected after compact or on first call. */
@@ -341,8 +344,8 @@ public abstract class AbstractAgent implements AiAgent {
         if (systemMessage != null) return systemMessage;
 
         var prompt = getSystemPrompt();
-        if (persistentContext != null) {
-            for (var item : persistentContext) {
+        if (staticContext != null) {
+            for (var item : staticContext) {
                 String rendered = item.render();
                 if (rendered != null) {
                     if (StringUtil.hasValue(item.label())) {
