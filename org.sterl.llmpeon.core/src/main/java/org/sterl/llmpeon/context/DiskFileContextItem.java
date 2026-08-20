@@ -19,8 +19,7 @@ public class DiskFileContextItem implements ContextItem {
     public String render() {
         try {
             if (Files.isRegularFile(path)) {
-                String content = Files.readString(path);
-                return dedupKey() + content;
+                return Files.readString(path);
             } else {
                 log.debug("Context file not present, skipping: {}", path);
                 return null;

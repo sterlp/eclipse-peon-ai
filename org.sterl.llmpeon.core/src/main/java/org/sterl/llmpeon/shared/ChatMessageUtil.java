@@ -57,8 +57,20 @@ public class ChatMessageUtil {
         return data;
     }
     
+    public static String readChatMessage(List<ChatMessage> msg) {
+        var result = new StringBuilder();
+        for (ChatMessage chatMessage : msg) {
+            result.append(toString(chatMessage)).append(System.lineSeparator());
+        }
+        return result.toString();
+    }
+    
     public static String toString(ChatMessage msg) {
-        return toString(msg, true, 4000);
+        return toString(msg, true, 6000);
+    }
+    
+    public static String toString(ChatMessage msg, int maxSize) {
+        return toString(msg, true, maxSize);
     }
     
     public static String toString(ChatMessage msg, boolean includeThink, int toolMessageSize) {

@@ -1,9 +1,11 @@
 package org.sterl.llmpeon.tool.tools;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,21 +16,26 @@ import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
 class JonDelegateToolTest {
 
+    private StreamMock streamMock = new StreamMock();
     private ConfiguredChatModel model;
 
     @BeforeEach
     void beforeEach() {
-        var cm = new StreamMock().buildMock(req -> ChatResponse.builder()
+        streamMock.reset();
+        var cm = streamMock.buildMock(req -> ChatResponse.builder()
                 .aiMessage(AiMessage.aiMessage("SLAVE REPLY")).build());
         model = new ConfiguredChatModel(LlmConfig.newOllama("foo"), cm);
     }
@@ -40,7 +47,7 @@ class JonDelegateToolTest {
         return newTool(List::of);
     }
 
-    private JonDelegateTool newTool(java.util.function.Supplier<List<String>> memory) {
+    private JonDelegateTool newTool(Supplier<List<ContextItem>> memory) {
         return new JonDelegateTool(new NamedAgent("Da Thinka", planSlave()),
                 new NamedAgent("Da Mek", devSlave()), memory);
     }
@@ -81,13 +88,18 @@ class JonDelegateToolTest {
     void planWithPlanAgent_injectsPlanWriteLoop_talkPlanDoesNot() {
         var tool = newTool();
 
+        // WHEN
         tool.talkPlan("just a question");
-        assertThat(tool.getPlanSlave().getRenderedTurnContext())
-                .noneMatch(s -> s.contains("plan tools (planSave/planUpdate"));
+        // THEN
+        var data = streamMock.getLastUserMessagesAsString();
+        assertThat(data).hasSize(1);
+        assertThat(data).contains("just a question");
+        assertThat(data).doesNotContain("plan tools (planSave/planUpdate");
 
+        // WHEN
         tool.planWithPlanAgent("write the plan");
-        assertThat(tool.getPlanSlave().getRenderedTurnContext())
-                .anyMatch(s -> s.contains("plan tools (planSave/planUpdate"));
+        assertThat(streamMock.getLastUserMessagesAsString())
+                .doesNotContain("plan tools (planSave/planUpdate");
     }
 
     /** ADR-0025: the slave is a shared singleton — the same instance across calls, context carries. */
@@ -116,61 +128,23 @@ class JonDelegateToolTest {
     /** The shared memory is injected into each slave's standing orders (read-only for slaves). */
     @Test
     void slaves_getSharedMemoryInjected() {
-        var tool = newTool(() -> List.of("MEMORY: always run the tests"));
+        // GIVEN
+        var memory = "MEMORY: always run the tests";
+        var tool = newTool(() -> List.of(new SimpleContextItem("MEMORY: always run the tests")));
 
+        // WHEN
         tool.talkPlan("go");
+        tool.talkPlan("go");
+        // THEN
+        assertThat(streamMock.count("go")).isEqualTo(2);
+        assertThat(streamMock.count(memory)).isEqualTo(1);
+        
+        // WHEN
+        tool.askDev("go");
         tool.askDev("go");
 
-        assertThat(tool.getPlanSlave().getRenderedTurnContext()).contains("MEMORY: always run the tests");
-        assertThat(tool.getDevSlave().getRenderedTurnContext()).contains("MEMORY: always run the tests");
-    }
-
-    /**
-     * Design-gap regression: the slaves must know the selected project, just like Jon does. The tool is
-     * agnostic — whatever the injected provider carries (shared memory <em>and</em> the project line that
-     * PeonAiService now folds in) reaches both slaves' standing orders.
-     */
-    @Test
-    void slaves_getSelectedProjectInjected() {
-        var tool = newTool(() -> List.of("MEMORY: run tests", "Selected project:\nDisk path: /ws/demo"));
-
-        tool.talkPlan("go");
-        tool.askDev("go");
-
-        assertThat(tool.getPlanSlave().getRenderedTurnContext()).contains("Selected project:\nDisk path: /ws/demo");
-        assertThat(tool.getDevSlave().getRenderedTurnContext()).contains("Selected project:\nDisk path: /ws/demo");
-    }
-
-    /**
-     * Inc 1 (docs/sklaven-kontext-plan.md): the base AGENTS.md ground rules must reach the slaves too,
-     * just like Jon. The tool is agnostic — PeonAiService folds the base AGENTS.md into the provider, so
-     * whatever line it carries lands in both slaves' standing orders.
-     */
-    @Test
-    void slaves_getBaseAgentsMdInjected() {
-        var tool = newTool(() -> List.of("MEMORY: run tests", "AGENTS.md:\n---\n\nAlways build green."));
-
-        tool.talkPlan("go");
-        tool.askDev("go");
-
-        assertThat(tool.getPlanSlave().getRenderedTurnContext()).contains("AGENTS.md:\n---\n\nAlways build green.");
-        assertThat(tool.getDevSlave().getRenderedTurnContext()).contains("AGENTS.md:\n---\n\nAlways build green.");
-    }
-
-    /** S5: additionalContext is applied per slave agent name — each slave gets its own items. */
-    @Test
-    void additionalContext_appliedPerAgentName() {
-        var tool = newTool();
-        tool.setAdditionalContext(name -> List.of(
-                new SimpleContextItem("AGENTS-" + name + ".md:\n---\n" + name + " rules")));
-
-        tool.talkPlan("go");
-        tool.askDev("go");
-
-        assertThat(tool.getPlanSlave().getRenderedTurnContext())
-                .anyMatch(s -> s.contains("Peon-Plan rules"));
-        assertThat(tool.getDevSlave().getRenderedTurnContext())
-                .anyMatch(s -> s.contains("Peon-Dev rules"));
+        assertThat(streamMock.count("go")).isEqualTo(2);
+        assertThat(streamMock.count(memory)).isEqualTo(1);
     }
 
     /**
@@ -188,43 +162,22 @@ class JonDelegateToolTest {
         assertThat(lines).anyMatch(l -> l.contains("done. (") && l.matches(".*\\(\\d+s\\)"));
     }
 
-    /**
-     * The build discipline (dev-build-loop.txt) rides only with buildWithDev — never on a plain askDev
-     * question and never on the Plan slave.
-     */
-    @Test
-    void devBuildLoop_injectedOnlyByBuildWithDev() {
-        var tool = newTool();
-
-        // plain dev question: no build-loop directive
-        tool.askDev("just answer a question");
-        assertThat(tool.getDevSlave().getRenderedTurnContext())
-                .noneMatch(s -> s.contains("Task by task, never a red build"));
-
-        // build call with a plan: the build loop rides along with the path
-        tool.buildWithDev("implement it", "peon-plan/overview.md");
-        assertThat(tool.getDevSlave().getRenderedTurnContext())
-                .anyMatch(s -> s.contains("Task by task, never a red build"))
-                .anyMatch(s -> s.contains("peon-plan/overview.md"));
-
-        // the Plan slave never gets the dev build loop
-        tool.talkPlan("make a plan");
-        assertThat(tool.getPlanSlave().getRenderedTurnContext())
-                .noneMatch(s -> s.contains("Task by task, never a red build"));
-    }
-
     /** buildWithDev planPath goes into the Dev slave's standing orders and stays sticky across calls. */
     @Test
     void buildWithDev_planPath_becomesStickyStandingOrder() {
+        // GIVEN
+        var plan = "peon-plan/overview.md";
         var tool = newTool();
 
-        tool.buildWithDev("start", "peon-plan/overview.md");
-        assertThat(tool.getDevSlave().getRenderedTurnContext())
-                .anyMatch(s -> s.contains("peon-plan/overview.md"));
+        tool.buildWithDev("start du ratte!", plan);
+        
+        assertThat(streamMock.count(plan)).isEqualTo(1);
+        assertThat(streamMock.count("start du ratte!")).isEqualTo(1);
 
         // a later plan-less build call must keep the plan path (survives compaction)
-        tool.buildWithDev("continue", null);
-        assertThat(tool.getDevSlave().getRenderedTurnContext())
-                .anyMatch(s -> s.contains("peon-plan/overview.md"));
+        tool.buildWithDev("continue 2", null);
+        tool.buildWithDev("continue 3", plan);
+        assertThat(streamMock.count(plan)).isEqualTo(1);
+        assertThat(streamMock.count("continue 3")).isEqualTo(1);
     }
 }

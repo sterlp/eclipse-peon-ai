@@ -84,6 +84,14 @@ public class ThreadSafeMemory {
             .anyMatch(um -> ChatMessageUtil.toString(um).contains(message));
     }
     
+    public synchronized boolean containsMessage(String message) {
+        if (StringUtil.hasNoValue(message)) return true;
+        return memory.stream()
+            .filter(m -> m instanceof UserMessage || m instanceof ToolExecutionResultMessage)
+            .map(m -> ChatMessageUtil.toString(m, 90000))
+            .anyMatch(um -> um.contains(message));
+    }
+    
     public synchronized List<ChatMessage> getCopy() {
         return new ArrayList<>(memory);
     }

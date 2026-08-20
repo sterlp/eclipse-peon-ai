@@ -13,24 +13,25 @@ import org.eclipse.core.resources.IProject;
  * own full workspace path as label and the exact ADR-0029 header as dedup key.
  * A missing project/file simply yields no item (nothing to inject, no status line).
  */
-public final class AgentsMdContextItem {
+public final class AgentsMdContextItem extends EclipseFileContextItem {
 
-    private AgentsMdContextItem() {
+    public static final String[] AGENT_FILES = { "AGENTS.MD", "AGENTS.md", "Agents.md", "agents.md",
+            "RULES.md", "rules.md", "AGENT.md", "CLAUDE.md", "claude.md" };
+
+    public AgentsMdContextItem(Supplier<IProject> project) {
+        super(AGENT_FILES, project);
     }
-
+    
+    
     /**
      * Resolves the AGENTS.md context items for the given agent and project.
      * @return 0, 1 or 2 items — the base file and/or the agent file; missing files are absent.
      */
     public static List<ContextItem> itemsFor(String agentName, Supplier<IProject> project) {
         if (project == null) return List.of();
-        
-        ContextItem agentMd = new EclipseFileContextItem(new String[] { "AGENTS.MD", "AGENTS.md", "Agents.md", "agents.md",
-            "RULES.md", "rules.md", "AGENT.md", "CLAUDE.md", "claude.md" }, project);
-        ContextItem forAgent = new EclipseFileContextItem(resolveAgentNames(agentName), project);
-        
-        return Arrays.asList(agentMd, forAgent);
 
+        ContextItem forAgent = new EclipseFileContextItem(resolveAgentNames(agentName), project);
+        return Arrays.asList(new AgentsMdContextItem(project), forAgent);
     }
 
     private static String[] resolveAgentNames(String key) {

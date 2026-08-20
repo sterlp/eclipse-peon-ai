@@ -4,6 +4,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -239,15 +240,10 @@ public abstract class AbstractAgent implements AiAgent {
         }
 
         // Inject turn-scoped context on every turn (idempotent via contains-check)
-        restoreTurnContext(monitor);
+        var userMessages = restoreTurnContext(monitor);
 
-        var userMessages = new ArrayList<Content>();
         if (StringUtil.hasValue(message)) userMessages.add(TextContent.from(message));
-        if (userMessages.isEmpty()) {
-            // nothing
-        } else {
-            addMessage(UserMessage.from(userMessages));
-        }
+        if (!userMessages.isEmpty()) addMessage(UserMessage.from(userMessages));
 
         var start = Instant.now();
         var staticMessages = buildStaticMessages(monitor);
@@ -278,9 +274,10 @@ public abstract class AbstractAgent implements AiAgent {
         memory.clear();
         this.systemMessage = null;
         // Restore turn-scoped context
-        restoreTurnContext(monitor);
+        var data = restoreTurnContext(monitor);
+        data.add(TextContent.from("Session compacted. Resume the task using the preserved context."));
         // Ensure memory starts with a user message (many LLMs require this)
-        memory.add(UserMessage.from("Session compacted. Resume the task using the preserved context."));
+        memory.add(UserMessage.from(data));
         memory.addResult(response);
         return response;
     }
@@ -300,19 +297,12 @@ public abstract class AbstractAgent implements AiAgent {
     public void setTurnContextSupplier(Supplier<List<ContextItem>> supplier) {
         this.turnContextSupplier = supplier;
     }
-    
-    @Override
-    public List<String> getRenderedTurnContext() {
-        if (turnContextSupplier == null) return List.of();
-        List<ContextItem> items = turnContextSupplier.get();
-        if (items == null || items.isEmpty()) return List.of();
-        return items.stream().map(ContextItem::render).filter(StringUtil::hasValue).toList();
-    }
 
     @Override
     public void clear() {
         memory.clear();
         messageQueue.clear();
+        this.systemMessage = null; // TODO test needed - AI forgot this reset case
     }
 
     /**
@@ -364,25 +354,28 @@ public abstract class AbstractAgent implements AiAgent {
      * Keyed items ({@link ContextItem#dedupKey()}) are deduped by key BEFORE rendering;
      * unkeyed items fall back to rendered-content dedup.
      */
-    private void restoreTurnContext(AiMonitor monitor) {
-        if (turnContextSupplier == null) return;
+    private List<Content> restoreTurnContext(AiMonitor monitor) {
+        var result = new LinkedList<Content>();
 
-        List<ContextItem> items = turnContextSupplier.get();
-        if (items == null || items.isEmpty()) return;
+        if (turnContextSupplier == null) return result;
+        var items = turnContextSupplier.get();
+        if (items == null || items.isEmpty()) return result ;
 
         for (var item : items) {
             var key = item.dedupKey();
             if (key == null || !memory.containsUserMessage(key)) {
                 String rendered = item.render();
                 if (rendered == null) continue;
-                if (memory.containsUserMessage(rendered)) continue;
+                if (memory.containsMessage(rendered)) continue;
                 if (StringUtil.hasValue(item.label())) {
                     monitor.onTool("Loading 📋 " + item.label());
                 }
-                memory.add(UserMessage.from(rendered));
-            } else {
-                log.debug("Turn context already loaded: {}", key);
+                if (key == null) result.add(new TextContent(rendered));
+                else result.add(new TextContent(
+                        key + System.lineSeparator() +
+                        rendered));
             }
         }
+        return result;
     }
 }

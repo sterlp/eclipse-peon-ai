@@ -38,18 +38,14 @@ public class EclipseFileContextItem implements ContextItem {
     public String dedupKey() {
         String key = label();
         if (key == null) return null;
-        return IoUtils.readString(exists());
+        return key + ":" + System.lineSeparator() + "---";
     }
 
     @Override
     public String render() {
-        var key = label();
         var file = exists();
-        if (key == null) return null;
         if (file == null) return null;
-
-        return key + ":" + System.lineSeparator() + "---" + System.lineSeparator() 
-            + IoUtils.readString(file);
+        return IoUtils.readString(file);
     }
 
     @Nullable

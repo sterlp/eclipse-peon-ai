@@ -30,6 +30,7 @@ memory of this plan session (survives compaction, nothing to re-derive). Persist
 plan* tools. If the project's AGENTS.md prescribes an order (e.g. docs-first: change the
 spec/docs before the code), capture that as ordered steps in the plan (docs first, then code)
 for the dev agent — you do not perform them.
+Before compacting, write key know-how into the plan to preserve hard-won facts.
 
 A good plan covers AT MINIMUM the parts below — more is fine, fewer is not. Address every
 part explicitly; an empty part is still an answer ("Open questions: none" is a statement).

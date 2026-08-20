@@ -1,14 +1,13 @@
 package org.sterl.llmpeon.tool.tools;
 
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.sterl.llmpeon.agent.AiAgent;
+import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.SimpleContextItem;
-import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.prompt.PeonPaths;
 import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.shared.ArgsUtil;
@@ -69,36 +68,26 @@ public class JonDelegateTool extends AbstractTool {
     private static final String PLAN_WRITE_LOOP = PeonPaths
             .resolve(PromptLoader.load("plan-write-loop.txt"));
 
+    private final Supplier<List<ContextItem>> agentOrders;
+
     private final NamedAgent plan; // "Da Thinka" — the Peon-Plan slave
     private final NamedAgent dev; // "Da Mek" — the Peon-Dev slave
-    private final Supplier<List<String>> memoryProvider;
+
     /**
      * Sticky plan path for the Dev slave — survives across dispatches and the
      * slave's compaction.
      */
     private String devPlanPath;
 
-    /**
-     * Additional context items (e.g. AGENTS-&lt;agent&gt;.md, the plan file) merged into
-     * every dispatch's turn context, applied per slave agent name. Set by the plugin layer.
-     */
-    private Function<String, List<ContextItem>> additionalContext = name -> List.of();
-
-    public JonDelegateTool(NamedAgent plan, NamedAgent dev,
-            Supplier<List<String>> memoryProvider) {
+    public JonDelegateTool(NamedAgent plan, NamedAgent dev, Supplier<List<ContextItem>> agentOrders) {
         this.plan = plan;
         this.dev = dev;
-        this.memoryProvider = memoryProvider;
-    }
-
-    /** Sets additional context items merged into every dispatch's turn context, applied per slave agent name (e.g. AGENTS-&lt;agent&gt;.md, plan file). */
-    public void setAdditionalContext(Function<String, List<ContextItem>> function) {
-        this.additionalContext = function;
+        this.agentOrders = agentOrders;
     }
 
     @Tool(name = JonDelegateTool.TALK_PLAN, value = "Ask your Peon-Plan team member (Da Thinka) a direct question or discuss an approach — no plan is written. Use planWithPlanAgent when you want the plan itself. Returns the team member's reply.")
     public String talkPlan(@P(name = "prompt") String prompt) {
-        return dispatch(plan, prompt, baseOrders());
+        return dispatch(plan, prompt, agentOrders.get());
     }
     
     @Tool("Wipes all stored memory/chat-history of the Peon-Plan (Da Thinka) agent back to a blank state.")
@@ -116,32 +105,33 @@ public class JonDelegateTool extends AbstractTool {
             + PeonPaths.PLAN_FILE
             + " with the plan tools, sliced into small green increments; it plans continuously and asks you if something is unclear. Returns the team member's reply.")
     public String planWithPlanAgent(@P(name = "prompt") String prompt) {
-        var orders = baseOrders();
-        orders.add(PLAN_WRITE_LOOP); // one-shot standing order (deduped by the
-                                     // slave)
+        var orders = new LinkedList<>(agentOrders.get());
+        orders.add(new SimpleContextItem("Plan instructions", PLAN_WRITE_LOOP));
         return dispatch(plan, "Plan " + prompt, orders);
     }
 
     @Tool(name = JonDelegateTool.ASK_DEV, value = "Ask your Peon-Dev team member (Da Mek) a direct question about the code or its progress — no build is triggered. Use buildWithDev to make it implement the plan. Returns the team member's reply.")
     public String askDev(@P(name = "prompt") String prompt) {
-        return dispatch(dev, prompt, baseOrders());
+        return dispatch(dev, prompt, agentOrders.get());
     }
 
-    @Tool(name = JonDelegateTool.BUILD_WITH_DEV, value = "Have your Peon-Dev team member (Da Mek) implement the released plan, increment by increment. Pass planPath ("
-            + PeonPaths.PLAN_FILE
-            + ") — it stays sticky as a standing order so it survives the team member's compaction. Returns the team member's reply.")
+    @Tool(name = JonDelegateTool.BUILD_WITH_DEV, 
+            value = "Have your Peon-Dev team member (Da Mek) implement the released plan, increment by increment. Pass planPath (" 
+                    + PeonPaths.PLAN_FILE
+                    + ") — it stays sticky as a standing order so it survives the team member's compaction. Returns the team member's reply.")
     public String buildWithDev(@P(name = "prompt") String prompt,
             @P(name = "planPath", required = false) String planPath) {
-        if (StringUtil.hasValue(planPath))
-            devPlanPath = planPath.trim(); // sticky across calls
-        var orders = baseOrders();
+        if (StringUtil.hasValue(planPath)) devPlanPath = planPath.trim(); // sticky across calls
+
+        var orders = new LinkedList<>(this.agentOrders.get());
         // Hand Da Mek the path AND the build discipline (task-by-task, green
-        // gate, compactSession) as its
-        // way of working — never the whole plan; the file is the durable
-        // handover.
+        // gate, compactSession) as its way of working — never the whole plan; the file is the durable handover.
         if (StringUtil.hasValue(devPlanPath)) {
-            orders.add("The released plan to implement: " + devPlanPath);
-            orders.add(DEV_BUILD_LOOP);
+            // the plan itself is injected by the agentOrders
+            orders.add(new SimpleContextItem("Reading dev loop instructions",
+                    "The released plan to implement: " + devPlanPath
+                    + System.lineSeparator()
+                    + DEV_BUILD_LOOP));
         }
         return dispatch(dev, prompt, orders);
     }
@@ -173,25 +163,14 @@ public class JonDelegateTool extends AbstractTool {
         return dev.agent();
     }
 
-    /**
-     * Shared memory + injected context (AGENTS.md, selected project) —
-     * read-only for the slaves.
-     */
-    private ArrayList<String> baseOrders() {
-        return new ArrayList<>(memoryProvider.get());
-    }
-
     private String dispatch(NamedAgent target, String prompt,
-            List<String> orders) {
+            List<ContextItem> orders) {
         ArgsUtil.requireNonBlank(prompt, "prompt");
         AiAgent slave = target.agent();
-        List<ContextItem> items = new ArrayList<>(orders.size());
-        for (String text : orders) items.add(new SimpleContextItem(text));
-        items.addAll(additionalContext.apply(slave.getName()));
-        List<ContextItem> captured = items;
-        slave.setTurnContextSupplier(() -> captured);
+        slave.setTurnContextSupplier(() -> orders);
 
-        onTool(target.uiName() + " start:\n" + prompt);
+        // TODO custom style for the UI as agent message ...
+        onTool(target.uiName() + " start: " + System.lineSeparator() + prompt);
         long startNanos = System.nanoTime();
         // The slave streams through Jon's monitor (this.monitor) — that is what
         // refreshes its 🟢 in the
@@ -213,7 +192,7 @@ public class JonDelegateTool extends AbstractTool {
             return "Failed: " + target.uiName() + e.getMessage();
         }
     }
-    
+
     private String contextUsed(AiAgent agent) {
         return "Context: " + agent.getMemory().getTotalTokenUsed() + " token - " + agent.tokenContextUsedInPercent() + "% used."; 
     }

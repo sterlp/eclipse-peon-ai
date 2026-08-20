@@ -436,9 +436,6 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         aiService.setActiveAgent(AiPoAgent.NAME);
         var delegate = aiService.getActiveAgent().getToolService().getTool(JonDelegateTool.class).orElseThrow();
 
-        var ctx = dev.langchain4j.data.message.SystemMessage.from("Today is 2026-08-06; prefer eclipse* over disk*.");
-        aiService.setStaticContext(List.of(ctx));
-
         assertTrue("Plan slave got the static context", !delegate.getPlanSlave().getStaticContext().isEmpty());
         assertTrue("Dev slave got the static context", !delegate.getDevSlave().getStaticContext().isEmpty());
     }
@@ -492,8 +489,6 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         eclipseWriteFile("docs/index.md", "# Docs Index\n- feature-x");
 
         // WHEN
-        var ctx = dev.langchain4j.data.message.SystemMessage.from("Today is 2026-08-06; prefer eclipse* over disk*.");
-        aiService.setStaticContext(List.of(ctx));
 
         // THEN: Jon's persistent context is the static base item only
         var jon = aiService.getActiveAgent();

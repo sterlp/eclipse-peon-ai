@@ -88,6 +88,7 @@ class TokenUsageAccumulationTest {
         assertThat(monitor.stats.isEmpty()).isTrue();
     }
 
+    @SuppressWarnings("null")
     private StreamingChatModel mockWithHandler(Function<ChatRequest, ChatResponse> fn) {
         var cm = mock(StreamingChatModel.class);
         doAnswer(inv -> {

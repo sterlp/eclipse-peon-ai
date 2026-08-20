@@ -18,6 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.tool.ToolService;
@@ -131,7 +132,7 @@ public class AiDeveloperAgentTest {
     }
     
     @Test
-    void test_context() {
+    void test_context_injection() {
         // GIVEN — turn context is restored after compact, not injected on first call
         var requestRef  = new AtomicReference<ChatRequest>();
         fn.set(req -> {
@@ -140,22 +141,64 @@ public class AiDeveloperAgentTest {
         });
 
         // WHEN — set turn context via turnContextSupplier
-        subject.setTurnContextSupplier(() -> List.of(new SimpleContextItem("We are all doomed!")));
-        subject.call("Foo", null);
+        subject.setTurnContextSupplier(() -> List.of(
+                new SimpleContextItem("We are all doomed!"),
+                new ContextItem() {
+                    @Override
+                    public String dedupKey() { return "foo/path/bar.txt"; }
+                    @Override
+                    public String render() { return "some nice file text"; }
+                },
+                new ContextItem() {
+                    @Override
+                    public String dedupKey() { return "foo/null.txt"; }
+                    @Override
+                    public String render() { return null; }
+                }
+            )
+        );
+        subject.call("Foo 1", null);
 
         // THEN — on first call, turn context is NOT injected (only restored after compact)
         verify(cm, times(1)).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
         // AND — only the explicit user message is in the request
-        var userTexts = requestRef.get().messages().stream()
+        var userTexts = String.join(
+            System.lineSeparator(),
+            requestRef.get().messages().stream()
                 .map(ChatMessageUtil::toString)
-                .filter(m -> m.startsWith("USER:"))
-                .toList();
-        assertThat(userTexts).hasSize(1);
-        assertThat(userTexts.get(0)).contains("Foo");
+                .toList());
+
+        assertThat(userTexts).contains("Foo 1");
+        assertThat(userTexts).doesNotContain("null");
+        // AND
+        assertThat(userTexts).contains("foo/path/bar.txt");
+        assertThat(userTexts).contains("some nice file text");
+        // AND
+        assertThat(userTexts).doesNotContain("foo/null.txt");
+        assertThat(userTexts).doesNotContain("null");
+
         // AND — turn context survives via turnContextSupplier for compact restore
-        assertThat(subject.getRenderedTurnContext()).containsExactly("We are all doomed!");
+        assertThat(userTexts).contains("USER: We are all doomed!");
+        
+        // WHEN
+        subject.call("Foo 2", null);
+        subject.call("Foo 3", null);
+        
+        userTexts = String.join(
+                System.lineSeparator(),
+                requestRef.get().messages().stream()
+                    .filter(m -> m instanceof UserMessage)
+                    .map(ChatMessageUtil::toString)
+                    .toList());
+        // THEN
+        assertThat(userTexts).contains("Foo 2");
+        assertThat(userTexts).contains("Foo 3");
+        assertThat(requestRef.get().messages().stream()
+                .filter(m -> m instanceof UserMessage)
+                .map(ChatMessageUtil::toString)
+                .filter(m -> m.contains("some nice file text"))
+                .count()).isOne();
     }
-    
     
     @Test
     void test_command_as_standing_order() {
@@ -179,7 +222,8 @@ public class AiDeveloperAgentTest {
         var userMsg = ChatMessageUtil.toString(subject.getMemory().get(0));
         assertThat(userMsg).contains("Refactor this class");
         // AND — turn context survives via turnContextSupplier for compact restore
-        assertThat(subject.getRenderedTurnContext()).containsExactly("Review the code and report any issues.");
+        assertThat(ChatMessageUtil.readChatMessage(requestRef.get().messages()))
+            .contains("Review the code and report any issues.");
     }
 
     @Test

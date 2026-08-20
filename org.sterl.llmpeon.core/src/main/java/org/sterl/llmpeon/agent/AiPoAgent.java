@@ -6,11 +6,11 @@ import java.util.List;
 
 import org.sterl.llmpeon.ai.AgentConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
+import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.memory.FileAgentHistoryStore;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.prompt.PeonPaths;
 import org.sterl.llmpeon.prompt.PromptLoader;
-import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.WriteValidator;
@@ -48,6 +48,13 @@ public class AiPoAgent extends AbstractAgent {
                 historyConfigDir == null ? new ThreadSafeMemory()
                         : new ThreadSafeMemory(new FileAgentHistoryStore(historyFile(historyConfigDir, NAME))));
         this.slaves = List.copyOf(slaves);
+    }
+
+    // jon delegates also the static content to the slaves ...
+    @Override
+    public void setStaticContext(List<ContextItem> context) {
+        super.setStaticContext(context);
+        this.slaves.forEach(s -> s.agent().setStaticContext(context));
     }
 
     @Override

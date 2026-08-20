@@ -1,8 +1,17 @@
 package org.sterl.llmpeon;
 
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
+import org.jspecify.annotations.NonNull;
+import org.sterl.llmpeon.shared.ChatMessageUtil;
+
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -43,5 +52,37 @@ public class StreamMock {
     public void reset() {
         callCount.set(0);
         lastRequest = null;
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T extends ChatMessage> Optional<T> getLast(Class<@NonNull T> clazz) {
+        if (lastRequest == null) return Optional.empty();
+        var msgs = lastRequest.messages();
+        for (int i = msgs.size() - 1; i >= 0; i--) {
+            if (clazz.isAssignableFrom(msgs.get(i).getClass())) return Optional.of((T)msgs.get(i));
+        }
+        return Optional.empty();
+    }
+    
+    public List<String> getLastUserMessagesAsString() {
+        return getLast(UserMessage.class).get().contents().stream().map(c -> ((TextContent)c).text()).toList();
+    }
+    
+    public List<String> allAsString() {
+        if (lastRequest == null) return List.of();
+        var result = new LinkedList<String>();
+        for (ChatMessage chatMessage : lastRequest.messages()) {
+            result.add(ChatMessageUtil.toString(chatMessage));
+        }
+        return result;
+    }
+
+    public int count(String value) {
+        if (lastRequest == null) return 0;
+        int result = 0;
+        for (ChatMessage chatMessage : lastRequest.messages()) {
+            if (ChatMessageUtil.toString(chatMessage).contains(value)) result++;
+        }
+        return result;
     }
 }

@@ -41,11 +41,6 @@ public interface AiAgent {
     default void setTurnContextSupplier(Supplier<List<ContextItem>> supplier) {
     }
 
-    /** @return rendered turn context items, or empty list if no supplier set. */
-    default List<String> getRenderedTurnContext() {
-        return List.of();
-    }
-    
     /**
      * If a handover is available show the button
      * 
