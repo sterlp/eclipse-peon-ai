@@ -1,0 +1,6 @@
+Erstelle einen einfachen Hello World Java Plan hier direkt als Chat antwort. E2E Test
+1. lese wenigstens eine datei
+2. erstelle ein plan um eine hello world datei zu erstellen
+3. ausführen
+4. wenn alles klappt löschen und "OK" melden
+5. bei problemen soll plan-problem-e2e.md erstellt werden

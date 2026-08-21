@@ -1,0 +1,7 @@
+Erstelle einen einfachen Hello World Java Plan E2E Test
+1. lese wenigstens eine datei
+2. erstelle ein docs als test
+3. Las ein plan erstellen welches ein hello world in java baut und ausführt
+4. Las den plan bauen
+5. wenn alles klappt lösche die docs und lass alles wieder aufräumen
+6. Bei problemen lass eine klare problem analyse erstellen -- du testest dich selbst -- sprich der code hier bist du -- fehler können direkt soweit möglich geprüft werden

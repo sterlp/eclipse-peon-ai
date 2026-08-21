@@ -95,7 +95,6 @@ public class BuildPoAgentComponent {
         // additionalContext as turn context (ADR-0029).
         var jonDelegateTool = new JonDelegateTool(thinka, mek, () -> {
             var orders = new LinkedList<ContextItem>();
-            orders.addAll(wmt.get());
             orders.add(new EclipseFileContextItem(PlanTool.OVERVIEW_FILE, projectRef));
             orders.add(new AgentsMdContextItem(projectRef));
             return orders;
