@@ -89,7 +89,7 @@ public class LlmConfig {
     @Default
     private final String apiKey = null;
     @Default
-    private final Path configDir = null;
+    private final Path configDir = Path.of(System.getProperty("user.home"), ".peon");
 
     @Default
     private final boolean diskToolsEnabled = false;

@@ -8,6 +8,7 @@ import org.eclipse.core.resources.IProject;
 import org.jspecify.annotations.Nullable;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
+import org.sterl.llmpeon.shared.FileLines;
 
 /**
  * Dynamically loads the first found file into the context.
@@ -38,14 +39,14 @@ public class EclipseFileContextItem implements ContextItem {
     public String dedupKey() {
         String key = label();
         if (key == null) return null;
-        return key + ":" + System.lineSeparator() + "---";
+        return key + " content with line numbers:";
     }
 
     @Override
     public String render() {
         var file = exists();
         if (file == null) return null;
-        return IoUtils.readString(file);
+        return FileLines.format(IoUtils.readString(file), 1);
     }
 
     @Nullable

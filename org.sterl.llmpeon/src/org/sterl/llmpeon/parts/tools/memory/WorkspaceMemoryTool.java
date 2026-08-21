@@ -9,7 +9,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.osgi.service.prefs.BackingStoreException;
-import org.sterl.llmpeon.StandingOrdersBuilder.ContextItemProvider;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.parts.tools.AbstractEclipseTool;
@@ -21,29 +20,19 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 
-public class WorkspaceMemoryTool extends AbstractEclipseTool implements ContextItemProvider {
+public class WorkspaceMemoryTool extends AbstractEclipseTool {
 
     private static final String PREF_KEY = "workspaceGuidelineMemory";
     private static final int MAX_ENTRIES = 200;
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final TypeReference<List<WorkspaceGuideline>> LIST_TYPE = new TypeReference<>() {
-    };
-
-    private static WorkspaceMemoryTool INSTANCE;
+    private static final TypeReference<List<WorkspaceGuideline>> LIST_TYPE = new TypeReference<>() {};
 
     private final IEclipsePreferences prefs = InstanceScope.INSTANCE.getNode(PLUGIN_ID);
 
     private final CopyOnWriteArrayList<WorkspaceGuideline> entries = new CopyOnWriteArrayList<>();
 
-    public static WorkspaceMemoryTool getInstance() {
-        if (INSTANCE == null) {
-            INSTANCE = new WorkspaceMemoryTool();
-        }
-        return INSTANCE;
-    }
-
-    private WorkspaceMemoryTool() {
+    public WorkspaceMemoryTool() {
         load();
     }
 
@@ -150,7 +139,6 @@ public class WorkspaceMemoryTool extends AbstractEclipseTool implements ContextI
         }
     }
 
-    @Override
     public List<ContextItem> get() {
         if (entries.isEmpty()) return List.of();
 

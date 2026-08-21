@@ -35,6 +35,7 @@
                     <useUIHarness>false</useUIHarness>
                     <useUIThread>false</useUIThread>
                     <!-- Only needed when mocking final classes/methods/static:
+                    TODO: should be both later true ...
                     <argLine>-javaagent:${settings.localRepository}/net/bytebuddy/byte-buddy-agent/VERSION/byte-buddy-agent-VERSION.jar</argLine>
                     Replace VERSION with the byte-buddy version pulled in transitively by
                     mockito-core. -->

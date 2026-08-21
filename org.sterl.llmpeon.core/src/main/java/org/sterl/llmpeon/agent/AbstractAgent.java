@@ -240,7 +240,7 @@ public abstract class AbstractAgent implements AiAgent {
         }
 
         // Inject turn-scoped context on every turn (idempotent via contains-check)
-        var userMessages = restoreTurnContext(monitor);
+        var userMessages = renderTurnContext(memory, turnContextSupplier, monitor);
 
         if (StringUtil.hasValue(message)) userMessages.add(TextContent.from(message));
         if (!userMessages.isEmpty()) addMessage(UserMessage.from(userMessages));
@@ -274,7 +274,7 @@ public abstract class AbstractAgent implements AiAgent {
         memory.clear();
         this.systemMessage = null;
         // Restore turn-scoped context
-        var data = restoreTurnContext(monitor);
+        var data = renderTurnContext(memory, turnContextSupplier, monitor);
         data.add(TextContent.from("Session compacted. Resume the task using the preserved context."));
         // Ensure memory starts with a user message (many LLMs require this)
         memory.add(UserMessage.from(data));
@@ -354,7 +354,11 @@ public abstract class AbstractAgent implements AiAgent {
      * Keyed items ({@link ContextItem#dedupKey()}) are deduped by key BEFORE rendering;
      * unkeyed items fall back to rendered-content dedup.
      */
-    private List<Content> restoreTurnContext(AiMonitor monitor) {
+    static List<Content> renderTurnContext(
+            ThreadSafeMemory memory,
+            Supplier<List<ContextItem>> turnContextSupplier, 
+            AiMonitor monitor) {
+
         var result = new LinkedList<Content>();
 
         if (turnContextSupplier == null) return result;
@@ -373,7 +377,8 @@ public abstract class AbstractAgent implements AiAgent {
                 if (key == null) result.add(new TextContent(rendered));
                 else result.add(new TextContent(
                         key + System.lineSeparator() +
-                        rendered));
+                        rendered + System.lineSeparator())
+                    );
             }
         }
         return result;

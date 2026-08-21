@@ -9,8 +9,9 @@ import java.util.function.Consumer;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.runtime.ILog;
+import org.eclipse.core.runtime.Platform;
 import org.sterl.llmpeon.AgentService;
-import org.sterl.llmpeon.StandingOrdersBuilder.ContextItemProvider;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.agent.AiPoAgent;
@@ -21,8 +22,10 @@ import org.sterl.llmpeon.ai.model.AiModel;
 import org.sterl.llmpeon.command.CommandService;
 import org.sterl.llmpeon.context.AgentsMdContextItem;
 import org.sterl.llmpeon.context.ContextItem;
+import org.sterl.llmpeon.context.EclipseFileContextItem;
 import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.context.StaticContextItem;
+import org.sterl.llmpeon.context.UserContext;
 import org.sterl.llmpeon.parts.ai.component.BuildPoAgentComponent;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.McpConnectionService;
@@ -41,7 +44,7 @@ import org.sterl.llmpeon.parts.tools.PlanTool;
 import org.sterl.llmpeon.parts.tools.memory.WorkspaceMemoryTool;
 import org.sterl.llmpeon.scaffold.AiScaffoldAgent;
 import org.sterl.llmpeon.scaffold.ReloadConfigTool;
-import org.sterl.llmpeon.shared.ChatMessageUtil;
+import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.tool.ToolService;
@@ -52,9 +55,8 @@ import org.sterl.llmpeon.tool.tools.SearchAgentTool;
 import org.sterl.llmpeon.tool.tools.SkillTool;
 
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.response.ChatResponse;
 
 /**
  * Bundles all AI services into a single eagerly-initialized object.
@@ -64,7 +66,10 @@ import dev.langchain4j.data.message.UserMessage;
  * has a chance to call any {@code @Inject} methods.</p>
  *
  */
-public class PeonAiService implements ContextItemProvider {
+public class PeonAiService {
+
+    private static final ILog LOG = Platform.getLog(PeonAiService.class);
+    private final UserContext userContext = new UserContext();
 
     private final AgentService agentService;
     private final ConfiguredChatModel configuredModel;
@@ -89,10 +94,8 @@ public class PeonAiService implements ContextItemProvider {
     
     private final ReloadConfigTool reloadConfigTool;
     
-    private final WorkspaceMemoryTool workspaceMemoryTool = WorkspaceMemoryTool.getInstance();
+    private final WorkspaceMemoryTool workspaceMemoryTool = new WorkspaceMemoryTool();
 
-    private  volatile IProject currentProject = null;
-    
     private IFile plan;
 
     /** Transient standing-order line set on handoff, consumed once by {@link #get()}. */
@@ -111,9 +114,17 @@ public class PeonAiService implements ContextItemProvider {
                          Consumer<Boolean> mcpStateChange,
                          Runnable onAgentReload) {
 
-        var config = LlmPreferenceInitializer.buildWithDefaults();
-        configuredModel = config.build();
-
+        this(sendTrigger, openInEditorCallback, mcpStateChange, onAgentReload, LlmPreferenceInitializer.buildWithDefaults().build());
+    }
+    
+    public PeonAiService(Runnable sendTrigger,
+            Consumer<IFile> openInEditorCallback,
+            Consumer<Boolean> mcpStateChange,
+            Runnable onAgentReload,
+            ConfiguredChatModel configuredModel) {
+        
+        var config              = configuredModel.getConfig();
+        this.configuredModel    = configuredModel;
         var rootPath            = EclipseUtil.workspacePath();
         sharedToolService       = new ToolService();
         skillService            = new SkillService();
@@ -174,22 +185,12 @@ public class PeonAiService implements ContextItemProvider {
     private void initStaticContext() {
         var env = new StaticContextItem();
         
-        
         for (var agent : this.getAgents()) {
             var context = new ArrayList<ContextItem>();
             context.add(env);
-
-            // Jon's own docs ride in his turn context (history, ADR-0029) — missing files render null
-            // and are skipped silently.
-            if (agent instanceof AiPoAgent) {
-                
-            }
-            
-            if (!(agent instanceof AiScaffoldAgent)) {
-                context.addAll(AgentsMdContextItem.itemsFor(getActiveAgent().getName(), this::getProject));
-            }
-
+            context.addAll(this.workspaceMemoryTool.get());
             agent.setStaticContext(context);
+            agent.setTurnContextSupplier(() -> get());
         }
     }
 
@@ -248,10 +249,10 @@ public class PeonAiService implements ContextItemProvider {
     /**
      * Updates the active project across all project-aware services.
      * Safe to call from any thread — each downstream setter manages its own state.
+     * @return <code>true</code> if changed
      */
-    public void setProject(IProject project) {
+    public boolean setProject(IProject project) {
         this.plan = null; // stale reference — restore on next agent activation if needed
-        currentProject = project;
 
         var projectPath = JdtUtil.pathOf(project);
 
@@ -264,6 +265,7 @@ public class PeonAiService implements ContextItemProvider {
             diskFileReadTool.setWorkingDir(projectPath);
             diskGrepTool.setWorkingDir(projectPath);
         }
+        return this.userContext.setCurrentProject(project);
     }
 
     // -------------------------------------------------------------------------
@@ -282,25 +284,25 @@ public class PeonAiService implements ContextItemProvider {
         if (toAgent.isEmpty()) return false;
 
         String planText;
+        String planPath;
         if (this.plan != null) { // this.plan — not disk, avoids stale project reference
             planText = readPlan();
+            planPath = JdtUtil.pathOf(this.plan);
+
+            _handoffLine = new SimpleContextItem("Handover reference " + getActiveAgent().getName(), 
+                    "Handover from " + getActiveAgent().getName() + " " + planPath);
         } else {
             var chatPlan = getActiveAgent().getMemory().getLastOf(AiMessage.class);
             if (chatPlan == null) planText = null;
             else planText = chatPlan.text();
+            
+            planPath = "Handover from " + getActiveAgent().getName() + ":";
         }
 
         if (planText != null) {
-            if (this.plan != null) {
-                _handoffLine = new SimpleContextItem("Handover " + getActiveAgent().getName(), 
-                        "Handover from " + getActiveAgent().getName() + " " + JdtUtil.pathOf(this.plan));
-            }
-
+            // and directly add the plan too ...
             toAgent.get().clear();
-            toAgent.get().getMemory().add(UserMessage.from(
-                    "Handover from " + getActiveAgent().getName() + System.lineSeparator()
-                    + planText));
-
+            toAgent.get().getMemory().add(UserMessage.from(planPath + System.lineSeparator() + planText));
             this.agentService.setActiveAgent(toAgent.get());
         }
         
@@ -324,7 +326,7 @@ public class PeonAiService implements ContextItemProvider {
     // -------------------------------------------------------------------------
 
     public IProject getProject() {
-        return currentProject;
+        return userContext.getCurrentProject();
     }
 
     public LlmConfig getConfig() {
@@ -485,31 +487,26 @@ public class PeonAiService implements ContextItemProvider {
         getActiveAgent().clear();
     }
     
+    public void clearAll() {
+        this.plan = null;
+        this.agentService.getAgents().forEach(AiAgent::clear);
+    }
+    
     public List<AiAgent> getAgents() {
         return this.agentService.getAgents();
     }
 
     private String readPlan() {
-        if (this.plan == null) return "";
+        if (this.plan == null || !this.plan.exists()) return "";
         return "Plan: " + JdtUtil.pathOf(plan) + System.lineSeparator() + "---" + System.lineSeparator() + System.lineSeparator()
             + IoUtils.readString(plan);
     }
 
-    /**
-     * The text of a static prompt message. {@code ChatMessageUtil.toString()} only renders
-     * User/Ai/Tool messages — a SystemMessage's text would be silently dropped, so extract it
-     * directly (SystemMessage is the only type AIChatView passes).
-     */
-    private static String staticText(ChatMessage msg) {
-        if (msg instanceof SystemMessage sm) return sm.text();
-        return ChatMessageUtil.toString(msg);
-    }
-
-    @Override
-    public List<ContextItem> get() {
+    private List<ContextItem> get() {
         var result = new LinkedList<ContextItem>();
 
         var agent = getActiveAgent();
+
         if ((agent instanceof AiScaffoldAgent)) {
             var configDir = getConfig().getConfigDir();
             if (configDir == null) return List.of(new SimpleContextItem("No config dir set -- inform the user to check the config"));
@@ -527,8 +524,8 @@ public class PeonAiService implements ContextItemProvider {
                 }
                 result.add(new SimpleContextItem("Scaffold env. info", orders.toString()));
                 orders.setLength(0);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
+            } catch (IllegalArgumentException e) {
+                LOG.info("Directories missing " + e.getMessage());
             }
 
             // Available tools from sharedToolService
@@ -538,20 +535,54 @@ public class PeonAiService implements ContextItemProvider {
             }
             
             result.add(new SimpleContextItem("Scaffold tool names", orders.toString()));
-            return result;
         } else {
             if (_handoffLine == null) {
-                var plan = getProject().getFile(PlanTool.OVERVIEW_FILE);
+                final var plan = getProject().getFile(PlanTool.OVERVIEW_FILE);
                 if (plan != null && plan.exists()) {
-                    result.add(new SimpleContextItem("Plan reference", "Existing plan found: " + JdtUtil.pathOf(plan)));
+                    result.add(new ContextItem() {
+                        @Override
+                        public String label() {
+                            return "Plan reference " + dedupKey();
+                        }
+                        @Override
+                        public String dedupKey() {
+                            return JdtUtil.pathOf(plan);
+                        }
+                        @Override
+                        public String render() {
+                            if (!plan.exists()) return null;
+                            return "Existing plan found: " + JdtUtil.pathOf(plan);
+                        };
+                    });
                 }
-                result.addAll(AgentsMdContextItem.itemsFor(agent.getName(), this::getProject));
             } else {
                 // Consume handoff line once (set by onHandoff, survives compaction)
                 result.add(_handoffLine);
                 _handoffLine = null;
             }
-            return result;
+            result.addAll(AgentsMdContextItem.itemsFor(agent.getName(), this::getProject));
         }
+        
+        if ((agent instanceof AiPoAgent)) {
+            result.add(new EclipseFileContextItem("docs/memory.md", this::getProject));
+            result.add(new EclipseFileContextItem("docs/index.md", this::getProject));
+        }
+
+        result.addAll(userContext.get());
+
+        return result;
+    }
+    
+    public UserContext getUserContext() {
+        return userContext;
+    }
+
+    /**
+     * Calls the active agent of the current context set
+     */
+    public ChatResponse call(String messageToSend, AiMonitor monitor) {
+        var agent = getActiveAgent();
+        agent.setTurnContextSupplier(() -> get());
+        return agent.call(messageToSend, monitor);
     }
 }

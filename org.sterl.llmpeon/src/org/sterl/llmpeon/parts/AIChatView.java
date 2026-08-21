@@ -29,23 +29,21 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IWorkingSet;
-import org.sterl.llmpeon.StandingOrdersBuilder;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.command.SlashCommandResolver;
 import org.sterl.llmpeon.command.SlashCommandResolver.SlashResult;
+import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.exception.ExceptionUtil;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.McpPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.VoicePreferenceInitializer;
 import org.sterl.llmpeon.parts.log.EclipseSlf4jLogger;
-import org.sterl.llmpeon.parts.model.UserContext;
 import org.sterl.llmpeon.parts.monitor.EclipseAiMonitor;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.SimpleDiff;
 import org.sterl.llmpeon.parts.tools.AskUserTool;
-import org.sterl.llmpeon.parts.tools.memory.WorkspaceMemoryTool;
 import org.sterl.llmpeon.parts.widget.ActionsBarWidget;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget;
 import org.sterl.llmpeon.parts.widget.HeaderBarWidget;
@@ -102,16 +100,9 @@ public class AIChatView implements EclipseAiMonitor {
     private UserInputWidget chatInput;
     private UserQuestionResponseWidget questionWidget;
 
-    private final UserContext userContext = new UserContext();
-
     private final IPreferenceChangeListener prefListener = event -> {
         EclipseUtil.runInUiThread(parent, this::applyConfig);
     };
-
-    private final StandingOrdersBuilder standingOrders = new StandingOrdersBuilder()
-            .add(WorkspaceMemoryTool.getInstance())
-            .add(userContext)
-            .add(aiService);
 
     @PostConstruct
     public void createPartControl(Composite parent) {
@@ -234,10 +225,8 @@ public class AIChatView implements EclipseAiMonitor {
     @org.eclipse.e4.core.di.annotations.Optional
     public void onTextSelection(@Named(IServiceConstants.ACTIVE_SELECTION) ITextSelection ts) {
         if (parent == null || parent.isDisposed()) return;
-        EclipseUtil.runInUiThread(parent, () -> {
-            userContext.setTextSelection(ts);
-            refreshStatusLine();
-        });
+        aiService.getUserContext().setTextSelection(ts);
+        EclipseUtil.runInUiThread(parent, this::refreshStatusLine);
     }
 
     @Inject
@@ -246,24 +235,23 @@ public class AIChatView implements EclipseAiMonitor {
         if (o instanceof ITextSelection) return;
         if (parent == null || parent.isDisposed()) return;
 
-        userContext.setClassFile(null);
+        aiService.getUserContext().setClassFile(null);
         var selectionElement = EclipseUtil.selectionElement(o).orElse(null);
-        if (selectionElement instanceof IClassFile classFile) userContext.setClassFile(classFile);
+        if (selectionElement instanceof IClassFile classFile) aiService.getUserContext().setClassFile(classFile);
         var selection = EclipseUtil.resolveResource(selectionElement).orElse(null);
         if (selection == null && selectionElement != null && !(selectionElement instanceof IWorkingSet)
                 && !selectionElement.getClass().getName().equals("org.eclipse.ui.internal.views.log.LogEntry")
                 && aiService.getConfig().isDebugMode()) {
             LOG.info("Unknown resource type selected " + selectionElement.getClass());
         }
-        userContext.setTextSelection(null);
-        userContext.setSelectedResource(selection);
+        aiService.getUserContext().setTextSelection(null);
+        aiService.getUserContext().setSelectedResource(selection);
         updateSelectedProject(EclipseUtil.resolveProject(selection));
     }
 
     private void updateSelectedProject(IProject project) {
-        if (project != null && !userContext.isProjectPinned()) {
-            aiService.setProject(project);
-            var changed = userContext.setCurrentProject(project);
+        if (project != null && !aiService.getUserContext().isProjectPinned()) {
+            var changed = aiService.setProject(project);
             if (changed) refreshStatusLine();
         }
     }
@@ -350,8 +338,8 @@ public class AIChatView implements EclipseAiMonitor {
 
         statusLine.update(
             aiService.getSkillService().getSkills().size(),
-            userContext.getCurrentProject(),
-            userContext.getSelectedFile()
+            aiService.getProject(),
+            aiService.getUserContext().getSelectedFile()
         );
 
         var ai = aiService.getActiveAgent();
@@ -612,7 +600,7 @@ public class AIChatView implements EclipseAiMonitor {
             return;
         }
 
-        submitAiJob(active, messageToSend);
+        submitAiJob(messageToSend);
     }
 
     private SendDecision resolveOutgoingMessage(String text, AiAgent active) {
@@ -622,9 +610,11 @@ public class AIChatView implements EclipseAiMonitor {
         String trailing;
         if (result.isPresent()) {
             SlashResult r = result.get();
-            standingOrders.addOneTimeOrder(r.body());
-            chatHistory.appendMessage(new SimpleMessage(Type.TOOL,
-                    r.isSkill() ? "Using 🧩: " + r.name() : "Using 🪄: " + r.name()));
+            var label = r.isSkill() ? "Using 🧩: " + r.name() : "Using 🪄: " + r.name();
+            this.aiService.getUserContext().addOneTimeOrder(
+                    new SimpleContextItem(label, r.body())
+            );
+            chatHistory.appendMessage(new SimpleMessage(Type.TOOL, label));
             trailing = StringUtil.hasValue(r.trailingText()) ? r.trailingText() : null;
             if (trailing != null) {
                 chatHistory.appendMessage(new SimpleMessage(Type.USER, trailing));
@@ -651,7 +641,7 @@ public class AIChatView implements EclipseAiMonitor {
         return new SendDecision.Submit(trailing);
     }
 
-    private void submitAiJob(AiAgent active, String messageToSend) {
+    private void submitAiJob(String messageToSend) {
         lockWhileWorking(true);
         Job.create("Peon AI request", monitor -> {
             monitor.beginTask("Arbeit, Arbeit!", 100);
@@ -659,8 +649,7 @@ public class AIChatView implements EclipseAiMonitor {
             Exception ex = null;
             ChatResponse cr = null;
             try {
-                active.setTurnContextSupplier(this.standingOrders::buildItems);
-                cr = active.call(messageToSend, this);
+                cr = aiService.call(messageToSend, this);
             } catch (Exception e) {
                 ex = handleChatException(e);
             } finally {
@@ -703,13 +692,10 @@ public class AIChatView implements EclipseAiMonitor {
     }
 
     private void onPinChange(boolean pinned) {
-        this.userContext.setProjectPinned(pinned);
-        if (!pinned && userContext.getSelectedResource() != null) {
-            var project = EclipseUtil.resolveProject(userContext.getSelectedResource());
-            if (project != null) {
-                userContext.setCurrentProject(project);
-                aiService.setProject(project);
-            }
+        aiService.getUserContext().setProjectPinned(pinned);
+        if (!pinned && aiService.getUserContext().getSelectedResource() != null) {
+            var project = EclipseUtil.resolveProject(aiService.getUserContext().getSelectedResource());
+            if (project != null)  aiService.setProject(project);
         }
         statusLine.setPinned(pinned);
         refreshStatusLine();

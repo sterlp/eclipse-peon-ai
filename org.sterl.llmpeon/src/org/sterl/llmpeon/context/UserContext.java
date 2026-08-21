@@ -1,7 +1,9 @@
-package org.sterl.llmpeon.parts.model;
+package org.sterl.llmpeon.context;
 
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
@@ -10,15 +12,14 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.IOrdinaryClassFile;
 import org.eclipse.jface.text.ITextSelection;
-import org.sterl.llmpeon.StandingOrdersBuilder.ContextItemProvider;
-import org.sterl.llmpeon.context.ContextItem;
-import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.FileLines;
 import org.sterl.llmpeon.shared.StringUtil;
 
-public class UserContext implements ContextItemProvider {
+public class UserContext {
+    public static final String PROJECT_TAG = "User selected project: ";
+
     private volatile IProject currentProject;
     private volatile boolean projectPinned = false;
 
@@ -26,18 +27,25 @@ public class UserContext implements ContextItemProvider {
     private volatile IClassFile clazz;
     private volatile ITextSelection textSelection;
 
-    @Override
+    private final Set<ContextItem> addOneTimeOrders = new LinkedHashSet<>();
+    
+    public void addOneTimeOrder(ContextItem item) {
+        this.addOneTimeOrders.add(item);
+    }
+
     public List<ContextItem> get() {
         if (currentProject == null && selectedResource == null) return List.of();
 
         var result = new LinkedList<ContextItem>();
         if (currentProject != null) {
             result.add(new SimpleContextItem("Project info " + currentProject.getName(),
-                    "Select project:" + System.lineSeparator() + EclipseUtil.projectInfo(currentProject)
+                    PROJECT_TAG + System.lineSeparator() + EclipseUtil.projectInfo(currentProject)
                 )
             );
         }
         addUserSelection(result);
+        result.addAll(addOneTimeOrders);
+        addOneTimeOrders.clear();
         return result;
     }
 

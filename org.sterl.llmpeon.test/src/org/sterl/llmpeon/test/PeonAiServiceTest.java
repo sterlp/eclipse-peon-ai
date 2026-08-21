@@ -6,6 +6,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
 
 import java.io.IOException;
@@ -13,39 +14,48 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
+import org.junit.Before;
 import org.junit.Test;
-import org.sterl.llmpeon.StandingOrdersBuilder;
+import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.agent.AiPoAgent;
 import org.sterl.llmpeon.ai.AiProvider;
+import org.sterl.llmpeon.ai.ConfiguredChatModel;
+import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.context.UserContext;
 import org.sterl.llmpeon.parts.PeonAiService;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
 import org.sterl.llmpeon.parts.tools.PlanTool;
 import org.sterl.llmpeon.scaffold.AiScaffoldAgent;
 import org.sterl.llmpeon.tool.tools.CompactSessionTool;
-import org.sterl.llmpeon.tool.tools.JonDelegateTool;
 import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 import org.sterl.llmpeon.tool.tools.DiskGrepTool;
+import org.sterl.llmpeon.tool.tools.JonDelegateTool;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 
 public class PeonAiServiceTest extends AbstractIntegrationTest {
 
-    PeonAiService aiService = new PeonAiService(null, null, null, null);
+    private PeonAiService aiService;
+    private final StreamMock streamMock = new StreamMock();
 
-    // Mirrors AIChatView's standing orders: the service (handoff, Jon's docs, plan) + AGENTS.md +
-    // the selected project.
-    private final StandingOrdersBuilder standingOrders = new StandingOrdersBuilder()
-            .add(aiService)
-            .add(() -> {
-                var p = aiService.getProject();
-                if (p == null) return List.of();
-                return List.of(new org.sterl.llmpeon.context.SimpleContextItem("Selected project:" + System.lineSeparator()
-                        + org.sterl.llmpeon.parts.shared.EclipseUtil.projectInfo(p)));
-            });
+    @Before
+    public void beforeEach() {
+        var ccm = new ConfiguredChatModel(LlmConfig.builder()
+                .model("test")
+                .url("http://localhost:0")
+                .configDir(Path.of(System.getProperty("java.io.tmpdir"), ".peon-test"))
+                .build()
+        );
+        aiService = new PeonAiService(() -> {}, null, null, null, ccm);
+        aiService.setProject(project);
+        aiService.clearAll();
+        ccm.setChatModel(streamMock.buildOkMock());
+        aiService.setProject(project);
+    }
     
     @Test
     public void test_compact_tool() {
@@ -79,7 +89,11 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         
         // THEN
         assertEquals(AiDevAgent.NAME, aiService.getActiveAgent().getName());
-        assertHasUserMessageWith(aiService.getActiveAgent().getMemory().getCopy(), "Very good plan");
+        var messages = aiService.getActiveAgent().getMemory().getCopy();
+        assertHasUserMessageWith(messages, "Very good plan");
+        // AND no plan ref
+        assertHasNoUserMessageWith(messages, PlanTool.OVERVIEW_FILE);
+        
     }
 
     @Test
@@ -151,44 +165,43 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         eclipseWriteFile("AGENTS.md", "# Test Specifics");
 
         // WHEN
-        aiService.setProject(project);
-        var agent = aiService.getActiveAgent();
-        agent.setTurnContextSupplier(() -> standingOrders.buildItems());
-        agent.call("Ping", null);
-
-        // THEN — render ContextItems for assertion (standing orders builder works)
-        var rendered = standingOrders.buildItems().stream().map(item -> item.render()).toList();
-        assertHasMessageWith(rendered, "# Test Specifics");
+        aiService.call("Ping", null);
 
         // AND — turn context is restored after compact (not injected on first call)
-        agent.compressContext(null);
-        var memory = agent.getMemory().getCopy();
+        aiService.getActiveAgent().compressContext(null);
+        var memory = aiService.getActiveAgent().getMemory().getCopy();
         assertHasUserMessageWith(memory, "# Test Specifics");
     }
 
     @Test
-    public void testHandoffStandingOrder() {
+    public void testHandoffStandingOrderWithPlan() {
         // GIVEN: plan agent with a saved plan
-        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
-        aiService.setProject(project);
+        //assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        var plan = """
+                # Test Plan
+                asdasdsad
+                asdasdasd
+                asdasddas
+                """;
         aiService.setActiveAgent(AiPlanAgent.NAME);
-        aiService.getToolService().getTool(PlanTool.class).get().planSave("# Test Plan");
+        aiService.getToolService().getTool(PlanTool.class).get().planSave(plan);
 
         // WHEN: handoff occurs
         boolean handedOff = aiService.onHandoff();
+        aiService.call(null, null);
 
         // THEN: handoff succeeded and agent switched
         assertTrue("handoff should succeed with a plan", handedOff);
         assertEquals(AiDevAgent.NAME, aiService.getActiveAgent().getName());
 
         // AND: first get() returns the handoff standing order (rendered)
-        var orders = aiService.get().stream().map(item -> item.render()).filter(i -> i != null).toList();
-        assertEquals(2, orders.size());
-        assertContains(orders.get(0), "Handover from ");
+        streamMock.assertCount("Handover from " + AiPlanAgent.NAME, 1);
 
         // AND: second get() contains still the reference to the plan
-        var orders2 = aiService.get().stream().map(item -> item.render()).filter(i -> i != null).toList();
-        assertContains(orders2.getFirst(), "peon-plan/overview.md");
+        aiService.call("Rückfrage", null);
+        streamMock.assertCount(plan, 1);
+        streamMock.assertCount("Handover from", 1);
+        streamMock.assertCount("peon-plan/overview.md", 1);
     }
     
     @Test
@@ -205,31 +218,6 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         // THEN
         assertEquals(4000, aiService.getConfig().getAutoCompactAfter());
     }
-
-    @Test
-    public void test_plan_handling() {
-        // GIVEN
-        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
-        aiService.setProject(project);
-        aiService.getAgent(AiDevAgent.NAME).get().getMemory().add(UserMessage.from("FOO BAR"));
-        aiService.setActiveAgent(AiPlanAgent.NAME);
-        aiService.getToolService().getTool(PlanTool.class).get().planSave("Das ist ein toller plan!");
-        
-        // WHEN
-        boolean handOff = aiService.onHandoff();
-        
-        // THEN
-        assertTrue("We have a plan - handoff should work.", handOff);
-        // AND
-        assertEquals(AiDevAgent.NAME, aiService.getActiveAgent().getName());
-        // AND
-        assertContains(aiService.getActiveAgent().getMemory().getLastOf(UserMessage.class).singleText(),
-                "Das ist ein toller plan!");
-        assertContains(aiService.getActiveAgent().getMemory().getLastOf(UserMessage.class).singleText(),
-                "Handover");
-        assertContains(aiService.getActiveAgent().getMemory().getLastOf(UserMessage.class).singleText(),
-                AiPlanAgent.NAME);
-    }
     
     @Test
     public void test_AiScaffoldAgent_tools() {
@@ -243,15 +231,11 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
 
         // WHEN — set turn context supplier and compact to restore context
         var agent = aiService.getActiveAgent();
-        agent.setTurnContextSupplier(() -> standingOrders.buildItems());
         mockLlmServer.queueResponse(AiMessage.aiMessage("compressed"));
         agent.getMemory().add(UserMessage.from("pre-compact"));
         agent.compressContext(null);
 
-        // THEN — standing orders builder produces items
-        assertTrue(standingOrders.buildItems().size() > 1);
-
-        // AND — turn context restored after compact contains tool descriptions
+        // THEN turn context restored after compact contains tool descriptions
         var memory = agent.getMemory().getCopy();
         assertHasUserMessageWith(memory, "- memoryAdd:");
     }
@@ -509,11 +493,8 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         aiService.getActiveAgent().getMemory().clear();
 
         // GIVEN: AGENTS.md exists (write before setProject so agentsMdService.load picks it up)
-        eclipseWriteFile("AGENTS.md", "# Test Specifics");
-        aiService.setProject(project);
-
-        // AND the turn context supplier is the standing orders builder (like AIChatView sets it)
-        aiService.getActiveAgent().setTurnContextSupplier(() -> standingOrders.buildItems());
+        var content = "# Test Specifics";
+        eclipseWriteFile("AGENTS.md", content);
 
         // AND mock server configured
         aiService.updateConfig(aiService.getConfig().toBuilder()
@@ -526,8 +507,8 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
 
         // THEN: turn context restored — project info AND AGENTS.md
         var memory = aiService.getActiveAgent().getMemory().getCopy();
-        assertHasUserMessageWith(memory, "Selected project:");
-        assertHasUserMessageWith(memory, "# Test Specifics");
+        assertHasUserMessageWith(memory, UserContext.PROJECT_TAG);
+        assertHasUserMessageWith(memory, content);
     }
 
     /** S2 (ADR-0029): Jon's docs/memory.md + docs/index.md ride in his turn context (history). */
@@ -541,9 +522,6 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         eclipseWriteFile("docs/memory.md", "# Memory\n- project context");
         eclipseWriteFile("docs/index.md", "# Docs Index\n- feature-x");
         aiService.setProject(project);
-
-        // AND the turn context supplier is the standing orders builder (like AIChatView sets it)
-        aiService.getActiveAgent().setTurnContextSupplier(() -> standingOrders.buildItems());
 
         aiService.updateConfig(aiService.getConfig().toBuilder()
                 .providerType(AiProvider.OPEN_AI)
@@ -608,9 +586,6 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         aiService.setActiveAgent(AiPoAgent.NAME);
         aiService.getActiveAgent().getMemory().clear();
 
-        // AND the turn context supplier is the standing orders builder (like AIChatView sets it)
-        aiService.getActiveAgent().setTurnContextSupplier(() -> standingOrders.buildItems());
-
         // Memory füllen (simuliert Konversation vor Compact)
         aiService.getActiveAgent().getMemory().add(UserMessage.from("Talk 1"));
         aiService.getActiveAgent().getMemory().add(AiMessage.from("Reply 1"));
@@ -625,10 +600,10 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
 
         // THEN: Turn-Context (Project + AGENTS.md + Jons Docs) überlebt als UserMessage in Memory
         var memory = aiService.getActiveAgent().getMemory().getCopy();
-        assertHasUserMessageWith(memory, "Selected project:");
         assertHasUserMessageWith(memory, "# Test Specifics");
         assertHasUserMessageWith(memory, "# Memory");
         assertHasUserMessageWith(memory, "# Docs Index");
+        assertHasUserMessageWith(memory, "User selected project:");
 
         // AND: Summary ist in Memory (als AiMessage)
         assertTrue("AI summary should be in memory", memory.stream()
@@ -730,9 +705,6 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         aiService.getActiveAgent().getMemory().add(UserMessage.from("pre-compact talk"));
         aiService.getActiveAgent().getMemory().add(AiMessage.from("pre-compact reply"));
 
-        // AND the turn context supplier is the standing orders builder (like AIChatView sets it)
-        aiService.getActiveAgent().setTurnContextSupplier(() -> standingOrders.buildItems());
-
         aiService.updateConfig(aiService.getConfig().toBuilder()
                 .providerType(AiProvider.OPEN_AI)
                 .url(mockLlmServer.getUrl()).build());
@@ -746,7 +718,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
 
         // THEN: Memory enthält Project-Info + AGENTS.md + Summary (ADR-0029)
         var memory = aiService.getActiveAgent().getMemory().getCopy();
-        assertHasUserMessageWith(memory, "Selected project:");
+        assertHasUserMessageWith(memory, UserContext.PROJECT_TAG);
         assertHasUserMessageWith(memory, "# Delegation Test");
         assertTrue("AI summary should be in memory", memory.stream()
                 .anyMatch(m -> m instanceof AiMessage ai && ai.text().contains("WHAT: Delegated summary")));

@@ -1,6 +1,5 @@
 package org.sterl.llmpeon.parts.ai.component;
 
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Predicate;
@@ -108,10 +107,6 @@ public class BuildPoAgentComponent {
         poToolService.addTool(new CompactSessionTool());
         var poAgent = new AiPoAgent(configuredModel, poToolService, config.getConfigDir(), List.of(thinka, mek));
 
-        poAgent.setTurnContextSupplier(() -> Arrays.asList(
-                new EclipseFileContextItem("docs/memory.md", projectRef),
-                new EclipseFileContextItem("docs/index.md", projectRef)));
-        
         return poAgent;
     }
 }

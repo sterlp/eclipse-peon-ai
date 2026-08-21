@@ -58,6 +58,8 @@ public abstract class AbstractIntegrationTest extends AbstractUnitTest {
         try {
             importProject(new File("./").getCanonicalFile());
         } catch (CoreException e) {
+            System.err.println("importProjectIntoWorkspace: " + e.getMessage());
+            // e.printStackTrace(); -> TODO create minimal test project for testing and importing!!!
             assumeTrue("Cannot import project (likely Maven/Tycho workspace overlap): " + e.getMessage(), false);
         }
     }
@@ -87,11 +89,11 @@ public abstract class AbstractIntegrationTest extends AbstractUnitTest {
 
     protected static boolean isWorkspaceAvailable() {
         try {
-            ResourcesPlugin.getWorkspace();
-            for (IProject p : ResourcesPlugin.getWorkspace().getRoot().getProjects())
-                p.open(new NullProgressMonitor());
+            var w = ResourcesPlugin.getWorkspace();
+            for (IProject p : w.getRoot().getProjects()) p.open(new NullProgressMonitor());
             return true;
         } catch (IllegalStateException | CoreException e) {
+            System.err.println(e.getMessage());
             return false;
         }
     }

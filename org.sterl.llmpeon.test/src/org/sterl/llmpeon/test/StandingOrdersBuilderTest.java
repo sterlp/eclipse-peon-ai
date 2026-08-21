@@ -3,8 +3,7 @@ package org.sterl.llmpeon.test;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import java.util.Collection;
-import java.util.stream.Collectors;
+import java.nio.file.Path;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.CoreException;
@@ -12,35 +11,35 @@ import org.eclipse.jdt.internal.core.util.SimpleDocument;
 import org.eclipse.jface.text.TextSelection;
 import org.junit.Before;
 import org.junit.Test;
-import org.sterl.llmpeon.StandingOrdersBuilder;
-import org.sterl.llmpeon.context.ContextItem;
+import org.sterl.llmpeon.StreamMock;
+import org.sterl.llmpeon.agent.AiPlanAgent;
+import org.sterl.llmpeon.ai.ConfiguredChatModel;
+import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.parts.PeonAiService;
-import org.sterl.llmpeon.parts.model.UserContext;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.scaffold.AiScaffoldAgent;
 
 public class StandingOrdersBuilderTest extends AbstractIntegrationTest {
-    PeonAiService aiService ;
-    UserContext userContext;
-    StandingOrdersBuilder standingOrders;
-
-    private Collection<String> render(Collection<ContextItem> items) {
-        return items.stream().map(ContextItem::render)
-                .filter(s -> s != null)
-                .collect(Collectors.toList());
-    }
+    PeonAiService aiService;
     
+    private StreamMock streamMock = new StreamMock();
+
     @Before
     public void beforeEach() {
-        aiService = new PeonAiService(null, null, null, null);
-        userContext = new UserContext();
-        standingOrders = new StandingOrdersBuilder()
-                .add(aiService)
-                .add(userContext);
-        
+        var ccm = new ConfiguredChatModel(LlmConfig.builder()
+                .model("test")
+                .url("http://localhost:0")
+                .configDir(Path.of(System.getProperty("java.io.tmpdir"), ".peon-test"))
+                .build()
+        );
+        aiService = new PeonAiService(() -> {}, null, null, null, ccm);
         aiService.setProject(project);
-        userContext.setCurrentProject(project);
+        aiService.clearAll();
+        ccm.setChatModel(streamMock.buildOkMock());
+
+        aiService.setProject(project);
     }
 
     @Test
@@ -49,13 +48,13 @@ public class StandingOrdersBuilderTest extends AbstractIntegrationTest {
         eclipseWriteFile("AGENTS.md", "(Global Rules)");
         
         // WHEN
-        var messages = render(standingOrders.buildItems());
+        aiService.call("Hallo Paul", null);
 
         // THAN agents md
-        assertHasMessageWith(messages, "/AGENTS.md");
-        assertHasMessageWith(messages, "(Global Rules)");
+        assertHasMessageWith(streamMock.getLastUserMessagesAsString(), "/AGENTS.md");
+        assertHasMessageWith(streamMock.getLastUserMessagesAsString(), "(Global Rules)");
         // AND no nulls ... 
-        assertHasNoMessageWith(messages, " null");
+        assertHasNoMessageWith(streamMock.getLastUserMessagesAsString(), " null");
     }
     
     @Test
@@ -63,78 +62,71 @@ public class StandingOrdersBuilderTest extends AbstractIntegrationTest {
         // GIVEN
         
         // WHEN
-        var messages = render(standingOrders.buildItems());
+        aiService.call("Hallo Paul", null);
+        assertHasMessageWith(streamMock.getLastUserMessagesAsString(), project.getName());
+
+        aiService.call("Hallo Paul", null);
 
         // THEN
-        assertHasMessageWith(messages, project.getName());
-        assertHasMessageWith(messages, JdtUtil.diskPathOf(project));
+        var messages = streamMock.getLastRequest().messages();
+        assertHasUserMessageWith(messages, project.getName());
+        assertHasUserMessageWith(messages, JdtUtil.diskPathOf(project));
 
         // AND no nulls ... 
-        assertHasNoMessageWith(messages, " null");
+        assertHasNoUserMessageWith(messages, "null");
+        
+        // AND
+        assertTrue(streamMock.count("Hallo Paul") == 2);
+
+        assertTrue("Expected " + JdtUtil.diskPathOf(project) + " only once: " + System.lineSeparator() +
+                String.join(System.lineSeparator(), streamMock.getLastUserMessagesAsString()), 
+                streamMock.count(JdtUtil.diskPathOf(project)) == 1); 
     }
     
     @Test
     public void test_one_time_order_flows_through_and_is_consumed() {
         // GIVEN — a command/skill body added as a one-time order
-        standingOrders.addOneTimeOrder("Review the code and report any issues.");
+        aiService.getUserContext().addOneTimeOrder(new SimpleContextItem("Review the code and report any issues."));
 
         // WHEN
-        var messages = render(standingOrders.buildItems());
+        aiService.call("Hallo Paul", null);
 
         // THEN — the one-time order is part of the built standing orders
-        assertHasMessageWith(messages, "Review the code and report any issues.");
-
-        // AND — it is consumed: a second build no longer contains it
-        var second = render(standingOrders.buildItems());
-        assertHasNoMessageWith(second, "Review the code and report any issues.");
+        assertHasMessageWith(streamMock.getLastUserMessagesAsString(), "Review the code and report any issues.");
+        
+        // AND
+        aiService.clear();
+        aiService.call("Hallo Paul", null);
+        assertHasNoMessageWith(streamMock.getLastUserMessagesAsString(), "Review the code and report any issues.");
     }
 
-    @Test
-    public void test_one_time_order_appended_after_providers() {
-        // GIVEN
-        eclipseWriteFile("AGENTS.md", "Test Specifics");
-        standingOrders.addOneTimeOrder("Review the code and report any issues.");
-
-        // WHEN
-        var messages = render(standingOrders.buildItems());
-
-        // THEN — provider content and the command body both present
-        assertHasMessageWith(messages, "/AGENTS.md");
-        assertHasMessageWith(messages, "Review the code and report any issues.");
-
-        // AND — the one-time order is consumed
-        var second = render(standingOrders.buildItems());
-        assertHasNoMessageWith(second, "Review the code and report any issues.");
-    }
 
     @Test
     public void test_file_selection_with_text_range() {
-        // GIVEN - selected file is pom.xml with text selection lines 1-2
-        userContext.setCurrentProject(project);
-        // AND
+        // GIVEN
         var pomResource = project.findMember("pom.xml");
         assertNotNull(pomResource);
         EclipseUtil.openInEditor((IFile)pomResource);
         // AND
         var doc = new SimpleDocument("Hallo von Paul - das sollten wir nicht sehen");
         var mockTextSelection = new TextSelection(doc, 0, doc.getLength());
-        userContext.setTextSelection(mockTextSelection);
-        userContext.setSelectedResource(pomResource);
+        aiService.getUserContext().setTextSelection(mockTextSelection);
+        aiService.getUserContext().setSelectedResource(pomResource);
 
         // WHEN
-        var messages = render(standingOrders.buildItems());
+        aiService.call("Hallo Paul", null);
 
         // THEN - should contain path to pom.xml
-        assertHasMessageWith(messages, "pom.xml");
+        assertHasMessageWith(streamMock.getLastUserMessagesAsString(), "pom.xml");
 
         // AND start marker <project should be present (line 1)
-        assertHasMessageWith(messages, "<project");
+        assertHasMessageWith(streamMock.getLastUserMessagesAsString(), "<project");
 
         // AND end marker </project> should be present
-        assertHasMessageWith(messages, "</project>");
+        assertHasMessageWith(streamMock.getLastUserMessagesAsString(), "</project>");
 
         // AND
-        assertHasNoMessageWith(messages, "das sollten wir nicht sehen");
+        assertHasNoMessageWith(streamMock.getLastUserMessagesAsString(), "das sollten wir nicht sehen");
     }
 
     // ---------------------------------------------------------------------
@@ -148,18 +140,15 @@ public class StandingOrdersBuilderTest extends AbstractIntegrationTest {
         eclipseWriteFile("AGENTS.md", "Test Specifics");
         eclipseWriteFile("AGENTS-DEV.md", "Dev agent content");
 
-        // AND Peon-Dev is the active agent
-        aiService.setProject(project);
-
         // WHEN standing orders are built
         assertTrue(aiService.setActiveAgent("Peon-Dev"));
-        var messages = render(standingOrders.buildItems());
+        aiService.call("Hallo Paul", null);
 
         // THEN both AGENTS.md and AGENTS-DEV.md content is included
-        assertHasMessageWith(messages, "AGENTS.md");
-        assertHasMessageWith(messages, "Test Specifics");
-        assertHasMessageWith(messages, "AGENTS-DEV.md");
-        assertHasMessageWith(messages, "Dev agent content");
+        assertHasMessageWith(streamMock.getLastUserMessagesAsString(), "AGENTS.md");
+        assertHasMessageWith(streamMock.getLastUserMessagesAsString(), "Test Specifics");
+        assertHasMessageWith(streamMock.getLastUserMessagesAsString(), "AGENTS-DEV.md");
+        assertHasMessageWith(streamMock.getLastUserMessagesAsString(), "Dev agent content");
     }
 
     @Test
@@ -167,13 +156,13 @@ public class StandingOrdersBuilderTest extends AbstractIntegrationTest {
         // GIVEN a project with only AGENTS.md (no AGENTS-DEV.md)
         eclipseWriteFile("AGENTS.md", "Test Specifics");
         eclipseDeleteResource("AGENTS-DEV.md");
-        aiService.setProject(project);
 
         // WHEN standing orders are built
         assertTrue(aiService.setActiveAgent("Peon-Dev"));
-        var messages = render(standingOrders.buildItems());
+        aiService.call("Hallo Paul", null);
 
         // THEN only AGENTS.md content is included
+        var messages = streamMock.getLastUserMessagesAsString();
         assertHasMessageWith(messages, "AGENTS.md");
         assertHasMessageWith(messages, "Test Specifics");
         assertHasNoMessageWith(messages, "Dev agent content");
@@ -186,15 +175,14 @@ public class StandingOrdersBuilderTest extends AbstractIntegrationTest {
         // AND Peon-Plan is the active agent
         eclipseDeleteResource("AGENTS.md");
 
-        aiService.setProject(project);
-
         // WHEN standing orders are built
-        assertTrue(aiService.setActiveAgent("Peon-Plan"));
-        var messages = render(aiService.get());
+        assertTrue(aiService.setActiveAgent(AiPlanAgent.NAME));
+        aiService.call("Hallo Paul", null);
 
         // THEN only AGENTS-PLAN.md content is included
-        assertHasMessageWith(messages, "AGENTS-PLAN.md");
-        assertHasMessageWith(messages, "Plan agent content");
+        var messages = streamMock.getLastRequest().messages();
+        assertHasUserMessageWith(messages, "AGENTS-PLAN.md");
+        assertHasUserMessageWith(messages, "Plan agent content");
     }
 
     @Test
@@ -205,24 +193,25 @@ public class StandingOrdersBuilderTest extends AbstractIntegrationTest {
         eclipseWriteFile("AGENTS-DEV.md", "Dev agent content");
         
         // AND Peon-Dev is the active agent
-        aiService.setProject(project);
         assertTrue(aiService.setActiveAgent("Peon-Dev"));
 
         // WHEN standing orders are built with Peon-Dev
-        var messages = render(aiService.get());
+        aiService.call("Hallo Paul", null);
 
         // THEN AGENTS-DEV.md content is included
-        assertHasMessageWith(messages, "AGENTS-DEV.md");
-        assertHasMessageWith(messages, "Dev agent content");
+        var messages = streamMock.getLastRequest().messages();
+        assertHasUserMessageWith(messages, "AGENTS-DEV.md");
+        assertHasUserMessageWith(messages, "Dev agent content");
 
         // WHEN the agent is switched to Peon-Plan
         assertTrue(aiService.setActiveAgent("Peon-Plan"));
-        messages = render(standingOrders.buildItems());
+        aiService.call("Hallo Paul", null);
 
         // THEN AGENTS-PLAN.md content is included instead
-        assertHasMessageWith(messages, "AGENTS-PLAN.md");
-        assertHasMessageWith(messages, "Plan agent content");
-        assertHasNoMessageWith(messages, "Dev agent content");
+        messages = streamMock.getLastRequest().messages();
+        assertHasUserMessageWith(messages, "AGENTS-PLAN.md");
+        assertHasUserMessageWith(messages, "Plan agent content");
+        assertHasNoUserMessageWith(messages, "Dev agent content");
     }
 
     @Test
@@ -232,17 +221,17 @@ public class StandingOrdersBuilderTest extends AbstractIntegrationTest {
         eclipseWriteFile("agents-dev.md", "Lowercase dev content");
 
         // AND Peon-Dev is the active agent
-        aiService.setProject(project);
         assertTrue(aiService.setActiveAgent("Peon-Dev"));
 
         // WHEN standing orders are built
-        var messages = render(aiService.get());
+        aiService.call("Hallo Paul", null);
 
         // THEN both AGENTS.md and agents-dev.md content is included
-        assertHasMessageWith(messages, "AGENTS.md");
-        assertHasMessageWith(messages, "Test Specifics");
-        assertHasMessageWith(messages, "agents-dev.md");
-        assertHasMessageWith(messages, "Lowercase dev content");
+        var messages = streamMock.getLastRequest().messages();
+        assertHasUserMessageWith(messages, "AGENTS.md");
+        assertHasUserMessageWith(messages, "Test Specifics");
+        assertHasUserMessageWith(messages, "agents-dev.md");
+        assertHasUserMessageWith(messages, "Lowercase dev content");
     }
 
     @Test
@@ -256,10 +245,11 @@ public class StandingOrdersBuilderTest extends AbstractIntegrationTest {
 
         // WHEN standing orders are built
         assertTrue(aiService.setActiveAgent(AiScaffoldAgent.NAME));
-        var messages = render(standingOrders.buildItems());
+        aiService.call("Hallo Paul", null);
 
         // THEN both AGENTS.md and AGENTS-Docs-Assistant.md content is included
-        assertHasNoMessageWith(messages, "Test Specifics");
-        assertHasNoMessageWith(messages, "Docs assistant content");
+        var messages = streamMock.getLastRequest().messages();
+        assertHasNoUserMessageWith(messages, "Test Specifics");
+        assertHasNoUserMessageWith(messages, "Docs assistant content");
     }
 }

@@ -99,4 +99,8 @@ public class ConfiguredChatModel {
             chatModel.set(null); // rebuild
         }
     }
+    
+    public void setChatModel(StreamingChatModel chatModel) {
+        this.chatModel.set(chatModel);
+    }
 }
