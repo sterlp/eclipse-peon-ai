@@ -27,7 +27,7 @@ import lombok.ToString;
  */
 @Builder(toBuilder = true)
 @Getter
-@ToString(exclude = "apiKey")
+@ToString(exclude = {"apiKey", "extraBody"})
 public class AgentConfig {
 
     private final AiProvider provider;
@@ -37,6 +37,12 @@ public class AgentConfig {
     /** {@code null}/empty/{@code false} = off; otherwise the reasoning effort / on value. */
     private final String think;
     private final Double temperature;
+    /**
+     * Raw extra JSON body merged into the request (advanced configuration); {@code null} = none.
+     * Reserved top-level keys ({@code model}, {@code messages}, {@code tools}) are stripped at
+     * parse time.
+     */
+    private final String extraBody;
 
     public ChatRequestParameters newRequestParameters(List<ToolSpecification> tools) {
         return LlmProviders.of(provider).newRequestParameters(this, tools);

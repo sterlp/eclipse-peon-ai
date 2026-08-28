@@ -32,7 +32,7 @@ import lombok.ToString;
 @AllArgsConstructor
 @Getter
 @EqualsAndHashCode
-@ToString(exclude = {"apiKey", "headerParams"})
+@ToString(exclude = {"apiKey", "headerParams", "extraBody"})
 public class LlmConfig {
     
     public final static String SKILL_DIRECTORY      = "skills";
@@ -89,6 +89,14 @@ public class LlmConfig {
     private final boolean sendThinkingEnabled = true;
     @Default
     private final String apiKey = null;
+    /**
+     * Raw extra JSON body (advanced configuration). Transport for the <b>build-time</b> body:
+     * the effective build config carries it into the provider's {@code buildModel}. The base
+     * config never sets it (only the effective build-config copy does), so base identity
+     * comparison stays unaffected.
+     */
+    @Default
+    private final String extraBody = null;
     @Default
     private final Path configDir = Path.of(System.getProperty("user.home"), ".peon");
 
