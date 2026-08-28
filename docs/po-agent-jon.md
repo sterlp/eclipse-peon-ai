@@ -766,6 +766,33 @@ GIVEN a slave returns plain text (a clarifying question), not an exception
 THEN it is a normal tool result (R8), not treated as an error
 ```
 
+### R15: Build-Zyklus auf Git-Branch — Dev committiert jede grüne Iteration ❌ (2026-08-28, User)
+Ein Build-Zyklus (ein Plan/Feature) läuft auf einem **dedizierten Git-Branch** — nur wenn Git
+im Workspace verfügbar und wir tatsächlich auf einem Branch (sonst: **kein** Auto-Commit,
+Jon fragt den User). Der **Dev-Agent** committet nach **jeder erfolgreichen (grünen)
+Iteration** (kurze Message, z. B. `inc-3: <einzeilige Summary>`, Scope = die Dateien dieser
+Iteration) — jeder Schritt bleibt revertierbar (`git revert`), die Base-Branch bleibt während
+des Zyklus unangetastet; am Ende steht eine saubere Fortschritts-History des Zyklus. Der
+**finale Merge** (optional squash: Zyklus = ein History-Eintrag) ist die **Entscheidung des
+Users**. Jon gibt die Anweisung im `buildWithDev`-Dispatch (Standing Order); die Konvention
+steht zusätzlich im Projekt-AGENTS.md („Build cycles & git“). Die Aufnahme in Jons Prompt
+(`po.txt`) ist Backlog.
+
+**BDD:**
+```
+GIVEN ein Build-Zyklus läuft auf einem Git-Branch
+WHEN Da Mek eine Iteration grün abschließt
+THEN er committet die Dateien dieser Iteration mit kurzer Summary
+AND die Base-Branch bleibt unangetastet
+
+GIVEN der Workspace ist kein Git-Repo (oder wir sind nicht auf einem Branch)
+WHEN eine Iteration grün abschließt
+THEN es passiert KEIN Auto-Commit — Jon fragt den User
+
+GIVEN der Zyklus ist fertig und bestanden
+THEN der finale Merge (optional squash) ist die Entscheidung des Users
+```
+
 ## Future Extensions (not MVP)
 
 - **Reviewer** — a dedicated agent Jon dispatches to review a plan or the changed code against the

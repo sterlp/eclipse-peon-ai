@@ -39,6 +39,19 @@ Module guides (read when working in one):
   it). Without `-am` Tycho resolves core from a stale target-platform copy and reports phantom
   "cannot be resolved" errors for brand-new core symbols.
 
+## Build cycles & git
+
+- A build cycle (one feature all plans / dev increments) runs on a **dedicated branch** — 
+  and only then does the Dev agent auto-commit. 
+  No git repo / not on a branch → **no auto commits, ask first**.
+- After **each successful (green) increment**, the Dev agent commits with a short message
+  (`inc-N: <one-line summary>`), scoped to that increment's files — every step stays
+  revertable (`git revert`) without touching the main branch.
+- Final takeover into the base branch (optionally squash-merged into one entry) is the
+  **user's** decision.
+- after a `planImplemented` all files and the archived plan should be committed. 
+  Repo should be clean for the next increment.
+
 ## Dependencies
 
 - External JARs land in `lib/` via `maven-dependency-plugin`; `MANIFEST.MF` `Bundle-ClassPath`,

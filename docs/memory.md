@@ -1,5 +1,15 @@
 # Offene Enden (2026-08-28)
 
+- **Git-Build-Zyklen (User, 2026-08-28):** Build-Zyklen laufen auf einem dedizierten Branch;
+  Da Mek committiert nach jeder grünen Iteration (kurze Summary, nur Iterations-Dateien);
+  finaler Merge/Squash = User. Konvention: AGENTS.md „Build cycles & git“ + SOLL
+  [po-agent-jon.md](po-agent-jon.md) R15 ❌ (po.txt-Erweiterung = Backlog). User hat den
+  Branch angelegt + alles committed.
+- **Zyklus 2a (Plan):** Core-Model-Config-Fundament (SOLL: [advanced-configuration.md](advanced-configuration.md)
+  SOLL-Ergänzung, [caching.md](caching.md), [ADR-0034](adr/0034-connection-cache-by-identity.md))
+  → danach 2b (Plugin-UI: Config-Seite, Dropdown+Refresh, Chat-UI-Ausblendung) und 2c
+  (Cache-Hardcode-Entfernung, GPT/Claude-Beispiele, Cache-Abgleich, Custom-Agent-yml, Homepage).
+
 - **Config-Umbau (User, 2026-08-28) — SOLL ❌ specified:** per-agent Model-Config (URL, Key,
   Modell, Think, JSON extra body); Connection-Cache nach Identität Provider+URL+Key
   [+Body nur Anthropic/Build-time] — [ADR-0034](adr/0034-connection-cache-by-identity.md);
