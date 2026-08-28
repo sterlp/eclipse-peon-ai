@@ -2,6 +2,9 @@ package org.sterl.llmpeon.ai;
 
 import java.util.List;
 
+import org.sterl.llmpeon.provider.LlmProvider;
+import org.sterl.llmpeon.provider.LlmProviders;
+
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import lombok.Builder;
@@ -20,7 +23,7 @@ import lombok.ToString;
  * <p>{@link #newRequestParameters(List)} builds the provider-specific
  * {@link ChatRequestParameters} — this is the single place where the per-agent {@code think} value
  * becomes a real request parameter, delegating to
- * {@link AiProvider#newRequestParameters(AgentConfig, List)}.</p>
+ * {@link LlmProvider#newRequestParameters(AgentConfig, List)} via {@link LlmProviders}.</p>
  */
 @Builder(toBuilder = true)
 @Getter
@@ -36,6 +39,6 @@ public class AgentConfig {
     private final Double temperature;
 
     public ChatRequestParameters newRequestParameters(List<ToolSpecification> tools) {
-        return provider.newRequestParameters(this, tools);
+        return LlmProviders.of(provider).newRequestParameters(this, tools);
     }
 }

@@ -1,4 +1,25 @@
-# Offene Enden (2026-08-27)
+# Offene Enden (2026-08-28)
+
+- **Config-Umbau (User, 2026-08-28) — SOLL ❌ specified:** per-agent Model-Config (URL, Key,
+  Modell, Think, JSON extra body); Connection-Cache nach Identität Provider+URL+Key
+  [+Body nur Anthropic/Build-time] — [ADR-0034](adr/0034-connection-cache-by-identity.md);
+  Modell-Listen einmalig pro Identität (Cache on success, Fehler → configured model);
+  Modell-Dropdown + Think aus Chat-UI raus (Config-Seite = Single Source of Truth);
+  JSON-Widget je Agent (Prefix-Speicherung); per-request Body nur OpenAI-Familie (verifiziert);
+  Modell nicht in Liste → bleibt gesetzt (kein B2-Auto-Switch); Refresh-Button im
+  Config-Dropdown (manueller Refetch, ❌). **Entschieden (2026-08-28): Option B** — Cache-
+  Hardcodes bleiben im Provider-Refactor verhaltenstreu, fallen in Schritt 2 mit der
+  JSON-Body-UI. Neu ❌: Core/UI-Trennung (Config-Domäne in core, Plugin = reine View),
+  kompletter Config-Rebuild bei Update (keine Migrations-Kette), Custom Agents tragen die
+  komplette Model-Config via AGENT.md-Frontmatter (yml) + Homepage-Doku. Reihenfolge:
+  Provider-Refactor (provider.md R1–R5, Slice 1 ADR-0033) → Config-Umbau + Caching.
+  **FERTIG (2026-08-28):** Provider-Refactor gebaut + PO-Review OK (454 Core-Tests grün,
+  `mvn clean verify` 7 Module SUCCESS, Plugin-Compile-Check SUCCESS) — **NICHT committed**
+  (Commit = User). AGENTS.md Compile-Check-Kommando korrigiert (`releng/llmpeon-target` in
+  `-pl`). Nächster Schritt: Config-Umbau + Caching (Schritt 2). **Offen User-Frage:**
+  „voice config“ = Base-Config (basic page) gemeint? (kein Voice-Feature in den Docs). **Follow-ups:** `free-provider-ox-alpha.md`
+  (Slice 2) fehlt noch als Story; ADR-Index 0027-Duplikat renumerieren; Known-Issue-Bug
+  (URL-Wechsel) wird strukturell kleiner, Fix-Regel im Config-Umbau.
 
 - **Zyklus 2.6.3 (Standing-Orders-Umarbeitung) — Review + Fix-Kampagne abgeschlossen:**
   - Bauspezifikation + Review OK: issues 01 (NPE-Guard in `PeonAiService.get()`), 03+04

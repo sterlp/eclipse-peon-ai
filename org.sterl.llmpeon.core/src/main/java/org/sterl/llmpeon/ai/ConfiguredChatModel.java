@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.sterl.llmpeon.ai.model.AiModel;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.provider.LlmProviders;
 import org.sterl.llmpeon.streaming.StreamingBridge;
 
 import dev.langchain4j.data.message.ChatMessage;
@@ -39,14 +40,14 @@ public class ConfiguredChatModel {
     
     public StreamingChatModel getChatModel() {
         if (chatModel.get() == null) {
-            chatModel.set(config.getProviderType().buildModel(config));
+            chatModel.set(LlmProviders.of(config.getProviderType()).buildModel(config));
         }
         return chatModel.get();
     }
 
     public List<AiModel> listAiModels() {
         // TODO caching?
-        return this.config.getProviderType().listAiModels(config);
+        return LlmProviders.of(this.config.getProviderType()).listAiModels(config);
     }
     
     /**

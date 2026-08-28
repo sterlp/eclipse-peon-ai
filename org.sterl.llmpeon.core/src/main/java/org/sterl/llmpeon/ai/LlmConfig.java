@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.sterl.llmpeon.ai.model.AiModel;
+import org.sterl.llmpeon.provider.LlmProviders;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -223,10 +224,10 @@ public class LlmConfig {
     }
 
     public List<AiModel> listAiModels() {
-        return getProviderType().listAiModels(this);
+        return LlmProviders.of(getProviderType()).listAiModels(this);
     }
     
     public List<String> listModels() {
-        return getProviderType().listModels(this);
+        return LlmProviders.of(getProviderType()).listModels(this);
     }
 }

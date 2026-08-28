@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+import org.sterl.llmpeon.provider.LlmProviders;
+
 @Disabled
 @Tag("integration")
 class ModelListingTest {
@@ -14,7 +16,7 @@ class ModelListingTest {
     @Test
     void ollamaListsModels() {
         var config = LlmConfig.newConfig("fooo", "http://localhost:11434");
-        var models = AiProvider.OLLAMA.listModels(config);
+        var models = LlmProviders.of(AiProvider.OLLAMA).listModels(config);
         System.out.println("Ollama models: " + models);
         assertFalse(models.isEmpty(), "Expected at least one Ollama model");
         assertFalse(models.contains("fooo"), "Foo should not be present " + models);
@@ -23,7 +25,7 @@ class ModelListingTest {
     @Test
     void lmStudioListsModels() {
         var config = LlmConfig.newConfig(AiProvider.LM_STUDIO, "fooo", "http://localhost:1234/v1");
-        var models = AiProvider.LM_STUDIO.listModels(config);
+        var models = LlmProviders.of(AiProvider.LM_STUDIO).listModels(config);
         System.out.println("LM Studio models: " + models);
         assertFalse(models.isEmpty(), "Expected at least one LM Studio model");
         assertFalse(models.contains("fooo"), "Foo should not be present " + models);

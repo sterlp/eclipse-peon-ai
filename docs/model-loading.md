@@ -4,6 +4,35 @@ The model dropdown shows the available models from the current LLM provider, wit
 model resolution. The list is fetched lazily and persists across agent switches — it is only
 refetched when the provider config changes.
 
+## SOLL (2026-08-28) — ❌ specified, nicht umgesetzt
+
+Der Modell-Dropdown wandert aus der Chat-UI in die Config-Seite (pro Agent) —
+[advanced-configuration.md](advanced-configuration.md), Mechanik:
+[ADR-0034](adr/0034-connection-cache-by-identity.md). Die Liste gilt pro **Verbindungs-
+Identität** (Provider+URL+Key): einmalig fetch, **Cache on success**, Fehler → configured
+model (heutiger Fallback), kein Refetch beim Agentenwechsel; **Refresh-Button im Dropdown**
+= manueller Refetch (Fehler → alter Cache bleibt). Identitätswechsel der effektiven
+Verbindung → neuer Fetch. Konfiguriertes Modell nicht in der Liste → **bleibt gesetzt**
+(kein Auto-Switch auf erstes Modell — Abweichung von B2); unbekanntes Modell wird der Liste
+angehängt (wie heute).
+
+```
+GIVEN die Modell-Liste für eine Identität wurde erfolgreich geladen
+WHEN ein Agent mit gleicher effektiver Identität aktiviert wird
+THEN die gecachte Liste wird genutzt — kein Refetch
+
+GIVEN der List-Fetch für eine Identität schlägt fehl (Netzwerk/leere Liste)
+WHEN der Agent aktiviert wird
+THEN das konfigurierte Modell bleibt gesetzt (kein Fehler, kein Auto-Switch)
+
+GIVEN die gecachte Liste einer Identität
+WHEN der User den Refresh-Button im Dropdown drückt
+THEN die Liste wird neu geholt und ersetzt den Cache
+AND bei Fetch-Fehler bleibt der alte Cache bestehen
+```
+
+Die Ist-Beschreibung unten gilt bis zum Umbau.
+
 ## Use Cases (BDD)
 
 ```

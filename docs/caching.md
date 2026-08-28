@@ -20,7 +20,17 @@ UI **nur**, wenn der Provider extra-body-Parameter unterstützt (Capability-Bool
   Custom Agents** — ein JSON-Snippet definieren, das in den Request-Body gemerged wird.
   Caching ist ein Anwendungsfall dieser Mechanik (GPT-/Claude-Snippets), kein Built-in-Flag —
   das Bestands-Hardcode (Anthropic-Flags, OpenAI-Claude `cache_control`) wird entfernt und lebt
-  nur noch als UI-Beispiel (entschieden 2026-08-21).
+  nur noch als UI-Beispiel (entschieden 2026-08-21). **Entfernung erst in Schritt 2**
+  zusammen mit der UI (2026-08-28, Option B: kein Caching-Regression-Fenster; der Provider-
+  Refactor bleibt verhaltenstreu — provider.md R4).
+- **R1a ❌ Body per Agent, möglichst per Request (2026-08-28, User):** der extra body wird
+  **per Request** gesetzt (langchain4j `customParameters`), wo der Provider es unterstützt —
+  dann geht er NICHT in die Verbindungs-Identität. Wo er nur Build-time geht, ist er Teil des
+  Verbindungs-Hashes (→ Connection-Cache in [advanced-configuration.md](advanced-configuration.md)).
+  Compact-Agent trägt KEINEN Body → belegt keinen KV-Cache-Slot (R6). Body darf je
+  Modell/Agent variieren. Provider-Unterstützung **verifiziert** (→ provider.md R3): per-request
+  nur OpenAI-Familie, Anthropic Build-time (Body dann in der Verbindungs-Identität,
+  [ADR-0034](adr/0034-connection-cache-by-identity.md)), Rest gar nicht.
 - **R2 ❌ Provider-Fähigkeits-Gate:** der JSON-Input erscheint im UI **nur**, wenn der aktive
   Provider extra-body-Parameter unterstützt — nur dort, wo es implementiert ist, wird es
   geboten. Mechanik (Boolean, Merge, Provider-Klassen): [provider.md](provider.md) P2–P3.

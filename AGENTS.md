@@ -33,9 +33,11 @@ Module guides (read when working in one):
     stale Surefire reports under `target/` mislead result reading.
   - A new test class needs manual workspace approval by the user and may time out if he is not
     watching — prefer the already approved suite.
-- Compile-checking the plugin against local core changes: `mvn -o -pl org.sterl.llmpeon -am
-  package` — without `-am` Tycho resolves core from the target platform (a stale copy) and
-  reports phantom "cannot be resolved" errors for brand-new core symbols.
+- Compile-checking the plugin against local core changes: `mvn -o -pl
+  org.sterl.llmpeon,releng/llmpeon-target -am package` — `releng/llmpeon-target` must be in the
+  `-pl` list (offline the target-platform artifact is not in `~/.m2`; `verify` does not install
+  it). Without `-am` Tycho resolves core from a stale target-platform copy and reports phantom
+  "cannot be resolved" errors for brand-new core symbols.
 
 ## Dependencies
 
@@ -75,3 +77,15 @@ Start at `docs/index.md` for the full map before touching a feature.
   **active** Peon-PO/Plan/Dev (key = name after "Peon-", uppercased); Jon's slave agents
   currently receive this base file only. Any other tool opens them manually and follows the
   Jon skill.
+
+## Reference and help working with eclipse building a good plugin
+Use search agents to search these big repos - do direct reads only.
+Save hard won facts / know how in /llmpeon-parent/skills/eclipse-dpe as SKILL use write SKILL
+for eclipse know-how you didn't know before. if you are in plan mode, add a hint in the plan to update
+the skill if needed.
+
+1. check the SKILL directory if something was already saved here ...
+2. use github eclipse plugin AI harness if problems or question arise which cannot be answered 
+   by the API itself eclipse: /github-copilot-for-eclipse
+3. /langchain4j-aggregator for langchain4j code & docs (*.md), if the API itself is not enough
+4. Opencode source - cli AI harness: /opencode -- for generall idea how AI harnesses are build

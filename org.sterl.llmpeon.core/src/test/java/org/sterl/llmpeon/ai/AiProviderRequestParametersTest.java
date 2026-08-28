@@ -6,17 +6,20 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import org.sterl.llmpeon.provider.LlmProviders;
+
 import com.openai.models.ReasoningEffort;
 
 import dev.langchain4j.model.anthropic.AnthropicChatRequestParameters;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.ollama.OllamaChatRequestParameters;
 import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
 import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesChatRequestParameters;
 
 /**
- * Verifies {@link AiProvider#newRequestParameters(AgentConfig, java.util.List)} maps the per-agent
- * {@code think} value into the correct provider-specific request parameter via the 3-stage schema:
- * off -> provider-specific off/omit, concrete level -> verbatim, generic on ->
+ * Verifies {@link org.sterl.llmpeon.provider.LlmProvider#newRequestParameters(AgentConfig, java.util.List)}
+ * maps the per-agent {@code think} value into the correct provider-specific request parameter via the
+ * 3-stage schema: off -> provider-specific off/omit, concrete level -> verbatim, generic on ->
  * {@link ThinkModelMapping} (no known model -> nothing).
  */
 class AiProviderRequestParametersTest {
@@ -27,6 +30,10 @@ class AiProviderRequestParametersTest {
 
     private AgentConfig mc(AiProvider p, String model, String think) {
         return AgentConfig.builder().provider(p).model(model).think(think).temperature(0.3).build();
+    }
+
+    private ChatRequestParameters params(AiProvider p, AgentConfig mc) {
+        return LlmProviders.of(p).newRequestParameters(mc, List.of());
     }
 
     @Test
@@ -46,7 +53,7 @@ class AiProviderRequestParametersTest {
     void openAiOfficialOmitsReasoningWhenOffOrUnsetOrFalse() {
         for (var think : new String[] {null, "", "false", "none", "off"}) {
             var params = (OpenAiOfficialResponsesChatRequestParameters)
-                    AiProvider.OPEN_AI_OFFICIAL.newRequestParameters(mc(AiProvider.OPEN_AI_OFFICIAL, think), List.of());
+                    params(AiProvider.OPEN_AI_OFFICIAL, mc(AiProvider.OPEN_AI_OFFICIAL, think));
             assertThat(params.reasoningEffort()).as("think=%s", think).isNull();
             assertThat(params.modelName()).isEqualTo("m");
             assertThat(params.temperature()).isEqualTo(0.3);
@@ -56,7 +63,7 @@ class AiProviderRequestParametersTest {
     @Test
     void openAiOfficialConcreteLevelPassesThrough() {
         var high = (OpenAiOfficialResponsesChatRequestParameters)
-                AiProvider.OPEN_AI_OFFICIAL.newRequestParameters(mc(AiProvider.OPEN_AI_OFFICIAL, "high"), List.of());
+                params(AiProvider.OPEN_AI_OFFICIAL, mc(AiProvider.OPEN_AI_OFFICIAL, "high"));
         assertThat(high.reasoningEffort()).isEqualTo(ReasoningEffort.of("high"));
     }
 
@@ -64,35 +71,35 @@ class AiProviderRequestParametersTest {
     void openAiOfficialGenericOnUsesModelMapping() {
         // known reasoning model -> mapped to high
         var known = (OpenAiOfficialResponsesChatRequestParameters)
-                AiProvider.OPEN_AI_OFFICIAL.newRequestParameters(mc(AiProvider.OPEN_AI_OFFICIAL, "gpt-5.5", "true"), List.of());
+                params(AiProvider.OPEN_AI_OFFICIAL, mc(AiProvider.OPEN_AI_OFFICIAL, "gpt-5.5", "true"));
         assertThat(known.reasoningEffort()).isEqualTo(ReasoningEffort.of("high"));
 
         // unknown model + generic on -> send nothing
         var unknown = (OpenAiOfficialResponsesChatRequestParameters)
-                AiProvider.OPEN_AI_OFFICIAL.newRequestParameters(mc(AiProvider.OPEN_AI_OFFICIAL, "kimi-k2", "true"), List.of());
+                params(AiProvider.OPEN_AI_OFFICIAL, mc(AiProvider.OPEN_AI_OFFICIAL, "kimi-k2", "true"));
         assertThat(unknown.reasoningEffort()).isNull();
     }
 
     @Test
     void openAiPlainUsesStringEffort() {
         var off = (OpenAiChatRequestParameters)
-                AiProvider.OPEN_AI.newRequestParameters(mc(AiProvider.OPEN_AI, "false"), List.of());
+                params(AiProvider.OPEN_AI, mc(AiProvider.OPEN_AI, "false"));
         assertThat(off.reasoningEffort()).isNull();
 
         var on = (OpenAiChatRequestParameters)
-                AiProvider.OPEN_AI.newRequestParameters(mc(AiProvider.OPEN_AI, "medium"), List.of());
+                params(AiProvider.OPEN_AI, mc(AiProvider.OPEN_AI, "medium"));
         assertThat(on.reasoningEffort()).isEqualTo("medium");
 
         // generic on + unknown model -> nothing
         var genericUnknown = (OpenAiChatRequestParameters)
-                AiProvider.OPEN_AI.newRequestParameters(mc(AiProvider.OPEN_AI, "true"), List.of());
+                params(AiProvider.OPEN_AI, mc(AiProvider.OPEN_AI, "true"));
         assertThat(genericUnknown.reasoningEffort()).isNull();
     }
 
     @Test
     void openAiPlainGenericOnKnownModelMapsToHigh() {
         var on = (OpenAiChatRequestParameters)
-                AiProvider.OPEN_AI.newRequestParameters(mc(AiProvider.OPEN_AI, "gpt-5.5", "true"), List.of());
+                params(AiProvider.OPEN_AI, mc(AiProvider.OPEN_AI, "gpt-5.5", "true"));
         assertThat(on.reasoningEffort()).isEqualTo("high");
     }
 
@@ -100,31 +107,31 @@ class AiProviderRequestParametersTest {
     void lmStudioReasoning_emptyOmits_explicitOffSendsOff_onSendsOn() {
         // empty -> omit
         var empty = (OpenAiChatRequestParameters)
-                AiProvider.LM_STUDIO.newRequestParameters(mc(AiProvider.LM_STUDIO, ""), List.of());
+                params(AiProvider.LM_STUDIO, mc(AiProvider.LM_STUDIO, ""));
         assertThat(empty.customParameters()).isNullOrEmpty();
 
         // explicit off-token -> reasoning:off (manual off, not silence)
         var off = (OpenAiChatRequestParameters)
-                AiProvider.LM_STUDIO.newRequestParameters(mc(AiProvider.LM_STUDIO, "false"), List.of());
+                params(AiProvider.LM_STUDIO, mc(AiProvider.LM_STUDIO, "false"));
         assertThat(off.customParameters()).containsEntry("reasoning", "off");
 
         var on = (OpenAiChatRequestParameters)
-                AiProvider.LM_STUDIO.newRequestParameters(mc(AiProvider.LM_STUDIO, "high"), List.of());
+                params(AiProvider.LM_STUDIO, mc(AiProvider.LM_STUDIO, "high"));
         assertThat(on.customParameters()).containsEntry("reasoning", "high");
     }
 
     @Test
     void ollamaThinkFlag_unsetOmits_offSendsFalse_onSendsTrue() {
         var unset = (OllamaChatRequestParameters)
-                AiProvider.OLLAMA.newRequestParameters(mc(AiProvider.OLLAMA, null), List.of());
+                params(AiProvider.OLLAMA, mc(AiProvider.OLLAMA, null));
         assertThat(unset.think()).isNull();
 
         var off = (OllamaChatRequestParameters)
-                AiProvider.OLLAMA.newRequestParameters(mc(AiProvider.OLLAMA, ""), List.of());
+                params(AiProvider.OLLAMA, mc(AiProvider.OLLAMA, ""));
         assertThat(off.think()).isFalse();
 
         var on = (OllamaChatRequestParameters)
-                AiProvider.OLLAMA.newRequestParameters(mc(AiProvider.OLLAMA, "true"), List.of());
+                params(AiProvider.OLLAMA, mc(AiProvider.OLLAMA, "true"));
         assertThat(on.think()).isTrue();
     }
 
@@ -183,21 +190,21 @@ class AiProviderRequestParametersTest {
     @Test
     void anthropicGenericOnUsesModelMapping() {
         var opus = (AnthropicChatRequestParameters)
-                AiProvider.ANTHROPIC.newRequestParameters(mc(AiProvider.ANTHROPIC, "claude-opus-4-8", "true"), List.of());
+                params(AiProvider.ANTHROPIC, mc(AiProvider.ANTHROPIC, "claude-opus-4-8", "true"));
         assertThat(opus.thinkingType()).isEqualTo("adaptive");
 
         var sonnet = (AnthropicChatRequestParameters)
-                AiProvider.ANTHROPIC.newRequestParameters(mc(AiProvider.ANTHROPIC, "claude-sonnet-4-5", "true"), List.of());
+                params(AiProvider.ANTHROPIC, mc(AiProvider.ANTHROPIC, "claude-sonnet-4-5", "true"));
         assertThat(sonnet.thinkingType()).isEqualTo("enabled");
 
         var off = (AnthropicChatRequestParameters)
-                AiProvider.ANTHROPIC.newRequestParameters(mc(AiProvider.ANTHROPIC, "claude-sonnet-4-5", "false"), List.of());
+                params(AiProvider.ANTHROPIC, mc(AiProvider.ANTHROPIC, "claude-sonnet-4-5", "false"));
         assertThat(off.thinkingType()).isNull();
     }
 
     @Test
     void geminiNeverCarriesThinking() {
-        var params = AiProvider.GOOGLE_GEMINI.newRequestParameters(mc(AiProvider.GOOGLE_GEMINI, "high"), List.of());
+        var params = params(AiProvider.GOOGLE_GEMINI, mc(AiProvider.GOOGLE_GEMINI, "high"));
         // generic params only — no provider-specific thinking subtype
         assertThat(params.getClass().getSimpleName()).isEqualTo("DefaultChatRequestParameters");
         assertThat(params.modelName()).isEqualTo("m");

@@ -24,6 +24,7 @@ isn't clear from a rule/BDD.
 | [0016](0016-async-state-safety.md) | Always capture state before resetting references in async callbacks | Accepted |
 | [0017](0017-atomic-ui-chaining.md) | Move queue ownership and chaining into core agent — eliminates UI flicker and race windows | Accepted |
 | [0018](0018-abort-path-parity.md) | Explicitly distinguish success from abort; drain queues safely to memory on failure | Accepted |
+| [0019](0019-jsonl-agent-history-store.md) | JSONL history store for agent sessions | Accepted |
 | [0026](0026-extract-question-shell-approval.md) | QuestionOrchestrator + ShellApprovalService aus AIChatView extrahieren — ~70 Zeilen weniger, testbar ohne SWT | Accepted |
 | [0027](0027-osgi-plugin-test-constraints.md) | OSGi Plugin-Tests nutzen JUnit 4 (Eclipse-Runtime); AssertJ bleibt im Maven-core — OSGi-Klassenpfad & Workbench-Startup beachten | Accepted |
 | [0020](0020-po-agent-orchestration.md) | Peon-PO orchestrates Plan/Dev as sub-agents via poagent delegate tools (talkPlan/planWithPlanAgent/askDev/buildWithDev) with planComplete/planImplemented completion signals | Accepted |
@@ -39,3 +40,5 @@ isn't clear from a rule/BDD.
 | [0030](0030-statictext-helper-frozen-chatmessageutil.md) | staticText()-Helper im Plugin statt Core-Fix: ChatMessageUtil.toString() droppt SystemMessages (silent-bug), Core bleibt frozen | Accepted |
 | [0031](0031-static-context-env-plus-memory.md) | Static Context: Env + Memory-Snapshot im System-Prompt (Memory-Anteil superseded durch ADR-0032); Re-Bake bei clear/compact/setStaticContext/updateConfig/Reload; File-Context-Format mit Linenumbers | Partially superseded |
 | [0032](0032-workspace-memory-dynamic-turn-context.md) | Workspace-Memory dynamisch: WorkspaceMemoryTool als ContextItem pro Turn (aktiver Agent + Delegate-Tool-Orders für Slaven); statischer Snapshot entfernt (Revision) — `PoDelegateTool` (früher JonDelegateTool) | Accepted |
+| [0033](0033-ox-alpha-provider-slices.md) | Ox-Alpha-Provider: Zwei-Slice-Plan — verhaltenstreues Provider-Refactoring (provider.md) zuerst, Ox Alpha dann als erste neue Provider-Klasse | Accepted |
+| [0034](0034-connection-cache-by-identity.md) | Connection-Cache nach Verbindungs-Identität (Provider+URL+Key, +Body nur Build-time-Provider); Modell-Listen einmalig pro Identität; Request-Ebene (Name/Think/Temp/Body) nie im Hash | Accepted |

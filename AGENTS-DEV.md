@@ -3,6 +3,7 @@
 Project-specific additions for the dev phase — the method lives in the Jon skill, the build
 rules in the base `AGENTS.md`.
 
+- `mvn clean install` makes the artifacts available for partial module builds.
 - **Never write to `docs/`** — owned by the PO + the user; the story's ❌ → ✅ flip is left to
   the docs owner. Track progress only in the plan file and the task files you create.
 - **User docs (homepage / VitePress):** `homepage/` is the published user documentation,

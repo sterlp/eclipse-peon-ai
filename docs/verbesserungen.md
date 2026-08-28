@@ -13,7 +13,7 @@ kommen ohne Code-Änderung. Diese Seite sammelt die Übernahme-Kandidaten.
 
 > **Verworfen (2026-08-23):** „Freie LLMs keyless über Cloud-Gateway" — OpenRouter braucht doch
 > einen Key für Completions (auch `:free`, live verifiziert), opencodes Sentinel-Trick funktioniert
-> nur am eigenen Gateway. Details: [ADR-0033](adr/0033-ox-alpha-openrouter-keyless.md) (Rejected).
+> nur am eigenen Gateway. Details: [ADR-0033](adr/0033-ox-alpha-provider-slices.md) (Rejected).
 > Ersatzidee falls „First Success" wieder aufgegriffen wird: lokale Ollama/LM-Studio-Erkennung.
 
 ---
