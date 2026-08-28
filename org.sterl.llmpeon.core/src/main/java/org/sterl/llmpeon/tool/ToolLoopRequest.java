@@ -123,7 +123,7 @@ public class ToolLoopRequest {
     }
     
     public ChatResponse call(ChatRequest chatRequest) {
-        return retry.call(monitor, () -> bridge.call(chatModel.getChatModel(), chatRequest, monitor));
+        return retry.call(monitor, () -> bridge.call(chatModel.modelFor(getAgentConfig()), chatRequest, monitor));
     }
 
     /**

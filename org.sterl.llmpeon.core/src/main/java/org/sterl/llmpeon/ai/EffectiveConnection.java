@@ -1,5 +1,7 @@
 package org.sterl.llmpeon.ai;
 
+import java.util.Objects;
+
 import org.sterl.llmpeon.provider.ExtraBodyMode;
 import org.sterl.llmpeon.provider.LlmProviders;
 import org.sterl.llmpeon.shared.StringUtil;
@@ -20,11 +22,16 @@ public record EffectiveConnection(ConnectionIdentity identity, LlmConfig buildCo
         String url = StringUtil.hasValue(agent.getUrl()) ? agent.getUrl() : base.getUrl();
         String apiKey = StringUtil.hasValue(agent.getApiKey()) ? agent.getApiKey() : base.getApiKey();
         String buildTimeBody = mode == ExtraBodyMode.BUILD_TIME ? agent.getExtraBody() : null;
+        // Base connection = agent does not effectively change endpoint/credential/body. The dev/plan
+        // agent configs carry the base url/key (not null), so compare against the base values — a
+        // null-check alone would double-build a second, functionally identical connection.
+        boolean isBase = Objects.equals(url, base.getUrl())
+                && Objects.equals(apiKey, base.getApiKey())
+                && StringUtil.hasNoValue(agent.getExtraBody());
         return new EffectiveConnection(
                 new ConnectionIdentity(base.getProviderType(), url, apiKey, buildTimeBody),
                 base.toBuilder().url(url).apiKey(apiKey).extraBody(buildTimeBody).build(),
                 mode == ExtraBodyMode.PER_REQUEST ? agent.getExtraBody() : null,
-                StringUtil.hasNoValue(agent.getUrl()) && StringUtil.hasNoValue(agent.getApiKey())
-                        && StringUtil.hasNoValue(agent.getExtraBody()));
+                isBase);
     }
 }
