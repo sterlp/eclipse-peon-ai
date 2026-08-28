@@ -54,9 +54,12 @@ public final class OpenAiProvider implements LlmProvider {
         var effort = ProviderRequestSupport.effortFor(mc);
         if (effort != null) b.reasoningEffort(effort);
 
+        Map<String, Object> cacheControl = null;
         if (mc.getModel() != null && mc.getModel().startsWith("claude")) {
-            b.customParameters(Map.of("cache_control", Map.of("type", "ephemeral")));
+            cacheControl = Map.of("cache_control", Map.of("type", "ephemeral"));
         }
+        var custom = ProviderRequestSupport.mergeCustomParameters(cacheControl, mc);
+        if (custom != null) b.customParameters(custom);
         // TODO for "gpt" based on the agent prompt_cache_key
 
         return b.build();

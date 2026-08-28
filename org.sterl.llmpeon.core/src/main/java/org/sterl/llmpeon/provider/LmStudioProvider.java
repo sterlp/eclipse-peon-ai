@@ -50,9 +50,12 @@ public final class LmStudioProvider implements LlmProvider {
     public ChatRequestParameters newRequestParameters(AgentConfig mc, List<ToolSpecification> tools) {
         var b = OpenAiChatRequestParameters.builder();
         ProviderRequestSupport.applyBase(b, mc, tools);
+        Map<String, Object> reasoning = null;
         if (StringUtil.hasValue(mc.getThink())) {
-            b.customParameters(Map.of("reasoning", ThinkResolver.toReasoning(mc.getThink())));
+            reasoning = Map.of("reasoning", ThinkResolver.toReasoning(mc.getThink()));
         }
+        var custom = ProviderRequestSupport.mergeCustomParameters(reasoning, mc);
+        if (custom != null) b.customParameters(custom);
         return b.build();
     }
 

@@ -2,8 +2,10 @@ package org.sterl.llmpeon.provider;
 
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import org.sterl.llmpeon.ai.AgentConfig;
 import org.sterl.llmpeon.ai.AiProvider;
@@ -34,6 +36,24 @@ public final class ProviderRequestSupport {
         b.temperature(mc.getTemperature());
         if (StringUtil.hasValue(mc.getModel())) b.modelName(mc.getModel());
         if (tools != null && !tools.isEmpty()) b.toolSpecifications(tools);
+    }
+
+    /**
+     * Merges the provider-computed {@code customParameters} entries with the agent's user
+     * extra body (2a §4): user entries are layered over the provider entries, so the user
+     * body wins on key conflicts (PO decision 2026-08-28).
+     *
+     * <p>Returns {@code null} when there is nothing to send — the caller must then leave
+     * {@code customParameters} untouched, keeping the request byte-identical to pre-2a.
+     * {@code providerEntries} may be {@code null} (provider has no own entries).
+     */
+    public static Map<String, Object> mergeCustomParameters(Map<String, Object> providerEntries, AgentConfig mc) {
+        var user = ExtraBody.parse(mc.getExtraBody());
+        if (user == null) return providerEntries;
+        if (providerEntries == null || providerEntries.isEmpty()) return user;
+        var merged = new LinkedHashMap<>(providerEntries);
+        merged.putAll(user);
+        return merged;
     }
 
     /**

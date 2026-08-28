@@ -69,6 +69,8 @@ public final class GithubCopilotProvider implements LlmProvider {
         ProviderRequestSupport.applyBase(b, mc, tools);
         var effort = ProviderRequestSupport.effortFor(mc);
         if (effort != null) b.reasoningEffort(effort);
+        var custom = ProviderRequestSupport.mergeCustomParameters(null, mc);
+        if (custom != null) b.customParameters(custom);
         return b.build();
     }
 
