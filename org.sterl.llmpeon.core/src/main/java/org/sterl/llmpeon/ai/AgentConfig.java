@@ -16,7 +16,10 @@ import lombok.ToString;
  * {@link AiProvider}, the model name, the thinking/reasoning setting ({@code think}) and the
  * temperature.
  *
- * <p>{@code url} and {@code apiKey} are captured here for a later step where each agent may talk to
+ * <p>{@code url} and {@code apiKey} are effective since cycle 2a: {@link EffectiveConnection}
+ * resolves the per-agent connection (falling back to the base values) and
+ * {@link ConfiguredChatModel} caches one model per effective identity. {@code extraBody} is applied
+ * per request (OpenAI family) or at build time (Anthropic).</p>
  * a different endpoint. Today all agents still share the single built {@link ConfiguredChatModel},
  * so these two are <b>not yet applied per request</b> (see the TODO in {@link AiProvider}).</p>
  *
