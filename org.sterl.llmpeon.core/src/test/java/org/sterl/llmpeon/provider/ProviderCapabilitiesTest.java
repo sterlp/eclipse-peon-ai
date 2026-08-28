@@ -42,6 +42,31 @@ class ProviderCapabilitiesTest {
         assertThat(LlmProviders.of(name).supportsExtraBody()).isEqualTo(expected);
     }
 
+    static Stream<Arguments> extraBodyModeCases() {
+        return Stream.of(
+                // PER_REQUEST: per-request customParameters (OpenAI family, LM Studio, Copilot)
+                Arguments.of(AiProvider.OPEN_AI, ExtraBodyMode.PER_REQUEST),
+                Arguments.of(AiProvider.LM_STUDIO, ExtraBodyMode.PER_REQUEST),
+                Arguments.of(AiProvider.GITHUB_COPILOT, ExtraBodyMode.PER_REQUEST),
+                // BUILD_TIME: baked into the model at build time (Anthropic)
+                Arguments.of(AiProvider.ANTHROPIC, ExtraBodyMode.BUILD_TIME),
+                // NONE: no extra body support
+                Arguments.of(AiProvider.OLLAMA, ExtraBodyMode.NONE),
+                Arguments.of(AiProvider.OPEN_AI_OFFICIAL, ExtraBodyMode.NONE),
+                Arguments.of(AiProvider.GOOGLE_GEMINI, ExtraBodyMode.NONE),
+                Arguments.of(AiProvider.MISTRAL, ExtraBodyMode.NONE),
+                Arguments.of(AiProvider.GITHUB_MODELS, ExtraBodyMode.NONE));
+    }
+
+    @ParameterizedTest(name = "{0}.extraBodyMode() == {1}")
+    @MethodSource("extraBodyModeCases")
+    void extraBodyModePerClass(AiProvider name, ExtraBodyMode expected) {
+        // GIVEN one of the 9 providers
+        // WHEN extraBodyMode()
+        // THEN it matches the R3 mode table
+        assertThat(LlmProviders.of(name).extraBodyMode()).isEqualTo(expected);
+    }
+
     static Stream<Arguments> thinkSupportCases() {
         var openAiFamily = ProviderRequestSupport.openAiFamilyThinkSupport();
         return Stream.of(

@@ -58,11 +58,16 @@ public interface LlmProvider {
     }
 
     /**
-     * Whether this provider can carry extra body parameters (provider.md R3) — per-request
-     * {@code customParameters} where the langchain4j model supports it, or build-time for
-     * providers that only offer it at model-build time (see the provider's Javadoc).
+     * How this provider consumes extra body parameters (provider.md R3): per-request
+     * {@code customParameters} where the langchain4j model supports it, build-time for
+     * providers that only offer it at model-build time, or {@link ExtraBodyMode#NONE}.
      */
-    boolean supportsExtraBody();
+    ExtraBodyMode extraBodyMode();
+
+    /** Whether this provider can carry extra body parameters (provider.md R3). */
+    default boolean supportsExtraBody() {
+        return extraBodyMode() != ExtraBodyMode.NONE;
+    }
 
     /** The form of the per-agent think input this provider can consume (provider.md R5). */
     ThinkSupport thinkSupport();

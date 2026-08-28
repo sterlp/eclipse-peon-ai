@@ -115,8 +115,8 @@ class ProviderFactoryTest {
         }
 
         @Override
-        public boolean supportsExtraBody() {
-            return false;
+        public ExtraBodyMode extraBodyMode() {
+            return ExtraBodyMode.NONE;
         }
 
         @Override

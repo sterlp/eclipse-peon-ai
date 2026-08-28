@@ -76,13 +76,13 @@ public final class AnthropicProvider implements LlmProvider {
     }
 
     /**
-     * {@code true} — Anthropic consumes extra body fields, but <b>build-time only</b>
+     * Anthropic consumes extra body fields, but <b>build-time only</b>
      * (the {@code cacheSystemMessages}/{@code cacheTools} flags baked into the model's
      * default request parameters); there is no per-request extra body.
      */
     @Override
-    public boolean supportsExtraBody() {
-        return true;
+    public ExtraBodyMode extraBodyMode() {
+        return ExtraBodyMode.BUILD_TIME;
     }
 
     @Override

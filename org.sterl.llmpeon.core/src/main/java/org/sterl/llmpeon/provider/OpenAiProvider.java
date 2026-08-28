@@ -73,8 +73,8 @@ public final class OpenAiProvider implements LlmProvider {
     }
 
     @Override
-    public boolean supportsExtraBody() {
-        return true;
+    public ExtraBodyMode extraBodyMode() {
+        return ExtraBodyMode.PER_REQUEST;
     }
 
     @Override
