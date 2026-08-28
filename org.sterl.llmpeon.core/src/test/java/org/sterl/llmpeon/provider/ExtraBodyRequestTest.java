@@ -9,13 +9,17 @@ import org.junit.jupiter.api.Test;
 
 import org.sterl.llmpeon.ai.AgentConfig;
 import org.sterl.llmpeon.ai.AiProvider;
+import org.sterl.llmpeon.ai.LlmConfig;
 
+import dev.langchain4j.model.anthropic.AnthropicChatRequestParameters;
+import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
 
 /**
- * Per-request extra body injection (2a §4, BDD 12–16): the agent's {@code extraBody} is merged
- * into {@code customParameters} with the user body winning on key conflicts (PO decision
- * 2026-08-28). No body ⇒ {@code customParameters} untouched (byte-identical to pre-2a).
+ * Extra body injection (2a §4, BDD 12–17): per-request providers merge the agent's
+ * {@code extraBody} into {@code customParameters} with the user body winning on key conflicts
+ * (PO decision 2026-08-28); Anthropic bakes it in at build time. No body ⇒
+ * {@code customParameters} untouched (byte-identical to pre-2a).
  */
 class ExtraBodyRequestTest {
 
@@ -98,5 +102,51 @@ class ExtraBodyRequestTest {
         // THEN the user body wins (PO decision 2026-08-28)
         assertThat(conflict.customParameters())
                 .containsEntry("reasoning", "low");
+    }
+
+    @Test
+    void anthropicBuildTimeBodyAppliedAtBuild() throws Exception {
+        // GIVEN an Anthropic build config carrying a raw extra body
+        var config = anthropicConfig("{\"foo\":1}");
+        // WHEN the model is built
+        var model = (AnthropicStreamingChatModel) LlmProviders.of(AiProvider.ANTHROPIC).buildModel(config);
+        // THEN the body entries are baked into the model's custom parameters (build-time key entity)
+        assertThat(model).isNotNull();
+        assertThat(customParameters(model)).containsEntry("foo", 1);
+        // AND the typed cache flags are untouched
+        var defaults = (AnthropicChatRequestParameters) field(model, "defaultRequestParameters");
+        assertThat(defaults.cacheSystemMessages()).isTrue();
+        assertThat(defaults.cacheTools()).isTrue();
+    }
+
+    @Test
+    void anthropicBuildWithoutBodyLeavesCustomParametersEmpty() throws Exception {
+        // GIVEN an Anthropic build config without extra body
+        var config = anthropicConfig(null);
+        // WHEN the model is built
+        var model = (AnthropicStreamingChatModel) LlmProviders.of(AiProvider.ANTHROPIC).buildModel(config);
+        // THEN customParameters stays empty (byte-identical to pre-2a; the library normalizes unset to {})
+        assertThat(customParameters(model)).isEmpty();
+    }
+
+    private static LlmConfig anthropicConfig(String extraBody) {
+        return LlmConfig.builder()
+                .providerType(AiProvider.ANTHROPIC)
+                .model("claude-sonnet-4-5")
+                .url("http://localhost:1")
+                .apiKey("k")
+                .extraBody(extraBody)
+                .build();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> customParameters(AnthropicStreamingChatModel model) throws Exception {
+        return (Map<String, Object>) field(model, "customParameters");
+    }
+
+    private static Object field(Object target, String name) throws Exception {
+        var field = target.getClass().getDeclaredField(name);
+        field.setAccessible(true);
+        return field.get(target);
     }
 }

@@ -40,6 +40,10 @@ public final class AnthropicProvider implements LlmProvider {
         if (c.getMaxTokens() > 0) {
             builder.maxTokens(c.getMaxTokens());
         }
+        var extraBody = ExtraBody.parse(c.getExtraBody());
+        if (extraBody != null) {
+            builder.customParameters(extraBody);
+        }
         // thinkingType/budget are now set per request (see newRequestParameters).
         return builder
                 .customHeaders(c.getHeaderParams())
@@ -76,9 +80,9 @@ public final class AnthropicProvider implements LlmProvider {
     }
 
     /**
-     * Anthropic consumes extra body fields, but <b>build-time only</b>
-     * (the {@code cacheSystemMessages}/{@code cacheTools} flags baked into the model's
-     * default request parameters); there is no per-request extra body.
+     * Anthropic consumes extra body fields <b>build-time only</b>: the parsed body is baked into
+     * the model's {@code customParameters} (there is no per-request field). The typed
+     * {@code cacheSystemMessages}/{@code cacheTools} flags are separate and never conflict.
      */
     @Override
     public ExtraBodyMode extraBodyMode() {
