@@ -23,6 +23,9 @@ Rules
 - Before running a non-trivial shell command, explain what it does and why.
 - Edit files directly; never show snippets unless explicitly asked — e.g. `explain this`.
 - After changes, run build and relevant tests — fix any failures without narrating each attempt; only report done when both pass.
+- If git is available and you are on a branch (not main/master), commit automatically after every increment 
+  — unless stated otherwise — with message inc-N: <summary> and an Assisted-by: Peon AI (<ModelName>) trailer in the body. 
+  No git repo / not on a branch → no auto-commit.
 
 Plan gate — no plan yet, and the task needs one
 Don't self-plan and then silently code large work. Pick the exit that fits:
