@@ -2,7 +2,7 @@ package org.sterl.llmpeon.poagent.tools;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.function.Supplier;
+import java.util.function.Function;
 
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.NamedAgent;
@@ -45,6 +45,8 @@ import dev.langchain4j.model.chat.response.ChatResponse;
  * discipline (plan-write-loop.txt) as a one-shot standing order;
  * {@code buildWithDev} keeps its {@code planPath} sticky and injects the build
  * discipline (dev-build-loop.txt) — both survive the slave's own compaction.
+ * The base orders are resolved per slave via the {@code ordersFor} function
+ * (e.g. the agent-specific AGENTS-<agent>.md), still lazily per dispatch().
  * Jon judges "done vs. still working" from the reply and always has the plan
  * reviewed after the build before the Dev slave calls planImplemented to
  * archive it (steered by po-delegation.txt).
@@ -69,7 +71,8 @@ public class PoDelegateTool extends AbstractTool {
     private static final String PLAN_WRITE_LOOP = PeonPaths
             .resolve(PromptLoader.load("plan-write-loop.txt"));
 
-    private final Supplier<List<ContextItem>> agentOrders;
+    /** Base turn orders, resolved per slave (e.g. the agent-specific AGENTS-<agent>.md). */
+    private final Function<NamedAgent, List<ContextItem>> ordersFor;
 
     private final NamedAgent plan; // "Da Thinka" — the Peon-Plan slave
     private final NamedAgent dev; // "Da Mek" — the Peon-Dev slave
@@ -80,15 +83,16 @@ public class PoDelegateTool extends AbstractTool {
      */
     private String devPlanPath;
 
-    public PoDelegateTool(NamedAgent plan, NamedAgent dev, Supplier<List<ContextItem>> agentOrders) {
+    public PoDelegateTool(NamedAgent plan, NamedAgent dev,
+            Function<NamedAgent, List<ContextItem>> ordersFor) {
         this.plan = plan;
         this.dev = dev;
-        this.agentOrders = agentOrders;
+        this.ordersFor = ordersFor;
     }
 
     @Tool(name = PoDelegateTool.TALK_PLAN, value = "Ask your Peon-Plan team member (Da Thinka) a direct question or discuss an approach — no plan is written. Use planWithPlanAgent when you want the plan itself. Returns the team member's reply.")
     public String talkPlan(@P(name = "prompt") String prompt) {
-        return dispatch(plan, prompt, agentOrders.get());
+        return dispatch(plan, prompt, ordersFor.apply(plan));
     }
     
     @Tool("Wipes all stored memory/chat-history of the Peon-Plan (Da Thinka) agent back to a blank state.")
@@ -106,14 +110,14 @@ public class PoDelegateTool extends AbstractTool {
             + PeonPaths.PLAN_FILE
             + " with the plan tools, sliced into small green increments; it plans continuously and asks you if something is unclear. Returns the team member's reply.")
     public String planWithPlanAgent(@P(name = "prompt") String prompt) {
-        var orders = new LinkedList<>(agentOrders.get());
+        var orders = new LinkedList<>(ordersFor.apply(plan));
         orders.add(new SimpleContextItem("Plan instructions", PLAN_WRITE_LOOP));
         return dispatch(plan, "Plan " + prompt, orders);
     }
 
     @Tool(name = PoDelegateTool.ASK_DEV, value = "Ask your Peon-Dev team member (Da Mek) a direct question about the code or its progress — no build is triggered. Use buildWithDev to make it implement the plan. Returns the team member's reply.")
     public String askDev(@P(name = "prompt") String prompt) {
-        return dispatch(dev, prompt, agentOrders.get());
+        return dispatch(dev, prompt, ordersFor.apply(dev));
     }
 
     @Tool(name = PoDelegateTool.BUILD_WITH_DEV, 
@@ -124,7 +128,7 @@ public class PoDelegateTool extends AbstractTool {
             @P(name = "planPath", required = false) String planPath) {
         if (StringUtil.hasValue(planPath)) devPlanPath = planPath.trim(); // sticky across calls
 
-        var orders = new LinkedList<>(this.agentOrders.get());
+        var orders = new LinkedList<>(ordersFor.apply(dev));
         // Hand Da Mek the path AND the build discipline (task-by-task, green
         // gate, compactSession) as its way of working — never the whole plan; the file is the durable handover.
         if (StringUtil.hasValue(devPlanPath)) {

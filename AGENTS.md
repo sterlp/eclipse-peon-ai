@@ -1,7 +1,8 @@
 # AGENTS.md — LLM Peon
 
-LLM Peon is an Eclipse RCP plugin that runs AI agents (Peon-PO / Peon-Plan / Peon-Dev + custom
+Peon AI is an Eclipse RCP plugin that runs AI agents (Peon-PO / Peon-Plan / Peon-Dev + custom
 agents) inside Eclipse: chat UI, streaming, tool loop, sub-agent orchestration.
+If you run in eclipse - your are building/improving yourself. Do a good job or you suffer!
 
 **Working method:** docs-first PO cycle — the method itself lives in the **Jon skill**
 (`https://github.com/sterlp/ai-skill-codex/tree/main/skills/jon`).
@@ -14,28 +15,30 @@ agents) inside Eclipse: chat UI, streaming, tool loop, sub-agent orchestration.
 | `org.sterl.llmpeon` | Eclipse plugin: SWT/JFace UI + wiring (OSGi). |
 | `org.sterl.llmpeon.test` | OSGi plugin tests — JUnit 4, no external assertion libs. |
 | `releng/` | Tycho feature, target platform, update site. |
+| `homepage/` | **User behavior/visible changes** need the update in the same increment. |
 
 Module guides (read when working in one):
 - `org.sterl.llmpeon.core/AGENTS.md` — core conventions
 - `org.sterl.llmpeon/AGENTS.md` — plugin UI & logic patterns
 
-## Build & test
+## Architecture
 
-- Full build: `mvn clean verify` at the repo root (`llmpeon-parent`) — an Eclipse refresh +
-  clean build afterwards is needed.
-- **Core changes need `mvn clean verify` in `org.sterl.llmpeon.core`** so the plugin/test
-  bundles pick up the new core — Tycho resolves core from the target platform, not the reactor.
-- Core tests: `mvn -pl org.sterl.llmpeon.core test` (JUnit 5). `@Tag("integration")` tests are
-  excluded by default — run with `-Pintegration`.
-- Plugin tests: `org.sterl.llmpeon.test` via the Eclipse test runner (OSGi, JUnit 4).
-  - Before EVERY test run call `eclipseBuildProject` (all changed projects) — stale bundle
-    classes in `bin/` cause `ClassNotFoundException` / unresolved-compilation failures, and
-    stale Surefire reports under `target/` mislead result reading.
-  - A new test class needs manual workspace approval by the user and may time out if he is not
-    watching — prefer the already approved suite.
-- Compile-checking the plugin against local core changes: `mvn -o -pl org.sterl.llmpeon -am
-  package` — without `-am` Tycho resolves core from the target platform (a stale copy) and
-  reports phantom "cannot be resolved" errors for brand-new core symbols.
+- **Log OR throw, never both** (except facades where the exception leaves the context).
+- Use a clean component architecture with proper information hiding / deep modules
+- **Thread safety:** Eclipse plugin - heavy work on a background Thread `Job.create`, UI changes
+  on a UI thread `EclipseUtil.runInUiThread` as so plan/build accordingly. 
+  No single-threaded assumptions.
+
+## Build cycles & git
+
+- A build cycle runs on a **dedicated branch** named by the PO; only there does the Dev agent
+  auto-commit. No git repo / not on a branch → **no auto commits, ask first**.
+- After **each green increment**: If git is available and you are on a branch (not main/master) 
+  commit automatically — unless stated otherwise — with message 
+  `inc-N: <summary>` scoped to that increment's and an `Assisted-by: Peon AI (<ModelName>)` trailer in the body
+  — every step stays revertable (`git revert`) without touching the main branch. 
+  After `planImplemented` everything (incl. the archived plan) — repo clean for the next cycle.
+- Final merge/squash into the base branch is the **user's** decision.
 
 ## Dependencies
 
@@ -44,14 +47,6 @@ Module guides (read when working in one):
 - Whitelist only the needed groupIds via `includeGroupIds`. Platform-provided JARs (jakarta,
   osgi, jna, asm, jetty, felix, …) must **not** be in `lib/` — they come from the target
   platform.
-
-## Code invariants
-
-- **Thread safety:** all code must be thread-safe (`volatile` / `Atomic*` / `ReentrantLock`) —
-  SWT jobs, streaming callbacks and the tool loop run concurrently. No single-threaded
-  assumptions.
-- Elegant, expressive modern Java (records, pattern matching, switch expressions, Lombok).
-- **Log OR throw, never both** (except facades where the exception leaves the context).
 
 ## Docs
 
@@ -63,15 +58,19 @@ Three trees, kept separate:
   (Status · Context · Decision · Consequences) — it cross-links to the story, never repeats
   a rule or BDD. In Peon the docs are owned by the PO + the user — **no other agent writes to
   `docs/`**.
-- `homepage/` — published end-user documentation (VitePress); mechanics in `AGENTS-DEV.md`.
-- `skills/` — agent skills (YAML frontmatter `description` + markdown body).
+- `homepage/` — published end-user documentation (VitePress); 
+- dev phase mechanics in `AGENTS-DEV.md`.
 
-Start at `docs/index.md` for the full map before touching a feature.
+Start at `docs/index.md` for the full map before touching planning a feature.
 
-## Phase files
+## Reference and help working with eclipse building a good plugin
+Use search agents to search these big repos - do direct reads only.
+Save hard won facts / know how in /llmpeon-parent/skills/eclipse-dpe as SKILL use write SKILL
+for eclipse know-how you didn't know before. if you are in plan mode, add a hint in the plan to update
+the skill if needed.
 
-- `AGENTS-PLAN.md` (planning), `AGENTS-DEV.md` (implementing) — project-specific additions on
-  top of the Jon skill's method. The Peon plugin auto-loads `AGENTS-<agent>.md` for the
-  **active** Peon-PO/Plan/Dev (key = name after "Peon-", uppercased); Jon's slave agents
-  currently receive this base file only. Any other tool opens them manually and follows the
-  Jon skill.
+1. check the SKILL directory if something was already saved here ...
+2. use github eclipse plugin AI harness if problems or question arise which cannot be answered 
+   by the API itself eclipse: /github-copilot-for-eclipse
+3. /langchain4j-aggregator for langchain4j code & docs (*.md), if the API itself is not enough
+4. Opencode source - cli AI harness: /opencode -- for generall idea how AI harnesses are build

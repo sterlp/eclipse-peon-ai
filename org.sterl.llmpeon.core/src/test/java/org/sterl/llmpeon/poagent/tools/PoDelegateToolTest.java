@@ -3,7 +3,7 @@ package org.sterl.llmpeon.poagent.tools;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
-import java.util.function.Supplier;
+import java.util.function.Function;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,12 +38,12 @@ class PoDelegateToolTest {
     private AiAgent devSlave()  { return new AiDevAgent(model, new ToolService()); }
 
     private PoDelegateTool newTool() {
-        return newTool(List::of);
+        return newTool(t -> List.of());
     }
 
-    private PoDelegateTool newTool(Supplier<List<ContextItem>> memory) {
+    private PoDelegateTool newTool(Function<NamedAgent, List<ContextItem>> ordersFor) {
         return new PoDelegateTool(new NamedAgent("Da Thinka", planSlave()),
-                new NamedAgent("Da Mek", devSlave()), memory);
+                new NamedAgent("Da Mek", devSlave()), ordersFor);
     }
 
     @Test
@@ -124,7 +124,7 @@ class PoDelegateToolTest {
     void slaves_getSharedMemoryInjected() {
         // GIVEN
         var memory = "MEMORY: always run the tests";
-        var tool = newTool(() -> List.of(new SimpleContextItem("MEMORY: always run the tests")));
+        var tool = newTool(t -> List.of(new SimpleContextItem("MEMORY: always run the tests")));
 
         // WHEN
         tool.talkPlan("go");

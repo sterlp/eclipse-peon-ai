@@ -15,6 +15,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.TokenUsage;
 
 class ThreadSafeMemoryTest extends AbstractMemoryFileTest {
 
@@ -79,6 +80,26 @@ class ThreadSafeMemoryTest extends AbstractMemoryFileTest {
         assertThat(ChatMessageUtil.toString(messages.getLast())).contains("U1");
         // AND
         assertThat(subject.messageFlow()).isEqualTo("USER->TOOL_REQUEST->TOOL_EXECUTION_RESULT->AI->USER");
+    }
+
+    @Test
+    void test_reevaluateTokens_usesActualMemoryEstimate() {
+        // GIVEN — a memory whose counter was set from a (stale) provider usage
+        var subject = new ThreadSafeMemory();
+        subject.add(UserMessage.from("A".repeat(3000)));
+        subject.add(AiMessage.from("B".repeat(3000)));
+        subject.addResult(ChatResponse.builder()
+                .aiMessage(AiMessage.from("C"))
+                .tokenUsage(new TokenUsage(9000, 100, 9100))
+                .build());
+        assertThat(subject.getTotalTokenUsed()).isEqualTo(9100);
+
+        // WHEN
+        subject.reevaluateTokens();
+
+        // THEN — the counter is recomputed from the actual memory content
+        assertThat(subject.getTotalTokenUsed()).isEqualTo(ChatMessageUtil.estimateTokens(subject.getCopy()));
+        assertThat(subject.getTotalTokenUsed()).isLessThan(9100);
     }
 
     @Test

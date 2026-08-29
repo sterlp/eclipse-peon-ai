@@ -33,6 +33,7 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.output.TokenUsage;
 
 public class AiDeveloperAgentTest {
 
@@ -131,6 +132,65 @@ public class AiDeveloperAgentTest {
         assertThat(((ToolExecutionResultMessage)mem.get(3)).text()).contains("Okay thats good");
     }
     
+    @Test
+    void test_inLoopCompact_tokenCounterResetsBelowThreshold() {
+        // GIVEN — a tiny budget (1000) so the stale pre-compact usage (9600) sits far above it
+        var config = LlmConfig.newOllama("foo").toBuilder().autoCompactAfter(1000).build();
+        subject = new AiDevAgent(new ConfiguredChatModel(config, cm), toolService);
+        for (int i = 0; i < 5; i++) {
+            subject.addMessage(UserMessage.from("Foo " + i));
+            subject.addMessage(AiMessage.from("Bar " + i));
+        }
+        var first = new AtomicBoolean(true);
+        fn.set(req -> {
+            if (first.getAndSet(false)) {
+                return ChatResponse.builder()
+                        .aiMessage(CALL_ME)
+                        .tokenUsage(new TokenUsage(9500, 100, 9600))
+                        .build();
+            }
+            return ChatResponse.builder().aiMessage(AiMessage.aiMessage("Okay thats good")).build();
+        });
+
+        // WHEN — the model compacts in-loop
+        subject.call("Foo", null);
+
+        // THEN — the counter reflects the NEW small memory, not the pre-compact request usage
+        assertThat(subject.getMemory().getTotalTokenUsed()).isLessThan(1000);
+        // AND — no compact hint was injected right after the compact
+        assertThat(subject.getMemory().containsUserMessage("CONTEXT LIMIT WARNING")).isFalse();
+    }
+
+    @Test
+    void test_inLoopCompact_noHintAfterCompact() {
+        // GIVEN — realistic budget (80k) and the slave compact factor (0.7 -> 56k pre-turn trigger)
+        var config = LlmConfig.newOllama("foo").toBuilder().autoCompactAfter(80000).build();
+        subject = new AiDevAgent(new ConfiguredChatModel(config, cm), toolService, 0.7);
+        for (int i = 0; i < 5; i++) {
+            subject.addMessage(UserMessage.from("Foo " + i));
+            subject.addMessage(AiMessage.from("Bar " + i));
+        }
+        var first = new AtomicBoolean(true);
+        fn.set(req -> {
+            if (first.getAndSet(false)) {
+                return ChatResponse.builder()
+                        .aiMessage(CALL_ME)
+                        .tokenUsage(new TokenUsage(76000, 1000, 77000))
+                        .build();
+            }
+            return ChatResponse.builder().aiMessage(AiMessage.aiMessage("Okay thats good")).build();
+        });
+
+        // WHEN — turn 1 compacts in-loop; turn 2 must NOT trigger a phantom pre-turn auto-compact
+        subject.call("Foo", null);
+        subject.call("Bar", null);
+
+        // THEN — no compact hint was injected
+        assertThat(subject.getMemory().containsUserMessage("CONTEXT LIMIT WARNING")).isFalse();
+        // AND — the compressor ran exactly once (turn 1: request, compact, final; turn 2: final)
+        verify(cm, times(4)).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+    }
+
     @Test
     void test_context_injection() {
         // GIVEN — turn context is restored after compact, not injected on first call

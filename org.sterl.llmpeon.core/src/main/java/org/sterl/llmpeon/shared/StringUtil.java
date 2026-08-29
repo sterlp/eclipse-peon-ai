@@ -2,14 +2,15 @@ package org.sterl.llmpeon.shared;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.text.NumberFormat;
+import java.util.Locale;
 
 public class StringUtil {
-	
-	/** any /r/n -> /n */
-	public static String normelizeEndings(String value) {
-		if (value == null || value.isBlank()) return value;
-		return value.replace("\r\n", "\n");
-	}
+    /** any /r/n -> /n */
+    public static String normelizeEndings(String value) {
+        if (value == null || value.isBlank()) return value;
+        return value.replace("\r\n", "\n");
+    }
     
     public static String getStackTrace(final Throwable throwable) {
         if (throwable == null) {
@@ -71,14 +72,15 @@ public class StringUtil {
         return value.strip();
     }
 
-    /** Converts a token count to a "k" string, e.g. 131072 → "131k". */
+    /** Converts a token count to a "k" string, e.g. 131072 → "131k", 1234567 → "1.234k". */
     public static String toK(int tokens) {
-        return (tokens / 1000) + "k";
+        return toK((long) tokens);
     }
 
-    /** Converts a token count to a "k" string, e.g. 131072 → "131k". */
+    /** Converts a token count to a "k" string, e.g. 131072 → "131k", 1234567 → "1.234k". */
     public static String toK(long tokens) {
-        return (tokens / 1000) + "k";
+        long k = tokens / 1000;
+        return NumberFormat.getIntegerInstance(Locale.GERMANY).format(k) + "k";
     }
 
     /**
