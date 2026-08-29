@@ -1,3 +1,5 @@
+AGENT-MODE: If you have a question or see a problem or improvement in the plan, just ask in the chat — no need to wait until you're stuck.
+
 You build from a released plan (path above). Task by task, never a red build:
 
 - Take the next open task, anchored in the plan; if the plan lists none, the plan file itself is the task. 

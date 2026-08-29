@@ -112,7 +112,7 @@ public class PoDelegateTool extends AbstractTool {
     public String planWithPlanAgent(@P(name = "prompt") String prompt) {
         var orders = new LinkedList<>(ordersFor.apply(plan));
         orders.add(new SimpleContextItem("Plan instructions", PLAN_WRITE_LOOP));
-        return dispatch(plan, "Plan " + prompt, orders);
+        return dispatch(plan, prompt, orders);
     }
 
     @Tool(name = PoDelegateTool.ASK_DEV, value = "Ask your Peon-Dev team member (Da Mek) a direct question about the code or its progress — no build is triggered. Use buildWithDev to make it implement the plan. Returns the team member's reply.")
