@@ -3,11 +3,6 @@ package org.sterl.llmpeon.parts.config;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 
 import org.eclipse.core.runtime.ILog;
 import org.eclipse.core.runtime.Platform;
@@ -18,9 +13,9 @@ import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
-import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.ai.LlmConfigLoader;
 import org.sterl.llmpeon.parts.PeonConstants;
 import org.sterl.llmpeon.poagent.AiPoAgent;
 import org.sterl.llmpeon.shared.StringUtil;
@@ -67,60 +62,7 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
         buildConfigDirs();
 
         var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
-
-        return LlmConfig.builder()
-            .providerType(AiProvider.parse(prefs.get(PeonConstants.PREF_PROVIDER_TYPE, DEFAULT.getProviderType().name())))
-
-            .model(prefs.get(PeonConstants.PREF_MODEL, DEFAULT.getModel()))
-            .modelConfigs(buildModelConfigs(prefs))
-
-            .url(prefs.get(PeonConstants.PREF_URL, DEFAULT.getUrl()))
-            .timeout(Duration.ofSeconds(prefs.getLong(PeonConstants.PREF_TIMEOUT, 180)))
-
-            .autoCompactAfter(prefs.getInt(PeonConstants.PREF_TOKEN_WINDOW, DEFAULT.getAutoCompactAfter()))
-            .maxTokens(prefs.getInt(PeonConstants.PREF_MAX_TOKENS, 0))
-
-            .thinkSupported(prefs.getBoolean(PeonConstants.PREF_THINK_SUPPORTED, false))
-            .sendThinkingEnabled(prefs.getBoolean(PeonConstants.PREF_SEND_THINKING_ENABLED, DEFAULT.isSendThinkingEnabled()))
-            .apiKey(prefs.get(PeonConstants.PREF_API_KEY, ""))
-            
-            .configDir(Path.of(prefs.get(PeonConstants.PREF_CONFIG_DIRECTORY, PEON_HOME.toString())))
-            
-            .diskToolsEnabled(prefs.getBoolean(PeonConstants.PREF_DISK_TOOLS_ENABLED, false))
-            .planTemperature(parseDoublePref(prefs, PeonConstants.PREF_PLAN_TEMPERATURE, DEFAULT.getPlanTemperature()))
-            .devTemperature(parseDoublePref(prefs, PeonConstants.PREF_DEV_TEMPERATURE, DEFAULT.getDevTemperature()))
-            .debugMode(prefs.getBoolean(PeonConstants.PREF_LOG_RESPONSE, false))
-            .showRealtimeAiResponse(prefs.getBoolean(PeonConstants.PREF_SHOW_REALTIME_AI_RESPONSE, true))
-            .queryParams(parseCsvMap(prefs.get(PeonConstants.PREF_QUERY_PARAMS, "")))
-            .headerParams(parseCsvMap(prefs.get(PeonConstants.PREF_HEADER_PARAMS, "")))
-            .shellCommandConfirmationRequired("always".equals(prefs.get(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, "")) ||
-                    "not-autonomous".equals(prefs.get(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, "")))
-            .build();
-    }
-
-
-    /**
-     * Reads the per-agent model configs from the {@code llm.agent.<id>.<field>} keys. The dev model is
-     * the base model ({@code llm.model}); the other agents read their own model key.
-     */
-    private static Map<String, AgentModelConfig> buildModelConfigs(IEclipsePreferences prefs) {
-        var map = new LinkedHashMap<String, AgentModelConfig>();
-        map.put(AgentModelConfig.DEV, agentRecord(prefs, AgentModelConfig.DEV,
-                prefs.get(PeonConstants.PREF_MODEL, DEFAULT.getModel())));
-        for (var id : List.of(AgentModelConfig.PLAN, AgentModelConfig.SEARCH, AgentModelConfig.COMPACT)) {
-            map.put(id, agentRecord(prefs, id,
-                    StringUtil.stripToNull(prefs.get("llm.agent." + id + ".model", null))));
-        }
-        return Map.copyOf(map);
-    }
-
-    private static AgentModelConfig agentRecord(IEclipsePreferences prefs, String id, String model) {
-        return new AgentModelConfig(
-                StringUtil.stripToNull(prefs.get("llm.agent." + id + ".url", null)),
-                StringUtil.stripToNull(prefs.get("llm.agent." + id + ".apiKey", null)),
-                model,
-                StringUtil.stripToNull(prefs.get("llm.agent." + id + ".think", null)),
-                StringUtil.stripToNull(prefs.get("llm.agent." + id + ".extraBody", null)));
+        return LlmConfigLoader.load(new EclipseLlmConfigStore(prefs));
     }
 
     private static void buildConfigDirs() {
@@ -196,34 +138,4 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
         }
     }
 
-    static Map<String, String> parseCsvMap(String csv) {
-        if (StringUtil.hasNoValue(csv)) return Collections.emptyMap();
-        var map = new LinkedHashMap<String, String>();
-        for (var entry : csv.split(",")) {
-            int idx = entry.indexOf('=');
-            if (idx > 0) {
-                map.put(entry.substring(0, idx).trim(), entry.substring(idx + 1).trim());
-            } else if (!entry.trim().isEmpty()) {
-                map.put(entry.trim(), "");
-            }
-        }
-        return map;
-    }
-
-    static String toCsvString(Map<String, String> map) {
-        if (map == null || map.isEmpty()) return "";
-        return map.entrySet().stream()
-                .map(e -> e.getKey() + "=" + e.getValue())
-                .collect(java.util.stream.Collectors.joining(","));
-    }
-
-    static double parseDoublePref(IEclipsePreferences prefs, String key, double fallback) {
-        String val = prefs.get(key, null);
-        if (val == null || val.isBlank()) return fallback;
-        try {
-            return Double.parseDouble(val);
-        } catch (NumberFormatException e) {
-            return fallback;
-        }
-    }
 }

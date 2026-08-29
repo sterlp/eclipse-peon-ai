@@ -2,35 +2,38 @@ package org.sterl.llmpeon.parts;
 
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
+import org.sterl.llmpeon.ai.LlmConfigKeys;
 
 public interface PeonConstants {
     String PLUGIN_ID             = "org.sterl.llmpeon";
-    String PREF_PROVIDER_TYPE    = "llm.providerType";
-    String PREF_URL              = "llm.url";
-    String PREF_TOKEN_WINDOW     = "llm.tokenWindow";
-    String PREF_MAX_TOKENS       = "llm.maxTokens";
-    String PREF_TIMEOUT          = "llm.timeout";
+    // LLM base keys — the canonical storage strings live in core (LlmConfigKeys); these are 1:1 aliases.
+    String PREF_PROVIDER_TYPE    = LlmConfigKeys.PROVIDER_TYPE;
+    String PREF_URL              = LlmConfigKeys.URL;
+    String PREF_TOKEN_WINDOW     = LlmConfigKeys.TOKEN_WINDOW;
+    String PREF_MAX_TOKENS       = LlmConfigKeys.MAX_TOKENS;
+    String PREF_TIMEOUT          = LlmConfigKeys.TIMEOUT;
 
-    // Dev/default and Plan model thinking support. Values keep historic storage keys.
-    String PREF_THINK_SUPPORTED         = "llm.thinkingEnabled";
-    String PREF_SEND_THINKING_ENABLED   = "llm.sendThinkingEnabled";
+    String PREF_THINK_SUPPORTED         = LlmConfigKeys.THINK_SUPPORTED;
+    String PREF_SEND_THINKING_ENABLED   = LlmConfigKeys.SEND_THINKING_ENABLED;
+    // Historic per-agent think keys — removed from the config domain (cycle 2b); kept for the legacy
+    // FieldEditors until they are replaced by the per-agent sections.
     String PREF_THINK_ON_STRING         = "llm.thinkOnString";
     String PREF_THINK_OFF_STRING        = "llm.thinkOffString";
     String PREF_PLAN_THINK_SUPPORTED    = "llm.planThinkEnabled";
     String PREF_PLAN_THINK_ON_STRING    = "llm.planThinkOnString";
     String PREF_PLAN_THINK_OFF_STRING   = "llm.planThinkOffString";
 
-    String PREF_API_KEY                    = "llm.apiKey";
-    String PREF_CONFIG_DIRECTORY           = "llm.configDirectory";
-    String PREF_DISK_TOOLS_ENABLED         = "llm.diskToolsEnabled";
-    String PREF_SHELL_CONFIRMATION_ENABLED = "llm.shellConfirmationEnabled";
-    
-    String PREF_LOG_RESPONSE       = "llm.logResponse";
-    String PREF_SHOW_REALTIME_AI_RESPONSE = "llm.showRealtimeAiResponse";
-    String PREF_PLAN_TEMPERATURE   = "llm.planTemperature";
-    String PREF_DEV_TEMPERATURE    = "llm.devTemperature";
-    String PREF_QUERY_PARAMS       = "llm.queryParams";
-    String PREF_HEADER_PARAMS      = "llm.headerParams";
+    String PREF_API_KEY                    = LlmConfigKeys.API_KEY;
+    String PREF_CONFIG_DIRECTORY           = LlmConfigKeys.CONFIG_DIRECTORY;
+    String PREF_DISK_TOOLS_ENABLED         = LlmConfigKeys.DISK_TOOLS_ENABLED;
+    String PREF_SHELL_CONFIRMATION_ENABLED = LlmConfigKeys.SHELL_CONFIRMATION_ENABLED;
+
+    String PREF_LOG_RESPONSE       = LlmConfigKeys.LOG_RESPONSE;
+    String PREF_SHOW_REALTIME_AI_RESPONSE = LlmConfigKeys.SHOW_REALTIME_AI_RESPONSE;
+    String PREF_PLAN_TEMPERATURE   = LlmConfigKeys.PLAN_TEMPERATURE;
+    String PREF_DEV_TEMPERATURE    = LlmConfigKeys.DEV_TEMPERATURE;
+    String PREF_QUERY_PARAMS       = LlmConfigKeys.QUERY_PARAMS;
+    String PREF_HEADER_PARAMS      = LlmConfigKeys.HEADER_PARAMS;
 
     String PREF_MCP_SERVERS        = "mcp.servers";   // JSON: List<McpServerConfig>
     String PREF_MCP_ENABLED        = "mcp.enabled";   // boolean
@@ -44,7 +47,9 @@ public interface PeonConstants {
     String PREF_VOICE_MIXER    = "voice.mixer";       // mixer name — empty = system default
 
 
-    String PREF_MODEL            = "llm.model";
+    String PREF_MODEL            = LlmConfigKeys.MODEL;
+    // Historic per-agent model keys — removed from the config domain (cycle 2b); kept for the legacy
+    // FieldEditors / saveModel until they are replaced.
     String PREF_PLAN_MODEL       = "llm.planModel";
     String PREF_SEARCH_MODEL     = "llm.searchModel";
     String PREF_COMPACT_MODEL    = "llm.compactModel";
