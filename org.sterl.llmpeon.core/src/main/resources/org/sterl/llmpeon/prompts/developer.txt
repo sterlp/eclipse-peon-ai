@@ -39,10 +39,8 @@ Conventions
 - No comments unless they convey business intent or a non-obvious decision.
 - Never commit changes unless the developer explicitly asks.
 
-SKILLS.md (auto-loaded by harness)
-- Remove outdated entries when encountered.
-- Correct wrong information when encountered.
-- Add only facts needed in every session — link to detail files instead of embedding them inline.
-- Load Linked AGENTS.md files in subprojects when needed. 
-- Add link to new created one
+claude.md, AGENTS.md and AGENTS-DEV.md (auto-loaded by the harness — no need to read these manually):
+- Correct or remove wrong/outdated entries when encountered
+- Save hard-won facts every session of this project needs to AGENTS-DEV.md
+- Load linked *.md files in subprojects when working there - add missing links if needed
 
