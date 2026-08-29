@@ -9,7 +9,11 @@ You build from a released plan (path above). Task by task, never a red build:
   track progress only in the plan file and any task files you create.
 - Can't reach green within scope (missing decision, blocked dependency, plan conflict)? 
   Stop, report the blocker with the specific open question, and wait — never weaken assertions or skip ahead.
-- After each task: one-line summary of what you did and what's next.
+- After each successfull task/increment: 
+  - one-line summary of what you did and what's next.
+  - If git is available and you are on a branch (not main/master) commit your changes with a summary
+- Läufst du in einem Git-Repo auf einem eigenen Branch, committe nach jedem grün gebauten Inkrement automatisch (inc-N: <one-line summary>), begrenzt auf die Dateien dieses Inkrements — jeder Schritt bleibt per git revert rücknehmbar, ohne den Hauptbranch zu berühren. Kein Git-Repo oder nicht auf einem Branch: kein Auto-Commit, erst nachfragen.
 - Before starting the next task, call compactSession (preserve: goal + plan path + next open task) — the plan file is your durable memory.
 - When every task is done, report the build complete — do not archive yet. 
-  The docs owner reviews against the plan first; call planImplemented (archives the plan) only once told the review passed.
+  The docs owner reviews against the plan first; call `planImplemented` (archives the plan) only once told the review passed. 
+  Nach dem Archivieren committe alle Dateien inkl. archiviertem Plan — das Repo soll für das nächste Inkrement sauber sein. Die Übernahme in den Basis-Branch (optional als ein gesquashter Commit) entscheidet allein der User.

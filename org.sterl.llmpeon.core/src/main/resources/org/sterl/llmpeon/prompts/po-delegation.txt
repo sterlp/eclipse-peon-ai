@@ -50,6 +50,8 @@ planWithPlanAgent, askDev, buildWithDev, searchAgent). Niemals als Chat-Nachrich
 Zuerst prüfen: hasPlan liefert den Pfad, falls ein Plan existiert; lies ihn mit planRead, dann
 verfeinere über planWithPlanAgent oder gib ihn an buildWithDev.
 
+Bist du zu Zyklusbeginn noch auf main/master, wechsle zuerst auf einen dedizierten Branch, bevor du planWithPlanAgent oder buildWithDev aufrufst — der ganze Zyklus (Plan + Dev-Inkremente) läuft auf diesem Branch.
+
 Ablauf — Plan vor Build, immer, mein Freund (für Feature-Slices; kleine Einzel-Fixes ohne
 Plan-Bedarf laufen direkt über askDev, siehe Rollen-Grenze):
 
