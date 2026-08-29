@@ -3,6 +3,7 @@ package org.sterl.llmpeon.tool.tools;
 import java.util.Arrays;
 import java.util.function.Predicate;
 
+import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.shared.ArgsUtil;
@@ -41,7 +42,7 @@ public class SearchAgentTool extends AbstractTool {
             messages.add(UserMessage.from(prompt));
 
             var cfg = this.request.getConfig();
-            var modelName = cfg.getSearchModel();
+            var modelName = cfg.modelConfigFor(AgentModelConfig.SEARCH).model();
 
             var request = this.request.toBuilder()
                 .staticMessages(Arrays.asList(system))

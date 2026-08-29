@@ -3,12 +3,15 @@ package org.sterl.llmpeon.poagent;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.sterl.llmpeon.agent.AbstractAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.AgentConfig;
+import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
+import org.sterl.llmpeon.ai.ThinkResolver;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.memory.FileAgentHistoryStore;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
@@ -106,27 +109,22 @@ public class AiPoAgent extends AbstractAgent {
 
     @Override
     public boolean isThinkSupported() {
-        return configuredModel.getConfig().isPlanThinkSupported();
+        return !ThinkResolver.isOff(configuredModel.getConfig().modelConfigFor(AgentModelConfig.PLAN).think());
     }
 
     @Override
     public String getAgentModelName() {
         var cfg = configuredModel.getConfig();
-        return StringUtil.hasValue(cfg.getPlanModel()) ? cfg.getPlanModel() : cfg.getModel();
+        var plan = cfg.modelConfigFor(AgentModelConfig.PLAN).model();
+        return StringUtil.hasValue(plan) ? plan : cfg.getModel();
     }
 
     @Override
     public boolean setAgentModelName(String modelName) {
         var cfg = configuredModel.getConfig();
-        if (modelName == null) {
-            if (cfg.getPlanModel() == null) return false;
-            this.configuredModel.updateConfig(cfg.toBuilder().planModel(null).build());
-            return true;
-        }
-        if (!modelName.equals(cfg.getPlanModel())) {
-            this.configuredModel.updateConfig(cfg.toBuilder().planModel(modelName).build());
-            return true;
-        }
-        return false;
+        var plan = cfg.modelConfigFor(AgentModelConfig.PLAN);
+        if (Objects.equals(modelName, plan.model())) return false;
+        this.configuredModel.updateConfig(cfg.withModelConfig(AgentModelConfig.PLAN, plan.withModel(modelName)));
+        return true;
     }
 }

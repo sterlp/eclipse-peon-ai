@@ -12,6 +12,7 @@ import java.util.Map;
 
 import org.sterl.llmpeon.ai.model.AiModel;
 import org.sterl.llmpeon.provider.LlmProviders;
+import org.sterl.llmpeon.shared.StringUtil;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -44,12 +45,13 @@ public class LlmConfig {
     private final AiProvider providerType = AiProvider.OLLAMA;
     @Default
     private final String model = null;
+    /**
+     * Per-agent model configs keyed by agent id ({@code dev}/{@code plan}/{@code search}/{@code compact}).
+     * Immutable; missing entries resolve to {@link AgentModelConfig#empty()}. The dev model is the base
+     * {@link #model} (no separate dev model key).
+     */
     @Default
-    private final String planModel = null;
-    @Default
-    private final String compactModel = null;
-    @Default
-    private final String searchModel = null;
+    private final Map<String, AgentModelConfig> modelConfigs = Map.of();
     @NonNull
     @Default
     private final Duration timeout = Duration.ofMinutes(3);
@@ -68,22 +70,12 @@ public class LlmConfig {
      */
     @Default
     private final int maxTokens = 0;
-    /** Dev/default model capability. Also drives build-time thinking config where providers require it. */
+    /**
+     * Base/dev model capability. Drives build-time thinking for Gemini/Mistral and the returnThinking
+     * context only — the per-agent think value itself now lives in {@link #modelConfigs}.
+     */
     @Default
     private final boolean thinkSupported = false;
-    /** Dev on-value. Empty -&gt; auto (heuristic). Setting on or off puts the agent in manual mode. */
-    @Default
-    private final String thinkOnString = null;
-    /** Dev off-value. Empty means provider default, except Ollama maps resolved off to {@code think:false}. */
-    @Default
-    private final String thinkOffString = null;
-    /** Plan model capability. */
-    @Default
-    private final boolean planThinkSupported = false;
-    @Default
-    private final String planThinkOnString = null;
-    @Default
-    private final String planThinkOffString = null;
     /** Global "send thinking back" (build-time). */
     @Default
     private final boolean sendThinkingEnabled = true;
@@ -165,29 +157,63 @@ public class LlmConfig {
                 .apiKey(apiKey);
     }
 
-    /** Dev agent (default model) — uses the dev think slot ({@code DEV == GLOBAL == DEFAULT}). */
+    /**
+     * Base provider/url/key with the record's own url/key/extraBody overriding the base. A blank
+     * record field inherits the base value (resolved again by {@link EffectiveConnection}).
+     */
+    private AgentConfig.AgentConfigBuilder agentBuilder(AgentModelConfig rec) {
+        return AgentConfig.builder()
+                .provider(providerType)
+                .url(StringUtil.hasValue(rec.url()) ? rec.url() : url)
+                .apiKey(StringUtil.hasValue(rec.apiKey()) ? rec.apiKey() : apiKey)
+                .extraBody(StringUtil.stripToNull(rec.extraBody()));
+    }
+
+    /** The per-agent config for the given agent id; missing entries resolve to {@link AgentModelConfig#empty()}. */
+    public AgentModelConfig modelConfigFor(String agentId) {
+        return modelConfigs.getOrDefault(agentId, AgentModelConfig.empty());
+    }
+
+    /** A copy with the given agent's model config replaced (null removes the entry). */
+    public LlmConfig withModelConfig(String agentId, AgentModelConfig config) {
+        var updated = new LinkedHashMap<>(modelConfigs);
+        if (config == null) {
+            updated.remove(agentId);
+        } else {
+            updated.put(agentId, config);
+        }
+        return toBuilder().modelConfigs(Map.copyOf(updated)).build();
+    }
+
+    /** Dev agent — always the base {@link #model}; think/url/key/body from the dev record (verbatim). */
     public AgentConfig devAgentConfig() {
-        return baseAgentConfig().model(model)
-                .think(ThinkResolver.effectiveThink(thinkSupported, thinkOnString, thinkOffString))
+        var dev = modelConfigFor(AgentModelConfig.DEV);
+        return agentBuilder(dev).model(model)
+                .think(dev.think())
                 .temperature(devTemperature).build();
     }
 
-    /** Plan agent — its own think slot; {@link #planModel} (null = provider default) and plan temperature. */
+    /** Plan agent — model/think from its record (model null = provider default) and plan temperature. */
     public AgentConfig planAgentConfig() {
-        return baseAgentConfig().model(planModel)
-                .think(ThinkResolver.effectiveThink(planThinkSupported, planThinkOnString, planThinkOffString))
+        var plan = modelConfigFor(AgentModelConfig.PLAN);
+        return agentBuilder(plan).model(plan.model())
+                .think(plan.think())
                 .temperature(planTemperature).build();
     }
 
-    /** Compactor — never thinks (nothing sent). Mirrors {@link org.sterl.llmpeon.agent.AiCompressorAgent}'s temperature. */
+    /** Compactor — model/think from its record. Mirrors {@link org.sterl.llmpeon.agent.AiCompressorAgent}'s temperature. */
     public AgentConfig compactAgentConfig() {
-        return baseAgentConfig().model(compactModel).think(null)
+        var compact = modelConfigFor(AgentModelConfig.COMPACT);
+        return agentBuilder(compact).model(compact.model())
+                .think(compact.think())
                 .temperature(devTemperature < 1.0 ? 0.2 : null).build();
     }
 
-    /** Search sub-agent — never thinks (nothing sent). Mirrors {@link org.sterl.llmpeon.tool.tools.SearchAgentTool}'s temperature. */
+    /** Search sub-agent — model/think from its record. Mirrors {@link org.sterl.llmpeon.tool.tools.SearchAgentTool}'s temperature. */
     public AgentConfig searchAgentConfig() {
-        return baseAgentConfig().model(searchModel).think(null)
+        var search = modelConfigFor(AgentModelConfig.SEARCH);
+        return agentBuilder(search).model(search.model())
+                .think(search.think())
                 .temperature(devTemperature < 1.0 ? 0.3 : null).build();
     }
 

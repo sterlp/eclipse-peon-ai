@@ -2,6 +2,7 @@ package org.sterl.llmpeon.agent;
 
 import java.util.List;
 
+import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.shared.AiMonitor;
@@ -36,7 +37,7 @@ public class AiCompressorAgent {
         messages.stream().forEach(m -> msg.append(toText(m)).append("\n\n"));
 
         var cfg = chatModel.getConfig();
-        var modelName = cfg.getCompactModel();
+        var modelName = cfg.modelConfigFor(AgentModelConfig.COMPACT).model();
         monitor.onTool("Compressing conversation " + messages.size()
             + " messages" + (modelName == null ? "" : " using " + modelName));
 

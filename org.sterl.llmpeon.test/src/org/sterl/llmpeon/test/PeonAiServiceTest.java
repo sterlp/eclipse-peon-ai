@@ -21,6 +21,7 @@ import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
+import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
@@ -315,8 +316,8 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
     @Test
     public void test_po_model_uses_plan_slot_and_defaults_to_dev_model() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
-        // GIVEN a dev/default model, no plan model, Jon active
-        aiService.updateConfig(aiService.getConfig().toBuilder().model("dev-model").planModel(null).build());
+        // GIVEN a dev/default model, no plan record, Jon active
+        aiService.updateConfig(aiService.getConfig().toBuilder().model("dev-model").build());
         aiService.setActiveAgent(AiPoAgent.NAME);
 
         // THEN Jon defaults to the dev/main model (never empty -> no "No model configured")
@@ -327,7 +328,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
 
         // THEN it lands in the plan slot and is what Jon reports and runs on
         assertEquals("po-model", aiService.getActiveModel());
-        assertEquals("po-model", aiService.getConfig().getPlanModel());
+        assertEquals("po-model", aiService.getConfig().modelConfigFor(AgentModelConfig.PLAN).model());
     }
 
     /**

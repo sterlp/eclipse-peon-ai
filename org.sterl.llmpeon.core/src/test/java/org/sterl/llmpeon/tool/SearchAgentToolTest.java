@@ -2,9 +2,12 @@ package org.sterl.llmpeon.tool;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Map;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.StreamMock;
+import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.tool.tools.SearchAgentTool;
@@ -25,10 +28,11 @@ class SearchAgentToolTest {
     
     @Test
     void testSearchAgentUsesConfiguredSearchModel() {
-        // GIVEN — config with searchModel="search-specific-model"
+        // GIVEN — config with a search record model="search-specific-model"
         var config = LlmConfig.builder()
                 .model("default-model")
-                .searchModel("search-specific-model")
+                .modelConfigs(Map.of(AgentModelConfig.SEARCH,
+                        new AgentModelConfig(null, null, "search-specific-model", null, null)))
                 .build();
         
         var cm = streamMock.buildMock(r -> ChatResponse.builder().aiMessage(AiMessage.aiMessage("Search done")).build());

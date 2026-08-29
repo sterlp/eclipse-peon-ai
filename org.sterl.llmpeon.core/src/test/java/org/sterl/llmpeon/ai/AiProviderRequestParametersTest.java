@@ -3,6 +3,7 @@ package org.sterl.llmpeon.ai;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
@@ -38,12 +39,13 @@ class AiProviderRequestParametersTest {
 
     @Test
     void devAndPlan_thinkSupportResolveIndependently() {
+        // GIVEN only the plan record carries a think value
         var cfg = LlmConfig.builder()
                 .providerType(AiProvider.OPEN_AI).model("gpt-5.5")
-                .thinkSupported(false)
-                .planThinkSupported(true).planThinkOnString("high")
+                .modelConfigs(Map.of(
+                        AgentModelConfig.PLAN, new AgentModelConfig(null, null, null, "high", null)))
                 .build();
-        assertThat(cfg.devAgentConfig().getThink()).isEqualTo("");
+        assertThat(cfg.devAgentConfig().getThink()).isNull();
         assertThat(cfg.planAgentConfig().getThink()).isEqualTo("high");
         assertThat(cfg.compactAgentConfig().getThink()).isNull();
         assertThat(cfg.searchAgentConfig().getThink()).isNull();
@@ -136,11 +138,13 @@ class AiProviderRequestParametersTest {
     }
 
     @Test
-    void ollamaDevThinkSupportedFalse_sendsThinkFalse() {
+    void ollamaDevThinkOff_sendsThinkFalse() {
+        // GIVEN an explicit off think value on the dev record
         var cfg = LlmConfig.builder()
                 .providerType(AiProvider.OLLAMA)
                 .model("gemma4:12b")
-                .thinkSupported(false)
+                .modelConfigs(Map.of(AgentModelConfig.DEV,
+                        new AgentModelConfig(null, null, null, "", null)))
                 .build();
 
         assertThat(cfg.devAgentConfig().getThink()).isEqualTo("");
@@ -174,11 +178,13 @@ class AiProviderRequestParametersTest {
     }
 
     @Test
-    void sendThinkingTransportIndependentFromThinkSupport() {
+    void sendThinkingTransportIndependentFromThinkValue() {
+        // GIVEN an explicit off think value, but send-thinking enabled
         var cfg = LlmConfig.builder()
                 .providerType(AiProvider.OPEN_AI)
                 .model("m")
-                .thinkSupported(false)
+                .modelConfigs(Map.of(AgentModelConfig.DEV,
+                        new AgentModelConfig(null, null, null, "", null)))
                 .sendThinkingEnabled(true)
                 .build();
 

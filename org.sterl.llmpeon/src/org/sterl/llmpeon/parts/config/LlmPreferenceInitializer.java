@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.eclipse.core.runtime.ILog;
@@ -17,6 +18,7 @@ import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
+import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.PeonConstants;
@@ -46,11 +48,6 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
         defaults.putInt(PeonConstants.PREF_TOKEN_WINDOW, DEFAULT.getAutoCompactAfter());
         defaults.putBoolean(PeonConstants.PREF_THINK_SUPPORTED, DEFAULT.isThinkSupported());
         defaults.putBoolean(PeonConstants.PREF_SEND_THINKING_ENABLED, DEFAULT.isSendThinkingEnabled());
-        defaults.put(PeonConstants.PREF_THINK_ON_STRING, "");
-        defaults.put(PeonConstants.PREF_THINK_OFF_STRING, "");
-        defaults.putBoolean(PeonConstants.PREF_PLAN_THINK_SUPPORTED, DEFAULT.isPlanThinkSupported());
-        defaults.put(PeonConstants.PREF_PLAN_THINK_ON_STRING, "");
-        defaults.put(PeonConstants.PREF_PLAN_THINK_OFF_STRING, "");
         defaults.put(PeonConstants.PREF_API_KEY, StringUtil.stripToEmpty(DEFAULT.getApiKey()));
 
         defaults.put(PeonConstants.PREF_CONFIG_DIRECTORY, PEON_HOME.toString());
@@ -75,9 +72,7 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
             .providerType(AiProvider.parse(prefs.get(PeonConstants.PREF_PROVIDER_TYPE, DEFAULT.getProviderType().name())))
 
             .model(prefs.get(PeonConstants.PREF_MODEL, DEFAULT.getModel()))
-            .planModel(StringUtil.stripToNull(prefs.get(PeonConstants.PREF_PLAN_MODEL, null)))
-            .compactModel(StringUtil.stripToNull(prefs.get(PeonConstants.PREF_COMPACT_MODEL, null)))
-            .searchModel(StringUtil.stripToNull(prefs.get(PeonConstants.PREF_SEARCH_MODEL, null)))
+            .modelConfigs(buildModelConfigs(prefs))
 
             .url(prefs.get(PeonConstants.PREF_URL, DEFAULT.getUrl()))
             .timeout(Duration.ofSeconds(prefs.getLong(PeonConstants.PREF_TIMEOUT, 180)))
@@ -87,11 +82,6 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
 
             .thinkSupported(prefs.getBoolean(PeonConstants.PREF_THINK_SUPPORTED, false))
             .sendThinkingEnabled(prefs.getBoolean(PeonConstants.PREF_SEND_THINKING_ENABLED, DEFAULT.isSendThinkingEnabled()))
-            .thinkOnString(StringUtil.stripToNull(prefs.get(PeonConstants.PREF_THINK_ON_STRING, null)))
-            .thinkOffString(StringUtil.stripToNull(prefs.get(PeonConstants.PREF_THINK_OFF_STRING, null)))
-            .planThinkSupported(prefs.getBoolean(PeonConstants.PREF_PLAN_THINK_SUPPORTED, false))
-            .planThinkOnString(StringUtil.stripToNull(prefs.get(PeonConstants.PREF_PLAN_THINK_ON_STRING, null)))
-            .planThinkOffString(StringUtil.stripToNull(prefs.get(PeonConstants.PREF_PLAN_THINK_OFF_STRING, null)))
             .apiKey(prefs.get(PeonConstants.PREF_API_KEY, ""))
             
             .configDir(Path.of(prefs.get(PeonConstants.PREF_CONFIG_DIRECTORY, PEON_HOME.toString())))
@@ -108,6 +98,30 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
             .build();
     }
 
+
+    /**
+     * Reads the per-agent model configs from the {@code llm.agent.<id>.<field>} keys. The dev model is
+     * the base model ({@code llm.model}); the other agents read their own model key.
+     */
+    private static Map<String, AgentModelConfig> buildModelConfigs(IEclipsePreferences prefs) {
+        var map = new LinkedHashMap<String, AgentModelConfig>();
+        map.put(AgentModelConfig.DEV, agentRecord(prefs, AgentModelConfig.DEV,
+                prefs.get(PeonConstants.PREF_MODEL, DEFAULT.getModel())));
+        for (var id : List.of(AgentModelConfig.PLAN, AgentModelConfig.SEARCH, AgentModelConfig.COMPACT)) {
+            map.put(id, agentRecord(prefs, id,
+                    StringUtil.stripToNull(prefs.get("llm.agent." + id + ".model", null))));
+        }
+        return Map.copyOf(map);
+    }
+
+    private static AgentModelConfig agentRecord(IEclipsePreferences prefs, String id, String model) {
+        return new AgentModelConfig(
+                StringUtil.stripToNull(prefs.get("llm.agent." + id + ".url", null)),
+                StringUtil.stripToNull(prefs.get("llm.agent." + id + ".apiKey", null)),
+                model,
+                StringUtil.stripToNull(prefs.get("llm.agent." + id + ".think", null)),
+                StringUtil.stripToNull(prefs.get("llm.agent." + id + ".extraBody", null)));
+    }
 
     private static void buildConfigDirs() {
         try {

@@ -3,6 +3,7 @@ package org.sterl.llmpeon.tool.tools;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
+import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
@@ -33,10 +35,11 @@ class CompactSessionToolTest {
 
     @Test
     void testCompactSessionUsesConfiguredCompactModel() {
-        // GIVEN — config with compactModel="compact-specific-model", a real owning agent
+        // GIVEN — config with a compact record model="compact-specific-model", a real owning agent
         var config = LlmConfig.builder()
                 .model("default-model")
-                .compactModel("compact-specific-model")
+                .modelConfigs(Map.of(AgentModelConfig.COMPACT,
+                        new AgentModelConfig(null, null, "compact-specific-model", null, null)))
                 .build();
         var cm = streamMock.buildMock(r -> ChatResponse.builder()
                 .aiMessage(AiMessage.aiMessage("WHAT: Test context summary"))

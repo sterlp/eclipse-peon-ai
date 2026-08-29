@@ -2,10 +2,13 @@ package org.sterl.llmpeon;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Map;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
+import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.tool.ToolService;
@@ -32,7 +35,7 @@ public class AiServicePerAgentModelTest {
         // GIVEN — config with base model="dev-model" (Dev agent always uses base)
         var config = LlmConfig.builder()
                 .model("dev-model")
-                .planModel("gpt-4")
+                .modelConfigs(Map.of(AgentModelConfig.PLAN, new AgentModelConfig(null, null, "gpt-4", null, null)))
                 .build();
         
         var cm = streamMock.buildMock(r -> ChatResponse.builder().aiMessage(AiMessage.aiMessage("done")).build());
@@ -49,10 +52,10 @@ public class AiServicePerAgentModelTest {
 
     @Test
     void testPlannerServiceUsesPlanModel() {
-        // GIVEN — config with planModel="claude-3"
+        // GIVEN — config with plan record model="claude-3"
         var config = LlmConfig.builder()
                 .model("default-model")
-                .planModel("claude-3")
+                .modelConfigs(Map.of(AgentModelConfig.PLAN, new AgentModelConfig(null, null, "claude-3", null, null)))
                 .build();
 
         var cm = streamMock.buildMock(r -> ChatResponse.builder().aiMessage(AiMessage.aiMessage("done")).build());
@@ -69,10 +72,9 @@ public class AiServicePerAgentModelTest {
 
     @Test
     void testNullAgentModelUsesDefault() {
-        // GIVEN — config with planModel=null (no per-agent override)
+        // GIVEN — config with no plan record (no per-agent override)
         var config = LlmConfig.builder()
                 .model("default-model")
-                .planModel(null)
                 .build();
 
         var cm = streamMock.buildMock(r -> ChatResponse.builder().aiMessage(AiMessage.aiMessage("done")).build());
