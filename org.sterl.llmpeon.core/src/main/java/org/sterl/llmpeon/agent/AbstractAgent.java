@@ -278,7 +278,9 @@ public abstract class AbstractAgent implements AiAgent {
         data.add(TextContent.from("Session compacted. Resume the task using the preserved context."));
         // Ensure memory starts with a user message (many LLMs require this)
         memory.add(UserMessage.from(data));
-        memory.addResult(response);
+        // DON'T use addResult -> as the totalTokenUsed is from the compressor here which is to large
+        // we only take the compacted new message!
+        memory.add(response.aiMessage());
         return response;
     }
 

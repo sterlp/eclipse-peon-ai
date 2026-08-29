@@ -15,7 +15,6 @@ import org.sterl.llmpeon.streaming.StreamingBridge;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import lombok.Builder;
@@ -87,30 +86,8 @@ public class ToolLoopRequest {
     @Getter
     public AiAgent agent;
 
-    /**
-     * @deprecated Replaced by {@link #agent}. Standing orders are now managed by the agent's
-     * {@code compressContext()} method directly. Kept for legacy fallback when {@code agent == null}.
-     */
-    @Deprecated
-    @Default
-    @Getter
-    public List<String> standingOrders = List.of();
-
     public void addMessage(ChatMessage message) {
         memory.add(message);
-    }
-
-    /**
-     * Clears the conversation memory and re-injects the standing orders as user messages, so a
-     * command/skill keeps governing the task after a compaction. With no standing orders this
-     * behaves like {@code memory.clear()}.
-     */
-    public void clearMemory() {
-        memory.clear();
-        if (standingOrders == null) return;
-        for (var order : standingOrders) {
-            memory.add(UserMessage.from(order));
-        }
     }
 
     public LlmConfig getConfig() {

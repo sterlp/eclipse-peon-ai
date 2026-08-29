@@ -13,22 +13,29 @@ Hints for the dev phase, base rules `AGENTS.md`
   
 ## Build & test
 
-- Full build: `mvn clean verify` at the repo root (`llmpeon-parent`) — an Eclipse refresh +
+- Full build: `mvn clean verify` or `mvn clean install` at the repo root (`llmpeon-parent`) — an Eclipse refresh +
   clean build afterwards is needed - build with maven only for code/artefact changes.
-- **Core changes in `org.sterl.llmpeon.core` needs `mvn clean verify` in the root/parent project** 
-  so the plugin/test bundles pick up the new core — Tycho resolves core from the target platform, 
-  not the reactor.
+- **Core changes in `org.sterl.llmpeon.core` are INVISIBLE to the Eclipse plugin build** — the
+  plugin (and the test fragment) never compile against the workspace core project: core's classes
+  ride inside the plugin bundle as `lib/llmpeon-core.jar` (MANIFEST `Bundle-ClassPath`), a copy of
+  the Maven artifact that only `maven-dependency-plugin:copy-dependencies` refreshes (see `pom.xml`).
+  The target platform is NOT involved (`llmpeon.target` contains only Eclipse RCP). `eclipseBuildProject`
+  alone therefore compiles against the STALE jar → phantom "constructor/method undefined" errors for
+  brand-new core symbols (hit 2026-08-29: a plan's "eclipseBuildProject is enough" verification step
+  failed exactly like this — a plan touching core MUST carry the Maven step below).
 - Plugin tests: `org.sterl.llmpeon.test` via the Eclipse test runner (OSGi, JUnit 4).
   - Before EVERY test run call `eclipseBuildProject` (all changed projects) — stale bundle
     classes in `bin/` cause `ClassNotFoundException` / unresolved-compilation failures, and
     stale Surefire reports under `target/` mislead result reading.
   - A new test class needs manual workspace approval by the user and may time out if he is not
     watching — prefer the already approved suite.
-- Compile-checking the plugin against local core changes: `mvn -o -pl
-  org.sterl.llmpeon,releng/llmpeon-target -am package` — `releng/llmpeon-target` must be in the
-  `-pl` list (offline the target-platform artifact is not in `~/.m2`; `verify` does not install
-  it). Without `-am` Tycho resolves core from a stale target-platform copy and reports phantom
-  "cannot be resolved" errors for brand-new core symbols.
+- After ANY core change, before the Eclipse plugin build/test run: `mvn -o -pl
+  org.sterl.llmpeon,releng/llmpeon-target -am package -DskipTests` — `-am` rebuilds core in the
+  reactor and re-copies the jar into `lib/`; `releng/llmpeon-target` must stay in `-pl` (offline the
+  target-platform artifact is not in `~/.m2`). Afterwards refresh + build `org.sterl.llmpeon` AND
+  `org.sterl.llmpeon.test` in Eclipse so they pick up the changed jar. Without `-am` the copy
+  resolves core from a stale `~/.m2` copy → phantom "cannot be resolved" errors for brand-new core
+  symbols. (A full `mvn clean install` at the root also works but is much slower.)
 - Elegant, expressive modern Java (records, pattern matching, switch expressions, Lombok).
 - **OSGi test constraints:** plugin tests are JUnit 4, new test classes need user approval.
   Run full test suite on timeout

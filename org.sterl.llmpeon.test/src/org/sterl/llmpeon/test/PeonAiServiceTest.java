@@ -678,6 +678,44 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
     }
 
 
+    /** S4/S5 (ADR-0029): the slaves get the agent-specific AGENTS-<agent>.md — plan the PLAN one, dev the DEV one. */
+    @Test
+    public void test_slaves_getAgentSpecificMdInTurnContext() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        eclipseWriteFile("AGENTS.md", "# Base Specifics");
+        eclipseWriteFile("AGENTS-DEV.md", "# Dev Specifics");
+        eclipseWriteFile("AGENTS-PLAN.md", "# Plan Specifics");
+        aiService.setProject(project);
+        aiService.setActiveAgent(AiPoAgent.NAME);
+
+        // AND mock server configured for the slave's call
+        aiService.updateConfig(aiService.getConfig().toBuilder()
+                .providerType(AiProvider.OPEN_AI)
+                .url(mockLlmServer.getUrl()).build());
+
+        var delegate = aiService.getActiveAgent().getToolService().getTool(PoDelegateTool.class).orElseThrow();
+
+        // WHEN: Jon delegates to his plan slave
+        mockLlmServer.queueResponse(AiMessage.aiMessage("plan done"));
+        delegate.talkPlan("make a plan");
+
+        // THEN: the plan slave gets base + AGENTS-PLAN.md — NOT the dev file
+        var planMemory = delegate.getPlanSlave().getMemory().getCopy();
+        assertHasUserMessageWith(planMemory, "# Base Specifics");
+        assertHasUserMessageWith(planMemory, "# Plan Specifics");
+        assertHasNoUserMessageWith(planMemory, "# Dev Specifics");
+
+        // WHEN: Jon delegates to his dev slave
+        mockLlmServer.queueResponse(AiMessage.aiMessage("dev done"));
+        delegate.askDev("what did you build?");
+
+        // THEN: the dev slave gets base + AGENTS-DEV.md — NOT the plan file
+        var devMemory = delegate.getDevSlave().getMemory().getCopy();
+        assertHasUserMessageWith(devMemory, "# Base Specifics");
+        assertHasUserMessageWith(devMemory, "# Dev Specifics");
+        assertHasNoUserMessageWith(devMemory, "# Plan Specifics");
+    }
+
     /**
      * SOLL (truncateMiddle survival): a Jon-Tool dispatch that references a plan must land the plan
      * (content + path) in the slave's FIRST user message — together with the prompt, not as a

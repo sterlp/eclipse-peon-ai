@@ -11,6 +11,7 @@ import org.jspecify.annotations.NonNull;
 import org.sterl.llmpeon.exception.ExceptionUtil;
 import org.sterl.llmpeon.mcp.McpServerConfig;
 import org.sterl.llmpeon.mcp.McpService;
+import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 import org.sterl.llmpeon.tool.model.ToSimpleMessage;
@@ -155,8 +156,13 @@ public class ToolService {
                 stuck = 0; // reset on productive tool use
                 var tR = runAllTools(response, req);
                 req.getMemory().addResult(response, tR);
-                addCompactHintIfNeeded(req, response, false);
+                // The compact-request's provider usage describes the PRE-compact context —
+                // re-derive the counter from the new (small) memory
+                if (ranTool(response, CompactSessionTool.NAME)) req.getMemory().reevaluateTokens();
+                else addCompactHintIfNeeded(req, response, false);
+
             } else if (hasResponseMessage) {
+                stuck = 0; // reset on productive response
                 req.getMemory().addResult(response);
                 break; // done
             } else if (hasThink) {
@@ -175,6 +181,11 @@ public class ToolService {
         return response;
     }
 
+    private static boolean ranTool(ChatResponse response, String toolName) {
+        return response.aiMessage().toolExecutionRequests().stream()
+                .anyMatch(tr -> toolName.equals(tr.name()));
+    }
+
     private void addCompactHintIfNeeded(ToolLoopRequest req, ChatResponse response, boolean force) {
         // if we have too compact session, a hint doesn't really help
         if (getTool(CompactSessionTool.class).isEmpty()) return;
@@ -186,8 +197,9 @@ public class ToolService {
         if (memory.size() < 10) return;
         
         if (force || memory.getTotalTokenUsed() > compactLimit * 0.95) {
-            req.addMessage(new UserMessage(COMPACT_HINT + "\n" 
-                + memory.getTotalTokenUsed() + " tokens of " + compactLimit + " used."));
+            var used = memory.getTotalTokenUsed() + " tokens of " + compactLimit + " used.";
+            AiMonitor.nullSafety(req.monitor).onTool("🗜 Compact hint for " + req.getAgent().getName() + " added! " + used);
+            req.addMessage(new UserMessage(COMPACT_HINT + System.lineSeparator() + used));
         }
     }
 

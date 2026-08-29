@@ -137,6 +137,11 @@ public class ThreadSafeMemory {
         return cm.type().name();
     }
 
+    /** Re-derives the token counter from the actual memory content (e.g. after a compact). */
+    public synchronized void reevaluateTokens() {
+        totalTokenUsed = ChatMessageUtil.estimateTokens(getCopy());
+    }
+
     public synchronized void addResult(ChatResponse response, List<ToolExecutionResultMessage> toolResult) {
         var appended = new ArrayList<ChatMessage>();
         var aiMessage = response.aiMessage();

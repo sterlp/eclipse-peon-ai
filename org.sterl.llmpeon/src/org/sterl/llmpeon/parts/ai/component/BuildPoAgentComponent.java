@@ -98,13 +98,14 @@ public class BuildPoAgentComponent {
         var mek = new NamedAgent("Da Mek", devSlave);
         // Slaves also need the same relevant context as the active agent (Jon gets it via userContext).
         // The shared memory rides in their system prompt (static context — re-baked by
-        // PeonAiService.initStaticContext); the turn orders below carry the plan file + AGENTS.md
-        // + the live Workspace-Memory snapshot (ADR-0029, ADR-0032).
-        var jonDelegateTool = new PoDelegateTool(thinka, mek, () -> {
+        // PeonAiService.initStaticContext); the turn orders below carry the plan file
+        // + AGENTS.md (base + agent-specific AGENTS-<agent>.md, ADR-0029)
+        // + the live Workspace-Memory snapshot (ADR-0032).
+        var jonDelegateTool = new PoDelegateTool(thinka, mek, target -> {
             var orders = new LinkedList<ContextItem>();
             orders.add(new EclipseFileContextItem(PlanTool.OVERVIEW_FILE, projectRef));
-            orders.add(new AgentsMdContextItem(projectRef));
-            // Shared memory live per delegation (ADR-0032): the supplier runs lazy per dispatch(),
+            orders.addAll(AgentsMdContextItem.itemsFor(target.agent().getName(), projectRef));
+            // Shared memory live per delegation (ADR-0032): the function runs lazy per dispatch(),
             // so the slaves always read the current snapshot (dedupKey carries the entries-hash).
             orders.add(wmt);
             return orders;
