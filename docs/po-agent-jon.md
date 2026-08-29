@@ -55,7 +55,8 @@ green** (`org.sterl.llmpeon.core`/`.test`):
 - **Prompt derived from the AGENTS conventions.** `po.txt` makes Jon the guardian of the docs and
   encodes the plan-phase working style (docs-first, IST/SOLL/WEIL, story = goal + rules + BDD
   GIVEN/WHEN/THEN, ADR = memory, `index.md` registries, one-question interview) plus the three status
-  markers above (test `AiPoAgentTest.systemPrompt_carriesTheMethodology`).
+  markers above — assembly: `default.txt` + `po.txt` + white-list line + `po-delegation.txt`, see
+  Prompts; test `AiPoAgentTest.systemPrompt_carriesTheMethodology` asserts the method section is present).
 
 - **ContextItem + Auto-Load (memory.md, docs/index.md, AGENTS.md) — SOLL 2026-08-16 (✅ 2026-08-16): History
   statt System-Prompt.** `ContextItem` Interface (core) + `EclipseFileContextItem` (plugin) bleiben;
@@ -87,6 +88,28 @@ GIVEN memory.md wird automatisch geladen
 WHEN der Plan-Agent (Da Thinka) startet
 THEN bekommt er memory.md NICHT automatisch injiziert
 ```
+
+## Prompts
+
+Jon's system prompt is assembled from built-in prompt files. **Policy:** the *content* of prompt
+files lives in the repo — that is the source of truth. The docs hold only the **wiring**: which
+file, who loads it, when, why the split. Prompt-driven behaviour rules below carry a **reference**
+to the prompt file instead of a BDD. Full 12-file inventory + loader mechanics:
+[prompts.md](prompts.md).
+
+| File | Loaded by | When | Why it exists |
+|---|---|---|---|
+| `default.txt` | `PromptLoader` (static base) | always — prepended via `loadWithDefault` | shared base behaviour for all built-in agents (and custom-agent bodies) |
+| `po.txt` | `AiPoAgent` (static) | always — Jon's system prompt | Jon's identity + docs-first methodology (SOLL/IST/WEIL, status markers, one-question interviews) |
+| `po-delegation.txt` | `AiPoAgent` (static) | always — appended after the path-white-list line | the delegation playbook (plan → sign-off → build → one review → retro, cycle/branch discipline) — split out so the identity stays clean and the playbook evolves on its own |
+| `po-tutorial.txt` | plugin `PeonAiService` | first activation in a session (R4) | onboarding message, like Peon-Scaffold |
+| `plan-write-loop.txt` | `PoDelegateTool.planWithPlanAgent` | one-shot standing order per plan dispatch | plan-writing discipline — only when Da Thinka actually writes the plan, not on `talkPlan` |
+| `dev-build-loop.txt` | `PoDelegateTool.buildWithDev` | per build dispatch with a (sticky) planPath | build discipline (vertical slices, green gate, git commits, compactSession) — only when Da Mek builds from a released plan, not on `askDev` |
+
+**Split rationale:** identity (static, small) · playbook (operational, changes more often) · loop
+disciplines (one-shot injections bound to the work verbs — talk/ask turns stay lean, and the
+discipline survives the slave's own compaction as a standing order) · tutorial (UI-level onboarding,
+plugin only).
 
 ## Increment 2 — chat-based delegation (happy path) ✅
 
@@ -143,13 +166,10 @@ THEN Jon's ToolService has talkPlan, planWithPlanAgent, askDev, buildWithDev and
 
 GIVEN Jon calls talkPlan / askDev with a prompt
 THEN the slave runs one turn and its reply text is returned to Jon, and no plan is written / no build runs
-
-GIVEN Jon calls planWithPlanAgent
-THEN the plan-write standing order is injected and the Plan slave writes/refines peon-plan/overview.md
-
-GIVEN Jon calls buildWithDev
-THEN the Dev slave runs one turn against the released plan and its reply text is returned to Jon
 ```
+
+The standing-order injections (`plan-write-loop.txt` on `planWithPlanAgent`, `dev-build-loop.txt` on
+`buildWithDev`) are **prompt wiring** — see Prompts; no prompt BDD here.
 
 ### I2.2: Slaves are RAM-only, Jon is durable ✅
 **Critical constraint.** Jon keeps his **persisted** state (`FileAgentHistoryStore`, already built).
@@ -183,8 +203,9 @@ THEN the durable plan handoff is the file peon-plan/overview.md, not the slave's
 
 ### I2.3: Delegation guidance — a temporary appended system block ✅
 Because there is no structured done-signal, Jon needs steering to run the loop from the **reply text**.
-A dedicated **delegation-guidance block** is **appended** to Jon's system messages (kept **out** of the
-static `po.txt` identity/methodology prompt) and tells Jon to:
+A dedicated **delegation-guidance block** (the `po-delegation.txt` file — see Prompts) is
+**appended** to Jon's system messages (kept **out** of the static `po.txt` identity/methodology
+prompt) and tells Jon to:
 
 - instruct each slave, in the dispatch prompt, to **state in its reply when it is finished** with the
   task;
@@ -194,14 +215,8 @@ static `po.txt` identity/methodology prompt) and tells Jon to:
 
 This is also where Jon is told to **delegate the unloved plan/dev work** rather than doing it himself.
 
-**BDD:**
-```
-GIVEN Jon delegates to a slave
-THEN his appended delegation-guidance block instructs him to make the slave report when it is done
-
-GIVEN a slave reply is unclear about whether it is finished
-THEN Jon re-asks the same (state-preserving) slave instead of assuming done or restarting it
-```
+**Prompt-Behaviour — kein BDD hier:** die Done-/Re-Ask-Disziplin steuert `po-delegation.txt`
+(Content im Repo, siehe Prompts).
 
 ### I2.4: Plan → review → path handoff to Dev ✅
 Happy-path flow, chat-driven end to end:
@@ -236,15 +251,8 @@ Three refinements over the earlier sketch:
 
 No queue, no header, no error plumbing in this increment (deferred).
 
-**BDD:**
-```
-GIVEN Jon has an approved feature and calls planWithPlanAgent
-THEN the Plan slave produces a plan at peon-plan/overview.md and reports back to Jon
-
-GIVEN Jon has reviewed and released the plan
-WHEN Jon calls buildWithDev
-THEN he passes the plan path peon-plan/overview.md and the Dev slave implements against it
-```
+**Prompt-Behaviour — kein BDD hier:** die Flow-Ordnung (plan → sign-off → build → review → retro)
+steuert `po-delegation.txt` (Content im Repo, siehe Prompts); die Tool-Mechanik selbst ist I2.1/I2.6.
 
 ### I2.5: Shared memory — Jon writes, slaves only read ✅
 Memory is **shared by every agent** in the workspace (`WorkspaceMemoryTool`, one Eclipse-preference
@@ -405,18 +413,8 @@ is satisfied** asks *"Shall I implement this?"* before delegating a build to Pla
 Plan agent a **question** via `jonAskQuestion` is design work, not a build — it needs no gate.) When an
 implemented slice is confirmed green, Jon flips its rules **❌ → ✅**.
 
-**BDD:**
-```
-GIVEN the user and Jon are still designing a feature
-WHEN Jon has open design questions
-THEN Jon keeps refining the story in docs and does NOT delegate to Plan or Dev
-
-GIVEN the user confirms the design is good
-THEN Jon asks whether to implement it before calling jonCreateDevPlan
-
-GIVEN a delegated slice returns green and is accepted
-THEN Jon flips the affected rules from ❌ to ✅ in the story
-```
+**Prompt-Behaviour — kein BDD hier:** das Approval-Gate („Shall I implement this?“) und der
+❌ → ✅-Flip werden von `po.txt` + `po-delegation.txt` gesteuert (Content im Repo, siehe Prompts).
 
 ### R6: Delegate to Plan — `planWithPlanAgent` (build) & `talkPlan` (Q&A) ✅
 (Tool-Names I2.1: `jonCreateDevPlan` → `planWithPlanAgent`, `jonAskQuestion` → `talkPlan`.)
@@ -684,16 +682,9 @@ are persistent singletons (R9), Jon **resumes** the paused slave with the answer
 This is the rule that prevents the hang: Jon **never blocks inside the tool-call loop waiting for the
 user** — escalation is always "end turn, resume later", which the persistent slaves make possible.
 
-**BDD:**
-```
-GIVEN a slave asks Jon a question that requires a user decision
-WHEN Jon cannot answer it from the docs
-THEN Jon ends his turn with the question; the chat input was never locked (R11 — we rely entirely on the queue feature), the user answers, and no slave is aborted
-
-GIVEN the user answered an escalated question
-WHEN Jon continues
-THEN he resumes the same persistent slave via jonCreateDevPlan / jonAskDev carrying the answer
-```
+**Prompt-Behaviour — kein BDD hier:** die Anti-Deadlock-Disziplin (Turn enden, eskalieren, denselben
+persistenten Slave mit der Antwort resümieren) steuert `po-delegation.txt` (Content im Repo, siehe
+Prompts); die Queue-Mechanik dahinter ist R11.
 
 ### R14: Slave failures come back as an error tool-result; Jon reports them (MVP) ❌
 Two failure origins must be told apart — and the existing framework already handles them, so the MVP
@@ -766,32 +757,26 @@ GIVEN a slave returns plain text (a clarifying question), not an exception
 THEN it is a normal tool result (R8), not treated as an error
 ```
 
-### R15: Build-Zyklus auf Git-Branch — Dev committiert jede grüne Iteration ❌ (2026-08-28, User)
+### R15: Build-Zyklus auf Git-Branch — Dev committiert jede grüne Iteration ✅ (2026-08-28, User; prompt-basiert, kein BDD)
 Ein Build-Zyklus (ein Plan/Feature) läuft auf einem **dedizierten Git-Branch** — nur wenn Git
 im Workspace verfügbar und wir tatsächlich auf einem Branch (sonst: **kein** Auto-Commit,
-Jon fragt den User). Der **Dev-Agent** committet nach **jeder erfolgreichen (grünen)
+Jon fragt den User). **Zu Zyklus-Start** prüft Jon den aktuellen Branch und ist bei
+main/master **zuerst** auf einem Feature-Branch (anlegen/wechseln, sonst User fragen), bevor
+er Da Mek los schickt (Prompt: `po-delegation.txt`). Der **Dev-Agent** committet nach **jeder erfolgreichen (grünen)
 Iteration** (kurze Message, z. B. `inc-3: <einzeilige Summary>`, Scope = die Dateien dieser
 Iteration) — jeder Schritt bleibt revertierbar (`git revert`), die Base-Branch bleibt während
 des Zyklus unangetastet; am Ende steht eine saubere Fortschritts-History des Zyklus. Der
 **finale Merge** (optional squash: Zyklus = ein History-Eintrag) ist die **Entscheidung des
-Users**. Jon gibt die Anweisung im `buildWithDev`-Dispatch (Standing Order); die Konvention
-steht zusätzlich im Projekt-AGENTS.md („Build cycles & git“). Die Aufnahme in Jons Prompt
-(`po.txt`) ist Backlog.
+Users**. Die Konvention steht im Projekt-`AGENTS.md` („Build cycles & git“ — das SOLL für alle
+Verbraucher) und operativ in den Prompts: **Jon-Teil** in `po-delegation.txt` (Branch-Namen zu
+Zyklusbeginn bestimmen, an Da Mek übergeben — vor „Ablauf — Plan vor Build“), **Dev-Teil** in
+`dev-build-loop.txt` (Commit-Bullet + Abschluss-Satz nach dem planImplemented-Bullet).
+`AGENTS-PO.md` bzw. der `AGENTS-DEV.md`-Git-Bullet wurden entfernt (2026-08-29,
+De-duplizierung — die Prompts tragen das operative Wissen). **Prompt-Aufnahme ✅ (2026-08-28).**
 
-**BDD:**
-```
-GIVEN ein Build-Zyklus läuft auf einem Git-Branch
-WHEN Da Mek eine Iteration grün abschließt
-THEN er committet die Dateien dieser Iteration mit kurzer Summary
-AND die Base-Branch bleibt unangetastet
-
-GIVEN der Workspace ist kein Git-Repo (oder wir sind nicht auf einem Branch)
-WHEN eine Iteration grün abschließt
-THEN es passiert KEIN Auto-Commit — Jon fragt den User
-
-GIVEN der Zyklus ist fertig und bestanden
-THEN der finale Merge (optional squash) ist die Entscheidung des Users
-```
+**Kein Prompt-BDD:** operative Umsetzung in `po-delegation.txt` (Jon: Branch-Entscheidung) +
+`dev-build-loop.txt` (Da Mek: Commit-Disziplin) — Content im Repo, siehe Prompts; SOLL im
+Projekt-`AGENTS.md`.
 
 ## Future Extensions (not MVP)
 

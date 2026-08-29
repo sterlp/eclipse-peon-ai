@@ -65,8 +65,8 @@ Dazu gehören:
 - Geltung für jeden Agenten, bei dem ein Modell eingestellt werden kann.
 - Zusammen mit dem Caching-SOLL dokumentiert — **Umsetzung Backlog** (nach der Issue-Runde).
 
-**SOLL-Ergänzung (2026-08-28, User) — ❌ specified, nicht umgesetzt.
-Mechanik: [ADR-0034](adr/0034-connection-cache-by-identity.md):**
+**SOLL-Ergänzung (2026-08-28, User) — ❌ specified (UI-Teile offen; Core-Fundament ✅).
+Mechanik: [ADR-0034](adr/0034-connection-cache-by-identity.md).**
 - **Model-Config pro Agent:** ein „configured model" = URL, Key, Modell, Think, extra JSON body
   (KV-Cache-ID & weitere Body-Params). Verbindungen (Model-Instanzen) werden per **Hash der
   Verbindungs-Identität** (Provider + URL + Key [+ body, wenn nur Build-time setzbar]) gecacht;
@@ -88,6 +88,12 @@ Mechanik: [ADR-0034](adr/0034-connection-cache-by-identity.md):**
   (URL/Key/Provider) → neuer Fetch. Konfiguriertes Modell
   nicht in der Liste → **bleibt gesetzt** (kein Auto-Switch auf erstes Modell — bewusste
   Abweichung von B2 in [model-loading.md](model-loading.md)).
+- **Core-Fundament ✅ (Zyklus 2a, 2026-08-28):** `AgentConfig`/`LlmConfig` +`extraBody`;
+  `EffectiveConnection` (Agent-URL/Key, sonst Base; Provider bleibt Base-Ebene);
+  Connection-Cache in `ConfiguredChatModel` pro `ConnectionIdentity` (Provider+URL+Key, +Body
+  nur Build-time-Provider); per-request Body-Merge (provider-Entries zuerst, **User-Body
+  gewinnt**, Reserved-Keys `model`/`messages`/`tools` gestrichen); invalides JSON → warn +
+  ignoriert. Core 483/483 grün, Branch `new-config` (Commits `inc-1`…`inc-8`, NICHT gemerged).
 - **Core/UI-Trennung (2026-08-28, User):** die Konfig-Domäne (Model-Config-Record, Speicherung,
   effektive Auflösung, Verbindungs-Identität) lebt in **core**; die Eclipse-Config-Seite ist
   reine View/Editor darüber — „sauber trennen, nah halten“ (das Plugin trägt keine

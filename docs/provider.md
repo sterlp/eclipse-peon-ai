@@ -92,11 +92,12 @@ davon ab, welches Think-Input gerendert wird (Checkbox / Dropdown / Freitext / a
   Responses: keine Möglichkeit** (kein Feld, kein Hook) → R3-Wertetabelle: OpenAI-Familie +
   Anthropic `true` (Anthropic: Build-time), Rest `false`. **Headers:** kein Provider per-request
   (nur build-time `customHeaders`, `Supplier`-Variante als einziger dynamischer Hebel).
-- Interface-Evolution (2026-08-28): `newRequestParameters(AgentConfig, tools)` soll auf der
-  agent-spezifischen Model-Config (Temp, Think, **extra JSON body**) aufbauen — Richtung
-  `buildRequest(modelConfig)`; per-request `customParameters`-Fähigkeit je Provider wird
-  verifiziert (bestimmt, ob der Body in die Verbindungs-Identität/Hash kommt —
-  [caching.md](caching.md) R1a).
+- ~~Interface-Evolution Richtung `buildRequest(modelConfig)`~~ **✅ umgesetzt (2a, 2026-08-28)**
+  — anders als skizziert, aber SOLL-erfüllend: `LlmProvider.extraBodyMode()`
+  (PER_REQUEST/BUILD_TIME/NONE; `supportsExtraBody()` daraus abgeleitet), `ExtraBody`-Helper
+  (Parse + Reserved-Key-Strip `model`/`messages`/`tools`), per-request Merge in
+  `newRequestParameters` (User-Body gewinnt) und Build-time via `LlmConfig.extraBody` bei
+  Anthropic. `AgentConfig.extraBody` trägt den Body.
 
 ## Relationship
 

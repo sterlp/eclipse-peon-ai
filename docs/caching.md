@@ -30,7 +30,10 @@ UI **nur**, wenn der Provider extra-body-Parameter unterstützt (Capability-Bool
   Compact-Agent trägt KEINEN Body → belegt keinen KV-Cache-Slot (R6). Body darf je
   Modell/Agent variieren. Provider-Unterstützung **verifiziert** (→ provider.md R3): per-request
   nur OpenAI-Familie, Anthropic Build-time (Body dann in der Verbindungs-Identität,
-  [ADR-0034](adr/0034-connection-cache-by-identity.md)), Rest gar nicht.
+  [ADR-0034](adr/0034-connection-cache-by-identity.md)), Rest gar nicht. **Core-Mechanik ✅
+  (2a, 2026-08-28):** `ExtraBody.parse` (Reserved-Key-Strip, invalid → warn+ignore) +
+  `ExtraBodyMode` (PER_REQUEST/BUILD_TIME/NONE) + Merge (User-Body gewinnt) + Connection-Cache —
+  UI + Beispiele + Hardcode-Entfernung folgen in 2b/2c.
 - **R2 ❌ Provider-Fähigkeits-Gate:** der JSON-Input erscheint im UI **nur**, wenn der aktive
   Provider extra-body-Parameter unterstützt — nur dort, wo es implementiert ist, wird es
   geboten. Mechanik (Boolean, Merge, Provider-Klassen): [provider.md](provider.md) P2–P3.

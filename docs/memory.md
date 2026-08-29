@@ -1,14 +1,30 @@
-# Offene Enden (2026-08-28)
+# Offene Enden (2026-08-29)
+
+- **Prompt- & Git-Konventions-De-duplizierung (2026-08-29):** Git-SOLL jetzt nur in Root-
+  `AGENTS.md` „Build cycles & git" (3 Zeilen, für alle Verbraucher: Peon, Nicht-Peon-Tools,
+  User); operatives Git-Wissen in den Agent-Prompts — `po-delegation.txt` (PO bestimmt den
+  Branch-Namen, übergibt an Da Mek; Branch-Check bei Zyklusbeginn), `developer.txt` /
+  `dev-build-loop.txt` (Commit-Disziplin, vertical slices, compactSession, docs-Grenze; User
+  editiert selbst). `AGENTS-DEV.md`-Git-Bullet gelöscht, `AGENTS-PO.md` vom User gelöscht.
+  **Prompt-Docs-Policy (User, 2026-08-29):** kein Prompt-*Inhalt* in den Docs (Repo = SOT) —
+  Docs halten nur das Wiring: welche Datei, wer lädt sie, wann, warum + Link. Kandidat: neue
+  Story `docs/prompts.md` (12 Prompt-Dateien, Loader `PromptLoader`, `withDefault` hängt
+  `default.txt` vor Custom Agents) — **✅ angelegt (2026-08-29)** + po-agent-jon.md umstrukturiert
+  (Prompts-Sektion mit Wiring-Tabelle, Prompt-BDDs → Referenzen, R15 ✅ prompt-basiert).
+
 
 - **Git-Build-Zyklen (User, 2026-08-28):** Build-Zyklen laufen auf einem dedizierten Branch;
   Da Mek committiert nach jeder grünen Iteration (kurze Summary, nur Iterations-Dateien);
   finaler Merge/Squash = User. Konvention: AGENTS.md „Build cycles & git“ + SOLL
   [po-agent-jon.md](po-agent-jon.md) R15 ❌ (po.txt-Erweiterung = Backlog). User hat den
   Branch angelegt + alles committed.
-- **Zyklus 2a (Plan):** Core-Model-Config-Fundament (SOLL: [advanced-configuration.md](advanced-configuration.md)
-  SOLL-Ergänzung, [caching.md](caching.md), [ADR-0034](adr/0034-connection-cache-by-identity.md))
-  → danach 2b (Plugin-UI: Config-Seite, Dropdown+Refresh, Chat-UI-Ausblendung) und 2c
-  (Cache-Hardcode-Entfernung, GPT/Claude-Beispiele, Cache-Abgleich, Custom-Agent-yml, Homepage).
+- **Zyklus 2a ✅ (2026-08-28):** Core-Model-Config-Fundament gebaut + PO-Review OK (483 Core-
+  Tests grün, Root-Build + Plugin-Compile-Check SUCCESS). Branch `new-config`: Commits `inc-1`…
+  `inc-8` + Abschluss (inkl. Docs-Sync) — **NICHT gemerged** (Squash/Merge = User). PO-
+  Entscheidungen im Zyklus: User-Body gewinnt bei Key-Konflikt; invalides extraBody-JSON →
+  warn+ignore; Branch = `git branch --show-current` zu Build-Start. → nächster: 2b
+  (Plugin-UI: Config-Seite, Dropdown+Refresh, Chat-UI-Ausblendung) und 2c (Cache-Hardcode-
+  Entfernung, GPT/Claude-Beispiele, Cache-Abgleich, Custom-Agent-yml, Homepage).
 
 - **Config-Umbau (User, 2026-08-28) — SOLL ❌ specified:** per-agent Model-Config (URL, Key,
   Modell, Think, JSON extra body); Connection-Cache nach Identität Provider+URL+Key
