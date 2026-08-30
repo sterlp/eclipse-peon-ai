@@ -169,7 +169,7 @@ Tests: `MockLlmServerTest.shouldStreamAnthropicSseAndCaptureBody`,
 `MockLlmServerTest.shouldStreamOllamaNdjsonAndCaptureBody`.
 Gate: `mvn -pl org.sterl.llmpeon.core test` → 488 grün (+2).
 
-**Inc 2 — E2E-Matrix: Routing + Config on the Wire (3 Provider × 2 Szenarien)**
+**Inc 2 — E2E-Matrix: Routing + Config on the Wire (3 Provider × 2 Szenarien)** ✅ DONE
 NEU `PerAgentConnectionE2ETest`: `inheritsBaseUrl_landsAtBaseStub_withAgentModelAndThink` (×3),
 `agentOwnUrl_landsAtAgentStub_withConfigOnTheWire` (×3).
 LÖSCHEN: `ToolLoopRequestConnectionTest`, `AiServicePerAgentModelTest`.
