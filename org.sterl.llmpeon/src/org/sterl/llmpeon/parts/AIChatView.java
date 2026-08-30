@@ -9,10 +9,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.ILog;
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Platform;
-import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences.IPreferenceChangeListener;
 import org.eclipse.core.runtime.preferences.InstanceScope;
@@ -93,7 +91,6 @@ public class AIChatView implements EclipseAiMonitor {
 
     private HeaderBarWidget headerBar;
 
-    private AtomicReference<LlmConfig> lastListedConfig = new AtomicReference<>();
     private volatile LlmConfig lastAppliedConfig = null;
 
     private ChatMarkdownWidget chatHistory;
@@ -152,11 +149,8 @@ public class AIChatView implements EclipseAiMonitor {
             this::onClear,
             this::onHandoff,
             this::onAgentChange,
-            aiService::setModel,
-            aiService::withThinkSupported,
             this::doCompressContext
         );
-        actionsBar.setModel(aiService.getActiveAgent().getAgentModelName());
 
         statusLine = new StatusLineWidget(inputBlock, SWT.NONE,
             this::onPinChange,
@@ -361,7 +355,6 @@ public class AIChatView implements EclipseAiMonitor {
     private void refreshAgentUI() {
         actionsBar.setAgents(aiService.getAgents());
         actionsBar.updateModeUI(aiService.getActiveAgent());
-        actionsBar.setThinkSupported(aiService.getActiveAgent().isThinkSupported());
         refreshChat();
     }
 
@@ -378,12 +371,8 @@ public class AIChatView implements EclipseAiMonitor {
 
         actionsBar.setAgents(aiService.getAgents());
         actionsBar.updateModeUI(aiService.getActiveAgent());
-
-        // Sync thinking support to the selected agent (Dev/Plan from prefs, Custom from AGENT.md).
-        actionsBar.setThinkSupported(aiService.getActiveAgent().isThinkSupported());
         applyMcpConfig();
         refreshStatusLine();
-        reloadModelsIfNeeded();
         applyShellCommandConfirmation();
     }
 
@@ -433,76 +422,6 @@ public class AIChatView implements EclipseAiMonitor {
         }
     }
 
-    private void reloadModelsIfNeeded() {
-        var config = aiService.getConfig();
-        var modelName = StringUtil.stripToNull(aiService.getActiveModel());
-
-        if (modelName == null
-                || lastListedConfig.get() == null
-                || config.getProviderType() != lastListedConfig.get().getProviderType()
-                || !java.util.Objects.equals(config.getUrl(), lastListedConfig.get().getUrl())
-                || !java.util.Objects.equals(config.getApiKey(), lastListedConfig.get().getApiKey())) {
-            loadModelsInBackground();
-        } else {
-            EclipseUtil.runInUiThread(parent, () -> {
-                if (!actionsBar.containsModelId(modelName)) {
-                    actionsBar.setModel(modelName);
-                    loadModelsInBackground();
-                } else {
-                    actionsBar.selectModel(modelName);
-                }
-            });
-        }
-        lastListedConfig.set(config);
-    }
-
-    private void loadModelsInBackground() {
-        Job.create("Fetching available models", monitor -> {
-            var config = aiService.getConfig();
-            var modelName = StringUtil.stripToNull(aiService.getActiveModel());
-            try {
-                var models = config.listAiModels();
-                if (models.isEmpty()) {
-                    onChatResponse(new SimpleMessage(Type.PROBLEM, "No models returned by " + config.getUrl()));
-                    showConfiguredModelFallback(modelName); // B1: keep the configured model visible
-                } else {
-                    EclipseUtil.runInUiThread(parent, () -> {
-                        boolean known = modelName != null
-                                && models.stream().anyMatch(m -> modelName.equals(m.getId()));
-                        if (!known) {
-                            // B2: configured model missing (or none) -> adopt the first from the list
-                            aiService.setModel(models.getFirst());
-                            actionsBar.applyModelList(models, aiService.getActiveModel());
-                        } else {
-                            actionsBar.applyModelList(models, modelName);
-                        }
-                    });
-                }
-                return Status.OK_STATUS;
-            } catch (Exception e) {
-                onChatResponse(new SimpleMessage(Type.PROBLEM, config.getProviderType().name() + ": " + e.getMessage()));
-                showConfiguredModelFallback(modelName); // B1: keep the configured model visible
-                if (StringUtil.hasValue(modelName)) {
-                    return new Status(IStatus.WARNING, PeonConstants.PLUGIN_ID, IStatus.OK,
-                            "Failed to load models fallback to " + modelName, e);
-                } else {
-                    return new Status(IStatus.ERROR, PeonConstants.PLUGIN_ID, IStatus.OK,
-                            "Failed to load models. " + e.getMessage() + " config:\n" + aiService.getConfig(), e);
-                }
-            }
-        }).schedule();
-    }
-
-    /**
-     * B1: when the model list is empty or failed to load, still show the model configured for the
-     * active agent instead of leaving the dropdown empty.
-     */
-    private void showConfiguredModelFallback(String modelName) {
-        if (StringUtil.hasValue(modelName)) {
-            EclipseUtil.runInUiThread(parent, () -> actionsBar.setModel(modelName));
-        }
-    }
-
     // -------------------------------------------------------------------------
     // Actions
     // -------------------------------------------------------------------------
@@ -513,14 +432,6 @@ public class AIChatView implements EclipseAiMonitor {
         // The header status widget pulls the new agent's team live on the next refresh — nothing to
         // reset here (the old onSubAgent chip state is gone; the widget holds no per-agent state).
         headerBar.refreshRoster();
-
-        if (!actionsBar.containsModelId(aiService.getActiveModel())) {
-            actionsBar.addAndSelectModel(aiService.getActiveModel());
-        } else {
-            actionsBar.selectModel(aiService.getActiveModel());
-        }
-
-        actionsBar.setThinkSupported(aiService.getActiveAgent().isThinkSupported());
 
         // Show scaffold tutorial on first activation
         var tutorial = aiService.getScaffoldTutorial();

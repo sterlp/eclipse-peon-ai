@@ -14,25 +14,21 @@ import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.sterl.llmpeon.agent.AiAgent;
-import org.sterl.llmpeon.ai.model.AiModel;
 import org.sterl.llmpeon.parts.shared.ImageUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 
 /**
- * Action bar below the user input. RowLayout (wrapping) with mode selector,
- * model selector, thinking-support toggle, Clear, and conditional controls.
+ * Action bar below the user input. RowLayout (wrapping) with agent selector,
+ * Clear, and conditional controls.
  */
 public class ActionsBarWidget extends Composite {
 
     private Button btnClear;
     private Button btnImplement;
-    private Button btnThink;
     private final Button btnCompact;
     private Combo agentCombo;
-    private Combo modelCombo;
 
     private volatile boolean working = false;
-    private List<AiModel> availableModels = List.of();
     private List<AiAgent> agents = new ArrayList<>();
     
     private final Color colorWarning;
@@ -43,8 +39,6 @@ public class ActionsBarWidget extends Composite {
             Runnable onClear,
             Runnable onImplement,
             Consumer<AiAgent> onAgentChange,
-            Consumer<AiModel> onModelChange,
-            Consumer<Boolean> onThinkToggle,
             Runnable onCompress) {
         super(parent, style);
         
@@ -69,13 +63,6 @@ public class ActionsBarWidget extends Composite {
         setLayout(rowLayout);
 
         buildAgentCombo(onAgentChange);
-        buildModelCombo(onModelChange);
-
-        btnThink = new Button(this, SWT.TOGGLE);
-        btnThink.setImage(ImageUtil.loadImage(this, ImageUtil.THINK));
-        //btnThink.setText("\uD83E\uDDE0 Think");
-        btnThink.setToolTipText("Model supports thinking; selects configured on/off reasoning value");
-        btnThink.addListener(SWT.Selection, e -> onThinkToggle.accept(btnThink.getSelection()));
 
         btnCompact = new Button(this, SWT.PUSH);
         buildCompact(onCompress);
@@ -104,18 +91,6 @@ public class ActionsBarWidget extends Composite {
         btnImplement.setVisible(false);
         btnImplement.setEnabled(true);
         btnImplement.addListener(SWT.Selection, e -> onImplement.run());
-    }
-
-    private void buildModelCombo(Consumer<AiModel> onModelChange) {
-        modelCombo = new Combo(this, SWT.READ_ONLY);
-        modelCombo.setLayoutData(new RowData(200, SWT.DEFAULT));
-        modelCombo.setToolTipText("Select model (fetched from provider)");
-        modelCombo.addListener(SWT.Selection, e -> {
-            int idx = modelCombo.getSelectionIndex();
-            if (idx >= 0 && idx < availableModels.size()) {
-                onModelChange.accept(availableModels.get(idx));
-            }
-        });
     }
 
     private void buildAgentCombo(Consumer<AiAgent> onModeChange) {
@@ -176,9 +151,7 @@ public class ActionsBarWidget extends Composite {
     public void lockWhileWorking(boolean value) {
         working = value;
         agentCombo.setEnabled(!working);
-        modelCombo.setEnabled(!working);
         btnClear.setEnabled(!working);
-        btnThink.setEnabled(!working);
         btnImplement.setEnabled(!working);
         btnCompact.setEnabled(!working);
     }
@@ -210,72 +183,5 @@ public class ActionsBarWidget extends Composite {
             layout(true, true);
             getParent().layout(new Control[]{this});
         }
-    }
-
-    /** Set the thinking-support toggle state without firing the listener. */
-    public void setThinkSupported(boolean value) {
-        btnThink.setSelection(value);
-    }
-
-    /** Returns whether thinking support is selected. */
-    public boolean isThinkSupported() {
-        return btnThink.getSelection();
-    }
-    
-    public void setModel(String model) {
-        availableModels = List.of(AiModel.builder().id(model).name(model).build());
-        modelCombo.setEnabled(true);
-        modelCombo.setItems(new String[] { model });
-        selectModel(model);
-    }
-
-    /** Populate the model combo with the available models. */
-    public void applyModelList(List<AiModel> models, String selectedModelId) {
-        availableModels = models;
-        modelCombo.setEnabled(true);
-        modelCombo.setItems(models.stream().map(AiModel::getName).toArray(String[]::new));
-        selectModel(selectedModelId);
-    }
-
-    /** Appends a model to the existing list if not already present, then selects it. */
-    public void addAndSelectModel(String modelId) {
-        if (containsModelId(modelId)) {
-            selectModel(modelId);
-            return;
-        }
-        var model = AiModel.builder().id(modelId).name(modelId).build();
-        var list = new ArrayList<AiModel>(availableModels);
-        list.add(model);
-        availableModels = list;
-        modelCombo.setItems(list.stream().map(AiModel::getName).toArray(String[]::new));
-        selectModel(modelId);
-    }
-
-    /** Select the model by its ID. Falls back to index 0 if not found. */
-    public void selectModel(String modelId) {
-        if (modelId == null || modelId.isBlank()) {
-            modelCombo.select(0);
-            return;
-        }
-        for (int i = 0; i < availableModels.size(); i++) {
-            if (availableModels.get(i).getId().equals(modelId)) {
-                modelCombo.select(i);
-                return;
-            }
-        }
-        modelCombo.select(0);
-    }
-
-    /** Returns true if the given model ID is in the current list. */
-    public boolean containsModelId(String modelId) {
-        return availableModels.stream().anyMatch(m -> m.getId().equals(modelId));
-    }
-
-    /** Returns the ID of the currently selected model, or null if nothing is selected. */
-    public String getSelectedModel() {
-        if (availableModels.isEmpty()) return null;
-        int idx = modelCombo.getSelectionIndex();
-        if (idx < 0 || idx >= availableModels.size()) return null;
-        return availableModels.get(idx).getId();
     }
 }

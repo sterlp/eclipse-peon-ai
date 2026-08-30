@@ -15,13 +15,6 @@ public interface PeonConstants {
 
     String PREF_THINK_SUPPORTED         = LlmConfigKeys.THINK_SUPPORTED;
     String PREF_SEND_THINKING_ENABLED   = LlmConfigKeys.SEND_THINKING_ENABLED;
-    // Historic per-agent think keys — removed from the config domain (cycle 2b); kept for the legacy
-    // FieldEditors until they are replaced by the per-agent sections.
-    String PREF_THINK_ON_STRING         = "llm.thinkOnString";
-    String PREF_THINK_OFF_STRING        = "llm.thinkOffString";
-    String PREF_PLAN_THINK_SUPPORTED    = "llm.planThinkEnabled";
-    String PREF_PLAN_THINK_ON_STRING    = "llm.planThinkOnString";
-    String PREF_PLAN_THINK_OFF_STRING   = "llm.planThinkOffString";
 
     String PREF_API_KEY                    = LlmConfigKeys.API_KEY;
     String PREF_CONFIG_DIRECTORY           = LlmConfigKeys.CONFIG_DIRECTORY;
@@ -48,11 +41,6 @@ public interface PeonConstants {
 
 
     String PREF_MODEL            = LlmConfigKeys.MODEL;
-    // Historic per-agent model keys — removed from the config domain (cycle 2b); kept for the legacy
-    // FieldEditors / saveModel until they are replaced.
-    String PREF_PLAN_MODEL       = "llm.planModel";
-    String PREF_SEARCH_MODEL     = "llm.searchModel";
-    String PREF_COMPACT_MODEL    = "llm.compactModel";
 
     public static IStatus okStatus(String message) {
         return new Status(IStatus.OK, PLUGIN_ID, message);

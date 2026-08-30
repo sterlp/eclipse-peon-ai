@@ -13,7 +13,6 @@ import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
-import org.sterl.llmpeon.ai.model.AiModel;
 import org.sterl.llmpeon.command.CommandService;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.UserContext;
@@ -361,27 +360,6 @@ public class PeonAiService {
         return mcpConnectionService;
     }
 
-    /**
-     * Persists a model change for whichever agent is active: a built-in mode saves to the
-     * per-mode preference, a custom agent writes {@code model:} back into its {@code AGENT.md}.
-     */
-    public void setModel(AiModel model) {
-        if (model == null) return;
-        var active = getActiveAgent();
-        LlmPreferenceInitializer.saveModel(model.getId(), active);
-    }
-
-    public void withThinkSupported(Boolean supported) {
-        if (supported == null) supported = Boolean.FALSE;
-        var active = getActiveAgent();
-        boolean prefChanged = LlmPreferenceInitializer.saveThinkSupported(supported, active);
-        if (prefChanged) {
-            // Dev/Plan live in LlmConfig -> reload so devAgentConfig()/planAgentConfig() pick it up
-            updateConfig(LlmPreferenceInitializer.buildWithDefaults());
-        }
-        // Custom reads its frontmatter live per request; nothing else to do.
-    }
-    
     public Optional<AiAgent> getAgent(String agent) {
         return this.agentService.get(agent);
     }
