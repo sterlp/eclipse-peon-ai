@@ -14,7 +14,7 @@ import org.sterl.llmpeon.shared.TokenStats;
 import dev.langchain4j.model.output.TokenUsage;
 
 /**
- * Self-contained readout of cumulative session token spend ({@code ↑ sent  ↓ received}).
+ * Self-contained readout of cumulative session token spend ({@code ↑ sent  ↓ received  ⇄ cache-read}).
  * <p>
  * Owns its own {@link TokenStats} — the widget's lifecycle equals the chat view's, so the totals are
  * cross-agent and never reset while the view is open (see {@code docs/token-usage.md} R3). Always
@@ -50,9 +50,14 @@ public class TokenHeaderWidget extends Composite {
         if (isDisposed()) return;
         long sent = stats.getSent();
         long received = stats.getReceived();
-        label.setText("↑ " + StringUtil.toK(sent) + "  ↓ " + StringUtil.toK(received));
+        long cacheRead = stats.getCachedRead();
+        long cacheWrite = stats.getCachedWrite();
+        label.setText("↑ " + StringUtil.toK(sent) + "  ↓ " + StringUtil.toK(received)
+                + "  ⇄ " + StringUtil.toK(cacheRead));
         label.setToolTipText("Session tokens — sent (input): " + sent
-                + ", received (output): " + received);
+                + ", received (output): " + received
+                + ", cache read: " + cacheRead
+                + ", cache write: " + cacheWrite);
         requestReflow();
     }
 
