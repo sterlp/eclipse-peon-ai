@@ -20,6 +20,7 @@ import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.ai.ModelListCache;
 import org.sterl.llmpeon.ai.model.AiModel;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
+import org.sterl.llmpeon.provider.ExtraBodyExamples;
 import org.sterl.llmpeon.provider.LlmProviders;
 import org.sterl.llmpeon.provider.ThinkSupport;
 import org.sterl.llmpeon.shared.StringUtil;
@@ -45,6 +46,7 @@ public class AgentModelConfigSection extends Composite {
     private final Text keyText;
     private CCombo modelCombo;
     private Text jsonText;
+    private Label examplesLabel;
 
     // exactly one of these is non-null, per thinkForm
     private Button thinkCheck;
@@ -194,6 +196,36 @@ public class AgentModelConfigSection extends Composite {
         gd.horizontalSpan = 2;
         gd.heightHint = 80;
         jsonText.setLayoutData(gd);
+        buildJsonExamples();
+    }
+
+    /**
+     * Paste-ready extra-body examples under the JSON input (caching.md R3): one row per example
+     * (label + paste button) and a status label. Built only when {@code supportsExtraBody()} —
+     * the provider gate. A paste simply replaces the field content (2c D2, no dialog).
+     */
+    private void buildJsonExamples() {
+        for (var example : ExtraBodyExamples.all()) {
+            var row = new Composite(this, SWT.NONE);
+            var rowGd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+            rowGd.horizontalSpan = 2;
+            row.setLayoutData(rowGd);
+            row.setLayout(new GridLayout(2, false));
+            var label = new Label(row, SWT.NONE);
+            label.setText(example.name() + " example:");
+            var paste = new Button(row, SWT.PUSH);
+            paste.setText("Paste");
+            paste.addListener(SWT.Selection, e -> pasteExample(example));
+        }
+        examplesLabel = new Label(this, SWT.NONE);
+        var labelGd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+        labelGd.horizontalSpan = 2;
+        examplesLabel.setLayoutData(labelGd);
+    }
+
+    private void pasteExample(ExtraBodyExamples.Example example) {
+        jsonText.setText(example.json());
+        examplesLabel.setText(example.name() + " example inserted.");
     }
 
     private Text addLabeledText(String label) {

@@ -100,7 +100,6 @@ public final class ProviderRequestSupport {
         if (effort != null) {
             b.reasoningEffort(ReasoningEffort.of(effort)).reasoningSummary(Reasoning.Summary.DETAILED);
         }
-        // TODO promt cache key based on the agents ...
         return b.build();
     }
 }

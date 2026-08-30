@@ -48,20 +48,37 @@ class ExtraBodyRequestTest {
     }
 
     @Test
-    void userBodyAndCacheControlCoexist() {
-        // (a) GIVEN a claude model (provider hardcodes cache_control=ephemeral) + a body WITHOUT cache_control
-        var coexist = params(AiProvider.OPEN_AI,
-                agent(AiProvider.OPEN_AI, "claude-sonnet-4-5", "{\"temperature2\":1}"));
-        // THEN both keys coexist
-        assertThat(coexist.customParameters())
-                .containsEntry("cache_control", Map.of("type", "ephemeral"))
-                .containsEntry("temperature2", 1);
+    void openAiClaudeModel_noUserBody_noCacheControlSent() {
+        // GIVEN a claude model without an extra body (clean break: the provider hardcode is gone)
+        var mc = agent(AiProvider.OPEN_AI, "claude-sonnet-4-5", null);
+        // WHEN newRequestParameters
+        var params = params(AiProvider.OPEN_AI, mc);
+        // THEN no cache_control is sent (caching.md: no cache until the user configures one)
+        assertThat(params.customParameters()).doesNotContainKey("cache_control");
+    }
 
-        // (b) GIVEN the same + a body WITH cache_control
-        var overridden = params(AiProvider.OPEN_AI,
-                agent(AiProvider.OPEN_AI, "claude-sonnet-4-5", "{\"cache_control\":{\"type\":\"persistent\"}}"));
+    @Test
+    void userBodyCacheControl_reachesRequest() {
+        // GIVEN the Claude example body (cache_control=ephemeral)
+        var mc = agent(AiProvider.OPEN_AI, "claude-sonnet-4-5",
+                "{\"cache_control\":{\"type\":\"ephemeral\"}}");
+        // WHEN newRequestParameters
+        var params = params(AiProvider.OPEN_AI, mc);
+        // THEN the example reaches the request verbatim (the pasted body actually works)
+        assertThat(params.customParameters())
+                .containsEntry("cache_control", Map.of("type", "ephemeral"));
+    }
+
+    @Test
+    void mergeUserWins_overProviderEntry() {
+        // GIVEN a provider entry and a user body with the same key
+        var mc = agent(AiProvider.OPEN_AI, "claude-sonnet-4-5",
+                "{\"cache_control\":{\"type\":\"persistent\"}}");
+        // WHEN mergeCustomParameters
+        var merged = ProviderRequestSupport.mergeCustomParameters(
+                Map.of("cache_control", Map.of("type", "ephemeral")), mc);
         // THEN the user body wins (PO decision 2026-08-28)
-        assertThat(overridden.customParameters())
+        assertThat(merged)
                 .containsEntry("cache_control", Map.of("type", "persistent"));
     }
 
@@ -113,10 +130,18 @@ class ExtraBodyRequestTest {
         // THEN the body entries are baked into the model's custom parameters (build-time key entity)
         assertThat(model).isNotNull();
         assertThat(customParameters(model)).containsEntry("foo", 1);
-        // AND the typed cache flags are untouched
+    }
+
+    @Test
+    void anthropicBuild_noCacheFlagsByDefault() throws Exception {
+        // GIVEN an Anthropic build config without extra body (clean break)
+        var config = anthropicConfig(null);
+        // WHEN the model is built
+        var model = (AnthropicStreamingChatModel) LlmProviders.of(AiProvider.ANTHROPIC).buildModel(config);
+        // THEN no native caching is enabled by default (the typed flags are absent/false)
         var defaults = (AnthropicChatRequestParameters) field(model, "defaultRequestParameters");
-        assertThat(defaults.cacheSystemMessages()).isTrue();
-        assertThat(defaults.cacheTools()).isTrue();
+        assertThat(defaults.cacheSystemMessages()).isNotEqualTo(Boolean.TRUE);
+        assertThat(defaults.cacheTools()).isNotEqualTo(Boolean.TRUE);
     }
 
     @Test

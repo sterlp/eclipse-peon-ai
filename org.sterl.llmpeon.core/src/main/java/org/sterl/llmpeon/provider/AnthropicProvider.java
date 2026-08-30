@@ -28,11 +28,7 @@ public final class AnthropicProvider implements LlmProvider {
         var builder = AnthropicStreamingChatModel.builder()
                 .timeout(c.getTimeout())
                 .modelName(c.getModel())
-                .apiKey(c.getApiKey())
-                .defaultRequestParameters(AnthropicChatRequestParameters.builder()
-                    .cacheSystemMessages(true)
-                    .cacheTools(true)
-                    .build());
+                .apiKey(c.getApiKey());
 
         if (c.getUrl() != null && c.getUrl().length() > 4) {
             builder.baseUrl(c.getUrl());
@@ -81,8 +77,7 @@ public final class AnthropicProvider implements LlmProvider {
 
     /**
      * Anthropic consumes extra body fields <b>build-time only</b>: the parsed body is baked into
-     * the model's {@code customParameters} (there is no per-request field). The typed
-     * {@code cacheSystemMessages}/{@code cacheTools} flags are separate and never conflict.
+     * the model's {@code customParameters} (there is no per-request field).
      */
     @Override
     public ExtraBodyMode extraBodyMode() {

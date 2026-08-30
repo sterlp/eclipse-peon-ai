@@ -4,7 +4,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.util.List;
-import java.util.Map;
 
 import org.sterl.llmpeon.ai.AgentConfig;
 import org.sterl.llmpeon.ai.LlmConfig;
@@ -54,13 +53,8 @@ public final class OpenAiProvider implements LlmProvider {
         var effort = ProviderRequestSupport.effortFor(mc);
         if (effort != null) b.reasoningEffort(effort);
 
-        Map<String, Object> cacheControl = null;
-        if (mc.getModel() != null && mc.getModel().startsWith("claude")) {
-            cacheControl = Map.of("cache_control", Map.of("type", "ephemeral"));
-        }
-        var custom = ProviderRequestSupport.mergeCustomParameters(cacheControl, mc);
+        var custom = ProviderRequestSupport.mergeCustomParameters(null, mc);
         if (custom != null) b.customParameters(custom);
-        // TODO for "gpt" based on the agent prompt_cache_key
 
         return b.build();
     }

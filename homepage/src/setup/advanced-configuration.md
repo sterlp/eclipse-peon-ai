@@ -85,6 +85,27 @@ When both value fields are empty and thinking is supported, Peon maps to a provi
 
 **Show and resend model thinking** (main Peon Configuration page) is a separate global transport switch. It is **independent** of model support.
 
+## Extra Body / Prompt Caching
+
+Each agent's section has an **Extra body (JSON)** field: raw JSON merged into that agent's request body. This is also where **prompt caching** is configured — Peon no longer enables caching by itself, so **no cache is sent until you configure one** (a deliberate clean break, no silent default, no migration).
+
+### Examples
+
+Two paste-ready examples sit under the field (shown only for providers that support an extra body):
+
+| Example | Body | Effect |
+|---------|------|--------|
+| **GPT** | `{"prompt_cache_key": "llmpeon"}` | Azure-OpenAI explicit prompt-caching key. On other OpenAI-compatible endpoints the top-level field is ignored (harmless). |
+| **Claude** | `{"cache_control": {"type": "ephemeral"}}` | The ephemeral cache marker — effective for Claude behind OpenAI-compatible gateways (LiteLLM & co.) that forward the field. |
+
+Click **Paste** to insert an example into the field (it replaces the current content). The body is sent per request for OpenAI-family providers and baked in at build time for Anthropic.
+
+### No cache by default
+
+Since the clean break, the provider no longer injects `cache_control` (Claude) or the native Anthropic cache flags on its own. If you want prompt caching, paste the matching example for your provider.
+
+> **Note for direct Anthropic API users:** native system/tool caching (`cache_control` inside the system/tool blocks) is a build-time flag Peon no longer sets, and it cannot be re-enabled through the top-level extra body. Direct Claude API users therefore lose automatic prompt caching; the `cache_control` example works for Claude behind an OpenAI-compatible gateway instead.
+
 ## Debug Mode
 
 When enabled, logs all requests and responses to the Eclipse console.
