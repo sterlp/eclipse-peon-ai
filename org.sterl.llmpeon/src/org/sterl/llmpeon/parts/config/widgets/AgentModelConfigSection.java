@@ -1,5 +1,11 @@
 package org.sterl.llmpeon.parts.config.widgets;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Supplier;
+
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CCombo;
 import org.eclipse.swt.layout.GridData;
@@ -9,7 +15,11 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
 import org.sterl.llmpeon.ai.AgentModelConfig;
-import org.sterl.llmpeon.ai.AiProvider;
+import org.sterl.llmpeon.ai.ConnectionIdentity;
+import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.ai.ModelListCache;
+import org.sterl.llmpeon.ai.model.AiModel;
+import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.provider.LlmProviders;
 import org.sterl.llmpeon.provider.ThinkSupport;
 import org.sterl.llmpeon.shared.StringUtil;
@@ -20,13 +30,16 @@ import org.sterl.llmpeon.shared.StringUtil;
  * <b>base</b> provider's {@link org.sterl.llmpeon.provider.LlmProvider} (provider.md R5/R3) — the
  * provider itself stays base-level.
  *
- * <p>SWT is encapsulated here; the value mappings live in the SWT-free {@link ThinkValueSupport}
- * (unit-testable without a Display). The model list is an editable combo — populating it from the
- * provider happens in the model-list increment (this increment only provides the control).</p>
+ * <p>The model combo is filled from the provider's model list, cached per
+ * {@link ConnectionIdentity} in {@link ModelListCache}: fetched once when the page opens (or on
+ * the refresh button), never while typing. A failed or empty list falls back to the configured
+ * model only — no auto-switch. SWT is encapsulated here; the value mappings live in the SWT-free
+ * {@link ThinkValueSupport} (unit-testable without a Display).</p>
  */
 public class AgentModelConfigSection extends Composite {
 
     private final String agentId;
+    private final LlmConfig base;
     private final ThinkSupport thinkForm;
     private final Text urlText;
     private final Text keyText;
@@ -38,10 +51,11 @@ public class AgentModelConfigSection extends Composite {
     private CCombo thinkCombo;
     private Text thinkText;
 
-    public AgentModelConfigSection(Composite parent, String agentId, AiProvider baseProvider) {
+    public AgentModelConfigSection(Composite parent, String agentId, LlmConfig base) {
         super(parent, SWT.NONE);
         this.agentId = agentId;
-        var provider = LlmProviders.of(baseProvider);
+        this.base = base;
+        var provider = LlmProviders.of(base.getProviderType());
         this.thinkForm = provider.thinkSupport();
         setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, true, false));
         setLayout(new GridLayout(2, false));
@@ -75,12 +89,67 @@ public class AgentModelConfigSection extends Composite {
                 jsonText != null ? StringUtil.stripToNull(jsonText.getText()) : null);
     }
 
+    // --- model list (per ConnectionIdentity, cached on success only) ---
+
+    /** Fetches the model list for the current widget values (page open). Cached per identity. */
+    public void fetchModels() {
+        var identity = currentIdentity();
+        Job.create("Loading models (" + agentId + ")", monitor -> {
+            var list = ModelListCache.instance().getOrFetch(identity, fetchList(identity));
+            applyModelList(list, identity);
+            return Status.OK_STATUS;
+        }).schedule();
+    }
+
+    /** Manual refresh: always refetches; a failed fetch keeps the previous list. */
+    private void refreshModels() {
+        var identity = currentIdentity();
+        Job.create("Refreshing models (" + agentId + ")", monitor -> {
+            var cache = ModelListCache.instance();
+            var list = cache.refresh(identity, fetchList(identity));
+            applyModelList(list != null ? list : cache.cached(identity), identity);
+            return Status.OK_STATUS;
+        }).schedule();
+    }
+
+    private ConnectionIdentity currentIdentity() {
+        return base.effectiveConnectionFor(getRecord()).identity();
+    }
+
+    private Supplier<List<AiModel>> fetchList(ConnectionIdentity identity) {
+        var buildConfig = base.effectiveConnectionFor(getRecord()).buildConfig();
+        return () -> LlmProviders.of(identity.provider()).listAiModels(buildConfig);
+    }
+
+    private void applyModelList(List<AiModel> fetched, ConnectionIdentity identity) {
+        EclipseUtil.runInUiThread(this, () -> {
+            if (!identity.equals(currentIdentity())) return; // config changed while fetching — stale
+            var items = new ArrayList<String>();
+            if (fetched != null) items.addAll(fetched.stream().map(AiModel::getId).toList());
+            var configured = StringUtil.stripToNull(modelCombo.getText());
+            if (configured != null && !items.contains(configured)) items.add(configured);
+            modelCombo.setItems(items.toArray(String[]::new));
+            if (configured != null) {
+                var idx = modelCombo.indexOf(configured);
+                if (idx >= 0) modelCombo.select(idx);
+                else modelCombo.setText(configured);
+            }
+        });
+    }
+
     // --- widget construction ---
 
     private void buildModel() {
         addLabel("Model:");
-        modelCombo = new CCombo(this, SWT.BORDER);
+        var row = new Composite(this, SWT.NONE);
+        row.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+        row.setLayout(new GridLayout(2, false));
+        modelCombo = new CCombo(row, SWT.BORDER);
         modelCombo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+        var refresh = new Button(row, SWT.PUSH);
+        refresh.setText("Refresh");
+        refresh.setToolTipText("Reload the model list for this agent's connection");
+        refresh.addListener(SWT.Selection, e -> refreshModels());
     }
 
     private void buildThink() {

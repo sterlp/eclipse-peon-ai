@@ -185,6 +185,14 @@ public class LlmConfig {
         return toBuilder().modelConfigs(Map.copyOf(updated)).build();
     }
 
+    /**
+     * The effective connection for the given per-agent record (url/key/body as currently set,
+     * provider from the base) — used to fetch the model list for exactly that configuration.
+     */
+    public EffectiveConnection effectiveConnectionFor(AgentModelConfig record) {
+        return EffectiveConnection.of(this, agentBuilder(record).build());
+    }
+
     /** Dev agent — always the base {@link #model}; think/url/key/body from the dev record (verbatim). */
     public AgentConfig devAgentConfig() {
         var dev = modelConfigFor(AgentModelConfig.DEV);

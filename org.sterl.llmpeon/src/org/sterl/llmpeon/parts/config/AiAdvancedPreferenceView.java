@@ -12,7 +12,6 @@ import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
 import org.eclipse.ui.preferences.ScopedPreferenceStore;
 import org.sterl.llmpeon.ai.AgentModelConfig;
-import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.ai.LlmConfigSaver;
 import org.sterl.llmpeon.parts.PeonConstants;
@@ -30,7 +29,6 @@ import org.sterl.llmpeon.parts.config.widgets.TitledGroup;
 public class AiAdvancedPreferenceView extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
 
     private LlmConfig config;
-    private AiProvider baseProvider;
     private final List<AgentModelConfigSection> sections = new ArrayList<>();
 
     public AiAdvancedPreferenceView() {
@@ -42,7 +40,6 @@ public class AiAdvancedPreferenceView extends FieldEditorPreferencePage implemen
     @Override
     public void createFieldEditors() {
         config = LlmPreferenceInitializer.buildWithDefaults();
-        baseProvider = config.getProviderType();
 
         addField(new IntegerFieldEditor(PeonConstants.PREF_TIMEOUT, "Timeout in seconds (default 180s):",
                 getFieldEditorParent()));
@@ -76,8 +73,9 @@ public class AiAdvancedPreferenceView extends FieldEditorPreferencePage implemen
 
     private void addAgentSection(String agentId, String title) {
         var titledGroup = new TitledGroup(getFieldEditorParent(), title);
-        var section = new AgentModelConfigSection(titledGroup.getGroup(), agentId, baseProvider);
+        var section = new AgentModelConfigSection(titledGroup.getGroup(), agentId, config);
         section.load(config.modelConfigFor(agentId));
+        section.fetchModels();
         sections.add(section);
     }
 
