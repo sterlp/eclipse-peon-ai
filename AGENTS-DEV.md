@@ -27,8 +27,8 @@ Hints for the dev phase, base rules `AGENTS.md`
   - Before EVERY test run call `eclipseBuildProject` (all changed projects) — stale bundle
     classes in `bin/` cause `ClassNotFoundException` / unresolved-compilation failures, and
     stale Surefire reports under `target/` mislead result reading.
-  - A new test class needs manual workspace approval by the user and may time out if he is not
-    watching — prefer the already approved suite.
+  - A new test class needs manual workspace approval once by the user and may time out if he is not
+    watching — prefer to run all tests in the plugin test project, which is already approved.
 - After ANY core change, before the Eclipse plugin build/test run: `mvn -o -pl
   org.sterl.llmpeon,releng/llmpeon-target -am package -DskipTests` — `-am` rebuilds core in the
   reactor and re-copies the jar into `lib/`; `releng/llmpeon-target` must stay in `-pl` (offline the
@@ -39,3 +39,4 @@ Hints for the dev phase, base rules `AGENTS.md`
 - Elegant, expressive modern Java (records, pattern matching, switch expressions, Lombok).
 - **OSGi test constraints:** plugin tests are JUnit 4, new test classes need user approval.
   Run full test suite on timeout
+- Prefer a few high-value assertions over many brittle ones; every assertion should earn its maintenance cost.

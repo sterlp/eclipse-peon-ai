@@ -4,7 +4,7 @@ The model dropdown shows the available models from the current LLM provider, wit
 model resolution. The list is fetched lazily and persists across agent switches — it is only
 refetched when the provider config changes.
 
-## SOLL (2026-08-28) — ❌ specified, nicht umgesetzt
+## SOLL (2026-08-28) — ✅ gebaut (Zyklus 2b, 2026-08-30)
 
 Der Modell-Dropdown wandert aus der Chat-UI in die Config-Seite (pro Agent) —
 [advanced-configuration.md](advanced-configuration.md), Mechanik:
@@ -31,7 +31,7 @@ THEN die Liste wird neu geholt und ersetzt den Cache
 AND bei Fetch-Fehler bleibt der alte Cache bestehen
 ```
 
-Die Ist-Beschreibung unten gilt bis zum Umbau.
+Die Ist-Beschreibung unten ist mit dem Umbau (2b, 2026-08-30) überholt — nur noch als historische Referenz.
 
 ## Use Cases (BDD)
 

@@ -32,9 +32,10 @@ UI **nur**, wenn der Provider extra-body-Parameter unterstützt (Capability-Bool
   nur OpenAI-Familie, Anthropic Build-time (Body dann in der Verbindungs-Identität,
   [ADR-0034](adr/0034-connection-cache-by-identity.md)), Rest gar nicht. **Core-Mechanik ✅
   (2a, 2026-08-28):** `ExtraBody.parse` (Reserved-Key-Strip, invalid → warn+ignore) +
-  `ExtraBodyMode` (PER_REQUEST/BUILD_TIME/NONE) + Merge (User-Body gewinnt) + Connection-Cache —
-  UI + Beispiele + Hardcode-Entfernung folgen in 2b/2c.
-- **R2 ❌ Provider-Fähigkeits-Gate:** der JSON-Input erscheint im UI **nur**, wenn der aktive
+  `ExtraBodyMode` (PER_REQUEST/BUILD_TIME/NONE) + Merge (User-Body gewinnt) + Connection-Cache;
+  **UI ✅ (2b, 2026-08-30)** (JSON-Widget je Agent, Gate per `supportsExtraBody()`) —
+  Beispiele + Hardcode-Entfernung folgen in 2c.
+- **R2 ✅ Provider-Fähigkeits-Gate (Mechanik 2a, UI-Gate 2b, 2026-08-30):** der JSON-Input erscheint im UI **nur**, wenn der aktive
   Provider extra-body-Parameter unterstützt — nur dort, wo es implementiert ist, wird es
   geboten. Mechanik (Boolean, Merge, Provider-Klassen): [provider.md](provider.md) P2–P3.
 - **R3 ❌ Config-UI mit Beispielen:** Unter dem JSON-Input werden die **GPT- und Claude-Beispiele

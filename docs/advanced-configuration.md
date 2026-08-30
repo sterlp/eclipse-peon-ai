@@ -52,7 +52,7 @@ AiPlannerService.resolveAgentModel()
 3. **Native support**: LangChain4j supports per-request model override directly
 4. **Lower overhead**: Avoids building and maintaining multiple `ConfiguredChatModel` wrappers
 
-## Agent-Specific Config Umbau (SOLL, 2026-08-21) — ❌ specified, nicht umgesetzt
+## Agent-Specific Config Umbau (SOLL, 2026-08-21) — ✅ Core (2a) + Config-UI (2b) gebaut (2026-08-30); 2c-Teile (Custom-Agent-yml, Homepage) ❌ offen
 
 **SOLL:** Alles konfigurierbar wird **agent-spezifisch** — jeder Agent mit Modell-Slot
 (base/plan/search/compact/PO + Custom Agents) trägt seine eigenen Einstellungen: Modell
@@ -65,7 +65,7 @@ Dazu gehören:
 - Geltung für jeden Agenten, bei dem ein Modell eingestellt werden kann.
 - Zusammen mit dem Caching-SOLL dokumentiert — **Umsetzung Backlog** (nach der Issue-Runde).
 
-**SOLL-Ergänzung (2026-08-28, User) — ❌ specified (UI-Teile offen; Core-Fundament ✅).
+**SOLL-Ergänzung (2026-08-28, User) — ✅ gebaut (2b, 2026-08-30: Config-Seite per-agent, Modell-Liste pro Identität, Chat-UI-Räumung); 2c-Teile ❌ offen.
 Mechanik: [ADR-0034](adr/0034-connection-cache-by-identity.md).**
 - **Model-Config pro Agent:** ein „configured model" = URL, Key, Modell, Think, extra JSON body
   (KV-Cache-ID & weitere Body-Params). Verbindungen (Model-Instanzen) werden per **Hash der
@@ -105,7 +105,7 @@ Mechanik: [ADR-0034](adr/0034-connection-cache-by-identity.md).**
   Einstellbare (URL, API Key, Modell, Think, JSON extra body) geht auch pro Custom Agent im
   Frontmatter — gleicher Record, gleiche Auflösung; **Homepage-Doku** dafür ist SOLL (wird mit
   dem Feature umgesetzt).
-- **Known Issue (Bug):** URL-Wechsel in der Base-Config macht die Modell-Auswahl der **anderen**
+- **Known Issue (Bug) — ✅ gelöst (2b, 2026-08-30):** war: URL-Wechsel in der Base-Config macht die Modell-Auswahl der **anderen**
   Agenten ungültig/leer (nur der selektierte Agent wird aktualisiert); heute via Wiederauswahl
   zu reparieren.
 

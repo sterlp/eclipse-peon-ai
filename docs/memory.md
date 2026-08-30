@@ -1,4 +1,6 @@
-# Offene Enden (2026-08-29)
+# Offene Enden (2026-08-30)
+
+- **Zyklus 2b ✅ (2026-08-30):** Plugin-UI per-agent Model-Config gebaut + Plan-Agent-Review OK + PO-Abnahme. 5 Inkremente: (1) `AgentModelConfig`-Record + `LlmConfig.modelConfigs` (alte per-agent-Felder raus, kein Temperature-Feld), (2) Persistenz-Domäne `LlmConfigStore/Keys/Loader/Saver` in core + `EclipseLlmConfigStore` + `PeonConstants`-Aliase (Sauberer-Rebuild, alte Keys ignoriert), (3) 4× `AgentModelConfigSection` (URL/Key/Modell-CCCombo+Refresh, Think-Widget je Base-Provider-`ThinkSupport`, JSON-ScrolledText nur bei `supportsExtraBody()`), (4) `ModelListCache` (pro `ConnectionIdentity`, Cache on success, Refresh-Fehler → alte Liste, configured-Model-Append ohne Auto-Switch), (5) Chat-UI-Räumung (`modelCombo`/`btnThink`, `PeonAiService.setModel`/`withThinkSupported`). Core 507/0 (Eclipse-Zählung; mvn 486), Plugin 121/0 grün. Commits auf `new-config`: 2a inc-1…8 + 2b (u. a. `10205dc`, `133dafc`, `c184aea`). Docs geflippt: advanced-configuration.md ✅ 2b (2c-Teile ❌), model-loading.md ✅, caching.md R2 ✅ + R1a-UI-✅ (Beispiele/Hardcode → 2c). **NICHT gemerged** (Squash/Merge = User). **E2E-Handverifikation (User, vor Merge):** Agent mit eigener URL → andere Liste; Refresh; Base-URL-Wechsel → keine leeren Dropdowns (Known-Issue gelöst); Chat ohne Modell-/Think-Widgets. **Nächster: 2c** (Cache-Hardcode-Entfernung, GPT/Claude-UI-Beispiele, Usage-Abgleich, AGENT.md-Frontmatter-yml, Homepage — `homepage/src/setup/advanced-configuration.md` beschreibt noch alte On/Off-Strings + „chat brain button" → wird in 2c umgeschrieben).
 
 - **Prompt- & Git-Konventions-De-duplizierung (2026-08-29):** Git-SOLL jetzt nur in Root-
   `AGENTS.md` „Build cycles & git" (3 Zeilen, für alle Verbraucher: Peon, Nicht-Peon-Tools,
@@ -22,8 +24,7 @@
   Tests grün, Root-Build + Plugin-Compile-Check SUCCESS). Branch `new-config`: Commits `inc-1`…
   `inc-8` + Abschluss (inkl. Docs-Sync) — **NICHT gemerged** (Squash/Merge = User). PO-
   Entscheidungen im Zyklus: User-Body gewinnt bei Key-Konflikt; invalides extraBody-JSON →
-  warn+ignore; Branch = `git branch --show-current` zu Build-Start. → nächster: 2b
-  (Plugin-UI: Config-Seite, Dropdown+Refresh, Chat-UI-Ausblendung) und 2c (Cache-Hardcode-
+  warn+ignore; Branch = `git branch --show-current` zu Build-Start. → 2b ✅ (2026-08-30); nächster: 2c (Cache-Hardcode-
   Entfernung, GPT/Claude-Beispiele, Cache-Abgleich, Custom-Agent-yml, Homepage).
 
 - **Config-Umbau (User, 2026-08-28) — SOLL ❌ specified:** per-agent Model-Config (URL, Key,
@@ -89,3 +90,5 @@
   Marker ✅, EclipseFileContextItem + AgentsMdContextItem → Header-dedupKey, `itemsFor()` mit
   2 Items (R1+R2), Core-Delta `StandingOrdersBuilder.buildItems()` → `List<ContextItem>`,
   R2(a) Live-Status-Hide nach Replay in `doCompressContext`.
+
+- **Idee (User, 2026-08-30, nach Zyklus 2b):** Docs-Seite für Icon-/Role-/Typography-Definition der UI-Symbole — Kandidaten: 📦, 🔧/🛠, ✅/❌, 🎯, ⚡; Rollen-Mapping (User-Vorschlag): 🗜 Compact, 🧩 SKILL, 🪄 Command. Noch unklar: Scope (welche Rollen/Icons), wo angezeigt (Chat-Header? Status?), SOLL-Doku erst wenn konkretisiert.
