@@ -93,21 +93,21 @@ public class AgentModelConfigSection extends Composite {
 
     /** Fetches the model list for the current widget values (page open). Cached per identity. */
     public void fetchModels() {
-        var identity = currentIdentity();
+        var snapshot = prepareFetch(); // UI thread: capture widget state before the background Job
         Job.create("Loading models (" + agentId + ")", monitor -> {
-            var list = ModelListCache.instance().getOrFetch(identity, fetchList(identity));
-            applyModelList(list, identity);
+            var list = ModelListCache.instance().getOrFetch(snapshot.identity(), fetchList(snapshot));
+            applyModelList(list, snapshot.identity());
             return Status.OK_STATUS;
         }).schedule();
     }
 
     /** Manual refresh: always refetches; a failed fetch keeps the previous list. */
     private void refreshModels() {
-        var identity = currentIdentity();
+        var snapshot = prepareFetch(); // UI thread: capture widget state before the background Job
         Job.create("Refreshing models (" + agentId + ")", monitor -> {
             var cache = ModelListCache.instance();
-            var list = cache.refresh(identity, fetchList(identity));
-            applyModelList(list != null ? list : cache.cached(identity), identity);
+            var list = cache.refresh(snapshot.identity(), fetchList(snapshot));
+            applyModelList(list != null ? list : cache.cached(snapshot.identity()), snapshot.identity());
             return Status.OK_STATUS;
         }).schedule();
     }
@@ -116,9 +116,23 @@ public class AgentModelConfigSection extends Composite {
         return base.effectiveConnectionFor(getRecord()).identity();
     }
 
-    private Supplier<List<AiModel>> fetchList(ConnectionIdentity identity) {
-        var buildConfig = base.effectiveConnectionFor(getRecord()).buildConfig();
-        return () -> LlmProviders.of(identity.provider()).listAiModels(buildConfig);
+    /**
+     * UI-thread snapshot of the effective connection for the current widget values, captured
+     * before the background fetch Job starts. The Job body reads only this snapshot — never the
+     * widgets (SWT widgets are not thread-safe; reading them off the UI thread throws
+     * {@code SWTException: Invalid thread access}).
+     */
+    public record FetchSnapshot(ConnectionIdentity identity, LlmConfig buildConfig) {}
+
+    /** Captures the fetch snapshot on the UI thread (the only place the widgets are read for a fetch). */
+    private FetchSnapshot prepareFetch() {
+        var effective = base.effectiveConnectionFor(getRecord());
+        return new FetchSnapshot(effective.identity(), effective.buildConfig());
+    }
+
+    /** SWT-free: the fetcher for a captured snapshot — safe to run in a background Job. */
+    public static Supplier<List<AiModel>> fetchList(FetchSnapshot snapshot) {
+        return () -> LlmProviders.of(snapshot.identity().provider()).listAiModels(snapshot.buildConfig());
     }
 
     private void applyModelList(List<AiModel> fetched, ConnectionIdentity identity) {
