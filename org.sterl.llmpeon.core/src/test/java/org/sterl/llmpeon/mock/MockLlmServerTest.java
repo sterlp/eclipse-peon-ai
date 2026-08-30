@@ -270,6 +270,69 @@ public class MockLlmServerTest {
         assertThat(toolMsg.text()).isEqualTo("25°C");
     }
 
+    // 5.4 Anthropic wire format (langchain4j DefaultAnthropicClient): SSE event stream
+    @Test
+    void shouldStreamAnthropicSseAndCaptureBody() throws Exception {
+        // GIVEN
+        server.reset();
+        server.queueResponse("Hello Anthropic");
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .timeout(TIMEOUT)
+                .uri(URI.create(server.getUrl() + "/messages"))
+                .header("Content-Type", "application/json")
+                .header("x-api-key", "test-key")
+                .header("anthropic-version", "2023-06-01")
+                .POST(HttpRequest.BodyPublishers.ofString(
+                        "{\"model\":\"claude-mock\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}]}"))
+                .build();
+
+        // WHEN
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        // THEN — a minimal Anthropic SSE event sequence, body captured
+        assertThat(response.statusCode()).isEqualTo(200);
+        String body = response.body();
+        assertThat(body).contains("event: content_block_start");
+        assertThat(body).contains("event: content_block_delta");
+        assertThat(body).contains("Hello Anthropic");
+        assertThat(body).contains("event: content_block_stop");
+        assertThat(body).contains("event: message_delta");
+        assertThat(body).contains("end_turn");
+        assertThat(body).contains("event: message_stop");
+        assertThat(server.getLastRequestBody()).contains("claude-mock");
+    }
+
+    // 5.5 Ollama wire format (langchain4j OllamaClient): newline-delimited JSON
+    @Test
+    void shouldStreamOllamaNdjsonAndCaptureBody() throws Exception {
+        // GIVEN
+        server.reset();
+        server.queueResponse("Hello Ollama");
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .timeout(TIMEOUT)
+                .uri(URI.create(server.rootUrl() + "/api/chat"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(
+                        "{\"model\":\"llama-mock\",\"messages\":[{\"role\":\"user\",\"content\":\"hi\"}]}"))
+                .build();
+
+        // WHEN
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        // THEN — NDJSON, final line done:true + done_reason:stop, body captured
+        assertThat(response.statusCode()).isEqualTo(200);
+        String body = response.body();
+        String[] lines = body.strip().split("\n");
+        assertThat(lines).hasSize(2);
+        assertThat(lines[0]).contains("\"done\":false");
+        assertThat(lines[1]).contains("\"done\":true");
+        assertThat(lines[1]).contains("\"done_reason\":\"stop\"");
+        assertThat(body).contains("Hello Ollama");
+        assertThat(server.getLastRequestBody()).contains("llama-mock");
+    }
+
     @SuppressWarnings("unchecked")
     private Map<?, ?> parseJson(String json) {
         try {

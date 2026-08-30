@@ -70,6 +70,8 @@ public class MockLlmServer {
             server = HttpServer.create(new InetSocketAddress(port), 0);
             server.createContext("/v1/chat/completions", this::handleChatCompletions);
             server.createContext("/v1/models", this::handleModels);
+            server.createContext("/v1/messages", this::handleAnthropicMessages);
+            server.createContext("/api/chat", this::handleOllamaChat);
             server.setExecutor(Executors.newCachedThreadPool());
             server.start();
             
@@ -131,6 +133,11 @@ public class MockLlmServer {
 
     public String getUrl() {
         return "http://127.0.0.1:" + port + "/v1";
+    }
+
+    /** Base URL without the {@code /v1} suffix — the Ollama endpoint root ({@code /api/chat}). */
+    public String rootUrl() {
+        return "http://127.0.0.1:" + port;
     }
 
     // -------------------------------------------------------------------------
@@ -279,6 +286,110 @@ public class MockLlmServer {
     	} finally {
 			exchange.close();
 		}
+    }
+
+    /**
+     * Anthropic {@code POST /v1/messages} (wire format per langchain4j {@code DefaultAnthropicClient}):
+     * captures the raw body (no OpenAI-shaped message capture) and always streams a minimal
+     * Anthropic SSE event sequence back.
+     */
+    private void handleAnthropicMessages(com.sun.net.httpserver.HttpExchange exchange) throws IOException {
+        try {
+            if (!"POST".equals(exchange.getRequestMethod())) {
+                sendJson(exchange, 405, Map.of("error", "Method not allowed"));
+                return;
+            }
+            String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            lastRequestBody.set(requestBody);
+            sendAnthropicSse(exchange, pollContent());
+        } finally {
+            exchange.close();
+        }
+    }
+
+    /**
+     * Ollama {@code POST /api/chat} (wire format per langchain4j {@code OllamaClient}):
+     * captures the raw body and always streams newline-delimited JSON back (the final line carries
+     * {@code done:true}).
+     */
+    private void handleOllamaChat(com.sun.net.httpserver.HttpExchange exchange) throws IOException {
+        try {
+            if (!"POST".equals(exchange.getRequestMethod())) {
+                sendJson(exchange, 405, Map.of("error", "Method not allowed"));
+                return;
+            }
+            String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            lastRequestBody.set(requestBody);
+            sendOllamaNdjson(exchange, pollContent());
+        } finally {
+            exchange.close();
+        }
+    }
+
+    private String pollContent() {
+        Object queued = responseQueue.poll();
+        return queued != null ? queued.toString() : "No queued response - default mock answer";
+    }
+
+    // -------------------------------------------------------------------------
+    // Anthropic SSE response (text/event-stream, event: <type>\ndata: <json>\n\n)
+    // -------------------------------------------------------------------------
+
+    private void sendAnthropicSse(com.sun.net.httpserver.HttpExchange exchange, String content) throws IOException {
+        exchange.getResponseHeaders().set("Content-Type", "text/event-stream");
+        exchange.getResponseHeaders().set("Cache-Control", "no-cache");
+
+        var sb = new StringBuilder();
+        appendAnthropicEvent(sb, "content_block_start", Map.of(
+                "type", "content_block_start",
+                "index", 0,
+                "content_block", Map.of("type", "text", "text", "")));
+        appendAnthropicEvent(sb, "content_block_delta", Map.of(
+                "type", "content_block_delta",
+                "index", 0,
+                "delta", Map.of("type", "text_delta", "text", content)));
+        appendAnthropicEvent(sb, "content_block_stop", Map.of(
+                "type", "content_block_stop",
+                "index", 0));
+        appendAnthropicEvent(sb, "message_delta", Map.of(
+                "type", "message_delta",
+                "delta", Map.of("stop_reason", "end_turn"),
+                "usage", Map.of("output_tokens", content.length())));
+        appendAnthropicEvent(sb, "message_stop", Map.of("type", "message_stop"));
+
+        byte[] bytes = sb.toString().getBytes(StandardCharsets.UTF_8);
+        exchange.sendResponseHeaders(200, bytes.length);
+        exchange.getResponseBody().write(bytes);
+    }
+
+    private void appendAnthropicEvent(StringBuilder sb, String event, Map<String, Object> data) throws IOException {
+        sb.append("event: ").append(event).append('\n');
+        sb.append("data: ").append(MAPPER.writeValueAsString(data)).append("\n\n");
+    }
+
+    // -------------------------------------------------------------------------
+    // Ollama NDJSON response (one JSON object per line; final line done:true)
+    // -------------------------------------------------------------------------
+
+    private void sendOllamaNdjson(com.sun.net.httpserver.HttpExchange exchange, String content) throws IOException {
+        exchange.getResponseHeaders().set("Content-Type", "application/x-ndjson");
+
+        var sb = new StringBuilder();
+        sb.append(MAPPER.writeValueAsString(Map.of(
+                "model", "mock-model",
+                "message", Map.of("role", "assistant", "content", content),
+                "done", false))).append('\n');
+        sb.append(MAPPER.writeValueAsString(Map.of(
+                "model", "mock-model",
+                "message", Map.of("role", "assistant", "content", ""),
+                "done_reason", "stop",
+                "done", true,
+                "prompt_eval_count", 5,
+                "eval_count", content.length()))).append('\n');
+
+        byte[] bytes = sb.toString().getBytes(StandardCharsets.UTF_8);
+        exchange.sendResponseHeaders(200, bytes.length);
+        exchange.getResponseBody().write(bytes);
     }
 
     // -------------------------------------------------------------------------
