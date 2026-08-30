@@ -18,6 +18,11 @@ NEXT: <What to do next>
 LESSONS-LEARNED: <Problems overcome>
 - Problems found and how they have been resolved
 - Discarded/failed approaches and why they were rejected
+- Critical issues found outside the task's scope, with a suggested patch/fix
+  (e.g. to the AGENTS*.md)
+- Errors found in existing SKILLs, or new SKILLs worth proposing — include the
+  actual suggested content and the problem it should solve, not just "a skill
+  is needed"
 
 Preserve: key decisions + rationale, pending work, file paths, exact code references (file:line), conclusions drawn from tool results — especially hard-won facts that are expensive to rediscover.
 Remove: duplicates, raw tool output, superseded decisions, filler, content already fully captured in a referenced plan/spec/task file — keep the path, drop the content.
