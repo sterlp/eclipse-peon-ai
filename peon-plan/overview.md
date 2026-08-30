@@ -177,10 +177,11 @@ Gates: `mvn -pl org.sterl.llmpeon.core test` → `mvn -o -pl org.sterl.llmpeon,r
 (Core-Jar-Änderung fließt ins Plugin ein; Compile-Sanity) → `eclipseBuildProject(llmpeon-core)` (+
 `llmpeon`/`llmpeon.test` bei Workspace-Sync).
 
-**Inc 3 — Config-Edit E2E (kein Stale-Cache)**
+**Inc 3 — Config-Edit E2E (kein Stale-Cache)** ✅ DONE
 `PerAgentConnectionE2ETest.configEdit_routesToNewUrl_noStaleConnection` (3 Stubs, echter
-`LlmConfig.withModelConfig` → `updateConfig` → `planAgentConfig`-Pfad).
-Gates: Core-Tests → Plugin-Compile → `eclipseBuildProject`.
+`LlmConfig.withModelConfig` → `updateConfig` → `planAgentConfig`-Pfad; Stale-Nachweis via
+`agentStub.reset()` nach dem Edit — keine Main-Code-Änderung nötig).
+Gates: Core-Tests (491 grün) → Plugin-Compile (SUCCESS) → `eclipseBuildProject(llmpeon-core)` (clean).
 
 ## 8. Regeln & Constraints
 

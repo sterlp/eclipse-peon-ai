@@ -7,11 +7,13 @@ import java.util.stream.Stream;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.sterl.llmpeon.ai.AgentConfig;
+import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
@@ -25,9 +27,10 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
 /**
- * E2E proof (Night-Cycle A, S1/S2): the per-agent model config routes the tool loop's request to
- * the configured URL, and the per-agent config (model, think, extraBody) arrives on the wire —
- * real HTTP against one dynamic-port stub per role (base/agent), one provider per matrix row.
+ * E2E proof (Night-Cycle A, S1/S2/S3): the per-agent model config routes the tool loop's request
+ * to the configured URL, the per-agent config (model, think, extraBody) arrives on the wire, and a
+ * config edit re-routes without a stale connection — real HTTP against one dynamic-port stub per
+ * role (base/agent), one provider per matrix row.
  */
 @Timeout(30)
 class PerAgentConnectionE2ETest {
@@ -133,6 +136,61 @@ class PerAgentConnectionE2ETest {
         assertThat(body.path("model").asText()).isEqualTo(v.model());
         v.expectThink().accept(body);
         v.expectExtraBody().accept(body);
+    }
+
+    /**
+     * S3 — a config edit routes to the new URL: after {@code withModelConfig} → {@code updateConfig}
+     * (the real UI path) the next requests land at the new stub, and the old URL receives nothing
+     * (no stale connection survives the edit). OpenAI — the cache-clear is provider-independent.
+     */
+    @Test
+    void configEdit_routesToNewUrl_noStaleConnection() {
+        // GIVEN — base → baseStub (stub1); the plan record carries its own URL → agentStub (stub2)
+        var base = LlmConfig.builder()
+                .providerType(AiProvider.OPEN_AI)
+                .model("base-model")
+                .url(baseStub.getUrl())
+                .apiKey("test-key")
+                .build();
+        var before = base.withModelConfig(AgentModelConfig.PLAN,
+                new AgentModelConfig(agentStub.getUrl(), null, "plan-model", null, null));
+        var ccm = new ConfiguredChatModel(before);
+        agentStub.queueResponse("before");
+
+        // WHEN — request 1 through the tool loop
+        var r1 = runLoop(ccm, before.planAgentConfig());
+
+        // THEN — it landed at the plan record's URL (stub2), not the base stub
+        assertThat(r1.aiMessage().text()).isEqualTo("before");
+        assertThat(agentStub.getLastRequestBody()).isNotNull();
+        assertThat(baseStub.getLastRequestBody()).isNull();
+
+        var stub3 = new MockLlmServer();
+        stub3.start();
+        try {
+            // WHEN — the config edit via the real UI path: withModelConfig → updateConfig → planAgentConfig
+            var after = before.withModelConfig(AgentModelConfig.PLAN,
+                    new AgentModelConfig(stub3.getUrl(), null, "plan-model", null, null));
+            ccm.updateConfig(after);
+            agentStub.reset(); // clear the pre-edit capture — any post-edit request would surface again
+            stub3.queueResponse("after-1");
+            stub3.queueResponse("after-2");
+
+            var r2 = runLoop(ccm, after.planAgentConfig());
+            var r3 = runLoop(ccm, after.planAgentConfig());
+
+            // THEN — both requests landed at the new stub (stub3), the plan model on the wire
+            assertThat(r2.aiMessage().text()).isEqualTo("after-1");
+            assertThat(r3.aiMessage().text()).isEqualTo("after-2");
+            assertThat(parse(stub3.getLastRequestBody()).path("model").asText()).isEqualTo("plan-model");
+
+            // THEN — no stale connection: after the edit nothing reaches the old URL (or the base stub)
+            assertThat(agentStub.getLastRequestBody())
+                    .as("after the config edit no request may reach the old URL").isNull();
+            assertThat(baseStub.getLastRequestBody()).isNull();
+        } finally {
+            stub3.stop();
+        }
     }
 
     private LlmConfig baseConfig(Variant v) {
