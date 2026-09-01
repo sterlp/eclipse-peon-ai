@@ -22,9 +22,9 @@ Different agents can use different models to optimize for cost, speed, or capabi
 ### How It Works
 
 1. The **Dev agent always uses the base model** you configure — this is your primary coding model
-2. Leave a per-agent field empty to use the provider's default for that agent
-3. Enter a specific model name to override only that agent's model
-4. Models are validated against your provider's available models when you click "Check Host and Port..."
+2. Leave a per-agent field empty to inherit the base connection (URL, key) and use the provider's default model
+3. Pick a model from the **dropdown** (or type one) to override only that agent's model
+4. The dropdown is filled from your provider's model list, **fetched once per connection** (the agent's effective URL/key). Click **Refresh** to reload the list — a failed refresh keeps the previous one. A model you have already configured stays selected even if it is missing from the fetched list.
 
 ## Temperature Settings
 
@@ -42,33 +42,29 @@ Temperature controls the randomness of model outputs:
 
 Thinking/reasoning is sent **per request**, so each agent resolves its own value for its provider and model. This solves mixed setups — for example planning with **GPT** (`reasoning.effort=high`) while implementing with **DeepSeek** through an OpenAI-compatible gateway that rejects `reasoning.effort`.
 
-Each agent — **Dev** (the default), **Plan**, and every [custom agent](./custom-agents.md) — has three values. **Search** and **Compact** never think.
+Every built-in agent — **Dev** (the default), **Plan**, **Search** and **Compact** — has its own **Think** field on this page, and every [custom agent](./custom-agents.md) sets the same via its `AGENT.md` frontmatter triple. **Nothing is inherited between agents.**
 
-| Setting | Meaning |
-|---------|---------|
-| **Model supports thinking** | Supported → use the *on-value*; unsupported → use the *off-value*. The chat brain button saves this per selected agent. |
-| **Thinking value (on)** | Used when thinking is supported. **Empty → auto** (the [built-in model mapping](#built-in-model-mapping) picks the value for your provider/model). |
-| **Thinking value (off)** | Used when thinking is unsupported. **Empty → provider default**, except Ollama sends `think:false`. |
+The Think field takes a single value whose form depends on the base provider:
 
-The two value fields are an **editable dropdown**: pick a common preset or type any value your provider accepts.
+| Provider | Think field | Values |
+|----------|-------------|--------|
+| **OpenAI family** | dropdown | `high` / `medium` / `low` / `minimal` (`reasoning.effort`) |
+| **Claude (Anthropic)** | dropdown | `enabled` / `adaptive` (extended thinking) |
+| **Ollama** | checkbox | on (`true`) / off |
+| **LM Studio** | free text | any value — sent as the custom `reasoning` body property |
 
-| Provider | Reasoning value |
-|----------|-----------------|
-| **OpenAI family** | `high` / `medium` / `low` / `minimal` (`reasoning.effort`) |
-| **Claude (Anthropic)** | `enabled` / `adaptive` (extended thinking) |
-| **Ollama** | `true` / `false` (the `think` flag) |
-| **LM Studio** | any value — sent as the custom `reasoning` body property |
-
-Dev and Plan have their own support checkbox + on/off fields on this page; custom agents set the same via [`AGENT.md` frontmatter](./custom-agents.md). **Nothing is inherited between agents**.
+- **Off / empty** — nothing is sent (provider default), except Ollama sends `think:false`.
+- **Generic on** (`true`) — the [built-in model mapping](#built-in-model-mapping) picks the concrete value for your provider/model.
+- **Concrete value** — used verbatim.
 
 ### Auto vs. manual
 
-- **Auto** — both value fields empty → Peon uses the built-in mapping when thinking is supported.
-- **Manual** — set *either* value field → the mapping is switched off in **both** directions and your strings are used verbatim.
+- **Auto** — the field is set to the generic on (`true`) → Peon uses the built-in mapping for your provider/model.
+- **Manual** — set a concrete value (e.g. `high`, `enabled`) → the mapping is switched off and your value is used verbatim.
 
 ### Built-in model mapping
 
-When both value fields are empty and thinking is supported, Peon maps to a provider- and model-specific value using built-in tables (one file per provider under the core plugin's `thinking/` resources):
+When the Think field is set to the generic on (`true`), Peon maps to a provider- and model-specific value using built-in tables (one file per provider under the core plugin's `thinking/` resources):
 
 - **OpenAI family** — known reasoning models (`gpt*`, `o1`, `o3`, `o4`) → `reasoning.effort=high`; an **unknown model → nothing is sent**.
 - **Anthropic** — `opus-4-8` / `opus-4-7` / `mythos` → `adaptive`; other Claude models → `enabled`.
@@ -76,10 +72,10 @@ When both value fields are empty and thinking is supported, Peon maps to a provi
 **Provider support:**
 
 - **OpenAI family** (OpenAI, OpenAI-official / Azure, GitHub Models, GitHub Copilot) — `reasoning.effort`. Empty/off = nothing sent.
-- **Ollama** — unsupported with an empty off-value sends `think:false`; unset (`null`) omits.
+- **Ollama** — the `think` flag: off sends `think:false`, on sends `think:true`, unset omits.
 - **Anthropic** — extended thinking (`enabled` / `adaptive`); off = nothing sent.
 - **LM Studio** — the custom `reasoning` body property.
-- **Google Gemini / Mistral** — no per-request support in the bundled langchain4j version; these follow the Dev/default support checkbox at build time.
+- **Google Gemini / Mistral** — no per-request think support; the Think field is hidden and no think value is sent.
 
 ### Send thinking back
 
