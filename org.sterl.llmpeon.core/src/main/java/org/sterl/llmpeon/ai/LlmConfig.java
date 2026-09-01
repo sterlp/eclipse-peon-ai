@@ -150,13 +150,6 @@ public class LlmConfig {
         return new ConfiguredChatModel(this);
     }
 
-    private AgentConfig.AgentConfigBuilder baseAgentConfig() {
-        return AgentConfig.builder()
-                .provider(providerType)
-                .url(url)
-                .apiKey(apiKey);
-    }
-
     /**
      * Base provider/url/key with the record's own url/key/extraBody overriding the base. A blank
      * record field inherits the base value (resolved again by {@link EffectiveConnection}).
