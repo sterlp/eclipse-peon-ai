@@ -190,6 +190,7 @@ public class LlmConfig {
     public AgentConfig devAgentConfig() {
         var dev = modelConfigFor(AgentModelConfig.DEV);
         return agentBuilder(dev).model(model)
+                .id(AgentModelConfig.DEV)
                 .think(dev.think())
                 .temperature(devTemperature).build();
     }
@@ -198,6 +199,7 @@ public class LlmConfig {
     public AgentConfig planAgentConfig() {
         var plan = modelConfigFor(AgentModelConfig.PLAN);
         return agentBuilder(plan).model(plan.model())
+                .id(AgentModelConfig.PLAN)
                 .think(plan.think())
                 .temperature(planTemperature).build();
     }
@@ -206,6 +208,7 @@ public class LlmConfig {
     public AgentConfig compactAgentConfig() {
         var compact = modelConfigFor(AgentModelConfig.COMPACT);
         return agentBuilder(compact).model(compact.model())
+                .id(AgentModelConfig.COMPACT)
                 .think(compact.think())
                 .temperature(devTemperature < 1.0 ? 0.2 : null).build();
     }
@@ -214,6 +217,7 @@ public class LlmConfig {
     public AgentConfig searchAgentConfig() {
         var search = modelConfigFor(AgentModelConfig.SEARCH);
         return agentBuilder(search).model(search.model())
+                .id(AgentModelConfig.SEARCH)
                 .think(search.think())
                 .temperature(devTemperature < 1.0 ? 0.3 : null).build();
     }
@@ -221,10 +225,12 @@ public class LlmConfig {
     /**
      * Custom agent — model/url/key/extraBody from the agent's own {@code AGENT.md} frontmatter
      * record (blank fields inherit the base, resolved by {@link EffectiveConnection}) and think from
-     * its own frontmatter triple (no inheritance). Same resolution path as the four core agents.
+     * its own frontmatter triple (no inheritance). Same resolution path as the four core agents;
+     * {@code agentId} is the agent's stable name (per-request metadata, e.g. default cache key).
      */
-    public AgentConfig customAgentConfig(AgentModelConfig rec, boolean supported, String on, String off, Double temperature) {
+    public AgentConfig customAgentConfig(AgentModelConfig rec, String agentId, boolean supported, String on, String off, Double temperature) {
         return agentBuilder(rec).model(rec.model())
+                .id(agentId)
                 .think(ThinkResolver.effectiveThink(supported, on, off))
                 .temperature(temperature).build();
     }

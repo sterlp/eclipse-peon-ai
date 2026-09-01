@@ -34,6 +34,11 @@ import lombok.ToString;
 public class AgentConfig {
 
     private final AiProvider provider;
+    /**
+     * Stable agent identifier (e.g. {@code plan}, custom agent name) — per-request metadata only,
+     * never part of the connection identity.
+     */
+    private final String id;
     private final String url;
     private final String apiKey;
     private final String model;

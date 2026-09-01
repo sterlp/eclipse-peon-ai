@@ -193,6 +193,49 @@ class PerAgentConnectionE2ETest {
         }
     }
 
+    /**
+     * R8 — gpt-5* OpenAI agent on the base connection: the per-agent default {@code prompt_cache_key}
+     * reaches the wire; a non-blank user value in the extra body wins over the default.
+     */
+    @Test
+    void gpt5DefaultCacheKey_reachesTheWire_andUserBodyWins() {
+        // GIVEN — base → baseStub; the agent runs a gpt-5* model with a stable id, no extra body
+        var base = LlmConfig.builder()
+                .providerType(AiProvider.OPEN_AI)
+                .model("base-model")
+                .url(baseStub.getUrl())
+                .apiKey("test-key")
+                .build();
+        var ccm = new ConfiguredChatModel(base);
+        baseStub.queueResponse("phase-1");
+
+        // WHEN — phase 1: one user turn through the tool loop
+        var r1 = runLoop(ccm, AgentConfig.builder()
+                .provider(AiProvider.OPEN_AI)
+                .model("gpt-5.6")
+                .id("plan")
+                .build());
+
+        // THEN — the request landed at the base stub carrying the per-agent default key
+        assertThat(r1.aiMessage().text()).isEqualTo("phase-1");
+        assertThat(parse(baseStub.getLastRequestBody()).path("prompt_cache_key").asText())
+                .isEqualTo("peon-ai-plan");
+
+        // WHEN — phase 2: the same agent with a non-blank user value in the extra body
+        baseStub.queueResponse("phase-2");
+        var r2 = runLoop(ccm, AgentConfig.builder()
+                .provider(AiProvider.OPEN_AI)
+                .model("gpt-5.6")
+                .id("plan")
+                .extraBody("{\"prompt_cache_key\":\"custom\"}")
+                .build());
+
+        // THEN — the user value reached the wire (2a merge: user wins)
+        assertThat(r2.aiMessage().text()).isEqualTo("phase-2");
+        assertThat(parse(baseStub.getLastRequestBody()).path("prompt_cache_key").asText())
+                .isEqualTo("custom");
+    }
+
     private LlmConfig baseConfig(Variant v) {
         return LlmConfig.builder()
                 .providerType(v.provider())

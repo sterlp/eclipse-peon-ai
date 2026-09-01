@@ -94,6 +94,8 @@ Two paste-ready examples sit under the field (shown only for providers that supp
 | **GPT** | `{"prompt_cache_key": "llmpeon"}` | Azure-OpenAI explicit prompt-caching key. On other OpenAI-compatible endpoints the top-level field is ignored (harmless). |
 | **Claude** | `{"cache_control": {"type": "ephemeral"}}` | The ephemeral cache marker — effective for Claude behind OpenAI-compatible gateways (LiteLLM & co.) that forward the field. |
 
+GPT-5* agents get a default per-agent cache key `peon-ai-<agent>`; override it in the JSON body.
+
 Click **Paste** to insert an example into the field (it replaces the current content). The body is sent per request for OpenAI-family providers and baked in at build time for Anthropic.
 
 Cache hits are visible in the chat's token header: `↑ sent  ↓ received  ⇄ cache-read` — the `⇄` counter accumulates tokens served from the prompt cache (cache writes are shown in the header's tooltip).

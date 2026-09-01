@@ -41,7 +41,10 @@ public final class ProviderRequestSupport {
     /**
      * Merges the provider-computed {@code customParameters} entries with the agent's user
      * extra body (2a §4): user entries are layered over the provider entries, so the user
-     * body wins on key conflicts (PO decision 2026-08-28).
+     * body wins on key conflicts (PO decision 2026-08-28). A user entry whose value is
+     * {@code null} or a blank string counts as <i>unset</i> (R8): it does not override a
+     * provider-supplied default for the same key, but a lone user key not in the provider
+     * entries passes through unchanged.
      *
      * <p>Returns {@code null} when there is nothing to send — the caller must then leave
      * {@code customParameters} untouched, keeping the request byte-identical to pre-2a.
@@ -52,8 +55,15 @@ public final class ProviderRequestSupport {
         if (user == null) return providerEntries;
         if (providerEntries == null || providerEntries.isEmpty()) return user;
         var merged = new LinkedHashMap<>(providerEntries);
-        merged.putAll(user);
+        user.forEach((key, value) -> {
+            if (!isAbsentValue(value) || !providerEntries.containsKey(key)) merged.put(key, value);
+        });
         return merged;
+    }
+
+    /** An unset user value: {@code null} or a blank string (R8 — does not override a provider default). */
+    private static boolean isAbsentValue(Object value) {
+        return value == null || (value instanceof String s && s.isBlank());
     }
 
     /**

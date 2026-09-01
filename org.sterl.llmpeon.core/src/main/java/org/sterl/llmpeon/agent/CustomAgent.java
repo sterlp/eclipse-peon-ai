@@ -140,7 +140,7 @@ public class CustomAgent extends AbstractAgent {
                 null, // think resolved separately from the frontmatter triple
                 promptFile.firstOrDefault(EXTRA_BODY, null));
         return configuredModel.getConfig().customAgentConfig(
-                rec, isThinkSupported(), on, off, getTemperature());
+                rec, getName(), isThinkSupported(), on, off, getTemperature());
     }
 
     @Override
