@@ -225,9 +225,13 @@ public class LlmConfig {
                 .temperature(devTemperature < 1.0 ? 0.3 : null).build();
     }
 
-    /** Custom agent — think from its own {@code AGENT.md} frontmatter (no inheritance), provider/url/key from here. */
-    public AgentConfig customAgentConfig(String agentModel, boolean supported, String on, String off, Double temperature) {
-        return baseAgentConfig().model(agentModel)
+    /**
+     * Custom agent — model/url/key/extraBody from the agent's own {@code AGENT.md} frontmatter
+     * record (blank fields inherit the base, resolved by {@link EffectiveConnection}) and think from
+     * its own frontmatter triple (no inheritance). Same resolution path as the four core agents.
+     */
+    public AgentConfig customAgentConfig(AgentModelConfig rec, boolean supported, String on, String off, Double temperature) {
+        return agentBuilder(rec).model(rec.model())
                 .think(ThinkResolver.effectiveThink(supported, on, off))
                 .temperature(temperature).build();
     }

@@ -55,6 +55,16 @@ The frontmatter parser does **not** strip trailing `# ...` comments. A line like
 and breaks. Keep frontmatter values comment-free.
 :::
 
+::: warning Quoting `extra_body`
+`extra_body` is a single-line JSON string. Wrap it in **single quotes** with double quotes inside — no escaping:
+
+```
+extra_body: '{"cache_control": {"type": "ephemeral"}}'
+```
+
+Double quotes on the outside would break, because the JSON itself contains double quotes.
+:::
+
 | Field | Meaning |
 |-------|---------|
 | `name` | Display name in the dropdown. Defaults to the directory name. |
@@ -64,12 +74,35 @@ and breaks. Keep frontmatter values comment-free.
 | `temperature` | Override temperature for this agent. Float 0.0–2.0. |
 | `handover` | Agent name to hand off to after work is done. Shows a **Handoff → [name]** button when set. Enables workflow chains (e.g. plan → dev → review). |
 | `model` | Optional model override. Changing the model in the UI while this agent is active writes it back here. |
+| `url` | Optional endpoint override for this agent (e.g. a different gateway or a local instance). Omitted/blank = inherits the base connection from Peon Configuration. |
+| `api_key` | Optional API-key override for this agent. Omitted/blank = inherits the base key. |
+| `extra_body` | Raw JSON merged into this agent's request body — where [prompt caching](./advanced-configuration.md#extra-body--prompt-caching) is configured per agent. Omitted/blank = none. |
 | `think_supported` | `true`/`false` — declares that this agent's model supports thinking. The chat brain button saves this value for the selected agent. |
 | `think_on_string` | Value used when supported. A level `high`/`medium`/`low`/`minimal` (OpenAI), `true` (Ollama/Anthropic), etc. **Empty → auto** ([built-in model mapping](./advanced-configuration.md#built-in-model-mapping)). Setting it (or `think_off_string`) switches the mapping off. |
 | `think_off_string` | Value used when unsupported. Empty means provider default, except Ollama sends `think:false`. Set `false` for providers that need explicit off. |
 | `think_send` | *(reserved)* Show the model's reasoning and resend it next turn (Qwen, Mistral, DeepSeek). Currently the global **Show and resend model thinking** setting applies to all agents; this per-agent key is parsed but not yet wired per request. |
 | `think` | *(legacy alias, auto-migrated)* Read as `think_on_string` and implies `think_supported` for on-values. Old files are auto-migrated on the first write operation (e.g. model or thinking-support change). Prefer the `think_*` keys above. |
 | `tools` | Allowlist of tool-name prefixes. **Omit it and the agent gets _no_ tools** — use `- '*'` to allow all. |
+
+## Model connection per agent
+
+A custom agent can carry a full model connection in its frontmatter — the same record and the same
+resolution as the four built-in agents:
+
+```markdown
+---
+name: sap-coder
+url: http://localhost:8080/v1
+api_key: sk-...
+extra_body: '{"prompt_cache_key": "llmpeon"}'
+model: gpt-5
+---
+You are the sap-coder. ...
+```
+
+Omitted/blank fields inherit the base connection from Peon Configuration. The extra body is sent
+per request for OpenAI-family providers and baked in at build time for Anthropic (see
+[Extra Body / Prompt Caching](./advanced-configuration.md#extra-body--prompt-caching)).
 
 ## Workflow Handoff
 

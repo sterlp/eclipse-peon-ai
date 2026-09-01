@@ -30,6 +30,9 @@ import lombok.Setter;
  */
 public class CustomAgent extends AbstractAgent {
     public static final String MODEL = "model";
+    public static final String URL = "url";
+    public static final String API_KEY = "api_key";
+    public static final String EXTRA_BODY = "extra_body";
     @Deprecated
     public static final String THINK = "think";                       // legacy alias for think_on_string
     @Deprecated
@@ -130,9 +133,14 @@ public class CustomAgent extends AbstractAgent {
         // legacy `think:` is read as an alias for think_on_string (no inheritance between agents)
         var on = promptFile.firstOrDefault(THINK_ON, promptFile.firstOrDefault(THINK, null));
         var off = promptFile.firstOrDefault(THINK_OFF, null);
-        return configuredModel.getConfig().customAgentConfig(
+        var rec = new org.sterl.llmpeon.ai.AgentModelConfig(
+                promptFile.firstOrDefault(URL, null),
+                promptFile.firstOrDefault(API_KEY, null),
                 promptFile.firstOrDefault(MODEL, null),
-                isThinkSupported(), on, off, getTemperature());
+                null, // think resolved separately from the frontmatter triple
+                promptFile.firstOrDefault(EXTRA_BODY, null));
+        return configuredModel.getConfig().customAgentConfig(
+                rec, isThinkSupported(), on, off, getTemperature());
     }
 
     @Override

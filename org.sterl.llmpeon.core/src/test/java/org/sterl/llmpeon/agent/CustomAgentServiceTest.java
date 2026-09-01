@@ -9,7 +9,9 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.AbstractMemoryFileTest;
+import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
+import org.sterl.llmpeon.ai.EffectiveConnection;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.prompt.PromptYmlParser;
@@ -306,5 +308,67 @@ class CustomAgentServiceTest extends AbstractMemoryFileTest {
         assertThat(changed).isTrue();
         assertThat(svc.getAgentModelName()).isEqualTo("m2");
         assertThat(Files.readString(file)).contains("model: m2");
+    }
+
+    private CustomAgent newAgentWith(LlmConfig cfg, String frontmatter) {
+        try {
+            var file = tmp.resolve("Agent" + (++count) + ".md");
+            Files.writeString(file, "---\n" + frontmatter + "\n---\nbody");
+            return new CustomAgent(PromptYmlParser.parseYml(file), cfg.build(), toolService);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Test
+    void frontmatterUrl_resolvesOwnConnectionIdentity() {
+        // GIVEN an AGENT.md with its own url
+        var cfg = LlmConfig.builder().providerType(AiProvider.OPEN_AI).model("base-model").url("http://base:1234/v1").build();
+        var agent = newAgentWith(cfg, "name: t\nurl: http://stub:9999/v1");
+        // WHEN
+        var conn = EffectiveConnection.of(cfg, agent.getConfig());
+        // THEN the agent talks to its own endpoint
+        assertThat(conn.identity().url()).isEqualTo("http://stub:9999/v1");
+        assertThat(conn.isBase()).isFalse();
+    }
+
+    @Test
+    void frontmatterApiKeyAndExtraBody_resolveLikeCoreAgents() {
+        // GIVEN an OpenAI-based config (per-request body) with api_key + extra_body in the frontmatter
+        var openAi = LlmConfig.builder().providerType(AiProvider.OPEN_AI).model("base-model").url("http://base:1234/v1").build();
+        var openAgent = newAgentWith(openAi, "name: t\napi_key: sk-agent\nextra_body: '{\"foo\": 1}'");
+        var openConn = EffectiveConnection.of(openAi, openAgent.getConfig());
+        // THEN the key is on the identity, the body rides per-request (not in the identity)
+        assertThat(openConn.identity().apiKey()).isEqualTo("sk-agent");
+        assertThat(openConn.perRequestBody()).isEqualTo("{\"foo\": 1}");
+        assertThat(openConn.identity().buildTimeBody()).isNull();
+        // AND an Anthropic-based config (build-time body)
+        var anthropic = LlmConfig.builder().providerType(AiProvider.ANTHROPIC).model("base-model").url("http://base:1234").build();
+        var anthropicAgent = newAgentWith(anthropic, "name: t\napi_key: sk-agent\nextra_body: '{\"foo\": 1}'");
+        var anthropicConn = EffectiveConnection.of(anthropic, anthropicAgent.getConfig());
+        assertThat(anthropicConn.identity().buildTimeBody()).isEqualTo("{\"foo\": 1}");
+        assertThat(anthropicConn.perRequestBody()).isNull();
+    }
+
+    @Test
+    void extraBodySingleQuotedJson_parsesIntact() {
+        // GIVEN extra_body as single-quoted JSON (the documented frontmatter quoting rule)
+        var cfg = LlmConfig.builder().providerType(AiProvider.OPEN_AI).model("base-model").build();
+        var agent = newAgentWith(cfg, "name: t\nextra_body: '{\"cache_control\": {\"type\": \"ephemeral\"}}'");
+        // WHEN
+        var config = agent.getConfig();
+        // THEN the JSON survived the parser intact
+        assertThat(config.getExtraBody()).isEqualTo("{\"cache_control\": {\"type\": \"ephemeral\"}}");
+    }
+
+    @Test
+    void noModelKeys_inheritsBaseIdentity() {
+        // GIVEN an AGENT.md without url/api_key/extra_body
+        var cfg = LlmConfig.builder().providerType(AiProvider.OPEN_AI).model("base-model").url("http://base:1234/v1").build();
+        var agent = newAgentWith(cfg, "name: t");
+        // WHEN
+        var conn = EffectiveConnection.of(cfg, agent.getConfig());
+        // THEN the base connection is inherited (no behavior change for existing agents)
+        assertThat(conn.isBase()).isTrue();
     }
 }
