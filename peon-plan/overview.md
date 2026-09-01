@@ -1,0 +1,329 @@
+# Plan — Zyklus 2c: LLM-Config-Abschluss (Cache-Clean-Break · UI-Beispiele · Usage-Abgleich · Custom-Agent-Frontmatter · Homepage)
+
+Status: FINAL (Research abgeschlossen 2026-08-30). Branch `new-config`, Start @ ~`60b494e` (inc-17).
+Vorgänger: Night-Cycle A (`overview-done-2026-08-30-18-58.md`, ✅ abgenommen) — E2E-Beweis per-agent Model-Config, 512 Tests grün.
+
+## 1. Context — Ziel
+
+Die LLM-Config-Änderung (Zyklen 2a → 2b → 2c) fertigstellen. 2a/2b haben die Core-Mechanik
+(`AgentModelConfig`-Record, `EffectiveConnection`, Connection-Cache, per-request/build-time
+Extra-Body) und die Config-UI (per-agent Section, Modell-Dropdown+Refresh, Chat-UI-Räumung,
+JSON-Body-Widget) gebaut. **2c macht den sauberen Schluss:**
+
+1. **Cache-Hardcode-Clean-Break** (PO-Entscheidung 2026-08-30): Provider-Hardcodes raus —
+   Caching lebt danach **nur** im per-agent extra-JSON-body. Kein Cache, solange der User nichts
+   konfiguriert (bewusste Abweichung, kein stiller Default, keine Migration).
+2. **GPT-/Claude-UI-Beispiele** mit Paste-Button unter dem JSON-Input (Gate: `supportsExtraBody()`).
+3. **Usage-Abgleich** (caching.md R5): Cache-Tokens aus der Usage-Antwort auslesen + anzeigen.
+4. **Custom-Agent-AGENT.md-Frontmatter**: komplette Model-Config (url/api_key/extra_body) pro
+   Custom Agent — gleicher `AgentModelConfig`-Record, gleiche Auflösung wie die 4 Core-Agents.
+5. **Homepage** auf den IST-Zustand nach 2c umschreiben (beschreibt noch ALTE On/Off-Strings +
+   „chat brain button").
+
+## 2. SOLL-Quellen (Repo = SOT, nur lesen — `docs/` ist PO+User-eigentlich, NIEMALS ändern)
+
+- `docs/caching.md` — R1/R1a (extra body, Hardcode wird zu UI-Beispielen), R2 (Capability-Gate),
+  R3 (GPT/Claude-Beispiele unter dem JSON-Input), R5 (Abgleich: `cache_read`/`cache_creation`
+  auslesen, **an token-usage andocken**), R6 (Absence = no cache).
+- `docs/advanced-configuration.md` — SOLL „Agent-Specific Config Umbau": Custom Agents tragen
+  alles Einstellbare im AGENT.md-Frontmatter (gleicher Record, gleiche Auflösung), Homepage-Doku
+  gehört zum Feature; 2c-Teile (Custom-Agent-yml, Homepage) ❌ offen.
+- `docs/provider.md` — P2–P5 (Provider-Klassen, `supportsExtraBody()`, `extraBodyMode()`),
+  Verhaltenstreu-Regel R4 gilt für 2a — **2c ist die bewusste Ausnahmerichtung** (PO-Entscheidung).
+- `docs/adr/0034` (Connection-Cache nach Identität), `docs/adr/0033` (Provider-Slices).
+- `docs/token-usage.md` — R4 (Header immer sichtbar, `↑ sent ↓ received`), R5-Grundlage.
+- `homepage/src/setup/advanced-configuration.md`, `homepage/src/setup/custom-agents.md`,
+  `homepage/src/setup/configuration.md` (Änderungsziele, s. §5).
+
+## 3. Design-Entscheidungen
+
+### D1 — Beispiel-Snippets: Inhalt + Ort (Baustein 2)
+**Inhalt** (reales Wire-Format; Basis: entferntes Hardcode + Legacy-TODOs + Night-Cycle-A-Wire-Nachweis):
+- **GPT**: `{"prompt_cache_key": "llmpeon"}` — Azure-OpenAI-Explicit-Cache-Key. Beweis für die
+  Absicht: Legacy-TODOs `OpenAiProvider.java:63` („for 'gpt' based on the agent prompt_cache_key")
+  und `ProviderRequestSupport.java:103`. Auf anderen OpenAI-Endpunkten = ignoriertes
+  Top-Level-Feld (harmless) — Homepage dokumentiert Azure-Fokus.
+- **Claude**: `{"cache_control": {"type": "ephemeral"}}` — exakt das Form des entfernten
+  OpenAI-Hardcodes (Night-Cycle-A-Wire-Verifizierung: `body.cache_control.type`). Wirkt bei
+  Claude hinter OpenAI-kompatiblen Gateways (LiteLLM & Co.), die das Feld weiterleiten.
+- Beide Snippets passieren `ExtraBody.parse` ohne Reserved-Key-Kollision
+  (`RESERVED_KEYS = model/messages/tools`).
+**Ort:** NEU Core-Klasse `org.sterl.llmpeon.provider.ExtraBodyExamples`
+(`record Example(String name, String json)` + `static List<Example> all()` → GPT, Claude) —
+Config-Domäne in core (UI-Trennungs-Regel), Plugin rendert blind. Core-Test sichert:
+valide JSON-Objekte, non-empty, keine Reserved Keys, `ExtraBody.parse` ≠ null.
+⚠️ **Annahme** — Snippet-Inhalt ist User-facing; PO bestätigt im Plan-Review (Offene Frage 1).
+
+### D2 — Paste-Verhalten (Baustein 2)
+Ein Klick füllt das JSON-Feld: **einfach ersetzen** (kein Bestätigungs-Dialog, bewusst klein),
++ Status-Meldung in einem kleinen `Label` unter den Beispiel-Rows
+(„GPT example inserted." / „Claude example inserted.") — bleibt bis zum nächsten Paste, kein
+Dialog, keine Persistenz. UI bleibt in `AgentModelConfigSection.buildJson(...)` — die Beispiele
+werden **nur** gebaut, wenn `provider.supportsExtraBody()` (Gate existiert seit 2b, s.
+`AgentModelConfigSection` Constructor → `buildJson(provider.supportsExtraBody())`).
+
+### D3 — Usage-Abgleich: Anzeige-Punkt = **Token-Header** (Baustein 3)
+**Empfehlung + Begründung:** den bestehenden `↑/↓`-Header um einen Cache-Read-Zähler erweitern:
+`↑ 12k ↓ 4k ⇄ 8k`.
+1. caching.md R5 verlangt explizit „an token-usage andocken" — der Header ist die
+   Sichtbarkeitsfläche von token-usage.md.
+2. **Kleinste Änderung**: die Daten fließen bereits — `StreamingBridge.onCompleteResponse` →
+   `AiMonitor.onTokenUsage(TokenUsage)` → `AIChatView.onTokenUsage` (AIChatView.java:295) →
+   `HeaderBarWidget.addTokenUsage` (92–95) → `TokenHeaderWidget.addUsage` (43–47) →
+   `TokenStats.add` — mit dem **ganzen Subklassen-Objekt**. Einziger Ausschnittspunkt:
+   `TokenStats.add` (TokenStats.java:24–28) liest nur input/output.
+3. Immer sichtbar = permanenter Abgleich „der Cache greift" (R5), konsistent mit token-usage R4
+   („always visible — no show/hide logic").
+4. Counter-Alternative (Config-Seiten-Status) scheidet aus: die Config-Seite ist beim LLM-Call
+   nicht offen; Abgleich muss dort passieren, wo die Calls stattfinden.
+
+**Mechanik** (verifiziert gegen langchain4j 1.18.1, Source `/langchain4j-aggregator`, 1.18.1-Tag
+byte-identisch für die relevanten Klassen — Blocking **und** Streaming-Pfad):
+- OpenAI: `usage instanceof OpenAiTokenUsage` → `inputTokensDetails().cachedTokens()`
+  (aus `prompt_tokens_details.cached_tokens`; `OpenAiUtils.tokenUsageFrom`,
+  OpenAI-Streaming: `OpenAiStreamingResponseBuilder.append`).
+- Anthropic: `usage instanceof AnthropicTokenUsage` → `cacheReadInputTokens()` /
+  `cacheCreationInputTokens()` (aus `cache_read_input_tokens` / `cache_creation_input_tokens`;
+  `AnthropicMapper.toTokenUsage`, Anthropic-Streaming: `DefaultAnthropicClient.handleUsage`).
+- `TokenStats`: +`cachedRead`, +`cachedWrite` (AtomicLong, extraction in `add()` via
+  instanceof), +Getter; `isEmpty()` **semantikstabil** (sent+received, unangetastet).
+- Header zeigt **nur Cache-READ** (3 Zahlen, R4-Konsistenz); Cache-WRITE wird akkumuliert
+  (Vollständigkeit, R5 nennt beides; Future: per-agent Breakdown R5-token-usage), erscheint nur
+  im Tooltip. ⚠️ Offene Frage 3/4 (Write-Anzeige, Symbol `⇄`).
+
+### D4 — Custom-Agent-Frontmatter: **bestehender Hand-Roller, kein snakeyaml** (Baustein 4)
+**Parser-Entscheidung + Begründung:** snakeyaml ist nirgends vorhanden (Core-pom, Plugin
+MANIFEST.MF, .classpath, Target-Platform — repo-weites Grep: 0 Hits). snakeyaml = neue externe
+Dependency + OSGi-Wiring (MANIFEST Import-Package/Bundle-ClassPath + .classpath + releng
+Target) → verletzt Constraint „KEINE neuen externen Dependencies". Der bestehende
+`PromptYmlParser` (core, `prompt/PromptYmlParser.java:40–99,162–171`) parst generisch flaches
+`key: value` (lowercase, Hyphen↔Underscore-Fallback, Quote-Strip) — **die neuen Keys brauchen
+keinerlei Parser-Änderung**, nur neue Key-Konstanten in `CustomAgent`.
+**Quoting-Regel für `extra_body`** (kein Unescaping im Parser!): doppelte Anführungszeichen
+außen sind kaputt (interne `"`) — **einsimple Quotes außen, keine Eskapes**:
+`extra_body: '{"cache_control": {"type": "ephemeral"}}'` → `stripYamlValue` streift die
+äußeren Single Quotes, das JSON bleibt intakt. Homepage dokumentiert das (neben dem bestehenden
+„No `#` comments"-Warning).
+**Auflösung (gleicher Record, gleicher Pfad als die 4 Core-Agents):**
+- Neue Frontmatter-Keys in `CustomAgent`: `URL = "url"`, `API_KEY = "api_key"`,
+  `EXTRA_BODY = "extra_body"` (neben bestehendem `model`, `think_*`, `temperature` —
+  Key-Konstanten CustomAgent.java:33–46).
+- `CustomAgent.getConfig()`: baut
+  `new AgentModelConfig(url, apiKey, model, /*think*/ null, extraBody)` und übergibt ihn an
+  `LlmConfig.customAgentConfig(record, supported, on, off, temperature)`.
+- `LlmConfig.customAgentConfig` (LlmConfig.java:229–233): Signatur von
+  `(String agentModel, boolean, String on, String off, Double temp)` →
+  `(AgentModelConfig rec, boolean, String on, String off, Double temp)`; Body wechselt von
+  `baseAgentConfig()` zu **`agentBuilder(rec)`** (LlmConfig.java:164–170) — damit url/key/
+  extraBody exakt wie bei Dev/Plan/Search/Compact auflösen (Base-Fallback bei leerem Feld,
+  Body per-request bzw. build-time je `extraBodyMode()`). Think bleibt über
+  `ThinkResolver.effectiveThink(supported, on, off)` aus dem Frontmatter-Tripel (unchanged).
+- **Plugin: keine Änderung.** Der komplette Flow ist Core: `CustomAgent.getConfig()` →
+  `AbstractAgent` → `ToolLoopRequest(AgentConfig)` → `ConfiguredChatModel.modelFor` →
+  `EffectiveConnection.of` → Connection-Cache. „Plugin nur Verdrahtung" = leere Menge;
+  Implementierer verifiziert das per Grep (keine Plugin-Referenz auf `customAgentConfig`).
+- **E2E-Beweis:** downstream (AgentConfig → EffectiveConnection → Wire) ist bereits in
+  Night-Cycle A per echtem HTTP bewiesen (`PerAgentConnectionE2ETest` S1/S2). Für 2c genügt der
+  Core-Unit-Nachweis der Auflösung (Frontmatter → `AgentConfig` → `EffectiveConnection`-
+  Identity ≠ Base-Identity; leer → Base-Identity). Kein neuer HTTP-E2E durch `CustomAgent`.
+
+### D5 — Clean-Break-Entfernungsliste (Baustein 1)
+- `AnthropicProvider.java:32–35` — `.cacheSystemMessages(true)` + `.cacheTools(true)` aus dem
+  `defaultRequestParameters`-Block; wird der Block dadurch leer → die ganze
+  `defaultRequestParameters`-Kette entfernen (Implementierer prüft Restinhalt des Blocks).
+- `OpenAiProvider.java:57–62` — `cache_control`-Block für `claude*`-Modelle; danach
+  `mergeCustomParameters(null, mc)` (nur User-Body). TODO-Zeile 63 entfernen.
+- `ProviderRequestSupport.java:103` — TODO-Kommentar entfernen.
+- **User-wins-Merge bleibt bewiesen:** `ProviderRequestSupport.mergeCustomParameters` (50–57)
+  selbst ist unangetastet; nach dem Entfernen des OpenAI-Provider-Eintrags muss der User-wins-
+  Nachweis ein direkter Unit-Test gegen `mergeCustomParameters` sein (provider-Entries +
+  User-Body mit gleichem Key → User gewinnt) — `ExtraBodyRequestTest` trägt das (s. §6).
+- **Bewusste Verhaltens-Folge (Homepage dokumentiert, Doku-SOLL bestätigt „Absence = no
+  cache"):**
+  - Claude via OpenAI-kompatiblen Gateway: kein `cache_control` mehr by Default — erst nach
+    Paste des Claude-Beispiels.
+  - **Direkte Anthropic-API: natives System/Tools-Caching ist danach NICHT über den
+    Top-Level-Extra-Body reaktivierbar** (Anthropics `cache_control` gehört in die
+    System-/Tool-Blöcke; langchain4j bietet es nur als Build-Flag, das wir entfernen).
+    ⚠️ Offene Frage 2 — PO soll die Konsequenz bestätigen; Empfehlung: akzeptieren +
+    dokumentieren (alternatives Opt-in-Checkbox-Design widerspräche dem „extra body only"-SOLL).
+- `PerAgentConnectionE2ETest` bleibt grün **ohne Änderung**: OpenAI-Variante (Model
+  `claude-mock`, User-Body `cache_control`) liefert den Marker ab jetzt allein aus dem
+  User-Body; Anthropic-Variante assertet nur think+foo.
+
+### D6 — Homepage-Schnitte folgen der sichtbaren Change (AGENTS.md)
+| Inkrement | Sichtbare Change | Homepage-Schnitt (im selben Commit) |
+|---|---|---|
+| inc-18 | Beispiele+Paste in Config-UI; no-cache-by-default | `advanced-configuration.md`: NEU Section „Extra Body / Prompt Caching" (Beispiele, Paste, no-default, Anthropic-Folge) |
+| inc-19 | Header zeigt `⇄` | ebenda 1 Zeile: Cache-Hits erscheinen als `⇄` im Token-Header |
+| inc-20 | Custom Agents tragen volle Config (Capability, keine neue UI) | `custom-agents.md`: Frontmatter-Tabelle +`url`/`api_key`/`extra_body` + Quoting-Regel + Beispiel |
+| inc-21 | — (Doku-Only) | `advanced-configuration.md` **Rewrite** der stale-2b-Teile + `configuration.md` (brain-button-Zeile) + Grep auf weitere stale Refs |
+
+## 4. Architektur / Datenfluss (was bleibt)
+
+**Unangetastet:** `EffectiveConnection`, `ConnectionIdentity` (build-time Body bleibt 4.
+Komponente), `ConfiguredChatModel` (Connection-Cache), `ExtraBody`/`ExtraBodyMode`/
+`mergeCustomParameters`, `MockLlmServer`, `PerAgentConnectionE2ETest`, `ModelConnectionCacheTest`,
+`AiServicePerAgentThinkTest` (außer 3 Aufrufstellen §5/inc-20), `ModelListFetchTest`,
+`LlmConfigLoader`/`LlmConfigSaver`/`LlmConfigKeys` (agent-prefix Scheme — Custom Agents nutzen
+ihn NICHT: ihre Config lebt im Frontmatter, keine Preference-Keys), `PromptYmlParser`
+(keine Änderung), `StreamingBridge`, `ChatMessageUtil`, `AIChatView.onTokenUsage`/
+`HeaderBarWidget` (Pfad bleibt, nur `TokenStats`+`TokenHeaderWidget` ändern).
+**Geänderte Flows:** (a) Provider-Requests ohne Cache-Hardcode; (b) `TokenStats.add` extrahiert
+Cache-Felder; (c) `CustomAgent.getConfig` → `agentBuilder(record)` statt `baseAgentConfig()`.
+
+## 5. Affected Files je Inkrement
+
+### inc-18 — Cache-Hardcode raus + GPT/Claude-Beispiele mit Paste
+| Pfad | Änderung |
+|---|---|
+| `org.sterl.llmpeon.core/src/main/java/org/sterl/llmpeon/provider/AnthropicProvider.java` | L32–35 Flags raus (Block ggf. komplett) |
+| `org.sterl.llmpeon.core/src/main/java/org/sterl/llmpeon/provider/OpenAiProvider.java` | L57–63 cache_control-Block + TODO raus |
+| `org.sterl.llmpeon.core/src/main/java/org/sterl/llmpeon/provider/ProviderRequestSupport.java` | L103 TODO raus |
+| `org.sterl.llmpeon.core/src/main/java/org/sterl/llmpeon/provider/ExtraBodyExamples.java` | NEU (D1) |
+| `org.sterl.llmpeon.core/src/test/java/org/sterl/llmpeon/provider/ExtraBodyRequestTest.java` | `userBodyAndCacheControlCoexist` (49–65) umschreiben → s. §6 |
+| `org.sterl.llmpeon.core/src/test/java/org/sterl/llmpeon/provider/ExtraBodyExamplesTest.java` | NEU |
+| `org.sterl.llmpeon/src/org/sterl/llmpeon/parts/config/widgets/AgentModelConfigSection.java` | `buildJson`: +2 Beispiel-Rows (Label + Paste-Button) + Status-Label (D2) |
+| `homepage/src/setup/advanced-configuration.md` | +Section Extra Body / Prompt Caching |
+
+### inc-19 — Cache-Usage-Abgleich im Token-Header
+| Pfad | Änderung |
+|---|---|
+| `org.sterl.llmpeon.core/src/main/java/org/sterl/llmpeon/shared/TokenStats.java` | +`cachedRead`/`cachedWrite` + Extraction in `add()` + Getter |
+| `org.sterl.llmpeon.core/src/test/java/org/sterl/llmpeon/shared/TokenStatsTest.java` | +3 Tests (§6) |
+| `org.sterl.llmpeon/src/org/sterl/llmpeon/parts/widget/TokenHeaderWidget.java` | `refresh()`: Label `↑ x ↓ y ⇄ z` + Tooltip +Write |
+| `homepage/src/setup/advanced-configuration.md` | 1 Zeile in der Caching-Section |
+
+### inc-20 — Custom-Agent-Frontmatter (url/api_key/extra_body)
+| Pfad | Änderung |
+|---|---|
+| `org.sterl.llmpeon.core/src/main/java/org/sterl/llmpeon/agent/CustomAgent.java` | +Key-Konstanten `URL`/`API_KEY`/`EXTRA_BODY`; `getConfig()` → Record an `customAgentConfig` |
+| `org.sterl.llmpeon.core/src/main/java/org/sterl/llmpeon/ai/LlmConfig.java` | `customAgentConfig` neue Signatur + `agentBuilder(rec)` (229–233) |
+| `org.sterl.llmpeon.core/src/test/java/org/sterl/llmpeon/agent/CustomAgentServiceTest.java` | +4 Tests (§6) |
+| `org.sterl.llmpeon.core/src/test/java/org/sterl/llmpeon/AiServicePerAgentThinkTest.java` | 3 Aufrufstellen neue Signatur |
+| `homepage/src/setup/custom-agents.md` | Frontmatter-Tabelle + 3 Keys + Quoting-Regel + Beispiel |
+| Plugin | **keine** (D4 — per Grep verifizieren) |
+
+### inc-21 — Homepage-Rewrite (stale 2b-Zustand)
+| Pfad | Änderung |
+|---|---|
+| `homepage/src/setup/advanced-configuration.md` | Per-Agent-Section neu: Config-Seite = Single Source; Modell-Dropdown+Refresh (Liste einmalig pro Identity, Refresh-Button, konfiguriertes Modell bleibt gesetzt); Chat-UI ohne Modell/Think-Widgets („chat brain button"-Passus L49 weg, On/Off-Strings → Think je Provider-Form auf der Config-Seite); „How It Works" + „Check Host and Port" (L30–33) durch Dropdown-Verhalten ersetzen; Think-Abschnitt: alle 4 Core-Agents + Custom (Frontmatter-Tripel); Caching-Versatz zur inc-18-Section |
+| `homepage/src/setup/configuration.md` | L189 brain-button-Referenz fixen |
+| `homepage/src/**` (Grep) | stale Refs: „brain button", „Check Host and Port", Chat-UI-Modell-Dropdown |
+
+## 6. BDD-Akzeptanz (Szenario → Test)
+
+**inc-18** (core, JUnit 5/AssertJ/GIVEN-WHEN-THEN):
+- `ExtraBodyRequestTest.openAiClaudeModel_noUserBody_noCacheControlSent`
+  GIVEN OpenAI-`AgentConfig` Model `claude-*`, kein extraBody WHEN `newRequestParameters`
+  THEN keine `cache_control` in den Parametern (caching.md: „kein Cache, solange der User
+  nichts konfiguriert" + R6 Compact-Agent-Szenario auf Provider-Ebene).
+- `ExtraBodyRequestTest.anthropicBuild_noCacheFlagsByDefault`
+  GIVEN Anthropic `buildModel` ohne extraBody WHEN built THEN
+  `defaultRequestParameters().cacheSystemMessages()`/`cacheTools()` = false/absent
+  (ersetzt heutige Assertions ExtraBodyRequestTest:117–118).
+- `ExtraBodyRequestTest.userBodyCacheControl_reachesRequest`
+  GIVEN User-Body `{"cache_control":{"type":"ephemeral"}}` (Claude-Snippet) WHEN request
+  THEN `cache_control` verbatim im Request (Beispiel wirkt tatsächlich).
+- `ExtraBodyRequestTest.mergeUserWins_overProviderEntry`
+  GIVEN provider-Entry + User-Body mit gleichem Key WHEN `mergeCustomParameters` THEN User
+  gewinnt (bleibt nach D5 der User-wins-Nachweis).
+- `ExtraBodyExamplesTest.examplesAreValidNonEmptyExtraBodies`
+  GIVEN die beiden Beispiele WHEN `ExtraBody.parse` THEN valides JSON-Objekt, non-empty,
+  keine Reserved Keys.
+- E2E-Regression: `PerAgentConnectionE2ETest` S1/S2/S3 **grün ohne Änderung** (D5).
+
+**inc-19** (core):
+- `TokenStatsTest.addsOpenAiCachedTokens`
+  GIVEN `OpenAiTokenUsage` (input 100, output 50, `inputTokensDetails.cachedTokens` 40)
+  WHEN `add` THEN `cachedRead==40`, sent 100, received 50.
+- `TokenStatsTest.addsAnthropicCacheReadAndCreation`
+  GIVEN `AnthropicTokenUsage` (read 30, creation 10) WHEN `add` THEN
+  `cachedRead==30`, `cachedWrite==10`.
+- `TokenStatsTest.plainUsage_leavesCacheCountersZero`
+  GIVEN plain `TokenUsage` WHEN `add` THEN beide Cache-Zähler 0 (alle anderen Provider).
+- UI (SWT, nicht unit-testbar im Plugin-Testmodul — s. §7): Header-Label `↑ x ↓ y ⇄ z`,
+  PO-Smoke.
+
+**inc-20** (core):
+- `CustomAgentServiceTest.frontmatterUrl_resolvesOwnConnectionIdentity`
+  GIVEN AGENT.md mit `url: <stub>` WHEN `agent.getConfig()` + `EffectiveConnection.of`
+  THEN Identity.url == Stub (≠ Base).
+- `CustomAgentServiceTest.frontmatterApiKeyAndExtraBody_resolveLikeCoreAgents`
+  GIVEN `api_key` + `extra_body` WHEN `agent.getConfig()` THEN AgentConfig trägt Key+Body;
+  (OpenAI-Basis) Body per-request (nicht in Identity); (Anthropic-Basis) Body in
+  `buildTimeBody` der Identity — gleicher Pfad wie Core-Agents.
+- `CustomAgentServiceTest.extraBodySingleQuotedJson_parsesIntact`
+  GIVEN `extra_body: '{"cache_control": {"type": "ephemeral"}}'` WHEN parsed THEN
+  extraBody-String = exakt das JSON (D4-Quoting-Regel).
+- `CustomAgentServiceTest.noModelKeys_inheritsBaseIdentity`
+  GIVEN AGENT.md ohne url/api_key/extra_body WHEN Auflösung THEN
+  `EffectiveConnection.isBase()` == true (kein Behavior-Change für Bestand).
+
+**inc-21:** keine Tests (Doku-Only; Gate = VitePress-Build).
+
+## 7. Test-Strategie & Gates
+
+- **Core:** `mvn -pl org.sterl.llmpeon.core test` — JUnit 5 + AssertJ + GIVEN/WHEN/THEN.
+  Testdelta (Baseline 512): inc-18 +2 (1 ersetzt, +3 neu → netto +2), inc-19 +3,
+  inc-20 +4 → Endstand ≈ 522.
+- **Plugin-Compile-Sanity** nach jeder Core-Jar-Änderung:
+  `mvn -o -pl org.sterl.llmpeon,releng/llmpeon-target -am package`.
+- **Plugin-Tests:** nur wenn relevant (inc-18/19/20: `ModelListFetchTest`,
+  `AgentModelConfigFetchTest` als Regression; Vor jedem Lauf `eclipseBuildProject` —
+  stale-Bundle-Lektion, AGENTS-DEV). **Kein SWT-Display-Harness im Plugin-Testmodul**
+  (`AbstractUnitTest` ist Eclipse-frei) → Paste-Button = dünne SWT-Glue ohne Unit-Test;
+  die testbare Logik (Snippet-Inhalt, Parse) liegt in core. PO-Smoke für die UI.
+- **Homepage-Gate** je Homepage-Schnitt: `npm run docs:build` in `homepage/` (VitePress).
+- **Commits:** `inc-18`…`inc-21` (fortlaufend nach inc-17), Message `inc-N: <summary>`,
+  Body-Trailer `Assisted-by: Peon AI (<ModelName>)`, nur Iterations-Dateien, Branch
+  `new-config` (dediziert → Auto-Commit erlaubt).
+- **SKILL-Hint (AGENTS.md):** falls beim Implementieren langchain4j-/Eclipse-Know-how
+  dazukommt (z. B. TokenUsage-Subklasse-Auslesung als Wiederverwendbares Muster), Dev-Agent
+  ergänzt `/llmpeon-parent/skills/eclipse-dpe/SKILL.md`.
+
+## 8. Regeln & Constraints
+
+- **Core/UI-Trennung:** Config-Domäne (Snippet-Inhalt, Record, Auflösung, Token-Extraktion) in
+  core; Plugin = reine View. **KEINE neuen externen Dependencies.**
+- `docs/` bleibt unangetastet (PO+User-eigentlich). Homepage-Änderung gehört zum
+  Increment mit der sichtbaren Change (D6).
+- Log OR throw; SWT nur UI-Thread (Job-Pattern aus 2b/`FetchSnapshot` bleibt); kein
+  persistierter State in Plugin-Tests (Fixture vor SUT, cleanup in finally).
+- `MockLlmServer`/`PerAgentConnectionE2ETest` bleiben API-stabil (Bundling für Plugin-Tests).
+- Kein git-Auto-Commit ohne dedizierten Branch (hier: `new-config` ✓); finaler Merge = User.
+
+## 9. Abweichungen / Annahmen
+
+1. **Snippet-Inhalt** (D1) rekonstruiert aus Legacy-TODOs + entferntem Hardcode +
+   Night-Cycle-A-Wire-Nachweis — **PO-Bestätigung im Review** (user-facing Homepage-Content).
+2. **inc-20 = null Plugin-Änderungen:** „Plugin nur Verdrahtung" erfüllt als leere Menge, weil
+   der komplette Auflösungspfad schon Core ist (D4, per Grep verifiziert).
+3. **Kein snakeyaml** (D4): Constraint „keine neuen Deps" schlägt Parser-Ästhetik; das
+   bekannte flache Schema braucht keinen YAML-Parser.
+4. **Kein HTTP-E2E durch `CustomAgent`** (D4): downstream-Pfad ist in Night-Cycle A schon per
+   echtem HTTP bewiesen; 2c beweist nur den neuen Auflösungsschritt (Unit).
+5. **Cache-WRITE nicht im Header** (D3): 3-Zahlen-Header, Write im Tooltip + akkumuliert.
+6. **Kein Plugin-Unit-Test für den Paste-Button** (kein Display-Harness); Logik in core getestet.
+7. Anthropic-`defaultRequestParameters`-Block: Implementierer prüft Restinhalt (wird der Block
+   leer → Kette komplett entfernen).
+
+## 10. Offene Fragen (PO-Review; blockierend nur Q2 für inc-18-Hompage-Wording)
+
+1. **Snippet-Wording/Inhalt:** GPT = `{"prompt_cache_key": "llmpeon"}` (Azure), Claude =
+   `{"cache_control": {"type": "ephemeral"}}` (Gateway-Form) — so OK?
+2. **Direkte Anthropic-API-Folge:** nach dem Clean-Break ist natives System/Tools-Caching
+   (cache_control in System-/Tool-Blöcken) nicht mehr über den Top-Level-Extra-Body
+   reaktivierbar — Claude-Direkt-User verlieren Caching dauerhaft. Akzeptieren + dokumentieren
+   (Empfehlung) oder Anthropic-Flags als opt-in nachrüsten (widerstrebt „extra body only")?
+3. **Cache-WRITE-Anzeige:** nur im Tooltip (Empfehlung) oder auch sichtbar?
+4. **Symbol:** `⇄` für Cache-Reads im Header — OK? (Alternative `↺`)
+
+## 11. Inkrement-Liste (Zusammenfassung)
+
+| # | Titel | 1 Zeile | Tests (neu/geändert) |
+|---|---|---|---|
+| inc-18 | Cache-Hardcode-Clean-Break + UI-Beispiele | Anthropic-Flags & OpenAI-`cache_control` raus; GPT/Claude-Snippets (core) + Paste-Buttons unter dem JSON-Input; Homepage-Section | `ExtraBodyRequestTest` 1→4 (ersetzt/erweitert), NEU `ExtraBodyExamplesTest`; E2E grün ohne Änderung |
+| inc-19 | Cache-Usage-Abgleich im Token-Header | `TokenStats` extrahiert `cachedTokens`/`cache_read`/`cache_creation` (OpenAI/Anthropic, 1.18.1-verified); Header `↑ x ↓ y ⇄ z` | `TokenStatsTest` +3 |
+| inc-20 | Custom-Agent-Frontmatter (volle Model-Config) | `url`/`api_key`/`extra_body` im AGENT.md → gleicher `AgentModelConfig`-Record + `agentBuilder`-Auflösung; kein neuer Parser, Plugin leer | `CustomAgentServiceTest` +4, `AiServicePerAgentThinkTest` 3 Stellen |
+| inc-21 | Homepage-Rewrite (2c-Ist) | `advanced-configuration.md` auf 2c-Zustand (Config-Seite Single Source, Dropdown+Refresh, kein Chat-UI-Modell/Think, Beispiele, Caching), `configuration.md` brain-button-Fix | keine (Gate: VitePress-Build) |

@@ -108,6 +108,16 @@ Mechanik: [ADR-0034](adr/0034-connection-cache-by-identity.md).**
 - **Known Issue (Bug) — ✅ gelöst (2b, 2026-08-30):** war: URL-Wechsel in der Base-Config macht die Modell-Auswahl der **anderen**
   Agenten ungültig/leer (nur der selektierte Agent wird aktualisiert); heute via Wiederauswahl
   zu reparieren.
+- **Known Issue (Bug) — ✅ done (2026-08-30, Smoke-Test User → Fix inc-17 `60b494e`):** war:
+  `SWTException: Invalid thread access` beim Modell-List-Fetch (Job „Loading models (&lt;agent&gt;)") —
+  `AgentModelConfigSection.fetchModels`/`refreshModels` riefen `getRecord()` im **Job-Body** →
+  SWT-Reads vom Hintergrund-Thread. Fix: `prepareFetch()` capturet auf der UI-Thread einen
+  SWT-freien `FetchSnapshot(identity, buildConfig)` vor dem Job-Start; `fetchList(FetchSnapshot)`
+  ist static und widget-frei; Test `AgentModelConfigFetchTest.fetchListUsesCapturedSnapshotWithoutWidgets`.
+  GIVEN Config-Seite geöffnet, Modell-Dropdown eines Agents lädt die Liste
+  WHEN der Fetch-Job die aktuelle Config liest
+  THEN alle SWT-Zugriffe laufen auf der UI-Thread (kein SWTException) und der Job nutzt
+  den gecaptured Config-Snapshot
 
 ## First-Launch Directory Resolution
 
