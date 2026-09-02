@@ -540,7 +540,7 @@ class AbstractAgentTest {
         agent.call("test", monitor);
 
         // THEN — onTool called for labeled item only
-        assertThat(toolMessages).contains("Loading 📋 docs/memory.md");
+        assertThat(toolMessages).contains("Loading 📋 docs/memory.md (Peon-Dev)");
         assertThat(toolMessages).noneMatch(m -> m.contains("unlabeled"));
     }
 
