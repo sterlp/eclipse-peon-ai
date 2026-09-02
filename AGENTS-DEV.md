@@ -36,6 +36,14 @@ Hints for the dev phase, base rules `AGENTS.md`
   `org.sterl.llmpeon.test` in Eclipse so they pick up the changed jar. Without `-am` the copy
   resolves core from a stale `~/.m2` copy → phantom "cannot be resolved" errors for brand-new core
   symbols. (A full `mvn clean install` at the root also works but is much slower.)
+- **m2e auto-build breaks Lombok (hit 2026-09-01, inc-24):** the `llmpeon-core` project's
+  `.classpath` output folder is `target/classes` — the SAME folder Maven uses. An Eclipse/m2e
+  auto-build after `eclipse*` file edits recompiles all main classes WITHOUT Lombok annotation
+  processing. Symptom: `mvn compile` says "Nothing to compile - all classes are up to date"
+  (classes newer than sources), then `testCompile` fails in ~17 test files with phantom
+  "constructor not applicable" errors (e.g. `SimpleContextItem` 2-arg from
+  `@RequiredArgsConstructor`). Fix: `mvn -pl org.sterl.llmpeon.core clean compile` (or `clean test`)
+  before the gate run.
 - Elegant, expressive modern Java (records, pattern matching, switch expressions, Lombok).
 - **OSGi test constraints:** plugin tests are JUnit 4, new test classes need user approval.
   Run full test suite on timeout
