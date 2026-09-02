@@ -8,12 +8,12 @@ import java.util.List;
 import org.junit.Test;
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.model.AiModel;
-import org.sterl.llmpeon.parts.config.widgets.AgentModelConfigSection;
+import org.sterl.llmpeon.parts.config.widgets.ModelComboWidget;
 
 /**
- * SWT thread fix for {@link AgentModelConfigSection}: the model-list fetch works off a snapshot
- * captured on the UI thread, and the fetcher itself is SWT-free (no widget reads) — so the
- * background Job body can no longer throw {@code SWTException: Invalid thread access}.
+ * SWT thread fix for the model-list fetch (shared {@link ModelComboWidget}): the fetch works off
+ * a snapshot captured on the UI thread, and the fetcher itself is SWT-free (no widget reads) —
+ * so the background Job body can no longer throw {@code SWTException: Invalid thread access}.
  */
 public class AgentModelConfigFetchTest extends AbstractUnitTest {
 
@@ -22,11 +22,11 @@ public class AgentModelConfigFetchTest extends AbstractUnitTest {
         // GIVEN a snapshot captured for the base connection (no widgets involved)
         var base = mockLlmServer.newConfig("gpt-4o");
         var effective = base.effectiveConnectionFor(AgentModelConfig.empty());
-        var snapshot = new AgentModelConfigSection.FetchSnapshot(
+        var snapshot = new ModelComboWidget.FetchSnapshot(
                 effective.identity(), effective.buildConfig());
 
         // WHEN the SWT-free fetcher is invoked (as the background Job would)
-        var list = AgentModelConfigSection.fetchList(snapshot).get();
+        var list = ModelComboWidget.fetchList(snapshot).get();
 
         // THEN the server's model ids come back — no Display/widgets were needed
         assertNotNull(list);

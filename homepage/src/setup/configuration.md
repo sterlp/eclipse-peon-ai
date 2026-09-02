@@ -11,6 +11,10 @@ After installation, configure the plugin via **Window > Preferences > AI Peon > 
 
 ## Provider Settings
 
+### Model
+
+The **Model** field is a dropdown filled from your provider's model list, **fetched once per connection** (your base URL/key). Click **Refresh** to reload the list — a failed refresh keeps the previous one. A model you have already configured stays selected even if it is missing from the fetched list; you can also type a model name that is not in the list.
+
 ### Ollama
 
 Run models locally e.g. mac.

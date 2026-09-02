@@ -1,11 +1,5 @@
 package org.sterl.llmpeon.parts.config.widgets;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Supplier;
-
-import org.eclipse.core.runtime.Status;
-import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CCombo;
 import org.eclipse.swt.layout.GridData;
@@ -15,11 +9,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
 import org.sterl.llmpeon.ai.AgentModelConfig;
-import org.sterl.llmpeon.ai.ConnectionIdentity;
 import org.sterl.llmpeon.ai.LlmConfig;
-import org.sterl.llmpeon.ai.ModelListCache;
-import org.sterl.llmpeon.ai.model.AiModel;
-import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.provider.ExtraBodyExamples;
 import org.sterl.llmpeon.provider.LlmProviders;
 import org.sterl.llmpeon.provider.ThinkSupport;
@@ -31,11 +21,10 @@ import org.sterl.llmpeon.shared.StringUtil;
  * <b>base</b> provider's {@link org.sterl.llmpeon.provider.LlmProvider} (provider.md R5/R3) — the
  * provider itself stays base-level.
  *
- * <p>The model combo is filled from the provider's model list, cached per
- * {@link ConnectionIdentity} in {@link ModelListCache}: fetched once when the page opens (or on
- * the refresh button), never while typing. A failed or empty list falls back to the configured
- * model only — no auto-switch. SWT is encapsulated here; the value mappings live in the SWT-free
- * {@link ThinkValueSupport} (unit-testable without a Display).</p>
+ * <p>The model dropdown + refresh lives in the shared {@link ModelComboWidget}: fetched once
+ * when the page opens (or on the refresh button), never while typing; a failed or empty list
+ * falls back to the configured model only. SWT is encapsulated here; the value mappings live in
+ * the SWT-free {@link ThinkValueSupport} (unit-testable without a Display).</p>
  */
 public class AgentModelConfigSection extends Composite {
 
@@ -44,7 +33,7 @@ public class AgentModelConfigSection extends Composite {
     private final ThinkSupport thinkForm;
     private final Text urlText;
     private final Text keyText;
-    private CCombo modelCombo;
+    private final ModelComboWidget modelWidget;
     private Text jsonText;
     private Label examplesLabel;
 
@@ -63,7 +52,7 @@ public class AgentModelConfigSection extends Composite {
         setLayout(new GridLayout(2, false));
         this.urlText = addLabeledText("URL (empty = inherit base):");
         this.keyText = addLabeledText("API Key (empty = inherit base):");
-        buildModel();
+        this.modelWidget = new ModelComboWidget(this, agentId, this::prepareFetch);
         buildThink();
         buildJson(provider.supportsExtraBody());
     }
@@ -76,7 +65,7 @@ public class AgentModelConfigSection extends Composite {
     public void load(AgentModelConfig record) {
         urlText.setText(StringUtil.stripToEmpty(record.url()));
         keyText.setText(StringUtil.stripToEmpty(record.apiKey()));
-        modelCombo.setText(StringUtil.stripToEmpty(record.model()));
+        modelWidget.setModel(record.model());
         loadThink(record.think());
         if (jsonText != null) jsonText.setText(StringUtil.stripToEmpty(record.extraBody()));
     }
@@ -86,36 +75,14 @@ public class AgentModelConfigSection extends Composite {
         return new AgentModelConfig(
                 StringUtil.stripToNull(urlText.getText()),
                 StringUtil.stripToNull(keyText.getText()),
-                StringUtil.stripToNull(modelCombo.getText()),
+                StringUtil.stripToNull(modelWidget.getModel()),
                 readThink(),
                 jsonText != null ? StringUtil.stripToNull(jsonText.getText()) : null);
     }
 
-    // --- model list (per ConnectionIdentity, cached on success only) ---
-
     /** Fetches the model list for the current widget values (page open). Cached per identity. */
     public void fetchModels() {
-        var snapshot = prepareFetch(); // UI thread: capture widget state before the background Job
-        Job.create("Loading models (" + agentId + ")", monitor -> {
-            var list = ModelListCache.instance().getOrFetch(snapshot.identity(), fetchList(snapshot));
-            applyModelList(list, snapshot.identity());
-            return Status.OK_STATUS;
-        }).schedule();
-    }
-
-    /** Manual refresh: always refetches; a failed fetch keeps the previous list. */
-    private void refreshModels() {
-        var snapshot = prepareFetch(); // UI thread: capture widget state before the background Job
-        Job.create("Refreshing models (" + agentId + ")", monitor -> {
-            var cache = ModelListCache.instance();
-            var list = cache.refresh(snapshot.identity(), fetchList(snapshot));
-            applyModelList(list != null ? list : cache.cached(snapshot.identity()), snapshot.identity());
-            return Status.OK_STATUS;
-        }).schedule();
-    }
-
-    private ConnectionIdentity currentIdentity() {
-        return base.effectiveConnectionFor(getRecord()).identity();
+        modelWidget.fetchModels();
     }
 
     /**
@@ -124,49 +91,12 @@ public class AgentModelConfigSection extends Composite {
      * widgets (SWT widgets are not thread-safe; reading them off the UI thread throws
      * {@code SWTException: Invalid thread access}).
      */
-    public record FetchSnapshot(ConnectionIdentity identity, LlmConfig buildConfig) {}
-
-    /** Captures the fetch snapshot on the UI thread (the only place the widgets are read for a fetch). */
-    private FetchSnapshot prepareFetch() {
+    private ModelComboWidget.FetchSnapshot prepareFetch() {
         var effective = base.effectiveConnectionFor(getRecord());
-        return new FetchSnapshot(effective.identity(), effective.buildConfig());
-    }
-
-    /** SWT-free: the fetcher for a captured snapshot — safe to run in a background Job. */
-    public static Supplier<List<AiModel>> fetchList(FetchSnapshot snapshot) {
-        return () -> LlmProviders.of(snapshot.identity().provider()).listAiModels(snapshot.buildConfig());
-    }
-
-    private void applyModelList(List<AiModel> fetched, ConnectionIdentity identity) {
-        EclipseUtil.runInUiThread(this, () -> {
-            if (!identity.equals(currentIdentity())) return; // config changed while fetching — stale
-            var items = new ArrayList<String>();
-            if (fetched != null) items.addAll(fetched.stream().map(AiModel::getId).toList());
-            var configured = StringUtil.stripToNull(modelCombo.getText());
-            if (configured != null && !items.contains(configured)) items.add(configured);
-            modelCombo.setItems(items.toArray(String[]::new));
-            if (configured != null) {
-                var idx = modelCombo.indexOf(configured);
-                if (idx >= 0) modelCombo.select(idx);
-                else modelCombo.setText(configured);
-            }
-        });
+        return new ModelComboWidget.FetchSnapshot(effective.identity(), effective.buildConfig());
     }
 
     // --- widget construction ---
-
-    private void buildModel() {
-        addLabel("Model:");
-        var row = new Composite(this, SWT.NONE);
-        row.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-        row.setLayout(new GridLayout(2, false));
-        modelCombo = new CCombo(row, SWT.BORDER);
-        modelCombo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-        var refresh = new Button(row, SWT.PUSH);
-        refresh.setText("Refresh");
-        refresh.setToolTipText("Reload the model list for this agent's connection");
-        refresh.addListener(SWT.Selection, e -> refreshModels());
-    }
 
     private void buildThink() {
         if (thinkForm instanceof ThinkSupport.Boolean) {

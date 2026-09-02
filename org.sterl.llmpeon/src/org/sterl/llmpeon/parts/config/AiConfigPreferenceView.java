@@ -19,12 +19,15 @@ import org.eclipse.ui.preferences.ScopedPreferenceStore;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.PeonConstants;
+import org.sterl.llmpeon.parts.config.widgets.ModelComboWidget;
+import org.sterl.llmpeon.shared.StringUtil;
 
 public class AiConfigPreferenceView extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
 
     private ComboFieldEditor providerEditor;
     private StringFieldEditor urlEditor;
     private StringFieldEditor apiKeyEditor;
+    private ModelComboWidget modelWidget;
 
     public AiConfigPreferenceView() {
         super(GRID);
@@ -46,8 +49,8 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
                         { "GitHub Models (PAT)", AiProvider.GITHUB_MODELS.name() } },
                 getFieldEditorParent());
         addField(providerEditor);
-        addField(new StringFieldEditor(PeonConstants.PREF_MODEL, "Model:", getFieldEditorParent()));
-        
+        buildModel();
+
         addField(new DoubleSliderFieldEditor(PeonConstants.PREF_PLAN_TEMPERATURE, "Plan temperature:", getFieldEditorParent()));
         addField(new DoubleSliderFieldEditor(PeonConstants.PREF_DEV_TEMPERATURE,  "Dev temperature:", getFieldEditorParent()));
 
@@ -87,6 +90,24 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
         gd.horizontalSpan = 2;
         link.setLayoutData(gd);
         link.addSelectionListener(SelectionListener.widgetSelectedAdapter(e -> Program.launch(e.text)));
+    }
+
+    /**
+     * Model dropdown + refresh (shared with the advanced page's per-agent sections). The
+     * snapshot provider reads the preferences live, so changing provider/url/key on this page
+     * keeps the fetch identity current (the widget's stale-guard discards stale results).
+     */
+    private void buildModel() {
+        modelWidget = new ModelComboWidget(getFieldEditorParent(), "base",
+                () -> ModelComboWidget.baseSnapshot(LlmPreferenceInitializer.buildWithDefaults()));
+        modelWidget.setModel(getPreferenceStore().getString(PeonConstants.PREF_MODEL));
+        modelWidget.fetchModels();
+    }
+
+    @Override
+    public boolean performOk() {
+        getPreferenceStore().setValue(PeonConstants.PREF_MODEL, StringUtil.stripToNull(modelWidget.getModel()));
+        return super.performOk();
     }
 
     private void buildCheckUrl() {
