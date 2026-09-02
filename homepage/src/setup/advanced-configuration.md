@@ -87,16 +87,17 @@ Each agent's section has an **Extra body (JSON)** field: raw JSON merged into th
 
 ### Examples
 
-Two paste-ready examples sit under the field (shown only for providers that support an extra body):
+Three paste-ready examples sit under the field (shown only for providers that support an extra body):
 
 | Example | Body | Effect |
 |---------|------|--------|
 | **GPT** | `{"prompt_cache_key": "llmpeon"}` | Azure-OpenAI explicit prompt-caching key. On other OpenAI-compatible endpoints the top-level field is ignored (harmless). |
 | **Claude** | `{"cache_control": {"type": "ephemeral"}}` | The ephemeral cache marker — effective for Claude behind OpenAI-compatible gateways (LiteLLM & co.) that forward the field. |
+| **llama.cpp** | `{"chat_template_kwargs": {"enable_thinking": false}}` | Disables thinking/reasoning in llama.cpp models. |
 
 GPT-5* agents get a default per-agent cache key `peon-ai-<agent>`; override it in the JSON body.
 
-Click **Paste** to insert an example into the field (it replaces the current content). The body is sent per request for OpenAI-family providers and baked in at build time for Anthropic.
+Click the example button to insert it into the field (it replaces the current content). Hover a button for a description. The body is sent per request for OpenAI-family providers and baked in at build time for Anthropic.
 
 Cache hits are visible in the chat's token header: `↑ sent  ↓ received  ⇄ cache-read` — the `⇄` counter accumulates tokens served from the prompt cache (cache writes are shown in the header's tooltip).
 

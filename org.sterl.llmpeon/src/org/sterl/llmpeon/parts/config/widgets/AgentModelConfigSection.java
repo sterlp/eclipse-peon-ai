@@ -130,22 +130,25 @@ public class AgentModelConfigSection extends Composite {
     }
 
     /**
-     * Paste-ready extra-body examples under the JSON input (caching.md R3): one row per example
-     * (label + paste button) and a status label. Built only when {@code supportsExtraBody()} —
-     * the provider gate. A paste simply replaces the field content (2c D2, no dialog).
+     * Paste-ready extra-body examples under the JSON input (caching.md R3): a single compact row
+     * (label + one button per example, tooltip = description) and a status label. Built only when
+     * {@code supportsExtraBody()} — the provider gate. A paste simply replaces the field content
+     * (2c D2, no dialog).
      */
     private void buildJsonExamples() {
-        for (var example : ExtraBodyExamples.all()) {
-            var row = new Composite(this, SWT.NONE);
-            var rowGd = new GridData(SWT.FILL, SWT.CENTER, true, false);
-            rowGd.horizontalSpan = 2;
-            row.setLayoutData(rowGd);
-            row.setLayout(new GridLayout(2, false));
-            var label = new Label(row, SWT.NONE);
-            label.setText(example.name() + " example:");
-            var paste = new Button(row, SWT.PUSH);
-            paste.setText("Paste");
-            paste.addListener(SWT.Selection, e -> pasteExample(example));
+        var examples = ExtraBodyExamples.all();
+        var row = new Composite(this, SWT.NONE);
+        var rowGd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+        rowGd.horizontalSpan = 2;
+        row.setLayoutData(rowGd);
+        row.setLayout(new GridLayout(examples.size() + 1, false));
+        var label = new Label(row, SWT.NONE);
+        label.setText("Examples:");
+        for (var example : examples) {
+            var button = new Button(row, SWT.PUSH);
+            button.setText(example.name());
+            button.setToolTipText(example.description());
+            button.addListener(SWT.Selection, e -> pasteExample(example));
         }
         examplesLabel = new Label(this, SWT.NONE);
         var labelGd = new GridData(SWT.FILL, SWT.CENTER, true, false);

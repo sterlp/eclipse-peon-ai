@@ -40,5 +40,9 @@ class ExtraBodyExamplesTest {
                 .doesNotContain("model", "messages", "tools");
         // AND ExtraBody.parse accepts it (non-null)
         assertThat(ExtraBody.parse(example.json())).isNotNull();
+        // AND description is not blank (tooltip content is user-facing)
+        assertThat(example.description())
+                .as("example %s must have a non-blank description", example.name())
+                .isNotBlank();
     }
 }
