@@ -70,4 +70,23 @@ class EffectiveConnectionTest {
         assertThat(gemini.perRequestBody()).isNull();
         assertThat(gemini.identity().buildTimeBody()).isNull();
     }
+
+    @Test
+    void toStringMasksPerRequestBodyAndCredential() {
+        // GIVEN an OpenAI agent with a per-request extra body and a base credential
+        String body = "{\"prompt_cache_key\":\"llmpeon\"}";
+        EffectiveConnection effective = EffectiveConnection.of(
+                LlmConfig.of(AiProvider.OPEN_AI).model("gpt").url("http://base:1234/v1").apiKey("base-key").build(),
+                AgentConfig.builder().provider(AiProvider.OPEN_AI).extraBody(body).build());
+        // WHEN toString
+        var rendered = effective.toString();
+        // THEN the body content and the credential are masked, the shape stays readable
+        assertThat(rendered)
+                .contains("perRequestBody=" + body.length() + " chars")
+                .contains("apiKey=***")
+                .contains("isBase=false")
+                .doesNotContain(body)
+                .doesNotContain("prompt_cache_key")
+                .doesNotContain("base-key");
+    }
 }

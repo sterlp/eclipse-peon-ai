@@ -60,7 +60,7 @@ public final class GithubModelsProvider implements LlmProvider {
                 .header("X-GitHub-Api-Version", CATALOG_API_VERSION);
         c.getHeaderParams().forEach(request::header);
 
-        return SharedHttpClient.cancelAndGet(request, AiModelParser::parseGithubModels);
+        return SharedHttpClient.getModels(request, AiModelParser::parseGithubModels);
     }
 
     @Override

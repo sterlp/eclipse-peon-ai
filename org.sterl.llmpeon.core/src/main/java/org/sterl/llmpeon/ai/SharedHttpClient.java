@@ -5,7 +5,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -30,37 +29,27 @@ public class SharedHttpClient {
         return ref.get();
     }
     
-    private static final AtomicReference<CompletableFuture<HttpResponse<String>>> pendingRequest = new AtomicReference<>();
-    
-    public static List<AiModel> cancelAndGet(HttpRequest.Builder request, 
-            Function<String, List<AiModel>> handler) {
-        return cancelAndSend(request.timeout(MODEL_TIMEOUT).GET().build(), handler);
-    }
     /**
-     * Sends the request asynchronously, cancelling any previously pending list request.
-     * Returns null if the request was itself cancelled before completion.
+     * Sends the model list request asynchronously and blocks until it completes (bounded by
+     * {@code MODEL_TIMEOUT + 10s}). Concurrent requests are independent — no cross-cancellation;
+     * duplicate needs for one connection are deduplicated upstream in {@link ModelListCache}
+     * (single-flight).
      */
-    public static List<AiModel> cancelAndSend(HttpRequest request, 
+    public static List<AiModel> getModels(HttpRequest.Builder request, 
             Function<String, List<AiModel>> handler) {
-        var future = getHttpClient().sendAsync(request, HttpResponse.BodyHandlers.ofString());
-        var prev = pendingRequest.getAndSet(future);
-        if (prev != null) prev.cancel(true);
-
+        var built = request.timeout(MODEL_TIMEOUT).GET().build();
+        var future = getHttpClient().sendAsync(built, HttpResponse.BodyHandlers.ofString());
         try {
             return handler.apply(future.get(MODEL_TIMEOUT.plusSeconds(10).toMillis(), TimeUnit.MILLISECONDS).body());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return List.of();
-        } catch (java.util.concurrent.CancellationException e) {
-            return List.of();
         } catch (ExecutionException e) {
-            throw new ModelLoadFailedException("Failed to load models from " + request.uri(), 
+            throw new ModelLoadFailedException("Failed to load models from " + built.uri(), 
                     e.getCause() == null ? e : e.getCause());
         } catch (TimeoutException e) {
-            throw new ModelLoadFailedException("Timeout loading models from " + request.uri() + " after " + MODEL_TIMEOUT, 
+            throw new ModelLoadFailedException("Timeout loading models from " + built.uri() + " after " + MODEL_TIMEOUT, 
                     e.getCause() == null ? e : e.getCause());
-        } finally {
-            pendingRequest.compareAndSet(future, null);
         }
     }
 }

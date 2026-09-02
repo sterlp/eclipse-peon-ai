@@ -87,7 +87,7 @@ public final class OpenAiProvider implements LlmProvider {
                 .header("Authorization", "Bearer " + c.getApiKey());
         c.getHeaderParams().forEach(request::header);
 
-        return SharedHttpClient.cancelAndGet(request, AiModelParser::parseOpenApiModels);
+        return SharedHttpClient.getModels(request, AiModelParser::parseOpenApiModels);
     }
 
     @Override

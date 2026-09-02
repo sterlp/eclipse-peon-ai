@@ -40,7 +40,7 @@ public final class MistralProvider implements LlmProvider {
                 .uri(URI.create(MODELS_URL))
                 .header("X-API-Key", c.getApiKey());
         c.getHeaderParams().forEach(request::header);
-        return SharedHttpClient.cancelAndGet(request, AiModelParser::parseMistralModels);
+        return SharedHttpClient.getModels(request, AiModelParser::parseMistralModels);
     }
 
     @Override

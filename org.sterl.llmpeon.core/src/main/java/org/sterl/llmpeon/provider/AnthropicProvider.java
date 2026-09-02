@@ -72,7 +72,7 @@ public final class AnthropicProvider implements LlmProvider {
                 .header("anthropic-version", ANTHROPIC_VERSION);
         c.getHeaderParams().forEach(request::header);
 
-        return SharedHttpClient.cancelAndGet(request, AiModelParser::parseAnthropicModels);
+        return SharedHttpClient.getModels(request, AiModelParser::parseAnthropicModels);
     }
 
     /**

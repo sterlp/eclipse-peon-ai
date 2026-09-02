@@ -65,7 +65,7 @@ public final class LmStudioProvider implements LlmProvider {
         var request = HttpRequest.newBuilder()
                 .uri(URI.create(url + "/models"));
         c.getHeaderParams().forEach(request::header);
-        return SharedHttpClient.cancelAndGet(request, AiModelParser::parseLmStudioModels);
+        return SharedHttpClient.getModels(request, AiModelParser::parseLmStudioModels);
     }
 
     @Override

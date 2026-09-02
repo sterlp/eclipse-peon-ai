@@ -87,7 +87,7 @@ public final class GithubCopilotProvider implements LlmProvider {
 
         headers.forEach(request::header);
 
-        return SharedHttpClient.cancelAndGet(request, AiModelParser::parseCopilotApiModels);
+        return SharedHttpClient.getModels(request, AiModelParser::parseCopilotApiModels);
     }
 
     @Override

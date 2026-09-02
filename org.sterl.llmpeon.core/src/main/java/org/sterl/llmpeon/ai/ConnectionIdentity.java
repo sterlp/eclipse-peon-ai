@@ -18,4 +18,14 @@ public record ConnectionIdentity(AiProvider provider, String url, String apiKey,
         url = url == null ? "" : url;
         apiKey = apiKey == null ? "" : apiKey;
     }
+
+    /** Masked form for logs: the credential and the body content never leave this type (memory #20). */
+    @Override
+    public String toString() {
+        return "ConnectionIdentity[provider=" + provider
+                + ", url=" + url
+                + ", apiKey=***"
+                + ", buildTimeBody=" + (buildTimeBody == null ? "-" : buildTimeBody.length() + " chars")
+                + "]";
+    }
 }

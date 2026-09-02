@@ -17,6 +17,16 @@ import org.sterl.llmpeon.shared.StringUtil;
  */
 public record EffectiveConnection(ConnectionIdentity identity, LlmConfig buildConfig, String perRequestBody, boolean isBase) {
 
+    /** Masked form for logs: the per-request body content never leaves this type (memory #20). */
+    @Override
+    public String toString() {
+        return "EffectiveConnection[identity=" + identity
+                + ", buildConfig=" + buildConfig
+                + ", perRequestBody=" + (perRequestBody == null ? "-" : perRequestBody.length() + " chars")
+                + ", isBase=" + isBase
+                + "]";
+    }
+
     public static EffectiveConnection of(LlmConfig base, AgentConfig agent) {
         ExtraBodyMode mode = LlmProviders.of(base.getProviderType()).extraBodyMode();
         String url = StringUtil.hasValue(agent.getUrl()) ? agent.getUrl() : base.getUrl();
