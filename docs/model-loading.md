@@ -6,7 +6,7 @@ refetched when the provider config changes.
 
 ## SOLL (2026-08-28) — ✅ gebaut (Zyklus 2b, 2026-08-30)
 
-Der Modell-Dropdown wandert aus der Chat-UI in die Config-Seite (pro Agent) —
+Der Modell-Dropdown wandert aus der Chat-UI in die Config-Seite (Basic-Page + pro Agent, shared `ModelComboWidget` inc-25) —
 [advanced-configuration.md](advanced-configuration.md), Mechanik:
 [ADR-0034](adr/0034-connection-cache-by-identity.md). Die Liste gilt pro **Verbindungs-
 Identität** (Provider+URL+Key): einmalig fetch, **Cache on success**, Fehler → configured

@@ -71,6 +71,7 @@ public class DropdownThemeTest extends AbstractUnitTest {
         assertRgb(palette.itemFocusBg(), DropdownTheme.DARK_ITEM_FOCUS_BG);
         assertRgb(palette.buttonFocusBg(), DropdownTheme.DARK_BUTTON_FOCUS_BG);
         assertRgb(palette.border(), DropdownTheme.DARK_BORDER);
+        assertRgb(palette.focusBorder(), DropdownTheme.FOCUS_BORDER);
         assertRgb(palette.text(), DropdownTheme.DARK_TEXT);
     }
 
@@ -84,6 +85,7 @@ public class DropdownThemeTest extends AbstractUnitTest {
         assertRgb(palette.itemFocusBg(), DropdownTheme.LIGHT_ITEM_FOCUS_BG);
         assertRgb(palette.buttonFocusBg(), DropdownTheme.LIGHT_BUTTON_FOCUS_BG);
         assertRgb(palette.border(), DropdownTheme.LIGHT_BORDER);
+        assertRgb(palette.focusBorder(), DropdownTheme.FOCUS_BORDER);
         assertRgb(palette.text(), DropdownTheme.LIGHT_TEXT);
     }
 

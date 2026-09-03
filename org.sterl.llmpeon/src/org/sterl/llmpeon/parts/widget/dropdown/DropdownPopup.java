@@ -65,10 +65,10 @@ public class DropdownPopup {
      * Opens the popup at the given screen location with the provided items.
      *
      * @param location     screen position for the top-left of the popup
-     * @param items        items to display
+     * @param itemList     items to display
      * @param selectedItemId id of the currently selected item, or {@code null}
      */
-    public void open(Point location, List<DropdownItem> items, String selectedItemId) {
+    public void open(Point location, List<DropdownItem> itemList, String selectedItemId) {
         if (shell != null && !shell.isDisposed()) {
             close();
         }
@@ -100,7 +100,7 @@ public class DropdownPopup {
 
         items.clear();
         hoverIndex = -1;
-        for (var item : items) {
+        for (var item : itemList) {
             addItem(container, item);
         }
 

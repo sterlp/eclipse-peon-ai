@@ -52,7 +52,7 @@ AiPlannerService.resolveAgentModel()
 3. **Native support**: LangChain4j supports per-request model override directly
 4. **Lower overhead**: Avoids building and maintaining multiple `ConfiguredChatModel` wrappers
 
-## Agent-Specific Config Umbau (SOLL, 2026-08-21) — ✅ Core (2a) + Config-UI (2b) gebaut (2026-08-30); 2c-Teile (Custom-Agent-yml, Homepage) ❌ offen
+## Agent-Specific Config Umbau (SOLL, 2026-08-21) — ✅ komplett gebaut: Core (2a) + Config-UI (2b) + Cache-Clean-Break/Beispiele/Usage/Custom-Agent-Frontmatter/Homepage (2c, 2026-09-01)
 
 **SOLL:** Alles konfigurierbar wird **agent-spezifisch** — jeder Agent mit Modell-Slot
 (base/plan/search/compact/PO + Custom Agents) trägt seine eigenen Einstellungen: Modell
@@ -63,9 +63,9 @@ Dazu gehören:
 - Advanced Settings-Eingabe **pro Agent** (inkl. Custom Agents) mit UI-Beispielen unter dem
   Input (GPT-/Claude-Cache-Snippets).
 - Geltung für jeden Agenten, bei dem ein Modell eingestellt werden kann.
-- Zusammen mit dem Caching-SOLL dokumentiert — **Umsetzung Backlog** (nach der Issue-Runde).
+- Zusammen mit dem Caching-SOLL dokumentiert ([caching.md](caching.md)) — **✅ umgesetzt (2a/2b/2c)**.
 
-**SOLL-Ergänzung (2026-08-28, User) — ✅ gebaut (2b, 2026-08-30: Config-Seite per-agent, Modell-Liste pro Identität, Chat-UI-Räumung); 2c-Teile ❌ offen.
+**SOLL-Ergänzung (2026-08-28, User) — ✅ komplett gebaut (2b 2026-08-30: Config-Seite per-agent, Modell-Liste pro Identität, Chat-UI-Räumung; 2c 2026-09-01: Custom-Agent-Frontmatter, Homepage-Doku, Caching-Beispiele + Clean-Break).
 Mechanik: [ADR-0034](adr/0034-connection-cache-by-identity.md).**
 - **Model-Config pro Agent:** ein „configured model" = URL, Key, Modell, Think, extra JSON body
   (KV-Cache-ID & weitere Body-Params). Verbindungen (Model-Instanzen) werden per **Hash der
@@ -101,10 +101,11 @@ Mechanik: [ADR-0034](adr/0034-connection-cache-by-identity.md).**
 - **Sauberer Rebuild bei Update (2026-08-28, User):** die effektive Config wird bei jedem Load
   **komplett** aus gespeicherten Werten + Defaults neu aufgebaut; unbekannte/entfernte Keys
   werden ignoriert (keine Migrations-Kette, kein Stale-State).
-- **Custom Agents: komplette Config via AGENT.md-Frontmatter (yml) (2026-08-28, User):** alles
+- **Custom Agents: komplette Config via AGENT.md-Frontmatter (yml) (2026-08-28, User) — ✅ gebaut (2c 2026-09-01):** alles
   Einstellbare (URL, API Key, Modell, Think, JSON extra body) geht auch pro Custom Agent im
-  Frontmatter — gleicher Record, gleiche Auflösung; **Homepage-Doku** dafür ist SOLL (wird mit
-  dem Feature umgesetzt).
+  Frontmatter — gleicher Record, gleiche Auflösung; Keys `url`/`api_key`/`extra_body`,
+  `PromptYmlParser` im core, Auflösung wie die 4 Core-Agents (0 Plugin-Änderungen);
+  **Homepage-Doku** ✅ (2c, `custom-agents.md`).
 - **Known Issue (Bug) — ✅ gelöst (2b, 2026-08-30):** war: URL-Wechsel in der Base-Config macht die Modell-Auswahl der **anderen**
   Agenten ungültig/leer (nur der selektierte Agent wird aktualisiert); heute via Wiederauswahl
   zu reparieren.

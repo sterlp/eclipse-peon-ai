@@ -34,6 +34,9 @@ public final class DropdownTheme {
     public static final RGB LIGHT_BORDER = new RGB(216, 216, 216);
     public static final RGB LIGHT_TEXT = new RGB(0, 0, 0);
 
+    /** Keyboard focus frame color (identical for both themes). */
+    public static final RGB FOCUS_BORDER = new RGB(55, 134, 246);
+
     private static final Map<Display, Map<String, Palette>> CACHE = new ConcurrentHashMap<>();
 
     private DropdownTheme() {
@@ -66,6 +69,7 @@ public final class DropdownTheme {
                     new Color(display, dark ? DARK_ITEM_FOCUS_BG : LIGHT_ITEM_FOCUS_BG),
                     new Color(display, dark ? DARK_BUTTON_FOCUS_BG : LIGHT_BUTTON_FOCUS_BG),
                     new Color(display, dark ? DARK_BORDER : LIGHT_BORDER),
+                    new Color(display, FOCUS_BORDER),
                     new Color(display, dark ? DARK_TEXT : LIGHT_TEXT));
         });
     }
@@ -77,7 +81,9 @@ public final class DropdownTheme {
      * @param itemFocusBg    highlighted (hover/focus) popup row background
      * @param buttonFocusBg  dropdown button hover background
      * @param border         popup border color
+     * @param focusBorder    keyboard focus frame color
      * @param text           popup text color
      */
-    public record Palette(Color popupBg, Color itemFocusBg, Color buttonFocusBg, Color border, Color text) {}
+    public record Palette(Color popupBg, Color itemFocusBg, Color buttonFocusBg, Color border,
+            Color focusBorder, Color text) {}
 }
