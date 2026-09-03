@@ -166,6 +166,9 @@ Keine Pixel-/Paint-Assertions — nur State, Callbacks, Layout-Größen, Positio
   Tests 1–2. (Kein sichtbarer UI-Change.) ✅ `DropdownItem`/`DropdownTheme` + `DropdownItemTest`(3)/`DropdownThemeTest`(4); Suite 133 grün.
 - **inc-2 — `DropdownPopup` v1 (standalone-funktionsfähig):** Zeilen, Hover, Klick-Auswahl,
   Esc/Deactivate-Schließen, Position unter Anchor. Test 3 (Teil).
+  ✅ `DropdownPopup` + `DropdownPopupTest`(2: selectsAndCloses, closesOnDeactivate); Theme-Farben +
+  Rahmen-Paint + Selected-Row-Highlight vorgezogen (standalone-funktionsfähig); Keyboard-Nav/Flip/
+  Clamp/Max-Height/Scrollbar bleiben inc-4. Suite 135 grün.
 - **inc-3 — `DropdownButton` v1:** painted Button, Popup-Toggle, Selection-Callback,
   natürlicher Width, Dispose-Safety. Test 4.
 - **inc-4 — Popup-Polish + Theming:** Keyboard-Nav, `DropdownTheme`-Farben anwenden,
