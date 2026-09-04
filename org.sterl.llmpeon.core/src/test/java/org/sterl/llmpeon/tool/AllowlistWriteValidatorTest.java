@@ -34,6 +34,23 @@ class AllowlistWriteValidatorTest {
     }
 
     @Test
+    void rejectsTraversalThroughDocs() {
+        // Bug-Hunt #9: raw glob match lets a/docs/../../secret.txt through (matches */docs/*);
+        // the normalized path (secret.txt) is outside the allowlist → must throw.
+        var ex = assertThrows(IllegalArgumentException.class,
+                () -> docs.validate("a/docs/../../secret.txt"));
+        assertTrue(ex.getMessage().contains("Write denied"));
+    }
+
+    @Test
+    void rejectsBddTraversalExample() {
+        // Regression pin for the original BDD string: docs/../../secret.txt has no /docs/ substring,
+        // so it never matched */docs/* — already rejected, keep it that way.
+        assertThrows(IllegalArgumentException.class,
+                () -> docs.validate("docs/../../secret.txt"));
+    }
+
+    @Test
     void allowAll_allows_everything() {
         assertDoesNotThrow(() -> WriteValidator.ALLOW_ALL.validate("anything/at/all.bin"));
     }

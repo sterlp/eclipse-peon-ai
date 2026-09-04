@@ -27,6 +27,18 @@ class FileUtilsTest {
         assertThat(FileUtils.normalizePath(value)).isEqualTo(expected);
     }
 
+    @ParameterizedTest
+    @CsvSource({
+        "docs/../../x           , ../x",
+        "a/b/../c               , a/c",
+        "./x                    , x",
+        "/abs/docs/../x.md      , /abs/x.md",
+        "a/docs/../../secret.txt, secret.txt"
+    })
+    void test_normalizeSegments(String value, String expected) {
+        assertThat(FileUtils.normalizeSegments(value)).isEqualTo(expected);
+    }
+
     /** Bug 3: second write must fully replace the file content, not leave stale bytes. */
     @Test
     void writeString_overwritesShorterContent() throws IOException {

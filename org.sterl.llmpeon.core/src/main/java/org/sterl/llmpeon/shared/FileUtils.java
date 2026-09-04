@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayDeque;
 import java.util.Optional;
 
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +18,28 @@ public class FileUtils {
     public static String normalizePath(String value) {
         if (value == null || value.length() == 0) return value;
         return value.replace('\\', '/');
+    }
+
+    /**
+     * Resolves {@code .} and {@code ..} segments in a {@code /}-separated path string, without
+     * touching the file system and without converting separators (unlike {@link java.nio.file.Path#normalize()}).
+     * A leading {@code /} is kept; a {@code ..} beyond the root is kept (POSIX-style).
+     */
+    public static String normalizeSegments(String path) {
+        if (path == null || path.isEmpty()) return path;
+        boolean absolute = path.startsWith("/");
+        var stack = new ArrayDeque<String>();
+        for (String seg : path.split("/")) {
+            if (seg.isEmpty() || seg.equals(".")) continue;
+            if (seg.equals("..")) {
+                if (stack.isEmpty()) stack.addLast("..");
+                else stack.removeLast();
+            } else {
+                stack.addLast(seg);
+            }
+        }
+        String joined = String.join("/", stack);
+        return absolute ? "/" + joined : joined;
     }
     
     public static String makeReltive(String value) {
