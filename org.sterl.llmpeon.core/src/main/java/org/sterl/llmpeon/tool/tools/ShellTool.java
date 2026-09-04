@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import org.sterl.llmpeon.shared.ArgsUtil;
+import org.sterl.llmpeon.shared.SearchQuery;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -29,7 +30,7 @@ public class ShellTool extends AbstractTool {
 
     private static final int DEFAULT_TIMEOUT_S = 60;
     private static final int MAX_OUTPUT_LENGTH = 3000;
-    private static final int DEFAULT_TAIL_LINES = 50;
+    private static final int DEFAULT_TAIL_LINES = 60;
 
     private static volatile UserToolEnvironment userToolEnvironment;
 
@@ -62,14 +63,15 @@ public class ShellTool extends AbstractTool {
             String workingDirectory,
             @P(description = "timeout in seconds, default=" + DEFAULT_TIMEOUT_S, required = false, name = "timeout") 
             Integer timeout,
-            @P(description = "max tail lines, default=" + DEFAULT_TAIL_LINES + " (-1 for all/max); use this instead of `| tail -50`", required = false, name = "tailLines") 
-            Integer tailLines) {
+            @P(description = "max tail lines, default=" + DEFAULT_TAIL_LINES + "; 0 or -1 = all (hard cap " + MAX_OUTPUT_LENGTH + "); use this instead of `| tail -50`", required = false, name = "tailLines") 
+            Integer tailLines,
+            @P(description = "filter output lines (regex, literal fallback) — like `| grep`", name = "filter", required = false) 
+            String filter) {
 
         ArgsUtil.requireNonBlank(command, "command");
         if (timeout == null) timeout = DEFAULT_TIMEOUT_S;
         if (workingDirectory == null) workingDirectory = Path.of(".").toAbsolutePath().toString();
-
-        tailLines = ArgsUtil.getOrDefault(tailLines, DEFAULT_TAIL_LINES);
+        if (tailLines == null) tailLines = DEFAULT_TAIL_LINES;
 
 
         if (confirmationProvider != null) {
@@ -141,7 +143,7 @@ public class ShellTool extends AbstractTool {
                         + "on timeout discarded that buffer. Use the `tailLines` parameter instead of "
                         + "`| tail -N` so output is available even on timeout. Consider a longer timeout.";
                 } else {
-                    partial = tailLines(lines, tailLines);
+                    partial = formatOutput(lines, filter, tailLines).text();
                 }
                 onTool("Command timed out (exit killed) - " + (lines.isEmpty() ? "no output" : lines.size() + " lines captured"));
                 return "Command timed out after " + timeout + "s. Partial output:\n" + partial;
@@ -150,25 +152,26 @@ public class ShellTool extends AbstractTool {
             reader.join(2000);
             int exitCode = process.exitValue();
 
-            String resultStr = tailLines(lines, tailLines);
+            var output = formatOutput(lines, filter, tailLines);
+            String resultStr = output.text();
             if (exitCode != 0) {
                 resultStr += System.lineSeparator() + "Exit code: " + exitCode;
             }
             onTool("Command finished (exit " + exitCode + ") reading " 
-                    + Math.min(lines.size(), tailLines) + " lines ...");
+                    + output.shown() + " lines ...");
             return resultStr;
 
         } catch (IOException e) {
             onProblem("Failed to run: " + command + " " + e.getMessage());
             return "Error executing command: " + e.getMessage()
                 + System.lineSeparator() + "Output so far:" + System.lineSeparator()
-                + tailLines(lines, tailLines);
+                + formatOutput(lines, filter, tailLines).text();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             onTool("Stopped " + command);
             return "Command interrupted: " + e.getMessage()
                 + System.lineSeparator() + "Output so far:" + System.lineSeparator()
-                + tailLines(lines, tailLines);
+                + formatOutput(lines, filter, tailLines).text();
         }
     }
 
@@ -217,19 +220,41 @@ public class ShellTool extends AbstractTool {
     private record UserToolEnvironment(String pathPrefix, String javaHome) {}
 
 
-    private static String tailLines(List<String> lines, Integer maxLines) {
-        if (maxLines == null) maxLines = MAX_OUTPUT_LENGTH;
-        if (maxLines > MAX_OUTPUT_LENGTH) maxLines = MAX_OUTPUT_LENGTH;
-
-        if (maxLines <= 0 || lines.size() <= maxLines) {
-            return String.join(System.lineSeparator(), lines);
+    /**
+     * Applies the optional filter (regex-first, literal fallback) then the tail limit.
+     * When a filter is active the output is prefixed with a disclosure line naming the
+     * pattern, the search mode and how many of the total lines are shown (repo contract:
+     * every truncation/filter is named). {@code shown} = lines actually returned
+     * (after filter + tail).
+     */
+    private static FormattedOutput formatOutput(List<String> allLines, String filter, Integer tailLines) {
+        var query = (filter == null || filter.isBlank()) ? null : SearchQuery.of(filter);
+        List<String> shownLines = (query == null) ? allLines : allLines.stream().filter(query::matches).toList();
+        Tail tail = tail(shownLines, tailLines);
+        String text = tail.text();
+        if (query != null) {
+            String disclosure = "filter: " + query.query() + " (" + (query.literal() ? "literal" : "regex")
+                + ", showing " + tail.shown() + " of " + allLines.size() + " lines)";
+            text = disclosure + System.lineSeparator() + text;
         }
-        int skipped = lines.size() - maxLines;
+        return new FormattedOutput(text, tail.shown());
+    }
+
+    private record FormattedOutput(String text, int shown) {}
+
+    private record Tail(String text, int shown) {}
+
+    private static Tail tail(List<String> lines, Integer maxLines) {
+        int cap = (maxLines == null || maxLines <= 0) ? MAX_OUTPUT_LENGTH : Math.min(maxLines, MAX_OUTPUT_LENGTH);
+        if (lines.size() <= cap) {
+            return new Tail(String.join(System.lineSeparator(), lines), lines.size());
+        }
+        int skipped = lines.size() - cap;
         var sb = new StringBuilder();
         sb.append("... (").append(skipped).append(" lines skipped)").append(System.lineSeparator());
         for (int i = skipped; i < lines.size(); i++) {
             sb.append(lines.get(i)).append(System.lineSeparator());
         }
-        return sb.toString();
+        return new Tail(sb.toString(), cap);
     }
 }
