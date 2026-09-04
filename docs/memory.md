@@ -46,8 +46,11 @@ Dieses File ist die Arbeitsliste — bei jeder Änderung sofort aktualisieren (C
 | inc-5 `fda110d` | #9 AllowlistWriteValidator Normalisierung (Traversal-Bypass) |
 | inc-6 `eb36e77` | #13 showRealtimeAiResponse Default = on |
 | inc-7 `1078a49` | Review-Nachträge: deleted-Count-Tool-Test + Original-Pfad-Assertion + Plan-Marker |
+| inc-8 `f5ab970` | #9f normalizeSegments converts backslashes (mixed-separator traversal) |
+| inc-9 | skill eclipse-dpe + path separator semantics |
 
-**Ground Truth:** Core (Surefire) **589/589** · Plugin (OSGi) **177/177** · 0 rot.
+**Ground Truth:** Core (Surefire) **591/591** · Plugin (OSGi) **177/177** · 0 rot.
+**Shipped (2026-09-04):** Merge `db92e1b` (--no-ff) in `2.7.0-fix` + docs-Commit für das #9-follow-up-SOLL (4 Dateien).
 **Review:** Code korrekt auf allen 3 Seiten; 2 Test-Lücken in inc-7 geschlossen.
 
 **Cleanup-Kandidaten (bewusst nicht angefasst, eigener Zyklus):**
@@ -56,9 +59,8 @@ Dieses File ist die Arbeitsliste — bei jeder Änderung sofort aktualisieren (C
 - Q3-CSV-Bug ist in inc-3 gefixt (war separater Kandidat).
 
 **Nächste Schritte (User):**
-1. **Merge-Entscheidung** für `bug-hunt-2026-09-04` (squash/merge in Base-Branch).
-2. Rest der Triage-Liste: #5–#12, #14, #15 (jeder 🔒-Festigung bedarf) + **Plugin-Hunt** ausstehend.
-3. Untracked `release-notes-2026-09-04.md` + PoDelegateTool-Glättung (Release-Nachlauf) — vom User committen.
+1. Rest der Triage-Liste: #5–#12, #14, #15 (jeder 🔒-Festigung bedarf) + **Plugin-Hunt** ausstehend.
+2. Untracked `release-notes-2026-09-04.md` (Release-Nachlauf) — vom User committen.
 
 ## Entschieden (User 2026-09-04)
 
@@ -68,6 +70,7 @@ Dieses File ist die Arbeitsliste — bei jeder Änderung sofort aktualisieren (C
 - **#3** = null-Allowlist → allow-all vor read-only-Regel (SOLL in custom-agents-design.md).
 - **#4** = ein Turn = eine Startzeit (SOLL bestätigt, UI-Consumer geprüft).
 - **#13** = Default `showRealtimeAiResponse` = on; Loader-Default → `true` (SOLL in streaming-display.md R17).
+- **#9 follow-up** = Normalisierung in `normalizeSegments` = `\`→`/` + `.`/`..`-Auflösung, **unbedingt** auf allen Plattformen (Validator: `/`-Glob ↔ `/`-Pfad, „gleiches mit gleichem"); Tools bleiben unverändert (Windows: `\` nativ verstanden; POSIX: LLM-Vertrag `/`, Worst Case = ehrliches „not found"). **✅ gebaut `f5ab970`** (inc-8, 2 neue Tests, Core 591/591).
 
 ## Ablauf pro Fehler (User-Vorgabe)
 
