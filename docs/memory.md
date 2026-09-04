@@ -4,7 +4,7 @@
 Fehler mit rotem Test **vor** dem Fix; Jon triagt und wählt die Fixes; nur echte Fehler.
 Dieses File ist die Arbeitsliste — bei jeder Änderung sofort aktualisieren (Compact-Schutz).
 
-## Triage-Liste (Status: alle ⏸ auf User-Freigabe, außer #9 = Konflikt)
+## Triage-Liste (2026-09-04: #1, #2, #3, #4, #9, #13 ✅ gebaut + reviewed; Rest offen)
 
 | # | Fehler | Modul | Fix (Jon gewählt) |
 |---|---|---|---|
@@ -32,13 +32,33 @@ Dieses File ist die Arbeitsliste — bei jeder Änderung sofort aktualisieren (C
 - `FileAgentHistoryStore` History-Wipe bei korrupter Zeile — dokumentiert
 - `McpService` Connection-Wipe bei Fehler — dokumentiert
 
-## Scope dieses Zyklus (User 2026-09-04, User kurz weg)
+## Zyklus abgeschlossen (2026-09-04)
 
-**Jetzt bauen:** #1, #2 (+filter), #3, #4, #9, #13 — alle 🔒 entschieden.
-**Später:** #5–#12, #14, #15 + Plugin-Hunt (bleiben auf der Liste oben).
+**Branch `bug-hunt-2026-09-04`** — gebaut + dreiseitig reviewed (Plan↔Code, Docs↔Code, Docs↔Plan) ✅:
 
-**Zyklus-Setup (Jon, AGENTS.md-Standard):** Branch `bug-hunt-2026-09-04`, Auto-Commit pro grünem
-Increment (`inc-N: <summary>` + Assisted-by-Trailer). Finaler Merge = User-Entscheidung.
+| Commit | Inhalt |
+|---|---|
+| inc-0 `29437af` | docs: Bug-Hunt SOLL-Updates |
+| inc-1 `3bd3acb` | #1 applyEdit Count + ehrliche Beschreibungen (disk+eclipse) |
+| inc-2 `72eec78` | #2 ShellTool tail 60/all + `filter` (Regex-first/Literal-Fallback) |
+| inc-3 `8bed72f` | #3 CustomAgent null-Allowlist → all + Inline-CSV-Flattening (Q3) + Homepage |
+| inc-4 `4b3478a` | #4 StreamingBridge startedAt pro Turn |
+| inc-5 `fda110d` | #9 AllowlistWriteValidator Normalisierung (Traversal-Bypass) |
+| inc-6 `eb36e77` | #13 showRealtimeAiResponse Default = on |
+| inc-7 `1078a49` | Review-Nachträge: deleted-Count-Tool-Test + Original-Pfad-Assertion + Plan-Marker |
+
+**Ground Truth:** Core (Surefire) **589/589** · Plugin (OSGi) **177/177** · 0 rot.
+**Review:** Code korrekt auf allen 3 Seiten; 2 Test-Lücken in inc-7 geschlossen.
+
+**Cleanup-Kandidaten (bewusst nicht angefasst, eigener Zyklus):**
+- `StreamingBridge.clock`-Feld redundant (assigned, nie gelesen) — inc-4-Nebenprodukt.
+- `EclipseUtil.editInEditor` Dead Code (0 Referenzen) — nur mechanisch adaptiert.
+- Q3-CSV-Bug ist in inc-3 gefixt (war separater Kandidat).
+
+**Nächste Schritte (User):**
+1. **Merge-Entscheidung** für `bug-hunt-2026-09-04` (squash/merge in Base-Branch).
+2. Rest der Triage-Liste: #5–#12, #14, #15 (jeder 🔒-Festigung bedarf) + **Plugin-Hunt** ausstehend.
+3. Untracked `release-notes-2026-09-04.md` + PoDelegateTool-Glättung (Release-Nachlauf) — vom User committen.
 
 ## Entschieden (User 2026-09-04)
 

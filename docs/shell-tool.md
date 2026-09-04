@@ -6,7 +6,7 @@ dafür). Output-Kontrolle (tail-Limit, Filter) macht das Tool selbst, nicht Shel
 
 ## Business Rules
 
-### R1 — Tail-Limit (❌ specified, 2026-09-04)
+### R1 — Tail-Limit (✅ done, 2026-09-04)
 
 `tailLines` steuert, wie viele der **letzten** Zeilen zurückgegeben werden:
 
@@ -36,11 +36,11 @@ THEN 3000 Zeilen werden zurückgegeben
 AND der Output benennt die Kürzung („1000 lines skipped")
 ```
 
-**Ist-Bug (Bug-Hunt #2):** `-1` wird heute auf Default 50 gemappt (`ArgsUtil.getOrDefault`
+**✅ fixed (Bug-Hunt #2, 2026-09-04):** `-1` wurde heute auf Default 50 gemappt (`ArgsUtil.getOrDefault`
 mappt `<= 0` auf Default) — die innere Methode, die `<= 0 = all` korrekt umsetzt, ist unerreichbar.
 Fix: `-1`/`0` als „all" durchreichen; Default wird 50 → 60.
 
-### R2 — Filter-Parameter (❌ specified, 2026-09-04 — neu)
+### R2 — Filter-Parameter (✅ done, 2026-09-04 — neu)
 
 Optionales `filter` (String) = „| grep" vom Tool selbst:
 

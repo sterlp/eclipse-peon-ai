@@ -47,7 +47,7 @@ tools:                        # optional; absent = all tools
 - `tool/ToolPolicy.enables(allowlist, name)` — `*` / prefix / exact match. Empty/null ⇒ false.
   Eine `null`-Allowlist (kein `tools:`) wird in `CustomAgent.getToolFilter()` **vor** der
   read-only-Regel auf ein allow-all-Predicate gemappt — `ToolPolicy.enables` selbst bleibt strikt
-  (empty/null ⇒ false). **Ist-Bug (Bug-Hunt #3, 2026-09-04):** das Mapping fehlte → ein Custom
+  (empty/null ⇒ false). **✅ fixed (Bug-Hunt #3, 2026-09-04):** das Mapping fehlte → ein Custom
   Agent ohne `tools:` hatte still **keine** Tools.
 - `prompt/PromptYmlParser` — `parseFrontmatter` returns `Map<String,List<String>>` with block-list
   + inline-CSV support; `setFrontmatterValue` writer; `toolAllowlist` / `firstOrDefault` helpers.

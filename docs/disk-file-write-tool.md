@@ -28,7 +28,7 @@ The tool output reports the number of replacements: `replaced N occurrence(s)`.
 `newString = null` deletes the match (`deleted N occurrence(s)`).
 Errors if 0 matches. Errors if oldString equals newString.
 
-**Ist-Bug (Bug-Hunt #1, 2026-09-04):** Javadoc und Tool-Beschreibung (disk **und** Eclipse) sagten
+**✅ fixed (Bug-Hunt #1, 2026-09-04):** Javadoc und Tool-Beschreibung (disk **und** Eclipse) sagten
 „first occurrence" — das Tool log über seine eigene Semantik. SOLL (User): Replace-All + Count-Disclosure;
 identisch in beiden Tool-Familien (ein Verhalten, eine Implementierung).
 

@@ -1,5 +1,8 @@
 # Write-Path Validator
 
+**2026-09-04 (✅ done):** Pfad-Normalisierung vor Glob-Match (Bug-Hunt #9) — Traversal-Bypass
+geschlossen, BDD R1 um Traversal-Fall erweitert.
+
 ## Purpose
 
 Constrain **where an agent may write** without giving it bespoke, agent-specific file tools. The write
