@@ -152,6 +152,13 @@ class LlmConfigLoaderTest {
     }
 
     @Test
+    void loaderDefaultsShowRealtimeAiResponse() {
+        var config = LlmConfigLoader.load(new MapLlmConfigStore());
+
+        assertThat(config.isShowRealtimeAiResponse()).isTrue();
+    }
+
+    @Test
     void loaderParsesInvalidTypedValuesToFallback() {
         var store = new MapLlmConfigStore();
         store.put(LlmConfigKeys.TIMEOUT, "not-a-number");

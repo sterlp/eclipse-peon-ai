@@ -37,7 +37,7 @@ public final class LlmConfigLoader {
                 .configDir(Path.of(store.get(LlmConfigKeys.CONFIG_DIRECTORY, defaultConfigDir())))
                 .diskToolsEnabled(parseBoolean(store.get(LlmConfigKeys.DISK_TOOLS_ENABLED, null), false))
                 .debugMode(parseBoolean(store.get(LlmConfigKeys.LOG_RESPONSE, null), false))
-                .showRealtimeAiResponse(parseBoolean(store.get(LlmConfigKeys.SHOW_REALTIME_AI_RESPONSE, null), false))
+                .showRealtimeAiResponse(parseBoolean(store.get(LlmConfigKeys.SHOW_REALTIME_AI_RESPONSE, null), true))
                 .queryParams(parseCsvMap(store.get(LlmConfigKeys.QUERY_PARAMS, "")))
                 .headerParams(parseCsvMap(store.get(LlmConfigKeys.HEADER_PARAMS, "")))
                 .shellCommandConfirmationRequired(shellConfirmationRequired(store.get(LlmConfigKeys.SHELL_CONFIRMATION_ENABLED, "")))
