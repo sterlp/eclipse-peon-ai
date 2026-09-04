@@ -63,10 +63,11 @@ public class FileUtils {
     }
 
     /**
-     * Replaces exactly one occurrence of {@code oldStr} with {@code newStr} inside {@code content}.
-     * Throws {@link IllegalArgumentException} if there are zero or more than one match.
+     * Replaces <b>all</b> occurrences of {@code oldStr} with {@code newStr} inside {@code content}.
+     * Returns the new content together with the number of replaced occurrences.
+     * Throws {@link IllegalArgumentException} if the strings are identical or nothing matches.
      */
-    public static String applyEdit(String filePath, String content, String oldStr, String newStr) {
+    public static EditResult applyEdit(String filePath, String content, String oldStr, String newStr) {
         if (oldStr.equals(newStr)) throw new IllegalArgumentException("Old and new string is the same.");
 
         String fileLineEnding = dominantLineEnding(content);
@@ -83,7 +84,7 @@ public class FileUtils {
         }
 
         if (content.contains(oldStr)) {
-            return content.replace(oldStr, newStr);
+            return new EditResult(content.replace(oldStr, newStr), countOccurrences(content, oldStr));
         } else {
             throw new IllegalArgumentException(
                     "Bad replace in file: " + filePath + " oldStr: " + fileLineEnding
@@ -91,6 +92,20 @@ public class FileUtils {
                             + "=> not found! Please check your replace. Current content of the file:" + fileLineEnding
                             + content);
         }
+    }
+
+    /** Result of {@link #applyEdit}: the new content and how many occurrences were replaced. */
+    public record EditResult(String content, int count) {}
+
+    /** Non-overlapping occurrences of {@code needle} in {@code content} (0 for an empty needle). */
+    private static int countOccurrences(String content, String needle) {
+        if (needle.isEmpty()) return 0;
+        int count = 0, idx = 0;
+        while ((idx = content.indexOf(needle, idx)) >= 0) {
+            count++;
+            idx += needle.length();
+        }
+        return count;
     }
 
     public static String dominantLineEnding(String content) {

@@ -161,15 +161,15 @@ public class EclipseUtil {
         IDocument document = provider.getDocument(editor.getEditorInput());
         
         var oldDoc = document.get();
-        var newDoc = FileUtils.applyEdit(path, oldDoc, oldContent, newContent);
-        document.set(newDoc);
+        var edit = FileUtils.applyEdit(path, oldDoc, oldContent, newContent);
+        document.set(edit.content());
 
         if (!PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().saveEditor(editor, false)) {
             if (!PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().saveEditor(editor, true)) {
                 throw new IllegalStateException("Failed to save " + path);
             }
         }
-        return new AiFileUpdate(path, oldDoc, newDoc);
+        return new AiFileUpdate(path, oldDoc, edit.content());
     }
 
     /**
