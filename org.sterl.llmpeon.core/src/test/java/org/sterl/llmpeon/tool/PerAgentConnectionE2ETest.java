@@ -153,7 +153,7 @@ class PerAgentConnectionE2ETest {
                 .apiKey("test-key")
                 .build();
         var before = base.withModelConfig(AgentModelConfig.PLAN,
-                new AgentModelConfig(agentStub.getUrl(), null, "plan-model", null, null));
+                new AgentModelConfig(agentStub.getUrl(), null, "plan-model", null, null, null));
         var ccm = new ConfiguredChatModel(before);
         agentStub.queueResponse("before");
 
@@ -170,7 +170,7 @@ class PerAgentConnectionE2ETest {
         try {
             // WHEN — the config edit via the real UI path: withModelConfig → updateConfig → planAgentConfig
             var after = before.withModelConfig(AgentModelConfig.PLAN,
-                    new AgentModelConfig(stub3.getUrl(), null, "plan-model", null, null));
+                    new AgentModelConfig(stub3.getUrl(), null, "plan-model", null, null, null));
             ccm.updateConfig(after);
             agentStub.reset(); // clear the pre-edit capture — any post-edit request would surface again
             stub3.queueResponse("after-1");

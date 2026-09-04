@@ -362,6 +362,23 @@ class CustomAgentServiceTest extends AbstractMemoryFileTest {
     }
 
     @Test
+    void frontmatterTemperature_resolvesLikeCoreSlots() {
+        var cfg = LlmConfig.builder().providerType(AiProvider.OPEN_AI).model("base-model").build();
+        var agent = newAgentWith(cfg, "name: t\ntemperature: 0.4");
+
+        assertThat(agent.getConfig().getTemperature()).isEqualTo(0.4);
+    }
+
+    @Test
+    void frontmatterInvalidTemperature_isIgnored() {
+        var cfg = LlmConfig.builder().providerType(AiProvider.OPEN_AI).model("base-model").build();
+        var agent = newAgentWith(cfg, "name: t\ntemperature: abc");
+
+        assertThat(agent.getConfig().getTemperature()).isNull();
+    }
+
+
+    @Test
     void noModelKeys_inheritsBaseIdentity() {
         // GIVEN an AGENT.md without url/api_key/extra_body
         var cfg = LlmConfig.builder().providerType(AiProvider.OPEN_AI).model("base-model").url("http://base:1234/v1").build();

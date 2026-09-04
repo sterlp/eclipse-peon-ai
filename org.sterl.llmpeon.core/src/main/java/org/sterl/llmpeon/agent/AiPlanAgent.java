@@ -38,11 +38,6 @@ public class AiPlanAgent extends AbstractAgent {
     }
 
     @Override
-    public Double getTemperature() {
-        return configuredModel.getConfig().getPlanTemperature();
-    }
-
-    @Override
     public org.sterl.llmpeon.ai.AgentConfig getConfig() {
         return configuredModel.getConfig().planAgentConfig();
     }

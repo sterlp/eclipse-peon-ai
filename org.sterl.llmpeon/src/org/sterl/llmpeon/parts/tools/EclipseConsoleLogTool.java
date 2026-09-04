@@ -7,7 +7,8 @@ import java.util.Optional;
 import org.eclipse.ui.console.ConsolePlugin;
 import org.eclipse.ui.console.IConsole;
 import org.eclipse.ui.console.TextConsole;
-import org.sterl.llmpeon.shared.FileLines;
+import org.sterl.llmpeon.shared.LogExcerpt;
+import org.sterl.llmpeon.shared.SearchQuery;
 import org.sterl.llmpeon.shared.StringUtil;
 
 import dev.langchain4j.agent.tool.P;
@@ -15,30 +16,35 @@ import dev.langchain4j.agent.tool.Tool;
 
 public class EclipseConsoleLogTool extends AbstractEclipseTool {
 
-    @Tool("Read Eclipse console output. consoleName targets a specific console; lines tails output.")
+    @Tool("Read Eclipse console output. consoleName targets a console; grep filters lines (regex, literal fallback); lines tails the filtered result.")
     public String eclipseReadConsoleLog(
             @P(description = "Name of the console to read. If empty, reads the active console.", required = false, name = "consoleName")
             String consoleName,
             @P(description = "Line count from the end of the log (like tail -n).", required = false, name = "lines")
-            Integer lines) {
+            Integer lines,
+            @P(description = "optional line filter — regex, falls back to literal", required = false, name = "grep")
+            String grep) {
 
         var consoles = consoles();
-        if (lines == null) lines = 50;
+        if (lines == null || lines <= 0) lines = 50;
 
         if (consoles.isEmpty()) {
             return "No message consoles available.";
         }
 
         var targetConsole = getConsole(consoleName, consoles);
-
-        onTool("Reading console " + StringUtil.stripToEmpty(consoleName));
         if (targetConsole.isEmpty()) {
+            onTool("Reading console " + StringUtil.stripToEmpty(consoleName));
             return "Console not found. Available consoles:\n" + eclipseListAvailableConsoles();
-        } else {
-            String content = targetConsole.get().getDocument().get();
-            return targetConsole.get().getName() + ":\n" 
-                    + (StringUtil.hasValue(content) ? FileLines.tail(content, lines) : "empty");
         }
+
+        var console = targetConsole.get();
+        SearchQuery query = StringUtil.hasValue(grep) ? SearchQuery.of(grep) : null;
+        LogExcerpt excerpt = LogExcerpt.of(console.getDocument().get(), lines, query);
+        String message = "Reading console " + console.getName();
+        if (query != null) message += " · grep '" + grep + "'";
+        onTool(message + " · " + excerpt.shown() + " of " + excerpt.matching() + " lines");
+        return excerpt.header(console.getName()) + "\n" + excerpt.text();
     }
 
     private Optional<TextConsole> getConsole(String consoleName, List<TextConsole> consoles) {

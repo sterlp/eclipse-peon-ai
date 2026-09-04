@@ -76,17 +76,6 @@ class AiPlanAgentTest {
     }
 
     @Test
-    void getTemperatureReturnsPlanTemperature() {
-        // GIVEN
-        var config = LlmConfig.builder().planTemperature(1.0).devTemperature(0.6).build();
-        var subject = new AiPlanAgent(config.build(), new ToolService());
-
-        // WHEN / THEN
-        assertThat(subject.getTemperature()).isEqualTo(1.0);
-    }
-
-
-    @Test
     void getAgentModelName_returnsNull_whenNoPlanModelSet() {
         // GIVEN
         var config = LlmConfig.newConfig(AiProvider.OLLAMA, "qwen3", "http://localhost:9999");

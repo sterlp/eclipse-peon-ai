@@ -26,12 +26,14 @@ import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.ITreeSelection;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IWorkingSet;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.ide.IDE;
 import org.eclipse.ui.part.MultiPageEditorPart;
+import org.jspecify.annotations.Nullable;
 import org.eclipse.ui.texteditor.IDocumentProvider;
 import org.eclipse.ui.texteditor.ITextEditor;
 import org.jspecify.annotations.NonNull;
@@ -46,6 +48,10 @@ public class EclipseUtil {
     public static void runInUiThread(Composite parent, Runnable fn) {
         if (parent == null || parent.isDisposed())
             return;
+        if (Display.getCurrent() == parent.getDisplay()) {
+            fn.run();
+            return;
+        }
         parent.getDisplay().asyncExec(() -> {
             if (parent.isDisposed())
                 return;
@@ -55,14 +61,21 @@ public class EclipseUtil {
     
     public static <T> CompletableFuture<T> runInUiThread(Supplier<T> fn) {
         final var result = new CompletableFuture<T>();
-        PlatformUI.getWorkbench().getDisplay().asyncExec(() -> {
-            try {
-                result.complete(fn.get());
-            } catch (Exception e) {
-                result.completeExceptionally(e);
-            }
-        });
+        var display = PlatformUI.getWorkbench().getDisplay();
+        if (Display.getCurrent() == display) {
+            complete(result, fn);
+        } else {
+            display.asyncExec(() -> complete(result, fn));
+        }
         return result;
+    }
+
+    private static <T> void complete(CompletableFuture<T> result, Supplier<T> fn) {
+        try {
+            result.complete(fn.get());
+        } catch (Exception e) {
+            result.completeExceptionally(e);
+        }
     }
 
     public static Path workspacePath() {
@@ -82,7 +95,7 @@ public class EclipseUtil {
      * Run in UI Thread!!
      */
     public static Optional<IEditorPart> getOpenEditor() {
-        if (PlatformUI.getWorkbench() == null) return Optional.empty();
+        if (!PlatformUI.isWorkbenchRunning()) return Optional.empty();
 
         var aww = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
         if (aww == null) return Optional.empty();
@@ -122,7 +135,7 @@ public class EclipseUtil {
      * @return the open {@link IEditorPart}, <code>null</code> if failed to open
      */
     public static IEditorPart openInEditor(IFile file) {
-        if (PlatformUI.getWorkbench() == null) return null;
+        if (!PlatformUI.isWorkbenchRunning()) return null;
         if (PlatformUI.getWorkbench().getActiveWorkbenchWindow() == null) return null;
 
         var page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
@@ -289,6 +302,14 @@ public class EclipseUtil {
             if (!p.isOpen())
                 continue;
             result.add(p);
+        }
+        return result;
+    }
+
+    public static List<IProject> openProjectsPreferring(@Nullable IProject selected) {
+        var result = openProjects();
+        if (selected != null && selected.isOpen() && result.remove(selected)) {
+            result.add(0, selected);
         }
         return result;
     }

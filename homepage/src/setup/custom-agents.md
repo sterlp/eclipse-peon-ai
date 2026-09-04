@@ -71,7 +71,7 @@ Double quotes on the outside would break, because the JSON itself contains doubl
 | `description` | Short summary. |
 | `read-only` | `true` = only non-editing tools are offered (no file writes, no shell). `readOnly` is also accepted. Default: `false`. |
 | `include-default` | `true` = prepend the shared built-in system prompt to this agent's body. Default: `false` (body only). |
-| `temperature` | Override temperature for this agent. Float 0.0–2.0. |
+| `temperature` | Temperature for this agent. Empty or invalid = not sent; a top-level `temperature` in `extra_body` wins. |
 | `handover` | Agent name to hand off to after work is done. Shows a **Handoff → [name]** button when set. Enables workflow chains (e.g. plan → dev → review). |
 | `model` | Optional model override. Changing the model in the UI while this agent is active writes it back here. |
 | `url` | Optional endpoint override for this agent (e.g. a different gateway or a local instance). Omitted/blank = inherits the base connection from Peon Configuration. |

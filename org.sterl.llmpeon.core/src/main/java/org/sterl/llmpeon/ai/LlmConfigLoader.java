@@ -4,7 +4,6 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.sterl.llmpeon.shared.StringUtil;
@@ -16,8 +15,8 @@ import org.sterl.llmpeon.shared.StringUtil;
  * migration chain.
  *
  * <p>Missing base keys fall back to the {@link LlmConfig} defaults; missing per-agent fields fall
- * back to {@code null} (inherit base / provider default). Typed parsing (long/int/boolean/double,
- * CSV maps) happens here, keeping the {@link LlmConfigStore} contract string-only.</p>
+ * back to {@code null} (inherit base / provider default). Typed parsing (long/int/boolean and CSV
+ * maps) happens here, keeping the {@link LlmConfigStore} contract string-only.</p>
  */
 public final class LlmConfigLoader {
 
@@ -37,8 +36,6 @@ public final class LlmConfigLoader {
                 .sendThinkingEnabled(parseBoolean(store.get(LlmConfigKeys.SEND_THINKING_ENABLED, null), true))
                 .configDir(Path.of(store.get(LlmConfigKeys.CONFIG_DIRECTORY, defaultConfigDir())))
                 .diskToolsEnabled(parseBoolean(store.get(LlmConfigKeys.DISK_TOOLS_ENABLED, null), false))
-                .planTemperature(parseDouble(store.get(LlmConfigKeys.PLAN_TEMPERATURE, null), 1.0))
-                .devTemperature(parseDouble(store.get(LlmConfigKeys.DEV_TEMPERATURE, null), 0.6))
                 .debugMode(parseBoolean(store.get(LlmConfigKeys.LOG_RESPONSE, null), false))
                 .showRealtimeAiResponse(parseBoolean(store.get(LlmConfigKeys.SHOW_REALTIME_AI_RESPONSE, null), false))
                 .queryParams(parseCsvMap(store.get(LlmConfigKeys.QUERY_PARAMS, "")))
@@ -52,10 +49,10 @@ public final class LlmConfigLoader {
     private static Map<String, AgentModelConfig> loadModelConfigs(LlmConfigStore store) {
         var baseModel = store.get(LlmConfigKeys.MODEL, null);
         var map = new LinkedHashMap<String, AgentModelConfig>();
-        map.put(AgentModelConfig.DEV, agentRecord(store, AgentModelConfig.DEV, baseModel));
-        for (var id : List.of(AgentModelConfig.PLAN, AgentModelConfig.SEARCH, AgentModelConfig.COMPACT)) {
-            map.put(id, agentRecord(store, id,
-                    StringUtil.stripToNull(store.get(LlmConfigKeys.agentKey(id, LlmConfigKeys.AGENT_FIELD_MODEL), null))));
+        for (var id : AgentModelConfig.CORE_IDS) {
+            String model = AgentModelConfig.DEV.equals(id) ? baseModel
+                    : StringUtil.stripToNull(store.get(LlmConfigKeys.agentKey(id, LlmConfigKeys.AGENT_FIELD_MODEL), null));
+            map.put(id, agentRecord(store, id, model));
         }
         return Map.copyOf(map);
     }
@@ -66,7 +63,8 @@ public final class LlmConfigLoader {
                 StringUtil.stripToNull(store.get(LlmConfigKeys.agentKey(id, LlmConfigKeys.AGENT_FIELD_API_KEY), null)),
                 model,
                 StringUtil.stripToNull(store.get(LlmConfigKeys.agentKey(id, LlmConfigKeys.AGENT_FIELD_THINK), null)),
-                StringUtil.stripToNull(store.get(LlmConfigKeys.agentKey(id, LlmConfigKeys.AGENT_FIELD_EXTRA_BODY), null)));
+                StringUtil.stripToNull(store.get(LlmConfigKeys.agentKey(id, LlmConfigKeys.AGENT_FIELD_EXTRA_BODY), null)),
+                StringUtil.stripToNull(store.get(LlmConfigKeys.agentKey(id, LlmConfigKeys.AGENT_FIELD_TEMPERATURE), null)));
     }
 
     private static String defaultConfigDir() {
@@ -100,15 +98,6 @@ public final class LlmConfigLoader {
     static boolean parseBoolean(String value, boolean fallback) {
         if (value == null || value.isBlank()) return fallback;
         return Boolean.parseBoolean(value.trim());
-    }
-
-    static double parseDouble(String value, double fallback) {
-        if (value == null || value.isBlank()) return fallback;
-        try {
-            return Double.parseDouble(value.trim());
-        } catch (NumberFormatException e) {
-            return fallback;
-        }
     }
 
     /** Parses a {@code k=v,k2=v2} CSV string into an ordered map; blank entries map to an empty value. */

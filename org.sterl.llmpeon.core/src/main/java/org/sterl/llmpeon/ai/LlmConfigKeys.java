@@ -26,8 +26,6 @@ public final class LlmConfigKeys {
     public static final String SHELL_CONFIRMATION_ENABLED = "llm.shellConfirmationEnabled";
     public static final String LOG_RESPONSE             = "llm.logResponse";
     public static final String SHOW_REALTIME_AI_RESPONSE = "llm.showRealtimeAiResponse";
-    public static final String PLAN_TEMPERATURE         = "llm.planTemperature";
-    public static final String DEV_TEMPERATURE          = "llm.devTemperature";
     public static final String QUERY_PARAMS             = "llm.queryParams";
     public static final String HEADER_PARAMS            = "llm.headerParams";
 
@@ -38,6 +36,7 @@ public final class LlmConfigKeys {
     public static final String AGENT_FIELD_API_KEY    = "apiKey";
     public static final String AGENT_FIELD_THINK      = "think";
     public static final String AGENT_FIELD_EXTRA_BODY = "extraBody";
+    public static final String AGENT_FIELD_TEMPERATURE = "temperature";
 
     /** Builds the key {@code llm.agent.<agentId>.<field>}. */
     public static String agentKey(String agentId, String field) {

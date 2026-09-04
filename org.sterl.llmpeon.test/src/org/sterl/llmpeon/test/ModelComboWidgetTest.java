@@ -208,6 +208,11 @@ public class ModelComboWidgetTest extends AbstractUnitTest {
         long deadline = System.currentTimeMillis() + WAIT_TIMEOUT_MS;
         while (System.currentTimeMillis() < deadline) {
             if (condition.getAsBoolean()) return;
+            if (Display.getCurrent() != null) {
+                while (display.readAndDispatch()) {
+                    // Drain UI updates posted by the background model-fetch job.
+                }
+            }
             sleep(50);
         }
         fail(timeoutMessage + " (after " + WAIT_TIMEOUT_MS + "ms)");

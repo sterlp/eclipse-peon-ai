@@ -14,6 +14,7 @@ Different agents can use different models to optimize for cost, speed, or capabi
 
 | Agent | Purpose | Recommended Model Type |
 |-------|---------|----------------------|
+| **PO (Jon)** | Coordinating the agent team and clarifying requirements | Strong conversational and reasoning models (e.g., `Sonnet`) |
 | **Dev (default)** | Implementing the plan / code generation | Reasoning-capable models (e.g., `Sonnet`) |
 | **Plan** | Creating task plans and strategies | Reasoning-capable models (e.g., `Opus`) |
 | **Search** | Finding relevant context and information | Fast, smaller models (e.g., `Haiku`) |
@@ -22,27 +23,27 @@ Different agents can use different models to optimize for cost, speed, or capabi
 ### How It Works
 
 1. The **Dev agent always uses the base model** you configure — this is your primary coding model
-2. Leave a per-agent field empty to inherit the base connection (URL, key) and use the provider's default model
+2. Leave URL or API key empty to inherit it from the base configuration. For the model, an empty **PO** or **Dev** field falls back to the base model; **Plan**, **Search**, and **Compact** use the provider's default model.
 3. Pick a model from the **dropdown** (or type one) to override only that agent's model
 4. The dropdown is filled from your provider's model list, **fetched once per connection** (the agent's effective URL/key). Click **Refresh** to reload the list — a failed refresh keeps the previous one. A model you have already configured stays selected even if it is missing from the fetched list.
 
+Existing installations start with an empty PO slot, which inherits the base configuration. If Jon was previously controlled through the Plan slot, configure the PO slot once after upgrading.
+
 ## Temperature Settings
 
-Temperature controls the randomness of model outputs:
+Every built-in agent — **PO (Jon)**, **Dev**, **Plan**, **Search**, and **Compact** — has its own Temperature field. There is no shared default and no value is inherited between agents.
 
-| Setting | Range | Effect |
-|---------|-------|--------|
-| **Plan Temperature** | 0.6 - 1.0 | Higher = more creative plans; Lower = more deterministic |
-| **Dev Temperature**  | 0.4 - 1.0 | Controls code generation creativity (uses base model) |
-
-- Claude and some other models only accept 1.0.
-- Qwen 3.6 27B usually works best with 1.0 and 0.9
+- **Empty** means unset: Peon omits `temperature` and lets the provider or model choose its default. This is important for GPT-5 and o-series models, which reject non-default temperature values.
+- Search and Compact now send nothing unless their own value is set (previously they implicitly sent `0.3` and `0.2`). To keep the old values, enter them once in the corresponding fields.
+- Enter a number to send that value for this agent. The field is plain text so provider-specific values are not restricted to an artificial slider range.
+- An invalid value is saved but ignored when requests are built; Peon logs a warning and omits `temperature`.
+- A top-level `temperature` in **Extra body (JSON)** wins over the Temperature field and is sent only once.
 
 ## Per-Agent Think
 
 Thinking/reasoning is sent **per request**, so each agent resolves its own value for its provider and model. This solves mixed setups — for example planning with **GPT** (`reasoning.effort=high`) while implementing with **DeepSeek** through an OpenAI-compatible gateway that rejects `reasoning.effort`.
 
-Every built-in agent — **Dev** (the default), **Plan**, **Search** and **Compact** — has its own **Think** field on this page, and every [custom agent](./custom-agents.md) sets the same via its `AGENT.md` frontmatter triple. **Nothing is inherited between agents.**
+Every built-in agent — **PO (Jon)**, **Dev** (the default), **Plan**, **Search** and **Compact** — has its own **Think** field on this page, and every [custom agent](./custom-agents.md) sets the same via its `AGENT.md` frontmatter triple. **Nothing is inherited between agents.**
 
 The Think field takes a single value whose form depends on the base provider:
 

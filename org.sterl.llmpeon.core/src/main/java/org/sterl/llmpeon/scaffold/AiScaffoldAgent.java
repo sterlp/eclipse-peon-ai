@@ -66,11 +66,6 @@ public class AiScaffoldAgent extends org.sterl.llmpeon.agent.AbstractAgent {
     }
 
     @Override
-    public Double getTemperature() {
-        return configuredModel.getConfig().getDevTemperature();
-    }
-
-    @Override
     public org.sterl.llmpeon.ai.AgentConfig getConfig() {
         return configuredModel.getConfig().devAgentConfig();
     }

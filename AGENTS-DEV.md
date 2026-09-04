@@ -47,4 +47,44 @@ Hints for the dev phase, base rules `AGENTS.md`
 - Elegant, expressive modern Java (records, pattern matching, switch expressions, Lombok).
 - **OSGi test constraints:** plugin tests are JUnit 4, new test classes need user approval.
   Run full test suite on timeout
+- On macOS, sum Surefire reports with Perl rather than GNU-only `awk match(..., array)`:
+  `perl -ne 'if (/Tests run: (\d+), Failures: (\d+), Errors: (\d+), Skipped: (\d+)/) {$t+=$1;$f+=$2;$e+=$3;$s+=$4} END {print "Tests=$t Failures=$f Errors=$e Skipped=$s\n"}' target/surefire-reports/*.txt`.
 - Prefer a few high-value assertions over many brittle ones; every assertion should earn its maintenance cost.
+
+## Test honesty (learned 2026-09-03, cycles 2b-1…3b)
+
+These bit us repeatedly in this repo — check them before reporting an increment green:
+
+- **A test that would also pass without the feature is not a test.** Recurring shapes here:
+  cleanup in `finally` running *before* the assertion, assertions on a constant suffix only, or
+  a test that builds the object graph *directly* and thereby bypasses the resolution chain it
+  claims to prove.
+- **Prove falsifiability per test, naming the path the mutation hits** — not "all red under
+  mutation X". A mutation that only flips the filter says nothing about the cropping.
+- **If a test is green before the fix, say so before building it.** Declare it a
+  characterization/regression test in the plan; never present it as proof of the rule. Reporting
+  this as a blocker is the correct move, not a failure.
+- **Never widen scope silently.** Fixes outside the released plan — even correct ones, even
+  one-liners — get reported to the PO first. TABU lists in a plan are binding. (Origin: in cycle
+  2b-2 the dev shipped three extra, factually correct fixes in a file the plan had marked TABU;
+  the fixes were fine, the surprise was not. Since then every plan carries a TABU list and this
+  rule.)
+
+## Repo-specific API traps (verified, don't re-derive)
+
+- `PlatformUI.getWorkbench()` never returns `null` (it throws `IllegalStateException`) — use
+  `PlatformUI.isWorkbenchRunning()`.
+- An `IProject` is never `instanceof IJavaProject` — use `JavaCore.create(project)` + `exists()`.
+- `IProject.isOpen()` already returns `false` for a project that does not exist; no extra
+  `exists()` guard needed.
+- `IResource.refreshLocal` is inherited by `IContainer`; it is long-running and throws
+  `CoreException` → run off the UI thread, log **or** throw, never both.
+- langchain4j serializes `customParameters` via `@JsonAnyGetter` **next to** the typed fields:
+  the same key in the extra body produces a **duplicate JSON key**, not an override. "User body
+  wins" must be implemented explicitly by clearing the typed field
+  (see `docs/adr/0039-temperature-body-precedence.md`).
+- `CompletableFuture.get()` on a future **you cancelled yourself** throws `CancellationException`
+  **unwrapped**, not wrapped in `ExecutionException` — a catch on `ExecutionException` silently
+  misses it (this hid the model-list race, see `docs/adr/0040-model-list-single-flight-secret-masking.md`).
+- More Eclipse-platform know-how lives in `skills/eclipse-dpe/SKILL.md` — read it before
+  guessing, and append new findings **at the end of the file** (do not split an existing bullet).

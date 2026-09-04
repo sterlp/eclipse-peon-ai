@@ -5,7 +5,8 @@ import static org.junit.Assume.assumeTrue;
 import java.io.File;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
@@ -55,17 +56,17 @@ public abstract class AbstractIntegrationTest extends AbstractUnitTest {
     public static void importProjectIntoWorkspace() throws Exception {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
 
+        File dir = PeonTestFixture.dir();
         try {
-            importProject(new File("./").getCanonicalFile());
+            importProject(dir);
         } catch (CoreException e) {
-            System.err.println("importProjectIntoWorkspace: " + e.getMessage());
-            // e.printStackTrace(); -> TODO create minimal test project for testing and importing!!!
-            assumeTrue("Cannot import project (likely Maven/Tycho workspace overlap): " + e.getMessage(), false);
+            throw new IllegalStateException(
+                    "failed to import test fixture " + dir + ": " + e.getMessage(), e);
         }
     }
 
     protected static void importProject(File projectDir) throws Exception {
-        final var latch = new CountDownLatch(1);
+        final var waiter = new CompletableFuture<Void>();
 
         IWorkspace workspace = ResourcesPlugin.getWorkspace();
         IProjectDescription desc = workspace.loadProjectDescription(
@@ -75,16 +76,20 @@ public abstract class AbstractIntegrationTest extends AbstractUnitTest {
 
         project = workspace.getRoot().getProject(desc.getName());
         workspace.run(monitor -> {
-            if (project.exists()) {
-                project.delete(false, true, monitor);
+            try {
+                if (project.exists()) {
+                    project.delete(false, true, monitor);
+                }
+                project.create(desc, monitor);
+                project.open(monitor);
+                project.build(IncrementalProjectBuilder.FULL_BUILD, new NullProgressMonitor());
+                waiter.complete(null);
+            } catch (Exception e) {
+                waiter.completeExceptionally(e);
             }
-            project.create(desc, monitor);
-            project.open(monitor);
-            project.build(IncrementalProjectBuilder.FULL_BUILD, new NullProgressMonitor());
-            latch.countDown();
         }, new NullProgressMonitor());
 
-        latch.await();
+        waiter.get(10, TimeUnit.SECONDS);
     }
 
     protected static boolean isWorkspaceAvailable() {

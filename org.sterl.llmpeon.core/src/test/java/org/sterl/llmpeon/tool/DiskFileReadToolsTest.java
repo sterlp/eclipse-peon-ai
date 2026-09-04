@@ -166,27 +166,21 @@ class DiskFileReadToolsTest {
     }
 
     @Test
-    void readDiskFile_endLineOutOfBoundsReturnsWholeFile() throws IOException {
+    void readDiskFile_endLineBeyondEndIsClamped() throws IOException {
         Files.writeString(tempDir.resolve("lines.txt"), "alpha\nbeta\ngamma");
-        // end line 99 exceeds file length (3 lines) - must return whole file
-        String result = tool.diskReadFile("lines.txt", 1, 99);
-        assertEquals(
-                "   1: alpha\n" +
-                "   2: beta\n" +
-                "   3: gamma\n",
-                result);
+
+        String result = tool.diskReadFile("lines.txt", 2, 99);
+
+        assertEquals("   2: beta\n   3: gamma\n", result);
     }
 
     @Test
-    void readDiskFile_startLineOutOfBoundsReturnsWholeFile() throws IOException {
+    void readDiskFile_startBeyondEndReturnsHint() throws IOException {
         Files.writeString(tempDir.resolve("lines.txt"), "alpha\nbeta\ngamma");
-        // start line 99 exceeds file length (3 lines) - must return whole file
-        String result = tool.diskReadFile("lines.txt", 99, 100);
-        assertEquals(
-                "   1: alpha\n" +
-                "   2: beta\n" +
-                "   3: gamma\n",
-                result);
+
+        String result = tool.diskReadFile("lines.txt", 99, 0);
+
+        assertEquals("file has 3 lines, requested start 99", result);
     }
     
     @Test

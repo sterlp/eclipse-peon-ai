@@ -46,7 +46,7 @@ public class LlmConfig {
     @Default
     private final String model = null;
     /**
-     * Per-agent model configs keyed by agent id ({@code dev}/{@code plan}/{@code search}/{@code compact}).
+     * Per-agent model configs keyed by agent id ({@code dev}/{@code po}/{@code plan}/{@code search}/{@code compact}).
      * Immutable; missing entries resolve to {@link AgentModelConfig#empty()}. The dev model is the base
      * {@link #model} (no separate dev model key).
      */
@@ -59,10 +59,6 @@ public class LlmConfig {
     private final String url = null;
     @Default
     private final int autoCompactAfter = 80000;
-    @Default
-    private final double planTemperature = 1.0;
-    @Default
-    private final double devTemperature = 0.6;
     /**
      * Max output tokens per response. 0 = use the provider/library default.
      * Anthropic's langchain4j default is only 1024, which truncates large
@@ -159,7 +155,8 @@ public class LlmConfig {
                 .provider(providerType)
                 .url(StringUtil.hasValue(rec.url()) ? rec.url() : url)
                 .apiKey(StringUtil.hasValue(rec.apiKey()) ? rec.apiKey() : apiKey)
-                .extraBody(StringUtil.stripToNull(rec.extraBody()));
+                .extraBody(StringUtil.stripToNull(rec.extraBody()))
+                .temperature(AgentTemperature.parse(rec.temperature()));
     }
 
     /** The per-agent config for the given agent id; missing entries resolve to {@link AgentModelConfig#empty()}. */
@@ -191,48 +188,51 @@ public class LlmConfig {
         var dev = modelConfigFor(AgentModelConfig.DEV);
         return agentBuilder(dev).model(model)
                 .id(AgentModelConfig.DEV)
-                .think(dev.think())
-                .temperature(devTemperature).build();
+                .think(dev.think()).build();
     }
 
-    /** Plan agent — model/think from its record (model null = provider default) and plan temperature. */
+    /** PO agent — model falls back to base; remaining fields come from its own record. */
+    public AgentConfig poAgentConfig() {
+        var po = modelConfigFor(AgentModelConfig.PO);
+        return agentBuilder(po).model(StringUtil.hasValue(po.model()) ? po.model() : model)
+                .id(AgentModelConfig.PO)
+                .think(po.think()).build();
+    }
+
+    /** Plan agent — configuration from its own record (model null = provider default). */
     public AgentConfig planAgentConfig() {
         var plan = modelConfigFor(AgentModelConfig.PLAN);
         return agentBuilder(plan).model(plan.model())
                 .id(AgentModelConfig.PLAN)
-                .think(plan.think())
-                .temperature(planTemperature).build();
+                .think(plan.think()).build();
     }
 
-    /** Compactor — model/think from its record. Mirrors {@link org.sterl.llmpeon.agent.AiCompressorAgent}'s temperature. */
+    /** Compactor — configuration from its own record. */
     public AgentConfig compactAgentConfig() {
         var compact = modelConfigFor(AgentModelConfig.COMPACT);
         return agentBuilder(compact).model(compact.model())
                 .id(AgentModelConfig.COMPACT)
-                .think(compact.think())
-                .temperature(devTemperature < 1.0 ? 0.2 : null).build();
+                .think(compact.think()).build();
     }
 
-    /** Search sub-agent — model/think from its record. Mirrors {@link org.sterl.llmpeon.tool.tools.SearchAgentTool}'s temperature. */
+    /** Search sub-agent — configuration from its own record. */
     public AgentConfig searchAgentConfig() {
         var search = modelConfigFor(AgentModelConfig.SEARCH);
         return agentBuilder(search).model(search.model())
                 .id(AgentModelConfig.SEARCH)
-                .think(search.think())
-                .temperature(devTemperature < 1.0 ? 0.3 : null).build();
+                .think(search.think()).build();
     }
 
     /**
      * Custom agent — model/url/key/extraBody from the agent's own {@code AGENT.md} frontmatter
      * record (blank fields inherit the base, resolved by {@link EffectiveConnection}) and think from
-     * its own frontmatter triple (no inheritance). Same resolution path as the four core agents;
+     * its own frontmatter triple (no inheritance). Same resolution path as the five core agents;
      * {@code agentId} is the agent's stable name (per-request metadata, e.g. default cache key).
      */
-    public AgentConfig customAgentConfig(AgentModelConfig rec, String agentId, boolean supported, String on, String off, Double temperature) {
+    public AgentConfig customAgentConfig(AgentModelConfig rec, String agentId, boolean supported, String on, String off) {
         return agentBuilder(rec).model(rec.model())
                 .id(agentId)
-                .think(ThinkResolver.effectiveThink(supported, on, off))
-                .temperature(temperature).build();
+                .think(ThinkResolver.effectiveThink(supported, on, off)).build();
     }
 
     public LlmConfig withModel(String model) {

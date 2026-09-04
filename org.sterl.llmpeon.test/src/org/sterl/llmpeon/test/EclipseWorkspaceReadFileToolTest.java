@@ -22,191 +22,124 @@ public class EclipseWorkspaceReadFileToolTest extends AbstractIntegrationTest {
 
     @Test
     public void test_findReferences() {
-        // GIVEN
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
-        
         var tool = new EclipseCodeNavigationTool();
-        
-        // WHEN
-        var content = tool.eclipseFindReferences(EclipseWorkspaceReadFileToolTest.class.getPackageName(), 
-                EclipseWorkspaceReadFileToolTest.class.getSimpleName(), null, null);
-        
-        // THEN
-        assertContains(content, getClass().getSimpleName() + ".java");
-        assertContains(content, "31");
+
+        var content = tool.eclipseFindReferences(
+                "org.sterl.fixture", "Alpha", null, PeonTestFixture.PROJECT_NAME);
+
+        assertContains(content, "Beta.java");
+        assertContains(content, "5");
     }
 
     @Test
     public void testList() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
-
         var tool = new EclipseBuildTool();
-        
-        // WHEN
+
         var result = tool.eclipseListAllOpenProjects();
-        
-        // THEN
-        assertTrue("Own project not found:\n" + result, result.contains("org.sterl.llmpeon.test"));
+
+        assertTrue("Fixture project not found:\n" + result, result.contains(PeonTestFixture.PROJECT_NAME));
     }
-    
+
     @Test
     public void test_getTypeSource() throws Exception {
-        // GIVEN
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
         var tool = new EclipseCodeNavigationTool();
 
-        // WHEN
         var content = tool.eclipseReadTypeSource(
-                getClass().getPackageName(), 
-                getClass().getSimpleName(), 
-                "org.sterl.llmpeon.test");
-        // THEN
-        assertContains(content, "public void test_getTypeSource()");
+                "org.sterl.fixture", "Alpha", PeonTestFixture.PROJECT_NAME);
+
+        assertContains(content, "public String hello()");
         assertContains(content, " 1: ");
-        assertContains(content, getClass().getSimpleName() + ".java");
+        assertContains(content, "Alpha.java");
     }
-    
+
     @Test
     public void test_getTypeSource_wrong_package() throws Exception {
-        // GIVEN
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
         var tool = new EclipseCodeNavigationTool();
 
-        // WHEN
         var content = tool.eclipseReadTypeSource(
-                "foo.bar", 
-                getClass().getSimpleName(), 
-                "org.sterl.llmpeon.test");
-        // THEN should return a list
-        assertContains(content, getClass().getSimpleName() + ".java");
+                "foo.bar", "Alpha", PeonTestFixture.PROJECT_NAME);
+
+        assertContains(content, "Alpha.java");
     }
 
-    @Test
-    public void searchAndReadSelf() throws Exception {
-        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
-
-        var tool = new EclipseWorkspaceReadFileTool();
-
-        // 1. find this file by name
-        String searchResult = tool.eclipseSearchFiles("EclipseWorkspaceReadFileToolTest", null, 0);
-        assertTrue("Expected to find the test file in workspace: " + searchResult,
-                searchResult.contains(this.getClass().getSimpleName() + ".java"));
-
-        String content = tool.eclipseReadFile(searchResult.split("\n")[0], 0, 0);
-        assertTrue("Expected to read own source, got: " + content.substring(0, Math.min(200, content.length())),
-                content.contains("searchAndReadSelf"));
-    }
-    
     @Test
     public void readUtf8() throws Exception {
-        // GIVEN
         var tool = new EclipseWorkspaceReadFileTool();
 
-        // WHEN
-        var c = tool.eclipseReadFile(JdtUtil.pathOf(project) + "/utf-8-test.txt", null, null);
+        var content = tool.eclipseReadFile(
+                JdtUtil.pathOf(project) + "/data/utf-8-test.txt", null, null);
 
-        // THEN
-        assertEquals("äüß Ö ⚡", c);
+        assertEquals("äüß Ö ⚡", content);
     }
-    
+
     @Test
     public void readIso() throws Exception {
-        // GIVEN
         var tool = new EclipseWorkspaceReadFileTool();
 
-        // WHEN
-        var c = tool.eclipseReadFile(JdtUtil.pathOf(project) + "/iso-test.txt", null, null);
+        var content = tool.eclipseReadFile(
+                JdtUtil.pathOf(project) + "/data/iso-test.txt", null, null);
 
-        // THEN
-        assertEquals("äüß Ö", c);
-    }
-    
-    @Test
-    public void searchWorkspaceFiles_limitRestrictsResults() {
-        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
-        var tool = new EclipseWorkspaceReadFileTool();
-
-        // unlimited should return multiple .java files
-        String all = tool.eclipseSearchFiles("*.java", null, 0);
-        int allCount = all.split("\n").length;
-        assertTrue("Expected more than 1 .java file", allCount > 1);
-        
-        all = tool.eclipseSearchFiles("*.java", project.getName(), 0);
-        allCount = all.split("\n").length;
-        assertTrue("Expected more than 1 .java file", allCount > 1);
-
-        // limit=1 must return exactly 1 result
-        String limited = tool.eclipseSearchFiles("*.java", project.getName(), 1);
-        assertEquals("Expected exactly 1 result with limit=1", 1, limited.split("\n").length);
+        assertEquals("äüß Ö", content);
     }
 
     @Test
     public void test_grepWorkspaceFiles() {
-        // GIVEN
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
-        
         var tool = new EclipseGrepTool();
-        
-        // WHEN
-        var content = tool.eclipseGrepFiles("test_grepWorkspaceFiles()", null, ".java");
-        
-        // THEN
-        assertTrue("Should contain out test:\n" + content, content.contains(getClass().getSimpleName() + ".java"));
+
+        var content = tool.eclipseGrepFiles(
+                "grepMe", PeonTestFixture.PROJECT_NAME, ".java");
+
+        assertTrue("Should contain fixture grep target:\n" + content,
+                content.contains("GrepTarget.java"));
     }
 
     @Test
     public void test_grepWorkspaceFiles_regexPattern() {
-        // GIVEN
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
-        
         var tool = new EclipseGrepTool();
-        
-        // WHEN - regex pattern that should match class declarations like "class EclipseGrepTool"
-        var content = tool.eclipseGrepFiles("class.*Tool", null, ".java");
-        
-        // THEN - should find files with class declarations matching the pattern
-        assertTrue("Regex pattern 'class.*Tool' should match class declarations:\n" + content, 
-                content.contains("EclipseWorkspaceReadFileToolTest.java"));
+
+        var content = tool.eclipseGrepFiles(
+                "class.*Alpha", PeonTestFixture.PROJECT_NAME, ".java");
+
+        assertTrue("Regex should match fixture class declaration:\n" + content,
+                content.contains("Alpha.java"));
     }
 
     @Test
     public void test_grepWorkspaceFiles_regexAlternation() {
-        // GIVEN
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
-        
         var tool = new EclipseGrepTool();
-        
-        // WHEN - regex alternation pattern that should match multiple terms
-        var content = tool.eclipseGrepFiles("JdtUtilDiskPathTest|PeonAiServiceTest", null, ".java");
-        
-        // THEN - should find files matching either term
-        assertTrue("Regex alternation should match:\n" + content, 
-                content.contains("JdtUtilDiskPathTest.java") 
-                && content.contains("PeonAiServiceTest.java"));
+
+        var content = tool.eclipseGrepFiles(
+                "class AlphaBeta|class Alphabet", PeonTestFixture.PROJECT_NAME, ".java");
+
+        assertTrue("Regex alternation should match fixture classes:\n" + content,
+                content.contains("AlphaBeta.java") && content.contains("Alphabet.java"));
     }
 
-    
     @Test
     public void test_readWorkspaceFiles() {
-        // GIVEN
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
         ToolService service = new ToolService();
         service.addTool(new EclipseWorkspaceReadFileTool());
 
-        var tr = ToolExecutionRequest.builder().arguments("")
+        var request = ToolExecutionRequest.builder()
             .name("eclipseReadFile")
-            .arguments("{\"filePath\": \"" + this.getClass().getName().replace(".", "/") + ".java\"}")
+            .arguments("{\"filePath\": \"/test_project/data/lines-120.txt\"}")
             .build();
-        
-        // WHEN
-        var content = service.execute(tr,
+
+        var content = service.execute(request,
                 ToolLoopRequest.builder()
                     .memory(new ThreadSafeMemory())
                     .chatModel(new ConfiguredChatModel(LlmConfig.newOpenAi("foo")))
                     .build());
-        
-        // THEN
-        assertContains(content.text(), 
-                "Hallo meine schöne datei wie geht es dir?");
+
+        assertContains(content.text(), "line 1");
+        assertContains(content.text(), "line 120");
     }
 }

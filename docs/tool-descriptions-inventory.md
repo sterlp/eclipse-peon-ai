@@ -146,7 +146,7 @@ Alle `@Tool`-Beschreibungen folgen einem einheitlichen Muster:
 
 | # | Method | Current Description | Rating | New Description | Why |
 |---|--------|---------------------|--------|-----------------|-----|
-| 43 | `eclipseReadConsoleLog` | `"Read the content of the active console log - available e.g. after a test run to read the test logs."` | ⚠️ okay aber unvollständig | `"Read Eclipse console output. Pass consoleName to target a specific console, or leave empty for the active one. Use lines to tail output (default 50)."` | Parameter-Kontext + use-case |
+| 43 | `eclipseReadConsoleLog` | ✅ **umgesetzt (2b-3, 2026-09-03):** `"Read Eclipse console output. consoleName targets a console; grep filters lines (regex, literal fallback); lines tails the filtered result."` | ✅ done | — | Neuer Parameter `grep` (R3a–R3d, [eclipse-read-tools.md](eclipse-read-tools.md)); `lines` limitiert jetzt die **gefilterten** Zeilen |
 | 44 | `eclipseListAvailableConsoles` | `"List all available consoles - e.g. for eclipse logs console etc."` | ⚠️ zu locker | `"List all open Eclipse consoles by name. Use this to discover console names for eclipseReadConsoleLog."` | Zweck + Referenz zum anderen Tool |
 
 ### PlanReadTool (`org.sterl.llmpeon.parts.tools`)

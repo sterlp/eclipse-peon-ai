@@ -125,8 +125,11 @@ public class JdtUtil {
             IProgressMonitor progressMonitor,
             String project) {
         var p = EclipseUtil.findOpenProject(project);
-        if (p.isPresent() && p.get() instanceof IJavaProject jp) {
-            return findType(packageName, typeQualifiedName, progressMonitor, jp);
+        if (p.isPresent()) {
+            var jp = JavaCore.create(p.get());
+            if (jp != null && jp.exists()) {
+                return findType(packageName, typeQualifiedName, progressMonitor, jp);
+            }
         }
         return findType(packageName, typeQualifiedName, progressMonitor);
     }

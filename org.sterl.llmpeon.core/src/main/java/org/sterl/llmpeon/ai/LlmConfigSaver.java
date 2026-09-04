@@ -9,7 +9,7 @@ import org.sterl.llmpeon.shared.StringUtil;
  *
  * <p>The dev model is the base model — it is written to {@code llm.model} (no separate dev model
  * key). The other agents write their model to {@code llm.agent.<id>.model}. The remaining fields
- * (url/apiKey/think/extraBody) always use the per-agent key scheme.</p>
+ * (url/apiKey/think/extraBody/temperature) always use the per-agent key scheme.</p>
  */
 public final class LlmConfigSaver {
 
@@ -26,6 +26,7 @@ public final class LlmConfigSaver {
         saveOrRemove(store, LlmConfigKeys.agentKey(agentId, LlmConfigKeys.AGENT_FIELD_API_KEY), record.apiKey());
         saveOrRemove(store, LlmConfigKeys.agentKey(agentId, LlmConfigKeys.AGENT_FIELD_THINK), record.think());
         saveOrRemove(store, LlmConfigKeys.agentKey(agentId, LlmConfigKeys.AGENT_FIELD_EXTRA_BODY), record.extraBody());
+        saveOrRemove(store, LlmConfigKeys.agentKey(agentId, LlmConfigKeys.AGENT_FIELD_TEMPERATURE), record.temperature());
     }
 
     private static void saveOrRemove(LlmConfigStore store, String key, String value) {

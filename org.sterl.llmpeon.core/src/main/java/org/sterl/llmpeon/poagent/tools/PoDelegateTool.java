@@ -1,5 +1,7 @@
 package org.sterl.llmpeon.poagent.tools;
 
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Function;
@@ -58,6 +60,8 @@ public class PoDelegateTool extends AbstractTool {
     public static final String ASK_DEV = "askDev";
     public static final String BUILD_WITH_DEV = "buildWithDev";
 
+    private static final DateTimeFormatter COMPLETION_TIME = DateTimeFormatter.ofPattern("HH:mm");
+
     /**
      * Build discipline injected into the Dev slave only when it builds from a
      * released plan.
@@ -95,20 +99,23 @@ public class PoDelegateTool extends AbstractTool {
         return dispatch(plan, prompt, ordersFor.apply(plan));
     }
     
-    @Tool("Wipes all stored memory/chat-history of the Peon-Plan (Da Thinka) agent back to a blank state.")
+    @Tool("Wipe Da Thinka back to blank — the next task is UNRELATED and the old state would only create drift. Use compactPlan instead when the same task continues.")
     public void resetPlan() {
         plan.agent().getMemory().clear();
+        reportAction(plan, "reset");
     }
     
-    @Tool("Compact the session of Peon-Plan (Da Thinka), e.g. before creating a new plan - if the old context still matters.")
+    @Tool("Compact Da Thinka — the SAME task continues but the history got long. Keeps the gist, frees context. Use resetPlan instead when the next task is unrelated.")
     public String compactPlan() {
-        return plan.agent().compressContext(monitor).aiMessage().text()
-                + System.lineSeparator() + contextUsed(plan.agent());
+        plan.agent().compressContext(monitor);
+        reportAction(plan, "compacted");
+        return "Da Thinka compacted. " + contextUsed(plan.agent());
     }
 
-    @Tool(name = PoDelegateTool.PLAN_WITH_PLAN_AGENT, value = "Have your Peon-Plan team member (Da Thinka) write/refine the plan into "
+    @Tool(name = PoDelegateTool.PLAN_WITH_PLAN_AGENT, 
+            value = "Have your Peon-Plan team member (Da Thinka) write/refine the plan into "
             + PeonPaths.PLAN_FILE
-            + " with the plan tools, sliced into small green increments; it plans continuously and asks you if something is unclear. Returns the team member's reply.")
+            + " with the plan tools (can only write a plan file), it plans continuously and asks you if something is unclear. Returns the team member's reply.")
     public String planWithPlanAgent(@P(name = "prompt") String prompt) {
         var orders = new LinkedList<>(ordersFor.apply(plan));
         orders.add(new SimpleContextItem("Plan instructions", PLAN_WRITE_LOOP));
@@ -141,15 +148,17 @@ public class PoDelegateTool extends AbstractTool {
         return dispatch(dev, prompt, orders);
     }
     
-    @Tool("Wipes all stored memory/chat-history of the Peon-Dev (Da Mek) agent back to a blank state.")
+    @Tool("Wipe Da Mek back to blank — the next task is UNRELATED and the old state would only create drift. Use compactDev instead when the same task continues.")
     public void resetDev() {
         dev.agent().getMemory().clear();
+        reportAction(dev, "reset");
     }
     
-    @Tool("Compact the session of Peon-Dev (Da Mek), e.g. before implementing a new plan - if the old context still matters.")
+    @Tool("Compact Da Mek — the SAME task continues but the history got long. Keeps the gist, frees context. Use resetDev instead when the next task is unrelated.")
     public String compactDev() {
-        return dev.agent().compressContext(monitor).aiMessage().text()
-                + System.lineSeparator() + contextUsed(dev.agent());
+        dev.agent().compressContext(monitor);
+        reportAction(dev, "compacted");
+        return "Da Mek compacted. " + contextUsed(dev.agent());
     }
 
     /**
@@ -184,19 +193,30 @@ public class PoDelegateTool extends AbstractTool {
         try {
             ChatResponse response = slave.call(prompt, this.monitor);
             long elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000;
-            onTool(target.uiName() + " done. ("
-                    + StringUtil.humanElapsed(elapsedMillis) + ")");
+            String stats = dispatchStats(slave, elapsedMillis);
+            onTool(target.uiName() + " done. " + stats);
             String answer = response != null
                     ? response.aiMessage().text()
                     : null;
             return StringUtil.hasValue(answer)
-                    ? answer + System.lineSeparator() + contextUsed(slave)
+                    ? answer + System.lineSeparator() + stats
                     : slave.getName() + " team member returned no result";
         } catch (IllegalStateException e) {
             onProblem(target.uiName() + " " + e.getMessage());
             return "Failed: " + target.uiName() + e.getMessage();
         }
     }
+
+    private String dispatchStats(AiAgent agent, long elapsedMillis) {
+        return contextUsed(agent) + " (" + StringUtil.humanElapsed(elapsedMillis)
+                + ", " + LocalTime.now().format(COMPLETION_TIME) + ")";
+    }
+
+    private void reportAction(NamedAgent target, String action) {
+        onTool(target.uiName() + " " + action + ".");
+    }
+
+
 
     private String contextUsed(AiAgent agent) {
         return "Context: " + agent.getMemory().getTotalTokenUsed() + " token - " + agent.tokenContextUsedInPercent() + "% used."; 

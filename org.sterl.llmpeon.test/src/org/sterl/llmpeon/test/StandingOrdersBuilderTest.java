@@ -45,7 +45,7 @@ public class StandingOrdersBuilderTest extends AbstractIntegrationTest {
     @Test
     public void test_AgentsMdService() {
         // GIVEN
-        eclipseWriteFile("AGENTS.md", "(Global Rules)");
+        eclipseWriteFile("/test_project/AGENTS.md", "(Global Rules)");
         
         // WHEN
         aiService.call("Hallo Paul", null);
@@ -137,8 +137,8 @@ public class StandingOrdersBuilderTest extends AbstractIntegrationTest {
     @Test
     public void test_agentsMd_and_agentSpecificMd_both_loaded() {
         // GIVEN a project with AGENTS.md and AGENTS-DEV.md
-        eclipseWriteFile("AGENTS.md", "Test Specifics");
-        eclipseWriteFile("AGENTS-DEV.md", "Dev agent content");
+        eclipseWriteFile("/test_project/AGENTS.md", "Test Specifics");
+        eclipseWriteFile("/test_project/AGENTS-DEV.md", "Dev agent content");
 
         // WHEN standing orders are built
         assertTrue(aiService.setActiveAgent("Peon-Dev"));
@@ -154,8 +154,8 @@ public class StandingOrdersBuilderTest extends AbstractIntegrationTest {
     @Test
     public void test_agentsMd_only_no_agentSpecific() {
         // GIVEN a project with only AGENTS.md (no AGENTS-DEV.md)
-        eclipseWriteFile("AGENTS.md", "Test Specifics");
-        eclipseDeleteResource("AGENTS-DEV.md");
+        eclipseWriteFile("/test_project/AGENTS.md", "Test Specifics");
+        eclipseDeleteResource("/test_project/AGENTS-DEV.md");
 
         // WHEN standing orders are built
         assertTrue(aiService.setActiveAgent("Peon-Dev"));
@@ -171,9 +171,9 @@ public class StandingOrdersBuilderTest extends AbstractIntegrationTest {
     @Test
     public void test_agentSpecificMd_only_no_base() {
         // GIVEN a project with only AGENTS-PLAN.md (no AGENTS.md)
-        eclipseWriteFile("AGENTS-PLAN.md", "Plan agent content");
+        eclipseWriteFile("/test_project/AGENTS-PLAN.md", "Plan agent content");
         // AND Peon-Plan is the active agent
-        eclipseDeleteResource("AGENTS.md");
+        eclipseDeleteResource("/test_project/AGENTS.md");
 
         // WHEN standing orders are built
         assertTrue(aiService.setActiveAgent(AiPlanAgent.NAME));
@@ -188,9 +188,9 @@ public class StandingOrdersBuilderTest extends AbstractIntegrationTest {
     @Test
     public void test_agent_switch_changes_agentSpecificMd() {
         // GIVEN
-        eclipseWriteFile("AGENTS.md", "Test Specifics");
-        eclipseWriteFile("AGENTS-PLAN.md", "Plan agent content");
-        eclipseWriteFile("AGENTS-DEV.md", "Dev agent content");
+        eclipseWriteFile("/test_project/AGENTS.md", "Test Specifics");
+        eclipseWriteFile("/test_project/AGENTS-PLAN.md", "Plan agent content");
+        eclipseWriteFile("/test_project/AGENTS-DEV.md", "Dev agent content");
         
         // AND Peon-Dev is the active agent
         assertTrue(aiService.setActiveAgent("Peon-Dev"));
@@ -217,8 +217,8 @@ public class StandingOrdersBuilderTest extends AbstractIntegrationTest {
     @Test
     public void test_agentSpecificMd_caseInsensitive_fallback() throws CoreException {
         // GIVEN
-        eclipseWriteFile("AGENTS.md", "Test Specifics");
-        eclipseWriteFile("agents-dev.md", "Lowercase dev content");
+        eclipseWriteFile("/test_project/AGENTS.md", "Test Specifics");
+        eclipseWriteFile("/test_project/agents-dev.md", "Lowercase dev content");
 
         // AND Peon-Dev is the active agent
         assertTrue(aiService.setActiveAgent("Peon-Dev"));
@@ -237,8 +237,8 @@ public class StandingOrdersBuilderTest extends AbstractIntegrationTest {
     @Test
     public void test_customAgent_specificMd_loaded() throws CoreException {
         // GIVEN a project with AGENTS.md and AGENTS-Docs-Assistant.md
-        eclipseWriteFile("AGENTS.md", "Test Specifics");
-        eclipseWriteFile("AGENTS-Docs-Assistant.md", "Docs assistant content");
+        eclipseWriteFile("/test_project/AGENTS.md", "Test Specifics");
+        eclipseWriteFile("/test_project/AGENTS-Docs-Assistant.md", "Docs assistant content");
 
         // AND a custom agent "Docs-Assistant" is active
         aiService.setProject(project);

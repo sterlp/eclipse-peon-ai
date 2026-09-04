@@ -50,7 +50,7 @@ public class AiServicePerAgentThinkTest {
                 .model("kimi-k2")
                 .timeout(Duration.ofSeconds(5))
                 .modelConfigs(Map.of(AgentModelConfig.PLAN,
-                        new AgentModelConfig(null, null, "gpt-5.5", "high", null)))
+                        new AgentModelConfig(null, null, "gpt-5.5", "high", null, null)))
                 .build();
 
         new AiDevAgent(model(config), toolService).call("test", null);
@@ -66,7 +66,7 @@ public class AiServicePerAgentThinkTest {
                 .providerType(AiProvider.OPEN_AI_OFFICIAL)
                 .model("kimi-k2")
                 .modelConfigs(Map.of(AgentModelConfig.PLAN,
-                        new AgentModelConfig(null, null, "gpt-5.5", "high", null)))
+                        new AgentModelConfig(null, null, "gpt-5.5", "high", null, null)))
                 .build();
 
         new AiPlanAgent(model(config), toolService).call("test", null);
@@ -83,7 +83,7 @@ public class AiServicePerAgentThinkTest {
                 .timeout(Duration.ofSeconds(5))
                 .model("gpt-5.5")
                 .modelConfigs(Map.of(AgentModelConfig.DEV,
-                        new AgentModelConfig(null, null, null, "medium", null)))
+                        new AgentModelConfig(null, null, null, "medium", null, null)))
                 .build();
 
         new AiDevAgent(model(config), toolService).call("test", null);
@@ -96,10 +96,10 @@ public class AiServicePerAgentThinkTest {
     void customAgent_manualOnString_disablesHeuristic() {
         var cfg = LlmConfig.builder().providerType(AiProvider.OPEN_AI).model("deepseek-chat").build();
         // supported + on="minimal" -> verbatim, no heuristic
-        assertThat(cfg.customAgentConfig(AgentModelConfig.empty().withModel("deepseek-chat"), "custom", true, "minimal", "", null).getThink()).isEqualTo("minimal");
+        assertThat(cfg.customAgentConfig(AgentModelConfig.empty().withModel("deepseek-chat"), "custom", true, "minimal", "").getThink()).isEqualTo("minimal");
         // both empty + supported -> auto marker
-        assertThat(cfg.customAgentConfig(AgentModelConfig.empty().withModel("deepseek-chat"), "custom", true, "", "", null).getThink()).isEqualTo("true");
+        assertThat(cfg.customAgentConfig(AgentModelConfig.empty().withModel("deepseek-chat"), "custom", true, "", "").getThink()).isEqualTo("true");
         // unsupported + off="false" -> verbatim off
-        assertThat(cfg.customAgentConfig(AgentModelConfig.empty().withModel("deepseek-chat"), "custom", false, "", "false", null).getThink()).isEqualTo("false");
+        assertThat(cfg.customAgentConfig(AgentModelConfig.empty().withModel("deepseek-chat"), "custom", false, "", "false").getThink()).isEqualTo("false");
     }
 }

@@ -7,10 +7,25 @@ import org.junit.jupiter.api.Test;
 class LlmConfigSaverTest {
 
     @Test
+    void savesTemperatureUnderAgentKey() {
+        var store = new MapLlmConfigStore();
+        var key = LlmConfigKeys.agentKey(AgentModelConfig.PLAN, LlmConfigKeys.AGENT_FIELD_TEMPERATURE);
+
+        LlmConfigSaver.saveAgentModelConfig(store, AgentModelConfig.PLAN,
+                new AgentModelConfig(null, null, null, null, null, " 0.4 "));
+        assertThat(store.asMap()).containsEntry(key, "0.4");
+
+        LlmConfigSaver.saveAgentModelConfig(store, AgentModelConfig.PLAN,
+                new AgentModelConfig(null, null, null, null, null, " "));
+        assertThat(store.asMap()).doesNotContainKey(key);
+    }
+
+
+    @Test
     void saverWritesSetFieldsTrimmed() {
         // GIVEN a plan record with all fields set (with surrounding whitespace)
         var store = new MapLlmConfigStore();
-        var record = new AgentModelConfig(" http://plan:5678/v1 ", " plan-key ", " opus ", " high ", "{\"a\":1}");
+        var record = new AgentModelConfig(" http://plan:5678/v1 ", " plan-key ", " opus ", " high ", "{\"a\":1}", null);
 
         // WHEN
         LlmConfigSaver.saveAgentModelConfig(store, AgentModelConfig.PLAN, record);
@@ -29,7 +44,7 @@ class LlmConfigSaverTest {
         var store = new MapLlmConfigStore();
         store.put(LlmConfigKeys.agentKey(AgentModelConfig.PLAN, LlmConfigKeys.AGENT_FIELD_URL), "http://old/v1");
         store.put(LlmConfigKeys.agentKey(AgentModelConfig.PLAN, LlmConfigKeys.AGENT_FIELD_API_KEY), "old-key");
-        var record = new AgentModelConfig("   ", null, "opus", "high", null);
+        var record = new AgentModelConfig("   ", null, "opus", "high", null, null);
 
         // WHEN
         LlmConfigSaver.saveAgentModelConfig(store, AgentModelConfig.PLAN, record);
@@ -45,7 +60,7 @@ class LlmConfigSaverTest {
     void saverDevModelUsesBaseKey() {
         // GIVEN a dev record with a model
         var store = new MapLlmConfigStore();
-        var record = new AgentModelConfig(null, null, "gpt-4o", "true", null);
+        var record = new AgentModelConfig(null, null, "gpt-4o", "true", null, null);
 
         // WHEN
         LlmConfigSaver.saveAgentModelConfig(store, AgentModelConfig.DEV, record);
@@ -61,7 +76,7 @@ class LlmConfigSaverTest {
     void saverNonDevModelUsesAgentKey() {
         // GIVEN a compact record with a model
         var store = new MapLlmConfigStore();
-        var record = new AgentModelConfig(null, null, "compact-model", null, null);
+        var record = new AgentModelConfig(null, null, "compact-model", null, null, null);
 
         // WHEN
         LlmConfigSaver.saveAgentModelConfig(store, AgentModelConfig.COMPACT, record);
@@ -72,9 +87,26 @@ class LlmConfigSaverTest {
     }
 
     @Test
+    void savesPoUnderPoAgentKeys() {
+        // Characterization: the generic saver must preserve the PO key schema.
+        var store = new MapLlmConfigStore();
+        var record = new AgentModelConfig("http://po/v1", "po-key", "claude-x", "high", "{\"foo\":1}", null);
+
+        LlmConfigSaver.saveAgentModelConfig(store, AgentModelConfig.PO, record);
+
+        assertThat(store.asMap())
+                .containsEntry(LlmConfigKeys.agentKey(AgentModelConfig.PO, LlmConfigKeys.AGENT_FIELD_MODEL), "claude-x")
+                .containsEntry(LlmConfigKeys.agentKey(AgentModelConfig.PO, LlmConfigKeys.AGENT_FIELD_URL), "http://po/v1")
+                .containsEntry(LlmConfigKeys.agentKey(AgentModelConfig.PO, LlmConfigKeys.AGENT_FIELD_API_KEY), "po-key")
+                .containsEntry(LlmConfigKeys.agentKey(AgentModelConfig.PO, LlmConfigKeys.AGENT_FIELD_THINK), "high")
+                .containsEntry(LlmConfigKeys.agentKey(AgentModelConfig.PO, LlmConfigKeys.AGENT_FIELD_EXTRA_BODY), "{\"foo\":1}")
+                .doesNotContainKey(LlmConfigKeys.MODEL);
+    }
+
+    @Test
     void roundtripStable() {
         // GIVEN a fully-set plan record
-        var record = new AgentModelConfig("http://plan:5678/v1", "plan-key", "opus", "high", "{\"a\":1}");
+        var record = new AgentModelConfig("http://plan:5678/v1", "plan-key", "opus", "high", "{\"a\":1}", null);
 
         // WHEN saved and reloaded
         var store = new MapLlmConfigStore();
@@ -88,7 +120,7 @@ class LlmConfigSaverTest {
     @Test
     void roundtripDevStable() {
         // GIVEN a fully-set dev record (model lands on the base key)
-        var record = new AgentModelConfig("http://dev:1234/v1", "dev-key", "gpt-4o", "medium", null);
+        var record = new AgentModelConfig("http://dev:1234/v1", "dev-key", "gpt-4o", "medium", null, null);
 
         // WHEN saved and reloaded
         var store = new MapLlmConfigStore();

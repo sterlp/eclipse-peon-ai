@@ -20,26 +20,26 @@
       </page>
       <page
             id="org.sterl.llmpeon.prefs.AiConfig"
-            name="Peon Configuration"
+            name="Peon configuration"
             category="org.sterl.llmpeon.prefs.AiPeon"
             class="org.sterl.llmpeon.parts.config.AiConfigPreferenceView">
       </page>
       
       <page
             id="org.sterl.llmpeon.prefs.AiAdvanced"
-            name="Peon Advanced Configuration"
+            name="Peon expert configuration"
             category="org.sterl.llmpeon.prefs.AiPeon"
             class="org.sterl.llmpeon.parts.config.AiAdvancedPreferenceView">
       </page>
       <page
             id="org.sterl.llmpeon.prefs.McpConfig"
-            name="Peon MCP Configuration"
+            name="Peon MCP configuration"
             category="org.sterl.llmpeon.prefs.AiPeon"
             class="org.sterl.llmpeon.parts.config.McpPreferenceView">
       </page>
       <page
             id="org.sterl.llmpeon.prefs.VoiceConfig"
-            name="Peon Voice Configuration"
+            name="Peon voice configuration"
             category="org.sterl.llmpeon.prefs.AiPeon"
             class="org.sterl.llmpeon.parts.config.VoicePreferenceView">
       </page>

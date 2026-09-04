@@ -36,12 +36,6 @@ public class SimplePromptFile {
     public String firstOrDefault(String name, String def) {
         return PromptYmlParser.firstOrDefault(frontmatter, name, def);
     }
-    public Double firstOrDefaultNumber(@NonNull String key, Double def) {
-        var result = firstOrDefault(key, null);
-        if (result == null)
-            return def;
-        return Double.parseDouble(result);
-    }
     public @Nullable List<String> get(String name) {
         return PromptYmlParser.getValue(frontmatter, name);
     }

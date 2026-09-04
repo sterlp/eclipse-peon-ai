@@ -138,6 +138,7 @@ class ModelListCacheTest {
         var attempts = new AtomicInteger();
         var started = new CountDownLatch(1);
         var release = new CountDownLatch(1);
+        var waiterStarted = new CountDownLatch(1);
         Supplier<List<AiModel>> fetcher = () -> {
             if (attempts.getAndIncrement() == 0) {
                 started.countDown();
@@ -151,10 +152,15 @@ class ModelListCacheTest {
         var result1 = new AtomicReference<List<AiModel>>();
         var result2 = new AtomicReference<List<AiModel>>();
         var t1 = new Thread(() -> result1.set(cache.getOrFetch(idA, fetcher)));
-        var t2 = new Thread(() -> result2.set(cache.getOrFetch(idA, fetcher)));
+        var t2 = new Thread(() -> {
+            waiterStarted.countDown();
+            result2.set(cache.getOrFetch(idA, fetcher));
+        });
         t1.start();
         started.await();
         t2.start();
+        waiterStarted.await();
+        while (t2.getState() != Thread.State.WAITING) Thread.onSpinWait();
         release.countDown();
         t1.join();
         t2.join();

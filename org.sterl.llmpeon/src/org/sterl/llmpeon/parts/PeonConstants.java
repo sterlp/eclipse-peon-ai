@@ -23,8 +23,6 @@ public interface PeonConstants {
 
     String PREF_LOG_RESPONSE       = LlmConfigKeys.LOG_RESPONSE;
     String PREF_SHOW_REALTIME_AI_RESPONSE = LlmConfigKeys.SHOW_REALTIME_AI_RESPONSE;
-    String PREF_PLAN_TEMPERATURE   = LlmConfigKeys.PLAN_TEMPERATURE;
-    String PREF_DEV_TEMPERATURE    = LlmConfigKeys.DEV_TEMPERATURE;
     String PREF_QUERY_PARAMS       = LlmConfigKeys.QUERY_PARAMS;
     String PREF_HEADER_PARAMS      = LlmConfigKeys.HEADER_PARAMS;
 

@@ -94,6 +94,48 @@ class FileLinesTest {
     }
 
     @Test
+    void clampsEndLineToFileEnd() {
+        String content = java.util.stream.IntStream.rangeClosed(1, 120)
+                .mapToObj(i -> "line " + i).collect(java.util.stream.Collectors.joining("\n"));
+
+        String result = FileLines.extract(content, 100, 900);
+
+        assertEquals(21, result.lines().count());
+        org.junit.jupiter.api.Assertions.assertTrue(result.startsWith(" 100: line 100\n"));
+        org.junit.jupiter.api.Assertions.assertTrue(result.endsWith(" 120: line 120\n"));
+    }
+
+    @Test
+    void startBeyondEndReturnsHint() {
+        String content = java.util.stream.IntStream.rangeClosed(1, 120)
+                .mapToObj(i -> "line " + i).collect(java.util.stream.Collectors.joining("\n"));
+
+        assertEquals("file has 120 lines, requested start 800", FileLines.extract(content, 800, 0));
+    }
+
+    @Test
+    void swapsBoundsBeforeClamping() {
+        String content = java.util.stream.IntStream.rangeClosed(1, 120)
+                .mapToObj(i -> "line " + i).collect(java.util.stream.Collectors.joining("\n"));
+
+        String result = FileLines.extract(content, 900, 100);
+
+        assertEquals(21, result.lines().count());
+        org.junit.jupiter.api.Assertions.assertTrue(result.startsWith(" 100: line 100\n"));
+        org.junit.jupiter.api.Assertions.assertTrue(result.endsWith(" 120: line 120\n"));
+    }
+
+
+    @Test
+    void existingBehaviourUnchanged() {
+        String content = "alpha\nbeta\ngamma";
+
+        assertEquals(content, FileLines.extract(content, 0, 0));
+        assertEquals("   2: beta\n   3: gamma\n", FileLines.extract(content, 3, 2));
+        assertEquals("   2: beta\n", FileLines.extract(content, 2, 2));
+    }
+
+    @Test
     void testTailShorterThanRequested() {
         assertEquals("a\nb", FileLines.tail("a\nb", 5));
     }

@@ -5,9 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.AiProvider;
+import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.poagent.AiPoAgent;
 import org.sterl.llmpeon.tool.ToolService;
@@ -90,5 +93,34 @@ class AiPoAgentTest {
         var config = LlmConfig.newConfig(AiProvider.OLLAMA, "m", "http://localhost:9999");
         assertSame(WriteValidator.ALLOW_ALL,
                 new AiDevAgent(config.build(), new ToolService()).getWriteValidator());
+    }
+
+    @Test
+    void agentModelName_defaultsToBaseModel_whenPoSlotEmpty() {
+        var agent = newAgent();
+
+        assertThat(agent.getAgentModelName()).isEqualTo("test-model");
+    }
+
+    @Test
+    void setAgentModelName_writesPoSlot_notPlanSlot() {
+        var model = LlmConfig.newConfig(AiProvider.OLLAMA, "base-model", "http://localhost:9999").build();
+        var agent = new AiPoAgent(model, new ToolService());
+
+        assertThat(agent.setAgentModelName("claude-x")).isTrue();
+        assertThat(model.getConfig().modelConfigFor(AgentModelConfig.PO).model()).isEqualTo("claude-x");
+        assertThat(model.getConfig().modelConfigFor(AgentModelConfig.PLAN).model()).isNull();
+    }
+
+    @Test
+    void isThinkSupported_readsPoSlot_notPlan() {
+        var config = LlmConfig.builder().providerType(AiProvider.OLLAMA).model("base-model")
+                .url("http://localhost:9999")
+                .modelConfigs(Map.of(AgentModelConfig.PLAN,
+                        new AgentModelConfig(null, null, null, "high", null, null)))
+                .build();
+        var agent = new AiPoAgent(new ConfiguredChatModel(config), new ToolService());
+
+        assertThat(agent.isThinkSupported()).isFalse();
     }
 }

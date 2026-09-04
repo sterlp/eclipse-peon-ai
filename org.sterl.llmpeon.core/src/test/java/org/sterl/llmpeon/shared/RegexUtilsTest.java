@@ -10,18 +10,6 @@ import org.junit.jupiter.api.Test;
 public class RegexUtilsTest {
 
     @Test
-    void testIsRegexPattern() {
-        assertTrue(RegexUtils.isRegexPattern("class.*Tool"));
-        assertTrue(RegexUtils.isRegexPattern("foo|bar"));
-        assertTrue(RegexUtils.isRegexPattern("foo+bar"));
-        assertTrue(RegexUtils.isRegexPattern("^start"));
-        assertTrue(RegexUtils.isRegexPattern("end$"));
-        assertFalse(RegexUtils.isRegexPattern("test_grep_workspace"));
-        assertFalse(RegexUtils.isRegexPattern("simpleText"));
-        assertFalse(RegexUtils.isRegexPattern("test()"));
-    }
-
-    @Test
     void testCountOccurrencesLiteral() {
         String content = "public class Foo\npublic class Bar\nprivate class Baz";
         assertEquals(3, RegexUtils.countOccurrences(content, "class"));
@@ -41,11 +29,6 @@ public class RegexUtilsTest {
     void testCountOccurrencesAlternation() {
         String content = "onThinkToggle()\nthinkEnabledPreference\nPREF_ENABLED";
         assertEquals(3, RegexUtils.countOccurrences(content, "onThinkToggle|thinkEnabledPreference|PREF_"));
-    }
-
-    @Test
-    void testCountOccurrencesInvalidRegex() {
-        assertEquals(0, RegexUtils.countOccurrences("some text", "[invalid"));
     }
 
     @Test

@@ -41,12 +41,16 @@ green** (`org.sterl.llmpeon.core`/`.test`):
   like Peon-Scaffold, is registered in the **plugin** via `PeonAiService.addPersistentAgent` (he needs
   a plugin-assembled, docs-only `ToolService`), not in the core `withDefaultAgent` block that seeds
   `activeAgent = devAgent`.
-- **Own model on the plan slot.** Jon reads/writes his model through the **plan model slot**
-  (`planModel`) and **defaults to the dev/main model** when it is unset; the pick persists to
-  `PREF_PLAN_MODEL`. This fixes the *"No model configured"* seen when Jon was opened first — root
-  cause: `AiPoAgent` used to inherit the no-op `setAgentModelName` default, so the auto-selected
-  model was dropped (test `test_po_model_uses_plan_slot_and_defaults_to_dev_model`,
-  [ADR-0023](adr/0023-po-model-plan-slot.md)).
+- **Own model slot (✅ 3a, 2026-09-03).** Jon liest/schreibt sein Modell über den **eigenen
+  `po`-Slot** (`llm.agent.po.*`) und fällt bei leerem Slot auf das **Base-Modell** zurück —
+  „No model configured" kann damit weiterhin nicht auftreten. **Kein** Rückfall auf den
+  Plan-Slot (Test `test_po_model_uses_po_slot_and_defaults_to_base_model`,
+  [ADR-0036](adr/0036-po-own-model-slot.md), SOLL in
+  [advanced-configuration.md](advanced-configuration.md) R-PO1…R-PO4).
+  *Historisch (bis 3a): Jon teilte sich den Plan-Slot — [ADR-0023](adr/0023-po-model-plan-slot.md),
+  superseded.*
+  Offen bis 3b: die **Temperature** ist noch ein Base-Level-Key (`getPlanTemperature()`), kein
+  Slot-Feld.
 - **docs/index.md via History (SOLL 2026-08-16, ✅ 2026-08-16).** ~~First-message-Seeding~~ wird ersetzt:
   `docs/index.md` (und `docs/memory.md`) kommen als **Dynamic Context** in Jons Chat History via
   `turnContextSupplier` — einmal pro vollem Pfad, als eigene Message **vor** der User-Message, neu

@@ -79,7 +79,7 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
     @Test
     public void test_turnContext_planReference_onlyWhenPlanExists() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
-        eclipseWriteFile(PlanTool.OVERVIEW_FILE, "# A Plan");
+        eclipseWriteFile("/test_project/" + PlanTool.OVERVIEW_FILE, "# A Plan");
 
         // WHEN a plan exists on disk
         var items = sut.turnContext();
@@ -91,7 +91,7 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
         assertNotNull(planItem.get().dedupKey());
 
         // AND: without a plan file there is no item
-        eclipseDeleteResource(PlanTool.OVERVIEW_FILE);
+        eclipseDeleteResource("/test_project/" + PlanTool.OVERVIEW_FILE);
         var withoutPlan = sut.turnContext();
         assertFalse(withoutPlan.stream().anyMatch(i -> i.dedupKey() != null
                 && i.dedupKey().contains(PlanTool.OVERVIEW_FILE)));

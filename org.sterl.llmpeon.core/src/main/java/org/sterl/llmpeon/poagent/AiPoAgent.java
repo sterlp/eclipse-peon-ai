@@ -24,7 +24,7 @@ import org.sterl.llmpeon.tool.WriteValidator;
 /**
  * Peon-PO ("Jon") — a docs-owning agent. Reads freely, writes only under docs/ (via
  * {@link WriteValidator#DOCS}). Unlike {@link AiPlanAgent} he keeps the edit tools (the validator, not
- * a tool filter, scopes him). Reuses the plan {@link AgentConfig} for provider/think/temperature.
+ * a tool filter, scopes him). Uses his own {@link AgentConfig} for provider/model/think.
  */
 public class AiPoAgent extends AbstractAgent {
 
@@ -93,38 +93,28 @@ public class AiPoAgent extends AbstractAgent {
     }
 
     @Override
-    public Double getTemperature() {
-        return configuredModel.getConfig().getPlanTemperature();
-    }
-
-    @Override
     public AgentConfig getConfig() {
-        var cfg = configuredModel.getConfig();
-        var plan = cfg.planAgentConfig();
-        // Jon uses the plan model slot; when it is unset he falls back to the dev/default model.
-        return StringUtil.hasValue(plan.getModel())
-                ? plan
-                : plan.toBuilder().model(cfg.getModel()).build();
+        return configuredModel.getConfig().poAgentConfig();
     }
 
     @Override
     public boolean isThinkSupported() {
-        return !ThinkResolver.isOff(configuredModel.getConfig().modelConfigFor(AgentModelConfig.PLAN).think());
+        return !ThinkResolver.isOff(configuredModel.getConfig().modelConfigFor(AgentModelConfig.PO).think());
     }
 
     @Override
     public String getAgentModelName() {
         var cfg = configuredModel.getConfig();
-        var plan = cfg.modelConfigFor(AgentModelConfig.PLAN).model();
-        return StringUtil.hasValue(plan) ? plan : cfg.getModel();
+        var po = cfg.modelConfigFor(AgentModelConfig.PO).model();
+        return StringUtil.hasValue(po) ? po : cfg.getModel();
     }
 
     @Override
     public boolean setAgentModelName(String modelName) {
         var cfg = configuredModel.getConfig();
-        var plan = cfg.modelConfigFor(AgentModelConfig.PLAN);
-        if (Objects.equals(modelName, plan.model())) return false;
-        this.configuredModel.updateConfig(cfg.withModelConfig(AgentModelConfig.PLAN, plan.withModel(modelName)));
+        var po = cfg.modelConfigFor(AgentModelConfig.PO);
+        if (Objects.equals(modelName, po.model())) return false;
+        this.configuredModel.updateConfig(cfg.withModelConfig(AgentModelConfig.PO, po.withModel(modelName)));
         return true;
     }
 }

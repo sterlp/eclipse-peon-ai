@@ -36,11 +36,6 @@ public class AiDevAgent extends AbstractAgent {
     }
 
     @Override
-    public Double getTemperature() {
-        return configuredModel.getConfig().getDevTemperature();
-    }
-
-    @Override
     public String getAgentModelName() {
         return configuredModel.getConfig().getModel();
     }

@@ -2,18 +2,22 @@ package org.sterl.llmpeon.parts.tools;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.Set;
+import java.util.List;
 
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IResourceVisitor;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.ILog;
+import org.eclipse.core.runtime.Platform;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.ArgsUtil;
-import org.sterl.llmpeon.shared.RegexUtils;
+import org.sterl.llmpeon.shared.SearchQuery;
 import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.shared.TextFileTypes;
 import org.sterl.llmpeon.tool.AiReponseBuilder;
 
 import dev.langchain4j.agent.tool.P;
@@ -21,7 +25,13 @@ import dev.langchain4j.agent.tool.Tool;
 
 public class EclipseGrepTool extends AbstractEclipseTool {
 
-    private static final int MAX_FILES = 100;
+    private static final ILog LOG = Platform.getLog(EclipseGrepTool.class);
+
+    private IProject currentProject;
+
+    public void setCurrentProject(IProject currentProject) {
+        this.currentProject = currentProject;
+    }
 
     @Tool("Search Eclipse workspace files for text. Scope to project path and file extension.")
     public String eclipseGrepFiles(
@@ -31,13 +41,18 @@ public class EclipseGrepTool extends AbstractEclipseTool {
 
         ArgsUtil.requireNonBlank(query, "query");
 
+        var searchQuery = SearchQuery.of(query);
         var allProjects = path == null || path.length() <= 1;
         var matches = new LinkedHashMap<String, Integer>(); // file path -> count
 
         // Determine containers to search
         var containers = new ArrayList<IContainer>();
+        var refreshTargets = new ArrayList<IContainer>();
         if (allProjects) {
-            containers.addAll(EclipseUtil.openProjects());
+            containers.addAll(EclipseUtil.openProjectsPreferring(currentProject));
+            if (currentProject != null && currentProject.isOpen()) {
+                refreshTargets.add(currentProject);
+            }
         } else {
             var resource = EclipseUtil.resolveInEclipse(path);
             if (resource.isEmpty()) {
@@ -45,8 +60,9 @@ public class EclipseGrepTool extends AbstractEclipseTool {
             }
             if (resource.get() instanceof IContainer c) {
                 containers.add(c);
+                refreshTargets.add(c);
             } else if (resource.get() instanceof IFile f) {
-                int count = countOccurrences(f, query);
+                int count = countOccurrences(f, searchQuery);
                 if (count > 0) matches.put(JdtUtil.pathOf(resource.get()), count);
             } else {
                 onProblem("Eclipse grep could not read " + JdtUtil.pathOf(resource.get()));
@@ -54,18 +70,40 @@ public class EclipseGrepTool extends AbstractEclipseTool {
             }
         }
 
-        for (IContainer container : containers) {
+        searchScope(containers, extension, searchQuery, matches);
+        if (matches.isEmpty() && !refreshTargets.isEmpty()) {
+            refreshScope(refreshTargets);
+            searchScope(containers, extension, searchQuery, matches);
+        }
+
+        onTool("Eclipse grep '" + query + "' type '" + StringUtil.getOrDefault(extension, "*")
+                + "' found " + matches.size() + " matches");
+
+        String result = AiReponseBuilder.grepComplete(
+                matches, searchQuery, AiReponseBuilder.MAX_GREP_FILES, extension);
+        if (matches.isEmpty()) {
+            var searchedScope = allProjects ? "all open projects (" + containers.size() + ")" : path;
+            result += System.lineSeparator() + "Searched: " + searchedScope + " · pattern: " + query;
+        }
+        return result;
+    }
+
+    private void searchScope(List<IContainer> scope, String extension, SearchQuery searchQuery,
+            LinkedHashMap<String, Integer> matches) {
+        for (IContainer container : scope) {
             try {
                 container.accept(new IResourceVisitor() {
                     @Override
                     public boolean visit(IResource resource) {
-                        if (matches.size() >= MAX_FILES) return false;
+                        if (matches.size() >= AiReponseBuilder.MAX_GREP_FILES) return false;
                         if (resource.isDerived()) return false;
                         if (!isNotDerived(JdtUtil.pathOf(resource))) return false;
 
                         if (resource.getType() == IResource.FILE && resource instanceof IFile file) {
-                            if (isTextFile(file, extension)) {
-                                int count = countOccurrences(file, query);
+                            if (StringUtil.hasValue(extension)
+                                    ? file.getName().toLowerCase().endsWith(extension.trim().toLowerCase())
+                                    : TextFileTypes.isTextFile(file.getName())) {
+                                int count = countOccurrences(file, searchQuery);
                                 if (count > 0) matches.put(JdtUtil.pathOf(file), count);
                             }
                         }
@@ -75,41 +113,24 @@ public class EclipseGrepTool extends AbstractEclipseTool {
             } catch (CoreException e) {
                 // skip container on error
             }
-            if (matches.size() >= MAX_FILES) break;
+            if (matches.size() >= AiReponseBuilder.MAX_GREP_FILES) break;
         }
-
-        onTool("Eclipse grep '" + query + "' type '" + StringUtil.getOrDefault(extension, "*")
-                + "' found " + matches.size() + " matches");
-
-        String suffix = null;
-        if (matches.size() >= MAX_FILES) {
-            suffix = "... result capped at " + MAX_FILES + " files. Narrow your search path.";
-        }
-        return AiReponseBuilder.searchComplete(matches.entrySet().stream()
-                .map(e -> e.getKey() + ": " + e.getValue() + " occurrence(s)").toList(), 
-                suffix);
     }
 
-    private static final Set<String> TEXT_EXTENSIONS = Set.of(
-            "java", "xml", "json", "yaml", "yml", "properties", "txt", "md",
-            "html", "css", "js", "ts", "jsx", "tsx", "sql", "sh", "bat",
-            "gradle", "kt", "groovy", "scala", "py", "rb", "php", "c", "h",
-            "cpp", "hpp", "rs", "go", "swift", "cfg", "ini", "toml", "csv",
-            "mf", "prefs", "product", "target", "project", "classpath", "bnd");
-
-    private static boolean isTextFile(IFile file, String extension) {
-        var name = file.getName().toLowerCase();
-        if (StringUtil.hasValue(extension)) return name.endsWith(extension.trim().toLowerCase());
-
-        int dot = name.lastIndexOf('.');
-        if (dot < 0) return false;
-        return TEXT_EXTENSIONS.contains(name.substring(dot + 1));
-    }
-
-    private int countOccurrences(IFile file, String query) {
+    private int countOccurrences(IFile file, SearchQuery query) {
         try {
             String content = file.readString();
-            return RegexUtils.countOccurrences(content, query);
+            return query.count(content);
         } catch (CoreException e) { return 0; }
+    }
+
+    protected void refreshScope(List<IContainer> scope) {
+        try {
+            for (IContainer container : scope) {
+                container.refreshLocal(IResource.DEPTH_INFINITE, getProgressMonitor());
+            }
+        } catch (CoreException e) {
+            LOG.warn("Failed to refresh grep scope", e);
+        }
     }
 }

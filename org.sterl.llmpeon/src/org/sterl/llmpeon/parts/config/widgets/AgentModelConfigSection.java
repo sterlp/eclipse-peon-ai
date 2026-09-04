@@ -16,7 +16,7 @@ import org.sterl.llmpeon.provider.ThinkSupport;
 import org.sterl.llmpeon.shared.StringUtil;
 
 /**
- * One per-agent model-config section (url / api-key / model / think / extra-body JSON) on the
+ * One per-agent model-config section (url / api-key / model / think / temperature / extra-body JSON) on the
  * advanced config page. The think widget form and the extra-body visibility are driven by the
  * <b>base</b> provider's {@link org.sterl.llmpeon.provider.LlmProvider} (provider.md R5/R3) — the
  * provider itself stays base-level.
@@ -34,6 +34,7 @@ public class AgentModelConfigSection extends Composite {
     private final Text urlText;
     private final Text keyText;
     private final ModelComboWidget modelWidget;
+    private final Text temperatureText;
     private Text jsonText;
     private Label examplesLabel;
 
@@ -54,6 +55,7 @@ public class AgentModelConfigSection extends Composite {
         this.keyText = addLabeledText("API Key (empty = inherit base):");
         this.modelWidget = new ModelComboWidget(this, agentId, this::prepareFetch);
         buildThink();
+        this.temperatureText = addLabeledText("Temperature (empty = unset):");
         buildJson(provider.supportsExtraBody());
     }
 
@@ -67,6 +69,7 @@ public class AgentModelConfigSection extends Composite {
         keyText.setText(StringUtil.stripToEmpty(record.apiKey()));
         modelWidget.setModel(record.model());
         loadThink(record.think());
+        temperatureText.setText(StringUtil.stripToEmpty(record.temperature()));
         if (jsonText != null) jsonText.setText(StringUtil.stripToEmpty(record.extraBody()));
     }
 
@@ -77,7 +80,8 @@ public class AgentModelConfigSection extends Composite {
                 StringUtil.stripToNull(keyText.getText()),
                 StringUtil.stripToNull(modelWidget.getModel()),
                 readThink(),
-                jsonText != null ? StringUtil.stripToNull(jsonText.getText()) : null);
+                jsonText != null ? StringUtil.stripToNull(jsonText.getText()) : null,
+                StringUtil.stripToNull(temperatureText.getText()));
     }
 
     /** Fetches the model list for the current widget values (page open). Cached per identity. */

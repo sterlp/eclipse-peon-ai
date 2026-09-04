@@ -115,11 +115,6 @@ public class CustomAgent extends AbstractAgent {
     }
 
     @Override
-    public Double getTemperature() {
-        return promptFile.firstOrDefaultNumber(TEMPERATURE, null);
-    }
-
-    @Override
     public boolean isThinkSupported() {
         // THINK_SUPPORTED (canonical) takes precedence; THINK_ENABLED (deprecated) as fallback; legacy `think:` implies support for an on-value.
         if (promptFile.firstOrDefault(THINK_SUPPORTED, null) != null) return promptFile.isTrue(THINK_SUPPORTED);
@@ -138,9 +133,10 @@ public class CustomAgent extends AbstractAgent {
                 promptFile.firstOrDefault(API_KEY, null),
                 promptFile.firstOrDefault(MODEL, null),
                 null, // think resolved separately from the frontmatter triple
-                promptFile.firstOrDefault(EXTRA_BODY, null));
+                promptFile.firstOrDefault(EXTRA_BODY, null),
+                promptFile.firstOrDefault(TEMPERATURE, null));
         return configuredModel.getConfig().customAgentConfig(
-                rec, getName(), isThinkSupported(), on, off, getTemperature());
+                rec, getName(), isThinkSupported(), on, off);
     }
 
     @Override

@@ -9,12 +9,16 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.junit.Before;
 import org.junit.Test;
 import org.sterl.llmpeon.StreamMock;
@@ -29,6 +33,7 @@ import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.UserContext;
 import org.sterl.llmpeon.parts.ai.PeonAiService;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
+import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
 import org.sterl.llmpeon.parts.tools.PlanTool;
 import org.sterl.llmpeon.parts.tools.memory.WorkspaceMemoryTool;
@@ -68,6 +73,31 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         aiService.setProject(project);
     }
     
+    @Test
+    public void setProjectWiresGrepTool() throws Exception {
+        var otherProject = ResourcesPlugin.getWorkspace().getRoot().getProject("aaa_other");
+        if (otherProject.exists()) otherProject.delete(true, true, new NullProgressMonitor());
+        otherProject.create(new NullProgressMonitor());
+        otherProject.open(new NullProgressMonitor());
+        otherProject.getFile("Other.java").create(new ByteArrayInputStream(
+                "public class Other {}".getBytes(StandardCharsets.UTF_8)), true,
+                new NullProgressMonitor());
+        try {
+            aiService.setProject(project);
+            var grepTool = aiService.getSharedToolService().getTool(EclipseGrepTool.class).orElseThrow();
+
+            String result = grepTool.eclipseGrepFiles("class", null, ".java");
+            int selected = result.indexOf("/" + PeonTestFixture.PROJECT_NAME + "/");
+            int other = result.indexOf("/aaa_other/");
+
+            assertTrue("Expected selected Fixture hits: " + result, selected >= 0);
+            assertTrue("Expected foreign project hit: " + result, other >= 0);
+            assertTrue("Expected selected project before foreign project: " + result, selected < other);
+        } finally {
+            if (otherProject.exists()) otherProject.delete(true, true, new NullProgressMonitor());
+        }
+    }
+
     @Test
     public void test_compact_tool() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
@@ -134,8 +164,9 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
                 .providerType(AiProvider.OPEN_AI)
                 .url(mockLlmServer.getUrl()).build());
         mockLlmServer.queueResponse(AiMessage.aiMessage("Pong"));
-        assertTrue(Files.exists(Path.of("../skills")));
-        aiService.getSkillService().refresh(Path.of("../skills"));
+        var skills = PeonTestFixture.repoRoot().toPath().resolve("skills");
+        assertTrue(Files.exists(skills));
+        aiService.getSkillService().refresh(skills);
 
         // WHEN
         aiService.getActiveAgent().call("Ping", null);
@@ -309,26 +340,24 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         assertEquals(AiPoAgent.NAME, aiService.getAgents().get(0).getName());
     }
 
-    /**
-     * Regression: opening Jon first used to yield "No model configured" because AiPoAgent inherited the
-     * no-op setAgentModelName default. Jon now uses the plan model slot and defaults to the dev/main model.
-     */
+    /** Regression: Jon always has a model and persists selections in his own slot. */
     @Test
-    public void test_po_model_uses_plan_slot_and_defaults_to_dev_model() {
+    public void test_po_model_uses_po_slot_and_defaults_to_base_model() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
-        // GIVEN a dev/default model, no plan record, Jon active
+        // GIVEN a base model, empty PO and plan slots, Jon active
         aiService.updateConfig(aiService.getConfig().toBuilder().model("dev-model").build());
         aiService.setActiveAgent(AiPoAgent.NAME);
 
-        // THEN Jon defaults to the dev/main model (never empty -> no "No model configured")
+        // THEN Jon defaults to the base model (never empty -> no "No model configured")
         assertEquals("dev-model", aiService.getActiveModel());
 
-        // WHEN a model is selected while Jon is active (used to be dropped for PO)
+        // WHEN a model is selected while Jon is active
         assertTrue(aiService.getActiveAgent().setAgentModelName("po-model"));
 
-        // THEN it lands in the plan slot and is what Jon reports and runs on
+        // THEN it lands only in the PO slot and is what Jon reports and runs on
         assertEquals("po-model", aiService.getActiveModel());
-        assertEquals("po-model", aiService.getConfig().modelConfigFor(AgentModelConfig.PLAN).model());
+        assertEquals("po-model", aiService.getConfig().modelConfigFor(AgentModelConfig.PO).model());
+        assertNull(aiService.getConfig().modelConfigFor(AgentModelConfig.PLAN).model());
     }
 
     /**

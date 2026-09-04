@@ -50,10 +50,6 @@ public interface AiAgent {
         return null;
     }
 
-    default Double getTemperature() {
-        return null;
-    }
-
     /**
      * The write-path validator this agent applies to every write tool call. Default: no restriction.
      * Peon-PO (Jon) overrides this to scope writes to docs. Provided per request, like the tool filter.

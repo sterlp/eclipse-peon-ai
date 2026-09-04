@@ -2,8 +2,9 @@
 package org.sterl.llmpeon.parts.tools;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -12,12 +13,12 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IResourceVisitor;
-import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.ILog;
+import org.eclipse.core.runtime.Platform;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.texteditor.IDocumentProvider;
-import org.jspecify.annotations.NonNull;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.ArgsUtil;
@@ -31,6 +32,14 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 
 public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
+
+    private static final ILog LOG = Platform.getLog(EclipseWorkspaceReadFileTool.class);
+
+    private IProject currentProject;
+
+    public void setCurrentProject(IProject currentProject) {
+        this.currentProject = currentProject;
+    }
 
     @Override
     public boolean isEditTool() {
@@ -120,34 +129,57 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
         ArgsUtil.requireNonBlank(query, "query");
         if (inLimit == null) inLimit = 100;
         if (inLimit == 0) inLimit = 1000;
-        final int limit = Math.min(inLimit, 1000);
+        final int limit = Math.max(1, Math.min(inLimit, 1000));
 
         query = FileUtils.normalizePath(query);
         final var matcher = StringMatcher.wildCardMatcher(query);
-        final List<String> matches = new LinkedList<>();
-        
+        final Map<String, String> matches = new LinkedHashMap<>();
+
         var project = EclipseUtil.findOpenProject(projectName);
-        if (project.isPresent() && project.get().isOpen()) {
-            matches.addAll(searchProjectFor(project.get(), matcher, limit));
-        } else {
-            for (IProject p : ResourcesPlugin.getWorkspace().getRoot().getProjects()) {
-                if (!p.isOpen()) continue;
-                matches.addAll(searchProjectFor(p, matcher, limit - matches.size()));
-                if (matches.size() >= limit) break;
-            }
+        var scope = project.map(List::of)
+                .orElseGet(() -> EclipseUtil.openProjectsPreferring(currentProject));
+        var refreshTargets = new ArrayList<IProject>();
+        project.ifPresentOrElse(refreshTargets::add, () -> {
+            if (currentProject != null && currentProject.isOpen()) refreshTargets.add(currentProject);
+        });
+        searchScope(scope, matcher, limit, matches);
+        if (matches.isEmpty() && !refreshTargets.isEmpty()) {
+            refreshScope(refreshTargets);
+            searchScope(scope, matcher, limit, matches);
         }
 
         onTool("Search workspace " + StringUtil.trimToEmpty(projectName) + " for " + query 
                 + " returned " + matches.size() + " results.");
         String suffix = null;
         if (matches.isEmpty()) {
-            suffix =  "Use findJavaType for Java classes or " + LIST_WORKSPACE_NAME + " to explore the project structure. Try a wildcard e.g. *folder*FileName*.java or grepWorkspaceFiles for content search.";
+            var searchedScope = project.map(IProject::getName)
+                    .orElse("all open projects (" + scope.size() + ")");
+            suffix = "Searched: " + searchedScope + " · pattern: " + matcher.getPattern() + "\n"
+                    + "Use findJavaType for Java classes or " + LIST_WORKSPACE_NAME + " to explore the project structure. Try a wildcard e.g. *folder*FileName*.java or grepWorkspaceFiles for content search.";
         }
-        return AiReponseBuilder.searchComplete(matches, suffix);
+        return AiReponseBuilder.searchComplete(new ArrayList<>(matches.values()), suffix);
     }
 
-    private @NonNull List<String> searchProjectFor(IProject project, final StringMatcher matcher, final int limit) {
-        var results = new LinkedList<String>();
+    private void searchScope(List<IProject> scope, StringMatcher matcher, int limit,
+            Map<String, String> results) {
+        for (IProject project : scope) {
+            searchProjectFor(project, matcher, limit, results);
+            if (results.size() >= limit) break;
+        }
+    }
+
+    protected void refreshScope(List<IProject> scope) {
+        try {
+            for (IProject project : scope) {
+                project.refreshLocal(IResource.DEPTH_INFINITE, getProgressMonitor());
+            }
+        } catch (CoreException e) {
+            LOG.warn("Failed to refresh search scope", e);
+        }
+    }
+
+    private void searchProjectFor(IProject project, StringMatcher matcher, int limit,
+            Map<String, String> results) {
         try {
             project.accept(new IResourceVisitor() {
                 @Override
@@ -159,7 +191,10 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
                         var match = matcher.match(file)
                                 || matcher.match(resource.getName());
 
-                        if (match && (results.isEmpty() || isNotDerived(file))) results.add(file);
+                        if (match && isNotDerived(file)) {
+                            var diskPath = JdtUtil.diskPathOf(resource);
+                            results.putIfAbsent(diskPath == null ? file : diskPath, file);
+                        }
                     }
                     return true;
                 }
@@ -167,7 +202,6 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
         } catch (CoreException e) {
             throw new RuntimeException(e);
         }
-        return results;
     }
 
     public static final String LIST_WORKSPACE_NAME = "eclipseList";

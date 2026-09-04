@@ -32,7 +32,7 @@ class SearchAgentToolTest {
         var config = LlmConfig.builder()
                 .model("default-model")
                 .modelConfigs(Map.of(AgentModelConfig.SEARCH,
-                        new AgentModelConfig(null, null, "search-specific-model", null, null)))
+                        new AgentModelConfig(null, null, "search-specific-model", null, null, null)))
                 .build();
         
         var cm = streamMock.buildMock(r -> ChatResponse.builder().aiMessage(AiMessage.aiMessage("Search done")).build());

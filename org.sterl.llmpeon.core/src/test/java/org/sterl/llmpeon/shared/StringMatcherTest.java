@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.shared;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -29,6 +30,12 @@ class StringMatcherTest {
         // WHEN & THEN
         assertFalse(matcher.match("/foo/bar/TemplateContext.java"));
         assertTrue(matcher.match("TemplateContext"));
+    }
+
+    @Test
+    void wildCardMatcherExposesTranslatedPattern() {
+        assertEquals("*Alpha*", StringMatcher.wildCardMatcher("Alpha").getPattern());
+        assertEquals("*.java", StringMatcher.wildCardMatcher("*.java").getPattern());
     }
 
 }

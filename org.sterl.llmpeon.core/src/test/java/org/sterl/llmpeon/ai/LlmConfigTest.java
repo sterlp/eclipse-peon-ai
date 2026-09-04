@@ -9,14 +9,36 @@ import org.junit.jupiter.api.Test;
 class LlmConfigTest {
 
     @Test
-    void planAgentConfigUsesPlanTemperatureNotDevTemperature() {
-        // GIVEN
-        var config = LlmConfig.builder().planTemperature(1.0).devTemperature(0.6).build();
+    void emptySlotYieldsNullTemperature() {
+        var config = LlmConfig.builder().build();
 
-        // WHEN / THEN
-        assertThat(config.planAgentConfig().getTemperature()).isEqualTo(1.0);
-        assertThat(config.devAgentConfig().getTemperature()).isEqualTo(0.6);
+        assertThat(Map.of(
+                AgentModelConfig.DEV, config.devAgentConfig(),
+                AgentModelConfig.PO, config.poAgentConfig(),
+                AgentModelConfig.PLAN, config.planAgentConfig(),
+                AgentModelConfig.SEARCH, config.searchAgentConfig(),
+                AgentModelConfig.COMPACT, config.compactAgentConfig()))
+                .allSatisfy((id, agent) -> assertThat(agent.getTemperature()).as(id).isNull());
     }
+
+    @Test
+    void slotTemperatureAppliesToEveryCoreAgentConfig() {
+        for (var id : AgentModelConfig.CORE_IDS) {
+            var record = new AgentModelConfig(null, null, null, null, null, "0.4");
+            var config = LlmConfig.builder().modelConfigs(Map.of(id, record)).build();
+
+            var actual = switch (id) {
+                case AgentModelConfig.DEV -> config.devAgentConfig();
+                case AgentModelConfig.PO -> config.poAgentConfig();
+                case AgentModelConfig.PLAN -> config.planAgentConfig();
+                case AgentModelConfig.SEARCH -> config.searchAgentConfig();
+                case AgentModelConfig.COMPACT -> config.compactAgentConfig();
+                default -> throw new AssertionError(id);
+            };
+            assertThat(actual.getTemperature()).as(id).isEqualTo(0.4);
+        }
+    }
+
 
     @Test
     void planFactoryPicksUpRecord() {
@@ -24,7 +46,7 @@ class LlmConfigTest {
         var config = LlmConfig.of(AiProvider.OPEN_AI).model("gpt-4o")
                 .url("http://base:1234/v1").apiKey("base-key")
                 .modelConfigs(Map.of(AgentModelConfig.PLAN,
-                        new AgentModelConfig("http://plan:5678/v1", "plan-key", "opus", "high", null)))
+                        new AgentModelConfig("http://plan:5678/v1", "plan-key", "opus", "high", null, null)))
                 .build();
 
         // WHEN
@@ -43,7 +65,7 @@ class LlmConfigTest {
         // GIVEN a dev record with a concrete think value (no supported/on/off strings)
         var config = LlmConfig.of(AiProvider.OPEN_AI).model("gpt-4o")
                 .modelConfigs(Map.of(AgentModelConfig.DEV,
-                        new AgentModelConfig(null, null, null, "medium", null)))
+                        new AgentModelConfig(null, null, null, "medium", null, null)))
                 .build();
 
         // WHEN / THEN — think is taken verbatim (no effectiveThink)
@@ -55,7 +77,7 @@ class LlmConfigTest {
         // GIVEN a dev record that (erroneously) carries no model of its own
         var config = LlmConfig.of(AiProvider.OPEN_AI).model("base-model")
                 .modelConfigs(Map.of(AgentModelConfig.DEV,
-                        new AgentModelConfig(null, null, null, "true", null)))
+                        new AgentModelConfig(null, null, null, "true", null, null)))
                 .build();
 
         // WHEN / THEN — the dev agent always runs the base model
@@ -68,7 +90,7 @@ class LlmConfigTest {
         var base = LlmConfig.of(AiProvider.OPEN_AI).model("gpt-4o")
                 .url("http://base:1234/v1").apiKey("base-key")
                 .modelConfigs(Map.of(AgentModelConfig.PLAN,
-                        new AgentModelConfig("http://plan:5678/v1", null, null, null, null)))
+                        new AgentModelConfig("http://plan:5678/v1", null, null, null, null, null)))
                 .build();
 
         // WHEN
@@ -95,7 +117,7 @@ class LlmConfigTest {
 
         // WHEN
         var updated = config.withModelConfig(AgentModelConfig.PLAN,
-                new AgentModelConfig(null, null, "opus", null, null));
+                new AgentModelConfig(null, null, "opus", null, null, null));
 
         // THEN the original is untouched, the copy carries the new record
         assertThat(config.modelConfigFor(AgentModelConfig.PLAN).model()).isNull();

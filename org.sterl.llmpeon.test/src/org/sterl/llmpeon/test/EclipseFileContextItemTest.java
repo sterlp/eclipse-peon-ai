@@ -18,7 +18,7 @@ public class EclipseFileContextItemTest extends AbstractIntegrationTest {
     public void render_returnsHeaderAndContent_whenFileExists() {
         // GIVEN
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
-        eclipseWriteFile("docs/test-memory.md", "memory content");
+        eclipseWriteFile("/test_project/docs/test-memory.md", "memory content");
         var workspacePath = "/" + project.getName() + "/docs/test-memory.md";
 
         // WHEN

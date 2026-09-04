@@ -34,6 +34,9 @@
                 <configuration>
                     <useUIHarness>false</useUIHarness>
                     <useUIThread>false</useUIThread>
+                    <systemProperties>
+                        <peon.test.project>${project.basedir}/../test_project</peon.test.project>
+                    </systemProperties>
                     <!-- Only needed when mocking final classes/methods/static:
                     TODO: should be both later true ...
                     <argLine>-javaagent:${settings.localRepository}/net/bytebuddy/byte-buddy-agent/VERSION/byte-buddy-agent-VERSION.jar</argLine>

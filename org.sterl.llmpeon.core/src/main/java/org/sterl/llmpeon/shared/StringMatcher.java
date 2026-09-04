@@ -28,6 +28,10 @@ public final class StringMatcher {
                 true, false);
     }
 
+    public String getPattern() {
+        return fPattern;
+    }
+
     private static final Pattern NON_WORD = Pattern.compile("\\W+", Pattern.UNICODE_CHARACTER_CLASS); //$NON-NLS-1$
 
     private static final StringMatcher[] NO_MATCHERS = new StringMatcher[0];

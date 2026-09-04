@@ -21,7 +21,7 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
     public void test_writeWorkspaceFile() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
         // GIVEN
-        var fileName = "/org.sterl.llmpeon.test/foo.txt";
+        var fileName = "/test_project/foo.txt";
         var message = "Hello world " + OffsetDateTime.now();
         tool.setCurrentProject(project);
 
@@ -36,7 +36,7 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
     public void test_editWorkspaceFile() {
         // GIVEN
         tool.setCurrentProject(project);
-        var fileName = "/org.sterl.llmpeon.test/foo.txt";
+        var fileName = "/test_project/foo.txt";
         var message = """
                     private void updateSelectedProject(IProject project) {
                         if (project != null && !projectPinned) {
@@ -78,7 +78,7 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
     public void writeUtf8() throws Exception {
         // GIVEN
         // WHEN
-        eclipseWriteFile("foo.java", "äüß Ö ⚡");
+        eclipseWriteFile("/test_project/foo.java", "äüß Ö ⚡");
 
         // THEN
         var c = new EclipseWorkspaceReadFileTool().eclipseReadFile(JdtUtil.pathOf(project) + "/foo.java", null, null);
@@ -90,7 +90,7 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
         // GIVEN
         tool.setCurrentProject(project);
-        var fileName = "/org.sterl.llmpeon.test/foo.txt";
+        var fileName = "/test_project/foo.txt";
         eclipseWriteFile(fileName, "line1\nline2\nline3\nline4\nline5");
 
         // WHEN — replace middle line 3, expanding it to two lines
@@ -111,7 +111,7 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
     public void test_editWorkspaceFile_not_found() {
         // GIVEN
         tool.setCurrentProject(project);
-        var fileName = "/org.sterl.llmpeon.test/foo.txt";
+        var fileName = "/test_project/foo.txt";
         var editString = "  " + OffsetDateTime.now().toString();
         var message = """
                   Hello world
@@ -138,16 +138,16 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
         // GIVEN
         tool.setCurrentProject(project);
-        var dirName = "/org.sterl.llmpeon.test/testDeleteDir/nested/child";
+        var dirName = "/test_project/testDeleteDir/nested/child";
         eclipseWriteFile(dirName + "/file1.txt", "a");
         eclipseWriteFile(dirName + "/file2.txt", "b");
-        eclipseWriteFile("/org.sterl.llmpeon.test/testDeleteDir/parentFile.txt", "c");
+        eclipseWriteFile("/test_project/testDeleteDir/parentFile.txt", "c");
 
         // WHEN
-        tool.eclipseDeleteResource("/org.sterl.llmpeon.test/testDeleteDir");
+        tool.eclipseDeleteResource("/test_project/testDeleteDir");
 
         // THEN — entire directory tree gone
-        var result = readTool.eclipseReadFile("/org.sterl.llmpeon.test/testDeleteDir/parentFile.txt", 0, 0);
+        var result = readTool.eclipseReadFile("/test_project/testDeleteDir/parentFile.txt", 0, 0);
         assertTrue("Directory should be deleted, but parentFile.txt still exists", result.contains("No eclipse file found"));
     }
 }

@@ -124,7 +124,13 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
             ILaunchConfiguration existing = findExistingConfig(launchManager, type, javaProject, testType, runAll);
 
             if (existing != null) {
-                config = existing;
+                if (pluginTest) {
+                    ILaunchConfigurationWorkingCopy wc = existing.getWorkingCopy();
+                    PdeTestLaunchConfig.applyUnattended(wc);
+                    config = wc.doSave();
+                } else {
+                    config = existing;
+                }
                 onTool(description + " (reusing existing launch config)");
             } else {
                 // 2) Fall back to Eclipse's own shortcut logic so all required
@@ -133,6 +139,9 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
                 String namePrefix = runAll ? javaProject.getElementName() : testType.getFullyQualifiedName();
                 String uniqueName = launchManager.generateLaunchConfigurationName(namePrefix);
                 wc.rename(uniqueName);
+                if (pluginTest) {
+                    PdeTestLaunchConfig.applyUnattended(wc);
+                }
                 config = wc.doSave();
             }
 

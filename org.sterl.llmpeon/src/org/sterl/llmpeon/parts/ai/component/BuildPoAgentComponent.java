@@ -111,9 +111,8 @@ public class BuildPoAgentComponent {
             return orders;
         });
         poToolService.addTool(jonDelegateTool);
-        // Jon's own throw-away research sub-agent (Da Sniffa) — searches with his read/grep tools to
-        // save his context; stateless one-shot, not one of his persistent slaves.
-        poToolService.addTool(new SearchAgentTool(poToolService));
+        // Jon's own throw-away research sub-agent (Da Sniffa) — searches with his read/grep tool
+        poToolService.addTool(sharedToolService.getTool(SearchAgentTool.class).get());
         poToolService.addTool(new CompactSessionTool());
         var poAgent = new AiPoAgent(configuredModel, poToolService, config.getConfigDir(), List.of(thinka, mek));
 

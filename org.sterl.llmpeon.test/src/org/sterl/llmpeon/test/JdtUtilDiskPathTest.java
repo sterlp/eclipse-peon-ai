@@ -3,7 +3,6 @@ package org.sterl.llmpeon.test;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assume.assumeTrue;
 
-import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IResource;
 import org.junit.Test;
@@ -33,10 +32,6 @@ public class JdtUtilDiskPathTest extends AbstractIntegrationTest {
         
         // WHEN - get a sub-folder (e.g., src folder)
         IFolder srcFolder = project.getFolder("src");
-        if (!srcFolder.exists()) {
-            // Try commands folder from ai-skill-codex if it exists
-            return; // Skip if folder doesn'writeTool exist
-        }
         
         // THEN - diskPathOf should return non-null for sub-folder
         var diskPath = JdtUtil.diskPathOf(srcFolder);
@@ -49,33 +44,25 @@ public class JdtUtilDiskPathTest extends AbstractIntegrationTest {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
         
         // WHEN - try to find any existing sub-resource
-        IResource nestedResource = findAnySubResource(project);
-        if (nestedResource == null) {
-            return; // Skip if no sub-resources found
-        }
+        IResource nestedResource = project.getFolder("src/org/sterl/fixture/sub");
         
         // THEN - diskPathOf should return non-null
         var diskPath = JdtUtil.diskPathOf(nestedResource);
         assertNotNull("diskPathOf should return disk path for nested resource: " + nestedResource.getFullPath(), diskPath);
     }
-    
-    private IResource findAnySubResource(IResource parent) {
-        try {
-            if (parent instanceof IContainer container) {
-                for (IResource member : container.members()) {
-                    if (member.getType() == IResource.FOLDER) {
-                        return member;
-                    }
-                    // Recurse into folders
-                    if (member instanceof IContainer subContainer) {
-                        var found = findAnySubResource(subContainer);
-                        if (found != null) return found;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            // Ignore
-        }
-        return null;
+
+    @Test
+    public void projectScopeIsHonoured() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        var monitor = new org.eclipse.core.runtime.NullProgressMonitor();
+
+        var fixtureType = JdtUtil.findType(
+                "org.sterl.fixture", "Alpha", monitor, PeonTestFixture.PROJECT_NAME);
+        var externalType = JdtUtil.findType(
+                "org.sterl.llmpeon.parts.shared", "JdtUtil", monitor, PeonTestFixture.PROJECT_NAME);
+
+        org.junit.Assert.assertTrue("Expected Alpha in Fixture project", fixtureType.isPresent());
+        org.junit.Assert.assertTrue("Project scope leaked to another project", externalType.isEmpty());
     }
+
 }

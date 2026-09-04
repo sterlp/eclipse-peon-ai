@@ -21,7 +21,6 @@ import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Control;
 
 /**
  * Custom-painted dropdown button showing the selected {@link DropdownItem} label and a
@@ -80,7 +79,6 @@ public class DropdownButton extends Composite {
         });
 
         setCursor(getDisplay().getSystemCursor(SWT.CURSOR_HAND));
-        ((Control) this).setTabList(true);
         addFocusBorder();
         addListener(SWT.Dispose, e -> popup.close());
     }

@@ -30,7 +30,7 @@ isn't clear from a rule/BDD.
 | [0020](0020-po-agent-orchestration.md) | Peon-PO orchestrates Plan/Dev as sub-agents via poagent delegate tools (talkPlan/planWithPlanAgent/askDev/buildWithDev) with planComplete/planImplemented completion signals | Accepted |
 | [0021](0021-po-slave-lifecycle-jit-compaction.md) | Peon-PO slave lifecycle (lazy persistent singletons) & just-in-time compaction | Proposed |
 | [0022](0022-write-path-allowlist-decorator.md) | Scope an agent's writes via a write-path-allowlist decorator (comma-separated glob config) | Proposed |
-| [0023](0023-po-model-plan-slot.md) | Jon (Peon-PO) reuses the plan model slot, defaulting to the dev/main model | Accepted |
+| [0023](0023-po-model-plan-slot.md) | Jon (Peon-PO) reuses the plan model slot, defaulting to the dev/main model | **Superseded** by [0036](0036-po-own-model-slot.md) (umgesetzt 3a, 2026-09-03) |
 | [0024](0024-po-slaves-ram-only.md) | Peon-PO slaves are RAM-only (no JSON); Jon is durable; the durable handoff is the plan file | Accepted |
 | [0025](0025-po-status-widget-named-agents.md) | Header PO-status is pulled from `AiPoAgent.getTeam()` (`NamedAgent` list) into `AiAgentStatusWidget`; ork-named team members (Da Thinka/Da Mek) are distinct from the selectable Plan/Dev; one `instanceof` choke-point in `PeonAiService` | Accepted |
 | [0026](0026-extract-question-shell-approval.md) | QuestionOrchestrator + ShellApprovalService aus AIChatView extrahieren — ~70 Zeilen weniger, testbar ohne SWT | Accepted |
@@ -42,3 +42,9 @@ isn't clear from a rule/BDD.
 | [0032](0032-workspace-memory-dynamic-turn-context.md) | Workspace-Memory dynamisch: WorkspaceMemoryTool als ContextItem pro Turn (aktiver Agent + Delegate-Tool-Orders für Slaven); statischer Snapshot entfernt (Revision) — `PoDelegateTool` (früher JonDelegateTool) | Accepted |
 | [0033](0033-ox-alpha-provider-slices.md) | Ox-Alpha-Provider: Zwei-Slice-Plan — verhaltenstreues Provider-Refactoring (provider.md) zuerst, Ox Alpha dann als erste neue Provider-Klasse | Accepted |
 | [0034](0034-connection-cache-by-identity.md) | Connection-Cache nach Verbindungs-Identität (Provider+URL+Key, +Body nur Build-time-Provider); Modell-Listen einmalig pro Identität; Request-Ebene (Name/Think/Temp/Body) nie im Hash | Accepted |
+| [0035](0035-grep-regex-first-literal-fallback.md) | Grep: Regex first, Literal-Fallback statt Zeichen-Heuristik; keine Eclipse `SearchEngine` — `IResourceVisitor` bleibt | Accepted |
+| [0036](0036-po-own-model-slot.md) | PO-Agent bekommt einen eigenen Model-Slot (`llm.agent.po.*`), Fallback = Base statt Plan; Clean Break — supersedes 0023 | Accepted |
+| [0037](0037-dedicated-test-fixture-project.md) | OSGi-Integrationstests importieren ein dediziertes `test_project`-Fixture statt sich selbst; `askclear=false` gegen den blockierenden PDE-Dialog | Accepted |
+| [0038](0038-refresh-on-empty-search.md) | `eclipseSearchFiles`/`eclipseGrepFiles` refreshen den Workspace **nur bei leerem Ergebnis** (dann genau einmal + zweiter Durchlauf); Nachtrag 2b-3: Refresh-Ziel ist nur das gewählte bzw. explizit genannte Projekt, nicht der ganze Workspace | Accepted |
+| [0040](0040-model-list-single-flight-secret-masking.md) | Modell-Listen-Fetch: Single-Flight pro `ConnectionIdentity` (Cancel entfernt) statt globalem `pendingRequest`; `toString()` maskiert `apiKey`/Body | Accepted |
+| [0039](0039-temperature-body-precedence.md) | „extra body gewinnt" für `temperature` wird durch **Streichen des typisierten Feldes** umgesetzt — langchain4j serialisiert `customParameters` per `@JsonAnyGetter` *neben* die typisierten Felder und erzeugt sonst einen Doppelkey; Provider-Gate `supportsExtraBody()` schützt Ollama | Accepted |

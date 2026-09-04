@@ -43,6 +43,12 @@ UI **nur**, wenn der Provider extra-body-Parameter unterstützt (Capability-Bool
   Unter dem JSON-Input werden die **Beispiele** in einer kompakten Zeile angezeigt (Buttons mit
   Tooltips, Gate `supportsExtraBody()`, ersetzen + Status-Label; kein stiller Setz). Beispiele:
   GPT (`prompt_cache_key`), Claude (`cache_control`), **llama.cpp** (`chat_template_kwargs.enable_thinking`).
+  **Herkunft der Snippet-Inhalte (2c/D1):** nicht frei erfunden, sondern rekonstruiert aus den
+  Legacy-TODOs (`OpenAiProvider.java:63`, `ProviderRequestSupport.java:103`) plus dem beim
+  Clean Break entfernten Hardcode, gegengeprüft am Wire-Nachweis aus Night-Cycle A
+  ([test-setup.md](test-setup.md) — Mock-Wire-Formate). Wer ein Snippet ändert, ändert damit
+  eine belegte Provider-Semantik, keinen Beispieltext.
+
 - **R4 ✅ Geltungsbereich (2c 2026-09-01):** alle Agenten mit Modell-Slot (base/plan/search/compact/PO +
   Custom). Custom Agents tragen die Config via **AGENT.md-Frontmatter** (`url`/`api_key`/
   `extra_body`) → gleicher `AgentModelConfig`-Record, `agentBuilder`-Auflösung wie die 4

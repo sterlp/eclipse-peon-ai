@@ -20,13 +20,22 @@ import org.sterl.llmpeon.parts.config.widgets.HorizontalRule;
 import org.sterl.llmpeon.parts.config.widgets.TitledGroup;
 
 /**
- * Advanced AI config page. The per-agent model config (url / key / model / think / extra-body JSON)
- * lives in four {@link AgentModelConfigSection} composites (dev/plan/search/compact) — the base
- * provider drives each section's think widget form and extra-body visibility. The remaining
- * base-level settings (timeout, temperatures, max tokens, query/header params, debug, realtime)
- * stay as field editors.
+ * Advanced AI config page. The per-agent model config (url / key / model / think / temperature /
+ * extra-body JSON) lives in five {@link AgentModelConfigSection} composites
+ * (po/dev/plan/search/compact) — the base provider drives each section's think widget form and
+ * extra-body visibility. The remaining base-level settings (timeout, max tokens, query/header
+ * params, debug, realtime) stay as field editors.
  */
 public class AiAdvancedPreferenceView extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
+
+    public record AgentSection(String id, String title) {}
+
+    public static final List<AgentSection> AGENT_SECTIONS = List.of(
+            new AgentSection(AgentModelConfig.PO, "PO agent (Jon)"),
+            new AgentSection(AgentModelConfig.DEV, "Dev agent (uses base model)"),
+            new AgentSection(AgentModelConfig.PLAN, "Plan agent"),
+            new AgentSection(AgentModelConfig.SEARCH, "Search agent"),
+            new AgentSection(AgentModelConfig.COMPACT, "Compact agent"));
 
     private LlmConfig config;
     private final List<AgentModelConfigSection> sections = new ArrayList<>();
@@ -46,15 +55,12 @@ public class AiAdvancedPreferenceView extends FieldEditorPreferencePage implemen
 
         new HorizontalRule(getFieldEditorParent());
 
-        addAgentSection(AgentModelConfig.DEV, "Dev agent (uses base model)");
-        addAgentSection(AgentModelConfig.PLAN, "Plan agent");
-        addAgentSection(AgentModelConfig.SEARCH, "Search agent");
-        addAgentSection(AgentModelConfig.COMPACT, "Compact agent");
+        for (var section : AGENT_SECTIONS) {
+            addAgentSection(section.id(), section.title());
+        }
 
         new HorizontalRule(getFieldEditorParent());
 
-        addField(new DoubleSliderFieldEditor(PeonConstants.PREF_DEV_TEMPERATURE,  "Dev temperature:", getFieldEditorParent()));
-        addField(new DoubleSliderFieldEditor(PeonConstants.PREF_PLAN_TEMPERATURE, "Plan temperature:", getFieldEditorParent()));
         addField(new IntegerFieldEditor(PeonConstants.PREF_MAX_TOKENS,            "Max output tokens (0 to disable):", getFieldEditorParent()));
 
         var queryParamEditor = new StringFieldEditor(PeonConstants.PREF_QUERY_PARAMS,

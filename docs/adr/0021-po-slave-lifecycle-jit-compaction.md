@@ -3,17 +3,11 @@
 **Status** · Accepted
 
 ## Context
-Jon's team members (Peon-Plan "Da Thinka", Peon-Dev "Da Mek") carry a real conversation across many `jonAsk*`
-turns, so they must **keep their context** between calls — unlike the stateless one-shot SearchAgent.
-Long-running team members will eventually overflow their window, but compacting eagerly (or on every turn)
-wastes tokens and can drop the very instruction Jon is about to send. Team members should also run leaner than
-turns, so they must **keep their context** between calls — unlike the stateless one-shot SearchAgent.
-Long-running team members will eventually overflow their window, but compacting eagerly (or on every turn)
-wastes tokens and can drop the very instruction Jon is about to send. Slaves should also run leaner than
-- **Eager shared singletons, RAM-only:** the two team members are created once and reused for the whole Jon
-  session, holding their in-RAM context across calls; they use no history file (see
-  [ADR-0024](0024-po-slaves-ram-only.md)). This supersedes the original "lazy, own-history-file"
-  sketch — the durable hand-off is the plan file, not the team member's memory.
+Jon's team members (Peon-Plan "Da Thinka", Peon-Dev "Da Mek") carry a real conversation across many
+delegate turns, so they must **keep their context** between calls — unlike the stateless one-shot
+SearchAgent. Long-running team members will eventually overflow their window, but compacting eagerly
+(or on every turn) wastes tokens and can drop the very instruction Jon is about to send. Team members
+should also run leaner than Jon himself: they are throw-away workers, he is the durable one.
 
 ## Decision
 - **Eager shared singletons, RAM-only:** the two team members are created once and reused for the whole Jon
@@ -60,3 +54,9 @@ wastes tokens and can drop the very instruction Jon is about to send. Slaves sho
   4000)` — a pre-existing UI-percent oddity, left untouched; it does not feed the compaction trigger.
 - Reuses the existing standing-orders mechanism and compaction tooling rather than inventing a new
   pre-compaction channel.
+- **The trigger measures fill level, not relevance.** A topic switch (new plan, unrelated task) leaves
+  a team member well below 70 % while its whole context is now ballast. That case stays Jon's manual
+  call via the delegate tools: `compactPlan`/`compactDev` when the same task continues but the history
+  grew long, `resetPlan`/`resetDev` when the next task is unrelated and the old state would only create
+  drift. Deliberately **not** automated in `PoDelegateTool` — a second, tool-side trigger would compact
+  mid-build (increment 3 of 5) for no gain.

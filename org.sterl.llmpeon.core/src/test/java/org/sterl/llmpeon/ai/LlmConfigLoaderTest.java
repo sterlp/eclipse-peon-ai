@@ -9,8 +9,32 @@ import org.junit.jupiter.api.Test;
 class LlmConfigLoaderTest {
 
     @Test
+    void legacyTemperatureKeysIgnored() {
+        var store = new MapLlmConfigStore();
+        store.put("llm.planTemperature", "0.7");
+        store.put("llm.devTemperature", "0.5");
+
+        var config = LlmConfigLoader.load(store);
+
+        assertThat(config.devAgentConfig().getTemperature()).isNull();
+        assertThat(config.poAgentConfig().getTemperature()).isNull();
+        assertThat(config.planAgentConfig().getTemperature()).isNull();
+        assertThat(config.searchAgentConfig().getTemperature()).isNull();
+        assertThat(config.compactAgentConfig().getTemperature()).isNull();
+    }
+
+    @Test
+    void loadsAgentTemperatureIntoRecord() {
+        var store = new MapLlmConfigStore();
+        store.put("llm.agent.plan.temperature", "0.4");
+
+        var config = LlmConfigLoader.load(store);
+
+        assertThat(config.modelConfigFor(AgentModelConfig.PLAN).temperature()).isEqualTo("0.4");
+    }
+
+    @Test
     void loaderRebuildsBaseConfig() {
-        // GIVEN a store carrying the base keys
         var store = new MapLlmConfigStore();
         store.put(LlmConfigKeys.PROVIDER_TYPE, "OPEN_AI");
         store.put(LlmConfigKeys.MODEL, "gpt-4o");
@@ -21,15 +45,11 @@ class LlmConfigLoaderTest {
         store.put(LlmConfigKeys.TOKEN_WINDOW, "100000");
         store.put(LlmConfigKeys.THINK_SUPPORTED, "true");
         store.put(LlmConfigKeys.SEND_THINKING_ENABLED, "false");
-        store.put(LlmConfigKeys.PLAN_TEMPERATURE, "0.7");
-        store.put(LlmConfigKeys.DEV_TEMPERATURE, "0.5");
         store.put(LlmConfigKeys.QUERY_PARAMS, "a=1,b=2");
         store.put(LlmConfigKeys.SHELL_CONFIRMATION_ENABLED, "always");
 
-        // WHEN
         var config = LlmConfigLoader.load(store);
 
-        // THEN the base config carries the values (typed parsing applied)
         assertThat(config.getProviderType()).isEqualTo(AiProvider.OPEN_AI);
         assertThat(config.getModel()).isEqualTo("gpt-4o");
         assertThat(config.getUrl()).isEqualTo("http://base:1234/v1");
@@ -39,25 +59,20 @@ class LlmConfigLoaderTest {
         assertThat(config.getAutoCompactAfter()).isEqualTo(100_000);
         assertThat(config.isThinkSupported()).isTrue();
         assertThat(config.shouldWeSendThinkingBackToLLM()).isFalse();
-        assertThat(config.getPlanTemperature()).isEqualTo(0.7);
-        assertThat(config.getDevTemperature()).isEqualTo(0.5);
         assertThat(config.getQueryParams()).containsEntry("a", "1").containsEntry("b", "2");
         assertThat(config.isShellCommandConfirmationRequired()).isTrue();
     }
 
     @Test
     void loaderRebuildsPerAgentRecords() {
-        // GIVEN a store with a plan agent's model + url
         var store = new MapLlmConfigStore();
         store.put(LlmConfigKeys.MODEL, "gpt-4o");
         store.put(LlmConfigKeys.agentKey(AgentModelConfig.PLAN, LlmConfigKeys.AGENT_FIELD_MODEL), "opus");
         store.put(LlmConfigKeys.agentKey(AgentModelConfig.PLAN, LlmConfigKeys.AGENT_FIELD_URL), "http://plan:5678/v1");
         store.put(LlmConfigKeys.agentKey(AgentModelConfig.PLAN, LlmConfigKeys.AGENT_FIELD_THINK), "high");
 
-        // WHEN
         var config = LlmConfigLoader.load(store);
 
-        // THEN the plan record carries the values; base keys unchanged
         var plan = config.modelConfigFor(AgentModelConfig.PLAN);
         assertThat(plan.model()).isEqualTo("opus");
         assertThat(plan.url()).isEqualTo("http://plan:5678/v1");
@@ -67,29 +82,23 @@ class LlmConfigLoaderTest {
 
     @Test
     void loaderDevModelIsBaseModel() {
-        // GIVEN a store with a base model but no dev-specific model key
         var store = new MapLlmConfigStore();
         store.put(LlmConfigKeys.MODEL, "gpt-4o");
 
-        // WHEN
         var config = LlmConfigLoader.load(store);
 
-        // THEN the dev record's model is the base model
         assertThat(config.modelConfigFor(AgentModelConfig.DEV).model()).isEqualTo("gpt-4o");
     }
 
     @Test
     void loaderIgnoresUnknownKeys() {
-        // GIVEN a store with a historic/removed key
         var store = new MapLlmConfigStore();
         store.put("llm.planModel", "opus");
         store.put("llm.thinkOnString", "high");
         store.put("llm.planThinkEnabled", "true");
 
-        // WHEN (no migration, no exception)
         var config = LlmConfigLoader.load(store);
 
-        // THEN the removed keys are ignored — plan record is empty
         var plan = config.modelConfigFor(AgentModelConfig.PLAN);
         assertThat(plan.model()).isNull();
         assertThat(plan.think()).isNull();
@@ -97,52 +106,62 @@ class LlmConfigLoaderTest {
 
     @Test
     void loaderMissingPerAgentFieldsAreNull() {
-        // GIVEN an empty store (no per-agent keys)
-        var store = new MapLlmConfigStore();
+        var config = LlmConfigLoader.load(new MapLlmConfigStore());
 
-        // WHEN
-        var config = LlmConfigLoader.load(store);
-
-        // THEN every agent record is empty (null fields = inherit base / provider default)
-        for (var id : new String[] { AgentModelConfig.DEV, AgentModelConfig.PLAN,
-                AgentModelConfig.SEARCH, AgentModelConfig.COMPACT }) {
+        for (var id : AgentModelConfig.CORE_IDS) {
             assertThat(config.modelConfigFor(id)).isEqualTo(AgentModelConfig.empty());
         }
     }
 
     @Test
-    void loaderFallsBackToDefaultsOnMissingKeys() {
-        // GIVEN an empty store
+    void loaderRebuildsPoRecord() {
         var store = new MapLlmConfigStore();
+        store.put(LlmConfigKeys.agentKey(AgentModelConfig.PO, LlmConfigKeys.AGENT_FIELD_MODEL), "claude-x");
+        store.put(LlmConfigKeys.agentKey(AgentModelConfig.PO, LlmConfigKeys.AGENT_FIELD_URL), "http://po/v1");
+        store.put(LlmConfigKeys.agentKey(AgentModelConfig.PO, LlmConfigKeys.AGENT_FIELD_THINK), "high");
 
-        // WHEN
+        var po = LlmConfigLoader.load(store).modelConfigFor(AgentModelConfig.PO);
+
+        assertThat(po.model()).isEqualTo("claude-x");
+        assertThat(po.url()).isEqualTo("http://po/v1");
+        assertThat(po.think()).isEqualTo("high");
+    }
+
+    @Test
+    void missingPoKeysYieldEmptySlot() {
+        var store = new MapLlmConfigStore();
+        store.put(LlmConfigKeys.agentKey(AgentModelConfig.PLAN, LlmConfigKeys.AGENT_FIELD_MODEL), "gpt-5");
+
         var config = LlmConfigLoader.load(store);
 
-        // THEN the LlmConfig defaults apply
+        assertThat(config.getModelConfigs()).containsKey(AgentModelConfig.PO);
+        assertThat(config.modelConfigFor(AgentModelConfig.PO)).isEqualTo(AgentModelConfig.empty());
+        assertThat(config.modelConfigFor(AgentModelConfig.PLAN).model()).isEqualTo("gpt-5");
+    }
+
+    @Test
+    void loaderFallsBackToDefaultsOnMissingKeys() {
+        var config = LlmConfigLoader.load(new MapLlmConfigStore());
+
         assertThat(config.getProviderType()).isEqualTo(AiProvider.OLLAMA);
         assertThat(config.getTimeout()).isEqualTo(Duration.ofMinutes(3));
         assertThat(config.getMaxTokens()).isZero();
         assertThat(config.getAutoCompactAfter()).isEqualTo(80_000);
         assertThat(config.isThinkSupported()).isFalse();
         assertThat(config.shouldWeSendThinkingBackToLLM()).isTrue();
-        assertThat(config.getPlanTemperature()).isEqualTo(1.0);
-        assertThat(config.getDevTemperature()).isEqualTo(0.6);
     }
 
     @Test
     void loaderParsesInvalidTypedValuesToFallback() {
-        // GIVEN a store with malformed typed values
         var store = new MapLlmConfigStore();
         store.put(LlmConfigKeys.TIMEOUT, "not-a-number");
-        store.put(LlmConfigKeys.PLAN_TEMPERATURE, "abc");
+        store.put(LlmConfigKeys.MAX_TOKENS, "abc");
         store.put(LlmConfigKeys.PROVIDER_TYPE, "NOT_A_PROVIDER");
 
-        // WHEN
         var config = LlmConfigLoader.load(store);
 
-        // THEN the fallbacks apply (no exception)
         assertThat(config.getTimeout()).isEqualTo(Duration.ofMinutes(3));
-        assertThat(config.getPlanTemperature()).isEqualTo(1.0);
+        assertThat(config.getMaxTokens()).isZero();
         assertThat(config.getProviderType()).isEqualTo(AiProvider.OLLAMA);
     }
 }

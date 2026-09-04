@@ -43,7 +43,7 @@ public class FileLines {
      * <ul>
      *   <li>0 or negative start/end → treat as 1 / last line respectively</li>
      *   <li>start &gt; end → swapped automatically</li>
-     *   <li>Either bound out of range → whole file returned</li>
+     *   <li>end beyond the file → clamped; start beyond the file → an explicit hint</li>
      * </ul>
      */
     // TODO: use LIST
@@ -56,15 +56,11 @@ public class FileLines {
         int total = lines.length;
 
         int s = startLine <= 0 ? 1 : startLine;
-        int e = endLine   <= 0 ? total : Math.min(endLine, total);
+        int e = endLine <= 0 ? total : endLine;
 
-        // check order - end for start
-        if (s > e) { int tmp = s; s = e; e = tmp; }
-
-        // something is messy
-        if (s > total || e > total) {
-            return format(content);
-        }
+        if (endLine > 0 && s > e) { int tmp = s; s = e; e = tmp; }
+        e = Math.min(e, total);
+        if (s > total) return "file has " + total + " lines, requested start " + s;
 
         var sb = new StringBuilder();
         for (int i = s - 1; i < e; i++) {
@@ -86,7 +82,7 @@ public class FileLines {
 
         int s = startLine <= 0 ? 1 : startLine;
         int e = endLine   <= 0 ? total : endLine;
-        if (s > e) { int tmp = s; s = e; e = tmp; }
+        if (endLine > 0 && s > e) { int tmp = s; s = e; e = tmp; }
         s = Math.max(1, Math.min(s, total));
         e = Math.max(1, Math.min(e, total));
 

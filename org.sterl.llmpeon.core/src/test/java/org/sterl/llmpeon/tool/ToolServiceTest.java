@@ -123,6 +123,7 @@ class ToolServiceTest {
         verify(cm, times(1)).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
         assertThat(requestRef.get().messages().get(1)).isEqualTo(userMessage);
         assertThat(((SystemMessage)requestRef.get().messages().get(0)).text()).contains("sys1", "sys2");
+        assertThat(requestRef.get().messages().stream().filter(SystemMessage.class::isInstance)).hasSize(1);
         // AND
         var messages = memory.getCopy();
         assertThat(messages.get(0)).isEqualTo(userMessage);

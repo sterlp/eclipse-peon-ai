@@ -1,6 +1,11 @@
 # ADR-0023: Jon (Peon-PO) reuses the plan model slot, defaulting to the dev/main model
 
-**Status** · Accepted
+**Status** · **Superseded by [ADR-0036](0036-po-own-model-slot.md)** (2026-09-03, umgesetzt in
+Zyklus 3a). Jon besitzt seit 3a einen eigenen `po`-Slot; der Fallback bei leerem Slot ist die
+**Base-Config**, nicht der Plan-Slot. Die unten als „deliberate follow-up" benannte Divergenz ist
+damit eingetreten. Der Regressionstest heißt jetzt
+`PeonAiServiceTest.test_po_model_uses_po_slot_and_defaults_to_base_model`.
+Die folgende Beschreibung ist **historisch**.
 
 ## Context
 Jon (Peon-PO) is a distinct agent in the dropdown, but he must not force the user to configure a

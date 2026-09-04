@@ -43,7 +43,7 @@ class AiProviderRequestParametersTest {
         var cfg = LlmConfig.builder()
                 .providerType(AiProvider.OPEN_AI).model("gpt-5.5")
                 .modelConfigs(Map.of(
-                        AgentModelConfig.PLAN, new AgentModelConfig(null, null, null, "high", null)))
+                        AgentModelConfig.PLAN, new AgentModelConfig(null, null, null, "high", null, null)))
                 .build();
         assertThat(cfg.devAgentConfig().getThink()).isNull();
         assertThat(cfg.planAgentConfig().getThink()).isEqualTo("high");
@@ -144,7 +144,7 @@ class AiProviderRequestParametersTest {
                 .providerType(AiProvider.OLLAMA)
                 .model("gemma4:12b")
                 .modelConfigs(Map.of(AgentModelConfig.DEV,
-                        new AgentModelConfig(null, null, null, "", null)))
+                        new AgentModelConfig(null, null, null, "", null, null)))
                 .build();
 
         assertThat(cfg.devAgentConfig().getThink()).isEqualTo("");
@@ -184,7 +184,7 @@ class AiProviderRequestParametersTest {
                 .providerType(AiProvider.OPEN_AI)
                 .model("m")
                 .modelConfigs(Map.of(AgentModelConfig.DEV,
-                        new AgentModelConfig(null, null, null, "", null)))
+                        new AgentModelConfig(null, null, null, "", null, null)))
                 .sendThinkingEnabled(true)
                 .build();
 

@@ -33,9 +33,18 @@ public final class ProviderRequestSupport {
 
     /** Applies the neutral request fields (modelName, temperature, tools) onto any provider builder. */
     public static void applyBase(DefaultChatRequestParameters.Builder<?> b, AgentConfig mc, List<ToolSpecification> tools) {
-        b.temperature(mc.getTemperature());
+        b.temperature(effectiveTemperature(mc));
         if (StringUtil.hasValue(mc.getModel())) b.modelName(mc.getModel());
         if (tools != null && !tools.isEmpty()) b.toolSpecifications(tools);
+    }
+
+
+    /** User extra body wins over the typed field to avoid duplicate temperature keys. */
+    static Double effectiveTemperature(AgentConfig mc) {
+        if (!LlmProviders.of(mc.getProvider()).supportsExtraBody()) return mc.getTemperature();
+        var body = ExtraBody.parse(mc.getExtraBody());
+        return body != null && body.containsKey("temperature") && !isAbsentValue(body.get("temperature"))
+                ? null : mc.getTemperature();
     }
 
     /**

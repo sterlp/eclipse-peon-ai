@@ -40,8 +40,6 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
 
         defaults.putBoolean(PeonConstants.PREF_DISK_TOOLS_ENABLED, false);
         defaults.put(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, "");
-        defaults.put(PeonConstants.PREF_PLAN_TEMPERATURE, String.valueOf(DEFAULT.getPlanTemperature()));
-        defaults.put(PeonConstants.PREF_DEV_TEMPERATURE, String.valueOf(DEFAULT.getDevTemperature()));
         defaults.put(PeonConstants.PREF_QUERY_PARAMS, "");
         defaults.put(PeonConstants.PREF_HEADER_PARAMS, "");
 
