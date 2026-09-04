@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.agent;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -25,6 +26,12 @@ class AgentServiceTest extends AbstractMemoryFileTest {
     private static Path writeAgent(Path agentsDir, String name, String content) throws Exception {
         var dir = Files.createDirectories(agentsDir.resolve(name));
         var file = dir.resolve("AGENT.md");
+        Files.writeString(file, content);
+        return file;
+    }
+
+    private static Path writeAgentOrder(Path agentsDir, String content) throws Exception {
+        var file = agentsDir.resolve("agent-order.txt");
         Files.writeString(file, content);
         return file;
     }
@@ -203,5 +210,235 @@ class AgentServiceTest extends AbstractMemoryFileTest {
         assertThat(Files.exists(tmp.resolve("state/docs-history.jsonl"))).isTrue();
         assertThat(Files.list(tmp.resolve("state")).map(p -> p.getFileName().toString()))
                 .containsExactlyInAnyOrder("Peon-Dev-history.jsonl", "Peon-Plan-history.jsonl", "docs-history.jsonl");
+    }
+
+    @Test
+    void defaultFileCreated() throws Exception {
+        // GIVEN — agents directory exists but no agent-order.txt
+        var agentsDir = tmp.resolve("agents");
+        Files.createDirectory(agentsDir);
+
+        // WHEN
+        new AgentService(false, agentsDir, toolService, chatModel);
+
+        // THEN
+        var orderFile = agentsDir.resolve("agent-order.txt");
+        assertThat(orderFile).exists();
+        var content = Files.readString(orderFile);
+        assertThat(content).contains("^Peon-PO$");
+    }
+
+    @Test
+    void getAgentsWithOrdering() throws Exception {
+        // GIVEN — custom ordering file with ^Peon-Dev$ first
+        var agentsDir = tmp.resolve("agents");
+        Files.createDirectory(agentsDir);
+        writeAgent(agentsDir, "Peon-Dev", """
+                ---
+                name: Peon-Dev
+                ---
+                body
+                """);
+        writeAgent(agentsDir, "Alpha-Agent", """
+                ---
+                name: Alpha-Agent
+                ---
+                body
+                """);
+        writeAgent(agentsDir, "Zeta-Agent", """
+                ---
+                name: Zeta-Agent
+                ---
+                body
+                """);
+
+        writeAgentOrder(agentsDir, """
+                ^Peon-Dev$
+                """);
+
+        // WHEN
+        var subject = new AgentService(false, agentsDir, toolService, chatModel);
+        var agents = subject.getAgents();
+
+        // THEN
+        assertThat(agents).extracting(AiAgent::getName).containsExactly("Peon-Dev", "Alpha-Agent", "Zeta-Agent");
+    }
+
+    @Test
+    void alphabeticalFallbackWhenNoPatterns() throws Exception {
+        // GIVEN — agent-order.txt with only comments
+        var agentsDir = tmp.resolve("agents");
+        Files.createDirectory(agentsDir);
+        writeAgent(agentsDir, "Charlie", """
+                ---
+                name: Charlie
+                ---
+                body
+                """);
+        writeAgent(agentsDir, "Alpha", """
+                ---
+                name: Alpha
+                ---
+                body
+                """);
+        writeAgent(agentsDir, "Bravo", """
+                ---
+                name: Bravo
+                ---
+                body
+                """);
+
+        writeAgentOrder(agentsDir, """
+                # Only comments
+                # Nothing here
+                """);
+
+        // WHEN
+        var subject = new AgentService(false, agentsDir, toolService, chatModel);
+        var agents = subject.getAgents();
+
+        // THEN
+        assertThat(agents).extracting(AiAgent::getName).containsExactly("Alpha", "Bravo", "Charlie");
+    }
+
+    @Test
+    void regexGrouping() throws Exception {
+        // GIVEN — agents matching .*Manager.* should appear first, sorted alphabetically
+        var agentsDir = tmp.resolve("agents");
+        Files.createDirectory(agentsDir);
+        writeAgent(agentsDir, "Dev-Manager", """
+                ---
+                name: Dev-Manager
+                ---
+                body
+                """);
+        writeAgent(agentsDir, "Admin-Manager", """
+                ---
+                name: Admin-Manager
+                ---
+                body
+                """);
+        writeAgent(agentsDir, "Other-Agent", """
+                ---
+                name: Other-Agent
+                ---
+                body
+                """);
+
+        writeAgentOrder(agentsDir, """
+                .*Manager.*
+                """);
+
+        // WHEN
+        var subject = new AgentService(false, agentsDir, toolService, chatModel);
+        var agents = subject.getAgents();
+
+        // THEN
+        assertThat(agents).extracting(AiAgent::getName).containsExactly("Admin-Manager", "Dev-Manager", "Other-Agent");
+    }
+
+    @Test
+    void invalidRegexHandling() throws Exception {
+        // GIVEN — agent-order.txt with an invalid regex
+        var agentsDir = tmp.resolve("agents");
+        Files.createDirectory(agentsDir);
+        writeAgent(agentsDir, "Good-Agent", """
+                ---
+                name: Good-Agent
+                ---
+                body
+                """);
+
+        writeAgentOrder(agentsDir, """
+                [invalid(regex
+                ^Good-Agent$
+                """);
+
+        // WHEN — should not crash, invalid regex skipped
+        var subject = new AgentService(false, agentsDir, toolService, chatModel);
+        var agents = subject.getAgents();
+
+        // THEN
+        assertThat(agents).extracting(AiAgent::getName).containsExactly("Good-Agent");
+    }
+
+    @Test
+    void duplicatePrevention() throws Exception {
+        // GIVEN — multiple patterns matching the same agent
+        var agentsDir = tmp.resolve("agents");
+        Files.createDirectory(agentsDir);
+        writeAgent(agentsDir, "Peon-PO", """
+                ---
+                name: Peon-PO
+                ---
+                body
+                """);
+        writeAgent(agentsDir, "Peon-Dev", """
+                ---
+                name: Peon-Dev
+                ---
+                body
+                """);
+
+        writeAgentOrder(agentsDir, """
+                ^Peon-.*$
+                ^Peon-PO$
+                """);
+
+        // WHEN
+        var subject = new AgentService(false, agentsDir, toolService, chatModel);
+        var agents = subject.getAgents();
+
+        // THEN — each agent appears exactly once, first pattern wins alphabetically
+        assertThat(agents).extracting(AiAgent::getName).containsExactly("Peon-Dev", "Peon-PO");
+    }
+
+    @Test
+    void multiplePatternsInOrder() throws Exception {
+        // GIVEN — multiple patterns defining distinct groups
+        var agentsDir = tmp.resolve("agents");
+        Files.createDirectory(agentsDir);
+        writeAgent(agentsDir, "Manager-A", """
+                ---
+                name: Manager-A
+                ---
+                body
+                """);
+        writeAgent(agentsDir, "Manager-B", """
+                ---
+                name: Manager-B
+                ---
+                body
+                """);
+        writeAgent(agentsDir, "Worker-X", """
+                ---
+                name: Worker-X
+                ---
+                body
+                """);
+        writeAgent(agentsDir, "Worker-Y", """
+                ---
+                name: Worker-Y
+                ---
+                body
+                """);
+        writeAgent(agentsDir, "Other-Z", """
+                ---
+                name: Other-Z
+                ---
+                body
+                """);
+
+        writeAgentOrder(agentsDir, """
+                .*Manager.*
+                .*Worker.*
+                """);
+
+        // WHEN
+        var subject = new AgentService(false, agentsDir, toolService, chatModel);
+        var agents = subject.getAgents();
+
+        // THEN
+        assertThat(agents).extracting(AiAgent::getName).containsExactly("Manager-A", "Manager-B", "Worker-X", "Worker-Y", "Other-Z");
     }
 }

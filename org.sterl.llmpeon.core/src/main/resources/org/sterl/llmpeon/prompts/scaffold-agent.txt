@@ -75,3 +75,29 @@ Frontmatter: `name`, `description`. Body is the skill instructions.
 
 ### Commands (`commands/<Name>.md`)
 Frontmatter: `name`, `description`. Body is the command instructions.
+
+### Agent Ordering (`agents/agent-order.txt`)
+Controls the display order of agents in the UI dropdown.
+Each line is a Java regex pattern matching agent names.
+Patterns are applied top-to-bottom; agents matching a pattern appear before agents matching later patterns.
+Within each group, agents are sorted alphabetically.
+Unmatched agents are appended alphabetically at the end.
+Lines starting with `#` are comments and ignored.
+Invalid regexes are skipped with a warning.
+
+When creating or editing agents, offer to update the ordering file if the user wants a specific display order.
+Default content creates Peon-PO first, then alphabetical:
+
+```text
+# Ordering of agents in the UI dropdown. Each line is a regex that matches agent names.
+# Patterns are applied top-to-bottom: agents matching an earlier line appear first.
+# Within each pattern group, agents are sorted alphabetically.
+# Unmatched agents are appended alphabetically at the end.
+# Falls back to Peon-PO first, then alphabetical, when no valid patterns exist.
+^Peon-PO$
+```
+
+Examples:
+- `^Peon-Dev$` — Peon-Dev first, then alphabetical.
+- `.*Manager.*` — All agents with "Manager" in their name, grouped alphabetically.
+- `.*Manager.*\n.*Worker.*` — Managers first, then workers, then others.
