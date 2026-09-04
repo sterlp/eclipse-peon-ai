@@ -46,6 +46,18 @@ class AllowlistWriteValidatorTest {
     }
 
     @Test
+    void rejectsBackslashTraversalThroughDocs() {
+        // Bug-Hunt #9f: mixed-separator traversal a/docs/..\..\secret.txt —
+        // raw string contains /docs/ so the glob */docs/* matches before segment resolution;
+        // after \→/ conversion the path resolves to secret.txt → outside the allowlist → must throw.
+        var ex = assertThrows(IllegalArgumentException.class,
+                () -> docs.validate("a/docs/..\\..\\secret.txt"));
+        assertTrue(ex.getMessage().contains("Write denied"));
+        assertTrue(ex.getMessage().contains("a/docs/..\\..\\secret.txt"),
+                "error should show the original path, was: " + ex.getMessage());
+    }
+
+    @Test
     void rejectsBddTraversalExample() {
         // Regression pin for the original BDD string: docs/../../secret.txt has no /docs/ substring,
         // so it never matched */docs/* — already rejected, keep it that way.

@@ -33,7 +33,8 @@ class FileUtilsTest {
         "a/b/../c               , a/c",
         "./x                    , x",
         "/abs/docs/../x.md      , /abs/x.md",
-        "a/docs/../../secret.txt, secret.txt"
+        "a/docs/../../secret.txt, secret.txt",
+        "a/docs/..\\..\\secret.txt, secret.txt"
     })
     void test_normalizeSegments(String value, String expected) {
         assertThat(FileUtils.normalizeSegments(value)).isEqualTo(expected);

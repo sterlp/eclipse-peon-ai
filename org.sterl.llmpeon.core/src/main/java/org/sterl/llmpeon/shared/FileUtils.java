@@ -21,12 +21,14 @@ public class FileUtils {
     }
 
     /**
-     * Resolves {@code .} and {@code ..} segments in a {@code /}-separated path string, without
-     * touching the file system and without converting separators (unlike {@link java.nio.file.Path#normalize()}).
+     * Resolves {@code .} and {@code ..} segments in a path string, without touching the file system.
+     * Accepts both {@code /} and {@code \} separators (converted to {@code /} first, unlike
+     * {@link java.nio.file.Path#normalize()} which is platform-dependent).
      * A leading {@code /} is kept; a {@code ..} beyond the root is kept (POSIX-style).
      */
     public static String normalizeSegments(String path) {
         if (path == null || path.isEmpty()) return path;
+        path = normalizePath(path);
         boolean absolute = path.startsWith("/");
         var stack = new ArrayDeque<String>();
         for (String seg : path.split("/")) {
