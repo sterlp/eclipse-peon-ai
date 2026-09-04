@@ -1,6 +1,6 @@
 ---
 name: eclipse-dpe
-description: Eclipse PDE development patterns for SWT tests, workspace resources, JDT project handles, and Maven/Eclipse build synchronization.
+description: Eclipse PDE development patterns for SWT tests, workspace resources, JDT project handles, path separator semantics, and Maven/Eclipse build synchronization.
 ---
 
 # SWT-UI tests in PDE JUnit (verified 2026-09-02, inc-25)
@@ -149,3 +149,26 @@ The daily "No files found for a file that exists" was never a wildcard problem:
 - **Extensionless files are not nothing.** `Dockerfile`, `Makefile`, `.gitignore` were silently
   skipped by the extension whitelist. Keep a shared `TextFileTypes` (extensions **and** file
   names) in core for both tool families, and name the type filter when the result is empty.
+
+
+
+## Path strings and separators — `/` vs `\` (verified 2026-09-04, bug-hunt #9 follow-up)
+
+- **`Path.of(...)` follows the host OS.** On Windows both `/` and `\` are separators; on POSIX
+  `\` is an ordinary filename character (`a\b.txt` is one segment). The same input string behaves
+  differently per platform — never rely on `Path` for platform-independent path semantics.
+- **`Path#normalize()` is platform-dependent twice over:** it only resolves `..` for the host
+  separator, and on Windows `toString()` re-emits `\`. For string-level matching (globs,
+  allowlists) written with `/` (Eclipse convention) it breaks the match on Windows. Use
+  `FileUtils.normalizeSegments` instead: `\`→`/` first (`normalizePath`), then `.`/`..` segment
+  resolution — pure string, no filesystem, identical result on every OS.
+- **Eclipse `IPath.fromPortableString` ("portable" = `/`) converts `\`→`/` only when
+  `Constants.RUNNING_ON_WINDOWS`** (`Path(String, forWindows)` → `backslashToForward`). So
+  workspace-relative paths with backslashes work on Windows and fail on macOS/Linux ("file not
+  found") — an honest error, not a false negative.
+- **Design rule (PO decision 2026-09-04):** normalize unconditionally at string-comparison
+  choke-points (e.g. `AllowlistWriteValidator` — a `/`-glob matched against a `\`-path compares
+  unlike with unlike, and a mismatch there is a *silent bypass*). Do NOT normalize in the file
+  tools: Windows understands both separators natively, and POSIX normalization would make files
+  literally named `a\b.txt` unaddressable (real loss for a hypothetical LLM slip; the tool's
+  "file not found" is loud and self-healing). See `docs/resolved-points.md`.
