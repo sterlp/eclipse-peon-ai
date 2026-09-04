@@ -16,6 +16,8 @@ import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+
 
 class DiskFileWriteToolTest {
 
@@ -123,6 +125,53 @@ class DiskFileWriteToolTest {
                 .writeValidator(WriteValidator.DOCS)
                 .build();
     }
+
+    @Test
+    void diskEditFile_reportsReplacementCount() throws IOException {
+        Files.writeString(tempDir.resolve("edit.txt"), "x\nx");
+        var ts = new ToolService(false);
+        ts.addTool(tool);
+
+        var model = LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", "http://localhost:9999").build();
+        var req = ToolLoopRequest.builder()
+                .memory(new ThreadSafeMemory())
+                .chatModel(model)
+                .build();
+
+        var tr = ToolExecutionRequest.builder()
+                .id("1")
+                .name("diskEditFile")
+                .arguments("{\"filePath\":\"edit.txt\",\"oldString\":\"x\",\"newString\":\"y\"}")
+                .build();
+
+        var result = ts.execute(tr, req);
+        assertTrue(result.text().contains("replaced 2 occurrence(s)"),
+                "LLM-visible result should report the replacement count, was: " + result.text());
+    }
+
+    @Test
+    void diskEditFile_nullNewStringReportsDeletedCount() throws IOException {
+        Files.writeString(tempDir.resolve("edit.txt"), "x\nx");
+        var ts = new ToolService(false);
+        ts.addTool(tool);
+
+        var model = LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", "http://localhost:9999").build();
+        var req = ToolLoopRequest.builder()
+                .memory(new ThreadSafeMemory())
+                .chatModel(model)
+                .build();
+
+        var tr = ToolExecutionRequest.builder()
+                .id("1")
+                .name("diskEditFile")
+                .arguments("{\"filePath\":\"edit.txt\",\"oldString\":\"x\",\"newString\":null}")
+                .build();
+
+        var result = ts.execute(tr, req);
+        assertTrue(result.text().contains("deleted 2 occurrence(s)"),
+                "LLM-visible result should report the delete count, was: " + result.text());
+    }
+
 
     @Test
     void write_allowedInsideDocs() {

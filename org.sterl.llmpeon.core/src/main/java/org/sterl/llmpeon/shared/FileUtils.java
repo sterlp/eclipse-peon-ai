@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayDeque;
 import java.util.Optional;
 
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +18,30 @@ public class FileUtils {
     public static String normalizePath(String value) {
         if (value == null || value.length() == 0) return value;
         return value.replace('\\', '/');
+    }
+
+    /**
+     * Resolves {@code .} and {@code ..} segments in a path string, without touching the file system.
+     * Accepts both {@code /} and {@code \} separators (converted to {@code /} first, unlike
+     * {@link java.nio.file.Path#normalize()} which is platform-dependent).
+     * A leading {@code /} is kept; a {@code ..} beyond the root is kept (POSIX-style).
+     */
+    public static String normalizeSegments(String path) {
+        if (path == null || path.isEmpty()) return path;
+        path = normalizePath(path);
+        boolean absolute = path.startsWith("/");
+        var stack = new ArrayDeque<String>();
+        for (String seg : path.split("/")) {
+            if (seg.isEmpty() || seg.equals(".")) continue;
+            if (seg.equals("..")) {
+                if (stack.isEmpty()) stack.addLast("..");
+                else stack.removeLast();
+            } else {
+                stack.addLast(seg);
+            }
+        }
+        String joined = String.join("/", stack);
+        return absolute ? "/" + joined : joined;
     }
     
     public static String makeReltive(String value) {
@@ -63,10 +88,11 @@ public class FileUtils {
     }
 
     /**
-     * Replaces exactly one occurrence of {@code oldStr} with {@code newStr} inside {@code content}.
-     * Throws {@link IllegalArgumentException} if there are zero or more than one match.
+     * Replaces <b>all</b> occurrences of {@code oldStr} with {@code newStr} inside {@code content}.
+     * Returns the new content together with the number of replaced occurrences.
+     * Throws {@link IllegalArgumentException} if the strings are identical or nothing matches.
      */
-    public static String applyEdit(String filePath, String content, String oldStr, String newStr) {
+    public static EditResult applyEdit(String filePath, String content, String oldStr, String newStr) {
         if (oldStr.equals(newStr)) throw new IllegalArgumentException("Old and new string is the same.");
 
         String fileLineEnding = dominantLineEnding(content);
@@ -83,7 +109,7 @@ public class FileUtils {
         }
 
         if (content.contains(oldStr)) {
-            return content.replace(oldStr, newStr);
+            return new EditResult(content.replace(oldStr, newStr), countOccurrences(content, oldStr));
         } else {
             throw new IllegalArgumentException(
                     "Bad replace in file: " + filePath + " oldStr: " + fileLineEnding
@@ -91,6 +117,20 @@ public class FileUtils {
                             + "=> not found! Please check your replace. Current content of the file:" + fileLineEnding
                             + content);
         }
+    }
+
+    /** Result of {@link #applyEdit}: the new content and how many occurrences were replaced. */
+    public record EditResult(String content, int count) {}
+
+    /** Non-overlapping occurrences of {@code needle} in {@code content} (0 for an empty needle). */
+    private static int countOccurrences(String content, String needle) {
+        if (needle.isEmpty()) return 0;
+        int count = 0, idx = 0;
+        while ((idx = content.indexOf(needle, idx)) >= 0) {
+            count++;
+            idx += needle.length();
+        }
+        return count;
     }
 
     public static String dominantLineEnding(String content) {

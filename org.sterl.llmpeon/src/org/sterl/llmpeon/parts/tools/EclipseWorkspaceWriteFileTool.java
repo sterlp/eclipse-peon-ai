@@ -61,8 +61,8 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
             IDocument document = provider.getDocument(text.getEditorInput());
             
             var oldDoc = document.get();
-            var newDoc = FileUtils.applyEdit(path, document.get(), oldString, newString);
-            document.set(newDoc);
+            var edit = FileUtils.applyEdit(path, document.get(), oldString, newString);
+            document.set(edit.content());
             
             var success = "Saved!";
             if (!PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().saveEditor(text, false)) {
@@ -70,8 +70,10 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
                     success = "Save failed! Ask user to save editor.";
                 }
             }
-            monitor.onFileUpdate(new AiFileUpdate(path, oldDoc, newDoc));
-            return openFile.isPresent() ? success + " of " + JdtUtil.pathOf(openFile.get()) : success;
+            monitor.onFileUpdate(new AiFileUpdate(path, oldDoc, edit.content()));
+            var verb = newString.isEmpty() ? "deleted" : "replaced";
+            var countMsg = " — " + verb + " " + edit.count() + " occurrence(s)";
+            return openFile.isPresent() ? success + " of " + JdtUtil.pathOf(openFile.get()) + countMsg : success + countMsg;
                 
         });
         
@@ -113,8 +115,8 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         }
     }
 
-    @Tool("Replace the first occurrence of an exact string in a workspace file. newString=null deletes the match.")
-    public void eclipseEditFile(
+    @Tool("Replace all occurrences of an exact string in a workspace file; reports how many were replaced. newString=null deletes the matches.")
+    public String eclipseEditFile(
             @P(description = "workspace-relative path", name = "filePath") String filePath,
             @P(description = "exact text to replace", name = "oldString", required = false) String oldString,
             @P(name = "newString", required = false) String newString) {
@@ -130,10 +132,13 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
             throw new IllegalArgumentException("Cannot write unknown file in eclipse " + filePath);
         } else {
             String content = readFile(eclipseFile);
-            String newFullContent = FileUtils.applyEdit(filePath, content, oldString, newString);
+            var edit = FileUtils.applyEdit(filePath, content, oldString, newString);
 
-            IoUtils.writeFile(eclipseFile, newFullContent, getProgressMonitor());
-            monitor.onFileUpdate(new AiFileUpdate(JdtUtil.pathOf(eclipseFile), content, newFullContent));
+            IoUtils.writeFile(eclipseFile, edit.content(), getProgressMonitor());
+            monitor.onFileUpdate(new AiFileUpdate(JdtUtil.pathOf(eclipseFile), content, edit.content()));
+
+            var verb = newString.isEmpty() ? "deleted" : "replaced";
+            return verb + " " + edit.count() + " occurrence(s) in " + JdtUtil.pathOf(eclipseFile);
         }
     }
 

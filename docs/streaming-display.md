@@ -157,3 +157,18 @@ Alle UI-Nachrichten werden in einer Queue gepuffert, bis die HTML-Seite vollstä
 - **Tag:** unit (verify `ChatMarkdownWidget.postMessage` queues when not ready; verify `TitleListener` flushes queue)
 
 **Context:** Ohne Queue gehen Nachrichten beim Agentenwechsel oder nach einem `clear()` verloren, da die HTML-Seite kurzzeitig nicht empfangsbereit ist. Die Queue garantiert, dass jede Nachricht exakt einmal und in der richtigen Reihenfolge ankommt.
+
+
+### R17 — Config-Default für `showRealtimeAiResponse` ist `true` (✅ done, 2026-09-04)
+
+Loader-Default und Eclipse-Preference-Default müssen **beide** `true` sein — Checkbox und
+Verhalten dürfen nicht auseinanderlaufen (passt zu R2/R3 „default: enabled").
+
+- **GIVEN** der Key `llm.showRealtimeAiResponse` fehlt im Store **WHEN** die Config geladen wird **THEN** `isShowRealtimeAiResponse()` liefert `true`
+- **GIVEN** die Checkbox wird angezeigt **WHEN** der Key fehlt **THEN** sie ist angehakt (Default `true`)
+- **Tag:** unit (`LlmConfigLoader` mit leerem Store)
+
+**✅ fixed (Bug-Hunt #13, 2026-09-04):** nach dem Config-Clean-Break war der Loader-Default `false`
+(`LlmConfigLoader`: `parseBoolean(null, false)`) bei Preference-Default `true` — die Checkbox sah
+angehakt aus, das Widget bekam `false` → User sah nur „N tokens" statt Text. User-Entscheidung:
+Default = on.

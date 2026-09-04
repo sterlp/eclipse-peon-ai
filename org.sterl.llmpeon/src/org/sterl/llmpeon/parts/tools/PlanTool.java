@@ -62,8 +62,8 @@ public class PlanTool extends AbstractEclipseTool {
 
         var content = planRead();
         var planFile = getProject().getFile(OVERVIEW_FILE);
-        String newContent = FileUtils.applyEdit(JdtUtil.pathOf(planFile), content, oldString, newString);
-        IoUtils.writeFile(planFile, newContent, getProgressMonitor());
+        var edit = FileUtils.applyEdit(JdtUtil.pathOf(planFile), content, oldString, newString);
+        IoUtils.writeFile(planFile, edit.content(), getProgressMonitor());
         var editResult = new AiFileUpdate(JdtUtil.pathOf(planFile), oldString, newString);
         monitor.onFileUpdate(editResult);
         

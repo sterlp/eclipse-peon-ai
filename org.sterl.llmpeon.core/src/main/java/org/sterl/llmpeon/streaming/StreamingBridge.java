@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.streaming;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CountDownLatch;
@@ -35,7 +36,17 @@ import dev.langchain4j.model.chat.response.StreamingHandle;
  */
 public class StreamingBridge implements StreamingChatResponseHandler {
 
-    private Instant startedAt = Instant.now();
+    private final Clock clock;
+    private final Instant startedAt;
+
+    public StreamingBridge() {
+        this(Clock.systemUTC());
+    }
+
+    StreamingBridge(Clock clock) {
+        this.clock = clock;
+        this.startedAt = Instant.now(clock);
+    }
 
     // Per-call state — reset at the top of each call()
     private volatile CountDownLatch latch;
@@ -46,13 +57,11 @@ public class StreamingBridge implements StreamingChatResponseHandler {
 
     /**
      * Executes one streaming LLM call and blocks until complete or error.
-     * Sets {@code startedAt} on the first invocation only.
+     * {@code startedAt} is set at construction (turn start) and kept across all calls of this turn.
      * 
      * @throws CancellationException if canceled
      */
     public ChatResponse call(StreamingChatModel model, ChatRequest request, AiMonitor monitor) {
-        startedAt = Instant.now();
-
         this.latch = new CountDownLatch(1);
         this.responseRef = new AtomicReference<>();
         this.errorRef = new AtomicReference<>();

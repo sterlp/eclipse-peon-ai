@@ -115,14 +115,14 @@ public class DiskFileWriteTool extends AbstractTool {
         }
     }
 
-    @Tool("Replace the first occurrence of an exact string. Error if not found or identical.")
-    public void diskEditFile(@P(name = "filePath") String filePath, 
+    @Tool("Replace all occurrences of an exact string; reports how many were replaced. newString=null/empty deletes the matches. Error if not found or identical.")
+    public String diskEditFile(@P(name = "filePath") String filePath, 
             @P(description = "exact string to replace", name = "oldString") String oldString, 
-            @P(name = "newString") String newString) {
+            @P(name = "newString", required = false) String newString) {
 
         ArgsUtil.requireNonBlank(filePath, "filePath");
         ArgsUtil.requireNonBlank(oldString, "oldString");
-        ArgsUtil.requireNonNull(newString, "newString");
+        if (newString == null) newString = "";
 
         if (oldString.equals(newString)) {
             throw new IllegalArgumentException("oldString and newString are identical - nothing to change");
@@ -136,12 +136,14 @@ public class DiskFileWriteTool extends AbstractTool {
 
         try {
             String content = Files.readString(resolved);
-            String newContent = FileUtils.applyEdit(filePath, content, oldString, newString);
-            Files.writeString(resolved, newContent);
+            var edit = FileUtils.applyEdit(filePath, content, oldString, newString);
+            Files.writeString(resolved, edit.content());
 
-            var result = new AiFileUpdate(workingDir.relativize(resolved).toString(), content, newContent);
+            var result = new AiFileUpdate(workingDir.relativize(resolved).toString(), content, edit.content());
             monitor.onFileUpdate(result);
 
+            var verb = newString.isEmpty() ? "deleted" : "replaced";
+            return verb + " " + edit.count() + " occurrence(s) in " + workingDir.relativize(resolved);
         } catch (IOException e) {
             throw new RuntimeException("Failed to edit " + filePath, e);
         }

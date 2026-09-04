@@ -95,7 +95,7 @@ public class LlmConfig {
     @Default
     private final boolean debugMode = false;
     @Default
-    private final boolean showRealtimeAiResponse = false;
+    private final boolean showRealtimeAiResponse = true;
     @Default
     private final Map<String, String> queryParams = new LinkedHashMap<>();
     @Default
