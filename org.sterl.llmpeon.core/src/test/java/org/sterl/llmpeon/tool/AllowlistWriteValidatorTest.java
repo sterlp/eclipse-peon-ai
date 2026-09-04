@@ -40,6 +40,9 @@ class AllowlistWriteValidatorTest {
         var ex = assertThrows(IllegalArgumentException.class,
                 () -> docs.validate("a/docs/../../secret.txt"));
         assertTrue(ex.getMessage().contains("Write denied"));
+        // The LLM sees the original path it sent, not the normalized one.
+        assertTrue(ex.getMessage().contains("a/docs/../../secret.txt"),
+                "error should show the original path, was: " + ex.getMessage());
     }
 
     @Test
