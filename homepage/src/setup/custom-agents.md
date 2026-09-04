@@ -82,7 +82,7 @@ Double quotes on the outside would break, because the JSON itself contains doubl
 | `think_off_string` | Value used when unsupported. Empty means provider default, except Ollama sends `think:false`. Set `false` for providers that need explicit off. |
 | `think_send` | *(reserved)* Show the model's reasoning and resend it next turn (Qwen, Mistral, DeepSeek). Currently the global **Show and resend model thinking** setting applies to all agents; this per-agent key is parsed but not yet wired per request. |
 | `think` | *(legacy alias, auto-migrated)* Read as `think_on_string` and implies `think_supported` for on-values. Old files are auto-migrated on the first write operation (e.g. model or thinking-support change). Prefer the `think_*` keys above. |
-| `tools` | Allowlist of tool-name prefixes. **Omit it and the agent gets _no_ tools** — use `- '*'` to allow all. |
+| `tools` | Allowlist of tool-name prefixes. **Omit it and the agent gets _all_ tools**; an empty list allows none. |
 
 ## Model connection per agent
 
@@ -131,9 +131,9 @@ The built-in **Peon-Plan** agent uses exactly this: it hands over to **Peon-Dev*
 - `'*'` — allow every tool.
 - a **prefix** — `eclipseRead` enables `eclipseReadFile`, `eclipseReadProjectProblems`, …; a full
   name enables exactly that tool. Works for built-in **and** MCP tools (e.g. `mcp__docs__search`).
-- **field omitted** — **no tools** (use `- '*'` if you want all of them).
+- **field omitted** — **all tools** (an empty list allows none).
 
-Use the YAML block-list form (one `- entry` per line), as in the example above.
+Use the YAML block-list form (one `- entry` per line) or inline CSV (`tools: grep, read_`).
 
 `read-only` and `tools` combine: a read-only agent that allowlists a write tool still won't get
 it, because editing tools are filtered out first. For MCP tools, restrict writes by only

@@ -111,6 +111,50 @@ class CustomAgentServiceTest extends AbstractMemoryFileTest {
     }
 
     @Test
+    void absentToolsAllowAll() throws IOException {
+        // GIVEN an agent whose frontmatter has no tools: field
+        var svc = newCustomAgent(false, null);
+
+        // THEN every tool is active (absent = all)
+        assertThat(svc.isToolActive(exec("read_file"))).isTrue();
+        assertThat(svc.isToolActive(exec("write_file"))).isTrue();
+        // AND the MCP name filter allows everything
+        assertThat(svc.getToolNameFilter().test("mcp__docs__search_docs")).isTrue();
+    }
+
+    @Test
+    void inlineCsvToolsFlattened() throws IOException {
+        // GIVEN an agent with an inline CSV tools list (single scalar "grep, read_")
+        var file = tmp.resolve("AgentCsv.md");
+        Files.writeString(file, "---\nname: t\ntools: grep, read_\n---\nbody");
+        var svc = newAgent(file);
+
+        // THEN the CSV is flattened so each entry is a prefix
+        assertThat(svc.getToolNameFilter().test("grep")).isTrue();
+        assertThat(svc.getToolNameFilter().test("read_")).isTrue();
+    }
+
+    @Test
+    void absentToolsReadOnlyOnlyReadTools() throws IOException {
+        // GIVEN a read-only agent with no tools: field
+        var svc = newCustomAgent(true, null);
+
+        // THEN read tools are active but edit tools stay blocked by read-only
+        assertThat(svc.isToolActive(exec("read_file"))).isTrue();
+        assertThat(svc.isToolActive(exec("write_file"))).isFalse();
+    }
+
+    @Test
+    void emptyToolsAllowNothing() {
+        // GIVEN an agent with an empty tools: list
+        var svc = agent(List.of(), false, null);
+
+        // THEN nothing is allowed (empty != absent)
+        assertThat(svc.isToolActive(exec("read_file"))).isFalse();
+        assertThat(svc.isToolActive(exec("write_file"))).isFalse();
+    }
+
+    @Test
     void toolNameFilterGovernsMcpNames() {
         var svc = agent(List.of("mcp__docs__search"), false, null);
         var nameFilter = svc.getToolNameFilter();

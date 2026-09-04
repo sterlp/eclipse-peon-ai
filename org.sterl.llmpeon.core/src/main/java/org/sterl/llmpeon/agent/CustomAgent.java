@@ -10,6 +10,7 @@ import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.memory.FileAgentHistoryStore;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.prompt.PromptLoader;
+import org.sterl.llmpeon.prompt.PromptYmlParser;
 import org.sterl.llmpeon.prompt.model.SimplePromptFile;
 import org.sterl.llmpeon.tool.ToolPolicy;
 import org.sterl.llmpeon.tool.ToolService;
@@ -191,9 +192,11 @@ public class CustomAgent extends AbstractAgent {
         return this::allowed;
     }
 
-    /** @return {@code true} if the tool name passes this agent's {@code tools} allowlist. */
+    /** @return {@code true} if the tool name passes this agent's {@code tools} allowlist.
+     * An absent {@code tools:} field (null) means all tools; an empty list means none. */
     private boolean allowed(String toolName) {
-        return ToolPolicy.enables(getTools(), toolName);
+        var allowlist = PromptYmlParser.toolAllowlist(getTools());
+        return allowlist == null || ToolPolicy.enables(allowlist, toolName);
     }
     
     @Override
