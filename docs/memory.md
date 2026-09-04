@@ -1,89 +1,64 @@
-# Session-Stand — Release-Stabilisierung **abgeschlossen** (2026-09-03/04)
+# Session-Stand — Bug-Hunt-Zyklus (2026-09-04)
 
-**Branch `new-config`, NICHTS committet.** Dev hatte in allen Zyklen Commit-Verbot; der User
-committet und released selbst.
+**User-Anweisung:** Da Mek sucht systematisch (core ✅ durch, Plugin ⏳ ausstehend), bewährt jeden
+Fehler mit rotem Test **vor** dem Fix; Jon triagt und wählt die Fixes; nur echte Fehler.
+Dieses File ist die Arbeitsliste — bei jeder Änderung sofort aktualisieren (Compact-Schutz).
 
-## Ergebnis
+## Triage-Liste (Status: alle ⏸ auf User-Freigabe, außer #9 = Konflikt)
 
-| | Start | Jetzt |
-|---|---|---|
-| Plugin-Build | ❌ Compile-Fehler | ✅ |
-| Core (Surefire = **Ground Truth**) | 519 | **566**, 0 rot, 0 skipped |
-| Plugin (Surefire) | 68 gelaufen, 8 rot, 15 skipped | **176**, 0 rot, 4 skipped (nur SWT ohne Display) |
-| `mvn clean verify` | headless rot | **SUCCESS** |
-| Homepage-Build | — | ✅ |
+| # | Fehler | Modul | Fix (Jon gewählt) |
+|---|---|---|---|
+| 1 | `FileUtils.applyEdit` ersetzt **alle** Vorkommen, Tool-Beschreibung (disk+eclipse) sagt „first occurrence" — Tool lügt | core | **🔒 User 2026-09-04:** Replace-All bleibt (bewusst, spart Tool-Runden); Tool meldet **Anzahl der Ersetzungen**; 0 Matches = Tool-Fehler; Count auch bei null-Delete („deleted N"); Javadoc + Tool-Beschreibungen (disk+eclipse) korrigieren |
+| 2 | `ShellTool`: dokumentiertes `tailLines=-1` (=all) wird auf Default 50 gemappt | core | **🔒 User 2026-09-04:** kein Param → Default **60**; >0 → letzte N; <=0 (0/-1) → alle; Hard-Cap 3000 disclosed. **Plus neues Feature `filter`** (Regex-first/Literal-Fallback, filtern→tail, Disclosure). SOLL in [shell-tool.md](shell-tool.md) (neu angelegt, index.md registriert) |
+| 3 | `CustomAgent`: fehlendes `tools:`-Frontmatter sperrt **alle** Tools, Javadoc sagt „absent = all" | core | **🔒 User 2026-09-04:** `null`-Allowlist → allow-all-Predicate in `CustomAgent.getToolFilter()` **vor** read-only-Regel; `ToolPolicy.enables` bleibt strikt. SOLL-Ergänzung in custom-agents-design.md |
+| 4 | `StreamingBridge.startedAt` resetet pro Call statt pro Turn (Javadoc + Lifecycle: 1 Bridge/Turn) — UI „working since Xs" springt bei jedem Tool-Call zurück | core | **🔒 SOLL bestätigt (Jon, UI-Consumer geprüft):** ein Turn = eine Startzeit; Reset-Zeile in `call()` entfernen, Field-Init deckt den Turn |
+| 5 | `ShellTool`: `join(timeout)` ≠ Sichtbarkeitsgarantie, plain `LinkedList` cross-thread | core | Thread-sichere Liste (CopyOnWrite) + Stress-Test |
+| 6 | `findFirst`/`diskDeleteFile`: `Files.walk`-Stream nie geschlossen; Delete meldet „Deleted:" trotz still übersprungener Fehler | core | try-with-resources; Teilerfolg benennen („Deleted N of M, failed: …") |
+| 7 | `AiModelParser`: Parse-Fehler → `printStackTrace` + leeres Catalog, Root Cause verloren (Verhalten greift trotzdem via SOLL-Fallback) | core | Root Cause loggen (warn), leere Liste bleibt |
+| 8 | `ThinkResolver.toReasoning`: „True"/"False" rutschen durch, Off-Tokens verbatim an LM Studio | core | Case-insensitive Normalisierung; Off-Token→"off", sonst→"on" |
+| 9 | `AllowlistWriteValidator`: `docs/../../secret.txt` matcht `*/docs/*` — Path-Traversal umgeht Jons Write-Scope | core | **🔒 User 2026-09-04:** nur Wording — Pfad vor Glob-Match normalisieren (`..`/`.` auflösen), Doc-Satz → „normalized path", BDD R1 um Traversal-Fall |
+| 10 | `VoiceInputService.transcribe`: kein Timeout, `f.get()` unbounded | core | HttpRequest-Timeout + `f.get(30s)` → Timeout = Fehlermeldung |
+| 11 | `searchComplete`: Limit-Cap **ohne** Disclosure (grepComplete hat sie) — „every truncation named" verletzt | core | „showing N of M" / Cap-Disclosure wie grepComplete |
+| 12 | `FileLines.extract(0,0)` → RAW-Content ohne Zeilennummern, Javadoc sagt 0 → 1/last nummriert | core | 0 als 1/last → nummriert (disk+eclipse konsistent) |
+| 13 | **User-Bug:** „Show real time response"-Checkbox in erweiterter Config ohne Funktion — nur Tokens sichtbar, kein Text mehr | plugin | **🔒 User 2026-09-04: Default = on.** Diagnose (Jon): Default-Mismatch vom Config-Clean-Break — Preference-Default `true` (`LlmPreferenceInitializer:44`) vs. `LlmConfigLoader:40` `parseBoolean(null, false)`. Fix: Loader-Default → `true`. SOLL in [streaming-display.md](streaming-display.md) R17 (neu) |
+| 14 | `AnthropicProvider.listAiModels`: hardcodet `api.anthropic.com`, ignoriert custom `baseUrl` (Proxy→401) | core | `baseUrl` aus Config nutzen |
+| 15 | `VoiceInputService`: doppeltes `startRecording` leakt die alte Line | core | Alte Line vor neuem Start schließen |
 
-**Backlog leer** — keine ❌ specified Story mehr offen.
+## Skips (dokumentierte Entscheidungen / bereits getrackt)
 
-Gebaut in 9 Zyklen: Test-Setup · 2a Read/Grep · 2b-1 Suche · 2b-2 Grep · 2b-3 Console +
-Refresh-Ziel · 3a PO-Model-Slot · 3b Temperature pro Agent · Flake-Fix · R6b aus dem E2E-Test.
-Details stehen dort, wo sie hingehören — in den Feature-Docs und ADRs, nicht hier:
+- Unbounded Query-Caches (`SearchQuery.CACHE`, `RegexUtils.GLOB_CACHE`) — ⏳ in open-points.md
+- `ModelListCache` ohne Eviction — „no eviction needed" dokumentiert (ConfiguredChatModel-Javadoc)
+- `SearchAgentTool` teilt parent `ApiRetry` — Design-Eigenheit
+- `FileAgentHistoryStore` History-Wipe bei korrupter Zeile — dokumentiert
+- `McpService` Connection-Wipe bei Fehler — dokumentiert
 
-- [eclipse-read-tools.md](eclipse-read-tools.md) — R1–R7 komplett ✅
-- [test-setup.md](test-setup.md) — R1–R5 ✅
-- [advanced-configuration.md](advanced-configuration.md) — R-PO1…R-PO4, R-T1…R-T5 ✅
-- ADRs [0035](adr/0035-grep-regex-first-literal-fallback.md) ·
-  [0036](adr/0036-po-own-model-slot.md) · [0037](adr/0037-dedicated-test-fixture-project.md) ·
-  [0038](adr/0038-refresh-on-empty-search.md) · [0039](adr/0039-temperature-body-precedence.md);
-  [0023](adr/0023-po-model-plan-slot.md) auf *Superseded* gesetzt.
+## Scope dieses Zyklus (User 2026-09-04, User kurz weg)
 
-## Offen für den User (vor dem Release)
+**Jetzt bauen:** #1, #2 (+filter), #3, #4, #9, #13 — alle 🔒 entschieden.
+**Später:** #5–#12, #14, #15 + Plugin-Hunt (bleiben auf der Liste oben).
 
-1. **Zwei manuelle Prüfungen** — bewusst nicht automatisiert, weil ein Render-Test ohne Display
-   skippen würde:
-   - Temperature-Feld steht in **allen fünf** Agent-Sections zwischen Think und Extra body,
-     auch bei Ollama (kein Provider-Gate).
-   - Advanced-Seite zeigt fünf Sections in der Reihenfolge **PO, Dev, Plan, Search, Compact**;
-     PO-Modell setzen → OK → Seite neu öffnen → Wert steht.
-2. **Verhaltensänderung kommunizieren:** Search und Compact senden ohne eigenen
-   Temperature-Wert **nichts** mehr (vorher implizit 0.3 / 0.2). Auf der Homepage dokumentiert.
-3. Modell-List-Fetch + Refresh bei allen Agenten; Cache-Snippets gegen das eigene Gateway.
-4. Dann **committen + releasen**.
+**Zyklus-Setup (Jon, AGENTS.md-Standard):** Branch `bug-hunt-2026-09-04`, Auto-Commit pro grünem
+Increment (`inc-N: <summary>` + Assisted-by-Trailer). Finaler Merge = User-Entscheidung.
 
-## Nachlauf 2026-09-04 (nach dem Release-Zyklus)
+## Entschieden (User 2026-09-04)
 
-- **Plan-Archiv aufgelöst:** alle 13 `peon-plan/overview-done-*.md` gesichtet, dauerhaft Wertvolles
-  in die Docs überführt, Dateien gelöscht. Neu: [ADR-0040](adr/0040-model-list-single-flight-secret-masking.md)
-  (Single-Flight + Secret-Masking); Ergänzungen in `test-setup.md` (Mock-Wire-Formate, bewusste
-  Abdeckungs-Entscheidung), `caching.md` R3 (Herkunft der Snippets), ADR-0039 (langchain4j-Merge-
-  Semantik), `AGENTS-DEV.md` (CancellationException-Trap, TABU-Regel-Ursprung).
-- **ADR-0021 repariert** (Copy-Paste-Schaden im Context) und ergänzt: der 70-%-Trigger misst
-  Füllstand, nicht Relevanz — Themenwechsel bleibt Jons manuelle Entscheidung (compact vs. reset).
-- **Prompts überarbeitet** (`po.txt` / `po-delegation.txt`, Produkt-Assets, nicht Doc-Baum):
-  index.md = Karte statt Protokoll · Glossar-Regel · Ownership entwirrt (adr/ = Jon allein,
-  Feature-Docs = gemeinsam) · zwei Gedächtnisse ohne Dubletten · aktives Beraten + Konflikte immer
-  gemeinsam lösen · Review prüft jetzt **drei** Seiten (Plan↔Code, Docs↔Code, Docs↔Plan) ·
-  Delta-Plan braucht Abnahme · ❌→✅ erst nach Review (war fälschlich bei der Plan-Abnahme) ·
-  Mutations-Check als Jons Ermessensentscheidung statt Dev-Dauerpflicht · Night-Cycle als
-  Drei-Wege-Sortierung (klar → bauen · ableitbar → entscheiden + ⏳ · echt offen → skip + ❓),
-  Präzisierungen ohne Bedeutungsänderung dürfen nachts direkt ins Feature-Doc.
-- **`PoDelegateTool` geglättet** (Dev, nicht committet): einheitliches compact/reset-Beschreibungspaar,
-  Compact liefert nur noch eine Quittung statt der ganzen Zusammenfassung, UI und Tool-Result teilen
-  sich `dispatchStats(...)` (Kontext + Dauer + HH:mm), compact/reset melden knapp an die UI.
-  `PoDelegateToolTest` 7/0.
+- **#9** = nur Wording: Pfad vor Glob-Match normalisieren, Doc-Satz → „normalized path", BDD R1 um Traversal-Fall.
+- **#1** = Replace-All bleibt (bewusst); Tool meldet Anzahl der Ersetzungen; 0 Matches = Fehler; Count auch bei null-Delete; Javadoc + Tool-Beschreibungen (disk+eclipse) korrigieren.
+- **#2** = tail: kein Param → 60, >0 → N, <=0 → all, Hard-Cap 3000 disclosed; **neu** `filter` (Regex-first/Literal-Fallback, filtern→tail, Disclosure) → SOLL in [shell-tool.md](shell-tool.md).
+- **#3** = null-Allowlist → allow-all vor read-only-Regel (SOLL in custom-agents-design.md).
+- **#4** = ein Turn = eine Startzeit (SOLL bestätigt, UI-Consumer geprüft).
+- **#13** = Default `showRealtimeAiResponse` = on; Loader-Default → `true` (SOLL in streaming-display.md R17).
 
-## Nächste Session — Startpunkte
+## Ablauf pro Fehler (User-Vorgabe)
 
-- **Eine Rückversicherung steht aus** (⏳ in [open-points.md](open-points.md)): unbegrenzte
-  Query-Caches (`SearchQuery.CACHE`, `RegexUtils.GLOB_CACHE`) — vorerst bewusst belassen,
-  LRU bei Bedarf.
-- Weitere ❓ in [open-points.md](open-points.md): Glossar eager laden? · `buildWithDev` soll
-  Da Mek vorher compacten · `eclipseWriteFile` schreibt immer UTF-8 (still korrumpierende
-  Round-Trips) · PDE-Runner meldet Skips nicht separat · Smoke-Test-Kosmetik (2 Striche,
-  Advanced-Config-Scrollen, Dropdown-L&F).
-- Aus `issues/fact-issues.md`: Punkt 3 (CancellationException-Stacktrace als Error geloggt),
-  Punkt 5 (GitHub-Actions Node-20-Deprecation).
-- Descoped, eigene Story nach dem Release: Custom-Dropdown-Umbau
-  (`DropdownButton`/`DropdownPopup`/… liegen unbenutzt + kompilierbar) →
-  [resolved-points.md](resolved-points.md).
+Rot-Test (Da Mek) → Jon prüft Rot-Test → Fix (von Jon gewählt) → Grün → Commit.
+Inkremente klein bündeln (2–4 Fehler/Increment), Review via Da Thinka am Ende.
 
-## Wo die Lernings dieser Session leben
+## Übernommen aus Release-Zyklus (2026-09-03/04, noch offen für User)
 
-`memory.md` ist **nur** Session-Zwischenstand. Dauerhaftes wurde verankert:
-
-| Wohin | Was |
-|---|---|
-| [AGENTS.md](../AGENTS.md) | Tool-Ehrlichkeit / Falsch-Negativ · ein Verhalten eine Implementierung · Clean Break statt Migration · „leer = unset" · Surefire = Ground Truth · Verträge lesen statt raten · Report don't route around |
-| [AGENTS-DEV.md](../AGENTS-DEV.md) | *Test honesty* (Vakuum-Test-Muster, Falsifizierbarkeit je Pfad, Charakterisierungstests vorab deklarieren, kein stilles Scope-Widening) · *Repo-specific API traps* |
-| [skills/eclipse-dpe/SKILL.md](../skills/eclipse-dpe/SKILL.md) | Test-Fixture & unattended PDE-Launches · Workspace-Suche/Grep („warum ‚not found' lügt") · Console-API in PDE-Tests · SWT-UI-Tests |
-| memory*-Tools (global) | 6 Einträge, projektübergreifend gültig |
+- ⏳ unbegrenzte Query-Caches (siehe Skips)
+- ❓ in open-points.md: Glossar eager laden · `buildWithDev` compactet Da Mek vorher ·
+  `eclipseWriteFile` immer UTF-8 · PDE-Runner meldet Skips nicht separat · Smoke-Test-Kosmetik
+- issues/fact-issues.md: Punkt 3 (CancellationException-Stacktrace als Error), Punkt 5 (Node-20-Deprecation)
+- Descoped eigene Story: Custom-Dropdown-Umbau (resolved-points.md)
+- Untracked: `release-notes-2026-09-04.md`; PoDelegateTool-Glättung uncommitted (Stand vom Nachlauf)
