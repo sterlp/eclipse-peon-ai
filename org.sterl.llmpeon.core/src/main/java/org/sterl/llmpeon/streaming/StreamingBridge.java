@@ -11,6 +11,7 @@ import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.shared.OnPartialAiResponse;
 import org.sterl.llmpeon.shared.OnPartialAiResponse.Type;
+import org.sterl.llmpeon.shared.Timer;
 
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -29,7 +30,13 @@ import dev.langchain4j.model.chat.response.StreamingHandle;
  * <p>
  * One instance is created per user request and reused across all tool-loop
  * iterations so that {@code startedAt} spans the entire turn. Each call to
- * {@link #call} resets per-call state (latch, refs) but keeps {@code startedAt}.
+ * {@link #call} resets per-call state (latch, refs, timing) but keeps {@code startedAt}.
+ * <p>
+ * Timing: four {@link Timer}s track the prompt phase (reset+start per call, stopped at the
+ * first partial), the think phase (reset+start per call, stopped at the first thinking), the
+ * token phase (started at the first partial, stopped at completion) and the total phase
+ * (started at construction, never stopped — there is no turn-end signal). Chunks carry the
+ * stamped {@code tokenPhaseStart}, never the live timers.
  * <p>
  * Cancel: every partial callback checks {@link AiMonitor#isCanceled()} and calls
  * {@link StreamingHandle#cancel()} immediately when true.
@@ -39,6 +46,12 @@ public class StreamingBridge implements StreamingChatResponseHandler {
     private final Clock clock;
     private final Instant startedAt;
 
+    private final Timer totalTimer;
+    private final Timer ppTimer;
+    private final Timer tokenTimer;
+    private final Timer thinkTimer;
+    private volatile long tokenPhaseStart;
+
     public StreamingBridge() {
         this(Clock.systemUTC());
     }
@@ -46,6 +59,12 @@ public class StreamingBridge implements StreamingChatResponseHandler {
     StreamingBridge(Clock clock) {
         this.clock = clock;
         this.startedAt = Instant.now(clock);
+        this.totalTimer = new Timer(clock);
+        this.ppTimer = new Timer(clock);
+        this.tokenTimer = new Timer(clock);
+        this.thinkTimer = new Timer(clock);
+        // The total timer spans the whole bridge lifetime — there is no turn-end signal (D3).
+        this.totalTimer.start();
     }
 
     // Per-call state — reset at the top of each call()
@@ -67,7 +86,14 @@ public class StreamingBridge implements StreamingChatResponseHandler {
         this.errorRef = new AtomicReference<>();
         this.handleRef = new AtomicReference<>();
         this.monitor = AiMonitor.nullSafety(monitor);
-        this.monitor.onStreamingChunk(new OnPartialAiResponse(Type.START, null, startedAt));
+        // Per-call timing: prompt and think phases start now; the token phase starts at the first partial.
+        this.ppTimer.reset();
+        this.ppTimer.start();
+        this.thinkTimer.reset();
+        this.thinkTimer.start();
+        this.tokenTimer.reset();
+        this.tokenPhaseStart = 0;
+        this.monitor.onStreamingChunk(new OnPartialAiResponse(Type.START, null, startedAt, tokenPhaseStart));
 
 
         Throwable error = null;
@@ -102,25 +128,42 @@ public class StreamingBridge implements StreamingChatResponseHandler {
     // StreamingChatResponseHandler — partial callbacks with cancel guard
     // -------------------------------------------------------------------------
 
+    /**
+     * Stamps the token-phase start on the first partial of any type, starts the token timer and
+     * stops the prompt-phase timer. Subsequent partials are no-ops.
+     */
+    private void onFirstPartial() {
+        if (tokenPhaseStart == 0) {
+            tokenPhaseStart = clock.millis();
+            tokenTimer.start();
+            ppTimer.stop();
+        }
+    }
+
     @Override
     public void onPartialResponse(PartialResponse partialResponse, PartialResponseContext context) {
         handleRef.compareAndSet(null, context.streamingHandle());
         if (cancelAndRelease(context.streamingHandle())) return;
-        monitor.onStreamingChunk(new OnPartialAiResponse(Type.ANSWER, partialResponse.text(), startedAt));
+        onFirstPartial();
+        monitor.onStreamingChunk(new OnPartialAiResponse(Type.ANSWER, partialResponse.text(), startedAt, tokenPhaseStart));
     }
 
     @Override
     public void onPartialThinking(PartialThinking partialThinking, PartialThinkingContext context) {
         handleRef.compareAndSet(null, context.streamingHandle());
         if (cancelAndRelease(context.streamingHandle())) return;
-        monitor.onStreamingChunk(new OnPartialAiResponse(Type.THINK, partialThinking.text(), startedAt));
+        onFirstPartial();
+        thinkTimer.stop();
+        monitor.onStreamingChunk(new OnPartialAiResponse(Type.THINK, partialThinking.text(), startedAt, tokenPhaseStart));
     }
 
     @Override
     public void onPartialToolCall(PartialToolCall partialToolCall, PartialToolCallContext context) {
         handleRef.compareAndSet(null, context.streamingHandle());
         if (cancelAndRelease(context.streamingHandle())) return;
-        monitor.onStreamingChunk(new OnPartialAiResponse(Type.TOOL, partialToolCall.name(), startedAt));
+        onFirstPartial();
+        // The tool name repeats in every callback; only the argument delta carries new tokens (D5).
+        monitor.onStreamingChunk(new OnPartialAiResponse(Type.TOOL, partialToolCall.partialArguments(), startedAt, tokenPhaseStart));
     }
 
     private boolean cancelAndRelease(StreamingHandle handle) {
@@ -137,7 +180,8 @@ public class StreamingBridge implements StreamingChatResponseHandler {
 
     @Override
     public void onCompleteResponse(ChatResponse completeResponse) {
-        this.monitor.onStreamingChunk(new OnPartialAiResponse(Type.END, null, startedAt));
+        this.tokenTimer.stop();
+        this.monitor.onStreamingChunk(new OnPartialAiResponse(Type.END, null, startedAt, tokenPhaseStart));
         responseRef.set(completeResponse);
         // Single accumulation trigger for the whole app (main loop, search sub-agent, compaction).
         // Only real provider usage — no estimate. See docs/adr/0004-session-token-accounting.md.
@@ -148,8 +192,14 @@ public class StreamingBridge implements StreamingChatResponseHandler {
 
     @Override
     public void onError(Throwable error) {
-        this.monitor.onStreamingChunk(new OnPartialAiResponse(Type.END, null, startedAt));
+        this.monitor.onStreamingChunk(new OnPartialAiResponse(Type.END, null, startedAt, tokenPhaseStart));
         errorRef.set(error);
         latch.countDown();
     }
+
+    // Package-private accessors for tests.
+    Timer totalTimer() { return totalTimer; }
+    Timer ppTimer() { return ppTimer; }
+    Timer tokenTimer() { return tokenTimer; }
+    Timer thinkTimer() { return thinkTimer; }
 }

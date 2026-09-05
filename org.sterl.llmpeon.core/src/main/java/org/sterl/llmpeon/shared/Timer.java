@@ -28,7 +28,7 @@ public class Timer {
         this(Clock.systemUTC());
     }
 
-    Timer(Clock clock) {
+    public Timer(Clock clock) {
         this.clock = clock;
     }
 
