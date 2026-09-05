@@ -1,4 +1,21 @@
-# Session-Stand — Bug-Hunt-Zyklus (2026-09-04)
+# Session-Stand — Bug-Hunt-Zyklus (2026-09-04) + Streaming Timing (2026-09-05)
+
+## Streaming Timing Fix (2026-09-05, Branch `bug-hunt-2026-09-04`)
+
+**SOLL:** R18–R21 in [streaming-display.md](streaming-display.md) (❌ specified, 2026-09-05)
+**Bug:** toc/s aus Turn-Start berechnet (inkl. Tool-Execution) → falsch
+**Fix:** Timer-Klasse (core/shared) + 4 Timer in StreamingBridge; toc/s aus Token-Timer
+**For free:** "Started hh:mm" in Statusleiste; PP/Think Timer existieren (noch nicht angezeigt)
+**Nicht jetzt:** Timestamps pro Nachricht im Chat-Widget (eigenes Feature), toc/s-Blending
+
+**Status:** ❌ specified → User bestätigt (2026-09-05). **Nächster Schritt: `planWithPlanAgent` für R18-R21.**
+**Branch:** `bug-hunt-2026-09-04` (bleibt, kein neuer Branch)
+**Key-Entscheidungen (User):**
+- Token-Counting: Estimator (chars/3, > 5 chars), nicht Callback-Count
+- Kein "n/a"-Threshold — Rate immer anzeigen (auch bei Bursts)
+- PP-Phase: kein UI-Update (kein Chunk = kein Trigger), User sieht Urzeit aus START-Chunk
+- "Started hh:mm" = for free (Instant haben wir schon)
+- R16 (Compact-Guard) ✅ User selbst gebaut (2026-09-05)
 
 **User-Anweisung:** Da Mek sucht systematisch (core ✅ durch, Plugin ⏳ ausstehend), bewährt jeden
 Fehler mit rotem Test **vor** dem Fix; Jon triagt und wählt die Fixes; nur echte Fehler.

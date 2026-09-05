@@ -3,6 +3,7 @@ package org.sterl.llmpeon.agent;
 import java.util.List;
 import java.util.function.Supplier;
 
+import org.jspecify.annotations.Nullable;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
@@ -16,8 +17,10 @@ public interface AiAgent {
     String getName();
     String getSystemPrompt();
 
+    @Nullable
     ChatResponse call(String message, AiMonitor monitor);
-    ChatResponse compressContext(AiMonitor monitor);
+    @Nullable
+    ChatResponse compact(AiMonitor monitor);
 
     ThreadSafeMemory getMemory();
     

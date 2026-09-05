@@ -100,14 +100,14 @@ public class PoDelegateTool extends AbstractTool {
     }
     
     @Tool("Wipe Da Thinka back to blank — the next task is UNRELATED and the old state would only create drift. Use compactPlan instead when the same task continues.")
-    public void resetPlan() {
+    public void clearPlan() {
         plan.agent().getMemory().clear();
         reportAction(plan, "reset");
     }
     
     @Tool("Compact Da Thinka — the SAME task continues but the history got long. Keeps the gist, frees context. Use resetPlan instead when the next task is unrelated.")
     public String compactPlan() {
-        plan.agent().compressContext(monitor);
+        plan.agent().compact(monitor);
         reportAction(plan, "compacted");
         return "Da Thinka compacted. " + contextUsed(plan.agent());
     }
@@ -149,14 +149,14 @@ public class PoDelegateTool extends AbstractTool {
     }
     
     @Tool("Wipe Da Mek back to blank — the next task is UNRELATED and the old state would only create drift. Use compactDev instead when the same task continues.")
-    public void resetDev() {
+    public void clearDev() {
         dev.agent().getMemory().clear();
         reportAction(dev, "reset");
     }
     
     @Tool("Compact Da Mek — the SAME task continues but the history got long. Keeps the gist, frees context. Use resetDev instead when the next task is unrelated.")
     public String compactDev() {
-        dev.agent().compressContext(monitor);
+        dev.agent().compact(monitor);
         reportAction(dev, "compacted");
         return "Da Mek compacted. " + contextUsed(dev.agent());
     }

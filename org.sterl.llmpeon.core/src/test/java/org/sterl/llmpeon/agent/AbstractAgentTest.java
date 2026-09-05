@@ -94,6 +94,7 @@ class AbstractAgentTest {
         // GIVEN — mock succeeds on first call, throws on second; latch for synchronization
         CountDownLatch callStarted = new CountDownLatch(1);
         CountDownLatch canProceed = new CountDownLatch(1);
+        var ex = new AtomicReference<Throwable>();
 
         List<ChatMessage> sendMsg = new ArrayList<>();
         var config = LlmConfig.builder().model("mock").build();
@@ -118,6 +119,7 @@ class AbstractAgentTest {
         // WHEN — queue msg2+msg3 during first doCall, second call aborts
         Thread callerThread = new Thread(() -> agent.call("msg1", monitor));
         callerThread.start();
+        callerThread.setUncaughtExceptionHandler( (t, e) -> ex.set(e));
         callStarted.await(5, TimeUnit.SECONDS);
 
         // AND
@@ -129,6 +131,10 @@ class AbstractAgentTest {
         callerThread.join(10_000);
 
         // THEN
+        assertThat(ex.get()).isNotNull();
+        assertThat(ex.get().getMessage()).isEqualTo("Abbort");
+        
+        // AND
         assertThat(sendMsg).hasSize(2);
         assertThat(ChatMessageUtil.toString(sendMsg.getLast())).contains("msg1");
         assertThat(ChatMessageUtil.toString(sendMsg.getLast())).doesNotContain("msg2");
@@ -339,18 +345,21 @@ class AbstractAgentTest {
     /** compactContext clears memory, invalidates systemMessage, restores turn context, then adds summary. */
     @Test
     void test_compactContext_clearsMemoryAndRestoresTurnContext() {
+        // GIVEN
         var config = LlmConfig.builder().model("mock").build();
         var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
                 .aiMessage(AiMessage.aiMessage("compressed summary")).build());
 
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        // AND we need at least 2 messages
         agent.addMessage(UserMessage.from("old message"));
+        agent.addMessage(AiMessage.from("AI response message"));
 
         // Set turn context supplier
         agent.setTurnContextSupplier(() -> List.of(new SimpleContextItem("turn context item")));
 
         // WHEN
-        agent.compressContext(monitor -> {});
+        agent.compact(monitor -> {});
 
         // THEN — memory cleared, turn context restored, summary added
         var memory = agent.getMemory().getCopy();
@@ -378,7 +387,7 @@ class AbstractAgentTest {
         agent.call("first", monitor -> {});
 
         // Compact — clears systemMessage (compressor also makes a call)
-        agent.compressContext(monitor -> {});
+        agent.compact(monitor -> {});
 
         // Second call — rebuilds systemMessage
         agent.call("second", monitor -> {});
@@ -415,6 +424,7 @@ class AbstractAgentTest {
     /** restoreTurnContext skips items already in memory (contains-check). */
     @Test
     void test_restoreTurnContext_skipsDuplicates() {
+        // GIVEN
         var config = LlmConfig.builder().model("mock").build();
         var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
                 .aiMessage(AiMessage.aiMessage("compressed")).build());
@@ -424,12 +434,13 @@ class AbstractAgentTest {
         // Pre-add turn context item to memory
         String turnContextText = "unique turn context";
         agent.addMessage(UserMessage.from(turnContextText));
+        agent.addMessage(AiMessage.from("AI response message"));
 
         // Set turn context supplier with the same item
         agent.setTurnContextSupplier(() -> List.of(new SimpleContextItem(turnContextText)));
 
         // WHEN — compress triggers restoreTurnContext
-        agent.compressContext(monitor -> {});
+        agent.compact(monitor -> {});
 
         // THEN — turn context appears only once (skipped on restore), plus compressed AI message
         var memory = agent.getMemory().getCopy();
@@ -444,18 +455,20 @@ class AbstractAgentTest {
     /** compressContext restores only turnContextSupplier (no double-restore). */
     @Test
     void test_compressContext_noUserContextRestore() {
+        // GIVEN
         var config = LlmConfig.builder().model("mock").build();
         var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
                 .aiMessage(AiMessage.aiMessage("compressed summary")).build());
 
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
         agent.addMessage(UserMessage.from("old message"));
+        agent.addMessage(AiMessage.from("AI response message"));
 
         // Set via turnContextSupplier
         agent.setTurnContextSupplier(() -> List.of(new SimpleContextItem("AGENTS.md: Rule 1 — be concise")));
 
         // WHEN
-        agent.compressContext(monitor -> {});
+        agent.compact(monitor -> {});
 
         // THEN — memory has the shimmed item (via turnContextSupplier), resume message, AI summary
         var memory = agent.getMemory().getCopy();
@@ -472,6 +485,7 @@ class AbstractAgentTest {
     /** compressContext skips duplicates in turnContextSupplier (contains-check). */
     @Test
     void test_compressContext_skipsDuplicatesInTurnContext() {
+        // GIVEN
         var config = LlmConfig.builder().model("mock").build();
         var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
                 .aiMessage(AiMessage.aiMessage("compressed")).build());
@@ -481,12 +495,13 @@ class AbstractAgentTest {
         // Pre-add context item to memory (simulating it was already injected)
         String turnContextText = "existing turn context";
         agent.addMessage(UserMessage.from(turnContextText));
+        agent.addMessage(AiMessage.from("AI response message"));
 
         // Set via turnContextSupplier with the same item
         agent.setTurnContextSupplier(() -> List.of(new SimpleContextItem(turnContextText)));
 
         // WHEN
-        agent.compressContext(monitor -> {});
+        agent.compact(monitor -> {});
 
         // THEN — context item appears only once (skipped on restore), plus resume message
         var memory = agent.getMemory().getCopy();
@@ -780,7 +795,7 @@ class AbstractAgentTest {
         agent.call("hi", monitor -> {});
 
         // WHEN — compact clears memory, then restores turn context
-        agent.compressContext(monitor -> {});
+        agent.compact(monitor -> {});
 
         // THEN — file content is back in memory
         assertThat(extractUserTexts(agent.getMemory().getCopy()))

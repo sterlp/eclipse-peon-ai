@@ -15,11 +15,15 @@ import org.sterl.llmpeon.ai.ThinkResolver;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.memory.FileAgentHistoryStore;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
+import org.sterl.llmpeon.poagent.tools.PoDelegateTool;
 import org.sterl.llmpeon.prompt.PeonPaths;
 import org.sterl.llmpeon.prompt.PromptLoader;
+import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.WriteValidator;
+
+import dev.langchain4j.model.chat.response.ChatResponse;
 
 /**
  * Peon-PO ("Jon") — a docs-owning agent. Reads freely, writes only under docs/ (via
@@ -116,5 +120,24 @@ public class AiPoAgent extends AbstractAgent {
         if (Objects.equals(modelName, po.model())) return false;
         this.configuredModel.updateConfig(cfg.withModelConfig(AgentModelConfig.PO, po.withModel(modelName)));
         return true;
+    }
+    
+    @Override
+    public void clear() {
+        super.clear();
+        toolService.getTool(PoDelegateTool.class).ifPresent(t -> {
+            t.clearDev();
+            t.clearPlan();
+        });
+    }
+    
+    @Override
+    public ChatResponse compact(AiMonitor monitor) {
+        var result = super.compact(monitor);
+        toolService.getTool(PoDelegateTool.class).ifPresent(t -> {
+            t.compactDev();
+            t.compactPlan();
+        });
+        return result;
     }
 }

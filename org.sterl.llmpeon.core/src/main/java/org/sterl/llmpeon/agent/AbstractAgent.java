@@ -231,7 +231,7 @@ public abstract class AbstractAgent implements AiAgent {
         // auto compress if we are close to full before we start (slaves trigger earlier via compactFactor;
         if (compactAfterTokens() < memory.getTotalTokenUsed()) {
             monitor.onTool("Auto Compact before execution, context to full " + compactAfterTokens() + "/" + memory.getTotalTokenUsed());
-            compressContext(monitor);
+            compact(monitor);
         }
 
         // Inject turn-scoped context on every turn (idempotent via contains-check)
@@ -260,8 +260,10 @@ public abstract class AbstractAgent implements AiAgent {
         return response;
     }
 
+    public ChatResponse compact(AiMonitor monitor) {
+        // macht keinen Sinn
+        if (memory.size() < 2) return null;
 
-    public ChatResponse compressContext(AiMonitor monitor) {
         monitor = AiMonitor.nullSafety(monitor);
         var response = new AiCompressorAgent(configuredModel)
                 .call(memory.getCopy(), monitor);

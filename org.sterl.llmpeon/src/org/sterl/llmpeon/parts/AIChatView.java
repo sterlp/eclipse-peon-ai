@@ -462,7 +462,7 @@ public class AIChatView implements EclipseAiMonitor {
 
     private void doCompressContext() {
         var active = aiService.getActiveAgent();
-        if (active.getMemory().size() == 0) return;
+        if (active.getMemory().size() < 3) return;
         lockWhileWorking(true);
         chatHistory.clear();
         Job.create("Compressing context", monitor -> {
@@ -471,7 +471,7 @@ public class AIChatView implements EclipseAiMonitor {
             Exception ex = null;
             ChatResponse cr = null;
             try {
-                cr = active.compressContext(this);
+                cr = active.compact(this);
             } catch (Exception e) {
                 ex = handleChatException(e);
             } finally {

@@ -113,7 +113,7 @@ class CompactSessionToolTest {
             @Override public String getName() { return "test-agent"; }
             @Override public String getSystemPrompt() { return "system"; }
             @Override public ChatResponse call(String message, AiMonitor monitor) { return null; }
-            @Override public ChatResponse compressContext(AiMonitor monitor) {
+            @Override public ChatResponse compact(AiMonitor monitor) {
                 compressCalled.set(true);
                 return ChatResponse.builder().aiMessage(AiMessage.aiMessage("WHAT: Compressed summary")).build();
             }

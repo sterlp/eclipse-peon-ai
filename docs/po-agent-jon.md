@@ -387,6 +387,22 @@ GIVEN the default allowlist */docs/* and a project without a docs/ directory
 WHEN Jon writes his first story
 THEN the write is allowed and docs/ is created with the file inside it
 
+### R16: Compact-Guard — < 2 Messages → Reset statt LLM-Call ✅ (2026-09-05, User)
+
+`AiPoAgent.compact()` (und damit `compactDev()`/`compactPlan()`) bricht, wenn das Memory
+weniger als 2 Nachrichten enthält — der LLM kann keine Summary aus < 2 Messages erstellen.
+
+**SOLL:** Vor dem Compact-Call prüfen: wenn `memory.size() < 2` → **Reset** (Clear) statt
+Compact. Gilt für Jon selbst UND seine Slaven (Da Thinka, Da Mek).
+
+- **GIVEN** Jon hat 0 oder 1 Nachrichten im Memory **WHEN** `compact()` aufgerufen **THEN** Memory wird geclarnt (Reset), kein LLM-Call
+- **GIVEN** Da Thinka hat 1 Nachricht im Memory **WHEN** `compactPlan()` aufgerufen **THEN** Da Thinka wird gereset, kein LLM-Call
+- **GIVEN** Da Mek hat 0 Nachrichten im Memory **WHEN** `compactDev()` aufgerufen **THEN** Da Mek wird gereset, kein LLM-Call
+- **GIVEN** Jon hat ≥ 2 Nachrichten **WHEN** `compact()` aufgerufen **THEN** normaler Compact-Flow (LLM-Call + Slave-Compacts)
+- **Tag:** unit (verify no LLM call when < 2 messages; verify clear/reset called instead)
+
+**IST-Bug (2026-09-05):** `compact()` ruft `super.compact(monitor)` ohne Guard — bricht bei
+< 2 Messages. Slaven-Compacts (`compactDev`/`compactPlan`) haben denselben Mangel.
 GIVEN the allowlist */docs/*
 WHEN Jon attempts to write a path outside any docs/ folder
 THEN the decorator rejects the write

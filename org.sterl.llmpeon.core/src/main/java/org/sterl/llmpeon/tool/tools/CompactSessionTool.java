@@ -25,7 +25,7 @@ public class CompactSessionTool extends AbstractTool {
         }
 
         long startNanos = System.nanoTime();
-        var summary = agent.compressContext(monitor);
+        var summary = agent.compact(monitor);
         long elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000;
         onTool("Da Scribe done. (" + StringUtil.humanElapsed(elapsedMillis) + ")");
 

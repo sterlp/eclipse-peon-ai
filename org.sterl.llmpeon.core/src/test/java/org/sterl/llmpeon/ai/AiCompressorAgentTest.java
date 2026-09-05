@@ -55,7 +55,7 @@ class AiCompressorAgentTest {
         subject.addMessage(UserMessage.from("It should show a Hello world with the current time"));
 
         // WHEN
-        var result = subject.compressContext(AiMonitor.NULL_MONITOR);
+        var result = subject.compact(AiMonitor.NULL_MONITOR);
 
         // THEN
         System.out.println(result.aiMessage().text());

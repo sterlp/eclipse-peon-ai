@@ -210,7 +210,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         aiService.call("Ping", null);
 
         // AND — turn context is restored after compact (not injected on first call)
-        aiService.getActiveAgent().compressContext(null);
+        aiService.getActiveAgent().compact(null);
         var memory = aiService.getActiveAgent().getMemory().getCopy();
         assertHasUserMessageWith(memory, "# Test Specifics");
     }
@@ -283,7 +283,9 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         var agent = aiService.getActiveAgent();
         mockLlmServer.queueResponse(AiMessage.aiMessage("compressed"));
         agent.getMemory().add(UserMessage.from("pre-compact"));
-        agent.compressContext(null);
+        agent.getMemory().add(UserMessage.from("User Message..."));
+        agent.getMemory().add(AiMessage.from("AI response..."));
+        agent.compact(null);
 
         // THEN turn context restored after compact contains tool descriptions
         var memory = agent.getMemory().getCopy();
@@ -311,7 +313,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
                 new org.sterl.llmpeon.context.SimpleContextItem("Text 3"),
                 new org.sterl.llmpeon.context.SimpleContextItem("Unique")));
         mockLlmServer.queueResponse(AiMessage.aiMessage("compressed"));
-        aiService.getActiveAgent().compressContext(null);
+        aiService.getActiveAgent().compact(null);
         aiService.getActiveAgent().call("Text 1", null);
         
         // THEN — verify turn context items reached memory and duplicates were handled
@@ -639,7 +641,9 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         mockLlmServer.queueResponse(AiMessage.aiMessage("compressed summary"));
 
         // WHEN: compact triggers restoreTurnContext
-        aiService.getActiveAgent().compressContext(null);
+        aiService.getActiveAgent().getMemory().add(UserMessage.from("User Message..."));
+        aiService.getActiveAgent().getMemory().add(AiMessage.from("AI response..."));
+        aiService.getActiveAgent().compact(null);
 
         // THEN: turn context restored — project info AND AGENTS.md
         var memory = aiService.getActiveAgent().getMemory().getCopy();
@@ -651,7 +655,11 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
     @Test
     public void test_turnContext_providesJonFiles() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        // GIVEN
         aiService.setActiveAgent(AiPoAgent.NAME);
+        aiService.getActiveAgent().getMemory().add(UserMessage.from("User Message..."));
+        aiService.getActiveAgent().getMemory().add(AiMessage.from("AI response..."));
+        
         aiService.getActiveAgent().getMemory().clear();
 
         // GIVEN: Jon's docs exist
@@ -665,7 +673,9 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         mockLlmServer.queueResponse(AiMessage.aiMessage("compressed"));
 
         // WHEN: compact triggers restoreTurnContext
-        aiService.getActiveAgent().compressContext(null);
+        aiService.getActiveAgent().getMemory().add(UserMessage.from("User Message..."));
+        aiService.getActiveAgent().getMemory().add(AiMessage.from("AI response..."));
+        aiService.getActiveAgent().compact(null);
 
         // THEN: both files are injected as history messages (header + content)
         var memory = aiService.getActiveAgent().getMemory().getCopy();
@@ -678,7 +688,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         eclipseDeleteResource("docs/memory.md");
         eclipseDeleteResource("docs/index.md");
         aiService.getActiveAgent().getMemory().clear();
-        aiService.getActiveAgent().compressContext(null);
+        aiService.getActiveAgent().compact(null);
         memory = aiService.getActiveAgent().getMemory().getCopy();
         assertHasNoUserMessageWith(memory, "# Memory");
         assertHasNoUserMessageWith(memory, "# Docs Index");
@@ -803,7 +813,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         mockLlmServer.queueResponse(AiMessage.aiMessage("WHAT: Compressed summary of conversation"));
 
         // WHEN: Compact via Agent
-        aiService.getActiveAgent().compressContext(null);
+        aiService.getActiveAgent().compact(null);
 
         // THEN: Turn-Context (Project + AGENTS.md + Jons Docs) überlebt als UserMessage in Memory
         var memory = aiService.getActiveAgent().getMemory().getCopy();
@@ -845,7 +855,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         mockLlmServer.queueResponse(AiMessage.aiMessage("compressed"));
 
         // WHEN: Compact via Agent
-        aiService.getActiveAgent().compressContext(null);
+        aiService.getActiveAgent().compact(null);
 
         // THEN: orders sind im Memory (gerestored via restoreUserContext)
         var memory = aiService.getActiveAgent().getMemory().getCopy();
@@ -884,7 +894,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         mockLlmServer.queueResponse(AiMessage.aiMessage("compressed"));
 
         // WHEN: Compact
-        aiService.getActiveAgent().compressContext(null);
+        aiService.getActiveAgent().compact(null);
 
         // THEN: Kontext erscheint NUR EINMAL (contains-Check)
         var memory = aiService.getActiveAgent().getMemory().getCopy();
@@ -899,7 +909,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         assertEquals("Context should appear exactly once (no duplicate after compact)", 1, count);
     }
 
-    /** CompactSessionTool is registered in shared tool service and delegates to agent via compressContext. */
+    /** CompactSessionTool is registered in shared tool service and delegates to agent via compact. */
     @Test
     public void test_compactViaTool_delegatesToAgent() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
@@ -921,7 +931,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         assertIsPresent(aiService.getSharedToolService().getTool(CompactSessionTool.class));
 
         // WHEN: Compact via agent (the tool delegates to this path via request.getAgent())
-        aiService.getActiveAgent().compressContext(null);
+        aiService.getActiveAgent().compact(null);
 
         // THEN: Memory enthält Project-Info + AGENTS.md + Summary (ADR-0029)
         var memory = aiService.getActiveAgent().getMemory().getCopy();
@@ -1097,7 +1107,9 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             mockLlmServer.queueResponse(AiMessage.aiMessage("compressed"));
 
             // WHEN: ein Turn beginnt (compact restored den Turn-Context)
-            svc.getActiveAgent().compressContext(null);
+            svc.getActiveAgent().getMemory().add(UserMessage.from("User Message..."));
+            svc.getActiveAgent().getMemory().add(AiMessage.from("AI response..."));
+            svc.getActiveAgent().compact(null);
 
             // THEN: UserMessage mit dedupKey-Präfix UND E1
             var memory = svc.getActiveAgent().getMemory().getCopy();
@@ -1126,7 +1138,9 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             svc.setActiveAgent(AiDevAgent.NAME);
             useMockLlm(svc);
             mockLlmServer.queueResponse(AiMessage.aiMessage("compressed"));
-            svc.getActiveAgent().compressContext(null);
+            svc.getActiveAgent().getMemory().add(UserMessage.from("User Message..."));
+            svc.getActiveAgent().getMemory().add(AiMessage.from("AI response..."));
+            svc.getActiveAgent().compact(null);
             assertHasUserMessageWith(svc.getActiveAgent().getMemory().getCopy(), e1);
 
             // WHEN: E2 kommt hinzu und der nächste Turn beginnt — über die LIVE-Instanz des
@@ -1171,7 +1185,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             mockLlmServer.queueResponse(AiMessage.aiMessage("compressed"));
 
             // WHEN: ein Turn beginnt
-            svc.getActiveAgent().compressContext(null);
+            svc.getActiveAgent().compact(null);
 
             // THEN: keine Message mit "workspace-memory"
             assertHasNoUserMessageWith(svc.getActiveAgent().getMemory().getCopy(), "workspace-memory");

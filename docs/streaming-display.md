@@ -172,3 +172,60 @@ Verhalten dürfen nicht auseinanderlaufen (passt zu R2/R3 „default: enabled").
 (`LlmConfigLoader`: `parseBoolean(null, false)`) bei Preference-Default `true` — die Checkbox sah
 angehakt aus, das Widget bekam `false` → User sah nur „N tokens" statt Text. User-Entscheidung:
 Default = on.
+### R18 — Timer-Klasse (Millisekunden, generisch) ❌
+
+Eine generische `Timer`-Klasse in `org.sterl.llmpeon.shared` (core) misst Millisekunden.
+API: `start()`, `stop()`, `reset()`, `millis()` (Dauer oder laufende Zeit), `running()` (bool).
+Kein Thread-Sync nötig (ein Thread schreibt, UI-Thread liest — volatile long reicht).
+
+- **GIVEN** ein Timer **WHEN** `start()` **THEN** Startzeit (epoch millis) wird erfasst, `running()` = true
+- **GIVEN** ein Timer läuft **WHEN** `stop()` **THEN** Dauer = End − Start, `running()` = false
+- **GIVEN** ein Timer ist gestoppt **WHEN** `reset()` **THEN** Timer ist zurückgesetzt, `millis()` = 0
+- **GIVEN** ein Timer läuft **WHEN** `millis()` **THEN** liefert `now − start` (live)
+- **Tag:** unit
+
+### R19 — StreamingBridge: 4 Timer, korrekte toc/s ❌
+
+`StreamingBridge` hält 4 Timer und verwaltet sie pro `call()`:
+
+| Timer | Scope | Start | Stop | Reset |
+|---|---|---|---|---|
+| **Total** | Turn | Konstruktor | letztes `onCompleteResponse` | nie |
+| **PP** | pro Call | `call()` Entry | erstes `onPartial*` (ANY Type) | pro `call()` |
+| **Token** | pro Call | erstes `onPartial*` | `onCompleteResponse` | pro `call()` |
+| **Think** | pro Call | `call()` Entry | erstes `onPartialThinking` | pro `call()` |
+
+**toc/s** = geschätzte Partial-Tokens (ANY Type: THINK + ANSWER + TOOL) / Token-Timer-Dauer.
+Nicht aus dem Turn-Start (Total) — das war der Bug.
+Token-Zählung: bestehender Estimator (Text > 5 chars → `length() / 3`; ≤ 5 chars → 1 Token).
+Nicht: Callback-Count (jeder `onPartialResponse` = 1 Token — war der zweite Bug).
+
+`OnPartialAiResponse` bekommt ein Feld `tokenPhaseStart` (epoch millis, `0` = Token-Phase
+noch nicht gestartet). Statusleiste nutzt `tokenPhaseStart` für Rate, `startedAt` für
+"working since".
+
+- **GIVEN** ein Tool-Loop mit 3 LLM-Calls **WHEN** der 2. `call()` startet **THEN** PP- und Token-Timer werden neu gestartet (Total bleibt)
+- **GIVEN** Partial-Text gesamt 3000 chars (mix THINK/ANSWER/TOOL) in 2000ms Token-Phase **WHEN** Statusleiste rendert **THEN** toc/s ≈ "1500 t/s" (3000/3 = 1000 Tokens / 2s)
+- **GIVEN** ein Non-Streaming-Modell sendet 1500 chars in 200ms **WHEN** Statusleiste rendert **THEN** toc/s = "2500 t/s" (500 Tokens / 0.2s — hoch, aber ehrlich)
+- **GIVEN** keine `onPartialThinking`-Callbacks im gesamten Turn **WHEN** Turn endet **THEN** Think-Timer ist nie gestoppt → Think-Zeit nicht verfügbar
+- **GIVEN** ein Call ist in der PP-Phase (noch kein Token) **WHEN** Statusleiste rendert **THEN** kein UI-Update (kein Chunk = kein Trigger); User sieht die Urzeit aus dem START-Chunk ("Started 12:24 waiting for AI...") und kann die Wartezeit mental ablesen
+- **Tag:** core (verify timer resets per call; verify toc/s uses token-timer not turn-start; verify tokenPhaseStart in OnPartialAiResponse)
+
+### R20 — Statusleiste zeigt "Started hh:mm" ❌
+
+Die Statusleiste zeigt die Turn-Startzeit (aus Total-Timer) zusätzlich zur Laufzeit.
+Format: `Started 14:32 · working since 3m 15s | <phase>... | <tok/s>`
+
+- **GIVEN** ein Turn startet um 14:32:05 **WHEN** Statusleiste rendert nach 3m 15s **THEN** zeigt `Started 14:32 · working since 3m 15s`
+- **GIVEN** ein Turn startet um 9:07 **WHEN** Statusleiste rendert **THEN** zeigt `Started 09:07` (leading zero)
+- **Tag:** unit (verify format includes hh:mm from Total-timer start Instant)
+
+### R21 — Token-Counting via Estimator (nicht Callback-Count) ❌
+
+Jeder `onPartialResponse`-Callback trägt einen Text-Snippet. Die Token-Anzahl wird aus dem
+Text geschätzt (bestehender Estimator), nicht als 1 pro Callback gezählt.
+
+- **GIVEN** ein `onPartialResponse` mit Text `"Hello world, how are you today?"` (32 chars) **WHEN** Tokens gezählt **THEN** 32/3 ≈ 10 Tokens (nicht 1)
+- **GIVEN** ein `onPartialResponse` mit Text `"Hi"` (2 chars, ≤ 5) **WHEN** Tokens gezählt **THEN** 1 Token
+- **GIVEN** ein `onPartialThinking` mit Text `"Let me think about this..."` (26 chars) **WHEN** Tokens gezählt **THEN** 26/3 ≈ 8 Tokens (THINK zählt mit)
+- **Tag:** unit (verify estimator used for token count; verify THINK/ANSWER/TOOL all counted)
