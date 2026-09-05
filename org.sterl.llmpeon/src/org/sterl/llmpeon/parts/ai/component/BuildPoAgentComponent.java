@@ -72,6 +72,10 @@ public class BuildPoAgentComponent {
         // Read-only plan access: hasPlan (returns the path) + planRead. Jon reviews & hands the path
         // to buildWithDev but never writes the plan himself — that is his Peon-Plan agent's job.
         poToolService.addTool(new PlanReadTool(sharedToolService.getTool(PlanTool.class).get()));
+        // askUser (R17): Jon may block on a direct user decision — the same instance as the shared
+        // service (one presenter, same widget + queue-safety as the other agents). Absent in
+        // headless builds (no presenter → not in the shared service).
+        sharedToolService.getTool(AskUserTool.class).ifPresent(poToolService::addTool);
         // Jon's Plan/Dev slaves: RAM-only (2-arg ctor — no history file, ADR-0024), reusing the shared
         // Eclipse tool set. Lazy singletons via the factory so Jon-in-core stays testable headless.
         // Slaves may READ the shared memory (injected into their turn orders per delegation) but

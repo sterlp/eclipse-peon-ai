@@ -33,6 +33,7 @@ import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.UserContext;
 import org.sterl.llmpeon.parts.ai.PeonAiService;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
+import org.sterl.llmpeon.parts.tools.AskUserTool;
 import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
 import org.sterl.llmpeon.parts.tools.PlanTool;
@@ -111,6 +112,52 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             .findAny();
         assertIsPresent(comp);
     }
+
+    @Test
+    public void poAgentToolServiceContainsAskUser() {
+        // GIVEN a service built with a question presenter (R17)
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        var svc = newServiceWithPresenter((question, answers, onAnswer) -> { });
+        var po = svc.getAgents().stream().filter(AiPoAgent.class::isInstance)
+                .map(AiPoAgent.class::cast).findFirst().orElseThrow();
+
+        // THEN Jon's curated tool service contains askUser (same instance as the shared service)
+        var askUser = svc.getSharedToolService().getTool(AskUserTool.class);
+        assertIsPresent(askUser);
+        assertSame(askUser.get(), po.getToolService().getTool(AskUserTool.class).orElseThrow());
+    }
+
+    @Test
+    public void poAgentSlavesStillFilterAskUser() {
+        // GIVEN a service built with a question presenter (R17)
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        var svc = newServiceWithPresenter((question, answers, onAnswer) -> { });
+        var po = svc.getAgents().stream().filter(AiPoAgent.class::isInstance)
+                .map(AiPoAgent.class::cast).findFirst().orElseThrow();
+        var askUser = svc.getSharedToolService().getExecutors().stream()
+                .filter(e -> e.getTool() instanceof AskUserTool).findFirst().orElseThrow();
+
+        // THEN Da Thinka / Da Mek still filter askUser out (R9 unchanged)
+        for (var slaveName : List.of("Da Thinka", "Da Mek")) {
+            var slave = po.getTeam().stream().filter(n -> n.uiName().equals(slaveName))
+                    .findFirst().orElseThrow().agent();
+            assertFalse(slaveName + " must not get askUser (R9)", slave.isToolActive(askUser));
+        }
+    }
+
+    /** Builds a test service with a no-op question presenter — tool-set checks only, never presented. */
+    private PeonAiService newServiceWithPresenter(AskUserTool.QuestionPresenter presenter) {
+        var ccm = new ConfiguredChatModel(LlmConfig.builder()
+                .model("test")
+                .url("http://localhost:0")
+                .configDir(Path.of(System.getProperty("java.io.tmpdir"), ".peon-test"))
+                .build());
+        ccm.setChatModel(streamMock.buildOkMock());
+        var svc = new PeonAiService(() -> {}, null, null, null, ccm, presenter);
+        svc.setProject(project);
+        return svc;
+    }
+
     
     @Test
     public void test_onHandoff() {

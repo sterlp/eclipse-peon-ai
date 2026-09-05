@@ -29,8 +29,9 @@ public class AskUserTool extends AbstractEclipseTool {
     }
 
     @Tool("""
-          Use this when you need the user's response to be matched to this specific question. 
+          Use this when you need the user's response to be matched to this specific question.
           Other user messages may arrive in the meantime; this tool returns the matching response, not an unrelated queued message.
+          If the user cancels (Stop button), the tool returns an error.
           """)
     public String askUser(
             @P(name = "question", description="""
@@ -39,7 +40,7 @@ public class AskUserTool extends AbstractEclipseTool {
                     """) 
             String question,
             @P(name = "predefinedAnswers", description = """
-                    Optional answer choices displayed as selectable radio buttons.
+                    Optional answer choices displayed as selectable radio buttons - plain text only (no Markdown).
                     If omitted, the user can provide a free-form text answer.
                     """, required = false) 
             List<String> predefinedAnswers) {
