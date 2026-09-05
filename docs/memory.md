@@ -1,27 +1,53 @@
-# Session-Stand — Bug-Hunt + Streaming-Timing (2026-09-05)
+# Session-Stand (2026-09-05)
 
-## Shipped (in `2.7.0-fix`)
+## Nächste Session = Smoke-Test (User testet den neuen Build)
 
-- **Bug-Hunt** (Branch `bug-hunt-2026-09-04`, Merge `db92e1b`, 2026-09-04): #1 applyEdit-Count,
-  #2 ShellTool tail+filter, #3 CustomAgent null-Allowlist, #4 startedAt pro Turn, #9 Traversal
-  (+follow-up `\`→`/`), #13 showRealtimeAiResponse Default on.
-- **Streaming-Timing** (Branch `streaming-timing-2026-09-05`, Merge `86594a4` 2026-09-05, gepusht): R18–R21
-  (Timer-Klasse, toc/s aus Token-Timer, "Started hh:mm", TOOL-Delta) + **R22** (kein toc/s am
-  1. Token eines Calls, pro Call) + **R-PI1** (planImplemented-Kollision → Counter-Suffix,
-  core `ArchiveName.firstFreeName`).
-- Ground Truth beim Merge: Core (Surefire) **632/632** · Plugin (OSGi) **177/177**.
-- **E5 offen (User-Entscheidung):** Disk-Tool Success-Message zeigt workingDir-Relative-Pfad
-  (PO: kanonisch für Disk-Scope, by design) vs. User: BUG (KV-Cache-Poisoning).
-  Optionen: (a) so lassen [PO-Empfehlung] · (b) absoluter Pfad.
+User testet 2.7.1 + Jon-AskUser. Erwartbar:
+- **askUser (R17):** Question-Widget erscheint jetzt **auch bei Jon** — matched/queue-safe Antwort,
+  Stop = Cancel-Error. Slaven (Da Thinka/Da Mek) + Search-Agent: **kein** askUser (R9, unverändert).
+- **Streaming:** toc/s aus Token-Phase, **kein Spike am 1. Token eines Calls** (R22), "Started hh:mm".
+- **Edit-Tools E2E:** Spec in `org.sterl.llmpeon.test/ai-e2e-test/file-edit-tools.txt`
+  (disk + eclipse, write counter, editLine + replaceLine).
+  ⚠️ **Item 3 (Line-Ending-Normalisierung) ist NICHT gebaut** → dort rot = erwartet, kein
+  Regression — SOLL steht im geparkten Edit-Tools-Punkt (open-points.md).
+- **planImplemented:** Kollision → Counter-Suffix (`…-1.md`), nie "already exists" (R-PI1).
+
+**Nach dem Smoke-Test — User-Entscheidungen offen:**
+1. **E5:** Disk-Tool Success-Message — (a) workingDir-Relative-Pfad lassen [PO-Empfehlung] oder
+   (b) absoluter Pfad? (User hatte "BUG/KV-Cache" gesagt.)
+2. **Merge:** `jon-askuser-2026-09-05` → main.
+3. **Triage-Liste (#5–#12, #14–#16):** GO für nächsten Bug-Fix-Zyklus (Fixes sind gewählt,
+   siehe unten) + Plugin-Hunt.
+4. **5 kleine ❓-Punkte** (open-points.md): UTF-8-Write · Glossar eager · PDE-Skip-Count ·
+   Smoke-Test-Kosmetik/Dropdown-Klassen · `buildWithDev`-Compact — User kann "nimm deine
+   Empfehlungen" sagen (PO: fixen · (b) Turn-Context · ja · löschen · Compact ~50 % nur neuer Plan).
+
+## In Flight: Jon-AskUser (Branch `jon-askuser-2026-09-05`, von `main`)
+
+**R17 (po-agent-jon.md ✅):** Jon bekommt `AskUserTool` in seine `poToolService` (dieselbe
+Instanz aus dem shared Service, `BuildPoAgentComponent:78`; headless = kein askUser).
+R13-Klärung: "never blocks" = Slave-Fragen-Eskalation, nicht direkte User-Entscheidungen.
+**Commits:** `3b90fad` Code + Tool-Beschreibung (plain text only (no Markdown); Cancel-Note) ·
+`2c9ccb6` Docs. **Ground Truth:** Core **632/632** · OSGi **179/179** (2 neue Tests: Membership
++ Slaven-Filter). **PO-Acceptance ✅.**
+**⚠️ User-WIP vermischt:** Code-Commit trug User-WIP-Zeilen in `AIChatView.java` mit
+(refreshChat-Javadoc + deduped `refreshStatusLine`); `StatusLineWidget.java` + `UserContext.java`
+= User-WIP mid-change, uncommitted.
+
+## Shipped (in `main`, 2026-09-04/05)
+
+- **Bug-Hunt** (Merge `db92e1b`): #1 applyEdit-Count, #2 ShellTool tail+filter, #3 CustomAgent
+  null-Allowlist, #4 startedAt pro Turn, #9 Traversal (+follow-up `\`→`/`), #13
+  showRealtimeAiResponse Default on.
+- **Streaming-Timing** (Merge `86594a4`, gepusht): R18–R21 (Timer-Klasse, toc/s aus Token-Timer,
+  "Started hh:mm", TOOL-Delta) + **R22** (kein toc/s am 1. Token eines Calls, pro Call) +
+  **R-PI1** (planImplemented-Kollision → Counter-Suffix, core `ArchiveName.firstFreeName`).
 
 ## Geparkt
 
 - **Edit-Tools** → [open-points.md](open-points.md): Rename auf "Edit", gemeinsame Doku (4 Tools),
-  `planEdit`-Count, Eclipse-Doku-Konflikt, `AiFileUpdate`-Nebenbefund, **neu: Line-Ending-
+  `planEdit`-Count, Eclipse-Doku-Konflikt, `AiFileUpdate`-Nebenbefund, **Line-Ending-
   Normalisierung** (User-E2E-Spec 2026-09-05, ersetzt E3-Skip).
-- **E2E-Abnahmetest nach Release:** `org.sterl.llmpeon.test/ai-e2e-test/file-edit-tools.txt`
-  (User führt ihn aus; Item 3 = Line-Ending-Normalisierung ist **noch nicht gebaut** → wird
-  bis zum Edit-Tools-Zyklus rot bleiben).
 - Cleanup-Kandidaten (eigener Zyklus): `StreamingBridge.clock`-Feld redundant (assigned, nie
   gelesen); `EclipseUtil.editInEditor` Dead Code (0 Referenzen).
 
@@ -58,4 +84,4 @@ am Ende. **Plugin-Hunt** (Da Mek) steht noch aus.
 - ❓ in open-points.md: Glossar eager laden · `buildWithDev` compactet Da Mek vorher ·
   `eclipseWriteFile` immer UTF-8 · PDE-Runner meldet Skips nicht separat · Smoke-Test-Kosmetik
 - issues/fact-issues.md: Punkt 3 (CancellationException-Stacktrace als Error), Punkt 5 (Node-20-Deprecation)
-- Untracked: `release-notes-2026-09-04.md`; PoDelegateTool-Glättung uncommitted (Stand vom Nachlauf)
+- Untracked: `release-notes-2026-09-04.md`

@@ -117,6 +117,11 @@ Plan-Bedarf laufen direkt über askDev, siehe Rollen-Grenze):
    - **Echt offen** — links oder rechts kostet richtig, es gibt keine ableitbare Antwort, ein
      Fehlgriff wäre teuer zu korrigieren → **skip**. Story bleibt liegen, Frage als ❓ in
      open-points.md, weiter mit der nächsten. Nie raten, nie selbst spezifizieren.
+   - Geht es nicht ohne Rückfrage an den User weiter: Im autonomen Modus NIEMALS das `askUser`-Tool — 
+     auch wenn du es hast, es blockiert bis zur Antwort. Stelle die Frage stattdessen direkt als Chat-Nachricht. 
+     Beachte: Sowohl eine Chat-Nachricht an den User als auch `askUser` beenden deinen Turn — 
+     außer der User hat dir eine gequeue­te Nachricht hinterlassen, dann fährst du direkt mit ihr fort 
+     (die Frage ist damit vielleicht schon beantwortet - vorsicht [Queued Message] sind von user früher eingegeben - ohne deine Frage zu kennen).
    Baue nur, was ❌ specified ist; 🚧-Stories rührst du nicht an. Eine blockierte Story blockiert
    nur sich selbst, der Rest läuft weiter. Nach jeder abgeschlossenen Story: memory.md aufräumen
    (erledigt raus, neu Offenes rein) und open-points.md aktuell halten — nicht erst am Ende
