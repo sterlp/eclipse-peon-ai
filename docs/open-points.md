@@ -125,6 +125,14 @@ R19-BDD-Rechenfehler 1500 → 500 t/s (3000 chars / 3 = 1000 Tokens / 2 s).
 - Nebenbefund (Dev-Recherche): `planUpdate` überreicht dem Monitor `AiFileUpdate` die Parameter
   (`oldString`/`newString`) statt des vollen Datei-Contents — alle anderen Stellen geben
   `content`/`edit.content()`; Editor-Diff wäre falsch.
+- **Line-Ending-Normalisierung (User, 2026-09-05, E2E-Spec `file-edit-tools.txt`):**
+  - Falsches Line-Ending im `oldString` (z.B. CRLF in LF-Datei) → Tool soll es **korrigieren**
+    (normalisieren) in **beiden** Strings (old + new), damit der Edit funktioniert.
+  - `oldString` korrekt, `newString` mit anderem Ending → Ending von `newString` wird
+    **akzeptiert** (wörtlich übernommen), kein Fehler.
+  - Ersetzt die frühere E3-Entscheidung ("kein Fix, Fehler zeigt Content") — User will
+    korrigierendes Verhalten in **beiden** Tool-Familien (disk + eclipse).
 
-**Status:** ⏳ geparkt — Smoke-Test-Bug (Rate-Spike am ersten Token) hat Vorrang. Danach
-wiederaufnehmen: Rename-Inkrement → Doku → Count-Fix.
+**Status:** ⏳ geparkt — danach wiederaufnehmen: Rename-Inkrement → Doku → Count-Fix →
+Line-Ending-Normalisierung. E2E-Spec steht in `org.sterl.llmpeon.test/ai-e2e-test/file-edit-tools.txt`
+(dient als Abnahmetest nach dem Release).
