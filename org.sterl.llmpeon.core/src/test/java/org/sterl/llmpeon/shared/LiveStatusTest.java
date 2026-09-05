@@ -34,6 +34,18 @@ class LiveStatusTest {
     }
 
     @Test
+    void working_line_full_think_after_3m15s() {
+        // GIVEN a THINK chunk whose turn started at 14:32 local, rendered 3m 15s later (R20 BDD)
+        Instant startedAt = at(14, 32);
+        long now = startedAt.toEpochMilli() + 195_000;
+        OnPartialAiResponse think = chunk(Type.THINK, startedAt, 0);
+        // WHEN
+        LiveStatus status = LiveStatus.of(think, 0, now);
+        // THEN the full line — wall-clock, middle-dot separator, elapsed, phase suffix
+        assertThat(status.state()).isEqualTo("Started 14:32 · working since 3m 15s | thinking...");
+    }
+
+    @Test
     void under_a_minute_shows_seconds_only() {
         // GIVEN a chunk 45 s after the turn started
         OnPartialAiResponse answer = chunk(Type.ANSWER, Instant.EPOCH, 0);
