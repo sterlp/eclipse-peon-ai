@@ -3,6 +3,7 @@ package org.sterl.llmpeon.context;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import org.eclipse.core.resources.IFile;
@@ -140,9 +141,20 @@ public class UserContext {
         this.textSelection = textSelection;
     }
 
-    public void setSelectedResource(IResource selectedResource) {
+    public boolean setSelectedResource(IResource selectedResource) {
+        var result = Objects.equals(JdtUtil.pathOf(selectedResource), 
+                JdtUtil.pathOf(this.selectedResource));
+
+        // clear text selection if a different file is selected ...
+        if (result) {
+            this.textSelection = null;
+        }
+
         this.selectedResource = selectedResource;
+        // if we have a selected file it can't be a class anymore...
         if (this.selectedResource != null) this.clazz = null;
+
+        return result;
     }
 
     public boolean isProjectPinned() {

@@ -66,15 +66,14 @@ public class StatusLineWidget extends Composite {
         btnPin.setLayoutData(pinRd);
         btnPin.setVisible(false);
         btnPin.addListener(SWT.Selection, e -> onPinChange.accept(btnPin.getSelection()));
-        
+
         // --- File label ---
+        EclipseUiUtil.newSeparator(this);
         fileLabel = new Label(this, SWT.NONE);
         fileLabel.setToolTipText("Automatically included in chat context — the AI sees this file");
 
-        EclipseUiUtil.newSeparator(this);
-
-        EclipseUiUtil.newSeparator(this);
         // --- Skills toggle ---
+        EclipseUiUtil.newSeparator(this);
         btnSkills = new Button(this, SWT.TOGGLE);
         btnSkills.setSelection(true);
         btnSkills.setImage(images.getImage(ISharedImages.IMG_OBJ_FOLDER));

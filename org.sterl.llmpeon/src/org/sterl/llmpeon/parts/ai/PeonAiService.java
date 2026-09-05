@@ -23,6 +23,7 @@ import org.sterl.llmpeon.parts.ai.component.SharedToolsComponent;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.McpConnectionService;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
+import org.sterl.llmpeon.parts.tools.AskUserTool;
 import org.sterl.llmpeon.parts.tools.PlanTool;
 import org.sterl.llmpeon.parts.tools.memory.WorkspaceMemoryTool;
 import org.sterl.llmpeon.poagent.AiPoAgent;
@@ -83,15 +84,30 @@ public class PeonAiService {
                          Consumer<Boolean> mcpStateChange,
                          Runnable onAgentReload) {
 
-        this(sendTrigger, openInEditorCallback, mcpStateChange, onAgentReload, LlmPreferenceInitializer.buildWithDefaults().build());
+        this(sendTrigger, openInEditorCallback, mcpStateChange, onAgentReload, LlmPreferenceInitializer.buildWithDefaults().build(), null);
     }
-    
+
     public PeonAiService(Runnable sendTrigger,
             Consumer<IFile> openInEditorCallback,
             Consumer<Boolean> mcpStateChange,
             Runnable onAgentReload,
             ConfiguredChatModel configuredModel) {
-        
+
+        this(sendTrigger, openInEditorCallback, mcpStateChange, onAgentReload, configuredModel, null);
+    }
+
+    /**
+     * @param questionPresenter presents the agent's questions in the UI (the view's question widget).
+     *        Null in headless builds → no agent gets the {@link org.sterl.llmpeon.parts.tools.AskUserTool}
+     *        (empty = unset).
+     */
+    public PeonAiService(Runnable sendTrigger,
+            Consumer<IFile> openInEditorCallback,
+            Consumer<Boolean> mcpStateChange,
+            Runnable onAgentReload,
+            ConfiguredChatModel configuredModel,
+            AskUserTool.QuestionPresenter questionPresenter) {
+
         var config              = configuredModel.getConfig();
         this.configuredModel    = configuredModel;
         skillService            = new SkillService();
@@ -102,6 +118,13 @@ public class PeonAiService {
 
         planTool = new PlanTool(this);
         sharedToolService.addTool(planTool);
+
+        // askUser (R17): one tool instance for ALL agents — the view's question widget is the
+        // presenter, so Jon, dev/plan agents and custom agents share the same widget + queue-safety.
+        // Null in headless builds → no agent gets the tool (empty = unset).
+        if (questionPresenter != null) {
+            sharedToolService.addTool(new AskUserTool(questionPresenter));
+        }
 
         agentService  = new AgentService(true,
                 config.getConfigDir().resolve(LlmConfig.AGENT_DIRECTORY), sharedToolService, configuredModel, config.getConfigDir());

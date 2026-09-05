@@ -387,6 +387,15 @@ GIVEN the default allowlist */docs/* and a project without a docs/ directory
 WHEN Jon writes his first story
 THEN the write is allowed and docs/ is created with the file inside it
 
+GIVEN the allowlist */docs/*
+WHEN Jon attempts to write a path outside any docs/ folder
+THEN the decorator rejects the write
+
+GIVEN the allowlist docs/* (root-only)
+WHEN Jon attempts to write <project>/sub/docs/x.md
+THEN the decorator rejects it, because docs/ is not at the project root
+```
+
 ### R16: Compact-Guard — < 2 Messages → Reset statt LLM-Call ✅ (2026-09-05, User)
 
 `AiPoAgent.compact()` (und damit `compactDev()`/`compactPlan()`) bricht, wenn das Memory
@@ -403,14 +412,6 @@ Compact. Gilt für Jon selbst UND seine Slaven (Da Thinka, Da Mek).
 
 **IST-Bug (2026-09-05):** `compact()` ruft `super.compact(monitor)` ohne Guard — bricht bei
 < 2 Messages. Slaven-Compacts (`compactDev`/`compactPlan`) haben denselben Mangel.
-GIVEN the allowlist */docs/*
-WHEN Jon attempts to write a path outside any docs/ folder
-THEN the decorator rejects the write
-
-GIVEN the allowlist docs/* (root-only)
-WHEN Jon attempts to write <project>/sub/docs/x.md
-THEN the decorator rejects it, because docs/ is not at the project root
-```
 
 ### R4: Onboarding tutorial ❌
 On the first activation in a session (`memory.size == 0`) Jon shows a short tutorial message (like
@@ -797,6 +798,28 @@ De-duplizierung — die Prompts tragen das operative Wissen). **Prompt-Aufnahme 
 **Kein Prompt-BDD:** operative Umsetzung in `po-delegation.txt` (Jon: Branch-Entscheidung) +
 `dev-build-loop.txt` (Da Mek: Commit-Disziplin) — Content im Repo, siehe Prompts; SOLL im
 Projekt-`AGENTS.md`.
+
+### R17: Jon gets `askUser` — matched user answers ✅ (2026-09-05, User)
+
+Jon bekommt das bestehende `AskUserTool` ([user-question-tool-design.md](user-question-tool-design.md))
+in seine kuratierte `poToolService`. Seine Fragen (Approval-Gates, 🔒-Bestätigungen, echte SOLL-
+Entscheidungen) zeigen das Question-Widget; die User-Antwort ist **matcht** zu genau dieser Frage
+(queue-safe — Input-Bereich ist während des Wartens ersetzt), keine beliebige queued Message.
+Cancel via Stop → Cancel-Error (cancel-safe, kein Deadlock).
+
+**Unverändert:** Slaven (Da Thinka/Da Mek) + Search-Agent behalten den bestehenden `AskUserTool`-
+Filter (R9: „Jon ist das UI, nicht die Sklaven").
+
+**R13-Klärung:** R13s „never blocks inside the tool-call loop" bezieht sich auf die **Slave-Fragen-
+Eskalation** (Turn enden, später resümieren). Direkte User-Entscheidungen dürfen via `askUser`
+blocken (diese Regel) — cancel-safe via Stop.
+
+- **GIVEN** der User schaltet auf Peon-PO **WHEN** Jons ToolService gebaut wird **THEN** sie enthält `askUser` zusätzlich zu den bestehenden kuratierten Tools
+- **GIVEN** Jon hat eine echte User-Entscheidung (Business-Choice, unklarer Use-Case, Zielkonflikt) **WHEN** er `askUser` aufruft **THEN** das Question-Widget erscheint und die eingereichte User-Antwort ist das Tool-Result
+- **GIVEN** Jon ruft `askUser` mit Predefined Answers auf **WHEN** der User eine auswählt (per Free Text verfeinerbar) **THEN** der ausgewählte Text wird zurückgegeben
+- **GIVEN** der User drückt Stop während eine Frage wartet **WHEN** der Latch released wird **THEN** das Tool liefert einen Cancel-Error und Jons Loop läuft weiter (kein Deadlock)
+- **GIVEN** Da Thinka/Da Mek werden erstellt **WHEN** ihr effektiver Tool-Set berechnet wird **THEN** `askUser` wird weiterhin gefiltert (R9 unverändert)
+- **Tag:** unit (verify poToolService contains AskUserTool; verify slaves still filter it)
 
 ## Future Extensions (not MVP)
 
