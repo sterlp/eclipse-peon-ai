@@ -5,7 +5,7 @@
 - **Bug-Hunt** (Branch `bug-hunt-2026-09-04`, Merge `db92e1b`, 2026-09-04): #1 applyEdit-Count,
   #2 ShellTool tail+filter, #3 CustomAgent null-Allowlist, #4 startedAt pro Turn, #9 Traversal
   (+follow-up `\`→`/`), #13 showRealtimeAiResponse Default on.
-- **Streaming-Timing** (Branch `streaming-timing-2026-09-05`, Merge 2026-09-05): R18–R21
+- **Streaming-Timing** (Branch `streaming-timing-2026-09-05`, Merge `86594a4` 2026-09-05, gepusht): R18–R21
   (Timer-Klasse, toc/s aus Token-Timer, "Started hh:mm", TOOL-Delta) + **R22** (kein toc/s am
   1. Token eines Calls, pro Call) + **R-PI1** (planImplemented-Kollision → Counter-Suffix,
   core `ArchiveName.firstFreeName`).
