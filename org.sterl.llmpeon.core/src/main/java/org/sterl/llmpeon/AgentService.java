@@ -10,6 +10,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
@@ -34,6 +38,18 @@ import lombok.Setter;
  */
 public class AgentService {
 
+    private static final Logger LOG = Logger.getLogger(AgentService.class.getName());
+
+    private static final String AGENT_ORDER_FILE = "agent-order.txt";
+    private static final String DEFAULT_ORDER_CONTENT = """
+            # Ordering of agents in the UI dropdown. Each line is a regex that matches agent names.
+            # Patterns are applied top-to-bottom: agents matching an earlier line appear first.
+            # Within each pattern group, agents are sorted alphabetically.
+            # Unmatched agents are appended alphabetically at the end.
+            # Falls back to Peon-PO first, then alphabetical, when no valid patterns exist.
+            ^Peon-PO$
+            """;
+
     private final ConfiguredChatModel chatModel;
     private final ToolService toolService;
     private final Path historyConfigDir;
@@ -44,6 +60,9 @@ public class AgentService {
     private final Map<String, AiAgent> persistentAgents = new ConcurrentHashMap<>();
 
     private volatile Path agentsDirectory;
+
+    /** Parsed regex patterns from agent-order.txt, applied in file order. */
+    private volatile List<Pattern> orderPatterns = List.of();
 
     /** Non-null when a custom agent is selected; takes precedence over {@link #mode}. */
     @Getter @Setter
@@ -106,14 +125,41 @@ public class AgentService {
         agents.clear();
     }
 
-    /** Returns loaded agents when enabled, empty list when disabled: Peon-PO (Jon) first, rest by name. */
+    /**
+     * Returns loaded and persistent agents ordered by {@code agent-order.txt} regex patterns.
+     * Matches are grouped by pattern (alphabetically within each group), followed by unmatched agents alphabetically.
+     * Falls back to {@link AiPoAgent} first, then alphabetical, when no valid patterns exist.
+     */
     public List<AiAgent> getAgents() {
         var all = new java.util.LinkedHashSet<AiAgent>(agents.values());
         all.addAll(persistentAgents.values());
-        return all.stream()
+
+        if (orderPatterns.isEmpty()) {
+            return all.stream()
                     .sorted(Comparator.<AiAgent>comparingInt(a -> a instanceof AiPoAgent ? 0 : 1)
                             .thenComparing(AiAgent::getName))
                     .toList();
+        }
+
+        var result = new java.util.ArrayList<AiAgent>();
+        var seen = new java.util.HashSet<String>();
+
+        for (var pattern : orderPatterns) {
+            var matches = all.stream()
+                    .filter(a -> !seen.contains(a.getName()))
+                    .filter(a -> pattern.matcher(a.getName()).matches())
+                    .sorted(Comparator.comparing(AiAgent::getName))
+                    .toList();
+            result.addAll(matches);
+            matches.forEach(a -> seen.add(a.getName()));
+        }
+
+        var remaining = all.stream()
+                .filter(a -> !seen.contains(a.getName()))
+                .sorted(Comparator.comparing(AiAgent::getName))
+                .toList();
+        result.addAll(remaining);
+        return result;
     }
 
     public int loadedAgentCount() {
@@ -160,6 +206,8 @@ public class AgentService {
     public boolean reloadAgents() {
         if (Files.isDirectory(agentsDirectory)) {
             try {
+                ensureOrderFileExists();
+                parseOrderFile();
                 reloadAgentConfig();
             } catch (IOException e) {
                 throw new RuntimeException("Failed to reload agents from: " + agentsDirectory, e);
@@ -168,6 +216,46 @@ public class AgentService {
             clearAgents();
         }
         return true;
+    }
+
+
+    /**
+     * Creates the default agent-order.txt file if it does not exist.
+     * The default preserves current UI behavior: Peon-PO first, others alphabetical.
+     */
+    private void ensureOrderFileExists() throws IOException {
+        var orderFile = agentsDirectory.resolve(AGENT_ORDER_FILE);
+        if (!Files.exists(orderFile)) {
+            Files.writeString(orderFile, DEFAULT_ORDER_CONTENT);
+        }
+    }
+
+    /**
+     * Parses agent-order.txt into a list of compiled regex patterns.
+     * Lines starting with '#' are comments and ignored. Empty lines are ignored.
+     * Invalid regex patterns are logged as warnings and skipped.
+     */
+    private void parseOrderFile() throws IOException {
+        var orderFile = agentsDirectory.resolve(AGENT_ORDER_FILE);
+        if (!Files.exists(orderFile)) {
+            orderPatterns = List.of();
+            return;
+        }
+
+        var patterns = new java.util.ArrayList<Pattern>();
+        var lines = Files.readAllLines(orderFile);
+        for (var line : lines) {
+            var trimmed = line.trim();
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                continue;
+            }
+            try {
+                patterns.add(Pattern.compile(trimmed));
+            } catch (PatternSyntaxException e) {
+                LOG.log(Level.WARNING, "Invalid regex in agent-order.txt, skipping: " + trimmed, e);
+            }
+        }
+        orderPatterns = patterns;
     }
 
     private void reloadAgentConfig() throws IOException {
