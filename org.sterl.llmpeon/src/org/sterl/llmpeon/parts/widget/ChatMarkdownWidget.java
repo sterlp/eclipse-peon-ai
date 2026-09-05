@@ -43,7 +43,7 @@ public class ChatMarkdownWidget extends Composite {
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true);
     private String chatHtml = null;
 
-    // UI-thread state (see AIChatView.onStreamingChunk): plain longs, no atomics needed.
+    // volatile longs, UI-thread contract (see AIChatView.onStreamingChunk).
     private volatile long estimatedTokens = 0;
     private volatile long lastRenderedTokens = 0;
     private volatile long lastTokenPhaseStart = 0;
@@ -214,7 +214,7 @@ public class ChatMarkdownWidget extends Composite {
     }
 
     private void updateRunningChunk(OnPartialAiResponse r) {
-        LiveStatus status = LiveStatus.of(r, estimatedTokens, System.currentTimeMillis(), lastTokenPhaseStart);
+        LiveStatus status = LiveStatus.of(r, estimatedTokens, System.currentTimeMillis(), lastTokenPhaseStart); // R22: read BEFORE write — LiveStatus.of needs the previous value
         if (r.tokenPhaseStart() != 0) lastTokenPhaseStart = r.tokenPhaseStart();
         if (r.type() == Type.START) {
             thinkText.setLength(0);
