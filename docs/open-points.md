@@ -92,3 +92,47 @@ Nacharbeit billig macht. Eigene kleine Story nach dem Release.
   `ActionsBarWidget`/`ModelComboWidget`. Wiederaufnahme = eigene Story nach dem Release.
 
 **Frage an den User:** nach dem Release angehen — oder die Dropdown-Klassen ersatzlos löschen?
+
+## ⏳ Streaming-Timing: Präzisierungen aus dem Plan (2026-09-05, PO)
+
+Zwei Punkte aus [streaming-display.md](streaming-display.md) R19 wurden beim Planen präzisiert
+(machen explizit, was die Regel schon sagt — keine Bedeutungsänderung). Reine Korrektur:
+R19-BDD-Rechenfehler 1500 → 500 t/s (3000 chars / 3 = 1000 Tokens / 2 s).
+
+1. **Total-Timer Stop:** Tabelle sagte „Stop: letztes `onCompleteResponse`" — die Bridge kennt
+   kein Turn-Ende (nächste `call()` ungewiss). Präzisierung: Total startet im Konstruktor und
+   läuft durch die Bridge-Lebenszeit (nie stop). Für die Anzeige nutzt die UI das
+   `startedAt`-Instant aus dem Chunk — der Total-Timer ist für die Anzeige redundant, existiert
+   aber laut SOLL.
+2. **TOOL-Chunk-Value:** Der TOOL-Partial-Value ist heute der Tool-**Name** (in jedem Callback
+   wiederholt). R21 zählt den gestreamten Text — für TOOL heißt das `partialArguments()`
+   (Delta-Slice); der Name wird nicht gezählt.
+## ⏳ Edit-Tools: Naming-Uniformität + gemeinsame Doku (geparkt 2026-09-05)
+
+**Richtung (PO+User 2026-09-05, geparkt wegen Streaming-Smoke-Test-Bug):**
+- Tool-Namen auf **"Edit"** ziehen (nicht "Update"): `eclipseUpdateOpenFile` → `eclipseEditOpenFile`,
+  `planUpdate` → `planEdit`; `diskEditFile`/`eclipseEditFile` bleiben. Begründung: "Edit" =
+  chirurgischer String-Replace (präzise, schon die Mehrheit), "Update" kollidiert mit
+  Write/overwrite; Verb-Familie Write/Edit/Replace/Insert/Delete/Rename bleibt konsistent.
+- Gemeinsame Doku für die **4** Edit-Tools (alle nutzen `FileUtils.applyEdit` = Replace-All +
+  Count + 0 = Fehler): kanonische Regel an einem Ort + kurze Verweise. Offene Unter-Entscheidung:
+  neue `edit-tools.md` (PO-Empfehlung) vs. kanonisch in [disk-file-write-tool.md](disk-file-write-tool.md).
+- `planUpdate`/`planEdit` meldet noch **keine Count** (Return nur "Updated <path>") — nachziehen
+  wie die anderen 3 ("replaced/deleted N occurrence(s)").
+- **Konflikt (offen):** [eclipse-workspace-write-file-tool.md](eclipse-workspace-write-file-tool.md)
+  → `eclipseEditFile` sagt noch "Errors if 0 or >1 matches" (altes SOLL) — widerspricht Bug-Hunt #1
+  (Replace-All + Count). Muss mitfixt werden.
+- Nebenbefund (Dev-Recherche): `planUpdate` überreicht dem Monitor `AiFileUpdate` die Parameter
+  (`oldString`/`newString`) statt des vollen Datei-Contents — alle anderen Stellen geben
+  `content`/`edit.content()`; Editor-Diff wäre falsch.
+- **Line-Ending-Normalisierung (User, 2026-09-05, E2E-Spec `file-edit-tools.txt`):**
+  - Falsches Line-Ending im `oldString` (z.B. CRLF in LF-Datei) → Tool soll es **korrigieren**
+    (normalisieren) in **beiden** Strings (old + new), damit der Edit funktioniert.
+  - `oldString` korrekt, `newString` mit anderem Ending → Ending von `newString` wird
+    **akzeptiert** (wörtlich übernommen), kein Fehler.
+  - Ersetzt die frühere E3-Entscheidung ("kein Fix, Fehler zeigt Content") — User will
+    korrigierendes Verhalten in **beiden** Tool-Familien (disk + eclipse).
+
+**Status:** ⏳ geparkt — danach wiederaufnehmen: Rename-Inkrement → Doku → Count-Fix →
+Line-Ending-Normalisierung. E2E-Spec steht in `org.sterl.llmpeon.test/ai-e2e-test/file-edit-tools.txt`
+(dient als Abnahmetest nach dem Release).

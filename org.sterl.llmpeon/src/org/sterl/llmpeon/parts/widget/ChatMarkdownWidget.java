@@ -5,9 +5,6 @@ import java.io.InputStream;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.FileLocator;
@@ -23,6 +20,8 @@ import org.eclipse.swt.widgets.Composite;
 import org.osgi.framework.FrameworkUtil;
 import org.sterl.llmpeon.parts.shared.EclipseUiUtil;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
+import org.sterl.llmpeon.shared.ChatMessageUtil;
+import org.sterl.llmpeon.shared.LiveStatus;
 import org.sterl.llmpeon.shared.OnPartialAiResponse;
 import org.sterl.llmpeon.shared.OnPartialAiResponse.Type;
 import org.sterl.llmpeon.parts.widget.model.HideLiveStatusCommand;
@@ -44,9 +43,12 @@ public class ChatMarkdownWidget extends Composite {
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true);
     private String chatHtml = null;
 
-    private final AtomicInteger streamingTokenCount = new AtomicInteger(0);
+    // volatile longs, UI-thread contract (see AIChatView.onStreamingChunk).
+    private volatile long estimatedTokens = 0;
+    private volatile long lastRenderedTokens = 0;
+    private volatile long lastTokenPhaseStart = 0;
     private final Composite parent;
-    private boolean showRealtimeAiResponse = false;
+    private volatile boolean showRealtimeAiResponse = false;
     private final StringBuilder thinkText = new StringBuilder();
     private final StringBuilder answerText = new StringBuilder();
 
@@ -191,53 +193,45 @@ public class ChatMarkdownWidget extends Composite {
     }
 
     public void onStreamingChunk(OnPartialAiResponse r) {
-        int tokens = 0;
-        if (r.type() == Type.START || r.type() == Type.END) {
-            streamingTokenCount.set(0);
-        } else {
-            tokens = streamingTokenCount.incrementAndGet();
-        }
-
-        if (r.type() == Type.END) {
-            EclipseUtil.runInUiThread(parent, this::hideLiveStatus);
-        } else {
-            if (r.type() == Type.THINK) {
-                thinkText.append(r.value());
-            } else if (r.type() == Type.ANSWER) {
-                answerText.append(r.value());
+        switch (r.type()) {
+            case START -> {
+                estimatedTokens = 0;
+                lastRenderedTokens = 0;
+                lastTokenPhaseStart = 0;
             }
-            updateRunningChunk(r, tokens);
+            case THINK -> {
+                thinkText.append(r.value());
+                estimatedTokens += ChatMessageUtil.estimateTokens(r.value());
+            }
+            case ANSWER -> {
+                answerText.append(r.value());
+                estimatedTokens += ChatMessageUtil.estimateTokens(r.value());
+            }
+            case TOOL -> estimatedTokens += ChatMessageUtil.estimateTokens(r.value());
+            case END -> EclipseUtil.runInUiThread(parent, this::hideLiveStatus);
         }
+        if (r.type() != Type.END) updateRunningChunk(r);
     }
 
-    private void updateRunningChunk(OnPartialAiResponse r, int tokens) {
-        long elapsed = Duration.between(r.startedAt(), Instant.now())
-                .toSeconds();
-        String state = switch (r.type()) {
-            case START -> "waiting for AI...";
-            case THINK -> "working since " + elapsed + "s | thinking...";
-            case ANSWER -> "working since " + elapsed + "s | responding...";
-            case TOOL -> "working since " + elapsed + "s | using tools...";
-            case END -> "AI done.";
-        };
+    private void updateRunningChunk(OnPartialAiResponse r) {
+        LiveStatus status = LiveStatus.of(r, estimatedTokens, System.currentTimeMillis(), lastTokenPhaseStart); // R22: read BEFORE write — LiveStatus.of needs the previous value
+        if (r.tokenPhaseStart() != 0) lastTokenPhaseStart = r.tokenPhaseStart();
         if (r.type() == Type.START) {
             thinkText.setLength(0);
             answerText.setLength(0);
-            updateLiveResponseInUIThread(state, 0, "");
-        } else {
+            updateLiveResponseInUIThread(status.state(), status.tokPerSec(), "");
+            return;
+        }
+        // render the first chunk immediately, then throttle to every 20 new tokens
+        long delta = estimatedTokens - lastRenderedTokens;
+        if (lastRenderedTokens == 0 || delta >= 20) {
+            lastRenderedTokens = estimatedTokens;
             String accumulatedText = switch (r.type()) {
-                case THINK -> showRealtimeAiResponse
-                        ? thinkText.toString()
-                        : tokens + " tokens";
-                case ANSWER -> showRealtimeAiResponse
-                        ? answerText.toString()
-                        : tokens + " tokens";
-                default -> tokens + " tokens";
+                case THINK -> showRealtimeAiResponse ? thinkText.toString() : estimatedTokens + " tokens";
+                case ANSWER -> showRealtimeAiResponse ? answerText.toString() : estimatedTokens + " tokens";
+                default -> estimatedTokens + " tokens";
             };
-            if (tokens == 1 || (tokens > 0 && tokens % 20 == 0)) {
-                double tokPerSec = elapsed > 0 ? tokens / (double) elapsed : 0;
-                updateLiveResponseInUIThread(state, tokPerSec, accumulatedText);
-            }
+            updateLiveResponseInUIThread(status.state(), status.tokPerSec(), accumulatedText);
         }
     }
 
