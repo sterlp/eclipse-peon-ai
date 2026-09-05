@@ -8,8 +8,13 @@
 **For free:** "Started hh:mm" in Statusleiste; PP/Think Timer existieren (noch nicht angezeigt)
 **Nicht jetzt:** Timestamps pro Nachricht im Chat-Widget (eigenes Feature), toc/s-Blending
 
-**Status:** ❌ specified → User bestätigt (2026-09-05). **Nächster Schritt: `planWithPlanAgent` für R18-R21.**
-**Branch:** `bug-hunt-2026-09-04` (bleibt, kein neuer Branch)
+**Status:** ✅ gebaut + dreiseitig reviewed (2026-09-05).
+**Branch:** `streaming-timing-2026-09-05` (neu von `2.7.0-fix` — `bug-hunt-2026-09-04` war bereits geshipped/merged, abgelaufen).
+**Commits (6):** `fec2f33` Timer · `a6a896b` Bridge-Timer+tokenPhaseStart · `a2e7cb2` Estimator · `f0022b9` LiveStatus · `2db9015` Widget-Wiring · `8023449` inc-6 R20-Vollzeilen-Assertion.
+**Ground Truth:** Core (Surefire) **625/625** · Plugin (OSGi) **177/177**.
+**Review:** alle 3 Seiten ✅; D5-Check (TOOL-Value Name→Delta) = kein Consumer bezieht den Namen; F2 (Vollzeilen-Assertion) in inc-6 geschlossen; F3 (Test-Naming inkonsistent) = Kosmetik, bewusst nicht angefasst.
+**Neu entdeckt (flaky Test, eigener Zyklus):** `ModelListCacheTest.concurrentGetOrFetch_sameIdentity_singleFlight` — timing-flakig (Single-Flight-Counter 2→1), 5/5 solo grün, im Full-Run 1× rot. Kandidat für die Triage-Liste.
+**Nächster Schritt (User):** Merge/Squash `streaming-timing-2026-09-05` → `2.7.0-fix` = User-Entscheidung.
 **Key-Entscheidungen (User):**
 - Token-Counting: Estimator (chars/3, > 5 chars), nicht Callback-Count
 - Kein "n/a"-Threshold — Rate immer anzeigen (auch bei Bursts)
@@ -20,6 +25,29 @@
 **User-Anweisung:** Da Mek sucht systematisch (core ✅ durch, Plugin ⏳ ausstehend), bewährt jeden
 Fehler mit rotem Test **vor** dem Fix; Jon triagt und wählt die Fixes; nur echte Fehler.
 Dieses File ist die Arbeitsliste — bei jeder Änderung sofort aktualisieren (Compact-Schutz).
+## Streaming Smoke-Test Follow-ups (2026-09-05, nach R18–R21 ✅)
+
+**Branch:** `streaming-timing-2026-09-05` (noch nicht gemerged — User-Entscheidung)
+
+### E2E-Triage (Jon)
+
+| # | E2E-Befund | Triage (Jon) |
+|---|---|---|
+| E1 | `planImplemented` Move ohne Timestamp-Kollision (Minute-Präfix, 2×/Minute → "already exists") | **✅ BUG bestätigt + gebaut (2026-09-05, R-PI1):** Code `HH-mm` (Minute, KEINE Sekunden — User-Annahme "Sekunden-Suffix" falsch). Fix: core `ArchiveName.firstFreeName` (Counter-Suffix), `PlanTool` = dünner Adapter; 4 Tests; dreiseitig reviewed. |
+| E5 | Success-Message: disk-Tool nur Basename, eclipse-Tool Workspace-Pfad | **⏳ PO-Counter** — Disk-Tool zeigt workingDir-Relative-Pfad (kanonisch für Disk-Scope = die Form, mit der der LLM Disk-Files adressiert). Stil-Diff zu Eclipse (Workspace-Pfad) = by design (unterschiedl. Scopes). PO: dokumentieren, kein Code-Change; User-Entscheidung offen (ggf. absoluter Pfad) |
+
+### R22 + R-PI1 Zyklus abgeschlossen (2026-09-05)
+
+**Branch `streaming-timing-2026-09-05`** — 3 Commits: `dded536` inc-1 R22 · `982390a` inc-2 R-PI1 · `ab4d4e6` inc-3 Review-Kommentare.
+**Ground Truth:** Core (Surefire) **632/632** · Plugin-Build clean (OSGi-Lauf nicht nötig — pure core-Logik + Wiring).
+**Review (3 Seiten ✅):** F1 (volatile statt plain long + Kommentar) → inc-3 behoben; F2 (Test-Einheit = core `ArchiveName`, dokumentiert); Mutation-Check: Rate-Guard selbst ist mutation-gekillt, **Read-before-Write** in `ChatMarkdownWidget.updateRunningChunk` (Zeilen 217-218) ist das ungetestete Gap — per Kommentar geschützt (SWT-Widget-Test = zu teuer für diesen Zyklus).
+**Nächster Schritt (User):** Testen, dann Merge/Squash `streaming-timing-2026-09-05` → `2.7.0-fix`.
+**E5 offen (User-Entscheidung):** Disk-Tool zeigt workingDir-Relative-Pfad (PO: kanonisch für Disk-Scope, by design) vs. User-Behauptung "BUG" (KV-Cache-Poisoning) — Vorlage in Report.
+
+
+**Geparkt:** Edit-Tools-Thema (Naming Edit/Update + gemeinsame Doku +
+`planUpdate`-Count + Eclipse-Doku-Konflikt + `AiFileUpdate`-Nebenbefund) →
+[open-points.md](open-points.md) "Edit-Tools: Naming-Uniformität".
 
 ## Triage-Liste (2026-09-04: #1, #2, #3, #4, #9, #13 ✅ gebaut + reviewed; Rest offen)
 
@@ -40,6 +68,7 @@ Dieses File ist die Arbeitsliste — bei jeder Änderung sofort aktualisieren (C
 | 13 | **User-Bug:** „Show real time response"-Checkbox in erweiterter Config ohne Funktion — nur Tokens sichtbar, kein Text mehr | plugin | **🔒 User 2026-09-04: Default = on.** Diagnose (Jon): Default-Mismatch vom Config-Clean-Break — Preference-Default `true` (`LlmPreferenceInitializer:44`) vs. `LlmConfigLoader:40` `parseBoolean(null, false)`. Fix: Loader-Default → `true`. SOLL in [streaming-display.md](streaming-display.md) R17 (neu) |
 | 14 | `AnthropicProvider.listAiModels`: hardcodet `api.anthropic.com`, ignoriert custom `baseUrl` (Proxy→401) | core | `baseUrl` aus Config nutzen |
 | 15 | `VoiceInputService`: doppeltes `startRecording` leakt die alte Line | core | Alte Line vor neuem Start schließen |
+| 16 | `ModelListCacheTest.concurrentGetOrFetch_sameIdentity_singleFlight` timing-flakig (Full-Run 1× rot, solo 5/5 grün) — False-Negative-Gefahr fürs Green-Gate | core | offen — gefunden 2026-09-05 während Streaming-Timing-Zyklus (Dev-Agent) |
 
 ## Skips (dokumentierte Entscheidungen / bereits getrackt)
 

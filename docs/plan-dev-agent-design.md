@@ -58,6 +58,27 @@ Standing orders ensure the plan path + "Handover from Peon-Plan" directive survi
 
 ---
 
+### Plan Tools — `planImplemented` (PlanTool)
+
+`planImplemented` archiviert `peon-plan/overview.md` als `overview-done-<timestamp>.md`
+(Timestamp `yyyy-MM-dd-HH-mm`, **Minute**-Granularität).
+
+**R-PI1 — Kein Kollisions-Fehler beim Archivieren ✅ (2026-09-05)**
+Zwei Archivierungen in derselben Minute → gleicher Dateiname → `IResource.move` schlägt fehl
+("already exists").
+
+- **GIVEN** ein Plan ist gerade archiviert (z.B. `overview-done-2026-09-05-12-59.md`) **WHEN** `planImplemented` wird erneut in derselben Minute aufgerufen **THEN** der neue Archiv-Name erhält einen Counter-Suffix (`…-12-59-1.md`, `…-12-59-2.md`, …) bis ein freier Name gefunden ist — **nie** ein "already exists"-Fehler.
+- **Tag:** unit (verify planImplemented appends counter on collision, never throws "already exists")
+
+> **Test-Einheit (2026-09-05):** Kollisions-Logik als pure core `ArchiveName.firstFreeName(stem, exists)`
+> getestet (4 Tests: frei / `-1` / `-2` / springt zu `-4`); `PlanTool.planImplemented` ist ein dünner
+> OSGi-Adapter (move nur auf den garantierten freien Namen) — OSGi-`exists` ist im core nicht testbar.
+
+**WEIL:** Im Bug-Fix-Zyklus werden Pläne schnell hintereinander archiviert — Kollisionen sind real
+(2× in einer Session beobachtet). Ein harter Fehler bricht den Dev-Agent-Flow.
+
+---
+
 ## PLANNED FEATURES (not yet implemented)
 
 The following pipeline features are documented as future work:
