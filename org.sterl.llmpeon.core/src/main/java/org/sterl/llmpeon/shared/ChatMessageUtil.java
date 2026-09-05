@@ -3,6 +3,8 @@ package org.sterl.llmpeon.shared;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
@@ -37,6 +39,18 @@ public class ChatMessageUtil {
         int chars = 0;
         for (var msg : messages) chars += charCount(msg);
         return chars / 3;
+    }
+
+    /**
+     * Estimates the token count of a single text snippet (a streaming text delta or a
+     * tool-argument slice): {@code null} or empty → 0, up to 5 chars → 1, otherwise
+     * {@code length / 3}. A coarse chars/3 heuristic — enough for a live rate readout,
+     * never a real provider count.
+     */
+    public static int estimateTokens(@Nullable String text) {
+        if (text == null || text.isEmpty()) return 0;
+        int len = text.length();
+        return len <= 5 ? 1 : len / 3;
     }
 
     private static int charCount(ChatMessage msg) {
