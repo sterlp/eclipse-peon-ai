@@ -52,7 +52,7 @@ public class PlanTool extends AbstractEclipseTool {
         return "Saved " + JdtUtil.pathOf(planFile); 
     }
 
-    @Tool("Update the plan by replacing an exact text substring. For incremental refinements.")
+    @Tool("Update the plan by replacing all exact text substring. For incremental refinements.")
     public String planUpdate(
             @P(description = "exact text to replace", name = "oldString") String oldString,
             @P(name = "newString", required = false) String newString) {

@@ -40,6 +40,7 @@ Module guides (read when working in one):
 - **Thread safety:** Eclipse plugin - heavy work on a background Thread `Job.create`, UI changes
   on a UI thread `EclipseUtil.runInUiThread` as so plan/build accordingly. 
   No single-threaded assumptions.
+- Code structure komponenten-architektur SKILL
 
 ## Build cycles & git
 

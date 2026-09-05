@@ -52,8 +52,11 @@ public class TokenHeaderWidget extends Composite {
         long received = stats.getReceived();
         long cacheRead = stats.getCachedRead();
         long cacheWrite = stats.getCachedWrite();
-        label.setText("↑ " + StringUtil.toK(sent) + "  ↓ " + StringUtil.toK(received)
-                + "  ⇄ " + StringUtil.toK(cacheRead));
+        label.setText(
+                "↑ " + StringUtil.toK(sent) 
+                + "  ⇄ " + StringUtil.toK(cacheRead)
+                + "  ↓ " + StringUtil.toK(received)
+        );
         label.setToolTipText("Session tokens — sent (input): " + sent
                 + ", received (output): " + received
                 + ", cache read: " + cacheRead

@@ -364,10 +364,11 @@ public class AIChatView implements EclipseAiMonitor {
         LOG.info("Set new config " + config);
         // ensure we set the voice config as we break later ...
         chatInput.setVoiceInputVisible(VoicePreferenceInitializer.buildWithDefaults().enabled());
+        chatHistory.setShowRealtimeAiResponse(config.isShowRealtimeAiResponse());
+
         if (lastAppliedConfig != null && lastAppliedConfig.equals(config)) return;
         lastAppliedConfig = config;
         aiService.updateConfig(config);
-        chatHistory.setShowRealtimeAiResponse(config.isShowRealtimeAiResponse());
 
         actionsBar.setAgents(aiService.getAgents());
         actionsBar.updateModeUI(aiService.getActiveAgent());

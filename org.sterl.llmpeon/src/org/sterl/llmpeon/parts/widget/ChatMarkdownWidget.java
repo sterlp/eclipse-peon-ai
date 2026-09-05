@@ -44,10 +44,10 @@ public class ChatMarkdownWidget extends Composite {
     private String chatHtml = null;
 
     // UI-thread state (see AIChatView.onStreamingChunk): plain longs, no atomics needed.
-    private long estimatedTokens = 0;
-    private long lastRenderedTokens = 0;
+    private volatile long estimatedTokens = 0;
+    private volatile long lastRenderedTokens = 0;
     private final Composite parent;
-    private boolean showRealtimeAiResponse = false;
+    private volatile boolean showRealtimeAiResponse = false;
     private final StringBuilder thinkText = new StringBuilder();
     private final StringBuilder answerText = new StringBuilder();
 
