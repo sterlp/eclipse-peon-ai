@@ -46,6 +46,7 @@ public class ChatMarkdownWidget extends Composite {
     // UI-thread state (see AIChatView.onStreamingChunk): plain longs, no atomics needed.
     private volatile long estimatedTokens = 0;
     private volatile long lastRenderedTokens = 0;
+    private volatile long lastTokenPhaseStart = 0;
     private final Composite parent;
     private volatile boolean showRealtimeAiResponse = false;
     private final StringBuilder thinkText = new StringBuilder();
@@ -196,6 +197,7 @@ public class ChatMarkdownWidget extends Composite {
             case START -> {
                 estimatedTokens = 0;
                 lastRenderedTokens = 0;
+                lastTokenPhaseStart = 0;
             }
             case THINK -> {
                 thinkText.append(r.value());
@@ -212,7 +214,8 @@ public class ChatMarkdownWidget extends Composite {
     }
 
     private void updateRunningChunk(OnPartialAiResponse r) {
-        LiveStatus status = LiveStatus.of(r, estimatedTokens, System.currentTimeMillis());
+        LiveStatus status = LiveStatus.of(r, estimatedTokens, System.currentTimeMillis(), lastTokenPhaseStart);
+        if (r.tokenPhaseStart() != 0) lastTokenPhaseStart = r.tokenPhaseStart();
         if (r.type() == Type.START) {
             thinkText.setLength(0);
             answerText.setLength(0);
