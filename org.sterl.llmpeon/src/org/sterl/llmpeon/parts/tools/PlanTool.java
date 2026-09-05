@@ -11,6 +11,7 @@ import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.AiMonitor.AiFileUpdate;
 import org.sterl.llmpeon.shared.ArgsUtil;
+import org.sterl.llmpeon.shared.ArchiveName;
 import org.sterl.llmpeon.shared.FileUtils;
 
 import dev.langchain4j.agent.tool.P;
@@ -74,14 +75,17 @@ public class PlanTool extends AbstractEclipseTool {
     
     @Tool("Archives the current plan with a timestamp once fully implemented. Call as the final tool call, or before starting a new plan to preserve the old one.")
     public void planImplemented() {
-        var plan = getProject().getFile(OVERVIEW_FILE);
+        var project = getProject();
+        var plan = project.getFile(OVERVIEW_FILE);
         if (plan == null || !plan.exists()) return;
 
         try {
             var stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm"));
-            var newPath = getProject().getFile(PLAN_DIR + "/overview-done-" + stamp + ".md").getFullPath();
-            onTool("Plan finished: " + newPath);
-            plan.move(newPath, IResource.KEEP_HISTORY, getProgressMonitor());
+            String stem = "overview-done-" + stamp;
+            String freeName = ArchiveName.firstFreeName(stem, n -> project.getFile(PLAN_DIR + "/" + n).exists());
+            var target = project.getFile(PLAN_DIR + "/" + freeName);
+            onTool("Plan finished: " + target.getFullPath());
+            plan.move(target.getFullPath(), IResource.KEEP_HISTORY, getProgressMonitor());
         } catch (CoreException e) {
             throw new RuntimeException("Failed to mark file as done. " + JdtUtil.pathOf(plan) + " " + e.getMessage(), e);
         }
