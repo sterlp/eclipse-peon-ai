@@ -74,7 +74,7 @@ sends — including a read-only agent's edit tools appearing as inactive. The na
 ## UI & wiring
 
 - `ActionsBarWidget` builds the agent combo from `AgentService.getAgents()` (built-in + custom,
-  sorted by name). Selecting an agent fires `onAgentChange` → `PeonAiService.setActiveAgent()`.
+  ordered by [agent-ordering.md](agent-ordering.md)). Selecting an agent fires `onAgentChange` → `PeonAiService.setActiveAgent()`.
   `setAgents(...)` rebuilds the combo preserving the current selection by label.
 - `PeonAiService` holds the `AgentService` which manages all agents. `getActiveAgent()` returns the
   currently selected one; `setActiveAgent()` switches. `updateConfig` refreshes agent definitions.
