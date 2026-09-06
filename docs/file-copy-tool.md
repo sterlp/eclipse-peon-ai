@@ -15,7 +15,7 @@ Familien. Ein Verhalten, eine Implementierung, konsistent in beiden Familien (AG
 
 ## Business Rules
 
-### R1: Copy-Kern ❌
+### R1: Copy-Kern ✅
 `fileCopy(sourcePath, targetPath)` kopiert die Datei Byte-genau. Same-Tool-Familie wie
 `RenameResource` — gleiche Pfad-Resolution (workingDir-relativ bzw. workspace-relativ).
 
@@ -27,7 +27,7 @@ Familien. Ein Verhalten, eine Implementierung, konsistent in beiden Familien (AG
 - **GIVEN** Quelle fehlt oder ist ein Verzeichnis **WHEN** Copy **THEN** Fehler mit klarer Meldung
   (kein rekursives Directory-Copy im MVP)
 
-### R2: Beide Familien, ein Verhalten ❌
+### R2: Beide Familien, ein Verhalten ✅
 `eclipseCopyFile` und `diskCopyFile` verhalten sich identisch (gleiche Semantik, gleiche
 Meldungen) — keine stillen Abweichungen (False-Negative-Risiko, AGENTS.md).
 

@@ -1,4 +1,42 @@
-# Session-Stand (2026-09-06)
+# Session-Stand (2026-09-06, Nachmittag)
+
+## In Flight: Batch-Zyklus `state-config-2026-09-06` — BUILD FERTIG, REVIEW STEHT AUS
+
+- Branch `state-config-2026-09-06` von main; 5 Commits (12940de→50899e5): inc-1 Housekeeping
+  (Smoke-Fixes + Docs-Relocation + Prompt-Commit-Regeln) · inc-2 State-Umzug (R2: historyFile
+  = stateDir-injiziert, getStateLocation im Plugin, LlmConfig.stateDirectory() headless) ·
+  inc-3 Migration (R3: StateMigration, skip-if-exists, log-only) · inc-4 E5 (absolute Pfade,
+  AiFileUpdate bleibt relativ) · inc-5 Copy-Tool (R1–R4, FileUtils.copy geteilt, Rename unangetastet).
+- **Core 651/651 · Plugin 183/183.** Homepage ✅ je Inkrement (peon-memory.md, custom-agents.md).
+- **Da Mek wartet auf planImplemented** — erst nach meinem Review (Schritt 4).
+- **NÄCHSTER SCHRITT:** Review durch Da Thinka (talkPlan): Plan↔Code, Docs↔Code, Docs↔Plan;
+  Feature-Docs: peon-config-directory.md (R1+R2+R3), disk-file-write-tool.md (E5), file-copy-tool.md
+  (R1–R4). Danach mein OK → planImplemented → Retro → Status-Flips in den Docs.
+- Da Mek design-note inc-5: Validierung lebt in FileUtils.copy (eine Implementierung) — OK von
+  mir, gegen Plan-Spez geprüft.
+
+## Neu in den Docs (2026-09-06)
+
+- **peon-config-directory.md** (R1+R2+R3 ❌) + **ADR-0041** (amendiert): .peon config-only,
+  History → workspace Metadata-State, One-Shot-Migration. **Konfigurations-Landkarte:**
+  configuration.md (im index verlinkt). **file-copy-tool.md** R1–R4 (❌→jetzt gebaut,
+  Status-Flip steht aus). **eclipse-java-move-type-tool.md** (🚧 Idee). **open-points.md:**
+  ❓ ApiRetry/Cancel-Verdacht (Null-Byte-IOException als Cancel klassifiziert?).
+- Jon×Scaffold-Side-Quest vermerkt (peon-config-directory.md).
+- 4 Docs waren versehentlich unter /org.sterl.llmpeon/docs/ gelandet — nach Root verschoben,
+  falscher Baum gelöscht (leerer adr-Rest räumt Da Mek weg).
+
+## Erledigt heute (fürs Protokoll)
+
+- Smoke-Test: askUser ✅, Prompt-Satz ✅, refreshRoster-Fix (zweimal — ging beim Merge #131
+  verloren, wieder eingesetzt) ✅, Sortierung AGENT_SECTIONS ✅, E5 entschieden (absolut).
+- Header-Roster + Sortierung wanderten in inc-1-Commit `12940de` auf dem Branch.
+
+## Offen für User
+
+- Merge `state-config-2026-09-06` → main (nach Review + planImplemented).
+- 5 kleine ❓-Punkte (open-points.md) — Empfehlungen stehen.
+- GO für Triage-Zyklus (#5–#16 + ApiRetry-Verdacht) — nächster Zyklus.
 
 ## Smoke-Test 2.7.1 — Ergebnisse (2026-09-06)
 

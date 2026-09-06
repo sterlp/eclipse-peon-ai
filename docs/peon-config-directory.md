@@ -29,7 +29,7 @@ Token-Counter + Model-Cache (RAM), Plan (`<project>/peon-plan/`), Docs (`<projec
 
 ## SOLL
 
-### R1: `.peon` = shared config only ❌
+### R1: `.peon` = shared config only ✅
 
 In `configDir` (`~/.peon`) darf **nur shared config** liegen: Agent-Definitionen (`AGENT.md`),
 Skills, Commands — alles, was der Scaffold-Agent verwaltet. **Kein** Runtime State (History,
@@ -40,7 +40,7 @@ Session-State, Counter) darf dorthin geschrieben werden.
 - **GIVEN** eine zweite Eclipse-Instanz läuft parallel **WHEN** beide Instanzen Agenten nutzen
   **THEN** stören sie sich nicht gegenseitig (kein geteilter State-Dateipfad)
 
-### R2: Agent-History = Runtime State, workspace-scoped ❌
+### R2: Agent-History = Runtime State, workspace-scoped ✅
 
 Die History ist Laufzeit-**State des Eclipse-Workspace** (Eclipse garantiert per Workspace-Lock
 genau eine Instanz → Totalschaden-Szenario konstruktiv weg). Zielort:
@@ -59,7 +59,7 @@ genau eine Instanz → Totalschaden-Szenario konstruktiv weg). Zielort:
 - **GIVEN** headless Core (Tests/CLI) **WHEN** Store gebaut wird **THEN** weiter
   `configDir/state` (kein Eclipse-Dependency im Core)
 
-### R3: One-Shot-Migration `.peon/state` → Workspace-Metadata ❌
+### R3: One-Shot-Migration `.peon/state` → Workspace-Metadata ✅
 
 Beim Plugin-/Service-Start verschiebt Peon eventuell vorhandene `~/.peon/state/**`-Dateien
 (alle: Built-in- **und** Custom-Agent-Histories) per **File-I/O** in den Metadata-State.
