@@ -60,7 +60,7 @@ public class DiskFileWriteTool extends AbstractTool {
                 monitor.onFileUpdate(new AiFileUpdate(workingDir.relativize(resolved).toString(), oldContent, content));
             }
             
-            onTool((existed ? "Updated" : "Created") + " file: " + workingDir.relativize(resolved));
+            onTool((existed ? "Updated" : "Created") + " file: " + resolved);
         } catch (IOException e) {
             throw new RuntimeException("Failed to write " + filePath, e);
         }
@@ -85,7 +85,7 @@ public class DiskFileWriteTool extends AbstractTool {
             } else {
                 Files.delete(resolved);
             }
-            onTool("Deleted: " + workingDir.relativize(resolved));
+            onTool("Deleted: " + resolved);
         } catch (IOException e) {
             throw new RuntimeException("Failed to delete " + filePath, e);
         }
@@ -143,7 +143,7 @@ public class DiskFileWriteTool extends AbstractTool {
             monitor.onFileUpdate(result);
 
             var verb = newString.isEmpty() ? "deleted" : "replaced";
-            return verb + " " + edit.count() + " occurrence(s) in " + workingDir.relativize(resolved);
+            return verb + " " + edit.count() + " occurrence(s) in " + resolved;
         } catch (IOException e) {
             throw new RuntimeException("Failed to edit " + filePath, e);
         }
@@ -171,10 +171,30 @@ public class DiskFileWriteTool extends AbstractTool {
         try {
             if (target.getParent() != null) Files.createDirectories(target.getParent());
             Files.move(source, target);
-            onTool("Renamed " + workingDir.relativize(source) + " -> " + workingDir.relativize(target));
+            onTool("Renamed " + source + " -> " + target);
         } catch (IOException e) {
             throw new RuntimeException("Failed to rename " + sourcePath + " -> " + targetPath, e);
         }
+    }
+
+    @Tool("Copy a file to a new location. Creates target parent folders. The original is kept; no overwrite.")
+    public void diskCopyFile(
+            @P(name = "sourcePath") String sourcePath,
+            @P(name = "targetPath") String targetPath) {
+
+        ArgsUtil.requireNonBlank(sourcePath, "sourcePath");
+        ArgsUtil.requireNonBlank(targetPath, "targetPath");
+
+        Path source = resolve(sourcePath);
+        if (source == null) {
+            throw new IllegalArgumentException("Cannot resolve path: " + sourcePath);
+        }
+        Path target = resolve(targetPath);
+        if (target == null) {
+            throw new IllegalArgumentException("Cannot resolve path: " + targetPath);
+        }
+        FileUtils.copy(source, target);
+        onTool("Copied " + source + " -> " + target);
     }
 
     @Tool("Insert text into a file at a specific position. Omit afterLine to append at end. 0 inserts before the first line (prepend). 1..n inserts after that line.")

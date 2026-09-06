@@ -160,3 +160,23 @@ Common built-in prefixes:
 | `plan` | `planRead`, `planSave`, `planUpdate`, `planImplemented` |
 | `disk` | Optional file/grep tools that bypass the Eclipse workspace — only registered when **Enable disk tools** is on (see [Advanced Configuration](./advanced-configuration.md)). E.g. `diskReadFile`, `diskGrepFiles`, `diskWriteFile`. |
 | `mcp__` | Every tool from a connected MCP server, e.g. `mcp__docs__search`. |
+
+::: tip Disk tools report absolute paths
+The `disk*` file tools report the **absolute** path of the affected file in their success messages
+(e.g. `Created file: /home/user/project/src/Foo.java`) — in sync with the `eclipse*` tools.
+:::
+
+## File tools
+
+Copying and renaming are separate, byte-exact operations in both file families:
+
+| Action | Eclipse family | Disk family |
+|--------|----------------|-------------|
+| Copy a file | `eclipseCopyFile` | `diskCopyFile` |
+| Rename / move | `eclipseRenameResource` | `diskRenameResource` |
+
+- **Copy** duplicates a file: it creates the target and any missing parent folders, and **keeps
+  the original**. If the target already exists, the copy **fails** — no overwrite, so nothing is
+  clobbered silently.
+- **Rename** stays a separate, **atomic** move. Don't assemble a move from copy + delete — rename
+  has no window where the file exists at both (or neither) path.

@@ -101,6 +101,15 @@ public class LlmConfig {
     @Default
     private final Map<String, String> headerParams = new LinkedHashMap<>();
     
+    /**
+     * The headless core default for the agent state directory (ADR-0041 R2) — the directory that
+     * holds the {@code <agent>-history.jsonl} files directly. The plugin overrides this with the
+     * workspace metadata state location.
+     */
+    public Path stateDirectory() {
+        return configDir.resolve("state");
+    }
+
     /** Dev/default model thinking support (drives build-time thinking for Gemini/Mistral and returnThinking). */
     public boolean isThinkSupported() {
         return thinkSupported;

@@ -183,6 +183,7 @@ public class AIChatView implements EclipseAiMonitor {
         aiService.clear();
         chatHistory.clear();
         actionsBar.updateCompact(0, aiService.getConfig().getAutoCompactAfter());
+        headerBar.refreshRoster(); // reflect cleared token counts in the agent header
     }
 
     @PreDestroy

@@ -34,7 +34,9 @@ You can also ask the AI directly to manage stored guidelines:
 
 ## Chat history persistence
 
-Peon also persists the current chat history for Peon-Dev, Peon-Plan, and custom agents, so their conversation context survives Eclipse/plugin restarts.
+Peon also persists the current chat history for Peon-Dev, Peon-Plan, Jon (Peon-PO), and custom agents, so their conversation context survives Eclipse/plugin restarts.
+
+History lives in the workspace metadata state — one file per agent at `<workspace>/.metadata/.plugins/org.sterl.llmpeon/state/<agent>-history.jsonl`. Because it is workspace-scoped, each workspace keeps its own history and multiple instances of the same project never collide. The shared config directory `~/.peon` now holds only configuration (Agents, Skills, Commands). On first start a one-time, automatic migration moves any existing `~/.peon/state` history into the workspace and removes the now-empty directory. If a file already exists at the target it is skipped — the existing file wins, the legacy copy is kept — and the skip is logged; the migration never overwrites data.
 
 The **Clear** button deletes only the active agent's chat history and queued messages. It does not delete Peon Memory guidelines; use the memory reset command for that.
 

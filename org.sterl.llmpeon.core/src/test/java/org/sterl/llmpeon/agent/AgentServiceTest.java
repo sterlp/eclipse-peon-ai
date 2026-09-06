@@ -168,29 +168,31 @@ class AgentServiceTest extends AbstractMemoryFileTest {
 
     @Test
     void customAgentHistoryPersistsWithoutHistoryFlag() throws Exception {
-        // GIVEN
+        // GIVEN — the injected stateDir (ADR-0041 R2) contains the history files directly
         var agentsDir = tmp.resolve("agents");
+        var stateDir = tmp.resolve("state");
         writeAgent(agentsDir, "docs", "---\nname: docs\n---\nbody");
-        var subject = new AgentService(false, agentsDir, toolService, chatModel, tmp);
+        var subject = new AgentService(false, agentsDir, toolService, chatModel, stateDir);
         var agent = subject.get("docs").orElseThrow();
 
         // WHEN
         agent.getMemory().add(UserMessage.from("hello"));
         agent.getMemory().add(AiMessage.from("world"));
-        var restarted = new AgentService(false, agentsDir, toolService, chatModel, tmp);
+        var restarted = new AgentService(false, agentsDir, toolService, chatModel, stateDir);
 
         // THEN
         var loaded = restarted.get("docs").orElseThrow().getMemory().getCopy();
         assertThat(loaded).hasSize(2);
-        assertThat(Files.exists(tmp.resolve("state/docs-history.jsonl"))).isTrue();
+        assertThat(Files.exists(stateDir.resolve("docs-history.jsonl"))).isTrue();
     }
 
     @Test
     void enablesHistoryForPlanDevAndCustomOnly() throws Exception {
-        // GIVEN
+        // GIVEN — history files land directly in the injected stateDir
         var agentsDir = tmp.resolve("agents");
+        var stateDir = tmp.resolve("state");
         writeAgent(agentsDir, "docs", "---\nname: docs\n---\nbody");
-        var subject = new AgentService(true, agentsDir, toolService, chatModel, tmp);
+        var subject = new AgentService(true, agentsDir, toolService, chatModel, stateDir);
 
         // WHEN
         subject.get(AiDevAgent.NAME).orElseThrow().getMemory().add(UserMessage.from("dev"));
@@ -198,10 +200,28 @@ class AgentServiceTest extends AbstractMemoryFileTest {
         subject.get("docs").orElseThrow().getMemory().add(UserMessage.from("docs"));
 
         // THEN
-        assertThat(Files.exists(tmp.resolve("state/Peon-Dev-history.jsonl"))).isTrue();
-        assertThat(Files.exists(tmp.resolve("state/Peon-Plan-history.jsonl"))).isTrue();
-        assertThat(Files.exists(tmp.resolve("state/docs-history.jsonl"))).isTrue();
-        assertThat(Files.list(tmp.resolve("state")).map(p -> p.getFileName().toString()))
+        assertThat(Files.exists(stateDir.resolve("Peon-Dev-history.jsonl"))).isTrue();
+        assertThat(Files.exists(stateDir.resolve("Peon-Plan-history.jsonl"))).isTrue();
+        assertThat(Files.exists(stateDir.resolve("docs-history.jsonl"))).isTrue();
+        assertThat(Files.list(stateDir).map(p -> p.getFileName().toString()))
                 .containsExactlyInAnyOrder("Peon-Dev-history.jsonl", "Peon-Plan-history.jsonl", "docs-history.jsonl");
+    }
+
+    /** ADR-0041 R2: dev/plan/custom agents carry their store under the injected stateDir. */
+    @Test
+    void agentsCarryStoreUnderInjectedStateDir() throws Exception {
+        // GIVEN
+        var agentsDir = tmp.resolve("agents");
+        var stateDir = tmp.resolve("state");
+        writeAgent(agentsDir, "docs", "---\nname: docs\n---\nbody");
+        var subject = new AgentService(true, agentsDir, toolService, chatModel, stateDir);
+
+        // WHEN / THEN — the durable agents expose their history file under the injected stateDir
+        assertThat(subject.get(AiDevAgent.NAME).orElseThrow().getMemory().historyFile())
+                .hasValue(stateDir.resolve("Peon-Dev-history.jsonl"));
+        assertThat(subject.get(AiPlanAgent.NAME).orElseThrow().getMemory().historyFile())
+                .hasValue(stateDir.resolve("Peon-Plan-history.jsonl"));
+        assertThat(subject.get("docs").orElseThrow().getMemory().historyFile())
+                .hasValue(stateDir.resolve("docs-history.jsonl"));
     }
 }

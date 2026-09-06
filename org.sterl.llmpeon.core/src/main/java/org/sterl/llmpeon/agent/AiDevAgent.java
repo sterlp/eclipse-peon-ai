@@ -25,9 +25,9 @@ public class AiDevAgent extends AbstractAgent {
 
     public AiDevAgent(ConfiguredChatModel configuredModel,
             ToolService toolService,
-            Path historyConfigDir) {
+            Path historyStateDir) {
         super(configuredModel, toolService,
-                historyConfigDir == null ? new ThreadSafeMemory() : new ThreadSafeMemory(new FileAgentHistoryStore(historyFile(historyConfigDir, NAME))));
+                historyStateDir == null ? new ThreadSafeMemory() : new ThreadSafeMemory(new FileAgentHistoryStore(historyFile(historyStateDir, NAME))));
     }
 
     @Override

@@ -1,4 +1,105 @@
-# Session-Stand (2026-09-05)
+# Session-Stand (2026-09-06, Abend)
+
+## Zyklus `state-config-2026-09-06` — ABGESCHLOSSEN ✅ (wartet auf Merge)
+
+- Branch `state-config-2026-09-06`: 8 Commits (inc-1..6 + cycle-close `35f96cb`), Working Tree sauber.
+- **Gebaut:** inc-1 Housekeeping (Smoke-Fixes, Docs-Relocation, Prompt-Commit-Regeln in
+  po-delegation/dev-build-loop/AGENTS.md) · inc-2 State-Umzug (R2) · inc-3 Migration (R3,
+  StateMigration) · inc-4 E5 (absolute Pfade) · inc-5 Copy-Tool (R1–R4, FileUtils.copy) ·
+  inc-6 Review-Fixes (Directory-Guard-Parität + Mutations-Killer `serviceStartMigratesLegacyState`).
+- **Core 651/651 · Plugin 185/185.** Homepage ✅ (peon-memory.md, custom-agents.md).
+- **Review ✅** (Da Thinka, 3-Seiten + Mutations-Check): 1 echte Lücke (Directory-Quelle im
+  eclipseCopyFile — meine Plan-Lücke, R1-Parität) → inc-6 gefixt; IST-Abweichungen ok
+  (Platform.getBundle statt FrameworkUtil — Target-Platform-Limit; ReloadConfigToolTest 4-arg).
+- **Docs geflippt:** peon-config-directory R1/R2/R3 ✅ · file-copy-tool R1/R2 ✅ · E5 ✅ ·
+  index.md aktualisiert. Plan archiviert (overview-done-2026-09-06-16-17.md).
+- **Nächster User-Schritt: Merge → main.** Smoke-Test des Builds (Migration prüfen: vorhandene
+  `~/.peon/state`-Dateien sollten beim ersten Start in den Metadata-State wandern).
+
+## Neu in den Docs heute
+
+- **peon-config-directory.md** (✅ R1+R2+R3) + **ADR-0041** · **configuration.md** (Landkarte,
+  im index) · **file-copy-tool.md** (✅ R1–R4) · **eclipse-java-move-type-tool.md** (🚧 Idee,
+  Backlog) · **builtin-agent-prompt-override.md** (🚧 Idee) · **open-points.md:** ❓ ApiRetry
+  (Null-Byte-IOException evtl. als Cancel klassifiziert — Smoke-Test-Beobachtung).
+
+## Offen für User
+
+1. **Merge `state-config-2026-09-06` → main** (nach eigenem Smoke-Test).
+2. **5 kleine ❓-Punkte** (open-points.md): UTF-8-Write · Glossar eager · PDE-Skip-Count ·
+   Dropdown-Klassen löschen · buildWithDev-Compact — „nimm deine Empfehlungen" genügt.
+3. **GO für Bug-Fix-Zyklus:** Triage #5–#16 + ApiRetry-Verdacht + Plugin-Hunt.
+4. Ideen (nicht geplant): Jon×Scaffold-Side-Quest · Built-in Prompt Override ·
+   eclipseJavaMoveType (🚧).
+
+## In Flight: Batch-Zyklus `state-config-2026-09-06` — BUILD FERTIG, REVIEW STEHT AUS
+
+- Branch `state-config-2026-09-06` von main; 5 Commits (12940de→50899e5): inc-1 Housekeeping
+  (Smoke-Fixes + Docs-Relocation + Prompt-Commit-Regeln) · inc-2 State-Umzug (R2: historyFile
+  = stateDir-injiziert, getStateLocation im Plugin, LlmConfig.stateDirectory() headless) ·
+  inc-3 Migration (R3: StateMigration, skip-if-exists, log-only) · inc-4 E5 (absolute Pfade,
+  AiFileUpdate bleibt relativ) · inc-5 Copy-Tool (R1–R4, FileUtils.copy geteilt, Rename unangetastet).
+- **Core 651/651 · Plugin 183/183.** Homepage ✅ je Inkrement (peon-memory.md, custom-agents.md).
+- **Da Mek wartet auf planImplemented** — erst nach meinem Review (Schritt 4).
+- **NÄCHSTER SCHRITT:** Review durch Da Thinka (talkPlan): Plan↔Code, Docs↔Code, Docs↔Plan;
+  Feature-Docs: peon-config-directory.md (R1+R2+R3), disk-file-write-tool.md (E5), file-copy-tool.md
+  (R1–R4). Danach mein OK → planImplemented → Retro → Status-Flips in den Docs.
+- Da Mek design-note inc-5: Validierung lebt in FileUtils.copy (eine Implementierung) — OK von
+  mir, gegen Plan-Spez geprüft.
+
+## Neu in den Docs (2026-09-06)
+
+- **peon-config-directory.md** (R1+R2+R3 ❌) + **ADR-0041** (amendiert): .peon config-only,
+  History → workspace Metadata-State, One-Shot-Migration. **Konfigurations-Landkarte:**
+  configuration.md (im index verlinkt). **file-copy-tool.md** R1–R4 (❌→jetzt gebaut,
+  Status-Flip steht aus). **eclipse-java-move-type-tool.md** (🚧 Idee). **open-points.md:**
+  ❓ ApiRetry/Cancel-Verdacht (Null-Byte-IOException als Cancel klassifiziert?).
+- Jon×Scaffold-Side-Quest vermerkt (peon-config-directory.md).
+- 4 Docs waren versehentlich unter /org.sterl.llmpeon/docs/ gelandet — nach Root verschoben,
+  falscher Baum gelöscht (leerer adr-Rest räumt Da Mek weg).
+
+## Erledigt heute (fürs Protokoll)
+
+- Smoke-Test: askUser ✅, Prompt-Satz ✅, refreshRoster-Fix (zweimal — ging beim Merge #131
+  verloren, wieder eingesetzt) ✅, Sortierung AGENT_SECTIONS ✅, E5 entschieden (absolut).
+- Header-Roster + Sortierung wanderten in inc-1-Commit `12940de` auf dem Branch.
+
+## Offen für User
+
+- Merge `state-config-2026-09-06` → main (nach Review + planImplemented).
+- 5 kleine ❓-Punkte (open-points.md) — Empfehlungen stehen.
+- GO für Triage-Zyklus (#5–#16 + ApiRetry-Verdacht) — nächster Zyklus.
+
+## Smoke-Test 2.7.1 — Ergebnisse (2026-09-06)
+
+1. **askUser R17 ✅** — Question-Widget bei Jon funktioniert (User: „hat geklappt").
+2. **Prompt-Satz** (`po-delegation.txt`, autonomer Modus: kein askUser, Frage in den Chat,
+   Turn-Ende außer Queued Message inkl. Alter-Warnung) — von User finalisiert ✅.
+3. **Header-Token-Count nach Clear ✅ gefixt (uncommitted):** `headerBar.refreshRoster()` in
+   `onClear()` (AIChatView.java:186); Compact war bereits korrekt. **Entscheidung User:** Fix
+   reist mit dem Merge `jon-askuser` → main, kein eigener Commit.
+4. **Sortierung Advanced-Config ✅ gefixt (uncommitted):** AGENT_SECTIONS PO → Plan → Dev →
+   Search → Compact (AiAdvancedPreferenceView.java:35) + Test + Doc-Zeile.
+5. **E5 ✅ entschieden:** Disk-Tool Success-Messages = absoluter Pfad (Regel ❌ in
+   disk-file-write-tool.md) — Bau steht aus (Bug-Fix-Zyklus).
+
+## Neu in den Docs (2026-09-06)
+
+- **peon-config-directory.md** (❌ R1) + **ADR-0041**: `.peon` = shared-config-only; Agent-History
+  raus (IST-Verstoß, Totalschaden bei 2. Instanz). Umsetzung: erst wenn bekannte Bugs weg.
+- **builtin-agent-prompt-override.md** (🚧 Idee): Built-in-Prompts als `.peon`-Config, Body
+  supersedes Default — nicht geplant.
+- Jon×Scaffold-Delegation (Skill-Anpassung nach Zyklus) = Side Quest, vermerkt in
+  peon-config-directory.md.
+
+## Nächste Schritte
+
+1. Smoke-Test weiterfahren (User).
+2. Danach: Merge-Entscheidung `jon-askuser` → main (Fixes reisen mit, User-WIP in
+   AskUserTool/StatusLineWidget/UserContext uncommitted!).
+3. Bug-Fix-Zyklus: Triage #5–#12/#14–#16 (GO-Entscheidung offen) + E5-Fix + ggf. Rest vom
+   Nacht-Bug-Hunt (brach an Netzwerkfehler ab, nichts geändert).
+4. Danach: `.peon`-State-Umsetzung (peon-config-directory.md R2, Zielort offen).
 
 ## Nächste Session = Smoke-Test (User testet den neuen Build)
 

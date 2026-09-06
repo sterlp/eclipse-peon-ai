@@ -3,6 +3,26 @@
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
 Geklärte Punkte ohne Feature-Doc wandern nach [resolved-points.md](resolved-points.md).
 
+## ❓ ApiRetry: Cancel-Meldung trotz aktiver Retries — „Attempt 1, retrying in 10s" gefolgt von Cancel
+
+**Gefunden:** 2026-09-06, Smoke-Test (User-Beobachtung im Da-Mek-Lauf beim Batch-Build).
+
+**IST (User-Schilderung):** Da Mek zeigt „API error — attempt 1, retrying in 10s.
+java.io.IOException: HTTP/1.1 header parser received no bytes · Use Stop to cancel." — und danach
+kam **kein** sauberer Retry, die Meldung endete wie gecancelt. User: „idR. klappt es aber" —
+der lokale LLM stürzt gelegentlich ab, meist retryt es sauber.
+
+**Vermutung (PO, 2026-09-06):** Der Null-Byte-IOException-Pfad wird möglicherweise als
+**Cancel klassifiziert** statt als retry-würdiger API-Fehler — oder der Retry-Thread selbst
+stirbt, ohne den Backoff zu beenden. Bekannter Nachbar: Memory #21 („Da Thinka calls get canceled
+during retry", 2026-09-02, ungeklärt). Symptome überlagern sich: „AI call canceled while waiting
+to retry" + hier „retrying in 10s" ohne nachfolgenden Versuch.
+
+**Frage:** Retry-Klassifikation für `IOException: header parser received no bytes` (empty
+response) prüfen — wird sie fälschlich als Cancel/Abort eingestuft? Und: kann ein fehlschlagender
+API-Call den Retry-Backoff abbrechen, ohne ein echtes Cancel zu sein? → Investigation im
+nächsten Bug-Fix-Zyklus (Triage-Liste).
+
 ## ❓ `eclipseWriteFile` schreibt immer UTF-8 — Charset-Asymmetrie
 
 **Gefunden:** 2026-09-03, Dev-Agent während inc-1 (Test-Fixture).

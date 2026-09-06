@@ -14,7 +14,17 @@ Provide file write/edit operations on the real filesystem, scoped to a configura
 ## Tools
 
 ### `diskWriteFile(filePath, content)`
-Write or overwrite a file. Creates parent directories. Returns "Created" or "Updated" with relative path.
+Write or overwrite a file. Creates parent directories. Returns "Created" or "Updated" — **with the absolute path** (workingDir resolved).
+
+### Success-Message: absolute path ✅ (E5, User 2026-09-06)
+Every disk tool that reports a path in its success message reports the **absolute path** (workingDir resolved), not a workingDir-relative one — in sync with the `eclipse*` tool family ("one behaviour, one implementation").
+
+**BDD:**
+```
+GIVEN diskWriteFile succeeds for "sub/x.txt" in a configured workingDir
+WHEN the success message is rendered
+THEN it carries the absolute path of the written file (workingDir resolved)
+```
 
 ### `diskDeleteFile(filePath)`
 Delete a file or directory **recursively**. Works on both files and non-empty directories.

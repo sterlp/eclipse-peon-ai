@@ -61,9 +61,9 @@ public class CustomAgent extends AbstractAgent {
     public CustomAgent(SimplePromptFile promptFile,
             ConfiguredChatModel configuredModel,
             ToolService toolService,
-            Path historyConfigDir) {
+            Path historyStateDir) {
         super(configuredModel, toolService,
-                historyConfigDir == null ? new ThreadSafeMemory() : new ThreadSafeMemory(new FileAgentHistoryStore(historyFile(historyConfigDir, promptFile.getName()))));
+                historyStateDir == null ? new ThreadSafeMemory() : new ThreadSafeMemory(new FileAgentHistoryStore(historyFile(historyStateDir, promptFile.getName()))));
         this.promptFile = promptFile;
     }
 

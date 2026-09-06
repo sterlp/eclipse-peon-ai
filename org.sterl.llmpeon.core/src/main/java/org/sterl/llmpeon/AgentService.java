@@ -36,7 +36,8 @@ public class AgentService {
 
     private final ConfiguredChatModel chatModel;
     private final ToolService toolService;
-    private final Path historyConfigDir;
+    /** Directory containing the {@code <agent>-history.jsonl} files directly (ADR-0041 R2); null = RAM-only. */
+    private final Path historyStateDir;
 
     private final Map<String, AiAgent> agents = new ConcurrentHashMap<>();
 
@@ -62,8 +63,8 @@ public class AgentService {
             Path agentsDirectory,
             ToolService toolService,
             ConfiguredChatModel configuredChatModel,
-            Path historyConfigDir) {
-        this(false, agentsDirectory, toolService, configuredChatModel, historyConfigDir);
+            Path historyStateDir) {
+        this(false, agentsDirectory, toolService, configuredChatModel, historyStateDir);
     }
 
     public AgentService(
@@ -79,18 +80,18 @@ public class AgentService {
             Path agentsDirectory, 
             ToolService toolService,
             ConfiguredChatModel configuredChatModel,
-            Path historyConfigDir) {
+            Path historyStateDir) {
         this.chatModel = configuredChatModel;
         this.toolService = toolService;
-        this.historyConfigDir = historyConfigDir;
+        this.historyStateDir = historyStateDir;
         
         Objects.requireNonNull(this.chatModel, "ConfiguredChatModel cannot be null");
         Objects.requireNonNull(this.toolService, "ToolService cannot be null");
 
         if (withDefaultAgent) {
-            devAgent = new AiDevAgent(chatModel, toolService, historyConfigDir);
+            devAgent = new AiDevAgent(chatModel, toolService, historyStateDir);
             this.persistentAgents.put(devAgent.getName(), devAgent);
-            planAgent = new AiPlanAgent(chatModel, toolService, historyConfigDir);
+            planAgent = new AiPlanAgent(chatModel, toolService, historyStateDir);
             this.persistentAgents.put(planAgent.getName(), planAgent);
             this.activeAgent = devAgent;
         } else {
@@ -178,7 +179,7 @@ public class AgentService {
                 if (agentCfg != null) {
                     var agent = this.agents.get(agentCfg.getName());
                     if (agent == null) {
-                        agent = new CustomAgent(agentCfg, chatModel, toolService, historyConfigDir);
+                        agent = new CustomAgent(agentCfg, chatModel, toolService, historyStateDir);
                     } else if (agent instanceof CustomAgent ca) ca.setPromptFile(agentCfg);
                     newAgents.put(agent.getName(), agent);
                 }

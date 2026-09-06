@@ -6,11 +6,19 @@ import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.Test;
+import org.sterl.llmpeon.ai.AiProvider;
+import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
+import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.tool.ToolLoopRequest;
+import org.sterl.llmpeon.tool.model.SimpleMessage;
 
 public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
 
@@ -165,5 +173,104 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
         // THEN — entire directory tree gone
         var result = readTool.eclipseReadFile("/test_project/testDeleteDir/parentFile.txt", 0, 0);
         assertTrue("Directory should be deleted, but parentFile.txt still exists", result.contains("No eclipse file found"));
+    }
+
+    // ------------------------------------------------------------------ Copy tool (file-copy-tool.md R1-R4)
+
+    @Test
+    public void test_copyWorkspaceFile() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        // GIVEN an existing file
+        tool.setCurrentProject(project);
+        var src = "/test_project/copySrc.txt";
+        eclipseWriteFile(src, "data");
+        var dst = "/test_project/sub/copyDst_" + System.nanoTime() + ".txt";
+        var sink = new ArrayList<String>();
+        tool.withToolRequest(requestWith(monitor(sink)));
+
+        // WHEN copy into a nested path
+        tool.eclipseCopyFile(src, dst);
+
+        // THEN copy has the same content, original is kept, R2 message form "Copied <s> -> <t>"
+        assertEquals("data", readTool.eclipseReadFile(dst, 0, 0));
+        assertEquals("data", readTool.eclipseReadFile(src, 0, 0));
+        assertTrue("R2 message form, was: " + sink, sink.stream().anyMatch(m -> m.contains(" -> ")));
+
+        tool.eclipseDeleteResource(dst); // the copy is not auto-tracked by eclipseWriteFile
+    }
+
+    @Test
+    public void test_copyWorkspaceFile_failsWhenTargetExists() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        // GIVEN source + an existing target
+        tool.setCurrentProject(project);
+        var src = "/test_project/copySrc2.txt";
+        var dst = "/test_project/copyDst2.txt";
+        eclipseWriteFile(src, "a");
+        eclipseWriteFile(dst, "b");
+
+        // WHEN copy onto the existing target
+        try {
+            tool.eclipseCopyFile(src, dst);
+            fail("Should throw IllegalArgumentException");
+        } catch (IllegalArgumentException e) {}
+
+        // THEN source and target unchanged (R3 no overwrite)
+        assertEquals("a", readTool.eclipseReadFile(src, 0, 0));
+        assertEquals("b", readTool.eclipseReadFile(dst, 0, 0));
+    }
+
+    @Test
+    public void test_copyWorkspaceFile_failsWhenSourceMissing() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        // GIVEN no source file
+        tool.setCurrentProject(project);
+
+        // WHEN copy a missing source
+        try {
+            tool.eclipseCopyFile("/test_project/no_such_src.txt", "/test_project/no_such_dst.txt");
+            fail("Should throw IllegalArgumentException");
+        } catch (IllegalArgumentException e) {}
+
+        // THEN no target was created
+        assertTrue(readTool.eclipseReadFile("/test_project/no_such_dst.txt", 0, 0).contains("No eclipse file found"));
+    }
+
+    @Test
+    public void test_copyWorkspaceFile_failsWhenSourceIsDirectory() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        // GIVEN a directory source (the inner file is auto-registered for cleanup)
+        tool.setCurrentProject(project);
+        eclipseWriteFile("/test_project/copyDirSrc/inner.txt", "x");
+
+        // WHEN copying the directory itself
+        try {
+            tool.eclipseCopyFile("/test_project/copyDirSrc", "/test_project/copyDirDst.txt");
+            fail("Should throw IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertTrue("Expected 'Not a file', was: " + e.getMessage(), e.getMessage().contains("Not a file"));
+        }
+
+        // THEN no target was created, source unchanged (R1 parity with FileUtils.copy)
+        assertTrue(readTool.eclipseReadFile("/test_project/copyDirDst.txt", 0, 0).contains("No eclipse file found"));
+        assertEquals("x", readTool.eclipseReadFile("/test_project/copyDirSrc/inner.txt", 0, 0));
+    }
+
+    private ToolLoopRequest requestWith(AiMonitor monitor) {
+        var model = LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", "http://localhost:9999").build();
+        return ToolLoopRequest.builder()
+                .memory(new ThreadSafeMemory())
+                .chatModel(model)
+                .monitor(monitor)
+                .build();
+    }
+
+    private AiMonitor monitor(List<String> sink) {
+        return new AiMonitor() {
+            @Override
+            public void onChatResponse(SimpleMessage m) {
+                if (m.role() == SimpleMessage.Type.TOOL) sink.add(m.message());
+            }
+        };
     }
 }

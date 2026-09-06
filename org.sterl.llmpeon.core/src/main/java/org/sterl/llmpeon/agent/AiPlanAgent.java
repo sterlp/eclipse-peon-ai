@@ -27,9 +27,9 @@ public class AiPlanAgent extends AbstractAgent {
         super(configuredModel, toolService, new ThreadSafeMemory(), compactFactor);
     }
 
-    public AiPlanAgent(ConfiguredChatModel configuredModel, ToolService toolService, Path historyConfigDir) {
+    public AiPlanAgent(ConfiguredChatModel configuredModel, ToolService toolService, Path historyStateDir) {
         super(configuredModel, toolService,
-                historyConfigDir == null ? new ThreadSafeMemory() : new ThreadSafeMemory(new FileAgentHistoryStore(historyFile(historyConfigDir, NAME))));
+                historyStateDir == null ? new ThreadSafeMemory() : new ThreadSafeMemory(new FileAgentHistoryStore(historyFile(historyStateDir, NAME))));
     }
 
     @Override
