@@ -1,10 +1,12 @@
 package org.sterl.llmpeon.test;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
 
+import java.nio.file.Files;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -108,6 +110,31 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
         var c = new EclipseWorkspaceReadFileTool().eclipseReadFile(JdtUtil.pathOf(project) + "/foo.java", null, null);
         assertEquals("äüß Ö ⚡", c);
     }
+
+    @Test
+    public void test_writeFile_usesFileCharset_iso88591() throws Exception {
+        // GIVEN a file with an explicit ISO-8859-1 charset (fixture persisted before the SUT call)
+        tool.setCurrentProject(project);
+        var fileName = "/test_project/latin1.txt";
+        eclipseWriteFile(fileName, "init");
+        var iFile = project.getFile("latin1.txt");
+        iFile.setCharset("ISO-8859-1");
+        try {
+            // WHEN writing umlauts via the tool
+            tool.eclipseWriteFile(fileName, "äüß Ö");
+
+            // THEN bytes on disk are ISO-8859-1 (E4 FC DF 20 D6), not UTF-8 (C3 A4 C3 BC C3 9F 20 C3 96)
+            var bytes = Files.readAllBytes(project.getLocation().append("latin1.txt").toFile().toPath());
+            assertArrayEquals(new byte[]{(byte) 0xE4, (byte) 0xFC, (byte) 0xDF, 0x20, (byte) 0xD6}, bytes);
+        } finally {
+            // drop the explicit charset — no cross-run residue in .settings/org.eclipse.core.resources.prefs
+            try {
+                iFile.setCharset(null);
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
 
     @Test
     public void test_replaceWorkspaceLine_middle() {
