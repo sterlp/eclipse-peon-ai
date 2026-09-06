@@ -202,7 +202,12 @@ Kein Thread-Sync nötig (ein Thread schreibt, UI-Thread liest — volatile long 
 **toc/s** = geschätzte Partial-Tokens (ANY Type: THINK + ANSWER + TOOL) / Token-Timer-Dauer.
 TOOL zählt den gestreamten Arguments-Delta (`partialArguments()`), nicht den Tool-Namen.
 Nicht aus dem Turn-Start (Total) — das war der Bug.
-Token-Zählung: bestehender Estimator (Text > 5 chars → `length() / 3`; ≤ 5 chars → 1 Token).
+Token-Zählung: Estimator `chars × 2 / 7` (~3,5 chars/token), konsistent an beiden Stellen
+(Live-Rate `estimateTokens(String)` inkl. Floor-Regel „≤5 chars → 1" + Context-Threshold
+`estimateTokens(List<ChatMessage>)`). **⚠️ bewusst leichte Über-Schätzung** (WEIL User
+2026-09-06: Rate lieber etwas zu hoch als zu niedrig; real ~4–5 chars/token Fließtext).
+Kalibrier-Historie: `chars/3` (bis 2.7.x, ~30–50 % über llama.cpp toc/s) → `×2/7`
+(2026-09-06, Branch `toc-estimate-2026-09-06`, `89a83d1`).
 Nicht: Callback-Count (jeder `onPartialResponse` = 1 Token — war der zweite Bug).
 
 `OnPartialAiResponse` bekommt ein Feld `tokenPhaseStart` (epoch millis, `0` = Token-Phase

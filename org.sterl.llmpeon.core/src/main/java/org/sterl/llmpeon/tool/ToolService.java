@@ -45,11 +45,11 @@ public class ToolService {
 
     private static final int MAX_STUCK_ITERATIONS = 10;
     private final Map<String, SmartToolExecutor> toolExecutors = new ConcurrentHashMap<>();
-    
+
     private static final String COMPACT_HINT =
             "CONTEXT LIMIT WARNING: Call '" + CompactSessionTool.NAME + "' as your first tool call. " +
             "In the 'preserve' field, summarize the critical next steps and any findings needed to continue. " +
-            "Include hard-won facts that are expensive to rediscover — exact file:line locations and key decisions with their rationale (the why) — not just what to do next. ";
+            "Include hard-won facts that are expensive to rediscover — exact file:line locations and key decisions with their rationale (the why) — and what to do next.";
 
     private static final String STUCK_MESSAGE = """
             Your last response contained only internal reasoning with no output.
