@@ -98,7 +98,7 @@ Homepage: `homepage/src` dokumentiert Disk-Tool-Messages bisher nirgends struktu
 
 Commit: `inc-4: disk tool success messages report absolute paths (E5)`.
 
-## inc-5 — File Copy Tool (SOLL: file-copy-tool.md R1–R4)
+## inc-5 — File Copy Tool (SOLL: file-copy-tool.md R1–R4) ✅ DONE (core 651/651 + Plugin 183/0; `FileUtils.copy` shared core (Not found/Not a file/Target already exists, no overwrite), `diskCopyFile` + `eclipseCopyFile` in both families (R1–R4), R2 message parity `Copied <s> -> <t>` asserted in both, Homepage „File tools" section in setup/custom-agents.md)
 
 **Geteilter Kern** („one behaviour, one implementation"): `shared/FileUtils.copy(Path source, Path target)` — validiert: Quelle fehlt → `IllegalArgumentException("Not found: …")`, Quelle ist Verzeichnis → `"Not a file: …"`, Ziel existiert → `"Target already exists: …"` (R3, **kein Overwrite-Flag**); `Files.createDirectories(target.getParent())` (R1, wie Rename); `Files.copy(source, target)` ohne `REPLACE_EXISTING`. Original bleibt.
 

@@ -286,4 +286,61 @@ class DiskFileWriteToolTest {
         runTool(ts, "diskRenameResource", "{\"sourcePath\":\"orig.txt\",\"targetPath\":\"moved/renamed.txt\"}", req);
         assertThat(monitor.toolMessages).contains("Renamed " + src + " -> " + dst);
     }
+
+    // ------------------------------------------------------------------ Copy tool (file-copy-tool.md R1-R4)
+
+    @Test
+    void copyCreatesTargetAndKeepsSource() throws IOException {
+        Files.writeString(tempDir.resolve("a.txt"), "data");
+        var ts = new ToolService(false);
+        ts.addTool(tool);
+        var monitor = new CapturingMonitor();
+        var src = tempDir.resolve("a.txt");
+        var dst = tempDir.resolve("b.txt");
+
+        // GIVEN existing file a.txt WHEN diskCopyFile THEN a copy exists, original kept, R2 message "Copied <s> -> <t>"
+        runTool(ts, "diskCopyFile", "{\"sourcePath\":\"a.txt\",\"targetPath\":\"b.txt\"}", requestWith(monitor));
+        assertTrue(Files.exists(src));
+        assertEquals("data", Files.readString(dst));
+        assertThat(monitor.toolMessages).contains("Copied " + src + " -> " + dst);
+    }
+
+    @Test
+    void copyCreatesParentDirectories() throws IOException {
+        Files.writeString(tempDir.resolve("a.txt"), "data");
+        var ts = new ToolService(false);
+        ts.addTool(tool);
+
+        // GIVEN existing file WHEN copy into a nested path THEN parent dirs are created (R1, like rename)
+        runTool(ts, "diskCopyFile", "{\"sourcePath\":\"a.txt\",\"targetPath\":\"sub/b.txt\"}", requestWith(new CapturingMonitor()));
+        assertEquals("data", Files.readString(tempDir.resolve("sub/b.txt")));
+        assertTrue(Files.exists(tempDir.resolve("a.txt")));
+    }
+
+    @Test
+    void copyFailsWhenTargetExists() throws IOException {
+        Files.writeString(tempDir.resolve("a.txt"), "data");
+        Files.writeString(tempDir.resolve("b.txt"), "existing");
+
+        // GIVEN target already exists WHEN copy THEN error, source + target unchanged (R3 no overwrite)
+        assertThrows(IllegalArgumentException.class, () -> tool.diskCopyFile("a.txt", "b.txt"));
+        assertEquals("data", Files.readString(tempDir.resolve("a.txt")));
+        assertEquals("existing", Files.readString(tempDir.resolve("b.txt")));
+    }
+
+    @Test
+    void copyFailsWhenSourceMissing() {
+        // GIVEN no source file WHEN copy THEN "Not found" error
+        var ex = assertThrows(IllegalArgumentException.class, () -> tool.diskCopyFile("nope.txt", "out.txt"));
+        assertTrue(ex.getMessage().contains("Not found"));
+    }
+
+    @Test
+    void copyFailsWhenSourceIsDirectory() throws IOException {
+        Files.createDirectories(tempDir.resolve("somedir"));
+
+        // GIVEN source is a directory WHEN copy THEN "Not a file" error (no recursive dir copy in MVP)
+        var ex = assertThrows(IllegalArgumentException.class, () -> tool.diskCopyFile("somedir", "out.txt"));
+        assertTrue(ex.getMessage().contains("Not a file"));
+    }
 }

@@ -177,6 +177,26 @@ public class DiskFileWriteTool extends AbstractTool {
         }
     }
 
+    @Tool("Copy a file to a new location. Creates target parent folders. The original is kept; no overwrite.")
+    public void diskCopyFile(
+            @P(name = "sourcePath") String sourcePath,
+            @P(name = "targetPath") String targetPath) {
+
+        ArgsUtil.requireNonBlank(sourcePath, "sourcePath");
+        ArgsUtil.requireNonBlank(targetPath, "targetPath");
+
+        Path source = resolve(sourcePath);
+        if (source == null) {
+            throw new IllegalArgumentException("Cannot resolve path: " + sourcePath);
+        }
+        Path target = resolve(targetPath);
+        if (target == null) {
+            throw new IllegalArgumentException("Cannot resolve path: " + targetPath);
+        }
+        FileUtils.copy(source, target);
+        onTool("Copied " + source + " -> " + target);
+    }
+
     @Tool("Insert text into a file at a specific position. Omit afterLine to append at end. 0 inserts before the first line (prepend). 1..n inserts after that line.")
     public void diskInsertLines(
             @P(name = "filePath") String filePath,

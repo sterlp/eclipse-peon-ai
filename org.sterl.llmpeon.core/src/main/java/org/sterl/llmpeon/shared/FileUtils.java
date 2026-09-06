@@ -88,6 +88,31 @@ public class FileUtils {
     }
 
     /**
+     * Copies {@code source} to {@code target} byte-for-byte, creating missing parent
+     * directories (like a rename). The original is kept. No overwrite: fails when the
+     * target already exists.
+     *
+     * @throws IllegalArgumentException when the source is missing, is a directory, or the target exists
+     */
+    public static void copy(Path source, Path target) {
+        if (source == null || !Files.exists(source)) {
+            throw new IllegalArgumentException("Not found: " + source);
+        }
+        if (Files.isDirectory(source)) {
+            throw new IllegalArgumentException("Not a file: " + source);
+        }
+        if (Files.exists(target)) {
+            throw new IllegalArgumentException("Target already exists: " + target);
+        }
+        try {
+            if (target.getParent() != null) Files.createDirectories(target.getParent());
+            Files.copy(source, target);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to copy " + source + " -> " + target, e);
+        }
+    }
+
+    /**
      * Replaces <b>all</b> occurrences of {@code oldStr} with {@code newStr} inside {@code content}.
      * Returns the new content together with the number of replaced occurrences.
      * Throws {@link IllegalArgumentException} if the strings are identical or nothing matches.

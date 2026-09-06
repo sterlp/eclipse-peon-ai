@@ -247,6 +247,43 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         }
     }
 
+    @Tool("Copy a workspace file or directory to a new location. Creates target parent folders. The source is kept.")
+    public void eclipseCopyFile(
+            @P(description = "existing workspace-relative path", name = "sourcePath") String sourcePath,
+            @P(description = "target workspace-relative path", name = "targetPath") String targetPath) {
+
+        ArgsUtil.requireNonBlank(sourcePath, "sourcePath");
+        ArgsUtil.requireNonBlank(targetPath, "targetPath");
+        validateWrite(sourcePath);
+        validateWrite(targetPath);
+
+        var source = EclipseUtil.resolveInEclipse(sourcePath);
+        if (source.isEmpty()) throw new IllegalArgumentException("Not found: " + sourcePath);
+
+        var resource = source.get();
+        if (EclipseUtil.resolveInEclipse(targetPath).isPresent()) {
+            throw new IllegalArgumentException("Target already exists: " + targetPath);
+        }
+
+        var workspaceRoot = resource.getWorkspace().getRoot();
+        org.eclipse.core.runtime.IPath destPath = resource.getFullPath()
+                .removeLastSegments(resource.getFullPath().segmentCount())
+                .append(org.eclipse.core.runtime.IPath.fromPortableString(
+                        targetPath.startsWith("/") ? targetPath.substring(1) : targetPath));
+
+        try {
+            var parent = workspaceRoot.getFolder(destPath.removeLastSegments(1));
+            if (!destPath.removeLastSegments(1).isEmpty() && !parent.exists()
+                    && destPath.segmentCount() > 2) {
+                IoUtils.ensureFolders(parent, getProgressMonitor());
+            }
+            resource.copy(destPath, IResource.KEEP_HISTORY, getProgressMonitor());
+            onTool("Copied " + sourcePath + " -> " + destPath.toPortableString());
+        } catch (CoreException e) {
+            throw new RuntimeException("Failed to copy " + sourcePath + " -> " + targetPath, e);
+        }
+    }
+
     @Tool("Delete workspace file or directory recursively.")
     public String eclipseDeleteResource(
             @P(description = "workspace-relative path", name = "filePath") String filePath) {
