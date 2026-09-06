@@ -9,21 +9,21 @@ class ChatMessageUtilTest {
     // R21 — the estimator the live status uses for per-chunk token counting.
 
     @Test
-    void estimates_long_snippet_by_chars_over_3() {
+    void estimates_32_chars_to_9() {
         // GIVEN a 32-char snippet (R21 BDD)
         // WHEN
         int tokens = ChatMessageUtil.estimateTokens("a".repeat(32));
-        // THEN 32 / 3 = 10
-        assertThat(tokens).isEqualTo(10);
+        // THEN (32 * 2) / 7 = 9
+        assertThat(tokens).isEqualTo(9);
     }
 
     @Test
-    void estimates_26_chars_to_8() {
+    void estimates_26_chars_to_7() {
         // GIVEN a 26-char snippet (R21 BDD)
         // WHEN
         int tokens = ChatMessageUtil.estimateTokens("b".repeat(26));
-        // THEN 26 / 3 = 8
-        assertThat(tokens).isEqualTo(8);
+        // THEN (26 * 2) / 7 = 7
+        assertThat(tokens).isEqualTo(7);
     }
 
     @Test
@@ -45,12 +45,12 @@ class ChatMessageUtilTest {
     }
 
     @Test
-    void boundary_six_chars_is_two() {
+    void boundary_six_chars_is_one() {
         // GIVEN a snippet of exactly 6 chars — first length past the short floor
         // WHEN
         int tokens = ChatMessageUtil.estimateTokens("123456");
-        // THEN 6 / 3 = 2
-        assertThat(tokens).isEqualTo(2);
+        // THEN (6 * 2) / 7 = 1
+        assertThat(tokens).isEqualTo(1);
     }
 
     @Test

@@ -38,19 +38,19 @@ public class ChatMessageUtil {
     public static int estimateTokens(List<ChatMessage> messages) {
         int chars = 0;
         for (var msg : messages) chars += charCount(msg);
-        return chars / 3;
+        return (chars * 2) / 7;
     }
 
     /**
      * Estimates the token count of a single text snippet (a streaming text delta or a
      * tool-argument slice): {@code null} or empty → 0, up to 5 chars → 1, otherwise
-     * {@code length / 3}. A coarse chars/3 heuristic — enough for a live rate readout,
-     * never a real provider count.
+     * {@code length × 2 / 7}. A coarse chars×2/7 (~3.5 chars per token) — deliberately
+     * over-estimating a bit keeps the live rate honest; never a real provider count.
      */
     public static int estimateTokens(@Nullable String text) {
         if (text == null || text.isEmpty()) return 0;
         int len = text.length();
-        return len <= 5 ? 1 : len / 3;
+        return len <= 5 ? 1 : (len * 2) / 7;
     }
 
     private static int charCount(ChatMessage msg) {
