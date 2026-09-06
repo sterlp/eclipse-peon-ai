@@ -17,6 +17,7 @@ import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.command.CommandService;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.UserContext;
+import org.sterl.llmpeon.memory.StateMigration;
 import org.sterl.llmpeon.parts.AIChatView;
 import org.sterl.llmpeon.parts.PeonConstants;
 import org.sterl.llmpeon.parts.ai.component.AgentContextComponent;
@@ -131,6 +132,10 @@ public class PeonAiService {
         // ADR-0041 R2: agent history lives in the workspace metadata state (not ~/.peon/state).
         var stateDir = Platform.getStateLocation(Platform.getBundle(PeonConstants.PLUGIN_ID))
                 .append("state").toFile().toPath();
+
+        // ADR-0041 R3: one-shot migration of any legacy ~/.peon/state/** into the metadata state.
+        // Runs before AgentService so the freshly-migrated histories are the ones the stores load.
+        StateMigration.migrate(config.stateDirectory(), stateDir);
 
         agentService  = new AgentService(true,
                 config.getConfigDir().resolve(LlmConfig.AGENT_DIRECTORY), sharedToolService, configuredModel, stateDir);
