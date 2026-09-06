@@ -1,4 +1,36 @@
-# Session-Stand (2026-09-06, Nachmittag)
+# Session-Stand (2026-09-06, Abend)
+
+## Zyklus `state-config-2026-09-06` — ABGESCHLOSSEN ✅ (wartet auf Merge)
+
+- Branch `state-config-2026-09-06`: 8 Commits (inc-1..6 + cycle-close `35f96cb`), Working Tree sauber.
+- **Gebaut:** inc-1 Housekeeping (Smoke-Fixes, Docs-Relocation, Prompt-Commit-Regeln in
+  po-delegation/dev-build-loop/AGENTS.md) · inc-2 State-Umzug (R2) · inc-3 Migration (R3,
+  StateMigration) · inc-4 E5 (absolute Pfade) · inc-5 Copy-Tool (R1–R4, FileUtils.copy) ·
+  inc-6 Review-Fixes (Directory-Guard-Parität + Mutations-Killer `serviceStartMigratesLegacyState`).
+- **Core 651/651 · Plugin 185/185.** Homepage ✅ (peon-memory.md, custom-agents.md).
+- **Review ✅** (Da Thinka, 3-Seiten + Mutations-Check): 1 echte Lücke (Directory-Quelle im
+  eclipseCopyFile — meine Plan-Lücke, R1-Parität) → inc-6 gefixt; IST-Abweichungen ok
+  (Platform.getBundle statt FrameworkUtil — Target-Platform-Limit; ReloadConfigToolTest 4-arg).
+- **Docs geflippt:** peon-config-directory R1/R2/R3 ✅ · file-copy-tool R1/R2 ✅ · E5 ✅ ·
+  index.md aktualisiert. Plan archiviert (overview-done-2026-09-06-16-17.md).
+- **Nächster User-Schritt: Merge → main.** Smoke-Test des Builds (Migration prüfen: vorhandene
+  `~/.peon/state`-Dateien sollten beim ersten Start in den Metadata-State wandern).
+
+## Neu in den Docs heute
+
+- **peon-config-directory.md** (✅ R1+R2+R3) + **ADR-0041** · **configuration.md** (Landkarte,
+  im index) · **file-copy-tool.md** (✅ R1–R4) · **eclipse-java-move-type-tool.md** (🚧 Idee,
+  Backlog) · **builtin-agent-prompt-override.md** (🚧 Idee) · **open-points.md:** ❓ ApiRetry
+  (Null-Byte-IOException evtl. als Cancel klassifiziert — Smoke-Test-Beobachtung).
+
+## Offen für User
+
+1. **Merge `state-config-2026-09-06` → main** (nach eigenem Smoke-Test).
+2. **5 kleine ❓-Punkte** (open-points.md): UTF-8-Write · Glossar eager · PDE-Skip-Count ·
+   Dropdown-Klassen löschen · buildWithDev-Compact — „nimm deine Empfehlungen" genügt.
+3. **GO für Bug-Fix-Zyklus:** Triage #5–#16 + ApiRetry-Verdacht + Plugin-Hunt.
+4. Ideen (nicht geplant): Jon×Scaffold-Side-Quest · Built-in Prompt Override ·
+   eclipseJavaMoveType (🚧).
 
 ## In Flight: Batch-Zyklus `state-config-2026-09-06` — BUILD FERTIG, REVIEW STEHT AUS
 
