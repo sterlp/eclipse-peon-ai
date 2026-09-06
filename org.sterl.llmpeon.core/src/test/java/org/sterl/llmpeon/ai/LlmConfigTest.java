@@ -110,6 +110,16 @@ class LlmConfigTest {
         assertThat(config.modelConfigFor(AgentModelConfig.PLAN)).isEqualTo(AgentModelConfig.empty());
     }
 
+    /** ADR-0041 R2: the headless core default state directory is configDir/state. */
+    @Test
+    void stateDirectory_isConfigDirState() {
+        // GIVEN
+        var config = LlmConfig.builder().configDir(java.nio.file.Path.of("/home/user/.peon")).build();
+
+        // WHEN / THEN
+        assertThat(config.stateDirectory()).isEqualTo(java.nio.file.Path.of("/home/user/.peon/state"));
+    }
+
     @Test
     void withModelConfigReplacesEntry() {
         // GIVEN

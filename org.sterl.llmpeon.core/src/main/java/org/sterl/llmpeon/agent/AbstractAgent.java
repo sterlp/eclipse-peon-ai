@@ -77,8 +77,14 @@ public abstract class AbstractAgent implements AiAgent {
         Objects.requireNonNull(this.toolService, "ToolService cannot be null");
     }
 
-    protected static Path historyFile(Path configDir, String agentName) {
-        return configDir.resolve("state").resolve(safeAgentName(agentName) + "-history.jsonl");
+    /**
+     * Derives the per-agent history file from the injected <b>state directory</b> — the directory
+     * that contains the {@code <agent>-history.jsonl} files directly (no {@code state} segment).
+     * Callers decide where the state lives (ADR-0041 R2: workspace metadata for the plugin,
+     * {@link org.sterl.llmpeon.ai.LlmConfig#stateDirectory()} for headless).
+     */
+    protected static Path historyFile(Path stateDir, String agentName) {
+        return stateDir.resolve(safeAgentName(agentName) + "-history.jsonl");
     }
 
     private static String safeAgentName(String agentName) {

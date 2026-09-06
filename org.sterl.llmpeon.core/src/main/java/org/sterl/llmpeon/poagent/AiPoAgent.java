@@ -48,15 +48,15 @@ public class AiPoAgent extends AbstractAgent {
         this.slaves = List.of();
     }
 
-    public AiPoAgent(ConfiguredChatModel configuredModel, ToolService toolService, Path historyConfigDir) {
-        this(configuredModel, toolService, historyConfigDir, List.of());
+    public AiPoAgent(ConfiguredChatModel configuredModel, ToolService toolService, Path historyStateDir) {
+        this(configuredModel, toolService, historyStateDir, List.of());
     }
 
-    public AiPoAgent(ConfiguredChatModel configuredModel, ToolService toolService, Path historyConfigDir,
+    public AiPoAgent(ConfiguredChatModel configuredModel, ToolService toolService, Path historyStateDir,
             List<NamedAgent> slaves) {
         super(configuredModel, toolService,
-                historyConfigDir == null ? new ThreadSafeMemory()
-                        : new ThreadSafeMemory(new FileAgentHistoryStore(historyFile(historyConfigDir, NAME))));
+                historyStateDir == null ? new ThreadSafeMemory()
+                        : new ThreadSafeMemory(new FileAgentHistoryStore(historyFile(historyStateDir, NAME))));
         this.slaves = List.copyOf(slaves);
     }
 

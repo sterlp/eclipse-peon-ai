@@ -1,10 +1,12 @@
 package org.sterl.llmpeon.memory;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -76,6 +78,15 @@ public class ThreadSafeMemory {
     /** @return true if this memory is backed by a history store (durable), false if RAM-only. */
     public boolean isPersistent() {
         return store != null;
+    }
+
+    /**
+     * @return the history file this memory persists to (empty for RAM-only). Serves the tests and
+     * callers that need the concrete location without reaching into the store.
+     */
+    public Optional<Path> historyFile() {
+        var s = store;
+        return s != null ? Optional.of(s.historyFile()) : Optional.empty();
     }
 
     public synchronized boolean containsUserMessage(String message) {

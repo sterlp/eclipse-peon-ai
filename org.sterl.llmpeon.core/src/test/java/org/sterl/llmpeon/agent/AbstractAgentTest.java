@@ -197,14 +197,34 @@ class AbstractAgentTest {
         assertThat(toolMessage.get()).isNull();
     }
 
+    /** ADR-0041 R2: historyFile(stateDir, name) derives stateDir/<agent>-history.jsonl directly. */
     @Test
-    void clearDeletesOnlyThisAgentsPersistedHistory(@TempDir Path configDir) throws Exception {
-        // GIVEN
-        var devStore = new FileAgentHistoryStore(configDir.resolve("state/Peon-Dev-history.jsonl"));
-        var planStore = new FileAgentHistoryStore(configDir.resolve("state/Peon-Plan-history.jsonl"));
+    void historyFile_derivesFromStateDir(@TempDir Path stateDir) {
+        // GIVEN / WHEN
+        var file = AbstractAgent.historyFile(stateDir, "Peon-Dev");
+
+        // THEN — no state segment, file directly in the injected dir
+        assertThat(file).isEqualTo(stateDir.resolve("Peon-Dev-history.jsonl"));
+    }
+
+    /** safeAgentName: special characters in the agent name are sanitized for the file name. */
+    @Test
+    void historyFile_sanitizesSpecialCharactersInAgentName(@TempDir Path stateDir) {
+        // GIVEN / WHEN
+        var file = AbstractAgent.historyFile(stateDir, "My Agent/Name?");
+
+        // THEN
+        assertThat(file).isEqualTo(stateDir.resolve("My_Agent_Name_-history.jsonl"));
+    }
+
+    @Test
+    void clearDeletesOnlyThisAgentsPersistedHistory(@TempDir Path stateDir) throws Exception {
+        // GIVEN — the injected stateDir contains the history files directly (ADR-0041 R2)
+        var devStore = new FileAgentHistoryStore(stateDir.resolve("Peon-Dev-history.jsonl"));
+        var planStore = new FileAgentHistoryStore(stateDir.resolve("Peon-Plan-history.jsonl"));
         var config = LlmConfig.builder().model("mock").build();
-        var devAgent = new AiDevAgent(new ConfiguredChatModel(config, streamMock.buildMock(r -> ChatResponse.builder().aiMessage(AiMessage.from("ok")).build())), new ToolService(), configDir);
-        var planAgent = new AiPlanAgent(new ConfiguredChatModel(config, streamMock.buildMock(r -> ChatResponse.builder().aiMessage(AiMessage.from("ok")).build())), new ToolService(), configDir);
+        var devAgent = new AiDevAgent(new ConfiguredChatModel(config, streamMock.buildMock(r -> ChatResponse.builder().aiMessage(AiMessage.from("ok")).build())), new ToolService(), stateDir);
+        var planAgent = new AiPlanAgent(new ConfiguredChatModel(config, streamMock.buildMock(r -> ChatResponse.builder().aiMessage(AiMessage.from("ok")).build())), new ToolService(), stateDir);
         devAgent.addMessage(UserMessage.from("dev"));
         planAgent.addMessage(UserMessage.from("plan"));
         devAgent.queueMessage("queued");

@@ -6,7 +6,7 @@
 
 ---
 
-## inc-1 — Aufräumen & Commit-Basis (klein, grün = compile + core-suite unverändert grün) ✅ DONE (core 632/632 grün, Plugin+Test-Compile ok; Branch `state-config-2026-09-06` angelegt, smoke-fixes + Docs + Prompt-Regeln committet)
+## inc-1 — Aufräumen & Commit-Basis (klein, grün = compile + core-suite unverändert grün) ✅ DONE (core 632/632 grün, Plugin+Test-Compile ok; Branch `state-config-2026-09-06` angelegt, smoke-fixes + Docs + Prompt-Regeln committet) ✅ DONE (core 632/632 grün, Plugin+Test-Compile ok; Branch `state-config-2026-09-06` angelegt, smoke-fixes + Docs + Prompt-Regeln committet) ✅ DONE (core 632/632 grün, Plugin+Test-Compile ok; Branch `state-config-2026-09-06` angelegt, smoke-fixes + Docs + Prompt-Regeln committet)
 
 1. `git status` / `git log --oneline -5` prüfen (Branch wechseln/anlegen: `state-config-2026-09-06` von `main`).
 2. Smoke-Test-Fixes **verifiziert — beide stehen im Code**:
@@ -23,7 +23,7 @@
    - `peon-plan/overview-done-2026-09-04-17-45.md` (archivierter Plan) → committen.
 5. Commit: `inc-1: housekeeping — smoke-test fixes, docs relocation, prompt commit rules`.
 
-## inc-2 — State-Umzug (SOLL: peon-config-directory.md R2 + ADR-0041)
+## inc-2 — State-Umzug (SOLL: peon-config-directory.md R2 + ADR-0041) ✅ DONE (core 636/636 + Plugin 180/0 grün; stateDir via `Platform.getBundle(PeonConstants.PLUGIN_ID)` — `FrameworkUtil` existiert in der Target-Platform NICHT; `BuildPoAgentComponent`: dead `config`-Feld entfernt; `lib/llmpeon-core.jar` regeneriert, da PDE-Build dagegen kompiliert)
 
 **Prinzip:** `FileAgentHistoryStore` bekommt weiterhin den vollen Datei-Pfad; die **Ableitung** `configDir → configDir/state/<agent>-history.jsonl` wandert aus dem Core-Agenten zu den Aufrufern. Der injizierte Parameter wird zum **State-Verzeichnis** (enthält die `<agent>-history.jsonl` direkt, ohne `state`-Segment). Keine Eclipse-Dependency im Core.
 

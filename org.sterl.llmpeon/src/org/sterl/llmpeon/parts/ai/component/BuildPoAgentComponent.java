@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.parts.ai.component;
 
+import java.nio.file.Path;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Predicate;
@@ -11,7 +12,6 @@ import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
-import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.context.AgentsMdContextItem;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.EclipseFileContextItem;
@@ -35,9 +35,10 @@ public class BuildPoAgentComponent {
     /** Jon's RAM-only slaves compact at 70% of the shared budget so their throw-away context stays lean. */
     private static final double SLAVE_COMPACT_FACTOR = 0.7;
     private final ConfiguredChatModel configuredModel;
-    private final LlmConfig config;
     private final Supplier<IProject> projectRef;
     private final ToolService sharedToolService;
+    /** Directory holding Jon's {@code <agent>-history.jsonl} directly (ADR-0041 R2); null = RAM-only. */
+    private final Path historyStateDir;
     /**
      * Fallback static context (env info only) handed to the slaves in {@link #build()}. In fully wired
      * operation {@code PeonAiService.initStaticContext()} overrides it with the same Env-only list
@@ -47,13 +48,13 @@ public class BuildPoAgentComponent {
     private final List<ContextItem> staticContent = List.of(new StaticContextItem());
 
     public BuildPoAgentComponent(ConfiguredChatModel configuredModel,
-            LlmConfig config, Supplier<IProject> projectRef,
-            ToolService sharedToolService) {
+            Supplier<IProject> projectRef,
+            ToolService sharedToolService, Path historyStateDir) {
         super();
         this.configuredModel = configuredModel;
-        this.config = config;
         this.projectRef = projectRef;
         this.sharedToolService = sharedToolService;
+        this.historyStateDir = historyStateDir;
     }
 
     public AiPoAgent build() {
@@ -118,7 +119,7 @@ public class BuildPoAgentComponent {
         // Jon's own throw-away research sub-agent (Da Sniffa) — searches with his read/grep tool
         poToolService.addTool(sharedToolService.getTool(SearchAgentTool.class).get());
         poToolService.addTool(new CompactSessionTool());
-        var poAgent = new AiPoAgent(configuredModel, poToolService, config.getConfigDir(), List.of(thinka, mek));
+        var poAgent = new AiPoAgent(configuredModel, poToolService, historyStateDir, List.of(thinka, mek));
 
         return poAgent;
     }

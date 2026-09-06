@@ -19,6 +19,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.Platform;
 import org.junit.Before;
 import org.junit.Test;
 import org.sterl.llmpeon.StreamMock;
@@ -31,6 +32,7 @@ import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.UserContext;
+import org.sterl.llmpeon.parts.PeonConstants;
 import org.sterl.llmpeon.parts.ai.PeonAiService;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.tools.AskUserTool;
@@ -505,6 +507,29 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         // distinct from the user-selectable standalone agents
         assertNotSame(aiService.getAgent(AiPlanAgent.NAME).get(), delegate.getPlanSlave());
         assertNotSame(aiService.getAgent(AiDevAgent.NAME).get(), delegate.getDevSlave());
+    }
+
+    /**
+     * ADR-0041 R2: the persistent agents (Dev, Plan, Jon/PO) store their history in the workspace
+     * metadata state — not in ~/.peon/state. The location is derived from the bundle's state location,
+     * so it is workspace-scoped and survives the config-dir move.
+     */
+    @Test
+    public void persistentAgentsLiveInWorkspaceMetadataState() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        var expectedStateDir = Platform.getStateLocation(Platform.getBundle(PeonConstants.PLUGIN_ID))
+                .append("state").toFile().toPath();
+
+        // GIVEN the built service, WHEN each persistent agent's history file is read
+        for (String agentName : List.of(AiDevAgent.NAME, AiPlanAgent.NAME, AiPoAgent.NAME)) {
+            var agent = aiService.getAgent(agentName).orElseThrow();
+            var historyFile = agent.getMemory().historyFile();
+
+            // THEN it is backed by a store that lives under the workspace metadata state dir
+            assertTrue(agentName + " must be persistent", historyFile.isPresent());
+            assertTrue(agentName + " history file must live under " + expectedStateDir,
+                    historyFile.get().startsWith(expectedStateDir));
+        }
     }
 
     /**
