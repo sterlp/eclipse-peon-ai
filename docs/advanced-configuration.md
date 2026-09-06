@@ -139,7 +139,7 @@ technisch unmöglich. → [ADR-0023](adr/0023-po-model-plan-slot.md) wird **supe
   Der PO-Agent besitzt einen eigenen `AgentModelConfig.PO = "po"`-Slot mit allen Feldern
   (`model`/`url`/`apiKey`/`think`/`extraBody`), gespeichert unter `llm.agent.po.<field>`.
   - GIVEN Advanced-Config geöffnet, WHEN die Seite rendert, THEN erscheinen fünf Sections in
-    der Reihenfolge PO, Dev, Plan, Search, Compact → `AdvancedPreferenceSectionsTest.showsPoSection`
+    der Reihenfolge PO, Plan, Dev, Search, Compact → `AdvancedPreferenceSectionsTest.showsPoSection`
     — **Einschränkung (Review 3a):** der Test prüft die **Deklaration** `AGENT_SECTIONS`, nicht
     das Rendern. Dreht jemand `createFieldEditors()` auf Einzelaufrufe zurück, bleibt er grün.
     Ein echter Render-Test bräuchte ein Display und würde skippen — bewusst nicht gebaut, das

@@ -24,7 +24,7 @@ public class AdvancedPreferenceSectionsTest {
     public void showsPoSection() {
         var sections = AiAdvancedPreferenceView.AGENT_SECTIONS;
 
-        assertEquals(List.of("po", "dev", "plan", "search", "compact"),
+        assertEquals(List.of("po", "plan", "dev", "search", "compact"),
                 sections.stream().map(AiAdvancedPreferenceView.AgentSection::id).toList());
         sections.forEach(section -> assertFalse(section.title().isBlank()));
     }

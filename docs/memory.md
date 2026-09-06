@@ -1,4 +1,35 @@
-# Session-Stand (2026-09-05)
+# Session-Stand (2026-09-06)
+
+## Smoke-Test 2.7.1 — Ergebnisse (2026-09-06)
+
+1. **askUser R17 ✅** — Question-Widget bei Jon funktioniert (User: „hat geklappt").
+2. **Prompt-Satz** (`po-delegation.txt`, autonomer Modus: kein askUser, Frage in den Chat,
+   Turn-Ende außer Queued Message inkl. Alter-Warnung) — von User finalisiert ✅.
+3. **Header-Token-Count nach Clear ✅ gefixt (uncommitted):** `headerBar.refreshRoster()` in
+   `onClear()` (AIChatView.java:186); Compact war bereits korrekt. **Entscheidung User:** Fix
+   reist mit dem Merge `jon-askuser` → main, kein eigener Commit.
+4. **Sortierung Advanced-Config ✅ gefixt (uncommitted):** AGENT_SECTIONS PO → Plan → Dev →
+   Search → Compact (AiAdvancedPreferenceView.java:35) + Test + Doc-Zeile.
+5. **E5 ✅ entschieden:** Disk-Tool Success-Messages = absoluter Pfad (Regel ❌ in
+   disk-file-write-tool.md) — Bau steht aus (Bug-Fix-Zyklus).
+
+## Neu in den Docs (2026-09-06)
+
+- **peon-config-directory.md** (❌ R1) + **ADR-0041**: `.peon` = shared-config-only; Agent-History
+  raus (IST-Verstoß, Totalschaden bei 2. Instanz). Umsetzung: erst wenn bekannte Bugs weg.
+- **builtin-agent-prompt-override.md** (🚧 Idee): Built-in-Prompts als `.peon`-Config, Body
+  supersedes Default — nicht geplant.
+- Jon×Scaffold-Delegation (Skill-Anpassung nach Zyklus) = Side Quest, vermerkt in
+  peon-config-directory.md.
+
+## Nächste Schritte
+
+1. Smoke-Test weiterfahren (User).
+2. Danach: Merge-Entscheidung `jon-askuser` → main (Fixes reisen mit, User-WIP in
+   AskUserTool/StatusLineWidget/UserContext uncommitted!).
+3. Bug-Fix-Zyklus: Triage #5–#12/#14–#16 (GO-Entscheidung offen) + E5-Fix + ggf. Rest vom
+   Nacht-Bug-Hunt (brach an Netzwerkfehler ab, nichts geändert).
+4. Danach: `.peon`-State-Umsetzung (peon-config-directory.md R2, Zielort offen).
 
 ## Nächste Session = Smoke-Test (User testet den neuen Build)
 

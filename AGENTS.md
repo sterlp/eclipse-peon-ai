@@ -48,8 +48,9 @@ Module guides (read when working in one):
   auto-commit. No git repo / not on a branch → **no auto commits, ask first**.
 - After **each green increment**: If git is available and you are on a branch (not main/master) 
   commit automatically — unless stated otherwise — with message 
-  `inc-N: <summary>` scoped to that increment's and an `Assisted-by: Peon AI (<ModelName>)` trailer in the body
-  — every step stays revertable (`git revert`) without touching the main branch. 
+  `inc-N: <summary>` scoped to that increment's — including its story docs (`docs/**`, Dev
+  commits them, the PO owns their content) — and an `Assisted-by: Peon AI (<ModelName>)` trailer in
+  the body — every step stays revertable (`git revert`) without touching the main branch. 
   After `planImplemented` everything (incl. the archived plan) — repo clean for the next cycle.
 - Final merge/squash into the base branch is the **user's** decision.
 

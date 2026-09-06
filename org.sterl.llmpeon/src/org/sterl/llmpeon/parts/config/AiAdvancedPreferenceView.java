@@ -22,7 +22,7 @@ import org.sterl.llmpeon.parts.config.widgets.TitledGroup;
 /**
  * Advanced AI config page. The per-agent model config (url / key / model / think / temperature /
  * extra-body JSON) lives in five {@link AgentModelConfigSection} composites
- * (po/dev/plan/search/compact) — the base provider drives each section's think widget form and
+ * (po/plan/dev/search/compact) — the base provider drives each section's think widget form and
  * extra-body visibility. The remaining base-level settings (timeout, max tokens, query/header
  * params, debug, realtime) stay as field editors.
  */
@@ -32,8 +32,8 @@ public class AiAdvancedPreferenceView extends FieldEditorPreferencePage implemen
 
     public static final List<AgentSection> AGENT_SECTIONS = List.of(
             new AgentSection(AgentModelConfig.PO, "PO agent (Jon)"),
-            new AgentSection(AgentModelConfig.DEV, "Dev agent (uses base model)"),
             new AgentSection(AgentModelConfig.PLAN, "Plan agent"),
+            new AgentSection(AgentModelConfig.DEV, "Dev agent (uses base model)"),
             new AgentSection(AgentModelConfig.SEARCH, "Search agent"),
             new AgentSection(AgentModelConfig.COMPACT, "Compact agent"));
 
