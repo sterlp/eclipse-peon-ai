@@ -189,6 +189,7 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
     private String runAndCollect(ILaunchConfiguration config, String launchName, int errorCount) throws Exception {
         var failures = Collections.synchronizedList(new ArrayList<ITestCaseElement>());
         var testCount = new int[]{0};
+        var skippedCount = new int[]{0};
         var finished = new AtomicBoolean(false);
         var sessionName = new String[]{launchName};
         var ourSession = new ITestRunSession[]{null};
@@ -212,6 +213,8 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
                 Result result = testCase.getTestResult(false);
                 if (result == Result.ERROR || result == Result.FAILURE) {
                     failures.add(testCase);
+                } else if (result == Result.IGNORED) {
+                    skippedCount[0]++;
                 }
             }
 
@@ -234,7 +237,7 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
             }
 
             onTool("Reading test results of " + launchName);
-            return formatResults(sessionName[0], testCount[0], failures, errorCount);
+            return formatResults(sessionName[0], testCount[0], skippedCount[0], failures, errorCount);
         } finally {
             JUnitCore.removeTestRunListener(listener);
         }
@@ -313,10 +316,11 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
         return sb.toString();
     }
 
-    private static String formatResults(String sessionName, int testCount, List<ITestCaseElement> failures, int errorCount) {
+    private static String formatResults(String sessionName, int testCount, int skippedCount, List<ITestCaseElement> failures, int errorCount) {
         var sb = new StringBuilder();
         sb.append("Test run: ").append(sessionName).append("\n");
         sb.append("Tests:    ").append(testCount).append("\n");
+        sb.append("Skipped:  ").append(skippedCount).append("\n");
         sb.append("Failures: ").append(failures.size()).append("\n");
 
         for (int i = 0; i < Math.min(errorCount, failures.size()); ++i) {
