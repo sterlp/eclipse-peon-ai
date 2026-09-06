@@ -68,6 +68,11 @@ Code. Vor dem Einführen eines neuen fachlichen Begriffs dort nachsehen und eint
 
 ## Offene User-Entscheidungen (2026-09-06)
 
-* **Batch-Zyklus `state-config-2026-09-06` ✅ gebaut (inc-1..6):** State-Umzug + Migration + E5 + Copy-Tool + Housekeeping — Core 651/651, Plugin 185/185, Review + Delta-Fixes erledigt. Merge → main = User-Entscheidung.
-* **5 kleine ❓-Punkte:** UTF-8-Write · Glossar eager · PDE-Skip-Count · Dropdown-Klassen löschen · `buildWithDev`-Compact — PO-Empfehlungen stehen in [open-points.md](open-points.md).
-* **❓ ApiRetry-Verdacht** (Null-Byte-IOException als Cancel klassifiziert?) — in [open-points.md](open-points.md), Investigation im Bug-Fix-Zyklus.
+* **Branch `sm-fixes-2026-09-06` (3 Commits, von main, nicht gemerged):** Dropdown-Klassen
+  gelöscht (`a1d8d35`) · UTF-8-Write **widerlegt** + Regression-Guard-Test (`27c09ad`) ·
+  PDE-Skip-Count im `EclipseRunTestTool`-Report (`11f34f6`). Plugin 186/0, Core 651/651.
+  Merge → main = User-Entscheidung.
+* **❓ Glossar eager** ((b) Turn-Context-Item für Jon+Thinka+Mek) und **❓ buildWithDev-Compact**
+  (Compact statt Reset, ~50 %, nur neuer Plan) — Empfehlungen in [open-points.md](open-points.md).
+* **❓ ApiRetry-Verdacht** (Null-Byte-IOException als Cancel klassifiziert?) — in
+  [open-points.md](open-points.md), Investigation im Bug-Fix-Zyklus (Triage #5–#16 + Plugin-Hunt).

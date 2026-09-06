@@ -23,25 +23,15 @@ response) prüfen — wird sie fälschlich als Cancel/Abort eingestuft? Und: kan
 API-Call den Retry-Backoff abbrechen, ohne ein echtes Cancel zu sein? → Investigation im
 nächsten Bug-Fix-Zyklus (Triage-Liste).
 
-## ❓ `eclipseWriteFile` schreibt immer UTF-8 — Charset-Asymmetrie
+## 🔒 `eclipseWriteFile` schreibt immer UTF-8 — Charset-Asymmetrie — **widerlegt**
 
-**Gefunden:** 2026-09-03, Dev-Agent während inc-1 (Test-Fixture).
-
-**IST:** `IoUtils` **liest** mit `IFile#getCharset()` (`IoUtils.java:28-35`), **schreibt** aber
-ohne Encoding-Berücksichtigung (`IoUtils.java:101-111`). Verifiziert: Datei mit
-`encoding//…=ISO-8859-1` in `.settings/org.eclipse.core.resources.prefs`, danach
-`eclipseWriteFile("äüß Ö")` → tatsächlich `C3 A4 C3 BC C3 9F 20 C3 96` (UTF-8) statt
-`E4 FC DF 20 D6` (ISO-8859-1).
-
-**Wirkung:** Ein Agent, der eine ISO-8859-1/Windows-1252-Datei liest, ändert und zurückschreibt,
-**korrumpiert** sie stillschweigend — Lesen dekodiert korrekt, Schreiben kodiert falsch. Trifft
-Legacy-Projekte (properties-Dateien, alte Java-Quellen).
-
-**Frage an den User:** eigene kleine Story (Fix: `IoUtils` schreibt mit `file.getCharset()`,
-Test mit ISO-Fixture) — oder bewusst akzeptieren und dokumentieren („Peon schreibt immer UTF-8")?
-
-**PO-Empfehlung:** fixen, aber **nicht** in diesem Zyklus — Kandidat für Zyklus 2 zusammen mit
-den Read-Tools ([eclipse-read-tools.md](eclipse-read-tools.md)), weil dieselbe Tool-Familie.
+**Gefunden:** 2026-09-03. **Geklärt:** 2026-09-06 (Regression-Test mit ISO-8859-1-Fixture
+läuft grün auf unmodifiziertem Code, Commit `27c09ad`). `IoUtils` schreibt seit v0.1.0 (#3)
+mit `IFile#getCharset()` (UTF-8-Fallback für neue Dateien). Der Triage-Befund war ein
+Fixture-Artefakt: Charset wurde per prefs-Datei auf der Disk gesetzt, **ohne
+Workspace-Refresh** — der Workspace sah das UTF-8-Project-Default. Test bleibt als
+Regression-Guard.
+→ nach [resolved-points.md](resolved-points.md) überführt.
 
 ## ❓ Glossar eager laden?
 
@@ -64,15 +54,14 @@ Queries von Agenten generiert werden, wächst der Cache theoretisch unbegrenzt.
 eine Session erzeugt Dutzende, nicht Millionen. Kein Blocker fürs Release.
 **Bei Bedarf:** LRU mit fixer Obergrenze (z.B. 500). → Rückversicherung mit dem User steht aus.
 
-## ❓ PDE-Runner meldet Skips nicht separat
+## 🔒 PDE-Runner meldet Skips nicht separat — **erledigt 2026-09-06**
 
-**Gefunden:** 2026-09-03, Zyklus Test-Setup. `eclipseRunTests` gibt gelaufen/fehlgeschlagen
-aus, aber keine Skip-Zahl. [test-setup.md](test-setup.md) R5 („0 skipped") ist damit nur
-indirekt nachweisbar (Testzahl-Entwicklung, kein `@Ignore`/`Assume` neu).
-
-**Frage an den User:** Skip-Zahl im Tool-Report ergänzen (kleiner Fix in `EclipseRunTestTool`)
-— lohnt sich das, oder reicht die indirekte Kontrolle? **PO-Empfehlung:** kleiner Zusatz in
-Zyklus 2, kostet fast nichts und macht R5 prüfbar.
+`EclipseRunTestTool` meldet jetzt `Skipped: N` im Test-Report (Commit `11f34f6`, Branch
+`sm-fixes-2026-09-06`): JDT `testCaseFinished` feuert auch für Ignored-Tests mit
+`Result.IGNORED`, gezählt im bestehenden Listener; Maven-Semantik („Tests" = total inkl.
+skipped). Canary-Test mit temporärem `@Ignore` verifizierte die Zählung. R5-Einschränkung in
+[test-setup.md](test-setup.md) aufgelöst.
+→ nach [resolved-points.md](resolved-points.md) überführt.
 
 ## 🔒 `eclipseReadFile` kürzt lange Ausgaben — **widerlegt**
 
@@ -108,8 +97,9 @@ Nacharbeit billig macht. Eigene kleine Story nach dem Release.
 - **Bug 2:** Scrollverhalten in der Advanced Config wirkt komisch.
 - **Punkt 4 (Dropdown Look & Feel):** Der Custom-Dropdown-Umbau wurde am 2026-09-03
   **descoped** (brach den Build). Die Klassen `DropdownItem`/`DropdownTheme`/`DropdownButton`/
-  `DropdownPopup` liegen unbenutzt und kompilierbar im Plugin; kein Wiring in
-  `ActionsBarWidget`/`ModelComboWidget`. Wiederaufnahme = eigene Story nach dem Release.
+  `DropdownPopup` wurden am **2026-09-06 ersatzlos gelöscht** (Commit `a1d8d35`, Dead Code,
+  0 Referenzen, −646 Zeilen). Wiederaufnahme des Umbaus = eigene Story nach dem Release
+  (Klassen aus Git-Historie wiederherstellbar).
 
 **Frage an den User:** nach dem Release angehen — oder die Dropdown-Klassen ersatzlos löschen?
 

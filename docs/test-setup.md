@@ -98,10 +98,11 @@ Die Suite meldet am Ende `gelaufen / skipped / rot`. Ein Skip ist nur zulässig 
 technischem Grund (kein Display); jeder andere Skip gilt als Bug.
 → Referenz-Zahlen 2026-09-03 nach dem Zyklus: Plugin **141/141** grün.
 
-**Einschränkung (Werkzeug, nicht SOLL):** Der PDE-Runner weist Skips nicht separat aus — „0
-skipped" ist derzeit nicht maschinell verifizierbar, nur über die Testzahl-Entwicklung
-(126 → 141, keine gelöschte Testklasse, kein neues `@Ignore`/`Assume`). Verbessern des
-Runner-Reportings = eigener Punkt, siehe [open-points.md](open-points.md).
+**Einschränkung (Werkzeug, nicht SOLL, 2026-09-03):** ~~Der PDE-Runner weist Skips nicht
+separat aus — „0 skipped" ist derzeit nicht maschinell verifizierbar~~ **aufgelöst
+2026-09-06:** `EclipseRunTestTool` meldet jetzt `Skipped: N` (JDT `testCaseFinished` feuert
+auch für Ignored mit `Result.IGNORED`; Maven-Semantik: „Tests" = total inkl. skipped).
+Sichtbar ab dem ersten Lauf nach Eclipse-Restart (Report-Formatierung im laufenden Bundle).
 
 ## Mock-LLM-Server — verifizierte Wire-Formate (Night-Cycle A, 2026-08-30)
 

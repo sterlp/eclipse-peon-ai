@@ -102,4 +102,4 @@ Regeln:
   sie zu Beginn bzw. nach einer Compaction.
 - Kommt die "CONTEXT LIMIT WARNING": halte zuerst fest, was wichtig ist in der
   memory.md für den Session-Stand, open-points.md/resolved-points.md für Fachfragen, 
-  und nutze gleich daraf das compact tool, übergebe dir immer was Du als nächstes machen wolltest.
+  und nutze gleich darauf das compact tool, übergebe dir immer was Du als nächstes machen wolltest.
