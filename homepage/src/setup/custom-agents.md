@@ -144,6 +144,21 @@ allowlisting the read-only tool names.
 Pick your agent from the dropdown below the input, just like Peon-Dev or Peon-Plan. Each agent
 keeps its own conversation. Edits to an `AGENT.md` are picked up on the next config refresh.
 
+## Ordering the agent list in UI
+
+Place an `agent-order.txt` file next to the agent directories to control dropdown order. Each line
+is a Java regex matched against agent names, applied top-to-bottom. Agents matching an earlier line
+appear first; within a group they are sorted alphabetically. Unmatched agents are appended
+alphabetically at the end. Lines starting with `#` are comments; invalid regexes are skipped.
+
+```
+.*Manager.*
+.*Worker.*
+```
+
+This puts all `...Manager...` agents first, then `...Worker...`, then everyone else. If the file is
+absent it is auto-created with `^Peon-PO$` so **Peon-PO** appears first by default.
+
 ## Finding the exact tool names
 
 The authoritative, always-up-to-date list (including connected MCP tools) is behind the **🔨

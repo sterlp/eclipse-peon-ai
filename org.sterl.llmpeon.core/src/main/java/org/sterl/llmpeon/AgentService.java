@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -15,8 +14,8 @@ import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.agent.CustomAgent;
+import org.sterl.llmpeon.agentorder.AgentOrder;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
-import org.sterl.llmpeon.poagent.AiPoAgent;
 import org.sterl.llmpeon.prompt.PromptYmlParser;
 import org.sterl.llmpeon.prompt.model.SimplePromptFile;
 import org.sterl.llmpeon.tool.ToolService;
@@ -45,6 +44,8 @@ public class AgentService {
     private final Map<String, AiAgent> persistentAgents = new ConcurrentHashMap<>();
 
     private volatile Path agentsDirectory;
+
+    private final AgentOrder agentOrder = new AgentOrder();
 
     /** Non-null when a custom agent is selected; takes precedence over {@link #mode}. */
     @Getter @Setter
@@ -107,14 +108,13 @@ public class AgentService {
         agents.clear();
     }
 
-    /** Returns loaded agents when enabled, empty list when disabled: Peon-PO (Jon) first, rest by name. */
+    /**
+     * Returns loaded and persistent agents in configured order.
+     */
     public List<AiAgent> getAgents() {
         var all = new java.util.LinkedHashSet<AiAgent>(agents.values());
         all.addAll(persistentAgents.values());
-        return all.stream()
-                    .sorted(Comparator.<AiAgent>comparingInt(a -> a instanceof AiPoAgent ? 0 : 1)
-                            .thenComparing(AiAgent::getName))
-                    .toList();
+        return agentOrder.sort(all);
     }
 
     public int loadedAgentCount() {
@@ -159,8 +159,9 @@ public class AgentService {
     }
 
     public boolean reloadAgents() {
-        if (Files.isDirectory(agentsDirectory)) {
+        if (agentsDirectory != null && Files.isDirectory(agentsDirectory)) {
             try {
+                agentOrder.load(agentsDirectory);
                 reloadAgentConfig();
             } catch (IOException e) {
                 throw new RuntimeException("Failed to reload agents from: " + agentsDirectory, e);

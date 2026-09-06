@@ -28,6 +28,12 @@ class AgentServiceTest extends AbstractMemoryFileTest {
         Files.writeString(file, content);
         return file;
     }
+
+    private static Path writeAgentOrder(Path agentsDir, String content) throws Exception {
+        var file = agentsDir.resolve("agent-order.txt");
+        Files.writeString(file, content);
+        return file;
+    }
     
     private AgentService service;
     private final ToolService toolService = new ToolService();
@@ -167,6 +173,33 @@ class AgentServiceTest extends AbstractMemoryFileTest {
     }
 
     @Test
+    void refreshWithNullPathClearsAgents() throws Exception {
+        // GIVEN — a custom agent loaded over a real directory
+        writeAgent(tmp, "docs", """
+                ---
+                name: docs
+                ---
+                body
+                """);
+        service.reloadAgents();
+        assertThat(service.get("docs")).isPresent();
+
+        // WHEN
+        var result = service.refresh((Path) null);
+
+        // THEN — mirrors SkillService: clears agents, does not throw
+        assertThat(result).isTrue();
+        assertThat(service.get("docs")).isEmpty();
+    }
+
+    @Test
+    void constructorWithNullDirectoryDoesNotThrow() {
+        // WHEN / THEN
+        var subject = new AgentService(false, null, toolService, chatModel);
+        assertThat(subject.hasAgents()).isFalse();
+    }
+
+    @Test
     void customAgentHistoryPersistsWithoutHistoryFlag() throws Exception {
         // GIVEN — the injected stateDir (ADR-0041 R2) contains the history files directly
         var agentsDir = tmp.resolve("agents");
@@ -223,5 +256,57 @@ class AgentServiceTest extends AbstractMemoryFileTest {
                 .hasValue(stateDir.resolve("Peon-Plan-history.jsonl"));
         assertThat(subject.get("docs").orElseThrow().getMemory().historyFile())
                 .hasValue(stateDir.resolve("docs-history.jsonl"));
+    }
+
+    @Test
+    void defaultFileCreated() throws Exception {
+        // GIVEN — agents directory exists but no agent-order.txt
+        var agentsDir = tmp.resolve("agents");
+        Files.createDirectory(agentsDir);
+
+        // WHEN
+        new AgentService(false, agentsDir, toolService, chatModel);
+
+        // THEN
+        var orderFile = agentsDir.resolve("agent-order.txt");
+        assertThat(orderFile).exists();
+        var content = Files.readString(orderFile);
+        assertThat(content).contains("^Peon-PO$");
+    }
+
+    @Test
+    void getAgentsWithOrdering() throws Exception {
+        // GIVEN — custom ordering file with ^Peon-Dev$ first
+        var agentsDir = tmp.resolve("agents");
+        Files.createDirectory(agentsDir);
+        writeAgent(agentsDir, "Peon-Dev", """
+                ---
+                name: Peon-Dev
+                ---
+                body
+                """);
+        writeAgent(agentsDir, "Alpha-Agent", """
+                ---
+                name: Alpha-Agent
+                ---
+                body
+                """);
+        writeAgent(agentsDir, "Zeta-Agent", """
+                ---
+                name: Zeta-Agent
+                ---
+                body
+                """);
+
+        writeAgentOrder(agentsDir, """
+                ^Peon-Dev$
+                """);
+
+        // WHEN
+        var subject = new AgentService(false, agentsDir, toolService, chatModel);
+        var agents = subject.getAgents();
+
+        // THEN
+        assertThat(agents).extracting(AiAgent::getName).containsExactly("Peon-Dev", "Alpha-Agent", "Zeta-Agent");
     }
 }

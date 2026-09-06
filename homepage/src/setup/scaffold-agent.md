@@ -12,6 +12,7 @@ The **Scaffold Agent** is a built-in agent that helps you create and edit agents
 - **Edit** existing agents, skills, or commands
 - **List** all your agents, skills, and commands
 - **Delete** agents, skills, or commands
+- **Reorder** agents in the dropdown by maintaining `agents/agent-order.txt`
 
 ## How to use it
 
@@ -35,6 +36,10 @@ List all my skills
 
 ```
 Edit the CodeReviewer agent to also have the write tool
+```
+
+```
+Put my CodeReviewer agent at the top of the dropdown
 ```
 
 ## How it works

@@ -113,6 +113,7 @@ Customize Peon AI with agents, commands, and skills — change the base director
 ```text
 ~/.peon/
 ├── agents/               # Custom agents (each a folder with AGENT.md)
+│   ├── agent-order.txt   # Controls agent presentation order in UI
 │   ├── planner/          →  AGENT.md    (name, model, tools, handover: …)
 │   └── reviewer/         →  AGENT.md
 ├── commands/             # Slash-commands (/review, /plan, …)
