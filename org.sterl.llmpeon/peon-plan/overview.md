@@ -141,4 +141,73 @@ Commit: `inc-5: file copy tool for disk and eclipse families (R1–R4)`.
 4. Pfeil: **`->` im Code** (ASCII, konsistent mit Rename, testbar per String-Vergleich), Doc-SOLL `→` bleibt Semantik-Beschreibung → inc-5.
 5. Cross-Volume: **kein eigener Fallback-Code** — JDK `Files.move` ohne `ATOMIC_MOVE` deckt copy+delete ab → in inc-3 eingetragen.
 
-STATUS: COMPLETE
+## inc-6 — Review-Fixes zum Build `state-config-2026-09-06` (Delta-Plan) ✅ DONE (core 651/651 unverändert — keine Core-Änderung; Plugin 185/0, +2 Tests. **R1-Parität:** `IFile`-Guard in `eclipseCopyFile` (Reihenfolge Not found → **Not a file** → Target already exists), Tool-Beschreibung auf „file" zurechtgestutzt, Paritätstest `test_copyWorkspaceFile_failsWhenSourceIsDirectory`; rename unangetastet (R4). **Mutations-Nachweis:** `serviceStartMigratesLegacyState` (Legacy-Fixture VOR Service-Bau, THEN1 History im Metadata-State, THEN2 geladene Memory enthält Legacy-Marker — killt die Reihenfolge-Mutation; finally räumt Legacy+Metadata-Datei).)
+
+Review-Befunde (drei Seiten-Abgleich Plan↔Code, Docs↔Code, Docs↔Plan) — zwei Fixes, keine Core-Änderung (Core-Suite bleibt 651/651, nichts anzufassen).
+
+### 1. R1-Parität Copy-Quelle: Verzeichnis-Quelle ablehnen (Plugin-Familie)
+
+**Befund:** `EclipseWorkspaceWriteFileTool.eclipseCopyFile` (src/org/sterl/llmpeon/parts/tools/EclipseWorkspaceWriteFileTool.java:250-285) akzeptiert Verzeichnisse als Quelle — Tool-Beschreibung sagt „file or directory" (:250), `resource.copy` kopiert Ordner rekursiv (:280). SOLL docs/file-copy-tool.md R1: Quelle = Verzeichnis → Fehler; Core macht es richtig via `FileUtils.copy` „Not a file"-Guard (shared/FileUtils.java, Test `DiskFileWriteToolTest.copyFailsWhenSourceIsDirectory`, llmpeon-parent/…/tool/DiskFileWriteToolTest.java:339).
+
+Änderungen `EclipseWorkspaceWriteFileTool`:
+- Guard nach `var resource = source.get();` (:263), **vor** dem Target-Exists-Check (:264) — Reihenfolge exakt wie `FileUtils.copy`: Not found → **Not a file** → Target already exists:
+  ```java
+  if (!(resource instanceof IFile)) throw new IllegalArgumentException("Not a file: " + sourcePath);
+  ```
+  (`IFile` ist importiert, :6; `sourcePath` wie bei „Not found: " (:261) — familien-üblicher Workspace-Pfad; Testbarkeit per `contains("Not a file")`.)
+- Tool-Beschreibung (:250): „Copy a workspace file **or directory** to a new location." → „Copy a workspace **file** to a new location."
+
+Test plugin (`EclipseWorkspaceWriteFileToolTest.java`, nach `test_copyWorkspaceFile_failsWhenSourceMissing`, JUnit 4, try/fail/catch-Stil wie die Nachbar-Tests):
+- `test_copyWorkspaceFile_failsWhenSourceIsDirectory` — GIVEN Ordner via `eclipseWriteFile("/test_project/copyDirSrc/inner.txt", "x")` WHEN `eclipseCopyFile("/test_project/copyDirSrc", "/test_project/copyDirDst.txt")` THEN IllegalArgumentException mit „Not a file", Ziel NICHT erstellt (readTool → „No eclipse file found"), Quelle unverändert. **Kein manuelles Cleanup** — `eclipseWriteFile` legt copyDirSrc in `toDelete`, `AbstractIntegrationTest.after()` löscht rekursiv (verifiziert: `test_deleteResource_recursiveDirectory`); Ziel entsteht nie.
+- R3 „Target already exists" ist in der Plugin-Familie bereits gedeckt (Test `test_copyWorkspaceFile_failsWhenTargetExists`) — kein Fix.
+
+**Verifiziert, keine Änderung:** Homepage `/llmpeon-parent/homepage/src/setup/custom-agents.md:178` sagt bereits „**Copy** duplicates a file" ✅. `docs/file-copy-tool.md` R1 ist korrekt — Docs werden nie vom Dev geändert.
+
+### 2. Mutations-Nachweis Migration-Wiring: `serviceStartMigratesLegacyState`
+
+**Befund:** `PeonAiService`-Konstruktor (src/org/sterl/llmpeon/parts/ai/PeonAiService.java:133-138) ruft `StateMigration.migrate(config.stateDirectory(), stateDir)` **vor** `new AgentService(...)` (:140) — die Reihenfolge wird von keinem Test getötet (Mutation „Migration nach Store-Bau" überlebt; Folge: leere History im UI trotz migrierter Datei). Der optionale Plugin-Test aus inc-3 wurde nie gebaut.
+
+Test `PeonAiServiceTest` (nach `persistentAgentsLiveInWorkspaceMetadataState`, :533; JUnit 4; eigenes Service-Setup, NICHT das `@Before`-aiService — Fixture muss **vor** Konstruktion stehen, Memory-Regel 12):
+
+```java
+@Test public void serviceStartMigratesLegacyState() {
+    assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+    // GIVEN legacy ~/.peon/state mit Dev-History (Marker-Content) — VOR Service-Bau
+    var legacyRoot = Path.of(System.getProperty("java.io.tmpdir"), ".peon-migration-test-" + System.nanoTime());
+    var legacyState = legacyRoot.resolve("state");
+    var legacyFile = legacyState.resolve(AiDevAgent.NAME + "-history.jsonl"); // "Peon-Dev" — safeAgentName-identisch
+    new FileAgentHistoryStore(legacyFile).append(UserMessage.from("legacy-migration-marker-" + System.nanoTime()));
+    var marker = /* denselben Marker-String in eine Variable, s.u. */;
+    try {
+        var ccm = new ConfiguredChatModel(LlmConfig.builder()
+                .model("test").url("http://localhost:0")
+                .configDir(legacyRoot) // → config.stateDirectory() = legacyRoot/state
+                .build());
+        // WHEN Service bauen (Konstruktor: migrate VOR AgentService)
+        var service = new PeonAiService(() -> {}, null, null, null, ccm);
+        var expectedStateDir = Platform.getStateLocation(Platform.getBundle(PeonConstants.PLUGIN_ID))
+                .append("state").toFile().toPath();
+        var dev = service.getAgent(AiDevAgent.NAME).orElseThrow();
+        // THEN 1: History-Datei liegt im Metadata-State (R2)
+        assertTrue(dev.getMemory().historyFile().orElseThrow().startsWith(expectedStateDir));
+        // THEN 2 (Mutations-Killer): geladene Memory enthält den Legacy-Content —
+        // nur wahr, wenn migrate VOR dem Store-Bau lief
+        assertTrue(dev.getMemory().containsMessage(marker));
+    } finally {
+        // Memory-Regel 12: kein persistenter State hinterlassen
+        // 1) legacyRoot rekursiv löschen (Files.walk sorted reverse) — migration hat legacyState evtl. schon entfernt
+        // 2) Safety: Files.deleteIfExists(expectedStateDir.resolve("Peon-Dev-history.jsonl"))
+        //    (expectedStateDir nur einmal berechnen, im finally neu oder in Variable vor try)
+    }
+}
+```
+Details (verifiziert): `AiDevAgent.NAME` = „Peon-Dev" → Dateiname `Peon-Dev-history.jsonl` (safeAgentName lässt `[A-Za-z0-9._-]` unangetastet, `AbstractAgent.java:90-94`). `FileAgentHistoryStore.append` schreibt korrektes JSONL (Serializer, `FileAgentHistoryStore.java:42-50`); ein store-gebautes `UserMessage` lädt sauber zurück (`load()`, :26-40). `containsMessage(String)` existiert an `ThreadSafeMemory.java` (filtert User+Tool-Messages, toString-basiert) — Marker daher als Variable VOR dem try bauen und in beiden Stellen (append + Assertion) verwenden. Konstruktor-Pattern wie `newServiceWithPresenter` (:151-161) bzw. `beforeEach` (:66-72) — 5-arg-CTor, kein Presenter nötig. Kein `clearAll()` nötig (Service ist test-lokal); Datei-Delete im finally reicht.
+Imports: `dev.langchain4j.data.message.UserMessage`, `org.sterl.llmpeon.memory.FileAgentHistoryStore` (Core-Dependency, wie inc-2/3), `java.nio.file.Files`. Keine UI-Threads nötig (Konstruktor only, kein send).
+
+**Wiring-Referenz (unverändert, nur getestet):** migrate(:138) → AgentService(:140); `stateDir` = `Platform.getStateLocation(Platform.getBundle(PeonConstants.PLUGIN_ID)).append("state")` (:133-134).
+
+Commit: `inc-6: copy directory-guard parity + migration wiring test (review findings)`.
+
+Verifikation: core-Suite unverändert grün (651/651 — keine Core-Änderung); `eclipseBuildProject` über `org.sterl.llmpeon` + `org.sterl.llmpeon.test` VOR dem Plugin-Lauf; PDE-Suite komplett, erste Trust-Bestätigung abwarten, nicht parallel.
+
+STATUS: COMPLETE — alle Inkremente (inc-1 bis inc-6) gebaut & committed (Branch `state-config-2026-09-06`). Wartet auf PO-Review; `planImplemented` erst nach Review-Freigabe.

@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -32,6 +33,7 @@ import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.UserContext;
+import org.sterl.llmpeon.memory.FileAgentHistoryStore;
 import org.sterl.llmpeon.parts.PeonConstants;
 import org.sterl.llmpeon.parts.ai.PeonAiService;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
@@ -529,6 +531,70 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             assertTrue(agentName + " must be persistent", historyFile.isPresent());
             assertTrue(agentName + " history file must live under " + expectedStateDir,
                     historyFile.get().startsWith(expectedStateDir));
+        }
+    }
+
+    /**
+     * ADR-0041 R3 mutation proof: the one-shot migration must run in the {@link PeonAiService}
+     * constructor BEFORE the AgentService is built — otherwise the freshly-migrated history file is
+     * never loaded into the stores (empty UI history despite the file having moved). This plants a
+     * legacy {@code ~/.peon/state} history with a unique marker, builds the service, and asserts the
+     * loaded memory contains the marker — only true if the migration ran before the stores loaded.
+     */
+    @Test
+    public void serviceStartMigratesLegacyState() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        var expectedStateDir = Platform.getStateLocation(Platform.getBundle(PeonConstants.PLUGIN_ID))
+                .append("state").toFile().toPath();
+
+        // clear any leftover target so the legacy file is moved (not skipped) — no reliance on prior-run state
+        Files.deleteIfExists(expectedStateDir.resolve(AiDevAgent.NAME + "-history.jsonl"));
+
+        // GIVEN a legacy ~/.peon/state with a Dev history carrying a unique marker — BEFORE the service build
+        var marker = "legacy-migration-marker-" + System.nanoTime();
+        var legacyRoot = Path.of(System.getProperty("java.io.tmpdir"), ".peon-migration-test-" + System.nanoTime());
+        var legacyFile = legacyRoot.resolve("state").resolve(AiDevAgent.NAME + "-history.jsonl");
+        new FileAgentHistoryStore(legacyFile).append(UserMessage.from(marker));
+
+        try {
+            var ccm = new ConfiguredChatModel(LlmConfig.builder()
+                    .model("test")
+                    .url("http://localhost:0")
+                    .configDir(legacyRoot) // → config.stateDirectory() = legacyRoot/state
+                    .build());
+
+            // WHEN building the service (constructor: migrate runs BEFORE AgentService/store build)
+            var service = new PeonAiService(() -> {}, null, null, null, ccm);
+            var dev = service.getAgent(AiDevAgent.NAME).orElseThrow();
+
+            // THEN 1: the history file now lives in the workspace metadata state (R2)
+            assertTrue("Dev history must live under " + expectedStateDir,
+                    dev.getMemory().historyFile().orElseThrow().startsWith(expectedStateDir));
+
+            // THEN 2 (mutation killer): the loaded memory contains the legacy marker —
+            // only true if the migration ran before the stores loaded
+            assertTrue("Loaded memory must contain the legacy marker (migration ran before store build)",
+                    dev.getMemory().containsMessage(marker));
+        } finally {
+            // no persistent state behind (Memory rule 12): remove the legacy root + the migrated metadata file
+            deleteRecursively(legacyRoot);
+            Files.deleteIfExists(expectedStateDir.resolve(AiDevAgent.NAME + "-history.jsonl"));
+        }
+    }
+
+    /** Best-effort recursive delete for test scratch state (tmpdir / metadata state file). */
+    private static void deleteRecursively(Path root) {
+        if (root == null || !Files.exists(root)) return;
+        try (var paths = Files.walk(root)) {
+            paths.sorted(Comparator.reverseOrder()).forEach(p -> {
+                try {
+                    Files.deleteIfExists(p);
+                } catch (IOException ignored) {
+                }
+            });
+        } catch (IOException ignored) {
+            // best-effort cleanup — leaving scratch state behind is harmless
         }
     }
 

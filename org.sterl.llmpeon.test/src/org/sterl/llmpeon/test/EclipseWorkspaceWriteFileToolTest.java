@@ -236,6 +236,26 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
         assertTrue(readTool.eclipseReadFile("/test_project/no_such_dst.txt", 0, 0).contains("No eclipse file found"));
     }
 
+    @Test
+    public void test_copyWorkspaceFile_failsWhenSourceIsDirectory() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        // GIVEN a directory source (the inner file is auto-registered for cleanup)
+        tool.setCurrentProject(project);
+        eclipseWriteFile("/test_project/copyDirSrc/inner.txt", "x");
+
+        // WHEN copying the directory itself
+        try {
+            tool.eclipseCopyFile("/test_project/copyDirSrc", "/test_project/copyDirDst.txt");
+            fail("Should throw IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertTrue("Expected 'Not a file', was: " + e.getMessage(), e.getMessage().contains("Not a file"));
+        }
+
+        // THEN no target was created, source unchanged (R1 parity with FileUtils.copy)
+        assertTrue(readTool.eclipseReadFile("/test_project/copyDirDst.txt", 0, 0).contains("No eclipse file found"));
+        assertEquals("x", readTool.eclipseReadFile("/test_project/copyDirSrc/inner.txt", 0, 0));
+    }
+
     private ToolLoopRequest requestWith(AiMonitor monitor) {
         var model = LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", "http://localhost:9999").build();
         return ToolLoopRequest.builder()

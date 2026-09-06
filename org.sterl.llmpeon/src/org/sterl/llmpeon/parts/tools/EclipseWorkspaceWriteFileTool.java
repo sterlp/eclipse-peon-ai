@@ -247,7 +247,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         }
     }
 
-    @Tool("Copy a workspace file or directory to a new location. Creates target parent folders. The source is kept.")
+    @Tool("Copy a workspace file to a new location. Creates target parent folders. The source is kept.")
     public void eclipseCopyFile(
             @P(description = "existing workspace-relative path", name = "sourcePath") String sourcePath,
             @P(description = "target workspace-relative path", name = "targetPath") String targetPath) {
@@ -261,6 +261,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         if (source.isEmpty()) throw new IllegalArgumentException("Not found: " + sourcePath);
 
         var resource = source.get();
+        if (!(resource instanceof IFile)) throw new IllegalArgumentException("Not a file: " + sourcePath);
         if (EclipseUtil.resolveInEclipse(targetPath).isPresent()) {
             throw new IllegalArgumentException("Target already exists: " + targetPath);
         }
