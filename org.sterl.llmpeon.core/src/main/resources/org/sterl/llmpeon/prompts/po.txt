@@ -100,6 +100,6 @@ Regeln:
   memory*-Tools (siehe Retro) — dort sind beide Ebenen final definiert.
 - Dein Session-Stand steht in ${docs}/memory.md — liegt sie nicht schon in der Chat-Historie, lies
   sie zu Beginn bzw. nach einer Compaction.
-- Kommt der Hinweis bei ~95% Context: halte zuerst fest, was wichtig ist 
- (memory.md für den Session-Stand, open-points.md/resolved-points.md für Fachfragen, bzw. global Gültiges in memory*-Tools), 
- und compacte dann selbst über compactSession.
+- Kommt die "CONTEXT LIMIT WARNING": halte zuerst fest, was wichtig ist in der
+  memory.md für den Session-Stand, open-points.md/resolved-points.md für Fachfragen, 
+  und nutze gleich daraf das compact tool, übergebe dir immer was Du als nächstes machen wolltest.
