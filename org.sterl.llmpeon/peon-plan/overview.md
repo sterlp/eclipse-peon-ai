@@ -51,7 +51,7 @@
 
 Commit: `inc-2: agent history → workspace metadata state (ADR-0041 R2)`.
 
-## inc-3 — One-Shot-Migration (SOLL: R3)
+## inc-3 — One-Shot-Migration (SOLL: R3) ✅ DONE (core 642/642 + Plugin 180/0 grün; `StateMigration` pure NIO + injizierbarer `Mover`, Skip-bei-Ziel-Existenz, per-Entry-Errors gefangen, leeres Source-Dir entfernt, idempotent; Wiring `PeonAiService`-CTor vor `AgentService`; Homepage Skip+Log-Verhalten)
 
 **Neu:** `org.sterl.llmpeon.core/.../memory/StateMigration.java` (pure NIO, kein Eclipse).
 API: `static MigrationResult migrate(Path sourceDir, Path targetDir)` + Kern mit injizierbarem Mover (`UnaryOperator<Path>`/`BiFunction<Path,Path,Path>`) für den Fehler-Test.
@@ -80,7 +80,7 @@ Homepage: in `peon-memory.md` den Migrationssatz ergänzen (einmalig, automatisc
 
 Commit: `inc-3: one-shot migration ~/.peon/state → workspace metadata (ADR-0041 R3)`.
 
-## inc-4 — E5: Disk-Tool-Success-Messages = absoluter Pfad (SOLL: disk-file-write-tool.md)
+## inc-4 — E5: Disk-Tool-Success-Messages = absoluter Pfad (SOLL: disk-file-write-tool.md) ✅ DONE (core 646/646 + Plugin 180/0; DiskFileWriteTool write/delete/edit/rename Success-Messages = absoluter Pfad (resolved), AiFileUpdate-Diff-Header bleibt workingDir-relativ (PO); +4 Tests via CapturingMonitor, Homepage-Tip in setup/custom-agents.md)
 
 **IST:** `tool/tools/DiskFileWriteTool.java` meldet `workingDir.relativize(resolved)`.
 **SOLL:** Jede Disk-Tool-Success-Message mit Pfad meldet den **absoluten** Pfad (workingDir aufgelöst) — im Sync mit der Eclipse-Familie (diese meldet bereits `JdtUtil.pathOf(...)`/Workspace-Pfad; **nichts zu ändern**, nur Verifikation).

@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.tool;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -8,6 +9,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,6 +18,8 @@ import org.junit.jupiter.api.io.TempDir;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
+import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 
@@ -192,5 +197,93 @@ class DiskFileWriteToolTest {
     void write_withoutRequest_isUnrestricted() {
         tool.diskWriteFile("anywhere/file.txt", "x"); // no withToolRequest -> request == null
         assertTrue(Files.exists(tempDir.resolve("anywhere/file.txt")));
+    }
+
+    // ------------------------------------------------------------------ E5: success messages carry absolute paths
+
+    private ToolLoopRequest requestWith(AiMonitor monitor) {
+        var model = LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", "http://localhost:9999").build();
+        return ToolLoopRequest.builder()
+                .memory(new ThreadSafeMemory())
+                .chatModel(model)
+                .monitor(monitor)
+                .build();
+    }
+
+    private void runTool(ToolService ts, String name, String args, ToolLoopRequest req) {
+        var tr = ToolExecutionRequest.builder().id("1").name(name).arguments(args).build();
+        ts.execute(tr, req);
+    }
+
+    /** Captures TOOL chat messages so void tools' success messages can be asserted. */
+    private static final class CapturingMonitor implements AiMonitor {
+        final List<String> toolMessages = new ArrayList<>();
+        @Override
+        public void onChatResponse(SimpleMessage m) {
+            if (m.role() == SimpleMessage.Type.TOOL) toolMessages.add(m.message());
+        }
+    }
+
+    @Test
+    void writeMessageCarriesAbsolutePath() {
+        var ts = new ToolService(false);
+        ts.addTool(tool);
+        var monitor = new CapturingMonitor();
+        var req = requestWith(monitor);
+        var abs = tempDir.resolve("sub/x.txt");
+
+        // GIVEN a configured workingDir WHEN diskWriteFile succeeds THEN the Created message carries the absolute path
+        runTool(ts, "diskWriteFile", "{\"filePath\":\"sub/x.txt\",\"content\":\"c\"}", req);
+        assertThat(monitor.toolMessages).contains("Created file: " + abs);
+
+        // WHEN the same file is written again THEN the Updated message carries the absolute path
+        runTool(ts, "diskWriteFile", "{\"filePath\":\"sub/x.txt\",\"content\":\"c2\"}", req);
+        assertThat(monitor.toolMessages).contains("Updated file: " + abs);
+    }
+
+    @Test
+    void deleteMessageCarriesAbsolutePath() throws IOException {
+        Files.writeString(tempDir.resolve("gone.txt"), "x");
+        var ts = new ToolService(false);
+        ts.addTool(tool);
+        var monitor = new CapturingMonitor();
+        var req = requestWith(monitor);
+        var abs = tempDir.resolve("gone.txt");
+
+        // GIVEN workingDir tempDir WHEN diskDeleteFile succeeds THEN the message carries the absolute path
+        runTool(ts, "diskDeleteFile", "{\"filePath\":\"gone.txt\"}", req);
+        assertThat(monitor.toolMessages).contains("Deleted: " + abs);
+    }
+
+    @Test
+    void editResultCarriesAbsolutePath() throws IOException {
+        Files.writeString(tempDir.resolve("edit.txt"), "x\nx");
+        var ts = new ToolService(false);
+        ts.addTool(tool);
+        var req = requestWith(new CapturingMonitor());
+        var abs = tempDir.resolve("edit.txt");
+
+        // GIVEN workingDir tempDir WHEN diskEditFile succeeds THEN the (String) result carries the absolute path
+        var tr = ToolExecutionRequest.builder()
+                .id("1").name("diskEditFile")
+                .arguments("{\"filePath\":\"edit.txt\",\"oldString\":\"x\",\"newString\":\"y\"}")
+                .build();
+        var result = ts.execute(tr, req);
+        assertThat(result.text()).contains("replaced 2 occurrence(s) in " + abs);
+    }
+
+    @Test
+    void renameMessageCarriesAbsolutePaths() throws IOException {
+        Files.writeString(tempDir.resolve("orig.txt"), "data");
+        var ts = new ToolService(false);
+        ts.addTool(tool);
+        var monitor = new CapturingMonitor();
+        var req = requestWith(monitor);
+        var src = tempDir.resolve("orig.txt");
+        var dst = tempDir.resolve("moved/renamed.txt");
+
+        // GIVEN workingDir tempDir WHEN diskRenameResource succeeds THEN the message carries both absolute paths
+        runTool(ts, "diskRenameResource", "{\"sourcePath\":\"orig.txt\",\"targetPath\":\"moved/renamed.txt\"}", req);
+        assertThat(monitor.toolMessages).contains("Renamed " + src + " -> " + dst);
     }
 }

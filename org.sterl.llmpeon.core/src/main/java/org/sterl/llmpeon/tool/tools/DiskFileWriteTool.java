@@ -60,7 +60,7 @@ public class DiskFileWriteTool extends AbstractTool {
                 monitor.onFileUpdate(new AiFileUpdate(workingDir.relativize(resolved).toString(), oldContent, content));
             }
             
-            onTool((existed ? "Updated" : "Created") + " file: " + workingDir.relativize(resolved));
+            onTool((existed ? "Updated" : "Created") + " file: " + resolved);
         } catch (IOException e) {
             throw new RuntimeException("Failed to write " + filePath, e);
         }
@@ -85,7 +85,7 @@ public class DiskFileWriteTool extends AbstractTool {
             } else {
                 Files.delete(resolved);
             }
-            onTool("Deleted: " + workingDir.relativize(resolved));
+            onTool("Deleted: " + resolved);
         } catch (IOException e) {
             throw new RuntimeException("Failed to delete " + filePath, e);
         }
@@ -143,7 +143,7 @@ public class DiskFileWriteTool extends AbstractTool {
             monitor.onFileUpdate(result);
 
             var verb = newString.isEmpty() ? "deleted" : "replaced";
-            return verb + " " + edit.count() + " occurrence(s) in " + workingDir.relativize(resolved);
+            return verb + " " + edit.count() + " occurrence(s) in " + resolved;
         } catch (IOException e) {
             throw new RuntimeException("Failed to edit " + filePath, e);
         }
@@ -171,7 +171,7 @@ public class DiskFileWriteTool extends AbstractTool {
         try {
             if (target.getParent() != null) Files.createDirectories(target.getParent());
             Files.move(source, target);
-            onTool("Renamed " + workingDir.relativize(source) + " -> " + workingDir.relativize(target));
+            onTool("Renamed " + source + " -> " + target);
         } catch (IOException e) {
             throw new RuntimeException("Failed to rename " + sourcePath + " -> " + targetPath, e);
         }
