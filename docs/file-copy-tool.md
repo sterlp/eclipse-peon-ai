@@ -11,13 +11,16 @@ Familien. Ein Verhalten, eine Implementierung, konsistent in beiden Familien (AG
 
 ## Status
 
-❌ specified — Backlog, eigener Zyklus (nicht im Release).
+❌ specified — **E2E-Befunde (2026-09-06) aufgedeckt: SOLL erweitert um R5 + R6, Umsetzung im
+nächsten Zyklus.** Ursprüngliche Umsetzung (R1–R4) war gebaut, aber: Erfolgsmeldung landete
+nur im UI-Kanal (LLM sah langchain4j-`"Success"` statt `Copied <s> -> <t>`) und der
+Ziel-Pfad von eclipseCopyFile/eclipseRenameResource wurde gegen die Workspace-Root statt das
+Quellprojekt aufgelöst.
 
 ## Business Rules
 
 ### R1: Copy-Kern ✅
-`fileCopy(sourcePath, targetPath)` kopiert die Datei Byte-genau. Same-Tool-Familie wie
-`RenameResource` — gleiche Pfad-Resolution (workingDir-relativ bzw. workspace-relativ).
+`fileCopy(sourcePath, targetPath)` kopiert die Datei Byte-genau.
 
 - **GIVEN** existierende Datei `a.txt` **WHEN** `diskCopyFile("a.txt", "sub/b.txt")` **THEN**
   Kopie unter `sub/b.txt`, Original bleibt, Parent-Dirs werden angelegt (wie Rename)
@@ -47,3 +50,29 @@ Datenverlust.
 Copy+Delete als LLM-Folge hat eine Fehlerlücke (Copy ok, Delete fails → Duplikat) und ein
 LLM-assemblierter Move echo-t Content. Rename = atomic Move, Copy+Delete = der versammelte Move,
 wenn nötig.
+
+### R5: Qualified Paths Only 🔒 (User 2026-09-06, E2E-Befund 2)
+Copy und Rename verlangen **voll qualifizierte Pfade** für **Quelle UND Ziel**:
+- `diskCopyFile` / `diskRenameResource`: **absolute** Pfade (workingDir wird nicht angenommen)
+- `eclipseCopyFile` / `eclipseRenameResource`: **`/project/path`** (projekt-qualifiziert)
+
+Relativer Pfad → **Fehler**, der den Vertrag nennt (z.B. „Copy/Rename paths must be fully
+qualified — disk: absolute, eclipse: /project/path"). **WEIL:** Copy/Rename sind die einzigen
+Zwei-Pfad-Operationen; ein relativer Pfad ist nicht eindeutig (workingDir/Quellprojekt-Annahme
+kann falsch sein → stiller Falsch-Ort bzw. IllegalArgumentException). Read/Write/Edit bleiben
+bei ihrer bestehenden Domain-Basis-Resolution (Single-File-Ops = workingDir bzw.
+resolveInEclipse) — der Regel-Split ist: Cross-File-Ops = qualifiziert, Single-File-Ops = Domain-Basis.
+
+- **GIVEN** relativer Pfad (egal welche Familie, Quelle oder Ziel) **WHEN** Copy/Rename
+  **THEN** Fehler, der den qualified-paths-Vertrag nennt — keine stillen Auflösungs-Annahmen
+- **GIVEN** qualifizierte Pfade **WHEN** Copy/Rename **THEN** Verhalten wie R1–R4
+
+### R6: Erfolgsmeldung ist LLM-sichtbar 🔒 (User 2026-09-06, E2E-Befund 1)
+Copy-Tools geben `String` zurück (wie Edit/Delete-Tools derselben Familien) — niemals `void`.
+Das Tool-Result (nicht nur der UI-Monitor-Kanal) lautet `Copied <resolved-source> -> <resolved-target>`
+mit den **aufgelösten** Pfaden (Disk: absolut, Eclipse: `/project/path`).
+
+- **GIVEN** erfolgreicher Copy **WHEN** das LLM das Tool-Result liest **THEN** es sieht
+  `Copied <s> -> <t>` — nicht den generischen langchain4j-`"Success"` für void-Methoden
+- **GIVEN** erfolgreicher Rename **WHEN** Result **THEN** Rename-Result nennt ebenfalls
+  aufgelöste Quelle+Ziel (gleiche Sichtbarkeits-Regel)

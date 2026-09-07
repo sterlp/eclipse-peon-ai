@@ -150,7 +150,7 @@ public class DiskFileWriteTool extends AbstractTool {
     }
 
     @Tool("Rename or move a file or directory. Creates target parent folders.")
-    public void diskRenameResource(
+    public String diskRenameResource(
             @P(name = "sourcePath") String sourcePath,
             @P(name = "targetPath") String targetPath) {
 
@@ -171,14 +171,16 @@ public class DiskFileWriteTool extends AbstractTool {
         try {
             if (target.getParent() != null) Files.createDirectories(target.getParent());
             Files.move(source, target);
-            onTool("Renamed " + source + " -> " + target);
+            var result = "Renamed " + source + " -> " + target;
+            onTool(result);
+            return result;
         } catch (IOException e) {
             throw new RuntimeException("Failed to rename " + sourcePath + " -> " + targetPath, e);
         }
     }
 
     @Tool("Copy a file to a new location. Creates target parent folders. The original is kept; no overwrite.")
-    public void diskCopyFile(
+    public String diskCopyFile(
             @P(name = "sourcePath") String sourcePath,
             @P(name = "targetPath") String targetPath) {
 
@@ -194,7 +196,9 @@ public class DiskFileWriteTool extends AbstractTool {
             throw new IllegalArgumentException("Cannot resolve path: " + targetPath);
         }
         FileUtils.copy(source, target);
-        onTool("Copied " + source + " -> " + target);
+        var result = "Copied " + source + " -> " + target;
+        onTool(result);
+        return result;
     }
 
     @Tool("Insert text into a file at a specific position. Omit afterLine to append at end. 0 inserts before the first line (prepend). 1..n inserts after that line.")

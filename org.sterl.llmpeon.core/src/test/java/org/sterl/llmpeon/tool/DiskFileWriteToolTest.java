@@ -273,18 +273,18 @@ class DiskFileWriteToolTest {
     }
 
     @Test
-    void renameMessageCarriesAbsolutePaths() throws IOException {
+    void renameResultCarriesAbsolutePaths() throws IOException {
         Files.writeString(tempDir.resolve("orig.txt"), "data");
         var ts = new ToolService(false);
         ts.addTool(tool);
-        var monitor = new CapturingMonitor();
-        var req = requestWith(monitor);
         var src = tempDir.resolve("orig.txt");
         var dst = tempDir.resolve("moved/renamed.txt");
 
-        // GIVEN workingDir tempDir WHEN diskRenameResource succeeds THEN the message carries both absolute paths
-        runTool(ts, "diskRenameResource", "{\"sourcePath\":\"orig.txt\",\"targetPath\":\"moved/renamed.txt\"}", req);
-        assertThat(monitor.toolMessages).contains("Renamed " + src + " -> " + dst);
+        // GIVEN workingDir tempDir WHEN diskRenameResource succeeds THEN the LLM-visible result carries both absolute paths (R6)
+        var result = ts.execute(ToolExecutionRequest.builder().id("1").name("diskRenameResource")
+                .arguments("{\"sourcePath\":\"orig.txt\",\"targetPath\":\"moved/renamed.txt\"}").build(),
+                requestWith(new CapturingMonitor()));
+        assertThat(result.text()).contains("Renamed " + src + " -> " + dst);
     }
 
     // ------------------------------------------------------------------ Copy tool (file-copy-tool.md R1-R4)
@@ -294,15 +294,17 @@ class DiskFileWriteToolTest {
         Files.writeString(tempDir.resolve("a.txt"), "data");
         var ts = new ToolService(false);
         ts.addTool(tool);
-        var monitor = new CapturingMonitor();
         var src = tempDir.resolve("a.txt");
         var dst = tempDir.resolve("b.txt");
 
-        // GIVEN existing file a.txt WHEN diskCopyFile THEN a copy exists, original kept, R2 message "Copied <s> -> <t>"
-        runTool(ts, "diskCopyFile", "{\"sourcePath\":\"a.txt\",\"targetPath\":\"b.txt\"}", requestWith(monitor));
+        // GIVEN existing file a.txt WHEN diskCopyFile THEN a copy exists, original kept,
+        // R6 LLM-visible result "Copied <s> -> <t>" (would be the "Success" literal before)
+        var result = ts.execute(ToolExecutionRequest.builder().id("1").name("diskCopyFile")
+                .arguments("{\"sourcePath\":\"a.txt\",\"targetPath\":\"b.txt\"}").build(),
+                requestWith(new CapturingMonitor()));
         assertTrue(Files.exists(src));
         assertEquals("data", Files.readString(dst));
-        assertThat(monitor.toolMessages).contains("Copied " + src + " -> " + dst);
+        assertThat(result.text()).contains("Copied " + src + " -> " + dst);
     }
 
     @Test

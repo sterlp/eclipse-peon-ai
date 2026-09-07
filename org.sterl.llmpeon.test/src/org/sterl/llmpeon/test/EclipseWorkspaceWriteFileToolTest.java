@@ -8,19 +8,11 @@ import static org.junit.Assume.assumeTrue;
 
 import java.nio.file.Files;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.junit.Test;
-import org.sterl.llmpeon.ai.AiProvider;
-import org.sterl.llmpeon.ai.LlmConfig;
-import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
-import org.sterl.llmpeon.shared.AiMonitor;
-import org.sterl.llmpeon.tool.ToolLoopRequest;
-import org.sterl.llmpeon.tool.model.SimpleMessage;
 
 public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
 
@@ -212,18 +204,36 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
         var src = "/test_project/copySrc.txt";
         eclipseWriteFile(src, "data");
         var dst = "/test_project/sub/copyDst_" + System.nanoTime() + ".txt";
-        var sink = new ArrayList<String>();
-        tool.withToolRequest(requestWith(monitor(sink)));
 
         // WHEN copy into a nested path
-        tool.eclipseCopyFile(src, dst);
+        var result = tool.eclipseCopyFile(src, dst);
 
-        // THEN copy has the same content, original is kept, R2 message form "Copied <s> -> <t>"
+        // THEN copy has the same content, original is kept, R6 result is "Copied <s> -> <t>" with resolved /project paths
         assertEquals("data", readTool.eclipseReadFile(dst, 0, 0));
         assertEquals("data", readTool.eclipseReadFile(src, 0, 0));
-        assertTrue("R2 message form, was: " + sink, sink.stream().anyMatch(m -> m.contains(" -> ")));
+        assertEquals("Copied " + src + " -> " + dst, result);
 
         tool.eclipseDeleteResource(dst); // the copy is not auto-tracked by eclipseWriteFile
+    }
+
+    @Test
+    public void test_renameWorkspaceFile_resultCarriesResolvedPaths() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        // GIVEN an existing file
+        tool.setCurrentProject(project);
+        var src = "/test_project/renameSrc_" + System.nanoTime() + ".txt";
+        eclipseWriteFile(src, "data");
+        // nested target: a top-level target hits the pre-existing IWorkspaceRoot.getFolder 1-segment
+        // limitation (file-copy-tool.md R5 — fixed in increment 2)
+        var dst = "/test_project/sub/renameDst_" + System.nanoTime() + ".txt";
+
+        // WHEN rename to a nested path in the same project
+        var result = tool.eclipseRenameResource(src, dst);
+
+        // THEN R6 result is "Renamed <s> -> <t>" with resolved /project paths, file moved
+        assertEquals("Renamed " + src + " -> " + dst, result);
+        assertEquals("data", readTool.eclipseReadFile(dst, 0, 0));
+        assertTrue(readTool.eclipseReadFile(src, 0, 0).contains("No eclipse file found"));
     }
 
     @Test
@@ -283,21 +293,4 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
         assertEquals("x", readTool.eclipseReadFile("/test_project/copyDirSrc/inner.txt", 0, 0));
     }
 
-    private ToolLoopRequest requestWith(AiMonitor monitor) {
-        var model = LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", "http://localhost:9999").build();
-        return ToolLoopRequest.builder()
-                .memory(new ThreadSafeMemory())
-                .chatModel(model)
-                .monitor(monitor)
-                .build();
-    }
-
-    private AiMonitor monitor(List<String> sink) {
-        return new AiMonitor() {
-            @Override
-            public void onChatResponse(SimpleMessage m) {
-                if (m.role() == SimpleMessage.Type.TOOL) sink.add(m.message());
-            }
-        };
-    }
 }

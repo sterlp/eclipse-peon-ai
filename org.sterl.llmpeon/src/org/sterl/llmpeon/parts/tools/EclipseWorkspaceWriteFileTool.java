@@ -211,7 +211,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
     }
 
     @Tool("Rename or move a workspace file or directory. Creates target parent folders.")
-    public void eclipseRenameResource(
+    public String eclipseRenameResource(
             @P(description = "existing workspace-relative path", name = "sourcePath") String sourcePath,
             @P(description = "new workspace-relative path", name = "targetPath") String targetPath) {
 
@@ -241,14 +241,16 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
                 IoUtils.ensureFolders(parent, getProgressMonitor());
             }
             resource.move(destPath, IResource.KEEP_HISTORY, getProgressMonitor());
-            onTool("Renamed " + sourcePath + " -> " + destPath.toPortableString());
+            var result = "Renamed " + JdtUtil.pathOf(resource) + " -> " + destPath.toPortableString();
+            onTool(result);
+            return result;
         } catch (CoreException e) {
             throw new RuntimeException("Failed to rename " + sourcePath + " -> " + targetPath, e);
         }
     }
 
     @Tool("Copy a workspace file to a new location. Creates target parent folders. The source is kept.")
-    public void eclipseCopyFile(
+    public String eclipseCopyFile(
             @P(description = "existing workspace-relative path", name = "sourcePath") String sourcePath,
             @P(description = "target workspace-relative path", name = "targetPath") String targetPath) {
 
@@ -279,7 +281,9 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
                 IoUtils.ensureFolders(parent, getProgressMonitor());
             }
             resource.copy(destPath, IResource.KEEP_HISTORY, getProgressMonitor());
-            onTool("Copied " + sourcePath + " -> " + destPath.toPortableString());
+            var result = "Copied " + JdtUtil.pathOf(resource) + " -> " + destPath.toPortableString();
+            onTool(result);
+            return result;
         } catch (CoreException e) {
             throw new RuntimeException("Failed to copy " + sourcePath + " -> " + targetPath, e);
         }
