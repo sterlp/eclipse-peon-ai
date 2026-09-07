@@ -26,6 +26,7 @@ import org.sterl.llmpeon.shared.OnPartialAiResponse;
 import org.sterl.llmpeon.shared.OnPartialAiResponse.Type;
 import org.sterl.llmpeon.parts.widget.model.HideLiveStatusCommand;
 import org.sterl.llmpeon.parts.widget.model.LiveStatusCommand;
+import org.sterl.llmpeon.parts.widget.model.ScrollToBottomCommand;
 import org.sterl.llmpeon.parts.widget.model.SetThemeCommand;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.model.ToSimpleMessage;
@@ -188,6 +189,27 @@ public class ChatMarkdownWidget extends Composite {
         postMessage(msg);
     }
 
+
+    public void hideLiveStatus() {
+        postMessage(HideLiveStatusCommand.INSTANCE);
+    }
+
+    /**
+     * Scrolls the chat to the bottom. Used after the question widget appears: the question
+     * message is scrolled into view before the widget grows, which shrinks the viewport and
+     * pushes the last lines of the question out of sight (R-UI1).
+     */
+    public void scrollToBottom() {
+        postMessage(ScrollToBottomCommand.INSTANCE);
+    }
+    /**
+     * Scrolls the chat to the bottom. Used after the question widget appears: the question
+     * message is scrolled into view before the widget grows, which shrinks the viewport and
+     * pushes the last lines of the question out of sight (R-UI1).
+     */
+    public void scrollToBottom() {
+        postMessage(ScrollToBottomCommand.INSTANCE);
+    }
     public void hideLiveStatus() {
         postMessage(HideLiveStatusCommand.INSTANCE);
     }

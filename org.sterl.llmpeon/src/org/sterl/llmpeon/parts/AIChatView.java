@@ -643,6 +643,9 @@ public class AIChatView implements EclipseAiMonitor {
             });
             inputBlock.layout(true, true);
             inputBlock.getParent().layout(new Control[]{ inputBlock });
+            // The question message scrolled to the bottom before the widget grew — the layout
+            // shrunk the chat viewport since, so scroll again or the last lines are covered (R-UI1).
+            chatHistory.scrollToBottom();
         });
     }
 

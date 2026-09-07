@@ -345,6 +345,10 @@
             }
             return self.renderToken(tokens, idx, options, env);
         };
+        function scrollToBottom() {
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+
         function toolMessage(message) {
             if (!message) return;
             const container = document.getElementById("chat");
@@ -360,7 +364,7 @@
                 div.innerHTML = message;
                 container.appendChild(div);
             }
-            window.scrollTo(0, document.body.scrollHeight);
+            scrollToBottom();
         }
 
 
@@ -391,7 +395,7 @@
 
             // Scroll page to bottom after live preview becomes visible
             if (wasHidden) {
-                window.scrollTo(0, document.body.scrollHeight);
+                scrollToBottom();
             }
         }
 
@@ -413,7 +417,7 @@
                 div.innerHTML = md.render(message.message ?? "");
                 container.appendChild(div);
             }
-            window.scrollTo(0, document.body.scrollHeight);
+            scrollToBottom();
         }
 
         document.addEventListener("click", e => {
@@ -487,7 +491,7 @@
                 colorScheme: document.body.getAttribute('data-peon-theme') || 'light'
             });
             diff2htmlUi.draw();
-            window.scrollTo(0, document.body.scrollHeight);
+            scrollToBottom();
         }
 
         function clearMessages() {
@@ -511,6 +515,9 @@
                         break;
                     case "setTheme":
                         setTheme(event.data.theme);
+                        break;
+                    case "scrollToBottom":
+                        scrollToBottom();
                         break;
                 }
             } else if (event.data.role) {
