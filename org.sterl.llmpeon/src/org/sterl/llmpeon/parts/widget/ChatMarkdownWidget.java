@@ -189,7 +189,6 @@ public class ChatMarkdownWidget extends Composite {
         postMessage(msg);
     }
 
-
     public void hideLiveStatus() {
         postMessage(HideLiveStatusCommand.INSTANCE);
     }
@@ -201,17 +200,6 @@ public class ChatMarkdownWidget extends Composite {
      */
     public void scrollToBottom() {
         postMessage(ScrollToBottomCommand.INSTANCE);
-    }
-    /**
-     * Scrolls the chat to the bottom. Used after the question widget appears: the question
-     * message is scrolled into view before the widget grows, which shrinks the viewport and
-     * pushes the last lines of the question out of sight (R-UI1).
-     */
-    public void scrollToBottom() {
-        postMessage(ScrollToBottomCommand.INSTANCE);
-    }
-    public void hideLiveStatus() {
-        postMessage(HideLiveStatusCommand.INSTANCE);
     }
 
     public void onStreamingChunk(OnPartialAiResponse r) {
