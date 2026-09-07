@@ -282,7 +282,7 @@ class DiskFileWriteToolTest {
 
         // GIVEN workingDir tempDir WHEN diskRenameResource succeeds THEN the LLM-visible result carries both absolute paths (R6)
         var result = ts.execute(ToolExecutionRequest.builder().id("1").name("diskRenameResource")
-                .arguments("{\"sourcePath\":\"orig.txt\",\"targetPath\":\"moved/renamed.txt\"}").build(),
+                .arguments("{\"sourcePath\":\"" + src + "\",\"targetPath\":\"" + dst + "\"}").build(),
                 requestWith(new CapturingMonitor()));
         assertThat(result.text()).contains("Renamed " + src + " -> " + dst);
     }
@@ -300,7 +300,7 @@ class DiskFileWriteToolTest {
         // GIVEN existing file a.txt WHEN diskCopyFile THEN a copy exists, original kept,
         // R6 LLM-visible result "Copied <s> -> <t>" (would be the "Success" literal before)
         var result = ts.execute(ToolExecutionRequest.builder().id("1").name("diskCopyFile")
-                .arguments("{\"sourcePath\":\"a.txt\",\"targetPath\":\"b.txt\"}").build(),
+                .arguments("{\"sourcePath\":\"" + src + "\",\"targetPath\":\"" + dst + "\"}").build(),
                 requestWith(new CapturingMonitor()));
         assertTrue(Files.exists(src));
         assertEquals("data", Files.readString(dst));
@@ -314,7 +314,9 @@ class DiskFileWriteToolTest {
         ts.addTool(tool);
 
         // GIVEN existing file WHEN copy into a nested path THEN parent dirs are created (R1, like rename)
-        runTool(ts, "diskCopyFile", "{\"sourcePath\":\"a.txt\",\"targetPath\":\"sub/b.txt\"}", requestWith(new CapturingMonitor()));
+        runTool(ts, "diskCopyFile",
+                "{\"sourcePath\":\"" + tempDir.resolve("a.txt") + "\",\"targetPath\":\"" + tempDir.resolve("sub/b.txt") + "\"}",
+                requestWith(new CapturingMonitor()));
         assertEquals("data", Files.readString(tempDir.resolve("sub/b.txt")));
         assertTrue(Files.exists(tempDir.resolve("a.txt")));
     }
@@ -325,7 +327,8 @@ class DiskFileWriteToolTest {
         Files.writeString(tempDir.resolve("b.txt"), "existing");
 
         // GIVEN target already exists WHEN copy THEN error, source + target unchanged (R3 no overwrite)
-        assertThrows(IllegalArgumentException.class, () -> tool.diskCopyFile("a.txt", "b.txt"));
+        assertThrows(IllegalArgumentException.class,
+                () -> tool.diskCopyFile(tempDir.resolve("a.txt").toString(), tempDir.resolve("b.txt").toString()));
         assertEquals("data", Files.readString(tempDir.resolve("a.txt")));
         assertEquals("existing", Files.readString(tempDir.resolve("b.txt")));
     }
@@ -333,7 +336,8 @@ class DiskFileWriteToolTest {
     @Test
     void copyFailsWhenSourceMissing() {
         // GIVEN no source file WHEN copy THEN "Not found" error
-        var ex = assertThrows(IllegalArgumentException.class, () -> tool.diskCopyFile("nope.txt", "out.txt"));
+        var ex = assertThrows(IllegalArgumentException.class,
+                () -> tool.diskCopyFile(tempDir.resolve("nope.txt").toString(), tempDir.resolve("out.txt").toString()));
         assertTrue(ex.getMessage().contains("Not found"));
     }
 
@@ -342,7 +346,54 @@ class DiskFileWriteToolTest {
         Files.createDirectories(tempDir.resolve("somedir"));
 
         // GIVEN source is a directory WHEN copy THEN "Not a file" error (no recursive dir copy in MVP)
-        var ex = assertThrows(IllegalArgumentException.class, () -> tool.diskCopyFile("somedir", "out.txt"));
+        var ex = assertThrows(IllegalArgumentException.class,
+                () -> tool.diskCopyFile(tempDir.resolve("somedir").toString(), tempDir.resolve("out.txt").toString()));
         assertTrue(ex.getMessage().contains("Not a file"));
+    }
+
+    // ------------------------------------------------------------------ R5: fully qualified paths only
+
+    @Test
+    void copyRejectsRelativeSourcePath() throws IOException {
+        Files.writeString(tempDir.resolve("a.txt"), "data");
+
+        // GIVEN a relative source path WHEN diskCopyFile THEN contract error, no operation
+        var ex = assertThrows(IllegalArgumentException.class,
+                () -> tool.diskCopyFile("a.txt", tempDir.resolve("b.txt").toString()));
+        assertThat(ex.getMessage()).contains("must be fully qualified").contains("(got: a.txt)");
+        assertFalse(Files.exists(tempDir.resolve("b.txt")));
+    }
+
+    @Test
+    void copyRejectsRelativeTargetPath() throws IOException {
+        Files.writeString(tempDir.resolve("a.txt"), "data");
+
+        // GIVEN a relative target path WHEN diskCopyFile THEN contract error, no operation
+        var ex = assertThrows(IllegalArgumentException.class,
+                () -> tool.diskCopyFile(tempDir.resolve("a.txt").toString(), "b.txt"));
+        assertThat(ex.getMessage()).contains("must be fully qualified").contains("(got: b.txt)");
+        assertFalse(Files.exists(tempDir.resolve("b.txt")));
+    }
+
+    @Test
+    void renameRejectsRelativeSourcePath() throws IOException {
+        Files.writeString(tempDir.resolve("a.txt"), "data");
+
+        // GIVEN a relative source path WHEN diskRenameResource THEN contract error, source untouched
+        var ex = assertThrows(IllegalArgumentException.class,
+                () -> tool.diskRenameResource("a.txt", tempDir.resolve("b.txt").toString()));
+        assertThat(ex.getMessage()).contains("must be fully qualified").contains("(got: a.txt)");
+        assertTrue(Files.exists(tempDir.resolve("a.txt")));
+    }
+
+    @Test
+    void renameRejectsRelativeTargetPath() throws IOException {
+        Files.writeString(tempDir.resolve("a.txt"), "data");
+
+        // GIVEN a relative target path WHEN diskRenameResource THEN contract error, source untouched
+        var ex = assertThrows(IllegalArgumentException.class,
+                () -> tool.diskRenameResource(tempDir.resolve("a.txt").toString(), "b.txt"));
+        assertThat(ex.getMessage()).contains("must be fully qualified").contains("(got: b.txt)");
+        assertTrue(Files.exists(tempDir.resolve("a.txt")));
     }
 }

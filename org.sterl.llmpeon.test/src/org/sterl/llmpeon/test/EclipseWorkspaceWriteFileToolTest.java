@@ -223,8 +223,7 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
         tool.setCurrentProject(project);
         var src = "/test_project/renameSrc_" + System.nanoTime() + ".txt";
         eclipseWriteFile(src, "data");
-        // nested target: a top-level target hits the pre-existing IWorkspaceRoot.getFolder 1-segment
-        // limitation (file-copy-tool.md R5 — fixed in increment 2)
+        // nested target (top-level targets are covered by test_renameWorkspaceFile_intoProjectRoot)
         var dst = "/test_project/sub/renameDst_" + System.nanoTime() + ".txt";
 
         // WHEN rename to a nested path in the same project
@@ -291,6 +290,103 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
         // THEN no target was created, source unchanged (R1 parity with FileUtils.copy)
         assertTrue(readTool.eclipseReadFile("/test_project/copyDirDst.txt", 0, 0).contains("No eclipse file found"));
         assertEquals("x", readTool.eclipseReadFile("/test_project/copyDirSrc/inner.txt", 0, 0));
+    }
+
+    // ------------------------------------------------------------------ R5: fully qualified paths only
+
+    @Test
+    public void test_copyWorkspaceFile_rejectsRelativePaths() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        // GIVEN an existing file
+        tool.setCurrentProject(project);
+        var src = "/test_project/relCopySrc_" + System.nanoTime() + ".txt";
+        eclipseWriteFile(src, "data");
+
+        // WHEN copy with a relative source or a relative target — the validator must fire BEFORE resolution
+        try {
+            tool.eclipseCopyFile("test_project/relCopySrc.txt", "/test_project/relCopyDst1.txt");
+            fail("Should throw IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertTrue("Expected contract error, was: " + e.getMessage(), e.getMessage().contains("must be fully qualified"));
+        }
+        try {
+            tool.eclipseCopyFile(src, "test_project/relCopyDst2.txt");
+            fail("Should throw IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertTrue("Expected contract error, was: " + e.getMessage(), e.getMessage().contains("must be fully qualified"));
+        }
+
+        // THEN no operation happened
+        assertTrue(readTool.eclipseReadFile("/test_project/relCopyDst1.txt", 0, 0).contains("No eclipse file found"));
+        assertTrue(readTool.eclipseReadFile("/test_project/relCopyDst2.txt", 0, 0).contains("No eclipse file found"));
+        assertEquals("data", readTool.eclipseReadFile(src, 0, 0));
+    }
+
+    @Test
+    public void test_renameWorkspaceFile_rejectsRelativePaths() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        // GIVEN an existing file
+        tool.setCurrentProject(project);
+        var src = "/test_project/relRenameSrc_" + System.nanoTime() + ".txt";
+        eclipseWriteFile(src, "data");
+
+        // WHEN rename with a relative source or a relative target — the validator must fire BEFORE resolution
+        try {
+            tool.eclipseRenameResource("test_project/relRenameSrc.txt", "/test_project/relRenameDst1.txt");
+            fail("Should throw IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertTrue("Expected contract error, was: " + e.getMessage(), e.getMessage().contains("must be fully qualified"));
+        }
+        try {
+            tool.eclipseRenameResource(src, "test_project/relRenameDst2.txt");
+            fail("Should throw IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertTrue("Expected contract error, was: " + e.getMessage(), e.getMessage().contains("must be fully qualified"));
+        }
+
+        // THEN no operation happened
+        assertEquals("data", readTool.eclipseReadFile(src, 0, 0));
+        assertTrue(readTool.eclipseReadFile("/test_project/relRenameDst1.txt", 0, 0).contains("No eclipse file found"));
+        assertTrue(readTool.eclipseReadFile("/test_project/relRenameDst2.txt", 0, 0).contains("No eclipse file found"));
+    }
+
+    @Test
+    public void test_copyWorkspaceFile_intoProjectRoot() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        // GIVEN an existing file
+        tool.setCurrentProject(project);
+        var src = "/test_project/copyRootSrc_" + System.nanoTime() + ".txt";
+        eclipseWriteFile(src, "data");
+        var dst = "/test_project/copyRootDst_" + System.nanoTime() + ".txt";
+
+        // WHEN copy directly into the project root — the parent is the project itself (1 segment),
+        // which crashed the old IWorkspaceRoot.getFolder(destPath.removeLastSegments(1)) call
+        var result = tool.eclipseCopyFile(src, dst);
+
+        // THEN copy exists, original kept, R6 result
+        assertEquals("Copied " + src + " -> " + dst, result);
+        assertEquals("data", readTool.eclipseReadFile(dst, 0, 0));
+        assertEquals("data", readTool.eclipseReadFile(src, 0, 0));
+
+        tool.eclipseDeleteResource(dst);
+    }
+
+    @Test
+    public void test_renameWorkspaceFile_intoProjectRoot() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        // GIVEN an existing file in a subfolder
+        tool.setCurrentProject(project);
+        var src = "/test_project/sub/renameRootSrc_" + System.nanoTime() + ".txt";
+        eclipseWriteFile(src, "data");
+        var dst = "/test_project/renameRootDst_" + System.nanoTime() + ".txt";
+
+        // WHEN rename into the project root (parent = project itself)
+        var result = tool.eclipseRenameResource(src, dst);
+
+        // THEN file moved, R6 result
+        assertEquals("Renamed " + src + " -> " + dst, result);
+        assertEquals("data", readTool.eclipseReadFile(dst, 0, 0));
+        assertTrue(readTool.eclipseReadFile(src, 0, 0).contains("No eclipse file found"));
     }
 
 }

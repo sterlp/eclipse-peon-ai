@@ -8,6 +8,7 @@ import org.sterl.llmpeon.shared.AiMonitor.AiFileUpdate;
 import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.FileLines;
 import org.sterl.llmpeon.shared.FileUtils;
+import org.sterl.llmpeon.shared.QualifiedPathValidator;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -149,13 +150,15 @@ public class DiskFileWriteTool extends AbstractTool {
         }
     }
 
-    @Tool("Rename or move a file or directory. Creates target parent folders.")
+    @Tool("Rename or move a file or directory. Creates target parent folders. Paths must be absolute.")
     public String diskRenameResource(
-            @P(name = "sourcePath") String sourcePath,
-            @P(name = "targetPath") String targetPath) {
+            @P(name = "sourcePath", description = "absolute source path") String sourcePath,
+            @P(name = "targetPath", description = "absolute target path") String targetPath) {
 
         ArgsUtil.requireNonBlank(sourcePath, "sourcePath");
         ArgsUtil.requireNonBlank(targetPath, "targetPath");
+        QualifiedPathValidator.requireQualifiedDisk("Rename", sourcePath);
+        QualifiedPathValidator.requireQualifiedDisk("Rename", targetPath);
 
         Path source = resolve(sourcePath);
         if (source == null || !Files.exists(source)) {
@@ -179,13 +182,15 @@ public class DiskFileWriteTool extends AbstractTool {
         }
     }
 
-    @Tool("Copy a file to a new location. Creates target parent folders. The original is kept; no overwrite.")
+    @Tool("Copy a file to a new location. Creates target parent folders. The original is kept; no overwrite. Paths must be absolute.")
     public String diskCopyFile(
-            @P(name = "sourcePath") String sourcePath,
-            @P(name = "targetPath") String targetPath) {
+            @P(name = "sourcePath", description = "absolute source path") String sourcePath,
+            @P(name = "targetPath", description = "absolute target path") String targetPath) {
 
         ArgsUtil.requireNonBlank(sourcePath, "sourcePath");
         ArgsUtil.requireNonBlank(targetPath, "targetPath");
+        QualifiedPathValidator.requireQualifiedDisk("Copy", sourcePath);
+        QualifiedPathValidator.requireQualifiedDisk("Copy", targetPath);
 
         Path source = resolve(sourcePath);
         if (source == null) {

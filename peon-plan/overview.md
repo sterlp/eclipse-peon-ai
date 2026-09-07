@@ -12,7 +12,9 @@ Verifizierte IST-Lage (2026-09-06, durch Da Mek):
 - `eclipseRenameResource` + `diskRenameResource`: prüfen — falls void → String mit aufgelöster Quelle+Ziel (R6 gilt für Rename ebenso); falls schon String: nichts tun (verifizieren).
 - Tests (GIVEN/WHEN/THEN, AssertJ in core / JUnit4 im Plugin): erfolgreicher Copy/Rename → Result enthält aufgelöste Pfade + ` -> `. Bestehende void/Success-Tests anpassen.
 
-## Inkrement 2 — R5: Qualified Paths Only
+## Inkrement 2 — R5: Qualified Paths Only ✅ (inc-2)
+- Status: DONE — core `QualifiedPathValidator` (eine Implementierung, beide Familien): disk = absolute; eclipse = `/project/path` (≥ 2 Segmente, Segment 1 = existierendes Projekt, via `EclipseUtil.isExistingProject`). Angewandt in allen 4 Tools VOR jeder Auflösung (sourcePath + targetPath) → Vertrag-Fehler `Copy/Rename paths must be fully qualified — disk: absolute, eclipse: /project/path (got: …)`, keine Datei-Operation. Ziel-Resolution vereinfacht (alter Workspace-Root-Fallback entfällt); getFolder-1-Segment-Crash gefixt via `ensureParentFolders` (Parent = Projekt selbst → kein getFolder). @Tool/@P-Descriptions beider Familien = qualifizierter Pfad-Vertrag.
+- Tests: Core 678/0 (+11: 4 Relative-Rejection in DiskFileWriteToolTest, 7 QualifiedPathValidatorTest), Plugin 191/0 (+4: 2 Relative-Rejection, 2 Project-Root-Targets — die letzten red vor dem Fix, getFolder-IAE). Bestehende relative Copy/Rename-Tests → absolute Pfade (SOLL, kein weaken).
 - Neuer kleiner Validator im core (eine Implementierung, keine Familie-Divergenz): qualifiziert = Disk `isAbsolute()`; Eclipse mind. 2 Segmente und Segment 0 = existierendes Projekt (`/project/path`).
 - Angewandt in diskCopyFile, diskRenameResource, eclipseCopyFile, eclipseRenameResource — sourcePath UND targetPath, VOR jeder Auflösung. Relativ → Fehler `Copy/Rename paths must be fully qualified — disk: absolute, eclipse: /project/path (got: <pfad>)`, KEINE Datei-Operation.
 - eclipseCopyFile-Ziel-Resolution reparieren: Ziel ist jetzt /project/path → alter Workspace-Root-Fallback (:270-276) entfällt/trivial; eclipseRenameResource analog. (Sicherstellen: kein getFolder-Crash bei Segment-Anzahl.)

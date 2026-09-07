@@ -387,6 +387,15 @@ public class EclipseUtil {
         return Optional.empty();
     }
 
+    /** R5 (docs/file-copy-tool.md): whether {@code name} is an existing project name in this workspace (closed included). */
+    public static boolean isExistingProject(String name) {
+        for (IProject project : ResourcesPlugin.getWorkspace().getRoot().getProjects()) {
+            if (project.getName().equals(name) && project.exists())
+                return true;
+        }
+        return false;
+    }
+
     public static Optional<IFile> findMember(IContainer root, String path) {
         var f = root.findMember(path);
         if (f != null && f instanceof IFile ff)

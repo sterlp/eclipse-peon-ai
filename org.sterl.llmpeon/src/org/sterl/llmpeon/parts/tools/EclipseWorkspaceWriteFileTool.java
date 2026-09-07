@@ -6,7 +6,9 @@ import java.util.concurrent.TimeUnit;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.texteditor.IDocumentProvider;
@@ -17,6 +19,7 @@ import org.sterl.llmpeon.shared.AiMonitor.AiFileUpdate;
 import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.FileLines;
 import org.sterl.llmpeon.shared.FileUtils;
+import org.sterl.llmpeon.shared.QualifiedPathValidator;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -209,14 +212,15 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         IoUtils.writeFile(eclipseFile, newFullContent, getProgressMonitor());
         monitor.onFileUpdate(new AiFileUpdate(JdtUtil.pathOf(eclipseFile), content, newFullContent));
     }
-
-    @Tool("Rename or move a workspace file or directory. Creates target parent folders.")
+    @Tool("Rename or move a workspace file or directory. Creates target parent folders. Paths must be workspace-qualified: /project/path.")
     public String eclipseRenameResource(
-            @P(description = "existing workspace-relative path", name = "sourcePath") String sourcePath,
-            @P(description = "new workspace-relative path", name = "targetPath") String targetPath) {
+            @P(description = "existing source path, workspace-qualified as /project/path", name = "sourcePath") String sourcePath,
+            @P(description = "new target path, workspace-qualified as /project/path", name = "targetPath") String targetPath) {
 
         ArgsUtil.requireNonBlank(sourcePath, "sourcePath");
         ArgsUtil.requireNonBlank(targetPath, "targetPath");
+        QualifiedPathValidator.requireQualifiedEclipse("Rename", sourcePath, EclipseUtil::isExistingProject);
+        QualifiedPathValidator.requireQualifiedEclipse("Rename", targetPath, EclipseUtil::isExistingProject);
         validateWrite(sourcePath);
         validateWrite(targetPath);
 
@@ -229,17 +233,10 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         }
 
         var workspaceRoot = resource.getWorkspace().getRoot();
-        org.eclipse.core.runtime.IPath destPath = resource.getFullPath()
-                .removeLastSegments(resource.getFullPath().segmentCount())
-                .append(org.eclipse.core.runtime.IPath.fromPortableString(
-                        targetPath.startsWith("/") ? targetPath.substring(1) : targetPath));
+        IPath destPath = workspaceRoot.getFullPath().append(IPath.fromPortableString(targetPath.substring(1)));
 
         try {
-            var parent = workspaceRoot.getFolder(destPath.removeLastSegments(1));
-            if (!destPath.removeLastSegments(1).isEmpty() && !parent.exists()
-                    && destPath.segmentCount() > 2) {
-                IoUtils.ensureFolders(parent, getProgressMonitor());
-            }
+            ensureParentFolders(workspaceRoot, destPath);
             resource.move(destPath, IResource.KEEP_HISTORY, getProgressMonitor());
             var result = "Renamed " + JdtUtil.pathOf(resource) + " -> " + destPath.toPortableString();
             onTool(result);
@@ -248,14 +245,15 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
             throw new RuntimeException("Failed to rename " + sourcePath + " -> " + targetPath, e);
         }
     }
-
-    @Tool("Copy a workspace file to a new location. Creates target parent folders. The source is kept.")
+    @Tool("Copy a workspace file to a new location. Creates target parent folders. The source is kept. Paths must be workspace-qualified: /project/path.")
     public String eclipseCopyFile(
-            @P(description = "existing workspace-relative path", name = "sourcePath") String sourcePath,
-            @P(description = "target workspace-relative path", name = "targetPath") String targetPath) {
+            @P(description = "existing source path, workspace-qualified as /project/path", name = "sourcePath") String sourcePath,
+            @P(description = "target path, workspace-qualified as /project/path", name = "targetPath") String targetPath) {
 
         ArgsUtil.requireNonBlank(sourcePath, "sourcePath");
         ArgsUtil.requireNonBlank(targetPath, "targetPath");
+        QualifiedPathValidator.requireQualifiedEclipse("Copy", sourcePath, EclipseUtil::isExistingProject);
+        QualifiedPathValidator.requireQualifiedEclipse("Copy", targetPath, EclipseUtil::isExistingProject);
         validateWrite(sourcePath);
         validateWrite(targetPath);
 
@@ -269,23 +267,28 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         }
 
         var workspaceRoot = resource.getWorkspace().getRoot();
-        org.eclipse.core.runtime.IPath destPath = resource.getFullPath()
-                .removeLastSegments(resource.getFullPath().segmentCount())
-                .append(org.eclipse.core.runtime.IPath.fromPortableString(
-                        targetPath.startsWith("/") ? targetPath.substring(1) : targetPath));
+        IPath destPath = workspaceRoot.getFullPath().append(IPath.fromPortableString(targetPath.substring(1)));
 
         try {
-            var parent = workspaceRoot.getFolder(destPath.removeLastSegments(1));
-            if (!destPath.removeLastSegments(1).isEmpty() && !parent.exists()
-                    && destPath.segmentCount() > 2) {
-                IoUtils.ensureFolders(parent, getProgressMonitor());
-            }
+            ensureParentFolders(workspaceRoot, destPath);
             resource.copy(destPath, IResource.KEEP_HISTORY, getProgressMonitor());
             var result = "Copied " + JdtUtil.pathOf(resource) + " -> " + destPath.toPortableString();
             onTool(result);
             return result;
         } catch (CoreException e) {
             throw new RuntimeException("Failed to copy " + sourcePath + " -> " + targetPath, e);
+        }
+    }
+
+    /**
+     * Creates the target parent folders. The parent may be the project itself (single
+     * segment) — nothing to create, and {@code getFolder} requires at least two segments.
+     */
+    private void ensureParentFolders(IWorkspaceRoot root, IPath destPath) throws CoreException {
+        var parentPath = destPath.removeLastSegments(1);
+        if (parentPath.segmentCount() > 1) {
+            var parent = root.getFolder(parentPath);
+            if (!parent.exists()) IoUtils.ensureFolders(parent, getProgressMonitor());
         }
     }
 
