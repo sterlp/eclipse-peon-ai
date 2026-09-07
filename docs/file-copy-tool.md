@@ -11,11 +11,11 @@ Familien. Ein Verhalten, eine Implementierung, konsistent in beiden Familien (AG
 
 ## Status
 
-❌ specified — **E2E-Befunde (2026-09-06) aufgedeckt: SOLL erweitert um R5 + R6, Umsetzung im
-nächsten Zyklus.** Ursprüngliche Umsetzung (R1–R4) war gebaut, aber: Erfolgsmeldung landete
-nur im UI-Kanal (LLM sah langchain4j-`"Success"` statt `Copied <s> -> <t>`) und der
-Ziel-Pfad von eclipseCopyFile/eclipseRenameResource wurde gegen die Workspace-Root statt das
-Quellprojekt aufgelöst.
+✅ done (2026-09-06, Zyklus `file-copy-e2e-fixes-2026-09-06` auf `release-2026-09-06`,
+Commits `b011576`/`f14371a`/`402b922` + Review-Fix `7d224ec`). R1–R6 komplett umgesetzt,
+Mutations-Nachweis für R5-Validator (`projectExists`-Klausel → `eclipse_unknownProjectRejected` rot).
+E2E-Befunde behoben: Erfolgsmeldung LLM-sichtbar (`Copied/Renamed <s> -> <t>` statt langchain4j-`"Success"`),
+Ziel-Pfad-Resolution projekt-qualifiziert (kein Workspace-Root-Fallback), relativer Pfad = Vertrags-Fehler.
 
 ## Business Rules
 
@@ -25,8 +25,7 @@ Quellprojekt aufgelöst.
 - **GIVEN** existierende Datei `a.txt` **WHEN** `diskCopyFile("a.txt", "sub/b.txt")` **THEN**
   Kopie unter `sub/b.txt`, Original bleibt, Parent-Dirs werden angelegt (wie Rename)
 - **GIVEN** Ziel existiert bereits **WHEN** Copy **THEN** Fehler (wie `diskRenameResource`:
-  „Errors if target exists") — *❓ offen: overwrite-Modus nötig, oder hart ablehnen wie Rename?*
-  **PO-Empfehlung:** hart ablehnen wie Rename, konsistent; Overwrite ist bewusst kein Default.
+  „Errors if target exists")
 - **GIVEN** Quelle fehlt oder ist ein Verzeichnis **WHEN** Copy **THEN** Fehler mit klarer Meldung
   (kein rekursives Directory-Copy im MVP)
 

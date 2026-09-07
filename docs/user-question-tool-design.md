@@ -30,7 +30,7 @@ On submit the normal input reappears and the LLM receives the answer string.
 
 ## UI Rules
 
-### R-UI1: Frage vollständig sichtbar 🔒 (User 2026-09-06, E2E-Regression)
+### R-UI1: Frage vollständig sichtbar ✅ (User 2026-09-06, E2E-Regression — gebaut inc-3 `402b922`)
 Wenn das Question-Widget erscheint, ist die Frage-Nachricht im Chat **vollständig sichtbar** —
 nichts davon wird vom (potenziell höheren) Widget verdeckt.
 
@@ -40,9 +40,11 @@ nichts davon wird vom (potenziell höheren) Widget verdeckt.
 - **GIVEN** das Widget inkl. Optionen ist höher als der freie Bereich unter der Frage
   **WHEN** gerendert **THEN** endet der View auf der Frage, nicht auf dem Widget — kein
   verdeckter Teil der Frage
-- **Umsetzung:** bevorzugt Reihenfolge (Nachricht zuerst, Widget-Build danach, dann
-  Scroll-to-bottom); nicht machbar → **finale** Scroll-to-bottom **nach** Widget-Completion
-  über das Chat-Widget (chat.html) — nie nur vor dem Widget-Build
+- **Umsetzung (gebaut):** finaler Scroll-to-bottom **nach** Widget-Completion über das
+  Chat-Widget (`ScrollToBottomCommand` → chat.html `scrollToBottom()`, aufgerufen in
+  `AIChatView.showQuestion` nach den Layout-Calls). Kein automatisierter Test möglich
+  (SWT-Browser, kein Harness) — manuelle Verifikation: Frage mit Widget > Input-Höhe
+  erzeugen, letzte Zeile der Frage muss lesbar sein.
 
 **Regression-Historie:** Beim Question-Widget-Erscheinen wurde die Nachricht erneut in
 chat.html eingefügt und die Optionen danach gebaut — ragten die Optionen über die
