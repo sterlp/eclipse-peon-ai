@@ -11,11 +11,16 @@ import org.sterl.llmpeon.prompt.model.SimplePromptFile;
 import org.sterl.llmpeon.shared.FileUtils;
 
 import lombok.Getter;
+import lombok.Setter;
 
 public class SkillPromptFile extends SimplePromptFile {
     @Nullable
     @Getter
     private volatile Path skillDir;
+
+    @Getter
+    @Setter
+    private volatile SkillSource source = SkillSource.CONFIG;
     
     public static SkillPromptFile from(SimplePromptFile yml) {
         return new SkillPromptFile(yml.getFrontmatter(), yml.getBody(), yml.getPromptFile());
@@ -40,14 +45,15 @@ public class SkillPromptFile extends SimplePromptFile {
         StringBuilder sb = new StringBuilder();
         sb.append("---\nname: ").append(getName())
           .append("\n")
-          .append("description: ").append(getDescription());
+          .append("description: ").append(getDescription())
+          .append("\nsource: ").append(source.tag().trim());
         return sb.toString();
     }
 
     public String renderBody() {
         var result = new StringBuilder();
         result.append("=== SKILL: ").append(getName())
-                .append(" ===").append(System.lineSeparator());
+                .append(source.tag()).append(" ===").append(System.lineSeparator());
         if (skillDir == null) {
             result.append(getPromptFile()).append(System.lineSeparator());
             result.append("only a SKILL file.").append(System.lineSeparator());

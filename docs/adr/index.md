@@ -1,3 +1,5 @@
+| [0042](0042-project-skill-slot.md) | Project-Skill-Slot: ein SkillService, zwei Slots (config + `<project>/.agents/skills`), Override, atomarer Swap, name-keyed Enabled-State | Accepted |
+| [0043](0043-scaffold-write-validator.md) | Scaffold-Write-Scoping via WriteValidator mit dynamischen Roots (configDir + Projekt-Skills-Dir), kein Instanz-Merge | Accepted |
 # Architecture Decision Records (ADR)
 
 Short record of every technical decision. Format per ADR: **Status · Context · Decision ·

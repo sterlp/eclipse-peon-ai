@@ -12,7 +12,7 @@ den verlinkten Stories.
 | Prompt-Caching | per-Agent JSON extra body (auch `AGENT.md`-Frontmatter) | [caching.md](caching.md) |
 | Think-Support | per-Agent, Provider-Mapping-Files | [per-agent-think.md](per-agent-think.md) |
 | Custom Agents | `~/.peon/agents/<name>/AGENT.md` (Frontmatter + Body) | [custom-agents-design.md](custom-agents-design.md) |
-| Skills & Commands | `~/.peon/skills/**`, `~/.peon/commands/**` | [scaffold-agent.md](scaffold-agent.md) |
+| Skills & Commands | `~/.peon/skills/**`, `~/.peon/commands/**` (+ `<project>/.agents/skills`, Override, siehe Story) | [scaffold-agent.md](scaffold-agent.md) · [project-skills.md](project-skills.md) |
 | Shared-Config-Verzeichnis + State-Trennung | `~/.peon` = config-only, History = workspace-scoped | [peon-config-directory.md](peon-config-directory.md) |
 | Workspace Memory (memory*-Tools) | Eclipse Instance-Preferences, user-global | [context-architecture.md](context-architecture.md) |
 | Agent-History | `.metadata/.plugins/org.sterl.llmpeon/state/<agent>-history.jsonl` (Umzug von `~/.peon/state`, One-Shot-Migration) | [peon-config-directory.md](peon-config-directory.md) |

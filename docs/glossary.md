@@ -76,6 +76,9 @@ entschieden · 🔒 geklärt.
 | **Falsch-Negativ** | Tool meldet „nicht gefunden", obwohl es existiert — der teuerste Tool-Fehler | leeres Ergebnis |
 | **Log-Auszug** (`LogExcerpt`) | Gefilterter und geklemmter Ausschnitt eines Logs samt Header, der gezeigt/gesamt benennt | Log-Snippet, Tail, Ausschnitt |
 | **Refresh-Ziel** | Der Container, der bei leerem Ergebnis synchronisiert wird — **nicht** dasselbe wie der Such-Scope | Refresh-Scope, Sync-Bereich |
+| **Config-Skills** | Skills aus dem geteilten Config-Dir (`~/.peon/skills`) — Basis, in jedem Projekt sichtbar | globale Skills, Basis-Skills |
+| **Projekt-Skills** | Skills aus `<Projekt>/.agents/skills` (Disk-Pfad) — nur bei gewähltem Projekt sichtbar, **Override** bei Namenskollision | lokale Skills, Project-Skills |
+| **Skill-Slot** | Ein vom `SkillService` geladenes Skill-Verzeichnis (Config-Slot + Projekt-Slot) | Skill-Dir, Skill-Pfad, Skill-Root |
 
 ## Offen
 

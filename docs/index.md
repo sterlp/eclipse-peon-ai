@@ -28,6 +28,7 @@ Code. Vor dem Einführen eines neuen fachlichen Begriffs dort nachsehen und eint
 * [Queued User Messages](queued-user-messages.md) - input queue with batching, FIFO consumption, drain-to-memory on abort.
 * [Session Token Usage](token-usage.md) - cumulative ↑/↓ token spend in the header, fed from the StreamingBridge choke point.
 * [Scaffold Agent](scaffold-agent.md) - built-in agent for creating/editing Peon config artifacts (agents, skills, commands) with config-scoped disk tools.
+* [Project Skills](project-skills.md) - projekt-lokale Skills in `<project>/.agents/skills`: Override über Config-Skills, Slot-Wechsel am setProject-Choke-Point, Scaffold schreibt Projekt-Skills + fragt die Platzierung im Chat. **❌ specified (2026-09-08)**
 * [`peon` Config Directory](peon-config-directory.md) - **✅ done (R1+R2+R3, 2026-09-06):** `~/.peon` = shared config only; Agent-History → workspace Metadata-State (getStateLocation) + One-Shot-Migration von `~/.peon/state` ([ADR-0041](adr/0041-peon-shared-config-only.md)). Side Quest: Jon delegiert an Scaffold.
 * [Built-in Agent Prompt Override](builtin-agent-prompt-override.md) - **🚧 Idee (2026-09-06, nicht geplant):** Built-in-Prompts als Config in `.peon` — Body supersedes den Default; Improvement-Cycle via geteilte Prompts.
 * [Standing Orders](standing-orders-design.md) - **historisch (superseded 2026-08-21).** `StandingOrdersBuilder` gelöscht; aktueller Flow: [Context Architecture](context-architecture.md) + [ADR-0031](adr/0031-static-context-env-plus-memory.md).

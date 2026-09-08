@@ -71,6 +71,10 @@ AND standing orders are injected
 ### R5: Reload Tool ✅
 Single `reloadConfig()` tool that triggers refresh on AgentService, SkillService, and CommandService. Returns summary of what was reloaded.
 
+**Project-Skills-Nachtrag (❌ 2026-09-08, [project-skills.md](project-skills.md)):** der Reload
+refreshed **jede** Skill-Component (Config + Projekt-Slot, der Projekt-Slot bleibt gesetzt) —
+Projekt-Skills werden nicht weggeputzt; siehe R3/R2a dort.
+
 **BDD:**
 ```
 GIVEN the scaffold agent is active

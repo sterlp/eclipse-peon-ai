@@ -40,6 +40,12 @@ model better than a wrapping decorator.
 - Allowed patterns are also stated in Jon's system prompt so he self-restricts; the pattern set is a
   constant today and becomes user-editable config later.
 
+**Dynamische Roots (❌ 2026-09-08, [project-skills.md](project-skills.md) + [ADR-0043](adr/0043-scaffold-write-validator.md)):**
+der Scaffold-Agent bekommt als zweiter Validator-Nutzer **dynamische Roots** (Supplier auf
+`configDir` + `<aktuelles Projekt>/.agents/skills` — zur Call-Zeit aufgelöst), kein statisches
+Glob-Set. `AllowlistWriteValidator` wird dafür erweitert (statische Globs von Jon bleiben unverändert);
+Projekt-Root nur gesetzt, wenn ein Projekt gewählt ist.
+
 ## Use Case: an agent may only write where its validator allows
 
 ### R1 — Write tools consult the request's validator before every write
