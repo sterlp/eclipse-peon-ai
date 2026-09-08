@@ -17,6 +17,7 @@ import org.sterl.llmpeon.context.EclipseFileContextItem;
 import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.context.StaticContextItem;
 import org.sterl.llmpeon.context.UserContext;
+import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.tools.PlanTool;
@@ -172,6 +173,22 @@ public class AgentContextComponent {
         }
 
         result.add(new SimpleContextItem("Scaffold tool names", orders.toString()));
+
+        // Open projects (R2d): project skills live in <disk path>/.agents/skills — the list
+        // lets the scaffold pick a target project when creating project-local skills.
+        var openProjects = EclipseUtil.openProjects();
+        if (!openProjects.isEmpty()) {
+            orders.setLength(0);
+            orders.append("Open projects (project skills live in <disk path>/.agents/skills):").append(System.lineSeparator());
+            for (var p : openProjects) {
+                var disk = JdtUtil.diskPathOf(p);
+                orders.append("- ").append(disk != null ? disk : JdtUtil.pathOf(p))
+                        .append(" — ").append(p.getName());
+                if (p == projectRef.get()) orders.append(" (current)");
+                orders.append(System.lineSeparator());
+            }
+            result.add(new SimpleContextItem("Open projects", orders.toString()));
+        }
     }
 
     private void appendPlanReference(LinkedList<ContextItem> result) {

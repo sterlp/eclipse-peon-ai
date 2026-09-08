@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.parts.ai;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -204,7 +205,8 @@ public class PeonAiService {
         
         var dir = config.getConfigDir().resolve(LlmConfig.SKILL_DIRECTORY);
         try {
-            skillService.refresh(dir);
+            skillService.refresh(dir);    // config slot: set + refresh (compat semantics)
+            skillService.refreshAll();    // R3: the project slot is refreshed as well
         } catch (IOException e) {
             throw new RuntimeException("Failed to load skills from " + dir, e);
         }
@@ -256,6 +258,13 @@ public class PeonAiService {
             sharedTools.diskFileWriteTool().setWorkingDir(projectPath);
             sharedTools.diskFileReadTool().setWorkingDir(projectPath);
             sharedTools.diskGrepTool().setWorkingDir(projectPath);
+        }
+        // ADR-0042: project skill slot — this is the single choke point that replaces it;
+        // null project = empty slot, the config slot stays untouched (R2b)
+        try {
+            skillService.setProjectSkillsDir(projectPath == null ? null : Path.of(projectPath).resolve(SkillService.PROJECT_SKILLS_DIR));
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load project skills from " + projectPath, e);
         }
         return this.userContext.setCurrentProject(project);
     }

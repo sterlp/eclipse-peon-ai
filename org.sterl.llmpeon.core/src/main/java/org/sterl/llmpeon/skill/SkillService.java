@@ -30,6 +30,9 @@ import org.jspecify.annotations.Nullable;
  */
 public class SkillService {
 
+    /** Project-local skills root, relative to the project disk path (ADR-0042). */
+    public static final String PROJECT_SKILLS_DIR = ".agents/skills";
+
     private final SkillSlot configSlot = new SkillSlot(SkillSource.CONFIG);
     private final SkillSlot projectSlot = new SkillSlot(SkillSource.PROJECT);
 

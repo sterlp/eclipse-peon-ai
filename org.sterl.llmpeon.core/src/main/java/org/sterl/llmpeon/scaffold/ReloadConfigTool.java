@@ -48,9 +48,10 @@ public class ReloadConfigTool extends AbstractTool {
         // Reload agents — pure business logic, no callback
         agentService.reloadAgents();
 
-        // Reload skills
+        // Reload skills (R3: config slot set + EVERY slot refreshed — project skills included)
         var skillDir = configDir.resolve(LlmConfig.SKILL_DIRECTORY);
         skillService.refresh(skillDir);
+        skillService.refreshAll();
 
         // Reload commands
         var commandDir = configDir.resolve(LlmConfig.COMMAND_DIRECTORY);
