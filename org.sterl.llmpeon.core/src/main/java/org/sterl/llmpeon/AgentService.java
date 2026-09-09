@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
+import org.sterl.llmpeon.agent.AiReviewAgent;
 import org.sterl.llmpeon.agent.CustomAgent;
 import org.sterl.llmpeon.agentorder.AgentOrder;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
@@ -52,6 +53,7 @@ public class AgentService {
     private volatile AiAgent activeAgent;
     private final AiDevAgent devAgent;
     private final AiPlanAgent planAgent;
+    private final AiReviewAgent reviewAgent;
 
     public AgentService(
             Path agentsDirectory, 
@@ -94,10 +96,13 @@ public class AgentService {
             this.persistentAgents.put(devAgent.getName(), devAgent);
             planAgent = new AiPlanAgent(chatModel, toolService, historyStateDir);
             this.persistentAgents.put(planAgent.getName(), planAgent);
+            reviewAgent = new AiReviewAgent(chatModel, toolService, historyStateDir);
+            this.persistentAgents.put(reviewAgent.getName(), reviewAgent);
             this.activeAgent = devAgent;
         } else {
             devAgent = null;
             planAgent = null;
+            reviewAgent = null;
         }
 
         refresh(agentsDirectory);

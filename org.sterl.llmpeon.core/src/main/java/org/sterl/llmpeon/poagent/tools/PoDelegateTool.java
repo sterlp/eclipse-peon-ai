@@ -22,10 +22,12 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 
 /**
  * Jon's delegate tools. Each drives one of his own, RAM-only slaves — a
- * Peon-Plan ("Da Thinka") and a Peon-Dev ("Da Mek") instance — for a single
- * turn and returns the slave's reply verbatim as the tool result. Two verbs per
- * slave: a plain question ({@code talkPlan} / {@code askDev}) and the real work
- * ({@code planWithPlanAgent} writes the plan, {@code buildWithDev} builds it).
+ * Peon-Plan ("Da Thinka"), a Peon-Review ("Da Dok") and a Peon-Dev ("Da Mek")
+ * instance — for a single turn and returns the slave's reply verbatim as the
+ * tool result. Verbs per slave: a direct question ({@code talkPlan} /
+ * {@code askDev}), the real work ({@code planWithPlanAgent} writes the plan,
+ * {@code reviewPlanAgent} reviews it, {@code buildWithDev} builds it) and
+ * context management (clear/compact per slave).
  *
  * <p>
  * The two slaves are shared, eager singletons: the layer that wires the tool
@@ -46,7 +48,8 @@ import dev.langchain4j.model.chat.response.ChatResponse;
  * <b>Working orders:</b> {@code planWithPlanAgent} injects a plan-writing
  * discipline (plan-write-loop.txt) as a one-shot standing order;
  * {@code buildWithDev} keeps its {@code planPath} sticky and injects the build
- * discipline (dev-build-loop.txt) — both survive the slave's own compaction.
+ * discipline (dev-build-loop.txt); {@code reviewPlanAgent} reuses the same
+ * sticky plan path — all survive the slaves' own compaction.
  * The base orders are resolved per slave via the {@code ordersFor} function
  * (e.g. the agent-specific AGENTS-<agent>.md), still lazily per dispatch().
  * Jon judges "done vs. still working" from the reply and always has the plan
@@ -56,6 +59,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 public class PoDelegateTool extends AbstractTool {
 
     public static final String TALK_PLAN = "talkPlan";
+    public static final String REVIEW_PLAN_AGENT = "reviewPlanAgent";
     public static final String PLAN_WITH_PLAN_AGENT = "planWithPlanAgent";
     public static final String ASK_DEV = "askDev";
     public static final String BUILD_WITH_DEV = "buildWithDev";
@@ -79,18 +83,20 @@ public class PoDelegateTool extends AbstractTool {
     private final Function<NamedAgent, List<ContextItem>> ordersFor;
 
     private final NamedAgent plan; // "Da Thinka" — the Peon-Plan slave
+    private final NamedAgent review; // "Da Dok" — the Peon-Review slave
     private final NamedAgent dev; // "Da Mek" — the Peon-Dev slave
 
     /**
-     * Sticky plan path for the Dev slave — survives across dispatches and the
-     * slave's compaction.
+     * Sticky plan path shared by the Dev and Review slaves — survives across
+     * dispatches and the slaves' compaction.
      */
-    private String devPlanPath;
+    private String planPath;
 
-    public PoDelegateTool(NamedAgent plan, NamedAgent dev,
+    public PoDelegateTool(NamedAgent plan, NamedAgent review, NamedAgent dev,
             Function<NamedAgent, List<ContextItem>> ordersFor) {
         this.plan = plan;
         this.dev = dev;
+        this.review = review;
         this.ordersFor = ordersFor;
     }
 
@@ -121,6 +127,35 @@ public class PoDelegateTool extends AbstractTool {
         orders.add(new SimpleContextItem("Plan instructions", PLAN_WRITE_LOOP));
         return dispatch(plan, prompt, orders);
     }
+    
+    
+    @Tool(name = PoDelegateTool.REVIEW_PLAN_AGENT,
+            value = "Have your Peon-Review team member (Da Dok) review the implementation of the plan. Pass planPath ("
+                    + PeonPaths.PLAN_FILE
+                    + ") to set which plan is under review — it stays sticky; without it the sticky plan path is reused. Returns the team member's reply.")
+    public String reviewPlanAgent(@P(name = "prompt") String prompt,
+            @P(name = "planPath", required = false) String planPath) {
+        if (StringUtil.hasValue(planPath)) this.planPath = planPath.trim(); // sticky across calls
+
+        var orders = new LinkedList<>(ordersFor.apply(review));
+        if (StringUtil.hasValue(this.planPath)) {
+            orders.add(new SimpleContextItem("Plan path to review", this.planPath));
+        }
+        return dispatch(review, prompt, orders);
+    }
+
+    @Tool("Wipe Da Dok back to blank — the next task is UNRELATED and the old state would only create drift. Use compactReview instead when the same task continues.")
+    public void clearReview() {
+        review.agent().getMemory().clear();
+        reportAction(review, "reset");
+    }
+
+    @Tool("Compact Da Dok — the SAME task continues but the history got long. Keeps the gist, frees context. Use clearReview instead when the next task is unrelated.")
+    public String compactReview() {
+        review.agent().compact(monitor);
+        reportAction(review, "compacted");
+        return "Da Dok compacted. " + contextUsed(review.agent());
+    }
 
     @Tool(name = PoDelegateTool.ASK_DEV, value = "Ask your Peon-Dev team member (Da Mek) a direct question about the code or its progress — no build is triggered. Use buildWithDev to make it implement the plan. Returns the team member's reply.")
     public String askDev(@P(name = "prompt") String prompt) {
@@ -133,15 +168,15 @@ public class PoDelegateTool extends AbstractTool {
                     + ") — it stays sticky as a standing order so it survives the team member's compaction. Returns the team member's reply.")
     public String buildWithDev(@P(name = "prompt") String prompt,
             @P(name = "planPath", required = false) String planPath) {
-        if (StringUtil.hasValue(planPath)) devPlanPath = planPath.trim(); // sticky across calls
+        if (StringUtil.hasValue(planPath)) this.planPath = planPath.trim(); // sticky across calls
 
         var orders = new LinkedList<>(ordersFor.apply(dev));
         // Hand Da Mek the path AND the build discipline (task-by-task, green
         // gate, compactSession) as its way of working — never the whole plan; the file is the durable handover.
-        if (StringUtil.hasValue(devPlanPath)) {
+        if (StringUtil.hasValue(this.planPath)) {
             // the plan itself is injected by the agentOrders
             orders.add(new SimpleContextItem("Reading dev loop instructions",
-                    "The released plan to implement: " + devPlanPath
+                    "The released plan to implement: " + this.planPath
                     + System.lineSeparator()
                     + DEV_BUILD_LOOP));
         }
@@ -215,8 +250,6 @@ public class PoDelegateTool extends AbstractTool {
     private void reportAction(NamedAgent target, String action) {
         onTool(target.uiName() + " " + action + ".");
     }
-
-
 
     private String contextUsed(AiAgent agent) {
         return "Context: " + agent.getMemory().getTotalTokenUsed() + " token - " + agent.tokenContextUsedInPercent() + "% used."; 

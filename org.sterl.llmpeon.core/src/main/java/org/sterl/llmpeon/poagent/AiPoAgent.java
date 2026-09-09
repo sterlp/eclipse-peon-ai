@@ -74,7 +74,8 @@ public class AiPoAgent extends AbstractAgent {
 
     /**
      * Jon's visible slaves for the header status widget (ADR-0025): <b>Da Boss</b> (Jon himself) first,
-     * then his ork slaves <b>Da Thinka</b> (Plan) and <b>Da Mek</b> (Dev). Always the same instances
+     * then his ork slaves <b>Da Thinka</b> (Plan), <b>Da Dok</b> (Review) and <b>Da Mek</b> (Dev).
+     * Always the same instances
      * {@code PoDelegateTool} drives, so the widget reads their live {@code isWorking()}/context.
      */
     public List<NamedAgent> getTeam() {
@@ -126,8 +127,9 @@ public class AiPoAgent extends AbstractAgent {
     public void clear() {
         super.clear();
         toolService.getTool(PoDelegateTool.class).ifPresent(t -> {
-            t.clearDev();
             t.clearPlan();
+            t.clearReview();
+            t.clearDev();
         });
     }
     
@@ -135,8 +137,9 @@ public class AiPoAgent extends AbstractAgent {
     public ChatResponse compact(AiMonitor monitor) {
         var result = super.compact(monitor);
         toolService.getTool(PoDelegateTool.class).ifPresent(t -> {
-            t.compactDev();
             t.compactPlan();
+            t.compactReview();
+            t.compactDev();
         });
         return result;
     }

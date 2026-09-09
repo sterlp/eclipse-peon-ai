@@ -63,12 +63,12 @@ class AgentServiceTest extends AbstractMemoryFileTest {
         // GIVEN
         var subject = new AgentService(true, tmp.resolve("any-foo"), toolService, chatModel);
         assertThat(subject.getActiveAgent()).isNotNull();
-        assertThat(subject.getAgents()).hasSize(2);
+        assertThat(subject.getAgents()).hasSize(3);
         // WHEN
         subject.refresh(tmp.resolve("config"));
         // THEN
         assertThat(subject.getActiveAgent()).isNotNull();
-        assertThat(subject.getAgents()).hasSize(2);
+        assertThat(subject.getAgents()).hasSize(3);
     }
     
     @Test
@@ -85,7 +85,7 @@ class AgentServiceTest extends AbstractMemoryFileTest {
         var subject = new AgentService(true, tmp, toolService, chatModel);
 
         // THEN
-        assertThat(subject.getAgents()).hasSize(3);
+        assertThat(subject.getAgents()).hasSize(4);
         // AND
         var agent = subject.get("foo").orElseThrow();
         assertThat(agent.getAgentModelName()).isEqualTo("qwen3");

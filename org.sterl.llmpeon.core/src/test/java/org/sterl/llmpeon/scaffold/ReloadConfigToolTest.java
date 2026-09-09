@@ -77,7 +77,7 @@ class ReloadConfigToolTest extends AbstractMemoryFileTest {
         var result = tool.reloadConfig();
 
         // THEN
-        assertThat(result).contains("Agents: 2 loaded");
+        assertThat(result).contains("Agents: 3 loaded");
     }
 
     @Test

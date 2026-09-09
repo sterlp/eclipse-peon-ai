@@ -11,6 +11,7 @@ import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
+import org.sterl.llmpeon.agent.AiReviewAgent;
 import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
@@ -34,8 +35,9 @@ class PoDelegateToolTest {
         model = new ConfiguredChatModel(LlmConfig.newOllama("foo"), cm);
     }
 
-    private AiAgent planSlave() { return new AiPlanAgent(model, new ToolService()); }
-    private AiAgent devSlave()  { return new AiDevAgent(model, new ToolService()); }
+    private AiAgent planSlave()   { return new AiPlanAgent(model, new ToolService()); }
+    private AiAgent reviewSlave() { return new AiReviewAgent(model, new ToolService()); }
+    private AiAgent devSlave()    { return new AiDevAgent(model, new ToolService()); }
 
     private PoDelegateTool newTool() {
         return newTool(t -> List.of());
@@ -43,6 +45,7 @@ class PoDelegateToolTest {
 
     private PoDelegateTool newTool(Function<NamedAgent, List<ContextItem>> ordersFor) {
         return new PoDelegateTool(new NamedAgent("Da Thinka", planSlave()),
+                new NamedAgent("Da Dok", reviewSlave()),
                 new NamedAgent("Da Mek", devSlave()), ordersFor);
     }
 
@@ -158,5 +161,33 @@ class PoDelegateToolTest {
         tool.buildWithDev("continue 3", plan);
         assertThat(streamMock.count(plan)).isEqualTo(1);
         assertThat(streamMock.count("continue 3")).isEqualTo(1);
+    }
+
+    /** reviewPlanAgent drives the Review slave and reuses the sticky plan path set by buildWithDev. */
+    @Test
+    void reviewPlanAgent_reusesStickyPlanPath() {
+        // GIVEN
+        var plan = "peon-plan/overview.md";
+        var tool = newTool();
+        tool.buildWithDev("start", plan);
+
+        // WHEN — no planPath passed: the sticky path must ride in the standing orders
+        var reply = tool.reviewPlanAgent("check the build", null);
+
+        // THEN
+        assertThat(reply).contains("SLAVE REPLY");
+        assertThat(streamMock.count(plan)).isEqualTo(1);
+        assertThat(streamMock.count("check the build")).isEqualTo(1);
+    }
+
+    /** Without a sticky plan path, reviewPlanAgent injects no path — Da Dok asks instead of guessing. */
+    @Test
+    void reviewPlanAgent_withoutStickyPath_injectsNothing() {
+        var tool = newTool();
+
+        var reply = tool.reviewPlanAgent("check", null);
+
+        assertThat(reply).contains("SLAVE REPLY");
+        assertThat(streamMock.count("peon-plan/overview.md")).isEqualTo(0);
     }
 }

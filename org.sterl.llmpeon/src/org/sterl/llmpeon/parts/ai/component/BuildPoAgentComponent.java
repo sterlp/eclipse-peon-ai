@@ -7,9 +7,9 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import org.eclipse.core.resources.IProject;
-import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
+import org.sterl.llmpeon.agent.AiReviewAgent;
 import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.context.AgentsMdContextItem;
@@ -85,14 +85,21 @@ public class BuildPoAgentComponent {
                 && !(t.getTool() instanceof AskUserTool);
         // Eager shared slaves (ADR-0025): created once here and handed — as the same NamedAgent objects —
         // to both the delegate tool (which drives them) and AiPoAgent (which exposes them via getTeam()).
-        AiAgent planSlave = new AiPlanAgent(configuredModel, sharedToolService, SLAVE_COMPACT_FACTOR) {
+        var planSlave = new AiPlanAgent(configuredModel, sharedToolService, SLAVE_COMPACT_FACTOR) {
             @Override protected Predicate<SmartToolExecutor> getToolFilter() {
                 return super.getToolFilter().and(noPrivilegedTools);
             }
         };
         planSlave.setStaticContext(staticContent);
+        
+        var reviewSlave = new AiReviewAgent(configuredModel, sharedToolService, SLAVE_COMPACT_FACTOR) {
+            @Override protected Predicate<SmartToolExecutor> getToolFilter() {
+                return super.getToolFilter().and(noPrivilegedTools);
+            }
+        };
+        reviewSlave.setStaticContext(staticContent);
 
-        AiAgent devSlave = new AiDevAgent(configuredModel, sharedToolService, SLAVE_COMPACT_FACTOR) {
+        var devSlave = new AiDevAgent(configuredModel, sharedToolService, SLAVE_COMPACT_FACTOR) {
             @Override protected Predicate<SmartToolExecutor> getToolFilter() {
                 return super.getToolFilter().and(noPrivilegedTools);
             }
@@ -100,13 +107,14 @@ public class BuildPoAgentComponent {
         devSlave.setStaticContext(staticContent);
 
         var thinka = new NamedAgent("Da Thinka", planSlave);
+        var doc = new NamedAgent("Da Dok", reviewSlave);
         var mek = new NamedAgent("Da Mek", devSlave);
         // Slaves also need the same relevant context as the active agent (Jon gets it via userContext).
         // The shared memory rides in their system prompt (static context — re-baked by
         // PeonAiService.initStaticContext); the turn orders below carry the plan file
         // + AGENTS.md (base + agent-specific AGENTS-<agent>.md, ADR-0029)
         // + the live Workspace-Memory snapshot (ADR-0032).
-        var jonDelegateTool = new PoDelegateTool(thinka, mek, target -> {
+        var jonDelegateTool = new PoDelegateTool(thinka, doc, mek, target -> {
             var orders = new LinkedList<ContextItem>();
             orders.add(new EclipseFileContextItem(PlanTool.OVERVIEW_FILE, projectRef));
             orders.addAll(AgentsMdContextItem.itemsFor(target.agent().getName(), projectRef));
@@ -119,7 +127,7 @@ public class BuildPoAgentComponent {
         // Jon's own throw-away research sub-agent (Da Sniffa) — searches with his read/grep tool
         poToolService.addTool(sharedToolService.getTool(SearchAgentTool.class).get());
         poToolService.addTool(new CompactSessionTool());
-        var poAgent = new AiPoAgent(configuredModel, poToolService, historyStateDir, List.of(thinka, mek));
+        var poAgent = new AiPoAgent(configuredModel, poToolService, historyStateDir, List.of(thinka, doc, mek));
 
         return poAgent;
     }
