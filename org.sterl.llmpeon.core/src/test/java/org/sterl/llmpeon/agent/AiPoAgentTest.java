@@ -8,13 +8,19 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.poagent.AiPoAgent;
+import org.sterl.llmpeon.poagent.tools.PoDelegateTool;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.WriteValidator;
+
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.response.ChatResponse;
 
 class AiPoAgentTest {
 
@@ -110,6 +116,68 @@ class AiPoAgentTest {
         assertThat(agent.setAgentModelName("claude-x")).isTrue();
         assertThat(model.getConfig().modelConfigFor(AgentModelConfig.PO).model()).isEqualTo("claude-x");
         assertThat(model.getConfig().modelConfigFor(AgentModelConfig.PLAN).model()).isNull();
+    }
+
+    /** Jon wired with the three ork slaves via the delegate tool — the same wiring the plugin uses. */
+    private record PoSetup(AiPoAgent po, AiPlanAgent plan, AiReviewAgent review, AiDevAgent dev) {
+    }
+
+    private static PoSetup poWithSlaves(ConfiguredChatModel config) {
+        var plan = new AiPlanAgent(config, new ToolService());
+        var review = new AiReviewAgent(config, new ToolService());
+        var dev = new AiDevAgent(config, new ToolService());
+        var delegate = new PoDelegateTool(new NamedAgent("Da Thinka", plan),
+                new NamedAgent("Da Dok", review),
+                new NamedAgent("Da Mek", dev), t -> List.of());
+        var toolService = new ToolService(false);
+        toolService.addTool(delegate);
+        return new PoSetup(new AiPoAgent(config, toolService), plan, review, dev);
+    }
+
+    /** R3: Jon's clear() cascades to all three slaves — plan, review, dev. */
+    @Test
+    void clear_cascadesToAllThreeSlaves() {
+        // GIVEN
+        var setup = poWithSlaves(LlmConfig.newConfig(AiProvider.OLLAMA, "m", "http://localhost:9999").build());
+        setup.plan().getMemory().add(UserMessage.from("plan marker"));
+        setup.review().getMemory().add(UserMessage.from("review marker"));
+        setup.dev().getMemory().add(UserMessage.from("dev marker"));
+
+        // WHEN
+        setup.po().clear();
+
+        // THEN — every slave's memory is wiped
+        assertThat(setup.plan().getMemory().getCopy()).isEmpty();
+        assertThat(setup.review().getMemory().getCopy()).isEmpty();
+        assertThat(setup.dev().getMemory().getCopy()).isEmpty();
+    }
+
+    /** R3: Jon's compact() cascades to all three slaves — each keeps only its summary. */
+    @Test
+    void compact_cascadesToAllThreeSlaves() {
+        // GIVEN
+        var streamMock = new StreamMock();
+        streamMock.reset();
+        var cm = streamMock.buildMock(req -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("COMPRESSED")).build());
+        var setup = poWithSlaves(new ConfiguredChatModel(LlmConfig.newOllama("foo"), cm));
+        // compact is a no-op below 2 messages — every agent needs history to make the cascade observable
+        for (var slave : List.of(setup.plan(), setup.review(), setup.dev())) {
+            slave.getMemory().add(UserMessage.from("old " + slave.getName()));
+            slave.getMemory().add(AiMessage.from("old reply"));
+        }
+        setup.po().getMemory().add(UserMessage.from("jon old"));
+        setup.po().getMemory().add(AiMessage.from("jon old reply"));
+
+        // WHEN
+        setup.po().compact(null);
+
+        // THEN — all three slaves were compacted: old history gone, summary present
+        for (var slave : List.of(setup.plan(), setup.review(), setup.dev())) {
+            assertThat(slave.getMemory().containsUserMessage("old " + slave.getName())).isFalse();
+            assertThat(slave.getMemory().getCopy())
+                    .anyMatch(m -> m instanceof AiMessage ai && "COMPRESSED".equals(ai.text()));
+        }
     }
 
     @Test

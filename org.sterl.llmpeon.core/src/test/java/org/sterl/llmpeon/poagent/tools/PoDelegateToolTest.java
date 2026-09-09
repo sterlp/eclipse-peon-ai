@@ -190,4 +190,38 @@ class PoDelegateToolTest {
         assertThat(reply).contains("SLAVE REPLY");
         assertThat(streamMock.count("peon-plan/overview.md")).isEqualTo(0);
     }
+
+    /** clearReview wipes the Review slave's memory — only Da Dok, not the other slaves. */
+    @Test
+    void clearReview_wipesReviewSlaveMemoryOnly() {
+        // GIVEN
+        var tool = newTool();
+        tool.reviewPlanAgent("first review", null);
+        tool.talkPlan("a question");
+        assertThat(tool.getReviewSlave().getMemory().containsUserMessage("first review")).isTrue();
+
+        // WHEN
+        tool.clearReview();
+
+        // THEN
+        assertThat(tool.getReviewSlave().getMemory().containsUserMessage("first review")).isFalse();
+        assertThat(tool.getPlanSlave().getMemory().containsUserMessage("a question")).isTrue();
+    }
+
+    /** compactReview compacts the Review slave — the old history is replaced by the summary. */
+    @Test
+    void compactReview_compactsReviewSlaveMemory() {
+        // GIVEN
+        var tool = newTool();
+        tool.reviewPlanAgent("first review", null);
+        tool.reviewPlanAgent("second review", null);
+        assertThat(tool.getReviewSlave().getMemory().containsUserMessage("second review")).isTrue();
+
+        // WHEN
+        var reply = tool.compactReview();
+
+        // THEN
+        assertThat(reply).containsPattern("Context: \\d+ token - \\d+% used\\.");
+        assertThat(tool.getReviewSlave().getMemory().containsUserMessage("second review")).isFalse();
+    }
 }

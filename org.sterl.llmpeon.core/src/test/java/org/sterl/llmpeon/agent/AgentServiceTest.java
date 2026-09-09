@@ -64,6 +64,9 @@ class AgentServiceTest extends AbstractMemoryFileTest {
         var subject = new AgentService(true, tmp.resolve("any-foo"), toolService, chatModel);
         assertThat(subject.getActiveAgent()).isNotNull();
         assertThat(subject.getAgents()).hasSize(3);
+        // AND the persistent defaults are named, not just counted
+        assertThat(subject.getAgents()).extracting(AiAgent::getName)
+                .containsExactlyInAnyOrder(AiDevAgent.NAME, AiPlanAgent.NAME, AiReviewAgent.NAME);
         // WHEN
         subject.refresh(tmp.resolve("config"));
         // THEN

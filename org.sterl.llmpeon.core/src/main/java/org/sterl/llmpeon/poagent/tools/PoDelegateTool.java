@@ -30,7 +30,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
  * context management (clear/compact per slave).
  *
  * <p>
- * The two slaves are shared, eager singletons: the layer that wires the tool
+ * The three slaves are shared, eager singletons: the layer that wires the tool
  * creates them (core supplies disk-tool slaves, the Eclipse plugin supplies
  * workspace-tool slaves with the memory-write tool filtered out) and hands them
  * in as {@link NamedAgent}s — the very same instances Jon exposes via
@@ -202,6 +202,14 @@ public class PoDelegateTool extends AbstractTool {
      */
     public AiAgent getPlanSlave() {
         return plan.agent();
+    }
+
+    /**
+     * The Review slave (Da Dok), an eager shared instance also exposed via the
+     * PO team.
+     */
+    public AiAgent getReviewSlave() {
+        return review.agent();
     }
 
     /**
