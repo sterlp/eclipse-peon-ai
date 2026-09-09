@@ -231,7 +231,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
                 .providerType(AiProvider.OPEN_AI)
                 .url(mockLlmServer.getUrl()).build());
         mockLlmServer.queueResponse(AiMessage.aiMessage("Pong"));
-        var skills = PeonTestFixture.repoRoot().toPath().resolve("skills");
+        var skills = PeonTestFixture.repoRoot().toPath().resolve(SkillService.PROJECT_SKILLS_DIR);
         assertTrue(Files.exists(skills));
         aiService.getSkillService().refresh(skills);
 
