@@ -1,120 +1,46 @@
-# Session-Stand (2026-09-08)
+# Session-Stand (2026-09-09)
 
 ## Git-Stand
 
-- Unverändert zu 2026-09-07: **`release-2026-09-06` @ `01c76ba`** — Merge/Squash in main + Push =
-  User-Entscheidung. → **Vor Projekt-Skills-Zyklus prüfen!**
-- Docs (project-skills.md, ADR-0042/0043, Glossar, index.md) liegen uncommittet im Workspace —
-  Dev committet sie mit inc-1.
+- **`story/133` @ `ac11023`** — Project-Skills-Zyklus **komplett** (inc-1 `f85c6f0` · inc-2
+  `d087eb0` · inc-3 `910b8bd` · Delta inc-4 `7e2320a` · inc-6 `94a6499` · Plan-Archiv `ac11023`).
+  **Merge/Squash in main + Push = User-Entscheidung.**
+- Core **688/0** · Plugin **193/0**. Plan archiviert: overview-done-2026-09-09-09-23.md.
+- ⚠️ Nicht committet (User-WIP, kompiliert NICHT): Review-Agent-Refactor (`PoDelegateTool` 3-
+  Agent-Ctor + Context-Fn; `PoDelegateToolTest.java:45` nutzt alten 2-Agent-Ctor → testCompile rot)
+  — User fragen, ob er fertigstellt oder Da Mek (`AiReviewAgent`, `BuildPoAgentComponent` berühren).
+- test_project-Rename-Test-Leftovers (renameRootDst_*, sub/) untracked — Rename-Test-Cleanup
+  verpasst vermutlich; mit Bug-Fix-Zyklus anschauen.
 
-## Zyklus (geplant): `project-skills-2026-09-08` — NOT YET STARTED
+## Zyklus `story/133` — Project Skills — ABGESCHLOSSEN ✅ (2026-09-09)
 
-Feature: **Project Skills** — `docs/project-skills.md` (❌ specified, R1–R13 + R2a–R2d + R5a) +
-ADR-0042 **Rev 2** (Slot-Components mit **disunkten Maps**, Override nur beim Lesen, Projektwechsel
-ersetzt nur die Projekt-Component — User-Korrektur gegen Rev-1-Merge) + ADR-0043
-(Scaffold-WriteValidator, dynamische Roots). Komplexität: klein–mittel, 3 Inkremente.
-
-## Nächste Schritte
-
-1. User-Freigabe zum Bauen abwarten (Design vollständig specified — R2c/R2d/R10 um offene-Projekte-
-   Liste erweitert, Scaffold darf in .agents/skills ALLER offenen Projekte schreiben).
-2. Vor Start: Git-Zustand prüfen (main vs. release-2026-09-06) + Branch `project-skills-2026-09-08`
-   vergeben (Memory #23: Branch-Anweisungen in memory.md veralten).
-3. Plan via planWithPlanAgent (3 Inkremente): (1) core SkillService zwei Slots + R1/R4/R5
-   (2) plugin setProject-Hook + Reload-Tool (3) UI R9/R13 + Scaffold-Validator/Prompt (R10–R12).
-   ADR-0042: enabled-state name-keyed; Test-Mapping-Tabelle in project-skills.md.
-4. Homepage-Doku prüfen (scaffold/skills Nutzer-Doku) — im selben Inkrement wie Scaffold-Änderung.
-5. Docs-Nachzug ✅ erledigt (2026-09-08): configuration.md (Landkarte-Zeile) · scaffold-agent.md R5
-   (Reload refreshed jede Component) · write-path-validator.md (dynamische Roots ❌ verlinkt).
-6. UI-Frage (R9) ✅ geklärt: Menü-Sektionen + Zähler + `[project]`-Suffix reicht, R13 (kein Suffix
-   im Dialog-Namen).
-
-## Offen / Geparkt
-
-- ❓ ApiRetry (open-points.md) + Triage #5–#15 + Plugin-Hunt — eigener Bug-Fix-Zyklus, unverändert.
-- ⏳ Query-Caches · ⏳ Streaming-Präzisierungen · ⏳ Edit-Tools (open-points.md) — unverändert.
-- **Scaffold als Jon-Sub-Agent** — out-of-scope, User will ihn später Jon als Sub-Agent zuordnen
-  (Skill-Editing) → später eigene Story.
-- copy-tools-e2e-test.md `diskRenameResource`-Korrektur — kosmetisch, steht aus.
-# Session-Stand (2026-09-07)
-
-## Git-Stand
-
-- **`release-2026-09-06` @ `01c76ba`** (gepusht bis `4fc1008`, lokal 5 neue Commits:
-  b011576 R6 · f14371a R5 · 402b922 + 7d224ec R-UI1/Review-Fix · 01c76ba cycle-close) —
-  **Merge/Squash in main + Push = User-Entscheidung.** Main = origin/main `1f204aa` (User
-  reviewed dort den Release; sein Squash-Merge des ersten Release-Stands stand noch aus —
-  Stand bei Session-Start: "patch eingespielt" lief lokal).
-- Alte lokale Branches: state-config-2026-09-06, toc-estimate-2026-09-06, sm-fixes-2026-09-06
-  (→ renamed zu release-2026-09-06), alle intakt.
-- **Core 678/0 · Plugin 191/0.** Plan archiviert: peon-plan/overview-done-2026-09-07-10-20.md.
-- Nicht committet: test_project/issue.md + Test-Artefakte (renameRootDst_*, sub/) — bewusst.
-
-## Zyklus `file-copy-e2e-fixes-2026-09-06` — ABGESCHLOSSEN ✅
-
-- **Auslöser:** Copy-Tools-E2E (Test-Anleitung copy-tools-e2e-test.md von mir angelegt,
-  User-Ausführung im isolierten Testprojekt → 4 Befunde in test_project/issue.md).
-- **Behoben:** R6 (`Copied/Renamed <s> -> <t>` LLM-sichtbar, void→String, war langchain4j-`"Success"`)
-  · R5 Qualified Paths Only (beide Familien, Copy+Rename, source+target; QualifiedPathValidator;
-  eclipse-Ziel-Resolution-Fix — Workspace-Root-Fallback/1-Segment-Crash weg) · R-UI1
-  (Question-Widget-Regression: finaler Scroll-to-bottom nach Widget-Completion, manuelle Verifikation).
-- **Review:** Da Thinka 3-Seiten — 1 echter Fund (duplizierte Methoden in ChatMarkdownWidget,
-  inc-3-ReplaceLines-Falle, gefixt 7d224ec) + Mutations-Nachweis R5 (`projectExists` →
-  `eclipse_unknownProjectRejected` rot, sonst grün).
-- Docs geflippt: file-copy-tool.md ✅ R1–R6 · user-question-tool-design.md R-UI1 ✅ · index.md.
-- Test-Anleitung copy-tools-e2e-test.md: `diskRenameFile` → `diskRenameResource` korrigieren
-  (Befund 3 des E2E) — **steht aus, kosmetisch**.
-
-## User-Entscheidungen (Stand)
-
-- R5 gilt **beide Familien, Copy + Rename** (User bestätigt). Begründung: stiller Falsch-Ort
-  vs. lauter Fehler (Single-File-Ops bleiben Domain-Basis-Resolution).
-- po.txt/dev-build-loop.txt Prompt-Änderungen (CONTEXT-LIMIT-Regel, Branch-Regeln inkl.
-  main/master-Zeile + detached-HEAD) — User-Edits, committed.
+- Design: docs/project-skills.md R1–R13 (alle ✅) + ADR-0042 Rev 2 (Slot-Components, disunkte
+  Maps, Override nur beim Lesen) + ADR-0043 (DynamicRootsWriteValidator, configDir + .agents/skills
+  aller offenen Projekte, kein Instanz-Merge). Branch-Namens-Abweichung: User-Wunsch `story/133`
+  statt project-skills-2026-09-08.
+- Review (Da Thinka, 3-Seiten): 1 Abweichung (Test-Name, Docs korrigiert) · 1 Risiko→inc-4
+  (Tag-Strip-Guard in get() gegen False-Negative beim Echo) · 1 PO-Lücke→inc-6 (Homepage) ·
+  Mutation-Proof bestanden (Merge-Order-Flip → 2 Tests rot → revert, beide Fänger wie vorhergesagt).
+- **UI manuell prüfen (SWT, Da Mek-Checkliste):** Zähler „N skills (M project)" · Menü-Sektion
+  „Project skills — <name>" · Slash-Autocomplete `[project]`-Suffix · Namen im Dialog unsuffigiert.
 
 ## Nächste Schritte
 
-1. **User:** Squash-Merge release-2026-09-06 → main nach Review + Push (beide Runden: der
-   erste Release-Stand war evtl. schon gesquasht — Git-Verlauf prüfen, nicht doppelt).
-2. **Bug-Fix-Zyklus:** Triage #5–#15 (Tabelle siehe unten) + ApiRetry-Verdacht (Null-Byte-
-   IOException als Cancel klassifiziert? ❓ open-points.md, verwandt Memory #21) + Plugin-Hunt
-   + **NEU: AgentOrder Auto-Create-Fehlschlag killt Agent-Reload** (Known Edge in
-   agent-ordering.md — read-only Config-Dir → gar keine Agenten; robust = weiter ohne Ordering).
-3. Offene ❓: Glossar eager ((b) Turn-Context-Item) · buildWithDev-Compact (Compact, ~50 %,
-   nur neuer Plan) — Empfehlungen in open-points.md, „nimm deine Empfehlungen" genügt.
-4. E2E-Erweiterungen möglich: Copy-Tools-Rerun auf dem gefixten Build (Anleitung liegt bereit),
-   Edit-Tools-E2E (Line-Ending-Item 3 weiter ungeparkt).
-5. Ideen-Backlog: Jon×Scaffold · builtin-agent-prompt-override (🚧) · eclipseJavaMoveType (🚧).
-
-## Triage-Liste (offen — #1–#4, #9, #13, #16 shipped)
-
-| # | Fehler | Modul | Fix (Jon gewählt) |
-|---|---|---|---|
-| 5 | `ShellTool`: `join(timeout)` ≠ Sichtbarkeitsgarantie, plain `LinkedList` cross-thread | core | Thread-sichere Liste (CopyOnWrite) + Stress-Test |
-| 6 | `findFirst`/`diskDeleteFile`: `Files.walk`-Stream nie geschlossen; Delete meldet „Deleted:" trotz still übersprungener Fehler | core | try-with-resources; Teilerfolg benennen („Deleted N of M, failed: …") |
-| 7 | `AiModelParser`: Parse-Fehler → `printStackTrace` + leeres Catalog, Root Cause verloren | core | Root Cause loggen (warn), leere Liste bleibt |
-| 8 | `ThinkResolver.toReasoning`: „True"/"False" rutschen durch, Off-Tokens verbatim an LM Studio | core | Case-insensitive Normalisierung; Off-Token→"off", sonst→"on" |
-| 10 | `VoiceInputService.transcribe`: kein Timeout, `f.get()` unbounded | core | HttpRequest-Timeout + `f.get(30s)` → Timeout = Fehlermeldung |
-| 11 | `searchComplete`: Limit-Cap **ohne** Disclosure (grepComplete hat sie) | core | „showing N of M" / Cap-Disclosure wie grepComplete |
-| 12 | `FileLines.extract(0,0)` → RAW-Content ohne Zeilennummern, Javadoc sagt 0 → 1/last nummriert | core | 0 als 1/last → nummriert (disk+eclipse konsistent) |
-| 14 | `AnthropicProvider.listAiModels`: hardcodet `api.anthropic.com`, ignoriert custom `baseUrl` (Proxy→401) | core | `baseUrl` aus Config nutzen |
-| 15 | `VoiceInputService`: doppeltes `startRecording` leakt die alte Line | core | Alte Line vor neuem Start schließen |
-
-**Ablauf pro Fehler (User-Vorgabe):** Rot-Test (Da Mek) → Jon prüft Rot-Test → Fix → Grün →
-Commit. Inkremente klein bündeln (2–4 Fehler/Increment), Review via Da Thinka am Ende.
-Plugin-Hunt (Da Mek) steht noch aus.
+1. **User:** Review-Agent-WIP entscheiden (selbst fertigstellen vs. Da Mek) — Blocker für
+   testCompile auf story/133.
+2. **User:** Merge story/133 → main (nach WIP-Entscheidung, da WIP auf gleichem Branch liegt).
+3. UI-Checkliste (oben) manuell durchklicken; Homepage `homepage/src/setup/agents-and-skills.md`
+   überfliegen (inc-6, User-Edit des yaml-Blocks möglich).
+4. Bug-Fix-Zyklus: Triage #5–#15 + ApiRetry-Verdacht (❓ open-points.md, Memory #21) + Plugin-Hunt
+   + AgentOrder Auto-Create-Edge (agent-ordering.md) + Rename-Test-Leftovers.
+5. Offene ❓: Glossar eager · buildWithDev-Compact — Empfehlungen in open-points.md.
+6. Ideen-Backlog: Jon×Scaffold (Scaffold als Jon-Sub-Agent, out-of-scope project-skills) ·
+   builtin-agent-prompt-override (🚧) · eclipseJavaMoveType (🚧).
 
 ## Geparkt / Wissenswert
 
-- **Edit-Tools** (open-points.md): Rename auf "Edit", gemeinsame Doku, planEdit-Count,
-  Line-Ending-Normalisierung (User-E2E-Spec, ersetzt E3-Skip). Reihenfolge: Rename → Doku →
-  Count → Line-Ending. E2E-Spec: file-edit-tools.txt. ⚠️ Item 3 NICHT gebaut = rot im E2E ist
-  erwartet.
-- Cleanup-Kandidaten: `StreamingBridge.clock` redundant; `EclipseUtil.editInEditor` Dead Code;
-  leerer /org.sterl.llmpeon/docs/adr-Restordner; test_project/issue.md nach Bug-Fix-Zyklus löschen.
-- E2E-Tool-Namens-Falle: Tools heißen `diskRenameResource`/`eclipseRenameResource` (nicht
-  *RenameFile) — in neuen Test-Anleitungen exakt prüfen.
-- Docs-Lage: docs/** = /llmpeon-parent/docs/. Agent-Ordering neu dokumentiert
-  (agent-ordering.md ✅ #128). Custom-Dropdown-Klassen gelöscht (2026-09-06).
-- open-points.md: ❓ ApiRetry · ❓ Glossar eager · ❓ buildWithDev-Compact · ⏳ Query-Caches ·
-  ⏳ Streaming-Präzisierungen · ⏳ Edit-Tools.
+- E2E-Tool-Namens-Falle: `diskRenameResource`/`eclipseRenameResource` (nicht *RenameFile).
+- copy-tools-e2e-test.md `diskRenameResource`-Korrektur — kosmetisch, steht aus.
+- ⏳ Query-Caches · ⏳ Streaming-Präzisierungen · ⏳ Edit-Tools (open-points.md) — unverändert.
+- Da Mek STOP-AND-ASK-Regel (memory-Tool #29): bewährt — hat Branch-Abweichung (story/133) und
+  WIP-Konflikt sauber eskaliert statt still zu workarounden.

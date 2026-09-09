@@ -57,7 +57,7 @@ public class AiReviewAgent extends AbstractAgent {
 
     @Override
     public String handoverTo() {
-        return AiDevAgent.NAME;
+        return AiPlanAgent.NAME;
     }
     
     @Override
