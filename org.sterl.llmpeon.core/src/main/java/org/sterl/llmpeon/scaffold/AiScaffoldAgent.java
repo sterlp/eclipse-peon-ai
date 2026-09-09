@@ -1,12 +1,15 @@
 package org.sterl.llmpeon.scaffold;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.function.Supplier;
 
+import org.jspecify.annotations.Nullable;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.tool.DynamicRootsWriteValidator;
 import org.sterl.llmpeon.tool.SmartTool;
 import org.sterl.llmpeon.tool.ToolService;
@@ -37,13 +40,33 @@ public class AiScaffoldAgent extends org.sterl.llmpeon.agent.AbstractAgent {
     private volatile Supplier<List<Path>> projectSkillsRoots = List::of;
 
     public AiScaffoldAgent(ConfiguredChatModel configuredModel) {
+        this(configuredModel, null);
+    }
+
+    /**
+     * @param skillService when non-null, every successful disk write deterministically
+     *        refreshes the skill view (R15) — no LLM-driven reload needed. The write has
+     *        already succeeded at that point, so a refresh failure is rethrown to the LLM
+     *        (tool honesty: no silent stale view).
+     */
+    public AiScaffoldAgent(ConfiguredChatModel configuredModel, @Nullable SkillService skillService) {
         super(configuredModel, new ToolService(false));
 
         var configDir = configuredModel.getConfig().getConfigDir();
         diskFileReadTool = new DiskFileReadTool(configDir);
         diskFileWriteTool = new DiskFileWriteTool(configDir);
         diskGrepTool = new DiskGrepTool(configDir);
-        
+
+        if (skillService != null) {
+            diskFileWriteTool.setAfterWrite(() -> {
+                try {
+                    skillService.refreshAll();
+                } catch (IOException e) {
+                    throw new RuntimeException("Write succeeded but skill refresh failed: " + e.getMessage(), e);
+                }
+            });
+        }
+
         toolService.addTool(diskFileReadTool);
         toolService.addTool(diskFileWriteTool);
         toolService.addTool(diskGrepTool);

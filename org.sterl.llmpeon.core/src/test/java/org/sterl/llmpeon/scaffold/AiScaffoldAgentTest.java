@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.skill.SkillService;
+import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 
 class AiScaffoldAgentTest {
 
@@ -87,4 +88,39 @@ class AiScaffoldAgentTest {
                 .as("foreign absolute paths are denied")
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void successfulWriteTriggersSkillRefreshAll() throws Exception {
+        // GIVEN a scaffold wired to a SkillService pointing at the config skills dir (R15)
+        var configDir = Files.createTempDirectory("scaffold-r15");
+        var config = LlmConfig.builder()
+                .providerType(AiProvider.OLLAMA)
+                .model("qwen3")
+                .url("http://localhost:9999")
+                .configDir(configDir)
+                .build();
+        var skillService = new SkillService();
+        skillService.refresh(configDir.resolve("skills"));
+        var subject = new AiScaffoldAgent(config.build(), skillService);
+        var writeTool = subject.getToolService().getTool(DiskFileWriteTool.class).orElseThrow();
+
+        // WHEN the scaffold writes a new skill into the config skills dir
+        writeTool.diskWriteFile(configDir.resolve("skills").resolve("new-skill.md").toString(), """
+                ---
+                name: new-skill
+                description: written by scaffold
+                ---
+                body
+                """);
+
+        // THEN the service view contains the skill — without any reload call
+        assertThat(skillService.get("new-skill")).isPresent();
+
+        // AND a failed write leaves the view untouched (afterWrite never fires on error)
+        var count = skillService.loadedSkillCount();
+        assertThatThrownBy(() -> writeTool.diskWriteFile("", "x"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(skillService.loadedSkillCount()).isEqualTo(count);
+    }
+
 }

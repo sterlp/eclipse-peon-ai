@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import org.jspecify.annotations.Nullable;
 import org.sterl.llmpeon.shared.AiMonitor.AiFileUpdate;
 import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.FileLines;
@@ -41,6 +42,21 @@ public class DiskFileWriteTool extends AbstractTool {
         return workingDir;
     }
 
+    private volatile @Nullable Runnable afterWrite;
+
+    /**
+     * Callback fired after every successful mutating tool call — never on
+     * failure (R15: e.g. refresh the skill view after a scaffold write).
+     */
+    public void setAfterWrite(@Nullable Runnable afterWrite) {
+        this.afterWrite = afterWrite;
+    }
+
+    private void fireAfterWrite() {
+        var hook = afterWrite;
+        if (hook != null) hook.run();
+    }
+
     @Tool("Write file. Creates parent dirs and overwrites if exists.")
     public void diskWriteFile(@P(name = "filePath") String filePath, @P(name = "content") String content) {
         ArgsUtil.requireNonBlank(filePath, "filePath");
@@ -62,6 +78,7 @@ public class DiskFileWriteTool extends AbstractTool {
             }
             
             onTool((existed ? "Updated" : "Created") + " file: " + resolved);
+            fireAfterWrite();
         } catch (IOException e) {
             throw new RuntimeException("Failed to write " + filePath, e);
         }
@@ -87,6 +104,7 @@ public class DiskFileWriteTool extends AbstractTool {
                 Files.delete(resolved);
             }
             onTool("Deleted: " + resolved);
+            fireAfterWrite();
         } catch (IOException e) {
             throw new RuntimeException("Failed to delete " + filePath, e);
         }
@@ -111,6 +129,7 @@ public class DiskFileWriteTool extends AbstractTool {
             String newFullContent = FileLines.replaceLines(content, line, line, newContent);
             Files.writeString(resolved, newFullContent);
             monitor.onFileUpdate(new AiFileUpdate(workingDir.relativize(resolved).toString(), content, newFullContent));
+            fireAfterWrite();
         } catch (IOException e) {
             throw new RuntimeException("Failed to edit " + filePath, e);
         }
@@ -143,6 +162,7 @@ public class DiskFileWriteTool extends AbstractTool {
             var result = new AiFileUpdate(workingDir.relativize(resolved).toString(), content, edit.content());
             monitor.onFileUpdate(result);
 
+            fireAfterWrite();
             var verb = newString.isEmpty() ? "deleted" : "replaced";
             return verb + " " + edit.count() + " occurrence(s) in " + resolved;
         } catch (IOException e) {
@@ -176,6 +196,7 @@ public class DiskFileWriteTool extends AbstractTool {
             Files.move(source, target);
             var result = "Renamed " + source + " -> " + target;
             onTool(result);
+            fireAfterWrite();
             return result;
         } catch (IOException e) {
             throw new RuntimeException("Failed to rename " + sourcePath + " -> " + targetPath, e);
@@ -203,6 +224,7 @@ public class DiskFileWriteTool extends AbstractTool {
         FileUtils.copy(source, target);
         var result = "Copied " + source + " -> " + target;
         onTool(result);
+        fireAfterWrite();
         return result;
     }
 
@@ -225,6 +247,7 @@ public class DiskFileWriteTool extends AbstractTool {
             String newFullContent = FileLines.insertLines(content, afterLine, newContent);
             Files.writeString(resolved, newFullContent);
             monitor.onFileUpdate(new AiFileUpdate(workingDir.relativize(resolved).toString(), content, newFullContent));
+            fireAfterWrite();
         } catch (IOException e) {
             throw new RuntimeException("Failed to edit " + filePath, e);
         }

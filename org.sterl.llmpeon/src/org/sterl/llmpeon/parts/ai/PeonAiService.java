@@ -143,7 +143,8 @@ public class PeonAiService {
         agentService  = new AgentService(true,
                 config.getConfigDir().resolve(LlmConfig.AGENT_DIRECTORY), sharedToolService, configuredModel, stateDir);
 
-        scaffoldAgent = new AiScaffoldAgent(configuredModel);
+        // R15: a successful scaffold disk write deterministically refreshes the skill view.
+        scaffoldAgent = new AiScaffoldAgent(configuredModel, skillService);
         // ADR-0043: the scaffold may write into the .agents/skills dir of every open project
         // (read at validate time, R10) — in addition to the config dir.
         scaffoldAgent.setProjectSkillsRootsSupplier(this::projectSkillsRoots);
