@@ -131,13 +131,28 @@ public class SkillService {
 
     /**
      * Return the skill -- also the disabled ones; project variant wins on name collision.
+     * Accepts tagged names as echoed from {@link #skillNames()} (e.g. {@code "review [project]"})
+     * — the trailing source tag is stripped before the lookup, so an echo never misses.
      */
     public Optional<SkillPromptFile> get(String name) {
         if (name == null || name.isBlank()) return Optional.empty();
-        var key = name.toLowerCase(Locale.ROOT);
+        var key = stripSourceTag(name).toLowerCase(Locale.ROOT);
         var skill = effectiveView().get(key);
         if (skill != null) skill.setEnabled(enabledByName.getOrDefault(key, true));
         return Optional.ofNullable(skill);
+    }
+
+    /**
+     * Strips one trailing source tag (e.g. {@code " [project]"}) from a skill name,
+     * case-insensitive. At most one tag; unknown tags are kept so such lookups miss as before.
+     */
+    private static String stripSourceTag(String name) {
+        var lower = name.toLowerCase(Locale.ROOT);
+        for (SkillSource source : SkillSource.values()) {
+            var tag = source.tag();
+            if (lower.endsWith(tag)) return name.substring(0, name.length() - tag.length()).strip();
+        }
+        return name;
     }
 
     public boolean hasSkills() {

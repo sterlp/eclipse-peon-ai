@@ -364,6 +364,32 @@ class SkillServiceTest extends AbstractMemoryFileTest {
     }
 
     @Test
+    void get_acceptsTaggedName_returnsSkill() throws Exception {
+        // GIVEN a config skill "cfg" + a project skill "review"
+        var service = new SkillService();
+        var configDir = Files.createDirectory(tmp.resolve("r4a-config"));
+        var projDir = Files.createDirectory(tmp.resolve("r4a-proj"));
+        writeSkill(configDir, "cfg", "cfg", "c");
+        writeSkill(projDir, "review", "review", "r");
+        service.refresh(configDir);
+        service.setProjectSkillsDir(projDir);
+
+        // WHEN the model echoes a tagged name as listed by skillNames()
+        // THEN it resolves, with the correct source (case-insensitive tag)
+        assertThat(service.get("review [project]").orElseThrow().getSource()).isEqualTo(SkillSource.PROJECT);
+        assertThat(service.get("cfg [config]").orElseThrow().getSource()).isEqualTo(SkillSource.CONFIG);
+        assertThat(service.get("REVIEW [PROJECT]").orElseThrow().getName()).isEqualTo("review");
+
+        // AND plain names still resolve
+        assertThat(service.get("review").orElseThrow().getSource()).isEqualTo(SkillSource.PROJECT);
+        assertThat(service.get("cfg").orElseThrow().getSource()).isEqualTo(SkillSource.CONFIG);
+
+        // AND unknown tags / unknown names keep missing
+        assertThat(service.get("review [bogus]")).isEmpty();
+        assertThat(service.get("nope")).isEmpty();
+    }
+
+    @Test
     void enabledStateSurvivesRefreshAndFollowsName() throws Exception {
         // GIVEN config skill foo, disabled by name
         var service = new SkillService();
