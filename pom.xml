@@ -9,7 +9,7 @@
     <packaging>pom</packaging>
 
     <properties>
-        <tycho.version>5.0.3</tycho.version>
+        <tycho.version>5.0.4</tycho.version>
         <java.version>21</java.version>
         <langchain4j.version>1.19.0</langchain4j.version>
         <mockito.version>5.23.0</mockito.version>

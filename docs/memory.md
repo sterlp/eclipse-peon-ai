@@ -1,37 +1,29 @@
-# Session-Stand (2026-09-09, Autonomie-Modus abgeschlossen)
+# Session-Stand (2026-09-09, Zyklus story/133 abgeschlossen)
 
-## Git-Stand — story/133 (11 Commits ahead, Merge/Push = User)
+## Git — story/133, 12 Commits, MERGE/PUSH = USER
 
-- **Story A ✅** SkillComponent-Refactor: `23fbaa3` `024d151` `c19ecd7` `5eff54f` `3d6c2d5`.
-- **Story B ✅** Skills-Move: `8acff18` (Move+AGENTS+po.txt+Smoke-Skill) · `134a73d`
-  (Test-Fixture-Pfad auf PROJECT_SKILLS_DIR — einziger Hardcode, Smoke-Test-Fund).
-- **Story C ✅** Learning-Loop: R1-Java `b4e918d`+`be4093b` · Text-Seite `2bca2c2`
-  (AGENTS-PO.md neu, AGENTS-DEV.md ergänzt, R2–R7).
-- Früher heute: Header-Order `ec2d754` · Docs `d5ca69a` · Rename-Test-Fix `7f89af5`.
-- **Smoke-Test ✅:** skillNames zeigt eclipse-dpe/skill-evolution [project], R1-Footer live am
-  skillRead-Ergebnis, test_project-Smoke-Skill `test [project]` sichtbar. Core 699/0 ·
-  Plugin 194/0.
-- **Merge/Squash → main + Push = User-Entscheidung.**
+Alle Features ✅ (Details: git log, docs/index.md):
+- A SkillComponent-Refactor (R14–R16) · B Skills-Move (.agents/skills, `134a73d` Fixture-Pfad-Fix)
+- C Skill-Evolution-Loop (R1-Footer Java, R2–R7 AGENTS-PO.md/AGENTS-DEV.md)
+- Früher: Team-Header-Order, Rename-Test-Cleanup, po.txt „Da Dok".
+Gates: Core 699/0 · Plugin 194/0. Smoke ✅ (project skills sichtbar, Footer live).
 
-## Offene Punkte (für User-Zusammenfassung)
+## Release-Notes (für homepage anpassen? — User prüfen)
 
-1. Merge story/133 → main + Push.
-2. Loop-Bewährung (C ist experimentell): erste Iterationen zeigen, ob Footer-Feedback +
-   CRUD-Evidence-Regel tragen — Wanderung in Built-in-Prompts später = User-Schritt.
-3. M2-cosmetic: „slot"-Namensdrift in alten Tests/Kommentaren (SkillServiceTest :209ff,
-   setProject_replacesProjectSlotOnly) — klein, wann immer berührt.
-4. Nächste Zyklen: Memory-Leak-Hunt (frischer Context) · Bug-Fix (Triage #5–#15 + ApiRetry +
-   AgentOrder-Edge) · ❓ Glossar eager · ❓ buildWithDev-Compact (open-points.md).
+Skills: projekt-lokale `.agents/skills` + CRUD-Evolutions-Loop + Usefulness-Footer;
+Scaffold-Write refresht Skills sofort; Jon liest Skills.
 
-## Geparkt / Wissenswert
+## Nächste Zyklen (Reihenfolge offen)
 
-- E2E-Tool-Namens-Falle: `diskRenameResource`/`eclipseRenameResource`.
-- copy-tools-e2e-test.md `diskRenameResource`-Korrektur — kosmetisch, steht aus.
-- ⏳ Query-Caches · ⏳ Streaming-Präzisierungen · ⏳ Edit-Tools (open-points.md).
-- Leere Test-Fixture-Dirs überleben Cleanup — bewusst kein Sweep (git-unsichtbar).
-- git mv auf macOS braucht mkdir -p des Ziels zuerst (Apple Git 2.50).
-- Review-Agent Bewährung: F1+F2 (story/133) + Story-C-Review sauber; Fixtures mit static
-  @BeforeAll-tmp nicht zweimal nutzen (FileAlreadyExists — fixture-shape ok, Name variieren).
-- Story-B-Lektion: Repo-interne Pfad-Referenzen (Tests!) beim Move mit-greppen — Hardcode
-  `resolve("skills")` überlebte den Move bis zum Smoke-Test.
+1. Memory-Leak-Hunt (frischer Context!) — Eclipse läuft voll.
+2. Bug-Fix: Triage #5–#15 + ApiRetry-Verdacht + AgentOrder-Edge.
+3. Loop-Bewährung beobachten → Wanderung in Built-in-Prompts = User-Schritt, später.
+4. ❓ Glossar eager · ❓ buildWithDev-Compact (open-points.md) · M2 „slot"-Drift (kosmetisch).
 
+## Geparkt
+
+- copy-tools-e2e-test.md `diskRenameResource`-Korrektur (kosmetisch).
+- ⏳ Query-Caches · Streaming-Präzisierungen · Edit-Tools (open-points.md).
+- Leere Fixture-Dirs überleben Cleanup (bewusst). git mv auf macOS: mkdir -p zuerst.
+- Story-B-Lektion: bei Moves Repo-interne Pfad-Referenzen (Tests!) mit-greppen.
+- Review-Agent Bewährung: F1+F2 + saubere Story-A/C-Reviews.

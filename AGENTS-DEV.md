@@ -3,13 +3,6 @@
 Hints for the dev phase, base rules `AGENTS.md`
 
 - `mvn clean install` makes the artifacts available for partial module builds.
-- **Never write to `docs/`** — owned by the PO + the user; the story's ❌ → ✅ flip is left to
-  the docs owner. Track progress only in the plan file and the task files you create.
-- **User docs (homepage / VitePress):** `homepage/` is the published user documentation,
-  separate from `docs/`. Source in `homepage/src` (`srcDir` in `homepage/.vitepress/config.ts`);
-  build via `homepage/build-docs.sh`. New page → update the sidebar/nav in
-  `homepage/.vitepress/config.ts`. A user-facing page is added only once the feature ships
-  (rule ✅) — never document unbuilt behaviour to users.
 
 ## Dependencies
 
@@ -101,3 +94,13 @@ These bit us repeatedly in this repo — check them before reporting an incremen
   read is wrong or outdated and you can fix it in place, do it in the same turn (keep it short);
   otherwise report the gap so Jon routes it. Skill changes follow `skill-evolution` (evidence
   required, keep skills short).
+  
+## Reference projects for API help
+
+1. use github eclipse plugin AI harness if problems or question arise which cannot be answered 
+   by the API itself eclipse: /github-copilot-for-eclipse
+2. /langchain4j-aggregator for langchain4j code & docs (*.md), if the API itself is not enough
+3. Opencode source - cli AI harness: /opencode -- for generall idea how AI harnesses are build
+
+Use search agents to search these big repos - do direct reads only. Considerer proposing SKILL changes
+or new skills for extracted patterns or solutions.
