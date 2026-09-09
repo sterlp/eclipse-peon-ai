@@ -20,6 +20,7 @@ import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
 import org.sterl.llmpeon.prompt.model.SimplePromptFile;
 import org.sterl.llmpeon.skill.SkillPromptFile;
+import org.sterl.llmpeon.skill.SkillSource;
 
 /**
  * Lightweight popup that lists slash-commands matching the current prefix.
@@ -184,7 +185,12 @@ public class SlashMenuPopup {
         table.removeAll();
         for (var cmd : filtered) {
             var item = new TableItem(table, SWT.NONE);
-            item.setText(0, "/" + cmd.getName());
+            // R9: project skills carry the source suffix in autocomplete (the name filter stays suffix-free, R13)
+            var label = "/" + cmd.getName();
+            if (cmd instanceof SkillPromptFile skill && skill.getSource() == SkillSource.PROJECT) {
+                label += " [project]";
+            }
+            item.setText(0, label);
             if (nameFont != null) item.setFont(0, nameFont);
             item.setText(1, cmd instanceof SkillPromptFile ? "SKILL" : "COMMAND");
             // mute the short type tag so the name stands out:

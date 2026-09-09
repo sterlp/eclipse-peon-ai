@@ -1,3 +1,41 @@
+# Session-Stand (2026-09-08)
+
+## Git-Stand
+
+- Unverändert zu 2026-09-07: **`release-2026-09-06` @ `01c76ba`** — Merge/Squash in main + Push =
+  User-Entscheidung. → **Vor Projekt-Skills-Zyklus prüfen!**
+- Docs (project-skills.md, ADR-0042/0043, Glossar, index.md) liegen uncommittet im Workspace —
+  Dev committet sie mit inc-1.
+
+## Zyklus (geplant): `project-skills-2026-09-08` — NOT YET STARTED
+
+Feature: **Project Skills** — `docs/project-skills.md` (❌ specified, R1–R13 + R2a–R2d + R5a) +
+ADR-0042 **Rev 2** (Slot-Components mit **disunkten Maps**, Override nur beim Lesen, Projektwechsel
+ersetzt nur die Projekt-Component — User-Korrektur gegen Rev-1-Merge) + ADR-0043
+(Scaffold-WriteValidator, dynamische Roots). Komplexität: klein–mittel, 3 Inkremente.
+
+## Nächste Schritte
+
+1. User-Freigabe zum Bauen abwarten (Design vollständig specified — R2c/R2d/R10 um offene-Projekte-
+   Liste erweitert, Scaffold darf in .agents/skills ALLER offenen Projekte schreiben).
+2. Vor Start: Git-Zustand prüfen (main vs. release-2026-09-06) + Branch `project-skills-2026-09-08`
+   vergeben (Memory #23: Branch-Anweisungen in memory.md veralten).
+3. Plan via planWithPlanAgent (3 Inkremente): (1) core SkillService zwei Slots + R1/R4/R5
+   (2) plugin setProject-Hook + Reload-Tool (3) UI R9/R13 + Scaffold-Validator/Prompt (R10–R12).
+   ADR-0042: enabled-state name-keyed; Test-Mapping-Tabelle in project-skills.md.
+4. Homepage-Doku prüfen (scaffold/skills Nutzer-Doku) — im selben Inkrement wie Scaffold-Änderung.
+5. Docs-Nachzug ✅ erledigt (2026-09-08): configuration.md (Landkarte-Zeile) · scaffold-agent.md R5
+   (Reload refreshed jede Component) · write-path-validator.md (dynamische Roots ❌ verlinkt).
+6. UI-Frage (R9) ✅ geklärt: Menü-Sektionen + Zähler + `[project]`-Suffix reicht, R13 (kein Suffix
+   im Dialog-Namen).
+
+## Offen / Geparkt
+
+- ❓ ApiRetry (open-points.md) + Triage #5–#15 + Plugin-Hunt — eigener Bug-Fix-Zyklus, unverändert.
+- ⏳ Query-Caches · ⏳ Streaming-Präzisierungen · ⏳ Edit-Tools (open-points.md) — unverändert.
+- **Scaffold als Jon-Sub-Agent** — out-of-scope, User will ihn später Jon als Sub-Agent zuordnen
+  (Skill-Editing) → später eigene Story.
+- copy-tools-e2e-test.md `diskRenameResource`-Korrektur — kosmetisch, steht aus.
 # Session-Stand (2026-09-07)
 
 ## Git-Stand

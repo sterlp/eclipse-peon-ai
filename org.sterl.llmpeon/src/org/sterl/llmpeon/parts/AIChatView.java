@@ -50,6 +50,7 @@ import org.sterl.llmpeon.parts.widget.StatusLineWidget.SkillMenuSelection;
 import org.sterl.llmpeon.parts.widget.UserInputWidget;
 import org.sterl.llmpeon.parts.widget.UserQuestionResponseWidget;
 import org.sterl.llmpeon.prompt.model.SimplePromptFile;
+import org.sterl.llmpeon.skill.SkillSource;
 import org.sterl.llmpeon.shared.OnPartialAiResponse;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
@@ -331,8 +332,10 @@ public class AIChatView implements EclipseAiMonitor {
         if (statusLine == null) return;
         if (actionsBar == null) return;
 
+        var skills = aiService.getSkillService().getSkills();
         statusLine.update(
-            aiService.getSkillService().getSkills().size(),
+            skills.size(),
+            (int) skills.stream().filter(s -> s.getSource() == SkillSource.PROJECT).count(),
             aiService.getProject(),
             aiService.getUserContext().getSelectedFile()
         );

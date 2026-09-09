@@ -1,10 +1,16 @@
 package org.sterl.llmpeon.scaffold;
 
+import java.nio.file.Path;
+import java.util.List;
+import java.util.function.Supplier;
+
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.tool.DynamicRootsWriteValidator;
 import org.sterl.llmpeon.tool.SmartTool;
 import org.sterl.llmpeon.tool.ToolService;
+import org.sterl.llmpeon.tool.WriteValidator;
 import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 import org.sterl.llmpeon.tool.tools.DiskGrepTool;
@@ -27,6 +33,8 @@ public class AiScaffoldAgent extends org.sterl.llmpeon.agent.AbstractAgent {
     private final DiskFileReadTool diskFileReadTool;
     private final DiskFileWriteTool diskFileWriteTool;
     private final DiskGrepTool diskGrepTool;
+    /** ADR-0043: additional write roots — the {@code .agents/skills} dirs of the open projects, read at validate time. */
+    private volatile Supplier<List<Path>> projectSkillsRoots = List::of;
 
     public AiScaffoldAgent(ConfiguredChatModel configuredModel) {
         super(configuredModel, new ToolService(false));
@@ -53,6 +61,21 @@ public class AiScaffoldAgent extends org.sterl.llmpeon.agent.AbstractAgent {
 
     public void addTool(SmartTool toolObject) {
         toolService.addTool(toolObject);
+    }
+
+    /**
+     * ADR-0043: supplier for the additional write roots — the {@code .agents/skills} dir of
+     * every open project (read at validate time, R10). Default: empty → writes restricted to
+     * the config dir.
+     */
+    public void setProjectSkillsRootsSupplier(Supplier<List<Path>> supplier) {
+        this.projectSkillsRoots = supplier == null ? List::of : supplier;
+    }
+
+    /** R10/R12: hard write gate — config dir + the open projects' skill dirs. */
+    @Override
+    public WriteValidator getWriteValidator() {
+        return new DynamicRootsWriteValidator(configuredModel.getConfig().getConfigDir(), projectSkillsRoots);
     }
 
     @Override

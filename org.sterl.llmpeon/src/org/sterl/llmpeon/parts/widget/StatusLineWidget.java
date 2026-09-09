@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.parts.widget;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -20,6 +21,7 @@ import org.eclipse.ui.PlatformUI;
 import org.sterl.llmpeon.parts.shared.EclipseUiUtil;
 import org.sterl.llmpeon.parts.shared.ImageUtil;
 import org.sterl.llmpeon.skill.SkillPromptFile;
+import org.sterl.llmpeon.skill.SkillSource;
 
 /**
  * Status bar below the action bar. Shows project pin, selected file, skills
@@ -36,6 +38,8 @@ public class StatusLineWidget extends Composite {
 
     private Supplier<List<SkillPromptFile>> skillsProvider;
     private Consumer<SkillMenuSelection> onSkillMenuChange;
+    /** Current project — names the "Project skills" menu header (R9). */
+    private IProject currentProject;
 
     private final ISharedImages images = PlatformUI.getWorkbench().getSharedImages();
 
@@ -98,7 +102,7 @@ public class StatusLineWidget extends Composite {
 
     }
 
-    public void update(int skillCount, IProject project, String selected) {
+    public void update(int skillCount, int projectSkillCount, IProject project, String selected) {
 
         // --- Pin: show/hide the button with project name ---
         boolean hasProject = project != null;
@@ -110,19 +114,22 @@ public class StatusLineWidget extends Composite {
         if (hasProject) {
             btnPin.setText(project.getName()); // 📌 ProjectName
         }
+        this.currentProject = project;
 
         // --- File ---
         fileLabel.setText(selected == null ? "" : selected);
 
-        setSkillCount(skillCount);
+        setSkillCount(skillCount, projectSkillCount);
 
         layout(true);
         getParent().layout(new Control[] { this });
     }
 
-    /** Update the skills toggle button text with the loaded skill count. */
-    public void setSkillCount(int count) {
-        btnSkills.setText(count + " skill" + (count != 1 ? "s" : ""));
+    /** Update the skills toggle button text: `N skills (M project)` — the project part only when M > 0 (R9). */
+    public void setSkillCount(int count, int projectCount) {
+        var text = count + " skill" + (count != 1 ? "s" : "");
+        if (projectCount > 0) text += " (" + projectCount + " project)";
+        btnSkills.setText(text);
         btnSkills.setSelection(count > 0);
         btnSkills.getParent().layout(false, false);
     }
@@ -166,6 +173,13 @@ public class StatusLineWidget extends Composite {
         List<SkillPromptFile> skills = skillsProvider.get();
         if (skills.isEmpty()) return;
 
+        // R9: two sections — config skills, then project skills under a named header
+        var configSkills = new ArrayList<SkillPromptFile>();
+        var projectSkills = new ArrayList<SkillPromptFile>();
+        for (SkillPromptFile skill : skills) {
+            (skill.getSource() == SkillSource.PROJECT ? projectSkills : configSkills).add(skill);
+        }
+
         Menu menu = new Menu(btnSkills);
 
         // "All" option at the top
@@ -182,7 +196,21 @@ public class StatusLineWidget extends Composite {
 
         new MenuItem(menu, SWT.SEPARATOR);
 
-        // Individual skill items
+        addSkillItems(menu, configSkills);
+
+        // Project section (R9): disabled-style header carrying the project name, then the project skills
+        if (!projectSkills.isEmpty()) {
+            new MenuItem(menu, SWT.SEPARATOR);
+            var header = new MenuItem(menu, SWT.NONE);
+            header.setText("Project skills — " + (currentProject != null ? currentProject.getName() : ""));
+            header.setEnabled(false);
+            addSkillItems(menu, projectSkills);
+        }
+
+        menu.setVisible(true);
+    }
+
+    private void addSkillItems(Menu menu, List<SkillPromptFile> skills) {
         for (SkillPromptFile skill : skills) {
             MenuItem item = new MenuItem(menu, SWT.CHECK);
             item.setText(skill.getName());
@@ -193,8 +221,6 @@ public class StatusLineWidget extends Composite {
                 }
             });
         }
-
-        menu.setVisible(true);
     }
 
     /** Encapsulates skill menu selection results. */

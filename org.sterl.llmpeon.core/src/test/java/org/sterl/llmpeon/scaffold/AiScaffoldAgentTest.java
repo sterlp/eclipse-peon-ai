@@ -1,12 +1,16 @@
 package org.sterl.llmpeon.scaffold;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.file.Files;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.skill.SkillService;
 
 class AiScaffoldAgentTest {
 
@@ -40,5 +44,47 @@ class AiScaffoldAgentTest {
 
         // WHEN / THEN — inherits no-op from interface default
         assertThat(subject.setAgentModelName("gpt-4")).isFalse();
+    }
+
+    @Test
+    void writeValidatorAllowsConfigAndProjectSkillsOnly() throws Exception {
+        // GIVEN a scaffold whose write roots are the config dir + two open projects' .agents/skills (R12)
+        var configDir = Files.createTempDirectory("scaffold-config");
+        var projectA = Files.createTempDirectory("project-a");
+        var projectB = Files.createTempDirectory("project-b");
+        var config = LlmConfig.builder()
+                .providerType(AiProvider.OLLAMA)
+                .model("qwen3")
+                .url("http://localhost:9999")
+                .configDir(configDir)
+                .build();
+        var subject = new AiScaffoldAgent(config.build());
+        subject.setProjectSkillsRootsSupplier(() -> List.of(
+                projectA.resolve(SkillService.PROJECT_SKILLS_DIR),
+                projectB.resolve(SkillService.PROJECT_SKILLS_DIR)));
+        var validator = subject.getWriteValidator();
+
+        // WHEN / THEN — the config dir and both project skill dirs are writable
+        assertThatCode(() -> validator.validate(configDir.resolve("skills/x/SKILL.md").toString()))
+                .as("config dir is allowed")
+                .doesNotThrowAnyException();
+        assertThatCode(() -> validator.validate(projectA.resolve(SkillService.PROJECT_SKILLS_DIR).resolve("x").resolve("SKILL.md").toString()))
+                .as("project A skill dir is allowed")
+                .doesNotThrowAnyException();
+        assertThatCode(() -> validator.validate(projectB.resolve(SkillService.PROJECT_SKILLS_DIR).resolve("y").resolve("SKILL.md").toString()))
+                .as("project B skill dir is allowed")
+                .doesNotThrowAnyException();
+
+        // ... but nothing else: no project source dirs, no traversal, no foreign absolute paths
+        assertThatThrownBy(() -> validator.validate(projectA.resolve("src").resolve("X.java").toString()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Write denied")
+                .hasMessageContaining(projectA.toString());
+        assertThatThrownBy(() -> validator.validate("../secret"))
+                .as("relative traversal beyond the config dir is denied")
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> validator.validate(Files.createTempDirectory("foreign").resolve("x.md").toString()))
+                .as("foreign absolute paths are denied")
+                .isInstanceOf(IllegalArgumentException.class);
     }
 }

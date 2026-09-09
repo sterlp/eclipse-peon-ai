@@ -42,41 +42,6 @@ Module guides (read when working in one):
   No single-threaded assumptions.
 - Code structure komponenten-architektur SKILL
 
-## Build cycles & git
-
-- A build cycle runs on a **dedicated branch** named by the PO; only there does the Dev agent
-  auto-commit. No git repo / not on a branch → **no auto commits, ask first**.
-- After **each green increment**: If git is available and you are on a branch (not main/master) 
-  commit automatically — unless stated otherwise — with message 
-  `inc-N: <summary>` scoped to that increment's — including its story docs (`docs/**`, Dev
-  commits them, the PO owns their content) — and an `Assisted-by: Peon AI (<ModelName>)` trailer in
-  the body — every step stays revertable (`git revert`) without touching the main branch. 
-  After `planImplemented` everything (incl. the archived plan) — repo clean for the next cycle.
-- Final merge/squash into the base branch is the **user's** decision.
-
-## Dependencies
-
-- External JARs land in `lib/` via `maven-dependency-plugin`; `MANIFEST.MF` `Bundle-ClassPath`,
-  `build.properties` `bin.includes` and `.classpath` must list the **same** JARs.
-- Whitelist only the needed groupIds via `includeGroupIds`. Platform-provided JARs (jakarta,
-  osgi, jna, asm, jetty, felix, …) must **not** be in `lib/` — they come from the target
-  platform.
-
-## Docs
-
-Three trees, kept separate:
-- `docs/` — the **SOLL**: feature stories (goal, business rules + BDD) and technical design
-  docs in `docs/<feature>.md`, story registry `docs/index.md`, technical decisions in
-  `docs/adr/` (`docs/adr/index.md` registry), cycle notes in `docs/memory.md`. An ADR is a
-  technical decision that doesn't follow from a rule/BDD: `docs/adr/NNNN-<slug>.md`
-  (Status · Context · Decision · Consequences) — it cross-links to the story, never repeats
-  a rule or BDD. In Peon the docs are owned by the PO + the user — **no other agent writes to
-  `docs/`**.
-- `homepage/` — published end-user documentation (VitePress); 
-- dev phase mechanics in `AGENTS-DEV.md`.
-
-Start at `docs/index.md` for the full map before touching planning a feature.
-
 ## Working agreements that cost us the most to learn
 
 - **Maven Surefire is the ground truth for test numbers**, not `eclipseRunTests` — the Eclipse

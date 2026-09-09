@@ -10,7 +10,15 @@ Hints for the dev phase, base rules `AGENTS.md`
   build via `homepage/build-docs.sh`. New page → update the sidebar/nav in
   `homepage/.vitepress/config.ts`. A user-facing page is added only once the feature ships
   (rule ✅) — never document unbuilt behaviour to users.
-  
+
+## Dependencies
+
+- External JARs land in `lib/` via `maven-dependency-plugin`; `MANIFEST.MF` `Bundle-ClassPath`,
+  `build.properties` `bin.includes` and `.classpath` must list the **same** JARs.
+- Whitelist only the needed groupIds via `includeGroupIds`. Platform-provided JARs (jakarta,
+  osgi, jna, asm, jetty, felix, …) must **not** be in `lib/` — they come from the target
+  platform.
+
 ## Build & test
 
 - Full build: `mvn clean verify` or `mvn clean install` at the repo root (`llmpeon-parent`) — an Eclipse refresh +
