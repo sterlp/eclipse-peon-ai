@@ -74,7 +74,8 @@ public class AiPoAgent extends AbstractAgent {
 
     /**
      * Jon's visible slaves for the header status widget (ADR-0025): <b>Da Boss</b> (Jon himself) first,
-     * then his ork slaves <b>Da Thinka</b> (Plan), <b>Da Dok</b> (Review) and <b>Da Mek</b> (Dev).
+     * then his ork slaves in lifecycle order <b>Da Thinka</b> (Plan), <b>Da Mek</b> (Dev) and
+     * <b>Da Dok</b> (Review).
      * Always the same instances
      * {@code PoDelegateTool} drives, so the widget reads their live {@code isWorking()}/context.
      */

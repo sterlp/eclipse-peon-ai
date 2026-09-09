@@ -373,7 +373,7 @@ public class PeonAiService {
 
     /**
      * The agents shown in the header status widget: when Jon (Peon-PO) is active, his
-     * {@link AiPoAgent#getTeam() team} (Da Boss + the two orks Da Thinka/Da Mek); for every other
+     * {@link AiPoAgent#getTeam() team} (Da Boss + the orks Da Thinka/Da Mek/Da Dok); for every other
      * agent an empty list — they show nothing. This is the <b>single</b> {@code instanceof AiPoAgent}
      * choke-point (ADR-0025): the widget pulls this list and stays type-agnostic, the {@code AiAgent}
      * interface stays lean.

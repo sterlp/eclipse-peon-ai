@@ -127,7 +127,8 @@ public class BuildPoAgentComponent {
         // Jon's own throw-away research sub-agent (Da Sniffa) — searches with his read/grep tool
         poToolService.addTool(sharedToolService.getTool(SearchAgentTool.class).get());
         poToolService.addTool(new CompactSessionTool());
-        var poAgent = new AiPoAgent(configuredModel, poToolService, historyStateDir, List.of(thinka, doc, mek));
+                // Header team order = lifecycle order (user decision): plan → build → review.
+        var poAgent = new AiPoAgent(configuredModel, poToolService, historyStateDir, List.of(thinka, mek, doc));
 
         return poAgent;
     }

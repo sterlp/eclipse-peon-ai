@@ -76,7 +76,27 @@ class AiPoAgentTest {
         assertSame(po, team.get(0).agent());
     }
 
-    /** ADR-0025: Da Boss (Jon) first, then the two ork slaves — on the shared instances, 0k idle. */
+    /** ADR-0025: Da Boss (Jon) first, then the ork slaves in lifecycle order plan→build→review — shared instances, 0k idle. */
+    @Test
+    void getTeam_daBossFirst_thenOrksInLifecycleOrder_onSharedInstances_idle() {
+        var config = LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", "http://localhost:9999").build();
+        var plan = new AiPlanAgent(config, new ToolService());
+        var dev = new AiDevAgent(config, new ToolService());
+        var review = new AiReviewAgent(config, new ToolService());
+        var po = new AiPoAgent(config, new ToolService(), null,
+                List.of(new NamedAgent("Da Thinka", plan), new NamedAgent("Da Mek", dev),
+                        new NamedAgent("Da Dok", review)));
+
+        var team = po.getTeam();
+
+        assertThat(team).extracting(NamedAgent::uiName)
+                .containsExactly("Da Boss", "Da Thinka", "Da Mek", "Da Dok");
+        assertSame(po, team.get(0).agent());
+        assertSame(plan, team.get(1).agent());
+        assertSame(dev, team.get(2).agent());
+        assertSame(review, team.get(3).agent());
+        assertThat(team).allSatisfy(n -> assertThat(n.agent().getMemory().getTotalTokenUsed()).isZero());
+    }
     @Test
     void getTeam_daBossFirst_thenTwoOrks_onSharedInstances_idle() {
         var config = LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", "http://localhost:9999").build();

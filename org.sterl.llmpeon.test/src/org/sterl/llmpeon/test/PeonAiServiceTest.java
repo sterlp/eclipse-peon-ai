@@ -616,14 +616,14 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
 
     // --- Header status widget MVP (agenten-status-im-header-mvp-plan.md, ADR-0025) -------------
 
-    /** GIVEN Jon is active THEN getStatusAgents() is his team: Da Boss first, then Da Thinka, Da Dok, Da Mek. */
+    /** GIVEN Jon is active THEN getStatusAgents() is his team: Da Boss first, then Da Thinka, Da Mek, Da Dok. */
     @Test
     public void test_status_agents_are_jons_team_when_po_active() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
         aiService.setActiveAgent(AiPoAgent.NAME);
 
         var uiNames = aiService.getStatusAgents().stream().map(n -> n.uiName()).toList();
-        assertEquals(List.of("Da Boss", "Da Thinka", "Da Dok", "Da Mek"), uiNames);
+        assertEquals(List.of("Da Boss", "Da Thinka", "Da Mek", "Da Dok"), uiNames);
     }
 
     /** GIVEN any other agent is active THEN the status widget shows nothing (empty list). */
