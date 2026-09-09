@@ -13,7 +13,7 @@ Built-in-Prompts (User 2026-09-09) — dort kann er billig iterieren, bis er sic
 
 ### Read — Nutzung sichtbar machen
 
-- **R1 ❌ specified** `skillRead`/`skillReadFile` liefern einen kurzen Usefulness-Footer (max
+- **R1 ✅** `skillRead`/`skillReadFile` liefern einen kurzen Usefulness-Footer (max
   ~2 Zeilen, Token-Disziplin): *Reporte in deiner Antwort — hilfreich? falsch/veraltet/
   unvollständig? obsolet?* Kein neues Tool, reiner Text-Hook am Read-Ergebnis.
   - GIVEN ein Agent liest einen Skill WHEN das Ergebnis gerendert wird THEN endet es mit dem
