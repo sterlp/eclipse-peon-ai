@@ -330,7 +330,7 @@ docs/write-path-validator.md, docs/memory.md.
 > blocker. Commit after each green item with usual trailer; docs/** and homepage/** go into the
 > commits; NEVER edit docs/** content.
 
-### inc-4 (core): false-negative guard in `SkillService.get(String)` — tagged-name echo
+### inc-4 (core): false-negative guard in `SkillService.get(String)` — tagged-name echo — ✅ DONE (7e2320a)
 - **Bug:** `skillNames()` now emits `"review [project]"` (R7 disclosure, feeds SkillTool's
   "Use one of:" listing). If the model echoes a tagged name into `skillRead`/`skillReadFile`,
   `get("review [project]")` does a lowercase map lookup → miss = **false negative** (worst bug
@@ -352,7 +352,7 @@ docs/write-path-validator.md, docs/memory.md.
 - Verify: full core Surefire green; commit `inc-4: get() accepts tagged skill names
   (false-negative guard)`.
 
-### inc-5 (core, expect NO surviving change → likely no commit): mutation proof R4 (review-approved)
+### inc-5 (core, expect NO surviving change → likely no commit): mutation proof R4 (review-approved) — ✅ DONE (no commit — no surviving change)
 - Mutate `SkillService.effectiveView()` (L75–79): flip merge order —
   `new LinkedHashMap<>(projectSlot.skills())` first, `merged.putAll(configSlot.skills())` second.
 - Run SkillServiceTest via Maven Surefire. EXPECT RED — primary catcher
@@ -363,8 +363,13 @@ docs/write-path-validator.md, docs/memory.md.
 - Report: mutated line, tests that caught it, revert confirmation. Commit ONLY if a file change
   survives (expected: none — if `git status` is clean after revert, skip the commit and report the
   evidence in the final summary instead).
+- DONE evidence: mutated `effectiveView()` L84–85 (project slot first, `putAll(configSlot)`
+  second). Surefire `SkillServiceTest`: 17 run, **2 FAIL** — `projectSkillOverridesConfigSkillByLowercaseName`
+  (expected: PROJECT, but was: CONFIG) + `configComponentNeverMutated_maskedSkillReturns` (same).
+  Reverted exactly → full core suite **688 green**. `git status` shows no surviving change to
+  `SkillService.java` → no commit, per plan.
 
-### inc-6 (homepage): "Project skills" section
+### inc-6 (homepage): "Project skills" section — ✅ DONE (94a6499)
 - `homepage/src/setup/agents-and-skills.md`: add `## Project skills` right after the existing
   `## Skills` section (file end). User-facing VitePress tone like the rest of the page ("Drop an
   ... into your project" style) — short, written as the user, NOT a changelog. Cover all five
@@ -384,3 +389,7 @@ docs/write-path-validator.md, docs/memory.md.
   13: first run may need workspace-trust confirm, never parallel launches).
 - Final report: core + plugin test numbers, inc-5 mutation evidence (mutated line, catcher tests,
   revert confirmation), commit hashes.
+- ✅ FINAL (2026-09-08): core Surefire **688 green** (687 + 1 new); plugin OSGi suite **193 green**
+  (unchanged). Commits: inc-4 `7e2320a`, inc-5 none (no surviving change), inc-6 `94a6499`.
+  SOLL docs content unchanged (the `docs/project-skills.md` R2c test-name mapping fix was a PO
+  edit, committed with inc-6).
