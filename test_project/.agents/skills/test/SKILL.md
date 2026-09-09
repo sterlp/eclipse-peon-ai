@@ -1,6 +1,6 @@
 ---
 name: test
-description: just a test skill
+description: smoke test skill for project skills feature
 ---
 
-say hello
+This is a smoke test skill. If you can read this, project skills discovery works.

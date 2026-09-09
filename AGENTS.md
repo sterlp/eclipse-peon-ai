@@ -58,11 +58,12 @@ Module guides (read when working in one):
 
 ## Reference and help working with eclipse building a good plugin
 Use search agents to search these big repos - do direct reads only.
-Save hard won facts / know how in /llmpeon-parent/skills/eclipse-dpe as SKILL use write SKILL
-for eclipse know-how you didn't know before. if you are in plan mode, add a hint in the plan to update
+Eclipse know-how lives in the project skills — read them via the skill tools (skillList/skillRead)
+when working on Eclipse integration problems: `eclipse-dpe` (append new hard-won findings at the
+end of its SKILL.md via your write tools). If you are in plan mode, add a hint in the plan to update
 the skill if needed.
 
-1. check the SKILL directory if something was already saved here ...
+1. check the project skills (skillList) if something was already saved there ...
 2. use github eclipse plugin AI harness if problems or question arise which cannot be answered 
    by the API itself eclipse: /github-copilot-for-eclipse
 3. /langchain4j-aggregator for langchain4j code & docs (*.md), if the API itself is not enough

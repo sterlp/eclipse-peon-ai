@@ -94,5 +94,5 @@ These bit us repeatedly in this repo — check them before reporting an incremen
 - `CompletableFuture.get()` on a future **you cancelled yourself** throws `CancellationException`
   **unwrapped**, not wrapped in `ExecutionException` — a catch on `ExecutionException` silently
   misses it (this hid the model-list race, see `docs/adr/0040-model-list-single-flight-secret-masking.md`).
-- More Eclipse-platform know-how lives in `skills/eclipse-dpe/SKILL.md` — read it before
-  guessing, and append new findings **at the end of the file** (do not split an existing bullet).
+- More Eclipse-platform know-how lives in the project skill `eclipse-dpe` (read it via skillRead
+  before guessing) — append new findings **at the end of the file** (do not split an existing bullet).
