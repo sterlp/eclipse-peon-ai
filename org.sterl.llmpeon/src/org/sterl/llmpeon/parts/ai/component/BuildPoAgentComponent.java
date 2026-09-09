@@ -29,6 +29,7 @@ import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 import org.sterl.llmpeon.tool.tools.SearchAgentTool;
+import org.sterl.llmpeon.tool.tools.SkillTool;
 
 public class BuildPoAgentComponent {
     
@@ -65,6 +66,9 @@ public class BuildPoAgentComponent {
         poToolService.addTool(sharedToolService.getTool(EclipseWorkspaceReadFileTool.class).get());
         poToolService.addTool(sharedToolService.getTool(EclipseWorkspaceWriteFileTool.class).get());
         poToolService.addTool(sharedToolService.getTool(EclipseGrepTool.class).get());
+        // R16: read skills the same way his slaves do — the shared SkillTool instance (one
+        // SkillService view for every agent).
+        poToolService.addTool(sharedToolService.getTool(SkillTool.class).get());
         // Jon curates the shared memory (write) — he knows it is shared by all agents, so writing it
         // steers his slaves and the other agents (they only ever READ it, injected per turn / delegation,
         // ADR-0032 Rev).

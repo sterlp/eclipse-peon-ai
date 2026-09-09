@@ -53,6 +53,7 @@ import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 import org.sterl.llmpeon.tool.tools.DiskGrepTool;
+import org.sterl.llmpeon.tool.tools.SkillTool;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -131,6 +132,19 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         var askUser = svc.getSharedToolService().getTool(AskUserTool.class);
         assertIsPresent(askUser);
         assertSame(askUser.get(), po.getToolService().getTool(AskUserTool.class).orElseThrow());
+    }
+
+    @Test
+    public void test_jon_gets_shared_skill_tool() {
+        // GIVEN a running service (R16)
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        var po = aiService.getAgents().stream().filter(AiPoAgent.class::isInstance)
+                .map(AiPoAgent.class::cast).findFirst().orElseThrow();
+
+        // THEN Jon's curated tool service contains the SAME shared SkillTool instance
+        var sharedSkillTool = aiService.getSharedToolService().getTool(SkillTool.class);
+        assertIsPresent(sharedSkillTool);
+        assertSame(sharedSkillTool.get(), po.getToolService().getTool(SkillTool.class).orElseThrow());
     }
 
     @Test
