@@ -71,5 +71,5 @@ Built-in-Prompts (User 2026-09-09) — dort kann er billig iterieren, bis er sic
 
 | Regel | Test (vorgeschlagen) |
 |---|---|
-| R1 | `SkillToolTest.skillReadAppendsUsefulnessFooter` |
+| R1 | `SkillToolTest.skillReadAppendsUsefulnessFooter` (+ not-found footer-frei AND-step) |
 | R2–R7 | Prompt/Verhalten — manuelle Verifikation (AGENTS-*-Konvention, wie Prompts-Konvention) |

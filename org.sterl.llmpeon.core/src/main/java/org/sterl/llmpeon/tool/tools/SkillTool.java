@@ -15,6 +15,10 @@ public class SkillTool extends AbstractTool {
 
     private final SkillService skillService;
 
+    /** R1 skill-evolution-loop: max ~2 lines, token discipline — ask is part of the read result. */
+    private static final String USEFULNESS_FOOTER =
+            "Report in your answer — helpful? wrong/outdated/incomplete? obsolete?";
+
     public SkillTool(SkillService skillService) {
         super();
         this.skillService = skillService;
@@ -30,7 +34,7 @@ public class SkillTool extends AbstractTool {
                     + " found. Use one of: " + skillService.skillNames();
         }
         onTool("Reading SKILL 🧩 " + name);
-        return skill.get().renderBody();
+        return withUsefulnessFooter(skill.get().renderBody());
     }
     
     @Tool("List all available skills with short descriptions. Call before complex tasks to discover relevant skills.")
@@ -53,6 +57,10 @@ public class SkillTool extends AbstractTool {
                     + " found. Use one of: " + skillService.skillNames();
         }
         onTool("Read file from SKILL " + name + ": " + path);
-        return skill.get().readRelativeFile(path);
+        return withUsefulnessFooter(skill.get().readRelativeFile(path));
+    }
+
+    private static String withUsefulnessFooter(String content) {
+        return content + System.lineSeparator() + USEFULNESS_FOOTER;
     }
 }
