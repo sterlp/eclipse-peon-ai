@@ -79,7 +79,7 @@ entschieden · 🔒 geklärt.
 | **Refresh-Ziel** | Der Container, der bei leerem Ergebnis synchronisiert wird — **nicht** dasselbe wie der Such-Scope | Refresh-Scope, Sync-Bereich |
 | **Config-Skills** | Skills aus dem geteilten Config-Dir (`~/.peon/skills`) — Basis, in jedem Projekt sichtbar | globale Skills, Basis-Skills |
 | **Projekt-Skills** | Skills aus `<Projekt>/.agents/skills` (Disk-Pfad) — nur bei gewähltem Projekt sichtbar, **Override** bei Namenskollision | lokale Skills, Project-Skills |
-| **Skill-Slot** | Ein vom `SkillService` geladenes Skill-Verzeichnis (Config-Slot + Projekt-Slot) | Skill-Dir, Skill-Pfad, Skill-Root |
+| **Skill-Component** | Eine vom `SkillService` gehaltene Component mit **immer einem Pfad** (Config- oder Projekt-Skills-Dir); lädt Disover+Parse+Swap selbst — Service tauscht Projekt-Component als Instanz, kein `@Nullable` dir | Skill-Slot (alt), Skill-Dir, Skill-Root |
 
 ## Offen
 

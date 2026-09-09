@@ -21,13 +21,13 @@ import org.sterl.llmpeon.prompt.PromptYmlParser;
  *
  * <p>A missing or null path yields an empty map, not an error.</p>
  */
-public class SkillSlot {
+public class SkillComponent {
 
     private final SkillSource source;
     private volatile @Nullable Path dir;
     private volatile Map<String, SkillPromptFile> skills = Map.of();
 
-    public SkillSlot(SkillSource source) {
+    public SkillComponent(SkillSource source) {
         this.source = source;
     }
 
@@ -36,7 +36,7 @@ public class SkillSlot {
         return dir;
     }
 
-    /** Replaces the responsible path and reloads. Null path = empty slot. */
+    /** Replaces the responsible path and reloads. Null path = empty component. */
     public void setPath(@Nullable Path newDir) throws IOException {
         this.dir = newDir;
         this.skills = load(newDir);

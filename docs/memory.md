@@ -2,45 +2,46 @@
 
 ## Git-Stand
 
-- **`story/133` @ `ac11023`** — Project-Skills-Zyklus **komplett** (inc-1 `f85c6f0` · inc-2
-  `d087eb0` · inc-3 `910b8bd` · Delta inc-4 `7e2320a` · inc-6 `94a6499` · Plan-Archiv `ac11023`).
-  **Merge/Squash in main + Push = User-Entscheidung.**
-- Core **688/0** · Plugin **193/0**. Plan archiviert: overview-done-2026-09-09-09-23.md.
-- ⚠️ Nicht committet (User-WIP, kompiliert NICHT): Review-Agent-Refactor (`PoDelegateTool` 3-
-  Agent-Ctor + Context-Fn; `PoDelegateToolTest.java:45` nutzt alten 2-Agent-Ctor → testCompile rot)
-  — User fragen, ob er fertigstellt oder Da Mek (`AiReviewAgent`, `BuildPoAgentComponent` berühren).
-- test_project-Rename-Test-Leftovers (renameRootDst_*, sub/) untracked — Rename-Test-Cleanup
-  verpasst vermutlich; mit Bug-Fix-Zyklus anschauen.
+- **`story/133`** — Project Skills + Review-Agent komplett, zusätzlich heute:
+  - Team-Header-Order-Fix `ec2d754` + Docs-Followup `d5ca69a` + Rename-Test-Fix `7f89af5`
+    (dst-Cleanup, Fixture-Leichen weg, 17/17 grün).
+  - Core 695/0 · Plugin 193/0. **Merge/Squash → main + Push = User-Entscheidung.**
+- Nicht committet: User-Assets chat/ (bewusst).
 
-## Zyklus `story/133` — Project Skills — ABGESCHLOSSEN ✅ (2026-09-09)
+## Skill-Feature — NEU (2026-09-09, User-Entscheid)
 
-- Design: docs/project-skills.md R1–R13 (alle ✅) + ADR-0042 Rev 2 (Slot-Components, disunkte
-  Maps, Override nur beim Lesen) + ADR-0043 (DynamicRootsWriteValidator, configDir + .agents/skills
-  aller offenen Projekte, kein Instanz-Merge). Branch-Namens-Abweichung: User-Wunsch `story/133`
-  statt project-skills-2026-09-08.
-- Review (Da Thinka, 3-Seiten): 1 Abweichung (Test-Name, Docs korrigiert) · 1 Risiko→inc-4
-  (Tag-Strip-Guard in get() gegen False-Negative beim Echo) · 1 PO-Lücke→inc-6 (Homepage) ·
-  Mutation-Proof bestanden (Merge-Order-Flip → 2 Tests rot → revert, beide Fänger wie vorhergesagt).
-- **UI manuell prüfen (SWT, Da Mek-Checkliste):** Zähler „N skills (M project)" · Menü-Sektion
-  „Project skills — <name>" · Slash-Autocomplete `[project]`-Suffix · Namen im Dialog unsuffigiert.
+- **3 Stories, Reihenfolge A→B→C** (User bestätigt):
+  - **A: SkillComponent-Refactor** — `project-skills.md` R14–R16 ❌: Rename SkillSlot→SkillComponent,
+    kein @Nullable dir (Service tauscht leere Component, 2 Felder bleiben, KEIN Cache pro Pfad),
+    Scaffold-Write→refreshAll() deterministisch, Jon bekommt geteilten SkillTool (Wiring-Lücke:
+    poToolService vergaß ihn, Sklaven haben ihn alle).
+  - **B: Skills-Move (Jon selbst, kein Dev)** — User-Details (2026-09-09): **alle** Skills zusammen
+    nach `.agents/skills` (Repo-Root); danach erreichen Agenten sie via Skill-Tools → **AGENTS.md:61-63
+    Skill-Directory-Hinweis ENTFERNEN** (nicht umschreiben), AGENTS-DEV.md:97-98 minimal halten
+    (nur skill-evolution-Bezug). `test-skill.md` löschen (User-OK). `wiki/` bleibt Ledger-Dir
+    (kein SKILL.md → Scan ignoriert). Smoketest bestätigt: Skills in .agents/skills werden sichtbar.
+  - **C: Skill-Evolution-Loop** — `skill-evolution-loop.md` R1–R6 ❌: Usefulness-Footer in
+    skillRead (~2 Zeilen), Jon konsolidiert pro Review (no change/patched/created/obsolete→delete,
+    Umsetzung via **Da Mek** — User bestätigt; Scaffold nur für spätere Global-Skills), Da Dok
+    meldet Outcome. **Experimentell → AGENTS-PO.md/AGENTS-DEV.md (projekt-lokal), KEINE
+    Built-in-Prompts (po.txt/review-agent.txt)** — Wanderung später = eigener User-Schritt.
+- Glossar: „Skill-Slot" → „Skill-Component" umbenannt. test_project/.agents/test/SKILL.md des
+  Users lag falsch (fehlt `skills`-Level) → `.agents/skills/test/SKILL.md`.
 
 ## Nächste Schritte
 
-1. **User:** Review-Agent-WIP entscheiden (selbst fertigstellen vs. Da Mek) — Blocker für
-   testCompile auf story/133.
-2. **User:** Merge story/133 → main (nach WIP-Entscheidung, da WIP auf gleichem Branch liegt).
-3. UI-Checkliste (oben) manuell durchklicken; Homepage `homepage/src/setup/agents-and-skills.md`
-   überfliegen (inc-6, User-Edit des yaml-Blocks möglich).
-4. Bug-Fix-Zyklus: Triage #5–#15 + ApiRetry-Verdacht (❓ open-points.md, Memory #21) + Plugin-Hunt
-   + AgentOrder Auto-Create-Edge (agent-ordering.md) + Rename-Test-Leftovers.
-5. Offene ❓: Glossar eager · buildWithDev-Compact — Empfehlungen in open-points.md.
-6. Ideen-Backlog: Jon×Scaffold (Scaffold als Jon-Sub-Agent, out-of-scope project-skills) ·
-   builtin-agent-prompt-override (🚧) · eclipseJavaMoveType (🚧).
+1. **User:** Merge story/133 → main + Push.
+2. **Story A planen lassen** (planWithPlanAgent) — erster Zyklus des neuen Features.
+3. Danach B (mache ich selbst), dann C.
+4. Memory-Leak-Hunt (User 2026-09-09, eigener Zyklus, frischer Context).
+5. Bug-Fix-Zyklus: Triage #5–#15 + ApiRetry-Verdacht + AgentOrder-Edge.
+6. Offene ❓: Glossar eager · buildWithDev-Compact (open-points.md).
 
 ## Geparkt / Wissenswert
 
-- E2E-Tool-Namens-Falle: `diskRenameResource`/`eclipseRenameResource` (nicht *RenameFile).
+- E2E-Tool-Namens-Falle: `diskRenameResource`/`eclipseRenameResource`.
 - copy-tools-e2e-test.md `diskRenameResource`-Korrektur — kosmetisch, steht aus.
-- ⏳ Query-Caches · ⏳ Streaming-Präzisierungen · ⏳ Edit-Tools (open-points.md) — unverändert.
-- Da Mek STOP-AND-ASK-Regel (memory-Tool #29): bewährt — hat Branch-Abweichung (story/133) und
-  WIP-Konflikt sauber eskaliert statt still zu workarounden.
+- ⏳ Query-Caches · ⏳ Streaming-Präzisierungen · ⏳ Edit-Tools (open-points.md).
+- Leere Test-Fixture-Dirs (sub/, copyDirSrc/) überleben Cleanup — unsichtbar für git, bewusst
+  kein Sweep (Da Mek-Entscheid, User kann anders entscheiden).
+- Review-Agent Bewährung: F1+F2 wären sonst in den Merge gegangen.

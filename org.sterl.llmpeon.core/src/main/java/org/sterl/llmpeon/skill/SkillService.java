@@ -14,27 +14,27 @@ import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Composes the skill slots (ADR-0042) into one effective view: config slot
- * first, project slot overrides by lowercase name — the override happens
- * <b>only at read time</b>, the config map is never touched by project
- * switches.
+ * Composes the skill components (ADR-0042) into one effective view: the
+ * config component first, the project component overrides by lowercase name
+ * — the override happens <b>only at read time</b>, the config map is never
+ * touched by project switches.
  *
  * <p>Owns the name-keyed enabled state (R1): toggles survive every refresh
  * and project switch, are override-aware by name, and new names start
  * enabled. State is decorated onto the view instances at view build so
  * consumers reading {@link SkillPromptFile#isEnabled()} stay consistent.</p>
  *
- * <p>API note: {@link #refresh(Path)} sets + refreshes the <b>config</b> slot
+ * <p>API note: {@link #refresh(Path)} sets + refreshes the <b>config</b> component
  * (kept for the existing config-dir callers); {@link #setProjectSkillsDir(Path)}
- * replaces only the project slot; {@link #refreshAll()} refreshes every slot.</p>
+ * replaces only the project component; {@link #refreshAll()} refreshes every component.</p>
  */
 public class SkillService {
 
     /** Project-local skills root, relative to the project disk path (ADR-0042). */
     public static final String PROJECT_SKILLS_DIR = ".agents/skills";
 
-    private final SkillSlot configSlot = new SkillSlot(SkillSource.CONFIG);
-    private final SkillSlot projectSlot = new SkillSlot(SkillSource.PROJECT);
+    private final SkillComponent configComponent = new SkillComponent(SkillSource.CONFIG);
+    private final SkillComponent projectComponent = new SkillComponent(SkillSource.PROJECT);
 
     private final Map<String, Boolean> enabledByName = new ConcurrentHashMap<>();
     private volatile boolean enabled = true;
@@ -54,35 +54,35 @@ public class SkillService {
         return enabled;
     }
 
-    /** Sets/refreshes the config slot (compat: the old single-directory refresh). */
+    /** Sets/refreshes the config component (compat: the old single-directory refresh). */
     public boolean refresh(String newPath) throws IOException {
         return this.refresh(newPath == null ? null : Path.of(newPath));
     }
 
     public boolean refresh(@Nullable Path newPath) throws IOException {
-        if (newPath == null && configSlot.path() == null) return false;
-        configSlot.setPath(newPath);
+        if (newPath == null && configComponent.path() == null) return false;
+        configComponent.setPath(newPath);
         return true;
     }
 
     /**
-     * Replaces ONLY the project slot (R2a) — the config slot is untouched.
-     * Null = no project, empty project slot.
+     * Replaces ONLY the project component (R2a) — the config component is untouched.
+     * Null = no project, empty project component.
      */
     public void setProjectSkillsDir(@Nullable Path projectSkillsDir) throws IOException {
-        projectSlot.setPath(projectSkillsDir);
+        projectComponent.setPath(projectSkillsDir);
     }
 
-    /** Refreshes every slot (R3). A failed refresh keeps the previous state and rethrows. */
+    /** Refreshes every component (R3). A failed refresh keeps the previous state and rethrows. */
     public void refreshAll() throws IOException {
-        configSlot.refresh();
-        projectSlot.refresh();
+        configComponent.refresh();
+        projectComponent.refresh();
     }
 
     /** Effective view: config first, project overrides by lowercase name. */
     private Map<String, SkillPromptFile> effectiveView() {
-        var merged = new LinkedHashMap<String, SkillPromptFile>(configSlot.skills());
-        merged.putAll(projectSlot.skills());
+        var merged = new LinkedHashMap<String, SkillPromptFile>(configComponent.skills());
+        merged.putAll(projectComponent.skills());
         return merged;
     }
 

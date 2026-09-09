@@ -109,10 +109,32 @@ Technische Basis: [ADR-0042](adr/0042-project-skill-slot.md) (ein Service, zwei 
 - **R13 ✅** Skill-Namen im Dialog/Output bleiben **ohne** Suffix — Quellen-Marker nur in Zähler,
   Menü-Header und Autocomplete (User 2026-09-08: „Menü-Sektionen + Zähler + Suffix reicht").
 
+### Component-Refactor (Follow-up, 2026-09-09)
+
+- **R14 ❌ specified** Der Skill-Slot heißt `SkillComponent` (Komponenten-Architektur); die
+  Component hat **immer einen Pfad** — kein `@Nullable` dir. „Kein Projekt" wird durch den
+  **Instanz-Tausch im Service** ausgedrückt: der Service setzt eine leere Component ein. Die
+  Config- und Projekt-Positionen bleiben als zwei Service-Felder erhalten; getauscht wird nur die
+  Projekt-Component (kein Component-Cache pro Pfad — Reload ist billig, Staleness-Risiko unbezahlbar).
+  - GIVEN kein Projekt gewählt WHEN View berechnet THEN die eingesetzte Projekt-Component liefert
+    leer, `path()` gibt nie null
+  - GIVEN Projekt A THEN B THEN A WHEN gewechselt THEN je Wechsel eine frisch geladene
+    Projekt-Component (kein wiederverwendeter Cache)
+- **R15 ❌ specified** Scaffold-Write → deterministischer Refresh: nach erfolgreichem
+  Disk-Write des Scaffolds ruft der Code `skillService.refreshAll()` (nicht LLM-getrieben —
+  kein Path-Sniffing, Scaffold schreibt ohnehin nur config-/skills-scoped). `ReloadConfigTool`
+  bleibt als manueller Reload.
+  - GIVEN Scaffold schreibt einen Skill WHEN der Write erfolgreich ist THEN die effektive View
+    enthält ihn ohne LLM-Zutun
+- **R16 ❌ specified** Jon (AiPoAgent) bekommt den geteilten `SkillTool` in seine curated
+  po-Tool-Liste (gleiche Instanz wie alle Sklaven — reine Wiring-Lücke, kein Filter).
+  - GIVEN Jon WHEN seine Tools aufgebaut sind THEN `skillRead`/`skillList` sind verfügbar
+
 ## Out of Scope
 
 - **Scaffold als Jon-Sub-Agent** (Jon delegiert Skill-Erstellung/-Edit an Scaffold) — User:
   „später", eigener Zyklus.
+- **Skill-Learning-Loop** — eigene Story, siehe [skill-evolution-loop.md](skill-evolution-loop.md).
 
 ## BDD-Test-Mapping (Plan-Nachweis je Regel)
 
@@ -127,5 +149,8 @@ Technische Basis: [ADR-0042](adr/0042-project-skill-slot.md) (ein Service, zwei 
 | R1 | `SkillServiceTest.enabledStateSurvivesRefreshAndFollowsName` |
 | R5a | `SkillServiceTest.failedRefreshKeepsPreviousState` |
 | R12 | `AiScaffoldAgentTest.writeValidatorAllowsConfigAndProjectSkillsOnly` |
+| R14 | `SkillServiceTest.noProjectUsesEmptyComponent_pathNeverNull` · `SkillServiceTest.projectSwitchAlwaysFreshLoad_noCache` |
+| R15 | `AiScaffoldAgentTest.successfulWriteTriggersSkillRefreshAll` |
+| R16 | `PeonAiServiceTest.test_jon_gets_shared_skill_tool` (assertSame: geteilte Instanz) |
 | R2a (Plugin) | `setProject_replacesProjectSlotOnly` |
-| R2c (Plugin) | `pinnedProject_keepsSkillSlot_untilSetProject` |
+| R2c (Plugin) | `pinnedProject_keepsSkillComponent_untilSetProject` |

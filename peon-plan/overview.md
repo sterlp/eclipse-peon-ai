@@ -1,110 +1,203 @@
-# PO-Review: Review Agent "Da Dok" (story/133, b55e477) — FINDBERICHT, KEINE FIXES
+# Plan Story A: SkillComponent-Refactor (R14–R16) — llmpeon-parent, branch story/133
 
-## Kontext
-Review des fertigen Review-Agent-Features (docs/review-agent.md R1–R6) auf drei Seiten:
-Docs↔Code, Test-Honesty, Gaps. Code gelesen (nicht nur gegreppt): AiReviewAgent, AgentService,
-PoDelegateTool, AiPoAgent, BuildPoAgentComponent, AgentsMdContextItem, PeonAiService,
-review-agent.txt, po-delegation.txt, dev-build-loop.txt + alle relevanten Tests.
-**Ergebnis: R1, R2, R5, R6 code-verifiziert ✅. Zwei echte Befunde (F1 hoch, F2 hoch),
-ein Docs/Test-Mapping-Regression (F3), Rest kleine Parity-Lücken.**
+> **⚠️ STOP-AND-ASK (User 2026-09-08, prominent):** Da Mek: bei Compile-Fehlern ohne Lösung,
+> nicht grün bekommbaren Tests, IST-Widersprüchen zu diesem Plan oder Unklarheiten SOFORT aktiv
+> über den askDev-Kanal bei Jon nachfragen. **Nie still workarounden, nie das SOLL ändern.**
+>
+> **SOLL = docs/project-skills.md, Abschnitt "Component-Refactor (Follow-up, 2026-09-09)", R14–R16
+> (verbatim im Prompt-Request).** Glossar: Begriff ist "Skill-Component"; "Skill-Slot" ist in neuem
+> Code/Docs verboten.
 
-## Verifiziert ✅ (Docs == Code)
-- **R1** AiReviewAgent = AiPlanAgent-Familie 1:1: NAME "Peon-Review" (AiReviewAgent.java:21),
-  3 Ctor-Varianten inkl. RAM-only (Faktor) + JSONL-History (stateDir), Tool-Filter
-  `super.getToolFilter().and(t -> !t.getTool().isEditTool())`, Slot=PLAN (`planAgentConfig()`,
-  `modelConfigFor(PLAN)`), handoverTo → AiDevAgent.NAME, persistent in AgentService-Ctor
-  (withDefaultAgent-Zweig: persistentAgents.put(reviewAgent)) — überlebt reloadAgents via
-  clearAgents()-Re-Add.
-- **R2** PoDelegateTool-Ctor (plan, review, dev, ordersFor); BuildPoAgentComponent baut
-  reviewSlave (RAM-only, SLAVE_COMPACT_FACTOR, noPrivilegedTools-Filter), NamedAgent("Da Dok"),
-  AiPoAgent(..., List.of(thinka, doc, mek)); Header-Widget: getStatusAgents() → instanceof
-  AiPoAgent → getTeam() → Da Boss + 3 Sklaven.
-- **R3 (Code-Seite)** reviewPlanAgent/clearReview/compactReview existieren; sticky planPath als
-  Feld von PoDelegateTool geteilt zwischen reviewPlanAgent und buildWithDev; AiPoAgent.clear()
-  cascadert clearPlan/clearReview/clearDev, compact() analog.
-- **R4 (Routing)** po-delegation.txt: Review AUSSCHLIESSLICH über reviewPlanAgent (Schritt 4 +
-  Werkzeuge-im-Detail + Kommunikationsliste). **Keine stale talkPlan-Review-Routing mehr** —
-  talkPlan ist "Rein beratend: kein Plan geschrieben, kein Code berührt"; dev-build-loop.txt
-  ("call planImplemented only once told the review passed") konsistent.
-- **R5** read-only: isEditTool-Filter (PlanTool ist KEIN isEditTool → plan*-Write-Tools bleiben
-  ✅ gewollt), zusätzlich noPrivilegedTools (WorkspaceMemoryTool/AskUserTool) im Plugin-Wiring;
-  review-agent.txt: "Never edit application code".
-- **R6** Turn-Context-Supplier generisch über NamedAgent (ordersFor-Lambda: Plan-Ref +
-  AgentsMdContextItem.itemsFor(agentName) + WorkspaceMemoryTool). **Strip-Logik verifiziert:**
-  AgentsMdContextItem.java:56-61:
-  ```java
-  private static String resolveAgentKey(String agentName) {
-      if (agentName.startsWith("Peon-")) {
-          return agentName.substring(5).toUpperCase();   // "Peon-Review" → "REVIEW" → AGENTS-REVIEW.md
-      }
-      return agentName;
-  }
-  ```
+## 0. Branch & Verifizierung (zuerst!)
+- `git branch --show-current` — Regel 23: Zustand selbst prüfen. Erwartet: `story/133`
+  (User-Branch, vgl. memory #23). Wenn anders/kein Branch → STOP-AND-ASK, nicht still umbenennen.
+- Commit nach **jedem** grünen Increment: `inc-N: <summary>` + Trailer
+  `Assisted-by: Peon AI (<ModelName>)`. Docs/**-Änderungen von Jon im selben Commit mitschieben.
+- Maven Surefire = ground truth (core). Plugin-Tests: vor jedem Lauf `eclipseBuildProject` auf
+  geänderten Projekten (stale bin/ → ClassNotFoundException); erster Lauf braucht einmalig
+  Workspace-Trust (memory #13) — ganze Suite starten, nicht parallel nachstarten.
 
-## Befunde
+## 1. Kontext
+Follow-up des Project-Skills-Features (R1–R13 ✅). drei Nachzieh-Regeln:
+- **R14** `SkillSlot` → `SkillComponent`; eine Component hat **immer einen Pfad** (kein
+  `@Nullable dir`); "kein Projekt" = Service tauscht auf eine **leere Component**-Instanz.
+  Zwei Service-Felder (Config + Projekt) bleiben; nur die Projekt-Component wird getauscht;
+  **kein Component-Cache pro Pfad** — frischer Load bei jedem Projektwechsel.
+- **R15** nach erfolgreichem Scaffold-Disk-Write ruft Code deterministisch
+  `skillService.refreshAll()` (nicht LLM-getrieben, kein Path-Sniffing). ReloadConfigTool
+  bleibt manueller Reload.
+- **R16** Jon (AiPoAgent) bekommt den **geteilten** SkillTool-Instanz in seine curated
+  po-Tool-Liste (reine Wiring-Lücke).
 
-### F1 (HOCH) — review-agent.txt widerspricht dem Drei-Seiten-SOLL
-- review-agent.txt: "The plan file and the code are your only inputs. This is deliberate." +
-  Goal "compare the implemented code to the persisted plan" + Intake (Plan + Diff).
-- SOLL (po-delegation.txt Schritt 4 + review-agent.md R4): DREI Seiten — Plan↔Code,
-  **Docs↔Code, Docs↔Plan**; Jon soll ihm "die Feature-Docs-Pfade" nennen.
-- prompt kennt KEINE Feature-Docs (Intake, Checklist 1–6 ohne Docs-Gegencheck).
-- prompt kennt den **Mutations-Check-Empfehlung**-Auftrag (po-delegation.txt: "lass dir von
-  Da Dok im Review sagen, welche EINE Stelle einen Nachweis verdient") NICHT.
-- review-agent.md R4-Prosa behauptet beides („DREI Seiten … + Mutations-Check-Empfehlung"),
-  die Prompt-Aufzählung in derselben Regel listet sie nicht → Prompt kann das SOLL nicht
-  erfüllen. R4-BDD "liefert Verdict + Chat-Summary, ohne Code zu ändern" wäre grün, der
-  Kernzweck des Reviews (SOLL==IST über drei Seiten) aber im Prompt nicht abgebildet.
+## 2. IST — verifiziert (nicht neu recherchieren)
+- `SkillSlot.java` (core, `org.sterl.llmpeon.skill`): `private volatile @Nullable Path dir` (:27),
+  `setPath(@Nullable Path)` (:40–44, null → `Map.of()`), `path()` nullable, `refresh()`,
+  `skills()`, `loadedSkillCount()`, private `load(@Nullable)` mit null-Branch.
+- **Call-Sites verifiziert (Regel 18):** `new SkillSlot` nur in `SkillService` (2 Feld-Inits,
+  :36–37); `SkillSlot.setPath` nur intern von `SkillService.refresh`/`setProjectSkillsDir`
+  (keine externen Aufrufer). "Slot"-Wort in Testnamen: nur
+  `PeonAiServiceTest.pinnedProject_keepsSkillSlot_untilSetProject` (+ docs-Tabelle).
+- `SkillService`: Felder `configSlot/projectSlot`; `setProjectSkillsDir(@Nullable)` mutiert
+  Projekt-Slot in place (:72–74); `refresh(@Nullable Path)` mit Guard
+  `newPath == null && configSlot.path() == null → false`; `refreshAll()` refreshed beide;
+  `effectiveView()` config-first + project-override. Javadoc erwähnt "slots".
+- `AiScaffoldAgent` (core, `scaffold/`, **nicht** `agent/`): 1-arg Ctor
+  `(ConfiguredChatModel)`, eigenes `ToolService(false)` mit eigenem `DiskFileWriteTool(configDir)`
+  (privat), `addTool(SmartTool)`, `getWriteValidator()` = DynamicRootsWriteValidator (R12).
+  **Kein Write-Hook heute.** Erzeugt in `PeonAiService` :146 (`scaffoldAgent = new
+  AiScaffoldAgent(configuredModel)`), `skillService` existiert dort schon (:119).
+- `DiskFileWriteTool` (core `tool/tools/`): @Tool-Methoden `diskWriteFile`, `diskDeleteFile`,
+  `diskReplaceLines`, `diskEditFile`, … (alle mutierenden Methoden durchzählen!) — keine
+  After-Write-Callback-Infrastruktur.
+- `SharedToolsComponent` :40: `sharedToolService.addTool(new SkillTool(skillService))` —
+  **immer** vorhanden (geteilte Instanz).
+- `BuildPoAgentComponent.build()` (plugin `parts/ai/component/`): Jon's `poToolService` holt
+  geteilte Tools per `sharedToolService.getTool(X.class).get()` ( garantiert vorhanden) bzw.
+  `ifPresent` (AskUserTool, optional). **SkillTool fehlt.** AiPoAgent erhält poToolService im Ctor.
+- `AbstractAgent`/`AiAgent` haben public `getToolService()`. `AgentService.getAgents()` existiert
+  (PeonAiService :182 nutzt sie).
+- Tests (Pin-Status): `SkillServiceTest` — zweiComponents_projectSwitchReplacesProjectComponent
+  (:190), configComponentNeverMutated_maskedSkillReturns (:217, setProjectSkillsDir(null) :238),
+  reloadRefreshesEveryComponent (:265), swapIsAtomic_noPartialMapVisible (:296),
+  failedRefreshKeepsPreviousState (:419), writeSkill-Helper (flat `*.md` mit YML-Frontmatter).
+  Plugin `PeonAiServiceTest`: test_has_read_skill_tool (:237, aktiver Agent),
+  pinnedProject_keepsSkillSlot_untilSetProject (:1446). `BuildPoAgentComponentTest` existiert NICHT.
 
-### F2 (HOCH) — PeonAiServiceTest-Status-Team-Test ist stale/rot
-- test_status_agents_are_jons_team_when_po_active:
-  `assertEquals(List.of("Da Boss", "Da Thinka", "Da Mek"), uiNames)` — getTeam() liefert jetzt
-  4 Einträge (Da Dok) → Assertion MUSS rot sein (Test wurde nach Feature nicht aktualisiert
-  oder nie gelaufen). Widerspricht R2 ("Da Dok erscheint im Header-Status-Widget").
-- poAgentSlavesStillFilterAskUser: nur List.of("Da Thinka", "Da Mek") — Da Dok ungedeckt
-  (Code filtert ihn generisch ✅, aber Test-Parity fehlt).
-- Plugin-Tests laufen lassen zur Bestätigung (erster Lauf braucht Workspace-Trust, Regel 13).
+## 3. Design-Entscheidungen
+1. **SkillComponent (R14-Kern):** Ctor **ohne** Pfad = leere Component
+   (`dir = EMPTY_PATH`, `skills = Map.of()`, **kein Load → kein checked Exception im
+   Feld-Initializer des Service**). Zweit-Ctor `(SkillSource, Path)` delegiert auf `setPath`
+   (lädt sofort, IOException fliegt). `setPath(Path)` **non-null** (lädt neu), `path()` gibt
+   **nie null** zurück. `EMPTY_PATH = Path.of("peon-empty-skills-placeholder")` — dokumentierter
+   Platzhalter, nie ein existierendes Skills-Verzeichnis; `load()` liefert dafür leer
+   (`Files.isDirectory` false). Javadoc-Kontrakt: "always has a path; the empty component's path
+   is a deliberate placeholder, never a real skill dir". *(Jon kann das beim Review veto'en —
+   BDD verlangt nur path() != null + leere View; Platzhalter ist die ehrlichste Form davon.)*
+2. **Service drückt Abwesenheit aus (SOLL):** Felder `configComponent/projectComponent`,
+   Initial `new SkillComponent(SkillSource.CONFIG/PROJECT)` (= leer).
+   `setProjectSkillsDir(@Nullable)`: null → **neue leere Instanz**, sonst `new
+   SkillComponent(PROJECT, dir)` — Instanz-Tausch, kein in-place setPath, kein Cache.
+   `refresh(@Nullable Path)`: null → wenn Config-Component leer ist (path == EMPTY_PATH)
+   No-op/false, sonst Tausch auf leere Instanz + true; nicht-null → wie heute setPath.
+   `refreshAll()`/View/Komposition unverändert (nur umbenannte Felder).
+   **Kein Cache pro Pfad** — bewusst, Staleness-Risiko > Ladekosten (SOLL-Wortlaut).
+3. **R15:** `DiskFileWriteTool` bekommt `volatile @Nullable Runnable afterWrite` +
+   `setAfterWrite(...)`, gefeuert am Ende **jeder** erfolgreichen mutierenden @Tool-Methode
+   (nach dem Write, vor dem Return; bei Exception nie). `AiScaffoldAgent` bekommt 2-arg Ctor
+   `(ConfiguredChatModel, @Nullable SkillService)`: non-null →
+   `diskFileWriteTool.setAfterWrite(() -> { try { skillService.refreshAll(); } catch
+   (IOException e) { throw new RuntimeException("Write succeeded but skill refresh failed: "
+   + e.getMessage(), e); } })` — Write ist geglückt, Refresh-Fehler muss zum LLM durchschlagen
+   (Tool-Honesty: kein stiller stale View). 1-arg Ctor bleibt (delegiert null) für bestehende
+   Tests/Headless. Wiring: `PeonAiService` :146 → `new AiScaffoldAgent(configuredModel, skillService)`.
+4. **R16:** In `BuildPoAgentComponent.build()`: `poToolService.addTool(sharedToolService
+   .getTool(SkillTool.class).get())` — Style wie die garantiert vorhandenen Eclipse-Tools
+   (SkillTool wird in SharedToolsComponent unconditionally geadded). Import `SkillTool` ergänzen.
+5. **Test-Zugriff auf Components:** `SkillComponent projectComponent()` **package-private** in
+   SkillService (Test liegt im selben Package) + Javadoc "visible for tests". Kein public API-Zuwachs.
 
-### F3 (MITTEL) — R3-Test-Mapping in review-agent.md ist falsch
-- Mapping-Zeile R3: "PoDelegateToolTest (sticky-path + clear/compact-Tests)".
-- Realität: die 2 sticky-path-Tests existieren ✅ (reviewPlanAgent_reusesStickyPlanPath,
-  reviewPlanAgent_withoutStickyPath_injectsNothing); **clear/compact-Tests existieren NICHT**
-  (Grep clearPlan/compactPlan/clearReview/compactReview über alle Core-Tests: 0 Treffer).
-- R3-BDD "GIVEN Jon ruft clear() … THEN auch Da Doks Memory wird geleert" ist ungetestet
-  (AiPoAgentTest hat keinen Cascade-Test; PoDelegateTool hat keinen getReviewSlave-Accessor).
+## 4. Architecture / Datenfluss
+SkillComponent (path + eigene Map, atomarer Swap) bleibt die Deep-Unit; SkillService komponiert
+zwei Component-Instanzen. Abwesenheit lebt **ausschließlich im Service** (leere Instanz), nie in
+einer null-Path-Component. Scaffold-Write-Pfad: LLM → DiskFileWriteTool.@Tool → Files.write ok →
+afterWrite → SkillService.refreshAll() → nächste View sieht den Skill. Jon liest Skills über die
+**geteilte** SkillTool-Instanz (gleiche Service-View wie alle Sklaven).
 
-### F4 (NIEDRIG) — R1-Persistenz nur indirekt (Counts) getestet
-- AgentServiceTest.hasDefaultAgent (3) / loadsAgentsAutomatically (4) +
-  ReloadConfigToolTest "Agents: 3 loaded" — Updates 2→3/3→4 sind **legitim** (echtes
-  Verhaltens-/Zähl-Änderung, dritter persistenter Agent) und wären ohne Feature ROT ✅.
-  Aber: keine Assertion nennt "Peon-Review" beim Namen (Grep: 0 Treffer in Tests) —
-  `extracting(AiAgent::getName).contains("Peon-Review")` wäre die ehrliche Form.
-- enablesHistoryForPlanDevAndCustomOnly: Name/Contract "PlanDevAndCustomOnly" stimmt nicht
-  mehr ganz — Review persistiert (stateDir-Ctor) ebenfalls, wird im Test nur nicht berührt.
-  Kein Lügner, aber Namens-Drift.
+## 5. Betroffene Dateien (vollständig)
+| Increment | Datei | Änderung |
+|---|---|---|
+| inc-1 | `org.sterl.llmpeon.core/src/main/java/org/sterl/llmpeon/skill/SkillSlot.java` → `SkillComponent.java` | Rename Klasse + Javadoc (Slot→Component-Worte) |
+| inc-1 | `.../skill/SkillService.java` | Typ/Feld-Rename (configSlot/projectSlot → configComponent/projectComponent), Javadoc-Worte |
+| inc-1 | `org.sterl.llmpeon.test/src/org/sterl/llmpeon/test/PeonAiServiceTest.java` | Testname `pinnedProject_keepsSkillSlot_untilSetProject` → `pinnedProject_keepsSkillComponent_untilSetProject` |
+| inc-2 | `.../skill/SkillComponent.java` | non-null dir/setPath/path, EMPTY_PATH, 2 Ctors (s. D1) |
+| inc-2 | `.../skill/SkillService.java` | Instanz-Tausch in setProjectSkillsDir/refresh, Guard ohne null-Path, `projectComponent()` package-private |
+| inc-2 | `.../core/src/test/java/org/sterl/llmpeon/skill/SkillServiceTest.java` | 2 neue Tests + ggf. Anpassung falls L1–170 einen refresh(null)-Pin enthält (erst ganze Datei lesen!) |
+| inc-3 | `.../tool/tools/DiskFileWriteTool.java` | afterWrite-Hook, feuern in allen mutierenden @Tool-Methoden |
+| inc-3 | `.../scaffold/AiScaffoldAgent.java` | 2-arg Ctor + Verdrahtung |
+| inc-3 | `org.sterl.llmpeon/src/org/sterl/llmpeon/parts/ai/PeonAiService.java` | :146 2-arg Ctor |
+| inc-3 | `.../core/src/test/java/org/sterl/llmpeon/scaffold/AiScaffoldAgentTest.java` | neuer Test |
+| inc-4 | `org.sterl.llmpeon/src/org/sterl/llmpeon/parts/ai/component/BuildPoAgentComponent.java` | SkillTool in poToolService |
+| inc-4 | `org.sterl.llmpeon.test/src/org/sterl/llmpeon/test/PeonAiServiceTest.java` | neuer Test |
 
-### F5 (NIEDRIG) — Da-Dok-Parity in Integration-Tests fehlt
-- test_static_context_reaches_jons_slaves, test_slaves_getAgentSpecificMdInTurnContext,
-  test_po_slaves_cannot_write_memory, test_staticContext_isEnvOnly (assertSame-Block):
-  prüfen nur Plan-/Dev-Sklaven. AGENTS-REVIEW.md-Auflösung ist code-verifiziert, aber
-  ungetestet (AgentsMdContextItemTest: nur Peon-Plan/Peon-Dev).
-- Kosmetik: PoDelegateTool-Javadoc sagt noch "The two slaves" (drei sind es).
+Nicht anfassen: SkillTool, SkillPromptFile, SkillSource, ReloadConfigTool (bleibt manueller
+Reload), ADR-Docs (Jon).
 
-## Test-Honesty — direkte Antwort
-Tests, die ohne Feature rot wären: AgentServiceTest.hasDefaultAgent/loadsAgentsAutomatically
-(Counts), ReloadConfigToolTest.reloadConfigReportsCounts, PoDelegateToolTest (kompiliert nicht
-ohne 4-arg Ctor; die 2 Review-Sticky-Tests wären rot). Assertion-Massage: NEIN — die
-Count-Updates sind legitime Verhaltensänderung. F2 ist das Gegenstück: ein Bestandstest, der
-durch das Feature rot wurde und nicht nachgezogen wurde.
+## 6. Increments (jeweils grün + Commit)
+### inc-1 — Mechanischer Rename SkillSlot → SkillComponent
+- Ziel: Begriff/Typ wechseln, Verhalten 0 Änderung.
+- Files: s. Tabelle inc-1. Eclipse Rename (alle Refs mitziehen — Grep "SkillSlot" danach: 0 in
+  src/main+src/test; Surefire-Reports/target ignorieren).
+- Tests: laufende Suite bleibt grün (reine Renames). Neuer Testname im Plugin-Test → Regeln unten.
+- Commit: `inc-1: rename SkillSlot to SkillComponent (glossary R14)`
 
-## Empfehlungen (Triage durch User, Umsetzung durch Da Mek — NICHT Teil dieses Reports)
-1. review-agent.txt: Feature-Docs-Intake + Drei-Seiten-Checkliste + Mutations-Check-Empfehlung
-   ergänzen (an po-delegation.txt Schritt 4 angleichen).
-2. PeonAiServiceTest: Status-Team auf ["Da Boss","Da Thinka","Da Dok","Da Mek"] korrigieren;
-   Filter-Test um Da Dok erweitern.
-3. clear/compact-Tests ergänzen (PoDelegateTool: clearReview/compactReview + Cascade via
-   AiPoAgent) ODER review-agent.md-Mapping korrigieren — docs-first: Mapping lügt heute.
-4. Optional: contains("Peon-Review")-Assertion; Da-Dok-Parity in den Kontext-Tests.
+### inc-2 — R14 non-null Pfad-Contract + leere Component + kein Cache
+- Ziel: `dir` nie null; "kein Projekt" = leere Component-Instanz; frischer Load je Wechsel.
+- Verhalten (s. D1/D2): setProjectSkillsDir(null) → leere Instanz; refresh(null) No-op nur wenn
+  Config bereits leer; path() nie null; jede setProjectSkillsDir(x≠null) = neue Instanz + Load.
+- Tests (SkillServiceTest, GIVEN/WHEN/THEN-Kommentare, AssertJ):
+  - `noProjectUsesEmptyComponent_pathNeverNull`: GIVEN frischer Service WHEN View berechnet THEN
+    View = Config-Skills, `projectComponent().path()` != null, `projectComponent().skills()` leer;
+    AND nach `setProjectSkillsDir(null)` erneut path() != null + leer.
+    (Rot ohne Feature: Accessor fehlt → kompiliert nicht; alt: path() == null.)
+  - `projectSwitchAlwaysFreshLoad_noCache`: GIVEN Projekt A mit Skill `alpha` WHEN A → B → (auf
+    Disk zweites A-Skill ergänzen) → A THEN View enthält beide A-Skills; AND
+    `projectComponent()` ist nach jedem Wechsel eine **neue Instanz** (isNotSameAs);
+    AND A-Skill löschen + nochmals A → Skill weg (frischer Load, kein Cache).
+    (Rot ohne Feature: selbe Instanz bei altem Code.)
+  - Bestehende Tests (configComponentNeverMutated… :238 `setProjectSkillsDir(null)` etc.)
+    müssen unverändert grün bleiben — View-Semantik identisch.
+- Commit: `inc-2: R14 non-null path contract, empty-component swap, no cache`
 
-## Offene Fragen
-- Keine — F1/F2 sind IST≠SOLL, F3 ist ein falsches Docs-Mapping; alles andere optional.
+### inc-3 — R15 deterministischer Skill-Refresh nach Scaffold-Write
+- Ziel: nach erfolgreichem Scaffold-Disk-Write enthält die effektive View den Skill ohne
+  LLM-Zutun (kein ReloadConfigTool-Call nötig).
+- Verhalten: s. D3. Alle mutierenden @Tool-Methoden von DiskFileWriteTool feuern afterWrite.
+- Test (AiScaffoldAgentTest, core, AssertJ):
+  - `successfulWriteTriggersSkillRefreshAll`: GIVEN Scaffold mit SkillService + tmp configDir
+    WHEN via `subject.getToolService().getTool(DiskFileWriteTool.class).orElseThrow()
+    .diskWriteFile("skills/new-skill.md", <YML-Frontmatter wie SkillServiceTest.writeSkill>)`
+    THEN `skillService.get("new-skill")` present — ohne jeden Reload-Call.
+    (Rot ohne Feature: Write passiert, Service nie refreshed → get() empty.)
+  - AND-step: `diskWriteFile` mit leerem Pfad → IllegalArgumentException, afterWrite **nicht**
+    gefeuert (View unverändert).
+- Plugin-Verdrahtung (PeonAiService 2-arg) läuft indirekt im Plugin-Suite-Mitlauf mit.
+- Commit: `inc-3: R15 refresh skills after successful scaffold write`
+
+### inc-4 — R16 Jon bekommt den geteilten SkillTool
+- Ziel: Jons curated po-Tool-Liste enthält dieselbe SkillTool-Instanz wie die Sklaven.
+- Verhalten: s. D4.
+- Test (PeonAiServiceTest, OSGi JUnit 4, **kein AssertJ** — standard assertNotNull):
+  - `test_jon_gets_shared_skill_tool`: GIVEN laufender aiService WHEN der AiPoAgent (Jon) aus
+    `aiService.getAgents()` gefiltert wird THEN `jon.getToolService().getTool(SkillTool.class)`
+    present und **same instance** wie `aiService.getToolService().getTool(SkillTool.class)`
+    (assertSame — "geteilte Instanz" ist Teil des SOLL).
+    (Rot ohne Wiring: getTool empty → assertNotNull fails.)
+- Commit: `inc-4: R16 wire shared SkillTool into Jon's po tool list`
+
+## 7. Regeln & Constraints
+- **Docs (docs/**) gehören Jon:** Da Mek schreibt KEINE Docs. Test-Renames erzeugen Docs-Drift
+  in der R-Mapping-Tabelle (project-skills.md, Zeile "R2c (Plugin)") — Jon sync't die Zeile
+  (`pinnedProject_keepsSkillComponent_untilSetProject`); Da Mek committet Jon's Docs-Änderung mit.
+  R16-Tabellenzeile darf bei `PeonAiServiceTest` bleiben (Variante war in der Tabelle genannt).
+- Glossar: "Skill-Slot" nur noch in historischen Docs (ADR-0042); neuer Code/Tests: Skill-Component.
+- Log OR throw, nie beides — im afterWrite: throw (Write-OK, Refresh-Fehler sichtbar, s. D3).
+- Kein `@Nullable` mehr an Component-dir/setPath/path; `@Nullable` bleibt an
+  SkillService-Methodenparametern (Service drückt Abwesenheit aus).
+- Thread-Safety: `volatile` auf dir/skills/afterWrite beibehalten; Instanz-Tausch im Service ist
+  atomar (ein reference write) — effectiveView-Leser sehen alt oder neu, nie halb (R5 bleibt).
+- Test-Honesty: jeder neue Test ist ohne das jeweilige Feature rot (Accessor/Compile, fehlender
+  Refresh, fehlendes Wiring) — keine Assertion-Massage.
+- Surefire = ground truth für core-Zahlen.
+
+## 8. Test-Strategie
+- Core: `mvn -pl org.sterl.llmpeon.core test` (Surefire) nach inc-2/inc-3; SkillServiceTest
+  zuerst GANZ lesen (L1–170 ungeprüft: evtl. refresh(null)-/slot-Javadocs-Pins).
+- Plugin: vor jedem Lauf `eclipseBuildProject` auf `org.sterl.llmpeon` + `org.sterl.llmpeon.test`;
+  ganze Suite; Workspace-Trust beim ersten Lauf (memory #13); Surefire-Reports unter
+  org.sterl.llmpeon.test/target sind stale (memory #16) — nicht als Wahrheit lesen.
+- Inc-1 ist refactor-safe: Suite grün, kein neuer Test nötig (Rename-Absicherung = Compiler).
+
+## 9. Offene Fragen
+- none — SOLL (R14–R16) ist verbatim übergeben; der einzige Deformationsspielraum (Pfad-Wert der
+  leeren Component, EMPTY_PATH-Platzhalter) ist als Design-Entscheidung D1 dokumentiert und beim
+  Review von Jon veto-bar.

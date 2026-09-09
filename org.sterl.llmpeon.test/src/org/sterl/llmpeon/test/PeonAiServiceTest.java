@@ -1443,7 +1443,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
      * the falsifiable proof is the slot following — and only following — setProject.
      */
     @Test
-    public void pinnedProject_keepsSkillSlot_untilSetProject() throws Exception {
+    public void pinnedProject_keepsSkillComponent_untilSetProject() throws Exception {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
 
         var otherProject = ResourcesPlugin.getWorkspace().getRoot().getProject("aaa_other");
