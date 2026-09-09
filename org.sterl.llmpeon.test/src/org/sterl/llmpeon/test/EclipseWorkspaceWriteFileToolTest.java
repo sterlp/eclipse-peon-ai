@@ -233,6 +233,8 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
         assertEquals("Renamed " + src + " -> " + dst, result);
         assertEquals("data", readTool.eclipseReadFile(dst, 0, 0));
         assertTrue(readTool.eclipseReadFile(src, 0, 0).contains("No eclipse file found"));
+
+        tool.eclipseDeleteResource(dst); // the rename target is not auto-tracked by eclipseWriteFile
     }
 
     @Test
@@ -387,6 +389,8 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
         assertEquals("Renamed " + src + " -> " + dst, result);
         assertEquals("data", readTool.eclipseReadFile(dst, 0, 0));
         assertTrue(readTool.eclipseReadFile(src, 0, 0).contains("No eclipse file found"));
+
+        tool.eclipseDeleteResource(dst); // the rename target is not auto-tracked by eclipseWriteFile
     }
 
 }
