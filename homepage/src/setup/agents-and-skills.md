@@ -104,3 +104,32 @@ name: spring-boot-patterns
 description: Spring Boot patterns for REST APIs, JPA, and testing. Use when
   working on Spring Boot projects or when the user asks about Spring conventions.
 ---
+```
+
+## Project skills
+
+Skills can also live in your project — in a `.agents/skills` folder at the project root
+(disk path, not the workspace path). Same structure as the config skills folder:
+
+```
+my-project/
+├── .agents/
+│   └── skills/
+│       └── my-project-conventions/
+│           └── SKILL.md
+└── src/
+```
+
+Good for knowledge that belongs to one project only: its build quirks, its conventions.
+
+A project skill with the same name as a config skill overrides the config one — in that
+project only. Switch to a project without the skill and the config version comes back.
+
+When you ask Peon AI to create a skill, it asks in chat where it should live — the
+project or the shared config — and recommends based on the skill's scope. Skills it
+creates for a project land in that project's `.agents/skills`.
+
+In the UI, project skills are easy to spot: the status line counter reads
+`5 skills (2 project)`, the skills menu lists them in their own section under the
+project name, and the slash autocomplete shows a ` [project]` suffix (the command that
+gets inserted stays untagged).

@@ -128,4 +128,4 @@ Technische Basis: [ADR-0042](adr/0042-project-skill-slot.md) (ein Service, zwei 
 | R5a | `SkillServiceTest.failedRefreshKeepsPreviousState` |
 | R12 | `AiScaffoldAgentTest.writeValidatorAllowsConfigAndProjectSkillsOnly` |
 | R2a (Plugin) | `setProject_replacesProjectSlotOnly` |
-| R2c (Plugin) | `pinnedProject_keepsSkillSlot_pinnedProject` |
+| R2c (Plugin) | `pinnedProject_keepsSkillSlot_untilSetProject` |

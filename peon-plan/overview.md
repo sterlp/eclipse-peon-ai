@@ -323,3 +323,64 @@ docs/write-path-validator.md, docs/memory.md.
 - None blocking. Two implementation freedoms (state in commit/PR description): (a) SkillSource enum
   location (SkillPromptFile nested vs own file), (b) setConfigSkillsDir vs reusing refresh(Path).
 - Per user instruction: docs/** files are PO-owned — commit them with increments, never edit content.
+
+## 11. Delta (Review-Funde) — branch story/133
+> All three items are implementation-level — **SOLL docs unchanged** (docs/project-skills.md is NOT
+> touched). Verify branch first: `git branch --show-current` = story/133. STOP-AND-ASK per §0 on any
+> blocker. Commit after each green item with usual trailer; docs/** and homepage/** go into the
+> commits; NEVER edit docs/** content.
+
+### inc-4 (core): false-negative guard in `SkillService.get(String)` — tagged-name echo
+- **Bug:** `skillNames()` now emits `"review [project]"` (R7 disclosure, feeds SkillTool's
+  "Use one of:" listing). If the model echoes a tagged name into `skillRead`/`skillReadFile`,
+  `get("review [project]")` does a lowercase map lookup → miss = **false negative** (worst bug
+  class in this repo, AGENTS.md).
+- **Fix:** `skill/SkillService.get(String)` — strip a trailing source tag BEFORE the lowercase
+  lookup. New private helper `stripSourceTag(String name)`: compare `name.toLowerCase(Locale.ROOT)`
+  against each `SkillSource.values().tag()` literal (`" [project]"`, `" [config]"`); case-insensitive
+  `endsWith` → cut that tag length off the ORIGINAL name, then `.strip()` (robustness vs double
+  space); strip at most one tag, only if present; unknown tags (`"review [bogus]"`) are NOT
+  stripped → lookup misses as before. Proceed unchanged: lowercase → `effectiveView().get(key)` →
+  enabled decoration. Update `get()` javadoc: accepts tagged names as echoed from `skillNames()`.
+- **Test** (SkillServiceTest, local instance + local tmp dirs per §9):
+  `get_acceptsTaggedName_returnsSkill` — GIVEN config skill `"cfg"` + project skill `"review"`
+  (reuse the `writeSkill` helper) WHEN `get("review [project]")`, `get("cfg [config]")`,
+  `get("REVIEW [PROJECT]")` (case-insensitive) THEN each resolves and `getSource()` is correct;
+  AND `get("review")` still resolves AND `get("review [bogus]")` AND unknown name are empty.
+  Test honesty: red without the fix (`orElseThrow()` on empty Optional for the tagged lookups).
+  R13 unaffected (display-side only), R7 disclosure unchanged.
+- Verify: full core Surefire green; commit `inc-4: get() accepts tagged skill names
+  (false-negative guard)`.
+
+### inc-5 (core, expect NO surviving change → likely no commit): mutation proof R4 (review-approved)
+- Mutate `SkillService.effectiveView()` (L75–79): flip merge order —
+  `new LinkedHashMap<>(projectSlot.skills())` first, `merged.putAll(configSlot.skills())` second.
+- Run SkillServiceTest via Maven Surefire. EXPECT RED — primary catcher
+  `projectSkillOverridesConfigSkillByLowercaseName` (getSource() = CONFIG ≠ PROJECT);
+  `configComponentNeverMutated_maskedSkillReturns` as second catcher (its first assert expects
+  PROJECT). Record which actually went red.
+- REVERT the mutation exactly → run FULL core suite → green again.
+- Report: mutated line, tests that caught it, revert confirmation. Commit ONLY if a file change
+  survives (expected: none — if `git status` is clean after revert, skip the commit and report the
+  evidence in the final summary instead).
+
+### inc-6 (homepage): "Project skills" section
+- `homepage/src/setup/agents-and-skills.md`: add `## Project skills` right after the existing
+  `## Skills` section (file end). User-facing VitePress tone like the rest of the page ("Drop an
+  ... into your project" style) — short, written as the user, NOT a changelog. Cover all five
+  points: (1) skills can live in `<project>/.agents/skills` (disk path, same `SKILL.md` structure
+  as the config skills folder); (2) same name as a config skill → project variant wins (override
+  by name); (3) when Peon AI creates a skill it asks in chat where to place it (project vs config)
+  and recommends based on scope; skills it writes land in a project's `.agents/skills`;
+  (4) status line counter shows `N skills (M project)`; (5) skills menu lists project skills in
+  their own section, slash autocomplete shows a ` [project]` suffix (the inserted command stays
+  untagged).
+- Commit `inc-6: homepage: project skills docs` (include homepage/**).
+
+### Delta verification & final report
+- Core Surefire full suite green — expect **688** (687 + 1 new).
+- Plugin suite (expect **193**, unchanged — plugin code untouched): `eclipseBuildProject` on core
+  + both plugin projects first (memory rule 16, stale bin/), then one full suite run (memory rule
+  13: first run may need workspace-trust confirm, never parallel launches).
+- Final report: core + plugin test numbers, inc-5 mutation evidence (mutated line, catcher tests,
+  revert confirmation), commit hashes.
