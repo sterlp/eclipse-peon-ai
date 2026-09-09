@@ -33,8 +33,8 @@ public class SkillService {
     /** Project-local skills root, relative to the project disk path (ADR-0042). */
     public static final String PROJECT_SKILLS_DIR = ".agents/skills";
 
-    private final SkillComponent configComponent = new SkillComponent(SkillSource.CONFIG);
-    private final SkillComponent projectComponent = new SkillComponent(SkillSource.PROJECT);
+    private volatile SkillComponent configComponent = new SkillComponent(SkillSource.CONFIG);
+    private volatile SkillComponent projectComponent = new SkillComponent(SkillSource.PROJECT);
 
     private final Map<String, Boolean> enabledByName = new ConcurrentHashMap<>();
     private volatile boolean enabled = true;
@@ -60,17 +60,30 @@ public class SkillService {
     }
 
     public boolean refresh(@Nullable Path newPath) throws IOException {
-        if (newPath == null && configComponent.path() == null) return false;
+        if (newPath == null) {
+            if (SkillComponent.EMPTY_PATH.equals(configComponent.path())) return false;
+            configComponent = new SkillComponent(SkillSource.CONFIG);
+            return true;
+        }
         configComponent.setPath(newPath);
         return true;
     }
 
     /**
-     * Replaces ONLY the project component (R2a) — the config component is untouched.
-     * Null = no project, empty project component.
+     * Replaces ONLY the project component (R2a, R14) — the config component is
+     * untouched. Null = no project: a fresh empty component. Every non-null
+     * switch is a fresh instance + load — no per-path cache (staleness risk
+     * outweighs load cost).
      */
     public void setProjectSkillsDir(@Nullable Path projectSkillsDir) throws IOException {
-        projectComponent.setPath(projectSkillsDir);
+        projectComponent = projectSkillsDir == null
+                ? new SkillComponent(SkillSource.PROJECT)
+                : new SkillComponent(SkillSource.PROJECT, projectSkillsDir);
+    }
+
+    /** Visible for tests: the current project component instance. */
+    SkillComponent projectComponent() {
+        return projectComponent;
     }
 
     /** Refreshes every component (R3). A failed refresh keeps the previous state and rethrows. */

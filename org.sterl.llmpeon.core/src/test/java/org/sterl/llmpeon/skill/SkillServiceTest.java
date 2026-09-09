@@ -416,6 +416,63 @@ class SkillServiceTest extends AbstractMemoryFileTest {
     }
 
     @Test
+    void noProjectUsesEmptyComponent_pathNeverNull() throws Exception {
+        // GIVEN a fresh service with one config skill, no project selected
+        var service = new SkillService();
+        var configDir = Files.createDirectory(tmp.resolve("r14-config"));
+        writeSkill(configDir, "cfg", "cfg", "c");
+        service.refresh(configDir);
+
+        // WHEN the view is computed
+        var names = service.getSkills().stream().map(SkillPromptFile::getName).toList();
+
+        // THEN view = config skills, project component has a non-null path and is empty
+        assertThat(names).containsExactly("cfg");
+        assertThat(service.projectComponent().path()).isNotNull();
+        assertThat(service.projectComponent().skills()).isEmpty();
+
+        // AND after setProjectSkillsDir(null) it is still non-null + empty
+        service.setProjectSkillsDir(null);
+        assertThat(service.projectComponent().path()).isNotNull();
+        assertThat(service.projectComponent().skills()).isEmpty();
+    }
+
+    @Test
+    void projectSwitchAlwaysFreshLoad_noCache() throws Exception {
+        // GIVEN project A with skill alpha
+        var service = new SkillService();
+        var projA = Files.createDirectory(tmp.resolve("r14a-A"));
+        var projB = Files.createDirectory(tmp.resolve("r14a-B"));
+        writeSkill(projA, "alpha", "alpha", "a");
+        service.setProjectSkillsDir(projA);
+        var first = service.projectComponent();
+
+        // WHEN A → B → (second A skill written on disk) → A
+        service.setProjectSkillsDir(projB);
+        var second = service.projectComponent();
+        writeSkill(projA, "alpha2", "alpha2", "a2");
+        service.setProjectSkillsDir(projA);
+        var third = service.projectComponent();
+
+        // THEN the view contains both A skills (fresh load)
+        assertThat(service.getSkills())
+                .extracting(SkillPromptFile::getName)
+                .containsExactlyInAnyOrder("alpha", "alpha2");
+
+        // AND every switch is a new component instance (no cache)
+        assertThat(second).isNotSameAs(first);
+        assertThat(third).isNotSameAs(second);
+        assertThat(third).isNotSameAs(first);
+
+        // AND delete A's skills + switch to A again → they are gone
+        Files.delete(projA.resolve("alpha.md"));
+        Files.delete(projA.resolve("alpha2.md"));
+        service.setProjectSkillsDir(projB);
+        service.setProjectSkillsDir(projA);
+        assertThat(service.getSkills()).isEmpty();
+    }
+
+    @Test
     void failedRefreshKeepsPreviousState() throws Exception {
         // A load failure is forced with a real, unreadable temp dir — Jimfs does
         // not enforce posix permissions. Skips where the environment cannot
