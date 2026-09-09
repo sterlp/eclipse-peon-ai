@@ -96,3 +96,8 @@ These bit us repeatedly in this repo — check them before reporting an incremen
   misses it (this hid the model-list race, see `docs/adr/0040-model-list-single-flight-secret-masking.md`).
 - More Eclipse-platform know-how lives in the project skill `eclipse-dpe` (read it via skillRead
   before guessing) — append new findings **at the end of the file** (do not split an existing bullet).
+- Skill-Evolution (experimentell): every skillRead result ends with a usefulness footer — **always
+  answer it in your report** (helpful? wrong/outdated/incomplete? obsolete?). If a skill you just
+  read is wrong or outdated and you can fix it in place, do it in the same turn (keep it short);
+  otherwise report the gap so Jon routes it. Skill changes follow `skill-evolution` (evidence
+  required, keep skills short).
