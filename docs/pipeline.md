@@ -3,7 +3,7 @@
 CI-Pipeline `.github/workflows/maven.yml`: ubuntu-latest, JDK 21 (temurin), `mvn -B clean verify`,
 Trigger push/PR auf `main` (paths-ignore `docs/**`, `skills/**`). CI ist **headless** (kein X).
 
-**Status: 🚧 in Umsetzung (2026-09-10, User-Go für sequenzielles B→A→B-Schema).**
+**Status: ✅ done (2026-09-10) — A validiert, R-PI3 bewusst entfallen (PO-Entscheidung, s. u.).**
 
 ## Bug (2026-09-10, User: „Pipeline kann nicht mehr releasen")
 
@@ -32,8 +32,12 @@ Trigger push/PR auf `main` (paths-ignore `docs/**`, `skills/**`). CI ist **headl
    **deaktiviert** (Validierung, dass A ALLEINE genügt — B würde maskieren) und `maven.yml`
    läuft `xvfb-run -a mvn -B clean verify`. Kanonisch für SWT in CI: CI bekommt ein Display,
    volle Suite inkl. Display-Tests, kein toter Guard dauerhaft.
-3. **R-PI3 — B zurück mit Kommentar:** Nach A-Bestätigung wird der B-Guard **wieder
-   eingeführt mit Kommentar** (Defense-in-Depth: falls CI mal ohne Display läuft).
+3. **R-PI3 — B zurück mit Kommentar: ✅ bewusst ENTFALLEN (PO-Entscheidung, User delegiert
+   2026-09-10).** Begründung: Der Guard feuert in keiner Umgebung, in der die Pipeline läuft
+   (lokal = PDE-Workbench-Display, CI = xvfb im Workflow) — und er würde Environment-Drift
+   **maskieren**: entfällt `xvfb-run` im Workflow, bliebe CI grün (Guard fängt), die Suite liefe
+   degradiert statt rot zu schlagen. AGENTS.md: *„A guard that never fires is worse than none."*
+   Die Display-Abhängigkeit steht sichtbar im Workflow (`xvfb-run`) — ein Ort, ein Wahrheitsgehalt.
 4. **R-PI4 — Validierung je Schritt:** Pipeline-Run muss grün sein; Ergebnis wird hier
    festgehalten (Datum + CI-Lauf).
 
@@ -42,8 +46,12 @@ Trigger push/PR auf `main` (paths-ignore `docs/**`, `skills/**`). CI ist **headl
 | Schritt | Änderung | CI-Ergebnis | Datum |
 |---|---|---|---|
 | B (Guard) | `EclipseConsoleLogToolTest.after()` Display-Guard | ✅ grün (User-CI-Lauf) | 2026-09-10 |
-| A ohne B (R-PI2) | `xvfb-run` in maven.yml, Guard deaktiviert | ⏳ offen | — |
-| B wieder aktiv + A | Guard zurück mit Kommentar | ⏳ offen | — |
+| A ohne B (R-PI2) | `xvfb-run` in maven.yml, Guard deaktiviert | ✅ grün (User-CI-Lauf) | 2026-09-10 |
+| B wieder aktiv + A | — **entfallen** (PO-Entscheidung, s. R-PI3: Guard maskiert Environment-Drift) | — | 2026-09-10 |
+
+**Ergebnis:** Fix = `xvfb-run -a mvn -B clean verify` in `.github/workflows/maven.yml`
+(Commit `35d6596`). Der temporäre B-Guard (`29b1c06`) wurde für die Validierung in
+`35d6596` wieder zurückgebaut — finaler IST ist der Original-`@After` plus xvfb im Workflow.
 
 ## Notes
 
