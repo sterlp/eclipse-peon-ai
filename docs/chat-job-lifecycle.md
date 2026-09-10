@@ -3,9 +3,11 @@
 UI-seitiger Lifecycle eines Agent-Turns: Job-Submit → Lock → `monitorRef` → Job-`finally`
 → Unlock. Stop-Button-Semantik._owner: AIChatView-Job-Mechanik (plugin).
 
-**Status: ❌ specified (2026-09-10)** — R-ST1 (In-Flight-Counter statt Ticket), R-ST2
-(Graceful Stop), R-ST3 (Turn-INFO-Logging) inkl. Counter-Invarianten vom User freigegeben
-(Design-Review Da Thinka eingearbeitet). Build pending.
+**Status: ✅ gebaut (2026-09-10, `ff69a3d`/`9cbb355`)** — R-ST1 (In-Flight-Counter statt
+Ticket), R-ST2 (Graceful Stop, kein Code-Change — Design-Decision bewusst), R-ST3
+(Turn-INFO-Logging) inkl. Counter-Invarianten; Design-Review Da Thinka + Da-Dok-Review
+(verifiziert gegen Code). Verifikation manuell (SWT-Präzedenz R-UI1/R-MCP3/R-ML1a) —
+User-Smoke-Steps 1–7 im Plan §7.
 
 ## IST (2026-09-10) — Bug „Stop-Fenster"
 
@@ -79,6 +81,14 @@ GIVEN Counter würde durch ein decrement unter 0 fallen
 WHEN das finally läuft
 THEN aufräumen (fail-open) UND ERROR-Log „unbalanced in-flight counter" — Programmierfehler sichtbar
 ```
+
+**Mutations-Nachweis (Da-Dok-Review, 2026-09-10):** Die eine beweiswürdige Stelle ist der
+Commit-Guard (`if (remaining <= 0)` + Skip-Else, `AIChatView.java:601-618`). Nachweis ohne
+SWT-Harness: Guard mutieren (immer committen) → zwei überlappende Turns (Send + sofort
+Compact bzw. Doppel-Send, Smoke 3) dekrementieren deterministisch auf **-1** → erwartete
+Evidence: ERROR `unbalanced in-flight turn counter: -1` + **doppelte** `turn done
+(reset committed in-flight 1->0)`-Zeilen in der Error Log View + UI unlockt während 🟢.
+Die `<0`-Zeile ist der eingebaute Mutations-Detektor.
 
 ```
 GIVEN Run B lebt und Job A's finally-UI-Runnable läuft
