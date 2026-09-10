@@ -124,11 +124,11 @@ public class McpPreferenceView extends PreferencePage implements IWorkbenchPrefe
         item.setText(1, s.type().name());
         if (s.type() == McpTransportType.STDIO) {
             item.setText(2, (s.command() + " " + s.args()).trim());
-            item.setText(3, s.protocolVersion());
+            item.setText(3, StringUtil.hasNoValue(s.protocolVersion()) ? "Auto" : s.protocolVersion());
             item.setText(4, StringUtil.hasNoValue(s.envVars()) ? "" : "<env set>");
         } else {
             item.setText(2, s.url());
-            item.setText(3, s.protocolVersion());
+            item.setText(3, StringUtil.hasNoValue(s.protocolVersion()) ? "Auto" : s.protocolVersion());
             item.setText(4, StringUtil.hasNoValue(s.apiKey()) ? "<no api key>" : "****");
         }
     }
@@ -206,7 +206,7 @@ public class McpPreferenceView extends PreferencePage implements IWorkbenchPrefe
 
         private Combo cmbType;
         private Text txtName;
-        private Text txtProtocol;
+        private Combo cmbProtocol;
 
         // HTTP fields
         private Group grpHttp;
@@ -263,7 +263,23 @@ public class McpPreferenceView extends PreferencePage implements IWorkbenchPrefe
             txtName = addText(container, initial != null ? initial.name() : "my-mcp");
 
             addLabel(container, "Protocol Version:");
-            txtProtocol = addText(container, initial != null ? initial.protocolVersion() : "");
+            cmbProtocol = new Combo(container, SWT.DROP_DOWN);
+            cmbProtocol.setItems("Auto", "2025-11-25", "2026-07-28");
+            cmbProtocol.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+            String existingProto = (initial != null) ? initial.protocolVersion() : "";
+            if (StringUtil.hasNoValue(existingProto)) {
+                cmbProtocol.select(0);                       // Auto
+            } else {
+                int match = cmbProtocol.indexOf(existingProto);
+                if (match >= 0) cmbProtocol.select(match);   // known version
+                else cmbProtocol.setText(existingProto);     // free text, e.g. 2024-11-05
+            }
+            var protoHint = new Label(container, SWT.NONE);
+            protoHint.setText("Empty = Auto-Detect; 2025-11-25/2024-11-05 = Legacy, 2026-07-28 = modern. "
+                    + "Other values trigger version detection (may yield -32022 on dual-era servers).");
+            var protoHintGd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+            protoHintGd.horizontalSpan = 2;
+            protoHint.setLayoutData(protoHintGd);
 
             // HTTP group
             grpHttp = new Group(container, SWT.NONE);
@@ -349,12 +365,18 @@ public class McpPreferenceView extends PreferencePage implements IWorkbenchPrefe
                     type,
                     stdio ? "" : txtUrl.getText().trim(),
                     stdio ? "" : txtApiKey.getText(),
-                    txtProtocol.getText().trim(),
+                    protoVersion(),
                     stdio ? txtCommand.getText().trim() : "",
                     stdio ? txtArgs.getText().trim() : "",
                     stdio ? txtEnvVars.getText() : ""
             );
             super.okPressed();
+        }
+
+        /** The protocol version to store: "Auto" → empty (Auto-Detect), otherwise the trimmed text. */
+        private String protoVersion() {
+            var proto = cmbProtocol.getText().trim();
+            return "Auto".equals(proto) ? "" : proto;
         }
 
         McpServerConfig getResult() {

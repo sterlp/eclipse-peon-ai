@@ -16,7 +16,7 @@ Each server entry has a **Type** — **HTTP (Streamable)**, **HTTP (legacy SSE)*
 |---|---|
 | **Name** | Display name shown in the UI and used in log output. |
 | **Description** | Optional hint for the AI describing what this server provides (e.g. "Web search"). |
-| **Protocol Version** | MCP protocol version to announce. Defaults to `2025-06-18` (latest stable spec). The server negotiates down if it only supports an older version — change this only if the server rejects the announced version. |
+| **Protocol Version** | Dropdown with `Auto`, `2025-11-25`, `2026-07-28`, plus free text (e.g. `2024-11-05`). `Auto` (empty) is the default and lets the client detect the version the server supports. `2025-11-25`/`2024-11-05` = Legacy, `2026-07-28` = modern. Any other value triggers version detection, which can fail with `-32022` on dual-era servers. |
 
 ### HTTP fields
 
@@ -59,6 +59,8 @@ Env:       DDG_SAFE_SEARCH=STRICT
 ## Enabling MCP
 
 Enable the **MCP** toggle in the chat toolbar to activate the configured servers. Peon AI connects to all servers on toggle-on and disconnects on toggle-off. If any server fails to connect, all servers are disconnected and an error is shown.
+
+**Changes apply live:** saving the MCP preference page reconnects the servers with the new configuration immediately — no restart needed. If the configuration is unchanged, nothing is reconnected.
 
 ## Notes
 

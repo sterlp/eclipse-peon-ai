@@ -110,3 +110,7 @@ public void applyConfig() {
 ## 9. Open questions
 - Homepage komplett in inc-2 (statt aufgeteilt) — pragmatisch entschieden, ein Edit statt zwei.
 - Falls Recorder-Subclass + Preferences im OSGi-Test nicht funktioniert (InstanceScope im Test-Workspace): STOP-AND-ASK vor Design-Änderung.
+
+## Status (Da Mek, 2026-09-10)
+- **inc-1** ✅ commit `cec9ebf` — R-MCP2a (core Surefire 4/4, Ground-Truth) + R-MCP1 (OSGi 196/0/0, R-MCP1a/b grün). `McpPreferenceView:266` Default `""` als kompilierende Ein-Zeilen-Fix mitgezogen (PO genehmigt, 2026-09-10).
+- **inc-2** ✅ (dieser Commit) — R-MCP3 Dialog-Combo (Auto/2025-11-25/2026-07-28 + Freitext, `Auto`→`""`, Hint), Tabelle zeigt `Auto`, homepage `mcp-configuration.md` (Auto-Detect-Default, live-apply-Hinweis R-MCP1). OSGi 196/0/0. R-MCP3 = manuelle UI-Verifikation (kein SWT-Harness).
