@@ -478,6 +478,7 @@ public class AIChatView implements EclipseAiMonitor {
         var active = aiService.getActiveAgent();
         if (active.getMemory().size() < 3) return;
         inFlightTurns.incrementAndGet();
+        LOG.info("turn submit (compress): agent=" + active.getName() + " in-flight=" + inFlightTurns.get());
         lockWhileWorking(true);
         chatHistory.clear();
         Job.create("Compressing context", monitor -> {
@@ -490,7 +491,7 @@ public class AIChatView implements EclipseAiMonitor {
             } catch (Exception e) {
                 ex = handleChatException(e);
             } finally {
-                handleDoneChatResponse(cr, monitor, ex, () -> {
+                handleDoneChatResponse(active.getName(), cr, monitor, ex, () -> {
                     // own refresh to ensure the onTool messages are preserved after compact
                     refreshStatusLine();
                     aiService.getActiveAgent().getMemory().forEach(chatHistory::appendMessage);
@@ -568,7 +569,9 @@ public class AIChatView implements EclipseAiMonitor {
     }
 
     private void submitAiJob(String messageToSend) {
+        final var agent = aiService.getActiveAgent();
         inFlightTurns.incrementAndGet();
+        LOG.info("turn submit: agent=" + agent.getName() + " in-flight=" + inFlightTurns.get());
         lockWhileWorking(true);
         Job.create("Peon AI request", monitor -> {
             monitor.beginTask("Arbeit, Arbeit!", 100);
@@ -580,13 +583,13 @@ public class AIChatView implements EclipseAiMonitor {
             } catch (Exception e) {
                 ex = handleChatException(e);
             } finally {
-                handleDoneChatResponse(cr, monitor, ex, null);
+                handleDoneChatResponse(agent.getName(), cr, monitor, ex, null);
             }
             return PeonConstants.status("Peon AI\n" + aiService.getConfig(), ex);
         }).schedule();
     }
 
-    private void handleDoneChatResponse(ChatResponse cr, IProgressMonitor monitor, Exception ex, Runnable onCommitUi) {
+    private void handleDoneChatResponse(String agentName, ChatResponse cr, IProgressMonitor monitor, Exception ex, Runnable onCommitUi) {
         if (aiService.getConfig().isDebugMode()) {
             LOG.info("Chatreponse: " + (cr == null ? "null" : cr.aiMessage()));
         }
@@ -606,8 +609,13 @@ public class AIChatView implements EclipseAiMonitor {
                         aiService.getActiveAgent().getMemory().getTotalTokenUsed(),
                         aiService.getConfig().getAutoCompactAfter());
                 chatHistory.hideLiveStatus();
+                if (remaining == 0) {
+                    LOG.info("turn done: agent=" + agentName + " reset committed (in-flight " + (remaining + 1) + "->" + remaining + ")");
+                }
+            } else {
+                // a newer run owns lock + monitorRef — touch nothing
+                LOG.info("turn finally skipped (newer run in flight): agent=" + agentName + " in-flight " + (remaining + 1) + "->" + remaining);
             }
-            // else: a newer run owns lock + monitorRef — touch nothing (skip INFO line lands in inc-2)
         });
     }
 
