@@ -7,7 +7,7 @@ import java.nio.file.Path;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.jdt.internal.core.util.SimpleDocument;
+import org.eclipse.jface.text.Document;
 import org.eclipse.jface.text.TextSelection;
 import org.junit.Before;
 import org.junit.Test;
@@ -108,7 +108,7 @@ public class StandingOrdersBuilderTest extends AbstractIntegrationTest {
         assertNotNull(pomResource);
         EclipseUtil.openInEditor((IFile)pomResource);
         // AND
-        var doc = new SimpleDocument("Hallo von Paul - das sollten wir nicht sehen");
+        var doc = new Document("Hallo von Paul - das sollten wir nicht sehen");
         var mockTextSelection = new TextSelection(doc, 0, doc.getLength());
         aiService.getUserContext().setTextSelection(mockTextSelection);
         aiService.getUserContext().setSelectedResource(pomResource);

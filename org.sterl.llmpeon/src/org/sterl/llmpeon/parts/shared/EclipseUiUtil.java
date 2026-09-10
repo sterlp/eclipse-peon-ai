@@ -40,6 +40,10 @@ public class EclipseUiUtil {
                 : LIGHT_THEME_NAME;
     }
 
+    // IThemeEngine is internal E4 CSS API. Reading the CSS engine directly is the correct source for the
+    // active theme: the public IThemeManager uses a separate workbench-theme registry (its IDs can be
+    // non-CSS values such as org.eclipse.ui.defaultTheme), so it is NOT provably behavior-identical here.
+    @SuppressWarnings("restriction")
     private static String resolveTheme(IEclipseContext context) {
         if (context != null) {
             IThemeEngine themeEngine = context.get(IThemeEngine.class);

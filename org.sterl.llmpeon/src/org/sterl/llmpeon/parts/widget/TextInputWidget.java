@@ -3,7 +3,6 @@ package org.sterl.llmpeon.parts.widget;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.eclipse.e4.ui.css.swt.CSSSWTConstants;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.custom.VerifyKeyListener;
@@ -60,7 +59,7 @@ public class TextInputWidget extends Composite {
         textData.heightHint = styledText.getLineHeight() * minRows;
         styledText.setLayoutData(textData);
         styledText.addModifyListener(e -> refreshHeight());
-        styledText.setData(CSSSWTConstants.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_TEXT_INPUT_WIDGET);
+        styledText.setData(WidgetCss.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_TEXT_INPUT_WIDGET);
         FileDropSupport.install(this, styledText);
         FileDropSupport.install(styledText, styledText);
 

@@ -63,6 +63,9 @@ public class IoUtils {
         return file;
     }
     
+    // ResourceException is internal API; the catch-split is intentional (it re-throws the raw message as
+    // IllegalArgumentException, unlike the generic CoreException path).
+    @SuppressWarnings("restriction")
     public static void writeFile(IFile file, String content, IProgressMonitor monitor ) {
         try {
             var charset = getCharset(file);
