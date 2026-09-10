@@ -1,3 +1,20 @@
+## UI
+
+### Status-Display nach `compactSession`-Tool inkonsistent 🚧 (beobachten — User 2026-09-10)
+
+**Observation:** Nach dem `compactSession`-Tool zeigt der Header „Da Boss" mit grünem Ball
+(**Stop aktiv**), aber **kein „Warte auf …"-Working-Hinweis** mehr — obwohl der Agent danach
+noch arbeitet (die Queued-Message-Bestätigung des User kam in diesem Zustand).
+
+**Could be:** Der Compact-Tool-Call hängt das Working-Status-Update ab (Sub-Agent-Timing/Status-
+Widget zählt den Turn als fertig, während der eigentliche Agent-Run weiterläuft) — passt
+thematisch zum MVP-Neubau [agenten-status-im-header-mvp-plan.md](agenten-status-im-header-mvp-plan.md)
+(Pull/MVC statt Observer) und zur Stop-Fenster-Erkenntnis (Clobber-Race im finally).
+
+**Verwandt:** „Senden-während-Compress Memory-Race" (Bug-Hunt-Backlog) — andere Facette
+(Memory-Race vs. rein optisches Status-Display).
+
+---
 # Open to Discuss — ambiguous items, not clear bugs or features yet
 
 Items here are **not committed decisions**. They are observations that could be problems, could be features, or could stay as-is. Reviewed at end of a cycle; discarded or moved to proper docs/ADRs when resolved.
