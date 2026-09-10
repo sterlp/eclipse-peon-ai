@@ -71,14 +71,16 @@ askDev-ConnectException war Dev-Modell-Endpoint, nicht Workspace.)
 - lib/-Fallen: `overWriteReleases=false` → immer `clean process-resources`;
   dependency:tree gegen `includeGroupIds`-Whitelist diffen.
 - Gates: Core Surefire ~699, Plugin-OSGi ~194.
-- Aktuelle Pins (vor inc-4): lombok 1.18.44, mockito 5.23.0, junit-bom 5.12.2, assertj 3.27.3,
-  slf4j-simple 2.0.18 (core/test) + 2.0.17 (plugin), jimfs 1.3.0, flexmark 0.64.8;
-  Maven-Plugins: compiler 3.15.0, surefire 3.5.5, clean 3.3.2, dependency 3.6.1, resources 3.3.1.
+- Pins (Stand nach inc-4, 2026-09-10): langchain4j 1.20.0 + beta-Module 1.20.0-beta30,
+  lombok 1.18.48, mockito 5.23.0 (latest), junit-bom 5.14.4, assertj 3.27.7,
+  slf4j-simple 2.0.19 (Parent-Property `slf4j-simple.version`), jimfs 1.3.2,
+  flexmark 0.64.8 (latest); Maven-Plugins: compiler 3.16.0, surefire 3.6.0, clean 3.5.0,
+  dependency 3.11.0, resources 3.5.0. Tycho 5.0.4.
 
 ## Nach Session-Restart weitermachen mit
 
-1. `git status` + `git log --oneline -3` — inc-4-Änderungen in Arbeit?
-2. inc-4 → Review (Da Dok, 3-Seiten, Plan + ADR-0044).
+1. Zyklus komplett (inc-1…4 committet) → Review (Da Dok, 3-Seiten, Plan + ADR-0044), danach
+   Merge/Squash-Entscheidung User.
 3. Danach Bug-Hunt-Zyklus (siehe oben).
 
 ## Vorheriger Zyklus (abgeschlossen, Referenz)
