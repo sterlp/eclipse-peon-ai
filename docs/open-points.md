@@ -146,3 +146,6 @@ R19-BDD-Rechenfehler 1500 → 500 t/s (3000 chars / 3 = 1000 Tokens / 2 s).
 **Status:** ⏳ geparkt — danach wiederaufnehmen: Rename-Inkrement → Doku → Count-Fix →
 Line-Ending-Normalisierung. E2E-Spec steht in `org.sterl.llmpeon.test/ai-e2e-test/file-edit-tools.txt`
 (dient als Abnahmetest nach dem Release).
+
+
+

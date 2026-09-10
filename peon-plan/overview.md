@@ -75,7 +75,7 @@ Zwei False-Negative-Fallen (AGENTS.md-Kostenlernen), beide im Plan abgedeckt:
 
 ## 4. Affected files / commands (je Increment)
 
-### inc-1 — Housekeeping (kein Code, kein Test)
+### inc-1 — Housekeeping (kein Code, kein Test) ✅ DONE (fe761f8)
 - `git checkout -b story/lib-update-2026-09-09` von main.
 - User-Pending-Changes exakt so committen: `pom.xml`, `releng/llmpeon-target/llmpeon.target`,
   `AGENTS.md`, `AGENTS-DEV.md`, `docs/memory.md`, 6 gelöschte `peon-plan/overview-done-*.md`.
