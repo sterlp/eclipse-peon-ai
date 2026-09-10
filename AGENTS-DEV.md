@@ -37,6 +37,14 @@ Hints for the dev phase, base rules `AGENTS.md`
   `org.sterl.llmpeon.test` in Eclipse so they pick up the changed jar. Without `-am` the copy
   resolves core from a stale `~/.m2` copy → phantom "cannot be resolved" errors for brand-new core
   symbols. (A full `mvn clean install` at the root also works but is much slower.)
+- **m2e stale model after `build.properties` edits (hit 2026-09-10, lib-update inc-3):**
+  m2e caches the Tycho project model at pom import time; editing `build.properties` alone does
+  not re-parse it. Symptom: IDE build fails in the tycho package-plugin with stale
+  `bin.includes` ("[lib/old.jar] do not match any files") although the file on disk is correct
+  and headless `mvn ... package` succeeds. Fix: delete
+  `<project>/.settings/org.eclipse.m2e.core.prefs` +
+  `<workspace>/.metadata/.plugins/org.eclipse.m2e.core/<project>.lifecyclemapping`, then
+  `eclipseRefreshProject` + rebuild.
 - **m2e auto-build breaks Lombok (hit 2026-09-01, inc-24):** the `llmpeon-core` project's
   `.classpath` output folder is `target/classes` — the SAME folder Maven uses. An Eclipse/m2e
   auto-build after `eclipse*` file edits recompiles all main classes WITHOUT Lombok annotation

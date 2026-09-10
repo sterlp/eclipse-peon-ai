@@ -16,11 +16,20 @@
    `eclipseBuildProject` beide Plugin-Projekte ohne Fehler, Plugin-OSGi-Suite **194/0**.
    Altes Blocker-Thema „IDE-Target rot" = erledigt (frische Eclipse-Installation löst 2026-09
    sauber — siehe resolved-points.md).
-3. **inc-3 langchain4j 1.20.0 + beta-Module 1.20.0-beta30 — NÄCHSTES.**
-   Ablauf: parent-pom `${langchain4j.version}` + neu `${langchain4j.beta.version}` →
-   core-pom beta-Module → core `mvn clean install` (Surefire ~699) →
-   Plugin `mvn clean process-resources` → lib/↔MANIFEST-Diff → dependency:tree-Whitelist-Diff →
-   Plugin-Suite grün → Commit (inkl. lib/, sources/, MANIFEST).
+3. **inc-3 langchain4j 1.20.0 + beta-Module 1.20.0-beta30** — committet (2026-09-10).
+   Gates grün: Core Surefire **699/0**, headless `mvn -pl org.sterl.llmpeon,releng/llmpeon-target package`
+   BUILD SUCCESS, `eclipseBuildProject` beide Projekte warnings-only, Plugin-OSGi-Suite **194/0**.
+   Änderungen: parent `langchain4j.version` 1.19.0→1.20.0 + neu `langchain4j.beta.version` 1.20.0-beta30
+   (darauf `mvn -N install` — sonst stale parent-Pom in ~/.m2); core-pom beta-Module →
+   `${langchain4j.beta.version}`; **McpService.java Compile-Fix**: `HttpMcpTransport` in beta30
+   entfernt → HTTP + HTTP_SSE beide `StreamableHttpMcpTransport` (MCP-Spec-Nachfolger,
+   text/event-stream nativ). lib/-Delta: −okhttp-sse, +kotlin-stdlib-jdk7, +langchain4j-reactive-streaming;
+   slf4j-simple.jar war in lib/, aber aus MANIFEST/build.properties/.classpath fehlend
+   (Pre-existing seit afbe7984) → alle drei auf 57 Jars gesynct. Whitelist: neu transitives
+   `io.smallrye.reactive:mutiny-zero` — nur von `AiServiceStreamingEventPublisher` referenziert
+   (unused in core) → kein `includeGroupIds`-Erweiterung nötig, kein Laufzeit-Risiko (an Jon
+   berichtet). lib/ + sources/ sind gitignored (regenerierbar) → Commit trägt MANIFEST/
+   build.properties/.classpath, Jars via `mvn -pl org.sterl.llmpeon clean process-resources`.
 4. inc-4 übrige Pins (gleiche Major-Line, Central-Check zuerst) + slf4j-simple-Entdoppelung
    (Parent-Property) — offen.
 
@@ -28,6 +37,18 @@
 
 Keine. (Ehemaliger IDE-Target-Blocker durch frische Eclipse-Installation gelöst;
 askDev-ConnectException war Dev-Modell-Endpoint, nicht Workspace.)
+
+### Befunde (Bug-Hunt-Kandidaten)
+
+- **PeonAiServiceTest löscht das Fixture `test_project/.agents/skills/test/SKILL.md`**
+  (gefunden 2026-09-10, inc-2-Gate): die ADR-0042-Tests `setProject_replacesProjectSlotOnly`
+  + `pinnedProject_keepsSkillComponent_untilSetProject` räumen in `finally` mit
+  `deleteRecursively(fixtureSkillsDir.getParent())` = das GANZE `test_project/.agents`-Verzeichnis
+  — inklusive dem getrackten Smoke-Fixture. Folge: nach JEDEM vollen Suite-Lauf taucht die
+  Deletion im Working Tree auf (kam beiläufig in den ersten inc-2-Commit, per Amend behoben,
+  `89531af`). Fix-Vorschlag: cleanup löscht nur die von den Tests angelegten Files
+  (`fixture-skill.md`/`other-skill.md`). → Bug-Hunt-Triage. Bis dahin: Commits nur mit
+  expliziten Datei-Listen, nie `git add -A` nach Suite-Läufen.
 
 ### Wichtige Fakten (verifiziert, nicht re-verifizieren)
 
@@ -47,8 +68,8 @@ askDev-ConnectException war Dev-Modell-Endpoint, nicht Workspace.)
 
 ## Nach Session-Restart weitermachen mit
 
-1. `git status` + `git log --oneline -3` — inc-3-Änderungen in Arbeit?
-2. inc-3 → inc-4 → Review (Da Dok, 3-Seiten, Plan + ADR-0044).
+1. `git status` + `git log --oneline -3` — inc-4-Änderungen in Arbeit?
+2. inc-4 → Review (Da Dok, 3-Seiten, Plan + ADR-0044).
 3. Danach Bug-Hunt-Zyklus (siehe oben).
 
 ## Vorheriger Zyklus (abgeschlossen, Referenz)

@@ -88,6 +88,8 @@ Bundle-ClassPath: .,
  lib/jackson-datatype-jdk8.jar,
  lib/jackson-datatype-jsr310.jar,
  lib/okhttp.jar,
- lib/okhttp-sse.jar,
  lib/okio.jar,
- lib/okio-jvm.jar
+ lib/okio-jvm.jar,
+ lib/kotlin-stdlib-jdk7.jar,
+ lib/langchain4j-reactive-streaming.jar,
+ lib/slf4j-simple.jar
