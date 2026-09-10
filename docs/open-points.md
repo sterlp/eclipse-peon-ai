@@ -1,6 +1,63 @@
 # Open Points
 
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
+## ❓ Shell-Tool für Plan-/Review-Agent (Da Thinka/Da Dok) — Whitelist-Capability? (2026-09-10, User)
+
+**Idee (User):** Plan-/Review-Agent sollen ggf. `git`/`mvn`/`npm` nutzen können — heute haben
+sie das Shell-Tool nicht. Frage: volles ShellTool, reduzierte Version, oder **Whitelist-Capability
+im ShellTool selbst** (analog Write-Tools-Validator): Pattern-Liste (`git *`, `mvn *`, `npm *`,
+…) für „common tools", per Agent konfigurierbar.
+
+**Status: nur als Ticket festgehalten** — User: „erst fertig werden, dann was Neues." Kein Design,
+kein SOLL. Offene Fragen für später: Whitelist pro Agent (Config) oder global? Default-Set?
+Read-only-Filter (git status/diff ok, push?) — analog Disk/Eclipse-Tool-Philosophie
+(sandbox boundary ADR-0015). Verwandt: ADR-0022 (Write-Path-Allowlist-Decorator, Proposed).
+
+
+
+
+## ⏳ Jackson 2 → 3: beobachten, Migration erst bei voller Entfernbarkeit (User 2026-09-10)
+
+**Fakten (Da Sniffa, 2026-09-10):** langchain4j 1.20.0 macht Jackson 3 **opt-in** (Modul
+`langchain4j-jackson3`; Default bleibt Jackson 2, Central-Poms: com.fasterxml 2.22). Jackson 3
+GA = tools.jackson 3.2.2; Annotations bleiben geteilt bei com.fasterxml 2.22.
+
+**Nicht heute migrierbar, weil:**
+1. **openai-java** (`open-ai-official`-Client) braucht weiter Jackson 2 (`jackson-databind` +
+   `jackson-module-kotlin`) — pinnt uns, Modul nicht unter unserer Kontrolle.
+2. Eigene Core-Nutzung in 5 Dateien (`AiModelParser`, `ExtraBody`, `MockLlmServer`,
+   `ModelListResponse`, `SseChunk`) müsste mit auf `tools.jackson` migrieren.
+3. Opt-in ändert den Error-Path (`JsonReadException`/`JsonWriteException` statt
+   Jackson-Exceptions) → ApiRetry-/Fehlerklassifikation prüfen.
+
+**Entscheidung (User, 2026-09-10):** **Beobachten, nicht migrieren.** Migration erst, sobald
+Jackson 2 **vollständig** entfernbar ist (auch aus openai) — ein Teilopt-in bringt nichts
+(beide Databinds wären dann in lib/). Revisit-Trigger: langchain4j 1.21+ (Aggregator-Checkout
+ist schon auf 1.21.0-beta31) oder openai-java Jackson-3-Support. Dann: eigene Story mit ADR
+(Major-Sprung, OSGi-Bundle-ClassPath, Error-Path).
+## ❓ Glossar: „Slot" ist doppelt belegt (2026-09-10)
+
+
+
+
+**Gefunden:** im Warning-Cleanup-Zyklus — der Rename-Kandidat „slot-drift" (M2) stellte sich
+als kein Drift heraus: ADR-0036 („po-own-model-**slot**") nutzt „Slot" aktuell für die
+per-Agent-Model-Config, ADR-0042 nutzt „Slot" für die Skill-Herkunft (Config- vs Projekt-Slot).
+Zwei Bedeutungen, ein Begriff — widerspricht „ein Begriff, eine Bedeutung".
+
+**Frage an User:** Disambiguieren? Optionen: (1) domain-scoped Begriffe festhalten
+(„Model-Slot" vs „Skill-Slot" als zwei Glossar-Einträge), (2) Skill-Seite umbenennen
+(z.B. „Quelle"). Kein Handlungsdruck — beim nächsten Terminologie-Kontakt entscheiden.
+
+## ❓ ApiRetry: frische Evidence (2026-09-10, Warning-Cleanup-Zyklus)
+
+Dev-Endpoint fiel zweimal hintereinander aus: erst `HttpTimeoutException` (request timed out),
+dann `ConnectException` — **beide ohne sichtbaren Retry**, der Call brach mit der Exception ab.
+Passt exakt zum bestehenden ApiRetry-Verdacht (Punkt unten): Netzwerk-Level-Failures
+(Connect/Timeout) scheinen nicht oder kaum retryt zu werden — im Gegensatz zu HTTP-Status-Fehlern.
+→ Investigation-Triage im Bug-Fix-Zyklus mit diesem konkreten Repro (Dev-Slot lokal).
+
+
 Geklärte Punkte ohne Feature-Doc wandern nach [resolved-points.md](resolved-points.md).
 
 ## ❓ ApiRetry: Cancel-Meldung trotz aktiver Retries — „Attempt 1, retrying in 10s" gefolgt von Cancel

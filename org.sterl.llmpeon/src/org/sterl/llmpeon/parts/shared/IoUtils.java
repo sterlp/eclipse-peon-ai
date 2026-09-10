@@ -86,11 +86,6 @@ public class IoUtils {
         if (container instanceof IFolder folder && !folder.exists()) {
             ensureFolders(folder.getParent(), monitor);
             folder.create(IResource.FORCE, true, monitor);
-            
-            /* TODO I don't think this is really needed!
-            if (folder.getParent() != null) folder.getParent().refreshLocal(IResource.DEPTH_ONE, monitor);
-            else folder.refreshLocal(IResource.DEPTH_ZERO, monitor);
-            */
         }
     }
 

@@ -3,13 +3,10 @@ package org.sterl.llmpeon.command;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Files;
-import java.util.Map;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.AbstractMemoryFileTest;
-import org.sterl.llmpeon.prompt.model.SimplePromptFile;
-import org.sterl.llmpeon.skill.SkillPromptFile;
 import org.sterl.llmpeon.skill.SkillService;
 
 class SlashCommandResolverTest extends AbstractMemoryFileTest {

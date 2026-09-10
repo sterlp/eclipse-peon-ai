@@ -59,6 +59,26 @@ Hints for the dev phase, base rules `AGENTS.md`
   "constructor not applicable" errors (e.g. `SimpleContextItem` 2-arg from
   `@RequiredArgsConstructor`). Fix: `mvn -pl org.sterl.llmpeon.core clean compile` (or `clean test`)
   before the gate run.
+- **Known-benign warnings — do NOT re-triage every cycle** (2026-09-10, warning-cleanup cycle:
+  64 → 12 problems, commits `51f43d2`/`a9124f1`/`56e9cc5`). The remaining 12 are accepted
+  exceptions; fix real new ones, keep this list current:
+  - Plugin ×10 null-type-safety on method refs (`AIChatView:158-159`, `PeonAiService:401-402,489`,
+    `ModelComboWidget:122`, `EclipseUtil:318`, `EclipseWorkspaceReadFileTool:155`,
+    `AiAgentStatusModel:48`, `StatusLineWidget:188`) — method refs to `@NonNull`-parameter
+    functional interfaces; internal callers never pass null.
+  - Plugin ×1 `resources/` class-folder (`.classpath` mirrors `Bundle-ClassPath`) — **must stay**:
+    `ChatMarkdownWidget` loads `chat.html` via classloader AND OSGi `FileLocator`; dropping the
+    entry risks breaking the chat view at IDE runtime.
+  - Core ×1 `MockLlmServer:98` unused TWR variable — needed for auto-close; variable-less
+    try-with-resources is invalid Java (JLS 14.20.3). **javac-lint only — not visible in the
+    Eclipse problems view.**
+  - Core IDE scope note (2026-09-10, Da-Dok review): the `llmpeon-core` IDE view additionally
+    carries ~150 **pre-existing** JDT warnings (null-type-safety/unused-import) that are NOT
+    part of the cleanup scope above — they never appear in the Maven gate. Sweep = own
+    micro-cycle decision (PO + user), not an obligation of every cycle.
+  - `-Xlint`-diagnostic only (not in default build/IDE): this-escape ×10 (7 classes, none
+    subclassed — intentional constructor-delegates-to-refresh pattern); opennlp-tools
+    manifest `Class-Path` slf4j path quirk (upstream packaging).
 - Elegant, expressive modern Java (records, pattern matching, switch expressions, Lombok).
 - **OSGi test constraints:** plugin tests are JUnit 4, new test classes need user approval.
   Run full test suite on timeout
