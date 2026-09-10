@@ -278,7 +278,14 @@ Tests). Verify-Loop je Inkrement: `eclipseBuildProject("org.sterl.llmpeon")` +
    Workspace-Trust; hier kein JUnit-Lauf geplant, aber die Smoke-Steps brauchen einen
    Plugin-Restart auf dem Branch-Stand.
 
-## 8. Offene Punkte
+## 8. Status (Da Mek)
+
+- **inc-1 (R-ST1 Counter + Guard): DONE** — commit `ff69a3d` (Code + PO-Docs). Build grün, nur die 10 known-benign Warnings.
+- **inc-2 (R-ST3 Turn-INFO-Logging): DONE** — commit `9cbb355` (Code; keine Doc-Änderungen nötig — PO-Docs waren in inc-1 bereits synchron). Build grün, nur die 10 known-benign Warnings.
+- **R-ST2:** kein Code-Change (Design-Decision 9) — Verifikation läuft über Smoke 4.
+- **Offen:** PO-Review + User-Smoke (Abschnitt 7, Steps 1–7). Danach `planImplemented` (nur auf Anweisung).
+
+## 9. Offene Punkte
 
 - **Keine.** Alle Entscheidungen (Counter statt Ticket, Invarianten, Log-Placement/-Level,
   keine Core-Klasse, Inkrement-Schnitt inc-1/inc-2, Branch) sind im Feature-Doc + diesem
