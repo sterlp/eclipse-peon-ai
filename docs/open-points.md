@@ -57,6 +57,13 @@ Passt exakt zum bestehenden ApiRetry-Verdacht (Punkt unten): Netzwerk-Level-Fail
 (Connect/Timeout) scheinen nicht oder kaum retryt zu werden — im Gegensatz zu HTTP-Status-Fehlern.
 → Investigation-Triage im Bug-Fix-Zyklus mit diesem konkreten Repro (Dev-Slot lokal).
 
+**Nachtrag (2026-09-10, 16:22, mcp-fixes-Zyklus):** `reviewPlanAgent`-Call starb mit
+`ToolExecutionException: closed` ← SSE `Connection reset` mitten im Stream
+(`IOException: chunked transfer encoding, state: READING_LENGTH` → `SocketException: Connection reset`).
+User (Queued Message 2026-09-10): „unser retry bug hat zugeschlagen wie es aussieht — wenn der
+LLM server abstürzt." Wieder derselbe Shape: Server-Crash → Call bricht, statt dass ApiRetry
+sichtbar retryt. Repro-Klasse für die Investigation: **„Connection reset mitten im SSE-Stream"**.
+
 
 Geklärte Punkte ohne Feature-Doc wandern nach [resolved-points.md](resolved-points.md).
 

@@ -107,3 +107,22 @@ agent switch when the new agent's model isn't in the current list.
   it later.
 - **B2 (unknown model):** if the configured model isn't found after a successful fetch, the first
   model from the provider list is selected automatically.
+
+## R-ML1 — Fetch-Identity ist live (2026-09-10) ❌
+
+Der Identity-Key für den Listen-Fetch (`ModelListCache.getOrFetch`) wird zur **Fetch-Zeit** aus
+der aktuellen Konfiguration gebaut — nie aus einem Snapshot, der beim Page-Aufbau gezogen wurde.
+
+**WEIL (Bug-1, lib-update Smoke-Test 2026-09-10):** die Advanced-Page snapshotet `LlmConfig`
+einmalig (`AiAdvancedPreferenceView.java:51`), `AgentModelConfigSection.base` ist `final`
+(`:49`), und `prepareFetch()` (`:99`) baut die Identität aus diesem Stale-Base → eine
+Base-URL-Korrektur in den Settings wirkt erst nach Page-Neuöffnung (frischer Snapshot).
+Die Basic-Page ist korrekt (live-Supplier, `AiConfigPreferenceView.java:98-99`); Agenten mit
+**eigener** URL sind live (`getRecord()`) — betroffen sind nur Agenten, die die Base-URL erben.
+
+- **BDD R-ML1a** GIVEN die Advanced-Page ist offen WHEN die Base-URL wird geändert und gespeichert
+  THEN der nächste Listen-Fetch (Refresh-Button oder Dropdown-Open) nutzt die neue
+  Effective-Connection-Identity — kein Page-Reopen nötig.
+  Verifikation manuell (SWT-Präzedenz R-UI1/R-MCP3) + Code-Review des Live-Supplier-Wirings.
+- **BDD R-ML1b** GIVEN ein Agent mit eigener URL WHEN die Agent-URL wird geändert THEN der Fetch
+  nutzt die neue Agent-URL (IST-Verhalten, bleibt erhalten — Regression-Guard via Review).

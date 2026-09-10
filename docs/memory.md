@@ -21,7 +21,8 @@ duckduckgo `-32022` — R-MCP1 live-apply (Compare in `McpConnectionService`, vo
 R-MCP2 leer=Auto-Detect (Clean Break, `DEFAULT_PROTOCOL_VERSION` weg), R-MCP3 editierbare Combo +
 Homepage. Review CONCERNS ohne Rework; Delta `eb12072` (C1 Toggle-Test R-MCP1c als Mutations-Nachweis,
 C2 Homepage-„Description"-Drift raus, C3 isEnabled-Dedup). Gates: Core Surefire 4/4, OSGi 197/0/0.
-Branch jetzt **13 Commits**. SOLL: [mcp.md](mcp.md) + [ADR-0045](adr/0045-mcp-protocol-version-auto-detect.md).
+Branch jetzt **13 Commits**. SOLL: [mcp.md](mcp.md) + [ADR-0045](adr/0045-mcp-protocol-version-auto-detect.md). Branch jetzt
+**15 Commits** (inkl. Docs-Flip `07a97b1` + Plan-Archiv `b0f4c22` → `peon-plan/overview-done-2026-09-10-16-30.md`).
 **Bug-Hunt-Backlog neu (echte Null-Flow-Signale, brauchen eigenen Review, NICHT Cleanup):**
 `ToolService.java:181` (@NonNull ChatResponse mismatch) · `:201` (`getAgent()` null) ·
 `SkillPromptFile.java:64/86/88` (@Nullable-Flow) · `CompactSessionTool.java:32`. +
@@ -59,8 +60,19 @@ Follow-up: `SimplePromptFile.readFullContent():52` (public, cross-project Usage-
   ⚠️ gespeicherte `2025-06-18` werden nicht migriert (Clean Break) — User-Feld leeren (Auto-Detect)
   oder `2025-11-25` setzen.
 
-**Bug 1 — Model-List-URL-Lockdown: NICHT untersucht** (Verdacht: Connection-Cache-Identity nach
-ADR-0034 nimmt korrigierte URL nicht als neue Identität → kein Refresh). Nächste Story.
+**Bug 1 — Model-List-URL-Lockdown: untersucht (Da Sniffa, 2026-09-10), Ursache code-verifiziert:**
+Stale-Base-Snapshot in der Advanced-Page — `AiAdvancedPreferenceView:51` snapshotet `LlmConfig`
+einmalig, `AgentModelConfigSection.base` final (`:49`), `prepareFetch():99` baut die Identity aus
+dem Stale-Base → Base-URL-Korrektur wirkt erst nach Page-Reopen. Basic-Page korrekt (live-Supplier),
+eigene Agent-URL live (`getRecord()`) — nur Base-ererbende Agenten betroffen. `ModelListCache`
+identity-korrekt. SOLL: **R-ML1** in [model-loading.md](model-loading.md) — Fix: live-Supplier
+statt final-Snapshot (gleicher Mechanismus wie Basic-Page).
+
+**Neuer Bug-Kandidat (2026-09-10, PO, in Bug-Hunt-Backlog):** `eclipseGrepFiles` mit Pfad `/docs`
+(Projekt-Unterordner, ohne Extension-Filter) meldet „no matches", obwohl Treffer existieren
+(„Retry"/„ApiRetry" in open-points.md + memory.md, per Read bestätigt). Verdacht: Pfad-Scoping auf
+Nicht-Projekt-Unterordner sucht still nichts = **False-Negative** (AGENTS.md: teuerster Tool-Bug).
+Workaround bis zum Fix: Projektpfad + Extension-Filter nutzen.
 
 ## Danach (Reihenfolge offen)
 
