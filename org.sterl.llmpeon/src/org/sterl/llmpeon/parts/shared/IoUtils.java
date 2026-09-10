@@ -71,13 +71,6 @@ public class IoUtils {
             var charset = getCharset(file);
             ensureFolders(file.getParent(), monitor);
             file.write(content.getBytes(charset), true, false, true, monitor);
-            /* TODO I don't think this is really needed!
-            if (file.getParent() == null) {
-                file.refreshLocal(IResource.DEPTH_ZERO, monitor);
-            } else {
-                file.getParent().refreshLocal(IResource.DEPTH_ONE, monitor);
-            }
-            */
         } catch (ResourceException e) {
             LOG.warn("Failed to edit " + JdtUtil.pathOf(file) + e.getMessage(), e);
             throw new IllegalArgumentException(e.getMessage(), e);
