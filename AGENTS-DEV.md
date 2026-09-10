@@ -11,6 +11,12 @@ Hints for the dev phase, base rules `AGENTS.md`
 - Whitelist only the needed groupIds via `includeGroupIds`. Platform-provided JARs (jakarta,
   osgi, jna, asm, jetty, felix, …) must **not** be in `lib/` — they come from the target
   platform.
+- **Ritual after EVERY lib bump** (hit 2026-09-10, lib-update inc-3: transitive
+  `io.smallrye.reactive:mutiny-zero` arrived unwhitelisted): diff `mvn dependency:tree` groups
+  against the `includeGroupIds` whitelist — a missing group means the jar silently never lands
+  in `lib/` → runtime `ClassNotFoundException` on an untested path. Decide each new group
+  explicitly (needed → whitelist; provably unreferenced in this bundle → leave out, say so in
+  the report).
 
 ## Build & test
 

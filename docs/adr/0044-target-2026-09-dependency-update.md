@@ -36,3 +36,17 @@ Facts (verified against p2 content.xml, 2026-09-09): 2026-03 = {1.3.5, 2.1.1},
 * jakarta.inject stays `[2.0.0,3.0.0)` — still provided by 2026-09 (verified by resolve).
 * If a future langchain4j release adds/removes transitive jars, the
   MANIFEST `Bundle-ClassPath` ↔ `lib/` sync must be checked (plan step, not folklore).
+
+## Addendum (2026-09-10, Review Da Dok — MCP semantic change)
+
+`langchain4j-mcp` 1.20.0-beta30 removed `HttpMcpTransport` → `McpService` now builds
+`StreamableHttpMcpTransport` for **both** `HTTP` and `HTTP_SSE` (MCP-spec successor, native
+`text/event-stream`). **Not** strictly behavior-preserving: legacy MCP servers speaking the
+2024-11-05 HTTP/SSE protocol no longer connect; HTTP and HTTP_SSE are now identical.
+Release-note worthy.
+
+Further review outcomes: `io.smallrye.reactive:mutiny-zero` stays unwhitelisted (only
+referenced by `AiServiceStreamingEventPublisher`; core uses no AiServices — no runtime risk;
+whitelist-ritual in `AGENTS-DEV.md` guards future bumps). lib/ + sources/ are gitignored by
+repo convention — MANIFEST/build.properties/.classpath carry the sync, jars regenerate via
+`mvn -pl org.sterl.llmpeon clean process-resources`.
