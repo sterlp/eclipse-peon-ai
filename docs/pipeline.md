@@ -41,7 +41,7 @@ Trigger push/PR auf `main` (paths-ignore `docs/**`, `skills/**`). CI ist **headl
 
 | Schritt | Änderung | CI-Ergebnis | Datum |
 |---|---|---|---|
-| B (Guard) | `EclipseConsoleLogToolTest.after()` Display-Guard | ⏳ offen | — |
+| B (Guard) | `EclipseConsoleLogToolTest.after()` Display-Guard | ✅ grün (User-CI-Lauf) | 2026-09-10 |
 | A ohne B (R-PI2) | `xvfb-run` in maven.yml, Guard deaktiviert | ⏳ offen | — |
 | B wieder aktiv + A | Guard zurück mit Kommentar | ⏳ offen | — |
 
