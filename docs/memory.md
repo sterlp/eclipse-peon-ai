@@ -1,6 +1,6 @@
-# Session-Stand (2026-09-10, Zyklus Warning-Cleanup abgeschlossen; lib-update wartet auf Merge)
+# Session-Stand (2026-09-10, Zyklus 3 mcp-fixes ✅ reviewed; Bug 1 offen, wartet auf Merge)
 
-## Aktiver Zweig: `story/lib-update-2026-09-09` — zwei Zyklen drauf, Merge = User
+## Aktiver Zweig: `story/lib-update-2026-09-09` — drei Zyklen drauf, Merge = User
 
 **Zyklus 1 — Dependency-Update (✅ abgeschlossen, reviewed):** Target 2026-09 +
 jakarta.annotation [3.0.0,4.0.0) + langchain4j 1.20.0/beta30 (McpService→Streamable-HTTP,
@@ -14,7 +14,14 @@ dokumentiert in `AGENTS-DEV.md` („Known-benign warnings"). M2-„slot-drift" w
 (ADR-0036 nutzt „Slot" aktuell) → Rename gestoppt; daraus ❓ Glossar-„Slot"-Doppelbelegung
 (open-points). Core Surefire 696/0 (−3 entfernte Tests), OSGi 194/0 (4 skipped = normal).
 inc-4 (`7f7b9b3`): IoUtils-ensureFolders-TODO + 7 Einzeiler (6 unused imports + 1 Suppression),
-Docs committet, Review-Record. Branch jetzt **10 Commits**.
+Docs committet, Review-Record.
+
+**Zyklus 3 — MCP-Fixes (✅ 2026-09-10, Commits `cec9ebf`/`fb86226`/`eb12072`):** Smoke-Test-Befund
+duckduckgo `-32022` — R-MCP1 live-apply (Compare in `McpConnectionService`, vor dem LlmConfig-Gate),
+R-MCP2 leer=Auto-Detect (Clean Break, `DEFAULT_PROTOCOL_VERSION` weg), R-MCP3 editierbare Combo +
+Homepage. Review CONCERNS ohne Rework; Delta `eb12072` (C1 Toggle-Test R-MCP1c als Mutations-Nachweis,
+C2 Homepage-„Description"-Drift raus, C3 isEnabled-Dedup). Gates: Core Surefire 4/4, OSGi 197/0/0.
+Branch jetzt **13 Commits**. SOLL: [mcp.md](mcp.md) + [ADR-0045](adr/0045-mcp-protocol-version-auto-detect.md).
 **Bug-Hunt-Backlog neu (echte Null-Flow-Signale, brauchen eigenen Review, NICHT Cleanup):**
 `ToolService.java:181` (@NonNull ChatResponse mismatch) · `:201` (`getAgent()` null) ·
 `SkillPromptFile.java:64/86/88` (@Nullable-Flow) · `CompactSessionTool.java:32`. +
@@ -22,11 +29,15 @@ Follow-up: `SimplePromptFile.readFullContent():52` (public, cross-project Usage-
 
 ## User-Handlungen offen
 
-1. **Smoke-Test** nach Eclipse-Neuinstallation (läuft gerade / geplant).
-2. **Merge/Squash** `story/lib-update-2026-09-09` → main (9 Commits: lib-update 6 + cleanup 3).
+1. **Smoke-Test** nach Eclipse-Neuinstallation: duckduckgo-MCP mit **leerem Protocol-Version-Feld**
+   (Auto-Detect) oder `2025-11-25` neu verbinden (Feld leeren — gespeicherte `2025-06-18` werden
+   nicht migriert); Config-Änderung wirkt jetzt ohne Restart (R-MCP1).
+2. **Merge/Squash** `story/lib-update-2026-09-09` → main (13 Commits: lib-update 6 + cleanup 4 +
+   mcp-fixes 3).
 3. **Homepage-Release-Notes** (User prüft): „Target Platform 2026-09, langchain4j 1.20.0, MCP
-   über Streamable HTTP (Legacy-HTTP/SSE-Server fallen weg), jakarta.annotation 3.0, Lib-Updates" +
-   Story/133-Skills-Zeile, falls unveröffentlicht.
+   über Streamable HTTP (Legacy-HTTP/SSE-Server fallen weg), jakarta.annotation 3.0, Lib-Updates;
+   MCP-Fix: leer = Auto-Detect + Config-Änderungen greifen sofort" + Story/133-Skills-Zeile,
+   falls unveröffentlicht.
 
 ## Blocker / Ausfälle
 
@@ -35,29 +46,21 @@ Follow-up: `SimplePromptFile.readFullContent():52` (public, cross-project Usage-
   trotzdem vollständig im Fehlertext enthalten und wurde gezogen; erneute Recherche nicht nötig.
   Weitere ApiRetry-Evidence (open-points.md).
 
-## Bug-Triage lib-update (2026-09-10, Smoke-Test läuft)
+## Bug-Triage lib-update (2026-09-10, Smoke-Test lief)
 
-**Bug 2 — MCP duckduckgo `-32022`: Ursache zweistufig, beide im Code verifiziert:**
-1. **MCP-Config-Änderungen werden nicht live angewandt:** `AIChatView.applyConfig():376` bricht bei
-   unverändertem `LlmConfig` früh ab — `applyMcpConfig():382` läuft dann nie → neue Server-Liste/
-   protocolVersion wirkt erst nach Restart oder manuellem MCP-Toggle (Statuszeile).
-2. **Default `2025-06-18` löst den Detect-Tanz aus:** langchain4j 1.20 kennt nur `""`=Auto-Detect,
-   `2026-07-28`=modern, `2025-11-25`/`2024-11-05`=force-legacy; **jede andere** Version →
-   autoDetect(version) mit modern-Probe zuerst (DefaultMcpClient.java:273–275). duckduckgo
-   (Python mcp SDK 2.x) ist dual-era: erster Request entscheidet Ära → Probe-Envelope lockt MODERN,
-   Probe schlägt fehl (server/discover fehlt), Legacy-Fallback auf derselben Verbindung → -32022.
-   Nicht „Client zu neu". `2024-05-11` (User-Test) = ebenfalls „andere" → gleiche Wall, erwartet.
-   `2024-11-05` (User-Test) = force-legacy, sollte funktionieren — Wirkung kam nie an (Punkt 1),
-   User-Bestätigung ausstehend.
+**Bug 2 — MCP duckduckgo `-32022`: gelöst ✅** — Ursache (Gate + Default `2025-06-18` → Detect-Tanz
+→ Era-Lock) und Fix vollständig in [mcp.md](mcp.md) + [ADR-0045](adr/0045-mcp-protocol-version-auto-detect.md).
 - **R-MCP2 entschieden (User, 2026-09-10):** Default **leer = Auto-Detect** (langchain4j-Verhalten),
   kein stiller Default mehr; Dialog = editierbare Combo (Auto/2025-11-25/2026-07-28 + Freitext).
-  SOLL in [mcp.md](mcp.md) + [ADR-0045](adr/0045-mcp-protocol-version-auto-detect.md) — ❌ specified
-  (R-MCP1 live-apply, R-MCP2 Semantik, R-MCP3 UI). ⚠️ gespeicherte `2025-06-18` werden nicht
-  migriert (Clean Break) — User-Feld ggf. manuell leeren.
-- Build-Freigabe + Branch-Entscheid ausstehend; danach Bug 1 (Model-List-URL).
+  **✅ gebaut + reviewed:** [mcp.md](mcp.md) + [ADR-0045](adr/0045-mcp-protocol-version-auto-detect.md)
+  — inc-1 `cec9ebf` (R-MCP2a core + R-MCP1 live-apply) · inc-2 `fb86226` (R-MCP3 Combo + Homepage) ·
+  Delta `eb12072` (Da-Dok-Findings C1 Toggle-Test/R-MCP1c, C2 Homepage-Drift raus, C3 isEnabled-Dedup).
+  Review CONCERNS ohne Rework; Mutations-Nachweis R-MCP1c. Gates: Core Surefire 4/4, OSGi 197/0/0.
+  ⚠️ gespeicherte `2025-06-18` werden nicht migriert (Clean Break) — User-Feld leeren (Auto-Detect)
+  oder `2025-11-25` setzen.
 
-**Bug 1 — Model-List-URL-Lockdown: noch nicht untersucht** (Verdacht: Connection-Cache-Identity
-nach ADR-0034 nimmt korrigierte URL nicht als neue Identität → kein Refresh).
+**Bug 1 — Model-List-URL-Lockdown: NICHT untersucht** (Verdacht: Connection-Cache-Identity nach
+ADR-0034 nimmt korrigierte URL nicht als neue Identität → kein Refresh). Nächste Story.
 
 ## Danach (Reihenfolge offen)
 

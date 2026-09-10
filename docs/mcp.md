@@ -6,12 +6,14 @@ Live-Apply bei Config-Änderung.
 Code: core `org.sterl.llmpeon.mcp` (`McpService`, `McpServerConfig`), Plugin
 `parts.config.Mcp*` (UI/Preferences/Live-Apply).
 
-**Status: ❌ specified (2026-09-10)** — R-MCP1–R-MCP3 designed während des Smoke-Tests des
-lib-update-Zyklus (langchain4j 1.20.0), nicht gebaut. Auslöser: duckduckgo-mcp (`uvx`, stdio)
+**✅ done (2026-09-10, Zyklus mcp-fixes)** — R-MCP1–R-MCP3 gebaut und reviewed (Verdict CONCERNS
+ohne Rework, Findings C1–C4 abgearbeitet: C1-Test, C2-Homepage-Drift raus, C3-Dedup; C4 Hinweis).
+Commits: inc-1 `cec9ebf` · inc-2 `fb86226` · Delta `eb12072`. R-MCP3 manuell verifiziert
+(Code-Review Da Dok; Live-Bestätigung im User-Smoke-Test). Auslöser: duckduckgo-mcp (`uvx`, stdio)
 stirbt mit JSON-RPC `-32022 UNSUPPORTED_PROTOCOL_VERSION` — Analyse in
 [ADR-0045](adr/0045-mcp-protocol-version-auto-detect.md).
 
-## R-MCP1 — MCP-Config wird live angewandt ❌
+## R-MCP1 — MCP-Config wird live angewandt ✅
 
 Jede Änderung der MCP-Konfiguration (Server-Liste, protocolVersion, enabled) wirkt ohne
 Eclipse-Neustart und ohne manuellen MCP-Toggle — wie die LLM-Config auch.
@@ -34,7 +36,7 @@ nicht im LlmConfig-Gate.
   Test: `McpConnectionServiceTest.givenToggledState_whenApplied_thenNoReconnect` (Da-Dok-Finding
   C1: einzige konsistenzkritische Stelle ohne roten Test; zugleich Mutations-Nachweis).
 
-## R-MCP2 — Protocol-Version-Semantik ❌
+## R-MCP2 — Protocol-Version-Semantik ✅
 
 Der Wert geht unverändert an `DefaultMcpClient.Builder.protocolVersion(...)` (`McpService.java:81`);
 langchain4j 1.20 interpretiert (`DefaultMcpClient.java:262–275`):
@@ -56,7 +58,7 @@ langchain4j 1.20 interpretiert (`DefaultMcpClient.java:262–275`):
 **nicht** migriert oder aliasiert — sie bleiben wirksam (Detect-Flow), bis der User das Feld leert
 oder setzt. Kein Sonderfall für den alten Default.
 
-## R-MCP3 — Dialog: editierbare Combo ❌
+## R-MCP3 — Dialog: editierbare Combo ✅
 
 Das Protocol-Version-Textfeld im MCP-Server-Dialog wird eine **editierbare Combo** (SWT Combo
 ohne `READ_ONLY`):
