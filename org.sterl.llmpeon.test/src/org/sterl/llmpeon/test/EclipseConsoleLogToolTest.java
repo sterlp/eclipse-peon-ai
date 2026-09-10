@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import org.eclipse.swt.SWTError;
 import org.eclipse.ui.console.ConsolePlugin;
 import org.eclipse.ui.console.IConsole;
 import org.junit.After;
@@ -21,7 +22,13 @@ public class EclipseConsoleLogToolTest extends AbstractUnitTest {
     @After
     public void after() {
         if (console != null) {
-            ConsolePlugin.getDefault().getConsoleManager().removeConsoles(new IConsole[] { console });
+            try {
+                ConsolePlugin.getDefault().getConsoleManager().removeConsoles(new IConsole[] { console });
+            } catch (SWTError e) {
+                System.err.println("R-PI1 headless guard: removeConsoles skipped — ConsoleZoomHandler "
+                        + "calls Display.getDefault() which cannot create a GTK Display without an X server. "
+                        + "Locally, Display.Default is set by the PDE workbench, so this path is never hit.");
+            }
         }
         super.after();
     }

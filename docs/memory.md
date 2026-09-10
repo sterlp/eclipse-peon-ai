@@ -1,5 +1,15 @@
 # Session-Stand (2026-09-10, Zyklus 3 mcp-fixes + Zyklus 4 stop-fenster ✅ gebaut+reviewed — alles wartet auf User-Smoke-Tests + Merge)
 
+**Zyklus 5 — CI-Pipeline-Fix (🚧 aktiv, Story [pipeline.md](pipeline.md)):** CI (ubuntu headless) rot
+seit Target-Sprung `89531af` — `EclipseConsoleLogToolTest.after:24` `removeConsoles` → neuer
+`ConsoleZoomHandler` (org.eclipse.ui.console 3.16.0→3.17.100) → `Display.getDefault()` →
+`SWTError: No more handles [gtk_init_check() failed]`. Test/Workflow/MANIFEST unangetastet,
+lokal grün (Display vorhanden) — CI-only. User-Schema: **B→A→B** — R-PI1 (B) Display-Guard im
+Test → User validiert CI → R-PI2 (A) `xvfb-run -a mvn -B clean verify` + B deaktiviert → User
+validiert (A muss ALLEIN genügen) → R-PI3 (B) Guard zurück mit Kommentar (Defense-in-Depth).
+Validierungs-Log im Story-Doc. Da Mek verifiziert SWT-Probe-Mechanik am Quellcode (STOP-AND-ASK).
+open-to-discuss: Compact/Chat-View = beobachten (Leitidee „ich sehe was der Agent sieht").
+
 **Zyklus 4 — Stop-Fenster-Fix (✅ 2026-09-10, Commits `ff69a3d`/`9cbb355`/`6781f7a`/`72655c6`/`9c03f17`):**
 Stop-Button tot+wirkungslos während laufendem Run (pre-existing, NICHT aus den Fixes). Diagnose
 (Clobber-Race im Job-finally, Da Sniffa+Da Thinka) → SOLL [chat-job-lifecycle.md](chat-job-lifecycle.md)
