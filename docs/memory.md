@@ -30,8 +30,17 @@
    (unused in core) → kein `includeGroupIds`-Erweiterung nötig, kein Laufzeit-Risiko (an Jon
    berichtet). lib/ + sources/ sind gitignored (regenerierbar) → Commit trägt MANIFEST/
    build.properties/.classpath, Jars via `mvn -pl org.sterl.llmpeon clean process-resources`.
-4. inc-4 übrige Pins (gleiche Major-Line, Central-Check zuerst) + slf4j-simple-Entdoppelung
-   (Parent-Property) — offen.
+4. **inc-4 übrige Pins + slf4j-simple-Entdoppelung** — committet (2026-09-10).
+   Gates grün: `mvn clean install` am Parent (alle 6 Module) BUILD SUCCESS, Core Surefire
+   **699/0/0**, `eclipseBuildProject` beide Projekte warnings-only, Plugin-OSGi-Suite **194/0**.
+   Bumped (gleiche Major-Line, Central-Check 2026-09-10): lombok 1.18.44→1.18.48,
+   junit-bom 5.12.2→5.14.4, assertj 3.27.3→3.27.7, jimfs 1.3.0→1.3.2,
+   slf4j-simple 2.0.18/2.0.17→**2.0.19 via neuer Parent-Property** `slf4j-simple.version`
+   (Entdoppelung); Maven-Plugins: compiler 3.15.0→3.16.0, surefire 3.5.5→3.6.0,
+   clean 3.3.2→3.5.0, dependency 3.6.1→3.11.0, resources 3.3.1→3.5.0.
+   Bereits latest: mockito 5.23.0, flexmark 0.64.8. Neue Majors existieren
+   (junit 6, assertj 4, slf4j 2.1, plugins 4.x) — Plan-Scope = gleiche Major-Line → nicht
+   gemacht, hier reportet.
 
 ### Blocker
 
