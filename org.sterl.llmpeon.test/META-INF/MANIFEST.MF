@@ -2,6 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Peon AI Tests
 Bundle-SymbolicName: org.sterl.llmpeon.test
+Automatic-Module-Name: org.sterl.llmpeon.test
 Bundle-Version: 2.8.1.qualifier
 Fragment-Host: org.sterl.llmpeon;bundle-version="[2.0.0,3.0.1)"
 Bundle-RequiredExecutionEnvironment: JavaSE-21

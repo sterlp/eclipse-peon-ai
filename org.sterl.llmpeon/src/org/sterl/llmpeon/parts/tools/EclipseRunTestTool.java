@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -136,7 +137,9 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
                 // 2) Fall back to Eclipse's own shortcut logic so all required
                 //    attributes (incl. PDE bundles/application) are populated correctly
                 ILaunchConfigurationWorkingCopy wc = shortcut.createConfig(launchElement);
-                String namePrefix = runAll ? javaProject.getElementName() : testType.getFullyQualifiedName();
+                // testType is guaranteed resolved above when !runAll (that block throws otherwise).
+                String namePrefix = runAll ? javaProject.getElementName()
+                        : Objects.requireNonNull(testType).getFullyQualifiedName();
                 String uniqueName = launchManager.generateLaunchConfigurationName(namePrefix);
                 wc.rename(uniqueName);
                 if (pluginTest) {

@@ -176,6 +176,7 @@ public class ThreadSafeMemory {
     }
 
     @Nullable
+    @SuppressWarnings("unchecked") // isInstance-guarded, so the cast to T is safe
     public synchronized <T extends ChatMessage> T getLastOf(Class<T> type) {
         var it = memory.listIterator(memory.size());
         while (it.hasPrevious()) {

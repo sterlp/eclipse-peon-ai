@@ -111,7 +111,7 @@ public class StatusLineWidget extends Composite {
             pinRd.exclude = !hasProject;
             btnPin.setVisible(hasProject);
         }
-        if (hasProject) {
+        if (project != null) {
             btnPin.setText(project.getName()); // 📌 ProjectName
         }
         this.currentProject = project;

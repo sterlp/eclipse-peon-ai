@@ -42,16 +42,6 @@
                     </target>
                 </configuration>
             </plugin>
-            <plugin>
-                <groupId>org.eclipse.tycho</groupId>
-                <artifactId>tycho-compiler-plugin</artifactId>
-                <version>${tycho.version}</version>
-                <configuration>
-                    <useJDTCompiler>true</useJDTCompiler>
-                    <debug>true</debug>
-                    <debugLevel>lines,vars,source</debugLevel>
-                </configuration>
-            </plugin>
         </plugins>
     </build>
     <modules>

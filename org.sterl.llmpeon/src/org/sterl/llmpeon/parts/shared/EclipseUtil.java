@@ -109,13 +109,11 @@ public class EclipseUtil {
         if (editor instanceof ITextEditor text) {
             return text;
         } else if (editor instanceof MultiPageEditorPart multiPage) {
-            var textEditor = multiPage.getAdapter(ITextEditor.class);
-            
-            if (textEditor == null) {
-                throw new IllegalArgumentException(
-                    "MultiPageEditor " + editor.getClass().getName() + " has no ITextEditor adapter. " +
-                    "Please switch to the Source tab in the editor.");
-            }
+            // getAdapter is @NonNull-annotated but may return null at runtime; Optional keeps the null path.
+            var textEditor = Optional.ofNullable(multiPage.getAdapter(ITextEditor.class))
+                    .orElseThrow(() -> new IllegalArgumentException(
+                        "MultiPageEditor " + editor.getClass().getName() + " has no ITextEditor adapter. " +
+                        "Please switch to the Source tab in the editor."));
             return textEditor;
         } else {
             throw new IllegalArgumentException(
@@ -197,13 +195,14 @@ public class EclipseUtil {
 
             // Fast path: direct IFile adapter (works for all standard workspace
             // editors)
-            var file = input.getAdapter(IFile.class);
-            if (file != null) return Optional.of(file);
+            // getAdapter is @NonNull-annotated but may return null at runtime; Optional keeps the fallback reachable.
+            var file = Optional.ofNullable(input.getAdapter(IFile.class));
+            if (file.isPresent()) return file;
 
             // Fallback: JDT compilation unit (handles linked resources, derived
             // sources, etc.)
-            ICompilationUnit cu = e.get().getAdapter(ICompilationUnit.class);
-            if (cu != null && cu.getResource() instanceof IFile f) {
+            var cu = Optional.ofNullable(e.get().getAdapter(ICompilationUnit.class));
+            if (cu.isPresent() && cu.get().getResource() instanceof IFile f) {
                 return Optional.of(f);
             }
         }
@@ -251,10 +250,11 @@ public class EclipseUtil {
             return Optional.ofNullable(javaElement.getResource());
         }
         if (value instanceof IAdaptable adaptable) {
-            var resource = adaptable.getAdapter(IResource.class);
-            if (resource != null) return Optional.of(resource);
-            var javaElement = adaptable.getAdapter(IJavaElement.class);
-            if (javaElement != null) return Optional.ofNullable(javaElement.getResource());
+            // getAdapter is @NonNull-annotated but may return null at runtime; Optional keeps the fallback reachable.
+            var resource = Optional.ofNullable(adaptable.getAdapter(IResource.class));
+            if (resource.isPresent()) return resource;
+            var javaElement = Optional.ofNullable(adaptable.getAdapter(IJavaElement.class));
+            if (javaElement.isPresent()) return Optional.ofNullable(javaElement.get().getResource());
         }
         return Optional.empty();
     }
