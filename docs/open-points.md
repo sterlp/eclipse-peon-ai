@@ -1,6 +1,18 @@
 # Open Points
 
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
+
+## ❓ Live-Status im Retry-Backoff-Fenster (2026-09-10, User-Symptom „Stop-Fenster"-Analyse)
+
+**IST:** Nach Connection-Abbruch versteckt `StreamingBridge.onError` (END-Chunk) die
+Live-Statuszeile, PROBLEM-Nachrichten ebenso → während des ApiRetry-Backoffs (10s…5min):
+Funkstille — keine Tokens, kein „working since", User liest es als „hängt im PP".
+
+**SOLL-Idee:** Statuszeile zeigt im Backoff-Fenster den Retry-Zustand („retrying in Xs"),
+statt still zu sein. Eigene Mini-Story (Design + BDD offen), **nicht Teil von
+[chat-job-lifecycle.md](chat-job-lifecycle.md)** — separate Story nach R-ST1…R-ST3.
+Verwandt: ApiRetry-Evidence-Punkte unten (gleiche Abort/Retry-Familie).
+
 ## ❓ Shell-Tool für Plan-/Review-Agent (Da Thinka/Da Dok) — Whitelist-Capability? (2026-09-10, User)
 
 **Idee (User):** Plan-/Review-Agent sollen ggf. `git`/`mvn`/`npm` nutzen können — heute haben

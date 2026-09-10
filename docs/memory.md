@@ -71,8 +71,25 @@ identity-korrekt. SOLL/IST: **R-ML1** ✅ in [model-loading.md](model-loading.md
 statt final-Snapshot (gleicher Mechanismus wie Basic-Page), Identity zur Fetch-Zeit; Think-Form/
 Extra-Body bewusst Konstruktions-Zeit; kein neuer Test (reines Wiring, SWT-Präzedenz R-UI1/R-MCP3).
 Review **ACCEPTED** (N1 kosmetisch). Verifikation manuell (User-Smoke-Test R-ML1a).
+Commits: `fcb5339` (Build) · `d8fb400` (Docs-Flip + skill-impact-Ledger) · `dfe1ff6`
+(Plan-Archiv → `peon-plan/overview-done-2026-09-10-17-18.md`). **Branch = 18 Commits.**
 
-**Neuer Bug-Kandidat (2026-09-10, PO, in Bug-Hunt-Backlog):** `eclipseGrepFiles` mit Pfad `/docs`
+**Neuer Bug-Kandidat (2026-09-10, User, PRE-EXISTING — nicht aus den Fixes): Stop-Button tot
+während laufendem Run („Stop-Fenster").** Analyse VOR Fix (User-Anforderung). Symptom präzisiert:
+Agent läuft (grüner Ball korrekt), Eingabefeld normal nutzbar (Senden queued Messages ✅),
+aber Stop nicht drückbar; kein Live-Status/Tokens (Teil des Retry-Fensters, by design); danach
+läuft es weiter, Stop wieder aktiv; nach Eclipse-Neustart alles normal. Tritt nach
+Verbindungsabbruch+Retry auf. **Analyse (Da Sniffa, 2026-09-10):** Stop-State ist Job-getrieben
+(`lockWhileWorking(true)` in `submitAiJob`, `false` in `handleDoneChatResponse`-finally, Stop
+cancelt via shared `monitorRef`). Szenario 3 (Run wirklich tot) eliminiert (grüner Ball +
+queued Messages). **Lead: Clobber-Race** — alter Job-`finally` (via `runInUiThread` async,
+ggf. verzögert durch langen Render) setzt `monitorRef` auf Null-Monitor + `lock(false)`,
+während der neue Run lebt → Stop tot UND wirkungslos. Szenario 2 (Frage-Widget versteckt
+Eingabeblock) unwahrscheinlich (Eingabe war nutzbar). langchain4j 1.20 unwahrscheinlich
+(Error-Pfad byte-identisch) — Trigger = flatternder Dev-Endpoint. Logs: User →
+`/Users/sterlp/eclipse-workspace/.metadata`. Kein Fix bis Diagnose bestätigt.
+
+**Bug-Kandidat (2026-09-10, PO, in Bug-Hunt-Backlog):** `eclipseGrepFiles` mit Pfad `/docs`
 (Projekt-Unterordner, ohne Extension-Filter) meldet „no matches", obwohl Treffer existieren
 („Retry"/„ApiRetry" in open-points.md + memory.md, per Read bestätigt). Verdacht: Pfad-Scoping auf
 Nicht-Projekt-Unterordner sucht still nichts = **False-Negative** (AGENTS.md: teuerster Tool-Bug).

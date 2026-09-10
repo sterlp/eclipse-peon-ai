@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.resources.IProject;
@@ -25,7 +26,6 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IWorkingSet;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
@@ -88,6 +88,9 @@ public class AIChatView implements EclipseAiMonitor {
     );
 
     private final AtomicReference<IProgressMonitor> monitorRef = new AtomicReference<>(new NullProgressMonitor());
+    /** R-ST1: submitted-but-unfinished turn jobs. Submit increments (UI thread, pre-schedule),
+     *  the finally's UI-runnable decrements — commit (reset+unlock) belongs to the LAST finisher. */
+    private final AtomicInteger inFlightTurns = new AtomicInteger();
     private final VoiceInputService voiceService = new VoiceInputService();
 
     private volatile boolean recording = false;
@@ -474,6 +477,7 @@ public class AIChatView implements EclipseAiMonitor {
     private void doCompressContext() {
         var active = aiService.getActiveAgent();
         if (active.getMemory().size() < 3) return;
+        inFlightTurns.incrementAndGet();
         lockWhileWorking(true);
         chatHistory.clear();
         Job.create("Compressing context", monitor -> {
@@ -486,13 +490,12 @@ public class AIChatView implements EclipseAiMonitor {
             } catch (Exception e) {
                 ex = handleChatException(e);
             } finally {
-                // own refresh to ensure the onTool messages are preserved after compact
-                Display.getDefault().asyncExec(() -> {
+                handleDoneChatResponse(cr, monitor, ex, () -> {
+                    // own refresh to ensure the onTool messages are preserved after compact
                     refreshStatusLine();
                     aiService.getActiveAgent().getMemory().forEach(chatHistory::appendMessage);
                     chatHistory.hideLiveStatus();
                 });
-                handleDoneChatResponse(cr, monitor, ex);
             }
             return PeonConstants.status("Compressed", ex);
         }).schedule();
@@ -565,6 +568,7 @@ public class AIChatView implements EclipseAiMonitor {
     }
 
     private void submitAiJob(String messageToSend) {
+        inFlightTurns.incrementAndGet();
         lockWhileWorking(true);
         Job.create("Peon AI request", monitor -> {
             monitor.beginTask("Arbeit, Arbeit!", 100);
@@ -576,25 +580,34 @@ public class AIChatView implements EclipseAiMonitor {
             } catch (Exception e) {
                 ex = handleChatException(e);
             } finally {
-                handleDoneChatResponse(cr, monitor, ex);
+                handleDoneChatResponse(cr, monitor, ex, null);
             }
             return PeonConstants.status("Peon AI\n" + aiService.getConfig(), ex);
         }).schedule();
     }
 
-    private void handleDoneChatResponse(ChatResponse cr, IProgressMonitor monitor, Exception ex) {
+    private void handleDoneChatResponse(ChatResponse cr, IProgressMonitor monitor, Exception ex, Runnable onCommitUi) {
         if (aiService.getConfig().isDebugMode()) {
             LOG.info("Chatreponse: " + (cr == null ? "null" : cr.aiMessage()));
         }
         monitor.done();
-        monitorRef.set(new NullProgressMonitor());
+        // R-ST1: the commit decision lives INSIDE the UI runnable — UI-thread-serialized with
+        // the submits. A stale finally (newer run in flight) must touch neither monitorRef
+        // nor the lock. (IST reset the monitorRef on the job thread — that was the clobber.)
         EclipseUtil.runInUiThread(parent, () -> {
-            // Queue drain on abort is handled in core by AbstractAgent.handleAbortAndDrain() — ADR-0017
-            lockWhileWorking(false);
-            actionsBar.updateCompact(
-                    aiService.getActiveAgent().getMemory().getTotalTokenUsed(),
-                    aiService.getConfig().getAutoCompactAfter());
-            chatHistory.hideLiveStatus();
+            int remaining = inFlightTurns.decrementAndGet();
+            if (remaining < 0) LOG.error("unbalanced in-flight turn counter: " + remaining + " — cleaning up");
+            if (remaining <= 0) { // fail-open: UI must never stay stuck
+                // Queue drain on abort is handled in core by AbstractAgent.handleAbortAndDrain() — ADR-0017
+                if (onCommitUi != null) onCommitUi.run();
+                monitorRef.set(new NullProgressMonitor());
+                lockWhileWorking(false);
+                actionsBar.updateCompact(
+                        aiService.getActiveAgent().getMemory().getTotalTokenUsed(),
+                        aiService.getConfig().getAutoCompactAfter());
+                chatHistory.hideLiveStatus();
+            }
+            // else: a newer run owns lock + monitorRef — touch nothing (skip INFO line lands in inc-2)
         });
     }
 

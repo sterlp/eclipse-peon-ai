@@ -62,7 +62,7 @@ Hints for the dev phase, base rules `AGENTS.md`
 - **Known-benign warnings — do NOT re-triage every cycle** (2026-09-10, warning-cleanup cycle:
   64 → 12 problems, commits `51f43d2`/`a9124f1`/`56e9cc5`). The remaining 12 are accepted
   exceptions; fix real new ones, keep this list current:
-  - Plugin ×10 null-type-safety on method refs (`AIChatView:158-159`, `PeonAiService:401-402,489`,
+  - Plugin ×10 null-type-safety on method refs (`AIChatView:162-163`, `PeonAiService:401-402,489`,
     `ModelComboWidget:122`, `EclipseUtil:318`, `EclipseWorkspaceReadFileTool:155`,
     `AiAgentStatusModel:48`, `StatusLineWidget:188`) — method refs to `@NonNull`-parameter
     functional interfaces; internal callers never pass null.
