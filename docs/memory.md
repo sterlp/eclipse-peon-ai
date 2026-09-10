@@ -1,4 +1,16 @@
-# Session-Stand (2026-09-10, Zyklus 3 mcp-fixes ✅ reviewed; R-ML1 ✅ gebaut+reviewed — beides wartet auf User-Smoke-Test + Merge)
+# Session-Stand (2026-09-10, Zyklus 3 mcp-fixes + Zyklus 4 stop-fenster ✅ gebaut+reviewed — alles wartet auf User-Smoke-Tests + Merge)
+
+**Zyklus 4 — Stop-Fenster-Fix (✅ 2026-09-10, Commits `ff69a3d`/`9cbb355`/`6781f7a`/`72655c6`/`9c03f17`):**
+Stop-Button tot+wirkungslos während laufendem Run (pre-existing, NICHT aus den Fixes). Diagnose
+(Clobber-Race im Job-finally, Da Sniffa+Da Thinka) → SOLL [chat-job-lifecycle.md](chat-job-lifecycle.md)
+— R-ST1 In-Flight-Counter (Design-Review Da Thinka: Ticket verworfen, Phantom-Job-Loch zusätzlich
+geschlossen; Counter-Invarianten User-OBACHT: 1:1-Paarung, Cancel kein Sonderpfad → Counter 0,
+nie unter 0 → fail-open + ERROR), R-ST2 Graceful Stop (kein Code-Change, bewusst), R-ST3
+Turn-INFO-Logging (Skip-Zeile = Clobber-Beweis; Mutations-Nachweis: Guard mutieren → -1 + doppelte
+done-Zeilen). Da-Dok-Verdict: REJECTED auf Doc-Flip (bewusst PO-Aufgabe, jetzt erledigt) —
+Plan↔Code grün, Docs↔Plan keine Lücke. Verifikation manuell (User-Smoke §7).
+**Backlog neu aus dem Zyklus:** Senden-während-Compress Memory-Race (Da-Thinka-Fund) ·
+Live-Status im Retry-Fenster (open-points). Branch jetzt **23 Commits**.
 
 ## Aktiver Zweig: `story/lib-update-2026-09-09` — drei Zyklen drauf, Merge = User
 
@@ -34,9 +46,12 @@ Follow-up: `SimplePromptFile.readFullContent():52` (public, cross-project Usage-
    (Auto-Detect) oder `2025-11-25` neu verbinden (Feld leeren — gespeicherte `2025-06-18` werden
    nicht migriert); Config-Änderung wirkt jetzt ohne Restart (R-MCP1). (b) R-ML1a: Base-URL eines
    Base-ererbenden Agenten ändern → Refresh-Button/Dropdown-Open holt Liste über die neue URL,
-   ohne Advanced-Page neu zu öffnen.
-2. **Merge/Squash** `story/lib-update-2026-09-09` → main (lib-update 6 + cleanup 4 + mcp-fixes 5
-   inkl. Docs-Flip + R-ML1).
+   ohne Advanced-Page neu zu öffnen. (c) **R-ST-Smokes 1–7** (Plan §7, archiviert
+   `peon-plan/overview-done-2026-09-10-19-18.md`): Happy Turn · Stale-finally-Repro · Phantom-Job ·
+   Compress+sofort-Send · Abort/Idle-Stop · INFO-Zeilen in der Error Log View — Plugin-Restart auf
+   Branch-Stand nötig.
+2. **Merge/Squash** `story/lib-update-2026-09-09` → main (23 Commits: lib-update 6 + cleanup 4 +
+   mcp-fixes 5 + R-ML1 3 + stop-fenster 5).
 3. **Homepage-Release-Notes** (User prüft): „Target Platform 2026-09, langchain4j 1.20.0, MCP
    über Streamable HTTP (Legacy-HTTP/SSE-Server fallen weg), jakarta.annotation 3.0, Lib-Updates;
    MCP-Fix: leer = Auto-Detect + Config-Änderungen greifen sofort" + Story/133-Skills-Zeile,
@@ -74,20 +89,10 @@ Review **ACCEPTED** (N1 kosmetisch). Verifikation manuell (User-Smoke-Test R-ML1
 Commits: `fcb5339` (Build) · `d8fb400` (Docs-Flip + skill-impact-Ledger) · `dfe1ff6`
 (Plan-Archiv → `peon-plan/overview-done-2026-09-10-17-18.md`). **Branch = 18 Commits.**
 
-**Neuer Bug-Kandidat (2026-09-10, User, PRE-EXISTING — nicht aus den Fixes): Stop-Button tot
-während laufendem Run („Stop-Fenster").** Analyse VOR Fix (User-Anforderung). Symptom präzisiert:
-Agent läuft (grüner Ball korrekt), Eingabefeld normal nutzbar (Senden queued Messages ✅),
-aber Stop nicht drückbar; kein Live-Status/Tokens (Teil des Retry-Fensters, by design); danach
-läuft es weiter, Stop wieder aktiv; nach Eclipse-Neustart alles normal. Tritt nach
-Verbindungsabbruch+Retry auf. **Analyse (Da Sniffa, 2026-09-10):** Stop-State ist Job-getrieben
-(`lockWhileWorking(true)` in `submitAiJob`, `false` in `handleDoneChatResponse`-finally, Stop
-cancelt via shared `monitorRef`). Szenario 3 (Run wirklich tot) eliminiert (grüner Ball +
-queued Messages). **Lead: Clobber-Race** — alter Job-`finally` (via `runInUiThread` async,
-ggf. verzögert durch langen Render) setzt `monitorRef` auf Null-Monitor + `lock(false)`,
-während der neue Run lebt → Stop tot UND wirkungslos. Szenario 2 (Frage-Widget versteckt
-Eingabeblock) unwahrscheinlich (Eingabe war nutzbar). langchain4j 1.20 unwahrscheinlich
-(Error-Pfad byte-identisch) — Trigger = flatternder Dev-Endpoint. Logs: User →
-`/Users/sterlp/eclipse-workspace/.metadata`. Kein Fix bis Diagnose bestätigt.
+**Gelöst (Zyklus 4, ✅ gebaut+reviewed, wartet auf User-Smoke):** Stop-Fenster-Bug —
+Clobber-Race im Job-finally; SOLL/IST vollständig in [chat-job-lifecycle.md](chat-job-lifecycle.md).
+Logs: User → `/Users/sterlp/eclipse-workspace/.metadata` (Incident-Evidence rotiert weg —
+deshalb jetzt R-ST3-Logging immer an).
 
 **Bug-Kandidat (2026-09-10, PO, in Bug-Hunt-Backlog):** `eclipseGrepFiles` mit Pfad `/docs`
 (Projekt-Unterordner, ohne Extension-Filter) meldet „no matches", obwohl Treffer existieren
