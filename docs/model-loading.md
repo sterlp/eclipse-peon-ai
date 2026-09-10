@@ -108,7 +108,7 @@ agent switch when the new agent's model isn't in the current list.
 - **B2 (unknown model):** if the configured model isn't found after a successful fetch, the first
   model from the provider list is selected automatically.
 
-## R-ML1 — Fetch-Identity ist live (2026-09-10) ❌
+## R-ML1 — Fetch-Identity ist live (2026-09-10) ✅ done (lib-update Zyklus, `fcb5339`)
 
 Der Identity-Key für den Listen-Fetch (`ModelListCache.getOrFetch`) wird zur **Fetch-Zeit** aus
 der aktuellen Konfiguration gebaut — nie aus einem Snapshot, der beim Page-Aufbau gezogen wurde.
@@ -126,3 +126,11 @@ Die Basic-Page ist korrekt (live-Supplier, `AiConfigPreferenceView.java:98-99`);
   Verifikation manuell (SWT-Präzedenz R-UI1/R-MCP3) + Code-Review des Live-Supplier-Wirings.
 - **BDD R-ML1b** GIVEN ein Agent mit eigener URL WHEN die Agent-URL wird geändert THEN der Fetch
   nutzt die neue Agent-URL (IST-Verhalten, bleibt erhalten — Regression-Guard via Review).
+
+Umsetzung (`fcb5339`): `AgentModelConfigSection.base` ist jetzt `Supplier<LlmConfig>` (statt
+finaler `LlmConfig`-Snapshot), `prepareFetch()` baut die Identity zur Fetch-Zeit via
+`base.get().effectiveConnectionFor(getRecord())`; `AiAdvancedPreferenceView` hält keinen
+stale config-Field mehr (Supplier = `LlmPreferenceInitializer::buildWithDefaults`).
+Think-Form/Extra-Body-Sichtbarkeit bleibt bewusst Konstruktions-Zeit (`base.get()` im Ctor).
+Kein neuer Test (reines Wiring; Fetch-Logik von `AgentModelConfigFetchTest`/
+`ModelComboWidgetTest` gedeckt) — Verifikation manuell wie R-UI1/R-MCP3.

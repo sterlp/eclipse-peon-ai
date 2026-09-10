@@ -1,4 +1,4 @@
-# Session-Stand (2026-09-10, Zyklus 3 mcp-fixes ✅ reviewed; Bug 1 offen, wartet auf Merge)
+# Session-Stand (2026-09-10, Zyklus 3 mcp-fixes ✅ reviewed; R-ML1 ✅ gebaut+reviewed — beides wartet auf User-Smoke-Test + Merge)
 
 ## Aktiver Zweig: `story/lib-update-2026-09-09` — drei Zyklen drauf, Merge = User
 
@@ -30,11 +30,13 @@ Follow-up: `SimplePromptFile.readFullContent():52` (public, cross-project Usage-
 
 ## User-Handlungen offen
 
-1. **Smoke-Test** nach Eclipse-Neuinstallation: duckduckgo-MCP mit **leerem Protocol-Version-Feld**
+1. **Smoke-Tests nach Eclipse-Neuinstallation:** (a) duckduckgo-MCP mit **leerem Protocol-Version-Feld**
    (Auto-Detect) oder `2025-11-25` neu verbinden (Feld leeren — gespeicherte `2025-06-18` werden
-   nicht migriert); Config-Änderung wirkt jetzt ohne Restart (R-MCP1).
-2. **Merge/Squash** `story/lib-update-2026-09-09` → main (13 Commits: lib-update 6 + cleanup 4 +
-   mcp-fixes 3).
+   nicht migriert); Config-Änderung wirkt jetzt ohne Restart (R-MCP1). (b) R-ML1a: Base-URL eines
+   Base-ererbenden Agenten ändern → Refresh-Button/Dropdown-Open holt Liste über die neue URL,
+   ohne Advanced-Page neu zu öffnen.
+2. **Merge/Squash** `story/lib-update-2026-09-09` → main (lib-update 6 + cleanup 4 + mcp-fixes 5
+   inkl. Docs-Flip + R-ML1).
 3. **Homepage-Release-Notes** (User prüft): „Target Platform 2026-09, langchain4j 1.20.0, MCP
    über Streamable HTTP (Legacy-HTTP/SSE-Server fallen weg), jakarta.annotation 3.0, Lib-Updates;
    MCP-Fix: leer = Auto-Detect + Config-Änderungen greifen sofort" + Story/133-Skills-Zeile,
@@ -60,13 +62,15 @@ Follow-up: `SimplePromptFile.readFullContent():52` (public, cross-project Usage-
   ⚠️ gespeicherte `2025-06-18` werden nicht migriert (Clean Break) — User-Feld leeren (Auto-Detect)
   oder `2025-11-25` setzen.
 
-**Bug 1 — Model-List-URL-Lockdown: untersucht (Da Sniffa, 2026-09-10), Ursache code-verifiziert:**
+**Bug 1 — Model-List-URL-Lockdown: ✅ gebaut + reviewed (2026-09-10, commit `fcb5339`):**
 Stale-Base-Snapshot in der Advanced-Page — `AiAdvancedPreferenceView:51` snapshotet `LlmConfig`
 einmalig, `AgentModelConfigSection.base` final (`:49`), `prepareFetch():99` baut die Identity aus
 dem Stale-Base → Base-URL-Korrektur wirkt erst nach Page-Reopen. Basic-Page korrekt (live-Supplier),
 eigene Agent-URL live (`getRecord()`) — nur Base-ererbende Agenten betroffen. `ModelListCache`
-identity-korrekt. SOLL: **R-ML1** in [model-loading.md](model-loading.md) — Fix: live-Supplier
-statt final-Snapshot (gleicher Mechanismus wie Basic-Page).
+identity-korrekt. SOLL/IST: **R-ML1** ✅ in [model-loading.md](model-loading.md) — Fix: live-Supplier
+statt final-Snapshot (gleicher Mechanismus wie Basic-Page), Identity zur Fetch-Zeit; Think-Form/
+Extra-Body bewusst Konstruktions-Zeit; kein neuer Test (reines Wiring, SWT-Präzedenz R-UI1/R-MCP3).
+Review **ACCEPTED** (N1 kosmetisch). Verifikation manuell (User-Smoke-Test R-ML1a).
 
 **Neuer Bug-Kandidat (2026-09-10, PO, in Bug-Hunt-Backlog):** `eclipseGrepFiles` mit Pfad `/docs`
 (Projekt-Unterordner, ohne Extension-Filter) meldet „no matches", obwohl Treffer existieren
