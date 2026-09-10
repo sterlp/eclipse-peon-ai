@@ -36,6 +36,7 @@ import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.exception.ExceptionUtil;
 import org.sterl.llmpeon.parts.ai.PeonAiService;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
+import org.sterl.llmpeon.parts.config.McpConnectionService;
 import org.sterl.llmpeon.parts.config.McpPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.VoicePreferenceInitializer;
 import org.sterl.llmpeon.parts.log.EclipseSlf4jLogger;
@@ -390,7 +391,7 @@ public class AIChatView implements EclipseAiMonitor {
     private void applyMcpConfig() {
         var servers = McpPreferenceInitializer.loadServers();
         statusLine.setMcpAvailable(!servers.isEmpty());
-        statusLine.setMcpEnabled(!servers.isEmpty() && McpPreferenceInitializer.isMcpEnabled());
+        statusLine.setMcpEnabled(McpConnectionService.isEnabled());
         aiService.applyMcpConfig();
     }
 

@@ -114,3 +114,80 @@ public void applyConfig() {
 ## Status (Da Mek, 2026-09-10)
 - **inc-1** ✅ commit `cec9ebf` — R-MCP2a (core Surefire 4/4, Ground-Truth) + R-MCP1 (OSGi 196/0/0, R-MCP1a/b grün). `McpPreferenceView:266` Default `""` als kompilierende Ein-Zeilen-Fix mitgezogen (PO genehmigt, 2026-09-10).
 - **inc-2** ✅ (dieser Commit) — R-MCP3 Dialog-Combo (Auto/2025-11-25/2026-07-28 + Freitext, `Auto`→`""`, Hint), Tabelle zeigt `Auto`, homepage `mcp-configuration.md` (Auto-Detect-Default, live-apply-Hinweis R-MCP1). OSGi 196/0/0. R-MCP3 = manuelle UI-Verifikation (kein SWT-Harness).
+
+---
+
+## PO-Review (2026-09-10) — Verdict: **CONCERNS**
+
+Drei-Seiten-Prüfung MCP-Feature (cec9ebf + fb86226). Frisch verifiziert in dieser Session:
+core 0 Errors, Plugin 0 Errors (nur die 11 known-benign Warnings — keine neuen aus dem
+MCP-Code), `McpServerConfigTest` 4/4 grün, `McpConnectionServiceTest` 2/2 grün (frischer Lauf).
+
+### Verified — Plan ↔ Code
+1. **Clean Break** ✅ — `McpServerConfig.DEFAULT_PROTOCOL_VERSION` weg (Repo-Grep: 0 Treffer in
+   Code, nur Docs-Historie); Compact-Ctor `hasNoValue → ""`; 3-arg-Ctor übergibt `""`; keine
+   Migration/Alias. `McpService` (`.protocolVersion(server.protocolVersion())`) unverändert.
+2. **Compare-Lokation** ✅ — `McpApplied`-Record + `lastApplied` volatile in
+   `McpConnectionService`, nicht im LlmConfig-Gate. `AIChatView.applyConfig():378` ruft
+   `applyMcpConfig()` VOR dem Gate (Return in :380); StatusLine-Updates in `applyMcpConfig`
+   (:390-395) unconditional. Gate-Block sonst unverändert. Chain komplett:
+   prefListener (:103) → applyConfig (UI-Thread) → PeonAiService.applyMcpConfig → service.applyConfig.
+3. **toggle()-lastApplied-Konsistenz** ✅ — `toggle()` setzt Persistenz (mit flush) + `lastApplied`
+   via `desiredState()` → der prefListener-Event nach dem Toggle fällt auf desired==lastApplied
+   durch (kein Doppel-Reconnect). Failure-Konvergenz wie geplant: connect()-Job setzt im finally
+   PREF_MCP_ENABLED → nächstes applyConfig disconnectet.
+4. **Thread-Safety** ✅ — lastApplied volatile + UI-thread-confined (Listener, Toggle, StatusLine
+   callbacks laufen über runInUiThread); connect im Hintergrund-Job. `McpPreferenceInitializer`
+   flushed bei saveServers/setMcpEnabled.
+5. **R-MCP3** ✅ — Combo ohne READ_ONLY (Freitext), Vorschläge Auto/2025-11-25/2026-07-28,
+   `protoVersion()`: "Auto"→"", Freitext-Roundtrip (indexOf/setText), Tabelle zeigt `Auto` in
+   beiden Branches (setItemData), Hinweistext inhaltlich = docs/mcp.md R-MCP3 (Englisch — PO
+   genehmigt), Dialog-Default `""` (PO genehmigter inc-1-Pullforward).
+6. **langchain4j-Semantik** ✅ — `DefaultMcpClient.initialize()` (262-276, gegen lokalen Checkout
+   verifiziert): leer→autoDetect(modern, legacy), moderne Version force, 2025-11-25/2024-11-05
+   force legacy, andere → autoDetect(v, v). docs/mcp.md R-MCP2 exakt korrekt abgebildet.
+7. **Homepage** ✅ für neues Verhalten — Dropdown mit Auto + Freitext, „Auto (empty) is the
+   default", -32022-Hinweis, live-apply-Absatz (R-MCP1). McpServiceTest unverändert (@Disabled,
+   3-arg-Ctor → compiliert).
+
+### Verified — Docs ↔ Code (BDD)
+8. R-MCP1a `givenChangedMcpConfig_whenApplied_thenReconnects` ✅, R-MCP1b
+   `givenUnchangedMcpConfig_whenApplied_thenNoReconnect` ✅ (JUnit 4, Recorder-Subclass, null
+   ToolService dokumentiert, Preferences-Fixture mit Restore+flush), R-MCP2a
+   `givenEmptyProtocolVersion_whenConstructed_thenStaysEmpty` ✅ (+ null-Normalisierung,
+   explizite Version bleibt, 3-arg → leer). R-MCP3 manuell laut Doc.
+
+### Verified — Docs ↔ Plan
+9. Plan deckt alle R-MCP-Regeln, Testnamen, Inc-Struktur, Homepage-Scope und ADR-0045-Decision
+   (Konstante weg, keine Migration, UI-Combo) ab. Kein Plan-Coverage-Gap.
+
+### Findings (nicht-blockierend → CONCERNS)
+- **C1 — toggle()-lastApplied ohne Test:** kein BDD/Plan-Test verlangt, aber die einzige
+  konsistenzkritische Zeile ohne roten Test. Symptom bei Regression: ein redundanter
+  Reconnect nach jedem Toggle (prefListener-Event). → kleiner dritter Recorder-Test
+  (toggle → applyConfig → kein Reconnect) schließt die Lücke und ist zugleich der
+  Mutation-Nachweis (siehe unten).
+- **C2 — Homepage „Description"-Feld existiert nicht im Code:** `mcp-configuration.md`
+  Common-fields-Tabelle dokumentiert „Description — Optional hint for the AI", aber
+  `McpServerConfig`/Dialog haben kein description-Feld. Vermutlich Alt-Drift (kein Git-Diff
+  in dieser Umgebung möglich), nicht R-MCP-Scope — aber in der in inc-2 berührten Datei.
+  PO-Entscheid: Zeile entfernen oder Feld planen.
+- **C3 — Rule of three „effective enabled":** `!servers.isEmpty() && isMcpEnabled()` 3×
+  (`McpConnectionService.desiredState()`, `isEnabled()` static, `AIChatView.applyMcpConfig():393`).
+  Lokale Extraktion: in `applyMcpConfig` `McpConnectionService.isEnabled()` statt Nachbau.
+- **C4 — connect() lädt Server im Job neu** statt lastApplied-Snapshot zu nutzen: wenn sich
+  Prefs zwischen applyConfig und Job-Ausführung ändern, wird einmal zu viel verbunden
+  (Selbst-Konvergenz, kein Stick-State; Pre-existing-Muster). Hinweis, kein Rework.
+
+### Mutation-check (C1 ist die eine Stelle)
+R-MCP1b selbst ist bereits der Mutations-Beweis für den Compare (Guard entfernen →
+connectCount 2 → rot). Der EINE Spot ohne Nachweis: `toggle()` ohne lastApplied-Update —
+kein Test würde rot. Empfehlung an PO: Test aus C1 nachziehen; kein separater
+Mutation-Proof nötig.
+
+Most likely reason this breaks later: toggle()'s lastApplied-Update ist die einzige
+konsistenzkritische Stelle ohne roten Test — ein Refactor von toggle()/prefListener
+reintroduziert still das „Reconnect bei jedem Preference-Event"-Bug. Change mit größter
+Risikominderung: der dritte Recorder-Test (C1).
+
+Skill/instruction gaps: keine.

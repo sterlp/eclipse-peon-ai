@@ -15,7 +15,6 @@ Each server entry has a **Type** — **HTTP (Streamable)**, **HTTP (legacy SSE)*
 | Field | Description |
 |---|---|
 | **Name** | Display name shown in the UI and used in log output. |
-| **Description** | Optional hint for the AI describing what this server provides (e.g. "Web search"). |
 | **Protocol Version** | Dropdown with `Auto`, `2025-11-25`, `2026-07-28`, plus free text (e.g. `2024-11-05`). `Auto` (empty) is the default and lets the client detect the version the server supports. `2025-11-25`/`2024-11-05` = Legacy, `2026-07-28` = modern. Any other value triggers version detection, which can fail with `-32022` on dual-era servers. |
 
 ### HTTP fields

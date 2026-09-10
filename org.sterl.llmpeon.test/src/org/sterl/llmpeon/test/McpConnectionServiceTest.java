@@ -83,6 +83,28 @@ public class McpConnectionServiceTest {
         assertEquals(0, service.disconnectCount);
     }
 
+    @Test
+    public void givenToggledState_whenApplied_thenNoReconnect() {
+        // GIVEN servers are configured but MCP is disabled; applyConfig has applied that state S
+        var c1 = List.of(server("ctx"));
+        givenMcpConfig(c1, false);
+        var service = new RecordingService();
+        service.applyConfig();
+        assertEquals(0, service.connectCount);
+        assertEquals(1, service.disconnectCount);
+
+        // WHEN the user toggles MCP on — its own connect fires, and the preference
+        // change it persists immediately fires an applyConfig() event
+        service.toggle(true);
+        assertEquals(1, service.connectCount);
+
+        // THEN the preference event's applyConfig() does NOT reconnect again,
+        // because toggle() already advanced lastApplied to the new state
+        service.applyConfig();
+        assertEquals(1, service.connectCount);
+        assertEquals(1, service.disconnectCount);
+    }
+
     private McpServerConfig server(String name) {
         return new McpServerConfig(name, McpServerConfig.McpTransportType.HTTP,
                 "https://" + name + ".example.com/mcp", "", "", "", "", "");

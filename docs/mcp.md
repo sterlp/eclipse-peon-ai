@@ -29,6 +29,10 @@ nicht im LlmConfig-Gate.
 - **BDD R-MCP1b** GIVEN MCP-Config unverändert WHEN applyConfig läuft THEN kein Reconnect
   (kein Spawn von STDIO-Prozessen pro Preference-Event).
   Test: `McpConnectionServiceTest.givenUnchangedMcpConfig_whenApplied_thenNoReconnect`
+- **BDD R-MCP1c** GIVEN toggle() hat den Zustand angewandt und lastApplied aktualisiert WHEN das
+  Preference-Event des Toggles applyConfig triggert THEN kein erneutes connect/disconnect.
+  Test: `McpConnectionServiceTest.givenToggledState_whenApplied_thenNoReconnect` (Da-Dok-Finding
+  C1: einzige konsistenzkritische Stelle ohne roten Test; zugleich Mutations-Nachweis).
 
 ## R-MCP2 — Protocol-Version-Semantik ❌
 
