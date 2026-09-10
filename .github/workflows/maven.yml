@@ -24,4 +24,4 @@ jobs:
         distribution: 'temurin'
         cache: maven
     - name: Build with Maven
-      run: mvn -B clean verify --file pom.xml
+      run: xvfb-run -a mvn -B clean verify --file pom.xml
