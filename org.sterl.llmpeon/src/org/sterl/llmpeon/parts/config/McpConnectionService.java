@@ -19,6 +19,17 @@ public class McpConnectionService {
     private final ToolService toolService;
     private final Consumer<Boolean> onStateChange;
 
+    /** Last applied MCP state (server list + effective enabled flag). UI-thread confined. */
+    private volatile McpApplied lastApplied;
+
+    private record McpApplied(List<McpServerConfig> servers, boolean enabled) {}
+
+    /** The MCP state the current preferences would produce. */
+    private McpApplied desiredState() {
+        var servers = McpPreferenceInitializer.loadServers();
+        return new McpApplied(servers, !servers.isEmpty() && McpPreferenceInitializer.isMcpEnabled());
+    }
+
     /**
      * @param toolService   the tool registry to connect/disconnect MCP tools on
      * @param onStateChange called on the UI thread with {@code true} when connected,
@@ -34,10 +45,10 @@ public class McpConnectionService {
      * Should be called whenever the preference page is saved.
      */
     public void applyConfig() {
-        var servers = McpPreferenceInitializer.loadServers();
-        boolean hasMcpServers = !servers.isEmpty();
-        boolean enabled = hasMcpServers && McpPreferenceInitializer.isMcpEnabled();
-        if (enabled) {
+        var desired = desiredState();
+        if (desired.equals(lastApplied)) return;   // R-MCP1b: unchanged config → no reconnect
+        lastApplied = desired;
+        if (desired.enabled()) {
             connect();
         } else {
             disconnect();
@@ -50,7 +61,9 @@ public class McpConnectionService {
      */
     public void toggle(boolean enabled) {
         McpPreferenceInitializer.setMcpEnabled(enabled);
-        if (enabled) {
+        var desired = desiredState();
+        lastApplied = desired;
+        if (desired.enabled()) {
             connect();
         } else {
             disconnect();

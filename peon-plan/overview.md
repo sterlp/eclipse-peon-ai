@@ -1,78 +1,112 @@
-# Review: Warning-Cleanup Cycle (branch story/lib-update-2026-09-09, 2026-09-10) — Verdict: **CONCERNS**
+# Feature: MCP Servers (R-MCP1/R-MCP2/R-MCP3, docs/mcp.md) — Branch `story/lib-update-2026-09-09` (bereits ausgecheckt, NICHT wechseln)
 
-Directive scope: 64 → 12 problems, behavior-preserving only. No plan file existed; reviewed
-against the directive text. Commits: `51f43d2` (inc-1), `a9124f1` (inc-2), `56e9cc5` (inc-3).
+## ⛔ STOP-AND-ASK (Da Mek, User-Regel 2026-09-08 — gilt immer)
+Bei Compile-Fehlern ohne Lösung, nicht-grün-bekommenden Tests, IST-Widersprüchen zum Plan
+oder Unklarheiten: AKTIV bei Jon (PO, askDev-Kanal) nachfragen — nie still workarounden,
+nie das SOLL (docs/mcp.md) ändern.
 
-## Verified — Code ↔ Directive
+## 1. Context
+MCP-Anbindung existiert, aber: (a) MCP-Config-Änderungen werden nicht live angewandt —
+`AIChatView.applyConfig():376` bricht bei unverändertem `LlmConfig` früh ab, `applyMcpConfig():382`
+läuft nie → User testete protocolVersionen gegen tote Verbindung (Bug, 2026-09-10);
+(b) stiller Default `DEFAULT_PROTOCOL_VERSION = "2025-06-18"` ist „andere Version" für
+langchain4j 1.20 → Detect-Flow → `-32022` gegen Dual-Era-Server (duckduckgo-mcp, ADR-0045).
+SOLL = docs/mcp.md (R-MCP1/R-MCP2/R-MCP3 mit BDDs und Testnamen) + ADR-0045. Docs/** gehören
+dem PO — NICHT anfassen (nur commiten).
 
-1. **CSS_CLASS_NAME_KEY (inc-1)** ✅ — `WidgetCss.CSS_CLASS_NAME_KEY = "org.eclipse.e4.ui.css.CssClassName"`
-   is an EXACT match with the platform source (`org.eclipse.e4.ui.css.swt.CSSSWTConstants`,
-   verified against the used target bundle, not memory). Platform JavaDoc explicitly authorizes
-   copying: "Clients may rely on the value of this key if they want to avoid a dependency on
-   this package." Constant defined once in `WidgetCss`, all 7 widget files reference it — no
-   divergent string literals. Wrong-value risk: none.
-2. **EclipseUiUtil theme (inc-1)** ✅ — resolution NOT switched to `IThemeManager`; kept on
-   `IThemeEngine` with `@SuppressWarnings("restriction")` and a written justification comment:
-   the public workbench-theme registry can report non-CSS IDs (e.g. `org.eclipse.ui.defaultTheme`)
-   and is not provably behavior-identical. Directive explicitly allowed "suppressed with
-   justification". Listener stays on public `IThemeManager` API.
-3. **resolveModel removal (inc-2)** ✅ — zero references anywhere in llmpeon code and docs
-   (grep across workspace; only `docs/memory.md` session-report mention). `advanced-configuration.md`
-   documents per-agent model resolution via `ChatRequest.modelName()` without `resolveModel`.
-   Replacement `modelFor` is covered by `ModelConnectionCacheTest` (19 references, incl.
-   `withThinkSupported`/`updateConfig` cache-clear behavior).
-4. **Optional.ofNullable rewrites (inc-2)** ✅ — all sites (`EclipseUtil.getTextEditor`,
-   `getOpenFile` fast path + JDT fallback, `resolveResource` adaptable path, `selectionElement`)
-   keep identical fallback semantics: null still flows to the same `orElseThrow`/fallback
-   branches; each site commented ("getAdapter is @NonNull-annotated but may return null at
-   runtime").
-5. **Small fixes (inc-2/3)** ✅ — `EclipseRunTestTool` `Objects.requireNonNull(testType)`
-   (line ~142, comment documents the guarantee; same NPE outcome, clearer contract);
-   `StatusLineWidget` null-guard at 114-116; `setCharset(String, IProgressMonitor)` two-arg
-   non-deprecated overload (`EclipseWorkspaceWriteFileToolTest:113,124`); no-op tycho-compiler
-   config block deleted (repo-wide grep: 0 matches in poms); test MANIFEST has
-   `Automatic-Module-Name`; `StandingOrdersBuilderTest` uses public
-   `org.eclipse.jface.text.Document`; `IoUtils.writeFile` `@SuppressWarnings("restriction")`
-   with justification comment.
-6. **ADR-0044** ✅ — unchanged and consistent (incl. the 2026-09-10 review addendum).
+## 2. Design decisions
+- **R-MCP2 (core, Clean Break):** `McpServerConfig.DEFAULT_PROTOCOL_VERSION` Konstante ENTFÄLLT.
+  Compact-Constructor: leere/null protocolVersion → `""` (Normalisierung bleibt, Default-Füllung
+  nicht — `StringUtil.hasNoValue`-Zweig setzt auf `""` statt Default). 3-arg Convenience-Ctor
+  übergibt `""`. Keine Migration/Aliase für gespeicherte `2025-06-18` (AGENTS.md Clean Break) —
+  Wert bleibt wirksam (Detect-Flow), bis User das Feld leert/setzt. Javadoc `@param protocolVersion`
+  anpassen (leer = Auto-Detect).
+- **R-MCP1 (plugin):** Der Compare (letzte angewandte Server-Liste + enabled) lebt in
+  `McpConnectionService` als privates Value-Objekt, NICHT im LlmConfig-Gate.
+  `AIChatView.applyConfig()` ruft `applyMcpConfig()` VOR dem Gate (vor Zeile 376) auf;
+  das Gate bleibt ausschließlich für LlmConfig-Arbeit (`lastAppliedConfig`, `aiService.updateConfig`,
+  agents/status). StatusLine-Updates in `applyMcpConfig()` bleiben unconditional (UI-Thread).
+- **Testbarkeit ohne echte Verbindungen (narrow seam, kein Interface-Spreizung):**
+  `McpConnectionServiceTest` (Plugin-Testmodul, JUnit 4, keine externen Assertions) subclassed
+  `McpConnectionService` und überschreibt `connect()`/`disconnect()` als Recorder — `ToolService`
+  wird als `null` übergeben (nie benutzt, dokumentiert im Test). Compare-Logik wird damit ohne
+  echte Verbindungen/OSGi-Verbindungen getestet. Falls sich die Preferences (`McpPreferenceInitializer`,
+  InstanceScope) im OSGi-Test nicht sauber bedienen lassen → STOP-AND-ASK, nicht Framework umbauen.
 
-## Verified — Docs ↔ Code
+## 3. Architecture
+```mermaid
+sequenceDiagram
+    participant P as Preferences (any change)
+    participant V as AIChatView.applyConfig()
+    participant S as McpConnectionService
+    participant T as ToolService (Job)
+    P->>V: prefListener → applyConfig()
+    V->>V: LlmConfig-Gate (unverändert → return, NACH Mcp-Apply)
+    V->>S: applyMcpConfig() → applyConfig()
+    S->>S: desired = McpApplied(servers, enabled); equals(lastApplied)? → return
+    S->>T: connect()/disconnect() im Hintergrund-Job (nur bei Änderung)
+```
+- `McpConnectionService.applyConfig()` neu (Sketch):
+```java
+private record McpApplied(List<McpServerConfig> servers, boolean enabled) {}
+private volatile McpApplied lastApplied; // UI-thread confined; volatile zur Sicherheit
 
-7. **AGENTS-DEV.md "Known-benign warnings" block** ✅ with two bookkeeping discrepancies
-   (see findings below): the 10 plugin null-type-safety entries match the live problem list
-   file-by-file and line-by-line (`AIChatView:158-159`, `PeonAiService:401-402,489`,
-   `ModelComboWidget:122`, `EclipseUtil:318`, `EclipseWorkspaceReadFileTool:155`,
-   `AiAgentStatusModel:48`, `StatusLineWidget:188`); the `resources/` class-folder entry
-   matches; `org.sterl.llmpeon.test` has 0 problems; nothing else remains in plugin/test.
+public void applyConfig() {
+    var servers = McpPreferenceInitializer.loadServers();
+    boolean enabled = !servers.isEmpty() && McpPreferenceInitializer.isMcpEnabled();
+    var desired = new McpApplied(servers, enabled);
+    if (desired.equals(lastApplied)) return;   // R-MCP1b
+    lastApplied = desired;
+    if (enabled) connect(); else disconnect();
+}
+```
+- `toggle(boolean)` aktualisiert `lastApplied` konsistent (sonst reconnectet das nächste
+  applyConfig unnötig): nach Persistenz-Update `lastApplied = new McpApplied(loadServers(), enabled)`.
+  Failure-Konvergenz: `connect()`-Fehler setzt `PREF_MCP_ENABLED=false` → nächstes applyConfig
+  berechnet enabled=false → disconnect (kein Endlos-Reconnect).
+- Dependency-Richtung bleibt: `McpConnectionService` (plugin) → `ToolService` (core) → `McpService` (core).
+  `McpService.java:81` (protocolVersion-Wiring) UNVERÄNDERT — leer geht an
+  `DefaultMcpClient.Builder.protocolVersion(...)` = Auto-Detect.
 
-## Test honesty
+## 4. Affected files
+**inc-1:**
+- `org.sterl.llmpeon.core/src/main/java/org/sterl/llmpeon/mcp/McpServerConfig.java` — Konstante weg, Compact-Ctor → `""`, 3-arg-Ctor → `""`, Javadoc.
+- `org.sterl.llmpeon.core/src/test/java/org/sterl/llmpeon/mcp/McpServerConfigTest.java` — NEU (JUnit 5 + AssertJ): R-MCP2a + null→""-Normalisierung.
+- `org.sterl.llmpeon/src/org/sterl/llmpeon/parts/config/McpConnectionService.java` — Compare-Value-Objekt + applyConfig/toggle wie oben.
+- `org.sterl.llmpeon/src/org/sterl/llmpeon/parts/AIChatView.java` — `applyMcpConfig()`-Aufruf vor Zeile 376 (aus dem Gate-Block raus); Gate-Block sonst unverändert.
+- `org.sterl.llmpeon.test/src/org/sterl/llmpeon/test/McpConnectionServiceTest.java` — NEU (JUnit 4): R-MCP1a/b.
+- ggf. `McpServiceTest.java` bleibt unberührt (@Disabled Integration, nutzt 3-arg-Ctor → jetzt `""`, ok).
 
-8. The 3 removed `ConfiguredModelTest` tests: remaining 3 tests all cover `withModel` (same
-   model no-change, null max-tokens preserved, null id no-NPE); the removed method's per-agent
-   behavior lives on in `modelFor` with dedicated coverage. No deleted-content diff possible
-   (no git tooling in this environment) — verified by proxy: zero references remain and the
-   class's public surface is fully covered by remaining tests. No coverage loss detectable.
+**inc-2:**
+- `org.sterl.llmpeon/src/org/sterl/llmpeon/parts/config/McpPreferenceView.java` — Zeile 266: Dialog-Default `""` statt Konstante; `txtProtocol` (209, 265-266) → editierbare Combo (`SWT.DROP_DOWN` ohne READ_ONLY; Vorschläge `Auto`, `2025-11-25`, `2026-07-28`; Freitext); `Auto` speichert `""`; Hinweistext laut docs/mcp.md R-MCP3 („leer = Auto-Detect; 2025-11-25/2024-11-05 = Legacy, 2026-07-28 = modern; andere Werte lösen die Versionserkennung aus (kann bei Dual-Era-Servern -32022 liefern)"); `setItemData` (Zeilen 127/131): leere protocolVersion → `Auto` anzeigen.
+- `homepage/src/setup/mcp-configuration.md` — sichtbare Änderungen im selben Inkrement: Auto-Detect-Default, Dropdown statt Textfeld, live-apply-Hinweis (R-MCP1). Welche Sektion: Datei prüfen (37 MCP-Treffer), passgenau statt Vollumbau.
 
-## Findings (non-blocking → CONCERNS)
+## 5. Rules & constraints
+- Log OR throw, nie beides. Surefire = Ground-Truth für Core-Testzahlen. `eclipseBuildProject` VOR jedem OSGi-Testlauf (stale bin/ → ClassNotFoundException).
+- Kein Git/kein Branch-Wechsel; Commit nach jeder grünen Iteration inkl. docs/** (hier: nur committen, nicht ändern).
+- Thread-Safety: `applyConfig`/`applyMcpConfig` laufen im UI-Thread; `connect()` im Job — `lastApplied` volatile,compare+set atomar aus UI-Thread-Sicht.
+- Plugin-Tests: JUnit 4, KEINE AssertJ; Preferences-Fixture VOR dem SUT setzen, im @After räumen (kein persistierter Cross-Run-State).
+- Warnings-Disziplin (laufender Cleanup-Zyklus): keine neuen Warnings/Suppressions ohne Not.
 
-- **F1 — IoUtils dead TODO block survives (inc-3 incomplete):** inc-3 deleted the dead
-  commented-out TODO block in `writeFile`, but its twin in the SAME file
-  `IoUtils.ensureFolders` (org.sterl.llmpeon/src/org/sterl/llmpeon/parts/shared/IoUtils.java,
-  ~lines 96-100: `/* TODO I don't think this is really needed! ... refreshLocal ... */`) is
-  still present. Cosmetic, but exactly the pattern inc-3 claims to have removed.
-- **F2 — "12" vs 11 visible IDE problems:** the "Core ×1 `MockLlmServer:98` unused TWR" entry
-  describes real code accurately (`try (var s = new Socket(...))`, variable needed for
-  auto-close — line 98 confirmed), but the warning does NOT appear in the Eclipse problems
-  list for llmpeon-core (~150 warnings there, none at MockLlmServer). The "remaining 12" are
-  11 in the default IDE view. Suggest the same "not in default build/IDE" qualifier the block
-  already uses for the -Xlint items.
-- **F3 — core's ~150 IDE null-analysis warnings are outside the known-benign list:** the
-  block's "fix real new ones, keep this list current" framing implies completeness; core's
-  pre-existing noise (null-safety on the /llmpeon-core workspace project) is not covered and
-  was not in the 64→12 scope. One-line clarification would prevent future re-triage.
+## 6. BDD acceptance
+- **R-MCP2a** GIVEN protocolVersion leer WHEN McpServerConfig gebaut THEN Wert bleibt leer.
+  Test: `McpServerConfigTest.givenEmptyProtocolVersion_whenConstructed_thenStaysEmpty` (core, Surefire).
+- **R-MCP1a** GIVEN MCP verbunden mit Config C1 WHEN gespeicherte MCP-Config ändert sich zu C2 (LlmConfig unverändert) THEN Clients werden mit C2 neu verbunden.
+  Test: `McpConnectionServiceTest.givenChangedMcpConfig_whenApplied_thenReconnects` (Plugin-Modul).
+- **R-MCP1b** GIVEN MCP-Config unverändert WHEN applyConfig läuft THEN kein Reconnect (kein Spawn pro Preference-Event).
+  Test: `McpConnectionServiceTest.givenUnchangedMcpConfig_whenApplied_thenNoReconnect` (Plugin-Modul).
+- **R-MCP3** manuelle Verifikation (kein SWT-Harness, Präzedenz R-UI1): Dropdown, Hint-Text, Tabelle „Auto", Freitext speichert.
 
-Most likely reason this breaks later: the WidgetCss constant silently diverges from a future
-platform value (no test pins it to styling behavior) — a one-line unit test asserting the
-constant equals the platform value would make that drift impossible to merge unnoticed.
+## 7. Test strategy
+- Core: neue `McpServerConfigTest` (eine Testklasse sammelt die Config-Tests); Surefire-Lauf als Ground-Truth.
+- Plugin: `McpConnectionServiceTest` sammelt R-MCP1-Tests; Recorder-Subclass als Seam; `eclipseBuildProject` vor Lauf; erster Lauf braucht ggf. Workspace-Trust-Dialog (User informieren, nicht parallel nachstarten).
+- AIChatView-Wiring (Aufruf vor dem Gate) ist UI-Wiring — über Code-Review + manuelle Verifikation (Preference-Page-Save ohne LlmConfig-Änderung verbindet neu), kein separater Test (AIChatView nicht unit-testbar).
+- Homepage: reiner Markdown-Text, kein Test.
 
-Skill/instruction gaps: none. Mutation-check: n/a (infrastructure cycle).
+## 8. Increments (je grün, Commit inkl. docs/**)
+1. **inc-1:** R-MCP2a (core + Test) + R-MCP1 (Compare in McpConnectionService + R-MCP1a/b-Tests + AIChatView-Wiring) → core-Surefire + OSGi-Tests grün → commit.
+2. **inc-2:** R-MCP3 (Dialog-Combo, Tabellen-„Auto", Hint) + homepage/src/setup/mcp-configuration.md → Build grün, manuelle UI-Verifikation → commit.
+
+## 9. Open questions
+- Homepage komplett in inc-2 (statt aufgeteilt) — pragmatisch entschieden, ein Edit statt zwei.
+- Falls Recorder-Subclass + Preferences im OSGi-Test nicht funktioniert (InstanceScope im Test-Workspace): STOP-AND-ASK vor Design-Änderung.

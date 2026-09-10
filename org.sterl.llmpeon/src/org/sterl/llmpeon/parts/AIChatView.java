@@ -373,13 +373,16 @@ public class AIChatView implements EclipseAiMonitor {
         chatInput.setVoiceInputVisible(VoicePreferenceInitializer.buildWithDefaults().enabled());
         chatHistory.setShowRealtimeAiResponse(config.isShowRealtimeAiResponse());
 
+        // MCP is applied on every preference change, INDEPENDENTLY of the LlmConfig gate below —
+        // otherwise an MCP-only change (LlmConfig unchanged) would never reconnect (R-MCP1).
+        applyMcpConfig();
+
         if (lastAppliedConfig != null && lastAppliedConfig.equals(config)) return;
         lastAppliedConfig = config;
         aiService.updateConfig(config);
 
         actionsBar.setAgents(aiService.getAgents());
         actionsBar.updateModeUI(aiService.getActiveAgent());
-        applyMcpConfig();
         refreshStatusLine();
         applyShellCommandConfirmation();
     }

@@ -263,7 +263,7 @@ public class McpPreferenceView extends PreferencePage implements IWorkbenchPrefe
             txtName = addText(container, initial != null ? initial.name() : "my-mcp");
 
             addLabel(container, "Protocol Version:");
-            txtProtocol = addText(container, initial != null ? initial.protocolVersion() : McpServerConfig.DEFAULT_PROTOCOL_VERSION);
+            txtProtocol = addText(container, initial != null ? initial.protocolVersion() : "");
 
             // HTTP group
             grpHttp = new Group(container, SWT.NONE);
