@@ -1,17 +1,22 @@
 package org.sterl.llmpeon.agentorder;
 
+import static java.util.stream.Collectors.counting;
+import static java.util.stream.Collectors.groupingBy;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import lombok.extern.slf4j.Slf4j;
@@ -83,18 +88,36 @@ public class AgentOrder {
     public List<AiAgent> sort(Collection<AiAgent> agents) {
         List<Pattern> effectivePatterns = patterns.isEmpty() ? DEFAULT_PATTERNS : patterns;
 
+        // Name collision is orthogonal to patterns: two distinct instances may share a name —
+        // both are kept, the collision is only surfaced (R4).
+        agents.stream().collect(groupingBy(AiAgent::getName, counting()))
+                .forEach((name, count) -> {
+                    if (count > 1) {
+                        log.warn("Agent name collision: {} agents share name '{}' — all kept", count, name);
+                    }
+                });
+
         List<AiAgent> sortedAgents = agents.stream().sorted(Comparator.comparing(AiAgent::getName)).toList();
 
-        Set<String> seen = new HashSet<>();
+        // Identity-based first match: an agent matched by a later pattern line keeps the group
+        // of the first line (R2) and the later match is warned, never silently dropped.
+        Map<AiAgent, Integer> firstMatchLine = new IdentityHashMap<>();
+        Stream<AiAgent> matchingAgents = IntStream.range(0, effectivePatterns.size())
+                .mapToObj(Integer::valueOf)
+                .flatMap(lineIdx -> sortedAgents.stream()
+                        .filter(agent -> effectivePatterns.get(lineIdx).matcher(agent.getName()).matches())
+                        .filter(agent -> {
+                            Integer claimedBy = firstMatchLine.putIfAbsent(agent, lineIdx);
+                            if (claimedBy != null) {
+                                log.warn("Agent '{}' matched by line {} (already claimed by line {}) — keeping first",
+                                        agent.getName(), lineIdx + 1, claimedBy + 1);
+                                return false;
+                            }
+                            return true;
+                        }));
 
-        Stream<AiAgent> matchingAgents = effectivePatterns.stream()
-                .flatMap(
-                        pattern -> sortedAgents.stream()
-                                .filter(agent -> !seen.contains(agent.getName()))
-                                .filter(agent -> pattern.matcher(agent.getName()).matches())
-                                .peek(agent -> seen.add(agent.getName())));
-
-        Stream<AiAgent> remainingAgents = sortedAgents.stream().filter(agent -> !seen.contains(agent.getName()));
+        Set<AiAgent> seen = firstMatchLine.keySet();
+        Stream<AiAgent> remainingAgents = sortedAgents.stream().filter(agent -> !seen.contains(agent));
 
         return Stream.concat(matchingAgents, remainingAgents).toList();
     }

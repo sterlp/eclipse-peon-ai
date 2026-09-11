@@ -124,10 +124,12 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- test-scope SLF4J binding (replaces slf4j-simple) — enables log event capture
+             (ListAppender) for the AgentOrder R4 warn assertions -->
         <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
-            <version>${slf4j-simple.version}</version>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.5.22</version>
             <scope>test</scope>
         </dependency>
 

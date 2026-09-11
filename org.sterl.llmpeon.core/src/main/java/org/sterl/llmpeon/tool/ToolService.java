@@ -202,7 +202,9 @@ public class ToolService {
         
         if (force || memory.getTotalTokenUsed() > compactLimit * 0.95) {
             var used = memory.getTotalTokenUsed() + " tokens of " + compactLimit + " used.";
-            AiMonitor.nullSafety(req.monitor).onTool("🗜 Compact hint for " + req.getAgent().getName() + " added! " + used);
+            // agent is @Nullable (ToolService loops run without one) — the hint is still added
+            String agentName = req.getAgent() != null ? req.getAgent().getName() : "the agent";
+            AiMonitor.nullSafety(req.monitor).onTool("🗜 Compact hint for " + agentName + " added! " + used);
             req.addMessage(new UserMessage(COMPACT_HINT + System.lineSeparator() + used));
         }
     }

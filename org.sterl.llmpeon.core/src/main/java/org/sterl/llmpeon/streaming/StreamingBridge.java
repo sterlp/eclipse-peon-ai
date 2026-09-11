@@ -193,7 +193,9 @@ public class StreamingBridge implements StreamingChatResponseHandler {
     @Override
     public void onError(Throwable error) {
         this.monitor.onStreamingChunk(new OnPartialAiResponse(Type.END, null, startedAt, tokenPhaseStart));
-        errorRef.set(error);
+        // first setter wins: a cancel stored a CancellationException before the provider's
+        // post-cancel onError — overwriting it would make callers retry a stopped call
+        errorRef.compareAndSet(null, error);
         latch.countDown();
     }
 
