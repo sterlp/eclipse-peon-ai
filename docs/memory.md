@@ -1,5 +1,11 @@
 # Session-Stand (2026-09-10, Zyklus 3 mcp-fixes + Zyklus 4 stop-fenster ✅ gebaut+reviewed — alles wartet auf User-Smoke-Tests + Merge)
 
+**Session-Ende 2026-09-10 (User clear statt Compact):** Session-State > 150k Context — compact
+nicht mehr möglich (`SearchAgentTool`-Call brach mit 152789 > 150016). **Neues kleines Problem
+fürs Backlog: compactSession bricht bei zu langem State ab, ohne klare Fehlermeldung an den User**
+(grüner Ball ohne Working-Hint, siehe open-to-discuss "Status-Display nach compactSession").
+User macht jetzt Clear. **Nächste Session: ⏳-Punkt bestätigen lassen, dann Backlog-Zyklus (Danach).**
+
 **Zyklus 5 — CI-Pipeline-Fix (✅ 2026-09-10, Story [pipeline.md](pipeline.md), Commits `29b1c06`/`35d6596`/`5550d96` + Docs-Commit):**
 CI (ubuntu headless) rot seit Target-Sprung `89531af` — `EclipseConsoleLogToolTest.after:24`
 `removeConsoles` → neuer `ConsoleZoomHandler` (org.eclipse.ui.console 3.16.0→3.17.100) →
@@ -113,7 +119,13 @@ Workaround bis zum Fix: Projektpfad + Extension-Filter nutzen.
 
 1. Bug-Fix-Zyklus: Memory-Leak-Hunt (frischer Context!) · Triage #5–#15 + ApiRetry (mit neuer
    Evidence) + AgentOrder-Edge + Fixture-Bug `PeonAiServiceTest.java:1444/1501` (löscht getracktes
-   `test_project/.agents/skills/test/SKILL.md` nach Suite-Lauf, Da-Dok-Fund 2026-09-10).
+   `test_project/.agents/skills/test/SKILL.md` nach Suite-Lauf, Da-Dok-Fund 2026-09-10) ·
+   **Compact-Komplex verifiziert (2026-09-10, [open-to-discuss.md](open-to-discuss.md)):**
+   1 compactSession = 1 Compressor-Call; Doppel-Compact nur über 2 Trigger (Pre-Turn-Auto 80k +
+   COMPACT_HINT ohne Dedup, §9.1); Fehler nach „Da Scribe done" = regulärer Call über hartes
+   Limit; Verzögerung = ApiRetry-Backoff auf deterministisch totem Payload; Stop → stille
+   Cancellation. Kandidaten: Hint-Dedup · ApiRetry non-retryable · stille Cancellation ·
+   Browser-Hang Chat-View.
 2. Loop-Bewährung → Built-in-Prompts (User-Schritt, später).
 3. ❓ Glossar eager · ❓ buildWithDev-Compact · ❓ Glossar „Slot" doppelt · ⏳ Jackson 2→3
    (open-points.md — beobachten, Migration erst wenn Jackson 2 komplett entfernbar, User 2026-09-10).

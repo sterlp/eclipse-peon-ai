@@ -245,3 +245,36 @@ THEN nichts wird injiziert (kein Error, kein Status-Eintrag)
   (`memory.containsUserMessage(item.dedupKey())` — Files: exakter Header `<pfad>:\n---\n`,
   sonst gerendeter Content bei `dedupKey() = null`); nur einmal injiziert, nie nachträglich
   angepasst (KV Cache!).
+
+## Compact-Tool-Result: preserve only (SOLL 2026-09-10) — ❌ specified
+
+Auslöser: User-Befund „Es wird doppelt eingefügt". Die Compressor-Summary stand **zweimal** im
+Kontext: (1) als AiMessage — `AbstractAgent.compact()` → `memory.add(response.aiMessage())`;
+(2) als `ToolExecutionResultMessage` — `CompactSessionTool` gab `summary.aiMessage().text()` als
+Tool-Result zurück, das `ToolService.executeLoop:158` (`addResult(response, tR)`) in die Memory
+schreibt.
+
+**Regel: Das Compact-Tool-Result trägt nur `preserve`.** Die Summary lebt ausschließlich als
+AiMessage in der Memory (eine Quelle, kein Duplikat).
+
+* Result = `Preserved:\n<preserve>` wenn preserve gesetzt; sonst der Marker `Session compacted.`
+  (Tool-Results sind nie leer — das Tool sagt, was passiert ist).
+* Die `Da Scribe done (Xs)`-Zeile bleibt UI-only (`onTool`) und wandert nicht ins Result.
+* Das Re-Add der Pre-Compact-Assistant-Message (ToolService `addResult`) bleibt **bewusst** — das
+  Tool-Result braucht seine Assistant-Message mit toolCalls (Message-Contract, issue-87-Repair).
+* `AbstractAgent.compact()` / `AiCompressorAgent` bleiben unverändert.
+
+### BDD
+
+```
+GIVEN ein Agent, dessen compact() die Summary „SUMMARY-X" als AiMessage in die Memory legt
+WHEN compactSession mit preserve = „KEEP-1" ausgeführt wird
+THEN das Tool-Result enthält „KEEP-1" und NICHT „SUMMARY-X"
+AND die Memory enthält „SUMMARY-X" genau einmal (AiMessage aus compact())
+
+GIVEN compactSession ohne preserve
+WHEN das Tool ausgeführt wird
+THEN das Result ist der Marker „Session compacted." (nicht leer)
+```
+Test: `CompactSessionToolTest` — Red-Nachweis VOR dem Fix (alter Code fügt SUMMARY-X ins Result
+ein), Fix, dann grün.

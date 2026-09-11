@@ -121,7 +121,8 @@ public class AiDeveloperAgentTest {
         // [0] UserMessage "Session compacted..." (resume message)
         // [1] AiMessage "Okay thats good" (compressor's summary, added by compressContext)
         // [2] CALL_ME (tool request, added by tool loop)
-        // [3] ToolExecutionResultMessage (tool result, added by tool loop)
+        // [3] ToolExecutionResultMessage (tool result, added by tool loop — marker only, no summary;
+        //     the summary lives exclusively as the AiMessage at [1], SOLL 2026-09-10)
         // [4] AiMessage "Okay thats good" (final response, second iteration)
         var mem = subject.getMemory().getCopy();
         assertThat(((UserMessage)mem.get(0)).singleText()).contains("Session compacted");
@@ -129,7 +130,7 @@ public class AiDeveloperAgentTest {
         assertThat(((AiMessage)mem.get(1)).text()).contains("Okay thats good");
         assertThat(mem.get(2)).isEqualTo(CALL_ME);
         assertThat(mem.get(3)).isInstanceOf(ToolExecutionResultMessage.class);
-        assertThat(((ToolExecutionResultMessage)mem.get(3)).text()).contains("Okay thats good");
+        assertThat(((ToolExecutionResultMessage)mem.get(3)).text()).isEqualTo("Session compacted.");
     }
     
     @Test
