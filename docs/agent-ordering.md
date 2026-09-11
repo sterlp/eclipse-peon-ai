@@ -62,9 +62,16 @@ Custom- und Built-in-Agenten.
 ## R4 — Duplikate: first-wins + Warnung **❌ specified (2026-09-11, Triage Bug 5)**
 
 User 2026-09-11: das still verworfene Duplikat ist ein Bug, das first-wins-Verhalten selbst ist
-gewollt — Fix = **nur Sichtbarkeit** (kein Verhaltens-Change).
+gewollt. Präzisierung 2026-09-11 (autonom, ⏳ Bestätigung ausstehend, open-points): „first-wins"
+= **Pattern-Ebene** (R2, ein Agent erscheint einmal) — das seen-Set ist **Agent-Identitäts-basiert**,
+nicht namensbasiert. Zwei **verschiedene** Agent-Instanzen mit gleichem Namen kollabieren nicht
+mehr (das war der Bug: False Negative im Dropdown); beide Duplikat-Fälle werden sichtbar geloggt.
 
-- GIVEN zwei Patterns, die denselben Agenten matchen (z. B. `^Peon-PO$` und `Peon.*`), WHEN
-  sortiert, THEN erscheint der Agent nur einmal (Gruppe der **ersten** Zeile, Verhalten wie R2)
-  UND ein `log.warn` nennt die übergehende Zeile + Agent
-  → `AgentOrderTest.sortWarnsWhenAPatternDuplicatesAnotherMatch`
+- GIVEN ein Agent matcht mehrere Patterns (z. B. `^Peon-PO$` und `Peon.*`), WHEN sortiert, THEN
+  erscheint der Agent nur einmal (Gruppe der **ersten** Zeile, R2-Verhalten) UND ein `log.warn`
+  nennt die übergehende Zeile + Agent
+  → `AgentOrderTest.sortWarnsWhenAnAgentMatchesMultiplePatterns`
+- GIVEN zwei verschiedene Agent-Instanzen mit gleichem Namen, WHEN sortiert, THEN erscheinen
+  **beide** (nichts wird verworfen) UND ein `log.warn` nennt die Namens-Kollision
+  → `AgentOrderTest.bug_sortSilentlyDropsAgentsWithDuplicateNames` (beweist das nicht-Drop) +
+  `AgentOrderTest.sortWarnsWhenTwoDistinctAgentsShareAName`
