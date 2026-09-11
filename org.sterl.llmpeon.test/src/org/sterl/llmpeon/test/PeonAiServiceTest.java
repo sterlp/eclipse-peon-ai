@@ -615,6 +615,34 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
     }
 
     /**
+     * Narrow test cleanup (ADR-0042 skill tests): remove ONLY the test's own skill files, plus the
+     * skills dir itself only when left empty (i.e. created by the test). The rest of the project's
+     * .agents tree stays — never delete a parent the test did not create (over-delete).
+     */
+    private static void deleteOwnSkillArtifacts(Path skillsDir, String... ownFiles) {
+        for (var name : ownFiles) {
+            try {
+                Files.deleteIfExists(skillsDir.resolve(name));
+            } catch (IOException ignored) {
+            }
+        }
+        if (isEmptyDirectory(skillsDir)) {
+            try {
+                Files.deleteIfExists(skillsDir);
+            } catch (IOException ignored) {
+            }
+        }
+    }
+
+    private static boolean isEmptyDirectory(Path dir) {
+        try (var entries = Files.list(dir)) {
+            return entries.findAny().isEmpty();
+        } catch (IOException e) {
+            return false; // unreadable → leave it in place
+        }
+    }
+
+    /**
      * Inc 2 (docs/sklaven-kontext-plan.md): the static context (date/OS + file-access rules) must reach
      * Jon's RAM slaves too — they are not in agentService, so setStaticContext applies it directly.
      */
@@ -1441,8 +1469,8 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             assertTrue("config slot must survive the project switch: " + names, names.contains("cfg-skill"));
             assertFalse("old project skill must be gone: " + names, names.contains("fixture-skill"));
         } finally {
-            deleteRecursively(fixtureSkillsDir.getParent());
-            deleteRecursively(otherSkillsDir.getParent());
+            deleteOwnSkillArtifacts(fixtureSkillsDir, "fixture-skill.md");
+            deleteOwnSkillArtifacts(otherSkillsDir, "other-skill.md");
             Files.deleteIfExists(configSkillsDir.resolve("cfg-skill.md"));
             if (otherProject.exists()) otherProject.delete(true, true, new NullProgressMonitor());
         }
@@ -1498,8 +1526,8 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             assertFalse("old project skill must be gone: " + names, names.contains("fixture-skill"));
         } finally {
             aiService.getUserContext().setProjectPinned(false);
-            deleteRecursively(fixtureSkillsDir.getParent());
-            deleteRecursively(otherSkillsDir.getParent());
+            deleteOwnSkillArtifacts(fixtureSkillsDir, "fixture-skill.md");
+            deleteOwnSkillArtifacts(otherSkillsDir, "other-skill.md");
             if (otherProject.exists()) otherProject.delete(true, true, new NullProgressMonitor());
         }
     }
