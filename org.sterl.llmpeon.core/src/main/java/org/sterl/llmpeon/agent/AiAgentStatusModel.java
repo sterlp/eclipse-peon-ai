@@ -1,13 +1,12 @@
-package org.sterl.llmpeon.parts.widget;
+package org.sterl.llmpeon.agent;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.shared.StringUtil;
 
 /**
- * Pure (SWT-free) render model for {@link AiAgentStatusWidget}. Maps an orchestrator's visible team
+ * Pure (SWT-free) render model for the plugin's agent-status widget. Maps an orchestrator's visible team
  * (a {@link NamedAgent} list — see {@code AiPoAgent.getTeam()}) to display rows {@code uiName (Xk)}.
  * <p>
  * The first entry is the orchestrator itself (Da Boss); the rest are his slaves (Da Thinka, Da Mek).

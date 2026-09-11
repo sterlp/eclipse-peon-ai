@@ -16,6 +16,7 @@ import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.provider.ExtraBodyExamples;
 import org.sterl.llmpeon.provider.LlmProviders;
 import org.sterl.llmpeon.provider.ThinkSupport;
+import org.sterl.llmpeon.provider.ThinkValueSupport;
 import org.sterl.llmpeon.shared.StringUtil;
 
 /**

@@ -1,4 +1,4 @@
-package org.sterl.llmpeon.parts.shared;
+package org.sterl.llmpeon.shared;
 
 import java.util.ArrayList;
 import java.util.List;

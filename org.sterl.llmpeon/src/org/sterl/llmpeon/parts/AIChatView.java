@@ -42,7 +42,7 @@ import org.sterl.llmpeon.parts.config.VoicePreferenceInitializer;
 import org.sterl.llmpeon.parts.log.EclipseSlf4jLogger;
 import org.sterl.llmpeon.parts.monitor.EclipseAiMonitor;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
-import org.sterl.llmpeon.parts.shared.SimpleDiff;
+import org.sterl.llmpeon.shared.SimpleDiff;
 import org.sterl.llmpeon.parts.widget.ActionsBarWidget;
 import org.sterl.llmpeon.parts.widget.ChatMarkdownWidget;
 import org.sterl.llmpeon.parts.widget.HeaderBarWidget;

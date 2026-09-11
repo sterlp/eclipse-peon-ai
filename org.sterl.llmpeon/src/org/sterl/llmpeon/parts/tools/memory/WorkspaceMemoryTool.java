@@ -13,6 +13,7 @@ import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.parts.tools.AbstractEclipseTool;
 import org.sterl.llmpeon.shared.ArgsUtil;
+import org.sterl.llmpeon.shared.WorkspaceGuideline;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;

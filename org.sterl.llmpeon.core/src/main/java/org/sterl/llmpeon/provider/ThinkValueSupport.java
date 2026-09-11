@@ -1,11 +1,9 @@
-package org.sterl.llmpeon.parts.config.widgets;
+package org.sterl.llmpeon.provider;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import org.sterl.llmpeon.ai.AiProvider;
-import org.sterl.llmpeon.provider.LlmProviders;
-import org.sterl.llmpeon.provider.ThinkSupport;
 
 /**
  * SWT-free mapping between the per-agent think value (a plain string) and the widget form a

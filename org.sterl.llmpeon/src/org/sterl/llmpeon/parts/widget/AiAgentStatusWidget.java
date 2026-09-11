@@ -9,6 +9,7 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
+import org.sterl.llmpeon.agent.AiAgentStatusModel;
 import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.parts.shared.EclipseUiUtil;
 
