@@ -1,8 +1,49 @@
-# Session-Stand (2026-09-11, Nachmittag — alles auf main gemerged, Zyklen abgeschlossen)
+# Session-Stand (2026-09-11, Nachmittag — main pushed, ein Branch, repo clean)
 
-**Aktiver Zweig: main** — User hat `story/lib-update-2026-09-09` (34 Commits) gemergt und das
-Eclipse-Update gezogen. Branch-Konsolidierung abgeschlossen: nur noch main (+ Story-Branch
-historisch). **Alle Smoke-Test-Befunde aus den letzten Zyklen zählen jetzt auf main-Stand.**
+## 🔴 AKTIVER AUTONOMER ZYKLUS (2026-09-11 Nachmittag — **User ist zurück, interaktiv**; Cleanup läuft weiter)
+
+**Compressor-Bug gefunden & gefixt (User-Anfrage „Compact agent kaputt?"):** `AiCompressorAgent.java:40`
+invertierte Dedup-Bedingung (`>= 0` statt `< 0`) → Compact-UserMessage ging IMMER leer an die LLM
+(Commit `d1c2191d`, „user change" #136). Beweis: roter Test `test_sendsSystemPromptToLlm` (Blank-Input,
+erweitert: 3 Messages + Duplikat 1× + Chat-Monitor), Fix 1 Zeile. **Branch `fix/compressor-empty-compact-input`
+(Commit `8d7cc2a` FROM main 57c7ac0, gepusht) — MERGE = User.** Danach: Cleanup-Zyklus weiter
+(planWithPlanAgent-Versuch #1 starb mit „AI call canceled" — neu anstoßen).
+⚠️ docs/memory.md war uncommitted und ist mit auf den Fix-Branch gewandert (uncommitted, kehrt zurück).
+
+**Mission (User-Wortlaut):** Bug sweep + Architecture Review im **core**. Fragestellung: was aus
+dem Plugin gehört in den core, ist die Architektur sauber, ist alles sauber abstrahiert?
+**Nordstern-Szenario:** Jon mit den Disk-Tools als Web-App aus Eclipse portieren — alle
+Eclipse-Tools fallen weg. Könnten wir das? Was im Plugin müsste portiert werden?
+**Regeln:** KEINE neuen Features — nur aufräumen, Bugs fixen, Architektur verbessern, Code
+einfacher machen. Bugs brauchen roten Test als Beweis; UI-Bugs ohne Test-Fokus → Fix erlaubt,
+User-Smoke nachträglich. Arbeiten auf eigenem Branch (alles drauf, Name frei wählbar —
+**`core-cleanup-2026-09-11`**). Keine App bauen — nur Aufräumen.
+**Da-Mek-Regel angepasst:** User weg → bei SOLL-Lücken NICHT askUser (blockiert) — SKIP die
+Story, als ❓ in open-points.md, weiter mit der nächsten. Technische Entscheidungen → ADR,
+ableitbare Annahmen → ⏳ in open-points.md.
+**Bug-Sweep-Triage-Liste (core, `299c26b` = 5 rote Tests committed auf `core-cleanup-2026-09-11`):**
+1. ✅**FIX** `StreamingBridge.onError:196` blindes `errorRef.set(error)` überschreibt CancellationException nach Cancel → ApiRetry retryt gestoppte Calls (**Root-Cause-Kandidat** für „canceled while waiting to retry", memory #21!). Fix: `errorRef.compareAndSet(null, error)` — Cancel gewinnt.
+2. ✅**FIX** `SkillPromptFile.readRelativeFile:86-92` skill-qualifizierter Pfad = Dead Code (Guard läuft nach Resolve → immer „Path traversal") — False Negative. Fix: startsWith-Check gegen `skillDir` korrekt/gestrichen, Skalierung `skillDir.getParent()` prüfen.
+3. ✅**FIX** `ToolService.addCompactHintIfNeeded:205` NPE bei `agent==null` (legal @Nullable) — Guard wie Zeile 163.
+4. ✅**FIX** `SkillPromptFile:88` NPE `skillDir.getParent()==null` bei parentlosem relativem Dir → „File not found"-IAE statt NPE.
+5. ✅**FIX** `AgentOrder.sort:100-110` dupl. matchende Namen still verworfen (seen-Set nur bei peek). Fix: Log/Warnung + nicht still; Verhalten NICHT ändern (SOLL offen: dedup gewollt? → ⏳-Vermerk, Fix = nur Sichtbarkeit).
+6. 🚫**SKIP** `PeonAiServiceTest:1444/1501` Over-Delete `<test_project>/.agents` komplett (real, aber OSGi-Lauf braucht Workspace-Trust → User). Fix erlaubt (Test-Fixture-only), Smoke/Neu-Lauf durch User. „Getrackte Datei"-Prämisse war stale (auf main nicht getrackt).
+Verifiziert stale: ToolService:181 (schon gefixt, Test existiert). Gate nach Sweep: 710 Tests, 5 rot (die Beweise), 705 grün.
+
+**Arch-Review-Verdicts (searchAgent, 2026-09-11) — Kategorien:**
+- **A Moves (mechanisch, tun wir):** `SimpleDiff` · `WorkspaceGuideline` (Jackson-Record) · `ThinkValueSupport` · `AiAgentStatusModel` — alle 0 Eclipse-Imports, je 1 Import-Fix im Plugin.
+- **B Moves (dokumentiert, NICHT in diesem Zyklus — mehrgliedrig):** `AskUserTool` → core (braucht Presenter-Interface) · `WorkspaceMemoryTool` → core mit Store-Interface (LlmConfigStore-Muster!).
+- **C Dead Code:** `UiCommand`-Hierarchie (LiveStatus/Scroll/SetTheme etc.) tot — **BEHALTEN**: gehört zum WIP-MVP-Plan agenten-status-im-header (index.md:48-49). Nicht löschen, im ADR vermerken.
+- **D ADR-Material (Web-App-Port):** Core import-rein (0 Eclipse-Imports ✓) · Kontrakte UI-agnostisch (AiMonitor/ToolLoopRequest/ConfiguredChatModel/LlmConfigStore ✓) · Lücken der Web-App: Build/Test-Runner/Java-Navigation/Console · **Composition-Root-Gap** (PeonAiService + AgentContextComponent + BuildPoAgentComponent Eclipse-typisiert; Plan nur IFile-basiert) · `StaticContextItem` verweist auf Plugin-Klasse + eclipse-Guidance hartkodiert · StringMatcher vendored (EPL, Header intakt — lassen) · QualifiedPathValidator sauber injiziert ✓ · `peon.test.project` existiert NICHT mehr.
+**ADR schreiben:** docs/adr/0046-core-portability-review.md (Bestandsaufnahme + Moves + Gaps + Composition-Root-Gap).
+**Wenn User zurück ist:** 1) Glossar-Thema lösen (User: „müssen wir lösen" — eager-Loading ❓ +
+Slot-Doppeltbelegung ❓, beide in open-points.md) · 2) Bug-Sweep-Verdicts + Smoke-Tests vorlegen.
+
+---
+
+**Aktiver Zweig (vormittags): main** — `57c7ac0` lokal = origin/main. Repo-Konsolidierung
+abgeschlossen: alle lokalen Branches gelöscht, nur noch main; Plan-Archive bewusst NICHT
+gesichert — User: „Pläne sind transient, gehen wir nie drauf zurück".
 
 ## Abgeschlossene Zyklen (Referenz)
 

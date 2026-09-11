@@ -50,20 +50,6 @@ Nicht heute migrierbar: (1) openai-java pinnt Jackson 2 (nicht unter unserer Kon
 openai). Revisit-Trigger: langchain4j 1.21+ (Aggregator schon auf 1.21.0-beta31) oder openai-java
 Jackson-3-Support. Dann eigene Story mit ADR (Major-Sprung, OSGi-Bundle-ClassPath, Error-Path).
 
-## ❓ Glossar: „Slot" doppelt belegt (2026-09-10)
-
-ADR-0036 nutzt „Slot" für per-Agent-Model-Config, ADR-0042 für Skill-Herkunft (Config- vs
-Projekt-Slot) — zwei Bedeutungen, ein Begriff. Optionen: (1) „Model-Slot" vs „Skill-Slot" als
-zwei domain-scoped Einträge, (2) Skill-Seite umbenennen (z. B. „Quelle"). Kein Handlungsdruck —
-beim nächsten Terminologie-Kontakt entscheiden.
-
-## ❓ Glossar eager laden? (2026-09-03)
-
-[glossary.md](glossary.md) angelegt. Optionen: (a) nur Jon · (b) Jon + Da Thinka + Da Mek ·
-(c) nur per Verweis aus index.md (Status quo). **PO-Empfehlung:** (b) als `ContextItem` im
-Turn-Context (nicht Static — sonst bricht jede Glossar-Änderung den Prompt-Cache), ~600 Token
-pro Turn. User-Entscheidung offen.
-
 ## ❓ buildWithDev sollte Da Mek vorher compacten (2026-09-03)
 
 Vor `buildWithDev` automatisch `compactDev` bei nennenswertem Kontext — die Plan-Datei ist die

@@ -57,5 +57,14 @@ Custom- und Built-in-Agenten.
 - Schlägt das Auto-Create fehl (read-only Config-Dir), wirft `AgentOrder.load()` und der
   ganze Agent-Reload bricht — **keine** Agenten laden. Ordering ist kosmetisch; statt zu
   töten wäre „weiter ohne Ordering" das robustere Verhalten. Kandidat für den Bug-Fix-Zyklus.
-- `peek(seen::add)` = Side-Effect im Stream (funktioniert, aber unidiomatisch); Warn-Log
-  wiederholt das Pattern zweimal. Kosmetik.
+- `peek(seen::add)` = Side-Effect im Stream (funktioniert, aber unidiomatisch) — ersetzt durch **R4** (2026-09-11).
+
+## R4 — Duplikate: first-wins + Warnung **❌ specified (2026-09-11, Triage Bug 5)**
+
+User 2026-09-11: das still verworfene Duplikat ist ein Bug, das first-wins-Verhalten selbst ist
+gewollt — Fix = **nur Sichtbarkeit** (kein Verhaltens-Change).
+
+- GIVEN zwei Patterns, die denselben Agenten matchen (z. B. `^Peon-PO$` und `Peon.*`), WHEN
+  sortiert, THEN erscheint der Agent nur einmal (Gruppe der **ersten** Zeile, Verhalten wie R2)
+  UND ein `log.warn` nennt die übergehende Zeile + Agent
+  → `AgentOrderTest.sortWarnsWhenAPatternDuplicatesAnotherMatch`

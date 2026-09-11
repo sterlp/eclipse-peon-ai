@@ -104,6 +104,12 @@ These bit us repeatedly in this repo — check them before reporting an incremen
   2b-2 the dev shipped three extra, factually correct fixes in a file the plan had marked TABU;
   the fixes were fine, the surprise was not. Since then every plan carries a TABU list and this
   rule.)
+- **Stub/mocked-LLM tests must assert BOTH directions: what is SENT and what is RECEIVED.**
+  Assert the captured request payload (the actual built messages/parameters), not just that a
+  call happened — whenever the send path contains logic (dedup, filtering, truncation,
+  mapping), that logic IS the feature under test. (Origin 2026-09-11: `AiCompressorAgent` dedup
+  was inverted → compact input always empty; both existing tests asserted only the system
+  prompt / the response side and stayed green for the broken send path.)
 
 ## Repo-specific API traps (verified, don't re-derive)
 

@@ -49,9 +49,10 @@ entschieden · 🔒 geklärt.
 | Begriff | Bedeutung | Nicht verwenden |
 |---|---|---|
 | **Base-Config** | Die Grundeinstellung auf der Basic-Preference-Page | Default-Config, globale Config, Haupt-Config |
-| **Agent-Slot** | Der Satz Einstellungen **eines** Agenten (`llm.agent.<id>.*`) | Agent-Settings, Profil, Sektion |
+| **Agent-Config** | Der Satz Einstellungen **eines** Agenten (`llm.agent.<id>.*`) auf der Preference-Page | Agent-Slot, Agent-Settings, Profil, Sektion |
+| **Model-Selection** | Die pro Agent/Verwendung **gewählte** Model-Config — im Code `AgentModelConfig` (DEV/PLAN/COMPACT/PO, `CORE_IDS`); Auflösung: Agent-Config, sonst Base ([ADR-0036](adr/0036-po-own-model-slot.md), Dateiname historisch) | Model-Slot, Slot, Agent-Slot |
 | **Model Config** | Der Wertetyp `AgentModelConfig` (model · url · apiKey · think · extraBody · temperature) | Modell-Einstellungen |
-| **Effective Connection** | Die aufgelöste Verbindung eines Agenten (Agent-Slot, sonst Base) | resolved config, aktive Verbindung |
+| **Effective Connection** | Die aufgelöste Verbindung eines Agenten (Agent-Config, sonst Base) | resolved config, aktive Verbindung |
 | **Connection Identity** | Der Cache-Schlüssel Provider + URL + Key (+ Body nur build-time) | Connection-Hash, Verbindungs-Key |
 | **extra body** | Das per-Agent-JSON, das in den Request gemerged wird (User gewinnt) | JSON-Body, Zusatz-Parameter, custom body |
 | **Provider** | Eine `AiProvider`-Implementierung (je Provider eine Klasse) | Backend, LLM-Anbieter |
@@ -81,12 +82,10 @@ entschieden · 🔒 geklärt.
 | **Refresh-Ziel** | Der Container, der bei leerem Ergebnis synchronisiert wird — **nicht** dasselbe wie der Such-Scope | Refresh-Scope, Sync-Bereich |
 | **Config-Skills** | Skills aus dem geteilten Config-Dir (`~/.peon/skills`) — Basis, in jedem Projekt sichtbar | globale Skills, Basis-Skills |
 | **Projekt-Skills** | Skills aus `<Projekt>/.agents/skills` (Disk-Pfad) — nur bei gewähltem Projekt sichtbar, **Override** bei Namenskollision | lokale Skills, Project-Skills |
-| **Skill-Component** | Eine vom `SkillService` gehaltene Component mit **immer einem Pfad** (Config- oder Projekt-Skills-Dir); lädt Disover+Parse+Swap selbst — Service tauscht Projekt-Component als Instanz, kein `@Nullable` dir | Skill-Slot (alt), Skill-Dir, Skill-Root |
+| **Skill-Component** | Eine vom `SkillService` gehaltene Component mit **immer einem Pfad** (Config- oder Projekt-Skills-Dir); lädt Discover+Parse+Swap selbst — Service tauscht Projekt-Component als Instanz, kein `@Nullable` dir | Skill-Slot (alt), Skill-Dir, Skill-Root |
 
 ## Offen
 
-- **Eager Load (❓, User 2026-09-03):** Soll dieses Glossar wie `AGENTS.md`/`docs/index.md`
-  automatisch in den Kontext geladen werden — und wenn ja, für **welche** Agenten?
-  Siehe [open-points.md](open-points.md).
 - Die Tabellen sind bewusst unvollständig. Neue Begriffe kommen bei Berührung dazu, nicht auf
   Vorrat.
+- **Eager Load 🔒 (2026-09-11):** (a) nur Jon — ADR: [resolved-points.md](resolved-points.md).
