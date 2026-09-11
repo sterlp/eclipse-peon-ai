@@ -154,3 +154,15 @@ Technische Basis: [ADR-0042](adr/0042-project-skill-slot.md) (ein Service, zwei 
 | R16 | `PeonAiServiceTest.test_jon_gets_shared_skill_tool` (assertSame: geteilte Instanz) |
 | R2a (Plugin) | `setProject_replacesProjectSlotOnly` (Name historisch, „Slot" = alte Begriffswelt) |
 | R2c (Plugin) | `pinnedProject_keepsSkillComponent_untilSetProject` |
+
+## Skill-relativer Lesepfad (SkillPromptFile) — ✅ done (2026-09-11, core-cleanup, `f85156a`)
+
+- GIVEN ein Pfad mit `../`-Segments (`../escape.txt`, `./sub/../../out.txt`), WHEN ein Skill seine
+  Datei liest, THEN IAE „Path traversal not allowed" — der **Roh-Pfad** wird normalisiert
+  (`\`→`/`, `.`/`..`-Auflösung, alle Plattformen) und gegen das Skill-Dir geprüft, BEVOR
+  `../`-Segmente gestrippt werden (vormals Dead Guard). Ein führendes `/` zählt als skill-relativ
+  (makeReltive-Kontrakt). → `SkillPromptFileTest.readRelativeFileRejectsPathTraversal`
+- GIVEN skill-qualifizierter relativer Pfad, WHEN gelesen, THEN Datei wird gefunden (kein false
+  „Path traversal") → `SkillPromptFileTest.bug_readRelativeFileWithSkillQualifiedPathAlwaysThrows`
+- GIVEN parentloses Skill-Dir, WHEN gelesen, THEN IAE „File not found" statt NPE
+  → `SkillPromptFileTest.bug_readRelativeFileWithParentlessSkillDirThrowsNpe`

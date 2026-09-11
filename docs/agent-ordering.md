@@ -53,7 +53,7 @@ Custom- und Built-in-Agenten.
   log.warn, Rest bleibt wirksam → `AgentOrderTest.sortSkipsInvalidRegexInTheOrderFile`
 
 ## Known Edge (Doku, kein Fix)
-
+## R4 — Duplikate: first-wins + Warnung **✅ done (2026-09-11, core-cleanup-2026-09-11 `8b2431e`, Review Da Dok)**
 - Schlägt das Auto-Create fehl (read-only Config-Dir), wirft `AgentOrder.load()` und der
   ganze Agent-Reload bricht — **keine** Agenten laden. Ordering ist kosmetisch; statt zu
   töten wäre „weiter ohne Ordering" das robustere Verhalten. Kandidat für den Bug-Fix-Zyklus.
