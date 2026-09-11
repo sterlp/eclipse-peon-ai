@@ -75,7 +75,7 @@ Code. Vor dem Einführen eines neuen fachlichen Begriffs dort nachsehen und eint
 
 ## Offene User-Entscheidungen (2026-09-06)
 
-* **Branch `sm-fixes-2026-09-06` (3 Commits, von main, nicht gemerged):** Dropdown-Klassen
+* **Branch `release-2026-09-06` (3 Commits, von main, nicht gemerged):** Dropdown-Klassen
   gelöscht (`a1d8d35`) · UTF-8-Write **widerlegt** + Regression-Guard-Test (`27c09ad`) ·
   PDE-Skip-Count im `EclipseRunTestTool`-Report (`11f34f6`). Plugin 186/0, Core 651/651.
   Merge → main = User-Entscheidung.
