@@ -31,8 +31,11 @@ public class CompactSessionTool extends AbstractTool {
 
         // The summary lives exclusively as an AiMessage in the agent's memory (added by compact()) —
         // the tool result carries only `preserve` (or a marker), never the summary (SOLL 2026-09-10).
+        // The no-preserve marker must NOT collide with the resume UserMessage "Session compacted.
+        // Resume the task using the preserved context." (AbstractAgent.compact) — otherwise the
+        // compact-result text appears twice in the memory (SOLL 2026-09-11).
         return StringUtil.hasValue(preserve)
                 ? "Preserved:\n" + StringUtil.stripToEmpty(preserve)
-                : "Session compacted.";
+                : "(nothing preserved)";
     }
 }

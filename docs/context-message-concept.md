@@ -246,7 +246,7 @@ THEN nichts wird injiziert (kein Error, kein Status-Eintrag)
   sonst gerendeter Content bei `dedupKey() = null`); nur einmal injiziert, nie nachträglich
   angepasst (KV Cache!).
 
-## Compact-Tool-Result: preserve only (SOLL 2026-09-10) — ❌ specified
+## Compact-Tool-Result: preserve only (SOLL 2026-09-10) — ✅ done (`1f2d0b0`)
 
 Auslöser: User-Befund „Es wird doppelt eingefügt". Die Compressor-Summary stand **zweimal** im
 Kontext: (1) als AiMessage — `AbstractAgent.compact()` → `memory.add(response.aiMessage())`;
@@ -278,3 +278,61 @@ THEN das Result ist der Marker „Session compacted." (nicht leer)
 ```
 Test: `CompactSessionToolTest` — Red-Nachweis VOR dem Fix (alter Code fügt SUMMARY-X ins Result
 ein), Fix, dann grün.
+
+**✅ done (2026-09-10, `1f2d0b0`):** Red-Evidenz: Result trug `SUMMARY-X\nPreserved:\nKEEP-1` →
+Fix: Result = `Preserved:\n<preserve>` / Marker `Session compacted.` (nie leer), Summary-Return
+entfernt, `onTool("Da Scribe done…")` unverändert. Zwei Alt-Assertions, die den Bug pinnnten,
+angepasst (`CompactSessionToolTest` delegiert → `doesNotContain`, `AiDeveloperAgentTest
+.test_clear_memory` → `isEqualTo("Session compacted.")`). Core Surefire 702/0.
+## Compact-Result genau einmal (SOLL 2026-09-11) — ❌ specified
+
+Auslöser: User-Befund 2026-09-11 — Compact-Result 2× sichtbar. Zwei unabhängige Duplikate:
+
+1. **Memory (Tool-Pfad):** Der 1f2d0b0-Marker `Session compacted.` (CompactSessionTool, kein
+   preserve) kollidiert mit der Resume-UserMessage `Session compacted. Resume the task using the
+   preserved context.` (AbstractAgent.compact:281) → `contains("Session compacted")` über alle
+   Messages = 2 (ToolExecutionResultMessage + UserMessage).
+2. **Chat-Render (Button-Pfad):** `doCompressContext` leert `chatHistory` nur VOR dem Job
+   (AIChatView.java:483); der Compressor postet die Summary live (AiCompressorAgent:51 →
+   `onChatResponse`), und das finally re-rendert die komplette Memory inkl. Summary erneut
+   (AIChatView.java:497) → Summary 2× im Chat (nicht adjazent — USER-Resume dazwischen).
+
+**Regel: Der Compact-Result-Text steht genau einmal — in der Memory UND im Chat-Render.**
+
+* **Memory:** kanonische Quelle ist die Resume-UserMessage (`Session compacted. Resume…`) — sie
+  existiert in BEIDEN Pfaden (Button ruft `compact()` direkt, ohne Tool-Result). Das
+  no-preserve-Tool-Result trägt deshalb den Marker `(nothing preserved)` — nicht leer, aber ohne
+  Duplikat des Resume-Texts. Mit preserve: `Preserved:\n<preserve>` (unverändert).
+* **Render:** nach Button-Compact ist das Voll-Re-Render der Memory autoritativ. Bei **echtem
+  Erfolg** (`ChatResponse != null`) wird der Chat vor dem Re-Render geleert — der live gestreamte
+  Compressor-Post bleibt nicht als permanentes Duplikat stehen. **Fehlerpfad: kein Clear** —
+  live Inhalt + PROBLEM-Meldung bleiben sichtbar (Abort-Path-Parity).
+* Die Count-Tests zählen über **alle** Message-Typen (UserMessage/AiMessage/
+  ToolExecutionResultMessage) — nicht nur `instanceof AiMessage` (dort wäre ein UserMessage- oder
+  ToolResult-Duplikat unsichtbar gewesen).
+
+### BDD
+
+```
+GIVEN ein In-Loop-Compact (Agent ruft compactSession ohne preserve)
+WHEN der Turn abgeschlossen ist
+THEN enthält contains(„Session compacted") über ALLE Messages der Memory genau 1 Treffer
+     (die Resume-UserMessage)
+AND das Tool-Result ist „(nothing preserved)" (nicht leer, kein Duplikat)
+
+GIVEN ein Agent, dessen compact() die Summary „SUMMARY-X" in die Memory legt
+WHEN compactSession mit preserve = „KEEP-1" ausgeführt wird
+THEN zählt contains(„SUMMARY-X") über ALLE Message-Typen genau 1
+
+GIVEN Button-Compact erfolgreich (ChatResponse != null)
+WHEN das Re-Render der Memory im finally läuft
+THEN wurde der Chat vorher geleert — die Summary steht genau einmal im Chat
+
+GIVEN Button-Compact fehlgeschlagen (Exception)
+WHEN handleDoneChatResponse läuft
+THEN kein Clear — live Inhalt und PROBLEM-Meldung bleiben sichtbar
+```
+
+Tests: `AiDeveloperAgentTest.test_clear_memory` (Count über alle Messages == 1, Red-Nachweis VOR
+dem Fix: Zählung = 2), `CompactSessionToolTest` (Summary-Count über alle Typen generalisiert,
+Marker-Asserts), Button-Render manuell (SWT, R-UI1-Präzedenz).

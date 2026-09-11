@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,9 @@ import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
@@ -141,6 +145,8 @@ class CompactSessionToolTest {
         // AND — the tool result no longer carries the summary text (SOLL 2026-09-10: the summary
         // lives exclusively as an AiMessage in the memory)
         assertThat(result).doesNotContain("WHAT: Compressed summary");
+        // AND — without preserve the result is the non-colliding marker (SOLL 2026-09-11)
+        assertThat(result).isEqualTo("(nothing preserved)");
     }
 
     @Test
@@ -188,6 +194,20 @@ class CompactSessionToolTest {
         };
     }
 
+    /** Raw text of any message type — UserMessage (single or joined contents), AiMessage, ToolExecutionResult. */
+    private static String textOf(ChatMessage m) {
+        if (m instanceof UserMessage um) {
+            if (um.hasSingleText()) return um.singleText();
+            return um.contents().stream()
+                    .filter(c -> c instanceof TextContent)
+                    .map(c -> ((TextContent) c).text())
+                    .collect(Collectors.joining());
+        }
+        if (m instanceof AiMessage ai) return ai.text() == null ? "" : ai.text();
+        if (m instanceof ToolExecutionResultMessage tr) return tr.text() == null ? "" : tr.text();
+        return "";
+    }
+
     private static CompactSessionTool compactSessionTool(ThreadSafeMemory memory, AiAgent agent) {
         var config = LlmConfig.builder().model("test").build();
         var cm = new StreamMock().buildMock(r -> ChatResponse.builder()
@@ -218,9 +238,11 @@ class CompactSessionToolTest {
         // the summary lives exclusively as an AiMessage in the memory)
         assertThat(result).contains("KEEP-1");
         assertThat(result).doesNotContain("SUMMARY-X");
-        // AND — the memory holds SUMMARY-X exactly once (the AiMessage added by compact())
+        // AND — the memory holds SUMMARY-X exactly once (the AiMessage added by compact()),
+        // counted over ALL message types — a UserMessage/ToolResult duplicate would be invisible
+        // to an AiMessage-only filter (SOLL 2026-09-11)
         assertThat(memory.getCopy().stream()
-                .filter(m -> m instanceof AiMessage ai && ai.text() != null && ai.text().contains("SUMMARY-X"))
+                .filter(m -> textOf(m).contains("SUMMARY-X"))
                 .count()).isEqualTo(1);
     }
 
@@ -236,6 +258,7 @@ class CompactSessionToolTest {
         String result = subject.compactSession(null);
 
         // THEN — tool results are never empty: without preserve the result is the marker
-        assertThat(result).isEqualTo("Session compacted.");
+        // (a non-colliding marker, not a duplicate of the resume UserMessage — SOLL 2026-09-11)
+        assertThat(result).isEqualTo("(nothing preserved)");
     }
 }

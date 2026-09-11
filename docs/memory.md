@@ -125,7 +125,8 @@ Workaround bis zum Fix: Projektpfad + Extension-Filter nutzen.
    COMPACT_HINT ohne Dedup, §9.1); Fehler nach „Da Scribe done" = regulärer Call über hartes
    Limit; Verzögerung = ApiRetry-Backoff auf deterministisch totem Payload; Stop → stille
    Cancellation. Kandidaten: Hint-Dedup · ApiRetry non-retryable · stille Cancellation ·
-   Browser-Hang Chat-View.
+   Browser-Hang Chat-View. **Doppel-Ablage gefixt (2026-09-10, `1f2d0b0`, User-Entscheid):**
+   Compact-Tool-Result = preserve only, Summary nur noch als AiMessage — [context-message-concept.md](context-message-concept.md).
 2. Loop-Bewährung → Built-in-Prompts (User-Schritt, später).
 3. ❓ Glossar eager · ❓ buildWithDev-Compact · ❓ Glossar „Slot" doppelt · ⏳ Jackson 2→3
    (open-points.md — beobachten, Migration erst wenn Jackson 2 komplett entfernbar, User 2026-09-10).

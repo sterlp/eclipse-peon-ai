@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,8 +27,10 @@ import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -130,7 +133,15 @@ public class AiDeveloperAgentTest {
         assertThat(((AiMessage)mem.get(1)).text()).contains("Okay thats good");
         assertThat(mem.get(2)).isEqualTo(CALL_ME);
         assertThat(mem.get(3)).isInstanceOf(ToolExecutionResultMessage.class);
-        assertThat(((ToolExecutionResultMessage)mem.get(3)).text()).isEqualTo("Session compacted.");
+        // no-preserve marker: non-empty, and NOT a duplicate of the resume text (SOLL 2026-09-11)
+        assertThat(((ToolExecutionResultMessage)mem.get(3)).text()).isEqualTo("(nothing preserved)");
+        // AND — the compact-result text appears EXACTLY ONCE over ALL messages (SOLL 2026-09-11):
+        // only the resume UserMessage carries "Session compacted"; the no-preserve tool result
+        // must be a non-colliding marker, never a duplicate of the resume text.
+        long compactMarkerCount = mem.stream()
+                .filter(m -> textOf(m).contains("Session compacted"))
+                .count();
+        assertThat(compactMarkerCount).isOne();
     }
     
     @Test
@@ -315,6 +326,20 @@ public class AiDeveloperAgentTest {
         assertThat(mem.get(2)).isEqualTo(aiMessage);
     }
     
+    /** Raw text of any message type — UserMessage (single or joined contents), AiMessage, ToolExecutionResult. */
+    private static String textOf(ChatMessage m) {
+        if (m instanceof UserMessage um) {
+            if (um.hasSingleText()) return um.singleText();
+            return um.contents().stream()
+                    .filter(c -> c instanceof TextContent)
+                    .map(c -> ((TextContent) c).text())
+                    .collect(Collectors.joining());
+        }
+        if (m instanceof AiMessage ai) return ai.text() == null ? "" : ai.text();
+        if (m instanceof ToolExecutionResultMessage tr) return tr.text() == null ? "" : tr.text();
+        return "";
+    }
+
     private StreamingChatModel mockWithHandler() {
         var cm = mock(StreamingChatModel.class);
         doAnswer(inv -> {

@@ -480,7 +480,6 @@ public class AIChatView implements EclipseAiMonitor {
         inFlightTurns.incrementAndGet();
         LOG.info("turn submit (compress): agent=" + active.getName() + " in-flight=" + inFlightTurns.get());
         lockWhileWorking(true);
-        chatHistory.clear();
         Job.create("Compressing context", monitor -> {
             monitor.beginTask("Compressing chat", 1);
             monitorRef.set(monitor);
@@ -491,10 +490,21 @@ public class AIChatView implements EclipseAiMonitor {
             } catch (Exception e) {
                 ex = handleChatException(e);
             } finally {
+                // cr is reassigned in the try (not effectively final) — capture the success flag
+                // here so the UI runnable can branch on it (only a real success clears + re-renders).
+                final boolean success = cr != null;
                 handleDoneChatResponse(active.getName(), cr, monitor, ex, () -> {
                     // own refresh to ensure the onTool messages are preserved after compact
                     refreshStatusLine();
-                    aiService.getActiveAgent().getMemory().forEach(chatHistory::appendMessage);
+                    if (success) {
+                        // Real success: clear the live-streamed compressor output, then re-render
+                        // the full (now-compacted) memory as the single authoritative source — the
+                        // summary appears exactly once (SOLL 2026-09-11).
+                        chatHistory.clear();
+                        aiService.getActiveAgent().getMemory().forEach(chatHistory::appendMessage);
+                    }
+                    // Error path: no clear, no re-render — the old chat, live content and the
+                    // PROBLEM message all stay visible (Abort-Path-Parity).
                     chatHistory.hideLiveStatus();
                 });
             }
