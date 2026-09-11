@@ -45,6 +45,23 @@ class SkillPromptFileTest {
     }
 
     @Test
+    void readRelativeFileRejectsPathTraversal() throws IOException {
+        // GIVEN — a skill dir with a file, so a successful read would be distinguishable
+        var skillDir = tmp.resolve("skills").resolve("my-skill");
+        Files.createDirectories(skillDir);
+        Files.writeString(skillDir.resolve("file.txt"), "content");
+        var subject = new SkillPromptFile(Map.of(), "body", skillDir.resolve("SKILL.md"), skillDir);
+
+        // WHEN + THEN — paths escaping the skill dir are rejected as traversal, not "File not found"
+        assertThatThrownBy(() -> subject.readRelativeFile("../escape.txt"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Path traversal");
+        assertThatThrownBy(() -> subject.readRelativeFile("./sub/../../out.txt"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Path traversal");
+    }
+
+    @Test
     void readRelativeFileResolvesPlainRelativePath() throws IOException {
         // GIVEN — sanity: the plain (non-qualified) path works today
         var skillDir = tmp.resolve("skills").resolve("my-skill");
