@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.tool;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -21,6 +22,7 @@ import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
@@ -253,5 +255,34 @@ class ToolServiceTest {
         assertThatThrownBy(() -> subject.executeLoop(req))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("simulated streaming failure");
+    }
+
+    /**
+     * BUG-PROOF (no fix yet, core-cleanup-2026-09-11): a think-only AI forces the compact hint on
+     * the 9th stuck iteration; with a null agent (legal — ToolLoopRequest.agent is @Nullable,
+     * ToolService itself null-guards it at the compact re-wire) the hint path dereferences
+     * {@code req.getAgent().getName()} and crashes the turn with an NPE instead of hinting.
+     */
+    @Test
+    @Timeout(30)
+    void bug_compactHintCrashesWhenAgentIsNull() {
+        // GIVEN — a think-only AI (never a final answer), memory pre-filled to >= 10 messages,
+        // no agent on the request
+        var cm = new StreamMock().buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.builder().thinking("still thinking").build())
+                .build());
+        var memory = new ThreadSafeMemory();
+        for (int i = 0; i < 5; i++) {
+            memory.add(UserMessage.from("user " + i));
+            memory.add(AiMessage.from("ai " + i));
+        }
+        var req = ToolLoopRequest.builder()
+                .memory(memory)
+                .chatModel(new ConfiguredChatModel(LlmConfig.newOpenAi("foo"), cm))
+                .build();
+
+        // WHEN — the loop reaches the forced compact hint (stuck > MAX_STUCK_ITERATIONS - 2)
+        // THEN — it must not crash on req.getAgent().getName() (ToolService.addCompactHintIfNeeded)
+        assertThatNoException().isThrownBy(() -> subject.executeLoop(req));
     }
 }

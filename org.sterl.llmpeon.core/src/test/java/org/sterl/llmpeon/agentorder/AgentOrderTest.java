@@ -176,6 +176,25 @@ class AgentOrderTest extends AbstractMemoryFileTest {
         assertThat(sorted).extracting(AiAgent::getName).containsExactly("Good-Agent");
     }
 
+    /**
+     * BUG-PROOF (no fix yet, core-cleanup-2026-09-11): the seen-set is keyed by NAME and records
+     * every agent matched by a pattern, so two distinct agent instances whose name matches a
+     * pattern silently collapse to one entry — the second agent disappears from the UI dropdown
+     * without any log line (false negative).
+     */
+    @Test
+    void bug_sortSilentlyDropsAgentsWithDuplicateNames() throws Exception {
+        // GIVEN — a catch-all pattern and two distinct agent instances with the same name
+        AgentOrder subject = loadedWith(".*");
+        List<AiAgent> agents = List.of(agent("Dup"), agent("Dup"));
+
+        // WHEN
+        List<AiAgent> sorted = subject.sort(agents);
+
+        // THEN — sort must not drop agents
+        assertThat(sorted).hasSize(2);
+    }
+
     @Test
     void defaultOrderContentReferencesThePoAgentByName() {
         // GIVEN - AgentOrder.DEFAULT_ORDER_CONTENT exists
