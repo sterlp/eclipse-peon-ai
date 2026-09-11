@@ -258,10 +258,8 @@ class ToolServiceTest {
     }
 
     /**
-     * BUG-PROOF (no fix yet, core-cleanup-2026-09-11): a think-only AI forces the compact hint on
-     * the 9th stuck iteration; with a null agent (legal — ToolLoopRequest.agent is @Nullable,
-     * ToolService itself null-guards it at the compact re-wire) the hint path dereferences
-     * {@code req.getAgent().getName()} and crashes the turn with an NPE instead of hinting.
+     * Bug proof: the compact hint path dereferenced req.getAgent().getName() — NPE when the
+     * @Nullable agent is null (think-only AI, forced hint) — fixed via null-safe agent name, inc-1 8b2431e.
      */
     @Test
     @Timeout(30)

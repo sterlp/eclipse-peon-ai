@@ -12,16 +12,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * BUG-PROOF tests (no fix yet, core-cleanup-2026-09-11) for
- * {@link SkillPromptFile#readRelativeFile(String)}:
- * <ul>
- * <li>the "accept SKILL path in the relative path" fallback is dead code — the
- *     {@code target.startsWith(skillDir)} guard runs AFTER the fallback resolved below
- *     {@code skillDir.getParent()}, so every legitimate skill-qualified path is rejected
- *     as "Path traversal not allowed" (false negative: the file exists).</li>
- * <li>a parentless relative skillDir NPEs in {@code skillDir.getParent().resolve(...)}
- *     instead of the documented "File not found" error.</li>
- * </ul>
+ * Bug proofs for {@link SkillPromptFile#readRelativeFile(String)}: dead skill-qualified-path fallback
+ * (false "Path traversal") + parentless-skillDir NPE — fixed via ancestor resolve inside skillDir, inc-1 8b2431e.
  */
 class SkillPromptFileTest {
 

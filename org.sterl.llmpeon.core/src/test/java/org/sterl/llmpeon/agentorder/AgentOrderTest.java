@@ -178,10 +178,8 @@ class AgentOrderTest extends AbstractMemoryFileTest {
     }
 
     /**
-     * BUG-PROOF (no fix yet, core-cleanup-2026-09-11): the seen-set is keyed by NAME and records
-     * every agent matched by a pattern, so two distinct agent instances whose name matches a
-     * pattern silently collapse to one entry — the second agent disappears from the UI dropdown
-     * without any log line (false negative).
+     * Bug proof: the name-keyed seen-set collapsed two distinct same-name agents into one, silently
+     * dropping the second from the UI dropdown (false negative) — fixed via identity-based seen-set, inc-1 8b2431e.
      */
     @Test
     void bug_sortSilentlyDropsAgentsWithDuplicateNames() throws Exception {

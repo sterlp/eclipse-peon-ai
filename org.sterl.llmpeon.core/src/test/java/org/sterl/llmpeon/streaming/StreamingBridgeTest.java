@@ -233,16 +233,8 @@ class StreamingBridgeTest {
     }
 
     /**
-     * BUG-PROOF (no fix yet, core-cleanup-2026-09-11): after a cancel, providers typically fire
-     * onError() for the killed stream. {@code onError} uses a blind {@code errorRef.set(...)} and
-     * overwrites the CancellationException that the cancel path stored — the caller then sees a
-     * plain RuntimeException (provider error) instead of the CancellationException documented in
-     * {@link #call}. Downstream, ApiRetry treats anything but CancellationException as a
-     * transient error and RETRIES a call the user just stopped (root-cause candidate for the
-     * "AI call canceled while waiting to retry" ticket — docs/memory #21).
-     * <p>
-     * Deterministic: the mock fires both callbacks synchronously, so the overwrite always lands
-     * before call() reads errorRef.
+     * Bug proof: onError's blind errorRef.set overwrote the stored CancellationException with a
+     * post-cancel provider error (→ ApiRetry retried a stopped call, docs/memory #21) — fixed via compareAndSet, inc-1 8b2431e.
      */
     @Test
     void bug_onErrorAfterCancelMasksCancellation() {
