@@ -17,10 +17,19 @@
   `(nothing preserved)`, Count-Test über ALLE Message-Typen, Button-Re-Render autoritativ
   (Clear nur bei Erfolg) — [context-message-concept.md](context-message-concept.md).
 
-**Branch-Konsolidierung (2026-09-11, User-Anordnung „alles auf einen Branch, Rest löschen"):**
-`release-2026-09-06` (3 Fixes: `a1d8d35` Dropdown-Deletion · `27c09ad` UTF-8-Write-Guard ·
-`11f34f6` PDE-Skip-Count — bisher weder in main noch im Story-Branch) wird auf den Story-Branch
-gebracht; danach alte lokale Branches löschen (nur gemergte/patch-äquivalente, Rest reporten).
+**Branch-Konsolidierung (2026-09-11, User-Anordnung „alles auf einen Branch, Rest löschen" — ✅
+abgeschlossen):** Meine Diagnose „3 Fixes fehlen" war **falsch** — User hatte recht: Content kam
+via Squash `45f2a0d2` („Release 2026 09 06 #132", Ancestor von main UND story) → alle 3
+Cherry-Picks (`a1d8d35`/`27c09ad`/`11f34f6`) leer. **13 Branches gelöscht** (je einzeln gegen
+main-Squashes verifiziert, patch-/tree-identisch): fix-compact-issue · bug/110 ·
+release-2026-09-06 · story/133 · use-agentmd-static · in-editor-edits · story/81 · 2.7.0-fix ·
+new-config · fix-stadning-orders · better-slash-commands · agent-specific-md-file · scaffold-agent.
+**Verbleibende 9 (User: Rest löschen — Tip-SHAs hier zur Reflog-Wiederherstellung):**
+commands-and-custom-system `5eb3022` · fix-queued-messages `e69a468` · toc-estimate-2026-09-06
+`d8cdb7d` · state-config-2026-09-06 `f262648` · jon-askuser-2026-09-05 `4f3bd1e` ·
+encoding-and-links `eb15808` · bug-hunt-2026-09-04 `22d2e99` · streaming-timing-2026-09-05
+`f334e7f` · think-setting-on-agent `ccbfc24`. (Jon-askuser R17 + encoding/links Features sind
+laut Docs ✅ in main — Branch-Diffs sind Intermediate-Stände.)
 
 ## User-Handlungen offen
 
@@ -42,6 +51,11 @@ gebracht; danach alte lokale Branches löschen (nur gemergte/patch-äquivalente,
 aus. Nur der Compact-Pfad (Chat-Turn hat `onCommitUi = null`, :596). Reproduziert es sich auf
 Branch-Stand → Fix: try/catch um `onCommitUi` + garantiertes Unlock (fail-open, R-ST1-Linie 613
 „UI must never stay stuck"). SOLL dann in [chat-job-lifecycle.md](chat-job-lifecycle.md).
+**User-Smoke 2026-09-11 (Alt-Stand, ohne Branch-Fixes):** Stop → llama.cpp zeigt
+stop/processing/cancel (Provider-Seite cancelt), UI läuft danach nicht weiter; erneutes Triggern,
+dann klappt Stop in der Alt-Version. Gilt nur für Alt-Stand — auf Branch-Stand (R-ST1) neu testen.
+**Da Mek 2026-09-11 vom ApiRetry-Bug getötet** („AI call canceled while waiting to retry", mitten
+in der Branch-Konsolidierung) — erneute Evidence für open-points ApiRetry-Ticket.
 
 ## Danach (Reihenfolge offen)
 
