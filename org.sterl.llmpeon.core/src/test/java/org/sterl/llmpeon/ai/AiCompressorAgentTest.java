@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
@@ -15,6 +16,7 @@ import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.tool.ToolService;
+import org.sterl.llmpeon.tool.model.SimpleMessage;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -82,15 +84,35 @@ class AiCompressorAgentTest {
                 .build());
         var config = LlmConfig.builder().model("test").build();
         var subject = new AiCompressorAgent(new ConfiguredChatModel(config, cm));
+        var monitor = new CapturingMonitor();
 
-        // WHEN
-        subject.call(List.of(UserMessage.from("Foo"), AiMessage.from("Bar")), AiMonitor.NULL_MONITOR);
+        // WHEN — three messages, the last a duplicate of the first
+        subject.call(List.of(UserMessage.from("Foo"), AiMessage.from("Bar"), UserMessage.from("Foo")), monitor);
 
         // THEN — the request carries the COMPRESS_SYSTEM system message from compressor.txt
         assertThat(streamMock.getLastRequest()).isNotNull();
         var system = streamMock.getLast(SystemMessage.class).orElseThrow();
         assertThat(system.text()).isNotBlank();
         assertThat(system.text()).contains("WHAT:");
+
+        // AND — the compact UserMessage reaching the LLM carries every distinct message,
+        // the duplicate only once
+        var compacted = streamMock.getLast(UserMessage.class).orElseThrow();
+        assertThat(compacted.singleText()).isNotBlank();
+        assertThat(compacted.singleText()).contains("Foo").contains("Bar");
+        assertThat(count(compacted.singleText(), "Foo")).isEqualTo(1);
+
+        // AND — the monitor (chat view) sees the same non-empty request and the response
+        // as a single AI message
+        assertThat(monitor.chatRequests).hasSize(1);
+        var monitorUser = monitor.chatRequests.getFirst().messages().stream()
+                .filter(UserMessage.class::isInstance).map(UserMessage.class::cast).toList();
+        assertThat(monitorUser).hasSize(1);
+        assertThat(monitorUser.getFirst().singleText()).isNotBlank();
+        assertThat(monitor.responses).anySatisfy(m -> {
+            assertThat(m.role()).isEqualTo(SimpleMessage.Type.AI);
+            assertThat(m.message()).isEqualTo("WHAT: Test summary");
+        });
     }
 
     @Test
@@ -113,5 +135,31 @@ class AiCompressorAgentTest {
         assertThatThrownBy(() -> subject.call(messages, AiMonitor.NULL_MONITOR))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("AI call returned null");
+    }
+
+    /** Monitor capturing what the chat view would see: the LLM request and the response messages. */
+    static final class CapturingMonitor implements AiMonitor {
+        final List<ChatRequest> chatRequests = new ArrayList<>();
+        final List<SimpleMessage> responses = new ArrayList<>();
+
+        @Override
+        public void onChatResponse(SimpleMessage message) {
+            responses.add(message);
+        }
+
+        @Override
+        public void onChatMessage(int iteration, ChatRequest.Builder request) {
+            chatRequests.add(request.build());
+        }
+    }
+
+    private static int count(String haystack, String needle) {
+        int count = 0;
+        int index = 0;
+        while ((index = haystack.indexOf(needle, index)) >= 0) {
+            count++;
+            index += needle.length();
+        }
+        return count;
     }
 }

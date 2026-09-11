@@ -37,7 +37,7 @@ public class AiCompressorAgent {
         for (var m : messages) {
             var txt = toText(m);
             // avoid any duplications in the compact message
-            if (msg.indexOf(txt) >= 0) {
+            if (msg.indexOf(txt) < 0) {
                 msg.append(txt).append(System.lineSeparator()).append(System.lineSeparator());
             }
         }
