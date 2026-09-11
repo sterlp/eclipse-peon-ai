@@ -11,6 +11,7 @@ import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.WriteValidator;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
 public interface AiAgent {
@@ -21,6 +22,10 @@ public interface AiAgent {
     ChatResponse call(String message, AiMonitor monitor);
     @Nullable
     ChatResponse compact(AiMonitor monitor);
+
+    /** Rebuild the static (system) messages. Non-default: an empty default would silently
+     *  produce a blank system prompt — a false-negative bomb. */
+    List<ChatMessage> buildStaticMessages(AiMonitor monitor);
 
     ThreadSafeMemory getMemory();
     

@@ -1,3 +1,76 @@
+## Stale System-Message im Compact-Turn (SOLL 2026-09-11, R-ST4) — ❌ specified
+
+Auslöser: User-Smoke-Test 1 („rufe das compact tool auf") — nach dem Compact lief der Turn
+weiter und der Compact-Briefing wurde verständlich fortgesetzt. User-Erkenntnis: „nach dem
+compact tool läuft wieder das LLM, der turn ist noch nicht beendet. Die System message wird erst
+neu gebaut, nachdem ich eine Nachricht sende."
+
+**IST (code-verifiziert, 2026-09-11):**
+* Die SystemMessage ist **nicht** in der Memory — sie reist pro Request in `req.staticMessages`,
+  gebaut **einmal am Turn-Start** in `doCall` → `buildStaticMessages` → `buildSystemPrompt`
+  (AbstractAgent.java:250/330/338–355, Cache-Feld `systemMessage`, „Build only once").
+* `compact()` nullt nur das Feld (:278). Im laufenden Tool-Loop (`ToolService.executeLoop:127–137`)
+  wird jede Iteration mit **derselben frozen** `req.staticMessages`-Liste gebaut — es gibt **keinen**
+  System-Refresh im Loop, nicht im Tool, nicht in compact().
+* Konsequenz: Nach In-Loop-Compact geht der Rest des Turns mit dem **alten, pre-compact
+  System-Prompt** raus (inkl. altem Datum/Env). Der Rebuild (neues Datum/Env) kommt erst beim
+  **nächsten `doCall`** — also mit der nächsten User-Nachricht.
+
+**Bewertung: funktionale Korrektheit OK, KV-Cache-Betrachtung offen:**
+* Der Post-Compact-Rest-Turn ist mit kleinem Memory + altem Prompt kurz — funktional harmlos.
+* Der **nächste User-Turn** sendet: neuer System-Prompt + kompakte Memory. KV-Cache-Frage
+  (User-Hypothese): Der Prompt-Prefix ändert sich **immer** beim Compact (Memory von „groß, alt"
+  → „Resume-UserMessage + Summary" + neuer System-Prompt davor) — **unabhängig vom Datumswechsel**
+  flushed der Prefix-Cache bei jedem Compact ohnehin, weil System-Prompt + Memory vor dem Rest
+  der History stehen. Ein Datumswechsel ändert nur zusätzlich die gerenderten Static-Context-Zeilen
+  (Env/Datum im Prompt-Body). Verifizieren: Refresh der System-Message direkt nach In-Loop-Compact
+  (im executeLoop-Zweig `ranTool(CompactSessionTool.NAME)`) — Aufwand klein, aber Änderung im
+  Loop-Request-Path → erst bewerten.
+
+**Entscheidung (User 2026-09-11): Fix bauen — R-ST4 „System-Message-Rebuild nach In-Loop-Compact" — ❌ specified**
+(Da-Thinka-Bewertung: Status quo hat einen echten Divergenz-Fall — Jons Static-Context enthält die
+Plan-Datei; Rest-Turn arbeitet nach Compact mit dem alten Plan-Snapshot, den der Sub-Agent gerade
+geändert hat. `compact()`-Invariante „force rebuild" wird vom Loop bis Turn-Ende ignoriert.
+Turn-Ende erzwingen abgelehnt — bricht den Resume-Flow.)
+
+* `ToolService.executeLoop` Compact-Zweig: nach `reevaluateTokens` die staticMessages neu bauen —
+  `req.staticMessages(req.getAgent().buildStaticMessages(req.getMonitor()))`, Guard `getAgent() != null`
+  (bare-builder-Tests ohne Agent: altes Verhalten).
+* `buildStaticMessages` wird **non-default** Methode am `AiAgent`-Interface (KEIN silent-empty-
+  Default — leere System-Messages = False-Negative-Bombe); `AbstractAgent` override't. Compile-Fix
+  (1 Stub-Zeile) in den 2 anonymen `new AiAgent(){}`-Impls (CompactSessionToolTest, HeaderBarWidget)
+  gehört ins selbe Inkrement.
+* executeLoop liest `req.staticMessages` **jede Iteration frisch** aus dem Feld — Setter greift ab
+  Iteration 2. Kein weiterer Mechanismus.
+* Bewusst UNVERÄNDERT: Button-Pfad `doCompressContext` (ruft compact() direkt ohne Loop — Rebuild
+  beim nächsten doCall wie heute) · Pre-Turn-Auto-Compact (läuft vor buildStaticMessages — schon
+  frisch) · Compact-No-Op (memory < 2 returnt vor dem Nullen → Cache bleibt → Rebuild liefert
+  Cache → No-Op).
+* KV-Cache: ein Flush statt zwei (Rest-Turn-Prefix wird mit dem nächsten User-Turn geteilt).
+  Bonus: Rebuild re-readet die Plan-Datei — Sub-Agent-Edits im Turn kommen an.
+
+### BDD (R-ST4)
+
+```
+GIVEN ein Agent mit staticContext, dessen render() sich pro Build ändert (Versions-Zähler)
+WHEN ein Turn läuft, in dem compactSession als Tool ausgeführt wird
+THEN die LLM-Iteration NACH dem Compact im selben Turn trägt einen neu gebauten System-Prompt
+     (neue Version, alte Version nicht mehr enthalten)
+
+GIVEN ein ToolLoopRequest ohne Agent (bare-builder-Test)
+WHEN compactSession im Loop lief
+THEN kein Refresh — kein NPE, altes Verhalten
+
+GIVEN compact() als No-Op (memory < 2)
+WHEN der Compact-Zweig läuft
+THEN die System-Message bleibt der gecachte Wert (kein sichtbarer Wechsel)
+```
+
+Test: `AiDeveloperAgentTest.test_inLoopCompact_systemMessageIsRebuilt` — staticContext als
+Versions-Zähler (`CTX-VERSION-n`), Mock-Model capture'd alle Requests, Assert Iteration-2-Prompt
+≠ Iteration-1-Prompt und enthält neue Version. Rot heute (frozen Liste, identischer Prompt).
+
+
 # Context Message Konzept — Typ-basiert, OCP
 
 **Status:** ✅ done · **Datum:** 2026-08-14

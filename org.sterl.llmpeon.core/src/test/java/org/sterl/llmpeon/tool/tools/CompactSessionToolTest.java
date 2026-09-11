@@ -3,6 +3,7 @@ package org.sterl.llmpeon.tool.tools;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -126,6 +127,8 @@ class CompactSessionToolTest {
             @Override public boolean isToolActive(SmartToolExecutor exec) { return true; }
             @Override public boolean isMcpToolActive(String toolName) { return true; }
             @Override public int tokenContextUsedInPercent() { return 0; }
+            // never called in this test context
+            @Override public List<ChatMessage> buildStaticMessages(AiMonitor monitor) { return List.of(); }
         };
 
         var toolRequest = ToolLoopRequest.builder()
@@ -191,6 +194,8 @@ class CompactSessionToolTest {
             @Override public boolean isToolActive(SmartToolExecutor exec) { return true; }
             @Override public boolean isMcpToolActive(String toolName) { return true; }
             @Override public int tokenContextUsedInPercent() { return 0; }
+            // never called in this test context
+            @Override public List<ChatMessage> buildStaticMessages(AiMonitor monitor) { return List.of(); }
         };
     }
 

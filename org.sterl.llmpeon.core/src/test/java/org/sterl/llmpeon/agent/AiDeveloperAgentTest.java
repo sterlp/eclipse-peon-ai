@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -201,6 +202,48 @@ public class AiDeveloperAgentTest {
         assertThat(subject.getMemory().containsUserMessage("CONTEXT LIMIT WARNING")).isFalse();
         // AND — the compressor ran exactly once (turn 1: request, compact, final; turn 2: final)
         verify(cm, times(4)).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+    }
+
+    @Test
+    void test_inLoopCompact_systemMessageIsRebuilt() {
+        // GIVEN — a ContextItem whose render() returns a version counter (SOLL R-ST4)
+        var version = new AtomicInteger(0);
+        subject.setStaticContext(List.of(() -> "CTX-VERSION-" + version.incrementAndGet()));
+        for (int i = 0; i < 5; i++) {
+            subject.addMessage(UserMessage.from("Foo " + i));
+            subject.addMessage(AiMessage.from("Bar " + i));
+        }
+        // Capture system texts from every ChatRequest (compressor call is in there too)
+        var systemTexts = new ArrayList<String>();
+        var first = new AtomicBoolean(true);
+        fn.set(req -> {
+            req.messages().stream()
+                    .filter(m -> m instanceof SystemMessage sm)
+                    .forEach(m -> systemTexts.add(((SystemMessage) m).text()));
+            if (first.getAndSet(false)) {
+                return ChatResponse.builder()
+                        .aiMessage(CALL_ME)
+                        .tokenUsage(new TokenUsage(9500, 100, 9600))
+                        .build();
+            }
+            return ChatResponse.builder().aiMessage(AiMessage.aiMessage("Okay thats good")).build();
+        });
+
+        // WHEN — the model compacts in-loop
+        subject.call("Foo", null);
+
+        // THEN — the LLM request AFTER the compact carries a NEW system prompt (R-ST4)
+        // Filter to only the main agent's system texts (compressor has its own prompt)
+        var agentSystemTexts = systemTexts.stream()
+                .filter(t -> t.contains("CTX-VERSION-"))
+                .collect(Collectors.toList());
+        assertThat(agentSystemTexts).hasSizeGreaterThanOrEqualTo(2);
+        var pre = agentSystemTexts.get(0);
+        var post = agentSystemTexts.get(agentSystemTexts.size() - 1);
+        var preVersion = pre.lines().filter(l -> l.startsWith("CTX-VERSION-")).findFirst().orElseThrow();
+        var postVersion = post.lines().filter(l -> l.startsWith("CTX-VERSION-")).findFirst().orElseThrow();
+        assertThat(postVersion).isNotEqualTo(preVersion);
+        assertThat(post).doesNotContain(preVersion);
     }
 
     @Test
