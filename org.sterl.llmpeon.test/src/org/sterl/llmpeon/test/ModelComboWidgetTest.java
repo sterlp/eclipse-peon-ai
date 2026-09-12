@@ -140,6 +140,28 @@ public class ModelComboWidgetTest extends AbstractSwtUiTest {
         assertEquals("FOO", ui(built.widget()::getModel));
     }
 
+    @Test
+    public void refreshFailureKeepsTypedModelVerbatim() {
+        // GIVEN a cached server list that does not contain the currently typed model
+        mockLlmServer.setModelIds(List.of("server-a"));
+        var built = ui(() -> newWidget("gpt-4o"));
+        ui(() -> { built.widget().fetchModels(); return null; });
+        waitUntil(() -> ui(() -> List.of(combo(built.parent()).getItems()).contains("server-a")), "initial fetch not applied");
+        ui(() -> { combo(built.parent()).setText("typed-x"); return null; });
+
+        // WHEN the server fails and the user presses Refresh (fallback to the cached list)
+        mockLlmServer.enableModelsError();
+        ui(() -> {
+            clickRefresh(built.parent());
+            return null;
+        });
+        waitUntil(() -> ui(() -> List.of(combo(built.parent()).getItems()).contains("typed-x")), "fallback list not applied");
+
+        // THEN the typed input stays verbatim (no canonicalization without a matching server entry)
+        assertArrayEquals(new String[] { "server-a", "typed-x" }, ui(() -> combo(built.parent()).getItems()));
+        assertEquals("typed-x", ui(built.widget()::getModel));
+    }
+
     // --- helpers ---
 
     /** The widget plus the 2-column parent grid it builds into. */
