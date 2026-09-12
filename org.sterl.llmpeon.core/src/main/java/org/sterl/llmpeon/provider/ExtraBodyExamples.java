@@ -20,12 +20,12 @@ public final class ExtraBodyExamples {
             "Sets prompt_cache_key for Azure GPT-5* prompt caching");
     public static final Example CLAUDE = new Example("Claude enable KV-Cache", "{\"cache_control\": {\"type\": \"ephemeral\"}}",
             "Sets cache_control for Claude prompt caching (gateway form)");
-    public static final Example LLAMA_CPP = new Example("llama.cpp - compact", """
+    public static final Example LLAMA_CPP = new Example("llama.cpp", """
             {
               "chat_template_kwargs": {
-                "enable_thinking": false
+                "enable_thinking": true
               },
-              "cache_prompt": false
+              "cache_prompt": true
             }
             """,
             "Disables thinking/reasoning in llama.cpp models");

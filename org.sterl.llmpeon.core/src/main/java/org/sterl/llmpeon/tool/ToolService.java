@@ -160,10 +160,11 @@ public class ToolService {
                 // re-derive the counter from the new (small) memory
                 if (ranTool(response, CompactSessionTool.NAME)) {
                     req.getMemory().reevaluateTokens();
-                    if (req.getAgent() != null)
-                        req.staticMessages(req.getAgent().buildStaticMessages(req.getMonitor()));
-                }
-                else addCompactHintIfNeeded(req, response, false);
+                    var agent = req.getAgent();
+                    if (agent != null) {
+                        req.staticMessages(agent.buildStaticMessages(req.getMonitor()));
+                    }
+                } else addCompactHintIfNeeded(req, response, false);
 
             } else if (hasResponseMessage) {
                 stuck = 0; // reset on productive response

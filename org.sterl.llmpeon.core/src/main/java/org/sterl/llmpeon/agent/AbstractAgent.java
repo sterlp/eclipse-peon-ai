@@ -268,7 +268,6 @@ public abstract class AbstractAgent implements AiAgent {
     }
 
     public ChatResponse compact(AiMonitor monitor) {
-        // macht keinen Sinn
         if (memory.size() < 2) return null;
 
         monitor = AiMonitor.nullSafety(monitor);
