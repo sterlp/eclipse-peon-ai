@@ -1,10 +1,10 @@
 package org.sterl.llmpeon.parts.config.widgets;
 
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.custom.CCombo;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
@@ -50,7 +50,7 @@ public class AgentModelConfigSection extends Composite {
 
     // exactly one of these is non-null, per thinkForm
     private Button thinkCheck;
-    private CCombo thinkCombo;
+    private Combo thinkCombo;
     private Text thinkText;
 
     public AgentModelConfigSection(Composite parent, String agentId, Supplier<LlmConfig> base) {
@@ -123,7 +123,7 @@ public class AgentModelConfigSection extends Composite {
             thinkCheck.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
         } else if (thinkForm instanceof ThinkSupport.Values v) {
             addLabel("Think:");
-            thinkCombo = new CCombo(this, SWT.BORDER);
+            thinkCombo = new Combo(this, SWT.BORDER);
             thinkCombo.setItems(ThinkValueSupport.valuesItems(v).toArray(String[]::new));
             thinkCombo.select(0);
             thinkCombo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));

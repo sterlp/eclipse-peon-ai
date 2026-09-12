@@ -276,9 +276,18 @@ Stale-Guard-Mutation lässt alle 5 Tests grün — Follow-up-Test offen.
 im Copilot-Plugin abschauen (alle Labels bündig, auch Extra Body) — Inspiration, kein Copy; nur
 anschauen, wenn die 2 einfachen Fixes drin sind.
 
-**R-A4 🚧 in design (2026-09-12, User-Sidequest):** das Think-Dropdown der Advanced-Page
-(`CCombo` in `AgentModelConfigSection.buildThink`, `ThinkSupport.Values`) hat dasselbe
-„alt"-Problem wie das Model-Dropdown vor R-A2 → native Combo. Offen vor SOLL: READ_ONLY (Werte
-sind provider-definiert) vs editierbar — und die Anzeige unbekannter gespeicherter Werte
-(`combo.setText(display)`-Fallback für nicht-listete Werte; mit nativem Combo READ_ONLY
-evtl. verboten). SOLL erst im eigenen Zyklus festlegen.
+**R-A4 ❌ specified (2026-09-12, User: „Think-Dropdown gleicher Style") — natives Combo (editierbar):**
+das Think-Feld für `ThinkSupport.Values` nutzt das **native SWT-Combo** (`SWT.BORDER`, editierbar —
+kein READ_ONLY) wie das Model-Combo (R-A2), an derselben Stelle im 2-Spalten-Grid: Label `Think:`
+mit `addLabel` (SWT.END) in der Label-Spalte, Combo FILL/CENTER in der Feld-Spalte. Boolean →
+weiter Checkbox, FreeString/Unknown → weiter Text-Feld. **Verhalten unverändert:** bekannter
+gespeicherter Wert wird selektiert, unbekannter erscheint verbatim (`setText`) — deshalb
+editierbar statt READ_ONLY (Provider-Werte sind Vorschläge, kein geschlossenes Set).
+
+- GIVEN die Advanced-Page rendert eine `AgentModelConfigSection` mit `ThinkSupport.Values`
+  WHEN die Widgets gebaut sind, THEN das Think-Feld ist ein natives `Combo` (kein `CCombo`)
+  in der Feld-Spalte, Label-Ausrichtung wie die Sibling-Labels
+- GIVEN ein gespeicherter Think-Wert, der nicht in der Provider-Liste steht
+  WHEN die Section lädt, THEN zeigt das Combo den Wert verbatim (Feld behält den Text)
+- GIVEN das Combo zeigt einen freien Text WHEN `getRecord()` THEN der Combo-Text wird
+  unverändert als Think-Wert übernommen

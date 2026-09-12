@@ -8,9 +8,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
-import java.util.function.Supplier;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridLayout;
@@ -19,64 +17,31 @@ import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
-import org.eclipse.swt.widgets.Shell;
 import org.junit.After;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.sterl.llmpeon.ai.ModelListCache;
 import org.sterl.llmpeon.parts.config.widgets.ModelComboWidget;
-import org.sterl.llmpeon.parts.shared.EclipseUtil;
 
 /**
- * Workbench-display test for the shared {@link ModelComboWidget} (first SWT-UI test of the
- * project): reuses the PDE workbench's {@link Display} (SWT supports only one display per
- * process) and performs all widget access on the UI thread via asyncExec. Skipped (Assume)
- * when no workbench display is available. The widget is a controller that builds its combo
- * and refresh button directly into the 2-column parent grid, so the helpers look them up in
- * the parent.
+ * Workbench-display test for the shared {@link ModelComboWidget}: the widget is a controller
+ * that builds its combo and refresh button directly into the 2-column parent grid, so the
+ * helpers look them up in the parent. Display/Shell lifecycle, the Assume-skip and
+ * UI-thread access come from {@link AbstractSwtUiTest}.
  */
-public class ModelComboWidgetTest extends AbstractUnitTest {
+public class ModelComboWidgetTest extends AbstractSwtUiTest {
 
     private static final long WAIT_TIMEOUT_MS = 5_000;
     private static final long SETTLE_MS = 2_000;
 
-    private Display display;
-    private Shell shell;
-
     @Before
-    public void setUpDisplay() {
+    public void setUp() {
         ModelListCache.instance().clear();
-        try {
-            ui(() -> {
-                display = Display.getDefault();
-                shell = new Shell(display);
-                return null;
-            });
-        } catch (AssertionError e) {
-            Assume.assumeNoException("no workbench display available — SWT test skipped", e.getCause());
-        }
-        if (display == null || shell == null) {
-            Assume.assumeNoException("no workbench display available — SWT test skipped",
-                    new IllegalStateException("Display.getDefault() returned null"));
-        }
     }
 
     @After
-    public void tearDownDisplay() {
+    public void tearDown() {
         ModelListCache.instance().clear();
-        if (shell != null && !shell.isDisposed()) {
-            try {
-                ui(() -> {
-                    shell.dispose();
-                    return null;
-                });
-            } catch (AssertionError ignored) {
-                // display already gone — nothing to dispose
-            }
-        }
-        shell = null;
-        // never dispose the workbench's display
     }
 
     @Test
@@ -177,18 +142,6 @@ public class ModelComboWidgetTest extends AbstractUnitTest {
 
     // --- helpers ---
 
-    /** Runs the given code on the workbench UI thread and returns its result (or throws). */
-    private <T> T ui(Supplier<T> fn) {
-        try {
-            return EclipseUtil.runInUiThread(fn).get(10, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new AssertionError("interrupted waiting for UI thread", e);
-        } catch (Exception e) {
-            throw new AssertionError("UI thread call failed", e);
-        }
-    }
-
     /** The widget plus the 2-column parent grid it builds into. */
     private record BuiltWidget(Composite parent, ModelComboWidget widget) {}
 
@@ -243,14 +196,5 @@ public class ModelComboWidgetTest extends AbstractUnitTest {
             sleep(50);
         }
         fail(timeoutMessage + " (after " + WAIT_TIMEOUT_MS + "ms)");
-    }
-
-    private static void sleep(long ms) {
-        try {
-            Thread.sleep(ms);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new AssertionError("interrupted", e);
-        }
     }
 }
