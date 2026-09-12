@@ -9,7 +9,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.IdentityHashMap;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -84,30 +85,36 @@ public class AgentOrder {
     /**
      * Sorts the given agents by the loaded patterns (or {@link #DEFAULT_PATTERNS} when none were loaded), grouped by pattern in file order,
      * alphabetical within each group, unmatched agents appended alphabetically.
+     * <p>
+     * Each agent name appears at most once (R4): two distinct instances sharing a name collapse into one dropdown entry — the first wins,
+     * the collision is surfaced via a warning, never dropped silently.
      */
     public List<AiAgent> sort(Collection<AiAgent> agents) {
         List<Pattern> effectivePatterns = patterns.isEmpty() ? DEFAULT_PATTERNS : patterns;
 
-        // Name collision is orthogonal to patterns: two distinct instances may share a name —
-        // both are kept, the collision is only surfaced (R4).
+        // Name-keyed dedup (R4): the dropdown is name-based, so two distinct instances sharing a name
+        // collapse into one entry — the first wins, the collision is surfaced, never silent.
         agents.stream().collect(groupingBy(AiAgent::getName, counting()))
                 .forEach((name, count) -> {
                     if (count > 1) {
-                        log.warn("Agent name collision: {} agents share name '{}' — all kept", count, name);
+                        log.warn("Agent name collision: {} agents share name '{}' — first one kept, others dropped", count, name);
                     }
                 });
 
-        List<AiAgent> sortedAgents = agents.stream().sorted(Comparator.comparing(AiAgent::getName)).toList();
+        Set<String> seenNames = new HashSet<>();
+        List<AiAgent> uniqueAgents = agents.stream().filter(agent -> seenNames.add(agent.getName())).toList();
 
-        // Identity-based first match: an agent matched by a later pattern line keeps the group
+        List<AiAgent> sortedAgents = uniqueAgents.stream().sorted(Comparator.comparing(AiAgent::getName)).toList();
+
+        // Name-keyed first match: an agent matched by a later pattern line keeps the group
         // of the first line (R2) and the later match is warned, never silently dropped.
-        Map<AiAgent, Integer> firstMatchLine = new IdentityHashMap<>();
+        Map<String, Integer> firstMatchLine = new HashMap<>();
         Stream<AiAgent> matchingAgents = IntStream.range(0, effectivePatterns.size())
                 .mapToObj(Integer::valueOf)
                 .flatMap(lineIdx -> sortedAgents.stream()
                         .filter(agent -> effectivePatterns.get(lineIdx).matcher(agent.getName()).matches())
                         .filter(agent -> {
-                            Integer claimedBy = firstMatchLine.putIfAbsent(agent, lineIdx);
+                            Integer claimedBy = firstMatchLine.putIfAbsent(agent.getName(), lineIdx);
                             if (claimedBy != null) {
                                 log.warn("Agent '{}' matched by line {} (already claimed by line {}) — keeping first",
                                         agent.getName(), lineIdx + 1, claimedBy + 1);
@@ -116,8 +123,8 @@ public class AgentOrder {
                             return true;
                         }));
 
-        Set<AiAgent> seen = firstMatchLine.keySet();
-        Stream<AiAgent> remainingAgents = sortedAgents.stream().filter(agent -> !seen.contains(agent));
+        Set<String> matchedNames = firstMatchLine.keySet();
+        Stream<AiAgent> remainingAgents = sortedAgents.stream().filter(agent -> !matchedNames.contains(agent.getName()));
 
         return Stream.concat(matchingAgents, remainingAgents).toList();
     }

@@ -32,9 +32,18 @@ User-Entscheidung) → `8b2431e` (Inc-1) → `b7f67e0` (Inc-2) → `44b1846` (In
 3. Retro kurz: keine neuen memory*-Tools nötig (dead-guard Lesson lebt in AGENTS.md, Test-honesty
    in AGENTS-DEV).
 
-## Offene User-Handlungen
-- **NEU:** (a) main-Merge des Branches (Compressor-Fix reist mit); (b) OSGi-Smoke
-  PeonAiServiceTest-Fix (Workspace-Trust); (c) bestehende Smoke-Liste vom Vormittags-Stand.
-- ⏳ AgentOrder identity-keyed Annahme (open-points.md) — User bestätigen lassen.
-- ❓ (weiterhin offen, open-points): Glossar-Themen ✅ gelöst (Vormittag), ApiRetry-Evidence,
-  Live-Status im Retry-Fenster, Shell-Tool für Plan/Review, Jackson 2→3, buildWithDev-compact.
+## Offene User-Handlungen (Stand 2026-09-12)
+- (a) main-Merge des Branches `core-cleanup-2026-09-11` (Compressor-Fix reist mit) — User.
+- **AgentOrder R4 (🔒 2026-09-12):** User-Entscheid — name-keyed, jeder Agent einmal im Dropdown,
+  Drop nur mit warn. Umsetzung offen (❌ in agent-ordering.md).
+- **Smoke-Verdicts 2026-09-12:** OSGi-Fixture-Smoke ✅ grün · MCP live ✅ · Stop ✅ ·
+  Compact-Button ✅ (Stop-idle-Verdacht damit **entkräftet**) · R-ST4: System-Prompt genau 1× im
+  Request (Rebuild = Replace, User bestätigt über Jon-History) · **R-ML1a → kein Bug**: Refresh
+  nutzt gespeicherten Stand, erst Apply (R-ML2 ✅ dokumentiert in model-loading.md + HP +
+  configuration.md).
+- ❓ User kommt zurück auf: `Loading 📋 Static env info` nach Such-Agent (Hypothese: frischer
+  Stateless-Agent bäkt eigenen Static bei Turn-Start, `AbstractAgent.java:350` — kein Reload des
+  Eltern-Agenten).
+- ❓ weiter offen (open-points.md): ApiRetry-Evidence, Live-Status im Retry-Fenster, Shell-Tool für
+  Plan/Review, Jackson 2→3, buildWithDev-compact.
+- Homepage-Release-Notes prüfen (User) — offen.

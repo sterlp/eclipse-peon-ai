@@ -178,20 +178,25 @@ class AgentOrderTest extends AbstractMemoryFileTest {
     }
 
     /**
-     * Bug proof: the name-keyed seen-set collapsed two distinct same-name agents into one, silently
-     * dropping the second from the UI dropdown (false negative) — fixed via identity-based seen-set, inc-1 8b2431e.
+     * R4 (docs/agent-ordering.md, User-SOLL 2026-09-12): two distinct agent instances with the same
+     * name yield exactly ONE dropdown entry — the first wins, the collision is surfaced via warn.
      */
     @Test
-    void bug_sortSilentlyDropsAgentsWithDuplicateNames() throws Exception {
+    void sortDropsDuplicateNamedAgentsWithWarning() throws Exception {
         // GIVEN — a catch-all pattern and two distinct agent instances with the same name
         AgentOrder subject = loadedWith(".*");
-        List<AiAgent> agents = List.of(agent("Dup"), agent("Dup"));
+        AiAgent first = agent("Dup");
+        AiAgent second = agent("Dup");
 
         // WHEN
-        List<AiAgent> sorted = subject.sort(agents);
-
-        // THEN — sort must not drop agents
-        assertThat(sorted).hasSize(2);
+        List<AiAgent> sorted;
+        try (var capture = captureAgentOrderLogs()) {
+            sorted = subject.sort(List.of(first, second));
+            // THEN — one dropdown entry, the first instance wins, the collision is warned
+            assertThat(sorted).hasSize(1);
+            assertThat(sorted.get(0)).isSameAs(first);
+            assertThat(capture.warns()).anyMatch(w -> w.contains("Dup") && w.contains("2"));
+        }
     }
 
     @Test
@@ -223,8 +228,8 @@ class AgentOrderTest extends AbstractMemoryFileTest {
     }
 
     /**
-     * R4 (docs/agent-ordering.md): two distinct agent instances sharing a name are both kept and
-     * the collision is surfaced via log.warn — not a silent drop.
+     * R4 (docs/agent-ordering.md): two distinct agent instances sharing a name collapse into one
+     * dropdown entry and the collision is surfaced via log.warn — not a silent drop.
      */
     @Test
     void sortWarnsWhenTwoDistinctAgentsShareAName() throws Exception {
@@ -235,8 +240,8 @@ class AgentOrderTest extends AbstractMemoryFileTest {
         List<AiAgent> sorted;
         try (var capture = captureAgentOrderLogs()) {
             sorted = subject.sort(List.of(agent("Dup"), agent("Dup")));
-            // THEN — both instances are kept AND the warn names the collision
-            assertThat(sorted).hasSize(2);
+            // THEN — one entry AND the warn names the collision
+            assertThat(sorted).hasSize(1);
             assertThat(capture.warns())
                     .anyMatch(w -> w.contains("Dup") && w.contains("2"));
         }

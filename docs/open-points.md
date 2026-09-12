@@ -1,18 +1,6 @@
 # Open Points
 
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
-## ⏳ AgentOrder Namens-Kollision: beide Agenten bleiben (identity-keyed) + warn (2026-09-11, autonom)
-
-**Annahme:** R4 („kein Verhaltens-Change") bezieht sich auf die **Pattern-Ebene** (R2 first-wins,
-ein Agent erscheint einmal) — nicht auf das stille Drop von zwei *verschiedenen* Agent-Instanzen
-mit gleichem Namen. Abgeleitet aus: committedem rotem Test `bug_sortSilentlyDropsAgentsWithDuplicateNames`
-(assertiert `hasSize(2)`) + AGENTS-False-Negative-Prinzip (Agent verschwindet stumm aus dem Dropdown).
-**Umsetzung:** seen-Set identitätsbasiert (`Agent` → erste Pattern-Zeile) + `log.warn` je Fall
-(Multi-Pattern-Match; Namens-Kollision). SOLL in [agent-ordering.md](agent-ordering.md) R4.
-**Falls User anders entscheidet** (name-keyed-Drop bleibt, nur warn): seen-Set zurück auf
-name-keyed, roter Test umschreiben (hasSize(1) + warn), R4-BDD anpassen.
-Geklärte Punkte ohne Feature-Doc: [resolved-points.md](resolved-points.md).
-
 ## ❓ ApiRetry: Cancellation-Evidenz-Sammlung (Priorität: hoch, 3. Evidence 2026-09-11)
 
 **Befund-Klassen (alle derselbe Shape: Call bricht, statt dass ApiRetry sichtbar retryt):**
