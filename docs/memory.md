@@ -1,49 +1,34 @@
-# Session-Stand (2026-09-11 Abend — core-cleanup-2026-09-11 @ `f85156a`, gebaut + Review bestanden)
+# Session-Stand (2026-09-12 — UI-Cycle R-A1/R-A2 läuft)
 
-## Zyklus core-cleanup-2026-09-11 — STATUS: ✅ Review bestanden (Da Dok CONCERNS→behoben), Archivierung läuft
+## Zyklus ui-config — STATUS: Plan ✅ abgenommen (inkl. Delta), BUILD als Nächstes
 
-Branch-Chain: `299c26b` (5 rote Tests) → `0224066`/`85de46d` (Docs) → `9adcab6` (Merge
-compressor-Fix aus `fix/compressor-empty-compact-input` — **main hat den Fix NICHT**, Merge main =
-User-Entscheidung) → `8b2431e` (Inc-1) → `b7f67e0` (Inc-2) → `44b1846` (Inc-3) → `e214997`
-(Javadoc-Refresh) → `f85156a` (Traversal-Guard-Fix SOLL-4 + ADR-0046).
+Branch `core-cleanup-2026-09-11` @ `d408fc6`. **Vor Inc-1 committet Da Mek separat die User-Work**
+(ExtraBodyExamples llama.cpp-Beispiel, AbstractAgent/PoDelegateTool uiName-Fallback, ToolService
+Reformat — User 2026-09-12, bewusst): der User repariert die PO-Tool-Meldungen — der Name des
+Sub-Agents fehlte in den Tool-Meldungen („Context: N token - X% used (…)" ohne Namensbezug).
+Docs R-A (advanced-configuration.md R-A1/R-A2/R-A3
++ model-loading.md R-ML3) vom PO auf **reines SOLL** umgeschrieben (User-Direktive 2026-09-12:
+keine implementierten Bug-/„war:"-Narrativen in Docs — der Plan trägt den Diff SOLL/IST).
+Uncommitted, reiten im **Inc-1-Commit** (Da Mek committet sie mit, ohne sie zu editieren) —
+zusammen mit memory.md + open-points.md (PO-Entscheid, Session-Docs).
 
-- **Inc-1 ✅** 5 Bug-Fixes + 2 neue R4-Warn-Tests (Core Surefire **727/0**): StreamingBridge
-  `compareAndSet` (Cancel gewinnt); SkillPromptFile skill-qualifizierter Pfad + parentless-IAE;
-  ToolService agent-null-Guard; AgentOrder `IdentityHashMap` (pattern first-wins → 1×, Namens-
-  Kollision → beide + je `log.warn`).
-- **Inc-2 ✅** Moves Plugin→core: SimpleDiff, WorkspaceGuideline, ThinkValueSupport,
-  AiAgentStatusModel — core import-rein (0 `org.eclipse`), JUnit5+AssertJ für die 2 mit Tests;
-  SimpleDiff/WorkspaceGuideline testlos = Altschuld (ADR-0046, kein Scope-Teil).
-- **Inc-3 ✅** `deleteOwnSkillArtifacts`-Helper (0 `.getParent()`-Deletes); OSGi-Run = User-Smoke,
-  offen.
-- **Da Dok:** CONCERNS — (1) Traversal-Guard war tot (`makeReltive` strippte `../` vor dem Guard,
-  False-Negative-Klasse) → Option-B-Fix `f85156a`: Guard sieht Roh-Pfad (führendes `/` = relativ,
-  makeReltive-Kontrakt), alter `:103`-Guard entfernt (verifiziert dead), Test
-  `readRelativeFileRejectsPathTraversal`, valid red-proof. (2) Mutations-Nachweis StreamingBridge
-  (`compareAndSet`→`set` = rot) ✅. (3) Skill-Evolution: **No change** (Evidence im Review).
-- **Docs:** ADR-0046 core-portability-review (Nordstern: Composition-Root-Gap, B-Moves AskUserTool/
-  WorkspaceMemoryTool, UiCommand BEHALTEN, Gaps) + index ✅ · R4 in agent-ordering.md ✅ geflippt ·
-  project-skills.md Skill-Lesepfad-BDDs ergänzt · glossary/resolved vom Vormittag drin.
-
-## Nächste Schritte
-1. `planImplemented` (Da Mek, Archiv + finaler Commit inkl. Docs) — direkt als Nächstes.
-2. Final-Report an User: gebaut ✅, Skill-Evolution No-change, ⏳-Bestätigungen (AgentOrder
-   identity-keyed), main-Merge = User, User-Smokes (OSGi + bestehende Liste).
-3. Retro kurz: keine neuen memory*-Tools nötig (dead-guard Lesson lebt in AGENTS.md, Test-honesty
-   in AGENTS-DEV).
-
-## Offene User-Handlungen (Stand 2026-09-12)
-- (a) main-Merge des Branches `core-cleanup-2026-09-11` (Compressor-Fix reist mit) — User.
-- **AgentOrder R4 (🔒 2026-09-12):** User-Entscheid — name-keyed, jeder Agent einmal im Dropdown,
-  Drop nur mit warn. Umsetzung offen (❌ in agent-ordering.md).
-- **Smoke-Verdicts 2026-09-12:** OSGi-Fixture-Smoke ✅ grün · MCP live ✅ · Stop ✅ ·
-  Compact-Button ✅ (Stop-idle-Verdacht damit **entkräftet**) · R-ST4: System-Prompt genau 1× im
-  Request (Rebuild = Replace, User bestätigt über Jon-History) · **R-ML1a → kein Bug**: Refresh
-  nutzt gespeicherten Stand, erst Apply (R-ML2 ✅ dokumentiert in model-loading.md + HP +
-  configuration.md).
-- ❓ User kommt zurück auf: `Loading 📋 Static env info` nach Such-Agent (Hypothese: frischer
-  Stateless-Agent bäkt eigenen Static bei Turn-Start, `AbstractAgent.java:350` — kein Reload des
-  Eltern-Agenten).
-- ❓ weiter offen (open-points.md): ApiRetry-Evidence, Live-Status im Retry-Fenster, Shell-Tool für
-  Plan/Review, Jackson 2→3, buildWithDev-compact.
-- Homepage-Release-Notes prüfen (User) — offen.
+- **Plan** (`peon-plan/overview.md`, nach Delta): Inc-1 = R-A1 Spacing (2× `marginBottom=0` +
+  `examplesLabel` hidden bis Paste; User-Smoke, kein Test). Inc-2 = R-A2: `ModelComboWidget` wird
+  **Controller statt Composite** — Combo col2 im Parent-Grid, Refresh-Button span2/LEFT (wie
+  `buildCheckUrl`), „Model:"-Label je Caller (Advanced `addLabel` END / Basic raw Label SWT.LEFT,
+  JFace-verifiziert, VOR Konstruktion), `EclipseUtil.runInUiThread(Composite→Widget)` signatur-
+  verbreitert (22 Call-Sites source-kompatibel), Stale-Guard-Anker `this`→`modelCombo`, API +
+  Verhalten unverändert (R-ML* + ADR-0040). Tests: 4 Szenarien unverändert, Helfer suchen im
+  Parent-Grid, + READ_ONLY-Assertion. Kein Core-Change; Homepage-Wording verifiziert wahr.
+- **Abnahme-Korrektur (PO):** alter Plan-Claim „Widget-Grid 3→2 Spalten = Label-Spalte der
+  Parent-Page" war falsch (verschachtelte GridLayouts teilen keine Spaltenbreiten) → Delta über
+  planWithPlanAgent, Abnahme erteilt.
+- **Nach Build:** IST-Verifikation je Deliverable (Plan §9, memory #28) → `reviewPlanAgent`
+  (Da Dok, 3 Seiten; Docs: advanced-configuration.md R-A1/R-A2 + model-loading.md R-ML3) →
+  Status-Flips ❌→✅ (PO-only) → `planImplemented` (Da Mek).
+- **Flags (Plan §10):** dropdown-ui-comparison.md wird stale (Update gehört zu R-A3);
+  AGENTS-DEV.md zitiert `ModelComboWidget:122` → Zeile von PO nach Inc-2 aktualisieren.
+- **Danach (User):** R-A3 Copilot-Studie separat; User-Smokes (R-A1 Abstand, R-A2 Look beider
+  Pages).
+- ⏳ in open-points.md: R-A2 SOLL-Präzisierung (Sibling-Ausrichtung statt literal „links")
+  im Smoke bestätigen lassen; Docs-SOLL-Hygiene-Sweep (Rest der Feature-Docs) — Scope-Confirm.

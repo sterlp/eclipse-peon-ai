@@ -89,3 +89,14 @@ Bei Bedarf: LRU mit Obergrenze (z. B. 500). Rückversicherung mit User steht aus
 - Scrollverhalten Advanced Config wirkt komisch.
 - Dropdown-Umbau descoped (2026-09-03), Klassen gelöscht (`a1d8d35`, Git-Historie) —
   Wiederaufnahme = eigene Story.
+
+- **⏳ 2026-09-12 — R-A2 SOLL-Präzisierung:** „Labels bündig links" konkretisiert als „exakt wie
+  die übrigen Label/Feld-Paare derselben Page" (Label in der Page-Label-Spalte mit
+  Sibling-Ausrichtung: Basic = LEFT/JFace, Advanced = END/addLabel). Abgeleitet aus der
+  User-Beschwerde („Model-Label rechts aligned wo die anderen links sind"); Bestätigung im
+  User-Smoke nach Inc-2. Will der User LEFT auf BEIDEN Pages → R-A3 (Label-Gestaltung).
+- **⏳ 2026-09-12 — Docs-SOLL-Hygiene-Sweep:** User-Direktive: Docs = reines SOLL, keine
+  implementierten Bug-/„war:"-Narrativen (der Plan trägt den Diff SOLL/IST). Umgesetzt für
+  advanced-configuration.md + model-loading.md (UI-Zyklus). Offen: Sweep über die übrigen
+  Feature-Docs (weitere „war:"-Blöcke, alte IST-Abschnitte) — als eigener Aufwasch, Scope vom
+  User bestätigen lassen.

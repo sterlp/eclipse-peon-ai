@@ -60,7 +60,9 @@ public class AgentModelConfigSection extends Composite {
         var provider = LlmProviders.of(base.get().getProviderType());
         this.thinkForm = provider.thinkSupport();
         setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, true, false));
-        setLayout(new GridLayout(2, false));
+        var sectionLayout = new GridLayout(2, false);
+        sectionLayout.marginBottom = 0;
+        setLayout(sectionLayout);
         this.urlText = addLabeledText("URL (empty = inherit base):");
         this.keyText = addLabeledText("API Key (empty = inherit base):");
         this.modelWidget = new ModelComboWidget(this, agentId, this::prepareFetch);
@@ -167,12 +169,17 @@ public class AgentModelConfigSection extends Composite {
         examplesLabel = new Label(this, SWT.NONE);
         var labelGd = new GridData(SWT.FILL, SWT.CENTER, true, false);
         labelGd.horizontalSpan = 2;
+        labelGd.exclude = true; // no extra space until a paste happened (GridLayout only filters GridData.exclude)
         examplesLabel.setLayoutData(labelGd);
+        examplesLabel.setVisible(false);
     }
 
     private void pasteExample(ExtraBodyExamples.Example example) {
         jsonText.setText(example.json());
         examplesLabel.setText(example.name() + " example inserted.");
+        ((GridData) examplesLabel.getLayoutData()).exclude = false;
+        examplesLabel.setVisible(true);
+        layout();
     }
 
     private Text addLabeledText(String label) {
