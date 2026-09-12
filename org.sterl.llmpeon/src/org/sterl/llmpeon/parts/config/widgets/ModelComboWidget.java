@@ -7,12 +7,10 @@ import java.util.function.Supplier;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.custom.CCombo;
 import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Label;
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConnectionIdentity;
 import org.sterl.llmpeon.ai.LlmConfig;
@@ -23,43 +21,45 @@ import org.sterl.llmpeon.provider.LlmProviders;
 import org.sterl.llmpeon.shared.StringUtil;
 
 /**
- * Model dropdown (editable CCombo) + Refresh button, shared by the basic config page and the
- * per-agent sections of the advanced config page.
+ * Model dropdown (native editable {@link Combo}) + Refresh button, shared by the basic config
+ * page and the per-agent sections of the advanced config page.
  *
  * <p>The combo is filled from the provider's model list, cached per {@link ConnectionIdentity}
  * in {@link ModelListCache}: fetched once when the page opens (or on the refresh button), never
  * while typing. A failed or empty list falls back to the configured model only — no
  * auto-switch. The widget owns the whole fetch/apply lifecycle; the caller only supplies a
  * {@link FetchSnapshot} provider (UI-thread) that reflects the current connection settings.</p>
+ *
+ * <p>This is a plain controller (no SWT parent of its own): it creates the combo and the
+ * refresh button directly in the given 2-column parent grid, so the combo sits in the same
+ * field column as the sibling fields. <b>Constructor contract:</b> the caller creates the
+ * "Model:" label in the parent grid <b>before</b> constructing this widget — otherwise the
+ * combo lands in the label column.</p>
  */
-public class ModelComboWidget extends Composite {
+public class ModelComboWidget {
 
     private final String jobName;
     private final Supplier<FetchSnapshot> snapshotProvider;
-    private final CCombo modelCombo;
+    private final Combo modelCombo;
 
     /**
-     * @param parent           the 2-column grid the widget spans (basic page or agent section)
+     * @param parent           the 2-column grid to build into (basic page or agent section);
+     *                         the caller's "Model:" label must already occupy its label cell
      * @param jobName          used in the background Job names (e.g. the agent id or "base")
      * @param snapshotProvider UI-thread supplier of the effective connection for the current
      *                         settings — read when a fetch starts and for the stale-guard
      */
     public ModelComboWidget(Composite parent, String jobName, Supplier<FetchSnapshot> snapshotProvider) {
-        super(parent, SWT.NONE);
         this.jobName = jobName;
         this.snapshotProvider = snapshotProvider;
-        var gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
-        gd.horizontalSpan = 2;
-        setLayoutData(gd);
-        setLayout(new GridLayout(3, false));
-        var label = new Label(this, SWT.NONE);
-        label.setText("Model:");
-        label.setLayoutData(new GridData(SWT.END, SWT.CENTER, false, false));
-        modelCombo = new CCombo(this, SWT.BORDER);
+        modelCombo = new Combo(parent, SWT.BORDER);
         modelCombo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-        var refresh = new Button(this, SWT.PUSH);
+        var refresh = new Button(parent, SWT.PUSH);
         refresh.setText("Refresh");
         refresh.setToolTipText("Reload the model list for this connection");
+        var refreshGd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
+        refreshGd.horizontalSpan = 2;
+        refresh.setLayoutData(refreshGd);
         refresh.addListener(SWT.Selection, e -> refreshModels());
     }
 
@@ -116,7 +116,7 @@ public class ModelComboWidget extends Composite {
     }
 
     private void applyModelList(List<AiModel> fetched, ConnectionIdentity identity) {
-        EclipseUtil.runInUiThread(this, () -> {
+        EclipseUtil.runInUiThread(modelCombo, () -> {
             if (!identity.equals(snapshotProvider.get().identity())) return; // settings changed while fetching — stale
             var items = new ArrayList<String>();
             if (fetched != null) items.addAll(fetched.stream().map(AiModel::getId).toList());

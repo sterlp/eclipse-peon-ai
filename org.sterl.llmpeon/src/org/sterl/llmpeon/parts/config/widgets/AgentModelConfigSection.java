@@ -65,6 +65,7 @@ public class AgentModelConfigSection extends Composite {
         setLayout(sectionLayout);
         this.urlText = addLabeledText("URL (empty = inherit base):");
         this.keyText = addLabeledText("API Key (empty = inherit base):");
+        addLabel("Model:"); // ModelComboWidget contract: label before the widget
         this.modelWidget = new ModelComboWidget(this, agentId, this::prepareFetch);
         buildThink();
         this.temperatureText = addLabeledText("Temperature (empty = unset):");

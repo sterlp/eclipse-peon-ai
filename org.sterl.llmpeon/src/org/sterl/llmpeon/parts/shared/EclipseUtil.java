@@ -25,8 +25,8 @@ import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.ITreeSelection;
-import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Widget;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IWorkingSet;
@@ -45,7 +45,7 @@ import jakarta.annotation.Nonnull;
 
 public class EclipseUtil {
     // TODO move to EclipseUiUtil
-    public static void runInUiThread(Composite parent, Runnable fn) {
+    public static void runInUiThread(Widget parent, Runnable fn) {
         if (parent == null || parent.isDisposed())
             return;
         if (Display.getCurrent() == parent.getDisplay()) {
