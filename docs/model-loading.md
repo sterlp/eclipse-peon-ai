@@ -82,3 +82,21 @@ Verhalten unverändert (R-ML-Regeln + HP): fetch einmal pro Identität, Refresh 
 Eingabe erlaubt, konfiguriertes Modell bleibt selektiert auch wenn nicht in der Liste, Single-Flight
 pro Identität + Secret-Masking (ADR-0040). Danach erst Design-Studie github-copilot-for-eclipse
 (separater Schritt, advanced-configuration.md R-A3).
+
+## R-ML4 — Eingabe-Dedup gegen die Server-Liste (case-insensitive) — ❌ specified (2026-09-12, User-Bug-Report; Fix im selben Zyklus)
+
+Die getippte Eingabe bleibt nur dann als **eigener** Eintrag in der Liste, wenn sie **nicht**
+(case-insensitiv) in der Server-Modell-Liste steht — Schreibweisen-Varianten sind dasselbe Modell.
+Bei Match gewinnt die **Server-ID** (canonical): das Combo selektiert den Server-Eintrag, die
+getippte Variante erscheint nicht und wird auch nicht gespeichert. **Ohne Server-Liste** (Fetch
+fehlgeschlagen/leer) bleibt die Eingabe verbatim — es gibt keine Kanonisierungsquelle. Die
+Server-Liste selbst wird nicht dedupliziert (Server-verantwortet).
+
+- GIVEN die Server-Liste enthält `FOO`, WHEN der User `foo` getippt hat und der Fetch
+  abgeschlossen ist, THEN enthält das Combo genau **einen** Eintrag (`FOO`) und zeigt/speichert
+  `FOO` → `ModelComboWidgetTest.typedCaseVariantOfListedModelIsNotDuplicated`
+- GIVEN das konfigurierte Modell ist ein exakter Listeneintrag, WHEN der Fetch abgeschlossen ist,
+  THEN kein Duplikat → `ModelComboWidgetTest.fetchShowsListAndKeepsConfiguredModel`
+- GIVEN Fetch fehlgeschlagen/leere Liste + getipptes Modell, WHEN Apply, THEN bleibt die Eingabe
+  verbatim erhalten → `ModelComboWidgetTest.refreshFailureKeepsPreviousList` (Fallback-Pfad läuft
+  über denselben apply-Knoten)

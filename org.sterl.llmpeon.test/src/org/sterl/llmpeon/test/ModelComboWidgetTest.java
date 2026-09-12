@@ -158,6 +158,23 @@ public class ModelComboWidgetTest extends AbstractUnitTest {
         assertEquals("gpt-4o", ui(built.widget()::getModel));
     }
 
+    @Test
+    public void typedCaseVariantOfListedModelIsNotDuplicated() {
+        // GIVEN the server list contains "FOO" and the user typed "foo"
+        mockLlmServer.setModelIds(List.of("FOO"));
+        var built = ui(() -> newWidget("foo"));
+
+        // WHEN the page-open fetch completes
+        ui(() -> { built.widget().fetchModels(); return null; });
+        waitUntil(() -> ui(() -> combo(built.parent()).getItems().length) > 0, "model list not applied");
+
+        // THEN the list has exactly one entry for that name (SOLL: append only if not in the server list)
+        var items = ui(() -> combo(built.parent()).getItems());
+        assertEquals(1, (int) List.of(items).stream().filter(s -> s.equalsIgnoreCase("foo")).count());
+        // canonical (PO 2026-09-12): the server's ID wins — typed variant disappears
+        assertEquals("FOO", ui(built.widget()::getModel));
+    }
+
     // --- helpers ---
 
     /** Runs the given code on the workbench UI thread and returns its result (or throws). */

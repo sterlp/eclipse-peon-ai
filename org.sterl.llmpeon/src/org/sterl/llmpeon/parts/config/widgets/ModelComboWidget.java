@@ -115,19 +115,33 @@ public class ModelComboWidget {
         return new FetchSnapshot(effective.identity(), effective.buildConfig());
     }
 
+    /**
+     * Applies the fetched model list to the combo. Dedup rule (R-ML4): the typed input is
+     * appended only if no entry equals it case-insensitively; on a match the server's ID wins
+     * (canonical) and is selected; without a server list the input stays verbatim.
+     */
     private void applyModelList(List<AiModel> fetched, ConnectionIdentity identity) {
         EclipseUtil.runInUiThread(modelCombo, () -> {
             if (!identity.equals(snapshotProvider.get().identity())) return; // settings changed while fetching — stale
             var items = new ArrayList<String>();
             if (fetched != null) items.addAll(fetched.stream().map(AiModel::getId).toList());
             var configured = StringUtil.stripToNull(modelCombo.getText());
-            if (configured != null && !items.contains(configured)) items.add(configured);
-            modelCombo.setItems(items.toArray(String[]::new));
-            if (configured != null) {
-                var idx = modelCombo.indexOf(configured);
-                if (idx >= 0) modelCombo.select(idx);
-                else modelCombo.setText(configured);
+            var idx = indexOfIgnoreCase(items, configured);
+            if (configured != null && idx < 0) {
+                items.add(configured);
+                idx = items.size() - 1;
             }
+            modelCombo.setItems(items.toArray(String[]::new));
+            if (idx >= 0) modelCombo.select(idx);
         });
+    }
+
+    /** First position whose entry equals value case-insensitively; -1 for null value or no match. */
+    private static int indexOfIgnoreCase(List<String> items, String value) {
+        if (value == null) return -1;
+        for (var i = 0; i < items.size(); i++) {
+            if (value.equalsIgnoreCase(items.get(i))) return i;
+        }
+        return -1;
     }
 }
