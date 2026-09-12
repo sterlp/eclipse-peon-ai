@@ -118,9 +118,9 @@ class CompactSessionToolTest {
             @Override public String getName() { return "test-agent"; }
             @Override public String getSystemPrompt() { return "system"; }
             @Override public ChatResponse call(String message, AiMonitor monitor) { return null; }
-            @Override public ChatResponse compact(AiMonitor monitor) {
+            @Override public boolean compact(AiMonitor monitor) {
                 compressCalled.set(true);
-                return ChatResponse.builder().aiMessage(AiMessage.aiMessage("any")).build();
+                return true;
             }
             @Override public ThreadSafeMemory getMemory() { return memory; }
             @Override public void clear() {}
@@ -184,10 +184,10 @@ class CompactSessionToolTest {
             @Override public String getName() { return "stub-agent"; }
             @Override public String getSystemPrompt() { return "system"; }
             @Override public ChatResponse call(String message, AiMonitor monitor) { return null; }
-            @Override public ChatResponse compact(AiMonitor monitor) {
+            @Override public boolean compact(AiMonitor monitor) {
                 var summary = AiMessage.aiMessage("SUMMARY-X");
                 memory.add(summary);
-                return ChatResponse.builder().aiMessage(summary).build();
+                return true;
             }
             @Override public ThreadSafeMemory getMemory() { return memory; }
             @Override public void clear() {}

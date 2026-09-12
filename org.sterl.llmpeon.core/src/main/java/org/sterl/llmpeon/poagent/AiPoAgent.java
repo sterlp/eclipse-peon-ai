@@ -23,8 +23,6 @@ import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.WriteValidator;
 
-import dev.langchain4j.model.chat.response.ChatResponse;
-
 /**
  * Peon-PO ("Jon") — a docs-owning agent. Reads freely, writes only under docs/ (via
  * {@link WriteValidator#DOCS}). Unlike {@link AiPlanAgent} he keeps the edit tools (the validator, not
@@ -135,7 +133,7 @@ public class AiPoAgent extends AbstractAgent {
     }
     
     @Override
-    public ChatResponse compact(AiMonitor monitor) {
+    public boolean compact(AiMonitor monitor) {
         var result = super.compact(monitor);
         toolService.getTool(PoDelegateTool.class).ifPresent(t -> {
             t.compactPlan();

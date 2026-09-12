@@ -2,6 +2,9 @@
 
 Compact Agent erhalte im WHAT: Hallo von Paul
 
+Jeder Agent soll sich diese oder das delta in "preserve" vom `compactSession` tool übergeben.
+Jon: rufe nicht das compact tool auf um die Agenten zu compactieren. Sag ihnen das sie selber compact aufrufen sollen!
+
 ## 1. Jon (du):
 - Mache ein „Browse Projects“ (eclipseList).
 - lese eine belibige Datei

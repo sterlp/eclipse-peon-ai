@@ -1,7 +1,6 @@
 package org.sterl.llmpeon.tool.tools;
 
 import org.sterl.llmpeon.agent.AiAgent;
-import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 
 import dev.langchain4j.agent.tool.P;
@@ -29,19 +28,15 @@ public class CompactSessionTool extends AbstractTool {
         long startNanos = System.nanoTime();
         var compactDone = agent.compact(monitor);
         
-        if (compactDone != null) {
+        if (compactDone) {
             long elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000;
             
-            var result = compactDone.aiMessage().text() + System.lineSeparator();
-            var nl = System.lineSeparator();
-            result += StringUtil.hasValue(preserve)
-                    ? nl + nl + "Preserved:" + nl + StringUtil.stripToEmpty(preserve)
-                    : "";
+            var result = StringUtil.hasValue(preserve)
+                    ? "Preserved:" + System.lineSeparator() + StringUtil.stripToEmpty(preserve)
+                    : "(nothing preserved)";
             
             onTool(TOOL_MESSAGE_PREFIX + " for " + agent.getName() 
-                + ". (" + StringUtil.humanElapsed(elapsedMillis) + ") length: " + ChatMessageUtil.estimateTokens(result));
-            System.err.println("compactSession");
-            System.err.println(result);
+                + ". (" + StringUtil.humanElapsed(elapsedMillis) + ")");
             return result;
         } else {
             onTool("Compact called but skipped because of small context for " + agent.getName());

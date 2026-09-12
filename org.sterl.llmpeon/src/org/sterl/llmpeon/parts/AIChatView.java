@@ -491,19 +491,15 @@ public class AIChatView implements EclipseAiMonitor {
         Job.create("Compact " + active.getName() , monitor -> {
             monitorRef.set(monitor);
             Exception ex = null;
-            ChatResponse result = null;
             try {
-                result = active.compact(this);
-                if (result != null) {
-                    active.getMemory().add(AiMessage.aiMessage(result.aiMessage().text()));
-                    EclipseUtil.runInUiThread(parent, this::refreshChat);
-                }
+                var result = active.compact(this);
+                if (result) EclipseUtil.runInUiThread(parent, this::refreshChat);
             } catch (Exception e) {
                 ex = handleChatException(e);
             } finally {
                 // cr is reassigned in the try (not effectively final) — capture the success flag
                 // here so the UI runnable can branch on it (only a real success clears + re-renders).
-                handleDoneChatResponse(active.getName(), result, monitor, ex);
+                handleDoneChatResponse(active.getName(), null, monitor, ex);
             }
             return PeonConstants.status("Compacted " + active.getName(), ex);
         }).schedule();

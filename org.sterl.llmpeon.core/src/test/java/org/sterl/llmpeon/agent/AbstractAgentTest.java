@@ -623,7 +623,7 @@ class AbstractAgentTest {
         agent.call("test", monitor);
 
         // THEN — onTool called for labeled turn context item
-        assertThat(toolMessages).contains("Loading 📋 peon-plan/overview.md");
+        assertThat(toolMessages).contains("📋 Loading peon-plan/overview.md");
     }
 
     /** S1: keyed item — file content change does not re-inject; the key check skips rendering entirely. */
@@ -694,7 +694,7 @@ class AbstractAgentTest {
         var text = userTexts.get(0);
         assertThat(text.indexOf("memory content")).isNotNegative().isLessThan(text.indexOf("hi"));
         // AND — loading status reported
-        assertThat(toolMessages).contains("Loading 📋 /proj/docs/memory.md");
+        assertThat(toolMessages).contains("📋 Loading /proj/docs/memory.md");
     }
 
     /** S3: render() = null → nothing injected, no loading status, no exception. */
