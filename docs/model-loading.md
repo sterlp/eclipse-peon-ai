@@ -134,3 +134,19 @@ stale config-Field mehr (Supplier = `LlmPreferenceInitializer::buildWithDefaults
 Think-Form/Extra-Body-Sichtbarkeit bleibt bewusst Konstruktions-Zeit (`base.get()` im Ctor).
 Kein neuer Test (reines Wiring; Fetch-Logik von `AgentModelConfigFetchTest`/
 `ModelComboWidgetTest` gedeckt) — Verifikation manuell wie R-UI1/R-MCP3.
+
+## R-ML2 — Refresh & gespeicherte Verbindungs-Identität — ✅ dokumentiertes Verhalten (2026-09-12, User-Smoke beide Pages — kein Fix)
+
+User-Entscheidung 2026-09-12 (beide Config-Pages getestet, gleiches Verhalten): der Refresh-Button
+nutzt den **gespeicherten** Stand — kein Dirty-Read-Fix. Apply (Speichern) übernimmt die korrigierte
+URL, danach greift Refresh mit der neuen Identität (Fetch-Identity zur Fetch-Zeit, ADR-0034).
+
+- GIVEN der User korrigiert die Base-URL **ohne** Apply und klickt Refresh, THEN die Liste kommt
+  vom alten (gespeicherten) URL.
+- GIVEN der User drückt Apply/OK, WHEN Refresh geklickt, THEN Fetch mit dem neuen URL aus dem Input.
+
+Dokumentiert auf der Homepage (setup/advanced-configuration.md) und in configuration.md.
+User-verifiziert (2026-09-12): nach Refresh ohne Apply bleibt die alte Modell-Liste vollständig
+stehen, ein manuell eingetipptes Modell bleibt in der Auswahl (HP-Claim „stays selected even if
+missing from the fetched list" bestätigt). Keine offenen Verdächtigen mehr — Fail-Wipe-Verdacht
+(`ModelComboWidget.java:94`) und Stale-Guard-Verdacht durch den Smoke widerlegt.

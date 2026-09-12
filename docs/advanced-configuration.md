@@ -273,3 +273,13 @@ On first launch, AI Peon resolves skills and commands directories:
 Same logic applies to commands directory (`~/.claude/commands` → `~/.llmpeon/commands`).
 
 This one-time resolution ensures deterministic behavior without filesystem I/O on every config load.
+
+## Basis-URL vs. per-Agent Override — Klartext (2026-09-12, User-Rückfrage)
+
+Die URL der **Basic-Page** (`llm.url`) ist die Basis für **alle** Agenten ohne eigenen Override —
+der Dev-Agent trägt standardmäßig **keinen eigenen** URL (`llm.agent.dev.url` existiert dann nicht)
+und erbt die Base-URL. Das URL-Feld der Advanced-View zeigt nur den **eigenen** Override
+(„empty = inherit base"), nicht die effektive Verbindung — deshalb steht dort für Dev nichts,
+obwohl dev faktisch die Base-URL nutzt (`LlmConfig.java:165`, `EffectiveConnection.java:32`).
+Modell-Listen-Refresh nutzt den **gespeicherten** Stand: erst **Apply**, dann Refresh →
+R-ML2 in [model-loading.md](model-loading.md).

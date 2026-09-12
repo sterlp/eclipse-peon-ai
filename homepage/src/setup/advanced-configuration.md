@@ -23,9 +23,9 @@ Different agents can use different models to optimize for cost, speed, or capabi
 ### How It Works
 
 1. The **Dev agent always uses the base model** you configure — this is your primary coding model
-2. Leave URL or API key empty to inherit it from the base configuration. For the model, an empty **PO** or **Dev** field falls back to the base model; **Plan**, **Search**, and **Compact** use the provider's default model.
+2. Leave URL or API key empty to inherit it from the base configuration. The Advanced URL field shows only the agent's **own** override — empty means inherit. The URL on the main Peon configuration page is the base for **every** agent without its own override; the Dev agent has no URL of its own by default and inherits the one configured there. For the model, an empty **PO** or **Dev** field falls back to the base model; **Plan**, **Search**, and **Compact** use the provider's default model.
 3. Pick a model from the **dropdown** (or type one) to override only that agent's model
-4. The dropdown is filled from your provider's model list, **fetched once per connection** (the agent's effective URL/key). Click **Refresh** to reload the list — a failed refresh keeps the previous one. A model you have already configured stays selected even if it is missing from the fetched list.
+4. The dropdown is filled from your provider's model list, **fetched once per connection** (the agent's effective URL/key). Click **Refresh** to reload the list — Refresh always uses the **saved** connection settings, so after changing URL/key click **Apply** first, then Refresh. A failed refresh keeps the previous one. A model you have already configured stays selected even if it is missing from the fetched list.
 
 Existing installations start with an empty PO slot, which inherits the base configuration. If Jon was previously controlled through the Plan slot, configure the PO slot once after upgrading.
 

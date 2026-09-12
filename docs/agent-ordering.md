@@ -52,7 +52,7 @@ Custom- und Built-in-Agenten.
 - GIVEN eine Zeile ist kein gültiger Regex, WHEN geparst, THEN Zeile übersprungen mit
   log.warn, Rest bleibt wirksam → `AgentOrderTest.sortSkipsInvalidRegexInTheOrderFile`
 
-## R4 — Ein Agent, ein Dropdown-Eintrag + Warnung **❌ specified (2026-09-12 User-Entscheid — löst die identity-keyed-Annahme vom 2026-09-11 ab)**
+## R4 — Ein Agent, ein Dropdown-Eintrag + Warnung **✅ done (2026-09-12, `cc28aac` — rot-first bewiesen, User-SOLL)
 
 User 2026-09-12: „Jeder Agent darf nur einmal im Dropdown sein. Das Feature erlaubt **nur** die
 Sortierung anzupassen — sonst nichts." Das seen-Set ist **namensbasiert** (das Dropdown ist

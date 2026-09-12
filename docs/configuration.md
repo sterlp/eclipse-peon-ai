@@ -17,6 +17,12 @@ den verlinkten Stories.
 | Workspace Memory (memory*-Tools) | Eclipse Instance-Preferences, user-global | [context-architecture.md](context-architecture.md) |
 | Agent-History | `.metadata/.plugins/org.sterl.llmpeon/state/<agent>-history.jsonl` (Umzug von `~/.peon/state`, One-Shot-Migration) | [peon-config-directory.md](peon-config-directory.md) |
 
+**Basis vs. Override (2026-09-12):** Die URL auf der Basic-Page ist die Basis für **alle** Agenten
+ohne eigenen Override — der Dev-Agent trägt standardmäßig **keinen eigenen** URL und erbt die
+Base-URL; das leere URL-Feld in der Advanced-View zeigt nur den eigenen Override (leer = erben).
+Modell-Listen-**Refresh** nutzt den gespeicherten Stand: erst **Apply**, dann Refresh.
+Details: [advanced-configuration.md](advanced-configuration.md) · [model-loading.md](model-loading.md).
+
 ## Aufnahme-Regel
 
 Neues Config-Feature → eigene Story, hier eine Zeile eintragen. Diese Seite bleibt eine
