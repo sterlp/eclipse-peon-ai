@@ -2,7 +2,7 @@
 cd C:\Users\pauls\dev\projekte\eclipse-peon-ai
 llama-server.exe `
   -m "..\..\..\.lmstudio\models\unsloth\Qwen3.8-27B-GGUF\Qwen3.8-27B-UD-Q5_K_XL.gguf" `
-  --alias "Qwen3.6-27B" `
+  --alias "Qwen3.8-27B" `
   -ngl 999 `
   --prio 3 `
   -c 150000 `
