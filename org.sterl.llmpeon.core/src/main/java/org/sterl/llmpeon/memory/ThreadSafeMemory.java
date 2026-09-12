@@ -191,6 +191,12 @@ public class ThreadSafeMemory {
     public synchronized ChatMessage get(int index) {
         return this.memory.get(index);
     }
+    
+    public synchronized long count(Class<? extends ChatMessage> clazz) {
+        return this.memory.stream()
+                .filter(clazz::isInstance)
+                .count();
+    }
 
     private void append(ChatMessage message) {
         var s = store;

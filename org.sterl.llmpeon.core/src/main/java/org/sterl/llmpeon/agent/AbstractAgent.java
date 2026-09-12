@@ -22,7 +22,6 @@ import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
@@ -267,6 +266,7 @@ public abstract class AbstractAgent implements AiAgent {
         return response;
     }
 
+    @Override
     public ChatResponse compact(AiMonitor monitor) {
         if (memory.size() < 2) return null;
 
@@ -281,10 +281,12 @@ public abstract class AbstractAgent implements AiAgent {
         data.add(TextContent.from("Session compacted. Resume the task using the preserved context."));
         // Ensure memory starts with a user message (many LLMs require this)
         memory.add(UserMessage.from(data));
+        
         // DON'T use addResult -> as the totalTokenUsed is from the compressor here which is to large
         // we only take the compacted new message!
         // and we remove the thinking, if any, from the result
-        memory.add(AiMessage.aiMessage(response.aiMessage().text()));
+        // memory.add(AiMessage.aiMessage(response.aiMessage().text()));
+
         return response;
     }
 

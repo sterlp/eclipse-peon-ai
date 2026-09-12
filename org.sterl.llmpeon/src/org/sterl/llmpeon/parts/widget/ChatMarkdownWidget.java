@@ -185,10 +185,16 @@ public class ChatMarkdownWidget extends Composite {
         return showRealtimeAiResponse;
     }
 
+    /**
+     * Needs to be called in eclipse UI thread!
+     */
     public void appendMessage(SimpleMessage msg) {
         postMessage(msg);
     }
 
+    /**
+     * Needs to be called in eclipse UI thread!
+     */
     public void hideLiveStatus() {
         postMessage(HideLiveStatusCommand.INSTANCE);
     }
@@ -245,10 +251,18 @@ public class ChatMarkdownWidget extends Composite {
         }
     }
 
+    /**
+     * Run in any background to update the status line
+     */
     public void updateLiveResponseInUIThread(String state, double tokPerSec, String safeChunk) {
-        EclipseUtil.runInUiThread(parent, () -> {
-            postMessage(new LiveStatusCommand(state, tokPerSec, safeChunk));
-        });
+        EclipseUtil.runInUiThread(parent, () -> updateLiveResponse(state, tokPerSec, safeChunk));
+    }
+    
+    /**
+     * Execute in UI thread
+     */
+    public void updateLiveResponse(String state, double tokPerSec, String safeChunk) {
+        postMessage(new LiveStatusCommand(state, tokPerSec, safeChunk));
     }
 
     public void showDiff(String unifiedDiff) {

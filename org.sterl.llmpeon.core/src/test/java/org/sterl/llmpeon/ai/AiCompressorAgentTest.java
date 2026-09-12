@@ -61,14 +61,11 @@ class AiCompressorAgentTest {
         subject.addMessage(UserMessage.from("It should show a Hello world with the current time"));
 
         // WHEN
-        var result = subject.compact(AiMonitor.NULL_MONITOR);
+        var compactMessage = subject.compact(AiMonitor.NULL_MONITOR).aiMessage();
 
         // THEN
-        System.out.println(result.aiMessage().text());
-        System.out.println(result.metadata());
-
-        assertTrue(result.aiMessage().text().length() > 10);
-        assertTrue(result.aiMessage().text().contains("WHAT"));
+        assertTrue(compactMessage.text().length() > 10);
+        assertTrue(compactMessage.text().contains("WHAT"));
 
         // AND
         assertTrue(subject.getMemory().size() <= 2, "Chat messages aren't reduced! Still " + subject.getMemory().size());

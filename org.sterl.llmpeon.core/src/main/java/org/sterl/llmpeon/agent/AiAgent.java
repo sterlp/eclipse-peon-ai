@@ -20,7 +20,15 @@ public interface AiAgent {
 
     @Nullable
     ChatResponse call(String message, AiMonitor monitor);
-    @Nullable
+    /**
+     * Returns the compact result which needs to be handled by the caller.
+     * If successful the agent will already be reseted.
+     * 
+     * Suggested default implementation
+     * <code>
+     * memory.add(AiMessage.aiMessage(response.aiMessage().text()));
+     * </code>
+     */
     ChatResponse compact(AiMonitor monitor);
 
     /** Rebuild the static (system) messages. Non-default: an empty default would silently

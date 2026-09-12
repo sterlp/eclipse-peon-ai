@@ -120,7 +120,7 @@ class CompactSessionToolTest {
             @Override public ChatResponse call(String message, AiMonitor monitor) { return null; }
             @Override public ChatResponse compact(AiMonitor monitor) {
                 compressCalled.set(true);
-                return ChatResponse.builder().aiMessage(AiMessage.aiMessage("WHAT: Compressed summary")).build();
+                return ChatResponse.builder().aiMessage(AiMessage.aiMessage("any")).build();
             }
             @Override public ThreadSafeMemory getMemory() { return memory; }
             @Override public void clear() {}
