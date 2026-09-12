@@ -54,7 +54,7 @@ public class ChatMessageUtil {
     }
 
     private static int charCount(ChatMessage msg) {
-        return toString(msg, 900000).length();
+        return toString(msg, Integer.MAX_VALUE).length();
     }
 
     public static UserMessage join(UserMessage m1, UserMessage m2) {
