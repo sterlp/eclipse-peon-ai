@@ -1,34 +1,30 @@
-# Session-Stand (2026-09-12 — UI-Cycle R-A1/R-A2 läuft)
+# Session-Stand (2026-09-12 — UI-Cycle R-A1/R-A2 ABGESCHLOSSEN, R-A3/R-A4 im Backlog)
 
-## Zyklus ui-config — STATUS: Plan ✅ abgenommen (inkl. Delta), BUILD als Nächstes
+## Zyklus ui-config — STATUS: ✅ done (Review ACCEPTED, Smokes ok, Flips ✅, Archiv läuft)
 
-Branch `core-cleanup-2026-09-11` @ `d408fc6`. **Vor Inc-1 committet Da Mek separat die User-Work**
-(ExtraBodyExamples llama.cpp-Beispiel, AbstractAgent/PoDelegateTool uiName-Fallback, ToolService
-Reformat — User 2026-09-12, bewusst): der User repariert die PO-Tool-Meldungen — der Name des
-Sub-Agents fehlte in den Tool-Meldungen („Context: N token - X% used (…)" ohne Namensbezug).
-Docs R-A (advanced-configuration.md R-A1/R-A2/R-A3
-+ model-loading.md R-ML3) vom PO auf **reines SOLL** umgeschrieben (User-Direktive 2026-09-12:
-keine implementierten Bug-/„war:"-Narrativen in Docs — der Plan trägt den Diff SOLL/IST).
-Uncommitted, reiten im **Inc-1-Commit** (Da Mek committet sie mit, ohne sie zu editieren) —
-zusammen mit memory.md + open-points.md (PO-Entscheid, Session-Docs).
+Branch `core-cleanup-2026-09-11` — Commits: `75ace08` (User-Work: uiName-Fallback PO-Tool-Meldungen
++ llama.cpp-Extra-Body-Beispiel, Core-Surefire 728/0), `66ce4fe` (Inc-1 R-A1), `6b5c9ca` (Inc-2 R-A2).
+Docs-Flips nach Review+Smoke erledigt: advanced-configuration.md (R-A1 ✅, R-A2 ✅), model-loading.md
+(R-ML3 ✅), index.md, open-points (R-A2-Präzisierung → resolved-points.md), AGENTS-DEV.md
+(Plugin-Liste ×9 nach AiAgentStatusModel-Move nach core; neuer API-Trap GridLayout/exclude).
+Docs-Commits: siehe nächsten Abschnitt.
 
-- **Plan** (`peon-plan/overview.md`, nach Delta): Inc-1 = R-A1 Spacing (2× `marginBottom=0` +
-  `examplesLabel` hidden bis Paste; User-Smoke, kein Test). Inc-2 = R-A2: `ModelComboWidget` wird
-  **Controller statt Composite** — Combo col2 im Parent-Grid, Refresh-Button span2/LEFT (wie
-  `buildCheckUrl`), „Model:"-Label je Caller (Advanced `addLabel` END / Basic raw Label SWT.LEFT,
-  JFace-verifiziert, VOR Konstruktion), `EclipseUtil.runInUiThread(Composite→Widget)` signatur-
-  verbreitert (22 Call-Sites source-kompatibel), Stale-Guard-Anker `this`→`modelCombo`, API +
-  Verhalten unverändert (R-ML* + ADR-0040). Tests: 4 Szenarien unverändert, Helfer suchen im
-  Parent-Grid, + READ_ONLY-Assertion. Kein Core-Change; Homepage-Wording verifiziert wahr.
-- **Abnahme-Korrektur (PO):** alter Plan-Claim „Widget-Grid 3→2 Spalten = Label-Spalte der
-  Parent-Page" war falsch (verschachtelte GridLayouts teilen keine Spaltenbreiten) → Delta über
-  planWithPlanAgent, Abnahme erteilt.
-- **Nach Build:** IST-Verifikation je Deliverable (Plan §9, memory #28) → `reviewPlanAgent`
-  (Da Dok, 3 Seiten; Docs: advanced-configuration.md R-A1/R-A2 + model-loading.md R-ML3) →
-  Status-Flips ❌→✅ (PO-only) → `planImplemented` (Da Mek).
-- **Flags (Plan §10):** dropdown-ui-comparison.md wird stale (Update gehört zu R-A3);
-  AGENTS-DEV.md zitiert `ModelComboWidget:122` → Zeile von PO nach Inc-2 aktualisieren.
-- **Danach (User):** R-A3 Copilot-Studie separat; User-Smokes (R-A1 Abstand, R-A2 Look beider
-  Pages).
-- ⏳ in open-points.md: R-A2 SOLL-Präzisierung (Sibling-Ausrichtung statt literal „links")
-  im Smoke bestätigen lassen; Docs-SOLL-Hygiene-Sweep (Rest der Feature-Docs) — Scope-Confirm.
+- **Nach Da-Dok-Verdict:** Mutations-Nachweis Stale-Guard (Da-Dok-Fund): Mutation → alle 5 Tests
+  grün = Lücke bestätigt, im Plan §11 dokumentiert; **Follow-up-Test** (Identity-Wechsel während
+  Fetch) noch zu planen. Core-Baseline mit User-Work: Surefire **728/0**.
+- **⏳ offen:** Docs-SOLL-Hygiene-Sweep über übrige Feature-Docs (Scope vom User bestätigen);
+  Stale-Guard-Follow-up-Test; `dropdown-ui-comparison.md`-Update gehört zu R-A3.
+- **Nicht committen (User-WIP):** `CompactSessionTool.java`, `AIChatView.java` — liegen uncommitted
+  im Tree (User repariert PO-Tool-Meldungen), Da Mek committet sie NICHT.
+- **Sidequests (User 2026-09-12):** R-A4 Think-Dropdown nativ (🚧 in design, advanced-configuration.md)
+  — offen: READ_ONLY vs editierbar + unbekannte gespeicherte Werte anzeigen. R-A3 Copilot-Studie
+  separat danach.
+- **User-Wissen (Session):** die Context-Stats-Zeilen in Tool-Meldungen sind die des Sub-Agents —
+  User repariert gerade, dass der Agenten-NAME in den Meldungen steht (uiName-Fallback, `75ace08`).
+
+## Nächster Zyklus (Kandidaten, Reihenfolge User)
+
+1. R-A4 Think-Dropdown (SOLL-Festlegung + Build, klein).
+2. Stale-Guard-Follow-up-Test (R-ML/ADR-0040).
+3. Docs-SOLL-Hygiene-Sweep über übrige Feature-Docs (Scope-Confirm offen).
+4. ApiRetry-Evidence-Sammlung + Live-Status im Backoff-Fenster (open-points, hoch priorisiert).

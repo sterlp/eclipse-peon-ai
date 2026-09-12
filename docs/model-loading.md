@@ -69,7 +69,7 @@ Dokumentiert auf der Homepage (setup/advanced-configuration.md) und in configura
 User-verifiziert (2026-09-12): nach Refresh ohne Apply bleibt die alte Modell-Liste vollständig
 stehen, ein manuell eingetipptes Modell bleibt in der Auswahl.
 
-## R-ML3 — Model-Auswahl = natives SWT Combo auf beiden Pages — ❌ specified (2026-09-12)
+## R-ML3 — Model-Auswahl = natives SWT Combo auf beiden Pages — ✅ done (ui-config, `6b5c9ca`, 2026-09-12)
 
 Das Model-Feld nutzt auf **Basic** und **Advanced** (geteilte Logik in `ModelComboWidget`) das
 **native SWT-Combo** wie die übrigen Dropdowns — gleicher Dropdown-Button. Label und Combo

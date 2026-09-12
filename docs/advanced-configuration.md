@@ -245,22 +245,40 @@ und erbt die Base-URL. Das URL-Feld der Advanced-View zeigt nur den **eigenen** 
 obwohl dev faktisch die Base-URL nutzt (`LlmConfig.java:165`, `EffectiveConnection.java:32`).
 Modell-Listen-Refresh nutzt den **gespeicherten** Stand: erst **Apply**, dann Refresh →
 R-ML2 in [model-loading.md](model-loading.md).
-## Config-Page UI — R-A1/R-A2/R-A3 — ❌ specified (2026-09-12, User-Smoke „Seite sieht altbacken aus")
+## Config-Page UI — R-A1/R-A2/R-A3/R-A4 (2026-09-12, User-Smoke „Seite sieht altbacken aus")
 
-**R-A1 — Abstand unter den Examples:** GIVEN die Advanced-Page zeigt die 3 Example-Buttons
-unter dem Extra-Body-Feld, WHEN gerendert, THEN ist der Abstand **unterhalb** der Gruppe gleich
-klein wie oberhalb — keine Leerraum-Zeile, kein Extra-Fußraum (Layout-Gruppe, kein Extra-Space).
+**R-A1 ✅ done (ui-config, `66ce4fe`) — Abstand unter den Examples:** GIVEN die Advanced-Page
+zeigt die 3 Example-Buttons unter dem Extra-Body-Feld, WHEN gerendert, THEN ist der Abstand
+**unterhalb** der Gruppe gleich klein wie oberhalb — keine Leerraum-Zeile, kein Extra-Fußraum
+(Layout-Gruppe, kein Extra-Space). Umsetzung: 2× `marginBottom=0` (Section + TitledGroup); das
+Examples-Status-Label ist bis zum Paste layout-exklusiv (`GridData.exclude=true` +
+`setVisible(false)`, beim Paste zurück + `layout()`) — SWT-GridLayout filtert nur
+`GridData.exclude`, nicht Visibility (API-Trap in [AGENTS-DEV.md](../AGENTS-DEV.md)). Kein
+automatisierter Test (SWT-Layout-Präzedenz wie R-T5) — **User-Smoke ✅ 2026-09-12**.
 
-**R-A2 — Native Combo statt Custom-Dropdown (beide Pages):** Das Model-Feld nutzt auf **Basic**
-und **Advanced** (geteilte Logik) das **native SWT-Combo** wie Provider/Shell-Command — gleicher
-Dropdown-Button. Label und Combo erscheinen exakt wie die übrigen Label/Feld-Paare derselben
-Page: Label in der Label-Spalte der Page (gleiche Ausrichtung wie die Sibling-Labels), Combo in
-der Feld-Spalte. Der Refresh-Button sitzt **unter** dem Combo
+**R-A2 ✅ done (ui-config, `6b5c9ca`) — Native Combo statt Custom-Dropdown (beide Pages):** Das
+Model-Feld nutzt auf **Basic** und **Advanced** (geteilte Logik) das **native SWT-Combo** wie
+Provider/Shell-Command — gleicher Dropdown-Button. Label und Combo erscheinen exakt wie die
+übrigen Label/Feld-Paare derselben Page: Label in der Label-Spalte der Page (gleiche Ausrichtung
+wie die Sibling-Labels), Combo in der Feld-Spalte. Der Refresh-Button sitzt **unter** dem Combo
 (Placement/Style wie „Check Host and Port" beim URL-Feld). **Verhalten unverändert:** lazy fetch
 einmal pro Verbindungs-Identität, Refresh holt neu, manuelle Modelleingabe erlaubt, konfiguriertes
 Modell bleibt selektiert auch wenn es nicht in der Liste steht, Single-Flight + Secret-Masking
-bleiben (ADR-0040) → R-ML3 in [model-loading.md](model-loading.md).
+bleiben (ADR-0040) → R-ML3 in [model-loading.md](model-loading.md). Umsetzung:
+`ModelComboWidget` = Controller (kein Composite) — Combo + Refresh im Parent-2-Spalten-Grid, Label
+je Caller (Basic raw `Label` SWT.LEFT, Advanced `addLabel` SWT.END),
+`EclipseUtil.runInUiThread(Composite→Widget)`, Stale-Guard-Anker `modelCombo`. Tests:
+`ModelComboWidgetTest` (inkl. READ_ONLY-Assert) + `AgentModelConfigFetchTest` — **User-Smoke
+beide Pages ✅ 2026-09-12** ([resolved-points.md](resolved-points.md)). Bekannte Lücke (Plan §11):
+Stale-Guard-Mutation lässt alle 5 Tests grün — Follow-up-Test offen.
 
 **R-A3 — Design-Studie github-copilot-for-eclipse (separat, NACH R-A1/R-A2):** Gruppen-/Label-Gestaltung
 im Copilot-Plugin abschauen (alle Labels bündig, auch Extra Body) — Inspiration, kein Copy; nur
 anschauen, wenn die 2 einfachen Fixes drin sind.
+
+**R-A4 🚧 in design (2026-09-12, User-Sidequest):** das Think-Dropdown der Advanced-Page
+(`CCombo` in `AgentModelConfigSection.buildThink`, `ThinkSupport.Values`) hat dasselbe
+„alt"-Problem wie das Model-Dropdown vor R-A2 → native Combo. Offen vor SOLL: READ_ONLY (Werte
+sind provider-definiert) vs editierbar — und die Anzeige unbekannter gespeicherter Werte
+(`combo.setText(display)`-Fallback für nicht-listete Werte; mit nativem Combo READ_ONLY
+evtl. verboten). SOLL erst im eigenen Zyklus festlegen.
