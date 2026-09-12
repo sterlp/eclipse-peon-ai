@@ -34,7 +34,13 @@ public class AiCompressorAgent {
     public ChatResponse call(List<ChatMessage> messages, AiMonitor monitor) {
         monitor = AiMonitor.nullSafety(monitor);
         var msg = new StringBuilder();
-        messages.stream().forEach(m -> msg.append(toText(m)).append("\n\n"));
+        for (var m : messages) {
+            var txt = toText(m);
+            // avoid any duplications in the compact message
+            if (msg.indexOf(txt) < 0) {
+                msg.append(txt).append(System.lineSeparator()).append(System.lineSeparator());
+            }
+        }
 
         var cfg = chatModel.getConfig();
         var modelName = cfg.modelConfigFor(AgentModelConfig.COMPACT).model();
@@ -58,8 +64,8 @@ public class AiCompressorAgent {
 
     String toText(ChatMessage msg) {
         var result = new StringBuilder();
-        result.append("\n").append(msg.type()).append(":\n");
-        result.append(ChatMessageUtil.toString(msg, false, 2500));
+        result.append(System.lineSeparator()).append(msg.type()).append(":\n");
+        result.append(ChatMessageUtil.toString(msg, false, 3000));
         return result.toString();
     }
 }

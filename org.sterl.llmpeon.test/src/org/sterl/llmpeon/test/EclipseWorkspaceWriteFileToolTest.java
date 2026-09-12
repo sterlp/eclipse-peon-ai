@@ -110,7 +110,7 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
         var fileName = "/test_project/latin1.txt";
         eclipseWriteFile(fileName, "init");
         var iFile = project.getFile("latin1.txt");
-        iFile.setCharset("ISO-8859-1");
+        iFile.setCharset("ISO-8859-1", null);
         try {
             // WHEN writing umlauts via the tool
             tool.eclipseWriteFile(fileName, "äüß Ö");
@@ -121,7 +121,7 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
         } finally {
             // drop the explicit charset — no cross-run residue in .settings/org.eclipse.core.resources.prefs
             try {
-                iFile.setCharset(null);
+                iFile.setCharset(null, null);
             } catch (Exception ignored) {
             }
         }

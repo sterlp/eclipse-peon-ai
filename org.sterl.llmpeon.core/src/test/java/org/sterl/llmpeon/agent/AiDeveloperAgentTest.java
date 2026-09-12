@@ -7,12 +7,14 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,8 +28,10 @@ import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -121,7 +125,8 @@ public class AiDeveloperAgentTest {
         // [0] UserMessage "Session compacted..." (resume message)
         // [1] AiMessage "Okay thats good" (compressor's summary, added by compressContext)
         // [2] CALL_ME (tool request, added by tool loop)
-        // [3] ToolExecutionResultMessage (tool result, added by tool loop)
+        // [3] ToolExecutionResultMessage (tool result, added by tool loop — marker only, no summary;
+        //     the summary lives exclusively as the AiMessage at [1], SOLL 2026-09-10)
         // [4] AiMessage "Okay thats good" (final response, second iteration)
         var mem = subject.getMemory().getCopy();
         assertThat(((UserMessage)mem.get(0)).singleText()).contains("Session compacted");
@@ -129,7 +134,15 @@ public class AiDeveloperAgentTest {
         assertThat(((AiMessage)mem.get(1)).text()).contains("Okay thats good");
         assertThat(mem.get(2)).isEqualTo(CALL_ME);
         assertThat(mem.get(3)).isInstanceOf(ToolExecutionResultMessage.class);
-        assertThat(((ToolExecutionResultMessage)mem.get(3)).text()).contains("Okay thats good");
+        // no-preserve marker: non-empty, and NOT a duplicate of the resume text (SOLL 2026-09-11)
+        assertThat(((ToolExecutionResultMessage)mem.get(3)).text()).isEqualTo("(nothing preserved)");
+        // AND — the compact-result text appears EXACTLY ONCE over ALL messages (SOLL 2026-09-11):
+        // only the resume UserMessage carries "Session compacted"; the no-preserve tool result
+        // must be a non-colliding marker, never a duplicate of the resume text.
+        long compactMarkerCount = mem.stream()
+                .filter(m -> textOf(m).contains("Session compacted"))
+                .count();
+        assertThat(compactMarkerCount).isOne();
     }
     
     @Test
@@ -189,6 +202,48 @@ public class AiDeveloperAgentTest {
         assertThat(subject.getMemory().containsUserMessage("CONTEXT LIMIT WARNING")).isFalse();
         // AND — the compressor ran exactly once (turn 1: request, compact, final; turn 2: final)
         verify(cm, times(4)).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+    }
+
+    @Test
+    void test_inLoopCompact_systemMessageIsRebuilt() {
+        // GIVEN — a ContextItem whose render() returns a version counter (SOLL R-ST4)
+        var version = new AtomicInteger(0);
+        subject.setStaticContext(List.of(() -> "CTX-VERSION-" + version.incrementAndGet()));
+        for (int i = 0; i < 5; i++) {
+            subject.addMessage(UserMessage.from("Foo " + i));
+            subject.addMessage(AiMessage.from("Bar " + i));
+        }
+        // Capture system texts from every ChatRequest (compressor call is in there too)
+        var systemTexts = new ArrayList<String>();
+        var first = new AtomicBoolean(true);
+        fn.set(req -> {
+            req.messages().stream()
+                    .filter(m -> m instanceof SystemMessage sm)
+                    .forEach(m -> systemTexts.add(((SystemMessage) m).text()));
+            if (first.getAndSet(false)) {
+                return ChatResponse.builder()
+                        .aiMessage(CALL_ME)
+                        .tokenUsage(new TokenUsage(9500, 100, 9600))
+                        .build();
+            }
+            return ChatResponse.builder().aiMessage(AiMessage.aiMessage("Okay thats good")).build();
+        });
+
+        // WHEN — the model compacts in-loop
+        subject.call("Foo", null);
+
+        // THEN — the LLM request AFTER the compact carries a NEW system prompt (R-ST4)
+        // Filter to only the main agent's system texts (compressor has its own prompt)
+        var agentSystemTexts = systemTexts.stream()
+                .filter(t -> t.contains("CTX-VERSION-"))
+                .collect(Collectors.toList());
+        assertThat(agentSystemTexts).hasSizeGreaterThanOrEqualTo(2);
+        var pre = agentSystemTexts.get(0);
+        var post = agentSystemTexts.get(agentSystemTexts.size() - 1);
+        var preVersion = pre.lines().filter(l -> l.startsWith("CTX-VERSION-")).findFirst().orElseThrow();
+        var postVersion = post.lines().filter(l -> l.startsWith("CTX-VERSION-")).findFirst().orElseThrow();
+        assertThat(postVersion).isNotEqualTo(preVersion);
+        assertThat(post).doesNotContain(preVersion);
     }
 
     @Test
@@ -314,6 +369,20 @@ public class AiDeveloperAgentTest {
         assertThat(mem.get(2)).isEqualTo(aiMessage);
     }
     
+    /** Raw text of any message type — UserMessage (single or joined contents), AiMessage, ToolExecutionResult. */
+    private static String textOf(ChatMessage m) {
+        if (m instanceof UserMessage um) {
+            if (um.hasSingleText()) return um.singleText();
+            return um.contents().stream()
+                    .filter(c -> c instanceof TextContent)
+                    .map(c -> ((TextContent) c).text())
+                    .collect(Collectors.joining());
+        }
+        if (m instanceof AiMessage ai) return ai.text() == null ? "" : ai.text();
+        if (m instanceof ToolExecutionResultMessage tr) return tr.text() == null ? "" : tr.text();
+        return "";
+    }
+
     private StreamingChatModel mockWithHandler() {
         var cm = mock(StreamingChatModel.class);
         doAnswer(inv -> {

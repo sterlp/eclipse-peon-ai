@@ -5,7 +5,6 @@ import java.util.function.Supplier;
 
 import org.eclipse.debug.ui.DebugUITools;
 import org.eclipse.debug.ui.IDebugUIConstants;
-import org.eclipse.e4.ui.css.swt.CSSSWTConstants;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.KeyListener;
 import org.eclipse.swt.graphics.Color;
@@ -78,7 +77,7 @@ public class UserInputWidget extends Composite {
 
         textInput = new TextInputWidget(textRow, SWT.NONE, 3, 10, this::requestReflow);
         textInput.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
-        textInput.setData(CSSSWTConstants.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_USER_QUESTION_RESPONSE_WIDGET);
+        textInput.setData(WidgetCss.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_USER_QUESTION_RESPONSE_WIDGET);
 
         // Ctrl/Cmd+Enter sends; plain Enter inserts newline
         textInput.addKeyListener(KeyListener.keyPressedAdapter(e -> {
@@ -135,7 +134,7 @@ public class UserInputWidget extends Composite {
         rcLayout.verticalSpacing = 0;
         rightColumn.setLayout(rcLayout);
         rightColumn.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, false, true));
-        rightColumn.setData(CSSSWTConstants.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_USER_QUESTION_RESPONSE_WIDGET);
+        rightColumn.setData(WidgetCss.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_USER_QUESTION_RESPONSE_WIDGET);
         rightColumn.setBackgroundMode(SWT.INHERIT_DEFAULT);
 
         // Mic button — created lazily by setVoiceInputVisible(), disposed when hidden.
@@ -145,7 +144,7 @@ public class UserInputWidget extends Composite {
         GridData fillerData = new GridData(SWT.FILL, SWT.FILL, false, true);
         fillerData.heightHint = 0;
         filler.setLayoutData(fillerData);
-        filler.setData(CSSSWTConstants.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_USER_QUESTION_RESPONSE_WIDGET);
+        filler.setData(WidgetCss.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_USER_QUESTION_RESPONSE_WIDGET);
         // Stop button — hidden initially, shown when working (sits at top above filler)
         stopButton = SwtUtil.createIconButton(rightColumn, stopImage, "Stop current request");
         stopButton.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, false, false));

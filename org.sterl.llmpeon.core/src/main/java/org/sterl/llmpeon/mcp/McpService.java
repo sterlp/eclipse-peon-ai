@@ -14,7 +14,6 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.mcp.client.transport.McpTransport;
-import dev.langchain4j.mcp.client.transport.http.HttpMcpTransport;
 import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
 import dev.langchain4j.mcp.client.transport.stdio.StdioMcpTransport;
 import lombok.extern.slf4j.Slf4j;
@@ -116,21 +115,14 @@ public class McpService implements AutoCloseable {
         return builder.build();
     }
 
-    @SuppressWarnings("removal")
     private McpTransport buildWebMcp(McpServerConfig server) {
         if (server.url().isBlank()) return null;
         Map<String, String> headers = server.apiKey().isBlank()
                 ? null
                 : Map.of("Authorization", "Bearer " + server.apiKey());
-        if (server.type() == McpServerConfig.McpTransportType.HTTP_SSE) {
-            var tb = HttpMcpTransport.builder()
-                    .sseUrl(server.url())
-                    .timeout(Duration.ofSeconds(60))
-                    .logRequests(false)
-                    .logResponses(false);
-            if (headers != null) tb.customHeaders(headers);
-            return tb.build();
-        }
+        // HTTP and HTTP_SSE share the Streamable HTTP transport: it is the MCP-spec successor of
+        // HTTP+SSE (handles text/event-stream responses), and the only HTTP transport since
+        // langchain4j removed the deprecated HttpMcpTransport.
         var tb = StreamableHttpMcpTransport.builder()
                 .url(server.url())
                 .timeout(Duration.ofSeconds(60))

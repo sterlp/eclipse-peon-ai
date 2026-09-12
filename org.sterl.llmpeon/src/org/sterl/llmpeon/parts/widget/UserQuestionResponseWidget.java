@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-import org.eclipse.e4.ui.css.swt.CSSSWTConstants;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.KeyListener;
 import org.eclipse.swt.layout.GridData;
@@ -61,7 +60,7 @@ public class UserQuestionResponseWidget extends Composite {
 
         textInput = new TextInputWidget(inputRow, SWT.NONE, 2, 7, this::requestReflow);
         textInput.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
-        textInput.setData(CSSSWTConstants.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_USER_QUESTION_RESPONSE_WIDGET);
+        textInput.setData(WidgetCss.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_USER_QUESTION_RESPONSE_WIDGET);
 
         // Ctrl/Cmd+Enter submits
         textInput.addKeyListener(KeyListener.keyPressedAdapter(e -> {
@@ -83,7 +82,7 @@ public class UserQuestionResponseWidget extends Composite {
         rightColumn.setLayout(rcLayout);
         rightColumn.setLayoutData(new GridData(SWT.CENTER, SWT.FILL, false, true));
         rightColumn.setBackgroundMode(SWT.INHERIT_DEFAULT);
-        rightColumn.setData(CSSSWTConstants.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_USER_QUESTION_RESPONSE_WIDGET);
+        rightColumn.setData(WidgetCss.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_USER_QUESTION_RESPONSE_WIDGET);
 
         Button cancelButton = new Button(rightColumn, SWT.PUSH);
         cancelButton.setText("Cancel");
@@ -94,7 +93,7 @@ public class UserQuestionResponseWidget extends Composite {
         GridData fillerData = new GridData(SWT.FILL, SWT.FILL, false, true);
         fillerData.heightHint = 0;
         filler.setLayoutData(fillerData);
-        filler.setData(CSSSWTConstants.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_USER_QUESTION_RESPONSE_WIDGET);
+        filler.setData(WidgetCss.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_USER_QUESTION_RESPONSE_WIDGET);
 
         Button submitButton = new Button(rightColumn, SWT.PUSH);
         submitButton.setText("Answer");

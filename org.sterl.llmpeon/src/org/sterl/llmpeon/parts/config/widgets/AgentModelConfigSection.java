@@ -8,6 +8,9 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
+
+import java.util.function.Supplier;
+
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.provider.ExtraBodyExamples;
@@ -25,11 +28,17 @@ import org.sterl.llmpeon.shared.StringUtil;
  * when the page opens (or on the refresh button), never while typing; a failed or empty list
  * falls back to the configured model only. SWT is encapsulated here; the value mappings live in
  * the SWT-free {@link ThinkValueSupport} (unit-testable without a Display).</p>
+ *
+ * <p>The base config is supplied <b>live</b> ({@code Supplier<LlmConfig>}) so the effective
+ * connection identity is read at <b>fetch time</b> (model-loading.md R-ML1) — a base-URL edit
+ * takes effect on the next fetch without reopening the page. The think widget form / extra-body
+ * visibility are still determined from {@code base.get()} at construction (provider-level, not
+ * per-fetch).</p>
  */
 public class AgentModelConfigSection extends Composite {
 
     private final String agentId;
-    private final LlmConfig base;
+    private final Supplier<LlmConfig> base;
     private final ThinkSupport thinkForm;
     private final Text urlText;
     private final Text keyText;
@@ -43,11 +52,11 @@ public class AgentModelConfigSection extends Composite {
     private CCombo thinkCombo;
     private Text thinkText;
 
-    public AgentModelConfigSection(Composite parent, String agentId, LlmConfig base) {
+    public AgentModelConfigSection(Composite parent, String agentId, Supplier<LlmConfig> base) {
         super(parent, SWT.NONE);
         this.agentId = agentId;
         this.base = base;
-        var provider = LlmProviders.of(base.getProviderType());
+        var provider = LlmProviders.of(base.get().getProviderType());
         this.thinkForm = provider.thinkSupport();
         setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, true, false));
         setLayout(new GridLayout(2, false));
@@ -96,7 +105,7 @@ public class AgentModelConfigSection extends Composite {
      * {@code SWTException: Invalid thread access}).
      */
     private ModelComboWidget.FetchSnapshot prepareFetch() {
-        var effective = base.effectiveConnectionFor(getRecord());
+        var effective = base.get().effectiveConnectionFor(getRecord());
         return new ModelComboWidget.FetchSnapshot(effective.identity(), effective.buildConfig());
     }
 

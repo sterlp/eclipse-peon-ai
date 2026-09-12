@@ -333,7 +333,6 @@ public class MockLlmServerTest {
         assertThat(server.getLastRequestBody()).contains("llama-mock");
     }
 
-    @SuppressWarnings("unchecked")
     private Map<?, ?> parseJson(String json) {
         try {
             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();

@@ -25,14 +25,17 @@ public class CompactSessionTool extends AbstractTool {
         }
 
         long startNanos = System.nanoTime();
-        var summary = agent.compact(monitor);
+        agent.compact(monitor);
         long elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000;
         onTool("Da Scribe done. (" + StringUtil.humanElapsed(elapsedMillis) + ")");
 
-        var aiMsg = summary.aiMessage();
-        var summaryText = (aiMsg != null && aiMsg.text() != null) ? aiMsg.text() : "";
-        return summaryText + (StringUtil.hasValue(preserve)
-                        ? "\nPreserved:\n" + StringUtil.stripToEmpty(preserve)
-                        : "");
+        // The summary lives exclusively as an AiMessage in the agent's memory (added by compact()) —
+        // the tool result carries only `preserve` (or a marker), never the summary (SOLL 2026-09-10).
+        // The no-preserve marker must NOT collide with the resume UserMessage "Session compacted.
+        // Resume the task using the preserved context." (AbstractAgent.compact) — otherwise the
+        // compact-result text appears twice in the memory (SOLL 2026-09-11).
+        return StringUtil.hasValue(preserve)
+                ? "Preserved:\n" + StringUtil.stripToEmpty(preserve)
+                : "(nothing preserved)";
     }
 }

@@ -56,6 +56,8 @@ entschieden · 🔒 geklärt.
 | **extra body** | Das per-Agent-JSON, das in den Request gemerged wird (User gewinnt) | JSON-Body, Zusatz-Parameter, custom body |
 | **Provider** | Eine `AiProvider`-Implementierung (je Provider eine Klasse) | Backend, LLM-Anbieter |
 | **unset** | Leerer Wert = Parameter wird **nicht** gesendet (kein Default) | null, leer, deaktiviert |
+| **Auto-Detect (MCP)** | Leere MCP-Protocol-Version: langchain4j sondiert — modern (`2026-07-28`) zuerst, Legacy-Fallback (`2025-11-25`) auf derselben Verbindung | Detect-Tanz, Auto-Erkennung |
+| **Dual-Era-Server** | MCP-Server (Python mcp SDK 2.x), dessen Ära (modern/legacy) der **erste** Request entscheidet; missglückte Probe + Legacy-Fallback auf derselben Verbindung = Era-Lock → `-32022` | Versions-Konflikt |
 
 ## Domäne — Kontext
 

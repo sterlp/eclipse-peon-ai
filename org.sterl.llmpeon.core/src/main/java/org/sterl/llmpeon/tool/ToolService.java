@@ -158,7 +158,11 @@ public class ToolService {
                 req.getMemory().addResult(response, tR);
                 // The compact-request's provider usage describes the PRE-compact context —
                 // re-derive the counter from the new (small) memory
-                if (ranTool(response, CompactSessionTool.NAME)) req.getMemory().reevaluateTokens();
+                if (ranTool(response, CompactSessionTool.NAME)) {
+                    req.getMemory().reevaluateTokens();
+                    if (req.getAgent() != null)
+                        req.staticMessages(req.getAgent().buildStaticMessages(req.getMonitor()));
+                }
                 else addCompactHintIfNeeded(req, response, false);
 
             } else if (hasResponseMessage) {

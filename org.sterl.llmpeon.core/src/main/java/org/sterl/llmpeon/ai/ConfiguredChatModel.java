@@ -96,28 +96,6 @@ public class ConfiguredChatModel {
         return true;
     }
 
-    /**
-     * Selects the best model from the list:
-     * - the currently configured model if present in the list, or
-     * - the first model in the list if the current model is null/missing.
-     * 
-     * @return <code>true</code> if config changed otherwise <code>false</code>
-     */
-    @Deprecated
-    public boolean resolveModel(List<AiModel> models) {
-        if (models.isEmpty()) return false;
-        var model = config.getModel();
-        if (StringUtil.hasNoValue(model)) {
-            return withModel(models.getFirst().getId());
-        } else {
-            var effective = models.stream()
-                    .filter(m -> model.equals(m.getId()) || model.equalsIgnoreCase(m.getName()))
-                    .findFirst()
-                    .orElse(models.get(0));
-            return withModel(effective.getId());
-        }
-    }
-    
     public void updateConfig(LlmConfig newConfig) {
         if (newConfig == null) throw new NullPointerException("LlmConfig cannot be null!");
         if (this.config == null || !this.config.equals(newConfig)) {

@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.resources.IProject;
@@ -25,7 +26,6 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IWorkingSet;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
@@ -36,6 +36,7 @@ import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.exception.ExceptionUtil;
 import org.sterl.llmpeon.parts.ai.PeonAiService;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
+import org.sterl.llmpeon.parts.config.McpConnectionService;
 import org.sterl.llmpeon.parts.config.McpPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.VoicePreferenceInitializer;
 import org.sterl.llmpeon.parts.log.EclipseSlf4jLogger;
@@ -87,6 +88,9 @@ public class AIChatView implements EclipseAiMonitor {
     );
 
     private final AtomicReference<IProgressMonitor> monitorRef = new AtomicReference<>(new NullProgressMonitor());
+    /** R-ST1: submitted-but-unfinished turn jobs. Submit increments (UI thread, pre-schedule),
+     *  the finally's UI-runnable decrements — commit (reset+unlock) belongs to the LAST finisher. */
+    private final AtomicInteger inFlightTurns = new AtomicInteger();
     private final VoiceInputService voiceService = new VoiceInputService();
 
     private volatile boolean recording = false;
@@ -373,13 +377,16 @@ public class AIChatView implements EclipseAiMonitor {
         chatInput.setVoiceInputVisible(VoicePreferenceInitializer.buildWithDefaults().enabled());
         chatHistory.setShowRealtimeAiResponse(config.isShowRealtimeAiResponse());
 
+        // MCP is applied on every preference change, INDEPENDENTLY of the LlmConfig gate below —
+        // otherwise an MCP-only change (LlmConfig unchanged) would never reconnect (R-MCP1).
+        applyMcpConfig();
+
         if (lastAppliedConfig != null && lastAppliedConfig.equals(config)) return;
         lastAppliedConfig = config;
         aiService.updateConfig(config);
 
         actionsBar.setAgents(aiService.getAgents());
         actionsBar.updateModeUI(aiService.getActiveAgent());
-        applyMcpConfig();
         refreshStatusLine();
         applyShellCommandConfirmation();
     }
@@ -387,7 +394,7 @@ public class AIChatView implements EclipseAiMonitor {
     private void applyMcpConfig() {
         var servers = McpPreferenceInitializer.loadServers();
         statusLine.setMcpAvailable(!servers.isEmpty());
-        statusLine.setMcpEnabled(!servers.isEmpty() && McpPreferenceInitializer.isMcpEnabled());
+        statusLine.setMcpEnabled(McpConnectionService.isEnabled());
         aiService.applyMcpConfig();
     }
 
@@ -470,8 +477,9 @@ public class AIChatView implements EclipseAiMonitor {
     private void doCompressContext() {
         var active = aiService.getActiveAgent();
         if (active.getMemory().size() < 3) return;
+        inFlightTurns.incrementAndGet();
+        LOG.info("turn submit (compress): agent=" + active.getName() + " in-flight=" + inFlightTurns.get());
         lockWhileWorking(true);
-        chatHistory.clear();
         Job.create("Compressing context", monitor -> {
             monitor.beginTask("Compressing chat", 1);
             monitorRef.set(monitor);
@@ -482,13 +490,23 @@ public class AIChatView implements EclipseAiMonitor {
             } catch (Exception e) {
                 ex = handleChatException(e);
             } finally {
-                // own refresh to ensure the onTool messages are preserved after compact
-                Display.getDefault().asyncExec(() -> {
+                // cr is reassigned in the try (not effectively final) — capture the success flag
+                // here so the UI runnable can branch on it (only a real success clears + re-renders).
+                final boolean success = cr != null;
+                handleDoneChatResponse(active.getName(), cr, monitor, ex, () -> {
+                    // own refresh to ensure the onTool messages are preserved after compact
                     refreshStatusLine();
-                    aiService.getActiveAgent().getMemory().forEach(chatHistory::appendMessage);
+                    if (success) {
+                        // Real success: clear the live-streamed compressor output, then re-render
+                        // the full (now-compacted) memory as the single authoritative source — the
+                        // summary appears exactly once (SOLL 2026-09-11).
+                        chatHistory.clear();
+                        aiService.getActiveAgent().getMemory().forEach(chatHistory::appendMessage);
+                    }
+                    // Error path: no clear, no re-render — the old chat, live content and the
+                    // PROBLEM message all stay visible (Abort-Path-Parity).
                     chatHistory.hideLiveStatus();
                 });
-                handleDoneChatResponse(cr, monitor, ex);
             }
             return PeonConstants.status("Compressed", ex);
         }).schedule();
@@ -561,6 +579,9 @@ public class AIChatView implements EclipseAiMonitor {
     }
 
     private void submitAiJob(String messageToSend) {
+        final var agent = aiService.getActiveAgent();
+        inFlightTurns.incrementAndGet();
+        LOG.info("turn submit: agent=" + agent.getName() + " in-flight=" + inFlightTurns.get());
         lockWhileWorking(true);
         Job.create("Peon AI request", monitor -> {
             monitor.beginTask("Arbeit, Arbeit!", 100);
@@ -572,25 +593,39 @@ public class AIChatView implements EclipseAiMonitor {
             } catch (Exception e) {
                 ex = handleChatException(e);
             } finally {
-                handleDoneChatResponse(cr, monitor, ex);
+                handleDoneChatResponse(agent.getName(), cr, monitor, ex, null);
             }
             return PeonConstants.status("Peon AI\n" + aiService.getConfig(), ex);
         }).schedule();
     }
 
-    private void handleDoneChatResponse(ChatResponse cr, IProgressMonitor monitor, Exception ex) {
+    private void handleDoneChatResponse(String agentName, ChatResponse cr, IProgressMonitor monitor, Exception ex, Runnable onCommitUi) {
         if (aiService.getConfig().isDebugMode()) {
             LOG.info("Chatreponse: " + (cr == null ? "null" : cr.aiMessage()));
         }
         monitor.done();
-        monitorRef.set(new NullProgressMonitor());
+        // R-ST1: the commit decision lives INSIDE the UI runnable — UI-thread-serialized with
+        // the submits. A stale finally (newer run in flight) must touch neither monitorRef
+        // nor the lock. (IST reset the monitorRef on the job thread — that was the clobber.)
         EclipseUtil.runInUiThread(parent, () -> {
-            // Queue drain on abort is handled in core by AbstractAgent.handleAbortAndDrain() — ADR-0017
-            lockWhileWorking(false);
-            actionsBar.updateCompact(
-                    aiService.getActiveAgent().getMemory().getTotalTokenUsed(),
-                    aiService.getConfig().getAutoCompactAfter());
-            chatHistory.hideLiveStatus();
+            int remaining = inFlightTurns.decrementAndGet();
+            if (remaining < 0) LOG.error("unbalanced in-flight turn counter: " + remaining + " — cleaning up");
+            if (remaining <= 0) { // fail-open: UI must never stay stuck
+                // Queue drain on abort is handled in core by AbstractAgent.handleAbortAndDrain() — ADR-0017
+                if (onCommitUi != null) onCommitUi.run();
+                monitorRef.set(new NullProgressMonitor());
+                lockWhileWorking(false);
+                actionsBar.updateCompact(
+                        aiService.getActiveAgent().getMemory().getTotalTokenUsed(),
+                        aiService.getConfig().getAutoCompactAfter());
+                chatHistory.hideLiveStatus();
+                if (remaining == 0) {
+                    LOG.info("turn done: agent=" + agentName + " reset committed (in-flight " + (remaining + 1) + "->" + remaining + ")");
+                }
+            } else {
+                // a newer run owns lock + monitorRef — touch nothing
+                LOG.info("turn finally skipped (newer run in flight): agent=" + agentName + " in-flight " + (remaining + 1) + "->" + remaining);
+            }
         });
     }
 

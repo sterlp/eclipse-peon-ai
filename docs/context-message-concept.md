@@ -1,3 +1,76 @@
+## Stale System-Message im Compact-Turn (SOLL 2026-09-11, R-ST4) — ✅ done (`a89cdc6`)
+
+Auslöser: User-Smoke-Test 1 („rufe das compact tool auf") — nach dem Compact lief der Turn
+weiter und der Compact-Briefing wurde verständlich fortgesetzt. User-Erkenntnis: „nach dem
+compact tool läuft wieder das LLM, der turn ist noch nicht beendet. Die System message wird erst
+neu gebaut, nachdem ich eine Nachricht sende."
+
+**IST (code-verifiziert, 2026-09-11):**
+* Die SystemMessage ist **nicht** in der Memory — sie reist pro Request in `req.staticMessages`,
+  gebaut **einmal am Turn-Start** in `doCall` → `buildStaticMessages` → `buildSystemPrompt`
+  (AbstractAgent.java:250/330/338–355, Cache-Feld `systemMessage`, „Build only once").
+* `compact()` nullt nur das Feld (:278). Im laufenden Tool-Loop (`ToolService.executeLoop:127–137`)
+  wird jede Iteration mit **derselben frozen** `req.staticMessages`-Liste gebaut — es gibt **keinen**
+  System-Refresh im Loop, nicht im Tool, nicht in compact().
+* Konsequenz: Nach In-Loop-Compact geht der Rest des Turns mit dem **alten, pre-compact
+  System-Prompt** raus (inkl. altem Datum/Env). Der Rebuild (neues Datum/Env) kommt erst beim
+  **nächsten `doCall`** — also mit der nächsten User-Nachricht.
+
+**Bewertung: funktionale Korrektheit OK, KV-Cache-Betrachtung offen:**
+* Der Post-Compact-Rest-Turn ist mit kleinem Memory + altem Prompt kurz — funktional harmlos.
+* Der **nächste User-Turn** sendet: neuer System-Prompt + kompakte Memory. KV-Cache-Frage
+  (User-Hypothese): Der Prompt-Prefix ändert sich **immer** beim Compact (Memory von „groß, alt"
+  → „Resume-UserMessage + Summary" + neuer System-Prompt davor) — **unabhängig vom Datumswechsel**
+  flushed der Prefix-Cache bei jedem Compact ohnehin, weil System-Prompt + Memory vor dem Rest
+  der History stehen. Ein Datumswechsel ändert nur zusätzlich die gerenderten Static-Context-Zeilen
+  (Env/Datum im Prompt-Body). Verifizieren: Refresh der System-Message direkt nach In-Loop-Compact
+  (im executeLoop-Zweig `ranTool(CompactSessionTool.NAME)`) — Aufwand klein, aber Änderung im
+  Loop-Request-Path → erst bewerten.
+
+**Entscheidung (User 2026-09-11): Fix bauen — R-ST4 „System-Message-Rebuild nach In-Loop-Compact" — ❌ specified**
+(Da-Thinka-Bewertung: Status quo hat einen echten Divergenz-Fall — Jons Static-Context enthält die
+Plan-Datei; Rest-Turn arbeitet nach Compact mit dem alten Plan-Snapshot, den der Sub-Agent gerade
+geändert hat. `compact()`-Invariante „force rebuild" wird vom Loop bis Turn-Ende ignoriert.
+Turn-Ende erzwingen abgelehnt — bricht den Resume-Flow.)
+
+* `ToolService.executeLoop` Compact-Zweig: nach `reevaluateTokens` die staticMessages neu bauen —
+  `req.staticMessages(req.getAgent().buildStaticMessages(req.getMonitor()))`, Guard `getAgent() != null`
+  (bare-builder-Tests ohne Agent: altes Verhalten).
+* `buildStaticMessages` wird **non-default** Methode am `AiAgent`-Interface (KEIN silent-empty-
+  Default — leere System-Messages = False-Negative-Bombe); `AbstractAgent` override't. Compile-Fix
+  (1 Stub-Zeile) in den 2 anonymen `new AiAgent(){}`-Impls (CompactSessionToolTest, HeaderBarWidget)
+  gehört ins selbe Inkrement.
+* executeLoop liest `req.staticMessages` **jede Iteration frisch** aus dem Feld — Setter greift ab
+  Iteration 2. Kein weiterer Mechanismus.
+* Bewusst UNVERÄNDERT: Button-Pfad `doCompressContext` (ruft compact() direkt ohne Loop — Rebuild
+  beim nächsten doCall wie heute) · Pre-Turn-Auto-Compact (läuft vor buildStaticMessages — schon
+  frisch) · Compact-No-Op (memory < 2 returnt vor dem Nullen → Cache bleibt → Rebuild liefert
+  Cache → No-Op).
+* KV-Cache: ein Flush statt zwei (Rest-Turn-Prefix wird mit dem nächsten User-Turn geteilt).
+  Bonus: Rebuild re-readet die Plan-Datei — Sub-Agent-Edits im Turn kommen an.
+
+### BDD (R-ST4)
+
+```
+GIVEN ein Agent mit staticContext, dessen render() sich pro Build ändert (Versions-Zähler)
+WHEN ein Turn läuft, in dem compactSession als Tool ausgeführt wird
+THEN die LLM-Iteration NACH dem Compact im selben Turn trägt einen neu gebauten System-Prompt
+     (neue Version, alte Version nicht mehr enthalten)
+
+GIVEN ein ToolLoopRequest ohne Agent (bare-builder-Test)
+WHEN compactSession im Loop lief
+THEN kein Refresh — kein NPE, altes Verhalten
+
+GIVEN compact() als No-Op (memory < 2)
+WHEN der Compact-Zweig läuft
+THEN die System-Message bleibt der gecachte Wert (kein sichtbarer Wechsel)
+```
+
+Test: `AiDeveloperAgentTest.test_inLoopCompact_systemMessageIsRebuilt` — staticContext als
+Versions-Zähler (`CTX-VERSION-n`), Mock-Model capture'd alle Requests, Assert Iteration-2-Prompt
+≠ Iteration-1-Prompt und enthält neue Version. Rot heute (frozen Liste, identischer Prompt).
+
+
 # Context Message Konzept — Typ-basiert, OCP
 
 **Status:** ✅ done · **Datum:** 2026-08-14
@@ -245,3 +318,94 @@ THEN nichts wird injiziert (kein Error, kein Status-Eintrag)
   (`memory.containsUserMessage(item.dedupKey())` — Files: exakter Header `<pfad>:\n---\n`,
   sonst gerendeter Content bei `dedupKey() = null`); nur einmal injiziert, nie nachträglich
   angepasst (KV Cache!).
+
+## Compact-Tool-Result: preserve only (SOLL 2026-09-10) — ✅ done (`1f2d0b0`)
+
+Auslöser: User-Befund „Es wird doppelt eingefügt". Die Compressor-Summary stand **zweimal** im
+Kontext: (1) als AiMessage — `AbstractAgent.compact()` → `memory.add(response.aiMessage())`;
+(2) als `ToolExecutionResultMessage` — `CompactSessionTool` gab `summary.aiMessage().text()` als
+Tool-Result zurück, das `ToolService.executeLoop:158` (`addResult(response, tR)`) in die Memory
+schreibt.
+
+**Regel: Das Compact-Tool-Result trägt nur `preserve`.** Die Summary lebt ausschließlich als
+AiMessage in der Memory (eine Quelle, kein Duplikat).
+
+* Result = `Preserved:\n<preserve>` wenn preserve gesetzt; sonst der Marker `Session compacted.`
+  (Tool-Results sind nie leer — das Tool sagt, was passiert ist).
+* Die `Da Scribe done (Xs)`-Zeile bleibt UI-only (`onTool`) und wandert nicht ins Result.
+* Das Re-Add der Pre-Compact-Assistant-Message (ToolService `addResult`) bleibt **bewusst** — das
+  Tool-Result braucht seine Assistant-Message mit toolCalls (Message-Contract, issue-87-Repair).
+* `AbstractAgent.compact()` / `AiCompressorAgent` bleiben unverändert.
+
+### BDD
+
+```
+GIVEN ein Agent, dessen compact() die Summary „SUMMARY-X" als AiMessage in die Memory legt
+WHEN compactSession mit preserve = „KEEP-1" ausgeführt wird
+THEN das Tool-Result enthält „KEEP-1" und NICHT „SUMMARY-X"
+AND die Memory enthält „SUMMARY-X" genau einmal (AiMessage aus compact())
+
+GIVEN compactSession ohne preserve
+WHEN das Tool ausgeführt wird
+THEN das Result ist der Marker „Session compacted." (nicht leer)
+```
+Test: `CompactSessionToolTest` — Red-Nachweis VOR dem Fix (alter Code fügt SUMMARY-X ins Result
+ein), Fix, dann grün.
+
+**✅ done (2026-09-10, `1f2d0b0`):** Red-Evidenz: Result trug `SUMMARY-X\nPreserved:\nKEEP-1` →
+Fix: Result = `Preserved:\n<preserve>` / Marker `Session compacted.` (nie leer), Summary-Return
+entfernt, `onTool("Da Scribe done…")` unverändert. Zwei Alt-Assertions, die den Bug pinnnten,
+angepasst (`CompactSessionToolTest` delegiert → `doesNotContain`, `AiDeveloperAgentTest
+.test_clear_memory` → `isEqualTo("Session compacted.")`). Core Surefire 702/0.
+## Compact-Result genau einmal (SOLL 2026-09-11) — ❌ specified
+
+Auslöser: User-Befund 2026-09-11 — Compact-Result 2× sichtbar. Zwei unabhängige Duplikate:
+
+1. **Memory (Tool-Pfad):** Der 1f2d0b0-Marker `Session compacted.` (CompactSessionTool, kein
+   preserve) kollidiert mit der Resume-UserMessage `Session compacted. Resume the task using the
+   preserved context.` (AbstractAgent.compact:281) → `contains("Session compacted")` über alle
+   Messages = 2 (ToolExecutionResultMessage + UserMessage).
+2. **Chat-Render (Button-Pfad):** `doCompressContext` leert `chatHistory` nur VOR dem Job
+   (AIChatView.java:483); der Compressor postet die Summary live (AiCompressorAgent:51 →
+   `onChatResponse`), und das finally re-rendert die komplette Memory inkl. Summary erneut
+   (AIChatView.java:497) → Summary 2× im Chat (nicht adjazent — USER-Resume dazwischen).
+
+**Regel: Der Compact-Result-Text steht genau einmal — in der Memory UND im Chat-Render.**
+
+* **Memory:** kanonische Quelle ist die Resume-UserMessage (`Session compacted. Resume…`) — sie
+  existiert in BEIDEN Pfaden (Button ruft `compact()` direkt, ohne Tool-Result). Das
+  no-preserve-Tool-Result trägt deshalb den Marker `(nothing preserved)` — nicht leer, aber ohne
+  Duplikat des Resume-Texts. Mit preserve: `Preserved:\n<preserve>` (unverändert).
+* **Render:** nach Button-Compact ist das Voll-Re-Render der Memory autoritativ. Bei **echtem
+  Erfolg** (`ChatResponse != null`) wird der Chat vor dem Re-Render geleert — der live gestreamte
+  Compressor-Post bleibt nicht als permanentes Duplikat stehen. **Fehlerpfad: kein Clear** —
+  live Inhalt + PROBLEM-Meldung bleiben sichtbar (Abort-Path-Parity).
+* Die Count-Tests zählen über **alle** Message-Typen (UserMessage/AiMessage/
+  ToolExecutionResultMessage) — nicht nur `instanceof AiMessage` (dort wäre ein UserMessage- oder
+  ToolResult-Duplikat unsichtbar gewesen).
+
+### BDD
+
+```
+GIVEN ein In-Loop-Compact (Agent ruft compactSession ohne preserve)
+WHEN der Turn abgeschlossen ist
+THEN enthält contains(„Session compacted") über ALLE Messages der Memory genau 1 Treffer
+     (die Resume-UserMessage)
+AND das Tool-Result ist „(nothing preserved)" (nicht leer, kein Duplikat)
+
+GIVEN ein Agent, dessen compact() die Summary „SUMMARY-X" in die Memory legt
+WHEN compactSession mit preserve = „KEEP-1" ausgeführt wird
+THEN zählt contains(„SUMMARY-X") über ALLE Message-Typen genau 1
+
+GIVEN Button-Compact erfolgreich (ChatResponse != null)
+WHEN das Re-Render der Memory im finally läuft
+THEN wurde der Chat vorher geleert — die Summary steht genau einmal im Chat
+
+GIVEN Button-Compact fehlgeschlagen (Exception)
+WHEN handleDoneChatResponse läuft
+THEN kein Clear — live Inhalt und PROBLEM-Meldung bleiben sichtbar
+```
+
+Tests: `AiDeveloperAgentTest.test_clear_memory` (Count über alle Messages == 1, Red-Nachweis VOR
+dem Fix: Zählung = 2), `CompactSessionToolTest` (Summary-Count über alle Typen generalisiert,
+Marker-Asserts), Button-Render manuell (SWT, R-UI1-Präzedenz).

@@ -3,7 +3,6 @@ package org.sterl.llmpeon.parts.widget;
 import java.util.List;
 import java.util.function.Supplier;
 
-import org.eclipse.e4.ui.css.swt.CSSSWTConstants;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -51,23 +50,23 @@ public class HeaderBarWidget extends Composite {
         layout.marginWidth = 4;
         setLayout(layout);
         setBackgroundMode(SWT.INHERIT_DEFAULT);
-        setData(CSSSWTConstants.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_HEADER_BAR_WIDGET);
+        setData(WidgetCss.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_HEADER_BAR_WIDGET);
 
         tokens = new TokenHeaderWidget(this, SWT.NONE);
         // Sits far left, natural width — the roster grabs the middle so both stay readable.
         tokens.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
-        tokens.setData(CSSSWTConstants.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_HEADER_BAR_WIDGET);
+        tokens.setData(WidgetCss.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_HEADER_BAR_WIDGET);
 
         // A "·" divider so the cumulative token readout reads as separate from the agent roster.
         Label divider = new Label(this, SWT.NONE);
         divider.setText("·");
         divider.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
-        divider.setData(CSSSWTConstants.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_HEADER_BAR_WIDGET);
+        divider.setData(WidgetCss.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_HEADER_BAR_WIDGET);
 
         roster = new AiAgentStatusWidget(this, SWT.NONE, statusAgents);
         // FILL the middle column so the roster gets the remaining width between tokens and hammer.
         roster.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-        roster.setData(CSSSWTConstants.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_HEADER_BAR_WIDGET);
+        roster.setData(WidgetCss.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_HEADER_BAR_WIDGET);
 
         Button hammer = SwtUtil.createIconButton(this,
                 ImageUtil.loadImage(this,
@@ -76,7 +75,7 @@ public class HeaderBarWidget extends Composite {
                 "Show which tools are active for the selected agent");
         hammer.setLayoutData(new GridData(SWT.END, SWT.CENTER, false, false));
         hammer.addListener(SWT.Selection, e -> showToolsMenu(hammer));
-        hammer.setData(CSSSWTConstants.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_HEADER_BAR_WIDGET);
+        hammer.setData(WidgetCss.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_HEADER_BAR_WIDGET);
 
         addDisposeListener(e -> {
             if (toolsMenu != null && !toolsMenu.isDisposed()) toolsMenu.dispose();

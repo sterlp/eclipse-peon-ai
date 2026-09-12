@@ -63,18 +63,14 @@ public class IoUtils {
         return file;
     }
     
+    // ResourceException is internal API; the catch-split is intentional (it re-throws the raw message as
+    // IllegalArgumentException, unlike the generic CoreException path).
+    @SuppressWarnings("restriction")
     public static void writeFile(IFile file, String content, IProgressMonitor monitor ) {
         try {
             var charset = getCharset(file);
             ensureFolders(file.getParent(), monitor);
             file.write(content.getBytes(charset), true, false, true, monitor);
-            /* TODO I don't think this is really needed!
-            if (file.getParent() == null) {
-                file.refreshLocal(IResource.DEPTH_ZERO, monitor);
-            } else {
-                file.getParent().refreshLocal(IResource.DEPTH_ONE, monitor);
-            }
-            */
         } catch (ResourceException e) {
             LOG.warn("Failed to edit " + JdtUtil.pathOf(file) + e.getMessage(), e);
             throw new IllegalArgumentException(e.getMessage(), e);
@@ -90,11 +86,6 @@ public class IoUtils {
         if (container instanceof IFolder folder && !folder.exists()) {
             ensureFolders(folder.getParent(), monitor);
             folder.create(IResource.FORCE, true, monitor);
-            
-            /* TODO I don't think this is really needed!
-            if (folder.getParent() != null) folder.getParent().refreshLocal(IResource.DEPTH_ONE, monitor);
-            else folder.refreshLocal(IResource.DEPTH_ZERO, monitor);
-            */
         }
     }
 

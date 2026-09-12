@@ -3,13 +3,6 @@
 Hints for the dev phase, base rules `AGENTS.md`
 
 - `mvn clean install` makes the artifacts available for partial module builds.
-- **Never write to `docs/`** — owned by the PO + the user; the story's ❌ → ✅ flip is left to
-  the docs owner. Track progress only in the plan file and the task files you create.
-- **User docs (homepage / VitePress):** `homepage/` is the published user documentation,
-  separate from `docs/`. Source in `homepage/src` (`srcDir` in `homepage/.vitepress/config.ts`);
-  build via `homepage/build-docs.sh`. New page → update the sidebar/nav in
-  `homepage/.vitepress/config.ts`. A user-facing page is added only once the feature ships
-  (rule ✅) — never document unbuilt behaviour to users.
 
 ## Dependencies
 
@@ -18,6 +11,12 @@ Hints for the dev phase, base rules `AGENTS.md`
 - Whitelist only the needed groupIds via `includeGroupIds`. Platform-provided JARs (jakarta,
   osgi, jna, asm, jetty, felix, …) must **not** be in `lib/` — they come from the target
   platform.
+- **Ritual after EVERY lib bump** (hit 2026-09-10, lib-update inc-3: transitive
+  `io.smallrye.reactive:mutiny-zero` arrived unwhitelisted): diff `mvn dependency:tree` groups
+  against the `includeGroupIds` whitelist — a missing group means the jar silently never lands
+  in `lib/` → runtime `ClassNotFoundException` on an untested path. Decide each new group
+  explicitly (needed → whitelist; provably unreferenced in this bundle → leave out, say so in
+  the report).
 
 ## Build & test
 
@@ -44,6 +43,14 @@ Hints for the dev phase, base rules `AGENTS.md`
   `org.sterl.llmpeon.test` in Eclipse so they pick up the changed jar. Without `-am` the copy
   resolves core from a stale `~/.m2` copy → phantom "cannot be resolved" errors for brand-new core
   symbols. (A full `mvn clean install` at the root also works but is much slower.)
+- **m2e stale model after `build.properties` edits (hit 2026-09-10, lib-update inc-3):**
+  m2e caches the Tycho project model at pom import time; editing `build.properties` alone does
+  not re-parse it. Symptom: IDE build fails in the tycho package-plugin with stale
+  `bin.includes` ("[lib/old.jar] do not match any files") although the file on disk is correct
+  and headless `mvn ... package` succeeds. Fix: delete
+  `<project>/.settings/org.eclipse.m2e.core.prefs` +
+  `<workspace>/.metadata/.plugins/org.eclipse.m2e.core/<project>.lifecyclemapping`, then
+  `eclipseRefreshProject` + rebuild.
 - **m2e auto-build breaks Lombok (hit 2026-09-01, inc-24):** the `llmpeon-core` project's
   `.classpath` output folder is `target/classes` — the SAME folder Maven uses. An Eclipse/m2e
   auto-build after `eclipse*` file edits recompiles all main classes WITHOUT Lombok annotation
@@ -52,6 +59,26 @@ Hints for the dev phase, base rules `AGENTS.md`
   "constructor not applicable" errors (e.g. `SimpleContextItem` 2-arg from
   `@RequiredArgsConstructor`). Fix: `mvn -pl org.sterl.llmpeon.core clean compile` (or `clean test`)
   before the gate run.
+- **Known-benign warnings — do NOT re-triage every cycle** (2026-09-10, warning-cleanup cycle:
+  64 → 12 problems, commits `51f43d2`/`a9124f1`/`56e9cc5`). The remaining 12 are accepted
+  exceptions; fix real new ones, keep this list current:
+  - Plugin ×10 null-type-safety on method refs (`AIChatView:162-163`, `PeonAiService:401-402,489`,
+    `ModelComboWidget:122`, `EclipseUtil:318`, `EclipseWorkspaceReadFileTool:155`,
+    `AiAgentStatusModel:48`, `StatusLineWidget:188`) — method refs to `@NonNull`-parameter
+    functional interfaces; internal callers never pass null.
+  - Plugin ×1 `resources/` class-folder (`.classpath` mirrors `Bundle-ClassPath`) — **must stay**:
+    `ChatMarkdownWidget` loads `chat.html` via classloader AND OSGi `FileLocator`; dropping the
+    entry risks breaking the chat view at IDE runtime.
+  - Core ×1 `MockLlmServer:98` unused TWR variable — needed for auto-close; variable-less
+    try-with-resources is invalid Java (JLS 14.20.3). **javac-lint only — not visible in the
+    Eclipse problems view.**
+  - Core IDE scope note (2026-09-10, Da-Dok review): the `llmpeon-core` IDE view additionally
+    carries ~150 **pre-existing** JDT warnings (null-type-safety/unused-import) that are NOT
+    part of the cleanup scope above — they never appear in the Maven gate. Sweep = own
+    micro-cycle decision (PO + user), not an obligation of every cycle.
+  - `-Xlint`-diagnostic only (not in default build/IDE): this-escape ×10 (7 classes, none
+    subclassed — intentional constructor-delegates-to-refresh pattern); opennlp-tools
+    manifest `Class-Path` slf4j path quirk (upstream packaging).
 - Elegant, expressive modern Java (records, pattern matching, switch expressions, Lombok).
 - **OSGi test constraints:** plugin tests are JUnit 4, new test classes need user approval.
   Run full test suite on timeout
@@ -101,3 +128,13 @@ These bit us repeatedly in this repo — check them before reporting an incremen
   read is wrong or outdated and you can fix it in place, do it in the same turn (keep it short);
   otherwise report the gap so Jon routes it. Skill changes follow `skill-evolution` (evidence
   required, keep skills short).
+  
+## Reference projects for API help
+
+1. use github eclipse plugin AI harness if problems or question arise which cannot be answered 
+   by the API itself eclipse: /github-copilot-for-eclipse
+2. /langchain4j-aggregator for langchain4j code & docs (*.md), if the API itself is not enough
+3. Opencode source - cli AI harness: /opencode -- for generall idea how AI harnesses are build
+
+Use search agents to search these big repos - do direct reads only. Considerer proposing SKILL changes
+or new skills for extracted patterns or solutions.

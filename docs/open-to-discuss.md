@@ -1,20 +1,12 @@
-# Open to Discuss — ambiguous items, not clear bugs or features yet
+# Open to Discuss
 
-Items here are **not committed decisions**. They are observations that could be problems, could be features, or could stay as-is. Reviewed at end of a cycle; discarded or moved to proper docs/ADRs when resolved.
+Ambiguous items, not clear bugs or features — reviewed end-of-cycle. ⏳ decision pending · 🔒 decided (moves to feature-doc/ADR).
 
-## UI
+## UI-Chat
 
-### Compact Session does not reset the chat view 🚧
-
-**Observation:** `compactSession` clears the agent's memory and re-injects standing orders, but the UI chat view (`AIChatView`) is **not reset** — old messages remain visible in the DOM.
-
-**Could be a problem:** On very long sessions the browser DOM grows unbounded (old messages never removed). Potential memory/CPU impact in the browser.
-
-**Could be a feature:** The user keeps visual context of what happened before compaction. A "history scroll" is nicer than a hard reset.
-
-**Open questions:**
-- Should we limit visible messages to the post-compaction window (virtualize the DOM)?
-- Should we keep pre-compaction messages but collapse/archive them visually?
-- Or is the current behavior fine (users rarely run sessions long enough to hit browser limits)?
-
-**Context:** `StreamingBridge` + `ToolService.executeLoop` + `AIChatView.onChatResponse`. Compact runs via `CompactSessionTool` → `ToolLoopRequest.clearMemory()` → memory cleared, standing orders re-injected. UI side: `AIChatView` never removes old DOM nodes.
+* **Status-Display nach compactSession (2026-09-10, User-Observation):** Während des Compact-Tool-Calls zeigte der Header grünen Ball + Stop aktiv, aber **keinen Working-Hint** ("Warte auf …"). Nach Compact-Abschluss erschien die Summary + Loading-Zeilen des Resumed-Turns **vor** der Done-Line "Da Scribe done. (11m 24s)" — Done-Line scheinbar verzögert gerendert. Erst-Analyse: beides display-level (kein Logic-Verlust), Mechanismus unaufgeklärt. Verwandt: MVP-Status-Neubau (Pull/MVC), Clobber-Race-Fix (R-ST1, onCommitUi). User: "analyse erst, kein direkter fix". **⏳** — Eva-Branch (zeige mir den Code der zwei Stellen).
+  * Kontext: 11m24s Wall-Clock plausibel (riesiger Session-Compact + möglicher ApiRetry-Backoff im gemessenen Fenster — Exceed-Context-Error bei SearchAgent bestätigt: compactSession bricht ab, wenn State > 150k Context (152789 > 150016), siehe [memory.md](memory.md)). Compact bricht NICHT mit deutlicher Fehlermeldung, sondern wirft intern CancellationException → UI bleibt im unklaren Zustand (grüner Ball ohne Working-Hint).
+  * **Update (2026-09-10, User):** "compact nicht möglich wenn state zu lang" — als eigene (kleine) Bug-Behandlung ins Bug-Fix-Zyklus-Backlog aufnehmen, nicht in diesem Zyklus. User macht jetzt ein clear (Reset statt Compact).
+* **„Da Scribe done" → danach Fehler „Session zu groß" (2026-09-10, User-Observation, verifiziert via Such-Agent):** Verdacht „wir compactieren zweimal". Code-Befund: **1 `compactSession`-Call = exakt 1 Compressor-LLM-Call** (`AbstractAgent.java:274-275` → `AiCompressorAgent.call`, callBlocking **ohne** ApiRetry) — das Tool selbst compactiert nie doppelt. **Doppel-Compact pro Trigger möglich, aber über zwei verschiedene Trigger:** Pre-Turn-Auto-Compact (Budget 80k, `AbstractAgent.java:238-241`) + Hint-getriebener `compactSession` (COMPACT_HINT bleibt **ohne Dedup** dauerhaft in der Memory, `ToolService.java:49-52/162/202`; offener Follow-up `issues/overview-fixed-compact-issue.md` §9.1); manuell-Button als dritter Trigger. Nur der Hint-Compact zeigt „Da Scribe done" — ein Auto-Compact davor wäre chat-unsichtbar (nur Summary-Zeile). **Der Fehler nach „done" ist kein zweiter Compact**, sondern ein regulärer Tool-Loop-Call über das **harte** Provider-Limit (Soft-Schwellen 80k/95 % schützen nicht gegen Regrowth im Turn — Datei-Loads direkt nach Compact laut Tool-Beschreibung sogar vorgesehen). Verzögerung = ApiRetry-Backoff auf einem **deterministisch toten** Payload (10s→…cap 5 min, kann nie gelingen); Stop → **stille Cancellation** (`AIChatView.java:624-625`, kein PROBLEM, Ball aus) = bekannter unklarer UI-Zustand. **Triage-Kandidaten (Bug-Fix-Zyklus):** (a) Hint-Dedup/Doppel-Compact · (b) ApiRetry non-retryable-Klassifikation (Exceed-Context) · (c) stille Cancellation (schon Backlog) · (d) Browser-Hang (unten). **⏳**
+  * **Update (2026-09-10, User-Entscheid — „weniger denken mitmachen"):** **Doppel-Einfügung bestätigt** — die Compressor-Summary landete als AiMessage (compact()) **und** als Tool-Result (CompactSessionTool gab `summary.aiMessage().text()` zurück → ToolService:158 `addResult`). Fix: **Summary raus aus dem Tool-Result, nur `preserve`** — SOLL in [context-message-concept.md](context-message-concept.md). Der Pre-Compact-Assistant-Re-Add bleibt bewusst (Message-Contract). Hint-Dedup · Counter-Bounce · Turn-Context-Voll-Restore bleiben Kandidaten. **🔒 (Doppel-Ablage)** · Rest **⏳**
+* **Chat-Browser hängt beim Kopieren (2026-09-10, User):** Im Fehlerzustand hängt der SWT-Browser der Chat-View — sauberes Kopieren (z. B. Fehlermeldung sichern) nicht möglich. Ursache offen (Display-level?). **⏳**
