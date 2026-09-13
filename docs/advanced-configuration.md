@@ -24,6 +24,17 @@ Request-Bau an.
 - **Alle anderen Slots** (plan/search/compact/po + Custom Agents): eigene Werte, wenn gesetzt;
   leere Felder erben die **Base-Connection** (URL, Key, Modell)
 - **Kein Slot fällt auf einen anderen Agent-Slot zurück** (R-PO2: PO-Fallback = Base, nie Plan)
+- **✅ Compact-Slot steuert den realen Call (2026-09-13, `efa22df`, Zyklus `fix/compact-slot-model`).**
+  Vorher gingen nur die Request-Parameter (Temp/Think/Body) aus dem COMPACT-Slot in den Call —
+  die **Verbindung** (URL/Key) und das Modell kamen immer vom BASE-Modell
+  (`callBlocking` → `getChatModel()`); ein konfiguriertes Compact-Modell (z.B. lokales
+  llama.cpp) wurde nie erreicht. Jetzt: `AiCompressorAgent` ruft
+  `callBlocking(req, cfg.compactAgentConfig(), monitor)` → `modelFor(agent)` (3-Arg-Overload,
+  ADR-0034-Identitätsauflösung) — Slot-URL/-Key/-Modell gelten für den Call; **leerer Slot →
+  Base** („Empty means unset", free über `EffectiveConnection.isBase`). Tests:
+  `AiCompressorAgentTest.compactSlotRoutesCallToCompactConnection` /
+  `emptyCompactSlotFallsBackToBaseConnection` (MockLlmServer-Duo, Captured-Body-Asserts).
+  Kein Homepage-Edit nötig — die Einstellung tut ab jetzt, was sie verspricht.
 - **Warum `ChatRequest.modelName()` statt separates Modell-Objekt:** ein `StreamingChatModel`
   pro Verbindung (KV-Cache bleibt über Agenten-Wechsel erhalten), keine Synchronisierung
   mehrerer Instanzen, nativer per-Request-Override, geringerer Overhead

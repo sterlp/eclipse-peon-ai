@@ -1,35 +1,31 @@
-# Session-Stand (2026-09-13 — Release-Gate ui-config abgeschlossen, User macht Commit+Merge)
+# Session-Stand (2026-09-13 — Compact-Slot-Bug-Zyklus als nächstes)
 
-## Zyklus ui-config Delta — ✅ KOMPLETT (User macht finalen Commit + Merge)
+## Release ui-config + UserContext — ✅ KOMPLETT, gemerged & gepusht
 
-Branch `core-cleanup-2026-09-11` @ `d643677`. Inc-1..5 committed, Da Dok-Reviews abgearbeitet,
-Suite 189/0/0. Plan archiviert (planImplemented). **User übernimmt:** Commit der eigenen
-WIP-Dateien + Merge (User-Entscheid).
+`main` = origin/main (0/0, Merge `3d38ef6` + User `bc24da9`). Suite 201/0. Compact-Konflikt
+(`AiCompressorAgent.java:41-45`, Dedup-Fix doppelt) zugunsten Branch aufgelöst.
+UserContext-Tests (12) + StandingOrdersBuilderTest-Fix: `a625167`/`13bb500`.
 
-**User-WIP im Working Tree (NICHT anfassen, User committet selbst):** `PoDelegateTool.java`
-(6 Zeilen, im Editor offen), `docs/index.md`, `docs/memory.md` (diese Datei), untracked
-`peon-plan/*`.
+## Nächste Zyklen (User-Reihenfolge 2026-09-13)
 
-## Release-Cleanup — alle 3 Da-Dok-Befunde (§14) abgearbeitet
+1. **Compact-Slot-Bug** — ✅ FIXED (`efa22df`, Zyklus fix/compact-slot-model, Da-Dok-Review
+   ACCEPTED, Surefire 728→730/0). COMPACT-Slot steuert den Call vollständig via
+   `ConfiguredChatModel.modelFor(agent)`; leer → Base. Docs: advanced-configuration.md +
+   compact-input-budget.md. **Merge/Release = User; User-Smoke: Compact mit fremder
+   Slot-URL konfigurieren und beobachten.**
+2. **Compact-Input-Budget Light + Context-Noise** — Story ❌ specified
+   (docs/compact-input-budget.md), zusammen mit Noise-Idee (open-points.md ❓) ausarbeiten,
+   vor dem Bau nochmal gemeinsam drüber.
+3. **ApiRetry-Cancel-Bug** (memory #21) — Verifikation beim Bau (User).
+4. Danach: Compact-Delay (~4-5s, Verdacht StreamingBridge-Poll/onCompleteResponse), R-A3
+   Copilot-Studie, Docs-Hygiene-Sweep, Stale-Guard-Follow-up-Test.
 
-1. **C-5** Debug-Gate `AIChatView.handleDoneChatResponse:595-597` — re-enable verifiziert (User).
-2. **Dead-Code-Sweep** — `d7a41d3` (5 Dateien): `ThreadSafeMemory.count` (0 Refs verifiziert),
-   Import `AiCompressorAgentTest:18`, `sm` `AiDeveloperAgentTest:221`, Javadoc `AiAgent.compact`,
-   stale Kommentar `AIChatView:498-499`. 189/0/0.
-3. **Doc-Sync** — `d643677`: `context-message-concept.md` „Compact-Result genau einmal" ✅
-   (`1f2d0b0`/`ce3483d`), R-ST4 Body-Marker ✅ (`a89cdc6`), Resume-Quote → IST
-   `Session compacted:` (AbstractAgent.compact:290 — kein „Resume the task" im Code).
-   AGENTS-DEV Zeilenref `:164-165`.
+**IST Compact-Input (User, gepusht):** LinkedHashSet-Dedup (exakt, O(n)) statt indexOf-Substring,
+Cap 4000. Dokumentiert in docs/compact-input-budget.md R2. Homepage: +5%-Toleranz-Doku = Teil der
+Budget-Story.
 
-## Backlog (nicht release-blockend, nächster Zyklus)
+## Backlog / offene User-Entscheidungen
 
-- **Compact-Slot-Bug:** `ConfiguredChatModel.callBlocking` nutzt `getChatModel()` = BASE —
-  COMPACT-Slot nur Anzeige-Name, nicht der tatsächliche Call. Fix-Idee: `AiCompressorAgent`
-  muss das Compact-Modell für den HTTP-Call auflösen. User-WIP-Area, erst nach Release.
-- **ApiRetry-Cancel-Bug** (memory #21) — Da Thinka-Calls während Retry gecancelt.
-- **Compact-Delay ~4-5s** (provider-side Verdacht: onCompleteResponse spät → StreamingBridge-Poll
-  in 1,5s-Quanta) — verify via Done-Zeilen-„(Xs)".
-- R-A3 Copilot-Studie · Docs-Hygiene-Sweep (Scope-Confirm) · Stale-Guard-Follow-up-Test.
-- Shell-Tool read-only für Review-Agent (open-points.md — Da Dok hat kein Git, Umweg über
-  Diff-File bewährt sich als Pattern).
-- **Branch `release-2026-09-06`** (3 Commits, von main, ungemerged) — Merge = User-Entscheid.
+- Branch `release-2026-09-06` (3 Commits, von main) — Merge = User-Entscheid (index.md).
+- Review-Agent bekommt read-only Git/Shell? (Use-Case: Diff-Isolation nach Hash — Umweg über
+  Diff-File war Workaround, open-points.md).

@@ -1,8 +1,12 @@
 # Compact Input Budget (AiCompressorAgent)
 
-**Status:** 🚧 in design (2026-09-13) — R1–R5 SOLL festgelegt (User 2026-09-13). R2 (exakter
-Loop-Filter) **IST gebaut durch User** (LinkedHashSet-Dedup, Cap 4000); R1/R3/R4/R5 unbaut.
-Design-Abnahme steht aus → dann ❌ specified.
+**Status:** ❌ specified (2026-09-13, Design-Abnahme User) — **Light-Version geplant**: Umsetzung
+zusammen mit der Noise-Idee (❓ in open-points.md — Context-Items zuerst raus), Details vor dem
+Bau gemeinsam verfeinern. R2 (exakter Loop-Filter) **IST bereits gebaut durch User**
+(LinkedHashSet-Dedup, Cap 4000); R1/R3/R4/R5 unbaut.
+
+**Vorgeschalteter Fix (eigener Zyklus, eigenes Release):** Compact-Slot-Bug — siehe unten,
+Abgrenzung.
 
 ## Problem
 
@@ -112,8 +116,11 @@ THEN enthält der Input keinen "session truncated"-Hinweis
 
 ## Abgrenzung
 
-- **Nicht Teil dieser Story:** der Compact-Slot-Bug (`ConfiguredChatModel.callBlocking` nutzt
-  `getChatModel()` = BASE statt des COMPACT-Modells — siehe docs/memory.md Backlog). R1 hängt
-  am Display-Namen bzw. der Config, nicht am Bug.
+- **Vorgeschalteter Fix ✅ (2026-09-13, `efa22df`, Zyklus `fix/compact-slot-model`):** der
+  Compact-Slot-Bug ist behoben — `AiCompressorAgent` routed den Call über
+  `ConfiguredChatModel.modelFor(agent)` (ADR-0034); COMPACT-Slot-URL/Key/Modell gelten,
+  leerer Slot → Base. Details in [advanced-configuration.md](advanced-configuration.md).
+  R1 (Budget) baut damit auf dem COMPACT-Modell auf — das war vorher der Grund, den Fix
+  vorzuziehen (Budget-Tuning aufs falsche Modell gerechnet).
 - **Nicht Teil:** Auto-Compact-Trigger-Logik (`autoCompactAfter` wird nur als Budget gelesen,
   das Trigger-Verhalten ändert sich nicht).
