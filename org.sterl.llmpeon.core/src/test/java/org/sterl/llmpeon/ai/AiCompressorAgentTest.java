@@ -134,6 +134,103 @@ class AiCompressorAgentTest {
         assertThat(serverB.getLastRequestBody()).isNull();
     }
 
+    /**
+     * Characterization: the COMPACT slot's think value reaches the wire as the provider-specific
+     * parameter (OpenAI {@code reasoning_effort}) on the compact stub, not the base stub.
+     */
+    @Test
+    @Timeout(10)
+    void compactSlotThinkReachesTheWire() {
+        // GIVEN — base points at serverA; the COMPACT slot carries its own url + a think level
+        var base = LlmConfig.builder()
+                .providerType(AiProvider.OPEN_AI)
+                .model("base-model")
+                .url(server.getUrl())
+                .apiKey("test-key")
+                .build();
+        var config = base.withModelConfig(AgentModelConfig.COMPACT,
+                new AgentModelConfig(serverB.getUrl(), null, "compact-model", "medium", null, null));
+        serverB.queueResponse("WHAT: compact briefing");
+        var subject = new AiCompressorAgent(new ConfiguredChatModel(config));
+
+        // WHEN — one compaction
+        var response = subject.call(List.of(UserMessage.from("Foo")), AiMonitor.NULL_MONITOR);
+
+        // THEN — the provider-specific think parameter is on the wire at the compact stub
+        assertThat(response.aiMessage().text()).contains("WHAT: compact briefing");
+        assertThat(parse(serverB.getLastRequestBody()).path("reasoning_effort").asText()).isEqualTo("medium");
+
+        // AND — the base URL received no call
+        assertThat(server.getLastRequestBody()).isNull();
+    }
+
+    /**
+     * Characterization: an Anthropic-based COMPACT slot sends the thinking block
+     * ({@code thinking.type}) on the wire — generic-on think + known model maps to "enabled".
+     */
+    @Test
+    @Timeout(10)
+    void compactSlotThinkAnthropicSendsThinkingBlock() {
+        // GIVEN — Anthropic base points at serverA; the COMPACT slot carries its own url + generic-on think
+        var base = LlmConfig.builder()
+                .providerType(AiProvider.ANTHROPIC)
+                .model("base-model")
+                .url(server.getUrl())
+                .apiKey("test-key")
+                .build();
+        var config = base.withModelConfig(AgentModelConfig.COMPACT,
+                new AgentModelConfig(serverB.getUrl(), null, "claude-sonnet-4-5", "true", null, null));
+        serverB.queueResponse("WHAT: compact briefing");
+        var subject = new AiCompressorAgent(new ConfiguredChatModel(config));
+
+        // WHEN — one compaction
+        var response = subject.call(List.of(UserMessage.from("Foo")), AiMonitor.NULL_MONITOR);
+
+        // THEN — the Anthropic thinking block is on the wire at the compact stub
+        assertThat(response.aiMessage().text()).contains("WHAT: compact briefing");
+        assertThat(parse(serverB.getLastRequestBody()).path("thinking").path("type").asText()).isEqualTo("enabled");
+
+        // AND — the base URL received no call
+        assertThat(server.getLastRequestBody()).isNull();
+    }
+
+    /**
+     * Characterization: the COMPACT slot's extra body reaches the wire — user body wins the
+     * temperature collision (slot 0.2 vs body 0.9), the reserved {@code model} key is stripped,
+     * and the temperature key appears exactly once (no duplicate JSON key).
+     */
+    @Test
+    @Timeout(10)
+    void compactSlotExtraBodyMergesUserWinsAndStripsReserved() {
+        // GIVEN — base points at serverA; the COMPACT slot carries its own url, a slot temperature
+        // and an extra body colliding with the slot temperature and the reserved model key
+        var base = LlmConfig.builder()
+                .providerType(AiProvider.OPEN_AI)
+                .model("base-model")
+                .url(server.getUrl())
+                .apiKey("test-key")
+                .build();
+        var config = base.withModelConfig(AgentModelConfig.COMPACT,
+                new AgentModelConfig(serverB.getUrl(), null, "compact-model", null,
+                        "{\"foo\":\"bar\",\"model\":\"hacked\",\"temperature\":0.9}", "0.2"));
+        serverB.queueResponse("WHAT: compact briefing");
+        var subject = new AiCompressorAgent(new ConfiguredChatModel(config));
+
+        // WHEN — one compaction
+        var response = subject.call(List.of(UserMessage.from("Foo")), AiMonitor.NULL_MONITOR);
+
+        // THEN — the body keys are on the wire, the user body wins, the reserved key is stripped
+        assertThat(response.aiMessage().text()).contains("WHAT: compact briefing");
+        var body = parse(serverB.getLastRequestBody());
+        assertThat(body.path("foo").asText()).isEqualTo("bar");
+        assertThat(body.path("model").asText()).isEqualTo("compact-model");
+        assertThat(body.path("temperature").asDouble()).isEqualTo(0.9);
+        assertThat(serverB.getLastRequestBody().split("\\\"temperature\\\"", -1)).hasSize(2);
+
+        // AND — the base URL received no call
+        assertThat(server.getLastRequestBody()).isNull();
+    }
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private static JsonNode parse(String body) {
