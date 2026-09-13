@@ -160,10 +160,11 @@ public class ToolService {
                 // re-derive the counter from the new (small) memory
                 if (ranTool(response, CompactSessionTool.NAME)) {
                     req.getMemory().reevaluateTokens();
-                    if (req.getAgent() != null)
-                        req.staticMessages(req.getAgent().buildStaticMessages(req.getMonitor()));
-                }
-                else addCompactHintIfNeeded(req, response, false);
+                    var agent = req.getAgent();
+                    if (agent != null) {
+                        req.staticMessages(agent.buildStaticMessages(req.getMonitor()));
+                    }
+                } else addCompactHintIfNeeded(req, response, false);
 
             } else if (hasResponseMessage) {
                 stuck = 0; // reset on productive response
@@ -202,7 +203,9 @@ public class ToolService {
         
         if (force || memory.getTotalTokenUsed() > compactLimit * 0.95) {
             var used = memory.getTotalTokenUsed() + " tokens of " + compactLimit + " used.";
-            AiMonitor.nullSafety(req.monitor).onTool("🗜 Compact hint for " + req.getAgent().getName() + " added! " + used);
+            // agent is @Nullable (ToolService loops run without one) — the hint is still added
+            String agentName = req.getAgent() != null ? req.getAgent().getName() : "the agent";
+            AiMonitor.nullSafety(req.monitor).onTool("🗜 Compact hint for " + agentName + " added! " + used);
             req.addMessage(new UserMessage(COMPACT_HINT + System.lineSeparator() + used));
         }
     }

@@ -18,7 +18,6 @@ import org.sterl.llmpeon.tool.tools.AbstractTool;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.model.chat.response.ChatResponse;
 
 /**
  * Jon's delegate tools. Each drives one of his own, RAM-only slaves — a
@@ -113,9 +112,7 @@ public class PoDelegateTool extends AbstractTool {
     
     @Tool("Compact Da Thinka — the SAME task continues but the history got long. Keeps the gist, frees context. Use resetPlan instead when the next task is unrelated.")
     public String compactPlan() {
-        plan.agent().compact(monitor);
-        reportAction(plan, "compacted");
-        return "Da Thinka compacted. " + contextUsed(plan.agent());
+        return compact(plan);
     }
 
     @Tool(name = PoDelegateTool.PLAN_WITH_PLAN_AGENT, 
@@ -128,11 +125,10 @@ public class PoDelegateTool extends AbstractTool {
         return dispatch(plan, prompt, orders);
     }
     
-    
     @Tool(name = PoDelegateTool.REVIEW_PLAN_AGENT,
             value = "Have your Peon-Review team member (Da Dok) review the implementation of the plan. Pass planPath ("
                     + PeonPaths.PLAN_FILE
-                    + ") to set which plan is under review — it stays sticky; without it the sticky plan path is reused. Returns the team member's reply.")
+                    + ") to set which plan is under review — it stays sticky; without it last plan is used. You can also talk to him.")
     public String reviewPlanAgent(@P(name = "prompt") String prompt,
             @P(name = "planPath", required = false) String planPath) {
         if (StringUtil.hasValue(planPath)) this.planPath = planPath.trim(); // sticky across calls
@@ -152,9 +148,7 @@ public class PoDelegateTool extends AbstractTool {
 
     @Tool("Compact Da Dok — the SAME task continues but the history got long. Keeps the gist, frees context. Use clearReview instead when the next task is unrelated.")
     public String compactReview() {
-        review.agent().compact(monitor);
-        reportAction(review, "compacted");
-        return "Da Dok compacted. " + contextUsed(review.agent());
+        return compact(review);
     }
 
     @Tool(name = PoDelegateTool.ASK_DEV, value = "Ask your Peon-Dev team member (Da Mek) a direct question about the code or its progress — no build is triggered. Use buildWithDev to make it implement the plan. Returns the team member's reply.")
@@ -191,9 +185,13 @@ public class PoDelegateTool extends AbstractTool {
     
     @Tool("Compact Da Mek — the SAME task continues but the history got long. Keeps the gist, frees context. Use resetDev instead when the next task is unrelated.")
     public String compactDev() {
-        dev.agent().compact(monitor);
-        reportAction(dev, "compacted");
-        return "Da Mek compacted. " + contextUsed(dev.agent());
+        return compact(dev);
+    }
+    
+    private String compact(NamedAgent agent) {
+        agent.agent().compact(monitor);
+        reportAction(agent, "compacted");
+        return agent.uiName() + " compacted. " + contextUsed(agent.agent());
     }
 
     /**
@@ -234,16 +232,17 @@ public class PoDelegateTool extends AbstractTool {
         // header status widget while it works (ADR-0025). Keep the monitor
         // passed through.
         try {
-            ChatResponse response = slave.call(prompt, this.monitor);
-            long elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000;
-            String stats = dispatchStats(slave, elapsedMillis);
-            onTool(target.uiName() + " done. " + stats);
-            String answer = response != null
+            final var response = slave.call(prompt, this.monitor);
+            final var elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000;
+            final var stats = target.uiName() + " done. " + dispatchStats(slave, elapsedMillis);
+            final var answer = response != null
                     ? response.aiMessage().text()
                     : null;
+
+            onTool(stats);
             return StringUtil.hasValue(answer)
                     ? answer + System.lineSeparator() + stats
-                    : slave.getName() + " team member returned no result";
+                    : target.uiName() + " returned no result";
         } catch (IllegalStateException e) {
             onProblem(target.uiName() + " " + e.getMessage());
             return "Failed: " + target.uiName() + e.getMessage();

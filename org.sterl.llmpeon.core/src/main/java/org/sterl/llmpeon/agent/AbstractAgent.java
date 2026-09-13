@@ -267,26 +267,33 @@ public abstract class AbstractAgent implements AiAgent {
         return response;
     }
 
-    public ChatResponse compact(AiMonitor monitor) {
-        // macht keinen Sinn
-        if (memory.size() < 2) return null;
+    @Override
+    public boolean compact(AiMonitor monitor) {
+        if (memory.size() < 2) return false;
 
         monitor = AiMonitor.nullSafety(monitor);
         var response = new AiCompressorAgent(configuredModel)
                 .call(memory.getCopy(), monitor);
+        
+        if (response == null || StringUtil.hasNoValue(response.aiMessage().text())) {
+            log.warn("Empty compact message received for " + getName());
+            return false;
+        }
 
         memory.clear();
         this.systemMessage = null;
         // Restore turn-scoped context
         var data = renderTurnContext(memory, turnContextSupplier, monitor);
-        data.add(TextContent.from("Session compacted. Resume the task using the preserved context."));
-        // Ensure memory starts with a user message (many LLMs require this)
-        memory.add(UserMessage.from(data));
         // DON'T use addResult -> as the totalTokenUsed is from the compressor here which is to large
         // we only take the compacted new message!
         // and we remove the thinking, if any, from the result
-        memory.add(AiMessage.aiMessage(response.aiMessage().text()));
-        return response;
+        data.add(TextContent.from("Session compacted:"));
+        // Ensure memory starts with a user message (many LLMs require this)
+        memory.add(UserMessage.from(data));
+        // we add the compact message as AI message
+        memory.add(AiMessage.from(response.aiMessage().text()));
+
+        return true;
     }
 
     /** Set static context items rendered into the system prompt on every rebuild. */
@@ -380,7 +387,7 @@ public abstract class AbstractAgent implements AiAgent {
                 if (rendered == null) continue;
                 if (memory.containsMessage(rendered)) continue;
                 if (StringUtil.hasValue(item.label())) {
-                    monitor.onTool("Loading 📋 " + item.label());
+                    monitor.onTool("📋 Loading " + item.label());
                 }
                 if (key == null) result.add(new TextContent(rendered));
                 else result.add(new TextContent(

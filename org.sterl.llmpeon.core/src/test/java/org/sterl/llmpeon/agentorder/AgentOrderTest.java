@@ -11,6 +11,7 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.sterl.llmpeon.AbstractMemoryFileTest;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.poagent.AiPoAgent;
@@ -176,11 +177,103 @@ class AgentOrderTest extends AbstractMemoryFileTest {
         assertThat(sorted).extracting(AiAgent::getName).containsExactly("Good-Agent");
     }
 
+    /**
+     * R4 (docs/agent-ordering.md, User-SOLL 2026-09-12): two distinct agent instances with the same
+     * name yield exactly ONE dropdown entry — the first wins, the collision is surfaced via warn.
+     */
+    @Test
+    void sortDropsDuplicateNamedAgentsWithWarning() throws Exception {
+        // GIVEN — a catch-all pattern and two distinct agent instances with the same name
+        AgentOrder subject = loadedWith(".*");
+        AiAgent first = agent("Dup");
+        AiAgent second = agent("Dup");
+
+        // WHEN
+        List<AiAgent> sorted;
+        try (var capture = captureAgentOrderLogs()) {
+            sorted = subject.sort(List.of(first, second));
+            // THEN — one dropdown entry, the first instance wins, the collision is warned
+            assertThat(sorted).hasSize(1);
+            assertThat(sorted.get(0)).isSameAs(first);
+            assertThat(capture.warns()).anyMatch(w -> w.contains("Dup") && w.contains("2"));
+        }
+    }
+
     @Test
     void defaultOrderContentReferencesThePoAgentByName() {
         // GIVEN - AgentOrder.DEFAULT_ORDER_CONTENT exists
         // WHEN - (none, static content)
         // THEN
         assertThat(AgentOrder.DEFAULT_ORDER_CONTENT).contains(AiPoAgent.NAME);
+    }
+
+    /**
+     * R4 (docs/agent-ordering.md): an agent matched by several pattern lines appears once (group
+     * of the first line, R2) and the later match is surfaced via log.warn — not silent.
+     */
+    @Test
+    void sortWarnsWhenAnAgentMatchesMultiplePatterns() throws Exception {
+        // GIVEN — one agent matching two pattern lines
+        AgentOrder subject = loadedWith("^Peon-PO$\nPeon.*\n");
+
+        // WHEN
+        List<AiAgent> sorted;
+        try (var capture = captureAgentOrderLogs()) {
+            sorted = subject.sort(List.of(agent("Peon-PO")));
+            // THEN — the agent appears exactly once AND the warn names the dropped line + agent
+            assertThat(sorted).extracting(AiAgent::getName).containsExactly("Peon-PO");
+            assertThat(capture.warns())
+                    .anyMatch(w -> w.contains("Peon-PO") && w.contains("line 2") && w.contains("line 1"));
+        }
+    }
+
+    /**
+     * R4 (docs/agent-ordering.md): two distinct agent instances sharing a name collapse into one
+     * dropdown entry and the collision is surfaced via log.warn — not a silent drop.
+     */
+    @Test
+    void sortWarnsWhenTwoDistinctAgentsShareAName() throws Exception {
+        // GIVEN — two distinct instances with the same name, catch-all pattern
+        AgentOrder subject = loadedWith(".*");
+
+        // WHEN
+        List<AiAgent> sorted;
+        try (var capture = captureAgentOrderLogs()) {
+            sorted = subject.sort(List.of(agent("Dup"), agent("Dup")));
+            // THEN — one entry AND the warn names the collision
+            assertThat(sorted).hasSize(1);
+            assertThat(capture.warns())
+                    .anyMatch(w -> w.contains("Dup") && w.contains("2"));
+        }
+    }
+
+    private static LogEvents captureAgentOrderLogs() {
+        return new LogEvents();
+    }
+
+    /** Captures AgentOrder log events via a logback ListAppender (test-scope binding). */
+    private static final class LogEvents implements AutoCloseable {
+        private final ch.qos.logback.classic.Logger logger;
+        private final ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> appender;
+
+        private LogEvents() {
+            this.logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(AgentOrder.class);
+            this.appender = new ch.qos.logback.core.read.ListAppender<>();
+            this.appender.start();
+            this.logger.addAppender(appender);
+        }
+
+        List<String> warns() {
+            return appender.list.stream()
+                    .filter(e -> e.getLevel() == ch.qos.logback.classic.Level.WARN)
+                    .map(ch.qos.logback.classic.spi.ILoggingEvent::getFormattedMessage)
+                    .toList();
+        }
+
+        @Override
+        public void close() {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
     }
 }

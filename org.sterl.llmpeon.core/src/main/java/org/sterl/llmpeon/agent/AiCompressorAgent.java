@@ -44,8 +44,11 @@ public class AiCompressorAgent {
 
         var cfg = chatModel.getConfig();
         var modelName = cfg.modelConfigFor(AgentModelConfig.COMPACT).model();
-        monitor.onTool("Compressing conversation " + messages.size()
-            + " messages" + (modelName == null ? "" : " using " + modelName));
+        monitor.onTool("Compressing conversation " 
+            + messages.size() + " messages "
+            + ChatMessageUtil.estimateTokens(messages) + " tokens"
+            + (modelName == null ? "" : " using " + modelName)
+        );
 
         // Model, temperature and think come from the compact ModelConfig (no tools for compaction).
         var request = ChatRequest.builder()

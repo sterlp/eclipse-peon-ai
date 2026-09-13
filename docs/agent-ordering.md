@@ -52,10 +52,26 @@ Custom- und Built-in-Agenten.
 - GIVEN eine Zeile ist kein gültiger Regex, WHEN geparst, THEN Zeile übersprungen mit
   log.warn, Rest bleibt wirksam → `AgentOrderTest.sortSkipsInvalidRegexInTheOrderFile`
 
+## R4 — Ein Agent, ein Dropdown-Eintrag + Warnung **✅ done (2026-09-12, `cc28aac` — rot-first bewiesen, User-SOLL)
+
+User 2026-09-12: „Jeder Agent darf nur einmal im Dropdown sein. Das Feature erlaubt **nur** die
+Sortierung anzupassen — sonst nichts." Das seen-Set ist **namensbasiert** (das Dropdown ist
+namensbasiert — zwei Instanzen gleichen Namens wären im UI ununterscheidbar). Dedup war schon immer
+gewollt (R2); der Bug war ausschließlich die Stille (Triage #5). Beide Duplikat-Fälle bleiben
+sichtbar geloggt.
+
+- GIVEN ein Agent matcht mehrere Patterns (z. B. `^Peon-PO$` und `Peon.*`), WHEN sortiert, THEN
+  erscheint der Agent nur einmal (Gruppe der **ersten** Zeile, R2) UND ein `log.warn` nennt die
+  übergehende Zeile + Agent
+  → `AgentOrderTest.sortWarnsWhenAnAgentMatchesMultiplePatterns`
+- GIVEN zwei verschiedene Agent-Instanzen mit gleichem Namen, WHEN sortiert, THEN erscheint nur
+  **eine** (die Erste) UND ein `log.warn` nennt die Namens-Kollision — kein stiller Drop
+  → `AgentOrderTest.sortWarnsWhenTwoDistinctAgentsShareAName` (`hasSize(1)` + warn; ersetzt den
+  alten `bug_sortSilentlyDropsAgentsWithDuplicateNames`, der `hasSize(2)` bewies)
+
 ## Known Edge (Doku, kein Fix)
 
 - Schlägt das Auto-Create fehl (read-only Config-Dir), wirft `AgentOrder.load()` und der
   ganze Agent-Reload bricht — **keine** Agenten laden. Ordering ist kosmetisch; statt zu
   töten wäre „weiter ohne Ordering" das robustere Verhalten. Kandidat für den Bug-Fix-Zyklus.
-- `peek(seen::add)` = Side-Effect im Stream (funktioniert, aber unidiomatisch); Warn-Log
-  wiederholt das Pattern zweimal. Kosmetik.
+- `peek(seen::add)` = Side-Effect im Stream (funktioniert, aber unidiomatisch) — ersetzt durch **R4** (2026-09-11).

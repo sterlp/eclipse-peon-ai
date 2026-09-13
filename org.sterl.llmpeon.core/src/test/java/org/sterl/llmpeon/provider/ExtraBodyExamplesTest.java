@@ -5,11 +5,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
@@ -23,6 +25,22 @@ class ExtraBodyExamplesTest {
 
     static Stream<Arguments> examples() {
         return ExtraBodyExamples.all().stream().map(Arguments::of);
+    }
+
+    @Test
+    void everyExtraBodyExampleIsParsableJson() throws Exception {
+        // GIVEN all paste-ready examples
+        // WHEN each raw JSON body is parsed as a tree
+        for (ExtraBodyExamples.Example example : ExtraBodyExamples.all()) {
+            JsonNode node = MAPPER.readTree(example.json());
+            // THEN it parses as a non-empty JSON object
+            assertThat(node.isObject())
+                    .as("example %s must be a JSON object", example.name())
+                    .isTrue();
+            assertThat(node.size())
+                    .as("example %s must have content", example.name())
+                    .isGreaterThan(0);
+        }
     }
 
     @ParameterizedTest(name = "{0}")

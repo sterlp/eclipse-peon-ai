@@ -12,6 +12,7 @@ import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.program.Program;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
@@ -95,6 +96,9 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
      * keeps the fetch identity current (the widget's stale-guard discards stale results).
      */
     private void buildModel() {
+        // ModelComboWidget contract: label before the widget (JFace Field-Editor default: SWT.LEFT, no GridData)
+        var label = new Label(getFieldEditorParent(), SWT.LEFT);
+        label.setText("Model:");
         modelWidget = new ModelComboWidget(getFieldEditorParent(), "base",
                 () -> ModelComboWidget.baseSnapshot(LlmPreferenceInitializer.buildWithDefaults()));
         modelWidget.setModel(getPreferenceStore().getString(PeonConstants.PREF_MODEL));

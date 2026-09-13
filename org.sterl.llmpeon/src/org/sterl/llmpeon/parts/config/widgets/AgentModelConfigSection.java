@@ -1,10 +1,10 @@
 package org.sterl.llmpeon.parts.config.widgets;
 
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.custom.CCombo;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
@@ -16,6 +16,7 @@ import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.provider.ExtraBodyExamples;
 import org.sterl.llmpeon.provider.LlmProviders;
 import org.sterl.llmpeon.provider.ThinkSupport;
+import org.sterl.llmpeon.provider.ThinkValueSupport;
 import org.sterl.llmpeon.shared.StringUtil;
 
 /**
@@ -49,7 +50,7 @@ public class AgentModelConfigSection extends Composite {
 
     // exactly one of these is non-null, per thinkForm
     private Button thinkCheck;
-    private CCombo thinkCombo;
+    private Combo thinkCombo;
     private Text thinkText;
 
     public AgentModelConfigSection(Composite parent, String agentId, Supplier<LlmConfig> base) {
@@ -59,9 +60,12 @@ public class AgentModelConfigSection extends Composite {
         var provider = LlmProviders.of(base.get().getProviderType());
         this.thinkForm = provider.thinkSupport();
         setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, true, false));
-        setLayout(new GridLayout(2, false));
+        var sectionLayout = new GridLayout(2, false);
+        sectionLayout.marginBottom = 0;
+        setLayout(sectionLayout);
         this.urlText = addLabeledText("URL (empty = inherit base):");
         this.keyText = addLabeledText("API Key (empty = inherit base):");
+        addLabel("Model:"); // ModelComboWidget contract: label before the widget
         this.modelWidget = new ModelComboWidget(this, agentId, this::prepareFetch);
         buildThink();
         this.temperatureText = addLabeledText("Temperature (empty = unset):");
@@ -119,7 +123,7 @@ public class AgentModelConfigSection extends Composite {
             thinkCheck.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
         } else if (thinkForm instanceof ThinkSupport.Values v) {
             addLabel("Think:");
-            thinkCombo = new CCombo(this, SWT.BORDER);
+            thinkCombo = new Combo(this, SWT.BORDER);
             thinkCombo.setItems(ThinkValueSupport.valuesItems(v).toArray(String[]::new));
             thinkCombo.select(0);
             thinkCombo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
@@ -166,12 +170,17 @@ public class AgentModelConfigSection extends Composite {
         examplesLabel = new Label(this, SWT.NONE);
         var labelGd = new GridData(SWT.FILL, SWT.CENTER, true, false);
         labelGd.horizontalSpan = 2;
+        labelGd.exclude = true; // no extra space until a paste happened (GridLayout only filters GridData.exclude)
         examplesLabel.setLayoutData(labelGd);
+        examplesLabel.setVisible(false);
     }
 
     private void pasteExample(ExtraBodyExamples.Example example) {
         jsonText.setText(example.json());
         examplesLabel.setText(example.name() + " example inserted.");
+        ((GridData) examplesLabel.getLayoutData()).exclude = false;
+        examplesLabel.setVisible(true);
+        layout();
     }
 
     private Text addLabeledText(String label) {

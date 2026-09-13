@@ -8,6 +8,7 @@ import dev.langchain4j.agent.tool.Tool;
 
 public class CompactSessionTool extends AbstractTool {
     public static final String NAME = "compactSession";
+    public static final String TOOL_MESSAGE_PREFIX = "Da Scribe done ";
 
     @Tool(name = CompactSessionTool.NAME,
             value = """
@@ -25,17 +26,21 @@ public class CompactSessionTool extends AbstractTool {
         }
 
         long startNanos = System.nanoTime();
-        agent.compact(monitor);
-        long elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000;
-        onTool("Da Scribe done. (" + StringUtil.humanElapsed(elapsedMillis) + ")");
-
-        // The summary lives exclusively as an AiMessage in the agent's memory (added by compact()) —
-        // the tool result carries only `preserve` (or a marker), never the summary (SOLL 2026-09-10).
-        // The no-preserve marker must NOT collide with the resume UserMessage "Session compacted.
-        // Resume the task using the preserved context." (AbstractAgent.compact) — otherwise the
-        // compact-result text appears twice in the memory (SOLL 2026-09-11).
-        return StringUtil.hasValue(preserve)
-                ? "Preserved:\n" + StringUtil.stripToEmpty(preserve)
-                : "(nothing preserved)";
+        var compactDone = agent.compact(monitor);
+        
+        if (compactDone) {
+            long elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000;
+            
+            var result = StringUtil.hasValue(preserve)
+                    ? "Preserved:" + System.lineSeparator() + StringUtil.stripToEmpty(preserve)
+                    : "(nothing preserved)";
+            
+            onTool(TOOL_MESSAGE_PREFIX + " for " + agent.getName() 
+                + ". (" + StringUtil.humanElapsed(elapsedMillis) + ")");
+            return result;
+        } else {
+            onTool("Compact called but skipped because of small context for " + agent.getName());
+            return "Not needed only " + agent.getMemory().size() + " message in context";
+        }
     }
 }

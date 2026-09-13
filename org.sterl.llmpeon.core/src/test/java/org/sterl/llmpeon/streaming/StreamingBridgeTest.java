@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.streaming;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -12,6 +13,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.shared.AiMonitor;
@@ -228,6 +230,33 @@ class StreamingBridgeTest {
         // THEN the total timer still runs — it is never stopped (no turn-end signal)
         assertThat(bridge.totalTimer().running()).isTrue();
         assertThat(bridge.totalTimer().millis()).isGreaterThanOrEqualTo(45_000);
+    }
+
+    /**
+     * Bug proof: onError's blind errorRef.set overwrote the stored CancellationException with a
+     * post-cancel provider error (→ ApiRetry retried a stopped call, docs/memory #21) — fixed via compareAndSet, inc-1 8b2431e.
+     */
+    @Test
+    void bug_onErrorAfterCancelMasksCancellation() {
+        // GIVEN — an already-canceled monitor and a model that fires a partial (→ cancel path
+        // stores CancellationException) then the provider's post-cancel error
+        var monitor = new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public boolean isCanceled() { return true; }
+        };
+        var cm = mock(StreamingChatModel.class);
+        doAnswer(inv -> {
+            var h = inv.getArgument(1, StreamingChatResponseHandler.class);
+            var handle = mock(StreamingHandle.class);
+            h.onPartialResponse(new PartialResponse("hi"), new PartialResponseContext(handle));
+            h.onError(new RuntimeException("provider error after cancel"));
+            return null;
+        }).when(cm).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+        var bridge = new StreamingBridge(new MutableClock());
+
+        // WHEN + THEN — the documented contract: a canceled call surfaces as CancellationException
+        assertThatThrownBy(() -> bridge.call(cm, request("hi"), monitor))
+                .isInstanceOf(CancellationException.class);
     }
 
     // -------------------------------------------------------------------------

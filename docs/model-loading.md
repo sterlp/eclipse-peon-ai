@@ -6,15 +6,15 @@ refetched when the provider config changes.
 
 ## SOLL (2026-08-28) — ✅ gebaut (Zyklus 2b, 2026-08-30)
 
-Der Modell-Dropdown wandert aus der Chat-UI in die Config-Seite (Basic-Page + pro Agent, shared `ModelComboWidget` inc-25) —
-[advanced-configuration.md](advanced-configuration.md), Mechanik:
-[ADR-0034](adr/0034-connection-cache-by-identity.md). Die Liste gilt pro **Verbindungs-
-Identität** (Provider+URL+Key): einmalig fetch, **Cache on success**, Fehler → configured
-model (heutiger Fallback), kein Refetch beim Agentenwechsel; **Refresh-Button im Dropdown**
-= manueller Refetch (Fehler → alter Cache bleibt). Identitätswechsel der effektiven
-Verbindung → neuer Fetch. Konfiguriertes Modell nicht in der Liste → **bleibt gesetzt**
-(kein Auto-Switch auf erstes Modell — Abweichung von B2); unbekanntes Modell wird der Liste
-angehängt (wie heute).
+Der Modell-Dropdown lebt in der Config-Seite (Basic-Page + pro Agent in der Advanced-Page,
+geteilte Logik in `ModelComboWidget`) — [advanced-configuration.md](advanced-configuration.md),
+Mechanik: [ADR-0034](adr/0034-connection-cache-by-identity.md). Die Liste gilt pro
+**Verbindungs-Identität** (Provider+URL+Key): einmalig fetch, **Cache on success**,
+Fetch-Fehler → konfiguriertes Modell bleibt gesetzt, kein Refetch beim Agentenwechsel;
+**Refresh-Button unter dem Combo** (R-ML3) = manueller Refetch (Fehler → alter Cache bleibt).
+Identitätswechsel der effektiven Verbindung → neuer Fetch. Konfiguriertes Modell nicht in der
+Liste → **bleibt gesetzt** (bewusst kein Auto-Switch auf ein Listen-Modell); unbekanntes
+Modell wird der Liste **angehängt** statt sie zu ersetzen.
 
 ```
 GIVEN die Modell-Liste für eine Identität wurde erfolgreich geladen
@@ -26,111 +26,77 @@ WHEN der Agent aktiviert wird
 THEN das konfigurierte Modell bleibt gesetzt (kein Fehler, kein Auto-Switch)
 
 GIVEN die gecachte Liste einer Identität
-WHEN der User den Refresh-Button im Dropdown drückt
+WHEN der User den Refresh-Button drückt
 THEN die Liste wird neu geholt und ersetzt den Cache
 AND bei Fetch-Fehler bleibt der alte Cache bestehen
 ```
 
-Die Ist-Beschreibung unten ist mit dem Umbau (2b, 2026-08-30) überholt — nur noch als historische Referenz.
-
-## Use Cases (BDD)
-
-```
-GIVEN we have a list of models loaded
-WHEN the config is changed (provider, URL, or API key)
-AND we successfully reload the models from the provider
-AND the currently configured model for the active agent is not found in the list
-THEN we select the first model from the loaded list
-
-GIVEN we have no models loaded
-WHEN the config is changed
-AND no models are successfully loaded (empty list or network failure)
-THEN we add the current model to the list and select it
-
-GIVEN we have an agent selected with a model list already loaded
-WHEN we select a different agent
-AND this agent has a different model in its config
-AND this model is not part of the currently loaded list
-THEN we add this model to the list and select it
-```
-
-## Data Flow
-
-```
-AIChatView.createPartControl()
-  → applyConfig()
-      → reloadModelsIfNeeded()
-          → if provider changed or first load → loadModelsInBackground()
-              → config.listAiModels() → actionsBar.applyModelList(models, selectedModel)
-          → else → actionsBar.selectModel(modelName) (reuse existing list)
-
-AIChatView.onAgentChange(agent)
-  → if new agent's model in list → actionsBar.selectModel(modelName)
-  → else → actionsBar.addAndSelectModel(modelName)   // append to existing list
-
-Preference change event
-  → applyConfig() → reloadModelsIfNeeded()
-```
-
-## Components
-
-### `reloadModelsIfNeeded()` in `AIChatView`
-Decides whether a full model list reload is needed. Triggers `loadModelsInBackground()` if the
-provider type, URL, or API key changed — or if no list exists yet. Otherwise reuses the cached list
-and selects the active model from it.
-
-### `loadModelsInBackground()` in `AIChatView`
-Fetches models via `config.listAiModels()` on a background job. On success, populates the combo
-via `actionsBar.applyModelList()`. On failure or empty list, falls back to showing the configured
-model name via `showConfiguredModelFallback()`.
-
-### `onAgentChange(agent)` in `AIChatView`
-Switches the active agent. If the new agent's model exists in the current list, selects it.
-If not, appends it to the list (preserving previously loaded models) and selects it — the user can
-still switch between all known models.
-
-### `ActionsBarWidget.applyModelList(models, selectedId)`
-Replaces the full model list. Called only on initial load or config change.
-
-### `ActionsBarWidget.addAndSelectModel(modelId)`
-Appends a single model to the existing list if not already present, then selects it. Called on
-agent switch when the new agent's model isn't in the current list.
-
-## Notes / constraints
-
-- **List persistence:** the model list is not cleared on agent switch. Once fetched, models stay
-  available — switching between agents with different models doesn't require re-fetching.
-- **Append on agent switch:** a model unknown to the current list is appended, not replacing the
-  list. This gives the user full model choice regardless of agent.
-- **Fallback (B1):** if the provider returns no models or the network call fails, the configured
-  model name is shown in the combo as a single-item fallback — the user can still type or change
-  it later.
-- **B2 (unknown model):** if the configured model isn't found after a successful fetch, the first
-  model from the provider list is selected automatically.
-
 ## R-ML1 — Fetch-Identity ist live (2026-09-10) ✅ done (lib-update Zyklus, `fcb5339`)
 
 Der Identity-Key für den Listen-Fetch (`ModelListCache.getOrFetch`) wird zur **Fetch-Zeit** aus
-der aktuellen Konfiguration gebaut — nie aus einem Snapshot, der beim Page-Aufbau gezogen wurde.
+der aktuellen Konfiguration gebaut (live-Supplier) — nie aus einem Snapshot, der beim
+Page-Aufbau gezogen wurde.
 
-**WEIL (Bug-1, lib-update Smoke-Test 2026-09-10):** die Advanced-Page snapshotet `LlmConfig`
-einmalig (`AiAdvancedPreferenceView.java:51`), `AgentModelConfigSection.base` ist `final`
-(`:49`), und `prepareFetch()` (`:99`) baut die Identität aus diesem Stale-Base → eine
-Base-URL-Korrektur in den Settings wirkt erst nach Page-Neuöffnung (frischer Snapshot).
-Die Basic-Page ist korrekt (live-Supplier, `AiConfigPreferenceView.java:98-99`); Agenten mit
-**eigener** URL sind live (`getRecord()`) — betroffen sind nur Agenten, die die Base-URL erben.
+**WEIL:** ein beim Page-Aufbau gezogener Snapshot ließe Base-URL-Korrekturen erst nach
+Page-Neuöffnung wirken.
 
 - **BDD R-ML1a** GIVEN die Advanced-Page ist offen WHEN die Base-URL wird geändert und gespeichert
   THEN der nächste Listen-Fetch (Refresh-Button oder Dropdown-Open) nutzt die neue
   Effective-Connection-Identity — kein Page-Reopen nötig.
   Verifikation manuell (SWT-Präzedenz R-UI1/R-MCP3) + Code-Review des Live-Supplier-Wirings.
 - **BDD R-ML1b** GIVEN ein Agent mit eigener URL WHEN die Agent-URL wird geändert THEN der Fetch
-  nutzt die neue Agent-URL (IST-Verhalten, bleibt erhalten — Regression-Guard via Review).
+  nutzt die neue Agent-URL (Regression-Guard via Review).
 
-Umsetzung (`fcb5339`): `AgentModelConfigSection.base` ist jetzt `Supplier<LlmConfig>` (statt
-finaler `LlmConfig`-Snapshot), `prepareFetch()` baut die Identity zur Fetch-Zeit via
-`base.get().effectiveConnectionFor(getRecord())`; `AiAdvancedPreferenceView` hält keinen
-stale config-Field mehr (Supplier = `LlmPreferenceInitializer::buildWithDefaults`).
+Umsetzung (`fcb5339`): `AgentModelConfigSection.base` ist `Supplier<LlmConfig>`,
+`prepareFetch()` baut die Identity zur Fetch-Zeit via
+`base.get().effectiveConnectionFor(getRecord())`; `AiAdvancedPreferenceView` hält keinen stale
+config-Field mehr (Supplier = `LlmPreferenceInitializer::buildWithDefaults`).
 Think-Form/Extra-Body-Sichtbarkeit bleibt bewusst Konstruktions-Zeit (`base.get()` im Ctor).
 Kein neuer Test (reines Wiring; Fetch-Logik von `AgentModelConfigFetchTest`/
 `ModelComboWidgetTest` gedeckt) — Verifikation manuell wie R-UI1/R-MCP3.
+
+## R-ML2 — Refresh & gespeicherte Verbindungs-Identität — ✅ dokumentiertes Verhalten (2026-09-12, User-Smoke beide Pages — kein Fix)
+
+User-Entscheidung 2026-09-12: der Refresh-Button nutzt den **gespeicherten** Stand — Apply
+(Speichern) übernimmt die korrigierte URL, danach greift Refresh mit der neuen Identität
+(Fetch-Identity zur Fetch-Zeit, ADR-0034).
+
+- GIVEN der User korrigiert die Base-URL **ohne** Apply und klickt Refresh, THEN die Liste kommt
+  vom alten (gespeicherten) URL.
+- GIVEN der User drückt Apply/OK, WHEN Refresh geklickt, THEN Fetch mit dem neuen URL aus dem Input.
+
+Dokumentiert auf der Homepage (setup/advanced-configuration.md) und in configuration.md.
+User-verifiziert (2026-09-12): nach Refresh ohne Apply bleibt die alte Modell-Liste vollständig
+stehen, ein manuell eingetipptes Modell bleibt in der Auswahl.
+
+## R-ML3 — Model-Auswahl = natives SWT Combo auf beiden Pages — ✅ done (ui-config, `6b5c9ca`, 2026-09-12)
+
+Das Model-Feld nutzt auf **Basic** und **Advanced** (geteilte Logik in `ModelComboWidget`) das
+**native SWT-Combo** wie die übrigen Dropdowns — gleicher Dropdown-Button. Label und Combo
+erscheinen exakt wie die übrigen Label/Feld-Paare derselben Page: Label in der Label-Spalte der
+Page (gleiche Ausrichtung wie die Sibling-Labels), Combo in der Feld-Spalte. Der
+**Refresh-Button** sitzt **unter** dem Combo (Placement/Style wie „Check Host and Port" beim
+URL-Feld).
+
+Verhalten unverändert (R-ML-Regeln + HP): fetch einmal pro Identität, Refresh holt neu, manuelle
+Eingabe erlaubt, konfiguriertes Modell bleibt selektiert auch wenn nicht in der Liste, Single-Flight
+pro Identität + Secret-Masking (ADR-0040). Danach erst Design-Studie github-copilot-for-eclipse
+(separater Schritt, advanced-configuration.md R-A3).
+
+## R-ML4 — Eingabe-Dedup gegen die Server-Liste (case-insensitive) — ❌ specified (2026-09-12, User-Bug-Report; Fix im selben Zyklus)
+
+Die getippte Eingabe bleibt nur dann als **eigener** Eintrag in der Liste, wenn sie **nicht**
+(case-insensitiv) in der Server-Modell-Liste steht — Schreibweisen-Varianten sind dasselbe Modell.
+Bei Match gewinnt die **Server-ID** (canonical): das Combo selektiert den Server-Eintrag, die
+getippte Variante erscheint nicht und wird auch nicht gespeichert. **Ohne Server-Liste** (Fetch
+fehlgeschlagen/leer) bleibt die Eingabe verbatim — es gibt keine Kanonisierungsquelle. Die
+Server-Liste selbst wird nicht dedupliziert (Server-verantwortet).
+
+- GIVEN die Server-Liste enthält `FOO`, WHEN der User `foo` getippt hat und der Fetch
+  abgeschlossen ist, THEN enthält das Combo genau **einen** Eintrag (`FOO`) und zeigt/speichert
+  `FOO` → `ModelComboWidgetTest.typedCaseVariantOfListedModelIsNotDuplicated`
+- GIVEN das konfigurierte Modell ist ein exakter Listeneintrag, WHEN der Fetch abgeschlossen ist,
+  THEN kein Duplikat → `ModelComboWidgetTest.fetchShowsListAndKeepsConfiguredModel`
+- GIVEN Fetch fehlgeschlagen/leere Liste + getipptes Modell, WHEN Apply, THEN bleibt die Eingabe
+  verbatim erhalten → `ModelComboWidgetTest.refreshFailureKeepsPreviousList` (Fallback-Pfad läuft
+  über denselben apply-Knoten)

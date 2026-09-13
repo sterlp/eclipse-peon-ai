@@ -80,25 +80,45 @@ public class SkillPromptFile extends SimplePromptFile {
             throw new IllegalStateException(
                     "SKILL " + getName() + " has no files.");
         }
+        // Defense in depth: reject traversal on the RAW input — makeReltive below strips "../",
+        // which would turn a traversal into a silent "File not found" (SOLL-4, ADR-0046).
+        // Normalize unconditionally: backslash→slash first, so mixed-separator traversals
+        // (a/docs/..\..\x) are caught on every platform, not only where "\" is a separator.
+        // One leading "/" is stripped before the check — the documented skill-relative contract
+        // (makeReltive below does the same), so only true absolute paths and ".." escapes count.
+        String rawPath = FileUtils.normalizePath(relativePath);
+        if (rawPath.startsWith("/")) rawPath = rawPath.substring(1);
+        Path base = skillDir.toAbsolutePath().normalize();
+        Path raw = base.resolve(rawPath).normalize();
+        if (!raw.startsWith(base)) {
+            throw new IllegalArgumentException("Path traversal not allowed: " + relativePath);
+        }
+
         // Strip leading slashes to avoid absolute path resolution
         String cleaned = FileUtils.makeReltive(relativePath);
 
-        var target = skillDir.resolve(cleaned);
-        // accept SKILL path in the relative path
-        if (!Files.exists(target)) target = skillDir.getParent().resolve(cleaned);
-
-        if (!target.startsWith(skillDir)) {
-            throw new IllegalArgumentException(
-                    "Path traversal not allowed: " + relativePath);
-        }
-        if (!Files.exists(target)) {
-            throw new IllegalArgumentException(
-                    "File not found in skill directory: " + relativePath);
-        }
+        var target = resolveInSkill(cleaned);
         try {
             return Files.readString(target);
         } catch (IOException e) {
             throw new RuntimeException("Failed to read " + target, e);
         }
+    }
+
+    /**
+     * Resolves a cleaned, already traversal-checked relative path inside the skill directory:
+     * first relative to the skill dir itself, then against its ancestors to accept
+     * SKILL-qualified paths — a candidate only counts if it stays inside the skill dir.
+     * A missing file yields "File not found", never an NPE.
+     */
+    private Path resolveInSkill(String cleaned) {
+        Path base = skillDir.toAbsolutePath().normalize();
+        Path plain = base.resolve(cleaned).normalize();
+        if (Files.exists(plain)) return plain;
+        for (Path ancestor = base.getParent(); ancestor != null; ancestor = ancestor.getParent()) {
+            Path candidate = ancestor.resolve(cleaned).normalize();
+            if (candidate.startsWith(base) && Files.exists(candidate)) return candidate;
+        }
+        throw new IllegalArgumentException("File not found in skill directory: " + cleaned);
     }
 }

@@ -18,7 +18,9 @@ public class TitledGroup extends Composite {
 
         group = new Group(this, SWT.NONE);
         group.setText(title);
-        group.setLayout(new GridLayout());
+        var groupLayout = new GridLayout();
+        groupLayout.marginBottom = 0;
+        group.setLayout(groupLayout);
     }
 
     public Group getGroup() {

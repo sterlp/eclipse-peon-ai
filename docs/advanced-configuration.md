@@ -13,44 +13,20 @@ This separation keeps the default configuration simple while providing power use
 
 ## Per-Agent Model Resolution via ChatRequest
 
-### Architecture Change (Issue #82)
+### Model Resolution (SOLL)
 
-**Previous approach**: All agents shared a single `ConfiguredChatModel`. Changing any model flushed the KV cache, and per-agent settings were ignored.
+Jeder Agent resolviert **seinen eigenen** Modell-/Verbindungs-Slot aus `LlmConfig` (Slots und
+Fallbacks: siehe „Agent-Specific Config Umbau" unten) und setzt den resolvierten Modellnamen auf
+`ChatRequest.modelName()`, bevor der Tool-Loop läuft — langchain4j wendet den Override beim
+Request-Bau an.
 
-**Current approach**: Each agent resolves its own model name from `LlmConfig` and sets it on `ChatRequest.modelName()` before calling the tool loop. LangChain4j applies this override when building the request to the provider.
-
-### Data Flow
-
-```
-AiPlannerService.resolveAgentModel()
-  → returns configuredModel.getConfig().getPlanModel()
-  → ToolLoopRequest.builder().modelName(planModel)
-  → AbstractChatService.call() passes modelName to ToolLoopRequest
-  → ToolService builds ChatRequest with modelName set
-  → Provider receives request with agent-specific model
-```
-
-### Configuration Keys
-
-| Key | Agent | Purpose |
-|-----|-------|---------|
-| `PREF_MODEL` | Developer (base) | Code generation — always uses base model |
-| `PREF_PLAN_MODEL` | Planner | Task planning and strategy |
-| `PREF_SEARCH_MODEL` | Search | Context retrieval and information lookup |
-| `PREF_COMPACT_MODEL` | CompactSessionTool | Conversation compression for context management |
-
-### Model Resolution Rules
-
-- **Developer agent**: Always uses the base model (`PREF_MODEL`) — no separate devModel configuration
-- **Other agents**: Use their configured per-agent model if set; otherwise provider default applies
-- **No fallback chain**: Per-agent models do not fall back to `PREF_MODEL`
-
-### Why ChatRequest.modelName() Instead of Separate ConfiguredChatModel?
-
-1. **Single cache**: One `StreamingChatModel` instance with KV cache preserved across agent switches
-2. **No synchronization**: No need to keep multiple model instances in sync on config change
-3. **Native support**: LangChain4j supports per-request model override directly
-4. **Lower overhead**: Avoids building and maintaining multiple `ConfiguredChatModel` wrappers
+- **Dev-Agent**: nutzt die Base-Connection; `llm.agent.dev.*` bleibt optional für Overrides
+- **Alle anderen Slots** (plan/search/compact/po + Custom Agents): eigene Werte, wenn gesetzt;
+  leere Felder erben die **Base-Connection** (URL, Key, Modell)
+- **Kein Slot fällt auf einen anderen Agent-Slot zurück** (R-PO2: PO-Fallback = Base, nie Plan)
+- **Warum `ChatRequest.modelName()` statt separates Modell-Objekt:** ein `StreamingChatModel`
+  pro Verbindung (KV-Cache bleibt über Agenten-Wechsel erhalten), keine Synchronisierung
+  mehrerer Instanzen, nativer per-Request-Override, geringerer Overhead
 
 ## Agent-Specific Config Umbau (SOLL, 2026-08-21) — ✅ komplett gebaut: Core (2a) + Config-UI (2b) + Cache-Clean-Break/Beispiele/Usage/Custom-Agent-Frontmatter/Homepage (2c, 2026-09-01)
 
@@ -75,19 +51,18 @@ Mechanik: [ADR-0034](adr/0034-connection-cache-by-identity.md).**
 - **JSON-Widget in der Config-Seite:** pro Agent ein Widget, das die Config editiert;
   Speicherung mit **Agent-Prefix** (Key-Prefix je Agent) — keine zentrale Modell-Registry.
 - **Modell-Dropdown + Think: aus der Chat-UI raus** (2026-08-28, User: „nur wenn es einfacher
-  wird" — es wird einfacher: Config-Seite = einzige Quelle, kein Dual-Edit, weniger Chat-UI-
-  State; Known-Issue-Bug schrumpft auf Validierung beim Öffnen der Config). Die Config-Seite
-  trägt pro Agent: Modell-Dropdown, Think, JSON-Body-Widget.
+  wird" — einfacher: Config-Seite = einzige Quelle, kein Dual-Edit, weniger Chat-UI-State).
+  Die Config-Seite trägt pro Agent: Modell-Dropdown, Think, JSON-Body-Widget.
 - **Modell-Liste pro Agent (2026-08-28, User):** das Dropdown eines Agenten bezieht seine
   Liste aus dessen **effektiver** Verbindung (eigene Provider+URL+Key, sonst Base-Config) —
   Umschalten auf einen Agenten mit anderer URL zieht also eine andere Liste. Liste **einmalig**
   pro Identität (gleicher Hash wie Connection-Cache): **Cache on success**; Fetch-Fehler →
-  konfiguriertes Modell bleibt gesetzt (heutiger Fallback); **kein Refetch** beim
-  Zurückwechseln. **Refresh-Button im Dropdown** (2026-08-28, User): manueller Refetch der
-  Liste der aktuellen Identität (Fehler → alter Cache bleibt). Identitätswechsel
+  konfiguriertes Modell bleibt gesetzt; **kein Refetch** beim
+  Zurückwechseln. **Refresh-Button** (2026-08-28, User): manueller Refetch der
+  Liste der aktuellen Identität (Fehler → alter Cache bleibt); Placement seit R-ML3
+  **unter dem Combo**. Identitätswechsel
   (URL/Key/Provider) → neuer Fetch. Konfiguriertes Modell
-  nicht in der Liste → **bleibt gesetzt** (kein Auto-Switch auf erstes Modell — bewusste
-  Abweichung von B2 in [model-loading.md](model-loading.md)).
+  nicht in der Liste → **bleibt gesetzt** (bewusst kein Auto-Switch auf ein Listen-Modell).
 - **Core-Fundament ✅ (Zyklus 2a, 2026-08-28):** `AgentConfig`/`LlmConfig` +`extraBody`;
   `EffectiveConnection` (Agent-URL/Key, sonst Base; Provider bleibt Base-Ebene);
   Connection-Cache in `ConfiguredChatModel` pro `ConnectionIdentity` (Provider+URL+Key, +Body
@@ -106,25 +81,18 @@ Mechanik: [ADR-0034](adr/0034-connection-cache-by-identity.md).**
   Frontmatter — gleicher Record, gleiche Auflösung; Keys `url`/`api_key`/`extra_body`,
   `PromptYmlParser` im core, Auflösung wie die 4 Core-Agents (0 Plugin-Änderungen);
   **Homepage-Doku** ✅ (2c, `custom-agents.md`).
-- **Known Issue (Bug) — ✅ gelöst (2b, 2026-08-30):** war: URL-Wechsel in der Base-Config macht die Modell-Auswahl der **anderen**
-  Agenten ungültig/leer (nur der selektierte Agent wird aktualisiert); heute via Wiederauswahl
-  zu reparieren.
-- **Known Issue (Bug) — ✅ done (2026-08-30, Smoke-Test User → Fix inc-17 `60b494e`):** war:
-  `SWTException: Invalid thread access` beim Modell-List-Fetch (Job „Loading models (&lt;agent&gt;)") —
-  `AgentModelConfigSection.fetchModels`/`refreshModels` riefen `getRecord()` im **Job-Body** →
-  SWT-Reads vom Hintergrund-Thread. Fix: `prepareFetch()` capturet auf der UI-Thread einen
-  SWT-freien `FetchSnapshot(identity, buildConfig)` vor dem Job-Start; `fetchList(FetchSnapshot)`
-  ist static und widget-frei; Test `AgentModelConfigFetchTest.fetchListUsesCapturedSnapshotWithoutWidgets`.
+- **URL-Wechsel in der Base-Config ✅ (2b, 2026-08-30):** GIVEN die Base-URL/-Key ändert sich,
+  WHEN die Modell-Auswahl eines beliebigen Agenten geladen/angezeigt wird, THEN folgt sie der
+  neuen effektiven Verbindung (kompletter Config-Rebuild bei jedem Load).
+- **Modell-Listen-Fetch UI-Thread-safe ✅ (2b, inc-17 `60b494e`):**
   GIVEN Config-Seite geöffnet, Modell-Dropdown eines Agents lädt die Liste
   WHEN der Fetch-Job die aktuelle Config liest
-  THEN alle SWT-Zugriffe laufen auf der UI-Thread (kein SWTException) und der Job nutzt
-  den gecaptured Config-Snapshot
+  THEN alle SWT-Zugriffe laufen auf dem UI-Thread — der Job arbeitet ausschließlich mit dem
+  vor dem Start gecapturten, SWT-freien `FetchSnapshot(identity, buildConfig)`
+  (`fetchList(FetchSnapshot)` ist static und widget-frei)
+  → `AgentModelConfigFetchTest.fetchListUsesCapturedSnapshotWithoutWidgets`
 
-## PO-Agent bekommt einen eigenen Model-Slot (SOLL, 2026-09-03)
-
-**IST:** Die Advanced-Config zeigt 4 Sections — `dev`, `plan`, `search`, `compact`
-(`AiAdvancedPreferenceView.createFieldEditors`). Der PO-Agent (Jon) hat **keinen** eigenen
-Slot und läuft auf dem Plan-Slot ([ADR-0023](adr/0023-po-model-plan-slot.md)).
+## PO-Agent bekommt einen eigenen Model-Slot (SOLL, 2026-09-03 — ✅ 3a: R-PO1–R-PO4)
 
 **SOLL:** Fünfter Slot `po` — vollwertig wie plan/search/compact (URL, API-Key, Modell +
 Refresh, Think, JSON extra body, gegated über `supportsExtraBody()`).
@@ -174,11 +142,7 @@ Deskriptor `AGENT_SECTIONS`. `LlmConfigSaver` und `LlmPreferenceInitializer` bli
 seither wie jeder andere Agent ein eigenes `llm.agent.po.temperature`. Die Marker in `AiPoAgent`
 und `LlmConfig` sind mitsamt den toten `getTemperature()`-Overrides gelöscht.
 
-## Temperature pro Agent (SOLL, 2026-09-03)
-
-**IST:** In Zyklus 2b wurde Temperature bewusst aus `AgentModelConfig` entfernt. Übrig sind
-zwei tote Keys `llm.planTemperature` / `llm.devTemperature` in `LlmConfigKeys` (kein UI,
-keine Auflösung). Wer Temperature will, schreibt sie heute in den **extra body**.
+## Temperature pro Agent (SOLL, 2026-09-03 — ✅ 3b: R-T1–R-T4)
 
 **SOLL:** Optionales Temperature-**Eingabefeld** pro Agent (alle fünf Core-Slots + Custom
 Agents via Frontmatter `temperature`).
@@ -239,21 +203,19 @@ API-Fehler ab — das würde exakt die Modelle brechen, die im Plan-/PO-Slot lau
 
 ### Konsequenzen des Clean Break (PO, 2026-09-03)
 
-- **Search und Compact verlieren ihre impliziten Defaults `0.3` / `0.2`.** Ohne konfigurierten
-  Wert senden sie **nichts**. Das ist R-T1 konsequent zu Ende gedacht und repariert nebenbei
-  GPT-5/o-Setups, die heute an `temperature=0.3` scheitern. Wer die alten Werte will, trägt sie
-  einmalig ins Feld ein. → Homepage muss das benennen.
-- **`temperature` ist ein einziger Parse-Pfad für alle Agent-Arten.** Custom Agents legen ihren
-  Frontmatter-Wert als **rohen String** in dasselbe `AgentModelConfig`-Record wie die fünf
-  Core-Slots; geparst wird an genau einer Stelle. `CustomAgent.getTemperature()` und
-  `SimplePromptFile.firstOrDefaultNumber` fallen weg — letzteres warf bei `temperature: abc`
-  eine ungefangene `NumberFormatException` und verletzte damit R-T2.
-- **R-T3 wird explizit implementiert, nicht der Serialisierung überlassen.** langchain4j merged
+- **Search und Compact haben keine impliziten Defaults (`0.3` / `0.2` entfallen, 3b).** Ohne
+  konfigurierten Wert senden sie **nichts** (R-T1). Wer die alten Werte will, trägt sie einmalig
+  ins Feld ein. → Homepage benennt das.
+- **`temperature` hat einen einzigen Parse-Pfad für alle Agent-Arten.** Custom Agents legen
+  ihren Frontmatter-Wert als **rohen String** in dasselbe `AgentModelConfig`-Record wie die
+  fünf Core-Slots; geparst wird an genau einer Stelle (`AgentTemperature`, R-T2: invalide
+  Eingabe → warn + ignorieren).
+- **R-T3 ist explizit implementiert, nicht der Serialisierung überlassen.** langchain4j merged
   `customParameters` per `@JsonAnyGetter` **neben** das typisierte Feld — ein `temperature` im
-  extra body erzeugte sonst einen **doppelten JSON-Key**, und wer gewinnt, entscheidet die
+  extra body würde sonst einen **doppelten JSON-Key** erzeugen, und wer gewinnt, entscheidet die
   Gegenseite. Deshalb streicht der Merge das typisierte Feld aktiv, wenn der Body den Wert
   trägt.
-- **`DoubleSliderFieldEditor` wird nach dem Umbau aufruferlos und gelöscht.** Toter Code, keine
+- **`DoubleSliderFieldEditor` wurde mit dem Umbau gelöscht (Clean Break).** Toter Code, keine
   Tests, und das SOLL schließt einen Slider dauerhaft aus.
 
 - **R-PO4 ✅ done (3a, 2026-09-03) — Custom-Agent-Parität.** Der PO-Slot verhält sich beim
@@ -273,3 +235,59 @@ On first launch, AI Peon resolves skills and commands directories:
 Same logic applies to commands directory (`~/.claude/commands` → `~/.llmpeon/commands`).
 
 This one-time resolution ensures deterministic behavior without filesystem I/O on every config load.
+
+## Basis-URL vs. per-Agent Override — Klartext (2026-09-12, User-Rückfrage)
+
+Die URL der **Basic-Page** (`llm.url`) ist die Basis für **alle** Agenten ohne eigenen Override —
+der Dev-Agent trägt standardmäßig **keinen eigenen** URL (`llm.agent.dev.url` existiert dann nicht)
+und erbt die Base-URL. Das URL-Feld der Advanced-View zeigt nur den **eigenen** Override
+(„empty = inherit base"), nicht die effektive Verbindung — deshalb steht dort für Dev nichts,
+obwohl dev faktisch die Base-URL nutzt (`LlmConfig.java:165`, `EffectiveConnection.java:32`).
+Modell-Listen-Refresh nutzt den **gespeicherten** Stand: erst **Apply**, dann Refresh →
+R-ML2 in [model-loading.md](model-loading.md).
+## Config-Page UI — R-A1/R-A2/R-A3/R-A4 (2026-09-12, User-Smoke „Seite sieht altbacken aus")
+
+**R-A1 ✅ done (ui-config, `66ce4fe`) — Abstand unter den Examples:** GIVEN die Advanced-Page
+zeigt die 3 Example-Buttons unter dem Extra-Body-Feld, WHEN gerendert, THEN ist der Abstand
+**unterhalb** der Gruppe gleich klein wie oberhalb — keine Leerraum-Zeile, kein Extra-Fußraum
+(Layout-Gruppe, kein Extra-Space). Umsetzung: 2× `marginBottom=0` (Section + TitledGroup); das
+Examples-Status-Label ist bis zum Paste layout-exklusiv (`GridData.exclude=true` +
+`setVisible(false)`, beim Paste zurück + `layout()`) — SWT-GridLayout filtert nur
+`GridData.exclude`, nicht Visibility (API-Trap in [AGENTS-DEV.md](../AGENTS-DEV.md)). Kein
+automatisierter Test (SWT-Layout-Präzedenz wie R-T5) — **User-Smoke ✅ 2026-09-12**.
+
+**R-A2 ✅ done (ui-config, `6b5c9ca`) — Native Combo statt Custom-Dropdown (beide Pages):** Das
+Model-Feld nutzt auf **Basic** und **Advanced** (geteilte Logik) das **native SWT-Combo** wie
+Provider/Shell-Command — gleicher Dropdown-Button. Label und Combo erscheinen exakt wie die
+übrigen Label/Feld-Paare derselben Page: Label in der Label-Spalte der Page (gleiche Ausrichtung
+wie die Sibling-Labels), Combo in der Feld-Spalte. Der Refresh-Button sitzt **unter** dem Combo
+(Placement/Style wie „Check Host and Port" beim URL-Feld). **Verhalten unverändert:** lazy fetch
+einmal pro Verbindungs-Identität, Refresh holt neu, manuelle Modelleingabe erlaubt, konfiguriertes
+Modell bleibt selektiert auch wenn es nicht in der Liste steht, Single-Flight + Secret-Masking
+bleiben (ADR-0040) → R-ML3 in [model-loading.md](model-loading.md). Umsetzung:
+`ModelComboWidget` = Controller (kein Composite) — Combo + Refresh im Parent-2-Spalten-Grid, Label
+je Caller (Basic raw `Label` SWT.LEFT, Advanced `addLabel` SWT.END),
+`EclipseUtil.runInUiThread(Composite→Widget)`, Stale-Guard-Anker `modelCombo`. Tests:
+`ModelComboWidgetTest` (inkl. READ_ONLY-Assert) + `AgentModelConfigFetchTest` — **User-Smoke
+beide Pages ✅ 2026-09-12** ([resolved-points.md](resolved-points.md)). Bekannte Lücke (Plan §11):
+Stale-Guard-Mutation lässt alle 5 Tests grün — Follow-up-Test offen.
+
+**R-A3 — Design-Studie github-copilot-for-eclipse (separat, NACH R-A1/R-A2):** Gruppen-/Label-Gestaltung
+im Copilot-Plugin abschauen (alle Labels bündig, auch Extra Body) — Inspiration, kein Copy; nur
+anschauen, wenn die 2 einfachen Fixes drin sind.
+
+**R-A4 ❌ specified (2026-09-12, User: „Think-Dropdown gleicher Style") — natives Combo (editierbar):**
+das Think-Feld für `ThinkSupport.Values` nutzt das **native SWT-Combo** (`SWT.BORDER`, editierbar —
+kein READ_ONLY) wie das Model-Combo (R-A2), an derselben Stelle im 2-Spalten-Grid: Label `Think:`
+mit `addLabel` (SWT.END) in der Label-Spalte, Combo FILL/CENTER in der Feld-Spalte. Boolean →
+weiter Checkbox, FreeString/Unknown → weiter Text-Feld. **Verhalten unverändert:** bekannter
+gespeicherter Wert wird selektiert, unbekannter erscheint verbatim (`setText`) — deshalb
+editierbar statt READ_ONLY (Provider-Werte sind Vorschläge, kein geschlossenes Set).
+
+- GIVEN die Advanced-Page rendert eine `AgentModelConfigSection` mit `ThinkSupport.Values`
+  WHEN die Widgets gebaut sind, THEN das Think-Feld ist ein natives `Combo` (kein `CCombo`)
+  in der Feld-Spalte, Label-Ausrichtung wie die Sibling-Labels
+- GIVEN ein gespeicherter Think-Wert, der nicht in der Provider-Liste steht
+  WHEN die Section lädt, THEN zeigt das Combo den Wert verbatim (Feld behält den Text)
+- GIVEN das Combo zeigt einen freien Text WHEN `getRecord()` THEN der Combo-Text wird
+  unverändert als Think-Wert übernommen
