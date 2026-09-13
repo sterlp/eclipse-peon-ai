@@ -104,6 +104,17 @@ Bei Bedarf: LRU mit Obergrenze (z. B. 500). Rückversicherung mit User steht aus
 
 ## Compact Input Budget (docs/compact-input-budget.md)
 
-- ⏳ Story ist 🚧 in design — R1–R5 SOLL von User festgelegt (2026-09-13, Budget=autoCompactAfter,
-  +5%-Toleranz, Stufen 8000→3000→drop-oldest, "session truncated"-Disclosure). Flip auf
-  ❌ specified nach Design-Abnahme. Homepage-Doku der +5%-Toleranz = Teil der Story.
+- ❓ Context-Noise zuerst raus (User-Idee, 2026-09-13): Context-Item-Messages (selektierte Files,
+  Standing Orders, AGENTS.md in der History) nehmen, bevor gekürzt wird — die echte User-Message
+  steht (Text-Content) zuletzt. Wird zusammen mit der **Light-Version** des Budgets ausgearbeitet
+  (User: „#2 und #5 gehören zusammen", vor dem Bau nochmal gemeinsam drüber).
+- 🔒 R1–R5 SOLL festgelegt, Story ❌ specified (2026-09-13). Reihenfolge: erst Compact-Slot-Bug
+  (eigener Zyklus, eigenes Release), dann Budget-Light + Noise.
+
+
+## Compact-Input: Context-Noise zuerst raus (User-Idee, 2026-09-13 — unterbrochen, nicht ausdiskutiert)
+
+- ❓ Vor dem Kürzen (R3) zuerst Context-Item-Messages aus dem Compact-Input nehmen: selektierte
+  Files, Standing Orders, AGENTS.md in der History — „Rauschen", das Compact nicht braucht.
+  Die echte User-Message steht (Text-Content) zuletzt. Ausarbeitung + Einordnung in
+  compact-input-budget.md (eigene Stufe vor der sanften Kürzung?) offen.
