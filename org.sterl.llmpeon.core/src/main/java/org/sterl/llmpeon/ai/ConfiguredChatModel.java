@@ -37,7 +37,12 @@ public class ConfiguredChatModel {
     }
 
     public ChatResponse callBlocking(ChatRequest req, AiMonitor monitor) {
-        return new StreamingBridge().call(getChatModel(), req, monitor);
+        return callBlocking(req, null, monitor);
+    }
+
+    /** Blocking call on the model for the agent's effective connection (ADR-0034). */
+    public ChatResponse callBlocking(ChatRequest req, AgentConfig agent, AiMonitor monitor) {
+        return new StreamingBridge().call(modelFor(agent), req, monitor);
     }
     
     public StreamingChatModel getChatModel() {

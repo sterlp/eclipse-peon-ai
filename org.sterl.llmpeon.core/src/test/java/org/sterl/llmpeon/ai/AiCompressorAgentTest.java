@@ -10,6 +10,7 @@ import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.agent.AiCompressorAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
@@ -17,6 +18,9 @@ import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -30,12 +34,15 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 class AiCompressorAgentTest {
 
     private MockLlmServer server;
+    private MockLlmServer serverB;
 
     @BeforeEach
     void setUp() throws Exception {
         server = new MockLlmServer(0);
         server.start();
-        
+        serverB = new MockLlmServer();
+        serverB.start();
+
         // Wait briefly for server to be ready (HttpServer starts async)
         Thread.sleep(100);
     }
@@ -43,6 +50,7 @@ class AiCompressorAgentTest {
     @AfterEach
     void tearDown() {
         server.stop();
+        serverB.stop();
     }
 
     @Test
@@ -70,6 +78,70 @@ class AiCompressorAgentTest {
 
         // AND
         assertTrue(subject.getMemory().size() <= 2, "Chat messages aren't reduced! Still " + subject.getMemory().size());
+    }
+
+    @Test
+    @Timeout(10)
+    void compactSlotRoutesCallToCompactConnection() {
+        // GIVEN — base points at serverA; the COMPACT slot carries its own url/model/temperature
+        var base = LlmConfig.builder()
+                .providerType(AiProvider.OPEN_AI)
+                .model("base-model")
+                .url(server.getUrl())
+                .apiKey("test-key")
+                .build();
+        var config = base.withModelConfig(AgentModelConfig.COMPACT,
+                new AgentModelConfig(serverB.getUrl(), null, "compact-model", null, null, "0.2"));
+        serverB.queueResponse("WHAT: compact briefing");
+        var subject = new AiCompressorAgent(new ConfiguredChatModel(config));
+
+        // WHEN — one compaction
+        var response = subject.call(List.of(UserMessage.from("Foo"), AiMessage.from("Bar")), AiMonitor.NULL_MONITOR);
+
+        // THEN — the call landed at the COMPACT slot's URL with the slot's model and temperature
+        assertThat(response.aiMessage().text()).contains("WHAT: compact briefing");
+        assertThat(serverB.getLastRequestBody()).isNotNull();
+        var body = parse(serverB.getLastRequestBody());
+        assertThat(body.path("model").asText()).isEqualTo("compact-model");
+        assertThat(body.path("temperature").asDouble()).isEqualTo(0.2);
+
+        // AND — the base URL received no call
+        assertThat(server.getLastRequestBody()).isNull();
+    }
+
+    @Test
+    @Timeout(10)
+    void emptyCompactSlotFallsBackToBaseConnection() {
+        // GIVEN — base points at serverA, no COMPACT slot entry at all
+        var config = LlmConfig.builder()
+                .providerType(AiProvider.OPEN_AI)
+                .model("base-model")
+                .url(server.getUrl())
+                .apiKey("test-key")
+                .build();
+        server.queueResponse("WHAT: base briefing");
+        var subject = new AiCompressorAgent(new ConfiguredChatModel(config));
+
+        // WHEN — one compaction
+        var response = subject.call(List.of(UserMessage.from("Foo"), AiMessage.from("Bar")), AiMonitor.NULL_MONITOR);
+
+        // THEN — the call landed at the base URL with the base model
+        assertThat(response.aiMessage().text()).contains("WHAT: base briefing");
+        assertThat(server.getLastRequestBody()).isNotNull();
+        assertThat(parse(server.getLastRequestBody()).path("model").asText()).isEqualTo("base-model");
+
+        // AND — the second stub received nothing
+        assertThat(serverB.getLastRequestBody()).isNull();
+    }
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    private static JsonNode parse(String body) {
+        try {
+            return MAPPER.readTree(body);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to parse captured request body: " + body, e);
+        }
     }
 
     @Test
@@ -122,7 +194,7 @@ class AiCompressorAgentTest {
         var configuredModel = new ConfiguredChatModel(config) {
             @Override
             public dev.langchain4j.model.chat.response.ChatResponse callBlocking(
-                    ChatRequest req, AiMonitor monitor) {
+                    ChatRequest req, AgentConfig agent, AiMonitor monitor) {
                 return null;
             }
         };
