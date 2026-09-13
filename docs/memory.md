@@ -8,11 +8,11 @@ UserContext-Tests (12) + StandingOrdersBuilderTest-Fix: `a625167`/`13bb500`.
 
 ## Nächste Zyklen (User-Reihenfolge 2026-09-13)
 
-1. **Compact-Slot-Bug** — ✅ FIXED (`efa22df`, Zyklus fix/compact-slot-model, Da-Dok-Review
-   ACCEPTED, Surefire 728→730/0). COMPACT-Slot steuert den Call vollständig via
-   `ConfiguredChatModel.modelFor(agent)`; leer → Base. Docs: advanced-configuration.md +
-   compact-input-budget.md. **Merge/Release = User; User-Smoke: Compact mit fremder
-   Slot-URL konfigurieren und beobachten.**
+1. **Compact-Slot-Bug** — ✅ FIXED (`efa22df` + Wire-Tests `3977a8d`: COMPACT Think/extraBody
+   + Custom-Agent-Frontmatter on-the-wire; Surefire 734/0), Da-Dok-Review ACCEPTED.
+   COMPACT-Slot steuert den Call vollständig via `ConfiguredChatModel.modelFor(agent)`;
+   leer → Base. Docs: advanced-configuration.md + compact-input-budget.md.
+   **Merge/Release = User; User-Smoke: Compact mit fremder Slot-URL konfigurieren und beobachten.**
 2. **Compact-Input-Budget Light + Context-Noise** — Story ❌ specified
    (docs/compact-input-budget.md), zusammen mit Noise-Idee (open-points.md ❓) ausarbeiten,
    vor dem Bau nochmal gemeinsam drüber.

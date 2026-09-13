@@ -33,7 +33,13 @@ Request-Bau an.
   ADR-0034-Identitätsauflösung) — Slot-URL/-Key/-Modell gelten für den Call; **leerer Slot →
   Base** („Empty means unset", free über `EffectiveConnection.isBase`). Tests:
   `AiCompressorAgentTest.compactSlotRoutesCallToCompactConnection` /
-  `emptyCompactSlotFallsBackToBaseConnection` (MockLlmServer-Duo, Captured-Body-Asserts).
+  `emptyCompactSlotFallsBackToBaseConnection` (MockLlmServer-Duo, Captured-Body-Asserts);
+  **Think/extra body pro Slot auf der Leitung** (`3977a8d`): COMPACT `reasoning_effort` +
+  Anthropic `thinking{type=enabled}` + extra body (User-wins, Reserved-Keys gestrippt, Key 1×)
+  sowie Custom-Agent-End-to-End via AGENT.md-Frontmatter
+  (`CustomAgentConnectionE2ETest.frontmatterAgent_reachesOwnStub_withFullPayloadOnTheWire`).
+  Bekannte Grenze: `api_key` ist HTTP-Header (nicht gecaptured) — Routing/Identity bewiesen,
+  Key selbst nur Unit-level.
   Kein Homepage-Edit nötig — die Einstellung tut ab jetzt, was sie verspricht.
 - **Warum `ChatRequest.modelName()` statt separates Modell-Objekt:** ein `StreamingChatModel`
   pro Verbindung (KV-Cache bleibt über Agenten-Wechsel erhalten), keine Synchronisierung
