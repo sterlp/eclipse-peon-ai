@@ -9,7 +9,7 @@ import org.sterl.llmpeon.shared.StringUtil;
  * Pure (SWT-free) render model for the plugin's agent-status widget. Maps an orchestrator's visible team
  * (a {@link NamedAgent} list — see {@code AiPoAgent.getTeam()}) to display rows {@code uiName (Xk)}.
  * <p>
- * The first entry is the orchestrator itself (Da Boss); the rest are his slaves (Da Thinka, Da Mek).
+ * The first entry is the orchestrator itself (Da Boss); the rest are his slaves (Da Thinka, Da Mek, Da Dok).
  * The 🟢 sits on the working leaf: a slave glows while it works, and — the <b>leaf rule</b> — Da Boss
  * glows only when he works AND no slave is working. So Jon lights up while he composes himself, but
  * during delegation the busy slave carries the glow and his row stays calm.
