@@ -2,7 +2,8 @@
 
 > **Status:** Roster **✅ gebaut** (MVP-Neubau 2026-09, [ADR-0025](adr/0025-po-status-widget-named-agents.md); Bau-Details im
 > archivierten [MVP-Plan](agenten-status-im-header-mvp-plan.md)). Per-Agent **Compact-Buttons**:
-> **❌ specified** (2026-09-13, User).
+> **✅ done** (2026-09-14, Zyklus story/po-compact-2026-09-13; Decision 2026-09-13, User;
+> UI-Verifikation = User-Smoke nach BDD unten).
 
 ## Ziel
 
@@ -37,7 +38,7 @@ Nicht-PO-Agent aktiv:
 - **Refresh-Trigger:** `onChatMessage` (🟢 an), `lockWhileWorking(false)`/Turn-Ende (🟢 aus),
   Agenten-Wechsel, Token/Response — idempotente Live-Pulls.
 
-## Per-Agent Compact-Buttons — ❌ specified (2026-09-13, User)
+## Per-Agent Compact-Buttons — ✅ done (2026-09-14; Decision 2026-09-13, User)
 
 Jede **Sklaven-Zeile** (Da Thinka, Da Mek, Da Dok) bekommt einen kleinen **Icon-Button** (Compact-Icon,
 keine Beschriftung, Tooltip `Compact Da X`). Klick komprimiert **genau diesen Agenten**.

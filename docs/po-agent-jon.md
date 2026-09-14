@@ -820,7 +820,7 @@ blocken (diese Regel) — cancel-safe via Stop.
 - **GIVEN** Da Thinka/Da Mek werden erstellt **WHEN** ihr effektiver Tool-Set berechnet wird **THEN** `askUser` wird weiterhin gefiltert (R9 unverändert)
 - **Tag:** unit (verify poToolService contains AskUserTool; verify slaves still filter it)
 
-### R18: Compact = nur der Agent selbst — kein Cascade ❌ specified (2026-09-13, User)
+### R18: Compact = nur der Agent selbst — kein Cascade ✅ done (2026-09-14, Zyklus story/po-compact-2026-09-13; Decision 2026-09-13, User)
 
 `AiPoAgent.compact()` komprimiert **ausschließlich Jon selbst**. Der implizite Slave-Cascade
 (sequenziell `compactPlan` → `compactReview` → `compactDev` über `PoDelegateTool`) wird **entfernt**.
@@ -856,8 +856,8 @@ THEN komprimiert sich der Slave selbst vor dem Turn (Auto-Compact, bereits gebau
 anfangen"-Aktion des Users, Compact ist Kontextpflege.
 
 - **GIVEN** Jon ist aktiv **WHEN** der User Clear drückt **THEN** Jon- und alle Slave-Memories sind geleert (IST `AiPoAgent.clear()`, unverändert)
-- **Homepage:** das Verhalten ist user-facing und wird dort dokumentiert (❌ Teil des Inkrements —
-  die Homepage hat bisher keine Agenten-/Clear-Doku).
+- **Homepage:** das Verhalten ist user-facing und wird dort dokumentiert (**✅ done** —
+  `homepage/src/usage/agents.md` inkl. Sidebar-Eintrag, Zyklus story/po-compact-2026-09-13).
 
 ## Future Extensions (not MVP)
 

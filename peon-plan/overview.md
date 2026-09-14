@@ -333,3 +333,80 @@ Preview/Build-Output prüfen (`ignoreDeadLinks: true` schlägt keine Toten-Links
   Top-Nav gemeint war: ein Zeile in `config.ts`, kein Wiederaufbau.
 - Beobachtung (out of scope, nicht fixen ohne Ansage): `homepage/src/setup/peon-po.md` listet
   das Team ohne **Da Dok** — leicht veraltet. Kandidat für Folge-Story, nicht diese.
+
+## 10. PO-Review (Da Dok, 2026-09-14) — Build `story/po-compact-2026-09-13` (76b4a06, 7945d95, 6323098, a0e6237)
+
+**Verdict: CONCERNS** — akzeptabel, kein Rework; eine kosmetische Lücke + zwei out-of-scope
+Beobachtungen.
+
+### a) Plan ↔ Code — alles umgesetzt
+
+| Plan | IST | OK |
+|---|---|---|
+| Inc 1: `AiPoAgent.compact()`-Override gelöscht | `AiPoAgent.java` enthält kein `compact` mehr (0 Vorkommen); erbt `AbstractAgent.compact()` mit R16-Guard (`AbstractAgent.java:272`); `clear()` (R19) unverändert | ✅ |
+| Inc 1: Tests umgebaut/neu | `AiPoAgentTest.compact_onlyCompactsJon_notSlaves` (Jon compacted, alle 3 Slaven bytegleich + kein `COMPRESSED`, `getCallCount() == 1`); `compact_skipsWithoutLlmCall_whenBelowTwoMessages` (1 Msg → `false`, Memory unverändert, 0 Calls); `clear_cascadesToAllThreeSlaves` grün geblieben | ✅ |
+| Inc 2: `AiAgentStatusModel` `Entry.slave` + `compactEnabled` + `compactResult` | exakt nach §3 (record, `slave = i > 0`, 2 pure statics); Tests: `entries_bossRowHasNoCompactButton_slaveRowsDo`, `compactEnabled_onlyWhenIdleAndNoTurnInFlight` (4er-Matrix), `compactResult_successVsSkip` | ✅ |
+| Inc 2: Widget Row-Composites, Button nur je Sklave, `SwtUtil.createIconButton` + `ImageUtil.COMPACT` + Tooltip `Compact Da X`, CSS-Key wie heute | `AiAgentStatusWidget.java`: `rebuild()` baut pro Member ein Row-Composite, `if (entry.slave())` → Button; refresh diffet nur bei Größenwechsel, sonst Text+`setEnabled(compactEnabled(...))` in place; Callback → `onSlaveCompactClick` | ✅ |
+| Inc 2: `HeaderBarWidget`-Durchreichung (2 neue Parameter) | Constructor + `statusAgents/onSlaveCompactClick/turnInFlight` weitergereicht; einziger Caller (`AIChatView.java:123-128`), referenzgeprüft | ✅ |
+| Inc 2: `AIChatView.doCompressAgent` (Job/inFlightTurns/monitorRef/handleDoneChatResponse, result vor finally) | `AIChatView.java:515-536`: 1:1-Mechanik; Guard `isWorking() || inFlightTurns > 0`; `result` vor `finally` initialisiert (async-state-safety, memory #4); `refreshRoster` im Job; `compactResult` für Statuszeile; kein `< 3`-Pre-Check im View (SOLL: Feedback statt Stillstand) | ✅ |
+| Inc 3: `usage/agents.md` + Sidebar-Eintrag | Seite vorhanden, alle 4 Inhaltspunkte (Team, per-Slave Button + Feedback, Compact=1 Agent, Clear-Cascade-Asymmetrie), Stil wie `selections.md`, Cross-Link `/setup/peon-po`; `config.ts` Usage-Gruppe: `{ text: 'Agent Team', link: '/usage/agents' }` | ✅ |
+
+Build-Verifikation (Review 2026-09-14): `eclipseBuildProject` `llmpeon-core` + `org.sterl.llmpeon`
+clean (nur präexistente Null-Safety-Warnings); Core-Suite grün (Eclipse-Runner 759 tests / 0
+failures; Zahlen-Surefire ist pro AGENTS Ground Truth, hier nur Rot/Grün-Proof).
+
+**Abweichungen, klassifiziert:**
+1. npm-Script `docs:build` statt Plan-`npm run build` — **bekannt gemeldet, legitime Abweichung**
+   (Plan hat den Script-Namen falsch vorausgesetzt; Dev korrekt). Hinweis an Da Thinka für
+   künftige Plans: Script-Name aus `homepage/package.json` lesen, nicht raten.
+2. `doCompressAgent` deklariert `boolean result = false;` **vor** dem `try` (Sketch sagte inside)
+   — identische Semantik, konsistent mit memory #4; **legitime Verbesserung**, kein Rework.
+
+### b) Docs ↔ Code — SOLL == IST
+
+- **R18** (po-agent-jon.md): Compact nur der Agent selbst — `compact_onlyCompactsJon_notSlaves`
+  (Test je BDD-Regel); explizite Tools `compactPlan/compactReview/compactDev` unverändert
+  (`PoDelegateTool.java:114-195`, `PoDelegateToolTest` grün); R16-Skip (< 2 → kein LLM-Call, kein
+  Clear) via ererbtem Guard + `compact_skipsWithoutLlmCall_whenBelowTwoMessages`; Slave-Auto-
+  Compact (`SLAVE_COMPACT_FACTOR`, `BuildPoAgentComponent.java`) unverändert vorhanden.
+- **R19**: `clear()`-Cascade unverändert, `clear_cascadesToAllThreeSlaves` grün; Homepage-Doku
+  (R19-Bullet) in `agents.md` vorhanden.
+- **agenten-status-im-header.md Regeln 1–6 + BDD**: Regel 1 (nur Sklaven-Zeilen, kein Da-Boss-
+  Button) → `Entry.slave` + Widget-Guard + Test; Regel 3 (disabled working/in-flight) →
+  `compactEnabled` + 4er-Matrix-Test; Regel 4 (Feedback-Strings + Roster-Refresh) →
+  `compactResult`-Test + `refreshRoster` im Job; Regel 5 (createIconButton-Reuse, Row-Composites,
+  Nicht-PO ohne Roster) → `getStatusAgents()` Choke-Point (`PeonAiService.java:382`) +
+  `empty_team_renders_no_rows`; Regel 6 (keine neuen Observer) → nur Pull-Trigger.
+- Doc-Status-Flips (❌→✅) stehen noch aus — **korrekt**: PO-Aufgabe nach diesem Review (§1).
+
+### c) Plan ↔ Docs — Coverage-Gaps: **keine**
+
+### CONCERNS (non-blocking, kein Rework)
+
+1. Veraltete Javadoc in `AiAgentStatusModel.java` (Klassen-Kommentar): "the rest are his slaves
+   (Da Thinka, Da Mek)" — das Team hat 3 Sklaven (Da Thinka/Da Mek/**Da Dok**); einzeilige
+   Korrigur im nächsten passenden Inkrement.
+
+### Observations (out of scope, nicht fixen ohne Ansage)
+
+1. `PoDelegateTool.compact()` (privater Helper, `PoDelegateTool.java:191-195`) ignoriert den
+   Boolean-Return von `agent.compact()` und meldet nach einem R16-Skip trotzdem
+   "<Name> compacted." — kleiner Tool-Lüge-Geschmack (AGENTS: "A tool must never lie"),
+   präexistent, nicht von diesem Build. Kandidat für Folge-Triage.
+2. `homepage/src/setup/peon-po.md` listet das Team ohne Da Dok (bereits in §9 notiert).
+
+### Mutation-Check-Empfehlung (für Da Thinka / Folge-Zyklus)
+
+Nicht Zeremonie — genau EINE Stelle verdient den Nachweis: die **R18-"kein-Cascade"-Invariante**.
+Mutation: `AiPoAgent.compact()`-Override mit Cascade wieder einbauen (oder einen
+`PoDelegateTool.compact()`-Call in den Pfad schmuggeln) → `compact_onlyCompactsJon_notSlaves` muss
+rot werden. Rot-Gewissheit: jeder Slave hat im Test genau 2 Messages → R16-Guard lässt den
+Cascade-Call durch → `COMPRESSED`-AiMessage landet in jedem Slave-Memory (bricht `noneMatch`) und
+`getCallCount()` wird 4 statt 1 (bricht `isEqualTo(1)`). Bonus: derselbe Test erwisch auch die
+Mutation R16-Guard `< 2` → `< 3` (Jon hat genau 2 Messages, Compact müsste real laufen).
+
+**Most likely reason this breaks later:** eine spätere "Verbesserung" (z. B. "Compact soll doch
+wieder alles räumen") reintegriert still den Cascade — der einzige Guard ist der eine Core-Test.
+**Change that most reduces that risk:** Mutation-Proof oben einmal ausführen (Test rot sehen) +
+die R18-Regel in der Homepage-Doku `usage/agents.md` als Absicherung gegen Doc-Drift belassen
+(steht dort schon: "Compact never cascades").
