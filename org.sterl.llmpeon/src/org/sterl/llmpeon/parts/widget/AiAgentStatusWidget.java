@@ -57,6 +57,10 @@ public class AiAgentStatusWidget extends Composite {
 
         RowLayout layout = new RowLayout(SWT.HORIZONTAL);
         layout.pack = true;
+        // this SWT generation defaults wrap=true — the roster must never grow a second line,
+        // overflow clips from the right (Da Dok drops first)
+        layout.wrap = false;
+        layout.center = true;
         layout.marginHeight = 0;
         layout.marginWidth = 0;
         setLayout(layout);
@@ -109,6 +113,8 @@ public class AiAgentStatusWidget extends Composite {
             var row = new Composite(this, SWT.NONE);
             RowLayout rl = new RowLayout(SWT.HORIZONTAL);
             rl.pack = true;
+            rl.wrap = false;
+            rl.center = true;
             rl.spacing = 2;
             rl.marginHeight = 0;
             rl.marginWidth = 0;
@@ -122,7 +128,10 @@ public class AiAgentStatusWidget extends Composite {
             Button button = null;
             if (entry.slave()) { // Da Boss row: no button — the action bar owns his compact
                 button = SwtUtil.createIconButton(row,
-                        ImageUtil.loadImage(row, ImageUtil.COMPACT), "Compact " + member.uiName());
+                        ImageUtil.loadImage(row,
+                                EclipseUiUtil.DARK_THEME_NAME.equals(EclipseUiUtil.resolveTheme())
+                                        ? ImageUtil.COMPACT_DARK : ImageUtil.COMPACT),
+                        "Compact " + member.uiName());
                 button.setData(WidgetCss.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_HEADER_BAR_WIDGET);
                 button.addListener(SWT.Selection, e -> {
                     if (!isDisposed()) onSlaveCompactClick.accept(member);
