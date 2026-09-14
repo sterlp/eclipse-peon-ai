@@ -1,213 +1,98 @@
 # Agenten-Status im Header
 
-> **Status: GEBAUT ✅ (nicht committet).** Roster ist auf den **aktiven Agenten** gescopet: seine
-> Zeile (Name + Kontextgröße) + 🟢 auf dem **Blatt-Worker**. Im **Jon-Modus** reiten seine zwei
-> Agenten (Plan, Dev) als feste Zeilen mit **ihrer eigenen** Kontextgröße mit. Search erscheint als
-> transienter Chip. Ein `·` trennt Token-Readout und Roster optisch.
+> **Status:** Roster **✅ gebaut** (MVP-Neubau 2026-09, [ADR-0025](adr/0025-po-status-widget-named-agents.md); Bau-Details im
+> archivierten [MVP-Plan](agenten-status-im-header-mvp-plan.md)). Per-Agent **Compact-Buttons**:
+> **❌ specified** (2026-09-13, User).
 
 ## Ziel
 
-Im Header — neben dem Session-Token-Readout (`↑ sent  ↓ received`) — soll **immer der Roster des
-aktiven Agenten** stehen: sein **Name** + **Kontextgröße**, und der **gerade arbeitende** Worker
-bekommt einen **🟢 grünen Ball**. So sieht man jederzeit, *mit wem* man spricht, *wie voll* dessen
-Kontext ist und *wer gerade werkelt* — auch wenn keiner arbeitet.
+Im Header — neben dem Session-Token-Readout (`↑ sent ↓ received`) — steht im **Jon-Modus** das Team
+mit Namen, Kontextgröße und 🟢 auf dem arbeitenden Blatt-Worker:
 
 ```
-Peon-Dev aktiv, idle:
-│ ↑12k ↓8k  ·  Peon-Dev (45k)                                        🔨 │
+Jon (Peon-PO) aktiv, idle:
+│ ↑12k ↓8k  ·  Da Boss (12k) · Da Thinka (8k) · Da Mek (45k) · Da Dok (3k)      🔨 │
 
-Peon-Dev aktiv, arbeitet direkt (kein Sub-Agent):
-│ ↑12k ↓8k  ·  🟢 Peon-Dev (45k)                                     🔨 │
+Jon delegiert an Da Mek → der Sklave glüht, Da Boss bleibt ruhig (Blatt-Regel):
+│ ↑12k ↓8k  ·  Da Boss (12k) · Da Thinka (8k) · 🟢 Da Mek (45k) · Da Dok (3k)   🔨 │
 
-Jon (Peon-PO) aktiv, idle — seine Agenten immer sichtbar, Plan vor Dev:
-│ ↑12k ↓8k  ·  Peon-PO (12k) · Peon-Plan (8k) · Peon-Dev (45k)       🔨 │
-
-Jon delegiert an Da Mek → der Sklave glüht, Jon bleibt ruhig:
-│ ↑12k ↓8k  ·  Peon-PO (12k) · Peon-Plan (8k) · 🟢 Peon-Dev (45k)    🔨 │
-
-Jon lässt suchen (transienter Chip, verschwindet bei „done"):
-│ ↑12k ↓8k  ·  Peon-PO (12k) · Peon-Plan (8k) · Peon-Dev (45k) · 🟢 Search  🔨 │
+Nicht-PO-Agent aktiv:
+│ ↑12k ↓8k  ·                                                                     🔨 │
 ```
 
-**Warum auf den aktiven Agenten gescopet:** Die anderen registrierten Agenten (persistente Dev/Plan,
-Scaffold, Custom-Agents) sind irrelevant, solange man nicht mit ihnen spricht — sie würden nur
-rauschen (dieselbe Klasse wie Scaffold). Der Roster zeigt darum **den aktiven Agenten** und das, was
-er real spawnt.
+**Gebautes Design (MVP, Pull/MVC statt Observer):**
 
-**Warum Jons Agenten eine Ausnahme sind:** Wenn Jon aktiv ist, *ist* sein Team (Plan/Dev) die
-relevante Arbeitsumgebung — man will sie **immer** sehen, nicht nur während er delegiert. Wichtig:
-Das sind **Jons eigene RAM-only-Sklaven** (`JonDelegateTool.peekPlanSlave()/peekDevSlave()`), **nicht**
-die persistenten Peon-Plan/Peon-Dev-Agenten — sie haben **eigene** Kontextgrößen. Beim Wechsel auf
-Jon zeigt der Roster also die Größen *seiner* Agenten (0k, solange er noch nie delegiert hat).
+- **`NamedAgent(String uiName, AiAgent agent)`** — schlichter Record. `AiPoAgent.getTeam()` hält die
+  feste Reihenfolge **Da Boss (=`this`) → Da Thinka → Da Mek → Da Dok** (BuildPoAgentComponent.java:135);
+  die Sklaven-Instanzen werden einmal erzeugt und an `AiPoAgent` **und** `PoDelegateTool` geteilt.
+- **`PeonAiService.getStatusAgents()`** — der eine `instanceof`-Choke-Point:
+  `getActiveAgent() instanceof AiPoAgent po ? po.getTeam() : List.of()`. Kein Orchestrierungs-State
+  in der UI, kein Roster-Leak über Agenten-Wechsel (die Doppel-Anzeige-Bugs des alten
+  Roster/Chip-Designs sind damit konstruktiv tot; `onSubAgent` ist ein ruhender No-op-Default).
+- **`AiAgentStatusWidget`** (`Composite` mit einem `Label`, kein SWT-Test): rendert die Zeilen mit
+  `   ·   ` getrennt, Präfix `🟢 ` bei `working`; Text `uiName (Xk)` mit
+  `getMemory().getTotalTokenUsed()`. State-los — jeder `refresh()` zieht live.
+- **Blatt-Regel** (in `AiAgentStatusModel`, headless getestet): Sklave glüht bei eigenem
+  `isWorking()`; **Da Boss** nur, wenn er arbeitet **und kein Sklave arbeitet**.
+- **Refresh-Trigger:** `onChatMessage` (🟢 an), `lockWhileWorking(false)`/Turn-Ende (🟢 aus),
+  Agenten-Wechsel, Token/Response — idempotente Live-Pulls.
 
-**Kein WARTET-Rauschen:** Es kann immer nur **einer** arbeiten (siehe unten). Statt „WARTET" an jeden
-idle Worker steht der Roster ruhig da; nur der Blatt-Worker glüht.
+## Per-Agent Compact-Buttons — ❌ specified (2026-09-13, User)
 
-## Die Blatt-Worker-Regel (wo sitzt das 🟢)
+Jede **Sklaven-Zeile** (Da Thinka, Da Mek, Da Dok) bekommt einen kleinen **Icon-Button** (Compact-Icon,
+keine Beschriftung, Tooltip `Compact Da X`). Klick komprimiert **genau diesen Agenten**.
 
-Das 🟢 sitzt immer auf dem **Blatt** der Aufruf-Kette:
+**Warum:** Beim Compact von Jon lief bisher ein impliziter Cascade über alle drei Sklaven
+(3 sequenzielle LLM-Calls, unsichtbar im UI → „Hänger"-Gefühl). Der Cascade ist gestrichen
+([po-agent-jon.md](po-agent-jon.md) R18 — Compact = nur der Agent selbst); damit der User trotzdem
+gezielt einen Sklaven-Kontext freigeben kann, gibt es den **expliziten** Button.
 
-* Eine **Sklaven-Zeile** glüht über ihr live gepeektes `isWorking()`; ein **Chip** glüht, solange sein
-  `onSubAgent`-Signal aktiv ist. (Der Merge könnte ein `onSubAgent`-Signal auch einer namensgleichen
-  Sklaven-Zeile zuordnen — das bleibt als Absicherung, wird aber nicht mehr ausgelöst, seit
-  `JonDelegateTool` keine Chips mehr sendet.)
-* Die **aktive Zeile** (der Orchestrator) glüht **nur**, wenn sie arbeitet **und nichts darunter**
-  läuft. Jon glüht also, während er **selbst** denkt/formuliert — sobald er delegiert, trägt der
-  arbeitende Sklave (oder der Search-Chip) das 🟢 und Jons Zeile bleibt ruhig.
+**Regeln:**
 
-Das war der eigentliche Bug-Fix: Jons `isWorking` ist während der ganzen Delegation korrekt true —
-würde man ihn stumpf highlighten, verdeckt das, *welches Tool* gerade rechnet.
+1. **Nur die drei Sklaven-Zeilen** bekommen den Button. **Da Boss nicht** — als aktiver Agent hat er
+   den Compact-Button in der Action Bar (der nach R18 nur noch Jon selbst komprimiert).
+2. Klick → Eclipse `Job` (gleiche Mechanik wie `AIChatView.doCompressContext`:
+   `inFlightTurns`/`monitorRef`/`lockWhileWorking`): `agent.compact(viewMonitor)` für **diesen einen**
+   Agenten. Die Zusammenfassung streamt über den View-Monitor sichtbar in den Chat (wie heute).
+3. **Disabled**, während der Agent `isWorking()` oder ein Turn/Compact in-flight ist
+   (`inFlightTurns > 0`) — kein Concurrent-Compact auf einem Agenten, der gerade arbeitet.
+4. **Feedback:** Job-Ergebnis in der Statuszeile (`Compacted Da Mek`); Skip (< 2 Messages, R16) →
+   `Nothing to compact` statt Stillstand. Danach Roster-Refresh (Kontextgröße fällt sichtbar).
+5. Reuse: `SwtUtil.createIconButton` (SwtUtil.java:30, Flat-Icon-Pattern wie der Header-Hammer).
+   Dafür wird die Widget-Struktur von einem Label pro Roster auf **Zeilen-Composites** (Label +
+   Button je Sklave) umgestellt; Nicht-PO-Modus bleibt ohne Roster.
+6. Kein Auto-Refresh-Zwang über neue Observer — die bestehenden Pull-Trigger reichen.
 
-## Wichtige Randbedingung — nur einer arbeitet zugleich
+**BDD:**
+```
+GIVEN Jon ist aktiv und Da Mek idle
+WHEN der User drückt Da Meks Compact-Button
+THEN wird AUSSCHLIESSLICH Da Mek komprimiert (ein LLM-Call), Da Boss/Da Thinka/Da Dok unverändert
+AND die Statuszeile meldet "Compacted Da Mek" und die Kontextgröße fällt im Roster
 
-`AbstractAgent.working` (AtomicBoolean) wird bei Call-Start gesetzt (Z.145) und im `finally`
-zurückgesetzt (Z.173); `isWorking()` liest es. **Slaves und der Search-Agent laufen synchron im
-selben Turn auf demselben Thread** — echte Parallelität gibt es nicht.
+GIVEN Da Mek hat < 2 Messages
+WHEN der User drückt Da Meks Compact-Button
+THEN kein LLM-Call, Statuszeile meldet "Nothing to compact" (R16-Skip)
 
-* Jons **Sklaven** sind persistente Lazy-Singletons auf dem `JonDelegateTool` (Felder
-  `planSlave`/`devSlave`, erzeugt bei erster Delegation, danach am Leben → ihr RAM-Kontext trägt über
-  Calls). Der Roster **peekt** sie (`peekPlanSlave/peekDevSlave` — erzeugt sie **nicht**, damit ein
-  Peek keinen Agenten eager hochfährt) und liest `getTotalTokenUsed()`/`isWorking()` live.
-* Der **Search-Agent** ist kein `AiAgent` (kein `isWorking`) — sein Signal ist die
-  `onSubAgent("Search", …)`-Klammer im `SearchAgentTool` → transienter Chip.
+GIVEN Da Mek arbeitet gerade (🟢) oder ein Turn ist in-flight
+THEN ist Da Meks Compact-Button disabled
 
-## Abgrenzung zum bestehenden Token-Readout
+GIVEN ein Nicht-PO-Agent ist aktiv
+THEN gibt es keine Sklaven-Zeilen und damit keine Compact-Buttons
+```
 
-Zwei verschiedene Zahlen — der `·` trennt sie im Header optisch:
+## Abgrenzung zum Token-Readout
 
 | Anzeige | Quelle | Bedeutung |
 | --- | --- | --- |
-| `↑ sent  ↓ received` (heute, [token-usage.md](token-usage.md)) | `TokenStats` im `TokenHeaderWidget`, via `addTokenUsage(TokenUsage)` | **Session-kumulativ**, cross-agent, wächst monoton bis View-Close |
-| `Peon-Dev (45k)` (neu) | `agent.getMemory().getTotalTokenUsed()` pro Agent | **Momentaner Kontext** eines Agenten — fällt beim Compact |
+| `↑ sent ↓ received` ([token-usage.md](token-usage.md)) | `TokenStats`, `addTokenUsage` | **Session-kumulativ**, cross-agent, monoton |
+| `Da Mek (45k)` | `agent.getMemory().getTotalTokenUsed()` | **Momentaner Kontext** des Agenten — fällt beim Compact |
 
-## Architektur — Merge im Model, nicht im Widget
+## Tests (gebaut)
 
-Reine, UI-freie Merge-Funktion, headless testbar:
-
-```java
-AgentRosterModel.build(AgentStatus active, List<AgentStatus> slaves, Collection<String> workingSubAgents)
-    -> List<Entry(text, working)>
-```
-
-* **`active`** = `PeonAiService.getRoster().active()` — der aktive Agent (Name, `contextTokens`,
-  `working`); `null`, wenn keiner aktiv ist.
-* **`slaves`** = `getRoster().slaves()` — Jons feste Sklaven-Zeilen (Plan, Dev), leer für jeden
-  anderen aktiven Agenten.
-* **`workingSubAgents`** = die gerade laufenden Sub-Agent-`displayName`s aus `onSubAgent`.
-* **Merge-Regel:** Ein Chip, dessen Name eine **echte Zeile** trifft (aktive Zeile **oder** eine
-  Sklaven-Zeile), ist **Rauschen** und wird verworfen — dieser Agent ist bereits durch seine Zeile
-  vertreten und glüht über sein eigenes `isWorking()`. Konkret: zuerst wird der Name der **aktiven
-  Zeile** aus den Chips entfernt, dann glüht jede Sklaven-Zeile bei eigenem `working` **oder** wenn ihr
-  Name in den Chips steht (dann dort **entfernt**). Danach glüht die aktive Zeile per Blatt-Regel
-  (`working && !subBusy`). Was **übrig** bleibt (nur noch **zeilenlose** Sub-Agenten wie `Search`)
-  wird als **transienter Chip** angehängt. Der Chip-Kanal ist damit **ausschließlich** für
-  zeilenlose transiente Sub-Agenten — kein Chip kann je einen Agenten doppelt rendern.
-
-**Kein Stale-State — immer das IST:** Weder Widget noch Model halten Zustand. Jeder `refresh()` liest
-`getRoster()` (live `getActiveAgent()`, Sklaven-Peek, `getTotalTokenUsed()`, `isWorking()`) + die
-`workingSubAgents`-Menge der View frisch. Ein Agenten-Wechsel oder `onSubAgent`-Flip schlägt beim
-nächsten Refresh sofort durch. **Beim Agenten-Wechsel** (`AIChatView.onAgentChange`) wird
-`workingSubAgents` **geleert** — laufende Chips gehörten zum Turn des vorherigen Agenten; ohne das
-Leeren würde ein Chip aus einer Jon-Delegation (z. B. `Search`) am neu aktivierten Agenten hängen
-bleiben.
-
-## Das `onSubAgent`-Signal
-
-Explizites Start/Ende-Signal aus den delegierenden Tools statt `onTool`-UI-Text zu parsen — eine
-**Default-Methode** auf `AiMonitor` (bricht keine bestehende Lambda; SAM bleibt `onChatResponse`):
-
-```java
-default void onSubAgent(String displayName, boolean active) { /* no-op */ }
-```
-
-* **Nur `SearchAgentTool`** benutzt den Chip-Kanal: es klammert `executeLoop(...)` mit
-  `onSubAgent("Search", true/false)` (`try/finally`, damit das 🟢 auch bei Exception ausgeht) → Chip.
-  `Search` ist **zeilenlos** (kein `AiAgent`), darum ist der Chip die einzig richtige Darstellung.
-* **`JonDelegateTool` sendet KEIN `onSubAgent` mehr.** Jons Agenten haben feste Roster-Zeilen und
-  glühen über ihr live gepeektes `isWorking()`. Ein Chip mit demselben **Namen** wie eine Roster-Zeile
-  (`Peon-Plan`/`Peon-Dev`) kollidierte mit dieser Zeile und rendert den Agenten **doppelt** — genau
-  der Bug. Der Chip-Kanal ist ausschließlich für **zeilenlose** transiente Sub-Agenten (Search).
-  Der prompte Refresh bei Delegations-Start/-Ende kommt ohnehin über die `onChatMessage`/
-  `onChatResponse`/`onTokenUsage`-Callbacks des Agenten (die durch Jons Monitor laufen).
-
-Die View hält die laufenden Sub-Agenten in `ConcurrentHashMap.newKeySet()`; `onSubAgent` add/remove +
-`refreshRoster()` auf dem UI-Thread.
-
-## Rendering
-
-* **Plain `Label`** auf nativem Weiß (wie `TokenHeaderWidget`) — **kein `StyledText`**, das auf macOS
-  read-only einen grauen Kasten rendert.
-* **🟢 ist der einzige Highlight** (kein Fett), Präfix nur bei `working`.
-* Header = `GridLayout(4)`: Tokens · `·`-Divider · Roster (FILL) · Hammer. Der Divider ist ein
-  Schatten-graues `Label("·")`. Trenner im Roster `   ·   `; `requestReflow()` wie im
-  `TokenHeaderWidget`, weil wachsende Zahlen/Chips die Breite ändern.
-
-## Gebaute Dateien
-
-* **`PeonAiService`** — `record AgentStatus(name, contextTokens, working)` +
-  `record RosterSnapshot(active, slaves)` + `getRoster()` (aktiver Agent; im Jon-Modus zusätzlich die
-  gepeekten Agenten Plan→Dev). Hält jetzt das `JonDelegateTool` als Feld, um zu peeken.
-* **`JonDelegateTool`** — `peekPlanSlave()`/`peekDevSlave()` (non-creating, nullable).
-* **`AgentRosterModel`** (rein) — `build(active, slaves, workingSubAgents)` mit Blatt-Regel + Chip-Merge;
-  Chips werden gegen die **aktive** Zeile **und** die Sklaven-Zeilen de-dupt (kein Doppel-Rendern).
-* **`AgentRosterWidget`** — `Label`-basiert, 🟢-only; `Supplier<RosterSnapshot>` + `Supplier<List<String>>`.
-* **`HeaderBarWidget`** — `GridLayout(4)` mit `·`-Divider; Ctor nimmt `Supplier<RosterSnapshot>`.
-* **`AiMonitor`** — Default-Methode `onSubAgent(displayName, active)` (no-op).
-* **`SearchAgentTool`** — `onSubAgent("Search", …)`-Klammer (try/finally). **`JonDelegateTool` sendet
-  bewusst KEIN `onSubAgent`** (Sklaven glühen über `isWorking()`, Name-Kollision vermieden).
-* **`AIChatView`** — `workingSubAgents`-Set + `onSubAgent`-Override; **`onAgentChange` leert das Set**;
-  `aiService::getRoster` durchgereicht;
-  `refreshRoster()` an `onChatMessage`/`onChatResponse`/`onTokenUsage`/`lockWhileWorking`/`onSubAgent`.
-
-## Regressionstests
-
-* **`AgentRosterModelTest`** (rein/SWT-frei → läuft **headless unter Maven**, 9 Tests): idle-Zeile ohne
-  Highlight · aktiver Worker glüht allein · **Jon-Modus zeigt Plan-dann-Dev** · delegierender Jon
-  ruhig, arbeitender Sklave glüht · `onSubAgent` glüht die Sklaven-Zeile **ohne Doppel-Chip** · Search
-  als transienter Chip nach den Zeilen · kein aktiver Agent → nur Chips · **Chip mit aktivem Namen wird
-  absorbiert (kein Doppel)** · **Search neben aktivem Agenten dupliziert ihn nie** (die zwei
-  Doppel-Anzeige-Regressionen).
-* **`PeonAiServiceTest`** — `test_roster_is_scoped_to_the_active_agent` · `..._active_follows_switch_no_stale_state`
-  · `..._shows_jons_slaves_plan_then_dev_when_jon_is_active`. Wie alle `PeonAiServiceTest`
-  `assumeTrue`-geskippt unter headless Maven/Tycho → laufen in der Eclipse-IDE.
-* Die SWT-Darstellung selbst wird nicht getestet (wie beim `TokenHeaderWidget`).
-
-## Gefixte Bugs (aus dem Bau)
-
-| Symptom | Ursache | Fix |
-| --- | --- | --- |
-| Grauer Kasten hinter dem Roster | `StyledText` read-only rendert auf macOS grau | `Label` statt `StyledText` |
-| „Peon-Dev fett obwohl nix aktiv" | Default-Aktiver ist `devAgent` (AgentService Z.95); Fett am Selektierten | Fett ganz raus; Highlight = 🟢 nur bei `working` |
-| Scaffold/andere Agenten im Roster | `getAgents()` global gelistet | Roster auf den **aktiven** Agenten gescopet |
-| 🟢 immer auf Peon-PO | Jons `isWorking` bei Delegation korrekt true — Orchestrator gehighlightet | Blatt-Regel: aktive Zeile glüht nur ohne laufenden Sub-Worker; `onSubAgent`/`isWorking` glühen den echten Worker |
-| Plan/Dev auch außerhalb Jon sichtbar | globale Liste | nur im Jon-Modus, als **seine** Agenten |
-| Agenten zeigten Größe der persistenten Dev/Plan | falsche Instanzen | Jons eigene Agenten peeken (eigener Kontext) |
-| „·" fehlte zwischen Tokens und Roster | kein Divider im Header | `·`-Label als 2. Grid-Spalte |
-| Aktiver Plan/Dev **doppelt** angezeigt | `JonDelegateTool.onSubAgent("Peon-Plan"/"Peon-Dev")` erzeugt Chip mit **gleichem Namen** wie die Roster-Zeile; Merge de-dupte Chips nur gegen Sklaven-, nicht gegen die **aktive** Zeile | `JonDelegateTool`-Emission **entfernt** (Sklaven glühen über `isWorking`); Merge de-dupt Chips auch gegen die aktive Zeile |
-| Such-Agent läuft → **Dev doppelt** (statt „Dev · Search") | ein aus einer Jon-Delegation **geleakter** `Peon-Dev`-Chip überlebte den Agenten-Wechsel (`workingSubAgents` nie geleert) und stand neben dem frischen `Search`-Chip | `onAgentChange` **leert** `workingSubAgents`; zusätzlich Emission entfernt + aktive-Zeile-De-dup |
-
-## BDD
-
-```
-GIVEN Peon-Dev ist aktiv, niemand arbeitet
-THEN zeigt der Roster nur "Peon-Dev (45k)" — keine Sklaven-Zeilen, kein 🟢
-
-GIVEN Peon-Dev ist aktiv und arbeitet direkt (kein Sub-Agent)
-THEN glüht "🟢 Peon-Dev (45k)"
-
-GIVEN Jon (Peon-PO) ist aktiv
-THEN zeigt der Roster "Peon-PO (…)" + seine festen Agenten "Peon-Plan (…)" · "Peon-Dev (…)" (Plan vor Dev)
-AND die Sklaven-Größen sind die SEINER RAM-Sklaven (0k, bevor er je delegiert hat)
-
-GIVEN Jon delegiert an seinen Peon-Devn
-WHEN der Sklave arbeitet (isWorking bzw. onSubAgent("Peon-Dev", true))
-THEN glüht die feste "Peon-Dev"-Zeile — kein Doppel-Chip, Jons Zeile bleibt ruhig
-WHEN die Delegation endet
-THEN geht das 🟢 der Zeile wieder aus
-
-GIVEN irgendein Agent startet den Search-Agenten
-WHEN onSubAgent("Search", true) kommt
-THEN erscheint hinter den Zeilen ein transienter Chip "🟢 Search"
-WHEN onSubAgent("Search", false) kommt
-THEN verschwindet der Chip
-```
+- `AiAgentStatusModelTest` (headless): Blatt-Regel — alle-idle → kein Ball · Boss arbeitet allein →
+  nur Boss · Da Mek arbeitet → nur Da Mek, Boss ruhig · leere Liste → keine Zeilen.
+- `AiPoAgentTest.getTeam()` — genau 4 Einträge (Da Boss + 3 Sklaven) auf die geteilten Instanzen.
+- `PeonAiServiceTest.getStatusAgents()` — PO aktiv → 4, Dev aktiv → leer (`assumeTrue`-geskippt
+  headless, läuft in der IDE).
+- SWT-Darstellung selbst nicht getestet (wie `TokenHeaderWidget`).

@@ -1,4 +1,13 @@
-# Session-Stand (2026-09-13 — Compact-Slot-Bug-Zyklus als nächstes)
+# Session-Stand (2026-09-13 — Compact-Cascade → R18/R19 + Header-Compact-Buttons)
+
+## Neu spezifiziert (2026-09-13, User-Entscheid — wartet auf Bau-Freigabe)
+
+- **R16 SOLL-Korrektur:** <2 Messages = **Skip** (kein Clear) — Code war richtig, Docs falsch. ✅ in po-agent-jon.md + index.md.
+- **R18 ❌ specified (po-agent-jon.md):** Compact = nur der Agent selbst — impliziter Slave-Cascade in `AiPoAgent.compact()` entfernen; explizite Slave-Compact-Tools bleiben; Sklaven self-managen (Auto-Compact 0.7).
+- **Header-Compact-Buttons ❌ specified (agenten-status-im-header.md, komplett auf MVP-Stand umgeschrieben):** Da Thinka/Da Mek/Da Dok je Icon-Button (kein Da Boss), Klick = `Job` wie `doCompressContext`, disabled bei working/in-flight, Statuszeile-Feedback inkl. „Nothing to compact" (R16-Skip). UI: `SwtUtil.createIconButton`, Widget von Label → Zeilen-Composites.
+- **R19 ✅:** Clear-Cascade bleibt (IST bestätigt). **Homepage-Doku fehlt komplett** (keine Agenten-/Clear-Seite) — ❌ Teil des Inkrements.
+- Pipeline: User-Frage war Anzeige-Lücke beim Jon-Compact (kein Fortschritt, „Hänger") — durch R18 obsolet für Jons Compact; Buttons geben Sklaven-Compact sichtbar zurück.
+- Story-Split für den Bau: (1) R18 Cascade raus (core, mit Tests), (2) Header-Buttons (plugin UI), (3) Homepage. Order noch nicht freigegeben.
 
 ## Release ui-config + UserContext — ✅ KOMPLETT, gemerged & gepusht
 
