@@ -18,7 +18,6 @@ import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.poagent.tools.PoDelegateTool;
 import org.sterl.llmpeon.prompt.PeonPaths;
 import org.sterl.llmpeon.prompt.PromptLoader;
-import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.WriteValidator;
@@ -130,20 +129,5 @@ public class AiPoAgent extends AbstractAgent {
             t.clearReview();
             t.clearDev();
         });
-    }
-    
-    @Override
-    public boolean compact(AiMonitor inMonitor) {
-        var monitor = AiMonitor.nullSafety(inMonitor);
-        var result = super.compact(monitor);
-        toolService.getTool(PoDelegateTool.class).ifPresent(t -> {
-            monitor.onTool("Compact Da Thinka");
-            monitor.onTool(t.compactPlan());
-            monitor.onTool("Compact Da Doc");
-            monitor.onTool(t.compactReview());
-            monitor.onTool("Compact Da Mek");
-            monitor.onTool(t.compactDev());
-        });
-        return result;
     }
 }

@@ -172,16 +172,16 @@ class AiPoAgentTest {
         assertThat(setup.dev().getMemory().getCopy()).isEmpty();
     }
 
-    /** R3: Jon's compact() cascades to all three slaves — each keeps only its summary. */
+    /** R18: Jon's compact() compacts only his own memory — the slaves' context stays untouched. */
     @Test
-    void compact_cascadesToAllThreeSlaves() {
+    void compact_onlyCompactsJon_notSlaves() {
         // GIVEN
         var streamMock = new StreamMock();
         streamMock.reset();
         var cm = streamMock.buildMock(req -> ChatResponse.builder()
                 .aiMessage(AiMessage.aiMessage("COMPRESSED")).build());
         var setup = poWithSlaves(new ConfiguredChatModel(LlmConfig.newOllama("foo"), cm));
-        // compact is a no-op below 2 messages — every agent needs history to make the cascade observable
+        // compact is a no-op below 2 messages — every agent needs history to make the behaviour observable
         for (var slave : List.of(setup.plan(), setup.review(), setup.dev())) {
             slave.getMemory().add(UserMessage.from("old " + slave.getName()));
             slave.getMemory().add(AiMessage.from("old reply"));
@@ -192,12 +192,39 @@ class AiPoAgentTest {
         // WHEN
         setup.po().compact(null);
 
-        // THEN — all three slaves were compacted: old history gone, summary present
+        // THEN — Jon is compacted: old history gone, summary present
+        assertThat(setup.po().getMemory().containsUserMessage("jon old")).isFalse();
+        assertThat(setup.po().getMemory().getCopy())
+                .anyMatch(m -> m instanceof AiMessage ai && "COMPRESSED".equals(ai.text()));
+        // AND — every slave is unchanged: old history kept, no summary inserted
         for (var slave : List.of(setup.plan(), setup.review(), setup.dev())) {
-            assertThat(slave.getMemory().containsUserMessage("old " + slave.getName())).isFalse();
+            assertThat(slave.getMemory().containsUserMessage("old " + slave.getName())).isTrue();
             assertThat(slave.getMemory().getCopy())
-                    .anyMatch(m -> m instanceof AiMessage ai && "COMPRESSED".equals(ai.text()));
+                    .noneMatch(m -> m instanceof AiMessage ai && "COMPRESSED".equals(ai.text()));
         }
+        // AND — exactly one LLM call (Jon's) — no slave traffic
+        assertThat(streamMock.getCallCount()).isEqualTo(1);
+    }
+
+    /** R16 (inherited from AbstractAgent): below 2 messages Jon's compact skips without an LLM call. */
+    @Test
+    void compact_skipsWithoutLlmCall_whenBelowTwoMessages() {
+        // GIVEN
+        var streamMock = new StreamMock();
+        streamMock.reset();
+        var cm = streamMock.buildMock(req -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("COMPRESSED")).build());
+        var setup = poWithSlaves(new ConfiguredChatModel(LlmConfig.newOllama("foo"), cm));
+        setup.po().getMemory().add(UserMessage.from("jon only"));
+        var before = setup.po().getMemory().getCopy();
+
+        // WHEN
+        var compacted = setup.po().compact(null);
+
+        // THEN — no LLM call, memory untouched
+        assertThat(compacted).isFalse();
+        assertThat(setup.po().getMemory().getCopy()).isEqualTo(before);
+        assertThat(streamMock.getCallCount()).isZero();
     }
 
     @Test
