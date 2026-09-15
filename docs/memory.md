@@ -1,49 +1,33 @@
-# Session-Stand (2026-09-15 — Header-Roster UI-Fix Runde 2: Fix implementiert, wartet User-Review/Smoke)
+# Session-Stand (2026-09-15 — Runde-2-UI-Fix + R16-Schärfung ✅, Merge = User)
 
-## Zyklus story/po-compact-2026-09-13 — ✅ fertig; UI-Fix Runde 2 implementiert (uncommitted)
+## Zyklus story/po-compact-2026-09-13 — ✅ KOMPLETT (Review bestanden, 12 Commits `76b4a06`→`26117a7`, nicht gemerged)
 
-Branch 8 Commits (`76b4a06`→`e46eab2`), Surefire 738/0. Merge = User. User-Smoke Runde 1:
+Surefire 742/0, Plugin-Suite 203/0, Working tree clean. **Merge/Squash = User.**
 
-**Befunde Runde 1 (User):** Wrap/Farben/„zu hoch" → Fix `e46eab2` (wrap=false explizit — SWT-Default
-ist in dieser Generation TRUE, nicht false!; center=true; compact_dark.svg). ABER:
+- **Runde-2-UI-Fix ✅ `9ed839b`:** Wrapper-Composite entfernt (flaches Roster — Label+Button direkte
+  Kinder, Button wie der Hammer, CSS-weiß; Probe-Dump-Evidenz) + `refreshChat()` aus
+  `doCompressAgent` (Slave-Summary streamt live UND persistiert; nur Jons eigener Compact rebuilt).
+  `HeaderRosterStructureTest` = falsifizierbarer Guard; Probe-Test nach Evidence-Extraktion gelöscht
+  (Regel: shell-öffnende SWT-Tests nie ins Repo). Struktur-Test-Charakterization: CSS-Klasse löst
+  weiß auf (nicht Shell-Erbe) — bewusst nicht-weißer Shell-Background hält ihn falsifizierbar.
+  User-Smoke Optik ✅ (2026-09-15: „optisch sauber").
+- **R16-Schärfung ✅ `16e9e47` (User: „einverstanden build"):** Guard <2 → <3
+  (`AbstractAgent.compact:274` — nach jedem Compact exakt 2 Messages → Re-Compact = Noop);
+  `PoDelegateTool.compact` liest Boolean → `"Nothing to compact (N messages)"` statt „compacted."
+  (Open-Point → resolved-points.md); CompactSessionTool unverändert; Surefire 738→742.
+  Plan-Abweichung legitim: `CompactSessionToolTest` + 3. Message (Plan §4 Liste unvollständig —
+  Coverage-Gap an Da Thinka zurückgemeldet: bei Guard-Änderungen alle Compact-Test-Seeds grep-inventarisieren).
+  Mutation-Check ✅ (Guard <2 → exakt 3 neue Tests rot). Da Dok ACCEPTED.
+- **Cleanup `779dce3`/`26117a7`:** R16 → ✅ geflippt, PoDelegateTool-Open-Point erledigt,
+  User-Smoke-Row dedupliziert, Homepage „fewer than 3" korrigiert — **Da-Dok-Nebenbefund war
+  arithmetisch falsch** (Guard skipt bei 0/1/2 = „fewer than 3", nicht „fewer than 2").
+- **Ausstehender User-Smoke (open-points.md ⏳):** Re-Compact-Noop (2 Messages → `Nothing to compact`),
+  Disabled-States, Tooltip — nach Merge.
 
-**Befunde Runde 2 (User-Diagnose, 2026-09-14) — ✅ implementiert (uncommitted, wartet User-Review/Smoke, 2026-09-15):**
-1. **Grauer Kasten (Wrapper):** ✅ **Fix implementiert** — Row-Composite komplett entfernt,
-   Label+Button direkte Kinder des Roster-Composites (RowLayout center=true, wrap=false,
-   spacing=2), CSS-Klasse auf Label+Button wie beim Hammer. Original-Befund: Row-Composite
-   (Label+Button) hatte grauen Hintergrund statt weiß/transparent, Button „zu groß".
-2. **Chat-Refresh beim Slave-Compact:** ✅ **Fix implementiert** — `refreshChat()` aus
-   `AIChatView.doCompressAgent` entfernt (Chat-Rebuild NUR bei Jons eigenem Compact).
-   IST-Verifikation: Slave-Compact streamt live UND hängt die finale Summary persistent an
-   (`AIChatView.doCompressAgent:516` → `AbstractAgent.compact:271` → `AiCompressorAgent.call:64`
-   → `ConfiguredChatModel.callBlocking:45` immer `StreamingBridge` → live via `onStreamingChunk`
-   = transient Live-Status; persistent via `AiCompressorAgent:67 onChatResponse` →
-   `AIChatView.onChatResponse:289-301 appendMessage`). Vor dem Fix hat `refreshChat()` die
-   angehängte Summary weggewischt.
-- Vorheriger Fix-Versuch (`askDev`) brach ab („Da Mek AI call canceled") — ✅ verifiziert: Working
-  Tree enthielt halbe Änderung (refreshChat-Fix + fertige Probe-Test-Datei); beides wurde
-  geprüft und in diesen Fix übernommen.
-
-**Runde-2-Änderungen (uncommitted, wartet User-Review/Smoke):**
-- `AiAgentStatusWidget.java` (flat Struktur), `AIChatView.java` (refreshChat entfernt)
-- NEU `HeaderRosterStructureTest.java` (falsifizierbarer Regression-Guard gegen Wrapper);
-  `HeaderRosterPaintProbeTest.java` war nur Diagnose-Probe (Evidence extrahiert, dann gelöscht —
-  kein toter Code ins Repo)
-- Builds: `org.sterl.llmpeon` ✅, `org.sterl.llmpeon.test` ✅; Core Surefire 738/0 (2026-09-15)
-- Plugin-Suite (OSGi, Eclipse-Runner): **203 Tests / 0 Failures** (2026-09-15, Trust-Dialog vom
-  User bestätigt). Struktur-Test-Fix: Background-Assertion war falsch (Shell-Erbschaft
-  angenommen) — IST: CSS-Klasse löst weiß auf (Probe-Dump: Button #FFFFFF wie Hammer); Test
-  assertet jetzt CSS-Weiß gegen bewusst nicht-weißem Shell-Hintergrund (falsifizierbar).
-
-## Zyklus-Übriges — ✅ KOMPLETT (Review bestanden, Mutation-Proof, nicht gemerged)
-
-Branch 8 Commits, Working tree clean (vor Runde-2-Fix). Surefire 738/0.
-- **R18 ✅** Compact ohne Cascade (Mutation-Proof: Cascade → rot AiPoAgentTest.java:201; Guard-Mutation → 7 Tests).
-- **Header-Compact-Buttons ✅ gebaut** (Da Thinka/Da Mek/Da Dok, kein Da-Boss-Button; `AiAgentStatusModel.compactEnabled/compactResult`, `AIChatView.doCompressAgent`) — **User-Smoke offen (Runde 2).**
-- **R19 ✅** Clear-Cascade + Homepage `usage/agents.md` (Build-Script `docs:build`, npm via nvm).
-- Da Dok: CONCERNS nur Kosmetik (gefixt `dcec8f9`); Docs geflippt `845e688`, Plan archiviert `d5f32dd`.
-- **Merge/Squash = User.** open-points.md: PoDelegateTool-„compacted."-Misreport ❓, homepage peon-po.md ohne Da Dok ❓, User-Smoke ❓.
-
+- **Zyklus-Übriges (Runde 1–2):** R18 ✅ Compact ohne Cascade (Mutation-Proof) · Header-Compact-Buttons ✅
+  · R19 ✅ Clear-Cascade + Homepage `usage/agents.md` · Runde-1-Fix `e46eab2` (wrap=false — SWT-Default
+  in dieser Generation TRUE; center=true; compact_dark.svg) · Da Dok CONCERNS nur Kosmetik (`dcec8f9`) ·
+  Docs geflippt `845e688`, Pläne archiviert.
 
 ## Release ui-config + UserContext — ✅ KOMPLETT, gemerged & gepusht
 
