@@ -396,21 +396,41 @@ WHEN Jon attempts to write <project>/sub/docs/x.md
 THEN the decorator rejects it, because docs/ is not at the project root
 ```
 
-### R16: Compact-Guard — < 2 Messages → Skip, kein LLM-Call ✅ (2026-09-05, User; SOLL-Korrektur 2026-09-13: Skip statt Reset)
+### R16: Compact-Guard — < 3 Messages → Skip, kein LLM-Call ❌ specified (2026-09-05, User; SOLL-Korrektur 2026-09-13: Skip statt Reset; 2026-09-15 geschärft < 2 → < 3, User)
 
-`AbstractAgent.compact()` bricht, wenn das Memory weniger als 2 Nachrichten enthält — der LLM kann keine Summary aus < 2 Messages erstellen.
+`AbstractAgent.compact()` bricht, wenn das Memory **weniger als 3 Nachrichten** enthält.
 
-**SOLL:** Vor dem Compact-Call prüfen: wenn `memory.size() < 2` → **Skip** (`false` zurückgeben) — kein LLM-Call, **kein** Clear (Memory bleibt unverändert, ist kein Reset). Gilt für **alle** Agenten inkl. Jon und seine Sklaven (Da Thinka, Da Mek, Da Dok).
-`CompactSessionTool` übersetzt das `false` in `"Not needed only N message in context"`. *(Historisch: R16 sagte ursprünglich „Reset statt LLM-Call" — der Code skipt korrekt ohne Clear; 2026-09-13, User: „der skip ist richtig, die docs sind da falsch".)*
+**WEIL (< 2 → < 3):** Ein Compact hinterlässt **exakt 2 Messages** (deterministisch, alle Agenten:
+Turn-Context-UserMessage mit `Session compacted:` + Summary-AiMessage). Bei Guard `< 2` war ein
+Re-Compact direkt nach jedem Compact ein echter LLM-Call auf genau diese 2 Messages (User-Smoke
+2026-09-15: „Compressing conversation 2 messages 124 tokens") — der Guard war strukturell tot.
+`< 3` macht **jeden Compact direkt nach einem Compact zum Noop**.
 
-- **GIVEN** Jon hat 0 oder 1 Nachrichten im Memory **WHEN** `compact()` aufgerufen **THEN** kein LLM-Call, Memory bleibt unverändert (`false`)
-- **GIVEN** Da Thinka hat 1 Nachricht im Memory **WHEN** `compactPlan()` aufgerufen **THEN** Da Thinka wird übersprungen, kein LLM-Call
-- **GIVEN** Da Mek hat 0 Nachrichten im Memory **WHEN** `compactDev()` aufgerufen **THEN** Da Mek wird übersprungen, kein LLM-Call
-- **GIVEN** Jon hat ≥ 2 Nachrichten **WHEN** `compact()` aufgerufen **THEN** normaler Compact-Flow
-- **Tag:** unit (verify no LLM call when < 2 messages; verify memory NOT cleared)
+**SOLL:** `memory.size() < 3` → **Skip** (`false` zurückgeben) — kein LLM-Call, **kein** Clear
+(Memory bleibt unverändert). Gilt für **alle** Agenten inkl. Jon und seine Sklaven (Da Thinka,
+Da Mek, Da Dok), **zentral in `AbstractAgent`** — damit alle 4 Eintrittspfade gedeckt sind
+(Action-Bar-Hammer, Sklaven-Header-Button, `compactSession`, `compactPlan/Review/Dev`).
+Der bestehende UI-Guard in `AIChatView.doCompressContext` (`size < 3`) bleibt als billiger
+Short-Circuit bestehen.
 
-**IST-Bug (2026-09-05):** `compact()` ruft `super.compact(monitor)` ohne Guard — bricht bei
-< 2 Messages. Slaven-Compacts (`compactDev`/`compactPlan`) haben denselben Mangel.
+**Ehrliche Skip-Meldung (kein Misreport):**
+- `CompactSessionTool` (Jon): `"Not needed only N message in context"` — bestehendes Pattern, an `< 3` angepasst.
+- `PoDelegateTool.compactPlan/compactReview/compactDev` (Sklaven): liest den **Boolean-Return** —
+  Skip → `"Nothing to compact (N messages)"`, niemals `"X compacted."` (löst den Open-Point
+  PoDelegateTool-Misreport, PoDelegateTool.java:191-195).
+- UI Sklaven-Button ([agenten-status-im-header.md](agenten-status-im-header.md) Regel 4):
+  `compactResult(false)` → Statuszeile `Nothing to compact`.
+  *(Historisch: R16 sagte ursprünglich „Reset statt LLM-Call" — der Code skipt korrekt ohne Clear;
+  2026-09-13, User: „der skip ist richtig, die docs sind da falsch".)*
+
+- **GIVEN** Jon hat 0, 1 oder 2 Nachrichten im Memory **WHEN** `compact()` aufgerufen **THEN** kein LLM-Call, Memory bleibt unverändert (`false`)
+- **GIVEN** ein Agent wurde gerade komprimiert (Memory = exakt 2 Messages) **WHEN** `compact()` erneut aufgerufen **THEN** Noop — kein LLM-Call, `false`
+- **GIVEN** Da Mek hat 2 Messages im Memory **WHEN** `compactDev()` aufgerufen **THEN** Skip und Tool-Result ist `"Nothing to compact (2 messages)"`, nicht `"Da Mek compacted."`
+- **GIVEN** Jon hat ≥ 3 Nachrichten **WHEN** `compact()` aufgerufen **THEN** normaler Compact-Flow
+- **Tag:** unit (verify no LLM call when < 3 messages; verify memory NOT cleared; verify PoDelegateTool surfaces the skip verbatim)
+
+**Historischer IST-Bug (2026-09-05):** `compact()` rief `super.compact(monitor)` ohne Guard —
+brach bei < 2 Messages. Slaven-Compacts (`compactDev`/`compactPlan`) hatten denselben Mangel.
 
 ### R4: Onboarding tutorial ❌
 On the first activation in a session (`memory.size == 0`) Jon shows a short tutorial message (like

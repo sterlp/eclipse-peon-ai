@@ -269,7 +269,9 @@ public abstract class AbstractAgent implements AiAgent {
 
     @Override
     public boolean compact(AiMonitor monitor) {
-        if (memory.size() < 2) return false;
+        // < 3: a compact leaves exactly 2 messages (Session-compacted user + summary) — with < 2
+        // a direct re-compact would fire a real LLM call on those 2 (R16 sharpened, 2026-09-15)
+        if (memory.size() < 3) return false;
 
         monitor = AiMonitor.nullSafety(monitor);
         var response = new AiCompressorAgent(configuredModel)

@@ -371,9 +371,10 @@ class AbstractAgentTest {
                 .aiMessage(AiMessage.aiMessage("compressed summary")).build());
 
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
-        // AND we need at least 2 messages
+        // AND we need at least 3 messages (R16 guard)
         agent.addMessage(UserMessage.from("old message"));
         agent.addMessage(AiMessage.from("AI response message"));
+        agent.addMessage(UserMessage.from("one more"));
 
         // Set turn context supplier
         agent.setTurnContextSupplier(() -> List.of(new SimpleContextItem("turn context item")));
@@ -388,6 +389,37 @@ class AbstractAgentTest {
         assertThat(ChatMessageUtil.toString(memory.get(0))).contains("turn context item");
         assertThat(memory.get(1)).isInstanceOf(AiMessage.class);
         assertThat(ChatMessageUtil.toString(memory.get(1))).contains("compressed summary");
+    }
+
+    /** R16 (sharpened): a compact leaves exactly 2 messages — a direct re-compact is a no-op
+     *  with no second LLM call (mutation guard: guard back to < 2 ⇒ second call fires the LLM). */
+    @Test
+    void compact_secondCallDirectlyAfterCompact_isNoop() {
+        // GIVEN — 3 messages so the first compact actually runs
+        var config = LlmConfig.builder().model("mock").build();
+        var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("compressed summary")).build());
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        agent.addMessage(UserMessage.from("m1"));
+        agent.addMessage(AiMessage.from("m2"));
+        agent.addMessage(UserMessage.from("m3"));
+
+        // WHEN — first compact runs
+        var first = agent.compact(monitor -> {});
+        var afterFirst = agent.getMemory().getCopy();
+
+        // AND — second compact directly after
+        var second = agent.compact(monitor -> {});
+
+        // THEN — first compacted to exactly 2 (Session-compacted user + summary), second is a no-op
+        assertThat(first).isTrue();
+        assertThat(afterFirst).hasSize(2);
+        assertThat(afterFirst.get(0)).isInstanceOf(UserMessage.class);
+        assertThat(afterFirst.get(1)).isInstanceOf(AiMessage.class);
+        assertThat(second).isFalse();
+        assertThat(agent.getMemory().getCopy()).isEqualTo(afterFirst);
+        // AND — exactly one LLM call (the first compact's compressor), none for the no-op
+        assertThat(streamMock.getCallCount()).isEqualTo(1);
     }
 
     /** call() rebuilds systemMessage after compact cleared it. */
@@ -406,7 +438,9 @@ class AbstractAgentTest {
         // First call — builds systemMessage
         agent.call("first", monitor -> {});
 
-        // Compact — clears systemMessage (compressor also makes a call)
+        // Compact — clears systemMessage (compressor also makes a call);
+        // one extra message so memory reaches the R16 guard minimum of 3
+        agent.addMessage(AiMessage.from("extra"));
         agent.compact(monitor -> {});
 
         // Second call — rebuilds systemMessage
@@ -451,10 +485,11 @@ class AbstractAgentTest {
 
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
 
-        // Pre-add turn context item to memory
+        // Pre-add turn context item to memory (3 messages total — R16 guard minimum)
         String turnContextText = "unique turn context";
         agent.addMessage(UserMessage.from(turnContextText));
         agent.addMessage(AiMessage.from("AI response message"));
+        agent.addMessage(UserMessage.from("one more"));
 
         // Set turn context supplier with the same item
         agent.setTurnContextSupplier(() -> List.of(new SimpleContextItem(turnContextText)));
@@ -483,6 +518,7 @@ class AbstractAgentTest {
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
         agent.addMessage(UserMessage.from("old message"));
         agent.addMessage(AiMessage.from("AI response message"));
+        agent.addMessage(UserMessage.from("one more")); // R16 guard minimum of 3
 
         // Set via turnContextSupplier
         agent.setTurnContextSupplier(() -> List.of(new SimpleContextItem("AGENTS.md: Rule 1 — be concise")));
@@ -512,10 +548,12 @@ class AbstractAgentTest {
 
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
 
-        // Pre-add context item to memory (simulating it was already injected)
+        // Pre-add context item to memory (simulating it was already injected);
+        // 3 messages total — R16 guard minimum
         String turnContextText = "existing turn context";
         agent.addMessage(UserMessage.from(turnContextText));
         agent.addMessage(AiMessage.from("AI response message"));
+        agent.addMessage(UserMessage.from("one more"));
 
         // Set via turnContextSupplier with the same item
         agent.setTurnContextSupplier(() -> List.of(new SimpleContextItem(turnContextText)));
@@ -811,6 +849,9 @@ class AbstractAgentTest {
 
         // GIVEN — first call injected the file
         agent.call("hi", monitor -> {});
+
+        // AND — one more message so memory reaches the R16 guard minimum of 3
+        agent.addMessage(AiMessage.from("more"));
 
         // WHEN — compact clears memory, then restores turn context
         agent.compact(monitor -> {});

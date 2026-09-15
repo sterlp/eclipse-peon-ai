@@ -513,7 +513,7 @@ public class AIChatView implements EclipseAiMonitor {
      *  cascade). Job mechanics mirror {@link #doCompressContext} except the chat is NOT rebuilt —
      *  the compressor summary streams into the chat live via the monitor and stays; a rebuild
      *  would replace it with the active agent's (uncompacted-here) memory. Only the roster
-     *  refreshes (context size visibly drops); the R16 skip (< 2 messages) surfaces as
+     *  refreshes (context size visibly drops); the R16 skip (< 3 messages) surfaces as
      *  "Nothing to compact" instead of a silent no-op. */
     private void doCompressAgent(NamedAgent slave) {
         var agent = slave.agent();

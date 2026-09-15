@@ -57,7 +57,8 @@ gezielt einen Sklaven-Kontext freigeben kann, gibt es den **expliziten** Button.
    Agenten. Die Zusammenfassung streamt über den View-Monitor sichtbar in den Chat (wie heute).
 3. **Disabled**, während der Agent `isWorking()` oder ein Turn/Compact in-flight ist
    (`inFlightTurns > 0`) — kein Concurrent-Compact auf einem Agenten, der gerade arbeitet.
-4. **Feedback:** Job-Ergebnis in der Statuszeile (`Compacted Da Mek`); Skip (< 2 Messages, R16) →
+4. **Feedback:** Job-Ergebnis in der Statuszeile (`Compacted Da Mek`); Skip (< 3 Messages, R16 —
+   nach jedem Compact bleiben exakt 2, Re-Compact = Noop) →
    `Nothing to compact` statt Stillstand. Danach Roster-Refresh (Kontextgröße fällt sichtbar).
 5. Reuse: `SwtUtil.createIconButton` (SwtUtil.java:30, Flat-Icon-Pattern wie der Header-Hammer).
    Dafür wird die Widget-Struktur von einem Label pro Roster auf **Zeilen-Composites** (Label +
@@ -76,9 +77,9 @@ WHEN der User drückt Da Meks Compact-Button
 THEN wird AUSSCHLIESSLICH Da Mek komprimiert (ein LLM-Call), Da Boss/Da Thinka/Da Dok unverändert
 AND die Statuszeile meldet "Compacted Da Mek" und die Kontextgröße fällt im Roster
 
-GIVEN Da Mek hat < 2 Messages
+GIVEN Da Mek hat < 3 Messages (nach jedem Compact exakt 2)
 WHEN der User drückt Da Meks Compact-Button
-THEN kein LLM-Call, Statuszeile meldet "Nothing to compact" (R16-Skip)
+THEN kein LLM-Call, Statuszeile meldet "Nothing to compact" (R16-Skip, Noop-Guard)
 
 GIVEN Da Mek arbeitet gerade (🟢) oder ein Turn ist in-flight
 THEN ist Da Meks Compact-Button disabled

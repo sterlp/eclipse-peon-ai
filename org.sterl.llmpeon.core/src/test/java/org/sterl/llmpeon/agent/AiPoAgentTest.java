@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.AiProvider;
@@ -181,13 +183,15 @@ class AiPoAgentTest {
         var cm = streamMock.buildMock(req -> ChatResponse.builder()
                 .aiMessage(AiMessage.aiMessage("COMPRESSED")).build());
         var setup = poWithSlaves(new ConfiguredChatModel(LlmConfig.newOllama("foo"), cm));
-        // compact is a no-op below 2 messages — every agent needs history to make the behaviour observable
+        // compact is a no-op below 3 messages — Jon needs history to make the behaviour observable
+        // (slaves stay at 2: they are never compacted here, so it is irrelevant)
         for (var slave : List.of(setup.plan(), setup.review(), setup.dev())) {
             slave.getMemory().add(UserMessage.from("old " + slave.getName()));
             slave.getMemory().add(AiMessage.from("old reply"));
         }
         setup.po().getMemory().add(UserMessage.from("jon old"));
         setup.po().getMemory().add(AiMessage.from("jon old reply"));
+        setup.po().getMemory().add(AiMessage.from("jon old reply 2"));
 
         // WHEN
         setup.po().compact(null);
@@ -206,16 +210,22 @@ class AiPoAgentTest {
         assertThat(streamMock.getCallCount()).isEqualTo(1);
     }
 
-    /** R16 (inherited from AbstractAgent): below 2 messages Jon's compact skips without an LLM call. */
-    @Test
-    void compact_skipsWithoutLlmCall_whenBelowTwoMessages() {
+    /** R16 (sharpened): below 3 messages Jon's compact skips without an LLM call — a compact
+     *  leaves exactly 2 messages, so a direct re-compact must be a no-op, not a new LLM call. */
+    @ParameterizedTest
+    @ValueSource(ints = {0, 1, 2})
+    void compact_skipsWithoutLlmCall_whenBelowThreeMessages(int messageCount) {
         // GIVEN
         var streamMock = new StreamMock();
         streamMock.reset();
         var cm = streamMock.buildMock(req -> ChatResponse.builder()
                 .aiMessage(AiMessage.aiMessage("COMPRESSED")).build());
         var setup = poWithSlaves(new ConfiguredChatModel(LlmConfig.newOllama("foo"), cm));
-        setup.po().getMemory().add(UserMessage.from("jon only"));
+        for (var i = 0; i < messageCount; i++) {
+            setup.po().getMemory().add(i % 2 == 0
+                    ? UserMessage.from("jon msg " + i)
+                    : AiMessage.from("jon reply " + i));
+        }
         var before = setup.po().getMemory().getCopy();
 
         // WHEN
