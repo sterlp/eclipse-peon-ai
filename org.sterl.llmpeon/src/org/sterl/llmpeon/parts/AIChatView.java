@@ -510,8 +510,11 @@ public class AIChatView implements EclipseAiMonitor {
     }
 
     /** Per-slave compact from the header roster: compresses exactly the clicked slave (R18 — no
-     *  cascade). Job mechanics mirror {@link #doCompressContext}; the R16 skip (< 2 messages)
-     *  surfaces as "Nothing to compact" instead of a silent no-op. */
+     *  cascade). Job mechanics mirror {@link #doCompressContext} except the chat is NOT rebuilt —
+     *  the compressor summary streams into the chat live via the monitor and stays; a rebuild
+     *  would replace it with the active agent's (uncompacted-here) memory. Only the roster
+     *  refreshes (context size visibly drops); the R16 skip (< 2 messages) surfaces as
+     *  "Nothing to compact" instead of a silent no-op. */
     private void doCompressAgent(NamedAgent slave) {
         var agent = slave.agent();
         if (agent.isWorking() || inFlightTurns.get() > 0) return; // defensive — buttons are disabled
@@ -524,7 +527,9 @@ public class AIChatView implements EclipseAiMonitor {
             boolean result = false; // captured before the finally's monitorRef reset (async-state safety)
             try {
                 result = agent.compact(this);
-                if (result) EclipseUtil.runInUiThread(parent, this::refreshChat);
+                // NO refreshChat here — a rebuild from the ACTIVE agent's memory would wipe the
+                // streamed slave summary (it lives in the slave's memory, not the active one).
+                // Jon's own compact (doCompressContext / CompactSessionTool) still rebuilds.
                 EclipseUtil.runInUiThread(parent, headerBar::refreshRoster); // context size visibly drops
             } catch (Exception e) {
                 ex = handleChatException(e);

@@ -6,6 +6,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
@@ -27,6 +28,11 @@ import org.sterl.llmpeon.parts.shared.SwtUtil;
  * {@code onSlaveCompactClick} callback — Da Boss has none (the action bar owns his compact).
  * An empty team (any non-PO agent) renders nothing.
  * <p>
+ * Flat structure: label and button are DIRECT children of this composite — no per-member
+ * wrapper. A wrapper composite rendered as a gray box (2026-09-14, Befund 1); a direct child
+ * inherits the header background, so the button's paint fill equals the header color, exactly
+ * like the hammer in {@link HeaderBarWidget}.
+ * <p>
  * Rows are structural: rebuilt only when the team size changes (agent switch PO ↔ non-PO),
  * otherwise each {@link #refresh()} updates label text and button enablement in place — the
  * monitor events call this often per turn. The widget renders and forwards clicks only; all
@@ -38,8 +44,9 @@ public class AiAgentStatusWidget extends Composite {
     private static final String SEP = "   ·   ";
     private static final String WORKING = "🟢 ";
 
-    /** One built row: the team member it renders, its composite, label and (slaves only) button. */
-    private record Row(NamedAgent member, Composite composite, Label label, Button button) {}
+    /** One rendered team member: its label and (slaves only) compact button + icon — all direct
+     *  children of this composite (flat structure, see class javadoc). */
+    private record Row(NamedAgent member, Image icon, Label label, Button button) {}
 
     private final Supplier<List<NamedAgent>> team;
     private final Consumer<NamedAgent> onSlaveCompactClick;
@@ -61,6 +68,7 @@ public class AiAgentStatusWidget extends Composite {
         // overflow clips from the right (Da Dok drops first)
         layout.wrap = false;
         layout.center = true;
+        layout.spacing = 2; // small gap between a member's label and its compact button
         layout.marginHeight = 0;
         layout.marginWidth = 0;
         setLayout(layout);
@@ -104,40 +112,32 @@ public class AiAgentStatusWidget extends Composite {
 
     /** Disposes and rebuilds every row — only when the team size changes (agent switch). */
     private void rebuild(List<NamedAgent> members, List<Entry> entries) {
-        for (var r : rows) r.composite().dispose();
+        for (var r : rows) {
+            r.label().dispose();
+            if (r.button() != null) r.button().dispose();
+            if (r.icon() != null) r.icon().dispose();
+        }
         rows.clear();
         for (int i = 0; i < members.size(); i++) {
             var member = members.get(i);
             var entry = entries.get(i);
 
-            var row = new Composite(this, SWT.NONE);
-            RowLayout rl = new RowLayout(SWT.HORIZONTAL);
-            rl.pack = true;
-            rl.wrap = false;
-            rl.center = true;
-            rl.spacing = 2;
-            rl.marginHeight = 0;
-            rl.marginWidth = 0;
-            row.setLayout(rl);
-            row.setBackgroundMode(SWT.INHERIT_DEFAULT);
-            row.setData(WidgetCss.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_HEADER_BAR_WIDGET);
-
-            var label = new Label(row, SWT.NONE);
+            var label = new Label(this, SWT.NONE);
             label.setData(WidgetCss.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_HEADER_BAR_WIDGET);
 
+            Image icon = null;
             Button button = null;
             if (entry.slave()) { // Da Boss row: no button — the action bar owns his compact
-                button = SwtUtil.createIconButton(row,
-                        ImageUtil.loadImage(row,
-                                EclipseUiUtil.DARK_THEME_NAME.equals(EclipseUiUtil.resolveTheme())
-                                        ? ImageUtil.COMPACT_DARK : ImageUtil.COMPACT),
-                        "Compact " + member.uiName());
+                icon = ImageUtil.loadImage(this,
+                        EclipseUiUtil.DARK_THEME_NAME.equals(EclipseUiUtil.resolveTheme())
+                                ? ImageUtil.COMPACT_DARK : ImageUtil.COMPACT);
+                button = SwtUtil.createIconButton(this, icon, "Compact " + member.uiName());
                 button.setData(WidgetCss.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_HEADER_BAR_WIDGET);
                 button.addListener(SWT.Selection, e -> {
                     if (!isDisposed()) onSlaveCompactClick.accept(member);
                 });
             }
-            rows.add(new Row(member, row, label, button));
+            rows.add(new Row(member, icon, label, button));
         }
     }
 

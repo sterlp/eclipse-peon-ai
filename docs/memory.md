@@ -1,13 +1,49 @@
-# Session-Stand (2026-09-13 — Compact-Cascade → R18/R19 + Header-Compact-Buttons)
+# Session-Stand (2026-09-15 — Header-Roster UI-Fix Runde 2: Fix implementiert, wartet User-Review/Smoke)
 
-## Neu spezifiziert (2026-09-13, User-Entscheid — wartet auf Bau-Freigabe)
+## Zyklus story/po-compact-2026-09-13 — ✅ fertig; UI-Fix Runde 2 implementiert (uncommitted)
 
-- **R16 SOLL-Korrektur:** <2 Messages = **Skip** (kein Clear) — Code war richtig, Docs falsch. ✅ in po-agent-jon.md + index.md.
-- **R18 ❌ specified (po-agent-jon.md):** Compact = nur der Agent selbst — impliziter Slave-Cascade in `AiPoAgent.compact()` entfernen; explizite Slave-Compact-Tools bleiben; Sklaven self-managen (Auto-Compact 0.7).
-- **Header-Compact-Buttons ❌ specified (agenten-status-im-header.md, komplett auf MVP-Stand umgeschrieben):** Da Thinka/Da Mek/Da Dok je Icon-Button (kein Da Boss), Klick = `Job` wie `doCompressContext`, disabled bei working/in-flight, Statuszeile-Feedback inkl. „Nothing to compact" (R16-Skip). UI: `SwtUtil.createIconButton`, Widget von Label → Zeilen-Composites.
-- **R19 ✅:** Clear-Cascade bleibt (IST bestätigt). **Homepage-Doku fehlt komplett** (keine Agenten-/Clear-Seite) — ❌ Teil des Inkrements.
-- Pipeline: User-Frage war Anzeige-Lücke beim Jon-Compact (kein Fortschritt, „Hänger") — durch R18 obsolet für Jons Compact; Buttons geben Sklaven-Compact sichtbar zurück.
-- Story-Split für den Bau: (1) R18 Cascade raus (core, mit Tests), (2) Header-Buttons (plugin UI), (3) Homepage. Order noch nicht freigegeben.
+Branch 8 Commits (`76b4a06`→`e46eab2`), Surefire 738/0. Merge = User. User-Smoke Runde 1:
+
+**Befunde Runde 1 (User):** Wrap/Farben/„zu hoch" → Fix `e46eab2` (wrap=false explizit — SWT-Default
+ist in dieser Generation TRUE, nicht false!; center=true; compact_dark.svg). ABER:
+
+**Befunde Runde 2 (User-Diagnose, 2026-09-14) — ✅ implementiert (uncommitted, wartet User-Review/Smoke, 2026-09-15):**
+1. **Grauer Kasten (Wrapper):** ✅ **Fix implementiert** — Row-Composite komplett entfernt,
+   Label+Button direkte Kinder des Roster-Composites (RowLayout center=true, wrap=false,
+   spacing=2), CSS-Klasse auf Label+Button wie beim Hammer. Original-Befund: Row-Composite
+   (Label+Button) hatte grauen Hintergrund statt weiß/transparent, Button „zu groß".
+2. **Chat-Refresh beim Slave-Compact:** ✅ **Fix implementiert** — `refreshChat()` aus
+   `AIChatView.doCompressAgent` entfernt (Chat-Rebuild NUR bei Jons eigenem Compact).
+   IST-Verifikation: Slave-Compact streamt live UND hängt die finale Summary persistent an
+   (`AIChatView.doCompressAgent:516` → `AbstractAgent.compact:271` → `AiCompressorAgent.call:64`
+   → `ConfiguredChatModel.callBlocking:45` immer `StreamingBridge` → live via `onStreamingChunk`
+   = transient Live-Status; persistent via `AiCompressorAgent:67 onChatResponse` →
+   `AIChatView.onChatResponse:289-301 appendMessage`). Vor dem Fix hat `refreshChat()` die
+   angehängte Summary weggewischt.
+- Vorheriger Fix-Versuch (`askDev`) brach ab („Da Mek AI call canceled") — ✅ verifiziert: Working
+  Tree enthielt halbe Änderung (refreshChat-Fix + fertige Probe-Test-Datei); beides wurde
+  geprüft und in diesen Fix übernommen.
+
+**Runde-2-Änderungen (uncommitted, wartet User-Review/Smoke):**
+- `AiAgentStatusWidget.java` (flat Struktur), `AIChatView.java` (refreshChat entfernt)
+- NEU `HeaderRosterStructureTest.java` (falsifizierbarer Regression-Guard gegen Wrapper);
+  `HeaderRosterPaintProbeTest.java` war nur Diagnose-Probe (Evidence extrahiert, dann gelöscht —
+  kein toter Code ins Repo)
+- Builds: `org.sterl.llmpeon` ✅, `org.sterl.llmpeon.test` ✅; Core Surefire 738/0 (2026-09-15)
+- Plugin-Suite (OSGi, Eclipse-Runner): **203 Tests / 0 Failures** (2026-09-15, Trust-Dialog vom
+  User bestätigt). Struktur-Test-Fix: Background-Assertion war falsch (Shell-Erbschaft
+  angenommen) — IST: CSS-Klasse löst weiß auf (Probe-Dump: Button #FFFFFF wie Hammer); Test
+  assertet jetzt CSS-Weiß gegen bewusst nicht-weißem Shell-Hintergrund (falsifizierbar).
+
+## Zyklus-Übriges — ✅ KOMPLETT (Review bestanden, Mutation-Proof, nicht gemerged)
+
+Branch 8 Commits, Working tree clean (vor Runde-2-Fix). Surefire 738/0.
+- **R18 ✅** Compact ohne Cascade (Mutation-Proof: Cascade → rot AiPoAgentTest.java:201; Guard-Mutation → 7 Tests).
+- **Header-Compact-Buttons ✅ gebaut** (Da Thinka/Da Mek/Da Dok, kein Da-Boss-Button; `AiAgentStatusModel.compactEnabled/compactResult`, `AIChatView.doCompressAgent`) — **User-Smoke offen (Runde 2).**
+- **R19 ✅** Clear-Cascade + Homepage `usage/agents.md` (Build-Script `docs:build`, npm via nvm).
+- Da Dok: CONCERNS nur Kosmetik (gefixt `dcec8f9`); Docs geflippt `845e688`, Plan archiviert `d5f32dd`.
+- **Merge/Squash = User.** open-points.md: PoDelegateTool-„compacted."-Misreport ❓, homepage peon-po.md ohne Da Dok ❓, User-Smoke ❓.
+
 
 ## Release ui-config + UserContext — ✅ KOMPLETT, gemerged & gepusht
 

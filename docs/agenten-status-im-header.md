@@ -62,6 +62,11 @@ gezielt einen Sklaven-Kontext freigeben kann, gibt es den **expliziten** Button.
 5. Reuse: `SwtUtil.createIconButton` (SwtUtil.java:30, Flat-Icon-Pattern wie der Header-Hammer).
    Dafür wird die Widget-Struktur von einem Label pro Roster auf **Zeilen-Composites** (Label +
    Button je Sklave) umgestellt; Nicht-PO-Modus bleibt ohne Roster.
+   **UI-Detail (2026-09-14, `e46eab2`):** beide RowLayouts mit `wrap=false` (in der aktuellen
+   SWT-Generation ist `wrap` per Default `true` — deshalb umbrauchte das Roster bei schmalem
+   Fenster; jetzt wird rechts **geclippt**, Da Dok fällt zuerst weg) und `center=true` (Label und
+   Button sitzen mittig — das Icon liegt exakt auf der Hammer-Mittelachse, auch in der 🟢-Zeile).
+   Compact-Icon **theme-aware** (`compact.svg`/`compact_dark.svg`, Selektion wie beim Hammer).
 6. Kein Auto-Refresh-Zwang über neue Observer — die bestehenden Pull-Trigger reichen.
 
 **BDD:**
