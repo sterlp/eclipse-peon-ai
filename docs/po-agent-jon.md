@@ -396,7 +396,7 @@ WHEN Jon attempts to write <project>/sub/docs/x.md
 THEN the decorator rejects it, because docs/ is not at the project root
 ```
 
-### R16: Compact-Guard — < 3 Messages → Skip, kein LLM-Call ❌ specified (2026-09-05, User; SOLL-Korrektur 2026-09-13: Skip statt Reset; 2026-09-15 geschärft < 2 → < 3, User)
+### R16: Compact-Guard — < 3 Messages → Skip, kein LLM-Call ✅ done (2026-09-15, R16-Schärfung `16e9e47`; 2026-09-05, User; SOLL-Korrektur 2026-09-13: Skip statt Reset)
 
 `AbstractAgent.compact()` bricht, wenn das Memory **weniger als 3 Nachrichten** enthält.
 

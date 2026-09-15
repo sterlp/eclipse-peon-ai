@@ -33,7 +33,7 @@ With a non-Jon agent active (e.g. plain Peon-Dev), the team roster is not shown 
 Each of the three worker rows (**Da Thinka**, **Da Mek**, **Da Dok**) carries a small **compact icon button** (tooltip: `Compact Da X`). Clicking it compresses **exactly that one agent's** context:
 
 - The summary streams into the chat, then the status line reports **`Compacted Da Mek`** and the roster shows the reduced context size.
-- If the agent has fewer than 2 messages, nothing is sent to the model — the status line simply reports **`Nothing to compact`**.
+- If the agent has fewer than 3 messages (right after a compact, exactly 2 remain), nothing is sent to the model — the status line simply reports **`Nothing to compact`**.
 - The button is **disabled** while that agent is working (🟢) or while any turn is in flight.
 
 **Da Boss has no such button** — Jon is the active agent and uses the regular **Compact** button in the action bar.
