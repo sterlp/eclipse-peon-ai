@@ -125,5 +125,4 @@ Bei Bedarf: LRU mit Obergrenze (z. B. 500). Rückversicherung mit User steht aus
 | Punkt | Status | Notiz |
 |---|---|---|
 | `homepage/src/setup/peon-po.md` listet das Team ohne Da Dok | ❓ offen | leicht veraltet, Da-Dok-Fund; Korrektur im nächsten Homepage-Kontakt |
-| User-Smoke Header-Compact-Buttons (BDD in agenten-status-im-header.md) | ⏳ teils erledigt | Optik ✅ (User 2026-09-15: „optisch sauber"); Re-Compact-Noop-Verifikation (2 Messages → `Nothing to compact`) beim nächsten Smoke |
-| User-Smoke Header-Compact-Buttons (BDD in agenten-status-im-header.md) | ❓ offen | UI-Verifikation nach Merge/Build — Da-Mek-Button, „Nothing to compact", Disabled-States, Tooltip |
+| User-Smoke Header-Compact-Buttons (BDD in agenten-status-im-header.md) | ⏳ teils erledigt | Optik ✅ (User 2026-09-15: „optisch sauber"); ausstehend: Re-Compact-Noop (2 Messages → `Nothing to compact`), Disabled-States, Tooltip — nach Merge |
