@@ -1,4 +1,33 @@
-# Session-Stand (2026-09-13 — Compact-Slot-Bug-Zyklus als nächstes)
+# Session-Stand (2026-09-15 — Runde-2-UI-Fix + R16-Schärfung ✅, Merge = User)
+
+## Zyklus story/po-compact-2026-09-13 — ✅ KOMPLETT (Review bestanden, 12 Commits `76b4a06`→`26117a7`, nicht gemerged)
+
+Surefire 742/0, Plugin-Suite 203/0, Working tree clean. **Merge/Squash = User.**
+
+- **Runde-2-UI-Fix ✅ `9ed839b`:** Wrapper-Composite entfernt (flaches Roster — Label+Button direkte
+  Kinder, Button wie der Hammer, CSS-weiß; Probe-Dump-Evidenz) + `refreshChat()` aus
+  `doCompressAgent` (Slave-Summary streamt live UND persistiert; nur Jons eigener Compact rebuilt).
+  `HeaderRosterStructureTest` = falsifizierbarer Guard; Probe-Test nach Evidence-Extraktion gelöscht
+  (Regel: shell-öffnende SWT-Tests nie ins Repo). Struktur-Test-Charakterization: CSS-Klasse löst
+  weiß auf (nicht Shell-Erbe) — bewusst nicht-weißer Shell-Background hält ihn falsifizierbar.
+  User-Smoke Optik ✅ (2026-09-15: „optisch sauber").
+- **R16-Schärfung ✅ `16e9e47` (User: „einverstanden build"):** Guard <2 → <3
+  (`AbstractAgent.compact:274` — nach jedem Compact exakt 2 Messages → Re-Compact = Noop);
+  `PoDelegateTool.compact` liest Boolean → `"Nothing to compact (N messages)"` statt „compacted."
+  (Open-Point → resolved-points.md); CompactSessionTool unverändert; Surefire 738→742.
+  Plan-Abweichung legitim: `CompactSessionToolTest` + 3. Message (Plan §4 Liste unvollständig —
+  Coverage-Gap an Da Thinka zurückgemeldet: bei Guard-Änderungen alle Compact-Test-Seeds grep-inventarisieren).
+  Mutation-Check ✅ (Guard <2 → exakt 3 neue Tests rot). Da Dok ACCEPTED.
+- **Cleanup `779dce3`/`26117a7`:** R16 → ✅ geflippt, PoDelegateTool-Open-Point erledigt,
+  User-Smoke-Row dedupliziert, Homepage „fewer than 3" korrigiert — **Da-Dok-Nebenbefund war
+  arithmetisch falsch** (Guard skipt bei 0/1/2 = „fewer than 3", nicht „fewer than 2").
+- **Ausstehender User-Smoke (open-points.md ⏳):** Re-Compact-Noop (2 Messages → `Nothing to compact`),
+  Disabled-States, Tooltip — nach Merge.
+
+- **Zyklus-Übriges (Runde 1–2):** R18 ✅ Compact ohne Cascade (Mutation-Proof) · Header-Compact-Buttons ✅
+  · R19 ✅ Clear-Cascade + Homepage `usage/agents.md` · Runde-1-Fix `e46eab2` (wrap=false — SWT-Default
+  in dieser Generation TRUE; center=true; compact_dark.svg) · Da Dok CONCERNS nur Kosmetik (`dcec8f9`) ·
+  Docs geflippt `845e688`, Pläne archiviert.
 
 ## Release ui-config + UserContext — ✅ KOMPLETT, gemerged & gepusht
 

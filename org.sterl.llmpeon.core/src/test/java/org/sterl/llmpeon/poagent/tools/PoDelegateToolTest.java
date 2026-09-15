@@ -20,6 +20,7 @@ import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.tool.ToolService;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
 class PoDelegateToolTest {
@@ -222,6 +223,27 @@ class PoDelegateToolTest {
 
         // THEN
         assertThat(reply).containsPattern("Context: \\d+ token - \\d+% used\\.");
+        assertThat(reply).contains("Da Dok compacted.");
         assertThat(tool.getReviewSlave().getMemory().containsUserMessage("second review")).isFalse();
+    }
+
+    /** R16 (sharpened): with exactly 2 messages (the deterministic post-compact state) compactDev
+     *  is an honest no-op — "Nothing to compact (2 messages)", no "compacted.", no LLM call. */
+    @Test
+    void compactDev_skipsWithHonestMessage_whenSlaveBelowThreeMessages() {
+        // GIVEN — Da Mek with exactly 2 messages
+        var tool = newTool();
+        var dev = tool.getDevSlave();
+        dev.getMemory().add(UserMessage.from("old"));
+        dev.getMemory().add(AiMessage.from("old reply"));
+        var before = dev.getMemory().getCopy();
+
+        // WHEN
+        var reply = tool.compactDev();
+
+        // THEN — honest skip message verbatim, no LLM call, memory untouched
+        assertThat(reply).isEqualTo("Nothing to compact (2 messages)");
+        assertThat(streamMock.getCallCount()).isZero();
+        assertThat(dev.getMemory().getCopy()).isEqualTo(before);
     }
 }

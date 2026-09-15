@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.parts.widget;
 
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.eclipse.swt.SWT;
@@ -41,7 +42,9 @@ public class HeaderBarWidget extends Composite {
     public HeaderBarWidget(Composite parent, int style,
             Supplier<String> activeAgentName,
             Supplier<List<ToolStatus>> toolStatus,
-            Supplier<List<NamedAgent>> statusAgents) {
+            Supplier<List<NamedAgent>> statusAgents,
+            Consumer<NamedAgent> onSlaveCompactClick,
+            Supplier<Boolean> turnInFlight) {
         super(parent, style);
         this.activeAgentName = activeAgentName;
         this.toolStatus = toolStatus;
@@ -63,7 +66,7 @@ public class HeaderBarWidget extends Composite {
         divider.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
         divider.setData(WidgetCss.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_HEADER_BAR_WIDGET);
 
-        roster = new AiAgentStatusWidget(this, SWT.NONE, statusAgents);
+        roster = new AiAgentStatusWidget(this, SWT.NONE, statusAgents, onSlaveCompactClick, turnInFlight);
         // FILL the middle column so the roster gets the remaining width between tokens and hammer.
         roster.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
         roster.setData(WidgetCss.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_HEADER_BAR_WIDGET);

@@ -52,7 +52,8 @@ export default defineConfig({
           text: 'Usage',
           items: [
             { text: 'Keyboard Shortcuts', link: '/usage/keyboard-shortcuts' },
-            { text: 'Context Selection', link: '/usage/selections' }
+            { text: 'Context Selection', link: '/usage/selections' },
+            { text: 'Agent Team', link: '/usage/agents' }
           ]
         },
         {

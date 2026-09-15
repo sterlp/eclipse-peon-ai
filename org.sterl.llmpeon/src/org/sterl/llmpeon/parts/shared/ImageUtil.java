@@ -18,6 +18,7 @@ public class ImageUtil {
     public static final String CLEAR = "platform:/plugin/org.sterl.llmpeon/icons/clear.svg";
     public static final String THINK = "platform:/plugin/org.sterl.llmpeon/icons/think.svg";
     public static final String COMPACT = "platform:/plugin/org.sterl.llmpeon/icons/compact.svg";
+    public static final String COMPACT_DARK = "platform:/plugin/org.sterl.llmpeon/icons/compact_dark.svg";
     public static final String PIN = "platform:/plugin/org.eclipse.ui.console/icons/full/elcl16/pin.svg";
 
     public static Image loadImage(Widget forWidget, String path) {

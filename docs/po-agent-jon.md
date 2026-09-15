@@ -396,22 +396,41 @@ WHEN Jon attempts to write <project>/sub/docs/x.md
 THEN the decorator rejects it, because docs/ is not at the project root
 ```
 
-### R16: Compact-Guard — < 2 Messages → Reset statt LLM-Call ✅ (2026-09-05, User)
+### R16: Compact-Guard — < 3 Messages → Skip, kein LLM-Call ✅ done (2026-09-15, R16-Schärfung `16e9e47`; 2026-09-05, User; SOLL-Korrektur 2026-09-13: Skip statt Reset)
 
-`AiPoAgent.compact()` (und damit `compactDev()`/`compactPlan()`) bricht, wenn das Memory
-weniger als 2 Nachrichten enthält — der LLM kann keine Summary aus < 2 Messages erstellen.
+`AbstractAgent.compact()` bricht, wenn das Memory **weniger als 3 Nachrichten** enthält.
 
-**SOLL:** Vor dem Compact-Call prüfen: wenn `memory.size() < 2` → **Reset** (Clear) statt
-Compact. Gilt für Jon selbst UND seine Slaven (Da Thinka, Da Mek).
+**WEIL (< 2 → < 3):** Ein Compact hinterlässt **exakt 2 Messages** (deterministisch, alle Agenten:
+Turn-Context-UserMessage mit `Session compacted:` + Summary-AiMessage). Bei Guard `< 2` war ein
+Re-Compact direkt nach jedem Compact ein echter LLM-Call auf genau diese 2 Messages (User-Smoke
+2026-09-15: „Compressing conversation 2 messages 124 tokens") — der Guard war strukturell tot.
+`< 3` macht **jeden Compact direkt nach einem Compact zum Noop**.
 
-- **GIVEN** Jon hat 0 oder 1 Nachrichten im Memory **WHEN** `compact()` aufgerufen **THEN** Memory wird geclarnt (Reset), kein LLM-Call
-- **GIVEN** Da Thinka hat 1 Nachricht im Memory **WHEN** `compactPlan()` aufgerufen **THEN** Da Thinka wird gereset, kein LLM-Call
-- **GIVEN** Da Mek hat 0 Nachrichten im Memory **WHEN** `compactDev()` aufgerufen **THEN** Da Mek wird gereset, kein LLM-Call
-- **GIVEN** Jon hat ≥ 2 Nachrichten **WHEN** `compact()` aufgerufen **THEN** normaler Compact-Flow (LLM-Call + Slave-Compacts)
-- **Tag:** unit (verify no LLM call when < 2 messages; verify clear/reset called instead)
+**SOLL:** `memory.size() < 3` → **Skip** (`false` zurückgeben) — kein LLM-Call, **kein** Clear
+(Memory bleibt unverändert). Gilt für **alle** Agenten inkl. Jon und seine Sklaven (Da Thinka,
+Da Mek, Da Dok), **zentral in `AbstractAgent`** — damit alle 4 Eintrittspfade gedeckt sind
+(Action-Bar-Hammer, Sklaven-Header-Button, `compactSession`, `compactPlan/Review/Dev`).
+Der bestehende UI-Guard in `AIChatView.doCompressContext` (`size < 3`) bleibt als billiger
+Short-Circuit bestehen.
 
-**IST-Bug (2026-09-05):** `compact()` ruft `super.compact(monitor)` ohne Guard — bricht bei
-< 2 Messages. Slaven-Compacts (`compactDev`/`compactPlan`) haben denselben Mangel.
+**Ehrliche Skip-Meldung (kein Misreport):**
+- `CompactSessionTool` (Jon): `"Not needed only N message in context"` — bestehendes Pattern, an `< 3` angepasst.
+- `PoDelegateTool.compactPlan/compactReview/compactDev` (Sklaven): liest den **Boolean-Return** —
+  Skip → `"Nothing to compact (N messages)"`, niemals `"X compacted."` (löst den Open-Point
+  PoDelegateTool-Misreport, PoDelegateTool.java:191-195).
+- UI Sklaven-Button ([agenten-status-im-header.md](agenten-status-im-header.md) Regel 4):
+  `compactResult(false)` → Statuszeile `Nothing to compact`.
+  *(Historisch: R16 sagte ursprünglich „Reset statt LLM-Call" — der Code skipt korrekt ohne Clear;
+  2026-09-13, User: „der skip ist richtig, die docs sind da falsch".)*
+
+- **GIVEN** Jon hat 0, 1 oder 2 Nachrichten im Memory **WHEN** `compact()` aufgerufen **THEN** kein LLM-Call, Memory bleibt unverändert (`false`)
+- **GIVEN** ein Agent wurde gerade komprimiert (Memory = exakt 2 Messages) **WHEN** `compact()` erneut aufgerufen **THEN** Noop — kein LLM-Call, `false`
+- **GIVEN** Da Mek hat 2 Messages im Memory **WHEN** `compactDev()` aufgerufen **THEN** Skip und Tool-Result ist `"Nothing to compact (2 messages)"`, nicht `"Da Mek compacted."`
+- **GIVEN** Jon hat ≥ 3 Nachrichten **WHEN** `compact()` aufgerufen **THEN** normaler Compact-Flow
+- **Tag:** unit (verify no LLM call when < 3 messages; verify memory NOT cleared; verify PoDelegateTool surfaces the skip verbatim)
+
+**Historischer IST-Bug (2026-09-05):** `compact()` rief `super.compact(monitor)` ohne Guard —
+brach bei < 2 Messages. Slaven-Compacts (`compactDev`/`compactPlan`) hatten denselben Mangel.
 
 ### R4: Onboarding tutorial ❌
 On the first activation in a session (`memory.size == 0`) Jon shows a short tutorial message (like
@@ -820,6 +839,45 @@ blocken (diese Regel) — cancel-safe via Stop.
 - **GIVEN** der User drückt Stop während eine Frage wartet **WHEN** der Latch released wird **THEN** das Tool liefert einen Cancel-Error und Jons Loop läuft weiter (kein Deadlock)
 - **GIVEN** Da Thinka/Da Mek werden erstellt **WHEN** ihr effektiver Tool-Set berechnet wird **THEN** `askUser` wird weiterhin gefiltert (R9 unverändert)
 - **Tag:** unit (verify poToolService contains AskUserTool; verify slaves still filter it)
+
+### R18: Compact = nur der Agent selbst — kein Cascade ✅ done (2026-09-14, Zyklus story/po-compact-2026-09-13; Decision 2026-09-13, User)
+
+`AiPoAgent.compact()` komprimiert **ausschließlich Jon selbst**. Der implizite Slave-Cascade
+(sequenziell `compactPlan` → `compactReview` → `compactDev` über `PoDelegateTool`) wird **entfernt**.
+
+**WEIL:** Die Slave-Memories sind unabhängig und self-managen ohnehin — jeder Slave auto-compactiert
+sich vor seinem nächsten Turn, wenn sein eigener Kontext über dem Budget liegt
+(`SLAVE_COMPACT_FACTOR = 0.7`). Der Cascade war 3 sequenzielle LLM-Calls ohne Nutzen, unsichtbar im
+UI („Hänger"-Gefühl, Dauer ∝ Kontextgröße) — vom User als ungewollter Seiteneffekt von Jons
+`compactSession`-Tool eingestuft.
+
+- Der UI-Compact-Button (Action Bar) auf Jon komprimiert nur Jon; Jons `compactSession`-Tool ebenso.
+- Die **expliziten** Slave-Compact-Tools (`compactPlan`/`compactReview`/`compactDev`) **bleiben** —
+  Jon (LLM) kann gezielt einen Slave komprimieren; neu dazu der **Header-Button pro Sklave**
+  ([agenten-status-im-header.md](agenten-status-im-header.md), ❌ specified).
+
+**BDD:**
+```
+GIVEN Jon wird komprimiert (Action-Bar-Button oder compactSession-Tool)
+WHEN compact() läuft
+THEN wird NUR Jons Memory komprimiert — Da Thinka/Da Mek/Da Dok bleiben unverändert
+AND es gibt keinen weiteren LLM-Call (kein Slave-Traffic, kein „Hänger")
+
+GIVEN ein Slave-Kontext wächst über sein eigenes Budget (0.7-Faktor)
+WHEN Jon schickt dem Slave die nächste Nachricht
+THEN komprimiert sich der Slave selbst vor dem Turn (Auto-Compact, bereits gebaut)
+```
+
+### R19: Clear-Cascade bleibt ✅ (IST bestätigt als SOLL, 2026-09-13, User)
+
+`AiPoAgent.clear()` cleart **Jon UND alle drei Sklaven** (`clearPlan`/`clearReview`/`clearDev` über
+`PoDelegateTool`) — im Jon-Modus räumt ein Clear alles weg (UI: `AIChatView.onClear` →
+`PeonAiService.clear()`). Bewusst **asymmetrisch zu Compact** (R18): Clear ist die harte „Neu-
+anfangen"-Aktion des Users, Compact ist Kontextpflege.
+
+- **GIVEN** Jon ist aktiv **WHEN** der User Clear drückt **THEN** Jon- und alle Slave-Memories sind geleert (IST `AiPoAgent.clear()`, unverändert)
+- **Homepage:** das Verhalten ist user-facing und wird dort dokumentiert (**✅ done** —
+  `homepage/src/usage/agents.md` inkl. Sidebar-Eintrag, Zyklus story/po-compact-2026-09-13).
 
 ## Future Extensions (not MVP)
 

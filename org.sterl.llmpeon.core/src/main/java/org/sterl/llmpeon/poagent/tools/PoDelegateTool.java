@@ -189,9 +189,13 @@ public class PoDelegateTool extends AbstractTool {
     }
     
     private String compact(NamedAgent agent) {
-        agent.agent().compact(monitor);
+        AiAgent slave = agent.agent();
+        if (!slave.compact(monitor)) {
+            // honest skip (R16 guard or empty compressor result) — memory untouched, so N is exact
+            return "Nothing to compact (" + slave.getMemory().size() + " messages)";
+        }
         reportAction(agent, "compacted");
-        return agent.uiName() + " compacted. " + contextUsed(agent.agent());
+        return agent.uiName() + " compacted. " + contextUsed(slave);
     }
 
     /**

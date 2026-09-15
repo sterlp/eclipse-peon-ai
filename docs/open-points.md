@@ -118,3 +118,11 @@ Bei Bedarf: LRU mit Obergrenze (z. B. 500). Rückversicherung mit User steht aus
   Files, Standing Orders, AGENTS.md in der History — „Rauschen", das Compact nicht braucht.
   Die echte User-Message steht (Text-Content) zuletzt. Ausarbeitung + Einordnung in
   compact-input-budget.md (eigene Stufe vor der sanften Kürzung?) offen.
+
+
+## Neu (2026-09-14, Zyklus story/po-compact-2026-09-13)
+
+| Punkt | Status | Notiz |
+|---|---|---|
+| `homepage/src/setup/peon-po.md` listet das Team ohne Da Dok | ❓ offen | leicht veraltet, Da-Dok-Fund; Korrektur im nächsten Homepage-Kontakt |
+| User-Smoke Header-Compact-Buttons (BDD in agenten-status-im-header.md) | ⏳ teils erledigt | Optik ✅ (User 2026-09-15: „optisch sauber"); ausstehend: Re-Compact-Noop (2 Messages → `Nothing to compact`), Disabled-States, Tooltip — nach Merge |

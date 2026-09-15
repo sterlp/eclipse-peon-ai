@@ -28,7 +28,9 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.ui.IWorkingSet;
 import org.sterl.llmpeon.agent.AiAgent;
+import org.sterl.llmpeon.agent.AiAgentStatusModel;
 import org.sterl.llmpeon.agent.AiPlanAgent;
+import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.command.SlashCommandResolver;
 import org.sterl.llmpeon.command.SlashCommandResolver.SlashResult;
@@ -121,7 +123,9 @@ public class AIChatView implements EclipseAiMonitor {
         headerBar = new HeaderBarWidget(parent, SWT.NONE,
                 () -> aiService.getActiveAgent().getName(),
                 aiService::getToolStatus,
-                aiService::getStatusAgents);
+                aiService::getStatusAgents,
+                this::doCompressAgent,
+                () -> inFlightTurns.get() > 0);
         headerBar.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
         // Borderless — a border's top edge would read as a divider against the flush header.
@@ -502,6 +506,37 @@ public class AIChatView implements EclipseAiMonitor {
                 handleDoneChatResponse(active.getName(), null, monitor, ex);
             }
             return PeonConstants.status("Compacted " + active.getName(), ex);
+        }).schedule();
+    }
+
+    /** Per-slave compact from the header roster: compresses exactly the clicked slave (R18 — no
+     *  cascade). Job mechanics mirror {@link #doCompressContext} except the chat is NOT rebuilt —
+     *  the compressor summary streams into the chat live via the monitor and stays; a rebuild
+     *  would replace it with the active agent's (uncompacted-here) memory. Only the roster
+     *  refreshes (context size visibly drops); the R16 skip (< 3 messages) surfaces as
+     *  "Nothing to compact" instead of a silent no-op. */
+    private void doCompressAgent(NamedAgent slave) {
+        var agent = slave.agent();
+        if (agent.isWorking() || inFlightTurns.get() > 0) return; // defensive — buttons are disabled
+        inFlightTurns.incrementAndGet();
+        LOG.info("turn submit (slave compact): agent=" + slave.uiName() + " in-flight=" + inFlightTurns.get());
+        lockWhileWorking(true);
+        Job.create("Compact " + slave.uiName(), monitor -> {
+            monitorRef.set(monitor);
+            Exception ex = null;
+            boolean result = false; // captured before the finally's monitorRef reset (async-state safety)
+            try {
+                result = agent.compact(this);
+                // NO refreshChat here — a rebuild from the ACTIVE agent's memory would wipe the
+                // streamed slave summary (it lives in the slave's memory, not the active one).
+                // Jon's own compact (doCompressContext / CompactSessionTool) still rebuilds.
+                EclipseUtil.runInUiThread(parent, headerBar::refreshRoster); // context size visibly drops
+            } catch (Exception e) {
+                ex = handleChatException(e);
+            } finally {
+                handleDoneChatResponse(slave.uiName(), null, monitor, ex);
+            }
+            return PeonConstants.status(AiAgentStatusModel.compactResult(result, slave.uiName()), ex);
         }).schedule();
     }
 
