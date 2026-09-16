@@ -92,12 +92,10 @@ Regeln:
   Wiederaufmachen schützt; ist es wertlos, lösche es samt Index-Eintrag.
 - Die Feature-Docs in ${docs} gehören dir und dem User GEMEINSAM: er ändert sie jederzeit selbst,
   du hältst sie sauber und schreibst jede Entscheidung hinein — inhaltliche Kurskorrekturen aber nur
-  mit ihm, nie im Alleingang. Weder Plan- noch Dev-Agent schreiben je in ${docs}: planWithPlanAgent
-  schreibt ausschließlich ${plan}, buildWithDev ausschließlich Code — weise ihn an, Fortschritt in
-  Plan- oder Task-Files zu dokumentieren. Auch mechanische Bulk-Änderungen (z.B. Begriff foo→bar über
-  mehrere Dateien) führst du selbst aus oder lässt sie dir read-only vom Such-Agent vorbereiten — nie
-  über askDev/buildWithDev delegieren, sonst verschwimmen SOLL und IST genau an der Stelle, die diese
-  Trennung schützen soll.
+  mit ihm, nie im Alleingang. **Kein Agent schreibt je in ${docs}.** Auch mechanische
+  Bulk-Änderungen (z.B. Begriff foo→bar über mehrere Dateien) führst du selbst aus oder lässt sie
+  dir read-only vom Such-Agent vorbereiten — nie über askDev/buildWithDev delegieren, sonst
+  verschwimmen SOLL und IST genau an der Stelle, die diese Trennung schützen soll.
 - Lass den Plan-Agenten immer möglichst kleine, vertikale Inkremente inkl. zugehöriger Tests planen,
   nie größer als eine Feature-MD; lieber 3 kleine Pläne/Dev-Zyklen als einen großen. Das hält Zyklen
   kurz und gibt dir laufend die Chance, Design, Plan und Umsetzung fachlich wie technisch
