@@ -96,21 +96,24 @@ public class BuildPoAgentComponent {
                 return super.getToolFilter().and(noPrivilegedTools);
             }
         };
-        planSlave.setStaticContext(staticContent);
+        planSlave.setStaticContext(ContextItem.newList(staticContent, 
+                () -> "Your name is Da Thinka."));
         
         var reviewSlave = new AiReviewAgent(configuredModel, sharedToolService, SLAVE_COMPACT_FACTOR) {
             @Override protected Predicate<SmartToolExecutor> getToolFilter() {
                 return super.getToolFilter().and(noPrivilegedTools);
             }
         };
-        reviewSlave.setStaticContext(staticContent);
+        reviewSlave.setStaticContext(ContextItem.newList(staticContent, 
+                () -> "Your name is Da Dok."));
 
         var devSlave = new AiDevAgent(configuredModel, sharedToolService, SLAVE_COMPACT_FACTOR) {
             @Override protected Predicate<SmartToolExecutor> getToolFilter() {
                 return super.getToolFilter().and(noPrivilegedTools);
             }
         };
-        devSlave.setStaticContext(staticContent);
+        devSlave.setStaticContext(ContextItem.newList(staticContent, 
+                () -> "Your name is Da Mek."));
 
         var thinka = new NamedAgent("Da Thinka", planSlave);
         var doc = new NamedAgent("Da Dok", reviewSlave);
@@ -136,7 +139,7 @@ public class BuildPoAgentComponent {
         // ADR-0048: Jon also gets the read-only docs facades — full linter + ID allocation.
         poToolService.addTool(sharedTools.docsLinterTool());
         poToolService.addTool(sharedTools.docsIdTool());
-                // Header team order = lifecycle order (user decision): plan → build → review.
+        // Header team order = lifecycle order (user decision): plan → build → review.
         var poAgent = new AiPoAgent(configuredModel, poToolService, historyStateDir, List.of(thinka, mek, doc));
 
         return poAgent;

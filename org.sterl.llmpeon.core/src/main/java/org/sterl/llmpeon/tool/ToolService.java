@@ -192,16 +192,19 @@ public class ToolService {
     }
 
     private void addCompactHintIfNeeded(ToolLoopRequest req, ChatResponse response, boolean force) {
-        // if we have too compact session, a hint doesn't really help
-        if (getTool(CompactSessionTool.class).isEmpty()) return;
-
-        var compactLimit = req.getConfig().getAutoCompactAfter();
-        if (compactLimit <= 0 && !force) return;
-
         var memory = req.getMemory();
         if (memory.size() < 10) return;
-        
-        if (force || memory.getTotalTokenUsed() > compactLimit * 0.95) {
+        var compactLimit = req.getConfig().getAutoCompactAfter();
+        if (compactLimit <= 0 && !force) return;
+        var shouldCompact = force || memory.getTotalTokenUsed() > compactLimit * 0.95;
+        if (!shouldCompact) return;
+
+        if (getTool(CompactSessionTool.class).isEmpty()) {
+            // avoid that a search agent or any other agent without a compact tools get stuck
+            req.addMessage(new UserMessage(
+                    "Your context window is almost full and cannot be compacted. " +
+                    "Stop calling tools now and give your best final answer with what you have so far."));
+        } else {
             var used = memory.getTotalTokenUsed() + " tokens of " + compactLimit + " used.";
             // agent is @Nullable (ToolService loops run without one) — the hint is still added
             String agentName = req.getAgent() != null ? req.getAgent().getName() : "the agent";

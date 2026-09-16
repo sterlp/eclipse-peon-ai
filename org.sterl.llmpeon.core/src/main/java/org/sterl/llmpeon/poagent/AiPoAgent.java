@@ -2,6 +2,7 @@ package org.sterl.llmpeon.poagent;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 
@@ -28,6 +29,13 @@ import org.sterl.llmpeon.tool.WriteValidator;
  * a tool filter, scopes him). Uses his own {@link AgentConfig} for provider/model/think.
  */
 public class AiPoAgent extends AbstractAgent {
+    
+    public static final String AGENT_MODE = """
+            You are in Agent Mode and report to Jon.
+            You have someone to ask — use that. Save your state to the
+            plan/task file first, then ask him directly, with more
+            questions rather than fewer. Never assume.
+            """;
 
     public static final String NAME = "Peon-PO";
     // ${docs}/${plan} placeholders resolved from PeonPaths so the paths live in one constant, not the prompt.
@@ -61,7 +69,10 @@ public class AiPoAgent extends AbstractAgent {
     @Override
     public void setStaticContext(List<ContextItem> context) {
         super.setStaticContext(context);
-        this.slaves.forEach(s -> s.agent().setStaticContext(context));
+        this.slaves.forEach(s -> {
+            s.agent().setStaticContext(newList(context, () -> "Your name is " + s.uiName() 
+                + System.lineSeparator() + AGENT_MODE));
+        });
     }
 
     @Override
@@ -129,5 +140,11 @@ public class AiPoAgent extends AbstractAgent {
             t.clearReview();
             t.clearDev();
         });
+    }
+    
+    static List<ContextItem> newList(List<ContextItem> items, ContextItem item) {
+        var result = new LinkedList<>(items);
+        result.add(item);
+        return result;
     }
 }

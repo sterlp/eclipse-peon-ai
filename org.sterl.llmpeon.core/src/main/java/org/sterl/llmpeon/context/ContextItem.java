@@ -1,10 +1,19 @@
 package org.sterl.llmpeon.context;
 
+import java.util.LinkedList;
+import java.util.List;
+
 /**
  * Renders context content into a string for injection into the agent's conversation memory.
  */
 @FunctionalInterface
 public interface ContextItem {
+    
+    static List<ContextItem> newList(List<ContextItem> items, ContextItem item) {
+        var result = new LinkedList<>(items);
+        result.add(item);
+        return result;
+    }
 
     /**
      * Renders the context content.
