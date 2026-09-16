@@ -274,6 +274,34 @@ public class UserContextTest {
         assertFalse(render.contains("FULL-FILE-MARKER"));
     }
 
+    // === Inc-2c: Non-IFile render branch must stay UI-free (job thread) ===
+
+    /**
+     * Contract test: with a stale class association (text selection followed by an
+     * outline class selection, no resource), the Non-IFile render branch renders the class
+     * name and lines purely locally — no EclipseUtil.getOpenFile() (UI-thread only) and no
+     * selectedResource side effect. Green before the fix as well when the test workbench
+     * has no open editor (declared characterization, not a mutation proof).
+     */
+    @Test
+    public void test_inc2c_classFileTextSelectionRendersLocallyWithoutUiAccess() {
+        // GIVEN a text selection followed by an outline class selection (stale clazz, no resource)
+        var context = new UserContext();
+        context.setTextSelection(textSelection(9, 9));
+        context.setClassFile(classFile("Foo.class"));
+
+        // WHEN the context is requested (runs on a job thread in production)
+        var item = item(context.get(), "User text selection");
+
+        // THEN the class name + lines are rendered locally, no UI fallback text, no resource side effect
+        assertNotNull(item);
+        var render = item.render();
+        assertTrue(render.contains("Foo:10-10"));
+        assertTrue(render.contains("10: selected text"));
+        assertFalse(render.contains("selected content not in a file."));
+        assertNull(context.getSelectedResource());
+    }
+
     // === Stubs ===
 
     private record FakeTextSelection(int startLine, int endLine) implements ITextSelection {
@@ -315,6 +343,21 @@ public class UserContextTest {
                     case "equals" -> proxy == args[0];
                     case "hashCode" -> System.identityHashCode(proxy);
                     case "toString" -> "file(" + fullPath + ")";
+                    default -> method.getReturnType().isPrimitive() ? primitiveDefault(method.getReturnType()) : null;
+                });
+    }
+
+    /** IClassFile stub — not an IOrdinaryClassFile, so UserContext.getName falls back to elementName. */
+    private static IClassFile classFile(String elementName) {
+        return (IClassFile) Proxy.newProxyInstance(
+                UserContextTest.class.getClassLoader(),
+                new Class<?>[] { IClassFile.class },
+                (proxy, method, args) -> switch (method.getName()) {
+                    case "getElementName" -> elementName;
+                    case "getParent" -> null;
+                    case "equals" -> proxy == args[0];
+                    case "hashCode" -> System.identityHashCode(proxy);
+                    case "toString" -> "classFile(" + elementName + ")";
                     default -> method.getReturnType().isPrimitive() ? primitiveDefault(method.getReturnType()) : null;
                 });
     }

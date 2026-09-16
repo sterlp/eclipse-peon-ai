@@ -2,7 +2,7 @@
 
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
 
-## ❓ SimpleDiff-Bremse: LCS-Diff kippt bei großen Dateien (2026-09-16, Crash)
+## 🔒 SimpleDiff-Bremse: LCS-Diff kippt bei großen Dateien — GELÖST (2026-09-16)
 
 `eclipseEditFile` → `AIChatView.onFileUpdate:329` → `SimpleDiff.unifiedDiff:21` → `lcsDiff:97` →
 `OutOfMemoryError: Java heap space` (gesamter Agenten-Loop gestorben). `lcsDiff` allokiert
@@ -12,10 +12,16 @@ dort kippt den ganzen Eclipse-Prozess. Heap 4 GB → Kipppunkt ≈ 6e8 Zellen. T
 neue Zeilen ≈ 9,7 GB. Ein normales Doc (300×300 ≈ 360 KB) ist sicher.
 
 **SOLL (Vorschlag):** Guard in `SimpleDiff.unifiedDiff` — wenn `m·n` über Schranke (z. B. 5e6
-Zellen ≈ 20 MB), kein LCS: summarische Meldung („file updated, N→M lines") statt Diff. Kein
+Zellen ≈ 20 MB), kein LCS: summarische Meldung („file updated, N→M lines changed") statt Diff. Kein
 Rate-Parsing, kein Verhalten Risiko — nur die Anzeige degeneriert kontrolliert.
 
-## ❓ User-Context-Selection-Regression — Design steht, wartet auf Freigabe (2026-09-16)
+**Gelöst (2026-09-16, `2e51a16`):** Guard `MAX_LCS_CELLS = 5_000_000` in `SimpleDiff.unifiedDiff`
+(Choke-Point, kein `catch OOM`); darüber human-readable Summary mit beiden Zeilenzahlen + Schranke
+(„a tool must never lie"). `AIChatView.onFileUpdate` zeigt Summary als TOOL-Message. Async/Job-Umzug
+bewusst descoped (Diff läuft bereits auf dem Tool-Thread; Job-Umzug erzeugt Chat-Reihenfolge-
+Probleme). 4 Guard-Tests in `SimpleDiffTest` (unter/an/über Schranke + Crash-Shape als 200k×100).
+
+## 🔒 User-Context-Selection-Regression — GELÖST (2026-09-16, User-Smoke steht aus)
 
 Paul meldete: selektierter Text fehlt im Kontext + Statuszeile (Regression ggü. vorletztem Release).
 Diagnose: `0a998ec` — Nicht-Text-Selektions-Events räumen die Editor-Selektion weg
@@ -26,6 +32,24 @@ file." — die **Ressource** wurde vom Event weggeräumt, der Text überlebte ha
 Dateipfad statt komplettem Dateiinhalt, Homepage-Text bleibt SOT). Fix-Zyklus: Branch
 `bugfix/user-context-selection` (von main), roter Test für die Event-Sequenz (inkl. Ressource),
 dann Fix, Review.
+
+**Gelöst (2026-09-16, `5ceb3aa` + Review-Fixes `c958d78`):** R-SEL-1…3 gebaut, Review CONCERNS →
+abgenommen (Plugin 216/0, Core 866/0, Linter UC 3/3). Mutation-Note: die Setter-Reihenfolge in
+`applyTextSelection` (Resource vor Selektion) fangen Headless-Tests nicht — Abdeckung durch den
+User-Smoke (bei falscher Reihenfolge ist die Selektion sofort sichtbar weg). Rest: siehe
+[user-context.md](user-context.md).
+
+## ❓ Docs-Linter-Tool: `idPattern`-Parameter verifizieren (2026-09-16)
+
+Da Dok meldete im Review: `lintDocsAndTests` mit explizitem `idPattern UC-SEL-\d+` liefere 0/0.
+Jon-Verifikation am Disk-Root (`/Users/sterlp/dev/workset/peon-ai`): dasselbe Pattern liefert
+korrekt 3/3 UCs + 5/3 Test-IDs — das Pattern selbst funktioniert.
+
+**Entscheidung (Paul, 2026-09-16):** Die Wurzel ist der Root, nicht das Pattern — workspace-
+qualifizierte Pfade (`/llmpeon-parent`) scheitern still. → **R-DL-18** (Root-Fallback: wie gegeben
+probiert, dann ohne führenden `/` gegen das `workingDir`, sonst Fehler mit beiden Pfaden), Umsetzung
+im Mini-Zyklus `bugfix/linter-root-fallback`. Die 0/0-Evidenz von Da Dok passt zu diesem Mechanismus;
+die Verifikation erledigt sich mit dem Fix.
 
 ## ⏳ `nextIds` reserviert nicht — Zustandslosigkeit ist Feature, der Ablauf ist die Pflicht (2026-09-15)
 

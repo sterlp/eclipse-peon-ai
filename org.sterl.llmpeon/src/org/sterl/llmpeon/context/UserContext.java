@@ -56,7 +56,9 @@ public class UserContext {
             String path = JdtUtil.pathOf(selectedResource);
             if (selectedResource == null || !(selectedResource instanceof IFile)) {
                 sb.append("\n\n```\n" + FileLines.format(textSelection.getText(), textSelection.getStartLine() + 1) + "\n```");
-                if (clazz != null) sb.append("\n").append(getSelectedFile());
+                // Inc-2c: render locally — getSelectedFile() touches UI-thread-only state and
+                // would mutate selectedResource from the job thread.
+                if (clazz != null) sb.append("\n").append(getName(clazz)).append(":").append(lines(textSelection));
                 else sb.append("\nselected content not in a file.");
             } else {
                 // R-SEL-3: snippet with line numbers + path — never the full file content.
