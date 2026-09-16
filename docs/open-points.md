@@ -163,30 +163,24 @@ gesamten Bestand annotiert? Meine Empfehlung: nur die DL-Tests jetzt, Rest separ
 dem Abschluss ein Großprojekt.
 
 
-## ❓ `PeonAiServiceTest`: 8 rote Compact-/TurnContext-Tests (2026-09-15, MITTEL)
+## 🔒 `PeonAiServiceTest`: 8 rote Compact-/TurnContext-Tests — GELÖST (2026-09-16): keine Bugs, veraltete Tests
 
-**IST:** `PeonAiServiceTest` läuft mit **8 Fehlern** (48 Tests). Betroffen sind
-`test_compactDelegatesToPoAgent`, `test_compactMixedRestore_survives`,
-`test_turnContext_providesJonFiles`, `test_turnContextSupplier_providesProjectInfoAndAgentsMd`,
-`test_compactViaTool_delegatesToAgent` + 3 weitere.
+**Auflösung (Da Mek, Worktree-Beweise):** `mvn clean verify` bricht mit 8 Failures in
+`PeonAiServiceTest` — **kein Produktionscode-Bug**. Ursache: der R16-Guard (`AbstractAgent.compact`,
+`memory.size() < 3`) skippt korrekt, weil genau diese 8 Tests nur **2 Messages** seeden und
+`compact()` lediglich als Mechanismus für die Turn-Context-Re-Injection nutzen. Kausalitätsbeweis:
+`9ed839b` (vor R16) → Plugin-Suite 202/0 grün; `d94e8e9`+ → dieselben 8 rot. Pauls Docs-Linter-Commit
+`d93b1d1` ist unschuldig.
 
-**Fehlerbild:** alle derselbe Typ — `AssertionError` in `AbstractUnitTest.assertHasUserMessageWith`.
-Der TurnContext wird nach `compact()` **nicht restored**; erwartete UserMessages fehlen
-(`# Test Specifics`, `docs/memory.md`, `order1: be concise`). Setup/Fixture läuft durch, die Tests
-scheitern erst an der Assertion.
+**Die frühere Notiz hier („zyklusfremd, schon vor Inc 1 rot", Da Mek 2026-09-15) war falsch** —
+wahrscheinlich stale `bin/`-Klassen ohne `eclipseBuildProject` (Memory-Regel #16). Die realen
+Lehren: (1) der R16-Gate lief nur Core-Surefire, nie die Plugin-Testsuite — das Modulgrenzen-Loch
+aus Memory-Regel #33, diesmal im anderen Modul; (2) Schwellenwert-Änderungen → Seed-Grep über
+**beide** Testmodule.
 
-**Nicht vom Docs-Linter verursacht** (Da Mek, historisch reproduziert): identische 8 Fehler bei
-`111f4c3` (vor Inc 1), `5f0a518` (Inc 3), `3b13f02` (Inc 4) und HEAD. Kein Commit dieses Zyklus hat
-sie eingeführt; zwischen Inc 3 und Inc 4 gibt es **keinen** Diff in `org.sterl.llmpeon/src` oder
-`org.sterl.llmpeon.test/src`. Kein Zusammenhang mit `WriteValidator.DENY_ALL`/`AiReviewAgent`.
-
-**WARUM offen:** Meine Notiz sagt für den Zyklus `story/po-compact-2026-09-13` **Plugin-Suite
-203/0 grün**. Entweder ist diese Zahl falsch/veraltet, oder zwischen Zyklusende und heute ist eine
-Regression eingelaufen — betroffen wäre ausgerechnet der Compact-Flow, den dieser Zyklus gebaut hat.
-Solange das ungeklärt ist, ist der grüne Stand jenes Zyklus nicht belegt.
-
-**Nächster Schritt:** eigener Bug-Zyklus (nicht im Docs-Linter). Erst klären, ob 203/0 je stimmte
-(`git bisect` auf `PeonAiServiceTest`), dann Ursache im TurnContext-Restore nach `compact()`.
+**Fix:** Da Mek hat die 8 Seeds auf 3 Messages umgestellt (1U+2A — 2×U geht nicht,
+`ThreadSafeMemory.add` mergt aufeinanderfolgende User-Messages). Core-Surefire 862/0. Plugin-Suite
+läuft noch (Trust-Dialog); Commit nach grünem Lauf.
 
 
 ## ❓ `eclipseReplaceLines`/`diskReplaceLines`: Replace verhält sich sporadisch wie Insert (2026-09-15, HOCH)
@@ -334,3 +328,5 @@ Bei Bedarf: LRU mit Obergrenze (z. B. 500). Rückversicherung mit User steht aus
 |---|---|---|
 | `homepage/src/setup/peon-po.md` listet das Team ohne Da Dok | ❓ offen | leicht veraltet, Da-Dok-Fund; Korrektur im nächsten Homepage-Kontakt |
 | User-Smoke Header-Compact-Buttons (BDD in agenten-status-im-header.md) | ⏳ teils erledigt | Optik ✅ (User 2026-09-15: „optisch sauber"); ausstehend: Re-Compact-Noop (2 Messages → `Nothing to compact`), Disabled-States, Tooltip — nach Merge |
+| Namen im System-Prompt: Scope über Jons Team hinaus? | 🔒 geklärt (2026-09-16, Paul) | **Nur Jons Team** (R-N1). Top-Level-Peon-Agents / Custom Agents / Da Sniffa bleiben außen vor — Wiederaufnahme nur auf expliziten Wunsch. |
+| BDD-Test für Compact-Hint-Fallback (Agenten ohne CompactSessionTool) | ❓ offen | Regel gebaut (`29a341b`), dokumentiert in context-message-concept.md. Paul 2026-09-16: „machen wir wann anders" — Backlog. |

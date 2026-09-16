@@ -70,3 +70,37 @@ statt auf den aktiven Sklaven (Jon→`PO`). Mehr als ein Einzeiler (eigener Reso
 - Nur noch **Inc 3** (Backlog, s.o.): `AGENTS-DEV.md`/`AGENTS-PLAN.md` per Sklave keyen.
 - Inc 1 + Inc 2 sind gebaut (grün, NICHT committed). `getStaticContext()`-Getter wurde als default am
   `AiAgent`-Interface + Override in `AbstractAgent` ergänzt.
+
+
+## Agenten-Namen im System-Prompt + Agent Mode (2026-09-16, Paul, `29a341b`)
+
+**IST/SOLL identisch gebaut.** Jon gibt seinen Sklaven ihren Namen (so wie das Header-Widget sie
+zeigt) in den System-Prompt — zentral, nicht pro Prompt-Datei.
+
+- **R-N1 — Name per Fan-out (Choke-Point):** `AiPoAgent.setStaticContext` hängt für jeden Slave
+  `ContextItem.newList(context, () -> "Your name is " + s.uiName())` + `AGENT_MODE` an. Replace-
+  Semantik: der Bake (`AgentContextComponent.initStaticContext` → Jon → Slaves) ergibt pro Slave
+  genau `[Env, Name + AGENT_MODE]`, keine Doppelung.
+  - GIVEN ein Slave von Jon WHEN der Static-Context-Bake läuft THEN sein System-Prompt enthält
+    `Your name is Da Thinka/Da Mek/Da Dok` + AGENT_MODE, genau einmal.
+  - GIVEN ein Slave wurde standalone/headless gebaut (ohne Jon-Bake) WHEN `build()` lief THEN
+    trägt er den Namen bereits aus der Fallback-Injektion in `BuildPoAgentComponent` — ohne
+    AGENT_MODE (das kommt erst mit dem Fan-out).
+- **R-N2 — Agent Mode (Antwort = Chat-Kanal):** `AGENT_MODE` (AiPoAgent.java): „You are in Agent
+  Mode and report to Jon. You have someone to ask — use that. Save your state to the plan/task file
+  first, then ask him directly, with more questions rather than fewer. Never assume." Slaven
+  formulieren offene Fragen **explizit in ihrer Antwort** (das Tool-Result landet bei Jon), statt
+  still zu raten; Jon versorgt sie über die Slave-Tools nach. **Sklaven bekommen kein `askUser`**
+  (User-Entscheid 2026-09-16: Sklaven fragen nie den User direkt).
+  - GIVEN ein Slave kann eine Aufgabe ohne fehlende Information nicht abschließen WHEN er antwortet
+    THEN enthält die Antwort die offenen Fragen explizit und zustands­gesichert (state vorher in
+    Plan-/Task-File), kein Raten.
+- **R-N3 — Prompt-Datei ist nicht die Quelle des Namens:** `dev-build-loop.md` trägt den Namen
+  nicht mehr hart im Body (alte Zeile `AGENT-MODE: You name is Da Mek` inkl. Typo entfernt) — der
+  Name kommt ausschließlich per Code-Injection (R-N1).
+- **Hilfsfunktion:** `ContextItem.newList(...)` (public, Interface) ist die einzige Implementierung;
+  die package-private Kopie in `AiPoAgent` ist entfernt.
+
+**Scope (🔒 Paul 2026-09-16):** Nur Jons Team — Top-Level-Peon-Agents (Peon-Dev/Plan/Review
+standalone), Custom Agents (Verzeichnisname) und Da Sniffa bleiben bewusst außen vor; Wiederaufnahme
+nur auf expliziten Wunsch.

@@ -2,7 +2,6 @@ package org.sterl.llmpeon.poagent;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 
@@ -70,7 +69,7 @@ public class AiPoAgent extends AbstractAgent {
     public void setStaticContext(List<ContextItem> context) {
         super.setStaticContext(context);
         this.slaves.forEach(s -> {
-            s.agent().setStaticContext(newList(context, () -> "Your name is " + s.uiName() 
+            s.agent().setStaticContext(ContextItem.newList(context, () -> "Your name is " + s.uiName() 
                 + System.lineSeparator() + AGENT_MODE));
         });
     }
@@ -140,11 +139,5 @@ public class AiPoAgent extends AbstractAgent {
             t.clearReview();
             t.clearDev();
         });
-    }
-    
-    static List<ContextItem> newList(List<ContextItem> items, ContextItem item) {
-        var result = new LinkedList<>(items);
-        result.add(item);
-        return result;
     }
 }

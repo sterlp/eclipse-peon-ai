@@ -1,9 +1,36 @@
-# Session-Stand — 2026-09-15 (Abend)
+# Session-Stand — 2026-09-16
 
 ## Wo wir stehen
 
 Branch `story/po-compact-2026-09-13` — **nie main, kein push** (Merge/Squash macht Paul).
-**Core Surefire 861/0** · Plugin Tycho 212/8 (die 8 sind zyklusfremd, s.u.).
+**Core Surefire 862/0** · Plugin Tycho: 8 Failures = **veraltete Tests** (R16-Guard `<3`, Seeds auf
+3 Messages angepasst, uncommitted, wartet auf Plugin-Suite-Lauf/Trust-Dialog) — KEINE Bugs,
+Auflösung in open-points.md (🔒).
+
+**Neu heute (Paul selbst gebaut, `29a341b` "added names to jons team"):** Namen im System-Prompt
+für Jons Sklaven (Fan-out `ContextItem.newList` + build()-Fallback) + `AGENT_MODE`-Schärfung
+(offene Fragen explizit in der Antwort, nie raten, kein `askUser` für Slaven) + Compact-Hint-
+Fallback für Agenten ohne CompactSessionTool. Docs: sklaven-kontext-plan.md (R-N1–R-N3),
+context-message-concept.md (Hint-Regel), index.md nachgezogen. Duplikat `AiPoAgent.newList` von
+mir entfernt (ContextItem.newList ist SOT). Offen: Scope für Top-Level/Custom/Sniffa ❓, BDD-Test
+Compact-Hint-Fallback ❓ (beide open-points.md).
+
+**Nebenbefund:** `29a341b` bündelt die ToolService-Compact-Hint-Änderung thematisch mit „names" —
+vermerkt, nicht blockierend. Untracked: `harness-request-docs-linter.md` + 5 Plan-Archive; 1
+gelöschtes Plan-Archiv uncommitted.
+
+## Nächste Schritte
+
+1. Trust-Dialog im Eclipse bestätigen → Plugin-Suite (Da Mek wartet) → Seed-Edits committen.
+2. `mvn clean verify` Vollcheck danach.
+3. Pauls offene ❓-Punkte (open-points.md „Neu"-Tabelle) klären.
+
+---
+
+# Historie — 2026-09-15 (Abend)
+
+Branch `story/po-compact-2026-09-13` — **nie main, kein push** (Merge/Squash macht Paul).
+**Core Surefire 861/0** · Plugin Tycho 212/8 (die 8 inzwischen geklärt — veraltete R16-Tests, s. oben).
 
 Vier Zyklen an diesem Tag, alle mit Review abgeschlossen:
 
@@ -74,7 +101,7 @@ EPP-Bundles, `org.sterl.llmpeon` ist `[RESOLVED]`. Details in `open-points.md` (
   fehlen weiter → eigener kleiner Zyklus.
 - ❓ **Code-Block-Regel für Testquellen** — ID-Kommentar in Java-Textblock/Python-Docstring zählt
   heute als Beleg. Bewusst nicht gebaut (erfordert Sprach-Parsing = die Rateübung aus Q8).
-- ❓ **`PeonAiServiceTest`: 8 rote Compact-/TurnContext-Tests** — zyklusfremd, eigener Bug-Zyklus.
+- ~~**`PeonAiServiceTest`: 8 rote Compact-/TurnContext-Tests**~~ — 🔒 geklärt 2026-09-16: veraltete R16-Tests, keine Bugs; Seeds angepasst (siehe open-points.md).
 - 🐞 **`eclipseReplaceLines` verhält sich sporadisch wie Insert** — nach jedem Line-Edit zurücklesen.
 - ⏳ Ausstehender User-Smoke Compact-Zyklus · Branch `release-2026-09-06` Merge = User-Entscheid.
 
