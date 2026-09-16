@@ -16,7 +16,7 @@ import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 public class AiPlanAgent extends AbstractAgent {
 
     public static final String NAME = "Peon-Plan";
-    private static final String BASE_PROMPT = PromptLoader.loadWithDefault("planner.txt");
+    private static final String BASE_PROMPT = PromptLoader.loadWithDefault("planner.md");
 
     public AiPlanAgent(ConfiguredChatModel configuredModel, ToolService toolService) {
         super(configuredModel, toolService);

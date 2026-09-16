@@ -1,8 +1,3 @@
-| [0046](0046-core-portability-review.md) | Core-Portability-Review (Nordstern Web-App-Port): core import-rein (0 Eclipse-Imports), 4 Moves Plugin→core (`b7f67e0`), B-Moves dokumentiert, Composition-Root-Gap | Accepted |
-
-| [0045](0045-mcp-protocol-version-auto-detect.md) | MCP Protocol-Version: leer = Auto-Detect als Default, kein stiller Default (`2025-06-18` entfällt, Clean Break), editierbare Combo | Accepted |
-| [0042](0042-project-skill-slot.md) | Project-Skill-Slot: ein SkillService, zwei Slots (config + `<project>/.agents/skills`), Override, atomarer Swap, name-keyed Enabled-State | Accepted |
-| [0043](0043-scaffold-write-validator.md) | Scaffold-Write-Scoping via WriteValidator mit dynamischen Roots (configDir + Projekt-Skills-Dir), kein Instanz-Merge | Accepted |
 # Architecture Decision Records (ADR)
 
 Short record of every technical decision. Format per ADR: **Status · Context · Decision ·
@@ -55,3 +50,10 @@ isn't clear from a rule/BDD.
 | [0039](0039-temperature-body-precedence.md) | „extra body gewinnt" für `temperature` wird durch **Streichen des typisierten Feldes** umgesetzt — langchain4j serialisiert `customParameters` per `@JsonAnyGetter` *neben* die typisierten Felder und erzeugt sonst einen Doppelkey; Provider-Gate `supportsExtraBody()` schützt Ollama | Accepted |
 | [0041](0041-peon-shared-config-only.md) | `.peon` = shared-config-only; Agent-History ist Runtime State und verlässt das Config-Verzeichnis (Clean Break) | Accepted |
 | [0044](0044-target-2026-09-dependency-update.md) | Target 2026-09, jakarta.annotation `[3.0.0,4.0.0)`, langchain4j 1.20.0, Lib-Bumps nur innerhalb der Major-Line | Accepted |
+| [0047](0047-docs-linter-disk-only-single-root.md) | Docs-Linter liest nur das Dateisystem mit einem `root`-Parameter (Default = Disk-Pfad des gewählten Projekts); kein `eclipse*`-Gegenstück, kein `FileTreeReader`-Interface, kein Vorab-Refactoring der Read-Tools — Preis: ungespeicherte Editor-Buffer, offengelegt statt umgebaut (R-DL-12) | Accepted |
+| [0048](0048-docs-linter-read-only-and-tool-split.md) | Docs-Linter echt read-only (`reportPath` ersatzlos gestrichen — Rückgabewert enthält alles ungekappt) + Split `DocsIdTool` (`nextIds`, nur PO) / `DocsLinterTool` (Prüfmethoden, alle), immer registriert statt hinter `diskToolsEnabled`; Tool-Matrix je Agent wird getestet | Accepted |
+| [0042](0042-project-skill-slot.md) | Project-Skill-Slot: ein SkillService, zwei Slots (config + `<project>/.agents/skills`), Override, atomarer Swap, name-keyed Enabled-State | Accepted |
+| [0043](0043-scaffold-write-validator.md) | Scaffold-Write-Scoping via WriteValidator mit dynamischen Roots (configDir + Projekt-Skills-Dir), kein Instanz-Merge | Accepted |
+| [0045](0045-mcp-protocol-version-auto-detect.md) | MCP Protocol-Version: leer = Auto-Detect als Default, kein stiller Default (`2025-06-18` entfällt, Clean Break), editierbare Combo | Accepted |
+| [0046](0046-core-portability-review.md) | Core-Portability-Review (Nordstern Web-App-Port): core import-rein (0 Eclipse-Imports), 4 Moves Plugin→core (`b7f67e0`), B-Moves dokumentiert, Composition-Root-Gap | Accepted |
+

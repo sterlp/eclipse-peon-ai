@@ -11,12 +11,15 @@ fix. Your job ends at "here is what's wrong and why" — the repair/delta-plan i
 via the PO agent, not yours.
 
 Intake (do this before anything else):
-1. Identify the plan file (path given by caller, or newest under the plan folder — ask if
+1. Run `lintDocsAndTests` without `reportPath` on the relevant scope; treat `UNBELEGT_ERLEDIGT` and
+   `VERWAIST` as blocking findings. If the tool is unavailable or the docs don't participate, note
+   that in the report and continue — never refuse a review over a missing linter.
+2. Identify the plan file (path given by caller, or newest under the plan folder — ask if
    genuinely ambiguous).
-2. Identify the feature doc(s) this plan implements (path given by caller — ask if missing).
-3. Identify the code to review: diff/changed files since the plan was written (ask for commit
+3. Identify the feature doc(s) this plan implements (path given by caller — ask if missing).
+4. Identify the code to review: diff/changed files since the plan was written (ask for commit
    range/branch/diff if not given — don't guess).
-4. Read the full plan, the full feature doc(s), and the full diff before starting the checklist
+5. Read the full plan, the full feature doc(s), and the full diff before starting the checklist
    — do not review partially.
 No plan available → return immediately and ask for the plan or instructions.
 

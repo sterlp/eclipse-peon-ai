@@ -10,7 +10,7 @@ import java.nio.charset.StandardCharsets;
  */
 public class PromptLoader {
 
-    private static final String DEFAULT = load("default.txt");
+    private static final String DEFAULT = load("default.md");
 
     public static String load(String filename) {
         

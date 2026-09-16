@@ -11,6 +11,7 @@ import org.sterl.llmpeon.memory.FileAgentHistoryStore;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.tool.ToolService;
+import org.sterl.llmpeon.tool.WriteValidator;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
 /**
@@ -19,7 +20,7 @@ import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 public class AiReviewAgent extends AbstractAgent {
 
     public static final String NAME = "Peon-Review";
-    private static final String BASE_PROMPT = PromptLoader.loadWithDefault("review-agent.txt");
+    private static final String BASE_PROMPT = PromptLoader.loadWithDefault("review-agent.md");
 
     public AiReviewAgent(ConfiguredChatModel configuredModel, ToolService toolService) {
         super(configuredModel, toolService);
@@ -72,6 +73,11 @@ public class AiReviewAgent extends AbstractAgent {
     @Override
     protected Predicate<SmartToolExecutor> getToolFilter() {
         return super.getToolFilter().and(t -> !t.getTool().isEditTool());
+    }
+
+    @Override
+    public WriteValidator getWriteValidator() {
+        return WriteValidator.DENY_ALL;
     }
 
     @Override

@@ -13,7 +13,7 @@ class PromptLoaderTest {
     @Test
     void loadExistingPrompt() {
         // Verify default.txt loads successfully (confirms resource exists)
-        String prompt = PromptLoader.load("default.txt");
+        String prompt = PromptLoader.load("default.md");
         assertThat(prompt).isNotBlank();
     }
 
@@ -28,8 +28,8 @@ class PromptLoaderTest {
     @Test
     void loadWithDefaultAppendsToDefault() {
         // Verify that loadWithDefault prepends the default prompt
-        String result = PromptLoader.loadWithDefault("default.txt");
-        assertThat(result).contains(PromptLoader.load("default.txt"));
+        String result = PromptLoader.loadWithDefault("default.md");
+        assertThat(result).contains(PromptLoader.load("default.md"));
         assertThat(result).contains("\n\n");
     }
 }

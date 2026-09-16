@@ -54,4 +54,8 @@ Module guides (read when working in one):
 - **Report, don't route around.** If a tool gives a surprising result, report query, scope and the
   expected file — never silently switch from `eclipse*` to `disk*`. That switch hides exactly the
   bug worth finding.
+- **Re-read after every line-based edit.** `eclipseReplaceLines`/`diskReplaceLines` have repeatedly
+  behaved as *insert* instead of *replace* — the old line stays, the new content lands below it,
+  with no error. It corrupted Java sources until a whole increment had to be reset. Read the changed
+  range back before trusting it; for larger rewrites prefer writing the whole file.
 - Shell is for read-only diagnosis (`xxd`, `file`, `wc`), never for file I/O.

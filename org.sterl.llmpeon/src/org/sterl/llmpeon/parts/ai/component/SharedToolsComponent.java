@@ -14,6 +14,8 @@ import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
 import org.sterl.llmpeon.parts.tools.memory.WorkspaceMemoryTool;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.tool.ToolService;
+import org.sterl.llmpeon.docslinter.DocsIdTool;
+import org.sterl.llmpeon.docslinter.DocsLinterTool;
 import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 import org.sterl.llmpeon.tool.tools.DiskGrepTool;
@@ -36,6 +38,8 @@ public class SharedToolsComponent {
     private final DiskFileWriteTool diskFileWriteTool;
     private final DiskFileReadTool diskFileReadTool;
     private final DiskGrepTool diskGrepTool;
+    private final DocsLinterTool docsLinterTool;
+    private final DocsIdTool docsIdTool;
 
     public SharedToolsComponent(SkillService skillService, CommandService commandService) {
         // filter eclipse tools from the search agents ...
@@ -51,7 +55,10 @@ public class SharedToolsComponent {
         diskFileWriteTool = new DiskFileWriteTool(rootPath);
         diskFileReadTool  = new DiskFileReadTool(rootPath);
         diskGrepTool      = new DiskGrepTool(rootPath);
+        docsLinterTool    = new DocsLinterTool(rootPath);
+        docsIdTool        = new DocsIdTool(docsLinterTool);
 
+        sharedToolService.addTool(docsLinterTool);
         sharedToolService.addTool(new WorkspaceMemoryTool());
         sharedToolService.addTool(new EclipseBuildTool());
         sharedToolService.addTool(eclipseGrepTool);
@@ -60,7 +67,7 @@ public class SharedToolsComponent {
         sharedToolService.addTool(new EclipseConsoleLogTool());
     }
 
-    /** Adds or removes the three disk tools depending on {@code config.isDiskToolsEnabled()}. */
+    /** Adds or removes the disk tools depending on {@code config.isDiskToolsEnabled()}. */
     public void updateActiveDiskTools(LlmConfig config) {
         if (config.isDiskToolsEnabled()) {
             if (sharedToolService.getTool(DiskFileWriteTool.class).isEmpty()) {
@@ -107,5 +114,13 @@ public class SharedToolsComponent {
 
     public DiskGrepTool diskGrepTool() {
         return diskGrepTool;
+    }
+
+    public DocsLinterTool docsLinterTool() {
+        return docsLinterTool;
+    }
+
+    public DocsIdTool docsIdTool() {
+        return docsIdTool;
     }
 }
