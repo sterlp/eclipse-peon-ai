@@ -3,17 +3,14 @@
 ## Wo wir stehen
 
 Branch `story/po-compact-2026-09-13` — **nie main, kein push** (Merge/Squash macht Paul).
-**Core Surefire 862/0** · Plugin Tycho: 8 Failures = **veraltete Tests** (R16-Guard `<3`, Seeds auf
-3 Messages angepasst, uncommitted, wartet auf Plugin-Suite-Lauf/Trust-Dialog) — KEINE Bugs,
-Auflösung in open-points.md (🔒).
+**Core Surefire 862/0** · Plugin Tycho 212/0 (11 Skipped = assumeTrue, normal).
 
-**Neu heute (Paul selbst gebaut, `29a341b` "added names to jons team"):** Namen im System-Prompt
-für Jons Sklaven (Fan-out `ContextItem.newList` + build()-Fallback) + `AGENT_MODE`-Schärfung
-(offene Fragen explizit in der Antwort, nie raten, kein `askUser` für Slaven) + Compact-Hint-
-Fallback für Agenten ohne CompactSessionTool. Docs: sklaven-kontext-plan.md (R-N1–R-N3),
-context-message-concept.md (Hint-Regel), index.md nachgezogen. Duplikat `AiPoAgent.newList` von
-mir entfernt (ContextItem.newList ist SOT). Offen: Scope für Top-Level/Custom/Sniffa ❓, BDD-Test
-Compact-Hint-Fallback ❓ (beide open-points.md).
+**Branch `story/po-compact-2026-09-13`, 3 Commits unpushed:** `29a341b` (Paul: Namen + Agent
+Mode) · `1fea07e` (Test-Seeds R16 + staticContext-Test auf R-N1 umgeschrieben, 212/0) ·
+`217163d` (newList-Dedup + Docs). **`mvn clean verify`: BUILD SUCCESS — Core 862/0, Plugin 212/0.**
+Das „mvn clean verify geht nicht"-Ticket ist damit geschlossen (8 veraltete R16-Tests + 1
+staticContext-Test, keine Bugs). Docs dafür: sklaven-kontext-plan.md (R-N1–R-N3),
+context-message-concept.md (Compact-Hint-Fallback), open-points.md.
 
 **Nebenbefund:** `29a341b` bündelt die ToolService-Compact-Hint-Änderung thematisch mit „names" —
 vermerkt, nicht blockierend. Untracked: `harness-request-docs-linter.md` + 5 Plan-Archive; 1
@@ -21,9 +18,9 @@ gelöschtes Plan-Archiv uncommitted.
 
 ## Nächste Schritte
 
-1. Trust-Dialog im Eclipse bestätigen → Plugin-Suite (Da Mek wartet) → Seed-Edits committen.
-2. `mvn clean verify` Vollcheck danach.
-3. Pauls offene ❓-Punkte (open-points.md „Neu"-Tabelle) klären.
+1. Merge/Squash = Paul. User-Smoke: Re-Compact-Noop, Disabled-States, Tooltip (agenten-status-im-header.md).
+2. Backlog (❓/⏳ in open-points.md): BDD-Test Compact-Hint-Fallback · Homepage peon-po.md Team ohne Da Dok · Plan-Archive aufräumen.
+3. Danach Pauls Reihenfolge: Compact-Input-Budget Light + Context-Noise (vor dem Bau gemeinsam), ApiRetry-Cancel-Bug, ID-Kommentare Alt-DL-Tests.
 
 ---
 
