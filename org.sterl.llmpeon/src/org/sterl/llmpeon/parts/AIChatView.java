@@ -18,6 +18,8 @@ import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.e4.ui.di.Focus;
 import org.eclipse.e4.ui.services.IServiceConstants;
 import org.eclipse.jdt.core.IClassFile;
+import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IType;
 import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
@@ -238,7 +240,6 @@ public class AIChatView implements EclipseAiMonitor {
     private void applyTextSelection(ITextSelection ts) {
         var uc = aiService.getUserContext();
         boolean changed = false;
-        uc.setClassFile(null);   // a text selection replaces the class-file association
         if (parent != null && !parent.isDisposed()) {
             // R-SEL-2: open file = known resource (UI-thread path of EclipseUtil.getOpenFile)
             changed |= uc.setSelectedResource(EclipseUtil.getOpenFile().orElse(null));
@@ -256,9 +257,15 @@ public class AIChatView implements EclipseAiMonitor {
         }
         if (parent == null || parent.isDisposed()) return;
 
-        aiService.getUserContext().setClassFile(null);
         var selectionElement = EclipseUtil.selectionElement(o).orElse(null);
-        if (selectionElement instanceof IClassFile classFile) aiService.getUserContext().setClassFile(classFile);
+        // R-SEL-4: a type selection wins — it must be detected BEFORE resolveResource, which
+        // would resolve a source IType to its .java file and kill the type. Resource and
+        // project stay untouched on a type event.
+        if (selectionElement instanceof IType || selectionElement instanceof IClassFile) {
+            if (aiService.getUserContext().setJavaType((IJavaElement) selectionElement))
+                EclipseUtil.runInUiThread(parent, this::refreshStatusLine);
+            return;
+        }
         var selection = EclipseUtil.resolveResource(selectionElement).orElse(null);
         if (selection == null && selectionElement != null && !(selectionElement instanceof IWorkingSet)
                 && !selectionElement.getClass().getName().equals("org.eclipse.ui.internal.views.log.LogEntry")

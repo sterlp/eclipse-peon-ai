@@ -75,6 +75,35 @@ File-Inhalt (Doc/Code-Drift). Der Homepage-Text stimmt bereits und wird **nicht*
 
 **Test:** `UserContextTest.test_rSel3_snippetPlusFilePath_notFullContent`
 
+### R-SEL-4 — JavaType-Selektion ersetzt File/Text-Selektion (Paul 2026-09-16) ❌
+
+**Regel:** Wird ein Java-Typ selektiert, gewinnt dieses Event: die bestehende File-Selektion
+(`selectedResource`) **und** die Text-Selektion werden geräumt, der Typ wird als `javaType`
+gespeichert (Rename von `clazz`/`setClassFile` — `IType` ist kein `IClassFile`, der technische
+Name folgt der Rolle).
+Java-Typ = `IClassFile` (.class-Datei) **oder** `IType` in einer Quell-Datei (Outline-Klick in
+`.java`) — Paul 2026-09-16: „beides". **Jeder** `setTextSelection`-Aufruf (auch leer/Caret) räumt
+den Typ — strikte Text/Typ-Alternation (Jon, ⏳-Rückversicherung in open-points.md). Der Zustand
+bleibt, bis etwas Neues selektiert wird (neuer
+Typ, neue Ressource oder neues Text-Selektions-Event ersetzt ihn nach den Regeln R-SEL-1/2/3 —
+ein Typ-Selektions-Event ist kein „Neben-Event" im Sinne von R-SEL-1).
+Kontext-Rendering: „Java type selected: <Name>" statt File/Snippet (`UserContext.addUserSelection`,
+Zweig `javaType != null`). Umsetzung: die Typ-Erkennung muss **vor** `resolveResource` greifen
+(AIChatView-Object-Pfad), sonst wird der Quell-Typ zur `.java`-Ressource aufgelöst und die Regel
+ist tot.
+
+**Begründung:** „Neuestes Event gewinnt" — R-SEL-1 schützt die Text-Selektion nur vor *irrelevanten*
+Neben-Events, nicht vor einer bewussten Typ-Auswahl. Ein Typ-Klick ist eine klare Intent-Änderung.
+
+#### UC-SEL-4 — Typ-Selektion ersetzt File und Text ❌
+
+- GIVEN Text-Selektion + File-Selektion aktiv WHEN Typ-Selektions-Event (`IType` oder `IClassFile`) THEN `javaType` gesetzt, `selectedResource` null, Text-Selektion geräumt; `get()` liefert „Java type selected: <Name>".
+- GIVEN Typ-Selektion aktiv WHEN neue Text-Selektion (auch leer/Caret) THEN Text-Selektion gewinnt, `javaType` geräumt (R-SEL-1/2/3-Semantik).
+- GIVEN Typ-Selektion aktiv WHEN Ressource-Selektion ANDERSER Datei THEN Typ geräumt, Datei gewinnt.
+
+**Test:** `UserContextTest` (headless über die UserContext-Setter); die UI-Erkennung (IType vor
+resolveResource im View-Pfad) ist manuell im User-Smoke verifiziert — headless nicht testbar.
+
 ## Nebenfunde
 
 - 🐞 **`SimpleDiff.lcsDiff` OOM (Crash 2026-09-16):** `eclipseEditFile` → `AIChatView.onFileUpdate:329` → `SimpleDiff.unifiedDiff:21` → `OutOfMemoryError: Java heap space` — **behoben:** Size-Guard in `SimpleDiff.unifiedDiff` (`MAX_LCS_CELLS = 5_000_000`), darüber summarische Meldung statt LCS (`2e51a16`). Details: `open-points.md`.

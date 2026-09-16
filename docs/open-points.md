@@ -392,3 +392,19 @@ Bei Bedarf: LRU mit Obergrenze (z. B. 500). Rückversicherung mit User steht aus
 | User-Smoke Header-Compact-Buttons (BDD in agenten-status-im-header.md) | ⏳ teils erledigt | Optik ✅ (User 2026-09-15: „optisch sauber"); ausstehend: Re-Compact-Noop (2 Messages → `Nothing to compact`), Disabled-States, Tooltip — nach Merge |
 | Namen im System-Prompt: Scope über Jons Team hinaus? | 🔒 geklärt (2026-09-16, Paul) | **Nur Jons Team** (R-N1). Top-Level-Peon-Agents / Custom Agents / Da Sniffa bleiben außen vor — Wiederaufnahme nur auf expliziten Wunsch. |
 | BDD-Test für Compact-Hint-Fallback (Agenten ohne CompactSessionTool) | ❓ offen | Regel gebaut (`29a341b`), dokumentiert in context-message-concept.md. Paul 2026-09-16: „machen wir wann anders" — Backlog. |
+
+## ⏳ R-SEL-4 Umsetzungsdetails (Jon, 2026-09-16 Abend — Rückversicherung steht aus)
+
+Paul hat R-SEL-4 bestätigt („beides": `IClassFile` **und** `IType`; Typ-Event ersetzt File+Text).
+Drei Detail-Entscheidungen habe ich selbst getroffen (aus Pauls „es bleibt bis wir wieder was neues
+selektieren" abgeleitet, im Plan §2.1/§6 von Da Thinka vorgeschlagen):
+
+1. **Jeder** `setTextSelection`-Aufruf (auch leer/Caret) räumt den Typ — strikte Text/Typ-
+   Alternation. Passend zu Pauls Regel (Caret-Klick = neue Selektion) und zur R-SEL-1-Formulierung
+   („inkl. leerem/Caret-Event").
+2. **Rename** `clazz`/`setClassFile` → `javaType`/`setJavaType` (Feld `IJavaElement`) — `IType` ist
+   kein `IClassFile`, technischer Name folgt der Rolle (memory #15).
+3. **Typ-Event berührt `currentProject` nicht** (kein `updateSelectedProject`) — Project-State
+   bleibt dem Projekt-/Pin-Flow vorbehalten.
+
+Wenn Paul widerspricht: Verhalten zurückändern, Tests (UC-SEL-4) entsprechend anpassen.
