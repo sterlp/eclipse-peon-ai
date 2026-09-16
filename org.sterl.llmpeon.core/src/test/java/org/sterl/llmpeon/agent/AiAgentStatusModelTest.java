@@ -79,4 +79,39 @@ class AiAgentStatusModelTest {
         assertThat(entries).hasSize(1);
         assertThat(entries.get(0).working()).isTrue();
     }
+
+    @Test
+    void entries_bossRowHasNoCompactButton_slaveRowsDo() {
+        // GIVEN the full PO team — Da Boss first, his slaves below
+        var entries = AiAgentStatusModel.build(List.of(
+                row("Da Boss", 12_000, false),
+                row("Da Thinka", 0, false),
+                row("Da Mek", 0, false),
+                row("Da Dok", 0, false)));
+
+        assertThat(entries.get(0).slave()).as("Da Boss has no compact button (action bar owns his compact)").isFalse();
+        assertThat(entries.get(1).slave()).as("slave rows carry a per-agent compact button").isTrue();
+        assertThat(entries.get(2).slave()).isTrue();
+        assertThat(entries.get(3).slave()).isTrue();
+    }
+
+    @Test
+    void compactEnabled_onlyWhenIdleAndNoTurnInFlight() {
+        // GIVEN the four agentWorking × turnInFlight combinations
+        assertThat(AiAgentStatusModel.compactEnabled(false, false))
+                .as("idle agent, no turn in flight → enabled").isTrue();
+        assertThat(AiAgentStatusModel.compactEnabled(true, false))
+                .as("working agent → disabled").isFalse();
+        assertThat(AiAgentStatusModel.compactEnabled(false, true))
+                .as("turn in flight → disabled").isFalse();
+        assertThat(AiAgentStatusModel.compactEnabled(true, true))
+                .as("working AND turn in flight → disabled").isFalse();
+    }
+
+    @Test
+    void compactResult_successVsSkip() {
+        // GIVEN the two outcomes of a slave-compact job
+        assertThat(AiAgentStatusModel.compactResult(true, "Da Mek")).isEqualTo("Compacted Da Mek");
+        assertThat(AiAgentStatusModel.compactResult(false, "Da Mek")).isEqualTo("Nothing to compact");
+    }
 }

@@ -11,7 +11,7 @@ import org.sterl.llmpeon.tool.ToolService;
 public class AiDevAgent extends AbstractAgent {
 
     public static final String NAME = "Peon-Dev";
-    private static final String BASE_PROMPT = PromptLoader.loadWithDefault("developer.txt");
+    private static final String BASE_PROMPT = PromptLoader.loadWithDefault("developer.md");
 
     public AiDevAgent(ConfiguredChatModel configuredModel,
             ToolService toolService) {

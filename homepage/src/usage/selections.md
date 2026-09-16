@@ -37,6 +37,40 @@ No need to say "in UserContext.java" — it's already included.
 
 Hover over the file name in the status bar to see a tooltip confirming automatic inclusion. You can also check that the AI sees your context by asking about "the selected file" — if it responds with information about your current file, the context is being sent correctly.
 
+## Name Your Project Like Its Folder
+
+**Recommendation: give the Eclipse project the same name as its folder on disk.**
+
+Peon AI has two tool families, and they speak different path dialects:
+
+| Family | Expects | Example |
+|---|---|---|
+| `eclipse*` | workspace path | `/my-project/src/Main.java` |
+| `disk*` | absolute filesystem path | `/Users/me/dev/my-project/src/Main.java` |
+
+Every message tells the AI both, so it can pick the right one:
+
+```
+Project name: my-project
+Eclipse path: /my-project
+Disk path:    /Users/me/dev/my-project
+```
+
+If the two names **differ** — say the project is called `my-project` but lives in
+`/Users/me/dev/some-other-folder` — a model may hand the workspace path to a `disk*` tool. That
+path does not exist on disk, and the tool answers with an honest error rather than guessing:
+
+```
+File not found: /my-project/README.md also not in /Users/me/dev/some-other-folder
+```
+
+Nothing is broken and nothing is silently read from the wrong place — but the model has to notice
+its mistake and retry, which costs a round trip. The tools deliberately do **not** translate
+workspace paths into disk paths: a project named `docs` or `tmp` would make `/docs/file.md` a valid
+path in *both* dialects, and a guess there could silently open the wrong file.
+
+Matching the two names removes the ambiguity entirely.
+
 ## Pinning Your Project
 
 If you navigate between files in different projects, the active project may change. Use the **pin button** (📌) in the status bar to lock your current project:

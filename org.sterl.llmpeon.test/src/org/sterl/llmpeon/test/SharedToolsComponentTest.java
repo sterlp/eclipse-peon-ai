@@ -1,11 +1,16 @@
 package org.sterl.llmpeon.test;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+
+import java.util.stream.Collectors;
 
 import org.junit.Test;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.command.CommandService;
+import org.sterl.llmpeon.docslinter.DocsIdTool;
+import org.sterl.llmpeon.docslinter.DocsLinterTool;
 import org.sterl.llmpeon.parts.ai.component.SharedToolsComponent;
 import org.sterl.llmpeon.parts.tools.EclipseBuildTool;
 import org.sterl.llmpeon.parts.tools.EclipseCodeNavigationTool;
@@ -71,6 +76,44 @@ public class SharedToolsComponentTest {
         assertTrue("grep stays visible to search agents", searchAgent.getFilter().test(grep));
     }
 
+    /** GIVEN default config (disk tools disabled) WHEN the shared service is built THEN the full DocsLinterTool is present. */
+    // UC-DL-52
+    @Test
+    public void docsLinterExistsWhenDiskToolsDisabled() {
+        // GIVEN / WHEN (default LlmConfig has diskToolsEnabled=false)
+        var ts = sut.toolService();
+
+        // THEN
+        assertTrue("DocsLinterTool must be registered unconditionally",
+                ts.getTool(DocsLinterTool.class).isPresent());
+        // AND the ID facade must NOT leak into the shared service
+        assertTrue("DocsIdTool must not be registered in the shared service",
+                ts.getTool(DocsIdTool.class).isEmpty());
+    }
+
+    /** UC-DL-53: GIVEN enabled disk tools WHEN toggled back to disabled THEN shared docs-linter executors are unchanged. */
+    // UC-DL-53
+    @Test
+    public void diskToggleDoesNotChangeDocsLinter() {
+        // GIVEN: snapshot the docs-linter tool names in the default (disk-off) state
+        var before = docsLinterNames();
+        assertTrue("linter tools expected before toggle", before.contains("lintDocs"));
+        assertTrue("linter tools expected before toggle", before.contains("lintDocsAndTests"));
+
+        // WHEN: enable then disable disk tools
+        sut.updateActiveDiskTools(config(true));
+        sut.updateActiveDiskTools(config(false));
+
+        // THEN: docs-linter names are unchanged
+        var after = docsLinterNames();
+        assertEquals(before, after);
+
+        // AND disk tools are gone
+        assertFalse(sut.toolService().getTool(DiskFileWriteTool.class).isPresent());
+        assertFalse(sut.toolService().getTool(DiskFileReadTool.class).isPresent());
+        assertFalse(sut.toolService().getTool(DiskGrepTool.class).isPresent());
+    }
+
     /** GIVEN enabled/disabled config WHEN updateActiveDiskTools THEN disk tools toggle on/off without duplicates. */
     @Test
     public void test_updateActiveDiskTools_togglesDiskTools() {
@@ -101,6 +144,13 @@ public class SharedToolsComponentTest {
         assertFalse(sut.toolService().getTool(DiskFileWriteTool.class).isPresent());
         assertFalse(sut.toolService().getTool(DiskFileReadTool.class).isPresent());
         assertFalse(sut.toolService().getTool(DiskGrepTool.class).isPresent());
+    }
+
+    private java.util.Set<String> docsLinterNames() {
+        return sut.toolService().getExecutors().stream()
+                .filter(e -> e.getTool() instanceof DocsLinterTool)
+                .map(e -> e.getSpec().name())
+                .collect(Collectors.toSet());
     }
 
     private static LlmConfig config(boolean diskEnabled) {

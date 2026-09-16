@@ -18,7 +18,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 
 public class AiCompressorAgent {
 
-    private static final SystemMessage COMPRESS_SYSTEM = SystemMessage.systemMessage(PromptLoader.load("compressor.txt"));
+    private static final SystemMessage COMPRESS_SYSTEM = SystemMessage.systemMessage(PromptLoader.load("compressor.md"));
 
     private final ConfiguredChatModel chatModel;
 

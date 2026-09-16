@@ -37,6 +37,7 @@ public class BuildPoAgentComponent {
     private static final double SLAVE_COMPACT_FACTOR = 0.7;
     private final ConfiguredChatModel configuredModel;
     private final Supplier<IProject> projectRef;
+    private final SharedToolsComponent sharedTools;
     private final ToolService sharedToolService;
     /** Directory holding Jon's {@code <agent>-history.jsonl} directly (ADR-0041 R2); null = RAM-only. */
     private final Path historyStateDir;
@@ -50,11 +51,12 @@ public class BuildPoAgentComponent {
 
     public BuildPoAgentComponent(ConfiguredChatModel configuredModel,
             Supplier<IProject> projectRef,
-            ToolService sharedToolService, Path historyStateDir) {
+            SharedToolsComponent sharedTools, Path historyStateDir) {
         super();
         this.configuredModel = configuredModel;
         this.projectRef = projectRef;
-        this.sharedToolService = sharedToolService;
+        this.sharedTools = sharedTools;
+        this.sharedToolService = sharedTools.toolService();
         this.historyStateDir = historyStateDir;
     }
 
@@ -94,21 +96,24 @@ public class BuildPoAgentComponent {
                 return super.getToolFilter().and(noPrivilegedTools);
             }
         };
-        planSlave.setStaticContext(staticContent);
+        planSlave.setStaticContext(ContextItem.newList(staticContent, 
+                () -> "Your name is Da Thinka."));
         
         var reviewSlave = new AiReviewAgent(configuredModel, sharedToolService, SLAVE_COMPACT_FACTOR) {
             @Override protected Predicate<SmartToolExecutor> getToolFilter() {
                 return super.getToolFilter().and(noPrivilegedTools);
             }
         };
-        reviewSlave.setStaticContext(staticContent);
+        reviewSlave.setStaticContext(ContextItem.newList(staticContent, 
+                () -> "Your name is Da Dok."));
 
         var devSlave = new AiDevAgent(configuredModel, sharedToolService, SLAVE_COMPACT_FACTOR) {
             @Override protected Predicate<SmartToolExecutor> getToolFilter() {
                 return super.getToolFilter().and(noPrivilegedTools);
             }
         };
-        devSlave.setStaticContext(staticContent);
+        devSlave.setStaticContext(ContextItem.newList(staticContent, 
+                () -> "Your name is Da Mek."));
 
         var thinka = new NamedAgent("Da Thinka", planSlave);
         var doc = new NamedAgent("Da Dok", reviewSlave);
@@ -131,7 +136,10 @@ public class BuildPoAgentComponent {
         // Jon's own throw-away research sub-agent (Da Sniffa) — searches with his read/grep tool
         poToolService.addTool(sharedToolService.getTool(SearchAgentTool.class).get());
         poToolService.addTool(new CompactSessionTool());
-                // Header team order = lifecycle order (user decision): plan → build → review.
+        // ADR-0048: Jon also gets the read-only docs facades — full linter + ID allocation.
+        poToolService.addTool(sharedTools.docsLinterTool());
+        poToolService.addTool(sharedTools.docsIdTool());
+        // Header team order = lifecycle order (user decision): plan → build → review.
         var poAgent = new AiPoAgent(configuredModel, poToolService, historyStateDir, List.of(thinka, mek, doc));
 
         return poAgent;

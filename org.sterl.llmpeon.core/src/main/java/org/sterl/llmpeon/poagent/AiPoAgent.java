@@ -18,7 +18,6 @@ import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.poagent.tools.PoDelegateTool;
 import org.sterl.llmpeon.prompt.PeonPaths;
 import org.sterl.llmpeon.prompt.PromptLoader;
-import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.WriteValidator;
@@ -29,14 +28,21 @@ import org.sterl.llmpeon.tool.WriteValidator;
  * a tool filter, scopes him). Uses his own {@link AgentConfig} for provider/model/think.
  */
 public class AiPoAgent extends AbstractAgent {
+    
+    public static final String AGENT_MODE = """
+            You are in Agent Mode and report to Jon.
+            You have someone to ask — use that. Save your state to the
+            plan/task file first, then ask him directly, with more
+            questions rather than fewer. Never assume.
+            """;
 
     public static final String NAME = "Peon-PO";
     // ${docs}/${plan} placeholders resolved from PeonPaths so the paths live in one constant, not the prompt.
-    private static final String BASE_PROMPT = PeonPaths.resolve(PromptLoader.loadWithDefault("po.txt"));
+    private static final String BASE_PROMPT = PeonPaths.resolve(PromptLoader.loadWithDefault("po.md"));
     // Delegation playbook appended after Jon's identity/methodology prompt — kept out of po.txt so his
     // identity stays clean. Steers the talkPlan/planWithPlanAgent/askDev/buildWithDev loop: plan →
     // sign-off → build → mandatory post-build review, then planImplemented as the closing step.
-    private static final String DELEGATION_PROMPT = PeonPaths.resolve(PromptLoader.load("po-delegation.txt"));
+    private static final String DELEGATION_PROMPT = PeonPaths.resolve(PromptLoader.load("po-delegation.md"));
 
     /** Jon's own ork slaves, shown in the header. Empty when Jon runs without delegation (e.g. tests). */
     private final List<NamedAgent> slaves;
@@ -62,7 +68,10 @@ public class AiPoAgent extends AbstractAgent {
     @Override
     public void setStaticContext(List<ContextItem> context) {
         super.setStaticContext(context);
-        this.slaves.forEach(s -> s.agent().setStaticContext(context));
+        this.slaves.forEach(s -> {
+            s.agent().setStaticContext(ContextItem.newList(context, () -> "Your name is " + s.uiName() 
+                + System.lineSeparator() + AGENT_MODE));
+        });
     }
 
     @Override
@@ -87,7 +96,7 @@ public class AiPoAgent extends AbstractAgent {
     @Override
     public String getSystemPrompt() {
         return BASE_PROMPT + System.lineSeparator()
-            + System.lineSeparator() + "- Your path white list " + WriteValidator.DEFAULT_ALLOW
+            + System.lineSeparator() + WriteValidator.JON_PATH_SCOPE_PROMPT
             + System.lineSeparator() + DELEGATION_PROMPT;
     }
 
@@ -130,20 +139,5 @@ public class AiPoAgent extends AbstractAgent {
             t.clearReview();
             t.clearDev();
         });
-    }
-    
-    @Override
-    public boolean compact(AiMonitor inMonitor) {
-        var monitor = AiMonitor.nullSafety(inMonitor);
-        var result = super.compact(monitor);
-        toolService.getTool(PoDelegateTool.class).ifPresent(t -> {
-            monitor.onTool("Compact Da Thinka");
-            monitor.onTool(t.compactPlan());
-            monitor.onTool("Compact Da Doc");
-            monitor.onTool(t.compactReview());
-            monitor.onTool("Compact Da Mek");
-            monitor.onTool(t.compactDev());
-        });
-        return result;
     }
 }

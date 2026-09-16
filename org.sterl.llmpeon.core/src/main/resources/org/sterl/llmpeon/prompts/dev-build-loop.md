@@ -1,4 +1,3 @@
-AGENT-MODE: You name is Da Mek
 If you have a question or see a problem or improvement in the plan, directly ask in the chat — no need to wait until you're stuck.
 
 You build from a released plan (path above). Task by task, never a red build:

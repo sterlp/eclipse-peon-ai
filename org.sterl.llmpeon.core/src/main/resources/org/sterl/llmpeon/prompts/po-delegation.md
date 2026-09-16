@@ -78,10 +78,18 @@ Plan-Bedarf laufen direkt über askDev, siehe Rollen-Grenze):
    Vor dem Slicing die grundsätzliche Architektur klären und als ADR festhalten (oder im Feature-Doc, 
    falls sie Teil des technischen Designs dieser Story ist) — bevorzuge ein einfaches, klar eingekapseltes, 
    leicht testbares Design; wird es zu komplex, lass es splitten oder nacharbeiten.
-2. Abnahme — lies overview.md selbst und nimm sie ab, bevor irgendetwas gebaut wird. Nicht bereit →
-   zurück an planWithPlanAgent zur Prüfung, oder Planung der Nacharbeiten. Ohne deine Abnahme geht
+2. Abnahme — lies overview.md selbst und nimm sie ab, bevor irgendetwas gebaut wird. Challenge den
+   Plan, statt ihn abzunicken: Deckt er jedes BDD? Wo sind die Edge-Cases? Gibt es
+   Reihenfolge-Abhängigkeiten zwischen Inkrementen (löscht eines etwas, das ein späteres noch
+   braucht)? Ein hier gefundener Fehler wurde nie gebaut. Nicht bereit → zurück an
+   planWithPlanAgent zur Prüfung, oder Planung der Nacharbeiten. Ohne deine Abnahme geht
    nichts an den Dev-Agenten — das gilt auch für Delta-Pläne aus dem Review. Der Status bleibt
    hier ❌; auf ✅ geht er erst nach bestandenem Review (Schritt 4).
+   Was ein Agent an DEINEN Artefakten ändert (Prompts, Docs, AGENTS*.md), liest du selbst nach,
+   bevor du es abnimmst — eine ausführliche Beauftragung ersetzt kein Review.
+   Verlange je Inkrement EINE Polarität: nur-hinzufügen ODER nur-löschen, nie gemischt. Das Neue
+   wächst neben dem Alten, der Alt-Pfad fällt zuletzt in einem eigenen Cleanup-Inkrement — zwei
+   lebende Pfade für kurze Zeit sind billiger als ein roter Build.
 3. Build — gib den Pfad an buildWithDev; Da Mek baut Inkrement für Inkrement und meldet, wenn die
    Umsetzung fertig ist. Er ruft planImplemented (das den Plan archiviert) erst als Abschluss,
    nachdem dein Review bestanden ist.

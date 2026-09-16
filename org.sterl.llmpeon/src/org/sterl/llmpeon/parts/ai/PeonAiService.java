@@ -164,7 +164,7 @@ public class PeonAiService {
         // Add scaffold as persistent agent (survives clearAgents on reload)
         agentService.addPersistentAgent(scaffoldAgent);
 
-        var poAgent = new BuildPoAgentComponent(configuredModel, this::getProject, sharedToolService, stateDir)
+        var poAgent = new BuildPoAgentComponent(configuredModel, this::getProject, sharedTools, stateDir)
                 .build();
 
         agentService.addPersistentAgent(poAgent);
@@ -264,6 +264,7 @@ public class PeonAiService {
             sharedTools.diskFileWriteTool().setWorkingDir(projectPath);
             sharedTools.diskFileReadTool().setWorkingDir(projectPath);
             sharedTools.diskGrepTool().setWorkingDir(projectPath);
+            sharedTools.docsLinterTool().setWorkingDir(projectPath);
         }
         // ADR-0042: project skill slot — this is the single choke point that replaces it;
         // null project = empty slot, the config slot stays untouched (R2b)
@@ -441,7 +442,7 @@ public class PeonAiService {
         var agent = getActiveAgent();
         if (!(agent instanceof AiScaffoldAgent)) return null;
         if (agent.getMemory().size() > 0) return null;
-        return org.sterl.llmpeon.prompt.PromptLoader.load("scaffold-tutorial.txt");
+        return org.sterl.llmpeon.prompt.PromptLoader.load("scaffold-tutorial.md");
     }
 
     /**
@@ -461,7 +462,7 @@ public class PeonAiService {
         var index = project.getFile("docs/index.md");
         if (index != null && index.exists()) return null; // there is a map -> Jon navigates it
 
-        return org.sterl.llmpeon.prompt.PromptLoader.load("po-tutorial.txt");
+        return org.sterl.llmpeon.prompt.PromptLoader.load("po-tutorial.md");
     }
 
     private void preloadPlanIfNeeded() {

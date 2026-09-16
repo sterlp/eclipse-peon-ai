@@ -28,6 +28,7 @@ import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
+import org.sterl.llmpeon.agent.AiReviewAgent;
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
@@ -49,6 +50,8 @@ import org.sterl.llmpeon.scaffold.AiScaffoldAgent;
 import org.sterl.llmpeon.scaffold.ReloadConfigTool;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
+import org.sterl.llmpeon.docslinter.DocsIdTool;
+import org.sterl.llmpeon.docslinter.DocsLinterTool;
 import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
@@ -101,6 +104,26 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             assertTrue("Expected selected Fixture hits: " + result, selected >= 0);
             assertTrue("Expected foreign project hit: " + result, other >= 0);
             assertTrue("Expected selected project before foreign project: " + result, selected < other);
+        } finally {
+            if (otherProject.exists()) otherProject.delete(true, true, new NullProgressMonitor());
+        }
+    }
+
+    @Test
+    public void setProjectUpdatesDocsLinterWorkingDirectory() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        var otherProject = ResourcesPlugin.getWorkspace().getRoot().getProject("aaa_linter");
+        if (otherProject.exists()) otherProject.delete(true, true, new NullProgressMonitor());
+        otherProject.create(new NullProgressMonitor());
+        otherProject.open(new NullProgressMonitor());
+        try {
+            aiService.setProject(project);
+            aiService.setProject(otherProject);
+
+            var linter = aiService.getSharedToolService().getTool(DocsLinterTool.class).orElseThrow();
+            var expected = Path.of(JdtUtil.diskPathOf(otherProject)).toAbsolutePath().normalize();
+            assertEquals("DocsLinterTool workingDir must follow setProject", expected, linter.getWorkingDir());
         } finally {
             if (otherProject.exists()) otherProject.delete(true, true, new NullProgressMonitor());
         }
@@ -350,8 +373,8 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         var agent = aiService.getActiveAgent();
         mockLlmServer.queueResponse(AiMessage.aiMessage("compressed"));
         agent.getMemory().add(UserMessage.from("pre-compact"));
-        agent.getMemory().add(UserMessage.from("User Message..."));
         agent.getMemory().add(AiMessage.from("AI response..."));
+        agent.getMemory().add(AiMessage.from("AI response 2..."));
         agent.compact(null);
 
         // THEN turn context restored after compact contains tool descriptions
@@ -691,14 +714,209 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         assertTrue("switching away clears it immediately", aiService.getStatusAgents().isEmpty());
     }
 
+
+    // --- Docs-Linter two-facade matrix (ADR-0048) ---------------------------
+
+    /** UC-DL-48: Dev and Da Mek see the linter methods, never nextIds. */
+    // UC-DL-48
+    @Test
+    public void docsLinterMatrixForDaMek() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        var dev = aiService.getAgent(AiDevAgent.NAME).orElseThrow();
+        assertDocsLinterOnly(activeToolNames(dev));
+
+        aiService.setActiveAgent(AiPoAgent.NAME);
+        var delegate = jonDelegate();
+        assertDocsLinterOnly(activeToolNames(delegate.getDevSlave()));
+    }
+
+    /** UC-DL-49: Jon's curated service contains all three docs methods. */
+    // UC-DL-49
+    @Test
+    public void docsLinterMatrixForJon() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        aiService.setActiveAgent(AiPoAgent.NAME);
+
+        var names = activeToolNames(aiService.getActiveAgent());
+        assertTrue("lintDocs expected for Jon", names.contains("lintDocs"));
+        assertTrue("lintDocsAndTests expected for Jon", names.contains("lintDocsAndTests"));
+        assertTrue("nextIds expected for Jon", names.contains("nextIds"));
+    }
+
+    /** UC-DL-50: Plan and Da Thinka see the linter methods, never nextIds. */
+    // UC-DL-50
+    @Test
+    public void docsLinterMatrixForDaThinka() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        var plan = aiService.getAgent(AiPlanAgent.NAME).orElseThrow();
+        assertDocsLinterOnly(activeToolNames(plan));
+
+        aiService.setActiveAgent(AiPoAgent.NAME);
+        var delegate = jonDelegate();
+        assertDocsLinterOnly(activeToolNames(delegate.getPlanSlave()));
+    }
+
+    /** UC-DL-51: Review and Da Dok see the linter methods, never nextIds. */
+    // UC-DL-51
+    @Test
+    public void docsLinterMatrixForDaDok() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        var review = aiService.getAgent(AiReviewAgent.NAME).orElseThrow();
+        assertDocsLinterOnly(activeToolNames(review));
+
+        aiService.setActiveAgent(AiPoAgent.NAME);
+        var delegate = jonDelegate();
+        assertDocsLinterOnly(activeToolNames(delegate.getReviewSlave()));
+    }
+
+    /** UC-DL-52: even with disk tools disabled, the shared linter exists and Jon gets both facades. */
+    // UC-DL-52
+    @Test
+    public void jonDocsFacadesExistWithDiskToolsDisabled() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        // default aiService has diskToolsEnabled=false
+        assertTrue("shared DocsLinterTool must exist with disk tools disabled",
+                aiService.getSharedToolService().getTool(DocsLinterTool.class).isPresent());
+        assertTrue("DocsIdTool must not leak into shared",
+                aiService.getSharedToolService().getTool(DocsIdTool.class).isEmpty());
+
+        aiService.setActiveAgent(AiPoAgent.NAME);
+        var names = activeToolNames(aiService.getActiveAgent());
+        assertTrue("Jon needs lintDocs", names.contains("lintDocs"));
+        assertTrue("Jon needs lintDocsAndTests", names.contains("lintDocsAndTests"));
+        assertTrue("Jon needs nextIds", names.contains("nextIds"));
+    }
+
+    /**
+     * Regression guard: Jon's docs tool surface must stay independent of the disk-tools gate.
+     * The same living AiPoAgent is observed before and after a live true→false toggle.
+     * This is NOT the UC-DL-53 proof; see SharedToolsComponentTest.diskToggleDoesNotChangeDocsLinter.
+     */
+    // Regression guard, not a UC proof: Jon's ToolService is filled once at build time and
+    // never mutated by the disk-tools gate. Fails only if someone couples Jon's wiring to
+    // diskToolsEnabled or rebuilds his ToolService during updateConfig.
+    @Test
+    public void diskTogglePreservesJonsDocsFacades() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        aiService.setActiveAgent(AiPoAgent.NAME);
+        var jon = aiService.getActiveAgent();
+
+        // GIVEN disk tools enabled
+        aiService.updateConfig(aiService.getConfig().toBuilder().diskToolsEnabled(true).build());
+        assertTrue("disk write tool must be enabled first",
+                aiService.getSharedToolService().getTool(DiskFileWriteTool.class).isPresent());
+
+        var before = activeToolNames(jon);
+        assertTrue("Jon needs lintDocs", before.contains("lintDocs"));
+        assertTrue("Jon needs lintDocsAndTests", before.contains("lintDocsAndTests"));
+        assertTrue("Jon needs nextIds", before.contains("nextIds"));
+
+        // WHEN toggled to disabled on the SAME service instance
+        aiService.updateConfig(aiService.getConfig().toBuilder().diskToolsEnabled(false).build());
+
+        // THEN the same living Jon still has all three docs methods
+        var after = activeToolNames(jon);
+        assertTrue("Jon needs lintDocs after toggle", after.contains("lintDocs"));
+        assertTrue("Jon needs lintDocsAndTests after toggle", after.contains("lintDocsAndTests"));
+        assertTrue("Jon needs nextIds after toggle", after.contains("nextIds"));
+
+        // AND the shared service lost the disk tools
+        assertTrue("disk write tool must be gone after toggle",
+                aiService.getSharedToolService().getTool(DiskFileWriteTool.class).isEmpty());
+        assertTrue("disk read tool must be gone after toggle",
+                aiService.getSharedToolService().getTool(DiskFileReadTool.class).isEmpty());
+        assertTrue("disk grep tool must be gone after toggle",
+                aiService.getSharedToolService().getTool(DiskGrepTool.class).isEmpty());
+    }
+
+
+    /** UC-DL-55: switching projects updates the single shared root; both facades observe the new project. */
+    // UC-DL-55
+    @Test
+    public void projectSwitchUpdatesBothDocsFacadeRoots() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        var projectA = ResourcesPlugin.getWorkspace().getRoot().getProject("aaa_linter_a");
+        var projectB = ResourcesPlugin.getWorkspace().getRoot().getProject("aaa_linter_b");
+        for (var p : List.of(projectA, projectB)) {
+            if (p.exists()) p.delete(true, true, new NullProgressMonitor());
+            p.create(new NullProgressMonitor());
+            p.open(new NullProgressMonitor());
+        }
+        try {
+            writeDoc(projectA, "a.md", "A", "UC-A-1");
+            writeDoc(projectB, "b.md", "B", "UC-B-1");
+
+            aiService.setActiveAgent(AiPoAgent.NAME);
+            var sharedLinter = aiService.getSharedToolService().getTool(DocsLinterTool.class).orElseThrow();
+            var jonIdTool = aiService.getActiveAgent().getToolService().getTool(DocsIdTool.class).orElseThrow();
+
+            // warm-up on A
+            aiService.setProject(projectA);
+            var lintA = sharedLinter.lintDocs(null, null, null);
+            var idsA = jonIdTool.nextIds(null, null, null);
+            assertTrue("project A lint must name its doc", lintA.contains("a.md"));
+            assertTrue("project A IDs must show prefix A occupied", idsA.contains("A: occupied"));
+
+            // switch to B
+            aiService.setProject(projectB);
+            var lintB = sharedLinter.lintDocs(null, null, null);
+            var idsB = jonIdTool.nextIds(null, null, null);
+
+            assertTrue("project B lint must name its doc", lintB.contains("b.md"));
+            assertFalse("project B lint must not mention project A's doc", lintB.contains("a.md"));
+            assertTrue("project B IDs must show prefix B occupied", idsB.contains("B: occupied"));
+            assertFalse("project B IDs must not show prefix A occupied", idsB.contains("A: occupied"));
+        } finally {
+            for (var p : List.of(projectA, projectB)) {
+                if (p.exists()) p.delete(true, true, new NullProgressMonitor());
+            }
+        }
+    }
+
+    private static List<String> activeToolNames(AiAgent agent) {
+        var svc = agent.getToolService();
+        return svc.getExecutors().stream()
+                .filter(agent::isToolActive)
+                .map(e -> e.getSpec().name())
+                .toList();
+    }
+
+    private PoDelegateTool jonDelegate() {
+        return aiService.getActiveAgent().getToolService().getTool(PoDelegateTool.class).orElseThrow();
+    }
+
+    private static void assertDocsLinterOnly(List<String> names) {
+        assertTrue("lintDocs expected", names.contains("lintDocs"));
+        assertTrue("lintDocsAndTests expected", names.contains("lintDocsAndTests"));
+        assertFalse("nextIds must NOT be visible outside Jon", names.contains("nextIds"));
+    }
+
+    private static void writeDoc(org.eclipse.core.resources.IProject p, String fileName,
+            String idPrefix, String id) throws IOException {
+        var dir = Files.createDirectories(Path.of(JdtUtil.diskPathOf(p)).resolve("docs"));
+        Files.writeString(dir.resolve(fileName), """
+                ---
+                idPrefix: %s
+                ---
+                # %s Title
+                """.formatted(idPrefix, id));
+    }
     // --- Inc 3: ContextItem Integration Tests ---------------------------------
 
     /**
-     * Revision ADR-0032 (2026-08-23): the static (persistent) context is EXACTLY Env — the
+     * Revision ADR-0032 (2026-08-23): Jon's static (persistent) context is EXACTLY Env — the
      * Workspace-Memory snapshot left the system prompt, the memory lives exclusively in the
      * turn context. No file items either (docs/memory.md, docs/index.md, AGENTS.md ride in the
      * turn context, ADR-0029). Deterministic: the memory entry is persisted BEFORE the service
      * build and must NOT leak into the static context; reset in a finally.
+     * R-N1 (2026-09-16, 29a341b): the slaves no longer share Jon's list object — each gets a
+     * COPY of his context plus exactly one name item ("Your name is &lt;uiName&gt;" + AGENT_MODE);
+     * the leak guards apply to the slave contexts as well.
      */
     @Test
     public void test_staticContext_isEnvOnly() {
@@ -732,18 +950,38 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             assertContains(ctx.get(0).render(), "prefer eclipse*"); // Env
 
             // AND: no memory snapshot and no file items in the static context
+            var forbidden = List.of(memoryText, "docs/memory.md", "docs/index.md");
             var rendered = ctx.stream().map(ContextItem::render).filter(r -> r != null).toList();
-            assertHasNoMessageWith(rendered, memoryText);
-            assertHasNoMessageWith(rendered, "docs/memory.md");
-            assertHasNoMessageWith(rendered, "docs/index.md");
+            forbidden.forEach(f -> assertHasNoMessageWith(rendered, f));
 
-            // AND: the slaves share Jon's static context (same list object, Env only)
+            // AND: the slaves get a COPY of Jon's context + exactly one name item (R-N1), leak-free
             var delegate = jon.getToolService().getTool(PoDelegateTool.class).orElseThrow();
-            assertSame(jon.getStaticContext(), delegate.getPlanSlave().getStaticContext());
-            assertSame(jon.getStaticContext(), delegate.getDevSlave().getStaticContext());
+            assertSlaveStaticContext(delegate.getPlanSlave(), "Da Thinka", ctx, forbidden);
+            assertSlaveStaticContext(delegate.getDevSlave(), "Da Mek", ctx, forbidden);
+            assertSlaveStaticContext(delegate.getReviewSlave(), "Da Dok", ctx, forbidden);
         } finally {
             wmt.memoryReset(); // isoliert: Memory nicht in andere Tests/Runs leaken
         }
+    }
+
+    /**
+     * R-N1 (29a341b): a slave's static context is a COPY of Jon's (never the same list object)
+     * plus exactly one name item containing the uiName and AGENT_MODE — and it stays free of
+     * memory snapshots and file items.
+     */
+    private void assertSlaveStaticContext(AiAgent slave, String uiName, List<ContextItem> jonContext,
+            List<String> forbidden) {
+        var slaveContext = slave.getStaticContext();
+        assertNotSame("slaves must get a copy, not Jon's list object", jonContext, slaveContext);
+        assertEquals(jonContext.size() + 1, slaveContext.size());
+        for (int i = 0; i < jonContext.size(); i++) {
+            assertEquals(jonContext.get(i).render(), slaveContext.get(i).render());
+        }
+        var nameItem = slaveContext.get(jonContext.size()).render();
+        assertContains(nameItem, "Your name is " + uiName);
+        assertContains(nameItem, AiPoAgent.AGENT_MODE);
+        var rendered = slaveContext.stream().map(ContextItem::render).filter(r -> r != null).toList();
+        forbidden.forEach(f -> assertHasNoMessageWith(rendered, f));
     }
     /**
      * F2-Delta (issue-03 main scenario, ADR-0032 Rev): ReloadConfigTool.reloadConfig() calls
@@ -822,9 +1060,10 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
                 .url(mockLlmServer.getUrl()).build());
         mockLlmServer.queueResponse(AiMessage.aiMessage("compressed summary"));
 
-        // WHEN: compact triggers restoreTurnContext
+        // WHEN: compact triggers restoreTurnContext (3 seeds — R16: compact skips < 3 messages)
         aiService.getActiveAgent().getMemory().add(UserMessage.from("User Message..."));
         aiService.getActiveAgent().getMemory().add(AiMessage.from("AI response..."));
+        aiService.getActiveAgent().getMemory().add(AiMessage.from("AI response 2..."));
         aiService.getActiveAgent().compact(null);
 
         // THEN: turn context restored — project info AND AGENTS.md
@@ -854,9 +1093,10 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
                 .url(mockLlmServer.getUrl()).build());
         mockLlmServer.queueResponse(AiMessage.aiMessage("compressed"));
 
-        // WHEN: compact triggers restoreTurnContext
+        // WHEN: compact triggers restoreTurnContext (3 seeds — R16: compact skips < 3 messages)
         aiService.getActiveAgent().getMemory().add(UserMessage.from("User Message..."));
         aiService.getActiveAgent().getMemory().add(AiMessage.from("AI response..."));
+        aiService.getActiveAgent().getMemory().add(AiMessage.from("AI response 2..."));
         aiService.getActiveAgent().compact(null);
 
         // THEN: both files are injected as history messages (header + content)
@@ -988,6 +1228,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         // Memory füllen (simuliert Konversation vor Compact)
         aiService.getActiveAgent().getMemory().add(UserMessage.from("Talk 1"));
         aiService.getActiveAgent().getMemory().add(AiMessage.from("Reply 1"));
+        aiService.getActiveAgent().getMemory().add(AiMessage.from("Reply 2"));
 
         aiService.updateConfig(aiService.getConfig().toBuilder()
                 .providerType(AiProvider.OPEN_AI)
@@ -1026,6 +1267,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
 
         aiService.getActiveAgent().getMemory().add(UserMessage.from("old talk"));
         aiService.getActiveAgent().getMemory().add(AiMessage.from("old reply"));
+        aiService.getActiveAgent().getMemory().add(AiMessage.from("old reply 2"));
 
         aiService.getActiveAgent().setTurnContextSupplier(() -> List.of(
                 new org.sterl.llmpeon.context.SimpleContextItem("order1: be concise"),
@@ -1103,6 +1345,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         aiService.getActiveAgent().getMemory().clear();
         aiService.getActiveAgent().getMemory().add(UserMessage.from("pre-compact talk"));
         aiService.getActiveAgent().getMemory().add(AiMessage.from("pre-compact reply"));
+        aiService.getActiveAgent().getMemory().add(AiMessage.from("pre-compact reply 2"));
 
         aiService.updateConfig(aiService.getConfig().toBuilder()
                 .providerType(AiProvider.OPEN_AI)
@@ -1288,9 +1531,10 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             useMockLlm(svc);
             mockLlmServer.queueResponse(AiMessage.aiMessage("compressed"));
 
-            // WHEN: ein Turn beginnt (compact restored den Turn-Context)
+            // WHEN: ein Turn beginnt (compact restored den Turn-Context) — 3 Seeds (R16: compact skippt < 3)
             svc.getActiveAgent().getMemory().add(UserMessage.from("User Message..."));
             svc.getActiveAgent().getMemory().add(AiMessage.from("AI response..."));
+            svc.getActiveAgent().getMemory().add(AiMessage.from("AI response 2..."));
             svc.getActiveAgent().compact(null);
 
             // THEN: UserMessage mit dedupKey-Präfix UND E1
@@ -1320,8 +1564,10 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             svc.setActiveAgent(AiDevAgent.NAME);
             useMockLlm(svc);
             mockLlmServer.queueResponse(AiMessage.aiMessage("compressed"));
+            // 3 Seeds (R16: compact skippt < 3 Messages)
             svc.getActiveAgent().getMemory().add(UserMessage.from("User Message..."));
             svc.getActiveAgent().getMemory().add(AiMessage.from("AI response..."));
+            svc.getActiveAgent().getMemory().add(AiMessage.from("AI response 2..."));
             svc.getActiveAgent().compact(null);
             assertHasUserMessageWith(svc.getActiveAgent().getMemory().getCopy(), e1);
 

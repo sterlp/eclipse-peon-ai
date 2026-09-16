@@ -31,7 +31,7 @@ public class AiScaffoldAgent extends org.sterl.llmpeon.agent.AbstractAgent {
     public static final String NAME = "Peon-Scaffold";
 
     private static final String BASE_PROMPT = PromptLoader
-            .loadWithDefault("scaffold-agent.txt");
+            .loadWithDefault("scaffold-agent.md");
     
     private final DiskFileReadTool diskFileReadTool;
     private final DiskFileWriteTool diskFileWriteTool;

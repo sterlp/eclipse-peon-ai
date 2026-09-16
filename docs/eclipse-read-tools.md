@@ -374,6 +374,41 @@ war die Quelle des Formatierungs-Bugs).
 - GIVEN Query `foo(bar`, WHEN `diskGrepFiles` läuft, THEN literal gesucht, Modus benannt
   → `DiskGrepToolTest.invalidPatternFallsBackToLiteral`
 
+## ℹ️ Info — Projektname ≠ Disk-Ordnername (kein Bug, bewusst so)
+
+**Realfall 2026-09-16:** Ein Modell rief `diskReadFile("/llmpeon-parent/docs/docs-linter.md")` auf,
+während das Projekt `llmpeon-parent` auf Disk unter `…/eclipse-peon-ai` liegt. Ergebnis:
+
+```
+File not found: /llmpeon-parent/docs/docs-linter.md also not in /Users/…/eclipse-peon-ai
+```
+
+**Warum:** `FileUtils.resolve:78-88` nimmt einen absoluten Pfad nur, wenn er **existiert** — sonst
+fällt es auf `workingDir.resolve(...)` zurück und hängt ihn an den Disk-Root
+(`…/eclipse-peon-ai/llmpeon-parent/docs/…`). Beide Kandidaten existieren nicht → ehrlicher Fehler
+(`DiskFileReadTool.java:54`).
+
+**Entscheidung (User 2026-09-16): kein Code-Fix, keine Auto-Übersetzung.** Empfohlen wird
+**Eclipse-Projektname = Disk-Ordnername**; damit verschwindet der Fall. Dokumentiert auf der
+Homepage unter *Context Selection*.
+
+Drei Gründe gegen eine Übersetzung `/project/path` → Disk in den `disk*`-Tools:
+
+1. **Echte Mehrdeutigkeit.** Heißt ein Projekt `docs` oder `tmp`, ist `/docs/x.md` gleichzeitig ein
+   gültiger Disk- **und** Eclipse-Pfad. Die Übersetzung müsste raten — und ein falscher Treffer
+   wäre still, also die teuerste Fehlerklasse dieses Repos.
+2. **Der `WriteValidator` arbeitet auf dem normalisierten Pfad**
+   ([write-path-validator.md](write-path-validator.md)). Eine Übersetzungsschicht davor verschiebt
+   genau die Stelle, die die Schreibgrenze absichert.
+3. **Familien-Trennung.** `QualifiedPathValidator` hat bei Copy/Rename gerade festgelegt: Disk =
+   absolut, Eclipse = `/project/path`. Eine Übersetzung im Read-Pfad verwischt das wieder.
+
+**Der Agent hat die Information ohnehin:** `projectInfo` nennt in **jedem** Turn Projektname,
+Eclipse-Pfad und Disk-Pfad (`EclipseUtil.java:346-358`, via `UserContext`). Im beobachteten Fall hat
+das Modell sie ignoriert — ein LLM-Fehler, kein Werkzeugfehler. Der Fehlerpfad ist self-healing: das
+Modell sieht den Fehler und korrigiert.
+
+
 ## Nicht im Scope
 - Keine neue Such-Engine als **Vorgabe**: Default bleibt der `IResourceVisitor`-Weg (einfach,
   testbar, headless). Zeigt R4a jedoch, dass das Falsch-Negativ strukturell am eigenen

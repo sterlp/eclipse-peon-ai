@@ -84,6 +84,7 @@ class CompactSessionToolTest {
         var agent = new AiDevAgent(configuredModel, new ToolService());
         agent.getMemory().add(UserMessage.from("Test message"));
         agent.getMemory().add(AiMessage.from("AI response"));
+        agent.getMemory().add(UserMessage.from("Third message")); // R16 guard minimum of 3
 
         var subject = new CompactSessionTool();
         subject.withToolRequest(ToolLoopRequest.builder()

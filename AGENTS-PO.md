@@ -41,65 +41,74 @@ einer Zeile. Ohne Änderungen entfällt der Abschnitt.
 - Projekt-lokale, wiederverwendbare Prozeduren → Skill in `.agents/skills`.
 - Keine Doppelhaltung desselben Inhalts — beim Retro bewusst sortieren.
 
-## Code Architektur und Design
+# Technisches SOLL — Architektur-Docs
 
-### Regeln
+Ergänzung zum PO-Systemprompt: die Fach-Docs tragen das **Was**, ein Architektur-Doc das **Wie**.
+Beides ist SOLL und gehört PO + User — nie den Agenten.
 
-1. **Jede Komponente** erhält eine `{name}-architektur.md`-Dokumentation.
-2. Architekturen werden **zusammen mit dem User** erstellt.
-3. Die Architektur beschreibt das **"Wie"** zu den fachlichen Docs **Was**.
-4. Ziel: Verantwortlichkeiten und Abhängigkeiten zwischen Modulen klar definieren.
-5. Erarbeitet einen **Vorschlag** mit Sequence- und Klassendiagrammen (verwende deine Agenten).
-6. Das Dokument stellt sicher:
-   - Keine Komponenten-Zyklen
-   - Klare Enkapsulation
-   - Single Responsibility (keine Duplizierung)
-   - Wiederverwendbar gemäß Composable Architecture
-7. **Vor der Implementierung** muss die Architektur vom User **abgenommen** werden.
-8. Die **Abgrenzung zu bestehenden Komponenten** ist explizit zu dokumentieren.
-9. Es geht nicht um Code, sondern um Architektur, Abhängigkeiten, Verantwortung - "wo ist was".
+## Wo was hingehört (keine Doppelung)
 
----
+| Ort | Inhalt |
+|---|---|
+| `docs/<feature>.md` | Fachliches SOLL: Regeln + BDD |
+| `docs/<feature>-architektur.md` | Struktur-SOLL: Verantwortung, Abgrenzung, Abhängigkeiten, Diagramme |
+| `docs/adr/` | **Warum** diese Wahl statt der Alternative + Fallstricke |
+| `docs/component-architecture-java.md` | projektweite Konventionen (Layering, Suffixe, Konverter) |
 
-## Template: `{name}-architektur.md`
+Das Architektur-Doc **verlinkt** ADRs und Konventionen, wiederholt sie nie. Keine Regel, kein BDD.
 
-```markdown
-# {Component-Name} Architektur
+## Regeln
 
-> **Status:** Draft | Abgenommen von @User  
-> **Bezug:** {Fachdoc} ("Was")
+1. **Granularität:** ein Architektur-Doc je Feature-Doc (= je Service-Fassade), gleicher Name.
+   Triviales CRUD ohne eigene Struktur bekommt keins.
+2. **Inkrementell, kein Big Bang:** Nicht rückwirkend für den Bestand. Sobald eine Komponente neu
+   gebaut oder angefasst/geändert wird, wird ihr Architektur-Doc im selben Zyklus angelegt bzw.
+   nachgezogen — vor der Planung, nicht danach. Beim Anlegen zählt nur der Zustand der
+   angefassten Komponente; Nachbarn werden verlinkt, nicht mitdokumentiert.
+3. **Erstellung:** zusammen mit dem User. Vorschlag/Diagramme lasse ich mir von Da Thinka (`talkPlan`)
+   oder Da Mek (`askDev`, IST-Analyse) **erarbeiten** — geschrieben wird ausschließlich von mir.
+   Agenten schreiben nie in `docs/`.
+4. **Abnahme vor Implementierung.** Ohne abgenommenes Architektur-Doc kein Plan, kein Build.
+5. **Status:** dieselben Marker wie im Fachdoc — 🚧 in design · ❌ specified · ✅ done.
+6. **Aktuell halten:** weicht der Bau ab, wird das Doc nachgezogen (oder die Abweichung als ADR
+   begründet) — nicht stillschweigend driften lassen.
+7. **Review** prüft immer drei Seiten: Fachdoc, Architektur-Doc, Code.
+8. Mechanisch prüfbare Paket-/Layer-/Zyklusregeln zusätzlich mit ArchUnit absichern.
+
+## Token-Disziplin
+
+- **Sequenzdiagramm** nur bei Interaktion über Komponenten-/Systemgrenzen.
+- **Klassendiagramm** nur, wenn die Struktur nicht aus Fachdoc + Konventionen ableitbar ist.
+- Sonst genügt die Verantwortungs-/Abhängigkeitstabelle. Kein Code im Doc.
+
+## Template `docs/<feature>-architektur.md`
+
+~~~
+# {Feature} Architektur
+
+> **Status:** 🚧 | ❌ | ✅   **Fachdoc:** [{feature}.md]({feature}.md)   **ADRs:** …
 
 ## Verantwortung & Abgrenzung
 - **Zweck:** …
-- **In-Scope:** …
-- **Out-of-Scope:** …
-- **Keine Überschneidung mit:** …
+- **In-Scope / Out-of-Scope:** …
+- **Keine Überschneidung mit:** … (Nachbarkomponente + was dort liegt)
 
 ## Schnittstellen & Abhängigkeiten
-- **Nutzt:** …
-- **Wird genutzt von:** …
-- **APIs/Events:** Input: … | Output: …
+| Richtung | Gegenüber | Wofür |
+|---|---|---|
+| nutzt | … | … |
+| genutzt von | … | … |
 
-## Diagramme (vor Implementierung)
+Input: … | Output (API/Events): …
 
-### Interaktion mit anderen Komponenten/Services:
+## Diagramme  (nur wenn nötig, s. o.)
 ```mermaid
 sequenceDiagram
-    ...
-```
-
-**Klassen:**
-```mermaid
-classDiagram
-    ...
 ```
 
 ## Architektur-Check
 - [ ] Keine Komponenten-Zyklen
-- [ ] Klare Aufgabe und Verantwortung u.a. zu Fachanforderungen
-- [ ] Klare Enkapsulation
-- [ ] Single Responsibility (keine Duplizierung)
-- [ ] Composable Architecture
-
-> **Pflicht:** Vor Implementierung erstellen und abnehmen lassen, immer aktuell halten. Review bezieht immer Architektur und Business Requirements mit ein.
-```
+- [ ] Klare Verantwortung, deckt die Regeln des Fachdocs ab
+- [ ] Enkapsulation: Entity/Repository liegen in der besitzenden Komponente
+- [ ] Single Responsibility, keine Duplizierung
+- [ ] Composable / wiederverwendbar

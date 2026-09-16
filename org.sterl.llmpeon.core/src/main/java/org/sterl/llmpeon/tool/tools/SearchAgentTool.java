@@ -20,7 +20,7 @@ import lombok.Setter;
 
 public class SearchAgentTool extends AbstractTool {
 
-    private final SystemMessage system = SystemMessage.systemMessage(PromptLoader.load("search-agent.txt"));
+    private final SystemMessage system = SystemMessage.systemMessage(PromptLoader.load("search-agent.md"));
 
     @Getter @Setter
     private Predicate<SmartToolExecutor> filter = e -> !e.getTool().isEditTool() 

@@ -79,6 +79,9 @@ part explicitly; an empty part is still an answer ("Open questions: none" is a s
 6. BDD acceptance — the measurable goal. GIVEN/WHEN/THEN per scenario (happy path, edge,
    failure); each maps to a concrete test name (unit / integration / e2e). No measurable
    goal = you cannot verify "done"; if you can't name the test, the goal isn't defined.
+   If the feature doc carries use-case IDs, read them with `lintDocs` instead of copying them
+   by eye, and name the covered IDs in EVERY increment. An increment without an ID is fine
+   only if it touches no use case (wiring, refactoring) — then say so.
 7. Test strategy — consider tests in your plan: which to adjust, which to move into a class to
    collect a feature's tests in one place, and proper testability of the functionality
    (e.g. retries, timeouts, cancellation — set explicit test timeouts, inject small waits).

@@ -70,13 +70,13 @@ public class PoDelegateTool extends AbstractTool {
      * released plan.
      */
     private static final String DEV_BUILD_LOOP = PromptLoader
-            .load("dev-build-loop.txt");
+            .load("dev-build-loop.md");
     /**
      * Plan-writing discipline injected into the Plan slave when Jon asks it to
      * write the plan.
      */
     private static final String PLAN_WRITE_LOOP = PeonPaths
-            .resolve(PromptLoader.load("plan-write-loop.txt"));
+            .resolve(PromptLoader.load("plan-write-loop.md"));
 
     /** Base turn orders, resolved per slave (e.g. the agent-specific AGENTS-<agent>.md). */
     private final Function<NamedAgent, List<ContextItem>> ordersFor;
@@ -189,9 +189,13 @@ public class PoDelegateTool extends AbstractTool {
     }
     
     private String compact(NamedAgent agent) {
-        agent.agent().compact(monitor);
+        AiAgent slave = agent.agent();
+        if (!slave.compact(monitor)) {
+            // honest skip (R16 guard or empty compressor result) — memory untouched, so N is exact
+            return "Nothing to compact (" + slave.getMemory().size() + " messages)";
+        }
         reportAction(agent, "compacted");
-        return agent.uiName() + " compacted. " + contextUsed(agent.agent());
+        return agent.uiName() + " compacted. " + contextUsed(slave);
     }
 
     /**

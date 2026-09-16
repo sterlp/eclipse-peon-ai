@@ -9,7 +9,7 @@ import org.sterl.llmpeon.shared.StringUtil;
  * Pure (SWT-free) render model for the plugin's agent-status widget. Maps an orchestrator's visible team
  * (a {@link NamedAgent} list — see {@code AiPoAgent.getTeam()}) to display rows {@code uiName (Xk)}.
  * <p>
- * The first entry is the orchestrator itself (Da Boss); the rest are his slaves (Da Thinka, Da Mek).
+ * The first entry is the orchestrator itself (Da Boss); the rest are his slaves (Da Thinka, Da Mek, Da Dok).
  * The 🟢 sits on the working leaf: a slave glows while it works, and — the <b>leaf rule</b> — Da Boss
  * glows only when he works AND no slave is working. So Jon lights up while he composes himself, but
  * during delegation the busy slave carries the glow and his row stays calm.
@@ -20,8 +20,10 @@ import org.sterl.llmpeon.shared.StringUtil;
  */
 public final class AiAgentStatusModel {
 
-    /** One rendered row: the label {@code uiName (Xk)} and whether it shows the 🟢 working dot. */
-    public record Entry(String text, boolean working) {}
+    /** One rendered row: the label {@code uiName (Xk)}, whether it shows the 🟢 working dot, and
+     *  whether it is a slave row ({@code i > 0}) — only slaves carry a per-agent compact button
+     *  (Da Boss stays compacted via the action bar). */
+    public record Entry(String text, boolean working, boolean slave) {}
 
     /** Snapshot of one team member for the pure builder (name, context size, momentary work). */
     record Row(String uiName, long tokens, boolean working) {}
@@ -49,8 +51,18 @@ public final class AiAgentStatusModel {
         for (int i = 0; i < rows.size(); i++) {
             var r = rows.get(i);
             boolean working = i == 0 ? (r.working() && !anySlaveWorking) : r.working();
-            entries.add(new Entry(r.uiName() + " (" + StringUtil.toK(r.tokens()) + ")", working));
+            entries.add(new Entry(r.uiName() + " (" + StringUtil.toK(r.tokens()) + ")", working, i > 0));
         }
         return entries;
+    }
+
+    /** Button only enabled when the agent IS idle and no turn/compact is in flight. */
+    public static boolean compactEnabled(boolean agentWorking, boolean turnInFlight) {
+        return !agentWorking && !turnInFlight;
+    }
+
+    /** Status-line feedback of a slave-compact job (R16 skip → feedback, not silence). */
+    public static String compactResult(boolean compacted, String uiName) {
+        return compacted ? "Compacted " + uiName : "Nothing to compact";
     }
 }

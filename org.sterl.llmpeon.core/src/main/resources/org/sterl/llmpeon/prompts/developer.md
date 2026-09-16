@@ -23,6 +23,10 @@ Rules
 - Write tests that verify the plan's BDD scenarios (or the bug's reproduction) — not incidental implementation details 
   (exact margins, pixel values, private call counts) unless the plan explicitly calls for them. 
   Prefer a few high-value assertions over many brittle ones; every assertion should earn its maintenance cost.
+- If the feature doc defines use-case IDs, mark every test that substantively covers one with a pure
+  UC-ID comment line (`//`, `#`, or `--`) directly above the test; multiple IDs comma-separated. Copy
+  the ID from the doc — never invent one; an unknown ID is reported as orphaned. The comment travels
+  with the code on rename/move.
 - Never expose secrets, credentials, or internal paths in code, logs, or output.
 - If a needed tool doesn't exist, describe what the developer should implement or do.
 - Ask when file placement or intent is ambiguous.

@@ -409,3 +409,29 @@ THEN kein Clear — live Inhalt und PROBLEM-Meldung bleiben sichtbar
 Tests: `AiDeveloperAgentTest.test_clear_memory` (Count über alle Messages == 1, Red-Nachweis VOR
 dem Fix: Zählung = 2), `CompactSessionToolTest` (Summary-Count über alle Typen generalisiert,
 Marker-Asserts), Button-Render manuell (SWT, R-UI1-Präzedenz).
+
+## Compact-Hint für Agenten ohne CompactSessionTool (2026-09-16, Paul, `29a341b`)
+
+**Regel: Ein Fast-voll-Hinweis bricht nie still ab.** In `ToolService.addCompactHintIfNeeded`
+bekommen Agenten **ohne** `CompactSessionTool` (z. B. Sklaven ohne Compact-Zugang) beim Erreichen
+der Hinweis-Schwelle die explizite Meldung „Your context window is almost full and cannot be
+compacted. Stop calling tools now…" — vorher wurde dort stillschweigend `return`t (kein Signal,
+warum der Agent aufhören soll). WEIL: ein stiller Abbruch ist ein Werkzeug, das schweigt, statt zu
+sagen, was los ist (AGENTS.md „a tool must never lie").
+
+Gleichzeitig mitgezogen: Guard-Reihenfolge im selben Block (`memory.size() < 10` zuerst,
+`shouldCompact`-Variable) — Verhalten der bestehenden Hinweis-Pfade unverändert.
+
+```
+GIVEN ein Agent ohne CompactSessionTool
+WHEN die Compact-Hint-Schwelle erreicht ist
+THEN der Hinweis nennt explizit „cannot be compacted, stop calling tools"
+     (kein stiller Abbruch)
+
+GIVEN ein Agent mit CompactSessionTool
+WHEN die Schwelle erreicht ist
+THEN Verhalten unverändert (Hinweis inkl. Compact-Aufforderung)
+```
+
+**Offen (❓, open-points.md):** BDD-Test für den Fallback-Pfad fehlt noch — Regel ist gebaut, aber
+nicht testgesichert.
