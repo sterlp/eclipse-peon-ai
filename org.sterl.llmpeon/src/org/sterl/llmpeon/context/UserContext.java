@@ -9,7 +9,6 @@ import java.util.Set;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
-import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jdt.core.IOrdinaryClassFile;
 import org.eclipse.jface.text.ITextSelection;
@@ -35,7 +34,8 @@ public class UserContext {
     }
 
     public List<ContextItem> get() {
-        if (currentProject == null && selectedResource == null) return List.of();
+        // R-SEL-2: a pure text selection goes out even without project or resource.
+        if (currentProject == null && selectedResource == null && !hasTextSelection()) return List.of();
 
         var result = new LinkedList<ContextItem>();
         if (currentProject != null) {
@@ -59,14 +59,12 @@ public class UserContext {
                 if (clazz != null) sb.append("\n").append(getSelectedFile());
                 else sb.append("\nselected content not in a file.");
             } else {
-                sb.append(System.lineSeparator()).append(path).append(" full content. Selected lines ")
-                  .append(lines(textSelection))
-                  .append(":").append(System.lineSeparator());
-                try {
-                    sb.append(((IFile)selectedResource).readString());
-                } catch (CoreException e) {
-                    throw new RuntimeException(e);
-                }
+                // R-SEL-3: snippet with line numbers + path — never the full file content.
+                sb.append(System.lineSeparator()).append(path)
+                  .append(System.lineSeparator()).append("Selected lines ").append(lines(textSelection)).append(':')
+                  .append(System.lineSeparator()).append("```").append('\n')
+                  .append(FileLines.format(textSelection.getText(), textSelection.getStartLine() + 1))
+                  .append("```");
             }
             result.add(new SimpleContextItem("User text selection", sb.toString()));
         } else if (selectedResource != null) {
@@ -152,18 +150,18 @@ public class UserContext {
     /**
      * @return <code>true</code> if the selected resource changed (UI update needed), otherwise <code>false</code>
      */
-    public boolean setSelectedResource(IResource selectedResource) {
-        var result = Objects.equals(JdtUtil.pathOf(selectedResource), 
-                JdtUtil.pathOf(this.selectedResource));
+    public boolean setSelectedResource(IResource newResource) {
+        var changed = !Objects.equals(JdtUtil.pathOf(newResource), JdtUtil.pathOf(this.selectedResource));
 
-        // clear text selection if a different file is selected ...
-        if (!result) this.textSelection = null;
+        // R-SEL-1: only a switch to another concrete file clears the text selection —
+        // null events (no resource) and the same file keep it.
+        if (changed && newResource != null) this.textSelection = null;
 
-        this.selectedResource = selectedResource;
+        this.selectedResource = newResource;
         // if we have a selected file it can't be a class anymore...
         if (this.selectedResource != null) this.clazz = null;
 
-        return !result;
+        return changed;
     }
 
     public boolean isProjectPinned() {

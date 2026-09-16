@@ -228,17 +228,29 @@ public class AIChatView implements EclipseAiMonitor {
     @Inject
     @org.eclipse.e4.core.di.annotations.Optional
     public void onTextSelection(@Named(IServiceConstants.ACTIVE_SELECTION) ITextSelection ts) {
-        if (parent == null || parent.isDisposed()) return;
-        if (aiService.getUserContext().setTextSelection(ts)) {
-            EclipseUtil.runInUiThread(parent, this::refreshStatusLine);
+        applyTextSelection(ts);
+    }
+
+    /**
+     * Applies a text selection event (UI thread): the open file becomes the selected resource
+     * first — a file switch clears the previous selection — then the selection itself is set.
+     */
+    private void applyTextSelection(ITextSelection ts) {
+        var uc = aiService.getUserContext();
+        boolean changed = false;
+        if (parent != null && !parent.isDisposed()) {
+            // R-SEL-2: open file = known resource (UI-thread path of EclipseUtil.getOpenFile)
+            changed |= uc.setSelectedResource(EclipseUtil.getOpenFile().orElse(null));
         }
+        changed |= uc.setTextSelection(ts);   // nachher: Resource-Wechsel hat alte Selektion bereits geräumt
+        if (changed) EclipseUtil.runInUiThread(parent, this::refreshStatusLine);
     }
 
     @Inject
     @org.eclipse.e4.core.di.annotations.Optional
     public void onSelection(@Named(IServiceConstants.ACTIVE_SELECTION) Object o) {
         if (o instanceof ITextSelection ts) {
-            aiService.getUserContext().setTextSelection(ts);
+            applyTextSelection(ts);
             return;
         }
         if (parent == null || parent.isDisposed()) return;
@@ -252,7 +264,6 @@ public class AIChatView implements EclipseAiMonitor {
                 && aiService.getConfig().isDebugMode()) {
             LOG.info("Unknown resource type selected " + selectionElement.getClass());
         }
-        aiService.getUserContext().setTextSelection(null);
         if (aiService.getUserContext().setSelectedResource(selection)) {
             EclipseUtil.runInUiThread(parent, this::refreshStatusLine);
         }

@@ -1,22 +1,26 @@
 package org.sterl.llmpeon.test;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.Proxy;
+import java.util.List;
 
+import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.IClassFile;
 import org.eclipse.jface.text.ITextSelection;
 import org.junit.Test;
+import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.UserContext;
 
 /**
- * Unit tests for the UI-update contract of UserContext's setters:
- * both return true only if an UI update is needed (no change -> false).
+ * Unit tests for the UI-update contract of UserContext's setters (both return true only if an
+ * UI update is needed, no change -> false) and the R-SEL selection semantics (UC-SEL-1..3).
  */
 public class UserContextTest {
 
@@ -198,6 +202,78 @@ public class UserContextTest {
         assertNull(context.getSelectedResource());
     }
 
+    // === R-SEL selection semantics (UC-SEL-1..3) ===
+
+    // UC-SEL-1
+    @Test
+    public void test_rSel1_nonTextSelectionEventKeepsTextSelection() {
+        // GIVEN a text selection in A.java (resource first, then the selection)
+        var context = new UserContext();
+        context.setSelectedResource(resource("/p/A.java"));
+        context.setTextSelection(textSelection(9, 9));
+
+        // WHEN a non-text selection event arrives without a resource (e.g. outline click)
+        context.setSelectedResource(null);
+
+        // THEN the selection survives and get() contains the selection context
+        var item = item(context.get(), "User text selection");
+        assertNotNull(item);
+        assertTrue(item.render().contains("10: selected text"));
+    }
+
+    // UC-SEL-1
+    @Test
+    public void test_rSel1_differentResourceClearsTextSelection() {
+        // Characterization test — green before and after the fix (plan §3.3).
+        // GIVEN a text selection in A.java
+        var context = new UserContext();
+        context.setSelectedResource(resource("/p/A.java"));
+        var selection = textSelection(9, 9);
+        context.setTextSelection(selection);
+
+        // WHEN a different resource B.java is selected
+        var changed = context.setSelectedResource(resource("/p/B.java"));
+
+        // THEN an UI update is needed and the previous text selection is cleared
+        assertTrue(changed);
+        assertNull(context.getTextSelection());
+    }
+
+    // UC-SEL-2
+    @Test
+    public void test_rSel2_selectionWithoutResourceIsStillSent() {
+        // GIVEN a pure text selection without project or resource
+        var context = new UserContext();
+        context.setTextSelection(textSelection(9, 9));
+
+        // WHEN the context is requested
+        var item = item(context.get(), "User text selection");
+
+        // THEN the selection goes out with a line-numbered snippet — no silent drop
+        assertNotNull(item);
+        assertTrue(item.render().contains("10: selected text"));
+    }
+
+    // UC-SEL-3
+    @Test
+    public void test_rSel3_snippetPlusFilePath_notFullContent() {
+        // GIVEN a selection in a known IFile whose full content carries a marker
+        var context = new UserContext();
+        context.setSelectedResource(file("/p/A.java"));
+        context.setTextSelection(textSelection(9, 9));
+
+        // WHEN the context is requested
+        var item = item(context.get(), "User text selection");
+
+        // THEN the item carries path + selected lines + snippet, but NOT the full file content
+        assertNotNull(item);
+        var render = item.render();
+        assertTrue(render.contains("/p/A.java"));
+        assertTrue(render.contains("Selected lines 10-10"));
+        assertTrue(render.contains("10: selected text"));
+        assertFalse(render.contains("FULL-FILE-MARKER"));
+    }
+
     // === Stubs ===
 
     private record FakeTextSelection(int startLine, int endLine) implements ITextSelection {
@@ -226,6 +302,25 @@ public class UserContextTest {
                     case "toString" -> "resource(" + fullPath + ")";
                     default -> method.getReturnType().isPrimitive() ? primitiveDefault(method.getReturnType()) : null;
                 });
+    }
+
+    /** IFile stub — getFullPath() for JdtUtil.pathOf; readString() returns a recognizable marker. */
+    private static IFile file(String fullPath) {
+        return (IFile) Proxy.newProxyInstance(
+                UserContextTest.class.getClassLoader(),
+                new Class<?>[] { IFile.class },
+                (proxy, method, args) -> switch (method.getName()) {
+                    case "getFullPath" -> IPath.fromOSString(fullPath);
+                    case "readString" -> "FULL-FILE-MARKER";
+                    case "equals" -> proxy == args[0];
+                    case "hashCode" -> System.identityHashCode(proxy);
+                    case "toString" -> "file(" + fullPath + ")";
+                    default -> method.getReturnType().isPrimitive() ? primitiveDefault(method.getReturnType()) : null;
+                });
+    }
+
+    private static ContextItem item(List<ContextItem> items, String label) {
+        return items.stream().filter(i -> label.equals(i.label())).findFirst().orElse(null);
     }
 
     private static Object primitiveDefault(Class<?> type) {
