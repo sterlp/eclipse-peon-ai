@@ -373,8 +373,8 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         var agent = aiService.getActiveAgent();
         mockLlmServer.queueResponse(AiMessage.aiMessage("compressed"));
         agent.getMemory().add(UserMessage.from("pre-compact"));
-        agent.getMemory().add(UserMessage.from("User Message..."));
         agent.getMemory().add(AiMessage.from("AI response..."));
+        agent.getMemory().add(AiMessage.from("AI response 2..."));
         agent.compact(null);
 
         // THEN turn context restored after compact contains tool descriptions
@@ -909,11 +909,14 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
     // --- Inc 3: ContextItem Integration Tests ---------------------------------
 
     /**
-     * Revision ADR-0032 (2026-08-23): the static (persistent) context is EXACTLY Env — the
+     * Revision ADR-0032 (2026-08-23): Jon's static (persistent) context is EXACTLY Env — the
      * Workspace-Memory snapshot left the system prompt, the memory lives exclusively in the
      * turn context. No file items either (docs/memory.md, docs/index.md, AGENTS.md ride in the
      * turn context, ADR-0029). Deterministic: the memory entry is persisted BEFORE the service
      * build and must NOT leak into the static context; reset in a finally.
+     * R-N1 (2026-09-16, 29a341b): the slaves no longer share Jon's list object — each gets a
+     * COPY of his context plus exactly one name item ("Your name is &lt;uiName&gt;" + AGENT_MODE);
+     * the leak guards apply to the slave contexts as well.
      */
     @Test
     public void test_staticContext_isEnvOnly() {
@@ -947,18 +950,38 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             assertContains(ctx.get(0).render(), "prefer eclipse*"); // Env
 
             // AND: no memory snapshot and no file items in the static context
+            var forbidden = List.of(memoryText, "docs/memory.md", "docs/index.md");
             var rendered = ctx.stream().map(ContextItem::render).filter(r -> r != null).toList();
-            assertHasNoMessageWith(rendered, memoryText);
-            assertHasNoMessageWith(rendered, "docs/memory.md");
-            assertHasNoMessageWith(rendered, "docs/index.md");
+            forbidden.forEach(f -> assertHasNoMessageWith(rendered, f));
 
-            // AND: the slaves share Jon's static context (same list object, Env only)
+            // AND: the slaves get a COPY of Jon's context + exactly one name item (R-N1), leak-free
             var delegate = jon.getToolService().getTool(PoDelegateTool.class).orElseThrow();
-            assertSame(jon.getStaticContext(), delegate.getPlanSlave().getStaticContext());
-            assertSame(jon.getStaticContext(), delegate.getDevSlave().getStaticContext());
+            assertSlaveStaticContext(delegate.getPlanSlave(), "Da Thinka", ctx, forbidden);
+            assertSlaveStaticContext(delegate.getDevSlave(), "Da Mek", ctx, forbidden);
+            assertSlaveStaticContext(delegate.getReviewSlave(), "Da Dok", ctx, forbidden);
         } finally {
             wmt.memoryReset(); // isoliert: Memory nicht in andere Tests/Runs leaken
         }
+    }
+
+    /**
+     * R-N1 (29a341b): a slave's static context is a COPY of Jon's (never the same list object)
+     * plus exactly one name item containing the uiName and AGENT_MODE — and it stays free of
+     * memory snapshots and file items.
+     */
+    private void assertSlaveStaticContext(AiAgent slave, String uiName, List<ContextItem> jonContext,
+            List<String> forbidden) {
+        var slaveContext = slave.getStaticContext();
+        assertNotSame("slaves must get a copy, not Jon's list object", jonContext, slaveContext);
+        assertEquals(jonContext.size() + 1, slaveContext.size());
+        for (int i = 0; i < jonContext.size(); i++) {
+            assertEquals(jonContext.get(i).render(), slaveContext.get(i).render());
+        }
+        var nameItem = slaveContext.get(jonContext.size()).render();
+        assertContains(nameItem, "Your name is " + uiName);
+        assertContains(nameItem, AiPoAgent.AGENT_MODE);
+        var rendered = slaveContext.stream().map(ContextItem::render).filter(r -> r != null).toList();
+        forbidden.forEach(f -> assertHasNoMessageWith(rendered, f));
     }
     /**
      * F2-Delta (issue-03 main scenario, ADR-0032 Rev): ReloadConfigTool.reloadConfig() calls
@@ -1037,9 +1060,10 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
                 .url(mockLlmServer.getUrl()).build());
         mockLlmServer.queueResponse(AiMessage.aiMessage("compressed summary"));
 
-        // WHEN: compact triggers restoreTurnContext
+        // WHEN: compact triggers restoreTurnContext (3 seeds — R16: compact skips < 3 messages)
         aiService.getActiveAgent().getMemory().add(UserMessage.from("User Message..."));
         aiService.getActiveAgent().getMemory().add(AiMessage.from("AI response..."));
+        aiService.getActiveAgent().getMemory().add(AiMessage.from("AI response 2..."));
         aiService.getActiveAgent().compact(null);
 
         // THEN: turn context restored — project info AND AGENTS.md
@@ -1069,9 +1093,10 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
                 .url(mockLlmServer.getUrl()).build());
         mockLlmServer.queueResponse(AiMessage.aiMessage("compressed"));
 
-        // WHEN: compact triggers restoreTurnContext
+        // WHEN: compact triggers restoreTurnContext (3 seeds — R16: compact skips < 3 messages)
         aiService.getActiveAgent().getMemory().add(UserMessage.from("User Message..."));
         aiService.getActiveAgent().getMemory().add(AiMessage.from("AI response..."));
+        aiService.getActiveAgent().getMemory().add(AiMessage.from("AI response 2..."));
         aiService.getActiveAgent().compact(null);
 
         // THEN: both files are injected as history messages (header + content)
@@ -1203,6 +1228,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         // Memory füllen (simuliert Konversation vor Compact)
         aiService.getActiveAgent().getMemory().add(UserMessage.from("Talk 1"));
         aiService.getActiveAgent().getMemory().add(AiMessage.from("Reply 1"));
+        aiService.getActiveAgent().getMemory().add(AiMessage.from("Reply 2"));
 
         aiService.updateConfig(aiService.getConfig().toBuilder()
                 .providerType(AiProvider.OPEN_AI)
@@ -1241,6 +1267,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
 
         aiService.getActiveAgent().getMemory().add(UserMessage.from("old talk"));
         aiService.getActiveAgent().getMemory().add(AiMessage.from("old reply"));
+        aiService.getActiveAgent().getMemory().add(AiMessage.from("old reply 2"));
 
         aiService.getActiveAgent().setTurnContextSupplier(() -> List.of(
                 new org.sterl.llmpeon.context.SimpleContextItem("order1: be concise"),
@@ -1318,6 +1345,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         aiService.getActiveAgent().getMemory().clear();
         aiService.getActiveAgent().getMemory().add(UserMessage.from("pre-compact talk"));
         aiService.getActiveAgent().getMemory().add(AiMessage.from("pre-compact reply"));
+        aiService.getActiveAgent().getMemory().add(AiMessage.from("pre-compact reply 2"));
 
         aiService.updateConfig(aiService.getConfig().toBuilder()
                 .providerType(AiProvider.OPEN_AI)
@@ -1503,9 +1531,10 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             useMockLlm(svc);
             mockLlmServer.queueResponse(AiMessage.aiMessage("compressed"));
 
-            // WHEN: ein Turn beginnt (compact restored den Turn-Context)
+            // WHEN: ein Turn beginnt (compact restored den Turn-Context) — 3 Seeds (R16: compact skippt < 3)
             svc.getActiveAgent().getMemory().add(UserMessage.from("User Message..."));
             svc.getActiveAgent().getMemory().add(AiMessage.from("AI response..."));
+            svc.getActiveAgent().getMemory().add(AiMessage.from("AI response 2..."));
             svc.getActiveAgent().compact(null);
 
             // THEN: UserMessage mit dedupKey-Präfix UND E1
@@ -1535,8 +1564,10 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             svc.setActiveAgent(AiDevAgent.NAME);
             useMockLlm(svc);
             mockLlmServer.queueResponse(AiMessage.aiMessage("compressed"));
+            // 3 Seeds (R16: compact skippt < 3 Messages)
             svc.getActiveAgent().getMemory().add(UserMessage.from("User Message..."));
             svc.getActiveAgent().getMemory().add(AiMessage.from("AI response..."));
+            svc.getActiveAgent().getMemory().add(AiMessage.from("AI response 2..."));
             svc.getActiveAgent().compact(null);
             assertHasUserMessageWith(svc.getActiveAgent().getMemory().getCopy(), e1);
 
