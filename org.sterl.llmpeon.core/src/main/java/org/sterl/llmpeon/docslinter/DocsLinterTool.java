@@ -155,18 +155,31 @@ public class DocsLinterTool extends AbstractTool {
         }
     }
 
+    /**
+     * Single choke point for root resolution in {@code lintDocs}, {@code lintDocsAndTests} and
+     * {@code nextIds} (R-DL-18): a given root that is a directory is used as-is; otherwise the
+     * path without its leading {@code /} is resolved against the tool's workingDir (workspace-
+     * qualified dialect, e.g. {@code /llmpeon-parent}); if both fail, the error names both tried
+     * paths — a wrong root must never look like a clean 0/0 scan.
+     */
     private Path resolveRoot(String root) {
-        Path effective;
         if (root == null || root.isBlank()) {
-            effective = workingDir;
-        } else {
-            QualifiedPathValidator.requireQualifiedDisk("lintDocs", root);
-            effective = Path.of(root).normalize();
+            if (!java.nio.file.Files.isDirectory(workingDir)) {
+                throw new IllegalArgumentException("Root is not a directory: " + workingDir);
+            }
+            return workingDir;
         }
-        if (!java.nio.file.Files.isDirectory(effective)) {
-            throw new IllegalArgumentException("Root is not a directory: " + effective);
+        QualifiedPathValidator.requireQualifiedDisk("lintDocs", root);
+        Path given = Path.of(root).normalize();
+        if (java.nio.file.Files.isDirectory(given)) {
+            return given;
         }
-        return effective;
+        Path fallback = workingDir.resolve(root.substring(1)).normalize();
+        if (java.nio.file.Files.isDirectory(fallback)) {
+            return fallback;
+        }
+        throw new IllegalArgumentException(
+                "Root is not a directory: " + given + " (also tried: " + fallback + ")");
     }
 
     static Pattern compilePattern(String idPattern) {

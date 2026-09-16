@@ -231,6 +231,60 @@ class DocsLinterToolTest {
                 .hasMessageContaining("not a directory");
     }
 
+    // --- UC-DL-60: workspace-qualified root resolves against workingDir ---
+    // UC-DL-60
+    @Test
+    void workspaceQualifiedRootResolvesAgainstWorkingDirectory() throws IOException {
+        // GIVEN the root is workspace-qualified — not a directory on disk,
+        // but the name exists relative to the tool's workingDir
+        assertThat(Files.isDirectory(Path.of("/llmpeon-parent"))).as("fixture precondition").isFalse();
+        Path nested = rootDir.resolve("llmpeon-parent");
+        Files.createDirectories(nested.resolve("docs"));
+        Files.writeString(nested.resolve("docs/a.md"), """
+                ---
+                idPrefix: DL
+                ---
+
+                # R-DL-1 Rule ✅ done
+
+                ## UC-DL-1 Covered UC ✅
+                """);
+
+        // WHEN any of the three methods runs with the workspace-qualified root
+        String docsOnly = tool.lintDocs("/llmpeon-parent", List.of("docs"), null);
+        String docsAndTests = tool.lintDocsAndTests("/llmpeon-parent", List.of("docs"), null, null, null);
+        String next = tool.nextIds("/llmpeon-parent", List.of("docs"), null);
+
+        // THEN the workingDir-relative directory is found — real numbers, no 0/0
+        assertThat(docsOnly).contains("1 doc file(s): 1 linted, 0 not participating");
+        assertThat(docsOnly).contains("UC definitions: 1 / 1");
+        assertThat(docsAndTests).contains("1 doc file(s): 1 linted, 0 not participating");
+        assertThat(next).contains("1 doc file(s): 1 linted, 0 not participating");
+    }
+
+    // --- UC-DL-61: unresolvable root names both tried paths ---
+    // UC-DL-61
+    @Test
+    void unresolvableRootNamesBothTriedPaths() {
+        // GIVEN the root exists neither as a directory nor relative to workingDir
+        var missing = "/no-such-peon-root";
+        assertThat(Files.isDirectory(Path.of(missing))).as("fixture precondition").isFalse();
+        assertThat(Files.isDirectory(rootDir.resolve("no-such-peon-root"))).as("fixture precondition").isFalse();
+        var expected = "Root is not a directory: " + missing
+                + " (also tried: " + rootDir.resolve("no-such-peon-root") + ")";
+
+        // WHEN any of the three methods runs — THEN the error names both tried paths
+        assertThatThrownBy(() -> tool.lintDocs(missing, List.of("docs"), null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage(expected);
+        assertThatThrownBy(() -> tool.lintDocsAndTests(missing, List.of("docs"), null, null, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage(expected);
+        assertThatThrownBy(() -> tool.nextIds(missing, List.of("docs"), null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage(expected);
+    }
+
     @Test
     void rejectsInvalidIdPattern() {
         assertThatThrownBy(() ->
