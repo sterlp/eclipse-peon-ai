@@ -117,8 +117,9 @@ public class StandingOrdersBuilderTest extends AbstractIntegrationTest {
         // WHEN
         aiService.call("Hallo Paul", null);
 
-        // THEN - should contain path to pom.xml
-        assertHasMessageWith(streamMock.getLastUserMessagesAsString(), "pom.xml");
+        // THEN - should contain the distinctive workspace path of the selected file
+        // (bare "pom.xml" would also match the AGENTS.md repo-layout text)
+        assertHasMessageWith(streamMock.getLastUserMessagesAsString(), JdtUtil.pathOf(pomResource));
 
         // AND the selection is rendered as snippet with line numbers (R-SEL-3)
         assertHasMessageWith(streamMock.getLastUserMessagesAsString(), "Selected lines 1-1");
