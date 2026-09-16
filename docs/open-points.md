@@ -2,6 +2,31 @@
 
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
 
+## ❓ SimpleDiff-Bremse: LCS-Diff kippt bei großen Dateien (2026-09-16, Crash)
+
+`eclipseEditFile` → `AIChatView.onFileUpdate:329` → `SimpleDiff.unifiedDiff:21` → `lcsDiff:97` →
+`OutOfMemoryError: Java heap space` (gesamter Agenten-Loop gestorben). `lcsDiff` allokiert
+`int[m+1][n+1]` ≈ 4·m·n Bytes (`SimpleDiff.java:91-101`), synchron auf dem Tool-Thread — ein OOM
+dort kippt den ganzen Eclipse-Prozess. Heap 4 GB → Kipppunkt ≈ 6e8 Zellen. Trigger war eine
+**in-memory aufgeblähte** Altdatei (7,3 Mio. Zeilen, siehe ReplaceLines-Evidence unten) × 332
+neue Zeilen ≈ 9,7 GB. Ein normales Doc (300×300 ≈ 360 KB) ist sicher.
+
+**SOLL (Vorschlag):** Guard in `SimpleDiff.unifiedDiff` — wenn `m·n` über Schranke (z. B. 5e6
+Zellen ≈ 20 MB), kein LCS: summarische Meldung („file updated, N→M lines") statt Diff. Kein
+Rate-Parsing, kein Verhalten Risiko — nur die Anzeige degeneriert kontrolliert.
+
+## ❓ User-Context-Selection-Regression — Design steht, wartet auf Freigabe (2026-09-16)
+
+Paul meldete: selektierter Text fehlt im Kontext + Statuszeile (Regression ggü. vorletztem Release).
+Diagnose: `0a998ec` — Nicht-Text-Selektions-Events räumen die Editor-Selektion weg
+(`AIChatView.java:255` + Clear-Logik `UserContext.java:157-160`). **Live-Beweis (2026-09-16,
+Pauls Paste):** Selektion in README.md kommt als Snippet an, aber mit „selected content not in a
+file." — die **Ressource** wurde vom Event weggeräumt, der Text überlebte halb. SOLL steht in
+[user-context.md](user-context.md) (R-SEL-1 bis R-SEL-3, inkl. Pauls Rendering-Entscheid: Snippet +
+Dateipfad statt komplettem Dateiinhalt, Homepage-Text bleibt SOT). Fix-Zyklus: Branch
+`bugfix/user-context-selection` (von main), roter Test für die Event-Sequenz (inkl. Ressource),
+dann Fix, Review.
+
 ## ⏳ `nextIds` reserviert nicht — Zustandslosigkeit ist Feature, der Ablauf ist die Pflicht (2026-09-15)
 
 **Pauls Frage:** „Wenn `nextIds` eine ID zieht — wie stellen wir sicher, dass es immer eine NEUE
@@ -191,6 +216,15 @@ Replace. Gleiches Verhalten bei `diskReplaceLines` (`TestParser.java`). **Nicht 
 reproduzierbar — bei anderen Dateien im selben Lauf korrekt. Kein Muster erkennbar
 (Mehrzeiligkeit? Sonderzeichen? Position?).
 
+**Neue Evidence (2026-09-16, OOM-Crash) — Verdacht erhält ein Live-Reprodukt:** Der In-Memory-
+Zustand von `docs/open-points.md` in Eclipse wuchs auf **~7,3 Mio. Zeilen** an (21997 duplizierte
+Blöcke: Header + Statuszeile + Inhalt wiederholten sich ~22k×, `# Open Points` in derselben Zeile
+wie der vorangehende Sektionstitel — Insert statt Replace als Wiederholform), während die **Disk-
+Datei unversehrt blieb** (332 Zeilen, 22K, `git` unmodified == HEAD). Eclipse-Reads (File/Docs-Grep)
+zeigten die Duplikate, Disk-Grep dasselbe File sauber. Der SimpleDiff-OOM oben ist Folge, nicht
+Ursache. Das stützt die „Replace-als-Insert"-Korruptionsklasse: sie lebt im In-Memory-/Editor-Pfad,
+nicht auf Disk.
+
 **Folge:** Java-Quellen wurden schrittweise korrumpiert („Duplicate local variable"), bis Da Mek
 den Überblick verlor; der ganze Inc-3-Stand musste auf `6520377` zurückgesetzt werden
 (~30 min Arbeit verloren). Erkannt wurde es spät, weil nach einem Replace nicht zurückgelesen wird —
@@ -202,6 +236,10 @@ tut als es meldet, ohne Fehlermeldung. Verwandt mit der AGENTS-Regel „a tool m
 **Nächster Schritt:** kontrollierte Einzeltests (ein-/mehrzeilig, LF/CRLF, letzte Zeile, Datei mit/
 ohne Schluss-Newline, Datei im Editor offen vs. geschlossen). **Verdachtsmoment:** ungespeicherter
 Editor-Buffer vs. Datei auf Platte — Da Mek arbeitete an Dateien, die ich parallel offen hatte.
+**Neu (2026-09-16):** Konkurrenzthese — die Korruption entsteht, wenn ein Tool-Write (Write vor
+Diff, `EclipseWorkspaceWriteFileTool.java:133-134`) auf ein File trifft, dessen In-Memory-Modell
+bereits divergiert; der Crash-Stack belegt Write-then-Diff. Die Repro-Sequenz-Aufklärung gehört in den
+Tool-Bug-Zyklus.
 
 ## ❓ ApiRetry: Cancellation-Evidenz-Sammlung (Priorität: hoch, 3. Evidence 2026-09-11)
 

@@ -327,7 +327,10 @@ public class AIChatView implements EclipseAiMonitor {
     public void onFileUpdate(AiFileUpdate update) {
         if (parent.isDisposed()) return;
         var diff = SimpleDiff.unifiedDiff(update.file(), update.oldContent(), update.newContent());
-        EclipseUtil.runInUiThread(parent, () -> chatHistory.showDiff(diff));
+        EclipseUtil.runInUiThread(parent, () -> {
+            if (diff.startsWith("--- a/")) chatHistory.showDiff(diff);
+            else if (!diff.isEmpty()) chatHistory.appendMessage(new SimpleMessage(Type.TOOL, diff));
+        });
     }
 
     @Override
