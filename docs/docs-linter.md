@@ -718,6 +718,33 @@ und wirft keinen Fehler.
 GIVEN ein beliebiger Lauf über einen Baum WHEN er beendet ist THEN ist keine Datei erzeugt, geändert
 oder gelöscht worden.
 
+### R-DL-18 — Root-Fallback: workspace-qualifizierte Pfade werden aufgelöst ❌
+
+Der `root`-Parameter wird tolerant aufgelöst, an **einem** Choke-Point für alle drei Methoden
+(`lintDocs`, `lintDocsAndTests`, `nextIds`): gilt der gegebene Pfad als Verzeichnis, wird er benutzt;
+sonst probiert das Tool den Pfad **ohne führenden `/`**, aufgelöst gegen das `workingDir` des Tools;
+scheitern beide Versuche, kommt der klare Fehler („Root is not a directory") mit **beiden**
+probierten Pfaden. Nie eine leise 0/0-Suche — ein falscher Pfad darf nicht wie ein sauberer Bestand
+aussehen (R-DL-6, UC-DL-27/40/41).
+
+> **WEIL** (User Paul, 2026-09-16): Der PO ruft die Tools mit workspace-qualifizierten Pfaden
+> (`/llmpeon-parent`) auf, wie er sie aus der Eclipse-Welt kennt — und bekam still 0/0 bzw. einen
+> rohen Fehler. „Im Tool normalisieren, dass beides geht" schlägt jedes Aufruf-Merkblatt: ein Tool
+> für Agenten muss die offensichtliche Pfadform fressen, nicht den Agenten zwingen, zwei Pfaddialekte
+> auseinanderzuhalten.
+
+#### UC-DL-60 — Workspace-qualifizierter Root wird aufgelöst ❌
+
+GIVEN `root=/llmpeon-parent` (kein Disk-Verzeichnis), aber `llmpeon-parent` existiert relativ zum
+`workingDir` WHEN eine der drei Methoden läuft THEN wird das Verzeichnis gefunden und der Report
+zeigt echte Zahlen (Scan-Umfang > 0), kein 0/0.
+
+#### UC-DL-61 — Unauflösbarer Root nennt beide Versuche ❌
+
+GIVEN `root` existiert weder als Verzeichnis noch ohne führenden `/` relativ zum `workingDir` WHEN
+eine der drei Methoden läuft THEN Fehlermeldung nennt **beide** probierten Pfade — kein stiller
+leerer Report.
+
 ## Nicht-funktional
 
 | Anforderung | Begründung |
