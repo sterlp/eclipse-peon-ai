@@ -47,7 +47,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
 
         CompletableFuture<String> result = EclipseUtil.runInUiThread(() -> {
             var newString = inNewString == null ? "" : inNewString;
-            var oldString = inOldString == null ? "" : inOldString;
+            var oldString = inOldString;
             
 
             onTool("Edit in editor");
@@ -124,11 +124,8 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
             @P(description = "exact text to replace", name = "oldString", required = false) String oldString,
             @P(name = "newString", required = false) String newString) {
 
-        if (newString == null && oldString == null) throw new IllegalArgumentException("Provide a now or old string!");
-
         validateWrite(filePath);
         if (newString == null) newString = "";
-        if (oldString == null) oldString = "";
 
         var inFile = EclipseUtil.resolveInEclipse(filePath);
         if (inFile.isEmpty() || !(inFile.get() instanceof IFile eclipseFile)) {

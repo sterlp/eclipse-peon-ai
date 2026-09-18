@@ -126,4 +126,46 @@ class FileUtilsTest {
         // THEN
         assertThat(error.getMessage()).contains("test.txt");
     }
+
+    // --- Edit-Guard (docs/disk-file-write-tool.md): oldString is a required anchor, min 3 non-whitespace chars ---
+
+    @Test
+    void applyEdit_nullOldStringRejects() {
+        // GIVEN any content WHEN oldString is null THEN IAE naming the requirement — no silent ""-replace
+        var error = assertThrows(IllegalArgumentException.class, () ->
+                FileUtils.applyEdit("test.txt", "one\ntwo\nthree", null, "x"));
+        assertThat(error.getMessage()).contains("oldString is required, min 3 non-whitespace chars");
+    }
+
+    @Test
+    void applyEdit_blankOldStringRejects() {
+        // GIVEN a blank oldString WHEN the edit runs THEN the same IAE
+        var error = assertThrows(IllegalArgumentException.class, () ->
+                FileUtils.applyEdit("test.txt", "one\ntwo\nthree", "  ", "x"));
+        assertThat(error.getMessage()).contains("oldString is required, min 3 non-whitespace chars");
+    }
+
+    @Test
+    void applyEdit_twoCharOldStringRejects() {
+        // GIVEN a 2-char anchor (micro edit) WHEN the edit runs THEN the same IAE — escape: replaceLines/insertLines/writeFile
+        var error = assertThrows(IllegalArgumentException.class, () ->
+                FileUtils.applyEdit("test.txt", "one\n}}\nthree", "}}", "x"));
+        assertThat(error.getMessage()).contains("oldString is required, min 3 non-whitespace chars");
+    }
+
+    @Test
+    void applyEdit_paddedOneCharOldStringRejects() {
+        // GIVEN 4 raw chars but 1 after trim WHEN the edit runs THEN IAE — the guard counts trimmed length
+        var error = assertThrows(IllegalArgumentException.class, () ->
+                FileUtils.applyEdit("test.txt", "one\n x \nthree", " x ", "y"));
+        assertThat(error.getMessage()).contains("oldString is required, min 3 non-whitespace chars");
+    }
+
+    @Test
+    void applyEdit_threeCharOldStringApplies() {
+        // GIVEN exactly 3 non-whitespace chars (the threshold) WHEN the edit runs THEN Replace-All + count as usual
+        var result = FileUtils.applyEdit("test.txt", "abc mid abc", "abc", "xyz");
+        assertThat(result.content()).isEqualTo("xyz mid xyz");
+        assertThat(result.count()).isEqualTo(2);
+    }
 }

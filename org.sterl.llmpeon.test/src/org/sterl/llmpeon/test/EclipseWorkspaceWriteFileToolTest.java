@@ -81,14 +81,14 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
         // GIVEN
         tool.setCurrentProject(project);
         var fileName = "/test_project/foo.txt";
-        eclipseWriteFile(fileName, "x\nmid\nx");
+        eclipseWriteFile(fileName, "top\nmid\nmid\nbot");
 
         // WHEN
-        var result = tool.eclipseEditFile(fileName, "x", "y");
+        var result = tool.eclipseEditFile(fileName, "mid", "new");
 
         // THEN
         assertTrue("Expected replacement count in: " + result, result.contains("replaced 2 occurrence(s)"));
-        assertEquals("y\nmid\ny", readTool.eclipseReadFile(fileName, 0, 0));
+        assertEquals("top\nnew\nnew\nbot", readTool.eclipseReadFile(fileName, 0, 0));
     }
 
 
