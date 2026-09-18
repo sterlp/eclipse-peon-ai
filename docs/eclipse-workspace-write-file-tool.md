@@ -23,7 +23,19 @@ Delete a file or directory **recursively** within the Eclipse workspace. Uses `I
 Replace lines by 1-based line number. Reads via `IFile.readString()`, replaces, writes back.
 
 ### `eclipseEditFile(filePath, oldString, newString)`
-Replace exact string. Errors if 0 or >1 matches. `newString` can be `null` (treated as empty string).
+Replace **all** occurrences of the exact string — Replace-All + Count-Disclosure, identisch zu
+`diskEditFile` (der bisherige Doc-Text „Errors if 0 or >1 matches" war Drift und ist korrigiert).
+`newString = null` löscht die Treffer. **Edit-Guard:** `oldString` ist Pflicht-Anker (non-blank,
+`trim().length() >= 3`) — siehe [disk-file-write-tool.md](disk-file-write-tool.md), ein Verhalten,
+eine Implementierung (`FileUtils.applyEdit`). Das frühere `oldString == null → ""` entfällt — es
+war der Root Cause der Insert-Korruption (2026-09-16).
+
+### `eclipseUpdateOpenFile(oldString, newString)` *(neu dokumentiert — Lücke C2, Review 2026-09-17)*
+Edit im **aktuell offenen Editor** über `IDocument` + Save — der einzige Weg in Edge-Cases wie
+ABAB (Checkout/Lock). Läuft auf dem UI-Thread, Timeout 2 min, meldet `monitor.onFileUpdate`.
+Derselbe **Edit-Guard** wie `eclipseEditFile` — auch hier entfällt das `oldString == null → ""`.
+Erfolgsmeldung nennt Pfad + `replaced/deleted N occurrence(s)`; bei Save-Fehler:
+`Save failed! Ask user to save editor.`
 
 ### `eclipseRenameResource(sourcePath, targetPath)`
 Rename or move within the workspace. Creates target parent folders. Errors if target exists. Uses `IResource.move()` with `KEEP_HISTORY`.

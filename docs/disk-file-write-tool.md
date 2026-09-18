@@ -42,6 +42,45 @@ Errors if 0 matches. Errors if oldString equals newString.
 „first occurrence" — das Tool log über seine eigene Semantik. SOLL (User): Replace-All + Count-Disclosure;
 identisch in beiden Tool-Familien (ein Verhalten, eine Implementierung).
 
+### Edit-Guard: `oldString` ist Pflicht-Anker ❌ specified (2026-09-17)
+
+`oldString` ist in **allen** Edit-Tools beider Familien (`diskEditFile`, `eclipseEditFile`,
+`eclipseUpdateOpenFile`) ein verpflichtender Anker mit Mindestlänge. Der Check läuft **explizit und
+up-front** im geteilten `FileUtils.applyEdit` — nicht als Nebeneffekt des Countings:
+
+- `null`, leer oder blank → `IllegalArgumentException`, die die Anforderung nennt
+- `trim().length() < 3` → dieselbe `IllegalArgumentException` — **mindestens 3
+  nicht-Whitespace-Zeichen**
+
+**WEIL:** Die Korruption vom 2026-09-16 (7,3 Mio. Zeilen) entstand, weil ein leerer `oldString`
+still als `""` behandelt wurde — `String.replace("", x)` fügt an jeder Position ein, und der
+Marker `replaced 0 occurrence(s)` log über das echte Verhalten (AGENTS.md: ein Tool lügt nie). Ein
+Anker unter 3 Zeichen ist fast immer ein Agentenfehler; Mikro-Edits haben Auswege
+(`replaceLines`, `insertLines`, `writeFile`). Zwischen „1 Zeichen nach Trim" und „3 Zeichen"
+entschied der User bewusst für **eine einfache Schwelle ohne Trim-Sonderfälle** („schwierig" —
+Einfachheit schlägt Randfall-Intelligenz).
+
+> **IST-Notiz (2026-09-17):** Der Schutz existiert heute nur **zufällig** — `oldString=""` fällt
+> durch `contains("")==true` und fliegt erst in `countOccurrences` mit der irreführenden Message
+> „Content is empty or null - cannot count!". Der Bau ersetzt das durch den expliziten Check; der
+> Count-Schutz bleibt als zweite Schranke bestehen.
+
+**BDD:**
+```
+GIVEN diskEditFile mit oldString=null oder blank
+WHEN der Edit läuft
+THEN IllegalArgumentException mit benannter Anforderung („oldString is required, min 3
+     non-whitespace chars") — kein stiller ""-Replace
+
+GIVEN diskEditFile mit oldString="}}" (2 Zeichen)
+WHEN der Edit läuft
+THEN dieselbe IllegalArgumentException — Ausweg: replaceLines/insertLines/writeFile
+
+GIVEN diskEditFile mit gültigem oldString (>= 3 nicht-Whitespace-Zeichen)
+WHEN der Edit läuft
+THEN Replace-All + Count-Disclosure wie gehabt
+```
+
 ### `diskRenameResource(sourcePath, targetPath)`
 Rename or move. Creates target parent directories. Errors if target exists.
 

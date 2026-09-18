@@ -61,6 +61,7 @@ public class DocsLinterTool extends AbstractTool {
 
         DocsLinter linter = new DocsLinter();
         try {
+            onTool("lintDocs...");
             DocsLintResult result = linter.lint(effectiveRoot, docRoots, pattern);
             return new DocsLintReportRenderer().summary(result, effectiveRoot);
         } catch (IOException e) {
@@ -89,6 +90,7 @@ public class DocsLinterTool extends AbstractTool {
 
         DocsLinter linter = new DocsLinter();
         try {
+            onTool("lintDocsAndTests...");
             DocsLintResult result = linter.lintWithTests(
                     effectiveRoot, docRoots, testRoots, testGlobs, pattern);
             return new DocsLintReportRenderer().summary(result, effectiveRoot);

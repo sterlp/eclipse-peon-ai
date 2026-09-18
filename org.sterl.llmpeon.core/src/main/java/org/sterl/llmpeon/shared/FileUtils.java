@@ -147,9 +147,13 @@ public class FileUtils {
     /** Result of {@link #applyEdit}: the new content and how many occurrences were replaced. */
     public record EditResult(String content, int count) {}
 
-    /** Non-overlapping occurrences of {@code needle} in {@code content} (0 for an empty needle). */
+    /** 
+     * Non-overlapping occurrences of {@code needle} in {@code content} (0 for an empty needle).
+     * @param what to search for
+     * @throws IllegalArgumentException if content is empty
+     */
     private static int countOccurrences(String content, String needle) {
-        if (needle.isEmpty()) return 0;
+        if (needle == null || needle.isEmpty()) throw new IllegalArgumentException("Content is empty or null - cannot count!");
         int count = 0, idx = 0;
         while ((idx = content.indexOf(needle, idx)) >= 0) {
             count++;
