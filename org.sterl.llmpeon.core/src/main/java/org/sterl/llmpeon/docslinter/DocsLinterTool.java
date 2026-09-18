@@ -60,10 +60,11 @@ public class DocsLinterTool extends AbstractTool {
         validateChildRoots(effectiveRoot, docRoots);
 
         DocsLinter linter = new DocsLinter();
+        DocsLintReportRenderer renderer = new DocsLintReportRenderer();
         try {
-            onTool("lintDocs...");
             DocsLintResult result = linter.lint(effectiveRoot, docRoots, pattern);
-            return new DocsLintReportRenderer().summary(result, effectiveRoot);
+            onTool(renderer.statusLine("lintDocs", result));
+            return renderer.summary(result, effectiveRoot);
         } catch (IOException e) {
             throw new RuntimeException("Failed to lint docs: " + e.getMessage(), e);
         }
@@ -89,11 +90,12 @@ public class DocsLinterTool extends AbstractTool {
         }
 
         DocsLinter linter = new DocsLinter();
+        DocsLintReportRenderer renderer = new DocsLintReportRenderer();
         try {
-            onTool("lintDocsAndTests...");
             DocsLintResult result = linter.lintWithTests(
                     effectiveRoot, docRoots, testRoots, testGlobs, pattern);
-            return new DocsLintReportRenderer().summary(result, effectiveRoot);
+            onTool(renderer.statusLine("lintDocsAndTests", result));
+            return renderer.summary(result, effectiveRoot);
         } catch (IOException e) {
             throw new RuntimeException("Failed to lint docs and tests: " + e.getMessage(), e);
         }

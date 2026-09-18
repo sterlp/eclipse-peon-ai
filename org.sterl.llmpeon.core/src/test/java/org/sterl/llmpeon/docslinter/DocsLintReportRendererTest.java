@@ -276,6 +276,72 @@ class DocsLintReportRendererTest {
         assertThat(summary).contains("test IDs: 1 / 1");
     }
 
+    // --- UC-DL-62: source list names roots relative to the root, never absolute ---
+    // UC-DL-62
+    @Test
+    void sourceListNamesRootsRelativeToRoot() throws IOException {
+        // GIVEN a run with docRoots=["docs"], testRoots=["src/test/java"]
+        writeDoc("a.md", """
+                ---
+                idPrefix: DL
+                ---
+
+                # R-DL-1 Rule ✅ done
+
+                ## UC-DL-1 Covered UC ✅
+                """);
+        writeTest("Test.java", "// UC-DL-1\nvoid testIt() {}");
+
+        var result = lintWithTests(rootDir, List.of("docs"), List.of("src/test/java"), null);
+        String summary = renderer.summary(result, rootDir);
+
+        // THEN the source list names the roots relative to the root
+        assertThat(summary).contains("Sources: docs, src/test/java");
+        // ...and never leaks the absolute root path
+        assertThat(summary).doesNotContain(rootDir.toAbsolutePath().normalize().toString());
+    }
+
+    // --- UC-DL-62: default test root renders as "." ---
+    // UC-DL-62
+    @Test
+    void sourceListRendersDotForDefaultTestRoot() throws IOException {
+        // GIVEN a run with default (null) test roots — the linter defaults to "."
+        writeDoc("a.md", """
+                ---
+                idPrefix: DL
+                ---
+
+                # R-DL-1 Rule ✅ done
+
+                ## UC-DL-1 Covered UC ✅
+                """);
+        writeTest("Test.java", "// UC-DL-1\nvoid testIt() {}");
+
+        var result = lintWithTests(rootDir, List.of("docs"), null, null);
+        String summary = renderer.summary(result, rootDir);
+
+        assertThat(summary).contains("Sources: docs, .");
+    }
+
+    // --- UC-DL-62: docs-only runs name the doc root(s) ---
+    // UC-DL-62
+    @Test
+    void lintDocsSourceListNamesDocRoots() throws IOException {
+        writeDoc("a.md", """
+                ---
+                idPrefix: DL
+                ---
+
+                # R-DL-1 Rule ✅ done
+                """);
+
+        var result = lint(rootDir, List.of("docs"), null);
+        String summary = renderer.summary(result, rootDir);
+
+        assertThat(summary).contains("Sources: docs");
+        assertThat(summary).doesNotContain(rootDir.toAbsolutePath().normalize().toString());
+    }
+
     private void writeDoc(String name, String content) throws IOException {
         Files.writeString(docsDir.resolve(name), content);
     }

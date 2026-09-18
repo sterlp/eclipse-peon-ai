@@ -6,12 +6,19 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.sterl.llmpeon.ai.AiProvider;
+import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.memory.ThreadSafeMemory;
+import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
+import org.sterl.llmpeon.tool.model.SimpleMessage;
 
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 
@@ -320,6 +327,81 @@ class DocsLinterToolTest {
         assertThat(testGlobs).isInstanceOf(JsonArraySchema.class);
 
         assertThat(spec.parameters().properties()).doesNotContainKey("testGlob");
+    }
+
+    // --- UC-DL-63: onTool line carries doc + finding numbers, not just the name ---
+    // UC-DL-63
+    @Test
+    void onToolLineCarriesDocAndFindingNumbers() throws IOException {
+        // GIVEN a fixture with 1 doc and exactly 1 UNBELEGT_ERLEDIGT finding
+        // (UC-DL-2 is marked done but has no test)
+        writeDoc("a.md", """
+                ---
+                idPrefix: DL
+                ---
+
+                # R-DL-1 Rule ✅ done
+
+                ## UC-DL-1 Covered UC ✅
+                ## UC-DL-2 Uncovered Done ✅
+                """);
+        Files.createDirectories(rootDir.resolve("src/test/java"));
+        Files.writeString(rootDir.resolve("src/test/java/Test.java"), "// UC-DL-1\nvoid testIt() {}");
+
+        var monitor = new CapturingMonitor();
+        tool.withToolRequest(requestWith(monitor));
+
+        // WHEN lintDocsAndTests runs
+        String output = tool.lintDocsAndTests(null, List.of("docs"), List.of("src/test/java"),
+                null, null);
+
+        // THEN the onTool line names the numbers of this fixture
+        assertThat(output).contains("UNBELEGT_ERLEDIGT UC-DL-2");
+        assertThat(monitor.toolMessages).containsExactly(
+                "lintDocsAndTests: 1 docs, 1 findings (1 UNBELEGT_ERLEDIGT)");
+    }
+
+    // --- UC-DL-63: zero findings omit the kappa clause ---
+    // UC-DL-63
+    @Test
+    void onToolLineWithoutFindingsOmitsKappaClause() throws IOException {
+        writeDoc("a.md", """
+                ---
+                idPrefix: DL
+                ---
+
+                # R-DL-1 Rule ✅ done
+
+                ## UC-DL-1 Covered UC ✅
+                """);
+
+        var monitor = new CapturingMonitor();
+        tool.withToolRequest(requestWith(monitor));
+
+        // WHEN lintDocs runs on a clean fixture
+        String output = tool.lintDocs(null, List.of("docs"), null);
+
+        // THEN the onTool line shows 0 findings without a kappa clause
+        assertThat(output).contains("findings: 0");
+        assertThat(monitor.toolMessages).containsExactly("lintDocs: 1 docs, 0 findings");
+    }
+
+    private ToolLoopRequest requestWith(AiMonitor monitor) {
+        var model = LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", "http://localhost:9999").build();
+        return ToolLoopRequest.builder()
+                .memory(new ThreadSafeMemory())
+                .chatModel(model)
+                .monitor(monitor)
+                .build();
+    }
+
+    /** Captures TOOL chat messages so the onTool status line can be asserted. */
+    private static final class CapturingMonitor implements AiMonitor {
+        final List<String> toolMessages = new ArrayList<>();
+        @Override
+        public void onChatResponse(SimpleMessage m) {
+            if (m.role() == SimpleMessage.Type.TOOL) toolMessages.add(m.message());
+        }
     }
 
     private void writeDoc(String name, String content) throws IOException {

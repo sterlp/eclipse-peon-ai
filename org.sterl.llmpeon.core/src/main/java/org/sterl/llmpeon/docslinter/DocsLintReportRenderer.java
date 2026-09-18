@@ -24,6 +24,10 @@ class DocsLintReportRenderer {
             sb.append("; tests: not read");
         }
 
+        if (!result.sourceRoots().isEmpty()) {
+            sb.append("\nSources: ").append(String.join(", ", result.sourceRoots()));
+        }
+
         sb.append("\nUC definitions: ").append(result.useCaseCount());
         sb.append(" / ").append(result.uniqueUseCaseCount());
 
@@ -49,6 +53,24 @@ class DocsLintReportRenderer {
             }
         }
 
+        return sb.toString();
+    }
+
+    /**
+     * Compact one-line status for {@code onTool} (R-DL-20), e.g.
+     * {@code lintDocs: 3 docs, 2 findings (1 UNBELEGT_ERLEDIGT)}.
+     * The kappa clause appears only for non-zero counts; the full report stays in the return value.
+     */
+    String statusLine(String toolName, DocsLintResult r) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(toolName).append(": ").append(r.docFileCount()).append(" docs, ");
+        sb.append(r.findings().size()).append(" findings");
+        long kappa = r.findings().stream()
+                .filter(f -> f.type() == FindingType.UNBELEGT_ERLEDIGT)
+                .count();
+        if (kappa > 0) {
+            sb.append(" (").append(kappa).append(" UNBELEGT_ERLEDIGT)");
+        }
         return sb.toString();
     }
 }
