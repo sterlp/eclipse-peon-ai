@@ -133,7 +133,7 @@ class DiskFileWriteToolTest {
 
     @Test
     void diskEditFile_reportsReplacementCount() throws IOException {
-        Files.writeString(tempDir.resolve("edit.txt"), "x\nx");
+        Files.writeString(tempDir.resolve("edit.txt"), "top\nmid\nmid\nbot");
         var ts = new ToolService(false);
         ts.addTool(tool);
 
@@ -146,7 +146,7 @@ class DiskFileWriteToolTest {
         var tr = ToolExecutionRequest.builder()
                 .id("1")
                 .name("diskEditFile")
-                .arguments("{\"filePath\":\"edit.txt\",\"oldString\":\"x\",\"newString\":\"y\"}")
+                .arguments("{\"filePath\":\"edit.txt\",\"oldString\":\"mid\",\"newString\":\"new\"}")
                 .build();
 
         var result = ts.execute(tr, req);
@@ -156,7 +156,7 @@ class DiskFileWriteToolTest {
 
     @Test
     void diskEditFile_nullNewStringReportsDeletedCount() throws IOException {
-        Files.writeString(tempDir.resolve("edit.txt"), "x\nx");
+        Files.writeString(tempDir.resolve("edit.txt"), "top\nmid\nmid\nbot");
         var ts = new ToolService(false);
         ts.addTool(tool);
 
@@ -169,7 +169,7 @@ class DiskFileWriteToolTest {
         var tr = ToolExecutionRequest.builder()
                 .id("1")
                 .name("diskEditFile")
-                .arguments("{\"filePath\":\"edit.txt\",\"oldString\":\"x\",\"newString\":null}")
+                .arguments("{\"filePath\":\"edit.txt\",\"oldString\":\"mid\",\"newString\":null}")
                 .build();
 
         var result = ts.execute(tr, req);
@@ -177,6 +177,15 @@ class DiskFileWriteToolTest {
                 "LLM-visible result should report the delete count, was: " + result.text());
     }
 
+    // --- Edit-Guard (docs/disk-file-write-tool.md): oldString is a required anchor, min 3 non-whitespace chars ---
+
+    @Test
+    void diskEditFile_nullOldStringRejectsNamingRequirement() throws IOException {
+        Files.writeString(tempDir.resolve("edit.txt"), "abc");
+        var error = assertThrows(IllegalArgumentException.class,
+                () -> tool.diskEditFile("edit.txt", null, "y"));
+        assertThat(error.getMessage()).contains("oldString is required, min 3 non-whitespace chars");
+    }
 
     @Test
     void write_allowedInsideDocs() {
@@ -257,7 +266,7 @@ class DiskFileWriteToolTest {
 
     @Test
     void editResultCarriesAbsolutePath() throws IOException {
-        Files.writeString(tempDir.resolve("edit.txt"), "x\nx");
+        Files.writeString(tempDir.resolve("edit.txt"), "top\nmid\nmid\nbot");
         var ts = new ToolService(false);
         ts.addTool(tool);
         var req = requestWith(new CapturingMonitor());
@@ -266,7 +275,7 @@ class DiskFileWriteToolTest {
         // GIVEN workingDir tempDir WHEN diskEditFile succeeds THEN the (String) result carries the absolute path
         var tr = ToolExecutionRequest.builder()
                 .id("1").name("diskEditFile")
-                .arguments("{\"filePath\":\"edit.txt\",\"oldString\":\"x\",\"newString\":\"y\"}")
+                .arguments("{\"filePath\":\"edit.txt\",\"oldString\":\"mid\",\"newString\":\"new\"}")
                 .build();
         var result = ts.execute(tr, req);
         assertThat(result.text()).contains("replaced 2 occurrence(s) in " + abs);

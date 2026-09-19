@@ -1,131 +1,39 @@
-# Session-Stand — 2026-09-16
+# Session-Stand — 2026-09-19
 
 ## Wo wir stehen
 
-Branch `story/po-compact-2026-09-13` — **nie main, kein push** (Merge/Squash macht Paul).
-**Core Surefire 862/0** · Plugin Tycho 212/0 (11 Skipped = assumeTrue, normal).
+**Branch `bugfix/user-context-selection`, Zyklus „Edit-Guard + Lint-Polish + Read-Zeilennummern" KOMPLETT:**
+- Step-0: Pauls Count-Guard + onTool + 5 SOLL-Docs committed
+- `7800a56` Inc 1 Edit-Guard (oldString Pflicht, `trim().length() >= 3`, up-front in `FileUtils.applyEdit`, alle 3 Oberflächen; null→"" entfernt) — Core 875/0, Plugin 222/0
+- `15e3eab` Inc 2 Lint-Polish (R-DL-19 `Sources:`-Zeile relativ, R-DL-20 onTool-Statuszeile, UC-DL-62/63 belegt) — Core 880/0 (Worktree-verifiziert)
+- `e0538fa` Inc 3 R9 (Ganzdatei MIT Zeilennummern, supersedet R1c-Klausel) + R8 (Grep = Trefferzeilen `pfad:42: text` unpadded, MAX_GREP_LINES=100 + Disclosure, per-File-Counts weg, Clean Break) — Core 884/0, Plugin 223/0
+- `fdaed04` AGENTS-DEV: `-pl test -am` zieht Host NICHT in Reaktor → `-pl org.sterl.llmpeon,org.sterl.llmpeon.test -am verify`
+- `73bb156` Review-Fixes (staler Timeout-Wrapper umbenannt, unused `effectiveRoot` weg)
+- **Review: CONCERNS → gelöst, abgenommen. Plan archiviert (`planImplemented`).** Docs ✅: Edit-Guard, R-DL-19/20, R8/R9. Lint: UC-DL-62/63 belegt, 0 neue Befunde (42 UNBELEGT_ERLEDIGT = vorbestehender Bestand).
 
-**Branch `story/po-compact-2026-09-13`, 3 Commits unpushed:** `29a341b` (Paul: Namen + Agent
-Mode) · `1fea07e` (Test-Seeds R16 + staticContext-Test auf R-N1 umgeschrieben, 212/0) ·
-`217163d` (newList-Dedup + Docs). **`mvn clean verify`: BUILD SUCCESS — Core 862/0, Plugin 212/0.**
-Das „mvn clean verify geht nicht"-Ticket ist damit geschlossen (8 veraltete R16-Tests + 1
-staticContext-Test, keine Bugs). Docs dafür: sklaven-kontext-plan.md (R-N1–R-N3),
-context-message-concept.md (Compact-Hint-Fallback), open-points.md.
-
-**Nebenbefund:** `29a341b` bündelt die ToolService-Compact-Hint-Änderung thematisch mit „names" —
-vermerkt, nicht blockierend. Untracked: `harness-request-docs-linter.md` + 5 Plan-Archive; 1
-gelöschtes Plan-Archiv uncommitted.
+**Da Mek IST gecompacted (21%).**
 
 ## Nächste Schritte
 
-1. Merge/Squash = Paul. User-Smoke: Re-Compact-Noop, Disabled-States, Tooltip (agenten-status-im-header.md).
-2. Backlog (❓/⏳ in open-points.md): BDD-Test Compact-Hint-Fallback · Homepage peon-po.md Team ohne Da Dok · Plan-Archive aufräumen.
-3. Danach Pauls Reihenfolge: Compact-Input-Budget Light + Context-Noise (vor dem Bau gemeinsam), ApiRetry-Cancel-Bug, ID-Kommentare Alt-DL-Tests.
+1. **Paul: Merge/Squash** `bugfix/user-context-selection` → main (enthält R-SEL-4 + R-DL-18 + diesen Zyklus — EIN Branch nach Pauls Wunsch). Alter `bugfix/edit-tool-insert` (Self-Ref-Historie) = Pauls Verwerf-Entscheid.
+2. **Paul: User-Smokes** — R-SEL-4 (Java-Type-Selektion im Chat), R8/R9 live (erst nach Plugin-Install sichtbar), Edit-Guard (Probe-Edit mit kurzem oldString).
+3. Backlog Pauls: Compact-Input-Budget Light + Context-Noise (gemeinsam vor dem Bau), ApiRetry-Cancel-Bug (heute 3 Connect/Stream-Abbrüche = frische Evidence für open-points #ApiRetry), Linter-idPattern-Verifikation.
+4. Neue ❓ in open-points: applyEdit Not-Found-Dump cappen (GO von Paul offen) · Self-Ref-Guard-Verwerfung bestätigen.
 
----
+## Offene Punkte
 
-# Historie — 2026-09-15 (Abend)
-
-Branch `story/po-compact-2026-09-13` — **nie main, kein push** (Merge/Squash macht Paul).
-**Core Surefire 861/0** · Plugin Tycho 212/8 (die 8 inzwischen geklärt — veraltete R16-Tests, s. oben).
-
-Vier Zyklen an diesem Tag, alle mit Review abgeschlossen:
-
-| Zyklus | Ergebnis |
-|---|---|
-| Docs-Linter (Inc 1-7 + 2 Reparaturen) | `lintDocsAndTests` / `lintDocs` / `nextIds`, verdrahtet, Homepage, Prompt-Verträge |
-| R-DL-13 (Inc 8 + 8a) | Fenced Code Blocks sind zitierter Text, keine Definitionen |
-| Nachzyklus R-DL-7/8/14/15 | read-only + Fassaden-Split + raus aus dem Disk-Gate + Tool-Matrix-Tests |
-| **R-DL-16 (`934ea7c`)** | `nextIds` zustandslos + Scan-Umfang/Lesequelle im Rückgabewert |
-| **R-DL-17 (`ab71c53`)** | ein Präfix = ein Feature über n Dateien; `PRAEFIX_DOPPELT` gestrichen |
-
-`docs/docs-linter.md` ist **✅ done, R-DL-1…17**. Offen dort nur noch Q2 (`suggestIds`, eigener Zyklus).
-**Core Surefire 862/0.** Verbrannte IDs: `UC-DL-17`, `UC-DL-44`, `UC-DL-54`.
-
-### R-DL-17 in einem Satz (2026-09-16, Pauls Einwand)
-
-Paul fragte, ob `nextIds` Overkill ist — „hast du das Doc offen, kennst du die nächste Nummer".
-Zurecht: `UC-DL-17` verlangte `PRAEFIX_DOPPELT` bei zwei Docs mit gleichem Präfix, womit ein Präfix
-in genau einer Datei lebte und `nextIds` über eine Menge der Größe 1 aggregierte. Das widersprach
-zugleich der Doc-Split-Regel aus `po.md` (Feature > 2 Seiten → mehrere Dateien). Entschieden:
-**ein `idPrefix` spannt ein Feature auf, nicht eine Datei** — Befundtyp ersatzlos gestrichen,
-Eindeutigkeit sichert allein `DOPPELT_DEFINIERT` (dateiübergreifend). Netto **weniger** Code:
-ein Befundtyp, ein Erkennungsblock, ein Test weg. Review ACCEPTED.
-
-**Pauls E2E am lebenden System (2026-09-16):** `nextIds` zweimal → stabil `R-DL-17`/`UC-DL-58`
-(zustandslos, reserviert nicht) · `lintDocs` 54/54 Definitionen, 0 Befunde · `lintDocsAndTests`
-34 erwartete Befunde (33 alte fehlende Testkommentare + absichtlicher `VERWAIST UC-DL-99`).
-Scan-Umfang und Disk-Lesequelle werden offengelegt.
-
-## Über Nacht allein bearbeitet (Paul war offline) — zwei Ergebnisse für den Morgen
-
-### 1. Pauls Frage zu `nextIds` — beantwortet und gebaut
-
-> „Wie stellen wir sicher, dass `nextIds` immer eine NEUE ID liefert? Sucht es nach einem
-> Eclipse-Neustart die letzte ID in den Docs?"
-
-**Ja — und der Neustart ist der harmlose Teil.** `DocsLinter.nextIds` hält nachweislich keinen
-Zustand (kein Feld, kein Cache, kein Zähler; baut `prefixStats` bei jedem Aufruf neu aus dem frisch
-gelesenen Doc-Baum). Ein persistenter Zähler wäre **schlechter** — er könnte still von den Docs
-abweichen.
-
-**Die echte Lücke liegt zwischen Ziehen und Speichern:** `nextIds` reserviert nichts. Gezogen ≠
-vergeben. Nicht sofort gespeichert → nächster Aufruf liefert dieselbe Nummer → `DOPPELT_DEFINIERT`.
-
-Entschieden, geschrieben, gebaut: **R-DL-16 + UC-DL-56/57** in `docs/docs-linter.md`, Arbeitsablauf
-in `po.md` verankert, `nextIds` legt jetzt Lesequelle + Doc-Dateizahl (aus der Discovery) offen.
-Review: **CONCERNS** (nicht blockierend — Plan hatte den Prompt-Pfad nicht als betroffen geführt),
-abgenommen.
-
-### 2. Install-Log des Users — **nicht unser Bug, kein Target-Rollback**
-
-Kette: `jface` → `eclipse.swt;image.format=svg` → `swt.svg` → `jsvg` → `spifly 1.3.7` → dort
-**uses-constraint violation**: `org.objectweb.asm` in **9.10.1 und 9.9.1 gleichzeitig**.
-Drei unabhängige Belege, dass es nicht an uns liegt: wir pinnen `swt`/`jface`/`ui` gar nicht; unser
-`Bundle-ClassPath` enthält **kein** asm/jsvg/spifly; `failing bundles.log` nennt nur die beiden
-EPP-Bundles, `org.sterl.llmpeon` ist `[RESOLVED]`. Details in `open-points.md` (⏳).
-
-## Für Paul zum Bestätigen (⏳ in `open-points.md`)
-
-1. `nextIds`-Ablauf statt persistentem Zähler — passt das so?
-2. Kein Target-Rollback auf 2026-03; dem betroffenen User frische Installation / `-clean` empfehlen.
-   Einzige Folge-Aktion wäre: Mindest-Eclipse-Version auf der Homepage nennen.
-3. `AGENTS-PO.md` ist weiterhin **uncommitted** (dein Edit, nicht angefasst).
-
-## Offene Punkte (`open-points.md`)
-
-- 🔒 **ID-Kommentare:** 11 UCs des Nachzyklus erledigt. Die ~37 älteren DL-Tests aus dem Erstzyklus
-  fehlen weiter → eigener kleiner Zyklus.
-- ❓ **Code-Block-Regel für Testquellen** — ID-Kommentar in Java-Textblock/Python-Docstring zählt
-  heute als Beleg. Bewusst nicht gebaut (erfordert Sprach-Parsing = die Rateübung aus Q8).
-- ~~**`PeonAiServiceTest`: 8 rote Compact-/TurnContext-Tests**~~ — 🔒 geklärt 2026-09-16: veraltete R16-Tests, keine Bugs; Seeds angepasst (siehe open-points.md).
-- 🐞 **`eclipseReplaceLines` verhält sich sporadisch wie Insert** — nach jedem Line-Edit zurücklesen.
-- ⏳ Ausstehender User-Smoke Compact-Zyklus · Branch `release-2026-09-06` Merge = User-Entscheid.
+- ❓ applyEdit Not-Found-Dump cappen — Paul fragen.
+- ❓ Self-Ref-Guard bewusst verworfen? — kurz bestätigen.
+- ⏳ R-SEL-4 Umsetzungsdetails (3 Eigenentscheidungen) + User-Smoke — nach Merge.
+- ❓ Linter-idPattern-Verifikation · ⏳ User-Smoke Compact-Buttons · ⏳ Jackson-2→3 · release-2026-09-06 Merge.
 
 ## Was nicht neu aufgemacht wird
 
-- **Keine Tests auf Prompt-Inhalte** — `docs/prompts.md` R1: Prompt-Content ist Repo-SOT.
-- **Keine Test-Infrastruktur in `homepage/`** — Green Gate ist `npm run docs:build`.
-- **Q2 `suggestIds`** — eigener Zyklus.
-- **Kein Overlay-/Child-`ToolService`** — verworfen, siehe ADR-0048.
-- **Kein persistenter ID-Zähler / keine Registry-Datei** — R-DL-16, die Docs sind die Registry.
+Keine Tests auf Prompt-Inhalte · kein Overlay-ToolService (ADR-0048) · Homepage `usage/selections.md` SOT · R3 Console-Log unangetastet · kein Parameter fürs Grep-Zeilen-Cap (Konstante).
 
-## Lektionen dieses Tages
+## Lektionen
 
-1. **Format-/Sprachneutralität vor dem BDD prüfen.** Lösung war **Streichen**, nicht Erweitern.
-2. **Ein Reporting-Tool muss den Scan-Umfang nennen**, aus der Discovery, nie aus den Treffern.
-3. **Ein Feature ist fertig, wenn der vorgesehene Aufrufer es in Standard-Konfiguration aufrufen kann.**
-4. **Streichen schlägt Absichern.**
-5. **Ein Test auf eine strukturelle Unmöglichkeit ist eine Schranke, kein Beleg.**
-6. **Prompt-/Doc-Änderungen der Agenten selbst nachlesen**, bevor man sie abnimmt.
-7. **Verbindliche Agenten-Abläufe brauchen den Prompt-Pfad im Plan** — sonst ist die Regel
-   dokumentiert, aber wirkungslos (Da Doks CONCERNS zu R-DL-16).
-
-## Nächste Zyklen (Pauls Reihenfolge)
-
-1. **Compact-Input-Budget Light + Context-Noise** — ❌ specified (`docs/compact-input-budget.md`),
-   vor dem Bau nochmal gemeinsam.
-2. **ApiRetry-Cancel-Bug** (`open-points.md`, 4 Evidence-Klassen).
-3. ID-Kommentare an den ~37 Alt-DL-Tests nachtragen (kleiner Zyklus).
-4. Danach: `PeonAiServiceTest`-Bugzyklus, Compact-Delay (~4-5s), R-A3 Copilot-Studie,
-   Docs-Hygiene-Sweep, `suggestIds`.
+1. Edit-Tool-Triage: erst oldString null/blank prüfen, dann Self-Reference, dann Race — 2h Stress-Jagd vs. Input-Validation-Blick.
+2. Plan-Test-Inventare per Grep über BEIDE Module verifizieren (13 statt 4 Pins — Memory #33 erneut bestätigt, Dev hat korrekt gestoppt/gemeldet).
+3. `-pl org.sterl.llmpeon.test -am` = stale-p2-Falle (jetzt in AGENTS-DEV.md, `fdaed04`).
+4. Bei LLM-Abbruch im buildWithDev: State+Commits überleben — einfach fortsetzen lassen, Dev prüft IST per Git selbst.

@@ -18,6 +18,8 @@ import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.e4.ui.di.Focus;
 import org.eclipse.e4.ui.services.IServiceConstants;
 import org.eclipse.jdt.core.IClassFile;
+import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IType;
 import org.eclipse.jface.text.ITextSelection;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
@@ -228,31 +230,48 @@ public class AIChatView implements EclipseAiMonitor {
     @Inject
     @org.eclipse.e4.core.di.annotations.Optional
     public void onTextSelection(@Named(IServiceConstants.ACTIVE_SELECTION) ITextSelection ts) {
-        if (parent == null || parent.isDisposed()) return;
-        if (aiService.getUserContext().setTextSelection(ts)) {
-            EclipseUtil.runInUiThread(parent, this::refreshStatusLine);
+        applyTextSelection(ts);
+    }
+
+    /**
+     * Applies a text selection event (UI thread): the open file becomes the selected resource
+     * first — a file switch clears the previous selection — then the selection itself is set.
+     */
+    private void applyTextSelection(ITextSelection ts) {
+        var uc = aiService.getUserContext();
+        boolean changed = false;
+        if (parent != null && !parent.isDisposed()) {
+            // R-SEL-2: open file = known resource (UI-thread path of EclipseUtil.getOpenFile)
+            changed |= uc.setSelectedResource(EclipseUtil.getOpenFile().orElse(null));
         }
+        changed |= uc.setTextSelection(ts);   // nachher: Resource-Wechsel hat alte Selektion bereits geräumt
+        if (changed) EclipseUtil.runInUiThread(parent, this::refreshStatusLine);
     }
 
     @Inject
     @org.eclipse.e4.core.di.annotations.Optional
     public void onSelection(@Named(IServiceConstants.ACTIVE_SELECTION) Object o) {
         if (o instanceof ITextSelection ts) {
-            aiService.getUserContext().setTextSelection(ts);
+            applyTextSelection(ts);
             return;
         }
         if (parent == null || parent.isDisposed()) return;
 
-        aiService.getUserContext().setClassFile(null);
         var selectionElement = EclipseUtil.selectionElement(o).orElse(null);
-        if (selectionElement instanceof IClassFile classFile) aiService.getUserContext().setClassFile(classFile);
+        // R-SEL-4: a type selection wins — it must be detected BEFORE resolveResource, which
+        // would resolve a source IType to its .java file and kill the type. Resource and
+        // project stay untouched on a type event.
+        if (selectionElement instanceof IType || selectionElement instanceof IClassFile) {
+            if (aiService.getUserContext().setJavaType((IJavaElement) selectionElement))
+                EclipseUtil.runInUiThread(parent, this::refreshStatusLine);
+            return;
+        }
         var selection = EclipseUtil.resolveResource(selectionElement).orElse(null);
         if (selection == null && selectionElement != null && !(selectionElement instanceof IWorkingSet)
                 && !selectionElement.getClass().getName().equals("org.eclipse.ui.internal.views.log.LogEntry")
                 && aiService.getConfig().isDebugMode()) {
             LOG.info("Unknown resource type selected " + selectionElement.getClass());
         }
-        aiService.getUserContext().setTextSelection(null);
         if (aiService.getUserContext().setSelectedResource(selection)) {
             EclipseUtil.runInUiThread(parent, this::refreshStatusLine);
         }
@@ -327,7 +346,10 @@ public class AIChatView implements EclipseAiMonitor {
     public void onFileUpdate(AiFileUpdate update) {
         if (parent.isDisposed()) return;
         var diff = SimpleDiff.unifiedDiff(update.file(), update.oldContent(), update.newContent());
-        EclipseUtil.runInUiThread(parent, () -> chatHistory.showDiff(diff));
+        EclipseUtil.runInUiThread(parent, () -> {
+            if (diff.startsWith("--- a/")) chatHistory.showDiff(diff);
+            else if (!diff.isEmpty()) chatHistory.appendMessage(new SimpleMessage(Type.TOOL, diff));
+        });
     }
 
     @Override

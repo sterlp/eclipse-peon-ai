@@ -73,7 +73,7 @@ public class EclipseWorkspaceReadFileToolTest extends AbstractIntegrationTest {
         var content = tool.eclipseReadFile(
                 JdtUtil.pathOf(project) + "/data/utf-8-test.txt", null, null);
 
-        assertEquals("äüß Ö ⚡", content);
+        assertEquals("   1: äüß Ö ⚡\n", content);
     }
 
     @Test
@@ -83,7 +83,7 @@ public class EclipseWorkspaceReadFileToolTest extends AbstractIntegrationTest {
         var content = tool.eclipseReadFile(
                 JdtUtil.pathOf(project) + "/data/iso-test.txt", null, null);
 
-        assertEquals("äüß Ö", content);
+        assertEquals("   1: äüß Ö\n", content);
     }
 
     @Test

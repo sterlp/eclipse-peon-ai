@@ -36,6 +36,13 @@ Hints for the dev phase, base rules `AGENTS.md`
     stale Surefire reports under `target/` mislead result reading.
   - A new test class needs manual workspace approval once by the user and may time out if he is not
     watching — prefer to run all tests in the plugin test project, which is already approved.
+- **Headless plugin suite — name the host explicitly (hit 2026-09-19, read-numbers inc-3):**
+  `-pl org.sterl.llmpeon.test -am` does **not** pull the host plugin into the reactor (the fragment
+  requires it as an OSGi bundle, not a Maven dependency) → stale local-p2 host → phantom
+  `NoSuchMethodError` (2026-09-17 R-SEL-4 case: `UserContext.setTextSelection`, 27 F / 37 E on green
+  code). Correct: `-pl org.sterl.llmpeon,org.sterl.llmpeon.test -am verify`. Same discipline for
+  merges: verify content via tree-diff (`git merge-tree` / `git diff --cached HEAD`), not commit
+  counts — squash PRs make counts meaningless (2026-09-19: 25 + 7 commits, zero content delta).
 - After ANY core change, before the Eclipse plugin build/test run: `mvn -o -pl
   org.sterl.llmpeon,releng/llmpeon-target -am package -DskipTests` — `-am` rebuilds core in the
   reactor and re-copies the jar into `lib/`; `releng/llmpeon-target` must stay in `-pl` (offline the
@@ -81,8 +88,6 @@ Hints for the dev phase, base rules `AGENTS.md`
     subclassed — intentional constructor-delegates-to-refresh pattern); opennlp-tools
     manifest `Class-Path` slf4j path quirk (upstream packaging).
 - Elegant, expressive modern Java (records, pattern matching, switch expressions, Lombok).
-- **OSGi test constraints:** plugin tests are JUnit 4, new test classes need user approval.
-  Run full test suite on timeout
 - On macOS, sum Surefire reports with Perl rather than GNU-only `awk match(..., array)`:
   `perl -ne 'if (/Tests run: (\d+), Failures: (\d+), Errors: (\d+), Skipped: (\d+)/) {$t+=$1;$f+=$2;$e+=$3;$s+=$4} END {print "Tests=$t Failures=$f Errors=$e Skipped=$s\n"}' target/surefire-reports/*.txt`.
 - Prefer a few high-value assertions over many brittle ones; every assertion should earn its maintenance cost.
@@ -97,6 +102,9 @@ These bit us repeatedly in this repo — check them before reporting an incremen
   claims to prove.
 - **Prove falsifiability per test, naming the path the mutation hits** — not "all red under
   mutation X". A mutation that only flips the filter says nothing about the cropping.
+- **A surface's output format changes → Grep-inventory ALL test pins on that surface** — never
+  trust the plan/doc list as complete (2026-09-19 read-numbers: plan named 4 raw-read pins,
+  IST had 13; all adaptations purely mechanical).
 - **If a test is green before the fix, say so before building it.** Declare it a
   characterization/regression test in the plan; never present it as proof of the rule. Reporting
   this as a blocker is the correct move, not a failure.
@@ -142,17 +150,14 @@ These bit us repeatedly in this repo — check them before reporting an incremen
 - More Eclipse-platform know-how lives in the project skill `eclipse-dpe` (read it via skillRead
   before guessing) — append new findings **at the end of the file** (do not split an existing bullet).
 - Skill-Evolution (experimentell): every skillRead result ends with a usefulness footer — **always
-  answer it in your report** (helpful? wrong/outdated/incomplete? obsolete?). If a skill you just
-  read is wrong or outdated and you can fix it in place, do it in the same turn (keep it short);
-  otherwise report the gap so Jon routes it. Skill changes follow `skill-evolution` (evidence
-  required, keep skills short).
-  
+  answer it in your report** (helpful? wrong/outdated? obsolete?). If a skill you just read is wrong
+  or outdated, fix it in place in the same turn (keep it short); otherwise report the gap so Jon
+  routes it. Skill changes follow `skill-evolution` (evidence required, keep skills short).
+
 ## Reference projects for API help
 
-1. use github eclipse plugin AI harness if problems or question arise which cannot be answered 
-   by the API itself eclipse: /github-copilot-for-eclipse
+1. /github-copilot-for-eclipse — the Eclipse plugin AI harness, if the API itself cannot answer
 2. /langchain4j-aggregator for langchain4j code & docs (*.md), if the API itself is not enough
 3. Opencode source - cli AI harness: /opencode -- for generall idea how AI harnesses are build
 
-Use search agents to search these big repos - do direct reads only. Considerer proposing SKILL changes
-or new skills for extracted patterns or solutions.
+Use search agents for these big repos (direct reads only); propose SKILL changes for extracted patterns/solutions.

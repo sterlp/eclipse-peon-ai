@@ -115,9 +115,15 @@ public class FileUtils {
     /**
      * Replaces <b>all</b> occurrences of {@code oldStr} with {@code newStr} inside {@code content}.
      * Returns the new content together with the number of replaced occurrences.
+     * Edit-Guard: {@code oldStr} is the mandatory anchor — null or fewer than 3 non-whitespace
+     * characters is rejected (micro edits belong to replaceLines/insertLines/writeFile).
      * Throws {@link IllegalArgumentException} if the strings are identical or nothing matches.
      */
     public static EditResult applyEdit(String filePath, String content, String oldStr, String newStr) {
+        if (oldStr == null || oldStr.trim().length() < 3) {
+            throw new IllegalArgumentException(
+                    "oldString is required, min 3 non-whitespace chars — use replaceLines/insertLines/writeFile for micro edits");
+        }
         if (oldStr.equals(newStr)) throw new IllegalArgumentException("Old and new string is the same.");
 
         String fileLineEnding = dominantLineEnding(content);
@@ -147,9 +153,13 @@ public class FileUtils {
     /** Result of {@link #applyEdit}: the new content and how many occurrences were replaced. */
     public record EditResult(String content, int count) {}
 
-    /** Non-overlapping occurrences of {@code needle} in {@code content} (0 for an empty needle). */
+    /** 
+     * Non-overlapping occurrences of {@code needle} in {@code content} (0 for an empty needle).
+     * @param what to search for
+     * @throws IllegalArgumentException if content is empty
+     */
     private static int countOccurrences(String content, String needle) {
-        if (needle.isEmpty()) return 0;
+        if (needle == null || needle.isEmpty()) throw new IllegalArgumentException("Content is empty or null - cannot count!");
         int count = 0, idx = 0;
         while ((idx = content.indexOf(needle, idx)) >= 0) {
             count++;

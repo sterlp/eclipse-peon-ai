@@ -1,8 +1,9 @@
 package org.sterl.llmpeon.parts.tools;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
@@ -15,6 +16,7 @@ import org.eclipse.core.runtime.Platform;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.shared.ArgsUtil;
+import org.sterl.llmpeon.shared.GrepHit;
 import org.sterl.llmpeon.shared.SearchQuery;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.shared.TextFileTypes;
@@ -43,7 +45,8 @@ public class EclipseGrepTool extends AbstractEclipseTool {
 
         var searchQuery = SearchQuery.of(query);
         var allProjects = path == null || path.length() <= 1;
-        var matches = new LinkedHashMap<String, Integer>(); // file path -> count
+        var hits = new ArrayList<GrepHit>(); // matched lines, in file-processing order
+        var matchedFiles = new HashSet<String>(); // distinct hit files — drives the file cap
 
         // Determine containers to search
         var containers = new ArrayList<IContainer>();
@@ -62,26 +65,25 @@ public class EclipseGrepTool extends AbstractEclipseTool {
                 containers.add(c);
                 refreshTargets.add(c);
             } else if (resource.get() instanceof IFile f) {
-                int count = countOccurrences(f, searchQuery);
-                if (count > 0) matches.put(JdtUtil.pathOf(resource.get()), count);
+                addHits(f, searchQuery, JdtUtil.pathOf(resource.get()), hits, matchedFiles);
             } else {
                 onProblem("Eclipse grep could not read " + JdtUtil.pathOf(resource.get()));
                 return "Couldn't read " + JdtUtil.pathOf(resource.get());
             }
         }
 
-        searchScope(containers, extension, searchQuery, matches);
-        if (matches.isEmpty() && !refreshTargets.isEmpty()) {
+        searchScope(containers, extension, searchQuery, hits, matchedFiles);
+        if (hits.isEmpty() && !refreshTargets.isEmpty()) {
             refreshScope(refreshTargets);
-            searchScope(containers, extension, searchQuery, matches);
+            searchScope(containers, extension, searchQuery, hits, matchedFiles);
         }
 
         onTool("Eclipse grep '" + query + "' type '" + StringUtil.getOrDefault(extension, "*")
-                + "' found " + matches.size() + " matches");
+                + "' found " + hits.size() + " matched lines");
 
         String result = AiReponseBuilder.grepComplete(
-                matches, searchQuery, AiReponseBuilder.MAX_GREP_FILES, extension);
-        if (matches.isEmpty()) {
+                hits, searchQuery, AiReponseBuilder.MAX_GREP_FILES, AiReponseBuilder.MAX_GREP_LINES, extension);
+        if (hits.isEmpty()) {
             var searchedScope = allProjects ? "all open projects (" + containers.size() + ")" : path;
             result += System.lineSeparator() + "Searched: " + searchedScope + " · pattern: " + query;
         }
@@ -89,13 +91,13 @@ public class EclipseGrepTool extends AbstractEclipseTool {
     }
 
     private void searchScope(List<IContainer> scope, String extension, SearchQuery searchQuery,
-            LinkedHashMap<String, Integer> matches) {
+            List<GrepHit> hits, Set<String> matchedFiles) {
         for (IContainer container : scope) {
             try {
                 container.accept(new IResourceVisitor() {
                     @Override
                     public boolean visit(IResource resource) {
-                        if (matches.size() >= AiReponseBuilder.MAX_GREP_FILES) return false;
+                        if (matchedFiles.size() >= AiReponseBuilder.MAX_GREP_FILES) return false;
                         if (resource.isDerived()) return false;
                         if (!isNotDerived(JdtUtil.pathOf(resource))) return false;
 
@@ -103,8 +105,7 @@ public class EclipseGrepTool extends AbstractEclipseTool {
                             if (StringUtil.hasValue(extension)
                                     ? file.getName().toLowerCase().endsWith(extension.trim().toLowerCase())
                                     : TextFileTypes.isTextFile(file.getName())) {
-                                int count = countOccurrences(file, searchQuery);
-                                if (count > 0) matches.put(JdtUtil.pathOf(file), count);
+                                addHits(file, searchQuery, JdtUtil.pathOf(file), hits, matchedFiles);
                             }
                         }
                         return true;
@@ -113,15 +114,20 @@ public class EclipseGrepTool extends AbstractEclipseTool {
             } catch (CoreException e) {
                 // skip container on error
             }
-            if (matches.size() >= AiReponseBuilder.MAX_GREP_FILES) break;
+            if (matchedFiles.size() >= AiReponseBuilder.MAX_GREP_FILES) break;
         }
     }
 
-    private int countOccurrences(IFile file, SearchQuery query) {
+    private void addHits(IFile file, SearchQuery query, String path, List<GrepHit> hits,
+            Set<String> matchedFiles) {
         try {
-            String content = file.readString();
-            return query.count(content);
-        } catch (CoreException e) { return 0; }
+            var lineHits = query.matchingLines(file.readString());
+            if (lineHits.isEmpty()) return;
+            matchedFiles.add(path);
+            lineHits.forEach(lh -> hits.add(new GrepHit(path, lh.line(), lh.text())));
+        } catch (CoreException e) {
+            // skip unreadable file
+        }
     }
 
     protected void refreshScope(List<IContainer> scope) {

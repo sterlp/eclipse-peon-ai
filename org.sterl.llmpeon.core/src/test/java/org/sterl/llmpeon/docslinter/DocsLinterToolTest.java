@@ -6,12 +6,19 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.sterl.llmpeon.ai.AiProvider;
+import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.memory.ThreadSafeMemory;
+import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
+import org.sterl.llmpeon.tool.model.SimpleMessage;
 
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 
@@ -231,6 +238,60 @@ class DocsLinterToolTest {
                 .hasMessageContaining("not a directory");
     }
 
+    // --- UC-DL-60: workspace-qualified root resolves against workingDir ---
+    // UC-DL-60
+    @Test
+    void workspaceQualifiedRootResolvesAgainstWorkingDirectory() throws IOException {
+        // GIVEN the root is workspace-qualified — not a directory on disk,
+        // but the name exists relative to the tool's workingDir
+        assertThat(Files.isDirectory(Path.of("/llmpeon-parent"))).as("fixture precondition").isFalse();
+        Path nested = rootDir.resolve("llmpeon-parent");
+        Files.createDirectories(nested.resolve("docs"));
+        Files.writeString(nested.resolve("docs/a.md"), """
+                ---
+                idPrefix: DL
+                ---
+
+                # R-DL-1 Rule ✅ done
+
+                ## UC-DL-1 Covered UC ✅
+                """);
+
+        // WHEN any of the three methods runs with the workspace-qualified root
+        String docsOnly = tool.lintDocs("/llmpeon-parent", List.of("docs"), null);
+        String docsAndTests = tool.lintDocsAndTests("/llmpeon-parent", List.of("docs"), null, null, null);
+        String next = tool.nextIds("/llmpeon-parent", List.of("docs"), null);
+
+        // THEN the workingDir-relative directory is found — real numbers, no 0/0
+        assertThat(docsOnly).contains("1 doc file(s): 1 linted, 0 not participating");
+        assertThat(docsOnly).contains("UC definitions: 1 / 1");
+        assertThat(docsAndTests).contains("1 doc file(s): 1 linted, 0 not participating");
+        assertThat(next).contains("1 doc file(s): 1 linted, 0 not participating");
+    }
+
+    // --- UC-DL-61: unresolvable root names both tried paths ---
+    // UC-DL-61
+    @Test
+    void unresolvableRootNamesBothTriedPaths() {
+        // GIVEN the root exists neither as a directory nor relative to workingDir
+        var missing = "/no-such-peon-root";
+        assertThat(Files.isDirectory(Path.of(missing))).as("fixture precondition").isFalse();
+        assertThat(Files.isDirectory(rootDir.resolve("no-such-peon-root"))).as("fixture precondition").isFalse();
+        var expected = "Root is not a directory: " + missing
+                + " (also tried: " + rootDir.resolve("no-such-peon-root") + ")";
+
+        // WHEN any of the three methods runs — THEN the error names both tried paths
+        assertThatThrownBy(() -> tool.lintDocs(missing, List.of("docs"), null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage(expected);
+        assertThatThrownBy(() -> tool.lintDocsAndTests(missing, List.of("docs"), null, null, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage(expected);
+        assertThatThrownBy(() -> tool.nextIds(missing, List.of("docs"), null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage(expected);
+    }
+
     @Test
     void rejectsInvalidIdPattern() {
         assertThatThrownBy(() ->
@@ -266,6 +327,81 @@ class DocsLinterToolTest {
         assertThat(testGlobs).isInstanceOf(JsonArraySchema.class);
 
         assertThat(spec.parameters().properties()).doesNotContainKey("testGlob");
+    }
+
+    // --- UC-DL-63: onTool line carries doc + finding numbers, not just the name ---
+    // UC-DL-63
+    @Test
+    void onToolLineCarriesDocAndFindingNumbers() throws IOException {
+        // GIVEN a fixture with 1 doc and exactly 1 UNBELEGT_ERLEDIGT finding
+        // (UC-DL-2 is marked done but has no test)
+        writeDoc("a.md", """
+                ---
+                idPrefix: DL
+                ---
+
+                # R-DL-1 Rule ✅ done
+
+                ## UC-DL-1 Covered UC ✅
+                ## UC-DL-2 Uncovered Done ✅
+                """);
+        Files.createDirectories(rootDir.resolve("src/test/java"));
+        Files.writeString(rootDir.resolve("src/test/java/Test.java"), "// UC-DL-1\nvoid testIt() {}");
+
+        var monitor = new CapturingMonitor();
+        tool.withToolRequest(requestWith(monitor));
+
+        // WHEN lintDocsAndTests runs
+        String output = tool.lintDocsAndTests(null, List.of("docs"), List.of("src/test/java"),
+                null, null);
+
+        // THEN the onTool line names the numbers of this fixture
+        assertThat(output).contains("UNBELEGT_ERLEDIGT UC-DL-2");
+        assertThat(monitor.toolMessages).containsExactly(
+                "lintDocsAndTests: 1 docs, 1 findings (1 UNBELEGT_ERLEDIGT)");
+    }
+
+    // --- UC-DL-63: zero findings omit the kappa clause ---
+    // UC-DL-63
+    @Test
+    void onToolLineWithoutFindingsOmitsKappaClause() throws IOException {
+        writeDoc("a.md", """
+                ---
+                idPrefix: DL
+                ---
+
+                # R-DL-1 Rule ✅ done
+
+                ## UC-DL-1 Covered UC ✅
+                """);
+
+        var monitor = new CapturingMonitor();
+        tool.withToolRequest(requestWith(monitor));
+
+        // WHEN lintDocs runs on a clean fixture
+        String output = tool.lintDocs(null, List.of("docs"), null);
+
+        // THEN the onTool line shows 0 findings without a kappa clause
+        assertThat(output).contains("findings: 0");
+        assertThat(monitor.toolMessages).containsExactly("lintDocs: 1 docs, 0 findings");
+    }
+
+    private ToolLoopRequest requestWith(AiMonitor monitor) {
+        var model = LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", "http://localhost:9999").build();
+        return ToolLoopRequest.builder()
+                .memory(new ThreadSafeMemory())
+                .chatModel(model)
+                .monitor(monitor)
+                .build();
+    }
+
+    /** Captures TOOL chat messages so the onTool status line can be asserted. */
+    private static final class CapturingMonitor implements AiMonitor {
+        final List<String> toolMessages = new ArrayList<>();
+        @Override
+        public void onChatResponse(SimpleMessage m) {
+            if (m.role() == SimpleMessage.Type.TOOL) toolMessages.add(m.message());
+        }
     }
 
     private void writeDoc(String name, String content) throws IOException {

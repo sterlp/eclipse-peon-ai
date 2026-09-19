@@ -6,9 +6,7 @@ idPrefix: DL
 
 > **Status:** ✅ done (2026-09-15) — R-DL-1…16 gebaut, drei Reviews bestanden. Nachzyklus:
 > `reportPath` gestrichen (echt read-only), Tool-Split `DocsIdTool`/`DocsLinterTool`, raus aus dem
-> Disk-Gate, Tool-Matrix je Agent getestet. Importiert aus dem
-> Feature-Request
-> [`harness-request-docs-linter.md`](../harness-request-docs-linter.md) (Jon/FORgE → Harness-Team).
+> Disk-Gate, Tool-Matrix je Agent getestet.
 > **Ziel:** Ein falsches `✅` maschinell unmöglich machen: jeder als erledigt markierte Use-Case
 > muss durch einen Test belegt sein, der die ID des Use-Case trägt.
 
@@ -59,7 +57,7 @@ Die Regelbindung liest der Linter aus der Doc-Struktur (braucht er für R-DL-3 o
 Keine Registry-Datei: **die Docs sind die Registry**, `nextIds` liest sie.
 
 Default-Regex: `\bUC-[A-Z]+-\d+(?:-\d+[a-z]?)*\b` — matcht flach (`UC-READTOOLS-7`) **und**
-hierarchisch (`UC-KUPO-3-3`, FORgE-Erstanwender). `idPattern` ist damit **Pflicht-Parameter, kein
+hierarchisch (`UC-FEATURE_NAME-3-3`, Erstanwender). `idPattern` ist damit **Pflicht-Parameter, kein
 Nice-to-have**: der Request-Regex mit `+` würde unser flaches Schema still nicht finden — exakt der
 Null-Treffer-Fehlerzustand aus R-DL-6.
 
@@ -718,6 +716,59 @@ und wirft keinen Fehler.
 GIVEN ein beliebiger Lauf über einen Baum WHEN er beendet ist THEN ist keine Datei erzeugt, geändert
 oder gelöscht worden.
 
+### R-DL-18 — Root-Fallback: workspace-qualifizierte Pfade werden aufgelöst ❌
+
+Der `root`-Parameter wird tolerant aufgelöst, an **einem** Choke-Point für alle drei Methoden
+(`lintDocs`, `lintDocsAndTests`, `nextIds`): gilt der gegebene Pfad als Verzeichnis, wird er benutzt;
+sonst probiert das Tool den Pfad **ohne führenden `/`**, aufgelöst gegen das `workingDir` des Tools;
+scheitern beide Versuche, kommt der klare Fehler („Root is not a directory") mit **beiden**
+probierten Pfaden. Nie eine leise 0/0-Suche — ein falscher Pfad darf nicht wie ein sauberer Bestand
+aussehen (R-DL-6, UC-DL-27/40/41).
+
+> **WEIL** (User Paul, 2026-09-16): Der PO ruft die Tools mit workspace-qualifizierten Pfaden
+> (`/llmpeon-parent`) auf, wie er sie aus der Eclipse-Welt kennt — und bekam still 0/0 bzw. einen
+> rohen Fehler. „Im Tool normalisieren, dass beides geht" schlägt jedes Aufruf-Merkblatt: ein Tool
+> für Agenten muss die offensichtliche Pfadform fressen, nicht den Agenten zwingen, zwei Pfaddialekte
+> auseinanderzuhalten.
+
+#### UC-DL-60 — Workspace-qualifizierter Root wird aufgelöst ❌
+
+GIVEN `root=/llmpeon-parent` (kein Disk-Verzeichnis), aber `llmpeon-parent` existiert relativ zum
+`workingDir` WHEN eine der drei Methoden läuft THEN wird das Verzeichnis gefunden und der Report
+zeigt echte Zahlen (Scan-Umfang > 0), kein 0/0.
+
+#### UC-DL-61 — Unauflösbarer Root nennt beide Versuche ❌
+
+GIVEN `root` existiert weder als Verzeichnis noch ohne führenden `/` relativ zum `workingDir` WHEN
+eine der drei Methoden läuft THEN Fehlermeldung nennt **beide** probierten Pfade — kein stiller
+leerer Report.
+
+### R-DL-19 — Scan-Quellen werden relativ zum Root benannt ✅ done (2026-09-19, `15e3eab`)
+
+Der Report nennt die gescannten Verzeichnisse **relativ zum Root** (`docs`, `src/test/java`, …),
+nicht als absolute Disk-Pfade — der User sieht auf einen Blick, welche Wurzeln aktiv waren, ohne
+absolute Pfade mental gegen die Parameter auflösen zu müssen.
+
+#### UC-DL-62 — Quellliste relativ ✅ done
+
+GIVEN ein Lauf mit `docRoots=["docs"]`, `testRoots=["src/test/java"]` WHEN der Report entsteht
+THEN nennt die Quellliste `docs`, `src/test/java` (relativ zum Root), nicht die absoluten Pfade.
+
+### R-DL-20 — Lint-Läufe sind per `onTool` sichtbar — compact, mit Zahlen ✅ done (2026-09-19, `15e3eab`/`73bb156`)
+
+Jeder Lauf meldet per `onTool` **eine Zeile** an die UI: Tool-Name + Scan-Zahl + Befundzahlen,
+z. B. `lintDocs: 3 docs, 2 findings (1 UNBELEGT_ERLEDIGT)`. Der vollständige Report bleibt
+ausschließlich im Rückgabewert (R-DL-7) — die Statuszeile bekommt nie den Vollreport.
+
+> **WEIL** (User Paul, 2026-09-17): `onTool` zeigte bisher nur den Methodennamen — der User sah,
+> *dass* gelintet wurde, aber nicht *was herauskam*. Eine kompakte Zeile mit Zahlen reicht; mehr
+> wäre Rauschen in der Statuszeile.
+
+#### UC-DL-63 — onTool-Zeile nennt Zahlen, nicht nur den Namen ✅ done
+
+GIVEN ein beliebiger Lauf WHEN `onTool` feuert THEN enthält die Zeile Doc-Anzahl und
+Befundzahl(en) — nicht nur den Methodennamen.
+
 ## Nicht-funktional
 
 | Anforderung | Begründung |
@@ -763,7 +814,7 @@ Die Prompt-Dateien gehören dem PO ([prompts.md](prompts.md)); die Agenten ände
 | Q5 | Tool-Filter je Agent → **🔒 Split in `DocsIdTool` (nur Jon) und `DocsLinterTool` (alle)** (User 2026-09-15). Der Filter wirkt tool-weit, nicht method-weit — der Split macht aus einer Sonderregel eine normale Zuordnung (R-DL-14). | 🔒 |
 | Q10 | 🐞 Linter hing am `diskToolsEnabled`-Gate (Default `false`) und fehlte Jon ganz → **🔒 immer registrieren, Jon + Da Thinka bekommen ihn** (User 2026-09-15). R-DL-15, R-DL-14. | 🔒 |
 | Q1 | **Dogfooding:** llmpeon-Docs kennen keine UC-IDs (Ist: `R1`/`R2` doc-lokal, ~200 `→ Klasse.methode`-Verweise in 33 Docs). → **🔒 Tool bauen + Prompts anpassen, Bestand NICHT rückwirkend nachziehen**; ID-Pflicht ab jetzt bei jedem angefassten Use-Case (Einführung Schritt 3), Teilnahme per Opt-in (R-DL-11). | 🔒 |
-| Q2 | Migrationshilfe `suggestIds` → **🔒 separat, nach dem Grundgerüst** (User 2026-09-15). Begründung: die drei Kernmethoden sind deterministische Mengenabgleiche, `suggestIds` muss heuristisch **raten** — anderer Charakter, andere Testbarkeit. Und da Opt-in bei uns ohnehin ein Doc-Umbau ist (Q6), spart es uns weniger als dem Erstanwender FORgE. | 🔒 |
+| Q2 | Migrationshilfe `suggestIds` → **🔒 separat, nach dem Grundgerüst** (User 2026-09-15). Begründung: die drei Kernmethoden sind deterministische Mengenabgleiche, `suggestIds` muss heuristisch **raten** — anderer Charakter, andere Testbarkeit. Und da Opt-in bei uns ohnehin ein Doc-Umbau ist (Q6), spart es uns weniger als dem Erstanwender. | 🔒 |
 | Q6 | **Definitionsform → 🔒 nur Überschriften** (`#### UC-…`), keine Bullet-Variante. User 2026-09-15: „Konsistenz ist besser als Optionen, das Tool soll Fehler melden wenn wir abweichen." Preis: Opt-in eines Bestands-Docs ist ein Umbau, kein Handgriff — passiert beim ohnehin-Anfassen. | 🔒 |
 | Q8 | **Sprachneutralität → 🔒 Methodenkopf-Zwang gestrichen** (User 2026-09-15, nach IST-Befund: `it(…)`/`export const` wurden nicht erkannt → stilles False Negative → falsches `UNBELEGT_ERLEDIGT`). Dazu `testGlobs` als Liste, `--` als drittes Kommentar-Präfix, Default-Testtypen aus `TextFileTypes`, `docRoots` vom Test-Scan ausgeschlossen. Betrifft R-DL-4, R-DL-1; neue UC-DL-34..39. | 🔒 |
 | Q9 | **Scan-Umfang im Report → 🔒 gefundene Dateizahlen** (Doc-Dateien und Test-Quelldateien), nicht nur ID-Zahlen (User 2026-09-15: „als Hinweis für das LLM ob es das Verzeichnis richtig erwischt hat"). UC-DL-40/41. | 🔒 |

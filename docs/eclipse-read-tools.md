@@ -39,6 +39,9 @@ verkehrt ihn ins Gegenteil und ist der Hauptgrund, warum Agenten auf `diskReadFi
   Bounds-Check — sonst liefert `(900, 100)` den R1b-Hinweis statt der Zeilen 100–120.
   `endLine = 0` bleibt Sentinel („bis Dateiende") und wird nicht getauscht.
   → `FileLinesTest.existingBehaviourUnchanged`
+  **Supersedet in dieser einen Klausel durch R9 (2026-09-17):** die Ganzdatei-Ausgabe
+  (`startLine<=0 && endLine<=0`) trägt künftig ebenfalls Zeilennummern — Rest von R1c
+  (Tauschen, Klemmen, Reihenfolge) unverändert.
 - **R1e ✅ done — `diskReadFile` verhält sich identisch.** Dieselbe Clamp-Semantik
   (R1a/R1b/R1c/R1d) gilt für das Disk-Tool; beide Tools benutzen **denselben** `FileLines`-Pfad
   im core. Divergierendes Verhalten zwischen den Familien ist ein Bug.
@@ -415,3 +418,39 @@ Modell sieht den Fehler und korrigiert.
   Traversal hängt (Scope/Sync/Wildcard), darf der Dev-Agent die Eclipse-Suche als Alternative
   vorschlagen — mit Begründung, dann entscheidet der PO und ADR-0035 wird ergänzt.
   → siehe [ADR-0035](adr/0035-grep-regex-first-literal-fallback.md)
+
+
+## R8 ✅ done (2026-09-19, `e0538fa`) — Grep liefert Trefferzeilen mit Zeilennummern
+
+**IST (verifiziert, SearchAgent 2026-09-17):** Beide Grep-Familien (`EclipseGrepTool.java:46,126`,
+`DiskGrepTool.java:55,72`, Output via `AiReponseBuilder.grepComplete`) listen **keine** Trefferzeilen —
+nur `pfad: N occurrence(s)`. Der Agent muss die Trefferstelle in einem Folge-Read suchen.
+
+**SOLL:** Der Grep liefert die **passenden Zeilen mit 1-basierter Zeilennummer** (gezählt über den
+vollen Datei-Inhalt) im Format `pfad:42: text`. Gilt für **beide** Familien — geteilte Logik im core
+(`AiReponseBuilder`/`SearchQuery`), eine Implementierung. Die per-File-Occurrence-Zählung entfällt
+(die Zeilen tragen die Information); **Caps und Ehrlichkeit bleiben**:
+
+- `MAX_GREP_FILES = 100` bleibt; zusätzlich ein **Zeilen-Cap (Default 100 Zeilen gesamt,
+  dateiübergreifend)** mit Disclosure `showing N of M matched lines — narrow your search`
+  (gleiche Ehrlichkeitsfamilie wie `showing N of M` bei den Read-Tools).
+- `modeHint()` (regex/literal, R2c) und `TextFileTypes.filterHint()` bleiben unverändert.
+
+**WEIL:** Paul: „grep scheint keine Zeilennummern zu liefern" — der IST ist schlimmer: keine Zeilen
+überhaupt. `pfad: N occurrences` erzwingt einen zweiten Read pro Treffer; Zeilen + Nummern machen
+den Treffer sofort adressierbar (`replaceLines`, `insertLines`, Range-Read). Der Zeilen-Cap schützt
+vor der Token-Bombe bei häufigen Begriffen — counts-only war der bisherige, unbenannte Cap.
+
+- GIVEN Datei mit Treffer in Zeile 42, WHEN grep läuft, THEN erscheint `pfad:42: <Zeileninhalt>`
+- GIVEN 500 Treffer über 20 Dateien, WHEN grep läuft, THEN werden die ersten 100 Zeilen geliefert
+  mit `showing 100 of 500 matched lines`
+
+## R9 ✅ done (2026-09-19, `e0538fa`) — Zeilennummern immer, auch beim Ganzdatei-Lesen
+
+**SOLL:** Alle Datei-Reads liefern Zeilennummern — **auch** bei `startLine<=0 && endLine<=0`
+(Ganzdatei). Die Wegoptimierung „Ganzdatei ohne Zeilennummern" wird zurückgenommen; das supersedet
+genau diese Klausel von R1c (Rest von R1c unverändert, siehe Notiz dort).
+
+**WEIL:** Paul: „scheinbar sind die aber immer hilfreich" — beim Ganzdatei-Lesen hatte er sie
+wegoptimiert, doch auch danach braucht der Agent Zeilennummern für Folge-Edits. Token-Preis
+(~5–7 Zeichen/Zeile) ist kleiner als ein erneuter Range-Read oder eine falsche Edit-Position.

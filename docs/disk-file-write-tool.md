@@ -42,6 +42,52 @@ Errors if 0 matches. Errors if oldString equals newString.
 „first occurrence" — das Tool log über seine eigene Semantik. SOLL (User): Replace-All + Count-Disclosure;
 identisch in beiden Tool-Familien (ein Verhalten, eine Implementierung).
 
+### Edit-Guard: `oldString` ist Pflicht-Anker ✅ done (2026-09-19, `7800a56`)
+
+`oldString` ist in **allen** Edit-Tools beider Familien (`diskEditFile`, `eclipseEditFile`,
+`eclipseUpdateOpenFile`) ein verpflichtender Anker mit Mindestlänge. Der Check läuft **explizit und
+up-front** im geteilten `FileUtils.applyEdit` — nicht als Nebeneffekt des Countings:
+
+- `null`, leer oder blank → `IllegalArgumentException`, die die Anforderung nennt
+- `trim().length() < 3` → dieselbe `IllegalArgumentException` — **mindestens 3
+  nicht-Whitespace-Zeichen**
+
+**WEIL:** Die Korruption vom 2026-09-16 (7,3 Mio. Zeilen) entstand, weil ein leerer `oldString`
+still als `""` behandelt wurde — `String.replace("", x)` fügt an jeder Position ein, und der
+Marker `replaced 0 occurrence(s)` log über das echte Verhalten (AGENTS.md: ein Tool lügt nie). Ein
+Anker unter 3 Zeichen ist fast immer ein Agentenfehler; Mikro-Edits haben Auswege
+(`replaceLines`, `insertLines`, `writeFile`). Zwischen „1 Zeichen nach Trim" und „3 Zeichen"
+entschied der User bewusst für **eine einfache Schwelle ohne Trim-Sonderfälle** („schwierig" —
+Einfachheit schlägt Randfall-Intelligenz).
+
+> **Umsetzung (2026-09-19, `7800a56`):** Guard ist jetzt die **erste** Prüflinie in
+> `applyEdit` mit der exakten BDD-Message; der Count-Schutz bleibt als zweite Schranke.
+> Der vorherige IST-Zustand (Schutz nur zufällig via `countOccurrences`) ist damit abgelöst.
+
+**BDD:**
+```
+GIVEN diskEditFile mit oldString=null oder blank
+WHEN der Edit läuft
+THEN IllegalArgumentException mit benannter Anforderung („oldString is required, min 3
+     non-whitespace chars") — kein stiller ""-Replace
+
+GIVEN diskEditFile mit oldString="}}" (2 Zeichen)
+WHEN der Edit läuft
+THEN dieselbe IllegalArgumentException — Ausweg: replaceLines/insertLines/writeFile
+
+GIVEN diskEditFile mit gültigem oldString (>= 3 nicht-Whitespace-Zeichen)
+WHEN der Edit läuft
+THEN Replace-All + Count-Disclosure wie gehabt
+```
+
+> **Bewusst KEIN Self-Reference-Guard (2026-09-19, Paul):** Ein `newString`, der den `oldString`
+> enthält (`foo()` → `foo(); // erledigt`), ist ein legitimer Edit — ein Guard darauf blockiert den
+> Normalfall. Selbstwachstum über Ketten-Edits (`abc` → `abcd` → …, jeder Call wächst um
+> `Treffer × Anhang`) ist damit möglich, aber explizite Agenten-Absicht, kein stilles Tool-Versagen;
+> der SimpleDiff-Guard fängt die Anzeige-Kippe. Ein fertiger Guard liegt auf
+> `bugfix/edit-tool-insert` (`FileUtils.applyEdit`, Commit `a3e8ce1`) — nur mergen, falls er doch
+> wieder gebraucht wird.
+
 ### `diskRenameResource(sourcePath, targetPath)`
 Rename or move. Creates target parent directories. Errors if target exists.
 

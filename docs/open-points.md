@@ -2,6 +2,86 @@
 
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
 
+## ❓ `applyEdit` Not-Found-Fehler dumpet das gesamte File (2026-09-19, Jon — offen, keine Lösung)
+
+`FileUtils.applyEdit` hängt bei „not found" den **kompletten Datei-Inhalt** in die
+IllegalArgumentException. **Paul (2026-09-19): bewusst so gebaut** — er beobachtete, dass Modelle
+ohne den Inhalt sofort ein zweites Read nachschieben (zusätzlicher Tool-Roundtrip, auch teuer);
+der Dump spart den Roundtrip genau im Fehlerfall. Nach dem alten String suchen geht nicht — der
+Anker liegt ja daneben. **Offen:** beide Seiten sind schlecht (Roundtrip vs. Context-Bombe bei
+großen Dateien); eine gute Lösung (z. B. Kontext-Fenster um die ähnlichste Fundstelle, modell-
+oder größenabhängig) existiert noch nicht. Bleibt stehen, kein Bau.
+
+## 🔒 Self-Reference-Guard bewusst NICHT übernommen (2026-09-19, Paul bestätigt)
+
+Der Self-Ref-Guard aus `bugfix/edit-tool-insert` (`a3e8ce1`: `newStr.contains(oldStr) &&
+content.contains(newStr)` → IAE) war nie gemerged und wurde im `FileUtils`-Umbau bewusst nicht
+übernommen. Begründung: Das Selbstwachstum (`abc` → `abcd` → …, jeder Call wächst um
+`Treffer × Anhang`) ist **explizite Agenten-Absicht** — jeder Call ist ein korrekt formulierter
+Edit mit gültigem Anker; der Tool-Output meldet ehrlich „replaced N occurrence(s)". Der Guard
+dagegen blockierte legitime Edits im Normalfall (Anker ist fast immer Präfix des Neuen, z. B.
+`foo()` → `foo(); // erledigt`). Der **Edit-Guard** (min. 3 Non-WS-Zeichen, `7800a56`) deckt die
+teure Korruptions-Klasse ab. **Falls wir ihn wieder brauchen: er liegt fertig auf
+`bugfix/edit-tool-insert` (`FileUtils.applyEdit`, Commit `a3e8ce1`).**
+
+## 🔒 Merge `release-2026-09-06` → main = User-Entscheid — ERLEDIGT (2026-09-19)
+
+**Gelöst:** Content war bereits vollständig auf dem Branch — Squash-PR #132 (`45f2a0d2`), Merge-Tree
+byte-identisch mit dem Release-Tip `2e338e5` (verifiziert per merge-tree Dry-Run, alle 3 Commits
+im Tree nachgewiesen). Ein echter Merge hätte 15 Scheinkonflikte + 25 redundante History-Commits
+bei null Content-Gewinn erzeugt. Konsolidierung von Paul angeordnet (2026-09-19), als verifizierter
+No-Op geschlossen. Ebenso `fix/compact-slot-model` (+7) — inhaltlich bereits via Squash-PR #140
+(`c808c42`) drin, Merge `0af001a` ist history-only. Ein reviewbarer Branch: `bugfix/user-context-selection`.
+
+## 🔒 SimpleDiff-Bremse: LCS-Diff kippt bei großen Dateien — GELÖST (2026-09-16)
+
+`eclipseEditFile` → `AIChatView.onFileUpdate:329` → `SimpleDiff.unifiedDiff:21` → `lcsDiff:97` →
+`OutOfMemoryError: Java heap space` (gesamter Agenten-Loop gestorben). `lcsDiff` allokiert
+`int[m+1][n+1]` ≈ 4·m·n Bytes (`SimpleDiff.java:91-101`), synchron auf dem Tool-Thread — ein OOM
+dort kippt den ganzen Eclipse-Prozess. Heap 4 GB → Kipppunkt ≈ 6e8 Zellen. Trigger war eine
+**in-memory aufgeblähte** Altdatei (7,3 Mio. Zeilen, siehe ReplaceLines-Evidence unten) × 332
+neue Zeilen ≈ 9,7 GB. Ein normales Doc (300×300 ≈ 360 KB) ist sicher.
+
+**SOLL (Vorschlag):** Guard in `SimpleDiff.unifiedDiff` — wenn `m·n` über Schranke (z. B. 5e6
+Zellen ≈ 20 MB), kein LCS: summarische Meldung („file updated, N→M lines changed") statt Diff. Kein
+Rate-Parsing, kein Verhalten Risiko — nur die Anzeige degeneriert kontrolliert.
+
+**Gelöst (2026-09-16, `2e51a16`):** Guard `MAX_LCS_CELLS = 5_000_000` in `SimpleDiff.unifiedDiff`
+(Choke-Point, kein `catch OOM`); darüber human-readable Summary mit beiden Zeilenzahlen + Schranke
+(„a tool must never lie"). `AIChatView.onFileUpdate` zeigt Summary als TOOL-Message. Async/Job-Umzug
+bewusst descoped (Diff läuft bereits auf dem Tool-Thread; Job-Umzug erzeugt Chat-Reihenfolge-
+Probleme). 4 Guard-Tests in `SimpleDiffTest` (unter/an/über Schranke + Crash-Shape als 200k×100).
+
+## 🔒 User-Context-Selection-Regression — GELÖST (2026-09-16, User-Smoke steht aus)
+
+Paul meldete: selektierter Text fehlt im Kontext + Statuszeile (Regression ggü. vorletztem Release).
+Diagnose: `0a998ec` — Nicht-Text-Selektions-Events räumen die Editor-Selektion weg
+(`AIChatView.java:255` + Clear-Logik `UserContext.java:157-160`). **Live-Beweis (2026-09-16,
+Pauls Paste):** Selektion in README.md kommt als Snippet an, aber mit „selected content not in a
+file." — die **Ressource** wurde vom Event weggeräumt, der Text überlebte halb. SOLL steht in
+[user-context.md](user-context.md) (R-SEL-1 bis R-SEL-3, inkl. Pauls Rendering-Entscheid: Snippet +
+Dateipfad statt komplettem Dateiinhalt, Homepage-Text bleibt SOT). Fix-Zyklus: Branch
+`bugfix/user-context-selection` (von main), roter Test für die Event-Sequenz (inkl. Ressource),
+dann Fix, Review.
+
+**Gelöst (2026-09-16, `5ceb3aa` + Review-Fixes `c958d78`):** R-SEL-1…3 gebaut, Review CONCERNS →
+abgenommen (Plugin 216/0, Core 866/0, Linter UC 3/3). Mutation-Note: die Setter-Reihenfolge in
+`applyTextSelection` (Resource vor Selektion) fangen Headless-Tests nicht — Abdeckung durch den
+User-Smoke (bei falscher Reihenfolge ist die Selektion sofort sichtbar weg). Rest: siehe
+[user-context.md](user-context.md).
+
+## ❓ Docs-Linter-Tool: `idPattern`-Parameter verifizieren (2026-09-16)
+
+Da Dok meldete im Review: `lintDocsAndTests` mit explizitem `idPattern UC-SEL-\d+` liefere 0/0.
+Jon-Verifikation am Disk-Root (`/Users/sterlp/dev/workset/peon-ai`): dasselbe Pattern liefert
+korrekt 3/3 UCs + 5/3 Test-IDs — das Pattern selbst funktioniert.
+
+**Entscheidung (Paul, 2026-09-16):** Die Wurzel ist der Root, nicht das Pattern — workspace-
+qualifizierte Pfade (`/llmpeon-parent`) scheitern still. → **R-DL-18** (Root-Fallback: wie gegeben
+probiert, dann ohne führenden `/` gegen das `workingDir`, sonst Fehler mit beiden Pfaden), Umsetzung
+im Mini-Zyklus `bugfix/linter-root-fallback`. Die 0/0-Evidenz von Da Dok passt zu diesem Mechanismus;
+die Verifikation erledigt sich mit dem Fix.
+
 ## ⏳ `nextIds` reserviert nicht — Zustandslosigkeit ist Feature, der Ablauf ist die Pflicht (2026-09-15)
 
 **Pauls Frage:** „Wenn `nextIds` eine ID zieht — wie stellen wir sicher, dass es immer eine NEUE
@@ -183,13 +263,35 @@ aus Memory-Regel #33, diesmal im anderen Modul; (2) Schwellenwert-Änderungen �
 läuft noch (Trust-Dialog); Commit nach grünem Lauf.
 
 
-## ❓ `eclipseReplaceLines`/`diskReplaceLines`: Replace verhält sich sporadisch wie Insert (2026-09-15, HOCH)
+## 🔒 `eclipseReplaceLines`/`diskReplaceLines`: Replace verhält sich sporadisch wie Insert — GELÖST (2026-09-19)
+
+**Auflösung (Zyklus `bugfix/user-context-selection`, Inc 1):** Die Korruptionsklasse hatte zwei
+Mechanismen, beide jetzt geschlossen: (1) **Primär-Ursache** — leerer/blanker `oldString` in
+`eclipseEditFile` wurde still zu `""` coalesced (`String.replace("", x)` fügt an jeder Position
+ein; „replaced 0 occurrence(s)" log über das echte Verhalten). Pauls Hypothese, code-bestätigt →
+**Edit-Guard** gebaut (`7800a56`: oldString Pflicht, `trim().length() >= 3`, up-front in
+`FileUtils.applyEdit`, alle 3 Oberflächen). (2) Self-Reference-Wachstum — durch denselben Guard
+praktisch ausgeschlossen (Anker ≥ 3 Non-WS-Zeichen). Die Stress-Jagden (1000+10000 Headless-
+Iterationen, 8-Zellen-UI-Matrix) fanden **kein** sporadisches Reprodukt in `replaceLines` selbst —
+die beobachteten Vorfälle passen zum empty-oldString-Mechanismus. Die falsch getesteten
+Last-Loop-/UI-Harness-Tests existieren nicht mehr; Mutation-Nachweise: 5× rot im Guard.
+Rest-Risiko: der veraltete `IllegalStateException`-Wrapper war die letzte Ablenkung und ist
+umbenannt (`73bb156`).
 
 **Evidence (Da Mek, Docs-Linter Inc 3):** Aufruf `eclipseReplaceLines(file, line=118, newContent=…)`
 → **alte Zeile 118 blieb stehen**, neuer Content landete ab Zeile 119. Effektiv Insert statt
 Replace. Gleiches Verhalten bei `diskReplaceLines` (`TestParser.java`). **Nicht bei jedem Aufruf**
 reproduzierbar — bei anderen Dateien im selben Lauf korrekt. Kein Muster erkennbar
 (Mehrzeiligkeit? Sonderzeichen? Position?).
+
+**Neue Evidence (2026-09-16, OOM-Crash) — Verdacht erhält ein Live-Reprodukt:** Der In-Memory-
+Zustand von `docs/open-points.md` in Eclipse wuchs auf **~7,3 Mio. Zeilen** an (21997 duplizierte
+Blöcke: Header + Statuszeile + Inhalt wiederholten sich ~22k×, `# Open Points` in derselben Zeile
+wie der vorangehende Sektionstitel — Insert statt Replace als Wiederholform), während die **Disk-
+Datei unversehrt blieb** (332 Zeilen, 22K, `git` unmodified == HEAD). Eclipse-Reads (File/Docs-Grep)
+zeigten die Duplikate, Disk-Grep dasselbe File sauber. Der SimpleDiff-OOM oben ist Folge, nicht
+Ursache. Das stützt die „Replace-als-Insert"-Korruptionsklasse: sie lebt im In-Memory-/Editor-Pfad,
+nicht auf Disk.
 
 **Folge:** Java-Quellen wurden schrittweise korrumpiert („Duplicate local variable"), bis Da Mek
 den Überblick verlor; der ganze Inc-3-Stand musste auf `6520377` zurückgesetzt werden
@@ -202,6 +304,10 @@ tut als es meldet, ohne Fehlermeldung. Verwandt mit der AGENTS-Regel „a tool m
 **Nächster Schritt:** kontrollierte Einzeltests (ein-/mehrzeilig, LF/CRLF, letzte Zeile, Datei mit/
 ohne Schluss-Newline, Datei im Editor offen vs. geschlossen). **Verdachtsmoment:** ungespeicherter
 Editor-Buffer vs. Datei auf Platte — Da Mek arbeitete an Dateien, die ich parallel offen hatte.
+**Neu (2026-09-16):** Konkurrenzthese — die Korruption entsteht, wenn ein Tool-Write (Write vor
+Diff, `EclipseWorkspaceWriteFileTool.java:133-134`) auf ein File trifft, dessen In-Memory-Modell
+bereits divergiert; der Crash-Stack belegt Write-then-Diff. Die Repro-Sequenz-Aufklärung gehört in den
+Tool-Bug-Zyklus.
 
 ## ❓ ApiRetry: Cancellation-Evidenz-Sammlung (Priorität: hoch, 3. Evidence 2026-09-11)
 
@@ -330,3 +436,19 @@ Bei Bedarf: LRU mit Obergrenze (z. B. 500). Rückversicherung mit User steht aus
 | User-Smoke Header-Compact-Buttons (BDD in agenten-status-im-header.md) | ⏳ teils erledigt | Optik ✅ (User 2026-09-15: „optisch sauber"); ausstehend: Re-Compact-Noop (2 Messages → `Nothing to compact`), Disabled-States, Tooltip — nach Merge |
 | Namen im System-Prompt: Scope über Jons Team hinaus? | 🔒 geklärt (2026-09-16, Paul) | **Nur Jons Team** (R-N1). Top-Level-Peon-Agents / Custom Agents / Da Sniffa bleiben außen vor — Wiederaufnahme nur auf expliziten Wunsch. |
 | BDD-Test für Compact-Hint-Fallback (Agenten ohne CompactSessionTool) | ❓ offen | Regel gebaut (`29a341b`), dokumentiert in context-message-concept.md. Paul 2026-09-16: „machen wir wann anders" — Backlog. |
+
+## ⏳ R-SEL-4 Umsetzungsdetails (Jon, 2026-09-16 Abend — Rückversicherung steht aus)
+
+Paul hat R-SEL-4 bestätigt („beides": `IClassFile` **und** `IType`; Typ-Event ersetzt File+Text).
+Drei Detail-Entscheidungen habe ich selbst getroffen (aus Pauls „es bleibt bis wir wieder was neues
+selektieren" abgeleitet, im Plan §2.1/§6 von Da Thinka vorgeschlagen):
+
+1. **Jeder** `setTextSelection`-Aufruf (auch leer/Caret) räumt den Typ — strikte Text/Typ-
+   Alternation. Passend zu Pauls Regel (Caret-Klick = neue Selektion) und zur R-SEL-1-Formulierung
+   („inkl. leerem/Caret-Event").
+2. **Rename** `clazz`/`setClassFile` → `javaType`/`setJavaType` (Feld `IJavaElement`) — `IType` ist
+   kein `IClassFile`, technischer Name folgt der Rolle (memory #15).
+3. **Typ-Event berührt `currentProject` nicht** (kein `updateSelectedProject`) — Project-State
+   bleibt dem Projekt-/Pin-Flow vorbehalten.
+
+Wenn Paul widerspricht: Verhalten zurückändern, Tests (UC-SEL-4) entsprechend anpassen.

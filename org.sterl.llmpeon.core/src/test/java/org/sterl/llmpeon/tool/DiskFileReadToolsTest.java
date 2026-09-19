@@ -136,9 +136,9 @@ class DiskFileReadToolsTest {
     @Test
     void readDiskFile_lineNumbersStartAtOne() throws IOException {
         Files.writeString(tempDir.resolve("lines.txt"), "alpha\nbeta\ngamma\ndelta\nepsilon");
-        // full file - line numbers must start at 1
+        // R9: full file - line numbers must start at 1
         String result = tool.diskReadFile("lines.txt", 0, 0);
-        assertEquals("alpha\nbeta\ngamma\ndelta\nepsilon",
+        assertEquals("   1: alpha\n   2: beta\n   3: gamma\n   4: delta\n   5: epsilon\n",
                 result);
     }
 
@@ -192,6 +192,6 @@ class DiskFileReadToolsTest {
         var result = tool.diskReadFile(resource.normalize().toString(), null, null);
 
         // THEN
-        assertThat(result).isEqualTo("äüß Ö ⚡");
+        assertThat(result).isEqualTo("   1: äüß Ö ⚡\n");
     }
 }

@@ -2,6 +2,7 @@ package org.sterl.llmpeon.shared;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Generates a unified diff string from two texts using LCS (longest common subsequence).
@@ -11,12 +12,24 @@ public class SimpleDiff {
     private static final int CONTEXT = 3;
 
     /**
+     * Maximum size of the LCS matrix (rows x cols, 4 bytes per cell, ~20 MB at the limit).
+     * Above this the diff is skipped with a summary instead of risking an OOM
+     * (open-points 2026-09-16: a corrupted 7.3M-line file took down the whole Eclipse process).
+     */
+    private static final long MAX_LCS_CELLS = 5_000_000L;
+
+    /**
      * Produces a unified diff string with compact hunks (3 lines of contextFile) suitable for diff2html rendering.
-     * @return empty string if no changes
+     * @return empty string if no changes; a string starting with "--- a/" if the diff was
+     *         computed; otherwise a human-readable summary when the input exceeds
+     *         {@link #MAX_LCS_CELLS} (diff skipped, both line counts and the limit exposed)
      */
     public static String unifiedDiff(String fileName, String oldText, String newText) {
         String[] oldLines = (oldText == null ? "" : oldText).split("\n", -1);
         String[] newLines = (newText == null ? "" : newText).split("\n", -1);
+
+        long cells = (long) oldLines.length * newLines.length;
+        if (cells > MAX_LCS_CELLS) return skippedSummary(oldLines.length, newLines.length, cells);
 
         List<String> diffLines = lcsDiff(oldLines, newLines);
         if (diffLines.stream().allMatch(l -> l.startsWith(" "))) return "";
@@ -102,5 +115,18 @@ public class SimpleDiff {
             }
         }
         return result;
+    }
+
+    /**
+     * Human-readable replacement for a skipped diff — exposes why it was skipped
+     * (both line counts + the limit), never a lie, never a silent loss.
+     */
+    private static String skippedSummary(int oldLineCount, int newLineCount, long cells) {
+        long bytes = cells * 4L;
+        String size = bytes >= 1_000_000_000L
+            ? String.format(Locale.ROOT, "%.1f GB", bytes / 1_000_000_000.0)
+            : (bytes / 1_000_000) + " MB";
+        return "file updated, diff skipped: " + oldLineCount + " → " + newLineCount
+            + " lines (LCS matrix would be ~" + size + ", limit " + MAX_LCS_CELLS + " cells)";
     }
 }

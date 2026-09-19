@@ -127,12 +127,14 @@ class FileLinesTest {
 
 
     @Test
-    void existingBehaviourUnchanged() {
+    void extractWholeFileHasLineNumbers() {
+        // R9
         String content = "alpha\nbeta\ngamma";
+        String whole = FileLines.extract(content, 0, 0);
 
-        assertEquals(content, FileLines.extract(content, 0, 0));
-        assertEquals("   2: beta\n   3: gamma\n", FileLines.extract(content, 3, 2));
-        assertEquals("   2: beta\n", FileLines.extract(content, 2, 2));
+        // 1-based, identical format to a range read
+        assertEquals("   1: alpha\n   2: beta\n   3: gamma\n", whole);
+        assertEquals(FileLines.extract(content, 1, 3), whole);
     }
 
     @Test

@@ -12,7 +12,8 @@ record DocsLintResult(
         int testEvidenceCount,
         int uniqueTestIdCount,
         int testSourceFileCount,
-        List<TestParser.TestEvidence> testEvidence) {
+        List<TestParser.TestEvidence> testEvidence,
+        List<String> sourceRoots) {
 
     DocsLintResult {
         definitions = List.copyOf(definitions);
@@ -20,12 +21,14 @@ record DocsLintResult(
         lintedDocs = List.copyOf(lintedDocs);
         skippedDocs = List.copyOf(skippedDocs);
         testEvidence = testEvidence == null ? List.of() : List.copyOf(testEvidence);
+        sourceRoots = sourceRoots == null ? List.of() : List.copyOf(sourceRoots);
     }
 
+    /** Compat constructor without source roots (R-DL-19). */
     DocsLintResult(List<DocDefinition> definitions, List<LintFinding> findings,
                    List<String> lintedDocs, List<String> skippedDocs, int useCaseCount) {
         this(definitions, findings, lintedDocs, skippedDocs, useCaseCount,
-                false, 0, 0, 0, List.of());
+                false, 0, 0, 0, List.of(), List.of());
     }
 
     int docFileCount() {

@@ -1,22 +1,31 @@
 package org.sterl.llmpeon.test;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.Proxy;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.IPath;
-import org.eclipse.jdt.core.IClassFile;
+import org.eclipse.jdt.core.IOrdinaryClassFile;
+import org.eclipse.jdt.core.IType;
 import org.eclipse.jface.text.ITextSelection;
 import org.junit.Test;
+import org.sterl.llmpeon.context.ContextItem;
+import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.context.UserContext;
 
 /**
- * Unit tests for the UI-update contract of UserContext's setters:
- * both return true only if an UI update is needed (no change -> false).
+ * Unit tests for the UI-update contract of UserContext's setters (both return true only if an
+ * UI update is needed, no change -> false) and the R-SEL selection semantics (UC-SEL-1..4).
  */
 public class UserContextTest {
 
@@ -166,23 +175,19 @@ public class UserContextTest {
     }
 
     @Test
-    public void resourceSetAfterClassFileNeedsUiUpdateAndStoresResource() {
-        // GIVEN a context with a selected class file
+    public void resourceSetAfterJavaTypeNeedsUiUpdateAndStoresResource() {
+        // GIVEN a context with a selected java type
         var context = new UserContext();
-        context.setClassFile((IClassFile) Proxy.newProxyInstance(
-                UserContextTest.class.getClassLoader(),
-                new Class<?>[] { IClassFile.class },
-                (proxy, method, args) -> null));
+        context.setJavaType(iType("com.example.Foo"));
         var resource = resource("/p/a.txt");
 
         // WHEN a resource is selected afterwards
         var changed = context.setSelectedResource(resource);
 
-        // THEN an UI update is needed and the resource is stored.
-        // The "clazz is nulled" effect itself is not observable — UserContext has no
-        // getter for the class file — so it is not asserted.
+        // THEN an UI update is needed, the resource is stored and the type is cleared
         assertTrue(changed);
         assertSame(resource, context.getSelectedResource());
+        assertNull(context.getJavaType());
     }
 
     @Test
@@ -198,20 +203,253 @@ public class UserContextTest {
         assertNull(context.getSelectedResource());
     }
 
+    // === R-SEL selection semantics (UC-SEL-1..3) ===
+
+    // UC-SEL-1
+    @Test
+    public void test_rSel1_nonTextSelectionEventKeepsTextSelection() {
+        // GIVEN a text selection in A.java (resource first, then the selection)
+        var context = new UserContext();
+        context.setSelectedResource(resource("/p/A.java"));
+        context.setTextSelection(textSelection(9, 9));
+
+        // WHEN a non-text selection event arrives without a resource (e.g. outline click)
+        context.setSelectedResource(null);
+
+        // THEN the selection survives and get() contains the selection context
+        var item = item(context.get(), "User text selection");
+        assertNotNull(item);
+        assertTrue(item.render().contains("10: selected text"));
+    }
+
+    // UC-SEL-1
+    @Test
+    public void test_rSel1_differentResourceClearsTextSelection() {
+        // Characterization test — green before and after the fix (plan §3.3).
+        // GIVEN a text selection in A.java
+        var context = new UserContext();
+        context.setSelectedResource(resource("/p/A.java"));
+        var selection = textSelection(9, 9);
+        context.setTextSelection(selection);
+
+        // WHEN a different resource B.java is selected
+        var changed = context.setSelectedResource(resource("/p/B.java"));
+
+        // THEN an UI update is needed and the previous text selection is cleared
+        assertTrue(changed);
+        assertNull(context.getTextSelection());
+    }
+
+    // UC-SEL-2
+    @Test
+    public void test_rSel2_selectionWithoutResourceIsStillSent() {
+        // GIVEN a pure text selection without project or resource
+        var context = new UserContext();
+        context.setTextSelection(textSelection(9, 9));
+
+        // WHEN the context is requested
+        var item = item(context.get(), "User text selection");
+
+        // THEN the selection goes out with a line-numbered snippet — no silent drop
+        assertNotNull(item);
+        assertTrue(item.render().contains("10: selected text"));
+    }
+
+    // UC-SEL-3
+    @Test
+    public void test_rSel3_snippetPlusFilePath_notFullContent() {
+        // GIVEN a selection in a known IFile whose full content carries a marker
+        var context = new UserContext();
+        context.setSelectedResource(file("/p/A.java"));
+        context.setTextSelection(textSelection(9, 9));
+
+        // WHEN the context is requested
+        var item = item(context.get(), "User text selection");
+
+        // THEN the item carries path + selected lines + snippet, but NOT the full file content
+        assertNotNull(item);
+        var render = item.render();
+        assertTrue(render.contains("/p/A.java"));
+        assertTrue(render.contains("Selected lines 10-10"));
+        assertTrue(render.contains("10: selected text"));
+        assertFalse(render.contains("FULL-FILE-MARKER"));
+    }
+
+    // === R-SEL-4: type selection replaces file/text selection (UC-SEL-4) ===
+
+    // UC-SEL-4
+    @Test
+    public void test_ucSel4_typeSelectionReplacesResourceAndText() {
+        // GIVEN a file selection with a text selection on it
+        var context = new UserContext();
+        context.setSelectedResource(resource("/p/A.java"));
+        context.setTextSelection(textSelection(9, 9));
+        var type = iType("com.example.Foo");
+
+        // WHEN a type selection event arrives (fresh context: no project)
+        context.setJavaType(type);
+
+        // THEN the type wins: resource and text selection are cleared, get() reports the type
+        assertSame(type, context.getJavaType());
+        assertNull(context.getSelectedResource());
+        assertNull(context.getTextSelection());
+        var renders = rendersOf(context.get());
+        assertTrue(renders.contains("Java type selected: com.example.Foo"));
+    }
+
+    // UC-SEL-4
+    @Test
+    public void test_ucSel4_classFileSelectionReplacesResourceAndText() {
+        // GIVEN a file selection with a text selection on it
+        var context = new UserContext();
+        context.setSelectedResource(resource("/p/A.java"));
+        context.setTextSelection(textSelection(9, 9));
+        var classFile = classFile("com.example.Foo");
+
+        // WHEN a class-file selection event arrives (fresh context: no project)
+        context.setJavaType(classFile);
+
+        // THEN the class file wins: resource and text selection are cleared, get() reports the type
+        assertSame(classFile, context.getJavaType());
+        assertNull(context.getSelectedResource());
+        assertNull(context.getTextSelection());
+        var renders = rendersOf(context.get());
+        assertTrue(renders.contains("Java type selected: com.example.Foo"));
+    }
+
+    // UC-SEL-4
+    @Test
+    public void test_ucSel4_textSelectionReplacesType() {
+        // GIVEN a type selection
+        var context = new UserContext();
+        context.setJavaType(iType("com.example.Foo"));
+
+        // WHEN a new text selection arrives
+        context.setTextSelection(textSelection(9, 9));
+
+        // THEN the text selection wins and the type is cleared
+        assertNull(context.getJavaType());
+        var item = item(context.get(), "User text selection");
+        assertNotNull(item);
+        assertTrue(item.render().contains("10: selected text"));
+    }
+
+    // UC-SEL-4
+    @Test
+    public void test_ucSel4_otherResourceReplacesType() {
+        // GIVEN a type selection
+        var context = new UserContext();
+        context.setJavaType(iType("com.example.Foo"));
+        var other = resource("/p/B.java");
+
+        // WHEN a different concrete file is selected
+        context.setSelectedResource(other);
+
+        // THEN the file wins and the type is cleared
+        assertNull(context.getJavaType());
+        assertSame(other, context.getSelectedResource());
+        var renders = rendersOf(context.get());
+        assertTrue(renders.contains("File selected: /p/B.java"));
+    }
+
+    // UC-SEL-4
+    @Test
+    public void test_ucSel4_typeSurvivesNullEvent() {
+        // GIVEN a type selection
+        var context = new UserContext();
+        var type = iType("com.example.Foo");
+        context.setJavaType(type);
+
+        // WHEN a null selection event arrives (no resource)
+        context.setSelectedResource(null);
+
+        // THEN the type survives (R-SEL-1 spirit: state stays until something new is selected)
+        assertSame(type, context.getJavaType());
+    }
+
+    // UC-SEL-4
+    @Test
+    public void test_ucSel4_caretEventReplacesType() {
+        // GIVEN a type selection
+        var context = new UserContext();
+        context.setJavaType(iType("com.example.Foo"));
+
+        // WHEN an empty caret text event arrives
+        context.setTextSelection(new FakeTextSelection(9, 9, ""));
+
+        // THEN the type is cleared (every text event wins, SOLL Q1)
+        assertNull(context.getJavaType());
+    }
+
+    // === One-time orders: UI-thread add vs. background drain ===
+
+    @Test
+    public void oneTimeOrdersDeliveredInOrderExactlyOnce() {
+        // Characterization test — green before and after the race fix (single-threaded drain).
+        // GIVEN a context with an active selection (so get() reaches the order drain)
+        var context = new UserContext();
+        context.setTextSelection(textSelection(9, 9));
+        context.addOneTimeOrder(new SimpleContextItem("Order A", "a"));
+        context.addOneTimeOrder(new SimpleContextItem("Order B", "b"));
+
+        // WHEN the context is requested twice
+        var first = rendersOf(context.get());
+        var second = rendersOf(context.get());
+
+        // THEN both orders go out in insertion order, exactly once
+        assertTrue(first.contains("a") && first.indexOf("a") < first.indexOf("b"));
+        assertFalse(second.contains("a"));
+        assertFalse(second.contains("b"));
+    }
+
+    @Test
+    public void oneTimeOrdersConcurrentAddAndDrainLoseNothingAndThrowNoCme() throws Exception {
+        // Swap-falsifiable: without the synchronized drain this errors (CME) or loses orders
+        // (an add between addAll and clear is wiped).
+        // GIVEN a context with an active selection (so get() reaches the order drain)
+        var context = new UserContext();
+        context.setTextSelection(textSelection(9, 9));
+        var delivered = new AtomicInteger();
+        var added = new AtomicInteger();
+        var stop = new AtomicBoolean();
+
+        var adder = new Thread(() -> {
+            for (var i = 0; i < 50_000 && !stop.get(); i++) {
+                // unique text per item — SimpleContextItem equals by text, equal items dedupe in the set
+                context.addOneTimeOrder(new SimpleContextItem("O", "o" + i));
+                added.incrementAndGet();
+            }
+        });
+        adder.start();
+
+        // WHEN the background side drains while the UI side keeps adding
+        for (var i = 0; i < 500 && !stop.get(); i++) {
+            delivered.addAndGet(orderCount(context.get()));
+        }
+        stop.set(true);
+        adder.join();
+        for (var n = orderCount(context.get()); n > 0; n = orderCount(context.get())) {
+            delivered.addAndGet(n);
+        }
+
+        // THEN every order was delivered exactly once — no CME, no lost orders
+        assertEquals(added.get(), delivered.get());
+    }
+
     // === Stubs ===
 
-    private record FakeTextSelection(int startLine, int endLine) implements ITextSelection {
+    private record FakeTextSelection(int startLine, int endLine, String text) implements ITextSelection {
         @Override public int getOffset() { return 0; }
-        @Override public int getLength() { return 0; }
-        @Override public String getText() { return "selected text"; }
+        @Override public int getLength() { return text.length(); }
+        @Override public String getText() { return text; }
         @Override public int getStartLine() { return startLine; }
         @Override public int getEndLine() { return endLine; }
-        @Override public boolean isEmpty() { return false; }
+        @Override public boolean isEmpty() { return text.isEmpty(); }
         @Override public String toString() { return "textSelection(" + startLine + "-" + endLine + ")"; }
     }
 
     private static ITextSelection textSelection(int startLine, int endLine) {
-        return new FakeTextSelection(startLine, endLine);
+        return new FakeTextSelection(startLine, endLine, "selected text");
     }
 
     /** Minimal IResource stub — only getFullPath() is used by UserContext (via JdtUtil.pathOf). */
@@ -226,6 +464,63 @@ public class UserContextTest {
                     case "toString" -> "resource(" + fullPath + ")";
                     default -> method.getReturnType().isPrimitive() ? primitiveDefault(method.getReturnType()) : null;
                 });
+    }
+
+    /** IFile stub — getFullPath() for JdtUtil.pathOf; readString() returns a recognizable marker. */
+    private static IFile file(String fullPath) {
+        return (IFile) Proxy.newProxyInstance(
+                UserContextTest.class.getClassLoader(),
+                new Class<?>[] { IFile.class },
+                (proxy, method, args) -> switch (method.getName()) {
+                    case "getFullPath" -> IPath.fromOSString(fullPath);
+                    case "readString" -> "FULL-FILE-MARKER";
+                    case "equals" -> proxy == args[0];
+                    case "hashCode" -> System.identityHashCode(proxy);
+                    case "toString" -> "file(" + fullPath + ")";
+                    default -> method.getReturnType().isPrimitive() ? primitiveDefault(method.getReturnType()) : null;
+                });
+    }
+
+    /** IType stub — getFullyQualifiedName() is the name source for UserContext.getName. */
+    private static IType iType(String fullyQualifiedName) {
+        return (IType) Proxy.newProxyInstance(
+                UserContextTest.class.getClassLoader(),
+                new Class<?>[] { IType.class },
+                (proxy, method, args) -> switch (method.getName()) {
+                    case "getFullyQualifiedName" -> fullyQualifiedName;
+                    case "equals" -> proxy == args[0];
+                    case "hashCode" -> System.identityHashCode(proxy);
+                    case "toString" -> "iType(" + fullyQualifiedName + ")";
+                    default -> method.getReturnType().isPrimitive() ? primitiveDefault(method.getReturnType()) : null;
+                });
+    }
+
+    /** IOrdinaryClassFile stub — getType() yields the IType stub (clean name source). */
+    private static IOrdinaryClassFile classFile(String fullyQualifiedName) {
+        var type = iType(fullyQualifiedName);
+        return (IOrdinaryClassFile) Proxy.newProxyInstance(
+                UserContextTest.class.getClassLoader(),
+                new Class<?>[] { IOrdinaryClassFile.class },
+                (proxy, method, args) -> switch (method.getName()) {
+                    case "getType" -> type;
+                    case "equals" -> proxy == args[0];
+                    case "hashCode" -> System.identityHashCode(proxy);
+                    case "toString" -> "classFile(" + fullyQualifiedName + ")";
+                    default -> method.getReturnType().isPrimitive() ? primitiveDefault(method.getReturnType()) : null;
+                });
+    }
+
+    private static ContextItem item(List<ContextItem> items, String label) {
+        return items.stream().filter(i -> label.equals(i.label())).findFirst().orElse(null);
+    }
+
+    /** All rendered texts — the 1-arg SimpleContextItem carries its message in text, not label. */
+    private static List<String> rendersOf(List<ContextItem> items) {
+        return items.stream().map(ContextItem::render).toList();
+    }
+
+    private static int orderCount(List<ContextItem> items) {
+        return (int) items.stream().filter(i -> "O".equals(i.label())).count();
     }
 
     private static Object primitiveDefault(Class<?> type) {

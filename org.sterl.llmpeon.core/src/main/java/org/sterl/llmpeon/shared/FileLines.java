@@ -49,7 +49,8 @@ public class FileLines {
     // TODO: use LIST
     public static String extract(String content, int startLine, int endLine) {
         if (content == null) return "";
-        if (startLine <= 0 && endLine <= 0) return content;
+        // R9: whole-file reads carry line numbers too (supersedes the R1c raw-file clause)
+        if (startLine <= 0 && endLine <= 0) return format(content);
         
         var lineEnding = FileUtils.dominantLineEnding(content);
         var lines = content.split(lineEnding, -1);

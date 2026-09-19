@@ -45,6 +45,23 @@ public record SearchQuery(String query, Pattern pattern, boolean literal) {
         return pattern.matcher(line).find();
     }
 
+    /** One matched line: 1-based line number plus the raw line text. */
+    public record LineHit(int line, String text) {}
+
+    /**
+     * R8: all lines that match, 1-based over the full file content, in file order.
+     * Uses the same regex-first / literal-fallback mode as {@link #matches(String)}.
+     */
+    public java.util.List<LineHit> matchingLines(String content) {
+        if (content == null || content.isEmpty()) return java.util.List.of();
+        var lines = content.split(FileUtils.dominantLineEnding(content), -1);
+        var hits = new java.util.ArrayList<LineHit>();
+        for (int i = 0; i < lines.length; i++) {
+            if (matches(lines[i])) hits.add(new LineHit(i + 1, lines[i]));
+        }
+        return hits;
+    }
+
     public String modeHint() {
         return literal ? LITERAL_HINT : "regex search";
     }

@@ -3,9 +3,11 @@ package org.sterl.llmpeon.tool.tools;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.util.HashSet;
 
 import org.sterl.llmpeon.shared.ArgsUtil;
+import org.sterl.llmpeon.shared.GrepHit;
 import org.sterl.llmpeon.shared.SearchQuery;
 import org.sterl.llmpeon.shared.TextFileTypes;
 import org.sterl.llmpeon.shared.StringUtil;
@@ -52,7 +54,8 @@ public class DiskGrepTool extends AbstractTool {
             throw new IllegalArgumentException("Directory not found: " + path);
         }
 
-        var matches = new LinkedHashMap<String, Integer>();
+        var hits = new ArrayList<GrepHit>();
+        var matchedFiles = new HashSet<String>(); // distinct hit files — drives the file cap
 
         try (var walk = Files.walk(searchDir)) {
             var stream = walk.filter(Files::isRegularFile);
@@ -64,13 +67,14 @@ public class DiskGrepTool extends AbstractTool {
             }
 
             stream.forEach(file -> {
-                if (matches.size() >= AiReponseBuilder.MAX_GREP_FILES) return;
+                if (matchedFiles.size() >= AiReponseBuilder.MAX_GREP_FILES) return;
                 try {
                     String content = Files.readString(file);
-                    int count = searchQuery.count(content);
-                    if (count > 0) {
-                        matches.put(file.toAbsolutePath().toString(), count);
-                    }
+                    String absPath = file.toAbsolutePath().toString();
+                    var lineHits = searchQuery.matchingLines(content);
+                    if (lineHits.isEmpty()) return;
+                    matchedFiles.add(absPath);
+                    lineHits.forEach(lh -> hits.add(new GrepHit(absPath, lh.line(), lh.text())));
                 } catch (IOException e) {
                     // skip unreadable files
                 }
@@ -80,8 +84,9 @@ public class DiskGrepTool extends AbstractTool {
         }
 
         onTool("Grep '" + query + "' type '" + StringUtil.getOrDefault(extension, "*")
-                + "' found " + matches.size() + " matches");
+                + "' found " + hits.size() + " matched lines");
 
-        return AiReponseBuilder.grepComplete(matches, searchQuery, AiReponseBuilder.MAX_GREP_FILES, extension);
+        return AiReponseBuilder.grepComplete(hits, searchQuery, AiReponseBuilder.MAX_GREP_FILES,
+                AiReponseBuilder.MAX_GREP_LINES, extension);
     }
 }

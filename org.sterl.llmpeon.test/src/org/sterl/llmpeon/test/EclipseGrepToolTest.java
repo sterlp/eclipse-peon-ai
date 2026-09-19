@@ -69,8 +69,18 @@ public class EclipseGrepToolTest extends AbstractIntegrationTest {
     public void invalidRegexFallsBackToLiteral() {
         String result = tool.eclipseGrepFiles("foo(bar", PeonTestFixture.PROJECT_NAME, ".java");
 
-        assertContains(result, "MetaChars.java: 1 occurrence(s)");
+        assertContains(result, "MetaChars.java:6:     // foo(bar unbalanced");
         assertContains(result, "literal search — query is not a valid regex");
+    }
+
+    @Test
+    public void grepListsMatchLinesWithLineNumbers() {
+        // R8 — fixture MetaChars.java line 4 holds "// C++ marker" (numbering from the fixture layout)
+        String result = tool.eclipseGrepFiles("C\\+\\+ marker", PeonTestFixture.PROJECT_NAME, ".java");
+
+        assertContains(result, "MetaChars.java:4:     // C++ marker");
+        assertFalse("under the line cap there must be no disclosure:\n" + result,
+                result.contains("matched lines — narrow your search"));
     }
 
     @Test

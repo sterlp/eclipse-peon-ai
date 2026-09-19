@@ -28,8 +28,24 @@ class DocsLinter {
 
     DocsLintResult lint(Path root, List<String> docRoots, Pattern idPattern) throws IOException {
         DocParseData data = parseDocs(root, docRoots, idPattern);
+        List<String> sourceRoots = relativeRoots(root, resolveRoots(root, docRoots));
         return new DocsLintResult(data.definitions(), data.findings(),
-                data.lintedDocs(), data.skippedDocs(), data.useCaseCount());
+                data.lintedDocs(), data.skippedDocs(), data.useCaseCount(),
+                false, 0, 0, 0, List.of(), sourceRoots);
+    }
+
+    /**
+     * Root-relative, '/'-normalized directory names of the resolved scan roots (R-DL-19);
+     * the root itself renders as ".". Order is kept, duplicates dropped.
+     */
+    private static List<String> relativeRoots(Path root, List<Path> resolvedRoots) {
+        Path rootAbs = root.toAbsolutePath().normalize();
+        var seen = new LinkedHashSet<String>();
+        for (Path resolved : resolvedRoots) {
+            String rel = rootAbs.relativize(resolved).toString().replace('\\', '/');
+            seen.add(rel.isEmpty() ? "." : rel);
+        }
+        return List.copyOf(seen);
     }
 
     NextIdsResult nextIds(Path root, List<String> docRoots, Pattern idPattern, String prefix)
@@ -186,6 +202,12 @@ class DocsLinter {
         List<Path> resolvedTestRoots = resolveRoots(root, testRoots != null && !testRoots.isEmpty()
                 ? testRoots : List.of("."));
 
+        // R-DL-19: doc roots first, then test roots — dedup, order keeping
+        List<String> sourceRoots = new ArrayList<>(relativeRoots(root, resolvedDocRoots));
+        for (String rel : relativeRoots(root, resolvedTestRoots)) {
+            if (!sourceRoots.contains(rel)) sourceRoots.add(rel);
+        }
+
         List<String> effectiveGlobs = buildDefaultGlobs(testGlobs);
         List<Pattern> globPatterns = effectiveGlobs.stream()
                 .map(RegexUtils::globToPattern)
@@ -255,7 +277,7 @@ class DocsLinter {
         return new DocsLintResult(docResult.definitions(), allFindings,
                 docResult.lintedDocs(), docResult.skippedDocs(),
                 docResult.useCaseCount(), true, allEvidence.size(), uniqueTestIds,
-                testSourceFileCount, allEvidence);
+                testSourceFileCount, allEvidence, sourceRoots);
     }
 
     private List<String> buildDefaultGlobs(List<String> testGlobs) {
