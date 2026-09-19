@@ -8,3 +8,10 @@ Compact catalog of reusable patterns learned from implementation iterations. Eac
 - **Root cause:** Environment-level (macOS 26.6.2), not a code or content problem.
 - **Proven response:** Treat the homepage `docs:build` gate as **deferred** — commit the homepage content with the note `homepage docs:build gate deferred (esbuild/macOS-26.6.2 env-blocker)` and do **not** modify the VitePress/Vite/esbuild dependency chain without explicit approval. Re-run the gate once the user's environment is fixed.
 - **Evidence:** Cycle 2c (inc-18…inc-21, 2026-08-30) — all four homepage increments committed with the deferred-gate note; core (`mvn test`) and plugin (Maven package + Eclipse suite) green throughout.
+
+## Edit-tool root-cause triage: input validation first
+
+- **Problem:** `eclipseEditFile`/`diskEditFile` "oldString not found" for a micro edit (`}}`); a 2h stress/race hunt (self-reference growth, thread interleaving) before the real cause surfaced.
+- **Root cause:** The anchor was below the validity threshold — an input-validation gap, not a concurrency bug. Chasing the exotic cause first.
+- **Proven response:** Triage edit-tool failures in this order: (1) oldString null/blank/too short (input validation), (2) self-reference growth (oldString contains its own replacement), (3) race/stress (concurrent modification). Input validation is the cheapest and most frequent cause — check it before any stress testing.
+- **Evidence:** Edit-Guard cycle `7800a56` (oldString required, min 3 non-whitespace chars, up-front in `FileUtils.applyEdit`); 2h stress hunt vs. the input-validation look (sanity-pass 2026-09-19, Da-Mek lesson).

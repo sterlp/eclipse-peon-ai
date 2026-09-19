@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.context;
 
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -28,7 +29,9 @@ public class UserContext {
     private volatile IJavaElement javaType;
     private volatile ITextSelection textSelection;
 
-    private final Set<ContextItem> addOneTimeOrders = new LinkedHashSet<>();
+    // UI-thread adds race the background drain in get() — synchronized set + drain under the
+    // same monitor (atomic addAll+clear: no CME, no order lost between read and clear).
+    private final Set<ContextItem> addOneTimeOrders = Collections.synchronizedSet(new LinkedHashSet<>());
     
     public void addOneTimeOrder(ContextItem item) {
         this.addOneTimeOrders.add(item);
@@ -46,8 +49,10 @@ public class UserContext {
             );
         }
         addUserSelection(result);
-        result.addAll(addOneTimeOrders);
-        addOneTimeOrders.clear();
+        synchronized (addOneTimeOrders) {
+            result.addAll(addOneTimeOrders);
+            addOneTimeOrders.clear();
+        }
         return result;
     }
 

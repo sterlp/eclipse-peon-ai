@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.test;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -8,6 +9,8 @@ import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.Proxy;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
@@ -17,6 +20,7 @@ import org.eclipse.jdt.core.IType;
 import org.eclipse.jface.text.ITextSelection;
 import org.junit.Test;
 import org.sterl.llmpeon.context.ContextItem;
+import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.context.UserContext;
 
 /**
@@ -377,6 +381,61 @@ public class UserContextTest {
         assertNull(context.getJavaType());
     }
 
+    // === One-time orders: UI-thread add vs. background drain ===
+
+    @Test
+    public void oneTimeOrdersDeliveredInOrderExactlyOnce() {
+        // Characterization test — green before and after the race fix (single-threaded drain).
+        // GIVEN a context with an active selection (so get() reaches the order drain)
+        var context = new UserContext();
+        context.setTextSelection(textSelection(9, 9));
+        context.addOneTimeOrder(new SimpleContextItem("Order A", "a"));
+        context.addOneTimeOrder(new SimpleContextItem("Order B", "b"));
+
+        // WHEN the context is requested twice
+        var first = rendersOf(context.get());
+        var second = rendersOf(context.get());
+
+        // THEN both orders go out in insertion order, exactly once
+        assertTrue(first.contains("a") && first.indexOf("a") < first.indexOf("b"));
+        assertFalse(second.contains("a"));
+        assertFalse(second.contains("b"));
+    }
+
+    @Test
+    public void oneTimeOrdersConcurrentAddAndDrainLoseNothingAndThrowNoCme() throws Exception {
+        // Swap-falsifiable: without the synchronized drain this errors (CME) or loses orders
+        // (an add between addAll and clear is wiped).
+        // GIVEN a context with an active selection (so get() reaches the order drain)
+        var context = new UserContext();
+        context.setTextSelection(textSelection(9, 9));
+        var delivered = new AtomicInteger();
+        var added = new AtomicInteger();
+        var stop = new AtomicBoolean();
+
+        var adder = new Thread(() -> {
+            for (var i = 0; i < 50_000 && !stop.get(); i++) {
+                // unique text per item — SimpleContextItem equals by text, equal items dedupe in the set
+                context.addOneTimeOrder(new SimpleContextItem("O", "o" + i));
+                added.incrementAndGet();
+            }
+        });
+        adder.start();
+
+        // WHEN the background side drains while the UI side keeps adding
+        for (var i = 0; i < 500 && !stop.get(); i++) {
+            delivered.addAndGet(orderCount(context.get()));
+        }
+        stop.set(true);
+        adder.join();
+        for (var n = orderCount(context.get()); n > 0; n = orderCount(context.get())) {
+            delivered.addAndGet(n);
+        }
+
+        // THEN every order was delivered exactly once — no CME, no lost orders
+        assertEquals(added.get(), delivered.get());
+    }
+
     // === Stubs ===
 
     private record FakeTextSelection(int startLine, int endLine, String text) implements ITextSelection {
@@ -458,6 +517,10 @@ public class UserContextTest {
     /** All rendered texts — the 1-arg SimpleContextItem carries its message in text, not label. */
     private static List<String> rendersOf(List<ContextItem> items) {
         return items.stream().map(ContextItem::render).toList();
+    }
+
+    private static int orderCount(List<ContextItem> items) {
+        return (int) items.stream().filter(i -> "O".equals(i.label())).count();
     }
 
     private static Object primitiveDefault(Class<?> type) {

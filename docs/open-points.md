@@ -24,6 +24,15 @@ dagegen blockierte legitime Edits im Normalfall (Anker ist fast immer Präfix de
 teure Korruptions-Klasse ab. **Falls wir ihn wieder brauchen: er liegt fertig auf
 `bugfix/edit-tool-insert` (`FileUtils.applyEdit`, Commit `a3e8ce1`).**
 
+## 🔒 Merge `release-2026-09-06` → main = User-Entscheid — ERLEDIGT (2026-09-19)
+
+**Gelöst:** Content war bereits vollständig auf dem Branch — Squash-PR #132 (`45f2a0d2`), Merge-Tree
+byte-identisch mit dem Release-Tip `2e338e5` (verifiziert per merge-tree Dry-Run, alle 3 Commits
+im Tree nachgewiesen). Ein echter Merge hätte 15 Scheinkonflikte + 25 redundante History-Commits
+bei null Content-Gewinn erzeugt. Konsolidierung von Paul angeordnet (2026-09-19), als verifizierter
+No-Op geschlossen. Ebenso `fix/compact-slot-model` (+7) — inhaltlich bereits via Squash-PR #140
+(`c808c42`) drin, Merge `0af001a` ist history-only. Ein reviewbarer Branch: `bugfix/user-context-selection`.
+
 ## 🔒 SimpleDiff-Bremse: LCS-Diff kippt bei großen Dateien — GELÖST (2026-09-16)
 
 `eclipseEditFile` → `AIChatView.onFileUpdate:329` → `SimpleDiff.unifiedDiff:21` → `lcsDiff:97` →

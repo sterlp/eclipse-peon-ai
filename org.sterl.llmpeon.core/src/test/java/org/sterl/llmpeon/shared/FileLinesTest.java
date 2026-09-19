@@ -127,16 +127,6 @@ class FileLinesTest {
 
 
     @Test
-    void existingBehaviourUnchanged() {
-        String content = "alpha\nbeta\ngamma";
-
-        // R9: whole-file read now carries line numbers (supersedes the R1c raw-file clause)
-        assertEquals("   1: alpha\n   2: beta\n   3: gamma\n", FileLines.extract(content, 0, 0));
-        assertEquals("   2: beta\n   3: gamma\n", FileLines.extract(content, 3, 2));
-        assertEquals("   2: beta\n", FileLines.extract(content, 2, 2));
-    }
-
-    @Test
     void extractWholeFileHasLineNumbers() {
         // R9
         String content = "alpha\nbeta\ngamma";

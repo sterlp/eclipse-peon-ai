@@ -37,8 +37,31 @@ Stashes: **keiner** (nichts zu löschen).
   docs/eclipse-read-tools.md, docs/memory.md, docs/open-points.md
 - Untracked: peon-plan/ (archivierter Plan overview-done-2026-09-19-11-29.md)
 
-## Offene Fragen an Paul
+## Pauls Entscheidungen (2026-09-19) + Ergebnis — ABGESCHLOSSEN
 
-1. Release-Merge: (a) No-Op, skip + dokumentieren (empfohlen) / (b) merge anyway (alle Konflikte "ours") / (c) anderes?
-2. Dirty Docs: erst als eigener "docs: status flips"-Commit einpflegen? (Merge braucht cleanen Tree)
-3. fix/compact-slot-model (+7): jetzt Teil des Zyklus oder später?
+1. Release-Merge: **(a) No-Op, skip + dokumentieren** → umgesetzt, kein Merge. (Paul schließt den
+   Punkt in den Docs selbst als 🔒.)
+2. Dirty Docs: erst eigener Commit → **`4568b51` "docs: status flips + open-points/memory (PO)"**
+   (5 Docs + peon-plan/**).
+3. fix/compact-slot-model: **konsolidieren** → **Merge `0af001a`** (history-only).
+
+### Merge fix/compact-slot-model — Details
+
+- 4 Konflikte, alle auf die neuere HEAD-Seite aufgelöst (eindeutig ableitbar, kein SOLL-Wissen nötig):
+  - `AiPoAgent.java`: theirs fügt `compact(AiMonitor)`-Override wieder ein — PR #141 (`8a2f62e`,
+    2026-09-16, main) hat exakt diese Methode **bewusst entfernt** (Diff verifiziert;
+    Per-Agent-Compact-Buttons = neuer Design-Pfad) → HEAD behalten.
+  - `docs/index.md`: theirs-Seite leer (HEAD hat neuere Docs-Linter/Blume-Einträge) → HEAD.
+  - `docs/memory.md`: Session-Stand 2026-09-19 (HEAD) vs 2026-09-13 (theirs, stale) → HEAD.
+  - `docs/open-points.md`: theirs-Seite leer (HEAD hat Neu-2026-09-14 + R-SEL-4) → HEAD.
+- Merge-Tree **byte-identisch mit Pre-Merge-HEAD** (`git diff --cached HEAD` leer) — Content der
+  +7 Commits war bereits via Squash-PR #140 (`c808c42`) auf dem Branch (verifiziert:
+  3-arg `callBlocking(ChatRequest, AgentConfig, AiMonitor)` in ConfiguredChatModel.java:44).
+- **Gates (mvn -o -pl org.sterl.llmpeon,org.sterl.llmpeon.test -am verify):**
+  **Core Surefire 884/0** (Baseline exakt) · **Plugin Tycho 223/0** (11 skipped, Baseline exakt) · BUILD SUCCESS.
+- Commits: `4568b51` (Docs) → `0af001a` (Merge). Branch-Tip: `0af001a`.
+
+### Rest
+
+- `bugfix/edit-tool-insert` (+4): unangetastet (Archiv, Paul).
+- Sanity-Pass: folgt (nächste Order).

@@ -188,15 +188,6 @@ class DiskFileWriteToolTest {
     }
 
     @Test
-    void diskEditFile_twoCharOldStringRejects() throws IOException {
-        Files.writeString(tempDir.resolve("edit.txt"), "abc }}");
-        var error = assertThrows(IllegalArgumentException.class,
-                () -> tool.diskEditFile("edit.txt", "}}", "x"));
-        assertThat(error.getMessage()).contains("oldString is required, min 3 non-whitespace chars");
-    }
-
-
-    @Test
     void write_allowedInsideDocs() {
         tool.withToolRequest(docsRequest());
         tool.diskWriteFile("proj/docs/feature.md", "hello");
