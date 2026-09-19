@@ -1,8 +1,9 @@
 package org.sterl.llmpeon.tool;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
+import org.sterl.llmpeon.shared.GrepHit;
 import org.sterl.llmpeon.shared.SearchQuery;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.shared.TextFileTypes;
@@ -10,6 +11,7 @@ import org.sterl.llmpeon.shared.TextFileTypes;
 public class AiReponseBuilder {
 
     public static final int MAX_GREP_FILES = 100;
+    public static final int MAX_GREP_LINES = 100;
 
     public static String searchComplete(List<String> results) {
         return searchComplete(results, null);
@@ -25,18 +27,35 @@ public class AiReponseBuilder {
         return result.toString();
     }
 
-    public static String grepComplete(Map<String, Integer> matches, SearchQuery query, int maxFiles,
+    /**
+     * R8: renders grep hits as {@code file:line: text} (1-based, unpadded), replacing the old
+     * per-file occurrence counts. Caps: {@code maxFiles} distinct files, {@code maxLines} lines
+     * total (cross-file). Honesty stays in the output: mode hint (R2c), type-filter hint
+     * (R6a/R6b) and the line-cap disclosure.
+     */
+    public static String grepComplete(List<GrepHit> hits, SearchQuery query, int maxFiles, int maxLines,
             String extension) {
+        int total = hits.size();
+        int shown = Math.min(total, maxLines);
+        var lines = new ArrayList<String>(shown);
+        for (int i = 0; i < shown; i++) {
+            var h = hits.get(i);
+            lines.add(h.file() + ":" + h.line() + ": " + h.text());
+        }
+
         String suffix = query.modeHint();
-        if (matches.isEmpty() && !StringUtil.hasValue(extension)) {
+        if (total > maxLines) {
+            suffix = "showing " + shown + " of " + total + " matched lines — narrow your search"
+                    + System.lineSeparator() + suffix;
+        }
+        if (total == 0 && !StringUtil.hasValue(extension)) {
             suffix += System.lineSeparator() + TextFileTypes.filterHint();
         }
-        if (matches.size() >= maxFiles) {
+        if (GrepHit.fileCount(hits) >= maxFiles) {
             suffix += System.lineSeparator()
                     + "... result capped at " + maxFiles + " files. Narrow your search path.";
         }
-        return grepComplete(matches.entrySet().stream()
-                .map(e -> e.getKey() + ": " + e.getValue() + " occurrence(s)").toList(), suffix);
+        return grepComplete(lines, suffix);
     }
 
     public static String searchComplete(List<String> results, String suffix) {

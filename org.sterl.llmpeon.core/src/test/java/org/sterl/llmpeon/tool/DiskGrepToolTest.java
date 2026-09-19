@@ -31,8 +31,21 @@ class DiskGrepToolTest {
         String result = tool.diskGrepFiles("foo(bar", null, ".java");
 
         assertThat(result)
-                .contains("MetaChars.java: 2 occurrence(s)")
+                .contains("MetaChars.java:1: FOO(BAR and foo(bar")
                 .contains("literal search — query is not a valid regex");
+    }
+
+    @Test
+    void grepListsMatchLinesWithLineNumbers() throws IOException {
+        // R8
+        // GIVEN a file where the match sits on a known 1-based line
+        Files.writeString(tempDir.resolve("Known.java"), "line one\nline two\nTARGET line three");
+        // WHEN grepped
+        String result = tool.diskGrepFiles("TARGET", null, ".java");
+        // THEN the matched line appears with its line number (unpadded), no cap disclosure (under cap)
+        assertThat(result)
+                .contains("Known.java:3: TARGET line three")
+                .doesNotContain("matched lines — narrow your search");
     }
 
     @Test
@@ -54,7 +67,7 @@ class DiskGrepToolTest {
 
         String result = tool.diskGrepFiles("sharedExtensionToken", null, null);
 
-        assertThat(result).contains("Build.bnd: 1 occurrence(s)");
+        assertThat(result).contains("Build.bnd:1: sharedExtensionToken");
     }
 
     @Test
@@ -77,7 +90,9 @@ class DiskGrepToolTest {
         String result = tool.diskGrepFiles(query.query(), null, ".java");
 
         assertThat(result)
-                .contains("Models.java: " + query.count(content) + " occurrence(s)")
+                .contains("Models.java:1: ModelBigWidget")
+                .contains("Models.java:2: ModelSmallWidget")
+                .doesNotContain("Models.java:3: ModelService")
                 .contains(query.modeHint());
     }
 }

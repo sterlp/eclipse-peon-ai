@@ -31,7 +31,8 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
         eclipseWriteFile(fileName, message);
         
         // THEN
-        assertEquals(message, readTool.eclipseReadFile(fileName, 0, 0));
+        // R9: whole-file read carries line numbers
+        assertEquals("   1: " + message + "\n", readTool.eclipseReadFile(fileName, 0, 0));
     }
     
     @Test
@@ -73,7 +74,9 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
                 editMessage);
         // THEN
         message = readTool.eclipseReadFile(fileName, 0, 0);
-        assertTrue("Missing edit text in:\n" + message, message.contains(editMessage));
+        // R9: reads carry line numbers — the inserted guard lands as line 2
+        assertTrue("Missing edit text at line 2 in:\n" + message,
+                message.lines().skip(1).findFirst().orElse("").contains("// Guard against selection injection"));
     }
 
     @Test
@@ -88,7 +91,7 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
 
         // THEN
         assertTrue("Expected replacement count in: " + result, result.contains("replaced 2 occurrence(s)"));
-        assertEquals("top\nnew\nnew\nbot", readTool.eclipseReadFile(fileName, 0, 0));
+        assertEquals("   1: top\n   2: new\n   3: new\n   4: bot\n", readTool.eclipseReadFile(fileName, 0, 0));
     }
 
 
@@ -100,7 +103,7 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
 
         // THEN
         var c = new EclipseWorkspaceReadFileTool().eclipseReadFile(JdtUtil.pathOf(project) + "/foo.java", null, null);
-        assertEquals("äüß Ö ⚡", c);
+        assertEquals("   1: äüß Ö ⚡\n", c);
     }
 
     @Test
@@ -209,8 +212,8 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
         var result = tool.eclipseCopyFile(src, dst);
 
         // THEN copy has the same content, original is kept, R6 result is "Copied <s> -> <t>" with resolved /project paths
-        assertEquals("data", readTool.eclipseReadFile(dst, 0, 0));
-        assertEquals("data", readTool.eclipseReadFile(src, 0, 0));
+        assertEquals("   1: data\n", readTool.eclipseReadFile(dst, 0, 0));
+        assertEquals("   1: data\n", readTool.eclipseReadFile(src, 0, 0));
         assertEquals("Copied " + src + " -> " + dst, result);
 
         tool.eclipseDeleteResource(dst); // the copy is not auto-tracked by eclipseWriteFile
@@ -231,7 +234,7 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
 
         // THEN R6 result is "Renamed <s> -> <t>" with resolved /project paths, file moved
         assertEquals("Renamed " + src + " -> " + dst, result);
-        assertEquals("data", readTool.eclipseReadFile(dst, 0, 0));
+        assertEquals("   1: data\n", readTool.eclipseReadFile(dst, 0, 0));
         assertTrue(readTool.eclipseReadFile(src, 0, 0).contains("No eclipse file found"));
 
         tool.eclipseDeleteResource(dst); // the rename target is not auto-tracked by eclipseWriteFile
@@ -254,8 +257,8 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
         } catch (IllegalArgumentException e) {}
 
         // THEN source and target unchanged (R3 no overwrite)
-        assertEquals("a", readTool.eclipseReadFile(src, 0, 0));
-        assertEquals("b", readTool.eclipseReadFile(dst, 0, 0));
+        assertEquals("   1: a\n", readTool.eclipseReadFile(src, 0, 0));
+        assertEquals("   1: b\n", readTool.eclipseReadFile(dst, 0, 0));
     }
 
     @Test
@@ -291,7 +294,7 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
 
         // THEN no target was created, source unchanged (R1 parity with FileUtils.copy)
         assertTrue(readTool.eclipseReadFile("/test_project/copyDirDst.txt", 0, 0).contains("No eclipse file found"));
-        assertEquals("x", readTool.eclipseReadFile("/test_project/copyDirSrc/inner.txt", 0, 0));
+        assertEquals("   1: x\n", readTool.eclipseReadFile("/test_project/copyDirSrc/inner.txt", 0, 0));
     }
 
     // ------------------------------------------------------------------ R5: fully qualified paths only
@@ -321,7 +324,7 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
         // THEN no operation happened
         assertTrue(readTool.eclipseReadFile("/test_project/relCopyDst1.txt", 0, 0).contains("No eclipse file found"));
         assertTrue(readTool.eclipseReadFile("/test_project/relCopyDst2.txt", 0, 0).contains("No eclipse file found"));
-        assertEquals("data", readTool.eclipseReadFile(src, 0, 0));
+        assertEquals("   1: data\n", readTool.eclipseReadFile(src, 0, 0));
     }
 
     @Test
@@ -347,7 +350,7 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
         }
 
         // THEN no operation happened
-        assertEquals("data", readTool.eclipseReadFile(src, 0, 0));
+        assertEquals("   1: data\n", readTool.eclipseReadFile(src, 0, 0));
         assertTrue(readTool.eclipseReadFile("/test_project/relRenameDst1.txt", 0, 0).contains("No eclipse file found"));
         assertTrue(readTool.eclipseReadFile("/test_project/relRenameDst2.txt", 0, 0).contains("No eclipse file found"));
     }
@@ -367,8 +370,8 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
 
         // THEN copy exists, original kept, R6 result
         assertEquals("Copied " + src + " -> " + dst, result);
-        assertEquals("data", readTool.eclipseReadFile(dst, 0, 0));
-        assertEquals("data", readTool.eclipseReadFile(src, 0, 0));
+        assertEquals("   1: data\n", readTool.eclipseReadFile(dst, 0, 0));
+        assertEquals("   1: data\n", readTool.eclipseReadFile(src, 0, 0));
 
         tool.eclipseDeleteResource(dst);
     }
@@ -387,7 +390,7 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
 
         // THEN file moved, R6 result
         assertEquals("Renamed " + src + " -> " + dst, result);
-        assertEquals("data", readTool.eclipseReadFile(dst, 0, 0));
+        assertEquals("   1: data\n", readTool.eclipseReadFile(dst, 0, 0));
         assertTrue(readTool.eclipseReadFile(src, 0, 0).contains("No eclipse file found"));
 
         tool.eclipseDeleteResource(dst); // the rename target is not auto-tracked by eclipseWriteFile

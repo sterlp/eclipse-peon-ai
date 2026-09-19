@@ -6,9 +6,7 @@ idPrefix: DL
 
 > **Status:** ✅ done (2026-09-15) — R-DL-1…16 gebaut, drei Reviews bestanden. Nachzyklus:
 > `reportPath` gestrichen (echt read-only), Tool-Split `DocsIdTool`/`DocsLinterTool`, raus aus dem
-> Disk-Gate, Tool-Matrix je Agent getestet. Importiert aus dem
-> Feature-Request
-> [`harness-request-docs-linter.md`](../harness-request-docs-linter.md) (Jon/FORgE → Harness-Team).
+> Disk-Gate, Tool-Matrix je Agent getestet.
 > **Ziel:** Ein falsches `✅` maschinell unmöglich machen: jeder als erledigt markierte Use-Case
 > muss durch einen Test belegt sein, der die ID des Use-Case trägt.
 
@@ -59,7 +57,7 @@ Die Regelbindung liest der Linter aus der Doc-Struktur (braucht er für R-DL-3 o
 Keine Registry-Datei: **die Docs sind die Registry**, `nextIds` liest sie.
 
 Default-Regex: `\bUC-[A-Z]+-\d+(?:-\d+[a-z]?)*\b` — matcht flach (`UC-READTOOLS-7`) **und**
-hierarchisch (`UC-KUPO-3-3`, FORgE-Erstanwender). `idPattern` ist damit **Pflicht-Parameter, kein
+hierarchisch (`UC-FEATURE_NAME-3-3`, Erstanwender). `idPattern` ist damit **Pflicht-Parameter, kein
 Nice-to-have**: der Request-Regex mit `+` würde unser flaches Schema still nicht finden — exakt der
 Null-Treffer-Fehlerzustand aus R-DL-6.
 
@@ -816,7 +814,7 @@ Die Prompt-Dateien gehören dem PO ([prompts.md](prompts.md)); die Agenten ände
 | Q5 | Tool-Filter je Agent → **🔒 Split in `DocsIdTool` (nur Jon) und `DocsLinterTool` (alle)** (User 2026-09-15). Der Filter wirkt tool-weit, nicht method-weit — der Split macht aus einer Sonderregel eine normale Zuordnung (R-DL-14). | 🔒 |
 | Q10 | 🐞 Linter hing am `diskToolsEnabled`-Gate (Default `false`) und fehlte Jon ganz → **🔒 immer registrieren, Jon + Da Thinka bekommen ihn** (User 2026-09-15). R-DL-15, R-DL-14. | 🔒 |
 | Q1 | **Dogfooding:** llmpeon-Docs kennen keine UC-IDs (Ist: `R1`/`R2` doc-lokal, ~200 `→ Klasse.methode`-Verweise in 33 Docs). → **🔒 Tool bauen + Prompts anpassen, Bestand NICHT rückwirkend nachziehen**; ID-Pflicht ab jetzt bei jedem angefassten Use-Case (Einführung Schritt 3), Teilnahme per Opt-in (R-DL-11). | 🔒 |
-| Q2 | Migrationshilfe `suggestIds` → **🔒 separat, nach dem Grundgerüst** (User 2026-09-15). Begründung: die drei Kernmethoden sind deterministische Mengenabgleiche, `suggestIds` muss heuristisch **raten** — anderer Charakter, andere Testbarkeit. Und da Opt-in bei uns ohnehin ein Doc-Umbau ist (Q6), spart es uns weniger als dem Erstanwender FORgE. | 🔒 |
+| Q2 | Migrationshilfe `suggestIds` → **🔒 separat, nach dem Grundgerüst** (User 2026-09-15). Begründung: die drei Kernmethoden sind deterministische Mengenabgleiche, `suggestIds` muss heuristisch **raten** — anderer Charakter, andere Testbarkeit. Und da Opt-in bei uns ohnehin ein Doc-Umbau ist (Q6), spart es uns weniger als dem Erstanwender. | 🔒 |
 | Q6 | **Definitionsform → 🔒 nur Überschriften** (`#### UC-…`), keine Bullet-Variante. User 2026-09-15: „Konsistenz ist besser als Optionen, das Tool soll Fehler melden wenn wir abweichen." Preis: Opt-in eines Bestands-Docs ist ein Umbau, kein Handgriff — passiert beim ohnehin-Anfassen. | 🔒 |
 | Q8 | **Sprachneutralität → 🔒 Methodenkopf-Zwang gestrichen** (User 2026-09-15, nach IST-Befund: `it(…)`/`export const` wurden nicht erkannt → stilles False Negative → falsches `UNBELEGT_ERLEDIGT`). Dazu `testGlobs` als Liste, `--` als drittes Kommentar-Präfix, Default-Testtypen aus `TextFileTypes`, `docRoots` vom Test-Scan ausgeschlossen. Betrifft R-DL-4, R-DL-1; neue UC-DL-34..39. | 🔒 |
 | Q9 | **Scan-Umfang im Report → 🔒 gefundene Dateizahlen** (Doc-Dateien und Test-Quelldateien), nicht nur ID-Zahlen (User 2026-09-15: „als Hinweis für das LLM ob es das Verzeichnis richtig erwischt hat"). UC-DL-40/41. | 🔒 |
