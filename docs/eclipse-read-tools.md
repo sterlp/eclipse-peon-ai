@@ -420,7 +420,7 @@ Modell sieht den Fehler und korrigiert.
   → siehe [ADR-0035](adr/0035-grep-regex-first-literal-fallback.md)
 
 
-## R8 ❌ specified (2026-09-17) — Grep liefert Trefferzeilen mit Zeilennummern
+## R8 ✅ done (2026-09-19, `e0538fa`) — Grep liefert Trefferzeilen mit Zeilennummern
 
 **IST (verifiziert, SearchAgent 2026-09-17):** Beide Grep-Familien (`EclipseGrepTool.java:46,126`,
 `DiskGrepTool.java:55,72`, Output via `AiReponseBuilder.grepComplete`) listen **keine** Trefferzeilen —
@@ -445,7 +445,7 @@ vor der Token-Bombe bei häufigen Begriffen — counts-only war der bisherige, u
 - GIVEN 500 Treffer über 20 Dateien, WHEN grep läuft, THEN werden die ersten 100 Zeilen geliefert
   mit `showing 100 of 500 matched lines`
 
-## R9 ❌ specified (2026-09-17) — Zeilennummern immer, auch beim Ganzdatei-Lesen
+## R9 ✅ done (2026-09-19, `e0538fa`) — Zeilennummern immer, auch beim Ganzdatei-Lesen
 
 **SOLL:** Alle Datei-Reads liefern Zeilennummern — **auch** bei `startLine<=0 && endLine<=0`
 (Ganzdatei). Die Wegoptimierung „Ganzdatei ohne Zeilennummern" wird zurückgenommen; das supersedet

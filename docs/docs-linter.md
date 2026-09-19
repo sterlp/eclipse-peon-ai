@@ -743,18 +743,18 @@ GIVEN `root` existiert weder als Verzeichnis noch ohne führenden `/` relativ zu
 eine der drei Methoden läuft THEN Fehlermeldung nennt **beide** probierten Pfade — kein stiller
 leerer Report.
 
-### R-DL-19 — Scan-Quellen werden relativ zum Root benannt ❌
+### R-DL-19 — Scan-Quellen werden relativ zum Root benannt ✅ done (2026-09-19, `15e3eab`)
 
 Der Report nennt die gescannten Verzeichnisse **relativ zum Root** (`docs`, `src/test/java`, …),
 nicht als absolute Disk-Pfade — der User sieht auf einen Blick, welche Wurzeln aktiv waren, ohne
 absolute Pfade mental gegen die Parameter auflösen zu müssen.
 
-#### UC-DL-62 — Quellliste relativ ❌
+#### UC-DL-62 — Quellliste relativ ✅ done
 
 GIVEN ein Lauf mit `docRoots=["docs"]`, `testRoots=["src/test/java"]` WHEN der Report entsteht
 THEN nennt die Quellliste `docs`, `src/test/java` (relativ zum Root), nicht die absoluten Pfade.
 
-### R-DL-20 — Lint-Läufe sind per `onTool` sichtbar — compact, mit Zahlen ❌
+### R-DL-20 — Lint-Läufe sind per `onTool` sichtbar — compact, mit Zahlen ✅ done (2026-09-19, `15e3eab`/`73bb156`)
 
 Jeder Lauf meldet per `onTool` **eine Zeile** an die UI: Tool-Name + Scan-Zahl + Befundzahlen,
 z. B. `lintDocs: 3 docs, 2 findings (1 UNBELEGT_ERLEDIGT)`. Der vollständige Report bleibt
@@ -764,7 +764,7 @@ ausschließlich im Rückgabewert (R-DL-7) — die Statuszeile bekommt nie den Vo
 > *dass* gelintet wurde, aber nicht *was herauskam*. Eine kompakte Zeile mit Zahlen reicht; mehr
 > wäre Rauschen in der Statuszeile.
 
-#### UC-DL-63 — onTool-Zeile nennt Zahlen, nicht nur den Namen ❌
+#### UC-DL-63 — onTool-Zeile nennt Zahlen, nicht nur den Namen ✅ done
 
 GIVEN ein beliebiger Lauf WHEN `onTool` feuert THEN enthält die Zeile Doc-Anzahl und
 Befundzahl(en) — nicht nur den Methodennamen.

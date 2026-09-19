@@ -42,7 +42,7 @@ Errors if 0 matches. Errors if oldString equals newString.
 „first occurrence" — das Tool log über seine eigene Semantik. SOLL (User): Replace-All + Count-Disclosure;
 identisch in beiden Tool-Familien (ein Verhalten, eine Implementierung).
 
-### Edit-Guard: `oldString` ist Pflicht-Anker ❌ specified (2026-09-17)
+### Edit-Guard: `oldString` ist Pflicht-Anker ✅ done (2026-09-19, `7800a56`)
 
 `oldString` ist in **allen** Edit-Tools beider Familien (`diskEditFile`, `eclipseEditFile`,
 `eclipseUpdateOpenFile`) ein verpflichtender Anker mit Mindestlänge. Der Check läuft **explizit und
@@ -60,10 +60,9 @@ Anker unter 3 Zeichen ist fast immer ein Agentenfehler; Mikro-Edits haben Ausweg
 entschied der User bewusst für **eine einfache Schwelle ohne Trim-Sonderfälle** („schwierig" —
 Einfachheit schlägt Randfall-Intelligenz).
 
-> **IST-Notiz (2026-09-17):** Der Schutz existiert heute nur **zufällig** — `oldString=""` fällt
-> durch `contains("")==true` und fliegt erst in `countOccurrences` mit der irreführenden Message
-> „Content is empty or null - cannot count!". Der Bau ersetzt das durch den expliziten Check; der
-> Count-Schutz bleibt als zweite Schranke bestehen.
+> **Umsetzung (2026-09-19, `7800a56`):** Guard ist jetzt die **erste** Prüflinie in
+> `applyEdit` mit der exakten BDD-Message; der Count-Schutz bleibt als zweite Schranke.
+> Der vorherige IST-Zustand (Schutz nur zufällig via `countOccurrences`) ist damit abgelöst.
 
 **BDD:**
 ```
@@ -80,6 +79,14 @@ GIVEN diskEditFile mit gültigem oldString (>= 3 nicht-Whitespace-Zeichen)
 WHEN der Edit läuft
 THEN Replace-All + Count-Disclosure wie gehabt
 ```
+
+> **Bewusst KEIN Self-Reference-Guard (2026-09-19, Paul):** Ein `newString`, der den `oldString`
+> enthält (`foo()` → `foo(); // erledigt`), ist ein legitimer Edit — ein Guard darauf blockiert den
+> Normalfall. Selbstwachstum über Ketten-Edits (`abc` → `abcd` → …, jeder Call wächst um
+> `Treffer × Anhang`) ist damit möglich, aber explizite Agenten-Absicht, kein stilles Tool-Versagen;
+> der SimpleDiff-Guard fängt die Anzeige-Kippe. Ein fertiger Guard liegt auf
+> `bugfix/edit-tool-insert` (`FileUtils.applyEdit`, Commit `a3e8ce1`) — nur mergen, falls er doch
+> wieder gebraucht wird.
 
 ### `diskRenameResource(sourcePath, targetPath)`
 Rename or move. Creates target parent directories. Errors if target exists.

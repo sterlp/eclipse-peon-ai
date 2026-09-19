@@ -2,6 +2,28 @@
 
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
 
+## ❓ `applyEdit` Not-Found-Fehler dumpet das gesamte File (2026-09-19, Jon — offen, keine Lösung)
+
+`FileUtils.applyEdit` hängt bei „not found" den **kompletten Datei-Inhalt** in die
+IllegalArgumentException. **Paul (2026-09-19): bewusst so gebaut** — er beobachtete, dass Modelle
+ohne den Inhalt sofort ein zweites Read nachschieben (zusätzlicher Tool-Roundtrip, auch teuer);
+der Dump spart den Roundtrip genau im Fehlerfall. Nach dem alten String suchen geht nicht — der
+Anker liegt ja daneben. **Offen:** beide Seiten sind schlecht (Roundtrip vs. Context-Bombe bei
+großen Dateien); eine gute Lösung (z. B. Kontext-Fenster um die ähnlichste Fundstelle, modell-
+oder größenabhängig) existiert noch nicht. Bleibt stehen, kein Bau.
+
+## 🔒 Self-Reference-Guard bewusst NICHT übernommen (2026-09-19, Paul bestätigt)
+
+Der Self-Ref-Guard aus `bugfix/edit-tool-insert` (`a3e8ce1`: `newStr.contains(oldStr) &&
+content.contains(newStr)` → IAE) war nie gemerged und wurde im `FileUtils`-Umbau bewusst nicht
+übernommen. Begründung: Das Selbstwachstum (`abc` → `abcd` → …, jeder Call wächst um
+`Treffer × Anhang`) ist **explizite Agenten-Absicht** — jeder Call ist ein korrekt formulierter
+Edit mit gültigem Anker; der Tool-Output meldet ehrlich „replaced N occurrence(s)". Der Guard
+dagegen blockierte legitime Edits im Normalfall (Anker ist fast immer Präfix des Neuen, z. B.
+`foo()` → `foo(); // erledigt`). Der **Edit-Guard** (min. 3 Non-WS-Zeichen, `7800a56`) deckt die
+teure Korruptions-Klasse ab. **Falls wir ihn wieder brauchen: er liegt fertig auf
+`bugfix/edit-tool-insert` (`FileUtils.applyEdit`, Commit `a3e8ce1`).**
+
 ## 🔒 SimpleDiff-Bremse: LCS-Diff kippt bei großen Dateien — GELÖST (2026-09-16)
 
 `eclipseEditFile` → `AIChatView.onFileUpdate:329` → `SimpleDiff.unifiedDiff:21` → `lcsDiff:97` →
@@ -232,7 +254,20 @@ aus Memory-Regel #33, diesmal im anderen Modul; (2) Schwellenwert-Änderungen �
 läuft noch (Trust-Dialog); Commit nach grünem Lauf.
 
 
-## ❓ `eclipseReplaceLines`/`diskReplaceLines`: Replace verhält sich sporadisch wie Insert (2026-09-15, HOCH)
+## 🔒 `eclipseReplaceLines`/`diskReplaceLines`: Replace verhält sich sporadisch wie Insert — GELÖST (2026-09-19)
+
+**Auflösung (Zyklus `bugfix/user-context-selection`, Inc 1):** Die Korruptionsklasse hatte zwei
+Mechanismen, beide jetzt geschlossen: (1) **Primär-Ursache** — leerer/blanker `oldString` in
+`eclipseEditFile` wurde still zu `""` coalesced (`String.replace("", x)` fügt an jeder Position
+ein; „replaced 0 occurrence(s)" log über das echte Verhalten). Pauls Hypothese, code-bestätigt →
+**Edit-Guard** gebaut (`7800a56`: oldString Pflicht, `trim().length() >= 3`, up-front in
+`FileUtils.applyEdit`, alle 3 Oberflächen). (2) Self-Reference-Wachstum — durch denselben Guard
+praktisch ausgeschlossen (Anker ≥ 3 Non-WS-Zeichen). Die Stress-Jagden (1000+10000 Headless-
+Iterationen, 8-Zellen-UI-Matrix) fanden **kein** sporadisches Reprodukt in `replaceLines` selbst —
+die beobachteten Vorfälle passen zum empty-oldString-Mechanismus. Die falsch getesteten
+Last-Loop-/UI-Harness-Tests existieren nicht mehr; Mutation-Nachweise: 5× rot im Guard.
+Rest-Risiko: der veraltete `IllegalStateException`-Wrapper war die letzte Ablenkung und ist
+umbenannt (`73bb156`).
 
 **Evidence (Da Mek, Docs-Linter Inc 3):** Aufruf `eclipseReplaceLines(file, line=118, newContent=…)`
 → **alte Zeile 118 blieb stehen**, neuer Content landete ab Zeile 119. Effektiv Insert statt
