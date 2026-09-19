@@ -64,4 +64,19 @@ Stashes: **keiner** (nichts zu löschen).
 ### Rest
 
 - `bugfix/edit-tool-insert` (+4): unangetastet (Archiv, Paul).
-- Sanity-Pass: folgt (nächste Order).
+- Sanity-Pass: abgenommen (Da-Dok: CONCERNS → Aufräum-Inkrement `93d512d`, 2026-09-19).
+
+## Aufräum-Inkrement `93d512d` (2026-09-19)
+
+- Race-Fix `UserContext.addOneTimeOrders`: synchronizedSet + drain unter demselben Monitor.
+  Roter Test zuerst: alte Code korruptierte die Set (NPE auf null-Element, 0.002s).
+  Neue Tests: `oneTimeOrdersDeliveredInOrderExactlyOnce` (Characterization) +
+  `oneTimeOrdersConcurrentAddAndDrainLoseNothingAndThrowNoCme` (swap-falsifizierbar).
+- Test-Dedup: `FileLinesTest.existingBehaviourUnchanged` + `DiskFileWriteToolTest.diskEditFile_twoCharOldStringRejects` gelöscht.
+- AGENTS-DEV.md: 162→162 Zeilen (net flat), 2 Lernings absorbiert.
+- Skill `komponenten-architektur`: Description-Patch (~/.peon/skills, außerhalb Repo).
+- Wiki-Pattern "Edit-tool root-cause triage" + 2 Ledger-Einträge.
+- Gates: Core 882/0 (884−2 Dedup), Plugin 225/0 (223+2 new), BUILD SUCCESS.
+- ACHTUNG: `git add -A` hat auch Pauls `docs/open-points.md`-🔒-Flip (release-2026-09-06) +
+  Da-Doks `peon-plan/overview.md` (Sanity-Review) in den Commit genommen — Repo-Konvention
+  (Docs mitnehmen), aber transparent gemeldet.

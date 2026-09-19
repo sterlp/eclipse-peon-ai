@@ -135,7 +135,7 @@ public class DiskFileWriteTool extends AbstractTool {
         }
     }
 
-    @Tool("Replace all occurrences of an exact string; reports how many were replaced. newString=null/empty deletes the matches. Error if not found or identical.")
+    @Tool("Replace all occurrences of an exact string; oldString is required (min 3 non-whitespace chars); reports how many were replaced. newString=null/empty deletes the matches. Error if not found or identical.")
     public String diskEditFile(@P(name = "filePath") String filePath, 
             @P(description = "exact string to replace", name = "oldString") String oldString, 
             @P(name = "newString", required = false) String newString) {

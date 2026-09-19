@@ -37,7 +37,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         return true;
     }
     
-    @Tool("Updates the content of current open eclipse workspace file - using the user access e.g. to help during coding or in edge cases e.g. ABAB the only way to change/checkout and lock")
+    @Tool("Updates the content of current open eclipse workspace file - using the user access e.g. to help during coding or in edge cases e.g. ABAB the only way to change/checkout and lock. oldString required, min 3 non-whitespace chars.")
     public String eclipseUpdateOpenFile(
             @P(description = "exact text to replace", name = "oldString", required = false) String inOldString,
             @P(name = "newString", required = false) String inNewString) {
@@ -118,7 +118,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         }
     }
 
-    @Tool("Replace all occurrences of an exact string in a workspace file; reports how many were replaced. newString=null deletes the matches.")
+    @Tool("Replace all occurrences of an exact string in a workspace file; oldString is required, min 3 non-whitespace chars; reports how many were replaced. newString=null deletes the matches.")
     public String eclipseEditFile(
             @P(description = "workspace-relative path", name = "filePath") String filePath,
             @P(description = "exact text to replace", name = "oldString", required = false) String oldString,
