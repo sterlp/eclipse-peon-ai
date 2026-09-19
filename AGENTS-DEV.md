@@ -36,6 +36,11 @@ Hints for the dev phase, base rules `AGENTS.md`
     stale Surefire reports under `target/` mislead result reading.
   - A new test class needs manual workspace approval once by the user and may time out if he is not
     watching — prefer to run all tests in the plugin test project, which is already approved.
+- **Headless plugin suite — name the host explicitly (hit 2026-09-19, read-numbers inc-3):**
+  `-pl org.sterl.llmpeon.test -am` does **not** pull the host plugin into the reactor (the fragment
+  requires it as an OSGi bundle, not a Maven dependency) → stale local-p2 host → phantom
+  `NoSuchMethodError` (2026-09-17 R-SEL-4 case: `UserContext.setTextSelection`, 27 F / 37 E on green
+  code). Correct: `-pl org.sterl.llmpeon,org.sterl.llmpeon.test -am verify`.
 - After ANY core change, before the Eclipse plugin build/test run: `mvn -o -pl
   org.sterl.llmpeon,releng/llmpeon-target -am package -DskipTests` — `-am` rebuilds core in the
   reactor and re-copies the jar into `lib/`; `releng/llmpeon-target` must stay in `-pl` (offline the
