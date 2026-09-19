@@ -67,6 +67,13 @@ Code. Vor dem Einführen eines neuen fachlichen Begriffs dort nachsehen und eint
 * [Context Message Konzept](context-message-concept.md) - **✅ done.** ContextItem, Agent-besitzter Compact-Flow, Tool-Delegation, Mixed Restore, Standing Orders Migration. + **✅ done 2026-08-16.** File-Context in der History (Dedup nach vollem Pfad, fehlende Datei → skip, AGENTS.md raus aus dem System-Prompt) — [ADR-0029](adr/0029-file-context-in-history.md), Bugfix-ADR [0030](adr/0030-statictext-helper-frozen-chatmessageutil.md). **✅ 2026-09-11:** Compact-Result genau einmal — Marker `(nothing preserved)` statt Resume-Duplikat + Button-Re-Render autoritativ (Clear bei Erfolg) (`1f2d0b0`/`ce3483d`). **R-ST4 ✅ (`a89cdc6`):** System-Message-Rebuild nach In-Loop-Compact — executeLoop baut staticMessages frisch (AiAgent non-default Interface-Methode), Rest-Turn nicht mehr mit Stale-Prompt/Plan-Snapshot.
 * [Tool Descriptions Inventory](tool-descriptions-inventory.md) - **✅ done.** 21/55 `@Tool`-Descriptions optimiert (Konsistenz, Token-Effizienz, LLM-Tool-Auswahl).
 * [Chat Markdown Links](chat-markdown-links.md) - **✅ done.** Klickbare Dateiverweise im Chat öffnen im Eclipse Editor (Workspace-Pfade, relative Doc-Links, Fallback-Suche, externe URLs im Browser).
+* [Tool Evolution](tool-evolution.md) - **🚧 TEMPORÄR (2026-09-19, PO-Run offen):** Sammelstelle der Tool-Weiterentwicklung aus dem externen Plugin-Vergleich — CR-1…CR-19 je mit Empfehlung + Feature-Doc; wird nach Pauls accept/reject aufgelöst (externe Mapping-Seite liegt im temporären Doc).
+* [Change-Review](change-review.md) - **🚧 Entwurf:** Agent-Änderungen gebündelt prüfbar statt sofort final — Original-Cache → Multi-Round-Undo, Keep/Undo/View-Diff je Datei, Compare-Editor mit editierbarer Vorschauseite.
+* [Tool-Confirmation](tool-confirmation.md) - **🚧 Entwurf:** kategorisiertes Bestätigungsmodell für riskante Tools (statt nur Shell-Widget) mit Scope-Cache Once/Session/Global, Default = nachfragen, Subagent erbt Parent-Entscheidung.
+* [Terminal-Session-Tool](terminal-session-tool.md) - **🚧 Entwurf:** persistente Shell-Session (env/cwd erhalten) statt 60s-One-shot, optional Background + Output-per-ID, disclosed Truncation, Session-Cleanup beim Chat-Ende.
+* [Java-Debugger-Tool](java-debugger-tool.md) - **🚧 Entwurf, Empfehlung defer:** Agent-Debugging (state/vars/stack lesend zuerst, eval/set_variable/breakpoints/steps mutierend) — L, sicherheitskritisch, braucht Tool-Confirmation.
+* [Project-Problems-Tool](project-problems-tool.md) - **🚧 Entwurf:** Datei- + Severity-Filter auf `eclipseReadProjectProblems` („validate after edit", token-schlank statt projektweiter Liste).
+* [Tool-Output-Disclosure](tool-output-disclosure.md) - **🚧 Entwurf:** Caps ehrlich machen — `eclipseSearchFiles` (Cap 1000 still), `diskSearchFiles` (Limit still), `webFetchAsMarkdown` (gar kein Cap, Fehlerpfad = voller Body). Ein S-Inkrement.
 
 ## Notes
 
@@ -74,6 +81,7 @@ Code. Vor dem Einführen eines neuen fachlichen Begriffs dort nachsehen und eint
 * [Open Points](open-points.md) - zurückgestellte/offene Punkte mit Status ❓ offen · ⏳ selbst entschieden · 🔒 geklärt.
 * [Resolved Points](resolved-points.md) - geklärte Punkte ohne eigenes Feature-Doc (Punkt · Entscheidung · Begründung · Datum).
 * [Open to Discuss](open-to-discuss.md) - ambiguous items not clear as bugs or features yet; reviewed end-of-cycle.
+* [Issue #142 — ASM-Konflikt](issue-142-asm-conflict.md) - **🚧 Analyse (2026-09-19):** unser p2-Repo liefert asm 9.10.1 mit (includeAllDependencies, 2026-09-Target) — meine alte „nicht unser Bug"-Analyse unvollständig; Fix-Kandidaten + Follow-ups offen.
 * [Open Ends / Memory](memory.md) - **Session-Zwischenstand only** (Ergebnis, offene User-Handlungen, Startpunkte der nächsten Session); nach jedem Plan-Zyklus aufräumen. Dauerhafte Lernings gehören nach `AGENTS.md` / `AGENTS-DEV.md` / `skills/` bzw. in die memory*-Tools, projektspezifische Fakten in die Feature-Docs und ADRs.
 * [ADRs](adr/index.md) - technical decision records (the agent's long-term memory).
 

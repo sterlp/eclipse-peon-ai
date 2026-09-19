@@ -2,6 +2,16 @@
 
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
 
+## ❓ Tool-Evolution PO-Run: CR-1…CR-19 accept/reject (2026-09-19, Nacht-Zyklus)
+
+Vergleich unseres Plugins gegen das externe Copilot-Eclipse-Plugin — alle Tools abgeglichen. Sammelstelle
++ 7 offene Fragen (je mit Lean): [tool-evolution.md](tool-evolution.md). Externe Mapping-Seite (temporär,
+wird nach dem Run gelöscht): feature-change-request-copilot.md. Neutrale Entwurfs-Docs: change-review,
+tool-confirmation, terminal-session-tool, java-debugger-tool, project-problems-tool, tool-output-disclosure.
+**Paul: alle CR-Items durchgehen, dann normale Build-Zyklen.**
+
+
+
 ## ❓ `applyEdit` Not-Found-Fehler dumpet das gesamte File (2026-09-19, Jon — offen, keine Lösung)
 
 `FileUtils.applyEdit` hängt bei „not found" den **kompletten Datei-Inhalt** in die
@@ -113,7 +123,20 @@ auf) — vorher lebte ein Präfix per `PRAEFIX_DOPPELT` in genau einer Datei und
 aus dem offenen Doc ablesbar. Beides gebaut (`934ea7c`, `ab71c53`), Punkt geschlossen.
 
 
-## ⏳ Eclipse-Installationsfehler eines Users — NICHT unser Bug, kein Target-Rollback (2026-09-15)
+## ⏳ Eclipse-Installationsfehler eines Users — Analyse KORRIGIERT (2026-09-19, siehe [issue-142-asm-conflict.md](issue-142-asm-conflict.md))
+
+> **Korrektur 2026-09-19 (Issue #142, Vollverifikation):** Die drei Belege unten bleiben wahr (kein
+> asm im Bundle-ClassPath, keine asm-Requirements von uns, pinnen nichts) — aber die Schlussfolgerung
+> „nicht unser Bug" war **unvollständig**: unser p2-Repo **liefert** asm 9.10.1 mit
+> (`includeAllDependencies=true` kopiert die 2026-09-Target-Closure). Wir sind die einzige Quelle für
+> asm 9.10.1 auf der User-Maschine; der uses-violation-Mechanismus ist exakt so im User-Log belegt.
+> Fix-Kandidaten + Follow-ups (Issue-Kommentar korrigieren, Mindest-Eclipse-Version dokumentieren,
+> includeAllDependencies-Entscheidung → ADR): [issue-142-asm-conflict.md](issue-142-asm-conflict.md).
+
+**Bestandteil der alten Analyse, der weiter gilt:** KEIN Target-Rollback auf 2026-03 (kostet den
+2026-09-Stand samt [ADR-0044](adr/0044-target-2026-09-dependency-update.md), löst die Kollision nicht).
+
+**Historischer Befund (2026-09-15, teilweise überholt):**
 
 **Auslöser:** Paul reichte `ins_err.log` + `failing bundles.log` eines Users herein mit der Frage,
 ob der Target-Sprung 2026-03 → 2026-09 ([ADR-0044](adr/0044-target-2026-09-dependency-update.md))
