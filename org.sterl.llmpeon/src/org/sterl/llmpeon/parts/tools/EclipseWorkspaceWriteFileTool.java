@@ -83,7 +83,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         try {
             return result.get(2, TimeUnit.MINUTES);
         } catch (Exception e) {
-            throw new IllegalStateException("Timeout during eclipse editor read", e);
+            throw new IllegalStateException("Timeout or failure while editing the open editor", e);
         }
 
     }

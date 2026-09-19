@@ -64,7 +64,7 @@ public class DocsLinterTool extends AbstractTool {
         try {
             DocsLintResult result = linter.lint(effectiveRoot, docRoots, pattern);
             onTool(renderer.statusLine("lintDocs", result));
-            return renderer.summary(result, effectiveRoot);
+            return renderer.summary(result);
         } catch (IOException e) {
             throw new RuntimeException("Failed to lint docs: " + e.getMessage(), e);
         }
@@ -95,7 +95,7 @@ public class DocsLinterTool extends AbstractTool {
             DocsLintResult result = linter.lintWithTests(
                     effectiveRoot, docRoots, testRoots, testGlobs, pattern);
             onTool(renderer.statusLine("lintDocsAndTests", result));
-            return renderer.summary(result, effectiveRoot);
+            return renderer.summary(result);
         } catch (IOException e) {
             throw new RuntimeException("Failed to lint docs and tests: " + e.getMessage(), e);
         }

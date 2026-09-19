@@ -1,6 +1,5 @@
 package org.sterl.llmpeon.docslinter;
 
-import java.nio.file.Path;
 
 class DocsLintReportRenderer {
 
@@ -13,7 +12,7 @@ class DocsLintReportRenderer {
         return sb.toString();
     }
 
-    String summary(DocsLintResult result, Path effectiveRoot) {
+    String summary(DocsLintResult result) {
         StringBuilder sb = new StringBuilder();
         sb.append(docScanSummary(result.lintedDocs().size(), result.skippedDocs().size()));
 

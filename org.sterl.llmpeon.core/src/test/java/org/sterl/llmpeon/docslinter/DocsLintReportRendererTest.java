@@ -45,7 +45,7 @@ class DocsLintReportRendererTest {
                 """);
 
         var result = lint(rootDir, List.of("docs"), null);
-        String summary = renderer.summary(result, rootDir);
+        String summary = renderer.summary(result);
 
         assertThat(summary).startsWith("Disk read — unsaved editor changes are not included.");
     }
@@ -78,7 +78,7 @@ class DocsLintReportRendererTest {
         }
 
         var result = lint(rootDir, List.of("docs", "plain"), null);
-        String summary = renderer.summary(result, rootDir);
+        String summary = renderer.summary(result);
 
         assertThat(summary).contains("Not participating (no idPrefix):");
         // All 66 must be listed
@@ -98,7 +98,7 @@ class DocsLintReportRendererTest {
         Files.createDirectories(emptyRoot.resolve("docs"));
 
         var emptyResult = lint(emptyRoot, List.of("docs"), null);
-        String emptySummary = renderer.summary(emptyResult, emptyRoot);
+        String emptySummary = renderer.summary(emptyResult);
 
         assertThat(emptyResult.useCaseCount()).isEqualTo(0);
         assertThat(emptyResult.lintedDocs()).isEmpty();
@@ -119,7 +119,7 @@ class DocsLintReportRendererTest {
         writeTest("Test.java", "// UC-DL-1\nvoid testIt() {}");
 
         var cleanResult = lintWithTests(rootDir, List.of("docs"), List.of("."), null);
-        String cleanSummary = renderer.summary(cleanResult, rootDir);
+        String cleanSummary = renderer.summary(cleanResult);
 
         assertThat(cleanResult.useCaseCount()).isEqualTo(1);
         assertThat(cleanResult.findings()).isEmpty();
@@ -159,7 +159,7 @@ class DocsLintReportRendererTest {
         writeTest("WithoutId.java", "void withoutId(){}");
 
         var result = lintWithTests(rootDir, List.of("docs"), List.of("src/test/java"), null);
-        String summary = renderer.summary(result, rootDir);
+        String summary = renderer.summary(result);
 
         assertThat(result.docFileCount()).isEqualTo(3);
         assertThat(result.testSourceFileCount()).isEqualTo(2);
@@ -186,12 +186,12 @@ class DocsLintReportRendererTest {
         Path emptyTests = rootDir.resolve("empty-tests");
         Files.createDirectories(emptyTests);
         var emptyResult = lintWithTests(rootDir, List.of("docs"), List.of("empty-tests"), null);
-        String emptySummary = renderer.summary(emptyResult, rootDir);
+        String emptySummary = renderer.summary(emptyResult);
 
         // Run B: one source file, but it has no UC ID -> 1 source file, 0 evidence.
         writeTest("NoId.java", "void noId(){}");
         var noEvidenceResult = lintWithTests(rootDir, List.of("docs"), List.of("src/test/java"), null);
-        String noEvidenceSummary = renderer.summary(noEvidenceResult, rootDir);
+        String noEvidenceSummary = renderer.summary(noEvidenceResult);
 
         assertThat(emptyResult.testEvidenceCount()).isEqualTo(0);
         assertThat(noEvidenceResult.testEvidenceCount()).isEqualTo(0);
@@ -222,7 +222,7 @@ class DocsLintReportRendererTest {
         writeTest("Test.java", "// UC-DL-461, UC-DL-463\nvoid mixed(){}");
 
         var result = lintWithTests(rootDir, List.of("docs"), List.of("src/test/java"), null);
-        String summary = renderer.summary(result, rootDir);
+        String summary = renderer.summary(result);
 
         // Definitions: 3 occurrences, 2 unique UCs.
         assertThat(result.useCaseCount()).isEqualTo(3);
@@ -249,7 +249,7 @@ class DocsLintReportRendererTest {
                 """);
 
         var result = lint(rootDir, List.of("docs"), null);
-        String summary = renderer.summary(result, rootDir);
+        String summary = renderer.summary(result);
 
         assertThat(summary).contains("tests: not read");
         assertThat(summary).doesNotContain("test IDs:");
@@ -270,7 +270,7 @@ class DocsLintReportRendererTest {
         writeTest("Test.java", "// UC-DL-1\nvoid testIt() {}");
 
         var result = lintWithTests(rootDir, List.of("docs"), List.of("."), null);
-        String summary = renderer.summary(result, rootDir);
+        String summary = renderer.summary(result);
 
         assertThat(summary).contains("UC definitions: 1 / 1");
         assertThat(summary).contains("test IDs: 1 / 1");
@@ -293,7 +293,7 @@ class DocsLintReportRendererTest {
         writeTest("Test.java", "// UC-DL-1\nvoid testIt() {}");
 
         var result = lintWithTests(rootDir, List.of("docs"), List.of("src/test/java"), null);
-        String summary = renderer.summary(result, rootDir);
+        String summary = renderer.summary(result);
 
         // THEN the source list names the roots relative to the root
         assertThat(summary).contains("Sources: docs, src/test/java");
@@ -318,7 +318,7 @@ class DocsLintReportRendererTest {
         writeTest("Test.java", "// UC-DL-1\nvoid testIt() {}");
 
         var result = lintWithTests(rootDir, List.of("docs"), null, null);
-        String summary = renderer.summary(result, rootDir);
+        String summary = renderer.summary(result);
 
         assertThat(summary).contains("Sources: docs, .");
     }
@@ -336,7 +336,7 @@ class DocsLintReportRendererTest {
                 """);
 
         var result = lint(rootDir, List.of("docs"), null);
-        String summary = renderer.summary(result, rootDir);
+        String summary = renderer.summary(result);
 
         assertThat(summary).contains("Sources: docs");
         assertThat(summary).doesNotContain(rootDir.toAbsolutePath().normalize().toString());
