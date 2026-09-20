@@ -2,6 +2,9 @@ package org.sterl.llmpeon.parts.tools.debug;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
@@ -9,18 +12,26 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.debug.core.DebugEvent;
 import org.eclipse.debug.core.DebugException;
 import org.eclipse.debug.core.DebugPlugin;
+import org.eclipse.debug.core.model.IStackFrame;
 import org.eclipse.debug.core.model.IValue;
 import org.eclipse.jdt.core.ICompilationUnit;
+import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.debug.core.IJavaBreakpoint;
 import org.eclipse.jdt.debug.core.IJavaDebugTarget;
 import org.eclipse.jdt.debug.core.IJavaExceptionBreakpoint;
 import org.eclipse.jdt.debug.core.IJavaLineBreakpoint;
 import org.eclipse.jdt.debug.core.IJavaStackFrame;
+import org.eclipse.jdt.debug.core.IJavaThread;
 import org.eclipse.jdt.debug.core.IJavaValue;
 import org.eclipse.jdt.debug.core.IJavaVariable;
 import org.eclipse.jdt.debug.core.JDIDebugModel;
+import org.eclipse.jdt.debug.eval.EvaluationManager;
+import org.eclipse.jdt.debug.eval.IAstEvaluationEngine;
+import org.eclipse.jdt.debug.eval.IEvaluationResult;
 import org.sterl.llmpeon.tool.tools.AbstractTool;
 
 import dev.langchain4j.agent.tool.P;
@@ -79,7 +90,51 @@ public class JavaDebugTool extends AbstractTool {
         if (session == null) {
             return noSession("evaluate_expression");
         }
-        return notYetAvailable("evaluate_expression");
+        if (expression == null || expression.isBlank()) {
+            throw new IllegalArgumentException("expression must not be empty");
+        }
+        int timeout = timeoutMs <= 0 ? 10000 : timeoutMs;
+        IJavaStackFrame javaFrame = javaFrame(session, thread, frame);
+        String projectName = session.sessionProject();
+        if (projectName.isBlank()) {
+            throw new IllegalArgumentException("cannot evaluate — the session has no project attribute, so the expression has no compilation context");
+        }
+        IJavaProject javaProject = JavaCore.create(project(projectName));
+        if (!javaProject.exists()) {
+            throw new IllegalArgumentException("project '" + projectName + "' is not a Java project — the expression cannot be compiled against it");
+        }
+        var result = new AtomicReference<IEvaluationResult>();
+        var latch = new CountDownLatch(1);
+        IAstEvaluationEngine engine = EvaluationManager.newAstEvaluationEngine(javaProject, session.target());
+        try {
+            try {
+                engine.evaluate(expression, javaFrame, eval -> {
+                    result.set(eval);
+                    latch.countDown();
+                }, DebugEvent.EVALUATION, false);
+            } catch (DebugException e) {
+                throw fail("starting evaluation of '" + expression + "' in " + frameName(javaFrame), e);
+            }
+            if (!latch.await(timeout, TimeUnit.MILLISECONDS)) {
+                try {
+                    session.resolveThread(thread).terminateEvaluation();
+                } catch (DebugException ignored) {
+                    // best effort — the timeout is reported anyway
+                }
+                throw new IllegalArgumentException("evaluation timed out after " + timeout
+                        + " ms — check the Debug view; the VM evaluation may have completed");
+            }
+            IEvaluationResult evaluationResult = result.get();
+            if (evaluationResult.hasErrors()) {
+                throw new IllegalArgumentException("evaluation failed: " + String.join("; ", evaluationResult.getErrorMessages()));
+            }
+            return DebugJson.evaluated(evaluationResult.getValue());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalArgumentException("evaluation of '" + expression + "' was interrupted");
+        } finally {
+            engine.dispose();
+        }
     }
 
     @Tool(name = "set_variable", value = "Set a local variable or argument to a primitive, String or null value. No confirmation.")
@@ -253,7 +308,13 @@ public class JavaDebugTool extends AbstractTool {
         if (session == null) {
             return noSession("step_over");
         }
-        return notYetAvailable("step_over");
+        IJavaThread debugThread = session.resolveThread(thread);
+        try {
+            debugThread.stepOver();
+        } catch (DebugException e) {
+            throw fail("stepping over in thread " + threadName(debugThread), e);
+        }
+        return waitForSuspend(session, debugThread, "step_over", waitMs <= 0 ? 15000 : waitMs);
     }
 
     @Tool(name = "step_in", value = "Step into a debug thread and wait for the next suspend; returns the new top frame.")
@@ -263,7 +324,13 @@ public class JavaDebugTool extends AbstractTool {
         if (session == null) {
             return noSession("step_in");
         }
-        return notYetAvailable("step_in");
+        IJavaThread debugThread = session.resolveThread(thread);
+        try {
+            debugThread.stepInto();
+        } catch (DebugException e) {
+            throw fail("stepping into a method in thread " + threadName(debugThread), e);
+        }
+        return waitForSuspend(session, debugThread, "step_in", waitMs <= 0 ? 15000 : waitMs);
     }
 
     @Tool(name = "step_out", value = "Step out of the current frame and wait for the next suspend; returns the new top frame.")
@@ -273,7 +340,22 @@ public class JavaDebugTool extends AbstractTool {
         if (session == null) {
             return noSession("step_out");
         }
-        return notYetAvailable("step_out");
+        IJavaThread debugThread = session.resolveThread(thread);
+        IStackFrame[] frames;
+        try {
+            frames = debugThread.getStackFrames();
+        } catch (DebugException e) {
+            throw fail("reading stack frames of thread " + threadName(debugThread), e);
+        }
+        if (frames.length <= 1) {
+            throw new IllegalArgumentException("thread " + threadName(debugThread) + " is already at its top frame — use continue");
+        }
+        try {
+            debugThread.stepReturn();
+        } catch (DebugException e) {
+            throw fail("stepping out in thread " + threadName(debugThread), e);
+        }
+        return waitForSuspend(session, debugThread, "step_out", waitMs <= 0 ? 15000 : waitMs);
     }
 
     @Tool(name = "continue", value = "Resume a suspended debug thread and wait for the next suspend; returns the new top frame.")
@@ -283,7 +365,16 @@ public class JavaDebugTool extends AbstractTool {
         if (session == null) {
             return noSession("continue");
         }
-        return notYetAvailable("continue");
+        IJavaThread debugThread = session.resolveThread(thread);
+        if (!debugThread.isSuspended()) {
+            throw new IllegalArgumentException("thread " + threadName(debugThread) + " is not suspended — nothing to continue");
+        }
+        try {
+            debugThread.resume();
+        } catch (DebugException e) {
+            throw fail("resuming thread " + threadName(debugThread), e);
+        }
+        return waitForSuspend(session, debugThread, "continue", waitMs <= 0 ? 30000 : waitMs);
     }
 
     @Tool(name = "suspend", value = "Suspend a running debug session; returns the suspended threads with their top frames.")
@@ -292,7 +383,12 @@ public class JavaDebugTool extends AbstractTool {
         if (session == null) {
             return noSession("suspend");
         }
-        return notYetAvailable("suspend");
+        try {
+            session.target().suspend();
+        } catch (DebugException e) {
+            throw fail("suspending the VM " + session.vmName(), e);
+        }
+        return DebugJson.state(session);
     }
 
     private static IJavaStackFrame javaFrame(DebugSession session, String thread, int frameIndex) {
@@ -434,8 +530,46 @@ public class JavaDebugTool extends AbstractTool {
         return DebugSession.NO_SESSION;
     }
 
-    /** I1 scaffold: actions without a session answer honestly, with a session they are not implemented yet. */
-    private static String notYetAvailable(String action) {
-        throw new IllegalArgumentException(action + " not yet available in this build");
+    /**
+     * D9: steps and resume are non-blocking on the JDI side — wait for the resolved thread's
+     * next suspend (100 ms tick, hard deadline) and answer with its new top frame.
+     * Every edge is reported honestly: still suspended, VM terminated, still running.
+     */
+    private static String waitForSuspend(DebugSession session, IJavaThread debugThread, String action, int waitMs) {
+        long deadline = System.currentTimeMillis() + waitMs;
+        while (debugThread.isSuspended() && System.currentTimeMillis() < deadline) {
+            sleep(100);
+        }
+        if (debugThread.isSuspended()) {
+            throw new IllegalArgumentException(action + ": thread " + threadName(debugThread) + " is still suspended after "
+                    + waitMs + " ms — check the Debug view");
+        }
+        while (System.currentTimeMillis() < deadline) {
+            if (session.target().isTerminated()) {
+                throw new IllegalArgumentException(action + ": the VM terminated while waiting — check the Debug view");
+            }
+            if (debugThread.isSuspended()) {
+                return DebugJson.controlResponse(debugThread);
+            }
+            sleep(100);
+        }
+        throw new IllegalArgumentException(action + ": still running after " + waitMs + " ms — no breakpoint hit?");
+    }
+
+    private static void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalArgumentException("waiting for the next suspend was interrupted");
+        }
+    }
+
+    private static String threadName(IJavaThread thread) {
+        try {
+            return thread.getName();
+        } catch (DebugException e) {
+            return "<unknown thread>";
+        }
     }
 }

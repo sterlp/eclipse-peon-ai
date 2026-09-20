@@ -171,6 +171,45 @@ public final class DebugJson {
         return pretty(node);
     }
 
+    /** step/continue response: {thread, state, topFrame} (the new top frame after the suspend). */
+    static String controlResponse(IJavaThread thread) {
+        Map<String, Object> node = new LinkedHashMap<>();
+        node.put("thread", threadName(thread));
+        node.put("state", isSuspended(thread) ? "suspended" : "running");
+        node.put("topFrame", topFrame(thread));
+        return pretty(node);
+    }
+
+    /** evaluate_expression response: {type, value} (arrays named with length + capped elements). */
+    static String evaluated(IJavaValue value) {
+        Map<String, Object> node = new LinkedHashMap<>();
+        if (value == null || isNull(value)) {
+            node.put("type", "null");
+            node.put("value", null);
+            return pretty(node);
+        }
+        node.put("type", valueTypeName(value));
+        if (value instanceof IJavaPrimitiveValue primitive) {
+            node.put("value", primitiveValue(primitive));
+            return pretty(node);
+        }
+        if (value instanceof IJavaArray array) {
+            node.put("length", arrayLength(array));
+            node.put("elements", arrayElements(array, 1));
+            return pretty(node);
+        }
+        node.put("value", valueString(value));
+        return pretty(node);
+    }
+
+    private static String valueTypeName(IValue value) {
+        try {
+            return value.getReferenceTypeName();
+        } catch (DebugException e) {
+            return "<unknown type>";
+        }
+    }
+
     private static List<Map<String, Object>> threadNodes(List<IJavaThread> threads) {
         var nodes = new ArrayList<Map<String, Object>>();
         for (IJavaThread thread : threads) {
