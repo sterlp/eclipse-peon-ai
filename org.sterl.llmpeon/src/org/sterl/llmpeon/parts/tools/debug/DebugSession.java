@@ -20,7 +20,7 @@ import org.eclipse.jdt.launching.IJavaLaunchConfigurationConstants;
  * no-session message, more than one yields an honest error naming all of them.
  * Never auto-starts and never auto-disconnects (R-JD-1).
  */
-final class DebugSession {
+public final class DebugSession {
 
     static final String NO_SESSION = "no active debug session — start debugging in the Debug view first";
 
@@ -32,13 +32,20 @@ final class DebugSession {
         this.target = target;
     }
 
+    /** Resolves the active session from the launch manager (never auto-starts, R-JD-1). */
+    static DebugSession findActive() {
+        return findActive(DebugPlugin.getDefault().getLaunchManager().getLaunches());
+    }
+
     /**
+     * Pure session lookup over the given launches.
+     *
      * @return the single active session, or {@code null} when none is active
      * @throws IllegalArgumentException when more than one session is active (all listed)
      */
-    static DebugSession findActive() {
+    public static DebugSession findActive(ILaunch[] launches) {
         var active = new ArrayList<DebugSession>();
-        for (ILaunch candidate : DebugPlugin.getDefault().getLaunchManager().getLaunches()) {
+        for (ILaunch candidate : launches) {
             for (var debugTarget : candidate.getDebugTargets()) {
                 if (!(debugTarget instanceof IJavaDebugTarget target)) {
                     continue;
@@ -84,7 +91,7 @@ final class DebugSession {
         return config == null ? "<unknown launch>" : config.getName();
     }
 
-    String vmName() {
+    public String vmName() {
         try {
             return target.getVMName();
         } catch (DebugException e) {
@@ -116,7 +123,7 @@ final class DebugSession {
                 }
             }
         } catch (DebugException e) {
-            throw fail("reading threads of " + vmName(), e);
+            throw DebugSupport.fail("reading threads of " + vmName(), e);
         }
         return threads;
     }
@@ -125,7 +132,7 @@ final class DebugSession {
         var threads = threads();
         if (name != null && !name.isBlank()) {
             for (IJavaThread thread : threads) {
-                if (name.equals(threadName(thread))) {
+                if (name.equals(DebugSupport.threadName(thread))) {
                     return thread;
                 }
             }
@@ -138,7 +145,7 @@ final class DebugSession {
             }
         }
         for (IJavaThread thread : threads) {
-            if (!isSystem(thread)) {
+            if (!DebugSupport.isSystem(thread)) {
                 return thread;
             }
         }
@@ -155,40 +162,20 @@ final class DebugSession {
         try {
             frames = thread.getStackFrames();
         } catch (DebugException e) {
-            throw fail("reading stack frames of thread " + threadName(thread), e);
+            throw DebugSupport.fail("reading stack frames of thread " + DebugSupport.threadName(thread), e);
         }
         if (frameIndex < 0 || frameIndex >= frames.length) {
             throw new IllegalArgumentException("frame index " + frameIndex + " out of range (0.."
-                    + Math.max(frames.length - 1, 0) + ", 0 = top) in thread " + threadName(thread));
+                    + Math.max(frames.length - 1, 0) + ", 0 = top) in thread " + DebugSupport.threadName(thread));
         }
         return frames[frameIndex];
-    }
-
-    private static boolean isSystem(IJavaThread thread) {
-        try {
-            return thread.isSystemThread();
-        } catch (DebugException e) {
-            return false;
-        }
-    }
-
-    private static String threadName(IJavaThread thread) {
-        try {
-            return thread.getName();
-        } catch (DebugException e) {
-            return "<unknown thread>";
-        }
     }
 
     private static String threadNames(List<IJavaThread> threads) {
         var names = new ArrayList<String>();
         for (IJavaThread thread : threads) {
-            names.add(threadName(thread));
+            names.add(DebugSupport.threadName(thread));
         }
         return String.join(", ", names);
-    }
-
-    private static IllegalArgumentException fail(String context, DebugException e) {
-        return new IllegalArgumentException(context + " failed: " + e.getMessage(), e);
     }
 }

@@ -66,7 +66,7 @@ public final class DebugJson {
         try {
             frames = thread.getStackFrames();
         } catch (DebugException e) {
-            throw fail("reading stack frames of thread " + threadName(thread), e);
+            throw DebugSupport.fail("reading stack frames of thread " + DebugSupport.threadName(thread), e);
         }
         var nodes = new ArrayList<Map<String, Object>>();
         for (int i = 0; i < frames.length; i++) {
@@ -93,7 +93,7 @@ public final class DebugJson {
         try {
             locals = frame.getLocalVariables();
         } catch (DebugException e) {
-            throw fail("reading local variables of frame " + frameName(frame), e);
+            throw DebugSupport.fail("reading local variables of frame " + frameName(frame), e);
         }
         if (namePath == null || namePath.isBlank()) {
             var nodes = new ArrayList<Map<String, Object>>();
@@ -174,7 +174,7 @@ public final class DebugJson {
     /** step/continue response: {thread, state, topFrame} (the new top frame after the suspend). */
     static String controlResponse(IJavaThread thread) {
         Map<String, Object> node = new LinkedHashMap<>();
-        node.put("thread", threadName(thread));
+        node.put("thread", DebugSupport.threadName(thread));
         node.put("state", isSuspended(thread) ? "suspended" : "running");
         node.put("topFrame", topFrame(thread));
         return pretty(node);
@@ -214,9 +214,9 @@ public final class DebugJson {
         var nodes = new ArrayList<Map<String, Object>>();
         for (IJavaThread thread : threads) {
             Map<String, Object> node = new LinkedHashMap<>();
-            node.put("name", threadName(thread));
+            node.put("name", DebugSupport.threadName(thread));
             node.put("state", isSuspended(thread) ? "suspended" : "running");
-            node.put("system", isSystem(thread));
+            node.put("system", DebugSupport.isSystem(thread));
             node.put("topFrame", topFrame(thread));
             nodes.add(node);
         }
@@ -254,7 +254,7 @@ public final class DebugJson {
         try {
             value = variable.getValue();
         } catch (DebugException e) {
-            throw fail("reading value of variable " + safeName(variable), e);
+            throw DebugSupport.fail("reading value of variable " + safeName(variable), e);
         }
         applyValue(node, value, depth);
         return node;
@@ -296,7 +296,7 @@ public final class DebugJson {
             try {
                 element = array.getValue(i);
             } catch (DebugException e) {
-                throw fail("reading element " + i + " of array " + arrayTypeName(array), e);
+                throw DebugSupport.fail("reading element " + i + " of array " + arrayTypeName(array), e);
             }
             elements.add(elementNode(element, depth));
         }
@@ -343,7 +343,7 @@ public final class DebugJson {
         try {
             value = variable.getValue();
         } catch (DebugException e) {
-            throw fail("reading value of variable " + safeName(variable), e);
+            throw DebugSupport.fail("reading value of variable " + safeName(variable), e);
         }
         if (value == null || isNull(value)) {
             throw new IllegalArgumentException("variable '" + safeName(variable) + "' is null — no fields or elements to walk into");
@@ -354,7 +354,7 @@ public final class DebugJson {
             }
             return new ArrayList<>(List.of(value.getVariables()));
         } catch (DebugException e) {
-            throw fail("reading fields of variable " + safeName(variable), e);
+            throw DebugSupport.fail("reading fields of variable " + safeName(variable), e);
         }
     }
 
@@ -362,7 +362,7 @@ public final class DebugJson {
         try {
             return new ArrayList<>(List.of(value.getVariables()));
         } catch (DebugException e) {
-            throw fail("reading fields of " + valueString(value), e);
+            throw DebugSupport.fail("reading fields of " + valueString(value), e);
         }
     }
 
@@ -378,7 +378,7 @@ public final class DebugJson {
         try {
             return array.getLength();
         } catch (DebugException e) {
-            throw fail("reading length of array " + arrayTypeName(array), e);
+            throw DebugSupport.fail("reading length of array " + arrayTypeName(array), e);
         }
     }
 
@@ -464,14 +464,6 @@ public final class DebugJson {
         return false;
     }
 
-    private static String threadName(IJavaThread thread) {
-        try {
-            return thread.getName();
-        } catch (DebugException e) {
-            return "<unknown thread>";
-        }
-    }
-
     private static boolean isSuspended(IJavaThread thread) {
         return thread.isSuspended();
     }
@@ -480,23 +472,11 @@ public final class DebugJson {
         return target.isSuspended();
     }
 
-    private static boolean isSystem(IJavaThread thread) {
-        try {
-            return thread.isSystemThread();
-        } catch (DebugException e) {
-            return false;
-        }
-    }
-
     private static boolean outOfSynch(IJavaDebugTarget target) {
         try {
             return target.isOutOfSynch();
         } catch (DebugException e) {
             return false;
         }
-    }
-
-    private static IllegalArgumentException fail(String context, DebugException e) {
-        return new IllegalArgumentException(context + " failed: " + e.getMessage(), e);
     }
 }

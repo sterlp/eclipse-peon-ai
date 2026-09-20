@@ -113,7 +113,7 @@ public class JavaDebugTool extends AbstractTool {
                     latch.countDown();
                 }, DebugEvent.EVALUATION, false);
             } catch (DebugException e) {
-                throw fail("starting evaluation of '" + expression + "' in " + frameName(javaFrame), e);
+                throw DebugSupport.fail("starting evaluation of '" + expression + "' in " + frameName(javaFrame), e);
             }
             if (!latch.await(timeout, TimeUnit.MILLISECONDS)) {
                 try {
@@ -125,6 +125,9 @@ public class JavaDebugTool extends AbstractTool {
                         + " ms — check the Debug view; the VM evaluation may have completed");
             }
             IEvaluationResult evaluationResult = result.get();
+            if (evaluationResult == null) {
+                throw new IllegalArgumentException("evaluation returned no result — check the Debug view; the VM evaluation may have completed");
+            }
             if (evaluationResult.hasErrors()) {
                 throw new IllegalArgumentException("evaluation failed: " + String.join("; ", evaluationResult.getErrorMessages()));
             }
@@ -151,7 +154,7 @@ public class JavaDebugTool extends AbstractTool {
         try {
             variable = javaFrame.findVariable(name);
         } catch (DebugException e) {
-            throw fail("reading variable " + name + " in frame " + frameName(javaFrame), e);
+            throw DebugSupport.fail("reading variable " + name + " in frame " + frameName(javaFrame), e);
         }
         if (variable == null) {
             throw new IllegalArgumentException("variable '" + name + "' not visible in frame " + frameName(javaFrame)
@@ -161,7 +164,7 @@ public class JavaDebugTool extends AbstractTool {
         try {
             variable.setValue(newValue);
         } catch (DebugException e) {
-            throw fail("setting variable " + name + " to " + value, e);
+            throw DebugSupport.fail("setting variable " + name + " to " + value, e);
         }
         String type;
         String newValueString;
@@ -170,7 +173,7 @@ public class JavaDebugTool extends AbstractTool {
             IValue after = variable.getValue();
             newValueString = after == null ? "null" : after.getValueString();
         } catch (DebugException e) {
-            throw fail("reading the new value of variable " + name, e);
+            throw DebugSupport.fail("reading the new value of variable " + name, e);
         }
         return DebugJson.valueResponse(name, type, newValueString);
     }
@@ -222,7 +225,7 @@ public class JavaDebugTool extends AbstractTool {
             breakpoint = JDIDebugModel.createLineBreakpoint(fileResource, typeName, line, -1, -1, hitCount, true,
                     new HashMap<>());
         } catch (CoreException e) {
-            throw fail("creating a line breakpoint in " + file + ":" + line, e);
+            throw DebugSupport.fail("creating a line breakpoint in " + file + ":" + line, e);
         }
         try {
             breakpoint.setSuspendPolicy(parseSuspendPolicy(suspendPolicy));
@@ -230,7 +233,7 @@ public class JavaDebugTool extends AbstractTool {
                 breakpoint.setCondition(condition.trim());
             }
         } catch (CoreException e) {
-            throw fail("configuring the breakpoint in " + file + ":" + line, e);
+            throw DebugSupport.fail("configuring the breakpoint in " + file + ":" + line, e);
         }
         return DebugJson.breakpointResponse(breakpoint, file, line, null);
     }
@@ -261,12 +264,12 @@ public class JavaDebugTool extends AbstractTool {
             breakpoint = JDIDebugModel.createExceptionBreakpoint(ResourcesPlugin.getWorkspace().getRoot(),
                     exceptionType, caught, uncaught, false, true, new HashMap<>());
         } catch (CoreException e) {
-            throw fail("creating an exception breakpoint for " + exceptionType, e);
+            throw DebugSupport.fail("creating an exception breakpoint for " + exceptionType, e);
         }
         try {
             breakpoint.setSuspendPolicy(parseSuspendPolicy(suspendPolicy));
         } catch (CoreException e) {
-            throw fail("configuring the exception breakpoint for " + exceptionType, e);
+            throw DebugSupport.fail("configuring the exception breakpoint for " + exceptionType, e);
         }
         return DebugJson.breakpointResponse(breakpoint, null, null, exceptionType);
     }
@@ -296,7 +299,7 @@ public class JavaDebugTool extends AbstractTool {
                 marker.delete();
             }
         } catch (CoreException e) {
-            throw fail("removing breakpoint marker id " + markerId, e);
+            throw DebugSupport.fail("removing breakpoint marker id " + markerId, e);
         }
         return DebugJson.removedResponse(markerId);
     }
@@ -312,7 +315,7 @@ public class JavaDebugTool extends AbstractTool {
         try {
             debugThread.stepOver();
         } catch (DebugException e) {
-            throw fail("stepping over in thread " + threadName(debugThread), e);
+            throw DebugSupport.fail("stepping over in thread " + DebugSupport.threadName(debugThread), e);
         }
         return waitForSuspend(session, debugThread, "step_over", waitMs <= 0 ? 15000 : waitMs);
     }
@@ -328,7 +331,7 @@ public class JavaDebugTool extends AbstractTool {
         try {
             debugThread.stepInto();
         } catch (DebugException e) {
-            throw fail("stepping into a method in thread " + threadName(debugThread), e);
+            throw DebugSupport.fail("stepping into a method in thread " + DebugSupport.threadName(debugThread), e);
         }
         return waitForSuspend(session, debugThread, "step_in", waitMs <= 0 ? 15000 : waitMs);
     }
@@ -345,15 +348,15 @@ public class JavaDebugTool extends AbstractTool {
         try {
             frames = debugThread.getStackFrames();
         } catch (DebugException e) {
-            throw fail("reading stack frames of thread " + threadName(debugThread), e);
+            throw DebugSupport.fail("reading stack frames of thread " + DebugSupport.threadName(debugThread), e);
         }
         if (frames.length <= 1) {
-            throw new IllegalArgumentException("thread " + threadName(debugThread) + " is already at its top frame — use continue");
+            throw new IllegalArgumentException("thread " + DebugSupport.threadName(debugThread) + " is already at its top frame — use continue");
         }
         try {
             debugThread.stepReturn();
         } catch (DebugException e) {
-            throw fail("stepping out in thread " + threadName(debugThread), e);
+            throw DebugSupport.fail("stepping out in thread " + DebugSupport.threadName(debugThread), e);
         }
         return waitForSuspend(session, debugThread, "step_out", waitMs <= 0 ? 15000 : waitMs);
     }
@@ -367,12 +370,12 @@ public class JavaDebugTool extends AbstractTool {
         }
         IJavaThread debugThread = session.resolveThread(thread);
         if (!debugThread.isSuspended()) {
-            throw new IllegalArgumentException("thread " + threadName(debugThread) + " is not suspended — nothing to continue");
+            throw new IllegalArgumentException("thread " + DebugSupport.threadName(debugThread) + " is not suspended — nothing to continue");
         }
         try {
             debugThread.resume();
         } catch (DebugException e) {
-            throw fail("resuming thread " + threadName(debugThread), e);
+            throw DebugSupport.fail("resuming thread " + DebugSupport.threadName(debugThread), e);
         }
         return waitForSuspend(session, debugThread, "continue", waitMs <= 0 ? 30000 : waitMs);
     }
@@ -386,7 +389,7 @@ public class JavaDebugTool extends AbstractTool {
         try {
             session.target().suspend();
         } catch (DebugException e) {
-            throw fail("suspending the VM " + session.vmName(), e);
+            throw DebugSupport.fail("suspending the VM " + session.vmName(), e);
         }
         return DebugJson.state(session);
     }
@@ -487,7 +490,7 @@ public class JavaDebugTool extends AbstractTool {
                     .findFirst()
                     .orElse(null);
         } catch (CoreException e) {
-            throw fail("scanning the workspace for marker id " + markerId, e);
+            throw DebugSupport.fail("scanning the workspace for marker id " + markerId, e);
         }
     }
 
@@ -521,10 +524,6 @@ public class JavaDebugTool extends AbstractTool {
         };
     }
 
-    private static IllegalArgumentException fail(String context, Exception e) {
-        return new IllegalArgumentException(context + " failed: " + e.getMessage(), e);
-    }
-
     private String noSession(String action) {
         onProblem(action + ": " + DebugSession.NO_SESSION);
         return DebugSession.NO_SESSION;
@@ -541,7 +540,7 @@ public class JavaDebugTool extends AbstractTool {
             sleep(100);
         }
         if (debugThread.isSuspended()) {
-            throw new IllegalArgumentException(action + ": thread " + threadName(debugThread) + " is still suspended after "
+            throw new IllegalArgumentException(action + ": thread " + DebugSupport.threadName(debugThread) + " is still suspended after "
                     + waitMs + " ms — check the Debug view");
         }
         while (System.currentTimeMillis() < deadline) {
@@ -565,11 +564,4 @@ public class JavaDebugTool extends AbstractTool {
         }
     }
 
-    private static String threadName(IJavaThread thread) {
-        try {
-            return thread.getName();
-        } catch (DebugException e) {
-            return "<unknown thread>";
-        }
-    }
 }
