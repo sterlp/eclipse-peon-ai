@@ -19,12 +19,12 @@
 | Klasse (core) | Rolle | isEditTool |
 |---|---|---|
 | `WebFetchTool` (bestehend) | fetch→Markdown→Cache→Zeilenfenster; Cache als Instanz-Feld (LRU 5) | nein |
-| `WebGetTool` (NEU) | URL→Disk-Download; `QualifiedPathValidator.requireQualifiedDisk` + `validateWrite`; Return = Status/Größe/Pfad; **gated hinter `diskToolsEnabled`** (R-W-8) | **ja** (Sub-Agent-Filter greift) |
+| `WebGetTool` (NEU) | URL→Disk-Download; `QualifiedPathValidator.requireQualifiedDisk` + `validateWrite`; Return = Status/Größe/Pfad; **gated hinter `diskToolsEnabled`** (R-WEB-8) | **ja** (Sub-Agent-Filter greift) |
 
 | Richtung | Gegenüber | Wofür |
 |---|---|---|
 | nutzt | `java.net.http.HttpClient` | GET (bestehender Code in WebFetchTool) |
-| nutzt | `QualifiedPathValidator`, `AbstractTool.validateWrite` | WebGet-Guards (R-W-5) |
+| nutzt | `QualifiedPathValidator`, `AbstractTool.validateWrite` | WebGet-Guards (R-WEB-5) |
 | nutzt | `Flexmark` (bestehend) | HTML→Markdown |
 | genutzt von | `ToolService`/`SharedToolsComponent` | Registrierung (WebGetTool zusätzlich registrieren) |
 

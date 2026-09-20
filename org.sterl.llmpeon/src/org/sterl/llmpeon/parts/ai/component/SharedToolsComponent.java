@@ -20,6 +20,7 @@ import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 import org.sterl.llmpeon.tool.tools.DiskGrepTool;
 import org.sterl.llmpeon.tool.tools.SearchAgentTool;
+import org.sterl.llmpeon.tool.tools.WebGetTool;
 import org.sterl.llmpeon.tool.tools.SkillTool;
 
 /**
@@ -40,6 +41,9 @@ public class SharedToolsComponent {
     private final DiskGrepTool diskGrepTool;
     private final DocsLinterTool docsLinterTool;
     private final DocsIdTool docsIdTool;
+
+    /** webGet (R-W-8): same risk class as the disk write tools — gated behind diskToolsEnabled, default OFF. */
+    private final WebGetTool webGetTool = new WebGetTool();
 
     public SharedToolsComponent(SkillService skillService, CommandService commandService) {
         // filter eclipse tools from the search agents ...
@@ -74,12 +78,14 @@ public class SharedToolsComponent {
                 sharedToolService.addTool(diskFileWriteTool);
                 sharedToolService.addTool(diskFileReadTool);
                 sharedToolService.addTool(diskGrepTool);
+                sharedToolService.addTool(webGetTool);
             }
         } else {
             if (sharedToolService.getTool(DiskFileWriteTool.class).isPresent()) {
                 sharedToolService.removeTool(diskFileWriteTool);
                 sharedToolService.removeTool(diskFileReadTool);
                 sharedToolService.removeTool(diskGrepTool);
+                sharedToolService.removeTool(webGetTool);
             }
         }
     }
@@ -114,6 +120,10 @@ public class SharedToolsComponent {
 
     public DiskGrepTool diskGrepTool() {
         return diskGrepTool;
+    }
+
+    public WebGetTool webGetTool() {
+        return webGetTool;
     }
 
     public DocsLinterTool docsLinterTool() {

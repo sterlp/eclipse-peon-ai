@@ -173,7 +173,7 @@ Common built-in prefixes:
 | `skill` | `skillList`, `skillRead`, `skillReadFile` |
 | `memory` | `memoryAdd`, `memoryReplace`, `memoryRemove` |
 | `plan` | `planRead`, `planSave`, `planUpdate`, `planImplemented` |
-| `disk` | Optional file/grep tools that bypass the Eclipse workspace — only registered when **Enable disk tools** is on (see [Advanced Configuration](./advanced-configuration.md)). E.g. `diskReadFile`, `diskGrepFiles`, `diskWriteFile`. |
+| `disk` | Optional file/grep tools that bypass the Eclipse workspace — only registered when **Enable disk tools** is on (see [Advanced Configuration](./advanced-configuration.md)). E.g. `diskReadFile`, `diskGrepFiles`, `diskWriteFile`. The same toggle also enables `webGet` (download a URL to a disk path — status, size and path in the context, never the content). |
 | `mcp__` | Every tool from a connected MCP server, e.g. `mcp__docs__search`. |
 
 ::: tip Disk tools report absolute paths

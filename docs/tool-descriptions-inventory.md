@@ -4,7 +4,7 @@
 
 ## IST
 
-- **42 `@Tool` methods** across 20 tool classes (core + Eclipse plugin)
+- **43 `@Tool` methods** across 21 tool classes (core + Eclipse plugin)
 - Descriptions vary wildly: some 5 words (`"Read file - not eclipse."`), some 3 lines of multi-paragraph text
 - No consistency in style (imperative vs descriptive, with/without context hints)
 - AskUserTool already optimized — excluded from plan
@@ -62,6 +62,7 @@ Alle `@Tool`-Beschreibungen folgen einem einheitlichen Muster:
 | # | Method | Current Description | Rating | New Description | Why |
 |---|--------|---------------------|--------|-----------------|-----|
 | 13 | `webFetchAsMarkdown` | `"Fetch URL content as Markdown."` | ⚠️ zu kurz | `"Fetch a URL and convert its HTML content to Markdown. Handles redirects, charset detection, and 30s timeout. Returns error on HTTP 4xx/5xx."` | Verhalten bei Errors, Timeout, Charset genannt |
+| 13a | `webGet` (WebGetTool, neu 2026-09-20, Story A) | *(neu — kein Bestand)* | ✅ | `"Download a URL to a file on disk. Absolute path required; overwrites existing. Returns status, size and path — never the content."` | Inhalt geht auf Disk, nie in den Kontext; Guards wie `diskWriteFile` (QualifiedPath + WriteValidator) |
 
 ### CompactSessionTool (`org.sterl.llmpeon.tool.tools`)
 

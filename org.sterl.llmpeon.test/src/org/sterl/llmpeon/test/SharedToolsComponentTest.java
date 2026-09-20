@@ -26,6 +26,7 @@ import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 import org.sterl.llmpeon.tool.tools.DiskGrepTool;
 import org.sterl.llmpeon.tool.tools.SearchAgentTool;
+import org.sterl.llmpeon.tool.tools.WebGetTool;
 
 /**
  * Inc 1 (PeonAiService-Struktur-Aufräumen): SharedToolsComponent — tool registration,
@@ -144,6 +145,35 @@ public class SharedToolsComponentTest {
         assertFalse(sut.toolService().getTool(DiskFileWriteTool.class).isPresent());
         assertFalse(sut.toolService().getTool(DiskFileReadTool.class).isPresent());
         assertFalse(sut.toolService().getTool(DiskGrepTool.class).isPresent());
+    }
+
+    /** GIVEN default config (disk tools disabled) WHEN toggling THEN webGet follows the disk tools (R-W-8, default OFF). */
+    @Test
+    public void test_webGetFollowsDiskToolToggle() {
+        // GIVEN default: disk tools disabled
+        assertFalse(sut.toolService().getTool(WebGetTool.class).isPresent());
+
+        // WHEN enabled
+        sut.updateActiveDiskTools(config(true));
+        assertTrue(sut.toolService().getTool(WebGetTool.class).isPresent());
+
+        // WHEN disabled again
+        sut.updateActiveDiskTools(config(false));
+        assertFalse(sut.toolService().getTool(WebGetTool.class).isPresent());
+    }
+
+    // UC-WEB-8
+    @Test
+    public void webGetFilteredFromSearchAgent() {
+        // GIVEN webGet registered (disk tools enabled) in the production wiring
+        sut.updateActiveDiskTools(config(true));
+        var webGet = sut.toolService().getExecutor("webGet");
+        assertTrue("webGet executor expected", webGet != null);
+        var searchAgent = sut.toolService().getTool(SearchAgentTool.class).orElseThrow();
+
+        // THEN the isEditTool filter excludes it from search agents
+        assertFalse("webGet (isEditTool) must be filtered out of search agents",
+                searchAgent.getFilter().test(webGet));
     }
 
     private java.util.Set<String> docsLinterNames() {
