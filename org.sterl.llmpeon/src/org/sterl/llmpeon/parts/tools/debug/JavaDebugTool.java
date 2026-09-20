@@ -1,6 +1,26 @@
 package org.sterl.llmpeon.parts.tools.debug;
 
+import java.util.Arrays;
+import java.util.HashMap;
+
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IMarker;
+import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.debug.core.DebugException;
+import org.eclipse.debug.core.DebugPlugin;
+import org.eclipse.debug.core.model.IValue;
+import org.eclipse.jdt.core.ICompilationUnit;
+import org.eclipse.jdt.debug.core.IJavaBreakpoint;
+import org.eclipse.jdt.debug.core.IJavaDebugTarget;
+import org.eclipse.jdt.debug.core.IJavaExceptionBreakpoint;
+import org.eclipse.jdt.debug.core.IJavaLineBreakpoint;
 import org.eclipse.jdt.debug.core.IJavaStackFrame;
+import org.eclipse.jdt.debug.core.IJavaValue;
+import org.eclipse.jdt.debug.core.IJavaVariable;
+import org.eclipse.jdt.debug.core.JDIDebugModel;
 import org.sterl.llmpeon.tool.tools.AbstractTool;
 
 import dev.langchain4j.agent.tool.P;
@@ -47,12 +67,7 @@ public class JavaDebugTool extends AbstractTool {
         if (session == null) {
             return noSession("get_variables");
         }
-        var debugThread = session.resolveThread(thread);
-        var stackFrame = session.resolveFrame(debugThread, frame);
-        if (!(stackFrame instanceof IJavaStackFrame javaFrame)) {
-            throw new IllegalArgumentException("frame " + frame + " of the resolved thread is not a Java frame");
-        }
-        return DebugJson.variables(javaFrame, name, depth);
+        return DebugJson.variables(javaFrame(session, thread, frame), name, depth);
     }
 
     @Tool(name = "evaluate_expression", value = "Evaluate a Java expression in a suspended stack frame and return the result as JSON.")
@@ -76,7 +91,33 @@ public class JavaDebugTool extends AbstractTool {
         if (session == null) {
             return noSession("set_variable");
         }
-        return notYetAvailable("set_variable");
+        IJavaStackFrame javaFrame = javaFrame(session, thread, frame);
+        IJavaVariable variable;
+        try {
+            variable = javaFrame.findVariable(name);
+        } catch (DebugException e) {
+            throw fail("reading variable " + name + " in frame " + frameName(javaFrame), e);
+        }
+        if (variable == null) {
+            throw new IllegalArgumentException("variable '" + name + "' not visible in frame " + frameName(javaFrame)
+                    + " (searched: local variables and arguments)");
+        }
+        IJavaValue newValue = newValueFor(session.target(), variable, value);
+        try {
+            variable.setValue(newValue);
+        } catch (DebugException e) {
+            throw fail("setting variable " + name + " to " + value, e);
+        }
+        String type;
+        String newValueString;
+        try {
+            type = variable.getReferenceTypeName();
+            IValue after = variable.getValue();
+            newValueString = after == null ? "null" : after.getValueString();
+        } catch (DebugException e) {
+            throw fail("reading the new value of variable " + name, e);
+        }
+        return DebugJson.valueResponse(name, type, newValueString);
     }
 
     @Tool(name = "set_breakpoint", value = "Set a line breakpoint with optional condition, hit count and suspend policy (THREAD or VM).")
@@ -89,7 +130,54 @@ public class JavaDebugTool extends AbstractTool {
         if (session == null) {
             return noSession("set_breakpoint");
         }
-        return notYetAvailable("set_breakpoint");
+        if (line < 1) {
+            throw new IllegalArgumentException("line must be >= 1 (got: " + line + ")");
+        }
+        if (hitCount < 0) {
+            throw new IllegalArgumentException("hitCount must be >= 0 (got: " + hitCount + ")");
+        }
+        IProject project;
+        String relativePath;
+        if (file != null && file.startsWith("/")) {
+            var segments = file.substring(1).split("/");
+            if (segments.length < 2 || segments[0].isBlank()) {
+                throw new IllegalArgumentException("an absolute file must be /project/path (got: " + file + ")");
+            }
+            project = project(segments[0]);
+            relativePath = String.join("/", Arrays.copyOfRange(segments, 1, segments.length));
+        } else {
+            String projectName = session.sessionProject();
+            if (projectName.isBlank()) {
+                throw new IllegalArgumentException("cannot resolve the project for file '" + file
+                        + "' — the session has no project attribute, pass /project/path explicitly");
+            }
+            project = project(projectName);
+            relativePath = file;
+        }
+        if (relativePath == null || relativePath.isBlank()) {
+            throw new IllegalArgumentException("no file path after the project segment in '" + file + "'");
+        }
+        IFile fileResource = project.getFile(relativePath);
+        if (!fileResource.exists()) {
+            throw new IllegalArgumentException("file '" + file + "' not found in project " + project.getName());
+        }
+        String typeName = primaryTypeName(fileResource, file);
+        IJavaLineBreakpoint breakpoint;
+        try {
+            breakpoint = JDIDebugModel.createLineBreakpoint(fileResource, typeName, line, -1, -1, hitCount, true,
+                    new HashMap<>());
+        } catch (CoreException e) {
+            throw fail("creating a line breakpoint in " + file + ":" + line, e);
+        }
+        try {
+            breakpoint.setSuspendPolicy(parseSuspendPolicy(suspendPolicy));
+            if (condition != null && !condition.isBlank()) {
+                breakpoint.setCondition(condition.trim());
+            }
+        } catch (CoreException e) {
+            throw fail("configuring the breakpoint in " + file + ":" + line, e);
+        }
+        return DebugJson.breakpointResponse(breakpoint, file, line, null);
     }
 
     @Tool(name = "set_exception_breakpoint", value = "Set an exception breakpoint for a type with suspend policy and caught/uncaught/subtype options.")
@@ -102,7 +190,30 @@ public class JavaDebugTool extends AbstractTool {
         if (session == null) {
             return noSession("set_exception_breakpoint");
         }
-        return notYetAvailable("set_exception_breakpoint");
+        if (exceptionType == null || exceptionType.isBlank()) {
+            throw new IllegalArgumentException("exceptionType must be a fully qualified type name");
+        }
+        boolean uncaught = catchUncaught == null || catchUncaught;
+        boolean caught = catchCaught == null || catchCaught;
+        if (!uncaught && !caught) {
+            throw new IllegalArgumentException("at least one of catchUncaught / catchCaught must be true");
+        }
+        if (subTypes != null && !subTypes) {
+            throw new IllegalArgumentException("subTypes=false is not supported — a JDI exception breakpoint always matches the type and its subtypes");
+        }
+        IJavaExceptionBreakpoint breakpoint;
+        try {
+            breakpoint = JDIDebugModel.createExceptionBreakpoint(ResourcesPlugin.getWorkspace().getRoot(),
+                    exceptionType, caught, uncaught, false, true, new HashMap<>());
+        } catch (CoreException e) {
+            throw fail("creating an exception breakpoint for " + exceptionType, e);
+        }
+        try {
+            breakpoint.setSuspendPolicy(parseSuspendPolicy(suspendPolicy));
+        } catch (CoreException e) {
+            throw fail("configuring the exception breakpoint for " + exceptionType, e);
+        }
+        return DebugJson.breakpointResponse(breakpoint, null, null, exceptionType);
     }
 
     @Tool(name = "remove_breakpoint", value = "Remove a breakpoint previously created by set_breakpoint or set_exception_breakpoint, given its marker id.")
@@ -111,7 +222,28 @@ public class JavaDebugTool extends AbstractTool {
         if (session == null) {
             return noSession("remove_breakpoint");
         }
-        return notYetAvailable("remove_breakpoint");
+        long markerId;
+        try {
+            markerId = Long.parseLong(id.trim());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("breakpoint id must be numeric (got: '" + id + "')");
+        }
+        IMarker marker = findMarkerById(markerId);
+        if (marker == null || !marker.exists()) {
+            throw new IllegalArgumentException("no breakpoint with marker id " + markerId + " — it was probably already removed");
+        }
+        var registered = DebugPlugin.getDefault().getBreakpointManager().getBreakpoint(marker);
+        try {
+            if (registered != null) {
+                registered.delete();
+            }
+            if (marker.exists()) {
+                marker.delete();
+            }
+        } catch (CoreException e) {
+            throw fail("removing breakpoint marker id " + markerId, e);
+        }
+        return DebugJson.removedResponse(markerId);
     }
 
     @Tool(name = "step_over", value = "Step over in a debug thread and wait for the next suspend; returns the new top frame.")
@@ -161,6 +293,140 @@ public class JavaDebugTool extends AbstractTool {
             return noSession("suspend");
         }
         return notYetAvailable("suspend");
+    }
+
+    private static IJavaStackFrame javaFrame(DebugSession session, String thread, int frameIndex) {
+        var debugThread = session.resolveThread(thread);
+        var stackFrame = session.resolveFrame(debugThread, frameIndex);
+        if (!(stackFrame instanceof IJavaStackFrame javaFrame)) {
+            throw new IllegalArgumentException("frame " + frameIndex + " of the resolved thread is not a Java frame");
+        }
+        return javaFrame;
+    }
+
+    private static String frameName(IJavaStackFrame frame) {
+        try {
+            return frame.getMethodName() + " in " + frame.getDeclaringTypeName();
+        } catch (DebugException e) {
+            return "<unknown frame>";
+        }
+    }
+
+    /** D7: the value parser — primitives, String or null, strictly against the declared type. */
+    private static IJavaValue newValueFor(IJavaDebugTarget target, IJavaVariable variable, String text) {
+        String declared;
+        try {
+            declared = variable.getReferenceTypeName();
+        } catch (DebugException e) {
+            declared = "";
+        }
+        if ("null".equals(text)) {
+            if (!"java.lang.String".equals(declared)) {
+                throw new IllegalArgumentException("set_variable: null is only allowed for a java.lang.String variable (declared: " + declared + ")");
+            }
+            return target.nullValue();
+        }
+        return switch (declared) {
+            case "boolean" -> target.newValue(parseBoolean(text));
+            case "byte" -> target.newValue((byte) parseBounded(text, declared, Byte.MIN_VALUE, Byte.MAX_VALUE));
+            case "short" -> target.newValue((short) parseBounded(text, declared, Short.MIN_VALUE, Short.MAX_VALUE));
+            case "int" -> target.newValue((int) parseBounded(text, declared, Integer.MIN_VALUE, Integer.MAX_VALUE));
+            case "long" -> target.newValue(parseBounded(text, declared, Long.MIN_VALUE, Long.MAX_VALUE));
+            case "float" -> target.newValue(parseFloat(text));
+            case "double" -> target.newValue(parseDouble(text));
+            case "char" -> {
+                if (text.length() != 1) {
+                    throw new IllegalArgumentException("set_variable: '" + text + "' is not a single char");
+                }
+                yield target.newValue(text.charAt(0));
+            }
+            case "java.lang.String" -> target.newValue(text);
+            default -> throw new IllegalArgumentException("set_variable targets primitives, String or null only (declared: " + declared + ")");
+        };
+    }
+
+    private static boolean parseBoolean(String text) {
+        if ("true".equals(text)) {
+            return true;
+        }
+        if ("false".equals(text)) {
+            return false;
+        }
+        throw new IllegalArgumentException("set_variable: '" + text + "' is not a boolean (expected true or false)");
+    }
+
+    private static long parseBounded(String text, String declared, long min, long max) {
+        try {
+            long value = Long.parseLong(text.trim());
+            if (value < min || value > max) {
+                throw new IllegalArgumentException("set_variable: " + text + " is out of range for " + declared + " (" + min + "…" + max + ")");
+            }
+            return value;
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("set_variable: '" + text + "' is not a " + declared);
+        }
+    }
+
+    private static float parseFloat(String text) {
+        try {
+            return Float.parseFloat(text.trim());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("set_variable: '" + text + "' is not a float");
+        }
+    }
+
+    private static double parseDouble(String text) {
+        try {
+            return Double.parseDouble(text.trim());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("set_variable: '" + text + "' is not a double");
+        }
+    }
+
+    /** Marker lookup by id — a workspace-wide scan of generic markers (the Markers.findMarkerById API is gone). */
+    private static IMarker findMarkerById(long markerId) {
+        try {
+            return Arrays.stream(ResourcesPlugin.getWorkspace().getRoot().findMarkers(IMarker.MARKER, true, IResource.DEPTH_INFINITE))
+                    .filter(marker -> marker.getId() == markerId)
+                    .findFirst()
+                    .orElse(null);
+        } catch (CoreException e) {
+            throw fail("scanning the workspace for marker id " + markerId, e);
+        }
+    }
+
+    private static IProject project(String name) {
+        IProject project = ResourcesPlugin.getWorkspace().getRoot().getProject(name);
+        if (!project.exists()) {
+            throw new IllegalArgumentException("project '" + name + "' does not exist in the workspace");
+        }
+        return project;
+    }
+
+    private static String primaryTypeName(IFile fileResource, String file) {
+        if (!(fileResource.getAdapter(ICompilationUnit.class) instanceof ICompilationUnit unit)) {
+            throw new IllegalArgumentException("file '" + file + "' is not a Java compilation unit");
+        }
+        var primaryType = unit.findPrimaryType();
+        if (primaryType == null) {
+            throw new IllegalArgumentException("file '" + file + "' has no primary Java type");
+        }
+        return primaryType.getFullyQualifiedName();
+    }
+
+    private static int parseSuspendPolicy(String policy) {
+        if (policy == null || policy.isBlank()) {
+            return IJavaBreakpoint.SUSPEND_THREAD;
+        }
+        return switch (policy.trim().toUpperCase()) {
+            case "THREAD" -> IJavaBreakpoint.SUSPEND_THREAD;
+            case "VM" -> IJavaBreakpoint.SUSPEND_VM;
+            default -> throw new IllegalArgumentException("suspendPolicy must be THREAD or VM (got: " + policy + ")");
+        };
+    }
+
+    private static IllegalArgumentException fail(String context, Exception e) {
+        return new IllegalArgumentException(context + " failed: " + e.getMessage(), e);
     }
 
     private String noSession(String action) {

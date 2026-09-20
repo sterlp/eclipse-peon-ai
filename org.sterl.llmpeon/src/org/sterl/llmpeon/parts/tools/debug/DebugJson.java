@@ -5,12 +5,16 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.debug.core.DebugException;
 import org.eclipse.debug.core.model.IStackFrame;
 import org.eclipse.debug.core.model.IValue;
 import org.eclipse.debug.core.model.IVariable;
 import org.eclipse.jdt.debug.core.IJavaArray;
+import org.eclipse.jdt.debug.core.IJavaBreakpoint;
 import org.eclipse.jdt.debug.core.IJavaDebugTarget;
+import org.eclipse.jdt.debug.core.IJavaExceptionBreakpoint;
+import org.eclipse.jdt.debug.core.IJavaLineBreakpoint;
 import org.eclipse.jdt.debug.core.IJavaPrimitiveValue;
 import org.eclipse.jdt.debug.core.IJavaStackFrame;
 import org.eclipse.jdt.debug.core.IJavaThread;
@@ -121,6 +125,50 @@ public final class DebugJson {
             }
         }
         return pretty(variableNode(current, d));
+    }
+
+    /** set_variable response: {name, type, value} (the new value). */
+    static String valueResponse(String name, String type, String value) {
+        Map<String, Object> node = new LinkedHashMap<>();
+        node.put("name", name);
+        node.put("type", type);
+        node.put("value", value);
+        return pretty(node);
+    }
+
+    /** set_breakpoint / set_exception_breakpoint response (D8). */
+    static String breakpointResponse(IJavaBreakpoint breakpoint, String file, Integer line, String exceptionType) {
+        Map<String, Object> node = new LinkedHashMap<>();
+        try {
+            node.put("id", String.valueOf(breakpoint.getMarker().getId()));
+            node.put("type", breakpoint instanceof IJavaExceptionBreakpoint ? "exception" : "line");
+            if (file != null) {
+                node.put("file", file);
+            }
+            if (line != null) {
+                node.put("line", line);
+            }
+            if (exceptionType != null) {
+                node.put("exceptionType", exceptionType);
+            }
+            if (breakpoint instanceof IJavaLineBreakpoint lineBreakpoint) {
+                node.put("condition", lineBreakpoint.getCondition());
+            }
+            node.put("hitCount", breakpoint.getHitCount());
+            node.put("suspendPolicy", breakpoint.getSuspendPolicy() == IJavaBreakpoint.SUSPEND_VM ? "VM" : "THREAD");
+            node.put("installed", breakpoint.isInstalled());
+        } catch (CoreException e) {
+            throw new IllegalArgumentException("reading the created breakpoint failed: " + e.getMessage(), e);
+        }
+        return pretty(node);
+    }
+
+    /** remove_breakpoint response: {id, removed}. */
+    static String removedResponse(long id) {
+        Map<String, Object> node = new LinkedHashMap<>();
+        node.put("id", String.valueOf(id));
+        node.put("removed", true);
+        return pretty(node);
     }
 
     private static List<Map<String, Object>> threadNodes(List<IJavaThread> threads) {
