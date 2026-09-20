@@ -181,6 +181,26 @@ Alle `@Tool`-Beschreibungen folgen einem einheitlichen Muster:
 |---|--------|---------------------|--------|-----------------|-----|
 | 55 | `reloadConfig` | `"Reload all configuration (agents, skills, commands) — call after creating/editing artifacts so they become immediately available."` | ✅ gut | *(kein Change)* | - |
 
+### JavaDebugTool (`org.sterl.llmpeon.parts.tools.debug`)
+
+isEditTool=✔ (R-JD-5: Plan/Review/SearchAgent/read-only-Custom filtern es automatisch raus). Story C (2026-09-20), SOLL: [java-debugger-tool.md](java-debugger-tool.md).
+
+| # | Method | Current Description | Rating | New Description | Why |
+|---|--------|---------------------|--------|-----------------|-----|
+| 56 | `get_state` | *(neu — kein Bestand)* | ✅ | `"Show the active Java debug session: VM state, all threads with state, system flag and top frame."` | Read-only Session-Überblick (UC-JD-3) |
+| 57 | `get_stack_trace` | *(neu — kein Bestand)* | ✅ | `"List the stack frames of a debug thread (index, method, type, line, method entry). Optional thread name."` | Stack-Liste, optionaler Thread-Filter |
+| 58 | `get_variables` | *(neu — kein Bestand)* | ✅ | `"Show variables of a stack frame as JSON. Optional name path (a.b.c) and depth (default 1, max 5)."` | Depth-Limit im Namen (Tool lügt nicht) |
+| 59 | `evaluate_expression` | *(neu — kein Bestand)* | ✅ | `"Evaluate a Java expression in a suspended stack frame and return the result as JSON."` | Ergebnis als JSON, kein Render |
+| 60 | `set_variable` | *(neu — kein Bestand)* | ✅ | `"Set a local variable or argument to a primitive, String or null value. No confirmation."` | Scope-Limit (Primitiven/String/null) + R-JD-2 (keine Confirmations) |
+| 61 | `set_breakpoint` | *(neu — kein Bestand)* | ✅ | `"Set a line breakpoint with optional condition, hit count and suspend policy (THREAD or VM)."` | Optionale Parameter im Namen |
+| 62 | `set_exception_breakpoint` | *(neu — kein Bestand)* | ✅ | `"Set an exception breakpoint for a type with suspend policy and caught/uncaught/subtype options."` | Exception-BP-Optionen |
+| 63 | `remove_breakpoint` | *(neu — kein Bestand)* | ✅ | `"Remove a breakpoint previously created by set_breakpoint or set_exception_breakpoint, given its marker id."` | Hygiene: Agent-Breakpoints entfernen (Zusatz über SOLL, gedeckt) |
+| 64 | `step_over` | *(neu — kein Bestand)* | ✅ | `"Step over in a debug thread and wait for the next suspend; returns the new top frame."` | Synchrones Warten auf Suspend (D9) |
+| 65 | `step_in` | *(neu — kein Bestand)* | ✅ | `"Step into a debug thread and wait for the next suspend; returns the new top frame."` | Synchrones Warten auf Suspend (D9) |
+| 66 | `step_out` | *(neu — kein Bestand)* | ✅ | `"Step out of the current frame and wait for the next suspend; returns the new top frame."` | Synchrones Warten auf Suspend (D9) |
+| 67 | `continue` | *(neu — kein Bestand)* | ✅ | `"Resume a suspended debug thread and wait for the next suspend; returns the new top frame."` | Synchrones Warten auf Suspend (D9) |
+| 68 | `suspend` | *(neu — kein Bestand)* | ✅ | `"Suspend a running debug session; returns the suspended threads with their top frames."` | Sofort suspended, Threads im JSON |
+
 ---
 
 ## Zusammenfassung der Änderungen

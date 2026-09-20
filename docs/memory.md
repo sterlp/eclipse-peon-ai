@@ -1,32 +1,41 @@
-# Session-Stand — 2026-09-19 (Tag: Tool-Evolution PO-Run + Build-Start)
+# Session-Stand — 2026-09-20 (Tool-Evolution Build-Zyklus)
 
 ## Wo wir stehen
 
-**Branch `analysis/tool-evolution`** — Story A vollständig gebaut (2026-09-20, inc 1…3, alle Docs committed).
+**Branch `analysis/tool-evolution`** — Paul freut Zyklus ab, kurze "ok"-Antworten.
 
-**PO-Run abgeschlossen (Paul):** alle CR-Items entschieden. Verdicts + Begründungen: [resolved-points.md](resolved-points.md)
-(„Tool-Evolution-Run"). Temp-Docs (tool-evolution.md, feature-change-request-copilot.md, change-review.md) gelöscht.
-
-**❌ specified, wartet auf Build-Zyklen (Reihenfolge-Vorschlag):**
-1. ✅ **Hygiene** (S): [tool-output-disclosure.md](tool-output-disclosure.md) — done 2026-09-20 (Story A, inc 1 + inc 3).
-2. ✅ **Web-Tools** (S/M): [web-tools.md](web-tools.md) — done 2026-09-20 (Story A, inc 2 + inc 3).
-3. **CR-3 Filter** (S): [project-problems-tool.md](project-problems-tool.md).
-4. **Debugger** (L, eigener Zyklus): [java-debugger-tool.md](java-debugger-tool.md) — User-managte Session, alle Actions, keine Confirmations, für Da Mek.
-
-**⏳ geparkt:** terminal-session-tool.md (Revisit async-agent-tools-proposal Option C) · tool-confirmation.md.
-**Decompiler Language-Server: Nein** (nativ, IP, wir haben das Verhaltenswichtige schon).
+- ✅ **Story A** (Disclosure + Web-Tools) — komplett, Flips ✅, Archiv `overview-done-2026-09-20-12-43.md`.
+- ✅ **Story B** (CR-3 Project-Problems-Filter) — **DONE 2026-09-20.** Feature `0eb746f` → Review-Fixes
+  `a721313` (ungültiger severity = IAE, case-insensitive gemessen, try/finally-Cleanup, whitespace=unset)
+  → `e98e646` (UC-PP-7-Kommentar) → `e84fcbc` (Flips + Archiv `overview-done-2026-09-20-14-02.md`).
+  Doc R-PP-1…7 + UC-PP-1…7 ✅, OSGi 236/0/0, Lint PP = 0.
+- **Story C (Debugger)** — Doc gehärtet: [java-debugger-tool.md](java-debugger-tool.md) R-JD-1…5 +
+  UC-JD-1…6 (❌), JD-Präfix gezogen. **Nächster Schritt: Plan via planWithPlanAgent** (User-managte
+  Session, alle Actions, KEINE Confirmations, für Da Mek, sync, keine Session = ehrlicher Fehler;
+  Fixture-Strategie Debug-Session im OSGi-Test klären — Da Mek STOP-AND-ASK).
+- Danach: DocsLinter `idPattern`-`@P`-Description als Mini-Zyklus (Da-Dok-Kandidat, siehe open-points).
 
 ## Nächste Schritte
 
-1. **Story A DONE (2026-09-20)** — Inc 1 Caps/Disclosures (UC-OD-1…3), Inc 2 webGet + Toggle-Gate + Homepage-Zeile (UC-WEB-5…8), Inc 3 webFetch-Pagination (UC-WEB-1…4); wartet auf PO-Review (Da Dok). Danach Story B: CR-3-Filter ([project-problems-tool.md](project-problems-tool.md), PP-IDs ziehen), Story C: Debugger ([java-debugger-tool.md](java-debugger-tool.md), JD-IDs ziehen). Review (Da Dok) je Story, Flip ✅ + lint vor Flip.
-2. ApiRetry-Evidence: 3 Connect/no-bytes-Abbrüche 2026-09-20 im buildWithDev — in open-points ergänzen.
-3. BDDs in ❌-Docs sind gehärtet (OD/WEB mit UC-IDs); PP/JD beim jeweiligen Plan-Zyklus härten.
+1. Story C: planWithPlanAgent → meine Abnahme → buildWithDev → reviewPlanAgent (Da Dok; vorher ggf.
+   compactReview, er ist bei ~77%) → Flips ✅ + lint vor Flip.
+2. Mini-Zyklus DocsLinter idPattern-`@P`-Description + docs-linter.md-Zeile.
+3. Management-Summary an Paul mit Skill-Evolution-Abschnitt (AGENTS-PO); Merge/Squash = Paul.
+
+## Bekannt & bewusst out-of-scope
+
+- Lint: 34× `UNBELEGT_ERLEDIGT UC-DL` (Docs-Linter-Doc hat UCs, Tests sind Tool-Tests) — seit 2026-09-15 bekannt.
+- Neu beobachtet: `VERWAIST UC-DL-99` (DocsLinterToolTest.java:78) —UC-DL-99 fehlt im Doc; beim
+  DocsLinter-Mini-Zyklus mit fixen.
 
 ## Was nicht neu aufgemacht wird
 
-CR-1/2/7 bleiben abgelehnt (Revisit nur bei Nicht-Git-Workspaces) · CR-5/CR-6 geparkt, nicht verworfen · Copilot-Server nicht decompilieren · keine Confirmations für Debugger.
+CR-1/2/7 abgelehnt (Revisit nur bei Nicht-Git-Workspaces) · CR-5/CR-6 geparkt, nicht verworfen ·
+Copilot-Server nicht decompilieren · keine Confirmations für Debugger.
 
-## Lektionen
+## Lektionen (Zyklus)
 
 1. Eigene frühere Analysen sind IST-Verdacht (Issue #142: p2-Site-Content ≠ Bundle-ClassPath).
-2. PO-Run-Dokumentation: Verdicts sofort in die CR-Tabelle, Auflösung mit resolved-points-Ablage — keine Leichen.
+2. PO-Run-Verdicts sofort ablegen (resolved-points.md), keine Leichen.
+3. LLM-Backend (llama.cpp) kann crashen — 3× Connect-Abbrüche am 2026-09-20; State/Commits überleben,
+   einfach retry (Evidence in open-points).

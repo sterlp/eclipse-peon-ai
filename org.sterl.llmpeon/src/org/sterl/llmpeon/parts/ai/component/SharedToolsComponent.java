@@ -11,6 +11,7 @@ import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
 import org.sterl.llmpeon.parts.tools.EclipseRunTestTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
+import org.sterl.llmpeon.parts.tools.debug.JavaDebugTool;
 import org.sterl.llmpeon.parts.tools.memory.WorkspaceMemoryTool;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.tool.ToolService;
@@ -65,6 +66,7 @@ public class SharedToolsComponent {
         sharedToolService.addTool(docsLinterTool);
         sharedToolService.addTool(new WorkspaceMemoryTool());
         sharedToolService.addTool(new EclipseBuildTool());
+        sharedToolService.addTool(new JavaDebugTool());
         sharedToolService.addTool(eclipseGrepTool);
         sharedToolService.addTool(new EclipseRunTestTool());
         sharedToolService.addTool(new EclipseCodeNavigationTool());

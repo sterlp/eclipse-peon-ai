@@ -19,6 +19,7 @@ import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
 import org.sterl.llmpeon.parts.tools.EclipseRunTestTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
+import org.sterl.llmpeon.parts.tools.debug.JavaDebugTool;
 import org.sterl.llmpeon.parts.tools.memory.WorkspaceMemoryTool;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.tool.ToolService;
@@ -48,6 +49,7 @@ public class SharedToolsComponentTest {
         assertTrue(countExecutors(ts, EclipseWorkspaceWriteFileTool.class) >= 1);
         assertTrue(countExecutors(ts, EclipseGrepTool.class) >= 1);
         assertTrue(countExecutors(ts, EclipseBuildTool.class) >= 1);
+        assertTrue(countExecutors(ts, JavaDebugTool.class) >= 1);
         assertTrue(countExecutors(ts, EclipseRunTestTool.class) >= 1);
         assertTrue(countExecutors(ts, EclipseCodeNavigationTool.class) >= 1);
         assertTrue(countExecutors(ts, EclipseConsoleLogTool.class) >= 1);
@@ -174,6 +176,23 @@ public class SharedToolsComponentTest {
         // THEN the isEditTool filter excludes it from search agents
         assertFalse("webGet (isEditTool) must be filtered out of search agents",
                 searchAgent.getFilter().test(webGet));
+    }
+
+    /** GIVEN JavaDebugTool registered WHEN the edit-tool filter matrix runs THEN read-only agents exclude it (R-JD-5). */
+    @Test
+    public void javaDebugToolIsEditToolFilteredFromReadOnlyAgents() {
+        var ts = sut.toolService();
+        var tool = ts.getTool(JavaDebugTool.class).orElseThrow();
+        assertTrue("JavaDebugTool must be an edit tool", tool.isEditTool());
+
+        var getState = ts.getExecutor("get_state");
+        assertTrue("get_state executor expected", getState != null);
+        var searchAgent = sut.toolService().getTool(SearchAgentTool.class).orElseThrow();
+
+        // THEN the isEditTool filter excludes it from search agents
+        // (AiPlanAgent/AiReviewAgent/CustomAgent apply the same !isEditTool predicate)
+        assertFalse("JavaDebugTool (isEditTool) must be filtered out of search agents",
+                searchAgent.getFilter().test(getState));
     }
 
     private java.util.Set<String> docsLinterNames() {
