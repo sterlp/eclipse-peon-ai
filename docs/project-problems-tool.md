@@ -47,3 +47,27 @@ Fehldeutes, keine projektweite Liste als Fallback.
 Ohne Filter bleibt das Verhalten exakt wie heute: alle Probleme des Projekts — die Filter sind additive
 Optionen, kein Ersatz des projektweiten Modus (Paul 2026-09-19). Beleg: bestehende projektweite Tests
 bleiben unverändert grün.
+
+### R-PP-5 — Ungültiger Severity-Wert = ehrlicher Fehler ❌
+
+Ein nicht-leerer, unbekannter Severity-Wert ist ein Fehler mit Nennung des Werts und der erlaubten
+Werte (IAE) — nie stiller No-Filter, nie stiller projektweiter Fallback („A tool must never lie";
+Review-Consensus 2026-09-20, Fix `a721313`).
+
+#### UC-PP-5 — invalidSeverityFailsHonest ❌
+- GIVEN `severity="bogus"` WHEN gefilterter Aufruf THEN IAE mit Wert + erlaubten Werten (Mutation
+  „severity ignorieren" → rot).
+
+### R-PP-6 — Severity case-insensitive ❌
+
+Der Severity-Wert wird case-insensitive akzeptiert (`toUpperCase(Locale.ROOT)`), der Header nennt den
+kanonischen Namen. Gemessen, nicht nur angenommen (Fix `a721313`).
+
+#### UC-PP-6 — severityValueIsCaseInsensitive ❌
+- GIVEN `severity="error"` WHEN gefilterter Aufruf THEN filtert wie `ERROR`, Header zeigt `severity ERROR`.
+
+### R-PP-7 — Empty means unset (auch Whitespace) ❌
+
+Whitespace-only-Werte in Filter-Parametern (`files=" "`) zählen als unset → projektweiter Modus,
+wie `severity`-Blank-Handling und AGENTS-Regel „Empty means unset" — konsistent, kein hartes
+Abschlagen nur für `files` (Da-Mek-Entscheidung 2026-09-20, Paul-Freigabe im Review-Umlauf).

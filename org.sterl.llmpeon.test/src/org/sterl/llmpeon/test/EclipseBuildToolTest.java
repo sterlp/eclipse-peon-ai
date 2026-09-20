@@ -201,7 +201,7 @@ public class EclipseBuildToolTest extends AbstractIntegrationTest {
         }
     }
 
-    // R-PP-4 parameter semantics: whitespace-only files is treated as unset = whole project
+    // UC-PP-7
     @Test
     public void whitespaceOnlyFilesMeansUnset() throws Exception {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
