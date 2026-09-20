@@ -1,3 +1,7 @@
+---
+idPrefix: WEB
+---
+
 # Web-Tools — Fetch (Kontext, paginiert) + Download (Disk)
 
 > **Status:** ❌ specified (2026-09-19, Paul). WebFetchTool wird paginiert (Cache + 500-Zeilen-Fenster),
@@ -26,16 +30,41 @@ der Kontext sieht nur Metadaten.
   — dieselben Guards wie `diskWriteFile`.
 - **R-W-6 ❌** `webGet` ist `isEditTool=true` → Sub-Agents/SearchAgent erhalten es nicht (bestehender
   Filter greift automatisch).
+- **R-W-8 ❌** `webGet` hängt hinter das `diskToolsEnabled`-Toggle (default **OFF**) — dieselbe Risikoklasse
+  wie die Disk-Write-Tools (schreibt auf absolute Pfade); ungated würde der Toggle still umgangen
+  (Paul 2026-09-19). Homepage-Doku des Toggles nennt `webGet` mit (gleiche Increment-Pflicht).
 - **R-W-7 ❌** Ehrliche Fehler: HTTP-Fehler → Status-Code; Timeout/unbekannter Host → Fehlermeldung,
   keine Teilergebnisse, keine stillen „0 bytes"-Erfolge.
 
-## BDD (Entwurf, hart beim Plan-Zyklus mit UC-IDs)
+## BDD
 
-- GIVEN URL erstmals gefetcht, 3000 Zeilen WHEN Aufruf ohne Range THEN Zeilen 1–500, Disclosure „lines 1–500 of 3000".
-- GIVEN URL im Cache WHEN Aufruf startLine=501 THEN Zeilen 501–1000 aus dem Cache, **kein** zweiter HTTP-Call.
-- GIVEN 6. URL im Cache WHEN älteste verdrängt und erneut aufgerufen THEN Refetch, Fenster wieder 1–500.
-- GIVEN HTTP 500 WHEN webFetchAsMarkdown THEN Status + Snippet (kein voller Body im Kontext).
-- GIVEN gültige URL + absoluten Pfad WHEN webGet THEN Datei auf Disk, Return nennt Status + Größe + Pfad.
-- GIVEN Pfad unter WriteValidator-Verbot WHEN webGet THEN Denial mit erlaubten Pfaden (wie diskWriteFile).
-- GIVEN Server liefert 0 bytes WHEN webGet THEN ehrliche Meldung (Status + 0 bytes), kein stiller Erfolg.
-- GIVEN webGet WHEN Tool-Filter des SearchAgent THEN Tool nicht verfügbar (isEditTool).
+#### UC-WEB-1 — webFetchFirstCallReturnsFirstWindow
+- GIVEN URL erstmals gefetcht, Markdown mit 3000 Zeilen WHEN `webFetchAsMarkdown(url)` ohne Range
+  THEN Zeilen 1–500, Disclosure „lines 1–500 of 3000 — read on with startLine=501".
+
+#### UC-WEB-2 — webFetchCacheHitPaginatesWithoutRefetch
+- GIVEN URL im Cache WHEN `webFetchAsMarkdown(url, startLine=501)` THEN Zeilen 501–1000 aus dem
+  gecachten Snapshot, **kein** zweiter HTTP-Call.
+
+#### UC-WEB-3 — webFetchCacheEvictionRefetches
+- GIVEN 6. URL verdrängt die älteste WHEN die verdrängte URL erneut aufgerufen wird THEN Refetch,
+  Fenster wieder 1–500.
+
+#### UC-WEB-4 — webFetchHttpErrorReturnsStatusAndSnippet
+- GIVEN HTTP 500 WHEN `webFetchAsMarkdown(url)` THEN Status + Snippet (kein voller Body im Kontext).
+
+#### UC-WEB-5 — webGetDownloadsAndReturnsMetadata
+- GIVEN gültige URL + absoluten Disk-Pfad WHEN `webGet(url, path)` THEN Datei auf Disk, Return nennt
+  HTTP-Status + Dateigröße + Disk-Pfad, **nicht** den Inhalt.
+
+#### UC-WEB-6 — webGetEnforcesWriteGuards
+- GIVEN Pfad unter WriteValidator-Verbot WHEN `webGet(url, path)` THEN Denial mit erlaubten Pfaden
+  (wie `diskWriteFile`); Pfad nicht absolut → ehrlicher Fehler.
+
+#### UC-WEB-7 — webGetHonestZeroBytes
+- GIVEN Server liefert 0 bytes WHEN `webGet(url, path)` THEN ehrliche Meldung (Status + 0 bytes),
+  kein stiller Erfolg.
+
+#### UC-WEB-8 — webGetIsEditToolFiltered
+- GIVEN SearchAgent-Tool-Filter WHEN Tool-Matrix gebaut THEN `webGet` nicht verfügbar (isEditTool).
+

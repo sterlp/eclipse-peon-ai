@@ -1,3 +1,7 @@
+---
+idPrefix: OD
+---
+
 # Tool-Output-Disclosure — Caps ehrlich machen
 
 > **Status:** 🚧 in design (Entwurf aus dem Tool-Evolutions-Run 2026-09-19, wartet auf PO-Freigabe).
@@ -19,12 +23,20 @@ Tools kappen still oder gar nicht. Nachziehen, gleiche Disclosure-Logik wie `gre
 - **R-OD-4 ❌** Disclosure-Zeilen folgen dem bestehenden `AiReponseBuilder`-Muster (eine Stelle, beide
   Such-Tools konsistent).
 
-## BDD (Entwurf, hart erst bei ❌)
+## BDD
 
-- GIVEN 1200 Treffer bei limit=1000 WHEN eclipseSearchFiles THEN Return nennt „capped at 1000".
-- GIVEN limit=0 WHEN diskSearchFiles THEN unlimited, keine Disclosure.
-- GIVEN 5-MB-HTML-Seite WHEN webFetchAsMarkdown THEN Result auf Cap gekürzt, Cap disclosed.
-- GIVEN HTTP 500 WHEN webFetchAsMarkdown THEN Status + Snippet (kein voller Body im Kontext).
+#### UC-OD-1 — eclipseSearchFilesCapsWithDisclosure
+- GIVEN Workspace mit 600 Match-Dateien WHEN `eclipseSearchFiles(query, limit=500)` THEN Return listet
+  500 Treffer **und** nennt die Kappung („capped at 500 — narrow your search").
+
+#### UC-OD-2 — diskSearchFilesDisclosesCap
+- GIVEN Verzeichnis mit 80 Match-Dateien WHEN `diskSearchFiles(query)` (Default-Limit 50) THEN Return
+  listet 50 Treffer **und** nennt die Kappung.
+
+#### UC-OD-3 — diskSearchFilesUnlimitedNoDisclosure
+- GIVEN Verzeichnis mit 30 Match-Dateien WHEN `diskSearchFiles(query, limit=0)` THEN alle 30 Treffer,
+  **keine** Disclosure-Zeile (nichts wurde gekappt).
+
 
 ## Offen (PO-Run)
 

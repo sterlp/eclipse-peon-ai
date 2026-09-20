@@ -352,6 +352,14 @@ Tool-Bug-Zyklus.
 Reset) prüfen — Cancel-Misclassification? Kann ein API-Call den Backoff abbrechen ohne echtes
 Cancel? Companion-Story: **Live-Status im Retry-Fenster** (unten).
 
+**Neue Evidence (2026-09-20):** 3× buildWithDev-Abbruch in Folge: 1× `IOException: header parser
+received no bytes`, 2× `ConnectException`/`ClosedChannelException` — Ursache (Paul): **llama.cpp
+abgestürzt**. Kein Retry, weil der erste Zugriff bereits fehlschlug. Meldungs-Sichtbarkeit an den
+PO/Chat: ✅ vollständige Stacktraces kamen durch. **Pauls Verbesserungs-Idee (offen, ❓):** mindest-
+ens **ein Retry nach ~10s** auch bei Connect-Level-Failures (llama.cpp-Crash+Restart dauert meist
+wenige Sekunden — ein Mindest-Retry würde kurzzeitige Ausfälle durchreiten), unabhängig von der
+generellen Retry-Klassifikations-Story.
+
 ## ❓ Live-Status im Retry-Backoff-Fenster (2026-09-10)
 
 **IST:** Nach Connection-Abbruch versteckt `StreamingBridge.onError` (END-Chunk) die

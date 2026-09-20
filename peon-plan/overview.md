@@ -1,258 +1,197 @@
-# Tool-Vergleich: GitHub Copilot Eclipse-Plugin (extern) vs. llmpeon (unser Plugin)
+# Story A — Build-Plan: Tool-Output-Disclosure + Web-Tools
 
-**Status:** Hoch-Level-Plan / Entscheidungsgrundlage (kein Build-Plan), 2026-09-19. Da Thinka.
-**Kein Code wird in diesem Plan gebaut.** Ziel: Für JEDES Tool-Paar (und neue Tool-Ideen) festhalten, was die
-Konkurrenz besser macht und **WARUM**, was wir übernehmen (Empfehlung Ja/Nein/teilweise + Aufwand S/M/L) und
-der UI-Aspekt. Paul geht danach mit dem PO je Item durch und **akzeptiert/verwirft jedes CR-Item eigenständig**.
-Dieser Plan gibt Empfehlungen + Begründung, trifft aber keine endgültige PO-Entscheidung vorweg.
+**Branch:** `analysis/tool-evolution` (läuft dort, nicht wechseln) · **Plan:** Da Thinka, 2026-09-20 · **Status:** vollständig baubar (2026-09-20: Q1 gelöst — Paul: Variante (b), SOLL nachgetragen in `web-tools.md` R-W-8 + Architektur-Doc; Homepage-Deliverable in Inc 2). Der alte Vergleichs-Plan ist abgearbeitet (Verdicts: `docs/resolved-points.md`, „Tool-Evolution-Run").
 
-## 0. Legende & Konventionen
-- **Empfehlung:** Ja (übernehmen) / Teilweise (nur Subset) / Nein (bewusst nicht)
-- **Aufwand:** S (ein kleines Inkrement) · M (mehrere Inkremente) · L (eigener Story-Zyklus)
-- **CR-n** = nummeriertes Change-Request-Item = genau eine PO-Entscheidung.
-- **Abdeckungsgarantie:** Jedes externe Client-Tool ist 1:1 in CR-1..CR-7; JEDES unserer 70 Tools ist exakt in
-  einer Matrixzeile/Abdeckungszelle benannt (auch wenn Fazit „kein Übernahme-Bedarf“ lautet).
-- **Verifiziert heute (IST, Code-Lesung):** Die drei Hygiene-Befunde in §4 (CR-17/18/19) sind gegen den Quellcode
-  bestätigt, nicht aus Doku übernommen.
-- **Einschränkung extern:** Copilot-Architektur = 6 Java-Client-Tools (`BaseTool`) + serverseitige Built-ins
-  (File-Read/Search/Web, `run_subagent`), die nativ im Server laufen und **nicht einsehbar** sind. Der Vergleich
-  gilt also für die Client-Tools + die sichtbare UI/Confirmation-Schicht, nicht für die Server-Innenleben.
+> **STOP-AND-ASK (erste Regel für Da Mek):** Compile-Fehler ohne Lösung, nicht-grün-bekommende Tests, IST-Widerspruch zum Plan oder Unklarheit → **aktiv beim PO nachfragen (askDev-Kanal) — nie still workarounden, nie still SOLL ändern.** Je Inkrement IST-Evidenz liefern (§8) und nach jeder grünen Iteration committen (inkl. `docs/**`), Branch `analysis/tool-evolution` unverändert.
 
-## 1. Architektur-Vergleich (Kontext)
-```mermaid
-flowchart LR
-  subgraph C["Copilot (2-Teil)"]
-    direction TB
-    CS["Copilot Server (nativ, nicht einsehbar)<br/>Built-ins: File-Read/Search/Web, run_subagent"]
-    CC["6 Java-Client-Tools (BaseTool)<br/>create_file, insert_edit_into_file,<br/>get_errors, java_debugger, run_in_terminal(+get_terminal_output)"]
-    CS -->|LSP conversation/registerTools| CC
-    CS -->|invokeClientTool / invokeClientToolConfirmation| CC
-  end
-  subgraph L["llmpeon (all-client)"]
-    direction TB
-    LA["Agent-Loop (AiAgent/PoAgent/DevAgent)<br/>70 @Tool-Tools (core 34 + plugin 36) + dynamische MCP"]
-  end
+## 1. Kontext
+
+PO-Run 2026-09-19 (Paul) hat angenommen: **CR-17/18/19** (Caps ehrlich machen; Search-Cap 1000→**500**; webFetch statt byte-Cap **paginiert**) und **CR-20** (neues `webGet(url, path)`). SOLL-Docs (lesen vor dem Bauen):
+
+- `docs/tool-output-disclosure.md` — UC-OD-1…3 (idPrefix `OD`)
+- `docs/web-tools.md` — UC-WEB-1…8 (idPrefix `WEB`)
+- `docs/web-tools-architektur.md` — Klassen/Grenzen (Cache = schlichte LRU im Tool-Instanz-Feld, kein ADR nötig)
+
+AGENTS.md-Prinzipien, die hier binden: „A tool must never lie about a limit" (Disclosure im Output), „One behaviour, one implementation" (geteilte Logik in core), „Empty means unset", „Clean break over migration", Thread-Safety (kein Single-Thread-Assumption), „Read the API contract in the source, never guess it".
+
+**Slicing:** 3 vertikale Inkremente, je für sich grün, eine Polarität je Inkrement (1: nur-hinzufügen, 2: nur-hinzufügen, 3: Refactor/Erweiterung — bewusst NACH 2).
+
+**Homepage:** genau **eine** Zeile in Inc 2 (AGENTS.md „visible changes"): die Doku des Disk-Tools-Toggles — `homepage/src/setup/custom-agents.md:176` (per Grep 2026-09-20 die einzige Toggle-Doku; „Disk tools" taucht sonst nur in `usage/docs-linter.md:11` auf — „Linter unabhängig vom Toggle" bleibt wahr, keine Änderung) — nennt jetzt auch `webGet` (gleiche Toggle-Bindung, R-W-8). Hinweis an Da-Dok, **kein** Scope: der „see Advanced Configuration"-Link auf dieser Zeile zeigt auf eine Seite ohne Disk-Tools-Sektion — Pre-existing Gap, nicht fixen.
+
+## 2. Design-Entscheidungen (fix — keine Neuentscheidung durch Da Mek)
+
+- **D1 Disclosure-Choke-Point:** Neue Überladung `AiReponseBuilder.searchComplete(List<String> results, int limit, String suffix)` (core, `…/tool/AiReponseBuilder.java:61`): wenn `limit > 0 && results.size() >= limit` → Disclosure-Zeile **„capped at {limit} — narrow your search"** (Wording aus `tool-output-disclosure.md`, Einstrich wie `grepComplete`). Bestehende 2-arg-`searchComplete` delegiert mit `limit = 0` (keine Disclosure). Trigger `>=` (nicht `>`): exakt am Limit ist schon gekappt.
+- **D2 `eclipseSearchFiles`-Cap:** Konstante `private static final int MAX_LIMIT = 500` (kein neuer Parameter). `inLimit == 0 → 500`, Clamp `Math.max(1, Math.min(inLimit, 500))` **beibehalten** (negatives Limit → 1, existing Test `negativeLimitIsClamped`). `@P`-Description: „max results to return. Default 100, max 500."
+- **D3 `diskSearchFiles`:** keine Logik-Änderung außer Call der 3-arg-`searchComplete` mit dem effektiven `limit` (0 = unlimited → keine Disclosure, UC-OD-3). `@P` bleibt („0 = unlimited. Default 50.") — jetzt ehrlich, weil der Return die Kappung nennt.
+- **D4 `webGet` (neu, core):** eigene Klasse `org.sterl.llmpeon.tool.tools.WebGetTool extends AbstractTool`, `isEditTool() = true` (Plan/Review/SearchAgent-Filter greifen automatisch — keine extra Filter-Änderung). Guards **in dieser Reihenfolge**: `QualifiedPathValidator.requireQualifiedDisk("webGet", path)` (relative → IAE „must be fully qualified") → `validateWrite(path)` (WriteValidator des Request, wie `diskWriteFile`). **Überwriting** bestehender Datei (frischer Download = neuer Inhalt, wie `diskWriteFile`); bei Overwrite `monitor.onFileUpdate` (Display-Pfad = absolut, kein workingDir). **Kein Size-Limit** (R-W-4). HttpClient wie `WebFetchTool` (Redirect.ALWAYS, 10s connect, 30s request). Fehler → Exception, **nie** Teilergebnis/stiller 0-Byte-Erfolg.
+- **D4a `webGet`-Registrierung:** **nur** `SharedToolsComponent` (plugin), **nicht** in `ToolService`-withDefaults (das bleibt WebFetch/Search/Shell/Compact) und **nicht** bei `AiScaffoldAgent` (configDir-scope passt nicht zu absoluten Download-Pfaden). **Gating (Q1 final, Paul 2026-09-20 — Variante (b)):** `webGet` hängt hinter `diskToolsEnabled` (default **OFF**) — in `SharedToolsComponent.updateActiveDiskTools`: on → `addTool(webGetTool)`, off → `removeTool(webGetTool)`, exakt wie die Disk-Tools (SOLL: `web-tools.md` R-W-8, `web-tools-architektur.md` Klassen-Tabelle).
+- **D5 `webFetch`-Pagination:** LRU-Cache **5 URLs** als Instanz-Feld in `WebFetchTool` (Enkapsulation, keine globale Sichtbarkeit — Arch-Doc); `LinkedHashMap(accessOrder=true)` + `removeEldestEntry`, **jeder Zugriff in `synchronized(cache)`-Block** (Tool-Instanz wird von mehreren Agenten/Threading genutzt). Cache-Hit = **kein Refetch**, Fenster aus dem Snapshot (R-W-2); Fehlerpfad (HTTP ≥ 400) **niemals gecacht**.
+- **D6 Fenster & Wording:** Signatur `webFetchAsMarkdown(url, startLine?, endLine?)` (optional, 1-based, `null/0` = Default wie Read-Tools). Fenster **hart max 500 Zeilen**: `shownEnd = min(endLine, start + 499)` (bei `start ≤ 0 → start = 1`, dann `shownEnd = min(endLine, 500)`). Output = **`FileLines.extract(markdown, start, shownEnd)`** → **nummerierte Zeilen** (konsistent mit Read-Familie `diskReadFile`/`eclipseReadFile`; „Zeilen-Splitting konsistent mit FileLines-Muster"). Disclosure-Zeile (exakt, R-W-1): **`lines X–Y of N — read on with startLine=Y+1`** — „read on"-Teil nur wenn `Y < N`. `start > N` → ehrliche Meldung `URL has N lines, requested start S` (FileLines-Semantik, web-taugliches Wording). Leeres Markdown → `Fetched <url>: empty content (0 lines)`.
+- **D7 Fehlerpfad webFetch (R-W-3/R-OD-3):** HTTP ≥ 400 → Return = `Failed to fetch <url>. HTTP status <code>` + **Snippet = `FileLines.extract(markdown, 1, 10)`** (erste 10 Zeilen des Markdowns), **nie** voller Body. `onProblem` wie heute.
+- **D8 Doc-Status-Flips:** Inc 1: `tool-output-disclosure.md` 🚧→❌ specified („Offen (PO-Run)"-Sektion aufgelöst) + `docs/index.md:74` „Hard-Cap" → „paginiert" korrigieren. Inc 3: UC-WEB-1…4 + R-W-1…3, R-OD-3, `index.md:74-75` + beide Doc-Status → **✅ done**; `docs/memory.md` Items 1+2 abhaken; `docs/open-points.md:10` `tool-output-disclosure` entfernen.
+
+- **D9 Linter-Struktur (2026-09-20, lint-IST: 22 Befunde `UC_OHNE_REGEL`+`STATUS_FEHLT` in OD/WEB):** der Linter verlangt Regeln als `### R-<PREFIX>-<n> — <titel> <marker>`-Überschriften mit Status-Marker und jede UC als `#### UC-…` **unter ihrer Regel** mit eigenem Marker (Vorbilder: `docs/docs-linter.md`, `docs/user-context.md` — `❌` = offen, `✅`/`✅ done` = belegt). Bulleten-Regeln von OD/WEB → `###`-Überschriften, UCs unter ihrer Regel nesten, in `web-tools.md` R-W-8 **nach** R-W-7 sortieren — **Regel-/BDD-Inhalt bleibt wortgleich** (Format-Fix gemäß Linter-SOLL, keine SOLL-Änderung). Verteilung: Inc 1 → OD-Doc (OD-Befunde → 0), Inc 2 → WEB-Doc + webGet-Flip (OD+WEB → 0), Inc 3 → Rest-Flip (Regressions-Check 0).
+
+## 3. Inc 1 (nur-hinzufügen) — Caps/Disclosures (UC-OD-1…3)
+
+**Änderungen:**
+1. `org.sterl.llmpeon.core/src/main/java/org/sterl/llmpeon/tool/AiReponseBuilder.java` — 3-arg-`searchComplete` (D1).
+2. `org.sterl.llmpeon.core/src/main/java/org/sterl/llmpeon/tool/tools/DiskFileReadTool.java:98` — `searchComplete(matches, limit, suffix)`.
+3. `org.sterl.llmpeon/src/org/sterl/llmpeon/parts/tools/EclipseWorkspaceReadFileTool.java:126-132,160` — `MAX_LIMIT = 500` (D2), `@P`-Text, `searchComplete(list, limit, suffix)`.
+4. Tests (s. §6, §7).
+5. Docs: `docs/tool-output-disclosure.md` — **D9-Umbau** (Bulleten-Regeln → `### R-OD-n`-Überschriften mit Marker, UCs unter ihrer Regel genestet + Marker; Inhalt **wortgleich**) + Status 🚧→❌ specified + „Offen (PO-Run)"-Sektion löschen + **Flip: UC-OD-1…3, R-OD-1…2, R-OD-4 → ✅** (R-OD-3 bleibt ❌ — Inc 3); `docs/index.md:74` „Hard-Cap" → „paginiert" korrigieren; `org.sterl.llmpeon.test/ai-e2e-test/read-tools-e2e-test.md` — in Abschnitt 4 neue Zeile `4.8`: `eclipseSearchFiles("*.java", limit=100)` in Projekt mit >100 Matches (z. B. `llmpeon-core`) → genau 100 Treffer **und** „capped at 100 — narrow your search".
+
+**Code-Sketch (D1, Kernstück):**
+```java
+public static String searchComplete(List<String> results, int limit, String suffix) {
+    if (limit > 0 && results.size() >= limit)
+        suffix = suffix == null ? "capped at " + limit + " — narrow your search"
+                                 : suffix + System.lineSeparator() + "capped at " + limit + " — narrow your search";
+    return searchComplete(results, suffix); // bestehende 2-arg-Methode rendert unverändert
+}
+public static String searchComplete(List<String> results, String suffix) {
+    return searchComplete(results, 0, suffix); // ← bestehende Body-Logik in 2-arg, neue Delegierung hier
+}
 ```
-- **Kernunterschied:** Copilot delegiert die „intelligente“ Arbeit (Lesen, Suchen, Web, Subagent) an einen
-  nativen Server und hält die Client-Tools klein und UI-lastig (Review/Undo/Confirmation). llmpeon ist
-  **voll im Client**: komplette Read/Search/Navigation/Docs/Orchestration/Memory/Skills/Build-Tools selbst.
-  → Copilot ist in den Bereichen, wo es **keine** Client-Tools hat, nicht vergleichbar (Server-Blackbox).
-  llmpeon ist dort **stärker** (sichtbare, ehrlich-disclosed Caps, Code-Navigation, Orchestrierung).
-- **Copilots echte Kante** liegt in der **UI-Sicherheits- & Review-Schicht** (Undo-Cache, WorkingSetBar,
-  Compare-Editor) und im **Confirmation-Modell** (Kategorien + Scope-Caching) — das sind die CR-Items mit
-  dem größten Nutzwert für uns (CR-6, CR-7).
+(Exakte Struktur frei wählbar, solange Wording/Trigger/Doppelt-Aufruf-Sicherheit stimmen.)
 
-## 2. Vergleichsmatrix (CR-Items)
+**Bestehende Tests, die rot werden (müssen adaptiert werden — Seed-Inventar per Grep in BEIDEN Modulen verifiziert, Memory-Regel #33):**
+- core `DiskFileReadToolsTest#searchDiskFiles_limitRestrictsResults` (Zeilen 104–119): `split("\n").length`-Assertions für limit=1/2 brechen (Disclosure-Zeile + Leerzeile kommen dazu) → auf Zählung der **Treffer-Zeilen** umstellen (z. B. `result.lines().filter(l -> l.endsWith(".java")).count()`).
+- plugin `EclipseSearchFilesToolTest#searchWorkspaceFiles_limitRestrictsResults` (Zeilen 95–105): `assertEquals(1, limited.split("\n").length)` bricht bei limit=1 → bestehende `resultLines(...)`-Helper nutzen (filtert `/`-Pfads).
+- **Nicht betroffen** (verifiziert): alle anderen Seeds < 500 und ohne erreichten Limit (core: 2–3 Dateien limit=0; plugin: `limitIsGlobal` limit=3, `negativeLimitIsClamped` limit=-1 — beide via `resultLines`; Fixture+other < 500 bei limit=0 → keine Disclosure).
 
-> Format je Item: **Unser Tool (Pfad) · Externes Tool (Pfad) · Konkurrenz besser + WARUM · UI-Aspekt · Empfehlung.**
+**Neue Tests:**
+- core `DiskFileReadToolsTest`: `searchDiskFilesDisclosesCap` `// UC-OD-2` (80 Dateien `f00.java`…`, Default-Limit 50 → 50 Treffer-Zeilen + „capped at 50 — narrow your search") · `searchDiskFilesUnlimitedNoDisclosure` `// UC-OD-3` (30 Dateien, `limit=0` → 30 Zeilen, `doesNotContain("capped at")`).
+- core `AiReponseBuilderTest`: 2 Unit-Tests für die 3-arg-Methode (Cap erreicht → Disclosure; unter Cap / limit=0 → keine) — ohne UC-ID (UC-Belege sitzen auf Tool-Ebene).
+- plugin `EclipseSearchFilesToolTest`: `eclipseSearchFilesCapsWithDisclosure` `// UC-OD-1` — **600** Fixture-Dateien `cap/Cap<i>.java` per `IFile.create` (BDD-Getreue), `eclipseSearchFiles("Cap*.java", PeonTestFixture.PROJECT_NAME, 500)` → `resultLines`-Count == 500 + `contains("capped at 500 — narrow your search")`; `@Test(timeout = 60_000)`; **Cleanup:** `cap`-Folder in der Klasse-`@After` (neben Existing-Cleanup, VOR `super.after()`) löschen — Cascade-Schutz: liegen die 600 Dateien zurück, cappt `*.java` (limit 0→500) andere Tests und `foreignProjectsStayReachable` könnte `Other.java` verlieren.
 
-### CR-1 — Datei anlegen (create_file)
-- **Unser Tool:** `diskWriteFile` (`…/tool/tools/DiskFileWriteTool.java`), `eclipseWriteFile` (`…/parts/tools/EclipseWorkspaceWriteFileTool.java`).
-- **Extern:** `com.microsoft.copilot.eclipse.ui/…/tools/CreateFileTool.java`.
-- **Konkurrenz besser + WARUM:** Kein eigener Funktionsvorsprung — Parent-Dir-rekursiv + „exists→Fehler mit
-  Verweis auf Edit-Tool“ haben wir funktional auch. Der Vorsprung ist rein **UI** (Original-Content-Cache →
-  Undo; Änderungen landen in der WorkingSetBar) → gehört zu **CR-7**.
-- **UI-Aspekt:** Undo + WorkingSetBar (CR-7), sonst identisch.
-- **Empfehlung:** **Nein** (Tool-Logik: kein Übernahme-Bedarf); der Nutzwert steckt komplett in CR-7 (Undo/Bar). Aufwand: —.
+**Gate Inc 1:** `mvn test` (llmpeon-core) grün → `eclipseBuildProject` `org.sterl.llmpeon` + `org.sterl.llmpeon.test` → `eclipseRunTests` `org.sterl.llmpeon.test` (ganze Suite, §7) grün → `lintDocsAndTests`: **OD 0 Befunde**; WEB weiterhin **12 Befunde** (`UC_OHNE_REGEL`+`STATUS_FEHLT` — D9-Umbau kommt in Inc 2) = erwartet.
 
-### CR-2 — Datei bearbeiten (Smart Edit vs. unser Edit-Guard)
-- **Unser Tool:** `eclipseEditFile`/`eclipseReplaceLines`/`eclipseInsertLines`/`eclipseUpdateOpenFile`,
-  `diskEditFile`/`diskReplaceLines`/`diskInsertLines` (s. o. Write-Tools); Shared-Logik: `FileUtils`/`AiReponseBuilder`
-  (Edit-Guard min-3-Chars, Count-Guard, Replace-All-Semantik).
-- **Extern:** `…/tools/EditFileTool.java` („Smart Edit“).
-- **Konkurrenz besser + WARUM:** Kopiert **keinen** oldString-Anker — der Server regeneriert die **GANZE Datei**
-  mit `// ...existing code...`-Platzhaltern. → **Keine** Insert/Match-Bugs (unsere Edit-Guard-/Insert-Jagd wird
-  umgangen). `validateEdit()` lehnt read-only ab; `keepHistory=true`.
-- **Aber (WARUM wir den Mechanismus NICHT übernehmen sollen):** Ganzer-File-Regen = **hohe Token-Kosten** je
-  Edit (Datei voll in Prompt), bei großen Dateien unpraktikabel, und der Model kann **andere Stellen der Datei
-  still ändern** (Silent-Drift) — weniger präzise/sicher als unser gezielter, count-geprüfter Edit.
-- **UI-Aspekt:** Compare-Editor (eclipse.compare) mit editierbarer „Proposed Changes“-Seite + WorkingSetBar
-  Keep/Undo/View-Diff; Original einmalig gecacht → Undo über **Multi-Round-Edits**.
-- **Empfehlung:** **Teilweise** — Mechanismus (Whole-File-Regen) = **Nein** (Token-Kosten + Drift-Risiko,
-  gegen unser Edit-Guard), aber **Review-UI übernehmen** → gehört zu **CR-7** (Compare-Editor + Original-Cache). Aufwand: M (nur UI-Teil).
+## 4. Inc 2 (nur-hinzufügen) — `webGet` (UC-WEB-5…8)
 
-### CR-3 — Fehler prüfen (get_errors)
-- **Unser Tool:** `eclipseReadProjectProblems`, `eclipseBuildProject` (`…/parts/tools/EclipseBuildTool.java`).
-- **Extern:** `…/tools/GetErrorsTool.java`.
-- **Konkurrenz besser + WARUM:** Fehler **pro Datei** (Pfad-Array) und nur **SEVERITY_ERROR** / DEPTH_ZERO —
-  d. h. gezielte, token-schlankere Validierung genau der Datei, die gerade bearbeitet wurde. Wir liefern
-  heute **projektweite** Probleme. Prompt-Muster dort: „after editing a file to validate the change“.
-- **UI-Aspekt:** keiner (Reintool).
-- **Empfehlung:** **Ja** — per-File-Modus ergänzen (Pfadleiste + SEVERITY_ERROR-Filter). Offene Variante: neues
-  Tool vs. optionaler Pfad-Filter auf `eclipseReadProjectProblems` (s. §6). Aufwand: **S**.
+**Neu:** `org.sterl.llmpeon.core/src/main/java/org/sterl/llmpeon/tool/tools/WebGetTool.java`
+```java
+public class WebGetTool extends AbstractTool {
+    @Override public boolean isEditTool() { return true; }   // D4 — Sub-Agent-/Plan-/Review-Filter greift automatisch
 
-### CR-4 — NEU: Java-Debugger-Tool (wir haben KEINES)
-- **Unser Tool:** — (kein Debugger-Tool; nur Build/Test/Problems).
-- **Extern:** `…/tools/JavaDebuggerToolAdapter.java` (Nightly+JDT), 15 Actions (get_state, get_variables nested,
-  get_stack_trace, evaluate_expression AST-Eval 5s, set_variable, Breakpoints conditional/hitCount/exception,
-  step_over/in/out, continue, suspend); JSON-Output; **`needConfirmation()=true` für JEDE Action**.
-- **Zweck/WARUM sinnvoll:** Live-Debugging per Agent (Variablen, Ausdrücke, Breakpoints) — heute in llmpeon
-  gar nicht möglich; stärkt den „run + diagnose“-Loop.
-- **Risiken:** **Sicherheit** (evaluate_expression / set_variable = Code-Ausführung/State-Mutation) → zwingend
-  auf Confirmation-Infra (CR-6) angewiesen; **L** (OSGi/JDT-Debugger-API, 15 Actions, Session-Lifecycle);
-  JDT/Nightly-Abhängigkeit wie extern.
-- **Empfehlung:** **Nein (erst) / Roadmap** — L, sicherheitskritisch, orthogonal zum heutigen Core-Loop und ohne
-  CR-6 nicht verantwortbar. Lese-Actions-Subset (state/vars/stacktrace) als möglichen späteren Start. Aufwand: **L**.
+    @Tool("Download a URL to a file on disk. Absolute path required; overwrites existing. Returns status, size and path — never the content.")
+    public String webGet(@P(name = "url") String url,
+                         @P(name = "path", description = "absolute disk path to write to") String path) {
+        ArgsUtil.requireNonBlank(url, "url");
+        ArgsUtil.requireNonBlank(path, "path");
+        QualifiedPathValidator.requireQualifiedDisk("webGet", path); // UC-WEB-6: relative → IAE „must be fully qualified"
+        validateWrite(path);                                          // UC-WEB-6: WriteValidator wie diskWriteFile
+        HttpResponse<byte[]> resp = httpGet(url);                     // Redirects/Timeouts wie WebFetchTool
+        if (resp.statusCode() >= 400)
+            throw new IllegalArgumentException("webGet failed: HTTP " + resp.statusCode() + " from " + url);
+        // Files.createDirectories(parent) + writeBytes (Byte-Array VOR Status-Check → nie Teilergebnis)
+        // existierte vorher → monitor.onFileUpdate(absPath, old, new); onTool("Downloaded …")
+        return n == 0
+            ? "Downloaded " + abs + ": HTTP " + code + ", 0 bytes — server returned an empty body (from " + url + ")"  // UC-WEB-7
+            : "Downloaded " + abs + ": HTTP " + code + ", " + n + " bytes (from " + url + ")";                          // UC-WEB-5
+    }
+}
+```
+Kein Inhalt im Return (R-W-4), keine neuen Dependencies.
 
-### CR-5 — NEU: (persistente/Background-)Terminal-Session + Output-Fetch
-- **Unser Tool:** `shellRunCommand` (One-shot, Timeout 60s, Tail 60, Hard-Cap 3000, je Call Bestätigung) —
-  `…/tool/tools/ShellTool.java`.
-- **Extern:** `…/tools/RunInTerminalToolAdapter.java` + Inner-Class `get_terminal_output` (L258); persistente
-  Session (Win PowerShell / Linux bash / macOS sh) → **env+cwd bleiben erhalten**; `isBackground=true` →
-  Terminal-ID, Output per ID nachlesbar (1000-Zeilen-Truncation); Terminal-View wird sichtbar; 2 Backends per
-  SPI; cwd aus referenzierten Chat-Dateien; Confirmation mit Auto-Approve-Cache.
-- **Zweck/WARUM sinnvoll:** Läufe, die >60s brauchen oder **Zustand tragen** (Maven-Build-Step-Sequenz, REPL,
-  exportierte Vars, `cd`) — unser One-shot-Timeout ist dafür die harte Grenze. Output-nachlesen = Long-Running
-  statt Blocken.
-- **Risiken:** Session-Lifecycle (Leck/Orphan), Sicherheit (persistente Shell) → braucht CR-6; Truncation muss
-  (wie extern) **disclosed** sein (unsere Disziplin).
-- **Empfehlung:** **Ja (Teilweise)** — erst **persistente Foreground-Session** (env+cwd behalten) statt 60s-
-  One-shot; Background + `get_terminal_output`-per-ID als nächster Schritt. Aufwand: **M** (Foreground) / M+ (mit Background).
+**Registrierung (D4a):** `org.sterl.llmpeon/src/org/sterl/llmpeon/parts/ai/component/SharedToolsComponent.java` — Feld `webGetTool` + `sharedToolService.addTool(webGetTool)` im Ctor (Zeile ~50–68) + Getter `webGetTool()` (Stil wie `diskGrepTool()`). **Gating (Q1 final, Variante (b)):** zusätzlich in `updateActiveDiskTools` — on → `addTool(webGetTool)`, off → `removeTool(webGetTool)`, exakt wie die Disk-Tools, **default OFF** (R-W-8). **Alle Registrierungs-/Tool-Listen-Stellen per Grep selbst verifiziert** (Memory #18): IST `ToolService` withDefaults (69–76, WebFetch/Search/Shell/Compact — bleibt unverändert), `AiScaffoldAgent:73` (bleibt unverändert), `SharedToolsComponent` (dort an), `BuildPoAgentComponent` (Jon — bewusst kein webGet, kuratiert; Slaves erhalten es über `sharedToolService`).
 
-### CR-6 — Confirmation-Modell (quer; größter Enabler)
-- **Unser Tool:** **nur** eine Shell-Bestätigung (AIChatView-Widget) — keine Kategorien, kein Scope-Cache.
-- **Extern:** `ConfirmationService` (UI) — Kategorien (terminal/file_read/file_write/file_operation/mcp_tool/
-  safe_tool/web/unknown), **YOLO-Preference**, Entscheidungen mit Scope **Once / Session / Global gecacht**,
-  Subagent-Conversations auf Parent gemappt, Policy kann Auto-Approve deaktivieren.
-- **Konkurrenz besser + WARUM:** Unsere Orchestrierung (Plan/Dev/Review) läuft **autonom & lang** → je-Call-
-  Bestätigung = **Fatigue** oder zu grobe „stets“/„nie“. Scope-Caching (Session) gibt Kontrolle ohne
-  Unterbrechungsflut; Kategorien gestatten feingranulare Politik.
-- **UI-Aspekt:** Confirm-Dialog mit **Scope-Wahl** (Once/Session/Global) + Category-Anzeige.
-- **Empfehlung:** **Ja** — Foundation für CR-4/CR-5 und alle autonomen Edits. Mindestvariante „Session“ vor
-  vollem Category-Modell abwägen (s. §6). Aufwand: **M-L**.
+**Tests:**
+- core **neu** `org.sterl.llmpeon.core/src/test/java/org/sterl/llmpeon/tool/WebGetToolTest.java` (JUnit5/AssertJ, `@TempDir`, lokaler `com.sun.net.httpserver.HttpServer`):
+  - `webGetDownloadsAndReturnsMetadata` `// UC-WEB-5` (Datei auf Disk, Return enthält Status/Größe/Pfad, **enthält nicht** den Body)
+  - `webGetEnforcesWriteGuards` `// UC-WEB-6` (WriteValidator wie `DiskFileWriteToolTest#docsRequest()` `withToolRequest`-Pattern: DOCS-Validator + absoluter Nicht-Docs-Pfad → IAE, Datei existiert nicht; + relativer Pfad → IAE „must be fully qualified")
+  - `webGetHonestZeroBytes` `// UC-WEB-7` (Server liefert leeren 200 → „0 bytes — server returned an empty body", Datei existiert als leere Datei)
+  - `webGetIsEditTool` `// UC-WEB-8` (`assertThat(new WebGetTool().isEditTool()).isTrue()`)
+- plugin `org.sterl.llmpeon.test/src/org/sterl/llmpeon/test/SharedToolsComponentTest.java`:
+  - Registrierung-Assertion (in `test_sharedTools_registersAllEclipseTools` oder neuer Test) + **Toggle-Test (Pflicht, R-W-8):** default OFF → `getTool(WebGetTool.class).isEmpty()` → `updateActiveDiskTools(config(true))` → present → `config(false)` → wieder empty. Kein UC-Kommentar — R-W-8 trägt im SOLL-Doc keinen UC; ein nicht definierter UC am Test würde `VERWAIST`.
+  - `webGetFilteredFromSearchAgent` `// UC-WEB-8`: `sut.toolService().getExecutor("webGet")` + `SearchAgentTool.getFilter()` → `false` (Production-Wiring, wie existing Filter-Test Zeilen 62–77).
 
-### CR-7 — Change-Review-UI: Original-Cache → Undo + WorkingSetBar (quer über alle Write/Edits)
-- **Unser Tool:** alle Write/Edit-Tools aus CR-1/CR-2 (Write-Tools, Pfade s. dort).
-- **Extern:** Querschnitt aus `CreateFileTool` + `EditFileTool` + `WorkingSetHandler.java`/`ChangedFile.java`
-  + Compare-Editor.
-- **Konkurrenz besser + WARUM:** Original **einmalig gecacht** → **Undo auch über Multi-Round-Edits**; Änderungen
-  in einer **WorkingSetBar** mit **Keep / Undo / View-Diff pro Datei** (eclipse.compare, editierbare Proposed-
-  Changes-Seite). → Der Agent darf „mutig“ editieren, weil der User jede Runde einzeln annehmen/verwerfen/diffen
-  kann. Das ist der zentrale **Vertrauens- & Sicherheitshebel**, den wir heute nicht haben (Edits landen
-  unmittelbar ohne gebündelte Review/Undo-Leiste).
-- **UI-Aspekt:** Das Kernstück — Changes-Leiste + Compare-Editor + Undo-Cache.
-- **Empfehlung:** **Ja** — höchster UX-/Vertrauensgewinn, hebt auch die Edit-Guard-Sorgen aus CR-2. Aufwand: **L**
-  (Write-Pfad + UI + Multi-Round-State).
+**Docs Inc 2:** `docs/tool-descriptions-inventory.md` — WebFetchTool-Sektion: neue Zeile `webGet` mit finaler Description (und Kopfzahl 42→43 `@Tool`-Methods). `docs/web-tools.md` — **D9-Umbau** (Bulleten-Regeln → `### R-W-n`-Überschriften mit Marker, UCs unter ihrer Regel genestet + Marker, R-W-8 **nach** R-W-7 sortieren; Inhalt **wortgleich**) + **Flip: UC-WEB-5…8, R-W-4…8 → ✅**; Doc-Status bleibt ❌ (UC-WEB-1…4/R-W-1…3 → Inc 3). **Homepage (Pflicht, „visible changes"):** `homepage/src/setup/custom-agents.md:176` (`disk`-Zeile) — `webGet` mit benennen, Entwurf: „The same toggle also enables **`webGet`** (download a URL to a disk path — status, size and path in the context, never the content)." (Wording final frei, muss `webGet` + gleiche Toggle-Bindung nennen.)
 
-### CR-8 — Read-Familie (unser Edge, kein externes Client-Counterpart)
-- **Unsere Tools:** `diskReadFile` (`DiskFileReadTool.java`), `eclipseReadFile`/`eclipseReadOpenFile`/
-  `eclipseOpenFileInEditor`/`eclipseList` (`EclipseWorkspaceReadFileTool.java`), `eclipseFindResource`
-  (`EclipseCodeNavigationTool.java`), `diskListDirectory` (`DiskFileReadTool.java`).
-- **Extern:** serverseitig nativ (nicht einsehbar) — im Client **kein** Read-Tool.
-- **Fazit:** Kein Übernahme-Bedarf; **unser Vorsprung** (sichtbare, ehrlich-disclosed Caps, Workspace+Disk-Dual,
-  Open-File-Reader). — Empfehlung **Nein** (nichts zu übernehmen). Aufwand: —.
+**Gate Inc 2:** wie Inc 1 (`mvn test` core → Build → OSGi-Suite → lint) + Homepage-Zeile im Commit (AGENTS.md „visible changes") — lint: **OD+WEB zusammen 0 Befunde** (❌-offene UCs sind **keine** Befunde).
 
-### CR-9 — Search-Familie (unser Edge, ehrliche Caps)
-- **Unsere Tools:** `diskGrepFiles` (`DiskGrepTool.java`), `eclipseGrepFiles` (`EclipseGrepTool.java`),
-  `diskSearchFiles` (`DiskFileReadTool.java`), `eclipseSearchFiles` (`EclipseWorkspaceReadFileTool.java`),
-  `searchAgent` (`SearchAgentTool.java`, Read-only-Filter).
-- **Extern:** serverseitig nativ (nicht einsehbar) — im Client **kein** Search-Tool.
-- **Fazit:** Kein Übernahme-Bedarf; **unser Edge** (Read-only-Subagent, disclosed File/Line-Caps). → Die
-  Caps-**Hygiene** dieser Familie wird in CR-17/18 gesondert behandelt. Empfehlung **Nein** (Funktionalität) /
-  Hygiene siehe CR-17/18. Aufwand: —.
+## 5. Inc 3 (Refactor/Erweiterung, bewusst NACH Inc 2) — `webFetchAsMarkdown` paginiert (UC-WEB-1…4, R-OD-3)
 
-### CR-10 — Code-Navigation (unser Edge, kein externes Counterpart)
-- **Unsere Tools:** `eclipseFindJavaType`, `readTypeSource`, `eclipseFindReferences` (`EclipseCodeNavigationTool.java`).
-- **Extern:** kein Client-Counterpart (Navigation serverseitig/Blackbox).
-- **Fazit:** Reiner **Vorsprung** (JDK/JAR-Quellzugriff, Referenzen, Typ-Metadaten ohne Decompiling). Empfehlung
-  **Nein** (nichts zu übernehmen). Aufwand: —.
+```mermaid
+sequenceDiagram
+  participant M as Model
+  participant W as WebFetchTool
+  participant C as LRU-Cache (5, synchronized)
+  participant H as HttpClient
+  M->>W: webFetchAsMarkdown(url, startLine?, endLine?)
+  alt Cache-Miss
+    W->>H: GET (30s request / 10s connect, Redirects)
+    H-->>W: status + body
+    alt status >= 400
+      W-->>M: "Failed to fetch … HTTP <code>" + Snippet (erste 10 MD-Zeilen) — NICHT gecacht
+    else ok
+      W->>W: HTML → Markdown (Flexmark, bestehend)
+      W->>C: put(url, markdown) — 6. URL verdrängt älteste
+    end
+  else Cache-Hit
+    C-->>W: markdown — KEIN zweiter HTTP-Call
+  end
+  W->>W: shownEnd = min(end, start+499); FileLines.extract(md, start, shownEnd)
+  W-->>M: nummerierte Zeilen + "lines X–Y of N — read on with startLine=Y+1"
+```
 
-### CR-11 — Docs-Linter (unser Edge)
-- **Unsere Tools:** `lintDocs`/`lintDocsAndTests` (`…/docslinter/DocsLinterTool.java`), `nextIds`
-  (`…/docslinter/DocsIdTool.java`).
-- **Extern:** keiner. **Fazit:** **Vorsprung** (Doc-/Test-ID-Integrität). Empfehlung **Nein**. Aufwand: —.
+**Änderungen:**
+1. `org.sterl.llmpeon.core/src/main/java/org/sterl/llmpeon/tool/tools/WebFetchTool.java` — Signatur + Cache (D5/D6), Fehlerpfad (D7). Konstanten `CACHE_MAX_URLS = 5`, `MAX_WINDOW_LINES = 500`, `SNIPPET_LINES = 10`. `@Tool`-Description wird pagination-tauglich (Entwurf: „Fetch a URL as Markdown (cached). startLine/endLine (1-based, 0 = default) page the result; max 500 lines per call, disclosed. HTTP 4xx/5xx: status + snippet.") — final nach tool-descriptions-Pattern (10–25 Wörter, imperativ).
+2. `org.sterl.llmpeon.core/src/main/java/org/sterl/llmpeon/shared/FileLines.java` — neuer `public static int countLines(String content)` (`split(FileUtils.dominantLineEnding(content), -1).length`) — Total fürs Disclosure, Logik an EINER Stelle.
+3. **Löschen:** die beiden `@Disabled` Manual-Probes in `WebFetchToolTest` (Clean break; echte Tests ersetzen sie).
+4. Tests (neu geschrieben) in `org.sterl.llmpeon.core/src/test/java/org/sterl/llmpeon/tool/WebFetchToolTest.java` — lokaler `com.sun.net.httpserver.HttpServer`, **per-URL Call-Counter** für Refetch-Belege:
+   - `webFetchFirstCallReturnsFirstWindow` `// UC-WEB-1` (3000-Zeilen-Page → Zeilen 1–500 (nummeriert), Disclosure `lines 1–500 of 3000 — read on with startLine=501`, Zeile 501 NICHT enthalten) + Window-Clamp: Request `startLine=1, endLine=3000` → trotzdem max 500 + „read on"
+   - `webFetchCacheHitPaginatesWithoutRefetch` `// UC-WEB-2` (2. Call `startLine=501` → 501–1000, **Counter == 1**)
+   - `webFetchCacheEvictionRefetches` `// UC-WEB-3` (URLs 1–6, dann URL 1 erneut → Counter(URL1) == 2, Fenster wieder 1–500)
+   - `webFetchHttpErrorReturnsStatusAndSnippet` `// UC-WEB-4` (HTTP 500, langer Body → Status im Return, Snippet vorhanden, **Body-Marker am Ende NICHT** enthalten)
+   - `FileLinesTest` (existing, `…/shared/FileLinesTest.java`): `countLines`-Test.
+   - Test-Timeouts explizit setzen (z. B. `@Timeout(30)` auf der Klasse).
+5. Doc-Flips (D8/D9) — erst NACH grünem Gate: `web-tools.md` UC-WEB-1…4 + R-W-1…3 → ✅ + Doc-Status → **✅ done**; `tool-output-disclosure.md` R-OD-3 → ✅ + Doc-Status → **✅ done**; `docs/index.md:74-75` → ✅; `docs/memory.md` Items 1+2 abhaken; `docs/open-points.md:10` `tool-output-disclosure` entfernen.
 
-### CR-12 — Orchestrierung (unser Edge)
-- **Unsere Tools:** `PoDelegateTool` (`…/poagent/tools/PoDelegateTool.java` — talkPlan/planWithPlanAgent/
-  clearPlan/compactPlan · reviewPlanAgent/clearReview/compactReview · askDev/buildWithDev/clearDev/compactDev),
-  `askUser` (`…/parts/tools/AskUserTool.java`).
-- **Extern:** Agent/Ask/Plan-Chat-Modes + `run_subagent` (serverseitig, Blackbox) — aber **kein** vergleichbares
-  Plan/Dev/Review-Delgationstool im Client.
-- **Fazit:** **Vorsprung** (explizite PO-Orchestrierung). Empfehlung **Nein** (nichts zu übernehmen). Aufwand: —.
-  *(Anknüpfung: CR-6 Confirmation würde die autonomy dieser Agents sauber absichern.)*
+**Nicht betroffen (explizit):** `ToolService` withDefaults (WebFetch-Instanz bleibt), `AiScaffoldAgent` (bekommt Pagination automatisch über dieselbe Klasse — gewollt), `ToolServiceTest:49-50` (nur Typ-Check, bleibt grün).
 
-### CR-13 — Memory (unser Edge)
-- **Unsere Tools:** `memoryAdd`/`memoryRemove`/`memoryReplace`/`memoryReset` (`…/parts/tools/memory/`),
-  `compactSession` (`…/tool/tools/CompactSessionTool.java`).
-- **Extern:** keiner. **Fazit:** **Vorsprung** (Workspace-Memory, 200 Slots). Empfehlung **Nein**. Aufwand: —.
+**Gate Inc 3:** wie Inc 1 + `lintDocsAndTests`: **0 Befunde** OD/WEB (Regressions-Check — war nach Inc 2 bereits 0).
 
-### CR-14 — Skills (unser Edge)
-- **Unsere Tools:** `skillRead`/`skillList`/`skillReadFile` (`…/tool/tools/SkillTool.java`).
-- **Extern:** keiner. **Fazit:** **Vorsprung** (Skill-/Prompt-System). Empfehlung **Nein**. Aufwand: —.
+## 6. BDD-Abdeckung (alle 11 UCs, linter-geprüft via `// UC-…`-Kommentare am Test)
 
-### CR-15 — Build / Test / Console (unser Edge)
-- **Unsere Tools:** `eclipseRunTests` (`EclipseRunTestTool.java`), `eclipseBuildProject`/`eclipseRefreshProject`/
-  `eclipseReadProjectProblems`/`eclipseListAllOpenProjects` (`EclipseBuildTool.java`),
-  `eclipseReadConsoleLog`/`eclipseListAvailableConsoles` (`EclipseConsoleLogTool.java`).
-- **Extern:** keiner (Build/Test/Console im Client nicht vorhanden).
-- **Fazit:** **Vorsprung** (PDE/OSGi-Testlauf, Console-Read). Empfehlung **Nein** (nichts zu übernehmen). Aufwand: —.
-  *(Cross-Ref: CR-3 nutzt `eclipseReadProjectProblems`.)*
+| UC (Doc) | Scenario | Test (Methode) | Inc | Modul |
+|---|---|---|---|---|
+| UC-OD-1 | `eclipseSearchFilesCapsWithDisclosure` | `EclipseSearchFilesToolTest#eclipseSearchFilesCapsWithDisclosure` | 1 | plugin (JUnit4) |
+| UC-OD-2 | `diskSearchFilesDisclosesCap` | `DiskFileReadToolsTest#searchDiskFilesDisclosesCap` | 1 | core |
+| UC-OD-3 | `diskSearchFilesUnlimitedNoDisclosure` | `DiskFileReadToolsTest#searchDiskFilesUnlimitedNoDisclosure` | 1 | core |
+| UC-WEB-5 | `webGetDownloadsAndReturnsMetadata` | `WebGetToolTest#webGetDownloadsAndReturnsMetadata` | 2 | core |
+| UC-WEB-6 | `webGetEnforcesWriteGuards` | `WebGetToolTest#webGetEnforcesWriteGuards` | 2 | core |
+| UC-WEB-7 | `webGetHonestZeroBytes` | `WebGetToolTest#webGetHonestZeroBytes` | 2 | core |
+| UC-WEB-8 | `webGetIsEditToolFiltered` | `SharedToolsComponentTest#webGetFilteredFromSearchAgent` (+ `WebGetToolTest#webGetIsEditTool`) | 2 | plugin + core |
+| UC-WEB-1 | `webFetchFirstCallReturnsFirstWindow` | `WebFetchToolTest#webFetchFirstCallReturnsFirstWindow` | 3 | core |
+| UC-WEB-2 | `webFetchCacheHitPaginatesWithoutRefetch` | `WebFetchToolTest#webFetchCacheHitPaginatesWithoutRefetch` | 3 | core |
+| UC-WEB-3 | `webFetchCacheEvictionRefetches` | `WebFetchToolTest#webFetchCacheEvictionRefetches` | 3 | core |
+| UC-WEB-4 | `webFetchHttpErrorReturnsStatusAndSnippet` | `WebFetchToolTest#webFetchHttpErrorReturnsStatusAndSnippet` | 3 | core |
 
-### CR-16 — Sonstiges / MCP (unser Edge / paritätisch)
-- **Unsere Tools:** `reloadConfig` (`…/scaffold/ReloadConfigTool.java`), dynamische MCP-Tools,
-  `readOperationSystemInformation` (`ShellTool.java`).
-- **Extern:** MCP-Tools werden ebenfalls unterstützt (paritätisch); `readOperationSystemInformation` ohne
-  Gegenstück.
-- **Fazit:** Kein Übernahme-Bedarf. Empfehlung **Nein**. Aufwand: —.
+## 7. Test-Strategie & Gates
 
-## 3. Neue Tool-Kandidaten (extern vorhanden, wir nicht)
-> Zusammengefasst in CR-4 und CR-5 (dort mit Zweck/Aufwand/Risiko). Keine weiteren extern-nicht-abgedeckten
-> Kandidaten gefunden. **Priorisierungsvorschlag (meiner):** CR-7 > CR-6 > CR-5(FG) > CR-3 > CR-4(defer).
+- **Ground truth = Maven Surefire** (core, `mvn test` in `llmpeon-core`), nicht `eclipseRunTests` (AGENTS.md). OSGi-Suite (`org.sterl.llmpeon.test`, JUnit4) nur für plugin-Teile (Inc 1: `EclipseSearchFilesToolTest`, Inc 2: `SharedToolsComponentTest`).
+- **VOR jedem OSGi-Run** `eclipseBuildProject` über alle geänderten Projekte (stale bin/-Klassen = ClassNotFoundException, Memory #16).
+- **OSGi-Run-Disziplin (Memory #13):** ERSTER Lauf braucht einmalig die manuelle Workspace-Trust-Bestätigung im UI-Dialog (ohne: Launch hängt, „0 tests ran") → **ganze Suite** starten (eine Bestätigung deckt den Lauf); bei Timeout NICHT parallel nachstarten (PDE-Instanzen kollidieren), sondern Paul informieren + auf die konkrete PID warten.
+- **Kein persistierter State** in Tests (kein Eclipse-Prefs-/Disk-Abhängiges von früheren Runs); `@TempDir` + lokaler `HttpServer` (Port 0 = frei) in core.
+- **Test-Honesty (AGENTS-DEV):** Cache-Tests belegen den **fehlenden** Refetch über den Call-Counter (nicht nur „Response ok"); Disclosure-Tests asserten die exakte Zeile UND die Trefferanzahl; „Test that would be green without the feature" = kein Test.
+- `System.lineSeparator()` in allen Tool-Output-Strings (Memory #7) — Disclosure-Zeilen über `System.lineSeparator()` anhängen.
+- `lintDocsAndTests` je Gate: Inc 1 → OD 0 / WEB 12 (D9-Umbau folgt in Inc 2) · Inc 2 → **0** (❌-offene UCs sind keine Befunde) · Inc 3 → 0 (Regression).
 
-## 4. Hygiene-Items (eigene Caps/Disclosure-Disziplin) — VERIFIZIERT heute
-> AGENTS.md: „A tool must never lie about a limit“; Prinzip „honesty stays in the output“. Grep-Tools disclose
-> Caps im Output (`AiReponseBuilder.grepComplete`, Zeilen-Cap + File-Cap); die **Search-Tools** tun das **nicht**.
+## 8. Evidenz & Abnahme je Inkrement (Memory #28 — IST, nicht Behauptung)
 
-- **CR-17 — `eclipseSearchFiles`: Cap 1000 im Output NICHT disclosed.**
-  - **Pfad:** `…/parts/tools/EclipseWorkspaceReadFileTool.java:120-160`; Output via `AiReponseBuilder.searchComplete`
-    (`…/tool/AiReponseBuilder.java:61`), das Caps **nie** im Ergebnis meldet. `limit` (Default 100, max 1000) wird
-    hart gekappt (Zeile 132), aber der LLM sieht nur `onTool(...returned N results)` (Log), **kein** Disclosure im
-    Return, wenn 1000 erreicht wird. → Tangiert „no lie about a limit“ (stille Kappung).
-  - **Empfehlung:** **Ja**, **S** — wie `grepComplete`: bei `matches.size() >= limit` eine Disclosure-Zeile im
-    Return ergänzen („capped at N — narrow your search“).
-- **CR-18 — `diskSearchFiles`: Default 50 / 0=unlimited, Output-Cap nicht disclosed.**
-  - **Pfad:** `…/tool/tools/DiskFileReadTool.java:73-99`; `@P` sagt „0 = unlimited. Default 50“ (Parameter-Doku ist
-    ehrlich), aber der **Return** meldet bei erreichtem Limit nicht, dass gekappt wurde (`searchComplete` ohne Cap-
-    Hinweis). Inkonsistenz zu Grep-Disziplin.
-  - **Empfehlung:** **Ja**, **S** — Cap-Disclosure im Return ergänzen (nur falls `limit>0` und erreicht).
-- **CR-19 — `webFetchAsMarkdown`: GAR keine Output-Cap (Context-Bombe).**
-  - **Pfad:** `…/tool/tools/WebFetchTool.java:49-73`. Nur 30s/10s-Timeout, **kein** Größencap auf HTML/Markdown;
-    Fehlerpfad (status≥400, Zeile 67) gibt **vollständiges** `htmlContent` zurück. Große Seite = unkontrollierbarer
-    Context-Blowup.
-  - **Empfehlung:** **Ja**, **S** — Hard-Cap auf Result (z. B. N KB) + Disclosure; Fehlerpfad auf Status+Snippet
-    kürzen (nicht voller Body). Vergleichspunkt extern: `get_terminal_output` trunciert auf 1000 Zeilen
-    (disclosed) → Maßstab für unsere Disziplin.
-- **Vergleichspunkt (kein eigenes CR):** extern `get_terminal_output` Truncation=1000 Zeilen — **wenn** wir
-  CR-5-Background einführen, dieselbe Disclosure-Disziplin wie extern anwenden.
+Je Inkrement liefert Da Mek: (1) Surefire/OSGi-Zahlen (Tests/Errors/Failures), (2) je UC: grüner Testname, (3) je Deliverable: file:line-Beleg (z. B. `AiReponseBuilder.searchComplete(…, int limit, …)` Zeile X; `WebGetTool` exists + `isEditTool` true; `EclipseWorkspaceReadFileTool` `MAX_LIMIT = 500`; `WebFetchTool` Cache-Feld + `MAX_WINDOW_LINES = 500`; `homepage/src/setup/custom-agents.md:176` nennt `webGet`), (4) lint-Report-Status, (5) Commit-Hash auf `analysis/tool-evolution`. PO/Da-Dok verifizieren gegen IST, bevor ein Inkrement „DONE" heißt.
 
-## 5. Was wir BEWUSST NICHT übernehmen (und warum)
-- **Smart-Edit Whole-File-Regen (CR-2-Mechanismus):** Token-Kosten je Edit (ganze Datei in Prompt) + Silent-Drift-
-  Risiko (Model kann unbetrafte Stellen ändern) > Nutzen; unser gezielter Edit-Guard ist präziser/effizienter.
-  **Nur die Review-UI** davon übernehmen (CR-7), nicht den Regen-Mechanismus.
-- **Confirmation-YOLO als Default:** Default bleibt „bestätigen“; YOLO nur **Opt-in** (Security-Default). Außen
-  kann Policy Auto-Approve deaktivieren — wir halten das sicherheitsbewusst.
-- **Serverseitige Built-ins (File-Read/Search/Web/`run_subagent`):** andere Architektur (2-Teil), nicht einsehbar
-  und nicht adaptierbar; llmpeon ist bewusst all-client. Kein Übernahme-Kandidat — **kein Nachteil**, da wir diese
-  Fähigkeiten selbst (und sichtbarer) haben (CR-8/9).
-- **File-Operationen auf absolute lokale Pfade außerhalb des Workspace** (`create_file` workspace-ODER-absolut):
-  wir sind bewusst **Workspace-scoped** (Disk-Tools für den Bereich davor); eigene Boundary beibehalten.
+## 9. Regeln & Constraints
 
-## 6. Offene Fragen für Paul (für den PO-Run — keine Entscheidungen vorweggenommen)
-1. **CR-4 Debugger:** jetzt anpacken (L) vs. **Roadmap/defer** (mein Lean: **defer**, sicherheitskritisch +
-   ohne CR-6 nicht verantwortbar)? Falls ja: nur Lese-Subset (state/vars/stacktrace) als Start?
-2. **CR-5 Terminal:** erst **persistente Foreground-Session** nur (mein Lean), oder inkl. Background +
-   `get_terminal_output`-per-ID in einem Zug?
-3. **CR-6 Confirmation Umfang:** volles Category-Modell + Once/Session/Global, oder **minimal „Session-“Cache**
-   vorab (mein Lean: minimal zuerst)?
-4. **CR-2/CR-7:** Ist die Token-Kosten-Abwägung für den **Whole-File-Regen** akzeptabel, oder fix „gezielter Edit +
-   nur Review-UI“ (mein Lean: fix)? Und ist die **WorkingSetBar/Undo** (L) priorisierbar vor CR-6?
-5. **CR-3 get_errors:** **neues** Tool vs. **optionaler Pfad-Filter** auf bestehendem `eclipseReadProjectProblems`
-   (mein Lean: Filter, weniger Tool-Fläche)?
-6. **Hygiene (CR-17/18/19):** als **ein schnelles Folge-Inkrement** bündeln (alle drei S, gleiche Disclosure-
-   Logik) oder getrennt abarbeiten? (mein Lean: bündeln.)
-7. **Reihenfolge/Priorität** der angenommenen Items insgesamt — mein Vorschlag in §3 (CR-7 > CR-6 > CR-5 > CR-3,
-   CR-4 defer, Hygiene parallel). Bestätigen/ändern?
+- Naming/Logging: Log-OR-throw (nie beides); Tool-Fehler = ehrliche Exception-Meldungen ohne Stacktrace-Füllwasser; Secrets nie in Output (nicht relevant hier, aber gilt).
+- Keine neuen Dependencies (Flexmark/HttpClient/JDK-`HttpServer` sind da); core bleibt plain-Maven.
+- Read-only-Vorgaben: `eclipseReadFile`/`diskReadFile`/Grep-Tools/Fixtures **nicht** anfassen; `grepComplete` unverändert; `ToolService`-withDefaults unverändert.
+- Inc-Polarität halten: Inc 1/2 fügen nur hinzu (keine Refactors), Inc 3 refactorisiert webFetch.
+- Branch/Commit: `analysis/tool-evolution`, Commit je grüner Iteration **inkl.** Docs; kein Branch-Wechsel ohne Ansage.
+- Vor Inc 1: Git-Zustand prüfen (Memory #23) — `docs/resolved-points.md`/`index.md`/`memory.md` der Auflösung sollen committed sein (`docs/memory.md` Schritt 1); falls nicht: erst committen, dann bauen.
 
-**Nächster Schritt:** Paul + PO gehen §2–§6 je CR-Item durch (accept/reject). Erst nach PO-Freigabe wird ein
-**eigenes Build-Plan** (konkret, inkrementiert) aus den akzeptierten Items erstellt — dieser Plan ist **kein**
-Build-Plan.
+## 10. Offene Fragen
+
+- **Q1 — gelöst (Paul, 2026-09-20): Variante (b).** `webGet` hinter `diskToolsEnabled` (default OFF) in `SharedToolsComponent.updateActiveDiskTools` eingehängt; SOLL nachgetragen (`web-tools.md` R-W-8 + `web-tools-architektur.md` Klassen-Tabelle); Homepage-Toggle-Doku (`custom-agents.md:176`) = Inc-2-Deliverable (AGENTS.md „visible changes").
+- **Offene Fragen: none.**
