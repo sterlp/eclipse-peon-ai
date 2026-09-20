@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.parts.tools.debug;
 
+import org.eclipse.jdt.debug.core.IJavaStackFrame;
 import org.sterl.llmpeon.tool.tools.AbstractTool;
 
 import dev.langchain4j.agent.tool.P;
@@ -25,7 +26,7 @@ public class JavaDebugTool extends AbstractTool {
         if (session == null) {
             return noSession("get_state");
         }
-        return notYetAvailable("get_state");
+        return DebugJson.state(session);
     }
 
     @Tool(name = "get_stack_trace", value = "List the stack frames of a debug thread (index, method, type, line, method entry). Optional thread name.")
@@ -34,7 +35,7 @@ public class JavaDebugTool extends AbstractTool {
         if (session == null) {
             return noSession("get_stack_trace");
         }
-        return notYetAvailable("get_stack_trace");
+        return DebugJson.stackTrace(session.resolveThread(thread));
     }
 
     @Tool(name = "get_variables", value = "Show variables of a stack frame as JSON. Optional name path (a.b.c) and depth (default 1, max 5).")
@@ -46,7 +47,12 @@ public class JavaDebugTool extends AbstractTool {
         if (session == null) {
             return noSession("get_variables");
         }
-        return notYetAvailable("get_variables");
+        var debugThread = session.resolveThread(thread);
+        var stackFrame = session.resolveFrame(debugThread, frame);
+        if (!(stackFrame instanceof IJavaStackFrame javaFrame)) {
+            throw new IllegalArgumentException("frame " + frame + " of the resolved thread is not a Java frame");
+        }
+        return DebugJson.variables(javaFrame, name, depth);
     }
 
     @Tool(name = "evaluate_expression", value = "Evaluate a Java expression in a suspended stack frame and return the result as JSON.")

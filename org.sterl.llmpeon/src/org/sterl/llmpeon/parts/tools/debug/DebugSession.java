@@ -106,7 +106,8 @@ final class DebugSession {
      *
      * @throws IllegalArgumentException when the named thread does not exist or no usable thread exists
      */
-    IJavaThread resolveThread(String name) {
+    /** All root threads of the session target. */
+    List<IJavaThread> threads() {
         var threads = new ArrayList<IJavaThread>();
         try {
             for (IJavaThreadGroup group : target.getRootThreadGroups()) {
@@ -117,6 +118,11 @@ final class DebugSession {
         } catch (DebugException e) {
             throw fail("reading threads of " + vmName(), e);
         }
+        return threads;
+    }
+
+    IJavaThread resolveThread(String name) {
+        var threads = threads();
         if (name != null && !name.isBlank()) {
             for (IJavaThread thread : threads) {
                 if (name.equals(threadName(thread))) {
