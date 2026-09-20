@@ -172,3 +172,32 @@ The daily "No files found for a file that exists" was never a wildcard problem:
   tools: Windows understands both separators natively, and POSIX normalization would make files
   literally named `a\b.txt` unaddressable (real loss for a hypothetical LLM slip; the tool's
   "file not found" is loud and self-healing). See `docs/resolved-points.md`.
+## JDT debug model — Eclipse 2026-09 generation (verified 2026-09-20, story C)
+
+- **No in-workbench automated debug-session tests.** `StandardVMDebugger.getCommandLine`
+  hardcodes `-agentlib:jdwp=…suspend=y` (jdt.launching) — no launch-config override; the
+  auto-resume after initial suspend is flaky in the PDE test workbench (VM sits in initial
+  suspend, `JDIDebugTarget.resume()` no-ops: `!isSuspended() && !canResumeThreads()`).
+  Java-Launch-Config type id is `org.eclipse.jdt.launching.localJavaApplication`
+  (`…jdt.launching.java` is gone) — but use manual smoke verification, not fixtures.
+- **Evaluation (public path):** `EvaluationManager.newAstEvaluationEngine(IJavaProject,
+  IJavaDebugTarget)` → `engine.evaluate(String, IJavaStackFrame, IEvaluationListener,
+  DebugEvent.EVALUATION, false)` (package `org.eclipse.jdt.debug.eval`, exported). The
+  internal `ASTEvaluationEngine` is `x-friends:="org.eclipse.jdt.debug.ui"` — not usable
+  from other bundles. `engine.dispose()` in finally; hard-timeout via `CountDownLatch` +
+  `thread.terminateEvaluation()`.
+- **Breakpoints:** `JDIDebugModel.createLineBreakpoint(IResource, String typeName, line,
+  charStart, charEnd, hitCount, register, Map)` — 2nd param is the **type name** (class
+  FQN), not a stratum. `createExceptionBreakpoint(IResource, fqn, caught, uncaught,
+  checked, register, Map)`; JDI always matches the type **and its subtypes** (no
+  subtypes=false). JDI hitCount = `addCountFilter`: fires on the Nth hit only, condition
+  evaluated afterwards, request auto-disables — hitCount+condition is NOT "suspends when
+  count reached AND condition true".
+- **API drift (2026-09):** `Markers.findMarkerById` gone → `IWorkspaceRoot.findMarkers(
+  IMarker.MARKER, true, IResource.DEPTH_INFINITE)` + filter by `getId()`;
+  `IResource.DEEP` → `DEPTH_INFINITE`; `ICompilationUnit.getPrimaryTypeName()` gone →
+  `ITypeRoot.findPrimaryType().getFullyQualifiedName()`; `IJavaDebugTarget.newValue(…)` no
+  longer throws; model package `org.eclipse.jdt.debug.model` is gone (types in
+  `…debug.core`, `IJavaFrame` → `IJavaStackFrame`).
+- **Wrapper jars:** `org.eclipse.jdt.debug` bundle has `Bundle-ClassPath: jdimodel.jar` —
+  extract the nested jar before `javap`/source reads.
