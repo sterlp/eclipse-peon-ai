@@ -16,7 +16,7 @@ Tools kappen still oder gar nicht. Nachziehen, gleiche Disclosure-Logik wie `gre
 ### R-OD-1 — `eclipseSearchFiles` ✅
 
 wird das Limit erreicht (Default 100, **Cap 500** — Paul 2026-09-19,
-war 1000), nennt der Return die Kappung („capped at N — narrow your search"). Heute: stille Kappung.
+war 1000), nennt der Return die Kappung („capped at N — narrow your search") — vorher: stille Kappung.
 
 #### UC-OD-1 — eclipseSearchFilesCapsWithDisclosure ✅
 - GIVEN Workspace mit 600 Match-Dateien WHEN `eclipseSearchFiles(query, limit=500)` THEN Return listet
