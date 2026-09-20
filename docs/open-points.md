@@ -7,7 +7,7 @@ Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User
 Vergleich unseres Plugins gegen das externe Copilot-Eclipse-Plugin — alle Tools abgeglichen. Sammelstelle
 + 7 offene Fragen (je mit Lean): [tool-evolution.md](tool-evolution.md). Externe Mapping-Seite (temporär,
 wird nach dem Run gelöscht): feature-change-request-copilot.md. Neutrale Entwurfs-Docs: change-review,
-tool-confirmation, terminal-session-tool, java-debugger-tool, project-problems-tool, tool-output-disclosure.
+tool-confirmation, terminal-session-tool, java-debugger-tool, project-problems-tool.
 **Paul: alle CR-Items durchgehen, dann normale Build-Zyklen.**
 
 

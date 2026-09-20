@@ -1,6 +1,6 @@
 # Story A — Build-Plan: Tool-Output-Disclosure + Web-Tools
 
-**Branch:** `analysis/tool-evolution` (läuft dort, nicht wechseln) · **Plan:** Da Thinka, 2026-09-20 · **Status:** vollständig baubar (2026-09-20: Q1 gelöst — Paul: Variante (b), SOLL nachgetragen in `web-tools.md` R-WEB-8 + Architektur-Doc; Homepage-Deliverable in Inc 2). Der alte Vergleichs-Plan ist abgearbeitet (Verdicts: `docs/resolved-points.md`, „Tool-Evolution-Run").
+**Branch:** `analysis/tool-evolution` (läuft dort, nicht wechseln) · **Plan:** Da Thinka, 2026-09-20 · **Status:** ✅ alle 3 Inkremente gebaut (2026-09-20: inc 1 `857b72f`, inc 2 `435a9c7`, inc 3 folgt) — wartet auf PO-Review (Da Dok). Q1 gelöst — Paul: Variante (b), SOLL nachgetragen in `web-tools.md` R-WEB-8 + Architektur-Doc; Homepage-Deliverable in Inc 2. Der alte Vergleichs-Plan ist abgearbeitet (Verdicts: `docs/resolved-points.md`, „Tool-Evolution-Run").
 
 > **STOP-AND-ASK (erste Regel für Da Mek):** Compile-Fehler ohne Lösung, nicht-grün-bekommende Tests, IST-Widerspruch zum Plan oder Unklarheit → **aktiv beim PO nachfragen (askDev-Kanal) — nie still workarounden, nie still SOLL ändern.** Je Inkrement IST-Evidenz liefern (§8) und nach jeder grünen Iteration committen (inkl. `docs/**`), Branch `analysis/tool-evolution` unverändert.
 
@@ -110,7 +110,7 @@ Kein Inhalt im Return (R-WEB-4), keine neuen Dependencies.
 
 **Gate Inc 2:** wie Inc 1 (`mvn test` core → Build → OSGi-Suite → lint) + Homepage-Zeile im Commit (AGENTS.md „visible changes") — lint: **OD+WEB zusammen 0 Befunde** (❌-offene UCs sind **keine** Befunde).
 
-## 5. Inc 3 (Refactor/Erweiterung, bewusst NACH Inc 2) — `webFetchAsMarkdown` paginiert (UC-WEB-1…4, R-OD-3)
+## 5. Inc 3 (Refactor/Erweiterung, bewusst NACH Inc 2) — `webFetchAsMarkdown` paginiert (UC-WEB-1…4, R-OD-3) — ✅ done (2026-09-20, inc-3): core 897/0/0, OSGi 228/0, lint OD+WEB 0. Deviations (alle Plan-konform): `FetchResult`-Record statt zweitem Fetch im Fehlerpfad (ein HTTP-Call, nie gecacht), `@P(required=false)` wie Read-Familie, Inventory-Zeile 13 + memory.md-State-Zeilen synchronisiert.
 
 ```mermaid
 sequenceDiagram

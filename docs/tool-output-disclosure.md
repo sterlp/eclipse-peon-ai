@@ -4,7 +4,7 @@ idPrefix: OD
 
 # Tool-Output-Disclosure — Caps ehrlich machen
 
-> **Status:** ❌ specified (2026-09-19, Paul).
+> **Status:** ✅ done (2026-09-20, Paul specified 2026-09-19).
 
 ## Ziel
 
@@ -34,7 +34,7 @@ gleiche Regel — nur falls `limit > 0` und erreicht.
 - GIVEN Verzeichnis mit 30 Match-Dateien WHEN `diskSearchFiles(query, limit=0)` THEN alle 30 Treffer,
   **keine** Disclosure-Zeile (nichts wurde gekappt).
 
-### R-OD-3 — `webFetchAsMarkdown` ❌
+### R-OD-3 — `webFetchAsMarkdown` ✅
 
 statt byte-Cap → **paginiert** (Mini-Cache letzte 5 URLs,
 500-Zeilen-Fenster je Call, disclosed) — Details in [web-tools.md](web-tools.md); Fehlerpfad

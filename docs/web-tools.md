@@ -4,8 +4,8 @@ idPrefix: WEB
 
 # Web-Tools — Fetch (Kontext, paginiert) + Download (Disk)
 
-> **Status:** ❌ specified (2026-09-19, Paul). WebFetchTool wird paginiert (Cache + 500-Zeilen-Fenster),
-> dazu neues `webGet` für Datei-Downloads ohne Limit.
+> **Status:** ✅ done (2026-09-20, Paul specified 2026-09-19). WebFetchTool paginiert (Cache + 500-Zeilen-Fenster),
+> `webGet` für Datei-Downloads ohne Limit.
 
 ## Ziel
 
@@ -15,36 +15,36 @@ der Kontext sieht nur Metadaten.
 
 ## Regeln
 
-### R-WEB-1 — paginierte `webFetchAsMarkdown` ❌
+### R-WEB-1 — paginierte `webFetchAsMarkdown` ✅
 
 `webFetchAsMarkdown(url, startLine?, endLine?)`: bei Cache-Miss fetch → Markdown im
 **Mini-Cache (letzte 5 URLs, LRU)**; Return = Zeilenfenster, **max 500 Zeilen** je Call (Start default 1,
 `0` = Dateiende wie bei den Read-Tools), Disclosure **„lines X–Y of N — read on with startLine"**
 (Paul 2026-09-19).
 
-#### UC-WEB-1 — webFetchFirstCallReturnsFirstWindow ❌
+#### UC-WEB-1 — webFetchFirstCallReturnsFirstWindow ✅
 - GIVEN URL erstmals gefetcht, Markdown mit 3000 Zeilen WHEN `webFetchAsMarkdown(url)` ohne Range
   THEN Zeilen 1–500, Disclosure „lines 1–500 of 3000 — read on with startLine=501".
 
-### R-WEB-2 — Cache-Hit ohne Refetch ❌
+### R-WEB-2 — Cache-Hit ohne Refetch ✅
 
 Cache-Hit = **kein Refetch**: das Fenster kommt aus dem gecachten Snapshot — Paginierung
 ist stabil (kein anderer Inhalt zwischen zwei Calls derselben URL). Cache-Verdrängung (6. URL) = beim
 nächsten Call Refetch.
 
-#### UC-WEB-2 — webFetchCacheHitPaginatesWithoutRefetch ❌
+#### UC-WEB-2 — webFetchCacheHitPaginatesWithoutRefetch ✅
 - GIVEN URL im Cache WHEN `webFetchAsMarkdown(url, startLine=501)` THEN Zeilen 501–1000 aus dem
   gecachten Snapshot, **kein** zweiter HTTP-Call.
 
-#### UC-WEB-3 — webFetchCacheEvictionRefetches ❌
+#### UC-WEB-3 — webFetchCacheEvictionRefetches ✅
 - GIVEN 6. URL verdrängt die älteste WHEN die verdrängte URL erneut aufgerufen wird THEN Refetch,
   Fenster wieder 1–500.
 
-### R-WEB-3 — Fehlerpfad HTTP ≥ 400 ❌
+### R-WEB-3 — Fehlerpfad HTTP ≥ 400 ✅
 
 Fehlerpfad HTTP ≥ 400 → Status + **Snippet** (Anfang des Mark downs), nie der volle Body.
 
-#### UC-WEB-4 — webFetchHttpErrorReturnsStatusAndSnippet ❌
+#### UC-WEB-4 — webFetchHttpErrorReturnsStatusAndSnippet ✅
 - GIVEN HTTP 500 WHEN `webFetchAsMarkdown(url)` THEN Status + Snippet (kein voller Body im Kontext).
 
 ### R-WEB-4 — `webGet`: Download auf Disk ✅
