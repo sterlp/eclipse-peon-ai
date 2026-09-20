@@ -64,6 +64,7 @@ Erwartung steht hier.
 | 4.5 | Datei mit `diskWriteFile` ins Fixture schreiben (**ohne** Refresh), dann `eclipseSearchFiles` danach | Wird gefunden. |
 | 4.6 | `eclipseSearchFiles("zzz-gibt-es-nicht-xyz")` | Meldung nennt **Scope und Pattern**, nicht nur „No files found". |
 | 4.7 | `eclipseSearchFiles("*.java", limit=-5)` | Liefert Treffer (Limit wird auf 1 geklemmt), **kein** leeres Ergebnis. |
+| 4.8 | `eclipseSearchFiles("*.java", limit=100)` in Projekt mit >100 Matches (z. B. `llmpeon-core`) | Genau **100** Treffer **und** „capped at 100 — narrow your search" im Return. |
 
 ## 5 — Console: filtern und ehrlich croppen
 

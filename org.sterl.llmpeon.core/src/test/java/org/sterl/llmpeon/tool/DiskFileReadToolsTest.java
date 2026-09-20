@@ -109,13 +109,53 @@ class DiskFileReadToolsTest {
         Files.writeString(tempDir.resolve("C.java"), "");
 
         // unlimited returns all three
-        assertEquals(3, tool.diskSearchFiles("*.java", 0).split("\n").length);
+        assertEquals(3, countHits(tool.diskSearchFiles("*.java", 0)));
 
-        // limit=1 returns exactly one
-        assertEquals(1, tool.diskSearchFiles("*.java", 1).split("\n").length);
+        // limit=1 returns exactly one + cap disclosure
+        String limited1 = tool.diskSearchFiles("*.java", 1);
+        assertEquals(1, countHits(limited1));
+        assertTrue(limited1.contains("capped at 1 — narrow your search"), limited1);
 
-        // limit=2 returns exactly two
-        assertEquals(2, tool.diskSearchFiles("*.java", 2).split("\n").length);
+        // limit=2 returns exactly two + cap disclosure
+        String limited2 = tool.diskSearchFiles("*.java", 2);
+        assertEquals(2, countHits(limited2));
+        assertTrue(limited2.contains("capped at 2 — narrow your search"), limited2);
+    }
+
+    @Test
+    void searchDiskFilesDisclosesCap() throws IOException {
+        // UC-OD-2
+        // GIVEN - 80 matching files, default limit 50
+        for (int i = 0; i < 80; i++) {
+            Files.writeString(tempDir.resolve(String.format("f%02d.java", i)), "");
+        }
+
+        // WHEN
+        String result = tool.diskSearchFiles("f*.java", null);
+
+        // THEN - 50 hits and the cap is named
+        assertEquals(50, countHits(result));
+        assertTrue(result.contains("capped at 50 — narrow your search"), result);
+    }
+
+    @Test
+    void searchDiskFilesUnlimitedNoDisclosure() throws IOException {
+        // UC-OD-3
+        // GIVEN - 30 matching files
+        for (int i = 0; i < 30; i++) {
+            Files.writeString(tempDir.resolve(String.format("g%02d.java", i)), "");
+        }
+
+        // WHEN
+        String result = tool.diskSearchFiles("g*.java", 0);
+
+        // THEN - all 30 hits, nothing was cropped → no disclosure
+        assertEquals(30, countHits(result));
+        assertFalse(result.contains("capped at"), result);
+    }
+
+    private static long countHits(String result) {
+        return result.lines().filter(l -> l.endsWith(".java")).count();
     }
 
     @Test

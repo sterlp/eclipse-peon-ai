@@ -63,6 +63,34 @@ class AiReponseBuilderTest {
     }
 
     @Test
+    void searchCompleteDisclosesReachedCap() {
+        // limit == size → already cropped → disclosure (trigger >=)
+        var results = List.of("a.java", "b.java");
+
+        String result = AiReponseBuilder.searchComplete(results, 2, null);
+
+        assertThat(result)
+                .contains("a.java")
+                .contains("b.java")
+                .contains("capped at 2 — narrow your search");
+
+        // existing suffix stays, disclosure appended after it
+        String withSuffix = AiReponseBuilder.searchComplete(results, 2, "Use diskListDirectory");
+        assertThat(withSuffix)
+                .contains("Use diskListDirectory")
+                .contains("capped at 2 — narrow your search");
+    }
+
+    @Test
+    void searchCompleteUnderCapOrUnlimitedHasNoDisclosure() {
+        var results = List.of("a.java", "b.java");
+
+        assertThat(AiReponseBuilder.searchComplete(results, 3, null)).doesNotContain("capped at");
+        assertThat(AiReponseBuilder.searchComplete(results, 0, null)).doesNotContain("capped at");
+        assertThat(AiReponseBuilder.searchComplete(results, null)).doesNotContain("capped at");
+    }
+
+    @Test
     void grepUnderCapShowsAllNoDisclosure() {
         // R8: 50 hits < 100 cap → all shown, no disclosure
         var hits = new ArrayList<GrepHit>();

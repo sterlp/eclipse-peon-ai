@@ -32,7 +32,7 @@ AGENTS.md-Prinzipien, die hier binden: „A tool must never lie about a limit" (
 
 - **D9 Linter-Struktur (2026-09-20, lint-IST: 22 Befunde `UC_OHNE_REGEL`+`STATUS_FEHLT` in OD/WEB):** der Linter verlangt Regeln als `### R-<PREFIX>-<n> — <titel> <marker>`-Überschriften mit Status-Marker und jede UC als `#### UC-…` **unter ihrer Regel** mit eigenem Marker (Vorbilder: `docs/docs-linter.md`, `docs/user-context.md` — `❌` = offen, `✅`/`✅ done` = belegt). Bulleten-Regeln von OD/WEB → `###`-Überschriften, UCs unter ihrer Regel nesten, in `web-tools.md` R-W-8 **nach** R-W-7 sortieren — **Regel-/BDD-Inhalt bleibt wortgleich** (Format-Fix gemäß Linter-SOLL, keine SOLL-Änderung). Verteilung: Inc 1 → OD-Doc (OD-Befunde → 0), Inc 2 → WEB-Doc + webGet-Flip (OD+WEB → 0), Inc 3 → Rest-Flip (Regressions-Check 0).
 
-## 3. Inc 1 (nur-hinzufügen) — Caps/Disclosures (UC-OD-1…3)
+## 3. Inc 1 (nur-hinzufügen) — Caps/Disclosures (UC-OD-1…3) — ✅ done (2026-09-20, inc-1): core 886/0/0, OSGi 226/0, lint OD 0 / WEB 16 (12 erwartet + 8 UNBELEGT, Tests folgen Inc 2/3)
 
 **Änderungen:**
 1. `org.sterl.llmpeon.core/src/main/java/org/sterl/llmpeon/tool/AiReponseBuilder.java` — 3-arg-`searchComplete` (D1).

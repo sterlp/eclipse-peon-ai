@@ -16,6 +16,20 @@ public class AiReponseBuilder {
     public static String searchComplete(List<String> results) {
         return searchComplete(results, null);
     }
+
+    /**
+     * R-OD: discloses a reached result cap ("capped at N — narrow your search") — a tool must
+     * never lie about a limit. Trigger is {@code >=}: exactly at the limit the result is already
+     * cropped. {@code limit <= 0} means unlimited → no disclosure.
+     */
+    public static String searchComplete(List<String> results, int limit, String suffix) {
+        if (limit > 0 && results.size() >= limit) {
+            suffix = suffix == null
+                    ? "capped at " + limit + " — narrow your search"
+                    : suffix + System.lineSeparator() + "capped at " + limit + " — narrow your search";
+        }
+        return searchComplete(results, suffix);
+    }
     public static String grepComplete(List<String> results, String suffix) {
         var result = new StringBuilder();
         if (results.isEmpty()) {

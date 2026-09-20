@@ -33,6 +33,8 @@ import dev.langchain4j.agent.tool.Tool;
 
 public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
 
+    private static final int MAX_LIMIT = 500;
+
     private static final ILog LOG = Platform.getLog(EclipseWorkspaceReadFileTool.class);
 
     private IProject currentProject;
@@ -123,13 +125,13 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
             String query,
             @P(name = "projectName", required = false) 
             String projectName,
-            @P(description = "max results to return. Default 100, max 1000.", required = false, name = "limit") 
+            @P(description = "max results to return. Default 100, max 500.", required = false, name = "limit") 
             Integer inLimit) {
 
         ArgsUtil.requireNonBlank(query, "query");
         if (inLimit == null) inLimit = 100;
-        if (inLimit == 0) inLimit = 1000;
-        final int limit = Math.max(1, Math.min(inLimit, 1000));
+        if (inLimit == 0) inLimit = MAX_LIMIT;
+        final int limit = Math.max(1, Math.min(inLimit, MAX_LIMIT));
 
         query = FileUtils.normalizePath(query);
         final var matcher = StringMatcher.wildCardMatcher(query);
@@ -157,7 +159,7 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
             suffix = "Searched: " + searchedScope + " · pattern: " + matcher.getPattern() + "\n"
                     + "Use findJavaType for Java classes or " + LIST_WORKSPACE_NAME + " to explore the project structure. Try a wildcard e.g. *folder*FileName*.java or grepWorkspaceFiles for content search.";
         }
-        return AiReponseBuilder.searchComplete(new ArrayList<>(matches.values()), suffix);
+        return AiReponseBuilder.searchComplete(new ArrayList<>(matches.values()), limit, suffix);
     }
 
     private void searchScope(List<IProject> scope, StringMatcher matcher, int limit,
