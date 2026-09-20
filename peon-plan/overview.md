@@ -110,3 +110,33 @@ Zusätzlich (R-PP-4): existierende Suite bleibt grün — `EclipseWorkspaceReadF
 ## 8. Offene Fragen
 
 **None.** Alle Designentscheidungen sind in §2 fixiert; Naming (`files`, `severity`) und Wording (D5) sind final. Falls sich ein IST-Widerspruch zeigt → STOP-AND-ASK, nicht still ändern.
+
+## 9. PO-Review Da Dok (2026-09-20) — Story B Inc (Commit `0eb746f`)
+
+**Verdict: CONCERNS** — keine blockierenden Lücken. Alle R-PP-1…4 + UC-PP-1…4 vom Code abgedeckt, je UC ein Test; Plan und Docs vollständig übereinstimmend; Default-Pfad strukturell unverändert.
+
+**Verifiziert (IST, diese Session):**
+- `EclipseBuildTool.java:41-43` — Signatur mit `files`/`severity` als optionale `@P`-Strings, Descriptionen **wortgleich** D6 (`:40,42,43`).
+- D2: `resolveFile` (`:149-154`) — project-relativ via `project.findMember`, workspace-absolut via `Root.findMember`, fremd-Projekt-Dateien → `null` → ehrlicher Fehler-String, nie Fallback; mehrere Pfade: jeder Unhit benannt (`:105-110`), gültige laufen trotzdem.
+- D3: `readFileStatus` `DEPTH_ZERO` (`:282`) vs. Default `readProjectStatus` `DEPTH_INFINITE` (`:275`) — Default-Pfad in `readProjectWide` extrahiert, Header **exakt** altes Wording (`:76,78`), alte 1-Arg-Delegation (`:54-56`) für `eclipseBuildProject` (`:208`) erhalten.
+- D4: Severity-Filter **vor** Formatierung in `Status.addMarker` (`:238-251`); INFO bleibt ausgeschlossen; ungültiger Wert → `IllegalArgumentException` mit Wert + erlaubten Werten (`:180-181`), case-insensitiv (`:174`).
+- D5 Wording exakt: `Problems in … (project …[, severity …]):` (`:130-131`), `No problems in … (scope: …)` (`:135-136`), `No problems found for … (project-relative path expected)` (`:106-108`); `System.lineSeparator()` in allen neuen Output-Zeilen (memory #7); Marker-Zeilen behalten hartkodiertes `"\n"` — bestehend, Default-Pfad bleibt dadurch byte-identisch (bewusste Plan-Entscheidung, kein Befund).
+- Tests: `EclipseBuildToolTest` — 5 Methoden exakt wie §5, 4× `// UC-PP-x` (`:53,71,89,108`), Default-Test ohne UC-Kommentar (`:125`); Fixture vor SUT, `@After`-Cleanup (`:31-38`, memory #12); `assumeTrue` vor Marker-Setzung.
+- Lint: default-Run **0 PP-Befunde**; mit `idPattern=UC-PP-\d+`: 4/4 UC-Defs + 4/4 Test-IDs, 0 Befunde. (Die 33 repo-weiten Befunde = UC-DL, bekannt out-of-scope.)
+- Inventory: `tool-descriptions-inventory.md:136` (Tabellen-Zeile 39) zeigt die neue Desc, ✅ (aktuell, 2026-09-20, Story B), altes ⚠️ weg — Plan hatte beide Zeilenangaben („Zeile 136 / Zeile 39") → **keine Deviation**.
+- Docs korrekt **nicht** geflippt (R-PP/UC-PP/Status in `project-problems-tool.md` + `index.md:73` alle noch ❌) — §7 ist post-review, korrekt eingehalten.
+- Grep: keine weiteren `eclipseReadProjectProblems`-Callstellen außer Tool + Test; Core-Prompts ohne Referenz (Plan-Claim bestätigt).
+- `org.sterl.llmpeon` Build: kompiliert, nur bestehende Null-Safety-Warnings.
+- **Nicht verifizierbar (Evidenz-Reserve):** Commit-Hash `0eb746f` (kein Git-Zugriff bei Da Dok) und OSGi-Suite-Lauf (erster Lauf braucht manuelle Trust-Bestätigung, memory #13) — Da Meks Zahlen daher nicht unabhängig bestätigt.
+
+**Gaps (CONCERNS, nicht blockierend):**
+1. **Kein Test für ungültigen `severity`-Wert.** D1 verpflichtet auf ehrliche `IllegalArgumentException` — implementiert (`:180-181`), aber §5-Testtabelle enthält keinen Fall, und die Doc-UCs decken es nicht. Mutation `default:` → „ignoriere" würde grün bleiben. Empfehlung: Test `invalidSeverityThrowsHonest` (keine UC-ID — SOLL-Doc trägt sie nicht).
+2. **Case-insensitive Severity ungetestet** (D1) — `toLowerCase`-Mutation bliebe grün. Kleiner Anhängsel-Test genügt (kann mit 1. kombiniert werden).
+3. **`@After`-Cleanup ohne try/finally:** wirft `deleteMarkers` für die erste Datei, rücken die Marker der restlichen Dateien nicht raus → persistenter Workspace-State (memory #12-Form ist in anderen Tests try/finally). `EclipseBuildToolTest.java:31-38`.
+4. Nit: `files=" "` (nur Whitespace) → `splitPaths` leer → stiller Default project-wide (`:161-167`). „Empty means unset" deckt es begründbar — als Nit notiert, kein Handlungsdruck.
+
+**Docs↔Plan (Seite c):** keine Lücke — der Plan deckt alle R-PP-1…4 ab; R-PP-4-ohne-UC ist bewusst so geplant (Beleg = Default-Test + bestehende Suite, beides IST vorhanden).
+
+**Skill-/Instruktions-Gap (Randnotiz 1, empirisch reproduziert):** `idPattern=PP` liefert **5 Scheinbefunde** (`DOPPELT_DEFINIERT PP` + 4× `UNBELEGT PP`), weil (a) `TestParser` das Pattern als **Full-Match** anwendet (`TestParser.java:94`) → Test-IDs 0/0, und (b) `DocParser.extractId` es als Substring-`find` anwendet (`DocParser.java:177-178`) → UC-IDs werden auf `"PP"` gekürzt. `idPattern=UC-PP-\d+` → 4/4 + 0 Befunde. Da Meks Analyse stimmt. **Wurzel-Problem:** der `@P` für `idPattern` in `DocsLinterTool` (`:52,79`) hat **keine Description** — das Model hat null Hinweis, dass ein Full-Match-Regex auf die komplette UC-ID erwartet wird. Empfehlung an PO (keine Story-B-Rework): `@P`-Description ergänzen (z. B. „regex that FULL-matches UC ids, e.g. `UC-PP-\\d+`") + ggf. eine Zeile in `docs-linter.md`; distinct vom 2026-09-16-Open-Point (Root-Fallback, anderer Mechanismus).
+
+**Skill-Evolution-Outcome (AGENTS-PO.md Gate-Phase):** 1 **Update-Kandidat** (keine Erzeugung/Löschung): DocsLinter-`idPattern`-Instruktion lückenhaft — zweiter dokumentierter Treffer (09-16 Root-Problem, 09-20 Pattern-Semantik) spricht für denselben Fix; Evidence oben. Ledger-Eintrag + Umsetzung per Delegation an Da Mek (Mini-Zyklus), Entscheidung: Jon. Positiv: Da Mek hat den Lint-Quirk **reportet statt still workaroundt** (AGENTS „Report, don't route around") und mit dem korrekten Pattern verifiziert — Reporting-Kultur wirkt.

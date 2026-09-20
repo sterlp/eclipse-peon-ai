@@ -160,6 +160,7 @@ public class EclipseBuildTool extends AbstractEclipseTool {
         }
         for (String raw : files.split(",")) {
             String path = raw.trim();
+            // blank entries are discarded: whitespace-only input = unset = whole project
             if (!path.isEmpty()) {
                 result.add(path);
             }
