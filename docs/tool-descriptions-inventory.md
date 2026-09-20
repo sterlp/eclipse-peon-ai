@@ -133,7 +133,7 @@ Alle `@Tool`-Beschreibungen folgen einem einheitlichen Muster:
 | # | Method | Current Description | Rating | New Description | Why |
 |---|--------|---------------------|--------|-----------------|-----|
 | 38 | `eclipseListAllOpenProjects` | `"List open workspace projects with their eclipse paths, disk paths, and natures."` | ✅ gut | *(kein Change)* | - |
-| 39 | `eclipseReadProjectProblems` | `"List build errors/warnings of a project."` | ⚠️ zu kurz | `"List compile errors and warnings for a project. Call after eclipseBuildProject to check build status. Returns problem messages with file and line numbers."` | Wann nutzen + Output-Format |
+| 39 | `eclipseReadProjectProblems` | `"List compile errors and warnings for a project. Optional: files (comma-separated) and severity (ERROR, WARNING) filter the result scope."` | ✅ (aktuell, 2026-09-20, Story B) | *(kein Change)* | File- + Severity-Filter nennen die optionale Scope-Einschränkung (R-PP-1…3, docs/project-problems-tool.md) |
 | 40 | `eclipseBuildProject` | `"Refresh and clean build the project. Returns errors/warnings. Preferred way to verify code changes or full refresh."` | ✅ gut | *(kein Change)* | - |
 | 41 | `eclipseRefreshProject` | `"Refresh/sync a project with the disk status - if changes have been made outside eclipse e.g. with disk tools."` | ✅ gut | *(kein Change)* | - |
 

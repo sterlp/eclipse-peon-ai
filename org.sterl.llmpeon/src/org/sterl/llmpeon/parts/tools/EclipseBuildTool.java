@@ -2,12 +2,16 @@ package org.sterl.llmpeon.parts.tools;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IncrementalProjectBuilder;
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.shared.ArgsUtil;
 
@@ -33,8 +37,10 @@ public class EclipseBuildTool extends AbstractEclipseTool {
         return sb.toString();
     }
     
-    @Tool("List compile errors and warnings for an Eclipse project with file and line numbers.")
-    public String eclipseReadProjectProblems(@P(name = "projectName") String projectName) {
+    @Tool("List compile errors and warnings for a project. Optional: files (comma-separated) and severity (ERROR, WARNING) filter the result scope.")
+    public String eclipseReadProjectProblems(@P(name = "projectName") String projectName,
+            @P(name = "files", description = "Comma-separated file paths (project-relative or workspace) to limit the problem list; empty = whole project.", required = false) String files,
+            @P(name = "severity", description = "Limit to one severity: ERROR or WARNING; empty = errors and warnings.", required = false) String severity) {
         ArgsUtil.requireNonBlank(projectName, "projectName");
         var project = EclipseUtil.findOpenProject(projectName);
         if (project.isEmpty()) {
@@ -42,12 +48,29 @@ public class EclipseBuildTool extends AbstractEclipseTool {
             return projectName + " not found.\n" + eclipseListAllOpenProjects();
         }
         var projectRef = project.get();
-        return readProblems(projectRef);
+        return readProblems(projectRef, files, severity);
     }
 
     private String readProblems(IProject projectRef) {
+        return readProblems(projectRef, null, null);
+    }
+
+    private String readProblems(IProject projectRef, String files, String severity) {
+        int severityFilter = parseSeverity(severity);
+        var paths = splitPaths(files);
+        if (paths.isEmpty()) {
+            return readProjectWide(projectRef);
+        }
+        return readFiltered(projectRef, paths, severityFilter);
+    }
+
+    /**
+     * Default mode (no file filter): project-wide problems — unchanged behaviour.
+     */
+    private String readProjectWide(IProject projectRef) {
         try {
-            var status = readProjectStatus(projectRef);
+            var status = new Status();
+            readProjectStatus(projectRef, status);
             onTool("Reading problems of " + projectRef.getName() + ": " + status.countProblems());
             if (status.hasProblems()) {
                 return "Project " + projectRef.getName() + " problems:\n" + status.toString();
@@ -57,6 +80,110 @@ public class EclipseBuildTool extends AbstractEclipseTool {
         } catch (CoreException e) {
             throw new RuntimeException("Failed to build " + projectRef.getName(), e);
         }
+    }
+
+    /**
+     * Filtered mode: markers of the given files only (DEPTH_ZERO), optionally one severity.
+     * Every scope restriction is named in the output; unresolved paths are reported honestly
+     * and never fall back to the project-wide list.
+     */
+    private String readFiltered(IProject project, List<String> paths, int severityFilter) {
+        var notFound = new ArrayList<String>();
+        var resolvedPaths = new ArrayList<String>();
+        var resolvedFiles = new ArrayList<IFile>();
+        for (String path : paths) {
+            var file = resolveFile(project, path);
+            if (file == null) {
+                notFound.add(path);
+            } else {
+                resolvedPaths.add(path);
+                resolvedFiles.add(file);
+            }
+        }
+
+        var out = new StringBuilder();
+        for (String path : notFound) {
+            out.append("No problems found for ").append(path)
+               .append(" in project ").append(project.getName())
+               .append(" (project-relative path expected)")
+               .append(System.lineSeparator());
+        }
+        if (!notFound.isEmpty()) {
+            onProblem("Problems filter: " + notFound.size() + " of " + paths.size()
+                    + " path(s) not found in " + project.getName());
+        }
+        if (resolvedFiles.isEmpty()) {
+            return out.toString();
+        }
+
+        try {
+            var status = new Status();
+            status.severityFilter = severityFilter;
+            for (IFile file : resolvedFiles) {
+                readFileStatus(file, status);
+            }
+            onTool("Reading filtered problems of " + project.getName() + ": " + status.countProblems());
+
+            String filesLabel = String.join(", ", resolvedPaths);
+            String severityLabel = severityFilter == 0 ? "" : ", severity " + severityName(severityFilter);
+            if (status.hasProblems()) {
+                out.append("Problems in ").append(filesLabel)
+                   .append(" (project ").append(project.getName()).append(severityLabel).append("):")
+                   .append(System.lineSeparator())
+                   .append(status.toString());
+            } else {
+                out.append("No problems in ").append(filesLabel)
+                   .append(" (scope: project ").append(project.getName()).append(severityLabel).append(")");
+            }
+            return out.toString();
+        } catch (CoreException e) {
+            throw new RuntimeException("Failed to read problems of " + project.getName(), e);
+        }
+    }
+
+    /**
+     * Resolves a project-relative or workspace-absolute path to an IFile of the given project.
+     *
+     * @return the file, or {@code null} when the path does not resolve to a file inside the project
+     */
+    private static IFile resolveFile(IProject project, String path) {
+        IResource resource = path.startsWith("/")
+                ? ResourcesPlugin.getWorkspace().getRoot().findMember(IPath.fromOSString(path))
+                : project.findMember(IPath.fromOSString(path));
+        return resource instanceof IFile file && file.getProject().equals(project) ? file : null;
+    }
+
+    private static List<String> splitPaths(String files) {
+        var result = new ArrayList<String>();
+        if (files == null) {
+            return result;
+        }
+        for (String raw : files.split(",")) {
+            String path = raw.trim();
+            if (!path.isEmpty()) {
+                result.add(path);
+            }
+        }
+        return result;
+    }
+
+    private static int parseSeverity(String severity) {
+        if (severity == null || severity.isBlank()) {
+            return 0;
+        }
+        switch (severity.trim().toUpperCase(Locale.ROOT)) {
+            case "ERROR":
+                return IMarker.SEVERITY_ERROR;
+            case "WARNING":
+                return IMarker.SEVERITY_WARNING;
+            default:
+                throw new IllegalArgumentException(
+                        "Invalid severity '" + severity + "'. Allowed values: ERROR, WARNING.");
+        }
+    }
+
+    private static String severityName(int severityFilter) {
+        return severityFilter == IMarker.SEVERITY_ERROR ? "ERROR" : "WARNING";
     }
 
     @Tool("Refresh and clean build the project. Returns errors/warnings. Preferred way to verify code changes or full refresh.")
@@ -106,6 +233,22 @@ public class EclipseBuildTool extends AbstractEclipseTool {
     static class Status {
         List<IMarker> errors = new ArrayList<>();
         List<IMarker> warnings = new ArrayList<>();
+        int severityFilter = 0; // 0 = no filter (ERROR + WARNING), else only this severity
+
+        void addMarker(IMarker marker) {
+            int severity = marker.getAttribute(IMarker.SEVERITY, IMarker.SEVERITY_INFO);
+            if (severityFilter != 0 && severity != severityFilter) {
+                return;
+            }
+            switch (severity) {
+            case IMarker.SEVERITY_ERROR:
+                errors.add(marker);
+                break;
+            case IMarker.SEVERITY_WARNING:
+                warnings.add(marker);
+                break;
+            }
+        }
 
         boolean hasProblems() {
             return !errors.isEmpty() || !warnings.isEmpty();
@@ -128,23 +271,18 @@ public class EclipseBuildTool extends AbstractEclipseTool {
         }
     }
 
-    private Status readProjectStatus(IProject project) throws CoreException {
-        var result = new Status();
+    private void readProjectStatus(IProject project, Status status) throws CoreException {
         IMarker[] markers = project.findMarkers(IMarker.PROBLEM, true, IResource.DEPTH_INFINITE);
-
         for (IMarker marker : markers) {
-            int severity = marker.getAttribute(IMarker.SEVERITY, IMarker.SEVERITY_INFO);
-            switch (severity) {
-            case IMarker.SEVERITY_ERROR:
-                result.errors.add(marker);
-                break;
-            case IMarker.SEVERITY_WARNING:
-                result.warnings.add(marker);
-                break;
-            }
+            status.addMarker(marker);
         }
+    }
 
-        return result;
+    private void readFileStatus(IFile file, Status status) throws CoreException {
+        IMarker[] markers = file.findMarkers(IMarker.PROBLEM, false, IResource.DEPTH_ZERO);
+        for (IMarker marker : markers) {
+            status.addMarker(marker);
+        }
     }
 
     private static String markerToAiString(IMarker marker) {
