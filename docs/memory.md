@@ -1,32 +1,32 @@
-# Session-Stand — 2026-09-19 (Nacht-Zyklus „Tool-Evolution")
+# Session-Stand — 2026-09-19 (Tag: Tool-Evolution PO-Run + Build-Start)
 
 ## Wo wir stehen
 
-**Branch `analysis/tool-evolution`** (von main `1b39a76`, clean) — **docs-only Nacht-Zyklus, kein Code.**
+**Branch `analysis/tool-evolution`** — Docs der Auflösung müssen noch committed werden (Da Mek).
 
-**Erledigt:**
-- Branch-Hauswirtschaft: alle lokalen Branches gelöscht (SHAs: `0a795bf`, `1dce54b`=`bugfix/edit-tool-insert`, `90df13b`, `be608d3`, `8d7cc2a`, `162e6fe`), neuer Branch `analysis/tool-evolution`. Docs **noch nicht committed** (kein Dev-Inkrement; Paul committet oder nächster Zyklus).
-- Tool-Inventar beider Projekte (Copilot: 6 Java-Client-Tools + Confirmation/WorkingSetBar/UI-Layer; wir: 70 @Tool-Tools) via searchAgent.
-- **High-Level-Plan** Da Thinka: `/github-copilot-for-eclipse/peon-plan/overview.md` (CR-1…CR-19, alle mit Pfad + Warum + Empfehlung Ja/Nein/Teilweise + S/M/L + UI-Aspekt; 7 offene Fragen mit Lean). Von mir abgenommen.
-- **Docs angelegt** (alle 🚧, PO-Run offen): [tool-evolution.md](tool-evolution.md) (Sammelstelle, temporär), change-review.md (CR-7/2-UI), tool-confirmation.md (CR-6), terminal-session-tool.md (CR-5), java-debugger-tool.md (CR-4, defer), project-problems-tool.md (CR-3), tool-output-disclosure.md (CR-17/18/19 Hygiene), feature-change-request-copilot.md (TEMP, externe Bezüge, wird gelöscht). index.md registriert.
-- **Issue #142 analysiert und korrigiert:** [issue-142-asm-conflict.md](issue-142-asm-conflict.md) — alte „nicht unser Bug"-Analyse war unvollständig: unser p2-Repo liefert asm 9.10.1 mit (`includeAllDependencies=true`, 2026-09-Target-Closure; `releng/llmpeon-update-site/pom.xml:24-26`). open-points.md ⏳-Abschnitt korrigiert. **Mein alter Issue-Kommentar braucht öffentliche Korrektur (Paul).**
+**PO-Run abgeschlossen (Paul):** alle CR-Items entschieden. Verdicts + Begründungen: [resolved-points.md](resolved-points.md)
+(„Tool-Evolution-Run"). Temp-Docs (tool-evolution.md, feature-change-request-copilot.md, change-review.md) gelöscht.
 
-## Nächste Schritte (morgen mit Paul)
+**❌ specified, wartet auf Build-Zyklen (Reihenfolge-Vorschlag):**
+1. **Hygiene** (S): [tool-output-disclosure.md](tool-output-disclosure.md) — Search-Cap **500** + Disclosures, webFetch paginiert (Mini-Cache 5 URLs, 500-Zeilen-Fenster), Snippet-Fehlerpfad.
+2. **Web-Tools** (S/M): [web-tools.md](web-tools.md) — `webGet(url, path)` (isEditTool, kein Limit) + paginierter webFetch — Story 1+2 können kombiniert werden (webFetch-Pagination greift in beide).
+3. **CR-3 Filter** (S): [project-problems-tool.md](project-problems-tool.md).
+4. **Debugger** (L, eigener Zyklus): [java-debugger-tool.md](java-debugger-tool.md) — User-managte Session, alle Actions, keine Confirmations, für Da Mek.
 
-1. **PO-Run:** tool-evolution.md — 7 offene Fragen durchgehen, je CR accept/reject. Danach Auflösungs-Checkliste im Doc (Feature-Docs 🚧→❌, Temp-Dateien löschen, Build-Zyklen).
-2. **Issue #142:** Kommentar-Korrektur posten (Paul), Fix-Entscheidung → ADR, Homepage Mindest-Eclipse-Version (≈2026-06, jdt.core 3.44).
-3. Skill „competitor-tool-audit" angelegt (Da Mek, Ledger-Eintrag) — Paul zur Kenntnis.
+**⏳ geparkt:** terminal-session-tool.md (Revisit async-agent-tools-proposal Option C) · tool-confirmation.md.
+**Decompiler Language-Server: Nein** (nativ, IP, wir haben das Verhaltenswichtige schon).
 
-## Offene Punkte
+## Nächste Schritte
 
-- Siehe [open-points.md](open-points.md) Abschnitt „Tool-Evolution PO-Run" (❓) + issue-142-Follow-ups (❓).
-- Glossar-Einträge (Change-Review, Tool-Confirmation, Terminal-Session) erst nach PO-Akzeptanz — bewusst aufgeschoben, im tool-evolution-Auflösungs-Checklisten-Punkt verankert.
+1. Docs-Resolution committen (Da Mek, inkl. resolved-points/index/memory).
+2. Build-Zyklen oben, je Story: planWithPlanAgent → Abnahme → buildWithDev → reviewPlanAgent → ❌→✅ (lintDocsAndTests).
+3. BDDs in den 4 ❌-Docs sind Entwürfe — beim Plan härten (UC-IDs via nextIds ziehen, idPrefix: DL? OD/WEB/PP/JD je Doc).
 
 ## Was nicht neu aufgemacht wird
 
-Kein Code/Build im Nacht-Zyklus (Pauls Vorgabe) · CR-2 Whole-File-Regen bleibt abgelehnt-Empfehlung · keine Entartung der Hygiene-Items in größere Umbauten.
+CR-1/2/7 bleiben abgelehnt (Revisit nur bei Nicht-Git-Workspaces) · CR-5/CR-6 geparkt, nicht verworfen · Copilot-Server nicht decompilieren · keine Confirmations für Debugger.
 
 ## Lektionen
 
-1. **Eigene frühere Analysen sind IST-Verdacht, nicht IST.** „Nicht unser Bug" (#142) war halb wahr — Repo-Inhalt (p2) ≠ Bundle-ClassPath. Verifikation beide Ebenen (Feature-Closure vs. Site-Content).
-2. Vergleiche sauber halten: externe Bezüge in genau EINER temporären Datei, Feature-Docs neutral — Auflösungs-Checkliste verhindert Leichen.
+1. Eigene frühere Analysen sind IST-Verdacht (Issue #142: p2-Site-Content ≠ Bundle-ClassPath).
+2. PO-Run-Dokumentation: Verdicts sofort in die CR-Tabelle, Auflösung mit resolved-points-Ablage — keine Leichen.

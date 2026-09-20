@@ -1,6 +1,7 @@
 # Terminal-Session-Tool — persistente & Hintergrund-Shells
 
-> **Status:** 🚧 in design (Entwurf aus dem Tool-Evolutions-Run 2026-09-19, wartet auf PO-Freigabe).
+> **Status:** ⏳ geparkt (2026-09-19, Paul: nicht verworfen) — Voraussetzung ist Async-Tool-Infrastruktur
+> ([async-agent-tools-proposal.md](async-agent-tools-proposal.md), Option C); Revisit, wenn Kosten/Nutzen passt.
 > Ursprungszuordnung (temporär): [tool-evolution.md](tool-evolution.md) — CR-5.
 
 ## Ziel

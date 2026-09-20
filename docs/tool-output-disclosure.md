@@ -10,12 +10,13 @@ Tools kappen still oder gar nicht. Nachziehen, gleiche Disclosure-Logik wie `gre
 
 ## Regeln (Entwurf)
 
-- **R-OD-1 🚧** `eclipseSearchFiles`: wird das Limit erreicht (Default 100, Cap 1000), nennt der Return
-  die Kappung („capped at N — narrow your search"). Heute: stille Kappung.
-- **R-OD-2 🚧** `diskSearchFiles`: gleiche Regel — nur falls `limit > 0` und erreicht.
-- **R-OD-3 🚧** `webFetchAsMarkdown`: **Hard-Cap** auf das Result (Größe in KB, disclosed); Fehlerpfad
+- **R-OD-1 ❌** `eclipseSearchFiles`: wird das Limit erreicht (Default 100, **Cap 500** — Paul 2026-09-19,
+  war 1000), nennt der Return die Kappung („capped at N — narrow your search"). Heute: stille Kappung.
+- **R-OD-2 ❌** `diskSearchFiles`: gleiche Regel — nur falls `limit > 0` und erreicht.
+- **R-OD-3 ❌** `webFetchAsMarkdown`: statt byte-Cap → **paginiert** (Mini-Cache letzte 5 URLs,
+  500-Zeilen-Fenster je Call, disclosed) — Details in [web-tools.md](web-tools.md); Fehlerpfad
   (HTTP ≥ 400) gibt Status + **Snippet** statt des vollständigen Body zurück.
-- **R-OD-4 🚧** Disclosure-Zeilen folgen dem bestehenden `AiReponseBuilder`-Muster (eine Stelle, beide
+- **R-OD-4 ❌** Disclosure-Zeilen folgen dem bestehenden `AiReponseBuilder`-Muster (eine Stelle, beide
   Such-Tools konsistent).
 
 ## BDD (Entwurf, hart erst bei ❌)

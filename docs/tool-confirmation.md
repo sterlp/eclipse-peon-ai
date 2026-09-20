@@ -1,6 +1,7 @@
 # Tool-Confirmation — ein Bestätigungsmodell für riskante Tools
 
-> **Status:** 🚧 in design (Entwurf aus dem Tool-Evolutions-Run 2026-09-19, wartet auf PO-Freigabe).
+> **Status:** ⏳ geparkt (2026-09-19, Paul) — Bestätigungen selbst nicht gewünscht (immer aus);
+> Bedarf entsteht erst mit CR-4 (Debugger) / CR-5 (Background-Shell). Confirmation bleibt Preference/Opt-in.
 > Ursprungszuordnung (temporär): [tool-evolution.md](tool-evolution.md) — CR-6.
 
 ## Ziel

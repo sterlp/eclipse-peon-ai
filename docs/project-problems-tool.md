@@ -1,6 +1,7 @@
 # Project-Problems-Tool — gezielte Fehlerprüfung
 
-> **Status:** 🚧 in design (Entwurf aus dem Tool-Evolutions-Run 2026-09-19, wartet auf PO-Freigabe).
+> **Status:** ❌ specified (2026-09-19, Paul: angenommen) — Datei-Filter + Severity-Filter als Option,
+> **projektweite Lesung bleibt unverändert** (beide Modi nebeneinander).
 > Ursprungszuordnung (temporär): [tool-evolution.md](tool-evolution.md) — CR-3.
 
 ## Ziel
@@ -11,10 +12,12 @@ edit"), nicht die projektweite Problemliste — token-schlanker und präziser. H
 
 ## Vorgeschlagenes Verhalten (Entwurf)
 
-- **R-PP-1 🚧** `eclipseReadProjectProblems` bekommt optionalen **Datei-Filter** (ein oder mehrere Pfade).
-- **R-PP-2 🚧** Optionaler **Severity-Filter** (z. B. nur ERROR) — Warnings/Infos bei Bedarf unterdrückt.
-- **R-PP-3 🚧** Nur eigene Marker der Datei (keine Sub-Resources, DEPTH_ZERO-Verhalten).
-- **R-PP-4 🚧** Leeres Ergebnis nach Filter: ehrliche Leermeldung mit Scope (kein „nicht gefunden"-Fehldeutes).
+- **R-PP-1 ❌** `eclipseReadProjectProblems` bekommt optionalen **Datei-Filter** (ein oder mehrere Pfade).
+- **R-PP-2 ❌** Optionaler **Severity-Filter** (z. B. nur ERROR) — Warnings/Infos bei Bedarf unterdrückt.
+- **R-PP-3 ❌** Nur eigene Marker der Datei (keine Sub-Resources, DEPTH_ZERO-Verhalten).
+- **R-PP-4 ❌** Leeres Ergebnis nach Filter: ehrliche Leermeldung mit Scope (kein „nicht gefunden"-Fehldeutes).
+- **R-PP-5 ❌** Ohne Filter bleibt das Verhalten exakt wie heute: alle Probleme des Projekts — die
+  Filter sind additive Optionen, kein Ersatz des projektweiten Modus (Paul 2026-09-19).
 
 ## BDD (Entwurf, hart erst bei ❌)
 
