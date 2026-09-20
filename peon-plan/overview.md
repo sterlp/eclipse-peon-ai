@@ -196,3 +196,33 @@ Je Inkrement liefert Da Mek: (1) Surefire/OSGi-Zahlen (Tests/Errors/Failures), (
 - **Q1 — gelöst (Paul, 2026-09-20): Variante (b).** `webGet` hinter `diskToolsEnabled` (default OFF) in `SharedToolsComponent.updateActiveDiskTools` eingehängt; SOLL nachgetragen (`web-tools.md` R-WEB-8 + `web-tools-architektur.md` Klassen-Tabelle); Homepage-Toggle-Doku (`custom-agents.md:176`) = Inc-2-Deliverable (AGENTS.md „visible changes").
 - **Q2 — gelöst (Jon, 2026-09-20): Variante (a).** `R-W-1…8` → `R-WEB-1…8` umbenannt (`web-tools.md`-Überschriften + 2 Referenzen in `web-tools-architektur.md` + Plan), Regel-/BDD-Inhalt wortgleich. DL-Befunde (33× UNBELEGT_ERLEDIGT UC-DL-5…39 + 1× VERWAIST UC-DL-99-Fixture) = bekannter offener Punkt „ID-Kommentare an den DL-Tests" (open-points.md), out-of-scope, kein Handlungsbedarf in dieser Story.
 - **Offene Fragen: none.**
+
+## 11. PO-Review Da Dok (2026-09-20) — Story A Inc 1–3 (bis `3b6de88`)
+
+**Verdict: CONCERNS** — keine blockierenden Lücken. SOLL==IST auf allen 11 UCs; Inc 1/2/3 Plan-konform; Deviations sind die im Plan akzeptierten (FetchResult-Record, `@P(required=false)`, Ctor-Registrierung nur bei Toggle-on nach Jon).
+
+**Verifiziert (IST, nicht Behauptung):**
+- Live-Testläufe (Da Dok, diese Session, Eclipse-Runner — Surefire-Zahlen unverifizierbar ohne Maven-Shell): `WebFetchToolTest` 5/5, `WebGetToolTest` 5/5, `DiskFileReadToolsTest` 16/16 grün; `llmpeon-core` Build kompiliert (nur bestehende Null-Safety-Warnings). OSGi-Suite (`EclipseSearchFilesToolTest` 600-Datei-Test, `SharedToolsComponentTest`) nicht gelöst (braucht manuelle Workspace-Trust-Bestätigung) — Code-Read-Evidenz statt Test-Lauf.
+- `lintDocsAndTests`: **OD 0 / WEB 0** Befunde (die 33 Befunde = UC-DL, bekannt out-of-scope, Plan Q2).
+- Cap **500** (nicht 1000): `EclipseWorkspaceReadFileTool.java:36` `MAX_LIMIT = 500`, `inLimit==0 → 500`, Clamp erhalten (`:133-134`).
+- Disclosure-Wording exakt: `AiReponseBuilder.searchComplete(List,int,String)` (`AiReponseBuilder.java:25-32`, Trigger `>=`, `System.lineSeparator()`); `webFetchAsMarkdown`: `lines X–Y of N — read on with startLine=Y+1` (`WebFetchTool.java:96-99`), „read on" nur bei `shownEnd < total`.
+- LRU **5** + `synchronized(cache)` + kein Refetch bei Hit + Fehlerpfad nie gecacht: `WebFetchTool.java:42-49,108-137`; Call-Counter-Tests belegen fehlenden/zweiten Refetch (`WebFetchToolTest` UC-WEB-2 `calls==1`, UC-WEB-3 `calls==2`, UC-WEB-4 Retry `calls==2`).
+- Snippet **10** Zeilen: `SNIPPET_LINES = 10`, `FileLines.extract(markdown, 1, 10)` (`WebFetchTool.java:78-79`).
+- webGet: Guard-Reihenfolge `requireQualifiedDisk` → `validateWrite` (`WebGetTool.java:47-48`), Status-Check **vor** Write (nie Teilergebnis, `:58-66`), ehrliche 0-Byte-Meldung (`:71-75`), `isEditTool=true` (`:38-39`), **kein** Size-Limit.
+- Toggle-Gate default OFF: `SharedToolsComponent.java:75-91` — `webGetTool` nur via `updateActiveDiskTools` (kein Ctor-`addTool`, Jon-Entscheidung); Toggle-Test `test_webGetFollowsDiskToolToggle` + `webGetFilteredFromSearchAgent` `// UC-WEB-8` (Production-Wiring) vorhanden.
+- `countLines` = exakt derselbe Split wie `extract` (`FileLines.java:10-13` — `dominantLineEnding`, `-1`) → Total und Fenster konsistent.
+- Inc-1-Seed-Tests korrekt adaptiert (nicht „Test falsch"): `DiskFileReadToolsTest.countHits` filtert Treffer-Zeilen (`:157-159`), `EclipseSearchFilesToolTest#searchWorkspaceFiles_limitRestrictsResults` nutzt `resultLines` + assertet Disclosure (`:105-108`); `negativeLimitIsClamped` unverändert grün-bleibend.
+- Docs: beide Fachdocs ✅ done + R-/UC-Marker, `index.md:74-75` ✅, `open-points.md:10` „tool-output-disclosure" entfernt, Inventory `13a webGet` + 42→43 + WebFetch-Zeile 13 aktualisiert, Homepage `custom-agents.md:176` nennt `webGet` + Toggle-Bindung, E2E `read-tools-e2e-test.md:67` 4.8, Arch-Doc Klassen-Tabelle mit Gating.
+- Commit-Hashes (`857b72f`, `435a9c7`, `3b6de88`) und Maven-Surefire-Zahlen **nicht unabhängig verifizierbar** (kein Git-/Maven-Zugriff bei Da Dok) — Code-Zustand auf dem Branch ist geprüft.
+
+**Gaps (CONCERNS, nicht blockierend — für PO/Da Thinka):**
+1. **`endLine=0`-Semantik: Doc↔Code-Drift.** `web-tools.md` R-WEB-1: „(`0` = Dateiende wie bei den Read-Tools)" — Code: `endLine=0` = **Fenster-Default** (min(start+499)), nicht Dateiende (`WebFetchTool.java:91-93`); `startLine=0` = Dokumentanfang. Weder Plan D6 noch eine UC pinnen `endLine=0`. Das Model liest aus der Doku ein „bis-Ende"-Lesen, kriegt aber ein 500-Fenster → SOLL≠IST in der Regel-Formulierung. D9-SOLL war „Inhalt wortgleich", also kein Da-Mek-Fehler — **PO-Entscheidung: Doku-Zeile korrigieren oder UC nachtragen** (Empfehlung: Doku-Zeile korrigieren, Code bleibt).
+2. **Snippet-Länge ist mutation-taub.** `WebFetchToolTest#webFetchHttpErrorReturnsStatusAndSnippet` assertet `ERR1…ERR10` vorhanden + `ERR50-ENDBODY` abwesend — würde grün bleiben bei `SNIPPET_LINES = 11…49`. Mutation-Check-Empfehlung: `.doesNotContain("11: ERR11")` ergänzen (einziger Spot, der die 10-Zeilen-Kappe wirklich rot macht).
+3. **Stale `R-W-*`-Referenzen nach Q2-Rename.** `WebGetToolTest.java:28` („R-W-4…8"), `:134` („R-W-7"), `SharedToolsComponent.java:45` („R-W-8"), `SharedToolsComponentTest.java:150` („R-W-8") — Doku heißt jetzt `R-WEB-*`. Nur Kommentare, kein Verhalten — aber genau die Verwechslungsquelle, die der Rename beseitigen sollte.
+4. **Edge: `endLine < startLine`** (z. B. start=500, end=100): `FileLines.extract` tauscht die Bounds still, Disclosure-Label bleibt „lines 500–100 of N" → widersprüchlicher Output (AGENTS „never lie"). In Plan/Doku nicht definiert — seltener Modell-Fehler, nicht hart.
+
+**Plan-coverage gaps (nicht Da-Mek-Fehler):**
+- Plan Q2 (R-W→R-WEB-Rename) deckte nur Doku-Überschriften + Arch-Doc + Plan — **Code-Kommentare** waren nicht im Rename-Scope (→ Gap 3). Memory #18 (Grep alle Referenzstellen) hätte greifen sollen.
+- `endLine=0`/`endLine<startLine`-Semantik nie im Plan gepinnt (→ Gaps 1+4).
+
+**Skill-Evolution-Outcome (AGENTS-PO.md Gate-Phase):** **Kein CRUD-Outcome erzwungen.** Evidence: (a) Memory #33 (Seed-Inventar im Plan) hat funktioniert — beide rot-werdenden Tests im Plan korrekt vorab benannt und im Code adaptiert; (b) STOP-AND-ASK hat funktioniert — Q1/Q2 gelöst und dokumentiert, keine stillen SOLL-Änderungen gefunden; (c) einziger Evolve-Kandidat: Ledger-Eintrag „Rule-ID-Rename: Referenzen auch in Code-Kommentaren grep (Memory #18-Analog für Doku-IDs)" — Empfehlung an Jon/Da Mek, kein Skill-File selbst betroffen.

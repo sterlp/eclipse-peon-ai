@@ -85,11 +85,18 @@ public class WebFetchTool extends AbstractTool {
 
         int total = FileLines.countLines(markdown);
         int start = startLine == null || startLine <= 0 ? 1 : startLine;
+        int end = endLine == null ? 0 : endLine;
+        if (end > 0 && end < start) {
+            // same swap semantics as FileLines.extract — the label below always names the shown lines
+            int swap = start;
+            start = end;
+            end = swap;
+        }
+        int windowEnd = start + MAX_WINDOW_LINES - 1;
+        end = end <= 0 ? windowEnd : Math.min(end, windowEnd);
         if (start > total) {
             return "URL has " + total + " lines, requested start " + start;
         }
-        int windowEnd = start + MAX_WINDOW_LINES - 1;
-        int end = endLine == null || endLine <= 0 ? windowEnd : Math.min(endLine, windowEnd);
         int shownEnd = Math.min(end, total);
 
         StringBuilder result = new StringBuilder(FileLines.extract(markdown, start, shownEnd));

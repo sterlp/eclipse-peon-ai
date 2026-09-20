@@ -88,6 +88,14 @@ class WebFetchToolTest {
                 .contains("lines 1–500 of 3000 — read on with startLine=501")
                 .doesNotContain("501: LN501");
 
+        // AND endLine < startLine is swapped like FileLines.extract — the label names the shown lines
+        String swapped = tool.webFetchAsMarkdown(url, 500, 100);
+        assertThat(swapped)
+                .startsWith(" 100: LN100")
+                .contains("500: LN500")
+                .contains("lines 100–500 of 3000 — read on with startLine=501")
+                .doesNotContain("501: LN501");
+
         // AND a start beyond the document is reported honestly
         assertThat(tool.webFetchAsMarkdown(url, 3001, null))
                 .isEqualTo("URL has 3000 lines, requested start 3001");
@@ -152,6 +160,8 @@ class WebFetchToolTest {
                 .startsWith("Failed to fetch " + url + ". HTTP status 500")
                 .contains("1: ERR1")
                 .contains("10: ERR10")
+                // snippet is capped at 10 lines — line 11 of the error markdown must not leak
+                .doesNotContain("11: ERR11")
                 .doesNotContain("ERR50-ENDBODY");
 
         // AND error responses are never cached — a retry hits the server again

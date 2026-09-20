@@ -25,7 +25,7 @@ import org.sterl.llmpeon.tool.tools.WebGetTool;
 import com.sun.net.httpserver.HttpServer;
 
 /**
- * webGet (docs/web-tools.md R-W-4…8): download to disk, metadata only in the return,
+ * webGet (docs/web-tools.md R-WEB-4…8): download to disk, metadata only in the return,
  * same guards as diskWriteFile, honest zero-byte and HTTP-error behaviour.
  */
 @Timeout(30)
@@ -131,7 +131,7 @@ class WebGetToolTest {
         var error = assertThrows(IllegalArgumentException.class,
                 () -> tool.webGet(base + "/missing", target.toString()));
 
-        // R-W-7: honest error with the status code, never a partial file
+        // R-WEB-7: honest error with the status code, never a partial file
         assertThat(error.getMessage()).contains("HTTP 500").contains(base + "/missing");
         assertFalse(Files.exists(target));
     }

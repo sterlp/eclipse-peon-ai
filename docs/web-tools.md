@@ -18,9 +18,9 @@ der Kontext sieht nur Metadaten.
 ### R-WEB-1 — paginierte `webFetchAsMarkdown` ✅
 
 `webFetchAsMarkdown(url, startLine?, endLine?)`: bei Cache-Miss fetch → Markdown im
-**Mini-Cache (letzte 5 URLs, LRU)**; Return = Zeilenfenster, **max 500 Zeilen** je Call (Start default 1,
-`0` = Dateiende wie bei den Read-Tools), Disclosure **„lines X–Y of N — read on with startLine"**
-(Paul 2026-09-19).
+**Mini-Cache (letzte 5 URLs, LRU)**; Return = Zeilenfenster, **max 500 Zeilen** je Call (Start default 1;
+`endLine 0/null` = **Fenster-Default `start+499`, NICHT Dateiende** — bewusste Abweichung von den Read-Tools,
+Doku-Korrektur aus dem Review 2026-09-20), Disclosure **„lines X–Y of N — read on with startLine"**.
 
 #### UC-WEB-1 — webFetchFirstCallReturnsFirstWindow ✅
 - GIVEN URL erstmals gefetcht, Markdown mit 3000 Zeilen WHEN `webFetchAsMarkdown(url)` ohne Range

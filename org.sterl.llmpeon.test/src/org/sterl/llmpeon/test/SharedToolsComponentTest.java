@@ -147,7 +147,7 @@ public class SharedToolsComponentTest {
         assertFalse(sut.toolService().getTool(DiskGrepTool.class).isPresent());
     }
 
-    /** GIVEN default config (disk tools disabled) WHEN toggling THEN webGet follows the disk tools (R-W-8, default OFF). */
+    /** GIVEN default config (disk tools disabled) WHEN toggling THEN webGet follows the disk tools (R-WEB-8, default OFF). */
     @Test
     public void test_webGetFollowsDiskToolToggle() {
         // GIVEN default: disk tools disabled

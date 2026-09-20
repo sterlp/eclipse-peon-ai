@@ -42,7 +42,7 @@ public class SharedToolsComponent {
     private final DocsLinterTool docsLinterTool;
     private final DocsIdTool docsIdTool;
 
-    /** webGet (R-W-8): same risk class as the disk write tools — gated behind diskToolsEnabled, default OFF. */
+    /** webGet (R-WEB-8): same risk class as the disk write tools — gated behind diskToolsEnabled, default OFF. */
     private final WebGetTool webGetTool = new WebGetTool();
 
     public SharedToolsComponent(SkillService skillService, CommandService commandService) {
