@@ -12,6 +12,7 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.debug.core.DebugEvent;
 import org.eclipse.debug.core.DebugException;
 import org.eclipse.debug.core.DebugPlugin;
@@ -78,7 +79,8 @@ public class JavaDebugTool extends AbstractTool {
                         .append(" | terminated=").append(target.isTerminated())
                         .append(" | suspended=").append(target.isSuspended())
                         .append(" | hasThreads=").append(safe(target::hasThreads));
-                if (target instanceof IProcess process) {
+                IProcess process = target.getProcess();
+                if (process != null) {
                     sb.append(" | pid=").append(safe(() -> process.getAttribute(IProcess.ATTR_PROCESS_ID)));
                 }
                 sb.append(System.lineSeparator());
@@ -96,9 +98,13 @@ public class JavaDebugTool extends AbstractTool {
         }
         System.err.println(sb);
         try {
-            java.nio.file.Files.writeString(java.nio.file.Path.of(
-                    ResourcesPlugin.getWorkspace().getRoot().getProject("org.sterl.llmpeon.test").getLocation().toOSString(),
-                    "diagnosis-sessions.txt"), sb.toString());
+            IProject diagnosticProject = ResourcesPlugin.getWorkspace().getRoot().getProject("org.sterl.llmpeon.test");
+            // rawLocation: getLocation() is null for a project without a resolvable local location
+            IPath projectDir = diagnosticProject.getRawLocation();
+            if (projectDir == null) {
+                projectDir = ResourcesPlugin.getWorkspace().getRoot().getLocation().append(diagnosticProject.getName());
+            }
+            java.nio.file.Files.writeString(java.nio.file.Path.of(projectDir.toOSString(), "diagnosis-sessions.txt"), sb.toString());
         } catch (Exception e) {
             System.err.println("diagnosis file write failed: " + e);
         }

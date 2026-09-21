@@ -8,10 +8,11 @@ import org.eclipse.debug.core.DebugException;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.ILaunch;
 import org.eclipse.debug.core.ILaunchConfiguration;
+import org.eclipse.debug.core.model.IProcess;
 import org.eclipse.debug.core.model.IStackFrame;
+import org.eclipse.debug.core.model.IThread;
 import org.eclipse.jdt.debug.core.IJavaDebugTarget;
 import org.eclipse.jdt.debug.core.IJavaThread;
-import org.eclipse.jdt.debug.core.IJavaThreadGroup;
 import org.eclipse.jdt.launching.IJavaLaunchConfigurationConstants;
 
 /**
@@ -113,22 +114,50 @@ public final class DebugSession {
      *
      * @throws IllegalArgumentException when the named thread does not exist or no usable thread exists
      */
-    /** All root threads of the session target. */
+    /**
+     * All threads of the session target via {@code getThreads()} — the single
+     * enumeration path. (getRootThreadGroups() was dropped after the 2026-09-21
+     * diagnosis: JDI root groups can miss threads, e.g. the main thread at a
+     * breakpoint, so the group path silently hid the session's threads.)
+     */
     List<IJavaThread> threads() {
-        var threads = new ArrayList<IJavaThread>();
+        IThread[] threads;
         try {
-            for (IJavaThreadGroup group : target.getRootThreadGroups()) {
-                for (IJavaThread thread : group.getThreads()) {
-                    threads.add(thread);
-                }
-            }
+            threads = target.getThreads();
         } catch (DebugException e) {
             throw DebugSupport.fail("reading threads of " + vmName(), e);
         }
-        return threads;
+        var result = new ArrayList<IJavaThread>();
+        for (IThread thread : threads) {
+            if (thread instanceof IJavaThread javaThread) {
+                result.add(javaThread);
+            }
+        }
+        return result;
     }
 
-    IJavaThread resolveThread(String name) {
+    /**
+     * Process id of the session target (IProcess.ATTR_PROCESS_ID), or null when unavailable.
+     * The target itself is NOT an IProcess (JDIDebugTarget wraps one) — the process is
+     * reached via getProcess(), and its attribute comes back as a String.
+     */
+    Integer processId() {
+        IProcess process = target.getProcess();
+        if (process == null) {
+            return null;
+        }
+        String pid = process.getAttribute(IProcess.ATTR_PROCESS_ID);
+        if (pid == null) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(pid.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    public IJavaThread resolveThread(String name) {
         var threads = threads();
         if (name != null && !name.isBlank()) {
             for (IJavaThread thread : threads) {

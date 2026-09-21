@@ -46,18 +46,40 @@ public final class DebugJson {
         }
     }
 
-    /** get_state shape: { vm: {name, version, state, outOfSynch}, threads: [{name, state, system, topFrame}] }. */
-    static String state(DebugSession session) {
+    /**
+     * get_state shape: { session, vm: {name, version, state, suspendedThreads, outOfSynch},
+     * threads: [{name, state, system, topFrame}] }.
+     * vm.state = "suspended" when the target is suspended OR any non-system thread is
+     * suspended (the debugging-relevant "where is it standing" question); suspendedThreads
+     * counts the suspended non-system threads and names the mixed state honestly
+     * (e.g. main suspended, system threads running).
+     */
+    public static String state(DebugSession session) {
         IJavaDebugTarget target = session.target();
+        var threads = session.threads();
+        int suspendedNonSystem = 0;
+        for (IJavaThread thread : threads) {
+            if (!DebugSupport.isSystem(thread) && thread.isSuspended()) {
+                suspendedNonSystem++;
+            }
+        }
         Map<String, Object> vm = new LinkedHashMap<>();
         vm.put("name", session.vmName());
         vm.put("version", session.vmVersion());
-        vm.put("state", isSuspended(target) ? "suspended" : "running");
+        vm.put("state", (isSuspended(target) || suspendedNonSystem > 0) ? "suspended" : "running");
+        vm.put("suspendedThreads", suspendedNonSystem);
         vm.put("outOfSynch", outOfSynch(target));
         Map<String, Object> root = new LinkedHashMap<>();
+        root.put("session", sessionLabel(session));
         root.put("vm", vm);
-        root.put("threads", threadNodes(session.threads()));
+        root.put("threads", threadNodes(threads));
         return pretty(root);
+    }
+
+    /** Session identity: launch config name + process id (pid omitted when unavailable). */
+    private static String sessionLabel(DebugSession session) {
+        Integer pid = session.processId();
+        return pid == null ? session.launchName() : session.launchName() + " (pid " + pid + ")";
     }
 
     /** get_stack_trace shape: [{index, method, type, line, methodEntry}]. */
