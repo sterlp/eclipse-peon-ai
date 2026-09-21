@@ -140,6 +140,15 @@ public class JavaDebugTool extends AbstractTool {
         }
     }
 
+    @Tool(name = "get_exception", value = "Find the exception at the current suspend: scans the top frame's local variables (incl. catch parameter) for a java.lang.Throwable or subtype and returns its type, message and variable name. Limit: an uncaught throw new X(...) at the throw site has no named variable and is not found there.")
+    public String getException(@P(name = "thread", description = "Thread name; empty = first suspended thread, else first non-system thread.", required = false) String thread) {
+        var session = DebugSession.findActive();
+        if (session == null) {
+            return noSession("get_exception");
+        }
+        return DebugJson.exception(session.resolveThread(thread));
+    }
+
     @Tool(name = "set_variable", value = "Set a local variable or argument to a primitive, String or null value. No confirmation.")
     public String setVariable(@P(name = "thread", description = "Thread name; empty = first suspended thread, else first non-system thread.", required = false) String thread,
             @P(name = "frame", description = "Stack frame index, 0 = top.", required = false) Integer frame,

@@ -14,8 +14,10 @@ import org.eclipse.debug.core.model.IVariable;
 import org.eclipse.jdt.debug.core.IJavaArray;
 import org.eclipse.jdt.debug.core.IJavaPrimitiveValue;
 import org.eclipse.jdt.debug.core.IJavaFieldVariable;
+import org.eclipse.jdt.debug.core.IJavaObject;
 import org.eclipse.jdt.debug.core.IJavaReferenceType;
 import org.eclipse.jdt.debug.core.IJavaStackFrame;
+import org.eclipse.jdt.debug.core.IJavaThread;
 import org.eclipse.jdt.debug.core.IJavaType;
 import org.eclipse.jdt.debug.core.IJavaValue;
 import org.eclipse.jdt.debug.core.IJavaVariable;
@@ -181,6 +183,22 @@ public class DebugJsonUnitTest {
     private static IJavaFieldVariable field(String name, String type, IValue value, boolean isStatic) {
         return stub(IJavaFieldVariable.class,
                 Map.of("getName", name, "getReferenceTypeName", type, "getValue", value, "isStatic", isStatic));
+    }
+
+    /** A non-null throwable object whose getMessage() returns "boom". */
+    private static IJavaObject throwableObject(String type) {
+        var answers = new HashMap<String, Object>();
+        answers.put("getReferenceTypeName", type);
+        answers.put("getValueString", type + "@7");
+        answers.put("isNull", false);
+        answers.put("isAllocated", true);
+        answers.put("getJavaType", javaType(type));
+        answers.put("sendMessage", (Function<Object, Object>) args -> object("java.lang.String", "boom"));
+        return stub(IJavaObject.class, answers);
+    }
+
+    private static IJavaThread threadWithTopFrame(IJavaStackFrame frame) {
+        return stub(IJavaThread.class, Map.of("getTopStackFrame", frame, "getName", "main"));
     }
 
     // === tests ===
@@ -366,6 +384,48 @@ public class DebugJsonUnitTest {
 
         // THEN: the output is multi-line pretty JSON, not a single line
         assertTrue("expected multi-line pretty JSON:\n" + json, json.contains("\n  "));
+    }
+
+    // UC-JD-12
+    @Test
+    public void exceptionFindsThrowableInTopFrame() {
+        // GIVEN: a thread whose top frame holds an int and a caught IllegalStateException
+        var count = variable("count", "int", primitive("int", 3, "3"));
+        var e = variable("e", "java.lang.IllegalStateException", throwableObject("java.lang.IllegalStateException"));
+        IJavaStackFrame frame = stub(IJavaStackFrame.class, Map.of(
+                "getLocalVariables", (Object) new IJavaVariable[] { count, e },
+                "getMethodName", "main"));
+        IJavaThread thread = threadWithTopFrame(frame);
+
+        // WHEN: looking for the exception
+        String json = DebugJson.exception(thread);
+
+        // THEN: the throwable is reported with variable name, type and message
+        assertContains(json, "\"varName\" : \"e\"");
+        assertContains(json, "\"type\" : \"java.lang.IllegalStateException\"");
+        assertContains(json, "\"message\" : \"boom\"");
+
+        // AND: non-throwable locals are not reported
+        assertFalse("non-throwable variables must not be reported:\n" + json, json.contains("count"));
+    }
+
+    // UC-JD-12
+    @Test
+    public void exceptionHonestErrorWhenNone() {
+        // GIVEN: a thread whose top frame holds only a primitive local
+        IJavaStackFrame frame = stub(IJavaStackFrame.class, Map.of(
+                "getLocalVariables", (Object) new IJavaVariable[] { variable("count", "int", primitive("int", 3, "3")) },
+                "getMethodName", "main"));
+        IJavaThread thread = threadWithTopFrame(frame);
+
+        // WHEN: looking for the exception
+        try {
+            DebugJson.exception(thread);
+            fail("expected an honest not-found error");
+        } catch (IllegalArgumentException e) {
+            // THEN: the error says there is no exception variable
+            assertContains(e.getMessage(), "no exception variable in top frame");
+        }
     }
 
     private static void assertContains(String value, String expected) {

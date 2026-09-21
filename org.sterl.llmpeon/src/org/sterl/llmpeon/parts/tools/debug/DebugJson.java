@@ -16,10 +16,12 @@ import org.eclipse.jdt.debug.core.IJavaDebugTarget;
 import org.eclipse.jdt.debug.core.IJavaExceptionBreakpoint;
 import org.eclipse.jdt.debug.core.IJavaFieldVariable;
 import org.eclipse.jdt.debug.core.IJavaLineBreakpoint;
+import org.eclipse.jdt.debug.core.IJavaObject;
 import org.eclipse.jdt.debug.core.IJavaPrimitiveValue;
 import org.eclipse.jdt.debug.core.IJavaReferenceType;
 import org.eclipse.jdt.debug.core.IJavaStackFrame;
 import org.eclipse.jdt.debug.core.IJavaThread;
+import org.eclipse.jdt.debug.core.IJavaType;
 import org.eclipse.jdt.debug.core.IJavaValue;
 import org.eclipse.jdt.debug.core.IJavaVariable;
 
@@ -295,6 +297,92 @@ public final class DebugJson {
         }
         applyValue(node, value, 2);
         return pretty(node);
+    }
+
+    /**
+     * get_exception response: {varName, type, message}. Scans the top frame's local
+     * variables (incl. the catch parameter) for a java.lang.Throwable or subtype
+     * (R-JD-10); the message comes from invoking getMessage(), null when unreadable.
+     * Limit: an uncaught throw new X(...) at the throw site has no named variable.
+     */
+    public static String exception(IJavaThread thread) {
+        IStackFrame topFrame;
+        try {
+            topFrame = thread.getTopStackFrame();
+        } catch (DebugException e) {
+            throw DebugSupport.fail("reading the top frame of thread " + DebugSupport.threadName(thread), e);
+        }
+        if (topFrame == null) {
+            throw new IllegalArgumentException("no top frame — thread " + DebugSupport.threadName(thread) + " has no stack");
+        }
+        if (!(topFrame instanceof IJavaStackFrame javaFrame)) {
+            throw new IllegalArgumentException("top frame of thread " + DebugSupport.threadName(thread) + " is not a Java frame");
+        }
+        IJavaVariable[] locals;
+        try {
+            locals = javaFrame.getLocalVariables();
+        } catch (DebugException e) {
+            throw DebugSupport.fail("reading local variables of frame " + frameName(topFrame), e);
+        }
+        for (IJavaVariable variable : locals) {
+            IValue value;
+            try {
+                value = variable.getValue();
+            } catch (DebugException e) {
+                throw DebugSupport.fail("reading value of variable " + safeName(variable), e);
+            }
+            if (!(value instanceof IJavaObject object) || object.isNull()) {
+                continue;
+            }
+            IJavaType type;
+            try {
+                type = object.getJavaType();
+            } catch (DebugException e) {
+                throw DebugSupport.fail("reading the type of variable " + safeName(variable), e);
+            }
+            if (type == null || !isThrowable(type)) {
+                continue;
+            }
+            Map<String, Object> node = new LinkedHashMap<>();
+            node.put("varName", safeName(variable));
+            node.put("type", valueTypeName(object));
+            node.put("message", messageOf(object, thread));
+            return pretty(node);
+        }
+        throw new IllegalArgumentException("no exception variable in top frame " + frameName(topFrame));
+    }
+
+    /** Name-based throwable check: java.lang.Throwable itself, or a simple name ending in Exception/Error. */
+    private static boolean isThrowable(IJavaType type) {
+        String name;
+        try {
+            name = type.getName();
+        } catch (DebugException e) {
+            return false;
+        }
+        if ("java.lang.Throwable".equals(name)) {
+            return true;
+        }
+        String simple = name.substring(name.lastIndexOf('.') + 1);
+        return simple.endsWith("Exception") || simple.endsWith("Error");
+    }
+
+    /** The exception message via getMessage(); null when the call or the result is unreadable. */
+    private static String messageOf(IJavaObject object, IJavaThread thread) {
+        IValue result;
+        try {
+            result = object.sendMessage("getMessage", "()Ljava/lang/String;", null, thread, false);
+        } catch (DebugException e) {
+            return null;
+        }
+        if (result == null || isNull(result)) {
+            return null;
+        }
+        try {
+            return result.getValueString();
+        } catch (DebugException e) {
+            return null;
+        }
     }
 
     private static String valueTypeName(IValue value) {

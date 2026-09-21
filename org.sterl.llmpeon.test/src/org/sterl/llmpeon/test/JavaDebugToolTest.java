@@ -37,6 +37,7 @@ public class JavaDebugToolTest extends AbstractIntegrationTest {
                 tool.getStackTrace(null),
                 tool.getVariables(null, 0, null, 0),
                 tool.evaluateExpression(null, 0, "x + 1", 0),
+                tool.getException(null),
                 tool.setVariable(null, 0, "x", "1"),
                 tool.setBreakpoint("src/Foo.java", 1, null, 0, "THREAD"),
                 tool.setExceptionBreakpoint("java.lang.Exception", "THREAD", null, null, null),
