@@ -322,6 +322,6 @@ Keine Code-Änderung nötig. Nächstes: Diagnose-Lauf Befund 1/2 (Paul startet S
 - `stateIsRunningWhenNothingIsSuspended` — `vm.state=running`, `suspendedThreads=0`.
 - `defaultThreadResolutionPicksMainThread` — Default-Auflösung wählt main (alter Group-Pfad hätte "no usable thread" geworfen).
 
-**Gates (2026-09-21):** `eclipseBuildProject` `org.sterl.llmpeon` grün (nur known-benign Warnings) + `org.sterl.llmpeon.test` 0 Fehler/0 Warnings; OSGi-Suite **248 Tests / 0 Failures / 0 Skipped** (245 + 3 neu). Commit: `1e19624`.
+**Gates (2026-09-21):** `eclipseBuildProject` `org.sterl.llmpeon` grün (nur known-benign Warnings) + `org.sterl.llmpeon.test` 0 Fehler/0 Warnings; OSGi-Suite **248 Tests / 0 Failures / 0 Skipped** (245 + 3 neu). Commit: `cd85bf2`.
 
 **Offen:** Pauls voller E2E-Smoke (Phase 1–5) → danach `diagnose_sessions`-TEMP-Tool entfernen + PO-Doc-Flips (R-JD-1…5, UC-JD-1…6, `index.md:72`).
