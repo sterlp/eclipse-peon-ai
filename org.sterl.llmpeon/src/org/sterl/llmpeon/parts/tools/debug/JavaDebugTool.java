@@ -15,7 +15,12 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.debug.core.DebugEvent;
 import org.eclipse.debug.core.DebugException;
 import org.eclipse.debug.core.DebugPlugin;
+import org.eclipse.debug.core.ILaunch;
+import org.eclipse.debug.core.ILaunchConfiguration;
+import org.eclipse.debug.core.model.IDebugTarget;
+import org.eclipse.debug.core.model.IProcess;
 import org.eclipse.debug.core.model.IStackFrame;
+import org.eclipse.debug.core.model.IThread;
 import org.eclipse.debug.core.model.IValue;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaProject;
@@ -26,6 +31,7 @@ import org.eclipse.jdt.debug.core.IJavaExceptionBreakpoint;
 import org.eclipse.jdt.debug.core.IJavaLineBreakpoint;
 import org.eclipse.jdt.debug.core.IJavaStackFrame;
 import org.eclipse.jdt.debug.core.IJavaThread;
+import org.eclipse.jdt.debug.core.IJavaThreadGroup;
 import org.eclipse.jdt.debug.core.IJavaValue;
 import org.eclipse.jdt.debug.core.IJavaVariable;
 import org.eclipse.jdt.debug.core.JDIDebugModel;
@@ -58,6 +64,97 @@ public class JavaDebugTool extends AbstractTool {
             return noSession("get_state");
         }
         return DebugJson.state(session);
+    }
+    // TEMPORARY DIAGNOSTIC (2026-09-21, issue.md: tools address a stale/wrong VM) — REMOVE after diagnosis.
+    @Tool(name = "diagnose_sessions", value = "TEMPORARY: inventory of all launches and debug targets (name, pid, terminated, suspended, threads). Call once while the debug session is at the breakpoint.")
+    public String diagnoseSessions() {
+        var sb = new StringBuilder();
+        for (ILaunch launch : DebugPlugin.getDefault().getLaunchManager().getLaunches()) {
+            ILaunchConfiguration config = launch.getLaunchConfiguration();
+            sb.append("LAUNCH ").append(config == null ? "<unknown>" : config.getName())
+                    .append(" | terminated=").append(launch.isTerminated()).append(System.lineSeparator());
+            for (IDebugTarget target : launch.getDebugTargets()) {
+                sb.append("  TARGET ").append(target.getClass().getName())
+                        .append(" | terminated=").append(target.isTerminated())
+                        .append(" | suspended=").append(target.isSuspended())
+                        .append(" | hasThreads=").append(safe(target::hasThreads));
+                if (target instanceof IProcess process) {
+                    sb.append(" | pid=").append(safe(() -> process.getAttribute(IProcess.ATTR_PROCESS_ID)));
+                }
+                sb.append(System.lineSeparator());
+                if (target instanceof IJavaDebugTarget javaTarget) {
+                    sb.append("    vmName=").append(safe(javaTarget::getVMName));
+                    sb.append(" | isOutOfSynch=").append(safe(() -> javaTarget.isOutOfSynch()));
+                    sb.append(System.lineSeparator());
+                    appendThreads(sb, "direct getThreads():", directThreads(javaTarget));
+                    appendThreads(sb, "getRootThreadGroups():", groupThreads(javaTarget));
+                }
+            }
+        }
+        if (sb.isEmpty()) {
+            sb.append("no launches known to the launch manager");
+        }
+        System.err.println(sb);
+        try (var out = java.nio.channels.Channels.newFileChannel(java.nio.file.Path.of(
+                ResourcesPlugin.getWorkspace().getRoot().getProject("org.sterl.llmpeon.test").getLocation().toOSString(),
+                "diagnosis-sessions.txt"),
+                java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.TRUNCATE_EXISTING, java.nio.file.StandardOpenOption.WRITE)) {
+            out.write(java.nio.charset.StandardCharsets.UTF_8.encode(sb.toString()));
+        } catch (Exception e) {
+            System.err.println("diagnosis file write failed: " + e);
+        }
+        return sb.toString();
+    }
+
+    private static IThread[] directThreads(IJavaDebugTarget target) {
+        try {
+            return target.getThreads();
+        } catch (DebugException e) {
+            return new IThread[0];
+        }
+    }
+
+    private static IThread[] groupThreads(IJavaDebugTarget target) {
+        try {
+            var all = new java.util.ArrayList<IThread>();
+            for (IJavaThreadGroup group : target.getRootThreadGroups()) {
+                for (IJavaThread thread : group.getThreads()) {
+                    all.add(thread);
+                }
+            }
+            return all.toArray(new IThread[0]);
+        } catch (DebugException e) {
+            return new IThread[0];
+        }
+    }
+
+    private static void appendThreads(StringBuilder sb, String label, IThread[] threads) {
+        sb.append("    ").append(label).append(' ').append(threads.length).append(System.lineSeparator());
+        for (IThread thread : threads) {
+            sb.append("      - ").append(safe(thread::getName));
+            if (thread instanceof IJavaThread javaThread) {
+                sb.append(" | suspended=").append(safe(javaThread::isSuspended))
+                        .append(" | system=").append(DebugSupport.isSystem(javaThread))
+                        .append(" | topFrame=").append(safe(() -> {
+                            IStackFrame frame = javaThread.getTopStackFrame();
+                            return frame == null ? "null" : frame.getName() + ":" + frame.getLineNumber();
+                        }));
+            }
+            sb.append(System.lineSeparator());
+        }
+    }
+
+    @FunctionalInterface
+    private interface CheckedSupplier<T> {
+        T get() throws Exception;
+    }
+
+    private static String safe(CheckedSupplier<?> value) {
+        try {
+            return String.valueOf(value.get());
+        } catch (Exception e) {
+            return "<error: " + e.getMessage() + ">";
+        }
     }
 
     @Tool(name = "get_stack_trace", value = "List the stack frames of a debug thread (index, method, type, line, method entry). Optional thread name.")
