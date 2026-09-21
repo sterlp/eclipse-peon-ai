@@ -95,11 +95,10 @@ public class JavaDebugTool extends AbstractTool {
             sb.append("no launches known to the launch manager");
         }
         System.err.println(sb);
-        try (var out = java.nio.channels.Channels.newFileChannel(java.nio.file.Path.of(
-                ResourcesPlugin.getWorkspace().getRoot().getProject("org.sterl.llmpeon.test").getLocation().toOSString(),
-                "diagnosis-sessions.txt"),
-                java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.TRUNCATE_EXISTING, java.nio.file.StandardOpenOption.WRITE)) {
-            out.write(java.nio.charset.StandardCharsets.UTF_8.encode(sb.toString()));
+        try {
+            java.nio.file.Files.writeString(java.nio.file.Path.of(
+                    ResourcesPlugin.getWorkspace().getRoot().getProject("org.sterl.llmpeon.test").getLocation().toOSString(),
+                    "diagnosis-sessions.txt"), sb.toString());
         } catch (Exception e) {
             System.err.println("diagnosis file write failed: " + e);
         }
@@ -168,21 +167,21 @@ public class JavaDebugTool extends AbstractTool {
 
     @Tool(name = "get_variables", value = "Show variables of a stack frame as JSON. Optional name path (a.b.c) and depth (default 1, max 5).")
     public String getVariables(@P(name = "thread", description = "Thread name; empty = first suspended thread, else first non-system thread.", required = false) String thread,
-            @P(name = "frame", description = "Stack frame index, 0 = top.", required = false) int frame,
+            @P(name = "frame", description = "Stack frame index, 0 = top.", required = false) Integer frame,
             @P(name = "name", description = "Variable path (a.b.c) to drill into; empty = all top-level variables.", required = false) String name,
-            @P(name = "depth", description = "Nesting depth for object fields, 1..5; 0 = default 1.", required = false) int depth) {
+            @P(name = "depth", description = "Nesting depth for object fields, 1..5; 0 = default 1.", required = false) Integer depth) {
         var session = DebugSession.findActive();
         if (session == null) {
             return noSession("get_variables");
         }
-        return DebugJson.variables(javaFrame(session, thread, frame), name, depth);
+        return DebugJson.variables(javaFrame(session, thread, frame), name, depth == null ? 0 : depth);
     }
 
     @Tool(name = "evaluate_expression", value = "Evaluate a Java expression in a suspended stack frame and return the result as JSON.")
     public String evaluateExpression(@P(name = "thread", description = "Thread name; empty = first suspended thread, else first non-system thread.", required = false) String thread,
-            @P(name = "frame", description = "Stack frame index, 0 = top.", required = false) int frame,
+            @P(name = "frame", description = "Stack frame index, 0 = top.", required = false) Integer frame,
             @P(name = "expression") String expression,
-            @P(name = "timeoutMs", description = "Max wait in ms for the evaluation; 0 = default 10000.", required = false) int timeoutMs) {
+            @P(name = "timeoutMs", description = "Max wait in ms for the evaluation; 0 = default 10000.", required = false) Integer timeoutMs) {
         var session = DebugSession.findActive();
         if (session == null) {
             return noSession("evaluate_expression");
@@ -190,7 +189,7 @@ public class JavaDebugTool extends AbstractTool {
         if (expression == null || expression.isBlank()) {
             throw new IllegalArgumentException("expression must not be empty");
         }
-        int timeout = timeoutMs <= 0 ? 10000 : timeoutMs;
+        int timeout = timeoutMs == null || timeoutMs <= 0 ? 10000 : timeoutMs;
         IJavaStackFrame javaFrame = javaFrame(session, thread, frame);
         String projectName = session.sessionProject();
         if (projectName.isBlank()) {
@@ -239,7 +238,7 @@ public class JavaDebugTool extends AbstractTool {
 
     @Tool(name = "set_variable", value = "Set a local variable or argument to a primitive, String or null value. No confirmation.")
     public String setVariable(@P(name = "thread", description = "Thread name; empty = first suspended thread, else first non-system thread.", required = false) String thread,
-            @P(name = "frame", description = "Stack frame index, 0 = top.", required = false) int frame,
+            @P(name = "frame", description = "Stack frame index, 0 = top.", required = false) Integer frame,
             @P(name = "name") String name,
             @P(name = "value", description = "New value as text: null, boolean, number, single char or string.") String value) {
         var session = DebugSession.findActive();
@@ -279,7 +278,7 @@ public class JavaDebugTool extends AbstractTool {
     public String setBreakpoint(@P(name = "file", description = "Project-relative file path of the session project (or /project/... absolute).") String file,
             @P(name = "line", description = "1-based line number.") int line,
             @P(name = "condition", description = "Breakpoint condition expression; empty = none.", required = false) String condition,
-            @P(name = "hitCount", description = "Suspend after this many hits; 0 = every hit.", required = false) int hitCount,
+            @P(name = "hitCount", description = "Suspend after this many hits; 0 = every hit.", required = false) Integer hitCount,
             @P(name = "suspendPolicy", description = "THREAD (default) or VM.", required = false) String suspendPolicy) {
         var session = DebugSession.findActive();
         if (session == null) {
@@ -288,8 +287,9 @@ public class JavaDebugTool extends AbstractTool {
         if (line < 1) {
             throw new IllegalArgumentException("line must be >= 1 (got: " + line + ")");
         }
-        if (hitCount < 0) {
-            throw new IllegalArgumentException("hitCount must be >= 0 (got: " + hitCount + ")");
+        int hits = hitCount == null ? 0 : hitCount;
+        if (hits < 0) {
+            throw new IllegalArgumentException("hitCount must be >= 0 (got: " + hits + ")");
         }
         IProject project;
         String relativePath;
@@ -319,7 +319,7 @@ public class JavaDebugTool extends AbstractTool {
         String typeName = primaryTypeName(fileResource, file);
         IJavaLineBreakpoint breakpoint;
         try {
-            breakpoint = JDIDebugModel.createLineBreakpoint(fileResource, typeName, line, -1, -1, hitCount, true,
+            breakpoint = JDIDebugModel.createLineBreakpoint(fileResource, typeName, line, -1, -1, hits, true,
                     new HashMap<>());
         } catch (CoreException e) {
             throw DebugSupport.fail("creating a line breakpoint in " + file + ":" + line, e);
@@ -403,7 +403,7 @@ public class JavaDebugTool extends AbstractTool {
 
     @Tool(name = "step_over", value = "Step over in a debug thread and wait for the next suspend; returns the new top frame.")
     public String stepOver(@P(name = "thread", description = "Thread name; empty = first suspended thread, else first non-system thread.", required = false) String thread,
-            @P(name = "waitMs", description = "Max wait in ms for the next suspend; 0 = default 15000.", required = false) int waitMs) {
+            @P(name = "waitMs", description = "Max wait in ms for the next suspend; 0 = default 15000.", required = false) Integer waitMs) {
         var session = DebugSession.findActive();
         if (session == null) {
             return noSession("step_over");
@@ -414,12 +414,12 @@ public class JavaDebugTool extends AbstractTool {
         } catch (DebugException e) {
             throw DebugSupport.fail("stepping over in thread " + DebugSupport.threadName(debugThread), e);
         }
-        return waitForSuspend(session, debugThread, "step_over", waitMs <= 0 ? 15000 : waitMs);
+        return waitForSuspend(session, debugThread, "step_over", waitMs == null || waitMs <= 0 ? 15000 : waitMs);
     }
 
     @Tool(name = "step_in", value = "Step into a debug thread and wait for the next suspend; returns the new top frame.")
     public String stepIn(@P(name = "thread", description = "Thread name; empty = first suspended thread, else first non-system thread.", required = false) String thread,
-            @P(name = "waitMs", description = "Max wait in ms for the next suspend; 0 = default 15000.", required = false) int waitMs) {
+            @P(name = "waitMs", description = "Max wait in ms for the next suspend; 0 = default 15000.", required = false) Integer waitMs) {
         var session = DebugSession.findActive();
         if (session == null) {
             return noSession("step_in");
@@ -430,12 +430,12 @@ public class JavaDebugTool extends AbstractTool {
         } catch (DebugException e) {
             throw DebugSupport.fail("stepping into a method in thread " + DebugSupport.threadName(debugThread), e);
         }
-        return waitForSuspend(session, debugThread, "step_in", waitMs <= 0 ? 15000 : waitMs);
+        return waitForSuspend(session, debugThread, "step_in", waitMs == null || waitMs <= 0 ? 15000 : waitMs);
     }
 
     @Tool(name = "step_out", value = "Step out of the current frame and wait for the next suspend; returns the new top frame.")
     public String stepOut(@P(name = "thread", description = "Thread name; empty = first suspended thread, else first non-system thread.", required = false) String thread,
-            @P(name = "waitMs", description = "Max wait in ms for the next suspend; 0 = default 15000.", required = false) int waitMs) {
+            @P(name = "waitMs", description = "Max wait in ms for the next suspend; 0 = default 15000.", required = false) Integer waitMs) {
         var session = DebugSession.findActive();
         if (session == null) {
             return noSession("step_out");
@@ -455,12 +455,12 @@ public class JavaDebugTool extends AbstractTool {
         } catch (DebugException e) {
             throw DebugSupport.fail("stepping out in thread " + DebugSupport.threadName(debugThread), e);
         }
-        return waitForSuspend(session, debugThread, "step_out", waitMs <= 0 ? 15000 : waitMs);
+        return waitForSuspend(session, debugThread, "step_out", waitMs == null || waitMs <= 0 ? 15000 : waitMs);
     }
 
     @Tool(name = "continue", value = "Resume a suspended debug thread and wait for the next suspend; returns the new top frame.")
     public String resume(@P(name = "thread", description = "Thread name; empty = first suspended thread, else first non-system thread.", required = false) String thread,
-            @P(name = "waitMs", description = "Max wait in ms for the next suspend; 0 = default 30000.", required = false) int waitMs) {
+            @P(name = "waitMs", description = "Max wait in ms for the next suspend; 0 = default 30000.", required = false) Integer waitMs) {
         var session = DebugSession.findActive();
         if (session == null) {
             return noSession("continue");
@@ -474,7 +474,7 @@ public class JavaDebugTool extends AbstractTool {
         } catch (DebugException e) {
             throw DebugSupport.fail("resuming thread " + DebugSupport.threadName(debugThread), e);
         }
-        return waitForSuspend(session, debugThread, "continue", waitMs <= 0 ? 30000 : waitMs);
+        return waitForSuspend(session, debugThread, "continue", waitMs == null || waitMs <= 0 ? 30000 : waitMs);
     }
 
     @Tool(name = "suspend", value = "Suspend a running debug session; returns the suspended threads with their top frames.")
@@ -491,11 +491,12 @@ public class JavaDebugTool extends AbstractTool {
         return DebugJson.state(session);
     }
 
-    private static IJavaStackFrame javaFrame(DebugSession session, String thread, int frameIndex) {
+    private static IJavaStackFrame javaFrame(DebugSession session, String thread, Integer frameIndex) {
+        int index = frameIndex == null ? 0 : frameIndex;
         var debugThread = session.resolveThread(thread);
-        var stackFrame = session.resolveFrame(debugThread, frameIndex);
+        var stackFrame = session.resolveFrame(debugThread, index);
         if (!(stackFrame instanceof IJavaStackFrame javaFrame)) {
-            throw new IllegalArgumentException("frame " + frameIndex + " of the resolved thread is not a Java frame");
+            throw new IllegalArgumentException("frame " + index + " of the resolved thread is not a Java frame");
         }
         return javaFrame;
     }
