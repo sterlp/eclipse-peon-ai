@@ -28,12 +28,22 @@ class TestParser {
             lines = reader.lines().toList();
         }
 
+        boolean isJavaFile = file.getFileName().toString().endsWith(".java");
+
         List<TestEvidence> evidence = new ArrayList<>();
         List<TestEvidence> pendingContext = new ArrayList<>();
+        boolean inTextBlock = false; // R-DL-21: Java text blocks (""" … """) carry no test evidence
 
         for (int i = 0; i < lines.size(); i++) {
             int lineNum = i + 1;
             String line = lines.get(i);
+
+            if (isJavaFile) {
+                inTextBlock ^= countOccurrences(line, "\"\"\"") % 2 == 1;
+                if (inTextBlock) {
+                    continue; // lines inside a text block are string content, not comments
+                }
+            }
 
             String commentIds = extractCommentIds(line, idPattern);
             if (commentIds != null) {
@@ -75,6 +85,16 @@ class TestParser {
 
         evidence.addAll(pendingContext);
         return evidence;
+    }
+
+    private static int countOccurrences(String line, String token) {
+        int count = 0;
+        int index = 0;
+        while ((index = line.indexOf(token, index)) != -1) {
+            count++;
+            index += token.length();
+        }
+        return count;
     }
 
     private String extractCommentIds(String line, Pattern idPattern) {

@@ -59,7 +59,9 @@ Keine Registry-Datei: **die Docs sind die Registry**, `nextIds` liest sie.
 Default-Regex: `\bUC-[A-Z]+-\d+(?:-\d+[a-z]?)*\b` — matcht flach (`UC-READTOOLS-7`) **und**
 hierarchisch (`UC-FEATURE_NAME-3-3`, Erstanwender). `idPattern` ist damit **Pflicht-Parameter, kein
 Nice-to-have**: der Request-Regex mit `+` würde unser flaches Schema still nicht finden — exakt der
-Null-Treffer-Fehlerzustand aus R-DL-6.
+Null-Treffer-Fehlerzustand aus R-DL-6. Der Parameter FULL-matcht die ID (`matches()`, kein
+Präfix-Match) — `UC-PP-\d+` findet `UC-PP-12`, aber nicht `UC-PP-12-3a`; Werkzeuge, die das
+Gegenteil erwarten, erzeugen genau den stillen 0/0 (zweimal passiert: 2026-09-16 + Da-Dok/Da-Mek).
 
 ### Doc-Template (verbindlich — der Parser ist nur so gut wie das Template)
 
@@ -768,6 +770,47 @@ ausschließlich im Rückgabewert (R-DL-7) — die Statuszeile bekommt nie den Vo
 
 GIVEN ein beliebiger Lauf WHEN `onTool` feuert THEN enthält die Zeile Doc-Anzahl und
 Befundzahl(en) — nicht nur den Methodennamen.
+
+### R-DL-21 — Java-Textblock-Belege zählen nicht ❌
+
+In `.java`-Testquellen zählt eine ID-Zeile **innerhalb eines Textblocks** (`"""` … `"""`) nicht
+als Beleg — sie ist zitierter Fixture-Inhalt, kein Beleg am Test. Zeilenbasierter Zustand: eine
+Zeile mit ungerader Anzahl von `"""` kippt den Zustand. Bewusst **nur Java**, bewusst einfach
+(kein Escaping-Handling) — die Rateübung fremder Sprach-Grammatiken bleibt verworfen (R-DL-4).
+
+> **WEIL** (realer Befund 2026-09-21): `DocsLinterToolTest.java:78` baut als Fixture eine Datei mit
+> `// UC-DL-99` — exakt der Fall, den [open-points.md](open-points.md) als ❓ „Code-Block-Regel für
+> Testquellen" zurückstellte („(a) offen bis er real auftritt"). Er ist real: der Dogfood-Lauf
+> meldet `VERWAIST UC-DL-99 DocsLinterToolTest.java:78`, weil der Linter die Textblock-Zeile als
+> Beleg am echten Test liest. Die Fixture selbst darf nicht verändert werden (der Test braucht die
+> reine ID-Zeile als Beleg **in der Fixture**) — die einzige saubere Lösung ist, Textblock-Zeilen
+> in `.java` als zitiert zu behandeln. Damit ist die ❓-Frage mit Option (b) entschieden: die eine
+> triviale Heuristik, durch einen echten Fall gerechtfertigt.
+
+#### UC-DL-64 — Textblock-ID ist kein Beleg ❌
+GIVEN eine `.java`-Testdatei mit `// UC-XY-1` innerhalb eines `"""`-Blocks WHEN gescannt THEN kein
+Beleg; GIVEN dieselbe Zeile außerhalb des Blocks THEN Beleg.
+
+### R-DL-22 — „manuell verifiziert"-Marker exemprt vom UNBELEGT-Check ❌
+
+Enthält die Überschriftenzeile eines UC nach dem Statusmarker einen **Klammer-Anhang** `(…)` mit
+dem Wort `manuell` (Asterisk optional, `manuelle` matcht ebenfalls — bewusst loose, kein
+Format-Parsing), gilt der UC als **manuell belegt**: kein `UNBELEGT_ERLEDIGT`, stattdessen eine
+Info-Zeile `MANUELL` (Typ, id, `datei:zeile`) im Report — info, kein Blocker. Ein UC ✅ **ohne**
+solchen Anhang bleibt `UNBELEGT_ERLEDIGT` (hoch).
+
+> **WEIL** (2026-09-21, Paul freigibt): UC-JD-2…6 sind manuell verifiziert
+> ([ADR-0051](adr/0051-debugger-no-live-session-tests.md)) und trugen die Annotation nur als
+> menschenlesbaren Hinweis — der Linter meldete sie trotzdem als `UNBELEGT_ERLEDIGT` und blockierte
+> den Flip-Workflow mit bekanntem Rauschen. Strikt generisches Datum/Beleg-Format zu verlangen wäre
+> Parsing-Zeremonie ohne Schutzgewinn.
+
+#### UC-DL-65 — Manueller Marker exemprt ❌
+GIVEN UC ✅ mit `*(manuell verifiziert 2026-09-21, ADR-0051)*` und kein Test mit der ID WHEN
+`lintDocsAndTests` THEN kein `UNBELEGT_ERLEDIGT`, aber Info-Zeile `MANUELL` mit `datei:zeile`.
+
+#### UC-DL-66 — Ohne Marker bleibt UNBELEGT_ERLEDIGT ❌
+GIVEN UC ✅ ohne `manuell`-Anhang und ohne Test THEN Befund `UNBELEGT_ERLEDIGT` — Regressionsschranke.
 
 ## Nicht-funktional
 

@@ -9,5 +9,6 @@ enum FindingType {
     FORM_ABWEICHEND,
     UNBELEGT_ERLEDIGT,
     UNBELEGT,
-    VERWAIST
+    VERWAIST,
+    MANUELL
 }

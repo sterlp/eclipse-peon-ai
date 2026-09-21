@@ -449,6 +449,78 @@ class DocsLinterMatchingTest {
         assertThat(result.testEvidenceCount()).isEqualTo(0);
     }
 
+    // --- UC-DL-65: a ✅ UC with a manuell annotation is exempt from UNBELEGT_ERLEDIGT ---
+    // UC-DL-65
+    @Test
+    void manuellMarkerExemptsDoneUcFromUnbelegtErledigt() throws IOException {
+        writeDoc("a.md", """
+                ---
+                idPrefix: DL
+                ---
+
+                # R-DL-1 Rule ✅ done
+
+                ## UC-XX-1 Manuell UC ✅ *(manuell verifiziert 2026-09-21, ADR-0051)*
+                """);
+
+        var result = new DocsLinter().lintWithTests(rootDir,
+                List.of("docs"), List.of("src/test/java"), null, ID_PATTERN);
+
+        assertThat(result.findings()).noneMatch(f ->
+                f.type() == FindingType.UNBELEGT_ERLEDIGT && f.id().equals("UC-XX-1"));
+        var manuell = result.findings().stream()
+                .filter(f -> f.type() == FindingType.MANUELL && f.id().equals("UC-XX-1"))
+                .findFirst().orElseThrow();
+        assertThat(manuell.file()).isEqualTo("docs/a.md");
+        assertThat(manuell.line()).isPositive();
+    }
+
+    // --- UC-DL-65: real form without asterisks (manuelle …) also exempts ---
+    // UC-DL-65
+    @Test
+    void manuellMarkerWithoutAsterisksExemptsDoneUc() throws IOException {
+        writeDoc("a.md", """
+                ---
+                idPrefix: DL
+                ---
+
+                # R-DL-1 Rule ✅ done
+
+                ## UC-XX-1 Manuell UC ✅ (manuelle Verifikation 2026-09-21, ADR-0051)
+                """);
+
+        var result = new DocsLinter().lintWithTests(rootDir,
+                List.of("docs"), List.of("src/test/java"), null, ID_PATTERN);
+
+        assertThat(result.findings()).anyMatch(f ->
+                f.type() == FindingType.MANUELL && f.id().equals("UC-XX-1"));
+        assertThat(result.findings()).noneMatch(f ->
+                f.type() == FindingType.UNBELEGT_ERLEDIGT && f.id().equals("UC-XX-1"));
+    }
+
+    // --- UC-DL-66: ✅ without a manuell annotation stays UNBELEGT_ERLEDIGT ---
+    // UC-DL-66
+    @Test
+    void doneWithoutManuellMarkerStaysUnbelegtErledigt() throws IOException {
+        writeDoc("a.md", """
+                ---
+                idPrefix: DL
+                ---
+
+                # R-DL-1 Rule ✅ done
+
+                ## UC-XX-2 Plain Done UC ✅
+                """);
+
+        var result = new DocsLinter().lintWithTests(rootDir,
+                List.of("docs"), List.of("src/test/java"), null, ID_PATTERN);
+
+        assertThat(result.findings()).anyMatch(f ->
+                f.type() == FindingType.UNBELEGT_ERLEDIGT && f.id().equals("UC-XX-2"));
+        assertThat(result.findings()).noneMatch(f ->
+                f.type() == FindingType.MANUELL && f.id().equals("UC-XX-2"));
+    }
+
     private int indexOfType(DocsLintResult result, FindingType type) {
         for (int i = 0; i < result.findings().size(); i++) {
             if (result.findings().get(i).type() == type) return i;

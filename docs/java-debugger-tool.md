@@ -20,10 +20,11 @@ setzen, Steps). Weil die Session User-Property ist, brauchen wir **keine Confirm
 
 ## Actions (voll, in einer Stufe)
 
-- **Lesend:** `get_state`, `get_variables` (nested, depth — **lokale Variablen des Frames, statische
-  Felder bewusst nicht enthalten**), `get_stack_trace`.
-- **Ändernd:** `evaluate_expression` (Timeout; Objekt-Ergebnisse als Referenz-ID „ (id=N)"),
-  `set_variable` (nur Primitiven/String/null), `set_breakpoint` (conditional + hitCount),
+- **Lesend:** `get_state`, `get_variables` (nested, depth — Frame-Lokale **plus statische Felder
+  des Frame-Typs** als separater `statics`-Block, R-JD-9), `get_stack_trace`, `get_exception`
+  (Exception am Suspend, R-JD-10).
+- **Ändernd:** `evaluate_expression` (Timeout; Primitive/String/null als Wert, Objekt-Ergebnisse
+  mit Feldwerten bis Tiefe 2, R-JD-9), `set_variable` (nur Primitiven/String/null), `set_breakpoint` (conditional + hitCount),
   `set_exception_breakpoint`, `remove_breakpoint`, `step_over/in/out`, `continue`, `suspend`.
 
 ## Regeln
@@ -122,6 +123,47 @@ Projekt + Grund (E2E F1: rohes `IFile` → „not a Java compilation unit", Fix 
   "suspended"`, `suspendedThreads = 1`, `session` nennt Launch + pid; `set_variable`-Response
   liefert den Wert als JSON-Zahl. *(Automatisiert: `DebugSessionThreadsTest` ×2 +
   `DebugJsonUnitTest.valueResponseRendersPrimitivesAsJsonPrimitives`.)*
+
+### R-JD-9 — Statische Felder + Objekt-Feldwerte (F2) ❌
+
+- `get_variables` liefert zusätzlich zu den Frame-Lokalen die **statischen Felder des Frame-Typs**
+  als separates JSON-Feld `"statics"` (leeres Array, wenn keine) — dieselbe Verschachtelung, auch
+  unter dem `depth`-Parameter. Getrennt von `locals`, damit der LLM Scope sauber trennt; **kein
+  zusätzlicher Parameter** — wer `get_variables` ruft, will den vollen Scope.
+- `evaluate_expression` rendert ein Objekt-Ergebnis nicht mehr nur als Referenz-ID „ (id=N)":
+  Felder werden mit demselben Walker wie `get_variables` aufgelöst, **fixe Tiefe 2**; Primitive,
+  String und null bleiben unverändert Wert. Kein neuer Parameter — die natürlichste Erwartung ist,
+  dass `evaluate("p")` die Feldwerte zeigt.
+
+#### UC-JD-10 — staticsInGetVariables ❌
+- GIVEN Frame in einer Klasse mit statischen Feldern WHEN `get_variables` THEN Antwort enthält
+  `statics` mit den Feldern (Name, Typ, Wert) und `locals` unverändert; GIVEN Klasse ohne statische
+  Felder THEN leeres `statics`-Array.
+
+#### UC-JD-11 — evaluateRendersObjectFields ❌
+- GIVEN `evaluate_expression("p")` liefert ein Objekt WHEN das Ergebnis gerendert wird THEN die
+  Felder des Objekts stehen bis Tiefe 2 im Output — keine bloße „ (id=N)"-Referenz; Primitive/
+  String/null bleiben als Wert gerendert.
+
+### R-JD-10 — `get_exception`: Exception am Suspend, stateless + ehrlich ❌
+
+Neue Action `get_exception` (Thread-Auflösung wie `get_stack_trace`). Sie scannt den Top-Frame
+(lokale Variablen inkl. Catch-Parameter) nach einer Variable vom Typ `java.lang.Throwable` oder
+Subtyp und liefert Typ + Message + Variablenname. Keine gefunden → ehrlicher Fehler („no exception
+variable in top frame"). **Stateless** (R-JD-3 bleibt): kein Event-Listening, kein Cache.
+
+**Bekannte Grenze (bewusst, dokumentiert):** Am Throw-Site eines ungefangenen `throw new X(…)`
+existiert keine benannte Variable — dort findet `get_exception` nichts, und `get_variables`/
+`evaluate_expression` bleiben der Weg. Die Tool-Beschreibung nennt die Grenze.
+
+> **WEIL** (E2E-Smoke 2026-09-21): am Exception-Suspend zeigte `get_state` nur den Frame, nicht
+> welche Exception geworfen hat — der Tester musste sie sich aus Frame+Kontext erschließen. Eine
+> echte Event-Abfrage (JDI-ExceptionEvent) würde R-JD-3 (stateless) brechen und mit JDTs eigenem
+> Event-Handler konkurrieren; der frame-lokale Scan ist der kleinste ehrliche Weg.
+
+#### UC-JD-12 — getExceptionFindsThrowableInTopFrame ❌
+- GIVEN Thread an Exception-Suspend mit Catch-Variable `e` WHEN `get_exception` THEN Typ + Message +
+  Variablenname; GIVEN kein Throwable im Top-Frame THEN ehrlicher Fehler, kein erfundener Typ.
 
 ## Thread-Enumeration (technischer Befund, ADR-verlinkt)
 

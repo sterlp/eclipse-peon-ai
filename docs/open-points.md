@@ -10,30 +10,22 @@ wird nach dem Run gelöscht): feature-change-request-copilot.md. Neutrale Entwur
 tool-confirmation, terminal-session-tool, java-debugger-tool, project-problems-tool.
 **Paul: alle CR-Items durchgehen, dann normale Build-Zyklen.**
 
-## ❓ Debugger-Backlog F2: statische Felder + evaluate-Objektwerte (2026-09-21, Paul: Backlog)
+## 🔒 Debugger-Backlog F2: statische Felder + evaluate-Objektwerte — ❌ SPECIFIED (2026-09-21, Paul: „Go")
 
-Aus dem Debugger-E2E-Smoke (issue3.md): `get_variables` liefert nur Frame-Lokale — statische Felder
-(`DebugFix.p` mit x/y) sind nicht erreichbar; `evaluate_expression("p")` gibt nur die Objekt-Referenz-ID
-(„ (id=25)") statt Feldwerten. Paul: **Backlog** — SOLL wäre: statische Felder des Frame-Typs
-(z. B. mit `"static": true`) + `evaluate_expression` rendert Objekt-Felder bis depth. Tool-Beschreibungen
-nennen beide Grenzen bereits (Fix `2efaaf6`), LLM-Überraschung ist abgefedert.
+SOLL jetzt in [java-debugger-tool.md](java-debugger-tool.md) R-JD-9 (UC-JD-10/11): statische Felder
+des Frame-Typs als separater `statics`-Block (immer, kein Parameter), `evaluate_expression` rendert
+Objekt-Felder bis Tiefe 2. Bau im Debugger+Linter-Mini-Zyklus.
 
-## ⏳ Debugger-Zusatz (klein, aus E2E-Smoke 2026-09-21): Exception-Suspend ohne Event-Info
+## 🔒 Debugger-Zusatz: Exception-Suspend — ❌ SPECIFIED (2026-09-21, Paul: „Go")
 
-`get_state`/`get_stack_trace` zeigen am Exception-Suspend nur den Frame (main, Zeile 14), nicht
-welche Exception geworfen hat. Tester-Notiz („kein SOLL-Verstoß") — kleine SOLL-Erweiterung wäre
-ein `exception`-Feld im State am Exception-Suspend. Rückversicherung mit Paul steht aus.
+SOLL jetzt R-JD-10 (UC-JD-12): neue Action `get_exception` (stateless Scan des Top-Frames nach
+Throwable, ehrlicher Fehler wenn nichts gefunden). Event-Abfrage bewusst verworfen (R-JD-3,
+Konkurrenz mit JDT-Handler).
 
-## ⏳ Docs-Linter: „manuelle Verifikation" als anerkannter Status (2026-09-21, Jon)
+## 🔒 Docs-Linter „manuell verifiziert"-Marker — ❌ SPECIFIED (2026-09-21, Paul: „Go")
 
-UC-JD-2…6 sind manuell verifiziert (E2E-Smoke, [ADR-0051](adr/0051-debugger-no-live-session-tests.md)),
-der Linter meldet sie trotzdem als `UNBELEGT_ERLEDIGT` — ich flippe sie mit expliziter Annotation als
-bekannt-jestifiziert. Linter-Idee (eigener Mini-Zyklus, mit UC-DL-99): Marker wie `*(manuell verifiziert
-<date>, <beleg>)*` in der UC-Zeile vom UNBELEGT-Check ausnehmen. Rückversicherung mit Paul steht aus.
-
-## ⏳ Docs-Linter: VERWAIST UC-DL-99 (DocsLinterToolTest.java:78)
-
-Test-ID ohne Doc-Definition — beim idPattern-`@P`-Description-Mini-Zyklus mappen oder Doc-UC nachziehen.
+R-DL-22 (UC-DL-65/66): Wort `manuell` in `*(…)*`-Anhang exemprt vom UNBELEGT-Check, Info-Zeile
+`MANUELL`. Loser Marker, bewusst kein Format-Parsing.
 
 ## ⏳ `eclipseBuildProject` Failure: build.properties-Warnung (seit Story #136)
 
@@ -240,28 +232,13 @@ Falschbefunde sind weg, `UC definitions: 43 / 43` (vorher `43 / 42`), findings 4
 **Abhängig davon:** Das Nachtragen der ID-Kommentare an die DL-Tests (nächster Punkt) ist jetzt
 unblockiert — der Report ist rauschfrei.
 
-## ❓ Code-Block-Regel für Testquellen? (2026-09-15, aus R-DL-13 ausgeklammert)
+## 🔒 Code-Block-Regel für Testquellen — ENTSCHEIDEN (2026-09-21) → R-DL-21, Option (b)
 
-**Frage:** R-DL-13 lässt Code-Blöcke in **Docs** nicht mehr als Definition zählen. Der Spiegelfall
-in **Testquellen** ist offen: Ein ID-Kommentar in einem Java-Textblock (`"""…"""`), einem
-Python-Docstring oder einem eingebetteten Beispiel-Snippet würde heute als echter Beleg zählen — ein
-Beispiel könnte einen Use-Case fälschlich als belegt ausweisen. Das wäre die teure
-False-**Negative**-Richtung: ein falsches ✅, das nie wieder jemand prüft.
-
-**Warum NICHT sofort gebaut:** Zitierten Text in beliebigen Sprachen zu erkennen erfordert
-Sprach-Parsing — exakt die Rateübung, die wir in Q8 bewusst verworfen haben (jeder Rateversuch auf
-fremde Grammatik erzeugt stille Lücken). Eine Regel schreiben, deren Umsetzung raten muss, wäre
-derselbe Fehler nochmal.
-
-**Wie wahrscheinlich ist der Fall?** Ein Testfile, das einen ID-Kommentar als Beispiel-String
-enthält, ist selten — aber dieses Repo ist selbst ein Kandidat, sobald die Linter-Tests eigene
-Fixtures mit ID-Zeilen bauen (tun sie bereits, allerdings in `@TempDir`-Dateien, nicht als
-String-Literale).
-
-**Optionen:** (a) offen lassen bis es real auftritt; (b) nur die eine triviale Heuristik „ID-Zeile
-innerhalb eines Java-Textblocks" abdecken; (c) Report nennt Belege aus verdächtigen Kontexten
-gesondert, statt sie zu unterdrücken. **Meine Empfehlung: (a)** — der Linter meldet lieber zu viel
-als zu wenig, und ein konkreter Fall ist die bessere Spezifikationsgrundlage als eine Vermutung.
+**Real aufgetreten:** `DocsLinterToolTest.java:78` (Fixture mit `// UC-DL-99`) erzeugt im
+Dogfood-Lauf `VERWAIST`. Die eine triviale Heuristik ist damit durch einen echten Fall
+gerechtfertigt: ID-Zeilen innerhalb eines Java-Textblocks (ungerade `"""`-Zeilen kippen den
+Zustand) zählen nicht als Beleg — nur `.java`, kein Escaping-Handling. Siehe R-DL-21/UC-DL-64
+in [docs-linter.md](docs-linter.md).
 
 ## 🔒 Docs-Linter: ID-Kommentare an den eigenen Tests (2026-09-15) — TEILWEISE GELÖST
 
