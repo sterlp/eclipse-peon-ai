@@ -14,8 +14,10 @@ import org.eclipse.jdt.debug.core.IJavaArray;
 import org.eclipse.jdt.debug.core.IJavaBreakpoint;
 import org.eclipse.jdt.debug.core.IJavaDebugTarget;
 import org.eclipse.jdt.debug.core.IJavaExceptionBreakpoint;
+import org.eclipse.jdt.debug.core.IJavaFieldVariable;
 import org.eclipse.jdt.debug.core.IJavaLineBreakpoint;
 import org.eclipse.jdt.debug.core.IJavaPrimitiveValue;
+import org.eclipse.jdt.debug.core.IJavaReferenceType;
 import org.eclipse.jdt.debug.core.IJavaStackFrame;
 import org.eclipse.jdt.debug.core.IJavaThread;
 import org.eclipse.jdt.debug.core.IJavaValue;
@@ -105,9 +107,11 @@ public final class DebugJson {
     }
 
     /**
-     * get_variables shape: [{name, type, value | fields | length+elements}].
-     * {@code namePath} drills into nested variables (a.b.c); {@code depth}
-     * bounds field nesting (1..5, 0 = 1).
+     * get_variables shape: { locals: […], statics: […] } without a name path — each variable
+     * as {name, type, value | fields | length+elements}; the statics block holds the static
+     * fields of the frame's declaring type, empty when there are none (R-JD-9).
+     * {@code namePath} drills into nested variables (a.b.c) and renders a single node;
+     * {@code depth} bounds field nesting (1..5, 0 = 1).
      */
     public static String variables(IJavaStackFrame frame, String namePath, int depth) {
         int d = depth <= 0 ? 1 : Math.min(depth, MAX_DEPTH);
@@ -118,11 +122,14 @@ public final class DebugJson {
             throw DebugSupport.fail("reading local variables of frame " + frameName(frame), e);
         }
         if (namePath == null || namePath.isBlank()) {
-            var nodes = new ArrayList<Map<String, Object>>();
+            Map<String, Object> root = new LinkedHashMap<>();
+            var localsNodes = new ArrayList<Map<String, Object>>();
             for (IJavaVariable variable : locals) {
-                nodes.add(variableNode(variable, d));
+                localsNodes.add(variableNode(variable, d));
             }
-            return pretty(nodes);
+            root.put("locals", localsNodes);
+            root.put("statics", staticNodes(frame, d));
+            return pretty(root);
         }
         IVariable current = null;
         List<IVariable> scope = new ArrayList<>(List.of(locals));
@@ -147,6 +154,58 @@ public final class DebugJson {
             }
         }
         return pretty(variableNode(current, d));
+    }
+
+    /**
+     * The static fields of the frame's declaring type, rendered like locals (R-JD-9);
+     * empty when the frame has no resolvable declaring type or no static fields.
+     */
+    private static List<Map<String, Object>> staticNodes(IJavaStackFrame frame, int depth) {
+        var statics = new ArrayList<Map<String, Object>>();
+        IJavaReferenceType type;
+        try {
+            type = frame.getReferenceType();
+        } catch (DebugException e) {
+            throw DebugSupport.fail("reading the declaring type of frame " + frameName(frame), e);
+        }
+        if (type == null) {
+            return statics;
+        }
+        String typeName = typeName(type);
+        String[] fieldNames;
+        try {
+            fieldNames = type.getAllFieldNames();
+        } catch (DebugException e) {
+            throw DebugSupport.fail("reading the fields of " + typeName, e);
+        }
+        for (String name : fieldNames) {
+            IJavaFieldVariable field;
+            try {
+                field = type.getField(name);
+            } catch (DebugException e) {
+                throw DebugSupport.fail("reading field " + name + " of " + typeName, e);
+            }
+            if (field == null) {
+                continue;
+            }
+            try {
+                if (!field.isStatic()) {
+                    continue;
+                }
+            } catch (DebugException e) {
+                throw DebugSupport.fail("reading the modifiers of field " + name + " of " + typeName, e);
+            }
+            statics.add(variableNode(field, depth));
+        }
+        return statics;
+    }
+
+    private static String typeName(IJavaReferenceType type) {
+        try {
+            return type.getName();
+        } catch (DebugException e) {
+            return "<unknown type>";
+        }
     }
 
     /**
@@ -212,8 +271,12 @@ public final class DebugJson {
         return pretty(node);
     }
 
-    /** evaluate_expression response: {type, value} (arrays named with length + capped elements). */
-    static String evaluated(IJavaValue value) {
+    /**
+     * evaluate_expression response: {type, value | fields | length+elements}. Object results
+     * render their fields to depth 2 (R-JD-9); primitives, String and null come back as values;
+     * arrays are named with length + capped elements.
+     */
+    public static String evaluated(IJavaValue value) {
         Map<String, Object> node = new LinkedHashMap<>();
         if (value == null || isNull(value)) {
             node.put("type", "null");
@@ -230,7 +293,7 @@ public final class DebugJson {
             node.put("elements", arrayElements(array, 1));
             return pretty(node);
         }
-        node.put("value", valueString(value));
+        applyValue(node, value, 2);
         return pretty(node);
     }
 

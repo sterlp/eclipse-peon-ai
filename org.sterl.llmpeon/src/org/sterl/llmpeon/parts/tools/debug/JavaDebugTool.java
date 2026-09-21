@@ -69,7 +69,7 @@ public class JavaDebugTool extends AbstractTool {
         return DebugJson.stackTrace(session.resolveThread(thread));
     }
 
-    @Tool(name = "get_variables", value = "Show the local variables of a stack frame as JSON (statics not included). Optional name path (a.b.c) and depth (default 1, max 5).")
+    @Tool(name = "get_variables", value = "Show the variables of a stack frame as JSON: the frame locals plus the static fields of the frame's declaring type in a separate `statics` block (empty when none). Optional name path (a.b.c) and depth (default 1, max 5).")
     public String getVariables(@P(name = "thread", description = "Thread name; empty = first suspended thread, else first non-system thread.", required = false) String thread,
             @P(name = "frame", description = "Stack frame index, 0 = top.", required = false) Integer frame,
             @P(name = "name", description = "Variable path (a.b.c) to drill into; empty = all top-level variables.", required = false) String name,
@@ -81,7 +81,7 @@ public class JavaDebugTool extends AbstractTool {
         return DebugJson.variables(javaFrame(session, thread, frame), name, depth == null ? 0 : depth);
     }
 
-    @Tool(name = "evaluate_expression", value = "Evaluate a Java expression in a suspended stack frame and return the result as JSON. Object results come back as a reference id (… (id=N)).")
+    @Tool(name = "evaluate_expression", value = "Evaluate a Java expression in a suspended stack frame and return the result as JSON. Object results render their fields to depth 2; primitives, String and null come back as values.")
     public String evaluateExpression(@P(name = "thread", description = "Thread name; empty = first suspended thread, else first non-system thread.", required = false) String thread,
             @P(name = "frame", description = "Stack frame index, 0 = top.", required = false) Integer frame,
             @P(name = "expression") String expression,

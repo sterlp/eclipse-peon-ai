@@ -13,6 +13,8 @@ import org.eclipse.debug.core.model.IValue;
 import org.eclipse.debug.core.model.IVariable;
 import org.eclipse.jdt.debug.core.IJavaArray;
 import org.eclipse.jdt.debug.core.IJavaPrimitiveValue;
+import org.eclipse.jdt.debug.core.IJavaFieldVariable;
+import org.eclipse.jdt.debug.core.IJavaReferenceType;
 import org.eclipse.jdt.debug.core.IJavaStackFrame;
 import org.eclipse.jdt.debug.core.IJavaType;
 import org.eclipse.jdt.debug.core.IJavaValue;
@@ -138,8 +140,13 @@ public class DebugJsonUnitTest {
         return stub(IJavaArray.class, answers);
     }
 
-    /** Frame locals: counter=0 (int), p (Point: x=1, y=2, q=Inner: z=7), n (String null), arr (int[25]). */
+    /** Frame locals: counter=0 (int), p (Point: x=1, y=2, q=Inner: z=7), n (String null), arr (int[25]). No static fields. */
     private static IJavaStackFrame fixtureFrame() {
+        return frameWithStatics(new String[0], new IJavaFieldVariable[0]);
+    }
+
+    /** The fixture frame with the given declaring-type fields (names and stubs in parallel). */
+    private static IJavaStackFrame frameWithStatics(String[] fieldNames, IJavaFieldVariable[] fields) {
         var z = variable("z", "int", primitive("int", 7, "7"));
         var q = variable("q", "peontest.Inner", object("peontest.Inner", "peontest.Inner@2", z));
         var x = variable("x", "int", primitive("int", 1, "1"));
@@ -148,13 +155,32 @@ public class DebugJsonUnitTest {
         var counter = variable("counter", "int", primitive("int", 0, "0"));
         var n = variable("n", "java.lang.String", nullValue("java.lang.String"));
         var arr = variable("arr", "int[]", intArray(25));
+        var typeAnswers = new HashMap<String, Object>();
+        typeAnswers.put("getName", "peontest.DebugFix");
+        typeAnswers.put("getAllFieldNames", fieldNames);
+        typeAnswers.put("getField", (Function<Object, Object>) args -> {
+            String name = (String) ((Object[]) args)[0];
+            for (int i = 0; i < fieldNames.length; i++) {
+                if (fieldNames[i].equals(name)) {
+                    return fields[i];
+                }
+            }
+            return null;
+        });
+        var type = stub(IJavaReferenceType.class, typeAnswers);
         return stub(IJavaStackFrame.class, Map.of(
                 "getLocalVariables", (Object) new IJavaVariable[] { counter, p, n, arr },
+                "getReferenceType", type,
                 "getMethodName", "main",
                 "getDeclaringTypeName", "peontest.DebugFix",
                 "getLineNumber", 8,
                 "getName", "main() in peontest.DebugFix",
                 "isConstructor", false));
+    }
+
+    private static IJavaFieldVariable field(String name, String type, IValue value, boolean isStatic) {
+        return stub(IJavaFieldVariable.class,
+                Map.of("getName", name, "getReferenceTypeName", type, "getValue", value, "isStatic", isStatic));
     }
 
     // === tests ===
@@ -172,6 +198,10 @@ public class DebugJsonUnitTest {
 
         // AND: element index 20 is not rendered
         assertFalse("element index 20 must not be rendered:\n" + json, json.contains("20,"));
+
+        // AND: the shape is { locals, statics } — the fixture frame has no static fields
+        assertContains(json, "\"locals\" :");
+        assertContains(json, "\"statics\" : [ ]");
     }
 
     @Test
@@ -225,6 +255,89 @@ public class DebugJsonUnitTest {
             assertContains(e.getMessage(), "not found");
             assertContains(e.getMessage(), "x");
         }
+    }
+
+    // UC-JD-10
+    @Test
+    public void staticsRenderedSeparatelyFromLocals() {
+        // GIVEN: a frame whose declaring type has a static field (limit=42) and a non-static one (cache)
+        var limit = field("limit", "int", primitive("int", 42, "42"), true);
+        var cache = field("cache", "java.util.Map", object("java.util.HashMap", "java.util.HashMap@3"), false);
+        IJavaStackFrame frame = frameWithStatics(new String[] { "limit", "cache" },
+                new IJavaFieldVariable[] { limit, cache });
+
+        // WHEN: reading the frame variables
+        String json = DebugJson.variables(frame, "", 1);
+
+        // THEN: the static field appears in its own block with name, type and value
+        assertContains(json, "\"statics\" :");
+        assertContains(json, "\"name\" : \"limit\"");
+        assertContains(json, "\"type\" : \"int\"");
+        assertContains(json, "\"value\" : 42");
+
+        // AND: the locals keep their previous content
+        assertContains(json, "\"locals\" :");
+        assertContains(json, "\"name\" : \"counter\"");
+        assertContains(json, "\"name\" : \"arr\"");
+
+        // AND: the non-static field must not appear
+        assertFalse("non-static fields must not be rendered:\n" + json, json.contains("cache"));
+    }
+
+    // UC-JD-10
+    @Test
+    public void staticsEmptyWhenNone() {
+        // GIVEN: a frame whose declaring type has no fields at all (fixtureFrame)
+
+        // WHEN: reading the frame variables
+        String json = DebugJson.variables(fixtureFrame(), "", 1);
+
+        // THEN: both keys are present and statics is an empty array
+        assertContains(json, "\"locals\" :");
+        assertContains(json, "\"statics\" : [ ]");
+    }
+
+    // UC-JD-11
+    @Test
+    public void evaluatedRendersObjectFieldsToDepth2() {
+        // GIVEN: an evaluated object with fields name (String "a"), n (int 3) and inner (object with field z)
+        var z = variable("z", "int", primitive("int", 7, "7"));
+        var inner = variable("inner", "peontest.Inner", object("peontest.Inner", "peontest.Inner@2", z));
+        var name = variable("name", "java.lang.String", object("java.lang.String", "a"));
+        var n = variable("n", "int", primitive("int", 3, "3"));
+        IJavaValue value = object("peontest.Point", "peontest.Point@1", name, n, inner);
+
+        // WHEN: rendering the evaluation result
+        String json = DebugJson.evaluated(value);
+
+        // THEN: the object renders its fields with values, not as a bare reference
+        assertContains(json, "\"type\" : \"peontest.Point\"");
+        assertContains(json, "\"fields\"");
+        assertContains(json, "\"name\" : \"name\"");
+        assertContains(json, "\"value\" : \"a\"");
+        assertContains(json, "\"value\" : 3");
+        assertFalse("no bare reference id must be rendered:\n" + json, json.contains("(id="));
+
+        // AND: depth 2 limits the nesting — inner shows its value string, not its own fields
+        assertContains(json, "\"value\" : \"peontest.Inner@2\"");
+        assertFalse("depth 2 must not expose the second nesting level:\n" + json, json.contains("\"name\" : \"z\""));
+    }
+
+    // UC-JD-11
+    @Test
+    public void evaluatedKeepsPrimitiveStringAndNullAsValues() {
+        // WHEN: rendering primitives, a String and null results
+        String intJson = DebugJson.evaluated(primitive("int", 3, "3"));
+        String stringJson = DebugJson.evaluated(object("java.lang.String", "hello"));
+        String nullJson = DebugJson.evaluated(nullValue("java.lang.String"));
+
+        // THEN: they come back as plain values (regression boundary for R-JD-9)
+        assertContains(intJson, "\"value\" : 3");
+        assertContains(stringJson, "\"value\" : \"hello\"");
+        assertFalse("a String without fields must not render a fields block:\n" + stringJson,
+                stringJson.contains("\"fields\""));
+        assertContains(nullJson, "\"type\" : \"null\"");
+        assertContains(nullJson, "\"value\" : null");
     }
 
     // UC-JD-9
