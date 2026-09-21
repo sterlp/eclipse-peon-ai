@@ -129,6 +129,7 @@ public class DebugSessionThreadsTest {
 
     // === tests ===
 
+    // UC-JD-9
     @Test
     public void stateShowsMainThreadAndSuspendedVm() {
         // GIVEN: the diagnosed state — main suspended at the breakpoint, 5 running system
@@ -152,6 +153,7 @@ public class DebugSessionThreadsTest {
         assertContains(json, "\"session\" : \"DebugFix (pid 78703)\"");
     }
 
+    // UC-JD-9
     @Test
     public void stateIsRunningWhenNothingIsSuspended() {
         // GIVEN: main running, system threads running, target not suspended
@@ -178,7 +180,7 @@ public class DebugSessionThreadsTest {
         assertEquals("main", resolved.getName());
     }
 
-    // UC-JD-2
+    // UC-JD-7
     @Test
     public void selfExitedVmIsNotAnActiveSession() {
         // GIVEN: a zombie target — after a self-exit JDT leaves the target
@@ -194,7 +196,7 @@ public class DebugSessionThreadsTest {
         assertNull(session);
     }
 
-    // UC-JD-2
+    // UC-JD-7
     @Test
     public void threadlessVmIsNotAnActiveSession() {
         // GIVEN: a zombie target — process alive, target un-terminated, but the VM

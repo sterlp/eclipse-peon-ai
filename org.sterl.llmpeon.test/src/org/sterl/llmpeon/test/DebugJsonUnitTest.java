@@ -227,6 +227,7 @@ public class DebugJsonUnitTest {
         }
     }
 
+    // UC-JD-9
     @Test
     public void valueResponseRendersPrimitivesAsJsonPrimitives() {
         // WHEN: a set_variable response for an int variable (E2E F3: "value":"42" → 42)

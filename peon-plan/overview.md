@@ -341,6 +341,6 @@ Keine Code-Änderung nötig. Nächstes: Diagnose-Lauf Befund 1/2 (Paul startet S
 
 **Tests (6 neu, 1 adaptiert):** `DebugPrimaryTypeTest` (3: Happy-Path / kein CU ehrlich / kein Primär-Typ ehrlich), `DebugSessionThreadsTest` +2 (`selfExitedVmIsNotAnActiveSession`, `threadlessVmIsNotAnActiveSession`), `DebugJsonUnitTest` +1 (`valueResponseRendersPrimitivesAsJsonPrimitives`), `DebugSessionLookupTest`-Stubs +`hasThreads` (lebende VMs haben Threads — sonst filterte die neue Lebend-Prüfung sie aus).
 
-**Gates (2026-09-21):** Build grün in beiden Projekten (nur known-benign Warnings); OSGi-Suite **254 Tests / 0 Failures / 0 Skipped** (248 + 6). Commit: (Hash unten).
+**Gates (2026-09-21):** Build grün in beiden Projekten (nur known-benign Warnings); OSGi-Suite **254 Tests / 0 Failures / 0 Skipped** (248 + 6). Commit: `2efaaf6`.
 
 **Offen (PO):** Doc-Flips (R-JD-1…5, UC-JD-1…6), ADRs, planImplemented. F2 bleibt Backlog.

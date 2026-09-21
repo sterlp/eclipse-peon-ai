@@ -56,6 +56,7 @@ public class DebugSessionLookupTest {
 
     // === tests ===
 
+    // UC-JD-7
     @Test
     public void terminatedTargetIsFilteredOut() {
         // GIVEN: one terminated and one active target
@@ -69,6 +70,7 @@ public class DebugSessionLookupTest {
         assertEquals("active-vm", session.vmName());
     }
 
+    // UC-JD-7
     @Test
     public void activeTargetIsChosen() {
         // GIVEN: a single active target
@@ -81,6 +83,7 @@ public class DebugSessionLookupTest {
         assertEquals("active-vm", session.vmName());
     }
 
+    // UC-JD-7
     @Test
     public void allTerminatedYieldsNoSession() {
         // GIVEN: two terminated targets

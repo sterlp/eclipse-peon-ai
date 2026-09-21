@@ -44,6 +44,7 @@ public class DebugPrimaryTypeTest {
 
     // === tests ===
 
+    // UC-JD-8
     @Test
     public void resolvesPrimaryTypeOfLoadedCompilationUnit() {
         // GIVEN: a JDT compilation unit with a primary type
@@ -57,6 +58,7 @@ public class DebugPrimaryTypeTest {
         assertEquals("peontest.DebugFix", typeName);
     }
 
+    // UC-JD-8
     @Test
     public void fileWithoutCompilationUnitFailsHonest() {
         // GIVEN: JDT could not load a compilation unit for the file (null — e.g. not a Java source file)
@@ -72,6 +74,7 @@ public class DebugPrimaryTypeTest {
         }
     }
 
+    // UC-JD-8
     @Test
     public void compilationUnitWithoutPrimaryTypeFailsHonest() {
         // GIVEN: a compilation unit that has no primary type
