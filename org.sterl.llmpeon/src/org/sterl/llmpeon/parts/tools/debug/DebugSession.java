@@ -51,7 +51,7 @@ public final class DebugSession {
                 if (!(debugTarget instanceof IJavaDebugTarget target)) {
                     continue;
                 }
-                if (!target.isTerminated()) {
+                if (!target.isTerminated() && !isDead(target)) {
                     active.add(new DebugSession(candidate, target));
                 }
             }
@@ -68,6 +68,25 @@ public final class DebugSession {
                     + " — only a single session is supported, stop all but one first");
         }
         return active.get(0);
+    }
+
+    /**
+     * A target whose VM exited on its own is dead even if JDT leaves the target
+     * un-terminated (2026-09-21 E2E F7: after a self-exit, get_state showed
+     * "&lt;unknown VM&gt; running, threads=[]" and continue burned its full wait).
+     * Dead = the process is terminated, or the VM answers no threads at all
+     * (a live JVM always has at least its main thread).
+     */
+    private static boolean isDead(IJavaDebugTarget target) {
+        IProcess process = target.getProcess();
+        if (process != null && process.isTerminated()) {
+            return true;
+        }
+        try {
+            return !target.hasThreads();
+        } catch (DebugException e) {
+            return true; // a VM that cannot even answer hasThreads() is not usable
+        }
     }
 
     IJavaDebugTarget target() {

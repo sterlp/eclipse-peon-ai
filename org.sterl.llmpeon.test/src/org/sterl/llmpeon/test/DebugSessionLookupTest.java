@@ -45,6 +45,7 @@ public class DebugSessionLookupTest {
     private static IJavaDebugTarget javaTarget(boolean terminated, String vmName) {
         var answers = new HashMap<String, Object>();
         answers.put("isTerminated", terminated);
+        answers.put("hasThreads", !terminated); // a live VM always has at least its main thread
         answers.put("getVMName", vmName);
         return stub(IJavaDebugTarget.class, answers);
     }

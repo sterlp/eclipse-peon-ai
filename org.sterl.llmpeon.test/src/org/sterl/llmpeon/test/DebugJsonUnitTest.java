@@ -228,6 +228,24 @@ public class DebugJsonUnitTest {
     }
 
     @Test
+    public void valueResponseRendersPrimitivesAsJsonPrimitives() {
+        // WHEN: a set_variable response for an int variable (E2E F3: "value":"42" → 42)
+        String json = DebugJson.valueResponse("counter", "int", primitive("int", 42, "42"));
+
+        // THEN: the value is a JSON number, not a quoted string (consistency with get_variables)
+        assertContains(json, "\"value\" : 42");
+        assertFalse("primitives must not be quoted:\n" + json, json.contains("\"value\" : \"42\""));
+
+        // AND: a boolean renders as a JSON boolean
+        assertContains(DebugJson.valueResponse("flag", "boolean", primitive("boolean", true, "true")),
+                "\"value\" : true");
+
+        // AND: a String variable stays a JSON string
+        assertContains(DebugJson.valueResponse("n", "java.lang.String", object("java.lang.String", "hello")),
+                "\"value\" : \"hello\"");
+    }
+
+    @Test
     public void outputIsPrettyPrinted() {
         // WHEN: rendering any shape
         String json = DebugJson.variables(fixtureFrame(), "", 1);

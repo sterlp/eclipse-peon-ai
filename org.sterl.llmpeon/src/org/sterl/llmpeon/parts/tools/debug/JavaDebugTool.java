@@ -12,19 +12,14 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.IPath;
 import org.eclipse.debug.core.DebugEvent;
 import org.eclipse.debug.core.DebugException;
 import org.eclipse.debug.core.DebugPlugin;
-import org.eclipse.debug.core.ILaunch;
-import org.eclipse.debug.core.ILaunchConfiguration;
-import org.eclipse.debug.core.model.IDebugTarget;
-import org.eclipse.debug.core.model.IProcess;
 import org.eclipse.debug.core.model.IStackFrame;
-import org.eclipse.debug.core.model.IThread;
 import org.eclipse.debug.core.model.IValue;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.debug.core.IJavaBreakpoint;
 import org.eclipse.jdt.debug.core.IJavaDebugTarget;
@@ -32,7 +27,6 @@ import org.eclipse.jdt.debug.core.IJavaExceptionBreakpoint;
 import org.eclipse.jdt.debug.core.IJavaLineBreakpoint;
 import org.eclipse.jdt.debug.core.IJavaStackFrame;
 import org.eclipse.jdt.debug.core.IJavaThread;
-import org.eclipse.jdt.debug.core.IJavaThreadGroup;
 import org.eclipse.jdt.debug.core.IJavaValue;
 import org.eclipse.jdt.debug.core.IJavaVariable;
 import org.eclipse.jdt.debug.core.JDIDebugModel;
@@ -66,102 +60,6 @@ public class JavaDebugTool extends AbstractTool {
         }
         return DebugJson.state(session);
     }
-    // TEMPORARY DIAGNOSTIC (2026-09-21, issue.md: tools address a stale/wrong VM) — REMOVE after diagnosis.
-    @Tool(name = "diagnose_sessions", value = "TEMPORARY: inventory of all launches and debug targets (name, pid, terminated, suspended, threads). Call once while the debug session is at the breakpoint.")
-    public String diagnoseSessions() {
-        var sb = new StringBuilder();
-        for (ILaunch launch : DebugPlugin.getDefault().getLaunchManager().getLaunches()) {
-            ILaunchConfiguration config = launch.getLaunchConfiguration();
-            sb.append("LAUNCH ").append(config == null ? "<unknown>" : config.getName())
-                    .append(" | terminated=").append(launch.isTerminated()).append(System.lineSeparator());
-            for (IDebugTarget target : launch.getDebugTargets()) {
-                sb.append("  TARGET ").append(target.getClass().getName())
-                        .append(" | terminated=").append(target.isTerminated())
-                        .append(" | suspended=").append(target.isSuspended())
-                        .append(" | hasThreads=").append(safe(target::hasThreads));
-                IProcess process = target.getProcess();
-                if (process != null) {
-                    sb.append(" | pid=").append(safe(() -> process.getAttribute(IProcess.ATTR_PROCESS_ID)));
-                }
-                sb.append(System.lineSeparator());
-                if (target instanceof IJavaDebugTarget javaTarget) {
-                    sb.append("    vmName=").append(safe(javaTarget::getVMName));
-                    sb.append(" | isOutOfSynch=").append(safe(() -> javaTarget.isOutOfSynch()));
-                    sb.append(System.lineSeparator());
-                    appendThreads(sb, "direct getThreads():", directThreads(javaTarget));
-                    appendThreads(sb, "getRootThreadGroups():", groupThreads(javaTarget));
-                }
-            }
-        }
-        if (sb.isEmpty()) {
-            sb.append("no launches known to the launch manager");
-        }
-        System.err.println(sb);
-        try {
-            IProject diagnosticProject = ResourcesPlugin.getWorkspace().getRoot().getProject("org.sterl.llmpeon.test");
-            // rawLocation: getLocation() is null for a project without a resolvable local location
-            IPath projectDir = diagnosticProject.getRawLocation();
-            if (projectDir == null) {
-                projectDir = ResourcesPlugin.getWorkspace().getRoot().getLocation().append(diagnosticProject.getName());
-            }
-            java.nio.file.Files.writeString(java.nio.file.Path.of(projectDir.toOSString(), "diagnosis-sessions.txt"), sb.toString());
-        } catch (Exception e) {
-            System.err.println("diagnosis file write failed: " + e);
-        }
-        return sb.toString();
-    }
-
-    private static IThread[] directThreads(IJavaDebugTarget target) {
-        try {
-            return target.getThreads();
-        } catch (DebugException e) {
-            return new IThread[0];
-        }
-    }
-
-    private static IThread[] groupThreads(IJavaDebugTarget target) {
-        try {
-            var all = new java.util.ArrayList<IThread>();
-            for (IJavaThreadGroup group : target.getRootThreadGroups()) {
-                for (IJavaThread thread : group.getThreads()) {
-                    all.add(thread);
-                }
-            }
-            return all.toArray(new IThread[0]);
-        } catch (DebugException e) {
-            return new IThread[0];
-        }
-    }
-
-    private static void appendThreads(StringBuilder sb, String label, IThread[] threads) {
-        sb.append("    ").append(label).append(' ').append(threads.length).append(System.lineSeparator());
-        for (IThread thread : threads) {
-            sb.append("      - ").append(safe(thread::getName));
-            if (thread instanceof IJavaThread javaThread) {
-                sb.append(" | suspended=").append(safe(javaThread::isSuspended))
-                        .append(" | system=").append(DebugSupport.isSystem(javaThread))
-                        .append(" | topFrame=").append(safe(() -> {
-                            IStackFrame frame = javaThread.getTopStackFrame();
-                            return frame == null ? "null" : frame.getName() + ":" + frame.getLineNumber();
-                        }));
-            }
-            sb.append(System.lineSeparator());
-        }
-    }
-
-    @FunctionalInterface
-    private interface CheckedSupplier<T> {
-        T get() throws Exception;
-    }
-
-    private static String safe(CheckedSupplier<?> value) {
-        try {
-            return String.valueOf(value.get());
-        } catch (Exception e) {
-            return "<error: " + e.getMessage() + ">";
-        }
-    }
-
     @Tool(name = "get_stack_trace", value = "List the stack frames of a debug thread (index, method, type, line, method entry). Optional thread name.")
     public String getStackTrace(@P(name = "thread", description = "Thread name; empty = first suspended thread, else first non-system thread.", required = false) String thread) {
         var session = DebugSession.findActive();
@@ -171,7 +69,7 @@ public class JavaDebugTool extends AbstractTool {
         return DebugJson.stackTrace(session.resolveThread(thread));
     }
 
-    @Tool(name = "get_variables", value = "Show variables of a stack frame as JSON. Optional name path (a.b.c) and depth (default 1, max 5).")
+    @Tool(name = "get_variables", value = "Show the local variables of a stack frame as JSON (statics not included). Optional name path (a.b.c) and depth (default 1, max 5).")
     public String getVariables(@P(name = "thread", description = "Thread name; empty = first suspended thread, else first non-system thread.", required = false) String thread,
             @P(name = "frame", description = "Stack frame index, 0 = top.", required = false) Integer frame,
             @P(name = "name", description = "Variable path (a.b.c) to drill into; empty = all top-level variables.", required = false) String name,
@@ -183,7 +81,7 @@ public class JavaDebugTool extends AbstractTool {
         return DebugJson.variables(javaFrame(session, thread, frame), name, depth == null ? 0 : depth);
     }
 
-    @Tool(name = "evaluate_expression", value = "Evaluate a Java expression in a suspended stack frame and return the result as JSON.")
+    @Tool(name = "evaluate_expression", value = "Evaluate a Java expression in a suspended stack frame and return the result as JSON. Object results come back as a reference id (… (id=N)).")
     public String evaluateExpression(@P(name = "thread", description = "Thread name; empty = first suspended thread, else first non-system thread.", required = false) String thread,
             @P(name = "frame", description = "Stack frame index, 0 = top.", required = false) Integer frame,
             @P(name = "expression") String expression,
@@ -269,15 +167,14 @@ public class JavaDebugTool extends AbstractTool {
             throw DebugSupport.fail("setting variable " + name + " to " + value, e);
         }
         String type;
-        String newValueString;
+        IValue after;
         try {
             type = variable.getReferenceTypeName();
-            IValue after = variable.getValue();
-            newValueString = after == null ? "null" : after.getValueString();
+            after = variable.getValue();
         } catch (DebugException e) {
             throw DebugSupport.fail("reading the new value of variable " + name, e);
         }
-        return DebugJson.valueResponse(name, type, newValueString);
+        return DebugJson.valueResponse(name, type, after);
     }
 
     @Tool(name = "set_breakpoint", value = "Set a line breakpoint with optional condition, hit count and suspend policy (THREAD or VM).")
@@ -322,7 +219,7 @@ public class JavaDebugTool extends AbstractTool {
         if (!fileResource.exists()) {
             throw new IllegalArgumentException("file '" + file + "' not found in project " + project.getName());
         }
-        String typeName = primaryTypeName(fileResource, file);
+        String typeName = primaryTypeName(JavaCore.create(project), fileResource, file);
         IJavaLineBreakpoint breakpoint;
         try {
             breakpoint = JDIDebugModel.createLineBreakpoint(fileResource, typeName, line, -1, -1, hits, true,
@@ -606,13 +503,28 @@ public class JavaDebugTool extends AbstractTool {
         return project;
     }
 
-    private static String primaryTypeName(IFile fileResource, String file) {
-        if (!(fileResource.getAdapter(ICompilationUnit.class) instanceof ICompilationUnit unit)) {
-            throw new IllegalArgumentException("file '" + file + "' is not a Java compilation unit");
+    /**
+     * Resolves the file to the primary type of its compilation unit via the JDT
+     * model — JavaCore.createCompilationUnitFrom(IFile) → ICompilationUnit →
+     * findPrimaryType (2026-09-21 E2E F1: the raw IFile was not loaded, so every
+     * set_breakpoint failed with "not a Java compilation unit").
+     *
+     * @param fileLabel the file as the user passed it (for honest errors)
+     * @throws IllegalArgumentException when the file is not a Java source file with a primary type
+     */
+    public static String primaryTypeName(IJavaProject javaProject, IFile file, String fileLabel) {
+        return primaryTypeName(JavaCore.createCompilationUnitFrom(file), javaProject.getElementName(), fileLabel);
+    }
+
+    public static String primaryTypeName(ICompilationUnit unit, String projectName, String fileLabel) {
+        if (unit == null) {
+            throw new IllegalArgumentException("file '" + fileLabel + "' in project " + projectName
+                    + " is not a Java source file — only .java files in a source folder can take line breakpoints");
         }
-        var primaryType = unit.findPrimaryType();
+        IType primaryType = unit.findPrimaryType();
         if (primaryType == null) {
-            throw new IllegalArgumentException("file '" + file + "' has no primary Java type");
+            throw new IllegalArgumentException("file '" + fileLabel + "' in project " + projectName
+                    + " has no primary Java type");
         }
         return primaryType.getFullyQualifiedName();
     }

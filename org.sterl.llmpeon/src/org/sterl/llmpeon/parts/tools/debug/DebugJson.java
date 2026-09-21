@@ -149,12 +149,22 @@ public final class DebugJson {
         return pretty(variableNode(current, d));
     }
 
-    /** set_variable response: {name, type, value} (the new value). */
-    static String valueResponse(String name, String type, String value) {
+    /**
+     * set_variable response: {name, type, value} (the new value). Primitives are
+     * rendered as JSON primitives (boolean/number) like get_variables (2026-09-21
+     * E2E F3); objects and strings as their value string, null as JSON null.
+     */
+    public static String valueResponse(String name, String type, IValue value) {
         Map<String, Object> node = new LinkedHashMap<>();
         node.put("name", name);
         node.put("type", type);
-        node.put("value", value);
+        if (value == null || isNull(value)) {
+            node.put("value", null);
+        } else if (value instanceof IJavaPrimitiveValue primitive) {
+            node.put("value", primitiveValue(primitive));
+        } else {
+            node.put("value", valueString(value));
+        }
         return pretty(node);
     }
 

@@ -325,3 +325,22 @@ Keine Code-Änderung nötig. Nächstes: Diagnose-Lauf Befund 1/2 (Paul startet S
 **Gates (2026-09-21):** `eclipseBuildProject` `org.sterl.llmpeon` grün (nur known-benign Warnings) + `org.sterl.llmpeon.test` 0 Fehler/0 Warnings; OSGi-Suite **248 Tests / 0 Failures / 0 Skipped** (245 + 3 neu). Commit: `cd85bf2`.
 
 **Offen:** Pauls voller E2E-Smoke (Phase 1–5) → danach `diagnose_sessions`-TEMP-Tool entfernen + PO-Doc-Flips (R-JD-1…5, UC-JD-1…6, `index.md:72`).
+
+---
+
+## E2E-F1+F7+F3-FIXRUNDE 2026-09-21 (Paul-Verdict: Minimal, F2 → Backlog) — DONE, wartet auf Pauls Flips + ADRs + planImplemented
+
+**Fixes:**
+1. **F1 — `set_breakpoint` „not a Java compilation unit":** `JavaDebugTool.primaryTypeName` löst das rohe IFile jetzt über JDT auf: `JavaCore.createCompilationUnitFrom(IFile)` → ICompilationUnit → `findPrimaryType`. Kein CU (nicht .java / außerhalb Source-Ordner) oder kein Primär-Typ → ehrlicher Fehler mit Datei+Projekt+Grund. Testbare Logik im public static Overload `primaryTypeName(ICompilationUnit, String, String)` (die statische JavaCore-Factory deckt der E2E-Smoke). API-Fakt: `IJavaProject.getRelativePath(IFile)` existiert in jdt.core 3.47 **nicht** — erster Ansatz nutzte es und brach den Build.
+2. **F7 — selbst beendete VM = aktive Session:** `DebugSession.findActive` filtert jetzt tote Targets: `isDead` = `IProcess.isTerminated()` **ODER** `!target.hasThreads()` (DebugException → tot). Selbst-exited JVM (JDT lässt Target un-terminated) oder threadlose VM → ehrliches no-session, `continue` verbrennt keine 30 s.
+3. **F3 — `set_variable`-Wert als String:** `DebugJson.valueResponse(String, String, IValue)` nimmt jetzt das IValue und rendert `IJavaPrimitiveValue` als JSON-Primitive (int → `42`), null als JSON null, sonst Value-String — konsistent mit `get_variables`.
+
+**Beschreibungs-Klarstellungen (nur Text):** `get_variables` = „Show the local variables of a stack frame as JSON (statics not included)…"; `evaluate_expression` = „…Object results come back as a reference id (… (id=N))". `docs/tool-descriptions-inventory.md:192-193` nachgezogen (2026-09-21-Hinweis).
+
+**TEMP-Tool:** `diagnose_sessions` samt Helpers entfernt (Smoke fertig).
+
+**Tests (6 neu, 1 adaptiert):** `DebugPrimaryTypeTest` (3: Happy-Path / kein CU ehrlich / kein Primär-Typ ehrlich), `DebugSessionThreadsTest` +2 (`selfExitedVmIsNotAnActiveSession`, `threadlessVmIsNotAnActiveSession`), `DebugJsonUnitTest` +1 (`valueResponseRendersPrimitivesAsJsonPrimitives`), `DebugSessionLookupTest`-Stubs +`hasThreads` (lebende VMs haben Threads — sonst filterte die neue Lebend-Prüfung sie aus).
+
+**Gates (2026-09-21):** Build grün in beiden Projekten (nur known-benign Warnings); OSGi-Suite **254 Tests / 0 Failures / 0 Skipped** (248 + 6). Commit: (Hash unten).
+
+**Offen (PO):** Doc-Flips (R-JD-1…5, UC-JD-1…6), ADRs, planImplemented. F2 bleibt Backlog.

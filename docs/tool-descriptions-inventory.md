@@ -189,8 +189,8 @@ isEditTool=✔ (R-JD-5: Plan/Review/SearchAgent/read-only-Custom filtern es auto
 |---|--------|---------------------|--------|-----------------|-----|
 | 56 | `get_state` | *(neu — kein Bestand)* | ✅ | `"Show the active Java debug session: VM state, all threads with state, system flag and top frame."` | Read-only Session-Überblick (UC-JD-3) |
 | 57 | `get_stack_trace` | *(neu — kein Bestand)* | ✅ | `"List the stack frames of a debug thread (index, method, type, line, method entry). Optional thread name."` | Stack-Liste, optionaler Thread-Filter |
-| 58 | `get_variables` | *(neu — kein Bestand)* | ✅ | `"Show variables of a stack frame as JSON. Optional name path (a.b.c) and depth (default 1, max 5)."` | Depth-Limit im Namen (Tool lügt nicht) |
-| 59 | `evaluate_expression` | *(neu — kein Bestand)* | ✅ | `"Evaluate a Java expression in a suspended stack frame and return the result as JSON."` | Ergebnis als JSON, kein Render |
+| 58 | `get_variables` | *(neu — kein Bestand)* | ✅ | `"Show the local variables of a stack frame as JSON (statics not included). Optional name path (a.b.c) and depth (default 1, max 5)."` | Depth-Limit im Namen (Tool lügt nicht); 2026-09-21: Scope-Klarstellung (statics nicht enthalten, Tester-Rückfrage) |
+| 59 | `evaluate_expression` | *(neu — kein Bestand)* | ✅ | `"Evaluate a Java expression in a suspended stack frame and return the result as JSON. Object results come back as a reference id (… (id=N))."` | Ergebnis als JSON, kein Render; 2026-09-21: Objekt-Ergebnis als Referenz-ID (id=N) benannt (Tester-Rückfrage) |
 | 60 | `set_variable` | *(neu — kein Bestand)* | ✅ | `"Set a local variable or argument to a primitive, String or null value. No confirmation."` | Scope-Limit (Primitiven/String/null) + R-JD-2 (keine Confirmations) |
 | 61 | `set_breakpoint` | *(neu — kein Bestand)* | ✅ | `"Set a line breakpoint with optional condition, hit count and suspend policy (THREAD or VM)."` | Optionale Parameter im Namen |
 | 62 | `set_exception_breakpoint` | *(neu — kein Bestand)* | ✅ | `"Set an exception breakpoint for a type with suspend policy and caught/uncaught/subtype options."` | Exception-BP-Optionen |

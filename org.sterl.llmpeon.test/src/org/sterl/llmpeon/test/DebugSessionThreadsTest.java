@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.Proxy;
@@ -97,12 +98,15 @@ public class DebugSessionThreadsTest {
      * ATTR_PROCESS_ID attribute comes back as the String "78703".
      */
     private static IJavaDebugTarget target(IJavaThread main) {
+        return target(main, stub(IProcess.class, Map.of("getAttribute", "78703")), true);
+    }
+
+    private static IJavaDebugTarget target(IJavaThread main, IProcess process, boolean hasThreads) {
         var system = systemThreads();
         var all = new IJavaThread[system.length + 1];
         all[0] = main;
         System.arraycopy(system, 0, all, 1, system.length);
         var group = stub(IJavaThreadGroup.class, Map.of("getThreads", (Object) system));
-        var process = stub(IProcess.class, Map.of("getAttribute", "78703"));
         var answers = new HashMap<String, Object>();
         answers.put("isTerminated", false);
         answers.put("isSuspended", false);
@@ -112,6 +116,7 @@ public class DebugSessionThreadsTest {
         answers.put("getThreads", (Object) all);
         answers.put("getRootThreadGroups", (Object) new IJavaThreadGroup[] { group });
         answers.put("getProcess", process);
+        answers.put("hasThreads", hasThreads);
         return stub(IJavaDebugTarget.class, answers);
     }
 
@@ -171,6 +176,34 @@ public class DebugSessionThreadsTest {
         // THEN: main is picked (first suspended) — with the old getRootThreadGroups()
         // path this throws "no usable thread" because main is missing there
         assertEquals("main", resolved.getName());
+    }
+
+    // UC-JD-2
+    @Test
+    public void selfExitedVmIsNotAnActiveSession() {
+        // GIVEN: a zombie target — after a self-exit JDT leaves the target
+        // un-terminated (2026-09-21 E2E F7), but the process is terminated
+        IProcess deadProcess = stub(IProcess.class, Map.of("isTerminated", true, "getAttribute", "78703"));
+        IJavaDebugTarget zombie = target(thread("main", true, false), deadProcess, true);
+
+        // WHEN: resolving the active session
+        DebugSession session = DebugSession.findActive(new ILaunch[] { launch(zombie) });
+
+        // THEN: no active session — get_state answers the no-session message and
+        // continue does not poll for 30 s
+        assertNull(session);
+    }
+
+    // UC-JD-2
+    @Test
+    public void threadlessVmIsNotAnActiveSession() {
+        // GIVEN: a zombie target — process alive, target un-terminated, but the VM
+        // answers no threads (the diagnosed get_state showed threads=[])
+        IProcess aliveProcess = stub(IProcess.class, Map.of("getAttribute", "78703"));
+        IJavaDebugTarget zombie = target(thread("main", true, false), aliveProcess, false);
+
+        // WHEN: resolving the active session
+        assertNull(DebugSession.findActive(new ILaunch[] { launch(zombie) }));
     }
 
     private static void assertContains(String value, String expected) {
