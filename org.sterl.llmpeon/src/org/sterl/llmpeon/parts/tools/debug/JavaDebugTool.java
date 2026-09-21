@@ -140,7 +140,7 @@ public class JavaDebugTool extends AbstractTool {
         }
     }
 
-    @Tool(name = "get_exception", value = "Find the exception at the current suspend: scans the top frame's local variables (incl. catch parameter) for a java.lang.Throwable or subtype and returns its type, message and variable name. Limit: an uncaught throw new X(...) at the throw site has no named variable and is not found there.")
+    @Tool(name = "get_exception", value = "Find the exception at the current suspend: scans the top frame's local variables (incl. catch parameter) for a java.lang.Throwable or subtype and returns its type, message and variable name. Recognition is by name — exact java.lang.Throwable or a simple name ending in Exception/Error; a custom Throwable subclass with an unusual name is NOT recognized (then use get_variables). Limit: an uncaught throw new X(...) at the throw site has no named variable and is not found there.")
     public String getException(@P(name = "thread", description = "Thread name; empty = first suspended thread, else first non-system thread.", required = false) String thread) {
         var session = DebugSession.findActive();
         if (session == null) {

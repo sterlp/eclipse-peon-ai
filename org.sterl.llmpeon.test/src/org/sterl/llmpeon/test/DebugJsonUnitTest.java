@@ -428,6 +428,26 @@ public class DebugJsonUnitTest {
         }
     }
 
+    // UC-JD-12
+    @Test
+    public void exceptionNotRecognizedByUnusualName() {
+        // GIVEN: a thread whose top frame holds a custom throwable named neither *Exception nor *Error
+        var failure = variable("failure", "my.company.WeirdThrowable", throwableObject("my.company.WeirdThrowable"));
+        IJavaStackFrame frame = stub(IJavaStackFrame.class, Map.of(
+                "getLocalVariables", (Object) new IJavaVariable[] { failure },
+                "getMethodName", "main"));
+        IJavaThread thread = threadWithTopFrame(frame);
+
+        // WHEN: looking for the exception
+        try {
+            DebugJson.exception(thread);
+            fail("expected an honest not-found error");
+        } catch (IllegalArgumentException e) {
+            // THEN: the name-heuristic boundary is reported honestly, not a silent false negative
+            assertContains(e.getMessage(), "no exception variable in top frame");
+        }
+    }
+
     private static void assertContains(String value, String expected) {
         assertTrue("Expected:\n" + value + "\nto contain:\n" + expected, value.contains(expected));
     }
