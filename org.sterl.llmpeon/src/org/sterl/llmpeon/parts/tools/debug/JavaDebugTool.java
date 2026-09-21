@@ -349,7 +349,7 @@ public class JavaDebugTool extends AbstractTool {
             throw new IllegalArgumentException("exceptionType must be a fully qualified type name");
         }
         boolean uncaught = catchUncaught == null || catchUncaught;
-        boolean caught = catchCaught == null || catchCaught;
+        boolean caught = catchCaught != null && catchCaught;
         if (!uncaught && !caught) {
             throw new IllegalArgumentException("at least one of catchUncaught / catchCaught must be true");
         }
