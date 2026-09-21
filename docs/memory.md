@@ -1,41 +1,42 @@
-# Session-Stand — 2026-09-20 (Tool-Evolution Build-Zyklus)
+# Session-Stand — 2026-09-21 (Tool-Evolution Build-Zyklus)
 
 ## Wo wir stehen
 
-**Branch `analysis/tool-evolution`** — Paul freut Zyklus ab, kurze "ok"-Antworten.
+**Branch `analysis/tool-evolution`** — Paul hat IDE neu installiert (2026-06, Target bleibt 2026-09).
 
-- ✅ **Story A** (Disclosure + Web-Tools) — komplett, Flips ✅, Archiv `overview-done-2026-09-20-12-43.md`.
-- ✅ **Story B** (CR-3 Project-Problems-Filter) — **DONE 2026-09-20.** Feature `0eb746f` → Review-Fixes
-  `a721313` (ungültiger severity = IAE, case-insensitive gemessen, try/finally-Cleanup, whitespace=unset)
-  → `e98e646` (UC-PP-7-Kommentar) → `e84fcbc` (Flips + Archiv `overview-done-2026-09-20-14-02.md`).
-  Doc R-PP-1…7 + UC-PP-1…7 ✅, OSGi 236/0/0, Lint PP = 0.
-- **Story C (Debugger)** — Doc gehärtet: [java-debugger-tool.md](java-debugger-tool.md) R-JD-1…5 +
-  UC-JD-1…6 (❌), JD-Präfix gezogen. **Nächster Schritt: Plan via planWithPlanAgent** (User-managte
-  Session, alle Actions, KEINE Confirmations, für Da Mek, sync, keine Session = ehrlicher Fehler;
-  Fixture-Strategie Debug-Session im OSGi-Test klären — Da Mek STOP-AND-ASK).
-- Danach: DocsLinter `idPattern`-`@P`-Description als Mini-Zyklus (Da-Dok-Kandidat, siehe open-points).
+- ✅ **Story A** (Disclosure + Web-Tools) — done 2026-09-20.
+- ✅ **Story B** (Project-Problems-Filter) — done 2026-09-20 (`e84fcbc`, Archiv `overview-done-2026-09-20-14-02.md`).
+- ✅ **Story C** (Java-Debugger) — **komplett 2026-09-21:** Plan → I1–I4 → Da-Dok-Review CONCERNS →
+  Fixes (`ca2793a`, Mutation-Nachweis Session-Gate) → E2E-Smoke 2 Runden (F1/F7/F3 gefixt `2efaaf6`,
+  F2 = Backlog) → UC-IDs gemappt (`8de750c`) → **Flips ✅** (R-JD-1…8, UC-JD-1…9; UC-JD-2…6 manuell
+  verifiziert per ADR-0051). ADRs 0049/0050/0051 geschrieben. Lint: nur bekannte Befunde
+  (34× UC-DL, 5× UC-JD-2…6 manuell, UC-DL-99).
+- **Wartet:** Da Mek `planImplemented` (nach Commit meiner Docs-Flips) + Ledger-Eintrag Skill
+  `eclipse-dpe` (Create, `2c1f2de`) + Management-Summary für Paul.
 
 ## Nächste Schritte
 
-1. Story C: planWithPlanAgent → meine Abnahme → buildWithDev → reviewPlanAgent (Da Dok; vorher ggf.
-   compactReview, er ist bei ~77%) → Flips ✅ + lint vor Flip.
-2. Mini-Zyklus DocsLinter idPattern-`@P`-Description + docs-linter.md-Zeile.
-3. Management-Summary an Paul mit Skill-Evolution-Abschnitt (AGENTS-PO); Merge/Squash = Paul.
+1. Da Mek: Docs committen (java-debugger-tool.md, index.md, ADRs 0049–0051, open-points, memory.md)
+   + `planImplemented` + Skill-Impact-Ledger für `eclipse-dpe`.
+2. Management-Summary mit Skill-Evolution-Abschnitt; Merge/Squash = Paul.
+3. DocsLinter-Mini-Zyklus (idPattern-`@P`-Description + UC-DL-99 + „manuell verifiziert"-Marker-Idee).
+4. ApiRetry-Follow-up + Issue #142 (Paul-Korrektur + Fix-Entscheid → ADR) — geparkt im Backlog.
 
 ## Bekannt & bewusst out-of-scope
 
-- Lint: 34× `UNBELEGT_ERLEDIGT UC-DL` (Docs-Linter-Doc hat UCs, Tests sind Tool-Tests) — seit 2026-09-15 bekannt.
-- Neu beobachtet: `VERWAIST UC-DL-99` (DocsLinterToolTest.java:78) —UC-DL-99 fehlt im Doc; beim
-  DocsLinter-Mini-Zyklus mit fixen.
+- Lint: 34× `UNBELEGT_ERLEDIGT UC-DL` + `VERWAIST UC-DL-99` + 5× UC-JD-2…6 (manuell, ADR-0051).
+- F2 (Debugger-Backlog), Exception-Event-Info, build.properties-Warnung — alle in open-points.md.
 
 ## Was nicht neu aufgemacht wird
 
-CR-1/2/7 abgelehnt (Revisit nur bei Nicht-Git-Workspaces) · CR-5/CR-6 geparkt, nicht verworfen ·
-Copilot-Server nicht decompilieren · keine Confirmations für Debugger.
+CR-1/2/7 abgelehnt · CR-5/CR-6 geparkt · Copilot-Server nicht decompilieren · keine Confirmations für
+Debugger · Target-Rollback auf 2026-06 nur IDE (Target bleibt 2026-09 — sonst bricht Story C).
 
 ## Lektionen (Zyklus)
 
-1. Eigene frühere Analysen sind IST-Verdacht (Issue #142: p2-Site-Content ≠ Bundle-ClassPath).
-2. PO-Run-Verdicts sofort ablegen (resolved-points.md), keine Leichen.
-3. LLM-Backend (llama.cpp) kann crashen — 3× Connect-Abbrüche am 2026-09-20; State/Commits überleben,
-   einfach retry (Evidence in open-points).
+1. API-Contract gegen die **tatsächlich aufgelöste** Target-Generation verifizieren (Plan-§3 ging 2×
+   daneben: debug.core-Drift, getRootThreadGroups-vs-getThreads → diagnose.txt-Beweis).
+2. Smoke vor Flips hat sich doppelt bewährt: F1/F7 wären sonst als ✅ geflippt worden.
+3. Full-File-Rewrites von Docs: Frontmatter (`idPrefix`) nicht verlieren — PRAEFIX_FEHLT-Lauf hat's
+   sofort gezeigt (Linter als Sicherheitsnetz, gut).
+4. Flaky-Test stoppen statt iterieren (Hard-Stop half; ADR-0051 hält die Decision).

@@ -56,4 +56,7 @@ isn't clear from a rule/BDD.
 | [0043](0043-scaffold-write-validator.md) | Scaffold-Write-Scoping via WriteValidator mit dynamischen Roots (configDir + Projekt-Skills-Dir), kein Instanz-Merge | Accepted |
 | [0045](0045-mcp-protocol-version-auto-detect.md) | MCP Protocol-Version: leer = Auto-Detect als Default, kein stiller Default (`2025-06-18` entfällt, Clean Break), editierbare Combo | Accepted |
 | [0046](0046-core-portability-review.md) | Core-Portability-Review (Nordstern Web-App-Port): core import-rein (0 Eclipse-Imports), 4 Moves Plugin→core (`b7f67e0`), B-Moves dokumentiert, Composition-Root-Gap | Accepted |
+| [0049](0049-jdt-debug-2026-09-api-drift.md) | JDT-Debug-API-Drift 2026-09: `model`-Paket weg, `IJavaProcess` weg, `getRootThreadGroups()` listet `main` nicht → `getThreads()`; Breakpoints über `JDIDebugModel`, Eval über `EvaluationManager` | Accepted |
+| [0050](0050-debugger-jdt-not-dap-user-session.md) | Debugger-Basis JDT-Debug-Model statt DAP; Session = User-Property (kein Auto-Start/-Disconnect); keine Confirmations | Accepted |
+| [0051](0051-debugger-no-live-session-tests.md) | Debugger ohne automatisierte Live-Session-Tests (flaky VMStart-Race): UC-JD-1 + Stub-Tests automatisiert, UC-JD-2…6 manuell (E2E-Smoke) | Accepted |
 

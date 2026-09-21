@@ -10,6 +10,37 @@ wird nach dem Run gelöscht): feature-change-request-copilot.md. Neutrale Entwur
 tool-confirmation, terminal-session-tool, java-debugger-tool, project-problems-tool.
 **Paul: alle CR-Items durchgehen, dann normale Build-Zyklen.**
 
+## ❓ Debugger-Backlog F2: statische Felder + evaluate-Objektwerte (2026-09-21, Paul: Backlog)
+
+Aus dem Debugger-E2E-Smoke (issue3.md): `get_variables` liefert nur Frame-Lokale — statische Felder
+(`DebugFix.p` mit x/y) sind nicht erreichbar; `evaluate_expression("p")` gibt nur die Objekt-Referenz-ID
+(„ (id=25)") statt Feldwerten. Paul: **Backlog** — SOLL wäre: statische Felder des Frame-Typs
+(z. B. mit `"static": true`) + `evaluate_expression` rendert Objekt-Felder bis depth. Tool-Beschreibungen
+nennen beide Grenzen bereits (Fix `2efaaf6`), LLM-Überraschung ist abgefedert.
+
+## ⏳ Debugger-Zusatz (klein, aus E2E-Smoke 2026-09-21): Exception-Suspend ohne Event-Info
+
+`get_state`/`get_stack_trace` zeigen am Exception-Suspend nur den Frame (main, Zeile 14), nicht
+welche Exception geworfen hat. Tester-Notiz („kein SOLL-Verstoß") — kleine SOLL-Erweiterung wäre
+ein `exception`-Feld im State am Exception-Suspend. Rückversicherung mit Paul steht aus.
+
+## ⏳ Docs-Linter: „manuelle Verifikation" als anerkannter Status (2026-09-21, Jon)
+
+UC-JD-2…6 sind manuell verifiziert (E2E-Smoke, [ADR-0051](adr/0051-debugger-no-live-session-tests.md)),
+der Linter meldet sie trotzdem als `UNBELEGT_ERLEDIGT` — ich flippe sie mit expliziter Annotation als
+bekannt-jestifiziert. Linter-Idee (eigener Mini-Zyklus, mit UC-DL-99): Marker wie `*(manuell verifiziert
+<date>, <beleg>)*` in der UC-Zeile vom UNBELEGT-Check ausnehmen. Rückversicherung mit Paul steht aus.
+
+## ⏳ Docs-Linter: VERWAIST UC-DL-99 (DocsLinterToolTest.java:78)
+
+Test-ID ohne Doc-Definition — beim idPattern-`@P`-Description-Mini-Zyklus mappen oder Doc-UC nachziehen.
+
+## ⏳ `eclipseBuildProject` Failure: build.properties-Warnung (seit Story #136)
+
+„class folder 'resources/' not associated to any output library entry" — Failure-Meldung bei grüner
+Kompilation. Pre-existing, nicht aus diesem Zyklus (Da Mek 2026-09-21 verifiziert). Separater
+Mini-Fix-Kandidat.
+
 
 
 ## ❓ `applyEdit` Not-Found-Fehler dumpet das gesamte File (2026-09-19, Jon — offen, keine Lösung)
