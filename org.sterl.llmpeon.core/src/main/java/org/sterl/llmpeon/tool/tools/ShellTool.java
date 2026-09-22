@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import org.sterl.llmpeon.shared.ArgsUtil;
+import org.sterl.llmpeon.shared.CallStats;
 import org.sterl.llmpeon.shared.SearchQuery;
 
 import dev.langchain4j.agent.tool.P;
@@ -112,6 +113,7 @@ public class ShellTool extends AbstractTool {
             // ensure we have set Xmx for mvn as it is very slow otherwise ...
             if (command.contains("mvn")) pb.environment().putIfAbsent("MAVEN_OPTS", "-Xmx4g");
             pb.redirectErrorStream(true); // merge stderr into stdout
+            var stats = CallStats.start();
             var process = pb.start();
 
             Thread reader = new Thread(() -> {
@@ -146,7 +148,8 @@ public class ShellTool extends AbstractTool {
                     partial = formatOutput(lines, filter, tailLines).text();
                 }
                 onTool("Command timed out (exit killed) - " + (lines.isEmpty() ? "no output" : lines.size() + " lines captured"));
-                return "Command timed out after " + timeout + "s. Partial output:\n" + partial;
+                return "Command timed out after " + stats.duration()
+                    + ". Partial output:\n" + partial + System.lineSeparator() + stats.suffix();
             }
 
             reader.join(2000);
@@ -159,7 +162,10 @@ public class ShellTool extends AbstractTool {
             }
             onTool("Command finished (exit " + exitCode + ") reading " 
                     + output.shown() + " lines ...");
-            return resultStr;
+            if (resultStr.isEmpty()) {
+                return stats.suffix();
+            }
+            return resultStr + System.lineSeparator() + stats.suffix();
 
         } catch (IOException e) {
             onProblem("Failed to run: " + command + " " + e.getMessage());
