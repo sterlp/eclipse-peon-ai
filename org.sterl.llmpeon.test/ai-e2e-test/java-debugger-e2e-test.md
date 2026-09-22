@@ -96,12 +96,15 @@ Erwartung steht hier.
 > | # | Aufruf | Erwartet |
 > |---|---|---|
 > | 3.1 | `set_breakpoint` auf die Breakpoint-Zeile, `condition="counter == 2"`, `hitCount=3` | Response mit Marker-ID + `installed`. |
-> | 3.2 | `continue` | Läuft weiter … **und suspended wieder**, wenn der BP das **dritte Mal** erreicht ist (JDI: hitCount zählt zuerst, Condition wird danach geprüft). Im Suspend: `counter == 2`. |
+> | 3.2 | `continue` | Läuft weiter … **und suspended wieder**, wenn der BP das **dritte Mal** erreicht ist (JDI: hitCount zählt zuerst, Condition wird danach geprüft). Im Suspend: `counter == 2`. **Zähl-Definition (JDI-Experiment Da Mek, 2026-09-22):** die Suspend-Position beim Setzen zählt als stiller Hit #1 — der BP wurde hier auf der bereits suspendierten Zeile gesetzt, also hält der 3. Hit am **4. Erreichen nach `continue`** (JDI-Semantik, kein Tool-Bug). Alternativ: BP vor dem Launch setzen, dann trifft der 3. Hit exakt das 3. Erreichen. |
 > | 3.3 | `remove_breakpoint(id)` | `{id, removed}`; ein erneuter `continue` hält dann **nicht** mehr an dieser Zeile. |
 > | 3.4 | `remove_breakpoint` mit unbekannter ID | **Ehrlicher Fehler**, kein stiller No-Op. |
 >
 > **Phase 3b — Exception-Breakpoint (Paul: Relaunch mit Programm-Arg `throw` nötig) — NACH Phase 4 ausführen!**
 > (Begründung F6: nach dem Exception-Suspend beendet jeder Resume die VM — Phase 4 wäre danach nicht mehr möglich.)
+> **Clean-State-Pflicht (2026-09-22, nach E2E-Befunden):** Paul leert vorher die Breakpoints-View
+> (alle alten Marker weg), damit kein Phantom-BP die Phasen 3b/3.2 verfälscht — solange
+> `list_breakpoints` (R-JD-11) nicht gebaut ist, ist die View die einzige Sicht.
 > 1. `set_exception_breakpoint("java.lang.IllegalArgumentException")` → `continue` → Suspend,
 >    sobald `IllegalArgumentException` geworfen wird.
 > 2. `get_exception` im Suspend → **Ehrlicher Fehler** in der Art „no exception variable in top
@@ -122,7 +125,7 @@ Erwartung steht hier.
 > | # | Aufruf | Erwartet |
 > |---|---|---|
 > | 4.1 | `step_over` | `topFrame` rückt eine Zeile weiter, Zustand suspended. |
-> | 4.2 | `step_in` | Erster `step_in` von der Loop-Zeile → `main`, Loop-Körper (JDI korrekt); **zweiter** `step_in` → `tick` (Zeile 20). |
+> | 4.2 | `step_in` | Erster `step_in` von der Loop-Zeile → `main`, Loop-Körper (JDI korrekt); **zweiter** `step_in` → `tick` (Fixture-Zeile 23). |
 > | 4.3 | `step_out` | Zurück in `main`. |
 > | 4.4 | `step_out` erneut am Top-Frame | Ehrliche Meldung in der Art „already at top frame — use continue", kein Crash. |
 > | 4.5 | `evaluate_expression("counter + 1")` | JSON mit `counter + 1` als Wert und Typ. |

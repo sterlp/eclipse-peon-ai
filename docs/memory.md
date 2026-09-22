@@ -1,45 +1,69 @@
-# Session-Stand — 2026-09-22 (Compact-Lock gebaut & reviewed, Smoke + Flip offen)
+# Session-Stand — 2026-09-22 (TD ✅ · Compact-Smoke ok · Debugger-Bug-Hunt läuft)
+
+## Debugger-Bug-Hunt (E2E 2026-09-22, test_project/issue.md — Triage nach Memory #22)
+
+- **F1 Exception-BP tot (Paul: Blocker):** Da Mek exkludierte JDI/JDT (raw-JDI-Experiment feuert;
+  `initializeBreakpoints` installiert Marker-BPs bei Target-Start). Verdacht: E2E-Setup/Phantom-BPs.
+- **F2-A „4. Hit": JDI-Quirk bestätigt** (Suspend-Position = stiller Hit #1) — e2e-Doc 3.2 jetzt mit
+  Zähl-Definition korrigiert. **F2-B „2. Hit": unklar** — Pauls Erinnerung: BP war sauber und griff;
+  Re-Run 3.2/3b mit Clean-State entscheidet.
+- **Bonus-Befund:** Request bleibt nach hitCount-Verbrauch enabled (Refire) — JDI-Spec-Verstoß,
+  Ursache/Owner noch offen.
+- **Ursachen-Fix-Story Paul:** `list_breakpoints` (R-JD-11/UC-JD-13, bewusst ohne Session —
+  Phantom-BPs leben zwischen Sessions) + `hitCount:-1→0` Display-Clamp (R-JD-12/UC-JD-14). SOLL in
+  java-debugger-tool.md ❌, e2e-Doc mit Clean-State-Pflicht (3b) + Zeile 23 + Zähl-Definition
+  aktualisiert. Bau als Mini-Zyklus, danach Paul: Re-Run 3b/3.2 (1–2 Relaunches).
+- Red-Test-Policy (Jon): Fix-Level = headless Stubs (DebugJson-Muster), JDI-Verhalten = Standalone-
+  JUnit-Dokumentation, Live-Session manuell (ADR-0051).
+
+# Session-Stand — 2026-09-22 (Compact-Lock ✅ reviewed · Tool-Time-Disclosure ✅ · Smoke offen)
 
 ## Wo wir stehen
 
-**Branch `story/compact-lock-2026-09-22`** (von `story/f2-debug-linter-2026-09-21`; Basis-Kette:
-tool-evolution ← f2 ← compact-lock; Merge/Squash = Paul).
+**Branch `analysis/tool-evolution`** — f2 + compact-lock gemerged (fast-forward, Pauls Anweisung),
+danach Tool-Time-Disclosure drüber. Story-Branches (f2, compact-lock) stehen noch (Aufräumen = Paul).
+Kein Push; Merge auf main = Paul.
 
-- ✅ **Compact-Lock gebaut:** I1 `18ae8eb` (CAS-Hülle `AbstractAgent.compact()`, Acquire vor
-  R16-Guard, Release nur `if (acquired)`) · I2 `f059c68` (`call(null)`+Queue → `[Queued Message]:`-
-  Payload, D5-`\nnull`-Fix) · I3 `d6b11b5` (Follow-up-Trigger in `handleDoneChatResponse` @Nullable
-  `compactedAgent`, selbes UI-Runnable wie Unlock, Identity-Check Active Agent, D6 feuert bei jedem
-  Abschluss) · Plan-Status `70ebd77` · Nacharbeiten `7e6afc5` (Javadoc selbsttragend + Companion-Pin
-  `compactFailedReleasesWorkingFlag`) · Docs/Plan-Commits `b9ca08b` (4 f2-Docs + f2-Plan-Archiv +
-  Da-Dok-Review-Sektion).
-- Tests: Core Surefire 908/0, Plugin 261/0. Review **Da Dok: ACCEPTED** (3-Seiten, Zeilen-Evidenz im
-  Plan-Datei-Ende). Meine Stichprobe ✅ (AbstractAgent.java:282/311-312, AIChatView.java:678-684).
-- SOLL: `docs/compact-lock.md` (R-CT-1…4, UC-CT-1…6, **❌**), ADR-0052, chat-job-lifecycle.md
-  Backlog → ❌. 🟡-Indicator + "!"-Messages (queued-user-messages.md Regel 8, 🚧) bewusst NICHT gebaut.
+- ✅ **Compact-Lock** (CAS-Hülle, `[Queued Message]`-Payload, Follow-up-Trigger): Core 908/0,
+  Plugin 261/0, Da Dok **ACCEPTED** (CONCERNS gefixt, `7e6afc5`/`b9ca08b`). Flips UC-CT-1…6
+  **offen** — warten auf Pauls Smoke 1–4 (Liste unten), dann Flip + Lint.
+- ✅ **Tool-Time-Disclosure (Option B)** komplett: `CallStats` im core-shared (Clock injizierbar,
+  `b74bf1c`), PoDelegateTool migriert (Pin, byte-identisch), Shell/RunTest/Build-Suffix mit
+  **gemessener** Dauer (auch im Timeout). Commits `b74bf1c`→`68ab57d`, Plan `6ea1b72`, Docs `081cccd`,
+  Archiv `6e16118`. Core 916/0, Plugin 264/0. Da Dok REJECTED war doc-only (Heading-Depth, mein
+  Fehler) — gefixt, TD-Scope im Lint clean. Abweichung bestätigt: `formatResults`/`timeoutReport`
+  public static (OSGi-Cross-Bundle).
+- Docs: `tool-time-disclosure.md` (R/UC-TD-1…4 ✅), ADR-0053 + Index (0052/0053 nachgetragen),
+  docs-linter.md **Autor-Konvention** ergänzt (Regel `###`, UC `####` — Da-Dok-Fund).
+- ⏳ **Eigener Lint läuft STALE** (Eclipse-Instanz lädt pre-F2-jar): zeigt VERWAIST UC-DL-99,
+  UNBELEGT UC-JD-2…6 (statt MANUELL). Nach Pauls Eclipse-Restart erneut prüfen — dann ist der
+  f2-Zyklus endgültig abgeschlossen.
 
 ## Nächste Schritte
 
-1. **Paul: Smoke 1–4** (Plan §9, UC-CT-3…6 manuell) — siehe Liste unten.
-2. Danach: Flips UC-CT-1…6 ❌→✅ durch Jon (nach Eclipse-Restart + frischem `lintDocsAndTests` —
-   die laufende Instanz lädt stale llmpeon-core, R-DL-22-Marker-Logik fehlt dort).
-3. **Eclipse-Restart → Dogfood-Lint prüfen:** UC-JD-2…6 als MANUELL-Zeilen, UC-DL-99 weg (Altbestand
-   f2-Zyklus) + dann UC-CT-Prüfung.
-4. Da Mek wartet auf Ansage `planImplemented` (Plan-Archiv) — nach Flip.
-5. Merge/Squash der Branch-Kette = Paul.
-6. Geparkt: ApiRetry-Follow-up, Issue #142-ADR, build.properties-Warnung, DL-Test-ID-Sweep (~33).
+1. **Paul: Smoke 1–4 (Compact-Lock)** — Send während Compact → Ack+kein 2. Job; Follow-up FIFO;
+   fehlgeschlagener Compact → Queue trotzdem; Slave-Compact → Blatt-Regel.
+2. Paul-Smoke Time-Disclosure mit drüber: Shell/RunTest/Build-Outputs enden mit `(Ns, HH:mm)`.
+3. Danach: Flips UC-CT-1…6 (CT-3/4/5/6 mit „manuelle Verifikation"-Marker) + Da Mek archiviert
+   Compact-Lock-Plan (wartet auf Ansage).
+4. **Story 2 offen: Queued-Message-Zeit** („[Queued Message] (queued 14:32, 3min ago)") — Format-
+   Empfehlung von Jon steht, **Pauls Bestätigung fehlt**; SOLL nach queued-user-messages.md, dann
+   eigener Mini-Zyklus.
+5. Eclipse-Restart → Dogfood-Lint (f2-Abschluss).
+6. Merge/Squash = Paul. Geparkt: ApiRetry, Issue #142-ADR, build.properties-Warnung, DL-Sweep (~33),
+   TD-Restkandidaten (open-points.md ❓), 🟡-Indicator, "!-Messages".
 
 ## Smoke-Liste (manuell, Compact-Lock CT-3…6)
 
-1. Send während Boss-Compact (autoCompactAfter klein, viele Messages) → Ack „queued", KEIN paralleler
-   2. Job, Roster zeigt Agenten working.
-2. Nach Compact-Ende: Follow-up-Turn verarbeitet Queue FIFO (eine Antwort).
-3. Compact fehlschlagen (leere Compressor-Response erzwingen) → Queue trotzdem Follow-up.
-4. Slave-Compact (Da Mek/Da Thinka Button) → nur Slave 🟢, Blatt-Regel Da Boss bleibt aus, kein
-   Follow-up am Boss.
+1. Send während Boss-Compact → Ack „queued", kein 2. Job, Agent 🟢 working.
+2. Nach Compact-Ende → Follow-up-Turn verarbeitet Queue FIFO.
+3. Compact fehlschlagen → Queue trotzdem Follow-up.
+4. Slave-Compact → nur Slave 🟢, Da Boss aus (Blatt-Regel), kein Follow-up am Boss.
 
 ## Lektionen (Zyklus)
 
-1. Eigene Dogfood-Tools in der laufenden Eclipse-Instanz testen STALE Code — Disk-Grep + Suite sind
-   der Beweis (übernommen aus f2-Zyklus, weiter gültig).
-2. Plan-Datei je Zyklus committen — f2-Plan war uncommitted, Archiv war verloren (in `b9ca08b`
-   nachgeholt).
+1. Eigene Dogfood-Tools testen STALE Code — Disk-Grep + Suite sind der Beweis (gilt weiter; nach
+   Neustart auflösen).
+2. Plan-Datei je Zyklus committen (f2-Plan war verloren, `b9ca08b` nachgeholt) — jetzt Routine.
+3. Feature-Doc direkt mit `### R-…`/`#### UC-…` anlegen — Heading-Depth-Regel (+1 Stufe) steht
+   im Linter-Doc, Konvention jetzt auch als Autor-Notiz (docs-linter.md).

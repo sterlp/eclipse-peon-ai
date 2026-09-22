@@ -22,7 +22,8 @@ setzen, Steps). Weil die Session User-Property ist, brauchen wir **keine Confirm
 
 - **Lesend:** `get_state`, `get_variables` (nested, depth — Frame-Lokale **plus statische Felder
   des Frame-Typs** als separater `statics`-Block, R-JD-9), `get_stack_trace`, `get_exception`
-  (Exception am Suspend, R-JD-10).
+  (Exception am Suspend, R-JD-10), `list_breakpoints` (R-JD-11, auch ohne Session — gewähltes
+  Projekt, Exception-BPs workspace-wide).
 - **Ändernd:** `evaluate_expression` (Timeout; Primitive/String/null als Wert, Objekt-Ergebnisse
   mit Feldwerten bis Tiefe 2, R-JD-9), `set_variable` (nur Primitiven/String/null), `set_breakpoint` (conditional + hitCount),
   `set_exception_breakpoint`, `remove_breakpoint`, `step_over/in/out`, `continue`, `suspend`.
@@ -174,6 +175,32 @@ existiert keine benannte Variable — auch dort findet `get_exception` nichts.
   ehrlicher Fehler. *(Automatisiert: `DebugJsonUnitTest.exceptionFindsThrowableInTopFrame` /
   `exceptionHonestErrorWhenNone` / `exceptionNotRecognizedByUnusualName` +
   `JavaDebugToolTest.noSessionFailsHonest` über alle 14 Actions.)*
+
+### R-JD-11 — `list_breakpoints`: Breakpoint-Landkarte, auch ohne Session ✅
+
+Neue lesende Action: listet **alle Breakpoint-Marker des gewählten Projekts** — `id`, Typ
+(line/exception), Ort (Typ + Zeile bzw. Exception-Klasse), `condition`, `hitCount`, `enabled`.
+Bewusst **ohne Session nutzbar** (bewusste Ausnahme zu R-JD-1): Marker sind Workspace-State,
+genau die Phantom-BPs, die der Agent nicht sehen kann, existieren zwischen Sessions — dort zu
+listen ist der Zweck (E2E 2026-09-22: der Agent musste über Laufzeitverhalten raten; Paul
+vermutet darin die Ursache der krummen Hits). Entfernen bleibt über `remove_breakpoint(id)`.
+
+#### UC-JD-13 — listBreakpointsMapsMarkers ✅
+- GIVEN Marker im gewählten Projekt (Line-BP mit condition/hitCount, Exception-BP, UI-gesetzter
+  BP) WHEN `list_breakpoints` (ohne Session) THEN jeder Marker mit id/Typ/Ort/condition/
+  hitCount/enabled; GIVEN keine Marker THEN leere Liste mit Scope-Disclosure; GIVEN anderes
+  Projekt THEN dessen Marker erscheinen nicht.
+
+### R-JD-12 — Breakpoint-Response: `hitCount` ohne JDT-Default ✅
+
+`DebugJson.breakpointResponse` zeigt heute den rohen Marker-Wert (`hitCount: -1`, JDT-Default
+„niemals expire") — die Tool-Beschreibung sagt `0 = every hit`. Anzeige-Clamp: Marker-Wert `< 0`
+wird als `0` gemeldet (Verhalten der Marker bleibt unangetastet, nur die Darstellung ist ehrlich
+zur Beschreibung).
+
+#### UC-JD-14 — breakpointResponseClampsNegativeHitCount ✅
+- GIVEN Marker mit hitCount `-1` WHEN Response gerendert THEN `hitCount: 0`; GIVEN `hitCount = 3`
+  THEN unverändert `3`. *(Automatisiert: `DebugJsonUnitTest`-Stub.)*
 
 ## Thread-Enumeration (technischer Befund, ADR-verlinkt)
 
