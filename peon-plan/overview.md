@@ -219,7 +219,7 @@ Call-Site-Updates (I3): `submitAiJob` :646 → `(null, agent.getName(), cr, moni
 
 ## 8. Inkremente (je grün + kompilierend, Modulgrenzen)
 
-### I1 — R-CT-1: Compact belegt das working-Flag (Core)
+### I1 — R-CT-1: Compact belegt das working-Flag (Core) — ✅ `18ae8eb` (Surefire 907/0/0)
 1. `AbstractAgent.compact()` → CAS-Hülle (D1), Body unverändert.
 2. Tests: +3 (`compactHoldsWorkingFlagDuringCompressorCall`,
    `compactFailedReleasesWorkingFlag`, `inLoopCompactDoesNotReleaseTurnsWorkingFlag`)
@@ -227,13 +227,13 @@ Call-Site-Updates (I3): `submitAiJob` :646 → `(null, agent.getName(), cr, moni
 3. Gate: `llmpeon-core` Surefire voll grün (erwartet 926/0/19).
 4. Commit: Code + Tests + die 6 Story-Docs (s. §4) + diese Plan-Datei.
 
-### I2 — R-CT-3 Core-Voraussetzung: `call(null)` mit Queue (Core)
+### I2 — R-CT-3 Core-Voraussetzung: `call(null)` mit Queue (Core) — ✅ `f059c68` (Surefire 908/0/0)
 1. `AbstractAgent.call()` :183-184 → 3-Wege-Next (D5).
 2. Test: +1 (`callNullInitialWithQueuedProcessesQueueAsPayload`).
 3. Gate: `llmpeon-core` Surefire voll grün (erwartet 927/0/19).
 4. Commit.
 
-### I3 — R-CT-3 UI: Follow-up-Trigger (Plugin)
+### I3 — R-CT-3 UI: Follow-up-Trigger (Plugin) — ✅ `d6b11b5` (Plugin-Suite 261/0; Plan-Baseline 260 vor f2-JavaDebugTool-Tests)
 1. `AIChatView.handleDoneChatResponse` → Signatur + Follow-up-Block + Log-Zeile
    (D2/D3/D4/D6); 3 Call-Sites aktualisieren.
 2. Keine neuen Tests (D8); Plugin-Suite ist Regression-Gate.
