@@ -1,42 +1,53 @@
-# Session-Stand — 2026-09-21 (Tool-Evolution Build-Zyklus)
+# Session-Stand — 2026-09-21 (F2 + get_exception + Linter-Mini-Zyklus)
 
 ## Wo wir stehen
 
-**Branch `analysis/tool-evolution`** — Paul hat IDE neu installiert (2026-06, Target bleibt 2026-09).
+**Branch `story/f2-debug-linter-2026-09-21`** (abgezweigt von `analysis/tool-evolution`, Story-C-Code
+dort noch ungemerged — Merge/Squash bleibt Paul).
 
-- ✅ **Story A** (Disclosure + Web-Tools) — done 2026-09-20.
-- ✅ **Story B** (Project-Problems-Filter) — done 2026-09-20 (`e84fcbc`, Archiv `overview-done-2026-09-20-14-02.md`).
-- ✅ **Story C** (Java-Debugger) — **komplett 2026-09-21:** Plan → I1–I4 → Da-Dok-Review CONCERNS →
-  Fixes (`ca2793a`, Mutation-Nachweis Session-Gate) → E2E-Smoke 2 Runden (F1/F7/F3 gefixt `2efaaf6`,
-  F2 = Backlog) → UC-IDs gemappt (`8de750c`) → **Flips ✅** (R-JD-1…8, UC-JD-1…9; UC-JD-2…6 manuell
-  verifiziert per ADR-0051). ADRs 0049/0050/0051 geschrieben. Lint: nur bekannte Befunde
-  (34× UC-DL, 5× UC-JD-2…6 manuell, UC-DL-99).
-- **Wartet:** Da Mek `planImplemented` (nach Commit meiner Docs-Flips) + Ledger-Eintrag Skill
-  `eclipse-dpe` (Create, `2c1f2de`) + Management-Summary für Paul.
+- ✅ **Zyklus gebaut & reviewed:** I1 Linter `7e8fb41` (idPattern-@P Full-Match, R-DL-21 Textblock,
+  R-DL-22 MANUELL-Marker) · I2 Debugger F2 `5c57422` (statics-Block, evaluate Tiefe 2) · I3
+  `get_exception` `75eb9ac` · G1-Fix `348d521` (Name-Heuristik-Grenze dokumentiert + Pin-Test).
+  Core 923/0, Plugin 261/0 (Da Dok verifiziert). Review: CONCERNS → G1 (a) gelöst, G2 (inventory) +
+  Flips durch Jon erledigt.
+- ✅ Docs: R-JD-9/10 + UC-JD-10/11/12 ✅, R-DL-21/22 + UC-DL-64/65/66 ✅, tool-descriptions-inventory
+  aktualisiert (58/59 neu, 67 get_exception), open-points 🔒-Abschnitte.
+- ⚠️ **Eigenes lintDocsAndTests läuft auf stale Bundle** (Eclipse-Instanz lädt altes llmpeon-core-jar):
+  zeigt noch `VERWAIST UC-DL-99` + `UNBELEGT UC-JD-2…6`. **Nach Eclipse-Restart prüfen:** UC-JD-2…6
+  als MANUELL-Zeilen, UC-DL-99 weg; das ist der letzte Bestätigungsschritt.
+- Da Mek wartet auf Freigabe `planImplemented` (Plan-Archiv) — nach Pauls OK/Neustart-Check.
 
 ## Nächste Schritte
 
-1. Da Mek: Docs committen (java-debugger-tool.md, index.md, ADRs 0049–0051, open-points, memory.md)
-   + `planImplemented` + Skill-Impact-Ledger für `eclipse-dpe`.
-2. Management-Summary mit Skill-Evolution-Abschnitt; Merge/Squash = Paul.
-3. DocsLinter-Mini-Zyklus (idPattern-`@P`-Description + UC-DL-99 + „manuell verifiziert"-Marker-Idee).
-4. ApiRetry-Follow-up + Issue #142 (Paul-Korrektur + Fix-Entscheid → ADR) — geparkt im Backlog.
+1. **Paul:** Konzept-Punkt 4 (Agent „aktiv" beim Compact + Queue/Block) — Konzept unten, Feedback
+   bitte; danach ggf. eigene Story.
+2. Eclipse-Restart → Dogfood-Lint prüfen → dann Da Mek `planImplemented`.
+3. Merge/Squash der Branches = Paul (tool-evolution + dieser).
+4. Geparkt: ApiRetry-Follow-up, Issue #142-ADR, build.properties-Warnung, DL-Test-ID-Sweep (~33).
 
-## Bekannt & bewusst out-of-scope
+## Konzept Punkt 4 (Stand, Paul-Feedback offen)
 
-- Lint: 34× `UNBELEGT_ERLEDIGT UC-DL` + `VERWAIST UC-DL-99` + 5× UC-JD-2…6 (manuell, ADR-0051).
-- F2 (Debugger-Backlog), Exception-Event-Info, build.properties-Warnung — alle in open-points.md.
+IST-Fakten (searchAgent, 2026-09-21): `AbstractAgent.working` (AtomicBoolean) deckt nur `call()` —
+`compact()` setzt es NICHT (`AbstractAgent.java:178/209` vs `:270-299`); Roster 🟢 leuchtet nur bei
+working-Leaf (`AiAgentStatusModel.java:53`); Slave-Compact = Job in `AIChatView.doCompressAgent:540-563`
+(inkrementiert `inFlightTurns`, disabled Buttons); Send während Compact geht NICHT in die Queue
+(`resolveOutgoingMessage:617-626` prüft nur `isWorking()`) → dokumentierter Memory-Race
+(chat-job-lifecycle.md:145-149, Backlog). Queue existiert (`UserMessageQueue`, FIFO-Chain,
+drain-on-abort) — sie verarbeitet nach dem Compact, aber nur wenn der Agent `isWorking()` war.
+
+Konzept-Skizze: (A) „aktiv"-Anzeige: compact setzt einen Compact-Status (z. B. `compacting` am
+NamedAgent-Status-Modell, nicht `working` — sonst Queue-Semantik koppeln), Roster zeigt 🟡/⚙️ beim
+kompaktierenden Agenten. (B) Eingabe während Compact: Queue-Pfad — UserMessage wird gequeued (wie
+heute bei working) und läuft NACH dem Compact als nächste Message in EINEM Job (Queue lebt außerhalb
+der Memory, ADR-0017/0018). Alternativ Input sperren (einfacher, aber UX-Schlechter). Offen bei
+Paul: Queue oder Block?
 
 ## Was nicht neu aufgemacht wird
 
 CR-1/2/7 abgelehnt · CR-5/CR-6 geparkt · Copilot-Server nicht decompilieren · keine Confirmations für
-Debugger · Target-Rollback auf 2026-06 nur IDE (Target bleibt 2026-09 — sonst bricht Story C).
+Debugger · Target-Rollback nur IDE.
 
 ## Lektionen (Zyklus)
 
-1. API-Contract gegen die **tatsächlich aufgelöste** Target-Generation verifizieren (Plan-§3 ging 2×
-   daneben: debug.core-Drift, getRootThreadGroups-vs-getThreads → diagnose.txt-Beweis).
-2. Smoke vor Flips hat sich doppelt bewährt: F1/F7 wären sonst als ✅ geflippt worden.
-3. Full-File-Rewrites von Docs: Frontmatter (`idPrefix`) nicht verlieren — PRAEFIX_FEHLT-Lauf hat's
-   sofort gezeigt (Linter als Sicherheitsnetz, gut).
-4. Flaky-Test stoppen statt iterieren (Hard-Stop half; ADR-0051 hält die Decision).
+1. Eigene Dogfood-Tools in der laufenden Eclipse-Instanz testen STALE Code — Disk-Grep + Suite sind
+   der Beweis, nicht der Live-Tool-Lauf (neu!).

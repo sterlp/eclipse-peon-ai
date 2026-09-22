@@ -37,7 +37,8 @@ Agenten, kein Auto-Disconnect.
 
 #### UC-JD-1 — noSessionFailsHonest ✅
 - GIVEN keine Debug-Session WHEN irgendeine Action THEN ehrlicher Fehler mit Hinweis, kein Auto-Start
-  (Launch-Zähler unverändert). *(Automatisiert: `JavaDebugToolTest.noSessionFailsHonest` über alle 13 Actions.)*
+  (Launch-Zähler unverändert). *(Automatisiert: `JavaDebugToolTest.noSessionFailsHonest` über alle
+  14 Actions — get_exception seit R-JD-10, `348d521`.)*
 
 ### R-JD-2 — Session-Lifecycle gehört dem User ✅
 
@@ -124,7 +125,7 @@ Projekt + Grund (E2E F1: rohes `IFile` → „not a Java compilation unit", Fix 
   liefert den Wert als JSON-Zahl. *(Automatisiert: `DebugSessionThreadsTest` ×2 +
   `DebugJsonUnitTest.valueResponseRendersPrimitivesAsJsonPrimitives`.)*
 
-### R-JD-9 — Statische Felder + Objekt-Feldwerte (F2) ❌
+### R-JD-9 — Statische Felder + Objekt-Feldwerte (F2) ✅
 
 - `get_variables` liefert zusätzlich zu den Frame-Lokalen die **statischen Felder des Frame-Typs**
   als separates JSON-Feld `"statics"` (leeres Array, wenn keine) — dieselbe Verschachtelung, auch
@@ -135,35 +136,44 @@ Projekt + Grund (E2E F1: rohes `IFile` → „not a Java compilation unit", Fix 
   String und null bleiben unverändert Wert. Kein neuer Parameter — die natürlichste Erwartung ist,
   dass `evaluate("p")` die Feldwerte zeigt.
 
-#### UC-JD-10 — staticsInGetVariables ❌
+#### UC-JD-10 — staticsInGetVariables ✅
 - GIVEN Frame in einer Klasse mit statischen Feldern WHEN `get_variables` THEN Antwort enthält
   `statics` mit den Feldern (Name, Typ, Wert) und `locals` unverändert; GIVEN Klasse ohne statische
-  Felder THEN leeres `statics`-Array.
+  Felder THEN leeres `statics`-Array. *(Automatisiert: `DebugJsonUnitTest.staticsInGetVariables`
+  ×2 — Proxy-Stub, keine Session nötig.)*
 
-#### UC-JD-11 — evaluateRendersObjectFields ❌
+#### UC-JD-11 — evaluateRendersObjectFields ✅
 - GIVEN `evaluate_expression("p")` liefert ein Objekt WHEN das Ergebnis gerendert wird THEN die
   Felder des Objekts stehen bis Tiefe 2 im Output — keine bloße „ (id=N)"-Referenz; Primitive/
-  String/null bleiben als Wert gerendert.
+  String/null bleiben als Wert gerendert. *(Automatisiert: `DebugJsonUnitTest`
+  `evaluateRendersObjectFieldsToDepth2` + Primitive/null-Regression.)*
 
-### R-JD-10 — `get_exception`: Exception am Suspend, stateless + ehrlich ❌
+### R-JD-10 — `get_exception`: Exception am Suspend, stateless + ehrlich ✅
 
 Neue Action `get_exception` (Thread-Auflösung wie `get_stack_trace`). Sie scannt den Top-Frame
-(lokale Variablen inkl. Catch-Parameter) nach einer Variable vom Typ `java.lang.Throwable` oder
-Subtyp und liefert Typ + Message + Variablenname. Keine gefunden → ehrlicher Fehler („no exception
-variable in top frame"). **Stateless** (R-JD-3 bleibt): kein Event-Listening, kein Cache.
+(lokale Variablen inkl. Catch-Parameter) nach einer Variable, deren Wert ein Throwable ist, und
+liefert Typ + Message + Variablenname. Keine gefunden → ehrlicher Fehler („no exception variable
+in top frame"). **Stateless** (R-JD-3 bleibt): kein Event-Listening, kein Cache.
 
-**Bekannte Grenze (bewusst, dokumentiert):** Am Throw-Site eines ungefangenen `throw new X(…)`
-existiert keine benannte Variable — dort findet `get_exception` nichts, und `get_variables`/
-`evaluate_expression` bleiben der Weg. Die Tool-Beschreibung nennt die Grenze.
+**Recognition ist name-basiert** (bewusst, kein Workspace-`isAssignableFrom` — das würde den
+Session-freien Stub-Test brechen): exakt `java.lang.Throwable` oder Simple-Name endet auf
+`Exception`/`Error`. **Grenze:** ein Custom-Throwable mit unüblichem Namen wird nicht erkannt
+(ehrlicher Fehler statt Befund) — dann bleibt `get_variables` der Weg; die Tool-Description nennt
+die Grenze. Zweite dokumentierte Grenze: am Throw-Site eines ungefangenen `throw new X(…)`
+existiert keine benannte Variable — auch dort findet `get_exception` nichts.
 
 > **WEIL** (E2E-Smoke 2026-09-21): am Exception-Suspend zeigte `get_state` nur den Frame, nicht
 > welche Exception geworfen hat — der Tester musste sie sich aus Frame+Kontext erschließen. Eine
 > echte Event-Abfrage (JDI-ExceptionEvent) würde R-JD-3 (stateless) brechen und mit JDTs eigenem
 > Event-Handler konkurrieren; der frame-lokale Scan ist der kleinste ehrliche Weg.
 
-#### UC-JD-12 — getExceptionFindsThrowableInTopFrame ❌
+#### UC-JD-12 — getExceptionFindsThrowableInTopFrame ✅
 - GIVEN Thread an Exception-Suspend mit Catch-Variable `e` WHEN `get_exception` THEN Typ + Message +
-  Variablenname; GIVEN kein Throwable im Top-Frame THEN ehrlicher Fehler, kein erfundener Typ.
+  Variablenname; GIVEN kein Throwable im Top-Frame THEN ehrlicher Fehler, kein erfundener Typ;
+  GIVEN Custom-Throwable `my.company.WeirdThrowable` (unüblicher Name) THEN nicht erkannt,
+  ehrlicher Fehler. *(Automatisiert: `DebugJsonUnitTest.exceptionFindsThrowableInTopFrame` /
+  `exceptionHonestErrorWhenNone` / `exceptionNotRecognizedByUnusualName` +
+  `JavaDebugToolTest.noSessionFailsHonest` über alle 14 Actions.)*
 
 ## Thread-Enumeration (technischer Befund, ADR-verlinkt)
 

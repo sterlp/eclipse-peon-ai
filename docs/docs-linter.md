@@ -4,9 +4,10 @@ idPrefix: DL
 
 # Docs-Linter — Use-Case-IDs gegen Testbaum abgleichen
 
-> **Status:** ✅ done (2026-09-15) — R-DL-1…16 gebaut, drei Reviews bestanden. Nachzyklus:
+> **Status:** ✅ done (2026-09-15) — R-DL-1…16 gebaut, drei Reviews bestanden. Nachzyklen:
 > `reportPath` gestrichen (echt read-only), Tool-Split `DocsIdTool`/`DocsLinterTool`, raus aus dem
-> Disk-Gate, Tool-Matrix je Agent getestet.
+> Disk-Gate, Tool-Matrix je Agent getestet; 2026-09-19 R-DL-18…20; 2026-09-21 R-DL-21/22
+> (Textblock-Belege, manuell-Marker).
 > **Ziel:** Ein falsches `✅` maschinell unmöglich machen: jeder als erledigt markierte Use-Case
 > muss durch einen Test belegt sein, der die ID des Use-Case trägt.
 
@@ -771,7 +772,7 @@ ausschließlich im Rückgabewert (R-DL-7) — die Statuszeile bekommt nie den Vo
 GIVEN ein beliebiger Lauf WHEN `onTool` feuert THEN enthält die Zeile Doc-Anzahl und
 Befundzahl(en) — nicht nur den Methodennamen.
 
-### R-DL-21 — Java-Textblock-Belege zählen nicht ❌
+### R-DL-21 — Java-Textblock-Belege zählen nicht ✅
 
 In `.java`-Testquellen zählt eine ID-Zeile **innerhalb eines Textblocks** (`"""` … `"""`) nicht
 als Beleg — sie ist zitierter Fixture-Inhalt, kein Beleg am Test. Zeilenbasierter Zustand: eine
@@ -787,11 +788,12 @@ Zeile mit ungerader Anzahl von `"""` kippt den Zustand. Bewusst **nur Java**, be
 > in `.java` als zitiert zu behandeln. Damit ist die ❓-Frage mit Option (b) entschieden: die eine
 > triviale Heuristik, durch einen echten Fall gerechtfertigt.
 
-#### UC-DL-64 — Textblock-ID ist kein Beleg ❌
+#### UC-DL-64 — Textblock-ID ist kein Beleg ✅
 GIVEN eine `.java`-Testdatei mit `// UC-XY-1` innerhalb eines `"""`-Blocks WHEN gescannt THEN kein
-Beleg; GIVEN dieselbe Zeile außerhalb des Blocks THEN Beleg.
+Beleg; GIVEN dieselbe Zeile außerhalb des Blocks THEN Beleg. *(Automatisiert:
+`TestParserTest` ×3 — im Block / außerhalb / `.java`-only-Regression.)*
 
-### R-DL-22 — „manuell verifiziert"-Marker exemprt vom UNBELEGT-Check ❌
+### R-DL-22 — „manuell verifiziert"-Marker exemprt vom UNBELEGT-Check ✅
 
 Enthält die Überschriftenzeile eines UC nach dem Statusmarker einen **Klammer-Anhang** `(…)` mit
 dem Wort `manuell` (Asterisk optional, `manuelle` matcht ebenfalls — bewusst loose, kein
@@ -805,12 +807,15 @@ solchen Anhang bleibt `UNBELEGT_ERLEDIGT` (hoch).
 > den Flip-Workflow mit bekanntem Rauschen. Strikt generisches Datum/Beleg-Format zu verlangen wäre
 > Parsing-Zeremonie ohne Schutzgewinn.
 
-#### UC-DL-65 — Manueller Marker exemprt ❌
+#### UC-DL-65 — Manueller Marker exemprt ✅
 GIVEN UC ✅ mit `*(manuell verifiziert 2026-09-21, ADR-0051)*` und kein Test mit der ID WHEN
 `lintDocsAndTests` THEN kein `UNBELEGT_ERLEDIGT`, aber Info-Zeile `MANUELL` mit `datei:zeile`.
+*(Automatisiert: `DocsLinterMatchingTest.manuellMarkerExemptsDoneUcFromUnbelegtErledigt` +
+Realform-Fall ohne Asterisk + `DocsLinterFindingsFixtureTest` UC-XX-1.)*
 
-#### UC-DL-66 — Ohne Marker bleibt UNBELEGT_ERLEDIGT ❌
+#### UC-DL-66 — Ohne Marker bleibt UNBELEGT_ERLEDIGT ✅
 GIVEN UC ✅ ohne `manuell`-Anhang und ohne Test THEN Befund `UNBELEGT_ERLEDIGT` — Regressionsschranke.
+*(Automatisiert: `DocsLinterMatchingTest.doneWithoutManuellMarkerStaysUnbelegtErledigt`.)*
 
 ## Nicht-funktional
 

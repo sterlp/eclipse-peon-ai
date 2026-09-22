@@ -288,3 +288,82 @@ In-Loop-Compact released das Turn-Flag vorzeitig → Phantom-IDLE-Fenster, in de
 paralleler `call()` durchrückt — exakt der Race, den wir schließen. —
 **Change that most reduces that risk:** UC-CT-2-Pin-Test
 (`inLoopCompactDoesNotReleaseTurnsWorkingFlag`) — Mutation macht ihn rot.
+
+---
+
+# PO-Review — Da Dok (2026-09-22)
+
+## Verdict: **ACCEPTED**
+
+3-Seiten-Prüfung (Plan ↔ Code ↔ Docs) über I1/I2/I3 — SOLL == IST, keine blockierenden Abweichungen.
+UC-Status in `docs/compact-lock.md` bleibt ❌ — Flip ist Jon-Aufgabe (Smoke 1–4 + Marker-Konvention).
+
+## a) Plan vs Code — ✅ exakt umgesetzt
+
+| Inkrement | Plan-Vorgabe | IST | Status |
+|---|---|---|---|
+| I1 | CAS `compareAndSet(false,true)` VOR R16-Guard, Release im finally NUR wenn `acquired` | `AbstractAgent.compact()` — CAS :282, R16-Guard :286 (unter Flag), `if (acquired) working.set(false)` :312; Body unverändert | ✅ |
+| I2 | `call(null)` + non-empty drained Queue → `"[Queued Message]: <msg>"` (D5, "\nnull"-Fix); leere Queue + null = Alt-Verhalten | `AbstractAgent.call()` :183-192 — 3-Wege-Next; `stillQueued==null` → `initialMessage` (null ok, doCall :255 `hasValue`-Guard) | ✅ |
+| I3 | `@Nullable AiAgent compactedAgent`, Follow-up im Unlock-Branch im SELBEN UI-Runnable, nur `compactedAgent == getActiveAgent()` (D4), feuert bei JEDEM Abschluss (D6), 3 Call-Sites | `AIChatView.handleDoneChatResponse` :652 (Signatur), Block :678-684 nach `lockWhileWorking(false)` im selben Runnable (kein Fenster; `submitAiJob` re-increments Counter atomar); Call-Sites :528 (`active`), :559 (`agent`=Slave), :646 (`null`=Send) | ✅ |
+
+- D4-Identity (`compactedAgent == aiService.getActiveAgent()`) wie geplant — AgentService hält langelebte
+  Instanzen (bekanntes Non-Issue, nicht beanstandet).
+- Slave-Compact → kein Follow-up (Sklave ≠ Active) — korrekte Konsequenz aus D4.
+- No-Op-Compact (`memory<3`) → Flag wird akquiriert+released, Queue-Ack-Pfad greift, Follow-up feuert bei
+  Queue>0 — konsistent mit R16 und ADR-0052 Consequences ("Follow-up-Trigger feuert unabhängig vom
+  Compact-Ergebnis").
+
+## b) Docs vs Code — ✅
+
+Tests (alle mit UC-ID-Kommentar, bidirektionale Assertions):
+- UC-CT-1: `compactHoldsWorkingFlagDuringCompressorCall` (`AbstractAgentTest.java:431`) — true während
+  Compressor, false danach. Richtig Red→Green.
+- UC-CT-1 (Fehler): `compactFailedReleasesWorkingFlag` (:457) — Exception propagiert, Flag released.
+- UC-CT-2 **Pin-Test vorhanden**: `inLoopCompactDoesNotReleaseTurnsWorkingFlag` (:485) — Javadoc markiert
+  explizit "Regression pin (IST already correct — declared per plan §7)" + Mutation-Guard-Beschreibung.
+  Genau der Risk-Line-Mutations-Test. (Anmerkung: der gefragte "Queue-when-working"-Pfad von
+  `resolveOutgoingMessage` (R-CT-2) ist Freebie — kein Test geplant/gefordert, Smoke 1 deckt ihn.)
+- UC-CT-4 (Core-Voraussetzung): `callNullInitialWithQueuedProcessesQueueAsPayload` (:520) — assertet
+  `[Queued Message]:`, `doesNotContain("null")`, exakt 1 LLM-Call. Richtig Red→Green.
+- R16-Erweiterung: `compact_secondCallDirectlyAfterCompact_isNoop` :426 — `isWorking()` isFalse nach No-Op.
+- UC-CT-3/5/6: manuell (Smoke 1–4), Docs markieren das (UC-CT-6 mit "Manuelle Verifikation"-Hinweis) —
+  konform mit Plan §6/D8 (kein SWT-Test-Harness). Linter: plain UNBELEGT für diese drei = erwartet,
+  NICHT blockierend (Status bleibt ❌ bis Jon flippt).
+- Queue-Survival (Regel 5 queued-user-messages) bleibt unverändert gedeckt.
+
+## c) Docs vs Plan — ✅, kein Scope-Creep
+
+- Plan deckt R-CT-1…4 + UC-CT-1…6 vollständig; Scope = R-CT-1 + R-CT-3, Freebies (R-CT-2/4) als
+  "fällt aus dem Flag" dokumentiert — Code bestätigt: `resolveOutgoingMessage` :617-627 UNVERÄNDERT,
+  kein 🟡-Indikator, kein `compacting`-Zustand (Grep clean), Roster/Buttons laufen weiter über `isWorking()`.
+- **Regel 8 "!"-Messages: NICHT gebaut** — Grep nach `drainAllImportant` / `startsWith("!")` = 0 Treffer;
+  Doc bleibt 🚧 Idee. ✅
+- ADR-0052: Decision 1–4 1:1 zum implementierten Code (CAS-Re-Entrancy, Follow-up im Job-finally, kein
+  Future, kein eigener UI-State). ✅
+- `chat-job-lifecycle.md:148`: Memory-Race → "❌ specified" mit Verweis auf compact-lock.md. ✅
+- `open-points.md:5`: 🟡-Indikator als Open Point aufgenommen (konform R-CT-4 WEIL). ✅
+- Test-Stände wie angegeben: Core Surefire 908/0/0, Plugin 261/0 — mit Plan-Erwartungen (908 nach I2;
+  261 = Baseline 260 + f2-UC-JD-Tests im Branch-Tip) konsistent.
+
+## Abweichungen / Nebeneffunde (nicht blockierend)
+
+1. **Kosmetik:** `AbstractAgentTest.java:479` — Test-Javadoc verweist auf "plan §7" (ephemere Plan-Datei,
+   wird archiviert → Verweis wird stale). Empfehlung: Javadoc auf selbsttragende Begründung umstellen
+   ("pin: In-Loop-Compact released nie das Turn-Flag").
+2. **Test-Honesty-Nuance:** `compactFailedReleasesWorkingFlag` (:457) wäre **allein** ohne das Feature auch
+   grün (ohne CAS-Hülle wird das Flag nie gesetzt → `isWorking()` false). Er ist Companion-Pin zum
+   Red→Green-Happy-Test (:431) — Plan §7 positioniert ihn entsprechend. OK, aber im Javadoc als Pin
+   markieren (wie beim UC-CT-2-Test :479), damit die Red-Green-Belastung klar bleibt.
+
+## Linter-Einordnung (Intake)
+
+- `compact-lock.md`: kein VERWAIST, kein UNBELEGT_ERLEDIGT. Plain UNBELEGT UC-CT-3/5/6 = manuelle UCs
+  vor Review-Flip — erwartet.
+- UC-DL-* / UC-JD-* (UNBELEGT_ERLEDIGT) + VERWAIST UC-DL-99 (`DocsLinterToolTest.java:78`) =
+  f2-/Linter-Zyklus, bekannter Altbestand (ausdrücklich aus diesem Review herausgenommen).
+
+## Mutation-Check (Empfehlung, nicht ausgeführt)
+
+Schwerpunkt: `AbstractAgent.compact()` :312 — Mutation `if (acquired)` → immer `working.set(false)`.
+Erwartet rot: `inLoopCompactDoesNotReleaseTurnsWorkingFlag` (:485). = exakt die Risk-Line, bereits
+gedeckt — kein zusätzlicher Mutation-Test nötig.
