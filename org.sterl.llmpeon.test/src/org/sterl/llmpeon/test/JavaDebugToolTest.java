@@ -24,7 +24,8 @@ public class JavaDebugToolTest extends AbstractIntegrationTest {
         return DebugPlugin.getDefault().getLaunchManager().getLaunches().length;
     }
 
-    // UC-JD-1 — list_breakpoints (R-JD-11) is the deliberate session exception, tested in DebugListBreakpointsTest.
+    // UC-JD-1
+    // list_breakpoints (R-JD-11) is the deliberate session exception, tested in DebugListBreakpointsTest.
     @Test
     public void noSessionFailsHonest() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());

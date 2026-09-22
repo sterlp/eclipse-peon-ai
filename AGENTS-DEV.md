@@ -120,6 +120,10 @@ These bit us repeatedly in this repo — check them before reporting an incremen
   was inverted → compact input always empty; both existing tests asserted only the system
   prompt / the response side and stayed green for the broken send path.)
 
+- **UC evidence lines are pure IDs** (`// UC-<FEATURE>-<n>`, exact full match) — never extra
+  text on the same line; accompanying comments go on their own line. Reason: the docs-linter
+  parser requires a full match on ID lines — extra text orphans the ID (UNBELEGT_ERLEDIGT),
+  hit UC-JD-1 2026-09-22.
 - **„Green before the change" declarations only for tests that can actually run against the
   pre-change state.** A new test coupled to the NEW type (e.g. asserts `instanceof Combo` where
   the old code had `CCombo`) is swap-falsifiable by construction and is declared as such — never
