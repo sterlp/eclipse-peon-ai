@@ -1,7 +1,9 @@
 package org.sterl.llmpeon.parts.tools.debug;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -43,11 +45,25 @@ import dev.langchain4j.agent.tool.Tool;
  * state, stack, variables, expression evaluation, variables, breakpoints and steps.
  * Stateless — every call re-resolves the session (R-JD-3). Never auto-starts and
  * never auto-disconnects a session (R-JD-1): without an active session every
- * action answers with the honest no-session message.
+ * action answers with the honest no-session message — except list_breakpoints
+ * (R-JD-11): it works without a session, reading the persistent breakpoint
+ * markers of the project selected in the chat view instead.
  *
  * Optional numeric parameters follow "0 = unset" (D3).
  */
 public class JavaDebugTool extends AbstractTool {
+
+    /** JDT breakpoint marker types (jdt.debug 3.26.100, 2026-07: JDTDebugConstants is gone, the ids live in the internal breakpoint classes). */
+    private static final String LINE_BREAKPOINT_MARKER = "org.eclipse.jdt.debug.javaLineBreakpointMarker";
+    private static final String EXCEPTION_BREAKPOINT_MARKER = "org.eclipse.jdt.debug.javaExceptionBreakpointMarker";
+
+    private static final String NO_PROJECT = "no project selected — select a project to list its breakpoints";
+
+    private IProject currentProject;
+
+    public void setCurrentProject(IProject currentProject) {
+        this.currentProject = currentProject;
+    }
 
     @Override
     public boolean isEditTool() { return true; }
@@ -311,6 +327,38 @@ public class JavaDebugTool extends AbstractTool {
             throw DebugSupport.fail("removing breakpoint marker id " + markerId, e);
         }
         return DebugJson.removedResponse(markerId);
+    }
+
+    @Tool(name = "list_breakpoints", value = "List the breakpoint map of the project selected in the chat view: all line breakpoints of that project plus the workspace-wide exception breakpoints (their markers live on the workspace root, so they appear for every project), each with id, type, location, condition, hit count and enabled state. Works without a debug session — it reads the persistent markers, so phantom breakpoints set in the UI between sessions are visible too. hitCount 0 = every hit. Removing a breakpoint stays remove_breakpoint(id). No project selected → honest error.")
+    public String listBreakpoints() {
+        if (currentProject == null) {
+            onProblem(NO_PROJECT);
+            return NO_PROJECT;
+        }
+        return listBreakpoints(currentProject);
+    }
+
+    /**
+     * R-JD-11 (UC-JD-13): the breakpoint map of the given project — the project's line
+     * breakpoints plus the workspace-wide exception breakpoints (their markers live on the
+     * workspace root). Deliberate exception to the R-JD-1 session guard: the markers
+     * outlive the target, so the map works between sessions too. Public static test seam
+     * (precedent: {@link #primaryTypeName}).
+     */
+    public static String listBreakpoints(IProject project) {
+        var root = ResourcesPlugin.getWorkspace().getRoot();
+        return DebugJson.breakpointListResponse(
+                project.getName(),
+                findMarkers(project, LINE_BREAKPOINT_MARKER, IResource.DEPTH_INFINITE),
+                findMarkers(root, EXCEPTION_BREAKPOINT_MARKER, IResource.DEPTH_ZERO));
+    }
+
+    private static List<IMarker> findMarkers(IResource resource, String markerType, int depth) {
+        try {
+            return new ArrayList<>(List.of(resource.findMarkers(markerType, true, depth)));
+        } catch (CoreException e) {
+            throw DebugSupport.fail("scanning " + markerType + " markers of " + resource.getName(), e);
+        }
     }
 
     @Tool(name = "step_over", value = "Step over in a debug thread and wait for the next suspend; returns the new top frame.")

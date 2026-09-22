@@ -258,6 +258,7 @@ public class PeonAiService {
         sharedTools.workspaceWriteFilesTool().setCurrentProject(project);
         sharedTools.workspaceReadFilesTool().setCurrentProject(project);
         sharedTools.eclipseGrepTool().setCurrentProject(project);
+        sharedTools.javaDebugTool().setCurrentProject(project);
         // disk tools work with the disk path not eclipse path
         projectPath = JdtUtil.diskPathOf(project);
         if (projectPath != null) {

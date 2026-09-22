@@ -36,6 +36,7 @@ public class SharedToolsComponent {
     private final EclipseWorkspaceWriteFileTool workspaceWriteFilesTool = new EclipseWorkspaceWriteFileTool();
     private final EclipseWorkspaceReadFileTool workspaceReadFilesTool = new EclipseWorkspaceReadFileTool();
     private final EclipseGrepTool eclipseGrepTool = new EclipseGrepTool();
+    private final JavaDebugTool javaDebugTool = new JavaDebugTool();
 
     private final DiskFileWriteTool diskFileWriteTool;
     private final DiskFileReadTool diskFileReadTool;
@@ -66,7 +67,7 @@ public class SharedToolsComponent {
         sharedToolService.addTool(docsLinterTool);
         sharedToolService.addTool(new WorkspaceMemoryTool());
         sharedToolService.addTool(new EclipseBuildTool());
-        sharedToolService.addTool(new JavaDebugTool());
+        sharedToolService.addTool(javaDebugTool);
         sharedToolService.addTool(eclipseGrepTool);
         sharedToolService.addTool(new EclipseRunTestTool());
         sharedToolService.addTool(new EclipseCodeNavigationTool());
@@ -110,6 +111,10 @@ public class SharedToolsComponent {
 
     public EclipseGrepTool eclipseGrepTool() {
         return eclipseGrepTool;
+    }
+
+    public JavaDebugTool javaDebugTool() {
+        return javaDebugTool;
     }
 
     public DiskFileWriteTool diskFileWriteTool() {

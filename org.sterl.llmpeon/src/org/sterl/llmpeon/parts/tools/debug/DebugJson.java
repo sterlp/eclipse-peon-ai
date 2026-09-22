@@ -5,8 +5,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.debug.core.DebugException;
+import org.eclipse.debug.core.model.IBreakpoint;
 import org.eclipse.debug.core.model.IStackFrame;
 import org.eclipse.debug.core.model.IValue;
 import org.eclipse.debug.core.model.IVariable;
@@ -263,6 +265,54 @@ public final class DebugJson {
      */
     private static int displayHitCount(int raw) {
         return Math.max(0, raw);
+    }
+
+    /**
+     * list_breakpoints shape (R-JD-11): {project, scope, breakpoints: […]} — line breakpoints
+     * of the project plus the workspace-wide exception breakpoints; the scope restriction is
+     * named in the output, empty list included.
+     */
+    public static String breakpointListResponse(String projectName, List<IMarker> lineBreakpoints, List<IMarker> exceptionBreakpoints) {
+        var nodes = new ArrayList<Map<String, Object>>();
+        for (IMarker marker : lineBreakpoints) {
+            nodes.add(lineBreakpointNode(marker));
+        }
+        for (IMarker marker : exceptionBreakpoints) {
+            nodes.add(exceptionBreakpointNode(marker));
+        }
+        Map<String, Object> root = new LinkedHashMap<>();
+        root.put("project", projectName);
+        root.put("scope", "line breakpoints of the project + workspace exception breakpoints (other projects not listed)");
+        root.put("breakpoints", nodes);
+        return pretty(root);
+    }
+
+    /** JDT breakpoint marker attributes (jdt.debug 3.26.100, 2026-07 source — JDTDebugConstants no longer exists on this platform). */
+    private static final String TYPE_NAME_ATTR = "org.eclipse.jdt.debug.core.typeName";
+    private static final String CONDITION_ATTR = "org.eclipse.jdt.debug.core.condition";
+    private static final String HIT_COUNT_ATTR = "org.eclipse.jdt.debug.core.hitCount";
+
+    private static Map<String, Object> lineBreakpointNode(IMarker marker) {
+        Map<String, Object> node = new LinkedHashMap<>();
+        node.put("id", String.valueOf(marker.getId()));
+        node.put("type", "line");
+        node.put("file", marker.getResource().getProjectRelativePath().toString());
+        node.put("line", marker.getAttribute(IMarker.LINE_NUMBER, 0));
+        node.put("typeName", marker.getAttribute(TYPE_NAME_ATTR, ""));
+        node.put("condition", marker.getAttribute(CONDITION_ATTR, ""));
+        node.put("hitCount", displayHitCount(marker.getAttribute(HIT_COUNT_ATTR, -1)));
+        node.put("enabled", marker.getAttribute(IBreakpoint.ENABLED, true));
+        return node;
+    }
+
+    private static Map<String, Object> exceptionBreakpointNode(IMarker marker) {
+        Map<String, Object> node = new LinkedHashMap<>();
+        node.put("id", String.valueOf(marker.getId()));
+        node.put("type", "exception");
+        node.put("exceptionType", marker.getAttribute(TYPE_NAME_ATTR, ""));
+        node.put("hitCount", displayHitCount(marker.getAttribute(HIT_COUNT_ATTR, -1)));
+        node.put("enabled", marker.getAttribute(IBreakpoint.ENABLED, true));
+        return node;
     }
 
     /** remove_breakpoint response: {id, removed}. */

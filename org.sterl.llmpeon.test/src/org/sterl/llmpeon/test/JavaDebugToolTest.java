@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
@@ -23,7 +24,7 @@ public class JavaDebugToolTest extends AbstractIntegrationTest {
         return DebugPlugin.getDefault().getLaunchManager().getLaunches().length;
     }
 
-    // UC-JD-1
+    // UC-JD-1 — list_breakpoints (R-JD-11) is the deliberate session exception, tested in DebugListBreakpointsTest.
     @Test
     public void noSessionFailsHonest() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
@@ -58,5 +59,22 @@ public class JavaDebugToolTest extends AbstractIntegrationTest {
 
         // AND: no auto-start — still no launch (R-JD-1)
         assertEquals("no auto-start expected", 0, launchCount());
+    }
+
+    // UC-JD-13
+    @Test
+    public void listBreakpointsDoesNotFailWithoutSession() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        // GIVEN: no active debug session and no project selected on the tool instance
+        assertEquals("premise: no launches in the test workbench", 0, launchCount());
+
+        // WHEN: list_breakpoints is called
+        String result = tool.listBreakpoints();
+
+        // THEN: the honest no-project error — and NOT the no-session message (R-JD-11 exception)
+        assertTrue("expected the no-project message:\n" + result, result.contains("no project selected"));
+        assertFalse("must not answer with the no-session message:\n" + result,
+                result.contains("no active debug session"));
     }
 }

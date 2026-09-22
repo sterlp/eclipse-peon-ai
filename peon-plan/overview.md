@@ -22,8 +22,9 @@ Repo-Root: Disk `/Users/sterlp/dev/workset/peon-ai` (Workspace-Projekt `llmpeon-
 
 ## Status
 - Vorbereitungen: ✅ (2026-09-22) — Branch `analysis/tool-evolution` Tip `6e16118` ✅; Baseline PDE-Suite **264/0/0**.
-- I1 (R-JD-12 Display-Clamp): offen — kann sofort starten.
-- I2 (R-JD-11 list_breakpoints): offen — Q1 gelöst, startet nach I1.
+- I1 (R-JD-12 Display-Clamp): ✅ (2026-09-22) — `displayHitCount` + Clamp in `breakpointResponse`, 2 UC-JD-14-Tests in `DebugJsonUnitTest`; Suite 266/0/0; Commit `b04f0e3`.
+- I2 (R-JD-11 list_breakpoints): ✅ (2026-09-22) — 15. Action + `currentProject`-Wiring (SharedToolsComponent/PeonAiService) + `DebugJson.breakpointListResponse`, 5 neue UC-JD-13-Tests (`DebugListBreakpointsTest`) + `listBreakpointsDoesNotFailWithoutSession`; Suite 272/0/0.
+  - IST-Abweichung (verifiziert, 2026-09-22): `JDTDebugConstants` existiert auf dieser Target-Platform (jdt.launching 3.24.300 / jdt.debug 3.26.100, 2026-06/07) **nicht** — Marker-Typ-IDs `org.eclipse.jdt.debug.javaLineBreakpointMarker` / `...javaExceptionBreakpointMarker`, Attribut-Keys `org.eclipse.jdt.debug.core.typeName` / `...condition` / `...hitCount`, enabled = `IBreakpoint.ENABLED` (`org.eclipse.debug.core.enabled`). Aus 2026-07-Quell verifiziert; UC-JD-13-Tests self-verifying bestätigt.
 
 ## 2. Slicing — 2 vertikale Inkremente, je grün + Commit auf `analysis/tool-evolution`
 
