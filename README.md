@@ -37,6 +37,10 @@ Jon and team are in the house. Single threaded for now - for best local performa
 
 - [Peon AI on eclipse marketplace](https://marketplace.eclipse.org/content/peon-ai)
 
+### Empfohlene Plugins
+
+- https://marketplace.eclipse.org/content/previewer für MD und mermaid
+
 ### Update Site
 
 1. Go to **Help > Install New Software**
