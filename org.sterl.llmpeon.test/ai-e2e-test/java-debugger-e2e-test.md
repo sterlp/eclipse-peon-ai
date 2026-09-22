@@ -18,7 +18,8 @@ Erwartung steht hier.
 
 ## Vorbedingungen (Paul)
 
-- Gewähltes Projekt: `test_project`.
+- Gewähltes Projekt: `test_project` (es gibt **nur** dieses Projekt — Referenzen auf andere
+  Projekte sind immer ein Fehler).
 - **Paul startet die Debug-Session** (Java-Launch im Debug-Mode, Breakpoint auf der mit
   `// <-- BREAKPOINT` markierten Zeile). Der Agent wartet danach.
 
@@ -27,7 +28,8 @@ Erwartung steht hier.
 ## Phase 0 — Fixture (Agent-Prompt)
 
 > Erstelle im Projekt `test_project` die Datei `src/org/sterl/fixture/DebugFix.java` mit exakt
-> diesem Inhalt und notiere die Zeilennummer der `// <-- BREAKPOINT`-Zeile:
+> diesem Inhalt und notiere die Zeilennummern der `// <-- BREAKPOINT`- und der
+> `// <-- BREAKPOINT-CATCH`-Zeile:
 >
 > ~~~java
 > package org.sterl.fixture;
@@ -45,18 +47,29 @@ Erwartung steht hier.
 >         if (args.length > 0 && args[0].equals("throw")) {
 >             throw new IllegalArgumentException("boom"); // nur mit Programm-Arg "throw"
 >         }
+>         if (args.length > 0 && args[0].equals("catch")) {
+>             caught();
+>         }
 >         System.out.println("done " + counter);
 >     }
 >
 >     static int tick(int counter) {
 >         return counter + 1;
 >     }
+>
+>     static void caught() {
+>         try {
+>             throw new IllegalStateException("caught boom");
+>         } catch (IllegalStateException e) {
+>             System.out.println("caught: " + e.getMessage()); // <-- BREAKPOINT-CATCH
+>         }
+>     }
 > }
 > ~~~
 >
 > Wenn Paul die Datei gesehen hat und die Session läuft (Programm am Breakpoint suspended):
 > weiter mit Phase 1. Sage ihm vorher: Launch mit Standard-Args für Phase 1–4, Programm-Arg
-> `throw` erst für Phase 3b.
+> `throw` erst für Phase 3b, Programm-Arg `catch` erst für Phase 3c.
 
 ## Phase 1 — Lesen (Agent-Prompt)
 
@@ -66,10 +79,10 @@ Erwartung steht hier.
 > |---|---|---|
 > | 1.1 | `get_state` | JSON: `vm.state` = suspended, Main-Thread mit `topFrame` (Methode `main`, Typ `DebugFix`, Zeile = Breakpoint-Zeile). |
 > | 1.2 | `get_stack_trace` | Frames, Frame 0 = `DebugFix.main`. |
-> | 1.3 | `get_variables` mit `depth=2` | `counter` (int, 0–9) in Pretty-JSON. **Statische Felder sind bewusst NICHT enthalten** („local variables of the frame" — statisches `p` fehlen ist **korrekt**, Erweiterung ist Backlog F2). |
+> | 1.3 | `get_variables` mit `depth=2` | `locals` mit `counter` (int, 0–9) **und** ein separates `statics`-Feld mit dem statischen `p` (Point, Feldwerte x=1, y=2 bis Tiefe 2) — leeres `statics`-Array, wenn die Klasse keine statischen Felder hat (R-JD-9). |
 >
 > Erwartung an die Namen: du solltest die Tools anhand ihrer Namen/Beschreibungen **ohne
-> Experimentieren** richtig bedienen können. Wenn du raten musstetest: notieren (Abschlussfrage).
+> Experimentieren** richtig bedienen können. Wenn du raten musstest: notieren (Abschlussfrage).
 
 ## Phase 2 — set_variable (Agent-Prompt)
 
@@ -89,8 +102,20 @@ Erwartung steht hier.
 >
 > **Phase 3b — Exception-Breakpoint (Paul: Relaunch mit Programm-Arg `throw` nötig) — NACH Phase 4 ausführen!**
 > (Begründung F6: nach dem Exception-Suspend beendet jeder Resume die VM — Phase 4 wäre danach nicht mehr möglich.)
-> `set_exception_breakpoint("java.lang.IllegalArgumentException")` → `continue` → Suspend,
-> sobald `IllegalArgumentException` geworfen wird. Danach Breakpoint wieder entfernen.
+> 1. `set_exception_breakpoint("java.lang.IllegalArgumentException")` → `continue` → Suspend,
+>    sobald `IllegalArgumentException` geworfen wird.
+> 2. `get_exception` im Suspend → **Ehrlicher Fehler** in der Art „no exception variable in top
+>    frame" — dokumentierte Grenze (R-JD-10): am Throw-Site eines ungefangenen `throw` existiert
+>    keine benannte Variable. Der positive Fall folgt in Phase 3c.
+> 3. Danach Exception-Breakpoint wieder entfernen.
+>
+> **Phase 3c — `get_exception` positiv (Paul: Relaunch mit Programm-Arg `catch` nötig):**
+> 1. `set_breakpoint` auf die `// <-- BREAKPOINT-CATCH`-Zeile (im `catch`-Block, der Agent setzt
+>    ihn selbst — Paul startet nur den Relaunch).
+> 2. `continue` → Suspend **im catch-Block**, `locals` enthält `e` (IllegalStateException).
+> 3. `get_exception` → Typ (`IllegalStateException`) + Message (`caught boom`) +
+>    Variablenname (`e`).
+> 4. `remove_breakpoint(id)`, Breakpoint-Catch-Zeile wieder freigeben.
 
 ## Phase 4 — Controls & Evaluate (Agent-Prompt)
 
@@ -101,7 +126,8 @@ Erwartung steht hier.
 > | 4.3 | `step_out` | Zurück in `main`. |
 > | 4.4 | `step_out` erneut am Top-Frame | Ehrliche Meldung in der Art „already at top frame — use continue", kein Crash. |
 > | 4.5 | `evaluate_expression("counter + 1")` | JSON mit `counter + 1` als Wert und Typ. |
-> | 4.6 | `suspend` (nach `continue`) | State-JSON mit suspended-Threads. |
+> | 4.6 | `evaluate_expression("p")` | Objekt-Ergebnis mit **Feldwerten bis Tiefe 2** (`x`, `y`) — keine bloße „(id=N)"-Referenz (R-JD-9). |
+> | 4.7 | `suspend` (nach `continue`) | State-JSON mit suspended-Threads. |
 
 ## Phase 5 — User beendet die Session (Agent-Prompt)
 
@@ -118,11 +144,11 @@ Erwartung steht hier.
 > Beantworte zum Schluss **explizit diese zwei Fragen** aus deiner Tester-Sicht (keine
 > Quellcode-Zitate, deine Erfahrung beim Testen):
 >
-> 1. **Namen & Beschreibungen:** Waren die 13 Tool-Namen (`get_state`, `get_stack_trace`,
+> 1. **Namen & Beschreibungen:** Waren die 14 Tool-Namen (`get_state`, `get_stack_trace`,
 >    `get_variables`, `evaluate_expression`, `set_variable`, `set_breakpoint`,
 >    `set_exception_breakpoint`, `remove_breakpoint`, `step_over`, `step_in`, `step_out`,
->    `continue`, `suspend`) und ihre Beschreibungen selbsterklärend? Konntest du jede Aktion
->    ohne Rateversuch richtig parametrisieren? Was fehlte oder war mehrdeutig?
+>    `continue`, `suspend`, `get_exception`) und ihre Beschreibungen selbsterklärend? Konntest du
+>    jede Aktion ohne Rateversuch richtig parametrisieren? Was fehlte oder war mehrdeutig?
 > 2. **Verhalten:** Haben sich die Tools so verhalten, wie du es als LLM anhand von Name +
 >    Beschreibung erwartet hättest? Nenne jede Abweichung (auch positive Überraschungen).
 >
@@ -131,6 +157,6 @@ Erwartung steht hier.
 
 ---
 
-**SOLL-Quelle:** `docs/java-debugger-tool.md` (R-JD-1…5). Weicht diese Anleitung vom SOLL ab,
+**SOLL-Quelle:** `docs/java-debugger-tool.md` (R-JD-1…10). Weicht diese Anleitung vom SOLL ab,
 gilt das SOLL — und die Abweichung ist selbst ein Befund. Keine Code-Änderungen, keine
 Ursachen-Vermutungen — du testest, du reparierst nicht.
