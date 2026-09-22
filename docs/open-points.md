@@ -2,6 +2,21 @@
 
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
 
+## ❓ Gelber Compact-Indikator (🟡) im Roster (2026-09-22, Paul)
+
+Paul: gelber Ball als Compact-Indicator wäre besser als 🟢, „aber grün ist auch vollkommen okay" —
+„letztendlich nur ein mini improvement", bewusst **nicht gebaut** im
+[compact-lock.md](compact-lock.md)-Zyklus. Umsetzung wäre: zweiter Zustand im Status-Modell
+(`compacting` nur für die Anzeige, `working` bleibt Queue/Lock-Flag) + 🟡-Präfix in
+`AiAgentStatusWidget.text()`. Wiederaufnahme = Mini-Increment.
+
+## 🚧 „!-Messages" — sofortiger History-Insert auch im ToolLoop (2026-09-22, Paul — nicht gebaut)
+
+Nachrichten mit `!` am Anfang werden direkt in die Chat-History eingefügt (alle gequekten `!`-
+Nachrichten als eine gejointe UserMessage + Dummy-„Ok"-AI-Message) — das Vor-Queue-Verhalten.
+Aufgenommen in [queued-user-messages.md](queued-user-messages.md) Regel 8. Wiederaufnahme = eigene
+Story, Insert-Punkt/Race offen.
+
 ## ❓ Tool-Evolution PO-Run: CR-1…CR-19 accept/reject (2026-09-19, Nacht-Zyklus)
 
 Vergleich unseres Plugins gegen das externe Copilot-Eclipse-Plugin — alle Tools abgeglichen. Sammelstelle

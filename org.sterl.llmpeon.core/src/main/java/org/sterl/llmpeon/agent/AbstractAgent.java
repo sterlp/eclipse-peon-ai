@@ -269,33 +269,40 @@ public abstract class AbstractAgent implements AiAgent {
 
     @Override
     public boolean compact(AiMonitor monitor) {
-        // < 3: a compact leaves exactly 2 messages (Session-compacted user + summary) — with < 2
-        // a direct re-compact would fire a real LLM call on those 2 (R16 sharpened, 2026-09-15)
-        if (memory.size() < 3) return false;
+        // User-triggered compact acquires the working flag (R-CT-1); an in-loop compact runs
+        // inside a turn that already holds it, so the CAS fails and the flag is left untouched.
+        boolean acquired = working.compareAndSet(false, true);
+        try {
+            // < 3: a compact leaves exactly 2 messages (Session-compacted user + summary) — with < 2
+            // a direct re-compact would fire a real LLM call on those 2 (R16 sharpened, 2026-09-15)
+            if (memory.size() < 3) return false;
 
-        monitor = AiMonitor.nullSafety(monitor);
-        var response = new AiCompressorAgent(configuredModel)
-                .call(memory.getCopy(), monitor);
-        
-        if (response == null || StringUtil.hasNoValue(response.aiMessage().text())) {
-            log.warn("Empty compact message received for " + getName());
-            return false;
+            monitor = AiMonitor.nullSafety(monitor);
+            var response = new AiCompressorAgent(configuredModel)
+                    .call(memory.getCopy(), monitor);
+
+            if (response == null || StringUtil.hasNoValue(response.aiMessage().text())) {
+                log.warn("Empty compact message received for " + getName());
+                return false;
+            }
+
+            memory.clear();
+            this.systemMessage = null;
+            // Restore turn-scoped context
+            var data = renderTurnContext(memory, turnContextSupplier, monitor);
+            // DON'T use addResult -> as the totalTokenUsed is from the compressor here which is to large
+            // we only take the compacted new message!
+            // and we remove the thinking, if any, from the result
+            data.add(TextContent.from("Session compacted:"));
+            // Ensure memory starts with a user message (many LLMs require this)
+            memory.add(UserMessage.from(data));
+            // we add the compact message as AI message
+            memory.add(AiMessage.from(response.aiMessage().text()));
+
+            return true;
+        } finally {
+            if (acquired) working.set(false);
         }
-
-        memory.clear();
-        this.systemMessage = null;
-        // Restore turn-scoped context
-        var data = renderTurnContext(memory, turnContextSupplier, monitor);
-        // DON'T use addResult -> as the totalTokenUsed is from the compressor here which is to large
-        // we only take the compacted new message!
-        // and we remove the thinking, if any, from the result
-        data.add(TextContent.from("Session compacted:"));
-        // Ensure memory starts with a user message (many LLMs require this)
-        memory.add(UserMessage.from(data));
-        // we add the compact message as AI message
-        memory.add(AiMessage.from(response.aiMessage().text()));
-
-        return true;
     }
 
     /** Set static context items rendered into the system prompt on every rebuild. */

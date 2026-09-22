@@ -111,6 +111,19 @@ THEN it is still added — no dedup across context vs. payload boundaries
 
 **Tests:** `AbstractAgentTest.testQueuedMessagesChainedFifo()` demonstrates queue chaining through doCall (standing orders handled separately via ToolLoopRequest).
 
+### 8. „!“-Messages: direkt in die History, auch im ToolLoop 🚧 Idee (2026-09-22, Paul — bewusst NICHT gebaut)
+
+- **Idee:** Nachrichten mit `!` am Anfang umgehen die Queue-Semantik: sie werden **sofort** in die
+  Chat-History eingebaut — auch mitten in einem Tool-Loop. Alle gequekten `!`-Nachrichten werden
+  zusammen gezogen (`drainAllImportant` o. ä.), mit `System.lineSeparator()` zu **einer**
+  UserMessage (String) gejoint und eingefügt; die `ThreadSafeMemory` fügt die Dummy-„Ok“-AI-Message
+  ein. Das war das Verhalten **vor** der Queue: die alte Implementierung fügte sie direkt nach dem
+  ToolCall ein — als Result-Insert im laufenden ToolLoop.
+- **Status:** nur aufgenommen, **nicht gebaut** (Paul 2026-09-22: „Bauen tun wir aber nur den fix
+  also den ‚lock' für compact"). Wiederaufnahme = eigene Story; offen sind u. a. Insert-Punkt
+  (nach welchem ToolCall-Result, Race mit dem laufenden Tool-Loop), Interaktion mit Burst-Join
+  (Regel 1) und der Schutz des History-Contracts (UserMessage/„Ok"-Paar).
+
 ## Data Flow
 ```
 AIChatView.resolveOutgoingMessage() → active.queueMessage(trailing) [batching in core]
