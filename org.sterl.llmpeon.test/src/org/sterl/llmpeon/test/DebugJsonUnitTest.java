@@ -9,9 +9,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
+import org.eclipse.core.resources.IMarker;
 import org.eclipse.debug.core.model.IValue;
 import org.eclipse.debug.core.model.IVariable;
 import org.eclipse.jdt.debug.core.IJavaArray;
+import org.eclipse.jdt.debug.core.IJavaLineBreakpoint;
 import org.eclipse.jdt.debug.core.IJavaPrimitiveValue;
 import org.eclipse.jdt.debug.core.IJavaFieldVariable;
 import org.eclipse.jdt.debug.core.IJavaObject;
@@ -446,6 +448,47 @@ public class DebugJsonUnitTest {
             // THEN: the name-heuristic boundary is reported honestly, not a silent false negative
             assertContains(e.getMessage(), "no exception variable in top frame");
         }
+    }
+
+    private static IMarker marker(long id) {
+        return stub(IMarker.class, Map.of("getId", id));
+    }
+
+    private static IJavaLineBreakpoint lineBreakpoint(long markerId, int hitCount, String condition) {
+        var answers = new HashMap<String, Object>();
+        answers.put("getMarker", marker(markerId));
+        answers.put("getHitCount", hitCount);
+        answers.put("getCondition", condition);
+        return stub(IJavaLineBreakpoint.class, answers);
+    }
+
+    // UC-JD-14
+    @Test
+    public void breakpointResponseClampsNegativeHitCount() {
+        // GIVEN: a created line breakpoint whose marker still carries the JDT default hitCount -1
+        IJavaLineBreakpoint breakpoint = lineBreakpoint(42, -1, null);
+
+        // WHEN: rendering the set_breakpoint response
+        String json = DebugJson.breakpointResponse(breakpoint, "src/Foo.java", 42, null);
+
+        // THEN: the raw -1 renders as 0 ("every hit" per the tool description)
+        assertContains(json, "\"hitCount\" : 0");
+        assertContains(json, "\"id\" : \"42\"");
+        assertFalse("the raw -1 must not leak into the output:\n" + json, json.contains("-1"));
+    }
+
+    // UC-JD-14
+    @Test
+    public void breakpointResponseKeepsPositiveHitCount() {
+        // GIVEN: a created line breakpoint with an explicit hitCount 3 and a condition
+        IJavaLineBreakpoint breakpoint = lineBreakpoint(42, 3, "i > 3");
+
+        // WHEN: rendering the set_breakpoint response
+        String json = DebugJson.breakpointResponse(breakpoint, "src/Foo.java", 42, null);
+
+        // THEN: values >= 0 pass through unchanged (regression boundary) and the condition is kept
+        assertContains(json, "\"hitCount\" : 3");
+        assertContains(json, "\"condition\" : \"i > 3\"");
     }
 
     private static void assertContains(String value, String expected) {

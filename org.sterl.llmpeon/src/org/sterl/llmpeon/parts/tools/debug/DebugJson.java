@@ -230,7 +230,7 @@ public final class DebugJson {
     }
 
     /** set_breakpoint / set_exception_breakpoint response (D8). */
-    static String breakpointResponse(IJavaBreakpoint breakpoint, String file, Integer line, String exceptionType) {
+    public static String breakpointResponse(IJavaBreakpoint breakpoint, String file, Integer line, String exceptionType) {
         Map<String, Object> node = new LinkedHashMap<>();
         try {
             node.put("id", String.valueOf(breakpoint.getMarker().getId()));
@@ -247,13 +247,22 @@ public final class DebugJson {
             if (breakpoint instanceof IJavaLineBreakpoint lineBreakpoint) {
                 node.put("condition", lineBreakpoint.getCondition());
             }
-            node.put("hitCount", breakpoint.getHitCount());
+            node.put("hitCount", displayHitCount(breakpoint.getHitCount()));
             node.put("suspendPolicy", breakpoint.getSuspendPolicy() == IJavaBreakpoint.SUSPEND_VM ? "VM" : "THREAD");
             node.put("installed", breakpoint.isInstalled());
         } catch (CoreException e) {
             throw new IllegalArgumentException("reading the created breakpoint failed: " + e.getMessage(), e);
         }
         return pretty(node);
+    }
+
+    /**
+     * Marker hitCount → honest display value (R-JD-12): the JDT marker default -1
+     * ("never expire") renders as 0, which is what "every hit" means in the tool
+     * description. Values ≥ 0 pass through unchanged.
+     */
+    private static int displayHitCount(int raw) {
+        return Math.max(0, raw);
     }
 
     /** remove_breakpoint response: {id, removed}. */

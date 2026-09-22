@@ -1,369 +1,241 @@
-# Compact-Lock — User-getriggerter Compact verhält sich wie ein Turn (2026-09-22)
+# Mini-Zyklus: Java-Debugger — `list_breakpoints` (R-JD-11) + hitCount-Clamp (R-JD-12)
 
-## ⛔ STOP-AND-ASK (User-Regel 2026-09-08 — gilt für ALLE Inkremente)
+## ⛔ STOP-AND-ASK (zuerst lesen)
+Bei **Compile-Fehlern ohne Lösung**, **nicht-grün-bekommenden Tests** oder **IST-Widersprüchen zu
+diesem Plan**: STOPP und Rückfrage über den Jon-Kanal — nie still workarounden, nie SOLL ändern.
+- UC-Status in `docs/java-debugger-tool.md` bleibt **❌** — Flippen ❌→✅ macht **ausschließlich
+  Jon** nach Review. Niemand in diesem Zyklus rührt die Feature-Docs an (nur Code + Tests).
+- **Q1 ist entschieden (Jon):** Projekt-Scope von `list_breakpoints` = **im Chat-View gewähltes
+  Projekt** (das bestehende „gewähltes Projekt"-Konzept des Plugins, dieselbe Quelle wie die
+  eclipse*-Tools) — **nicht** der aktive Editor. I2 ist damit **entblockt**; Reihenfolge
+  I1 → I2 bleibt.
 
-Bei Compile-Fehlern ohne Lösung, nicht-grün-bekommenden Tests, IST-Widersprüchen zu diesem
-Plan oder Unklarheiten: **STOPP und Rückfrage über den Jon-Kanal** — nie still workarounden,
-nie SOLL ändern. UC-Status in `docs/compact-lock.md` bleibt ❌ — Flippen macht Jon nach Review.
-Da Thinka ruft `planImplemented` NIEMALS auf; Archivierung = Aufgabe des Dev-Agenten nach
-bestandenem PO-Review.
+## 1. Kontext
+SOLL: `docs/java-debugger-tool.md` **R-JD-11** (UC-JD-13: `list_breakpoints` — Breakpoint-
+Landkarte, **bewusst ohne Session** als Ausnahme zu R-JD-1) und **R-JD-12** (UC-JD-14:
+`DebugJson.breakpointResponse` zeigt Marker-hitCount `< 0` als `0` — die Beschreibung sagt
+„0 = every hit"; Marker-Verhalten unangetastet).
+Motivation (SOLL-WEIL, E2E 2026-09-22): zwischen Sessions konnte der Agent Phantom-BPs nicht
+sehen und musste über Laufzeitverhalten raten.
+Branch: **`analysis/tool-evolution`** (Tool-Time-Disclosure drin; erwartet Tip `081cccd`/`6e16118`).
+Repo-Root: Disk `/Users/sterlp/dev/workset/peon-ai` (Workspace-Projekt `llmpeon-parent`).
 
-## 1. Context
+## Status
+- Vorbereitungen: ✅ (2026-09-22) — Branch `analysis/tool-evolution` Tip `6e16118` ✅; Baseline PDE-Suite **264/0/0**.
+- I1 (R-JD-12 Display-Clamp): offen — kann sofort starten.
+- I2 (R-JD-11 list_breakpoints): offen — Q1 gelöst, startet nach I1.
 
-User-getriggerter Compact (`AIChatView.doCompressContext` / `doCompressAgent`) lief als Job
-**ohne** das `working`-Flag von `AbstractAgent` → dokumentierter Memory-Race (Send während
-Compact = paralleler `call()` gegen dieselbe Memory, während `compact()` sie leert,
-`docs/chat-job-lifecycle.md` Backlog), Roster zeigte den Agenten inaktiv, gequeuete
-Nachrichten wachten erst beim nächsten manuellen Turn auf.
+## 2. Slicing — 2 vertikale Inkremente, je grün + Commit auf `analysis/tool-evolution`
 
-**Scope (Paul):** gebaut wird **nur R-CT-1 (Lock) + R-CT-3 (Follow-up-Trigger)**.
-R-CT-2 (Queue-Guard) und R-CT-4 (Anzeige) fallen **gratis** aus dem Flag heraus —
-keine Code-Änderung dort. 🟡-Indikator und „!-Messages" sind EXPLIZIT OUT OF SCOPE.
-UC-CT-3/4/5/6 = manuelle Verifikation (User-Smoke; kein SWT-Test-Harness, Präzedenz R-UI1/R-MCP3).
+### Vorbereitungen (vor I1 — einmalig)
+1. Git-Zustand prüfen: Branch `analysis/tool-evolution`, Tip `081cccd` oder `6e16118`
+   (beide von Paul genannt — einer muss als HEAD stimmen; Weichbeide ab → STOP-AND-ASK).
+   Working Tree ohne fremde Änderungen.
+2. **Baseline neu messen**: `eclipseBuildProject` über `org.sterl.llmpeon` **und**
+   `org.sterl.llmpeon.test` (Rule 16), dann `eclipseRunTests` Project `org.sterl.llmpeon.test`
+   — ganze Suite (erwartet ~264/0; erster Lauf: Workspace-Trust manuell bestätigen, Rule 13 —
+   nicht parallel nachstarten). Reale Zahl in §Status eintragen; rot/weich ab → STOP-AND-ASK.
 
-SOLL-Quellen: `docs/compact-lock.md` (R-CT-1…4, UC-CT-1…6),
-`docs/adr/0052-compact-uses-working-flag.md`, `docs/chat-job-lifecycle.md` (R-ST1-Konventionen),
-`docs/queued-user-messages.md` (Queue-Mechanik, wird reused, NICHT geändert).
+### Inkrement 1 — R-JD-12: hitCount-Clamp in `breakpointResponse` (Plugin)
+**UC-IDs: UC-JD-14**
+- IST (verifiziert): `DebugJson.breakpointResponse` (`org.sterl.llmpeon/.../parts/tools/debug/
+  DebugJson.java:233-257`) rendert :250 `node.put("hitCount", breakpoint.getHitCount())` —
+  roher Marker-Wert (JDT-Default `-1` „niemals expire"). Aufrufer: nur
+  `set_breakpoint` (JavaDebugTool:247) + `set_exception_breakpoint` (:283).
+- ÄNDERUNG in `DebugJson`:
+  - neuer `static int displayHitCount(int raw) { return Math.max(0, raw); }` (private)
+    — die **einzige** Clamp-Stelle (wird in I2 von der List-Response wiederverwendet,
+    „one behaviour, one implementation").
+  - :250 → `node.put("hitCount", displayHitCount(breakpoint.getHitCount()));`
+  - Sonst **nichts** — Shape, Key-Reihenfolge (LinkedHashMap), alle anderen Felder unverändert.
+- TESTS (in `DebugJsonUnitTest` — Proxy-Stub-Muster :36, JUnit 4, OSGi; heute **keine**
+  Breakpoint-Tests, Grep-verifiziert):
+  - `// UC-JD-14` + `breakpointResponseClampsNegativeHitCount`: Stub
+    `IJavaLineBreakpoint` (Proxy) mit `getMarker()` → `IMarker`-Stub (`getId()`=42),
+    `getHitCount()` → `-1` → Output enthält `"hitCount": 0` und `"id": "42"`.
+  - `// UC-JD-14` + `breakpointResponseKeepsPositiveHitCount`: `getHitCount()` → `3`
+    → `"hitCount": 3` (Regressionsschranke: ≥ 0 unverändert).
+  - Stub-Honesty (Rule 30): beide Richtungen — Input (gesubberter Wert −1/3) und Output
+    (exakter gerendert er Wert), nicht nur „Call kam".
+- GATE I1: `eclipseBuildProject` beider Plugin-Projekte + `eclipseRunTests`
+  `org.sterl.llmpeon.test` — ganze Suite grün (Baseline + 2 neue). Commit.
 
-## 2. Design decisions
+### Inkrement 2 — R-JD-11: `list_breakpoints` (Plugin)
+**UC-IDs: UC-JD-13**
+- **Projekt-Scope (Q1, Jon): „gewähltes Projekt" = im Chat-View gewähltes Projekt** —
+  dieselbe Quelle, die die anderen eclipse*-Tools nutzen (**nicht** der aktive Editor):
+  - **Wiring (etabliertes Muster `EclipseGrepTool:32-36` / `EclipseWorkspaceReadFileTool:40-44`):**
+    - `JavaDebugTool`: neu `private IProject currentProject;` +
+      `public void setCurrentProject(IProject currentProject)` (wie die Schwestertools,
+      plain field — konsistent, nicht volatile-abweichend).
+    - `SharedToolsComponent` (:69 heute `new JavaDebugTool()` inline): Instanz in Field
+      `javaDebugTool` + Accessor `javaDebugTool()` (Muster `eclipseGrepTool` :38/:70/:111).
+    - `PeonAiService.setProject` (:258-260): ergänzen
+      `sharedTools.javaDebugTool().setCurrentProject(project);` — eine Zeile, derselbe
+      Push wie workspaceRead/Write/grep.
+  - @Tool-Methode `listBreakpoints()` **ohne Parameter** → löst `currentProject` auf und
+    delegiert an die Seam (s. u.).
+  - **Nichts gewählt → ehrlicher Fehler, kein Fallback-Raten**: neue Konstante
+    `private static final String NO_PROJECT = "no project selected — select a project to list its breakpoints"`
+    + `onProblem(...)`-Ruf, Stil von `noSession` (:552-555).
+  - Session-Guard (`DebugSession.findActive()`/`noSession(...)`) greift hier **nicht** —
+    bewusste R-JD-1-Ausnahme, im Code als Javadoc-Hinweis an der Methode benannt.
+- **Marker-Scan (Workspace-State, sessionfrei):**
+  - Line-BPs des Projekts: `project.findMarkers(<JDT-Line-BP-Marker-Typ>, true,
+    IResource.DEPTH_INFINITE)`.
+  - Exception-BPs: Marker leben auf dem **Workspace-Root** (`createExceptionBreakpoint`
+    wird in `set_exception_breakpoint` :273 explizit mit `getRoot()` angelegt) — also:
+    `getRoot().findMarkers(<JDT-Exception-BP-Marker-Typ>, false, IResource.DEPTH_ZERO)`.
+    Exception-BPs sind workspace-global → erscheinen in **jeder** Projekt-Liste
+    (Jon akzeptiert das als JDT-Wahrheit; im Output + Description als workspace-wide benannt).
+  - Marker-Typ-IDs + Attribut-Keys aus `JDTDebugConstants` (erwartet: Basis
+    `org.eclipse.jdt.debug.model_breakpoint`, line `..._line`? — **exakte Konstanten
+    vor dem Coden via readTypeSource/JDT-Quell bestätigen** (AGENTS: nie raten);
+    Fallback-Vertrauen: die UC-JD-13-Tests sind self-verifying (echte Marker werden angelegt
+    und müssen erscheinen) → falscher Typ/Key = roter Test, kein stiller False-Negative.
+  - Attribute pro Marker: `id` = `marker.getId()` (String), `type` = line/exception
+    (per Marker-Typ), Line: `file` (projekt-relativ), `line` (`IMarker.LINE_NUMBER`),
+    `typeName` (JDT-Attr `...typeName`), `condition` (JDT-Attr `...condition`, `""` wenn
+    keiner); Exception: `exceptionType` (JDT-Attr `...exception_type`); beide: `hitCount`
+    (JDT-Attr `...hit_count`, Default `-1` → **`displayHitCount`** aus I1) und `enabled`
+    (`IMarker.ATTR_ENABLED`).
+- **Response** (neue `DebugJson.breakpointListResponse(String projectName, List<...>)`,
+  pretty + LinkedHashMap, konsistent mit den DebugJson-Formen):
+  ```json
+  {
+    "project": "test_project",
+    "scope": "line breakpoints of the project + workspace exception breakpoints (other projects not listed)",
+    "breakpoints": [
+      { "id": "123", "type": "line", "file": "src/Foo.java", "line": 42,
+        "typeName": "org.example.Foo", "condition": "i > 3", "hitCount": 0, "enabled": true },
+      { "id": "124", "type": "exception", "exceptionType": "java.lang.IllegalStateException",
+        "hitCount": 0, "enabled": true }
+    ]
+  }
+  ```
+  Leere Liste: `"breakpoints": []` + `project`/`scope`-Keys = Scope-Disclosure
+  (SOLL: „leere Liste mit Scope-Disclosure"; AGENTS: Scope-Einschränkung im Output benannt).
+- **@Tool-Description** (15. Action, Stil der 14 bestehenden): Zweck = Landkarte der
+  Breakpoints **vor/zwischen Sessions** inkl. Phantom-BPs (UI gesetzt), die das
+  Laufzeitverhalten sonst nicht verrät; Scope = **im Chat gewähltes Projekt** +
+  workspace-wide Exception-BPs; hitCount `0 = every hit` (Clamp R-JD-12); entfernen
+  bleibt `remove_breakpoint(id)`; **works without a debug session**;
+  kein gewähltes Projekt → ehrlicher Fehler.
+- **JavaDebugTool-Klassen-Javadoc** :41-49 aktualisieren (heute: „every action answers
+  with the honest no-session message" — Ausnahmeklausel für `list_breakpoints` ergänzen:
+  läuft ohne Session, braucht dafür aber ein gewähltes Projekt).
+- TESTS:
+  - **Neue Klasse `DebugListBreakpointsTest`** (JUnit 4, extends `AbstractIntegrationTest` —
+    Fixture `test_project`, Muster `EclipseBuildToolTest`/`DebugSessionLookupTest`):
+    - `// UC-JD-13` + `lineBreakpointWithConditionAndHitCountAppears`: via
+      `JDIDebugModel.createLineBreakpoint(file, typeName, line, -1, -1, 3, true, {})`
+      auf einer echten Fixture-CU (z. B. `src/org/sterl/fixture/Alpha.java`, wie
+      `EclipseBuildToolTest.FILE_A`) + `setCondition("i > 3")` →
+      `JavaDebugTool.listBreakpoints(project)` (Seam, s. u.) enthält id/`"type": "line"`/
+      file/line/`"condition": "i > 3"`/`"hitCount": 3`/`"enabled": true`.
+      finally: `breakpoint.delete()` + `marker.delete()` (Muster `EclipseBuildToolTest`
+      `deleteTestMarkers`).
+    - `// UC-JD-13` + `exceptionBreakpointListedWorkspaceWide`:
+      `JDIDebugModel.createExceptionBreakpoint(getRoot(), "java.lang.IllegalStateException",
+      false, true, false, true, {})` → erscheint mit `"type": "exception"` +
+      `exceptionType` (beweist zugleich Root-Scope); cleanup idem.
+    - `// UC-JD-13` + `uiStyleBreakpointRendersClampedHitCount`: Line-BP mit
+      `hitCount = -1` (UI-Stil) → `"hitCount": 0` in der Liste (R-JD-12 greift auch
+      auf Marker-Lese-Pfad — via `displayHitCount`).
+    - `// UC-JD-13` + `noMarkersListsEmptyWithScopeDisclosure`: ohne Marker →
+      `"breakpoints": []` + Projekt-Name im Output.
+    - `// UC-JD-13` + `otherProjectMarkersDoNotAppear`: Line-BP-**Marker** direkt auf
+      der Workspace-Root anlegen (`root.createMarker(<line-BP-Typ>, attrs)` ohne
+      `getFile(...)`-Ziel im Projekt) → taucht in `listBreakpoints(project)` **nicht**
+      auf (Isolation: nur Projekt-Marker + Root-Exception-Marker zählen).
+  - **Seam für die Tests**: `public static String listBreakpoints(IProject project)`
+    in `JavaDebugTool` (Präzedenz: `primaryTypeName` :524 ist public static als
+    Test-Seam, R-JD-7/`DebugPrimaryTypeTest`); @Tool-Methode = gewähltes-Projekt-Resolution
+    + Delegation. (Package-private reicht nicht — Test-Package ist `org.sterl.llmpeon.test`.)
+  - **`JavaDebugToolTest.noSessionFailsHonest`** (:28-61, heute 14 Actions): Matrix **unverändert**
+    lassen; `// UC-JD-1`-Kommentar (:26) um einen Satz ergänzen (Paul: „im Test kommentieren,
+    NICHT im Doc"): `list_breakpoints` (R-JD-11) ist die bewusste Session-Ausnahme —
+    getestet in `DebugListBreakpointsTest`. Dazu neuer Test
+    `listBreakpointsDoesNotFailWithoutSession` in `JavaDebugToolTest`:
+    `tool.listBreakpoints()` (Test-Instanz ohne gewähltes Projekt, Headless-PDE) enthält
+    „no project selected" (NO_PROJECT, deterministisch) **und kein** „no active debug session".
+- GATE I2: wie GATE I1 (Build beider Projekte + ganze Suite). Commit.
 
-- **D1 (R-CT-1):** `AbstractAgent.compact()` startet mit `boolean acquired = working.compareAndSet(false, true);`
-  — **vor** dem R16-Guard (Guard wird dann unter dem Flag evaluiert, serialisiert).
-  `finally { if (acquired) working.set(false); }`. In-Loop-Compact (Auto-Compact :241,
-  `CompactSessionTool`) läuft mit `working==true` → CAS scheitert → `acquired==false` →
-  wird weder akquiriert noch released (Flag gehört dem Turn). `PoDelegateTool.compact(slave)`
-  compaktiert einen **anderen** (idle) Agenten → CAS succeeds → Slave ist währenddessen
-  korrekt `working`. Ein `AtomicBoolean` reicht — Ownership über `acquired`.
-- **D2 (R-CT-3, Trigger-Placement):** Follow-up-Check + Submit liegen **innerhalb des
-  `remaining <= 0`-Branch** des `handleDoneChatResponse`-UI-Runnables — Unlock + Submit im
-  selben UI-Thread-Runnable, kein Unlock-Fenster (ADR-0017, Memory-Regel #5 atomic UI chaining).
-  Inflight-Skip-Branch (`remaining > 0`): **kein** Follow-up — der neuere Turn drainet die
-  Queue selbst beim `call()`-Einstieg → kein doppeltes Submit.
-- **D3 (Compact-Job-Unterscheidung):** `handleDoneChatResponse` erhält einen neuen
-  `@Nullable AiAgent compactedAgent`-Parameter. Send-Pfad (`submitAiJob`) übergeben `null`;
-  beide Compact-Pfade übergeben den kompaktierten Agenten. `agentName` (Display-String, bei
-  Slave = `slave.uiName()`) bleibt wie heute. Kein Boolean-Flag, keine Job-Typ-Klasse.
-- **D4 (nur aktiver Agent):** Trigger-Bedingung `compactedAgent == aiService.getActiveAgent()`
-  (Identität — `AgentService` hält langelebte Instanzen; Implementierer verifiziert).
-  Slave-Compact → kein Follow-up (Sklaven-Queue wird nicht vom UI gefüttert).
-  Agent-Wechsel während des Compacts → kein Follow-up (Queue des alten Agenten bleibt,
-  wird bei dessen nächstem Turn drainet).
-- **D5 (Follow-up = `submitAiJob(null)` + Core-Fix):** `call()` :183-184 concatiniert heute
-  `stillQueued + lineSeparator + initialMessage` — bei `initialMessage==null` und non-empty
-  Queue ergibt das latent „…\nnull" im LLM-Prompt (defekt, heute unerreichbar via Follow-up,
-  erreichbar via Empty-Send + Queue). Fix: `initialMessage` blank + drained Queue nicht leer
-  → **Payload = drained Queue mit `"[Queued Message]:"`-Prefix** (UC-CT-4 verlangt die
-  Markierung auch auf dem ersten Eintrag; in-Loop `pollNext` markiert schon identisch, :197-198).
-- **D6 (Cancel-Parität):** Trigger feuert bei **jedem** Compact-Job-Ende (Erfolg/Fehler/**Stop**),
-  `ex` ist irrelevant. Stop-canceled Compact → `handleChatException` liefert `null` (sieht
-  aus wie Erfolg) → Follow-up feuert trotzdem. Rationale: „die Nachricht wird dann trotzdem
-  verarbeitet" (Paul, R-CT-3 WEIL) + kein „N queued messages preserved"-Pfad. Kompact-Abort
-  drainet nicht (Drain-on-Abort gehört zu `call()`, nicht zu `compact()`).
-- **D7 (Freebies, keine Änderungen):** `resolveOutgoingMessage` :617-627 unverändert —
-  `isWorking()==true` während Compact → `Skip` + Queue + Ack (R-CT-2). Roster 🟢 via
-  `agent.isWorking()` Pull (`AiAgentStatusModel` :40, Blatt-Regel :53), Compact-Buttons
-  via `AiAgentStatusModel.compactEnabled` (`AiAgentStatusWidget.java:96`) +
-  `ActionsBarWidget.lockWhileWorking` :156 — alles fällt aus dem Flag (R-CT-4).
-  Geprüft: Actions-bar-Compact-Button ist per `lockWhileWorking` während laufendem Turn
-  deaktiviert → kein Gegen-Race (Compact-während-Turn) durchs UI; der CAS ist Backstop.
-- **D8 (Tests):** Core: UC-CT-1/2 headless in `AbstractAgentTest` (StreamMock-Pattern,
-  s. Test strategy). UC-CT-2 ist **Regression-Pin** (IST verhält sich dort schon korrekt —
-  Test fixt die Re-Entrancy gegen zukünftige naive finally-Release). Plugin: **keine**
-  neuen Headless-Tests (AIChatView braucht SWT `Display`; im `org.sterl.llmpeon.test` existiert
-  kein View-Test, nur Kommentar-Verweis `PeonAiServiceTest.java:1727`). Evidenz = INFO-Log +
-  User-Smoke.
+## 3. Design-Entscheidungen (alle entschieden — keine offenen)
+1. **Clamp-Zentrale**: ein `displayHitCount` in `DebugJson`, genutzt von
+   `breakpointResponse` (I1) UND `breakpointListResponse` (I2) — eine Stelle für
+   „Marker-Rohwert → ehrliche Anzeige" (SOLL R-JD-12 + AGENTS one-behaviour).
+2. **List-Datenquelle = Marker, nicht Breakpoint-Manager**: Marker überleben das
+   Target (Phantom-BPs zwischen Sessions = genau der Zweck); der Breakpoint-Manager
+   würde nur session-registrierte BP liefern. Projekt-Isolation per `project.findMarkers`.
+3. **Exception-BPs = workspace-global im Scope** (Marker leben auf Root — JDT-Wahrheit,
+   von Jon akzeptiert; UC-JD-13 verlangt sie in der Liste). Im Output + Description
+   benannt („exception breakpoints are workspace-wide"); „anderes Projekt" isoliert
+   nur die Line-BPs.
+4. **Scope = im Chat-View gewähltes Projekt (Q1, Jon)** — per bestehendem
+   `setCurrentProject`-Wiring (SharedToolsComponent → `PeonAiService.setProject`),
+   **nicht** aktiver Editor: (1) „gewählt" bedeutet überall im Plugin dasselbe;
+   (2) bleibt zwischen Sessions stabil ohne Editor (User-Kombo, Phantom-Hunt-Zweck);
+   (3) ehrlicher Fehler statt Fallback-Raten. **Seam `public static
+   listBreakpoints(IProject)`** hält die @Tool-Hülle dünn (Projekt-Resolution +
+   ehrlicher Fehler) und macht die Logik ohne UI/Session testbar (ADR-0051: keine
+   Live-Session-Tests; ADR-0037: `test_project`-Fixture).
+5. **Kein Session-Guard, kein Auto-Start** in der neuen Action; `noSession`-Text und
+   die 14er-Matrix bleiben byte-identisch.
+6. **Keine neue Abhängigkeit, keine @P-Parameter** (Paul: Parameter „keine");
+   `remove_breakpoint` unangetastet.
 
-## 3. Architecture
-
-Komponenten-Grenzen bleiben: **Core** (`AbstractAgent`) besitzt Flag + Queue +
-`[Queued Message]`-Semantik; **Plugin** (`AIChatView`) besitzt nur Job-Lifecycle,
-Unlock-Entscheidung und den einen neuen Trigger. Abhängigkeitsrichtung unverändert
-(UI → core, core ohne UI-Kenntnis). Neues State: null (kein `compacting`-Flag, kein Future).
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant UI as AIChatView (UI-Thread)
-    participant J as Compact-Job (Job-Thread)
-    participant A as AbstractAgent (Core)
-
-    U->>UI: Compact klicken (idle)
-    UI->>UI: inFlightTurns++ · lockWhileWorking(true)
-    UI->>J: Job.schedule
-    J->>A: compact(monitor)
-    Note over A: CAS working false→true (acquired=true)<br/>R16-Guard + Compressor unter dem Flag
-    U->>UI: Send während Compact
-    UI->>A: isWorking()==true → Skip: queueMessage + „Noted…" (kein Job)
-    J->>A: finally: working→false (nur if acquired)
-    J->>UI: handleDoneChatResponse(compactedAgent=active, …)
-    UI->>UI: inFlightTurns-- == 0 → Unlock (same Runnable)
-    alt compactedAgent == activeAgent && queue non-empty
-        UI->>J: submitAiJob(null) (same Runnable, kein Unlock-Fenster)
-        Note over A: call(null): CAS ok, drainAll →<br/>„[Queued Message]: …" FIFO-Loop
-    end
-```
-
-Code-Sketches (Signaturniveau):
-
-```java
-// AbstractAgent.compact (I1) — nur die Hülle neu, Body unverändert
-public boolean compact(AiMonitor monitor) {
-    boolean acquired = working.compareAndSet(false, true); // User-Pfad; In-Loop: CAS failt
-    try {
-        if (memory.size() < 3) return false;              // R16-Guard, jetzt unter dem Flag
-        /* …IST-Body unverändert… */
-    } finally {
-        if (acquired) working.set(false);
-    }
-}
-
-// AbstractAgent.call :183-184 (I2)
-var stillQueued = messageQueue.drainAll();
-String next;
-if (stillQueued == null) {
-    next = initialMessage;
-} else if (StringUtil.hasValue(initialMessage)) {
-    next = stillQueued + System.lineSeparator() + initialMessage;
-} else {
-    next = "[Queued Message]: " + stillQueued;            // Follow-up: Queue ist Payload
-}
-
-// AIChatView.handleDoneChatResponse (I3) — neu: 1. Parameter + Block im Unlock-Branch
-private void handleDoneChatResponse(@Nullable AiAgent compactedAgent, String agentName,
-        @Nullable ChatResponse cr, IProgressMonitor monitor, Exception ex) {
-    /* …IST… */
-    EclipseUtil.runInUiThread(parent, () -> {
-        int remaining = inFlightTurns.decrementAndGet();
-        if (remaining < 0) { /* …IST fail-open… */ }
-        if (remaining <= 0) {
-            monitorRef.set(new NullProgressMonitor());
-            lockWhileWorking(false);
-            actionsBar.updateCompact(/* …IST… */);
-            // R-CT-3 (D2/D4): im selben Runnable wie der Unlock
-            if (compactedAgent != null
-                    && compactedAgent == aiService.getActiveAgent()
-                    && compactedAgent.getQueuedMessageCount() > 0) {
-                LOG.info("compact follow-up: agent=" + agentName
-                        + " queued=" + compactedAgent.getQueuedMessageCount());
-                submitAiJob(null);
-            }
-            LOG.info("turn done: agent=" + agentName + " …"); // IST
-        } else { /* …IST skip… */ }
-    });
-}
-```
-
-Call-Site-Updates (I3): `submitAiJob` :646 → `(null, agent.getName(), cr, monitor, ex)`;
-`doCompressContext` :528 → `(active, active.getName(), null, monitor, ex)`;
-`doCompressAgent` :559 → `(agent, slave.uiName(), null, monitor, ex)`.
-
-## 4. Affected files
-
-| Datei | Änderung | Inkrement |
+## 4. Betroffene Dateien (vollständig)
+| Datei | Inkrement | Art |
 |---|---|---|
-| `org.sterl.llmpeon.core/src/main/java/org/sterl/llmpeon/agent/AbstractAgent.java` | I1: `compact()` :270-299 → CAS-Hülle. I2: `call()` :183-184 → 3-Wege-Next. (`working` :45, `StringUtil`-Import vorhanden) | I1, I2 |
-| `org.sterl.llmpeon.core/src/test/java/org/sterl/llmpeon/agent/AbstractAgentTest.java` | I1: +3 Tests, 1 Erweiterung (:397-423 `compact_secondCallDirectlyAfterCompact_isNoop` um `isWorking()==false`). I2: +1 Test | I1, I2 |
-| `org.sterl.llmpeon/src/org/sterl/llmpeon/parts/AIChatView.java` | I3: `handleDoneChatResponse` :652-681 (Signatur + Follow-up-Block + Log), 3 Call-Sites :528/:559/:646 | I3 |
-| **unverändert** (bewusst): `resolveOutgoingMessage` :593-629, `UserMessageQueue`, `AiAgentStatusModel`, `AiAgentStatusWidget`, `ActionsBarWidget`, `doCompressContext`/`doCompressAgent`-Job-Body (nur die `handleDoneChatResponse`-Aufrufe ändern sich) | — | — |
-| Docs (nur **Commit**, keine Edit!): `docs/compact-lock.md`, `docs/adr/0052-compact-uses-working-flag.md`, `docs/index.md`, `docs/queued-user-messages.md`, `docs/open-points.md`, `docs/chat-job-lifecycle.md` | mit I1-Commit committen | I1 |
+| `org.sterl.llmpeon/src/org/sterl/llmpeon/parts/tools/debug/DebugJson.java` | I1 | ändern (:250 Clamp, neu `displayHitCount`) |
+| `org.sterl.llmpeon/src/org/sterl/llmpeon/parts/tools/debug/DebugJson.java` | I2 | ändern (neu `breakpointListResponse`) |
+| `org.sterl.llmpeon/src/org/sterl/llmpeon/parts/tools/debug/JavaDebugTool.java` | I2 | ändern (15. Action `listBreakpoints` + `currentProject`-Field/`setCurrentProject` + `NO_PROJECT`-Konstante + public static Seam, Klassen-Javadoc :41-49) |
+| `org.sterl.llmpeon/src/org/sterl/llmpeon/parts/ai/component/SharedToolsComponent.java` | I2 | ändern (JavaDebugTool in Field + Accessor `javaDebugTool()`, :69) |
+| `org.sterl.llmpeon/src/org/sterl/llmpeon/parts/ai/PeonAiService.java` | I2 | ändern (`setProject` :258-260: Push an `javaDebugTool`) |
+| `org.sterl.llmpeon.test/src/org/sterl/llmpeon/test/DebugJsonUnitTest.java` | I1 | ändern (2 UC-JD-14-Stub-Tests) |
+| `org.sterl.llmpeon.test/src/org/sterl/llmpeon/test/DebugListBreakpointsTest.java` | I2 | **neu** (5 UC-JD-13-Tests) |
+| `org.sterl.llmpeon.test/src/org/sterl/llmpeon/test/JavaDebugToolTest.java` | I2 | ändern (UC-JD-1-Kommentar + `listBreakpointsDoesNotFailWithoutSession`) |
+| **unverändert**: `DebugSession`, `DebugSupport`, `UserContext`, `set_breakpoint`/`set_exception_breakpoint`/`remove_breakpoint`-Logik, die anderen Shared-Tools, `docs/**` (Flip = Jon), `docs/java-debugger-tool.md` | — | — |
 
-## 5. Rules & constraints
+## 5. Regeln & Constraints
+- **Falsche Negative sind der teuerste Bug** (AGENTS): jede Scope-Einschränkung im
+  Output benannt (`project`/`scope`-Keys); der self-verifying-Charakter der UC-JD-13-
+  Tests (echte Marker müssen erscheinen) darf nicht „erleichtert" werden.
+- Test-Kommentar `// UC-JD-n` (reine ID-Zeile) über jeden Beleg-Test; Test-Honesty
+  (Rule 30) — Input-Setup und gerendertes Output beidseitig asserten.
+- JUnit 4 im Test-Modul, **keine** externen Assert-Libs (OSGi).
+- Marker-Cleanup in `finally` (Muster `EclipseBuildToolTest.deleteTestMarkers`) —
+  keine cross-run-Leichen (diese würden andere Tests + den User-Workspace verschmutzen).
+- Vor jedem Plugin-JUnit-Lauf: `eclipseBuildProject` über `org.sterl.llmpeon` **und**
+  `org.sterl.llmpeon.test` (stale bin/); PDE-Trust-Dialog einmalig (Rule 13).
+- Kein Docs-Flip, keine SOLL-Änderung, keine neuen Dependencies.
+- Commit nach JEDEM grünen Inkrement auf `analysis/tool-evolution` (Code + Tests;
+  keine Docs-Änderungen in diesem Zyklus).
+- DONE-Claims vom PO gegen IST verifiziert (Rule 28): Suite-Status + Test-Namen.
 
-- Log OR throw, nie beides; Tool/Log-Ehrlichkeit: Follow-up-Log-Zeile ist die
-  Manual-Verification-Evidence (analog R-ST3).
-- Counter-Invarianten R-ST1 bleiben 1:1: Follow-up-Submit läuft durch den **bestehenden**
-  `submitAiJob` (increment + lock + finally-Guard) — kein eigener Counter-Pfad.
-- Kein `System.lineSeparator()`-Verstoß: D5-Prefix ist fester Marker-Text
-  (konsistent mit :197-198 `"[Queued Message]: " + next`).
-- `monitorRef`/`monitor`-Semantik unverändert; Compact-Stop cancelt weiterhin über
-  `monitorRef` (Compressor läuft durch `StreamingBridge` mit dem Job-Monitor).
-- Plugin-Änderungen UI-Thread-sicher: alles im bestehenden `runInUiThread`-Runnable.
-- Keine Migration, kein neuer UI-State, keine neue Abhängigkeit.
-- Git (Memory #19): Branch `story/compact-lock-2026-09-22` **von `story/f2-debug-linter-2026-09-21` tip**
-  (frischer Stand inkl. Linter-Fixes). Commit nach jeder grünen Iteration inkl. Story-Docs +
-  Plan; Docs-Dateien (o.g. 6) mit dem I1-Commit. Branch-Wechsel nur auf Ansage.
-- Vor jedem Plugin-Testlauf `eclipseBuildProject` für `org.sterl.llmpeon` UND
-  `org.sterl.llmpeon.test` (stale `bin/`-Klassen, Memory #16).
+## 6. BDD-Akzeptanz (Status bleibt ❌)
+- **UC-JD-13** (R-JD-11) — GIVEN Marker im gewählten Projekt (Line-BP mit
+  condition/hitCount, Exception-BP, UI-gesetzter BP) WHEN `list_breakpoints` (ohne
+  Session) THEN jeder Marker mit id/Typ/Ort/condition/hitCount/enabled; GIVEN keine
+  Marker THEN leere Liste mit Scope-Disclosure; GIVEN anderes Projekt THEN dessen
+  Line-BP-Marker erscheinen nicht (Exception-BPs workspace-wide, disclosed);
+  GIVEN kein gewähltes Projekt THEN ehrlicher Fehler, kein Session-Text, kein Raten.
+  → `DebugListBreakpointsTest` ×5 + `JavaDebugToolTest.listBreakpointsDoesNotFailWithoutSession`.
+- **UC-JD-14** (R-JD-12) — GIVEN Marker hitCount `-1` WHEN Response THEN `hitCount: 0`;
+  GIVEN `3` THEN `3`. → `DebugJsonUnitTest.breakpointResponseClampsNegativeHitCount`
+  + `breakpointResponseKeepsPositiveHitCount` (+ Clamp-Regression in der List-Test-Klasse).
 
-## 6. BDD Acceptance (UC → Test)
+## 7. Test-Strategie
+- Plugin-Gate = **ganze** PDE-Suite `org.sterl.llmpeon.test` (Baseline aus
+  Vorbereitungen + neue Tests), vorher Build beider Plugin-Projekte.
+- UC-JD-13-Tests sind echte Integration gegen `test_project` (ADR-0037) — keine
+  Live-Debug-Session, aber **echte Marker** (self-verifying für Marker-Typ/Attribute).
+- Keine Sleeps/Timeouts nötig (Marker-Operationen sind Workspace-synchron);
+  `waitForSuspend`-Logik wird nicht berührt.
+- Reihenfolge: I1 (klein, liefert `displayHitCount`) → I2 (Wiring + Action).
 
-| UC | Polarität | Test / Verifikation |
-|---|---|---|
-| UC-CT-1 (R-CT-1) | Happy | **`AbstractAgentTest.compactHoldsWorkingFlagDuringCompressorCall`** — 3 Messages in Memory, StreamMock-Callback: `agent.isWorking()` während Compressor-Call == `true`; nach `compact()` Rückkehr == `false` |
-| UC-CT-1 | Fehler | **`AbstractAgentTest.compactFailedReleasesWorkingFlag`** — Mock wirft `IllegalStateException`; Exception propagiert; danach `isWorking()==false` (finally-Release) |
-| UC-CT-1 | R16-Guard | Erweiterung **`compact_secondCallDirectlyAfterCompact_isNoop`** (:397): am Ende `assertThat(agent.isWorking()).isFalse()` — No-Op-Compact (Guard-Return unter dem Flag) released sauber |
-| UC-CT-2 (R-CT-1) | Pin (IST-schon-grün, Re-Entrancy-Fixierung) | **`AbstractAgentTest.inLoopCompactDoesNotReleaseTurnsWorkingFlag`** — Auto-Compact-Szenario (`autoCompactAfter(100)` + `ThreadSafeMemory`-Override `getTotalTokenUsed()==101`, Pattern `buildsSystemPromptOnceWhenAutoCompacting` :454); Mock-Call 1 = Compressor (OK), Mock-Call 2 = Turn: `agent.isWorking()` **im Turn nach dem In-Loop-Compact** == `true`; nach `call()` == `false` |
-| UC-CT-4 (R-CT-3, Core-Voraussetzung) | Happy + „no-null"-Defekt | **`AbstractAgentTest.callNullInitialWithQueuedProcessesQueueAsPayload`** — `queueMessage("q1")`; `agent.call(null, monitor)`; THEN: erste User-Message im Memory enthält `"[Queued Message]:"` und `"q1"`, **enthält kein** literales `"null"`; exakt ein LLM-Call für die Queue-Payload. Red vor I2 („…\nnull"), grün danach |
-| UC-CT-2/UC-CT-1 (Queue-Survival) | — | unverändert, bereits gedeckt: queued-user-messages Regel 5 (`compact_session`-Survival-Tests) |
-| UC-CT-3 (R-CT-2 freebie) | — | **Manuell** (Smoke 1) — kein zweiter Job, Ack im Chat |
-| UC-CT-4 (R-CT-3, UI) | — | **Manuell** (Smoke 2) — Follow-up-Job startet, FIFO, `[Queued Message]`-Markierung |
-| UC-CT-5 (R-CT-3) | Fehler | **Manuell** (Smoke 3) — fehlgeschlagener Compact → Queue trotzdem verarbeitet, kein „N queued message(s) preserved" |
-| UC-CT-6 (R-CT-4 freebie) | — | **Manuell** (Smoke 4) — Roster 🟢 auf dem kompakten Mitglied, Boss leuchtet nicht (Blatt-Regel) |
-
-## 7. Test strategy
-
-- Core-Gate = **Maven Surefire voll auf `llmpeon-core`** (AGENTS.md: Surefire ist ground
-  truth, nicht `eclipseRunTests`), Baseline Branch-Tip **923 / 0 Fail / 19 Skip** (PO-Review
-  2026-09-21) → nach I1: 926, nach I2: 927 Tests.
-- Plugin-Gate = `eclipseRunTests` auf `org.sterl.llmpeon.test` (PDE/OSGi), Baseline **260 / 0 / 0**.
-  Wichtig für I3: `PeonAiServiceTest` ruft `compact(null)` an 13 Stellen an idle Agents —
-  muss mit dem neuen Acquire/Release grün bleiben (Regression-Canary).
-  Erster Plugin-Testlauf braucht einmalig manuelle Workspace-Trust-Bestätigung im UI
-  (Memory #13) — bei Timeout nicht parallel nachstarten, User informieren.
-- Test-Hygiene (AGENTS.md „Test honesty"): UC-CT-1-Tests sind echte Red→Green
-  (vor I1: `isWorking()` während Compressor == false). UC-CT-2-Test ist **bewusst**
-  ein Pin (IST-korrekt, fixt Re-Entrancy) — im Test-Javadoc so markieren.
-- Bidirektionalität: UC-CT-1-Happy-Test assertet NICHT nur „true während" — auch
-  „false danach" (Release-Defekt) und im UC-CT-2-Test „false nach call()".
-- Latches mit Timeouts (5-10 s), wie das bestehende `testQueuedMessagesChainedFifo` :48-86.
-
-## 8. Inkremente (je grün + kompilierend, Modulgrenzen)
-
-### I1 — R-CT-1: Compact belegt das working-Flag (Core) — ✅ `18ae8eb` (Surefire 907/0/0)
-1. `AbstractAgent.compact()` → CAS-Hülle (D1), Body unverändert.
-2. Tests: +3 (`compactHoldsWorkingFlagDuringCompressorCall`,
-   `compactFailedReleasesWorkingFlag`, `inLoopCompactDoesNotReleaseTurnsWorkingFlag`)
-   + 1-Assertion-Erweiterung in `compact_secondCallDirectlyAfterCompact_isNoop`.
-3. Gate: `llmpeon-core` Surefire voll grün (erwartet 926/0/19).
-4. Commit: Code + Tests + die 6 Story-Docs (s. §4) + diese Plan-Datei.
-
-### I2 — R-CT-3 Core-Voraussetzung: `call(null)` mit Queue (Core) — ✅ `f059c68` (Surefire 908/0/0)
-1. `AbstractAgent.call()` :183-184 → 3-Wege-Next (D5).
-2. Test: +1 (`callNullInitialWithQueuedProcessesQueueAsPayload`).
-3. Gate: `llmpeon-core` Surefire voll grün (erwartet 927/0/19).
-4. Commit.
-
-### I3 — R-CT-3 UI: Follow-up-Trigger (Plugin) — ✅ `d6b11b5` (Plugin-Suite 261/0; Plan-Baseline 260 vor f2-JavaDebugTool-Tests)
-1. `AIChatView.handleDoneChatResponse` → Signatur + Follow-up-Block + Log-Zeile
-   (D2/D3/D4/D6); 3 Call-Sites aktualisieren.
-2. Keine neuen Tests (D8); Plugin-Suite ist Regression-Gate.
-3. Gate: `eclipseBuildProject` `org.sterl.llmpeon` + `org.sterl.llmpeon.test` fehlerfrei,
-   dann Plugin-Suite voll grün (erwartet 260/0/0).
-4. Commit.
-5. Smoke 1-4 (PO-Review mit User, §9) → danach Jon flipped UC-CT-1…6 ❌→✅
-   (manuelle UCs mit `(manuelle Verifikation …)`-Marker, vgl. ADR-0051-Konvention).
-
-## 9. Manuelle Smoke-Steps (UC-CT-3/4/5/6, nach I3)
-
-1. **UC-CT-3:** Agent mit ≥3 Messages, idle → Actions-bar Compact klicken → während
-   des sichtbar streamenden Compacts Text einfügen + Send → **erwartet:** „Noted, I will
-   respond as soon as I finished…"-Ack, **kein** zweiter Job (Task-View: nur der
-   „Compact"-Job), kein LLM-Traffic für die neue Nachricht.
-2. **UC-CT-4:** Fortsetzung von 1 → nach Compact-Ende startet **automatisch** ein
-   „Peon AI request"-Job → die gequeuete Nachricht wird beantwortet; Chat zeigt
-   `[Queued Message]`-Semantik (mehrere gequeuete Nachrichten: eine nach der anderen).
-   Log-Evidenz: INFO `compact follow-up: agent=… queued=N`.
-3. **UC-CT-5:** Compact erzwingen, der fehlschlägt (z. B. Provider-URL auf tot gestellt
-   oder Rate-Limit) → Fehler-Meldung im Chat → danach wird die gequeuete Nachricht
-   **trotzdem** verarbeitet (Follow-up feuert), **kein** „N queued message(s)
-   preserved"-TOOL-Message.
-4. **UC-CT-6:** Team-Mitglied per Roster-Button compacten (Da Boss wie Sklave) → während
-   des Compacts zeigt die Zeile dieses Mitglieds 🟢; Da Boss leuchtet **nicht** mit
-   (Blatt-Regel); nach Ende: beide inaktiv.
-
-## 10. Edge cases (bewusst akzeptiert, dokumentiert)
-
-- **Clear-Zwischenfenster:** User klickt Clear zwischen Unlock und Follow-up-Job-Start
-  (ms-Fenster) → Follow-up läuft als Empty-Continuation-Turn — identisch zum
-  IST-Empty-Send-Verhalten, kein neuer Defekt. Kein Guard (would need eigenes Flag).
-- **Agent-Wechsel während Compact:** kein Follow-up (D4) — Queue des verlassenen Agenten
-  überlebt und wird bei dessen nächstem Turn drainet (bestehende Semantik).
-- **Inflight-Skip + Follow-up:** folgt aus D2 — neuerer Turn drainet selbst; kein doppeltes Submit.
-
-## 11. Offene Fragen für die Implementierung
-
-- **Keine blockierenden.** Zwei Da-Thinka-Entscheidungen, PO-reviewbar:
-  D5 (`[Queued Message]:`-Prefix auf dem ersten Follow-up-Eintrag + „\nnull"-Fix in Core)
-  und D6 (Stop-Cancel behandelt wie Fehler → Follow-up feuert, kein Verlust).
-  Bei Widerspruch: STOP-AND-ASK vor I2/I3.
-- `compactedAgent == aiService.getActiveAgent()` setzt Instanz-Identität des
-  `AgentService` voraus — Implementierer mit einem Blick verifizieren (Agenten sind
-  langelebte Instanzen); bricht es: STOP-AND-ASK.
-
-## Risk line
-
-**Most likely reason this breaks later:** Jemand „vereinfacht" später das Release in
-`compact()` (immer `working.set(false)` im finally, ohne `acquired`-Check) → der
-In-Loop-Compact released das Turn-Flag vorzeitig → Phantom-IDLE-Fenster, in dem ein
-paralleler `call()` durchrückt — exakt der Race, den wir schließen. —
-**Change that most reduces that risk:** UC-CT-2-Pin-Test
-(`inLoopCompactDoesNotReleaseTurnsWorkingFlag`) — Mutation macht ihn rot.
-
----
-
-# PO-Review — Da Dok (2026-09-22)
-
-## Verdict: **ACCEPTED**
-
-3-Seiten-Prüfung (Plan ↔ Code ↔ Docs) über I1/I2/I3 — SOLL == IST, keine blockierenden Abweichungen.
-UC-Status in `docs/compact-lock.md` bleibt ❌ — Flip ist Jon-Aufgabe (Smoke 1–4 + Marker-Konvention).
-
-## a) Plan vs Code — ✅ exakt umgesetzt
-
-| Inkrement | Plan-Vorgabe | IST | Status |
-|---|---|---|---|
-| I1 | CAS `compareAndSet(false,true)` VOR R16-Guard, Release im finally NUR wenn `acquired` | `AbstractAgent.compact()` — CAS :282, R16-Guard :286 (unter Flag), `if (acquired) working.set(false)` :312; Body unverändert | ✅ |
-| I2 | `call(null)` + non-empty drained Queue → `"[Queued Message]: <msg>"` (D5, "\nnull"-Fix); leere Queue + null = Alt-Verhalten | `AbstractAgent.call()` :183-192 — 3-Wege-Next; `stillQueued==null` → `initialMessage` (null ok, doCall :255 `hasValue`-Guard) | ✅ |
-| I3 | `@Nullable AiAgent compactedAgent`, Follow-up im Unlock-Branch im SELBEN UI-Runnable, nur `compactedAgent == getActiveAgent()` (D4), feuert bei JEDEM Abschluss (D6), 3 Call-Sites | `AIChatView.handleDoneChatResponse` :652 (Signatur), Block :678-684 nach `lockWhileWorking(false)` im selben Runnable (kein Fenster; `submitAiJob` re-increments Counter atomar); Call-Sites :528 (`active`), :559 (`agent`=Slave), :646 (`null`=Send) | ✅ |
-
-- D4-Identity (`compactedAgent == aiService.getActiveAgent()`) wie geplant — AgentService hält langelebte
-  Instanzen (bekanntes Non-Issue, nicht beanstandet).
-- Slave-Compact → kein Follow-up (Sklave ≠ Active) — korrekte Konsequenz aus D4.
-- No-Op-Compact (`memory<3`) → Flag wird akquiriert+released, Queue-Ack-Pfad greift, Follow-up feuert bei
-  Queue>0 — konsistent mit R16 und ADR-0052 Consequences ("Follow-up-Trigger feuert unabhängig vom
-  Compact-Ergebnis").
-
-## b) Docs vs Code — ✅
-
-Tests (alle mit UC-ID-Kommentar, bidirektionale Assertions):
-- UC-CT-1: `compactHoldsWorkingFlagDuringCompressorCall` (`AbstractAgentTest.java:431`) — true während
-  Compressor, false danach. Richtig Red→Green.
-- UC-CT-1 (Fehler): `compactFailedReleasesWorkingFlag` (:457) — Exception propagiert, Flag released.
-- UC-CT-2 **Pin-Test vorhanden**: `inLoopCompactDoesNotReleaseTurnsWorkingFlag` (:485) — Javadoc markiert
-  explizit "Regression pin (IST already correct — declared per plan §7)" + Mutation-Guard-Beschreibung.
-  Genau der Risk-Line-Mutations-Test. (Anmerkung: der gefragte "Queue-when-working"-Pfad von
-  `resolveOutgoingMessage` (R-CT-2) ist Freebie — kein Test geplant/gefordert, Smoke 1 deckt ihn.)
-- UC-CT-4 (Core-Voraussetzung): `callNullInitialWithQueuedProcessesQueueAsPayload` (:520) — assertet
-  `[Queued Message]:`, `doesNotContain("null")`, exakt 1 LLM-Call. Richtig Red→Green.
-- R16-Erweiterung: `compact_secondCallDirectlyAfterCompact_isNoop` :426 — `isWorking()` isFalse nach No-Op.
-- UC-CT-3/5/6: manuell (Smoke 1–4), Docs markieren das (UC-CT-6 mit "Manuelle Verifikation"-Hinweis) —
-  konform mit Plan §6/D8 (kein SWT-Test-Harness). Linter: plain UNBELEGT für diese drei = erwartet,
-  NICHT blockierend (Status bleibt ❌ bis Jon flippt).
-- Queue-Survival (Regel 5 queued-user-messages) bleibt unverändert gedeckt.
-
-## c) Docs vs Plan — ✅, kein Scope-Creep
-
-- Plan deckt R-CT-1…4 + UC-CT-1…6 vollständig; Scope = R-CT-1 + R-CT-3, Freebies (R-CT-2/4) als
-  "fällt aus dem Flag" dokumentiert — Code bestätigt: `resolveOutgoingMessage` :617-627 UNVERÄNDERT,
-  kein 🟡-Indikator, kein `compacting`-Zustand (Grep clean), Roster/Buttons laufen weiter über `isWorking()`.
-- **Regel 8 "!"-Messages: NICHT gebaut** — Grep nach `drainAllImportant` / `startsWith("!")` = 0 Treffer;
-  Doc bleibt 🚧 Idee. ✅
-- ADR-0052: Decision 1–4 1:1 zum implementierten Code (CAS-Re-Entrancy, Follow-up im Job-finally, kein
-  Future, kein eigener UI-State). ✅
-- `chat-job-lifecycle.md:148`: Memory-Race → "❌ specified" mit Verweis auf compact-lock.md. ✅
-- `open-points.md:5`: 🟡-Indikator als Open Point aufgenommen (konform R-CT-4 WEIL). ✅
-- Test-Stände wie angegeben: Core Surefire 908/0/0, Plugin 261/0 — mit Plan-Erwartungen (908 nach I2;
-  261 = Baseline 260 + f2-UC-JD-Tests im Branch-Tip) konsistent.
-
-## Abweichungen / Nebeneffunde (nicht blockierend)
-
-1. **Kosmetik:** `AbstractAgentTest.java:479` — Test-Javadoc verweist auf "plan §7" (ephemere Plan-Datei,
-   wird archiviert → Verweis wird stale). Empfehlung: Javadoc auf selbsttragende Begründung umstellen
-   ("pin: In-Loop-Compact released nie das Turn-Flag").
-2. **Test-Honesty-Nuance:** `compactFailedReleasesWorkingFlag` (:457) wäre **allein** ohne das Feature auch
-   grün (ohne CAS-Hülle wird das Flag nie gesetzt → `isWorking()` false). Er ist Companion-Pin zum
-   Red→Green-Happy-Test (:431) — Plan §7 positioniert ihn entsprechend. OK, aber im Javadoc als Pin
-   markieren (wie beim UC-CT-2-Test :479), damit die Red-Green-Belastung klar bleibt.
-
-## Linter-Einordnung (Intake)
-
-- `compact-lock.md`: kein VERWAIST, kein UNBELEGT_ERLEDIGT. Plain UNBELEGT UC-CT-3/5/6 = manuelle UCs
-  vor Review-Flip — erwartet.
-- UC-DL-* / UC-JD-* (UNBELEGT_ERLEDIGT) + VERWAIST UC-DL-99 (`DocsLinterToolTest.java:78`) =
-  f2-/Linter-Zyklus, bekannter Altbestand (ausdrücklich aus diesem Review herausgenommen).
-
-## Mutation-Check (Empfehlung, nicht ausgeführt)
-
-Schwerpunkt: `AbstractAgent.compact()` :312 — Mutation `if (acquired)` → immer `working.set(false)`.
-Erwartet rot: `inLoopCompactDoesNotReleaseTurnsWorkingFlag` (:485). = exakt die Risk-Line, bereits
-gedeckt — kein zusätzlicher Mutation-Test nötig.
+## 8. Offene Fragen
+Keine. Q1 ist von Jon entschieden (gewähltes Projekt der Chat-View, nicht Editor)
+und in I2 + §3.4 aufgegangen; Exception-BPs workspace-wide wurde als JDT-Wahrheit
+mit Disclosure akzeptiert.
