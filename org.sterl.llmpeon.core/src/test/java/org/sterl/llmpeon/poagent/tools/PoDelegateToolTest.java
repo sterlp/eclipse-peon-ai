@@ -81,6 +81,17 @@ class PoDelegateToolTest {
         assertThat(reply).containsPattern("Context: \\d+ token - \\d+% used\\.");
     }
 
+    // UC-TD-1
+    /** Pins the full stats tail of a dispatch reply — the CallStats migration must stay byte-identical. */
+    @Test
+    void dispatchReplyPinsStatsSuffixFormat() {
+        var reply = newTool().askDev("x");
+
+        assertThat(reply).containsPattern(
+                "done\\. Context: \\d+ token - \\d+% used\\. \\(\\d+(?:m \\d+)?s, \\d{2}:\\d{2}\\)");
+    }
+
+
     /** planWithPlanAgent injects the plan-writing discipline as a standing order; talkPlan does not. */
     @Test
     void planWithPlanAgent_injectsPlanWriteLoop_talkPlanDoesNot() {

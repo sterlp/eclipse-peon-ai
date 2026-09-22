@@ -2,6 +2,16 @@
 
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
 
+## ❓ Tool-Time-Disclosure Restkandidaten (2026-09-22, Da-Thinka-Scan, Paul-Scope = B)
+
+Da Thinkas Inventar (2026-09-22) meldete weitere Kandidaten, bewusst **nicht** im
+[tool-time-disclosure.md](tool-time-disclosure.md)-Zyklus (Paul: Option B):
+`webFetchAsMarkdown` (`fetched HH:mm (cached)` — Cache-Frische), `memoryAdd/Replace`
+(Datum-Bestätigung — heute `void`, LLM sieht gar nichts), `JavaDebugTool.continue`
+(Dauer + Uhrzeit — echte Ausführungszeit), searchAgent/compactSession/lint (nur Konsistenz).
+Wiederaufnahme = je eine eigene Mini-Story. Read/Grep/Write-Familie bleibt ohne Zeitinfo
+(stateless, Rauschen).
+
 ## ❓ Gelber Compact-Indikator (🟡) im Roster (2026-09-22, Paul)
 
 Paul: gelber Ball als Compact-Indicator wäre besser als 🟢, „aber grün ist auch vollkommen okay" —

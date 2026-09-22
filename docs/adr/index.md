@@ -59,4 +59,6 @@ isn't clear from a rule/BDD.
 | [0049](0049-jdt-debug-2026-09-api-drift.md) | JDT-Debug-API-Drift 2026-09: `model`-Paket weg, `IJavaProcess` weg, `getRootThreadGroups()` listet `main` nicht → `getThreads()`; Breakpoints über `JDIDebugModel`, Eval über `EvaluationManager` | Accepted |
 | [0050](0050-debugger-jdt-not-dap-user-session.md) | Debugger-Basis JDT-Debug-Model statt DAP; Session = User-Property (kein Auto-Start/-Disconnect); keine Confirmations | Accepted |
 | [0051](0051-debugger-no-live-session-tests.md) | Debugger ohne automatisierte Live-Session-Tests (flaky VMStart-Race): UC-JD-1 + Stub-Tests automatisiert, UC-JD-2…6 manuell (E2E-Smoke) | Accepted |
+| [0052](0052-compact-uses-working-flag.md) | Compact-Lock: User-getriggerter Compact belegt das `working`-Flag (CAS statt Future-Chain/eigenem Zustand); Follow-up-Turn nach dem Compact draint die Queue | Accepted |
+| [0053](0053-call-stats-shared-helper.md) | `CallStats`-Helper im core shared (Dauer + HH:mm-Suffix, Clock injizierbar); PoDelegateTool migriert — Time-Disclosure für Shell/RunTest/Build | Accepted |
 

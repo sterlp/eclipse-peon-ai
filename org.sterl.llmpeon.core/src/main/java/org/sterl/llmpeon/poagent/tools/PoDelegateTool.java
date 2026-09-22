@@ -1,7 +1,5 @@
 package org.sterl.llmpeon.poagent.tools;
 
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Function;
@@ -13,6 +11,7 @@ import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.prompt.PeonPaths;
 import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.shared.ArgsUtil;
+import org.sterl.llmpeon.shared.CallStats;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.tools.AbstractTool;
 
@@ -62,8 +61,6 @@ public class PoDelegateTool extends AbstractTool {
     public static final String PLAN_WITH_PLAN_AGENT = "planWithPlanAgent";
     public static final String ASK_DEV = "askDev";
     public static final String BUILD_WITH_DEV = "buildWithDev";
-
-    private static final DateTimeFormatter COMPLETION_TIME = DateTimeFormatter.ofPattern("HH:mm");
 
     /**
      * Build discipline injected into the Dev slave only when it builds from a
@@ -230,32 +227,26 @@ public class PoDelegateTool extends AbstractTool {
 
         // TODO custom style for the UI as agent message ...
         onTool(target.uiName() + " start: " + System.lineSeparator() + prompt);
-        long startNanos = System.nanoTime();
+        var stats = CallStats.start();
         // The slave streams through Jon's monitor (this.monitor) — that is what
         // refreshes its 🟢 in the
         // header status widget while it works (ADR-0025). Keep the monitor
         // passed through.
         try {
             final var response = slave.call(prompt, this.monitor);
-            final var elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000;
-            final var stats = target.uiName() + " done. " + dispatchStats(slave, elapsedMillis);
+            final var statsLine = target.uiName() + " done. " + contextUsed(slave) + " " + stats.suffix();
             final var answer = response != null
                     ? response.aiMessage().text()
                     : null;
 
-            onTool(stats);
+            onTool(statsLine);
             return StringUtil.hasValue(answer)
-                    ? answer + System.lineSeparator() + stats
-                    : target.uiName() + " returned no result " + stats;
+                    ? answer + System.lineSeparator() + statsLine
+                    : target.uiName() + " returned no result " + statsLine;
         } catch (IllegalStateException e) {
             onProblem(target.uiName() + " " + e.getMessage());
             return "Failed: " + target.uiName() + e.getMessage();
         }
-    }
-
-    private String dispatchStats(AiAgent agent, long elapsedMillis) {
-        return contextUsed(agent) + " (" + StringUtil.humanElapsed(elapsedMillis)
-                + ", " + LocalTime.now().format(COMPLETION_TIME) + ")";
     }
 
     private void reportAction(NamedAgent target, String action) {
