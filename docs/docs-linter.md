@@ -90,6 +90,10 @@ Drei harte Struktur-Regeln, alles andere ist für den Parser unsichtbarer Fließ
 3. **UC-Überschrift genau eine Ebene tiefer** als ihre Regel — daraus leitet sich die Zugehörigkeit
    und damit die Status-Vererbung (R-DL-3) ab.
 
+> **Autor-Konvention (2026-09-22, Da-Dok-Fund):** Regel-Überschrift `### R-<FEATURE>-<n>`, UC
+> `#### UC-<FEATURE>-<n>`. Ein neues Feature-Doc schreibt die Regeln von Anfang an auf `###` —
+> ein `##` erzeugt `UC_OHNE_REGEL` (Fall: tool-time-disclosure.md, Erstfassung).
+
 Das **Frontmatter-Feld `idPrefix`** deklariert das Feature-Kürzel **explizit**, statt es aus
 vorhandenen IDs abzuleiten. Begründung: ein frisches Doc ohne Regeln hätte sonst kein Kürzel, und
 ein Tippfehler (`READTOOL` statt `READTOOLS`) sähe aus wie ein neues Feature — unsichtbar. Mit

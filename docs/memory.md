@@ -28,7 +28,7 @@ tool-evolution ← f2 ← compact-lock; Merge/Squash = Paul).
 5. Merge/Squash der Branch-Kette = Paul.
 6. Geparkt: ApiRetry-Follow-up, Issue #142-ADR, build.properties-Warnung, DL-Test-ID-Sweep (~33).
 
-## Smoke-Liste (UC-CT-3…6, manuell)
+## Smoke-Liste (manuell, Compact-Lock CT-3…6)
 
 1. Send während Boss-Compact (autoCompactAfter klein, viele Messages) → Ack „queued", KEIN paralleler
    2. Job, Roster zeigt Agenten working.
