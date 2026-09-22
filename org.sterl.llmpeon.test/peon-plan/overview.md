@@ -29,10 +29,15 @@ Workspace-Projekt `llmpeon-parent`; f2 + compact-lock gemerged, erwartet Tip `be
   Jon-Docs exakt wie erwartet vorhanden (Abweichung gemeldet: die TD-Plan-Datei ersetzt an
   gleicher Stelle das f2-Archiv — Jon). Baseline: Core Surefire **908/0/0**, Plugin **261/0/0**
   (erwartet ~908 / ~261).
-- I1: offen (CallStats + PoDelegate-Migration + Pin).
-- I2: offen (ShellTool-Suffix).
-- I3: offen (eclipseRunTests-Suffix).
-- I4: offen (eclipseBuildProject-Suffix).
+- I1: ✅ `b74bf1c` (Surefire 913/0/0; Abweichung: Plan-Sketch `Clock.systemDefault()`
+  existiert nicht → `Clock.systemDefaultZone()`, gleiche Semantik, im Commit gemeldet).
+- I2: ✅ `6ccf4bd` (Surefire 916/0/0).
+- I3: ✅ `70de69c` (PDE-Suite 263/0/0; **Abweichung**: `formatResults`/`timeoutReport` sind
+  **public** statt package-private — PDE-Test-Bundle hat separaten OSGi-Classloader,
+  package-private ist cross-Bundle unsichtbar (im Commit gemeldet)).
+- I4: ✅ `68ab57d` (PDE-Suite 264/0/0).
+- **Build complete** (2026-09-22): alle 4 Inkremente grün + committet. UC-Status in Feature-Docs
+  bleibt ❌ (Flip = Jon nach Review). `planImplemented` erst nach Jon-Review.
 
 ## 2. Slicing — 4 vertikale Inkremente, je für sich grün
 Jedes Inkrement: Gate grün → **Commit auf `analysis/tool-evolution`** (Rule 19, nur geänderte
