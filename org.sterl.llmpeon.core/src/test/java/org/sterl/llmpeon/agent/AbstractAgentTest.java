@@ -453,6 +453,12 @@ class AbstractAgentTest {
     }
 
     // UC-CT-1
+    /**
+     * Companion pin to {@link #compactHoldsWorkingFlagDuringCompressorCall}: alone this test
+     * would be green without the feature (a compact that holds no flag has nothing to
+     * release). It only counts as mutation protection together with the happy-path test —
+     * that one proves the flag is acquired, this one that it is released on failure.
+     */
     @Test
     void compactFailedReleasesWorkingFlag() {
         // GIVEN — 3 messages; the compressor call throws
@@ -476,10 +482,11 @@ class AbstractAgentTest {
 
     // UC-CT-2
     /**
-     * Regression pin (IST already correct — declared per plan §7): an in-loop auto-compact
-     * must not release the turn's working flag. Mutation guard: a naive
-     * finally { working.set(false) } without the acquired check releases it mid-turn and
-     * turns this test red.
+     * Regression pin (green before the CAS change — the in-loop compact already kept the
+     * turn's flag; the test exists to fix that behavior against future regressions): an
+     * in-loop auto-compact must not release the turn's working flag. Mutation guard: a
+     * naive finally { working.set(false) } without the acquired check releases it
+     * mid-turn and turns this test red.
      */
     @Test
     void inLoopCompactDoesNotReleaseTurnsWorkingFlag() {
