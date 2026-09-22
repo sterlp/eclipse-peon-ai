@@ -515,6 +515,30 @@ class AbstractAgentTest {
         assertThat(agent.isWorking()).isFalse();
     }
 
+    // UC-CT-4
+    @Test
+    void callNullInitialWithQueuedProcessesQueueAsPayload() {
+        // GIVEN — a queued message, no initial message (compact follow-up send)
+        var config = LlmConfig.builder().model("mock").build();
+        var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("OK")).build());
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        agent.queueMessage("q1");
+
+        // WHEN
+        agent.call(null, monitor -> {});
+
+        // THEN — the drained queue becomes the payload, marked like the in-loop pollNext
+        List<String> userTexts = extractUserTexts(agent.getMemory().getCopy());
+        assertThat(userTexts).hasSize(1);
+        assertThat(userTexts.get(0)).contains("[Queued Message]:", "q1");
+        // AND — no literal "null" concatenated into the prompt (pre-fix defect)
+        assertThat(userTexts.get(0)).doesNotContain("null");
+        // AND — exactly one LLM call for the queued payload
+        assertThat(streamMock.getCallCount()).isEqualTo(1);
+    }
+
+
     /** call() rebuilds systemMessage after compact cleared it. */
     @Test
     void test_call_rebuildsSystemMessageAfterClear() {

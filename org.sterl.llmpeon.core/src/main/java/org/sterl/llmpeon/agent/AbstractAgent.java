@@ -181,7 +181,15 @@ public abstract class AbstractAgent implements AiAgent {
             }
 
             var stillQueued = messageQueue.drainAll();
-            String next = stillQueued == null ? initialMessage : stillQueued + System.lineSeparator() + initialMessage;
+            String next;
+            if (stillQueued == null) {
+                next = initialMessage;
+            } else if (StringUtil.hasValue(initialMessage)) {
+                next = stillQueued + System.lineSeparator() + initialMessage;
+            } else {
+                // Follow-up (null initial): the queue IS the payload — mark like in-loop pollNext
+                next = "[Queued Message]: " + stillQueued;
+            }
 
             ChatResponse lastResponse = null;
             do {
