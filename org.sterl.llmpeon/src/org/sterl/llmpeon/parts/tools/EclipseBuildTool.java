@@ -14,6 +14,7 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.shared.ArgsUtil;
+import org.sterl.llmpeon.shared.CallStats;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -199,6 +200,7 @@ public class EclipseBuildTool extends AbstractEclipseTool {
         IProject projectRef = project.get();
         try {
             onTool("Building " + projectName);
+            var stats = CallStats.start();
             projectRef.deleteMarkers(IMarker.PROBLEM, true, IResource.DEPTH_INFINITE);
             projectRef.refreshLocal(IResource.DEPTH_INFINITE, getProgressMonitor());
             // CLEAN
@@ -206,7 +208,7 @@ public class EclipseBuildTool extends AbstractEclipseTool {
             // BUILD
             projectRef.build(IncrementalProjectBuilder.FULL_BUILD, getProgressMonitor());
 
-            return readProblems(projectRef);
+            return readProblems(projectRef) + System.lineSeparator() + stats.suffix();
         } catch (CoreException e) {
             throw new RuntimeException("Filed to build " + projectRef.getName(), e);
         }

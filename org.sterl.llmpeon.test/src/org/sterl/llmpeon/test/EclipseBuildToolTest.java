@@ -201,6 +201,21 @@ public class EclipseBuildToolTest extends AbstractIntegrationTest {
         }
     }
 
+    // UC-TD-4
+    @Test(timeout = 120000)
+    public void buildReportEndsWithStatsSuffix() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        String result = tool.eclipseBuildProject(PeonTestFixture.PROJECT_NAME);
+
+        // THEN report body is intact and the last line is the stats suffix
+        assertTrue("expected report body:\n" + result, result.contains("Project "));
+        var lines = new ArrayList<String>();
+        result.lines().forEach(lines::add);
+        assertTrue("expected stats suffix on last line:\n" + result,
+                lines.get(lines.size() - 1).matches("\\(\\d+(?:m \\d+)?s, \\d{2}:\\d{2}\\)"));
+    }
+
     // UC-PP-7
     @Test
     public void whitespaceOnlyFilesMeansUnset() throws Exception {
