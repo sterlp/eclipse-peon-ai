@@ -124,6 +124,31 @@ THEN it is still added — no dedup across context vs. payload boundaries
   (nach welchem ToolCall-Result, Race mit dem laufenden Tool-Loop), Interaktion mit Burst-Join
   (Regel 1) und der Schutz des History-Contracts (UserMessage/„Ok"-Paar).
 
+### 9. Queued-At Disclosure — Uhrzeit in onTool + Marker ❌ specified (2026-09-23, Paul)
+
+Jeder Queue-Eintrag trägt einen **queuedAt**-Zeitstempel (Zeitpunkt des Queueings). Beim Konsum zeigt
+**beides** die Uhrzeit im Format `(queued HH:mm)`:
+
+- **onTool-Zeile:** `Reading queued User message: <text> (queued 14:32)` (`AbstractAgent`, in-loop-
+  Pfad), 
+- **LLM-Marker:** `[Queued Message] (queued 14:32): <text>` — auch im Follow-up-Pfad (Queue als
+  Payload nach dem Compact).
+
+Die Uhrzeit ist die Queue-Zeit, nicht die Konsum-Zeit; Burst-Join (Regel 1) zeigt die Zeit des
+zusammengefassten Batches (erster Eintrag). Clock ist injizierbar (testbar).
+
+```
+GIVEN eine Message wird um 14:32 gequeued
+WHEN sie in-loop (pollNext) oder als Follow-up konsumiert wird
+THEN onTool-Zeile UND Marker tragen `(queued 14:32)`
+AND der Message-Text bleibt unverändert hinter dem Präfix
+
+GIVEN ein Burst (Regel 1) fasst 3 Messages zusammen
+WHEN konsumiert THEN die Zeit des ersten Eintrags steht im Präfix
+```
+
+**Tests:** `AbstractAgentTest` — bestehende Queue-Tests erweitern um das Präfix-Assert (Clock injiziert).
+
 ## Data Flow
 ```
 AIChatView.resolveOutgoingMessage() → active.queueMessage(trailing) [batching in core]

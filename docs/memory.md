@@ -1,69 +1,54 @@
-# Session-Stand — 2026-09-22 (TD ✅ · Compact-Smoke ok · Debugger-Bug-Hunt läuft)
-
-## Debugger-Bug-Hunt (E2E 2026-09-22, test_project/issue.md — Triage nach Memory #22)
-
-- **F1 Exception-BP tot (Paul: Blocker):** Da Mek exkludierte JDI/JDT (raw-JDI-Experiment feuert;
-  `initializeBreakpoints` installiert Marker-BPs bei Target-Start). Verdacht: E2E-Setup/Phantom-BPs.
-- **F2-A „4. Hit": JDI-Quirk bestätigt** (Suspend-Position = stiller Hit #1) — e2e-Doc 3.2 jetzt mit
-  Zähl-Definition korrigiert. **F2-B „2. Hit": unklar** — Pauls Erinnerung: BP war sauber und griff;
-  Re-Run 3.2/3b mit Clean-State entscheidet.
-- **Bonus-Befund:** Request bleibt nach hitCount-Verbrauch enabled (Refire) — JDI-Spec-Verstoß,
-  Ursache/Owner noch offen.
-- **Ursachen-Fix-Story Paul:** `list_breakpoints` (R-JD-11/UC-JD-13, bewusst ohne Session —
-  Phantom-BPs leben zwischen Sessions) + `hitCount:-1→0` Display-Clamp (R-JD-12/UC-JD-14). SOLL in
-  java-debugger-tool.md ❌, e2e-Doc mit Clean-State-Pflicht (3b) + Zeile 23 + Zähl-Definition
-  aktualisiert. Bau als Mini-Zyklus, danach Paul: Re-Run 3b/3.2 (1–2 Relaunches).
-- Red-Test-Policy (Jon): Fix-Level = headless Stubs (DebugJson-Muster), JDI-Verhalten = Standalone-
-  JUnit-Dokumentation, Live-Session manuell (ADR-0051).
-
-# Session-Stand — 2026-09-22 (Compact-Lock ✅ reviewed · Tool-Time-Disclosure ✅ · Smoke offen)
+# Session-Stand — 2026-09-23 (Hotfix „Ehrlicher Compact" ✅ `d9786ba` · Tool-Polish-Mini-Zyklus noch offen)
 
 ## Wo wir stehen
 
-**Branch `analysis/tool-evolution`** — f2 + compact-lock gemerged (fast-forward, Pauls Anweisung),
-danach Tool-Time-Disclosure drüber. Story-Branches (f2, compact-lock) stehen noch (Aufräumen = Paul).
-Kein Push; Merge auf main = Paul.
+**Branch `analysis/tool-evolution`** (Merge/Squash auf main = Paul).
 
-- ✅ **Compact-Lock** (CAS-Hülle, `[Queued Message]`-Payload, Follow-up-Trigger): Core 908/0,
-  Plugin 261/0, Da Dok **ACCEPTED** (CONCERNS gefixt, `7e6afc5`/`b9ca08b`). Flips UC-CT-1…6
-  **offen** — warten auf Pauls Smoke 1–4 (Liste unten), dann Flip + Lint.
-- ✅ **Tool-Time-Disclosure (Option B)** komplett: `CallStats` im core-shared (Clock injizierbar,
-  `b74bf1c`), PoDelegateTool migriert (Pin, byte-identisch), Shell/RunTest/Build-Suffix mit
-  **gemessener** Dauer (auch im Timeout). Commits `b74bf1c`→`68ab57d`, Plan `6ea1b72`, Docs `081cccd`,
-  Archiv `6e16118`. Core 916/0, Plugin 264/0. Da Dok REJECTED war doc-only (Heading-Depth, mein
-  Fehler) — gefixt, TD-Scope im Lint clean. Abweichung bestätigt: `formatResults`/`timeoutReport`
-  public static (OSGi-Cross-Bundle).
-- Docs: `tool-time-disclosure.md` (R/UC-TD-1…4 ✅), ADR-0053 + Index (0052/0053 nachgetragen),
-  docs-linter.md **Autor-Konvention** ergänzt (Regel `###`, UC `####` — Da-Dok-Fund).
-- ⏳ **Eigener Lint läuft STALE** (Eclipse-Instanz lädt pre-F2-jar): zeigt VERWAIST UC-DL-99,
-  UNBELEGT UC-JD-2…6 (statt MANUELL). Nach Pauls Eclipse-Restart erneut prüfen — dann ist der
-  f2-Zyklus endgültig abgeschlossen.
+- **✅ Hotfix „Ehrlicher Compact" (`d9786ba` + Archiv `edc2a42`):** R-CC-1..4 + R-CC-6 —
+  Kontext-Zähler = `inputTokenCount()` statt Kosten (ADR-0055), Reevaluate nur bei COMPACTED
+  (sticky `compactedThisTurn`), `CompactResult` statt stiller Lüge (onProblem ein Wortlaut, 4
+  Stellen), Hint-Dedup, Estimate-Disclosure `~N (estimate)`. Surefire 930/0/0/0 (+10), Plugin
+  279/0/0, Mutations-Nachweis ech gemessen. Docs: compact-context-counter.md (✅), ADR-0055.
+  **R-CC-5 (Dedup-Truncation) gestrichen** — Analyse war falsch (UserMessage wird nie trunciert);
+  echte Ursache der Aufsummierung = Workspace-Memory-Hash-Key (ADR-0032, by design) → ❓ in
+  open-points.md.
+- **⚠️ Uncommitted in docs:** java-debugger-tool.md (Rename + R-JD-13/UC-JD-15), ADR-0054 + adr/
+  index-Zeile, tool-descriptions-inventory.md, index.md (2 Zeilen), queued-user-messages.md —
+  gehören zum Tool-Polish-Mini-Zyklus, dessen **Build noch nicht lief**.
 
 ## Nächste Schritte
 
-1. **Paul: Smoke 1–4 (Compact-Lock)** — Send während Compact → Ack+kein 2. Job; Follow-up FIFO;
-   fehlgeschlagener Compact → Queue trotzdem; Slave-Compact → Blatt-Regel.
-2. Paul-Smoke Time-Disclosure mit drüber: Shell/RunTest/Build-Outputs enden mit `(Ns, HH:mm)`.
-3. Danach: Flips UC-CT-1…6 (CT-3/4/5/6 mit „manuelle Verifikation"-Marker) + Da Mek archiviert
-   Compact-Lock-Plan (wartet auf Ansage).
-4. **Story 2 offen: Queued-Message-Zeit** („[Queued Message] (queued 14:32, 3min ago)") — Format-
-   Empfehlung von Jon steht, **Pauls Bestätigung fehlt**; SOLL nach queued-user-messages.md, dann
-   eigener Mini-Zyklus.
-5. Eclipse-Restart → Dogfood-Lint (f2-Abschluss).
-6. Merge/Squash = Paul. Geparkt: ApiRetry, Issue #142-ADR, build.properties-Warnung, DL-Sweep (~33),
-   TD-Restkandidaten (open-points.md ❓), 🟡-Indicator, "!-Messages".
+1. **Tool-Polish-Mini-Zyklus** (I1 Rename `debugJava*` + Referenzen · I2 R-JD-13 Breakpoints
+   ohne Session · I3 QueuedAt-Regel 9 · I4 Homepage-Nachziehen) — Pauls 4 Entscheidungen vom
+   2026-09-23 stehen im SOLL (❌), Plan war nicht angefangen, als der Hotfix kam.
+2. Paul: Compact-Lock-Smoke 3+4 → Flips UC-CT-1…6 (UC-CT-3/5/6 stehen als UNBELEGT im Lint) →
+   Compact-Lock-Plan archivieren.
+3. Paul: Debugger-Re-Run 3b/3.2 mit Clean-State (F1/F2-B).
+4. Paul: Compressor-Empty-Root-Cause — Error-Log (`log.warn „Empty compact message received"`)
+   + Compact-Model-Config schicken.
+5. Eclipse-Restart → Dogfood-Lint (stale UNBELEGT_ERLEDIGT-DL-Bestand + UC-PP/OD/TD/SEL/CT
+   auflösen) — Linter-Report 2026-09-23: 74 findings, fast alle Alt-Bestand (docs-linter.md,
+   java-debugger-tool.md, project-problems-tool.md etc.), KEINE vom CC-Hotfix.
 
-## Smoke-Liste (manuell, Compact-Lock CT-3…6)
+## Smoke-Liste (manuell, Compact-Lock CT-3…6) — 1+2 ✅ Paul
 
-1. Send während Boss-Compact → Ack „queued", kein 2. Job, Agent 🟢 working.
-2. Nach Compact-Ende → Follow-up-Turn verarbeitet Queue FIFO.
 3. Compact fehlschlagen → Queue trotzdem Follow-up.
 4. Slave-Compact → nur Slave 🟢, Da Boss aus (Blatt-Regel), kein Follow-up am Boss.
 
+## Geparkt
+
+ApiRetry-Follow-up (Memory #21) · Issue #142-ADR · build.properties-Warnung · DL-Sweep ·
+🟡-Indicator · „!-Messages" (Regel 8) · Refire-after-hitCount · Workspace-Memory-Vollkopie je
+memoryAdd (❓ open-points.md, neu) · Anthropic cache_read-Undercount (ADR-0055 Pitfall).
+
 ## Lektionen (Zyklus)
 
-1. Eigene Dogfood-Tools testen STALE Code — Disk-Grep + Suite sind der Beweis (gilt weiter; nach
-   Neustart auflösen).
-2. Plan-Datei je Zyklus committen (f2-Plan war verloren, `b9ca08b` nachgeholt) — jetzt Routine.
-3. Feature-Doc direkt mit `### R-…`/`#### UC-…` anlegen — Heading-Depth-Regel (+1 Stufe) steht
-   im Linter-Doc, Konvention jetzt auch als Autor-Notiz (docs-linter.md).
+1. **SOLL-Mechanismus am IST prüfen, bevor die Regel ins Doc geht:** R-CC-5 basierte auf meiner
+   falschen Truncation-Analyse — Da Thinka fing es im Plan, Da Mek verifizierte es (UserMessage
+   nie trunciert). Unbestätigte Befunde ersatzlos streichen, nicht „kein Bug"-nachhalten.
+2. **RED-Test muss den letzten Schreiber pinnen:** `addResult` ist Replace-Semantik — ein Test
+   hinter `executeLoop` muss die finale Usage/Re-Derive-Reihenfolge kennen (Cancel-Break als
+   deterministisches Loop-Ende), sonst testet er die falsche Metrik.
+3. **Sticky-Flags: Dokumentation ≠ Test** (Da-Dok-Risk-Line) — der 2×-compactSession-Pfad war
+   implementiert, aber ungetestet; Delta-Test + echte Mutation (nicht Argumentation) schlossen
+   die Lücke.
