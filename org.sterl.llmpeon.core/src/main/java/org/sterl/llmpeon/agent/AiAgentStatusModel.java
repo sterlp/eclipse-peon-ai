@@ -25,8 +25,8 @@ public final class AiAgentStatusModel {
      *  (Da Boss stays compacted via the action bar). */
     public record Entry(String text, boolean working, boolean slave) {}
 
-    /** Snapshot of one team member for the pure builder (name, context size, momentary work). */
-    record Row(String uiName, long tokens, boolean working) {}
+    /** Snapshot of one team member for the pure builder (name, context size, momentary work, estimate flag). */
+    record Row(String uiName, long tokens, boolean working, boolean estimate) {}
 
     private AiAgentStatusModel() {}
 
@@ -37,7 +37,8 @@ public final class AiAgentStatusModel {
         var snapshot = new ArrayList<Row>(team.size());
         for (var member : team) {
             var agent = member.agent();
-            snapshot.add(new Row(member.uiName(), agent.getMemory().getTotalTokenUsed(), agent.isWorking()));
+            snapshot.add(new Row(member.uiName(), agent.getMemory().getTotalTokenUsed(),
+                    agent.isWorking(), agent.getMemory().isTokenEstimate()));
         }
         return build(snapshot);
     }
@@ -51,7 +52,7 @@ public final class AiAgentStatusModel {
         for (int i = 0; i < rows.size(); i++) {
             var r = rows.get(i);
             boolean working = i == 0 ? (r.working() && !anySlaveWorking) : r.working();
-            entries.add(new Entry(r.uiName() + " (" + StringUtil.toK(r.tokens()) + ")", working, i > 0));
+            entries.add(new Entry(r.uiName() + " (" + StringUtil.estimateAware(r.estimate(), StringUtil.toK(r.tokens())) + ")", working, i > 0));
         }
         return entries;
     }
@@ -61,8 +62,17 @@ public final class AiAgentStatusModel {
         return !agentWorking && !turnInFlight;
     }
 
-    /** Status-line feedback of a slave-compact job (R16 skip → feedback, not silence). */
-    public static String compactResult(boolean compacted, String uiName) {
-        return compacted ? "Compacted " + uiName : "Nothing to compact";
+    /**
+     * Status-line feedback of a slave-compact job (R16 skip → feedback, not silence).
+     * A null result (the job threw before compact returned) keeps the legacy skip text —
+     * the exception itself is surfaced by the status line.
+     */
+    public static String compactResult(CompactResult result, String uiName) {
+        if (result == null) return "Nothing to compact";
+        return switch (result) {
+            case COMPACTED -> "Compacted " + uiName;
+            case SKIPPED_SMALL -> "Nothing to compact";
+            case FAILED_EMPTY -> "Compact failed: no summary for " + uiName;
+        };
     }
 }

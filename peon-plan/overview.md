@@ -1,403 +1,415 @@
-# Mini-Zyklus: Tool-Polish 2026-09-23 (I1 Rename debugJava*, I2 R-JD-13, I3 Queued-At, I4 Homepage)
+# Mini-Zyklus: Hotfix „Ehrlicher Compact" (2026-09-23, v2 — R-CC-5 gestrichen)
 
 > **⛔ STOP-AND-ASK (prominent, gilt je Inkrement):** Bei Compile-Fehlern ohne Lösung,
 > nicht-grün-bekommenden Tests, IST-Widersprüchen zum Plan oder Unklarheiten: **STOPP und aktiv bei
-> Jon nachfragen (askDev-Kanal)** — nie still workarounden, nie SOLL ändern. Fachliche Lücke, die
+> Jon (askDev-Kanal) nachfragen** — nie still workarounden, nie SOLL ändern. Fachliche Lücke, die
 > keine Regel beantwortet → STOP-AND-ASK, nie selbst füllen.
-
-## Status
-- **I1** (Rename 15 Debug-Tools → `debugJava*`): ✅ — Longest-First-Rename in 3 Main- + 6 Test-Dateien + E2E-/Inventory-/ADR-/AGENTS-DEV-Docs; Grep-Gate: **0** alte Namen in `src/**` + non-historischen Docs (Rest nur in `docs/adr/**`, `open-points.md`, `index.md`-Datumzeile = planmäßig NICHT anfasst); Plugin-Build grün (nur Pre-Existing-Warnings), **Suite 272/0/0** (Baseline gleich, reines Umbenennen).
-  - Abweichung gemeldet: `DebugPrimaryTypeTest.java` (2 Kommentare) war im Plan-File-List nicht genannt, wird aber vom eigenen Grep-Gate (0 Treffer in `src/**`) verlangt → mit renamed.
-  - Flag für Jon (SOLL-Doc, nicht von Da Mek editiert): `docs/java-debugger-tool.md:96` sagt „use continue"-Hinweis, Plan/Code sagt `use debugJavaContinue` — SOLL↔Code-Reconciliation = Docs-Owner.
-- **I2** (R-JD-13 Breakpoints ohne Session): ✅ — 3 BP-Actions (`debugJavaSetBreakpoint`/`…SetExceptionBreakpoint`/`…RemoveBreakpoint`) verlieren den Session-Guard (Marker-Op); Projekt-Auflösung ohne Session: relativer Pfad → `currentProject` (Chat-View), sonst ehrlicher Fehler (nennt: kein Session-Project-Attribut **und** kein Projekt in der Chat-View gewählt); `DebugJson.breakpointResponse`/`removedResponse` tragen ohne Session `session` statt `installed` (SOLL-Wortlaut exakt, Constant `NO_SESSION_MARKER_OP`); `noSessionFailsHonest` auf 11 session-gebundene Actions eingeschränkt; neu `DebugBreakpointNoSessionTest` ×5 + `DebugJsonUnitTest` ×2. Suite **279/0/0** (Baseline 272 + 7), Build grün (nur Pre-Existing-Warnings), Core unverändert. Docs: UC-JD-15 „Automatisiert:"-Zeile befüllt (Status ❌ bleibt = PO).
-  - Abweichung gemeldet: `removedResponse` → `public` (notwendig, damit der Stub-Test in `org.sterl.llmpeon.test` es aufrufen kann; konsistent mit `breakpointResponse`, das schon public ist).
-  - Ist-Korrektheit: Class-Javadoc `JavaDebugTool` + Javadoc/Comment in `JavaDebugToolTest` auf „11 session-gebundene Actions / R-JD-13" angepasst (sonst falsch).
-- **I3** (Rule 9 Queued-At Disclosure): ✅ — `UserMessageQueue` trägt `QueuedMessage(text, queuedAt)` + injizierbare `Clock` (Ctor `(long)`→systemDefaultZone, `(long,Clock)`); `add()` stampft via `clock.millis()` (auch für `batchStartTime`), Burst-Merge hält den **ersten** Timestamp; `pollNext()`/`drainAll()`→`QueuedMessage` (drainAll `queuedAt`=erster Eintrag); `queuedLabel(long)` rendert `HH:mm` im Clock-Zone. `AbstractAgent`: Follow-up- + in-loop-Marker `[Queued Message] (queued HH:mm): <text>` (neuer privater `queuedMarker`-Helper), in-loop onTool `Reading queued User message: <text> (queued HH:mm)`; Join-Pfad + `handleAbortAndDrain` + `drainQueue()` (Interface `AiAgent` bleibt `String`) nutzen `.text()` ohne Zeit; package-private Test-Seam `setMessageQueue`. Core Surefire **920/0/0** (UserMessageQueueTest **20** = 16+4 neu: `entriesCarryQueuedAtFromFirstAdd`/`newEntryAfterWindowGetsNewTimestamp`/`drainAllReturnsFirstEntryQueuedAt`/`queuedLabelFormatsHHmmInClockZone`; AbstractAgentTest **34** — `testQueuedMessagesChainedFifo` + `callNullInitialWithQueuedProcessesQueueAsPayload` mit fester 14:32-Clock + Präfix-Assert erweitert). Plugin kompiliert gegen neues Core (Maven Tycho + Eclipse-Build grün, nur Pre-Existing-Warnings). Keine Plugin-/Doc-Änderung (Status-Flip = PO).
-- **I4** (Homepage-Nachziehen): ✅ — `homepage/src/setup/custom-agents.md`: Prefix-Tabelle +4 Zeilen vor `mcp__` (`debugJava` 15 Actions, `web`=webGet nur bei disk-tools, `shell`=shellRunCommand, `lintDocs`+`nextIds` mit `startsWith`-Fakten) + neue kompakte „Java debugger"-Sektion (Session = User-Property, no-session-Breakpoints R-JD-13, keine Confirmations); `homepage/src/index.md`: „Java Debugger"-Bullet in Available Tools + 1 Satz `(queued HH:mm)` in der CTRL+Enter-Infobox (**bewusster Zusatz** — fällt, wenn PO es nicht will). Fakten per Code verifiziert (ToolPolicy `startsWith`:27, SharedToolsComponent webGet-Gate :84/:91, JavaDebugTool `isEditTool`:75). **Präzisierung** (keine SOLL-Änderung, SOLL=AGENTS.md „visible changes im selben Inkrement"): Plan-Wortlaut „Dev-agent-only" → „edit tool, offered to non-read-only agents (in practice Peon-Dev)" — Po/Scaffold nutzen kuratierte Services ohne Debug-Tools, Plan filtert edit-tools; ein nicht-read-only Custom-Agent würde sie ebenfalls bekommen. Nur `homepage/src` geändert, `.vitepress/dist` nicht angefasst. Kein Build (Markdown).
+> **Test-First (Paul):** JEDE Regel zuerst ein isolierter roter Core-Test (JUnit 5 + AssertJ,
+> GIVEN/WHEN/THEN) — der RED-Beweis wird VOR dem Fix gezeigt. Ein Test, der vor dem Fix schon grün
+> ist, ist kein Test — bei grünen Vor-Zuständen: STOP-AND-ASK.
 
 ## 1. Kontext
 
-Mini-Zyklus mit vier Inkrementen auf Branch **`analysis/tool-evolution`** (Git-Zustand vor Zyklus-Start
-selbst prüfen: Branch existiert noch/ist er gemerged? — Memory 2026-09-05). **Commit je Inkrement,
-inkl. geänderter `docs/**`** (nie nur Code). SOLL steht in den Docs — 1:1 folgen, nichts erfinden.
+SOLL steht 1:1 in **`docs/compact-context-counter.md`** (Regeln **R-CC-1, R-CC-2, R-CC-3, R-CC-4,
+R-CC-6** — R-CC-5 existiert nicht mehr, Nummerierung bleibt mit Lücke, je Regel BDD + Testname) +
+**`docs/adr/0055-context-counter-input-not-cost.md`**. Hotfix für Paul — drei beobachtete Fälle,
+gemeinsame Wurzel: `totalTokenUsed` trägt zwei inkompatible Werte (Kosten vs. Kontextgröße),
+`compact()` meldet zwei grundverschiedene Fälle als dasselbe `false`, der Compact-Hint feuert pro
+Tool-Runde neu.
 
-| # | Inkrement | SOLL | Modul |
-|---|-----------|------|-------|
-| I1 | 15 Debug-Tools snake_case → `debugJava*` (Clean Break, keine Aliase) | `docs/java-debugger-tool.md` (Namen) + [ADR-0054](docs/adr/0054-tool-naming-camelcase-family-prefix.md) | Plugin |
-| I2 | R-JD-13: Breakpoints ohne Session (Marker-Op) | `docs/java-debugger-tool.md` R-JD-13 / UC-JD-15 | Plugin |
-| I3 | Rule 9: Queued-At Disclosure `(queued HH:mm)` | `docs/queued-user-messages.md` Rule 9 | Core |
-| I4 | Homepage-Nachziehen | AGENTS.md „homepage = user-visible Änderungen im selben Inkrement" | Homepage |
+**Plan-Entscheidung (Paul, 2026-09-23):** R-CC-5 (Dedup-Blindstelle 6000/90000) **ersatzlos
+gestrichen** — Da Mek hat den Pfad verifiziert: `ChatMessageUtil.toString` trunciert nur
+Ai-Tool-Args + ToolResults (ChatMessageUtil.java:120/129), UserMessage-Text NIE;
+`containsUserMessage` prüft pro Item volltextlich über die gesamte Historie. Die beobachtete
+Aufsummierung ist gecauset durch den Workspace-Memory-Hash-Key (ADR-0032: jede memoryAdd → neue
+Vollkopie bis zum Compact) — **by design**, als ❓ in `docs/open-points.md` geparkt, OUT of scope.
+Mehrere AGENTS.md-Kopien in EINEM Slave-Memory sind im IST-Code nicht produzierbar — bei
+wiederholter Beobachtung: Evidenz von Paul, kein Code-Fix ins Blaue.
 
-**UC-Konventionen:** UC-Kommentar am Test = reine ID (z. B. `// UC-JD-15`), kein Text dahinter.
-Core-Tests: JUnit 5 + AssertJ; Plugin-Tests: JUnit 4, keine externen Assertion-Libs.
-Vor Plugin-Testlauf: `eclipseBuildProject` über geänderte Projekte (stale bin/ → ClassNotFoundException).
-Tests: GIVEN/WHEN/THEN. Stub/mock-LLM-Tests verifizieren **beide Richtungen** (Payload capturen + asserten
-UND was beim Monitor ankommt). Gates: **Core via Maven Surefire = Ground Truth**, Plugin via
-eclipseBuildProject + JUnit. Status-Flips in Docs (`❌→✅`) macht **NICHT** Da Mek (PO-Aufgabe) —
-Da Mek trägt nur Testnamen in „Automatisiert:"-Zeilen ein, per `eclipseEditFile` mit eindeutigem
-oldString (nie per Zeilennummer), danach Grep-Count-Verifikation.
+**Harte Rahmenbedingungen (Paul):**
+- Branch **`analysis/tool-evolution`** (läuft). **Genau EIN Commit am Ende (I5)** — inkl.
+  `docs/**` (compact-context-counter.md, adr/0055) und der Plan-Datei. Kein Zwischen-Commit.
+- Core-Tests isoliert (JUnit 5 + AssertJ); nur I1 hat Plugin-Bedarf (Interface-Change).
+- Gate je Inkrement: **Maven Surefire (artifactId `llmpeon-core`) = Ground Truth** (Zahlen aus
+  Surefire, nicht Eclipse-Runner). I1 zusätzlich: `eclipseBuildProject` + Plugin-JUnit.
+- **Keine Scope-Erweiterung:** OUT = WHY der Compressor leeren Text liefert (braucht Pauls
+  Error-Log), Compressor-Input-Budget (`compact-input-budget.md` R1–R5), Anthropic `cache_read`
+  Pitfall (ADR-0055, separater Punkt), Workspace-Memory-Snapshot-Aufsummierung (ADR-0032,
+  open-points.md).
+- **`planImplemented` nur NACH bestandenem Jon-Review** — und dann vom Dev-Agent (nie Da Thinka).
+  I5-Commit erst nach dem Review.
+- Baseline vor I1: Surefire-Zahlen (Tests/Failures) notieren — Referenz fürs Abschluss-Gate.
+- Regel-Kommentar am Test = reine ID (z. B. `// R-CC-3`).
+- Workspace-Hinweis: der Core-Modul liegt unter **zwei** Eclipse-Projekt-Ansichten desselben
+  Ordners (`llmpeon-core` und `org.sterl.llmpeon.core`). Editieren über
+  `org.sterl.llmpeon.core/src/main/java/…` (kanonisch), Maven-Artefakt = `llmpeon-core`.
 
-## 2. Verifizierte IST-Fakten (2026-09-23, Da Thinka)
+## 2. Verifizierte IST-Fakten (2026-09-23, Da Thinka — per Grep/Read)
 
-### I1 — Referenz-Inventory (komplett per Grep verifiziert)
+### `compact()`-Aufrufstellen (komplett inventarisiert — Interface-Change!)
 
-**Rename-Mapping (ADR-0054, Longest-First-Reihenfolge beachten — `set_breakpoint` ⊂ `set_exception_breakpoint`):**
+**Produktion:**
+- `org.sterl.llmpeon.core/src/main/java/org/sterl/llmpeon/agent/AiAgent.java:26` —
+  `boolean compact(AiMonitor monitor)` (Interface, **abstrakt** — jede Implementierung betroffen).
+- `…/agent/AbstractAgent.java:297-332` — Implementierung: CAS `working` :300, `size()<3 → return
+  false` :304, `monitor = AiMonitor.nullSafety(monitor)` :306 (nach dem Guard),
+  `AiCompressorAgent(configuredModel).call(memory.getCopy(), monitor)` :307-308,
+  **leer-Check :310-312 nur `log.warn("Empty compact message received for " + getName())` +
+  `return false`**, clear+re-seed :315-326, `return true` :328.
+- `…/agent/AbstractAgent.java:265-268` — **stilles Auto-Compact in `doCall`**:
+  `if (compactAfterTokens() < memory.getTotalTokenUsed()) { onTool("Auto Compact …"); compact(monitor); }`
+  — **Returnwert ignoriert**.
+- `…/poagent/tools/PoDelegateTool.java:188-196` — `if (!slave.compact(monitor)) return "Nothing to
+  compact (" + size + " messages)"`, sonst `"… compacted. " + contextUsed(slave)`.
+- `…/tool/tools/CompactSessionTool.java:29-44` — `var compactDone = agent.compact(monitor)`;
+  false → `onTool("Compact called but skipped because of small context …")` +
+  `"Not needed only " + size + " message in context"` (bei leerem Compressor = **Lüge**).
 
-| alt (snake) | neu (camel) |
-|---|---|
-| `set_exception_breakpoint` | `debugJavaSetExceptionBreakpoint` |
-| `set_breakpoint` | `debugJavaSetBreakpoint` |
-| `remove_breakpoint` | `debugJavaRemoveBreakpoint` |
-| `list_breakpoints` | `debugJavaListBreakpoints` |
-| `evaluate_expression` | `debugJavaEvaluateExpression` |
-| `get_stack_trace` | `debugJavaGetStackTrace` |
-| `get_variables` | `debugJavaGetVariables` |
-| `get_exception` | `debugJavaGetException` |
-| `set_variable` | `debugJavaSetVariable` |
-| `step_over`/`step_in`/`step_out` | `debugJavaStepOver`/`debugJavaStepIn`/`debugJavaStepOut` |
-| `get_state` | `debugJavaGetState` |
-| `continue` | `debugJavaContinue` |
-| `suspend` | `debugJavaSuspend` |
+**Plugin (nur I1):**
+- `org.sterl.llmpeon/src/org/sterl/llmpeon/parts/AIChatView.java:523-524` — ActionBar-Button:
+  `var result = active.compact(this); if (result) refreshChat` (Pre-Guard `size()<3` :515 bleibt).
+- `AIChatView.java:549-551, 561` — Roster-Slave: `boolean result = false; result = agent.compact(this);`
+  (Capture vor `monitorRef`-Reset — Async-State-Safety, bleibt) →
+  `AiAgentStatusModel.compactResult(result, slave.uiName())`.
+- `AiAgentStatusModel` ist **CORE** (`org.sterl.llmpeon.core/…/agent/AiAgentStatusModel.java`):
+  `compactResult(boolean, String)` :65-67 („Compacted X" / „Nothing to compact");
+  Roster-Label :54: `uiName + " (" + StringUtil.toK(tokens) + ")"`, Snapshot :40
+  `agent.getMemory().getTotalTokenUsed()`.
 
-**Live-Stellen (müssen renamed werden):**
-- `org.sterl.llmpeon/src/org/sterl/llmpeon/parts/tools/debug/JavaDebugTool.java` — 15× `@Tool(name=…)`
-  (:71, :79, :88, :100, :159, :168, :205, :266, :302, :332, :364, :380, :396, :421, :440),
-  14× `noSession("…")`-Strings, `waitForSuspend(…, "…")`-Labels (:377, :393, :418, :437, :621, :628),
-  Class-Javadoc :48 (`list_breakpoints`), `stepOut`-Meldung „use continue" (:411) → „use debugJavaContinue",
-  `listBreakpoints`-Description :332 (beinhaltet `remove_breakpoint(id)`-Referenz),
-  `remove_breakpoint`-Description :302 (referenziert `set_breakpoint`/`set_exception_breakpoint`).
-- `DebugJson.java` — Javadoc-Namen (:56, :91, :234, :271, :318, :336).
-- `DebugSession.java` — Kommentar :75 (`get_state`).
-- Plugin-Tests: `SharedToolsComponentTest.java:188-189` (`ts.getExecutor("get_state")` —
-  **funktionale** Referenz → `debugJavaGetState`), Kommentare in `JavaDebugToolTest.java:28,73`,
-  `DebugListBreakpointsTest.java:22`, `DebugSessionThreadsTest.java:139,162,194,203`,
-  `DebugJsonUnitTest.java:369,471,486` (nur Kommentare).
-- **Keine** Core-Referenzen (Grep clean: `org.sterl.llmpeon.core`), **keine Prompt-Referenzen**
-  (`src/main/resources` clean).
-- E2E-Doc `org.sterl.llmpeon.test/ai-e2e-test/java-debugger-e2e-test.md` — :80-82, :91, :98-101,
-  :107-108, :116, :121, :127-133, :141, :150-153 (Abschluss-Frage listet „14 Tool-Namen" → **15**
-  inkl. `debugJavaListBreakpoints` korrigieren, R-JD-11 fehlt dort).
-- `docs/tool-descriptions-inventory.md` :191-204 (Tabelle Zeilen 56-68, Namen + In-Description-
-  Referenzen in Zeile 63) — ADR-0054 nennt dieses Doc explizit.
+**Tests (Compile-betroffen, je Call-Site verifiziert):**
+- Core `AbstractAgentTest.java`: :436 `assertThat(first).isTrue()`, :440
+  `assertThat(second).isFalse()`, :470 `assertThat(compacted).isTrue()` → Enum; Call-Sites
+  :404, :429, :433, :495, :590, :644, :673, :708, :1003 ignorieren den Return (kein Impact).
+- Core `AiPoAgentTest.java:235` `assertThat(compacted).isFalse()` → Enum; :197 ignoriert.
+- Core `AiCompressorAgentTest.java:72` — ignoriert (kein Impact).
+- Core `CompactSessionToolTest.java` — **zwei anonyme AiAgent-Implementierungen** mit
+  `@Override public boolean compact(AiMonitor)` :122 und :188 (`compactStub` :183-215) →
+  Signature + Return `CompactResult.COMPACTED`; :232-268 Result-Text-Tests bleiben grün
+  (kompaktierter Pfad unverändert).
+- Core `AiAgentStatusModelTest.java:112-115` — `compactResult(true/false, "Da Mek")` → Enum.
+- Plugin `org.sterl.llmpeon.test/…/HeaderRosterStructureTest.java:103` —
+  `@Override public boolean compact(AiMonitor monitor) { return false; }` →
+  `CompactResult compact(…) { return CompactResult.SKIPPED_SMALL; }`.
+- Plugin `PeonAiServiceTest.java` — 13× `compact(null)` (Return ignoriert :303, :378, :406, :1067,
+  :1100, :1113, :1239, :1282, :1321, :1359, :1538, :1571, :1616) → **kein** Compile-Impact.
 
-**Historisch = NICHT anfassen** (datierte Aufzeichnungen): `peon-plan/overview-done-*.md`,
-`docs/adr/0049…` (API-Drift-Doku), `docs/open-points.md` (🔒-Log), `docs/index.md` (datierte
-Status-zeilen, die 2026-09-23-Notiz dort hat bereits die neuen Namen),
-`github-copilot-for-eclipse/` (externes Referenzprojekt).
+### Zähler-Fakten (`ThreadSafeMemory.java`, `…/memory/`)
 
-**Grep-Verifikation am Ende von I1:** die 15 alten Namen müssen **0 Treffer** liefern in:
-`org.sterl.llmpeon*/src/**`, `docs/**` außer `docs/adr/**`, `homepage/src/**`, `AGENTS*.md`,
-`peon-plan/overview.md`. Die Longest-First-Falle (`set_breakpoint` ⊂ `set_exception_breakpoint`)
-wird damit erwischt, wenn sie überlebt.
+- Schreibstellen von `totalTokenUsed` (alle!): Konstruktor :42 (Estimate via
+  `getTokenCount(null, …)`), `add()` :55 (`+= estimateTokens`), `addResult(…, toolResult)` :163 und
+  `addResult(response)` :170 (**Replace** via `getTokenCount(response, memory)`),
+  `reevaluateTokens()` :152-154 (Estimate), `clear()` :122 (→ 0), `replaceAll()` :129 (→ 0).
+- `ChatMessageUtil.java` (`…/shared/`): `getTokenCount` :20-27 nutzt **`totalTokenCount()`**
+  (Fallback Estimate) — **einzige** Call-Sites = ThreadSafeMemory :42, :163, :170 (Grep,
+  workspace-weit).
+- `TokenUsage` (langchain4j, Source verifiziert): `inputTokenCount()`/`totalTokenCount()` →
+  `Integer` (nullable).
+- ⚠️ **Dedup-Blindstelle (ehem. R-CC-5) — NICHT vorhanden (gestrichen):** `ChatMessageUtil.toString
+  (msg, includeThink, toolMessageSize)` :95-133 trunciert den Parameter **nur** für
+  AiMessage-Tool-Args und ToolExecutionResult-Text — UserMessage-Text NIE. `containsUserMessage`
+  :92-98 prüft volltextlich über die gesamte Historie. (Verifiziert 2026-09-23, Da Mek.)
+- `renderTurnContext` (static, `AbstractAgent.java:407-435`): :420
+  `containsUserMessage(key)` (keyed), :423 `containsMessage(rendered)` (fallback).
 
-### I2 — Code-Fakten
+### Tool-Loop-Fakten (`ToolService.java`, `…/tool/`)
 
-- `JavaDebugTool.java`: BP-Guards bei `setBreakpoint` :211-214, `setExceptionBreakpoint` :272-275,
-  `removeBreakpoint` :304-307; `noSession`-Helper :600-603 (ruft `onProblem`); `NO_SESSION`
-  = `DebugSession.NO_SESSION` (DebugSession.java:26).
-- **Marker-Factory braucht kein IDebugTarget — bereits durch den Bestand bewiesen:**
-  `JDIDebugModel.createLineBreakpoint(IFile, typeName, line, …)` (:250) und
-  `createExceptionBreakpoint(workspaceRoot, …)` (:289) laufen heute schon ohne Target-Parameter.
-  Marker-Typs/Attrs stimmen mit der AGENTS-DEV-Notiz überein:
-  `org.eclipse.jdt.debug.javaLineBreakpointMarker` / `javaExceptionBreakpointMarker`,
-  `IBreakpoint.ENABLED` (kein `IMarker.ATTR_ENABLED`). Da Mek verifiziert die Signaturen
-  trotzdem bei der Umsetzung kurz (readTypeSource) — Abweichung = STOP-AND-ASK.
-- `setBreakpoint` nutzt `session` **nur** für die Projekt-Auflösung bei relativen Pfaden
-  (:232-236); absolute Pfade `/projekt/…` sind schon session-frei (:224-230).
-- `DebugJson.breakpointResponse` (:235) trägt `installed` (:254); `removedResponse` (:319) = `{id, removed}`.
-- `listBreakpoints` hat nur den `currentProject`-Guard (:334) — bleibt so (R-JD-11).
-- `currentProject` (Chat-View-Auswahl) = etablierter Träger für „gewähltes Projekt"
-  (R-JD-11, `setCurrentProject` :64).
-- **Tests:** `JavaDebugToolTest.noSessionFailsHonest` (:30-63) iteriert 14 Actions (alle außer
-  list) inkl. `setBreakpoint`/`setExceptionBreakpoint`/`removeBreakpoint` (:44-46) — nach I2 müssen
-  genau die **11 session-gebundenen** bleiben. Fixture-Muster für neue Marker-Tests:
-  `DebugListBreakpointsTest` (erzeugt echte Marker im Fixture-Projekt, Cleanup in `finally`,
-  `AbstractIntegrationTest` liefert `project` + `PeonTestFixture.ALPHA`-Datei `src/org/sterl/fixture/Alpha.java`).
+- `executeLoop` :120-187: `runAllTools` :157 **vor** `addResult` :158 → **2× compactSession im
+  selben Turn möglich** (zweite sieht post-compact Memory, size<3 → muss ehrlich SKIPPED_SMALL
+  sein, kein onProblem). `ranTool(response, CompactSessionTool.NAME)` :161 →
+  `reevaluateTokens()` + Static-Rebuild :162-166 **bedingungslos** (auch bei Fehlschlag — der Bug),
+  sonst `addCompactHintIfNeeded(req, response, false)` :167. Forced-Hint :181
+  (`stuck > MAX_STUCK_ITERATIONS - 2`).
+- `addCompactHintIfNeeded` :194-214: Guards size<10 :196, `0.95`-Schwelle :199,
+  `COMPACT_HINT` :49-52 (private, startet mit „CONTEXT LIMIT WARNING: …"), ohne Compact-Tool →
+  „cannot be compacted"-Message :202-206, sonst onTool „🗜 Compact hint …" +
+  `req.addMessage(new UserMessage(COMPACT_HINT + ls + used))` :211-212. **Kein Dedup.**
+- `ToolLoopRequest` (`…/tool/ToolLoopRequest.java`): Builder-POJO, **frisch pro Turn**
+  (AbstractAgent `doCall` :279-290 baut neu) → kein Leck zwischen Turns.
+- `PoDelegateTool.contextUsed` :256-258:
+  `"Context: " + getTotalTokenUsed() + " token - " + tokenContextUsedInPercent() + "% used."`
+- `AbstractAgent.tokenContextUsedInPercent` :156-160 — **einziger** Production-Caller
+  PoDelegateTool:257 (Grep); Roster zeigt `toK(tokens)` (AiAgentStatusModel:54), nicht Prozent.
+- `PoDelegateToolTest.java` :64, :81, :91, :236 — Pattern `Context: \d+ token - \d+% used\.`
+  (bricht nach I4 → wird bewusst verschärft, s. I4).
 
-### I3 — Code-Fakten
+## 3. Design-Entscheidungen
 
-- `org.sterl.llmpeon.core/…/queuedmessages/UserMessageQueue.java`: `Deque<String> queue` :7,
-  `batchStartTime` :8 (Burst-Window, nicht queuedAt — **bleibt**, eigene Semantik),
-  `add()` :20 (mergt `last` + neue Message, :29-38), `pollNext()` :46, `drainAll()` :48 (join),
-  `size()` :56, `clear()` :57.
-- `AbstractAgent.java` (`org.sterl.llmpeon.agent`): Feld `messageQueue = new UserMessageQueue()` :44;
-  `call()`: `drainAll()` :183, Follow-up-Marker `"[Queued Message]: "` :191, Join mit initial :188,
-  in-loop `pollNext()` :203, onTool-Zeile „Reading queued User message: " :205,
-  in-loop-Marker :206, `handleAbortAndDrain` :222-229, `drainQueue()` :232 (Interface-Contract
-  `AiAgent.drainQueue()` → String, bleibt String).
-- **Einziger pollNext/drainAll-Consumer ist AbstractAgent** (Plugin nur `getQueuedMessageCount()`,
-  AIChatView :680-682; `drainQueue()` aktuell ohne Plugin-Caller).
-- Tests: `AbstractAgentTest.callNullInitialWithQueuedProcessesQueueAsPayload` :526-546
-  (assertet `"[Queued Message]:"` + `q1`, **ohne** Zeit — erweitern), `testQueuedMessagesChainedFifo`
-  :49-87 (assertet nur contains msg2/msg3 — übersteht den Marker, wird um Zeit-Assert erweitert),
-  `UserMessageQueueTest` (~20 Tests, alle `new UserMessageQueue(200)` bzw `(100)`,
-  `pollNext()`-Assertions auf String :30,48,65-66,84-87,130-133,148-150,191).
+- **D1 — `CompactResult`-Enum:** neue Top-Level-Datei
+  `org.sterl.llmpeon.core/src/main/java/org/sterl/llmpeon/agent/CompactResult.java` mit
+  `COMPACTED / SKIPPED_SMALL / FAILED_EMPTY` (Javadoc je Konstante: was sie heißt, dass
+  SKIPPED_SMALL legitim ist, FAILED_EMPTY ein Fehler). Top-Level statt nested: einfachster
+  Import an allen Call-Sites.
+- **D2 — `onProblem` an EINER Stelle** (One Behaviour, One Implementation): in
+  `AbstractAgent.compact()` beim leer-Check:
+  `monitor.onProblem("Compact failed: compressor returned no summary for " + getName())`
+  (exakter SOLL-Wortlaut) + `log.warn` bleibt (Pauls Root-Cause-Log). Alle drei Stellen
+  (Tool-Call, UI-Button, Auto-Compact) rufen `compact(monitor)` mit ihrem jeweils lebenden
+  Monitor → alle drei empfangen die Meldung. `monitor = AiMonitor.nullSafety(monitor)` in den
+  try-Block-Vorspann ziehen (vor `<3`-Guard) damit der onProblem-Pfad nie null hat.
+  → **doCall :265-268 braucht KEINE Änderung**: Auto-Compact ist dadurch nicht mehr still, und
+  das Retry (R-CC-3-BDD-3) entsteht strukturell (Memory + Zähler unverändert → Gate feuert
+  nächsten Turn neu).
+- **D3 — „Compact hat kompaktiert" als sticky Flag auf `ToolLoopRequest`:**
+  `private boolean compactedThisTurn;` + `markCompacted()` + `isCompactedThisTurn()`
+  (Javadoc: von CompactSessionTool gesetzt bei COMPACTED, von executeLoop für R-CC-2 gelesen;
+  frisch pro Turn). Sticky-OR (nicht „letztes Result"): 2× compactSession im selben Turn
+  (erstes COMPACTED, zweites SKIPPED_SMALL) → Flag bleibt true → exakt ein re-derive.
+  CompactSessionTool setzt es nach `agent.compact(monitor)` bei COMPACTED.
+- **D4 — Ein Wortlaut für FAILED_EMPTY:** Tool-Return (CompactSessionTool + PoDelegateTool) =
+  derselbe Satz wie onProblem („Compact failed: compressor returned no summary for `<agent>`") —
+  keine erfundene zweite Wortwahl. UI-Statusline (AiAgentStatusModel, UI-Detail, nicht im SOLL,
+  PO-Review): `FAILED_EMPTY → "Compact failed: no summary for " + uiName`.
+- **D5 — R-CC-1:** `ChatMessageUtil.getTokenCount` :20-27 → `inputTokenCount() != null` dann
+  Input, sonst Estimate (Fallback bleibt). **Replace-Semantik** von `addResult` bleibt (Counter =
+  Größe des letzten echten Prompts; incrementieren würde den Zähler ohne Oberschranke treiben).
+  Einzige Call-Sites = ThreadSafeMemory → Change ist lokal. Javadoc: Kontextgröße-Semantik
+  (R-CC-1, ADR-0055), `totalTokenCount()` (Kosten) fließt nie herein.
+- **D6 — R-CC-6-Flag in `ThreadSafeMemory`:** `private volatile boolean tokenIsEstimate` +
+  `public boolean isTokenEstimate()`. Semantik: „aktueller Wert enthält Estimate-Komponente".
+  Schreibstellen: Konstruktor(store)→true, `add()`→true, `addResult`→
+  (Provider-Input vorhanden ? false : true), `reevaluateTokens()`→true, `clear()`/`replaceAll()`→false
+  (0 ist exakt).
+- **D7 — Eine Format-Stelle:** `StringUtil.estimateAware(boolean isEstimate, String value)` →
+  `isEstimate ? "~" + value + " (estimate)" : value` (SOLL-Format `~N (estimate)`). Verwendet von
+  `PoDelegateTool.contextUsed` (roher Wert) und `AiAgentStatusModel` (toK-Wert:
+  `Row` + `boolean estimate`, `rows()` liest `isTokenEstimate()`, `build()` rendert
+  `uiName + " (" + estimateAware(estimate, toK(tokens)) + ")"`). Prozent (int) bleibt int —
+  die Tilde am Zähler ist die Disclosure.
+- **D8 — R-CC-4-Dedup an einer Stelle:** in `addCompactHintIfNeeded` im Hint-Add-Branch
+  (else, :207) vor `addMessage`: `if (memory.containsMessage(COMPACT_HINT)) return;` —
+  covered beide Pfade (normal + forced :181, gleiche Methode), und nach erfolgreichem Compact
+  ist die Memory geleert → Hint automatisch wieder scharf (SOLL).
+- **D9 — R-CC-5 streichen (Plan-Entscheidung Paul 2026-09-23):** kein Code, kein Test, keine
+  Regel. Workspace-Memory-Aufsummierung = ADR-0032 by design → `docs/open-points.md` ❓.
 
-## 3. Inkrement 1 — Rename 15 Debug-Tools → `debugJava*` (Plugin)
+## 4. Inkremente (I1 → I5, je für sich kompilierend + grün)
 
-**Polarität: reines Umbenennen** (Namen in Annotationen, Strings, Kommentaren, Docs).
-Kein Verhalten, keine neue Logik, keine Aliase (ADR-0054 Clean Break).
+### I1 — R-CC-3 + R-CC-2 (Core + Plugin-Compile) — ✅ DONE (2026-09-23): RED-Beweise R-CC-2 (`expected 260000 but was 52`) + R-CC-3 (onProblem null / compactCalls 1≠2); Gate: Surefire 924/0/0/0, Plugin-Build grün, Plugin-Suite 279/0/0
 
-### Design
-- Reihenfolge der Ersetzung **Longest-First** (Tabelle oben, `set_exception_breakpoint` vor
-  `set_breakpoint`), danach die Grep-Verifikation aus §2/I1.
-- `noSession("…")`/`waitForSuspend("…")`-Strings + `stepOut`-„use continue" → neue Namen
-  (Tool-Referenzen in ehrlichen Meldungen dürfen nicht alt bleiben).
-- Tool-Descriptions: **nur** die Tool-Namen-referenzierenden Textstellen (:302, :332, :411) —
-  keine sonstigen Description-Änderungen (SOLL-Rename, keine Beschreibungs-Rework).
+**Schritt 1 — roter R-CC-2-Test (kompiliert gegen den IST, noch KEIN Code-Change):**
+- NEU `…/src/test/java/org/sterl/llmpeon/tool/ToolServiceCompactResultTest.java`
+  `#keepsRealCounterOnFailedCompact` (`// R-CC-2`):
+  - GIVEN `AiDevAgent` mit streamMock; Memory ≥ 3 kleine Messages, Zähler vorab via
+    `memory.addResult(response with TokenUsage(260000, 0, 260000), List.of())` auf 260000
+    (Pre-Compact-Kontext, SOLL-GIVEN); Compact-Model liefert **leeren** AiMessage (→ FAILED_EMPTY).
+  - streamMock Haupt-Model (AtomicInteger-Counter):
+    - **Call 1:** Tool-Request `compactSession` mit `tokenUsage = TokenUsage(260000, 0, 260000)`
+      (input==total: Wert vor UND nach I2 identisch — I2-unkritisch). **Pflicht** (nicht
+      optional): ohne Usage würde `addResult` :158 selbst schon auf Estimate fallen → rot aus
+      dem falschen Grund (würde `addResult`-Fallback testen statt dem Re-Derive).
+    - **Call 2:** flippt das Cancel-Flag (AtomicBoolean) **bevor** die (irgendeine) Text-Response
+      geliefert wird → `executeLoop` bricht an :145 (`isCanceled`) → `addResult` für Call 2
+      passiert **nie**.
+  - WHEN `toolService.executeLoop(req)` (req.agent = Agent, req.monitor = der cancel-fähige
+    Monitor);
+  - THEN `memory.getTotalTokenUsed() == 260000`.
+  - **ROT heute:** Call-1-Runde: `addResult(r1, tR)` :158 schreibt 260000, dann re-derive
+    :161-162 **bedingungslos** → Zähler fällt auf den Estimate der kleinen Memory.
+  - **Testdesign-Begründung (Abnahme 2026-09-23, SOLL unverändert):**
+    1. Der unterscheidbare Pfad ist das **Re-Derive** (:162), nicht `addResult` — beide Pfade
+       schreiben via `addResult(r1)` denselben Wert (260000); nur das Re-Derive existiert im BUG.
+       Damit der Test exakt das Re-Derive pinnt, darf KEINE spätere `addResult` es überdecken:
+       der Loop muss in der Compact-Runde enden. Monitor-Cancel nach Call 1 nutzt den vorhandenen
+       Break-Pfad :145 — deterministisch, kein SUT-Code, keine Sleeps. (Ohne Cancel würde die
+       `addResult` der finalen Text-Response :171 den Endwert in BEIDEN Pfade identisch
+       überdecken → Test grün heute, kein Test.)
+    2. `== 260000` statt `isGreaterThan(Schwelle)`: exakter SOLL-Wortlaut („bleibt 260000");
+       Replace-Semantik macht den Endwert exakt deterministisch; der Estimate der kleinen Memory
+       liegt provabel weit darunter → kein Flake-Fenster. `isGreaterThan` wäre schwächer (jede
+       Schreibstelle > Schwelle bliebe grün) und dupliziere die Gate-Folge, die
+       `#autoCompactRetriesAfterFailure` bereits testet.
+- **RED-Beweis dokumentieren** (Surefire-Auszug), dann:
 
-### Betroffene Dateien
-1. `org.sterl.llmpeon/src/org/sterl/llmpeon/parts/tools/debug/JavaDebugTool.java` (15 Annotations,
-   Strings, Javadoc, Descriptions)
-2. `…/debug/DebugJson.java` (Javadoc)
-3. `…/debug/DebugSession.java` (Kommentar)
-4. `org.sterl.llmpeon.test/src/org/sterl/llmpeon/test/SharedToolsComponentTest.java` (getExecutor)
-5. `…/test/JavaDebugToolTest.java`, `DebugListBreakpointsTest.java`, `DebugSessionThreadsTest.java`,
-   `DebugJsonUnitTest.java` (Kommentare)
-6. `org.sterl.llmpeon.test/ai-e2e-test/java-debugger-e2e-test.md` (alle Phasen + Abschluss „14→15")
-7. `docs/tool-descriptions-inventory.md` (Tabelle 56-68)
+**Schritt 2 — mechanisches Skelett (API-Change, Verhalten der alten Pfade unverändert):**
+- NEU `CompactResult.java` (D1).
+- `AiAgent.java:26` → `CompactResult compact(AiMonitor monitor)` + Javadoc (3 Werte, SKIPPED_SMALL
+  legitim, FAILED_EMPTY = Fehler + onProblem).
+- `AbstractAgent.compact` :304→`return CompactResult.SKIPPED_SMALL;`, :310-312→
+  `log.warn` (bleibt) + `return CompactResult.FAILED_EMPTY;` (**noch ohne** onProblem),
+  :328→`return CompactResult.COMPACTED;`.
+- `PoDelegateTool.compact` :188-196 → switch: COMPACTED→wie heute; SKIPPED_SMALL→
+  „Nothing to compact (N messages)" (alt); FAILED_EMPTY→D4-Wortlaut.
+- `CompactSessionTool.compactSession` :29-44 → branch: COMPACTED→alt + `request.markCompacted()`;
+  SKIPPED_SMALL→„Not needed only N message in context" (alt); FAILED_EMPTY→D4-Wortlaut
+  (onProblem kommt in Schritt 4).
+- `ToolLoopRequest` → Flag (D3, noch ungelesen).
+- Plugin: `AIChatView` :523-524 (`== CompactResult.COMPACTED`), :549-551
+  (`CompactResult result = null`), :561; `AiAgentStatusModel.compactResult(CompactResult, String)`
+  (switch, D4-FAILED_EMPTY-Text).
+- Test-Compile-Fixes (Inventory §2): AbstractAgentTest :436/:440/:470 →
+  `isEqualTo(CompactResult.COMPACTED)` / `SKIPPED_SMALL`; AiPoAgentTest :235 → `SKIPPED_SMALL`;
+  CompactSessionToolTest :122/:188 → `CompactResult compact(…) { return CompactResult.COMPACTED; }`;
+  AiAgentStatusModelTest :114-115 → Enum; HeaderRosterStructureTest :103 → `SKIPPED_SMALL`.
+- Gate 2: Surefire grün (Verhalten unverändert) + `eclipseBuildProject` (Plugin + Test-Modul) grün.
 
-### BDD / Tests
-- `SharedToolsComponentTest.javaDebugToolIsEditToolFilteredFromReadOnlyAgents` — executor unter
-  neuem Namen gefunden (bestehender Test, nur String).
-- `JavaDebugToolTest.noSessionFailsHonest` — weiter grün (14 Actions, Verhalten identisch).
-- **Nicht-regressionspflichtig** sind die UC-JD-Tests nicht — Rename-Polarität; grüne Suite = Beweis.
+**Schritt 3 — rote R-CC-3-Tests:**
+- NEU `…/src/test/java/org/sterl/llmpeon/agent/AbstractAgentCompactResultTest.java`
+  (Muster: AbstractAgentTest + streamMock):
+  1. `#skipsSmallContextHonestly` (`// R-CC-3`) — 2 Messages, capturing Monitor
+     (AtomicReference-Lambda) → `SKIPPED_SMALL` **und** onProblem **nicht** gefeuert.
+     (Pin — nach dem Skelett grün, darf nicht rot werden.)
+  2. `#emptyCompressorIsFailedNotEmptyNeeded` (`// R-CC-3`) — ≥ 3 Messages, Compressor-Mock
+     leeren Text → `FAILED_EMPTY` **und** onProblem == „Compact failed: compressor returned no
+     summary for `<getName()>`". **ROT** (Skelett: kein onProblem).
+  3. `#autoCompactRetriesAfterFailure` (`// R-CC-3`) — `autoCompactAfter` klein setzen,
+     Memory über Schwelle (addResult mit Usage), Compressor leer → `doCall`-Turn 1: FAILED_EMPTY
+     + onProblem gefeuert; Turn 2: Compressor wird **erneut** aufgerufen
+     (`streamMock.getCallCount() == 2`). **ROT** (heute: nach fehlgeschlagenem Compact
+     re-deriverter Zähler → Gate zu → kein Retry; wird grün erst mit dem R-CC-2-Fix).
+- **RED-Beweis dokumentieren.**
 
-### Gate
-`eclipseBuildProject` (org.sterl.llmpeon + org.sterl.llmpeon.test) grün, **gesamte** Plugin-Suite
-grün (Baseline vor Änderung notieren), Core Surefire unverändert grün. Grep-Verifikation 0 Restreferenzen.
-Commit inkl. Docs.
+**Schritt 4 — Fix:**
+- `AbstractAgent.compact` :310-312 → `monitor.onProblem("Compact failed: compressor returned no
+  summary for " + getName())` (D2; nullSafety-Verschiebung).
+- `ToolService.executeLoop` :161-167 →
+  `if (ranTool(response, CompactSessionTool.NAME)) { if (req.isCompactedThisTurn()) { reevaluate +
+  Static-Rebuild } /* SKIPPED_SMALL/FAILED_EMPTY: echter Zählerwert bleibt (R-CC-2) */ }
+  else addCompactHintIfNeeded(req, response, false);` (D3)
+- Gate I1: Surefire grün + Plugin-Build + Plugin-Suite grün (1. Lauf: Workspace-Trust-Bestätigung
+  im UI nötig — Memory; Suite komplett starten, nicht parallel nachstarten).
 
-## 4. Inkrement 2 — R-JD-13: Breakpoints ohne Session (Plugin)
+### I2 — R-CC-1 (nur Core) — ✅ DONE (2026-09-23): RED-Beweis (`expected 1000 but was 6000`); Fix `ChatMessageUtil.getTokenCount` → `inputTokenCount()` (D5, + Javadoc ADR-0055); Pin `fallsBackToEstimate` grün; `ThreadSafeMemoryTest:95` Cost-Pin 9100→9000 (Input-Semantik, erlaubt); Gate: Surefire 926/0/0/0
 
-SOLL: `docs/java-debugger-tool.md` **R-JD-13 / UC-JD-15** (1:1, inkl. exaktem Response-Wording).
+1. **ROT** — NEU `…/memory/ThreadSafeMemoryInputTokenCountTest.java`:
+   - `#countsInputNotTotal` (`// R-CC-1`): frische Memory;
+     `addResult(ChatResponse mit TokenUsage(1000, 5000, 6000), List.of())` →
+     `totalTokenUsed == 1000` (nicht 6000). **ROT heute** (totalTokenCount).
+   - `#fallsBackToEstimate` (`// R-CC-1`): Response **ohne** TokenUsage →
+     Estimate chars×2/7 (Pin — heute schon grün).
+   - RED-Beweis dokumentieren.
+2. **Fix** — `ChatMessageUtil.getTokenCount` :20-27 (D5) + Javadoc.
+3. Gate I2: Surefire grün. Bestehende Tests, die über `addResult` mit Usage laufen und den
+   Zähler asserten: bei Rot **Testintention prüfen** — nur Assertionen, die die Kosten-Semantik
+   einkodiert haben, dürfen angepasst werden (im Zweifel STOP-AND-ASK).
 
-### Design-Entscheidungen
-1. **3 Actions verlieren den Session-Guard**: `debugJavaSetBreakpoint`, `debugJavaSetExceptionBreakpoint`,
-   `debugJavaRemoveBreakpoint`. Die 11 session-gebundenen + `debugJavaListBreakpoints` (R-JD-11) bleiben.
-2. **Projekt-Auflösung `debugJavaSetBreakpoint` ohne Session** (aus SOLL abgeleitet, nicht erfunden —
-   UC-JD-15: „Marker existiert im **gewählten** Projekt", der etablierte Träger = `currentProject`):
-   - absoluter Pfad `/projekt/…` → wie heute, session-frei;
-   - relativer Pfad + Session → `session.sessionProject()` (wie heute);
-   - relativer Pfad + **keine Session** → `currentProject` (Chat-View-Auswahl);
-   - relativer Pfad + keine Session + kein `currentProject` → ehrlicher Fehler (nennt: kein
-     Session-Project-Attribut **und** kein Projekt in der Chat-View gewählt).
-   → Auflösung von Paul bestätigt (2026-09-23): `currentProject` (Chat-View) ist das intendierte
-     „gewählte Projekt" — konsistent mit R-JD-11.
-3. **No-Session-Response** (SOLL-Wortlaut, exakt):
-   `no active session — breakpoint stored as marker, installed when a session starts`
-   - Constant in `JavaDebugTool` (z. B. `NO_SESSION_MARKER_OP`); gilt für set, set-exception **und**
-     remove („dito-Response" — SOLL).
-   - `debugJavaSetBreakpoint`/`…SetExceptionBreakpoint` ohne Session: gleiches JSON wie heute,
-     **ohne** `installed`, stattdessen Feld `"session"` mit dem No-Session-Satz.
-   - `debugJavaRemoveBreakpoint` ohne Session: `{id, removed, session: <Satz>}`.
-   - Mit Session: unverändert (inkl. `installed` — Install-Pfad bleibt manuell verifiziert, UC-JD-15).
-4. **DebugJson-Signaturen** (einzige Call-Change): `breakpointResponse(bp, file, line, exceptionType,
-   String noSessionNote)` (`note == null` → `installed`, sonst `session`), `removedResponse(id,
-   String noSessionNote)`. Alte 4- bzw. 1-Arg-Overloads **nicht** behalten (Clean Break;
-   DebugJsonUnitTest-Call-Sites :472, :487 auf `null` umstellen).
-5. CU-Auflösung (R-JD-7, `primaryTypeName`) + hitCount-Clamp (R-JD-12) gelten unverändert.
-6. **Kein** `onProblem` auf dem no-session-Erfolgspfad (kein Problem — der Marker wurde angelegt).
+### I3 — R-CC-4 (nur Core) — ✅ DONE (2026-09-23): RED-Beweis `hintIsAddedOnce` (`Expected size: 1 but was: 2` — zwei identische CONTEXT-LIMIT-WARNING-UserMessages); Pin `hintReappearsAfterSuccessfulCompact` grün (Compact via agent.getMemory() — req-Memory muss die Agent-Memory sein, sonst SKIPPED_SMALL); Fix `addCompactHintIfNeeded` :211-212 `containsMessage(COMPACT_HINT)`-Dedup (D8); Gate: Surefire 928/0/0/0
 
-### Betroffene Dateien
-- `org.sterl.llmpeon/src/org/sterl/llmpeon/parts/tools/debug/JavaDebugTool.java` (3 Guards weg,
-  Projekt-Auflösung, Responses; **3 BP-Descriptions aktualisieren**: no-session-Verhalten nennen,
-  z. B. „Works without a debug session — stored as a JDT marker, installed into the VM when a
-  session starts (no VM-install status in the response when no session is active).")
-- `…/debug/DebugJson.java` (2 Signaturen + `session`-Feld statt `installed` bei Note)
-- `org.sterl.llmpeon.test/src/org/sterl/llmpeon/test/JavaDebugToolTest.java` —
-  `noSessionFailsHonest` auf **11** Actions einschränken (:44-46 raus), Kommentar :28 aktualisieren
-  („11 session-gebunden; BP-ohne-Session = R-JD-13, DebugBreakpointNoSessionTest")
-- **NEU** `…/test/DebugBreakpointNoSessionTest.java` (Muster `DebugListBreakpointsTest`)
-- `…/test/DebugJsonUnitTest.java` (2 Call-Sites + no-session-Rendering-Tests, s. u.)
-- `docs/java-debugger-tool.md` — **nur** die „Automatisiert:"-Zeile von UC-JD-15 (:233) mit den
-  Testnamen befüllen (eclipseEditFile, eindeutiges oldString, danach Grep-Count-Check).
-  Status ❌ R-JD-13/UC-JD-15 bleibt — Flip ist PO-Aufgabe.
+1. **ROT** — NEU `…/tool/ToolServiceCompactHintTest.java`:
+   - `#hintIsAddedOnce` (`// R-CC-4`): Memory ≥ 10 Messages, Zähler > 0.95 ×
+     `autoCompactAfter` (via `addResult` mit Usage — deterministisch, keine Zeit); streamMock-
+     Funktion (AtomicInteger-Counter) liefert **zwei** Tool-Requests (unbekannter Tool-Name,
+     z. B. „probe" → ehrliche „unknown tool"-Result-Runde) und dann Text →
+     `executeLoop` → UserMessages in Memory, die „CONTEXT LIMIT WARNING" enthalten, == **1**
+     (beide Richtungen: Memory-Inhalt + onTool-Zeile „🗜 Compact hint" genau 1×).
+     **ROT heute** (Hint pro Runde → 2×).
+   - `#hintReappearsAfterSuccessfulCompact` (`// R-CC-4`): nach erfolgreichem Compact
+     (Memory gecleart, „Session compacted"-Marker) wieder über Schwelle → Hint erscheint
+     erneut (1× in der NEUEN Memory) (Pin).
+   - RED-Beweis dokumentieren.
+2. **Fix** — `addCompactHintIfNeeded` :207 (else-Branch) vor `addMessage`:
+   `if (memory.containsMessage(COMPACT_HINT)) return;` (D8).
+3. Gate I3: Surefire grün.
 
-### BDD (UC-JD-15: `breakpointsWorkWithoutSession`)
-```
-GIVEN keine Debug-Session (launchCount == 0)
-WHEN debugJavaSetBreakpoint(file, line, condition, hitCount, policy) auf Fixture-CU (currentProject gesetzt)
-THEN Response enthält "no active session — breakpoint stored as marker, installed when a session starts"
-AND Response enthält KEIN "installed"-Feld
-AND ein Line-BP-Marker (javaLineBreakpointMarker) existiert im gewählten Projekt
-   (condition/hitCount korrekt, Marker-Ebene)
-WHEN debugJavaRemoveBreakpoint(id)
-THEN Marker entfernt, Response {removed:true} + dito-No-Session-Satz
-GIVEN keine Session WHEN debugJavaSetExceptionBreakpoint(fqn)
-THEN Exception-BP-Marker am Workspace-Root existiert, Response mit dito-Satz
-GIVEN keine Session UND kein `currentProject`
-WHEN debugJavaSetBreakpoint(relativer Pfad)
-THEN ehrlicher Fehler: kein Session-Project-Attribut UND kein Projekt in der Chat-View gewählt
-AND kein Marker angelegt
-```
-(Automatisiert: Marker-Ebene; Install-Pfad manuell — SOLL.)
+### I4 — R-CC-6 (nur Core) — ✅ DONE (2026-09-23): RED-Beweis = Compile-Rot (7 Errors: `isTokenEstimate()` ×5, `Row`-Konstruktor ×2 — neue API existiert noch nicht, vom Plan akzeptiert); Fix: `ThreadSafeMemory.tokenIsEstimate` + `isTokenEstimate()` + alle 7 Schreibstellen (D6), `StringUtil.estimateAware` (D7), `PoDelegateTool.contextUsed` + `AiAgentStatusModel` (Row+estimate, build via estimateAware); `PoDelegateToolTest` :64/:81/:91/:236 verschärft auf `Context: ~\d+ \(estimate\) token - \d+% used\.` (Wiring verifiziert — Fail-Output zeigte exakt `~11 (estimate)`); Gate: Surefire 929/0/0/0
 
-### Neue Tests (Plugin, JUnit 4, Kommentare `// UC-JD-15`)
-`DebugBreakpointNoSessionTest extends AbstractIntegrationTest`, Cleanup in `finally`:
-1. `setBreakpointWithoutSessionStoresMarker` — SOLL-Branch 1 (Marker via
-   `project.findMarkers(LINE_BREAKPOINT_MARKER, true, DEPTH_INFINITE)` verifizieren).
-2. `removeBreakpointWithoutSessionRemovesMarker` — Marker via `JDIDebugModel.createLineBreakpoint`
-   anlegen, `debugJavaRemoveBreakpoint(id)` entfernen, Existenz weg.
-3. `setExceptionBreakpointWithoutSessionStoresMarker` — Marker am `getRoot()` (DEPTH_ZERO).
-`DebugJsonUnitTest` (Stub-Ebene, beide Richtungen = Render-Eingabe + JSON-Output):
-4. `breakpointResponseWithoutSessionOmitsInstalled` — noSessionNote → `"session" : "no active session …"`,
-   kein `"installed"`.
-5. `removedResponseCarriesNoSessionNote` — dito für remove.
-6. `setBreakpointRelativePathWithoutSessionUsesCurrentProject` — relativer Pfad, keine Session,
-   `setCurrentProject(project)` → Marker entsteht im **gewählten Projekt** (BDD-Branch „relativ +
-   keine Session + currentProject"; Test 1 nutzt dieselbe Auflösung — Fixture-CU via relativem Pfad).
-7. `setBreakpointRelativePathNoSessionNoProjectFailsHonestly` — relativer Pfad, keine Session,
-   kein `currentProject` → ehrlicher Fehler (nennt: kein Session-Project-Attribut **und** kein
-   Projekt in der Chat-View gewählt), kein Marker angelegt.
+1. **ROT** — NEU `…/agent/ContextCounterDisplayTest.java` `#estimateIsDisclosed` (`// R-CC-6`)
+   (Rot = **Compile-Rot**, neue API existiert noch nicht — als Rot-Beweis akzeptiert):
+   - `ThreadSafeMemory`: `add(msg)` → `isTokenEstimate() == true` →
+     `StringUtil.estimateAware(true, "34210")` == `~34210 (estimate)`;
+     `addResult(Usage input=1234)` → `false` → `1234` (keine Tilde);
+     `reevaluateTokens()` → `true` wieder.
+   - `AiAgentStatusModel.build`: Row mit estimate → `Da Mek (~15k (estimate))`;
+     ohne → `Da Mek (15k)` (Label-Format SOLL: `~N (estimate)`).
+2. **Fix** —
+   - `ThreadSafeMemory`: Flag + `isTokenEstimate()` + alle 6 Schreibstellen (§2, D6).
+   - `StringUtil.estimateAware` (D7).
+   - `PoDelegateTool.contextUsed` :256-258 →
+     `"Context: " + StringUtil.estimateAware(mem.isTokenEstimate(),
+     String.valueOf(mem.getTotalTokenUsed())) + " token - " + agent.tokenContextUsedInPercent()
+     + "% used."`
+   - `AiAgentStatusModel`: `Row` + `boolean estimate`, `rows()` :40 liest
+     `isTokenEstimate()`, `build()` :54 rendert via `estimateAware` (D7).
+   - **`PoDelegateToolTest` :64, :81, :91, :236** — Patterns brechen (Memory dort = rein
+     Estimate-basiert) → **verschärfen** auf `Context: ~\d+ (estimate) token - \d+% used\.`
+     (der verschärfte Assert IS die Wiring-Verifikation).
+3. Gate I4: Surefire grün.
 
-### Gate
-eclipseBuildProject grün, Plugin-Suite grün, Core unverändert. Commit inkl. `docs/java-debugger-tool.md`.
+### I5 — Commit (erst NACH bestandenem Jon-Review)
 
-## 5. Inkrement 3 — Rule 9: Queued-At Disclosure (Core)
+- **EIN** Commit auf `analysis/tool-evolution` mit: allen Code-/Test-Dateien **und**
+  `docs/compact-context-counter.md` + `docs/adr/0055-…` + `peon-plan/overview.md`.
+- Doc-Status `❌ specified` **bleibt** — Flip = PO-Aufgabe (Hauskonvention).
+- Abschluss-Evidenz für Jon: Surefire-Zahlen (vorher/hinterher), Plugin-Suite-Status, RED-
+  Beweise je Regel. `planImplemented` ruft der **Dev-Agent** erst nach PO-Review auf
+  (nie Da Thinka).
 
-SOLL: `docs/queued-user-messages.md` **Rule 9** (1:1): Eintrag trägt `queuedAt`; **beide** Konsumenten
-zeigen `(queued HH:mm)` — onTool-Zeile `Reading queued User message: <text> (queued 14:32)` UND
-Marker `[Queued Message] (queued 14:32): <text>` (in-loop **und** Follow-up-Pfad); Burst-Join zeigt
-die Zeit des **ersten** Eintrags; Clock injizierbar; Message-Text hinter dem Präfix unverändert.
+## 5. Regeln & Constraints
 
-### Design-Entscheidungen
-1. **Record** `QueuedMessage(String text, long queuedAt)` in `UserMessageQueue` (nested public
-   record) — modern, ein Record statt zwei parallele Deques. `Deque<QueuedMessage>`.
-2. **Clock gehört zur Queue** (sie stampft): Konstruktoren
-   - `UserMessageQueue(long batchWindowMs)` → `Clock.systemDefaultZone()` (Production, bestehende
-     Call-Sites kompilieren);
-   - `UserMessageQueue(long batchWindowMs, Clock clock)` (Tests/Injection).
-   `add()` nutzt `clock.millis()` statt `System.currentTimeMillis()` (auch für `batchStartTime` —
-   konsistent, Test deterministisch).
-3. **Burst-Join behält den ersten Timestamp:** beim Merge (:29-38) übernimmt die neue Kombination
-   das `queuedAt` des gemergten letzten Eintrags (= Batch-Start).
-4. **API-Change (einseitig, Core-intern + ein Interface bleibt):**
-   - `pollNext()` → `QueuedMessage` (war String);
-   - `drainAll()` → `QueuedMessage` (combiniert; `queuedAt` = **erster** Eintrag) oder `null`;
-   - `AbstractAgent.drainQueue()` (Interface `AiAgent`) bleibt `String` — Wrapper:
-     `var d = messageQueue.drainAll(); return d == null ? null : d.text();`
-   - `handleAbortAndDrain` nutzt `.text()` (Abort-Drain = Memory-Payload, **keine** Zeit nötig — SOLL
-     verlangt sie nur für onTool + Marker).
-5. **Formatierung an einer Stelle** (One Behaviour, One Implementation): die Queue kennt ihre
-   Clock/Zone und stellt das Label bereit:
-   ```java
-   // UserMessageQueue
-   public String queuedLabel(long queuedAt) {
-       return Instant.ofEpochMilli(queuedAt).atZone(clock.getZone()).format(HHMM); // "HH:mm"
-   }
-   ```
-   `AbstractAgent` baut die beiden Strings aus `text()` + `queuedLabel(entry.queuedAt())`:
-   - in-loop: `monitor.onTool("Reading queued User message: " + e.text() + " (queued " + messageQueue.queuedLabel(e.queuedAt()) + ")")`
-     und `next = queuedMarker(e);`
-   - Follow-up (:191): `next = queuedMarker(drained);`
-   - Helper `queuedMarker(QueuedMessage e)` = `"[Queued Message] (queued " + label + "): " + e.text()`.
-   - Join-Fall :188 (`stillQueued + sep + initialMessage`) → `stillQueued.text() + …` (keine Zeit —
-     SOLL verlangt sie hier nicht, Marker kommt nur bei Follow-up/in-loop).
-6. **Test-Sauma:** `AbstractAgent` erhält ein **package-privates** `void setMessageQueue(UserMessageQueue)`
-   (Test in `org.sterl.llmpeon.agent` = gleiches Package; Präzedenz: statische Test-Seams
-   `listBreakpoints(IProject)`/`primaryTypeName`). Kein Konstruktoren-Change an Subklassen.
+- STOP-AND-ASK-Banner gilt je Inkrement (oben). SOLL = Docs; nichts erfinden;
+  Wortlaut-Änderungen = STOP-AND-ASK.
+- Ein Wortlaut je Verhalten (D2/D4/D7); keine Aliase, keine Backwards-Compat
+  (`boolean compact` verschwindet vollständig — Clean Break).
+- Kein Scope-OUT-Topic anfassen (Compressor-Root-Cause, Input-Budget, cache_read,
+  Workspace-Memory-Snapshot/ADR-0032).
+- Regeldoc-Nummerung bleibt mit Lücke bei R-CC-6 — **nicht** nachnummerieren (Doc + ADR-0055
+  referenzieren die finale Nummerierung).
+- Kern-Gate immer **Surefire** (llmpeon-core); Eclipse-Runner-Zahlen keine Referenz.
+- `eclipseReplaceLines`/`diskReplaceLines`-Falle: nach jeder zeilenbasierten Edit den Bereich
+  re-lesen; größere Umbauten als Ganz-File-Write (AGENTS.md).
+- Plugin-Änderungen nur in I1; I2–I4 dürfen kein Plugin kompilieren-müssen
+  (`eclipseBuildProject` als Billig-Check ok).
+- Kein Git-Zwischen-Commit; Branch wechseln nur auf Ansage.
 
-### Betroffene Dateien (nur Core)
-- `org.sterl.llmpeon.core/src/main/java/org/sterl/llmpeon/queuedmessages/UserMessageQueue.java`
-- `org.sterl.llmpeon.core/src/main/java/org/sterl/llmpeon/agent/AbstractAgent.java`
-- Tests: `…/src/test/java/org/sterl/llmpeon/queuedmessages/UserMessageQueueTest.java`,
-  `…/src/test/java/org/sterl/llmpeon/agent/AbstractAgentTest.java`
-- **Keine** Plugin-/Doc-Änderung (Rule-9-„Tests:"-Zeile im SOLL ist generisch; Status-Flip = PO).
+## 6. BDD-Akzeptanz (SOLL-IDs: R-CC-1 … R-CC-4 + R-CC-6 — das Doc trägt keine UC-IDs)
 
-### BDD (Rule 9)
-```
-GIVEN eine Message wird um 14:32 gequeued (fest injizierte Clock, z. B.
-      Clock.fixed(Instant.parse("2026-09-23T14:32:00Z"), ZoneId.of("UTC")))
-WHEN sie in-loop (pollNext) konsumiert wird
-THEN onTool == "Reading queued User message: <text> (queued 14:32)"
-AND der an das Mock-LLM gesendete UserMessage-Payload enthält
-     "[Queued Message] (queued 14:32): <text>" (Text unverändert hinter dem Präfix)
-GIVEN null-initial + 1 gequeued (Follow-up/Compact-Pfad)
-WHEN call(null, …)
-THEN Payload = "[Queued Message] (queued 14:32): <text>" (keineswegs „null" im Prompt)
-GIVEN Burst (3 Messages im Fenster, Rule 1)
-WHEN konsumiert THEN Zeit des ERSTEN Eintrags im Präfix (beide Richtungen)
-```
+| SOLL-Regel | BDD (Kurzfassung, Wortlaut im Doc) | Test (Name exakt aus SOLL) | Increment |
+|---|---|---|---|
+| R-CC-1 | inputTokenCount=1000/total=6000 → Zähler wächst um 1000; ohne Usage → Estimate | `ThreadSafeMemoryInputTokenCountTest#countsInputNotTotal`, `#fallsBackToEstimate` | I2 |
+| R-CC-2 | Zähler 260000 + fehlgeschlagener Compact → bleibt 260000, Gate scharf | `ToolServiceCompactResultTest#keepsRealCounterOnFailedCompact` | I1 |
+| R-CC-3 | 2 Messages → SKIPPED_SMALL ohne onProblem; leerer Compressor → FAILED_EMPTY + onProblem mit Agenten-Name; nach Fehlschlag rettet das Auto-Compact-Gate den nächsten Turn | `AbstractAgentCompactResultTest#skipsSmallContextHonestly`, `#emptyCompressorIsFailedNotEmptyNeeded`, `#autoCompactRetriesAfterFailure` | I1 |
+| R-CC-4 | Hint steht schon → kein zweiter; nach erfolgreichem Compact → Hint wieder scharf | `ToolServiceCompactHintTest#hintIsAddedOnce`, `#hintReappearsAfterSuccessfulCompact` | I3 |
+| R-CC-6 | Estimate-Wert → `~34k (estimate)` (PoDelegateTool + Roster); Provider-Wert ohne Tilde | `ContextCounterDisplayTest#estimateIsDisclosed` | I4 |
 
-### Test-Strategie (JUnit 5 + AssertJ, beide Richtungen, deterministisch)
-1. `AbstractAgentTest.callNullInitialWithQueuedProcessesQueueAsPayload` (:526) — erweitern:
-   feste Clock injizieren (setMessageQueue + `new UserMessageQueue(10_000, fixedClock)`),
-   Assert um `(queued 14:32)` im Marker erweitern, bestehende `doesNotContain("null")` bleibt.
-2. `AbstractAgentTest.testQueuedMessagesChainedFifo` (:49) — Monitor mit onTool-Capture + fixe Clock;
-   THEN: onTool-Zeile für den Burst = „Reading queued User message: msg2<ls>msg3 (queued 14:32)"
-   (Zeit des ersten Eintrags) + Memory-Payload enthält den Marker. (Latches/Timeouts bleiben.)
-3. `UserMessageQueueTest` — alle `pollNext()`-Assertions auf `.text()` umstellen, `drainAll()`-
-   Assertions analog; **neue** Tests (je 1, kurze Namen):
-   - `entriesCarryQueuedAtFromFirstAdd` (Burst-Merge hält ersten Timestamp),
-   - `newEntryAfterWindowGetsNewTimestamp`,
-   - `drainAllReturnsFirstEntryQueuedAt`,
-   - `queuedLabelFormatsHHmmInClockZone` (injected Clock).
+## 7. Test-Strategie
 
-### Gate
-Maven Surefire (llmpeon-core) grün = Ground Truth (Zahlen aus Surefire, nicht Eclipse-Runner).
-Kein Plugin-Aufbau nötig (Achtung: Interface `AiAgent` bleibt unverändert → Plugin kompiliert weiter;
-kurzer `eclipseBuildProject` als Billig-Check trotzdem ok). Commit.
-
-## 6. Inkrement 4 — Homepage-Nachziehen
-
-SOLL: AGENTS.md „User behavior/visible changes need the update in the same increment".
-**Kein** volles Tool-Register (bewusst verworfen).
-
-### Betroffene Dateien + Inhalt (Wortlaut = Vorschlag, Fakten müssen stimmen)
-1. `homepage/src/setup/custom-agents.md` —
-   a) Prefix-Tabelle „Common built-in prefixes" (:170-177), Zeilen ergänzen (vor `mcp__`):
-   - `` `debugJava` `` — Java-Debugger (Dev-agent-only, edit tool): 15 Actions `debugJavaGetState` …
-     `debugJavaSuspend` (volle Liste wie im SOLL); Session = vom User im Debug-View gestartet;
-     Breakpoint-Actions (set/remove/exception) wirken **ohne Session** (Marker, installiert wenn eine
-     Session startet).
-   - `` `web` `` — `webGet` (nur bei „Enable disk tools" aktiv — Hinweis, siehe `disk`-Zeile).
-   - `` `shell` `` — `shellRunCommand` (Shell-Kommando, nicht für File-I/O).
-   - Docs-Familie: **IST-Fakten** — die Tools heißen `lintDocs`, `lintDocsAndTests`
-     (Prefix `lintDocs` deckt beide, Matching = `startsWith`, `ToolPolicy.java:27`) und `nextIds`
-     (kein Prefix, exakter Name nötig). Zeile final mit den **tatsächlich matchenden** Prefixen
-     (`lintDocs`, `nextIds`) — ein `docs`-Prefix matcht nichts (Task-Abkürzung korrigiert, nicht
-     erfunden; von Paul bestätigt 2026-09-23).
-   b) **Debugger-Abschnitt** (neu, kompakt, Nähe zu „File tools"-Sektion): was die 15 Tools können
-   (lesend/ändernd), Session = User-Property (kein Auto-Start, ehrlicher Fehler ohne Session),
-   no-session-Breakpoints (R-JD-13), keine Confirmations (User sieht jede Änderung im Debug-UI).
-2. `homepage/src/index.md` —
-   a) „Available Tools" (:62-73): Bullet **Java Debugger** ergänzen (debugJava*, Session startet der
-      User, Breakpoints auch ohne Session).
-   b) CTRL+Enter-Infobox (:82-84) **oder** dort wo Queuing beschrieben ist: ein Satz zu
-      `(queued HH:mm)` — Rule 9 ist user-visible Chat-Output, daher im selben Zyklus (AGENTS.md-
-      Regel; im Task nicht explizit, daher **bewusst als Zusatz markiert** — wenn PO es nicht will,
-      fällt genau dieser Satz).
-
-### Gate
-Kein Build nötig (Markdown). **Nur `homepage/src` committen, `.vitepress/dist` nicht anfassen**
-(generiertes Build-Artefakt, wird beim Release gebaut — Konvention von Paul bestätigt 2026-09-23).
-Commit.
-
-## 7. Reihenfolge & Gesamtdatenfluss
-
-I1 → I2 → I3 → I4 (je für sich kompilierbar + grün, eine Polarität je Inkrement).
-
-```mermaid
-flowchart LR
-  subgraph I1["I1 Rename (Plugin)"]
-    A[15 @Tool-Names + Strings + Javadoc] --> B[Tests + E2E-Doc + inventory-Doc]
-  end
-  subgraph I2["I2 R-JD-13 (Plugin)"]
-    C[3 BP-Guards weg + Projekt-Fallback currentProject] --> D[DebugJson: session statt installed]
-    D --> E[noSessionFailsHonest 11 + DebugBreakpointNoSessionTest + DebugJsonUnitTest]
-  end
-  subgraph I3["I3 Queued-At (Core)"]
-    F[UserMessageQueue: QueuedMessage + Clock] --> G[AbstractAgent: onTool + Marker, beide Pfade]
-    G --> H[Queue- + Agent-Tests mit fester Clock]
-  end
-  I1 --> I2 --> I4
-  I3 --> I4
-```
+- JUnit 5 + AssertJ, GIVEN/WHEN/THEN, Regel-ID-Kommentar (`// R-CC-n`).
+- Mock-Modelle über das bestehende `streamMock.buildMock(fn)`-Muster (fn zählt Aufrufe via
+  AtomicInteger für Mehr-Runden-Szenarien); Capture-Monitore über AtomicReference-Lambdas
+  (onProblem/onTool).
+- Keine Zeit-/Raten-Logik im Hotfix → Tests deterministisch, keine Sleeps/Latches nötig.
+- 5 neue Core-Testklassen (oben); beide Richtungen wo Send-/Monitor-Pfad Logik trägt
+  (R-CC-4: Memory-Inhalt UND onTool-Zeile; R-CC-3: Return-Wert UND onProblem UND callCount).
+- Bestehende Tests, die den compact-Pfad üben (AiCompressorAgentTest, CompactSessionToolTest,
+  PeonAiServiceTest-Delegationstests) bleiben grün — sie sind die Nicht-Regression.
+- Testhonesty: R-CC-3-#skipsSmallContextHonestly und die Pin-Tests sind bewusst
+  Vor-Grün-Pins; die Behavior-Tests (onProblem, Zähler, Retry, Dedup-Hint) müssen rot starten.
 
 ## 8. Open Questions
 
-**Keine.** Alle 3 Fragen von Paul am 2026-09-23 entschieden (jeweils wie empfohlen):
-1. I2 Projekt-Fallback = `currentProject` (Chat-View) → §4 Decision 2 + neue Tests 6/7.
-2. Homepage-Docs-Zeile = real matchende Prefixes `lintDocs`/`nextIds` → §6.1a.
-3. Homepage = nur `homepage/src` committen, `dist` nicht anfassen → §6 Gate.
+- Keine. R-CC-5-Entscheidung = (b) streichen (Paul, 2026-09-23) — in §1 + D9 dokumentiert.
+
+---
+
+## 9. PO-Review-Befund (Da Dok, 2026-09-23) — Verdict: **CONCERNS** (nicht-blockierend)
+
+**Evidenz (selbst gelaufen, nicht übernommen):**
+- Core-Suite `llmpeon-core`: **948 Tests / 0 Failures / 19 Skipped** (Eclipse-Runner; Surefire-Zahlen liegen niedriger — Green ist die Evidenz, zählt hier als Gate-bestanden).
+- Plugin `org.sterl.llmpeon`: Build **grün** (nur Pre-Existing-Null-Safety-Warnings); Test-Modul `org.sterl.llmpeon.test`: Build **grün, 0 Warnings**.
+- Plugin-Suite (PDE): **279/0/0** — exakt Da-Mek-Claim.
+- Lint (`lintDocsAndTests`): 41 Findings, **alle pre-existing** (UC-DL/UC-JD/UC-CT); `compact-context-counter.md` neu im Lint (CC-IDs), keine neuen Findings.
+- Doc-Status `docs/compact-context-counter.md:7` = `❌ specified` — **nicht geflippt** (PO-Aufgabe respektiert) ✓.
+
+**Drei-Seiten-Check — SOLL == IST:**
+- R-CC-1: `ChatMessageUtil.getTokenCount:25-32` (inputTokenCount, Estimate-Fallback) + `ThreadSafeMemoryInputTokenCountTest` (2/2 Tests, exakte SOLL-Namen) ✓
+- R-CC-2: `ToolService.executeLoop:159-170` (Re-Derive nur bei `isCompactedThisTurn()`) + `ToolServiceCompactResultTest#keepsRealCounterOnFailedCompact` (260000-exakt + compactCalls-Pin) ✓
+- R-CC-3: `AbstractAgent.compact:297-334` (SKIPPED_SMALL ohne onProblem, FAILED_EMPTY mit exaktem Wortlaut + Agenten-Name; nullSafety vor Guard) + `AbstractAgentCompactResultTest` (3/3 Tests, beide Richtungen) ✓
+- R-CC-4: `ToolService.addCompactHintIfNeeded:212` (`containsMessage(COMPACT_HINT)`-Dedup, deckt normal + forced) + `ToolServiceCompactHintTest` (2/2 Tests, Memory-Inhalt UND onTool-Zeile) ✓
+- R-CC-6: `ThreadSafeMemory.isTokenEstimate` + `StringUtil.estimateAware` + `PoDelegateTool.contextUsed:259-263` + `AiAgentStatusModel.build:55` + `ContextCounterDisplayTest#estimateIsDisclosed` ✓
+- FAILED_EMPTY-Wortlaut **exakt ein Satz** an allen 4 Stellen (AbstractAgent onProblem, CompactSessionTool yield, PoDelegateTool yield, Test-Pins) — kein Alias ✓
+- Clean Break: Grep `boolean compact` im gesamten Repo = 0 Code-Treffer; alle Compile-Fixes aus §2-Inventory vorhanden (AbstractAgentTest:436/440/470, AiPoAgentTest:235, CompactSessionToolTest:123/189, AiAgentStatusModelTest:114-115, HeaderRosterStructureTest:104) ✓
+
+**Deviations (alle 4 von Da Mek — Klassifikation: legitime Verbesserungen, kein Rework):**
+1. `ThreadSafeMemory`-Konstruktor: `tokenIsEstimate = !memory.isEmpty()` statt planmäßiger `true` — leerer Restore = 0 = exakt (konsistent mit D6-eigener `clear/replaceAll→false`-Logik); SOLL-Semantik („Wert enthält Estimate-Komponente") erfüllt ✓
+2. `AiAgentStatusModel.Row`-Feldreihenfolge: `estimate` als 4. Feld — Plan schrieb nur „Row + boolean estimate", keine Reihenfolge; kosmetisches ✓
+3. `PoDelegateToolTest:64/81/91/236`: escaped Pattern `~\\d+ \\(estimate\\)` = Java-Regex-Zwang für das Plan-Pattern; **pinnt die estimateAware-Wiring wirklich** (plain-Wert würde rot) ✓
+4. I1: (a) `AiAgentStatusModel.compactResult` null-Guard → „Nothing to compact" (AIChatView:550 null-init, Exception vor compact() → null; Javadoc dokumentiert; verletzt keinen SOLL-Wortlaut) ✓ (b) R-CC-3-Test3: Gate-Überschreitung via Compact-Request-eigener Usage (autoCompactAfter=200000 < 260000) statt vorgesehener addResult — mit addResult würde das doCall-Pre-Turn-Auto-Compact vor Turn 1 feuern und den Retry-Count verschmutzen; Test-Kommentar:73-76 begründet, SOLL-Verhalten („Gate feuert nächsten Turn neu") exakt erhalten ✓
+
+**Nicht-blockierende Lücke (CONCERNS-Grund):**
+- D3-Sticky-OR (2× compactSession in EINEM Turn: erst COMPACTED, dann SKIPPED_SMALL → exakt ein Re-Derive) ist dokumentierte Design-Entscheidung, aber **ohne Test**. Mutation `CompactSessionTool.markCompacted()` → no-op bleibt grün (keiner der 9 neuen Tests deckt das 2×-Szenario). Empfehlung an PO/Da Thinka: optionaler Folge-Test `#secondCompactInSameTurnStillDerivesOnce` (Re-Derive genau 1× + Zähler konsistent).
+
+**Mutation-Check (die EINER Stelle):** `ToolService.executeLoop:160` — Gate `req.isCompactedThisTurn()`. Mutation „Re-Derive immer bei ranTool(compactSession)" (Flag ignoriert) → `ToolServiceCompactResultTest#keepsRealCounterOnFailedCompact` wird **rot** (Zähler 260000 → Estimate). Der R-CC-2-Pin hält.
+
+**Plan-Coverage-Gap:** keiner. **Skill/Instruktionen-Gap:** keiner — das §2-Call-Site-/Test-Inventory war vollständig und exakt (eigene Grep-Verifikation fand nichts darüber hinaus).
+
+**Most likely reason this breaks later:** das Sticky-OR-Flag (`ToolLoopRequest.compactedThisTurn`) ist die einzige neue, ungetestete Zustandshaltung — ein zukünftiger Change, der es resetet oder überschreiben lässt, macht das Re-Derive doppelt oder unmöglich → Zähler fällt auf Estimate → Auto-Compact-Gate blind (genau der Bug, den R-CC-2 fixt).
+**Change, der das Risiko am meisten senkt:** der oben genannte 2×-compactSession-Test, der exakt ein Re-Derive assertet.

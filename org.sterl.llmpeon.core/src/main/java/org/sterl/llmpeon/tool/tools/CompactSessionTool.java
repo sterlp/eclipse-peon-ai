@@ -26,21 +26,24 @@ public class CompactSessionTool extends AbstractTool {
         }
 
         long startNanos = System.nanoTime();
-        var compactDone = agent.compact(monitor);
-        
-        if (compactDone) {
-            long elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000;
-            
-            var result = StringUtil.hasValue(preserve)
-                    ? "Preserved:" + System.lineSeparator() + StringUtil.stripToEmpty(preserve)
-                    : "(nothing preserved)";
-            
-            onTool(TOOL_MESSAGE_PREFIX + " for " + agent.getName() 
-                + ". (" + StringUtil.humanElapsed(elapsedMillis) + ")");
-            return result;
-        } else {
-            onTool("Compact called but skipped because of small context for " + agent.getName());
-            return "Not needed only " + agent.getMemory().size() + " message in context";
-        }
+        return switch (agent.compact(monitor)) {
+            case COMPACTED -> {
+                long elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000;
+                onTool(TOOL_MESSAGE_PREFIX + " for " + agent.getName()
+                    + ". (" + StringUtil.humanElapsed(elapsedMillis) + ")");
+                request.markCompacted();
+                yield StringUtil.hasValue(preserve)
+                        ? "Preserved:" + System.lineSeparator() + StringUtil.stripToEmpty(preserve)
+                        : "(nothing preserved)";
+            }
+            case SKIPPED_SMALL -> {
+                onTool("Compact called but skipped because of small context for " + agent.getName());
+                yield "Not needed only " + agent.getMemory().size() + " message in context";
+            }
+            case FAILED_EMPTY -> {
+                onTool("Compact failed: compressor returned no summary for " + agent.getName());
+                yield "Compact failed: compressor returned no summary for " + agent.getName();
+            }
+        };
     }
 }

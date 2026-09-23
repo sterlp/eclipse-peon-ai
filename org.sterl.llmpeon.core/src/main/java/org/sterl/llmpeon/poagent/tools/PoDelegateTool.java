@@ -187,12 +187,15 @@ public class PoDelegateTool extends AbstractTool {
     
     private String compact(NamedAgent agent) {
         AiAgent slave = agent.agent();
-        if (!slave.compact(monitor)) {
-            // honest skip (R16 guard or empty compressor result) — memory untouched, so N is exact
-            return "Nothing to compact (" + slave.getMemory().size() + " messages)";
-        }
-        reportAction(agent, "compacted");
-        return agent.uiName() + " compacted. " + contextUsed(slave);
+        return switch (slave.compact(monitor)) {
+            case COMPACTED -> {
+                reportAction(agent, "compacted");
+                yield agent.uiName() + " compacted. " + contextUsed(slave);
+            }
+            // honest skip (R16 guard) — memory untouched, so N is exact
+            case SKIPPED_SMALL -> "Nothing to compact (" + slave.getMemory().size() + " messages)";
+            case FAILED_EMPTY -> "Compact failed: compressor returned no summary for " + slave.getName();
+        };
     }
 
     /**
@@ -254,6 +257,8 @@ public class PoDelegateTool extends AbstractTool {
     }
 
     private String contextUsed(AiAgent agent) {
-        return "Context: " + agent.getMemory().getTotalTokenUsed() + " token - " + agent.tokenContextUsedInPercent() + "% used."; 
+        var memory = agent.getMemory();
+        return "Context: " + StringUtil.estimateAware(memory.isTokenEstimate(), String.valueOf(memory.getTotalTokenUsed()))
+                + " token - " + agent.tokenContextUsedInPercent() + "% used.";
     }
 }

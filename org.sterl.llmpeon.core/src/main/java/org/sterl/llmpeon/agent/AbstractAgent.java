@@ -294,22 +294,24 @@ public abstract class AbstractAgent implements AiAgent {
     }
 
     @Override
-    public boolean compact(AiMonitor monitor) {
+    public CompactResult compact(AiMonitor monitor) {
         // User-triggered compact acquires the working flag (R-CT-1); an in-loop compact runs
         // inside a turn that already holds it, so the CAS fails and the flag is left untouched.
         boolean acquired = working.compareAndSet(false, true);
         try {
+            // nullSafety before the guard: the FAILED_EMPTY onProblem path must never have a null monitor
+            monitor = AiMonitor.nullSafety(monitor);
             // < 3: a compact leaves exactly 2 messages (Session-compacted user + summary) — with < 2
             // a direct re-compact would fire a real LLM call on those 2 (R16 sharpened, 2026-09-15)
-            if (memory.size() < 3) return false;
+            if (memory.size() < 3) return CompactResult.SKIPPED_SMALL;
 
-            monitor = AiMonitor.nullSafety(monitor);
             var response = new AiCompressorAgent(configuredModel)
                     .call(memory.getCopy(), monitor);
 
             if (response == null || StringUtil.hasNoValue(response.aiMessage().text())) {
+                monitor.onProblem("Compact failed: compressor returned no summary for " + getName());
                 log.warn("Empty compact message received for " + getName());
-                return false;
+                return CompactResult.FAILED_EMPTY;
             }
 
             memory.clear();
@@ -325,7 +327,7 @@ public abstract class AbstractAgent implements AiAgent {
             // we add the compact message as AI message
             memory.add(AiMessage.from(response.aiMessage().text()));
 
-            return true;
+            return CompactResult.COMPACTED;
         } finally {
             if (acquired) working.set(false);
         }

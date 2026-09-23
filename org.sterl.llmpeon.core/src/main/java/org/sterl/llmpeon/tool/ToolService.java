@@ -156,14 +156,17 @@ public class ToolService {
                 stuck = 0; // reset on productive tool use
                 var tR = runAllTools(response, req);
                 req.getMemory().addResult(response, tR);
-                // The compact-request's provider usage describes the PRE-compact context —
-                // re-derive the counter from the new (small) memory
                 if (ranTool(response, CompactSessionTool.NAME)) {
-                    req.getMemory().reevaluateTokens();
-                    var agent = req.getAgent();
-                    if (agent != null) {
-                        req.staticMessages(agent.buildStaticMessages(req.getMonitor()));
+                    if (req.isCompactedThisTurn()) {
+                        // The compact-request's provider usage describes the PRE-compact context —
+                        // re-derive the counter from the new (small) memory
+                        req.getMemory().reevaluateTokens();
+                        var agent = req.getAgent();
+                        if (agent != null) {
+                            req.staticMessages(agent.buildStaticMessages(req.getMonitor()));
+                        }
                     }
+                    // SKIPPED_SMALL / FAILED_EMPTY: the real counter value stays (R-CC-2)
                 } else addCompactHintIfNeeded(req, response, false);
 
             } else if (hasResponseMessage) {
@@ -205,6 +208,8 @@ public class ToolService {
                     "Your context window is almost full and cannot be compacted. " +
                     "Stop calling tools now and give your best final answer with what you have so far."));
         } else {
+            // R-CC-4: one hint per memory — a cleared memory (successful compact) re-arms it
+            if (memory.containsMessage(COMPACT_HINT)) return;
             var used = memory.getTotalTokenUsed() + " tokens of " + compactLimit + " used.";
             // agent is @Nullable (ToolService loops run without one) — the hint is still added
             String agentName = req.getAgent() != null ? req.getAgent().getName() : "the agent";

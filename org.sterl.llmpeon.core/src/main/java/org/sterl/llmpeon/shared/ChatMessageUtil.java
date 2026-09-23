@@ -17,10 +17,15 @@ import dev.langchain4j.model.output.TokenUsage;
 
 public class ChatMessageUtil {
     
+    /**
+     * The CONTEXT SIZE of the given prompt/response in tokens: the provider's INPUT token count
+     * when available, otherwise the chars×2/7 estimate of the messages. The total token count
+     * (input + output = COST) never flows into this value (R-CC-1, docs/adr/0055-context-counter-input-not-cost.md).
+     */
     public static int getTokenCount(ChatResponse response, List<ChatMessage> messages) {
         var tokenUsage = tokenUsage(response);
-        if (tokenUsage != null && tokenUsage.totalTokenCount() != null) {
-            return tokenUsage.totalTokenCount();
+        if (tokenUsage != null && tokenUsage.inputTokenCount() != null) {
+            return tokenUsage.inputTokenCount();
         } else {
             return estimateTokens(messages);
         }

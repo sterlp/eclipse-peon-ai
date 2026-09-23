@@ -72,6 +72,14 @@ public class StringUtil {
         return value.strip();
     }
 
+    /**
+     * One disclosure format for every context-counter surface (R-CC-6, docs/compact-context-counter.md):
+     * estimate values render as {@code ~N (estimate)}, exact provider values render plain.
+     */
+    public static String estimateAware(boolean isEstimate, String value) {
+        return isEstimate ? "~" + value + " (estimate)" : value;
+    }
+
     /** Converts a token count to a "k" string, e.g. 131072 → "131k", 1234567 → "1.234k". */
     public static String toK(int tokens) {
         return toK((long) tokens);

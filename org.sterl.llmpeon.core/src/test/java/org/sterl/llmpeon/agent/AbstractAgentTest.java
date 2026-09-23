@@ -433,11 +433,11 @@ class AbstractAgentTest {
         var second = agent.compact(monitor -> {});
 
         // THEN — first compacted to exactly 2 (Session-compacted user + summary), second is a no-op
-        assertThat(first).isTrue();
+        assertThat(first).isEqualTo(CompactResult.COMPACTED);
         assertThat(afterFirst).hasSize(2);
         assertThat(afterFirst.get(0)).isInstanceOf(UserMessage.class);
         assertThat(afterFirst.get(1)).isInstanceOf(AiMessage.class);
-        assertThat(second).isFalse();
+        assertThat(second).isEqualTo(CompactResult.SKIPPED_SMALL);
         assertThat(agent.getMemory().getCopy()).isEqualTo(afterFirst);
         // AND — exactly one LLM call (the first compact's compressor), none for the no-op
         assertThat(streamMock.getCallCount()).isEqualTo(1);
@@ -467,7 +467,7 @@ class AbstractAgentTest {
         var compacted = agent.compact(monitor -> {});
 
         // THEN — the agent is working during the compressor call and released afterwards
-        assertThat(compacted).isTrue();
+        assertThat(compacted).isEqualTo(CompactResult.COMPACTED);
         assertThat(workingDuringCompressor.get()).isTrue();
         assertThat(agent.isWorking()).isFalse();
     }

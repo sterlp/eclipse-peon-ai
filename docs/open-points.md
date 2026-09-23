@@ -2,6 +2,17 @@
 
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
 
+## ❓ Workspace-Memory-Snapshot: Vollkopie je `memoryAdd` (2026-09-23, Hotfix-Analyse)
+
+Der Snapshot-Key ist der entries-Hash (ADR-0032, `WorkspaceMemoryTool.dedupKey:149-152`) — jede
+Mutation (`memoryAdd/Replace/Remove/Reset`) erzeugt einen neuen Key → frische **Vollkopie** aller
+Einträge je Dispatch, bis zum Compact (bei 35 Entries × N Mutationen zwischen Compacts wird das
+teuer). By design, kein Bug im Hotfix-Sinn — aber eine Design-Entscheidung fehlt: inkrementeller
+Snapshot, Dedup je Eintrag oder Compact-frequenter. Verwandt:
+[compact-context-counter.md](compact-context-counter.md) („Offen"), 
+[context-architecture.md](context-architecture.md)/ADR-0032. Frage an Paul: soll das ein eigener
+Design-Punkt werden?
+
 ## ❓ Tool-Time-Disclosure Restkandidaten (2026-09-22, Da-Thinka-Scan, Paul-Scope = B)
 
 Da Thinkas Inventar (2026-09-22) meldete weitere Kandidaten, bewusst **nicht** im

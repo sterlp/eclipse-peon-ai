@@ -31,6 +31,7 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.ui.IWorkingSet;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiAgentStatusModel;
+import org.sterl.llmpeon.agent.CompactResult;
 import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.LlmConfig;
@@ -521,7 +522,7 @@ public class AIChatView implements EclipseAiMonitor {
             Exception ex = null;
             try {
                 var result = active.compact(this);
-                if (result) EclipseUtil.runInUiThread(parent, this::refreshChat);
+                if (result == CompactResult.COMPACTED) EclipseUtil.runInUiThread(parent, this::refreshChat);
             } catch (Exception e) {
                 ex = handleChatException(e);
             } finally {
@@ -546,7 +547,7 @@ public class AIChatView implements EclipseAiMonitor {
         Job.create("Compact " + slave.uiName(), monitor -> {
             monitorRef.set(monitor);
             Exception ex = null;
-            boolean result = false; // captured before the finally's monitorRef reset (async-state safety)
+            CompactResult result = null; // captured before the finally's monitorRef reset (async-state safety)
             try {
                 result = agent.compact(this);
                 // NO refreshChat here — a rebuild from the ACTIVE agent's memory would wipe the

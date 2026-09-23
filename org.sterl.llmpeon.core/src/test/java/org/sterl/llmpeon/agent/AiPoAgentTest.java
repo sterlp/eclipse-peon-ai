@@ -232,7 +232,7 @@ class AiPoAgentTest {
         var compacted = setup.po().compact(null);
 
         // THEN — no LLM call, memory untouched
-        assertThat(compacted).isFalse();
+        assertThat(compacted).isEqualTo(CompactResult.SKIPPED_SMALL);
         assertThat(setup.po().getMemory().getCopy()).isEqualTo(before);
         assertThat(streamMock.getCallCount()).isZero();
     }
