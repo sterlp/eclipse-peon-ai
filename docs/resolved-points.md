@@ -21,3 +21,30 @@ Geklärte Punkte, die in kein Feature-Doc passen. Offene Punkte: [open-points.md
 | AgentOrder: doppelt matchende Patterns still verworfen (Triage Bug 5) | **Verhalten bleibt (a), Sichtbarkeit kommt** — first-wins ist gewollt; Fix = `log.warn` nennt die übergehende Zeile. **R4** in [agent-ordering.md](agent-ordering.md) ❌ specified | User 2026-09-11: „ich bin wie du bei (a) und docs pflegen dazu." Kein Verhaltens-Change im Cleanup-Zyklus, nur silent-discard weg. | 2026-09-11 |
 | `diskReadFile` scheitert an workspace-qualifizierten Pfaden, wenn Projektname ≠ Disk-Ordnername | **Kein Code-Fix** — Empfehlung „Eclipse-Projektname = Disk-Ordnername", dokumentiert auf der Homepage. Keine Auto-Übersetzung `/project/path` → Disk in den `disk*`-Tools | Realfall 2026-09-16 (Kimi): `diskReadFile("/llmpeon-parent/docs/docs-linter.md")` bei Disk-Pfad `…/eclipse-peon-ai`. `FileUtils.resolve:78-88` nimmt einen absoluten Pfad nur, wenn er **existiert**, sonst `workingDir.resolve(...)` → hängt ihn an den Disk-Root (`…/eclipse-peon-ai/llmpeon-parent/docs/…`). Beides weg → `File not found: <x> also not in <workingDir>` (`DiskFileReadTool.java:54`). **Warum keine Übersetzung:** (1) echte Mehrdeutigkeit — heißt ein Projekt `docs` oder `tmp`, ist `/docs/x.md` gleichzeitig gültiger Disk- und Eclipse-Pfad, die Übersetzung müsste raten; (2) der `WriteValidator` arbeitet auf dem normalisierten Pfad, eine Schicht davor verschiebt die Sicherheitsgrenze; (3) es verwischt die Familien-Trennung, die `QualifiedPathValidator` bei Copy/Rename gerade hergestellt hat. Das LLM hat die Information ohnehin: `projectInfo` nennt in **jedem** Turn Projektname, Eclipse-Pfad und Disk-Pfad (`EclipseUtil.java:346-358`) — hier hat das Modell sie ignoriert, kein Werkzeugfehler. | 2026-09-16 |
 | `PoDelegateTool.compact()` meldet trotz R16-Skip „compacted." (Da-Dok-Fund) | **Gefixt** — R16-Schärfung (`16e9e47`): Boolean-Return wird gelesen, Skip → `"Nothing to compact (N messages)"`; gemeinsam mit Guard < 2 → < 3 (Re-Compact = Noop), [po-agent-jon.md](po-agent-jon.md) R16 | Beides dieselbe Ehrlichkeits-Lücke am selben Choke-Point; User 2026-09-15: „einverstanden". Da-Dok-Review ACCEPTED. | 2026-09-15 |
+
+## Tool-Evolution-Run — CR-Verdicts (2026-09-19, Paul) · Zusammfassung nach Auflösung
+
+Ausgangspunkt: Vergleich unseres Plugins gegen das externe Copilot-Eclipse-Plugin (Nacht-Zyklus 2026-09-19,
+Plan `/github-copilot-for-eclipse/peon-plan/overview.md` — auf unseren Projekt-Peon-Plan verschoben).
+Alle CR-Items im PO-Run entschieden; die ursprüngliche Sammelstelle (tool-evolution.md) und die externe
+Mapping-Datei (feature-change-request-copilot.md) wurden aufgelöst. Verbleibende SOLL-Docs: ❌
+[project-problems-tool.md](project-problems-tool.md), [java-debugger-tool.md](java-debugger-tool.md),
+[tool-output-disclosure.md](tool-output-disclosure.md), [web-tools.md](web-tools.md) · ⏳ geparkt
+[terminal-session-tool.md](terminal-session-tool.md) (Revisit mit async-agent-tools-proposal, Option C),
+[tool-confirmation.md](tool-confirmation.md).
+
+- **CR-1 (create_file), CR-2 (Whole-File-Regen), CR-7 (Change-Review-UI/Undo/WorkingSetBar) — abgelehnt.**
+  Begründung (Paul): Agent-basiertes System + Git/PR-Workflow (V2 als eigener Service mit PRs) deckt
+  Review/Undo; Whole-File deckt `diskWriteFile`/`eclipseWriteFile` ohnehin ab; Delta-Edit (Edit-Guard) ist
+  besser; Extra-UI = Ballast (L). Revisit-Trigger: Nicht-Git-Workspaces werden realer Use-Case.
+- **CR-3 — angenommen:** Datei- + Severity-Filter auf `eclipseReadProjectProblems`, projektweite Lesung bleibt unverändert.
+- **CR-4 — angenommen (angepasst):** Debugger-Tool für Da Mek, lesend + ändernd, keine Confirmations, weil
+  die Debug-Session User-Property ist (User startet/managt sie, Agent unterstützt).
+- **CR-5 (persistente/Background-Terminal-Session) — geparkt, nicht verworfen:** Tools sind synchron;
+  Background braucht Async-Tool-Infrastruktur (async-agent-tools-proposal Option C); Shell bleibt One-shot.
+- **CR-6 (Tool-Confirmation) — geparkt:** Paul nutzt Bestätigungen nie (immer aus); Bedarf erst mit CR-4/CR-5.
+- **CR-17/18/19 — angenommen:** Caps ehrlich (Search-Cap 1000→**500**); webFetch statt byte-Cap paginiert.
+- **CR-20 — angenommen:** neues `webGet(url, path)` (eigenes Tool, isEditTool, kein Size-Limit).
+- **CR-8–16 — Nein:** unsere Read/Search/Nav/Docs/Orchestration/Memory/Skills/Build/MCP-Familien = Vorsprung.
+- **Decompiler Language-Server — kein Nutzen** (nativ gebündelt, nicht decompilierbar; Logik bewusst anders;
+  IP-Gründe).

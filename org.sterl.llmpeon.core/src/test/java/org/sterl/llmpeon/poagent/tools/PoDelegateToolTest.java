@@ -61,7 +61,7 @@ class PoDelegateToolTest {
         assertThat(tool.getPlanSlave().getMemory().containsUserMessage("make a plan")).isTrue();
         // AND
         // Token-Zahl ist plattformabhängig (lineSeparator im Prompt) — wir prüfen das Format des Kontext-Reports, nicht die Zahl.
-        assertThat(reply).containsPattern("Context: \\d+ token - \\d+% used\\.");
+        assertThat(reply).containsPattern("Context: ~\\d+ \\(estimate\\) token - \\d+% used\\.");
     }
 
     @Test
@@ -78,8 +78,19 @@ class PoDelegateToolTest {
         
         // AND
         // Token-Zahl ist plattformabhängig (lineSeparator im Prompt) — wir prüfen das Format des Kontext-Reports, nicht die Zahl.
-        assertThat(reply).containsPattern("Context: \\d+ token - \\d+% used\\.");
+        assertThat(reply).containsPattern("Context: ~\\d+ \\(estimate\\) token - \\d+% used\\.");
     }
+
+    // UC-TD-1
+    /** Pins the full stats tail of a dispatch reply — the CallStats migration must stay byte-identical. */
+    @Test
+    void dispatchReplyPinsStatsSuffixFormat() {
+        var reply = newTool().askDev("x");
+
+        assertThat(reply).containsPattern(
+                "done\\. Context: ~\\d+ \\(estimate\\) token - \\d+% used\\. \\(\\d+(?:m \\d+)?s, \\d{2}:\\d{2}\\)");
+    }
+
 
     /** planWithPlanAgent injects the plan-writing discipline as a standing order; talkPlan does not. */
     @Test
@@ -222,7 +233,7 @@ class PoDelegateToolTest {
         var reply = tool.compactReview();
 
         // THEN
-        assertThat(reply).containsPattern("Context: \\d+ token - \\d+% used\\.");
+        assertThat(reply).containsPattern("Context: ~\\d+ \\(estimate\\) token - \\d+% used\\.");
         assertThat(reply).contains("Da Dok compacted.");
         assertThat(tool.getReviewSlave().getMemory().containsUserMessage("second review")).isFalse();
     }

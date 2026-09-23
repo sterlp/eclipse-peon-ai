@@ -2,6 +2,75 @@
 
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
 
+## ❓ Workspace-Memory-Snapshot: Vollkopie je `memoryAdd` (2026-09-23, Hotfix-Analyse)
+
+Der Snapshot-Key ist der entries-Hash (ADR-0032, `WorkspaceMemoryTool.dedupKey:149-152`) — jede
+Mutation (`memoryAdd/Replace/Remove/Reset`) erzeugt einen neuen Key → frische **Vollkopie** aller
+Einträge je Dispatch, bis zum Compact (bei 35 Entries × N Mutationen zwischen Compacts wird das
+teuer). By design, kein Bug im Hotfix-Sinn — aber eine Design-Entscheidung fehlt: inkrementeller
+Snapshot, Dedup je Eintrag oder Compact-frequenter. Verwandt:
+[compact-context-counter.md](compact-context-counter.md) („Offen"), 
+[context-architecture.md](context-architecture.md)/ADR-0032. Frage an Paul: soll das ein eigener
+Design-Punkt werden?
+
+## ❓ Tool-Time-Disclosure Restkandidaten (2026-09-22, Da-Thinka-Scan, Paul-Scope = B)
+
+Da Thinkas Inventar (2026-09-22) meldete weitere Kandidaten, bewusst **nicht** im
+[tool-time-disclosure.md](tool-time-disclosure.md)-Zyklus (Paul: Option B):
+`webFetchAsMarkdown` (`fetched HH:mm (cached)` — Cache-Frische), `memoryAdd/Replace`
+(Datum-Bestätigung — heute `void`, LLM sieht gar nichts), `JavaDebugTool.continue`
+(Dauer + Uhrzeit — echte Ausführungszeit), searchAgent/compactSession/lint (nur Konsistenz).
+Wiederaufnahme = je eine eigene Mini-Story. Read/Grep/Write-Familie bleibt ohne Zeitinfo
+(stateless, Rauschen).
+
+## ❓ Gelber Compact-Indikator (🟡) im Roster (2026-09-22, Paul)
+
+Paul: gelber Ball als Compact-Indicator wäre besser als 🟢, „aber grün ist auch vollkommen okay" —
+„letztendlich nur ein mini improvement", bewusst **nicht gebaut** im
+[compact-lock.md](compact-lock.md)-Zyklus. Umsetzung wäre: zweiter Zustand im Status-Modell
+(`compacting` nur für die Anzeige, `working` bleibt Queue/Lock-Flag) + 🟡-Präfix in
+`AiAgentStatusWidget.text()`. Wiederaufnahme = Mini-Increment.
+
+## 🚧 „!-Messages" — sofortiger History-Insert auch im ToolLoop (2026-09-22, Paul — nicht gebaut)
+
+Nachrichten mit `!` am Anfang werden direkt in die Chat-History eingefügt (alle gequekten `!`-
+Nachrichten als eine gejointe UserMessage + Dummy-„Ok"-AI-Message) — das Vor-Queue-Verhalten.
+Aufgenommen in [queued-user-messages.md](queued-user-messages.md) Regel 8. Wiederaufnahme = eigene
+Story, Insert-Punkt/Race offen.
+
+## ❓ Tool-Evolution PO-Run: CR-1…CR-19 accept/reject (2026-09-19, Nacht-Zyklus)
+
+Vergleich unseres Plugins gegen das externe Copilot-Eclipse-Plugin — alle Tools abgeglichen. Sammelstelle
++ 7 offene Fragen (je mit Lean): [tool-evolution.md](tool-evolution.md). Externe Mapping-Seite (temporär,
+wird nach dem Run gelöscht): feature-change-request-copilot.md. Neutrale Entwurfs-Docs: change-review,
+tool-confirmation, terminal-session-tool, java-debugger-tool, project-problems-tool.
+**Paul: alle CR-Items durchgehen, dann normale Build-Zyklen.**
+
+## 🔒 Debugger-Backlog F2: statische Felder + evaluate-Objektwerte — ❌ SPECIFIED (2026-09-21, Paul: „Go")
+
+SOLL jetzt in [java-debugger-tool.md](java-debugger-tool.md) R-JD-9 (UC-JD-10/11): statische Felder
+des Frame-Typs als separater `statics`-Block (immer, kein Parameter), `evaluate_expression` rendert
+Objekt-Felder bis Tiefe 2. Bau im Debugger+Linter-Mini-Zyklus.
+
+## 🔒 Debugger-Zusatz: Exception-Suspend — ❌ SPECIFIED (2026-09-21, Paul: „Go")
+
+SOLL jetzt R-JD-10 (UC-JD-12): neue Action `get_exception` (stateless Scan des Top-Frames nach
+Throwable, ehrlicher Fehler wenn nichts gefunden). Event-Abfrage bewusst verworfen (R-JD-3,
+Konkurrenz mit JDT-Handler).
+
+## 🔒 Docs-Linter „manuell verifiziert"-Marker — ❌ SPECIFIED (2026-09-21, Paul: „Go")
+
+R-DL-22 (UC-DL-65/66): Wort `manuell` in `*(…)*`-Anhang exemprt vom UNBELEGT-Check, Info-Zeile
+`MANUELL`. Loser Marker, bewusst kein Format-Parsing.
+
+## ⏳ `eclipseBuildProject` Failure: build.properties-Warnung (seit Story #136)
+
+„class folder 'resources/' not associated to any output library entry" — Failure-Meldung bei grüner
+Kompilation. Pre-existing, nicht aus diesem Zyklus (Da Mek 2026-09-21 verifiziert). Separater
+Mini-Fix-Kandidat.
+
+
+
 ## ❓ `applyEdit` Not-Found-Fehler dumpet das gesamte File (2026-09-19, Jon — offen, keine Lösung)
 
 `FileUtils.applyEdit` hängt bei „not found" den **kompletten Datei-Inhalt** in die
@@ -113,7 +182,20 @@ auf) — vorher lebte ein Präfix per `PRAEFIX_DOPPELT` in genau einer Datei und
 aus dem offenen Doc ablesbar. Beides gebaut (`934ea7c`, `ab71c53`), Punkt geschlossen.
 
 
-## ⏳ Eclipse-Installationsfehler eines Users — NICHT unser Bug, kein Target-Rollback (2026-09-15)
+## ⏳ Eclipse-Installationsfehler eines Users — Analyse KORRIGIERT (2026-09-19, siehe [issue-142-asm-conflict.md](issue-142-asm-conflict.md))
+
+> **Korrektur 2026-09-19 (Issue #142, Vollverifikation):** Die drei Belege unten bleiben wahr (kein
+> asm im Bundle-ClassPath, keine asm-Requirements von uns, pinnen nichts) — aber die Schlussfolgerung
+> „nicht unser Bug" war **unvollständig**: unser p2-Repo **liefert** asm 9.10.1 mit
+> (`includeAllDependencies=true` kopiert die 2026-09-Target-Closure). Wir sind die einzige Quelle für
+> asm 9.10.1 auf der User-Maschine; der uses-violation-Mechanismus ist exakt so im User-Log belegt.
+> Fix-Kandidaten + Follow-ups (Issue-Kommentar korrigieren, Mindest-Eclipse-Version dokumentieren,
+> includeAllDependencies-Entscheidung → ADR): [issue-142-asm-conflict.md](issue-142-asm-conflict.md).
+
+**Bestandteil der alten Analyse, der weiter gilt:** KEIN Target-Rollback auf 2026-03 (kostet den
+2026-09-Stand samt [ADR-0044](adr/0044-target-2026-09-dependency-update.md), löst die Kollision nicht).
+
+**Historischer Befund (2026-09-15, teilweise überholt):**
 
 **Auslöser:** Paul reichte `ins_err.log` + `failing bundles.log` eines Users herein mit der Frage,
 ob der Target-Sprung 2026-03 → 2026-09 ([ADR-0044](adr/0044-target-2026-09-dependency-update.md))
@@ -186,28 +268,13 @@ Falschbefunde sind weg, `UC definitions: 43 / 43` (vorher `43 / 42`), findings 4
 **Abhängig davon:** Das Nachtragen der ID-Kommentare an die DL-Tests (nächster Punkt) ist jetzt
 unblockiert — der Report ist rauschfrei.
 
-## ❓ Code-Block-Regel für Testquellen? (2026-09-15, aus R-DL-13 ausgeklammert)
+## 🔒 Code-Block-Regel für Testquellen — ENTSCHEIDEN (2026-09-21) → R-DL-21, Option (b)
 
-**Frage:** R-DL-13 lässt Code-Blöcke in **Docs** nicht mehr als Definition zählen. Der Spiegelfall
-in **Testquellen** ist offen: Ein ID-Kommentar in einem Java-Textblock (`"""…"""`), einem
-Python-Docstring oder einem eingebetteten Beispiel-Snippet würde heute als echter Beleg zählen — ein
-Beispiel könnte einen Use-Case fälschlich als belegt ausweisen. Das wäre die teure
-False-**Negative**-Richtung: ein falsches ✅, das nie wieder jemand prüft.
-
-**Warum NICHT sofort gebaut:** Zitierten Text in beliebigen Sprachen zu erkennen erfordert
-Sprach-Parsing — exakt die Rateübung, die wir in Q8 bewusst verworfen haben (jeder Rateversuch auf
-fremde Grammatik erzeugt stille Lücken). Eine Regel schreiben, deren Umsetzung raten muss, wäre
-derselbe Fehler nochmal.
-
-**Wie wahrscheinlich ist der Fall?** Ein Testfile, das einen ID-Kommentar als Beispiel-String
-enthält, ist selten — aber dieses Repo ist selbst ein Kandidat, sobald die Linter-Tests eigene
-Fixtures mit ID-Zeilen bauen (tun sie bereits, allerdings in `@TempDir`-Dateien, nicht als
-String-Literale).
-
-**Optionen:** (a) offen lassen bis es real auftritt; (b) nur die eine triviale Heuristik „ID-Zeile
-innerhalb eines Java-Textblocks" abdecken; (c) Report nennt Belege aus verdächtigen Kontexten
-gesondert, statt sie zu unterdrücken. **Meine Empfehlung: (a)** — der Linter meldet lieber zu viel
-als zu wenig, und ein konkreter Fall ist die bessere Spezifikationsgrundlage als eine Vermutung.
+**Real aufgetreten:** `DocsLinterToolTest.java:78` (Fixture mit `// UC-DL-99`) erzeugt im
+Dogfood-Lauf `VERWAIST`. Die eine triviale Heuristik ist damit durch einen echten Fall
+gerechtfertigt: ID-Zeilen innerhalb eines Java-Textblocks (ungerade `"""`-Zeilen kippen den
+Zustand) zählen nicht als Beleg — nur `.java`, kein Escaping-Handling. Siehe R-DL-21/UC-DL-64
+in [docs-linter.md](docs-linter.md).
 
 ## 🔒 Docs-Linter: ID-Kommentare an den eigenen Tests (2026-09-15) — TEILWEISE GELÖST
 
@@ -328,6 +395,14 @@ Tool-Bug-Zyklus.
 **Investigations-Fragen:** Retry-Klassifikation für empty-response/Network-Level (Connect/Timeout/
 Reset) prüfen — Cancel-Misclassification? Kann ein API-Call den Backoff abbrechen ohne echtes
 Cancel? Companion-Story: **Live-Status im Retry-Fenster** (unten).
+
+**Neue Evidence (2026-09-20):** 3× buildWithDev-Abbruch in Folge: 1× `IOException: header parser
+received no bytes`, 2× `ConnectException`/`ClosedChannelException` — Ursache (Paul): **llama.cpp
+abgestürzt**. Kein Retry, weil der erste Zugriff bereits fehlschlug. Meldungs-Sichtbarkeit an den
+PO/Chat: ✅ vollständige Stacktraces kamen durch. **Pauls Verbesserungs-Idee (offen, ❓):** mindest-
+ens **ein Retry nach ~10s** auch bei Connect-Level-Failures (llama.cpp-Crash+Restart dauert meist
+wenige Sekunden — ein Mindest-Retry würde kurzzeitige Ausfälle durchreiten), unabhängig von der
+generellen Retry-Klassifikations-Story.
 
 ## ❓ Live-Status im Retry-Backoff-Fenster (2026-09-10)
 

@@ -28,6 +28,7 @@ import org.eclipse.jdt.junit.model.ITestRunSession;
 import org.eclipse.jdt.launching.IJavaLaunchConfigurationConstants;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.shared.ArgsUtil;
+import org.sterl.llmpeon.shared.CallStats;
 import org.sterl.llmpeon.shared.WaitUtil;
 
 import dev.langchain4j.agent.tool.P;
@@ -67,6 +68,7 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
 
         ArgsUtil.requireNonBlank(projectName, "projectName");
         if (errorCount == null) errorCount = 5;
+        var stats = CallStats.start();
 
         var project = EclipseUtil.findOpenProject(projectName);
         if (project.isEmpty()) {
@@ -149,7 +151,7 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
             }
 
             try {
-                return runAndCollect(config, description, errorCount);
+                return runAndCollect(config, description, errorCount, stats);
             } finally {
                 // Don't delete — keep config so it can be reused on next run
             }
@@ -189,7 +191,7 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
         return null;
     }
 
-    private String runAndCollect(ILaunchConfiguration config, String launchName, int errorCount) throws Exception {
+    private String runAndCollect(ILaunchConfiguration config, String launchName, int errorCount, CallStats stats) throws Exception {
         var failures = Collections.synchronizedList(new ArrayList<ITestCaseElement>());
         var testCount = new int[]{0};
         var skippedCount = new int[]{0};
@@ -234,13 +236,11 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
 
             boolean completed = WaitUtil.awaitCondition(finished::get, MAX_TEST_DURATION, POLL_INTERVAL_MS);
             if (!completed) {
-                return "Test run timed out after " + MAX_TEST_DURATION.toMinutes()
-                        + " minutes. " + testCount[0] + " tests ran, "
-                        + failures.size() + " failures so far.";
+                return timeoutReport(testCount[0], failures.size(), stats);
             }
 
             onTool("Reading test results of " + launchName);
-            return formatResults(sessionName[0], testCount[0], skippedCount[0], failures, errorCount);
+            return formatResults(sessionName[0], testCount[0], skippedCount[0], failures, errorCount, stats);
         } finally {
             JUnitCore.removeTestRunListener(listener);
         }
@@ -319,7 +319,9 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
         return sb.toString();
     }
 
-    private static String formatResults(String sessionName, int testCount, int skippedCount, List<ITestCaseElement> failures, int errorCount) {
+    // public (not package-private) so the PDE test bundle can reach it — separate OSGi classloader.
+    public static String formatResults(String sessionName, int testCount, int skippedCount, List<ITestCaseElement> failures,
+            int errorCount, CallStats stats) {
         var sb = new StringBuilder();
         sb.append("Test run: ").append(sessionName).append("\n");
         sb.append("Tests:    ").append(testCount).append("\n");
@@ -332,6 +334,13 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
         if (failures.size() > errorCount) {
             sb.append("Errors capped — fix the first " + errorCount + " problems, or run a specific test class");
         }
+        sb.append(System.lineSeparator()).append(stats.suffix());
         return sb.toString();
+    }
+
+    public static String timeoutReport(int testsRan, int failuresSoFar, CallStats stats) {
+        return "Test run timed out after " + stats.duration() + ". " + testsRan + " tests ran, "
+                + failuresSoFar + " failures so far."
+                + System.lineSeparator() + stats.suffix();
     }
 }

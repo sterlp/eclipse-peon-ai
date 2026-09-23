@@ -21,9 +21,11 @@ public interface AiAgent {
     @Nullable
     ChatResponse call(String message, AiMonitor monitor);
     /** Compacts the agent's memory via the compressor.
-     * @return true if the compact succeeded — the memory is already reset and re-seeded with the
-     *         summary; false if nothing was compacted (memory too small or empty response). */
-    boolean compact(AiMonitor monitor);
+     * @return {@link CompactResult#COMPACTED} — the memory is already reset and re-seeded with the
+     *         summary; {@link CompactResult#SKIPPED_SMALL} — the memory is too small (< 3
+     *         messages), a legitimate no-op; {@link CompactResult#FAILED_EMPTY} — the compressor
+     *         returned no usable summary, an error (the caller reports it via onProblem). */
+    CompactResult compact(AiMonitor monitor);
 
     /** Rebuild the static (system) messages. Non-default: an empty default would silently
      *  produce a blank system prompt — a false-negative bomb. */

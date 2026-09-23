@@ -190,6 +190,7 @@ class DocsLinter {
             case DOPPELT_DEFINIERT -> 2;
             case PRAEFIX_FREMD, PRAEFIX_FEHLT, UC_OHNE_REGEL, STATUS_FEHLT, FORM_ABWEICHEND -> 3;
             case UNBELEGT -> 4;
+            case MANUELL -> 5;
         };
     }
 
@@ -247,8 +248,15 @@ class DocsLinter {
 
             String status = def.status();
             if (status != null && status.startsWith("✅")) {
-                allFindings.add(new LintFinding(FindingType.UNBELEGT_ERLEDIGT, def.id(),
-                        def.file(), def.line()));
+                if (def.manuell()) {
+                    // R-DL-22: manual-verification annotation exempts the UC from the
+                    // evidence check — reported as info-level MANUELL, not UNBELEGT_ERLEDIGT
+                    allFindings.add(new LintFinding(FindingType.MANUELL, def.id(),
+                            def.file(), def.line()));
+                } else {
+                    allFindings.add(new LintFinding(FindingType.UNBELEGT_ERLEDIGT, def.id(),
+                            def.file(), def.line()));
+                }
             } else {
                 allFindings.add(new LintFinding(FindingType.UNBELEGT, def.id(),
                         def.file(), def.line()));

@@ -4,6 +4,14 @@ package org.sterl.llmpeon.shared;
 //https://github.com/sterlp/eclipse-peon-ai/issues/57
 public class FileLines {
 
+    /**
+     * Returns the number of lines in the content (same split as {@link #extract}).
+     */
+    public static int countLines(String content) {
+        if (content == null) return 0;
+        return content.split(FileUtils.dominantLineEnding(content), -1).length;
+    }
+
     public static String tail(String content, int lines) {
         String[] split = content.split("\n", -1);
         if (split.length <= lines) {

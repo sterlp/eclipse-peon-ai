@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
+import org.sterl.llmpeon.agent.CompactResult;
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
@@ -119,9 +120,9 @@ class CompactSessionToolTest {
             @Override public String getName() { return "test-agent"; }
             @Override public String getSystemPrompt() { return "system"; }
             @Override public ChatResponse call(String message, AiMonitor monitor) { return null; }
-            @Override public boolean compact(AiMonitor monitor) {
+            @Override public CompactResult compact(AiMonitor monitor) {
                 compressCalled.set(true);
-                return true;
+                return CompactResult.COMPACTED;
             }
             @Override public ThreadSafeMemory getMemory() { return memory; }
             @Override public void clear() {}
@@ -185,10 +186,10 @@ class CompactSessionToolTest {
             @Override public String getName() { return "stub-agent"; }
             @Override public String getSystemPrompt() { return "system"; }
             @Override public ChatResponse call(String message, AiMonitor monitor) { return null; }
-            @Override public boolean compact(AiMonitor monitor) {
+            @Override public CompactResult compact(AiMonitor monitor) {
                 var summary = AiMessage.aiMessage("SUMMARY-X");
                 memory.add(summary);
-                return true;
+                return CompactResult.COMPACTED;
             }
             @Override public ThreadSafeMemory getMemory() { return memory; }
             @Override public void clear() {}

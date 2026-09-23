@@ -16,6 +16,8 @@ public class DocsLinterTool extends AbstractTool {
 
     private static final String DEFAULT_DOC_ROOT = "docs";
     static final String DEFAULT_ID_PATTERN = "\\bUC-[A-Z]+-\\d+(?:-\\d+[a-z]?)*\\b";
+    static final String ID_PATTERN_DESCRIPTION =
+            "regex that FULL-matches UC ids (e.g. UC-PP-\\d+); full-match, not a prefix";
 
     private volatile Path workingDir;
 
@@ -49,7 +51,7 @@ public class DocsLinterTool extends AbstractTool {
     public String lintDocs(
             @P(required = false, name = "root") String root,
             @P(required = false, name = "docRoots") List<String> docRoots,
-            @P(required = false, name = "idPattern") String idPattern) {
+            @P(required = false, name = "idPattern", description = ID_PATTERN_DESCRIPTION) String idPattern) {
 
         Path effectiveRoot = resolveRoot(root);
         if (docRoots == null || docRoots.isEmpty()) {
@@ -76,7 +78,7 @@ public class DocsLinterTool extends AbstractTool {
             @P(required = false, name = "docRoots") List<String> docRoots,
             @P(required = false, name = "testRoots") List<String> testRoots,
             @P(required = false, name = "testGlobs") List<String> testGlobs,
-            @P(required = false, name = "idPattern") String idPattern) {
+            @P(required = false, name = "idPattern", description = ID_PATTERN_DESCRIPTION) String idPattern) {
 
         Path effectiveRoot = resolveRoot(root);
         if (docRoots == null || docRoots.isEmpty()) {

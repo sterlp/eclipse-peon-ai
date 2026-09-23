@@ -15,6 +15,9 @@ class TestParserTest {
     private static final Pattern ID_PATTERN = Pattern.compile(DocsLinterTool.DEFAULT_ID_PATTERN);
     private final TestParser parser = new TestParser();
 
+    /** The Java text-block delimiter as a constant — keeps fixtures escape-free (and this file's own toggle parity intact). */
+    private static final String TB = new String(new char[] { '"', '"', '"' });
+
     @TempDir
     Path tempDir;
 
@@ -184,6 +187,58 @@ class TestParserTest {
         assertThat(evidence).hasSize(1);
         assertThat(evidence.get(0).id()).isEqualTo("UC-DL-35");
         assertThat(evidence.get(0).methodName()).isNull();
+    }
+
+    // --- UC-DL-64: a pure ID line inside a Java text block is string content, not evidence ---
+    // UC-DL-64
+    @Test
+    void textBlockLinesAreNotEvidence() throws IOException {
+        writeTest("Test.java",
+                "class T {\n"
+                        + "    String s = " + TB + "\n"
+                        + "        // UC-XY-1\n"
+                        + "    " + TB + ";\n"
+                        + "    void testIt() {}\n"
+                        + "}\n");
+
+        var evidence = parser.parse(file("Test.java"), "Test.java", ID_PATTERN);
+
+        assertThat(evidence).isEmpty();
+    }
+
+    // --- UC-DL-64: the same line outside a text block counts ---
+    // UC-DL-64
+    @Test
+    void idCommentOutsideTextBlockIsEvidence() throws IOException {
+        writeTest("Test.java",
+                "class T {\n"
+                        + "    String s = " + TB + "\n"
+                        + "        text\n"
+                        + "    " + TB + ";\n"
+                        + "    // UC-XY-1\n"
+                        + "    void testIt() {}\n"
+                        + "}\n");
+
+        var evidence = parser.parse(file("Test.java"), "Test.java", ID_PATTERN);
+
+        assertThat(evidence).hasSize(1);
+        assertThat(evidence.get(0).id()).isEqualTo("UC-XY-1");
+        assertThat(evidence.get(0).methodName()).isEqualTo("testIt");
+    }
+
+    // --- UC-DL-64: the text-block toggle is a .java-only rule ---
+    // UC-DL-64
+    @Test
+    void textBlockToggleOnlyAppliesToJavaFiles() throws IOException {
+        writeTest("notes.txt",
+                TB + "\n"
+                        + "// UC-XY-1\n"
+                        + TB + "\n");
+
+        var evidence = parser.parse(file("notes.txt"), "notes.txt", ID_PATTERN);
+
+        assertThat(evidence).hasSize(1);
+        assertThat(evidence.get(0).id()).isEqualTo("UC-XY-1");
     }
 
     private void writeTest(String name, String content) throws IOException {

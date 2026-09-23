@@ -19,6 +19,7 @@ import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
 import org.sterl.llmpeon.parts.tools.EclipseRunTestTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
+import org.sterl.llmpeon.parts.tools.debug.JavaDebugTool;
 import org.sterl.llmpeon.parts.tools.memory.WorkspaceMemoryTool;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.tool.ToolService;
@@ -26,6 +27,7 @@ import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 import org.sterl.llmpeon.tool.tools.DiskGrepTool;
 import org.sterl.llmpeon.tool.tools.SearchAgentTool;
+import org.sterl.llmpeon.tool.tools.WebGetTool;
 
 /**
  * Inc 1 (PeonAiService-Struktur-Aufräumen): SharedToolsComponent — tool registration,
@@ -47,6 +49,7 @@ public class SharedToolsComponentTest {
         assertTrue(countExecutors(ts, EclipseWorkspaceWriteFileTool.class) >= 1);
         assertTrue(countExecutors(ts, EclipseGrepTool.class) >= 1);
         assertTrue(countExecutors(ts, EclipseBuildTool.class) >= 1);
+        assertTrue(countExecutors(ts, JavaDebugTool.class) >= 1);
         assertTrue(countExecutors(ts, EclipseRunTestTool.class) >= 1);
         assertTrue(countExecutors(ts, EclipseCodeNavigationTool.class) >= 1);
         assertTrue(countExecutors(ts, EclipseConsoleLogTool.class) >= 1);
@@ -144,6 +147,52 @@ public class SharedToolsComponentTest {
         assertFalse(sut.toolService().getTool(DiskFileWriteTool.class).isPresent());
         assertFalse(sut.toolService().getTool(DiskFileReadTool.class).isPresent());
         assertFalse(sut.toolService().getTool(DiskGrepTool.class).isPresent());
+    }
+
+    /** GIVEN default config (disk tools disabled) WHEN toggling THEN webGet follows the disk tools (R-WEB-8, default OFF). */
+    @Test
+    public void test_webGetFollowsDiskToolToggle() {
+        // GIVEN default: disk tools disabled
+        assertFalse(sut.toolService().getTool(WebGetTool.class).isPresent());
+
+        // WHEN enabled
+        sut.updateActiveDiskTools(config(true));
+        assertTrue(sut.toolService().getTool(WebGetTool.class).isPresent());
+
+        // WHEN disabled again
+        sut.updateActiveDiskTools(config(false));
+        assertFalse(sut.toolService().getTool(WebGetTool.class).isPresent());
+    }
+
+    // UC-WEB-8
+    @Test
+    public void webGetFilteredFromSearchAgent() {
+        // GIVEN webGet registered (disk tools enabled) in the production wiring
+        sut.updateActiveDiskTools(config(true));
+        var webGet = sut.toolService().getExecutor("webGet");
+        assertTrue("webGet executor expected", webGet != null);
+        var searchAgent = sut.toolService().getTool(SearchAgentTool.class).orElseThrow();
+
+        // THEN the isEditTool filter excludes it from search agents
+        assertFalse("webGet (isEditTool) must be filtered out of search agents",
+                searchAgent.getFilter().test(webGet));
+    }
+
+    /** GIVEN JavaDebugTool registered WHEN the edit-tool filter matrix runs THEN read-only agents exclude it (R-JD-5). */
+    @Test
+    public void javaDebugToolIsEditToolFilteredFromReadOnlyAgents() {
+        var ts = sut.toolService();
+        var tool = ts.getTool(JavaDebugTool.class).orElseThrow();
+        assertTrue("JavaDebugTool must be an edit tool", tool.isEditTool());
+
+        var getState = ts.getExecutor("debugJavaGetState");
+        assertTrue("debugJavaGetState executor expected", getState != null);
+        var searchAgent = sut.toolService().getTool(SearchAgentTool.class).orElseThrow();
+
+        // THEN the isEditTool filter excludes it from search agents
+        // (AiPlanAgent/AiReviewAgent/CustomAgent apply the same !isEditTool predicate)
+        assertFalse("JavaDebugTool (isEditTool) must be filtered out of search agents",
+                searchAgent.getFilter().test(getState));
     }
 
     private java.util.Set<String> docsLinterNames() {

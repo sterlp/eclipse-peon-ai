@@ -65,6 +65,12 @@ class DocsLinterFindingsFixtureTest {
         assertThat(result.findings()).anyMatch(f ->
                 f.type() == FindingType.VERWAIST && f.id().equals("UC-DL-14"));
 
+        // MANUELL — ✅ with a manual-verification annotation is exempt from UNBELEGT_ERLEDIGT
+        assertThat(result.findings()).anyMatch(f ->
+                f.type() == FindingType.MANUELL && f.id().equals("UC-XX-1"));
+        assertThat(result.findings()).noneMatch(f ->
+                f.type() == FindingType.UNBELEGT_ERLEDIGT && f.id().equals("UC-XX-1"));
+
         // Covered UC should have no UNBELEGT* finding
         assertThat(result.findings().stream()
                 .noneMatch(f -> (f.type() == FindingType.UNBELEGT_ERLEDIGT

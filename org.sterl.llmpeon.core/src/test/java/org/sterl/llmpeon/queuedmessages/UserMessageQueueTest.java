@@ -2,10 +2,15 @@ package org.sterl.llmpeon.queuedmessages;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +32,7 @@ class UserMessageQueueTest {
 
         // THEN - all joined into single entry with newlines, total well under 300
         assertThat(queue.size()).isEqualTo(1);
-        assertThat(queue.pollNext())
+        assertThat(queue.pollNext().text())
                 .isEqualTo("Hello" + System.lineSeparator() + "world" + System.lineSeparator() + "how are you?");
     }
 
@@ -45,7 +50,7 @@ class UserMessageQueueTest {
 
         // THEN - all joined together (timer reset on "second" allowed "third" to merge)
         assertThat(queue.size()).isEqualTo(1);
-        String joined = queue.pollNext();
+        String joined = queue.pollNext().text();
         assertThat(joined).contains("first", "second", "third");
         assertThat(joined).doesNotContain(" first ", " second ", " third "); // newline joiner, not space
     }
@@ -62,8 +67,8 @@ class UserMessageQueueTest {
 
         // THEN - starts a new separate entry
         assertThat(queue.size()).isEqualTo(2);
-        assertThat(queue.pollNext()).isEqualTo("message one");
-        assertThat(queue.pollNext()).isEqualTo("message two");
+        assertThat(queue.pollNext().text()).isEqualTo("message one");
+        assertThat(queue.pollNext().text()).isEqualTo("message two");
     }
 
     @Test
@@ -81,10 +86,10 @@ class UserMessageQueueTest {
 
         // THEN - first two joined, third is separate (length includes newline chars)
         assertThat(queue.size()).isEqualTo(2);
-        String first = queue.pollNext();
+        String first = queue.pollNext().text();
         int nlLen = System.lineSeparator().length();
         assertThat(first.length()).isEqualTo(120 + nlLen + 120);
-        assertThat(queue.pollNext()).isEqualTo("c".repeat(120));
+        assertThat(queue.pollNext().text()).isEqualTo("c".repeat(120));
     }
 
     @Test
@@ -127,9 +132,9 @@ class UserMessageQueueTest {
         queue.add("third");
 
         // WHEN/THEN - consumed individually in FIFO order
-        assertThat(queue.pollNext()).isEqualTo("first");
-        assertThat(queue.pollNext()).isEqualTo("second");
-        assertThat(queue.pollNext()).isEqualTo("third");
+        assertThat(queue.pollNext().text()).isEqualTo("first");
+        assertThat(queue.pollNext().text()).isEqualTo("second");
+        assertThat(queue.pollNext().text()).isEqualTo("third");
         assertThat(queue.pollNext()).isNull();
     }
 
@@ -162,7 +167,7 @@ class UserMessageQueueTest {
         queue.add("line two");
 
         // WHEN
-        String result = queue.drainAll();
+        String result = queue.drainAll().text();
 
         // THEN - joined with newline, queue cleared
         assertThat(result).isEqualTo("line one" + System.lineSeparator() + "line two");
@@ -228,6 +233,7 @@ class UserMessageQueueTest {
 
     @Test
     void add_returnsTrue_whenWindowExpired() throws InterruptedException {
+        // GIVEN a queue with short window
         var queue = new UserMessageQueue(100);
         queue.add("first");
 
@@ -237,6 +243,71 @@ class UserMessageQueueTest {
 
         // THEN returns true (new entry, window expired) → UI shows "Noted..."
         assertThat(result).isTrue();
+    }
+
+    // ========== Rule 9: Queued-At Disclosure ==========
+
+    @Test
+    void entriesCarryQueuedAtFromFirstAdd() {
+        // GIVEN a fixed clock so the queue time is deterministic
+        var clock = fixedClock();
+        var queue = new UserMessageQueue(200, clock);
+
+        // WHEN - two messages arrive within the window and merge
+        queue.add("first");
+        queue.add("second");
+
+        // THEN - the merged entry keeps the FIRST entry's queuedAt
+        var entry = queue.pollNext();
+        assertThat(entry.text()).isEqualTo("first" + System.lineSeparator() + "second");
+        assertThat(entry.queuedAt()).isEqualTo(clock.millis());
+    }
+
+    @Test
+    void newEntryAfterWindowGetsNewTimestamp() {
+        // GIVEN a clock I can advance past the batch window
+        var clock = new MutableClock();
+        var queue = new UserMessageQueue(100, clock);
+
+        // WHEN - first message, then one after the window expires
+        queue.add("first");
+        clock.advance(150); // > 100ms window
+        queue.add("second");
+
+        // THEN - two entries; the second is stamped with the LATER time
+        assertThat(queue.size()).isEqualTo(2);
+        assertThat(queue.pollNext().queuedAt()).isEqualTo(BASE_EPOCH_MS);
+        assertThat(queue.pollNext().queuedAt()).isEqualTo(BASE_EPOCH_MS + 150);
+    }
+
+    @Test
+    void drainAllReturnsFirstEntryQueuedAt() {
+        // GIVEN a clock I can advance so the two entries have different times
+        var clock = new MutableClock();
+        var queue = new UserMessageQueue(100, clock);
+        queue.add("line one");
+        clock.advance(150);
+        queue.add("line two");
+
+        // WHEN
+        var drained = queue.drainAll();
+
+        // THEN - joined text, but the FIRST entry's timestamp
+        assertThat(drained.text()).isEqualTo("line one" + System.lineSeparator() + "line two");
+        assertThat(drained.queuedAt()).isEqualTo(BASE_EPOCH_MS);
+    }
+
+    @Test
+    void queuedLabelFormatsHHmmInClockZone() {
+        // GIVEN a fixed clock at 14:32 UTC
+        var clock = fixedClock();
+        var queue = new UserMessageQueue(100, clock);
+
+        // WHEN
+        String label = queue.queuedLabel(clock.millis());
+
+        // THEN - rendered as HH:mm in the clock's zone
+        assertThat(label).isEqualTo("14:32");
     }
 
     // ========== Thread Safety ==========
@@ -269,5 +340,26 @@ class UserMessageQueueTest {
 
         // All messages should be present (may be batched or separate depending on timing)
         assertThat(queue.size()).isGreaterThan(0);
+    }
+
+    // ========== Rule 9 test helpers ==========
+
+    private static final long BASE_EPOCH_MS = Instant.parse("2026-09-23T14:32:00Z").toEpochMilli();
+
+    /** A fixed clock at 14:32 UTC (deterministic queuedAt + HH:mm label). */
+    private static Clock fixedClock() {
+        return Clock.fixed(Instant.ofEpochMilli(BASE_EPOCH_MS), ZoneOffset.UTC);
+    }
+
+    /** A controllable clock: starts at 14:32 UTC, advanced explicitly by the test. */
+    private static final class MutableClock extends Clock {
+        private final AtomicLong millis = new AtomicLong(BASE_EPOCH_MS);
+
+        long advance(long ms) { return millis.addAndGet(ms); }
+
+        @Override public ZoneId getZone() { return ZoneOffset.UTC; }
+        @Override public Clock withZone(ZoneId zone) { return this; }
+        @Override public Instant instant() { return Instant.ofEpochMilli(millis.get()); }
+        @Override public long millis() { return millis.get(); }
     }
 }

@@ -120,6 +120,10 @@ These bit us repeatedly in this repo — check them before reporting an incremen
   was inverted → compact input always empty; both existing tests asserted only the system
   prompt / the response side and stayed green for the broken send path.)
 
+- **UC evidence lines are pure IDs** (`// UC-<FEATURE>-<n>`, exact full match) — never extra
+  text on the same line; accompanying comments go on their own line. Reason: the docs-linter
+  parser requires a full match on ID lines — extra text orphans the ID (UNBELEGT_ERLEDIGT),
+  hit UC-JD-1 2026-09-22.
 - **„Green before the change" declarations only for tests that can actually run against the
   pre-change state.** A new test coupled to the NEW type (e.g. asserts `instanceof Combo` where
   the old code had `CCombo`) is swap-falsifiable by construction and is declared as such — never
@@ -147,6 +151,15 @@ These bit us repeatedly in this repo — check them before reporting an incremen
   `exclude=true` + `setVisible(false)`; on show `exclude=false` + `setVisible(true)` +
   `parent.layout()`. (Origin 2026-09-12, ui-config cycle: the plan's `setVisible(false)`-only fix
   would have left the empty label row standing — caught by the dev's SWT-source check.)
+- **JDT breakpoint markers (verified 2026-09-22, I2 debugJavaListBreakpoints):** `JDTDebugConstants` does
+  NOT exist on the current target platform (jdt.launching 3.24.300 / jdt.debug 3.26.100, 2026-06/07)
+  — the ids live in the internal breakpoint classes. Line BP marker type
+  `org.eclipse.jdt.debug.javaLineBreakpointMarker`, exception BP marker type
+  `org.eclipse.jdt.debug.javaExceptionBreakpointMarker` (markers on the workspace root = workspace-wide);
+  attribute keys `org.eclipse.jdt.debug.core.typeName` / `...condition` / `...hitCount` (absent = -1 =
+  every hit); enabled state = public constant `IBreakpoint.ENABLED` (`org.eclipse.debug.core.enabled`) —
+  there is no `IMarker.ATTR_ENABLED`. `IMarker.getAttribute(String, default)` overloads (int/String/boolean)
+  do not throw; only the single-arg `getAttribute(String)` does.
 - More Eclipse-platform know-how lives in the project skill `eclipse-dpe` (read it via skillRead
   before guessing) — append new findings **at the end of the file** (do not split an existing bullet).
 - Skill-Evolution (experimentell): every skillRead result ends with a usefulness footer — **always

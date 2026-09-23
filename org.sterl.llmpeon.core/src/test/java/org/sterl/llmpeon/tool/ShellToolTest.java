@@ -169,4 +169,35 @@ class ShellToolTest {
         String result = tool.shellRunCommand(command, tempDir.toString(), null, null, null);
         assertTrue(result.contains("Exit code: 42"), "Expected exit code 42, got: " + result);
     }
+
+    // UC-TD-2
+    @Test
+    void shellRunCommand_reportsDurationAndTime() {
+        String result = tool.shellRunCommand("sleep 2", tempDir.toString(), null, null, null);
+        var last = linesOf(result).get(linesOf(result).size() - 1);
+        assertTrue(last.matches("\\(\\d+s, \\d{2}:\\d{2}\\)"),
+                "last line should be stats suffix, got: " + last);
+        assertTrue(last.contains("2s"), "duration should be measured ~2s, got: " + last);
+    }
+
+    // UC-TD-2
+    @Test
+    void shellRunCommand_timeout_reportsMeasuredDurationAndTime() {
+        String result = tool.shellRunCommand("sleep 5", tempDir.toString(), 1, null, null);
+        assertTrue(result.contains("Command timed out after 1s"),
+                "timeout message should carry measured duration, got: " + result);
+        var last = linesOf(result).get(linesOf(result).size() - 1);
+        assertTrue(last.matches("\\(\\d+s, \\d{2}:\\d{2}\\)"),
+                "last line should be stats suffix, got: " + last);
+    }
+
+    // UC-TD-2
+    @Test
+    void shellRunCommand_nonZeroExit_endsWithStats() {
+        String result = tool.shellRunCommand("exit 42", tempDir.toString(), null, null, null);
+        assertTrue(result.contains("Exit code: 42"), "expected exit code, got: " + result);
+        var lines = linesOf(result);
+        assertTrue(lines.get(lines.size() - 1).matches("\\(\\d+s, \\d{2}:\\d{2}\\)"),
+                "last line should be stats suffix, got: " + result);
+    }
 }

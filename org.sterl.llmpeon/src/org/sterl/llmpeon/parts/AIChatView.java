@@ -31,6 +31,7 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.ui.IWorkingSet;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiAgentStatusModel;
+import org.sterl.llmpeon.agent.CompactResult;
 import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.LlmConfig;
@@ -521,11 +522,11 @@ public class AIChatView implements EclipseAiMonitor {
             Exception ex = null;
             try {
                 var result = active.compact(this);
-                if (result) EclipseUtil.runInUiThread(parent, this::refreshChat);
+                if (result == CompactResult.COMPACTED) EclipseUtil.runInUiThread(parent, this::refreshChat);
             } catch (Exception e) {
                 ex = handleChatException(e);
             } finally {
-                handleDoneChatResponse(active.getName(), null, monitor, ex);
+                handleDoneChatResponse(active, active.getName(), null, monitor, ex);
             }
             return PeonConstants.status("Compacted " + active.getName(), ex);
         }).schedule();
@@ -546,7 +547,7 @@ public class AIChatView implements EclipseAiMonitor {
         Job.create("Compact " + slave.uiName(), monitor -> {
             monitorRef.set(monitor);
             Exception ex = null;
-            boolean result = false; // captured before the finally's monitorRef reset (async-state safety)
+            CompactResult result = null; // captured before the finally's monitorRef reset (async-state safety)
             try {
                 result = agent.compact(this);
                 // NO refreshChat here — a rebuild from the ACTIVE agent's memory would wipe the
@@ -556,7 +557,7 @@ public class AIChatView implements EclipseAiMonitor {
             } catch (Exception e) {
                 ex = handleChatException(e);
             } finally {
-                handleDoneChatResponse(slave.uiName(), null, monitor, ex);
+                handleDoneChatResponse(agent, slave.uiName(), null, monitor, ex);
             }
             return PeonConstants.status(AiAgentStatusModel.compactResult(result, slave.uiName()), ex);
         }).schedule();
@@ -643,13 +644,13 @@ public class AIChatView implements EclipseAiMonitor {
             } catch (Exception e) {
                 ex = handleChatException(e);
             } finally {
-                handleDoneChatResponse(agent.getName(), cr, monitor, ex);
+                handleDoneChatResponse(null, agent.getName(), cr, monitor, ex);
             }
             return PeonConstants.status("Peon AI\n" + aiService.getConfig(), ex);
         }).schedule();
     }
 
-    private void handleDoneChatResponse(String agentName,
+    private void handleDoneChatResponse(@Nullable AiAgent compactedAgent, String agentName,
             @Nullable ChatResponse cr, IProgressMonitor monitor, Exception ex) {
         if (aiService.getConfig().isDebugMode()) {
             LOG.info("Chatreponse for " + agentName + ": " + (cr == null ? "null" : cr.aiMessage()));
@@ -670,6 +671,18 @@ public class AIChatView implements EclipseAiMonitor {
                 actionsBar.updateCompact(
                         aiService.getActiveAgent().getMemory().getTotalTokenUsed(),
                         aiService.getConfig().getAutoCompactAfter());
+
+                // R-CT-3: compact finished and the user queued a message during it — submit the
+                // follow-up in THIS runnable (same as the unlock, no window). Active agent only:
+                // a slave compact's queue is not fed by the UI; an agent switch mid-compact leaves
+                // the queue to the old agent's next turn. Fires on every job end (D6) — ex is irrelevant.
+                if (compactedAgent != null
+                        && compactedAgent == aiService.getActiveAgent()
+                        && compactedAgent.getQueuedMessageCount() > 0) {
+                    LOG.info("compact follow-up: agent=" + agentName
+                            + " queued=" + compactedAgent.getQueuedMessageCount());
+                    submitAiJob(null);
+                }
 
                 // Queue drain on abort is handled in core by AbstractAgent.handleAbortAndDrain() — ADR-0017
                 LOG.info("turn done: agent=" + agentName + " reset committed (in-flight " + (remaining + 1) + "->" + remaining + ")");

@@ -145,8 +145,8 @@ THEN INFO-Skip-Zeile mit Agent + in-flight-Wert, kein Reset/Unlock
 - **Senden während Compress (Da-Thinka-Fund, 2026-09-10):** `doCompressContext` setzt
   `working` nie → `resolveOutgoingMessage` queued nicht → Send während Compress = Submit →
   **paralleler Run gegen dieselbe Memory**, während `compact()` `memory.clear()` macht.
-  Der Counter räumt das Lock-Bookkeeping korrekt auf, die Memory-Race bleibt — Backlog,
-  eigene Story, nicht hier.
+  **❌ specified (2026-09-22):** Lösung in [compact-lock.md](compact-lock.md) — Compact belegt das
+  `working`-Flag (CAS-bedingt), Queue-Guard greift, Follow-up-Turn nach dem Compact.
 - **Live-Status im Retry-Backoff-Fenster:** aktuell by design unsichtbar (END-Chunk bei
   onError versteckt die Statuszeile, PROBLEM-Nachrichten ebenso) — User liest die Stille als
   „hängt im PP". Eigene Mini-Story, nicht hier ([open-points.md](open-points.md)).

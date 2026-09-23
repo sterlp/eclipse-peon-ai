@@ -4,7 +4,7 @@
 
 ## IST
 
-- **42 `@Tool` methods** across 20 tool classes (core + Eclipse plugin)
+- **43 `@Tool` methods** across 21 tool classes (core + Eclipse plugin)
 - Descriptions vary wildly: some 5 words (`"Read file - not eclipse."`), some 3 lines of multi-paragraph text
 - No consistency in style (imperative vs descriptive, with/without context hints)
 - AskUserTool already optimized — excluded from plan
@@ -16,7 +16,8 @@
 Alle `@Tool`-Beschreibungen folgen einem einheitlichen Muster:
 - **1 Zeile, imperativ**, 10-25 Wörter
 - **Name + Zweck + Schlüssel-Constraint** (was es NICHT ist, wann man es nutzt)
-- Workspace-Tools: `workspace-` Prefix im Namen zur Unterscheidung von Disk-Tools
+- Tool-Namen: **camelCase mit Familien-/Klassen-Prefix** (`eclipseReadFile`, `diskGrepFiles`,
+  `webGet`, `debugJavaSetBreakpoint` …) — [ADR-0054](adr/0054-tool-naming-camelcase-family-prefix.md)
 - Parameter-Descriptions (`@P`) erhalten kurze kontextreiche Hints
 
 **WEIL:** Konsistente, token-effiziente Descriptions verbessern die Tool-Auswahl des LLM, reduzieren Halluzinationen und sparen ~50-150 Tokens/Tool-Call.
@@ -61,7 +62,8 @@ Alle `@Tool`-Beschreibungen folgen einem einheitlichen Muster:
 
 | # | Method | Current Description | Rating | New Description | Why |
 |---|--------|---------------------|--------|-----------------|-----|
-| 13 | `webFetchAsMarkdown` | `"Fetch URL content as Markdown."` | ⚠️ zu kurz | `"Fetch a URL and convert its HTML content to Markdown. Handles redirects, charset detection, and 30s timeout. Returns error on HTTP 4xx/5xx."` | Verhalten bei Errors, Timeout, Charset genannt |
+| 13 | `webFetchAsMarkdown` | `"Fetch a URL as cached Markdown. startLine/endLine (1-based, 0 = default) page the result; max 500 lines per call, disclosed. HTTP 4xx/5xx: status plus snippet."` | ✅ (aktuell, 2026-09-20, Story A inc 3) | *(kein Change)* | Paginiert: 500-Zeilen-Fenster + LRU-Cache 5 URLs + Disclosure, Fehlerpfad = Status + Snippet (R-WEB-1…3) |
+| 13a | `webGet` (WebGetTool, neu 2026-09-20, Story A) | *(neu — kein Bestand)* | ✅ | `"Download a URL to a file on disk. Absolute path required; overwrites existing. Returns status, size and path — never the content."` | Inhalt geht auf Disk, nie in den Kontext; Guards wie `diskWriteFile` (QualifiedPath + WriteValidator) |
 
 ### CompactSessionTool (`org.sterl.llmpeon.tool.tools`)
 
@@ -132,7 +134,7 @@ Alle `@Tool`-Beschreibungen folgen einem einheitlichen Muster:
 | # | Method | Current Description | Rating | New Description | Why |
 |---|--------|---------------------|--------|-----------------|-----|
 | 38 | `eclipseListAllOpenProjects` | `"List open workspace projects with their eclipse paths, disk paths, and natures."` | ✅ gut | *(kein Change)* | - |
-| 39 | `eclipseReadProjectProblems` | `"List build errors/warnings of a project."` | ⚠️ zu kurz | `"List compile errors and warnings for a project. Call after eclipseBuildProject to check build status. Returns problem messages with file and line numbers."` | Wann nutzen + Output-Format |
+| 39 | `eclipseReadProjectProblems` | `"List compile errors and warnings for a project. Optional: files (comma-separated) and severity (ERROR, WARNING) filter the result scope."` | ✅ (aktuell, 2026-09-20, Story B) | *(kein Change)* | File- + Severity-Filter nennen die optionale Scope-Einschränkung (R-PP-1…3, docs/project-problems-tool.md) |
 | 40 | `eclipseBuildProject` | `"Refresh and clean build the project. Returns errors/warnings. Preferred way to verify code changes or full refresh."` | ✅ gut | *(kein Change)* | - |
 | 41 | `eclipseRefreshProject` | `"Refresh/sync a project with the disk status - if changes have been made outside eclipse e.g. with disk tools."` | ✅ gut | *(kein Change)* | - |
 
@@ -179,6 +181,27 @@ Alle `@Tool`-Beschreibungen folgen einem einheitlichen Muster:
 | # | Method | Current Description | Rating | New Description | Why |
 |---|--------|---------------------|--------|-----------------|-----|
 | 55 | `reloadConfig` | `"Reload all configuration (agents, skills, commands) — call after creating/editing artifacts so they become immediately available."` | ✅ gut | *(kein Change)* | - |
+
+### JavaDebugTool (`org.sterl.llmpeon.parts.tools.debug`)
+
+isEditTool=✔ (R-JD-5: Plan/Review/SearchAgent/read-only-Custom filtern es automatisch raus). Story C (2026-09-20), SOLL: [java-debugger-tool.md](java-debugger-tool.md).
+
+| # | Method | Current Description | Rating | New Description | Why |
+|---|--------|---------------------|--------|-----------------|-----|
+| 56 | `debugJavaGetState` | *(neu — kein Bestand)* | ✅ | `"Show the active Java debug session: VM state, all threads with state, system flag and top frame."` | Read-only Session-Überblick (UC-JD-3) |
+| 57 | `debugJavaGetStackTrace` | *(neu — kein Bestand)* | ✅ | `"List the stack frames of a debug thread (index, method, type, line, method entry). Optional thread name."` | Stack-Liste, optionaler Thread-Filter |
+| 58 | `debugJavaGetVariables` | *(neu — kein Bestand)* | ✅ | `"Show the local variables of a stack frame as JSON — frame locals plus the static fields of the frame's declaring type in a separate statics block (empty when none). Optional name path (a.b.c) and depth (default 1, max 5)."` | Depth-Limit im Namen (Tool lügt nicht); 2026-09-21 (F2, R-JD-9): statics-Block statt „statics not included" |
+| 59 | `debugJavaEvaluateExpression` | *(neu — kein Bestand)* | ✅ | `"Evaluate a Java expression in a suspended stack frame and return the result as JSON. Object results render their fields to depth 2; primitives, String and null come back as values."` | Ergebnis als JSON, kein Render; 2026-09-21 (F2, R-JD-9): Objekt-Felder bis Tiefe 2 statt Referenz-ID (id=N) |
+| 60 | `debugJavaSetVariable` | *(neu — kein Bestand)* | ✅ | `"Set a local variable or argument to a primitive, String or null value. No confirmation."` | Scope-Limit (Primitiven/String/null) + R-JD-2 (keine Confirmations) |
+| 61 | `debugJavaSetBreakpoint` | *(neu — kein Bestand)* | ✅ | `"Set a line breakpoint with optional condition, hit count and suspend policy (THREAD or VM)."` | Optionale Parameter im Namen |
+| 62 | `debugJavaSetExceptionBreakpoint` | *(neu — kein Bestand)* | ✅ | `"Set an exception breakpoint for a type with suspend policy and caught/uncaught/subtype options."` | Exception-BP-Optionen |
+| 63 | `debugJavaRemoveBreakpoint` | *(neu — kein Bestand)* | ✅ | `"Remove a breakpoint previously created by debugJavaSetBreakpoint or debugJavaSetExceptionBreakpoint, given its marker id."` | Hygiene: Agent-Breakpoints entfernen (Zusatz über SOLL, gedeckt) |
+| 64 | `debugJavaStepOver` | *(neu — kein Bestand)* | ✅ | `"Step over in a debug thread and wait for the next suspend; returns the new top frame."` | Synchrones Warten auf Suspend (D9) |
+| 65 | `debugJavaStepIn` | *(neu — kein Bestand)* | ✅ | `"Step into a debug thread and wait for the next suspend; returns the new top frame."` | Synchrones Warten auf Suspend (D9) |
+| 66 | `debugJavaStepOut` | *(neu — kein Bestand)* | ✅ | `"Step out of the current frame and wait for the next suspend; returns the new top frame."` | Synchrones Warten auf Suspend (D9) |
+| 67 | `debugJavaGetException` | *(neu — kein Bestand)* | ✅ | `"Find the exception at the current suspend: scans the top frame's local variables (incl. catch parameter) for a java.lang.Throwable or subtype and returns its type, message and variable name. Limit: an uncaught throw new X(...) at the throw site has no named variable and is not found there."` | 2026-09-21 (R-JD-10, 14. Action); Recognition name-based (Throwable exakt / *Exception / *Error) in der Code-Description (G1, `348d521`) |
+| 67 | `debugJavaContinue` | *(neu — kein Bestand)* | ✅ | `"Resume a suspended debug thread and wait for the next suspend; returns the new top frame."` | Synchrones Warten auf Suspend (D9) |
+| 68 | `debugJavaSuspend` | *(neu — kein Bestand)* | ✅ | `"Suspend a running debug session; returns the suspended threads with their top frames."` | Sofort suspended, Threads im JSON |
 
 ---
 

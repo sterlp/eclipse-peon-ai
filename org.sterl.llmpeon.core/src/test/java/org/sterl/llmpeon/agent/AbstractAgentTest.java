@@ -1,9 +1,13 @@
 package org.sterl.llmpeon.agent;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CancellationException;
@@ -22,6 +26,7 @@ import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.memory.FileAgentHistoryStore;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
+import org.sterl.llmpeon.queuedmessages.UserMessageQueue;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.tool.ToolService;
@@ -62,9 +67,16 @@ class AbstractAgentTest {
         });
 
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        // AND — a fixed 14:32 clock so the Rule 9 marker time is deterministic
+        agent.setMessageQueue(new UserMessageQueue(10_000, fixedClock1432()));
+        List<String> toolLines = new ArrayList<>();
+        var monitor = new AiMonitor() {
+            @Override public void onChatResponse(org.sterl.llmpeon.tool.model.SimpleMessage m) {}
+            @Override public void onTool(String message) { toolLines.add(message); }
+        };
 
         // WHEN — start call on background thread, queue msg2+msg3 during execution
-        Thread callerThread = new Thread(() -> agent.call("msg1", monitor -> { }));
+        Thread callerThread = new Thread(() -> agent.call("msg1", monitor));
         callerThread.start();
 
         callStarted.await(5, TimeUnit.SECONDS);
@@ -81,7 +93,11 @@ class AbstractAgentTest {
         assertThat(userTexts).hasSize(2);
         
         assertThat(userTexts.get(0)).contains("msg1");
-        assertThat(userTexts.get(1)).contains("msg2", "msg3");
+        // AND — the burst's onTool line carries the FIRST entry's queued time (Rule 9)
+        assertThat(toolLines).contains("Reading queued User message: msg2"
+                + System.lineSeparator() + "msg3 (queued 14:32)");
+        // AND — the LLM payload marker carries the same time, text unchanged after the prefix
+        assertThat(userTexts.get(1)).contains("[Queued Message] (queued 14:32):", "msg2", "msg3");
         
     }
 
@@ -362,6 +378,11 @@ class AbstractAgentTest {
                 .toList();
     }
 
+    /** A fixed clock at 14:32 UTC for deterministic Rule 9 queued-time assertions. */
+    private static Clock fixedClock1432() {
+        return Clock.fixed(Instant.parse("2026-09-23T14:32:00Z"), ZoneOffset.UTC);
+    }
+
     /** compactContext clears memory, invalidates systemMessage, restores turn context, then adds summary. */
     @Test
     void test_compactContext_clearsMemoryAndRestoresTurnContext() {
@@ -412,15 +433,140 @@ class AbstractAgentTest {
         var second = agent.compact(monitor -> {});
 
         // THEN — first compacted to exactly 2 (Session-compacted user + summary), second is a no-op
-        assertThat(first).isTrue();
+        assertThat(first).isEqualTo(CompactResult.COMPACTED);
         assertThat(afterFirst).hasSize(2);
         assertThat(afterFirst.get(0)).isInstanceOf(UserMessage.class);
         assertThat(afterFirst.get(1)).isInstanceOf(AiMessage.class);
-        assertThat(second).isFalse();
+        assertThat(second).isEqualTo(CompactResult.SKIPPED_SMALL);
         assertThat(agent.getMemory().getCopy()).isEqualTo(afterFirst);
         // AND — exactly one LLM call (the first compact's compressor), none for the no-op
         assertThat(streamMock.getCallCount()).isEqualTo(1);
+
+        // AND — the no-op compact (guard return under the flag) released its flag acquisition (R-CT-1)
+        assertThat(agent.isWorking()).isFalse();
     }
+
+    // UC-CT-1
+    @Test
+    void compactHoldsWorkingFlagDuringCompressorCall() {
+        // GIVEN — 3 messages so the compact actually runs
+        var agentRef = new AtomicReference<AiDevAgent>();
+        var workingDuringCompressor = new AtomicReference<Boolean>();
+        var config = LlmConfig.builder().model("mock").build();
+        var mockModel = streamMock.buildMock(r -> {
+            workingDuringCompressor.set(agentRef.get().isWorking());
+            return ChatResponse.builder().aiMessage(AiMessage.aiMessage("compressed summary")).build();
+        });
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        agentRef.set(agent);
+        agent.addMessage(UserMessage.from("m1"));
+        agent.addMessage(AiMessage.from("m2"));
+        agent.addMessage(UserMessage.from("m3"));
+
+        // WHEN
+        var compacted = agent.compact(monitor -> {});
+
+        // THEN — the agent is working during the compressor call and released afterwards
+        assertThat(compacted).isEqualTo(CompactResult.COMPACTED);
+        assertThat(workingDuringCompressor.get()).isTrue();
+        assertThat(agent.isWorking()).isFalse();
+    }
+
+    // UC-CT-1
+    /**
+     * Companion pin to {@link #compactHoldsWorkingFlagDuringCompressorCall}: alone this test
+     * would be green without the feature (a compact that holds no flag has nothing to
+     * release). It only counts as mutation protection together with the happy-path test —
+     * that one proves the flag is acquired, this one that it is released on failure.
+     */
+    @Test
+    void compactFailedReleasesWorkingFlag() {
+        // GIVEN — 3 messages; the compressor call throws
+        var config = LlmConfig.builder().model("mock").build();
+        var mockModel = streamMock.buildMock(r -> {
+            throw new IllegalStateException("compressor exploded");
+        });
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        agent.addMessage(UserMessage.from("m1"));
+        agent.addMessage(AiMessage.from("m2"));
+        agent.addMessage(UserMessage.from("m3"));
+
+        // WHEN — the compact fails
+        assertThatThrownBy(() -> agent.compact(monitor -> {}))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("compressor exploded");
+
+        // THEN — the flag is released by the finally
+        assertThat(agent.isWorking()).isFalse();
+    }
+
+    // UC-CT-2
+    /**
+     * Regression pin (green before the CAS change — the in-loop compact already kept the
+     * turn's flag; the test exists to fix that behavior against future regressions): an
+     * in-loop auto-compact must not release the turn's working flag. Mutation guard: a
+     * naive finally { working.set(false) } without the acquired check releases it
+     * mid-turn and turns this test red.
+     */
+    @Test
+    void inLoopCompactDoesNotReleaseTurnsWorkingFlag() {
+        // GIVEN — auto-compact threshold exceeded so doCall compacts in-loop before the turn
+        var config = LlmConfig.builder().model("mock").autoCompactAfter(100).build();
+        var callCount = new AtomicInteger();
+        var workingDuringTurnCall = new AtomicReference<Boolean>();
+        var agentRef = new AtomicReference<AbstractAgent>();
+        var mockModel = streamMock.buildMock(r -> {
+            if (callCount.incrementAndGet() == 2) {
+                workingDuringTurnCall.set(agentRef.get().isWorking());
+            }
+            return ChatResponse.builder().aiMessage(AiMessage.aiMessage("OK")).build();
+        });
+        var memory = new ThreadSafeMemory() {
+            @Override public int getTotalTokenUsed() { return 101; }
+        };
+        memory.add(UserMessage.from("m1"));
+        memory.add(AiMessage.from("m2"));
+        memory.add(UserMessage.from("m3"));
+        var agent = new AbstractAgent(
+                new ConfiguredChatModel(config, mockModel), new ToolService(), memory, 1.0) {
+            @Override public String getName() { return "test"; }
+            @Override public String getSystemPrompt() { return "test"; }
+        };
+        agentRef.set(agent);
+
+        // WHEN — one turn; the in-loop compact (mock call 1) must not drop the turn's flag
+        agent.call("test", monitor -> {});
+
+        // THEN — still working during the turn's own LLM call (mock call 2), released only after call()
+        assertThat(workingDuringTurnCall.get()).isTrue();
+        assertThat(agent.isWorking()).isFalse();
+    }
+
+    // UC-CT-4
+    @Test
+    void callNullInitialWithQueuedProcessesQueueAsPayload() {
+        // GIVEN — a queued message, no initial message (compact follow-up send)
+        var config = LlmConfig.builder().model("mock").build();
+        var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("OK")).build());
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        // AND — a fixed 14:32 clock so the Rule 9 marker time is deterministic
+        agent.setMessageQueue(new UserMessageQueue(10_000, fixedClock1432()));
+        agent.queueMessage("q1");
+
+        // WHEN
+        agent.call(null, monitor -> {});
+
+        // THEN — the drained queue becomes the payload, marked like the in-loop pollNext
+        List<String> userTexts = extractUserTexts(agent.getMemory().getCopy());
+        assertThat(userTexts).hasSize(1);
+        assertThat(userTexts.get(0)).contains("[Queued Message] (queued 14:32):", "q1");
+        // AND — no literal "null" concatenated into the prompt (pre-fix defect)
+        assertThat(userTexts.get(0)).doesNotContain("null");
+        // AND — exactly one LLM call for the queued payload
+        assertThat(streamMock.getCallCount()).isEqualTo(1);
+    }
+
 
     /** call() rebuilds systemMessage after compact cleared it. */
     @Test

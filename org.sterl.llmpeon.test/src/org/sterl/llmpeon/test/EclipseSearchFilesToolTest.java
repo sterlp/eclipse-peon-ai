@@ -59,6 +59,8 @@ public class EclipseSearchFilesToolTest extends AbstractIntegrationTest {
         } finally {
             try {
                 var monitor = new NullProgressMonitor();
+                var capFolder = project.getFolder("cap");
+                if (capFolder.exists()) capFolder.delete(true, monitor);
                 var generatedResource = project.getFile(NON_DERIVED_TARGET_FILE);
                 if (generatedResource.exists()) generatedResource.delete(true, monitor);
                 if (targetWasDerived != null) {
@@ -101,7 +103,35 @@ public class EclipseSearchFilesToolTest extends AbstractIntegrationTest {
         assertTrue("Expected more than 1 Fixture .java file", allCount > 1);
 
         String limited = tool.eclipseSearchFiles("*.java", PeonTestFixture.PROJECT_NAME, 1);
-        assertEquals("Expected exactly 1 result with limit=1", 1, limited.split("\n").length);
+        assertEquals("Expected exactly 1 result with limit=1", 1, resultLines(limited).size());
+        assertTrue("Expected cap disclosure for limit=1: " + limited,
+                limited.contains("capped at 1 — narrow your search"));
+    }
+
+    @Test(timeout = 60_000)
+    public void eclipseSearchFilesCapsWithDisclosure() throws Exception {
+        // UC-OD-1
+        // GIVEN - 600 matching files in the Fixture project
+        var capFolder = project.getFolder("cap");
+        if (!capFolder.exists()) capFolder.create(true, true, new NullProgressMonitor());
+        for (int i = 0; i < 600; i++) {
+            var file = capFolder.getFile("Cap" + i + ".java");
+            if (!file.exists()) {
+                file.create(new ByteArrayInputStream(
+                        ("public class Cap" + i + " {}").getBytes(StandardCharsets.UTF_8)),
+                        true, new NullProgressMonitor());
+            }
+        }
+        var tool = new EclipseWorkspaceReadFileTool();
+
+        // WHEN
+        String result = tool.eclipseSearchFiles("Cap*.java", PeonTestFixture.PROJECT_NAME, 500);
+
+        // THEN - exactly 500 hits and the cap is named
+        assertEquals("Expected exactly 500 hits: " + resultLines(result).size(),
+                500, resultLines(result).size());
+        assertTrue("Expected cap disclosure: " + result,
+                result.contains("capped at 500 — narrow your search"));
     }
 
     @Test

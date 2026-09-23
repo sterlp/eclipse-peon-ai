@@ -17,7 +17,7 @@ import org.sterl.llmpeon.shared.StringUtil;
 class AiAgentStatusModelTest {
 
     private static Row row(String uiName, long tokens, boolean working) {
-        return new Row(uiName, tokens, working);
+        return new Row(uiName, tokens, working, false); // exact counter, not an estimate
     }
 
     private static String label(String uiName, long tokens) {
@@ -111,7 +111,7 @@ class AiAgentStatusModelTest {
     @Test
     void compactResult_successVsSkip() {
         // GIVEN the two outcomes of a slave-compact job
-        assertThat(AiAgentStatusModel.compactResult(true, "Da Mek")).isEqualTo("Compacted Da Mek");
-        assertThat(AiAgentStatusModel.compactResult(false, "Da Mek")).isEqualTo("Nothing to compact");
+        assertThat(AiAgentStatusModel.compactResult(CompactResult.COMPACTED, "Da Mek")).isEqualTo("Compacted Da Mek");
+        assertThat(AiAgentStatusModel.compactResult(CompactResult.SKIPPED_SMALL, "Da Mek")).isEqualTo("Nothing to compact");
     }
 }

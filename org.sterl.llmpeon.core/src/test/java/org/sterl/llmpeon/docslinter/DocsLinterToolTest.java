@@ -108,6 +108,24 @@ class DocsLinterToolTest {
                 .containsExactlyInAnyOrder("root", "docRoots", "testRoots", "testGlobs", "idPattern");
     }
 
+    // --- idPattern description documents the full-match semantics (doc note, no UC) ---
+    @Test
+    void idPatternDescriptionDocumentsFullMatch() {
+        var toolService = new ToolService(false);
+        toolService.addTool(tool);
+
+        var lintSpecs = toolService.toolSpecifications().stream()
+                .filter(s -> "lintDocs".equals(s.name()) || "lintDocsAndTests".equals(s.name()))
+                .toList();
+        assertThat(lintSpecs).hasSize(2);
+
+        for (var spec : lintSpecs) {
+            var idPattern = spec.parameters().properties().get("idPattern");
+            assertThat(idPattern).isNotNull();
+            assertThat(idPattern.description()).contains("full-match");
+        }
+    }
+
     // --- UC-DL-47: lint methods do not touch the fixture tree ---
     // UC-DL-47
     @Test

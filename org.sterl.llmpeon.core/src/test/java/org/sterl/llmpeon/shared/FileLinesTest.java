@@ -138,6 +138,16 @@ class FileLinesTest {
     }
 
     @Test
+    void countLinesCountsDominantEndingLines() {
+        assertEquals(0, FileLines.countLines(null));
+        assertEquals(1, FileLines.countLines("only"));
+        assertEquals(3, FileLines.countLines("a\nb\nc"));
+        // trailing newline yields an empty last line — same split as extract()
+        assertEquals(4, FileLines.countLines("a\nb\nc\n"));
+        assertEquals(2, FileLines.countLines("a\r\nb"));
+    }
+
+    @Test
     void testTailShorterThanRequested() {
         assertEquals("a\nb", FileLines.tail("a\nb", 5));
     }

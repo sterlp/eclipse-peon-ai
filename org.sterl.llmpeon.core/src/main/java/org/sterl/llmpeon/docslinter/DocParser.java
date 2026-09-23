@@ -79,10 +79,11 @@ class DocParser {
 
                 String status = null;
                 String cleanContent = headingContent;
+                String textAfter = null;
                 var sm = STATUS_EMOJI_PATTERN.matcher(headingContent);
                 if (sm.matches()) {
                     String emoji = sm.group(1);
-                    String textAfter = sm.group(2);
+                    textAfter = sm.group(2);
                     status = statusFromEmoji(emoji, textAfter);
                     int emojiIdx = headingContent.lastIndexOf(emoji);
                     cleanContent = headingContent.substring(0, emojiIdx).trim();
@@ -97,7 +98,8 @@ class DocParser {
                     findings.add(new LintFinding(FindingType.PRAEFIX_FEHLT, id, relativePath, lineNum));
                 }
 
-                DocDefinition def = makeDefinition(id, prefixHolder[0], relativePath, lineNum, depth, status);
+                boolean manuell = isManuellMarker(textAfter);
+                DocDefinition def = makeDefinition(id, prefixHolder[0], relativePath, lineNum, depth, status, manuell);
                 if (def != null) {
                     definitions.add(def);
                 }
@@ -180,7 +182,7 @@ class DocParser {
     }
 
     private DocDefinition makeDefinition(String id, String prefix, String file, int line,
-                                         int depth, String status) {
+                                         int depth, String status, boolean manuell) {
         boolean isRule = id.startsWith("R-");
         String defPrefix;
         if (isRule) {
@@ -188,7 +190,20 @@ class DocParser {
         } else {
             defPrefix = prefix;
         }
-        return new DocDefinition(id, defPrefix, file, line, depth, status, null);
+        return new DocDefinition(id, defPrefix, file, line, depth, status, null, manuell);
+    }
+
+    /**
+     * R-DL-22 marker predicate (deliberately loose, PO-confirmed): the text after the status
+     * emoji is an optional {@code *}, exactly one (…) parenthesis pair containing the
+     * substring {@code manuell} (covers "manuelle"), and an optional closing {@code *}.
+     * Anchored so "manuell" cannot match earlier title text.
+     */
+    private static final Pattern MANUELL_MARKER_PATTERN =
+            Pattern.compile("^\\*?\\s*\\([^()]*manuell[^()]*\\)\\s*\\*?$");
+
+    private static boolean isManuellMarker(String textAfter) {
+        return textAfter != null && MANUELL_MARKER_PATTERN.matcher(textAfter.trim()).matches();
     }
 
     private String statusFromEmoji(String emoji, String textAfter) {
@@ -232,7 +247,7 @@ class DocParser {
                     }
                     // Re-slot with inherited status
                     definitions.set(i, new DocDefinition(def.id(), def.prefix(), def.file(),
-                            def.line(), def.depth(), effectiveStatus, lastRule.id()));
+                            def.line(), def.depth(), effectiveStatus, lastRule.id(), def.manuell()));
                 }
             }
         }
