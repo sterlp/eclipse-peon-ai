@@ -68,6 +68,7 @@ The AI assistant has access to several tools:
 - **Code Navigation**: Find Java types, references and implementations
 - **Build Project**: Trigger Eclipse builds and report errors/warnings
 - **Run Tests**: Execute JUnit tests and report failures with stack traces
+- **Java Debugger**: Drive a live JDT debug session — inspect, step, evaluate, and manage breakpoints (breakpoints work even before a session is started)
 - **Plan**: Save and track an implementation plan (`peon-plan/overview.md`)
 - **Skills & Memory**: Load reusable skills and persist notes across sessions
 - **MCP**: Connect to MCP servers for extended tooling (e.g., web search, codebase indexing)
@@ -80,7 +81,7 @@ The AI assistant has access to several tools:
 4. **Debug**: Paste error messages and ask "What's causing this?"
 
 ::: info "CTRL+Enter"
-You can also send messages with `CTRL+Enter` or `CMD+Enter` - if the AI is working, the message is added to the history - best effort to add message during a tool loop.
+You can also send messages with `CTRL+Enter` or `CMD+Enter` - if the AI is working, the message is added to the history - best effort to add message during a tool loop. When such a queued message is picked up, the chat discloses when it was queued — e.g. `[Queued Message] (queued 14:32): …` — so you can see how long it waited.
 :::
 
 - Drag-and-drop files from Eclipse Explorer or your file system directly into the chat input to attach them as `@path` references.

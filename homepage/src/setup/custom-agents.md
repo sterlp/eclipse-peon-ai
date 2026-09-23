@@ -174,6 +174,10 @@ Common built-in prefixes:
 | `memory` | `memoryAdd`, `memoryReplace`, `memoryRemove` |
 | `plan` | `planRead`, `planSave`, `planUpdate`, `planImplemented` |
 | `disk` | Optional file/grep tools that bypass the Eclipse workspace — only registered when **Enable disk tools** is on (see [Advanced Configuration](./advanced-configuration.md)). E.g. `diskReadFile`, `diskGrepFiles`, `diskWriteFile`. The same toggle also enables `webGet` (download a URL to a disk path — status, size and path in the context, never the content). |
+| `debugJava` | Java debugger — 15 actions (e.g. `debugJavaGetState`, `debugJavaStepOver`, `debugJavaSetBreakpoint`, `debugJavaSuspend`). An **edit tool**, so only offered to non-read-only agents (in practice Peon-Dev). You start the debug session in the Debug view; breakpoint set/remove work without one (stored as markers). See [Java debugger](#java-debugger). |
+| `web` | `webGet` (download a URL to a disk path) — only registered when **Enable disk tools** is on, like the `disk*` tools above. |
+| `shell` | `shellRunCommand` (run a shell command — mvn, npm, git; not for file I/O). |
+| `lintDocs`, `nextIds` | Docs tooling — `lintDocs` and `lintDocsAndTests` (the `lintDocs` prefix matches **both**) and `nextIds` (exact name, no shared prefix). A bare `docs` prefix matches nothing. |
 | `mcp__` | Every tool from a connected MCP server, e.g. `mcp__docs__search`. |
 
 ::: tip Disk tools report absolute paths
@@ -195,3 +199,19 @@ Copying and renaming are separate, byte-exact operations in both file families:
   clobbered silently.
 - **Rename** stays a separate, **atomic** move. Don't assemble a move from copy + delete — rename
   has no window where the file exists at both (or neither) path.
+
+## Java debugger
+
+The `debugJava*` family (15 actions) drives a live JDT debug session: inspect the stack, variables
+and exceptions, evaluate expressions, set variables, step (`debugJavaStepOver` / `In` / `Out`),
+suspend, resume, and manage line and exception breakpoints. Because these are **edit tools**, they
+are offered only to non-read-only agents (in practice **Peon-Dev**), never to read-only ones.
+
+- **The session is yours to start.** The agent never launches a debug session — you do, in the
+  Eclipse **Debug view**. Session-bound actions (step, evaluate, inspect, …) fail honestly when no
+  session is active.
+- **Breakpoints work before a session.** `debugJavaSetBreakpoint`, `debugJavaSetExceptionBreakpoint`
+  and `debugJavaRemoveBreakpoint` act on JDT markers directly, so they succeed even with no session
+  running; the breakpoint is installed into the VM when a session does start.
+- **No per-action confirmations.** Every change is visible in the Eclipse Debug UI as it happens, so
+  the agent applies it without an approval prompt.
