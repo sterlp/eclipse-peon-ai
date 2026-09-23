@@ -469,7 +469,7 @@ public class DebugJsonUnitTest {
         IJavaLineBreakpoint breakpoint = lineBreakpoint(42, -1, null);
 
         // WHEN: rendering the debugJavaSetBreakpoint response
-        String json = DebugJson.breakpointResponse(breakpoint, "src/Foo.java", 42, null);
+        String json = DebugJson.breakpointResponse(breakpoint, "src/Foo.java", 42, null, null);
 
         // THEN: the raw -1 renders as 0 ("every hit" per the tool description)
         assertContains(json, "\"hitCount\" : 0");
@@ -484,7 +484,7 @@ public class DebugJsonUnitTest {
         IJavaLineBreakpoint breakpoint = lineBreakpoint(42, 3, "i > 3");
 
         // WHEN: rendering the debugJavaSetBreakpoint response
-        String json = DebugJson.breakpointResponse(breakpoint, "src/Foo.java", 42, null);
+        String json = DebugJson.breakpointResponse(breakpoint, "src/Foo.java", 42, null, null);
 
         // THEN: values >= 0 pass through unchanged (regression boundary) and the condition is kept
         assertContains(json, "\"hitCount\" : 3");
@@ -493,5 +493,34 @@ public class DebugJsonUnitTest {
 
     private static void assertContains(String value, String expected) {
         assertTrue("Expected:\n" + value + "\nto contain:\n" + expected, value.contains(expected));
+    }
+
+    // UC-JD-15
+    @Test
+    public void breakpointResponseWithoutSessionOmitsInstalled() {
+        // GIVEN: a created line breakpoint, no session active
+        IJavaLineBreakpoint breakpoint = lineBreakpoint(42, 3, "i > 3");
+
+        // WHEN: rendering the debugJavaSetBreakpoint response with the no-session note
+        String json = DebugJson.breakpointResponse(breakpoint, "src/Foo.java", 42, null,
+                "no active session — breakpoint stored as marker, installed when a session starts");
+
+        // THEN: the no-session note is carried as "session" and no VM-install status is reported
+        assertContains(json, "\"session\" : \"no active session — breakpoint stored as marker, installed when a session starts\"");
+        assertFalse("no VM-install status without a session:\n" + json, json.contains("\"installed\""));
+    }
+
+    // UC-JD-15
+    @Test
+    public void removedResponseCarriesNoSessionNote() {
+        // GIVEN: removing a breakpoint while no session is active
+
+        // WHEN: rendering the debugJavaRemoveBreakpoint response with the no-session note
+        String json = DebugJson.removedResponse(42,
+                "no active session — breakpoint stored as marker, installed when a session starts");
+
+        // THEN: removed stays true and the no-session note is carried as "session"
+        assertContains(json, "\"removed\" : true");
+        assertContains(json, "\"session\" : \"no active session — breakpoint stored as marker, installed when a session starts\"");
     }
 }

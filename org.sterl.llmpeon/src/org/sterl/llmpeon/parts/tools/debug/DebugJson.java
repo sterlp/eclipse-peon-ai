@@ -231,8 +231,13 @@ public final class DebugJson {
         return pretty(node);
     }
 
-    /** debugJavaSetBreakpoint / debugJavaSetExceptionBreakpoint response (D8). */
-    public static String breakpointResponse(IJavaBreakpoint breakpoint, String file, Integer line, String exceptionType) {
+    /**
+     * debugJavaSetBreakpoint / debugJavaSetExceptionBreakpoint response (D8). With an active
+     * session {@code noSessionNote} is null and the VM-install status is reported as
+     * {@code "installed"}; without a session it carries the no-session note as
+     * {@code "session"} and no install status (R-JD-13).
+     */
+    public static String breakpointResponse(IJavaBreakpoint breakpoint, String file, Integer line, String exceptionType, String noSessionNote) {
         Map<String, Object> node = new LinkedHashMap<>();
         try {
             node.put("id", String.valueOf(breakpoint.getMarker().getId()));
@@ -251,7 +256,11 @@ public final class DebugJson {
             }
             node.put("hitCount", displayHitCount(breakpoint.getHitCount()));
             node.put("suspendPolicy", breakpoint.getSuspendPolicy() == IJavaBreakpoint.SUSPEND_VM ? "VM" : "THREAD");
-            node.put("installed", breakpoint.isInstalled());
+            if (noSessionNote == null) {
+                node.put("installed", breakpoint.isInstalled());
+            } else {
+                node.put("session", noSessionNote);
+            }
         } catch (CoreException e) {
             throw new IllegalArgumentException("reading the created breakpoint failed: " + e.getMessage(), e);
         }
@@ -315,11 +324,14 @@ public final class DebugJson {
         return node;
     }
 
-    /** debugJavaRemoveBreakpoint response: {id, removed}. */
-    static String removedResponse(long id) {
+    /** debugJavaRemoveBreakpoint response: {id, removed} — plus the no-session note as {@code "session"} when no session is active (R-JD-13). */
+    public static String removedResponse(long id, String noSessionNote) {
         Map<String, Object> node = new LinkedHashMap<>();
         node.put("id", String.valueOf(id));
         node.put("removed", true);
+        if (noSessionNote != null) {
+            node.put("session", noSessionNote);
+        }
         return pretty(node);
     }
 

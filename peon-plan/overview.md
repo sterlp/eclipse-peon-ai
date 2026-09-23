@@ -9,7 +9,9 @@
 - **I1** (Rename 15 Debug-Tools → `debugJava*`): ✅ — Longest-First-Rename in 3 Main- + 6 Test-Dateien + E2E-/Inventory-/ADR-/AGENTS-DEV-Docs; Grep-Gate: **0** alte Namen in `src/**` + non-historischen Docs (Rest nur in `docs/adr/**`, `open-points.md`, `index.md`-Datumzeile = planmäßig NICHT anfasst); Plugin-Build grün (nur Pre-Existing-Warnings), **Suite 272/0/0** (Baseline gleich, reines Umbenennen).
   - Abweichung gemeldet: `DebugPrimaryTypeTest.java` (2 Kommentare) war im Plan-File-List nicht genannt, wird aber vom eigenen Grep-Gate (0 Treffer in `src/**`) verlangt → mit renamed.
   - Flag für Jon (SOLL-Doc, nicht von Da Mek editiert): `docs/java-debugger-tool.md:96` sagt „use continue"-Hinweis, Plan/Code sagt `use debugJavaContinue` — SOLL↔Code-Reconciliation = Docs-Owner.
-- **I2** (R-JD-13 Breakpoints ohne Session): ⬜ offen
+- **I2** (R-JD-13 Breakpoints ohne Session): ✅ — 3 BP-Actions (`debugJavaSetBreakpoint`/`…SetExceptionBreakpoint`/`…RemoveBreakpoint`) verlieren den Session-Guard (Marker-Op); Projekt-Auflösung ohne Session: relativer Pfad → `currentProject` (Chat-View), sonst ehrlicher Fehler (nennt: kein Session-Project-Attribut **und** kein Projekt in der Chat-View gewählt); `DebugJson.breakpointResponse`/`removedResponse` tragen ohne Session `session` statt `installed` (SOLL-Wortlaut exakt, Constant `NO_SESSION_MARKER_OP`); `noSessionFailsHonest` auf 11 session-gebundene Actions eingeschränkt; neu `DebugBreakpointNoSessionTest` ×5 + `DebugJsonUnitTest` ×2. Suite **279/0/0** (Baseline 272 + 7), Build grün (nur Pre-Existing-Warnings), Core unverändert. Docs: UC-JD-15 „Automatisiert:"-Zeile befüllt (Status ❌ bleibt = PO).
+  - Abweichung gemeldet: `removedResponse` → `public` (notwendig, damit der Stub-Test in `org.sterl.llmpeon.test` es aufrufen kann; konsistent mit `breakpointResponse`, das schon public ist).
+  - Ist-Korrektheit: Class-Javadoc `JavaDebugTool` + Javadoc/Comment in `JavaDebugToolTest` auf „11 session-gebundene Actions / R-JD-13" angepasst (sonst falsch).
 - **I3** (Rule 9 Queued-At Disclosure): ⬜ offen
 - **I4** (Homepage-Nachziehen): ⬜ offen
 

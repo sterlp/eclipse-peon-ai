@@ -12,9 +12,11 @@ import org.sterl.llmpeon.parts.tools.debug.JavaDebugTool;
 /**
  * Java debug tool (docs/java-debugger-tool.md R-JD-1…5, UC-JD-1…6).
  * Automated coverage is session-free: the honest no-session message of every
- * action (UC-JD-1) plus the DebugJson walker (DebugJsonUnitTest). Live-session
- * behavior is verified manually (smoke) — the PDE test workbench cannot host a
- * reliable in-workbench Java debug launch (JDWP initial-suspend race, 2026-09-20).
+ * session-bound action (UC-JD-1) plus the DebugJson walker (DebugJsonUnitTest).
+ * The breakpoint marker ops work without a session (R-JD-13,
+ * DebugBreakpointNoSessionTest). Live-session behavior is verified manually
+ * (smoke) — the PDE test workbench cannot host a reliable in-workbench Java
+ * debug launch (JDWP initial-suspend race, 2026-09-20).
  */
 public class JavaDebugToolTest extends AbstractIntegrationTest {
 
@@ -25,7 +27,7 @@ public class JavaDebugToolTest extends AbstractIntegrationTest {
     }
 
     // UC-JD-1
-    // debugJavaListBreakpoints (R-JD-11) is the deliberate session exception, tested in DebugListBreakpointsTest.
+    // 11 session-bound actions; the 3 breakpoint marker ops work without a session (R-JD-13, DebugBreakpointNoSessionTest) and debugJavaListBreakpoints is the deliberate read exception (R-JD-11, DebugListBreakpointsTest).
     @Test
     public void noSessionFailsHonest() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
@@ -33,7 +35,7 @@ public class JavaDebugToolTest extends AbstractIntegrationTest {
         // GIVEN: no active debug session
         assertEquals("premise: no launches in the test workbench", 0, launchCount());
 
-        // WHEN: every action is called without a session
+        // WHEN: every session-bound action is called without a session
         var results = new String[] {
                 tool.getState(),
                 tool.getStackTrace(null),
@@ -41,9 +43,6 @@ public class JavaDebugToolTest extends AbstractIntegrationTest {
                 tool.evaluateExpression(null, 0, "x + 1", 0),
                 tool.getException(null),
                 tool.setVariable(null, 0, "x", "1"),
-                tool.setBreakpoint("src/Foo.java", 1, null, 0, "THREAD"),
-                tool.setExceptionBreakpoint("java.lang.Exception", "THREAD", null, null, null),
-                tool.removeBreakpoint("1"),
                 tool.stepOver(null, 15000),
                 tool.stepIn(null, 15000),
                 tool.stepOut(null, 15000),

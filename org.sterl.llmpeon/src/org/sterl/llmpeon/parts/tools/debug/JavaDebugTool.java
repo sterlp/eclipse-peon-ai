@@ -44,10 +44,13 @@ import dev.langchain4j.agent.tool.Tool;
  * Reads and drives a user-started Java debug session (JDT debug model, R-JD-4):
  * state, stack, variables, expression evaluation, variables, breakpoints and steps.
  * Stateless — every call re-resolves the session (R-JD-3). Never auto-starts and
- * never auto-disconnects a session (R-JD-1): without an active session every
- * action answers with the honest no-session message — except debugJavaListBreakpoints
- * (R-JD-11): it works without a session, reading the persistent breakpoint
- * markers of the project selected in the chat view instead.
+ * never auto-disconnects a session (R-JD-1): without an active session the
+ * session-bound actions answer with the honest no-session message. Two deliberate
+ * exceptions: debugJavaListBreakpoints (R-JD-11) reads the persistent breakpoint
+ * markers of the project selected in the chat view, and the breakpoint marker ops
+ * debugJavaSetBreakpoint / debugJavaSetExceptionBreakpoint / debugJavaRemoveBreakpoint
+ * (R-JD-13) create or remove the persistent markers without a session — JDT installs
+ * them into a running or a later-started VM.
  *
  * Optional numeric parameters follow "0 = unset" (D3).
  */
@@ -58,6 +61,9 @@ public class JavaDebugTool extends AbstractTool {
     private static final String EXCEPTION_BREAKPOINT_MARKER = "org.eclipse.jdt.debug.javaExceptionBreakpointMarker";
 
     private static final String NO_PROJECT = "no project selected — select a project to list its breakpoints";
+
+    /** R-JD-13: the honest no-session note on breakpoint marker ops (no VM-install status without a session). */
+    static final String NO_SESSION_MARKER_OP = "no active session — breakpoint stored as marker, installed when a session starts";
 
     private IProject currentProject;
 
@@ -202,16 +208,13 @@ public class JavaDebugTool extends AbstractTool {
         return DebugJson.valueResponse(name, type, after);
     }
 
-    @Tool(name = "debugJavaSetBreakpoint", value = "Set a line breakpoint with optional condition, hit count and suspend policy (THREAD or VM).")
-    public String setBreakpoint(@P(name = "file", description = "Project-relative file path of the session project (or /project/... absolute).") String file,
+    @Tool(name = "debugJavaSetBreakpoint", value = "Set a line breakpoint with optional condition, hit count and suspend policy (THREAD or VM). Works without a debug session — stored as a JDT marker, installed into the VM when a session starts (no VM-install status in the response when no session is active).")
+    public String setBreakpoint(@P(name = "file", description = "Project-relative file path of the session project, or of the project selected in the chat view when no session is active (or /project/... absolute).") String file,
             @P(name = "line", description = "1-based line number.") int line,
             @P(name = "condition", description = "Breakpoint condition expression; empty = none.", required = false) String condition,
             @P(name = "hitCount", description = "Suspend after this many hits; 0 = every hit.", required = false) Integer hitCount,
             @P(name = "suspendPolicy", description = "THREAD (default) or VM.", required = false) String suspendPolicy) {
         var session = DebugSession.findActive();
-        if (session == null) {
-            return noSession("debugJavaSetBreakpoint");
-        }
         if (line < 1) {
             throw new IllegalArgumentException("line must be >= 1 (got: " + line + ")");
         }
@@ -228,7 +231,7 @@ public class JavaDebugTool extends AbstractTool {
             }
             project = project(segments[0]);
             relativePath = String.join("/", Arrays.copyOfRange(segments, 1, segments.length));
-        } else {
+        } else if (session != null) {
             String projectName = session.sessionProject();
             if (projectName.isBlank()) {
                 throw new IllegalArgumentException("cannot resolve the project for file '" + file
@@ -236,6 +239,12 @@ public class JavaDebugTool extends AbstractTool {
             }
             project = project(projectName);
             relativePath = file;
+        } else if (currentProject != null) {
+            project = currentProject;
+            relativePath = file;
+        } else {
+            throw new IllegalArgumentException("cannot resolve the project for file '" + file
+                    + "' — there is no active debug session to resolve the project from and no project is selected in the chat view; select a project or pass /project/path explicitly");
         }
         if (relativePath == null || relativePath.isBlank()) {
             throw new IllegalArgumentException("no file path after the project segment in '" + file + "'");
@@ -260,19 +269,16 @@ public class JavaDebugTool extends AbstractTool {
         } catch (CoreException e) {
             throw DebugSupport.fail("configuring the breakpoint in " + file + ":" + line, e);
         }
-        return DebugJson.breakpointResponse(breakpoint, file, line, null);
+        return DebugJson.breakpointResponse(breakpoint, file, line, null, session == null ? NO_SESSION_MARKER_OP : null);
     }
 
-    @Tool(name = "debugJavaSetExceptionBreakpoint", value = "Set an exception breakpoint for a type with suspend policy and caught/uncaught/subtype options.")
+    @Tool(name = "debugJavaSetExceptionBreakpoint", value = "Set an exception breakpoint for a type with suspend policy and caught/uncaught/subtype options. Works without a debug session — stored as a JDT marker on the workspace root, installed into the VM when a session starts (no VM-install status in the response when no session is active).")
     public String setExceptionBreakpoint(@P(name = "exceptionType", description = "Fully qualified exception type name.") String exceptionType,
             @P(name = "suspendPolicy", description = "THREAD (default) or VM.", required = false) String suspendPolicy,
             @P(name = "catchUncaught", description = "Catch uncaught exceptions; empty = true.", required = false) Boolean catchUncaught,
             @P(name = "catchCaught", description = "Catch caught exceptions; empty = false.", required = false) Boolean catchCaught,
             @P(name = "subTypes", description = "Include subtypes; empty = true.", required = false) Boolean subTypes) {
         var session = DebugSession.findActive();
-        if (session == null) {
-            return noSession("debugJavaSetExceptionBreakpoint");
-        }
         if (exceptionType == null || exceptionType.isBlank()) {
             throw new IllegalArgumentException("exceptionType must be a fully qualified type name");
         }
@@ -296,15 +302,12 @@ public class JavaDebugTool extends AbstractTool {
         } catch (CoreException e) {
             throw DebugSupport.fail("configuring the exception breakpoint for " + exceptionType, e);
         }
-        return DebugJson.breakpointResponse(breakpoint, null, null, exceptionType);
+        return DebugJson.breakpointResponse(breakpoint, null, null, exceptionType, session == null ? NO_SESSION_MARKER_OP : null);
     }
 
-    @Tool(name = "debugJavaRemoveBreakpoint", value = "Remove a breakpoint previously created by debugJavaSetBreakpoint or debugJavaSetExceptionBreakpoint, given its marker id.")
+    @Tool(name = "debugJavaRemoveBreakpoint", value = "Remove a breakpoint previously created by debugJavaSetBreakpoint or debugJavaSetExceptionBreakpoint, given its marker id. Works without a debug session — the marker is removed whether or not a session is active.")
     public String removeBreakpoint(@P(name = "id", description = "Breakpoint marker id from a debugJavaSetBreakpoint response.") String id) {
         var session = DebugSession.findActive();
-        if (session == null) {
-            return noSession("debugJavaRemoveBreakpoint");
-        }
         long markerId;
         try {
             markerId = Long.parseLong(id.trim());
@@ -326,7 +329,7 @@ public class JavaDebugTool extends AbstractTool {
         } catch (CoreException e) {
             throw DebugSupport.fail("removing breakpoint marker id " + markerId, e);
         }
-        return DebugJson.removedResponse(markerId);
+        return DebugJson.removedResponse(markerId, session == null ? NO_SESSION_MARKER_OP : null);
     }
 
     @Tool(name = "debugJavaListBreakpoints", value = "List the breakpoint map of the project selected in the chat view: all line breakpoints of that project plus the workspace-wide exception breakpoints (their markers live on the workspace root, so they appear for every project), each with id, type, location, condition, hit count and enabled state. Works without a debug session — it reads the persistent markers, so phantom breakpoints set in the UI between sessions are visible too. hitCount 0 = every hit. Removing a breakpoint stays debugJavaRemoveBreakpoint(id). No project selected → honest error.")

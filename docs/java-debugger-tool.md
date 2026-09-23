@@ -11,6 +11,10 @@ idPrefix: JD
 > Basis: Eclipse-Debug-Model (JDT), nicht DAP — [ADR-0050](adr/0050-debugger-jdt-not-dap-user-session.md).
 > API-Fakten 2026-09: [ADR-0049](adr/0049-jdt-debug-2026-09-api-drift.md).
 > Ursprung: CR-4 des Copilot-Vergleichs — [resolved-points.md](resolved-points.md) („Tool-Evolution-Run").
+> **2026-09-23 (❌ R-JD-13 + Rename):** Breakpoint-Actions (`debugJavaSetBreakpoint` /
+> `debugJavaSetExceptionBreakpoint` / `debugJavaRemoveBreakpoint`) arbeiten jetzt **ohne Session**
+> (Marker-Op, JDT installiert in laufende + später gestartete VMs); alle Tool-Namen snake_case →
+> `debugJava*` camelCase — [ADR-0054](adr/0054-tool-naming-camelcase-family-prefix.md).
 
 ## Ziel
 
@@ -20,26 +24,31 @@ setzen, Steps). Weil die Session User-Property ist, brauchen wir **keine Confirm
 
 ## Actions (voll, in einer Stufe)
 
-- **Lesend:** `get_state`, `get_variables` (nested, depth — Frame-Lokale **plus statische Felder
-  des Frame-Typs** als separater `statics`-Block, R-JD-9), `get_stack_trace`, `get_exception`
-  (Exception am Suspend, R-JD-10), `list_breakpoints` (R-JD-11, auch ohne Session — gewähltes
-  Projekt, Exception-BPs workspace-wide).
-- **Ändernd:** `evaluate_expression` (Timeout; Primitive/String/null als Wert, Objekt-Ergebnisse
-  mit Feldwerten bis Tiefe 2, R-JD-9), `set_variable` (nur Primitiven/String/null), `set_breakpoint` (conditional + hitCount),
-  `set_exception_breakpoint`, `remove_breakpoint`, `step_over/in/out`, `continue`, `suspend`.
+- **Lesend:** `debugJavaGetState`, `debugJavaGetVariables` (nested, depth — Frame-Lokale **plus statische
+  Felder des Frame-Typs** als separater `statics`-Block, R-JD-9), `debugJavaGetStackTrace`,
+  `debugJavaGetException` (Exception am Suspend, R-JD-10), `debugJavaListBreakpoints` (R-JD-11,
+  auch ohne Session — gewähltes Projekt, Exception-BPs workspace-wide).
+- **Ändernd, ohne Session (Marker-Op, R-JD-13):** `debugJavaSetBreakpoint` (conditional + hitCount),
+  `debugJavaSetExceptionBreakpoint`, `debugJavaRemoveBreakpoint`.
+- **Ändernd, Session nötig (R-JD-1):** `debugJavaEvaluateExpression` (Timeout; Primitive/String/null als
+  Wert, Objekt-Ergebnisse mit Feldwerten bis Tiefe 2, R-JD-9), `debugJavaSetVariable` (nur
+  Primitiven/String/null), `debugJavaStepOver`/`debugJavaStepIn`/`debugJavaStepOut`,
+  `debugJavaContinue`, `debugJavaSuspend`.
 
 ## Regeln
 
 ### R-JD-1 — Keine Session = ehrlicher Fehler ✅
 
-Alle Actions setzen eine **aktive Debug-Session** voraus (vom User gestartet). Ohne Session: ehrlicher
+Die **session-gebundenen** Actions (alles außer `debugJavaSetBreakpoint`/`debugJavaSetExceptionBreakpoint`/
+`debugJavaRemoveBreakpoint` — R-JD-13 — und `debugJavaListBreakpoints` — R-JD-11) setzen eine **aktive
+Debug-Session** voraus (vom User gestartet). Ohne Session: ehrlicher
 Fehler („no active debug session — start debugging in the Debug view first"), kein Auto-Start durch den
 Agenten, kein Auto-Disconnect.
 
 #### UC-JD-1 — noSessionFailsHonest ✅
 - GIVEN keine Debug-Session WHEN irgendeine Action THEN ehrlicher Fehler mit Hinweis, kein Auto-Start
   (Launch-Zähler unverändert). *(Automatisiert: `JavaDebugToolTest.noSessionFailsHonest` über alle
-  14 Actions — get_exception seit R-JD-10, `348d521`.)*
+  11 session-gebundenen Actions — debugJavaGetException seit R-JD-10, `348d521`.)*
 
 ### R-JD-2 — Session-Lifecycle gehört dem User ✅
 
@@ -56,7 +65,7 @@ JSON-Output, pretty; synchron — jedes Tool gibt sofort zurück, was es sieht. 
 Zustands-Gedächtnis im Tool — Session-State lebt im Eclipse-Debug-Model.
 
 #### UC-JD-3 — readActionsReturnNestedJson ✅ (manuelle Verifikation 2026-09-21, ADR-0051)
-- GIVEN laufende Debug-Session WHEN `get_state` / `get_stack_trace` / `get_variables depth=2` THEN
+- GIVEN laufende Debug-Session WHEN `debugJavaGetState` / `debugJavaGetStackTrace` / `debugJavaGetVariables depth=2` THEN
   JSON (pretty), Variablen nested bis Tiefe 2.
 
 ### R-JD-4 — Basis Eclipse-Debug-Model, keine Confirmations ✅
@@ -66,7 +75,7 @@ Keine Confirmations (bewusst, Session = User-Property — Paul 2026-09-19): jede
 der User sieht jede Änderung unmittelbar im Debug-UI.
 
 #### UC-JD-4 — setVariableImmediateNoConfirmation ✅ (manuelle Verifikation 2026-09-21, ADR-0051)
-- GIVEN laufende Session WHEN `set_variable` auf Primitive/String/null THEN Wert sofort geändert, ohne
+- GIVEN laufende Session WHEN `debugJavaSetVariable` auf Primitive/String/null THEN Wert sofort geändert, ohne
   Bestätigungsrunde; Debug-UI zeigt ihn. GIVEN Ziel ist kein Primitive/String/null THEN ehrlicher Fehler
   („primitives, String or null only (declared: <type>)").
 
@@ -74,7 +83,7 @@ der User sieht jede Änderung unmittelbar im Debug-UI.
 
 Das Tool gehört Da Meks Toolset (`isEditTool() = true`, Registrierung in `SharedToolsComponent`);
 Plan-/Review-/Search-/ReadOnly-Custom-Agents filtern es automatisch raus. Auswirkung nur auf die
-debuggte App.
+debuggte App. Allowlist-Präfix für Custom Agents: `debugJava` (Naming: ADR-0054).
 
 #### UC-JD-5 — conditionalBreakpointWithHitCount ✅ (manuelle Verifikation 2026-09-21, ADR-0051)
 - GIVEN laufende Session WHEN Breakpoint conditional + hitCount THEN Suspend genau wie konfiguriert
@@ -82,15 +91,15 @@ debuggte App.
   Testkombination ist `hitCount=3` + `condition="counter == 2"`).
 
 #### UC-JD-6 — stepAndControlActions ✅ (manuelle Verifikation 2026-09-21, ADR-0051)
-- GIVEN suspended Thread WHEN `step_over`/`step_in`/`step_out`/`continue`/`suspend`/`evaluate_expression`
-  THEN Ausführung bewegt sich wie verlangt; `evaluate_expression` mit Timeout respektiert;
-  `step_out` am Top-Frame = ehrlicher „use continue"-Hinweis.
+- GIVEN suspended Thread WHEN `debugJavaStepOver`/`debugJavaStepIn`/`debugJavaStepOut`/`debugJavaContinue`/`debugJavaSuspend`/`debugJavaEvaluateExpression`
+  THEN Ausführung bewegt sich wie verlangt; `debugJavaEvaluateExpression` mit Timeout respektiert;
+  `debugJavaStepOut` am Top-Frame = ehrlicher „use continue"-Hinweis.
 
 ### R-JD-6 — Session-Erkennung schließt tote Targets aus ✅
 
 Session-Lookup filtert Targets, deren Process terminiert ist oder keine Threads mehr hat
 (`IProcess.isTerminated()` / `!hasThreads()`) — eine **selbst beendete** VM (Programm lief durch)
-zählt als „no active debug session", genau wie eine UI-Terminierung; `continue` pollt dann nicht
+zählt als „no active debug session", genau wie eine UI-Terminierung; `debugJavaContinue` pollt dann nicht
 in die Deadline. Kollateral aus dem E2E-Smoke (F7, 2026-09-21, Fix `2efaaf6`).
 
 #### UC-JD-7 — deadVMSelfExitFailsHonest ✅
@@ -99,14 +108,14 @@ in die Deadline. Kollateral aus dem E2E-Smoke (F7, 2026-09-21, Fix `2efaaf6`).
   *(Automatisiert: `DebugSessionLookupTest` ×3 + `DebugSessionThreadsTest` ×2 — Mutation-Nachweis
   für den Session-Gate liegt separat vor (3 rote Pfade).)*
 
-### R-JD-7 — set_breakpoint verlangt geladene Compilation Unit ✅
+### R-JD-7 — debugJavaSetBreakpoint verlangt geladene Compilation Unit ✅
 
 Breakpoint-Erstellung löst das File zuerst über JDT auf (`JavaCore.createCompilationUnitFrom` →
 `findPrimaryType`) und legt den Marker nur bei geladener CU an; sonst ehrlicher Fehler mit Datei +
 Projekt + Grund (E2E F1: rohes `IFile` → „not a Java compilation unit", Fix `2efaaf6`).
 
 #### UC-JD-8 — breakpointRequiresCompilationUnit ✅
-- GIVEN Datei im Projekt WHEN `set_breakpoint` THEN CU-Auflösung vor Marker-Factory; Nicht-Source-
+- GIVEN Datei im Projekt WHEN `debugJavaSetBreakpoint` THEN CU-Auflösung vor Marker-Factory; Nicht-Source-
   File / fehlender Primär-Typ → ehrlicher Fehler, keine Marker-Leiche. *(Automatisiert:
   `DebugPrimaryTypeTest` ×3.)*
 
@@ -115,43 +124,43 @@ Projekt + Grund (E2E F1: rohes `IFile` → „not a Java compilation unit", Fix 
 - `vm.state` = „suspended", wenn Target suspended ODER ein non-system-Thread suspended ist
   (debugging-relevante Frage „wo steht es?"), sonst „running"; zusätzlich `vm.suspendedThreads`
   (Anzahl suspended non-system Threads) — mixed State ehrlich gezählt.
-- `get_state` trägt `session` = Launch-Name + pid (`target.getProcess().getAttribute(ATTR_PROCESS_ID)`,
+- `debugJavaGetState` trägt `session` = Launch-Name + pid (`target.getProcess().getAttribute(ATTR_PROCESS_ID)`,
   **String** — `JDIDebugTarget` implementiert `IProcess` nicht, `instanceof` wäre immer false).
-- `set_variable`-Response liefert Primitive als JSON-Zahl (nicht String) — konsistent mit
-  `get_variables` (E2E F3).
+- `debugJavaSetVariable`-Response liefert Primitive als JSON-Zahl (nicht String) — konsistent mit
+  `debugJavaGetVariables` (E2E F3).
 
 #### UC-JD-9 — stateAndValueContract ✅
 - GIVEN main suspended, System-Threads running, Target selbst NICHT suspended THEN `vm.state =
-  "suspended"`, `suspendedThreads = 1`, `session` nennt Launch + pid; `set_variable`-Response
+  "suspended"`, `suspendedThreads = 1`, `session` nennt Launch + pid; `debugJavaSetVariable`-Response
   liefert den Wert als JSON-Zahl. *(Automatisiert: `DebugSessionThreadsTest` ×2 +
   `DebugJsonUnitTest.valueResponseRendersPrimitivesAsJsonPrimitives`.)*
 
 ### R-JD-9 — Statische Felder + Objekt-Feldwerte (F2) ✅
 
-- `get_variables` liefert zusätzlich zu den Frame-Lokalen die **statischen Felder des Frame-Typs**
+- `debugJavaGetVariables` liefert zusätzlich zu den Frame-Lokalen die **statischen Felder des Frame-Typs**
   als separates JSON-Feld `"statics"` (leeres Array, wenn keine) — dieselbe Verschachtelung, auch
   unter dem `depth`-Parameter. Getrennt von `locals`, damit der LLM Scope sauber trennt; **kein
-  zusätzlicher Parameter** — wer `get_variables` ruft, will den vollen Scope.
-- `evaluate_expression` rendert ein Objekt-Ergebnis nicht mehr nur als Referenz-ID „ (id=N)":
-  Felder werden mit demselben Walker wie `get_variables` aufgelöst, **fixe Tiefe 2**; Primitive,
+  zusätzlicher Parameter** — wer `debugJavaGetVariables` ruft, will den vollen Scope.
+- `debugJavaEvaluateExpression` rendert ein Objekt-Ergebnis nicht mehr nur als Referenz-ID „ (id=N)":
+  Felder werden mit demselben Walker wie `debugJavaGetVariables` aufgelöst, **fixe Tiefe 2**; Primitive,
   String und null bleiben unverändert Wert. Kein neuer Parameter — die natürlichste Erwartung ist,
   dass `evaluate("p")` die Feldwerte zeigt.
 
 #### UC-JD-10 — staticsInGetVariables ✅
-- GIVEN Frame in einer Klasse mit statischen Feldern WHEN `get_variables` THEN Antwort enthält
+- GIVEN Frame in einer Klasse mit statischen Feldern WHEN `debugJavaGetVariables` THEN Antwort enthält
   `statics` mit den Feldern (Name, Typ, Wert) und `locals` unverändert; GIVEN Klasse ohne statische
   Felder THEN leeres `statics`-Array. *(Automatisiert: `DebugJsonUnitTest.staticsInGetVariables`
   ×2 — Proxy-Stub, keine Session nötig.)*
 
 #### UC-JD-11 — evaluateRendersObjectFields ✅
-- GIVEN `evaluate_expression("p")` liefert ein Objekt WHEN das Ergebnis gerendert wird THEN die
+- GIVEN `debugJavaEvaluateExpression("p")` liefert ein Objekt WHEN das Ergebnis gerendert wird THEN die
   Felder des Objekts stehen bis Tiefe 2 im Output — keine bloße „ (id=N)"-Referenz; Primitive/
   String/null bleiben als Wert gerendert. *(Automatisiert: `DebugJsonUnitTest`
   `evaluateRendersObjectFieldsToDepth2` + Primitive/null-Regression.)*
 
-### R-JD-10 — `get_exception`: Exception am Suspend, stateless + ehrlich ✅
+### R-JD-10 — `debugJavaGetException`: Exception am Suspend, stateless + ehrlich ✅
 
-Neue Action `get_exception` (Thread-Auflösung wie `get_stack_trace`). Sie scannt den Top-Frame
+Neue Action `debugJavaGetException` (Thread-Auflösung wie `debugJavaGetStackTrace`). Sie scannt den Top-Frame
 (lokale Variablen inkl. Catch-Parameter) nach einer Variable, deren Wert ein Throwable ist, und
 liefert Typ + Message + Variablenname. Keine gefunden → ehrlicher Fehler („no exception variable
 in top frame"). **Stateless** (R-JD-3 bleibt): kein Event-Listening, kein Cache.
@@ -159,35 +168,35 @@ in top frame"). **Stateless** (R-JD-3 bleibt): kein Event-Listening, kein Cache.
 **Recognition ist name-basiert** (bewusst, kein Workspace-`isAssignableFrom` — das würde den
 Session-freien Stub-Test brechen): exakt `java.lang.Throwable` oder Simple-Name endet auf
 `Exception`/`Error`. **Grenze:** ein Custom-Throwable mit unüblichem Namen wird nicht erkannt
-(ehrlicher Fehler statt Befund) — dann bleibt `get_variables` der Weg; die Tool-Description nennt
+(ehrlicher Fehler statt Befund) — dann bleibt `debugJavaGetVariables` der Weg; die Tool-Description nennt
 die Grenze. Zweite dokumentierte Grenze: am Throw-Site eines ungefangenen `throw new X(…)`
-existiert keine benannte Variable — auch dort findet `get_exception` nichts.
+existiert keine benannte Variable — auch dort findet `debugJavaGetException` nichts.
 
-> **WEIL** (E2E-Smoke 2026-09-21): am Exception-Suspend zeigte `get_state` nur den Frame, nicht
+> **WEIL** (E2E-Smoke 2026-09-21): am Exception-Suspend zeigte `debugJavaGetState` nur den Frame, nicht
 > welche Exception geworfen hat — der Tester musste sie sich aus Frame+Kontext erschließen. Eine
 > echte Event-Abfrage (JDI-ExceptionEvent) würde R-JD-3 (stateless) brechen und mit JDTs eigenem
 > Event-Handler konkurrieren; der frame-lokale Scan ist der kleinste ehrliche Weg.
 
 #### UC-JD-12 — getExceptionFindsThrowableInTopFrame ✅
-- GIVEN Thread an Exception-Suspend mit Catch-Variable `e` WHEN `get_exception` THEN Typ + Message +
+- GIVEN Thread an Exception-Suspend mit Catch-Variable `e` WHEN `debugJavaGetException` THEN Typ + Message +
   Variablenname; GIVEN kein Throwable im Top-Frame THEN ehrlicher Fehler, kein erfundener Typ;
   GIVEN Custom-Throwable `my.company.WeirdThrowable` (unüblicher Name) THEN nicht erkannt,
   ehrlicher Fehler. *(Automatisiert: `DebugJsonUnitTest.exceptionFindsThrowableInTopFrame` /
   `exceptionHonestErrorWhenNone` / `exceptionNotRecognizedByUnusualName` +
-  `JavaDebugToolTest.noSessionFailsHonest` über alle 14 Actions.)*
+  `JavaDebugToolTest.noSessionFailsHonest` über alle 11 session-gebundenen Actions.)*
 
-### R-JD-11 — `list_breakpoints`: Breakpoint-Landkarte, auch ohne Session ✅
+### R-JD-11 — `debugJavaListBreakpoints`: Breakpoint-Landkarte, auch ohne Session ✅
 
 Neue lesende Action: listet **alle Breakpoint-Marker des gewählten Projekts** — `id`, Typ
 (line/exception), Ort (Typ + Zeile bzw. Exception-Klasse), `condition`, `hitCount`, `enabled`.
 Bewusst **ohne Session nutzbar** (bewusste Ausnahme zu R-JD-1): Marker sind Workspace-State,
 genau die Phantom-BPs, die der Agent nicht sehen kann, existieren zwischen Sessions — dort zu
 listen ist der Zweck (E2E 2026-09-22: der Agent musste über Laufzeitverhalten raten; Paul
-vermutet darin die Ursache der krummen Hits). Entfernen bleibt über `remove_breakpoint(id)`.
+vermutet darin die Ursache der krummen Hits). Entfernen bleibt über `debugJavaRemoveBreakpoint(id)`.
 
 #### UC-JD-13 — listBreakpointsMapsMarkers ✅
 - GIVEN Marker im gewählten Projekt (Line-BP mit condition/hitCount, Exception-BP, UI-gesetzter
-  BP) WHEN `list_breakpoints` (ohne Session) THEN jeder Marker mit id/Typ/Ort/condition/
+  BP) WHEN `debugJavaListBreakpoints` (ohne Session) THEN jeder Marker mit id/Typ/Ort/condition/
   hitCount/enabled; GIVEN keine Marker THEN leere Liste mit Scope-Disclosure; GIVEN anderes
   Projekt THEN dessen Marker erscheinen nicht.
 
@@ -201,6 +210,27 @@ zur Beschreibung).
 #### UC-JD-14 — breakpointResponseClampsNegativeHitCount ✅
 - GIVEN Marker mit hitCount `-1` WHEN Response gerendert THEN `hitCount: 0`; GIVEN `hitCount = 3`
   THEN unverändert `3`. *(Automatisiert: `DebugJsonUnitTest`-Stub.)*
+
+### R-JD-13 — Breakpoints ohne Session (Marker-Op) ❌
+
+`debugJavaSetBreakpoint`, `debugJavaSetExceptionBreakpoint` und `debugJavaRemoveBreakpoint` brauchen
+**keine** Debug-Session: Breakpoints sind persistente JDT-Marker, und JDT installiert sie automatisch
+in laufende **und** später gestartete VMs. Ohne Session legen/entfernen sie den Marker trotzdem; die
+Response nennt ehrlich, dass keine Session aktiv ist („no active session — breakpoint stored as
+marker, installed when a session starts") und enthält keinen VM-Install-Status. CU-Auflösung
+(R-JD-7) und hitCount-Clamp (R-JD-12) gelten unverändert. Session-gebunden bleiben Step/Continue/
+Suspend/State/Evaluate/SetVariable (R-JD-1).
+
+> **WEIL** (Paul 2026-09-23): genau der Workflow „BPs vorbereiten vor dem Launch" war die Lücke,
+> die die Phantom-BPs im E2E 2026-09-22 offengelegt hat — der User setzt BPs im UI, weil der Agent
+> es ohne Session nicht kann. Sichtbarkeit: `debugJavaListBreakpoints` (R-JD-11), Rückweg:
+> `debugJavaRemoveBreakpoint`.
+
+#### UC-JD-15 — breakpointsWorkWithoutSession ❌
+- GIVEN keine Debug-Session WHEN `debugJavaSetBreakpoint` THEN Marker existiert im gewählten Projekt,
+  Response nennt „no active session … stored as marker"; WHEN `debugJavaRemoveBreakpoint(id)` THEN
+  Marker entfernt, dito-Response; GIVEN Session aktiv WHEN gleiches Set THEN BP wie bisher installiert
+  (Install-Status in der Response). *(Automatisiert: `DebugBreakpointNoSessionTest` ×5 (Marker-Ebene: no-Session-Response, Projekt-Auflösung via currentProject, ehrlicher Fehler ohne Projekt) + `DebugJsonUnitTest` ×2 (no-Session-Response-Rendering) + `JavaDebugToolTest.noSessionFailsHonest` (11 session-gebundene Actions); Install-Pfad manuell.)*
 
 ## Thread-Enumeration (technischer Befund, ADR-verlinkt)
 
