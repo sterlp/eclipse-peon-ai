@@ -5,6 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CancellationException;
@@ -23,6 +26,7 @@ import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.memory.FileAgentHistoryStore;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
+import org.sterl.llmpeon.queuedmessages.UserMessageQueue;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.tool.ToolService;
@@ -63,9 +67,16 @@ class AbstractAgentTest {
         });
 
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        // AND — a fixed 14:32 clock so the Rule 9 marker time is deterministic
+        agent.setMessageQueue(new UserMessageQueue(10_000, fixedClock1432()));
+        List<String> toolLines = new ArrayList<>();
+        var monitor = new AiMonitor() {
+            @Override public void onChatResponse(org.sterl.llmpeon.tool.model.SimpleMessage m) {}
+            @Override public void onTool(String message) { toolLines.add(message); }
+        };
 
         // WHEN — start call on background thread, queue msg2+msg3 during execution
-        Thread callerThread = new Thread(() -> agent.call("msg1", monitor -> { }));
+        Thread callerThread = new Thread(() -> agent.call("msg1", monitor));
         callerThread.start();
 
         callStarted.await(5, TimeUnit.SECONDS);
@@ -82,7 +93,11 @@ class AbstractAgentTest {
         assertThat(userTexts).hasSize(2);
         
         assertThat(userTexts.get(0)).contains("msg1");
-        assertThat(userTexts.get(1)).contains("msg2", "msg3");
+        // AND — the burst's onTool line carries the FIRST entry's queued time (Rule 9)
+        assertThat(toolLines).contains("Reading queued User message: msg2"
+                + System.lineSeparator() + "msg3 (queued 14:32)");
+        // AND — the LLM payload marker carries the same time, text unchanged after the prefix
+        assertThat(userTexts.get(1)).contains("[Queued Message] (queued 14:32):", "msg2", "msg3");
         
     }
 
@@ -363,6 +378,11 @@ class AbstractAgentTest {
                 .toList();
     }
 
+    /** A fixed clock at 14:32 UTC for deterministic Rule 9 queued-time assertions. */
+    private static Clock fixedClock1432() {
+        return Clock.fixed(Instant.parse("2026-09-23T14:32:00Z"), ZoneOffset.UTC);
+    }
+
     /** compactContext clears memory, invalidates systemMessage, restores turn context, then adds summary. */
     @Test
     void test_compactContext_clearsMemoryAndRestoresTurnContext() {
@@ -530,6 +550,8 @@ class AbstractAgentTest {
         var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
                 .aiMessage(AiMessage.aiMessage("OK")).build());
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        // AND — a fixed 14:32 clock so the Rule 9 marker time is deterministic
+        agent.setMessageQueue(new UserMessageQueue(10_000, fixedClock1432()));
         agent.queueMessage("q1");
 
         // WHEN
@@ -538,7 +560,7 @@ class AbstractAgentTest {
         // THEN — the drained queue becomes the payload, marked like the in-loop pollNext
         List<String> userTexts = extractUserTexts(agent.getMemory().getCopy());
         assertThat(userTexts).hasSize(1);
-        assertThat(userTexts.get(0)).contains("[Queued Message]:", "q1");
+        assertThat(userTexts.get(0)).contains("[Queued Message] (queued 14:32):", "q1");
         // AND — no literal "null" concatenated into the prompt (pre-fix defect)
         assertThat(userTexts.get(0)).doesNotContain("null");
         // AND — exactly one LLM call for the queued payload

@@ -41,7 +41,7 @@ public abstract class AbstractAgent implements AiAgent {
 
     protected final ToolService toolService;
 
-    private final UserMessageQueue messageQueue = new UserMessageQueue();
+    private UserMessageQueue messageQueue = new UserMessageQueue();
     private final AtomicBoolean working = new AtomicBoolean(false);
 
     private volatile String systemMessage = null;
@@ -150,6 +150,9 @@ public abstract class AbstractAgent implements AiAgent {
         return messageQueue.add(msg);
     }
 
+    /** Test seam: swap the queue (fixed {@code Clock} for Rule 9 Queued-At tests). Package-private. */
+    void setMessageQueue(UserMessageQueue queue) { this.messageQueue = queue; }
+
     public int tokenContextUsedInPercent() {
         float used = memory.getTotalTokenUsed();
         if (used < 100) return 0;
@@ -185,10 +188,11 @@ public abstract class AbstractAgent implements AiAgent {
             if (stillQueued == null) {
                 next = initialMessage;
             } else if (StringUtil.hasValue(initialMessage)) {
-                next = stillQueued + System.lineSeparator() + initialMessage;
+                // Join path: queued payload + initial — no time here (Rule 9 shows it only on the marker)
+                next = stillQueued.text() + System.lineSeparator() + initialMessage;
             } else {
                 // Follow-up (null initial): the queue IS the payload — mark like in-loop pollNext
-                next = "[Queued Message]: " + stillQueued;
+                next = queuedMarker(stillQueued);
             }
 
             ChatResponse lastResponse = null;
@@ -200,10 +204,13 @@ public abstract class AbstractAgent implements AiAgent {
                     throw e;
                 }
                 // check if we have waiting messages
-                next = messageQueue.pollNext(); // FIFO drain
-                if (next != null) {
-                    monitor.onTool("Reading queued User message: " + next);
-                    next = "[Queued Message]: " + next;
+                var queued = messageQueue.pollNext(); // FIFO drain
+                if (queued != null) {
+                    monitor.onTool("Reading queued User message: " + queued.text()
+                            + " (queued " + messageQueue.queuedLabel(queued.queuedAt()) + ")");
+                    next = queuedMarker(queued);
+                } else {
+                    next = null;
                 }
             } while (next != null && lastResponse != null && !monitor.isCanceled());
 
@@ -221,22 +228,33 @@ public abstract class AbstractAgent implements AiAgent {
     /** Drain remaining queued messages into memory on abort/error. */
     private void handleAbortAndDrain(AiMonitor monitor) {
         int preservedCount = messageQueue.size();
-        String preserved = messageQueue.drainAll();
+        var preserved = messageQueue.drainAll();
         if (preserved != null) {
-            memory.add(UserMessage.from(preserved));
+            // Abort drain = memory payload — no time (Rule 9 shows it only on the onTool line + marker)
+            memory.add(UserMessage.from(preserved.text()));
             monitor.onTool(preservedCount + " queued message(s) preserved for your next request.");
         }
     }
 
     @Override
     public String drainQueue() {
-        return messageQueue.drainAll();
+        // Interface contract stays String; the queue now carries the queuedAt timestamp (Rule 9)
+        var drained = messageQueue.drainAll();
+        return drained == null ? null : drained.text();
     }
 
     /** @return the number of queued messages waiting to be processed. */
     @Override
     public int getQueuedMessageCount() {
         return messageQueue.size();
+    }
+
+    /**
+     * Rule 9 LLM marker: {@code [Queued Message] (queued HH:mm): <text>} — the message text stays
+     * unchanged after the prefix; the time is rendered in the queue's clock zone.
+     */
+    private String queuedMarker(UserMessageQueue.QueuedMessage entry) {
+        return "[Queued Message] (queued " + messageQueue.queuedLabel(entry.queuedAt()) + "): " + entry.text();
     }
 
     /** Execute a single LLM+tool turn for the given message. */

@@ -1,17 +1,36 @@
 package org.sterl.llmpeon.queuedmessages;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
 import java.util.Deque;
 
 public class UserMessageQueue {
-    private final Deque<String> queue = new ArrayDeque<>();
+
+    /** A queued message: its text plus the instant it was queued (Rule 9 Queued-At Disclosure). */
+    public record QueuedMessage(String text, long queuedAt) {}
+
+    private static final DateTimeFormatter HHMM = DateTimeFormatter.ofPattern("HH:mm");
+
+    private final Deque<QueuedMessage> queue = new ArrayDeque<>();
     private volatile long batchStartTime = 0;
     private final long batchWindowMs;
+    private final Clock clock;
 
     public UserMessageQueue() { this(10_000); } // Production default: 10s window
 
     /** @param batchWindowMs configurable window for tests (e.g. 250ms) */
-    public UserMessageQueue(long batchWindowMs) { this.batchWindowMs = batchWindowMs; }
+    public UserMessageQueue(long batchWindowMs) { this(batchWindowMs, Clock.systemDefaultZone()); }
+
+    /**
+     * @param clock injectable clock (tests) that stamps {@code queuedAt} and renders the
+     *        {@code HH:mm} label — production uses the system default-zone clock.
+     */
+    public UserMessageQueue(long batchWindowMs, Clock clock) {
+        this.batchWindowMs = batchWindowMs;
+        this.clock = clock;
+    }
 
     /**
      * Add a message to the queue, optionally merging with the last entry within the sliding window.
@@ -19,18 +38,20 @@ public class UserMessageQueue {
      */
     public synchronized boolean add(String message) {
         if (message == null || message.isBlank()) return false;
-        long now = System.currentTimeMillis();
+        long now = clock.millis();
 
         boolean startNewBatch = queue.isEmpty() || (now - batchStartTime > batchWindowMs);
         String combined = message;
+        long queuedAt = now;
 
         // Allow merging even for longer incoming messages, as long as capacity permits
         if (!startNewBatch) {
-            String last = queue.removeLast();
+            QueuedMessage last = queue.removeLast();
             String sep = System.lineSeparator();
-            int newLen = last.length() + sep.length() + message.length();
+            int newLen = last.text().length() + sep.length() + message.length();
             if (newLen <= 300) {
-                combined = last + sep + message;
+                combined = last.text() + sep + message;
+                queuedAt = last.queuedAt(); // burst-join keeps the FIRST entry's time (Rule 9)
                 startNewBatch = false; // explicitly merged
             } else {
                 queue.addLast(last); // cap exceeded, restore & add separate
@@ -38,19 +59,27 @@ public class UserMessageQueue {
             }
         }
 
-        queue.addLast(combined);
+        queue.addLast(new QueuedMessage(combined, queuedAt));
         batchStartTime = now; // sliding window reset
         return startNewBatch; // true if new entry created, false if silently joined
     }
 
-    public synchronized String pollNext() { return queue.pollFirst(); }
+    public synchronized QueuedMessage pollNext() { return queue.pollFirst(); }
 
-    public synchronized String drainAll() {
+    public synchronized QueuedMessage drainAll() {
         if (queue.isEmpty()) return null;
-        String combined = String.join(System.lineSeparator(), queue);
+        // Burst-join shows the FIRST entry's time (Rule 9)
+        long firstQueuedAt = queue.peekFirst().queuedAt();
+        String combined = String.join(System.lineSeparator(),
+                queue.stream().map(QueuedMessage::text).toList());
         queue.clear();
         batchStartTime = 0;
-        return combined;
+        return new QueuedMessage(combined, firstQueuedAt);
+    }
+
+    /** Renders a stored {@code queuedAt} as {@code HH:mm} in this queue's clock zone (Rule 9). */
+    public String queuedLabel(long queuedAt) {
+        return Instant.ofEpochMilli(queuedAt).atZone(clock.getZone()).format(HHMM);
     }
 
     public synchronized int size() { return queue.size(); }
