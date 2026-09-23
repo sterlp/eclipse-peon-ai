@@ -77,60 +77,60 @@ Erwartung steht hier.
 >
 > | # | Aufruf | Erwartet |
 > |---|---|---|
-> | 1.1 | `get_state` | JSON: `vm.state` = suspended, Main-Thread mit `topFrame` (Methode `main`, Typ `DebugFix`, Zeile = Breakpoint-Zeile). |
-> | 1.2 | `get_stack_trace` | Frames, Frame 0 = `DebugFix.main`. |
-> | 1.3 | `get_variables` mit `depth=2` | `locals` mit `counter` (int, 0–9) **und** ein separates `statics`-Feld mit dem statischen `p` (Point, Feldwerte x=1, y=2 bis Tiefe 2) — leeres `statics`-Array, wenn die Klasse keine statischen Felder hat (R-JD-9). |
+> | 1.1 | `debugJavaGetState` | JSON: `vm.state` = suspended, Main-Thread mit `topFrame` (Methode `main`, Typ `DebugFix`, Zeile = Breakpoint-Zeile). |
+> | 1.2 | `debugJavaGetStackTrace` | Frames, Frame 0 = `DebugFix.main`. |
+> | 1.3 | `debugJavaGetVariables` mit `depth=2` | `locals` mit `counter` (int, 0–9) **und** ein separates `statics`-Feld mit dem statischen `p` (Point, Feldwerte x=1, y=2 bis Tiefe 2) — leeres `statics`-Array, wenn die Klasse keine statischen Felder hat (R-JD-9). |
 >
 > Erwartung an die Namen: du solltest die Tools anhand ihrer Namen/Beschreibungen **ohne
 > Experimentieren** richtig bedienen können. Wenn du raten musstest: notieren (Abschlussfrage).
 
-## Phase 2 — set_variable (Agent-Prompt)
+## Phase 2 — debugJavaSetVariable (Agent-Prompt)
 
 > | # | Aufruf | Erwartet |
 > |---|---|---|
-> | 2.1 | `set_variable(name=counter, value=42)` | Response mit neuem Wert **42 als JSON-Zahl** (nicht String); danach `get_variables` bestätigt 42. Danach `set_variable(counter, 0)` — setzt zurück für Phase 3 und verifiziert den zweiten Write. |
-> | 2.2 | `set_variable(name=p, value=0)` | **Ehrlicher Fehler** in der Art „primitives, String or null only (declared: …)" — kein stiller No-Op, kein Crash. |
+> | 2.1 | `debugJavaSetVariable(name=counter, value=42)` | Response mit neuem Wert **42 als JSON-Zahl** (nicht String); danach `debugJavaGetVariables` bestätigt 42. Danach `debugJavaSetVariable(counter, 0)` — setzt zurück für Phase 3 und verifiziert den zweiten Write. |
+> | 2.2 | `debugJavaSetVariable(name=p, value=0)` | **Ehrlicher Fehler** in der Art „primitives, String or null only (declared: …)" — kein stiller No-Op, kein Crash. |
 
 ## Phase 3 — Breakpoints (Agent-Prompt)
 
 > | # | Aufruf | Erwartet |
 > |---|---|---|
-> | 3.1 | `set_breakpoint` auf die Breakpoint-Zeile, `condition="counter == 2"`, `hitCount=3` | Response mit Marker-ID + `installed`. |
-> | 3.2 | `continue` | Läuft weiter … **und suspended wieder**, wenn der BP das **dritte Mal** erreicht ist (JDI: hitCount zählt zuerst, Condition wird danach geprüft). Im Suspend: `counter == 2`. **Zähl-Definition (JDI-Experiment Da Mek, 2026-09-22):** die Suspend-Position beim Setzen zählt als stiller Hit #1 — der BP wurde hier auf der bereits suspendierten Zeile gesetzt, also hält der 3. Hit am **4. Erreichen nach `continue`** (JDI-Semantik, kein Tool-Bug). Alternativ: BP vor dem Launch setzen, dann trifft der 3. Hit exakt das 3. Erreichen. |
-> | 3.3 | `remove_breakpoint(id)` | `{id, removed}`; ein erneuter `continue` hält dann **nicht** mehr an dieser Zeile. |
-> | 3.4 | `remove_breakpoint` mit unbekannter ID | **Ehrlicher Fehler**, kein stiller No-Op. |
+> | 3.1 | `debugJavaSetBreakpoint` auf die Breakpoint-Zeile, `condition="counter == 2"`, `hitCount=3` | Response mit Marker-ID + `installed`. |
+> | 3.2 | `debugJavaContinue` | Läuft weiter … **und suspended wieder**, wenn der BP das **dritte Mal** erreicht ist (JDI: hitCount zählt zuerst, Condition wird danach geprüft). Im Suspend: `counter == 2`. **Zähl-Definition (JDI-Experiment Da Mek, 2026-09-22):** die Suspend-Position beim Setzen zählt als stiller Hit #1 — der BP wurde hier auf der bereits suspendierten Zeile gesetzt, also hält der 3. Hit am **4. Erreichen nach `debugJavaContinue`** (JDI-Semantik, kein Tool-Bug). Alternativ: BP vor dem Launch setzen, dann trifft der 3. Hit exakt das 3. Erreichen. |
+> | 3.3 | `debugJavaRemoveBreakpoint(id)` | `{id, removed}`; ein erneuter `debugJavaContinue` hält dann **nicht** mehr an dieser Zeile. |
+> | 3.4 | `debugJavaRemoveBreakpoint` mit unbekannter ID | **Ehrlicher Fehler**, kein stiller No-Op. |
 >
 > **Phase 3b — Exception-Breakpoint (Paul: Relaunch mit Programm-Arg `throw` nötig) — NACH Phase 4 ausführen!**
 > (Begründung F6: nach dem Exception-Suspend beendet jeder Resume die VM — Phase 4 wäre danach nicht mehr möglich.)
 > **Clean-State-Pflicht (2026-09-22, nach E2E-Befunden):** Paul leert vorher die Breakpoints-View
 > (alle alten Marker weg), damit kein Phantom-BP die Phasen 3b/3.2 verfälscht — solange
-> `list_breakpoints` (R-JD-11) nicht gebaut ist, ist die View die einzige Sicht.
-> 1. `set_exception_breakpoint("java.lang.IllegalArgumentException")` → `continue` → Suspend,
+> `debugJavaListBreakpoints` (R-JD-11) nicht gebaut ist, ist die View die einzige Sicht.
+> 1. `debugJavaSetExceptionBreakpoint("java.lang.IllegalArgumentException")` → `debugJavaContinue` → Suspend,
 >    sobald `IllegalArgumentException` geworfen wird.
-> 2. `get_exception` im Suspend → **Ehrlicher Fehler** in der Art „no exception variable in top
+> 2. `debugJavaGetException` im Suspend → **Ehrlicher Fehler** in der Art „no exception variable in top
 >    frame" — dokumentierte Grenze (R-JD-10): am Throw-Site eines ungefangenen `throw` existiert
 >    keine benannte Variable. Der positive Fall folgt in Phase 3c.
 > 3. Danach Exception-Breakpoint wieder entfernen.
 >
-> **Phase 3c — `get_exception` positiv (Paul: Relaunch mit Programm-Arg `catch` nötig):**
-> 1. `set_breakpoint` auf die `// <-- BREAKPOINT-CATCH`-Zeile (im `catch`-Block, der Agent setzt
+> **Phase 3c — `debugJavaGetException` positiv (Paul: Relaunch mit Programm-Arg `catch` nötig):**
+> 1. `debugJavaSetBreakpoint` auf die `// <-- BREAKPOINT-CATCH`-Zeile (im `catch`-Block, der Agent setzt
 >    ihn selbst — Paul startet nur den Relaunch).
-> 2. `continue` → Suspend **im catch-Block**, `locals` enthält `e` (IllegalStateException).
-> 3. `get_exception` → Typ (`IllegalStateException`) + Message (`caught boom`) +
+> 2. `debugJavaContinue` → Suspend **im catch-Block**, `locals` enthält `e` (IllegalStateException).
+> 3. `debugJavaGetException` → Typ (`IllegalStateException`) + Message (`caught boom`) +
 >    Variablenname (`e`).
-> 4. `remove_breakpoint(id)`, Breakpoint-Catch-Zeile wieder freigeben.
+> 4. `debugJavaRemoveBreakpoint(id)`, Breakpoint-Catch-Zeile wieder freigeben.
 
 ## Phase 4 — Controls & Evaluate (Agent-Prompt)
 
 > | # | Aufruf | Erwartet |
 > |---|---|---|
-> | 4.1 | `step_over` | `topFrame` rückt eine Zeile weiter, Zustand suspended. |
-> | 4.2 | `step_in` | Erster `step_in` von der Loop-Zeile → `main`, Loop-Körper (JDI korrekt); **zweiter** `step_in` → `tick` (Fixture-Zeile 23). |
-> | 4.3 | `step_out` | Zurück in `main`. |
-> | 4.4 | `step_out` erneut am Top-Frame | Ehrliche Meldung in der Art „already at top frame — use continue", kein Crash. |
-> | 4.5 | `evaluate_expression("counter + 1")` | JSON mit `counter + 1` als Wert und Typ. |
-> | 4.6 | `evaluate_expression("p")` | Objekt-Ergebnis mit **Feldwerten bis Tiefe 2** (`x`, `y`) — keine bloße „(id=N)"-Referenz (R-JD-9). |
-> | 4.7 | `suspend` (nach `continue`) | State-JSON mit suspended-Threads. |
+> | 4.1 | `debugJavaStepOver` | `topFrame` rückt eine Zeile weiter, Zustand suspended. |
+> | 4.2 | `debugJavaStepIn` | Erster `debugJavaStepIn` von der Loop-Zeile → `main`, Loop-Körper (JDI korrekt); **zweiter** `debugJavaStepIn` → `tick` (Fixture-Zeile 23). |
+> | 4.3 | `debugJavaStepOut` | Zurück in `main`. |
+> | 4.4 | `debugJavaStepOut` erneut am Top-Frame | Ehrliche Meldung in der Art „already at top frame — use debugJavaContinue", kein Crash. |
+> | 4.5 | `debugJavaEvaluateExpression("counter + 1")` | JSON mit `counter + 1` als Wert und Typ. |
+> | 4.6 | `debugJavaEvaluateExpression("p")` | Objekt-Ergebnis mit **Feldwerten bis Tiefe 2** (`x`, `y`) — keine bloße „(id=N)"-Referenz (R-JD-9). |
+> | 4.7 | `debugJavaSuspend` (nach `debugJavaContinue`) | State-JSON mit suspended-Threads. |
 
 ## Phase 5 — User beendet die Session (Agent-Prompt)
 
@@ -138,7 +138,7 @@ Erwartung steht hier.
 >
 > | # | Aufruf | Erwartet |
 > |---|---|---|
-> | 5.1 | `get_state` | **Ehrlicher Fehler** „no active debug session — start debugging first". **Kein** Auto-Start, **kein** Auto-Reconnect, keine neue Launch. |
+> | 5.1 | `debugJavaGetState` | **Ehrlicher Fehler** „no active debug session — start debugging first". **Kein** Auto-Start, **kein** Auto-Reconnect, keine neue Launch. |
 >
 > Räume danach die Fixture-Datei weg (`toDelete`).
 
@@ -147,10 +147,10 @@ Erwartung steht hier.
 > Beantworte zum Schluss **explizit diese zwei Fragen** aus deiner Tester-Sicht (keine
 > Quellcode-Zitate, deine Erfahrung beim Testen):
 >
-> 1. **Namen & Beschreibungen:** Waren die 14 Tool-Namen (`get_state`, `get_stack_trace`,
->    `get_variables`, `evaluate_expression`, `set_variable`, `set_breakpoint`,
->    `set_exception_breakpoint`, `remove_breakpoint`, `step_over`, `step_in`, `step_out`,
->    `continue`, `suspend`, `get_exception`) und ihre Beschreibungen selbsterklärend? Konntest du
+> 1. **Namen & Beschreibungen:** Waren die 15 Tool-Namen (`debugJavaGetState`, `debugJavaGetStackTrace`,
+>    `debugJavaGetVariables`, `debugJavaEvaluateExpression`, `debugJavaSetVariable`, `debugJavaSetBreakpoint`,
+>    `debugJavaSetExceptionBreakpoint`, `debugJavaRemoveBreakpoint`, `debugJavaListBreakpoints`, `debugJavaStepOver`, `debugJavaStepIn`, `debugJavaStepOut`,
+>    `debugJavaContinue`, `debugJavaSuspend`, `debugJavaGetException`) und ihre Beschreibungen selbsterklärend? Konntest du
 >    jede Aktion ohne Rateversuch richtig parametrisieren? Was fehlte oder war mehrdeutig?
 > 2. **Verhalten:** Haben sich die Tools so verhalten, wie du es als LLM anhand von Name +
 >    Beschreibung erwartet hättest? Nenne jede Abweichung (auch positive Überraschungen).

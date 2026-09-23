@@ -13,7 +13,7 @@ import org.junit.Test;
 import org.sterl.llmpeon.parts.tools.debug.JavaDebugTool;
 
 /**
- * Regression test for the 2026-09-21 E2E F1: set_breakpoint failed with
+ * Regression test for the 2026-09-21 E2E F1: debugJavaSetBreakpoint failed with
  * "not a Java compilation unit" because the raw IFile was used without
  * resolving it through the JDT model. primaryTypeName must work on the
  * resolved ICompilationUnit (JavaCore.createCompilationUnitFrom, which is a
@@ -51,7 +51,7 @@ public class DebugPrimaryTypeTest {
         IType type = stub(IType.class, Map.of("getFullyQualifiedName", "peontest.DebugFix"));
         ICompilationUnit unit = stub(ICompilationUnit.class, Map.of("findPrimaryType", type));
 
-        // WHEN: resolving the primary type for set_breakpoint
+        // WHEN: resolving the primary type for debugJavaSetBreakpoint
         String typeName = JavaDebugTool.primaryTypeName(unit, "test_project", "src/peontest/DebugFix.java");
 
         // THEN: the fully qualified name of the primary type

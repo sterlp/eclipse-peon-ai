@@ -185,8 +185,8 @@ public class SharedToolsComponentTest {
         var tool = ts.getTool(JavaDebugTool.class).orElseThrow();
         assertTrue("JavaDebugTool must be an edit tool", tool.isEditTool());
 
-        var getState = ts.getExecutor("get_state");
-        assertTrue("get_state executor expected", getState != null);
+        var getState = ts.getExecutor("debugJavaGetState");
+        assertTrue("debugJavaGetState executor expected", getState != null);
         var searchAgent = sut.toolService().getTool(SearchAgentTool.class).orElseThrow();
 
         // THEN the isEditTool filter excludes it from search agents

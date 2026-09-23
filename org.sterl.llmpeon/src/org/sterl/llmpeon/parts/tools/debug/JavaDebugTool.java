@@ -45,7 +45,7 @@ import dev.langchain4j.agent.tool.Tool;
  * state, stack, variables, expression evaluation, variables, breakpoints and steps.
  * Stateless — every call re-resolves the session (R-JD-3). Never auto-starts and
  * never auto-disconnects a session (R-JD-1): without an active session every
- * action answers with the honest no-session message — except list_breakpoints
+ * action answers with the honest no-session message — except debugJavaListBreakpoints
  * (R-JD-11): it works without a session, reading the persistent breakpoint
  * markers of the project selected in the chat view instead.
  *
@@ -68,43 +68,43 @@ public class JavaDebugTool extends AbstractTool {
     @Override
     public boolean isEditTool() { return true; }
 
-    @Tool(name = "get_state", value = "Show the active Java debug session: VM state, all threads with state, system flag and top frame.")
+    @Tool(name = "debugJavaGetState", value = "Show the active Java debug session: VM state, all threads with state, system flag and top frame.")
     public String getState() {
         var session = DebugSession.findActive();
         if (session == null) {
-            return noSession("get_state");
+            return noSession("debugJavaGetState");
         }
         return DebugJson.state(session);
     }
-    @Tool(name = "get_stack_trace", value = "List the stack frames of a debug thread (index, method, type, line, method entry). Optional thread name.")
+    @Tool(name = "debugJavaGetStackTrace", value = "List the stack frames of a debug thread (index, method, type, line, method entry). Optional thread name.")
     public String getStackTrace(@P(name = "thread", description = "Thread name; empty = first suspended thread, else first non-system thread.", required = false) String thread) {
         var session = DebugSession.findActive();
         if (session == null) {
-            return noSession("get_stack_trace");
+            return noSession("debugJavaGetStackTrace");
         }
         return DebugJson.stackTrace(session.resolveThread(thread));
     }
 
-    @Tool(name = "get_variables", value = "Show the variables of a stack frame as JSON: the frame locals plus the static fields of the frame's declaring type in a separate `statics` block (empty when none). Optional name path (a.b.c) and depth (default 1, max 5).")
+    @Tool(name = "debugJavaGetVariables", value = "Show the variables of a stack frame as JSON: the frame locals plus the static fields of the frame's declaring type in a separate `statics` block (empty when none). Optional name path (a.b.c) and depth (default 1, max 5).")
     public String getVariables(@P(name = "thread", description = "Thread name; empty = first suspended thread, else first non-system thread.", required = false) String thread,
             @P(name = "frame", description = "Stack frame index, 0 = top.", required = false) Integer frame,
             @P(name = "name", description = "Variable path (a.b.c) to drill into; empty = all top-level variables.", required = false) String name,
             @P(name = "depth", description = "Nesting depth for object fields, 1..5; 0 = default 1.", required = false) Integer depth) {
         var session = DebugSession.findActive();
         if (session == null) {
-            return noSession("get_variables");
+            return noSession("debugJavaGetVariables");
         }
         return DebugJson.variables(javaFrame(session, thread, frame), name, depth == null ? 0 : depth);
     }
 
-    @Tool(name = "evaluate_expression", value = "Evaluate a Java expression in a suspended stack frame and return the result as JSON. Object results render their fields to depth 2; primitives, String and null come back as values.")
+    @Tool(name = "debugJavaEvaluateExpression", value = "Evaluate a Java expression in a suspended stack frame and return the result as JSON. Object results render their fields to depth 2; primitives, String and null come back as values.")
     public String evaluateExpression(@P(name = "thread", description = "Thread name; empty = first suspended thread, else first non-system thread.", required = false) String thread,
             @P(name = "frame", description = "Stack frame index, 0 = top.", required = false) Integer frame,
             @P(name = "expression") String expression,
             @P(name = "timeoutMs", description = "Max wait in ms for the evaluation; 0 = default 10000.", required = false) Integer timeoutMs) {
         var session = DebugSession.findActive();
         if (session == null) {
-            return noSession("evaluate_expression");
+            return noSession("debugJavaEvaluateExpression");
         }
         if (expression == null || expression.isBlank()) {
             throw new IllegalArgumentException("expression must not be empty");
@@ -156,23 +156,23 @@ public class JavaDebugTool extends AbstractTool {
         }
     }
 
-    @Tool(name = "get_exception", value = "Find the exception at the current suspend: scans the top frame's local variables (incl. catch parameter) for a java.lang.Throwable or subtype and returns its type, message and variable name. Recognition is by name — exact java.lang.Throwable or a simple name ending in Exception/Error; a custom Throwable subclass with an unusual name is NOT recognized (then use get_variables). Limit: an uncaught throw new X(...) at the throw site has no named variable and is not found there.")
+    @Tool(name = "debugJavaGetException", value = "Find the exception at the current suspend: scans the top frame's local variables (incl. catch parameter) for a java.lang.Throwable or subtype and returns its type, message and variable name. Recognition is by name — exact java.lang.Throwable or a simple name ending in Exception/Error; a custom Throwable subclass with an unusual name is NOT recognized (then use debugJavaGetVariables). Limit: an uncaught throw new X(...) at the throw site has no named variable and is not found there.")
     public String getException(@P(name = "thread", description = "Thread name; empty = first suspended thread, else first non-system thread.", required = false) String thread) {
         var session = DebugSession.findActive();
         if (session == null) {
-            return noSession("get_exception");
+            return noSession("debugJavaGetException");
         }
         return DebugJson.exception(session.resolveThread(thread));
     }
 
-    @Tool(name = "set_variable", value = "Set a local variable or argument to a primitive, String or null value. No confirmation.")
+    @Tool(name = "debugJavaSetVariable", value = "Set a local variable or argument to a primitive, String or null value. No confirmation.")
     public String setVariable(@P(name = "thread", description = "Thread name; empty = first suspended thread, else first non-system thread.", required = false) String thread,
             @P(name = "frame", description = "Stack frame index, 0 = top.", required = false) Integer frame,
             @P(name = "name") String name,
             @P(name = "value", description = "New value as text: null, boolean, number, single char or string.") String value) {
         var session = DebugSession.findActive();
         if (session == null) {
-            return noSession("set_variable");
+            return noSession("debugJavaSetVariable");
         }
         IJavaStackFrame javaFrame = javaFrame(session, thread, frame);
         IJavaVariable variable;
@@ -202,7 +202,7 @@ public class JavaDebugTool extends AbstractTool {
         return DebugJson.valueResponse(name, type, after);
     }
 
-    @Tool(name = "set_breakpoint", value = "Set a line breakpoint with optional condition, hit count and suspend policy (THREAD or VM).")
+    @Tool(name = "debugJavaSetBreakpoint", value = "Set a line breakpoint with optional condition, hit count and suspend policy (THREAD or VM).")
     public String setBreakpoint(@P(name = "file", description = "Project-relative file path of the session project (or /project/... absolute).") String file,
             @P(name = "line", description = "1-based line number.") int line,
             @P(name = "condition", description = "Breakpoint condition expression; empty = none.", required = false) String condition,
@@ -210,7 +210,7 @@ public class JavaDebugTool extends AbstractTool {
             @P(name = "suspendPolicy", description = "THREAD (default) or VM.", required = false) String suspendPolicy) {
         var session = DebugSession.findActive();
         if (session == null) {
-            return noSession("set_breakpoint");
+            return noSession("debugJavaSetBreakpoint");
         }
         if (line < 1) {
             throw new IllegalArgumentException("line must be >= 1 (got: " + line + ")");
@@ -263,7 +263,7 @@ public class JavaDebugTool extends AbstractTool {
         return DebugJson.breakpointResponse(breakpoint, file, line, null);
     }
 
-    @Tool(name = "set_exception_breakpoint", value = "Set an exception breakpoint for a type with suspend policy and caught/uncaught/subtype options.")
+    @Tool(name = "debugJavaSetExceptionBreakpoint", value = "Set an exception breakpoint for a type with suspend policy and caught/uncaught/subtype options.")
     public String setExceptionBreakpoint(@P(name = "exceptionType", description = "Fully qualified exception type name.") String exceptionType,
             @P(name = "suspendPolicy", description = "THREAD (default) or VM.", required = false) String suspendPolicy,
             @P(name = "catchUncaught", description = "Catch uncaught exceptions; empty = true.", required = false) Boolean catchUncaught,
@@ -271,7 +271,7 @@ public class JavaDebugTool extends AbstractTool {
             @P(name = "subTypes", description = "Include subtypes; empty = true.", required = false) Boolean subTypes) {
         var session = DebugSession.findActive();
         if (session == null) {
-            return noSession("set_exception_breakpoint");
+            return noSession("debugJavaSetExceptionBreakpoint");
         }
         if (exceptionType == null || exceptionType.isBlank()) {
             throw new IllegalArgumentException("exceptionType must be a fully qualified type name");
@@ -299,11 +299,11 @@ public class JavaDebugTool extends AbstractTool {
         return DebugJson.breakpointResponse(breakpoint, null, null, exceptionType);
     }
 
-    @Tool(name = "remove_breakpoint", value = "Remove a breakpoint previously created by set_breakpoint or set_exception_breakpoint, given its marker id.")
-    public String removeBreakpoint(@P(name = "id", description = "Breakpoint marker id from a set_breakpoint response.") String id) {
+    @Tool(name = "debugJavaRemoveBreakpoint", value = "Remove a breakpoint previously created by debugJavaSetBreakpoint or debugJavaSetExceptionBreakpoint, given its marker id.")
+    public String removeBreakpoint(@P(name = "id", description = "Breakpoint marker id from a debugJavaSetBreakpoint response.") String id) {
         var session = DebugSession.findActive();
         if (session == null) {
-            return noSession("remove_breakpoint");
+            return noSession("debugJavaRemoveBreakpoint");
         }
         long markerId;
         try {
@@ -329,7 +329,7 @@ public class JavaDebugTool extends AbstractTool {
         return DebugJson.removedResponse(markerId);
     }
 
-    @Tool(name = "list_breakpoints", value = "List the breakpoint map of the project selected in the chat view: all line breakpoints of that project plus the workspace-wide exception breakpoints (their markers live on the workspace root, so they appear for every project), each with id, type, location, condition, hit count and enabled state. Works without a debug session — it reads the persistent markers, so phantom breakpoints set in the UI between sessions are visible too. hitCount 0 = every hit. Removing a breakpoint stays remove_breakpoint(id). No project selected → honest error.")
+    @Tool(name = "debugJavaListBreakpoints", value = "List the breakpoint map of the project selected in the chat view: all line breakpoints of that project plus the workspace-wide exception breakpoints (their markers live on the workspace root, so they appear for every project), each with id, type, location, condition, hit count and enabled state. Works without a debug session — it reads the persistent markers, so phantom breakpoints set in the UI between sessions are visible too. hitCount 0 = every hit. Removing a breakpoint stays debugJavaRemoveBreakpoint(id). No project selected → honest error.")
     public String listBreakpoints() {
         if (currentProject == null) {
             onProblem(NO_PROJECT);
@@ -361,12 +361,12 @@ public class JavaDebugTool extends AbstractTool {
         }
     }
 
-    @Tool(name = "step_over", value = "Step over in a debug thread and wait for the next suspend; returns the new top frame.")
+    @Tool(name = "debugJavaStepOver", value = "Step over in a debug thread and wait for the next suspend; returns the new top frame.")
     public String stepOver(@P(name = "thread", description = "Thread name; empty = first suspended thread, else first non-system thread.", required = false) String thread,
             @P(name = "waitMs", description = "Max wait in ms for the next suspend; 0 = default 15000.", required = false) Integer waitMs) {
         var session = DebugSession.findActive();
         if (session == null) {
-            return noSession("step_over");
+            return noSession("debugJavaStepOver");
         }
         IJavaThread debugThread = session.resolveThread(thread);
         try {
@@ -374,15 +374,15 @@ public class JavaDebugTool extends AbstractTool {
         } catch (DebugException e) {
             throw DebugSupport.fail("stepping over in thread " + DebugSupport.threadName(debugThread), e);
         }
-        return waitForSuspend(session, debugThread, "step_over", waitMs == null || waitMs <= 0 ? 15000 : waitMs);
+        return waitForSuspend(session, debugThread, "debugJavaStepOver", waitMs == null || waitMs <= 0 ? 15000 : waitMs);
     }
 
-    @Tool(name = "step_in", value = "Step into a debug thread and wait for the next suspend; returns the new top frame.")
+    @Tool(name = "debugJavaStepIn", value = "Step into a debug thread and wait for the next suspend; returns the new top frame.")
     public String stepIn(@P(name = "thread", description = "Thread name; empty = first suspended thread, else first non-system thread.", required = false) String thread,
             @P(name = "waitMs", description = "Max wait in ms for the next suspend; 0 = default 15000.", required = false) Integer waitMs) {
         var session = DebugSession.findActive();
         if (session == null) {
-            return noSession("step_in");
+            return noSession("debugJavaStepIn");
         }
         IJavaThread debugThread = session.resolveThread(thread);
         try {
@@ -390,15 +390,15 @@ public class JavaDebugTool extends AbstractTool {
         } catch (DebugException e) {
             throw DebugSupport.fail("stepping into a method in thread " + DebugSupport.threadName(debugThread), e);
         }
-        return waitForSuspend(session, debugThread, "step_in", waitMs == null || waitMs <= 0 ? 15000 : waitMs);
+        return waitForSuspend(session, debugThread, "debugJavaStepIn", waitMs == null || waitMs <= 0 ? 15000 : waitMs);
     }
 
-    @Tool(name = "step_out", value = "Step out of the current frame and wait for the next suspend; returns the new top frame.")
+    @Tool(name = "debugJavaStepOut", value = "Step out of the current frame and wait for the next suspend; returns the new top frame.")
     public String stepOut(@P(name = "thread", description = "Thread name; empty = first suspended thread, else first non-system thread.", required = false) String thread,
             @P(name = "waitMs", description = "Max wait in ms for the next suspend; 0 = default 15000.", required = false) Integer waitMs) {
         var session = DebugSession.findActive();
         if (session == null) {
-            return noSession("step_out");
+            return noSession("debugJavaStepOut");
         }
         IJavaThread debugThread = session.resolveThread(thread);
         IStackFrame[] frames;
@@ -408,22 +408,22 @@ public class JavaDebugTool extends AbstractTool {
             throw DebugSupport.fail("reading stack frames of thread " + DebugSupport.threadName(debugThread), e);
         }
         if (frames.length <= 1) {
-            throw new IllegalArgumentException("thread " + DebugSupport.threadName(debugThread) + " is already at its top frame — use continue");
+            throw new IllegalArgumentException("thread " + DebugSupport.threadName(debugThread) + " is already at its top frame — use debugJavaContinue");
         }
         try {
             debugThread.stepReturn();
         } catch (DebugException e) {
             throw DebugSupport.fail("stepping out in thread " + DebugSupport.threadName(debugThread), e);
         }
-        return waitForSuspend(session, debugThread, "step_out", waitMs == null || waitMs <= 0 ? 15000 : waitMs);
+        return waitForSuspend(session, debugThread, "debugJavaStepOut", waitMs == null || waitMs <= 0 ? 15000 : waitMs);
     }
 
-    @Tool(name = "continue", value = "Resume a suspended debug thread and wait for the next suspend; returns the new top frame.")
+    @Tool(name = "debugJavaContinue", value = "Resume a suspended debug thread and wait for the next suspend; returns the new top frame.")
     public String resume(@P(name = "thread", description = "Thread name; empty = first suspended thread, else first non-system thread.", required = false) String thread,
             @P(name = "waitMs", description = "Max wait in ms for the next suspend; 0 = default 30000.", required = false) Integer waitMs) {
         var session = DebugSession.findActive();
         if (session == null) {
-            return noSession("continue");
+            return noSession("debugJavaContinue");
         }
         IJavaThread debugThread = session.resolveThread(thread);
         if (!debugThread.isSuspended()) {
@@ -434,14 +434,14 @@ public class JavaDebugTool extends AbstractTool {
         } catch (DebugException e) {
             throw DebugSupport.fail("resuming thread " + DebugSupport.threadName(debugThread), e);
         }
-        return waitForSuspend(session, debugThread, "continue", waitMs == null || waitMs <= 0 ? 30000 : waitMs);
+        return waitForSuspend(session, debugThread, "debugJavaContinue", waitMs == null || waitMs <= 0 ? 30000 : waitMs);
     }
 
-    @Tool(name = "suspend", value = "Suspend a running debug session; returns the suspended threads with their top frames.")
+    @Tool(name = "debugJavaSuspend", value = "Suspend a running debug session; returns the suspended threads with their top frames.")
     public String suspend() {
         var session = DebugSession.findActive();
         if (session == null) {
-            return noSession("suspend");
+            return noSession("debugJavaSuspend");
         }
         try {
             session.target().suspend();
@@ -479,7 +479,7 @@ public class JavaDebugTool extends AbstractTool {
         }
         if ("null".equals(text)) {
             if (!"java.lang.String".equals(declared)) {
-                throw new IllegalArgumentException("set_variable: null is only allowed for a java.lang.String variable (declared: " + declared + ")");
+                throw new IllegalArgumentException("debugJavaSetVariable: null is only allowed for a java.lang.String variable (declared: " + declared + ")");
             }
             return target.nullValue();
         }
@@ -493,12 +493,12 @@ public class JavaDebugTool extends AbstractTool {
             case "double" -> target.newValue(parseDouble(text));
             case "char" -> {
                 if (text.length() != 1) {
-                    throw new IllegalArgumentException("set_variable: '" + text + "' is not a single char");
+                    throw new IllegalArgumentException("debugJavaSetVariable: '" + text + "' is not a single char");
                 }
                 yield target.newValue(text.charAt(0));
             }
             case "java.lang.String" -> target.newValue(text);
-            default -> throw new IllegalArgumentException("set_variable targets primitives, String or null only (declared: " + declared + ")");
+            default -> throw new IllegalArgumentException("debugJavaSetVariable targets primitives, String or null only (declared: " + declared + ")");
         };
     }
 
@@ -509,18 +509,18 @@ public class JavaDebugTool extends AbstractTool {
         if ("false".equals(text)) {
             return false;
         }
-        throw new IllegalArgumentException("set_variable: '" + text + "' is not a boolean (expected true or false)");
+        throw new IllegalArgumentException("debugJavaSetVariable: '" + text + "' is not a boolean (expected true or false)");
     }
 
     private static long parseBounded(String text, String declared, long min, long max) {
         try {
             long value = Long.parseLong(text.trim());
             if (value < min || value > max) {
-                throw new IllegalArgumentException("set_variable: " + text + " is out of range for " + declared + " (" + min + "…" + max + ")");
+                throw new IllegalArgumentException("debugJavaSetVariable: " + text + " is out of range for " + declared + " (" + min + "…" + max + ")");
             }
             return value;
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("set_variable: '" + text + "' is not a " + declared);
+            throw new IllegalArgumentException("debugJavaSetVariable: '" + text + "' is not a " + declared);
         }
     }
 
@@ -528,7 +528,7 @@ public class JavaDebugTool extends AbstractTool {
         try {
             return Float.parseFloat(text.trim());
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("set_variable: '" + text + "' is not a float");
+            throw new IllegalArgumentException("debugJavaSetVariable: '" + text + "' is not a float");
         }
     }
 
@@ -536,7 +536,7 @@ public class JavaDebugTool extends AbstractTool {
         try {
             return Double.parseDouble(text.trim());
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("set_variable: '" + text + "' is not a double");
+            throw new IllegalArgumentException("debugJavaSetVariable: '" + text + "' is not a double");
         }
     }
 
@@ -564,7 +564,7 @@ public class JavaDebugTool extends AbstractTool {
      * Resolves the file to the primary type of its compilation unit via the JDT
      * model — JavaCore.createCompilationUnitFrom(IFile) → ICompilationUnit →
      * findPrimaryType (2026-09-21 E2E F1: the raw IFile was not loaded, so every
-     * set_breakpoint failed with "not a Java compilation unit").
+     * debugJavaSetBreakpoint failed with "not a Java compilation unit").
      *
      * @param fileLabel the file as the user passed it (for honest errors)
      * @throws IllegalArgumentException when the file is not a Java source file with a primary type

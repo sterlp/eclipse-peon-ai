@@ -151,7 +151,7 @@ These bit us repeatedly in this repo — check them before reporting an incremen
   `exclude=true` + `setVisible(false)`; on show `exclude=false` + `setVisible(true)` +
   `parent.layout()`. (Origin 2026-09-12, ui-config cycle: the plan's `setVisible(false)`-only fix
   would have left the empty label row standing — caught by the dev's SWT-source check.)
-- **JDT breakpoint markers (verified 2026-09-22, I2 list_breakpoints):** `JDTDebugConstants` does
+- **JDT breakpoint markers (verified 2026-09-22, I2 debugJavaListBreakpoints):** `JDTDebugConstants` does
   NOT exist on the current target platform (jdt.launching 3.24.300 / jdt.debug 3.26.100, 2026-06/07)
   — the ids live in the internal breakpoint classes. Line BP marker type
   `org.eclipse.jdt.debug.javaLineBreakpointMarker`, exception BP marker type

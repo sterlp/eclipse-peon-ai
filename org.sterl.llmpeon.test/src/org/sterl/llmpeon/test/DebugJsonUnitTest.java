@@ -363,10 +363,10 @@ public class DebugJsonUnitTest {
     // UC-JD-9
     @Test
     public void valueResponseRendersPrimitivesAsJsonPrimitives() {
-        // WHEN: a set_variable response for an int variable (E2E F3: "value":"42" → 42)
+        // WHEN: a debugJavaSetVariable response for an int variable (E2E F3: "value":"42" → 42)
         String json = DebugJson.valueResponse("counter", "int", primitive("int", 42, "42"));
 
-        // THEN: the value is a JSON number, not a quoted string (consistency with get_variables)
+        // THEN: the value is a JSON number, not a quoted string (consistency with debugJavaGetVariables)
         assertContains(json, "\"value\" : 42");
         assertFalse("primitives must not be quoted:\n" + json, json.contains("\"value\" : \"42\""));
 
@@ -468,7 +468,7 @@ public class DebugJsonUnitTest {
         // GIVEN: a created line breakpoint whose marker still carries the JDT default hitCount -1
         IJavaLineBreakpoint breakpoint = lineBreakpoint(42, -1, null);
 
-        // WHEN: rendering the set_breakpoint response
+        // WHEN: rendering the debugJavaSetBreakpoint response
         String json = DebugJson.breakpointResponse(breakpoint, "src/Foo.java", 42, null);
 
         // THEN: the raw -1 renders as 0 ("every hit" per the tool description)
@@ -483,7 +483,7 @@ public class DebugJsonUnitTest {
         // GIVEN: a created line breakpoint with an explicit hitCount 3 and a condition
         IJavaLineBreakpoint breakpoint = lineBreakpoint(42, 3, "i > 3");
 
-        // WHEN: rendering the set_breakpoint response
+        // WHEN: rendering the debugJavaSetBreakpoint response
         String json = DebugJson.breakpointResponse(breakpoint, "src/Foo.java", 42, null);
 
         // THEN: values >= 0 pass through unchanged (regression boundary) and the condition is kept

@@ -136,7 +136,7 @@ public class DebugSessionThreadsTest {
         // threads, getRootThreadGroups() without main
         DebugSession session = DebugSession.findActive(new ILaunch[] { launch(target(thread("main", true, false))) });
 
-        // WHEN: rendering get_state
+        // WHEN: rendering debugJavaGetState
         String json = DebugJson.state(session);
 
         // THEN: main is listed with its top frame (method main, type DebugFix, line 11)
@@ -159,7 +159,7 @@ public class DebugSessionThreadsTest {
         // GIVEN: main running, system threads running, target not suspended
         DebugSession session = DebugSession.findActive(new ILaunch[] { launch(target(thread("main", false, false))) });
 
-        // WHEN: rendering get_state
+        // WHEN: rendering debugJavaGetState
         String json = DebugJson.state(session);
 
         // THEN: vm.state is running and zero suspended non-system threads are counted
@@ -191,7 +191,7 @@ public class DebugSessionThreadsTest {
         // WHEN: resolving the active session
         DebugSession session = DebugSession.findActive(new ILaunch[] { launch(zombie) });
 
-        // THEN: no active session — get_state answers the no-session message and
+        // THEN: no active session — debugJavaGetState answers the no-session message and
         // continue does not poll for 30 s
         assertNull(session);
     }
@@ -200,7 +200,7 @@ public class DebugSessionThreadsTest {
     @Test
     public void threadlessVmIsNotAnActiveSession() {
         // GIVEN: a zombie target — process alive, target un-terminated, but the VM
-        // answers no threads (the diagnosed get_state showed threads=[])
+        // answers no threads (the diagnosed debugJavaGetState showed threads=[])
         IProcess aliveProcess = stub(IProcess.class, Map.of("getAttribute", "78703"));
         IJavaDebugTarget zombie = target(thread("main", true, false), aliveProcess, false);
 

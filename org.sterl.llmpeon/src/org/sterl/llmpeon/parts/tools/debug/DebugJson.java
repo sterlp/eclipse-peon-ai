@@ -53,7 +53,7 @@ public final class DebugJson {
     }
 
     /**
-     * get_state shape: { session, vm: {name, version, state, suspendedThreads, outOfSynch},
+     * debugJavaGetState shape: { session, vm: {name, version, state, suspendedThreads, outOfSynch},
      * threads: [{name, state, system, topFrame}] }.
      * vm.state = "suspended" when the target is suspended OR any non-system thread is
      * suspended (the debugging-relevant "where is it standing" question); suspendedThreads
@@ -88,7 +88,7 @@ public final class DebugJson {
         return pid == null ? session.launchName() : session.launchName() + " (pid " + pid + ")";
     }
 
-    /** get_stack_trace shape: [{index, method, type, line, methodEntry}]. */
+    /** debugJavaGetStackTrace shape: [{index, method, type, line, methodEntry}]. */
     static String stackTrace(IJavaThread thread) {
         IStackFrame[] frames;
         try {
@@ -111,7 +111,7 @@ public final class DebugJson {
     }
 
     /**
-     * get_variables shape: { locals: […], statics: […] } without a name path — each variable
+     * debugJavaGetVariables shape: { locals: […], statics: […] } without a name path — each variable
      * as {name, type, value | fields | length+elements}; the statics block holds the static
      * fields of the frame's declaring type, empty when there are none (R-JD-9).
      * {@code namePath} drills into nested variables (a.b.c) and renders a single node;
@@ -213,8 +213,8 @@ public final class DebugJson {
     }
 
     /**
-     * set_variable response: {name, type, value} (the new value). Primitives are
-     * rendered as JSON primitives (boolean/number) like get_variables (2026-09-21
+     * debugJavaSetVariable response: {name, type, value} (the new value). Primitives are
+     * rendered as JSON primitives (boolean/number) like debugJavaGetVariables (2026-09-21
      * E2E F3); objects and strings as their value string, null as JSON null.
      */
     public static String valueResponse(String name, String type, IValue value) {
@@ -231,7 +231,7 @@ public final class DebugJson {
         return pretty(node);
     }
 
-    /** set_breakpoint / set_exception_breakpoint response (D8). */
+    /** debugJavaSetBreakpoint / debugJavaSetExceptionBreakpoint response (D8). */
     public static String breakpointResponse(IJavaBreakpoint breakpoint, String file, Integer line, String exceptionType) {
         Map<String, Object> node = new LinkedHashMap<>();
         try {
@@ -268,7 +268,7 @@ public final class DebugJson {
     }
 
     /**
-     * list_breakpoints shape (R-JD-11): {project, scope, breakpoints: […]} — line breakpoints
+     * debugJavaListBreakpoints shape (R-JD-11): {project, scope, breakpoints: […]} — line breakpoints
      * of the project plus the workspace-wide exception breakpoints; the scope restriction is
      * named in the output, empty list included.
      */
@@ -315,7 +315,7 @@ public final class DebugJson {
         return node;
     }
 
-    /** remove_breakpoint response: {id, removed}. */
+    /** debugJavaRemoveBreakpoint response: {id, removed}. */
     static String removedResponse(long id) {
         Map<String, Object> node = new LinkedHashMap<>();
         node.put("id", String.valueOf(id));
@@ -333,7 +333,7 @@ public final class DebugJson {
     }
 
     /**
-     * evaluate_expression response: {type, value | fields | length+elements}. Object results
+     * debugJavaEvaluateExpression response: {type, value | fields | length+elements}. Object results
      * render their fields to depth 2 (R-JD-9); primitives, String and null come back as values;
      * arrays are named with length + capped elements.
      */
@@ -359,7 +359,7 @@ public final class DebugJson {
     }
 
     /**
-     * get_exception response: {varName, type, message}. Scans the top frame's local
+     * debugJavaGetException response: {varName, type, message}. Scans the top frame's local
      * variables (incl. the catch parameter) for a java.lang.Throwable or subtype
      * (R-JD-10); the message comes from invoking getMessage(), null when unreadable.
      * Limit: an uncaught throw new X(...) at the throw site has no named variable.

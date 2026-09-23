@@ -61,4 +61,5 @@ isn't clear from a rule/BDD.
 | [0051](0051-debugger-no-live-session-tests.md) | Debugger ohne automatisierte Live-Session-Tests (flaky VMStart-Race): UC-JD-1 + Stub-Tests automatisiert, UC-JD-2…6 manuell (E2E-Smoke) | Accepted |
 | [0052](0052-compact-uses-working-flag.md) | Compact-Lock: User-getriggerter Compact belegt das `working`-Flag (CAS statt Future-Chain/eigenem Zustand); Follow-up-Turn nach dem Compact draint die Queue | Accepted |
 | [0053](0053-call-stats-shared-helper.md) | `CallStats`-Helper im core shared (Dauer + HH:mm-Suffix, Clock injizierbar); PoDelegateTool migriert — Time-Disclosure für Shell/RunTest/Build | Accepted |
+| [0054](0054-tool-naming-camelcase-family-prefix.md) | Tool-Naming: camelCase mit Familien-Prefix — Java-Debug-Familie snake_case → `debugJava*` (Clean Break, keine Aliase) | Accepted |
 

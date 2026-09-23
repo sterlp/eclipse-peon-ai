@@ -25,7 +25,7 @@ public class JavaDebugToolTest extends AbstractIntegrationTest {
     }
 
     // UC-JD-1
-    // list_breakpoints (R-JD-11) is the deliberate session exception, tested in DebugListBreakpointsTest.
+    // debugJavaListBreakpoints (R-JD-11) is the deliberate session exception, tested in DebugListBreakpointsTest.
     @Test
     public void noSessionFailsHonest() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
@@ -70,7 +70,7 @@ public class JavaDebugToolTest extends AbstractIntegrationTest {
         // GIVEN: no active debug session and no project selected on the tool instance
         assertEquals("premise: no launches in the test workbench", 0, launchCount());
 
-        // WHEN: list_breakpoints is called
+        // WHEN: debugJavaListBreakpoints is called
         String result = tool.listBreakpoints();
 
         // THEN: the honest no-project error — and NOT the no-session message (R-JD-11 exception)

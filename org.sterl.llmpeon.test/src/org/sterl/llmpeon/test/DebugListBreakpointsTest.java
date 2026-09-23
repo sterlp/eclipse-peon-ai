@@ -19,7 +19,7 @@ import org.junit.Test;
 import org.sterl.llmpeon.parts.tools.debug.JavaDebugTool;
 
 /**
- * list_breakpoints (docs/java-debugger-tool.md R-JD-11, UC-JD-13) — the breakpoint map of
+ * debugJavaListBreakpoints (docs/java-debugger-tool.md R-JD-11, UC-JD-13) — the breakpoint map of
  * the selected project from persistent markers, without a debug session. Real markers are
  * created and must appear (self-verifying for marker types and attribute keys); cleanup in
  * finally so no cross-run leeks.
