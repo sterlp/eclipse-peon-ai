@@ -135,17 +135,46 @@ public class DocsLinterTool extends AbstractTool {
                 result.lintedDocCount(), result.skippedDocCount()));
         for (var r : result.nextIds()) {
             sb.append("\n");
-            if (r.occupied()) {
+            if (!r.occupied()) {
+                sb.append(r.prefix()).append(": free, would start: R-").append(r.prefix())
+                        .append("-1, UC-").append(r.prefix()).append("-1");
+            } else if (flatWins(r)) {
+                FamilyOccurrence f = r.flat();
+                sb.append(r.prefix()).append(": occupied, next: ").append(r.prefix())
+                        .append("-").append(r.nextFlat())
+                        .append(" (highest found ").append(r.prefix())
+                        .append("-").append(f.highestNumber())
+                        .append(" in ").append(f.file()).append(")");
+            } else {
                 sb.append(r.prefix()).append(": occupied, next: R-").append(r.prefix())
                         .append("-").append(r.nextRule())
                         .append(", UC-").append(r.prefix())
                         .append("-").append(r.nextUseCase());
-            } else {
-                sb.append(r.prefix()).append(": free, would start: R-").append(r.prefix())
-                        .append("-1, UC-").append(r.prefix()).append("-1");
+                FamilyOccurrence cited = citedFamily(r);
+                sb.append(" (highest found ").append(cited == r.rule() ? "R-" : "UC-")
+                        .append(r.prefix()).append("-").append(cited.highestNumber())
+                        .append(" in ").append(cited.file()).append(")");
             }
         }
         return sb.toString();
+    }
+
+    // R-DL-24: a flat registry is continued flat, even on a tie; missing families count as 0.
+    private static boolean flatWins(NextIds r) {
+        int flatMax = r.flat() == null ? 0 : r.flat().highestNumber();
+        return flatMax > 0
+                && flatMax >= (r.rule() == null ? 0 : r.rule().highestNumber())
+                && flatMax >= (r.useCase() == null ? 0 : r.useCase().highestNumber());
+    }
+
+    // Cited family for the Fundstelle: the higher max, rule family on a tie.
+    private static FamilyOccurrence citedFamily(NextIds r) {
+        FamilyOccurrence rule = r.rule();
+        FamilyOccurrence useCase = r.useCase();
+        if (useCase != null && (rule == null || useCase.highestNumber() > rule.highestNumber())) {
+            return useCase;
+        }
+        return rule;
     }
 
     private void validateChildRoots(Path effectiveRoot, List<String> childRoots) {
