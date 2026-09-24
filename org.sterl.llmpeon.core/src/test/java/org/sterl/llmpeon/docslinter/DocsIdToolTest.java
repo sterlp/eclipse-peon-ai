@@ -270,6 +270,34 @@ class DocsIdToolTest {
         assertThat(output).contains("highest found R-OP-90 in docs/a.md");
     }
 
+    // Guard for the §2.5 tie-break (Da-Dok C1): on equal highest numbers the flat registry wins.
+    @Test
+    void flatWinsTieAgainstRuleForm() throws IOException {
+        Path docsDir = rootDir.resolve("docs");
+        Files.createDirectories(docsDir);
+        Files.writeString(docsDir.resolve("a.md"), """
+                ---
+                idPrefix: OP
+                ---
+
+                # R-OP-9 Rule ✅ done
+                """);
+        Files.writeString(docsDir.resolve("offene-punkte.md"), """
+                # Offene Punkte
+
+                - OP-9 Flat
+                """);
+
+        var core = new DocsLinterTool(rootDir);
+        var tool = new DocsIdTool(core);
+
+        String output = tool.nextIds(null, List.of("docs"), "OP");
+
+        assertThat(output).contains(
+                "OP: occupied, next: OP-10 (highest found OP-9 in docs/offene-punkte.md)");
+        assertThat(output).doesNotContain("R-OP-10");
+    }
+
     // UC-DL-73
     @Test
     void nextIdsOutputListsNonParticipatingDocs() throws IOException {
