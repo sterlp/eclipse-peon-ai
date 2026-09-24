@@ -401,6 +401,29 @@ class DocsLinterNextIdsTest {
         assertThat(r.flat()).isNull();
     }
 
+    // UC-DL-73
+    @Test
+    void resultCarriesSkippedDocNames() throws IOException {
+        writeDoc("a.md", """
+                ---
+                idPrefix: DL
+                ---
+
+                # R-DL-1 Rule
+                """);
+        writeDoc("skip-a.md", """
+                # No prefix A
+                """);
+        writeDoc("skip-b.md", """
+                # No prefix B
+                """);
+
+        NextIdsResult result = nextIdsResult(null);
+
+        assertThat(result.skippedDocs()).containsExactly("docs/skip-a.md", "docs/skip-b.md");
+        assertThat(result.docFileCount()).isEqualTo(3);
+    }
+
     private void writeDoc(String name, String content) {
         try {
             Files.writeString(docsDir.resolve(name), content);

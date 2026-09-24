@@ -269,4 +269,32 @@ class DocsIdToolTest {
         assertThat(output).contains("next: R-OP-91, UC-OP-1");
         assertThat(output).contains("highest found R-OP-90 in docs/a.md");
     }
+
+    // UC-DL-73
+    @Test
+    void nextIdsOutputListsNonParticipatingDocs() throws IOException {
+        Path docsDir = rootDir.resolve("docs");
+        Files.createDirectories(docsDir);
+        Files.writeString(docsDir.resolve("a.md"), """
+                ---
+                idPrefix: DL
+                ---
+
+                # R-DL-1 Rule ✅ done
+                """);
+        Files.writeString(docsDir.resolve("skip-a.md"), """
+                # No prefix A
+                """);
+        Files.writeString(docsDir.resolve("skip-b.md"), """
+                # No prefix B
+                """);
+
+        var core = new DocsLinterTool(rootDir);
+        var tool = new DocsIdTool(core);
+
+        String output = tool.nextIds(null, List.of("docs"), null);
+
+        assertThat(output).contains(
+                "Not participating (no idPrefix):\n  docs/skip-a.md\n  docs/skip-b.md");
+    }
 }

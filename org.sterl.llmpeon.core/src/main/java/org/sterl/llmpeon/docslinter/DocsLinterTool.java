@@ -130,8 +130,9 @@ public class DocsLinterTool extends AbstractTool {
     // --- package-private helpers visible for tests ---
 
     private String formatNextIds(NextIdsResult result) {
+        var renderer = new DocsLintReportRenderer();
         StringBuilder sb = new StringBuilder();
-        sb.append(new DocsLintReportRenderer().docScanSummary(
+        sb.append(renderer.docScanSummary(
                 result.lintedDocCount(), result.skippedDocCount()));
         for (var r : result.nextIds()) {
             sb.append("\n");
@@ -156,6 +157,7 @@ public class DocsLinterTool extends AbstractTool {
                         .append(" in ").append(cited.file()).append(")");
             }
         }
+        sb.append(renderer.skippedDocsList(result.skippedDocs()));
         return sb.toString();
     }
 

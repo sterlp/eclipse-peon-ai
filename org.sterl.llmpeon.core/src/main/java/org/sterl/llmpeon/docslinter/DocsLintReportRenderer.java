@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.docslinter;
 
+import java.util.List;
 
 class DocsLintReportRenderer {
 
@@ -45,13 +46,24 @@ class DocsLintReportRenderer {
             }
         }
 
-        if (!result.skippedDocs().isEmpty()) {
-            sb.append("\n\nNot participating (no idPrefix):");
-            for (String s : result.skippedDocs()) {
-                sb.append("\n  ").append(s);
-            }
-        }
+        sb.append(skippedDocsList(result.skippedDocs()));
 
+        return sb.toString();
+    }
+
+    /**
+     * "Not participating" file list shared by the lint report and the nextIds output
+     * (R-DL-25); empty for a fully participating scan.
+     */
+    String skippedDocsList(List<String> skippedDocs) {
+        if (skippedDocs.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("\n\nNot participating (no idPrefix):");
+        for (String s : skippedDocs) {
+            sb.append("\n  ").append(s);
+        }
         return sb.toString();
     }
 

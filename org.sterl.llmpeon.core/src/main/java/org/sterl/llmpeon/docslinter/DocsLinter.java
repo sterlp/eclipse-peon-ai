@@ -123,7 +123,7 @@ class DocsLinter {
 
             return new NextIdsResult(
                     List.of(new NextIds(wanted, occupied, rule, useCase, flat)),
-                    data.lintedDocs().size(), data.skippedDocs().size());
+                    data.lintedDocs().size(), data.skippedDocs().size(), data.skippedDocs());
         }
 
         List<NextIds> allocations = new ArrayList<>();
@@ -132,7 +132,8 @@ class DocsLinter {
             allocations.add(new NextIds(entry.getKey(), true,
                     ruleOccurrence(stats), useCaseOccurrence(stats), null));
         }
-        return new NextIdsResult(allocations, data.lintedDocs().size(), data.skippedDocs().size());
+        return new NextIdsResult(allocations, data.lintedDocs().size(),
+                data.skippedDocs().size(), data.skippedDocs());
     }
 
     private DocParseData parseDocs(Path root, List<String> docRoots, Pattern idPattern)
