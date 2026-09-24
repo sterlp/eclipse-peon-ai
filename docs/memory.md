@@ -29,9 +29,13 @@ StaticContextItem-Java-Änderung von Paul ist committed. Alte Stashes: keine.
 
 1. ✅ R-ET Rename-Docs-Follow-ups erledigt: ADR-0053 ✅, Homepage-Toolset-Tabelle ✅, AGENTS.md ✅,
    tool-time-disclosure.md ✅ (Code `909ce05`, Docs `0188fd3` + index.md).
-2. Paul (offen): `eclipseBuildProject`-Warnings sind aktuell **UNGECAppt** — `EclipseBuildTool.java:241-254`
-   druckt alle ERROR+WARNING-Marker ohne Limit (Gegenteil der Annahme „Cap 100"). Vorschlag
-   **Cap 100 + Disclosure** — wartet auf Pauls Entscheidung.
+2. **R-OD-5 (eclipseBuildProject Cap 100 + Disclosure) gebaut, Review OFFEN:** Commit `5d74aab`
+   (core `AiReponseBuilder.buildMarkers` + `MAX_BUILD_MARKERS`, Plugin-Wiring, 1-arg
+   `readProblems`-Overload entfernt; Surefire **953/0/0/0**, PDE-Suite 280/0/0). Erster
+   Da-Dok-Review starb an Context-Overflow (172205 > 170240, 4 tote Retries, Memory #21 live) —
+   Befund in [open-to-discuss.md](open-to-discuss.md) (2026-09-24). → Review neu aufsetzen mit
+   kompaktiertem Da Dok + schlankem Prompt; nach ACCEPTED: UC-OD-5/6 flippen, dann
+   `planImplemented`.
 3. Paul (beantwortet, kein Change): Test-Dauer + Endzeit stehen im Tool-Result via
    `CallStats.suffix` ✅ — nicht in der `onTool`-Statuszeile (bewusst).
 4. Paul: Branch pushen/mergen (`fix/nextids-bug-report` → main) — sein Call.

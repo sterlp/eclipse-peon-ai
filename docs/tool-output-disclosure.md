@@ -45,18 +45,18 @@ statt byte-Cap → **paginiert** (Mini-Cache letzte 5 URLs,
 Disclosure-Zeilen folgen dem bestehenden `AiReponseBuilder`-Muster (eine Stelle, beide
 Such-Tools konsistent).
 
-### R-OD-5 — `eclipseBuildProject` ❌ specified (2026-09-24, Paul)
+### R-OD-5 — `eclipseBuildProject` ✅ done (2026-09-24, Paul; Review Da Dok ACCEPTED, Commit `5d74aab`)
 
 Marker-Output wird auf **100** gecappt (Errors zuerst, dann Warnings) — vorher: unlimitiert
 (`EclipseBuildTool.java:241-254` druckt alle ERROR+WARNING-Marker). Wird der Cap erreicht, nennt
 der Return die Kappung im bestehenden Disclosure-Muster („showing 100 of N markers"). INFO-Marker
 bleiben gedroppt (unverändert).
 
-#### UC-OD-5 — buildMarkersCappedWithDisclosure ❌
+#### UC-OD-5 — buildMarkersCappedWithDisclosure ✅
 - GIVEN Projekt mit 120 Markern WHEN `eclipseBuildProject` THEN Return listet 100 Marker (alle
   Errors zuerst, dann Warnings) **und** nennt die Kappung („showing 100 of 120 markers").
 
-#### UC-OD-6 — buildMarkersUnderCapNoDisclosure ❌
+#### UC-OD-6 — buildMarkersUnderCapNoDisclosure ✅
 - GIVEN Projekt mit 30 Markern WHEN `eclipseBuildProject` THEN alle 30 Marker, **keine**
   Disclosure-Zeile (nichts wurde gekappt).
 
