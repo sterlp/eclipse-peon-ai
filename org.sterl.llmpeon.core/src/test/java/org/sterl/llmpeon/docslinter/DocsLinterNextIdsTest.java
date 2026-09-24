@@ -135,6 +135,8 @@ class DocsLinterNextIdsTest {
         assertThat(results.get(1).nextUseCase()).isEqualTo(3);
     }
 
+    // R-DL-23: digit-ending UC ids split at the LAST dash (UC-KUPO-7-1 → family KUPO-7,
+    // number 1); non-digit-ending ids keep the legacy first-dash path (UC-KUPO-19-4b → family KUPO).
     @Test
     void handlesLegacyHierarchicalUseCaseIds() throws IOException {
         writeDoc("a.md", """
@@ -151,11 +153,13 @@ class DocsLinterNextIdsTest {
 
         var results = nextIds(null);
 
-        assertThat(results).hasSize(1);
-        var r = results.get(0);
-        assertThat(r.prefix()).isEqualTo("KUPO");
-        assertThat(r.nextRule()).isEqualTo(2);
-        assertThat(r.nextUseCase()).isEqualTo(20); // max(19,7)+1
+        assertThat(results).hasSize(2);
+        assertThat(results.get(0).prefix()).isEqualTo("KUPO");
+        assertThat(results.get(0).nextRule()).isEqualTo(2);
+        assertThat(results.get(0).nextUseCase()).isEqualTo(20); // UC-KUPO-19-4b → legacy path, family KUPO
+        assertThat(results.get(1).prefix()).isEqualTo("KUPO-7");
+        assertThat(results.get(1).nextRule()).isEqualTo(1);
+        assertThat(results.get(1).nextUseCase()).isEqualTo(2); // UC-KUPO-7-1 → number 1
     }
 
     @Test
@@ -193,20 +197,49 @@ class DocsLinterNextIdsTest {
         assertThat(results).isEmpty();
     }
 
+    // UC-DL-67
     @Test
-    void rejectsInvalidPrefix() {
+    void acceptsHyphenatedPrefix() throws IOException {
         writeDoc("a.md", """
                 ---
-                idPrefix: DL
+                idPrefix: O-TEST
                 ---
 
-                # R-DL-1 Rule
+                # R-O-TEST-1 Rule
                 """);
 
-        DocsLinter linter = new DocsLinter();
-        assertThatThrownBy(() -> linter.nextIds(rootDir, List.of("docs"), DEFAULT_PATTERN, "dls"))
+        var results = nextIds("O-TEST");
+
+        assertThat(results).hasSize(1);
+        var r = results.get(0);
+        assertThat(r.prefix()).isEqualTo("O-TEST");
+        assertThat(r.occupied()).isTrue();
+        assertThat(r.nextRule()).isEqualTo(2);
+        assertThat(r.nextUseCase()).isEqualTo(1);
+    }
+
+    // UC-DL-68
+    @Test
+    void rejectsPrefixWithTrailingHyphen() {
+        assertThatThrownBy(() -> new DocsLinter().nextIds(rootDir, List.of("docs"), DEFAULT_PATTERN, "OP-"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("prefix must be uppercase letters only");
+                .hasMessage("prefix must not start or end with a hyphen: OP-");
+    }
+
+    // UC-DL-68
+    @Test
+    void rejectsPrefixWithLeadingHyphen() {
+        assertThatThrownBy(() -> new DocsLinter().nextIds(rootDir, List.of("docs"), DEFAULT_PATTERN, "-OP"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("prefix must not start or end with a hyphen: -OP");
+    }
+
+    // UC-DL-68
+    @Test
+    void rejectsLowercaseOrSymbolPrefix() {
+        assertThatThrownBy(() -> new DocsLinter().nextIds(rootDir, List.of("docs"), DEFAULT_PATTERN, "op"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("prefix must be uppercase letters or digits, e.g. ORD or O-TEST: op");
     }
 
     @Test

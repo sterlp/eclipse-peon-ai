@@ -113,12 +113,9 @@ public class DocsLinterTool extends AbstractTool {
         Pattern pattern = Pattern.compile(DEFAULT_ID_PATTERN);
         validateChildRoots(effectiveRoot, docRoots);
 
+        // Input normalization at the boundary; validation lives in DocsLinter.requireValidPrefix (R-DL-23).
         if (prefix != null) {
             prefix = prefix.trim();
-            if (!prefix.matches("[A-Z]+")) {
-                throw new IllegalArgumentException(
-                        "prefix must be uppercase letters only: " + prefix);
-            }
         }
 
         DocsLinter linter = new DocsLinter();

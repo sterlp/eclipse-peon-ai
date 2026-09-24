@@ -282,6 +282,41 @@ class DocParserTest {
                 f.type() == FindingType.PRAEFIX_FREMD && f.id().equals("R-XX-1"));
     }
 
+    // R-DL-23: hyphenated scope — R-O-TEST-1 splits at the last dash (O-TEST) and matches the doc prefix
+    @Test
+    void acceptsHyphenatedRuleScopeMatchingDocPrefix() throws IOException {
+        Files.writeString(docFile, """
+                ---
+                idPrefix: O-TEST
+                ---
+
+                # R-O-TEST-1 Titel
+                """);
+
+        var result = parser.parse(docFile, "test.md");
+
+        assertThat(result.definitions()).extracting(DocDefinition::id)
+                .containsExactly("R-O-TEST-1");
+        assertThat(result.findings()).noneMatch(f -> f.type() == FindingType.PRAEFIX_FREMD);
+    }
+
+    // R-DL-23: hyphenated scope — last-dash scope AB-C is foreign to doc prefix DD
+    @Test
+    void reportsForeignHyphenatedRuleScope() throws IOException {
+        Files.writeString(docFile, """
+                ---
+                idPrefix: DD
+                ---
+
+                # R-AB-C-1 Foreign
+                """);
+
+        var result = parser.parse(docFile, "test.md");
+
+        assertThat(result.findings()).anyMatch(f ->
+                f.type() == FindingType.PRAEFIX_FREMD && f.id().equals("R-AB-C-1"));
+    }
+
     // --- No definitions → no findings ---
     @Test
     void producesNoDefinitionsForPlainMarkdown() throws IOException {
