@@ -106,4 +106,79 @@ class AiReponseBuilderTest {
                 .contains("Only.java:50: hit 50")
                 .doesNotContain("matched lines — narrow your search");
     }
+
+    private static List<String> lines(String name, int count) {
+        var result = new ArrayList<String>();
+        for (int i = 1; i <= count; i++) {
+            result.add(name + " " + i);
+        }
+        return result;
+    }
+
+    // UC-OD-5
+    @Test
+    void buildMarkersCappedWithDisclosure() {
+        // GIVEN 40 error lines + 80 warning lines (120 markers)
+        var errors = lines("error", 40);
+        var warnings = lines("warning", 80);
+
+        // WHEN
+        String result = AiReponseBuilder.buildMarkers(
+                errors, warnings, AiReponseBuilder.MAX_BUILD_MARKERS);
+
+        // THEN exactly 100 marker lines: all errors first, then the first 60 warnings
+        var lines = result.lines().toList();
+        assertEquals(102, lines.size());
+        assertEquals("error 1", lines.get(0));
+        assertEquals("error 40", lines.get(39));
+        assertEquals("warning 1", lines.get(40));
+        assertEquals("warning 60", lines.get(99));
+        // and the cap is disclosed as the last line
+        assertEquals("", lines.get(100));
+        assertEquals("showing 100 of 120 markers", lines.get(101));
+    }
+
+    // UC-OD-6
+    @Test
+    void buildMarkersUnderCapNoDisclosure() {
+        // GIVEN 10 error lines + 20 warning lines (30 markers)
+        var errors = lines("error", 10);
+        var warnings = lines("warning", 20);
+
+        // WHEN
+        String result = AiReponseBuilder.buildMarkers(
+                errors, warnings, AiReponseBuilder.MAX_BUILD_MARKERS);
+
+        // THEN all 30 lines present, no disclosure
+        assertThat(result).contains("error 10").contains("warning 20");
+        var lines = result.lines().toList();
+        assertEquals(30, lines.size());
+        assertThat(result).doesNotContain("showing");
+    }
+
+    @Test
+    void buildMarkersUnlimitedAndExactCapNoDisclosure() {
+        // cap 0 = unlimited → all lines, no disclosure
+        String unlimited = AiReponseBuilder.buildMarkers(lines("error", 5), lines("warning", 7), 0);
+        var unlimitedLines = unlimited.lines().toList();
+        assertEquals(12, unlimitedLines.size());
+        assertThat(unlimited).doesNotContain("showing");
+
+        // total == cap → nothing cropped → no disclosure
+        String exactCap = AiReponseBuilder.buildMarkers(lines("error", 60), lines("warning", 40), 100);
+        assertEquals(100, exactCap.lines().count());
+        assertThat(exactCap).doesNotContain("showing");
+    }
+
+    @Test
+    void buildMarkersMoreErrorsThanCap() {
+        // 120 errors + 0 warnings, cap 100 → 100 error lines, warnings never backfilled
+        String result = AiReponseBuilder.buildMarkers(lines("error", 120), List.of(), 100);
+
+        var lines = result.lines().toList();
+        assertEquals(102, lines.size());
+        assertEquals("error 100", lines.get(99));
+        assertEquals("showing 100 of 120 markers", lines.get(101));
+    }
+
 }

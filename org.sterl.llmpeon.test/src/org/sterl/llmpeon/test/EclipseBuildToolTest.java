@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.test;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -215,6 +216,43 @@ public class EclipseBuildToolTest extends AbstractIntegrationTest {
         assertTrue("expected stats suffix on last line:\n" + result,
                 lines.get(lines.size() - 1).matches("\\(\\d+(?:m \\d+)?s, \\d{2}:\\d{2}\\)"));
     }
+
+    // UC-OD-5
+    @Test(timeout = 180000)
+    public void buildReportCappedAt100WithDisclosure() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        var capFiles = new ArrayList<String>();
+        try {
+            // GIVEN 120 broken .java files (missing closing brace → JDT error per file)
+            for (int i = 0; i < 120; i++) {
+                String file = "src/org/sterl/fixture/cap/CapErr" + i + ".java";
+                eclipseWriteFile(file, "package org.sterl.fixture.cap;\nclass CapErr" + i + " {\n");
+                capFiles.add(file);
+            }
+
+            // WHEN
+            String result = tool.eclipseBuildProject(PeonTestFixture.PROJECT_NAME);
+
+            // THEN N = actual problem markers, disclosure names N, exactly 100 marker lines
+            int n = project.findMarkers(IMarker.PROBLEM, true, IResource.DEPTH_INFINITE).length;
+            assertTrue("expected more than 100 markers, got " + n, n > 100);
+            assertTrue("expected cap disclosure:\n" + result,
+                    result.contains("showing 100 of " + n + " markers"));
+            long markerLines = result.lines()
+                    .filter(l -> l.matches(".* @ line .* @ file .*")).count();
+            assertEquals(100, markerLines);
+        } finally {
+            // delete fixture markers before the base after() deletes the fixture files
+            for (String file : capFiles) {
+                try {
+                    project.getFile(file).deleteMarkers(IMarker.PROBLEM, true, IResource.DEPTH_ZERO);
+                } catch (CoreException e) {
+                    // cleanup must not mask the test outcome
+                }
+            }
+        }
+    }
+
 
     // UC-PP-7
     @Test

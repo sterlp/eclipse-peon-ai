@@ -14,6 +14,7 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.shared.ArgsUtil;
+import org.sterl.llmpeon.tool.AiReponseBuilder;
 import org.sterl.llmpeon.shared.CallStats;
 
 import dev.langchain4j.agent.tool.P;
@@ -52,10 +53,6 @@ public class EclipseBuildTool extends AbstractEclipseTool {
         return readProblems(projectRef, files, severity);
     }
 
-    private String readProblems(IProject projectRef) {
-        return readProblems(projectRef, null, null);
-    }
-
     private String readProblems(IProject projectRef, String files, String severity) {
         int severityFilter = parseSeverity(severity);
         var paths = splitPaths(files);
@@ -69,8 +66,13 @@ public class EclipseBuildTool extends AbstractEclipseTool {
      * Default mode (no file filter): project-wide problems — unchanged behaviour.
      */
     private String readProjectWide(IProject projectRef) {
+        return readProjectWide(projectRef, 0);
+    }
+
+    private String readProjectWide(IProject projectRef, int cap) {
         try {
             var status = new Status();
+            status.cap = cap;
             readProjectStatus(projectRef, status);
             onTool("Reading problems of " + projectRef.getName() + ": " + status.countProblems());
             if (status.hasProblems()) {
@@ -208,7 +210,8 @@ public class EclipseBuildTool extends AbstractEclipseTool {
             // BUILD
             projectRef.build(IncrementalProjectBuilder.FULL_BUILD, getProgressMonitor());
 
-            return readProblems(projectRef) + System.lineSeparator() + stats.suffix();
+            return readProjectWide(projectRef, AiReponseBuilder.MAX_BUILD_MARKERS)
+                    + System.lineSeparator() + stats.suffix();
         } catch (CoreException e) {
             throw new RuntimeException("Filed to build " + projectRef.getName(), e);
         }
@@ -237,6 +240,7 @@ public class EclipseBuildTool extends AbstractEclipseTool {
         List<IMarker> errors = new ArrayList<>();
         List<IMarker> warnings = new ArrayList<>();
         int severityFilter = 0; // 0 = no filter (ERROR + WARNING), else only this severity
+        int cap = 0; // 0 = unlimited (no disclosure), else max marker lines
 
         void addMarker(IMarker marker) {
             int severity = marker.getAttribute(IMarker.SEVERITY, IMarker.SEVERITY_INFO);
@@ -263,14 +267,10 @@ public class EclipseBuildTool extends AbstractEclipseTool {
 
         @Override
         public String toString() {
-            var result = new StringBuilder();
-            for (IMarker m : errors) {
-                result.append(markerToAiString(m)).append("\n");
-            }
-            for (IMarker m : warnings) {
-                result.append(markerToAiString(m)).append("\n");
-            }
-            return result.toString();
+            return AiReponseBuilder.buildMarkers(
+                    errors.stream().map(EclipseBuildTool::markerToAiString).toList(),
+                    warnings.stream().map(EclipseBuildTool::markerToAiString).toList(),
+                    cap);
         }
     }
 
