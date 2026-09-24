@@ -13,6 +13,12 @@ danach 3 neue lokale Commits — erneut pushen). Merge = Pauls Entscheidung.
   Da-Dok-Verdict **CONCERNS (non-blocking)** → Hygiene + Phantom-ADR-0026 behoben (`1a93f48`):
   ADR-0026 hatte nie gebauten `QuestionOrchestrator` als „✅ Implemented" geführt — gegen IST
   korrigiert. Surefire 959/0/0/0, PDE-Suite 285/0/0. Docs geflippt (R-TC-6…9 + Befunde ✅).
+- **✅ R3 (Shell workingDirectory-Default):** Commit `c06efcb` — `ShellTool` Supplier
+  (`setDefaultWorkingDir`), Single-Wiring `PeonAiService:126-127` (`projectWorkDir()` via
+  `JdtUtil.diskPathOf`), `cwd=`-Disclosure an 5 Returns. Da-Dok **ACCEPTED** (D5-Disclosure
+  ~15 Tokens, unkritisch). Surefire 964/0/0/0, PDE 288/0/0. 2 vorab freigegebene IST-Abweichungen
+  (Plan §9): Test-Pin-Shift + CanonicalPath-Fallback (macOS /var→/private/var). R3 ✅ geflippt.
+  Manueller Smoke (Plan §7, 3 Punkte): offen bei Paul.
 - **Befund des Zyklus (User, offengelegt):** Agenten-Calls überlaufen Context + Header-State
   bleibt hängen (Fall 1: 172205 > 170240; Fall 2: 232440 > 170240, 8 Retries — Pauls
   Neubewertung: Anzeige-Leak, Compact-Positiv-Fall). Evidenz zentral:

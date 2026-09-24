@@ -69,7 +69,7 @@ THEN Literal-Fallback: exakte Zeichenfolge wird gesucht
 AND der Output benennt den Modus („literal")
 ```
 
-### R3 — workingDirectory-Default (❌ specified, 2026-09-24, Paul)
+### R3 — workingDirectory-Default (✅ done, 2026-09-24, Paul; Review Da Dok ACCEPTED, Commit `c06efcb`)
 
 Fehlende `workingDirectory` darf **nicht** in den Process-CWD laufen (heute `ShellTool.java:74`:
 `Path.of(".")` → `/Applications/Eclipse.app/.../MacOS/.` — der Prompt zeigte genau das). Stattdessen:
