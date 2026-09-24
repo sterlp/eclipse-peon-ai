@@ -1,11 +1,14 @@
 package org.sterl.llmpeon.tool;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,6 +37,11 @@ class ShellToolTest {
 
     private static List<String> linesOf(String result) {
         return result.lines().toList();
+    }
+
+    /** prints the current working directory */
+    private static String pwdCommand() {
+        return System.getProperty("os.name").toLowerCase().contains("win") ? "cd" : "pwd";
     }
 
     @Test
@@ -86,9 +94,10 @@ class ShellToolTest {
     void runOsCommand_tailLinesMinusOneReturnsAll() {
         // 100 lines so the old default-50 cap would drop the first 50
         String result = tool.shellRunCommand(seqCommand(1, 100), tempDir.toString(), null, -1, null);
-        assertTrue(result.startsWith("line 1"),
-                "tailLines=-1 must return ALL lines starting from the first, got: " + result);
         var lines = linesOf(result);
+        // R3: first line is the cwd= disclosure now — the first output line moved to line 2 (mechanical pin shift)
+        assertTrue(lines.get(1).startsWith("line 1"),
+                "tailLines=-1 must return ALL lines starting from the first (line 2 after cwd=), got: " + result);
         assertTrue(lines.contains("line 100"));
         assertFalse(result.contains("lines skipped"),
                 "tailLines=-1 must not truncate 100 lines, got: " + result);
@@ -199,5 +208,78 @@ class ShellToolTest {
         var lines = linesOf(result);
         assertTrue(lines.get(lines.size() - 1).matches("\\(\\d+s, \\d{2}:\\d{2}\\)"),
                 "last line should be stats suffix, got: " + result);
+    }
+
+    // R3
+    @Test
+    void r3DefaultSupplier_usesSupplierDirAndDisclosesCwd() throws Exception {
+        var supplierDir = Files.createDirectories(tempDir.resolve("supplier-dir")).toAbsolutePath().normalize();
+        tool.setDefaultWorkingDir(() -> supplierDir);
+
+        var lines = linesOf(tool.shellRunCommand(pwdCommand(), null, null, null, null));
+
+        assertEquals("cwd=" + supplierDir, lines.get(0),
+                "first line must disclose the effective dir: " + lines);
+        // canonical path: on macOS the temp dir sits behind a /var/folders -> /private/var/folders
+        // symlink, and pwd reports the physical path (known-risk R3, Plan §5 fallback)
+        assertEquals(supplierDir.toFile().getCanonicalPath(), lines.get(1),
+                "must execute in the supplier dir, not the process CWD: " + lines);
+    }
+
+    // R3
+    @Test
+    void r3SupplierCallTimeEvaluation_followsChangedReference() throws Exception {
+        var dirA = Files.createDirectories(tempDir.resolve("dir-a")).toAbsolutePath().normalize();
+        var dirB = Files.createDirectories(tempDir.resolve("dir-b")).toAbsolutePath().normalize();
+        var ref = new AtomicReference<Path>(dirA);
+        tool.setDefaultWorkingDir(ref::get);
+
+        var first = linesOf(tool.shellRunCommand(pwdCommand(), null, null, null, null));
+        assertEquals("cwd=" + dirA, first.get(0), "first call must use the supplier's value: " + first);
+
+        ref.set(dirB);
+        var second = linesOf(tool.shellRunCommand(pwdCommand(), null, null, null, null));
+        assertEquals("cwd=" + dirB, second.get(0),
+                "supplier must be re-read at call time (no frozen field): " + second);
+        assertEquals(dirB.toFile().getCanonicalPath(), second.get(1),
+                "second call must execute in the new dir (canonical: /var/folders symlink, Plan §5 fallback): " + second);
+    }
+
+    // R3
+    @Test
+    void r3SupplierReturnsNull_fallsBackToProcessCwdWithDisclosure() {
+        tool.setDefaultWorkingDir(() -> null);
+
+        var lines = linesOf(tool.shellRunCommand("echo hi", null, null, null, null));
+
+        assertEquals("cwd=" + Path.of(".").toAbsolutePath().normalize(), lines.get(0),
+                "null supplier result must fall back to the process CWD (disclosed): " + lines);
+        assertEquals("hi", lines.get(1), "the command must still run: " + lines);
+    }
+
+    // R3
+    @Test
+    void r3NoSupplier_set_keepsCurrentDirAndDisclosesCwd() {
+        // no setDefaultWorkingDir call at all — regression guard: "." default + disclosure
+        var lines = linesOf(tool.shellRunCommand("echo hi", null, null, null, null));
+
+        assertEquals("cwd=" + Path.of(".").toAbsolutePath().normalize(), lines.get(0),
+                "without a supplier the process CWD must be used and disclosed: " + lines);
+        assertEquals("hi", lines.get(1), "the command must still run: " + lines);
+    }
+
+    // R3
+    @Test
+    void r3ExplicitWorkingDir_ignoresSupplier() throws Exception {
+        var dirA = Files.createDirectories(tempDir.resolve("dir-a")).toAbsolutePath().normalize();
+        var dirB = Files.createDirectories(tempDir.resolve("dir-b")).toAbsolutePath().normalize();
+        tool.setDefaultWorkingDir(() -> dirA);
+
+        var lines = linesOf(tool.shellRunCommand(pwdCommand(), dirB.toString(), null, null, null));
+
+        assertEquals("cwd=" + dirB, lines.get(0),
+                "an explicit workingDirectory must win over the supplier: " + lines);
+        assertEquals(dirB.toFile().getCanonicalPath(), lines.get(1),
+                "must execute in the explicit dir (canonical: /var/folders symlink, Plan §5 fallback): " + lines);
     }
 }

@@ -13,9 +13,11 @@ danach 3 neue lokale Commits — erneut pushen). Merge = Pauls Entscheidung.
   Da-Dok-Verdict **CONCERNS (non-blocking)** → Hygiene + Phantom-ADR-0026 behoben (`1a93f48`):
   ADR-0026 hatte nie gebauten `QuestionOrchestrator` als „✅ Implemented" geführt — gegen IST
   korrigiert. Surefire 959/0/0/0, PDE-Suite 285/0/0. Docs geflippt (R-TC-6…9 + Befunde ✅).
-- **Befund des Zyklus (User, offengelegt):** Da-Dok-Review-Call überlief Context
-  (172205 > 170240, 4 tote ApiRetry-Rounds, Header-Zähler 81k ≠ 172k, Logging-Lücke) —
-  Triage in [open-to-discuss.md](open-to-discuss.md) (2026-09-24), Bug-Fix-Zyklus-Backlog.
+- **Befund des Zyklus (User, offengelegt):** Agenten-Calls überlaufen Context + Header-State
+  bleibt hängen (Fall 1: 172205 > 170240; Fall 2: 232440 > 170240, 8 Retries — Pauls
+  Neubewertung: Anzeige-Leak, Compact-Positiv-Fall). Evidenz zentral:
+  [header-state-leak.md](header-state-leak.md) — onProblem soll den Header re-rendern;
+  Bug-Fix-Zyklus-Backlog.
 - nextIds-Bug-Fixes (R-DL-23/24/25) ✅ weiter unten — unverändert, inkl. Da-Dok C1 Mutation-Pin.
 
 ## Nächste Schritte

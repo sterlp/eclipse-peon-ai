@@ -39,6 +39,7 @@ import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.tool.ToolService;
+import org.sterl.llmpeon.tool.tools.ShellTool;
 import org.sterl.llmpeon.tool.tools.SkillTool;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -120,6 +121,10 @@ public class PeonAiService {
         commandService          = new CommandService();
         sharedTools             = new SharedToolsComponent(skillService, commandService);
         sharedToolService       = sharedTools.toolService();
+        // R3 (shell-tool.md): default shell working dir = active project's disk path, evaluated at
+        // call time — project switch (or unpinned selection change) takes effect without any refresh.
+        sharedToolService.getTool(ShellTool.class)
+                .ifPresent(t -> t.setDefaultWorkingDir(this::projectWorkDir));
         workspaceMemoryTool     = sharedTools.workspaceMemoryTool();
 
         planTool = new PlanTool(this);
@@ -345,6 +350,12 @@ public class PeonAiService {
 
     public IProject getProject() {
         return userContext.getCurrentProject();
+    }
+
+    /** R3: disk path of the active project (pin-aware) at call time; null = no project selected. */
+    private Path projectWorkDir() {
+        var diskPath = JdtUtil.diskPathOf(getProject());
+        return diskPath == null ? null : Path.of(diskPath);
     }
 
     public LlmConfig getConfig() {

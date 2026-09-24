@@ -69,6 +69,33 @@ THEN Literal-Fallback: exakte Zeichenfolge wird gesucht
 AND der Output benennt den Modus („literal")
 ```
 
+### R3 — workingDirectory-Default (❌ specified, 2026-09-24, Paul)
+
+Fehlende `workingDirectory` darf **nicht** in den Process-CWD laufen (heute `ShellTool.java:74`:
+`Path.of(".")` → `/Applications/Eclipse.app/.../MacOS/.` — der Prompt zeigte genau das). Stattdessen:
+
+- Default = **Disk-Pfad des aktiven Projekts** (`aiService.getProject()`-Semantik — der Pin
+  fließt ein: gepinntes Projekt bleibt auch bei Selektionswechsel).
+- Call-Zeit-Evaluation (Supplier am `ShellTool`, Wiring im Plugin) — gleiches Muster wie
+  R-TC-7: kein eingefrorenes Feld, Projektwechsel wirkt ohne Refresh.
+- Kein Projekt gewählt → unverändert `.`; der **effektive** Pfad wird im Output genannt
+  (`cwd=...`), nie still (Repo-Vertrag: kein stilles Umfeld).
+- Explizit übergebene Pfade bleiben unverändert (inkl. ehrlicher Fehler bei ungültigem Pfad).
+
+```
+GIVEN Projekt „llmpeon-parent" gewählt (gepinnt) WHEN shellRunCommand ohne workingDirectory
+THEN der Command läuft im Disk-Pfad des Projekts AND der Output nennt den effektiven Pfad
+
+GIVEN Selektion wechselt auf ein anderes Projekt WHEN neuer Shell-Call ohne workingDirectory
+THEN der neue Projekt-Disk-Pfad gilt (Call-Zeit, kein Reload)
+
+GIVEN kein Projekt gewählt WHEN shellRunCommand ohne workingDirectory
+THEN Process-CWD wie heute AND der Output nennt ihn („cwd=...")
+
+GIVEN shellRunCommand mit explizitem workingDirectory
+THEN verhält sich unverändert (Default greift nicht)
+```
+
 ## Notes
 
 - Hard-Cap 3000 bleibt auch bei `tailLines <= 0` — explizites „all" darf den Context nicht
