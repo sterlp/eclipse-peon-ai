@@ -23,7 +23,14 @@ Geladen als `persistentContext: List<ContextItem>` → gerendert in `buildSystem
 
 | Item | Wer | Quelle |
 |------|-----|--------|
-| OS/Date-Regeln (Datum, OS, File-Access) | Alle | `PeonAiService.initStaticContext()` |
+| OS/Date-Regeln (Datum, OS, File-Access, User-Language-Fallback) | Alle | `PeonAiService.initStaticContext()` |
+
+**User-Language-Fallback (2026-09-23, Paul):** der Static Context trägt
+`user language: <user.language> — respond in the user's language; if unsure or not otherwise
+declared, use this one.` Vorrang-Kette: explizite Deklaration (AGENTS.md / AGENTS-\<agent\>.md)
+> Sprache der Nutzernachricht > System-Locale. Die Locale ist bewusst **letzte Stufe** (Fallback
+für Agenten ohne Userkontakt — Sklaven, Search-Agent — und den ersten Turn), kein Override —
+sonst gewinnt die statische Env gegen die eigentliche Chat-Sprache.
 
 **Memory ist NICHT mehr hier** (Revision 2026-08-23, ADR-0032): der statische Snapshot wurde
 entfernt — seit dem dynamischen Turn-Item war er reine Duplikation. Static Context = nur noch Env.
