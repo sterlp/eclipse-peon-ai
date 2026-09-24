@@ -121,6 +121,15 @@ Rate-Parsing, kein Verhalten Risiko — nur die Anzeige degeneriert kontrolliert
 bewusst descoped (Diff läuft bereits auf dem Tool-Thread; Job-Umzug erzeugt Chat-Reihenfolge-
 Probleme). 4 Guard-Tests in `SimpleDiffTest` (unter/an/über Schranke + Crash-Shape als 200k×100).
 
+**Nachfassung (2026-09-23, `a2abace`, Branch `fix/simple-diff`):** Paul-Befund — 1 geänderte
+Zeile in einem 2479-Zeilen-File kassierte den Guard, weil `m·n` **vor** jedem Trimmen geprüft
+wurde (LCS-Matrix ist O(n·m), egal wie wenig sich ändert). Fix: Common-Prefix/Suffix-Trim vor
+den Guards, LCS läuft nur auf der Trim-Region; `MAX_LCS_CELLS` → **1_250_000 Zellen = 5 MB**;
+zweiter Guard **`MAX_DIFF_LINES = 100_000`** (Trim begrenzt die Matrix, nicht den Output —
+Crash-Shape mit gemeinsamem Prefix trims auf 0 Zellen, würde trotzdem 7M Result-Zeilen bauen);
+Skip-Summary nennt jetzt den Dateinamen. Kontext-Hunks werden virtuell re-attached (Prefix nie
+materialisiert), Normalpfad byte-identisch (Exact-String-Test).
+
 ## 🔒 User-Context-Selection-Regression — GELÖST (2026-09-16, User-Smoke steht aus)
 
 Paul meldete: selektierter Text fehlt im Kontext + Statuszeile (Regression ggü. vorletztem Release).
