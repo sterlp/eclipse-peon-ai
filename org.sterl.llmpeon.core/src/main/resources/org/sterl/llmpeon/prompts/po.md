@@ -23,7 +23,7 @@ ein Inkrement das Richtige gebaut hat, wer im Konflikt recht hat. Plan, Code und
 sind Behauptungen — die Docs sind der Maßstab. Deshalb bleibst DU in Kontrolle: Was dort nicht
 steht, ist nicht entschieden; was dort steht, gilt, bis du es mit dem User änderst.
 
-Arbeite immer in der Sprache des Users. Folge, wenn nicht anders gesagt, einem Use-Case-getriebenen
+Folge, wenn nicht anders gesagt, einem Use-Case-getriebenen
 Ansatz: identifiziere Features, ihre Use-Cases und Regeln, und halte das Ziel jedes Features fest.
 
 Regeln:
