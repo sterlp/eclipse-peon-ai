@@ -489,7 +489,7 @@ gemeldet (nächste IDs wären `R-FOO-1` / `UC-FOO-1`).
 #### UC-DL-33 — Ohne `prefix` listet `nextIds` alle belegten Kürzel ✅ done
 GIVEN kein `prefix`-Parameter WHEN `nextIds` läuft THEN werden alle in den Docs belegten Kürzel mit
 ihrer jeweils nächsten freien Regel- und UC-Nummer gemeldet.
-### R-DL-23 — `prefix` erlaubt Bindestriche im Präfix ❌
+### R-DL-23 — `prefix` erlaubt Bindestriche im Präfix ✅ done (2026-09-24, `d477820`)
 
 `prefix` akzeptiert `[A-Z]+(?:-[A-Z0-9]+)*` — Bindestriche und Ziffern **innen**, nicht am Rand.
 Bestands-Präfixe (`ORD`, `CUST`, `TS`) verhalten sich unverändert. Das Splitten von `R-`/`UC-`-IDs
@@ -503,17 +503,17 @@ in Bereich + Nummer erfolgt am **letzten** Bindestrich vor der Nummer (`R-O-TEST
 > „prefix must be uppercase letters only" exakt die Projekte ab, für die es gebaut wurde, und der
 > Anwender fiel zurück auf Handvergabe per Grep — genau das, was das Tool verhindern soll.
 
-#### UC-DL-67 — Bindestrich-Präfix wird akzeptiert ❌
+#### UC-DL-67 — Bindestrich-Präfix wird akzeptiert ✅ done
 
 GIVEN `prefix=O-TEST` WHEN `nextIds` läuft THEN wird der Aufruf **nicht** abgewiesen — die
 Präfix-Suche läuft über `O-TEST` als ganzes Kürzel.
 
-#### UC-DL-68 — Rand-Bindestrich/Kleinbuchstaben werden abgewiesen ❌
+#### UC-DL-68 — Rand-Bindestrich/Kleinbuchstaben werden abgewiesen ✅ done
 
 GIVEN `prefix=OP-`, `prefix=-OP` oder `prefix=op` WHEN `nextIds` läuft THEN klarer Fehler
 („not am Rand" bzw. uppercase only), keine stille Normalisierung.
 
-### R-DL-24 — `nextIds` schreibt die gefundene Form fort; „free" nur bei echtem Nichts ❌
+### R-DL-24 — `nextIds` schreibt die gefundene Form fort; „free" nur bei echtem Nichts ✅ done (2026-09-24, `887d301` + `2235dba`)
 
 Bei gesetztem `prefix` durchsucht `nextIds` zusätzlich zu den Definitionen der Opt-in-Docs den
 **rohen Text** aller gescannten MD-Dateien der `docRoots` nach Vorkommen von
@@ -543,30 +543,30 @@ Bei gesetztem `prefix` durchsucht `nextIds` zusätzlich zu den Definitionen der 
 > (Definition vs. Vorkommen). Erwähnungen brennen Nummern bewusst — lieber eine verbrannte Nummer
 > als eine Doppelvergabe, und die Fundstelle macht jeden Fall nachprüfbar.
 
-#### UC-DL-69 — Flaches Register wird erkannt und flach fortgeschrieben ❌
+#### UC-DL-69 — Flaches Register wird erkannt und flach fortgeschrieben ✅ done
 
 GIVEN `OP-70…OP-79` als Bullets in einem Doc **ohne** `idPrefix` WHEN `nextIds` mit `prefix=OP`
 läuft THEN meldet es das höchste Vorkommen (`OP-79`) **mit Datei-Fundstelle** und schlägt `OP-80`
 vor — nie `R-OP-1`/`UC-OP-1`, nie „free".
 
-#### UC-DL-70 — `R-`/`UC-`-Formen verhalten sich unverändert ❌
+#### UC-DL-70 — `R-`/`UC-`-Formen verhalten sich unverändert ✅ done
 
 GIVEN Docs mit `R-READTOOLS-1..4` und `UC-READTOOLS-1..7` (Definitionen) WHEN `nextIds` mit
 `prefix=READTOOLS` läuft THEN kommt wie bisher `R-READTOOLS-5`, `UC-READTOOLS-8` (UC-DL-24).
 
-#### UC-DL-71 — Vorkommen zählen auch ohne Definition ❌
+#### UC-DL-71 — Vorkommen zählen auch ohne Definition ✅ done
 
 GIVEN eine Erwähnung `UC-FOO-3` in einem nicht teilnehmenden Doc, keine Definition WHEN `nextIds`
 mit `prefix=FOO` läuft THEN ist `UC-FOO-3` belegt — Vorschlag ab `UC-FOO-4` mit Fundstelle, keine
 Wiederverwendung der Lücke.
 
-#### UC-DL-72 — „free" nur bei echtem Nichts ❌
+#### UC-DL-72 — „free" nur bei echtem Nichts ✅ done
 
 GIVEN `prefix=FOO` und **kein** Vorkommen von `FOO-<Nr>` in irgendeiner gescannten Datei WHEN
 `nextIds` läuft THEN erst dann meldet es `free` mit `R-FOO-1` / `UC-FOO-1` (UC-DL-26 bleibt, mit
 schärferer Vorbedingung).
 
-### R-DL-25 — `nextIds` nennt die nicht teilnehmenden Docs namentlich ❌
+### R-DL-25 — `nextIds` nennt die nicht teilnehmenden Docs namentlich ✅ done (2026-09-24, `7933301`)
 
 Der `nextIds`-Rückgabewert listet — wie der Lint-Report (R-DL-11) — **jede** nicht teilnehmende
 Datei („Not participating (no idPrefix)") mit Pfad auf, nicht nur die Zählzeile.
@@ -576,7 +576,7 @@ Datei („Not participating (no idPrefix)") mit Pfad auf, nicht nur die Zählzei
 > entschärft das Fachliche (Rohscan sieht die Dateien trotzdem), die Liste macht den Scan
 > nachprüfbar und kostet nur Dateinamen.
 
-#### UC-DL-73 — Skipped-Liste im `nextIds`-Output ❌
+#### UC-DL-73 — Skipped-Liste im `nextIds`-Output ✅ done
 
 GIVEN ein Lauf mit nicht teilnehmenden Docs WHEN `nextIds` zurückkehrt THEN listet der Output jede
 dieser Dateien mit Pfad — analog zum „Nicht teilnehmend"-Abschnitt des Lint-Reports (UC-DL-23).
