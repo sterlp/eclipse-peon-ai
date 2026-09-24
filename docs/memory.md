@@ -2,7 +2,7 @@
 
 ## Wo wir stehen
 
-**Branch `fix/nextids-bug-report`** (von main `4a6abdd`), 6 Commits, **nicht gepusht** — Merge = Pauls
+**Branch `fix/nextids-bug-report`** (von main `4a6abdd`), 10 Commits, **nicht gepusht** — Merge = Pauls
 Entscheidung. `fix/simple-diff` ist als #146 (Squash `4a6abdd`) in main, lokal+remote gelöscht;
 StaticContextItem-Java-Änderung von Paul ist committed. Alte Stashes: keine.
 
@@ -16,17 +16,30 @@ StaticContextItem-Java-Änderung von Paul ist committed. Alte Stashes: keine.
   Surefire **949/0/0/0** (Ground Truth; Da Doks eclipseRunTests-Zahl 967 ist Artefakt).
   Da-Dok-Verdict: CONCERNS → C1 geschlossen. Docs geflippt (R-DL-23/24/25 + UC-DL-67…73 ✅),
   lintDocsAndTests: alle 45 UNBELEGT_ERLEDIGT = Alt-Bestand UC-DL-1…55, keine neuen.
+- **✅ R-ET Rename `eclipseRunTests` → `eclipseRunJavaTests`** (Pauls Pre-Approval, Java-only-Guard
+  `JavaCore.create`+`exists()` macht den Scope explizit): Code `909ce05` (1 Zeile, kein Reflector/
+  Wiring), Docs-Follow-ups `0188fd3` (ADR-0053, Homepage-Toolset-Tabelle) + AGENTS.md, index.md,
+  tool-time-disclosure.md (uncommitted bei diesem Stand) — alle ✅. Gate: Core **949/0/0/0**,
+  Plugin compile grün. Stale `lib/llmpeon-core.jar` (20.09, ohne `CallStats`) vorher per
+  dokumentiertem Ritual re-copied — Vorbestand, nicht Rename-Folge.
 - **Befund 1 des Reports** war kein Bug (Anwenderfehler) — R-DL-18 (Root-Fallback) deckte ihn
   2026-09-19 ab. Wunsch 4 (Disk-Pfad-Hinweis im Fehler) offengeblieben — kosmetisch.
 
 ## Nächste Schritte
 
-1. Paul: Branch pushen/mergen (`fix/nextids-bug-report` → main) — sein Call.
-2. Optional ( kosmetisch): `@P`-Description für `prefix` an `DocsIdTool` („e.g. ORD or O-TEST") —
+1. ✅ R-ET Rename-Docs-Follow-ups erledigt: ADR-0053 ✅, Homepage-Toolset-Tabelle ✅, AGENTS.md ✅,
+   tool-time-disclosure.md ✅ (Code `909ce05`, Docs `0188fd3` + index.md).
+2. Paul (offen): `eclipseBuildProject`-Warnings sind aktuell **UNGECAppt** — `EclipseBuildTool.java:241-254`
+   druckt alle ERROR+WARNING-Marker ohne Limit (Gegenteil der Annahme „Cap 100"). Vorschlag
+   **Cap 100 + Disclosure** — wartet auf Pauls Entscheidung.
+3. Paul (beantwortet, kein Change): Test-Dauer + Endzeit stehen im Tool-Result via
+   `CallStats.suffix` ✅ — nicht in der `onTool`-Statuszeile (bewusst).
+4. Paul: Branch pushen/mergen (`fix/nextids-bug-report` → main) — sein Call.
+5. Optional (kosmetisch): `@P`-Description für `prefix` an `DocsIdTool` („e.g. ORD or O-TEST") —
    Fassaden-Änderung, als Follow-up notiert (Plan §10.3).
-3. Tool-Polish-Mini-Zyklus (I1–I4) weiter offen: `debugJava*`-Rename + R-JD-13 + QueuedAt-Regel 9 +
+6. Tool-Polish-Mini-Zyklus (I1–I4) weiter offen: `debugJava*`-Rename + R-JD-13 + QueuedAt-Regel 9 +
    Homepage (memory.md vom 2026-09-23, unverändert).
-4. Paul: Compact-Lock-Smoke 3+4 → Flips UC-CT-3/5/6; Debugger-Re-Run 3b/3.2; Compressor-Empty-
+7. Paul: Compact-Lock-Smoke 3+4 → Flips UC-CT-3/5/6; Debugger-Re-Run 3b/3.2; Compressor-Empty-
    Root-Cause (Error-Log + Compact-Model-Config).
 
 ## Smoke-Liste (manuell) — Compact-Lock CT-3…6: 1+2 ✅ Paul
