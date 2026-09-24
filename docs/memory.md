@@ -2,7 +2,7 @@
 
 ## Wo wir stehen
 
-**Branch `fix/nextids-bug-report`** (von main `4a6abdd`), 10 Commits, **nicht gepusht** — Merge = Pauls
+**Branch `fix/nextids-bug-report`** (von main `4a6abdd`), 11 Commits, **nicht gepusht** — Merge = Pauls
 Entscheidung. `fix/simple-diff` ist als #146 (Squash `4a6abdd`) in main, lokal+remote gelöscht;
 StaticContextItem-Java-Änderung von Paul ist committed. Alte Stashes: keine.
 
@@ -18,8 +18,8 @@ StaticContextItem-Java-Änderung von Paul ist committed. Alte Stashes: keine.
   lintDocsAndTests: alle 45 UNBELEGT_ERLEDIGT = Alt-Bestand UC-DL-1…55, keine neuen.
 - **✅ R-ET Rename `eclipseRunTests` → `eclipseRunJavaTests`** (Pauls Pre-Approval, Java-only-Guard
   `JavaCore.create`+`exists()` macht den Scope explizit): Code `909ce05` (1 Zeile, kein Reflector/
-  Wiring), Docs-Follow-ups `0188fd3` (ADR-0053, Homepage-Toolset-Tabelle) + AGENTS.md, index.md,
-  tool-time-disclosure.md (uncommitted bei diesem Stand) — alle ✅. Gate: Core **949/0/0/0**,
+  Wiring), Docs-Follow-ups `0188fd3` (ADR-0053, Homepage-Toolset-Tabelle) + `52ce47f` (AGENTS.md, index.md,
+  tool-time-disclosure.md) — alle ✅ committed. Gate: Core **949/0/0/0**,
   Plugin compile grün. Stale `lib/llmpeon-core.jar` (20.09, ohne `CallStats`) vorher per
   dokumentiertem Ritual re-copied — Vorbestand, nicht Rename-Folge.
 - **Befund 1 des Reports** war kein Bug (Anwenderfehler) — R-DL-18 (Root-Fallback) deckte ihn
