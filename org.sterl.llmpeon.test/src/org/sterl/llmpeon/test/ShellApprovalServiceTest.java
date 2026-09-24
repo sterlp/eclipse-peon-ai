@@ -16,6 +16,7 @@ import org.junit.Test;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
+import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.parts.PeonConstants;
 import org.sterl.llmpeon.parts.shell.ShellApprovalService;
@@ -68,12 +69,19 @@ public class ShellApprovalServiceTest extends AbstractUnitTest {
         return toolService.getTool(ShellTool.class).get();
     }
 
+    private static ConfiguredChatModel model() {
+        return LlmConfig.newOllama("x").build();
+    }
+
+    private static ToolService tools() {
+        return new ToolService(false);
+    }
+
     // R-TC-6: not-autonomous + Jon active → slave's shell call runs without prompt
     @Test
     public void notAutonomous_jon_active_noPrompt() throws Exception {
         // GIVEN Jon (AiPoAgent) is the active turn owner, pref "not-autonomous"
-        var model = LlmConfig.newOllama("x").build();
-        activeAgent.set(new AiPoAgent(model, new ToolService(false)));
+        activeAgent.set(new AiPoAgent(model(), tools()));
         service.applyConfiguration();
 
         // WHEN a shell call happens (e.g. Da Mek via the shared ShellTool)
@@ -88,12 +96,11 @@ public class ShellApprovalServiceTest extends AbstractUnitTest {
     @Test
     public void agentFlip_toSlave_prompts() throws Exception {
         // GIVEN pref "not-autonomous", SUT applied with Peon-Plan active
-        var model = LlmConfig.newOllama("x").build();
-        activeAgent.set(new AiPlanAgent(model, new ToolService(false)));
+        activeAgent.set(new AiPlanAgent(model(), tools()));
         service.applyConfiguration();
 
         // ... then the active agent flips to a non-autonomous one (no re-apply)
-        activeAgent.set(new AiDevAgent(model, new ToolService(false)));
+        activeAgent.set(new AiDevAgent(model(), tools()));
 
         // WHEN a shell call happens — the fake presenter answers "No"
         String result = shell().shellRunCommand("echo od7-denied", null, null, null, null);
@@ -109,9 +116,8 @@ public class ShellApprovalServiceTest extends AbstractUnitTest {
     @Test
     public void always_alwaysPrompts() throws Exception {
         // GIVEN pref "always", Peon-Plan (autonomous) active
-        var model = LlmConfig.newOllama("x").build();
         InstanceScope.INSTANCE.getNode(NODE).put(PREF, "always");
-        activeAgent.set(new AiPlanAgent(model, new ToolService(false)));
+        activeAgent.set(new AiPlanAgent(model(), tools()));
         service.applyConfiguration();
 
         // WHEN a shell call happens — the fake presenter answers "No"
@@ -129,8 +135,7 @@ public class ShellApprovalServiceTest extends AbstractUnitTest {
             // GIVEN pref unset / legacy "true"
             InstanceScope.INSTANCE.getNode(NODE).put(PREF, raw);
             // Jon active would be the case where a stale "true" used to prompt
-            var model = LlmConfig.newOllama("x").build();
-            activeAgent.set(new AiPoAgent(model, new ToolService(false)));
+            activeAgent.set(new AiPoAgent(model(), tools()));
             service.applyConfiguration();
 
             // WHEN a shell call happens

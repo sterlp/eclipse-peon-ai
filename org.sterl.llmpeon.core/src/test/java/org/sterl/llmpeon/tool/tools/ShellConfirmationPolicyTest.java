@@ -11,7 +11,6 @@ import org.sterl.llmpeon.scaffold.AiScaffoldAgent;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.tools.ShellConfirmationPolicy.Decision;
-import org.sterl.llmpeon.tool.tools.ShellConfirmationMode;
 
 class ShellConfirmationPolicyTest {
 
