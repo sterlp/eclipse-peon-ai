@@ -48,3 +48,24 @@ Mapping-Datei (feature-change-request-copilot.md) wurden aufgelöst. Verbleibend
 - **CR-8–16 — Nein:** unsere Read/Search/Nav/Docs/Orchestration/Memory/Skills/Build/MCP-Familien = Vorsprung.
 - **Decompiler Language-Server — kein Nutzen** (nativ gebündelt, nicht decompilierbar; Logik bewusst anders;
   IP-Gründe).
+
+## Weitere geklärte Punkte (2026-09-24 aus open-points.md konsolidiert)
+
+| Punkt | Entscheidung | Begründung | Datum |
+|---|---|---|---|
+| Debugger-Backlog F2: statische Felder + evaluate-Objektwerte | **Specified** — SOLL jetzt R-JD-9 (UC-JD-10/11) in [java-debugger-tool.md](java-debugger-tool.md), Bau im Debugger+Linter-Mini-Zyklus | Paul „Go" 2026-09-21 | 2026-09-21 |
+| Debugger Exception-Suspend | **Specified** — R-JD-10 (UC-JD-12), `get_exception`-Action; Event-Abfrage verworfen (R-JD-3) | Paul „Go" 2026-09-21 | 2026-09-21 |
+| Docs-Linter „manuell verifiziert"-Marker | **Specified** — R-DL-22 (UC-DL-65/66) in [docs-linter.md](docs-linter.md) | Paul „Go" 2026-09-21 | 2026-09-21 |
+| Self-Reference-Guard aus `bugfix/edit-tool-insert` | **Bewusst NICHT übernommen** — Selbstwachstum ist Agenten-Absicht; Edit-Guard (`7800a56`) deckt die teure Klasse | Paul bestätigt 2026-09-19; Guard liegt fertig auf `bugfix/edit-tool-insert` (`a3e8ce1`) falls wieder gebraucht | 2026-09-19 |
+| Merge `release-2026-09-06` → main | **Erledigt** — Squash-PR #132 (`45f2a0d2`), Content war vollständig auf dem Branch; ebenso `fix/compact-slot-model` via #140 | Konsolidierung Paul 2026-09-19; No-Op-Merges vermieden | 2026-09-19 |
+| SimpleDiff LCS-OOM bei großen Dateien | **Gelöst** — Guard `MAX_LCS_CELLS` + Common-Trim + `MAX_DIFF_LINES` (`2e51a16`, Nachfassung `a2abace` auf `fix/simple-diff`, in main) | 4 Tests + Crash-Shape-Abdeckung | 2026-09-16/23 |
+| User-Context-Selection-Regression | **Gelöst** — R-SEL-1…3 (`5ceb3aa`/`c958d78`); Setter-Reihenfolge nur per User-Smoke prüfbar | SOLL in [user-context.md](user-context.md) | 2026-09-16 |
+| Docs-Linter liest Code-Block-Überschriften als Definitionen | **Gelöst** — R-DL-13 (Fenced Code Blocks übersprungen, `797670c`/`43d4ff8`) | Dogfooding-Fund, Linter reportete False Positives | 2026-09-15 |
+| Code-Block-Regel für Testquellen (VERWAIST-Fehlalarm) | **Entschieden** — R-DL-21 Option (b) in [docs-linter.md](docs-linter.md) | Realfall `DocsLinterToolTest:78` | 2026-09-21 |
+| DL-Tests ohne ID-Kommentare (37 Altbestand) | **Bewusst offen als eigener Sweep** — ✅s sind legitim (Implementierung nachweislich getestet, nur Annotation fehlt); Empfehlung: eigener Mini-Zyklus, nicht im Feature-Zyklus | Linter meldet korrekt; zu groß für einen Feature-Abschluss | 2026-09-15 |
+| 8 rote Compact-/TurnContext-Tests in `PeonAiServiceTest` | **Gelöst** — keine Bugs, veraltete Seeds (2 Messages vs. R16-Guard < 3); Seeds auf 1U+2A umgestellt | Da-Mek-Kausalanalyse (`9ed839b` vs `d94e8e9`) | 2026-09-16 |
+| `eclipseReplaceLines`/`diskReplaceLines` Insert-Korruption | **Gelöst** — Root-Cause = leerer/blanker oldString (`String.replace("", x)`); Edit-Guard min. 3 Non-WS (`7800a56`), alle 3 Oberflächen, 5 Mutation-Nachweise rot | Stress-Jagden fanden kein sporadisches Reprokt im Replace selbst | 2026-09-19 |
+| Docs-Linter `idPattern` 0/0 bei workspace-Pfaden | **Entschieden** — Wurzel = Root-Handling, → R-DL-18 (Root-Fallback), gebaut im Mini-Zyklus `bugfix/linter-root-fallback` | Paul 2026-09-16 | 2026-09-16 |
+| `nextIds` reserviert nicht / Neustart | **Gebaut** — Zustandslosigkeit bleibt (R-DL-16 + UC-DL-56/57), Ablauf in po.md; Mehrwert erst durch R-DL-17 | `934ea7c`/`ab71c53`, Paul bestätigt | 2026-09-15/16 |
+| „Slot" doppelt belegt (Glossar) | **„Slot" gestorben** — Model-Selection vs. Skill-Component | Paul 2026-09-11 | 2026-09-11 |
+| Glossar eager laden | **(a) Nur Jon** — Turn-scoped Kontext, Jon ist Sprach-Hüter | Paul-Scope bestätigt 2026-09-11 | 2026-09-11 |

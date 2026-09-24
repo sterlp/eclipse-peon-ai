@@ -107,11 +107,43 @@ PoDelegateTool-Kontext und im Roster. Provider-Werte stehen ohne Tilde.
 - GIVEN der letzte Wert stammt vom Estimate WHEN der Kontext angezeigt wird THEN
   `~34k (estimate)`. *(Test: `ContextCounterDisplayTest#estimateIsDisclosed`)*
 
+### R-CC-7 — Compact-Fehler sichtbar machen + begrenzter Retry 🚧 in design (2026-09-24, Paul)
+
+Der Compact-Call selbst kann fehlschlagen (neue Evidenz 2026-09-24: „Compressing conversation
+48 messages, 169592 tokens" → 400 `exceed_context_size_error` am Compressor-Call — der
+Compressor-Input übersteigt das Context-Fenster des Compact-Modells). IST: Exception stirbt je
+nach Aufrufer still oder als roher Stack — das LLM erfährt nichts, der User sieht evtl. nur den
+hängenden Header (siehe [header-state-leak.md](header-state-leak.md)).
+
+SOLL (Paul, 2026-09-24):
+
+- **Fehler ans LLM:** Ein fehlgeschlagener Compact wird dem LLM als ehrliches Tool-Result
+  gemeldet: „**compact failed** + Fehlerursache des Compact-Agenten" — nie still. Damit kann
+  das LLM reagieren (z. B. User informieren) und das Problem **bubbelt zum User**.
+- **`monitor.onProblem`** zusätzlich (User-Sichtbarkeit im Chat, wie R-CC-3 bei FAILED_EMPTY).
+- **Retry: mindestens 1× nach 20s** — aber **nur für transiente Fehlerklassen** (Rate-Limit,
+  5xx, Netzwerk). Bei **deterministisch toten** Fehlern (`exceed_context_size_error`,
+  Invalid-Request) ist ein Retry reine Wartezeit auf dasselbe Scheitern — derselbe Befund wie
+  die ApiRetry-Triage (open-to-discuss 2026-09-24, 4–8 tote Backoff-Runden). Diese Klasse geht
+  **sofort** als fehlgeschlagen ans LLM/den User.
+- BDD (hart erst bei ❌):
+  - GIVEN Compact-Call wirft einen transienten Fehler WHEN compact() THEN 1 Retry nach 20s,
+    bei erneutem Fehler → onProblem + ehrliches Tool-Result.
+  - GIVEN Compact-Call wirft `exceed_context_size_error` WHEN compact() THEN KEIN Retry,
+    sofort onProblem + Tool-Result mit der Fehlerursache.
+  - GIVEN Retry erfolgreich WHEN der zweite Call kompaktiert THEN normaler COMPACTED-Fluss.
+
+Offen zur Festlegung (nur Paul): Retry-Zählschutz — soll der Auto-Compact-Pfad (pre-turn) beim
+deterministischen Fehler NICHT endlos je Turn wiederversuchen (Max-1-Retry-pro-Fehlerklasse)?
+Empfehlung: ja, sonst Compact-Spirale je Turn.
+
 ## Umsetzung
 
 - Ein Commit (Docs + Code), Core-Tests isoliert (JUnit 5 + AssertJ, GIVEN/WHEN/THEN); UI-Button-
   Feedback ist Plugin-Teil. Test-First: rote Tests zuerst zeigen, dann der Fix (Paul).
-- Reihenfolge: R-CC-2 + R-CC-3 zuerst (entblockt), dann R-CC-1, R-CC-4, R-CC-6.
+- Reihenfolge: R-CC-2 + R-CC-3 zuerst (entblockt), dann R-CC-1, R-CC-4, R-CC-6; R-CC-7 im
+  Bug-Fix-Zyklus zusammen mit der ApiRetry-non-retryable-Klassifikation (eine Fehlerklassen-
+  Tabelle, zwei Verbraucher).
 - Alle `compact()`-Caller (PoDelegateTool, CompactSessionTool, UI-Button, Tests) per Grep
   verifizieren — Interface-Änderung `AiAgent.compact()`.
 

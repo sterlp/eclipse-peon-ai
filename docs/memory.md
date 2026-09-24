@@ -1,45 +1,29 @@
-# Session-Stand — 2026-09-24 (nextIds-Bug-Fixes ✅ auf `fix/nextids-bug-report`)
+# Session-Stand — 2026-09-24 (Zyklus komplett: R-DL/R-ET/R-OD-5/R-TC/R3 ✅ auf `fix/nextids-bug-report`)
 
 ## Wo wir stehen
 
-**Branch `fix/nextids-bug-report`** (von main `4a6abdd`), **gepusht** auf origin (Stand `84629f36`,
-danach 3 neue lokale Commits — erneut pushen). Merge = Pauls Entscheidung.
+**Branch `fix/nextids-bug-report`** (von main `4a6abdd`), gepusht (HEAD `e3ff278` + Docs-Aufräum-Commits),
+nicht gemerged — Merge = Pauls Entscheidung. Docs aufgeräumt 2026-09-24: open-points.md von 539
+Zeilen stranguriert (🔒-Blöcke → resolved-points.md konsolidiert, Bug-Fix-Backlog priorisiert an
+den Anfang), memory.md kompakt.
 
-- **✅ R-OD-5 (eclipseBuildProject Cap 100 + Disclosure):** Commit `5d74aab` (core
-  `AiReponseBuilder.buildMarkers` + `MAX_BUILD_MARKERS`, 1-arg `readProblems`-Overload entfernt),
-  Da-Dok-Review **ACCEPTED**, Docs geflippt (`e68fb4c`), Surefire 953/0/0/0.
-- **✅ R-TC-6/7/8/9 (Shell-Approval):** Commit `6a72e92` (core `ShellConfirmationMode`/`Policy`,
-  plugin `ShellApprovalService`, AIChatView aufgeräumt, Dead-Field weg) + `43fe725` (Hygiene).
-  Da-Dok-Verdict **CONCERNS (non-blocking)** → Hygiene + Phantom-ADR-0026 behoben (`1a93f48`):
-  ADR-0026 hatte nie gebauten `QuestionOrchestrator` als „✅ Implemented" geführt — gegen IST
-  korrigiert. Surefire 959/0/0/0, PDE-Suite 285/0/0. Docs geflippt (R-TC-6…9 + Befunde ✅).
-- **✅ R3 (Shell workingDirectory-Default):** Commit `c06efcb` — `ShellTool` Supplier
-  (`setDefaultWorkingDir`), Single-Wiring `PeonAiService:126-127` (`projectWorkDir()` via
-  `JdtUtil.diskPathOf`), `cwd=`-Disclosure an 5 Returns. Da-Dok **ACCEPTED** (D5-Disclosure
-  ~15 Tokens, unkritisch). Surefire 964/0/0/0, PDE 288/0/0. 2 vorab freigegebene IST-Abweichungen
-  (Plan §9): Test-Pin-Shift + CanonicalPath-Fallback (macOS /var→/private/var). R3 ✅ geflippt.
-  Manueller Smoke (Plan §7, 3 Punkte): offen bei Paul.
-- **Befund des Zyklus (User, offengelegt):** Agenten-Calls überlaufen Context + Header-State
-  bleibt hängen (Fall 1: 172205 > 170240; Fall 2: 232440 > 170240, 8 Retries — Pauls
-  Neubewertung: Anzeige-Leak, Compact-Positiv-Fall). Evidenz zentral:
-  [header-state-leak.md](header-state-leak.md) — onProblem soll den Header re-rendern;
-  Bug-Fix-Zyklus-Backlog.
-- nextIds-Bug-Fixes (R-DL-23/24/25) ✅ weiter unten — unverändert, inkl. Da-Dok C1 Mutation-Pin.
+- **✅ R-OD-5** (eclipseBuildProject Cap 100 + Disclosure): `5d74aab`, Da-Dok ACCEPTED, Surefire 953.
+- **✅ R-TC-6/7/8/9** (Shell-Approval: Autonom = Jon/Plan, Call-Zeit-Evaluation, `true` ignoriert,
+  eigene Klasse `ShellApprovalService`): `6a72e92`+`43fe725`, Surefire 959, PDE 285. ADR-0026 gegen
+  IST korrigiert (Phantom `QuestionOrchestrator`).
+- **✅ R3** (Shell workingDirectory-Default = Projekt-Disk-Pfad, `cwd=`-Disclosure): `c06efcb`,
+  Da-Dok ACCEPTED, Surefire 964, PDE 288. Smoke ✅ Paul (Pkt 1+2; „kein Projekt" nur noch Safety-Net,
+  automatisiert gedeckt).
 
 ## Nächste Schritte
 
-1. Paul: **Manueller Smoke R-TC** (Plan §6, 5 Punkte): „not-autonomous"+Jon → kein Prompt (auch
-   via Da Mek) · Peon-Dev direkt → Prompt · Mid-Session-Wechsel ohne Reload folgt neuem Agenten ·
-   „always" → Prompt überall · `""`/`"true"` → nie.
-2. Paul: Branch erneut pushen (3 neue Commits) + Merge → main — sein Call.
-3. **Nächster Bug-Fix-Zyklus-Backlog:** Context-Overflow-Triage (open-to-discuss 2026-09-24:
-   ApiRetry non-retryable, Counter-Lücke 81k↔172k, Review-Guard, Retry-Logging, stille
-   Cancellation) · ApiRetry-Follow-up (Memory #21) · optional `ShellTool.confirmationProvider`
-   volatile (pre-existing, harmlos, 1-Wort-Fix).
-4. Tool-Polish-Mini-Zyklus (I1–I4) weiter offen: `debugJava*`-Rename + R-JD-13 + QueuedAt-Regel 9
-   + Homepage (memory.md vom 2026-09-23, unverändert).
-5. Paul: Compact-Lock-Smoke 3+4 → Flips UC-CT-3/5/6; Debugger-Re-Run 3b/3.2; Compressor-Empty-
-   Root-Cause (Error-Log + Compact-Model-Config).
+1. **Thema jetzt: Compact + State** (Paul) — R-CC-7 (Compact-Fehler ans LLM + Retry-1×-20s
+   transient-only) + Header-State-Leak (onProblem re-rendert Header) + ApiRetry-Fehlerklassen-
+   Tabelle. Evidenz zentral: docs/header-state-leak.md. → Plan mit Da Thinka, dann Build.
+2. R-TC-Smoke (5 Punkte, tool-confirmation.md) — offen bei Paul.
+3. Tool-Polish I1–I4 (`debugJava*`-Rename + R-JD-13 + QueuedAt-Regel 9 + Homepage) — unverändert.
+4. Compact-Lock-Smoke 3+4; Debugger-Re-Run; Compressor-Empty-Root-Cause (Error-Log +
+   Compact-Model-Config) — Paul.
 
 ### Zyklus-Historie (kompakt, Details in den Feature-Docs)
 
@@ -57,12 +41,9 @@ danach 3 neue lokale Commits — erneut pushen). Merge = Pauls Entscheidung.
 
 ## Geparkt
 
-ApiRetry-Follow-up (Memory #21, erneut live aufgetreten — im Overflow-Triage-Backlog) ·
-`ShellTool.confirmationProvider` volatile (pre-existing, harmlos, 1-Wort-Fix) · Issue #142-ADR ·
-DL-Sweep der 45 Alt-UNBELEGT (UC-DL-1…55, Da-Dok-Out-of-Scope-Notiz) · UC-DL-60/61 (R-DL-18 ist
-gebaut aber ❌ — Flip-Verdacht beim nächsten DL-Kontakt prüfen) · 🟡-Indicator · „!-Messages"
-(Regel 8) · Workspace-Memory-Vollkopie je memoryAdd (❓ open-points.md) · Anthropic
-cache_read-Undercount.
+`ShellTool.confirmationProvider` volatile (1-Wort-Fix bei Berührung) · Issue #142-ADR ·
+DL-Sweep der 45 Alt-UNBELEGT · UC-DL-60/61 (R-DL-18 gebaut aber ❌ — Flip-Verdacht beim nächsten
+DL-Kontakt prüfen) · Anthropic cache_read-Undercount. Übriges: docs/open-points.md.
 
 ## Lektionen (Zyklus)
 
