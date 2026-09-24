@@ -169,7 +169,7 @@ Common built-in prefixes:
 
 | Prefix | Tools |
 |--------|-------|
-| `eclipse` | Workspace file read/write/search/navigation, build, tests, console, project problems — the default toolset. E.g. `eclipseReadFile`, `eclipseWriteFile`, `eclipseGrepFiles`, `eclipseSearchFiles`, `eclipseBuildProject`, `eclipseRunTests`, `eclipseReadProjectProblems`, `eclipseFindReferences`. |
+| `eclipse` | Workspace file read/write/search/navigation, build, tests, console, project problems — the default toolset. E.g. `eclipseReadFile`, `eclipseWriteFile`, `eclipseGrepFiles`, `eclipseSearchFiles`, `eclipseBuildProject`, `eclipseRunJavaTests`, `eclipseReadProjectProblems`, `eclipseFindReferences`. |
 | `skill` | `skillList`, `skillRead`, `skillReadFile` |
 | `memory` | `memoryAdd`, `memoryReplace`, `memoryRemove` |
 | `plan` | `planRead`, `planSave`, `planUpdate`, `planImplemented` |
