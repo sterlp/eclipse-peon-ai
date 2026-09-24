@@ -40,7 +40,6 @@ public final class LlmConfigLoader {
                 .showRealtimeAiResponse(parseBoolean(store.get(LlmConfigKeys.SHOW_REALTIME_AI_RESPONSE, null), true))
                 .queryParams(parseCsvMap(store.get(LlmConfigKeys.QUERY_PARAMS, "")))
                 .headerParams(parseCsvMap(store.get(LlmConfigKeys.HEADER_PARAMS, "")))
-                .shellCommandConfirmationRequired(shellConfirmationRequired(store.get(LlmConfigKeys.SHELL_CONFIRMATION_ENABLED, "")))
                 .modelConfigs(loadModelConfigs(store))
                 .build();
     }
@@ -69,10 +68,6 @@ public final class LlmConfigLoader {
 
     private static String defaultConfigDir() {
         return Path.of(System.getProperty("user.home"), ".peon").toString();
-    }
-
-    private static boolean shellConfirmationRequired(String value) {
-        return "always".equals(value) || "not-autonomous".equals(value);
     }
 
     // --- Typed parsing (string store -> value, fallback on null/blank/invalid) ---

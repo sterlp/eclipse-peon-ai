@@ -3,7 +3,6 @@ package org.sterl.llmpeon.parts;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CancellationException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -32,7 +31,6 @@ import org.eclipse.ui.IWorkingSet;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiAgentStatusModel;
 import org.sterl.llmpeon.agent.CompactResult;
-import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.command.SlashCommandResolver;
@@ -61,8 +59,8 @@ import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.skill.SkillSource;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.model.SimpleMessage.Type;
+import org.sterl.llmpeon.parts.shell.ShellApprovalService;
 import org.sterl.llmpeon.tool.tools.CompactSessionTool;
-import org.sterl.llmpeon.tool.tools.ShellTool;
 import org.sterl.llmpeon.voice.VoiceConfig;
 import org.sterl.llmpeon.voice.VoiceInputService;
 
@@ -93,6 +91,11 @@ public class AIChatView implements EclipseAiMonitor {
         LlmPreferenceInitializer.buildWithDefaults().build(),
         this::showQuestion
     );
+
+    /** R-TC-9: shell-approval wiring — autonomy is evaluated per shell call (R-TC-7),
+     *  so an agent switch needs no provider refresh. */
+    private final ShellApprovalService shellApproval = new ShellApprovalService(
+        aiService.getSharedToolService(), this::showQuestion, aiService::getActiveAgent);
 
     private final AtomicReference<IProgressMonitor> monitorRef = new AtomicReference<>(new NullProgressMonitor());
     /** R-ST1: submitted-but-unfinished turn jobs. Submit increments (UI thread, pre-schedule),
@@ -418,6 +421,11 @@ public class AIChatView implements EclipseAiMonitor {
         // otherwise an MCP-only change (LlmConfig unchanged) would never reconnect (R-MCP1).
         applyMcpConfig();
 
+        // Shell-Confirmation is applied on every preference change, INDEPENDENTLY of the LlmConfig
+        // gate below — LlmConfig no longer carries the shell pref (clean break), so a shell-only
+        // change would early-return otherwise (same pattern as applyMcpConfig, R-MCP1).
+        shellApproval.applyConfiguration();
+
         if (lastAppliedConfig != null && lastAppliedConfig.equals(config)) return;
         lastAppliedConfig = config;
         aiService.updateConfig(config);
@@ -425,7 +433,6 @@ public class AIChatView implements EclipseAiMonitor {
         actionsBar.setAgents(aiService.getAgents());
         actionsBar.updateModeUI(aiService.getActiveAgent());
         refreshStatusLine();
-        applyShellCommandConfirmation();
     }
 
     private void applyMcpConfig() {
@@ -433,45 +440,6 @@ public class AIChatView implements EclipseAiMonitor {
         statusLine.setMcpAvailable(!servers.isEmpty());
         statusLine.setMcpEnabled(McpConnectionService.isEnabled());
         aiService.applyMcpConfig();
-    }
-
-    private void applyShellCommandConfirmation() {
-        var prefs = InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID);
-        var autonomous = this.aiService.getActiveAgent() instanceof AiPlanAgent;
-
-        // TODO move into own class?
-        var shellSetting = prefs.get(PeonConstants.PREF_SHELL_CONFIRMATION_ENABLED, "");
-        if ("true".equalsIgnoreCase(shellSetting) ||
-                "always".equalsIgnoreCase(shellSetting) ||
-                (!autonomous && "not-autonomous".equalsIgnoreCase(shellSetting))) {
-            // TODO is this always needed??!?
-            aiService.getSharedToolService().getTool(ShellTool.class).ifPresent(shellTool -> {
-                shellTool.setConfirmationProvider((command, workingDirectory) -> {
-                    var latch = new java.util.concurrent.CountDownLatch(1);
-                    var answer = new AtomicReference<>("No");
-                    showQuestion("Approve execution of:"
-                            + "\n\n`" + command + "`"
-                            + "\n in **" + workingDirectory + "**? \n\n"
-                            + "or enter a new command to execute:",
-                            List.of("Yes", "No"),
-                            a -> { answer.set(a); latch.countDown(); });
-                    try {
-                        latch.await();
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
-                    if (UserQuestionResponseWidget.CANCEL.equals(answer.get())) {
-                        throw new CancellationException("Canceled tool execution " + workingDirectory + " " + command);
-                    }
-                    return answer.get();
-                });
-            });
-
-        } else {
-            aiService.getSharedToolService().getTool(ShellTool.class).ifPresent(shellTool -> {
-                shellTool.setConfirmationProvider(null);
-            });
-        }
     }
 
     // -------------------------------------------------------------------------

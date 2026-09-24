@@ -60,7 +60,6 @@ class LlmConfigLoaderTest {
         assertThat(config.isThinkSupported()).isTrue();
         assertThat(config.shouldWeSendThinkingBackToLLM()).isFalse();
         assertThat(config.getQueryParams()).containsEntry("a", "1").containsEntry("b", "2");
-        assertThat(config.isShellCommandConfirmationRequired()).isTrue();
     }
 
     @Test
