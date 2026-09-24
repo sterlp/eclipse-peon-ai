@@ -40,13 +40,13 @@ mit **entscheids-cache**, damit autonome, lange Läufe nicht in Bestätigungs-Er
 - Der Approval-Prompt blockiert im Provider-Callback den Agent-Thread (CountDownLatch,
   `AIChatView.java:449-466`) — UI bleibt bedienbar.
 
-### Befund 1 — Stale-Provider (False Negative) 🚧
+### Befund 1 — Stale-Provider (False Negative) ✅ (behoben durch R-TC-6/7)
 
 Peon-Plan aktiv + `not-autonomous` → Provider `null`. Wechsel auf Peon-Dev → Dev führt
 Shell-Befehle **ohne Approval** aus. False Negative = teuerste Fehlerklasse (AGENTS.md:
 „a tool must never lie").
 
-### Befund 2 — Jon zählt nicht als autonom 🚧
+### Befund 2 — Jon zählt nicht als autonom ✅ (behoben durch R-TC-6)
 
 `AiPoAgent` ist kein `AiPlanAgent` → unter `not-autonomous` prompten Jons Sklaven (Da Mek,
 Shell via Shared-Tool) bei jedem Aufruf. SOLL (Paul 2026-09-24): **Jons Agenten brauchen im
@@ -55,24 +55,24 @@ Mini-Fix behandelbar, ohne das volle R-TC-1…5-Modell zu öffnen.
 
 ### SOLL (Fix, 2026-09-24, Paul freigegeben)
 
-- **R-TC-6 ❌ — Autonom-Definition:** Unter `not-autonomous` gilt ein Lauf als autonom, wenn der
+- **R-TC-6 ✅ done (2026-09-24, Paul; Review Da Dok, Commits `6a72e92`/`43fe725`) — Autonom-Definition:** Unter `not-autonomous` gilt ein Lauf als autonom, wenn der
   **aktive Agent Jon (`AiPoAgent`) oder Peon-Plan (`AiPlanAgent`)** ist. Jons Sklaven (Da Mek,
   Da Thinka, Da Dok) erben das — der Lauf-Kontext (wer den Turn besitzt), nicht der Sklave,
   entscheidet.
-- **R-TC-7 ❌ — Evaluation zur Call-Zeit:** Der ConfirmationProvider wird konfiguriert gesetzt,
+- **R-TC-7 ✅ done (2026-09-24, Paul; Review Da Dok) — Evaluation zur Call-Zeit:** Der ConfirmationProvider wird konfiguriert gesetzt,
   entscheidet aber **pro Call** über die Autonomie (aktiver Agent zur Call-Zeit) — kein Stale-
   Zustand mehr, kein Refresh beim Agenten-Wechsel nötig. Alternative (a) „Refresh in
   `onAgentChange`" verworfen: sie fixt Befund 1, aber hält zwei Evaluationspunkte und das
   Stale-Risiko am Leben.
-- **R-TC-8 ❌ — Doppelung konsolidiert (Clean Break, AGENTS.md):** nur noch `always` (immer
+- **R-TC-8 ✅ done (2026-09-24, Paul; Review Da Dok) — Doppelung konsolidiert (Clean Break, AGENTS.md):** nur noch `always` (immer
   bestätigen) und `not-autonomous`; der Altwert `true` wird **ignoriert** (= unset, keine
   Bestätigung), nicht gemigtiert. Kein Alias.
-- **R-TC-9 ❌ — Eigene Klasse:** die Shell-Confirmation-Logik verlässt `AIChatView` (löst die
+- **R-TC-9 ✅ done (2026-09-24, Paul; Review Da Dok, ADR-0026 korrigiert) — Eigene Klasse:** die Shell-Confirmation-Logik verlässt `AIChatView` (löst die
   TODOs `AIChatView.java:444/447`): reine Policy-Entscheidung im **core** (Preference-Wert +
   „autonomous?"-Signal → Entscheidung, testbar ohne SWT), UI-Wiring (showQuestion-Callback)
   bleibt dünn im Plugin. One behaviour, one implementation.
 
-BDD (hart bei ❌):
+BDD (alle ✅, getestet 2026-09-24 — core `ShellConfirmationPolicyTest` 6, plugin `ShellApprovalServiceTest` 5; Widget/Latch-Verhalten manuell):
 - GIVEN `not-autonomous` + Jon aktiv WHEN Jons Sklave Shell ruft THEN kein Prompt, Befehl läuft.
 - GIVEN `not-autonomous` + Peon-Plan aktiv WHEN Shell-Call THEN kein Prompt.
 - GIVEN `not-autonomous` + Peon-Dev direkt aktiv WHEN Shell-Call THEN Prompt.

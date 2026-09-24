@@ -252,3 +252,90 @@ weg (grep: 0 Treffer), Surefire X/Y grün").
 
 ## 8. Offene Fragen
 Keine. D5-Dead-Field-Entfernung und Gate-Bypass (D4, Jon-Befund 1) sind freigegeben.
+
+## 9. PO-Review (Da Dok, 2026-09-24) — R-TC-6/7/8/9, Commit 6a72e92, Branch fix/nextids-bug-report
+
+### Verdict: **CONCERNS** (kein Rework — 2 Hygiene-Lücken + 1 Doku-Befund für Jon)
+
+Plan↔Code, Docs↔Code (SOLL R-TC-6…9 + alle 8 BDDs), Docs↔Plan, Architektur: **alle grün**.
+Evidenz (selbst verifiziert, nicht übernommen):
+
+- **Builds:** `eclipseBuildProject` llmpeon-core / org.sterl.llmpeon / org.sterl.llmpeon.test → 0 Errors
+  (nur pre-existing Null-Safety-Warnings).
+- **Tests:** ShellConfirmationPolicyTest 6/6, LlmConfigLoaderTest 12/12 (Core),
+  ShellApprovalServiceTest 5/5 (PDE/OSGi, Trust-Dialog blockierte nicht) — alle grün.
+- **Clean-Break-Greps (workspace-wide, .java):** `applyShellCommandConfirmation` → 0 Treffer,
+  `shellCommandConfirmationRequired` → 0 Treffer, `QuestionOrchestrator` → 0 Treffer.
+- **Lint (lintDocsAndTests, scope docs + beide Test-Module):** 0 Befunde im SOLL-Scope
+  (tool-confirmation.md trägt bewusst keine UC-IDs, Plan §5); die 44 gemeldeten
+  UNBELEGT*/MANUELL-Findings liegen in docs-linter.md / compact-lock.md / java-debugger-tool.md
+  = Bestand aus anderen Zyklen, nicht von diesem Commit verursacht.
+
+### Geprüft & ok (Auszug)
+
+- D1/D2 core verbatim Plan: `of()` trim+case-insensitiv, Alles-andere→UNSET; `decide` reine
+  Call-Zeit-Funktion; `isAutonomous` = AiPoAgent|AiPlanAgent, null→false (fail-closed).
+- D3 `ShellApprovalService`: Paket, stateless, kein SWT, Supplier pro Call; Frage-Text byte-gleich
+  mit D3-Zitat (abgeleitet aus altem AIChatView:452-455), `"No"`-Default, CANCEL→
+  CancellationException, `List.of("Yes","No")`, Latch-Semantik unverändert. ShellTool-Vertrag
+  verifiziert (ShellTool.java:78-87: "Yes"→Original, "No"→denied, sonst→New-Command).
+- D4: `shellApproval.applyConfiguration()` :427 **vor** LlmConfig-Gate :429, nach
+  applyMcpConfig :422; Methode weg; Feld :95-98 nach aiService; onAgentChange :449 ohne
+  Provider-Refresh; Imports: AiPlanAgent/ShellTool/CancellationException/CountDownLatch weg,
+  AtomicReference behalten (monitorRef :100), **InstanceScope behalten — korrekt**, noch genutzt
+  in :187/:209 (Plan-Alternativklausel greift).
+- D5: LlmConfig ohne "Shell" (grep 0), LlmConfigLoader clean (ganze Datei), LoaderTest nur noch
+  `store.put(...)` :49 (wie Plan) + 12/12 grün.
+- R-TC-8 Combo **unangetastet** (AiConfigPreferenceView :73-79 wortgleich),
+  LlmPreferenceInitializer :42 Default `""` unverändert.
+- R-TC-9: AIChatView enthält nur noch import+Field+1 Call (grep "hell": 7 Zeilen, alle Wiring).
+- BDD-Mapping: #1 `notAutonomous_jon_active_noPrompt` (RED-ehrlich), #2 core
+  `decideNotAutonomousAutonomousApproves`+`isAutonomousMatrix` (Plan-§5-Zuordnung), #3
+  `decideNotAutonomousSlavePrompts`+Flip-Test, #4 `agentFlip_toSlave_prompts` (RED-ehrlich),
+  #5 `always_alwaysPrompts`, #6 `unset_noProvider("true")` (RED-ehrlich)+`modeOfMatrix`,
+  #7 `unset_noProvider("")`, #8 `decideCallTimeFlip`+Flip. `// R-TC-N`-Kommentare in beiden
+  Test-Dateien vorhanden.
+- Architektur: core SWT-frei, eine Implementierung (keine zweite Policy), Kapselung (Service:
+  public = Ctor + applyConfiguration), Richtung plugin→core, UI-Verhalten unverändert.
+
+### Geplant-Zusatz-Test `nullActiveAgent_prompts` — vertretbar?
+
+**Ja.** Pinnt den in D2-Javadoc dokumentierten Fail-closed-Vertrag
+("null → false, a missing agent never skips the prompt"). Hinweis: wäre auch mit altem Code grün
+(alt: null → kein AiPlanAgent → Provider → Prompt) → ist **Vertrags-Guard, kein
+RED-Feature-Test** — als Contract-Pin korrekt gelabelt, kein Verstoss.
+
+### CONCERNS (non-blocking, keine Rework-Pflicht)
+
+1. **Unused Import:** `ShellConfirmationPolicyTest.java:14` —
+   `import org.sterl.llmpeon.tool.tools.ShellConfirmationMode` ist redundant (gleiche Package),
+   Build-Warning. Extraktion/Entfernung: Import streichen.
+2. **Test-Fixture-Duplikation (Rule of Three):** `var model = LlmConfig.newOllama("x").build();`
+   + `new ToolService(false)` 4× in `ShellApprovalServiceTest` (plus Core-Test). Einfach/lokal →
+   Named Extraction: kleiner `static` Helper im Test (z. B. `model()` bzw. `autonomousAgent()`).
+
+### Doku-Befund (separat, für Jon — nicht Rework gegen die Implementierung)
+
+3. **ADR-0026 ist faktisch falsch** (`docs/adr/0026-extract-question-shell-approval.md`):
+   behauptet mit Status "✅ Implemented (2026-08-09)" die Extraktion von
+   `ShellApprovalService` **und** `QuestionOrchestrator`
+   (`org.sterl.llmpeon.parts.question`). IST: `QuestionOrchestrator` existiert nirgends
+   (grep+find 0), und die Shell-Logik saß bis zum 2026-09-24-IST-Befund noch in AIChatView —
+   d. h. die ADR beschreibt Phantom-Komponente + Phantom-Zeitpunkt. Sie war im Plan nicht
+   genannt und wird vom Increment auch nicht berührt. Empfehlung an Jon: ADR gegen die
+   tatsächliche 2026-09-24-Umsetzung umschreiben (QuestionOrchestrator streichen,
+   Dateiname/Datum korrigieren) — aktuell aktiv irreführend für künftige Agenten.
+
+### Risikozile (CONCERNS)
+
+- Most likely reason this breaks later: **ADR-0026** — ein künftiger Refaktor liest
+  "ShellApprovalService → QuestionOrchestrator (via QuestionPresenter)" und operiert auf einer
+  Architektur, die nie existierte (false belief, teuerste Fehlerklasse).
+- Change, das das Risiko am meisten senkt: ADR-0026 von Jon gegen IST korrigieren; die zwei
+  Hygiene-Punkte (1+2) sind Kosmetik.
+
+### Status-Flip-Erinnerung (Jon/Paul)
+
+`docs/tool-confirmation.md` R-TC-6…9 + BDD-Liste stehen noch auf ❌ — Flip ❌→✅ ist Jons
+Aufgabe (Plan §0), wurde im Review bewusst nicht angefasst. Manueller Smoke (Plan §6,
+Acceptanz 1-5) bleibt Paults Aufgabe.
