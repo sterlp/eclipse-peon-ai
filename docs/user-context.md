@@ -106,4 +106,4 @@ resolveResource im View-Pfad) ist manuell im User-Smoke verifiziert — headless
 
 ## Nebenfunde
 
-- 🐞 **`SimpleDiff.lcsDiff` OOM (Crash 2026-09-16):** `eclipseEditFile` → `AIChatView.onFileUpdate:329` → `SimpleDiff.unifiedDiff:21` → `OutOfMemoryError: Java heap space` — **behoben:** Size-Guard in `SimpleDiff.unifiedDiff` (`MAX_LCS_CELLS = 5_000_000`), darüber summarische Meldung statt LCS (`2e51a16`). Details: `open-points.md`.
+- 🐞 **`SimpleDiff.lcsDiff` OOM (Crash 2026-09-16):** `eclipseEditFile` → `AIChatView.onFileUpdate:329` → `SimpleDiff.unifiedDiff:21` → `OutOfMemoryError: Java heap space` — **behoben:** Size-Guard in `SimpleDiff.unifiedDiff` (`MAX_LCS_CELLS = 5_000_000`), darüber summarische Meldung statt LCS (`2e51a16`). Details: `open-points.md`. **Nachfassung (2026-09-23, `a2abace`):** Prefix/Suffix-Trim vor dem Guard (1-Zeilen-Änderung in großem File gibt jetzt einen echten Diff), Limit **5 MB = 1_250_000 Zellen** auf der Trim-Region, zweiter Guard `MAX_DIFF_LINES = 100_000` gegen den Output (Trim begrenzt die Matrix, nicht das Diff-Ergebnis), Skip-Summary nennt den Dateinamen.

@@ -18,7 +18,9 @@ public class StaticContextItem implements ContextItem {
         + ls + "os file.separator: '" + System.getProperty("file.separator") + "'"
         + ls + "os line.separator: " + LineSeparatorUtil.getDefaultLineSeparatorForLlm()
         + ls + "File access: prefer eclipse* over disk* tools. After disk* writes, call eclipseRefreshProject (refresh only) or eclipseBuildProject (refresh + build check) to sync Eclipse."
-        + ls + "Outside the workspace, use Disk-tools if available; if not, ask the user to enable them. Never use shell/terminal for file I/O.";
+        + ls + "Outside the workspace, use Disk-tools if available; if not, ask the user to enable them. Never use shell/terminal for file I/O."
+        + ls + "user language: " + System.getProperty("user.language")
+            + " — respond in the user's language; if unsure or not otherwise declared, use this one.";
     }
     @Override
     public String label() {

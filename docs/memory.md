@@ -2,7 +2,9 @@
 
 ## Wo wir stehen
 
-**Branch `analysis/tool-evolution`** (Merge/Squash auf main = Paul).
+**Branch `fix/simple-diff`** (von main `b42a3be`) — SimpleDiff-Fix läuft. Alt-Branch
+`analysis/tool-evolution`: merged als `a4eeea6` (#144) + upstream gelöscht — Pauls
+„Branch-Inhalt löschen" damit bereits erledigt, Working Tree clean.
 
 - **✅ Hotfix „Ehrlicher Compact" (`d9786ba` + Archiv `edc2a42`):** R-CC-1..4 + R-CC-6 —
   Kontext-Zähler = `inputTokenCount()` statt Kosten (ADR-0055), Reevaluate nur bei COMPACTED
@@ -12,9 +14,9 @@
   **R-CC-5 (Dedup-Truncation) gestrichen** — Analyse war falsch (UserMessage wird nie trunciert);
   echte Ursache der Aufsummierung = Workspace-Memory-Hash-Key (ADR-0032, by design) → ❓ in
   open-points.md.
-- **⚠️ Uncommitted in docs:** java-debugger-tool.md (Rename + R-JD-13/UC-JD-15), ADR-0054 + adr/
-  index-Zeile, tool-descriptions-inventory.md, index.md (2 Zeilen), queued-user-messages.md —
-  gehören zum Tool-Polish-Mini-Zyklus, dessen **Build noch nicht lief**.
+- **Docs der Tool-Polish-Story (java-debugger Rename, ADR-0054 + Index, inventory,
+  queued-user-messages) sind mit #144 in main gelandet** — der **Build (I1–I4) läuft trotzdem
+  noch nicht** (Fachdoc: Rename + R-JD-13 weiter ❌, Queued-At Regel 9 ❌).
 
 ## Nächste Schritte
 
