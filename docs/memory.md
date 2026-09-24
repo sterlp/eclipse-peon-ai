@@ -2,49 +2,45 @@
 
 ## Wo wir stehen
 
-**Branch `fix/nextids-bug-report`** (von main `4a6abdd`), 11 Commits, **nicht gepusht** — Merge = Pauls
-Entscheidung. `fix/simple-diff` ist als #146 (Squash `4a6abdd`) in main, lokal+remote gelöscht;
-StaticContextItem-Java-Änderung von Paul ist committed. Alte Stashes: keine.
+**Branch `fix/nextids-bug-report`** (von main `4a6abdd`), **gepusht** auf origin (Stand `84629f36`,
+danach 3 neue lokale Commits — erneut pushen). Merge = Pauls Entscheidung.
 
-- **✅ nextIds-Bug-Fixes (R-DL-23/24/25, Pauls Bug-Report `nextIds-user-bug-report.md`):**
-  R-DL-23 Bindestrich-Präfixe (`[A-Z]+(?:-[A-Z0-9]+)*`, last-dash-Split, inkl. DocParser/Lint-Pfad)
-  · R-DL-24 Rohvorkommen zählen als belegt, gefundene Form wird fortgeschrieben (flach `OP-79` →
-  `OP-80`, nie `R-OP-1`), Fundstelle im Vorschlag, „free" nur bei echtem Nichts · R-DL-25
-  skipped-Docs namentlich im nextIds-Output.
-  Commits: `889b315` (Docs-SOLL) · `d477820` (Inc 1) · `887d301` (Inc 2) · `7933301` (Inc 3) ·
-  `2235dba` (Da-Dok C1: Flat-Tie-Break `>=` in `flatWins` mutations-gepinnt, rot gemessen).
-  Surefire **949/0/0/0** (Ground Truth; Da Doks eclipseRunTests-Zahl 967 ist Artefakt).
-  Da-Dok-Verdict: CONCERNS → C1 geschlossen. Docs geflippt (R-DL-23/24/25 + UC-DL-67…73 ✅),
-  lintDocsAndTests: alle 45 UNBELEGT_ERLEDIGT = Alt-Bestand UC-DL-1…55, keine neuen.
-- **✅ R-ET Rename `eclipseRunTests` → `eclipseRunJavaTests`** (Pauls Pre-Approval, Java-only-Guard
-  `JavaCore.create`+`exists()` macht den Scope explizit): Code `909ce05` (1 Zeile, kein Reflector/
-  Wiring), Docs-Follow-ups `0188fd3` (ADR-0053, Homepage-Toolset-Tabelle) + `52ce47f` (AGENTS.md, index.md,
-  tool-time-disclosure.md) — alle ✅ committed. Gate: Core **949/0/0/0**,
-  Plugin compile grün. Stale `lib/llmpeon-core.jar` (20.09, ohne `CallStats`) vorher per
-  dokumentiertem Ritual re-copied — Vorbestand, nicht Rename-Folge.
-- **Befund 1 des Reports** war kein Bug (Anwenderfehler) — R-DL-18 (Root-Fallback) deckte ihn
-  2026-09-19 ab. Wunsch 4 (Disk-Pfad-Hinweis im Fehler) offengeblieben — kosmetisch.
+- **✅ R-OD-5 (eclipseBuildProject Cap 100 + Disclosure):** Commit `5d74aab` (core
+  `AiReponseBuilder.buildMarkers` + `MAX_BUILD_MARKERS`, 1-arg `readProblems`-Overload entfernt),
+  Da-Dok-Review **ACCEPTED**, Docs geflippt (`e68fb4c`), Surefire 953/0/0/0.
+- **✅ R-TC-6/7/8/9 (Shell-Approval):** Commit `6a72e92` (core `ShellConfirmationMode`/`Policy`,
+  plugin `ShellApprovalService`, AIChatView aufgeräumt, Dead-Field weg) + `43fe725` (Hygiene).
+  Da-Dok-Verdict **CONCERNS (non-blocking)** → Hygiene + Phantom-ADR-0026 behoben (`1a93f48`):
+  ADR-0026 hatte nie gebauten `QuestionOrchestrator` als „✅ Implemented" geführt — gegen IST
+  korrigiert. Surefire 959/0/0/0, PDE-Suite 285/0/0. Docs geflippt (R-TC-6…9 + Befunde ✅).
+- **Befund des Zyklus (User, offengelegt):** Da-Dok-Review-Call überlief Context
+  (172205 > 170240, 4 tote ApiRetry-Rounds, Header-Zähler 81k ≠ 172k, Logging-Lücke) —
+  Triage in [open-to-discuss.md](open-to-discuss.md) (2026-09-24), Bug-Fix-Zyklus-Backlog.
+- nextIds-Bug-Fixes (R-DL-23/24/25) ✅ weiter unten — unverändert, inkl. Da-Dok C1 Mutation-Pin.
 
 ## Nächste Schritte
 
-1. ✅ R-ET Rename-Docs-Follow-ups erledigt: ADR-0053 ✅, Homepage-Toolset-Tabelle ✅, AGENTS.md ✅,
-   tool-time-disclosure.md ✅ (Code `909ce05`, Docs `0188fd3` + index.md).
-2. **R-OD-5 (eclipseBuildProject Cap 100 + Disclosure) gebaut, Review OFFEN:** Commit `5d74aab`
-   (core `AiReponseBuilder.buildMarkers` + `MAX_BUILD_MARKERS`, Plugin-Wiring, 1-arg
-   `readProblems`-Overload entfernt; Surefire **953/0/0/0**, PDE-Suite 280/0/0). Erster
-   Da-Dok-Review starb an Context-Overflow (172205 > 170240, 4 tote Retries, Memory #21 live) —
-   Befund in [open-to-discuss.md](open-to-discuss.md) (2026-09-24). → Review neu aufsetzen mit
-   kompaktiertem Da Dok + schlankem Prompt; nach ACCEPTED: UC-OD-5/6 flippen, dann
-   `planImplemented`.
-3. Paul (beantwortet, kein Change): Test-Dauer + Endzeit stehen im Tool-Result via
-   `CallStats.suffix` ✅ — nicht in der `onTool`-Statuszeile (bewusst).
-4. Paul: Branch pushen/mergen (`fix/nextids-bug-report` → main) — sein Call.
-5. Optional (kosmetisch): `@P`-Description für `prefix` an `DocsIdTool` („e.g. ORD or O-TEST") —
-   Fassaden-Änderung, als Follow-up notiert (Plan §10.3).
-6. Tool-Polish-Mini-Zyklus (I1–I4) weiter offen: `debugJava*`-Rename + R-JD-13 + QueuedAt-Regel 9 +
-   Homepage (memory.md vom 2026-09-23, unverändert).
-7. Paul: Compact-Lock-Smoke 3+4 → Flips UC-CT-3/5/6; Debugger-Re-Run 3b/3.2; Compressor-Empty-
+1. Paul: **Manueller Smoke R-TC** (Plan §6, 5 Punkte): „not-autonomous"+Jon → kein Prompt (auch
+   via Da Mek) · Peon-Dev direkt → Prompt · Mid-Session-Wechsel ohne Reload folgt neuem Agenten ·
+   „always" → Prompt überall · `""`/`"true"` → nie.
+2. Paul: Branch erneut pushen (3 neue Commits) + Merge → main — sein Call.
+3. **Nächster Bug-Fix-Zyklus-Backlog:** Context-Overflow-Triage (open-to-discuss 2026-09-24:
+   ApiRetry non-retryable, Counter-Lücke 81k↔172k, Review-Guard, Retry-Logging, stille
+   Cancellation) · ApiRetry-Follow-up (Memory #21) · optional `ShellTool.confirmationProvider`
+   volatile (pre-existing, harmlos, 1-Wort-Fix).
+4. Tool-Polish-Mini-Zyklus (I1–I4) weiter offen: `debugJava*`-Rename + R-JD-13 + QueuedAt-Regel 9
+   + Homepage (memory.md vom 2026-09-23, unverändert).
+5. Paul: Compact-Lock-Smoke 3+4 → Flips UC-CT-3/5/6; Debugger-Re-Run 3b/3.2; Compressor-Empty-
    Root-Cause (Error-Log + Compact-Model-Config).
+
+### Zyklus-Historie (kompakt, Details in den Feature-Docs)
+
+- **✅ R-DL-23/24/25** (nextIds, Pauls Bug-Report): Bindestrich-Präfixe, Rohvorkommen zählen
+  (flach `OP-79`→`OP-80`), skipped-Docs namentlich. Commits `889b315`/`d477820`/`887d301`/
+  `7933301`/`2235dba` (C1 Mutation-Pin). Befund 1 = Anwenderfehler (R-DL-18 deckt ab).
+- **✅ R-ET Rename** `eclipseRunTests`→`eclipseRunJavaTests` (Java-only-Guard): Code `909ce05`,
+  Docs `0188fd3`+`52ce47f`. Pauls Fragen beantwortet (Dauer via CallStats im Result, nicht
+  onTool; Warnings → R-OD-5).
 
 ## Smoke-Liste (manuell) — Compact-Lock CT-3…6: 1+2 ✅ Paul
 
@@ -53,10 +49,12 @@ StaticContextItem-Java-Änderung von Paul ist committed. Alte Stashes: keine.
 
 ## Geparkt
 
-ApiRetry-Follow-up (Memory #21, erneut live aufgetreten) · Issue #142-ADR · DL-Sweep der 45
-Alt-UNBELEGT (UC-DL-1…55, Da-Dok-Out-of-Scope-Notiz) · UC-DL-60/61 (R-DL-18 ist gebaut aber
-❌ — Flip-Verdacht beim nächsten DL-Kontakt prüfen) · 🟡-Indicator · „!-Messages" (Regel 8) ·
-Workspace-Memory-Vollkopie je memoryAdd (❓ open-points.md) · Anthropic cache_read-Undercount.
+ApiRetry-Follow-up (Memory #21, erneut live aufgetreten — im Overflow-Triage-Backlog) ·
+`ShellTool.confirmationProvider` volatile (pre-existing, harmlos, 1-Wort-Fix) · Issue #142-ADR ·
+DL-Sweep der 45 Alt-UNBELEGT (UC-DL-1…55, Da-Dok-Out-of-Scope-Notiz) · UC-DL-60/61 (R-DL-18 ist
+gebaut aber ❌ — Flip-Verdacht beim nächsten DL-Kontakt prüfen) · 🟡-Indicator · „!-Messages"
+(Regel 8) · Workspace-Memory-Vollkopie je memoryAdd (❓ open-points.md) · Anthropic
+cache_read-Undercount.
 
 ## Lektionen (Zyklus)
 
