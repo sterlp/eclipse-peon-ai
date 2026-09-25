@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.jspecify.annotations.NonNull;
+import org.sterl.llmpeon.compact.CompactConstants;
 import org.sterl.llmpeon.exception.ExceptionUtil;
 import org.sterl.llmpeon.mcp.McpServerConfig;
 import org.sterl.llmpeon.mcp.McpService;
@@ -197,7 +198,9 @@ public class ToolService {
 
     private void addCompactHintIfNeeded(ToolLoopRequest req, ChatResponse response, boolean force) {
         var memory = req.getMemory();
-        if (memory.size() < 10) return;
+        // R-CC-8: the hint only makes sense with a real history — at ≤ MIN_COMPACT_MESSAGES the
+        // compact would skip anyway (old gate: < 10)
+        if (memory.size() <= CompactConstants.MIN_COMPACT_MESSAGES) return;
         var compactLimit = req.getConfig().getAutoCompactAfter();
         if (compactLimit <= 0 && !force) return;
         var shouldCompact = force || memory.getTotalTokenUsed() > compactLimit * 0.95;

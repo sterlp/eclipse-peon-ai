@@ -525,9 +525,11 @@ class AbstractAgentTest {
         var memory = new ThreadSafeMemory() {
             @Override public int getTotalTokenUsed() { return 101; }
         };
+        // 4 messages — R-CC-8: the auto-gate fires only above MIN_COMPACT_MESSAGES (3)
         memory.add(UserMessage.from("m1"));
         memory.add(AiMessage.from("m2"));
         memory.add(UserMessage.from("m3"));
+        memory.add(AiMessage.from("m4"));
         var agent = new AbstractAgent(
                 new ConfiguredChatModel(config, mockModel), new ToolService(), memory, 1.0) {
             @Override public String getName() { return "test"; }
@@ -597,8 +599,12 @@ class AbstractAgentTest {
         assertThat(callCount.get()).isEqualTo(3);
     }
 
+    /**
+     * R-CC-8: with no history (0 messages) the auto-gate skips on message count even though the
+     * token threshold is exceeded — the system prompt is still built exactly once for the turn.
+     */
     @Test
-    void buildsSystemPromptOnceWhenAutoCompacting() {
+    void systemPromptBuiltOnceWhenAutoCompactSkipsOnMessageCount() {
         var config = LlmConfig.builder().model("mock").autoCompactAfter(100).build();
         var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
                 .aiMessage(AiMessage.aiMessage("OK")).build());
@@ -619,6 +625,38 @@ class AbstractAgentTest {
         agent.call("test", monitor -> {});
 
         assertThat(renderCount.get()).isOne();
+    }
+
+    /**
+     * R-CC-8: exactly MIN_COMPACT_MESSAGES (3) messages with the token threshold exceeded — the
+     * auto-gate must NOT fire (it needs MORE than 3), so no compressor call: only the turn's LLM call.
+     */
+    @Test
+    void autoGateNeedsMoreThanMinCompactMessages() {
+        // GIVEN — exactly 3 messages, token threshold exceeded
+        var config = LlmConfig.builder().model("mock").autoCompactAfter(100).build();
+        var callCount = new AtomicInteger();
+        var mockModel = streamMock.buildMock(r -> {
+            callCount.incrementAndGet();
+            return ChatResponse.builder().aiMessage(AiMessage.aiMessage("OK")).build();
+        });
+        var memory = new ThreadSafeMemory() {
+            @Override public int getTotalTokenUsed() { return 101; }
+        };
+        memory.add(UserMessage.from("m1"));
+        memory.add(AiMessage.from("m2"));
+        memory.add(UserMessage.from("m3"));
+        var agent = new AbstractAgent(
+                new ConfiguredChatModel(config, mockModel), new ToolService(), memory, 1.0) {
+            @Override public String getName() { return "test"; }
+            @Override public String getSystemPrompt() { return "test"; }
+        };
+
+        // WHEN — one turn
+        agent.call("test", monitor -> {});
+
+        // THEN — the auto-gate did not fire (3 is not > 3): only the turn's LLM call, no compressor
+        assertThat(callCount.get()).isEqualTo(1);
     }
 
 

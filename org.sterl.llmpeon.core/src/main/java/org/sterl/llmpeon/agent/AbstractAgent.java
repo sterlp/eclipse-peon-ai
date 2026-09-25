@@ -13,12 +13,13 @@ import java.util.function.Supplier;
 
 import org.sterl.llmpeon.ai.AgentConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
+import org.sterl.llmpeon.compact.CompactConstants;
+import org.sterl.llmpeon.compact.CompactEngine;
 import org.sterl.llmpeon.compact.CompactResult;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.queuedmessages.UserMessageQueue;
 import org.sterl.llmpeon.shared.AiMonitor;
-import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
@@ -263,8 +264,10 @@ public abstract class AbstractAgent implements AiAgent {
     protected ChatResponse doCall(String message, AiMonitor monitor) {
         monitor = AiMonitor.nullSafety(monitor);
         monitor.onCallStart(message);
-        // auto compress if we are close to full before we start (slaves trigger earlier via compactFactor;
-        if (compactAfterTokens() < memory.getTotalTokenUsed()) {
+        // auto compress if we are close to full before we start (slaves trigger earlier via
+        // compactFactor). R-CC-8: only above MIN_COMPACT_MESSAGES — below that a compact skips/fails.
+        if (compactAfterTokens() < memory.getTotalTokenUsed()
+                && memory.size() > CompactConstants.MIN_COMPACT_MESSAGES) {
             monitor.onTool("Auto Compact before execution, context to full " + compactAfterTokens() + "/" + memory.getTotalTokenUsed());
             compact(monitor);
         }
@@ -303,25 +306,18 @@ public abstract class AbstractAgent implements AiAgent {
         try {
             // nullSafety before the guard: the FAILED_EMPTY onProblem path must never have a null monitor
             monitor = AiMonitor.nullSafety(monitor);
-            // < 3: a compact leaves exactly 2 messages (Session-compacted user + summary) — with < 2
-            // a direct re-compact would fire a real LLM call on those 2 (R16 sharpened, 2026-09-15)
-            if (memory.size() < 3) return CompactResult.skippedSmall();
+            // < MIN_COMPACT_MESSAGES: a compact leaves exactly 2 messages (Session-compacted user +
+            // summary) — with < 2 a direct re-compact would fire a real LLM call on those 2 (R16)
+            if (memory.size() < CompactConstants.MIN_COMPACT_MESSAGES) return CompactResult.skippedSmall();
 
-            var snapshot = memory.getCopy();
-            long startMillis = System.currentTimeMillis();
-            var response = new AiCompressorAgent(configuredModel)
-                    .call(snapshot, monitor);
-            long millis = System.currentTimeMillis() - startMillis;
-            // Legacy path (engine wiring is the next increment): no staging → stage NONE, estimate unchanged
-            var estimate = ChatMessageUtil.estimateTokens(snapshot);
-            var model = configuredModel.getConfig().compactAgentConfig().getModel();
+            // R-CIB-1: the staging budget is the raw config value — compactFactor scales only the trigger
+            var run = new CompactEngine(configuredModel).compact(
+                    getName(), memory.getCopy(), configuredModel.getConfig().getAutoCompactAfter(), monitor);
+            var result = run.result();
 
-            if (response == null || StringUtil.hasNoValue(response.aiMessage().text())) {
-                monitor.onProblem("Compact failed: compressor returned no summary for " + getName());
-                log.warn("Empty compact message received for " + getName());
-                return CompactResult.failedEmpty(
-                        new CompactResult.Stats(snapshot.size(), estimate, estimate, CompactResult.Stage.NONE, 0, 0, model, millis),
-                        "compressor returned no summary for " + getName());
+            if (result.status() == CompactResult.Status.FAILED_EMPTY) {
+                monitor.onProblem("Compact failed: " + result.cause());
+                return result;
             }
 
             memory.clear();
@@ -331,15 +327,13 @@ public abstract class AbstractAgent implements AiAgent {
             // DON'T use addResult -> as the totalTokenUsed is from the compressor here which is to large
             // we only take the compacted new message!
             // and we remove the thinking, if any, from the result
-            data.add(TextContent.from("Session compacted:"));
+            data.add(TextContent.from(CompactConstants.REINSERT_MARKER));
             // Ensure memory starts with a user message (many LLMs require this)
             memory.add(UserMessage.from(data));
             // we add the compact message as AI message
-            var summary = response.aiMessage().text();
-            memory.add(AiMessage.from(summary));
+            memory.add(AiMessage.from(run.summary()));
 
-            return CompactResult.compacted(new CompactResult.Stats(snapshot.size(), estimate, estimate,
-                    CompactResult.Stage.NONE, 0, summary.length(), model, millis));
+            return result;
         } finally {
             if (acquired) working.set(false);
         }

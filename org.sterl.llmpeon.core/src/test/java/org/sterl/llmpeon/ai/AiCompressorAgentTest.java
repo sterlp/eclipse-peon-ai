@@ -54,33 +54,6 @@ class AiCompressorAgentTest {
     }
 
     @Test
-    void test_compressContext() {
-        // GIVEN
-        var config = LlmConfig.newConfig(AiProvider.OPEN_AI, "mock-model", 
-                String.format("http://localhost:%d/v1", server.getPort()));
-        server.queueResponse("WHAT: Build a Java Hello world application that displays the current time when executed.");
-
-        var subject = new AiDevAgent(config.build(), new ToolService());
-
-        subject.addMessage(UserMessage.from("Build be a Hello world"));
-        subject.addMessage(AiMessage.from("In which language?"));
-        subject.addMessage(UserMessage.from("In java"));
-        subject.addMessage(AiMessage.from("What should it do?"));
-        subject.addMessage(UserMessage.from("It should show a Hello world with the current time"));
-
-        // WHEN
-        subject.compact(AiMonitor.NULL_MONITOR);
-
-        // THEN
-        var message = subject.getMemory().getLastOf(AiMessage.class);
-        assertTrue(message.text().length() > 10);
-        assertTrue(message.text().contains("WHAT: Build a Java Hello world application"));
-
-        // AND
-        assertTrue(subject.getMemory().size() <= 2, "Chat messages aren't reduced! Still " + subject.getMemory().size());
-    }
-
-    @Test
     @Timeout(10)
     void compactSlotRoutesCallToCompactConnection() {
         // GIVEN — base points at serverA; the COMPACT slot carries its own url/model/temperature

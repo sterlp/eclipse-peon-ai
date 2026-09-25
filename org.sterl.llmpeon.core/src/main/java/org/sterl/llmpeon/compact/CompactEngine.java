@@ -21,6 +21,13 @@ import dev.langchain4j.model.chat.request.ChatRequest;
  */
 public class CompactEngine {
 
+    /**
+     * One compact attempt: the status+stats {@link CompactResult} plus the summary text the
+     * compressor produced ({@code null} unless COMPACTED) — the agent re-seeds its memory with
+     * it, the tool/UI only ever see the result.
+     */
+    public record CompactRun(CompactResult result, String summary) {}
+
     private static final SystemMessage COMPRESS_SYSTEM = SystemMessage.systemMessage(PromptLoader.load("compressor.md"));
 
     private final ConfiguredChatModel chatModel;
@@ -49,7 +56,7 @@ public class CompactEngine {
      * @throws IllegalStateException when the LLM call returns null — Log OR throw: the throw stays
      *             in the call path, the result line is no exception substitute
      */
-    public CompactResult compact(String agentName, List<ChatMessage> messages, int budgetTokens, AiMonitor monitor) {
+    public CompactRun compact(String agentName, List<ChatMessage> messages, int budgetTokens, AiMonitor monitor) {
         monitor = AiMonitor.nullSafety(monitor);
         var compactCfg = chatModel.getConfig().compactAgentConfig();
 
@@ -82,13 +89,13 @@ public class CompactEngine {
                     stats(messages.size(), outcome, 0, compactCfg.getModel(), millis),
                     "compressor returned no summary for " + agentName);
             if (budgetTokens > 0) log.error("Compact result: {}", result.resultLine());
-            return result;
+            return new CompactRun(result, null);
         }
 
-        var result = CompactResult.compacted(stats(messages.size(), outcome, response.aiMessage().text().length(),
-                compactCfg.getModel(), millis));
+        var summary = response.aiMessage().text();
+        var result = CompactResult.compacted(stats(messages.size(), outcome, summary.length(), compactCfg.getModel(), millis));
         if (budgetTokens > 0) logResult(result);
-        return result;
+        return new CompactRun(result, summary);
     }
 
     /** R-CIB-6: the result line is logged at the stage's level (info stage 1 / warn stage 2 / error final). */

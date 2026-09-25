@@ -15,8 +15,10 @@ import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.compact.CompactConstants;
 import org.sterl.llmpeon.compact.CompactResult;
 import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 
@@ -121,6 +123,101 @@ class AbstractAgentCompactResultTest {
         assertThat(compactCalls.get()).isEqualTo(2);
         // AND — the failure was reported, not swallowed
         assertThat(problems).anyMatch(p -> p.contains("Compact failed: compressor returned no summary for " + AiDevAgent.NAME));
+    }
+
+    // R-CC-9 / migrated from AiCompressorAgentTest#test_compressContext
+    @Test
+    @Timeout(10)
+    void compact_delegatesToEngineAndReseeds() {
+        // GIVEN — a real history and a compressor that answers with a summary
+        var agent = devAgent(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("WHAT: Build a Java Hello world application")).build());
+        agent.addMessage(UserMessage.from("Build a Hello world"));
+        agent.addMessage(AiMessage.from("In which language?"));
+        agent.addMessage(UserMessage.from("In java"));
+        agent.addMessage(AiMessage.from("What should it do?"));
+        agent.addMessage(UserMessage.from("It should show a Hello world"));
+
+        // WHEN
+        var result = agent.compact(AiMonitor.NULL_MONITOR);
+
+        // THEN — the compact succeeded and the memory is re-seeded to exactly two messages
+        assertThat(result.status()).isEqualTo(CompactResult.Status.COMPACTED);
+        var copy = agent.getMemory().getCopy();
+        assertThat(copy).hasSize(2);
+        // AND — the first is the resume UserMessage carrying the re-insert marker (R-CC-9)
+        assertThat(copy.get(0)).isInstanceOf(UserMessage.class);
+        assertThat(ChatMessageUtil.toString(copy.get(0))).contains(CompactConstants.REINSERT_MARKER);
+        // AND — the second is the summary as an AI message
+        assertThat(copy.get(1)).isInstanceOf(AiMessage.class);
+        assertThat(((AiMessage) copy.get(1)).text()).contains("WHAT: Build a Java Hello world application");
+    }
+
+    // R-CC-3
+    @Test
+    @Timeout(10)
+    void compact_failedEmpty_onProblemKept() {
+        // GIVEN — 3 messages and a compressor answering empty (FAILED_EMPTY)
+        var agent = devAgent(r -> ChatResponse.builder().aiMessage(AiMessage.aiMessage("")).build());
+        agent.addMessage(UserMessage.from("m1"));
+        agent.addMessage(AiMessage.from("m2"));
+        agent.addMessage(UserMessage.from("m3"));
+        var problem = new AtomicReference<String>();
+        var monitor = capturingMonitor(problem, new AtomicBoolean());
+        var sizeBefore = agent.getMemory().size();
+
+        // WHEN
+        var result = agent.compact(monitor);
+
+        // THEN — FAILED_EMPTY is reported and the history is preserved (not cleared on failure)
+        assertThat(result.status()).isEqualTo(CompactResult.Status.FAILED_EMPTY);
+        assertThat(problem.get()).isNotNull();
+        assertThat(agent.getMemory().size()).isEqualTo(sizeBefore);
+    }
+
+    // R-CC-9b
+    @Test
+    @Timeout(10)
+    void reinsertedMessagesDoNotTriggerImmediateReCompact() {
+        // GIVEN — a successful compact re-seeds the memory to exactly two messages
+        var agent = devAgent(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("WHAT: summary")).build());
+        agent.addMessage(UserMessage.from("m1"));
+        agent.addMessage(AiMessage.from("m2"));
+        agent.addMessage(UserMessage.from("m3"));
+        var first = agent.compact(AiMonitor.NULL_MONITOR);
+        assertThat(first.status()).isEqualTo(CompactResult.Status.COMPACTED);
+        assertThat(agent.getMemory().size()).isEqualTo(2);
+
+        // WHEN — an immediate re-compact: the two reinserted messages are below the minimum
+        var second = agent.compact(AiMonitor.NULL_MONITOR);
+
+        // THEN — honestly skipped, not a looping/failed compact
+        assertThat(second.status()).isEqualTo(CompactResult.Status.SKIPPED_SMALL);
+    }
+
+    // Q2 / R-CIB-1
+    @Test
+    @Timeout(10)
+    void compactWithZeroBudget_neverCaps() {
+        // GIVEN — autoCompactAfter = 0 (budget off): the staging must never truncate
+        var streamMock = new StreamMock();
+        var cm = streamMock.buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("WHAT: summary")).build());
+        var config = LlmConfig.builder().model("mock").autoCompactAfter(0).build();
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, cm), new ToolService());
+        var big = "X".repeat(5000);
+        agent.addMessage(UserMessage.from(big));
+        agent.addMessage(AiMessage.from("m2"));
+        agent.addMessage(UserMessage.from("m3"));
+
+        // WHEN
+        var result = agent.compact(AiMonitor.NULL_MONITOR);
+
+        // THEN — the compact runs and the full (uncapped) message reaches the wire
+        assertThat(result.status()).isEqualTo(CompactResult.Status.COMPACTED);
+        var compacted = streamMock.getLast(UserMessage.class).orElseThrow();
+        assertThat(compacted.singleText()).contains(big);
     }
 
     private AiDevAgent devAgent() {

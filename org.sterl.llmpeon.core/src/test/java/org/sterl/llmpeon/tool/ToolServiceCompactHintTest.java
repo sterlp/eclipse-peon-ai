@@ -107,6 +107,60 @@ class ToolServiceCompactHintTest {
         assertThat(hints).hasSize(1);
     }
 
+    // R-CC-8
+    @Test
+    @Timeout(10)
+    void hintNotBelowMinCompactMessages() {
+        // GIVEN — 1 seeded message: after the turn's AiMessage + tool result the history is
+        // exactly MIN_COMPACT_MESSAGES (3) at the hint check — too short for a meaningful compact
+        var memory = seedMemory(new ThreadSafeMemory(), 1);
+        var rounds = new AtomicInteger();
+        var cm = new StreamMock().buildMock(r -> rounds.incrementAndGet() == 1
+                ? toolResponse("probe")
+                : ChatResponse.builder().aiMessage(AiMessage.from("done")).build());
+        var hints = new ArrayList<String>();
+        var monitor = hintCapturingMonitor(hints);
+        var req = ToolLoopRequest.builder()
+                .memory(memory)
+                .chatModel(new ConfiguredChatModel(hintConfig(), cm))
+                .monitor(monitor)
+                .build();
+
+        // WHEN
+        new ToolService().executeLoop(req);
+
+        // THEN — no hint: the history is too short (≤ MIN_COMPACT_MESSAGES)
+        assertThat(hintMessages(memory)).isEmpty();
+        assertThat(hints).isEmpty();
+    }
+
+    // R-CC-8
+    @Test
+    @Timeout(10)
+    void hintSharpAboveMinCompactMessages() {
+        // GIVEN — 2 seeded messages: after the turn's AiMessage + tool result the history is
+        // MIN_COMPACT_MESSAGES + 1 (4) at the hint check — just above the boundary
+        var memory = seedMemory(new ThreadSafeMemory(), 2);
+        var rounds = new AtomicInteger();
+        var cm = new StreamMock().buildMock(r -> rounds.incrementAndGet() == 1
+                ? toolResponse("probe")
+                : ChatResponse.builder().aiMessage(AiMessage.from("done")).build());
+        var hints = new ArrayList<String>();
+        var monitor = hintCapturingMonitor(hints);
+        var req = ToolLoopRequest.builder()
+                .memory(memory)
+                .chatModel(new ConfiguredChatModel(hintConfig(), cm))
+                .monitor(monitor)
+                .build();
+
+        // WHEN
+        new ToolService().executeLoop(req);
+
+        // THEN — the hint is sharp above the boundary (exactly one, R-CC-4 dedup)
+        assertThat(hintMessages(memory)).hasSize(1);
+        assertThat(hints).hasSize(1);
+    }
+
     private static LlmConfig hintConfig() {
         return LlmConfig.builder().model("mock").autoCompactAfter(160000).build();
     }
