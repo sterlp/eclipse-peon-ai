@@ -450,3 +450,13 @@ THEN Verhalten unverändert (Hinweis inkl. Compact-Aufforderung)
 
 **Offen (❓, open-points.md):** BDD-Test für den Fallback-Pfad fehlt noch — Regel ist gebaut, aber
 nicht testgesichert.
+
+## Diagnose-Ausgabe (2026-09-25, Paul — Token-Verlust nachvollziehbar machen)
+
+Der `Compact entry:`-Debug-Log (R-CIB-3, weiterhin **genau ein** Debug-Log pro Compact) trägt
+einen mehrzeiligen Diagnose-Block: je Message eine Zeile (Nr., Typ, Tool-Name, chars roh, chars
+nach Cap, dropped) — **nur wenn** etwas gecappt/deduped wurde — plus immer eine Summenzeile
+(`output: N rendered, X chars / ~Y tokens, stage=…, droppedChars=…, dropRate=…%`).
+Entscheidung: **Level DEBUG für alle Trigger** (manual/auto nicht am `compact()`-Aufrufpunkt
+unterscheidbar, ohne die `AiAgent`-Signature zu vergrößern); Zahlenquellen = `CompactStager`
+(`MessageStat`/`Outcome`), keine Instrumentierung der Call-Pfade.

@@ -87,6 +87,49 @@ class CompactEngineTest {
     }
 
     @Test
+    void diagnosticBlockListsPerMessageDropsWhenCapped() {
+        // GIVEN — a tool-heavy history that reaches stage 2 (6000-char caps), capturing log
+        var log = new CapturingLog();
+        var engine = engineWithSummary(log);
+        var messages = List.<ChatMessage>of(
+                AiMessage.builder().text("a").thinking("T".repeat(12000))
+                        .toolExecutionRequests(List.of(ToolExecutionRequest.builder().id("1").name("write")
+                                .arguments("A".repeat(12000)).build())).build(),
+                ToolExecutionResultMessage.from("id", "write", "R".repeat(12000)));
+
+        // WHEN
+        engine.compact("dev", messages, 7000, AiMonitor.NULL_MONITOR);
+
+        // THEN — the single debug log carries the per-message drops (tool named) and the output summary
+        var debugs = log.lines(CapturingLog.Level.DEBUG);
+        assertThat(debugs).hasSize(1);
+        assertThat(debugs.getFirst())
+                .contains("tool(write)")
+                .contains(" -> ")
+                .contains("(dropped ")
+                .contains("stage=TOOL_RESULTS")
+                .contains("dropRate=");
+    }
+
+    @Test
+    void diagnosticBlockOmitsPerMessageLinesWhenNothingDropped() {
+        // GIVEN — a small history, well under budget
+        var log = new CapturingLog();
+        var engine = engineWithSummary(log);
+
+        // WHEN
+        engine.compact("dev", List.of(UserMessage.from("Foo"), AiMessage.from("Bar")), 100000, AiMonitor.NULL_MONITOR);
+
+        // THEN — only the output summary line, no per-message drop lines
+        var debugs = log.lines(CapturingLog.Level.DEBUG);
+        assertThat(debugs).hasSize(1);
+        assertThat(debugs.getFirst())
+                .contains("output: 2 rendered")
+                .contains("stage=NONE")
+                .doesNotContain(" -> ");
+    }
+
+    @Test
     void zeroBudget_onlyEntryLog() {
         // GIVEN — budget off (≤ 0): the entry log is the only log (R-CIB-1)
         var log = new CapturingLog();

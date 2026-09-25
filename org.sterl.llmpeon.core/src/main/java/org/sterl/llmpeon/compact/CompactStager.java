@@ -3,6 +3,7 @@ package org.sterl.llmpeon.compact;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Function;
 
 import org.sterl.llmpeon.queuedmessages.UserMessageQueue;
@@ -14,6 +15,7 @@ import org.sterl.llmpeon.tool.ToolService;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 
 /**
@@ -37,8 +39,11 @@ public class CompactStager {
     /** First line of the input-end disclosure (R-CIB-5). */
     static final String DISCLOSURE_MARKER = "session truncated";
 
+    /** Per-message staging numbers for the diagnostic log (1-based index in the final input). */
+    public record MessageStat(int index, String type, String toolName, int charsBefore, int charsAfter) {}
+
     public record Outcome(String input, int estimateBefore, int estimateAfter, CompactResult.Stage stage,
-                          long droppedChars, int duplicatesCollapsed) {}
+                          long droppedChars, int duplicatesCollapsed, List<MessageStat> messages) {}
 
     public Outcome stage(List<ChatMessage> messages, int budgetTokens) {
         // System messages never enter the compact input (static prompt, injected fresh on every
@@ -58,30 +63,30 @@ public class CompactStager {
         }
         int duplicatesCollapsed = nonEmpty - entries.size();
 
-        int estimateBefore = estimate(uncappedRenders(entries));
+        int estimateBefore = estimate(uncapped(entries));
 
         // Budget off (≤ 0): never truncate, no disclosure (R-CIB-1).
         if (budgetTokens <= 0) {
-            return outcome(entries, uncappedRenders(entries), CompactResult.Stage.NONE, null, estimateBefore, duplicatesCollapsed);
+            return outcome(entries, uncapped(entries), CompactResult.Stage.NONE, null, estimateBefore, duplicatesCollapsed);
         }
         // Under budget: nothing is truncated — except dedup, which must be disclosed, not silent (F4).
         if (estimateBefore <= budgetTokens) {
             var caps = duplicatesCollapsed > 0 ? capsLine(CompactResult.Stage.NONE, 0, duplicatesCollapsed) : null;
-            return outcome(entries, uncappedRenders(entries), CompactResult.Stage.NONE, caps, estimateBefore, duplicatesCollapsed);
+            return outcome(entries, uncapped(entries), CompactResult.Stage.NONE, caps, estimateBefore, duplicatesCollapsed);
         }
 
         var lastRealUser = lastRealUserMessage(entries);
 
         // Stage 1 (R-CIB-4.1): think capped to 9000 (front), only last real user message full,
         // tools rendered uncapped (capped in stage 2), earlier user messages state-only.
-        var stage1 = render(entries, e -> renderStage(e, RenderOptions.compactStage1(), e.message() == lastRealUser));
+        var stage1 = capped(entries, e -> renderStage(e, RenderOptions.compactStage1(), e.message() == lastRealUser));
         if (estimate(stage1) <= budgetTokens) {
             return outcome(entries, stage1, CompactResult.Stage.THINK_AND_USER,
                     capsLine(CompactResult.Stage.THINK_AND_USER, 0, duplicatesCollapsed), estimateBefore, duplicatesCollapsed);
         }
 
         // Stage 2 (R-CIB-4.3): tool results + tool arguments + thinking capped at 6000.
-        var stage2 = render(entries, e -> renderStage(e, RenderOptions.compactStage2(), e.message() == lastRealUser));
+        var stage2 = capped(entries, e -> renderStage(e, RenderOptions.compactStage2(), e.message() == lastRealUser));
         if (estimate(stage2) <= budgetTokens) {
             return outcome(entries, stage2, CompactResult.Stage.TOOL_RESULTS,
                     capsLine(CompactResult.Stage.TOOL_RESULTS, 0, duplicatesCollapsed), estimateBefore, duplicatesCollapsed);
@@ -89,27 +94,48 @@ public class CompactStager {
 
         // Final stage (R-CIB-4.4): per-message cap = restTokens×7/2/n, head-keep. Termination
         // guaranteed: sum ≤ n·capChars → estimate ≤ restTokens + overhead = budget.
-        int n = Math.max(1, stage2.size());
+        int n = Math.max(1, nonEmptyCount(stage2));
         int cap = perMessageCap(budgetTokens, n, duplicatesCollapsed, perMessageCap(budgetTokens, n, duplicatesCollapsed, 0));
-        var capped = stage2.stream().map(r -> StringUtil.trimToLength(r, cap)).toList();
-        return outcome(entries, capped, CompactResult.Stage.PER_MESSAGE,
+        var finalCapped = stage2.stream().map(c -> new Capped(c.entry(), StringUtil.trimToLength(c.render(), cap))).toList();
+        return outcome(entries, finalCapped, CompactResult.Stage.PER_MESSAGE,
                 capsLine(CompactResult.Stage.PER_MESSAGE, cap, duplicatesCollapsed), estimateBefore, duplicatesCollapsed);
     }
 
     private record Entry(ChatMessage message, String uncapped) {}
 
-    private static List<String> uncappedRenders(List<Entry> entries) {
-        return entries.stream().map(Entry::uncapped).toList();
+    /** A deduped entry with its final render at the winning stage (empty = not part of the input). */
+    private record Capped(Entry entry, String render) {}
+
+    private static List<Capped> uncapped(List<Entry> entries) {
+        return entries.stream().map(e -> new Capped(e, e.uncapped())).toList();
     }
 
-    /** Re-renders the deduped entries in the given mode, dropping empty renders (state-only user messages). */
-    private static List<String> render(List<Entry> entries, Function<Entry, String> fn) {
-        var result = new ArrayList<String>();
-        for (var e : entries) {
-            var r = fn.apply(e);
-            if (!r.isEmpty()) result.add(r);
-        }
+    /** Re-renders the deduped entries in the given mode, keeping (entry, render) pairs so the
+     *  diagnostic can name every message (state-only user messages may render empty). */
+    private static List<Capped> capped(List<Entry> entries, Function<Entry, String> fn) {
+        var result = new ArrayList<Capped>();
+        for (var e : entries) result.add(new Capped(e, fn.apply(e)));
         return result;
+    }
+
+    private static int nonEmptyCount(List<Capped> capped) {
+        return (int) capped.stream().filter(c -> !c.render().isEmpty()).count();
+    }
+
+    private static List<String> renders(List<Capped> capped) {
+        return capped.stream().map(Capped::render).filter(r -> !r.isEmpty()).toList();
+    }
+
+    private static int estimate(List<Capped> capped) {
+        return ChatMessageUtil.estimateTokens(String.join(System.lineSeparator(), renders(capped)));
+    }
+
+    /** State-only render of a user message: everything but the last TextContent (the real user
+     *  text). Empty when the message carries nothing but (possibly excluded) real text. */
+    private static String renderStateOnly(UserMessage um) {
+        var texts = um.contents().stream().filter(c -> c instanceof TextContent).toList();
+        if (texts.size() <= 1) return "";
+        return ChatMessageUtil.toString(UserMessage.from(texts.subList(0, texts.size() - 1)), RenderOptions.uncapped());
     }
 
     private static String renderStage(Entry e, RenderOptions options, boolean lastRealUser) {
@@ -117,19 +143,9 @@ public class CompactStager {
         if (m instanceof UserMessage um) {
             // The last real user message stays full; earlier user messages are state-only
             // (everything but the last TextContent — context-message-concept.md).
-            return lastRealUser ? ChatMessageUtil.toString(um, RenderOptions.uncapped()) : renderStateOnly(um);
+            return lastRealUser ? e.uncapped() : renderStateOnly(um);
         }
         return ChatMessageUtil.toString(m, options);
-    }
-
-    /**
-     * State-only render of a user message: everything but the last TextContent (the real user
-     * text). Empty when the message carries nothing but (possibly excluded) real text.
-     */
-    private static String renderStateOnly(UserMessage um) {
-        var texts = um.contents().stream().filter(c -> c instanceof TextContent).toList();
-        if (texts.size() <= 1) return "";
-        return ChatMessageUtil.toString(UserMessage.from(texts.subList(0, texts.size() - 1)), RenderOptions.uncapped());
     }
 
     /** The last UserMessage whose last TextContent is real user text (R-CIB-4.1); {@code null} if none. */
@@ -186,18 +202,35 @@ public class CompactStager {
         return String.join(", ", parts);
     }
 
-    private static int estimate(List<String> renders) {
-        return ChatMessageUtil.estimateTokens(String.join(System.lineSeparator(), renders));
-    }
-
-    private Outcome outcome(List<Entry> entries, List<String> finalRenders, CompactResult.Stage stage, String caps,
+    private Outcome outcome(List<Entry> entries, List<Capped> finalCapped, CompactResult.Stage stage, String caps,
                             int estimateBefore, int duplicatesCollapsed) {
         var nl = System.lineSeparator();
+        var finalRenders = renders(finalCapped);
         String input = caps == null
                 ? String.join(nl, finalRenders)
                 : String.join(nl, finalRenders) + nl + DISCLOSURE_MARKER + nl + caps;
         long droppedChars = entries.stream().mapToLong(e -> (long) e.uncapped().length()).sum()
                 - finalRenders.stream().mapToLong(String::length).sum();
-        return new Outcome(input, estimateBefore, ChatMessageUtil.estimateTokens(input), stage, droppedChars, duplicatesCollapsed);
+        return new Outcome(input, estimateBefore, ChatMessageUtil.estimateTokens(input), stage, droppedChars,
+                duplicatesCollapsed, messageStats(finalCapped));
+    }
+
+    /** 1-based index in the final input; entries that render empty (state-only) are not in the
+     *  input and have no index — their chars still count into {@code droppedChars}. */
+    private static List<MessageStat> messageStats(List<Capped> finalCapped) {
+        var stats = new ArrayList<MessageStat>();
+        int index = 0;
+        for (var c : finalCapped) {
+            if (c.render().isEmpty()) continue;
+            index++;
+            var m = c.entry().message();
+            var toolName = m instanceof ToolExecutionResultMessage t ? t.toolName() : "";
+            var type = switch (m.type()) {
+                case TOOL_EXECUTION_RESULT -> "tool";
+                default -> m.type().name().toLowerCase(Locale.ROOT);
+            };
+            stats.add(new MessageStat(index, type, toolName, c.entry().uncapped().length(), c.render().length()));
+        }
+        return List.copyOf(stats);
     }
 }

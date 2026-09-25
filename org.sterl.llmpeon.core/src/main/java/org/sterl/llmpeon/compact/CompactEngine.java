@@ -60,12 +60,14 @@ public class CompactEngine {
         monitor = AiMonitor.nullSafety(monitor);
         var compactCfg = chatModel.getConfig().compactAgentConfig();
 
-        // R-CIB-3: exactly one debug log with the initial values, before any truncation.
-        log.debug("Compact entry: agent={}, messageCount={}, estimatedInputTokens={}, budget={}, thinkingEnabled={}",
-                agentName, messages.size(), ChatMessageUtil.estimateTokens(messages), budgetTokens,
-                StringUtil.hasValue(compactCfg.getThink()));
-
         var outcome = stager.stage(messages, budgetTokens);
+
+        // R-CIB-3: exactly one debug log with the initial values, before any truncation — the
+        // diagnostic block (per-message caps, output summary) rides on the same call, so the
+        // "exactly one debug log" contract holds.
+        log.debug("Compact entry: agent={}, messageCount={}, estimatedInputTokens={}, budget={}, thinkingEnabled={}\n{}",
+                agentName, messages.size(), ChatMessageUtil.estimateTokens(messages), budgetTokens,
+                StringUtil.hasValue(compactCfg.getThink()), diagnosticBlock(outcome));
 
         monitor.onTool("Compressing conversation " + messages.size() + " messages "
                 + ChatMessageUtil.estimateTokens(messages) + " tokens"
@@ -96,6 +98,39 @@ public class CompactEngine {
         var result = CompactResult.compacted(stats(messages.size(), outcome, summary.length(), compactCfg.getModel(), millis));
         if (budgetTokens > 0) logResult(result);
         return new CompactRun(result, summary);
+    }
+
+    /**
+     * Multi-line diagnostic for the entry log (2026-09-25, Paul): one line per rendered message
+     * (index, type, tool name, raw chars, chars after caps) only when something was dropped or
+     * deduplicated, plus the output summary line — always. Pure formatting of the Stager's
+     * numbers; no instrumentation of the call paths.
+     */
+    private static String diagnosticBlock(CompactStager.Outcome outcome) {
+        var nl = System.lineSeparator();
+        var sb = new StringBuilder();
+        if (outcome.droppedChars() > 0 || outcome.duplicatesCollapsed() > 0) {
+            for (var stat : outcome.messages()) {
+                sb.append("  ").append(stat.index()).append(". ").append(stat.type());
+                if (!stat.toolName().isEmpty()) sb.append("(").append(stat.toolName()).append(")");
+                if (stat.charsBefore() == stat.charsAfter()) {
+                    sb.append(" ").append(stat.charsAfter()).append(" chars");
+                } else {
+                    sb.append(" ").append(stat.charsBefore()).append(" -> ").append(stat.charsAfter())
+                            .append(" chars (dropped ").append(stat.charsBefore() - stat.charsAfter()).append(")");
+                }
+                sb.append(nl);
+            }
+        }
+        long totalBefore = outcome.messages().stream().mapToLong(CompactStager.MessageStat::charsBefore).sum();
+        // Clamped: state-only user messages drop chars that have no per-message line (not in the input).
+        var dropRate = String.format(java.util.Locale.ROOT, "%.1f%%",
+                totalBefore > 0 ? Math.min(100.0, outcome.droppedChars() * 100.0 / totalBefore) : 0.0);
+        sb.append("  output: ").append(outcome.messages().size()).append(" rendered, ").append(totalBefore)
+                .append(" chars / ~").append(outcome.estimateAfter()).append(" tokens, stage=")
+                .append(outcome.stage()).append(", droppedChars=").append(outcome.droppedChars())
+                .append(", dropRate=").append(dropRate);
+        return sb.toString();
     }
 
     /** R-CIB-6: the result line is logged at the stage's level (info stage 1 / warn stage 2 / error final). */
