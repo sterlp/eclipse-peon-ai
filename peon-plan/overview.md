@@ -267,4 +267,8 @@ Test zuerst), dann 2b, 3 (inkl. R-CC-8/9 + Q2-Verifikation), 4, 5.
 
 Fortschritt: **2a ✅** (970 grün, `6530ba1`) · **2b ✅** (999 grün; `CompactStagerTest` 18 +
 `CompactEngineTest` 11 neu, inkl. migrierter Slot-Tests; Plugin-Compile-Fixes `AIChatView` +
-`HeaderRosterStructureTest` grün) · Stufe-1-Korrektur: Tools ungecappt (Paul 2026-09-25, s. Zeile 68).
+`HeaderRosterStructureTest` grün) · **3 ✅** (1005 grün, `86a5fe9`; R-CC-8/9-Gates + Q2-Verifikation) ·
+**3.1 ✅** (`823dbe6`: Paul-Entscheid 2026-09-25 — ≤0-Guard ins Auto-Gate, SOLL-Nachtrag in
+docs/compact.md R-CIB-1 „Gate-Seite" eingebracht, Test `compactWithZeroBudget_gateOff`
+mutation-verified: ohne Guard callCount 2 statt 1) · Stufe-1-Korrektur: Tools ungecappt
+(Paul 2026-09-25, s. Zeile 68). **Nächste: Inkrement 4** (R6 + UI + compressor.md + Homepage).

@@ -151,8 +151,9 @@ class CompactSessionToolTest {
         // AND — the tool result no longer carries the summary text (SOLL 2026-09-10: the summary
         // lives exclusively as an AiMessage in the memory)
         assertThat(result).doesNotContain("WHAT: Compressed summary");
-        // AND — without preserve the result is the non-colliding marker (SOLL 2026-09-11)
-        assertThat(result).isEqualTo("(nothing preserved)");
+        // AND — without preserve the result carries the non-colliding marker (SOLL 2026-09-11),
+        // preceded by the stats line (R-CIB-6)
+        assertThat(result).contains("(nothing preserved)");
     }
 
     @Test
@@ -183,6 +184,10 @@ class CompactSessionToolTest {
     }
 
     private static AiAgent compactStub(ThreadSafeMemory memory) {
+        return agentReturning(memory, CoreTestFixtures.compactedResult());
+    }
+
+    private static AiAgent agentReturning(ThreadSafeMemory memory, CompactResult result) {
         return new AiAgent() {
             @Override public String getName() { return "stub-agent"; }
             @Override public String getSystemPrompt() { return "system"; }
@@ -190,7 +195,7 @@ class CompactSessionToolTest {
             @Override public CompactResult compact(AiMonitor monitor) {
                 var summary = AiMessage.aiMessage("SUMMARY-X");
                 memory.add(summary);
-                return CoreTestFixtures.compactedResult();
+                return result;
             }
             @Override public ThreadSafeMemory getMemory() { return memory; }
             @Override public void clear() {}
@@ -231,7 +236,7 @@ class CompactSessionToolTest {
     }
 
     @Test
-    void testCompactSessionResultCarriesOnlyPreserve() {
+    void preserveTextKept() {
         // GIVEN — an agent whose compact() stores the summary "SUMMARY-X" as an AiMessage in the memory
         // and returns a ChatResponse carrying the same text
         var memory = new ThreadSafeMemory();
@@ -242,7 +247,7 @@ class CompactSessionToolTest {
         // WHEN
         String result = subject.compactSession("KEEP-1");
 
-        // THEN — the tool result carries only `preserve`, never the summary (SOLL 2026-09-10:
+        // THEN — the tool result carries the preserve text, never the summary (SOLL 2026-09-10:
         // the summary lives exclusively as an AiMessage in the memory)
         assertThat(result).contains("KEEP-1");
         assertThat(result).doesNotContain("SUMMARY-X");
@@ -265,8 +270,29 @@ class CompactSessionToolTest {
         // WHEN
         String result = subject.compactSession(null);
 
-        // THEN — tool results are never empty: without preserve the result is the marker
-        // (a non-colliding marker, not a duplicate of the resume UserMessage — SOLL 2026-09-11)
-        assertThat(result).isEqualTo("(nothing preserved)");
+        // THEN — tool results are never empty: without preserve the result carries the marker
+        // (a non-colliding marker, not a duplicate of the resume UserMessage — SOLL 2026-09-11),
+        // preceded by the stats line (R-CIB-6)
+        assertThat(result).contains("(nothing preserved)");
+    }
+
+    @Test
+    void compactedToolResultCarriesStats() {
+        // GIVEN — an agent whose compact() returns COMPACTED with concrete stats (R-CIB-6:
+        // log and tool result carry the same numbers)
+        var memory = new ThreadSafeMemory();
+        memory.add(UserMessage.from("Test message"));
+        memory.add(AiMessage.from("AI response"));
+        var compacted = CompactResult.compacted(new CompactResult.Stats(
+                61, 114_000, 40_000, CompactResult.Stage.TOOL_RESULTS, 500_000, 2_300, "compact-model", 1234L));
+        var subject = compactSessionTool(memory, agentReturning(memory, compacted));
+
+        // WHEN
+        String toolResult = subject.compactSession(null);
+
+        // THEN — the tool result carries the same numbers as the log (resultLine)
+        assertThat(toolResult).contains("compressed 61 messages ~114k → input ~40k, result 2k, stage: tool results 6000");
+        // AND — without preserve the marker follows the stats line
+        assertThat(toolResult).contains("(nothing preserved)");
     }
 }

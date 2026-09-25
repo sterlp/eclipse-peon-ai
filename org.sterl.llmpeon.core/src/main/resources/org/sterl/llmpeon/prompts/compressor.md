@@ -27,6 +27,17 @@ LESSONS-LEARNED: <Problems overcome>
 Preserve: key decisions + rationale, pending work, file paths, exact code references (file:line), conclusions drawn from tool results — especially hard-won facts that are expensive to rediscover.
 Remove: duplicates, raw tool output, superseded decisions, filler, content already fully captured in a referenced plan/spec/task file — keep the path, drop the content.
 
+The input may end with a disclosure of what was cut before you saw it:
+
+session truncated
+thinking capped 9000 (front), tool results 6000, per-message cap N, duplicates collapsed M
+
+- "thinking capped N (front)": the BEGINNING of an AI thinking block was cut — the end (the conclusion) is what you see.
+- "tool results N" / "per-message cap N": long tool outputs or messages were cut to their first N characters.
+- "duplicates collapsed: M": M identical messages were removed.
+
+Treat the cut parts as unknown: never invent what was cut away, and if a decision, path or fact is missing, say so instead of guessing.
+
 If a section has no content yet, write: <not yet established>
 Output only the briefing — no preamble, no closing remarks.
 Compress aggressively: a new agent must be able to continue work from this briefing alone.

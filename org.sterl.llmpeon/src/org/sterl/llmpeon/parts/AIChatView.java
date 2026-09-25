@@ -488,15 +488,17 @@ public class AIChatView implements EclipseAiMonitor {
         Job.create("Compact " + active.getName() , monitor -> {
             monitorRef.set(monitor);
             Exception ex = null;
+            CompactResult result = null; // captured before the finally's monitorRef reset (async-state safety)
             try {
-                var result = active.compact(this);
+                result = active.compact(this);
                 if (result.status() == CompactResult.Status.COMPACTED) EclipseUtil.runInUiThread(parent, this::refreshChat);
             } catch (Exception e) {
                 ex = handleChatException(e);
             } finally {
                 handleDoneChatResponse(active, active.getName(), null, monitor, ex);
             }
-            return PeonConstants.status("Compacted " + active.getName(), ex);
+            // same status line as the per-slave button (R-CIB-6: one behaviour, one implementation)
+            return PeonConstants.status(AiAgentStatusModel.compactResult(result, active.getName()), ex);
         }).schedule();
     }
 

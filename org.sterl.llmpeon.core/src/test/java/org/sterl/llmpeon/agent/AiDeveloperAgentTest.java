@@ -134,8 +134,9 @@ public class AiDeveloperAgentTest {
         assertThat(((AiMessage)mem.get(1)).text()).contains("Okay thats good");
         assertThat(mem.get(2)).isEqualTo(CALL_ME);
         assertThat(mem.get(3)).isInstanceOf(ToolExecutionResultMessage.class);
-        // no-preserve marker: non-empty, and NOT a duplicate of the resume text (SOLL 2026-09-11)
-        assertThat(((ToolExecutionResultMessage)mem.get(3)).text()).isEqualTo("(nothing preserved)");
+        // no-preserve marker: present, and NOT a duplicate of the resume text (SOLL 2026-09-11);
+        // the stats line (R-CIB-6) precedes it
+        assertThat(((ToolExecutionResultMessage)mem.get(3)).text()).contains("(nothing preserved)");
         // AND — the compact-result text appears EXACTLY ONCE over ALL messages (SOLL 2026-09-11):
         // only the resume UserMessage carries "Session compacted"; the no-preserve tool result
         // must be a non-colliding marker, never a duplicate of the resume text.
