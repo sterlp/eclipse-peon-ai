@@ -1,6 +1,10 @@
 # 0030: staticText()-Helper statt Core-Änderung an ChatMessageUtil
 
-**Status:** Accepted · **Datum:** 2026-08-16 · **Zyklus:** ADR-0029
+**Status:** ~~Accepted~~ **Superseded by [ADR-0056](0056-compact-component-and-render-modes.md) (2026-09-24)** —
+der „frozen"-Charakter ist verworfen (ADRs halten kein Frozen); die SystemMessage-Drop-Landmine
+wird im ADR-0056-Zyklus gefixt und getestet. **Dieses ADR bleibt NUR bis zum Landmine-Fix
+stehen** (schützt vor silent-broken SystemMessage-Rendering), danach löschen.
+· **Datum:** 2026-08-16 · **Zyklus:** ADR-0029
 
 ## Context
 

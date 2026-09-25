@@ -5,7 +5,7 @@ Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.
 
 ## Bug-Fix-Zyklus-Backlog (2026-09-24, priorisiert)
 
-1. **R-CC-7 — Compact-Fehler sichtbar + begrenzter Retry** ([compact-context-counter.md](compact-context-counter.md)):
+1. **R-CC-7 — Compact-Fehler sichtbar + begrenzter Retry** ([compact.md](compact.md)):
    Fehler ans LLM („compact failed" + Ursache) + onProblem; Retry 1× nach 20s nur transient,
    deterministische Fehler sofort ehrlich. Zusammen mit der ApiRetry-non-retryable-Klassifikation
    (eine Fehlerklassen-Tabelle, zwei Verbraucher). Evidenz: header-state-leak.md Fall 1+2.
@@ -17,12 +17,23 @@ Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.
 4. ⏳ `ShellTool.confirmationProvider` non-volatile — pre-existing, harmlos, 1-Wort-Fix bei
    nächster Berührung (Da-Dok-Hinweis R-TC-Review).
 
+## ❓ Context-Pollution-Quellen (2026-09-24, Evidenz aus dem Compact-Thema)
+
+337461 Provider-Tokens vs. 114512 Compact-Schätzung — Pollution-Kandidaten im Jon/Agent-Mode
+(IST-Analyse Da Mek): (a) `eclipseReadFile`/`diskReadFile` ohne Cap (`FileLines` 0/0 = ganze
+Datei), (b) `docs/index.md` + `docs/memory.md` + AGENTS.md **pro Turn** in Jons System-Context
+(`AgentContextComponent.java:130-140`) — index.md wächst ungebremst, (c) Workspace-Memory-Snapshot
+ohne Cap. Frage an Paul: Caps an der Quelle (Read-Größenlimit, Kontext-Items begrenzen) oder
+bewusst so lassen, weil der Compact-Input jetzt budgetiert ([compact.md](compact.md))? Verwandt:
+Workspace-Memory-Vollkopien (unten).
+
+
 ## ❓ Workspace-Memory-Snapshot: Vollkopie je `memoryAdd` (2026-09-23)
 
 Snapshot-Key ist der entries-Hash (ADR-0032) — jede Mutation erzeugt eine frische Vollkopie
 aller Einträge, bis zum Compact. By design, aber die Kosten skalieren schlecht. Frage an Paul:
 eigener Design-Punkt? (inkrementeller Snapshot / Dedup je Eintrag / Compact-frequenter).
-Verwandt: [compact-context-counter.md](compact-context-counter.md) „Offen".
+Verwandt: [compact.md](compact.md) „Offen".
 
 ## ❓ Tool-Time-Disclosure Restkandidaten (2026-09-22, Option B — Paul-Scope)
 
@@ -126,11 +137,13 @@ Dedup kann Einzel-Nachricht als Teiltext unterschlagen (Compact ist lossy — ak
 nach Persist-IOException läuft die Session RAM-only weiter (präexistierendes Muster). Keine
 Blocker; Revisit nur bei Beschwerden/Datenverlust-Meldungen.
 
-## Compact Input Budget ([compact-input-budget.md](compact-input-budget.md))
+## Compact ([compact.md](compact.md))
 
 - ❓ Context-Noise zuerst raus (User-Idee, 2026-09-13): Context-Item-Messages vor dem Kürzen
-  nehmen — zusammen mit der Light-Version ausarbeiten („#2 und #5 gehören zusammen").
-- 🔒 R1–R5 SOLL festgelegt, Story ❌ specified. Reihenfolge: erst Compact-Slot-Bug, dann Budget-Light + Noise.
+  nehmen — „Light-Version" des Input-Budgets; R-CIB-Redesign (2026-09-24) deckt das Staging ab,
+  Noise-Entfernung bleibt eigener Punkt.
+- 🔒 R-CIB-1…6 SOLL festgelegt (Redesign 2026-09-24, Da-Dok-Review F1–F8 abgearbeitet),
+  Story ❌ specified → Plan/Bau.
 
 ## Neu (2026-09-14, story/po-compact-2026-09-13)
 

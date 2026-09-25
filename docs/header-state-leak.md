@@ -3,7 +3,7 @@
 > **Status:** 🚧 in design (2026-09-24, Paul) — Bug-Fix-Zyklus-Backlog.
 > Verwandt: [open-to-discuss.md](open-to-discuss.md) (Context-Overflow-Triage) ·
 > [chat-job-lifecycle.md](chat-job-lifecycle.md) (R-ST1 Clobber-Race, gleiche Familie) ·
-> [compact-context-counter.md](compact-context-counter.md) (R-CC-Zähler).
+> [compact.md](compact.md) (R-CC-Zähler).
 
 ## Ziel
 

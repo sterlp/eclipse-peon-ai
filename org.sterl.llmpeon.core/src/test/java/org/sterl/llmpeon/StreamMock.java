@@ -85,4 +85,14 @@ public class StreamMock {
         }
         return result;
     }
+
+    /** Counts messages of the given type whose rendering contains the value (type-scoped count). */
+    public int count(Class<? extends ChatMessage> type, String value) {
+        if (lastRequest == null) return 0;
+        int result = 0;
+        for (ChatMessage chatMessage : lastRequest.messages()) {
+            if (type.isInstance(chatMessage) && ChatMessageUtil.toString(chatMessage).contains(value)) result++;
+        }
+        return result;
+    }
 }
