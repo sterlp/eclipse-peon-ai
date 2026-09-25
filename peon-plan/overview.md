@@ -271,4 +271,17 @@ Fortschritt: **2a ✅** (970 grün, `6530ba1`) · **2b ✅** (999 grün; `Compac
 **3.1 ✅** (`823dbe6`: Paul-Entscheid 2026-09-25 — ≤0-Guard ins Auto-Gate, SOLL-Nachtrag in
 docs/compact.md R-CIB-1 „Gate-Seite" eingebracht, Test `compactWithZeroBudget_gateOff`
 mutation-verified: ohne Guard callCount 2 statt 1) · Stufe-1-Korrektur: Tools ungecappt
-(Paul 2026-09-25, s. Zeile 68). **Nächste: Inkrement 4** (R6 + UI + compressor.md + Homepage).
+(Paul 2026-09-25, s. Zeile 68) · **4 ✅** (`56ffece`: Core 1008 + Plugin 288 grün;
+`CompactSessionTool` COMPACTED = `resultLine()` + preserve-Text ins Tool-Result,
+`AiAgentStatusModel.compactResult` + `AIChatView.doCompressContext` Statuszeile mit Zahlen
+(eine Implementierung, s. Dev-Report), `compressor.md` Disclosure-Erklärung, Homepage
+`usage/agents.md`; Tests: `compactedToolResultCarriesStats` + `compactResultCarriesNumbers` neu,
+`preserveTextKept` renamed/adaptiert, 4 Pins adaptiert) · **5 ✅** (Code-Cleanup,
+Scope-Pflege Paul 2026-09-25: NUR Code — ADR-0030 löscht **Paul** selbst nach dem Review):
+`AiCompressorAgent` + `AiCompressorAgentTest` gelöscht (alle 7 Tests 1:1 in
+`CompactEngineTest` verifiziert: 5 Slots + `sendsSystemPromptAndDedupedInput` +
+`nullResponse_throwsIllegalStateException`), 2 Provenienz-Kommentare umbenannt,
+Grep-Check Code = 0 Treffer (docs/AGENTS-DEV/Plan = Doku-Verweise, Pauls Domain),
+`toString(msg,bool,int)`-Overload: 0 Prod-Caller nach Löschung, bleibt per 2a-Vertrag
+(„Bestehende 3 Signaturen bleiben") + Charakterisierungstest — Befund an Paul gemeldet.
+Core 1001/1001, Plugin 288/288 grün.

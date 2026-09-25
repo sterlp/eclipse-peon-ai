@@ -125,7 +125,7 @@ class AbstractAgentCompactResultTest {
         assertThat(problems).anyMatch(p -> p.contains("Compact failed: compressor returned no summary for " + AiDevAgent.NAME));
     }
 
-    // R-CC-9 / migrated from AiCompressorAgentTest#test_compressContext
+    // R-CC-9 / agent-level compact+reseed integration (migrated from the legacy compressor test)
     @Test
     @Timeout(10)
     void compact_delegatesToEngineAndReseeds() {

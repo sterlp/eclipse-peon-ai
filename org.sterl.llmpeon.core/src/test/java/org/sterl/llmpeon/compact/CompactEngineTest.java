@@ -216,7 +216,7 @@ class CompactEngineTest {
                 .hasMessageContaining("AI call returned null");
     }
 
-    // ---------- COMPACT slot routing (migrated from AiCompressorAgentTest) ----------
+    // ---------- COMPACT slot routing (migrated from the legacy compressor tests) ----------
 
     @Test
     @Timeout(10)
