@@ -266,7 +266,10 @@ public abstract class AbstractAgent implements AiAgent {
         monitor.onCallStart(message);
         // auto compress if we are close to full before we start (slaves trigger earlier via
         // compactFactor). R-CC-8: only above MIN_COMPACT_MESSAGES — below that a compact skips/fails.
-        if (compactAfterTokens() < memory.getTotalTokenUsed()
+        // R-CIB-1: autoCompactAfter <= 0 means "off" (like the Hint) — without this the gate would
+        // fire every turn (0 < tokens) while the Stager never caps.
+        if (configuredModel.getConfig().getAutoCompactAfter() > 0
+                && compactAfterTokens() < memory.getTotalTokenUsed()
                 && memory.size() > CompactConstants.MIN_COMPACT_MESSAGES) {
             monitor.onTool("Auto Compact before execution, context to full " + compactAfterTokens() + "/" + memory.getTotalTokenUsed());
             compact(monitor);

@@ -658,6 +658,39 @@ class AbstractAgentTest {
         // THEN — the auto-gate did not fire (3 is not > 3): only the turn's LLM call, no compressor
         assertThat(callCount.get()).isEqualTo(1);
     }
+    /**
+     * R-CIB-1: autoCompactAfter <= 0 means "off" (like the Hint) — even with more than
+     * MIN_COMPACT_MESSAGES and the token threshold exceeded, the auto-gate must NOT fire:
+     * only the turn's LLM call, no compressor call.
+     */
+    @Test
+    void compactWithZeroBudget_gateOff() {
+        // GIVEN — 4 messages (> 3), token threshold exceeded, but budget off (0)
+        var config = LlmConfig.builder().model("mock").autoCompactAfter(0).build();
+        var callCount = new AtomicInteger();
+        var mockModel = streamMock.buildMock(r -> {
+            callCount.incrementAndGet();
+            return ChatResponse.builder().aiMessage(AiMessage.aiMessage("OK")).build();
+        });
+        var memory = new ThreadSafeMemory() {
+            @Override public int getTotalTokenUsed() { return 101; }
+        };
+        memory.add(UserMessage.from("m1"));
+        memory.add(AiMessage.from("m2"));
+        memory.add(UserMessage.from("m3"));
+        memory.add(AiMessage.from("m4"));
+        var agent = new AbstractAgent(
+                new ConfiguredChatModel(config, mockModel), new ToolService(), memory, 1.0) {
+            @Override public String getName() { return "test"; }
+            @Override public String getSystemPrompt() { return "test"; }
+        };
+
+        // WHEN — one turn
+        agent.call("test", monitor -> {});
+
+        // THEN — the auto-gate is off (budget <= 0): only the turn's LLM call, no compressor
+        assertThat(callCount.get()).isEqualTo(1);
+    }
 
 
     /** restoreTurnContext skips items already in memory (contains-check). */

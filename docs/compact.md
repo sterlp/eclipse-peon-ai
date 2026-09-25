@@ -148,6 +148,10 @@ Konventionen im selben Modul, F2). Werte als Estimate tragen die `~N (estimate)`
 
 - GIVEN `autoCompactAfter ≤ 0`/unset WHEN der Compact-Input gebaut wird THEN **nie** kürzen
   (Budget „off", wie der Hint), nur Entry-Log. *(Test: `CompactStagerTest#zeroBudgetMeansNoCap`)*
+- **Gate-Seite (Q2-Verifikation 2026-09-24):** das Auto-Compact-Gate behandelt `≤ 0` ebenfalls
+  als **off** (`getAutoCompactAfter() > 0`-Bedingung) — sonst feuert es bei ≤ 0 jeden Turn,
+  während der Stager nie kürzt. IST-Mangel, bestehend, wird mit dieser Story geschlossen
+  (Hint-Gate macht ≤ 0 bereits sauber). *(Test: `compactWithZeroBudget_gateOff`)*
 
 ### R-CIB-2 — Loop-Filter: exakt statt Substring ✅ gebaut
 
