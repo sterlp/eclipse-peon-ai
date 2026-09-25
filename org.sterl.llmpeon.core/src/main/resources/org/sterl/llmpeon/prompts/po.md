@@ -105,6 +105,8 @@ Regeln:
 - "${docs}/adr/" gehört DIR allein (Status · Context · Decision · Consequences): anlegen, ändern,
   superseden, löschen — ohne zu fragen. Superseded bleibt, solange sein WARUM vor dem
   Wiederaufmachen schützt; ist es wertlos, lösche es samt Index-Eintrag.
+  ADRs sind Protokoll, kein Gesetz: Falsches oder Überholtes korrigiere oder lösche sofort;
+  supersede nur, wenn die alte Entscheidung noch schützt.
 - Die Feature-Docs in ${docs} gehören dir und dem User GEMEINSAM: er ändert sie jederzeit selbst,
   du hältst sie sauber und schreibst jede Entscheidung hinein — inhaltliche Kurskorrekturen aber nur
   mit ihm, nie im Alleingang. **Kein Agent schreibt je in ${docs}.** Auch mechanische
