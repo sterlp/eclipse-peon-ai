@@ -1,538 +1,159 @@
 # Open Points
 
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
+Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.md).
 
-## ❓ Workspace-Memory-Snapshot: Vollkopie je `memoryAdd` (2026-09-23, Hotfix-Analyse)
+## Bug-Fix-Zyklus-Backlog (2026-09-24, priorisiert)
 
-Der Snapshot-Key ist der entries-Hash (ADR-0032, `WorkspaceMemoryTool.dedupKey:149-152`) — jede
-Mutation (`memoryAdd/Replace/Remove/Reset`) erzeugt einen neuen Key → frische **Vollkopie** aller
-Einträge je Dispatch, bis zum Compact (bei 35 Entries × N Mutationen zwischen Compacts wird das
-teuer). By design, kein Bug im Hotfix-Sinn — aber eine Design-Entscheidung fehlt: inkrementeller
-Snapshot, Dedup je Eintrag oder Compact-frequenter. Verwandt:
-[compact-context-counter.md](compact-context-counter.md) („Offen"), 
-[context-architecture.md](context-architecture.md)/ADR-0032. Frage an Paul: soll das ein eigener
-Design-Punkt werden?
+1. **R-CC-7 — Compact-Fehler sichtbar + begrenzter Retry** ([compact-context-counter.md](compact-context-counter.md)):
+   Fehler ans LLM („compact failed" + Ursache) + onProblem; Retry 1× nach 20s nur transient,
+   deterministische Fehler sofort ehrlich. Zusammen mit der ApiRetry-non-retryable-Klassifikation
+   (eine Fehlerklassen-Tabelle, zwei Verbraucher). Evidenz: header-state-leak.md Fall 1+2.
+2. **Header-State-Leak** ([header-state-leak.md](header-state-leak.md)): onProblem rendert den
+   Header-State neu (🟢/Zähler/Working-Hint hängen nach Fehlerpfaden); IST-Messung vor der
+   SOLL-Härtung offen (letzter gültiger Wert vs. aktiv falsch gesetzt).
+3. **ApiRetry** (❓ unten, Evidence-Sammlung): non-retryable-Klassifikation + Mindest-Retry bei
+   Connect-Level-Failures (Paul-Idee 2026-09-20) — in die gleiche Fehlerklassen-Tabelle.
+4. ⏳ `ShellTool.confirmationProvider` non-volatile — pre-existing, harmlos, 1-Wort-Fix bei
+   nächster Berührung (Da-Dok-Hinweis R-TC-Review).
 
-## ❓ Tool-Time-Disclosure Restkandidaten (2026-09-22, Da-Thinka-Scan, Paul-Scope = B)
+## ❓ Workspace-Memory-Snapshot: Vollkopie je `memoryAdd` (2026-09-23)
 
-Da Thinkas Inventar (2026-09-22) meldete weitere Kandidaten, bewusst **nicht** im
-[tool-time-disclosure.md](tool-time-disclosure.md)-Zyklus (Paul: Option B):
-`webFetchAsMarkdown` (`fetched HH:mm (cached)` — Cache-Frische), `memoryAdd/Replace`
-(Datum-Bestätigung — heute `void`, LLM sieht gar nichts), `JavaDebugTool.continue`
-(Dauer + Uhrzeit — echte Ausführungszeit), searchAgent/compactSession/lint (nur Konsistenz).
-Wiederaufnahme = je eine eigene Mini-Story. Read/Grep/Write-Familie bleibt ohne Zeitinfo
-(stateless, Rauschen).
+Snapshot-Key ist der entries-Hash (ADR-0032) — jede Mutation erzeugt eine frische Vollkopie
+aller Einträge, bis zum Compact. By design, aber die Kosten skalieren schlecht. Frage an Paul:
+eigener Design-Punkt? (inkrementeller Snapshot / Dedup je Eintrag / Compact-frequenter).
+Verwandt: [compact-context-counter.md](compact-context-counter.md) „Offen".
+
+## ❓ Tool-Time-Disclosure Restkandidaten (2026-09-22, Option B — Paul-Scope)
+
+`webFetchAsMarkdown` (Cache-Frische), `memoryAdd/Replace` (Datum-Bestätigung), `JavaDebugTool.continue`
+(Dauer), searchAgent/compactSession/lint (Konsistenz) — je eigene Mini-Story. Read/Grep/Write-Familie
+bleibt ohne Zeitinfo (stateless, Rauschen).
 
 ## ❓ Gelber Compact-Indikator (🟡) im Roster (2026-09-22, Paul)
 
-Paul: gelber Ball als Compact-Indicator wäre besser als 🟢, „aber grün ist auch vollkommen okay" —
-„letztendlich nur ein mini improvement", bewusst **nicht gebaut** im
-[compact-lock.md](compact-lock.md)-Zyklus. Umsetzung wäre: zweiter Zustand im Status-Modell
-(`compacting` nur für die Anzeige, `working` bleibt Queue/Lock-Flag) + 🟡-Präfix in
-`AiAgentStatusWidget.text()`. Wiederaufnahme = Mini-Increment.
-
-## 🚧 „!-Messages" — sofortiger History-Insert auch im ToolLoop (2026-09-22, Paul — nicht gebaut)
-
-Nachrichten mit `!` am Anfang werden direkt in die Chat-History eingefügt (alle gequekten `!`-
-Nachrichten als eine gejointe UserMessage + Dummy-„Ok"-AI-Message) — das Vor-Queue-Verhalten.
-Aufgenommen in [queued-user-messages.md](queued-user-messages.md) Regel 8. Wiederaufnahme = eigene
-Story, Insert-Punkt/Race offen.
-
-## ❓ Tool-Evolution PO-Run: CR-1…CR-19 accept/reject (2026-09-19, Nacht-Zyklus)
-
-Vergleich unseres Plugins gegen das externe Copilot-Eclipse-Plugin — alle Tools abgeglichen. Sammelstelle
-+ 7 offene Fragen (je mit Lean): [tool-evolution.md](tool-evolution.md). Externe Mapping-Seite (temporär,
-wird nach dem Run gelöscht): feature-change-request-copilot.md. Neutrale Entwurfs-Docs: change-review,
-tool-confirmation, terminal-session-tool, java-debugger-tool, project-problems-tool.
-**Paul: alle CR-Items durchgehen, dann normale Build-Zyklen.**
-
-## 🔒 Debugger-Backlog F2: statische Felder + evaluate-Objektwerte — ❌ SPECIFIED (2026-09-21, Paul: „Go")
-
-SOLL jetzt in [java-debugger-tool.md](java-debugger-tool.md) R-JD-9 (UC-JD-10/11): statische Felder
-des Frame-Typs als separater `statics`-Block (immer, kein Parameter), `evaluate_expression` rendert
-Objekt-Felder bis Tiefe 2. Bau im Debugger+Linter-Mini-Zyklus.
-
-## 🔒 Debugger-Zusatz: Exception-Suspend — ❌ SPECIFIED (2026-09-21, Paul: „Go")
-
-SOLL jetzt R-JD-10 (UC-JD-12): neue Action `get_exception` (stateless Scan des Top-Frames nach
-Throwable, ehrlicher Fehler wenn nichts gefunden). Event-Abfrage bewusst verworfen (R-JD-3,
-Konkurrenz mit JDT-Handler).
-
-## 🔒 Docs-Linter „manuell verifiziert"-Marker — ❌ SPECIFIED (2026-09-21, Paul: „Go")
-
-R-DL-22 (UC-DL-65/66): Wort `manuell` in `*(…)*`-Anhang exemprt vom UNBELEGT-Check, Info-Zeile
-`MANUELL`. Loser Marker, bewusst kein Format-Parsing.
-
-## ⏳ `eclipseBuildProject` Failure: build.properties-Warnung (seit Story #136)
-
-„class folder 'resources/' not associated to any output library entry" — Failure-Meldung bei grüner
-Kompilation. Pre-existing, nicht aus diesem Zyklus (Da Mek 2026-09-21 verifiziert). Separater
-Mini-Fix-Kandidat.
-
-
-
-## ❓ `applyEdit` Not-Found-Fehler dumpet das gesamte File (2026-09-19, Jon — offen, keine Lösung)
-
-`FileUtils.applyEdit` hängt bei „not found" den **kompletten Datei-Inhalt** in die
-IllegalArgumentException. **Paul (2026-09-19): bewusst so gebaut** — er beobachtete, dass Modelle
-ohne den Inhalt sofort ein zweites Read nachschieben (zusätzlicher Tool-Roundtrip, auch teuer);
-der Dump spart den Roundtrip genau im Fehlerfall. Nach dem alten String suchen geht nicht — der
-Anker liegt ja daneben. **Offen:** beide Seiten sind schlecht (Roundtrip vs. Context-Bombe bei
-großen Dateien); eine gute Lösung (z. B. Kontext-Fenster um die ähnlichste Fundstelle, modell-
-oder größenabhängig) existiert noch nicht. Bleibt stehen, kein Bau.
-
-## 🔒 Self-Reference-Guard bewusst NICHT übernommen (2026-09-19, Paul bestätigt)
-
-Der Self-Ref-Guard aus `bugfix/edit-tool-insert` (`a3e8ce1`: `newStr.contains(oldStr) &&
-content.contains(newStr)` → IAE) war nie gemerged und wurde im `FileUtils`-Umbau bewusst nicht
-übernommen. Begründung: Das Selbstwachstum (`abc` → `abcd` → …, jeder Call wächst um
-`Treffer × Anhang`) ist **explizite Agenten-Absicht** — jeder Call ist ein korrekt formulierter
-Edit mit gültigem Anker; der Tool-Output meldet ehrlich „replaced N occurrence(s)". Der Guard
-dagegen blockierte legitime Edits im Normalfall (Anker ist fast immer Präfix des Neuen, z. B.
-`foo()` → `foo(); // erledigt`). Der **Edit-Guard** (min. 3 Non-WS-Zeichen, `7800a56`) deckt die
-teure Korruptions-Klasse ab. **Falls wir ihn wieder brauchen: er liegt fertig auf
-`bugfix/edit-tool-insert` (`FileUtils.applyEdit`, Commit `a3e8ce1`).**
-
-## 🔒 Merge `release-2026-09-06` → main = User-Entscheid — ERLEDIGT (2026-09-19)
-
-**Gelöst:** Content war bereits vollständig auf dem Branch — Squash-PR #132 (`45f2a0d2`), Merge-Tree
-byte-identisch mit dem Release-Tip `2e338e5` (verifiziert per merge-tree Dry-Run, alle 3 Commits
-im Tree nachgewiesen). Ein echter Merge hätte 15 Scheinkonflikte + 25 redundante History-Commits
-bei null Content-Gewinn erzeugt. Konsolidierung von Paul angeordnet (2026-09-19), als verifizierter
-No-Op geschlossen. Ebenso `fix/compact-slot-model` (+7) — inhaltlich bereits via Squash-PR #140
-(`c808c42`) drin, Merge `0af001a` ist history-only. Ein reviewbarer Branch: `bugfix/user-context-selection`.
-
-## 🔒 SimpleDiff-Bremse: LCS-Diff kippt bei großen Dateien — GELÖST (2026-09-16)
-
-`eclipseEditFile` → `AIChatView.onFileUpdate:329` → `SimpleDiff.unifiedDiff:21` → `lcsDiff:97` →
-`OutOfMemoryError: Java heap space` (gesamter Agenten-Loop gestorben). `lcsDiff` allokiert
-`int[m+1][n+1]` ≈ 4·m·n Bytes (`SimpleDiff.java:91-101`), synchron auf dem Tool-Thread — ein OOM
-dort kippt den ganzen Eclipse-Prozess. Heap 4 GB → Kipppunkt ≈ 6e8 Zellen. Trigger war eine
-**in-memory aufgeblähte** Altdatei (7,3 Mio. Zeilen, siehe ReplaceLines-Evidence unten) × 332
-neue Zeilen ≈ 9,7 GB. Ein normales Doc (300×300 ≈ 360 KB) ist sicher.
-
-**SOLL (Vorschlag):** Guard in `SimpleDiff.unifiedDiff` — wenn `m·n` über Schranke (z. B. 5e6
-Zellen ≈ 20 MB), kein LCS: summarische Meldung („file updated, N→M lines changed") statt Diff. Kein
-Rate-Parsing, kein Verhalten Risiko — nur die Anzeige degeneriert kontrolliert.
-
-**Gelöst (2026-09-16, `2e51a16`):** Guard `MAX_LCS_CELLS = 5_000_000` in `SimpleDiff.unifiedDiff`
-(Choke-Point, kein `catch OOM`); darüber human-readable Summary mit beiden Zeilenzahlen + Schranke
-(„a tool must never lie"). `AIChatView.onFileUpdate` zeigt Summary als TOOL-Message. Async/Job-Umzug
-bewusst descoped (Diff läuft bereits auf dem Tool-Thread; Job-Umzug erzeugt Chat-Reihenfolge-
-Probleme). 4 Guard-Tests in `SimpleDiffTest` (unter/an/über Schranke + Crash-Shape als 200k×100).
-
-**Nachfassung (2026-09-23, `a2abace`, Branch `fix/simple-diff`):** Paul-Befund — 1 geänderte
-Zeile in einem 2479-Zeilen-File kassierte den Guard, weil `m·n` **vor** jedem Trimmen geprüft
-wurde (LCS-Matrix ist O(n·m), egal wie wenig sich ändert). Fix: Common-Prefix/Suffix-Trim vor
-den Guards, LCS läuft nur auf der Trim-Region; `MAX_LCS_CELLS` → **1_250_000 Zellen = 5 MB**;
-zweiter Guard **`MAX_DIFF_LINES = 100_000`** (Trim begrenzt die Matrix, nicht den Output —
-Crash-Shape mit gemeinsamem Prefix trims auf 0 Zellen, würde trotzdem 7M Result-Zeilen bauen);
-Skip-Summary nennt jetzt den Dateinamen. Kontext-Hunks werden virtuell re-attached (Prefix nie
-materialisiert), Normalpfad byte-identisch (Exact-String-Test).
-
-## 🔒 User-Context-Selection-Regression — GELÖST (2026-09-16, User-Smoke steht aus)
-
-Paul meldete: selektierter Text fehlt im Kontext + Statuszeile (Regression ggü. vorletztem Release).
-Diagnose: `0a998ec` — Nicht-Text-Selektions-Events räumen die Editor-Selektion weg
-(`AIChatView.java:255` + Clear-Logik `UserContext.java:157-160`). **Live-Beweis (2026-09-16,
-Pauls Paste):** Selektion in README.md kommt als Snippet an, aber mit „selected content not in a
-file." — die **Ressource** wurde vom Event weggeräumt, der Text überlebte halb. SOLL steht in
-[user-context.md](user-context.md) (R-SEL-1 bis R-SEL-3, inkl. Pauls Rendering-Entscheid: Snippet +
-Dateipfad statt komplettem Dateiinhalt, Homepage-Text bleibt SOT). Fix-Zyklus: Branch
-`bugfix/user-context-selection` (von main), roter Test für die Event-Sequenz (inkl. Ressource),
-dann Fix, Review.
-
-**Gelöst (2026-09-16, `5ceb3aa` + Review-Fixes `c958d78`):** R-SEL-1…3 gebaut, Review CONCERNS →
-abgenommen (Plugin 216/0, Core 866/0, Linter UC 3/3). Mutation-Note: die Setter-Reihenfolge in
-`applyTextSelection` (Resource vor Selektion) fangen Headless-Tests nicht — Abdeckung durch den
-User-Smoke (bei falscher Reihenfolge ist die Selektion sofort sichtbar weg). Rest: siehe
-[user-context.md](user-context.md).
-
-## ❓ Docs-Linter-Tool: `idPattern`-Parameter verifizieren (2026-09-16)
-
-Da Dok meldete im Review: `lintDocsAndTests` mit explizitem `idPattern UC-SEL-\d+` liefere 0/0.
-Jon-Verifikation am Disk-Root (`/Users/sterlp/dev/workset/peon-ai`): dasselbe Pattern liefert
-korrekt 3/3 UCs + 5/3 Test-IDs — das Pattern selbst funktioniert.
-
-**Entscheidung (Paul, 2026-09-16):** Die Wurzel ist der Root, nicht das Pattern — workspace-
-qualifizierte Pfade (`/llmpeon-parent`) scheitern still. → **R-DL-18** (Root-Fallback: wie gegeben
-probiert, dann ohne führenden `/` gegen das `workingDir`, sonst Fehler mit beiden Pfaden), Umsetzung
-im Mini-Zyklus `bugfix/linter-root-fallback`. Die 0/0-Evidenz von Da Dok passt zu diesem Mechanismus;
-die Verifikation erledigt sich mit dem Fix.
-
-## ⏳ `nextIds` reserviert nicht — Zustandslosigkeit ist Feature, der Ablauf ist die Pflicht (2026-09-15)
-
-**Pauls Frage:** „Wenn `nextIds` eine ID zieht — wie stellen wir sicher, dass es immer eine NEUE
-liefert? Sucht es nach einem Eclipse-Neustart die letzte ID in den Docs?"
-
-**Antwort:** Ja — und der Neustart ist der harmlose Teil. `DocsLinter.nextIds` hält nachweislich
-keinen Zustand (kein Feld, kein Cache, kein Zähler; `DocsLinter.java:35-110` baut die
-`prefixStats`-Map bei jedem Aufruf neu aus dem frisch gelesenen Doc-Baum). `DocsLinterTool` hält nur
-das `workingDir`. Neustart, neuer Rechner, frischer Clone: identisches Ergebnis, weil es nur an den
-Dateien hängt. **Ein persistenter Zähler wäre schlechter** — er könnte still von den Docs abweichen.
-
-**Die echte Lücke, die Paul instinktiv getroffen hat, liegt woanders:** zwischen *Ziehen* und
-*Speichern*. `nextIds` **reserviert nichts**. Ziehe ich `UC-DL-56` und schreibe sie nicht sofort
-ins Doc, liefert der nächste Aufruf dieselbe Nummer → `DOPPELT_DEFINIERT`, also genau der Befund,
-gegen den das Tool gebaut wurde. Dasselbe, wenn die Doc-Datei nur im Editor-Buffer geändert ist
-(R-DL-12: Disk-Read).
-
-**Selbst entschieden und gebaut (2026-09-15, `934ea7c`, Review CONCERNS → abgenommen):**
-Zustandslosigkeit bleibt, keine Registry-Datei, kein Zähler. Stattdessen als **R-DL-16 +
-UC-DL-56/57** spezifiziert, gebaut und in `po.md` als Arbeitsablauf verankert (ziehen → sofort
-schreiben → speichern → erst dann die nächste). Zusätzlich legt `nextIds` jetzt — wie die
-Lint-Methoden (R-DL-12/UC-DL-4) — Lesequelle und Doc-Dateizahl offen; bei `nextIds` ist das
-wertvoller als bei den Lint-Methoden, weil ein veralteter Stand dort keinen sichtbaren Falschbefund
-erzeugt, sondern eine **unsichtbare doppelte ID**. Core Surefire 859 → 861, 0 failures.
-
-**🔒 Nachtrag 2026-09-16:** Paul hat den Ablauf bestätigt und dabei zurecht gefragt, ob `nextIds`
-überhaupt Mehrwert hat. Antwort: erst mit **R-DL-17** (ein Präfix spannt ein Feature über n Dateien
-auf) — vorher lebte ein Präfix per `PRAEFIX_DOPPELT` in genau einer Datei und die nächste Nummer war
-aus dem offenen Doc ablesbar. Beides gebaut (`934ea7c`, `ab71c53`), Punkt geschlossen.
-
-
-## ⏳ Eclipse-Installationsfehler eines Users — Analyse KORRIGIERT (2026-09-19, siehe [issue-142-asm-conflict.md](issue-142-asm-conflict.md))
-
-> **Korrektur 2026-09-19 (Issue #142, Vollverifikation):** Die drei Belege unten bleiben wahr (kein
-> asm im Bundle-ClassPath, keine asm-Requirements von uns, pinnen nichts) — aber die Schlussfolgerung
-> „nicht unser Bug" war **unvollständig**: unser p2-Repo **liefert** asm 9.10.1 mit
-> (`includeAllDependencies=true` kopiert die 2026-09-Target-Closure). Wir sind die einzige Quelle für
-> asm 9.10.1 auf der User-Maschine; der uses-violation-Mechanismus ist exakt so im User-Log belegt.
-> Fix-Kandidaten + Follow-ups (Issue-Kommentar korrigieren, Mindest-Eclipse-Version dokumentieren,
-> includeAllDependencies-Entscheidung → ADR): [issue-142-asm-conflict.md](issue-142-asm-conflict.md).
-
-**Bestandteil der alten Analyse, der weiter gilt:** KEIN Target-Rollback auf 2026-03 (kostet den
-2026-09-Stand samt [ADR-0044](adr/0044-target-2026-09-dependency-update.md), löst die Kollision nicht).
-
-**Historischer Befund (2026-09-15, teilweise überholt):**
-
-**Auslöser:** Paul reichte `ins_err.log` + `failing bundles.log` eines Users herein mit der Frage,
-ob der Target-Sprung 2026-03 → 2026-09 ([ADR-0044](adr/0044-target-2026-09-dependency-update.md))
-die Installierbarkeit gebrochen hat, und ob wir zurückrollen müssen. Vorgabe: „keine Aktion, wenn
-kein Problem".
-
-**Befund (aus `ins_err.log`, Zeilen 1–120):** Die Meldung `Could not resolve module:
-org.sterl.llmpeon [1032] → Unresolved requirement: Require-Bundle: org.eclipse.jface` ist nur das
-letzte Glied. Die Kette dahinter:
-
-```
-org.eclipse.jface → Require-Capability: eclipse.swt; filter:="(image.format=svg)"
-  → org.eclipse.swt.svg → com.github.weisj.jsvg
-    → org.apache.aries.spifly.dynamic.bundle 1.3.7  ← hier bricht es
-```
-
-`spifly` scheitert an einer **uses-constraint violation**: es sieht `org.objectweb.asm` in **zwei
-Versionen gleichzeitig** — `9.10.1` direkt und `9.9.1` transitiv über `org.objectweb.asm.commons
-9.9.1`, das `asm [9.9.1,9.10.0)` fordert. Zwei inkonsistente asm-Versionen in **einer**
-Installation.
-
-**Warum es nicht an uns liegt — drei unabhängige Belege:**
-
-1. **Wir fordern dort gar nichts.** `org.sterl.llmpeon/META-INF/MANIFEST.MF` listet
-   `org.eclipse.swt`, `org.eclipse.jface`, `org.eclipse.ui` **ohne jede `bundle-version`**. Kein
-   Constraint von uns kann diese Auflösung erzwingen oder verhindern.
-2. **Wir liefern kein asm mit.** Der `Bundle-ClassPath` (60 `lib/*.jar`) enthält **kein**
-   `org.objectweb.asm`, kein `jsvg`, kein `spifly` — geprüft, Volltext gelesen. Wir tragen zur
-   Versionskollision nichts bei.
-3. **Nur Plattform-Bundles scheitern.** `failing bundles.log` (690 Zeilen) nennt genau zwei
-   ungelöste Bundles: `org.eclipse.epp.package.common` und `org.eclipse.epp.package.rcp`
-   (4.41.0.20260903-0719) — die EPP-Paketierungs-Bundles von Eclipse selbst. `org.sterl.llmpeon
-   2.8.1.qualifier` steht dort als `[RESOLVED]`.
-
-Jedes beliebige Plugin mit JFace-Abhängigkeit würde in dieser Installation scheitern; unseres ist
-nur das erste, das darüber stolpert.
-
-**Entscheidung (selbst getroffen, Rückversicherung offen): KEIN Rollback auf 2026-03.** Ein
-Rollback würde die asm-Kollision in der User-Installation nicht beheben — sie sitzt in dessen
-SVG-Support-Stack, nicht in unserem Target — und kostet den 2026-09-Stand samt ADR-0044. Empfehlung
-an den betroffenen User: frische Eclipse-2026-09-Installation bzw. Start mit `-clean`; eine
-gemischte Installation (z.B. über ein altes Update-Site-Profil aktualisiert) ist die wahrscheinliche
-Ursache.
-
-**Nachzuholen, wenn Paul zustimmt:** Mindest-Eclipse-Version auf der Homepage nennen (heute steht
-sie nirgends) — das ist die einzige Aktion, die aus dem Vorfall überhaupt folgt.
-
-
-## 🔒 Docs-Linter liest Überschriften in Code-Blöcken als Definitionen (2026-09-15, Dogfooding-Fund) — GELÖST
-
-**IST:** Beim ersten Lauf gegen das eigene Repo meldet der Linter drei Falschbefunde in
-`docs/docs-linter.md`: `DOPPELT_DEFINIERT R-READTOOLS-4:41` und `PRAEFIX_FREMD R-READTOOLS-4:41`
-sowie `:73`. Beide Zeilen stehen in ` ```markdown `-**Code-Blöcken** — Beispiele, die das
-Doc-Format illustrieren (Pattern-Beispiel und Doc-Template).
-
-**SOLL-Lücke:** R-DL-2 legt fest „nur ein ID-Vorkommen in einer Markdown-**Überschrift** ist eine
-Definition; jedes Vorkommen im Fließtext ist eine Referenz". Ein Code-Block ist weder das eine noch
-das andere — er ist zitierter Text. Die Regel nennt den Fall nicht, der Parser kennt ihn nicht.
-
-**Warum das zählt:** Betroffen ist jedes Doc, das Doc-Struktur erklärt — also ausgerechnet Template-
-und Meta-Docs. Es ist ein False **Positive** (der Linter meldet einen Fehler, der keiner ist), nicht
-die teure False-Negative-Klasse. Aber es erzeugt Rauschen genau dort, wo das Werkzeug Vertrauen
-aufbauen muss, und drei Rauschbefunde in 41 Zeilen Report sind zu viel.
-
-**Gelöst (2026-09-15):** als **R-DL-13** + UC-DL-42/43 spezifiziert und gebaut (`797670c`, `43d4ff8`),
-Review bestanden. Fenced Code Blocks werden beim Doc-Parsing übersprungen — ein gemeinsamer
-Fence-Zustand schützt Überschriften **und** `FORM_ABWEICHEND`. Dogfooding danach: die drei
-Falschbefunde sind weg, `UC definitions: 43 / 43` (vorher `43 / 42`), findings 41 → 37.
-
-**Abhängig davon:** Das Nachtragen der ID-Kommentare an die DL-Tests (nächster Punkt) ist jetzt
-unblockiert — der Report ist rauschfrei.
-
-## 🔒 Code-Block-Regel für Testquellen — ENTSCHEIDEN (2026-09-21) → R-DL-21, Option (b)
-
-**Real aufgetreten:** `DocsLinterToolTest.java:78` (Fixture mit `// UC-DL-99`) erzeugt im
-Dogfood-Lauf `VERWAIST`. Die eine triviale Heuristik ist damit durch einen echten Fall
-gerechtfertigt: ID-Zeilen innerhalb eines Java-Textblocks (ungerade `"""`-Zeilen kippen den
-Zustand) zählen nicht als Beleg — nur `.java`, kein Escaping-Handling. Siehe R-DL-21/UC-DL-64
-in [docs-linter.md](docs-linter.md).
-
-## 🔒 Docs-Linter: ID-Kommentare an den eigenen Tests (2026-09-15) — TEILWEISE GELÖST
-
-**Gelöst für den Nachzyklus (2026-09-15):** Die 11 UCs des Read-only/Split-Zyklus
-(UC-DL-4/45/46/47/48/49/50/51/52/53/55) tragen jetzt reine `// UC-DL-<n>`-Belegzeilen — **erzwungen
-durch Da Doks Review**, der den Flip auf ✅ blockierte, solange die Tests für den Linter unsichtbar
-waren. Das Werkzeug hat damit seinen eigenen ersten echten Fang gemacht: Wir hätten sonst genau das
-falsche `✅` gesetzt, gegen das es gebaut wurde.
-
-**Lektion daraus, die über diesen Fall hinausgeht:** Ein Test, der eine strukturelle Unmöglichkeit
-prüft, ist eine **Regressionsschranke, kein Beleg** — er darf keine UC-ID tragen. Konkreter Fall:
-`PeonAiServiceTest.diskTogglePreservesJonsDocsFacades` ist trivial grün (Jons `ToolService` wird
-einmalig gebaut und nie mutiert), trägt deshalb bewusst **keine** ID und sagt im Kommentar, was er
-*nicht* beweist. Die ID sitzt am shared-Test, wo die Mutation greift.
-
-**Weiter offen (Bestand):** Die ~37 älteren DL-Tests aus dem Erstzyklus tragen weiterhin keine
-ID-Kommentare. **Empfehlung unverändert:** in einem eigenen kleinen Zyklus nachziehen, nicht als
-Teil eines Feature-Zyklus — und den repo-weiten Sweep davon getrennt halten.
-
-
-**IST:** `docs/docs-linter.md` steht seit heute auf ✅ done (gebaut, Review bestanden, Surefire
-860/0, alle Mutationsnachweise erbracht). Der erste Dogfooding-Lauf meldet aber **37×
-`UNBELEGT_ERLEDIGT`** — die Tests existieren und sind grün, tragen aber die
-`// UC-DL-<n>`-Kommentarzeilen noch nicht, mit denen der Linter sie zuordnet.
-
-**Selbst entschieden:** Das ✅ bleibt stehen. Die Regeln sind nachweislich implementiert und
-falsifizierbar getestet; es fehlt nur die maschinenlesbare Zuordnung. Das Werkzeug meldet hier also
-korrekt, was es melden soll — der Bestand ist noch nicht opt-in-fähig annotiert.
-
-**Offen für den User:** Sollen die ID-Kommentare an den DL-Tests nachgetragen werden (dann ist der
-Docs-Linter sein eigener erster sauberer Beleg), oder lassen wir das für einen Sweep, der den
-gesamten Bestand annotiert? Meine Empfehlung: nur die DL-Tests jetzt, Rest separat — sonst wird aus
-dem Abschluss ein Großprojekt.
-
-
-## 🔒 `PeonAiServiceTest`: 8 rote Compact-/TurnContext-Tests — GELÖST (2026-09-16): keine Bugs, veraltete Tests
-
-**Auflösung (Da Mek, Worktree-Beweise):** `mvn clean verify` bricht mit 8 Failures in
-`PeonAiServiceTest` — **kein Produktionscode-Bug**. Ursache: der R16-Guard (`AbstractAgent.compact`,
-`memory.size() < 3`) skippt korrekt, weil genau diese 8 Tests nur **2 Messages** seeden und
-`compact()` lediglich als Mechanismus für die Turn-Context-Re-Injection nutzen. Kausalitätsbeweis:
-`9ed839b` (vor R16) → Plugin-Suite 202/0 grün; `d94e8e9`+ → dieselben 8 rot. Pauls Docs-Linter-Commit
-`d93b1d1` ist unschuldig.
-
-**Die frühere Notiz hier („zyklusfremd, schon vor Inc 1 rot", Da Mek 2026-09-15) war falsch** —
-wahrscheinlich stale `bin/`-Klassen ohne `eclipseBuildProject` (Memory-Regel #16). Die realen
-Lehren: (1) der R16-Gate lief nur Core-Surefire, nie die Plugin-Testsuite — das Modulgrenzen-Loch
-aus Memory-Regel #33, diesmal im anderen Modul; (2) Schwellenwert-Änderungen → Seed-Grep über
-**beide** Testmodule.
-
-**Fix:** Da Mek hat die 8 Seeds auf 3 Messages umgestellt (1U+2A — 2×U geht nicht,
-`ThreadSafeMemory.add` mergt aufeinanderfolgende User-Messages). Core-Surefire 862/0. Plugin-Suite
-läuft noch (Trust-Dialog); Commit nach grünem Lauf.
-
-
-## 🔒 `eclipseReplaceLines`/`diskReplaceLines`: Replace verhält sich sporadisch wie Insert — GELÖST (2026-09-19)
-
-**Auflösung (Zyklus `bugfix/user-context-selection`, Inc 1):** Die Korruptionsklasse hatte zwei
-Mechanismen, beide jetzt geschlossen: (1) **Primär-Ursache** — leerer/blanker `oldString` in
-`eclipseEditFile` wurde still zu `""` coalesced (`String.replace("", x)` fügt an jeder Position
-ein; „replaced 0 occurrence(s)" log über das echte Verhalten). Pauls Hypothese, code-bestätigt →
-**Edit-Guard** gebaut (`7800a56`: oldString Pflicht, `trim().length() >= 3`, up-front in
-`FileUtils.applyEdit`, alle 3 Oberflächen). (2) Self-Reference-Wachstum — durch denselben Guard
-praktisch ausgeschlossen (Anker ≥ 3 Non-WS-Zeichen). Die Stress-Jagden (1000+10000 Headless-
-Iterationen, 8-Zellen-UI-Matrix) fanden **kein** sporadisches Reprodukt in `replaceLines` selbst —
-die beobachteten Vorfälle passen zum empty-oldString-Mechanismus. Die falsch getesteten
-Last-Loop-/UI-Harness-Tests existieren nicht mehr; Mutation-Nachweise: 5× rot im Guard.
-Rest-Risiko: der veraltete `IllegalStateException`-Wrapper war die letzte Ablenkung und ist
-umbenannt (`73bb156`).
-
-**Evidence (Da Mek, Docs-Linter Inc 3):** Aufruf `eclipseReplaceLines(file, line=118, newContent=…)`
-→ **alte Zeile 118 blieb stehen**, neuer Content landete ab Zeile 119. Effektiv Insert statt
-Replace. Gleiches Verhalten bei `diskReplaceLines` (`TestParser.java`). **Nicht bei jedem Aufruf**
-reproduzierbar — bei anderen Dateien im selben Lauf korrekt. Kein Muster erkennbar
-(Mehrzeiligkeit? Sonderzeichen? Position?).
-
-**Neue Evidence (2026-09-16, OOM-Crash) — Verdacht erhält ein Live-Reprodukt:** Der In-Memory-
-Zustand von `docs/open-points.md` in Eclipse wuchs auf **~7,3 Mio. Zeilen** an (21997 duplizierte
-Blöcke: Header + Statuszeile + Inhalt wiederholten sich ~22k×, `# Open Points` in derselben Zeile
-wie der vorangehende Sektionstitel — Insert statt Replace als Wiederholform), während die **Disk-
-Datei unversehrt blieb** (332 Zeilen, 22K, `git` unmodified == HEAD). Eclipse-Reads (File/Docs-Grep)
-zeigten die Duplikate, Disk-Grep dasselbe File sauber. Der SimpleDiff-OOM oben ist Folge, nicht
-Ursache. Das stützt die „Replace-als-Insert"-Korruptionsklasse: sie lebt im In-Memory-/Editor-Pfad,
-nicht auf Disk.
-
-**Folge:** Java-Quellen wurden schrittweise korrumpiert („Duplicate local variable"), bis Da Mek
-den Überblick verlor; der ganze Inc-3-Stand musste auf `6520377` zurückgesetzt werden
-(~30 min Arbeit verloren). Erkannt wurde es spät, weil nach einem Replace nicht zurückgelesen wird —
-berechtigtes Vertrauen ins eigene Tool.
-
-**Warum hoch:** Das ist die teuerste Fehlerklasse dieses Codebases — ein Tool, das etwas anderes
-tut als es meldet, ohne Fehlermeldung. Verwandt mit der AGENTS-Regel „a tool must never lie".
-
-**Nächster Schritt:** kontrollierte Einzeltests (ein-/mehrzeilig, LF/CRLF, letzte Zeile, Datei mit/
-ohne Schluss-Newline, Datei im Editor offen vs. geschlossen). **Verdachtsmoment:** ungespeicherter
-Editor-Buffer vs. Datei auf Platte — Da Mek arbeitete an Dateien, die ich parallel offen hatte.
-**Neu (2026-09-16):** Konkurrenzthese — die Korruption entsteht, wenn ein Tool-Write (Write vor
-Diff, `EclipseWorkspaceWriteFileTool.java:133-134`) auf ein File trifft, dessen In-Memory-Modell
-bereits divergiert; der Crash-Stack belegt Write-then-Diff. Die Repro-Sequenz-Aufklärung gehört in den
-Tool-Bug-Zyklus.
-
-## ❓ ApiRetry: Cancellation-Evidenz-Sammlung (Priorität: hoch, 3. Evidence 2026-09-11)
-
-**Befund-Klassen (alle derselbe Shape: Call bricht, statt dass ApiRetry sichtbar retryt):**
-1. **Netzwerk-Failures ohne Retry** (2026-09-10, warning-cleanup): `HttpTimeoutException` +
-   `ConnectException` brachen den Call ohne sichtbaren Retry ab — im Gegensatz zu
-   HTTP-Status-Fehlern.
-2. **Connection reset mitten im SSE-Stream** (2026-09-10, mcp-fixes): `reviewPlanAgent` starb mit
-   `ToolExecutionException: closed` ← SSE `Connection reset` (`IOException: chunked transfer
-   encoding, state: READING_LENGTH` → `SocketException`).
-3. **„AI call canceled while waiting to retry"** (2026-09-02 memory #21; erneut 2026-09-11:
-   Da-Mek-Lauf (Branch-Konsolidierung) + Compact-Session starb mittendrin am selben String) —
-   Retry-Thread stirbt im Backoff, Meldung endet wie gecancelt.
-4. **`IOException: header parser received no bytes`** (2026-09-06): „attempt 1, retrying in 10s"
-   gefolgt von Cancel — Verdacht: Null-Byte-IOException wird fälschlich als Cancel klassifiziert
-   statt als retry-würdiger API-Fehler.
-
-**Investigations-Fragen:** Retry-Klassifikation für empty-response/Network-Level (Connect/Timeout/
-Reset) prüfen — Cancel-Misclassification? Kann ein API-Call den Backoff abbrechen ohne echtes
-Cancel? Companion-Story: **Live-Status im Retry-Fenster** (unten).
-
-**Neue Evidence (2026-09-20):** 3× buildWithDev-Abbruch in Folge: 1× `IOException: header parser
-received no bytes`, 2× `ConnectException`/`ClosedChannelException` — Ursache (Paul): **llama.cpp
-abgestürzt**. Kein Retry, weil der erste Zugriff bereits fehlschlug. Meldungs-Sichtbarkeit an den
-PO/Chat: ✅ vollständige Stacktraces kamen durch. **Pauls Verbesserungs-Idee (offen, ❓):** mindest-
-ens **ein Retry nach ~10s** auch bei Connect-Level-Failures (llama.cpp-Crash+Restart dauert meist
-wenige Sekunden — ein Mindest-Retry würde kurzzeitige Ausfälle durchreiten), unabhängig von der
-generellen Retry-Klassifikations-Story.
+„Besser als 🟢, aber grün ist auch vollkommen okay" — bewusst nicht gebaut. Umsetzung: zweiter
+Anzeige-Zustand `compacting` + 🟡-Präfix in `AiAgentStatusWidget.text()`. Wiederaufnahme = Mini-Increment.
+Kontext: [compact-lock.md](compact-lock.md).
+
+## 🚧 „!-Messages" — sofortiger History-Insert auch im ToolLoop (2026-09-22, Paul)
+
+Regel 8 in [queued-user-messages.md](queued-user-messages.md); Insert-Punkt/Race offen. Eigene Story.
+
+## ❓ Tool-Evolution PO-Run CR-Verdicts (2026-09-19)
+
+Alle CR-Items entschieden — Verdicts + Begründungen: [resolved-points.md](resolved-points.md)
+(„Tool-Evolution-Run"). Offen bleiben nur die dort gelisteten ❌-Stories (project-problems,
+debugger, web-tools — teils inzwischen ✅) und die geparkten Docs (terminal-session, tool-confirmation).
+
+## ❓ `applyEdit` Not-Found dumpet das gesamte File (2026-09-19 — bewusst so, Lösung offen)
+
+**Paul: bewusst so** — der Dump spart den Read-Roundtrip im Fehlerfall. Offen: Roundtrip vs.
+Context-Bombe bei großen Dateien; gute Lösung (Kontext-Fenster um die ähnlichste Fundstelle)
+existiert nicht. Bleibt stehen, kein Bau.
+
+## ❓ ApiRetry: Cancellation-/Retry-Klassifikation (Priorität hoch, Evidence 4×)
+
+Befund-Klassen (derselbe Shape: Call bricht statt sichtbarem Retry):
+1. `HttpTimeoutException`/`ConnectException` ohne Retry (2026-09-10).
+2. SSE `Connection reset` mitten im Stream (2026-09-10).
+3. „AI call canceled while waiting to retry" — Retry-Thread stirbt im Backoff (2026-09-02/11;
+   **erneut 2026-09-24 doppelt live**: Da-Dok-Review + Da-Thinka-Plan, siehe
+   [header-state-leak.md](header-state-leak.md)).
+4. `IOException: header parser received no bytes` — Verdacht: Null-Byte-IOException als Cancel
+   klassifiziert (2026-09-06).
+5. **Neu 2026-09-20:** llama.cpp-Crash → 3× buildWithDev-Abbruch (`ConnectException`/
+   `ClosedChannelException`/no-bytes). **Pauls Idee:** mindestens 1 Retry nach ~10s auch bei
+   Connect-Level-Failures (Crash+Restart dauert meist Sekunden).
+
+→ Lösungsweg: gemeinsame **Fehlerklassen-Tabelle** mit R-CC-7 (transient → Retry;
+`exceed_context_size`/Invalid-Request → sofort ehrlich failen), dann Klassifikation
+(Cancel-Misclassification?) in ApiRetry.
 
 ## ❓ Live-Status im Retry-Backoff-Fenster (2026-09-10)
 
-**IST:** Nach Connection-Abbruch versteckt `StreamingBridge.onError` (END-Chunk) die
-Live-Statuszeile, PROBLEM-Nachrichten ebenso → während des ApiRetry-Backoffs (10s…5min):
-Funkstille — keine Tokens, kein „working since", User liest es als „hängt".
+`StreamingBridge.onError` versteckt die Statuszeile → 10s…5min Funkstille (User liest „hängt").
+SOLL-Idee: „retrying in Xs" im Backoff-Fenster. Mini-Story, verwandt mit header-state-leak.
 
-**SOLL-Idee:** Statuszeile zeigt im Backoff-Fenster den Retry-Zustand („retrying in Xs").
-Eigene Mini-Story, nicht Teil von [chat-job-lifecycle.md](chat-job-lifecycle.md).
+## ❓ Shell-Tool für Plan-/Review-Agent — Whitelist-Capability? (2026-09-10/13)
 
-## ❓ Shell-Tool für Plan-/Review-Agent — Whitelist-Capability? (2026-09-10, User)
+Use-Case belegt (Da Dok konnte im Release-Scan Commits nicht isolieren — kein Git). Optionen:
+volles ShellTool / reduziert / Whitelist pro Agent (analog Write-Validator). Offen: Scope, Default-Set,
+Read-only-Filter. Verwandt: ADR-0015, ADR-0022.
 
-Plan-/Review-Agent sollen ggf. `git`/`mvn`/`npm` nutzen — heute ohne Shell-Tool. Optionen: volles
-ShellTool, reduziert, oder Whitelist-Capability im ShellTool selbst (analog Write-Validator):
-Pattern-Liste per Agent konfigurierbar. **Status: nur Ticket** — „erst fertig werden, dann was
-Neues." Offene Fragen: Whitelist pro Agent oder global? Default-Set? Read-only-Filter (push?)?
-Verwandt: ADR-0015 (sandbox), ADR-0022 (Write-Path-Allowlist, Proposed). **Evidence 2026-09-13
-(User: „sollte er haben"):** Da Dok konnte im Release-Scan die User-Compact-Commits nicht
-isolieren (kein Git) — Review-Material musste erst Da Mek aufbereiten. Konkreter Use-Case für
-read-only Git beim Review-Agent.
+## ⏳ Jackson 2 → 3: beobachten (2026-09-10, User)
 
-## ⏳ Jackson 2 → 3: beobachten, Migration erst bei voller Entfernbarkeit (User 2026-09-10)
-
-langchain4j 1.20.0 macht Jackson 3 **opt-in** (`langchain4j-jackson3`; Default bleibt Jackson 2).
-Nicht heute migrierbar: (1) openai-java pinnt Jackson 2 (nicht unter unserer Kontrolle),
-(2) eigene Core-Nutzung in 5 Dateien müsste mit, (3) Error-Path-Änderung
-(`JsonReadException` statt Jackson-Exceptions) → ApiRetry-Klassifikation prüfen.
-**Entscheidung:** Beobachten — Migration erst, wenn Jackson 2 vollständig entfernbar (auch aus
-openai). Revisit-Trigger: langchain4j 1.21+ (Aggregator schon auf 1.21.0-beta31) oder openai-java
-Jackson-3-Support. Dann eigene Story mit ADR (Major-Sprung, OSGi-Bundle-ClassPath, Error-Path).
+Migration erst bei voller Entfernbarkeit (openai-java pinnt Jackson 2; 5 eigene Dateien; Error-Path
+ändert sich → ApiRetry-Klassifikation prüfen). Revisit-Trigger: langchain4j 1.21+/openai-Jackson-3.
+Dann eigene Story mit ADR.
 
 ## ❓ buildWithDev sollte Da Mek vorher compacten (2026-09-03)
 
-Vor `buildWithDev` automatisch `compactDev` bei nennenswertem Kontext — die Plan-Datei ist die
-Übergabe, nicht der Restkontext. User: „da brauchen wir kein Test". **PO-Empfehlung:** Compact
-statt Reset, Schwelle ~50 % Fenster, nur beim Start eines neuen Plans (nicht bei Delta/Nacharbeit
-— dort ist der Restkontext die Ersparnis). Eigene kleine Story.
+Compact statt Reset bei nennenswertem Kontext, Schwelle ~50 %, nur bei neuem Plan (nicht bei
+Delta/Nacharbeit). User: „da brauchen wir kein Test". Eigene kleine Story.
 
-## ⏳ Unbegrenzte Query-Caches (PO-Entscheidung, Rückversicherung offen)
+## ⏳ Unbegrenzte Query-Caches (Rückversicherung offen)
 
-`SearchQuery.CACHE` + `RegexUtils.GLOB_CACHE` sind unbegrenzte `ConcurrentHashMap`s.
-**PO-Entscheidung (2026-09-03):** vorerst belassen — Einträge winzig, Session erzeugt Dutzende.
-Bei Bedarf: LRU mit Obergrenze (z. B. 500). Rückversicherung mit User steht aus.
+`SearchQuery.CACHE` + `RegexUtils.GLOB_CACHE` unbegrenzt — belassen (Einträge winzig); bei Bedarf
+LRU 500.
 
-## ⏳ Streaming-Timing: Präzisierungen (2026-09-05, streaming-display.md R19)
+## ⏳ Streaming-Timing-Präzisierungen (2026-09-05, streaming-display.md R19)
 
-1. **Total-Timer Stop:** Bridge kennt kein Turn-Ende — Total startet im Konstruktor, läuft durch
-   die Bridge-Lebenszeit; Anzeige nutzt `startedAt` aus dem Chunk.
-2. **TOOL-Chunk-Value:** R21 zählt gestreamten Text — für TOOL heißt das `partialArguments()`
-   (Delta-Slice); der Tool-Name wird nicht gezählt.
+Total-Timer läuft durch die Bridge-Lebenszeit (Anzeige nutzt `startedAt`); TOOL-Chunk zählt
+`partialArguments()`-Delta.
 
 ## ⏳ Edit-Tools: Naming-Uniformität + gemeinsame Doku (geparkt 2026-09-05)
 
-- Rename auf **"Edit"**: `eclipseUpdateOpenFile` → `eclipseEditOpenFile`, `planUpdate` →
-  `planEdit` (Verb-Familie konsistent; "Update" kollidiert mit Write/overwrite).
-- Gemeinsame Doku für die 4 Edit-Tools (`FileUtils.applyEdit` = Replace-All + Count + 0 = Fehler):
-  neue `edit-tools.md` (PO-Empfehlung) vs kanonisch in disk-file-write-tool.md.
-- `planUpdate`/`planEdit` meldet noch **keine Count** — nachziehen.
-- **Konflikt offen:** eclipse-workspace-write-file-tool.md sagt noch „Errors if 0 or >1 matches"
-  — widerspricht Bug-Hunt #1 (Replace-All + Count). Muss mitfixt werden.
-- Nebenbefund: `planUpdate` überreicht dem Monitor Parameter statt Content — Editor-Diff falsch.
-- **Line-Ending-Normalisierung (User, 2026-09-05, `file-edit-tools.txt`):** falsches Ending im
-  oldString → Tool normalisiert **beide** Strings; anderes Ending im newString → wörtlich
-  übernommen, kein Fehler. Ersetzt frühere E3-Entscheidung. E2E-Spec:
-  `org.sterl.llmpeon.test/ai-e2e-test/file-edit-tools.txt`.
+Rename auf „Edit" (`eclipseUpdateOpenFile`→`eclipseEditOpenFile`, `planUpdate`→`planEdit`);
+gemeinsame `edit-tools.md`; `planUpdate` ohne Count-Disclosure (nachziehen); **Konflikt offen:**
+eclipse-workspace-write-file-tool.md sagt noch „Errors if 0 or >1 matches" — widerspricht
+Bug-Hunt #1 (Replace-All + Count), muss mitfixt werden. Line-Ending-Normalisierung: E2E-Spec
+`file-edit-tools.txt`.
 
 ## ❓ Deferred Smoke-Test-Kosmetik (User: „Kosmetik ist mir erstmal egal")
 
-- Zwei horizontale Striche zwischen Selected-File und Skill-Liste — einer raus.
-- Scrollverhalten Advanced Config wirkt komisch.
-- Dropdown-Umbau descoped (2026-09-03), Klassen gelöscht (`a1d8d35`, Git-Historie) —
-  Wiederaufnahme = eigene Story.
+Statuszeilen-Striche, Scrollverhalten Advanced Config. Dropdown-Umbau descoped (Klassen gelöscht
+`a1d8d35`), Wiederaufnahme = eigene Story.
 
-- **⏳ 2026-09-12 — Docs-SOLL-Hygiene-Sweep:** User-Direktive: Docs = reines SOLL, keine
-  implementierten Bug-/„war:"-Narrativen (der Plan trägt den Diff SOLL/IST). Umgesetzt für
-  advanced-configuration.md + model-loading.md (UI-Zyklus). Offen: Sweep über die übrigen
-  Feature-Docs (weitere „war:"-Blöcke, alte IST-Abschnitte) — als eigener Aufwasch, Scope vom
-  User bestätigen lassen.
+## ⏳ Docs-SOLL-Hygiene-Sweep (2026-09-12)
 
-- **⏳ 2026-09-13 — Compressor-Dedup-Subtext-Edge (Da-Dok Release-Scan):** `AiCompressorAgent`-Dedup (`msg.indexOf(txt) < 0`) kann eine Einzel-Nachricht unterschlagen, deren (≤3000-Zeichen-truncated) Text Teiltext einer früheren Nachricht ist. Compact ist ohnehin lossy — bewusst akzeptiert, kein Release-Blocker; Revisit nur bei Kompaktier-Qualitäts-Beschwerden.
-- **⏳ 2026-09-13 — ThreadSafeMemory: RAM-only nach Persist-IOException (Da-Dok Release-Scan):** nach Persist-Fehler `store = null` + throw → Session läuft ohne Persistenz weiter (stille Loss NACH dem Fehler; präexistierendes Muster aller append/persist/clear-Pfade). Kein Blocker; Revisit nur bei Datenverlust-Meldungen.
+Docs = reines SOLL, keine „war:"-Narrativen. Umgesetzt für advanced-configuration + model-loading;
+Sweep über die übrigen Feature-Docs als eigener Aufwasch, Scope vom User bestätigen lassen.
 
-## Compact Input Budget (docs/compact-input-budget.md)
+## ⏳ Compressor-Dedup-Subtext-Edge / ThreadSafeMemory RAM-only (2026-09-13, Da-Dok Release-Scan)
 
-- ❓ Context-Noise zuerst raus (User-Idee, 2026-09-13): Context-Item-Messages (selektierte Files,
-  Standing Orders, AGENTS.md in der History) nehmen, bevor gekürzt wird — die echte User-Message
-  steht (Text-Content) zuletzt. Wird zusammen mit der **Light-Version** des Budgets ausgearbeitet
-  (User: „#2 und #5 gehören zusammen", vor dem Bau nochmal gemeinsam drüber).
-- 🔒 R1–R5 SOLL festgelegt, Story ❌ specified (2026-09-13). Reihenfolge: erst Compact-Slot-Bug
-  (eigener Zyklus, eigenes Release), dann Budget-Light + Noise.
+Dedup kann Einzel-Nachricht als Teiltext unterschlagen (Compact ist lossy — akzeptiert);
+nach Persist-IOException läuft die Session RAM-only weiter (präexistierendes Muster). Keine
+Blocker; Revisit nur bei Beschwerden/Datenverlust-Meldungen.
 
+## Compact Input Budget ([compact-input-budget.md](compact-input-budget.md))
 
-## Compact-Input: Context-Noise zuerst raus (User-Idee, 2026-09-13 — unterbrochen, nicht ausdiskutiert)
+- ❓ Context-Noise zuerst raus (User-Idee, 2026-09-13): Context-Item-Messages vor dem Kürzen
+  nehmen — zusammen mit der Light-Version ausarbeiten („#2 und #5 gehören zusammen").
+- 🔒 R1–R5 SOLL festgelegt, Story ❌ specified. Reihenfolge: erst Compact-Slot-Bug, dann Budget-Light + Noise.
 
-- ❓ Vor dem Kürzen (R3) zuerst Context-Item-Messages aus dem Compact-Input nehmen: selektierte
-  Files, Standing Orders, AGENTS.md in der History — „Rauschen", das Compact nicht braucht.
-  Die echte User-Message steht (Text-Content) zuletzt. Ausarbeitung + Einordnung in
-  compact-input-budget.md (eigene Stufe vor der sanften Kürzung?) offen.
-
-
-## Neu (2026-09-14, Zyklus story/po-compact-2026-09-13)
+## Neu (2026-09-14, story/po-compact-2026-09-13)
 
 | Punkt | Status | Notiz |
 |---|---|---|
-| `homepage/src/setup/peon-po.md` listet das Team ohne Da Dok | ❓ offen | leicht veraltet, Da-Dok-Fund; Korrektur im nächsten Homepage-Kontakt |
-| User-Smoke Header-Compact-Buttons (BDD in agenten-status-im-header.md) | ⏳ teils erledigt | Optik ✅ (User 2026-09-15: „optisch sauber"); ausstehend: Re-Compact-Noop (2 Messages → `Nothing to compact`), Disabled-States, Tooltip — nach Merge |
-| Namen im System-Prompt: Scope über Jons Team hinaus? | 🔒 geklärt (2026-09-16, Paul) | **Nur Jons Team** (R-N1). Top-Level-Peon-Agents / Custom Agents / Da Sniffa bleiben außen vor — Wiederaufnahme nur auf expliziten Wunsch. |
-| BDD-Test für Compact-Hint-Fallback (Agenten ohne CompactSessionTool) | ❓ offen | Regel gebaut (`29a341b`), dokumentiert in context-message-concept.md. Paul 2026-09-16: „machen wir wann anders" — Backlog. |
+| `homepage/src/setup/peon-po.md` listet das Team ohne Da Dok | ❓ offen | Korrektur im nächsten Homepage-Kontakt |
+| User-Smoke Header-Compact-Buttons | ⏳ teils | Optik ✅; ausstehend: Re-Compact-Noop, Disabled-States, Tooltip — nach Merge |
+| BDD-Test Compact-Hint-Fallback | ❓ Backlog | Regel gebaut (`29a341b`), Paul: „wann anders" |
 
-## ⏳ R-SEL-4 Umsetzungsdetails (Jon, 2026-09-16 Abend — Rückversicherung steht aus)
+## ⏳ R-SEL-4 Umsetzungsdetails (2026-09-16 — Rückversicherung steht aus)
 
-Paul hat R-SEL-4 bestätigt („beides": `IClassFile` **und** `IType`; Typ-Event ersetzt File+Text).
-Drei Detail-Entscheidungen habe ich selbst getroffen (aus Pauls „es bleibt bis wir wieder was neues
-selektieren" abgeleitet, im Plan §2.1/§6 von Da Thinka vorgeschlagen):
+Paul bestätigte „beides" (`IClassFile` + `IType`). Drei selbst abgeleitete Details (Plan §2.1/§6):
+(1) jeder `setTextSelection` (auch leer) räumt den Typ — strikte Text/Typ-Alternation;
+(2) Rename `clazz`/`setClassFile` → `javaType`/`setJavaType`; (3) Typ-Event berührt `currentProject`
+nicht. Widerspruch = Verhalten zurückändern, Tests (UC-SEL-4) anpassen.
 
-1. **Jeder** `setTextSelection`-Aufruf (auch leer/Caret) räumt den Typ — strikte Text/Typ-
-   Alternation. Passend zu Pauls Regel (Caret-Klick = neue Selektion) und zur R-SEL-1-Formulierung
-   („inkl. leerem/Caret-Event").
-2. **Rename** `clazz`/`setClassFile` → `javaType`/`setJavaType` (Feld `IJavaElement`) — `IType` ist
-   kein `IClassFile`, technischer Name folgt der Rolle (memory #15).
-3. **Typ-Event berührt `currentProject` nicht** (kein `updateSelectedProject`) — Project-State
-   bleibt dem Projekt-/Pin-Flow vorbehalten.
+## ⏳ `eclipseBuildProject` Failure: build.properties-Warnung (seit #136)
 
-Wenn Paul widerspricht: Verhalten zurückändern, Tests (UC-SEL-4) entsprechend anpassen.
+„class folder 'resources/' not associated to any output library entry" bei grüner Kompilation.
+Pre-existing (Da Mek 2026-09-21 verifiziert). Separater Mini-Fix-Kandidat.
+
+## ⏳ Eclipse-Installationsfehler User — Issue #142
+
+Analyse korrigiert (2026-09-19): unser p2-Repo liefert asm 9.10.1 mit (includeAllDependencies).
+Fix-Kandidaten + Follow-ups: [issue-142-asm-conflict.md](issue-142-asm-conflict.md). Nachzuholen
+bei Pauls Zustimmung: Mindest-Eclipse-Version auf der Homepage nennen.

@@ -44,7 +44,7 @@ Module guides (read when working in one):
 
 ## Working agreements that cost us the most to learn
 
-- **Maven Surefire is the ground truth for test numbers**, not `eclipseRunTests` — the Eclipse
+- **Maven Surefire is the ground truth for test numbers**, not `eclipseRunJavaTests` — the Eclipse
   runner counts higher (parameterized artefacts) and has repeatedly produced wrong report numbers.
 - **Read the API contract in the source, never guess it.** Dead guards survived here for months
   because they *looked* defensive (`PlatformUI.getWorkbench() == null`,

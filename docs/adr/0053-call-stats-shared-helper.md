@@ -6,7 +6,7 @@
 
 `PoDelegateTool` baut das Zeit-Suffix („done. … (1m 5s, 14:32)") privat (`dispatchStats`):
 `System.nanoTime()`-Delta + `StringUtil.humanElapsed` + `LocalTime.now()` (HH:mm). Mit dem
-Time-Disclosure-SOLL (Shell, eclipseRunTests, eclipseBuildProject) braucht jetzt eine zweite
+Time-Disclosure-SOLL (Shell, eclipseRunJavaTests, eclipseBuildProject) braucht jetzt eine zweite
 Tool-Familie dasselbe Muster.
 
 ## Decision

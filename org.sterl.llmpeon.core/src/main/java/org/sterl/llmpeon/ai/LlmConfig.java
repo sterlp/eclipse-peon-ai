@@ -91,8 +91,6 @@ public class LlmConfig {
     @Default
     private final boolean diskToolsEnabled = false;
     @Default
-    private final boolean shellCommandConfirmationRequired = false;
-    @Default
     private final boolean debugMode = false;
     @Default
     private final boolean showRealtimeAiResponse = true;

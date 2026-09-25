@@ -5,10 +5,12 @@ import java.util.List;
 record NextIdsResult(
         List<NextIds> nextIds,
         int lintedDocCount,
-        int skippedDocCount) {
+        int skippedDocCount,
+        List<String> skippedDocs) {
 
     NextIdsResult {
         nextIds = List.copyOf(nextIds);
+        skippedDocs = List.copyOf(skippedDocs);
     }
 
     int docFileCount() {

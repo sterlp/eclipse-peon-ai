@@ -56,6 +56,7 @@ import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 import org.sterl.llmpeon.tool.tools.DiskGrepTool;
+import org.sterl.llmpeon.tool.tools.ShellTool;
 import org.sterl.llmpeon.tool.tools.SkillTool;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -127,6 +128,63 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         } finally {
             if (otherProject.exists()) otherProject.delete(true, true, new NullProgressMonitor());
         }
+    }
+
+    // R3
+    @Test
+    public void r3ShellDefaultCwdIsActiveProject() {
+        var shell = aiService.getSharedToolService().getTool(ShellTool.class).orElseThrow();
+        var expectedCwd = Path.of(JdtUtil.diskPathOf(project)).toAbsolutePath().normalize();
+
+        var lines = shell.shellRunCommand(pwdCommand(), null, null, null, null).lines().toList();
+
+        assertEquals("first line must disclose the effective cwd: " + lines, "cwd=" + expectedCwd, lines.get(0));
+        assertEquals("must execute in the active project dir: " + lines, expectedCwd.toString(), lines.get(1));
+    }
+
+    // R3
+    @Test
+    public void r3ShellCwdFollowsProjectSwitchAtCallTime() throws Exception {
+        var otherProject = ResourcesPlugin.getWorkspace().getRoot().getProject("aaa_other");
+        if (otherProject.exists()) otherProject.delete(true, true, new NullProgressMonitor());
+        otherProject.create(new NullProgressMonitor());
+        otherProject.open(new NullProgressMonitor());
+        try {
+            var shell = aiService.getSharedToolService().getTool(ShellTool.class).orElseThrow();
+
+            aiService.setProject(otherProject);
+            var expectedOther = Path.of(JdtUtil.diskPathOf(otherProject)).toAbsolutePath().normalize();
+
+            var lines = shell.shellRunCommand(pwdCommand(), null, null, null, null).lines().toList();
+
+            assertEquals("cwd must follow setProject at call time: " + lines, "cwd=" + expectedOther, lines.get(0));
+            assertEquals("must execute in the new project dir: " + lines, expectedOther.toString(), lines.get(1));
+        } finally {
+            aiService.setProject(project);
+            if (otherProject.exists()) otherProject.delete(true, true, new NullProgressMonitor());
+        }
+    }
+
+    // R3
+    @Test
+    public void r3ShellNoProjectFallsBackToProcessCwd() {
+        try {
+            aiService.setProject(null);
+            var shell = aiService.getSharedToolService().getTool(ShellTool.class).orElseThrow();
+
+            var lines = shell.shellRunCommand("echo hi", null, null, null, null).lines().toList();
+
+            var expectedCwd = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
+            assertEquals("no project -> process CWD, disclosed: " + lines, "cwd=" + expectedCwd, lines.get(0));
+            assertEquals("the command must still run: " + lines, "hi", lines.get(1));
+        } finally {
+            aiService.setProject(project);
+        }
+    }
+
+    /** prints the current working directory */
+    private static String pwdCommand() {
+        return System.getProperty("os.name").toLowerCase().contains("win") ? "cd" : "pwd";
     }
 
     @Test

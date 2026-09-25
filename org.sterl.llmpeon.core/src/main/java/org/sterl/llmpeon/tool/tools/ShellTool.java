@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import org.sterl.llmpeon.shared.ArgsUtil;
@@ -36,12 +37,19 @@ public class ShellTool extends AbstractTool {
     private static volatile UserToolEnvironment userToolEnvironment;
 
     private ShellConfirmationProvider confirmationProvider = null;
+    private Supplier<Path> defaultWorkingDir = null; // set at construction, before first use (same as confirmationProvider)
 
     @Override
     public boolean isEditTool() { return true; }
 
     public void setConfirmationProvider(ShellConfirmationProvider confirmationProvider) {
         this.confirmationProvider = confirmationProvider;
+    }
+
+    /** R3 (shell-tool.md): supplies the default working directory at call time (active project);
+     *  null or a null result = fall back to the process CWD (".") as before. */
+    public void setDefaultWorkingDir(Supplier<Path> defaultWorkingDir) {
+        this.defaultWorkingDir = defaultWorkingDir;
     }
 
     @Tool("Read OS and environment info: name, Java version, user home, PATH, temp dir.")
@@ -71,7 +79,11 @@ public class ShellTool extends AbstractTool {
 
         ArgsUtil.requireNonBlank(command, "command");
         if (timeout == null) timeout = DEFAULT_TIMEOUT_S;
-        if (workingDirectory == null) workingDirectory = Path.of(".").toAbsolutePath().toString();
+        if (workingDirectory == null) {
+            // R3: default = supplier (active project) at call time; no supplier/no project = process CWD
+            Path defaultDir = defaultWorkingDir != null ? defaultWorkingDir.get() : null;
+            workingDirectory = (defaultDir != null ? defaultDir : Path.of(".")).toAbsolutePath().toString();
+        }
         if (tailLines == null) tailLines = DEFAULT_TAIL_LINES;
 
 
@@ -90,6 +102,8 @@ public class ShellTool extends AbstractTool {
         if (!effectiveDir.toFile().isDirectory()) {
             throw new IllegalArgumentException("workingDirectory is not a valid directory: " + workingDirectory);
         }
+        // R3: disclose the effective (absolute + normalized) working dir — first line of every run result
+        String cwdPrefix = "cwd=" + effectiveDir + System.lineSeparator();
 
         String[] shellCommand;
         String os = System.getProperty("os.name").toLowerCase();
@@ -148,7 +162,7 @@ public class ShellTool extends AbstractTool {
                     partial = formatOutput(lines, filter, tailLines).text();
                 }
                 onTool("Command timed out (exit killed) - " + (lines.isEmpty() ? "no output" : lines.size() + " lines captured"));
-                return "Command timed out after " + stats.duration()
+                return cwdPrefix + "Command timed out after " + stats.duration()
                     + ". Partial output:\n" + partial + System.lineSeparator() + stats.suffix();
             }
 
@@ -163,19 +177,19 @@ public class ShellTool extends AbstractTool {
             onTool("Command finished (exit " + exitCode + ") reading " 
                     + output.shown() + " lines ...");
             if (resultStr.isEmpty()) {
-                return stats.suffix();
+                return cwdPrefix + stats.suffix();
             }
-            return resultStr + System.lineSeparator() + stats.suffix();
+            return cwdPrefix + resultStr + System.lineSeparator() + stats.suffix();
 
         } catch (IOException e) {
             onProblem("Failed to run: " + command + " " + e.getMessage());
-            return "Error executing command: " + e.getMessage()
+            return cwdPrefix + "Error executing command: " + e.getMessage()
                 + System.lineSeparator() + "Output so far:" + System.lineSeparator()
                 + formatOutput(lines, filter, tailLines).text();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             onTool("Stopped " + command);
-            return "Command interrupted: " + e.getMessage()
+            return cwdPrefix + "Command interrupted: " + e.getMessage()
                 + System.lineSeparator() + "Output so far:" + System.lineSeparator()
                 + formatOutput(lines, filter, tailLines).text();
         }

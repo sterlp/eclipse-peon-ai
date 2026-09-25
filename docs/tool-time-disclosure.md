@@ -10,7 +10,7 @@ idPrefix: TD
 **Ziel:** Der LLM sieht am Ende von langlaufenden Tool-Aufrufen **Dauer + Uhrzeit** — er kann
 Timeout/Retry skalieren, Hangs einordnen und Tageszeit-Kontext ableiten. Vorbild ist das bestehende
 Muster in `PoDelegateTool` („done. Context: … (1m 5s, 14:32)"). Scope-Entscheidung Paul (Option B):
-Shell + eclipseRunTests + eclipseBuildProject; abgelehnt für den Rest (siehe [open-points.md](open-points.md)).
+Shell + eclipseRunJavaTests + eclipseBuildProject; abgelehnt für den Rest (siehe [open-points.md](open-points.md)).
 
 ### R-TD-1 — `CallStats`: ein geteilter Stats-Suffix-Helper ✅
 
@@ -46,7 +46,7 @@ tatsächlichen Verlauf.
 - GIVEN Shell-Aufruf (echter kurzer Befehl) WHEN Antwort an LLM THEN letzter Abschnitt enthält
   Dauer + Uhrzeit im R-TD-1-Format; GIVEN Timeout THEN Dauer = gemessen.
 
-### R-TD-3 — `eclipseRunTests` meldet Dauer + Uhrzeit ✅
+### R-TD-3 — `eclipseRunJavaTests` meldet Dauer + Uhrzeit ✅
 
 Der Test-Report (`Test run / Tests / Skipped / Failures`) wird um den Stats-Suffix ergänzt. Auch im
 Timeout-Fall (`5 min`-Guard) steht die gemessene Dauer, nicht die konfigurierte Grenze.

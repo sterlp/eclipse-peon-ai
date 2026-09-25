@@ -57,7 +57,7 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
     private static final String PDE_JUNIT_LAUNCH_TYPE = "org.eclipse.pde.ui.JunitLaunchConfig";
 
     @Tool("Run JUnit tests (auto-detects JUnit 3/4/5/6). For Eclipse plugin projects, usePluginTest=true starts the OSGi framework.")
-    public String eclipseRunTests(
+    public String eclipseRunJavaTests(
             @P(name = "projectName") String projectName,
             @P(description = "fully qualified test class, empty = all tests in project", required = false, name = "testClassName")
             String testClassName,

@@ -12,7 +12,7 @@ class DocParser {
 
     private final Pattern idPattern;
     private static final Pattern HEADING_PATTERN = Pattern.compile("^(#{1,6})\\s+(.+)");
-    private static final Pattern RULE_ID_PATTERN = Pattern.compile("^R-[A-Z]+-\\d+");
+    private static final Pattern RULE_ID_PATTERN = Pattern.compile("^R-[A-Z0-9]+(?:-[A-Z0-9]+)*-\\d+");
     private static final Pattern STATUS_EMOJI_PATTERN = Pattern.compile(".*\\s([🚧❌✅])(?:\\s+(.*))?$");
 
     DocParser(Pattern idPattern) {
@@ -253,14 +253,18 @@ class DocParser {
         }
     }
 
+    /**
+     * R-DL-23: the scope of a rule id is everything between {@code R-} and the last dash
+     * before the trailing number ({@code R-O-TEST-1} → {@code O-TEST}); ids without a
+     * trailing number yield no scope and are returned unchanged.
+     */
     private static String extractRulePrefix(String ruleId) {
-        // R-<FEATURE>-<n> → extract <FEATURE>
-        int firstDash = ruleId.indexOf('-');
-        int secondDash = ruleId.indexOf('-', firstDash + 1);
-        if (firstDash > 0 && secondDash > firstDash) {
-            return ruleId.substring(firstDash + 1, secondDash);
+        int end = ruleId.length();
+        while (end > 0 && Character.isDigit(ruleId.charAt(end - 1))) {
+            end--;
         }
-        return ruleId;
+        int lastDash = ruleId.lastIndexOf('-', end - 1);
+        return lastDash > 2 ? ruleId.substring(2, lastDash) : ruleId;
     }
 
     record DocParseResult(List<DocDefinition> definitions, List<LintFinding> findings,

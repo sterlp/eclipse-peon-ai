@@ -23,8 +23,9 @@ class DocsLinter {
             "md", "txt", "json", "xml", "csv", "yaml", "yml",
             "properties", "cfg", "ini", "toml");
 
-    private static final Pattern RULE_NUM_PATTERN = Pattern.compile("^R-([A-Z]+)-(\\d+)");
-    private static final Pattern UC_FLAT_NUM_PATTERN = Pattern.compile("^UC-([A-Z]+)-(\\d+)");
+    private static final Pattern RULE_NUM_PATTERN = Pattern.compile("^R-(.+)-(\\d+)");
+    private static final Pattern UC_FLAT_NUM_PATTERN = Pattern.compile("^UC-(.+)-(\\d+)");
+    private static final Pattern PREFIX_PATTERN = Pattern.compile("[A-Z]+(?:-[A-Z0-9]+)*");
 
     DocsLintResult lint(Path root, List<String> docRoots, Pattern idPattern) throws IOException {
         DocParseData data = parseDocs(root, docRoots, idPattern);
@@ -48,42 +49,48 @@ class DocsLinter {
         return List.copyOf(seen);
     }
 
+    /**
+     * R-DL-23: single choke point for {@code nextIds} prefix validation — the tool layer
+     * keeps only input normalization (trim), never a second copy of this rule.
+     * Null/blank means "all prefixes" and is not an error.
+     */
+    static void requireValidPrefix(String prefix) {
+        if (prefix == null || prefix.isBlank()) {
+            return;
+        }
+        if (prefix.startsWith("-") || prefix.endsWith("-")) {
+            throw new IllegalArgumentException("prefix must not start or end with a hyphen: " + prefix);
+        }
+        if (!PREFIX_PATTERN.matcher(prefix).matches()) {
+            throw new IllegalArgumentException(
+                    "prefix must be uppercase letters or digits, e.g. ORD or O-TEST: " + prefix);
+        }
+    }
+
     NextIdsResult nextIds(Path root, List<String> docRoots, Pattern idPattern, String prefix)
             throws IOException {
-        if (prefix != null && !prefix.matches("[A-Z]+")) {
-            throw new IllegalArgumentException("prefix must be uppercase letters only: " + prefix);
-        }
+        requireValidPrefix(prefix);
         DocParseData data = parseDocs(root, docRoots, idPattern);
 
         List<DocDefinition> participatingDefs = data.definitions().stream()
                 .filter(d -> d.prefix() != null)
                 .toList();
 
-        Map<String, int[]> prefixStats = new TreeMap<>();
+        Map<String, PrefixMax> prefixStats = new TreeMap<>();
 
         for (var def : participatingDefs) {
             if (def.id().startsWith("R-")) {
                 var rm = RULE_NUM_PATTERN.matcher(def.id());
                 if (rm.matches()) {
-                    String pfx = rm.group(1);
-                    int num = Integer.parseInt(rm.group(2));
-                    prefixStats.compute(pfx, (k, v) -> {
-                        if (v == null) return new int[]{num, 0};
-                        v[0] = Math.max(v[0], num);
-                        return v;
-                    });
+                    updateRule(prefixStats, rm.group(1), Integer.parseInt(rm.group(2)), def.file());
                 }
             } else {
                 var um = UC_FLAT_NUM_PATTERN.matcher(def.id());
                 if (um.matches()) {
-                    String pfx = um.group(1);
-                    int num = Integer.parseInt(um.group(2));
-                    prefixStats.compute(pfx, (k, v) -> {
-                        if (v == null) return new int[]{0, num};
-                        v[1] = Math.max(v[1], num);
-                        return v;
-                    });
+                    updateUseCase(prefixStats, um.group(1), Integer.parseInt(um.group(2)), def.file());
                 } else {
+                    // Legacy hierarchical UC ids not ending in digits (e.g. UC-KUPO-19-4b):
+                    // first dash + first digit run — deliberately unchanged by R-DL-23.
                     String id = def.id();
                     if (id.startsWith("UC-")) {
                         int firstDash = id.indexOf('-', 3);
@@ -95,12 +102,8 @@ class DocsLinter {
                                 numEnd++;
                             }
                             if (numEnd > numStart) {
-                                int num = Integer.parseInt(id.substring(numStart, numEnd));
-                                prefixStats.compute(pfx, (k, v) -> {
-                                    if (v == null) return new int[]{0, num};
-                                    v[1] = Math.max(v[1], num);
-                                    return v;
-                                });
+                                updateUseCase(prefixStats, pfx,
+                                        Integer.parseInt(id.substring(numStart, numEnd)), def.file());
                             }
                         }
                     }
@@ -110,22 +113,27 @@ class DocsLinter {
 
         if (prefix != null && !prefix.isBlank()) {
             String wanted = prefix.trim();
-            int[] stats = prefixStats.get(wanted);
-            if (stats == null) {
-                return new NextIdsResult(List.of(new NextIds(wanted, false, 1, 1)),
-                        data.lintedDocs().size(), data.skippedDocs().size());
-            }
+            PrefixMax defs = prefixStats.get(wanted);
+            RawScan raw = scanRawOccurrences(root, data.mdFiles(), wanted);
+
+            FamilyOccurrence rule = higher(defs == null ? null : ruleOccurrence(defs), raw.rule());
+            FamilyOccurrence useCase = higher(defs == null ? null : useCaseOccurrence(defs), raw.useCase());
+            FamilyOccurrence flat = raw.flat();
+            boolean occupied = rule != null || useCase != null || flat != null;
+
             return new NextIdsResult(
-                    List.of(new NextIds(wanted, true, stats[0] + 1, stats[1] + 1)),
-                    data.lintedDocs().size(), data.skippedDocs().size());
+                    List.of(new NextIds(wanted, occupied, rule, useCase, flat)),
+                    data.lintedDocs().size(), data.skippedDocs().size(), data.skippedDocs());
         }
 
         List<NextIds> allocations = new ArrayList<>();
         for (var entry : prefixStats.entrySet()) {
-            int[] stats = entry.getValue();
-            allocations.add(new NextIds(entry.getKey(), true, stats[0] + 1, stats[1] + 1));
+            PrefixMax stats = entry.getValue();
+            allocations.add(new NextIds(entry.getKey(), true,
+                    ruleOccurrence(stats), useCaseOccurrence(stats), null));
         }
-        return new NextIdsResult(allocations, data.lintedDocs().size(), data.skippedDocs().size());
+        return new NextIdsResult(allocations, data.lintedDocs().size(),
+                data.skippedDocs().size(), data.skippedDocs());
     }
 
     private DocParseData parseDocs(Path root, List<String> docRoots, Pattern idPattern)
@@ -133,7 +141,7 @@ class DocsLinter {
         List<Path> resolvedRoots = resolveRoots(root, docRoots);
         List<Path> mdFiles = discoverMarkdownFiles(resolvedRoots);
         if (mdFiles.isEmpty()) {
-            return new DocParseData(List.of(), List.of(), List.of(), List.of(), 0);
+            return new DocParseData(List.of(), List.of(), List.of(), List.of(), List.of(), 0);
         }
 
         DocParser parser = new DocParser(idPattern);
@@ -180,7 +188,7 @@ class DocsLinter {
                 .thenComparingInt(LintFinding::line)
                 .thenComparing(LintFinding::id));
 
-        return new DocParseData(allDefs, allFindings, lintedDocs, skippedDocs, (int) ucCount);
+        return new DocParseData(allDefs, allFindings, lintedDocs, skippedDocs, mdFiles, (int) ucCount);
     }
 
     static int findingPriority(FindingType type) {
@@ -366,14 +374,77 @@ class DocsLinter {
         return files;
     }
 
+    /** Per-prefix maxima; the files carry the location of the highest number (R-DL-24 Fundstelle). */
+    private record PrefixMax(int ruleMax, int ucMax, String ruleFile, String ucFile) {}
+
+    private record RawScan(FamilyOccurrence rule, FamilyOccurrence useCase, FamilyOccurrence flat) {}
+
+    private static FamilyOccurrence ruleOccurrence(PrefixMax max) {
+        return max.ruleMax() > 0
+                ? new FamilyOccurrence(max.ruleMax(), max.ruleMax() + 1, max.ruleFile()) : null;
+    }
+
+    private static FamilyOccurrence useCaseOccurrence(PrefixMax max) {
+        return max.ucMax() > 0
+                ? new FamilyOccurrence(max.ucMax(), max.ucMax() + 1, max.ucFile()) : null;
+    }
+
+    private static FamilyOccurrence higher(FamilyOccurrence current, FamilyOccurrence candidate) {
+        return current == null || candidate.highestNumber() > current.highestNumber()
+                ? candidate : current;
+    }
+
+    /**
+     * R-DL-24: raw scan of all scanned markdown files for occurrences of the prefix in any
+     * form (R- / UC- / flat). Mentions burn numbers even in non-participating docs; code
+     * blocks are included (raw text, conservative). Second read pass — prefix mode only.
+     */
+    private RawScan scanRawOccurrences(Path root, List<Path> mdFiles, String prefix) throws IOException {
+        Pattern pattern = Pattern.compile(
+                "\\b(?<form>R-|UC-)?(?:" + Pattern.quote(prefix) + ")-(\\d+)");
+        FamilyOccurrence rule = null;
+        FamilyOccurrence useCase = null;
+        FamilyOccurrence flat = null;
+        for (Path file : mdFiles) {
+            String relativePath = root.relativize(file).toString().replace('\\', '/');
+            var matcher = pattern.matcher(Files.readString(file));
+            while (matcher.find()) {
+                int num = Integer.parseInt(matcher.group(2));
+                FamilyOccurrence candidate = new FamilyOccurrence(num, num + 1, relativePath);
+                String form = matcher.group("form");
+                if (form == null) {
+                    flat = higher(flat, candidate);
+                } else if (form.equals("UC-")) {
+                    useCase = higher(useCase, candidate);
+                } else {
+                    rule = higher(rule, candidate);
+                }
+            }
+        }
+        return new RawScan(rule, useCase, flat);
+    }
+
+    private static void updateRule(Map<String, PrefixMax> stats, String pfx, int num, String file) {
+        stats.compute(pfx, (k, v) -> v == null
+                ? new PrefixMax(num, 0, file, null)
+                : num > v.ruleMax() ? new PrefixMax(num, v.ucMax(), file, v.ucFile()) : v);
+    }
+
+    private static void updateUseCase(Map<String, PrefixMax> stats, String pfx, int num, String file) {
+        stats.compute(pfx, (k, v) -> v == null
+                ? new PrefixMax(0, num, null, file)
+                : num > v.ucMax() ? new PrefixMax(v.ruleMax(), num, v.ruleFile(), file) : v);
+    }
+
     private record DocParseData(List<DocDefinition> definitions, List<LintFinding> findings,
                                 List<String> lintedDocs, List<String> skippedDocs,
-                                int useCaseCount) {
+                                List<Path> mdFiles, int useCaseCount) {
         DocParseData {
             definitions = List.copyOf(definitions);
             findings = List.copyOf(findings);
             lintedDocs = List.copyOf(lintedDocs);
             skippedDocs = List.copyOf(skippedDocs);
+            mdFiles = List.copyOf(mdFiles);
         }
     }
 }
