@@ -187,7 +187,7 @@ public class PoDelegateTool extends AbstractTool {
     
     private String compact(NamedAgent agent) {
         AiAgent slave = agent.agent();
-        return switch (slave.compact(monitor)) {
+        return switch (slave.compact(monitor).status()) {
             case COMPACTED -> {
                 reportAction(agent, "compacted");
                 yield agent.uiName() + " compacted. " + contextUsed(slave);

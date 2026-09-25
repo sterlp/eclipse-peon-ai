@@ -65,7 +65,7 @@ compressor.md-Prompt-Zeile, Homepage-Update.
    record RenderOptions(boolean includeThink, int toolMessageSize, int thinkCapChars,
                         boolean thinkKeepTail, boolean perMessageTrimmedTag, boolean renderSystemMessage) {
        static RenderOptions defaults() { /* includeThink=true, toolMessageSize=6000, cap=MAX, tag=true, system=true */ }
-       static RenderOptions compactStage1() { /* thinkCap=9000, keepTail=true, toolMessageSize=0 (nichts), tag=false, system=false */ }
+       static RenderOptions compactStage1() { /* thinkCap=9000, keepTail=true, tools UNgecappt (Stufe 2 fügt die Caps hinzu — monoton; „0 (nichts)" war schlampig, Paul 2026-09-25 entschieden: b), tag=false, system=false */ }
        static RenderOptions compactStage2() { /* thinkCap=6000, keepTail=true, toolMessageSize=6000, tag=false, system=false */ }
    }
    String toString(ChatMessage msg, RenderOptions options);
@@ -264,3 +264,7 @@ Record-Compile-Fixes wo Signaturen betroffen sind.
 Plan **freigegeben** (Da Boss, 2026-09-24, nach Q1/Q2-Entscheid + R-CC-8/9 + Git-Regeln).
 Start: Branch `story/compact-input-budget` → Inkrement 2a (Render-Modi, SystemMessage-Fix roter
 Test zuerst), dann 2b, 3 (inkl. R-CC-8/9 + Q2-Verifikation), 4, 5.
+
+Fortschritt: **2a ✅** (970 grün, `6530ba1`) · **2b ✅** (999 grün; `CompactStagerTest` 18 +
+`CompactEngineTest` 11 neu, inkl. migrierter Slot-Tests; Plugin-Compile-Fixes `AIChatView` +
+`HeaderRosterStructureTest` grün) · Stufe-1-Korrektur: Tools ungecappt (Paul 2026-09-25, s. Zeile 68).

@@ -22,6 +22,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.compact.CompactResult;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.memory.FileAgentHistoryStore;
@@ -433,11 +434,11 @@ class AbstractAgentTest {
         var second = agent.compact(monitor -> {});
 
         // THEN — first compacted to exactly 2 (Session-compacted user + summary), second is a no-op
-        assertThat(first).isEqualTo(CompactResult.COMPACTED);
+        assertThat(first.status()).isEqualTo(CompactResult.Status.COMPACTED);
         assertThat(afterFirst).hasSize(2);
         assertThat(afterFirst.get(0)).isInstanceOf(UserMessage.class);
         assertThat(afterFirst.get(1)).isInstanceOf(AiMessage.class);
-        assertThat(second).isEqualTo(CompactResult.SKIPPED_SMALL);
+        assertThat(second.status()).isEqualTo(CompactResult.Status.SKIPPED_SMALL);
         assertThat(agent.getMemory().getCopy()).isEqualTo(afterFirst);
         // AND — exactly one LLM call (the first compact's compressor), none for the no-op
         assertThat(streamMock.getCallCount()).isEqualTo(1);
@@ -467,7 +468,7 @@ class AbstractAgentTest {
         var compacted = agent.compact(monitor -> {});
 
         // THEN — the agent is working during the compressor call and released afterwards
-        assertThat(compacted).isEqualTo(CompactResult.COMPACTED);
+        assertThat(compacted.status()).isEqualTo(CompactResult.Status.COMPACTED);
         assertThat(workingDuringCompressor.get()).isTrue();
         assertThat(agent.isWorking()).isFalse();
     }

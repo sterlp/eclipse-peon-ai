@@ -43,14 +43,22 @@ public class ChatMessageUtil {
             return new RenderOptions(true, 6000, Integer.MAX_VALUE, false, true, true);
         }
 
-        /** Compact stage 1 (R-CIB-4.1): thinking front-capped at 9000, tool messages not rendered. */
+        /**
+         * Compact stage 1 (R-CIB-4.1): thinking front-capped at 9000, tool messages rendered
+         * UNCAPPED — stage 2 is the one that caps them (monotone ladder, Paul 2026-09-25).
+         */
         public static RenderOptions compactStage1() {
-            return new RenderOptions(true, 0, 9000, true, false, false);
+            return new RenderOptions(true, Integer.MAX_VALUE, 9000, true, false, false);
         }
 
         /** Compact stage 2 (R-CIB-4.3): thinking front-capped at 6000, tool messages head-capped at 6000. */
         public static RenderOptions compactStage2() {
             return new RenderOptions(true, 6000, 6000, true, false, false);
+        }
+
+        /** No caps at all — the stager's baseline render (dedup before caps, R-CIB-2). */
+        public static RenderOptions uncapped() {
+            return new RenderOptions(true, Integer.MAX_VALUE, Integer.MAX_VALUE, false, false, false);
         }
     }
 

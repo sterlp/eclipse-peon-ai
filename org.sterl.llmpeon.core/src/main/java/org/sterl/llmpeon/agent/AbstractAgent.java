@@ -13,10 +13,12 @@ import java.util.function.Supplier;
 
 import org.sterl.llmpeon.ai.AgentConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
+import org.sterl.llmpeon.compact.CompactResult;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.queuedmessages.UserMessageQueue;
 import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
@@ -303,15 +305,23 @@ public abstract class AbstractAgent implements AiAgent {
             monitor = AiMonitor.nullSafety(monitor);
             // < 3: a compact leaves exactly 2 messages (Session-compacted user + summary) — with < 2
             // a direct re-compact would fire a real LLM call on those 2 (R16 sharpened, 2026-09-15)
-            if (memory.size() < 3) return CompactResult.SKIPPED_SMALL;
+            if (memory.size() < 3) return CompactResult.skippedSmall();
 
+            var snapshot = memory.getCopy();
+            long startMillis = System.currentTimeMillis();
             var response = new AiCompressorAgent(configuredModel)
-                    .call(memory.getCopy(), monitor);
+                    .call(snapshot, monitor);
+            long millis = System.currentTimeMillis() - startMillis;
+            // Legacy path (engine wiring is the next increment): no staging → stage NONE, estimate unchanged
+            var estimate = ChatMessageUtil.estimateTokens(snapshot);
+            var model = configuredModel.getConfig().compactAgentConfig().getModel();
 
             if (response == null || StringUtil.hasNoValue(response.aiMessage().text())) {
                 monitor.onProblem("Compact failed: compressor returned no summary for " + getName());
                 log.warn("Empty compact message received for " + getName());
-                return CompactResult.FAILED_EMPTY;
+                return CompactResult.failedEmpty(
+                        new CompactResult.Stats(snapshot.size(), estimate, estimate, CompactResult.Stage.NONE, 0, 0, model, millis),
+                        "compressor returned no summary for " + getName());
             }
 
             memory.clear();
@@ -325,9 +335,11 @@ public abstract class AbstractAgent implements AiAgent {
             // Ensure memory starts with a user message (many LLMs require this)
             memory.add(UserMessage.from(data));
             // we add the compact message as AI message
-            memory.add(AiMessage.from(response.aiMessage().text()));
+            var summary = response.aiMessage().text();
+            memory.add(AiMessage.from(summary));
 
-            return CompactResult.COMPACTED;
+            return CompactResult.compacted(new CompactResult.Stats(snapshot.size(), estimate, estimate,
+                    CompactResult.Stage.NONE, 0, summary.length(), model, millis));
         } finally {
             if (acquired) working.set(false);
         }

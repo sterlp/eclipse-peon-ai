@@ -5,7 +5,7 @@ import java.util.function.Predicate;
 
 import org.jspecify.annotations.Nullable;
 import org.sterl.llmpeon.agent.AiAgent;
-import org.sterl.llmpeon.agent.CompactResult;
+import org.sterl.llmpeon.compact.CompactResult;
 import org.sterl.llmpeon.ai.AgentConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
@@ -90,9 +90,9 @@ public class ToolLoopRequest {
     /**
      * Sticky flag: a compact already succeeded in this turn. Set by
      * {@link org.sterl.llmpeon.tool.tools.CompactSessionTool} on
-     * {@link CompactResult#COMPACTED}, read by {@link ToolService#executeLoop(ToolLoopRequest)}
+     * {@link CompactResult.Status#COMPACTED}, read by {@link ToolService#executeLoop(ToolLoopRequest)}
      * to decide the post-compact counter re-derive (R-CC-2). Sticky-OR — a later
-     * {@link CompactResult#SKIPPED_SMALL} in the same turn does not clear it. Fresh per turn
+     * {@link CompactResult.Status#SKIPPED_SMALL} in the same turn does not clear it. Fresh per turn
      * (this object is rebuilt per message).
      */
     private boolean compactedThisTurn;

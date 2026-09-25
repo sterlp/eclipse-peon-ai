@@ -26,7 +26,7 @@ public class CompactSessionTool extends AbstractTool {
         }
 
         long startNanos = System.nanoTime();
-        return switch (agent.compact(monitor)) {
+        return switch (agent.compact(monitor).status()) {
             case COMPACTED -> {
                 long elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000;
                 onTool(TOOL_MESSAGE_PREFIX + " for " + agent.getName()

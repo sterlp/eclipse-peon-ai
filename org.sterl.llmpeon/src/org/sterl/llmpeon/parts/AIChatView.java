@@ -30,7 +30,7 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.ui.IWorkingSet;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiAgentStatusModel;
-import org.sterl.llmpeon.agent.CompactResult;
+import org.sterl.llmpeon.compact.CompactResult;
 import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.command.SlashCommandResolver;
@@ -490,7 +490,7 @@ public class AIChatView implements EclipseAiMonitor {
             Exception ex = null;
             try {
                 var result = active.compact(this);
-                if (result == CompactResult.COMPACTED) EclipseUtil.runInUiThread(parent, this::refreshChat);
+                if (result.status() == CompactResult.Status.COMPACTED) EclipseUtil.runInUiThread(parent, this::refreshChat);
             } catch (Exception e) {
                 ex = handleChatException(e);
             } finally {

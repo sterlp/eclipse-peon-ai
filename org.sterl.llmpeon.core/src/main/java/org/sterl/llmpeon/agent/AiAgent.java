@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.function.Supplier;
 
 import org.jspecify.annotations.Nullable;
+import org.sterl.llmpeon.compact.CompactResult;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
@@ -21,10 +22,11 @@ public interface AiAgent {
     @Nullable
     ChatResponse call(String message, AiMonitor monitor);
     /** Compacts the agent's memory via the compressor.
-     * @return {@link CompactResult#COMPACTED} — the memory is already reset and re-seeded with the
-     *         summary; {@link CompactResult#SKIPPED_SMALL} — the memory is too small (< 3
-     *         messages), a legitimate no-op; {@link CompactResult#FAILED_EMPTY} — the compressor
-     *         returned no usable summary, an error (the caller reports it via onProblem). */
+     * @return {@link CompactResult.Status#COMPACTED} — the memory is already reset and re-seeded
+     *         with the summary; {@link CompactResult.Status#SKIPPED_SMALL} — the memory is too
+     *         small (< 3 messages), a legitimate no-op; {@link CompactResult.Status#FAILED_EMPTY}
+     *         — the compressor returned no usable summary, an error (the caller reports it via
+     *         onProblem). */
     CompactResult compact(AiMonitor monitor);
 
     /** Rebuild the static (system) messages. Non-default: an empty default would silently

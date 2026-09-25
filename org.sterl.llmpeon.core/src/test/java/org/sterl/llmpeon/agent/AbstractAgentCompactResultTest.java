@@ -15,6 +15,7 @@ import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.compact.CompactResult;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
@@ -42,7 +43,7 @@ class AbstractAgentCompactResultTest {
         var result = agent.compact(monitor);
 
         // THEN — honestly reported as a skip, and not as a problem
-        assertThat(result).isEqualTo(CompactResult.SKIPPED_SMALL);
+        assertThat(result.status()).isEqualTo(CompactResult.Status.SKIPPED_SMALL);
         assertThat(problem.get()).isNull();
     }
 
@@ -61,7 +62,7 @@ class AbstractAgentCompactResultTest {
         var result = agent.compact(capturingMonitor(problem, new AtomicBoolean()));
 
         // THEN — an empty compressor is a FAILED_EMPTY, not a "nothing to compact"
-        assertThat(result).isEqualTo(CompactResult.FAILED_EMPTY);
+        assertThat(result.status()).isEqualTo(CompactResult.Status.FAILED_EMPTY);
         // AND — the failure is reported with the agent's name (SOLL wording)
         assertThat(problem.get()).isEqualTo("Compact failed: compressor returned no summary for " + agent.getName());
     }

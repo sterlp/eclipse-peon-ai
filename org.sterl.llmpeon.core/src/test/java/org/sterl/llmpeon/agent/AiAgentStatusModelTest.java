@@ -7,6 +7,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.agent.AiAgentStatusModel.Entry;
 import org.sterl.llmpeon.agent.AiAgentStatusModel.Row;
+import org.sterl.llmpeon.compact.CompactResult;
 import org.sterl.llmpeon.shared.StringUtil;
 
 /**
@@ -111,7 +112,9 @@ class AiAgentStatusModelTest {
     @Test
     void compactResult_successVsSkip() {
         // GIVEN the two outcomes of a slave-compact job
-        assertThat(AiAgentStatusModel.compactResult(CompactResult.COMPACTED, "Da Mek")).isEqualTo("Compacted Da Mek");
-        assertThat(AiAgentStatusModel.compactResult(CompactResult.SKIPPED_SMALL, "Da Mek")).isEqualTo("Nothing to compact");
+        assertThat(AiAgentStatusModel.compactResult(
+                CompactResult.compacted(new CompactResult.Stats(4, 1000, 400, CompactResult.Stage.TOOL_RESULTS, 100, 2300, "compact-model", 1234L)), "Da Mek"))
+            .isEqualTo("Compacted Da Mek");
+        assertThat(AiAgentStatusModel.compactResult(CompactResult.skippedSmall(), "Da Mek")).isEqualTo("Nothing to compact");
     }
 }

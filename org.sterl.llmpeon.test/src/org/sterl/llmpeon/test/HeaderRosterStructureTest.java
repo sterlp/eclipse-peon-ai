@@ -14,7 +14,7 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
 import org.junit.Test;
 import org.sterl.llmpeon.agent.AiAgent;
-import org.sterl.llmpeon.agent.CompactResult;
+import org.sterl.llmpeon.compact.CompactResult;
 import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.parts.widget.AiAgentStatusWidget;
@@ -101,7 +101,7 @@ public class HeaderRosterStructureTest extends AbstractSwtUiTest {
             @Override public String getName() { return "probe"; }
             @Override public String getSystemPrompt() { return ""; }
             @Override public dev.langchain4j.model.chat.response.ChatResponse call(String message, AiMonitor monitor) { return null; }
-            @Override public CompactResult compact(AiMonitor monitor) { return CompactResult.SKIPPED_SMALL; }
+            @Override public CompactResult compact(AiMonitor monitor) { return CompactResult.skippedSmall(); }
             @Override public List<ChatMessage> buildStaticMessages(AiMonitor monitor) { return List.of(); }
             @Override public ThreadSafeMemory getMemory() { return new ThreadSafeMemory(); }
             @Override public int tokenContextUsedInPercent() { return 0; }

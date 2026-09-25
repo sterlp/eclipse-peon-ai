@@ -10,10 +10,11 @@ import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.sterl.llmpeon.CoreTestFixtures;
 import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
-import org.sterl.llmpeon.agent.CompactResult;
+import org.sterl.llmpeon.compact.CompactResult;
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
@@ -122,7 +123,7 @@ class CompactSessionToolTest {
             @Override public ChatResponse call(String message, AiMonitor monitor) { return null; }
             @Override public CompactResult compact(AiMonitor monitor) {
                 compressCalled.set(true);
-                return CompactResult.COMPACTED;
+                return CoreTestFixtures.compactedResult();
             }
             @Override public ThreadSafeMemory getMemory() { return memory; }
             @Override public void clear() {}
@@ -189,7 +190,7 @@ class CompactSessionToolTest {
             @Override public CompactResult compact(AiMonitor monitor) {
                 var summary = AiMessage.aiMessage("SUMMARY-X");
                 memory.add(summary);
-                return CompactResult.COMPACTED;
+                return CoreTestFixtures.compactedResult();
             }
             @Override public ThreadSafeMemory getMemory() { return memory; }
             @Override public void clear() {}

@@ -3,6 +3,7 @@ package org.sterl.llmpeon.agent;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.sterl.llmpeon.compact.CompactResult;
 import org.sterl.llmpeon.shared.StringUtil;
 
 /**
@@ -69,7 +70,7 @@ public final class AiAgentStatusModel {
      */
     public static String compactResult(CompactResult result, String uiName) {
         if (result == null) return "Nothing to compact";
-        return switch (result) {
+        return switch (result.status()) {
             case COMPACTED -> "Compacted " + uiName;
             case SKIPPED_SMALL -> "Nothing to compact";
             case FAILED_EMPTY -> "Compact failed: no summary for " + uiName;
