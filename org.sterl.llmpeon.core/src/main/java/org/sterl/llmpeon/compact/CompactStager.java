@@ -72,8 +72,8 @@ public class CompactStager {
 
         var lastRealUser = lastRealUserMessage(entries);
 
-        // Stage 1 (R-CIB-4.1): thinking 9000 front-cap, tool messages not rendered, only the last
-        // user message with real user text stays full, earlier ones state-only.
+        // Stage 1 (R-CIB-4.1): think capped to 9000 (front), only last real user message full,
+        // tools rendered uncapped (capped in stage 2), earlier user messages state-only.
         var stage1 = render(entries, e -> renderStage(e, RenderOptions.compactStage1(), e.message() == lastRealUser));
         if (estimate(stage1) <= budgetTokens) {
             return outcome(entries, stage1, CompactResult.Stage.THINK_AND_USER,
