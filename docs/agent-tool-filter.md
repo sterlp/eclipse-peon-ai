@@ -4,7 +4,7 @@ idPrefix: TF
 
 # Agent-Tool-Filter — Tool-Sichtbarkeit je Agent
 
-> **Status:** ❌ specified (2026-09-25, Paul) ·
+> **Status:** ✅ done (2026-09-26, Branch `story/agent-tool-filter`, Da-Dok-Review nach CONCERNS-Bearbeitung) ·
 > **ADRs:** [ADR-0048](adr/0048-docs-linter-read-only-and-tool-split.md) (Korrektur 2026-09-25) ·
 > **verwandt:** [review-agent.md](review-agent.md) · [custom-agents-design.md](custom-agents-design.md) · [search-agent-tool.md](search-agent-tool.md)
 
@@ -17,7 +17,7 @@ Umbenennen"-Risiko (eine Quelle für Konstante und `@Tool(name=…)`).
 
 ## Business Rules
 
-### R-TF-1 ❌ — Da Dok erhält das ShellTool (Whitelist-Exception)
+### R-TF-1 ✅ — Da Dok erhält das ShellTool (Whitelist-Exception)
 
 - `AiReviewAgent.getToolFilter()` wird erweitert: `!isEditTool || t.getTool() instanceof ShellTool`
   — **beide** Shell-Methoden (`readOperationSystemInformation`, `shellRunCommand`) sind für Da Dok
@@ -37,7 +37,7 @@ Umbenennen"-Risiko (eine Quelle für Konstante und `@Tool(name=…)`).
 - GIVEN Da Dok WHEN WriteValidator THEN `DENY_ALL` unverändert (Shell-Whitelist ≠ Schreibrecht der
   Write-Tools)
 
-### R-TF-2 ❌ — Da Sniffa (SearchAgent) sieht keine Plan-Tools
+### R-TF-2 ✅ — Da Sniffa (SearchAgent) sieht keine Plan-Tools
 
 - Der `SearchAgentTool`-Filter schließt `PlanTool` aus. **🐞 Befund 2026-09-25:** Plan-Tools sind
   `isEditTool()==false` ("READ" markiert), schreiben aber real (`planSave`/`planUpdate` →
@@ -47,7 +47,7 @@ Umbenennen"-Risiko (eine Quelle für Konstante und `@Tool(name=…)`).
 - GIVEN SearchAgent WHEN sonstige READ-Tools THEN unverändert sichtbar (read/grep/search…)
 - GIVEN Da Dok / Da Thinka / Da Mek WHEN Filter THEN deren plan*-Sichtbarkeit bleibt unverändert
 
-### R-TF-3 ❌ — Tool-Namen für Filter/Tests als statische Konstanten
+### R-TF-3 ✅ — Tool-Namen für Filter/Tests als statische Konstanten
 
 - Jede Filter-/Whitelist-Stelle, die einen Tool-Namen als String prüft, nutzt eine
   `public static final String`-Konstante an der Tool-Klasse (`@Tool(name = KONSTANTE)`), kein
@@ -59,7 +59,7 @@ Umbenennen"-Risiko (eine Quelle für Konstante und `@Tool(name=…)`).
 - GIVEN Methode wird umbenannt ohne die Konstante zu berühren THEN Compile-Fehler an der
   Filterstelle (Compiler-Bindung über die Konstante)
 
-### R-TF-4 ❌ — Tool-Matrix je Agent als Test (Erweiterung)
+### R-TF-4 ✅ — Tool-Matrix je Agent als Test (Erweiterung)
 
 - Ergänzt die bestehende Matrix (UC-DL-48…51): **Da Dok** hält `shellRunCommand`,
   `readOperationSystemInformation`, `eclipseRunJavaTests`, `eclipseReadProjectProblems`,
