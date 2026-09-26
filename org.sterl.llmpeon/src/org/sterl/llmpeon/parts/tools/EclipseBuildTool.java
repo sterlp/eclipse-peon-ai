@@ -205,9 +205,7 @@ public class EclipseBuildTool extends AbstractEclipseTool {
             var stats = CallStats.start();
             projectRef.deleteMarkers(IMarker.PROBLEM, true, IResource.DEPTH_INFINITE);
             projectRef.refreshLocal(IResource.DEPTH_INFINITE, getProgressMonitor());
-            // CLEAN
             projectRef.build(IncrementalProjectBuilder.CLEAN_BUILD, getProgressMonitor());
-            // BUILD
             projectRef.build(IncrementalProjectBuilder.FULL_BUILD, getProgressMonitor());
 
             return readProjectWide(projectRef, AiReponseBuilder.MAX_BUILD_MARKERS)

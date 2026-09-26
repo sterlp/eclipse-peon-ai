@@ -508,7 +508,6 @@ public final class StringMatcher {
                 break;
             case '*':
                 if (buf.length() > 0) {
-                    // Create a new segment
                     temp.add(buf.toString());
                     fBound += buf.length();
                     buf.setLength(0);
@@ -526,7 +525,6 @@ public final class StringMatcher {
             }
         }
 
-        // Add last buffer to segment list
         if (buf.length() > 0) {
             temp.add(buf.toString());
             fBound += buf.length();
