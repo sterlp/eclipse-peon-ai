@@ -158,3 +158,10 @@ keinen sichtbaren Namen (Default = Method-Name).
   memory*/askUser) → **Option A**: UC-TF-2 gilt nur für den RAM-Sklaven; Standalone behält
   memory*/askUser (IST stimmig, kein neuer Mechanismus). SOLL von Jon nachgetragen in
   `docs/agent-tool-filter.md` (R-TF-1-BDDs, UC-TF-2, R-TF-4-never-list auf RAM-Sklave gescoped).
+- **inc-2 committed (9d1153f):** PDE 291/0/0 (PeonAiServiceTest 61/0/0, keine Skips); Core an HEAD
+  966/966 (inc-1). **Ausgeklammert, Entscheidung ausstehend:** Working-Tree-Change an
+  `AbstractAgent.java:257` (Queued-Marker `(queued HH:mm)` → `(HH:mm)`) — stammt aus dem gepoppten
+  Stash des Compact-Zyklus, existiert in keiner Commits/Branch-Version, bricht 2 Core-Tests
+  (`AbstractAgentTest`: `testQueuedMessagesChainedFifo` + 1 weiterer, erwarten `queued 14:32` pro
+  Rule-9-Javadoc). Frage an Paul: revert (meine Empfehlung: Stash-Artefakt) oder beabsichtigt
+  (dann: Tests + Rule-9-Format nachziehen, eigener Scope)?
