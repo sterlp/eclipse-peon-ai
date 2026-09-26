@@ -26,6 +26,23 @@ class ContextTrimComponentTest {
 
     private final ContextTrimComponent subject = new ContextTrimComponent();
 
+
+    // ---------- stage presets ----------
+
+    @Test
+    void stagePresetsOwnTheCapValues() {
+        // WHEN — the stage presets are read from the component
+        var stage1 = ContextTrimComponent.stage1Options();
+        var stage2 = ContextTrimComponent.stage2Options();
+
+        // THEN — stage 1: thinking front-capped at 9000, tools rendered uncapped
+        assertThat(stage1.thinkCapChars()).isEqualTo(9000);
+        assertThat(stage1.thinkKeepTail()).isTrue();
+        assertThat(stage1.toolMessageSize()).isEqualTo(Integer.MAX_VALUE);
+        // AND — stage 2: thinking and tools head-capped at 6000
+        assertThat(stage2.thinkCapChars()).isEqualTo(6000);
+        assertThat(stage2.toolMessageSize()).isEqualTo(6000);
+    }
     // ---------- budget off / under budget ----------
 
     @Test

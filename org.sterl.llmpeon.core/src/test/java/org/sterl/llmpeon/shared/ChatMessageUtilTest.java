@@ -3,6 +3,7 @@ package org.sterl.llmpeon.shared;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
+import org.sterl.llmpeon.compact.ContextTrimComponent;
 
 import java.util.List;
 
@@ -68,7 +69,7 @@ class ChatMessageUtilTest {
         var nl = System.lineSeparator();
 
         // WHEN rendered in compact stage 1
-        String out = ChatMessageUtil.toString(msg, ChatMessageUtil.RenderOptions.compactStage1());
+        String out = ChatMessageUtil.toString(msg, ContextTrimComponent.stage1Options());
 
         // THEN the head is dropped, the end (conclusion) is kept, the anchor marks the cut
         assertThat(out).isEqualTo("AI:" + nl + "ANSWER" + nl + "Think: " + ChatMessageUtil.THINK_FRONT_CAP_ANCHOR
@@ -97,7 +98,7 @@ class ChatMessageUtilTest {
         var nl = System.lineSeparator();
 
         // WHEN rendered in compact stage 2
-        String out = ChatMessageUtil.toString(msg, ChatMessageUtil.RenderOptions.compactStage2());
+        String out = ChatMessageUtil.toString(msg, ContextTrimComponent.stage2Options());
 
         // THEN capped, but no per-message "(trimmed)" tag (R-CIB-5: one disclosure at the input end)
         assertThat(out).isEqualTo("TOOL_EXECUTION_RESULT:" + nl + "tool name: big" + nl + "result:" + nl + "X".repeat(6000) + nl)
@@ -114,7 +115,7 @@ class ChatMessageUtilTest {
         var nl = System.lineSeparator();
 
         // WHEN rendered in compact stage 2
-        String out = ChatMessageUtil.toString(msg, ChatMessageUtil.RenderOptions.compactStage2());
+        String out = ChatMessageUtil.toString(msg, ContextTrimComponent.stage2Options());
 
         // THEN the arguments are head-capped at 6000, no per-message tag
         assertThat(out).isEqualTo("AI:" + nl + "WRITING" + nl + "tool name: write" + nl + "arguments:" + nl + "A".repeat(6000) + nl);

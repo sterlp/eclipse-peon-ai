@@ -23,7 +23,7 @@ public class ChatMessageUtil {
 
     /**
      * Render modes for {@link #toString(ChatMessage, RenderOptions)}.
-     * Existing formats stay exactly preserved via {@link #defaults()}; the compact modes only switch extras.
+     * Existing formats stay exactly preserved via {@link #defaults()}; {@link #uncapped()} is the stager's baseline render.
      *
      * @param includeThink          render the thinking block of an AI message at all
      * @param toolMessageSize       head cap (chars) for tool arguments/results; 0 = not rendered at all
@@ -41,19 +41,6 @@ public class ChatMessageUtil {
         /** Legacy defaults — the existing overloads delegate here, formats unchanged. */
         public static RenderOptions defaults() {
             return new RenderOptions(true, 6000, Integer.MAX_VALUE, false, true, true);
-        }
-
-        /**
-         * Compact stage 1 (R-CIB-4.1): thinking front-capped at 9000, tool messages rendered
-         * UNCAPPED — stage 2 is the one that caps them (monotone ladder, Paul 2026-09-25).
-         */
-        public static RenderOptions compactStage1() {
-            return new RenderOptions(true, Integer.MAX_VALUE, 9000, true, false, false);
-        }
-
-        /** Compact stage 2 (R-CIB-4.3): thinking front-capped at 6000, tool messages head-capped at 6000. */
-        public static RenderOptions compactStage2() {
-            return new RenderOptions(true, 6000, 6000, true, false, false);
         }
 
         /** No caps at all — the stager's baseline render (dedup before caps, R-CIB-2). */
@@ -89,7 +76,7 @@ public class ChatMessageUtil {
     public static int estimateTokens(List<ChatMessage> messages) {
         int chars = 0;
         for (var msg : messages) chars += charCount(msg);
-        return (chars * 2) / 7;
+        return charsToTokens(chars);
     }
 
     /**
@@ -101,7 +88,12 @@ public class ChatMessageUtil {
     public static int estimateTokens(@Nullable String text) {
         if (text == null || text.isEmpty()) return 0;
         int len = text.length();
-        return len <= 5 ? 1 : (len * 2) / 7;
+        return len <= 5 ? 1 : charsToTokens(len);
+    }
+
+    /** The central chars×2/7 estimator (~3.5 chars per token) — deliberately over-estimating keeps estimates honest. */
+    private static int charsToTokens(int chars) {
+        return (chars * 2) / 7;
     }
 
     private static int charCount(ChatMessage msg) {

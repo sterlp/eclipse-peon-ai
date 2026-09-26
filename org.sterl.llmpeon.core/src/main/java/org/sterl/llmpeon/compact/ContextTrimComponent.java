@@ -40,6 +40,19 @@ public class ContextTrimComponent {
     /** First line of the input-end disclosure (R-CIB-5). */
     static final String DISCLOSURE_MARKER = "session truncated";
 
+    /**
+     * Stage 1 render options (R-CIB-4.1): thinking front-capped at {@link #STAGE1_THINK_CAP},
+     * tool messages rendered UNCAPPED — stage 2 is the one that caps them (monotone ladder).
+     */
+    public static RenderOptions stage1Options() {
+        return new RenderOptions(true, Integer.MAX_VALUE, STAGE1_THINK_CAP, true, false, false);
+    }
+
+    /** Stage 2 render options (R-CIB-4.3): thinking front-capped and tool messages head-capped at {@link #STAGE2_CAP}. */
+    public static RenderOptions stage2Options() {
+        return new RenderOptions(true, STAGE2_CAP, STAGE2_CAP, true, false, false);
+    }
+
     /** Per-message staging numbers for the diagnostic log (1-based index in the final input). */
     public record MessageStat(int index, String type, String toolName, int charsBefore, int charsAfter) {}
 
@@ -80,14 +93,14 @@ public class ContextTrimComponent {
 
         // Stage 1 (R-CIB-4.1): think capped to 9000 (front), only last real user message full,
         // tools rendered uncapped (capped in stage 2), earlier user messages state-only.
-        var stage1 = capped(entries, e -> renderStage(e, RenderOptions.compactStage1(), e.message() == lastRealUser));
+        var stage1 = capped(entries, e -> renderStage(e, stage1Options(), e.message() == lastRealUser));
         if (estimate(stage1) <= budgetTokens) {
             return outcome(entries, stage1, CompactResult.Stage.THINK_AND_USER,
                     capsLine(CompactResult.Stage.THINK_AND_USER, 0, duplicatesCollapsed), estimateBefore, duplicatesCollapsed);
         }
 
         // Stage 2 (R-CIB-4.3): tool results + tool arguments + thinking capped at 6000.
-        var stage2 = capped(entries, e -> renderStage(e, RenderOptions.compactStage2(), e.message() == lastRealUser));
+        var stage2 = capped(entries, e -> renderStage(e, stage2Options(), e.message() == lastRealUser));
         if (estimate(stage2) <= budgetTokens) {
             return outcome(entries, stage2, CompactResult.Stage.TOOL_RESULTS,
                     capsLine(CompactResult.Stage.TOOL_RESULTS, 0, duplicatesCollapsed), estimateBefore, duplicatesCollapsed);
