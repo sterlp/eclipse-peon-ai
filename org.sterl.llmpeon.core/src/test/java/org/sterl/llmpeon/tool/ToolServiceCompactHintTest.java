@@ -161,6 +161,99 @@ class ToolServiceCompactHintTest {
         assertThat(hints).hasSize(1);
     }
 
+    // R-CC-10
+    @Test
+    @Timeout(10)
+    void hintLineCarriesTokenDiagnosis() {
+        // GIVEN — 10 memory messages; the tool round reports real usage (153000) above the hint threshold
+        var memory = seedMemory(new ThreadSafeMemory(), 10);
+        var rounds = new AtomicInteger();
+        var cm = new StreamMock().buildMock(r -> rounds.incrementAndGet() <= 2
+                ? toolResponse("probe")
+                : ChatResponse.builder().aiMessage(AiMessage.from("done")).build());
+        var hints = new ArrayList<String>();
+        var monitor = hintCapturingMonitor(hints);
+        var req = ToolLoopRequest.builder()
+                .memory(memory)
+                .chatModel(new ConfiguredChatModel(hintConfig(), cm))
+                .monitor(monitor)
+                .build();
+
+        // WHEN — a tool round crossing the hint threshold
+        new ToolService().executeLoop(req);
+
+        // THEN — the hint LOG line carries the diagnosis: memory exact (153000), model = same provider input
+        assertThat(hints).hasSize(1);
+        assertThat(hints.getFirst())
+                .contains("memory=153000(estimate=false)")
+                .contains("model=153000")
+                .contains(" estimate=");
+    }
+
+    // R-CC-10
+    @Test
+    @Timeout(10)
+    void hintLineShowsMemoryDivergingFromModel() {
+        // GIVEN — round 1 reports input 80211; round 2 grows the context with big messages and reports NO
+        // usage, so the counter becomes an estimate that drifts far above the (unchanged) model value
+        var memory = seedMemory(new ThreadSafeMemory(), 10);
+        var rounds = new AtomicInteger();
+        var cm = new StreamMock().buildMock(r -> switch (rounds.incrementAndGet()) {
+            case 1 -> toolResponseWithUsage("probe", 80211);
+            case 2 -> {
+                for (int i = 0; i < 3; i++) memory.add(AiMessage.from("G".repeat(200000)));
+                yield toolResponseNoUsage("probe");
+            }
+            default -> ChatResponse.builder().aiMessage(AiMessage.from("done")).build();
+        });
+        var hints = new ArrayList<String>();
+        var monitor = hintCapturingMonitor(hints);
+        var req = ToolLoopRequest.builder()
+                .memory(memory)
+                .chatModel(new ConfiguredChatModel(hintConfig(), cm))
+                .monitor(monitor)
+                .build();
+
+        // WHEN — round 2 crosses the threshold on an estimated (no-usage) counter
+        new ToolService().executeLoop(req);
+
+        // THEN — the hint LOG line shows the divergence: memory is an estimate above the model, model exact
+        assertThat(hints).hasSize(1);
+        var matcher = java.util.regex.Pattern.compile("memory=(\\d+)").matcher(hints.getFirst());
+        assertThat(matcher.find()).isTrue();
+        assertThat(Integer.parseInt(matcher.group(1))).isGreaterThan(80211);
+        assertThat(hints.getFirst()).contains("model=80211").contains("(estimate=true)");
+    }
+
+    // R-CC-10
+    @Test
+    @Timeout(10)
+    void hintUserMessageCarriesNoTokenDiagnosis() {
+        // GIVEN — a tool round that fires the hint (real usage above the threshold)
+        var memory = seedMemory(new ThreadSafeMemory(), 10);
+        var rounds = new AtomicInteger();
+        var cm = new StreamMock().buildMock(r -> rounds.incrementAndGet() <= 2
+                ? toolResponse("probe")
+                : ChatResponse.builder().aiMessage(AiMessage.from("done")).build());
+        var hints = new ArrayList<String>();
+        var monitor = hintCapturingMonitor(hints);
+        var req = ToolLoopRequest.builder()
+                .memory(memory)
+                .chatModel(new ConfiguredChatModel(hintConfig(), cm))
+                .monitor(monitor)
+                .build();
+
+        // WHEN
+        new ToolService().executeLoop(req);
+
+        // THEN — the diagnosis stays on the LOG line only; the COMPACT_HINT UserMessage (LLM context) is clean
+        var hintMsgs = hintMessages(memory);
+        assertThat(hintMsgs).hasSize(1);
+        var text = ChatMessageUtil.toString(hintMsgs.getFirst());
+        assertThat(text).doesNotContain("memory=").doesNotContain("model=").doesNotContain(" estimate=");
+    }
+
+
     private static LlmConfig hintConfig() {
         return LlmConfig.builder().model("mock").autoCompactAfter(160000).build();
     }
@@ -190,6 +283,25 @@ class ToolServiceCompactHintTest {
                                 .id("1").name(toolName).arguments("{}").build()))
                         .build())
                 .tokenUsage(new TokenUsage(153000, 0, 153000))
+                .build();
+    }
+
+    private static ChatResponse toolResponseWithUsage(String toolName, int input) {
+        return ChatResponse.builder()
+                .aiMessage(AiMessage.builder()
+                        .toolExecutionRequests(List.of(ToolExecutionRequest.builder()
+                                .id("1").name(toolName).arguments("{}").build()))
+                        .build())
+                .tokenUsage(new TokenUsage(input, 0, input))
+                .build();
+    }
+
+    private static ChatResponse toolResponseNoUsage(String toolName) {
+        return ChatResponse.builder()
+                .aiMessage(AiMessage.builder()
+                        .toolExecutionRequests(List.of(ToolExecutionRequest.builder()
+                                .id("1").name(toolName).arguments("{}").build()))
+                        .build())
                 .build();
     }
 

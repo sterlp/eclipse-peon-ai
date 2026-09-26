@@ -217,7 +217,9 @@ public class ToolService {
             var used = memory.getTotalTokenUsed() + " tokens of " + compactLimit + " used.";
             // agent is @Nullable (ToolService loops run without one) — the hint is still added
             String agentName = req.getAgent() != null ? req.getAgent().getName() : "the agent";
-            AiMonitor.nullSafety(req.monitor).onTool("🗜 Compact hint for " + agentName + " added! " + used);
+            // R-CC-10: the diagnosis rides on the onTool LOG line only — the UserMessage below must
+            // stay clean (it becomes LLM context; the diagnosis is not for the model).
+            AiMonitor.nullSafety(req.monitor).onTool("🗜 Compact hint for " + agentName + " added! " + used + memory.tokenDiagnosis());
             req.addMessage(new UserMessage(COMPACT_HINT + System.lineSeparator() + used));
         }
     }

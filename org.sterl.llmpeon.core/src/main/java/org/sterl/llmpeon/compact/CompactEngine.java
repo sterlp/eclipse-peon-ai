@@ -56,7 +56,8 @@ public class CompactEngine {
      * @throws IllegalStateException when the LLM call returns null — Log OR throw: the throw stays
      *             in the call path, the result line is no exception substitute
      */
-    public CompactRun compact(String agentName, List<ChatMessage> messages, int budgetTokens, AiMonitor monitor) {
+    public CompactRun compact(String agentName, List<ChatMessage> messages, int budgetTokens, String tokenDiagnosis,
+                              AiMonitor monitor) {
         monitor = AiMonitor.nullSafety(monitor);
         var compactCfg = chatModel.getConfig().compactAgentConfig();
 
@@ -65,9 +66,11 @@ public class CompactEngine {
         // R-CIB-3: exactly one debug log with the initial values, before any truncation — the
         // diagnostic block (per-message caps, output summary) rides on the same call, so the
         // "exactly one debug log" contract holds.
-        log.debug("Compact entry: agent={}, messageCount={}, estimatedInputTokens={}, budget={}, thinkingEnabled={}\n{}",
+        // R-CC-10: the token diagnosis (memory/model/estimate) is appended after thinkingEnabled,
+        // before the diagnostic block — the "exactly one debug log" contract still holds.
+        log.debug("Compact entry: agent={}, messageCount={}, estimatedInputTokens={}, budget={}, thinkingEnabled={}{}\n{}",
                 agentName, messages.size(), ChatMessageUtil.estimateTokens(messages), budgetTokens,
-                StringUtil.hasValue(compactCfg.getThink()), diagnosticBlock(outcome));
+                StringUtil.hasValue(compactCfg.getThink()), tokenDiagnosis, diagnosticBlock(outcome));
 
         monitor.onTool("Compressing conversation " + messages.size() + " messages "
                 + ChatMessageUtil.estimateTokens(messages) + " tokens"

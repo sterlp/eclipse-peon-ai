@@ -3,6 +3,7 @@ package org.sterl.llmpeon.tool.tools;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -23,6 +24,7 @@ import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
+import org.sterl.llmpeon.tool.model.SimpleMessage;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -30,6 +32,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.TokenUsage;
 
 class CompactSessionToolTest {
 
@@ -294,5 +297,87 @@ class CompactSessionToolTest {
         assertThat(toolResult).contains("compressed 61 messages ~114k → input ~40k, result 2k, stage: tool results 6000");
         // AND — without preserve the marker follows the stats line
         assertThat(toolResult).contains("(nothing preserved)");
+    }
+
+    // R-CC-10
+    @Test
+    void skippedSmallLineCarriesTokenDiagnosis() {
+        // GIVEN — a small memory (2 messages < MIN_COMPACT_MESSAGES) with a reported usage; the agent skips
+        var memory = new ThreadSafeMemory();
+        memory.add(UserMessage.from("Test message"));
+        memory.addResult(ChatResponse.builder()
+                .aiMessage(AiMessage.from("AI response"))
+                .tokenUsage(new TokenUsage(80211, 0, 80211))
+                .build());
+        var tools = new ArrayList<String>();
+        var subject = compactSessionToolWithMonitor(memory, skipStub(memory), tools);
+
+        // WHEN
+        subject.compactSession(null);
+
+        // THEN — the skip LOG line carries all three diagnosis fields (memory exact, model = provider input)
+        assertThat(tools).anySatisfy(line -> assertThat(line)
+                .contains("skipped because of small context")
+                .contains("memory=")
+                .contains("(estimate=false)")
+                .contains("model=80211")
+                .contains(" estimate="));
+    }
+
+    // R-CC-10
+    @Test
+    void skippedSmallLineShowsEstimateMemoryWithoutModel() {
+        // GIVEN — one large seed message, no provider usage (Paul's "memory cannot be right" case)
+        var memory = new ThreadSafeMemory();
+        memory.add(UserMessage.from("X".repeat(100000)));
+        var tools = new ArrayList<String>();
+        var subject = compactSessionToolWithMonitor(memory, skipStub(memory), tools);
+
+        // WHEN
+        subject.compactSession(null);
+
+        // THEN — the skip LOG line shows an estimated memory with no model value
+        assertThat(tools).anySatisfy(line -> {
+            var matcher = java.util.regex.Pattern.compile("memory=(\\d+)").matcher(line);
+            assertThat(matcher.find()).isTrue();
+            assertThat(Integer.parseInt(matcher.group(1))).isGreaterThan(20000);
+            assertThat(line).contains("(estimate=true)").contains("model=n/a");
+        });
+    }
+
+    /** An agent whose compact() returns SKIPPED_SMALL without touching the memory (the diagnosis is read after). */
+    private static AiAgent skipStub(ThreadSafeMemory memory) {
+        return new AiAgent() {
+            @Override public String getName() { return "stub-agent"; }
+            @Override public String getSystemPrompt() { return "system"; }
+            @Override public ChatResponse call(String message, AiMonitor monitor) { return null; }
+            @Override public CompactResult compact(AiMonitor monitor) { return CompactResult.skippedSmall(); }
+            @Override public ThreadSafeMemory getMemory() { return memory; }
+            @Override public void clear() {}
+            @Override public boolean isToolActive(SmartToolExecutor exec) { return true; }
+            @Override public boolean isMcpToolActive(String toolName) { return true; }
+            @Override public int tokenContextUsedInPercent() { return 0; }
+            @Override public List<ChatMessage> buildStaticMessages(AiMonitor monitor) { return List.of(); }
+        };
+    }
+
+    /** A compactSession tool wired to a monitor capturing the onTool LOG lines into {@code tools}. */
+    private static CompactSessionTool compactSessionToolWithMonitor(ThreadSafeMemory memory, AiAgent agent, List<String> tools) {
+        var config = LlmConfig.builder().model("test").build();
+        var cm = new StreamMock().buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("unused"))
+                .build());
+        var monitor = new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onTool(String message) { tools.add(message); }
+        };
+        var subject = new CompactSessionTool();
+        subject.withToolRequest(ToolLoopRequest.builder()
+                .chatModel(new ConfiguredChatModel(config, cm))
+                .memory(memory)
+                .agent(agent)
+                .monitor(monitor)
+                .build());
+        return subject;
     }
 }

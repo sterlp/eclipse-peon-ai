@@ -325,6 +325,27 @@ THEN existiert genau eine Result-Zeile in Log UND im Tool-Ergebnis an den Agente
   Cap): ❓ [open-points.md](open-points.md) — hier nicht behoben; der Compact symptom-behandelt
   nur seinen eigenen Input.
 
+### R-CC-10 ❌ — Diagnose-Dreiklang im Compact-Log: Memory vs. Modell vs. Schätzung
+
+**Anlass (2026-09-25, Paul, Main-Log):** `Compact hint … 289493 tokens of 240000 used` bei einem
+Agenten mit **256k-Modell-Limit**, danach `Compact called but skipped because of small context` —
+die Memory-Summe kann so nicht stimmen (289k–307k > Modell-Limit, der Agent läuft weiter). Verdacht:
+die Summe in `ThreadSafeMemory` ist falsch (z. B. gecachte Prefix-Tokens zählen in **jedem**
+Response-`inputTokenCount()` → Summe läuft davon). Vor jedem Fix wird gemessen:
+
+- **Bei jedem Compact-Ereignis** (Hint-Add, Compact-Call, Skip-Gründe) nennt die Log-Zeile **drei
+  Größen** nebeneinander, jeweils mit Quelle/Flag:
+  1. `memory` — `ThreadSafeMemory.getTotalTokenUsed()` + `isTokenEstimate()` (unser Zähler),
+  2. `model` — der letzte provider-gemeldete `inputTokenCount()` (was das Modell beim letzten
+     Call **tatsächlich** sah; ohne Modell-Meldung: `n/a`),
+  3. `estimate` — unsere `chars×2/7`-Schätzung über den aktuellen Context.
+- GIVEN Memory meldet 289493 WHEN Modell-Input 80k und Estimate 82k THEN die Skip-/Hint-Zeile
+  zeigt alle drei Werte mit Flags (so kann Paul die Quelle der falschen Zahl bestimmen).
+- **Der Fix der Memory-Summe (falls bestätigt) ist ein EIGENER Punkt** — dieser Regel geht nur die
+  Messung voraus; keine Heuristik-Änderung, kein Display-Change (R-TF-tangiert nicht).
+- Verwandt: [R-CC-1](compact-context-counter.md) (Zähler = `inputTokenCount()`), Punkt 4 des
+  Compact-Nachbau-Reviews (beide Zahlen im `CompactResult` sichtbar machen).
+
 ## Info (2026-09-25, Paul — „China API leak", nur notiert, kein Bau)
 
 GIVEN API-Modell-Limit ≈ 26.3k WHEN im Compact-Log 300k Context-Größe erschien THEN Compact-Hint

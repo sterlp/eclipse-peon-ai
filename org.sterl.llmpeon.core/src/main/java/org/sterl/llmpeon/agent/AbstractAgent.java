@@ -315,7 +315,8 @@ public abstract class AbstractAgent implements AiAgent {
 
             // R-CIB-1: the staging budget is the raw config value — compactFactor scales only the trigger
             var run = new CompactEngine(configuredModel).compact(
-                    getName(), memory.getCopy(), configuredModel.getConfig().getAutoCompactAfter(), monitor);
+                    getName(), memory.getCopy(), configuredModel.getConfig().getAutoCompactAfter(),
+                    memory.tokenDiagnosis(), monitor);
             var result = run.result();
 
             if (result.status() == CompactResult.Status.FAILED_EMPTY) {

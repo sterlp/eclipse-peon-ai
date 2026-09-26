@@ -41,7 +41,9 @@ public class CompactSessionTool extends AbstractTool {
                                 : "(nothing preserved)");
             }
             case SKIPPED_SMALL -> {
-                onTool("Compact called but skipped because of small context for " + agent.getName());
+                // R-CC-10: the diagnosis rides on the onTool LOG line only; the result string stays clean.
+                onTool("Compact called but skipped because of small context for " + agent.getName()
+                        + agent.getMemory().tokenDiagnosis());
                 yield "Not needed only " + agent.getMemory().size() + " message in context";
             }
             case FAILED_EMPTY -> {
