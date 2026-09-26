@@ -165,3 +165,80 @@ keinen sichtbaren Namen (Default = Method-Name).
   (`AbstractAgentTest`: `testQueuedMessagesChainedFifo` + 1 weiterer, erwarten `queued 14:32` pro
   Rule-9-Javadoc). Frage an Paul: revert (meine Empfehlung: Stash-Artefakt) oder beabsichtigt
   (dann: Tests + Rule-9-Format nachziehen, eigener Scope)?
+
+---
+
+## 10. Da-Dok-Review (2026-09-26, Story Agent-Tool-Filter, inc-1 `9e1366a` / inc-2 `9d1153f`+`acf675c`)
+
+**Verdict: CONCERNS** — SOLL == IST für alle 4 Regeln; keine Code-Re-Arbeit. Befunde:
+
+### Befunde (non-blocking)
+
+1. **PRAEFIX_FEHLT ×8 in `docs/agent-tool-filter.md` (R-TF-1…4, UC-TF-1…4)** — der Doc trägt
+   `idPrefix: TF` nur als fettes Markdown im Header-Zitat (Zeile 3), **nicht** als YAML-Front-Matter
+   (`---\nidPrefix: TF\n---` wie `docs/docs-linter.md:1-3`). Der Docs-Linter erkennt den Präfix
+   daher nicht und meldet alle 8 IDs als PRAEFIX_FEHLT → UC-/Rule-Tracking des Linters für diese
+   Story-Doku ist faktisch inaktiv. **Owner: Jon (Doku), kein Story-Code** — Fix vor Status-Flip ✅.
+   (Alle übrigen Lint-Befunde im Run: `docs-linter.md` UNBELEGT_ERLEDIGT ×32,
+   `compact-context-counter.md` DOPPELT_DEFINIERT ×5, `compact.md` PRAEFIX_FREMD ×6,
+   `compact-lock.md`/`java-debugger.md` — Bestand, andere Stories, nicht dieser Zyklus zurechenbar.)
+2. **Working-Tree-Rotz (verifiziert, §8-Offene-Frage noch offen):** Die uncommitted
+   Queued-Marker-Änderung an `AbstractAgent.java` ist weiterhin im Working Tree — Core-Lauf
+   2026-09-26: 985 Tests, **2 rot** (`AbstractAgentTest#callNullInitialWithQueuedProcessesQueueAsPayload`
+   + `#testQueuedMessagesChainedFifo`, erwarten `[Queued Message] (queued HH:mm)`, IST
+   `(HH:mm)`). Story-eigener Code ist davon unberührt — aber der Branch ist so **nicht mergbar**,
+   bis Paul entscheidet (Revert = Empfehlung im Plan).
+
+### Verifikation (IST, nicht Dev-Claim)
+
+- **Core (eclipseRunTests 2026-09-26):** `AiReviewAgentTest` 6/6 grün (inkl. neu
+  `reviewAgentSeesBothShellMethods`, `reviewAgentStillHidesOtherEditTools`); Full-Core 983/985 grün
+  (nur die 2 §8-Queued-Failures). Build core + Plugin: 0 Errors, nur Bestands-Warnings.
+- **Plugin (PDE):** `PeonAiServiceTest` **61/61 grün** (inkl. neu
+  `daDokMatrixKeepsShellAndWorkTools`, `daDokMatrixNeverPrivileged`, `searchAgentFilterHidesPlanTools`);
+  `SharedToolsComponentTest` 8/8 grün (PlanTool-Änderung bricht keinen Bestandstest).
+- **Plan↔Code:** alle Deliverables + Test-Namen 1:1 vorhanden. `ShellTool.OPERATION_SYSTEM_INFORMATION`
+  /`SHELL_RUN_COMMAND` (ShellTool:28-29) sind Single Source für `@Tool(name=…)` (:58, :70);
+  `AiReviewAgent.getToolFilter()` (AiReviewAgent:77) = exakt Plan-§2.1; `getWriteValidator()` DENY_ALL
+  unverändert; `SharedToolsComponent:56-58` = exakt Plan-§2.3; `SearchAgentTool`-Core-Default-Filter
+  (:26-28) unverändert; `BuildPoAgentComponent:102-106` Review-Slave erbt Whitelist + `noPrivilegedTools`.
+- **Docs↔Code (inkl. Option A):** R-TF-1 beide BDD-Varianten getestet (Sklave: 6 privileged-Typen
+  nie; Standalone: memory* (4 Methoden) + askUser via `newServiceWithPresenter` sichtbar) —
+  Doc↔Test↔Code **konsistent** (Sonderfall 1 erledigt). R-TF-2: alle 4 PlanTool-Executors fallen
+  durch den Filter, `eclipseGrepFiles` bleibt. R-TF-3: Konstanten-Assertions in beiden Modulen,
+  keine Literale bei Shell-Namen; Work-Tool-Literale erlaubt (Doc: „Scoping R-TF-3"). R-TF-4:
+  `nextIds` über `DocsIdTool`-Typzählung + `assertDocsLinterOnly` abgedeckt.
+- **ADR-0048-Ergänzung 2026-09-25 + `docs-linter.md` Q5:** vorhanden und mit R-TF-3/agent-tool-filter.md
+  konsistent (Sonderfall 4 OK).
+
+### Plan-coverage-gap (Checkliste 4 — nicht Da-Mek-Re-Arbeit)
+
+- R-TF-2-Dritten-BDD („Da Dok/Da Thinka/Da Mek plan*-Sichtbarkeit unverändert"): **kein direkter
+  Test** für Da Thinka/Da Mek. Plan-§6 zitiert dafür UC-DL-50 — inakkurat, UC-DL-50
+  (`docsLinterMatrixForDaThinka`) assertet nur den Docs-Linter, nicht plan*. Strukturell geschützt
+  (geändertes Prädikat sitzt ausschließlich im `SearchAgentTool`-Filter, den diese Agenten nicht
+  konsumieren) — SOLL bleibt erfüllt, aber eine einzeilige Plan-Agent-Matrix-Assertion (4 aktive
+  PlanTool-Executors) wäre der ehrliche Beleg.
+
+### Mutation-Check / Skill-Gaps
+
+- Mutation-Check nicht nötig: Filter-Prädikate sind simpel, Tests asserten bidirektional
+  (Presence + Absence).
+- Keine Skill-/Instruction-Gaps.
+
+**Most likely reason this breaks later:** der Story-Doc-Präfix wird nie erkannt, weil das
+Front-Matter fehlt — beim Status-Flip ✅ führt der Linter alle 8 UCs als Rauschen und jede spätere
+Änderung an R-TF-* bleibt ungetrackt. **Änderung, die das Risiko am stärksten senkt:**
+`idPrefix: TF` als YAML-Front-Matter in `docs/agent-tool-filter.md` (Jon, 2 Zeilen) + parallel
+die §8-Queued-Frage bei Paul abschließen, damit der Branch mergbar ist.
+
+### Auflösung der CONCERNS (Da Mek, 2026-09-26)
+
+- **Befund 1 (PRAEFIX_FEHLT):** erledigt in inc-3 (`6a96622`) — Jon hat `idPrefix: TF` als
+  YAML-Front-Matter in `docs/agent-tool-filter.md` fixiert, im selben Commit.
+- **CONCERNS 3 (R-TF-2 plan*-Coverage-Gap Da Thinka/Da Mek):** erledigt in inc-3 (`6a96622`) —
+  `daDokMatrixKeepsShellAndWorkTools` assertet zusätzlich 4 aktive PlanTool-Executors für
+  `AiPlanAgent` (Da Thinka, Filter `!isEditTool`) und `AiDevAgent` (Da Mek, Filter `p -> true`).
+  PDE nach inc-3: 291/0/0 (PeonAiServiceTest 61/61).
+- **Befund 2 (Queued-Marker / AbstractAgent.java):** OFFEN — wartet auf Pauls Entscheidung
+  (Revert = Empfehlung, s. §8).
