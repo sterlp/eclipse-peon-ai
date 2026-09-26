@@ -26,8 +26,10 @@ Umbenennen"-Risiko (eine Quelle für Konstante und `@Tool(name=…)`).
   (soft rule, wie bei Da Mek).
 - GIVEN Da Dok WHEN toolSpecifications THEN `readOperationSystemInformation` + `shellRunCommand`
   sichtbar
-- GIVEN Da Dok WHEN Filter THEN Write-Tools, JavaDebugTool, AskUserTool, WorkspaceMemoryTool
-  bleiben unsichtbar (nur Shell ist die Ausnahme)
+- GIVEN Da Dok **als RAM-Sklave** (noPrivilegedTools, Delegation-Loop) WHEN Filter THEN Write-Tools,
+  JavaDebugTool, AskUserTool, WorkspaceMemoryTool unsichtbar (nur Shell ist die Ausnahme)
+- GIVEN Da Dok **als Standalone-Peon-Review** WHEN Filter THEN memory*/askUser bleiben sichtbar —
+  wie bei allen Standalone-Agenten (IST, 2026-09-25 präzisiert; ⏳ Rückversicherung Paul)
 - GIVEN Da Dok WHEN WriteValidator THEN `DENY_ALL` unverändert (Shell-Whitelist ≠ Schreibrecht der
   Write-Tools)
 
@@ -70,9 +72,10 @@ Umbenennen"-Risiko (eine Quelle für Konstante und `@Tool(name=…)`).
 GIVEN Da Dok (`AiReviewAgent`, RAM-Sklave wie Standalone) WHEN `toolSpecifications` THEN
 `readOperationSystemInformation` + `shellRunCommand` enthalten.
 
-#### UC-TF-2 — Da Dok versteckt andere Edit-Tools weiterhin
-GIVEN Da Dok WHEN Filter greift THEN Write-Tools, JavaDebugTool, AskUserTool, WorkspaceMemoryTool
-unsichtbar; WriteValidator bleibt `DENY_ALL`.
+#### UC-TF-2 — Da Dok (RAM-Sklave) versteckt andere Edit-Tools weiterhin
+GIVEN Da Dok als RAM-Sklave (noPrivilegedTools) WHEN Filter greift THEN Write-Tools, JavaDebugTool,
+AskUserTool, WorkspaceMemoryTool unsichtbar; WriteValidator bleibt `DENY_ALL`. Der
+Standalone-Peon-Review behält memory*/askUser wie alle Standalone-Agenten (kein neuer Mechanismus).
 
 #### UC-TF-3 — SearchAgent ohne plan*-Tools
 GIVEN Da Sniffa WHEN `toolSpecifications` THEN keine plan*-Methoden; sonstige READ-Tools
@@ -80,7 +83,8 @@ unverändert sichtbar.
 
 #### UC-TF-4 — Da-Dok-Matrix behält die Review-Werkzeuge
 GIVEN PeonAiService WHEN Da-Dok-Toolnamen THEN `eclipseRunJavaTests`, `eclipseReadProjectProblems`,
-`eclipseBuildProject`, `lintDocs`, `lintDocsAndTests`, plan* (alle 4) enthalten — niemals `nextIds`.
+`eclipseBuildProject`, `lintDocs`, `lintDocsAndTests`, plan* (alle 4) enthalten — als RAM-Sklave
+**niemals** AskUserTool/WorkspaceMemoryTool/Write-Tools, nie `nextIds`.
 
 ## BDD-Test-Mapping
 
