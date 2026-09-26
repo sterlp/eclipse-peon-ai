@@ -13,6 +13,7 @@ import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.WriteValidator;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
+import org.sterl.llmpeon.tool.tools.ShellTool;
 
 /**
  * Own "agent" for a review which is a plan agent with a system custom prompt
@@ -72,7 +73,8 @@ public class AiReviewAgent extends AbstractAgent {
 
     @Override
     protected Predicate<SmartToolExecutor> getToolFilter() {
-        return super.getToolFilter().and(t -> !t.getTool().isEditTool());
+        // R-TF-1: Shell is Da Dok's only whitelist exception — review diagnosis needs git/build/test runs.
+        return super.getToolFilter().and(t -> !t.getTool().isEditTool() || t.getTool() instanceof ShellTool);
     }
 
     @Override

@@ -324,3 +324,12 @@ THEN existiert genau eine Result-Zeile in Log UND im Tool-Ergebnis an den Agente
 - **Context-Pollution-Quellen** (Read-Tools ohne Cap, index.md pro Turn, Workspace-Memory ohne
   Cap): ❓ [open-points.md](open-points.md) — hier nicht behoben; der Compact symptom-behandelt
   nur seinen eigenen Input.
+
+## Info (2026-09-25, Paul — „China API leak", nur notiert, kein Bau)
+
+GIVEN API-Modell-Limit ≈ 26.3k WHEN im Compact-Log 300k Context-Größe erschien THEN Compact-Hint
++ Modell ruft Compact-Tool. Beim zweiten Aufruf zeigte das Log 600k (Verdopplung), während der
+Header korrekt **80k** anzeigte und auch der Compact-Aufruf selbst nur 80k Context sah.
+**Befund:** Die **Größenbestimmung im Compact-Log** war falsch (Header und tatsächlicher
+Compact-Input waren richtig). Revisit nur bei Reproduktion — verwandt mit
+[header-state-leak.md](header-state-leak.md) und R-CC-1 (Zähler = `inputTokenCount()`).

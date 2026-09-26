@@ -3,6 +3,15 @@
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
 Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.md).
 
+## ⏳ Standalone-Peon-Review behält memory*/askUser (2026-09-25, Jon-Entscheid aus dem Build)
+
+Da-Dok-Stop-And-Ask: der Standalone-Peon-Review sieht WorkspaceMemoryTool (+ askUser im UI) —
+die RAM-Sklaven-Stripping-Regel (noPrivilegedTools) greift nur für Sklaven. UC-TF-2
+([agent-tool-filter.md](agent-tool-filter.md)) entsprechend auf den RAM-Sklaven verengt: Standalone
+= wie alle Standalone-Agenten (Peon-Plan/-Dev, Custom), kein neuer Mechanismus. **Rückversicherung
+Paul steht aus** — falls er Standalone-Review auch gestrippt haben will: eigener Mechanismus,
+dann neue Story.
+
 ## ⏳ slf4j-simple.jar wird noch mitgebündelt (Paul-Notiz, 2026-09-25)
 
 Verifiziert: `lib/slf4j-simple.jar` liegt weiter im Bundle (`MANIFEST.MF:96` Bundle-ClassPath,
@@ -11,7 +20,6 @@ eigenem `EclipseSlf4jProvider` (via `META-INF/services/org.slf4j.spi.SLF4JServic
 `Bundle-ClassPath: .` zuerst → unser Provider gewinnt den ServiceLoader-Scan). Vermutlich Rest aus
 dem Zeit vor dem Eclipse-Provider. Bei nächster Berührung: Jar + Dependency raus, Build + Plugin-Lauf
 testen (Test-Scope im core nutzt ohnehin logback statt slf4j-simple).
-
 
 ## Bug-Fix-Zyklus-Backlog (2026-09-24, priorisiert)
 
