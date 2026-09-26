@@ -100,6 +100,13 @@ Trotzdem die Fassade, aus zwei Gründen:
 > wirke „tool-weit, nicht method-weit". **Das ist faktisch falsch** und wurde beim Planen widerlegt.
 > Die Entscheidung bleibt, die Begründung ist ersetzt — eine falsche Begründung im ADR ist
 > gefährlicher als keine, weil sie beim nächsten Anfassen als Fakt gelesen wird.
+>
+> **Ergänzung 2026-09-25 (Paul):** Mit der Regel „Tool-Namen, die Filter/Tests referenzieren,
+> werden als statische String-Konstanten gefasst" ([agent-tool-filter.md](../agent-tool-filter.md),
+> R-TF-3) entfällt Grund 2 („stilles Umbenennen") weitgehend — Konstante und `@Tool(name=…)` haben
+> eine Quelle. Die Entscheidung (Fassade für `nextIds`) bleibt: Grund 1 (Präzedenz `PlanReadTool`)
+> trägt weiter, und eine bestehende Fassade wird nicht umgebaut. Neue Fälle entscheiden sich im
+> Einzelfall: erst Filter (Standard-Mechanik), Fassade nur bei echtem Ownership-Split.
 
 ### 3. Raus aus dem `diskToolsEnabled`-Gate
 

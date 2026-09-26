@@ -25,6 +25,9 @@ import dev.langchain4j.agent.tool.Tool;
  */
 public class ShellTool extends AbstractTool {
 
+    public static final String OPERATION_SYSTEM_INFORMATION = "readOperationSystemInformation";
+    public static final String SHELL_RUN_COMMAND = "shellRunCommand";
+
     @FunctionalInterface
     public interface ShellConfirmationProvider {
         String confirm(String command, String workingDirectory);
@@ -52,7 +55,7 @@ public class ShellTool extends AbstractTool {
         this.defaultWorkingDir = defaultWorkingDir;
     }
 
-    @Tool("Read OS and environment info: name, Java version, user home, PATH, temp dir.")
+    @Tool(name = OPERATION_SYSTEM_INFORMATION, value = "Read OS and environment info: name, Java version, user home, PATH, temp dir.")
     public String readOperationSystemInformation() {
         return "java.version: " + System.getProperty("java.version")
             + "\nos.name: " + System.getProperty("os.name")
@@ -64,7 +67,7 @@ public class ShellTool extends AbstractTool {
             + "\ntmpdir: " + System.getProperty("java.io.tmpdir");
     }
 
-    @Tool("Run a shell command (mvn, npm, git). Not for file I/O — use read/write tools.")
+    @Tool(name = SHELL_RUN_COMMAND, value = "Run a shell command (mvn, npm, git). Not for file I/O — use read/write tools.")
     public String shellRunCommand(
             @P(description = "shell command", name = "command") 
             String command,

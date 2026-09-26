@@ -16,6 +16,9 @@ import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.docslinter.DocsLinterTool;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.WriteValidator;
+import org.sterl.llmpeon.tool.component.SmartToolExecutor;
+import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
+import org.sterl.llmpeon.tool.tools.ShellTool;
 
 class AiReviewAgentTest {
 
@@ -31,6 +34,8 @@ class AiReviewAgentTest {
         tool = new DocsLinterTool(rootDir);
         ToolService toolService = new ToolService(false);
         toolService.addTool(tool);
+        toolService.addTool(new ShellTool());
+        toolService.addTool(new DiskFileWriteTool(rootDir));
         ConfiguredChatModel model = LlmConfig.newConfig(
                 AiProvider.OLLAMA, "test-model", "http://localhost:9999").build();
         agent = new AiReviewAgent(model, toolService);
@@ -79,5 +84,31 @@ class AiReviewAgentTest {
     void planAgentKeepsAllowAllValidator() {
         assertThat(WriteValidator.ALLOW_ALL).isNotNull();
         WriteValidator.ALLOW_ALL.validate("anything/at/all.txt");
+    }
+
+    // UC-TF-1
+    @Test
+    void reviewAgentSeesBothShellMethods() {
+        assertThat(agent.isToolActive(executorNamed(ShellTool.OPERATION_SYSTEM_INFORMATION))).isTrue();
+        assertThat(agent.isToolActive(executorNamed(ShellTool.SHELL_RUN_COMMAND))).isTrue();
+    }
+
+    // UC-TF-2
+    @Test
+    void reviewAgentStillHidesOtherEditTools() {
+        for (var exec : agent.getToolService().getExecutors()) {
+            if (exec.getTool() instanceof DiskFileWriteTool) {
+                assertThat(agent.isToolActive(exec)).as("edit tool must stay hidden: %s", exec.getSpec().name()).isFalse();
+            }
+        }
+        assertThat(agent.isToolActive(executorNamed(ShellTool.OPERATION_SYSTEM_INFORMATION))).isTrue();
+        assertThat(agent.isToolActive(executorNamed(ShellTool.SHELL_RUN_COMMAND))).isTrue();
+    }
+
+    private SmartToolExecutor executorNamed(String name) {
+        return agent.getToolService().getExecutors().stream()
+                .filter(e -> e.getSpec().name().equals(name))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("no executor named " + name));
     }
 }
