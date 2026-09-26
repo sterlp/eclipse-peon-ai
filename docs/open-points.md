@@ -3,6 +3,16 @@
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
 Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.md).
 
+## ⏳ slf4j-simple.jar wird noch mitgebündelt (Paul-Notiz, 2026-09-25)
+
+Verifiziert: `lib/slf4j-simple.jar` liegt weiter im Bundle (`MANIFEST.MF:96` Bundle-ClassPath,
+`build.properties:65`, Plugin-`pom.xml:23-27` Dependency `${slf4j-simple.version} 2.0.19`) — trotz
+eigenem `EclipseSlf4jProvider` (via `META-INF/services/org.slf4j.spi.SLF4JServiceProvider`,
+`Bundle-ClassPath: .` zuerst → unser Provider gewinnt den ServiceLoader-Scan). Vermutlich Rest aus
+dem Zeit vor dem Eclipse-Provider. Bei nächster Berührung: Jar + Dependency raus, Build + Plugin-Lauf
+testen (Test-Scope im core nutzt ohnehin logback statt slf4j-simple).
+
+
 ## Bug-Fix-Zyklus-Backlog (2026-09-24, priorisiert)
 
 1. **R-CC-7 — Compact-Fehler sichtbar + begrenzter Retry** ([compact.md](compact.md)):
@@ -47,9 +57,9 @@ bleibt ohne Zeitinfo (stateless, Rauschen).
 Anzeige-Zustand `compacting` + 🟡-Präfix in `AiAgentStatusWidget.text()`. Wiederaufnahme = Mini-Increment.
 Kontext: [compact-lock.md](compact-lock.md).
 
-## 🚧 „!-Messages" — sofortiger History-Insert auch im ToolLoop (2026-09-22, Paul)
+## 🔒 „!-Messages" — Queued-Message-Override (2026-09-25 geklärt)
 
-Regel 8 in [queued-user-messages.md](queued-user-messages.md); Insert-Punkt/Race offen. Eigene Story.
+Spezifiziert als Regel 8 in [queued-user-messages.md](queued-user-messages.md). Kein offener Punkt mehr.
 
 ## ❓ Tool-Evolution PO-Run CR-Verdicts (2026-09-19)
 

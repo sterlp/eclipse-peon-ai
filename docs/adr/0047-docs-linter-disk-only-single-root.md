@@ -38,13 +38,13 @@ Daraus folgt:
 - **Keine** Änderung an `EclipseWorkspaceReadFileTool` / `DiskFileReadTool` — kein Refactoring als
   Vorbedingung eines neuen Features.
 - Die gesamte Linter-Logik lebt in `llmpeon-core` und ist mit plain JUnit ohne OSGi testbar.
-- `root` ist ein **Parameter mit Default**, nicht verdrahtet: Fremd-Repos (FORgE als Erstanwender)
+- `root` ist ein **Parameter mit Default**, nicht verdrahtet: Fremd-Repos
   übergeben ihren eigenen Pfad.
 
 ## Consequences
 
 **Gut:** Ein Inkrement statt zwei. Kein Eingriff in funktionierenden Code, damit keine
-Regressionsfläche. Schnelle Core-Tests. FORgE-tauglich ohne Eclipse.
+Regressionsfläche. Schnelle Core-Tests. Headless-tauglich ohne Eclipse.
 
 **Preis:** Der Linter sieht **ungespeicherte Editor-Buffer nicht** — eine Datei mit ungespeicherten
 Änderungen wird im alten Stand gelesen. Bei einem Werkzeug, dessen Zweck Vertrauen ist, ist eine

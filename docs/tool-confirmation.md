@@ -53,12 +53,17 @@ Shell via Shared-Tool) bei jedem Aufruf. SOLL (Paul 2026-09-24): **Jons Agenten 
 autonomen Lauf kein Approval.** Fragment der geparkten Kategorisierung — hier als eigener
 Mini-Fix behandelbar, ohne das volle R-TC-1…5-Modell zu öffnen.
 
-### SOLL (Fix, 2026-09-24, Paul freigegeben)
+### SOLL (Fix, 2026-09-24, Revision 2026-09-25 Paul)
 
-- **R-TC-6 ✅ done (2026-09-24, Paul; Review Da Dok, Commits `6a72e92`/`43fe725`) — Autonom-Definition:** Unter `not-autonomous` gilt ein Lauf als autonom, wenn der
-  **aktive Agent Jon (`AiPoAgent`) oder Peon-Plan (`AiPlanAgent`)** ist. Jons Sklaven (Da Mek,
-  Da Thinka, Da Dok) erben das — der Lauf-Kontext (wer den Turn besitzt), nicht der Sklave,
-  entscheidet.
+- **R-TC-6 ❌ specified (Revision 2026-09-25, Paul — vormals ✅ 2026-09-24):** Unter `not-autonomous`
+  gilt ein Lauf genau dann als autonom, wenn der **aktive Agent Jon (`AiPoAgent`)** ist.
+  Jons Sklaven (Da Mek, Da Thinka, Da Dok) laufen unter Jons aktiver Turn-Governance und sind
+  damit frei. **Peon-Plan (`AiPlanAgent`) standalone ist NICHT autonom** — er besitzt keine
+  PO-Governance und promptet unter `not-autonomous` bei Shell-Aufrufen wie alle anderen Agenten
+  auch.
+  *(Begründung Paul 2026-09-25: Nur der `AiPoAgent` und seine Sklaven sind autonom. Da Mek / Da Thinka
+  sind gar nicht Teil des `AgentService`, sondern RAM-only Slaves unter Jon. Ein standalone
+  betriebener Plan-Agent ist nicht autonom.)*
 - **R-TC-7 ✅ done (2026-09-24, Paul; Review Da Dok) — Evaluation zur Call-Zeit:** Der ConfirmationProvider wird konfiguriert gesetzt,
   entscheidet aber **pro Call** über die Autonomie (aktiver Agent zur Call-Zeit) — kein Stale-
   Zustand mehr, kein Refresh beim Agenten-Wechsel nötig. Alternative (a) „Refresh in
@@ -72,13 +77,13 @@ Mini-Fix behandelbar, ohne das volle R-TC-1…5-Modell zu öffnen.
   „autonomous?"-Signal → Entscheidung, testbar ohne SWT), UI-Wiring (showQuestion-Callback)
   bleibt dünn im Plugin. One behaviour, one implementation.
 
-BDD (alle ✅, getestet 2026-09-24 — core `ShellConfirmationPolicyTest` 6, plugin `ShellApprovalServiceTest` 5; Widget/Latch-Verhalten manuell):
+BDD (R-TC-6 revidiert 2026-09-25; R-TC-7…9 ✅):
 - GIVEN `not-autonomous` + Jon aktiv WHEN Jons Sklave Shell ruft THEN kein Prompt, Befehl läuft.
-- GIVEN `not-autonomous` + Peon-Plan aktiv WHEN Shell-Call THEN kein Prompt.
+- GIVEN `not-autonomous` + Peon-Plan standalone aktiv WHEN Shell-Call THEN **Prompt** (geändert 2026-09-25: war fälschlich kein Prompt).
 - GIVEN `not-autonomous` + Peon-Dev direkt aktiv WHEN Shell-Call THEN Prompt.
-- GIVEN `not-autonomous`, Start mit Peon-Plan, Wechsel auf Peon-Dev WHEN Dev Shell-Call THEN
-  Prompt (Befund 1 behoben — Call-Zeit-Evaluation).
-- GIVEN `always` WHEN Shell-Call THEN Prompt — auch bei autonomen Agenten.
+- GIVEN `not-autonomous`, Start mit Peon-Plan, Wechsel auf Jon WHEN Jons Sklave Shell ruft THEN
+  kein Prompt (Call-Zeit-Evaluation).
+- GIVEN `always` WHEN Shell-Call THEN Prompt — auch bei Jon.
 - GIVEN Pref-Wert `true` (Altwert) WHEN Load THEN behandelt wie unset — keine Bestätigung.
 - GIVEN Pref leer/unset WHEN Shell-Call THEN keine Bestätigung.
 - GIVEN `always` und eine Config-/Agenten-Änderung WÄHREND eines Laufs WHEN Shell-Call THEN

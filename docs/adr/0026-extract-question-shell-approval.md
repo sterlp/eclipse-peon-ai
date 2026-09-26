@@ -29,6 +29,8 @@ hat** (grep-verifiziert 2026-09-24, Da-Dok-Review R-TC-9). Tatsächlicher Stand:
   `ShellConfirmationPolicy`), Evaluation zur **Call-Zeit** über `Supplier<AiAgent>` statt
   eingefrorenem Flag. UI-Prompt-Verhalten (Frage-Text, „No"-Default, CANCEL →
   CancellationException) unverändert.
+  *Nachtrag 2026-09-25 (Revision R-TC-6):* Autonomie gilt strikt nur für den `AiPoAgent` (Jon)
+  und seine Sklaven unter Jon-Governance. `AiPlanAgent` standalone ist nicht autonom.
 - **Question:** bewusst **nicht** extrahiert — der Widget-Swap ist UI-Verbundenheit pur; ein
   Orchestrator brächte nur einen Extra-Hop ohne zweite Nutzung. Kein geplanter Termin.
 
