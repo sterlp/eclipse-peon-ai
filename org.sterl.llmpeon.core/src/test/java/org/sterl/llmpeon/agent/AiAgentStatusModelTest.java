@@ -113,8 +113,8 @@ class AiAgentStatusModelTest {
     void compactResult_successVsSkip() {
         // GIVEN the two outcomes of a slave-compact job
         assertThat(AiAgentStatusModel.compactResult(
-                CompactResult.compacted(new CompactResult.Stats(4, 12_000, 4_000, CompactResult.Stage.TOOL_RESULTS, 100, 2_300, "compact-model", 1234L)), "Da Mek"))
-            .isEqualTo("Compacted Da Mek: compressed 4 messages ~12k → input ~4k, result 2k, stage: tool results 6000");
+                CompactResult.compacted(new CompactResult.Stats(4, 12_000, 4_000, CompactResult.Stage.TOOL_RESULTS, 100, 2_300, "compact-model", 1234L, null, true)), "Da Mek"))
+            .isEqualTo("Compacted Da Mek: compressed 4 messages ~12k → input ~4k, result 2k, stage: tool results 6000, request n/a (no provider value)");
         assertThat(AiAgentStatusModel.compactResult(CompactResult.skippedSmall(), "Da Mek")).isEqualTo("Nothing to compact");
     }
 
@@ -123,7 +123,7 @@ class AiAgentStatusModelTest {
         // GIVEN — a compacted result with realistic stats (R-CIB-6: the status line carries
         // the same numbers as the log and the tool result)
         var result = CompactResult.compacted(new CompactResult.Stats(
-                61, 114_000, 40_000, CompactResult.Stage.TOOL_RESULTS, 500_000, 2_300, "compact-model", 1234L));
+                61, 114_000, 40_000, CompactResult.Stage.TOOL_RESULTS, 500_000, 2_300, "compact-model", 1234L, null, true));
 
         // THEN — the status line is the prefix plus the exact resultLine
         assertThat(AiAgentStatusModel.compactResult(result, "Da Mek"))

@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.model;
 
+import org.jspecify.annotations.Nullable;
 import org.sterl.llmpeon.shared.StringUtil;
 
 /**
@@ -18,8 +19,15 @@ public record CompactResult(Status status, Stats stats, String cause) {
     /** The deepest truncation stage that was applied (R-CIB-4). */
     public enum Stage { NONE, THINK_AND_USER, TOOL_RESULTS, PER_MESSAGE }
 
+    /**
+     * @param requestTokens     R-CC-12: the last provider-REPORTED {@code inputTokenCount()} —
+     *                          {@code null} when the API never reported one (never an estimate)
+     * @param requestIsEstimate R-CC-12: true when no provider value exists — the request number
+     *                          is not a real one
+     */
     public record Stats(int messageCount, int estimateBefore, int estimateAfter, Stage stage,
-                        long droppedChars, int resultChars, String model, long millis) {}
+                        long droppedChars, int resultChars, String model, long millis,
+                        @Nullable Integer requestTokens, boolean requestIsEstimate) {}
 
     /** The compact succeeded — the memory is already reset and re-seeded with the summary. */
     public static CompactResult compacted(Stats stats) {
@@ -45,10 +53,18 @@ public record CompactResult(Status status, Stats stats, String cause) {
             case COMPACTED -> "compressed " + stats.messageCount() + " messages ~" + StringUtil.toK(stats.estimateBefore())
                     + " → input ~" + StringUtil.toK(stats.estimateAfter())
                     + ", result " + StringUtil.toK(stats.resultChars())
-                    + ", stage: " + stageDescription(stats.stage());
+                    + ", stage: " + stageDescription(stats.stage())
+                    + requestPart(stats);
             case SKIPPED_SMALL -> "compact skipped: context too small";
             case FAILED_EMPTY -> "compact failed: " + cause;
         };
+    }
+
+    /** R-CC-12: the last provider-reported request value side by side with the estimate — n/a honestly. */
+    private static String requestPart(Stats stats) {
+        return stats.requestIsEstimate()
+                ? ", request n/a (no provider value)"
+                : ", request " + stats.requestTokens() + " (provider)";
     }
 
     private static String stageDescription(Stage stage) {

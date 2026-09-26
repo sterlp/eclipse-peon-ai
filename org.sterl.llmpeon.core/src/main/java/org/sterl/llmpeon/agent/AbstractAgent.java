@@ -314,9 +314,12 @@ public abstract class AbstractAgent implements AiAgent {
             if (memory.size() < CompactConstants.MIN_COMPACT_MESSAGES) return CompactResult.skippedSmall();
 
             // R-CIB-1: the staging budget is the raw config value — compactFactor scales only the trigger
+            // R-CC-12: capture the last provider-reported input tokens BEFORE the clear below —
+            // after it the value is gone (async-state-safety)
+            var requestTokens = memory.getLastProviderInputTokens();
             var run = new CompactService(configuredModel).compact(
                     getName(), memory.getCopy(), configuredModel.getConfig().getAutoCompactAfter(),
-                    memory.tokenDiagnosis(), monitor);
+                    memory.tokenDiagnosis(), requestTokens, requestTokens == null, monitor);
             var result = run.result();
 
             if (result.status() == CompactResult.Status.FAILED_EMPTY) {

@@ -2,6 +2,7 @@ package org.sterl.llmpeon.compact;
 
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.prompt.PromptLoader;
@@ -54,11 +55,14 @@ public class CompactService {
      * staged input, COMPACT slot call, result line (log level matches the stage). With a
      * non-positive budget the entry log is the only log (R-CIB-1).
      *
+     * @param requestTokens     R-CC-12: the last provider-reported input tokens, captured by the
+     *                          caller BEFORE its memory clear — {@code null} when never reported
+     * @param requestIsEstimate R-CC-12: true when {@code requestTokens} is not a real provider value
      * @throws IllegalStateException when the LLM call returns null — Log OR throw: the throw stays
      *             in the call path, the result line is no exception substitute
      */
     public CompactRun compact(String agentName, List<ChatMessage> messages, int budgetTokens, String tokenDiagnosis,
-                              AiMonitor monitor) {
+                              @Nullable Integer requestTokens, boolean requestIsEstimate, AiMonitor monitor) {
         monitor = AiMonitor.nullSafety(monitor);
         var compactCfg = chatModel.getConfig().compactAgentConfig();
 
@@ -92,14 +96,15 @@ public class CompactService {
 
         if (StringUtil.hasNoValue(response.aiMessage().text())) {
             var result = CompactResult.failedEmpty(
-                    stats(messages.size(), outcome, 0, compactCfg.getModel(), millis),
+                    stats(messages.size(), outcome, 0, compactCfg.getModel(), millis, requestTokens, requestIsEstimate),
                     "compressor returned no summary for " + agentName);
             if (budgetTokens > 0) log.error("Compact result: {}", result.resultLine());
             return new CompactRun(result, null);
         }
 
         var summary = response.aiMessage().text();
-        var result = CompactResult.compacted(stats(messages.size(), outcome, summary.length(), compactCfg.getModel(), millis));
+        var result = CompactResult.compacted(
+                stats(messages.size(), outcome, summary.length(), compactCfg.getModel(), millis, requestTokens, requestIsEstimate));
         if (budgetTokens > 0) logResult(result);
         return new CompactRun(result, summary);
     }
@@ -147,8 +152,9 @@ public class CompactService {
     }
 
     private static CompactResult.Stats stats(int messageCount, ContextTrimComponent.Outcome outcome, int resultChars,
-                                             String model, long millis) {
+                                             String model, long millis, @Nullable Integer requestTokens,
+                                             boolean requestIsEstimate) {
         return new CompactResult.Stats(messageCount, outcome.estimateBefore(), outcome.estimateAfter(),
-                outcome.stage(), outcome.droppedChars(), resultChars, model, millis);
+                outcome.stage(), outcome.droppedChars(), resultChars, model, millis, requestTokens, requestIsEstimate);
     }
 }

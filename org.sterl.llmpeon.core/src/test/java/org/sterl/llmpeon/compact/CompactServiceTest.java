@@ -70,7 +70,7 @@ class CompactServiceTest {
         var budget = 100000;
 
         // WHEN
-        var result = engine.compact("dev-agent", messages, budget, "", AiMonitor.NULL_MONITOR).result();
+        var result = engine.compact("dev-agent", messages, budget, "", null, true, AiMonitor.NULL_MONITOR).result();
 
         // THEN — exactly ONE debug log with the initial values, before any truncation (R-CIB-3)
         var estimate = ChatMessageUtil.estimateTokens(messages);
@@ -95,7 +95,7 @@ class CompactServiceTest {
         var diagnosis = " | memory=289493(estimate=false) model=80211 estimate=82450";
 
         // WHEN
-        engine.compact("dev-agent", messages, 100000, diagnosis, AiMonitor.NULL_MONITOR);
+        engine.compact("dev-agent", messages, 100000, diagnosis, null, true, AiMonitor.NULL_MONITOR);
 
         // THEN — the single debug log carries the diagnosis right after thinkingEnabled, before the
         // diagnostic block (newline) — the "exactly one debug log" contract still holds
@@ -119,7 +119,7 @@ class CompactServiceTest {
                 ToolExecutionResultMessage.from("id", "write", "R".repeat(12000)));
 
         // WHEN
-        engine.compact("dev", messages, 7000, "", AiMonitor.NULL_MONITOR);
+        engine.compact("dev", messages, 7000, "", null, true, AiMonitor.NULL_MONITOR);
 
         // THEN — the single debug log carries the per-message drops (tool named) and the output summary
         var debugs = log.lines(CapturingLog.Level.DEBUG);
@@ -139,7 +139,7 @@ class CompactServiceTest {
         var engine = engineWithSummary(log);
 
         // WHEN
-        engine.compact("dev", List.of(UserMessage.from("Foo"), AiMessage.from("Bar")), 100000, "", AiMonitor.NULL_MONITOR);
+        engine.compact("dev", List.of(UserMessage.from("Foo"), AiMessage.from("Bar")), 100000, "", null, true, AiMonitor.NULL_MONITOR);
 
         // THEN — only the output summary line, no per-message drop lines
         var debugs = log.lines(CapturingLog.Level.DEBUG);
@@ -158,7 +158,7 @@ class CompactServiceTest {
         var messages = List.<ChatMessage>of(UserMessage.from("Foo"), AiMessage.from("Bar"));
 
         // WHEN
-        var result = engine.compact("dev-agent", messages, 0, "", AiMonitor.NULL_MONITOR).result();
+        var result = engine.compact("dev-agent", messages, 0, "", null, true, AiMonitor.NULL_MONITOR).result();
 
         // THEN
         assertThat(log.all()).hasSize(1);
@@ -189,7 +189,7 @@ class CompactServiceTest {
     private static CapturingLog.Level resultLevel(List<ChatMessage> messages, int budget) {
         var log = new CapturingLog();
         var engine = engineWithSummary(log);
-        engine.compact("dev", messages, budget, "", AiMonitor.NULL_MONITOR);
+        engine.compact("dev", messages, budget, "", null, true, AiMonitor.NULL_MONITOR);
         var resultLines = log.allLines().stream().filter(l -> l.message().contains("Compact result:")).toList();
         assertThat(resultLines).hasSize(1);
         return resultLines.getFirst().level();
@@ -205,7 +205,7 @@ class CompactServiceTest {
         var messages = List.<ChatMessage>of(UserMessage.from("Foo"), AiMessage.from("Bar"));
 
         // WHEN
-        var result = engine.compact("dev-agent", messages, 100000, "", AiMonitor.NULL_MONITOR).result();
+        var result = engine.compact("dev-agent", messages, 100000, "", null, true, AiMonitor.NULL_MONITOR).result();
 
         // THEN — FAILED_EMPTY with the cause and the numbers of what was sent
         assertThat(result.status()).isEqualTo(CompactResult.Status.FAILED_EMPTY);
@@ -235,7 +235,7 @@ class CompactServiceTest {
         // WHEN
         var result = engine.compact("dev-agent",
                 List.of(UserMessage.from("Foo"), AiMessage.from("Bar"), UserMessage.from("Foo")),
-                100000, "", monitor).result();
+                100000, "", null, true, monitor).result();
 
         // THEN — the request carries the COMPRESS_SYSTEM prompt from compressor.md
         assertThat(streamMock.getLastRequest()).isNotNull();
@@ -275,7 +275,7 @@ class CompactServiceTest {
         var engine = new CompactService(configuredModel, new CapturingLog());
 
         // WHEN + THEN — Log OR throw: the throw stays in the call path (R-CC-3)
-        assertThatThrownBy(() -> engine.compact("dev-agent", List.of(UserMessage.from("test")), 100000, "", AiMonitor.NULL_MONITOR))
+        assertThatThrownBy(() -> engine.compact("dev-agent", List.of(UserMessage.from("test")), 100000, "", null, true, AiMonitor.NULL_MONITOR))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("AI call returned null");
     }
@@ -298,7 +298,7 @@ class CompactServiceTest {
         var engine = new CompactService(new ConfiguredChatModel(config));
 
         // WHEN — one compact
-        var result = engine.compact("dev-agent", List.of(UserMessage.from("Foo"), AiMessage.from("Bar")), 100000, "", AiMonitor.NULL_MONITOR).result();
+        var result = engine.compact("dev-agent", List.of(UserMessage.from("Foo"), AiMessage.from("Bar")), 100000, "", null, true, AiMonitor.NULL_MONITOR).result();
 
         // THEN — the call landed at the COMPACT slot's URL with the slot's model and temperature
         assertThat(result.status()).isEqualTo(CompactResult.Status.COMPACTED);
@@ -325,7 +325,7 @@ class CompactServiceTest {
         var engine = new CompactService(new ConfiguredChatModel(config));
 
         // WHEN
-        var result = engine.compact("dev-agent", List.of(UserMessage.from("Foo"), AiMessage.from("Bar")), 100000, "", AiMonitor.NULL_MONITOR).result();
+        var result = engine.compact("dev-agent", List.of(UserMessage.from("Foo"), AiMessage.from("Bar")), 100000, "", null, true, AiMonitor.NULL_MONITOR).result();
 
         // THEN — the call landed at the base URL with the base model
         assertThat(result.status()).isEqualTo(CompactResult.Status.COMPACTED);
@@ -353,7 +353,7 @@ class CompactServiceTest {
         var engine = new CompactService(new ConfiguredChatModel(config));
 
         // WHEN
-        var result = engine.compact("dev-agent", List.of(UserMessage.from("Foo")), 100000, "", AiMonitor.NULL_MONITOR).result();
+        var result = engine.compact("dev-agent", List.of(UserMessage.from("Foo")), 100000, "", null, true, AiMonitor.NULL_MONITOR).result();
 
         // THEN — the provider-specific think parameter is on the wire at the compact stub
         assertThat(result.status()).isEqualTo(CompactResult.Status.COMPACTED);
@@ -380,7 +380,7 @@ class CompactServiceTest {
         var engine = new CompactService(new ConfiguredChatModel(config));
 
         // WHEN
-        var result = engine.compact("dev-agent", List.of(UserMessage.from("Foo")), 100000, "", AiMonitor.NULL_MONITOR).result();
+        var result = engine.compact("dev-agent", List.of(UserMessage.from("Foo")), 100000, "", null, true, AiMonitor.NULL_MONITOR).result();
 
         // THEN — the Anthropic thinking block is on the wire at the compact stub
         assertThat(result.status()).isEqualTo(CompactResult.Status.COMPACTED);
@@ -409,7 +409,7 @@ class CompactServiceTest {
         var engine = new CompactService(new ConfiguredChatModel(config));
 
         // WHEN
-        var result = engine.compact("dev-agent", List.of(UserMessage.from("Foo")), 100000, "", AiMonitor.NULL_MONITOR).result();
+        var result = engine.compact("dev-agent", List.of(UserMessage.from("Foo")), 100000, "", null, true, AiMonitor.NULL_MONITOR).result();
 
         // THEN — the body keys are on the wire, the user body wins, the reserved key is stripped
         assertThat(result.status()).isEqualTo(CompactResult.Status.COMPACTED);

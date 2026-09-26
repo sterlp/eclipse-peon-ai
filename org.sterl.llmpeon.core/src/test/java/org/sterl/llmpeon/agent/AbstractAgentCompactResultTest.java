@@ -153,6 +153,31 @@ class AbstractAgentCompactResultTest {
         assertThat(((AiMessage) copy.get(1)).text()).contains("WHAT: Build a Java Hello world application");
     }
 
+    // R-CC-12
+    @Test
+    @Timeout(10)
+    void compactCapturesRequestTokensBeforeMemoryClear() {
+        // GIVEN — a real history whose last model call reported 80211 input tokens
+        var agent = devAgent(r -> ChatResponse.builder().aiMessage(AiMessage.aiMessage("summary")).build());
+        agent.addMessage(UserMessage.from("m1"));
+        agent.addMessage(AiMessage.from("m2"));
+        agent.addMessage(UserMessage.from("m3"));
+        agent.getMemory().addResult(ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("m4"))
+                .tokenUsage(new TokenUsage(80_211, 0, 80_211))
+                .build());
+
+        // WHEN
+        var result = agent.compact(AiMonitor.NULL_MONITOR);
+
+        // THEN — the result carries the provider value captured BEFORE the clear
+        assertThat(result.status()).isEqualTo(CompactResult.Status.COMPACTED);
+        assertThat(result.stats().requestTokens()).isEqualTo(80_211);
+        assertThat(result.stats().requestIsEstimate()).isFalse();
+        // AND — the clear wiped the provider value: a capture after the clear would see null
+        assertThat(agent.getMemory().getLastProviderInputTokens()).isNull();
+    }
+
     // R-CC-3
     @Test
     @Timeout(10)
