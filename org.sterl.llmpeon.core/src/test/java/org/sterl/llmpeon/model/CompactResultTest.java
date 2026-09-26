@@ -17,7 +17,7 @@ class CompactResultTest {
                 500_000, 2_300, "compact-model", 1234L, 80_211, false);
 
         // WHEN
-        var line = CompactResult.compacted(stats).resultLine();
+        var line = CompactResult.compacted(stats, "summary").resultLine();
 
         // THEN — estimate AND provider request value side by side, fixed field names
         assertThat(line).isEqualTo("compressed 61 messages ~114k → input ~40k, result 2k, "
@@ -31,7 +31,7 @@ class CompactResultTest {
                 500_000, 2_300, "compact-model", 1234L, null, true);
 
         // WHEN
-        var line = CompactResult.compacted(stats).resultLine();
+        var line = CompactResult.compacted(stats, "summary").resultLine();
 
         // THEN — honestly n/a, and the flag marks the missing provider value
         assertThat(line).isEqualTo("compressed 61 messages ~114k → input ~40k, result 2k, "

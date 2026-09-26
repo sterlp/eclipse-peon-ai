@@ -25,6 +25,7 @@ import org.sterl.llmpeon.tool.model.SimpleMessage;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 
@@ -176,6 +177,89 @@ class AbstractAgentCompactResultTest {
         assertThat(result.stats().requestIsEstimate()).isFalse();
         // AND — the clear wiped the provider value: a capture after the clear would see null
         assertThat(agent.getMemory().getLastProviderInputTokens()).isNull();
+    }
+
+    // R-CC-14
+    @Test
+    @Timeout(10)
+    void compressorChatEventsDoNotReachAgentMonitor() {
+        // GIVEN — a real history and a compressor answering with a summary; the monitor captures
+        // every chat event the agent's monitor would see
+        var agent = devAgent(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("WHAT: compressor summary")).build());
+        agent.addMessage(UserMessage.from("m1"));
+        agent.addMessage(AiMessage.from("m2"));
+        agent.addMessage(UserMessage.from("m3"));
+        var responses = new ArrayList<SimpleMessage>();
+        var chatRequests = new ArrayList<Integer>();
+        var monitor = new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) { responses.add(m); }
+            @Override public void onChatMessage(int iteration, ChatRequest.Builder request) { chatRequests.add(iteration); }
+        };
+
+        // WHEN
+        var result = agent.compact(monitor);
+
+        // THEN — no compressor chat event reaches the agent's monitor (the internal call goes to the log only)
+        assertThat(result.status()).isEqualTo(CompactResult.Status.COMPACTED);
+        assertThat(chatRequests).isEmpty();
+        assertThat(responses).noneMatch(m -> m.message() != null && m.message().contains("WHAT: compressor summary"));
+    }
+
+    // R-CC-14
+    @Test
+    @Timeout(10)
+    void startLineEmittedByAgent() {
+        // GIVEN — a real history (the guard passes) and a monitor capturing the tool lines
+        var agent = devAgent();
+        agent.addMessage(UserMessage.from("m1"));
+        agent.addMessage(AiMessage.from("m2"));
+        agent.addMessage(UserMessage.from("m3"));
+        var toolLines = new ArrayList<String>();
+        var monitor = new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onTool(String message) { toolLines.add(message); }
+        };
+
+        // WHEN
+        var result = agent.compact(monitor);
+
+        // THEN — exactly ONE start line, emitted by the agent (after the guard, before the clear)
+        assertThat(result.status()).isEqualTo(CompactResult.Status.COMPACTED);
+        assertThat(toolLines).hasSize(1);
+        assertThat(toolLines.getFirst()).startsWith("Compressing conversation 3 messages");
+    }
+
+    // R-CC-14
+    @Test
+    @Timeout(10)
+    void summaryIsCarriedInResult() {
+        // GIVEN — three agents: COMPACTED (summary), FAILED_EMPTY (empty compressor), SKIPPED_SMALL (2 messages)
+        var compactedAgent = devAgent(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("WHAT: the summary")).build());
+        compactedAgent.addMessage(UserMessage.from("m1"));
+        compactedAgent.addMessage(AiMessage.from("m2"));
+        compactedAgent.addMessage(UserMessage.from("m3"));
+        var failedAgent = devAgent(r -> ChatResponse.builder().aiMessage(AiMessage.aiMessage("")).build());
+        failedAgent.addMessage(UserMessage.from("m1"));
+        failedAgent.addMessage(AiMessage.from("m2"));
+        failedAgent.addMessage(UserMessage.from("m3"));
+        var smallAgent = devAgent();
+        smallAgent.addMessage(UserMessage.from("m1"));
+        smallAgent.addMessage(AiMessage.from("m2"));
+
+        // WHEN
+        var compacted = compactedAgent.compact(AiMonitor.NULL_MONITOR);
+        var failed = failedAgent.compact(AiMonitor.NULL_MONITOR);
+        var small = smallAgent.compact(AiMonitor.NULL_MONITOR);
+
+        // THEN — only COMPACTED carries the compressor's summary; the other statuses stay null
+        assertThat(compacted.status()).isEqualTo(CompactResult.Status.COMPACTED);
+        assertThat(compacted.summary()).isEqualTo("WHAT: the summary");
+        assertThat(failed.status()).isEqualTo(CompactResult.Status.FAILED_EMPTY);
+        assertThat(failed.summary()).isNull();
+        assertThat(small.status()).isEqualTo(CompactResult.Status.SKIPPED_SMALL);
+        assertThat(small.summary()).isNull();
     }
 
     // R-CC-3

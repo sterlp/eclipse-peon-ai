@@ -287,7 +287,7 @@ class CompactSessionToolTest {
         memory.add(UserMessage.from("Test message"));
         memory.add(AiMessage.from("AI response"));
         var compacted = CompactResult.compacted(new CompactResult.Stats(
-                61, 114_000, 40_000, CompactResult.Stage.TOOL_RESULTS, 500_000, 2_300, "compact-model", 1234L, null, true));
+                61, 114_000, 40_000, CompactResult.Stage.TOOL_RESULTS, 500_000, 2_300, "compact-model", 1234L, null, true), null);
         var subject = compactSessionTool(memory, agentReturning(memory, compacted));
 
         // WHEN

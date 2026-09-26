@@ -20,6 +20,7 @@ import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.queuedmessages.UserMessageQueue;
 import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
@@ -317,10 +318,16 @@ public abstract class AbstractAgent implements AiAgent {
             // R-CC-12: capture the last provider-reported input tokens BEFORE the clear below —
             // after it the value is gone (async-state-safety)
             var requestTokens = memory.getLastProviderInputTokens();
-            var run = new CompactService(configuredModel).compact(
-                    getName(), memory.getCopy(), configuredModel.getConfig().getAutoCompactAfter(),
-                    memory.tokenDiagnosis(), requestTokens, requestTokens == null, monitor);
-            var result = run.result();
+            var messages = memory.getCopy();
+            var compactCfg = configuredModel.getConfig().compactAgentConfig();
+            // R-CC-14: the service is monitor-free — the start line is emitted by the agent
+            // (all five triggers funnel through here), same wording as before
+            monitor.onTool("Compressing conversation " + messages.size() + " messages "
+                    + ChatMessageUtil.estimateTokens(messages) + " tokens"
+                    + (compactCfg.getModel() == null ? "" : " using " + compactCfg.getModel()));
+            var result = new CompactService(configuredModel).compact(
+                    getName(), messages, configuredModel.getConfig().getAutoCompactAfter(),
+                    memory.tokenDiagnosis(), requestTokens, requestTokens == null);
 
             if (result.status() == CompactResult.Status.FAILED_EMPTY) {
                 monitor.onProblem("Compact failed: " + result.cause());
@@ -338,7 +345,7 @@ public abstract class AbstractAgent implements AiAgent {
             // Ensure memory starts with a user message (many LLMs require this)
             memory.add(UserMessage.from(data));
             // we add the compact message as AI message
-            memory.add(AiMessage.from(run.summary()));
+            memory.add(AiMessage.from(result.summary()));
 
             return result;
         } finally {

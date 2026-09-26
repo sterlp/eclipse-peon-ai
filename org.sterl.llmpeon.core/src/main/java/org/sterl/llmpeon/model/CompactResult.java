@@ -11,8 +11,10 @@ import org.sterl.llmpeon.shared.StringUtil;
  * @param stats  the numbers (estimate before/after, stage, dropped chars, result size, model,
  *               duration); {@code null} for {@link Status#SKIPPED_SMALL} (nothing ran)
  * @param cause  human-readable failure cause for {@link Status#FAILED_EMPTY}
+ * @param summary the summary text the compressor produced — {@code null} unless
+ *               {@link Status#COMPACTED}; the agent re-seeds its memory with it (R-CC-14)
  */
-public record CompactResult(Status status, Stats stats, String cause) {
+public record CompactResult(Status status, Stats stats, String cause, @Nullable String summary) {
 
     public enum Status { COMPACTED, SKIPPED_SMALL, FAILED_EMPTY }
 
@@ -30,18 +32,18 @@ public record CompactResult(Status status, Stats stats, String cause) {
                         @Nullable Integer requestTokens, boolean requestIsEstimate) {}
 
     /** The compact succeeded — the memory is already reset and re-seeded with the summary. */
-    public static CompactResult compacted(Stats stats) {
-        return new CompactResult(Status.COMPACTED, stats, null);
+    public static CompactResult compacted(Stats stats, String summary) {
+        return new CompactResult(Status.COMPACTED, stats, null, summary);
     }
 
     /** The memory is too small to compact — legitimate, not an error, memory untouched. */
     public static CompactResult skippedSmall() {
-        return new CompactResult(Status.SKIPPED_SMALL, null, null);
+        return new CompactResult(Status.SKIPPED_SMALL, null, null, null);
     }
 
     /** The compressor returned no usable summary — an error, memory untouched. */
     public static CompactResult failedEmpty(Stats stats, String cause) {
-        return new CompactResult(Status.FAILED_EMPTY, stats, cause);
+        return new CompactResult(Status.FAILED_EMPTY, stats, cause, null);
     }
 
     /**

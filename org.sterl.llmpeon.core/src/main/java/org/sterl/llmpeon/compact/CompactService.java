@@ -9,32 +9,50 @@ import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.model.ToSimpleMessage;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.output.TokenUsage;
 
 /**
  * The compact component (ADR-0056): stages the input (R-CIB-4), calls the COMPACT slot exactly
  * like the legacy path (COMPRESS_SYSTEM prompt, slot routing, no tools), and logs the entry line
- * (R-CIB-3) plus the result line (R-CIB-6). Stateless per call — safe from any thread.
+ * (R-CIB-3) plus the result line (R-CIB-6). Monitor-free (R-CC-14): the emission belongs to the
+ * callers, the compressor call's chat events go to the log only. Stateless per call — safe from
+ * any thread.
  */
 public class CompactService {
-
-    /**
-     * One compact attempt: the status+stats {@link CompactResult} plus the summary text the
-     * compressor produced ({@code null} unless COMPACTED) — the agent re-seeds its memory with
-     * it, the tool/UI only ever see the result.
-     */
-    public record CompactRun(CompactResult result, String summary) {}
 
     private static final SystemMessage COMPRESS_SYSTEM = SystemMessage.systemMessage(PromptLoader.load("compressor.md"));
 
     private final ConfiguredChatModel chatModel;
     private final ContextTrimComponent stager;
     private final CompactLog log;
+
+    /**
+     * R-CC-14: the compressor call's chat events (request, response, usage) go to the log only —
+     * the UI never gets a streaming preview of the internal call.
+     */
+    private final AiMonitor logMonitor = new AiMonitor() {
+        @Override
+        public void onChatMessage(int iteration, ChatRequest.Builder request) {
+            log.debug("Compressor request: {} messages", request.build().messages().size());
+        }
+
+        @Override
+        public void onChatResponse(SimpleMessage message) {
+            log.debug("Compressor response: {}", message.message());
+        }
+
+        @Override
+        public void onTokenUsage(TokenUsage usage) {
+            log.debug("Compressor usage: {}", usage);
+        }
+    };
 
     public CompactService(ConfiguredChatModel chatModel) {
         this(chatModel, new ContextTrimComponent(), CompactLog.slf4j());
@@ -53,7 +71,9 @@ public class CompactService {
     /**
      * One compact attempt: entry debug log (exactly once, initial values, before any truncation),
      * staged input, COMPACT slot call, result line (log level matches the stage). With a
-     * non-positive budget the entry log is the only log (R-CIB-1).
+     * non-positive budget the entry log is the only log (R-CIB-1). Returns the
+     * {@link CompactResult} carrying the summary (R-CC-14) — the caller emits the start/result
+     * lines and re-seeds the memory.
      *
      * @param requestTokens     R-CC-12: the last provider-reported input tokens, captured by the
      *                          caller BEFORE its memory clear — {@code null} when never reported
@@ -61,9 +81,8 @@ public class CompactService {
      * @throws IllegalStateException when the LLM call returns null — Log OR throw: the throw stays
      *             in the call path, the result line is no exception substitute
      */
-    public CompactRun compact(String agentName, List<ChatMessage> messages, int budgetTokens, String tokenDiagnosis,
-                              @Nullable Integer requestTokens, boolean requestIsEstimate, AiMonitor monitor) {
-        monitor = AiMonitor.nullSafety(monitor);
+    public CompactResult compact(String agentName, List<ChatMessage> messages, int budgetTokens, String tokenDiagnosis,
+                                 @Nullable Integer requestTokens, boolean requestIsEstimate) {
         var compactCfg = chatModel.getConfig().compactAgentConfig();
 
         var outcome = stager.stage(messages, budgetTokens);
@@ -77,36 +96,33 @@ public class CompactService {
                 agentName, messages.size(), ChatMessageUtil.estimateTokens(messages), budgetTokens,
                 StringUtil.hasValue(compactCfg.getThink()), tokenDiagnosis, diagnosticBlock(outcome));
 
-        monitor.onTool("Compressing conversation " + messages.size() + " messages "
-                + ChatMessageUtil.estimateTokens(messages) + " tokens"
-                + (compactCfg.getModel() == null ? "" : " using " + compactCfg.getModel()));
-
         var request = ChatRequest.builder()
                 .messages(COMPRESS_SYSTEM, UserMessage.from(outcome.input()))
                 .parameters(compactCfg.newRequestParameters(null));
-        monitor.onChatMessage(1, request);
+        logMonitor.onChatMessage(1, request);
 
         long startMillis = System.currentTimeMillis();
-        var response = chatModel.callBlocking(request.build(), compactCfg, monitor);
+        var response = chatModel.callBlocking(request.build(), compactCfg, logMonitor);
         long millis = System.currentTimeMillis() - startMillis;
         if (response == null) {
             throw new IllegalStateException("AI call returned null — streaming failed without a response");
         }
-        ToSimpleMessage.INSTANCE.convert(response.aiMessage()).forEach(monitor::onChatResponse);
+        ToSimpleMessage.INSTANCE.convert(response.aiMessage()).forEach(logMonitor::onChatResponse);
 
         if (StringUtil.hasNoValue(response.aiMessage().text())) {
             var result = CompactResult.failedEmpty(
                     stats(messages.size(), outcome, 0, compactCfg.getModel(), millis, requestTokens, requestIsEstimate),
                     "compressor returned no summary for " + agentName);
             if (budgetTokens > 0) log.error("Compact result: {}", result.resultLine());
-            return new CompactRun(result, null);
+            return result;
         }
 
         var summary = response.aiMessage().text();
         var result = CompactResult.compacted(
-                stats(messages.size(), outcome, summary.length(), compactCfg.getModel(), millis, requestTokens, requestIsEstimate));
+                stats(messages.size(), outcome, summary.length(), compactCfg.getModel(), millis, requestTokens, requestIsEstimate),
+                summary);
         if (budgetTokens > 0) logResult(result);
-        return new CompactRun(result, summary);
+        return result;
     }
 
     /**
