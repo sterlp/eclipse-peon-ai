@@ -1,7 +1,7 @@
 # Sklaven-Kontext — was Da Thinka & Da Mek mitbekommen (Plan)
 
 > **Status: PLAN, teils gebaut.** Jons RAM-Sklaven (Da Thinka = Peon-Plan, Da Mek = Peon-Dev,
-> [ADR-0024](adr/0024-*)/[ADR-0025](adr/0025-po-status-widget-named-agents.md)) bekamen bisher deutlich
+> [ADR-0024](adr/0024-po-slaves-ram-only.md)/[ADR-0025](adr/0025-po-status-widget-named-agents.md)) bekamen bisher deutlich
 > weniger Kontext als der **aktive** Agent. Dieser Plan schließt die Lücken inkrementell, jedes
 > Inkrement baubar + grün ([phasenweise arbeiten](../phasen-weise-arbeiten.txt)).
 

@@ -5,7 +5,7 @@ Eine Java-Regex pro Zeile steuert die Reihenfolge **aller** Agenten (Custom + Bu
 Chat-Dropdown. Implementierung: `agentorder.AgentOrder` (core), geladen in
 `AgentService.reloadAgents()`, angewandt in `AgentService.getAgents()`.
 Nutzung dokumentiert für End-User in [Homepage „Ordering the agent list in UI"](../../homepage/src/setup/custom-agents.md) und README; der Scaffold-Agent bietet Order-Updates an
-([scaffold-agent.txt](../llmpeon-core/src/main/resources/org/sterl/llmpeon/prompts/scaffold-agent.txt)).
+([scaffold-agent.md](../org.sterl.llmpeon.core/src/main/resources/org/sterl/llmpeon/prompts/scaffold-agent.md)).
 
 **WEIL:** Die Dropdown-Reihenfolge ist Präsentation, keine Korrektheit — Peon-PO zuerst,
 spezifische Agenten gruppiert, ohne dass der User Code anfassen muss. Eine Datei im

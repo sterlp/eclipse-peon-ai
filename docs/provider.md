@@ -2,8 +2,9 @@
 
 **Status:** ✅ done (2026-08-28) — Slice 1 des Zwei-Slice-Plans aus
 [ADR-0033](adr/0033-ox-alpha-provider-slices.md): dieses Refactoring zuerst (mechanisch,
-verhaltenstreu), danach [Free Provider „Ox Alpha"](free-provider-ox-alpha.md) als erste neue
-Provider-Klasse. Caching als Feature lebt in [caching.md](caching.md).
+verhaltenstreu). Slice 2 (Free Provider „Ox Alpha" als erste neue Provider-Klasse) wurde nie
+spezifiziert — Kandidaten-Studie in [verbesserungen.md](verbesserungen.md). Caching als Feature
+lebt in [caching.md](caching.md).
 
 ## Goal
 
@@ -101,8 +102,9 @@ davon ab, welches Think-Input gerendert wird (Checkbox / Dropdown / Freitext / a
 
 ## Relationship
 
-- [Free Provider „Ox Alpha"](free-provider-ox-alpha.md) — Slice 2 baut auf diesem Interface auf;
-  Reihenfolge fixiert in [ADR-0033](adr/0033-ox-alpha-provider-slices.md)
+- Free Provider „Ox Alpha" — Slice 2 baut auf diesem Interface auf; nie spezifiziert
+  (Studie in [verbesserungen.md](verbesserungen.md)); Reihenfolge fixiert in
+  [ADR-0033](adr/0033-ox-alpha-provider-slices.md)
 - [Prompt Caching](caching.md) — Extra-Body-Feature, das die Provider-Domäne erweitert
 - [Advanced Configuration](advanced-configuration.md) — per-agent-Config andockt hier an
 - [Per-Agent Think Support](per-agent-think.md) — per-request think läuft durch

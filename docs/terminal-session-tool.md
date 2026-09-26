@@ -2,7 +2,7 @@
 
 > **Status:** ⏳ geparkt (2026-09-19, Paul: nicht verworfen) — Voraussetzung ist Async-Tool-Infrastruktur
 > ([async-agent-tools-proposal.md](async-agent-tools-proposal.md), Option C); Revisit, wenn Kosten/Nutzen passt.
-> Ursprungszuordnung (temporär): [tool-evolution.md](tool-evolution.md) — CR-5.
+> Ursprungszuordnung (temporär): [resolved-points.md](resolved-points.md) (Tool-Evolution-Run 2026-09-19) — CR-5.
 
 ## Ziel
 

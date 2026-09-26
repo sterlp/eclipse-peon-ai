@@ -67,7 +67,4 @@ Mapping-Datei (feature-change-request-copilot.md) wurden aufgelöst. Verbleibend
 | `eclipseReplaceLines`/`diskReplaceLines` Insert-Korruption | **Gelöst** — Root-Cause = leerer/blanker oldString (`String.replace("", x)`); Edit-Guard min. 3 Non-WS (`7800a56`), alle 3 Oberflächen, 5 Mutation-Nachweise rot | Stress-Jagden fanden kein sporadisches Reprokt im Replace selbst | 2026-09-19 |
 | Docs-Linter `idPattern` 0/0 bei workspace-Pfaden | **Entschieden** — Wurzel = Root-Handling, → R-DL-18 (Root-Fallback), gebaut im Mini-Zyklus `bugfix/linter-root-fallback` | Paul 2026-09-16 | 2026-09-16 |
 | `nextIds` reserviert nicht / Neustart | **Gebaut** — Zustandslosigkeit bleibt (R-DL-16 + UC-DL-56/57), Ablauf in po.md; Mehrwert erst durch R-DL-17 | `934ea7c`/`ab71c53`, Paul bestätigt | 2026-09-15/16 |
-| „Slot" doppelt belegt (Glossar) | **„Slot" gestorben** — Model-Selection vs. Skill-Component | Paul 2026-09-11 | 2026-09-11 |
-| Glossar eager laden | **(a) Nur Jon** — Turn-scoped Kontext, Jon ist Sprach-Hüter | Paul-Scope bestätigt 2026-09-11 | 2026-09-11 |
-
 | `applyEdit` not-found dumpet das gesamte File | **Bewusst so** — kein Bau; Dump spart den Read-Roundtrip im Fehlerfall | Paul 2026-09-19: gute Lösung (Kontext-Fenster um die ähnlichste Fundstelle) existiert nicht; Roundtrip-vs-Context-Bombe bleibt offen, bleibt stehen bis ein Realfall kommt | 2026-09-19 (aus open-points konsolidiert 2026-09-26) |

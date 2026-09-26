@@ -202,4 +202,4 @@ Agents run inside a message harness that buffers inputs asynchronously. Due to F
 
 - **Inputs are async (FIFO, order uncertain).** For guaranteed answers: use the `askUser` tool.
 - **Otherwise:** If a message is prefixed with `[Queued Message]`, it is **not** a reply to your last question. Acknowledge it briefly, re-ask your question if necessary, or treat the question as unanswered.
-- *Context & Prompt adjustments:* See [PO Agent System Prompt](po.md) and `prompts/po.txt` for the agent-facing instructions solving this alignment problem.
+- *Context & Prompt adjustments:* See [Peon-PO (Jon)](po-agent-jon.md) and `prompts/po.md` for the agent-facing instructions solving this alignment problem.

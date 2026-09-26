@@ -1,6 +1,6 @@
-# ADR-0027: StaticContentLoader — effizientes Dateiladen mit Duplikat-Prüfung
+# ADR-0057 (vormals 0027 — Nummer war doppelt vergeben): StaticContentLoader — effizientes Dateiladen mit Duplikat-Prüfung
 
-**Status:** Akzeptiert · **Datum:** 2026-08-11 · **Betroffen:** Jon (Peon-PO), allgemein nutzbar
+**Status:** Superseded by [ADR-0032](0032-workspace-memory-dynamic-turn-context.md) (statischer Snapshot entfernt, Memory dynamisch pro Turn) · **Datum:** 2026-08-11 · **Betroffen:** Jon (Peon-PO), allgemein nutzbar
 
 ## Kontext
 
@@ -8,7 +8,7 @@ Jon braucht Auto-Load von `memory.md` + `docs/index.md` bei Session-Start und na
 
 ## Entscheidung
 
-1. **`StaticContentMessage` als record** — kein ChatMessage-Interface. Langchain4j `ChatMessage` ist ein Interface; Extension会导致 Serialization-Probleme. Record hält nur Pfad, wird zu `UserMessage` expandiert vor Memory-Eintritt.
+1. **`StaticContentMessage` als record** — kein ChatMessage-Interface. Langchain4j `ChatMessage` ist ein Interface; eine Extension bringt Serialisierungsprobleme. Record hält nur Pfad, wird zu `UserMessage` expandiert vor Memory-Eintritt.
 
 2. **`StaticContentLoader` (core)** — eigene Klasse, allgemein nutzbar. Methode `load(List<StaticContentMessage>, ThreadSafeMemory, AiMonitor, Function<String, Path> pathResolver)`.
 

@@ -2,7 +2,7 @@
 
 > **Status:** ⏳ geparkt (2026-09-19, Paul) — Bestätigungen selbst nicht gewünscht (immer aus);
 > Bedarf entsteht erst mit CR-4 (Debugger) / CR-5 (Background-Shell). Confirmation bleibt Preference/Opt-in.
-> Ursprungszuordnung (temporär): [tool-evolution.md](tool-evolution.md) — CR-6.
+> Ursprungszuordnung (temporär): [resolved-points.md](resolved-points.md) (Tool-Evolution-Run 2026-09-19) — CR-6.
 
 ## Ziel
 

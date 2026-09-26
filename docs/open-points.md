@@ -30,8 +30,8 @@ testen (Test-Scope im core nutzt ohnehin logback statt slf4j-simple).
 2. **Header-State-Leak** ([header-state-leak.md](header-state-leak.md)): onProblem rendert den
    Header-State neu (🟢/Zähler/Working-Hint hängen nach Fehlerpfaden); IST-Messung vor der
    SOLL-Härtung offen (letzter gültiger Wert vs. aktiv falsch gesetzt).
-3. **ApiRetry** (❓ unten, Evidence-Sammlung): non-retryable-Klassifikation + Mindest-Retry bei
-   Connect-Level-Failures (Paul-Idee 2026-09-20) — in die gleiche Fehlerklassen-Tabelle.
+3. **ApiRetry** (❓ eigener Abschnitt unten, Evidence 5×): non-retryable-Klassifikation +
+   Mindest-Retry bei Connect-Level-Failures — in die gleiche Fehlerklassen-Tabelle.
 4. ⏳ `ShellTool.confirmationProvider` non-volatile — pre-existing, harmlos, 1-Wort-Fix bei
    nächster Berührung (Da-Dok-Hinweis R-TC-Review).
 
@@ -119,8 +119,7 @@ Bug-Hunt #1 (Replace-All + Count), muss mitfixt werden. Line-Ending-Normalisieru
 
 ## ❓ Deferred Smoke-Test-Kosmetik (User: „Kosmetik ist mir erstmal egal")
 
-Statuszeilen-Striche, Scrollverhalten Advanced Config. Dropdown-Umbau descoped (Klassen gelöscht
-`a1d8d35`), Wiederaufnahme = eigene Story.
+Statuszeilen-Striche, Scrollverhalten Advanced Config.
 
 ## ⏳ Docs-SOLL-Hygiene-Sweep (2026-09-12)
 
