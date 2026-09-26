@@ -171,7 +171,10 @@ an der Quelle gefixt („Compact-Result genau einmal" + R-ST4). Dedup läuft **v
 **Sobald der Compact-Auftrag durch das Compact-Tool geht, genau EIN debug-Log** — vor jeder
 Kürzung, mit den Anfangswerten: `agent, messageCount, estimatedInputTokens, budget,
 thinkingEnabled` — damit Paul die Werte mit der UI (Token-Header) abgleichen kann. Bei
-Budget „off" (≤ 0) ist das Entry-Log der einzige Log.
+Budget „off" (≤ 0) ist das Entry-Log der einzige *Compact*-Log. **Klarstellung (R-CC-14,
+2026-09-26):** seit dem monitor-freien Service schreiben die internen Compressor-Chat-Events
+zusätzlich `log.debug`-Zeilen (log-only Monitor) — der Entry-Log bleibt die EINE *Compact-Ereignis*-
+Zeile; die Compressor-Debug-Zeilen sind kein Verstoß gegen dieses BDD.
 
 ### R-CIB-4 — Stufen-Kürzung über Budget ✅ done
 
@@ -324,6 +327,50 @@ THEN existiert genau eine Result-Zeile in Log UND im Tool-Ergebnis an den Agente
 - **Context-Pollution-Quellen** (Read-Tools ohne Cap, index.md pro Turn, Workspace-Memory ohne
   Cap): ❓ [open-points.md](open-points.md) — hier nicht behoben; der Compact symptom-behandelt
   nur seinen eigenen Input.
+
+## Compact-Nachbau-Review (Paul, 2026-09-26 — 6 Punkte, einzeln entschieden; ✅ gebaut & reviewed 2026-09-26)
+
+### R-CC-11 ✅ — Benennung & Architektur des `compact`-Packages (built `414edf4`)
+
+- `CompactEngine` → **`CompactService`** (Einstiegs-Component, Name = Aufgabe).
+- `CompactStager` → **`ContextTrimComponent`** (budgetierte Stufenkürzung; bleibt im
+  `compact`-Package, intern/deep module — nur der Service zeigt nach außen).
+- `CompactResult` (Record inkl. nested Status/Stage/Stats) → **`model`-Package** — wird von
+  Agent-Layer und Plugin konsumiert, ist Model/Value.
+- `CompactLog`: **bleibt wie ist** (Test-Naht für „genau EIN debug-Log" + Result-Level-BDDs;
+  capturing-Implementierung statt Log-Capture-Lib) + kurze Info-Zeile an der Klasse, die den Zweck
+  dokumentiert.
+- `CompactConstants`: **bleibt final class mit privatem Konstruktor** (Konstanten-Interfaces sind
+  Anti-Pattern; Paul 2026-09-26 bestätigt).
+
+### R-CC-12 ✅ — `CompactResult` trägt den letzten Modell-Wert (built `9cf99c3`)
+
+- `Stats` + `resultLine()` zeigen **beide** Zahlen: unser Estimate **und** den letzten
+  provider-gemeldeten `inputTokenCount()` als `requestTokens` + `requestIsEstimate`.
+- **Nur echte Provider-Werte** (`lastProviderInputTokens` ist per Konstruktion nur gesetzt, wenn
+  die API gemeldet hat — `n/a` sonst).
+- Capture **vor** `memory.clear()` (async-state-safety; nach clear ist der Wert weg).
+- GIVEN Memory hat letzten Modell-Input 80k WHEN Compact läuft THEN `resultLine()` zeigt Estimate
+  und `requestTokens=80k` nebeneinander.
+
+### R-CC-13 ✅ — Token-Mathe zentral in `ChatMessageUtil`, Trim in `ContextTrimComponent` (built `08c9a57`)
+
+- Die Formel (`chars×2/7`) wird **zentral** in `ChatMessageUtil` abgelegt/verwendet; die
+  Trim-Logik (Stufenkürzung, Caps, letzte User-Message voll) lebt vollständig in
+  `ContextTrimComponent`. Keine Doppelhaltung der Mathe, keine Compact-Logik außerhalb der
+  Component.
+- Die größere Konsolidierung (Memory-Zähler vs. Estimate — R-CC-10-Messwerte als Grundlage) folgt
+  nach den Messwerten als eigener Punkt.
+
+### R-CC-14 ✅ — Monitor-freier `CompactService`, Emission gehört den Tools/Callern (built `d3e8833`)
+
+- `CompactService.compact(...)` wird **monitor-frei** — pure Service-Call, Return = `CompactResult`.
+  Der Service ist entsprechend „offen", dass die Tools sauber reporten können (auch fürs Testing).
+- Die Engine feuert kein `onTool` mehr; **Start- und Ergebnis-Emission macht der jeweilige Caller**
+  über die bestehende Tool-/Monitor-Mechanik (Button, `compactSession`, PoDelegateTool,
+  Auto-Compact — alle funneln durch `AbstractAgent.compact`).
+- Interne Chat-Events des Compressor-Calls (`onChatMessage`/`onChatResponse`) gehen **nur ins Log**
+  — die UI braucht die Streaming-Preview des internen Calls nicht.
 
 ### R-CC-10 ✅ — Diagnose-Dreiklang im Compact-Log: Memory vs. Modell vs. Schätzung (built `138a2ea`, Da-Dok-Review: Code-Seite sauber, Da-Dok-Verifikation QUEUED_MARKER-Hunk: nicht im Commit)
 
