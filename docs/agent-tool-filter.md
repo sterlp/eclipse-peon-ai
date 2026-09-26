@@ -1,6 +1,10 @@
+---
+idPrefix: TF
+---
+
 # Agent-Tool-Filter — Tool-Sichtbarkeit je Agent
 
-> **Status:** ❌ specified (2026-09-25, Paul) · **idPrefix:** TF ·
+> **Status:** ❌ specified (2026-09-25, Paul) ·
 > **ADRs:** [ADR-0048](adr/0048-docs-linter-read-only-and-tool-split.md) (Korrektur 2026-09-25) ·
 > **verwandt:** [review-agent.md](review-agent.md) · [custom-agents-design.md](custom-agents-design.md) · [search-agent-tool.md](search-agent-tool.md)
 

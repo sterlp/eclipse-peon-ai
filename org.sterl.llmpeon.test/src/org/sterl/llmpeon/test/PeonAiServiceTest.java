@@ -878,6 +878,16 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
                     .count();
             assertEquals("Da Dok keeps all 4 plan* methods", 4, activePlanMethods);
         }
+
+        // R-TF-2: Da Thinka / Da Mek plan*-visibility unchanged — all 4 plan* methods stay active.
+        for (var agent : List.of(aiService.getAgent(AiPlanAgent.NAME).orElseThrow(),
+                aiService.getAgent(AiDevAgent.NAME).orElseThrow())) {
+            long activePlanMethods = agent.getToolService().getExecutors().stream()
+                    .filter(e -> e.getTool() instanceof PlanTool)
+                    .filter(agent::isToolActive)
+                    .count();
+            assertEquals(agent.getName() + " keeps all 4 plan* methods", 4, activePlanMethods);
+        }
     }
 
     // UC-TF-2
