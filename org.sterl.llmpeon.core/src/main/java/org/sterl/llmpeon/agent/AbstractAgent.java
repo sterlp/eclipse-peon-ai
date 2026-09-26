@@ -258,7 +258,7 @@ public abstract class AbstractAgent implements AiAgent {
      * unchanged after the prefix; the time is rendered in the queue's clock zone.
      */
     private String queuedMarker(UserMessageQueue.QueuedMessage entry) {
-        return UserMessageQueue.QUEUED_MARKER_PREFIX + "(queued " + messageQueue.queuedLabel(entry.queuedAt()) + "): " + entry.text();
+        return UserMessageQueue.QUEUED_MARKER_PREFIX + "(" + messageQueue.queuedLabel(entry.queuedAt()) + "): " + entry.text();
     }
 
     /** Execute a single LLM+tool turn for the given message. */

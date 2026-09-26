@@ -98,7 +98,7 @@ class AbstractAgentTest {
         assertThat(toolLines).contains("Reading queued User message: msg2"
                 + System.lineSeparator() + "msg3 (queued 14:32)");
         // AND — the LLM payload marker carries the same time, text unchanged after the prefix
-        assertThat(userTexts.get(1)).contains("[Queued Message] (queued 14:32):", "msg2", "msg3");
+        assertThat(userTexts.get(1)).contains("[Queued Message] (14:32):", "msg2", "msg3");
         
     }
 
@@ -563,7 +563,7 @@ class AbstractAgentTest {
         // THEN — the drained queue becomes the payload, marked like the in-loop pollNext
         List<String> userTexts = extractUserTexts(agent.getMemory().getCopy());
         assertThat(userTexts).hasSize(1);
-        assertThat(userTexts.get(0)).contains("[Queued Message] (queued 14:32):", "q1");
+        assertThat(userTexts.get(0)).contains("[Queued Message] (14:32):", "q1");
         // AND — no literal "null" concatenated into the prompt (pre-fix defect)
         assertThat(userTexts.get(0)).doesNotContain("null");
         // AND — exactly one LLM call for the queued payload

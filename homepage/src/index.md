@@ -81,7 +81,7 @@ The AI assistant has access to several tools:
 4. **Debug**: Paste error messages and ask "What's causing this?"
 
 ::: info "CTRL+Enter"
-You can also send messages with `CTRL+Enter` or `CMD+Enter` - if the AI is working, the message is added to the history - best effort to add message during a tool loop. When such a queued message is picked up, the chat discloses when it was queued — e.g. `[Queued Message] (queued 14:32): …` — so you can see how long it waited.
+You can also send messages with `CTRL+Enter` or `CMD+Enter` - if the AI is working, the message is added to the history - best effort to add message during a tool loop. When such a queued message is picked up, the chat discloses when it was queued — e.g. `[Queued Message] (14:32): …` — so you can see how long it waited.
 :::
 
 - Drag-and-drop files from Eclipse Explorer or your file system directly into the chat input to attach them as `@path` references.
