@@ -325,7 +325,7 @@ THEN existiert genau eine Result-Zeile in Log UND im Tool-Ergebnis an den Agente
   Cap): ❓ [open-points.md](open-points.md) — hier nicht behoben; der Compact symptom-behandelt
   nur seinen eigenen Input.
 
-### R-CC-10 ❌ — Diagnose-Dreiklang im Compact-Log: Memory vs. Modell vs. Schätzung
+### R-CC-10 ✅ — Diagnose-Dreiklang im Compact-Log: Memory vs. Modell vs. Schätzung (built `138a2ea`, Da-Dok-Review: Code-Seite sauber, Da-Dok-Verifikation QUEUED_MARKER-Hunk: nicht im Commit)
 
 **Anlass (2026-09-25, Paul, Main-Log):** `Compact hint … 289493 tokens of 240000 used` bei einem
 Agenten mit **256k-Modell-Limit**, danach `Compact called but skipped because of small context` —
