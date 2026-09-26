@@ -39,9 +39,15 @@ Umbenennen"-Risiko (eine Quelle für Konstante und `@Tool(name=…)`).
 
 ### R-TF-2 ✅ — Da Sniffa (SearchAgent) sieht keine Plan-Tools
 
-- Der `SearchAgentTool`-Filter schließt `PlanTool` aus. **🐞 Befund 2026-09-25:** Plan-Tools sind
+- Der `SearchAgentTool`-Filter schließt `PlanTool` aus. **Befund 2026-09-25:** Plan-Tools sind
   `isEditTool()==false` ("READ" markiert), schreiben aber real (`planSave`/`planUpdate` →
   `peon-plan/overview.md`) — der SearchAgent sah bisher alle vier plan*-Methoden.
+- **Klarstellung (Paul, 2026-09-25, absichtlich):** `isEditTool=false` auf den Plan-Tools ist
+  **Design, kein Label-Bug** — so fließen Da Thinka und Da Dok automatisch durch den
+  `!isEditTool`-Filter, ohne einen Plan-Sonderfilter. Die Alternative (PlanTools als Edit-Tools +
+  Namensfilter auf den Plan-Pfad) wäre der umgekehrte Sonderfall. Der **klassen-basierte Ausschluss
+  für Da Sniffa bleibt deshalb richtig**: READ-Markierung heißt nicht "für jeden Recherche-Agenten",
+  nur "nicht-grob-edit".
 - GIVEN SearchAgent WHEN toolSpecifications THEN keine plan*-Tools (planRead/planSave/planUpdate/
   planImplemented)
 - GIVEN SearchAgent WHEN sonstige READ-Tools THEN unverändert sichtbar (read/grep/search…)
