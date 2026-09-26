@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.Function;
 
+import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.queuedmessages.UserMessageQueue;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.shared.ChatMessageUtil.RenderOptions;
@@ -30,7 +31,7 @@ import dev.langchain4j.data.message.UserMessage;
  * one caps line) is appended once at the input end, only when something was truncated —
  * including a dedup-only collapse (F4, R-CIB-5).</p>
  */
-public class CompactStager {
+public class ContextTrimComponent {
 
     /** Stage 1: thinking is front-capped at this many chars (the end — the conclusion — is kept). */
     static final int STAGE1_THINK_CAP = 9000;

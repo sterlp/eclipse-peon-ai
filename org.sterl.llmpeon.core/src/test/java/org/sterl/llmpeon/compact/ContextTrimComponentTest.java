@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
-import org.sterl.llmpeon.compact.CompactResult.Stage;
+import org.sterl.llmpeon.model.CompactResult.Stage;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.tool.ToolService;
 
@@ -22,9 +22,9 @@ import dev.langchain4j.data.message.UserMessage;
  * Pure staging tests of the compact input (R-CIB-1…5, docs/compact.md §BDD) — no agent, no LLM.
  * Budgets are tokens (chars×2/7 estimator), fixture sizes are chosen so exactly one stage wins.
  */
-class CompactStagerTest {
+class ContextTrimComponentTest {
 
-    private final CompactStager subject = new CompactStager();
+    private final ContextTrimComponent subject = new ContextTrimComponent();
 
     // ---------- budget off / under budget ----------
 

@@ -15,7 +15,7 @@ import org.sterl.llmpeon.CoreTestFixtures;
 import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
-import org.sterl.llmpeon.compact.CompactResult;
+import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;

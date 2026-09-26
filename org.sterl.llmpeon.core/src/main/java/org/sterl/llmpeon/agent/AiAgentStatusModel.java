@@ -3,7 +3,7 @@ package org.sterl.llmpeon.agent;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.sterl.llmpeon.compact.CompactResult;
+import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.shared.StringUtil;
 
 /**

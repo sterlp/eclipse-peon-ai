@@ -1,4 +1,4 @@
-package org.sterl.llmpeon.compact;
+package org.sterl.llmpeon.model;
 
 import org.sterl.llmpeon.shared.StringUtil;
 

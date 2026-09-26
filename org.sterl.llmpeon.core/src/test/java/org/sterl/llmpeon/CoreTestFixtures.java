@@ -1,6 +1,6 @@
 package org.sterl.llmpeon;
 
-import org.sterl.llmpeon.compact.CompactResult;
+import org.sterl.llmpeon.model.CompactResult;
 
 /**
  * Shared test fixtures across the core test tree.

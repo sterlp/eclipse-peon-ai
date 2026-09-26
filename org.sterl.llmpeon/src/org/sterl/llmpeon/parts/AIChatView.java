@@ -30,7 +30,7 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.ui.IWorkingSet;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiAgentStatusModel;
-import org.sterl.llmpeon.compact.CompactResult;
+import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.command.SlashCommandResolver;

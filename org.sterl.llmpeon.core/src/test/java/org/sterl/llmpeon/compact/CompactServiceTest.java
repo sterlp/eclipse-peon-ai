@@ -17,6 +17,7 @@ import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
@@ -35,10 +36,10 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
 /**
- * Engine tests (R-CIB-3 entry log, R-CIB-6 result line, slot routing) — the request payload is
+ * CompactService tests (R-CIB-3 entry log, R-CIB-6 result line, slot routing) — the request payload is
  * captured and asserted, not only "a call happened" (AGENTS-DEV test honesty).
  */
-class CompactEngineTest {
+class CompactServiceTest {
 
     private MockLlmServer server;
     private MockLlmServer serverB;
@@ -200,7 +201,7 @@ class CompactEngineTest {
         var log = new CapturingLog();
         var streamMock = new StreamMock();
         var cm = streamMock.buildMock(r -> ChatResponse.builder().aiMessage(AiMessage.aiMessage("")).build());
-        var engine = new CompactEngine(new ConfiguredChatModel(LlmConfig.builder().model("test").build(), cm), log);
+        var engine = new CompactService(new ConfiguredChatModel(LlmConfig.builder().model("test").build(), cm), log);
         var messages = List.<ChatMessage>of(UserMessage.from("Foo"), AiMessage.from("Bar"));
 
         // WHEN
@@ -227,7 +228,7 @@ class CompactEngineTest {
         var streamMock = new StreamMock();
         var cm = streamMock.buildMock(r -> ChatResponse.builder()
                 .aiMessage(AiMessage.aiMessage("WHAT: Test summary")).build());
-        var engine = new CompactEngine(new ConfiguredChatModel(LlmConfig.builder().model("test").build(), cm),
+        var engine = new CompactService(new ConfiguredChatModel(LlmConfig.builder().model("test").build(), cm),
                 new CapturingLog());
         var monitor = new CapturingMonitor();
 
@@ -271,7 +272,7 @@ class CompactEngineTest {
                 return null;
             }
         };
-        var engine = new CompactEngine(configuredModel, new CapturingLog());
+        var engine = new CompactService(configuredModel, new CapturingLog());
 
         // WHEN + THEN — Log OR throw: the throw stays in the call path (R-CC-3)
         assertThatThrownBy(() -> engine.compact("dev-agent", List.of(UserMessage.from("test")), 100000, "", AiMonitor.NULL_MONITOR))
@@ -294,7 +295,7 @@ class CompactEngineTest {
         var config = base.withModelConfig(AgentModelConfig.COMPACT,
                 new AgentModelConfig(serverB.getUrl(), null, "compact-model", null, null, "0.2"));
         serverB.queueResponse("WHAT: compact briefing");
-        var engine = new CompactEngine(new ConfiguredChatModel(config));
+        var engine = new CompactService(new ConfiguredChatModel(config));
 
         // WHEN — one compact
         var result = engine.compact("dev-agent", List.of(UserMessage.from("Foo"), AiMessage.from("Bar")), 100000, "", AiMonitor.NULL_MONITOR).result();
@@ -321,7 +322,7 @@ class CompactEngineTest {
                 .apiKey("test-key")
                 .build();
         server.queueResponse("WHAT: base briefing");
-        var engine = new CompactEngine(new ConfiguredChatModel(config));
+        var engine = new CompactService(new ConfiguredChatModel(config));
 
         // WHEN
         var result = engine.compact("dev-agent", List.of(UserMessage.from("Foo"), AiMessage.from("Bar")), 100000, "", AiMonitor.NULL_MONITOR).result();
@@ -349,7 +350,7 @@ class CompactEngineTest {
         var config = base.withModelConfig(AgentModelConfig.COMPACT,
                 new AgentModelConfig(serverB.getUrl(), null, "compact-model", "medium", null, null));
         serverB.queueResponse("WHAT: compact briefing");
-        var engine = new CompactEngine(new ConfiguredChatModel(config));
+        var engine = new CompactService(new ConfiguredChatModel(config));
 
         // WHEN
         var result = engine.compact("dev-agent", List.of(UserMessage.from("Foo")), 100000, "", AiMonitor.NULL_MONITOR).result();
@@ -376,7 +377,7 @@ class CompactEngineTest {
         var config = base.withModelConfig(AgentModelConfig.COMPACT,
                 new AgentModelConfig(serverB.getUrl(), null, "claude-sonnet-4-5", "true", null, null));
         serverB.queueResponse("WHAT: compact briefing");
-        var engine = new CompactEngine(new ConfiguredChatModel(config));
+        var engine = new CompactService(new ConfiguredChatModel(config));
 
         // WHEN
         var result = engine.compact("dev-agent", List.of(UserMessage.from("Foo")), 100000, "", AiMonitor.NULL_MONITOR).result();
@@ -405,7 +406,7 @@ class CompactEngineTest {
                 new AgentModelConfig(serverB.getUrl(), null, "compact-model", null,
                         "{\"foo\":\"bar\",\"model\":\"hacked\",\"temperature\":0.9}", "0.2"));
         serverB.queueResponse("WHAT: compact briefing");
-        var engine = new CompactEngine(new ConfiguredChatModel(config));
+        var engine = new CompactService(new ConfiguredChatModel(config));
 
         // WHEN
         var result = engine.compact("dev-agent", List.of(UserMessage.from("Foo")), 100000, "", AiMonitor.NULL_MONITOR).result();
@@ -424,11 +425,11 @@ class CompactEngineTest {
 
     // ---------- helpers ----------
 
-    private static CompactEngine engineWithSummary(CapturingLog log) {
+    private static CompactService engineWithSummary(CapturingLog log) {
         var streamMock = new StreamMock();
         var cm = streamMock.buildMock(r -> ChatResponse.builder()
                 .aiMessage(AiMessage.aiMessage("WHAT: Test summary")).build());
-        return new CompactEngine(new ConfiguredChatModel(LlmConfig.builder().model("test").build(), cm), log);
+        return new CompactService(new ConfiguredChatModel(LlmConfig.builder().model("test").build(), cm), log);
     }
 
     private static AiMessage ai(String text, String thinking) {

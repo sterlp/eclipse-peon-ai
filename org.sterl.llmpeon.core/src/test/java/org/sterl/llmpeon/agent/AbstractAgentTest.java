@@ -22,7 +22,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
-import org.sterl.llmpeon.compact.CompactResult;
+import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.memory.FileAgentHistoryStore;

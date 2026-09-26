@@ -3,6 +3,7 @@ package org.sterl.llmpeon.compact;
 import java.util.List;
 
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
+import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
@@ -19,7 +20,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
  * like the legacy path (COMPRESS_SYSTEM prompt, slot routing, no tools), and logs the entry line
  * (R-CIB-3) plus the result line (R-CIB-6). Stateless per call — safe from any thread.
  */
-public class CompactEngine {
+public class CompactService {
 
     /**
      * One compact attempt: the status+stats {@link CompactResult} plus the summary text the
@@ -31,18 +32,18 @@ public class CompactEngine {
     private static final SystemMessage COMPRESS_SYSTEM = SystemMessage.systemMessage(PromptLoader.load("compressor.md"));
 
     private final ConfiguredChatModel chatModel;
-    private final CompactStager stager;
+    private final ContextTrimComponent stager;
     private final CompactLog log;
 
-    public CompactEngine(ConfiguredChatModel chatModel) {
-        this(chatModel, new CompactStager(), CompactLog.slf4j());
+    public CompactService(ConfiguredChatModel chatModel) {
+        this(chatModel, new ContextTrimComponent(), CompactLog.slf4j());
     }
 
-    public CompactEngine(ConfiguredChatModel chatModel, CompactLog log) {
-        this(chatModel, new CompactStager(), log);
+    public CompactService(ConfiguredChatModel chatModel, CompactLog log) {
+        this(chatModel, new ContextTrimComponent(), log);
     }
 
-    CompactEngine(ConfiguredChatModel chatModel, CompactStager stager, CompactLog log) {
+    CompactService(ConfiguredChatModel chatModel, ContextTrimComponent stager, CompactLog log) {
         this.chatModel = chatModel;
         this.stager = stager;
         this.log = log;
@@ -109,7 +110,7 @@ public class CompactEngine {
      * deduplicated, plus the output summary line — always. Pure formatting of the Stager's
      * numbers; no instrumentation of the call paths.
      */
-    private static String diagnosticBlock(CompactStager.Outcome outcome) {
+    private static String diagnosticBlock(ContextTrimComponent.Outcome outcome) {
         var nl = System.lineSeparator();
         var sb = new StringBuilder();
         if (outcome.droppedChars() > 0 || outcome.duplicatesCollapsed() > 0) {
@@ -125,7 +126,7 @@ public class CompactEngine {
                 sb.append(nl);
             }
         }
-        long totalBefore = outcome.messages().stream().mapToLong(CompactStager.MessageStat::charsBefore).sum();
+        long totalBefore = outcome.messages().stream().mapToLong(ContextTrimComponent.MessageStat::charsBefore).sum();
         // Clamped: state-only user messages drop chars that have no per-message line (not in the input).
         var dropRate = String.format(java.util.Locale.ROOT, "%.1f%%",
                 totalBefore > 0 ? Math.min(100.0, outcome.droppedChars() * 100.0 / totalBefore) : 0.0);
@@ -145,7 +146,7 @@ public class CompactEngine {
         }
     }
 
-    private static CompactResult.Stats stats(int messageCount, CompactStager.Outcome outcome, int resultChars,
+    private static CompactResult.Stats stats(int messageCount, ContextTrimComponent.Outcome outcome, int resultChars,
                                              String model, long millis) {
         return new CompactResult.Stats(messageCount, outcome.estimateBefore(), outcome.estimateAfter(),
                 outcome.stage(), outcome.droppedChars(), resultChars, model, millis);

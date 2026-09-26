@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.function.Supplier;
 
 import org.jspecify.annotations.Nullable;
-import org.sterl.llmpeon.compact.CompactResult;
+import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;

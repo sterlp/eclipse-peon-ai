@@ -14,8 +14,8 @@ import java.util.function.Supplier;
 import org.sterl.llmpeon.ai.AgentConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.compact.CompactConstants;
-import org.sterl.llmpeon.compact.CompactEngine;
-import org.sterl.llmpeon.compact.CompactResult;
+import org.sterl.llmpeon.compact.CompactService;
+import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.queuedmessages.UserMessageQueue;
@@ -314,7 +314,7 @@ public abstract class AbstractAgent implements AiAgent {
             if (memory.size() < CompactConstants.MIN_COMPACT_MESSAGES) return CompactResult.skippedSmall();
 
             // R-CIB-1: the staging budget is the raw config value — compactFactor scales only the trigger
-            var run = new CompactEngine(configuredModel).compact(
+            var run = new CompactService(configuredModel).compact(
                     getName(), memory.getCopy(), configuredModel.getConfig().getAutoCompactAfter(),
                     memory.tokenDiagnosis(), monitor);
             var result = run.result();

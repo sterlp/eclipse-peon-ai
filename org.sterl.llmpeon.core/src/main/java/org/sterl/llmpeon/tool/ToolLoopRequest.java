@@ -5,7 +5,7 @@ import java.util.function.Predicate;
 
 import org.jspecify.annotations.Nullable;
 import org.sterl.llmpeon.agent.AiAgent;
-import org.sterl.llmpeon.compact.CompactResult;
+import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.ai.AgentConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
