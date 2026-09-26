@@ -65,22 +65,6 @@ bleibt ohne Zeitinfo (stateless, Rauschen).
 Anzeige-Zustand `compacting` + 🟡-Präfix in `AiAgentStatusWidget.text()`. Wiederaufnahme = Mini-Increment.
 Kontext: [compact-lock.md](compact-lock.md).
 
-## 🔒 „!-Messages" — Queued-Message-Override (2026-09-25 geklärt)
-
-Spezifiziert als Regel 8 in [queued-user-messages.md](queued-user-messages.md). Kein offener Punkt mehr.
-
-## ❓ Tool-Evolution PO-Run CR-Verdicts (2026-09-19)
-
-Alle CR-Items entschieden — Verdicts + Begründungen: [resolved-points.md](resolved-points.md)
-(„Tool-Evolution-Run"). Offen bleiben nur die dort gelisteten ❌-Stories (project-problems,
-debugger, web-tools — teils inzwischen ✅) und die geparkten Docs (terminal-session, tool-confirmation).
-
-## ❓ `applyEdit` Not-Found dumpet das gesamte File (2026-09-19 — bewusst so, Lösung offen)
-
-**Paul: bewusst so** — der Dump spart den Read-Roundtrip im Fehlerfall. Offen: Roundtrip vs.
-Context-Bombe bei großen Dateien; gute Lösung (Kontext-Fenster um die ähnlichste Fundstelle)
-existiert nicht. Bleibt stehen, kein Bau.
-
 ## ❓ ApiRetry: Cancellation-/Retry-Klassifikation (Priorität hoch, Evidence 4×)
 
 Befund-Klassen (derselbe Shape: Call bricht statt sichtbarem Retry):
@@ -103,12 +87,6 @@ Befund-Klassen (derselbe Shape: Call bricht statt sichtbarem Retry):
 
 `StreamingBridge.onError` versteckt die Statuszeile → 10s…5min Funkstille (User liest „hängt").
 SOLL-Idee: „retrying in Xs" im Backoff-Fenster. Mini-Story, verwandt mit header-state-leak.
-
-## ❓ Shell-Tool für Plan-/Review-Agent — Whitelist-Capability? (2026-09-10/13)
-
-Use-Case belegt (Da Dok konnte im Release-Scan Commits nicht isolieren — kein Git). Optionen:
-volles ShellTool / reduziert / Whitelist pro Agent (analog Write-Validator). Offen: Scope, Default-Set,
-Read-only-Filter. Verwandt: ADR-0015, ADR-0022.
 
 ## ⏳ Jackson 2 → 3: beobachten (2026-09-10, User)
 
@@ -158,10 +136,14 @@ Blocker; Revisit nur bei Beschwerden/Datenverlust-Meldungen.
 ## Compact ([compact.md](compact.md))
 
 - ❓ Context-Noise zuerst raus (User-Idee, 2026-09-13): Context-Item-Messages vor dem Kürzen
-  nehmen — „Light-Version" des Input-Budgets; R-CIB-Redesign (2026-09-24) deckt das Staging ab,
-  Noise-Entfernung bleibt eigener Punkt.
-- 🔒 R-CIB-1…6 SOLL festgelegt (Redesign 2026-09-24, Da-Dok-Review F1–F8 abgearbeitet),
-  Story ❌ specified → Plan/Bau.
+  nehmen — „Light-Version" des Input-Budgets; die Input-Budget-Story (2026-09-24) deckt das
+  Staging ab, Noise-Entfernung bleibt eigener Punkt.
+- ⏳ **Input-Budget-Doc ausgegliedert** (2026-09-26, Jon): die sechs Lint-Befunde im Compact-Doc
+  (6× `PRAEFIX_FREMD` für die Input-Budget-Regeln; die 6× `DOPPELT_DEFINIERT` waren durch das
+  Löschen von compact-context-counter.md schon weg) mit einem **Doc-Split** gelöst statt
+  Umnummerierung — [compact-input-budget.md](compact-input-budget.md) (Präfix `CIB`), IDs und
+  ~35 Code-Kommentar-Referenzen unangetastet, `compact.md` bleibt Einstieg (Präfix `CC`).
+  Rückversicherung Paul: Split okay, oder doch Umnummerierung unter `CC`?
 
 ## Neu (2026-09-14, story/po-compact-2026-09-13)
 

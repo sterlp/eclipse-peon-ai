@@ -2,39 +2,37 @@
 idPrefix: CC
 ---
 
-# Compact (core) — ehrlicher Compact: Zähler, Input-Budget, Result, Logging
+# Compact (core) — ehrlicher Compact: Zähler, Result, Logging
 
 > **Status:** R-CC-1…6 **✅ done** (2026-09-23, Hotfix Paul, Surefire core 930, Mutations-Nachweis)
-> · R-CIB-1…6 **✅ done** (2026-09-25, Da Dok Review ACCEPTED, 1001 tests grün)
 > · R-CC-8/9 **✅ done** (2026-09-25, Inc 3/3.1, Da Dok Review ACCEPTED)
+> · R-CC-10 **✅ done** (2026-09-26, `138a2ea`) · R-CC-11…14 **✅ done** (2026-09-26,
+> Nachbau-Review, `414edf4`→`d3e8833`)
 > · R-CC-7 **🚧 in design** (Retry/Fehlerklassen, zusammen mit ApiRetry-Tabelle).
+> **Input-Budget-Regeln (Präfix CIB):** eigenes Doc
+> [compact-input-budget.md](compact-input-budget.md) — ✅ done (2026-09-25, Da Dok ACCEPTED).
 > **Komponente:** eigens core-Package `compact` ([ADR-0056](adr/0056-compact-component-and-render-modes.md)) —
 > der Compact ist kein Konversations-Agent. **UI-Teil** (Compact-Button, Compact-Lock/Queue,
 > working-Flag) liegt getrennt in [compact-lock.md](compact-lock.md) → künftig Plugin-Docs.
 > Verwandt: [token-usage.md](token-usage.md) (Header ↑↓ = Kosten, ADR-0004, unverändert),
-> [context-message-concept.md](context-message-concept.md), [header-state-leak.md](header-state-leak.md).
+> [context-message-concept.md](context-message-concept.md), [header-state-leak.md](header-state-leak.md),
+> Architektur: [compact-architektur.md](compact-architektur.md).
 
 ## Problem
 
-Drei Themenkreise, ein Ziel — der Compact ist der Recovery-Pfad für übergroße History und muss
-in jedem Fall liefern, ehrlich und nachvollziehbar:
+Der Compact ist der Recovery-Pfad für übergroße History und muss in jedem Fall liefern, ehrlich
+und nachvollziehbar:
 
-1. **Zähler-Lügen (R-CC, ✅ gefixt 2026-09-23):** `totalTokenUsed` trug zwei Metriken (Provider-
+1. **Zähler-Lügen (✅ gefixt 2026-09-23):** `totalTokenUsed` trug zwei Metriken (Provider-
    Kosten vs. Estimate), Compact-Skip fiel aufs Auto-Gate blind, Hint feuerte je Tool-Runde neu.
-2. **Input-Budget (R-CIB):** der Compact-Input ist heute nur per-Message begrenzt
-   (statischer 4000er Head-Cap, `AiCompressorAgent.java:70`) — kein Gesamt-Budget. Genau dann,
-   wenn er gebraucht wird, kann sein Input das Context-Fenster des Compact-Modells sprengen
-   (Evidenz 2026-09-24: 400 `exceed_context_size_error`). Umgekehrt kappt der Blanko-Cap die
-   Substanz weg: bei einem 200k-Zeichen-Tool-Result bleibt ~1k Token für die Summary — der
-   Compact komprimiert das weg, was er retten soll (Evidenz: 337461 Provider-Tokens vs.
-   114512 Compact-Schätzung, 61 Messages).
-3. **Keine Beobachtbarkeit (R-CIB-6):** kein Logger im Compact-Pfad, keine Größe/Stufen/
-   Dropped-Mengen; History-JSONL wird nach dem Compact gelöscht — ein Compact-Problem ist
-   nachträglich nicht rekonstruierbar.
+2. **Input-Budget:** der Compact-Input war nur per-Message begrenzt — kein Gesamt-Budget; das
+   Thema lebt im [Input-Budget-Doc](compact-input-budget.md) (✅ behoben 2026-09-25).
+3. **Keine Beobachtbarkeit:** kein Logger im Compact-Pfad, keine Größe/Stufen/Dropped-Mengen —
+   ebenfalls im [Input-Budget-Doc](compact-input-budget.md) behoben.
 
 ---
 
-## Teil 1 — Zähler & Result (R-CC)
+## Zähler & Result (R-CC)
 
 ### R-CC-8 — Compact/Hint nur ab einer echten History ✅ done (Paul 2026-09-24)
 
@@ -135,166 +133,15 @@ Stack; LLM erfährt nichts, Header hängt ([header-state-leak.md](header-state-l
 
 ---
 
-## Teil 2 — Compressor-Input-Budget (R-CIB)
-
-### R-CIB-1 — Budget & Schätzung an einer Stelle ✅ done
-
-Budget = `autoCompactAfter` (Config, Tokens), Vergleichsbasis **ohne** Toleranz; die
-**+5%-Toleranz gilt nur für den Auto-Compact-Hint** (Spielraum, damit das LLM noch Tools
-aufrufen kann). **Schätzung an EINER Stelle:** `ChatMessageUtil.estimateTokens` (chars×2/7,
-bewusst über-schätzend) ist der einzige Estimator — auch für den Compact-Input. Der alte
-`join/4`-Ansatz ist verworfen (schätzte niedriger → Kürzung greift später als gedacht; zwei
-Konventionen im selben Modul, F2). Werte als Estimate tragen die `~N (estimate)`-Markierung
-(R-CC-6-Muster).
-
-- GIVEN `autoCompactAfter ≤ 0`/unset WHEN der Compact-Input gebaut wird THEN **nie** kürzen
-  (Budget „off", wie der Hint), nur Entry-Log. *(Test: `CompactStagerTest#zeroBudgetMeansNoCap`)*
-- **Gate-Seite (Q2-Verifikation 2026-09-24):** das Auto-Compact-Gate behandelt `≤ 0` ebenfalls
-  als **off** (`getAutoCompactAfter() > 0`-Bedingung) — sonst feuert es bei ≤ 0 jeden Turn,
-  während der Stager nie kürzt. IST-Mangel, bestehend, wird mit dieser Story geschlossen
-  (Hint-Gate macht ≤ 0 bereits sauber). *(Test: `compactWithZeroBudget_gateOff`)*
-
-### R-CIB-2 — Loop-Filter: exakt statt Substring ✅ done
-
-Exakte Duplikate via `Set` statt `indexOf`-Substring, O(n) (`LinkedHashSet`, keep-first) —
-Zweck: LLM-Hänger (50× dasselbe File) kollabieren, ohne False-Positives. Duplikat-Hygiene wurde
-an der Quelle gefixt („Compact-Result genau einmal" + R-ST4). Dedup läuft **vor** den Caps
-(ungecappte Strings = exakter Vergleich; nach Caps würden verschiedene Messages kollabieren).
-
-- GIVEN 50× identische Tool-Message WHEN der Filter läuft THEN genau einmal im Input.
-- GIVEN zwei Messages mit identischem Kopf (bis Truncation), differierendem Inhalt THEN beide
-  bleiben (kein Substring-False-Positive — Regressions-Gegenstück zum IST; Mutation: Set-Dedup
-  zurück zu Substring → Test muss rot).
-
-### R-CIB-3 — Entry-Debug-Log: Anfangswerte ✅ done
-
-**Sobald der Compact-Auftrag durch das Compact-Tool geht, genau EIN debug-Log** — vor jeder
-Kürzung, mit den Anfangswerten: `agent, messageCount, estimatedInputTokens, budget,
-thinkingEnabled` — damit Paul die Werte mit der UI (Token-Header) abgleichen kann. Bei
-Budget „off" (≤ 0) ist das Entry-Log der einzige *Compact*-Log. **Klarstellung (R-CC-14,
-2026-09-26):** seit dem monitor-freien Service schreiben die internen Compressor-Chat-Events
-zusätzlich `log.debug`-Zeilen (log-only Monitor) — der Entry-Log bleibt die EINE *Compact-Ereignis*-
-Zeile; die Compressor-Debug-Zeilen sind kein Verstoß gegen dieses BDD.
-
-### R-CIB-4 — Stufen-Kürzung über Budget ✅ done
-
-Trigger: `estimate > autoCompactAfter`. Re-Estimate (`ChatMessageUtil.estimateTokens`) nach
-jeder Stufe. Gilt **nur im Compacter** — der Live-Context an das LLM wird nicht verändert
-(kein Live-Think-Stripping, bewusst verworfen). Logic = pure Funktion
-`(Memory-Snapshot, Budget) → (Input-String, Disclosure, Stats)` im `compact`-Package
-([ADR-0056](adr/0056-compact-component-and-render-modes.md)) — testbar ohne Agent-Mock.
-
-1. **Stufe 1 — Think-Cap front + letzte echte User-Message:** Thinking wird mit **Cap 9000
-   (Zeichen)** aufgenommen, Front-Cap mit `$`-Anker — **das Ende bleibt** (Konklusion steht am
-   Ende, Kopf ist Prozessgeraste). Neuer Render-Modus in `ChatMessageUtil` (Options-Record,
-   nicht wachsende Parameterliste; IST-Format `Think: `). Gleichzeitig: vom Textcontent der
-   User-Messages nur die **letzte mit echtem User-Text** — frühere User-Messages sind nur
-   „State" (gleiche Semantik wie die Chat-Darstellung). **Echter User-Text = letzter
-   TextContent** der UserMessage — code-verifiziert (Da Thinka 2026-09-24): Turn-Context-Items
-   werden **zuerst** angehängt, der echte User-Text **zuletzt** (`AbstractAgent.doCall:271-274`,
-   `ThreadSafeMemory.add:73-77`, Compact-Restore `AbstractAgent:320-326`); Pauls Erst-These
-   „erster TextContent" war am Code falsch herum und wurde korrigiert. Die Insert-Ordnung ist
-   damit eine Regel — kein Raten mehr ([context-message-concept.md](context-message-concept.md)).
-   **Ausgeschlossen von „letzte":** `COMPACT_HINT`, Queued-Marker, System-Nachrichten —
-   Hint/Marker werden als **Konstanten** referenziert (nie verstreute String-Literale), damit
-   der Ausschluss robust bleibt (Da-Dok F1: der Hint liegt real als UserMessage in der Memory).
-   AI-Text voll.
-2. **Re-Estimate** nach dem Join (`System.lineSeparator`) — estimate ≤ Budget → fertig.
-3. **Stufe 2 — Tool-Results, Tool-Arguments, Thinking auf 6000:** immer noch drüber → Cap 6000
-   (Zeichen) auf alle drei (Arguments gehören dazu, F3 — sonst wandern 200k-Write-Args ungecappt
-   bis zur Endstufe). **Log warn.**
-4. **Endstufe — dynamisches Per-Message-Cap:** immer noch drüber → Cap je Message =
-   `capChars = restTokens × 7 / 2 / n` (Token→Zeichen mit dem ×2/7-Estimator, F5), n ≥ 1
-   geclampt (`AiCompressorAgent.call` ist public und umgeht den `< 3`-Guard) → garantiert
-   Terminierung (Summe ≤ n·cap → estimate ≤ Rest). Ersetzt fixe 3000-Stufe und „Text-only"-Stufe.
-   **Log error.**
-
-Konsequenz: unter Budget wird **gar nicht** gekürzt — auch ein einzelnes großes Tool-Result
-nicht (es passt ja). Der statische 4000er-Blanko-Cap fällt weg.
-
-### R-CIB-5 — Disclosure: einmal am Ende ✅ done
-
-Wurde gekürzt: der Compact-Input endet mit **`session truncated`** plus **einer Zeile** mit den
-angewandten Caps („thinking capped 9000 (front), tool results 6000, per-message cap N,
-duplicates collapsed M") — einmal am Input-Ende, **nicht** in jeder gekappten Message (User-
-korrektur des heutigen IST). Nicht gekürzt → kein Hinweis. `compressor.md`-Prompt wird
-erweitert, damit das Modell die Disclosure-Zeile versteht.
-
-### R-CIB-6 — Compact-Logging: Log + Agent ✅ done
-
-**Eine Result-Zeile pro Compact-Versuch** — dieselben Zahlen an zwei Empfänger:
-
-- **Log:** Stufe (info Stufe 1 / warn Stufe 2 / error Endstufe), estimate vor/nach,
-  Dropped-Menge (Zeichen), Result-Größe, Modell, Dauer; bei Failure Ursache + Zahlen
-  (Fehlerklassen kommen mit R-CC-7). „Log OR throw"-Regel unberührt (Result-Zeile ist kein
-  Exception-Ersatz).
-- **Zum Agenten:** die `CompactResult`-Zeile (Tool-Ergebnis an das LLM) trägt dieselben Zahlen
-  („compressed 61 messages ~114k → input ~40k, result 2.3k, stage: tool results 6000") — das
-  LLM versteht im nächsten Turn, was passiert ist. `CompactResult` wird dafür vom Enum zum
-  **Record** mit den Zahlen erweitert (Da-Dok F9; alle `compact()`-Caller per Grep verifizieren).
-
----
-
-## BDD (R-CIB)
-
-```
-GIVEN History unter Budget (estimate ≤ autoCompactAfter)
-WHEN der Compressor baut seinen Input
-THEN keine Message wird gekürzt oder gestrichen
-AND der Input enthält alle Messages vollständig inkl. Thinking
-AND kein "session truncated"-Hinweis
-AND genau ein debug-Log mit Anfangswerten (agent, messageCount, estimate, budget)
-
-GIVEN autoCompactAfter ≤ 0 oder unset
-WHEN der Compact-Input gebaut wird
-THEN wird nie gekürzt, egal wie groß der Estimate ist
-AND es gibt nur das Entry-Log
-
-GIVEN estimate > autoCompactAfter, Stufe 1 reicht (Re-Estimate ≤ Budget)
-WHEN Stufe 1 läuft
-THEN Thinking ist auf 9000 Zeichen gecappt, Front-Cap mit $-Anker — das Ende (Konklusion) bleibt
-AND die letzte User-Message mit echtem User-Text (LETZTER TextContent) ist voll, frühere nur State
-AND die letzte User-Message ist NICHT der COMPACT_HINT / Queued-Marker (Konstanten-Ausschluss)
-AND AI-Text ist unverändert
-AND der Input endet mit "session truncated" + Cap-Zeile (einmal, am Ende)
-AND Log-Level = info
-
-GIVEN estimate bleibt nach Stufe 1 über Budget
-WHEN Stufe 2 läuft (Cap 6000 auf Tool-Results + Tool-Arguments + Thinking)
-THEN estimate ist danach ≤ Budget oder die Endstufe greift
-AND es gibt ein warn-Log mit Stufe + Zahlen
-
-GIVEN estimate bleibt auch nach Stufe 2 über Budget
-WHEN die Endstufe läuft
-THEN jede Message ist auf restTokens × 7 / 2 / n Zeichen gecappt (n ≥ 1)
-AND estimate ist danach ≤ Budget (garantiert — Mutation: Divisor/Konvertierung mutieren → rot)
-AND es gibt ein error-Log mit Stufe + Zahlen
-
-GIVEN eine einzige Message ist größer als das gesamte Budget
-WHEN die Endstufe läuft
-THEN diese Message wird auf das Per-Message-Cap gekappt und der Compact liefert
-
-GIVEN Dedup allein bringt den Estimate unter Budget
-WHEN der Input gebaut ist
-THEN die Disclosure-Zeile nennt "duplicates collapsed: N" (kein stilles Entfernen)
-
-GIVEN keine UserMessage mit echtem User-Text in der History
-WHEN Stufe 1 läuft
-THEN keine User-Message-Reduktion (Regel greift ins Leere, kein Fehler)
-
-GIVEN ein Compact-Auftrag geht durch das Compact-Tool
-WHEN der Compact startet
-THEN genau EIN debug-Log mit den Anfangswerten wird geschrieben (vor jeder Kürzung)
-
-GIVEN ein Compact-Versuch ist abgeschlossen (erfolgreich oder nicht)
-WHEN das Ergebnis gebaut ist
-THEN existiert genau eine Result-Zeile in Log UND im Tool-Ergebnis an den Agenten
-```
+> **Input-Budget & Logging:** die Regeln R-CIB (budgetierter Compact-Input, Stufenkürzung,
+> Entry-Log, Disclosure, Result-Zeile in Log + Tool-Result + Status) leben in
+> [compact-input-budget.md](compact-input-budget.md).
 
 ## Umsetzung & Slicing (kleine vertikale Inkremente)
 
 1. **Docs ✅ (dieses Doc):** Konsolidierung von compact-input-budget.md + compact-context-counter.md,
-   F1–F8-Entscheidungen eingebacken; alte Docs aufgelöst.
+   F1–F8-Entscheidungen eingebacken; alte Docs aufgelöst. (2026-09-26: das Input-Budget als
+   eigenes Doc wieder ausgegliedert — ein ID-Präfix je Feature-Doc, Linter `PRAEFIX_FREMD`.)
 2. **Core extrahieren:** core-Package `compact` — `CompactStager` (pure: Dedup + Stufen 1/2/
    Endstufe + Disclosure), `CompactEngine` (Stager + LLM-Call + Logging), `CompactResult`-Record.
    Grüne Unit-Tests ohne Agent-Mock; Mutation-Kandidaten: Endstufen-Terminierung + Dedup-Regression.
@@ -319,7 +166,8 @@ THEN existiert genau eine Result-Zeile in Log UND im Tool-Ergebnis an den Agente
 - **Live-Context:** bewusst nicht Teil dieser Story — kein Live-Think-Stripping; nur der
   Compact-Input wird gestuft gekürzt.
 - **R-CC-7** (Fehlerklassen + Retry) bleibt eigenständig 🚧 und teilt sich die Fehlerklassen-
-  Tabelle mit der ApiRetry-Triage — dieses Doc liefert die Zahlen/Disclosure-Infrastruktur (R-CIB-6).
+  Tabelle mit der ApiRetry-Triage — die Zahlen/Disclosure-Infrastruktur liefert das
+  [Input-Budget-Doc](compact-input-budget.md).
 - **Auto-Compact-Trigger-Logik:** `autoCompactAfter` wird nur als Budget gelesen, das
   Trigger-Verhalten ändert sich nicht.
 - **UI** (Compact-Button, Lock/Queue, working-Flag): [compact-lock.md](compact-lock.md) —
@@ -390,7 +238,7 @@ Response-`inputTokenCount()` → Summe läuft davon). Vor jedem Fix wird gemesse
   zeigt alle drei Werte mit Flags (so kann Paul die Quelle der falschen Zahl bestimmen).
 - **Der Fix der Memory-Summe (falls bestätigt) ist ein EIGENER Punkt** — dieser Regel geht nur die
   Messung voraus; keine Heuristik-Änderung, kein Display-Change (R-TF-tangiert nicht).
-- Verwandt: [R-CC-1](compact-context-counter.md) (Zähler = `inputTokenCount()`), Punkt 4 des
+- Verwandt: R-CC-1 (Zähler = `inputTokenCount()`), Punkt 4 des
   Compact-Nachbau-Reviews (beide Zahlen im `CompactResult` sichtbar machen).
 
 ## Info (2026-09-25, Paul — „China API leak", nur notiert, kein Bau)

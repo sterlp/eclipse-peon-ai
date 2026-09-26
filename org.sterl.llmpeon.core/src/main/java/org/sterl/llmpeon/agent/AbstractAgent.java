@@ -254,7 +254,7 @@ public abstract class AbstractAgent implements AiAgent {
     }
 
     /**
-     * Rule 9 LLM marker: {@code [Queued Message] (queued HH:mm): <text>} — the message text stays
+     * Rule 9 LLM marker: {@code [Queued Message] (HH:mm): <text>} — the message text stays
      * unchanged after the prefix; the time is rendered in the queue's clock zone.
      */
     private String queuedMarker(UserMessageQueue.QueuedMessage entry) {
@@ -326,8 +326,7 @@ public abstract class AbstractAgent implements AiAgent {
                     + ChatMessageUtil.estimateTokens(messages) + " tokens"
                     + (compactCfg.getModel() == null ? "" : " using " + compactCfg.getModel()));
             var result = new CompactService(configuredModel).compact(
-                    getName(), messages, configuredModel.getConfig().getAutoCompactAfter(),
-                    memory.tokenDiagnosis(), requestTokens, requestTokens == null);
+                    getName(), messages, memory.tokenDiagnosis(), requestTokens);
 
             if (result.status() == CompactResult.Status.FAILED_EMPTY) {
                 monitor.onProblem("Compact failed: " + result.cause());

@@ -75,14 +75,18 @@ public class CompactService {
      * {@link CompactResult} carrying the summary (R-CC-14) — the caller emits the start/result
      * lines and re-seeds the memory.
      *
-     * @param requestTokens     R-CC-12: the last provider-reported input tokens, captured by the
-     *                          caller BEFORE its memory clear — {@code null} when never reported
-     * @param requestIsEstimate R-CC-12: true when {@code requestTokens} is not a real provider value
+     * The staging budget is the config's {@code autoCompactAfter} (R-CIB-1) — not a parameter.
+     *
+     * @param requestTokens R-CC-12: the last provider-reported input tokens, captured by the
+     *                      caller BEFORE its memory clear — {@code null} when never reported
+     *                      (then the result line reads {@code request n/a (no provider value)})
      * @throws IllegalStateException when the LLM call returns null — Log OR throw: the throw stays
      *             in the call path, the result line is no exception substitute
      */
-    public CompactResult compact(String agentName, List<ChatMessage> messages, int budgetTokens, String tokenDiagnosis,
-                                 @Nullable Integer requestTokens, boolean requestIsEstimate) {
+    public CompactResult compact(String agentName, List<ChatMessage> messages, String tokenDiagnosis,
+                                 @Nullable Integer requestTokens) {
+        var budgetTokens = chatModel.getConfig().getAutoCompactAfter();
+        var requestIsEstimate = requestTokens == null;
         var compactCfg = chatModel.getConfig().compactAgentConfig();
 
         var outcome = stager.stage(messages, budgetTokens);
