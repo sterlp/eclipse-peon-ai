@@ -129,7 +129,6 @@ public class UserQuestionResponseWidget extends Composite {
     public void showQuestion(List<String> answers, Consumer<String> onAnswer) {
         pendingAnswer.set(onAnswer);
 
-        // Rebuild radio buttons for this question
         for (Control c : radiosContainer.getChildren()) c.dispose();
         for (String answer : answers) {
             Button radio = new Button(radiosContainer, SWT.RADIO);

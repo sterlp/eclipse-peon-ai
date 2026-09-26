@@ -3,9 +3,27 @@
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
 Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.md).
 
+## ⏳ Standalone-Peon-Review behält memory*/askUser (2026-09-25, Jon-Entscheid aus dem Build)
+
+Da-Dok-Stop-And-Ask: der Standalone-Peon-Review sieht WorkspaceMemoryTool (+ askUser im UI) —
+die RAM-Sklaven-Stripping-Regel (noPrivilegedTools) greift nur für Sklaven. UC-TF-2
+([agent-tool-filter.md](agent-tool-filter.md)) entsprechend auf den RAM-Sklaven verengt: Standalone
+= wie alle Standalone-Agenten (Peon-Plan/-Dev, Custom), kein neuer Mechanismus. **Rückversicherung
+Paul steht aus** — falls er Standalone-Review auch gestrippt haben will: eigener Mechanismus,
+dann neue Story.
+
+## ⏳ slf4j-simple.jar wird noch mitgebündelt (Paul-Notiz, 2026-09-25)
+
+Verifiziert: `lib/slf4j-simple.jar` liegt weiter im Bundle (`MANIFEST.MF:96` Bundle-ClassPath,
+`build.properties:65`, Plugin-`pom.xml:23-27` Dependency `${slf4j-simple.version} 2.0.19`) — trotz
+eigenem `EclipseSlf4jProvider` (via `META-INF/services/org.slf4j.spi.SLF4JServiceProvider`,
+`Bundle-ClassPath: .` zuerst → unser Provider gewinnt den ServiceLoader-Scan). Vermutlich Rest aus
+dem Zeit vor dem Eclipse-Provider. Bei nächster Berührung: Jar + Dependency raus, Build + Plugin-Lauf
+testen (Test-Scope im core nutzt ohnehin logback statt slf4j-simple).
+
 ## Bug-Fix-Zyklus-Backlog (2026-09-24, priorisiert)
 
-1. **R-CC-7 — Compact-Fehler sichtbar + begrenzter Retry** ([compact-context-counter.md](compact-context-counter.md)):
+1. **R-CC-7 — Compact-Fehler sichtbar + begrenzter Retry** ([compact.md](compact.md)):
    Fehler ans LLM („compact failed" + Ursache) + onProblem; Retry 1× nach 20s nur transient,
    deterministische Fehler sofort ehrlich. Zusammen mit der ApiRetry-non-retryable-Klassifikation
    (eine Fehlerklassen-Tabelle, zwei Verbraucher). Evidenz: header-state-leak.md Fall 1+2.
@@ -17,12 +35,23 @@ Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.
 4. ⏳ `ShellTool.confirmationProvider` non-volatile — pre-existing, harmlos, 1-Wort-Fix bei
    nächster Berührung (Da-Dok-Hinweis R-TC-Review).
 
+## ❓ Context-Pollution-Quellen (2026-09-24, Evidenz aus dem Compact-Thema)
+
+337461 Provider-Tokens vs. 114512 Compact-Schätzung — Pollution-Kandidaten im Jon/Agent-Mode
+(IST-Analyse Da Mek): (a) `eclipseReadFile`/`diskReadFile` ohne Cap (`FileLines` 0/0 = ganze
+Datei), (b) `docs/index.md` + `docs/memory.md` + AGENTS.md **pro Turn** in Jons System-Context
+(`AgentContextComponent.java:130-140`) — index.md wächst ungebremst, (c) Workspace-Memory-Snapshot
+ohne Cap. Frage an Paul: Caps an der Quelle (Read-Größenlimit, Kontext-Items begrenzen) oder
+bewusst so lassen, weil der Compact-Input jetzt budgetiert ([compact.md](compact.md))? Verwandt:
+Workspace-Memory-Vollkopien (unten).
+
+
 ## ❓ Workspace-Memory-Snapshot: Vollkopie je `memoryAdd` (2026-09-23)
 
 Snapshot-Key ist der entries-Hash (ADR-0032) — jede Mutation erzeugt eine frische Vollkopie
 aller Einträge, bis zum Compact. By design, aber die Kosten skalieren schlecht. Frage an Paul:
 eigener Design-Punkt? (inkrementeller Snapshot / Dedup je Eintrag / Compact-frequenter).
-Verwandt: [compact-context-counter.md](compact-context-counter.md) „Offen".
+Verwandt: [compact.md](compact.md) „Offen".
 
 ## ❓ Tool-Time-Disclosure Restkandidaten (2026-09-22, Option B — Paul-Scope)
 
@@ -35,22 +64,6 @@ bleibt ohne Zeitinfo (stateless, Rauschen).
 „Besser als 🟢, aber grün ist auch vollkommen okay" — bewusst nicht gebaut. Umsetzung: zweiter
 Anzeige-Zustand `compacting` + 🟡-Präfix in `AiAgentStatusWidget.text()`. Wiederaufnahme = Mini-Increment.
 Kontext: [compact-lock.md](compact-lock.md).
-
-## 🚧 „!-Messages" — sofortiger History-Insert auch im ToolLoop (2026-09-22, Paul)
-
-Regel 8 in [queued-user-messages.md](queued-user-messages.md); Insert-Punkt/Race offen. Eigene Story.
-
-## ❓ Tool-Evolution PO-Run CR-Verdicts (2026-09-19)
-
-Alle CR-Items entschieden — Verdicts + Begründungen: [resolved-points.md](resolved-points.md)
-(„Tool-Evolution-Run"). Offen bleiben nur die dort gelisteten ❌-Stories (project-problems,
-debugger, web-tools — teils inzwischen ✅) und die geparkten Docs (terminal-session, tool-confirmation).
-
-## ❓ `applyEdit` Not-Found dumpet das gesamte File (2026-09-19 — bewusst so, Lösung offen)
-
-**Paul: bewusst so** — der Dump spart den Read-Roundtrip im Fehlerfall. Offen: Roundtrip vs.
-Context-Bombe bei großen Dateien; gute Lösung (Kontext-Fenster um die ähnlichste Fundstelle)
-existiert nicht. Bleibt stehen, kein Bau.
 
 ## ❓ ApiRetry: Cancellation-/Retry-Klassifikation (Priorität hoch, Evidence 4×)
 
@@ -74,12 +87,6 @@ Befund-Klassen (derselbe Shape: Call bricht statt sichtbarem Retry):
 
 `StreamingBridge.onError` versteckt die Statuszeile → 10s…5min Funkstille (User liest „hängt").
 SOLL-Idee: „retrying in Xs" im Backoff-Fenster. Mini-Story, verwandt mit header-state-leak.
-
-## ❓ Shell-Tool für Plan-/Review-Agent — Whitelist-Capability? (2026-09-10/13)
-
-Use-Case belegt (Da Dok konnte im Release-Scan Commits nicht isolieren — kein Git). Optionen:
-volles ShellTool / reduziert / Whitelist pro Agent (analog Write-Validator). Offen: Scope, Default-Set,
-Read-only-Filter. Verwandt: ADR-0015, ADR-0022.
 
 ## ⏳ Jackson 2 → 3: beobachten (2026-09-10, User)
 
@@ -126,11 +133,17 @@ Dedup kann Einzel-Nachricht als Teiltext unterschlagen (Compact ist lossy — ak
 nach Persist-IOException läuft die Session RAM-only weiter (präexistierendes Muster). Keine
 Blocker; Revisit nur bei Beschwerden/Datenverlust-Meldungen.
 
-## Compact Input Budget ([compact-input-budget.md](compact-input-budget.md))
+## Compact ([compact.md](compact.md))
 
 - ❓ Context-Noise zuerst raus (User-Idee, 2026-09-13): Context-Item-Messages vor dem Kürzen
-  nehmen — zusammen mit der Light-Version ausarbeiten („#2 und #5 gehören zusammen").
-- 🔒 R1–R5 SOLL festgelegt, Story ❌ specified. Reihenfolge: erst Compact-Slot-Bug, dann Budget-Light + Noise.
+  nehmen — „Light-Version" des Input-Budgets; die Input-Budget-Story (2026-09-24) deckt das
+  Staging ab, Noise-Entfernung bleibt eigener Punkt.
+- ⏳ **Input-Budget-Doc ausgegliedert** (2026-09-26, Jon): die sechs Lint-Befunde im Compact-Doc
+  (6× `PRAEFIX_FREMD` für die Input-Budget-Regeln; die 6× `DOPPELT_DEFINIERT` waren durch das
+  Löschen von compact-context-counter.md schon weg) mit einem **Doc-Split** gelöst statt
+  Umnummerierung — [compact-input-budget.md](compact-input-budget.md) (Präfix `CIB`), IDs und
+  ~35 Code-Kommentar-Referenzen unangetastet, `compact.md` bleibt Einstieg (Präfix `CC`).
+  Rückversicherung Paul: Split okay, oder doch Umnummerierung unter `CC`?
 
 ## Neu (2026-09-14, story/po-compact-2026-09-13)
 

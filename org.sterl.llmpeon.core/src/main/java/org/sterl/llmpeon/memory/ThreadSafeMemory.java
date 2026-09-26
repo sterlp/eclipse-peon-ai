@@ -39,9 +39,33 @@ public class ThreadSafeMemory {
      */
     private volatile boolean tokenIsEstimate = false;
 
+    /**
+     * R-CC-10: the LAST provider-REPORTED {@code inputTokenCount()} — what the model actually saw
+     * on its last call. Set only when the provider reports usage; a response without usage leaves
+     * the previous value in place ("last reported"); reset to null by {@code clear()}/{@code replaceAll()}.
+     * Pure observation — never feeds {@link #totalTokenUsed}, the gates or the display.
+     */
+    private volatile @Nullable Integer lastProviderInputTokens = null;
+
     /** @return true if the current token counter value contains an estimate component. */
     public boolean isTokenEstimate() {
         return tokenIsEstimate;
+    }
+
+    /** R-CC-10: the last provider-reported input token count, or null when never reported/reset. */
+    public @Nullable Integer getLastProviderInputTokens() {
+        return lastProviderInputTokens;
+    }
+
+    /**
+     * R-CC-10: the compact-log diagnosis — the three context sizes side by side, each with its
+     * source/flag. Appended by ALL three compact event lines (hint, entry, skip). One format, one
+     * implementation: {@code " | memory=<total>(estimate=<flag>) model=<input|n/a> estimate=<chars×2/7>"}.
+     */
+    public synchronized String tokenDiagnosis() {
+        String model = lastProviderInputTokens == null ? "n/a" : String.valueOf(lastProviderInputTokens);
+        return " | memory=" + totalTokenUsed + "(estimate=" + tokenIsEstimate + ") model=" + model
+                + " estimate=" + ChatMessageUtil.estimateTokens(getCopy());
     }
 
     public ThreadSafeMemory() {
@@ -137,6 +161,7 @@ public class ThreadSafeMemory {
         memory.clear();
         totalTokenUsed = 0;
         tokenIsEstimate = false;
+        lastProviderInputTokens = null;
         clearStore();
     }
 
@@ -145,6 +170,7 @@ public class ThreadSafeMemory {
         if (messages != null) memory.addAll(messages);
         totalTokenUsed = 0;
         tokenIsEstimate = false;
+        lastProviderInputTokens = null;
         persist(new ArrayList<>(memory));
     }
     
@@ -182,6 +208,7 @@ public class ThreadSafeMemory {
         var usage = ChatMessageUtil.tokenUsage(response);
         totalTokenUsed = ChatMessageUtil.getTokenCount(response, memory);
         tokenIsEstimate = usage == null || usage.inputTokenCount() == null;
+        if (usage != null && usage.inputTokenCount() != null) lastProviderInputTokens = usage.inputTokenCount();
         append(appended);
     }
 
@@ -191,6 +218,7 @@ public class ThreadSafeMemory {
         var usage = ChatMessageUtil.tokenUsage(response);
         totalTokenUsed = ChatMessageUtil.getTokenCount(response, memory);
         tokenIsEstimate = usage == null || usage.inputTokenCount() == null;
+        if (usage != null && usage.inputTokenCount() != null) lastProviderInputTokens = usage.inputTokenCount();
         append(message);
     }
 

@@ -54,7 +54,6 @@ public class EclipseFileContextItem implements ContextItem {
         if (project == null) return null;
         if (project.get() == null) return null;
         if (!project.get().isAccessible()) return null;
-        // select the first found
         for (String relativePath : relativePaths) {
             IFile file = project.get().getFile(relativePath);
             if (file != null && file.exists()) return file;

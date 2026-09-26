@@ -43,7 +43,7 @@ class ShellConfirmationPolicyTest {
     // R-TC-6: decide_not_autonomous_autonomous_approves
     @Test
     void decideNotAutonomousAutonomousApproves() {
-        // GIVEN mode not-autonomous, autonomous turn owner (Jon or Peon-Plan)
+        // GIVEN mode not-autonomous, autonomous turn owner (Jon)
         // WHEN
         var decision = ShellConfirmationPolicy.decide(ShellConfirmationMode.NOT_AUTONOMOUS, true);
         // THEN no prompt
@@ -78,9 +78,9 @@ class ShellConfirmationPolicyTest {
         var model = LlmConfig.newOllama("x").build();
         var toolService = new ToolService(false);
 
-        // THEN Jon (AiPoAgent) and Peon-Plan (AiPlanAgent) are autonomous
+        // THEN only Jon (AiPoAgent) is autonomous — standalone Peon-Plan is not
         assertThat(ShellConfirmationPolicy.isAutonomous(new AiPoAgent(model, toolService))).isTrue();
-        assertThat(ShellConfirmationPolicy.isAutonomous(new AiPlanAgent(model, toolService))).isTrue();
+        assertThat(ShellConfirmationPolicy.isAutonomous(new AiPlanAgent(model, toolService))).isFalse();
 
         // ... everything else is not — including null (fail-closed)
         assertThat(ShellConfirmationPolicy.isAutonomous(new AiDevAgent(model, toolService))).isFalse();

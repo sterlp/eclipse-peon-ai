@@ -37,7 +37,6 @@ isn't clear from a rule/BDD.
 | [0027](0027-static-content-loader.md) | StaticContentLoader — effizientes Dateiladen mit Duplikat-Prüfung (record statt ChatMessage-Extension, PathResolver SPI, Callback-Hook) | Superseded |
 | [0028](0028-context-item-concept.md) | ContextItem-Konzept — OCP, Agent-besitzter Compact-Flow via `ToolLoopRequest.agent()`, Tool-delegation | Accepted |
 | [0029](0029-file-context-in-history.md) | File-Context (AGENTS.md, memory.md, index.md) in die Chat History statt System-Prompt; Dedup nach vollem Workspace-Pfad (nie nach Content), fehlende Datei → skip | Accepted |
-| [0030](0030-statictext-helper-frozen-chatmessageutil.md) | staticText()-Helper im Plugin statt Core-Fix: ChatMessageUtil.toString() droppt SystemMessages (silent-bug), Core bleibt frozen | Accepted |
 | [0031](0031-static-context-env-plus-memory.md) | Static Context: Env + Memory-Snapshot im System-Prompt (Memory-Anteil superseded durch ADR-0032); Re-Bake bei clear/compact/setStaticContext/updateConfig/Reload; File-Context-Format mit Linenumbers | Partially superseded |
 | [0032](0032-workspace-memory-dynamic-turn-context.md) | Workspace-Memory dynamisch: WorkspaceMemoryTool als ContextItem pro Turn (aktiver Agent + Delegate-Tool-Orders für Slaven); statischer Snapshot entfernt (Revision) — `PoDelegateTool` (früher JonDelegateTool) | Accepted |
 | [0033](0033-ox-alpha-provider-slices.md) | Ox-Alpha-Provider: Zwei-Slice-Plan — verhaltenstreues Provider-Refactoring (provider.md) zuerst, Ox Alpha dann als erste neue Provider-Klasse | Accepted |
@@ -63,4 +62,5 @@ isn't clear from a rule/BDD.
 | [0053](0053-call-stats-shared-helper.md) | `CallStats`-Helper im core shared (Dauer + HH:mm-Suffix, Clock injizierbar); PoDelegateTool migriert — Time-Disclosure für Shell/RunTest/Build | Accepted |
 | [0054](0054-tool-naming-camelcase-family-prefix.md) | Tool-Naming: camelCase mit Familien-Prefix — Java-Debug-Familie snake_case → `debugJava*` (Clean Break, keine Aliase) | Accepted |
 | [0055](0055-context-counter-input-not-cost.md) | Context-Counter misst Input (`inputTokenCount()`), nie `totalTokenCount()` (Kosten) — Header ↑↓ bleibt Kosten; Gate nach fehlgeschlagenem Compact nicht mehr blind | Accepted |
+| [0056](0056-compact-component-and-render-modes.md) | Compact = eigene core-Komponente (`compact`: CompactStager pure + CompactEngine + CompactResult-Record); Render-Modi in ChatMessageUtil (Options-Record, SystemMessage-Drop gefixt) — verwirft das 0030-Freeze; Schätzung nur noch estimateTokens ×2/7 | Accepted |
 

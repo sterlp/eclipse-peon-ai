@@ -497,10 +497,10 @@ in Bereich + Nummer erfolgt am **letzten** Bindestrich vor der Nummer (`R-O-TEST
 `O-TEST`, nicht `O`). Die Validierung liegt an **einer** Stelle im Core, nicht doppelt
 (Tool-Fassade + Linter hatten bislang zwei Kopien derselben Regex).
 
-> **WEIL** (Bug-Report Paul, 2026-09-24, [nextIds-user-bug-report.md](../nextIds-user-bug-report.md)):
-> In FORgE/MaPa tragen IDs bewusst einen **Bereichs**-Anteil — `O-TEST-1`, `R-ORD-1`,
+> **WEIL:**
+> In vielen Projekten tragen IDs bewusst einen **Bereichs**-Anteil — `O-TEST-1`, `R-ORD-1`,
 > `D-<BEREICH>-<Nr>`. Der Bereich *ist* das Präfix, das die Nummernkreise trennt. Das Tool wies mit
-> „prefix must be uppercase letters only" exakt die Projekte ab, für die es gebaut wurde, und der
+> „prefix must be uppercase letters only" solche Projekte ab, und der
 > Anwender fiel zurück auf Handvergabe per Grep — genau das, was das Tool verhindern soll.
 
 #### UC-DL-67 — Bindestrich-Präfix wird akzeptiert ✅ done
@@ -529,7 +529,7 @@ Bei gesetztem `prefix` durchsucht `nextIds` zusätzlich zu den Definitionen der 
 4. **„free" nur, wenn wirklich kein Vorkommen in irgendeiner Schreibweise gefunden wurde** — dann
    erst `R-FOO-1` / `UC-FOO-1`.
 
-> **WEIL** (Bug-Report Paul, 2026-09-24, [nextIds-user-bug-report.md](../nextIds-user-bug-report.md)):
+> **WEIL:**
 > `nextIds` las nur Definitionen aus Opt-in-Docs — `OP-70…OP-79` als Bullets in einer
 > nicht teilnehmenden Datei waren unsichtbar, und das Tool meldete „free, would start: R-OP-1".
 > Ein Paralleluniversum `R-OP-*` neben dem existierenden Register, oder schlimmer: `OP-80` wurde
@@ -571,7 +571,7 @@ schärferer Vorbedingung).
 Der `nextIds`-Rückgabewert listet — wie der Lint-Report (R-DL-11) — **jede** nicht teilnehmende
 Datei („Not participating (no idPrefix)") mit Pfad auf, nicht nur die Zählzeile.
 
-> **WEIL** (Bug-Report Paul, 2026-09-24): Bei einem Vergabe-Tool ist die stumme Blindstelle am
+> **WEIL:** Bei einem Vergabe-Tool ist die stumme Blindstelle am
 > teuersten — genau in den nicht teilnehmenden Dateien kann die ID längst vergeben sein. R-DL-24
 > entschärft das Fachliche (Rohscan sieht die Dateien trotzdem), die Liste macht den Scan
 > nachprüfbar und kostet nur Dateinamen.
@@ -929,8 +929,7 @@ und der wahrscheinlichste Grund, das Werkzeug nach Lauf 1 zu ignorieren. Deshalb
 
 1. Nie Build-Schranke, auch nicht später — und kein Schreibzugriff (R-DL-8).
 2. **In llmpeon wird der Bestand NICHT nachgezogen** (Q1) — Teilnahme ist Opt-in über `idPrefix`
-   (R-DL-11). Der Request sieht ein einmaliges Nachziehen vor; das gilt für FORgE als Erstanwender,
-   nicht für uns: bei uns kostet Opt-in zusätzlich den Umbau der BDDs zu Überschriften (Q6).
+   (R-DL-11). Ein einmaliges Nachziehen ist optional und kostet bei uns den Umbau der BDDs zu Überschriften (Q6).
 3. Die ID ist Pflicht bei jedem **angefassten** Use-Case — inkrementell, nie rückwirkend.
 
 **Migrationshilfe `suggestIds` (Request §7) — eigener Zyklus, Q2 🔒:** Lauf 1 erzeugt aus
@@ -955,7 +954,7 @@ Die Prompt-Dateien gehören dem PO ([prompts.md](prompts.md)); die Agenten ände
 |---|---|---|
 | Q3 | Lieferform → **🔒 nur Dateisystem-Zugriff, ein `root`-Parameter mit Default = Disk-Pfad des gewählten Projekts.** Kein `eclipse*`-Gegenstück, kein `FileTreeReader`-Interface, keine Änderung an den bestehenden Read-Tools ([ADR-0047](adr/0047-docs-linter-disk-only-single-root.md)). | 🔒 |
 | Q4 | Da Dok ist read-only, Tool schrieb einen Report → **🔒 `reportPath` ersatzlos gestrichen** (User 2026-09-15). Der Rückgabewert enthält bereits alles ungekappt; die Datei war reine Aufbereitung. Damit ist das Tool echt read-only (R-DL-7). | 🔒 |
-| Q5 | Tool-Filter je Agent → **🔒 Split in `DocsIdTool` (nur Jon) und `DocsLinterTool` (alle)** (User 2026-09-15). Der Filter wirkt tool-weit, nicht method-weit — der Split macht aus einer Sonderregel eine normale Zuordnung (R-DL-14). | 🔒 |
+| Q5 | Tool-Filter je Agent → **🔒 Split in `DocsIdTool` (nur Jon) und `DocsLinterTool` (alle)** (User 2026-09-15). Begründung korrigiert (ADR-0048, Ergänzung 2026-09-25): der Filter ist method-weit möglich; Fassade wegen Präzedenz (`PlanReadTool`) — neue Fälle: erst Filter, mit Tool-Namen als statischen Konstanten ([agent-tool-filter.md](agent-tool-filter.md) R-TF-3), Fassade nur bei echtem Ownership-Split (R-DL-14). | 🔒 |
 | Q10 | 🐞 Linter hing am `diskToolsEnabled`-Gate (Default `false`) und fehlte Jon ganz → **🔒 immer registrieren, Jon + Da Thinka bekommen ihn** (User 2026-09-15). R-DL-15, R-DL-14. | 🔒 |
 | Q1 | **Dogfooding:** llmpeon-Docs kennen keine UC-IDs (Ist: `R1`/`R2` doc-lokal, ~200 `→ Klasse.methode`-Verweise in 33 Docs). → **🔒 Tool bauen + Prompts anpassen, Bestand NICHT rückwirkend nachziehen**; ID-Pflicht ab jetzt bei jedem angefassten Use-Case (Einführung Schritt 3), Teilnahme per Opt-in (R-DL-11). | 🔒 |
 | Q2 | Migrationshilfe `suggestIds` → **🔒 separat, nach dem Grundgerüst** (User 2026-09-15). Begründung: die drei Kernmethoden sind deterministische Mengenabgleiche, `suggestIds` muss heuristisch **raten** — anderer Charakter, andere Testbarkeit. Und da Opt-in bei uns ohnehin ein Doc-Umbau ist (Q6), spart es uns weniger als dem Erstanwender. | 🔒 |
@@ -966,7 +965,6 @@ Die Prompt-Dateien gehören dem PO ([prompts.md](prompts.md)); die Agenten ände
 
 ## Herkunft
 
-Entstanden 2026-09-15 aus FORgE `OP-36` (Paul + Jon): autonomer Nachtlauf fand 15+ kaputte
-Testverweise in zwei Docs, darunter ein unbelegtes `✅` und zwei doppelt vergebene Regel-IDs.
-FORgE ist Erstanwender und hält sein Nachziehen (~20 Docs, geschätzt 50–100 kaputte Verweise)
-ausdrücklich bis zu diesem Werkzeug an.
+Entstanden 2026-09-15 aus einem autonomen Nachtlauf: dieser fand 15+ kaputte
+Testverweise in Bestands-Docs, darunter ein unbelegtes `✅` und zwei doppelt vergebene Regel-IDs.
+Das Werkzeug sichert künftige Zyklen deterministisch ab.

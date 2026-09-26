@@ -3,6 +3,7 @@ package org.sterl.llmpeon.agent;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.shared.StringUtil;
 
 /**
@@ -65,12 +66,13 @@ public final class AiAgentStatusModel {
     /**
      * Status-line feedback of a slave-compact job (R16 skip → feedback, not silence).
      * A null result (the job threw before compact returned) keeps the legacy skip text —
-     * the exception itself is surfaced by the status line.
+     * the exception itself is surfaced by the status line. COMPACTED carries the same
+     * numbers as the log and the tool result (R-CIB-6, {@link CompactResult#resultLine()}).
      */
     public static String compactResult(CompactResult result, String uiName) {
         if (result == null) return "Nothing to compact";
-        return switch (result) {
-            case COMPACTED -> "Compacted " + uiName;
+        return switch (result.status()) {
+            case COMPACTED -> "Compacted " + uiName + ": " + result.resultLine();
             case SKIPPED_SMALL -> "Nothing to compact";
             case FAILED_EMPTY -> "Compact failed: no summary for " + uiName;
         };

@@ -98,7 +98,6 @@ public class SimpleDiff {
             int nextStart = Math.max(0, nextFull - CONTEXT);
             int nextEnd = Math.min(fullEnd, nextFull + CONTEXT);
             if (nextStart <= hunkEnd + 1) {
-                // merge
                 hunkEnd = nextEnd;
             } else {
                 hunkRanges.add(new int[]{hunkStart, hunkEnd});

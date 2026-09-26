@@ -26,18 +26,24 @@ public class CompactSessionTool extends AbstractTool {
         }
 
         long startNanos = System.nanoTime();
-        return switch (agent.compact(monitor)) {
+        var result = agent.compact(monitor);
+        return switch (result.status()) {
             case COMPACTED -> {
                 long elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000;
                 onTool(TOOL_MESSAGE_PREFIX + " for " + agent.getName()
                     + ". (" + StringUtil.humanElapsed(elapsedMillis) + ")");
                 request.markCompacted();
-                yield StringUtil.hasValue(preserve)
-                        ? "Preserved:" + System.lineSeparator() + StringUtil.stripToEmpty(preserve)
-                        : "(nothing preserved)";
+                // R-CIB-6: the tool result carries the same numbers as the log (resultLine), so the
+                // LLM knows in the next turn what the compact did; the onTool line stays untouched.
+                yield result.resultLine() + System.lineSeparator()
+                        + (StringUtil.hasValue(preserve)
+                                ? "Preserved:" + System.lineSeparator() + StringUtil.stripToEmpty(preserve)
+                                : "(nothing preserved)");
             }
             case SKIPPED_SMALL -> {
-                onTool("Compact called but skipped because of small context for " + agent.getName());
+                // R-CC-10: the diagnosis rides on the onTool LOG line only; the result string stays clean.
+                onTool("Compact called but skipped because of small context for " + agent.getName()
+                        + agent.getMemory().tokenDiagnosis());
                 yield "Not needed only " + agent.getMemory().size() + " message in context";
             }
             case FAILED_EMPTY -> {

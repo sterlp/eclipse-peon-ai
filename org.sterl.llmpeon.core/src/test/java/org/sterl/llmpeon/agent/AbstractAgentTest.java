@@ -22,6 +22,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.memory.FileAgentHistoryStore;
@@ -97,7 +98,7 @@ class AbstractAgentTest {
         assertThat(toolLines).contains("Reading queued User message: msg2"
                 + System.lineSeparator() + "msg3 (queued 14:32)");
         // AND — the LLM payload marker carries the same time, text unchanged after the prefix
-        assertThat(userTexts.get(1)).contains("[Queued Message] (queued 14:32):", "msg2", "msg3");
+        assertThat(userTexts.get(1)).contains("[Queued Message] (14:32):", "msg2", "msg3");
         
     }
 
@@ -433,11 +434,11 @@ class AbstractAgentTest {
         var second = agent.compact(monitor -> {});
 
         // THEN — first compacted to exactly 2 (Session-compacted user + summary), second is a no-op
-        assertThat(first).isEqualTo(CompactResult.COMPACTED);
+        assertThat(first.status()).isEqualTo(CompactResult.Status.COMPACTED);
         assertThat(afterFirst).hasSize(2);
         assertThat(afterFirst.get(0)).isInstanceOf(UserMessage.class);
         assertThat(afterFirst.get(1)).isInstanceOf(AiMessage.class);
-        assertThat(second).isEqualTo(CompactResult.SKIPPED_SMALL);
+        assertThat(second.status()).isEqualTo(CompactResult.Status.SKIPPED_SMALL);
         assertThat(agent.getMemory().getCopy()).isEqualTo(afterFirst);
         // AND — exactly one LLM call (the first compact's compressor), none for the no-op
         assertThat(streamMock.getCallCount()).isEqualTo(1);
@@ -467,7 +468,7 @@ class AbstractAgentTest {
         var compacted = agent.compact(monitor -> {});
 
         // THEN — the agent is working during the compressor call and released afterwards
-        assertThat(compacted).isEqualTo(CompactResult.COMPACTED);
+        assertThat(compacted.status()).isEqualTo(CompactResult.Status.COMPACTED);
         assertThat(workingDuringCompressor.get()).isTrue();
         assertThat(agent.isWorking()).isFalse();
     }
@@ -524,9 +525,11 @@ class AbstractAgentTest {
         var memory = new ThreadSafeMemory() {
             @Override public int getTotalTokenUsed() { return 101; }
         };
+        // 4 messages — R-CC-8: the auto-gate fires only above MIN_COMPACT_MESSAGES (3)
         memory.add(UserMessage.from("m1"));
         memory.add(AiMessage.from("m2"));
         memory.add(UserMessage.from("m3"));
+        memory.add(AiMessage.from("m4"));
         var agent = new AbstractAgent(
                 new ConfiguredChatModel(config, mockModel), new ToolService(), memory, 1.0) {
             @Override public String getName() { return "test"; }
@@ -560,7 +563,7 @@ class AbstractAgentTest {
         // THEN — the drained queue becomes the payload, marked like the in-loop pollNext
         List<String> userTexts = extractUserTexts(agent.getMemory().getCopy());
         assertThat(userTexts).hasSize(1);
-        assertThat(userTexts.get(0)).contains("[Queued Message] (queued 14:32):", "q1");
+        assertThat(userTexts.get(0)).contains("[Queued Message] (14:32):", "q1");
         // AND — no literal "null" concatenated into the prompt (pre-fix defect)
         assertThat(userTexts.get(0)).doesNotContain("null");
         // AND — exactly one LLM call for the queued payload
@@ -596,8 +599,12 @@ class AbstractAgentTest {
         assertThat(callCount.get()).isEqualTo(3);
     }
 
+    /**
+     * R-CC-8: with no history (0 messages) the auto-gate skips on message count even though the
+     * token threshold is exceeded — the system prompt is still built exactly once for the turn.
+     */
     @Test
-    void buildsSystemPromptOnceWhenAutoCompacting() {
+    void systemPromptBuiltOnceWhenAutoCompactSkipsOnMessageCount() {
         var config = LlmConfig.builder().model("mock").autoCompactAfter(100).build();
         var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
                 .aiMessage(AiMessage.aiMessage("OK")).build());
@@ -618,6 +625,71 @@ class AbstractAgentTest {
         agent.call("test", monitor -> {});
 
         assertThat(renderCount.get()).isOne();
+    }
+
+    /**
+     * R-CC-8: exactly MIN_COMPACT_MESSAGES (3) messages with the token threshold exceeded — the
+     * auto-gate must NOT fire (it needs MORE than 3), so no compressor call: only the turn's LLM call.
+     */
+    @Test
+    void autoGateNeedsMoreThanMinCompactMessages() {
+        // GIVEN — exactly 3 messages, token threshold exceeded
+        var config = LlmConfig.builder().model("mock").autoCompactAfter(100).build();
+        var callCount = new AtomicInteger();
+        var mockModel = streamMock.buildMock(r -> {
+            callCount.incrementAndGet();
+            return ChatResponse.builder().aiMessage(AiMessage.aiMessage("OK")).build();
+        });
+        var memory = new ThreadSafeMemory() {
+            @Override public int getTotalTokenUsed() { return 101; }
+        };
+        memory.add(UserMessage.from("m1"));
+        memory.add(AiMessage.from("m2"));
+        memory.add(UserMessage.from("m3"));
+        var agent = new AbstractAgent(
+                new ConfiguredChatModel(config, mockModel), new ToolService(), memory, 1.0) {
+            @Override public String getName() { return "test"; }
+            @Override public String getSystemPrompt() { return "test"; }
+        };
+
+        // WHEN — one turn
+        agent.call("test", monitor -> {});
+
+        // THEN — the auto-gate did not fire (3 is not > 3): only the turn's LLM call, no compressor
+        assertThat(callCount.get()).isEqualTo(1);
+    }
+    /**
+     * R-CIB-1: autoCompactAfter <= 0 means "off" (like the Hint) — even with more than
+     * MIN_COMPACT_MESSAGES and the token threshold exceeded, the auto-gate must NOT fire:
+     * only the turn's LLM call, no compressor call.
+     */
+    @Test
+    void compactWithZeroBudget_gateOff() {
+        // GIVEN — 4 messages (> 3), token threshold exceeded, but budget off (0)
+        var config = LlmConfig.builder().model("mock").autoCompactAfter(0).build();
+        var callCount = new AtomicInteger();
+        var mockModel = streamMock.buildMock(r -> {
+            callCount.incrementAndGet();
+            return ChatResponse.builder().aiMessage(AiMessage.aiMessage("OK")).build();
+        });
+        var memory = new ThreadSafeMemory() {
+            @Override public int getTotalTokenUsed() { return 101; }
+        };
+        memory.add(UserMessage.from("m1"));
+        memory.add(AiMessage.from("m2"));
+        memory.add(UserMessage.from("m3"));
+        memory.add(AiMessage.from("m4"));
+        var agent = new AbstractAgent(
+                new ConfiguredChatModel(config, mockModel), new ToolService(), memory, 1.0) {
+            @Override public String getName() { return "test"; }
+            @Override public String getSystemPrompt() { return "test"; }
+        };
+
+        // WHEN — one turn
+        agent.call("test", monitor -> {});
+
+        // THEN — the auto-gate is off (budget <= 0): only the turn's LLM call, no compressor
+        assertThat(callCount.get()).isEqualTo(1);
     }
 
 

@@ -144,15 +144,15 @@ class PoDelegateToolTest {
         // WHEN
         tool.talkPlan("go");
         tool.talkPlan("go");
-        // THEN
-        assertThat(streamMock.count("go")).isEqualTo(2);
+        // THEN — user messages only: the system prompt also contains "go" ("goal") since the ADR-0030 render fix
+        assertThat(streamMock.count(UserMessage.class, "go")).isEqualTo(2);
         assertThat(streamMock.count(memory)).isEqualTo(1);
-        
+
         // WHEN
         tool.askDev("go");
         tool.askDev("go");
 
-        assertThat(streamMock.count("go")).isEqualTo(2);
+        assertThat(streamMock.count(UserMessage.class, "go")).isEqualTo(2);
         assertThat(streamMock.count(memory)).isEqualTo(1);
     }
 

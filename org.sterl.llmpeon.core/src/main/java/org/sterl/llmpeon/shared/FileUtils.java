@@ -127,7 +127,6 @@ public class FileUtils {
         if (oldStr.equals(newStr)) throw new IllegalArgumentException("Old and new string is the same.");
 
         String fileLineEnding = dominantLineEnding(content);
-        // fix endings
         var oldE = dominantLineEnding(oldStr);
         if (oldE != fileLineEnding) {
             oldStr = oldStr.replace(oldE, fileLineEnding);

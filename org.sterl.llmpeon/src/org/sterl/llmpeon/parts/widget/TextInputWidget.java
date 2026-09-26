@@ -167,7 +167,6 @@ public class TextInputWidget extends Composite {
                         UndoRedoStack urs =
                             new UndoRedoStack(eventStartPostition, newText, oldText, eventLength, eventType);
 
-                        // Stack is full
                         if (undoStack.size() == MAX_STACK_SIZE) {
                             undoStack.remove(undoStack.size() - 1);
                         }

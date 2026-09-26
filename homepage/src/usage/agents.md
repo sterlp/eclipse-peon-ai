@@ -32,7 +32,7 @@ With a non-Jon agent active (e.g. plain Peon-Dev), the team roster is not shown 
 
 Each of the three worker rows (**Da Thinka**, **Da Mek**, **Da Dok**) carries a small **compact icon button** (tooltip: `Compact Da X`). Clicking it compresses **exactly that one agent's** context:
 
-- The summary streams into the chat, then the status line reports **`Compacted Da Mek`** and the roster shows the reduced context size.
+- The compression runs quietly in the background — the compressor's request and summary never appear in the chat (log only) — then the status line reports the result with its numbers — **`Compacted Da Mek: compressed 61 messages ~114k → input ~40k, result 2k, stage: tool results 6000, request 80211 (provider)`** — and the roster shows the reduced context size.
 - If the agent has fewer than 3 messages (right after a compact, exactly 2 remain), nothing is sent to the model — the status line simply reports **`Nothing to compact`**.
 - The button is **disabled** while that agent is working (🟢) or while any turn is in flight.
 
@@ -65,6 +65,6 @@ Use **Clear** to start a fresh session; use the **per-worker compact buttons** t
 1. Activate Jon and watch the header — all four members appear with context sizes.
 2. Start a task that delegates to a worker — the worker's row glows 🟢 while working.
 3. Hover over a worker's compact icon — the tooltip reads `Compact Da X`.
-4. Click it — the status line shows `Compacted Da X`, and only that worker's context size drops.
+4. Click it — the status line shows `Compacted Da X: compressed N messages ~Xk → input ~Yk, result Zk, stage: …, request 80211 (provider) or request n/a (no provider value)`, and only that worker's context size drops.
 
 Want the full picture of how Jon and his team work together? See [Jon & Team](/setup/peon-po).

@@ -111,27 +111,55 @@ THEN it is still added — no dedup across context vs. payload boundaries
 
 **Tests:** `AbstractAgentTest.testQueuedMessagesChainedFifo()` demonstrates queue chaining through doCall (standing orders handled separately via ToolLoopRequest).
 
-### 8. „!“-Messages: direkt in die History, auch im ToolLoop 🚧 Idee (2026-09-22, Paul — bewusst NICHT gebaut)
+### 8. „!“-Messages: Queued-Message-Override direkt ins Agent-Memory ❌ specified (2026-09-25, Paul)
 
-- **Idee:** Nachrichten mit `!` am Anfang umgehen die Queue-Semantik: sie werden **sofort** in die
-  Chat-History eingebaut — auch mitten in einem Tool-Loop. Alle gequekten `!`-Nachrichten werden
-  zusammen gezogen (`drainAllImportant` o. ä.), mit `System.lineSeparator()` zu **einer**
-  UserMessage (String) gejoint und eingefügt; die `ThreadSafeMemory` fügt die Dummy-„Ok“-AI-Message
-  ein. Das war das Verhalten **vor** der Queue: die alte Implementierung fügte sie direkt nach dem
-  ToolCall ein — als Result-Insert im laufenden ToolLoop.
-- **Status:** nur aufgenommen, **nicht gebaut** (Paul 2026-09-22: „Bauen tun wir aber nur den fix
-  also den ‚lock' für compact"). Wiederaufnahme = eigene Story; offen sind u. a. Insert-Punkt
-  (nach welchem ToolCall-Result, Race mit dem laufenden Tool-Loop), Interaktion mit Burst-Join
-  (Regel 1) und der Schutz des History-Contracts (UserMessage/„Ok"-Paar).
+- **Zweck:** Escape-Hatch, wenn der Agent bereits arbeitet. Eine Nachricht, die mit `!` beginnt,
+  umgeht die Queue vollständig und wird direkt in das `ThreadSafeMemory` des aktiven Agenten
+  eingefügt.
+- **Verhalten:**
+  1. Gilt **nur, während der Agent arbeitet**. Wenn der Agent idle ist, startet die Eingabe wie gewohnt
+     einen regulären Turn (keine Queue, kein Override nötig).
+  2. Das führende `!` wird von der Nachricht entfernt.
+  3. Beginnt der verbleibende Text mit `/` (Slash-Command oder Skill):
+     - Lookup nach Command/Skill.
+     - Wenn gefunden: `/command-name` wird durch den Command-Body ersetzt, der restliche User-Text
+       wird angehängt.
+     - Wenn nicht gefunden: Roher Text bleibt erhalten.
+  4. Die resultierende Nachricht landet **direkt im Agent-Memory** (`ThreadSafeMemory`) und
+     erscheint sofort in der Chat-History.
+  5. **Kein neuer Turn, kein Follow-up:** Die Nachricht liegt im Memory; die AI sieht sie im
+     nächsten Modell-Aufruf / nächsten Loop-Schritt des laufenden Turns und kann direkt reagieren.
+  6. Kein `Noted...`-Echo, kein Quota-Verbrauch, kein `(queued …)`-Marker.
+  7. **Homepage-Update:** Die Funktion muss auf der Homepage dokumentiert werden (user-visible).
+
+```
+GIVEN der Agent arbeitet aktuell
+WHEN der User gibt eine Nachricht ein, die mit "!" beginnt (z.B. "!bitte abbrechen")
+THEN wird das "!" entfernt
+AND die Nachricht landet direkt im ThreadSafeMemory des aktiven Agenten
+AND die Nachricht taucht sofort in der Chat-History auf
+AND es wird KEIN Queue-Eintrag erzeugt und kein neuer Turn gestartet
+
+GIVEN der Agent arbeitet aktuell
+WHEN der User gibt "!/my-command rest text" ein
+AND "/my-command" existiert als Command mit Body "instruction content"
+THEN wird "/my-command" durch "instruction content" ersetzt
+AND "instruction content rest text" landet direkt im ThreadSafeMemory
+AND es wird kein separater Turn gestartet
+
+GIVEN der Agent arbeitet NICHT
+WHEN der User gibt eine Nachricht ein, die mit "!" beginnt
+THEN startet ein normaler Agent-Turn mit der Nachricht (Regel greift nur bei laufendem Agent)
+```
 
 ### 9. Queued-At Disclosure — Uhrzeit in onTool + Marker ❌ specified (2026-09-23, Paul)
 
 Jeder Queue-Eintrag trägt einen **queuedAt**-Zeitstempel (Zeitpunkt des Queueings). Beim Konsum zeigt
-**beides** die Uhrzeit im Format `(queued HH:mm)`:
+**beides** die Uhrzeit — onTool-Zeile im Format `(queued HH:mm)`, LLM-Marker im Format `(HH:mm)` (2026-09-26, Paul):
 
 - **onTool-Zeile:** `Reading queued User message: <text> (queued 14:32)` (`AbstractAgent`, in-loop-
   Pfad), 
-- **LLM-Marker:** `[Queued Message] (queued 14:32): <text>` — auch im Follow-up-Pfad (Queue als
+- **LLM-Marker:** `[Queued Message] (14:32): <text>` — auch im Follow-up-Pfad (Queue als
   Payload nach dem Compact).
 
 Die Uhrzeit ist die Queue-Zeit, nicht die Konsum-Zeit; Burst-Join (Regel 1) zeigt die Zeit des
@@ -140,7 +168,7 @@ zusammengefassten Batches (erster Eintrag). Clock ist injizierbar (testbar).
 ```
 GIVEN eine Message wird um 14:32 gequeued
 WHEN sie in-loop (pollNext) oder als Follow-up konsumiert wird
-THEN onTool-Zeile UND Marker tragen `(queued 14:32)`
+THEN onTool-Zeile trägt `(queued 14:32)` und der Marker `(14:32)`
 AND der Message-Text bleibt unverändert hinter dem Präfix
 
 GIVEN ein Burst (Regel 1) fasst 3 Messages zusammen

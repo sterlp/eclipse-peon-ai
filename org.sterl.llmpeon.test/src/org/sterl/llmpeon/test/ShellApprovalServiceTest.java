@@ -95,8 +95,8 @@ public class ShellApprovalServiceTest extends AbstractUnitTest {
     // R-TC-7: agentFlip_toSlave_prompts — the decision follows the call-time agent
     @Test
     public void agentFlip_toSlave_prompts() throws Exception {
-        // GIVEN pref "not-autonomous", SUT applied with Peon-Plan active
-        activeAgent.set(new AiPlanAgent(model(), tools()));
+        // GIVEN pref "not-autonomous", SUT applied with Jon active
+        activeAgent.set(new AiPoAgent(model(), tools()));
         service.applyConfiguration();
 
         // ... then the active agent flips to a non-autonomous one (no re-apply)
@@ -115,9 +115,9 @@ public class ShellApprovalServiceTest extends AbstractUnitTest {
     // R-TC-6: always_alwaysPrompts — even for autonomous agents
     @Test
     public void always_alwaysPrompts() throws Exception {
-        // GIVEN pref "always", Peon-Plan (autonomous) active
+        // GIVEN pref "always", Jon (autonomous) active
         InstanceScope.INSTANCE.getNode(NODE).put(PREF, "always");
-        activeAgent.set(new AiPlanAgent(model(), tools()));
+        activeAgent.set(new AiPoAgent(model(), tools()));
         service.applyConfiguration();
 
         // WHEN a shell call happens — the fake presenter answers "No"
@@ -159,5 +159,20 @@ public class ShellApprovalServiceTest extends AbstractUnitTest {
         // THEN prompt shown, denied
         assertEquals(1, presenterCalls.get());
         assertFalse("must be denied:\n" + result, result.contains("od6-null"));
+    }
+
+    // R-TC-6: notAutonomous_planStandalone_active_prompts — standalone Peon-Plan is NOT autonomous
+    @Test
+    public void notAutonomous_planStandalone_active_prompts() throws Exception {
+        // GIVEN pref "not-autonomous", standalone Peon-Plan active (not under Jon's governance)
+        activeAgent.set(new AiPlanAgent(model(), tools()));
+        service.applyConfiguration();
+
+        // WHEN a shell call happens — the fake presenter answers "No"
+        String result = shell().shellRunCommand("echo od6-plan", null, null, null, null);
+
+        // THEN prompt shown, denied
+        assertEquals(1, presenterCalls.get());
+        assertEquals("Shell command execution denied!", result.trim());
     }
 }

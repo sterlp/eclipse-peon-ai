@@ -38,8 +38,10 @@ Delegation über [PoDelegateTool](adr/0020-po-agent-orchestration.md).
   Plan-Update bei legitimen Abweichungen, Chat-Summary zuletzt.
   - GIVEN Da Mek meldet fertig WHEN Jon reviewPlanAgent aufruft THEN Da Dok liefert Verdict +
     Chat-Summary, ohne Code zu ändern
-- **R5 ✅** Da Dok ist **read-only im Code**: nur plan*-Tools zum Schreiben (Plan-Datei korrigieren
-  bei legitimen Abweichungen), nie Application Code, nie Docs.
+- **R5 ✅** Da Dok ist **read-only im Code**: Write-Tools ausgenommen, nur plan*-Tools zum Schreiben
+  (Plan-Datei korrigieren bei legitimen Abweichungen), nie Application Code, nie Docs. **Ausnahme
+  Shell** ([agent-tool-filter.md](agent-tool-filter.md) R-TF-1): Diagnose/git/Build/Test erlaubt —
+  Code-Änderungen via Shell bleiben Regelbruch (soft rule).
 - **R6 ✅** Kontext wie alle Sklaven: Turn-Context-Supplier (gewähltes Projekt + AgentsMd-Basis —
   Agent-File-Konvention `AGENTS-REVIEW.md`, `Peon-`-Präfix wird gestrippt) + Workspace-Memory-Snapshot
   über die generische `ordersFor`-Lambda.

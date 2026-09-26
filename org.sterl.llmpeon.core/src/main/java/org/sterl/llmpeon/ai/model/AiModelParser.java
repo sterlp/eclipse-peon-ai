@@ -102,7 +102,6 @@ public class AiModelParser {
                 String id = idNode.asText();
                 String name = getNodeString(item, "name", id);
 
-                // check policy
                 var policy = item.get("policy");
                 if (policy != null) {
                     var state = policy.get("state");

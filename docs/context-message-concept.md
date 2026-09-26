@@ -1,3 +1,18 @@
+## User-Message-Insert-Ordnung (SOLL-Kontrakt, Paul 2026-09-24 — code-verifiziert Da Thinka)
+
+Wie eine UserMessage aufgebaut wird (kein Raten mehr, Grundlage für R-CIB-4 in [compact-input-budget.md](compact-input-budget.md)):
+
+- **Turn-Context-Items zuerst, User-Text zuletzt:** `AbstractAgent.doCall:271-274` hängt die
+  Turn-Context-Items (`renderTurnContext`) zuerst in die Contents, der echte User-Text als
+  **letzter** TextContent (`TextContent.from(message)`). Dasselbe Bild bei
+  `ThreadSafeMemory.add:73-77` (Join hängt neu hinten an) und beim Compact-Restore
+  (`AbstractAgent:320-326`).
+- **Regel:** „Echter User-Text" einer UserMessage = **letzter TextContent**; alles davor ist
+  State (ContextItems). Wer User-Text erkennt (Compact, Darstellung), liest das letzte
+  TextContent — nie den ersten. Compact-Restore-Messages (Summary/Marker) sind State und
+  konstanten-erkennbar ([compact.md](compact.md) R-CC-9).
+
+## Stale System-Message im Compact-Turn (SOLL 2026-09-11, R-ST4) — ✅ done (`a89cdc6`)
 ## Stale System-Message im Compact-Turn (SOLL 2026-09-11, R-ST4) — ✅ done (`a89cdc6`)
 
 Auslöser: User-Smoke-Test 1 („rufe das compact tool auf") — nach dem Compact lief der Turn
@@ -435,3 +450,13 @@ THEN Verhalten unverändert (Hinweis inkl. Compact-Aufforderung)
 
 **Offen (❓, open-points.md):** BDD-Test für den Fallback-Pfad fehlt noch — Regel ist gebaut, aber
 nicht testgesichert.
+
+## Diagnose-Ausgabe (2026-09-25, Paul — Token-Verlust nachvollziehbar machen)
+
+Der `Compact entry:`-Debug-Log (R-CIB-3 in [compact-input-budget.md](compact-input-budget.md), weiterhin **genau ein** Debug-Log pro Compact) trägt
+einen mehrzeiligen Diagnose-Block: je Message eine Zeile (Nr., Typ, Tool-Name, chars roh, chars
+nach Cap, dropped) — **nur wenn** etwas gecappt/deduped wurde — plus immer eine Summenzeile
+(`output: N rendered, X chars / ~Y tokens, stage=…, droppedChars=…, dropRate=…%`).
+Entscheidung: **Level DEBUG für alle Trigger** (manual/auto nicht am `compact()`-Aufrufpunkt
+unterscheidbar, ohne die `AiAgent`-Signature zu vergrößern); Zahlenquellen = `CompactStager`
+(`MessageStat`/`Outcome`), keine Instrumentierung der Call-Pfade.

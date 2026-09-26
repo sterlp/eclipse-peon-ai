@@ -1,0 +1,251 @@
+---
+idPrefix: CC
+---
+
+# Compact (core) — ehrlicher Compact: Zähler, Result, Logging
+
+> **Status:** R-CC-1…6 **✅ done** (2026-09-23, Hotfix Paul, Surefire core 930, Mutations-Nachweis)
+> · R-CC-8/9 **✅ done** (2026-09-25, Inc 3/3.1, Da Dok Review ACCEPTED)
+> · R-CC-10 **✅ done** (2026-09-26, `138a2ea`) · R-CC-11…14 **✅ done** (2026-09-26,
+> Nachbau-Review, `414edf4`→`d3e8833`)
+> · R-CC-7 **🚧 in design** (Retry/Fehlerklassen, zusammen mit ApiRetry-Tabelle).
+> **Input-Budget-Regeln (Präfix CIB):** eigenes Doc
+> [compact-input-budget.md](compact-input-budget.md) — ✅ done (2026-09-25, Da Dok ACCEPTED).
+> **Komponente:** eigens core-Package `compact` ([ADR-0056](adr/0056-compact-component-and-render-modes.md)) —
+> der Compact ist kein Konversations-Agent. **UI-Teil** (Compact-Button, Compact-Lock/Queue,
+> working-Flag) liegt getrennt in [compact-lock.md](compact-lock.md) → künftig Plugin-Docs.
+> Verwandt: [token-usage.md](token-usage.md) (Header ↑↓ = Kosten, ADR-0004, unverändert),
+> [context-message-concept.md](context-message-concept.md), [header-state-leak.md](header-state-leak.md),
+> Architektur: [compact-architektur.md](compact-architektur.md).
+
+## Problem
+
+Der Compact ist der Recovery-Pfad für übergroße History und muss in jedem Fall liefern, ehrlich
+und nachvollziehbar:
+
+1. **Zähler-Lügen (✅ gefixt 2026-09-23):** `totalTokenUsed` trug zwei Metriken (Provider-
+   Kosten vs. Estimate), Compact-Skip fiel aufs Auto-Gate blind, Hint feuerte je Tool-Runde neu.
+2. **Input-Budget:** der Compact-Input war nur per-Message begrenzt — kein Gesamt-Budget; das
+   Thema lebt im [Input-Budget-Doc](compact-input-budget.md) (✅ behoben 2026-09-25).
+3. **Keine Beobachtbarkeit:** kein Logger im Compact-Pfad, keine Größe/Stufen/Dropped-Mengen —
+   ebenfalls im [Input-Budget-Doc](compact-input-budget.md) behoben.
+
+---
+
+## Zähler & Result (R-CC)
+
+### R-CC-8 — Compact/Hint nur ab einer echten History ✅ done (Paul 2026-09-24)
+
+Der **Compact-Hint macht nur Sinn, wenn mehr als 3 Messages** in der Memory stehen — Tokens
+allein reichen nicht (3 riesige Messages → der Compact hätte nichts zu retten). Konstante
+`MIN_COMPACT_MESSAGES` (Wert: > 3) wird **an einer Stelle definiert und überall referenziert**:
+Hint-Gate (`ToolService`), Auto-Compact-Gate (`AbstractAgent`) und der bestehende
+SKIPPED_SMALL-Guard nutzen dieselbe Konstante — keine verstreuten Literale. Bestehender
+SKIPPED_SMALL-Guard (`size() < 3` → Skip) bleibt unverändert im Verhalten, referenziert künftig
+die Konstante.
+
+- GIVEN Memory mit ≤ 3 Messages, Token-Schwelle überschritten WHEN das Hint-Gate prüft THEN
+  kein Hint (Compact würde ohnehin skippen/scheitern).
+- GIVEN Memory mit > 3 Messages, Token-Schwelle überschritten WHEN das Gate prüft THEN Hint
+  scharf (R-CC-4-Dedup unverändert).
+
+### R-CC-9 — Compact-Reinsert: keine Rekursion ✅ done (Paul 2026-09-24)
+
+Nach dem Compact legt die Compact-Komponente die Zusammenfassung + Marker **wieder ins Memory**
+(`ThreadSafeMemory`-Add, Compact-Restore `AbstractAgent:320-326`). Diese **vom Compact
+wiedereingefügten Messages** (a) werden über **Konstanten** erkennbar gemacht (wie `COMPACT_HINT`),
+(b) dürfen **keinen erneuten Compact triggern** — weder Auto-Gate noch Hint feuern auf das
+grade kompaktierte Ergebnis (R-CC-2-Reevaluate + R-CC-8-Messages-Gate decken das ab), und (c)
+dürfen beim nächsten Compact nicht **rekursiv** wieder komprimiert werden, ohne dass neue
+Messages dazukamen. So wird nie aus Versehen die frische Summary (oder eine echte User-Message)
+beim Compact verworfen.
+
+- GIVEN Compact erfolgreich, Memory = Summary + Marker WHEN das Auto-Gate/Hint erneut prüft THEN
+  kein sofortiger Re-Compact ohne neue Messages.
+- GIVEN die wiedereingefügten Summary-Messages WHEN ein Compact läuft THEN sie werden als
+  State behandelt (nie als „echter User-Text"), erkennbar über die Konstante.
+
+### R-CC-1 — Context-Counter misst Input, nie Kosten ✅
+
+`totalTokenUsed` trägt ausschließlich Kontextgröße (Prompt-Input). Provider
+`TokenUsage.inputTokenCount()` wird verwendet (Fallback: Estimate chars×2/7); `totalTokenCount()`
+(Kosten) fließt **nie** in den Kontext-Zähler — Header ↑↓ bleibt Kosten (ADR-0004).
+
+- GIVEN Response `TokenUsage(input=1000, output=5000, total=6000)` WHEN `addResult` THEN
+  Zähler wächst um **1000**. *(Test: `ThreadSafeMemoryInputTokenCountTest#countsInputNotTotal`)*
+- GIVEN Response ohne TokenUsage WHEN `addResult` THEN Estimate (chars×2/7). *(Test:
+  `ThreadSafeMemoryInputTokenCountTest#fallsBackToEstimate`)*
+
+### R-CC-2 — Reevaluate nur nach erfolgreichem Compact ✅
+
+`reevaluateTokens()` + Static-Rebuild nach `compactSession` nur bei **COMPACTED**; bei Skip/
+Failure bleibt der echte Zählerwert (Auto-Gate scharf, kein Death Spiral).
+
+- GIVEN Zähler auf 260000 WHEN `compactSession` scheitert (leere Compressor-Response) THEN
+  Zähler bleibt 260000. *(Test: `ToolServiceCompactResultTest#keepsRealCounterOnFailedCompact`)*
+
+### R-CC-3 — Ehrliches Compact-Ergebnis ✅
+
+`compact()` liefert `CompactResult` (**COMPACTED / SKIPPED_SMALL / FAILED_EMPTY**), kein Boolean.
+`SKIPPED_SMALL` = zu klein (legitim, „not needed"-Zeile bleibt ehrlich); `FAILED_EMPTY` =
+Compressor lieferte nichts → **Fehler**: `monitor.onProblem` beim Tool-Call, UI-Button und
+stillen Auto-Compact — nie stiller Abbruch.
+
+- GIVEN Memory mit 2 Messages WHEN `compact()` THEN `SKIPPED_SMALL`, kein onProblem. *(Test:
+  `AbstractAgentCompactResultTest#skipsSmallContextHonestly`)*
+- GIVEN Memory ≥ 3, Compressor liefert leer WHEN `compact()` THEN `FAILED_EMPTY` + `onProblem`
+  mit Agentennamen. *(Test: `AbstractAgentCompactResultTest#emptyCompressorIsFailedNotEmptyNeeded`)*
+- GIVEN Compact scheitert WHEN nächster Turn THEN Auto-Gate versucht erneut. *(Test:
+  `AbstractAgentCompactResultTest#autoCompactRetriesAfterFailure`)*
+
+### R-CC-4 — Compact-Hint nur einmal ✅
+
+`addCompactHintIfNeeded` fügt den `COMPACT_HINT` nur hinzu, wenn er nicht bereits in der Memory
+steht (`containsMessage`); nach erfolgreichem Compact (Memory geleert) wieder scharf; forced
+Hint (Stuck-Pfad) unterliegt demselben Dedup.
+
+- GIVEN Hint bereits in Memory WHEN erneut feuert THEN genau einmal. *(Test:
+  `ToolServiceCompactHintTest#hintIsAddedOnce`)*
+- GIVEN Compact erfolgreich, Schwelle wieder überschritten THEN Hint erscheint erneut. *(Test:
+  `ToolServiceCompactHintTest#hintReappearsAfterSuccessfulCompact`)*
+
+### R-CC-6 — Estimate als Estimate gekennzeichnet ✅
+
+Wird der Zähler als Estimate (chars×2/7) bestimmt, zeigt die Anzeige `~N (estimate)` (PoDelegateTool-
+Kontext, Roster). Provider-Werte ohne Tilde. *(Test: `ContextCounterDisplayTest#estimateIsDisclosed`)*
+
+### R-CC-7 — Compact-Fehler sichtbar + begrenzter Retry 🚧 in design (Paul 2026-09-24)
+
+Compact-Call kann fehlschlagen (Evidenz: 400 `exceed_context_size_error` am Compressor-Call —
+Input übersteigt das Fenster des Compact-Modells). IST: Exception stirbt still oder als roher
+Stack; LLM erfährt nichts, Header hängt ([header-state-leak.md](header-state-leak.md)).
+
+- **Fehler ans LLM:** ehrliches Tool-Result „compact failed + Ursache" — nie still; bubbelt
+  zum User. **`monitor.onProblem`** zusätzlich.
+- **Retry 1× nach 20s — nur transient** (Rate-Limit, 5xx, Netzwerk); deterministisch tot
+  (`exceed_context_size_error`, Invalid-Request) → sofort ehrlich fehlgeschlagen, kein Retry.
+  Gleiche Fehlerklassen-Tabelle wie ApiRetry (ein Bestand, zwei Verbraucher).
+- BDD (hart erst bei ❌): transient → 1 Retry nach 20s, dann onProblem + ehrliches Result;
+  `exceed_context_size_error` → KEIN Retry, sofort onProblem + Ursache; Retry erfolgreich →
+  normaler COMPACTED-Fluss.
+- ❓ offen (nur Paul): Auto-Compact-Pfad darf bei deterministischem Fehler nicht je Turn
+  endlos wiederversuchen (Max-1-Retry-pro-Fehlerklasse? Empfehlung: ja, sonst Compact-Spirale).
+
+---
+
+> **Input-Budget & Logging:** die Regeln R-CIB (budgetierter Compact-Input, Stufenkürzung,
+> Entry-Log, Disclosure, Result-Zeile in Log + Tool-Result + Status) leben in
+> [compact-input-budget.md](compact-input-budget.md).
+
+## Umsetzung & Slicing (kleine vertikale Inkremente)
+
+1. **Docs ✅ (dieses Doc):** Konsolidierung von compact-input-budget.md + compact-context-counter.md,
+   F1–F8-Entscheidungen eingebacken; alte Docs aufgelöst. (2026-09-26: das Input-Budget als
+   eigenes Doc wieder ausgegliedert — ein ID-Präfix je Feature-Doc, Linter `PRAEFIX_FREMD`.)
+2. **Core extrahieren:** core-Package `compact` — `CompactStager` (pure: Dedup + Stufen 1/2/
+   Endstufe + Disclosure), `CompactEngine` (Stager + LLM-Call + Logging), `CompactResult`-Record.
+   Grüne Unit-Tests ohne Agent-Mock; Mutation-Kandidaten: Endstufen-Terminierung + Dedup-Regression.
+3. **Wiring:** `AbstractAgent.compact()` auf Engine umstellen, Hint/Trigger unverändert,
+   `autoCompactAfter ≤ 0`-Guard, Entry-Debug-Log, Render-Modi in `ChatMessageUtil`
+   (Options-Record) inkl. Fix des SystemMessage-Drops (ADR-0030-Landmine).
+4. **R6 + UI:** Stats bis `CompactSessionTool`/Statuszeile, compressor.md-Prompt, Homepage-Update
+   (user-visible → im selben Inkrement), Plugin-Tests.
+
+## Offen
+
+- **WARUM liefert der Compressor leeren Text?** (Think-only-Response? Cancel?) — R-CC-3-Log +
+  Compact-Model-Config. Paul.
+- **R-CC-7 Retry-Zählschutz** (s. o.) — nur Paul.
+- **Workspace-Memory-Snapshot Vollkopien je `memoryAdd`** (ADR-0032-Hash-Key) — ❓
+  [open-points.md](open-points.md).
+- **AGENTS-`<agent>.md`-Kopien** im Slave-Memory: Code-Pfad liefert keine Mehrfach-Erzeugung;
+  Evidenz fehlt.
+
+## Abgrenzung
+
+- **Live-Context:** bewusst nicht Teil dieser Story — kein Live-Think-Stripping; nur der
+  Compact-Input wird gestuft gekürzt.
+- **R-CC-7** (Fehlerklassen + Retry) bleibt eigenständig 🚧 und teilt sich die Fehlerklassen-
+  Tabelle mit der ApiRetry-Triage — die Zahlen/Disclosure-Infrastruktur liefert das
+  [Input-Budget-Doc](compact-input-budget.md).
+- **Auto-Compact-Trigger-Logik:** `autoCompactAfter` wird nur als Budget gelesen, das
+  Trigger-Verhalten ändert sich nicht.
+- **UI** (Compact-Button, Lock/Queue, working-Flag): [compact-lock.md](compact-lock.md) —
+  künftig Plugin-Docs.
+- **Context-Pollution-Quellen** (Read-Tools ohne Cap, index.md pro Turn, Workspace-Memory ohne
+  Cap): ❓ [open-points.md](open-points.md) — hier nicht behoben; der Compact symptom-behandelt
+  nur seinen eigenen Input.
+
+## Compact-Nachbau-Review (Paul, 2026-09-26 — 6 Punkte, einzeln entschieden; ✅ gebaut & reviewed 2026-09-26)
+
+### R-CC-11 ✅ — Benennung & Architektur des `compact`-Packages (built `414edf4`)
+
+- `CompactEngine` → **`CompactService`** (Einstiegs-Component, Name = Aufgabe).
+- `CompactStager` → **`ContextTrimComponent`** (budgetierte Stufenkürzung; bleibt im
+  `compact`-Package, intern/deep module — nur der Service zeigt nach außen).
+- `CompactResult` (Record inkl. nested Status/Stage/Stats) → **`model`-Package** — wird von
+  Agent-Layer und Plugin konsumiert, ist Model/Value.
+- `CompactLog`: **bleibt wie ist** (Test-Naht für „genau EIN debug-Log" + Result-Level-BDDs;
+  capturing-Implementierung statt Log-Capture-Lib) + kurze Info-Zeile an der Klasse, die den Zweck
+  dokumentiert.
+- `CompactConstants`: **bleibt final class mit privatem Konstruktor** (Konstanten-Interfaces sind
+  Anti-Pattern; Paul 2026-09-26 bestätigt).
+
+### R-CC-12 ✅ — `CompactResult` trägt den letzten Modell-Wert (built `9cf99c3`)
+
+- `Stats` + `resultLine()` zeigen **beide** Zahlen: unser Estimate **und** den letzten
+  provider-gemeldeten `inputTokenCount()` als `requestTokens` + `requestIsEstimate`.
+- **Nur echte Provider-Werte** (`lastProviderInputTokens` ist per Konstruktion nur gesetzt, wenn
+  die API gemeldet hat — `n/a` sonst).
+- Capture **vor** `memory.clear()` (async-state-safety; nach clear ist der Wert weg).
+- GIVEN Memory hat letzten Modell-Input 80k WHEN Compact läuft THEN `resultLine()` zeigt Estimate
+  und `requestTokens=80k` nebeneinander.
+
+### R-CC-13 ✅ — Token-Mathe zentral in `ChatMessageUtil`, Trim in `ContextTrimComponent` (built `08c9a57`)
+
+- Die Formel (`chars×2/7`) wird **zentral** in `ChatMessageUtil` abgelegt/verwendet; die
+  Trim-Logik (Stufenkürzung, Caps, letzte User-Message voll) lebt vollständig in
+  `ContextTrimComponent`. Keine Doppelhaltung der Mathe, keine Compact-Logik außerhalb der
+  Component.
+- Die größere Konsolidierung (Memory-Zähler vs. Estimate — R-CC-10-Messwerte als Grundlage) folgt
+  nach den Messwerten als eigener Punkt.
+
+### R-CC-14 ✅ — Monitor-freier `CompactService`, Emission gehört den Tools/Callern (built `d3e8833`)
+
+- `CompactService.compact(...)` wird **monitor-frei** — pure Service-Call, Return = `CompactResult`.
+  Der Service ist entsprechend „offen", dass die Tools sauber reporten können (auch fürs Testing).
+- Die Engine feuert kein `onTool` mehr; **Start- und Ergebnis-Emission macht der jeweilige Caller**
+  über die bestehende Tool-/Monitor-Mechanik (Button, `compactSession`, PoDelegateTool,
+  Auto-Compact — alle funneln durch `AbstractAgent.compact`).
+- Interne Chat-Events des Compressor-Calls (`onChatMessage`/`onChatResponse`) gehen **nur ins Log**
+  — die UI braucht die Streaming-Preview des internen Calls nicht.
+
+### R-CC-10 ✅ — Diagnose-Dreiklang im Compact-Log: Memory vs. Modell vs. Schätzung (built `138a2ea`, Da-Dok-Review: Code-Seite sauber, Da-Dok-Verifikation QUEUED_MARKER-Hunk: nicht im Commit)
+
+**Anlass (2026-09-25, Paul, Main-Log):** `Compact hint … 289493 tokens of 240000 used` bei einem
+Agenten mit **256k-Modell-Limit**, danach `Compact called but skipped because of small context` —
+die Memory-Summe kann so nicht stimmen (289k–307k > Modell-Limit, der Agent läuft weiter). Verdacht:
+die Summe in `ThreadSafeMemory` ist falsch (z. B. gecachte Prefix-Tokens zählen in **jedem**
+Response-`inputTokenCount()` → Summe läuft davon). Vor jedem Fix wird gemessen:
+
+- **Bei jedem Compact-Ereignis** (Hint-Add, Compact-Call, Skip-Gründe) nennt die Log-Zeile **drei
+  Größen** nebeneinander, jeweils mit Quelle/Flag:
+  1. `memory` — `ThreadSafeMemory.getTotalTokenUsed()` + `isTokenEstimate()` (unser Zähler),
+  2. `model` — der letzte provider-gemeldete `inputTokenCount()` (was das Modell beim letzten
+     Call **tatsächlich** sah; ohne Modell-Meldung: `n/a`),
+  3. `estimate` — unsere `chars×2/7`-Schätzung über den aktuellen Context.
+- GIVEN Memory meldet 289493 WHEN Modell-Input 80k und Estimate 82k THEN die Skip-/Hint-Zeile
+  zeigt alle drei Werte mit Flags (so kann Paul die Quelle der falschen Zahl bestimmen).
+- **Der Fix der Memory-Summe (falls bestätigt) ist ein EIGENER Punkt** — dieser Regel geht nur die
+  Messung voraus; keine Heuristik-Änderung, kein Display-Change (R-TF-tangiert nicht).
+- Verwandt: R-CC-1 (Zähler = `inputTokenCount()`), Punkt 4 des
+  Compact-Nachbau-Reviews (beide Zahlen im `CompactResult` sichtbar machen).
+
+## Info (2026-09-25, Paul — „China API leak", nur notiert, kein Bau)
+
+GIVEN API-Modell-Limit ≈ 26.3k WHEN im Compact-Log 300k Context-Größe erschien THEN Compact-Hint
++ Modell ruft Compact-Tool. Beim zweiten Aufruf zeigte das Log 600k (Verdopplung), während der
+Header korrekt **80k** anzeigte und auch der Compact-Aufruf selbst nur 80k Context sah.
+**Befund:** Die **Größenbestimmung im Compact-Log** war falsch (Header und tatsächlicher
+Compact-Input waren richtig). Revisit nur bei Reproduktion — verwandt mit
+[header-state-leak.md](header-state-leak.md) und R-CC-1 (Zähler = `inputTokenCount()`).

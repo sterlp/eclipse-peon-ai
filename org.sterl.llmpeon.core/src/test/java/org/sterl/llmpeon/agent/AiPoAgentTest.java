@@ -15,6 +15,7 @@ import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.poagent.AiPoAgent;
 import org.sterl.llmpeon.poagent.tools.PoDelegateTool;
 import org.sterl.llmpeon.tool.ToolService;
@@ -232,7 +233,7 @@ class AiPoAgentTest {
         var compacted = setup.po().compact(null);
 
         // THEN — no LLM call, memory untouched
-        assertThat(compacted).isEqualTo(CompactResult.SKIPPED_SMALL);
+        assertThat(compacted.status()).isEqualTo(CompactResult.Status.SKIPPED_SMALL);
         assertThat(setup.po().getMemory().getCopy()).isEqualTo(before);
         assertThat(streamMock.getCallCount()).isZero();
     }

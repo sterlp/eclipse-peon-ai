@@ -11,6 +11,7 @@ import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
 import org.sterl.llmpeon.parts.tools.EclipseRunTestTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
+import org.sterl.llmpeon.parts.tools.PlanTool;
 import org.sterl.llmpeon.parts.tools.debug.JavaDebugTool;
 import org.sterl.llmpeon.parts.tools.memory.WorkspaceMemoryTool;
 import org.sterl.llmpeon.skill.SkillService;
@@ -50,8 +51,11 @@ public class SharedToolsComponent {
     public SharedToolsComponent(SkillService skillService, CommandService commandService) {
         // filter eclipse tools from the search agents ...
         var sa = sharedToolService.getTool(SearchAgentTool.class).get();
+        // R-TF-2: PlanTool reports isEditTool()==false but really writes peon-plan/overview.md —
+        // a read-only research agent must not see it, so exclude it by type.
         sa.setFilter(sa.getFilter().and(e -> !(e.getTool() instanceof AskUserTool)
-                       && !(e.getTool() instanceof WorkspaceMemoryTool)));
+                       && !(e.getTool() instanceof WorkspaceMemoryTool)
+                       && !(e.getTool() instanceof PlanTool)));
 
         sharedToolService.addTool(new SkillTool(skillService));
         sharedToolService.addTool(workspaceWriteFilesTool);

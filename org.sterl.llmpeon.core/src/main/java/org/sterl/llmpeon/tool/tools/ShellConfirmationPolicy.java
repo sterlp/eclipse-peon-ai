@@ -1,7 +1,6 @@
 package org.sterl.llmpeon.tool.tools;
 
 import org.sterl.llmpeon.agent.AiAgent;
-import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.poagent.AiPoAgent;
 
 /**
@@ -26,11 +25,11 @@ public final class ShellConfirmationPolicy {
     }
 
     /**
-     * R-TC-6: autonomous = the active agent is Jon ({@link AiPoAgent}) or Peon-Plan
-     * ({@link AiPlanAgent}). Slaves inherit — the turn owner decides, not the slave.
+     * R-TC-6: autonomous = the active agent is Jon ({@link AiPoAgent}). Slaves inherit —
+     * the turn owner decides, not the slave. Standalone Peon-Plan is NOT autonomous.
      * null → false (fail-closed: a missing agent never skips the prompt).
      */
     public static boolean isAutonomous(AiAgent agent) {
-        return agent instanceof AiPoAgent || agent instanceof AiPlanAgent;
+        return agent instanceof AiPoAgent;
     }
 }

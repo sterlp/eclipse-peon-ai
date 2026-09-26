@@ -1,55 +1,24 @@
-# Session-Stand — 2026-09-24 (Zyklus komplett: R-DL/R-ET/R-OD-5/R-TC/R3 ✅ auf `fix/nextids-bug-report`)
+# Session-Stand — 2026-09-26 (Compact-Nachbau-Review + Agent-Tool-Filter + Docs-Cleanup)
 
-## Wo wir stehen
+## Branch
+- **`story/compact-input-budget`** — alles drauf (Merge `a7c533f` mit `story/agent-tool-filter`, gepusht, in Sync mit origin). Merge → main = **User-Entscheidung**.
 
-**Branch `fix/nextids-bug-report`** (von main `4a6abdd`), gepusht (HEAD `e3ff278` + Docs-Aufräum-Commits),
-nicht gemerged — Merge = Pauls Entscheidung. Docs aufgeräumt 2026-09-24: open-points.md von 539
-Zeilen stranguriert (🔒-Blöcke → resolved-points.md konsolidiert, Bug-Fix-Backlog priorisiert an
-den Anfang), memory.md kompakt.
+## Abgeschlossen (alle gepusht, reviewed, ✅ geflippt)
+- **Architektur-Doc `docs/compact-architektur.md`** (Paul-Anfrage 14:48): Ownership „Agent entscheidet & setzt zurück · Service führt aus (monitor-frei) · Component kürzt · Result spricht", Mermaid-Sequence, Schnittstellen-Tabelle — in index.md verlinkt. Paul-Report mit Review-Fokus-Stellen ausgeliefert.
+- **Agent-Tool-Filter** (R-TF-1…4, `docs/agent-tool-filter.md`): Da Dok hat Shell (instanceof-Whitelist), SearchAgent ohne plan*-Tools, ShellTool-Namen als Konstanten, Tool-Matrix-Tests. Option A: UC-TF-2 nur RAM-Sklave.
+- **Compact-Nachbau-Review** (R-CC-11…14, `docs/compact.md`): CompactService/ContextTrimComponent/model-Package, requestTokens (Provider-only B′) in resultLine, Token-Mathe zentral in ChatMessageUtil, monitor-freier Service (Emission durch Caller, Compressor-Events log-only).
+- **R-CC-10** Diagnose-Dreiklang (`memory=… model=… estimate=…` bei jedem Compact-Ereignis) — Paul kann die 289k/307k-Phantom-Zahlen jetzt messen.
+- **Queued-Marker**: Pauls Format `(HH:mm)` ist SOLL — Tests + Regel 9 + Homepage angepasst (`48e0332`). onTool-Zeile bleibt `(queued HH:mm)` (bewusst, per Doc getrennt).
+- **Docs-Cleanup (Paul 17:35, `8b48048`):** Lint-Befunde weg — `docs/compact-input-budget.md` (Präfix CIB) aus compact.md ausgegliedert, lintDocs = 0 Befunde. Signature-Cleanup (Paul 17:00): `compact(...)` ohne `budgetTokens`/`requestIsEstimate` (ableitbare Parameter raus), stale Javadoc :257 gefixt. open-points ausgemistet (🔒/erledigt → resolved-points/gelöscht), 4 alte Plan-Archive + 2 Task-Pläne gelöscht. Surefire 1023/0, Plugin-Build clean.
 
-- **✅ R-OD-5** (eclipseBuildProject Cap 100 + Disclosure): `5d74aab`, Da-Dok ACCEPTED, Surefire 953.
-- **✅ R-TC-6/7/8/9** (Shell-Approval: Autonom = Jon/Plan, Call-Zeit-Evaluation, `true` ignoriert,
-  eigene Klasse `ShellApprovalService`): `6a72e92`+`43fe725`, Surefire 959, PDE 285. ADR-0026 gegen
-  IST korrigiert (Phantom `QuestionOrchestrator`).
-- **✅ R3** (Shell workingDirectory-Default = Projekt-Disk-Pfad, `cwd=`-Disclosure): `c06efcb`,
-  Da-Dok ACCEPTED, Surefire 964, PDE 288. Smoke ✅ Paul (Pkt 1+2; „kein Projekt" nur noch Safety-Net,
-  automatisiert gedeckt).
+## Offen
+1. **⏳ Option A** (Paul-Rückversicherung): Standalone-Peon-Review behält memory*/askUser — open-points.md.
+2. **⏳ Doc-Split CIB** (Paul-Rückversicherung): compact-input-budget.md ausgegliedert statt Umnummerierung — open-points.md.
+3. **Merge → main**: FF/merge-fähig, Working Tree sauber (nur untracked `peon-plan/overview-done-2026-09-26-17-24.md`, mit nächstem Commit rein) — User-Entscheidung.
+4. **Memory-Summen-Verdacht** (289k/307k > Modell-Limit): Messwerte aus R-CC-10 abwarten → dann Fix (Kandidat: gecachte Prefix-Tokens in jedem Response-Input) als eigene Story.
+5. **R-CC-7** (Retry/Fehlerklassen) 🚧 — Bug-Fix-Backlog, mit ApiRetry-Tabelle.
+6. **⏳ Docs-SOLL-Hygiene-Sweep**: Scope von Paul bestätigen lassen (open-points.md).
 
-## Nächste Schritte
-
-1. **Thema jetzt: Compact + State** (Paul) — R-CC-7 (Compact-Fehler ans LLM + Retry-1×-20s
-   transient-only) + Header-State-Leak (onProblem re-rendert Header) + ApiRetry-Fehlerklassen-
-   Tabelle. Evidenz zentral: docs/header-state-leak.md. → Plan mit Da Thinka, dann Build.
-2. R-TC-Smoke (5 Punkte, tool-confirmation.md) — offen bei Paul.
-3. Tool-Polish I1–I4 (`debugJava*`-Rename + R-JD-13 + QueuedAt-Regel 9 + Homepage) — unverändert.
-4. Compact-Lock-Smoke 3+4; Debugger-Re-Run; Compressor-Empty-Root-Cause (Error-Log +
-   Compact-Model-Config) — Paul.
-
-### Zyklus-Historie (kompakt, Details in den Feature-Docs)
-
-- **✅ R-DL-23/24/25** (nextIds, Pauls Bug-Report): Bindestrich-Präfixe, Rohvorkommen zählen
-  (flach `OP-79`→`OP-80`), skipped-Docs namentlich. Commits `889b315`/`d477820`/`887d301`/
-  `7933301`/`2235dba` (C1 Mutation-Pin). Befund 1 = Anwenderfehler (R-DL-18 deckt ab).
-- **✅ R-ET Rename** `eclipseRunTests`→`eclipseRunJavaTests` (Java-only-Guard): Code `909ce05`,
-  Docs `0188fd3`+`52ce47f`. Pauls Fragen beantwortet (Dauer via CallStats im Result, nicht
-  onTool; Warnings → R-OD-5).
-
-## Smoke-Liste (manuell) — Compact-Lock CT-3…6: 1+2 ✅ Paul
-
-3. Compact fehlschlagen → Queue trotzdem Follow-up.
-4. Slave-Compact → nur Slave 🟢, Da Boss aus (Blatt-Regel), kein Follow-up am Boss.
-
-## Geparkt
-
-`ShellTool.confirmationProvider` volatile (1-Wort-Fix bei Berührung) · Issue #142-ADR ·
-DL-Sweep der 45 Alt-UNBELEGT · UC-DL-60/61 (R-DL-18 gebaut aber ❌ — Flip-Verdacht beim nächsten
-DL-Kontakt prüfen) · Anthropic cache_read-Undercount. Übriges: docs/open-points.md.
-
-## Lektionen (Zyklus)
-
-1. **Bug-Report gegen Code prüfen, bevor Fix-Pläne entstehen:** Da Doks CONCERNS-C1 (ungepinnter
-   Tie-Break `>=`) war exakt die Stelle, die Befund-3 rückholbar gemacht hätte — Mutations-Nachweis
-   rot gemessen statt argumentiert, 5 Minuten Aufwand.
-2. **Opt-in-Blindstelle bei Vergabe-Tools:** `nextIds` las nur Definitionen aus Opt-in-Docs —
-   „free" war eine Lüge über Nicht-Lesbares. Regel-Prinzip: ein Eindeutigkeits-Tool darf im Zweifel
-   nicht raten (R-DL-24 schreibt das jetzt fest).
+## Nächste Schritte (Vorschlag)
+- Paul: Compact-Code-Review (Fokus-Stellen im Report) + ⏳-Rückversicherungen (Option A, Doc-Split) → dann Merge-Frage.
+- Nach Merge: R-CC-7 oder Memory-Konsolidierung (Punkt 4).

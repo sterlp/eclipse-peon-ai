@@ -223,11 +223,9 @@ public class JdtUtil {
         }
         if (StringUtil.hasValue(result)) return result;
         
-        // get the type source
         if (je instanceof IType t) result = t.getSource();
         if (StringUtil.hasValue(result)) return result;
         
-        // check for the resource
         if (je.getResource() instanceof IFile f && f.exists()) {
             try {
                 result = f.readString();

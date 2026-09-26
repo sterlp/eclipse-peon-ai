@@ -8,6 +8,12 @@ import java.util.Deque;
 
 public class UserMessageQueue {
 
+    /**
+     * Prefix of the Rule 9 LLM marker — the single home of this literal. The compact stage-1
+     * "last real user message" check excludes messages starting with it (docs/compact.md R-CIB-4).
+     */
+    public static final String QUEUED_MARKER_PREFIX = "[Queued Message] ";
+
     /** A queued message: its text plus the instant it was queued (Rule 9 Queued-At Disclosure). */
     public record QueuedMessage(String text, long queuedAt) {}
 
