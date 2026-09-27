@@ -18,10 +18,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.openai.OpenAiTokenUsage;
-import dev.langchain4j.model.output.TokenUsage;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -69,26 +66,6 @@ public class ThreadSafeMemory {
         String model = lastProviderInputTokens == null ? "n/a" : String.valueOf(lastProviderInputTokens);
         return " | memory=" + totalTokenUsed + "(estimate=" + tokenIsEstimate + ") model=" + model
                 + " estimate=" + ChatMessageUtil.estimateTokens(getCopy());
-    }
-
-    // TODO-REMOVE (289k/307k suspicion, temporary diagnosis): the provider-reported CACHED input tokens of a
-    // response's usage, if the provider exposes them (OpenAI prompt-cached / Anthropic cache-read tokens) —
-    // the suspected driver of the counter drift. null when the usage is null or reports no cached detail.
-    private static @Nullable Integer cachedInputTokens(@Nullable TokenUsage usage) {
-        if (usage == null) return null;
-        if (usage instanceof OpenAiTokenUsage openAi) {
-            var details = openAi.inputTokensDetails();
-            return details == null ? null : details.cachedTokens();
-        }
-        if (usage instanceof AnthropicTokenUsage anthropic) {
-            return anthropic.cacheReadInputTokens();
-        }
-        return null;
-    }
-
-    // TODO-REMOVE (temporary diagnosis log): render a possibly-null diagnostic value as "?" when absent.
-    private static String diagOrQuestionMark(@Nullable Object value) {
-        return value == null ? "?" : String.valueOf(value);
     }
 
     public ThreadSafeMemory() {
@@ -229,17 +206,9 @@ public class ThreadSafeMemory {
         appended.add(aiMessage);
         appended.addAll(toolResult);
         var usage = ChatMessageUtil.tokenUsage(response);
-        int before = totalTokenUsed; // TODO-REMOVE (289k/307k suspicion): memory state before the provider update
         totalTokenUsed = ChatMessageUtil.getTokenCount(response, memory);
         tokenIsEstimate = usage == null || usage.inputTokenCount() == null;
         if (usage != null && usage.inputTokenCount() != null) lastProviderInputTokens = usage.inputTokenCount();
-        // TODO-REMOVE (289k/307k suspicion): API-reported usage vs. memory counter before/after — reveals
-        // whether the counter sums per response and drifts.
-        log.info("TODO-REMOVE api-input={} total={} cached={} | memory before={} after={}",
-                diagOrQuestionMark(usage == null ? null : usage.inputTokenCount()),
-                diagOrQuestionMark(usage == null ? null : usage.totalTokenCount()),
-                diagOrQuestionMark(cachedInputTokens(usage)),
-                before, totalTokenUsed);
         append(appended);
     }
 
@@ -247,17 +216,9 @@ public class ThreadSafeMemory {
         var message = response.aiMessage();
         memory.add(message);
         var usage = ChatMessageUtil.tokenUsage(response);
-        int before = totalTokenUsed; // TODO-REMOVE (289k/307k suspicion): memory state before the provider update
         totalTokenUsed = ChatMessageUtil.getTokenCount(response, memory);
         tokenIsEstimate = usage == null || usage.inputTokenCount() == null;
         if (usage != null && usage.inputTokenCount() != null) lastProviderInputTokens = usage.inputTokenCount();
-        // TODO-REMOVE (289k/307k suspicion): API-reported usage vs. memory counter before/after — reveals
-        // whether the counter sums per response and drifts.
-        log.info("TODO-REMOVE api-input={} total={} cached={} | memory before={} after={}",
-                diagOrQuestionMark(usage == null ? null : usage.inputTokenCount()),
-                diagOrQuestionMark(usage == null ? null : usage.totalTokenCount()),
-                diagOrQuestionMark(cachedInputTokens(usage)),
-                before, totalTokenUsed);
         append(message);
     }
 

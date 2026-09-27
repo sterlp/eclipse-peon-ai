@@ -198,8 +198,6 @@ public class ToolService {
 
     private void addCompactHintIfNeeded(ToolLoopRequest req, ChatResponse response, boolean force) {
         var memory = req.getMemory();
-        // TODO-REMOVE (289k/307k suspicion): full context sizes at loop end, before the compact-hint decision.
-        log.info("TODO-REMOVE loop-end{}", memory.tokenDiagnosis());
         // R-CC-8: the hint only makes sense with a real history — at ≤ MIN_COMPACT_MESSAGES the
         // compact would skip anyway (old gate: < 10)
         if (memory.size() <= CompactConstants.MIN_COMPACT_MESSAGES) return;
