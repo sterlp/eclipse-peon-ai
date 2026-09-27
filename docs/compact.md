@@ -241,30 +241,43 @@ Response-`inputTokenCount()` → Summe läuft davon). Vor jedem Fix wird gemesse
 - Verwandt: R-CC-1 (Zähler = `inputTokenCount()`), Punkt 4 des
   Compact-Nachbau-Reviews (beide Zahlen im `CompactResult` sichtbar machen).
 
-### R-CC-15 🚧 — Nested-Agent-Usage darf nicht ins Parent-Memory (2026-09-27, Paul, Smoke-Log)
+### R-CC-15 ❌ — Nested-Agent-Usage darf nicht ins Parent-Memory (2026-09-27, Paul + Da-Dok-Verifikation)
 
-**Befund:** Nach `Da Sniffa done. (2m 40s)` zeigte der PO-Hint
-`memory=31002(estimate=false) model=31002 estimate=1902` — der eigene PO-Context war klein
-(Estimate ≈ 1.9k), die 31002 stammen mutmaßlich aus dem **Suchagenten-Call** (dessen Session
-zeigte selbst ein Context-Limit-Warning 19150/20000). Verdacht: die Usage-Antwort des Sub-Agents
-wird am geteilten Choke-Point (`addResult`/Usage-Capture in der Parent-Loop) in das
-**Parent-ThreadSafeMemory** geschrieben. Der Suchagent war bei jedem der „komischen" Zähler-Fälle
-beteiligt — er bekommt einen eigenen Context, sein Memory darf nicht beim Parent landen. Kandidat
-für die 289k/307k-Phantom-Zahlen (R-CC-10-Anlass).
+**Root Cause (verifiziert, Paul markiert die Stelle):** `SearchAgentTool.java:47-51` baut den
+Nested-Request per `this.request.toBuilder()` und überschreibt `staticMessages`, `toolFilter`,
+`memory`, `agentConfig` — **aber nicht `.agent()`**. Der Sub-Loop trägt daher den **Parent-Agenten**
+(Jon). `CompactSessionTool.java:23` löst im Sniffa-Loop Jons Agent auf → Sniffas
+Context-Warning-Lese-Compact hat **Jons Memory gecleart und mit Sniffas Summary re-geseed**
+(`AbstractAgent.java:337`). Kein Usage-Summen-Bug — `addResult` setzt (addiert nicht,
+`ThreadSafeMemory.java:233/251`); der Smoke-Sprung `memory=31002 / estimate=1902` war
+post-Compact-Re-Seed neben Pre-Compact-Call-Input. Selbe Wurzel erklärt: Hint-Fehlzuschreibung
+(`ToolService.java:221` — Sub-Loop-Hints landen auf dem Parent) und den Static-Swap
+(`ToolService.java:166-169` — Sniffa bekam Jons System-Prompt). Sniffa **hat** `compactSession`
+(Filter schließt es nicht aus) — entgegen der bisherigen Annahme „kein Compact-Tool".
 
-**SOLL:** Jeder Agent besitzt **exakt sein eigenes** `ThreadSafeMemory`. Usage eines Sub-Agent-Calls
-(searchAgent, talkPlan/planWithPlanAgent/askDev/buildWithDev, compactSession) wird **nie** in das
-Memory des Parent-Agenten geschrieben — auch nicht, wenn der Call über dessen Loop/Monitor läuft.
+**SOLL:**
+1. Der Nested-Request überschreibt `.agent()` — **nie** erbt er den Parent-Agenten. Damit fallen
+   Compact-auf-Parent, Hint-Fehlzuschreibung und Static-Swap mit derselben Wurzel weg.
+2. `compactSession` fliegt aus dem Sniffa-Tool-Filter — ohne Compact-Tool antwortet der Sub-Loop
+   ehrlich („cannot be compacted"-Fallback, `ToolService.java:213-215`).
+3. `ToolLoopRequest` bekommt am Klassenkopf eine **Warnung**: `toBuilder()` erbt `agent` (und
+   `memory`) — Nested-Requests müssen beide explizit setzen.
+4. `toBuilder` bleibt **grundsätzlich** erhalten (implizite Vererbung der unveränderten Felder ist
+   der Vorteil) — Kosten/Nutzen-Abgleich durch Da Mek mit Evidenz; bricht die Analyse die
+   Annahme (Entfernung klar billiger/sicherer), STOP-AND-ASK an Jon statt still umdrehen.
 
-#### UC-CC-1 — Usage-Trennung Parent/Sub-Agent
+#### UC-CC-1 — Usage-/Agent-Trennung Parent/Sub-Agent
 
-- GIVEN der Parent-Agent ruft `searchAgent` WHEN der Sub-Agent eine Response mit `usage` empfängt
-  THEN das Parent-Memory ändert `totalTokenUsed` **nicht** (Beobachtung: `TODO-REMOVE`-Logs).
-- GIVEN PO ruft Da Sniffa WHEN Da Sniffa done THEN der nächste Compact-Hint des PO spiegelt nur
-  PO-eigene Calls wider (kein Sprung um die Sub-Agent-Usage).
+- GIVEN der Parent-Agent ruft `searchAgent` WHEN der Nested-Loop Tools auflöst THEN
+  `request.getAgent()` ist **nicht** der Parent-Agent.
+- GIVEN der Sub-Loop ruft `compactSession` (oder would-be) WHEN done THEN das Parent-Memory ist
+  **unverändert** (kein clear/re-seed).
+- GIVEN der Sub-Loop feuert einen Compact-Hint WHEN die Zeile emittiert wird THEN die
+  Zuschreibung nennt den Sub-Agenten, nicht den Parent.
 
-**Status-Begründung 🚧:** Mechanismus-Verifikation (Da Dok, code-seitig) und roter Test (Da Mek,
-mit Estimates im Test) stehen aus; nach Bestätigung → ❌ specified, Fix = eigener Bug-Fix.
+**Tests (Da Mek, Estimates statt echter Usage):** `shouldNotExposeParentAgentToNestedLoop` (heute
+rot) · `subCompactMustNotClearParentMemory` (heute rot) · `subLoopHintAttributesToSubAgent`.
+Roboter-Smoke danach durch Paul (Branch bleibt `story/compact-input-budget`).
 
 ### R-CC-16 ❌ — Da Scribe schreibt die neue Context-Größe ins onTool (2026-09-27, Paul)
 

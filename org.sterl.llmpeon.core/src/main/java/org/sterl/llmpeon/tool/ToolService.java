@@ -208,7 +208,11 @@ public class ToolService {
         var shouldCompact = force || memory.getTotalTokenUsed() > compactLimit * 0.95;
         if (!shouldCompact) return;
 
-        if (getTool(CompactSessionTool.class).isEmpty()) {
+        // R-CC-15: per-request check — the registry is parent-wide, but the hint may only fire
+        // when THIS loop's tool set actually offers compactSession; otherwise the honest fallback
+        var hasCompactTool = toolSpecifications(req).stream()
+                .anyMatch(spec -> CompactSessionTool.NAME.equals(spec.name()));
+        if (!hasCompactTool) {
             // avoid that a search agent or any other agent without a compact tools get stuck
             req.addMessage(new UserMessage(
                     "Your context window is almost full and cannot be compacted. " +

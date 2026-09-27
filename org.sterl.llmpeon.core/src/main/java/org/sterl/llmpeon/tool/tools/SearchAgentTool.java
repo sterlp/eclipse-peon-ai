@@ -25,7 +25,9 @@ public class SearchAgentTool extends AbstractTool {
     @Getter @Setter
     private Predicate<SmartToolExecutor> filter = e -> !e.getTool().isEditTool() 
             && !(e.getTool() instanceof SearchAgentTool)
-            && !(e.getTool() instanceof ShellTool);
+            && !(e.getTool() instanceof ShellTool)
+            // R-CC-15: a sub-loop has no owning agent — compactSession would hit the parent
+            && !(e.getTool() instanceof CompactSessionTool);
 
     private final ToolService toolService;
 
@@ -48,7 +50,10 @@ public class SearchAgentTool extends AbstractTool {
                 .staticMessages(Arrays.asList(system))
                 .toolFilter(filter)
                 .memory(messages)
-                .agentConfig(cfg.searchAgentConfig());
+                .agentConfig(cfg.searchAgentConfig())
+                // R-CC-15: never inherit the parent agent — a sub-loop compactSession would
+                // clear/re-seed the PARENT memory (toBuilder inherits every field, see ToolLoopRequest)
+                .agent(null);
 
             onTool("Da Sniffa "
                     + (modelName == null ? "" : "(" + modelName + ")")
