@@ -14,7 +14,7 @@ to provider-specific request parameters. Es gibt **keinen** separaten "supports"
 
 ## Business Rules
 
-### R-THINK-1: Ein Think-Wert je Agent — leer = unset ❌
+### R-THINK-1: Ein Think-Wert je Agent — leer = unset ✅ done (2026-09-27)
 
 #### UC-THINK-1 — emptyThinkOmitted
 Der per-agent Think-String ist die einzige Quelle. `null`/`""` = unset → es wird **kein**
@@ -25,7 +25,7 @@ AGENTS.md).
 - **GIVEN** per-agent Think = `"false"` **WHEN** ein Ollama-Request gebaut wird **THEN** `"think": false`
 - **GIVEN** per-agent Think = `"false"` **WHEN** ein OpenAI-Request gebaut wird **THEN** kein reasoning-Parameter (OpenAI kennt kein explizites off)
 
-### R-THINK-2: Persistenz-Roundtrip — explizites Off überlebt ❌ (Issue #149)
+### R-THINK-2: Persistenz-Roundtrip — explizites Off überlebt ✅ done (2026-09-27, Issue #149)
 
 #### UC-THINK-2 — explicitOffSurvivesPersistence
 Ein gespeicherter Off-Wert darf auf dem Weg Saver → Store → Loader → `AgentConfig` nie zu `null`
@@ -38,7 +38,7 @@ UI unerreichbar.
 - **GIVEN** think = `"false"` **WHEN** E2E (Agent.call → StreamMock, Ollama) **THEN** Request trägt `think:false`
 - **Regression:** der Roundtrip-Test war vor dem Fix rot (Issue-#149-Reproduktion)
 
-### R-THINK-3: Off-Tokens — `false`/`FALSE`/`none`/`no`/`off` ❌
+### R-THINK-3: Off-Tokens — `false`/`FALSE`/`none`/`no`/`off` ✅ done (2026-09-27)
 
 #### UC-THINK-3 — offTokensCaseInsensitive
 Erkennung case-insensitive und getrimmt. Ein nicht-leerer Wert, der kein Off-Token ist, ist on
@@ -48,7 +48,7 @@ Erkennung case-insensitive und getrimmt. Ein nicht-leerer Wert, der kein Off-Tok
 - **GIVEN** think = `"true"` oder `"high"` **WHEN** Ollama-Request **THEN** `think:true`
 - **GIVEN** think = `"false"` **WHEN** LM-Studio-Request **THEN** `reasoning=off` (bisheriges Verhalten unverändert)
 
-### R-THINK-4: Think-Dropdown statt Checkbox ❌
+### R-THINK-4: Think-Dropdown statt Checkbox ✅ done (2026-09-27, Paul-Smoke steht aus)
 
 #### UC-THINK-4 — thinkToggleComboNotCheckbox
 `ThinkSupport.Boolean` (die per-agent Checkbox, nur Ollama) entfällt ersatzlos — jeder Provider
@@ -59,7 +59,7 @@ mit per-request Think bekommt ein editierbares Dropdown.
 - **GIVEN** Ollama-Dropdown leer **WHEN** gespeichert **THEN** nichts persistiert (unset)
 - Clean Break: `ThinkSupport.Boolean` + `booleanValue`/`booleanOn` verschwinden, keine Migration
 
-### R-THINK-5: Basis-Checkbox „Default model supports thinking" raus ❌
+### R-THINK-5: Basis-Checkbox „Default model supports thinking" raus ✅ done (2026-09-27, Paul-Smoke steht aus)
 
 #### UC-THINK-5 — baseCheckboxRemovedDerivedSupport
 `PREF_THINK_SUPPORTED` (Basic-Seite) entfällt — sie beeinflusste den Request ohnehin nicht und hat
@@ -70,7 +70,7 @@ Issue-#149-Reporter verwirrt. `isThinkSupported()` leitet sich aus dem Think-Wer
 - **GIVEN** dev think = `""` oder ein Off-Token **WHEN** `isThinkSupported()` **THEN** `false`
 - **GIVEN** Preference-Store mit dem alten Key **WHEN** Config geladen **THEN** Key ignoriert (Clean Break)
 
-### R-THINK-6: Custom Agents — `think`-Frontmatter, `think_supported` fliegt raus ❌
+### R-THINK-6: Custom Agents — `think`-Frontmatter, `think_supported` fliegt raus ✅ done (2026-09-27, Paul-Entscheid)
 
 #### UC-THINK-6 — customAgentThinkFrontmatter
 Paul 2026-09-27: `think_supported` (und `think_on_string`/`think_off_string` als Steuerung)
@@ -82,6 +82,7 @@ entfallen ersatzlos — abgeleitet wird **komplett** aus dem Think-Level (ein St
 - **GIVEN** legacy `think_supported: false` **WHEN** gelesen **THEN** als explizites off (`"false"`) abgeleitet (User-Intention bleibt)
 - **GIVEN** legacy `think_on_string: high` **WHEN** gelesen **THEN** think() = `"high"`
 - **GIVEN** Write **THEN** Datei enthält nur `think` — `think_supported`/`think_enabled`/`think_on_string`/`think_off_string` entfernt (Migrate-on-write, wie heute)
+- **GIVEN** legacy `think_supported: false` **WHEN** E2E (eigener Stub, B6) **THEN** off-Signal korrekt, kein reasoning_effort (OpenAI)
 - **GIVEN** `think` = `"high"` **WHEN** returnThinking geprüft **THEN** abgeleitet aus isOn(think) OR globalem send-thinking (ersetzt ADR-0003s think_supported-Bein)
 
 ### R-THINK-7: Built-in Agenten unabhängig ✅

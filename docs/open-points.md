@@ -225,3 +225,20 @@ Da-Mek-Empfehlung: (a) behalten + Doc anpassen, (b) ja.
 Analyse korrigiert (2026-09-19): unser p2-Repo liefert asm 9.10.1 mit (includeAllDependencies).
 Fix-Kandidaten + Follow-ups: [issue-142-asm-conflict.md](issue-142-asm-conflict.md). Nachzuholen
 bei Pauls Zustimmung: Mindest-Eclipse-Version auf der Homepage nennen.
+## ⏳ Think-BDD-Lücken (2026-09-27, Da-Dok-Provider-Think-Audit, Issue-#149-Zyklus)
+
+Aus dem Audit registriert, bewusst nicht in Inc-4 (Scope-Dispositionen):
+(a) Gemini buildModel-Thinking-Branch ungetestet (einziger Konsument der R-THINK-5-Ableitung);
+(b) OpenAI-Familie-Off-Test fehlt `FALSE`/`No`/` Off `-Varianten; (c) GITHUB_COPILOT/GITHUB_MODELS
+ohne Request-Param-Tests; (d) Anthropic konkret-Level-Pfad (Budget 8000) + unknown string ungetestet;
+(e) LM Studio extra_body-reasoning-Override-Interaktion; (f) OPEN_AI_OFFICIAL reasoningSummary=DETAILED
+nie asserted; (g) custom-agent×OpenAI-Familie nur Signatur-Smoke. Plus: `ThinkModelMapping.Entry.off`
+wird geparst, aber ungenutzt (Inc-4-Scope war nur `resolveOff`+`find`); `AiAgent.isThinkEnabled()`
+(deprecated Default) Kandidat fürs nächste Sterben-Inkrement.
+
+## ⏳ User-Smoke Issue #149 (2026-09-27, Paul)
+
+UI-Verifikation steht aus: Ollama-Dropdown (""/true/false) in der Advanced-Page, Basis-Checkbox
+weg, `think:false` im Debug-Log bei `false` (der eigentliche Issue-Reporter-Fall), Custom-Agent
+Legacy-Frontmatter (Write → nur `think`). Branch `story/issue-149-think` unveröffentlicht, Merge
+nach Paul-Review.
