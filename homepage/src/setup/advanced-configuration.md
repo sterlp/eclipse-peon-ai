@@ -43,7 +43,7 @@ Every built-in agent — **PO (Jon)**, **Dev**, **Plan**, **Search**, and **Comp
 
 Thinking/reasoning is sent **per request**, so each agent resolves its own value for its provider and model. This solves mixed setups — for example planning with **GPT** (`reasoning.effort=high`) while implementing with **DeepSeek** through an OpenAI-compatible gateway that rejects `reasoning.effort`.
 
-Every built-in agent — **PO (Jon)**, **Dev** (the default), **Plan**, **Search** and **Compact** — has its own **Think** field on this page, and every [custom agent](./custom-agents.md) sets the same via its `AGENT.md` frontmatter triple. **Nothing is inherited between agents.**
+Every built-in agent — **PO (Jon)**, **Dev** (the default), **Plan**, **Search** and **Compact** — has its own **Think** field on this page, and every [custom agent](./custom-agents.md) sets the same via the `think` field in its `AGENT.md` frontmatter. **Nothing is inherited between agents.**
 
 The Think field takes a single value whose form depends on the base provider:
 
@@ -51,12 +51,17 @@ The Think field takes a single value whose form depends on the base provider:
 |----------|-------------|--------|
 | **OpenAI family** | dropdown | `high` / `medium` / `low` / `minimal` (`reasoning.effort`) |
 | **Claude (Anthropic)** | dropdown | `enabled` / `adaptive` (extended thinking) |
-| **Ollama** | checkbox | on (`true`) / off |
+| **Ollama** | editable dropdown | empty / `true` / `false` — the `think` flag |
 | **LM Studio** | free text | any value — sent as the custom `reasoning` body property |
 
-- **Off / empty** — nothing is sent (provider default), except Ollama sends `think:false`.
+- **Empty** — unset: nothing is sent and the model decides (for Ollama the `think` field is omitted entirely).
+- **Off token** (`false` / `off` / `no` / `none`, case-insensitive) — explicit off where the provider knows it: Ollama sends `think:false`, LM Studio sends `reasoning=off`. OpenAI and Anthropic have no off concept — nothing is sent.
 - **Generic on** (`true`) — the [built-in model mapping](#built-in-model-mapping) picks the concrete value for your provider/model.
 - **Concrete value** — used verbatim.
+
+::: warning The Ollama checkbox is gone
+The old on/off checkbox is replaced by the dropdown, and a previously **off** checkbox now reads as **empty = unset** — the model thinks by default again. To explicitly turn thinking off, select `false`.
+:::
 
 ### Auto vs. manual
 
@@ -80,7 +85,7 @@ When the Think field is set to the generic on (`true`), Peon maps to a provider-
 
 ### Send thinking back
 
-**Show and resend model thinking** (main Peon Configuration page) is a separate global transport switch. It is **independent** of model support.
+**Show and resend model thinking** (main Peon Configuration page) is a separate global transport switch. It is **independent** of the per-agent Think value.
 
 ## Extra Body / Prompt Caching
 

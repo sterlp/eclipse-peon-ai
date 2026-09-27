@@ -190,11 +190,11 @@ The **Token Window** setting controls how many tokens of conversation history ar
 
 ### Thinking Support
 
-The **Default model supports thinking** checkbox declares whether the **Dev/default** model supports thinking/reasoning.
+There is no base-level "supports thinking" checkbox anymore — thinking is configured **per agent** on the [Advanced Configuration](./advanced-configuration.md#per-agent-think) page (the same `think` field [custom agents](./custom-agents.md) use in their frontmatter).
 
-Thinking is resolved **per request**, so each agent decides on its own. With the Think field set to the generic on (`true`), Peon picks the right value for your provider and model via a built-in table. With thinking off, OpenAI-style providers omit reasoning while Ollama sends `think:false`. To take manual control — or to plan with one provider and implement with another — set the Think value per agent on the [Advanced Configuration](./advanced-configuration.md#per-agent-think) page.
+Each agent's Think value is a single string: **empty = unset** (nothing is sent, the model decides), an off token (`false` / `off` / `no` / `none`) for an explicit off, `true` for auto (Peon picks the right value for your provider and model via a built-in table), or a concrete value used verbatim. That also covers mixed setups — e.g. planning with one provider and implementing with another.
 
-The separate **Show and resend model thinking** checkbox controls whether the model's own reasoning is shown and sent back on the next turn (needed by some LLMs like Qwen, Mistral, DeepSeek). It is independent of model support.
+The **Show and resend model thinking** checkbox controls whether the model's own reasoning is shown and sent back on the next turn (needed by some LLMs like Qwen, Mistral, DeepSeek). It is independent of the per-agent Think value.
 
 ## Testing the Connection
 

@@ -40,6 +40,7 @@ name: Docs-Assistant
 description: Answers only from the retrieved documents
 read-only: true
 model: qwen3.6-27b
+think: true
 tools:
   - eclipseReadFile
   - eclipseGrepFiles
@@ -77,12 +78,13 @@ Double quotes on the outside would break, because the JSON itself contains doubl
 | `url` | Optional endpoint override for this agent (e.g. a different gateway or a local instance). Omitted/blank = inherits the base connection from Peon Configuration. |
 | `api_key` | Optional API-key override for this agent. Omitted/blank = inherits the base key. |
 | `extra_body` | Raw JSON merged into this agent's request body — where [prompt caching](./advanced-configuration.md#extra-body--prompt-caching) is configured per agent. Omitted/blank = none. |
-| `think_supported` | `true`/`false` — declares that this agent's model supports thinking. |
-| `think_on_string` | Value used when supported. A level `high`/`medium`/`low`/`minimal` (OpenAI), `true` (Ollama/Anthropic), etc. **Empty → auto** ([built-in model mapping](./advanced-configuration.md#built-in-model-mapping)). Setting it (or `think_off_string`) switches the mapping off. |
-| `think_off_string` | Value used when unsupported. Empty means provider default, except Ollama sends `think:false`. Set `false` for providers that need explicit off. |
 | `think_send` | *(reserved)* Show the model's reasoning and resend it next turn (Qwen, Mistral, DeepSeek). Currently the global **Show and resend model thinking** setting applies to all agents; this per-agent key is parsed but not yet wired per request. |
-| `think` | *(legacy alias, auto-migrated)* Read as `think_on_string` and implies `think_supported` for on-values. Old files are auto-migrated on the first write operation (e.g. model or thinking-support change). Prefer the `think_*` keys above. |
+| `think` | The agent's think level (one string). **Empty/omitted = unset** — nothing is sent, the model decides. `false` / `off` / `no` / `none` (case-insensitive) = explicit off (Ollama: `think:false`, LM Studio: `reasoning=off`). `true` = auto ([built-in model mapping](./advanced-configuration.md#built-in-model-mapping)). Any other value (e.g. `high`, `enabled`) is used verbatim. |
 | `tools` | Allowlist of tool-name prefixes. **Omit it and the agent gets _all_ tools**; an empty list allows none. |
+
+::: tip Legacy `think_*` keys
+The old keys `think_supported`, `think_enabled`, `think_on_string` and `think_off_string` are no longer written, but old files still load: they resolve to the `think` value (an on-string wins over an off-string, which wins over the support flag). The next write — e.g. changing the model in the UI — replaces them with a single `think` line.
+:::
 
 ## Model connection per agent
 
