@@ -308,3 +308,9 @@ editierbar statt READ_ONLY (Provider-Werte sind Vorschläge, kein geschlossenes 
   WHEN die Section lädt, THEN zeigt das Combo den Wert verbatim (Feld behält den Text)
 - GIVEN das Combo zeigt einen freien Text WHEN `getRecord()` THEN der Combo-Text wird
   unverändert als Think-Wert übernommen
+
+**R-A4-Follow-up (2026-09-27, Issue #149, [ADR-0059](adr/0059-think-dropdown-empty-unset.md) — ❌ in Arbeit):**
+„Boolean → weiter Checkbox" entfällt: `ThinkSupport.Boolean` (Ollama-Checkbox) wird ersatzlos
+gestrichen, Ollama bekommt ein editierbares Dropdown mit Items `""`/`true`/`false`; leer = unset =
+nichts senden. Basis-Checkbox „Default model supports thinking" (Basic-Seite) entfällt ebenfalls.
+Fachliche Regeln + BDD: [per-agent-think.md](per-agent-think.md) (UC-THINK-4/5).

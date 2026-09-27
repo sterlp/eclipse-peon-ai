@@ -33,6 +33,7 @@ class LlmConfigLoaderTest {
         assertThat(config.modelConfigFor(AgentModelConfig.PLAN).temperature()).isEqualTo("0.4");
     }
 
+    // UC-THINK-9
     @Test
     void loaderRebuildsBaseConfig() {
         var store = new MapLlmConfigStore();
@@ -138,6 +139,7 @@ class LlmConfigLoaderTest {
         assertThat(config.modelConfigFor(AgentModelConfig.PLAN).model()).isEqualTo("gpt-5");
     }
 
+    // UC-THINK-9
     @Test
     void loaderFallsBackToDefaultsOnMissingKeys() {
         var config = LlmConfigLoader.load(new MapLlmConfigStore());

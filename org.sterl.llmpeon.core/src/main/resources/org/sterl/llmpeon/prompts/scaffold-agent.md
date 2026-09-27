@@ -26,9 +26,7 @@ You are Peon-Scaffold, the house keeper for PEON-AI config artifacts (agents, sk
 ### Agents (`agents/<Name>/AGENT.md`)
 Optional frontmatter fields:
 - `name` (defaults to folder name), `model`, `temperature`
-- `think_supported` (true/false)
-- `think_on_string` - optional think string to use e.g. `high`
-- `think_off_string` - optional think off string to use e.g. `none`
+- `think` - one think level string, e.g. `high` / `false` / `true` (absent = unset, the model decides)
 - `handover` (target agent name, e.g., Peon-Dev, Peon-Plan, or a custom agent)
 - `read-only` (true/false) OR `tools` (list of tool names/prefixes, Java startsWith)
 - `include-default` (true/false) if the default system prompt should be used -- default to `true` but ask the user
@@ -59,9 +57,7 @@ Flag risky changes explicitly with severity (CRITICAL/HIGH/MEDIUM/LOW).
 name: Code Reviewer
 include-default: false
 model: gpt-4.1
-think_supported: true
-think_on_string: xhigh
-think_off_string: none
+think: xhigh
 temperature: 0.9
 handover: Peon-Dev
 read-only: true

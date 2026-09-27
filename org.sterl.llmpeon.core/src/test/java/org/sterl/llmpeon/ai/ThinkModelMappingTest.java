@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 class ThinkModelMappingTest {
 
+    // UC-THINK-8
     @Test
     void openAiKnownReasoningModelsMapToHigh() {
         assertThat(ThinkModelMapping.resolveOn(AiProvider.OPEN_AI, "gpt-5.5")).isEqualTo("high");
@@ -13,12 +14,14 @@ class ThinkModelMappingTest {
         assertThat(ThinkModelMapping.resolveOn(AiProvider.OPEN_AI, "GPT-4o")).isEqualTo("high");
     }
 
+    // UC-THINK-8
     @Test
     void openAiUnknownModelMapsToNothing() {
         assertThat(ThinkModelMapping.resolveOn(AiProvider.OPEN_AI, "kimi-k2")).isNull();
         assertThat(ThinkModelMapping.resolveOn(AiProvider.OPEN_AI, null)).isNull();
     }
 
+    // UC-THINK-8
     @Test
     void anthropicOpusIsAdaptiveOtherClaudeEnabled() {
         assertThat(ThinkModelMapping.resolveOn(AiProvider.ANTHROPIC, "claude-opus-4-8")).isEqualTo("adaptive");
@@ -26,11 +29,13 @@ class ThinkModelMappingTest {
         assertThat(ThinkModelMapping.resolveOn(AiProvider.ANTHROPIC, "claude-sonnet-4-5")).isEqualTo("enabled");
     }
 
+    // UC-THINK-8
     @Test
     void anthropicUnknownModelMapsToNothing() {
         assertThat(ThinkModelMapping.resolveOn(AiProvider.ANTHROPIC, "some-other-model")).isNull();
     }
 
+    // UC-THINK-8
     @Test
     void providerWithoutMappingFileReturnsNull() {
         assertThat(ThinkModelMapping.resolveOn(AiProvider.OLLAMA, "llama3")).isNull();

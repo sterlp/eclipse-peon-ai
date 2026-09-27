@@ -55,6 +55,7 @@ class CustomAgentConnectionE2ETest {
         baseStub.stop();
     }
 
+    // UC-THINK-6
     @Test
     @Timeout(10)
     void frontmatterAgent_reachesOwnStub_withFullPayloadOnTheWire() throws IOException {

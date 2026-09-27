@@ -2,19 +2,16 @@ package org.sterl.llmpeon.ai;
 
 import java.util.Set;
 
-import org.sterl.llmpeon.shared.StringUtil;
-
 /**
  * Resolves the per-agent "think" string into provider-specific thinking/reasoning values.
  *
- * <p>The string IS the effort. The following are treated as "off": {@code null}, {@code ""},
- * {@code "false"}, {@code "off"}, {@code "no"}, {@code "none"}. Everything else
- * ({@code "true"}/{@code "on"}/{@code "yes"} or an explicit level like {@code "high"}/{@code "medium"}/
- * {@code "low"}/{@code "minimal"}) enables thinking.</p>
- *
- * <p>Provider mapping decides whether off is omitted or explicit. Ollama distinguishes unset
- * {@code null} from resolved off: {@link #toOllamaThink(String)} maps off to {@code false}; OpenAI
- * omits reasoning for off.</p>
+ * <p>Blank ({@code null} or empty) is <em>unset</em>: no thinking/reasoning parameter is sent at
+ * all — the model decides. Explicit off tokens ({@code "false"}, {@code "off"}, {@code "no"},
+ * {@code "none"} — case-insensitive, trimmed) disable thinking where the provider knows the
+ * concept: Ollama sends {@code think:false} ({@link #toOllamaThink}), LM Studio sends
+ * {@code reasoning:off} ({@link #toReasoning}); OpenAI/Anthropic have no off concept and omit the
+ * parameter. Everything else ({@code "true"}/{@code "on"}/{@code "yes"} or an explicit level like
+ * {@code "high"}/{@code "medium"}/{@code "low"}/{@code "minimal"}) enables thinking.</p>
  */
 public final class ThinkResolver {
 
@@ -85,30 +82,20 @@ public final class ThinkResolver {
         return isOff(think) ? null : Boolean.TRUE;
     }
 
-    /**
-     * Effective per-agent think string. Both strings empty = auto: {@code "true"} (heuristic marker)
-     * when supported, {@code ""} (off) when unsupported. Any string set = manual: the active string is
-     * used verbatim (empty active string = off), and the heuristic never applies.
-     */
-    public static String effectiveThink(boolean enabled, String on, String off) {
-        boolean auto = StringUtil.hasNoValue(on) && StringUtil.hasNoValue(off);
-        if (enabled) return auto ? "true" : StringUtil.stripToEmpty(on);
-        return auto ? "" : StringUtil.stripToEmpty(off);
-    }
-
-    /** Ollama {@code think} flag: {@code null} (omit) when unset; {@code FALSE} for off; else {@code TRUE}. */
+    /** Ollama {@code think} flag: {@code null} (omit) when unset/blank; {@code FALSE} for an off token; else {@code TRUE}. */
     public static Boolean toOllamaThink(String think) {
-        if (think == null) return null;
         var v = norm(think);
+        if (v.isEmpty()) return null;
         return OFF.contains(v) ? Boolean.FALSE : Boolean.TRUE;
     }
     
-    /** LM Studio custom {@code reasoning}: {@code null} (omit) when empty; {@code "off"} for an explicit off-token; else {@code "on"}. */
+    /** LM Studio custom {@code reasoning}: {@code null} (omit) when unset/blank; {@code "off"} for an
+     *  off token; {@code "on"} for a generic on ({@code true}/{@code on}/{@code yes}); else verbatim. */
     public static String toReasoning(String think) {
         var v = norm(think);
         if (v.isEmpty()) return null;
-        if (isTrue(think)) return "on";
-        if (isFalse(think)) return "off";
+        if (OFF.contains(v)) return "off";
+        if (ON.contains(v)) return "on";
         return think;
     }
 }

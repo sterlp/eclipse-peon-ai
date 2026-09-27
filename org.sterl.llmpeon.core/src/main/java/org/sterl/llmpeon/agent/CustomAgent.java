@@ -7,6 +7,7 @@ import java.util.Objects;
 import java.util.function.Predicate;
 
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
+import org.sterl.llmpeon.ai.ThinkResolver;
 import org.sterl.llmpeon.memory.FileAgentHistoryStore;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.prompt.PromptLoader;
@@ -34,12 +35,14 @@ public class CustomAgent extends AbstractAgent {
     public static final String URL = "url";
     public static final String API_KEY = "api_key";
     public static final String EXTRA_BODY = "extra_body";
-    @Deprecated
-    public static final String THINK = "think";                       // legacy alias for think_on_string
-    @Deprecated
-    public static final String THINK_ENABLED = "think_enabled";       // deprecated, kept for backward compat
-    public static final String THINK_SUPPORTED = "think_supported";   // canonical name
+    public static final String THINK = "think";                       // canonical: one think level string (blank = unset)
+    /** Legacy frontmatter key — read-compatible, migrated to {@link #THINK} on write. */
+    public static final String THINK_ENABLED = "think_enabled";
+    /** Legacy frontmatter key — read-compatible, migrated to {@link #THINK} on write. */
+    public static final String THINK_SUPPORTED = "think_supported";
+    /** Legacy frontmatter key — read-compatible, migrated to {@link #THINK} on write. */
     public static final String THINK_ON = "think_on_string";
+    /** Legacy frontmatter key — read-compatible, migrated to {@link #THINK} on write. */
     public static final String THINK_OFF = "think_off_string";
     public static final String INCLUDE_DEFAULT = "include-default";
     public static final String TEMPERATURE = "temperature";
@@ -67,26 +70,45 @@ public class CustomAgent extends AbstractAgent {
         this.promptFile = promptFile;
     }
 
-    /** Migrates legacy frontmatter keys to their canonical names. Called before any write to avoid
-     * eager file mutation on load — the file is only modified when a write operation occurs. */
+    /** The agent's single think value: canonical {@code think} wins; the legacy triple is
+     *  read-compatible (an on-string is the more specific user intent and wins over a supported
+     *  flag). {@code null} = unset. */
+    private String resolveThink() {
+        var think = promptFile.firstOrDefault(THINK, null);
+        if (think != null) return think.trim();
+        var on = promptFile.firstOrDefault(THINK_ON, null);
+        var off = promptFile.firstOrDefault(THINK_OFF, null);
+        var sup = promptFile.firstOrDefault(THINK_SUPPORTED, promptFile.firstOrDefault(THINK_ENABLED, null));
+        if (on != null) return on.trim();
+        if (off != null) return off.trim();
+        if (sup != null) return promptFile.isTrue(THINK_SUPPORTED) || promptFile.isTrue(THINK_ENABLED)
+                ? "true" : "false";
+        return null;
+    }
+
+    /** Migrates legacy frontmatter keys to the canonical {@link #THINK}. Called before any write to
+     * avoid eager file mutation on load — the file is only modified when a write operation occurs.
+     * After a write the file contains only {@code think} (legacy keys removed). */
     public void migrateIfNeeded() {
         try {
+            var legacyKeys = List.of(THINK_SUPPORTED, THINK_ENABLED, THINK_ON, THINK_OFF);
             boolean changed = false;
-            // think_enabled → think_supported
-            String thinkEnabled = promptFile.firstOrDefault(THINK_ENABLED, null);
-            if (thinkEnabled != null) {
-                promptFile.setValue(THINK_SUPPORTED, thinkEnabled);
-                promptFile.remove(THINK_ENABLED);
-                changed = true;
-            }
-            // think → think_on_string (also implies enabled if an on-value)
-            String think = promptFile.firstOrDefault(THINK, null);
+            var think = promptFile.firstOrDefault(THINK, null);
             if (think != null) {
-                promptFile.setValue(THINK_ON, think);
-                promptFile.remove(THINK);
-                // `think: high` implies enabled; set think_supported if not already present
-                if (org.sterl.llmpeon.ai.ThinkResolver.isOn(think) && promptFile.firstOrDefault(THINK_SUPPORTED, null) == null) {
-                    promptFile.setValue(THINK_SUPPORTED, "true");
+                // canonical think wins — shadowed legacy keys are dropped
+                for (var key : legacyKeys) {
+                    if (promptFile.firstOrDefault(key, null) != null) {
+                        promptFile.remove(key);
+                        changed = true;
+                    }
+                }
+            } else if (legacyKeys.stream().anyMatch(key -> promptFile.firstOrDefault(key, null) != null)) {
+                var resolved = resolveThink();
+                if (resolved != null) {
+                    promptFile.setValue(THINK, resolved);
+                }
+                for (var key : legacyKeys) {
+                    promptFile.remove(key);
                 }
                 changed = true;
             }
@@ -117,27 +139,19 @@ public class CustomAgent extends AbstractAgent {
 
     @Override
     public boolean isThinkSupported() {
-        // THINK_SUPPORTED (canonical) takes precedence; THINK_ENABLED (deprecated) as fallback; legacy `think:` implies support for an on-value.
-        if (promptFile.firstOrDefault(THINK_SUPPORTED, null) != null) return promptFile.isTrue(THINK_SUPPORTED);
-        if (promptFile.firstOrDefault(THINK_ENABLED, null) != null) return promptFile.isTrue(THINK_ENABLED);
-        var legacy = promptFile.firstOrDefault(THINK, null);
-        return legacy != null && org.sterl.llmpeon.ai.ThinkResolver.isOn(legacy);
+        return !ThinkResolver.isOff(resolveThink());
     }
 
     @Override
     public org.sterl.llmpeon.ai.AgentConfig getConfig() {
-        // legacy `think:` is read as an alias for think_on_string (no inheritance between agents)
-        var on = promptFile.firstOrDefault(THINK_ON, promptFile.firstOrDefault(THINK, null));
-        var off = promptFile.firstOrDefault(THINK_OFF, null);
         var rec = new org.sterl.llmpeon.ai.AgentModelConfig(
                 promptFile.firstOrDefault(URL, null),
                 promptFile.firstOrDefault(API_KEY, null),
                 promptFile.firstOrDefault(MODEL, null),
-                null, // think resolved separately from the frontmatter triple
+                resolveThink(),
                 promptFile.firstOrDefault(EXTRA_BODY, null),
                 promptFile.firstOrDefault(TEMPERATURE, null));
-        return configuredModel.getConfig().customAgentConfig(
-                rec, getName(), isThinkSupported(), on, off);
+        return configuredModel.getConfig().customAgentConfig(rec, getName());
     }
 
     @Override

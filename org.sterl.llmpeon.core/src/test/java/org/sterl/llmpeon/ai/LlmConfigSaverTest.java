@@ -103,6 +103,7 @@ class LlmConfigSaverTest {
                 .doesNotContainKey(LlmConfigKeys.MODEL);
     }
 
+    // UC-THINK-2
     @Test
     void roundtripStable() {
         // GIVEN a fully-set plan record
@@ -117,6 +118,7 @@ class LlmConfigSaverTest {
         assertThat(reloaded).isEqualTo(record);
     }
 
+    // UC-THINK-2
     @Test
     void roundtripDevStable() {
         // GIVEN a fully-set dev record (model lands on the base key)

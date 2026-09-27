@@ -43,6 +43,7 @@ public class AiServicePerAgentThinkTest {
         return new ConfiguredChatModel(config, cm);
     }
 
+    // UC-THINK-7
     @Test
     void devAgentSendsNoReasoningWhenThinkUnsupported() {
         var config = LlmConfig.builder()
@@ -60,6 +61,7 @@ public class AiServicePerAgentThinkTest {
         assertThat(params.reasoningEffort()).as("dev must not send reasoning.effort").isNull();
     }
 
+    // UC-THINK-7
     @Test
     void planAgentSendsHighReasoning() {
         var config = LlmConfig.builder()
@@ -76,6 +78,7 @@ public class AiServicePerAgentThinkTest {
         assertThat(params.reasoningEffort()).isEqualTo(ReasoningEffort.of("high"));
     }
 
+    // UC-THINK-7
     @Test
     void devManualThinkValueApplies() {
         var config = LlmConfig.builder()
@@ -92,14 +95,13 @@ public class AiServicePerAgentThinkTest {
         assertThat(params.reasoningEffort()).isEqualTo(ReasoningEffort.of("medium"));
     }
 
+    // UC-THINK-6
     @Test
-    void customAgent_manualOnString_disablesHeuristic() {
+    void customAgentConfigAppliesThinkVerbatim() {
         var cfg = LlmConfig.builder().providerType(AiProvider.OPEN_AI).model("deepseek-chat").build();
-        // supported + on="minimal" -> verbatim, no heuristic
-        assertThat(cfg.customAgentConfig(AgentModelConfig.empty().withModel("deepseek-chat"), "custom", true, "minimal", "").getThink()).isEqualTo("minimal");
-        // both empty + supported -> auto marker
-        assertThat(cfg.customAgentConfig(AgentModelConfig.empty().withModel("deepseek-chat"), "custom", true, "", "").getThink()).isEqualTo("true");
-        // unsupported + off="false" -> verbatim off
-        assertThat(cfg.customAgentConfig(AgentModelConfig.empty().withModel("deepseek-chat"), "custom", false, "", "false").getThink()).isEqualTo("false");
+        // the record's think value is the single source — applied verbatim (no heuristic, no supported flag)
+        var rec = new AgentModelConfig(null, null, "deepseek-chat", "minimal", null, null);
+        assertThat(cfg.customAgentConfig(rec, "custom").getThink()).isEqualTo("minimal");
+        assertThat(cfg.customAgentConfig(AgentModelConfig.empty(), "custom").getThink()).isNull();
     }
 }

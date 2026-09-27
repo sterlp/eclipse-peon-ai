@@ -8,6 +8,7 @@ class ThinkResolverTest {
 
     private static final String[] OFF = {null, "", "  ", "false", "off", "no", "none", "FALSE", "Off"};
 
+    // UC-THINK-3
     @Test
     void offValuesMapToGenericOmitValues() {
         for (var v : OFF) {
@@ -18,6 +19,7 @@ class ThinkResolverTest {
         }
     }
 
+    // UC-THINK-3
     @Test
     void truthyValuesMapToHigh() {
         for (var v : new String[] {"true", "on", "yes", "TRUE"}) {
@@ -41,31 +43,37 @@ class ThinkResolverTest {
         assertThat(ThinkResolver.toReasoningEffort(" Medium ")).isEqualTo("medium");
     }
 
+    // UC-THINK-1
     @Test
-    void effectiveThink_autoMode_bothEmpty() {
-        // both strings empty -> auto: "true" marker when supported, "" when unsupported
-        assertThat(ThinkResolver.effectiveThink(true, "", "")).isEqualTo("true");
-        assertThat(ThinkResolver.effectiveThink(true, null, null)).isEqualTo("true");
-        assertThat(ThinkResolver.effectiveThink(false, "", "")).isEqualTo("");
-    }
-
-    @Test
-    void effectiveThink_manualMode_anyStringSet_disablesHeuristic() {
-        // on-string set -> verbatim when on; off empty -> "" when off
-        assertThat(ThinkResolver.effectiveThink(true, "high", "")).isEqualTo("high");
-        assertThat(ThinkResolver.effectiveThink(false, "high", "")).isEqualTo("");
-        // off-string set -> manual: on empty -> "" (no heuristic), off verbatim
-        assertThat(ThinkResolver.effectiveThink(true, "", "false")).isEqualTo("");
-        assertThat(ThinkResolver.effectiveThink(false, "", "false")).isEqualTo("false");
-    }
-
-    @Test
-    void toOllamaThink_distinguishesUnsetFromOff() {
+    void toOllamaThink_unsetOrBlankIsOmitted() {
         assertThat(ThinkResolver.toOllamaThink(null)).isNull();
-        assertThat(ThinkResolver.toOllamaThink("")).isEqualTo(Boolean.FALSE);
-        assertThat(ThinkResolver.toOllamaThink("false")).isEqualTo(Boolean.FALSE);
-        assertThat(ThinkResolver.toOllamaThink("none")).isEqualTo(Boolean.FALSE);
-        assertThat(ThinkResolver.toOllamaThink("true")).isEqualTo(Boolean.TRUE);
-        assertThat(ThinkResolver.toOllamaThink("high")).isEqualTo(Boolean.TRUE);
+        assertThat(ThinkResolver.toOllamaThink("")).isNull();
+        assertThat(ThinkResolver.toOllamaThink("   ")).isNull();
+    }
+
+    // UC-THINK-3
+    @Test
+    void toOllamaThink_offTokensSendFalse_onSendsTrue() {
+        for (var off : new String[] {"false", "FALSE", "none", "no", "off", " Off ", "nO"}) {
+            assertThat(ThinkResolver.toOllamaThink(off)).as("off %s", off).isEqualTo(Boolean.FALSE);
+        }
+        for (var on : new String[] {"true", "high", "on", "yes", "minimal"}) {
+            assertThat(ThinkResolver.toOllamaThink(on)).as("on %s", on).isEqualTo(Boolean.TRUE);
+        }
+    }
+
+    // UC-THINK-3
+    @Test
+    void toReasoning_blankOmits_offTokensSendOff_genericOnSendsOn_elseVerbatim() {
+        assertThat(ThinkResolver.toReasoning(null)).isNull();
+        assertThat(ThinkResolver.toReasoning("")).isNull();
+        assertThat(ThinkResolver.toReasoning("  ")).isNull();
+        for (var off : new String[] {"false", "FALSE", "none", "no", "off", " Off "}) {
+            assertThat(ThinkResolver.toReasoning(off)).as("off %s", off).isEqualTo("off");
+        }
+        for (var on : new String[] {"true", "on", "yes", "TRUE"}) {
+            assertThat(ThinkResolver.toReasoning(on)).as("on %s", on).isEqualTo("on");
+        }
+        assertThat(ThinkResolver.toReasoning("high")).isEqualTo("high");
     }
 }

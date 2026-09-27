@@ -232,14 +232,15 @@ public class LlmConfig {
 
     /**
      * Custom agent — model/url/key/extraBody from the agent's own {@code AGENT.md} frontmatter
-     * record (blank fields inherit the base, resolved by {@link EffectiveConnection}) and think from
-     * its own frontmatter triple (no inheritance). Same resolution path as the five core agents;
-     * {@code agentId} is the agent's stable name (per-request metadata, e.g. default cache key).
+     * record (blank fields inherit the base, resolved by {@link EffectiveConnection}) and think
+     * verbatim from the record (the agent resolves its own frontmatter semantics). Same resolution
+     * path as the five core agents; {@code agentId} is the agent's stable name (per-request
+     * metadata, e.g. default cache key).
      */
-    public AgentConfig customAgentConfig(AgentModelConfig rec, String agentId, boolean supported, String on, String off) {
+    public AgentConfig customAgentConfig(AgentModelConfig rec, String agentId) {
         return agentBuilder(rec).model(rec.model())
                 .id(agentId)
-                .think(ThinkResolver.effectiveThink(supported, on, off)).build();
+                .think(rec.think()).build();
     }
 
     public LlmConfig withModel(String model) {
