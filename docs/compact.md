@@ -241,7 +241,23 @@ Response-`inputTokenCount()` → Summe läuft davon). Vor jedem Fix wird gemesse
 - Verwandt: R-CC-1 (Zähler = `inputTokenCount()`), Punkt 4 des
   Compact-Nachbau-Reviews (beide Zahlen im `CompactResult` sichtbar machen).
 
-### R-CC-15 ❌ — Nested-Agent-Usage darf nicht ins Parent-Memory (2026-09-27, Paul + Da-Dok-Verifikation)
+### R-CC-15 ✅ — Nested-Agent-Usage darf nicht ins Parent-Memory (2026-09-27, gebaut `4cb2783`, Paul-Smoke steht aus)
+
+**Fix:** Nested-Request in `SearchAgentTool` mit `.agent(null)` (alle 3 `getAgent()`-Reader
+null-safe: `CompactSessionTool:23-26` ehrlicher Fehler, `ToolService:166-169`/`:221` guarded) +
+`compactSession` aus dem Sniffa-Filter + **per-request** Hint-Check (`toolSpecifications(req)`
+statt Registry — Custom Agents ohne Allowlist bekommen denselben ehrlichen Fallback) +
+`ToolLoopRequest`-Klassenkopf-Warnung (toBuilder erbt `agent`/`memory`). Surefire 1026/0/0/0
+(3 neue UC-CC-1-Tests, rot vor dem Fix). Tests: `shouldNotExposeParentAgentToNestedLoop` ·
+`subCompactMustNotClearParentMemory` · `subLoopHintAttributesToSubAgent` (Lint: 3 IDs auf
+UC-CC-1, 0 Befunde).
+
+**toBuilder-Entscheid (Da-Mek-Analyse, ADR-0058):** nur **1** Prod-Call-Site (`SearchAgentTool:47`);
+Sklaven bauen fresh (`PoDelegateTool:239` → `AbstractAgent:286-297` mit `.agent(this)` = Sklave) —
+keine weitere Lücke. toBuilder bleibt (implizite Vererbung von 7 Feldern ist der Vorteil; eine
+Factory verschiebt das Risiko nur in den Factory-Body). Nebenbefund (eigener Punkt, s.
+open-points): stateful `StreamingBridge`/`ApiRetry` werden via toBuilder geteilt — parallele
+Nested-Calls würden sich bewerfen (sequenziell harmlos).
 
 **Root Cause (verifiziert, Paul markiert die Stelle):** `SearchAgentTool.java:47-51` baut den
 Nested-Request per `this.request.toBuilder()` und überschreibt `staticMessages`, `toolFilter`,

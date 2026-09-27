@@ -175,12 +175,21 @@ nicht. Widerspruch = Verhalten zurückändern, Tests (UC-SEL-4) anpassen.
 „class folder 'resources/' not associated to any output library entry" bei grüner Kompilation.
 Pre-existing (Da Mek 2026-09-21 verifiziert). Separater Mini-Fix-Kandidat.
 
+## ⏳ StreamingBridge/ApiRetry geteilt über toBuilder — parallele Nested-Calls racen (Da-Dok/Mek-Nebenbefund 2026-09-27, ADR-0058)
+
+Der Nested-Request erbt den stateful `StreamingBridge` + `ApiRetry` des Parents — sequenziell
+harmlos, zwei **parallele** Nested-Calls würden um latch/responseRef konkurrieren. Heute gibt es
+keinen parallelen Sub-Call (alle Agent-Tools blockieren), Revisit mit
+[async-agent-tools-proposal.md](async-agent-tools-proposal.md).
+
 ## ❓ Header: Jon-Context-Größe bleibt „0k estimate" (2026-09-27, Paul, Smoke)
 
-Im Header/Roster zeigte Jon die ganze Zeit „0k estimate", obwohl der erste Think ~5k Tokens hatte —
-bei anderen Agenten aktualisiert sich der Wert. Verdacht (Paul): Rendern wir oben nicht immer alle
-Agenten-Context-Größen — Update nur bei selektiertem Agenten? IST-Analyse des Roster-Update-Pfads
-(Pull/MVC, `getRoster`) + Repro-Frage offen.
+IST (Da Dok): Roster-Refresh ist event-getrieben (`AIChatView:336-340` via `onTokenUsage`) — ein
+Turn ohne echte Provider-Usage feuert das Event nicht → Jon bleibt auf „0k estimate" stehen, bis
+ein anderes Event refreshed; andere Agenten (mit Provider-Usage) aktualisieren. SOLL-Frage an
+Paul: Estimate-Pfad zusätzlich in den Roster-Refresh aufnehmen (Update auch ohne
+Provider-Usage)? Verdacht-Update („rendern wir nicht alle Agenten") damit eingeschränkt: es
+rendert alles, aber nur bei Event.
 
 ## ❓ Test-Fixture-Drift: `test_project` enthält pom.xml + Dockerfile (2026-09-27, Da-Mek-Smoke)
 

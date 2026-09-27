@@ -62,4 +62,5 @@ isn't clear from a rule/BDD.
 | [0054](0054-tool-naming-camelcase-family-prefix.md) | Tool-Naming: camelCase mit Familien-Prefix — Java-Debug-Familie snake_case → `debugJava*` (Clean Break, keine Aliase) | Accepted |
 | [0055](0055-context-counter-input-not-cost.md) | Context-Counter misst Input (`inputTokenCount()`), nie `totalTokenCount()` (Kosten) — Header ↑↓ bleibt Kosten; Gate nach fehlgeschlagenem Compact nicht mehr blind | Accepted |
 | [0056](0056-compact-component-and-render-modes.md) | Compact = eigene core-Komponente (`compact`: CompactStager pure + CompactEngine + CompactResult-Record); Render-Modi in ChatMessageUtil (Options-Record, SystemMessage-Drop gefixt) — verwirft das 0030-Freeze; Schätzung nur noch estimateTokens ×2/7 | Accepted |
+| [0058](0058-toollooprequest-tobuilder-agent-inheritance.md) | ToolLoopRequest.toBuilder bleibt (1 Prod-Call-Site, implizite Vererbung = Vorteil); Pitfall dokumentiert: Nested-Requests müssen `agent`/`memory` explizit setzen — sonst erbt der Sub-Loop den Parent (R-CC-15-Bug) | Accepted |
 
