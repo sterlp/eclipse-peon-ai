@@ -32,7 +32,6 @@ public final class LlmConfigLoader {
                 .timeout(Duration.ofSeconds(parseLong(store.get(LlmConfigKeys.TIMEOUT, null), 180)))
                 .maxTokens(parseInt(store.get(LlmConfigKeys.MAX_TOKENS, null), 0))
                 .autoCompactAfter(parseInt(store.get(LlmConfigKeys.TOKEN_WINDOW, null), 80_000))
-                .thinkSupported(parseBoolean(store.get(LlmConfigKeys.THINK_SUPPORTED, null), false))
                 .sendThinkingEnabled(parseBoolean(store.get(LlmConfigKeys.SEND_THINKING_ENABLED, null), true))
                 .configDir(Path.of(store.get(LlmConfigKeys.CONFIG_DIRECTORY, defaultConfigDir())))
                 .diskToolsEnabled(parseBoolean(store.get(LlmConfigKeys.DISK_TOOLS_ENABLED, null), false))

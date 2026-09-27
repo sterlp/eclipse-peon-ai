@@ -85,11 +85,6 @@ class ModelConnectionCacheTest {
         assertThat(sut.withModel("model-y")).isTrue();
         // THEN the next modelFor builds a fresh connection
         assertThat(sut.modelFor(agent)).isNotSameAs(cachedModel);
-        // WHEN the build-time think flag changes
-        StreamingChatModel cachedThink = sut.modelFor(agent);
-        assertThat(sut.withThinkSupported(true)).isTrue();
-        // THEN the next modelFor builds a fresh connection
-        assertThat(sut.modelFor(agent)).isNotSameAs(cachedThink);
     }
 
     private static AgentConfig agent(AiProvider provider, String url, String apiKey, String extraBody) {

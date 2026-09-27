@@ -70,7 +70,7 @@ class ProviderCapabilitiesTest {
     static Stream<Arguments> thinkSupportCases() {
         var openAiFamily = ProviderRequestSupport.openAiFamilyThinkSupport();
         return Stream.of(
-                Arguments.of(AiProvider.OLLAMA, new ThinkSupport.Boolean()),
+                Arguments.of(AiProvider.OLLAMA, new ThinkSupport.Toggle()),
                 Arguments.of(AiProvider.OPEN_AI, openAiFamily),
                 Arguments.of(AiProvider.OPEN_AI_OFFICIAL, openAiFamily),
                 Arguments.of(AiProvider.GITHUB_MODELS, openAiFamily),

@@ -9,14 +9,14 @@ import java.util.List;
  * (ADR-0003) deliberately does not belong here.</p>
  */
 public sealed interface ThinkSupport
-        permits ThinkSupport.Boolean, ThinkSupport.Values, ThinkSupport.FreeString, ThinkSupport.None, ThinkSupport.Unknown {
+        permits ThinkSupport.Toggle, ThinkSupport.Values, ThinkSupport.FreeString, ThinkSupport.None, ThinkSupport.Unknown {
 
     /** Record singletons — no separate constant needed. */
     ThinkSupport NONE = new None();
     ThinkSupport UNKNOWN = new Unknown();
 
-    /** Think is a simple on/off switch (e.g. Ollama {@code think:true/false}). */
-    record Boolean() implements ThinkSupport {
+    /** Think is one of the fixed levels unset/true/false (e.g. Ollama {@code think}); stored verbatim. */
+    record Toggle() implements ThinkSupport {
     }
 
     /** Think is one of a fixed set of values (e.g. OpenAI-family reasoning effort levels). */

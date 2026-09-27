@@ -19,7 +19,6 @@ public final class LlmConfigKeys {
     public static final String TIMEOUT                  = "llm.timeout";
     public static final String MAX_TOKENS               = "llm.maxTokens";
     public static final String TOKEN_WINDOW             = "llm.tokenWindow";
-    public static final String THINK_SUPPORTED          = "llm.thinkingEnabled";
     public static final String SEND_THINKING_ENABLED    = "llm.sendThinkingEnabled";
     public static final String CONFIG_DIRECTORY         = "llm.configDirectory";
     public static final String DISK_TOOLS_ENABLED       = "llm.diskToolsEnabled";

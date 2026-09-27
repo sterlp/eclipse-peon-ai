@@ -44,7 +44,6 @@ class LlmConfigLoaderTest {
         store.put(LlmConfigKeys.TIMEOUT, "120");
         store.put(LlmConfigKeys.MAX_TOKENS, "4096");
         store.put(LlmConfigKeys.TOKEN_WINDOW, "100000");
-        store.put(LlmConfigKeys.THINK_SUPPORTED, "true");
         store.put(LlmConfigKeys.SEND_THINKING_ENABLED, "false");
         store.put(LlmConfigKeys.QUERY_PARAMS, "a=1,b=2");
         store.put(LlmConfigKeys.SHELL_CONFIRMATION_ENABLED, "always");
@@ -58,7 +57,6 @@ class LlmConfigLoaderTest {
         assertThat(config.getTimeout()).isEqualTo(Duration.ofSeconds(120));
         assertThat(config.getMaxTokens()).isEqualTo(4096);
         assertThat(config.getAutoCompactAfter()).isEqualTo(100_000);
-        assertThat(config.isThinkSupported()).isTrue();
         assertThat(config.shouldWeSendThinkingBackToLLM()).isFalse();
         assertThat(config.getQueryParams()).containsEntry("a", "1").containsEntry("b", "2");
     }
@@ -148,7 +146,6 @@ class LlmConfigLoaderTest {
         assertThat(config.getTimeout()).isEqualTo(Duration.ofMinutes(3));
         assertThat(config.getMaxTokens()).isZero();
         assertThat(config.getAutoCompactAfter()).isEqualTo(80_000);
-        assertThat(config.isThinkSupported()).isFalse();
         assertThat(config.shouldWeSendThinkingBackToLLM()).isTrue();
     }
 

@@ -13,20 +13,12 @@ import org.sterl.llmpeon.ai.AiProvider;
  */
 class ThinkValueSupportTest {
 
-    // --- Boolean form ---
+    // --- Toggle form ---
 
+    // UC-THINK-4
     @Test
-    void booleanOnOffMaps() {
-        assertThat(ThinkValueSupport.booleanValue(true)).isEqualTo("true");
-        assertThat(ThinkValueSupport.booleanValue(false)).isEqualTo("");
-    }
-
-    @Test
-    void booleanOnDetectsStoredValue() {
-        assertThat(ThinkValueSupport.booleanOn("true")).isTrue();
-        assertThat(ThinkValueSupport.booleanOn("")).isFalse();
-        assertThat(ThinkValueSupport.booleanOn(null)).isFalse();
-        assertThat(ThinkValueSupport.booleanOn("false")).isFalse();
+    void toggleItemsAreUnsetOnOff() {
+        assertThat(ThinkValueSupport.toggleItems()).containsExactly("", "true", "false");
     }
 
     // --- Values form ---

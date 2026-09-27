@@ -10,10 +10,11 @@ import org.sterl.llmpeon.ai.AiProvider;
  * provider's {@link ThinkSupport} dictates (provider.md R5). Stateless — unit-testable without a
  * Display.
  *
- * <p>Value space: {@code ""} = off, {@code "true"} = generic-on (auto), a concrete level passes
- * through verbatim. The widget forms:
+ * <p>Value space: {@code ""} = unset, {@code "true"} = generic-on (auto), a concrete level or an
+ * explicit off token passes through verbatim. The widget forms:
  * <ul>
- *   <li>{@link ThinkSupport.Boolean} → checkbox: on → {@code "true"}, off → {@code ""}</li>
+ *   <li>{@link ThinkSupport.Toggle} → editable combo {@code ["", "true", "false"]}: stored value
+ *       = displayed value (verbatim)</li>
  *   <li>{@link ThinkSupport.Values} → combo {@code [Off, Auto] + values}: Off → {@code ""},
  *       Auto → {@code "true"}, else verbatim</li>
  *   <li>{@link ThinkSupport.FreeString} / {@link ThinkSupport.Unknown} → text field: verbatim</li>
@@ -30,14 +31,9 @@ public final class ThinkValueSupport {
     private ThinkValueSupport() {
     }
 
-    /** Stored value for a {@link ThinkSupport.Boolean} checkbox. */
-    public static String booleanValue(boolean on) {
-        return on ? "true" : "";
-    }
-
-    /** Whether a stored value turns the {@link ThinkSupport.Boolean} checkbox on. */
-    public static boolean booleanOn(String stored) {
-        return "true".equals(stored);
+    /** Fixed combo items for a {@link ThinkSupport.Toggle} form: unset / on / explicit off. */
+    public static List<String> toggleItems() {
+        return List.of("", "true", "false");
     }
 
     /** Combo items for a {@link ThinkSupport.Values} form: {@code [Off, Auto] + values} (order kept, dedup). */

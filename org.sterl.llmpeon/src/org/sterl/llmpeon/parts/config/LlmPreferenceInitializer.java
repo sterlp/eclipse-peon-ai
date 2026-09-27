@@ -32,7 +32,6 @@ public class LlmPreferenceInitializer extends AbstractPreferenceInitializer {
         
         defaults.putInt(PeonConstants.PREF_MAX_TOKENS, 0);
         defaults.putInt(PeonConstants.PREF_TOKEN_WINDOW, DEFAULT.getAutoCompactAfter());
-        defaults.putBoolean(PeonConstants.PREF_THINK_SUPPORTED, DEFAULT.isThinkSupported());
         defaults.putBoolean(PeonConstants.PREF_SEND_THINKING_ENABLED, DEFAULT.isSendThinkingEnabled());
         defaults.put(PeonConstants.PREF_API_KEY, StringUtil.stripToEmpty(DEFAULT.getApiKey()));
 

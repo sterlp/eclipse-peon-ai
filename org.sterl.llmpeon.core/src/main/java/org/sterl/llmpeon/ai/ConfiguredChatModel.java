@@ -93,14 +93,6 @@ public class ConfiguredChatModel {
         }
     }
 
-    public boolean withThinkSupported(boolean supported) {
-        if (config.isThinkSupported() == supported) return false;
-        config = config.toBuilder().thinkSupported(supported).build();
-        chatModel.set(null); // rebuild (returnThinking is build-time)
-        agentConnections.clear(); // build-time flag changed → agent build configs stale
-        return true;
-    }
-
     public void updateConfig(LlmConfig newConfig) {
         if (newConfig == null) throw new NullPointerException("LlmConfig cannot be null!");
         if (this.config == null || !this.config.equals(newConfig)) {

@@ -72,6 +72,43 @@ class LlmConfigTest {
         assertThat(config.devAgentConfig().getThink()).isEqualTo("medium");
     }
 
+
+    // UC-THINK-5
+    @Test
+    void thinkSupportedIsDerivedFromDevThinkValue() {
+        // GIVEN a dev record with a generic on value
+        var on = LlmConfig.of(AiProvider.OLLAMA).model("base-model")
+                .modelConfigs(Map.of(AgentModelConfig.DEV,
+                        new AgentModelConfig(null, null, null, "true", null, null)))
+                .build();
+        assertThat(on.isThinkSupported()).isTrue();
+
+        // WHEN the dev think value is unset or an explicit off token
+        var unset = LlmConfig.of(AiProvider.OLLAMA).model("base-model").build();
+        var off = LlmConfig.of(AiProvider.OLLAMA).model("base-model")
+                .modelConfigs(Map.of(AgentModelConfig.DEV,
+                        new AgentModelConfig(null, null, null, "off", null, null)))
+                .build();
+
+        // THEN there is no separate capability flag — off (incl. unset) means not supported
+        assertThat(unset.isThinkSupported()).isFalse();
+        assertThat(off.isThinkSupported()).isFalse();
+    }
+
+    // UC-THINK-5
+    @Test
+    void legacyThinkingEnabledKeyIsIgnoredOnLoad() {
+        // GIVEN a store with the removed base key (old base checkbox)
+        var store = new MapLlmConfigStore();
+        store.put("llm.thinkingEnabled", "true");
+
+        // WHEN loaded
+        var config = LlmConfigLoader.load(store);
+
+        // THEN the key is ignored — support derives from the (unset) dev think value
+        assertThat(config.isThinkSupported()).isFalse();
+    }
+
     @Test
     void devAlwaysUsesBaseModel() {
         // GIVEN a dev record that (erroneously) carries no model of its own

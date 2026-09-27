@@ -13,7 +13,6 @@ public interface PeonConstants {
     String PREF_MAX_TOKENS       = LlmConfigKeys.MAX_TOKENS;
     String PREF_TIMEOUT          = LlmConfigKeys.TIMEOUT;
 
-    String PREF_THINK_SUPPORTED         = LlmConfigKeys.THINK_SUPPORTED;
     String PREF_SEND_THINKING_ENABLED   = LlmConfigKeys.SEND_THINKING_ENABLED;
 
     String PREF_API_KEY                    = LlmConfigKeys.API_KEY;

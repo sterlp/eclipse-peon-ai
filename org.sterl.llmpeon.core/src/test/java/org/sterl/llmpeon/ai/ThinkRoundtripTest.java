@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
-import org.sterl.llmpeon.provider.ThinkValueSupport;
 
 import dev.langchain4j.model.ollama.OllamaChatRequestParameters;
 
@@ -49,26 +48,5 @@ class ThinkRoundtripTest {
         // THEN unset stays unset: the key is removed and the agent config carries no think
         assertThat(store.asMap()).doesNotContainKey(key);
         assertThat(LlmConfigLoader.load(store).planAgentConfig().getThink()).isNull();
-    }
-
-    // UC-THINK-2
-    @Test
-    void issue149_booleanCheckboxOffCollapsesToUnset() {
-        // IST vor Fix: Issue #149 — the Boolean checkbox encodes "off" as "" which the persistence
-        // layer treats as unset, so an explicit off could never reach Ollama as think:false.
-        // Inc-2 replaces this pinned IST collapse with the toggle UI (stored "false" survives).
-        var stored = ThinkValueSupport.booleanValue(false);
-        assertThat(stored).isEmpty();
-
-        var store = new MapLlmConfigStore();
-        LlmConfigSaver.saveAgentModelConfig(store, AgentModelConfig.PLAN,
-                new AgentModelConfig(null, null, "gemma4:12b", stored, null, null));
-
-        assertThat(store.asMap())
-                .doesNotContainKey(LlmConfigKeys.agentKey(AgentModelConfig.PLAN, LlmConfigKeys.AGENT_FIELD_THINK));
-        assertThat(LlmConfigLoader.load(store).planAgentConfig().getThink()).isNull();
-        var params = (OllamaChatRequestParameters)
-                LlmConfigLoader.load(store).planAgentConfig().newRequestParameters(List.of());
-        assertThat(params.think()).isNull();
     }
 }

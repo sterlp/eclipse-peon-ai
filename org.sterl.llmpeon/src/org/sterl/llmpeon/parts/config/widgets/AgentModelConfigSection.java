@@ -49,7 +49,6 @@ public class AgentModelConfigSection extends Composite {
     private Label examplesLabel;
 
     // exactly one of these is non-null, per thinkForm
-    private Button thinkCheck;
     private Combo thinkCombo;
     private Text thinkText;
 
@@ -116,11 +115,12 @@ public class AgentModelConfigSection extends Composite {
     // --- widget construction ---
 
     private void buildThink() {
-        if (thinkForm instanceof ThinkSupport.Boolean) {
+        if (thinkForm instanceof ThinkSupport.Toggle) {
             addLabel("Think:");
-            thinkCheck = new Button(this, SWT.CHECK);
-            thinkCheck.setText("Enabled");
-            thinkCheck.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+            thinkCombo = new Combo(this, SWT.BORDER);
+            thinkCombo.setItems(ThinkValueSupport.toggleItems().toArray(String[]::new));
+            thinkCombo.setText("");
+            thinkCombo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
         } else if (thinkForm instanceof ThinkSupport.Values v) {
             addLabel("Think:");
             thinkCombo = new Combo(this, SWT.BORDER);
@@ -199,8 +199,8 @@ public class AgentModelConfigSection extends Composite {
     // --- think value mapping (delegates to the SWT-free helper) ---
 
     private void loadThink(String stored) {
-        if (thinkForm instanceof ThinkSupport.Boolean) {
-            thinkCheck.setSelection(ThinkValueSupport.booleanOn(stored));
+        if (thinkForm instanceof ThinkSupport.Toggle) {
+            thinkCombo.setText(StringUtil.stripToEmpty(stored));
         } else if (thinkForm instanceof ThinkSupport.Values) {
             var display = ThinkValueSupport.valuesDisplay(stored);
             int idx = thinkCombo.indexOf(display);
@@ -213,8 +213,8 @@ public class AgentModelConfigSection extends Composite {
     }
 
     private String readThink() {
-        if (thinkForm instanceof ThinkSupport.Boolean) {
-            return ThinkValueSupport.booleanValue(thinkCheck.getSelection());
+        if (thinkForm instanceof ThinkSupport.Toggle) {
+            return StringUtil.stripToEmpty(thinkCombo.getText());
         } else if (thinkForm instanceof ThinkSupport.Values) {
             return ThinkValueSupport.valuesStored(thinkCombo.getText());
         } else if (thinkForm instanceof ThinkSupport.FreeString || thinkForm instanceof ThinkSupport.Unknown) {

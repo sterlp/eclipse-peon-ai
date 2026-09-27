@@ -66,12 +66,6 @@ public class LlmConfig {
      */
     @Default
     private final int maxTokens = 0;
-    /**
-     * Base/dev model capability. Drives build-time thinking for Gemini/Mistral and the returnThinking
-     * context only — the per-agent think value itself now lives in {@link #modelConfigs}.
-     */
-    @Default
-    private final boolean thinkSupported = false;
     /** Global "send thinking back" (build-time). */
     @Default
     private final boolean sendThinkingEnabled = true;
@@ -108,9 +102,12 @@ public class LlmConfig {
         return configDir.resolve("state");
     }
 
-    /** Dev/default model thinking support (drives build-time thinking for Gemini/Mistral and returnThinking). */
+    /**
+     * Dev/default model thinking support, derived from the dev think value (ADR-0059: there is no
+     * separate capability flag) — drives build-time thinking for Gemini/Mistral and returnThinking.
+     */
     public boolean isThinkSupported() {
-        return thinkSupported;
+        return !ThinkResolver.isOff(modelConfigFor(AgentModelConfig.DEV).think());
     }
 
     /** Resend prior thinking to the model. */

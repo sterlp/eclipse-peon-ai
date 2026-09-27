@@ -184,18 +184,6 @@ class AiProviderRequestParametersTest {
         assertThat(search.think()).isNull();
     }
 
-    @Test
-    void openAiThinkSupportedFalse_emptyOffOmitsReasoning() {
-        var cfg = LlmConfig.builder()
-                .providerType(AiProvider.OPEN_AI_OFFICIAL)
-                .model("kimi-k2")
-                .thinkSupported(false)
-                .build();
-
-        var params = (OpenAiOfficialResponsesChatRequestParameters) cfg.devAgentConfig().newRequestParameters(List.of());
-        assertThat(params.reasoningEffort()).isNull();
-    }
-
     // UC-THINK-9
     @Test
     void sendThinkingTransportIndependentFromThinkValue() {

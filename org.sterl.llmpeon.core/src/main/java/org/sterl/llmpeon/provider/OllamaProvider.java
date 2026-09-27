@@ -70,6 +70,6 @@ public final class OllamaProvider implements LlmProvider {
 
     @Override
     public ThinkSupport thinkSupport() {
-        return new ThinkSupport.Boolean();
+        return new ThinkSupport.Toggle();
     }
 }
