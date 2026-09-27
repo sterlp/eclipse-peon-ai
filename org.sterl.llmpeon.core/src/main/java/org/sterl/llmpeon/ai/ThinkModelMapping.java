@@ -42,12 +42,11 @@ public final class ThinkModelMapping {
 
     /** Mapped on-value for the provider/model, or {@code null} when nothing should be sent. */
     public static String resolveOn(AiProvider provider, String model) {
-        return find(provider, model, true);
-    }
-
-    /** Mapped off-value for the provider/model, or {@code null} when nothing should be sent. */
-    public static String resolveOff(AiProvider provider, String model) {
-        return find(provider, model, false);
+        if (provider == null) return null;
+        for (var e : entries(provider)) {
+            if (e.matches(model)) return e.on();
+        }
+        return null;
     }
 
     /**
@@ -63,14 +62,6 @@ public final class ThinkModelMapping {
             }
         }
         return out;
-    }
-
-    private static String find(AiProvider provider, String model, boolean on) {
-        if (provider == null) return null;
-        for (var e : entries(provider)) {
-            if (e.matches(model)) return on ? e.on() : e.off();
-        }
-        return null;
     }
 
     private static List<Entry> entries(AiProvider provider) {

@@ -39,6 +39,5 @@ class ThinkModelMappingTest {
     @Test
     void providerWithoutMappingFileReturnsNull() {
         assertThat(ThinkModelMapping.resolveOn(AiProvider.OLLAMA, "llama3")).isNull();
-        assertThat(ThinkModelMapping.resolveOff(AiProvider.OLLAMA, "llama3")).isNull();
     }
 }

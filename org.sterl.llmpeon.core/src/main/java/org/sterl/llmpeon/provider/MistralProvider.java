@@ -19,8 +19,8 @@ public final class MistralProvider implements LlmProvider {
 
     @Override
     public StreamingChatModel buildModel(LlmConfig c) {
-        // TODO per-agent think: Mistral has no per-request thinking parameter subtype in this
-        // langchain4j version, so thinking stays build-time via the global thinkingEnabled toggle.
+        // Mistral has no per-request thinking parameter subtype in this langchain4j version;
+        // returnThinking stays on and sendThinking follows the global show-and-resend-thinking preference.
         var builder = MistralAiStreamingChatModel.builder()
                 .timeout(c.getTimeout())
                 .modelName(c.getModel())

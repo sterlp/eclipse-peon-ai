@@ -13,8 +13,6 @@ class ThinkResolverTest {
     void offValuesMapToGenericOmitValues() {
         for (var v : OFF) {
             assertThat(ThinkResolver.toReasoningEffort(v)).as("effort %s", v).isNull();
-            assertThat(ThinkResolver.toOnOff(v)).as("onOff %s", v).isNull();
-            assertThat(ThinkResolver.toBoolean(v)).as("bool %s", v).isNull();
             assertThat(ThinkResolver.isOn(v)).as("isOn %s", v).isFalse();
         }
     }
@@ -24,8 +22,6 @@ class ThinkResolverTest {
     void truthyValuesMapToHigh() {
         for (var v : new String[] {"true", "on", "yes", "TRUE"}) {
             assertThat(ThinkResolver.toReasoningEffort(v)).isEqualTo("high");
-            assertThat(ThinkResolver.toOnOff(v)).isEqualTo("on");
-            assertThat(ThinkResolver.toBoolean(v)).isTrue();
             assertThat(ThinkResolver.isOn(v)).isTrue();
         }
     }
@@ -34,8 +30,6 @@ class ThinkResolverTest {
     void explicitLevelsPassThrough() {
         for (var v : new String[] {"high", "medium", "low", "minimal"}) {
             assertThat(ThinkResolver.toReasoningEffort(v)).isEqualTo(v);
-            assertThat(ThinkResolver.toOnOff(v)).isEqualTo("on");
-            assertThat(ThinkResolver.toBoolean(v)).isTrue();
             assertThat(ThinkResolver.isOn(v)).isTrue();
         }
         // normalization

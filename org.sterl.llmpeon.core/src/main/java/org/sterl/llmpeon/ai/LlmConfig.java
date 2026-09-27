@@ -104,7 +104,7 @@ public class LlmConfig {
 
     /**
      * Dev/default model thinking support, derived from the dev think value (ADR-0059: there is no
-     * separate capability flag) — drives build-time thinking for Gemini/Mistral and returnThinking.
+     * separate capability flag) — drives build-time thinking for Gemini and returnThinking.
      */
     public boolean isThinkSupported() {
         return !ThinkResolver.isOff(modelConfigFor(AgentModelConfig.DEV).think());

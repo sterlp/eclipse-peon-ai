@@ -96,6 +96,48 @@ class CustomAgentConnectionE2ETest {
         assertThat(agentStub.getLastRequestBody().split("\\\"model\\\"", -1)).hasSize(2);
     }
 
+    // UC-THINK-6
+    @Test
+    @Timeout(10)
+    void legacyThinkSupportedFalse_reachesOwnStub_withoutReasoningEffort() throws IOException {
+        // GIVEN — the AGENT.md frontmatter carries only the legacy think_supported: false
+        // (no think, no think_on_string)
+        var base = LlmConfig.builder()
+                .providerType(AiProvider.OPEN_AI)
+                .model("base-model")
+                .url(baseStub.getUrl())
+                .apiKey("test-key")
+                .build();
+        var agentFile = writeAgentMdLegacyOff(tmp.resolve("legacy-off-agent.md"));
+        var ccm = new ConfiguredChatModel(base);
+        var toolService = new ToolService(false);
+        var agent = new CustomAgent(PromptYmlParser.parseYml(agentFile), ccm, toolService);
+        agentStub.queueResponse("agent answer");
+
+        // WHEN — one user turn through the tool loop with the frontmatter-derived agent config
+        var memory = new ThreadSafeMemory();
+        memory.add(UserMessage.from("go"));
+        var response = toolService.executeLoop(
+                ToolLoopRequest.builder()
+                        .memory(memory)
+                        .chatModel(ccm)
+                        .agentConfig(agent.getConfig())
+                        .build());
+
+        // THEN — legacy think_supported: false resolves to the explicit off ("false");
+        // OpenAI has no off concept, so reasoning_effort is absent from the request body
+        assertThat(response.aiMessage().text()).isEqualTo("agent answer");
+        assertThat(baseStub.getLastRequestBody()).isNull();
+        var body = parse(agentStub.getLastRequestBody());
+        assertThat(body.path("model").asText()).isEqualTo("custom-model");
+        assertThat(body.path("temperature").asDouble()).isEqualTo(0.3);
+        assertThat(body.path("reasoning_effort").isMissingNode()).isTrue();
+        assertThat(body.path("foo").asText()).isEqualTo("bar");
+
+        // AND — the reserved model key from the extra body was stripped (slot model wins)
+        assertThat(agentStub.getLastRequestBody().split("\\\"model\\\"", -1)).hasSize(2);
+    }
+
     private Path writeAgentMd(Path file) throws IOException {
         Files.writeString(file, """
                 ---
@@ -106,6 +148,22 @@ class CustomAgentConnectionE2ETest {
                 temperature: 0.3
                 think_supported: true
                 think_on_string: high
+                extra_body: '{"foo":"bar","model":"hacked"}'
+                ---
+                You are a test agent.
+                """.formatted(agentStub.getUrl()));
+        return file;
+    }
+
+    private Path writeAgentMdLegacyOff(Path file) throws IOException {
+        Files.writeString(file, """
+                ---
+                name: legacy-off-agent
+                url: %s
+                api_key: sk-agent
+                model: custom-model
+                temperature: 0.3
+                think_supported: false
                 extra_body: '{"foo":"bar","model":"hacked"}'
                 ---
                 You are a test agent.

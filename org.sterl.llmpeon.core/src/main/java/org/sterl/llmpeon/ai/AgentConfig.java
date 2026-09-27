@@ -42,7 +42,7 @@ public class AgentConfig {
     private final String url;
     private final String apiKey;
     private final String model;
-    /** {@code null}/empty/{@code false} = off; otherwise the reasoning effort / on value. */
+    /** {@code null}/empty = unset — send nothing; an off token ({@code false}, {@code off}, …) = explicit off; otherwise the reasoning effort / on value (ADR-0059). */
     private final String think;
     private final Double temperature;
     /**

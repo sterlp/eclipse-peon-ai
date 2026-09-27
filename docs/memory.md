@@ -1,4 +1,4 @@
-# Session-Stand — 2026-09-27 (R-CC-15 Nested-Usage-Leak; Smoke-Test Compact-Hint)
+# Session-Stand — 2026-09-27 (Nested-Usage-Leak gemerged; Issue #149 Think-Dropdown)
 
 > Achtung: docs/** — insbesondere memory.md — schreibt AUSSCHLIESSLICH Jon. Agenten liefern Facts
 > im Chat, Jon schreibt. (Da Mek hatte 2026-09-27 memory.md überschrieben — nicht wiederholen.)
@@ -8,8 +8,8 @@
   alles auf main gemerged; alte lokale Branches gelöscht (compact-input-budget `f6ce9211`,
   agent-tool-filter `271ca847` — Mek hat Unmerged-Inhalt verneint, diff vs. main = 0). Merge → main = Paul.
 
-## R-CC-15 Zyklus — ABGESCHLOSSEN, gemerged (#148)
-- ✅ R-CC-15 Nested-Loop erbt Parent-Agent — `SearchAgentTool` `.agent(null)`, compactSession aus
+## Compact-Zyklus (Nested-Usage-Leak, Details in compact.md) — ABGESCHLOSSEN, gemerged (#148)
+- ✅ Nested-Loop erbt Parent-Agent — `SearchAgentTool` `.agent(null)`, compactSession aus
   Sniffa-Filter, per-request Hint-Check, Paul-Hotfix „Compact geht nur mit Agent" (ToolService:216),
   Spam-Guard-Inversion gefixt. Surefire 1022/0/0/0, lint 0. TODO-REMOVE-Diagnostik raus.
 - ⏳ offen (open-points.md): Bug B (CompactSessionTool: agent.getMemory() statt req.getMemory()),

@@ -72,16 +72,6 @@ public final class ThinkResolver {
         return v;
     }
 
-    /** LM Studio custom {@code reasoning} value: {@code "on"} or {@code null} (omit). */
-    public static String toOnOff(String think) {
-        return isOff(think) ? null : "on";
-    }
-
-    /** Ollama {@code think} flag: {@link Boolean#TRUE} or {@code null} (omit). */
-    public static Boolean toBoolean(String think) {
-        return isOff(think) ? null : Boolean.TRUE;
-    }
-
     /** Ollama {@code think} flag: {@code null} (omit) when unset/blank; {@code FALSE} for an off token; else {@code TRUE}. */
     public static Boolean toOllamaThink(String think) {
         var v = norm(think);
