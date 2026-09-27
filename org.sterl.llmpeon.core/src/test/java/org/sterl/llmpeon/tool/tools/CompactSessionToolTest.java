@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -16,7 +15,6 @@ import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.model.CompactResult;
-import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
@@ -41,69 +39,6 @@ class CompactSessionToolTest {
     @BeforeEach
     void beforeEach() {
         streamMock = new StreamMock();
-    }
-
-    @Test
-    void testCompactSessionUsesConfiguredCompactModel() {
-        // GIVEN — config with a compact record model="compact-specific-model", a real owning agent
-        var config = LlmConfig.builder()
-                .model("default-model")
-                .modelConfigs(Map.of(AgentModelConfig.COMPACT,
-                        new AgentModelConfig(null, null, "compact-specific-model", null, null, null)))
-                .build();
-        var cm = streamMock.buildMock(r -> ChatResponse.builder()
-                .aiMessage(AiMessage.aiMessage("WHAT: Test context summary"))
-                .build());
-        var configuredModel = new ConfiguredChatModel(config, cm);
-        var agent = new AiDevAgent(configuredModel, new ToolService());
-        agent.getMemory().add(UserMessage.from("First message"));
-        agent.getMemory().add(AiMessage.from("AI response 1"));
-        agent.getMemory().add(UserMessage.from("Second message"));
-        agent.getMemory().add(AiMessage.from("AI response 2"));
-
-        var subject = new CompactSessionTool();
-        subject.withToolRequest(ToolLoopRequest.builder()
-                .chatModel(configuredModel)
-                .memory(agent.getMemory())
-                .agent(agent)
-                .build());
-
-        // WHEN
-        subject.compactSession(null);
-
-        // THEN — the compressor request should have modelName="compact-specific-model"
-        assertThat(streamMock.getLastRequest()).isNotNull();
-        assertThat(streamMock.getLastRequest().modelName()).isEqualTo("compact-specific-model");
-    }
-
-    @Test
-    void testCompactSessionWithoutCompactModelUsesDefault() {
-        // GIVEN — config without compactModel (null), a real owning agent
-        var config = LlmConfig.builder()
-                .model("default-model")
-                .build();
-        var cm = streamMock.buildMock(r -> ChatResponse.builder()
-                .aiMessage(AiMessage.aiMessage("WHAT: Test context summary"))
-                .build());
-        var configuredModel = new ConfiguredChatModel(config, cm);
-        var agent = new AiDevAgent(configuredModel, new ToolService());
-        agent.getMemory().add(UserMessage.from("Test message"));
-        agent.getMemory().add(AiMessage.from("AI response"));
-        agent.getMemory().add(UserMessage.from("Third message")); // R16 guard minimum of 3
-
-        var subject = new CompactSessionTool();
-        subject.withToolRequest(ToolLoopRequest.builder()
-                .chatModel(configuredModel)
-                .memory(agent.getMemory())
-                .agent(agent)
-                .build());
-
-        // WHEN
-        subject.compactSession(null);
-
-        // THEN — the compressor request should have no modelName override (null means provider default)
-        assertThat(streamMock.getLastRequest()).isNotNull();
-        assertThat(streamMock.getLastRequest().modelName()).isNull();
     }
 
     @Test

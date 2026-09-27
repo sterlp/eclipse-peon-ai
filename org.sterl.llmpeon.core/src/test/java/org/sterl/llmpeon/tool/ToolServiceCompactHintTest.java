@@ -1,6 +1,8 @@
 package org.sterl.llmpeon.tool;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,6 +16,7 @@ import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
@@ -33,8 +36,10 @@ class ToolServiceCompactHintTest {
     @Test
     @Timeout(10)
     void hintIsAddedOnce() {
-        // GIVEN — 10 memory messages and two consecutive tool rounds, each reporting real usage
-        // (153000) above the 0.95 hint threshold of autoCompactAfter (160000 * 0.95 = 152000)
+        // GIVEN — 10 memory messages, an owning agent (the COMPACT_HINT branch requires one —
+        // R-CC-15 hotfix: agent == null takes the fallback branch) and two consecutive tool
+        // rounds, each reporting real usage (153000) above the 0.95 hint threshold of
+        // autoCompactAfter (160000 * 0.95 = 152000)
         var memory = seedMemory(new ThreadSafeMemory(), 10);
         var rounds = new AtomicInteger();
         var cm = new StreamMock().buildMock(r -> rounds.incrementAndGet() <= 2
@@ -46,6 +51,7 @@ class ToolServiceCompactHintTest {
                 .memory(memory)
                 .chatModel(new ConfiguredChatModel(hintConfig(), cm))
                 .monitor(monitor)
+                .agent(hintAgent())
                 .build();
 
         // WHEN — two tool rounds each crossing the hint threshold
@@ -110,62 +116,25 @@ class ToolServiceCompactHintTest {
     // R-CC-8
     @Test
     @Timeout(10)
-    void hintNotBelowMinCompactMessages() {
-        // GIVEN — 1 seeded message: after the turn's AiMessage + tool result the history is
-        // exactly MIN_COMPACT_MESSAGES (3) at the hint check — too short for a meaningful compact
-        var memory = seedMemory(new ThreadSafeMemory(), 1);
-        var rounds = new AtomicInteger();
-        var cm = new StreamMock().buildMock(r -> rounds.incrementAndGet() == 1
-                ? toolResponse("probe")
-                : ChatResponse.builder().aiMessage(AiMessage.from("done")).build());
-        var hints = new ArrayList<String>();
-        var monitor = hintCapturingMonitor(hints);
-        var req = ToolLoopRequest.builder()
-                .memory(memory)
-                .chatModel(new ConfiguredChatModel(hintConfig(), cm))
-                .monitor(monitor)
-                .build();
+    void hintBoundarySharpAtMinCompactMessages() {
+        // GIVEN — sharp boundary at MIN_COMPACT_MESSAGES: 1 seeded message → the history is
+        // exactly 3 (the minimum) at the hint check; 2 seeded messages → 4, one above
+        var below = runHintRounds(1);
+        var above = runHintRounds(2);
 
-        // WHEN
-        new ToolService().executeLoop(req);
-
-        // THEN — no hint: the history is too short (≤ MIN_COMPACT_MESSAGES)
-        assertThat(hintMessages(memory)).isEmpty();
-        assertThat(hints).isEmpty();
-    }
-
-    // R-CC-8
-    @Test
-    @Timeout(10)
-    void hintSharpAboveMinCompactMessages() {
-        // GIVEN — 2 seeded messages: after the turn's AiMessage + tool result the history is
-        // MIN_COMPACT_MESSAGES + 1 (4) at the hint check — just above the boundary
-        var memory = seedMemory(new ThreadSafeMemory(), 2);
-        var rounds = new AtomicInteger();
-        var cm = new StreamMock().buildMock(r -> rounds.incrementAndGet() == 1
-                ? toolResponse("probe")
-                : ChatResponse.builder().aiMessage(AiMessage.from("done")).build());
-        var hints = new ArrayList<String>();
-        var monitor = hintCapturingMonitor(hints);
-        var req = ToolLoopRequest.builder()
-                .memory(memory)
-                .chatModel(new ConfiguredChatModel(hintConfig(), cm))
-                .monitor(monitor)
-                .build();
-
-        // WHEN
-        new ToolService().executeLoop(req);
-
-        // THEN — the hint is sharp above the boundary (exactly one, R-CC-4 dedup)
-        assertThat(hintMessages(memory)).hasSize(1);
-        assertThat(hints).hasSize(1);
+        // THEN — no hint at the boundary (a compact would skip anyway), sharp above it
+        assertThat(hintMessages(below.memory())).isEmpty();
+        assertThat(below.hintLines()).isEmpty();
+        assertThat(hintMessages(above.memory())).hasSize(1);
+        assertThat(above.hintLines()).hasSize(1);
     }
 
     // R-CC-10
     @Test
     @Timeout(10)
     void hintLineCarriesTokenDiagnosis() {
-        // GIVEN — 10 memory messages; the tool round reports real usage (153000) above the hint threshold
+        // GIVEN — 10 memory messages, an owning agent; the tool round reports real usage
+        // (153000) above the hint threshold
         var memory = seedMemory(new ThreadSafeMemory(), 10);
         var rounds = new AtomicInteger();
         var cm = new StreamMock().buildMock(r -> rounds.incrementAndGet() <= 2
@@ -177,6 +146,7 @@ class ToolServiceCompactHintTest {
                 .memory(memory)
                 .chatModel(new ConfiguredChatModel(hintConfig(), cm))
                 .monitor(monitor)
+                .agent(hintAgent())
                 .build();
 
         // WHEN — a tool round crossing the hint threshold
@@ -212,6 +182,7 @@ class ToolServiceCompactHintTest {
                 .memory(memory)
                 .chatModel(new ConfiguredChatModel(hintConfig(), cm))
                 .monitor(monitor)
+                .agent(hintAgent())
                 .build();
 
         // WHEN — round 2 crosses the threshold on an estimated (no-usage) counter
@@ -229,18 +200,18 @@ class ToolServiceCompactHintTest {
     @Test
     @Timeout(10)
     void hintUserMessageCarriesNoTokenDiagnosis() {
-        // GIVEN — a tool round that fires the hint (real usage above the threshold)
+        // GIVEN — a tool round that fires the hint (real usage above the threshold, owning agent present)
         var memory = seedMemory(new ThreadSafeMemory(), 10);
         var rounds = new AtomicInteger();
         var cm = new StreamMock().buildMock(r -> rounds.incrementAndGet() <= 2
                 ? toolResponse("probe")
                 : ChatResponse.builder().aiMessage(AiMessage.from("done")).build());
-        var hints = new ArrayList<String>();
-        var monitor = hintCapturingMonitor(hints);
+        var monitor = hintCapturingMonitor(new ArrayList<>());
         var req = ToolLoopRequest.builder()
                 .memory(memory)
                 .chatModel(new ConfiguredChatModel(hintConfig(), cm))
                 .monitor(monitor)
+                .agent(hintAgent())
                 .build();
 
         // WHEN
@@ -253,9 +224,42 @@ class ToolServiceCompactHintTest {
         assertThat(text).doesNotContain("memory=").doesNotContain("model=").doesNotContain(" estimate=");
     }
 
+    // R-CC-15 hotfix (Bug A, docs/open-points.md): the fallback hint (no owning agent / no
+    // compact tool) is added once per memory — never once per iteration above the limit
+    @Test
+    @Timeout(10)
+    void fallbackHintIsAddedOnce() {
+        // GIVEN — no owning agent (agent == null → fallback branch) and two consecutive tool
+        // rounds, each reporting usage above the hint threshold
+        var memory = seedMemory(new ThreadSafeMemory(), 10);
+        var rounds = new AtomicInteger();
+        var cm = new StreamMock().buildMock(r -> rounds.incrementAndGet() <= 2
+                ? toolResponse("probe")
+                : ChatResponse.builder().aiMessage(AiMessage.from("done")).build());
+        var req = ToolLoopRequest.builder()
+                .memory(memory)
+                .chatModel(new ConfiguredChatModel(hintConfig(), cm))
+                .monitor(new AiMonitor() {
+                    @Override public void onChatResponse(SimpleMessage m) {}
+                })
+                .build();
+
+        // WHEN — two tool rounds each crossing the hint threshold
+        new ToolService().executeLoop(req);
+
+        // THEN — the fallback message is there exactly once, not once per round
+        assertThat(fallbackMessages(memory)).hasSize(1);
+    }
 
     private static LlmConfig hintConfig() {
         return LlmConfig.builder().model("mock").autoCompactAfter(160000).build();
+    }
+
+    /** A minimal owning agent: the COMPACT_HINT branch requires one (R-CC-15 hotfix: agent == null → fallback). */
+    private static AiAgent hintAgent() {
+        var agent = mock(AiAgent.class);
+        when(agent.getName()).thenReturn("Peon-Dev");
+        return agent;
     }
 
     private static ThreadSafeMemory seedMemory(ThreadSafeMemory memory, int messages) {
@@ -263,6 +267,26 @@ class ToolServiceCompactHintTest {
             memory.add(i % 2 == 0 ? UserMessage.from("seed " + i) : AiMessage.from("seed " + i));
         }
         return memory;
+    }
+
+    /** One tool round above the hint threshold; returns the memory and the hint LOG lines. */
+    private record HintRun(ThreadSafeMemory memory, List<String> hintLines) {}
+
+    private HintRun runHintRounds(int seeded) {
+        var memory = seedMemory(new ThreadSafeMemory(), seeded);
+        var rounds = new AtomicInteger();
+        var cm = new StreamMock().buildMock(r -> rounds.incrementAndGet() == 1
+                ? toolResponse("probe")
+                : ChatResponse.builder().aiMessage(AiMessage.from("done")).build());
+        var hints = new ArrayList<String>();
+        var req = ToolLoopRequest.builder()
+                .memory(memory)
+                .chatModel(new ConfiguredChatModel(hintConfig(), cm))
+                .monitor(hintCapturingMonitor(hints))
+                .agent(hintAgent())
+                .build();
+        new ToolService().executeLoop(req);
+        return new HintRun(memory, hints);
     }
 
     /** Adds 10 small messages and a real usage above the hint threshold (153000 > 152000). */
@@ -317,6 +341,13 @@ class ToolServiceCompactHintTest {
     private static List<UserMessage> hintMessages(ThreadSafeMemory memory) {
         return memory.getCopy().stream()
                 .filter(m -> m instanceof UserMessage um && ChatMessageUtil.toString(um).contains("CONTEXT LIMIT WARNING"))
+                .map(m -> (UserMessage) m)
+                .toList();
+    }
+
+    private static List<UserMessage> fallbackMessages(ThreadSafeMemory memory) {
+        return memory.getCopy().stream()
+                .filter(m -> m instanceof UserMessage um && ChatMessageUtil.toString(um).contains("cannot be compacted"))
                 .map(m -> (UserMessage) m)
                 .toList();
     }

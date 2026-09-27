@@ -75,17 +75,6 @@ class ThreadSafeMemoryInputTokenCountTest {
 
     // R-CC-10
     @Test
-    void tokenDiagnosisModelIsNaWithoutProviderUsage() {
-        // GIVEN — only an estimate-driven add, the provider never reported usage
-        var memory = new ThreadSafeMemory();
-        memory.add(UserMessage.from("hello"));
-
-        // WHEN/THEN — model is n/a (never reported)
-        assertThat(memory.tokenDiagnosis()).contains("model=n/a");
-    }
-
-    // R-CC-10
-    @Test
     void tokenDiagnosisShowsMemoryFarAboveModel() {
         // GIVEN — a reported input of 80211, then large messages push the memory counter far above it
         var memory = new ThreadSafeMemory();

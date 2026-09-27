@@ -212,17 +212,20 @@ public class ToolService {
         // when THIS loop's tool set actually offers compactSession; otherwise the honest fallback
         var hasCompactTool = toolSpecifications(req).stream()
                 .anyMatch(spec -> CompactSessionTool.NAME.equals(spec.name()));
-        if (!hasCompactTool) {
+        var agent = req.getAgent();
+        if (agent == null || !hasCompactTool) {
             // avoid that a search agent or any other agent without a compact tools get stuck
-            req.addMessage(new UserMessage(
-                    "Your context window is almost full and cannot be compacted. " +
-                    "Stop calling tools now and give your best final answer with what you have so far."));
+            final var msg = "Your context window is almost full and cannot be compacted. " +
+                    "Stop calling tools now and give your best final answer with what you have so far.";
+            if (!memory.containsMessage(msg)) {
+                req.addMessage(new UserMessage(msg));
+                AiMonitor.nullSafety(req.monitor).onTool("Info for search agent added to return now a result, context full: " + memory.getTotalTokenUsed());
+            }
         } else {
             // R-CC-4: one hint per memory — a cleared memory (successful compact) re-arms it
             if (memory.containsMessage(COMPACT_HINT)) return;
             var used = memory.getTotalTokenUsed() + " tokens of " + compactLimit + " used.";
-            // agent is @Nullable (ToolService loops run without one) — the hint is still added
-            String agentName = req.getAgent() != null ? req.getAgent().getName() : "the agent";
+            String agentName = agent.getName();
             // R-CC-10: the diagnosis rides on the onTool LOG line only — the UserMessage below must
             // stay clean (it becomes LLM context; the diagnosis is not for the model).
             AiMonitor.nullSafety(req.monitor).onTool("🗜 Compact hint for " + agentName + " added! " + used + memory.tokenDiagnosis());

@@ -60,6 +60,7 @@ class AbstractAgentCompactResultTest {
         agent.addMessage(AiMessage.from("m2"));
         agent.addMessage(UserMessage.from("m3"));
         var problem = new AtomicReference<String>();
+        var sizeBefore = agent.getMemory().size();
 
         // WHEN
         var result = agent.compact(capturingMonitor(problem, new AtomicBoolean()));
@@ -68,6 +69,8 @@ class AbstractAgentCompactResultTest {
         assertThat(result.status()).isEqualTo(CompactResult.Status.FAILED_EMPTY);
         // AND — the failure is reported with the agent's name (SOLL wording)
         assertThat(problem.get()).isEqualTo("Compact failed: compressor returned no summary for " + agent.getName());
+        // AND — the history is preserved (not cleared on failure)
+        assertThat(agent.getMemory().size()).isEqualTo(sizeBefore);
     }
 
     // R-CC-3
@@ -260,28 +263,6 @@ class AbstractAgentCompactResultTest {
         assertThat(failed.summary()).isNull();
         assertThat(small.status()).isEqualTo(CompactResult.Status.SKIPPED_SMALL);
         assertThat(small.summary()).isNull();
-    }
-
-    // R-CC-3
-    @Test
-    @Timeout(10)
-    void compact_failedEmpty_onProblemKept() {
-        // GIVEN — 3 messages and a compressor answering empty (FAILED_EMPTY)
-        var agent = devAgent(r -> ChatResponse.builder().aiMessage(AiMessage.aiMessage("")).build());
-        agent.addMessage(UserMessage.from("m1"));
-        agent.addMessage(AiMessage.from("m2"));
-        agent.addMessage(UserMessage.from("m3"));
-        var problem = new AtomicReference<String>();
-        var monitor = capturingMonitor(problem, new AtomicBoolean());
-        var sizeBefore = agent.getMemory().size();
-
-        // WHEN
-        var result = agent.compact(monitor);
-
-        // THEN — FAILED_EMPTY is reported and the history is preserved (not cleared on failure)
-        assertThat(result.status()).isEqualTo(CompactResult.Status.FAILED_EMPTY);
-        assertThat(problem.get()).isNotNull();
-        assertThat(agent.getMemory().size()).isEqualTo(sizeBefore);
     }
 
     // R-CC-9b

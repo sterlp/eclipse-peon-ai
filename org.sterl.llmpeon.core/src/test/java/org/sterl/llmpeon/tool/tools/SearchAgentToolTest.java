@@ -10,11 +10,13 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.sterl.llmpeon.StreamMock;
+import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.agent.AiAgent;
@@ -177,5 +179,33 @@ class SearchAgentToolTest {
         assertThat(monitor.toolLines).noneMatch(l -> l.contains("Compact hint for Peon-PO"));
         // AND — the honest fallback landed in the sub-memory (the sub-loop has no compact tool)
         assertThat(service.loops.get(0).getMemory().containsMessage("cannot be compacted")).isTrue();
+    }
+
+    // SEARCH slot routing: the nested loop runs on the configured search model
+    @Test
+    @Timeout(10)
+    void searchAgentUsesConfiguredSearchModel() {
+        // GIVEN — config with a SEARCH slot model="search-specific-model"
+        var config = LlmConfig.builder()
+                .model("default-model")
+                .modelConfigs(Map.of(AgentModelConfig.SEARCH,
+                        new AgentModelConfig(null, null, "search-specific-model", null, null, null)))
+                .build();
+        var streamMock = new StreamMock();
+        var cm = streamMock.buildMock(r -> ChatResponse.builder().aiMessage(AiMessage.from("Search done")).build());
+        var request = ToolLoopRequest.builder()
+                .chatModel(new ConfiguredChatModel(config, cm))
+                .memory(new ThreadSafeMemory())
+                .build();
+        var service = new RecordingToolService();
+        var sniffa = service.getTool(SearchAgentTool.class).get();
+        sniffa.withToolRequest(request);
+
+        // WHEN
+        sniffa.searchAgent("Any funny search");
+
+        // THEN — the nested loop's request carries the SEARCH slot model
+        assertThat(streamMock.getLastRequest()).isNotNull();
+        assertThat(streamMock.getLastRequest().modelName()).isEqualTo("search-specific-model");
     }
 }
