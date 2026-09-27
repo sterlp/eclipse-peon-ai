@@ -36,13 +36,21 @@ public class CustomAgent extends AbstractAgent {
     public static final String API_KEY = "api_key";
     public static final String EXTRA_BODY = "extra_body";
     public static final String THINK = "think";                       // canonical: one think level string (blank = unset)
-    /** Legacy frontmatter key — read-compatible, migrated to {@link #THINK} on write. */
+    /** Legacy frontmatter key — read-compatible, migrated to {@link #THINK} on write.
+     * @deprecated legacy alias, removed in a future major version — new files use {@link #THINK} (migrate-on-write). */
+    @Deprecated
     public static final String THINK_ENABLED = "think_enabled";
-    /** Legacy frontmatter key — read-compatible, migrated to {@link #THINK} on write. */
+    /** Legacy frontmatter key — read-compatible, migrated to {@link #THINK} on write.
+     * @deprecated legacy alias, removed in a future major version — new files use {@link #THINK} (migrate-on-write). */
+    @Deprecated
     public static final String THINK_SUPPORTED = "think_supported";
-    /** Legacy frontmatter key — read-compatible, migrated to {@link #THINK} on write. */
+    /** Legacy frontmatter key — read-compatible, migrated to {@link #THINK} on write.
+     * @deprecated legacy alias, removed in a future major version — new files use {@link #THINK} (migrate-on-write). */
+    @Deprecated
     public static final String THINK_ON = "think_on_string";
-    /** Legacy frontmatter key — read-compatible, migrated to {@link #THINK} on write. */
+    /** Legacy frontmatter key — read-compatible, migrated to {@link #THINK} on write.
+     * @deprecated legacy alias, removed in a future major version — new files use {@link #THINK} (migrate-on-write). */
+    @Deprecated
     public static final String THINK_OFF = "think_off_string";
     public static final String INCLUDE_DEFAULT = "include-default";
     public static final String TEMPERATURE = "temperature";
