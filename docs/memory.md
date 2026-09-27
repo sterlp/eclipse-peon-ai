@@ -18,14 +18,17 @@
   memory==model → kein Wildwuchs; Fixed-Overhead ≈ 7,3k → 10k-Limit praktisch sinnlos (30–40k testen).
 
 ## In Arbeit
-1. **R-CC-15 ✅** (`4cb2783`): Fix gebaut — `.agent(null)` im Nested-Builder, compactSession raus
-   aus dem Sniffa-Filter, per-request Hint-Check, `ToolLoopRequest`-Warnung; Surefire 1026/0/0/0;
-   lint 0. **Paul smoke-testet jetzt** (3 Tage gesucht!). toBuilder bleibt (ADR-0058).
-2. **R-CC-16 ❌** — Da Scribe schreibt Compressor-LLM-Context-Größe (ohne Static) ins onTool,
+1. **R-CC-15 ✅** (`4cb2783` + **Paul-Hotfix**: `agent == null || !hasCompactTool` → Fallback-Hint,
+   ToolService:216 — „Compact geht nur mit Agent"). Surefire 1026/0/0/0; lint 0. Paul smoke-testet.
+2. **Neue Befunde (Jon, in open-points):** **Bug A** Fallback-Hint ohne Dedup-Guard → Spam je
+   Iteration (aktiv!) · **Bug B ⏳** CompactSessionTool kompaktiert agent.getMemory() statt
+   req.getMemory() (latent, echten Suchagenten) · **Kleinigkeit** compactSession trotz agent==null
+   exponiert · StreamingBridge-Race (ADR-0058-Nebenbefund).
+3. **R-CC-16 ❌** — Da Scribe schreibt Compressor-LLM-Context-Größe (ohne Static) ins onTool,
    Estimate daneben — wartet auf Umsetzung.
-3. **❓ Header 0k estimate (Jon)** — IST: Roster-Refresh nur event-getrieben (onTokenUsage);
+4. **❓ Header 0k estimate (Jon)** — IST: Roster-Refresh nur event-getrieben (onTokenUsage);
    SOLL-Frage an Paul: Estimate-Pfad in den Refresh — open-points.md.
-4. **TODO-REMOVE-Diagnostik** (`aaea9e5`) — nach Pauls Re-Smoke entfernen (grep `TODO-REMOVE`).
+5. **TODO-REMOVE-Diagnostik** (`aaea9e5`) — nach Pauls Re-Smoke entfernen (grep `TODO-REMOVE`).
 
 ## Offen (Paul)
 1. **❓ Fixture-Drift**: pom.xml/Dockerfile im test_project zulässig oder aufräumen + README-Zeile —

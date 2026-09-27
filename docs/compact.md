@@ -252,6 +252,12 @@ statt Registry — Custom Agents ohne Allowlist bekommen denselben ehrlichen Fal
 `subCompactMustNotClearParentMemory` · `subLoopHintAttributesToSubAgent` (Lint: 3 IDs auf
 UC-CC-1, 0 Befunde).
 
+**Hotfix Paul (2026-09-27, ToolService:216):** `agent == null || !hasCompactTool` → Fallback-Hint
+(„cannot be compacted") — **Compact geht nur mit Agent**; `agent == null` ist damit die
+ausdrückliche Semantik „dieser Loop kann nicht kompaktieren" (statt nur der Sniffa-Sonderfall).
+Damit hat sich der ehrliche Fallback von „ohne Compact-Tool" auf „ohne Compact-Tool **oder** ohne
+Agent" erweitert.
+
 **toBuilder-Entscheid (Da-Mek-Analyse, ADR-0058):** nur **1** Prod-Call-Site (`SearchAgentTool:47`);
 Sklaven bauen fresh (`PoDelegateTool:239` → `AbstractAgent:286-297` mit `.agent(this)` = Sklave) —
 keine weitere Lücke. toBuilder bleibt (implizite Vererbung von 7 Feldern ist der Vorteil; eine

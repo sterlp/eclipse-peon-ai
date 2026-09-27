@@ -175,6 +175,34 @@ nicht. Widerspruch = Verhalten zurückändern, Tests (UC-SEL-4) anpassen.
 „class folder 'resources/' not associated to any output library entry" bei grüner Kompilation.
 Pre-existing (Da Mek 2026-09-21 verifiziert). Separater Mini-Fix-Kandidat.
 
+## ❓ Fallback-Hint ohne Once-only-Guard — Message-Spam je Iteration (Bug A, 2026-09-27, Jon-Befund)
+
+`ToolService.addCompactHintIfNeeded` läuft **je Tool-Iteration** (:172); der
+Fallback-Branch („cannot be compacted", :216-220) hat **keinen Dedup-Guard** (der else-Branch hat
+R-CC-4 `containsMessage(COMPACT_HINT)`) — oberhalb des Limits wird die Message **je Iteration
+erneut angehängt** → Spam + der Fallback selbst bläht den Context auf. Fix-Kandidat: derselbe
+Once-only-Mechanismus (eigener Marker pro Memory). Pauls Hotfix (`agent == null || !hasCompactTool`
+→ Fallback) erweitert den betroffenen Pfad auf agentlose Loops.
+
+## ⏳ CompactSessionTool kompaktiert agent.getMemory(), der Loop fährt req.getMemory() (Bug B, latent, 2026-09-27)
+
+`CompactSessionTool.java:23-29` → `agent.compact(monitor)` (= `agent.getMemory()`), der Loop läuft
+auf `req.getMemory()` (ToolService:200). Für Haupt-Agenten zufällig dasselbe Objekt
+(`AbstractAgent.doCall` setzt `.memory(agent.memory)` — Konvention, keine Gewähr). Sobald ein
+echter SearchAgent (agent != null + compactSession) mit auseinanderfallenden Objekten existiert:
+Compact leert das **falsche** Memory → Summary landet unerreichbar, R-CC-4-Guard blockiert neue
+Hints → Agent stuck. Optionen: (1) Tool kompaktiert `req.getMemory()` (berührt Compact-Ownership,
+compact-architektur.md), oder (2) fail-fast im Loop (`agent != null && req.getMemory() !=
+agent.getMemory()` → ehrlicher Fehler). Eigene kleine Story mit Doc-Anpassung, Revisit spätestens
+beim echten Suchagenten.
+
+## ⏳ compactSession trotz agent == null exponiert (Kleinigkeit, 2026-09-27)
+
+Bei agent == null bleibt `compactSession` im Tool-Set sichtbar (Hint sagt „cannot be compacted",
+das Tool wirft aber nur die ehrliche `IllegalStateException` beim Call). Konsistenter:
+`toolSpecifications` lässt `compactSession` weg, wenn `agent == null` — spart Token und den
+Fehlaufruf. Mit Bug-A-Fix zusammen behandelbar.
+
 ## ⏳ StreamingBridge/ApiRetry geteilt über toBuilder — parallele Nested-Calls racen (Da-Dok/Mek-Nebenbefund 2026-09-27, ADR-0058)
 
 Der Nested-Request erbt den stateful `StreamingBridge` + `ApiRetry` des Parents — sequenziell
