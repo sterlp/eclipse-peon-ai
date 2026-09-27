@@ -54,6 +54,8 @@ public final class GithubCopilotProvider implements LlmProvider {
                 .baseUrl(baseUrl(c))
                 .apiKey(c.getApiKey() != null && !c.getApiKey().isBlank() ? c.getApiKey() : "not-configured")
                 .modelName(c.getModel())
+                .returnThinking(true)
+                .sendThinking(c.shouldWeSendThinkingBackToLLM())
 
                 .customHeaders(headers)
                 .customQueryParams(c.getQueryParams())
