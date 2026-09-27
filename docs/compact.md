@@ -256,7 +256,13 @@ UC-CC-1, 0 Befunde).
 („cannot be compacted") — **Compact geht nur mit Agent**; `agent == null` ist damit die
 ausdrückliche Semantik „dieser Loop kann nicht kompaktieren" (statt nur der Sniffa-Sonderfall).
 Damit hat sich der ehrliche Fallback von „ohne Compact-Tool" auf „ohne Compact-Tool **oder** ohne
-Agent" erweitert.
+Agent" erweitert. **Spam-Guard (Bug A, `8fb7baf`):** der Fallback-Hint kommt **genau einmal pro
+Memory** (`!memory.containsMessage(msg)`, ToolService:220 — Pauls Ersteinbau war invertiert, Da Mek
+hat die Negation gefixt). Test: `fallbackHintIsAddedOnce`. Nebenbefund: der
+agent==null-Zweig lenkte 4 bestehende Hint-Tests in den Fallback — diese fahren jetzt mit
+minimalen Mock-Agenten (`hintAgent()`) und testen wie beabsichtigt den COMPACT_HINT-Zweig
+(R-CC-4/R-CC-10). Test-Dedup: 1026 → **1022 Tests** (4 Doppeltester gestrichen/merge, je
+Begründung im Commit `8fb7baf`), Surefire 1022/0/0/0, Lint 0.
 
 **toBuilder-Entscheid (Da-Mek-Analyse, ADR-0058):** nur **1** Prod-Call-Site (`SearchAgentTool:47`);
 Sklaven bauen fresh (`PoDelegateTool:239` → `AbstractAgent:286-297` mit `.agent(this)` = Sklave) —

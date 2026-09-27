@@ -20,10 +20,12 @@
 ## In Arbeit
 1. **R-CC-15 ✅** (`4cb2783` + **Paul-Hotfix**: `agent == null || !hasCompactTool` → Fallback-Hint,
    ToolService:216 — „Compact geht nur mit Agent"). Surefire 1026/0/0/0; lint 0. Paul smoke-testet.
-2. **Neue Befunde (Jon, in open-points):** **Bug A** Fallback-Hint ohne Dedup-Guard → Spam je
-   Iteration (aktiv!) · **Bug B ⏳** CompactSessionTool kompaktiert agent.getMemory() statt
+2. **Neue Befunde (Jon):** ~~Bug A~~ **gelöst** (Paul-Guard + Mek-Inversions-Fix `8fb7baf`,
+   resolved-points) · **Bug B ⏳** CompactSessionTool kompaktiert agent.getMemory() statt
    req.getMemory() (latent, echten Suchagenten) · **Kleinigkeit** compactSession trotz agent==null
    exponiert · StreamingBridge-Race (ADR-0058-Nebenbefund).
+   **Aufräum-Inkrement `8fb7baf`:** Test-Dedup 1026→1022 (Doppeltester gestrichen, Begründungen im
+   Commit), Spam-Guard-Test, Surefire 1022/0/0/0, Lint 0. TODO-REMOVE-Logs bleiben drin (nimmt Paul).
 3. **R-CC-16 ❌** — Da Scribe schreibt Compressor-LLM-Context-Größe (ohne Static) ins onTool,
    Estimate daneben — wartet auf Umsetzung.
 4. **❓ Header 0k estimate (Jon)** — IST: Roster-Refresh nur event-getrieben (onTokenUsage);
