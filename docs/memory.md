@@ -4,6 +4,7 @@
 - **`story/compact-input-budget`** — bleibt drauf (Paul: **kein Merge**, weiter aufräumen). Merge → main bleibt User-Entscheidung.
 
 ## Abgeschlossen (diese Runde, Docs-only)
+- **Temp-Diagnostik `aaea9e5`** (Paul-Order, Smoke-Log 2026-09-27): `TODO-REMOVE`-Info-Logs an `ThreadSafeMemory.addResult` (api-input/total/cached + memory before/after, cached via OpenAI/Anthropic-Usage-Subklassen) und `ToolService.addCompactHintIfNeeded`-Kopf (tokenDiagnosis, je Iteration vor Early-Returns). Surefire 1023/0. Smoke-Befunde: Compact lief sauber (Zeile-2-Skip = LLM-Doppel-Aufruf, Guard size<3 by design), memory==model=11806 (kein Wildwuchs), Fixed-Overhead ≈ 7,3k (System+Tools), 10k-Limit praktisch sinnlos (→ 30–40k testen).
 - **Docs-Sanity-Sweep** (searchAgent-Scan + eigene Verifikation): 6 tote Links repariert
   (tool-evolution.md ×2 → resolved-points.md, free-provider-ox-alpha.md ×2 → verbesserungen.md-Studie,
   po.md → po-agent-jon.md + `prompts/po.md`, scaffold-agent.txt → Pfad+Name korrekt,
