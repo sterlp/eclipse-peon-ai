@@ -3,6 +3,17 @@
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
 Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.md).
 
+## ❓ test_project-Fixture: „minimal" SOLL vs. IST-Inhalt (2026-09-27, searchAgent-Freshness-Check)
+
+`docs/test-setup.md:20-21` sagt SOLL = minimal (`.project`, `.classpath`, `src/`); liegt im
+Fixture inzwischen: `pom.xml`, `Dockerfile`, `copyDirSrc/`, `data/`, `docs/`, `sub/`, `tmp/`,
+`bin/`, `target/`, `peon-plan/`, `.agents/`. Teils legitimer Test-Output (Tests schreiben ins
+Fixture, `test-setup.md:29-30`), aber `pom.xml`/`Dockerfile` sind kein Test-Output — Herkunft
+unklar. README L3 „nicht als echtes Projekt benutzen" ist irreführend (das Fixture ist *bewusst*
+echtes JDT-Projekt, `.project`-Nature ist der Punkt). Fragen an Paul: (a) `pom.xml`/`Dockerfile`
+behalten (dann Doc-SOLL anpassen) oder aufräumen? (b) README-Zeile ergänzen: Zweck + Property
+`peon.test.project` überschreibt den Pfad (`test-setup.md:52-53`)?
+
 ## ⏳ Standalone-Peon-Review behält memory*/askUser (2026-09-25, Jon-Entscheid aus dem Build)
 
 Da-Dok-Stop-And-Ask: der Standalone-Peon-Review sieht WorkspaceMemoryTool (+ askUser im UI) —
@@ -163,6 +174,23 @@ nicht. Widerspruch = Verhalten zurückändern, Tests (UC-SEL-4) anpassen.
 
 „class folder 'resources/' not associated to any output library entry" bei grüner Kompilation.
 Pre-existing (Da Mek 2026-09-21 verifiziert). Separater Mini-Fix-Kandidat.
+
+## ❓ Header: Jon-Context-Größe bleibt „0k estimate" (2026-09-27, Paul, Smoke)
+
+Im Header/Roster zeigte Jon die ganze Zeit „0k estimate", obwohl der erste Think ~5k Tokens hatte —
+bei anderen Agenten aktualisiert sich der Wert. Verdacht (Paul): Rendern wir oben nicht immer alle
+Agenten-Context-Größen — Update nur bei selektiertem Agenten? IST-Analyse des Roster-Update-Pfads
+(Pull/MVC, `getRoster`) + Repro-Frage offen.
+
+## ❓ Test-Fixture-Drift: `test_project` enthält pom.xml + Dockerfile (2026-09-27, Da-Mek-Smoke)
+
+[test-setup.md](test-setup.md):20-21 sagt SOLL = „minimal" (.project, .classpath, src/), aber
+`test_project` enthält auch `pom.xml` und `Dockerfile` (Test-Output bin/, target/, data/ sind laut
+Doc legitim). README-Zeile „nicht als echtes Projekt benutzen" irreführend — es muss als echtes
+Eclipse-Projekt ladbar sein, der Punkt ist nur, dass man nicht in ihm entwickelt. Entscheidung
+offen: (a) Fixture behalten + Doc-SOLL anpassen, oder aufräumen; (b) README-Zeile korrigieren
+(„Test-Fixture — ladbar, aber nicht hier developen; `peon.test.project` überschreibt den Pfad").
+Da-Mek-Empfehlung: (a) behalten + Doc anpassen, (b) ja.
 
 ## ⏳ Eclipse-Installationsfehler User — Issue #142
 
