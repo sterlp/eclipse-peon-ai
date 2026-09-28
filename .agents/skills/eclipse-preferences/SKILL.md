@@ -57,3 +57,21 @@ description: Eclipse JFace preference-page patterns — live widget reads instea
 
 Reference tests: `org.sterl.llmpeon.test` — `ModelConfigWidgetTest` (live read, provider switch),
 `AiConfigPreferenceViewTest` (page-level persist/reload).
+
+
+## 4. ScopedPreferenceStore setValue traps (verified 2026-09-28, default-inheritance cycle)
+
+- **Trap (a) — silent key removal:** `setValue(name, value)` removes the InstanceScope key
+  when `value` equals the DefaultScope default (e.g. a `LlmPreferenceInitializer` default).
+  Raw-node readers (`EclipseLlmConfigStore`) then see no value at all — no error, just "empty".
+  Root cause of R-DEF-3 (cost one full cycle).
+- **Trap (b) — NPE on null:** `setValue(name, null)` → `put(name, null)` → NPE in
+  `EclipsePreferences`. Mid-`performOk` it aborts after the preceding keys were written →
+  partial save (Inc-3 finding, fixed in review as C2 — cost one cycle).
+- **Pattern:** write the base connection keys (provider/url/apiKey) via the shared
+  `EclipseLlmConfigStore.putOrRemove(store, key, value)` — `put` if `hasValue`, else `remove`
+  (both preference pages use it). `getString` reads live from the node (no in-memory cache),
+  so direct node writes are safe.
+- **Apply when:** persisting user-editable strings that may be empty or equal to a registered
+  default — check the `IPreferenceInitializer` for the key first; never rely on the
+  InstanceScope key surviving for such values.
