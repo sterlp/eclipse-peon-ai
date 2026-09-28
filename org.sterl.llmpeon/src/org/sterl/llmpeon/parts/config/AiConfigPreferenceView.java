@@ -33,8 +33,9 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
 
     @Override
     public void createFieldEditors() {
-        // The connection fields (provider · URL · API key · model · think) plus Ping live in the
-        // ModelConfigWidget: Ping and Reload read the widget's live values, only OK/Apply persists.
+        // The connection fields (provider · URL · API key · model · think · temperature) plus Ping
+        // live in the ModelConfigWidget: Ping and Reload read the widget's live values, only
+        // OK/Apply persists.
         modelConfigWidget = new ModelConfigWidget(getFieldEditorParent(), "base",
                 LlmPreferenceInitializer::buildWithDefaults);
         modelConfigWidget.load(storeValues());
@@ -79,7 +80,7 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
         var devRecord = LlmPreferenceInitializer.buildWithDefaults().modelConfigFor(AgentModelConfig.DEV);
         return new ModelConfigWidget.ConnectionValues(providerOrNull(store.getString(PeonConstants.PREF_PROVIDER_TYPE)),
                 store.getString(PeonConstants.PREF_URL), store.getString(PeonConstants.PREF_API_KEY), devRecord.think(),
-                store.getString(PeonConstants.PREF_MODEL));
+                store.getString(PeonConstants.PREF_MODEL), devRecord.temperature());
     }
 
     private static AiProvider providerOrNull(String name) {
@@ -102,12 +103,12 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
         getPreferenceStore().setValue(PeonConstants.PREF_PROVIDER_TYPE, values.provider().name());
         getPreferenceStore().setValue(PeonConstants.PREF_URL, values.url());
         getPreferenceStore().setValue(PeonConstants.PREF_API_KEY, values.apiKey());
-        // The dev record is the base model: the saver writes llm.model + llm.agent.dev.think and
-        // keeps the dev url/key/extraBody/temperature overrides (loaded state) untouched.
+        // The dev record is the base model: the saver writes llm.model + llm.agent.dev.think/temperature
+        // and keeps the dev url/key/extraBody overrides (loaded state) untouched.
         LlmConfigSaver.saveAgentModelConfig(
                 new EclipseLlmConfigStore(InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID)), AgentModelConfig.DEV,
                 LlmPreferenceInitializer.buildWithDefaults().modelConfigFor(AgentModelConfig.DEV).withModel(values.model())
-                        .withThink(values.think()));
+                        .withThink(values.think()).withTemperature(values.temperature()));
         return true;
     }
 

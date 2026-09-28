@@ -3,6 +3,7 @@ package org.sterl.llmpeon.test;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -57,11 +58,12 @@ public class ModelConfigWidgetTest extends AbstractSwtUiTest {
         // GIVEN a widget in a 2-column grid with an Ollama connection loaded
         var built = ui(() -> newWidget(() -> LlmConfig.newOllama("mock-model"),
                 new ModelConfigWidget.ConnectionValues(AiProvider.OLLAMA, "http://127.0.0.1:11434", "secret",
-                        "false", "mock-model")));
+                        "false", "mock-model", null)));
 
-        // THEN it shows exactly provider · url · ping · key · model+refresh · think in that parent-child order
+        // THEN it shows exactly provider · url · ping · key · model+refresh · think · temperature in
+        // that parent-child order
         var children = ui(() -> rendered(built.parent()));
-        assertEquals(12, children.length);
+        assertEquals(14, children.length);
         assertEquals("Provider Type:", ((Label) children[0]).getText());
         var provider = (Combo) children[1];
         assertTrue("provider combo must be read-only", (provider.getStyle() & SWT.READ_ONLY) != 0);
@@ -81,10 +83,12 @@ public class ModelConfigWidgetTest extends AbstractSwtUiTest {
         assertArrayEquals(new String[] { "", "true", "false" }, think.getItems());
         assertEquals("false", think.getText());
         assertEquals("mock-model", model.getText());
+        assertEquals("Temperature (empty = unset):", ((Label) children[12]).getText());
+        assertTrue(children[13] instanceof Text);
 
         // AND the free-string variant exists but is excluded (created once, toggled per form)
         var all = ui(() -> built.parent().getChildren());
-        assertEquals(13, all.length);
+        assertEquals(15, all.length);
         assertTrue(all[12] instanceof Text);
         assertTrue("free-string variant must be excluded", ((GridData) all[12].getLayoutData()).exclude);
 
@@ -98,7 +102,7 @@ public class ModelConfigWidgetTest extends AbstractSwtUiTest {
         // GIVEN the widget shows Ollama (toggle) with think "false"
         var built = ui(() -> newWidget(() -> LlmConfig.newOllama("mock-model"),
                 new ModelConfigWidget.ConnectionValues(AiProvider.OLLAMA, "http://127.0.0.1:11434", null, "false",
-                        "mock-model")));
+                        "mock-model", null)));
         assertEquals("false", ui(() -> thinkCombo(built.parent()).getText()));
 
         // WHEN the provider changes to OpenAI (fixed values list) via the combo selection
@@ -134,7 +138,7 @@ public class ModelConfigWidgetTest extends AbstractSwtUiTest {
         });
 
         // THEN the think field is gone entirely (label + combo + text all excluded) and the value is unset
-        assertEquals(10, (int) ui(() -> rendered(built.parent()).length));
+        assertEquals(12, (int) ui(() -> rendered(built.parent()).length));
         var noneAll = ui(() -> built.parent().getChildren());
         assertTrue(((GridData) noneAll[10].getLayoutData()).exclude);
         assertTrue(((GridData) noneAll[11].getLayoutData()).exclude);
@@ -165,7 +169,7 @@ public class ModelConfigWidgetTest extends AbstractSwtUiTest {
         // GIVEN the base ("store state") points at a dead URL and the widget holds the live mock-server URL (typed, no Apply)
         var built = ui(() -> newWidget(
                 () -> LlmConfig.newConfig(AiProvider.OPEN_AI, "gpt-4o", "http://127.0.0.1:1/v1"),
-                new ModelConfigWidget.ConnectionValues(null, null, null, "", "gpt-4o")));
+                new ModelConfigWidget.ConnectionValues(null, null, null, "", "gpt-4o", null)));
         ui(() -> {
             urlText(built.parent()).setText(mockLlmServer.getUrl());
             return null;
@@ -181,7 +185,7 @@ public class ModelConfigWidgetTest extends AbstractSwtUiTest {
 
         // AND the other way: a live base with a dead URL typed in the widget → no list (widget identity still wins)
         var builtDead = ui(() -> newWidget(() -> mockLlmServer.newConfig("gpt-4o"),
-                new ModelConfigWidget.ConnectionValues(null, null, null, "", "gpt-4o")));
+                new ModelConfigWidget.ConnectionValues(null, null, null, "", "gpt-4o", null)));
         ui(() -> {
             urlText(builtDead.parent()).setText("http://127.0.0.1:1/v1");
             return null;
@@ -220,6 +224,43 @@ public class ModelConfigWidgetTest extends AbstractSwtUiTest {
         var dead = ui(built.widget()::computePing);
         assertFalse("dead typed URL must not be reachable", dead.reachable());
         assertEquals("http://127.0.0.1:1/v1", dead.url());
+    }
+
+    // UC-DEF-8
+    @Test
+    public void showsTemperatureFieldAfterThink() {
+        // GIVEN a widget with an Ollama connection loaded (think = toggle form)
+        var built = ui(() -> newWidget(() -> LlmConfig.newOllama("mock-model"),
+                new ModelConfigWidget.ConnectionValues(AiProvider.OLLAMA, "http://127.0.0.1:11434", "secret", "false",
+                        "mock-model", null)));
+
+        // THEN the temperature field sits right after the think field (binding 6) and is rendered
+        // (no provider gate — request-level like think, R-T5). Rendered indices 12/13: the
+        // excluded think free-string text (parent index 12) shifts the rendered order.
+        var children = ui(() -> rendered(built.parent()));
+        assertEquals("Temperature (empty = unset):", ((Label) children[12]).getText());
+        assertTrue(children[13] instanceof Text);
+    }
+
+    // UC-DEF-8
+    @Test
+    public void temperatureRoundTripsThroughValues() {
+        // GIVEN a widget loaded with a temperature
+        var built = ui(() -> newWidget(() -> LlmConfig.newOllama("mock-model"),
+                new ModelConfigWidget.ConnectionValues(AiProvider.OLLAMA, "http://127.0.0.1:11434", null, "false",
+                        "mock-model", "0.7")));
+
+        // THEN the value round-trips load → getValues
+        assertEquals("0.7", ui(built.widget()::getValues).temperature());
+
+        // WHEN the field is cleared
+        ui(() -> {
+            temperatureText(built.parent()).setText("");
+            return null;
+        });
+
+        // THEN getValues returns null (empty = unset)
+        assertNull(ui(built.widget()::getValues).temperature());
     }
 
     // --- helpers ---
@@ -267,6 +308,13 @@ public class ModelConfigWidgetTest extends AbstractSwtUiTest {
         var c = parent.getChildren()[12];
         if (c instanceof Text t) return t;
         throw new AssertionError("expected think text, got " + c.getClass().getSimpleName());
+    }
+
+    /** UI-thread only. The temperature field — created once, always rendered (no provider gate). */
+    private static Text temperatureText(Composite parent) {
+        var c = parent.getChildren()[14];
+        if (c instanceof Text t) return t;
+        throw new AssertionError("expected temperature text, got " + c.getClass().getSimpleName());
     }
 
     /** UI-thread only. The rendered children — GridLayout honors only {@code GridData.exclude}. */

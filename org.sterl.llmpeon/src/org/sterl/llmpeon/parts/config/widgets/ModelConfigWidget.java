@@ -20,8 +20,9 @@ import org.sterl.llmpeon.provider.ThinkValueSupport;
 import org.sterl.llmpeon.shared.StringUtil;
 
 /**
- * The basic config page's connection field group (provider · URL · API key · model · think) plus
- * the ping button — a plain controller (no SWT parent of its own, like {@link ModelComboWidget}):
+ * The basic config page's connection field group (provider · URL · API key · model · think ·
+ * temperature) plus the ping button — a plain controller (no SWT parent of its own, like
+ * {@link ModelComboWidget}):
  * it creates the fields directly in the given 2-column parent grid so they sit in the same field
  * column as the page's other fields.
  *
@@ -72,6 +73,7 @@ public class ModelConfigWidget {
     private Label thinkLabel;
     private Combo thinkCombo;
     private Text thinkText;
+    private final Text temperatureText;
 
     /**
      * @param parent the 2-column grid to build into (the basic page)
@@ -120,14 +122,20 @@ public class ModelConfigWidget {
         thinkText.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
         applyThinkForm(LlmProviders.of(provider()).thinkSupport(), null, false);
+
+        // Temperature (R-DEF-8): request-level like think — no provider gate, always visible.
+        addLabel("Temperature (empty = unset):");
+        temperatureText = new Text(parent, SWT.BORDER);
+        temperatureText.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
     }
 
     /** The connection values as currently shown (null fields = empty, think "" = unset). */
-    public record ConnectionValues(AiProvider provider, String url, String apiKey, String think, String model) {
+    public record ConnectionValues(AiProvider provider, String url, String apiKey, String think, String model,
+            String temperature) {
         @Override
         public String toString() {
-            return "ConnectionValues[provider=%s, url=%s, apiKey=***, think=%s, model=%s]"
-                    .formatted(provider, url, think, model);
+            return "ConnectionValues[provider=%s, url=%s, apiKey=***, think=%s, model=%s, temperature=%s]"
+                    .formatted(provider, url, think, model, temperature);
         }
     }
 
@@ -137,12 +145,13 @@ public class ModelConfigWidget {
 
     /** Populates the widgets from the given values (null-safe; builds the think field per provider form). */
     public void load(ConnectionValues values) {
-        var v = values == null ? new ConnectionValues(null, null, null, null, null) : values;
+        var v = values == null ? new ConnectionValues(null, null, null, null, null, null) : values;
         var idx = providerIndex(v.provider());
         providerCombo.select(idx >= 0 ? idx : 0); // unknown stored value → first entry (ComboFieldEditor parity)
         urlText.setText(StringUtil.stripToEmpty(v.url()));
         keyText.setText(StringUtil.stripToEmpty(v.apiKey()));
         modelWidget.setModel(v.model());
+        temperatureText.setText(StringUtil.stripToEmpty(v.temperature()));
         applyThinkForm(LlmProviders.of(provider()).thinkSupport(), v.think(), false);
     }
 
@@ -152,7 +161,8 @@ public class ModelConfigWidget {
                 StringUtil.stripToNull(urlText.getText()),
                 StringUtil.stripToNull(keyText.getText()),
                 readThink(),
-                StringUtil.stripToNull(modelWidget.getModel()));
+                StringUtil.stripToNull(modelWidget.getModel()),
+                StringUtil.stripToNull(temperatureText.getText()));
     }
 
     /**

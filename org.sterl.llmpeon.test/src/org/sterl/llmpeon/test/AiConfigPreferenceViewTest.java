@@ -48,9 +48,11 @@ public class AiConfigPreferenceViewTest extends AbstractSwtUiTest {
 
     private static final long WAIT_TIMEOUT_MS = 5_000;
     private static final String THINK_KEY = LlmConfigKeys.agentKey(AgentModelConfig.DEV, LlmConfigKeys.AGENT_FIELD_THINK);
+    private static final String TEMPERATURE_KEY = LlmConfigKeys.agentKey(AgentModelConfig.DEV,
+            LlmConfigKeys.AGENT_FIELD_TEMPERATURE);
 
     private static final List<String> KEYS = List.of(PeonConstants.PREF_PROVIDER_TYPE, PeonConstants.PREF_URL,
-            PeonConstants.PREF_API_KEY, PeonConstants.PREF_MODEL, THINK_KEY);
+            PeonConstants.PREF_API_KEY, PeonConstants.PREF_MODEL, THINK_KEY, TEMPERATURE_KEY);
 
     private IEclipsePreferences prefs;
     private Map<String, String> original;
@@ -63,13 +65,14 @@ public class AiConfigPreferenceViewTest extends AbstractSwtUiTest {
         for (var key : KEYS) {
             original.put(key, prefs.get(key, null));
         }
-        // Fixture VOR the page build: Ollama · dead URL · empty key · fixture model · unset think
+        // Fixture VOR the page build: Ollama · dead URL · empty key · fixture model · unset think/temperature
         var store = new EclipseLlmConfigStore(prefs);
         store.put(PeonConstants.PREF_PROVIDER_TYPE, "OLLAMA");
         store.put(PeonConstants.PREF_URL, "http://127.0.0.1:1");
         store.put(PeonConstants.PREF_API_KEY, "");
         store.put(PeonConstants.PREF_MODEL, "fixture-model");
         store.remove(THINK_KEY);
+        store.remove(TEMPERATURE_KEY);
     }
 
     @After
@@ -102,7 +105,7 @@ public class AiConfigPreferenceViewTest extends AbstractSwtUiTest {
         // THEN the connection fields sit in the widget in the binding order 1-5 (+ Ping) and no
         // loose connection field editors remain
         var rendered = ui(() -> rendered(parent));
-        assertEquals(22, rendered.length);
+        assertEquals(24, rendered.length);
         assertEquals("Provider Type:", ((Label) rendered[0]).getText());
         var provider = (Combo) rendered[1];
         assertTrue("provider combo must be read-only", (provider.getStyle() & SWT.READ_ONLY) != 0);
@@ -142,6 +145,28 @@ public class AiConfigPreferenceViewTest extends AbstractSwtUiTest {
         assertEquals("sk-test-123", prefs.get(PeonConstants.PREF_API_KEY, null));
         assertEquals("gpt-4o", prefs.get(PeonConstants.PREF_MODEL, null));
         assertEquals("low", prefs.get(THINK_KEY, null));
+    }
+
+    // UC-DEF-8
+    @Test
+    public void performOkPersistsTemperature() {
+        // GIVEN the basic page is built (fixture: unset temperature → empty field)
+        var page = ui(() -> buildPage());
+        var parent = ui(() -> fieldEditorParent(page));
+        assertEquals("unset temperature loads as an empty field", "", temperatureText(parent).getText());
+
+        // WHEN the temperature is typed and OK is pressed — the key field must be non-empty:
+        // performOk's setValue(null) NPEs in the JFace store for an empty key (preexisting bug,
+        // reported to the PO — not fixed in this increment)
+        ui(() -> {
+            temperatureText(parent).setText("0.7");
+            ((Text) parent.getChildren()[6]).setText("sk-test-123");
+            return null;
+        });
+        ui(page::performOk);
+
+        // THEN the dev temperature key carries the value
+        assertEquals("0.7", prefs.get(TEMPERATURE_KEY, null));
     }
 
     // UC-MCW-4
@@ -257,6 +282,11 @@ public class AiConfigPreferenceViewTest extends AbstractSwtUiTest {
     /** UI-thread only. The widget's model combo (slot 4 of the binding order). */
     private static Combo modelCombo(Composite parent) {
         return (Combo) parent.getChildren()[8];
+    }
+
+    /** UI-thread only. The widget's temperature field (binding 6 of the order). */
+    private static Text temperatureText(Composite parent) {
+        return (Text) parent.getChildren()[14];
     }
 
     /** UI-thread only. */
