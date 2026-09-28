@@ -3,7 +3,6 @@ package org.sterl.llmpeon.parts.config.widgets;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
-import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
@@ -13,7 +12,6 @@ import java.util.function.Supplier;
 
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.LlmConfig;
-import org.sterl.llmpeon.provider.ExtraBodyExamples;
 import org.sterl.llmpeon.provider.LlmProviders;
 import org.sterl.llmpeon.provider.ThinkSupport;
 import org.sterl.llmpeon.provider.ThinkValueSupport;
@@ -45,8 +43,7 @@ public class AgentModelConfigSection extends Composite {
     private final Text keyText;
     private final ModelComboWidget modelWidget;
     private final Text temperatureText;
-    private Text jsonText;
-    private Label examplesLabel;
+    private final ExtraBodyWidget extraBody;
 
     // exactly one of these is non-null, per thinkForm
     private Combo thinkCombo;
@@ -68,7 +65,7 @@ public class AgentModelConfigSection extends Composite {
         this.modelWidget = new ModelComboWidget(this, agentId, this::prepareFetch);
         buildThink();
         this.temperatureText = addLabeledText("Temperature (empty = unset):");
-        buildJson(provider.supportsExtraBody());
+        this.extraBody = new ExtraBodyWidget(this, provider.supportsExtraBody());
     }
 
     public String getAgentId() {
@@ -82,7 +79,7 @@ public class AgentModelConfigSection extends Composite {
         modelWidget.setModel(record.model());
         loadThink(record.think());
         temperatureText.setText(StringUtil.stripToEmpty(record.temperature()));
-        if (jsonText != null) jsonText.setText(StringUtil.stripToEmpty(record.extraBody()));
+        extraBody.setBody(record.extraBody());
     }
 
     /** Reads the widgets back into a record (empty fields become null). */
@@ -92,7 +89,7 @@ public class AgentModelConfigSection extends Composite {
                 StringUtil.stripToNull(keyText.getText()),
                 StringUtil.stripToNull(modelWidget.getModel()),
                 readThink(),
-                jsonText != null ? StringUtil.stripToNull(jsonText.getText()) : null,
+                extraBody.getExtraBody(),
                 StringUtil.stripToNull(temperatureText.getText()));
     }
 
@@ -133,54 +130,6 @@ public class AgentModelConfigSection extends Composite {
             thinkText.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
         }
         // ThinkSupport.None → no per-request think input, widget hidden
-    }
-
-    private void buildJson(boolean visible) {
-        if (!visible) return;
-        addLabel("Extra body (JSON):");
-        jsonText = new Text(this, SWT.BORDER | SWT.MULTI | SWT.V_SCROLL | SWT.WRAP);
-        var gd = new GridData(SWT.FILL, SWT.FILL, true, false);
-        gd.horizontalSpan = 2;
-        gd.heightHint = 80;
-        jsonText.setLayoutData(gd);
-        buildJsonExamples();
-    }
-
-    /**
-     * Paste-ready extra-body examples under the JSON input (caching.md R3): a single compact row
-     * (label + one button per example, tooltip = description) and a status label. Built only when
-     * {@code supportsExtraBody()} — the provider gate. A paste simply replaces the field content
-     * (2c D2, no dialog).
-     */
-    private void buildJsonExamples() {
-        var examples = ExtraBodyExamples.all();
-        var row = new Composite(this, SWT.NONE);
-        var rowGd = new GridData(SWT.FILL, SWT.CENTER, true, false);
-        rowGd.horizontalSpan = 2;
-        row.setLayoutData(rowGd);
-        row.setLayout(new GridLayout(examples.size() + 1, false));
-        var label = new Label(row, SWT.NONE);
-        label.setText("Examples:");
-        for (var example : examples) {
-            var button = new Button(row, SWT.PUSH);
-            button.setText(example.name());
-            button.setToolTipText(example.description());
-            button.addListener(SWT.Selection, e -> pasteExample(example));
-        }
-        examplesLabel = new Label(this, SWT.NONE);
-        var labelGd = new GridData(SWT.FILL, SWT.CENTER, true, false);
-        labelGd.horizontalSpan = 2;
-        labelGd.exclude = true; // no extra space until a paste happened (GridLayout only filters GridData.exclude)
-        examplesLabel.setLayoutData(labelGd);
-        examplesLabel.setVisible(false);
-    }
-
-    private void pasteExample(ExtraBodyExamples.Example example) {
-        jsonText.setText(example.json());
-        examplesLabel.setText(example.name() + " example inserted.");
-        ((GridData) examplesLabel.getLayoutData()).exclude = false;
-        examplesLabel.setVisible(true);
-        layout();
     }
 
     private Text addLabeledText(String label) {

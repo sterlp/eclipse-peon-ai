@@ -20,12 +20,14 @@ import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 
 public class AdvancedPreferenceSectionsTest {
 
+    // UC-DEF-5
     @Test
-    public void showsPoSection() {
+    public void devSectionIsFirstAndTitledDefault() {
         var sections = AiAdvancedPreferenceView.AGENT_SECTIONS;
 
-        assertEquals(List.of("po", "plan", "dev", "search", "compact"),
+        assertEquals(List.of("dev", "po", "plan", "search", "compact"),
                 sections.stream().map(AiAdvancedPreferenceView.AgentSection::id).toList());
+        assertEquals("Dev (Default)", sections.get(0).title());
         sections.forEach(section -> assertFalse(section.title().isBlank()));
     }
 

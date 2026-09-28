@@ -44,7 +44,13 @@ public final class LlmConfigLoader {
                 .build();
     }
 
-    /** The per-agent records: dev's model is the base {@code llm.model}; the others read their own model key. */
+    /**
+     * The per-agent records: dev's model is the base {@code llm.model} and the dev url/apiKey
+     * keys are never read (ADR-0062: dev is the base slot, not an override slot — a stored
+     * {@code llm.agent.dev.url/apiKey} would be an invisible override against the base
+     * connection UI; removed keys are ignored, never migrated); the other agents read their
+     * own keys.
+     */
     private static Map<String, AgentModelConfig> loadModelConfigs(LlmConfigStore store) {
         var baseModel = store.get(LlmConfigKeys.MODEL, null);
         var map = new LinkedHashMap<String, AgentModelConfig>();
@@ -57,9 +63,10 @@ public final class LlmConfigLoader {
     }
 
     private static AgentModelConfig agentRecord(LlmConfigStore store, String id, String model) {
+        boolean dev = AgentModelConfig.DEV.equals(id);
         return new AgentModelConfig(
-                StringUtil.stripToNull(store.get(LlmConfigKeys.agentKey(id, LlmConfigKeys.AGENT_FIELD_URL), null)),
-                StringUtil.stripToNull(store.get(LlmConfigKeys.agentKey(id, LlmConfigKeys.AGENT_FIELD_API_KEY), null)),
+                dev ? null : StringUtil.stripToNull(store.get(LlmConfigKeys.agentKey(id, LlmConfigKeys.AGENT_FIELD_URL), null)),
+                dev ? null : StringUtil.stripToNull(store.get(LlmConfigKeys.agentKey(id, LlmConfigKeys.AGENT_FIELD_API_KEY), null)),
                 model,
                 StringUtil.stripToNull(store.get(LlmConfigKeys.agentKey(id, LlmConfigKeys.AGENT_FIELD_THINK), null)),
                 StringUtil.stripToNull(store.get(LlmConfigKeys.agentKey(id, LlmConfigKeys.AGENT_FIELD_EXTRA_BODY), null)),

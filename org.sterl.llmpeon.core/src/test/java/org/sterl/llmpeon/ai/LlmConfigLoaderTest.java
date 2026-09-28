@@ -88,6 +88,24 @@ class LlmConfigLoaderTest {
         assertThat(config.modelConfigFor(AgentModelConfig.DEV).model()).isEqualTo("gpt-4o");
     }
 
+    // UC-DEF-4
+    @Test
+    void devUrlAndApiKeyKeysAreIgnored() {
+        // GIVEN a store with legacy dev override keys and a base model
+        var store = new MapLlmConfigStore();
+        store.put(LlmConfigKeys.MODEL, "base-model");
+        store.put(LlmConfigKeys.agentKey(AgentModelConfig.DEV, LlmConfigKeys.AGENT_FIELD_URL), "http://dev-override:11434");
+        store.put(LlmConfigKeys.agentKey(AgentModelConfig.DEV, LlmConfigKeys.AGENT_FIELD_API_KEY), "dev-override-key");
+
+        // WHEN the config is loaded
+        var dev = LlmConfigLoader.load(store).modelConfigFor(AgentModelConfig.DEV);
+
+        // THEN the dev record carries no url/key (dev is the base slot, ADR-0062) and the base model
+        assertThat(dev.url()).isNull();
+        assertThat(dev.apiKey()).isNull();
+        assertThat(dev.model()).isEqualTo("base-model");
+    }
+
     @Test
     void loaderIgnoresUnknownKeys() {
         var store = new MapLlmConfigStore();

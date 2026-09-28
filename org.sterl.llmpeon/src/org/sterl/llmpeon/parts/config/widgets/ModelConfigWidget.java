@@ -20,9 +20,9 @@ import org.sterl.llmpeon.provider.ThinkValueSupport;
 import org.sterl.llmpeon.shared.StringUtil;
 
 /**
- * The basic config page's connection field group (provider · URL · API key · model · think ·
- * temperature) plus the ping button — a plain controller (no SWT parent of its own, like
- * {@link ModelComboWidget}):
+ * The connection field group (provider · URL · API key · model · think · temperature) plus the
+ * ping button, shared by the basic config page and the advanced page's dev (default) section — a
+ * plain controller (no SWT parent of its own, like {@link ModelComboWidget}):
  * it creates the fields directly in the given 2-column parent grid so they sit in the same field
  * column as the page's other fields.
  *
@@ -45,7 +45,8 @@ import org.sterl.llmpeon.shared.StringUtil;
  * {@link #snapshot()}.</p>
  *
  * <p><b>Constructor contract:</b> the parent is the page's 2-column grid; the widget creates its
- * own labels in the JFace Field-Editor style (SWT.LEFT, no GridData).</p>
+ * own labels — JFace Field-Editor style ({@code SWT.LEFT}, no GridData) on the basic page,
+ * right-aligned ({@code SWT.END}, GridData) on the advanced page (D4, label per caller).</p>
  */
 public class ModelConfigWidget {
 
@@ -62,6 +63,7 @@ public class ModelConfigWidget {
             { "GitHub Models (PAT)", AiProvider.GITHUB_MODELS.name() } };
 
     private final Composite parent;
+    private final int labelStyle;
     private final Supplier<LlmConfig> base;
     private final Combo providerCombo;
     private final Text urlText;
@@ -82,7 +84,20 @@ public class ModelConfigWidget {
      *             are overridden with the live widget values in {@link #snapshot()}
      */
     public ModelConfigWidget(Composite parent, String jobName, Supplier<LlmConfig> base) {
+        this(parent, jobName, base, SWT.LEFT); // JFace Field-Editor style (basic page)
+    }
+
+    /**
+     * @param parent the 2-column grid to build into
+     * @param jobName used in the background Job names (e.g. "base" or "dev")
+     * @param base UI-thread supplier of the store state (transport parameters); provider/url/key
+     *             are overridden with the live widget values in {@link #snapshot()}
+     * @param labelStyle the label alignment: {@code SWT.LEFT} (basic page, JFace Field-Editor
+     *             style, no GridData) or {@code SWT.END} (advanced page, GridData)
+     */
+    public ModelConfigWidget(Composite parent, String jobName, Supplier<LlmConfig> base, int labelStyle) {
         this.parent = parent;
+        this.labelStyle = labelStyle;
         this.base = base;
 
         addLabel("Provider Type:");
@@ -116,7 +131,9 @@ public class ModelConfigWidget {
         // the parent's children and break the binding field order once the page adds its own
         // field editors after the widget.
         thinkLabel = addLabel("Think (Default):");
-        thinkLabel.setLayoutData(new GridData()); // needs a GridData instance for the exclude toggle
+        if (labelStyle != SWT.END) {
+            thinkLabel.setLayoutData(new GridData()); // needs a GridData instance for the exclude toggle
+        } // SWT.END labels already carry a GridData from addLabel
         thinkCombo = newCombo();
         thinkText = new Text(parent, SWT.BORDER);
         thinkText.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
@@ -200,8 +217,11 @@ public class ModelConfigWidget {
     }
 
     private Label addLabel(String text) {
-        var label = new Label(parent, SWT.LEFT); // JFace Field-Editor default: SWT.LEFT, no GridData
+        var label = new Label(parent, labelStyle);
         label.setText(text);
+        if (labelStyle == SWT.END) {
+            label.setLayoutData(new GridData(SWT.END, SWT.CENTER, false, false)); // agent-section style
+        }
         return label;
     }
 
