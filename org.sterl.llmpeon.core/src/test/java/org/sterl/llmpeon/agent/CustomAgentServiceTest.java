@@ -6,10 +6,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.AbstractMemoryFileTest;
 import org.sterl.llmpeon.ai.AiProvider;
+import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.EffectiveConnection;
 import org.sterl.llmpeon.ai.LlmConfig;
@@ -235,6 +237,21 @@ class CustomAgentServiceTest extends AbstractMemoryFileTest {
         assertThat(agent.getConfig().getThink()).isNull();
         assertThat(agent.isThinkSupported()).isFalse();
     }
+
+    // UC-THINK-10
+    @Test
+    void customAgentWithoutThinkInheritsBaseDefault() {
+        // GIVEN a base config whose DEV record carries a think value, an AGENT.md without think
+        var cfg = LlmConfig.builder().providerType(AiProvider.OLLAMA).model("base-model")
+                .modelConfigs(Map.of(AgentModelConfig.DEV,
+                        new AgentModelConfig(null, null, null, "true", null, null)))
+                .build();
+        var agent = newAgentWith(cfg, "name: t");
+
+        // WHEN / THEN — the blank frontmatter inherits the base default
+        assertThat(agent.getConfig().getThink()).isEqualTo("true");
+    }
+
 
     // UC-THINK-6
     @Test
