@@ -6,6 +6,7 @@ import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
@@ -32,8 +33,11 @@ import org.sterl.llmpeon.shared.StringUtil;
  * widget values.</p>
  *
  * <p><b>Provider-dependent think field (R-MCW-6):</b> the think field's form follows the
- * selected provider's {@link ThinkSupport} and is rebuilt live on a provider-combo selection —
- * unlike the advanced page, which freezes the form at construction. Carry-over on a provider
+ * selected provider's {@link ThinkSupport} and is switched live on a provider-combo selection —
+ * unlike the advanced page, which freezes the form at construction. The label/combo/text are
+ * created once and toggled via {@code GridData.exclude}, so the binding field order stays
+ * stable (dispose + recreate would append the new controls at the end of the parent's
+ * children). Carry-over on a provider
  * change: verbatim where the new form allows free input (toggle combo / free text), cleared for a
  * fixed list without a match (never a silent replacement), dropped for {@link ThinkSupport.None}.
  * Think is not part of the {@link org.sterl.llmpeon.ai.ConnectionIdentity} and never flows into
@@ -63,7 +67,7 @@ public class ModelConfigWidget {
     private final Text keyText;
     private final ModelComboWidget modelWidget;
 
-    // exactly one of thinkCombo/thinkText is non-null, per thinkForm (None → neither)
+    // think field created once; the visible control follows thinkForm (None → all hidden)
     private ThinkSupport thinkForm;
     private Label thinkLabel;
     private Combo thinkCombo;
@@ -105,7 +109,17 @@ public class ModelConfigWidget {
         addLabel("Model:"); // ModelComboWidget contract: label before the widget
         modelWidget = new ModelComboWidget(parent, jobName, this::snapshot);
 
-        rebuildThink(LlmProviders.of(provider()).thinkSupport(), null, false);
+        // The think field (label + combo + text) is created once and switched per form via
+        // GridData.exclude — dispose + recreate would append the new controls at the end of
+        // the parent's children and break the binding field order once the page adds its own
+        // field editors after the widget.
+        thinkLabel = addLabel("Think (Default):");
+        thinkLabel.setLayoutData(new GridData()); // needs a GridData instance for the exclude toggle
+        thinkCombo = newCombo();
+        thinkText = new Text(parent, SWT.BORDER);
+        thinkText.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+
+        applyThinkForm(LlmProviders.of(provider()).thinkSupport(), null, false);
     }
 
     /** The connection values as currently shown (null fields = empty, think "" = unset). */
@@ -129,7 +143,7 @@ public class ModelConfigWidget {
         urlText.setText(StringUtil.stripToEmpty(v.url()));
         keyText.setText(StringUtil.stripToEmpty(v.apiKey()));
         modelWidget.setModel(v.model());
-        rebuildThink(LlmProviders.of(provider()).thinkSupport(), v.think(), false);
+        applyThinkForm(LlmProviders.of(provider()).thinkSupport(), v.think(), false);
     }
 
     /** Reads the widgets back (UI thread); empty fields become null, think "" = unset. */
@@ -203,50 +217,42 @@ public class ModelConfigWidget {
         }
     }
 
-    // --- think field (provider-dependent, live rebuild — R-MCW-6) ---
+    // --- think field (provider-dependent, live form switch — R-MCW-6) ---
 
-    /** Provider-combo selection: carry the current value over and rebuild for the new form. */
+    /** Provider-combo selection: carry the current value over and switch to the new form. */
     private void rebuildThinkOnProviderChange() {
-        var carried = readThink(); // read before disposing the old control
-        rebuildThink(LlmProviders.of(provider()).thinkSupport(), carried, true);
+        var carried = readThink(); // read before the form switch
+        applyThinkForm(LlmProviders.of(provider()).thinkSupport(), carried, true);
     }
 
     /**
-     * Rebuilds the think field for the given form — atomically (dispose + build + layout in one
-     * UI-thread run, no flicker window) — and applies the value. With {@code carried=true}
-     * (provider change): verbatim where the form allows free input, cleared for a fixed list
-     * without a match (never a silent replacement), dropped for {@link ThinkSupport.None}. With
-     * {@code carried=false} (explicit load): an unknown values-list entry is shown verbatim
-     * (advanced-page parity).
+     * Switches the think field to the given form — atomically on the UI thread (label text,
+     * combo items and the show/hide state change in one run, then one layout — no flicker
+     * window) — and applies the value. With {@code carried=true} (provider change): verbatim
+     * where the form allows free input, cleared for a fixed list without a match (never a
+     * silent replacement), dropped for {@link ThinkSupport.None}. With {@code carried=false}
+     * (explicit load): an unknown values-list entry is shown verbatim (advanced-page parity).
      */
-    private void rebuildThink(ThinkSupport form, String value, boolean carried) {
-        disposeThinkField();
+    private void applyThinkForm(ThinkSupport form, String value, boolean carried) {
         thinkForm = form;
+        boolean combo = form instanceof ThinkSupport.Toggle || form instanceof ThinkSupport.Values;
+        boolean text = form instanceof ThinkSupport.FreeString || form instanceof ThinkSupport.Unknown;
+        thinkLabel.setText(text ? "Think (Default, empty = off):" : "Think (Default):");
         if (form instanceof ThinkSupport.Toggle) {
-            thinkLabel = addLabel("Think (Default):");
-            thinkCombo = newCombo();
             thinkCombo.setItems(ThinkValueSupport.toggleItems().toArray(String[]::new));
         } else if (form instanceof ThinkSupport.Values v) {
-            thinkLabel = addLabel("Think (Default):");
-            thinkCombo = newCombo();
             thinkCombo.setItems(ThinkValueSupport.valuesItems(v).toArray(String[]::new));
-        } else if (form instanceof ThinkSupport.FreeString || form instanceof ThinkSupport.Unknown) {
-            thinkLabel = addLabel("Think (Default, empty = off):");
-            thinkText = new Text(parent, SWT.BORDER);
-            thinkText.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
         }
-        // ThinkSupport.None → no field (value dropped)
+        setThinkVisible(thinkLabel, combo || text);
+        setThinkVisible(thinkCombo, combo);
+        setThinkVisible(thinkText, text);
         applyThinkValue(value, carried);
         parent.layout();
     }
 
-    private void disposeThinkField() {
-        if (thinkLabel != null && !thinkLabel.isDisposed()) thinkLabel.dispose();
-        if (thinkCombo != null && !thinkCombo.isDisposed()) thinkCombo.dispose();
-        if (thinkText != null && !thinkText.isDisposed()) thinkText.dispose();
-        thinkLabel = null;
-        thinkCombo = null;
-        thinkText = null;
+    private static void setThinkVisible(Control control, boolean visible) {
+        ((GridData) control.getLayoutData()).exclude = !visible; // GridLayout honors only exclude
+        control.setVisible(visible);
     }
 
     private Combo newCombo() {
@@ -256,28 +262,27 @@ public class ModelConfigWidget {
     }
 
     private void applyThinkValue(String value, boolean carried) {
-        if (thinkCombo != null) {
-            if (thinkForm instanceof ThinkSupport.Values) {
-                var display = ThinkValueSupport.valuesDisplay(value);
-                var idx = thinkCombo.indexOf(display);
-                if (idx >= 0) thinkCombo.select(idx);
-                else if (carried) thinkCombo.setText(""); // fixed list, no match → unset (never a silent replacement)
-                else thinkCombo.setText(display); // explicit load: unknown value shown verbatim
-            } else { // Toggle: editable combo, stored value = displayed value
-                thinkCombo.setText(StringUtil.stripToEmpty(value));
-            }
-        } else if (thinkText != null) { // FreeString/Unknown: verbatim
-            thinkText.setText(StringUtil.stripToEmpty(value));
+        if (thinkForm instanceof ThinkSupport.Toggle) {
+            // editable combo, stored value = displayed value
+            thinkCombo.setText(StringUtil.stripToEmpty(value));
+        } else if (thinkForm instanceof ThinkSupport.Values) {
+            var display = ThinkValueSupport.valuesDisplay(value);
+            var idx = thinkCombo.indexOf(display);
+            if (idx >= 0) thinkCombo.select(idx);
+            else if (carried) thinkCombo.setText(""); // fixed list, no match → unset (never a silent replacement)
+            else thinkCombo.setText(display); // explicit load: unknown value shown verbatim
+        } else if (thinkForm instanceof ThinkSupport.FreeString || thinkForm instanceof ThinkSupport.Unknown) {
+            thinkText.setText(StringUtil.stripToEmpty(value)); // verbatim
         }
-        // None → no field
+        // ThinkSupport.None → no field (value dropped)
     }
 
     private String readThink() {
-        if (thinkCombo != null && !thinkCombo.isDisposed()) {
-            if (thinkForm instanceof ThinkSupport.Values) return ThinkValueSupport.valuesStored(thinkCombo.getText());
-            return StringUtil.stripToEmpty(thinkCombo.getText()); // Toggle
+        if (thinkForm instanceof ThinkSupport.Values) return ThinkValueSupport.valuesStored(thinkCombo.getText());
+        if (thinkForm instanceof ThinkSupport.Toggle) return StringUtil.stripToEmpty(thinkCombo.getText());
+        if (thinkForm instanceof ThinkSupport.FreeString || thinkForm instanceof ThinkSupport.Unknown) {
+            return StringUtil.stripToEmpty(thinkText.getText());
         }
-        if (thinkText != null && !thinkText.isDisposed()) return StringUtil.stripToEmpty(thinkText.getText());
         return ""; // None
     }
 }

@@ -10,10 +10,12 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
@@ -58,7 +60,7 @@ public class ModelConfigWidgetTest extends AbstractSwtUiTest {
                         "false", "mock-model")));
 
         // THEN it shows exactly provider · url · ping · key · model+refresh · think in that parent-child order
-        var children = ui(() -> built.parent().getChildren());
+        var children = ui(() -> rendered(built.parent()));
         assertEquals(12, children.length);
         assertEquals("Provider Type:", ((Label) children[0]).getText());
         var provider = (Combo) children[1];
@@ -79,6 +81,12 @@ public class ModelConfigWidgetTest extends AbstractSwtUiTest {
         assertArrayEquals(new String[] { "", "true", "false" }, think.getItems());
         assertEquals("false", think.getText());
         assertEquals("mock-model", model.getText());
+
+        // AND the free-string variant exists but is excluded (created once, toggled per form)
+        var all = ui(() -> built.parent().getChildren());
+        assertEquals(13, all.length);
+        assertTrue(all[12] instanceof Text);
+        assertTrue("free-string variant must be excluded", ((GridData) all[12].getLayoutData()).exclude);
 
         // AND no extra-body field (advanced-only)
         assertFalse("no extra-body field on the basic page", hasLabelContaining(built.parent(), "extra body"));
@@ -125,8 +133,12 @@ public class ModelConfigWidgetTest extends AbstractSwtUiTest {
             return null;
         });
 
-        // THEN the think field is gone entirely (label + control) and the value is unset
-        assertEquals(10, (int) ui(() -> built.parent().getChildren().length));
+        // THEN the think field is gone entirely (label + combo + text all excluded) and the value is unset
+        assertEquals(10, (int) ui(() -> rendered(built.parent()).length));
+        var noneAll = ui(() -> built.parent().getChildren());
+        assertTrue(((GridData) noneAll[10].getLayoutData()).exclude);
+        assertTrue(((GridData) noneAll[11].getLayoutData()).exclude);
+        assertTrue(((GridData) noneAll[12].getLayoutData()).exclude);
         assertEquals("", ui(built.widget()::getValues).think());
 
         // WHEN the provider changes back to Ollama, a toggle value is set, then LM Studio again
@@ -243,18 +255,30 @@ public class ModelConfigWidgetTest extends AbstractSwtUiTest {
         return (Combo) parent.getChildren()[8];
     }
 
-    /** UI-thread only. The last child is the think control (combo or text) — the think field is last. */
+    /** UI-thread only. The think combo — created once, so its slot is stable (field 5 of the order). */
     private static Combo thinkCombo(Composite parent) {
-        var last = parent.getChildren()[parent.getChildren().length - 1];
-        if (last instanceof Combo c) return c;
-        throw new AssertionError("expected think combo, got " + last.getClass().getSimpleName());
+        var c = parent.getChildren()[11];
+        if (c instanceof Combo combo) return combo;
+        throw new AssertionError("expected think combo, got " + c.getClass().getSimpleName());
     }
 
-    /** UI-thread only. */
+    /** UI-thread only. The think free-string field — created once, toggled per form. */
     private static Text thinkText(Composite parent) {
-        var last = parent.getChildren()[parent.getChildren().length - 1];
-        if (last instanceof Text t) return t;
-        throw new AssertionError("expected think text, got " + last.getClass().getSimpleName());
+        var c = parent.getChildren()[12];
+        if (c instanceof Text t) return t;
+        throw new AssertionError("expected think text, got " + c.getClass().getSimpleName());
+    }
+
+    /** UI-thread only. The rendered children — GridLayout honors only {@code GridData.exclude}. */
+    private static Control[] rendered(Composite parent) {
+        var list = new java.util.ArrayList<Control>();
+        for (var child : parent.getChildren()) {
+            var gd = child.getLayoutData();
+            if (gd == null || !((GridData) gd).exclude) {
+                list.add(child);
+            }
+        }
+        return list.toArray(new Control[0]);
     }
 
     /** UI-thread only. */
