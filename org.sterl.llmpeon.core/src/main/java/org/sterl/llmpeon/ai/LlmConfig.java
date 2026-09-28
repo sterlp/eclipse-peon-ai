@@ -12,6 +12,8 @@ import java.util.Map;
 
 import org.sterl.llmpeon.ai.model.AiModel;
 import org.sterl.llmpeon.provider.LlmProviders;
+import org.sterl.llmpeon.provider.LmStudioProvider;
+import org.sterl.llmpeon.provider.OllamaProvider;
 import org.sterl.llmpeon.shared.StringUtil;
 
 import lombok.AllArgsConstructor;
@@ -121,12 +123,12 @@ public class LlmConfig {
     
     public static LlmConfig newOllama(String model) {
         return LlmConfig.builder().providerType(AiProvider.OLLAMA)
-                .model(model).url("http://localhost:11434").build();
+                .model(model).url(OllamaProvider.DEFAULT_BASE_URL).build();
     }
     
     public static LlmConfig newLmStudio(String model) {
         return LlmConfig.builder().providerType(AiProvider.LM_STUDIO)
-                .model(model).url("http://localhost:1234/v1").build();
+                .model(model).url(LmStudioProvider.DEFAULT_BASE_URL).build();
     }
     
     public static LlmConfig newOpenAi(String model) {

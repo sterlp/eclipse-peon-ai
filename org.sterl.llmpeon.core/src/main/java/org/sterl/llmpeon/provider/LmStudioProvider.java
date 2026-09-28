@@ -25,6 +25,14 @@ import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 // model URL /api/v1/models
 public final class LmStudioProvider implements LlmProvider {
 
+    /** Default LM Studio endpoint (R-DEF-3 fallback; also referenced by {@code LlmConfig.newLmStudio}). */
+    public static final String DEFAULT_BASE_URL = "http://localhost:1234/v1";
+
+    @Override
+    public String defaultBaseUrl() {
+        return DEFAULT_BASE_URL;
+    }
+
     @Override
     public StreamingChatModel buildModel(LlmConfig c) {
         var http1 = JdkHttpClient.builder()
@@ -32,7 +40,7 @@ public final class LmStudioProvider implements LlmProvider {
                         .version(HttpClient.Version.HTTP_1_1));
         var builder = OpenAiStreamingChatModel.builder()
                 .timeout(c.getTimeout())
-                .baseUrl(c.getUrl())
+                .baseUrl(baseUrlFor(c))
                 .modelName(c.getModel())
                 .apiKey(StringUtil.hasValue(c.getApiKey()) ? c.getApiKey() : "lm-studio")
                 .httpClientBuilder(http1)
@@ -61,7 +69,7 @@ public final class LmStudioProvider implements LlmProvider {
 
     @Override
     public List<AiModel> listAiModels(LlmConfig c) {
-        var url = c.getUrl().replace("/v1", "/api/v1");
+        var url = baseUrlFor(c).replace("/v1", "/api/v1");
         var request = HttpRequest.newBuilder()
                 .uri(URI.create(url + "/models"));
         c.getHeaderParams().forEach(request::header);

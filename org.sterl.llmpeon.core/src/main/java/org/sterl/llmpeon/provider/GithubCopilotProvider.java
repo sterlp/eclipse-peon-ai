@@ -23,7 +23,8 @@ import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 // GitHub Copilot subscription — OAuth Device Flow, api.githubcopilot.com
 public final class GithubCopilotProvider implements LlmProvider {
 
-    private static final String DEFAULT_BASE_URL = "https://api.githubcopilot.com";
+    /** Default GitHub Copilot endpoint (R-DEF-3 fallback). */
+    public static final String DEFAULT_BASE_URL = "https://api.githubcopilot.com";
     // Impersonate the official Microsoft Copilot Eclipse plugin so the API does not
     // fall back to the "vscode-nl" integrator (which exposes only a tiny model whitelist).
     private static final String INTEGRATION_ID = "copilot-eclipse";
@@ -37,10 +38,14 @@ public final class GithubCopilotProvider implements LlmProvider {
                 "Editor-Plugin-Version",  "copilot-eclipse/0.16.0");
     }
 
-    private String baseUrl(LlmConfig c) {
-        return (c.getUrl() != null && !c.getUrl().isBlank())
-                ? c.getUrl().replaceAll("/+$", "")
-                : DEFAULT_BASE_URL;
+    @Override
+    public String defaultBaseUrl() {
+        return DEFAULT_BASE_URL;
+    }
+
+    // langchain4j appends the endpoint path — a configured trailing slash would double it.
+    private static String withoutTrailingSlashes(String url) {
+        return url.replaceAll("/+$", "");
     }
 
     @Override
@@ -51,7 +56,7 @@ public final class GithubCopilotProvider implements LlmProvider {
 
         var builder = OpenAiStreamingChatModel.builder()
                 .timeout(c.getTimeout())
-                .baseUrl(baseUrl(c))
+                .baseUrl(withoutTrailingSlashes(baseUrlFor(c)))
                 .apiKey(c.getApiKey() != null && !c.getApiKey().isBlank() ? c.getApiKey() : "not-configured")
                 .modelName(c.getModel())
                 .returnThinking(true)

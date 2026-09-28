@@ -39,7 +39,7 @@ public final class OpenAiProvider implements LlmProvider {
 
         var builder = OpenAiStreamingChatModel.builder()
                 .timeout(c.getTimeout())
-                .baseUrl(c.getUrl())
+                .baseUrl(baseUrlFor(c))
                 .modelName(c.getModel())
                 .apiKey(c.getApiKey())
                 .httpClientBuilder(http1)
@@ -83,7 +83,7 @@ public final class OpenAiProvider implements LlmProvider {
     @Override
     public List<AiModel> listAiModels(LlmConfig c) {
         var request = HttpRequest.newBuilder()
-                .uri(URI.create(c.getUrl() + "/models"))
+                .uri(URI.create(baseUrlFor(c) + "/models"))
                 .header("Authorization", "Bearer " + c.getApiKey());
         c.getHeaderParams().forEach(request::header);
 

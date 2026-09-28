@@ -24,6 +24,28 @@ public interface LlmProvider {
     StreamingChatModel buildModel(LlmConfig config);
 
     /**
+     * This provider's default base URL, used when the configured URL is empty (R-DEF-3);
+     * {@code null} = no default, the provider requires a configured URL.
+     */
+    default String defaultBaseUrl() {
+        return null;
+    }
+
+    /**
+     * The base URL for this provider's connection: the configured URL when present, else the
+     * provider default ({@link #defaultBaseUrl()}). Providers without a default throw an
+     * {@link IllegalStateException} with an honest message instead of letting langchain4j fail
+     * with "baseUrl cannot be null or blank" (R-DEF-3).
+     */
+    default String baseUrlFor(LlmConfig config) {
+        if (StringUtil.hasValue(config.getUrl())) return config.getUrl();
+        var fallback = defaultBaseUrl();
+        if (StringUtil.hasNoValue(fallback))
+            throw new IllegalStateException("No base URL configured — open Window > Preferences > Peon AI");
+        return fallback;
+    }
+
+    /**
      * Returns a list of available {@link AiModel}s with metadata.
      * For providers that expose capability data (Copilot, LM Studio, Mistral), only
      * tool-callable models are returned. Other providers return all known models.

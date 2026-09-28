@@ -19,21 +19,26 @@ import dev.langchain4j.model.openaiofficial.OpenAiOfficialResponsesStreamingChat
 /** GitHub Models marketplace — PAT-based, pay-per-use, models.github.ai (stateless singleton). */
 public final class GithubModelsProvider implements LlmProvider {
 
-    private static final String DEFAULT_BASE_URL    = "https://models.github.ai/inference";
+    /** Default GitHub Models endpoint (R-DEF-3 fallback). */
+    public static final String DEFAULT_BASE_URL    = "https://models.github.ai/inference";
     private static final String CATALOG_URL         = "https://models.github.ai/catalog/models";
     private static final String CATALOG_API_VERSION = "2026-03-10";
 
-    private String baseUrl(LlmConfig c) {
-        return (c.getUrl() != null && !c.getUrl().isBlank())
-                ? c.getUrl().replaceAll("/+$", "")
-                : DEFAULT_BASE_URL;
+    @Override
+    public String defaultBaseUrl() {
+        return DEFAULT_BASE_URL;
+    }
+
+    // langchain4j appends the endpoint path — a configured trailing slash would double it.
+    private static String withoutTrailingSlashes(String url) {
+        return url.replaceAll("/+$", "");
     }
 
     @Override
     public StreamingChatModel buildModel(LlmConfig c) {
         var builder = OpenAiOfficialResponsesStreamingChatModel.builder()
                 .timeout(c.getTimeout())
-                .baseUrl(baseUrl(c))
+                .baseUrl(withoutTrailingSlashes(baseUrlFor(c)))
                 .apiKey(c.getApiKey() != null && !c.getApiKey().isBlank() ? c.getApiKey() : "not-configured")
                 .modelName(c.getModel())
                 .isGitHubModels(true)

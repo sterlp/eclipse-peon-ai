@@ -23,7 +23,7 @@ public final class OpenAiOfficialProvider implements LlmProvider {
     public StreamingChatModel buildModel(LlmConfig c) {
         var result = OpenAiOfficialResponsesStreamingChatModel.builder()
                 .timeout(c.getTimeout())
-                .baseUrl(c.getUrl())
+                .baseUrl(baseUrlFor(c))
                 .modelName(c.getModel())
                 .apiKey(c.getApiKey())
                 .strictTools(true)
@@ -47,7 +47,7 @@ public final class OpenAiOfficialProvider implements LlmProvider {
     @Override
     public List<AiModel> listAiModels(LlmConfig c) {
         var request = HttpRequest.newBuilder()
-                .uri(URI.create(c.getUrl() + "/models"))
+                .uri(URI.create(baseUrlFor(c) + "/models"))
                 .header("Authorization", "Bearer " + c.getApiKey());
         c.getHeaderParams().forEach(request::header);
 

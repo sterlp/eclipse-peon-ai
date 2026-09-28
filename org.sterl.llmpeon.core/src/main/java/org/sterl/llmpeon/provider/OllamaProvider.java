@@ -20,6 +20,14 @@ import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 /** Ollama provider (stateless singleton). */
 public final class OllamaProvider implements LlmProvider {
 
+    /** Default Ollama endpoint (R-DEF-3 fallback; also referenced by {@code LlmConfig.newOllama}). */
+    public static final String DEFAULT_BASE_URL = "http://localhost:11434";
+
+    @Override
+    public String defaultBaseUrl() {
+        return DEFAULT_BASE_URL;
+    }
+
     @Override
     public StreamingChatModel buildModel(LlmConfig c) {
         // Thinking is now set per request (see newRequestParameters). returnThinking stays
@@ -27,7 +35,7 @@ public final class OllamaProvider implements LlmProvider {
         // parsed whenever a per-agent think value enables it.
         var builder = OllamaStreamingChatModel.builder()
                 .timeout(c.getTimeout())
-                .baseUrl(c.getUrl())
+                .baseUrl(baseUrlFor(c))
                 .modelName(c.getModel())
                 .returnThinking(Boolean.TRUE)
                 .customHeaders(c.getHeaderParams())
@@ -50,7 +58,7 @@ public final class OllamaProvider implements LlmProvider {
     @Override
     public List<AiModel> listAiModels(LlmConfig c) {
         var models = OllamaModels.builder()
-                .baseUrl(c.getUrl())
+                .baseUrl(baseUrlFor(c))
                 .timeout(ProviderRequestSupport.MODEL_TIMEOUT)
                 .build()
                 .availableModels()
