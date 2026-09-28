@@ -24,7 +24,6 @@ import org.sterl.llmpeon.parts.config.widgets.HorizontalRule;
 import org.sterl.llmpeon.parts.config.widgets.ModelConfigWidget;
 import org.sterl.llmpeon.parts.config.widgets.TitledGroup;
 import org.sterl.llmpeon.provider.LlmProviders;
-import org.sterl.llmpeon.shared.StringUtil;
 
 /**
  * Advanced AI config page. The dev slot is the default connection (ADR-0062): its section
@@ -127,8 +126,8 @@ public class AiAdvancedPreferenceView extends FieldEditorPreferencePage implemen
         // remove the legacy llm.agent.dev.url/apiKey overrides (ADR-0062 clean break).
         var values = devWidget.getValues();
         store.put(PeonConstants.PREF_PROVIDER_TYPE, values.provider().name());
-        putOrRemove(store, PeonConstants.PREF_URL, values.url());
-        putOrRemove(store, PeonConstants.PREF_API_KEY, values.apiKey());
+        EclipseLlmConfigStore.putOrRemove(store, PeonConstants.PREF_URL, values.url());
+        EclipseLlmConfigStore.putOrRemove(store, PeonConstants.PREF_API_KEY, values.apiKey());
         LlmConfigSaver.saveAgentModelConfig(store, AgentModelConfig.DEV,
                 new AgentModelConfig(null, null, values.model(), values.think(),
                         devExtraBody.getExtraBody(), values.temperature()));
@@ -136,14 +135,6 @@ public class AiAdvancedPreferenceView extends FieldEditorPreferencePage implemen
             LlmConfigSaver.saveAgentModelConfig(store, section.getAgentId(), section.getRecord());
         }
         return true;
-    }
-
-    private static void putOrRemove(EclipseLlmConfigStore store, String key, String value) {
-        if (StringUtil.hasValue(value)) {
-            store.put(key, value);
-        } else {
-            store.remove(key);
-        }
     }
 
     @Override

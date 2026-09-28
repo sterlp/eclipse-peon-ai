@@ -169,6 +169,34 @@ public class AiConfigPreferenceViewTest extends AbstractSwtUiTest {
         assertEquals("0.7", prefs.get(TEMPERATURE_KEY, null));
     }
 
+    @Test
+    public void performOkWithEmptyUrlAndApiKey_removesKeysAndSavesCompletely() {
+        // GIVEN the basic page is built (fixture: Ollama · dead URL · empty key · fixture-model · unset think/temperature)
+        var page = ui(() -> buildPage());
+        var parent = ui(() -> fieldEditorParent(page));
+
+        // WHEN URL and API key are cleared, think/temperature are set and OK is pressed —
+        // empty = unset: both keys must be removed (not null-put — JFace's setValue(name, null)
+        // NPEd on the empty key and left a partial save), and the save must run to completion
+        ui(() -> {
+            ((Text) parent.getChildren()[3]).setText("");
+            ((Text) parent.getChildren()[6]).setText("");
+            var think = (Combo) parent.getChildren()[11];
+            think.select(think.indexOf("true"));
+            temperatureText(parent).setText("0.7");
+            return null;
+        });
+        ui(page::performOk);
+
+        // THEN both empty keys are removed (not stored as empty strings) and the rest of the save completed
+        assertNull("empty URL must remove the key, not store an empty value", prefs.get(PeonConstants.PREF_URL, null));
+        assertNull("empty API key must remove the key, not store an empty value", prefs.get(PeonConstants.PREF_API_KEY, null));
+        assertEquals("OLLAMA", prefs.get(PeonConstants.PREF_PROVIDER_TYPE, null));
+        assertEquals("fixture-model", prefs.get(PeonConstants.PREF_MODEL, null));
+        assertEquals("true", prefs.get(THINK_KEY, null));
+        assertEquals("0.7", prefs.get(TEMPERATURE_KEY, null));
+    }
+
     // UC-MCW-4
     @Test
     public void reloadDoesNotTouchStore() {

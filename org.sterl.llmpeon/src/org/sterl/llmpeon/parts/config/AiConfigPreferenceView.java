@@ -100,13 +100,17 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
             return false;
         }
         var values = modelConfigWidget.getValues();
-        getPreferenceStore().setValue(PeonConstants.PREF_PROVIDER_TYPE, values.provider().name());
-        getPreferenceStore().setValue(PeonConstants.PREF_URL, values.url());
-        getPreferenceStore().setValue(PeonConstants.PREF_API_KEY, values.apiKey());
-        // The dev record is the base model: the saver writes llm.model + llm.agent.dev.think/temperature
-        // and keeps the dev url/key/extraBody overrides (loaded state) untouched.
-        LlmConfigSaver.saveAgentModelConfig(
-                new EclipseLlmConfigStore(InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID)), AgentModelConfig.DEV,
+        var store = new EclipseLlmConfigStore(InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID));
+        // Dev is the default slot (R-DEF-4): the widget writes the base keys — an empty url/key
+        // removes the key (empty = unset, never a null put: JFace's setValue(name, null) NPEs and
+        // leaves a partial save).
+        store.put(PeonConstants.PREF_PROVIDER_TYPE, values.provider().name());
+        EclipseLlmConfigStore.putOrRemove(store, PeonConstants.PREF_URL, values.url());
+        EclipseLlmConfigStore.putOrRemove(store, PeonConstants.PREF_API_KEY, values.apiKey());
+        // The dev record is the base model: the saver writes llm.model + llm.agent.dev.think/temperature,
+        // keeps the loaded extraBody, and removes the legacy llm.agent.dev.url/apiKey overrides —
+        // dev is the default slot, it has no override keys (ADR-0062 clean break).
+        LlmConfigSaver.saveAgentModelConfig(store, AgentModelConfig.DEV,
                 LlmPreferenceInitializer.buildWithDefaults().modelConfigFor(AgentModelConfig.DEV).withModel(values.model())
                         .withThink(values.think()).withTemperature(values.temperature()));
         return true;
