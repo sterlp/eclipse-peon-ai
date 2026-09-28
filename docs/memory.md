@@ -3,6 +3,16 @@
 > Achtung: docs/** — insbesondere memory.md — schreibt AUSSCHLIESSLICH Jon. Agenten liefern Facts
 > im Chat, Jon schreibt. (Da Mek hatte 2026-09-27 memory.md überschrieben — nicht wiederholen.)
 
+## Neu 2026-09-28 (pm): Default-Inheritance — ✅ GEBAUT (wartet auf Paul-Smoke/Merge)
+
+- **Story komplett (6 Commits `19a67c17`→`76df135d`→`39c83789`→`593fe634`→`3f909ace`→`a3320aa8`, Branch story/issue-149-think):** R-DEF-1 Core-Vererbung (resolveModel in po/plan/compact/search/custom, Wire-Test) · R-DEF-2 Custom erbt Base-Model · R-DEF-3 Base-URL→Provider-Default (Ollama :11434, LM Studio :1234/v1, GitHub-Defaults migriert), ehrlicher Fehler „No base URL configured"; Root Cause #125 (JFace entfernt Instance-Keys == Default, Runtime liest rohen InstanceScope) · R-DEF-8 Temperature auf Basic (leer=unset, Bindung 6, Label „Temperature (empty = unset):") · R-DEF-4/5/7 Advanced-„Dev (Default)"-Sektion ganz oben, kompletter Slot (Ping+Temperature+ExtraBody via ExtraBodyWidget-Extract), Save-Routing Base-Keys, `llm.agent.dev.url/apiKey/model` Clean-Break nie-gelesen · R-DEF-6 Guard unverändert (MANUELL-Marker).
+- **Surefire:** core **1054/0**, OSGi Tycho **307/0** (+26 headless Skips; Display-Runner 307/307). Lint UC-DEF: 8/8, 0 findings (MANUELL-Info UC-DEF-6).
+- **Da Dok CONCERNS → Nacharbeiten `a3320aa8`:** C1 Lügen-Kommentar performOk:108 korrigiert · C2+C3 NPE-Fix leeres API-Key/URL-Feld (Partial Save) → neu `EclipseLlmConfigStore.putOrRemove`, beide Pages schreiben Base-Keys jetzt direkt (JFace-Trap URL/Key auf Schreibpfad geschlossen, lesseitig unverändert), rot-erst-Test + Mutation · D6-Mutation agentRecord DEV-Zweig (rot→revert).
+- **Docs:** default-inheritance.md (R-DEF-1…8 ✅), ADR-0062, index.md, advanced-configuration.md Update-Abschnitt (Dev-Override-Keys enden + R-ML2-Note), model-config-widget.md Scope-Update. Status-Flips von Jon.
+- **Skill-Evolution (Da-Dok-Empfehlung, bei Mek bestellt):** eclipse-preferences SKILL um „ScopedPreferenceStore setValue traps" erweitern (Default-Equal-Removal + setValue(name,null)-NPE).
+- **Paul-Smoke steht aus** (siehe Chat-Zusammenfassung 2026-09-28); danach Merge (Reihenfolge egal — alles auf EINEM Branch) + Push.
+- **Achtung Backend:** 2× ConnectException beim Build-Start (LLM-Backend down) — Paul hat behoben; Retry klappte.
+
 ## Neu 2026-09-28: Model Config Widget + Think-Default — ✅ GEBAUT (wartet auf Paul-Smoke/Merge)
 
 - **Zyklus komplett durchgebaut** (Jon gab Build-Freiagbe nach SOLL-Klärung; Branch `story/model-config-widget` auf Basis `story/issue-149-think`): Inc-0 Think-Default-Fallback (`c90debfb`, core Surefire **1040/0**) · Inc-1 ModelConfigWidget (`df4293fe`) · Inc-2 Basic-Page-Umbau (`a9691449`, OSGi Surefire **301/0** + 20 Headless-Skips = bestehendes „Workbench not created"-Muster; SWT-Tests laufen im PDE-Runner) · Inc-3 Homepage (`99c5aecb`) · Inc-4 Skill `eclipse-preferences` + dpe-Section verlagert (`5fd04c42`).

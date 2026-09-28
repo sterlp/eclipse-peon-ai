@@ -137,3 +137,9 @@ GIVEN der User wechselt im Widget den Provider (z. B. Ollama → OpenAI)
 WHEN die neue Auswahl aktiv wird
 THEN das Think-Feld rendert sofort die Optionen/Form des NEUEN Providers — ohne Page-Reopen
 → `ModelConfigWidgetTest.thinkFieldFollowsProviderChange` (Mutations-Nachweis: applyThinkValue red→green)
+
+## Scope-Update (2026-09-28, pm — [default-inheritance.md](default-inheritance.md) R-DEF-8)
+
+R-DEF-8 erweitert den Widget-Scope: die Basic-Seite bekommt **Temperature** als zusätzliches Feld
+(leer = unset, `AgentTemperature`-Parse-Punkt, R-T-Semantik aus advanced-configuration.md). JSON
+extra body bleibt bewusst draußen (Advanced-DEV-Sektion „Dev (Default)").

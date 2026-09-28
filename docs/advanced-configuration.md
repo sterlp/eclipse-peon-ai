@@ -253,15 +253,20 @@ Same logic applies to commands directory (`~/.claude/commands` → `~/.llmpeon/c
 
 This one-time resolution ensures deterministic behavior without filesystem I/O on every config load.
 
-## Basis-URL vs. per-Agent Override — Klartext (2026-09-12, User-Rückfrage)
+## Basis-URL vs. per-Agent Override — Klartext (2026-09-12, User-Rückfrage; Update 2026-09-28)
 
 Die URL der **Basic-Page** (`llm.url`) ist die Basis für **alle** Agenten ohne eigenen Override —
 der Dev-Agent trägt standardmäßig **keinen eigenen** URL (`llm.agent.dev.url` existiert dann nicht)
 und erbt die Base-URL. Das URL-Feld der Advanced-View zeigt nur den **eigenen** Override
 („empty = inherit base"), nicht die effektive Verbindung — deshalb steht dort für Dev nichts,
 obwohl dev faktisch die Base-URL nutzt (`LlmConfig.java:165`, `EffectiveConnection.java:32`).
-Modell-Listen-Refresh nutzt den **gespeicherten** Stand: erst **Apply**, dann Refresh →
-R-ML2 in [model-loading.md](model-loading.md).
+
+**Update 2026-09-28 ([default-inheritance.md](default-inheritance.md) R-DEF-4):** dev ist **kein
+Override-Slot** mehr — `llm.agent.dev.url`/`llm.agent.dev.apiKey`/`llm.agent.dev.model` werden nie
+mehr gelesen (Clean Break, beim nächsten Save geräumt); die Advanced-DEV-Sektion ist die
+„Dev (Default)"-Sicht auf die Base-Keys. Dev erbt zusätzlich das Base-Model (R-DEF-1-Fallback für
+alle NULL-Slots). Modell-Listen-Refresh liest **Live-Widget-Werte** (R-ML2, 2026-09-28 neu —
+siehe [model-loading.md](model-loading.md) / [model-config-widget.md](model-config-widget.md)).
 ## Config-Page UI — R-A1/R-A2/R-A3/R-A4 (2026-09-12, User-Smoke „Seite sieht altbacken aus")
 
 **R-A1 ✅ done (ui-config, `66ce4fe`) — Abstand unter den Examples:** GIVEN die Advanced-Page
