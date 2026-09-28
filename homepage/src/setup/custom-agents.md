@@ -74,7 +74,7 @@ Double quotes on the outside would break, because the JSON itself contains doubl
 | `include-default` | `true` = prepend the shared built-in system prompt to this agent's body. Default: `false` (body only). |
 | `temperature` | Temperature for this agent. Empty or invalid = not sent; a top-level `temperature` in `extra_body` wins. |
 | `handover` | Agent name to hand off to after work is done. Shows a **Handoff → [name]** button when set. Enables workflow chains (e.g. plan → dev → review). |
-| `model` | Optional model override. Changing the model in the UI while this agent is active writes it back here. |
+| `model` | Optional model override. **Empty/omitted = inherits the base model** from Peon Configuration. Changing the model in the UI while this agent is active writes it back here. |
 | `url` | Optional endpoint override for this agent (e.g. a different gateway or a local instance). Omitted/blank = inherits the base connection from Peon Configuration. |
 | `api_key` | Optional API-key override for this agent. Omitted/blank = inherits the base key. |
 | `extra_body` | Raw JSON merged into this agent's request body — where [prompt caching](./advanced-configuration.md#extra-body--prompt-caching) is configured per agent. Omitted/blank = none. |
@@ -102,7 +102,7 @@ model: gpt-5
 You are the sap-coder. ...
 ```
 
-Omitted/blank fields inherit the base connection from Peon Configuration. The extra body is sent
+Omitted/blank fields inherit the base connection from Peon Configuration: a blank `model` uses the base model, a blank `url`/`api_key` the base endpoint and key. The extra body is sent
 per request for OpenAI-family providers and baked in at build time for Anthropic (see
 [Extra Body / Prompt Caching](./advanced-configuration.md#extra-body--prompt-caching)).
 

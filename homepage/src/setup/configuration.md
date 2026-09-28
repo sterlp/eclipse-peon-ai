@@ -11,12 +11,15 @@ After installation, configure the plugin via **Window > Preferences > AI Peon > 
 
 ## Provider Settings
 
-The page shows one connection block: **Provider Type**, **URL (incl. port)**, **API Key**, **Model** (+ **Refresh**) and **Think (Default)** — plus the **Ping** button below the URL field.
+The page shows one connection block: **Provider Type**, **URL (incl. port)**, **API Key**, **Model** (+ **Refresh**), **Think (Default)** and **Temperature** — plus the **Ping** button below the URL field.
 
 - **Ping** tests TCP connectivity (host and port) to the URL currently typed in the page, with a 3-second timeout. It does not validate the API key — the model **Refresh** does that implicitly.
 - All of these fields are read **live** by Refresh and Ping: you can test a new URL, key or provider without leaving the page or clicking Apply. **Cancel** discards the typed values; only **Apply/OK** saves them.
+- **URL (incl. port)** may be left empty where the provider has a built-in endpoint: **Ollama** uses `http://localhost:11434`, **LM Studio** uses `http://localhost:1234/v1`, and the GitHub providers their own endpoints. **OpenAI**-compatible providers have no built-in endpoint — an empty URL there is an error, and Peon reports *No base URL configured — open Window > Preferences > Peon AI* instead of a connection crash.
 
 ### Model
+
+This model is the **base model**: every other agent — **PO**, **Plan**, **Search**, **Compact** and [custom agents](./custom-agents.md) — inherits it whenever its own model field is empty (see [Per-Agent Model Selection](./advanced-configuration.md#per-agent-model-selection)).
 
 The **Model** field is a dropdown filled from your provider's model list, **fetched once per connection** (your base URL/key). Click **Refresh** to reload the list — a failed refresh keeps the previous one. Refresh and **Ping** always use the values you have **typed in the page** — no Apply needed; Apply/OK is what saves them. A model you have already configured stays in the field even if it is missing from the fetched list; you can also type a model name that is not in the list — typed models are never added to the dropdown.
 
@@ -28,7 +31,7 @@ Run models locally e.g. mac.
 |---------|-------|
 | Provider | `OLLAMA` |
 | Model | `llama3.2`, `codellama`, `qwen2.5-coder`, `mistral` |
-| Base URL | `http://localhost:11434` |
+| Base URL | `http://localhost:11434` (default — may be left empty) |
 
 - [Ollama documentation](https://ollama.com/library)
 - [Ollama model library](https://ollama.com/search)
@@ -41,7 +44,7 @@ Run models locally — e.g. for windows.
 |---------|-------|
 | Provider | `LM Studio / OpenAI HTTP 1.1` |
 | Model | `qwen/qwen3.5-9b` |
-| Base URL | `http://localhost:1234/v1` |
+| Base URL | `http://localhost:1234/v1` (default — may be left empty) |
 
 ![google gemnini](../assets/lm-studio-setup.png)
 
@@ -206,6 +209,15 @@ Per-agent Think values are configured on the [Advanced Configuration](./advanced
 Each Think value is a single string: **empty = unset**, an off token (`false` / `off` / `no` / `none`) for an explicit off, `true` for auto (Peon picks the right value for your provider and model via a built-in table), or a concrete value used verbatim. The field's form follows the selected provider (editable dropdown for Ollama, value list for the OpenAI family and Anthropic, free text for LM Studio, hidden for Gemini and Mistral). That also covers mixed setups — e.g. planning with one provider and implementing with another.
 
 The **Resend model thinking** checkbox controls whether the model's own reasoning is shown and sent back on the next turn (needed by most LLMs like Qwen 3.x, Mistral, DeepSeek). It is independent of the per-agent Think value.
+
+### Temperature
+
+The **Temperature** field sets the sampling temperature of the **Dev agent** — the default agent of this page. It is a request-level value like Think: it is **not inherited** by any other agent, which each have their own Temperature field on the [Advanced Configuration](./advanced-configuration.md#temperature-settings) page.
+
+- **Empty = unset** — no `temperature` parameter is sent, the provider or model chooses its default. This is important for GPT-5 and o-series models, which reject non-default temperature values.
+- Enter a number (e.g. `0.7`) to send it with every Dev agent request.
+- An **invalid** value is saved but ignored when requests are built: Peon logs a warning and omits `temperature`.
+- A top-level `temperature` in the Dev agent's **Extra body (JSON)** (Advanced page) wins over the field and is sent only once.
 
 ## Testing the Connection
 

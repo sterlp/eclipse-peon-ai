@@ -22,16 +22,15 @@ Different agents can use different models to optimize for cost, speed, or capabi
 
 ### How It Works
 
-1. The **Dev agent always uses the base model** you configure — this is your primary coding model
-2. Leave URL or API key empty to inherit it from the base configuration. The Advanced URL field shows only the agent's **own** override — empty means inherit. The URL on the main Peon configuration page is the base for **every** agent without its own override; the Dev agent has no URL of its own by default and inherits the one configured there. For the model, an empty **PO** or **Dev** field falls back to the base model; **Plan**, **Search**, and **Compact** use the provider's default model.
-3. Pick a model from the **dropdown** (or type one) to override only that agent's model
-4. The dropdown is filled from your provider's model list, **fetched once per connection** (the agent's effective URL/key). Click **Refresh** to reload the list — Refresh uses the values **currently typed** in the page's fields, no Apply needed (Apply/OK is what saves them). A failed refresh keeps the previous one. A model you have already configured stays in the field even if it is missing from the fetched list — typed models are never added to the dropdown.
+1. The **Dev (Default)** section at the top of this page mirrors the main [Peon Configuration](./configuration.md) page: the same **Provider Type**, **URL**, **API Key**, **Model** (+ **Refresh**), **Think**, **Temperature** and **Ping** fields, plus **Extra body (JSON)** — writing the same settings. The Dev agent is the default: its model is your primary coding model.
+2. Every other slot — **PO**, **Plan**, **Search** and **Compact** — leaves its **Model** field empty to inherit the base model; pick a model from the **dropdown** (or type one) to override only that agent. Leave the slot's **URL** or **API Key** field empty to inherit it from the base configuration — those fields show only the agent's **own** override.
+3. The dropdown is filled from your provider's model list, **fetched once per connection** (the agent's effective URL/key). Click **Refresh** to reload the list — Refresh uses the values **currently typed** in the page's fields, no Apply needed (Apply/OK is what saves them). A failed refresh keeps the previous one. A model you have already configured stays in the field even if it is missing from the fetched list — typed models are never added to the dropdown.
 
 Existing installations start with an empty PO slot, which inherits the base configuration. If Jon was previously controlled through the Plan slot, configure the PO slot once after upgrading.
 
 ## Temperature Settings
 
-Every built-in agent — **PO (Jon)**, **Dev**, **Plan**, **Search**, and **Compact** — has its own Temperature field. There is no shared default and no value is inherited between agents.
+Every built-in agent — **PO (Jon)**, **Dev**, **Plan**, **Search**, and **Compact** — has its own Temperature field. There is no shared default and no value is inherited between agents. The Dev agent's field is also on the main [Peon Configuration](./configuration.md#temperature) page (**Temperature** in the connection block) — both pages edit the same value.
 
 - **Empty** means unset: Peon omits `temperature` and lets the provider or model choose its default. This is important for GPT-5 and o-series models, which reject non-default temperature values.
 - Search and Compact now send nothing unless their own value is set (previously they implicitly sent `0.3` and `0.2`). To keep the old values, enter them once in the corresponding fields.
