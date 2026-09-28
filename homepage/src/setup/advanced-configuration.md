@@ -25,7 +25,7 @@ Different agents can use different models to optimize for cost, speed, or capabi
 1. The **Dev agent always uses the base model** you configure — this is your primary coding model
 2. Leave URL or API key empty to inherit it from the base configuration. The Advanced URL field shows only the agent's **own** override — empty means inherit. The URL on the main Peon configuration page is the base for **every** agent without its own override; the Dev agent has no URL of its own by default and inherits the one configured there. For the model, an empty **PO** or **Dev** field falls back to the base model; **Plan**, **Search**, and **Compact** use the provider's default model.
 3. Pick a model from the **dropdown** (or type one) to override only that agent's model
-4. The dropdown is filled from your provider's model list, **fetched once per connection** (the agent's effective URL/key). Click **Refresh** to reload the list — Refresh always uses the **saved** connection settings, so after changing URL/key click **Apply** first, then Refresh. A failed refresh keeps the previous one. A model you have already configured stays in the field even if it is missing from the fetched list — typed models are never added to the dropdown.
+4. The dropdown is filled from your provider's model list, **fetched once per connection** (the agent's effective URL/key). Click **Refresh** to reload the list — Refresh uses the values **currently typed** in the page's fields, no Apply needed (Apply/OK is what saves them). A failed refresh keeps the previous one. A model you have already configured stays in the field even if it is missing from the fetched list — typed models are never added to the dropdown.
 
 Existing installations start with an empty PO slot, which inherits the base configuration. If Jon was previously controlled through the Plan slot, configure the PO slot once after upgrading.
 
@@ -43,7 +43,9 @@ Every built-in agent — **PO (Jon)**, **Dev**, **Plan**, **Search**, and **Comp
 
 Thinking/reasoning is sent **per request**, so each agent resolves its own value for its provider and model. This solves mixed setups — for example planning with **GPT** (`reasoning.effort=high`) while implementing with **DeepSeek** through an OpenAI-compatible gateway that rejects `reasoning.effort`.
 
-Every built-in agent — **PO (Jon)**, **Dev** (the default), **Plan**, **Search** and **Compact** — has its own **Think** field on this page, and every [custom agent](./custom-agents.md) sets the same via the `think` field in its `AGENT.md` frontmatter. **Nothing is inherited between agents.**
+Every built-in agent — **PO (Jon)**, **Dev** (the default), **Plan**, **Search** and **Compact** — has its own **Think** field on this page, and every [custom agent](./custom-agents.md) sets the same via the `think` field in its `AGENT.md` frontmatter.
+
+The only inheritance is the **default**: an agent with an **empty** Think field inherits the **Think (Default)** value from the main [Peon Configuration](./configuration.md#thinking-support) page. An agent's own value always wins — an explicit off included. Empty agent **and** empty default → unset, nothing is sent.
 
 The Think field takes a single value whose form depends on the base provider:
 
@@ -85,7 +87,7 @@ When the Think field is set to the generic on (`true`), Peon maps to a provider-
 
 ### Send thinking back
 
-**Show and resend model thinking** (main Peon Configuration page) is a separate global transport switch. It is **independent** of the per-agent Think value.
+**Resend model thinking** (main Peon Configuration page) is a separate global transport switch. It is **independent** of the per-agent Think value.
 
 ## Extra Body / Prompt Caching
 

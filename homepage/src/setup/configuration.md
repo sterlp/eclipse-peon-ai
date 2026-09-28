@@ -11,9 +11,14 @@ After installation, configure the plugin via **Window > Preferences > AI Peon > 
 
 ## Provider Settings
 
+The page shows one connection block: **Provider Type**, **URL (incl. port)**, **API Key**, **Model** (+ **Refresh**) and **Think (Default)** — plus the **Ping** button below the URL field.
+
+- **Ping** tests TCP connectivity (host and port) to the URL currently typed in the page, with a 3-second timeout. It does not validate the API key — the model **Refresh** does that implicitly.
+- All of these fields are read **live** by Refresh and Ping: you can test a new URL, key or provider without leaving the page or clicking Apply. **Cancel** discards the typed values; only **Apply/OK** saves them.
+
 ### Model
 
-The **Model** field is a dropdown filled from your provider's model list, **fetched once per connection** (your base URL/key). Click **Refresh** to reload the list — a failed refresh keeps the previous one. A model you have already configured stays in the field even if it is missing from the fetched list; you can also type a model name that is not in the list — typed models are never added to the dropdown.
+The **Model** field is a dropdown filled from your provider's model list, **fetched once per connection** (your base URL/key). Click **Refresh** to reload the list — a failed refresh keeps the previous one. Refresh and **Ping** always use the values you have **typed in the page** — no Apply needed; Apply/OK is what saves them. A model you have already configured stays in the field even if it is missing from the fetched list; you can also type a model name that is not in the list — typed models are never added to the dropdown.
 
 ### Ollama
 
@@ -99,7 +104,7 @@ Using the [GitHub Models marketplace](https://github.com/marketplace/models) wit
 **Authentication:**
 1. Generate a [GitHub PAT](https://github.com/settings/tokens) with `models:read` scope
 2. Paste the token in the API Key field
-3. Click "Check Host and Port..." to verify connectivity
+3. Click **Ping** to verify connectivity
 
 **Available models:** Use the **Model** picker to list all marketplace models you have access to. Models are filtered to those supporting tool calling only.
 
@@ -190,17 +195,23 @@ The **Token Window** setting controls how many tokens of conversation history ar
 
 ### Thinking Support
 
-There is no base-level "supports thinking" checkbox anymore — thinking is configured **per agent** on the [Advanced Configuration](./advanced-configuration.md#per-agent-think) page (the same `think` field [custom agents](./custom-agents.md) use in their frontmatter).
+The **Think (Default)** field on this page sets the default think level for the base connection — and it is the value every agent **without its own Think** inherits:
 
-Each agent's Think value is a single string: **empty = unset** (nothing is sent, the model decides), an off token (`false` / `off` / `no` / `none`) for an explicit off, `true` for auto (Peon picks the right value for your provider and model via a built-in table), or a concrete value used verbatim. That also covers mixed setups — e.g. planning with one provider and implementing with another.
+1. An agent with its own Think value uses it — an **explicit off wins** even when a default is set.
+2. An agent with an **empty** Think inherits the default from this page.
+3. Empty default **and** empty agent → unset: nothing is sent, the model decides.
 
-The **Show and resend model thinking** checkbox controls whether the model's own reasoning is shown and sent back on the next turn (needed by some LLMs like Qwen, Mistral, DeepSeek). It is independent of the per-agent Think value.
+Per-agent Think values are configured on the [Advanced Configuration](./advanced-configuration.md#per-agent-think) page (the same `think` field [custom agents](./custom-agents.md) use in their frontmatter).
+
+Each Think value is a single string: **empty = unset**, an off token (`false` / `off` / `no` / `none`) for an explicit off, `true` for auto (Peon picks the right value for your provider and model via a built-in table), or a concrete value used verbatim. The field's form follows the selected provider (editable dropdown for Ollama, value list for the OpenAI family and Anthropic, free text for LM Studio, hidden for Gemini and Mistral). That also covers mixed setups — e.g. planning with one provider and implementing with another.
+
+The **Resend model thinking** checkbox controls whether the model's own reasoning is shown and sent back on the next turn (needed by most LLMs like Qwen 3.x, Mistral, DeepSeek). It is independent of the per-agent Think value.
 
 ## Testing the Connection
 
-1. Open the Peon AI chat view
-2. Type a test message like "Hello"
-3. If configured correctly, you should receive a response
+1. In the Peon Configuration page, click **Ping** to check that the URL (host and port) is reachable — it uses the values currently typed, no Apply needed
+2. Click **Refresh** next to the Model field to load the model list for the current provider/URL/key
+3. Open the Peon AI chat view and type a test message like "Hello" — if configured correctly, you should receive a response
 
 ::: tip Troubleshooting
 If connection tests fail, verify:
