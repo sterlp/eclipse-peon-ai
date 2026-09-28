@@ -9,14 +9,15 @@
 - **Da-Dok-Review:** REJECTED → 2 Blocker von Mek behoben: (1) Surefire-Ground-Truth nachgereicht (die 298/301 waren Eclipse-Runner-Zahlen — Memory-Regel 28 zutiefst bestätigt), (2) Docs-Flips PO-Aufgabe. Mutations-Nachweis applyThinkValue („nie stiller Ersatzwert"): red→green. Non-Blocking: waitUntil 3× dupliziert → Extract-Kandidat; index-basierte Child-Lookups spröde.
 - **Status-Flips gemacht (Jon):** R-MCW-1…6 ✅, R-THINK-10 ✅, index.md, ADR-0060/0061 Accepted. Lint (Scope MCW|THINK): 17/17 UCs, 63 Test-IDs, 0 findings.
 - **Think-Default (ADR-0061):** leerer Agent-Think erbt Base-Think (Dev-Slot); explizites off gewinnt; Custom erbt gleich. Basic-Think-Feld = Default-Editor (Label „Think (Default)").
-- **Noch offen:** Da Mek soll docs/** + peon-plan committen und planImplemented ausführen (nach Freigabe durch Jon — ORDER unter „Nächste Schritte"). Merge-Reihenfolge: erst #149, dann Widget-Branch (Basis ist #149). User-Smoke: beide Branches gemeinsam (Think-Dropdown, think:false im Log, Widget-Felder 1–5 untereinander, Provider-Wechsel → Think-Form folgt, Reload ohne Apply, Cancel verwirft).
+- **Docs+Plan committed ✅** (Mek `9ac3d587` docs/** + Plan, `e4e705a7` Archiv, `planImplemented` ausgeführt → `peon-plan/overview-done-2026-09-28-14-09.md`). Merge-Reihenfolge: erst #149, dann Widget-Branch (Basis ist #149). User-Smoke: beide Branches gemeinsam (Think-Dropdown, think:false im Log, Widget-Felder 1–5 untereinander, Provider-Wechsel → Think-Form folgt, Reload ohne Apply, Cancel verwirft).
+- Auffällig: altes Archiv-Artefakt `org.sterl.llmpeon/peon-plan/overview-done-2026-09-27-17-02.md` (#149-Zyklus, untracked, am falschen Ort) — Mek hat es bewusst außerhalb des Order-Scope gelassen; Aufräumen mit dem #149-Merge-Commit.
 - **Zwei ⏳ aus dem Widget-Bau (open-points):** waitUntil-Extract in AbstractSwtUiTest; per-Agent-Provider-Override-Story (❓, bereits eingetragen).
 
-## Branch
-- **`story/issue-149-think`** — 8 Commits: `88d01ed5` Inc-1 (core) · `a70d4897` Inc-2 (UI+Clean
-  Break) · `b13e60da` Inc-3 (homepage) · `945115df` (WIP rot-Evidenz) + `4a7bbc84` (B1-Fix) ·
-  `f4a80592` Inc-4 (Audit-Nacharbeiten + docs). Surefire core **1032/1032**, OSGi 294/294, Lint 0.
-  Merge → main + User-Smoke = Paul.
+## Branch — konsolidiert (Paul-Order 2026-09-28)
+- **EINE Branch: `story/issue-149-think` @ `0bf93cb0`** — Widget-Branch wurde fast-forward gemerged (`f2059191..e4e705a7`, 24 Dateien +1698/−106, 0 Konflikte) und `story/model-config-widget` gelöscht (`git branch -d`). Archiv-Strunk aufgeräumt (`0bf93cb0`: `org.sterl.llmpeon/peon-plan/overview-done-2026-09-27-17-02.md` → `peon-plan/`).
+- `release-2026-09-06` existiert weder lokal noch auf origin — nichts zu löschen. Remote-Reste (nicht Pauls Ziel?): `fix/nextids-bug-report`, `git-support`, `story/compact-input-budget`.
+- **9 Commits ahead of `origin/story/issue-149-think`** — Push noch nicht gemacht (Jon-Entscheidung, default: nach Paul-Smoke).
+- Merge → main + User-Smoke = Paul.
 
 ## Issue #149 — ✅ FERTIG (wartet auf Paul-Review)
 - **Fix:** Boolean-off kollabierte in Persistenz zu unset (`ThinkValueSupport.booleanValue(false)`→`""`
@@ -47,8 +48,8 @@
   Exposition, Header 0k, Fixture-Drift, Option A, Docs-Sweep, R-CC-7, Issue #142, Merge = Paul).
 
 ## Nächste Schritte
-1. Da Mek: docs/** + peon-plan/overview.md committen + `planImplemented` ausführen (Widget-Zyklus; Jon-Freigabe erteilt nach Da-Dok-REJECTED → Blocker behoben).
-2. Paul: gemeinsamer Smoke **beider Branches** — Merge-Reihenfolge: erst `story/issue-149-think`, dann `story/model-config-widget` (Basis ist #149). Smoke-Punkte unten.
+1. ~~Da Mek: committen + planImplemented~~ ✅ erledigt (`9ac3d587`/`e4e705a7`, Plan archiviert) — nur noch der untracked alte Archiv-Strunk im Plugin-Ordner offen.
+2. Paul: gemeinsamer Smoke **beider Branches** — Merge-Reihenfolge: erst `story/issue-149-think`, dann `story/model-config-widget` (Basis ist #149). Smoke-Punkte oben („Neu 2026-09-28") + bei #149.
 3. Autonom danach: R-CC-7 (next), Think-BDD-Lücken (a)–(g), per-Agent-Provider-Override-Story (❓ in open-points.md).
 
 ## Paul-Feedback 2026-09-27 (Config-UI)
