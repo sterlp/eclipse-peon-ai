@@ -6,11 +6,16 @@ idPrefix: THINK
 ## Goal
 
 Each agent has **one** per-agent think value (a String) and resolves its own effective request
-value from it. **Leer = unset = es wird nichts gesendet.** `AiProvider` maps the resolved string
-to provider-specific request parameters. Es gibt **keinen** separaten "supports"-Boolean —
-`think_supported` fliegt komplett raus, abgeleitet wird ausschließlich aus dem Think-Level
-([ADR-0059](adr/0059-think-dropdown-empty-unset.md), Issue #149). Einige Provider haben statt
-`none`/`medium`/`high`/`xhigh` nur `true`/`false`/`""`.
+value from it. `AiProvider` maps the resolved string to provider-specific request parameters.
+Es gibt **keinen** separaten "supports"-Boolean — `think_supported` fliegt komplett raus,
+abgeleitet wird ausschließlich aus dem Think-Level ([ADR-0059](adr/0059-think-dropdown-empty-unset.md),
+Issue #149). Einige Provider haben statt `none`/`medium`/`high`/`xhigh` nur `true`/`false`/`""`.
+
+**Ab R-THINK-10 (✅ done, 2026-09-28) gilt die Fallback-Kette Agent→Base:** ein leerer
+per-agent Think erbt den **Base-Think** (Dev-Record) — die einfache Config definiert den Default,
+die Advanced-Page/Frontmatter nur noch Ausnahmen. „Empty = nichts senden" bleibt auf den Stufen
+gültig, wo auch die Basis leer ist; ein Agent, der trotz Base-Default **nichts** senden will,
+setzt explizites off.
 
 ## Business Rules
 
@@ -109,6 +114,32 @@ Auto/generic on (`true`) wird über `resources/thinking/<PROVIDER>`-Dateien übe
 unabhängig vom per-agent Think-Wert.
 
 - **GIVEN** think unset **AND** globales send-thinking enabled **WHEN** Config geprüft **THEN** Thinking wird weiterhin zurückgesendet
+
+### R-THINK-10: Base-Think-Default — leerer Agent-Think erbt den Base-Think ✅ done (2026-09-28, `c90debfb`, Surefire core 1040/0)
+
+**WEIL (Paul):** „Offline local default — ich will mit der einfachen Config durchkommen; nur für
+Compact und Search definiere ich ein anderes Think." Die einfache Config (Basic-Page) ist der
+Default-Editor, die Advanced-Page/Frontmatter definieren Ausnahmen. Der „verlorene" Default aus
+der Zeit vor der Per-Agent-Trennung kommt zurück — als echtes SOLL-Fallback, nicht als
+Capability-Flag.
+
+**Resolution-Kette (alle Agenten einheitlich — PO, Plan, Search, Compact, Custom):**
+1. per-agent Think **gesetzt** (auch explizites off) → verbatim (R-THINK-1-Semantik unverändert).
+2. per-agent Think **leer** → Base-Think (Dev-Record, `llm.agent.dev.think` — dass der Dev-Slot
+   die Base-Semantik trägt, ist IST: `LlmConfig.devAgentConfig()`, `LlmConfigSaver`).
+3. Base auch leer → unset → **nichts senden** („Empty means unset" auf der untersten Stufe).
+
+Der Dev-Agent liest weiterhin seinen Record verbatim (er *ist* die Basis, kein Selbst-Fallback).
+Explizites off gewinnt **immer** — trotz Base-Default kann ein Agent Thinking ausstellen
+(Off-Tokens R-THINK-7; für Provider ohne off-Konzept entfällt der Parameter).
+
+#### UC-THINK-10 — emptyAgentThinkInheritsBaseThink
+- **GIVEN** Base-Think = `true`, Search-Think = leer **WHEN** ein Search-Request gebaut wird **THEN** der Base-on-Wert wird gesendet (gemappt wie R-THINK-8)
+- **GIVEN** Base-Think = `true`, Search-Think = `"false"` **WHEN** Search-Request **THEN** explizites off — **kein** Fallback
+- **GIVEN** Base-Think = leer, Agent-Think = leer **WHEN** Request **THEN** nichts gesendet (R-THINK-1 unverändert)
+- **GIVEN** Custom-Agent-Frontmatter ohne `think`, Base-Think = `true` **WHEN** Custom-Request **THEN** Base-Wert geerbt (ein Verhalten, eine Implementierung — auch für Custom)
+- **GIVEN** Dev-Think = leer **WHEN** Dev-Request **THEN** nichts gesendet (Dev erbt nicht von sich selbst)
+→ `LlmConfigTest` (Slot-Parität + off-gewinnt + Dev-verbatim) + `CustomAgentServiceTest` (Frontmatter erbt Base) — Surefire core 1040/0
 
 ## Provider Semantics
 

@@ -1,7 +1,16 @@
-# Session-Stand — 2026-09-27 (Issue #149 Think-Dropdown ✅; Paul weg — Entscheidungsliste unten)
+# Session-Stand — 2026-09-28 (Widget-Zyklus gebaut + reviewed; #149 + Widget warten auf Paul-Smoke/Merge)
 
 > Achtung: docs/** — insbesondere memory.md — schreibt AUSSCHLIESSLICH Jon. Agenten liefern Facts
 > im Chat, Jon schreibt. (Da Mek hatte 2026-09-27 memory.md überschrieben — nicht wiederholen.)
+
+## Neu 2026-09-28: Model Config Widget + Think-Default — ✅ GEBAUT (wartet auf Paul-Smoke/Merge)
+
+- **Zyklus komplett durchgebaut** (Jon gab Build-Freiagbe nach SOLL-Klärung; Branch `story/model-config-widget` auf Basis `story/issue-149-think`): Inc-0 Think-Default-Fallback (`c90debfb`, core Surefire **1040/0**) · Inc-1 ModelConfigWidget (`df4293fe`) · Inc-2 Basic-Page-Umbau (`a9691449`, OSGi Surefire **301/0** + 20 Headless-Skips = bestehendes „Workbench not created"-Muster; SWT-Tests laufen im PDE-Runner) · Inc-3 Homepage (`99c5aecb`) · Inc-4 Skill `eclipse-preferences` + dpe-Section verlagert (`5fd04c42`).
+- **Da-Dok-Review:** REJECTED → 2 Blocker von Mek behoben: (1) Surefire-Ground-Truth nachgereicht (die 298/301 waren Eclipse-Runner-Zahlen — Memory-Regel 28 zutiefst bestätigt), (2) Docs-Flips PO-Aufgabe. Mutations-Nachweis applyThinkValue („nie stiller Ersatzwert"): red→green. Non-Blocking: waitUntil 3× dupliziert → Extract-Kandidat; index-basierte Child-Lookups spröde.
+- **Status-Flips gemacht (Jon):** R-MCW-1…6 ✅, R-THINK-10 ✅, index.md, ADR-0060/0061 Accepted. Lint (Scope MCW|THINK): 17/17 UCs, 63 Test-IDs, 0 findings.
+- **Think-Default (ADR-0061):** leerer Agent-Think erbt Base-Think (Dev-Slot); explizites off gewinnt; Custom erbt gleich. Basic-Think-Feld = Default-Editor (Label „Think (Default)").
+- **Noch offen:** Da Mek soll docs/** + peon-plan committen und planImplemented ausführen (nach Freigabe durch Jon — ORDER unter „Nächste Schritte"). Merge-Reihenfolge: erst #149, dann Widget-Branch (Basis ist #149). User-Smoke: beide Branches gemeinsam (Think-Dropdown, think:false im Log, Widget-Felder 1–5 untereinander, Provider-Wechsel → Think-Form folgt, Reload ohne Apply, Cancel verwirft).
+- **Zwei ⏳ aus dem Widget-Bau (open-points):** waitUntil-Extract in AbstractSwtUiTest; per-Agent-Provider-Override-Story (❓, bereits eingetragen).
 
 ## Branch
 - **`story/issue-149-think`** — 8 Commits: `88d01ed5` Inc-1 (core) · `a70d4897` Inc-2 (UI+Clean
@@ -38,5 +47,12 @@
   Exposition, Header 0k, Fixture-Drift, Option A, Docs-Sweep, R-CC-7, Issue #142, Merge = Paul).
 
 ## Nächste Schritte
-1. planImplemented (Archiv) durch Da Mek — nach diesem Commit.
-2. Paul: Review-Liste oben + Smoke → dann Merge. 3. Autonome Backlog-Kandidaten: R-CC-16 (next).
+1. Da Mek: docs/** + peon-plan/overview.md committen + `planImplemented` ausführen (Widget-Zyklus; Jon-Freigabe erteilt nach Da-Dok-REJECTED → Blocker behoben).
+2. Paul: gemeinsamer Smoke **beider Branches** — Merge-Reihenfolge: erst `story/issue-149-think`, dann `story/model-config-widget` (Basis ist #149). Smoke-Punkte unten.
+3. Autonom danach: R-CC-7 (next), Think-BDD-Lücken (a)–(g), per-Agent-Provider-Override-Story (❓ in open-points.md).
+
+## Paul-Feedback 2026-09-27 (Config-UI)
+- Widget-vs-Store-Stale-Reads in Preference-Pages: eclipse-dpe-Skill erweitert (Abschnitt
+  „Preference pages — read widget state, not the store"). Asymmetrie Check-Host (liest Widget,
+  AiConfigPreferenceView:121) vs. Reload-Models (liest Store, R-ML2-SOLL: erst Apply) —
+  Mek-Analyse bestätigt R-ML2 als dokumentierte Entscheidung; SOLL-Änderung nur auf Paul-Wunsch.

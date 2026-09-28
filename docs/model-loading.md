@@ -56,19 +56,18 @@ Think-Form/Extra-Body-Sichtbarkeit bleibt bewusst Konstruktions-Zeit (`base.get(
 Kein neuer Test (reines Wiring; Fetch-Logik von `AgentModelConfigFetchTest`/
 `ModelComboWidgetTest` gedeckt) — Verifikation manuell wie R-UI1/R-MCP3.
 
-## R-ML2 — Refresh & gespeicherte Verbindungs-Identität — ✅ dokumentiertes Verhalten (2026-09-12, User-Smoke beide Pages — kein Fix)
+## R-ML2 — Refresh & Verbindungs-Identität — ❌ neu entschieden (2026-09-28, Paul; ersetzt die Entscheidung vom 2026-09-12)
 
-User-Entscheidung 2026-09-12: der Refresh-Button nutzt den **gespeicherten** Stand — Apply
-(Speichern) übernimmt die korrigierte URL, danach greift Refresh mit der neuen Identität
-(Fetch-Identity zur Fetch-Zeit, ADR-0034).
+**Alt (2026-09-12, ✅ gebaut, user-verifiziert):** Refresh las den **gespeicherten** Stand — Apply
+zuerst, dann Refresh mit der neuen Identität. **Warum umgestellt (WEIL):** Paul — „Es hilft uns
+nichts, wenn ich die Eingabe mache und erst die Config-Seite verlassen muss, um das Modell zu
+testen." Refresh-ohne-Apply verlangte erst Apply = Config-Seite war zum Testen nicht benutzbar
+(widget-vs-store-Stale-Read, „Anfänger-Fehler"-Muster).
 
-- GIVEN der User korrigiert die Base-URL **ohne** Apply und klickt Refresh, THEN die Liste kommt
-  vom alten (gespeicherten) URL.
-- GIVEN der User drückt Apply/OK, WHEN Refresh geklickt, THEN Fetch mit dem neuen URL aus dem Input.
-
-Dokumentiert auf der Homepage (setup/advanced-configuration.md) und in configuration.md.
-User-verifiziert (2026-09-12): nach Refresh ohne Apply bleibt die alte Modell-Liste vollständig
-stehen, ein manuell eingetipptes Modell bleibt in der Auswahl.
+**Neu:** Ping & Reload lesen die **Live-Widget-Werte** (Provider/URL/Key/Think), Reload
+persistiert nicht (Apply bleibt einziger Save-Pfad, Cancel verwirft). Die Regeln und BDDs liegen
+jetzt im Widget-Doc: [model-config-widget.md](model-config-widget.md) (R-MCW-2/R-MCW-3, Präfix
+`MCW`). Der gelieferte Umbau ist das `ModelConfigWidget`.
 
 ## R-ML3 — Model-Auswahl = natives SWT Combo auf beiden Pages — ✅ done (ui-config, `6b5c9ca`, 2026-09-12)
 

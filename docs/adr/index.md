@@ -64,4 +64,6 @@ isn't clear from a rule/BDD.
 | [0056](0056-compact-component-and-render-modes.md) | Compact = eigene core-Komponente (`compact`: CompactStager pure + CompactEngine + CompactResult-Record); Render-Modi in ChatMessageUtil (Options-Record, SystemMessage-Drop gefixt) — verwirft das 0030-Freeze; Schätzung nur noch estimateTokens ×2/7 | Accepted |
 | [0058](0058-toollooprequest-tobuilder-agent-inheritance.md) | ToolLoopRequest.toBuilder bleibt (1 Prod-Call-Site, implizite Vererbung = Vorteil); Pitfall dokumentiert: Nested-Requests müssen `agent`/`memory` explizit setzen — sonst erbt der Sub-Loop den Parent (R-CC-15-Bug) | Accepted |
 | [0059](0059-think-dropdown-empty-unset.md) | Think: Checkbox raus → ein editierbares Dropdown; leer = unset = nichts senden (alle Provider); Off-Tokens explizit (Ollama `think:false`); Basis-Checkbox „supports thinking" raus (Issue #149) | Accepted |
+| [0060](0060-model-config-widget-live-widget-reads.md) | ModelConfigWidget: Ping/Reload lesen Live-Widget-Werte (nie den Store); Reload = nur Fetch, kein Persist; ersetzt R-ML2-Entscheidung 2026-09-12 | Accepted |
+| [0061](0061-think-default-base-think-fallback.md) | Think-Default: leerer Agent-Think erbt den Base-Think (Dev-Slot); explizites off gewinnt; Custom-Agenten erben gleich | Accepted |
 

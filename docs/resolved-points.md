@@ -4,6 +4,8 @@ Geklärte Punkte, die in kein Feature-Doc passen. Offene Punkte: [open-points.md
 
 | Punkt | Entscheidung | Begründung | Datum |
 |---|---|---|---|
+| Widget-vs-Store-Stale-Reads (R-ML2) | Neu entschieden: Ping/Reload lesen Live-Widget-Werte, Reload persistiert nicht (Apply/Cancel unverändert); Umsetzung als `ModelConfigWidget` (Provider/URL/Key/Think + Model-Combo + Ping + Reload), JSON extra body bleibt außerhalb; Ping bleibt Host+Port | „Es hilft uns nichts, wenn ich die Eingabe mache und erst die Config-Seite verlassen muss, um das Modell zu testen" — Store-Read-Asymmetrie zum Check-Host war ein bewusster Entscheid von 2026-09-12, der sich in der Praxis als unbenutzbar erwies; mehrere fokussierte Widgets statt einem alles fressenden Block. Details: [model-config-widget.md](model-config-widget.md) + [ADR-0060](adr/0060-model-config-widget-live-widget-reads.md) | 2026-09-28 |
+|---|---|---|---|
 | `eclipseReadFile` kürzt lange Ausgaben still (Dev-Befund) | **Widerlegt** — kein Zeilen-Cap, R1d in [eclipse-read-tools.md](eclipse-read-tools.md) zurückgezogen | Pfadanalyse `FileLines` → `DefaultToolExecutor` → `SmartToolExecutor` → `ToolService.execute` → `ThreadSafeMemory.addResult` → `ToolLoopRequest.call` → `StreamingBridge`: nirgends wird gekappt. `ChatMessageUtil`-Limits (6000/90000/900000) dienen Logging/Dedup/Token-Schätzung; `SmartToolExecutor:60-62` kürzt nur Anzeigetext. Beobachtet wurde R1a/R1b. | 2026-09-03 |
 | „Loading 📋 Static env info" erscheint häufig nach Tool-Calls — System-Prompt-Bug? | **Kein Bug.** Kein Rebuild pro Tool-Iteration, Prompt-Cache bricht nicht | `ToolService.executeLoop` ruft `buildSystemPrompt()` nie; Static-Context enthält nur `LocalDate.now()`, keinen Timestamp/Projekt/Zähler. Die Meldungen stammen von **verschiedenen Agenten** (je eigener Cache) und echten Invalidierungen (`clear`/`compact`/`setStaticContext`/`updateConfig`). Sichtbar erst seit inc-27 (Agentenname in der Meldung). Rest-Befunde (doppelter Aufruf `AbstractAgent:179`, fehlende `count == 1`-Assertion) → Zyklus 2a. | 2026-09-03 |
 | Gewähltes Projekt im Static Context? Bekommen Da Mek/Da Thinka es? | **Wie gewollt** — Projekt ist Turn-Context, nicht System-Prompt; Sklaven bekommen es bewusst nicht | `AgentContextComponent:136-140` → `UserContext:20-44` (aktiver Agent). `initStaticContext` fügt nur `StaticContextItem` hinzu; `BuildPoAgentComponent:99-112` gibt den Sklaven Plan + agentenspezifische AGENTS.md + Workspace-Memory, kein Selected-Project-Block. Entspricht `issues/fact-issues.md` Punkt 0b. | 2026-09-03 |
@@ -52,6 +54,7 @@ Mapping-Datei (feature-change-request-copilot.md) wurden aufgelöst. Verbleibend
 ## Weitere geklärte Punkte (2026-09-24 aus open-points.md konsolidiert)
 
 | Punkt | Entscheidung | Begründung | Datum |
+|---|---|---|---|
 |---|---|---|---|
 | Debugger-Backlog F2: statische Felder + evaluate-Objektwerte | **Specified** — SOLL jetzt R-JD-9 (UC-JD-10/11) in [java-debugger-tool.md](java-debugger-tool.md), Bau im Debugger+Linter-Mini-Zyklus | Paul „Go" 2026-09-21 | 2026-09-21 |
 | Debugger Exception-Suspend | **Specified** — R-JD-10 (UC-JD-12), `get_exception`-Action; Event-Abfrage verworfen (R-JD-3) | Paul „Go" 2026-09-21 | 2026-09-21 |

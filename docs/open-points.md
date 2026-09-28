@@ -2,6 +2,14 @@
 
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
 Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.md).
+## ❓ Per-Agent Provider Override (2026-09-28, Paul identifiziert — Story angenommen, noch nicht geplant)
+
+IST: nur der Base besitzt einen Provider (`EffectiveConnection.java:13`, Entscheidung 2026-08-28);
+Advanced-Page und Custom-Agent-Frontmatter kennen kein `provider`-Key. Ein Custom-Agent mit
+URL-Override läuft immer gegen die Base-Provider-API-Semantik — bricht bei inkompatiblen APIs.
+Paul entschied (Option A): eigener Zyklus **nach** dem ModelConfigWidget-Zyklus. Offen bei Planung:
+Advanced-Feld, Frontmatter-Key `provider`, oder beides. Kontext: [model-config-widget.md](model-config-widget.md) R-MCW-5.
+
 
 ## ❓ test_project-Fixture: „minimal" SOLL vs. IST-Inhalt (2026-09-27, searchAgent-Freshness-Check)
 
