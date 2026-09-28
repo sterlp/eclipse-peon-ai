@@ -78,6 +78,53 @@ class AgentModelResolutionTest {
         assertThat(config.planAgentConfig().getThink()).isNull();
     }
 
+
+    // UC-DEF-1
+    @Test
+    void emptyPlanSlotInheritsBaseModel() {
+        // GIVEN a base model and an empty plan slot
+        var config = config(Map.of(AgentModelConfig.PLAN, AgentModelConfig.empty()));
+
+        // WHEN / THEN — the plan agent inherits the base model
+        assertThat(config.planAgentConfig().getModel()).isEqualTo("base-model");
+    }
+
+    // UC-DEF-1
+    @Test
+    void emptyCompactSlotInheritsBaseModel() {
+        // GIVEN a base model and an empty compact slot
+        var config = config(Map.of(AgentModelConfig.COMPACT, AgentModelConfig.empty()));
+
+        // WHEN / THEN — the compactor inherits the base model
+        assertThat(config.compactAgentConfig().getModel()).isEqualTo("base-model");
+    }
+
+    // UC-DEF-1
+    @Test
+    void emptySearchSlotInheritsBaseModel() {
+        // GIVEN a base model and an empty search slot
+        var config = config(Map.of(AgentModelConfig.SEARCH, AgentModelConfig.empty()));
+
+        // WHEN / THEN — the search agent inherits the base model
+        assertThat(config.searchAgentConfig().getModel()).isEqualTo("base-model");
+    }
+
+    // UC-DEF-1
+    @Test
+    void ownModelBeatsInheritance() {
+        // GIVEN slots that pin their own models
+        var config = config(Map.of(
+                AgentModelConfig.PLAN, record(null, null, "plan-own", null, null),
+                AgentModelConfig.COMPACT, record(null, null, "compact-own", null, null),
+                AgentModelConfig.SEARCH, record(null, null, "search-own", null, null)));
+
+        // WHEN / THEN — the own model wins over the base model (no regression)
+        assertThat(config.planAgentConfig().getModel()).isEqualTo("plan-own");
+        assertThat(config.compactAgentConfig().getModel()).isEqualTo("compact-own");
+        assertThat(config.searchAgentConfig().getModel()).isEqualTo("search-own");
+    }
+
+
     private LlmConfig config(Map<String, AgentModelConfig> modelConfigs) {
         return LlmConfig.builder()
                 .providerType(AiProvider.OPEN_AI)

@@ -15,8 +15,9 @@ import org.sterl.llmpeon.shared.StringUtil;
  * migration chain.
  *
  * <p>Missing base keys fall back to the {@link LlmConfig} defaults; missing per-agent fields fall
- * back to {@code null} (inherit base / provider default). Typed parsing (long/int/boolean and CSV
- * maps) happens here, keeping the {@link LlmConfigStore} contract string-only.</p>
+ * back to {@code null} (inherit base — the model directly, url/key via
+ * {@link EffectiveConnection}). Typed parsing (long/int/boolean and CSV maps) happens here, keeping
+ * the {@link LlmConfigStore} contract string-only.</p>
  */
 public final class LlmConfigLoader {
 

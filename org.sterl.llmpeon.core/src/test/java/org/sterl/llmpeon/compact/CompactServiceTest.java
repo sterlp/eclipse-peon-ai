@@ -345,6 +345,35 @@ class CompactServiceTest {
         assertThat(serverB.getLastRequestBody()).isNull();
     }
 
+    // UC-DEF-1
+    @Test
+    @Timeout(10)
+    void slotWithOwnUrlButEmptyModel_sendsBaseModelOnTheWire() {
+        // GIVEN — base points at serverA; the COMPACT slot carries its own url but no model
+        var base = LlmConfig.builder()
+                .providerType(AiProvider.OPEN_AI)
+                .model("base-model")
+                .url(server.getUrl())
+                .apiKey("test-key")
+                .autoCompactAfter(100000)
+                .build();
+        var config = base.withModelConfig(AgentModelConfig.COMPACT,
+                new AgentModelConfig(serverB.getUrl(), null, null, null, null, null));
+        serverB.queueResponse("WHAT: compact briefing");
+        var engine = new CompactService(new ConfiguredChatModel(config));
+
+        // WHEN — one compact
+        var result = engine.compact("dev-agent", List.of(UserMessage.from("Foo")), "", null);
+
+        // THEN — the call landed at the slot's URL carrying the inherited BASE model, not null
+        assertThat(result.status()).isEqualTo(CompactResult.Status.COMPACTED);
+        assertThat(serverB.getLastRequestBody()).isNotNull();
+        assertThat(parse(serverB.getLastRequestBody()).path("model").asText()).isEqualTo("base-model");
+
+        // AND — the base URL received no call
+        assertThat(server.getLastRequestBody()).isNull();
+    }
+
     /** Characterization: the COMPACT slot's think value reaches the wire as the provider-specific parameter. */
     @Test
     @Timeout(10)

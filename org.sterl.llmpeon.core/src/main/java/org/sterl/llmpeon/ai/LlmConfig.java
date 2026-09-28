@@ -204,47 +204,55 @@ public class LlmConfig {
         return StringUtil.hasValue(record.think()) ? record.think() : modelConfigFor(AgentModelConfig.DEV).think();
     }
 
-    /** PO agent — model falls back to base; remaining fields come from its own record. */
+    /**
+     * Model resolution (R-DEF-1/2, ADR-0062): an explicit slot model wins verbatim; a blank slot
+     * model inherits the base model. The dev slot never resolves through this (it IS the base).
+     */
+    private String resolveModel(String slotModel) {
+        return StringUtil.hasValue(slotModel) ? slotModel : model;
+    }
+
+    /** PO agent — a blank model inherits the base model; remaining fields come from its own record. */
     public AgentConfig poAgentConfig() {
         var po = modelConfigFor(AgentModelConfig.PO);
-        return agentBuilder(po).model(StringUtil.hasValue(po.model()) ? po.model() : model)
+        return agentBuilder(po).model(resolveModel(po.model()))
                 .id(AgentModelConfig.PO)
                 .think(resolveThink(po)).build();
     }
 
-    /** Plan agent — configuration from its own record (model null = provider default). */
+    /** Plan agent — configuration from its own record (empty model inherits the base model, R-DEF-1). */
     public AgentConfig planAgentConfig() {
         var plan = modelConfigFor(AgentModelConfig.PLAN);
-        return agentBuilder(plan).model(plan.model())
+        return agentBuilder(plan).model(resolveModel(plan.model()))
                 .id(AgentModelConfig.PLAN)
                 .think(resolveThink(plan)).build();
     }
 
-    /** Compactor — configuration from its own record. */
+    /** Compactor — configuration from its own record (empty model inherits the base model, R-DEF-1). */
     public AgentConfig compactAgentConfig() {
         var compact = modelConfigFor(AgentModelConfig.COMPACT);
-        return agentBuilder(compact).model(compact.model())
+        return agentBuilder(compact).model(resolveModel(compact.model()))
                 .id(AgentModelConfig.COMPACT)
                 .think(resolveThink(compact)).build();
     }
 
-    /** Search sub-agent — configuration from its own record. */
+    /** Search sub-agent — configuration from its own record (empty model inherits the base model, R-DEF-1). */
     public AgentConfig searchAgentConfig() {
         var search = modelConfigFor(AgentModelConfig.SEARCH);
-        return agentBuilder(search).model(search.model())
+        return agentBuilder(search).model(resolveModel(search.model()))
                 .id(AgentModelConfig.SEARCH)
                 .think(resolveThink(search)).build();
     }
 
     /**
      * Custom agent — model/url/key/extraBody from the agent's own {@code AGENT.md} frontmatter
-     * record (blank fields inherit the base, resolved by {@link EffectiveConnection}) and think
-     * from the record, inheriting the base default when blank (R-THINK-10). Same resolution
-     * path as the five core agents; {@code agentId} is the agent's stable name (per-request
-     * metadata, e.g. default cache key).
+     * record (blank model inherits the base model (R-DEF-2), blank url/key inherit the base,
+     * resolved by {@link EffectiveConnection}) and think from the record, inheriting the base
+     * default when blank (R-THINK-10). Same resolution path as the five core agents;
+     * {@code agentId} is the agent's stable name (per-request metadata, e.g. default cache key).
      */
     public AgentConfig customAgentConfig(AgentModelConfig rec, String agentId) {
-        return agentBuilder(rec).model(rec.model())
+        return agentBuilder(rec).model(resolveModel(rec.model()))
                 .id(agentId)
                 .think(resolveThink(rec)).build();
     }

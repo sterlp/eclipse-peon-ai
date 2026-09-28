@@ -184,6 +184,26 @@ class CustomAgentServiceTest extends AbstractMemoryFileTest {
         assertThat(agent(null, false, "agent-model").getAgentModelName()).isEqualTo("agent-model");
     }
 
+    // UC-DEF-2
+    @Test
+    void frontmatterEmptyModel_inheritsBaseModel() {
+        // GIVEN — a custom agent whose frontmatter model is empty; the shared config carries a base model
+        var agent = agent(null, false, null);
+
+        // WHEN / THEN — the resolved agent config inherits the base model
+        assertThat(agent.getConfig().getModel()).isEqualTo("base-model");
+    }
+
+    // UC-DEF-2
+    @Test
+    void frontmatterModelStillWins() {
+        // GIVEN — a custom agent whose frontmatter pins its own model
+        var agent = agent(null, false, "agent-model");
+
+        // WHEN / THEN — the pinned model wins over the base model
+        assertThat(agent.getConfig().getModel()).isEqualTo("agent-model");
+    }
+
     @Test
     void systemPromptContainsBody() throws Exception {
         // GIVEN
