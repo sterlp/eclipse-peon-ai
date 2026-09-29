@@ -66,4 +66,6 @@ isn't clear from a rule/BDD.
 | [0059](0059-think-dropdown-empty-unset.md) | Think: Checkbox raus → ein editierbares Dropdown; leer = unset = nichts senden (alle Provider); Off-Tokens explizit (Ollama `think:false`); Basis-Checkbox „supports thinking" raus (Issue #149) | Accepted |
 | [0060](0060-model-config-widget-live-widget-reads.md) | ModelConfigWidget: Ping/Reload lesen Live-Widget-Werte (nie den Store); Reload = nur Fetch, kein Persist; ersetzt R-ML2-Entscheidung 2026-09-12 | Accepted |
 | [0061](0061-think-default-base-think-fallback.md) | Think-Default: leerer Agent-Think erbt den Base-Think (Dev-Slot); explizites off gewinnt; Custom-Agenten erben gleich | Accepted |
+| [0062](0062-base-inheritance-dev-default.md) | Base-Inheritance: dev = Default-Slot, alle NULL-Slots erben Base; Dev-Override-Keys Clean Break; URL → Provider-Default (ehelicher Fehler) | Accepted |
+| [0063](0063-default-config-single-owner-basic-page.md) | Default-Config hat EINEN Owner (Basic-Seite „Default for all agents"); Advanced ohne DEV-Sektion/Base-Key-Writes; versteckt ≠ löschen (extraBody/Think bleiben im Store) | Accepted |
 

@@ -21,6 +21,8 @@ entfernt Instance-Keys, die dem DefaultScope-Default entsprechen → Base-URL nu
 3. **Base-URL-Fallback auf Provider-Default** (Ollama localhost:11434), sonst ehrlicher Fehler statt
    langchain4j-Exception.
 4. **Sichtbarmachung:** Advanced-DEV-Sektion = „Dev (Default)", gespiegelte Basic-Felder, ganz oben.
+   *(2026-09-29 supersedes durch [ADR-0063](0063-default-config-single-owner-basic-page.md):
+   DEV-Sektion entfernt, Basic-Seite ist der einzige Owner — Vererbung bleibt unverändert.)*
 
 ## Consequences
 

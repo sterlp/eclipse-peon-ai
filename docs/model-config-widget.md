@@ -143,3 +143,10 @@ THEN das Think-Feld rendert sofort die Optionen/Form des NEUEN Providers — ohn
 R-DEF-8 erweitert den Widget-Scope: die Basic-Seite bekommt **Temperature** als zusätzliches Feld
 (leer = unset, `AgentTemperature`-Parse-Punkt, R-T-Semantik aus advanced-configuration.md). JSON
 extra body bleibt bewusst draußen (Advanced-DEV-Sektion „Dev (Default)").
+## Scope-Update (2026-09-29 — [default-inheritance.md](default-inheritance.md) R-DEF-9, [ADR-0063](adr/0063-default-config-single-owner-basic-page.md))
+
+Rework „Default for all agents": das Widget ist der **komplette Default-Editor** auf der Basic-Seite
+— jetzt inkl. **Extra body (JSON)** via `ExtraBodyWidget` (Bindung 7), Überschrift
+„Default for all agents". Das provider-gate des Extra-Body-Feldes ist **live** (wie Think), und
+versteckte gespeicherte Werte werden **nie still gelöscht** (R-DEF-11). Die Advanced-DEV-Sektion
+entfällt (Advanced schreibt keine Base-Keys mehr).

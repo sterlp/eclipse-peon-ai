@@ -1,7 +1,31 @@
-# Session-Stand — 2026-09-28 (Widget-Zyklus gebaut + reviewed; #149 + Widget warten auf Paul-Smoke/Merge)
+# Session-Stand — 2026-09-29 (Widget-Rework R-DEF-9…11 im Bau; Mek nach Context-Overflow compactiert)
 
 > Achtung: docs/** — insbesondere memory.md — schreibt AUSSCHLIESSLICH Jon. Agenten liefern Facts
 > im Chat, Jon schreibt. (Da Mek hatte 2026-09-27 memory.md überschrieben — nicht wiederholen.)
+
+## AKTUELL 2026-09-29: Widget-Rework R-DEF-9…11 — Plan abgenommen, Build LÄUFT (Inc-Status unklar — MEST ERST STATUS ABFRAGEN)
+
+- **SOLL steht (Paul-GO 2026-09-29):** Basic-Seite = „Default for all agents" (kompletter Slot inkl. Extra body JSON, Bindung 7); Advanced ohne DEV-Sektion + keine Base-Key-Writes (Single Owner, ADR-0063); Extra body/Think folgen Provider **live**, **versteckt ≠ löschen** (preservedBody/hiddenThink); Clean Break dev.url/apiKey bleibt. Supersedes R-DEF-4/5/7 (Advanced-DEV-Sektion 2026-09-28 — doppelt-Editor-Verlustrace: Dialog performt OK auf jede besuchte Seite, Advanced-Statle gewann; Extra-Body build-time-Gate + stille Löschung).
+- **Docs umgeschrieben (Jon, 2026-09-29):** default-inheritance.md (R-DEF-9/10/11 ❌, R-DEF-4/5/7 ☠️, Rework-WARUM-Paragraph, BDD-Tabelle) · ADR-0063 + adr/index.md + ADR-0062-Note · index.md · advanced-configuration.md · model-config-widget.md. Uncommitted? → mit nächstem Mek-Commit mitreinichen lassen.
+- **Plan:** peon-plan/overview.md (Delta-Plan, 4 Inkremente, von Da Thinka, von Jon ABGENOMMEN): Inc 1 Widget live-Gate + Preserve (UC-DEF-11) · Inc 2 Basic „Default for all agents" + extraBody-Persistenz (UC-DEF-9) · Inc 3 Advanced DEV raus + Base-Key-Writes raus (UC-DEF-10, Single-Owner-Beweis performOkWritesOnlySlotKeys) · Inc 4 Homepage. Test-Löschungen SOLL-bedingt benannt (performOkWritesBaseKeysForDev, devSectionCarriesFullFieldset, devSectionIsFirstAndTitledDefault). Build-Order an Mek erteilt (Surefire Ground Truth, eclipseBuildProject, Mutation-Nachweis applyGate(false), STOP-AND-ASK).
+- **⚠️ Mek-Zwischenfall:** erster buildWithDev-Call starb mit „AI call canceled while waiting to retry" (bekannter ApiRetry-Bug, memory 21). Danach war Meks Context aufgebläht (431005 tokens vs. 170240 — verdächtigt: zu großes Tool-Ergebnis, letzter Call grep „MUTATION"); Paul hat Mek **compactiert** (99 msgs ~414k → input ~80k, result 9k). Mek ist laut Paul bereit — **JON MUSS ALS ERSTES: askDev an Mek = Inc-Status erfragen** (was von Inc 1 existiert? Commits? Tests?), dann Build weiterfahren mit derselben Build-Order.
+- **Neue Bugs/Todos (open-points.md, ❓):** (1) Compact-Button übergibt keinen Monitor → UI-Feedback-Loch während Compress; (2) Auto-Compact bei `exceed_context_size_error` statt hartem Tod (gehört zum open-to-discuss-Dreiklang).
+- **Kein Push/Merge** (Paul: „wir bleiben auf dem Branch").
+
+## Vorherige Zyklen (veraltet-flugfähig)
+
+- **Default-Inheritance 2026-09-28 ✅ (6 Story-Commits `19a67c17`…`a3320aa8` + Abschluss `4d52f45b`/`5beb28d7`/`ab92fa0f`):** R-DEF-1…3/6/8 gebaut (Vererbung alle NULL-Slots, URL-Fallback + ehrlicher Fehler, Temperature auf Basic, „Dev (Default)"-Sektion — die durch R-DEF-9/10 wieder entfernt wird), core 1054/0, OSGi 307/0. Branch-Konsolidierung: alles auf `story/issue-149-think`, story/model-config-widget gelöscht, release-2026-09-06 existiert nicht mehr.
+- **Model Config Widget + Think-Default 2026-09-28 ✅** (R-MCW-1…6, R-THINK-10, ADR-0060/0061, Skill eclipse-preferences + setValue-traps-Update `5beb28d7`).
+- **Issue #149 Think ✅** (R-THINK-1…9, ADR-0059) — Paul-Smoke für alle drei Zyklen steht gemeinsam aus; danach Push/Merge (Paul).
+
+
+## Neu 2026-09-29: Widget-Rework R-DEF-9…11 — 🚧 freigegeben (Paul GO 2026-09-29)
+
+- **Paul-Smoke-Befunde:** (1) Extra-Body-Feld provider-gated nur bei Page-Bau (Apply+Tab-Wechsel nötig) + **stille Löschung** gespeicherten extraBody/Think beim Advanced-OK mit geschlossenem Gate; (2) „speichert nicht immer" = **bewiesene Doppelt-Editor-Falle**: Dialog performt OK auf jede besuchte Seite (Basic zuerst, Advanced zuletzt), beide schrieben Base-Keys + Dev-Slot → Basic-Edits verloren; fehlender Provider-Key materialisiert OLLAMA-Default. Mek-IST-Analyse komplett (Schreibpfad-Tabelle, 6 Writer, Copilot-Login-Überschreibung).
+- **Paul-Entscheidung (GO):** Ein Owner = Basic-Seite („Default for all agents", kompletter Slot inkl. Extra body JSON via ExtraBodyWidget, Bindung 7); Advanced ohne DEV-Sektion, keine Base-Key-Writes; Extra body/Think folgen Provider **live**, **versteckt ≠ löschen**; Clean Break dev.url/apiKey bleibt. Supersedes R-DEF-4/5/7.
+- **Docs umgeschrieben (Jon):** default-inheritance.md R-DEF-9/10/11 ❌ + R-DEF-4/5/7 ☠️ superseded, BDD-Tabelle aktualisiert · [ADR-0063](adr/0063-default-config-single-owner-basic-page.md) Accepted + adr/index.md + ADR-0062-Note · index.md · advanced-configuration.md Update-Abschnitt · model-config-widget.md Scope-Update.
+- **Nächste Schritte:** Plan (Da Thinka) → Abnahme → Build → Review → Flips; Homepage nachziehen lassen (Paul ausdrücklich bestellt). Kein Push/Merge (Paul: „wir bleiben auf dem Branch").
+- **Paul-Notiz:** TrimService-Story für den nächsten Architecture-&-Bug-Sprint in open-points.md (⏳), inkl. `\n`-Konvention (memory-Regel 36).
 
 ## Neu 2026-09-28 (pm): Default-Inheritance — ✅ GEBAUT (wartet auf Paul-Smoke/Merge)
 

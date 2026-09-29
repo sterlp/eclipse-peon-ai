@@ -261,12 +261,13 @@ und erbt die Base-URL. Das URL-Feld der Advanced-View zeigt nur den **eigenen** 
 („empty = inherit base"), nicht die effektive Verbindung — deshalb steht dort für Dev nichts,
 obwohl dev faktisch die Base-URL nutzt (`LlmConfig.java:165`, `EffectiveConnection.java:32`).
 
-**Update 2026-09-28 ([default-inheritance.md](default-inheritance.md) R-DEF-4):** dev ist **kein
-Override-Slot** mehr — `llm.agent.dev.url`/`llm.agent.dev.apiKey`/`llm.agent.dev.model` werden nie
-mehr gelesen (Clean Break, beim nächsten Save geräumt); die Advanced-DEV-Sektion ist die
-„Dev (Default)"-Sicht auf die Base-Keys. Dev erbt zusätzlich das Base-Model (R-DEF-1-Fallback für
-alle NULL-Slots). Modell-Listen-Refresh liest **Live-Widget-Werte** (R-ML2, 2026-09-28 neu —
-siehe [model-loading.md](model-loading.md) / [model-config-widget.md](model-config-widget.md)).
+**Update 2026-09-29 ([default-inheritance.md](default-inheritance.md) R-DEF-9/10, [ADR-0063](adr/0063-default-config-single-owner-basic-page.md)):**
+**Ein Owner:** die Basic-Seite („Default for all agents") ist die EINZIGE Stelle, die die Base-Keys
++ Dev-Slot schreibt (jetzt inkl. Extra body JSON); die Advanced-Seite hat **keine DEV-Sektion** und
+schreibt keine Base-Keys mehr. Der 2026-09-28 gebaute „Dev (Default)"-Abschnitt auf Advanced ist
+entfernt. Dev erbt zusätzlich das Base-Model (R-DEF-1-Fallback für alle NULL-Slots).
+Modell-Listen-Refresh liest **Live-Widget-Werte** (R-ML2, 2026-09-28 — siehe
+[model-loading.md](model-loading.md) / [model-config-widget.md](model-config-widget.md)).
 ## Config-Page UI — R-A1/R-A2/R-A3/R-A4 (2026-09-12, User-Smoke „Seite sieht altbacken aus")
 
 **R-A1 ✅ done (ui-config, `66ce4fe`) — Abstand unter den Examples:** GIVEN die Advanced-Page
