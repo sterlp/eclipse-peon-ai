@@ -32,6 +32,10 @@ public record AgentModelConfig(String url, String apiKey, String model, String t
         return new AgentModelConfig(url, apiKey, model, think, extraBody, temperature);
     }
 
+    public AgentModelConfig withExtraBody(String extraBody) {
+        return new AgentModelConfig(url, apiKey, model, think, extraBody, temperature);
+    }
+
     public AgentModelConfig withTemperature(String temperature) {
         return new AgentModelConfig(url, apiKey, model, think, extraBody, temperature);
     }

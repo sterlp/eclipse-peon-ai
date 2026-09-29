@@ -44,7 +44,7 @@ import org.sterl.llmpeon.shared.StringUtil;
  * (hidden ≠ delete, R-DEF-11). Think is not part of the
  * {@link org.sterl.llmpeon.ai.ConnectionIdentity} and never flows into {@link #snapshot()}.</p>
  *
- * <p><b>Extra body (R-DEF-9/11):</b> binding 6 — the composed {@link ExtraBodyWidget} with a live
+ * <p><b>Extra body (R-DEF-9/11):</b> binding 7 — the composed {@link ExtraBodyWidget} with a live
  * provider gate (created once, toggled via {@code GridData.exclude} on provider changes); a
  * hidden field keeps returning its last visible value (hidden ≠ delete). Like think, it is
  * request-level and never flows into {@link #snapshot()}.</p>

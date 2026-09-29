@@ -21,6 +21,7 @@ import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
 import org.junit.After;
@@ -36,11 +37,12 @@ import org.sterl.llmpeon.parts.config.EclipseLlmConfigStore;
 
 /**
  * Page-level test for the basic config page after the {@link ModelConfigWidget} rewiring
- * (ADR-0060): the connection fields live in the widget in the binding order, OK persists the
- * widget values (incl. the dev think slot), and Reload/Ping never touch the store.
+ * (ADR-0060) and the "Default for all agents" group (ADR-0063): the connection fields live in
+ * the group's widget in the binding order, OK persists the widget values (incl. the dev
+ * think/extra-body slot), and Reload/Ping never touch the store.
  *
  * <p>No-cross-run-state rule: the fixture is written VOR the page build (the page reads the
- * store at build time) and the original values of the 5 keys are restored in finally. Store
+ * store at build time) and the original values of the tracked keys are restored in finally. Store
  * reads go through {@link org.osgi.service.prefs.Preferences} — the truth below the
  * ScopedPreferenceStore cache.</p>
  */
@@ -50,9 +52,11 @@ public class AiConfigPreferenceViewTest extends AbstractSwtUiTest {
     private static final String THINK_KEY = LlmConfigKeys.agentKey(AgentModelConfig.DEV, LlmConfigKeys.AGENT_FIELD_THINK);
     private static final String TEMPERATURE_KEY = LlmConfigKeys.agentKey(AgentModelConfig.DEV,
             LlmConfigKeys.AGENT_FIELD_TEMPERATURE);
+    private static final String EXTRA_BODY_KEY = LlmConfigKeys.agentKey(AgentModelConfig.DEV,
+            LlmConfigKeys.AGENT_FIELD_EXTRA_BODY);
 
     private static final List<String> KEYS = List.of(PeonConstants.PREF_PROVIDER_TYPE, PeonConstants.PREF_URL,
-            PeonConstants.PREF_API_KEY, PeonConstants.PREF_MODEL, THINK_KEY, TEMPERATURE_KEY);
+            PeonConstants.PREF_API_KEY, PeonConstants.PREF_MODEL, THINK_KEY, TEMPERATURE_KEY, EXTRA_BODY_KEY);
 
     private IEclipsePreferences prefs;
     private Map<String, String> original;
@@ -65,7 +69,8 @@ public class AiConfigPreferenceViewTest extends AbstractSwtUiTest {
         for (var key : KEYS) {
             original.put(key, prefs.get(key, null));
         }
-        // Fixture VOR the page build: Ollama · dead URL · empty key · fixture model · unset think/temperature
+        // Fixture VOR the page build: Ollama · dead URL · empty key · fixture model · unset
+        // think/temperature/extraBody
         var store = new EclipseLlmConfigStore(prefs);
         store.put(PeonConstants.PREF_PROVIDER_TYPE, "OLLAMA");
         store.put(PeonConstants.PREF_URL, "http://127.0.0.1:1");
@@ -73,6 +78,7 @@ public class AiConfigPreferenceViewTest extends AbstractSwtUiTest {
         store.put(PeonConstants.PREF_MODEL, "fixture-model");
         store.remove(THINK_KEY);
         store.remove(TEMPERATURE_KEY);
+        store.remove(EXTRA_BODY_KEY);
     }
 
     @After
@@ -102,10 +108,10 @@ public class AiConfigPreferenceViewTest extends AbstractSwtUiTest {
         var page = ui(() -> buildPage());
         var parent = ui(() -> fieldEditorParent(page));
 
-        // THEN the connection fields sit in the widget in the binding order 1-5 (+ Ping) and no
-        // loose connection field editors remain
+        // THEN the connection fields sit in the "Default for all agents" group in the binding order
+        // 1-5 (+ Ping) — the group's grid holds only the widget (no loose connection field editors)
         var rendered = ui(() -> rendered(parent));
-        assertEquals(24, rendered.length);
+        assertEquals(14, rendered.length);
         assertEquals("Provider Type:", ((Label) rendered[0]).getText());
         var provider = (Combo) rendered[1];
         assertTrue("provider combo must be read-only", (provider.getStyle() & SWT.READ_ONLY) != 0);
@@ -132,8 +138,10 @@ public class AiConfigPreferenceViewTest extends AbstractSwtUiTest {
             return null;
         });
 
-        // AND the binding field order survives the provider switch (think stays field 5, not reordered to the page end)
+        // AND the binding field order survives the provider switch (think stays field 5, not reordered
+        // to the page end) and the extra body (binding 7) appears live for the supporting provider
         var afterSwitch = ui(() -> rendered(parent));
+        assertEquals(17, afterSwitch.length);
         assertEquals("Think (Default):", ((Label) afterSwitch[10]).getText());
         assertTrue(afterSwitch[11] instanceof Combo);
 
@@ -211,6 +219,77 @@ public class AiConfigPreferenceViewTest extends AbstractSwtUiTest {
 
         // THEN the stored think key survives (hidden ≠ delete: the hidden field returns its last visible value)
         assertEquals("false", prefs.get(THINK_KEY, null));
+    }
+
+    // UC-DEF-9
+    @Test
+    public void showsDefaultForAllAgentsGroup() {
+        // GIVEN the fixture is OpenAI (extra-body capable) and the basic page is built
+        var store = new EclipseLlmConfigStore(prefs);
+        store.put(PeonConstants.PREF_PROVIDER_TYPE, "OPEN_AI");
+        var page = ui(() -> buildPage());
+        var parent = ui(() -> fieldEditorParent(page));
+
+        // THEN the "Default for all agents" group exists, the widget builds into its grid, and the
+        // group carries the full dev slot in the binding order (extra body is binding 7, visible
+        // for the supporting provider)
+        var group = (Group) ui(() -> findControl(page.getControl(),
+                c -> c instanceof Group g && "Default for all agents".equals(g.getText())));
+        assertNotNull("Default for all agents group not found", group);
+        assertEquals("the widget builds into the group's grid", parent, group.getChildren()[0]);
+        var rendered = ui(() -> rendered(parent));
+        assertEquals(17, rendered.length);
+        var labels = new ArrayList<String>();
+        for (var c : rendered) {
+            if (c instanceof Label l) {
+                labels.add(l.getText());
+            }
+        }
+        assertEquals(List.of("Provider Type:", "URL (incl. port):", "API Key:", "Model:",
+                "Think (Default):", "Temperature (empty = unset):", "Extra body (JSON):"), labels);
+    }
+
+    // UC-DEF-9
+    @Test
+    public void performOkPersistsExtraBody() {
+        // GIVEN the fixture is OpenAI (extra-body capable) and the page is built
+        var store = new EclipseLlmConfigStore(prefs);
+        store.put(PeonConstants.PREF_PROVIDER_TYPE, "OPEN_AI");
+        var page = ui(() -> buildPage());
+        var parent = ui(() -> fieldEditorParent(page));
+
+        // WHEN extra-body JSON is typed and OK is pressed
+        ui(() -> {
+            extraBodyText(parent).setText("{\"reasoning_effort\":\"high\"}");
+            return null;
+        });
+        ui(page::performOk);
+
+        // THEN the dev extra-body key carries the JSON
+        assertEquals("{\"reasoning_effort\":\"high\"}", prefs.get(EXTRA_BODY_KEY, null));
+
+        // AND clearing the field and pressing OK again removes the key (empty = unset)
+        ui(() -> {
+            extraBodyText(parent).setText("");
+            return null;
+        });
+        ui(page::performOk);
+        assertNull("cleared extra body must remove the key", prefs.get(EXTRA_BODY_KEY, null));
+    }
+
+    // UC-DEF-11
+    @Test
+    public void hiddenExtraBodyKeySurvivesOk() {
+        // GIVEN the fixture is Ollama (no extra-body support → the field is hidden) with a stored dev extra body
+        var store = new EclipseLlmConfigStore(prefs);
+        store.put(EXTRA_BODY_KEY, "{\"a\":1}");
+
+        // WHEN the page is built and OK is pressed without any change
+        var page = ui(() -> buildPage());
+        ui(page::performOk);
+
+        // THEN the stored extra-body key survives (hidden ≠ delete: the hidden field returns its last visible value)
+        assertEquals("{\"a\":1}", prefs.get(EXTRA_BODY_KEY, null));
     }
 
     // UC-MCW-4
@@ -331,6 +410,11 @@ public class AiConfigPreferenceViewTest extends AbstractSwtUiTest {
     /** UI-thread only. The widget's temperature field (binding 6 of the order). */
     private static Text temperatureText(Composite parent) {
         return (Text) parent.getChildren()[14];
+    }
+
+    /** UI-thread only. The widget's extra-body field (binding 7 of the order). */
+    private static Text extraBodyText(Composite parent) {
+        return (Text) parent.getChildren()[16];
     }
 
     /** UI-thread only. */

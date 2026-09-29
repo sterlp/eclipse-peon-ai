@@ -9,8 +9,10 @@ import org.eclipse.jface.preference.StringFieldEditor;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.program.Program;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
@@ -20,6 +22,7 @@ import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.LlmConfigSaver;
 import org.sterl.llmpeon.parts.PeonConstants;
 import org.sterl.llmpeon.parts.config.widgets.ModelConfigWidget;
+import org.sterl.llmpeon.parts.config.widgets.TitledGroup;
 
 public class AiConfigPreferenceView extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
 
@@ -33,11 +36,16 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
 
     @Override
     public void createFieldEditors() {
-        // The connection fields (provider · URL · API key · model · think · temperature) plus Ping
-        // live in the ModelConfigWidget: Ping and Reload read the widget's live values, only
-        // OK/Apply persists.
-        modelConfigWidget = new ModelConfigWidget(getFieldEditorParent(), "base",
-                LlmPreferenceInitializer::buildWithDefaults);
+        // "Default for all agents" (R-DEF-9): the single owner of the base keys + dev slot
+        // (ADR-0063). The connection fields (provider · URL · API key · model · think · temperature
+        // · extra body) plus Ping live in the ModelConfigWidget: Ping and Reload read the widget's
+        // live values, only OK/Apply persists.
+        var group = new TitledGroup(getFieldEditorParent(), "Default for all agents");
+        // The titled group's inner group is a single-column grid; the widget contract needs a 2-column grid.
+        var grid = new Composite(group.getGroup(), SWT.NONE);
+        grid.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+        grid.setLayout(new GridLayout(2, false));
+        modelConfigWidget = new ModelConfigWidget(grid, "base", LlmPreferenceInitializer::buildWithDefaults);
         modelConfigWidget.load(storeValues());
         modelConfigWidget.fetchModels();
 
@@ -107,12 +115,13 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
         store.put(PeonConstants.PREF_PROVIDER_TYPE, values.provider().name());
         EclipseLlmConfigStore.putOrRemove(store, PeonConstants.PREF_URL, values.url());
         EclipseLlmConfigStore.putOrRemove(store, PeonConstants.PREF_API_KEY, values.apiKey());
-        // The dev record is the base model: the saver writes llm.model + llm.agent.dev.think/temperature,
-        // keeps the loaded extraBody, and removes the legacy llm.agent.dev.url/apiKey overrides —
-        // dev is the default slot, it has no override keys (ADR-0062 clean break).
+        // The dev record is the base model: the saver writes llm.model + llm.agent.dev.think/extraBody/
+        // temperature from the widget's values (hidden ≠ delete: a gated-off field returns its last
+        // visible value, R-DEF-11) and removes the legacy llm.agent.dev.url/apiKey overrides — dev is
+        // the default slot, it has no override keys (ADR-0062 clean break).
         LlmConfigSaver.saveAgentModelConfig(store, AgentModelConfig.DEV,
                 LlmPreferenceInitializer.buildWithDefaults().modelConfigFor(AgentModelConfig.DEV).withModel(values.model())
-                        .withThink(values.think()).withTemperature(values.temperature()));
+                        .withThink(values.think()).withExtraBody(values.extraBody()).withTemperature(values.temperature()));
         return true;
     }
 
