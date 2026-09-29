@@ -1,6 +1,6 @@
 ---
 name: eclipse-preferences
-description: Eclipse JFace preference-page patterns — live widget reads instead of store reads, coupled fields (provider → think form), and the parts/config/widgets overview.
+description: Eclipse JFace preference-page patterns — live widget reads instead of store reads, coupled fields (provider → think form), one key = one page for multi-page dialogs, and the parts/config/widgets overview.
 ---
 
 # Preference pages — read widget state, not the store (verified 2026-09-28, model-config-widget cycle)
@@ -22,7 +22,8 @@ description: Eclipse JFace preference-page patterns — live widget reads instea
 - **`performOk`/`performCancel` timing (JFace):** `performOk()` first stores all field editors,
   then returns its boolean as the page's OK result — do custom persistence *after* `super.performOk()`
   so the field editors' values are already in the store. `performCancel()` is a no-op on the store —
-  a live-read widget + untouched store means Cancel discards typed values for free.
+  a live-read widget + untouched store means Cancel discards typed values for free. For multi-page
+  dialogs showing the same config, see §5 — one key, one page.
 
 ## 2. Coupled fields — switch live, don't freeze
 
@@ -75,3 +76,15 @@ Reference tests: `org.sterl.llmpeon.test` — `ModelConfigWidgetTest` (live read
 - **Apply when:** persisting user-editable strings that may be empty or equal to a registered
   default — check the `IPreferenceInitializer` for the key first; never rely on the
   InstanceScope key surviving for such values.
+
+## 5. One key, one page — the double-editor trap (verified 2026-09-29, widget rework R-DEF-9…11)
+
+- **`PreferenceDialog.okPressed()` calls `performOk()` on every instantiated page** (initial page + every
+  page the user has flipped to — unvisited pages have `getPage() == null` and are skipped), **in tree
+  (plugin.xml) order** — the last page in that order persists last and wins: it writes the state it loaded
+  at tab-visit time (before OK, without the other pages' edits) over the other pages' edits. A page
+  returning `false` aborts the entire OK (nothing is saved). Observed: a missing provider key even
+  materialized a DefaultScope default.
+- **Rule: one key = one editor/page (single owner, ADR-0063).** If the same configuration must be visible
+  on multiple pages, exactly one page writes the shared keys — the others are display-only or write nothing
+  (performOk = slot loop only). Proof test: `AiAdvancedPreferenceViewTest.performOkWritesOnlySlotKeys`.
