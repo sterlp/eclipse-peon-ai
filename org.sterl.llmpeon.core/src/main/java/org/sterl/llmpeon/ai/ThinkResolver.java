@@ -32,14 +32,6 @@ public final class ThinkResolver {
         return OFF;
     }
 
-    public static boolean isTrue(String think) {
-        return "true".equals(think);
-    }
-
-    public static boolean isFalse(String think) {
-        return "false".equals(think);
-    }
-
     private static String norm(String think) {
         return think == null ? "" : think.trim().toLowerCase();
     }

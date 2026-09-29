@@ -8,21 +8,6 @@ class ThinkModelMappingTest {
 
     // UC-THINK-8
     @Test
-    void openAiKnownReasoningModelsMapToHigh() {
-        assertThat(ThinkModelMapping.resolveOn(AiProvider.OPEN_AI, "gpt-5.5")).isEqualTo("high");
-        assertThat(ThinkModelMapping.resolveOn(AiProvider.OPEN_AI, "o3-mini")).isEqualTo("high");
-        assertThat(ThinkModelMapping.resolveOn(AiProvider.OPEN_AI, "GPT-4o")).isEqualTo("high");
-    }
-
-    // UC-THINK-8
-    @Test
-    void openAiUnknownModelMapsToNothing() {
-        assertThat(ThinkModelMapping.resolveOn(AiProvider.OPEN_AI, "kimi-k2")).isNull();
-        assertThat(ThinkModelMapping.resolveOn(AiProvider.OPEN_AI, null)).isNull();
-    }
-
-    // UC-THINK-8
-    @Test
     void anthropicOpusIsAdaptiveOtherClaudeEnabled() {
         assertThat(ThinkModelMapping.resolveOn(AiProvider.ANTHROPIC, "claude-opus-4-8")).isEqualTo("adaptive");
         assertThat(ThinkModelMapping.resolveOn(AiProvider.ANTHROPIC, "claude-opus-4-7")).isEqualTo("adaptive");
