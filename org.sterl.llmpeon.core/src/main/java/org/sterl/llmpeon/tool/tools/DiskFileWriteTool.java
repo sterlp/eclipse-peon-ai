@@ -113,7 +113,7 @@ public class DiskFileWriteTool extends AbstractTool {
     @Tool("Replace a single line by 1-based line number. newContent may span multiple lines.")
     public void diskReplaceLines(
             @P(name = "filePath") String filePath,
-            @P("line to replace (1-based)") Integer line,
+            @P(name = "line", description = "line to replace (1-based)") Integer line,
             @P(name = "newContent") String newContent) {
 
         ArgsUtil.requireNonBlank(filePath, "filePath");
