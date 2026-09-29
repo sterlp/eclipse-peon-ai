@@ -62,10 +62,11 @@ class AiProviderRequestParametersTest {
         assertThat(cfg.searchAgentConfig().getThink()).isNull();
     }
 
-    // UC-THINK-1
+    // UC-THINK-11
     @Test
-    void openAiOfficialOmitsReasoningWhenOffOrUnsetOrFalse() {
-        for (var think : new String[] {null, "", "false", "none", "off"}) {
+    void openAiOfficialOmitsReasoningWhenUnset() {
+        // blank = unset = nothing sent (verbatim channel, ADR-0064) — off tokens are no longer omitted
+        for (var think : new String[] {null, "", "   "}) {
             var params = (OpenAiOfficialResponsesChatRequestParameters)
                     params(AiProvider.OPEN_AI_OFFICIAL, mc(AiProvider.OPEN_AI_OFFICIAL, think));
             assertThat(params.reasoningEffort()).as("think=%s", think).isNull();
@@ -115,28 +116,19 @@ class AiProviderRequestParametersTest {
         assertThat(blank.reasoningEffort()).isNull();
     }
 
-    // UC-THINK-3
+    // UC-THINK-11
     @Test
-    void lmStudioReasoning_blankOmits_offTokensSendOff_genericOnSendsOn_levelPassesThrough() {
-        // unset/blank -> omit
+    void lmStudioReasoningVerbatim() {
+        // unset/blank -> omit (no reasoning field)
         for (var unset : new String[] {null, "", "  "}) {
             var p = (OpenAiChatRequestParameters) params(AiProvider.LM_STUDIO, mc(AiProvider.LM_STUDIO, unset));
             assertThat(p.customParameters()).as("unset %s", (Object) unset).isNullOrEmpty();
         }
-        // every explicit off-token -> reasoning:off (manual off, not silence)
-        for (var off : new String[] {"false", "FALSE", "none", "no", "off", " Off "}) {
-            var p = (OpenAiChatRequestParameters) params(AiProvider.LM_STUDIO, mc(AiProvider.LM_STUDIO, off));
-            assertThat(p.customParameters()).as("off %s", off).containsEntry("reasoning", "off");
+        // every non-blank value is sent VERBATIM (ADR-0064): no off/on mapping, no trim, no lowercasing
+        for (var v : new String[] {"off", "false", "none", "no", "true", "on", "yes", "banana", "high", "FALSE"}) {
+            var p = (OpenAiChatRequestParameters) params(AiProvider.LM_STUDIO, mc(AiProvider.LM_STUDIO, v));
+            assertThat(p.customParameters()).as("verbatim %s", v).containsEntry("reasoning", v);
         }
-        // generic on -> reasoning:on
-        for (var on : new String[] {"true", "on", "yes"}) {
-            var p = (OpenAiChatRequestParameters) params(AiProvider.LM_STUDIO, mc(AiProvider.LM_STUDIO, on));
-            assertThat(p.customParameters()).as("on %s", on).containsEntry("reasoning", "on");
-        }
-        // explicit level passes through
-        var level = (OpenAiChatRequestParameters)
-                params(AiProvider.LM_STUDIO, mc(AiProvider.LM_STUDIO, "high"));
-        assertThat(level.customParameters()).containsEntry("reasoning", "high");
     }
 
     // UC-THINK-1
@@ -149,13 +141,16 @@ class AiProviderRequestParametersTest {
     }
 
     // UC-THINK-3
+    // UC-THINK-12
     @Test
     void ollamaThinkFlag_offTokensSendFalse_onSendsTrue() {
-        for (var off : new String[] {"false", "FALSE", "none", "no", "off", " Off "}) {
+        // toggle-off tokens (incl. German "nein", case-insensitive) -> think:false
+        for (var off : new String[] {"false", "FALSE", "none", "no", "off", " Off ", "nein", "NEIN"}) {
             var p = (OllamaChatRequestParameters) params(AiProvider.OLLAMA, mc(AiProvider.OLLAMA, off));
             assertThat(p.think()).as("off %s", off).isFalse();
         }
-        for (var on : new String[] {"true", "high", "on", "yes"}) {
+        // everything else (incl. "ja" and arbitrary values) -> think:true
+        for (var on : new String[] {"true", "high", "on", "yes", "ja", "banana"}) {
             var p = (OllamaChatRequestParameters) params(AiProvider.OLLAMA, mc(AiProvider.OLLAMA, on));
             assertThat(p.think()).as("on %s", on).isTrue();
         }

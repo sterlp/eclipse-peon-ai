@@ -10,7 +10,8 @@
 ## Fortschritt (Da Mek)
 
 - **Inc 1** ✅ (2026-09-29): Evidenz grün — `ReasoningEffort.of()` lenient, Rohtext via `asString()` (Plan-Sketch `value()` liefert das `_UNKNOWN`-Enum; javap-Diagnose, planautorisiert). 7 rote SOLL-Tests befestigt, 0 ungeplante Rotten. Surefire-Baseline 1054/0 → 1060/7 (exakt die in §4/5 markierten Rotten).
-- **Offen (Jon):** Inc-2-Gate „voller Core-Surefire grün" kollidiert mit PerAgent `lmstudio-true` (rot bis Inc 3, LM-Fix). Empfehlung: Inc-2-Gate = grün ABER die 2 bekannten `lmstudio-true`-Instanzen (S1+S2) ausgenommen.
+- **Inc 2** ✅ (2026-09-29): `effortFor` → verbatim, `toOllamaThink` +`TOGGLE_OFF`(nein), `toReasoningEffort`+`toReasoning` raus (Clean-Break, 0 Consumer), `LmStudioProvider:63` → verbatim. Surefire 1060/7 → **1057/0/0** (voller grün, alle 7 Inc-1-Rotten grün). Delta: −4 removed (`offValuesMapToGenericOmitValues`/`truthyValuesMapToHigh`/`explicitLevelsPassThrough`/`toReasoning_*`) +1 new (`isOff_isOn_keepFrozenTokens`) = −3. Build clean (0 Errors).
+  - **⚠️ PLAN-DEVIATION (PO-Entscheid Jon, 2026-09-29):** Inc-3-LM-Fix (`LmStudioProvider:63` → verbatim) **nach Inc 2 vorgezogen** → Inc-2-Gate = voller grün (statt „grün abzgl. 2 lmstudio-true"). Konsequenz: `toReasoning` (letzter Consumer = LmStudio) stirbt **hier in Inc 2** (Clean-Break §2.7), nicht in Inc 3. Inc 3 = nur noch `isTrue`/`isFalse` raus + `/thinking/OPEN_AI` löschen + Anthropic-Frozen-Beweise.
 
 ## 0. STOP-AND-ASK (Pflicht — Paul 2026-09-08)
 

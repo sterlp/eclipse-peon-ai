@@ -6,37 +6,6 @@ import org.junit.jupiter.api.Test;
 
 class ThinkResolverTest {
 
-    private static final String[] OFF = {null, "", "  ", "false", "off", "no", "none", "FALSE", "Off"};
-
-    // UC-THINK-3
-    @Test
-    void offValuesMapToGenericOmitValues() {
-        for (var v : OFF) {
-            assertThat(ThinkResolver.toReasoningEffort(v)).as("effort %s", v).isNull();
-            assertThat(ThinkResolver.isOn(v)).as("isOn %s", v).isFalse();
-        }
-    }
-
-    // UC-THINK-3
-    @Test
-    void truthyValuesMapToHigh() {
-        for (var v : new String[] {"true", "on", "yes", "TRUE"}) {
-            assertThat(ThinkResolver.toReasoningEffort(v)).isEqualTo("high");
-            assertThat(ThinkResolver.isOn(v)).isTrue();
-        }
-    }
-
-    @Test
-    void explicitLevelsPassThrough() {
-        for (var v : new String[] {"high", "medium", "low", "minimal"}) {
-            assertThat(ThinkResolver.toReasoningEffort(v)).isEqualTo(v);
-            assertThat(ThinkResolver.isOn(v)).isTrue();
-        }
-        // normalization
-        assertThat(ThinkResolver.toReasoningEffort("HIGH")).isEqualTo("high");
-        assertThat(ThinkResolver.toReasoningEffort(" Medium ")).isEqualTo("medium");
-    }
-
     // UC-THINK-1
     @Test
     void toOllamaThink_unsetOrBlankIsOmitted() {
@@ -46,28 +15,34 @@ class ThinkResolverTest {
     }
 
     // UC-THINK-3
+    // UC-THINK-12
     @Test
     void toOllamaThink_offTokensSendFalse_onSendsTrue() {
-        for (var off : new String[] {"false", "FALSE", "none", "no", "off", " Off ", "nO"}) {
+        // toggle-off tokens (incl. German "nein", case-insensitive) -> false
+        for (var off : new String[] {"false", "FALSE", "none", "no", "off", " Off ", "nO", "nein", "NEIN"}) {
             assertThat(ThinkResolver.toOllamaThink(off)).as("off %s", off).isEqualTo(Boolean.FALSE);
         }
-        for (var on : new String[] {"true", "high", "on", "yes", "minimal"}) {
+        // everything else (incl. "ja" and arbitrary values) -> true
+        for (var on : new String[] {"true", "high", "on", "yes", "minimal", "ja", "Ja", "banana"}) {
             assertThat(ThinkResolver.toOllamaThink(on)).as("on %s", on).isEqualTo(Boolean.TRUE);
         }
     }
 
     // UC-THINK-3
     @Test
-    void toReasoning_blankOmits_offTokensSendOff_genericOnSendsOn_elseVerbatim() {
-        assertThat(ThinkResolver.toReasoning(null)).isNull();
-        assertThat(ThinkResolver.toReasoning("")).isNull();
-        assertThat(ThinkResolver.toReasoning("  ")).isNull();
-        for (var off : new String[] {"false", "FALSE", "none", "no", "off", " Off "}) {
-            assertThat(ThinkResolver.toReasoning(off)).as("off %s", off).isEqualTo("off");
+    void isOff_isOn_keepFrozenTokens() {
+        // the shared off vocabulary is frozen (isThinkSupported consumers + Anthropic generic-on)
+        for (var off : new String[] {"false", "off", "no", "none", ""}) {
+            assertThat(ThinkResolver.isOff(off)).as("isOff %s", (Object) off).isTrue();
         }
-        for (var on : new String[] {"true", "on", "yes", "TRUE"}) {
-            assertThat(ThinkResolver.toReasoning(on)).as("on %s", on).isEqualTo("on");
+        for (var on : new String[] {"true", "on", "yes", "high"}) {
+            assertThat(ThinkResolver.isOn(on)).as("isOn %s", on).isTrue();
         }
-        assertThat(ThinkResolver.toReasoning("high")).isEqualTo("high");
+        // case-insensitive
+        assertThat(ThinkResolver.isOff("FALSE")).isTrue();
+        assertThat(ThinkResolver.isOff("Off")).isTrue();
+        // "nein" is a TOGGLE-only off-token, NOT part of the shared OFF set (the §2.2 boundary)
+        assertThat(ThinkResolver.isOff("nein")).isFalse();
+        assertThat(ThinkResolver.isOn("nein")).isTrue();
     }
 }

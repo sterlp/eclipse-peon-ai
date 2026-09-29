@@ -6,17 +6,19 @@ import java.util.Set;
  * Resolves the per-agent "think" string into provider-specific thinking/reasoning values.
  *
  * <p>Blank ({@code null} or empty) is <em>unset</em>: no thinking/reasoning parameter is sent at
- * all — the model decides. Explicit off tokens ({@code "false"}, {@code "off"}, {@code "no"},
- * {@code "none"} — case-insensitive, trimmed) disable thinking where the provider knows the
- * concept: Ollama sends {@code think:false} ({@link #toOllamaThink}), LM Studio sends
- * {@code reasoning:off} ({@link #toReasoning}); OpenAI/Anthropic have no off concept and omit the
- * parameter. Everything else ({@code "true"}/{@code "on"}/{@code "yes"} or an explicit level like
- * {@code "high"}/{@code "medium"}/{@code "low"}/{@code "minimal"}) enables thinking.</p>
+ * all — the model decides. The shared off/on token sets ({@link #offTokens}/{@link #onTokens}) are
+ * the frozen generic vocabulary behind the derived {@link #isOff}/{@link #isOn} flags (used by the
+ * {@code isThinkSupported} consumers) and the Anthropic generic-on {@link ThinkModelMapping}. The
+ * OpenAI family and LM Studio send the stored value <em>verbatim</em> (ADR-0064) — no mapping, no
+ * normalization. Only the Ollama toggle interprets the value ({@link #toOllamaThink}), which
+ * understands the extra German off-token {@code nein} in its local set.</p>
  */
 public final class ThinkResolver {
 
     private static final Set<String> OFF = Set.of("", "false", "off", "no", "none");
     private static final Set<String> ON = Set.of("true", "on", "yes");
+    /** Ollama toggle off-tokens: the shared off set (sans blank) plus the German {@code nein}. */
+    private static final Set<String> TOGGLE_OFF = Set.of("false", "off", "no", "nein", "none");
 
     private ThinkResolver() {}
 
@@ -29,11 +31,11 @@ public final class ThinkResolver {
     public static Set<String> offTokens() {
         return OFF;
     }
-    
+
     public static boolean isTrue(String think) {
         return "true".equals(think);
     }
-    
+
     public static boolean isFalse(String think) {
         return "false".equals(think);
     }
@@ -55,37 +57,21 @@ public final class ThinkResolver {
     /**
      * @return {@code true} if the value is a <em>generic</em> on ({@code true}/{@code on}/{@code yes})
      *         rather than a concrete level like {@code high}. Generic-on is what triggers the
-     *         provider/model {@link ThinkModelMapping}.
+     *         Anthropic {@link ThinkModelMapping}.
      */
     public static boolean isGenericOn(String think) {
         return ON.contains(norm(think));
     }
 
     /**
-     * OpenAI {@code reasoning.effort} value. Returns {@code null} when reasoning must not be sent at
-     * all. {@code "true"}/{@code "on"}/{@code "yes"} map to {@code "high"}; explicit levels pass through.
+     * Ollama {@code think} flag: {@code null} (omit) when unset/blank; {@code FALSE} for a toggle-off
+     * token ({@code false}/{@code off}/{@code no}/{@code nein}/{@code none}, case-insensitive); else
+     * {@code TRUE}. This is the only provider that interprets the value — the verbatim channel sends
+     * it as-is (ADR-0064).
      */
-    public static String toReasoningEffort(String think) {
-        var v = norm(think);
-        if (OFF.contains(v)) return null;
-        if (ON.contains(v)) return "high";
-        return v;
-    }
-
-    /** Ollama {@code think} flag: {@code null} (omit) when unset/blank; {@code FALSE} for an off token; else {@code TRUE}. */
     public static Boolean toOllamaThink(String think) {
         var v = norm(think);
         if (v.isEmpty()) return null;
-        return OFF.contains(v) ? Boolean.FALSE : Boolean.TRUE;
-    }
-    
-    /** LM Studio custom {@code reasoning}: {@code null} (omit) when unset/blank; {@code "off"} for an
-     *  off token; {@code "on"} for a generic on ({@code true}/{@code on}/{@code yes}); else verbatim. */
-    public static String toReasoning(String think) {
-        var v = norm(think);
-        if (v.isEmpty()) return null;
-        if (OFF.contains(v)) return "off";
-        if (ON.contains(v)) return "on";
-        return think;
+        return TOGGLE_OFF.contains(v) ? Boolean.FALSE : Boolean.TRUE;
     }
 }

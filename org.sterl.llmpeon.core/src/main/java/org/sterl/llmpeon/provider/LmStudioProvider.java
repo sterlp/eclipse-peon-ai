@@ -9,7 +9,6 @@ import java.util.Map;
 import org.sterl.llmpeon.ai.AgentConfig;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.ai.SharedHttpClient;
-import org.sterl.llmpeon.ai.ThinkResolver;
 import org.sterl.llmpeon.ai.model.AiModel;
 import org.sterl.llmpeon.ai.model.AiModelParser;
 import org.sterl.llmpeon.shared.StringUtil;
@@ -60,7 +59,7 @@ public final class LmStudioProvider implements LlmProvider {
         ProviderRequestSupport.applyBase(b, mc, tools);
         Map<String, Object> reasoning = null;
         if (StringUtil.hasValue(mc.getThink())) {
-            reasoning = Map.of("reasoning", ThinkResolver.toReasoning(mc.getThink()));
+            reasoning = Map.of("reasoning", mc.getThink());   // verbatim (ADR-0064): stored value as-is
         }
         var custom = ProviderRequestSupport.mergeCustomParameters(reasoning, mc);
         if (custom != null) b.customParameters(custom);

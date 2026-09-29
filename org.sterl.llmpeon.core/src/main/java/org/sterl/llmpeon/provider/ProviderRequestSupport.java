@@ -76,16 +76,11 @@ public final class ProviderRequestSupport {
     }
 
     /**
-     * OpenAI-family {@code reasoning.effort} for the agent's think value (3-stage schema):
-     * off -&gt; {@code null} (send nothing); a concrete level -&gt; used verbatim; a generic on
-     * ({@code true}/{@code on}) -&gt; the {@link ThinkModelMapping} for the OpenAI family and this
-     * model (no known reasoning model -&gt; {@code null}, send nothing).
+     * OpenAI-family {@code reasoning.effort} for the agent's think value (verbatim channel, ADR-0064):
+     * blank = unset = nothing sent; any other value is sent AS-IS (no mapping, no normalization).
      */
     public static String effortFor(AgentConfig mc) {
-        var think = mc.getThink();
-        if (ThinkResolver.isOff(think)) return null;
-        if (ThinkResolver.isGenericOn(think)) return ThinkModelMapping.resolveOn(AiProvider.OPEN_AI, mc.getModel());
-        return ThinkResolver.toReasoningEffort(think);
+        return StringUtil.hasValue(mc.getThink()) ? mc.getThink() : null;
     }
 
     /**
