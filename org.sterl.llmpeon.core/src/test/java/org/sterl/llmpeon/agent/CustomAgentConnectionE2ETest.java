@@ -97,9 +97,10 @@ class CustomAgentConnectionE2ETest {
     }
 
     // UC-THINK-6
+    // UC-THINK-11
     @Test
     @Timeout(10)
-    void legacyThinkSupportedFalse_reachesOwnStub_withoutReasoningEffort() throws IOException {
+    void legacyThinkSupportedFalse_reachesOwnStub_withLiteralFalseEffort() throws IOException {
         // GIVEN — the AGENT.md frontmatter carries only the legacy think_supported: false
         // (no think, no think_on_string)
         var base = LlmConfig.builder()
@@ -125,13 +126,13 @@ class CustomAgentConnectionE2ETest {
                         .build());
 
         // THEN — legacy think_supported: false resolves to the explicit off ("false");
-        // OpenAI has no off concept, so reasoning_effort is absent from the request body
+        // verbatim (ADR-0064): the value is sent as-is, so reasoning_effort == "false"
         assertThat(response.aiMessage().text()).isEqualTo("agent answer");
         assertThat(baseStub.getLastRequestBody()).isNull();
         var body = parse(agentStub.getLastRequestBody());
         assertThat(body.path("model").asText()).isEqualTo("custom-model");
         assertThat(body.path("temperature").asDouble()).isEqualTo(0.3);
-        assertThat(body.path("reasoning_effort").isMissingNode()).isTrue();
+        assertThat(body.path("reasoning_effort").asText()).isEqualTo("false");
         assertThat(body.path("foo").asText()).isEqualTo("bar");
 
         // AND — the reserved model key from the extra body was stripped (slot model wins)

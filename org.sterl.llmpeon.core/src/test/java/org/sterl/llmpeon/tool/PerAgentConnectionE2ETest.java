@@ -2,6 +2,7 @@ package org.sterl.llmpeon.tool;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
@@ -62,29 +63,49 @@ class PerAgentConnectionE2ETest {
                    Consumer<JsonNode> expectThink, Consumer<JsonNode> expectExtraBody) {}
 
     static Stream<Arguments> variants() {
-        return Stream.of(
+        var rows = List.of(
                 // PER_REQUEST: think → reasoning_effort; extraBody merged per request (user wins, reserved keys stripped)
-                Arguments.of(new Variant("openai", AiProvider.OPEN_AI, "claude-mock", "medium",
+                new Variant("openai", AiProvider.OPEN_AI, "claude-mock", "medium",
                         "{\"foo\":\"bar\",\"cache_control\":{\"type\":\"user-wins\"},\"model\":\"hacked\"}",
                         body -> assertThat(body.path("reasoning_effort").asText()).isEqualTo("medium"),
                         body -> {
                             assertThat(body.path("foo").asText()).isEqualTo("bar");
                             assertThat(body.path("cache_control").path("type").asText()).isEqualTo("user-wins");
-                        })),
+                        }),
                 // BUILD_TIME: think → thinking{type,budget_tokens}; extraBody baked into the model
-                Arguments.of(new Variant("anthropic", AiProvider.ANTHROPIC, "claude-mock", "enabled",
+                new Variant("anthropic", AiProvider.ANTHROPIC, "claude-mock", "enabled",
                         "{\"foo\":\"bar\",\"model\":\"hacked\"}",
                         body -> {
                             assertThat(body.path("thinking").path("type").asText()).isEqualTo("enabled");
                             assertThat(body.path("thinking").path("budget_tokens").asInt()).isEqualTo(8000);
                         },
-                        body -> assertThat(body.path("foo").asText()).isEqualTo("bar"))),
+                        body -> assertThat(body.path("foo").asText()).isEqualTo("bar")),
                 // NONE: think → think:true; extraBody ignored
-                Arguments.of(new Variant("ollama", AiProvider.OLLAMA, "llama-mock", "true",
+                new Variant("ollama", AiProvider.OLLAMA, "llama-mock", "true",
                         "{\"foo\":\"bar\"}",
                         body -> assertThat(body.path("think").asBoolean()).isTrue(),
                         body -> assertThat(body.has("foo"))
-                                .as("extraBody mode NONE: user body must not reach the wire").isFalse())));
+                                .as("extraBody mode NONE: user body must not reach the wire").isFalse()),
+                // UC-THINK-11
+                // LM-Studio: off-token → reasoning:"off" (characterization: passes through today too)
+                new Variant("lmstudio-off", AiProvider.LM_STUDIO, "lm-mock", "off",
+                        "{\"foo\":\"bar\"}",
+                        body -> assertThat(body.path("reasoning").asText()).isEqualTo("off"),
+                        body -> assertThat(body.path("foo").asText()).isEqualTo("bar")),
+                // UC-THINK-11
+                // LM-Studio: generic on → reasoning:"true" (verbatim; red until the Inc 3 LM fix)
+                new Variant("lmstudio-true", AiProvider.LM_STUDIO, "lm-mock", "true",
+                        "{\"foo\":\"bar\"}",
+                        body -> assertThat(body.path("reasoning").asText()).isEqualTo("true"),
+                        body -> assertThat(body.path("foo").asText()).isEqualTo("bar")),
+                // UC-THINK-12
+                // Ollama: "nein" → think:false (red until "nein" joins TOGGLE_OFF in Inc 2)
+                new Variant("ollama-nein", AiProvider.OLLAMA, "ollama-mock", "nein",
+                        "{\"foo\":\"bar\"}",
+                        body -> assertThat(body.path("think").asBoolean()).isFalse(),
+                        body -> assertThat(body.has("foo")).isFalse())
+        );
+        return rows.stream().map(Arguments::of);
     }
 
     /** S1 — the agent inherits the base connection: the request lands at the base stub, but the agent's model + think are on the wire. */

@@ -37,6 +37,16 @@ class AiProviderRequestParametersTest {
         return LlmProviders.of(p).newRequestParameters(mc, List.of());
     }
 
+    // UC-THINK-11
+    @Test
+    void reasoningEffortOf_unknownValuesAreLenient() {
+        // ADR-0064 evidence: the OpenAI SDK's ReasoningEffort.of() is a lenient enum — unknown
+        // values are preserved as-is (asString), not rejected. This pins the SDK contract the
+        // verbatim OpenAI-family channel relies on.
+        assertThat(ReasoningEffort.of("true").asString()).isEqualTo("true");
+        assertThat(ReasoningEffort.of("banana").asString()).isEqualTo("banana");
+    }
+
     // UC-THINK-7
     @Test
     void devAndPlan_thinkSupportResolveIndependently() {
@@ -71,41 +81,38 @@ class AiProviderRequestParametersTest {
         assertThat(high.reasoningEffort()).isEqualTo(ReasoningEffort.of("high"));
     }
 
-    // UC-THINK-8
+    // UC-THINK-11
     @Test
-    void openAiOfficialGenericOnUsesModelMapping() {
-        // known reasoning model -> mapped to high
-        var known = (OpenAiOfficialResponsesChatRequestParameters)
+    void openAiOfficialGenericOnSendsLiteralTrue() {
+        // verbatim (ADR-0064): a generic "true" is sent as-is, no model mapping
+        var params = (OpenAiOfficialResponsesChatRequestParameters)
                 params(AiProvider.OPEN_AI_OFFICIAL, mc(AiProvider.OPEN_AI_OFFICIAL, "gpt-5.5", "true"));
-        assertThat(known.reasoningEffort()).isEqualTo(ReasoningEffort.of("high"));
-
-        // unknown model + generic on -> send nothing
-        var unknown = (OpenAiOfficialResponsesChatRequestParameters)
-                params(AiProvider.OPEN_AI_OFFICIAL, mc(AiProvider.OPEN_AI_OFFICIAL, "kimi-k2", "true"));
-        assertThat(unknown.reasoningEffort()).isNull();
+        assertThat(params.reasoningEffort()).isEqualTo(ReasoningEffort.of("true"));
     }
 
+    // UC-THINK-11
     @Test
-    void openAiPlainUsesStringEffort() {
-        var off = (OpenAiChatRequestParameters)
-                params(AiProvider.OPEN_AI, mc(AiProvider.OPEN_AI, "false"));
-        assertThat(off.reasoningEffort()).isNull();
+    void openAiPlainVerbatim() {
+        // verbatim (ADR-0064): the stored value is sent as-is — no mapping, no omission
+        var none = (OpenAiChatRequestParameters) params(AiProvider.OPEN_AI, mc(AiProvider.OPEN_AI, "none"));
+        assertThat(none.reasoningEffort()).isEqualTo("none");
 
-        var on = (OpenAiChatRequestParameters)
-                params(AiProvider.OPEN_AI, mc(AiProvider.OPEN_AI, "medium"));
-        assertThat(on.reasoningEffort()).isEqualTo("medium");
-
-        // generic on + unknown model -> nothing
-        var genericUnknown = (OpenAiChatRequestParameters)
-                params(AiProvider.OPEN_AI, mc(AiProvider.OPEN_AI, "true"));
-        assertThat(genericUnknown.reasoningEffort()).isNull();
-    }
-
-    @Test
-    void openAiPlainGenericOnKnownModelMapsToHigh() {
         var on = (OpenAiChatRequestParameters)
                 params(AiProvider.OPEN_AI, mc(AiProvider.OPEN_AI, "gpt-5.5", "true"));
-        assertThat(on.reasoningEffort()).isEqualTo("high");
+        assertThat(on.reasoningEffort()).isEqualTo("true");
+
+        var xhigh = (OpenAiChatRequestParameters) params(AiProvider.OPEN_AI, mc(AiProvider.OPEN_AI, "xhigh"));
+        assertThat(xhigh.reasoningEffort()).isEqualTo("xhigh");
+
+        var medium = (OpenAiChatRequestParameters) params(AiProvider.OPEN_AI, mc(AiProvider.OPEN_AI, "medium"));
+        assertThat(medium.reasoningEffort()).isEqualTo("medium");
+
+        var banana = (OpenAiChatRequestParameters) params(AiProvider.OPEN_AI, mc(AiProvider.OPEN_AI, "banana"));
+        assertThat(banana.reasoningEffort()).isEqualTo("banana");
+
+        // blank = unset = nothing sent
+        var blank = (OpenAiChatRequestParameters) params(AiProvider.OPEN_AI, mc(AiProvider.OPEN_AI, "   "));
+        assertThat(blank.reasoningEffort()).isNull();
     }
 
     // UC-THINK-3
