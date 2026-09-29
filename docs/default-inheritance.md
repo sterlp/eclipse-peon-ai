@@ -137,7 +137,7 @@ gegen Advanced-Stale**; fehlender Provider-Key materialisierte den DefaultScope-
 → Pauls Entscheidung: **Ein Owner für die Default-Config = Basic-Seite**; Advanced nur Overrides.
 Supersedes R-DEF-4/5/7 (Advanced-DEV-Sektion) — [ADR-0063](adr/0063-default-config-single-owner-basic-page.md).
 
-### R-DEF-9 — Basic-Seite = „Default for all agents" mit komplettem Slot ❌ specified
+### R-DEF-9 — Basic-Seite = „Default for all agents" mit komplettem Slot ✅ done (2026-09-29, `c7d4e71d`/`af27674b`)
 
 #### UC-DEF-9 — Default-for-all-agents-Gruppe
 
@@ -146,7 +146,7 @@ GIVEN die Basic-Config-Seite ist offen WHEN sie gerendert wird THEN trägt sie d
 Model+Refresh · Think · Temperature · **Extra body (JSON)** via `ExtraBodyWidget` (Input + 3
 Example-Buttons, Bindung 7). Temperature-Label bleibt „Temperature (empty = unset):" (R-DEF-8).
 
-### R-DEF-10 — Advanced ohne DEV-Sektion, ohne Base-Key-Writes ❌ specified
+### R-DEF-10 — Advanced ohne DEV-Sektion, ohne Base-Key-Writes ✅ done (2026-09-29, `43c91fb2`)
 
 #### UC-DEF-10 — Single Owner
 
@@ -157,7 +157,7 @@ ausschließlich die Basic-Seite. Damit sind Stale-Überschreibung, Default-Mater
 Copilot-Login-Überschreibung strukturell weg. `LlmConfigLoader`-Clean-Break (dev.url/apiKey nie
 gelesen) bleibt unverändert.
 
-### R-DEF-11 — Extra body/Think folgen dem Provider live; versteckt ≠ löschen ❌ specified
+### R-DEF-11 — Extra body/Think folgen dem Provider live; versteckt ≠ löschen ✅ done (2026-09-29, `af27674b`/`6c275676`)
 
 #### UC-DEF-11 — Live-Gate ohne stille Löschung
 
@@ -183,9 +183,9 @@ Verstecken noch vorhandener Wert wird preserved.
 | R-DEF-3 | ✅ Automat (core) | `ProviderBaseUrlTest` |
 | R-DEF-6 | ✅ MANUELL (bestehender Guard, unverändert) | — |
 | R-DEF-8 | ✅ Automat (core/UI) | `ModelConfigWidgetTest` / `AiConfigPreferenceViewTest` |
-| R-DEF-9 | ❌ Automat (plugin) | Plan-Inkrement |
-| R-DEF-10 | ❌ Automat (plugin) | Plan-Inkrement |
-| R-DEF-11 | ❌ Automat (plugin) | Plan-Inkrement |
+| R-DEF-9 | ✅ Automat (plugin) | `AiConfigPreferenceViewTest` (Group, Persistenz, Hidden-Pfade) |
+| R-DEF-10 | ✅ Automat (plugin) | `AiAdvancedPreferenceViewTest` (`devSectionIsGoneAndSlotOrderStable`, `performOkWritesOnlySlotKeys`, `AdvancedPreferenceSectionsTest`) |
+| R-DEF-11 | ✅ Automat (plugin) | `ModelConfigWidgetTest` (Live-Gate, Preserve, `hiddenThinkSurvivesNoneProvider`, G1-Präzedenz-Test) |
 | R-DEF-4/5/7 | ☠️ superseded (R-DEF-9/10) | — |
 
 ## IST-Notizen (für den Plan)
