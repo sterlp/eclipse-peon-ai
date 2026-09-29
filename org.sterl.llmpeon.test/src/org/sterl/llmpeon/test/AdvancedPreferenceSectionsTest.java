@@ -20,26 +20,30 @@ import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 
 public class AdvancedPreferenceSectionsTest {
 
-    // UC-DEF-5
+    // UC-DEF-10
     @Test
-    public void devSectionIsFirstAndTitledDefault() {
+    public void devSectionIsGoneAndSlotOrderStable() {
         var sections = AiAdvancedPreferenceView.AGENT_SECTIONS;
 
-        assertEquals(List.of("dev", "po", "plan", "search", "compact"),
+        assertEquals(List.of("po", "plan", "search", "compact"),
                 sections.stream().map(AiAdvancedPreferenceView.AgentSection::id).toList());
-        assertEquals("Dev (Default)", sections.get(0).title());
         sections.forEach(section -> assertFalse(section.title().isBlank()));
+        sections.forEach(section -> assertFalse(section.title().contains("Dev")));
     }
 
     @Test
     public void everyCoreSlotHasASection() {
+        // Single owner (ADR-0063): dev is owned by the basic page — this page covers the overrides only.
+        var overrideIds = AgentModelConfig.CORE_IDS.stream()
+                .filter(id -> !AgentModelConfig.DEV.equals(id))
+                .toList();
         var sectionIds = AiAdvancedPreferenceView.AGENT_SECTIONS.stream()
                 .map(AiAdvancedPreferenceView.AgentSection::id)
                 .toList();
 
-        assertEquals(AgentModelConfig.CORE_IDS.size(), sectionIds.size());
-        assertEquals(AgentModelConfig.CORE_IDS.stream().distinct().count(), sectionIds.stream().distinct().count());
-        assertEquals(AgentModelConfig.CORE_IDS.stream().sorted().toList(), sectionIds.stream().sorted().toList());
+        assertEquals(overrideIds.size(), sectionIds.size());
+        assertEquals(overrideIds.stream().distinct().count(), sectionIds.stream().distinct().count());
+        assertEquals(overrideIds.stream().sorted().toList(), sectionIds.stream().sorted().toList());
     }
 
     @Test

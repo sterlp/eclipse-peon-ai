@@ -2,7 +2,6 @@ package org.sterl.llmpeon.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.HashMap;
@@ -11,13 +10,10 @@ import java.util.Map;
 
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.InstanceScope;
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Group;
-import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
 import org.junit.After;
 import org.junit.Before;
@@ -31,25 +27,29 @@ import org.sterl.llmpeon.parts.config.AiAdvancedPreferenceView;
 import org.sterl.llmpeon.parts.config.EclipseLlmConfigStore;
 
 /**
- * Page-level test for the advanced config page's dev section (R-DEF-4/5/7, ADR-0062): the
- * "Dev (Default)" section carries the full basic-page fieldset (provider · url · key ·
- * model+refresh · think · temperature · ping · extra body), and OK writes the base keys — the
- * legacy llm.agent.dev.url/apiKey overrides are removed (clean break).
+ * Page-level test for the advanced config page (ADR-0063, single owner): the page carries only
+ * the per-agent override sections (po/plan/search/compact) — OK writes exactly the per-agent
+ * slot keys, never the base keys or the dev default slot (owned by the basic page).
  *
  * <p>No-cross-run-state rule: the fixture is written VOR the page build (the page reads the
  * store at build time) and the original values are restored in finally.</p>
  */
 public class AiAdvancedPreferenceViewTest extends AbstractSwtUiTest {
 
-    private static final String DEV_URL_KEY = LlmConfigKeys.agentKey(AgentModelConfig.DEV, LlmConfigKeys.AGENT_FIELD_URL);
-    private static final String DEV_API_KEY_KEY = LlmConfigKeys.agentKey(AgentModelConfig.DEV, LlmConfigKeys.AGENT_FIELD_API_KEY);
     private static final String DEV_THINK_KEY = LlmConfigKeys.agentKey(AgentModelConfig.DEV, LlmConfigKeys.AGENT_FIELD_THINK);
     private static final String DEV_TEMPERATURE_KEY = LlmConfigKeys.agentKey(AgentModelConfig.DEV, LlmConfigKeys.AGENT_FIELD_TEMPERATURE);
     private static final String DEV_EXTRA_BODY_KEY = LlmConfigKeys.agentKey(AgentModelConfig.DEV, LlmConfigKeys.AGENT_FIELD_EXTRA_BODY);
+    private static final String PO_URL_KEY = LlmConfigKeys.agentKey(AgentModelConfig.PO, LlmConfigKeys.AGENT_FIELD_URL);
+    private static final String PO_API_KEY_KEY = LlmConfigKeys.agentKey(AgentModelConfig.PO, LlmConfigKeys.AGENT_FIELD_API_KEY);
+    private static final String PO_MODEL_KEY = LlmConfigKeys.agentKey(AgentModelConfig.PO, LlmConfigKeys.AGENT_FIELD_MODEL);
+    private static final String PO_THINK_KEY = LlmConfigKeys.agentKey(AgentModelConfig.PO, LlmConfigKeys.AGENT_FIELD_THINK);
+    private static final String PO_TEMPERATURE_KEY = LlmConfigKeys.agentKey(AgentModelConfig.PO, LlmConfigKeys.AGENT_FIELD_TEMPERATURE);
+    private static final String PO_EXTRA_BODY_KEY = LlmConfigKeys.agentKey(AgentModelConfig.PO, LlmConfigKeys.AGENT_FIELD_EXTRA_BODY);
 
     private static final List<String> KEYS = List.of(PeonConstants.PREF_PROVIDER_TYPE, PeonConstants.PREF_URL,
-            PeonConstants.PREF_API_KEY, PeonConstants.PREF_MODEL, DEV_URL_KEY, DEV_API_KEY_KEY, DEV_THINK_KEY,
-            DEV_TEMPERATURE_KEY, DEV_EXTRA_BODY_KEY);
+            PeonConstants.PREF_API_KEY, PeonConstants.PREF_MODEL, DEV_THINK_KEY, DEV_TEMPERATURE_KEY,
+            DEV_EXTRA_BODY_KEY, PO_URL_KEY, PO_API_KEY_KEY, PO_MODEL_KEY, PO_THINK_KEY, PO_TEMPERATURE_KEY,
+            PO_EXTRA_BODY_KEY);
 
     private IEclipsePreferences prefs;
     private Map<String, String> original;
@@ -62,19 +62,23 @@ public class AiAdvancedPreferenceViewTest extends AbstractSwtUiTest {
         for (var key : KEYS) {
             original.put(key, prefs.get(key, null));
         }
-        // Fixture VOR the page build: OpenAI (extra-body-capable) · dead URL · empty key ·
-        // fixture model · legacy dev overrides present (must be removed on OK) · unset dev
-        // think/temperature/extraBody
+        // Fixture VOR the page build: base keys (OpenAI · dead URL · empty key · fixture model)
+        // + dev default slot set (owned by the basic page — must survive an advanced OK) + a
+        // stale PO url (must be overwritten by the typed value on OK)
         var store = new EclipseLlmConfigStore(prefs);
         store.put(PeonConstants.PREF_PROVIDER_TYPE, "OPEN_AI");
         store.put(PeonConstants.PREF_URL, "http://127.0.0.1:1");
         store.put(PeonConstants.PREF_API_KEY, "");
         store.put(PeonConstants.PREF_MODEL, "fixture-model");
-        store.put(DEV_URL_KEY, "http://legacy-dev:11434");
-        store.put(DEV_API_KEY_KEY, "legacy-dev-key");
-        store.remove(DEV_THINK_KEY);
-        store.remove(DEV_TEMPERATURE_KEY);
-        store.remove(DEV_EXTRA_BODY_KEY);
+        store.put(DEV_THINK_KEY, "low");
+        store.put(DEV_TEMPERATURE_KEY, "0.5");
+        store.put(DEV_EXTRA_BODY_KEY, "{\"dev\":true}");
+        store.put(PO_URL_KEY, "http://stale-po:11111");
+        store.remove(PO_API_KEY_KEY);
+        store.remove(PO_MODEL_KEY);
+        store.remove(PO_THINK_KEY);
+        store.remove(PO_TEMPERATURE_KEY);
+        store.remove(PO_EXTRA_BODY_KEY);
     }
 
     @After
@@ -97,72 +101,50 @@ public class AiAdvancedPreferenceViewTest extends AbstractSwtUiTest {
         }
     }
 
-    // UC-DEF-4
+    // UC-DEF-10
     @Test
-    public void performOkWritesBaseKeysForDev() {
-        // GIVEN the advanced page is built (fixture: OpenAI · dead URL · legacy dev overrides present)
+    public void performOkWritesOnlySlotKeys() {
+        // GIVEN the advanced page is built (fixture: base keys + dev slot set, stale PO url)
         var page = ui(() -> buildPage());
-        var grid = ui(() -> devGrid(page));
-        assertEquals("fixture-model", ((Combo) grid.getChildren()[8]).getText());
+        var grid = ui(() -> sectionGrid(page, "PO agent (Jon)"));
+        assertEquals("the PO section must carry url/key/model+refresh/think/temperature/extra body",
+                15, grid.getChildren().length);
+        assertEquals("stale-po must be loaded into the section", "http://stale-po:11111",
+                ((Text) grid.getChildren()[1]).getText());
 
-        // WHEN the dev section values change (url/key/model typed, think + temperature + extra body set) and OK is pressed
+        // WHEN the PO section values change (url/key/model typed, think + temperature + extra body set) and OK is pressed
         ui(() -> {
-            ((Text) grid.getChildren()[3]).setText("http://127.0.0.1:9/v1");
-            ((Text) grid.getChildren()[6]).setText("sk-test-123");
-            ((Combo) grid.getChildren()[8]).setText("dev-base-model");
-            var think = (Combo) grid.getChildren()[11];
+            ((Text) grid.getChildren()[1]).setText("http://127.0.0.1:9/po");
+            ((Text) grid.getChildren()[3]).setText("sk-po-123");
+            ((Combo) grid.getChildren()[5]).setText("po-model");
+            var think = (Combo) grid.getChildren()[8];
             var lowIdx = think.indexOf("low");
-            assertTrue("the think combo must offer 'low'", lowIdx >= 0);
+            assertTrue("the PO think combo must offer 'low'", lowIdx >= 0);
             think.select(lowIdx);
-            ((Text) grid.getChildren()[14]).setText("0.7");
-            ((Text) grid.getChildren()[16]).setText("{\"a\":1}");
+            ((Text) grid.getChildren()[10]).setText("0.6");
+            ((Text) grid.getChildren()[12]).setText("{\"po\":true}");
             return null;
         });
         ui(page::performOk);
 
-        // THEN the base keys carry the widget values and the dev record fields are persisted
+        // THEN the PO slot keys carry the typed values (the stale url is overwritten)
+        assertEquals("http://127.0.0.1:9/po", prefs.get(PO_URL_KEY, null));
+        assertEquals("sk-po-123", prefs.get(PO_API_KEY_KEY, null));
+        assertEquals("po-model", prefs.get(PO_MODEL_KEY, null));
+        assertEquals("low", prefs.get(PO_THINK_KEY, null));
+        assertEquals("0.6", prefs.get(PO_TEMPERATURE_KEY, null));
+        assertEquals("{\"po\":true}", prefs.get(PO_EXTRA_BODY_KEY, null));
+
+        // AND the base keys are UNCHANGED (fixture values — the basic page is the sole owner)
         assertEquals("OPEN_AI", prefs.get(PeonConstants.PREF_PROVIDER_TYPE, null));
-        assertEquals("http://127.0.0.1:9/v1", prefs.get(PeonConstants.PREF_URL, null));
-        assertEquals("sk-test-123", prefs.get(PeonConstants.PREF_API_KEY, null));
-        assertEquals("dev-base-model", prefs.get(PeonConstants.PREF_MODEL, null));
+        assertEquals("http://127.0.0.1:1", prefs.get(PeonConstants.PREF_URL, null));
+        assertEquals("", prefs.get(PeonConstants.PREF_API_KEY, null));
+        assertEquals("fixture-model", prefs.get(PeonConstants.PREF_MODEL, null));
+
+        // AND the dev default slot is UNCHANGED (no write path from this page)
         assertEquals("low", prefs.get(DEV_THINK_KEY, null));
-        assertEquals("0.7", prefs.get(DEV_TEMPERATURE_KEY, null));
-        assertEquals("{\"a\":1}", prefs.get(DEV_EXTRA_BODY_KEY, null));
-
-        // AND the legacy dev override keys are removed (clean break, ADR-0062)
-        assertNull(prefs.get(DEV_URL_KEY, null));
-        assertNull(prefs.get(DEV_API_KEY_KEY, null));
-    }
-
-    // UC-DEF-7
-    @Test
-    public void devSectionCarriesFullFieldset() {
-        // GIVEN the advanced page is built (fixture: OpenAI — extra-body-capable)
-        var page = ui(() -> buildPage());
-        var grid = ui(() -> devGrid(page));
-
-        // THEN the dev section carries the full basic-page fieldset + extra body (19 children,
-        // the think free-string text is excluded for the OpenAI values form)
-        assertEquals(19, grid.getChildren().length);
-        assertEquals("Provider Type:", ((Label) grid.getChildren()[0]).getText());
-        var provider = (Combo) grid.getChildren()[1];
-        assertTrue("provider combo must be read-only", (provider.getStyle() & SWT.READ_ONLY) != 0);
-        assertEquals(9, provider.getItemCount());
-        assertEquals(0, provider.getSelectionIndex()); // fixture provider OPEN_AI = first entry
-        assertEquals("URL (incl. port):", ((Label) grid.getChildren()[2]).getText());
-        assertEquals("http://127.0.0.1:1", ((Text) grid.getChildren()[3]).getText());
-        assertEquals("Ping", ((Button) grid.getChildren()[4]).getText());
-        assertEquals("API Key:", ((Label) grid.getChildren()[5]).getText());
-        assertEquals("Model:", ((Label) grid.getChildren()[7]).getText());
-        assertEquals("fixture-model", ((Combo) grid.getChildren()[8]).getText());
-        assertEquals("Refresh", ((Button) grid.getChildren()[9]).getText());
-        assertEquals("Think (Default):", ((Label) grid.getChildren()[10]).getText());
-        assertTrue(grid.getChildren()[11] instanceof Combo);
-        assertEquals("Temperature (empty = unset):", ((Label) grid.getChildren()[13]).getText());
-        assertEquals("Extra body (JSON):", ((Label) grid.getChildren()[15]).getText());
-        assertTrue("extra body field must be multi-line", (((Text) grid.getChildren()[16]).getStyle() & SWT.MULTI) != 0);
-        assertTrue("examples row must be a composite", grid.getChildren()[17] instanceof Composite);
-        assertTrue("paste status must be a label", grid.getChildren()[18] instanceof Label);
+        assertEquals("0.5", prefs.get(DEV_TEMPERATURE_KEY, null));
+        assertEquals("{\"dev\":true}", prefs.get(DEV_EXTRA_BODY_KEY, null));
     }
 
     // --- helpers ---
@@ -174,11 +156,11 @@ public class AiAdvancedPreferenceViewTest extends AbstractSwtUiTest {
         return page;
     }
 
-    /** UI-thread only. The 2-column grid inside the "Dev (Default)" titled group. */
-    private static Composite devGrid(AiAdvancedPreferenceView page) {
-        var group = findGroup(page.getControl(), "Dev (Default)");
-        assertNotNull("the Dev (Default) section group not found", group);
-        assertEquals("the dev group must hold exactly the 2-column grid", 1, group.getChildren().length);
+    /** UI-thread only. The per-agent section composite inside the given titled group. */
+    private static Composite sectionGrid(AiAdvancedPreferenceView page, String groupTitle) {
+        var group = findGroup(page.getControl(), groupTitle);
+        assertNotNull("section group not found: " + groupTitle, group);
+        assertEquals("the section group must hold exactly one section composite", 1, group.getChildren().length);
         return (Composite) group.getChildren()[0];
     }
 

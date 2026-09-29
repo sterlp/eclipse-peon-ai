@@ -88,7 +88,6 @@ class LlmConfigLoaderTest {
         assertThat(config.modelConfigFor(AgentModelConfig.DEV).model()).isEqualTo("gpt-4o");
     }
 
-    // UC-DEF-4
     @Test
     void devUrlAndApiKeyKeysAreIgnored() {
         // GIVEN a store with legacy dev override keys and a base model
