@@ -11,7 +11,7 @@ After installation, configure the plugin via **Window > Preferences > AI Peon > 
 
 ## Provider Settings
 
-The page shows one connection block: **Provider Type**, **URL (incl. port)**, **API Key**, **Model** (+ **Refresh**), **Think (Default)** and **Temperature** — plus the **Ping** button below the URL field.
+The page shows the **Default for all agents** group with one connection block: **Provider Type**, **URL (incl. port)**, **API Key**, **Model** (+ **Refresh**), **Think (Default)**, **Temperature** and **Extra body (JSON)** — plus the **Ping** button below the URL field.
 
 - **Ping** tests TCP connectivity (host and port) to the URL currently typed in the page, with a 3-second timeout. It does not validate the API key — the model **Refresh** does that implicitly.
 - All of these fields are read **live** by Refresh and Ping: you can test a new URL, key or provider without leaving the page or clicking Apply. **Cancel** discards the typed values; only **Apply/OK** saves them.
@@ -217,7 +217,17 @@ The **Temperature** field sets the sampling temperature of the **Dev agent** —
 - **Empty = unset** — no `temperature` parameter is sent, the provider or model chooses its default. This is important for GPT-5 and o-series models, which reject non-default temperature values.
 - Enter a number (e.g. `0.7`) to send it with every Dev agent request.
 - An **invalid** value is saved but ignored when requests are built: Peon logs a warning and omits `temperature`.
-- A top-level `temperature` in the Dev agent's **Extra body (JSON)** (Advanced page) wins over the field and is sent only once.
+- A top-level `temperature` in the **Extra body (JSON)** field below wins over the field and is sent only once.
+
+### Extra body (JSON)
+
+The **Extra body (JSON)** field sets raw JSON that is merged into the **Dev agent's** request body — the default agent of this page. It is the same field [custom agents](./custom-agents.md) use via the `extra_body` frontmatter key, and the place where [prompt caching](./advanced-configuration.md#extra-body--prompt-caching) is configured for the default agent.
+
+The field follows the provider **live**: it appears as soon as you switch to a provider that supports an extra body — **OpenAI**, **LM Studio**, **GitHub Copilot** and **Anthropic** — and hides again for **Ollama**, **Google Gemini**, **Mistral**, **GitHub Models** and **OpenAI-official**. No Apply, no tab switch.
+
+- **Hidden ≠ deleted:** switching to a provider without extra-body support hides the field but **never deletes** the stored JSON — switch back and it is there again. While hidden, it is simply not sent.
+- **Empty = unset** — no extra body is sent.
+- Three paste-ready **example buttons** (GPT / Claude / llama.cpp) sit under the field; clicking one **replaces** the current content (see [Extra Body / Prompt Caching](./advanced-configuration.md#examples)).
 
 ## Testing the Connection
 
