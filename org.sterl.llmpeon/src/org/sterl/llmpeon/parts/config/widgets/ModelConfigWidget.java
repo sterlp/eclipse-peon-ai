@@ -21,8 +21,9 @@ import org.sterl.llmpeon.shared.StringUtil;
 
 /**
  * The connection field group (provider · URL · API key · model · think · temperature · extra
- * body) plus the ping button, shared by the basic config page and the advanced page's dev
- * (default) section — a plain controller (no SWT parent of its own, like {@link ModelComboWidget}):
+ * body) plus the ping button, on the basic config page — the single owner of the base keys and
+ * the dev default slot (R-DEF-9/10, ADR-0063) — a plain controller (no SWT parent of its own,
+ * like {@link ModelComboWidget}):
  * it creates the fields directly in the given 2-column parent grid so they sit in the same field
  * column as the page's other fields.
  *
@@ -50,8 +51,8 @@ import org.sterl.llmpeon.shared.StringUtil;
  * request-level and never flows into {@link #snapshot()}.</p>
  *
  * <p><b>Constructor contract:</b> the parent is the page's 2-column grid; the widget creates its
- * own labels — JFace Field-Editor style ({@code SWT.LEFT}, no GridData) on the basic page,
- * right-aligned ({@code SWT.END}, GridData) on the advanced page (D4, label per caller).</p>
+ * own labels — JFace Field-Editor style ({@code SWT.LEFT}, no GridData) by default, or
+ * right-aligned ({@code SWT.END}, GridData) via the label-style parameter.</p>
  */
 public class ModelConfigWidget {
 

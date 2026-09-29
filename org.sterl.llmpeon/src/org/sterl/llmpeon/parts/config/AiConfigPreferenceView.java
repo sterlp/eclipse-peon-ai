@@ -109,9 +109,10 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
         }
         var values = modelConfigWidget.getValues();
         var store = new EclipseLlmConfigStore(InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID));
-        // Dev is the default slot (R-DEF-4): the widget writes the base keys — an empty url/key
-        // removes the key (empty = unset, never a null put: JFace's setValue(name, null) NPEs and
-        // leaves a partial save).
+        // Single owner (R-DEF-9, ADR-0063): the basic page is the only editor of the base keys
+        // and the dev default slot — the widget writes the base keys, an empty url/key removes
+        // the key (empty = unset, never a null put: JFace's setValue(name, null) NPEs and leaves
+        // a partial save).
         store.put(PeonConstants.PREF_PROVIDER_TYPE, values.provider().name());
         EclipseLlmConfigStore.putOrRemove(store, PeonConstants.PREF_URL, values.url());
         EclipseLlmConfigStore.putOrRemove(store, PeonConstants.PREF_API_KEY, values.apiKey());

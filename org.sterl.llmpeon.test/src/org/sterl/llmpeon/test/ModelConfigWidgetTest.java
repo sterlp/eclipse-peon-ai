@@ -236,6 +236,37 @@ public class ModelConfigWidgetTest extends AbstractSwtUiTest {
         assertEquals("false", ui(() -> thinkCombo(built.parent()).getText()));
     }
 
+    // UC-DEF-11
+    @Test
+    public void thinkClearedByListSwitchStaysClearedAfterNoneTransition() {
+        // GIVEN the widget shows OpenAI (fixed values list) with think "high"
+        var built = ui(() -> newWidget(() -> LlmConfig.newConfig(AiProvider.OPEN_AI, "gpt-4o", "http://127.0.0.1:1/v1"),
+                new ModelConfigWidget.ConnectionValues(AiProvider.OPEN_AI, "http://127.0.0.1:1/v1", null, "high",
+                        "gpt-4o", null, null)));
+        assertEquals("high", ui(() -> thinkCombo(built.parent()).getText()));
+
+        // WHEN the provider changes to Anthropic (fixed values list without "high")
+        ui(() -> {
+            selectProvider(built.parent(), "Anthropic Claude");
+            return null;
+        });
+
+        // THEN the field is visibly cleared (R-MCW-6: fixed list without a match → unset,
+        // never a silent replacement)
+        assertEquals("visible clearing, no silent replacement", "", ui(() -> thinkCombo(built.parent()).getText()));
+
+        // WHEN the provider changes to Gemini (no think support → the field is hidden) and the
+        // values are read for saving
+        ui(() -> {
+            selectProvider(built.parent(), "Google Gemini");
+            return null;
+        });
+
+        // THEN think stays empty — the preserve path (hiddenThink) carries the cleared visible
+        // value and must not resurrect the pre-cleared one
+        assertEquals("", ui(built.widget()::getValues).think());
+    }
+
     // UC-MCW-2
     @Test
     public void reloadUsesLiveWidgetValues() {
