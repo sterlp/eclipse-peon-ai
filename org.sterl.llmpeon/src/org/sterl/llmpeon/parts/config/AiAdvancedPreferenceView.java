@@ -19,11 +19,9 @@ import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.LlmConfigSaver;
 import org.sterl.llmpeon.parts.PeonConstants;
 import org.sterl.llmpeon.parts.config.widgets.AgentModelConfigSection;
-import org.sterl.llmpeon.parts.config.widgets.ExtraBodyWidget;
 import org.sterl.llmpeon.parts.config.widgets.HorizontalRule;
 import org.sterl.llmpeon.parts.config.widgets.ModelConfigWidget;
 import org.sterl.llmpeon.parts.config.widgets.TitledGroup;
-import org.sterl.llmpeon.provider.LlmProviders;
 
 /**
  * Advanced AI config page. The dev slot is the default connection (ADR-0062): its section
@@ -46,7 +44,6 @@ public class AiAdvancedPreferenceView extends FieldEditorPreferencePage implemen
 
     private final List<AgentModelConfigSection> sections = new ArrayList<>();
     private ModelConfigWidget devWidget;
-    private ExtraBodyWidget devExtraBody;
 
     public AiAdvancedPreferenceView() {
         super(GRID);
@@ -110,9 +107,7 @@ public class AiAdvancedPreferenceView extends FieldEditorPreferencePage implemen
         var devRecord = base.modelConfigFor(AgentModelConfig.DEV);
         devWidget = new ModelConfigWidget(grid, "dev", LlmPreferenceInitializer::buildWithDefaults, SWT.END);
         devWidget.load(new ModelConfigWidget.ConnectionValues(base.getProviderType(), base.getUrl(),
-                base.getApiKey(), devRecord.think(), base.getModel(), devRecord.temperature()));
-        devExtraBody = new ExtraBodyWidget(grid, LlmProviders.of(base.getProviderType()).supportsExtraBody());
-        devExtraBody.setBody(devRecord.extraBody());
+                base.getApiKey(), devRecord.think(), base.getModel(), devRecord.temperature(), devRecord.extraBody()));
         devWidget.fetchModels();
     }
 
@@ -130,7 +125,7 @@ public class AiAdvancedPreferenceView extends FieldEditorPreferencePage implemen
         EclipseLlmConfigStore.putOrRemove(store, PeonConstants.PREF_API_KEY, values.apiKey());
         LlmConfigSaver.saveAgentModelConfig(store, AgentModelConfig.DEV,
                 new AgentModelConfig(null, null, values.model(), values.think(),
-                        devExtraBody.getExtraBody(), values.temperature()));
+                        values.extraBody(), values.temperature()));
         for (var section : sections) {
             LlmConfigSaver.saveAgentModelConfig(store, section.getAgentId(), section.getRecord());
         }

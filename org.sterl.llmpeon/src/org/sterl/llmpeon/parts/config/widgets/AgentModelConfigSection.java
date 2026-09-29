@@ -43,6 +43,7 @@ public class AgentModelConfigSection extends Composite {
     private final Text keyText;
     private final ModelComboWidget modelWidget;
     private final Text temperatureText;
+    private final boolean extraBodySupported;
     private final ExtraBodyWidget extraBody;
 
     // exactly one of these is non-null, per thinkForm
@@ -55,6 +56,7 @@ public class AgentModelConfigSection extends Composite {
         this.base = base;
         var provider = LlmProviders.of(base.get().getProviderType());
         this.thinkForm = provider.thinkSupport();
+        this.extraBodySupported = provider.supportsExtraBody();
         setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, true, false));
         var sectionLayout = new GridLayout(2, false);
         sectionLayout.marginBottom = 0;
@@ -65,7 +67,7 @@ public class AgentModelConfigSection extends Composite {
         this.modelWidget = new ModelComboWidget(this, agentId, this::prepareFetch);
         buildThink();
         this.temperatureText = addLabeledText("Temperature (empty = unset):");
-        this.extraBody = new ExtraBodyWidget(this, provider.supportsExtraBody());
+        this.extraBody = new ExtraBodyWidget(this, extraBodySupported);
     }
 
     public String getAgentId() {
@@ -89,7 +91,7 @@ public class AgentModelConfigSection extends Composite {
                 StringUtil.stripToNull(keyText.getText()),
                 StringUtil.stripToNull(modelWidget.getModel()),
                 readThink(),
-                extraBody.getExtraBody(),
+                extraBodySupported ? extraBody.getExtraBody() : null, // construction gate (R-MCW-5): hidden → null, no R-DEF-11
                 StringUtil.stripToNull(temperatureText.getText()));
     }
 

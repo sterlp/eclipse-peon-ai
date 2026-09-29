@@ -58,7 +58,7 @@ public class ModelConfigWidgetTest extends AbstractSwtUiTest {
         // GIVEN a widget in a 2-column grid with an Ollama connection loaded
         var built = ui(() -> newWidget(() -> LlmConfig.newOllama("mock-model"),
                 new ModelConfigWidget.ConnectionValues(AiProvider.OLLAMA, "http://127.0.0.1:11434", "secret",
-                        "false", "mock-model", null)));
+                        "false", "mock-model", null, null)));
 
         // THEN it shows exactly provider · url · ping · key · model+refresh · think · temperature in
         // that parent-child order
@@ -88,12 +88,13 @@ public class ModelConfigWidgetTest extends AbstractSwtUiTest {
 
         // AND the free-string variant exists but is excluded (created once, toggled per form)
         var all = ui(() -> built.parent().getChildren());
-        assertEquals(15, all.length);
+        assertEquals(19, all.length);
         assertTrue(all[12] instanceof Text);
         assertTrue("free-string variant must be excluded", ((GridData) all[12].getLayoutData()).exclude);
 
-        // AND no extra-body field (advanced-only)
-        assertFalse("no extra-body field on the basic page", hasLabelContaining(built.parent(), "extra body"));
+        // AND the extra-body field (binding 6) is created but excluded for the NONE provider (live gate, R-DEF-11)
+        assertEquals("Extra body (JSON):", ((Label) all[15]).getText());
+        assertTrue("extra-body label must be excluded for a NONE provider", ((GridData) all[15].getLayoutData()).exclude);
     }
 
     // UC-MCW-7
@@ -102,7 +103,7 @@ public class ModelConfigWidgetTest extends AbstractSwtUiTest {
         // GIVEN the widget shows Ollama (toggle) with think "false"
         var built = ui(() -> newWidget(() -> LlmConfig.newOllama("mock-model"),
                 new ModelConfigWidget.ConnectionValues(AiProvider.OLLAMA, "http://127.0.0.1:11434", null, "false",
-                        "mock-model", null)));
+                        "mock-model", null, null)));
         assertEquals("false", ui(() -> thinkCombo(built.parent()).getText()));
 
         // WHEN the provider changes to OpenAI (fixed values list) via the combo selection
@@ -137,13 +138,14 @@ public class ModelConfigWidgetTest extends AbstractSwtUiTest {
             return null;
         });
 
-        // THEN the think field is gone entirely (label + combo + text all excluded) and the value is unset
+        // THEN the think field is gone entirely (label + combo + text all excluded) and the last
+        // visible value is preserved (hidden ≠ delete, R-DEF-11)
         assertEquals(12, (int) ui(() -> rendered(built.parent()).length));
         var noneAll = ui(() -> built.parent().getChildren());
         assertTrue(((GridData) noneAll[10].getLayoutData()).exclude);
         assertTrue(((GridData) noneAll[11].getLayoutData()).exclude);
         assertTrue(((GridData) noneAll[12].getLayoutData()).exclude);
-        assertEquals("", ui(built.widget()::getValues).think());
+        assertEquals("low", ui(built.widget()::getValues).think());
 
         // WHEN the provider changes back to Ollama, a toggle value is set, then LM Studio again
         ui(() -> {
@@ -163,13 +165,84 @@ public class ModelConfigWidgetTest extends AbstractSwtUiTest {
         assertEquals("true", ui(() -> thinkText(built.parent()).getText()));
     }
 
+    // UC-DEF-11
+    @Test
+    public void extraBodyFieldFollowsProviderChangeLive() {
+        // GIVEN a widget with Ollama (no extra-body support → the field is hidden)
+        var built = ui(() -> newWidget(() -> LlmConfig.newOllama("mock-model"),
+                new ModelConfigWidget.ConnectionValues(AiProvider.OLLAMA, "http://127.0.0.1:11434", null, "false",
+                        "mock-model", null, null)));
+
+        // WHEN the provider changes to OpenAI (extra-body capable) via the combo selection
+        ui(() -> {
+            selectProvider(built.parent(), "OpenAI (llama.cpp, unsloth, OmniRoute)");
+            return null;
+        });
+
+        // THEN the extra-body field is immediately visible (label · multi-text · examples row) without Apply
+        var visible = ui(() -> rendered(built.parent()));
+        assertEquals("Extra body (JSON):", ((Label) visible[14]).getText());
+        assertTrue("extra-body field must be multi-line", (((Text) visible[15]).getStyle() & SWT.MULTI) != 0);
+        assertTrue("examples row must be a composite", visible[16] instanceof Composite);
+
+        // WHEN a value is typed and the provider changes to Gemini (no extra-body support)
+        ui(() -> {
+            extraBodyText(built.parent()).setText("{\"a\":1}");
+            return null;
+        });
+        ui(() -> {
+            selectProvider(built.parent(), "Google Gemini");
+            return null;
+        });
+
+        // THEN the field is hidden again but the typed value survives in the values (hidden ≠ delete)
+        assertEquals(12, (int) ui(() -> rendered(built.parent()).length));
+        assertEquals("{\"a\":1}", ui(built.widget()::getValues).extraBody());
+
+        // WHEN the provider changes back to OpenAI
+        ui(() -> {
+            selectProvider(built.parent(), "OpenAI (llama.cpp, unsloth, OmniRoute)");
+            return null;
+        });
+
+        // THEN the value is back in the field
+        assertEquals("{\"a\":1}", ui(() -> extraBodyText(built.parent()).getText()));
+    }
+
+    // UC-DEF-11
+    @Test
+    public void hiddenThinkSurvivesNoneProvider() {
+        // GIVEN the widget shows Ollama (toggle) with think "false"
+        var built = ui(() -> newWidget(() -> LlmConfig.newOllama("mock-model"),
+                new ModelConfigWidget.ConnectionValues(AiProvider.OLLAMA, "http://127.0.0.1:11434", null, "false",
+                        "mock-model", null, null)));
+
+        // WHEN the provider changes to Gemini (no think support → the field is hidden)
+        ui(() -> {
+            selectProvider(built.parent(), "Google Gemini");
+            return null;
+        });
+
+        // THEN the hidden value survives in the values (not "" — hidden ≠ delete)
+        assertEquals("false", ui(built.widget()::getValues).think());
+
+        // WHEN the provider changes back to Ollama
+        ui(() -> {
+            selectProvider(built.parent(), "Ollama");
+            return null;
+        });
+
+        // THEN the value is back in the field
+        assertEquals("false", ui(() -> thinkCombo(built.parent()).getText()));
+    }
+
     // UC-MCW-2
     @Test
     public void reloadUsesLiveWidgetValues() {
         // GIVEN the base ("store state") points at a dead URL and the widget holds the live mock-server URL (typed, no Apply)
         var built = ui(() -> newWidget(
                 () -> LlmConfig.newConfig(AiProvider.OPEN_AI, "gpt-4o", "http://127.0.0.1:1/v1"),
-                new ModelConfigWidget.ConnectionValues(null, null, null, "", "gpt-4o", null)));
+                new ModelConfigWidget.ConnectionValues(null, null, null, "", "gpt-4o", null, null)));
         ui(() -> {
             urlText(built.parent()).setText(mockLlmServer.getUrl());
             return null;
@@ -185,7 +258,7 @@ public class ModelConfigWidgetTest extends AbstractSwtUiTest {
 
         // AND the other way: a live base with a dead URL typed in the widget → no list (widget identity still wins)
         var builtDead = ui(() -> newWidget(() -> mockLlmServer.newConfig("gpt-4o"),
-                new ModelConfigWidget.ConnectionValues(null, null, null, "", "gpt-4o", null)));
+                new ModelConfigWidget.ConnectionValues(null, null, null, "", "gpt-4o", null, null)));
         ui(() -> {
             urlText(builtDead.parent()).setText("http://127.0.0.1:1/v1");
             return null;
@@ -232,7 +305,7 @@ public class ModelConfigWidgetTest extends AbstractSwtUiTest {
         // GIVEN a widget with an Ollama connection loaded (think = toggle form)
         var built = ui(() -> newWidget(() -> LlmConfig.newOllama("mock-model"),
                 new ModelConfigWidget.ConnectionValues(AiProvider.OLLAMA, "http://127.0.0.1:11434", "secret", "false",
-                        "mock-model", null)));
+                        "mock-model", null, null)));
 
         // THEN the temperature field sits right after the think field (binding 6) and is rendered
         // (no provider gate — request-level like think, R-T5). Rendered indices 12/13: the
@@ -248,7 +321,7 @@ public class ModelConfigWidgetTest extends AbstractSwtUiTest {
         // GIVEN a widget loaded with a temperature
         var built = ui(() -> newWidget(() -> LlmConfig.newOllama("mock-model"),
                 new ModelConfigWidget.ConnectionValues(AiProvider.OLLAMA, "http://127.0.0.1:11434", null, "false",
-                        "mock-model", "0.7")));
+                        "mock-model", "0.7", null)));
 
         // THEN the value round-trips load → getValues
         assertEquals("0.7", ui(built.widget()::getValues).temperature());
@@ -317,6 +390,13 @@ public class ModelConfigWidgetTest extends AbstractSwtUiTest {
         throw new AssertionError("expected temperature text, got " + c.getClass().getSimpleName());
     }
 
+    /** UI-thread only. The extra-body field — created once, gated live per provider (R-DEF-11). */
+    private static Text extraBodyText(Composite parent) {
+        var c = parent.getChildren()[16];
+        if (c instanceof Text t) return t;
+        throw new AssertionError("expected extra-body text, got " + c.getClass().getSimpleName());
+    }
+
     /** UI-thread only. The rendered children — GridLayout honors only {@code GridData.exclude}. */
     private static Control[] rendered(Composite parent) {
         var list = new java.util.ArrayList<Control>();
@@ -338,14 +418,6 @@ public class ModelConfigWidgetTest extends AbstractSwtUiTest {
             }
         }
         fail("no refresh button in " + parent);
-    }
-
-    /** UI-thread only. */
-    private static boolean hasLabelContaining(Composite parent, String needle) {
-        for (var child : parent.getChildren()) {
-            if (child instanceof Label l && l.getText().toLowerCase().contains(needle)) return true;
-        }
-        return false;
     }
 
     private void waitUntil(BooleanSupplier condition, String timeoutMessage) {

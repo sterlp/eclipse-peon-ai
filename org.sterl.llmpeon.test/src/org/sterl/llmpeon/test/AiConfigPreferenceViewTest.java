@@ -197,6 +197,22 @@ public class AiConfigPreferenceViewTest extends AbstractSwtUiTest {
         assertEquals("0.7", prefs.get(TEMPERATURE_KEY, null));
     }
 
+    // UC-DEF-11
+    @Test
+    public void hiddenThinkKeySurvivesOk() {
+        // GIVEN the fixture is Gemini (no think support → the think field is hidden) with a stored dev think
+        var store = new EclipseLlmConfigStore(prefs);
+        store.put(PeonConstants.PREF_PROVIDER_TYPE, "GOOGLE_GEMINI");
+        store.put(THINK_KEY, "false");
+
+        // WHEN the page is built and OK is pressed without any change
+        var page = ui(() -> buildPage());
+        ui(page::performOk);
+
+        // THEN the stored think key survives (hidden ≠ delete: the hidden field returns its last visible value)
+        assertEquals("false", prefs.get(THINK_KEY, null));
+    }
+
     // UC-MCW-4
     @Test
     public void reloadDoesNotTouchStore() {

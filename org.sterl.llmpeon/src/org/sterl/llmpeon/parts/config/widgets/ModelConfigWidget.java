@@ -20,9 +20,9 @@ import org.sterl.llmpeon.provider.ThinkValueSupport;
 import org.sterl.llmpeon.shared.StringUtil;
 
 /**
- * The connection field group (provider · URL · API key · model · think · temperature) plus the
- * ping button, shared by the basic config page and the advanced page's dev (default) section — a
- * plain controller (no SWT parent of its own, like {@link ModelComboWidget}):
+ * The connection field group (provider · URL · API key · model · think · temperature · extra
+ * body) plus the ping button, shared by the basic config page and the advanced page's dev
+ * (default) section — a plain controller (no SWT parent of its own, like {@link ModelComboWidget}):
  * it creates the fields directly in the given 2-column parent grid so they sit in the same field
  * column as the page's other fields.
  *
@@ -40,9 +40,14 @@ import org.sterl.llmpeon.shared.StringUtil;
  * stable (dispose + recreate would append the new controls at the end of the parent's
  * children). Carry-over on a provider
  * change: verbatim where the new form allows free input (toggle combo / free text), cleared for a
- * fixed list without a match (never a silent replacement), dropped for {@link ThinkSupport.None}.
- * Think is not part of the {@link org.sterl.llmpeon.ai.ConnectionIdentity} and never flows into
- * {@link #snapshot()}.</p>
+ * fixed list without a match (never a silent replacement), preserved for {@link ThinkSupport.None}
+ * (hidden ≠ delete, R-DEF-11). Think is not part of the
+ * {@link org.sterl.llmpeon.ai.ConnectionIdentity} and never flows into {@link #snapshot()}.</p>
+ *
+ * <p><b>Extra body (R-DEF-9/11):</b> binding 6 — the composed {@link ExtraBodyWidget} with a live
+ * provider gate (created once, toggled via {@code GridData.exclude} on provider changes); a
+ * hidden field keeps returning its last visible value (hidden ≠ delete). Like think, it is
+ * request-level and never flows into {@link #snapshot()}.</p>
  *
  * <p><b>Constructor contract:</b> the parent is the page's 2-column grid; the widget creates its
  * own labels — JFace Field-Editor style ({@code SWT.LEFT}, no GridData) on the basic page,
@@ -76,6 +81,8 @@ public class ModelConfigWidget {
     private Combo thinkCombo;
     private Text thinkText;
     private final Text temperatureText;
+    private final ExtraBodyWidget extraBody;
+    private String hiddenThink; // the think value while the form is None (hidden ≠ delete, R-DEF-11)
 
     /**
      * @param parent the 2-column grid to build into (the basic page)
@@ -105,7 +112,7 @@ public class ModelConfigWidget {
         providerCombo.setItems(labels());
         providerCombo.select(0);
         providerCombo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-        providerCombo.addListener(SWT.Selection, e -> rebuildThinkOnProviderChange());
+        providerCombo.addListener(SWT.Selection, e -> onProviderChange());
 
         addLabel("URL (incl. port):");
         urlText = new Text(parent, SWT.BORDER);
@@ -144,15 +151,18 @@ public class ModelConfigWidget {
         addLabel("Temperature (empty = unset):");
         temperatureText = new Text(parent, SWT.BORDER);
         temperatureText.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+
+        // Extra body (R-DEF-9/11): live provider gate — created once, toggled via GridData.exclude.
+        extraBody = new ExtraBodyWidget(parent, LlmProviders.of(provider()).supportsExtraBody(), labelStyle);
     }
 
     /** The connection values as currently shown (null fields = empty, think "" = unset). */
     public record ConnectionValues(AiProvider provider, String url, String apiKey, String think, String model,
-            String temperature) {
+            String temperature, String extraBody) {
         @Override
         public String toString() {
-            return "ConnectionValues[provider=%s, url=%s, apiKey=***, think=%s, model=%s, temperature=%s]"
-                    .formatted(provider, url, think, model, temperature);
+            return "ConnectionValues[provider=%s, url=%s, apiKey=***, think=%s, model=%s, temperature=%s, extraBody=%s]"
+                    .formatted(provider, url, think, model, temperature, extraBody);
         }
     }
 
@@ -162,14 +172,17 @@ public class ModelConfigWidget {
 
     /** Populates the widgets from the given values (null-safe; builds the think field per provider form). */
     public void load(ConnectionValues values) {
-        var v = values == null ? new ConnectionValues(null, null, null, null, null, null) : values;
+        var v = values == null ? new ConnectionValues(null, null, null, null, null, null, null) : values;
         var idx = providerIndex(v.provider());
         providerCombo.select(idx >= 0 ? idx : 0); // unknown stored value → first entry (ComboFieldEditor parity)
         urlText.setText(StringUtil.stripToEmpty(v.url()));
         keyText.setText(StringUtil.stripToEmpty(v.apiKey()));
         modelWidget.setModel(v.model());
         temperatureText.setText(StringUtil.stripToEmpty(v.temperature()));
+        hiddenThink = null; // explicit load: the preserved value is re-fed from the loaded values below
         applyThinkForm(LlmProviders.of(provider()).thinkSupport(), v.think(), false);
+        extraBody.setBody(v.extraBody());
+        extraBody.applyGate(LlmProviders.of(provider()).supportsExtraBody());
     }
 
     /** Reads the widgets back (UI thread); empty fields become null, think "" = unset. */
@@ -179,7 +192,8 @@ public class ModelConfigWidget {
                 StringUtil.stripToNull(keyText.getText()),
                 readThink(),
                 StringUtil.stripToNull(modelWidget.getModel()),
-                StringUtil.stripToNull(temperatureText.getText()));
+                StringUtil.stripToNull(temperatureText.getText()),
+                extraBody.getExtraBody());
     }
 
     /**
@@ -249,10 +263,11 @@ public class ModelConfigWidget {
 
     // --- think field (provider-dependent, live form switch — R-MCW-6) ---
 
-    /** Provider-combo selection: carry the current value over and switch to the new form. */
-    private void rebuildThinkOnProviderChange() {
+    /** Provider-combo selection: carry the current values over and switch to the new forms. */
+    private void onProviderChange() {
         var carried = readThink(); // read before the form switch
         applyThinkForm(LlmProviders.of(provider()).thinkSupport(), carried, true);
+        extraBody.applyGate(LlmProviders.of(provider()).supportsExtraBody());
     }
 
     /**
@@ -260,8 +275,9 @@ public class ModelConfigWidget {
      * combo items and the show/hide state change in one run, then one layout — no flicker
      * window) — and applies the value. With {@code carried=true} (provider change): verbatim
      * where the form allows free input, cleared for a fixed list without a match (never a
-     * silent replacement), dropped for {@link ThinkSupport.None}. With {@code carried=false}
-     * (explicit load): an unknown values-list entry is shown verbatim (advanced-page parity).
+     * silent replacement), preserved for {@link ThinkSupport.None} (hidden ≠ delete, R-DEF-11).
+     * With {@code carried=false} (explicit load): an unknown values-list entry is shown verbatim
+     * (advanced-page parity).
      */
     private void applyThinkForm(ThinkSupport form, String value, boolean carried) {
         thinkForm = form;
@@ -303,8 +319,9 @@ public class ModelConfigWidget {
             else thinkCombo.setText(display); // explicit load: unknown value shown verbatim
         } else if (thinkForm instanceof ThinkSupport.FreeString || thinkForm instanceof ThinkSupport.Unknown) {
             thinkText.setText(StringUtil.stripToEmpty(value)); // verbatim
+        } else {
+            hiddenThink = value; // ThinkSupport.None → field hidden, value preserved (hidden ≠ delete, R-DEF-11)
         }
-        // ThinkSupport.None → no field (value dropped)
     }
 
     private String readThink() {
@@ -313,6 +330,6 @@ public class ModelConfigWidget {
         if (thinkForm instanceof ThinkSupport.FreeString || thinkForm instanceof ThinkSupport.Unknown) {
             return StringUtil.stripToEmpty(thinkText.getText());
         }
-        return ""; // None
+        return StringUtil.stripToEmpty(hiddenThink); // None → the preserved value (hidden ≠ delete, R-DEF-11)
     }
 }

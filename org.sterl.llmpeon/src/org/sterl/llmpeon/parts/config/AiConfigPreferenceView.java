@@ -80,7 +80,7 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
         var devRecord = LlmPreferenceInitializer.buildWithDefaults().modelConfigFor(AgentModelConfig.DEV);
         return new ModelConfigWidget.ConnectionValues(providerOrNull(store.getString(PeonConstants.PREF_PROVIDER_TYPE)),
                 store.getString(PeonConstants.PREF_URL), store.getString(PeonConstants.PREF_API_KEY), devRecord.think(),
-                store.getString(PeonConstants.PREF_MODEL), devRecord.temperature());
+                store.getString(PeonConstants.PREF_MODEL), devRecord.temperature(), devRecord.extraBody());
     }
 
     private static AiProvider providerOrNull(String name) {
