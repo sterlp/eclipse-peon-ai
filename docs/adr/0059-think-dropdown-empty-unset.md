@@ -1,4 +1,6 @@
 # ADR-0059: Think — Checkbox raus, leer = unset (Issue #149)
+> **Note (2026-09-29):** Die Off-Token-Semantik für String-Provider (Omission bei OPEN_AI & Co.) ist
+> durch [ADR-0064](0064-verbatim-think-values.md) superseded — „leer = unset" bleibt.
 
 **Status:** Accepted (2026-09-27, Paul)
 

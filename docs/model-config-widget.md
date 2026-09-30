@@ -122,10 +122,12 @@ deshalb baut sich das Think-Feld **bei jedem Provider-Wechsel live neu** (keine
 Construction-time-Freeze). Reload/Ping-Identity enthält Think nicht (R-THINK-Semantik: Think ist
 Request-Level, nicht Connection-Identity).
 
-Wert-Verhalten beim Provider-Wechsel (Paul bestätigt, 2026-09-28): der getippte/gewählte Wert wird
-**verbatim übernommen, solange die neue Form freie Eingabe erlaubt** (Toggle/FreeString); bei
-einer festen Options-Liste (Values/READ_ONLY) wird das Feld **geleert**, wenn der Wert nicht in
-der Liste steht — nie ein stiller Ersatzwert.
+Wert-Verhalten beim Provider-Wechsel: der getippte/gewählte Wert wird **verbatim übernommen —
+kein Clear, kein stiller Ersatzwert**, auch beim Listen-Wechsel (ab R-THINK-11/12,
+[ADR-0064](adr/0064-verbatim-think-values.md)). Die Regel vom 2026-09-28 („Values-Liste leert das
+Feld bei Nicht-Match") ist damit **supersedes**: die Combos listen die echten Provider-Werte,
+geleert wird nur beim Übergang nach unset. Test:
+`thinkKeptVerbatimByListSwitchSurvivesNoneTransition`.
 
 **Das Basic-Think-Feld ist der Default-Editor** ([R-THINK-10](per-agent-think.md),
 [ADR-0061](adr/0061-think-default-base-think-fallback.md)): sein Wert gilt für alle Agenten ohne

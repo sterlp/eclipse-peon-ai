@@ -111,6 +111,10 @@ class AiProviderRequestParametersTest {
         var banana = (OpenAiChatRequestParameters) params(AiProvider.OPEN_AI, mc(AiProvider.OPEN_AI, "banana"));
         assertThat(banana.reasoningEffort()).isEqualTo("banana");
 
+        // padded value is sent as-is, no trim (mutation falsifier, ADR-0064)
+        var padded = (OpenAiChatRequestParameters) params(AiProvider.OPEN_AI, mc(AiProvider.OPEN_AI, " high "));
+        assertThat(padded.reasoningEffort()).isEqualTo(" high ");
+
         // blank = unset = nothing sent
         var blank = (OpenAiChatRequestParameters) params(AiProvider.OPEN_AI, mc(AiProvider.OPEN_AI, "   "));
         assertThat(blank.reasoningEffort()).isNull();
@@ -129,6 +133,9 @@ class AiProviderRequestParametersTest {
             var p = (OpenAiChatRequestParameters) params(AiProvider.LM_STUDIO, mc(AiProvider.LM_STUDIO, v));
             assertThat(p.customParameters()).as("verbatim %s", v).containsEntry("reasoning", v);
         }
+        // padded value is sent as-is, no trim (mutation falsifier, ADR-0064)
+        var padded = (OpenAiChatRequestParameters) params(AiProvider.LM_STUDIO, mc(AiProvider.LM_STUDIO, " high "));
+        assertThat(padded.customParameters()).containsEntry("reasoning", " high ");
     }
 
     // UC-THINK-1

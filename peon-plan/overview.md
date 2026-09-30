@@ -15,6 +15,8 @@
 - **Inc 3** ✅ (2026-09-29): `isTrue`/`isFalse` raus (0 Consumer, grep-verifiziert), `/thinking/OPEN_AI` gelöscht (ANTHROPIC bleibt), `ThinkModelMappingTest` OPEN_AI-Fälle raus (Anthropic + OLLAMA bleiben). Surefire 1057 → **1055/0/0** (voller grün, inkl. Anthropic-Frozen-Beweise `anthropicGenericOnUsesModelMapping` + `ThinkModelMappingTest` Anthropic). Build clean (0 Errors).
 - **Inc 4** ✅ (2026-09-29): Core ✅ (`ThinkValueSupport`: OFF/AUTO/valuesItems/valuesDisplay/valuesStored raus, 1051/0/0) + Widgets ✅ (`ModelConfigWidget` + `AgentModelConfigSection` §2.4 verbatim, `select(0)` :127 tot, `carried`-Parameter tot). **⚠️ Plan-§8-Lücke (Jon: „war meins, Befund berechtigt"):** PDE `AgentModelConfigSectionTest` pinnte Off/Auto am ANTHROPIC-Combo (2 Tests nicht inventarisiert; `AnthropicProvider:89` = `Values([adaptive, enabled])`). **Gate-Entscheidung Jon Option A (2026-09-29):** ANTHROPIC-Combo = nur `values()` (`[adaptive, enabled]`), editierbar, leer=unset, kein Default — exakt SOLL (frozen ist Anthropics Wire-Übersetzungsschicht, nicht die Combo-UI); beide Tests mechanisch adaptiert. **3. §8-Lücke (Paul-Meldung, im PDE-Run bestätigt):** `ModelConfigWidgetTest.thinkClearedByListSwitchStaysClearedAfterNoneTransition` (:240–267, UC-DEF-11) pinnte die alte clear-Semantik (R-MCW-6: kein Match → `""`; Failure `expected:<[]> but was:<[high]>` :255) → SOLL-konform adaptiert + rename `thinkKeptVerbatimByListSwitchSurvivesNoneTransition` (verbatim + R-DEF-11-Preserve-Pfad bleibt geprüft). **Gate grün: Core-Surefire 1051/0/0, 3-Projekt-Build 0 Errors, PDE-Suite 313/0/0. Commit `1fc34679`.**
 - **Inc 5** ✅ (2026-09-29): Homepage (§3-Stellen: `advanced-configuration.md` :58–61 Off-Token→nur-Ollama + :67–77 Mapping→nur-Anthropic („Auto vs. manual" raus) + :81 OpenAI-Familie verbatim; `configuration.md` :209; `custom-agents.md` :82). **Final-Gate grün: Core-Surefire 1051/0/0 (final), 3-Projekt-Build 0 Errors, PDE-Suite 313/0/0 (final).** **Lint-Gate: 0 Probleme** (12/12 UC-THINK-IDs, 60 Test-IDs). Status-Flip R-THINK-11/12 in `docs/per-agent-think.md` = JON (PO).
+- **Da-Dok-Nachtrag** ✅ (2026-09-30): Da-Dok-Review (CONCERNS, keine Blocker) → 2 Nachträge umgesetzt: (1) **F2 Labels** `ModelConfigWidget.java:285` + `AgentModelConfigSection.java:129` „empty = off" → „empty = unset" (ehrlich + Konvention `Temperature (empty = unset):`; kein Test pinnt den Text-Branch, nur Combo-Branch „Think (Default):" = unverändert). (2) **Mutation-Falsifikator** (§12.4): gepaddeter Wert `" high "` as-is in `openAiPlainVerbatim` (:114–116) + `lmStudioReasoningVerbatim` (:136–138) → `.trim()`-Mutant wird rot. **Gate grün: Core-Surefire 1051/0/0 (Assertions in bestehenden Tests, keine neuen @Test), Plugin-Build 0 Errors (nur 10 bekannte Warnings).** Kein Commit — wartet auf Jon-Go (gemeinsamer Commit Code+Homepage+docs/** + planImplemented).
+
 
 ## 0. STOP-AND-ASK (Pflicht — Paul 2026-09-08)
 
@@ -358,3 +360,60 @@ Verhaltensänderungen, die SOLL-Docs berühren (für Jon nach grünem Gate, mit 
 
 ---
 *Plan-Quellen: ADR-0064 + per-agent-think.md §Rework (SOLL); IST grep-/read-verifiziert am 2026-09-29 (Zeilen in §3/§8). Surefire-Baseline-Ziel: Inc 1 dokumentiert.*
+
+---
+
+## 12. Review R-THINK-11/12 — Verbatim-Think (Da Dok, 2026-09-29, Pre-Mortem)
+
+**Verdict: CONCERNS** — SOLL==IST auf Code-Ebene, alle 5 Increments umgesetzt (inkl. PO-gebilligter Deviations), keine Blocker, keine REJECTED-Rework-Items für Da Mek. Gaps sind: 1 veraltete Test-Javadoc, 1 irreführendes UI-Label (pre-existing, 1-Zeiler), 2 stale SOLL-Docs (PO/Jon-Bereich), 1 PDE-Evidenzlücke (Umbegung, kein Code), 1 Plan-Text-Unterspezifikation, und 1 **nicht abgedeckte Trim-Mutation** im Verbatim-Kanal.
+
+### 12.1 Checkpoint-Evidenz (re-verifiziert, nicht geglaubt)
+
+| Check | Resultat |
+|---|---|
+| Lint `UC-THINK-\d+` | 12/12 UC-IDs, 60 Test-IDs, **0 Probleme** ✓ |
+| Core Surefire HEAD `b7f175e6` | **1051/0/0/0**, BUILD SUCCESS ✓ |
+| Core Surefire inc-1 `3b7d5df4` (Worktree `/tmp/peon-inc1`) | 1060 Tests, **exakt 7 rot**, alle SOLL-inventarisiert (§8), 0 ungeplant: `legacyThinkSupportedFalse_…_withLiteralFalseEffort`, `openAiPlainVerbatim`, `openAiOfficialGenericOnSendsLiteralTrue`, PerAgent `S1/S2[5]` `lmstudio-true`, `S1/S2[6]` `ollama-nein` ✓ |
+| Test-Arithmetik | 1054 +6 (3 PerAgent-Zeilen × 2 Methoden) +1 (reasoningEffortOf) −1 (openAiPlainGenericOnKnownMapsToHigh) = 1060 → −4+1 = 1057 → −2 = 1055 → −4 = **1051** ✓ end-to-end nachvollziehbar |
+| 3-Projekt-Eclipse-Build | **0 Errors** (llmpeon-core 328, plugin 10, test 0 Marker = nur vorgefundene Null-Safety-Warnings, keine in geänderten Dateien) ✓ |
+| PDE headless (`mvn verify -pl org.sterl.llmpeon.test -am`) | **FAILED am Launch (Umbegung, kein Code):** `ClassNotFoundException org.eclipse.jdt.debug.core.IJavaBreakpoint cannot be found by org.sterl.llmpeon_2.8.1.202609101148` (stale Bundle-Qualifier, Target-Closure) → PDE-Claim 313/0/0 **nicht unabhängig re-verifizierbar** (→ F5) |
+| SDK-Vertrag (`javap`) | `ReasoningEffort` (openai-java-core **4.35.0**, Plan zitiert 4.41.0 → F8): final class, `of()` lenient, `asString()` = Rohtext, `Known` = none..xhigh ✓ — Inc-1-Deviation `asString()` statt Plan-Sketch `value()` ist javap-belegt und planautorisiert (STOP-AND-ASK-Punkt 5 → grün) |
+| Provider-Wiring | alle 4 OpenAI-Familien via `effortFor` (`OpenAiProvider:63`, `GithubCopilotProvider:77` direkt; `OpenAiOfficialProvider:44`, `GithubModelsProvider:56` via `openAiOfficialParameters:113`); `thinking/OPEN_AI` gelöscht, `thinking/ANTHROPIC` bleibt; **0** stale Refs auf `valuesItems`/`valuesDisplay`/`valuesStored`/`toReasoning`/`toReasoningEffort` (grep) ✓ |
+
+### 12.2 Befunde
+
+**F1 (CONCERNS, veraltete Test-Javadoc):** `AiProviderRequestParametersTest.java:20–25` — Klassen-Javadoc beschreibt noch das **3-Stage-Schema** („off → provider-specific off/omit, concrete level → verbatim, generic on → ThinkModelMapping"). Durch ADR-0064 überholt; alle Einzeltests sind aktuell, nur die Klassen-Erklärung ist stale. 1-Block-Fix.
+
+**F2 (CONCERNS, Top-Risk — UI-Label lügt über „off"):** `ModelConfigWidget.java:285` („Think (Default, empty = off):", FreeString/Unknown-Branch) + `AgentModelConfigSection.java:129` („Think (empty = off):", FreeString/Unknown-Branch). Unter dem neuen SOLL ist Leergang = **unset = nichts senden = Modell entscheidet** — bei Denkmodellen meist **ON**, nicht off. Die Homepage (User-Doc) sagt korrekt „empty = unset". Das Label ist exakt die Lügen-Klasse, die ADR-0064 tötet (Config sagt „off", Verhalten = Modell denkt). **Pre-existing** (nicht von dieser Story eingeführt), 1-Zeiler, außerhalb des Plan-Scope → kein Rework-Item, optionaler Follow-up-Kandidat.
+
+**F3 (DOKU-FÜR-JON, ADR-0064-interner Widerspruch):** `docs/adr/0064-verbatim-think-values.md:33–35` (Decision 3) listet „Anthropic/Gemini/**Copilot**" unter „provider-eigene Übersetzungsschicht" — **Widerspruch** zu Decision 1 (:22–26, GITHUB_COPILOT = verbatim mit der OpenAI-Familie), der korrigierten UC-Zeile `per-agent-think.md:159–161`, Q2 (2026-09-29) und dem Code (`GithubCopilotProvider:77` via `effortFor`). **Fix: „Copilot" aus Decision 3 streichen.** Zusätzlich: ADR-0064 ist **uncommitted (`??`)**, und `per-agent-think.md`, `adr/0059-think-dropdown-empty-unset.md`, `adr/index.md`, `index.md`, `open-points.md` sind uncommitted (`M`) — Status-Flip R-THINK-11/12 (per-agent-think.md, noch ❌) + Commit ist **Jons** Aufgabe nach grünem Gate. Plan-§9-Open-Item (D1-Liste) ist stale — D1 ist im Working-Tree-ADR bereits korrigiert.
+
+**F4 (NOTE, pre-existing Asymmetrie):** `AgentModelConfigSection.readThink:173` mappt None-Provider → `""`, während `ModelConfigWidget` via `hiddenThink` preserviert (`:321`/`:332`, R-DEF-11). Beide pre-existing, out-of-scope.
+
+**F5 (Evidenzlücke, Umbegung):** PDE-Suite 313/0/0 konnte headless nicht re-gefahren werden (12.1). Mitigation: Test-Projekt-Build 0 Errors; kein stale Off/Auto-Auto-Auto im PDE-Testcode (grep ✓); die unveränderten think-relevanten PDE-Tests (`AiConfigPreferenceViewTest` `indexOf("low")`/`indexOf("true")`/`hiddenThinkKeySurvivesOk`, `AiAdvancedPreferenceViewTest`, `UiCommandTest`) sind mit der neuen Semantik kompatibel. → PDE-Run bei nächster Gelegenheit (Eclipse oder reparierte headless-Umbegung) nachholen.
+
+**F6 (PLAN-COVERAGE-GAP, Plan-Text nicht Code):** Plan §3/§8 unter-spezifizierten den Assert-Flip in `ModelConfigWidgetTest.java:117–118` (`thinkFieldFollowsProviderChange`: `""`→`"false"` = verbatim-keep nach Wechsel zu Provider, der den Wert nicht unterstützt). Der Code folgt §2.4 korrekt (einheitliche Logik: kein Match → `setText(value)`); nur die Test-Inventar-Zeile fehlt in §8. **Keine Dev-Deviation** — Da Mek hat exakt den Plan umgesetzt, der Plan hat diese Test-Zeile nur nicht aufgeführt.
+
+**F7 (DOKU-FÜR-JON, R-MCW-6 stale):** `docs/model-config-widget.md:125–128` pinnt das alte SOLL: „bei einer festen Options-Liste (Values/READ_ONLY) wird das Feld **geleert**, wenn der Wert nicht in der Liste steht — nie ein stiller Ersatzwert" (Paul bestätigt 2026-09-28). ADR-0064 (2026-09-29, neuer) + UC-THINK-11 + die PO-gebilligte Inc-4-Rename (Deviation 3: `thinkKeptVerbatimByListSwitch…`) überstimmen: kein Match → **wert bleibt verbatim** (keine Whitelist, keine Still-Korrektur). Doc muss aktualisiert werden (Jon-Bereich). Hinweis: Die R-MCW-6-Präzedenz für die **Modell-/Extra-Body-Listen** in `default-inheritance.md:171–172` bleibt gültig (das ist Listen-Clearing, nicht Think).
+
+**F8 (Minor IST-Drift):** Plan §2.3 zitiert `openai-java-core-4.41.0.jar`; die resolved Version ist **4.35.0** — Vertrag identisch (12.1). Keine Aktion.
+
+### 12.3 Dreiseitiger Abgleich
+
+- **Plan↔Code:** Alle 5 Increments wie geplant umgesetzt, inkl. PO-gebilligter Deviations (LmStudio-Fix nach Inc 2 vorgezogen; Option A ANTHROPIC-Combo `[adaptive, enabled]` editierbar/leer=unset; Test-Rename `thinkKeptVerbatimByListSwitch…`). §2.5-Clean-Break-Checkliste eingehalten (0 stale Refs). Einzige nicht-PO-Deviation: `asString()` statt `value()` (javap-belegt, STOP-AND-ASK 5 → grün) ✓.
+- **Docs↔Code (SOLL==IST):** UC-THINK-11 — alle SOLL-Bullets gepinnt (§6-Mapping vollständig: `none`→`"none"`, `true`→`"true"` (beide Kanäle), `xhigh`→`xhigh`, Leergang→omit, LM `off`/`true` verbatim, legacy `false`→`"false"`, Combo ohne Off/Auto, `/thinking/OPEN_AI` weg / ANTHROPIC bleibt). UC-THINK-12 — `ja`→true, `nein`→false (Unit + E2E), bestehende Tokens unverändert, Groß/Klein egal. Frozen-Kontrakt — `anthropicGenericOnUsesModelMapping`, Anthropic-Budget, Ollama off/unset, Gemini, `frontmatter high→high`, Compact-Slots, `ProviderCapabilitiesTest`, `ReasoningPresetsTest` — alle grün in den 1051. **Code implementiert SOLL ohne Gap.**
+- **Docs↔Plan:** Plan deckt alle SOLL-Bullets ab; PO-Entscheidungen (Q2, Q4, Option A + Rename) sind im Plan verankert. Gaps: F6 (Test-Inventar) ist Plan-Text-Lücke; F3/F7 sind PO-Doc-Themen (nicht Dev-Rework).
+
+### 12.4 Mutation-Check (Empfehlung für PO-Repair-Plan)
+
+- `TOGGLE_OFF`: **abgedeckt** — `nein`/`NEIN`/`ja`/`Ja`/`none`/`no`/`false`/`FALSE` + Case-Insensitiv + E2E `ollama-nein` (false).
+- `effortFor` Off-Omission- und On-Mapping-Mutation: **falsifizierbar** (`openAiPlainVerbatim` none-Teilkasus, `openAiOfficialGenericOnSendsLiteralTrue`).
+- **NICHT abgedeckte Mutation (Empfehlung):** `effortFor → hasValue ? think.trim() : null` (bzw. Lowercase/Normalisierung) würde die **gesamte Suite grün** lassen — kein Test speist einen gepaddeten/großgeschriebenen Wert in den String-Kanal ein (UI strippt via `stripToEmpty` vor der Speicherung, die Mutation ist auch E2E unsichtbar). **Falsifikator:** ein gepaddeter Teilfall, z. B. `" high "` → `" high "` (wörtlich, mit Leerzeichen) in `openAiPlainVerbatim` oder `lmStudioReasoningVerbatim`. SOLL-Anker: Plan §5 „kein Trim des Wertes".
+
+### 12.5 Risk-Line (Pre-Mortem)
+
+**Wahrscheinlichster späterer Break:** jemand „räumt" den Verbatim-Kanal auf (`.trim()`, `toLowerCase()`, „Normalisierung gegen Known-Liste") — die Tests bleiben grün, und genau die Lügen-Klasse, die ADR-0064 tötet (Config sagt X, Wire bekommt X'), kehrt still zurück. **Änderung, die das Risiko am meisten senkt:** (1) ein gepaddeter-Wert-Test im String-Kanal (12.4) — macht die Trim-Mutation rot; (2) F2-Label-Fix, damit die UI nicht mehr „off" andeutet.
+
+### 12.6 PO-Repair-Plan-Zusammenfassung
+
+**Keine Rework-Items** (kein REJECTED-Trigger). Optionaler Follow-up (alles Trivial): F1 Javadoc-Block, F2 Label ×2, F3 ADR-„Copilot" streichen + uncommitted-Docs committen, F7 R-MCW-6-Doc-Zeile aktualisieren, gepaddeter-Wert-Test (12.4). PDE-313/0/0-Re-Run bei nächster Gelegenheit.

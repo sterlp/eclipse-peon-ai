@@ -282,7 +282,7 @@ public class ModelConfigWidget {
         thinkForm = form;
         boolean combo = form instanceof ThinkSupport.Toggle || form instanceof ThinkSupport.Values;
         boolean text = form instanceof ThinkSupport.FreeString || form instanceof ThinkSupport.Unknown;
-        thinkLabel.setText(text ? "Think (Default, empty = off):" : "Think (Default):");
+        thinkLabel.setText(text ? "Think (Default, empty = unset):" : "Think (Default):");
         if (form instanceof ThinkSupport.Toggle) {
             thinkCombo.setItems(ThinkValueSupport.toggleItems().toArray(String[]::new));
         } else if (form instanceof ThinkSupport.Values v) {

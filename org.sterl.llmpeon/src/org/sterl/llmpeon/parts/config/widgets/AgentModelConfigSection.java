@@ -126,7 +126,7 @@ public class AgentModelConfigSection extends Composite {
             thinkCombo.setItems(v.values().toArray(String[]::new)); // real values, no off/auto (ADR-0064); empty → nothing selected
             thinkCombo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
         } else if (thinkForm instanceof ThinkSupport.FreeString || thinkForm instanceof ThinkSupport.Unknown) {
-            addLabel("Think (empty = off):");
+            addLabel("Think (empty = unset):");
             thinkText = new Text(this, SWT.BORDER);
             thinkText.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
         }
