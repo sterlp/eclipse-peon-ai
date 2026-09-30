@@ -244,12 +244,11 @@ nie asserted; (g) custom-agent×OpenAI-Familie nur Signatur-Smoke. Plus: `ThinkM
 wird geparst, aber ungenutzt (Inc-4-Scope war nur `resolveOff`+`find`); `AiAgent.isThinkEnabled()`
 (deprecated Default) Kandidat fürs nächste Sterben-Inkrement.
 
-## ⏳ User-Smoke Issue #149 (2026-09-27, Paul)
+## 🔒 User-Smoke Issue #149 (2026-09-27, Paul — ✅ 2026-09-30)
 
-UI-Verifikation steht aus: Ollama-Dropdown (""/true/false) in der Advanced-Page, Basis-Checkbox
-weg, `think:false` im Debug-Log bei `false` (der eigentliche Issue-Reporter-Fall), Custom-Agent
-Legacy-Frontmatter (Write → nur `think`). Branch `story/issue-149-think` unveröffentlicht, Merge
-nach Paul-Review.
+Paul-Smoke erfolgreich (2026-09-30, gemeinsamer Smoke aller Zyklen): Ollama-Dropdown (""/true/false)
+in der Advanced-Page, Basis-Checkbox weg, `think:false` im Debug-Log bei `false`, Custom-Agent
+Legacy-Frontmatter — bestätigt.
 
 
 - ⏳ **TrimService-Story (Paul, 2026-09-29, für den nächsten „Architecture & Bug Sprint"):** Head/Tail/Trim ist ein wiederkehrendes Konzept, das in der ganzen Codebasis repliziert wird (ShellTool-Tail, Compact-Stufenkürzung, Tool-Output-Caps, Log-Auszug, webFetch-Paging) → als eigene Story aufnehmen, gemeinsame Klasse (Arbeitstitel `TrimService`/`TrimmedResult`): eine Stelle, die kürzt + disclosed. **Konvention mit in die Docs:** Zeilen zählen/zusammensetzen im Trim-Pfad mit **literal `\n`** statt `lineSeparator()` — plattformunabhängig, funktioniert immer (Paul: „einfach und sehr richtig"); das Konzept soll in `TrimmedResult.toString` dokumentiert sein (verfeinert Memory-Regel 7 für Trim-/Tail-Pfade). Grundlage: `ShellTool.java` (Tail) · Verwandtes: `LogExcerpt`, `TextFileTypes`, Compact-Input-Budget, Tool-Output-Disclosure.

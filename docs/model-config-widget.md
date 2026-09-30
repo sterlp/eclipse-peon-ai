@@ -4,7 +4,7 @@ idPrefix: MCW
 
 # Model Config Widget — Verbindungsfelder live testbar
 
-> **Status:** ✅ done (2026-09-28, `story/model-config-widget` — Inc-0 `c90debfb` · Inc-1 `df4293fe` · Inc-2 `a9691449` · Inc-3 `99c5aecb` · Inc-4 `5fd04c42`; Surefire core 1040/0, OSGi 301/0 + 20 Headless-Skips (bestehendes „Workbench not created"-Muster); SWT-Tests laufen im PDE-Runner, Mutations-Nachweis applyThinkValue). User-Smoke steht aus.
+> **Status:** ✅ done (2026-09-28, `story/model-config-widget` — Inc-0 `c90debfb` · Inc-1 `df4293fe` · Inc-2 `a9691449` · Inc-3 `99c5aecb` · Inc-4 `5fd04c42`; Surefire core 1040/0, OSGi 301/0 + 20 Headless-Skips (bestehendes „Workbench not created"-Muster); SWT-Tests laufen im PDE-Runner, Mutations-Nachweis applyThinkValue). User-Smoke ✅ 2026-09-30.
 > **Heimat der Reload-Fetch-Mechanik:** [model-loading.md](model-loading.md) (R-ML2, neu entschieden)
 > · **Cache je Verbindungs-Identität:** [ADR-0034](adr/0034-connection-cache-by-identity.md)
 > · **Warum:** [ADR-0060](adr/0060-model-config-widget-live-widget-reads.md)

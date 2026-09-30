@@ -53,7 +53,7 @@ Erkennung case-insensitive und getrimmt. Ein nicht-leerer Wert, der kein Off-Tok
 - **GIVEN** think = `"true"` oder `"high"` **WHEN** Ollama-Request **THEN** `think:true`
 - **GIVEN** think = `"false"` **WHEN** LM-Studio-Request **THEN** `reasoning:"false"` (verbatim — ab R-THINK-11, ADR-0064; vorher: Mapping zu `reasoning=off`)
 
-### R-THINK-4: Think-Dropdown statt Checkbox ✅ done (2026-09-27, Paul-Smoke steht aus)
+### R-THINK-4: Think-Dropdown statt Checkbox ✅ done (2026-09-27, Paul-Smoke ✅ 2026-09-30)
 
 #### UC-THINK-4 — thinkToggleComboNotCheckbox
 `ThinkSupport.Boolean` (die per-agent Checkbox, nur Ollama) entfällt ersatzlos — jeder Provider
@@ -64,7 +64,7 @@ mit per-request Think bekommt ein editierbares Dropdown.
 - **GIVEN** Ollama-Dropdown leer **WHEN** gespeichert **THEN** nichts persistiert (unset)
 - Clean Break: `ThinkSupport.Boolean` + `booleanValue`/`booleanOn` verschwinden, keine Migration
 
-### R-THINK-5: Basis-Checkbox „Default model supports thinking" raus ✅ done (2026-09-27, Paul-Smoke steht aus)
+### R-THINK-5: Basis-Checkbox „Default model supports thinking" raus ✅ done (2026-09-27, Paul-Smoke ✅ 2026-09-30)
 
 #### UC-THINK-5 — baseCheckboxRemovedDerivedSupport
 `PREF_THINK_SUPPORTED` (Basic-Seite) entfällt — sie beeinflusste den Request ohnehin nicht und hat

@@ -4,7 +4,7 @@ idPrefix: SEL
 
 # User-Context Selection
 
-> **Status:** ✅ done (2026-09-16, Branch `bugfix/user-context-selection`: `2e51a16`/`5ceb3aa`/`c958d78`, Plugin 216/0 · Core 866/0, Review CONCERNS → abgenommen; User-Smoke steht aus) · **Architektur:** kein eigenes
+> **Status:** ✅ done (2026-09-16, Branch `bugfix/user-context-selection`: `2e51a16`/`5ceb3aa`/`c958d78`, Plugin 216/0 · Core 866/0, Review CONCERNS → abgenommen; User-Smoke ✅ 2026-09-30) · **Architektur:** kein eigenes
 > Architektur-Doc — Bestandskomponenten `UserContext` + `AIChatView`, Regeln siehe `docs/architecture.md`
 
 ## Ziel

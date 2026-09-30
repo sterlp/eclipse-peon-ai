@@ -241,7 +241,7 @@ Response-`inputTokenCount()` → Summe läuft davon). Vor jedem Fix wird gemesse
 - Verwandt: R-CC-1 (Zähler = `inputTokenCount()`), Punkt 4 des
   Compact-Nachbau-Reviews (beide Zahlen im `CompactResult` sichtbar machen).
 
-### R-CC-15 ✅ — Nested-Agent-Usage darf nicht ins Parent-Memory (2026-09-27, gebaut `4cb2783`, Paul-Smoke steht aus)
+### R-CC-15 ✅ — Nested-Agent-Usage darf nicht ins Parent-Memory (2026-09-27, gebaut `4cb2783`, Paul-Smoke ✅ 2026-09-30)
 
 **Fix:** Nested-Request in `SearchAgentTool` mit `.agent(null)` (alle 3 `getAgent()`-Reader
 null-safe: `CompactSessionTool:23-26` ehrlicher Fehler, `ToolService:166-169`/`:221` guarded) +
