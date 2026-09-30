@@ -115,6 +115,40 @@ public class EclipseGrepToolTest extends AbstractIntegrationTest {
                 result.length() < 2048);
     }
 
+    @Test(timeout = 60_000)
+    public void manyMdMatchesAreCappedAndDisclosed() {
+        // GIVEN 110 .md files, each with 5 lines containing "einem text" (550 potential matches —
+        // well past MAX_GREP_FILES=100 and MAX_GREP_LINES=100, so both caps must engage)
+        for (int i = 0; i < 110; i++) {
+            eclipseWriteFile(String.format("grepmany_%03d.md", i),
+                    "# fixture note\n"
+                    + "einem text one\n"
+                    + "einem text two\n"
+                    + "einem text three\n"
+                    + "einem text four\n"
+                    + "einem text five\n");
+        }
+
+        // WHEN grepping "einem text" with the .md type filter
+        String result = tool.eclipseGrepFiles("einem text", PeonTestFixture.PROJECT_NAME, ".md");
+
+        // THEN the line cap renders exactly MAX_GREP_LINES(100) hit lines ...
+        var hitLines = result.lines()
+                .filter(l -> l.matches(".*\\.md:\\d+: .*"))
+                .toList();
+        assertEquals("line cap must render exactly 100 hit lines:\n" + result, 100, hitLines.size());
+        // ... the FULL captured payload stays far below any token-overflow threshold
+        // (a leaked line cap would render ~5x more lines and blow past this bound)
+        assertTrue("many-match payload must stay < 15KB, was " + result.length() + " chars",
+                result.length() < 15000);
+        // ... every truncation is honestly disclosed: showing N of M + the file cap + the mode
+        assertContains(result, "showing 100 of 500 matched lines — narrow your search");
+        assertContains(result, "... result capped at 100 files. Narrow your search path.");
+        assertContains(result, "regex search");
+        // ... and every shown hit is a real .md match on the query, not garbage
+        hitLines.forEach(l -> assertTrue("hit must contain the query:\n" + l, l.contains("einem text")));
+    }
+
     @Test
     public void validRegexReportsRegexMode() {
         String result = tool.eclipseGrepFiles("C++", PeonTestFixture.PROJECT_NAME, ".java");

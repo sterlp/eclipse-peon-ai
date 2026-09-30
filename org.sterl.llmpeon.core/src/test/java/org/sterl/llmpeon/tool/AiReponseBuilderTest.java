@@ -69,6 +69,40 @@ class AiReponseBuilderTest {
     }
 
     @Test
+    void grepCompleteManyHitsAreCappedAndDisclosed() {
+        // GIVEN 500 hits across 125 distinct .md files (125 x 4 lines) — past both caps
+        var hits = new ArrayList<GrepHit>();
+        for (int f = 0; f < 125; f++) {
+            for (int l = 1; l <= 4; l++) {
+                hits.add(new GrepHit("md/file_" + f + ".md", l, "einem text " + l));
+            }
+        }
+        assertThat(hits).hasSize(500);
+        assertThat(GrepHit.fileCount(hits)).isEqualTo(125);
+
+        // WHEN the shared response-assembly layer renders them with the .md type filter
+        String result = AiReponseBuilder.grepComplete(hits, SearchQuery.of("einem text"),
+                AiReponseBuilder.MAX_GREP_FILES, AiReponseBuilder.MAX_GREP_LINES, ".md");
+
+        // THEN the line cap renders exactly 100 hit lines — the first 100 in order, not a sample
+        var hitLines = result.lines()
+                .filter(l -> l.matches(".*\\.md:\\d+: .*"))
+                .toList();
+        assertThat(hitLines).hasSize(100);
+        assertThat(hitLines.get(0)).isEqualTo("md/file_0.md:1: einem text 1");
+        assertThat(hitLines.get(99)).isEqualTo("md/file_24.md:4: einem text 4");
+        // ... hits beyond the cap are NOT rendered ...
+        assertThat(result).doesNotContain("file_25.md");
+        // ... the FULL payload stays small (a leaked cap would render ~5x more lines) ...
+        assertThat(result).hasSizeLessThan(10000);
+        // ... and every truncation is honestly disclosed: showing N of M + file cap + mode
+        assertThat(result)
+                .contains("showing 100 of 500 matched lines — narrow your search")
+                .contains("... result capped at 100 files. Narrow your search path.")
+                .contains("regex search");
+    }
+
+    @Test
     void grepLineCapDisclosesShowingOfM() {
         // R8: 500 hits over 20 files → exactly the first 100 lines + disclosure
         var hits = new ArrayList<GrepHit>();
