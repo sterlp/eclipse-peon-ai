@@ -146,7 +146,7 @@ public class ModelConfigWidget {
         thinkText = new Text(parent, SWT.BORDER);
         thinkText.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
-        applyThinkForm(LlmProviders.of(provider()).thinkSupport(), null, false);
+        applyThinkForm(LlmProviders.of(provider()).thinkSupport(), null);
 
         // Temperature (R-DEF-8): request-level like think — no provider gate, always visible.
         addLabel("Temperature (empty = unset):");
@@ -181,7 +181,7 @@ public class ModelConfigWidget {
         modelWidget.setModel(v.model());
         temperatureText.setText(StringUtil.stripToEmpty(v.temperature()));
         hiddenThink = null; // explicit load: the preserved value is re-fed from the loaded values below
-        applyThinkForm(LlmProviders.of(provider()).thinkSupport(), v.think(), false);
+        applyThinkForm(LlmProviders.of(provider()).thinkSupport(), v.think());
         extraBody.setBody(v.extraBody());
         extraBody.applyGate(LlmProviders.of(provider()).supportsExtraBody());
     }
@@ -267,20 +267,18 @@ public class ModelConfigWidget {
     /** Provider-combo selection: carry the current values over and switch to the new forms. */
     private void onProviderChange() {
         var carried = readThink(); // read before the form switch
-        applyThinkForm(LlmProviders.of(provider()).thinkSupport(), carried, true);
+        applyThinkForm(LlmProviders.of(provider()).thinkSupport(), carried);
         extraBody.applyGate(LlmProviders.of(provider()).supportsExtraBody());
     }
 
     /**
      * Switches the think field to the given form — atomically on the UI thread (label text,
      * combo items and the show/hide state change in one run, then one layout — no flicker
-     * window) — and applies the value. With {@code carried=true} (provider change): verbatim
-     * where the form allows free input, cleared for a fixed list without a match (never a
-     * silent replacement), preserved for {@link ThinkSupport.None} (hidden ≠ delete, R-DEF-11).
-     * With {@code carried=false} (explicit load): an unknown values-list entry is shown verbatim
-     * (advanced-page parity).
+     * window) — and applies the value: a known values-list entry is selected, every other
+     * value is kept verbatim (no whitelist, ADR-0064; empty → nothing selected), and
+     * {@link ThinkSupport.None} preserves the value (hidden ≠ delete, R-DEF-11).
      */
-    private void applyThinkForm(ThinkSupport form, String value, boolean carried) {
+    private void applyThinkForm(ThinkSupport form, String value) {
         thinkForm = form;
         boolean combo = form instanceof ThinkSupport.Toggle || form instanceof ThinkSupport.Values;
         boolean text = form instanceof ThinkSupport.FreeString || form instanceof ThinkSupport.Unknown;
@@ -288,12 +286,12 @@ public class ModelConfigWidget {
         if (form instanceof ThinkSupport.Toggle) {
             thinkCombo.setItems(ThinkValueSupport.toggleItems().toArray(String[]::new));
         } else if (form instanceof ThinkSupport.Values v) {
-            thinkCombo.setItems(ThinkValueSupport.valuesItems(v).toArray(String[]::new));
+            thinkCombo.setItems(v.values().toArray(String[]::new)); // real values, no off/auto (ADR-0064)
         }
         setThinkVisible(thinkLabel, combo || text);
         setThinkVisible(thinkCombo, combo);
         setThinkVisible(thinkText, text);
-        applyThinkValue(value, carried);
+        applyThinkValue(value);
         parent.layout();
     }
 
@@ -308,16 +306,15 @@ public class ModelConfigWidget {
         return combo;
     }
 
-    private void applyThinkValue(String value, boolean carried) {
+    private void applyThinkValue(String value) {
         if (thinkForm instanceof ThinkSupport.Toggle) {
             // editable combo, stored value = displayed value
             thinkCombo.setText(StringUtil.stripToEmpty(value));
         } else if (thinkForm instanceof ThinkSupport.Values) {
-            var display = ThinkValueSupport.valuesDisplay(value);
-            var idx = thinkCombo.indexOf(display);
+            var v = StringUtil.stripToEmpty(value);
+            int idx = thinkCombo.indexOf(v);
             if (idx >= 0) thinkCombo.select(idx);
-            else if (carried) thinkCombo.setText(""); // fixed list, no match → unset (never a silent replacement)
-            else thinkCombo.setText(display); // explicit load: unknown value shown verbatim
+            else thinkCombo.setText(v); // verbatim, no whitelist (ADR-0064); empty → nothing selected
         } else if (thinkForm instanceof ThinkSupport.FreeString || thinkForm instanceof ThinkSupport.Unknown) {
             thinkText.setText(StringUtil.stripToEmpty(value)); // verbatim
         } else {
@@ -326,8 +323,9 @@ public class ModelConfigWidget {
     }
 
     private String readThink() {
-        if (thinkForm instanceof ThinkSupport.Values) return ThinkValueSupport.valuesStored(thinkCombo.getText());
-        if (thinkForm instanceof ThinkSupport.Toggle) return StringUtil.stripToEmpty(thinkCombo.getText());
+        if (thinkForm instanceof ThinkSupport.Toggle || thinkForm instanceof ThinkSupport.Values) {
+            return StringUtil.stripToEmpty(thinkCombo.getText()); // both render in the (editable) combo
+        }
         if (thinkForm instanceof ThinkSupport.FreeString || thinkForm instanceof ThinkSupport.Unknown) {
             return StringUtil.stripToEmpty(thinkText.getText());
         }

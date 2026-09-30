@@ -2,8 +2,6 @@ package org.sterl.llmpeon.provider;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.List;
-
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.ai.AiProvider;
 
@@ -19,35 +17,6 @@ class ThinkValueSupportTest {
     @Test
     void toggleItemsAreUnsetOnOff() {
         assertThat(ThinkValueSupport.toggleItems()).containsExactly("", "true", "false");
-    }
-
-    // --- Values form ---
-
-    @Test
-    void valuesDropdownOffersOffAutoAndValues() {
-        var values = new ThinkSupport.Values(List.of("none", "minimal", "low", "medium", "high", "xhigh"));
-        assertThat(ThinkValueSupport.valuesItems(values))
-                .containsExactly("Off", "Auto", "none", "minimal", "low", "medium", "high", "xhigh");
-    }
-
-    @Test
-    void valuesSelectionMapsToStored() {
-        assertThat(ThinkValueSupport.valuesStored("Off")).isEqualTo("");
-        assertThat(ThinkValueSupport.valuesStored("Auto")).isEqualTo("true");
-        assertThat(ThinkValueSupport.valuesStored("high")).isEqualTo("high");
-    }
-
-    @Test
-    void valuesStoredMapsToDisplay() {
-        assertThat(ThinkValueSupport.valuesDisplay("")).isEqualTo("Off");
-        assertThat(ThinkValueSupport.valuesDisplay(null)).isEqualTo("Off");
-        assertThat(ThinkValueSupport.valuesDisplay("true")).isEqualTo("Auto");
-        assertThat(ThinkValueSupport.valuesDisplay("high")).isEqualTo("high");
-    }
-
-    @Test
-    void unknownValueDisplaysVerbatim() {
-        assertThat(ThinkValueSupport.valuesDisplay("custom-level")).isEqualTo("custom-level");
     }
 
     // --- extra-body gate (provider.md R3) ---

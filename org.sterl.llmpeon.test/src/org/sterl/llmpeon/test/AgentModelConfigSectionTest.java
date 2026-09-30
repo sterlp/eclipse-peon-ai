@@ -66,12 +66,13 @@ public class AgentModelConfigSectionTest extends AbstractSwtUiTest {
         // WHEN built
         var combo = ui(this::findThinkCombo);
 
-        // THEN the think field is a native editable Combo (not a CCombo), items [Off, Auto, adaptive, enabled], default Off
+        // THEN the think field is a native editable Combo (not a CCombo) with the real values
+        // [adaptive, enabled] (no Off/Auto pseudo-entries, ADR-0064) and nothing selected (empty = unset)
         assertTrue("think field must be a native Combo, was " + combo.getClass().getName(),
                 combo instanceof Combo);
         assertTrue("think combo must be editable (no SWT.READ_ONLY)", (combo.getStyle() & SWT.READ_ONLY) == 0);
-        assertArrayEquals(new String[] { "Off", "Auto", "adaptive", "enabled" }, combo.getItems());
-        assertEquals("Off", combo.getText());
+        assertArrayEquals(new String[] { "adaptive", "enabled" }, combo.getItems());
+        assertEquals("empty = unset, no default selection", "", combo.getText());
     }
 
     @Test
@@ -90,7 +91,7 @@ public class AgentModelConfigSectionTest extends AbstractSwtUiTest {
     public void thinkValueRoundtripsThroughRecord() {
         var combo = ui(this::findThinkCombo);
 
-        // GIVEN free text in the combo
+        // GIVEN free text in the combo (no whitelist, ADR-0064)
         ui(() -> {
             combo.setText("custom-level");
             return null;
@@ -99,19 +100,19 @@ public class AgentModelConfigSectionTest extends AbstractSwtUiTest {
         // WHEN read back, the value roundtrips verbatim
         assertEquals("custom-level", ui(() -> section.getRecord().think()));
 
-        // AND known values map to their stored forms
+        // AND the listed values roundtrip as-is (no Off/Auto mapping, ADR-0064)
         ui(() -> {
-            combo.select(1); // Auto
-            return null;
-        });
-        assertEquals("true", ui(() -> section.getRecord().think()));
-        ui(() -> {
-            combo.select(2); // adaptive
+            combo.select(0); // adaptive
             return null;
         });
         assertEquals("adaptive", ui(() -> section.getRecord().think()));
         ui(() -> {
-            combo.select(0); // Off
+            combo.select(1); // enabled
+            return null;
+        });
+        assertEquals("enabled", ui(() -> section.getRecord().think()));
+        ui(() -> {
+            combo.setText(""); // unset
             return null;
         });
         assertEquals("", ui(() -> section.getRecord().think()));

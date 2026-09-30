@@ -29,7 +29,6 @@ import org.sterl.llmpeon.ai.ModelListCache;
 import org.sterl.llmpeon.parts.config.widgets.ModelConfigWidget;
 import org.sterl.llmpeon.provider.LlmProviders;
 import org.sterl.llmpeon.provider.ThinkSupport;
-import org.sterl.llmpeon.provider.ThinkValueSupport;
 
 /**
  * Workbench-display test for the basic page's {@link ModelConfigWidget}: the widget is a
@@ -112,12 +111,12 @@ public class ModelConfigWidgetTest extends AbstractSwtUiTest {
             return null;
         });
 
-        // THEN the think field immediately renders the OpenAI values list and the non-matching value is cleared
-        var expectedItems = ThinkValueSupport
-                .valuesItems((ThinkSupport.Values) LlmProviders.of(AiProvider.OPEN_AI).thinkSupport());
+        // THEN the think field immediately renders the real OpenAI values (no off/auto, UC-THINK-11)
+        // and the non-matching legacy value is kept verbatim (no whitelist, ADR-0064)
+        var expectedItems = ((ThinkSupport.Values) LlmProviders.of(AiProvider.OPEN_AI).thinkSupport()).values();
         assertArrayEquals(expectedItems.toArray(String[]::new), ui(() -> thinkCombo(built.parent()).getItems()));
-        assertEquals("no silent replacement value", "", ui(() -> thinkCombo(built.parent()).getText()));
-        assertEquals("", ui(built.widget()::getValues).think());
+        assertEquals("legacy value kept verbatim, no whitelist", "false", ui(() -> thinkCombo(built.parent()).getText()));
+        assertEquals("false", ui(built.widget()::getValues).think());
 
         // WHEN a listed value is chosen and the provider changes to LM Studio (free string)
         ui(() -> {
@@ -238,7 +237,7 @@ public class ModelConfigWidgetTest extends AbstractSwtUiTest {
 
     // UC-DEF-11
     @Test
-    public void thinkClearedByListSwitchStaysClearedAfterNoneTransition() {
+    public void thinkKeptVerbatimByListSwitchSurvivesNoneTransition() {
         // GIVEN the widget shows OpenAI (fixed values list) with think "high"
         var built = ui(() -> newWidget(() -> LlmConfig.newConfig(AiProvider.OPEN_AI, "gpt-4o", "http://127.0.0.1:1/v1"),
                 new ModelConfigWidget.ConnectionValues(AiProvider.OPEN_AI, "http://127.0.0.1:1/v1", null, "high",
@@ -251,9 +250,8 @@ public class ModelConfigWidgetTest extends AbstractSwtUiTest {
             return null;
         });
 
-        // THEN the field is visibly cleared (R-MCW-6: fixed list without a match → unset,
-        // never a silent replacement)
-        assertEquals("visible clearing, no silent replacement", "", ui(() -> thinkCombo(built.parent()).getText()));
+        // THEN the value is kept verbatim (no whitelist, ADR-0064 — no clearing, no silent replacement)
+        assertEquals("verbatim, no whitelist (ADR-0064)", "high", ui(() -> thinkCombo(built.parent()).getText()));
 
         // WHEN the provider changes to Gemini (no think support → the field is hidden) and the
         // values are read for saving
@@ -262,9 +260,8 @@ public class ModelConfigWidgetTest extends AbstractSwtUiTest {
             return null;
         });
 
-        // THEN think stays empty — the preserve path (hiddenThink) carries the cleared visible
-        // value and must not resurrect the pre-cleared one
-        assertEquals("", ui(built.widget()::getValues).think());
+        // THEN think survives the hidden transition (hidden ≠ delete, R-DEF-11)
+        assertEquals("high", ui(built.widget()::getValues).think());
     }
 
     // UC-MCW-2
