@@ -95,6 +95,27 @@ public class EclipseGrepToolTest extends AbstractIntegrationTest {
     }
 
     @Test
+    public void emptyMdGrepPayloadStaysSmallAndHonest() {
+        // GIVEN the fixture's .md files (README.md, data/notes.md) do not contain "einem text"
+        // WHEN grepping "einem text" with the .md type filter (Paul's 0-hit case)
+        String result = tool.eclipseGrepFiles("einem text", PeonTestFixture.PROJECT_NAME, ".md");
+
+        // THEN the 0-hit payload is honest: R2d "no matches" + R2c mode + searched scope + pattern
+        assertContains(result, "no matches");
+        assertContains(result, "regex search"); // "einem text" is a valid regex -> regex mode
+        assertContains(result, "Searched: " + PeonTestFixture.PROJECT_NAME);
+        assertContains(result, "pattern: einem text");
+        // ... and no file content / bulk data leaks into the empty payload ...
+        assertFalse("empty payload must not leak README.md content:\n" + result,
+                result.contains("Test fixture"));
+        assertFalse("empty payload must not leak notes.md content:\n" + result,
+                result.contains("Fixture notes"));
+        // ... and the FULL captured payload stays far below any token-overflow threshold.
+        assertTrue("empty grep payload must stay < 2KB, was " + result.length() + " chars:\n" + result,
+                result.length() < 2048);
+    }
+
+    @Test
     public void validRegexReportsRegexMode() {
         String result = tool.eclipseGrepFiles("C++", PeonTestFixture.PROJECT_NAME, ".java");
 

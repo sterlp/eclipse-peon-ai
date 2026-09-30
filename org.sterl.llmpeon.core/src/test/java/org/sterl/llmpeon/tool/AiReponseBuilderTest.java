@@ -40,6 +40,35 @@ class AiReponseBuilderTest {
     }
 
     @Test
+    void grepCompleteEmptyResultLeaksNoFileContent() {
+        // GIVEN a large (~70KB) seeded .md file content that does NOT contain the query
+        var seed = new StringBuilder();
+        for (int i = 0; i < 2000; i++) {
+            seed.append("line ").append(i).append(" lorem ipsum dolor sit amet\n");
+        }
+        String content = seed.toString();
+        assertThat(content).hasSizeGreaterThanOrEqualTo(50000).doesNotContain("einem text");
+
+        var query = SearchQuery.of("einem text");
+
+        // WHEN the shared match + assemble path runs over that content (type filter .md)
+        var hits = query.matchingLines(content).stream()
+                .map(lh -> new GrepHit("README.md", lh.line(), lh.text()))
+                .toList();
+        String result = AiReponseBuilder.grepComplete(hits, query,
+                AiReponseBuilder.MAX_GREP_FILES, AiReponseBuilder.MAX_GREP_LINES, ".md");
+
+        // THEN 0 hits -> honest "no matches" + regex mode, and NO seed content leaks into the output
+        assertThat(hits).isEmpty();
+        assertThat(result)
+                .contains("no matches")
+                .contains("regex search")
+                .doesNotContain("lorem ipsum")
+                .doesNotContain("README.md")
+                .hasSizeLessThan(2048);
+    }
+
+    @Test
     void grepLineCapDisclosesShowingOfM() {
         // R8: 500 hits over 20 files → exactly the first 100 lines + disclosure
         var hits = new ArrayList<GrepHit>();
