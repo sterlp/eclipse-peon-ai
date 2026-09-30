@@ -56,29 +56,23 @@ The Think field takes a single value whose form depends on the base provider:
 | **LM Studio** | free text | any value — sent as the custom `reasoning` body property |
 
 - **Empty** — unset: nothing is sent and the model decides (for Ollama the `think` field is omitted entirely).
-- **Off token** (`false` / `off` / `no` / `none`, case-insensitive) — explicit off where the provider knows it: Ollama sends `think:false`, LM Studio sends `reasoning=off`. OpenAI and Anthropic have no off concept — nothing is sent.
-- **Generic on** (`true`) — the [built-in model mapping](#built-in-model-mapping) picks the concrete value for your provider/model.
+- **Off token** (`false` / `off` / `no` / `nein` / `none`, case-insensitive) — interpreted **only by Ollama** (sends `think:false`). On the string providers (OpenAI family, LM Studio) it is just a value and is sent verbatim (`reasoning.effort=false`, `reasoning=off`). On Anthropic it means off — nothing is sent.
+- **Generic on** (`true`) — Anthropic: the [built-in model mapping](#built-in-model-mapping) picks the concrete value for your model. OpenAI family and LM Studio: sent verbatim as `true`.
 - **Concrete value** — used verbatim.
 
 ::: warning The Ollama checkbox is gone
 The old on/off checkbox is replaced by the dropdown, and a previously **off** checkbox now reads as **empty = unset** — the model thinks by default again. To explicitly turn thinking off, select `false`.
 :::
 
-### Auto vs. manual
-
-- **Auto** — the field is set to the generic on (`true`) → Peon uses the built-in mapping for your provider/model.
-- **Manual** — set a concrete value (e.g. `high`, `enabled`) → the mapping is switched off and your value is used verbatim.
-
 ### Built-in model mapping
 
-When the Think field is set to the generic on (`true`), Peon maps to a provider- and model-specific value using built-in tables (one file per provider under the core plugin's `thinking/` resources):
+Only **Anthropic** still resolves the generic on (`true`) — using its built-in table (the `thinking/ANTHROPIC` resource under the core plugin):
 
-- **OpenAI family** — known reasoning models (`gpt*`, `o1`, `o3`, `o4`) → `reasoning.effort=high`; an **unknown model → nothing is sent**.
-- **Anthropic** — `opus-4-8` / `opus-4-7` / `mythos` → `adaptive`; other Claude models → `enabled`.
+- `opus-4-8` / `opus-4-7` / `mythos` → `adaptive`; other Claude models → `enabled`.
 
 **Provider support:**
 
-- **OpenAI family** (OpenAI, OpenAI-official / Azure, GitHub Models, GitHub Copilot) — `reasoning.effort`. Empty/off = nothing sent.
+- **OpenAI family** (OpenAI, OpenAI-official / Azure, GitHub Models, GitHub Copilot) — `reasoning.effort`; empty = nothing sent, any other value is sent verbatim (incl. `none` and `false`).
 - **Ollama** — the `think` flag: off sends `think:false`, on sends `think:true`, unset omits.
 - **Anthropic** — extended thinking (`enabled` / `adaptive`); off = nothing sent.
 - **LM Studio** — the custom `reasoning` body property.
