@@ -122,6 +122,7 @@ public class ShellTool extends AbstractTool {
         // Shared with the reader thread; only read after reader.join() to
         // guarantee visibility (join() establishes a happens-before edge).
         List<String> lines = new LinkedList<>();
+        var stats = CallStats.start();
         try {
             onTool("Running: `" + command + "` in " + effectiveDir);
 
@@ -131,7 +132,6 @@ public class ShellTool extends AbstractTool {
             // ensure we have set Xmx for mvn as it is very slow otherwise ...
             if (command.contains("mvn")) pb.environment().putIfAbsent("MAVEN_OPTS", "-Xmx4g");
             pb.redirectErrorStream(true); // merge stderr into stdout
-            var stats = CallStats.start();
             var process = pb.start();
 
             Thread reader = new Thread(() -> {
@@ -168,7 +168,7 @@ public class ShellTool extends AbstractTool {
                 String result = cwdPrefix + "Command timed out after " + stats.duration()
                     + ". Partial output:\n" + partial + System.lineSeparator() + stats.suffix();
                 onTool("Command timed out (exit killed) - " + (lines.isEmpty() ? "no output" : lines.size() + " lines captured")
-                    + " " + StringUtil.charsSuffix(result));
+                    + " " + stats.suffix() + " " + StringUtil.charsSuffix(result));
                 return result;
             }
 
@@ -184,7 +184,7 @@ public class ShellTool extends AbstractTool {
                     ? cwdPrefix + stats.suffix()
                     : cwdPrefix + resultStr + System.lineSeparator() + stats.suffix();
             onTool("Command finished (exit " + exitCode + ") reading " 
-                    + output.shown() + " lines ..." + " " + StringUtil.charsSuffix(result));
+                    + output.shown() + " lines ..." + " " + stats.suffix() + " " + StringUtil.charsSuffix(result));
             return result;
 
         } catch (IOException e) {
@@ -197,7 +197,7 @@ public class ShellTool extends AbstractTool {
             String result = cwdPrefix + "Command interrupted: " + e.getMessage()
                 + System.lineSeparator() + "Output so far:" + System.lineSeparator()
                 + formatOutput(lines, filter, tailLines).text();
-            onTool("Stopped " + command + " " + StringUtil.charsSuffix(result));
+            onTool("Stopped " + command + " " + stats.suffix() + " " + StringUtil.charsSuffix(result));
             return result;
         }
     }
