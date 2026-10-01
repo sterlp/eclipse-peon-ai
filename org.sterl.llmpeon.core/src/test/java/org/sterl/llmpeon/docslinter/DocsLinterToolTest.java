@@ -16,6 +16,7 @@ import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
@@ -375,8 +376,9 @@ class DocsLinterToolTest {
 
         // THEN the onTool line names the numbers of this fixture
         assertThat(output).contains("UNBELEGT_ERLEDIGT UC-DL-2");
+        // R-RS-1: the status line ends with the exact size of the returned summary
         assertThat(monitor.toolMessages).containsExactly(
-                "lintDocsAndTests: 1 docs, 1 findings (1 UNBELEGT_ERLEDIGT)");
+                "lintDocsAndTests: 1 docs, 1 findings (1 UNBELEGT_ERLEDIGT)" + " " + StringUtil.charsSuffix(output));
     }
 
     // --- UC-DL-63: zero findings omit the kappa clause ---
@@ -401,7 +403,8 @@ class DocsLinterToolTest {
 
         // THEN the onTool line shows 0 findings without a kappa clause
         assertThat(output).contains("findings: 0");
-        assertThat(monitor.toolMessages).containsExactly("lintDocs: 1 docs, 0 findings");
+        // R-RS-1: the status line ends with the exact size of the returned summary
+        assertThat(monitor.toolMessages).containsExactly("lintDocs: 1 docs, 0 findings" + " " + StringUtil.charsSuffix(output));
     }
 
     private ToolLoopRequest requestWith(AiMonitor monitor) {

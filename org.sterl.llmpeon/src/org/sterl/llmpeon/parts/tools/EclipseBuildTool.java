@@ -16,6 +16,7 @@ import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.tool.AiReponseBuilder;
 import org.sterl.llmpeon.shared.CallStats;
+import org.sterl.llmpeon.shared.StringUtil;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -35,8 +36,9 @@ public class EclipseBuildTool extends AbstractEclipseTool {
                   .append("\n---");
             }
         }
-        onTool("List workspace with " + projects.size() + " open projects");
-        return sb.toString();
+        String result = sb.toString();
+        onTool("List workspace with " + projects.size() + " open projects" + " " + StringUtil.charsSuffix(result));
+        return result;
     }
     
     @Tool("List compile errors and warnings for a project. Optional: files (comma-separated) and severity (ERROR, WARNING) filter the result scope.")
@@ -74,12 +76,12 @@ public class EclipseBuildTool extends AbstractEclipseTool {
             var status = new Status();
             status.cap = cap;
             readProjectStatus(projectRef, status);
-            onTool("Reading problems of " + projectRef.getName() + ": " + status.countProblems());
-            if (status.hasProblems()) {
-                return "Project " + projectRef.getName() + " problems:\n" + status.toString();
-            } else {
-                return "Project build " + projectRef.getName() + " has no errors or warning.";
-            }
+            String result = status.hasProblems()
+                    ? "Project " + projectRef.getName() + " problems:\n" + status.toString()
+                    : "Project build " + projectRef.getName() + " has no errors or warning.";
+            onTool("Reading problems of " + projectRef.getName() + ": " + status.countProblems()
+                    + " " + StringUtil.charsSuffix(result));
+            return result;
         } catch (CoreException e) {
             throw new RuntimeException("Failed to build " + projectRef.getName(), e);
         }
@@ -125,8 +127,6 @@ public class EclipseBuildTool extends AbstractEclipseTool {
             for (IFile file : resolvedFiles) {
                 readFileStatus(file, status);
             }
-            onTool("Reading filtered problems of " + project.getName() + ": " + status.countProblems());
-
             String filesLabel = String.join(", ", resolvedPaths);
             String severityLabel = severityFilter == 0 ? "" : ", severity " + severityName(severityFilter);
             if (status.hasProblems()) {
@@ -138,7 +138,10 @@ public class EclipseBuildTool extends AbstractEclipseTool {
                 out.append("No problems in ").append(filesLabel)
                    .append(" (scope: project ").append(project.getName()).append(severityLabel).append(")");
             }
-            return out.toString();
+            String result = out.toString();
+            onTool("Reading filtered problems of " + project.getName() + ": " + status.countProblems()
+                    + " " + StringUtil.charsSuffix(result));
+            return result;
         } catch (CoreException e) {
             throw new RuntimeException("Failed to read problems of " + project.getName(), e);
         }

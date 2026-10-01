@@ -16,6 +16,7 @@ import java.util.stream.Stream;
 import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.CallStats;
 import org.sterl.llmpeon.shared.SearchQuery;
+import org.sterl.llmpeon.shared.StringUtil;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -164,9 +165,11 @@ public class ShellTool extends AbstractTool {
                 } else {
                     partial = formatOutput(lines, filter, tailLines).text();
                 }
-                onTool("Command timed out (exit killed) - " + (lines.isEmpty() ? "no output" : lines.size() + " lines captured"));
-                return cwdPrefix + "Command timed out after " + stats.duration()
+                String result = cwdPrefix + "Command timed out after " + stats.duration()
                     + ". Partial output:\n" + partial + System.lineSeparator() + stats.suffix();
+                onTool("Command timed out (exit killed) - " + (lines.isEmpty() ? "no output" : lines.size() + " lines captured")
+                    + " " + StringUtil.charsSuffix(result));
+                return result;
             }
 
             reader.join(2000);
@@ -177,12 +180,12 @@ public class ShellTool extends AbstractTool {
             if (exitCode != 0) {
                 resultStr += System.lineSeparator() + "Exit code: " + exitCode;
             }
+            String result = resultStr.isEmpty()
+                    ? cwdPrefix + stats.suffix()
+                    : cwdPrefix + resultStr + System.lineSeparator() + stats.suffix();
             onTool("Command finished (exit " + exitCode + ") reading " 
-                    + output.shown() + " lines ...");
-            if (resultStr.isEmpty()) {
-                return cwdPrefix + stats.suffix();
-            }
-            return cwdPrefix + resultStr + System.lineSeparator() + stats.suffix();
+                    + output.shown() + " lines ..." + " " + StringUtil.charsSuffix(result));
+            return result;
 
         } catch (IOException e) {
             onProblem("Failed to run: " + command + " " + e.getMessage());
@@ -191,10 +194,11 @@ public class ShellTool extends AbstractTool {
                 + formatOutput(lines, filter, tailLines).text();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            onTool("Stopped " + command);
-            return cwdPrefix + "Command interrupted: " + e.getMessage()
+            String result = cwdPrefix + "Command interrupted: " + e.getMessage()
                 + System.lineSeparator() + "Output so far:" + System.lineSeparator()
                 + formatOutput(lines, filter, tailLines).text();
+            onTool("Stopped " + command + " " + StringUtil.charsSuffix(result));
+            return result;
         }
     }
 

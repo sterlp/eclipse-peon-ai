@@ -10,6 +10,7 @@ import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.FileLines;
 import org.sterl.llmpeon.shared.FileUtils;
 import org.sterl.llmpeon.shared.QualifiedPathValidator;
+import org.sterl.llmpeon.shared.StringUtil;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -190,7 +191,7 @@ public class DiskFileWriteTool extends AbstractTool {
             if (target.getParent() != null) Files.createDirectories(target.getParent());
             Files.move(source, target);
             var result = "Renamed " + source + " -> " + target;
-            onTool(result);
+            onTool(result + " " + StringUtil.charsSuffix(result));
             fireAfterWrite();
             return result;
         } catch (IOException e) {
@@ -218,7 +219,7 @@ public class DiskFileWriteTool extends AbstractTool {
         }
         FileUtils.copy(source, target);
         var result = "Copied " + source + " -> " + target;
-        onTool(result);
+        onTool(result + " " + StringUtil.charsSuffix(result));
         fireAfterWrite();
         return result;
     }

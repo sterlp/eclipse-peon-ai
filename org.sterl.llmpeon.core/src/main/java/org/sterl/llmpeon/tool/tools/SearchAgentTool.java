@@ -63,9 +63,10 @@ public class SearchAgentTool extends AbstractTool {
             response = toolService.executeLoop(request.build());
             long elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000;
 
-            onTool("Da Sniffa done. (" + StringUtil.humanElapsed(elapsedMillis) + ")");
             String answer = response != null ? response.aiMessage().text() : null;
-            return StringUtil.hasValue(answer) ? answer : "Search completed but returned no result";
+            String result = StringUtil.hasValue(answer) ? answer : "Search completed but returned no result";
+            onTool("Da Sniffa done. (" + StringUtil.humanElapsed(elapsedMillis) + ")" + " " + StringUtil.charsSuffix(result));
+            return result;
 
         } catch (Exception e) {
             onProblem("SearchAgent error: " + e.getMessage());

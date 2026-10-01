@@ -20,6 +20,7 @@ import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.FileLines;
 import org.sterl.llmpeon.shared.FileUtils;
 import org.sterl.llmpeon.shared.QualifiedPathValidator;
+import org.sterl.llmpeon.shared.StringUtil;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -236,7 +237,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
             ensureParentFolders(workspaceRoot, destPath);
             resource.move(destPath, IResource.KEEP_HISTORY, getProgressMonitor());
             var result = "Renamed " + JdtUtil.pathOf(resource) + " -> " + destPath.toPortableString();
-            onTool(result);
+            onTool(result + " " + StringUtil.charsSuffix(result));
             return result;
         } catch (CoreException e) {
             throw new RuntimeException("Failed to rename " + sourcePath + " -> " + targetPath, e);
@@ -270,7 +271,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
             ensureParentFolders(workspaceRoot, destPath);
             resource.copy(destPath, IResource.KEEP_HISTORY, getProgressMonitor());
             var result = "Copied " + JdtUtil.pathOf(resource) + " -> " + destPath.toPortableString();
-            onTool(result);
+            onTool(result + " " + StringUtil.charsSuffix(result));
             return result;
         } catch (CoreException e) {
             throw new RuntimeException("Failed to copy " + sourcePath + " -> " + targetPath, e);
