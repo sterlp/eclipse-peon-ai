@@ -9,6 +9,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.shared.GrepHit;
 import org.sterl.llmpeon.shared.SearchQuery;
+import org.sterl.llmpeon.shared.TextFileTypes;
 
 class AiReponseBuilderTest {
 
@@ -168,6 +169,57 @@ class AiReponseBuilderTest {
                 .contains("Only.java:1: hit 1")
                 .contains("Only.java:50: hit 50")
                 .doesNotContain("matched lines — narrow your search");
+    }
+
+    // UC-OD-7
+    @Test
+    void grepClampsMinifiedLine() {
+        // GIVEN one hit whose line is 20000 chars (minified)
+        var hits = List.of(new GrepHit("bundle.js", 1, "a".repeat(20_000)));
+
+        // WHEN the shared renderer clamps the line
+        String result = AiReponseBuilder.grepComplete(hits, SearchQuery.of("a"),
+                AiReponseBuilder.MAX_GREP_FILES, AiReponseBuilder.MAX_GREP_LINES, ".js");
+
+        // THEN the line is prefix + exactly 2000 chars (the 2001st is not there)
+        var hitLines = result.lines().filter(l -> l.startsWith("bundle.js:1: ")).toList();
+        assertThat(hitLines).hasSize(1);
+        assertThat(hitLines.get(0)).isEqualTo("bundle.js:1: " + "a".repeat(2000));
+        assertThat(hitLines.get(0)).hasSize("bundle.js:1: ".length() + 2000);
+        // ... and the clamp is honestly disclosed
+        assertThat(result).contains("1 line(s) truncated at 2000 chars");
+    }
+
+    // UC-OD-8
+    @Test
+    void grepNormalLinesUntouched() {
+        // GIVEN hits with normal lines (< 2000 chars)
+        var hits = List.of(new GrepHit("A.java", 1, "short a"), new GrepHit("A.java", 2, "short b"));
+
+        // WHEN the renderer runs
+        String result = AiReponseBuilder.grepComplete(hits, SearchQuery.of("short"),
+                AiReponseBuilder.MAX_GREP_FILES, AiReponseBuilder.MAX_GREP_LINES, ".java");
+
+        // THEN the lines are bit-identical and no truncation is disclosed
+        assertThat(result)
+                .contains("A.java:1: short a")
+                .contains("A.java:2: short b")
+                .doesNotContain("truncated");
+    }
+
+    // UC-OD-9
+    @Test
+    void grepNoMatchesUnchanged() {
+        // GIVEN zero hits
+        String result = AiReponseBuilder.grepComplete(List.of(), SearchQuery.of("nothing"),
+                AiReponseBuilder.MAX_GREP_FILES, AiReponseBuilder.MAX_GREP_LINES, null);
+
+        // THEN "no matches" + mode hint + filter hint, exactly as before, no truncation disclosure
+        assertThat(result)
+                .contains("no matches")
+                .contains("regex search")
+                .contains(TextFileTypes.filterHint())
+                .doesNotContain("truncated");
     }
 
     private static List<String> lines(String name, int count) {

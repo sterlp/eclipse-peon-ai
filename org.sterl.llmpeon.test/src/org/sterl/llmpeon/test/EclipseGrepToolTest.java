@@ -150,6 +150,23 @@ public class EclipseGrepToolTest extends AbstractIntegrationTest {
     }
 
     @Test
+    public void longLineIsClampedAndDisclosed() {
+        // GIVEN one .md file with a single 20013-char line containing the query (minified)
+        eclipseWriteFile("grepminified.md", "minifiedline " + "a".repeat(20_000) + "\n");
+
+        // WHEN grepping the query with the .md type filter
+        String result = tool.eclipseGrepFiles("minifiedline", PeonTestFixture.PROJECT_NAME, ".md");
+
+        // THEN the hit line is clamped to exactly 2000 chars of text (13-char token + 1987 'a', nothing more)
+        var hitLines = result.lines().filter(l -> l.contains("grepminified.md:1: ")).toList();
+        assertEquals("exactly one hit line expected:\n" + result, 1, hitLines.size());
+        assertTrue("hit line must end with exactly the clamped 2000 chars:\n" + hitLines.get(0),
+                hitLines.get(0).matches(".*grepminified\\.md:1: minifiedline a{1987}$"));
+        // ... and the clamp is honestly disclosed (family consistency with the disk tool)
+        assertContains(result, "1 line(s) truncated at 2000 chars");
+    }
+
+    @Test
     public void validRegexReportsRegexMode() {
         String result = tool.eclipseGrepFiles("C++", PeonTestFixture.PROJECT_NAME, ".java");
 
