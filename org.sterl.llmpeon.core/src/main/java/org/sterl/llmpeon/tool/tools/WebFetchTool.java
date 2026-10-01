@@ -16,6 +16,7 @@ import java.util.regex.Pattern;
 
 import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.FileLines;
+import org.sterl.llmpeon.shared.StringUtil;
 
 import com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter;
 
@@ -99,12 +100,14 @@ public class WebFetchTool extends AbstractTool {
         }
         int shownEnd = Math.min(end, total);
 
-        StringBuilder result = new StringBuilder(FileLines.extract(markdown, start, shownEnd));
-        result.append("lines ").append(start).append('\u2013').append(shownEnd).append(" of ").append(total);
+        StringBuilder builder = new StringBuilder(FileLines.extract(markdown, start, shownEnd));
+        builder.append("lines ").append(start).append('\u2013').append(shownEnd).append(" of ").append(total);
         if (shownEnd < total) {
-            result.append(" — read on with startLine=").append(shownEnd + 1);
+            builder.append(" — read on with startLine=").append(shownEnd + 1);
         }
-        return result.toString();
+        String result = builder.toString();
+        onTool("Fetched " + url + " " + StringUtil.charsSuffix(result));
+        return result;
     }
 
     /**
