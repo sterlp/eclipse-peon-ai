@@ -320,7 +320,7 @@ LLM-Größe.
 - GIVEN der Compact-LLM meldet keine Usage WHEN done THEN fällt die Zeile auf die Estimate allein
   zurück (kein `n/a`-Rauschen nötig — ehrliche Abwesenheit).
 
-### R-CC-17 ❌ — „Log biggest overflow": größte Message beim Compact loggen (2026-09-30, Paul)
+### R-CC-17 ✅ done — „Log biggest overflow": größte Message beim Compact loggen (2026-09-30, Paul; `4f7cab05`, U1–U4)
 
 Anlass: Thinka-Overflow `974105 tokens` vs `n_ctx 170240` — der Status zeigte 23k; die Ursache
 (eine Riesen-Message in der History, vermutlich ein Tool-Result) ist im Log unsichtbar. **Das
@@ -335,9 +335,11 @@ Logging kommt VOR dem Auto-Compact-Feature** (offen) — Diagnose zuerst.
   Compact-Logging unverändert).
 - Tie-Break bei Gleichstand (zwei gleich große Messages): klärt der Plan, nicht still.
 
-❓ offen (nur Paul): loggt auch der 400-`exceed_context_size_error`-Pfad **ohne** Compact
-(Pauls beobachteter Fall) denselben Dump? Empfehlung: ja, derselbe Helper — sonst bleibt genau
-der Fall unsichtbar, der ohne Compact stirbt.
+🔒 **Entscheidung Paul (2026-09-30):** Nein — der 400-`exceed_context_size_error`-Pfad **ohne**
+Compact wird nicht zusätzlich instrumentiert (kein Eingriff in den Fehlerpfad). R-CC-17 bleibt
+Compact-only. Sichtbarkeit für den 400-Fall kommt stattdessen über ein neues Feature (🚧 in design,
+[open-points.md](open-points.md)): **API-Fehler werden ins Agent-Memory eingefügt**, damit der
+Agent den Abbruch kennt und nachfolgend reagieren kann.
 
 
 ## Info (2026-09-25, Paul — „China API leak", nur notiert, kein Bau)

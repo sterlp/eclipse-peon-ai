@@ -67,10 +67,18 @@ notes in english schreiben."
   minified .js = ganze Datei als „eine Zeile". Hauptverdacht für 974k (Thinka grep `replace` = 850
   Treffer workspace-weit). eclipseGrepFiles braucht workspace-qualifizierten Pfad (`/llmpeon-parent/docs`)
   — „docs" ohne Projekt = leerer Scope (Jon-Bedienfehler, kein Tool-Bug).
-- Paul-Order: 1) Docs ❌ schreiben (erledigt), 2) aktuellen Plan finalisieren + bauen, 3) Logging-Teil bauen:
-  **R-CC-17** (compact.md, Biggest-Message-WARN beim Compact; ❓: auch 400-Pfad ohne Compact? — nur Paul) ·
-  **R-OD-6** (tool-output-disclosure.md, Grep-Zeilen-Cap 2000, ⏳ Wert) · **R-RS-1/2**
-  (tool-result-size.md, `(N chars)` an Tool-Zeile).
+- Paul-Order: 1) Docs ❌ schreiben (erledigt), 2) aktuellen Plan finalisieren + bauen **✅ (Inc 1
+  `e97ef512` replaceLines-Fix, Inc 2 `0be24315` Descriptions, `135d7ac0` Inventory-Sync — Branch
+  erstmals gepusht)**, 3) Logging/Cap-Batch bauen — SOLL komplett freigegeben:
+  **R-RS-1/2** (tool-result-size.md, `(N chars)`) · **R-OD-6** (Cap 2000, Paul ✅ nach Erklärung) ·
+  **R-CC-17** (Biggest-Message-WARN, Compact-only — Paul 🔒: 400-Pfad NICHT instrumentieren) ·
+  **R-AEM-1/2** (agent-error-memory.md NEU, ❌: terminale Fehler → e.getMessage() ins Memory,
+  nie Cancel, Dedup 1×, Einfügepunkt AiChatView-catch). **✅ BATCH GEBAUT + REVIEWED 2026-09-30:**
+  `0be9a4c5` (R-RS) · `d7cf6578` (R-OD-6) · `4f7cab05` (R-CC-17) · `53e54c5e` (R-AEM) · Delta
+  `f77cbef0` (R-RS-Nachzug reloadConfig + webFetch Option A nach Da-Dok-REJECTED: 2 Sites verpasst;
+  findImplementations = toter Code, open-points). Core 1085/0/0, Plugin 320/0/0. Status-Flips ✅
+  erledigt, Lint 0. **Ausstehend: Paul-Smoke AiChatView-Wiring** (terminale Fehler → 1× in History,
+  Abbruch → keine Insertion) · `planImplemented` (Archiv) · Commit offener docs/** + Push.
 
 ## Nächste Schritte
 
