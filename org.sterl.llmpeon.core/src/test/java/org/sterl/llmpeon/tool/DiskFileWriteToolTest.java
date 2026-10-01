@@ -435,4 +435,47 @@ class DiskFileWriteToolTest {
         // THEN exactly one line changed, no insert-copy below, indent exactly as passed
         assertEquals("alpha\n    aaaa\ngamma", Files.readString(tempDir.resolve("indentRep.txt")));
     }
+
+    // ------------------------------------------------------------------ Out-of-range line number → honest error (Paul 2026-09-30)
+    // The old silent high-clamp replaced the LAST line for a stale line number; now the tool
+    // reports the actual facts and leaves the file untouched.
+
+    @Test
+    void diskReplaceLines_lineBeyondEnd_errorsFileUntouched() throws IOException {
+        // GIVEN a 3-line file
+        Files.writeString(tempDir.resolve("range.txt"), "l1\nl2\nl3");
+
+        // WHEN a line number beyond the end is requested
+        var ex = assertThrows(IllegalArgumentException.class,
+                () -> tool.diskReplaceLines("range.txt", 99, "x"));
+
+        // THEN the error carries the actual facts and the file is untouched
+        assertThat(ex.getMessage()).contains("file has 3 lines").contains("99");
+        assertEquals("l1\nl2\nl3", Files.readString(tempDir.resolve("range.txt")));
+    }
+
+    @Test
+    void diskReplaceLines_lineBeyondEnd_errorVisibleToLlm() throws IOException {
+        // GIVEN a 3-line file and a ToolService with the tool
+        Files.writeString(tempDir.resolve("range.txt"), "l1\nl2\nl3");
+        var ts = new ToolService(false);
+        ts.addTool(tool);
+        var model = LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", "http://localhost:9999").build();
+        var req = ToolLoopRequest.builder()
+                .memory(new ThreadSafeMemory())
+                .chatModel(model)
+                .build();
+
+        // WHEN the LLM requests a line beyond the end
+        var tr = ToolExecutionRequest.builder()
+                .id("1")
+                .name("diskReplaceLines")
+                .arguments("{\"filePath\":\"range.txt\",\"line\":99,\"newContent\":\"x\"}")
+                .build();
+
+        // THEN the IAE message is the LLM-visible tool result (no silent clamp)
+        var result = ts.execute(tr, req);
+        assertTrue(result.text().contains("file has 3 lines"),
+                "LLM-visible result should carry the range error, was: " + result.text());
+    }
 }

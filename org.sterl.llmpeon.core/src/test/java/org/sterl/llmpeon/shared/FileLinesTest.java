@@ -1,5 +1,7 @@
 package org.sterl.llmpeon.shared;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
@@ -124,6 +126,92 @@ class FileLinesTest {
         org.junit.jupiter.api.Assertions.assertTrue(result.startsWith(" 100: line 100\n"));
         org.junit.jupiter.api.Assertions.assertTrue(result.endsWith(" 120: line 120\n"));
     }
+
+    // ------------------------------------------------------------------ replaceLines: out-of-range → honest error (Paul 2026-09-30)
+    // The old silent high-clamp replaced the LAST line for a stale line number; now a bound
+    // beyond the file fails with the actual line count + requested range.
+
+    @Test
+    void replaceLines_startBeyondEnd_throwsWithLineCountAndRange() {
+        // GIVEN a 3-line content
+        String content = "a\nb\nc";
+
+        // WHEN the requested start is beyond the end
+        assertThatThrownBy(() -> FileLines.replaceLines(content, 5, 5, "x"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("file has 3 lines")
+                .hasMessageContaining("5-5");
+    }
+
+    @Test
+    void replaceLines_endBeyondEnd_throwsWithLineCountAndRange() {
+        // GIVEN a 3-line content
+        String content = "a\nb\nc";
+
+        // WHEN the requested end is beyond the file
+        assertThatThrownBy(() -> FileLines.replaceLines(content, 1, 9, "x"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("file has 3 lines")
+                .hasMessageContaining("1-9");
+    }
+
+    @Test
+    void replaceLines_lastLineInRange_replaces() {
+        // GIVEN a 3-line content
+        String content = "a\nb\nc";
+
+        // WHEN the last line is replaced — endLine = total is valid
+        assertThat(FileLines.replaceLines(content, 3, 3, "X")).isEqualTo("a\nb\nX");
+    }
+
+    @Test
+    void replaceLines_swappedInValidRange_usesSwappedRange() {
+        // GIVEN a 3-line content
+        String content = "a\nb\nc";
+
+        // WHEN start > end within the file — the range is swapped to 1-3
+        assertThat(FileLines.replaceLines(content, 3, 1, "X")).isEqualTo("X");
+    }
+
+    @Test
+    void replaceLines_swappedBeyondEnd_throws() {
+        // GIVEN a 3-line content
+        String content = "a\nb\nc";
+
+        // WHEN start > end and the swapped range exceeds the file
+        assertThatThrownBy(() -> FileLines.replaceLines(content, 5, 2, "x"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("file has 3 lines");
+    }
+
+    @Test
+    void replaceLines_emptyFileLine1_becomesReplacement() {
+        // GIVEN an empty file (= 1 line, same split convention as extract/countLines)
+
+        // WHEN line 1 is replaced
+        assertThat(FileLines.replaceLines("", 1, 1, "x")).isEqualTo("x");
+    }
+
+    @Test
+    void replaceLines_emptyFileBeyondLine1_throws() {
+        // GIVEN an empty file (= 1 line)
+
+        // WHEN line 2 is requested
+        assertThatThrownBy(() -> FileLines.replaceLines("", 2, 2, "x"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("file has 1 lines")
+                .hasMessageContaining("2-2");
+    }
+
+    @Test
+    void replaceLines_zeroSentinels_replaceWholeFile() {
+        // GIVEN a 2-line content
+        String content = "a\nb";
+
+        // WHEN the 0/0 sentinel is used — documented whole-file replace, unchanged behaviour
+        assertThat(FileLines.replaceLines(content, 0, 0, "x")).isEqualTo("x");
+    }
+
 
 
     @Test

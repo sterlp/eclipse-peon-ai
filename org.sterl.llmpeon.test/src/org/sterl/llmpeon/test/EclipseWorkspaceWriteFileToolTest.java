@@ -2,6 +2,7 @@ package org.sterl.llmpeon.test;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
@@ -190,6 +191,30 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
         var onDisk = Files.readString(project.getLocation().append("indentRep.txt").toFile().toPath());
         assertEquals("alpha\n    aaaa\ngamma", onDisk);
     }
+
+    // ------------------------------------------------------------------ Out-of-range line number → honest error (Paul 2026-09-30)
+    // Same behaviour as diskReplaceLines (one behaviour, one implementation): a stale line
+    // number must fail with the actual facts, never silently replace the last line.
+
+    @Test
+    public void test_replaceWorkspaceLine_beyondEnd_errorsFileUntouched() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        // GIVEN a 5-line workspace file
+        tool.setCurrentProject(project);
+        var fileName = "/test_project/replaceRange.txt";
+        eclipseWriteFile(fileName, "l1\nl2\nl3\nl4\nl5");
+
+        // WHEN a line number beyond the end is requested
+        var ex = assertThrows(IllegalArgumentException.class,
+                () -> tool.eclipseReplaceLines(fileName, 99, "x"));
+
+        // THEN the error carries the actual facts and the file on disk is untouched
+        assertTrue("expected line count + range in: " + ex.getMessage(),
+                ex.getMessage().contains("file has 5 lines") && ex.getMessage().contains("99"));
+        var onDisk = Files.readString(project.getLocation().append("replaceRange.txt").toFile().toPath());
+        assertEquals("l1\nl2\nl3\nl4\nl5", onDisk);
+    }
+
 
     @Test
     public void test_editWorkspaceFile_not_found() {

@@ -60,3 +60,27 @@ bleiben gedroppt (unverändert).
 - GIVEN Projekt mit 30 Markern WHEN `eclipseBuildProject` THEN alle 30 Marker, **keine**
   Disclosure-Zeile (nichts wurde gekappt).
 
+
+### R-OD-6 — Grep: Zeilenlängen-Cap gegen Minified-Overflow ❌ specified (2026-09-30, Paul)
+
+Grep liefert pro Treffer Pfad + Zeilennummer + **die komplette Zeile** — der 100-Zeilen-Cap
+(`MAX_GREP_LINES`) ist ein **Zeilenzähler ohne Längenlimit pro Zeile**. Eine minifizierte
+`.js`/Bundle-Datei (eine einzige Megabyte-Zeile) schiebt damit faktisch die ganze Datei in den
+LLM-Kontext — Hauptverdachtiger für den 974k-Overflow (Thinka, 2026-09-30, Grep `replace` = 850
+Treffer workspace-weit).
+
+**SOLL:** jede ausgegebene Treffer-Zeile wird auf **2000 Zeichen** gekappt (⏳ Wert: Paul bestätigt
+beim Bau), mit ehrlicher Disclosure im bestehenden Muster („N line(s) truncated at 2000 chars") —
+eine Stelle im geteilten Layer (`AiReponseBuilder`/`LogExcerpt`-Muster), beide Grep-Familien
+konsistent („one behaviour, one implementation"). Der 0-Treffer-Fall bleibt unverändert (klein).
+
+#### UC-OD-7 — grepClampsMinifiedLine ❌
+- GIVEN minifizierte Datei mit einer 2-MB-Zeile, die matcht WHEN grep THEN die Zeile kommt auf
+  2000 Zeichen gekappt zurück **und** die Disclosure nennt die Truncation.
+
+#### UC-OD-8 — grepNormalLinesUntouched ❌
+- GIVEN normale Zeilen (< Cap) WHEN grep THEN unverändert, keine Truncation-Disclosure.
+
+#### UC-OD-9 — grepNoMatchesUnchanged ❌
+- GIVEN Suche ohne Treffer WHEN grep THEN das kleine ehrliche „no matches"-Payload (Guard,
+  Regression gegen Regression-Behandlung des Leerfalls).

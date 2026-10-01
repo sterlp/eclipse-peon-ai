@@ -320,6 +320,26 @@ LLM-Größe.
 - GIVEN der Compact-LLM meldet keine Usage WHEN done THEN fällt die Zeile auf die Estimate allein
   zurück (kein `n/a`-Rauschen nötig — ehrliche Abwesenheit).
 
+### R-CC-17 ❌ — „Log biggest overflow": größte Message beim Compact loggen (2026-09-30, Paul)
+
+Anlass: Thinka-Overflow `974105 tokens` vs `n_ctx 170240` — der Status zeigte 23k; die Ursache
+(eine Riesen-Message in der History, vermutlich ein Tool-Result) ist im Log unsichtbar. **Das
+Logging kommt VOR dem Auto-Compact-Feature** (offen) — Diagnose zuerst.
+
+- GIVEN der Context übersteigt das Modell-Limit um mehr als 30 % WHEN Compact aufgerufen wird THEN
+  loggt der Compact die **größte Message der History komplett** als `WARN` — mit Größe (chars +
+  geschätzte Tokens) und Role; der Inhalt selbst zeigt, ob es ein Tool-Result war („wir sehen in
+  der Nachricht selbst, ob es ein Tool call war oder was"). Nur die EINE größte Message landet
+  komplett im Log — daneben die üblichen Compact-Stats (R-CC-10-Dreiklang), keine weiteren Dumps.
+- GIVEN Context unter dem Limit WHEN Compact läuft THEN kein Biggest-Message-Dump (normales
+  Compact-Logging unverändert).
+- Tie-Break bei Gleichstand (zwei gleich große Messages): klärt der Plan, nicht still.
+
+❓ offen (nur Paul): loggt auch der 400-`exceed_context_size_error`-Pfad **ohne** Compact
+(Pauls beobachteter Fall) denselben Dump? Empfehlung: ja, derselbe Helper — sonst bleibt genau
+der Fall unsichtbar, der ohne Compact stirbt.
+
+
 ## Info (2026-09-25, Paul — „China API leak", nur notiert, kein Bau)
 
 GIVEN API-Modell-Limit ≈ 26.3k WHEN im Compact-Log 300k Context-Größe erschien THEN Compact-Hint
