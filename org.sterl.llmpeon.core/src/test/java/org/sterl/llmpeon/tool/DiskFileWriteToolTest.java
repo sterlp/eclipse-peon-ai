@@ -405,4 +405,34 @@ class DiskFileWriteToolTest {
         assertThat(ex.getMessage()).contains("must be fully qualified").contains("(got: b.txt)");
         assertTrue(Files.exists(tempDir.resolve("a.txt")));
     }
+
+    // ------------------------------------------------------------------ Indent regression guards (Paul 2026-10-01)
+    // LLM repeatedly wants to change ONLY a line's indent (e.g. 'aaaa' -> '    aaaa'). Guard: the
+    // tools must land the indent exactly once — no duplicated line, no dropped indent, count honest.
+
+    @Test
+    void diskEditFile_indentOnly_changeIsExact_noDuplication() throws IOException {
+        // GIVEN a file whose target line is a bare token and whose neighbours are already indented
+        Files.writeString(tempDir.resolve("indent.txt"), "    indented1\naaaa\n    indented3");
+
+        // WHEN the token is indented to match its neighbours — newString still contains oldString
+        var result = tool.diskEditFile("indent.txt", "aaaa", "    aaaa");
+
+        // THEN the file is EXACTLY the expected form: token line indented once, neighbours untouched,
+        // no line duplicated; count disclosure matches the single non-overlapping replacement
+        assertEquals("    indented1\n    aaaa\n    indented3", Files.readString(tempDir.resolve("indent.txt")));
+        assertTrue(result.contains("replaced 1 occurrence(s)"), "count disclosure wrong: " + result);
+    }
+
+    @Test
+    void diskReplaceLines_indentOnly_exactlyOneLine_noInsertCopy() throws IOException {
+        // GIVEN a file where line 2 is a bare token
+        Files.writeString(tempDir.resolve("indentRep.txt"), "alpha\naaaa\ngamma");
+
+        // WHEN line 2 is replaced by its indented form
+        tool.diskReplaceLines("indentRep.txt", 2, "    aaaa");
+
+        // THEN exactly one line changed, no insert-copy below, indent exactly as passed
+        assertEquals("alpha\n    aaaa\ngamma", Files.readString(tempDir.resolve("indentRep.txt")));
+    }
 }

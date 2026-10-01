@@ -153,6 +153,44 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
         assertTrue(content, !content.contains("line3\n"));
     }
 
+    // ------------------------------------------------------------------ Indent regression guards (Paul 2026-10-01)
+    // LLM repeatedly wants to change ONLY a line's indent. Guard: the indent lands exactly once —
+    // no duplicated line, no dropped indent, count honest (one behaviour, one implementation vs disk*).
+
+    @Test
+    public void test_editWorkspaceFile_indentOnly_exactNoDuplication() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        // GIVEN a workspace file whose target line is a bare token, neighbours already indented
+        tool.setCurrentProject(project);
+        var fileName = "/test_project/indentEdit.txt";
+        eclipseWriteFile(fileName, "    indented1\naaaa\n    indented3");
+
+        // WHEN the token is indented to match its neighbours — newString still contains oldString
+        var result = tool.eclipseEditFile(fileName, "aaaa", "    aaaa");
+
+        // THEN the file on disk is EXACTLY the expected form: token line indented once, neighbours
+        // untouched, no duplicate line; count disclosure matches the single non-overlapping replacement
+        var onDisk = Files.readString(project.getLocation().append("indentEdit.txt").toFile().toPath());
+        assertEquals("    indented1\n    aaaa\n    indented3", onDisk);
+        assertTrue("count disclosure wrong: " + result, result.contains("replaced 1 occurrence(s)"));
+    }
+
+    @Test
+    public void test_replaceWorkspaceLine_indentOnly_exactlyOneLineNoInsertCopy() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        // GIVEN a workspace file where line 2 is a bare token
+        tool.setCurrentProject(project);
+        var fileName = "/test_project/indentRep.txt";
+        eclipseWriteFile(fileName, "alpha\naaaa\ngamma");
+
+        // WHEN line 2 is replaced by its indented form
+        tool.eclipseReplaceLines(fileName, 2, "    aaaa");
+
+        // THEN exactly one line changed, no insert-copy below, indent exactly as passed
+        var onDisk = Files.readString(project.getLocation().append("indentRep.txt").toFile().toPath());
+        assertEquals("alpha\n    aaaa\ngamma", onDisk);
+    }
+
     @Test
     public void test_editWorkspaceFile_not_found() {
         // GIVEN
