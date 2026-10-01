@@ -118,7 +118,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         }
     }
 
-    @Tool("Replace all occurrences of an exact string in a workspace file; oldString is required, min 3 non-whitespace chars; reports how many were replaced. newString=null deletes the matches.")
+    @Tool("Replace exact, whitespace-sensitive occurrences in a file. oldString must uniquely identify the target in its line context; if it matches multiple locations, all are replaced. Min 3 non-whitespace chars; reports count. newString=null deletes.")
     public String eclipseEditFile(
             @P(description = "workspace-relative path", name = "filePath") String filePath,
             @P(description = "exact text to replace", name = "oldString", required = false) String oldString,
