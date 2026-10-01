@@ -1949,6 +1949,28 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             if (otherProject.exists()) otherProject.delete(true, true, new NullProgressMonitor());
         }
     }
+    /**
+     * Replace/Indent regression guard (Paul 2026-10-01): planUpdate delegates to the shared
+     * FileUtils.applyEdit. Guard: a newString with LEADING SPACES is written verbatim — no trim,
+     * no duplication, exact replace semantics as described.
+     */
+    @Test
+    public void planUpdate_leadingSpacesInNewString_notTrimmed_noDuplication() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        // GIVEN a saved plan with a single target token
+        var planTool = aiService.getSharedToolService().getTool(PlanTool.class).orElseThrow();
+        planTool.planSave("alpha\nbeta\n");
+        try {
+            // WHEN the token is replaced by an indented form whose newString still contains oldString
+            planTool.planUpdate("beta", "    beta");
+
+            // THEN the plan file is EXACTLY the expected form: leading spaces kept (no trim),
+            // token appears once (no duplication), old form gone
+            assertEquals("alpha\n    beta\n", planTool.planRead());
+        } finally {
+            eclipseDeleteResource("/test_project/" + PlanTool.OVERVIEW_FILE);
+        }
+    }
 
     /** Lowercase skill names currently visible in the effective view (config + project slots). */
     private static List<String> skillNames(PeonAiService svc) {

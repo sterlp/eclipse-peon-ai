@@ -22,6 +22,19 @@ Delete a file or directory **recursively** within the Eclipse workspace. Uses `I
 ### `eclipseReplaceLines(filePath, line, newContent)`
 Replace lines by 1-based line number. Reads via `IFile.readString()`, replaces, writes back.
 
+**Out-of-Range → ehrlicher Fehler ❌ specified (2026-09-30, Paul):** identisch zu
+`diskReplaceLines` ([disk-file-write-tool.md](disk-file-write-tool.md)) — eine Zeilennummer
+jenseits des Dateiendes wirft einen Fehler mit den Ist-Fakten („file has N lines, requested S-E"),
+**kein stiller Clamp**, Datei bei Fehler unverändert; `line ≤ 0` = Sentinel Ganzdatei-Replace.
+Ein Verhalten, eine Implementierung (`FileLines.replaceLines`).
+
+**BDD:**
+```
+GIVEN Workspace-Datei mit 5 Zeilen
+WHEN eclipseReplaceLines(fileName, 99, "x")
+THEN Fehler „file has 5 lines, requested 99-99" und Read-back der Datei = Original (unverändert)
+```
+
 ### `eclipseEditFile(filePath, oldString, newString)`
 Replace **all** occurrences of the exact string — Replace-All + Count-Disclosure, identisch zu
 `diskEditFile` (der bisherige Doc-Text „Errors if 0 or >1 matches" war Drift und ist korrigiert).

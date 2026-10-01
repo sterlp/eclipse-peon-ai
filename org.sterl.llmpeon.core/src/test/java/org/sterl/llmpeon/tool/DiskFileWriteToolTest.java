@@ -405,4 +405,77 @@ class DiskFileWriteToolTest {
         assertThat(ex.getMessage()).contains("must be fully qualified").contains("(got: b.txt)");
         assertTrue(Files.exists(tempDir.resolve("a.txt")));
     }
+
+    // ------------------------------------------------------------------ Indent regression guards (Paul 2026-10-01)
+    // LLM repeatedly wants to change ONLY a line's indent (e.g. 'aaaa' -> '    aaaa'). Guard: the
+    // tools must land the indent exactly once — no duplicated line, no dropped indent, count honest.
+
+    @Test
+    void diskEditFile_indentOnly_changeIsExact_noDuplication() throws IOException {
+        // GIVEN a file whose target line is a bare token and whose neighbours are already indented
+        Files.writeString(tempDir.resolve("indent.txt"), "    indented1\naaaa\n    indented3");
+
+        // WHEN the token is indented to match its neighbours — newString still contains oldString
+        var result = tool.diskEditFile("indent.txt", "aaaa", "    aaaa");
+
+        // THEN the file is EXACTLY the expected form: token line indented once, neighbours untouched,
+        // no line duplicated; count disclosure matches the single non-overlapping replacement
+        assertEquals("    indented1\n    aaaa\n    indented3", Files.readString(tempDir.resolve("indent.txt")));
+        assertTrue(result.contains("replaced 1 occurrence(s)"), "count disclosure wrong: " + result);
+    }
+
+    @Test
+    void diskReplaceLines_indentOnly_exactlyOneLine_noInsertCopy() throws IOException {
+        // GIVEN a file where line 2 is a bare token
+        Files.writeString(tempDir.resolve("indentRep.txt"), "alpha\naaaa\ngamma");
+
+        // WHEN line 2 is replaced by its indented form
+        tool.diskReplaceLines("indentRep.txt", 2, "    aaaa");
+
+        // THEN exactly one line changed, no insert-copy below, indent exactly as passed
+        assertEquals("alpha\n    aaaa\ngamma", Files.readString(tempDir.resolve("indentRep.txt")));
+    }
+
+    // ------------------------------------------------------------------ Out-of-range line number → honest error (Paul 2026-09-30)
+    // The old silent high-clamp replaced the LAST line for a stale line number; now the tool
+    // reports the actual facts and leaves the file untouched.
+
+    @Test
+    void diskReplaceLines_lineBeyondEnd_errorsFileUntouched() throws IOException {
+        // GIVEN a 3-line file
+        Files.writeString(tempDir.resolve("range.txt"), "l1\nl2\nl3");
+
+        // WHEN a line number beyond the end is requested
+        var ex = assertThrows(IllegalArgumentException.class,
+                () -> tool.diskReplaceLines("range.txt", 99, "x"));
+
+        // THEN the error carries the actual facts and the file is untouched
+        assertThat(ex.getMessage()).contains("file has 3 lines").contains("99");
+        assertEquals("l1\nl2\nl3", Files.readString(tempDir.resolve("range.txt")));
+    }
+
+    @Test
+    void diskReplaceLines_lineBeyondEnd_errorVisibleToLlm() throws IOException {
+        // GIVEN a 3-line file and a ToolService with the tool
+        Files.writeString(tempDir.resolve("range.txt"), "l1\nl2\nl3");
+        var ts = new ToolService(false);
+        ts.addTool(tool);
+        var model = LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", "http://localhost:9999").build();
+        var req = ToolLoopRequest.builder()
+                .memory(new ThreadSafeMemory())
+                .chatModel(model)
+                .build();
+
+        // WHEN the LLM requests a line beyond the end
+        var tr = ToolExecutionRequest.builder()
+                .id("1")
+                .name("diskReplaceLines")
+                .arguments("{\"filePath\":\"range.txt\",\"line\":99,\"newContent\":\"x\"}")
+                .build();
+
+        // THEN the IAE message is the LLM-visible tool result (no silent clamp)
+        var result = ts.execute(tr, req);
+        assertTrue(result.text().contains("file has 3 lines"),
+                "LLM-visible result should carry the range error, was: " + result.text());
+    }
 }

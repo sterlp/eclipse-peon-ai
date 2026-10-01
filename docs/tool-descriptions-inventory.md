@@ -1,6 +1,6 @@
 # Tool Descriptions — Inventory & Optimization Plan
 
-**Status:** ✅ **done** — 25/25 `@Tool`-Descriptions optimiert (Runde 2: kurze Version 10-17 Wörter), `buildWithAgent` → `buildWithDev` rename, static tool-name constants in JonDelegateTool, Test auf structural checks umgestellt. Build grün, verifiziert.
+**Status:** ✅ **done** — 25/25 `@Tool`-Descriptions optimiert (Runde 2: kurze Version 10-17 Wörter), `buildWithAgent` → `buildWithDev` rename, static tool-name constants in JonDelegateTool, Test auf structural checks umgestellt. Build grün, verifiziert. **Sync 2026-09-30 (`0be24315`):** #7/#28 auf den Paul-verbatim-Text aktualisiert (beide Familien identisch), #6/#27 verifiziert (Runde-2-Text ist IST; Out-of-Range-Fehler ändert nur Verhalten, Description bleibt wahr).
 
 ## IST
 
@@ -40,8 +40,8 @@ Alle `@Tool`-Beschreibungen folgen einem einheitlichen Muster:
 |---|--------|---------------------|--------|-----------------|-----|
 | 4 | `diskWriteFile` | `"Write file. Creates parent dirs and overwrites if exists."` | ✅ gut | *(kein Change)* | - |
 | 5 | `diskDeleteFile` | `"Delete file or directory recursively."` | ✅ gut | *(kein Change)* | - |
-| 6 | `diskReplaceLines` | `"Precise, line-targeted updates/insert lines by line number. newContent may span multiple lines."` | ⚠️ verwirrend (sagt "updates/insert") | `"Replace a single line in a file by 1-based line number. newContent may span multiple lines, replacing only the specified line."` | Insert vs Replace klären — das ist Replace, kein Insert |
-| 7 | `diskEditFile` | `"Replace the exact string in a file."` | ⚠️ zu kurz | `"Replace the first occurrence of an exact string in a file. Error if oldString not found or identical to newString."` | Fehlerbedingungen genannt, "first occurrence" präzisiert |
+| 6 | `diskReplaceLines` | `"Replace a single line in a file by 1-based line number. newContent may span multiple lines."` | ✅ (aktuell) | *(kein Change)* | Runde 2 ist IST; **Out-of-Range → ehrlicher Fehler** seit 2026-09-30 (`e97ef512`) — nur Verhalten, Description bleibt wahr ([disk-file-write-tool.md](disk-file-write-tool.md)) |
+| 7 | `diskEditFile` | ✅ **umgesetzt (Inc 2, 2026-09-30, `0be24315`, Paul verbatim):** `"Replace exact, whitespace-sensitive occurrences in a file. oldString must uniquely identify the target in its line context; if it matches multiple locations, all are replaced. Min 3 non-whitespace chars; reports count. newString=null deletes."` | ✅ done | — | Paul-Text 1:1; altes „first occurrence" war Drift (Replace-All seit 2026-09-04); gestrichenes „Error if not found or identical." = bewusste Textentscheidung, Verhalten unverändert (applyEdit-IAEs bestehen) |
 | 8 | `diskRenameResource` | `"Rename or move a file or directory. Creates target parent folders."` | ✅ gut | *(kein Change)* | - |
 | 9 | `diskInsertLines` | `"Insert text into a file at a specific position. Omit afterLine to append at end. 0 inserts before the first line (prepend). 1..n inserts after that line."` | ✅ gut | *(kein Change)* | - |
 
@@ -107,8 +107,8 @@ Alle `@Tool`-Beschreibungen folgen einem einheitlichen Muster:
 
 | # | Method | Current Description | Rating | New Description | Why |
 |---|--------|---------------------|--------|-----------------|-----|
-| 27 | `eclipseReplaceLines` | `"Replace lines by line number. newContent may span multiple lines."` | ⚠️ verwirrend | `"Replace a single line in a workspace file by 1-based line number. newContent may span multiple lines, replacing only the specified line."` | Insert vs Replace klären |
-| 28 | `eclipseEditFile` | `"Replace exact string in workspace file."` | ⚠️ zu kurz | `"Replace the first occurrence of an exact string in a workspace file. newString can be null (deletes the match)."` | Null-Verhalten + "first occurrence" |
+| 27 | `eclipseReplaceLines` | `"Replace a single line in a workspace file by 1-based line number. newContent may span multiple lines."` | ✅ (aktuell) | *(kein Change)* | Runde 2 ist IST; **Out-of-Range → ehrlicher Fehler** seit 2026-09-30 (`e97ef512`) — nur Verhalten, Description bleibt wahr |
+| 28 | `eclipseEditFile` | ✅ **umgesetzt (Inc 2, 2026-09-30, `0be24315`, Paul verbatim):** `"Replace exact, whitespace-sensitive occurrences in a file. oldString must uniquely identify the target in its line context; if it matches multiple locations, all are replaced. Min 3 non-whitespace chars; reports count. newString=null deletes."` | ✅ done | — | **identisch zu #7** — „one behaviour, one implementation" auch im Text |
 | 29 | `eclipseWriteFile` | `"Write file to workspace. Creates parent dirs and overwrites if exists."` | ✅ gut | *(kein Change)* | - |
 | 30 | `eclipseInsertLines` | *(1 line, ausführlich)* | ✅ gut | *(kein Change)* | - |
 | 31 | `eclipseRenameResource` | `"Rename or move a workspace file or directory. Creates target parent folders."` | ✅ gut | *(kein Change)* | - |

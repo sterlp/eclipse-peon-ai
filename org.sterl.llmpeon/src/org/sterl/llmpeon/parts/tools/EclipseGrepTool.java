@@ -78,15 +78,14 @@ public class EclipseGrepTool extends AbstractEclipseTool {
             searchScope(containers, extension, searchQuery, hits, matchedFiles);
         }
 
-        onTool("Eclipse grep '" + query + "' type '" + StringUtil.getOrDefault(extension, "*")
-                + "' found " + hits.size() + " matched lines");
-
         String result = AiReponseBuilder.grepComplete(
                 hits, searchQuery, AiReponseBuilder.MAX_GREP_FILES, AiReponseBuilder.MAX_GREP_LINES, extension);
         if (hits.isEmpty()) {
             var searchedScope = allProjects ? "all open projects (" + containers.size() + ")" : path;
             result += System.lineSeparator() + "Searched: " + searchedScope + " · pattern: " + query;
         }
+        onTool("Eclipse grep '" + query + "' type '" + StringUtil.getOrDefault(extension, "*")
+                + "' found " + hits.size() + " matched lines" + " " + StringUtil.charsSuffix(result));
         return result;
     }
 

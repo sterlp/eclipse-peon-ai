@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.compact;
 
 import java.util.List;
+import java.util.Locale;
 
 import org.jspecify.annotations.Nullable;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
@@ -8,6 +9,7 @@ import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
+import org.sterl.llmpeon.shared.ChatMessageUtil.RenderOptions;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.model.ToSimpleMessage;
@@ -96,9 +98,16 @@ public class CompactService {
         // "exactly one debug log" contract holds.
         // R-CC-10: the token diagnosis (memory/model/estimate) is appended after thinkingEnabled,
         // before the diagnostic block — the "exactly one debug log" contract still holds.
+        var estimate = ChatMessageUtil.estimateTokens(messages);
         log.debug("Compact entry: agent={}, messageCount={}, estimatedInputTokens={}, budget={}, thinkingEnabled={}{}\n{}",
-                agentName, messages.size(), ChatMessageUtil.estimateTokens(messages), budgetTokens,
+                agentName, messages.size(), estimate, budgetTokens,
                 StringUtil.hasValue(compactCfg.getThink()), tokenDiagnosis, diagnosticBlock(outcome));
+
+        // R-CC-17: more than 30% over budget → dump the single biggest message as one WARN —
+        // the "which message ate the context" diagnostic of an over-limit compact.
+        if (budgetTokens > 0 && estimate > budgetTokens * 1.3) {
+            logBiggestMessage(messages);
+        }
 
         var request = ChatRequest.builder()
                 .messages(COMPRESS_SYSTEM, UserMessage.from(outcome.input()))
@@ -160,6 +169,32 @@ public class CompactService {
                 .append(outcome.stage()).append(", droppedChars=").append(outcome.droppedChars())
                 .append(", dropRate=").append(dropRate);
         return sb.toString();
+    }
+
+    /**
+     * R-CC-17: one WARN dumping the single biggest message (uncapped render — the same measure
+     * as the entry log and the trim sizes). System messages render empty (uncapped drops them)
+     * and are skipped defensively; ties break to the FIRST of the largest (deterministic).
+     */
+    private void logBiggestMessage(List<ChatMessage> messages) {
+        ChatMessage biggest = null;
+        String biggestRender = null;
+        for (var m : messages) {
+            if (m instanceof SystemMessage) continue;
+            var render = ChatMessageUtil.toString(m, RenderOptions.uncapped());
+            if (render.isEmpty()) continue;
+            if (biggestRender == null || render.length() > biggestRender.length()) {
+                biggest = m;
+                biggestRender = render;
+            }
+        }
+        if (biggest == null) return;
+        var role = switch (biggest.type()) {
+            case TOOL_EXECUTION_RESULT -> "tool";
+            default -> biggest.type().name().toLowerCase(Locale.ROOT);
+        };
+        log.warn("Compact biggest message: {}, {} chars (~{} tokens)\n{}",
+                role, biggestRender.length(), ChatMessageUtil.estimateTokens(biggestRender), biggestRender);
     }
 
     /** R-CIB-6: the result line is logged at the stage's level (info stage 1 / warn stage 2 / error final). */

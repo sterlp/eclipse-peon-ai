@@ -80,7 +80,12 @@ public class FileLines {
 
     /**
      * Replaces lines [startLine, endLine] (1-based, inclusive) with {@code replacement}.
-     * start &gt; end is swapped. Out-of-range bounds are clamped to the file size.
+     * <ul>
+     *   <li>0 or negative start/end → treat as 1 / last line respectively (sentinel: whole-file replace)</li>
+     *   <li>start &gt; end → swapped automatically</li>
+     *   <li>a bound beyond the file → {@link IllegalArgumentException} with the actual line count
+     *       and requested range — no silent clamp (asymmetric to {@link #extract}, which clamps by design)</li>
+     * </ul>
      */
     public static String replaceLines(String content, int startLine, int endLine, String replacement) {
         if (content == null) return replacement == null ? "" : replacement;
@@ -92,8 +97,9 @@ public class FileLines {
         int s = startLine <= 0 ? 1 : startLine;
         int e = endLine   <= 0 ? total : endLine;
         if (endLine > 0 && s > e) { int tmp = s; s = e; e = tmp; }
-        s = Math.max(1, Math.min(s, total));
-        e = Math.max(1, Math.min(e, total));
+        if (s > total || e > total) {
+            throw new IllegalArgumentException("file has " + total + " lines, requested " + s + "-" + e);
+        }
 
         for (int i = e; i >= s; i--) lines.remove(i - 1);
 

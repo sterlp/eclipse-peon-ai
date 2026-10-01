@@ -67,6 +67,17 @@ Helper, keine Sonderlogik.
 #### UC-TD-4 — buildReportIncludesStats ✅
 - GIVEN Build-Aufruf THEN Report endet mit Stats-Suffix; Failure-Pfad inklusive.
 
+### R-TD-5 — ShellTool-onTool-Zeilen tragen Dauer + Uhrzeit ✅ done (2026-10-01, Paul; kein Test — Anzeige-Präzisierung)
+
+Die **3 terminalen onTool-Zeilen** von `shellRunCommand` (finished / timed out / stopped) bekommen
+denselben `CallStats.suffix()` **vor** dem R-RS-Chars-Suffix: `… (4s, 19:54) (1234 chars)`. Die
+Start-Zeile bleibt ohne Suffix (sofortiges Start-Signal). Im IST trug die Stopped-Zeile die Dauer
+noch nicht einmal im Return — die onTool-Zeile schließt diese Lücke für Pauls Log-Sicht.
+
+- GIVEN Shell-Aufruf mit Laufzeit WHEN die onTool-Zeile emittiert THEN sie enthält
+  `(Ns, HH:mm)` vor `(N chars)`; GIVEN Timeout/Stopped THEN ebenfalls (gemessene Dauer).
+- *(Verifikation: keine automatisierten Tests — Anzeige-Präzisierung, Paul 2026-10-01.)*
+
 ## Out of Scope (bewusst, Paul 2026-09-22)
 
 - `webFetchAsMarkdown` (Fetch-Zeit), `memoryAdd/Replace` (Datum), `JavaDebugTool.continue`

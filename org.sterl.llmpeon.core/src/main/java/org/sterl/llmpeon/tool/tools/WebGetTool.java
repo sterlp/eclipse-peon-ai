@@ -13,6 +13,7 @@ import java.time.Duration;
 import org.sterl.llmpeon.shared.AiMonitor.AiFileUpdate;
 import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.QualifiedPathValidator;
+import org.sterl.llmpeon.shared.StringUtil;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -66,12 +67,12 @@ public class WebGetTool extends AbstractTool {
         Files.write(target, body);
         if (existed)
             monitor.onFileUpdate(new AiFileUpdate(target.toString(), oldContent, new String(body, StandardCharsets.UTF_8)));
-        onTool("Downloaded " + target + " (from " + url + ")");
-
-        return body.length == 0
+        String result = body.length == 0
                 ? "Downloaded " + target + ": HTTP " + response.statusCode()
                         + ", 0 bytes — server returned an empty body (from " + url + ")"
                 : "Downloaded " + target + ": HTTP " + response.statusCode()
                         + ", " + body.length + " bytes (from " + url + ")";
+        onTool("Downloaded " + target + " (from " + url + ")" + " " + StringUtil.charsSuffix(result));
+        return result;
     }
 }

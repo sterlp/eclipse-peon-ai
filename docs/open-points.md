@@ -260,3 +260,18 @@ Legacy-Frontmatter — bestätigt.
 - ⏳ **SwtUtil.setExcluded-Extract (Da-Dok G2, 2026-09-29):** SWT-Idiom `exclude`+`setVisible` 3× dupliziert (2× im Widget-Rework R-DEF-9…11 + `McpPreferenceView`) — Extraktions-Kandidat. Review-Befunde G1–G6 im Plan §11 (archiviert).
 - ⏳ **Dead Code: `ModelConfigWidget` 4-Arg-Konstruktor (Da Mek, 2026-09-29):** `labelStyle`-Parameter + SWT.END-Zweig sind seit der DEV-Sektions-Entfernung (R-DEF-10) caller-less — Cleanup-Kandidat beim nächsten Widget-Berührungs-Kontakt.
 - ⏳ **Inc-2-Zähler-Abweichung (Da Mek, 2026-09-29, akzeptiert):** Plan §5 sagte „rendered 24→28" — mit dem eigenen 2-Spalten-Grid-Wrapper (D6, Muster `addDevSection`) stehen die Page-Editors nicht mehr im gezählten Parent. IST: 14 (OLLAMA) / 17 (OpenAI, +3 Extra-Body-Kontrollen). Struktur folgt D6/ADR-0063, Zähler im Plan-Status vermerkt — keine Aktion nötig, Vermerk fürs Review.
+
+
+## API-Fehler ins Agent-Memory (✅ gebaut 2026-09-30 — [agent-error-memory.md](agent-error-memory.md))
+
+Paul: „Wenn wir mit einer Fehlermeldung rausfliegen, sollten wir diese auch dem Memory einfügen."
+Entschieden (Paul): **terminale** Fehler nach erschöpftem ApiRetry (nicht-retryable sofort), **nie
+Cancel**, Inhalt = `e.getMessage()` kompakt, **Dedup 1× pro Memory**; Einfügepunkt = `AiChatView`-
+`catch` echter Exceptions (nicht der stille Cancel-Pfad, vgl. header-state-leak/memory 29). Details
++ BDDs im Feature-Doc.
+
+## Toter Code: `eclipseFindImplementations` (2026-09-30, Da-Dok-Review-Nebenbefund)
+
+Die Methode `EclipseCodeNavigationTool.java:288-308` (inkl. `@Tool`-Annotation) liegt in einem
+`/* … */`-Kommentar-Block (:287-331) — leblos. Entfernung = separate Dead-Code-Story (Jon-Entscheid
+im Delta-Plan: No-Op bestätigt, nichts löschen im laufenden Batch).

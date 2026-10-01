@@ -83,10 +83,10 @@ public class DiskGrepTool extends AbstractTool {
             throw new RuntimeException("Failed to search in " + searchDir, e);
         }
 
-        onTool("Grep '" + query + "' type '" + StringUtil.getOrDefault(extension, "*")
-                + "' found " + hits.size() + " matched lines");
-
-        return AiReponseBuilder.grepComplete(hits, searchQuery, AiReponseBuilder.MAX_GREP_FILES,
+        String result = AiReponseBuilder.grepComplete(hits, searchQuery, AiReponseBuilder.MAX_GREP_FILES,
                 AiReponseBuilder.MAX_GREP_LINES, extension);
+        onTool("Grep '" + query + "' type '" + StringUtil.getOrDefault(extension, "*")
+                + "' found " + hits.size() + " matched lines" + " " + StringUtil.charsSuffix(result));
+        return result;
     }
 }

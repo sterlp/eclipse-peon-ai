@@ -10,6 +10,7 @@ import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.FileLines;
 import org.sterl.llmpeon.shared.FileUtils;
 import org.sterl.llmpeon.shared.QualifiedPathValidator;
+import org.sterl.llmpeon.shared.StringUtil;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -135,7 +136,7 @@ public class DiskFileWriteTool extends AbstractTool {
         }
     }
 
-    @Tool("Replace all occurrences of an exact string; oldString is required (min 3 non-whitespace chars); reports how many were replaced. newString=null/empty deletes the matches. Error if not found or identical.")
+    @Tool("Replace exact, whitespace-sensitive occurrences in a file. oldString must uniquely identify the target in its line context; if it matches multiple locations, all are replaced. Min 3 non-whitespace chars; reports count. newString=null deletes.")
     public String diskEditFile(@P(name = "filePath") String filePath, 
             @P(description = "exact string to replace", name = "oldString") String oldString, 
             @P(name = "newString", required = false) String newString) {
@@ -190,7 +191,7 @@ public class DiskFileWriteTool extends AbstractTool {
             if (target.getParent() != null) Files.createDirectories(target.getParent());
             Files.move(source, target);
             var result = "Renamed " + source + " -> " + target;
-            onTool(result);
+            onTool(result + " " + StringUtil.charsSuffix(result));
             fireAfterWrite();
             return result;
         } catch (IOException e) {
@@ -218,7 +219,7 @@ public class DiskFileWriteTool extends AbstractTool {
         }
         FileUtils.copy(source, target);
         var result = "Copied " + source + " -> " + target;
-        onTool(result);
+        onTool(result + " " + StringUtil.charsSuffix(result));
         fireAfterWrite();
         return result;
     }

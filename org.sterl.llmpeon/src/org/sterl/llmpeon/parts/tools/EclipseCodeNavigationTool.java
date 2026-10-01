@@ -76,8 +76,9 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
                 sb.append("\n... ").append(found.size() - MAX_TYPE_RESULTS)
                   .append(" more results. Narrow your search.");
             }
-            onTool("Find type " + typeName + " reading " + found.size() + " results ...");
-            return sb.toString();
+            String result = sb.toString();
+            onTool("Find type " + typeName + " reading " + found.size() + " results ..." + " " + StringUtil.charsSuffix(result));
+            return result;
         } catch (JavaModelException e) {
             throw new RuntimeException("Search failed: " + e.getMessage(), e);
         }
@@ -122,9 +123,10 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
                 appendBinarySignatures(sb, type);
             }
 
-            onTool("Reading type " + typeName + " " + projectName + (StringUtil.hasValue(source) ? " source" : " binary"));
-            
-            return sb.toString();
+            String result = sb.toString();
+            onTool("Reading type " + typeName + " " + projectName + (StringUtil.hasValue(source) ? " source" : " binary")
+                    + " " + StringUtil.charsSuffix(result));
+            return result;
         } catch (JavaModelException e) {
             throw new RuntimeException("Read source failed: " + e.getMessage(), e);
         }
@@ -219,8 +221,10 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
                 sb.append("\n... capped at ").append(MAX_REFERENCE_RESULTS)
                   .append(" results. Narrow with a project name.");
             }
-            onTool("Reading references of " + target.getElementName() + " found " + matches.size() + " matches.");
-            return sb.toString();
+            String result = sb.toString();
+            onTool("Reading references of " + target.getElementName() + " found " + matches.size() + " matches."
+                    + " " + StringUtil.charsSuffix(result));
+            return result;
         } catch (Exception e) {
             throw new RuntimeException("Reference search failed: " + e.getMessage(), e);
         }
@@ -258,20 +262,22 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
             throw new RuntimeException("Resource search failed: " + e.getMessage(), e);
         }
 
-        onTool("Search for " + namePattern + " found " + matches.size() + " matches in " + projects.size() + " projects ");
-        
+        String result;
         if (matches.isEmpty()) {
-            return "No resources found matching '" + namePattern + "' in following projects: " 
+            result = "No resources found matching '" + namePattern + "' in following projects: " 
                     + projects.stream().map(p -> p.getName()).collect(Collectors.joining(", "));
+        } else {
+            var sb = new StringBuilder();
+            matches.forEach(p -> sb.append(p).append("\n"));
+            if (matches.size() >= MAX_REFERENCE_RESULTS) {
+                sb.append("\n... capped at ").append(MAX_REFERENCE_RESULTS)
+                  .append(" results. Narrow with a project name or more specific pattern.");
+            }
+            result = sb.toString();
         }
-        var sb = new StringBuilder();
-        matches.forEach(p -> sb.append(p).append("\n"));
-        if (matches.size() >= MAX_REFERENCE_RESULTS) {
-            sb.append("\n... capped at ").append(MAX_REFERENCE_RESULTS)
-              .append(" results. Narrow with a project name or more specific pattern.");
-        }
-
-        return sb.toString();
+        onTool("Search for " + namePattern + " found " + matches.size() + " matches in " + projects.size() + " projects "
+                + " " + StringUtil.charsSuffix(result));
+        return result;
     }
 
     // -------------------------------------------------------------------------

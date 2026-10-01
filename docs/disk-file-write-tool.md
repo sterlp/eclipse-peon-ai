@@ -32,6 +32,22 @@ Delete a file or directory **recursively**. Works on both files and non-empty di
 ### `diskReplaceLines(filePath, line, newContent)`
 Replace lines by 1-based line number. Reads entire file, replaces, writes back.
 
+**Out-of-Range → ehrlicher Fehler ❌ specified (2026-09-30, Paul):** eine Zeilennummer jenseits
+des Dateiendes wirft einen Fehler mit den Ist-Fakten („file has N lines, requested S-E") — **kein
+stiller Clamp auf die letzte Zeile mehr** (eine stale Line-Number ersetzte still die falsche
+Zeile); bei Fehler bleibt die Datei **unverändert** (Write erst nach dem Replace).
+`line ≤ 0` bleibt dokumentiertes Sentinel = Ganzdatei-Replace (Muster wie `extract`/`insertLines`).
+Bewusste Asymmetrie: **Read** (`extract`) clampt by design ([eclipse-read-tools.md](eclipse-read-tools.md) R1),
+**Write** (`replaceLines`) fehlerhaftet.
+
+**BDD:**
+```
+GIVEN Datei mit 3 Zeilen
+WHEN diskReplaceLines(filePath, 99, "x")
+THEN Fehler „file has 3 lines, requested 99-99" (LLM-sichtbares Tool-Result) und Read-back der
+     Datei = Original (unverändert)
+```
+
 ### `diskEditFile(filePath, oldString, newString)`
 Replace **all** occurrences of the exact string — Replace-All is deliberate (saves tool rounds).
 The tool output reports the number of replacements: `replaced N occurrence(s)`.

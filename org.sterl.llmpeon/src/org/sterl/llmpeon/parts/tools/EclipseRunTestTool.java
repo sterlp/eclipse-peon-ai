@@ -29,6 +29,7 @@ import org.eclipse.jdt.launching.IJavaLaunchConfigurationConstants;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.CallStats;
+import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.shared.WaitUtil;
 
 import dev.langchain4j.agent.tool.P;
@@ -239,8 +240,9 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
                 return timeoutReport(testCount[0], failures.size(), stats);
             }
 
-            onTool("Reading test results of " + launchName);
-            return formatResults(sessionName[0], testCount[0], skippedCount[0], failures, errorCount, stats);
+            String result = formatResults(sessionName[0], testCount[0], skippedCount[0], failures, errorCount, stats);
+            onTool("Reading test results of " + launchName + " " + StringUtil.charsSuffix(result));
+            return result;
         } finally {
             JUnitCore.removeTestRunListener(listener);
         }

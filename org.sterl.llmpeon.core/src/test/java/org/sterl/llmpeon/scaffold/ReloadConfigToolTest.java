@@ -16,9 +16,14 @@ import org.sterl.llmpeon.AgentService;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.command.CommandService;
+import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.mock.MockLlmServer;
+import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.skill.SkillService;
+import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
+import org.sterl.llmpeon.tool.model.SimpleMessage;
 
 class ReloadConfigToolTest extends AbstractMemoryFileTest {
 
@@ -130,5 +135,38 @@ class ReloadConfigToolTest extends AbstractMemoryFileTest {
 
         // WHEN + THEN — with a valid empty dir this won't fail, so we verify normal success path instead
         assertThatNoException().isThrownBy(() -> tool.reloadConfig());
+    }
+
+    // R-RS-1
+    @Test
+    void reloadConfigDoneLineDisclosesResultChars() throws Exception {
+        // GIVEN the tool wired with a capturing monitor
+        var tools = new ArrayList<String>();
+        tool.withToolRequest(request(tools));
+
+        // WHEN the reload runs
+        String result = tool.reloadConfig();
+
+        // THEN the return string stays clean and the done line ends with its exact size
+        assertThat(result).contains("Reloaded config from").doesNotContain(" chars)");
+        assertThat(tools).hasSize(1);
+        assertThat(tools.get(0)).startsWith("Reloaded config from");
+        assertThat(tools.get(0)).endsWith(StringUtil.charsSuffix(result));
+    }
+
+    /** Full request wiring (memory + chatModel are required fields) — the model is never called by this tool. */
+    private ToolLoopRequest request(List<String> tools) {
+        return ToolLoopRequest.builder()
+                .memory(new ThreadSafeMemory())
+                .chatModel(chatModel)
+                .monitor(monitorCapturing(tools))
+                .build();
+    }
+
+    private static AiMonitor monitorCapturing(List<String> tools) {
+        return new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onTool(String message) { tools.add(message); }
+        };
     }
 }

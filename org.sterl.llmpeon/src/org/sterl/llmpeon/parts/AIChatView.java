@@ -37,6 +37,7 @@ import org.sterl.llmpeon.command.SlashCommandResolver;
 import org.sterl.llmpeon.command.SlashCommandResolver.SlashResult;
 import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.exception.ExceptionUtil;
+import org.sterl.llmpeon.memory.AgentErrorMemory;
 import org.sterl.llmpeon.parts.ai.PeonAiService;
 import org.sterl.llmpeon.parts.config.LlmPreferenceInitializer;
 import org.sterl.llmpeon.parts.config.McpConnectionService;
@@ -613,6 +614,7 @@ public class AIChatView implements EclipseAiMonitor {
                 cr = aiService.call(messageToSend, this);
             } catch (Exception e) {
                 ex = handleChatException(e);
+                AgentErrorMemory.recordIfTerminal(agent.getMemory(), e);
             } finally {
                 handleDoneChatResponse(null, agent.getName(), cr, monitor, ex);
             }

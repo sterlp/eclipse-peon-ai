@@ -464,6 +464,85 @@ class CompactServiceTest {
         assertThat(server.getLastRequestBody()).isNull();
     }
 
+    // ---------- R-CC-17 biggest message dump ----------
+
+    @Test
+    void biggestMessageDumpedWhenOverLimitBy30Percent() {
+        // GIVEN — budget 1000, one tool result of 10000 chars → estimate far above 1.3 x budget
+        var log = new CapturingLog();
+        var engine = engineWithSummary(log, 1000);
+        var toolResult = ToolExecutionResultMessage.from("id", "read", "x".repeat(10_000));
+        var messages = List.<ChatMessage>of(UserMessage.from("Foo"), toolResult);
+        var expected = ChatMessageUtil.toString(toolResult, ChatMessageUtil.RenderOptions.uncapped());
+        assertThat(ChatMessageUtil.estimateTokens(messages)).isGreaterThan(1300);
+
+        // WHEN
+        engine.compact("dev-agent", messages, "", null);
+
+        // THEN — exactly ONE dump: marker + role + exact chars + est. tokens + the FULL render
+        var dumps = log.lines(CapturingLog.Level.WARN).stream()
+                .filter(l -> l.contains("Compact biggest message:"))
+                .toList();
+        assertThat(dumps).hasSize(1);
+        assertThat(dumps.get(0))
+                .contains("Compact biggest message: tool, " + expected.length() + " chars (~"
+                        + ChatMessageUtil.estimateTokens(expected) + " tokens)")
+                .contains(expected);
+        // AND — the entry log and the result line are untouched
+        assertThat(log.entryLine()).contains("budget=1000");
+        assertThat(log.allLines()).anyMatch(l -> l.message().contains("Compact result:"));
+    }
+
+    @Test
+    void noBiggestMessageDumpUnderLimit() {
+        // GIVEN — small messages, high budget
+        var log = new CapturingLog();
+        var engine = engineWithSummary(log, 100_000);
+        var messages = List.<ChatMessage>of(UserMessage.from("Foo"), AiMessage.from("Bar"));
+
+        // WHEN
+        engine.compact("dev-agent", messages, "", null);
+
+        // THEN — no dump
+        assertThat(log.lines(CapturingLog.Level.WARN)).noneMatch(l -> l.contains("Compact biggest message:"));
+    }
+
+    @Test
+    void noDumpBetweenLimitAnd130Percent() {
+        // GIVEN — estimate at ~1.25 x budget: over the limit, below the 1.3 gate
+        var log = new CapturingLog();
+        var engine = engineWithSummary(log, 1000);
+        var messages = List.<ChatMessage>of(UserMessage.from("y".repeat(4_375)));
+        var estimate = ChatMessageUtil.estimateTokens(messages);
+        assertThat(estimate).isGreaterThan(1000).isLessThan(1300);
+
+        // WHEN
+        engine.compact("dev-agent", messages, "", null);
+
+        // THEN — the gate is not reached, no dump
+        assertThat(log.lines(CapturingLog.Level.WARN)).noneMatch(l -> l.contains("Compact biggest message:"));
+    }
+
+    @Test
+    void tieBreakDumpsFirstOfLargest() {
+        // GIVEN — two tool results of identical size, over the gate
+        var log = new CapturingLog();
+        var engine = engineWithSummary(log, 1000);
+        var messages = List.<ChatMessage>of(
+                ToolExecutionResultMessage.from("1", "tool", "A".repeat(5_000)),
+                ToolExecutionResultMessage.from("2", "tool", "B".repeat(5_000)));
+
+        // WHEN
+        engine.compact("dev-agent", messages, "", null);
+
+        // THEN — the FIRST of the largest is dumped
+        var dumps = log.lines(CapturingLog.Level.WARN).stream()
+                .filter(l -> l.contains("Compact biggest message:"))
+                .toList();
+        assertThat(dumps).hasSize(1);
+        assertThat(dumps.get(0)).contains("A".repeat(5_000)).doesNotContain("B".repeat(5_000));
+    }
+
     // ---------- helpers ----------
 
     private static CompactService engineWithSummary(CapturingLog log, int budget) {

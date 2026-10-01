@@ -95,6 +95,78 @@ public class EclipseGrepToolTest extends AbstractIntegrationTest {
     }
 
     @Test
+    public void emptyMdGrepPayloadStaysSmallAndHonest() {
+        // GIVEN the fixture's .md files (README.md, data/notes.md) do not contain "einem text"
+        // WHEN grepping "einem text" with the .md type filter (Paul's 0-hit case)
+        String result = tool.eclipseGrepFiles("einem text", PeonTestFixture.PROJECT_NAME, ".md");
+
+        // THEN the 0-hit payload is honest: R2d "no matches" + R2c mode + searched scope + pattern
+        assertContains(result, "no matches");
+        assertContains(result, "regex search"); // "einem text" is a valid regex -> regex mode
+        assertContains(result, "Searched: " + PeonTestFixture.PROJECT_NAME);
+        assertContains(result, "pattern: einem text");
+        // ... and no file content / bulk data leaks into the empty payload ...
+        assertFalse("empty payload must not leak README.md content:\n" + result,
+                result.contains("Test fixture"));
+        assertFalse("empty payload must not leak notes.md content:\n" + result,
+                result.contains("Fixture notes"));
+        // ... and the FULL captured payload stays far below any token-overflow threshold.
+        assertTrue("empty grep payload must stay < 2KB, was " + result.length() + " chars:\n" + result,
+                result.length() < 2048);
+    }
+
+    @Test(timeout = 60_000)
+    public void manyMdMatchesAreCappedAndDisclosed() {
+        // GIVEN 110 .md files, each with 5 lines containing "einem text" (550 potential matches —
+        // well past MAX_GREP_FILES=100 and MAX_GREP_LINES=100, so both caps must engage)
+        for (int i = 0; i < 110; i++) {
+            eclipseWriteFile(String.format("grepmany_%03d.md", i),
+                    "# fixture note\n"
+                    + "einem text one\n"
+                    + "einem text two\n"
+                    + "einem text three\n"
+                    + "einem text four\n"
+                    + "einem text five\n");
+        }
+
+        // WHEN grepping "einem text" with the .md type filter
+        String result = tool.eclipseGrepFiles("einem text", PeonTestFixture.PROJECT_NAME, ".md");
+
+        // THEN the line cap renders exactly MAX_GREP_LINES(100) hit lines ...
+        var hitLines = result.lines()
+                .filter(l -> l.matches(".*\\.md:\\d+: .*"))
+                .toList();
+        assertEquals("line cap must render exactly 100 hit lines:\n" + result, 100, hitLines.size());
+        // ... the FULL captured payload stays far below any token-overflow threshold
+        // (a leaked line cap would render ~5x more lines and blow past this bound)
+        assertTrue("many-match payload must stay < 15KB, was " + result.length() + " chars",
+                result.length() < 15000);
+        // ... every truncation is honestly disclosed: showing N of M + the file cap + the mode
+        assertContains(result, "showing 100 of 500 matched lines — narrow your search");
+        assertContains(result, "... result capped at 100 files. Narrow your search path.");
+        assertContains(result, "regex search");
+        // ... and every shown hit is a real .md match on the query, not garbage
+        hitLines.forEach(l -> assertTrue("hit must contain the query:\n" + l, l.contains("einem text")));
+    }
+
+    @Test
+    public void longLineIsClampedAndDisclosed() {
+        // GIVEN one .md file with a single 20013-char line containing the query (minified)
+        eclipseWriteFile("grepminified.md", "minifiedline " + "a".repeat(20_000) + "\n");
+
+        // WHEN grepping the query with the .md type filter
+        String result = tool.eclipseGrepFiles("minifiedline", PeonTestFixture.PROJECT_NAME, ".md");
+
+        // THEN the hit line is clamped to exactly 2000 chars of text (13-char token + 1987 'a', nothing more)
+        var hitLines = result.lines().filter(l -> l.contains("grepminified.md:1: ")).toList();
+        assertEquals("exactly one hit line expected:\n" + result, 1, hitLines.size());
+        assertTrue("hit line must end with exactly the clamped 2000 chars:\n" + hitLines.get(0),
+                hitLines.get(0).matches(".*grepminified\\.md:1: minifiedline a{1987}$"));
+        // ... and the clamp is honestly disclosed (family consistency with the disk tool)
+        assertContains(result, "1 line(s) truncated at 2000 chars");
+    }
+
+    @Test
     public void validRegexReportsRegexMode() {
         String result = tool.eclipseGrepFiles("C++", PeonTestFixture.PROJECT_NAME, ".java");
 

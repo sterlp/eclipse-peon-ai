@@ -9,6 +9,7 @@ import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.FileLines;
 import org.sterl.llmpeon.shared.FileUtils;
 import org.sterl.llmpeon.shared.StringMatcher;
+import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.AiReponseBuilder;
 
 import dev.langchain4j.agent.tool.P;
@@ -62,9 +63,10 @@ public class DiskFileReadTool extends AbstractTool {
         try {
             var lines = "";
             if (startLine > 0 && endLine > 0) lines = " from " + startLine + " to " + endLine;
-            onTool("Reading " + lines + " file " + filePath);
             String content = Files.readString(resolved);
-            return FileLines.extract(content, startLine, endLine);
+            String result = FileLines.extract(content, startLine, endLine);
+            onTool("Reading " + lines + " file " + filePath + " " + StringUtil.charsSuffix(result));
+            return result;
         } catch (IOException e) {
             throw new RuntimeException("Failed to read " + filePath, e);
         }
@@ -90,12 +92,13 @@ public class DiskFileReadTool extends AbstractTool {
             throw new RuntimeException("Failed to search in " + workingDir, e);
         }
 
-        onTool("Found " + matches.size() + " files in " + workingDir + " for '" + query + "'.");
         String suffix = null;
         if (matches.isEmpty()) {
             suffix =  "Use " + LIST_DISK_NAME + " to explore the project structure.";
         }
-        return AiReponseBuilder.searchComplete(matches, limit, suffix);
+        String result = AiReponseBuilder.searchComplete(matches, limit, suffix);
+        onTool("Found " + matches.size() + " files in " + workingDir + " for '" + query + "'." + " " + StringUtil.charsSuffix(result));
+        return result;
     }
 
     public static final String LIST_DISK_NAME = "diskListDirectory";
@@ -124,11 +127,11 @@ public class DiskFileReadTool extends AbstractTool {
             throw new RuntimeException("Failed to list " + dir, e);
         }
 
-        onTool("List directory " + dir + " with " + entries.size() + " elements");
-        if (entries.isEmpty()) {
-            return "Directory is empty: " + dir;
-        }
-        return String.join("\n", entries);
+        String result = entries.isEmpty()
+                ? "Directory is empty: " + dir
+                : String.join("\n", entries);
+        onTool("List directory " + dir + " with " + entries.size() + " elements" + " " + StringUtil.charsSuffix(result));
+        return result;
     }
 
     private Path resolve(String path) {
