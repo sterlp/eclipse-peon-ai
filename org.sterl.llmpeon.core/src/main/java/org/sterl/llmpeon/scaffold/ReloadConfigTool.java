@@ -5,6 +5,7 @@ import java.io.IOException;
 import org.sterl.llmpeon.AgentService;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.command.CommandService;
+import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.tool.tools.AbstractTool;
 
@@ -57,11 +58,11 @@ public class ReloadConfigTool extends AbstractTool {
         var commandDir = configDir.resolve(LlmConfig.COMMAND_DIRECTORY);
         commandService.refresh(commandDir);
 
-        onTool("Reloaded config from " + configDir);
         String result = "Reloaded config from " + configDir + ":" + System.lineSeparator() +
                 "  Agents: " + agentService.loadedAgentCount() + " loaded" + System.lineSeparator() +
                 "  Skills: " + skillService.loadedSkillCount() + " loaded" + System.lineSeparator() +
                 "  Commands: " + commandService.loadedCommandCount() + " loaded";
+        onTool("Reloaded config from " + configDir + " " + StringUtil.charsSuffix(result));
 
         // Fire callback after ALL services succeeded
         if (onReload != null) {

@@ -189,8 +189,9 @@ public class PoDelegateTool extends AbstractTool {
         AiAgent slave = agent.agent();
         return switch (slave.compact(monitor).status()) {
             case COMPACTED -> {
-                reportAction(agent, "compacted");
-                yield agent.uiName() + " compacted. " + contextUsed(slave);
+                var toolResult = agent.uiName() + " compacted. " + contextUsed(slave);
+                onTool(agent.uiName() + " compacted." + " " + StringUtil.charsSuffix(toolResult));
+                yield toolResult;
             }
             // honest skip (R16 guard) — memory untouched, so N is exact
             case SKIPPED_SMALL -> "Nothing to compact (" + slave.getMemory().size() + " messages)";
@@ -242,10 +243,11 @@ public class PoDelegateTool extends AbstractTool {
                     ? response.aiMessage().text()
                     : null;
 
-            onTool(statsLine);
-            return StringUtil.hasValue(answer)
+            final var result = StringUtil.hasValue(answer)
                     ? answer + System.lineSeparator() + statsLine
                     : target.uiName() + " returned no result " + statsLine;
+            onTool(statsLine + " " + StringUtil.charsSuffix(result));
+            return result;
         } catch (IllegalStateException e) {
             onProblem(target.uiName() + " " + e.getMessage());
             return "Failed: " + target.uiName() + e.getMessage();

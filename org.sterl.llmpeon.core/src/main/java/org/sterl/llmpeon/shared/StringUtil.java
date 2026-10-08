@@ -36,6 +36,15 @@ public class StringUtil {
         if (totalSeconds < 60) return totalSeconds + "s";
         return (totalSeconds / 60) + "m " + (totalSeconds % 60) + "s";
     }
+
+    /**
+     * Size disclosure for tool completion lines (R-RS-1, docs/tool-result-size.md):
+     * the exact character count of the tool's return string as {@code "(N chars)"}.
+     * A {@code null} result counts as zero — honest, never omitted.
+     */
+    public static String charsSuffix(String result) {
+        return "(" + (result == null ? 0 : result.length()) + " chars)";
+    }
     
     public static String getOrDefault(String value, String defaultValue) {
         if (hasValue(value)) return value;

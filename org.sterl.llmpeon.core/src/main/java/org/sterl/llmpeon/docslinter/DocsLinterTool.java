@@ -7,6 +7,7 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 import org.sterl.llmpeon.shared.QualifiedPathValidator;
+import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.tools.AbstractTool;
 
 import dev.langchain4j.agent.tool.P;
@@ -65,8 +66,9 @@ public class DocsLinterTool extends AbstractTool {
         DocsLintReportRenderer renderer = new DocsLintReportRenderer();
         try {
             DocsLintResult result = linter.lint(effectiveRoot, docRoots, pattern);
-            onTool(renderer.statusLine("lintDocs", result));
-            return renderer.summary(result);
+            String summary = renderer.summary(result);
+            onTool(renderer.statusLine("lintDocs", result) + " " + StringUtil.charsSuffix(summary));
+            return summary;
         } catch (IOException e) {
             throw new RuntimeException("Failed to lint docs: " + e.getMessage(), e);
         }
@@ -96,8 +98,9 @@ public class DocsLinterTool extends AbstractTool {
         try {
             DocsLintResult result = linter.lintWithTests(
                     effectiveRoot, docRoots, testRoots, testGlobs, pattern);
-            onTool(renderer.statusLine("lintDocsAndTests", result));
-            return renderer.summary(result);
+            String summary = renderer.summary(result);
+            onTool(renderer.statusLine("lintDocsAndTests", result) + " " + StringUtil.charsSuffix(summary));
+            return summary;
         } catch (IOException e) {
             throw new RuntimeException("Failed to lint docs and tests: " + e.getMessage(), e);
         }

@@ -13,6 +13,7 @@ import org.sterl.llmpeon.shared.AiMonitor.AiFileUpdate;
 import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.ArchiveName;
 import org.sterl.llmpeon.shared.FileUtils;
+import org.sterl.llmpeon.shared.StringUtil;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -47,10 +48,11 @@ public class PlanTool extends AbstractEclipseTool {
         ArgsUtil.requireNonBlank(content, "content");
         var project = getProject();
         var planFile = IoUtils.writeProjectFile(project, OVERVIEW_FILE, content, getProgressMonitor());
-        onTool("Plan saved to " + JdtUtil.pathOf(planFile));
+        String result = "Saved " + JdtUtil.pathOf(planFile);
+        onTool("Plan saved to " + JdtUtil.pathOf(planFile) + " " + StringUtil.charsSuffix(result));
         peonAiService.onPlanSaved(planFile);
         
-        return "Saved " + JdtUtil.pathOf(planFile); 
+        return result;
     }
 
     @Tool("Update the plan by replacing all exact text substring. For incremental refinements.")

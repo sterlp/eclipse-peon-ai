@@ -25,4 +25,17 @@ class StringUtilTest {
         assertEquals("0s", StringUtil.humanElapsed(-5));       // negative counts as zero
     }
 
+    /** R-RS-1 (docs/tool-result-size.md): the exact character count as a suffix. */
+    @Test
+    void charsSuffix_basic() {
+        assertEquals("(3 chars)", StringUtil.charsSuffix("abc"));
+    }
+
+    /** R-RS-1: a null or empty result counts as zero — honest, never omitted. */
+    @Test
+    void charsSuffix_nullOrEmptyIsZero() {
+        assertEquals("(0 chars)", StringUtil.charsSuffix(null));
+        assertEquals("(0 chars)", StringUtil.charsSuffix(""));
+    }
+
 }

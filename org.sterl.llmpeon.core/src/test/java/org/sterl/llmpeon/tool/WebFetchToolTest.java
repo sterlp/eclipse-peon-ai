@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -13,9 +15,19 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.sterl.llmpeon.StreamMock;
+import org.sterl.llmpeon.ai.ConfiguredChatModel;
+import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.memory.ThreadSafeMemory;
+import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.tool.ToolLoopRequest;
+import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.tools.WebFetchTool;
 
 import com.sun.net.httpserver.HttpServer;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.response.ChatResponse;
 
 /**
  * webFetchAsMarkdown pagination (docs/web-tools.md R-WEB-1…3): first window, cache hit
@@ -176,6 +188,53 @@ class WebFetchToolTest {
 
         assertThat(tool.webFetchAsMarkdown(url, null, null))
                 .isEqualTo("Fetched " + url + ": empty content (0 lines)");
+    }
+
+    // R-RS-1
+    @Test
+    void webFetchDoneLineDisclosesWindowChars() throws Exception {
+        String url = base + "/page3000";
+        serve("/page3000", 200, page(PAGE_3000_MARKERS).getBytes(StandardCharsets.UTF_8));
+        var tools = new ArrayList<String>();
+        tool.withToolRequest(request(monitorCapturing(tools)));
+
+        // GIVEN a 3000-line page WHEN webFetchAsMarkdown(url) — cache miss
+        String result = tool.webFetchAsMarkdown(url, null, null);
+
+        // THEN the start line stays, the done line is emitted after the result with its exact size
+        assertThat(result).doesNotContain(" chars)");
+        assertThat(tools).hasSize(2);
+        assertThat(tools.get(0)).isEqualTo("Reading " + url);
+        assertThat(tools.get(1)).startsWith("Fetched " + url);
+        assertThat(tools.get(1)).endsWith(StringUtil.charsSuffix(result));
+
+        // AND the cache-hit path emits the same done line for the cached window
+        tools.clear();
+        String cached = tool.webFetchAsMarkdown(url, 501, null);
+        assertThat(cached).doesNotContain(" chars)");
+        assertThat(tools).hasSize(1);
+        assertThat(tools.get(0)).startsWith("Fetched " + url);
+        assertThat(tools.get(0)).endsWith(StringUtil.charsSuffix(cached));
+    }
+
+    /** Full request wiring (memory + chatModel are required fields) — the model is never called by this tool. */
+    private static ToolLoopRequest request(AiMonitor monitor) {
+        var config = LlmConfig.builder().model("test").build();
+        var cm = new StreamMock().buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("unused"))
+                .build());
+        return ToolLoopRequest.builder()
+                .memory(new ThreadSafeMemory())
+                .chatModel(new ConfiguredChatModel(config, cm))
+                .monitor(monitor)
+                .build();
+    }
+
+    private static AiMonitor monitorCapturing(List<String> tools) {
+        return new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onTool(String message) { tools.add(message); }
+        };
     }
 
     private static String page(int markers) {

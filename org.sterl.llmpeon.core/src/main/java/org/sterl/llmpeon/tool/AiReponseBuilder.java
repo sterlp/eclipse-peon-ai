@@ -12,6 +12,8 @@ public class AiReponseBuilder {
 
     public static final int MAX_GREP_FILES = 100;
     public static final int MAX_GREP_LINES = 100;
+    /** R-OD-6: a single hit line is clamped to this many chars (minified lines must not blow the context). */
+    public static final int MAX_GREP_LINE_CHARS = 2000;
 
     public static final int MAX_BUILD_MARKERS = 100;
 
@@ -75,17 +77,24 @@ public class AiReponseBuilder {
     /**
      * R8: renders grep hits as {@code file:line: text} (1-based, unpadded), replacing the old
      * per-file occurrence counts. Caps: {@code maxFiles} distinct files, {@code maxLines} lines
-     * total (cross-file). Honesty stays in the output: mode hint (R2c), type-filter hint
-     * (R6a/R6b) and the line-cap disclosure.
+     * total (cross-file), each line clamped to {@link #MAX_GREP_LINE_CHARS} chars (R-OD-6).
+     * Honesty stays in the output: mode hint (R2c), type-filter hint (R6a/R6b), the line-cap
+     * disclosure and the truncated-line disclosure.
      */
     public static String grepComplete(List<GrepHit> hits, SearchQuery query, int maxFiles, int maxLines,
             String extension) {
         int total = hits.size();
         int shown = Math.min(total, maxLines);
         var lines = new ArrayList<String>(shown);
+        int truncated = 0;
         for (int i = 0; i < shown; i++) {
             var h = hits.get(i);
-            lines.add(h.file() + ":" + h.line() + ": " + h.text());
+            String text = h.text();
+            if (text.length() > MAX_GREP_LINE_CHARS) {
+                text = text.substring(0, MAX_GREP_LINE_CHARS);
+                truncated++;
+            }
+            lines.add(h.file() + ":" + h.line() + ": " + text);
         }
 
         String suffix = query.modeHint();
@@ -99,6 +108,10 @@ public class AiReponseBuilder {
         if (GrepHit.fileCount(hits) >= maxFiles) {
             suffix += System.lineSeparator()
                     + "... result capped at " + maxFiles + " files. Narrow your search path.";
+        }
+        if (truncated > 0) {
+            suffix += System.lineSeparator()
+                    + truncated + " line(s) truncated at " + MAX_GREP_LINE_CHARS + " chars";
         }
         return grepComplete(lines, suffix);
     }

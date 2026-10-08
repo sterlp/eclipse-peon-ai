@@ -34,8 +34,9 @@ public class EclipseConsoleLogTool extends AbstractEclipseTool {
 
         var targetConsole = getConsole(consoleName, consoles);
         if (targetConsole.isEmpty()) {
-            onTool("Reading console " + StringUtil.stripToEmpty(consoleName));
-            return "Console not found. Available consoles:\n" + eclipseListAvailableConsoles();
+            String result = "Console not found. Available consoles:\n" + eclipseListAvailableConsoles();
+            onTool("Reading console " + StringUtil.stripToEmpty(consoleName) + " " + StringUtil.charsSuffix(result));
+            return result;
         }
 
         var console = targetConsole.get();
@@ -43,8 +44,9 @@ public class EclipseConsoleLogTool extends AbstractEclipseTool {
         LogExcerpt excerpt = LogExcerpt.of(console.getDocument().get(), lines, query);
         String message = "Reading console " + console.getName();
         if (query != null) message += " · grep '" + grep + "'";
-        onTool(message + " · " + excerpt.shown() + " of " + excerpt.matching() + " lines");
-        return excerpt.header(console.getName()) + "\n" + excerpt.text();
+        String result = excerpt.header(console.getName()) + "\n" + excerpt.text();
+        onTool(message + " · " + excerpt.shown() + " of " + excerpt.matching() + " lines" + " " + StringUtil.charsSuffix(result));
+        return result;
     }
 
     private Optional<TextConsole> getConsole(String consoleName, List<TextConsole> consoles) {
@@ -64,19 +66,15 @@ public class EclipseConsoleLogTool extends AbstractEclipseTool {
     public String eclipseListAvailableConsoles() {
         var consoles = consoles();
 
-        onTool("List available consoles " + consoles.size());
-        if (consoles.isEmpty()) {
-            return "No consoles available.";
-        }
-
-        StringBuilder result = new StringBuilder();
+        StringBuilder sb = new StringBuilder();
         for (IConsole console : consoles) {
             if (console instanceof TextConsole) {
-                result.append(StringUtil.hasValue(console.getName()) ? console.getName() : console.getClass()).append("\n");
+                sb.append(StringUtil.hasValue(console.getName()) ? console.getName() : console.getClass()).append("\n");
             }
         }
-
-        return result.toString().trim();
+        String result = consoles.isEmpty() ? "No consoles available." : sb.toString().trim();
+        onTool("List available consoles " + consoles.size() + " " + StringUtil.charsSuffix(result));
+        return result;
     }
 
     private List<TextConsole> consoles() {
