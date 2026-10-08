@@ -228,11 +228,12 @@ offen: (a) Fixture behalten + Doc-SOLL anpassen, oder aufräumen; (b) README-Zei
 („Test-Fixture — ladbar, aber nicht hier developen; `peon.test.project` überschreibt den Pfad").
 Da-Mek-Empfehlung: (a) behalten + Doc anpassen, (b) ja.
 
-## ⏳ Eclipse-Installationsfehler User — Issue #142
+## ✅ Eclipse-Installationsfehler User — Issue #142 (gefixt 2026-10-06)
 
-Analyse korrigiert (2026-09-19): unser p2-Repo liefert asm 9.10.1 mit (includeAllDependencies).
-Fix-Kandidaten + Follow-ups: [issue-142-asm-conflict.md](issue-142-asm-conflict.md). Nachzuholen
-bei Pauls Zustimmung: Mindest-Eclipse-Version auf der Homepage nennen.
+`includeAllDependencies` entfernt (Repo liefert nur noch Feature+Plugin), `jakarta.annotation` auf
+`[2.0.0,4.0.0)`, Target/Compatibility-Floor auf 2025-12. Details:
+[issue-142-asm-conflict.md](issue-142-asm-conflict.md). Homepage-Mindestversion 2025-12 bereits
+korrekt.
 ## ⏳ Think-BDD-Lücken (2026-09-27, Da-Dok-Provider-Think-Audit, Issue-#149-Zyklus)
 
 Aus dem Audit registriert, bewusst nicht in Inc-4 (Scope-Dispositionen):
