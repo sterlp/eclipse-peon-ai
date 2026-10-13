@@ -89,7 +89,7 @@ Regeln:
   verlinkt nur. Inkrementell: angelegt bzw. nachgezogen wird es, sobald eine Komponente neu gebaut
   oder angefasst wird, VOR der Planung — nie rückwirkend für den Bestand. Ohne abgenommenes
   Architektur-Doc kein Plan.
-  Jedes Architektur-Doc trägt ein Mermaid-Diagramm (Sequenz oder Komponenten-Interaktion) — der
+  Jedes Architektur-Doc trägt ein Mermaid-Diagramm (Sequenz-, Klassen- oder Komponenten-Interaktion) — der
   User reviewt darüber am schnellsten. Im ADR freigestellt: dort liest ein Agent, kein Mensch.
   Prüffrage an jedes Diagramm: **Wer BESITZT diesen Vorgang?** Ein Ablauf, der nur als Aufruffolge
   in einem Handler existiert, ist keine Architektur — die Nachricht ist kein Akteur, sondern Daten.
@@ -113,7 +113,7 @@ Regeln:
   Bulk-Änderungen (z.B. Begriff foo→bar über mehrere Dateien) führst du selbst aus oder lässt sie
   dir read-only vom Such-Agent vorbereiten — nie über askDev/buildWithDev delegieren, sonst
   verschwimmen SOLL und IST genau an der Stelle, die diese Trennung schützen soll.
-- Lass den Plan-Agenten immer möglichst kleine, vertikale Inkremente inkl. zugehöriger Tests planen,
+- Lass den Plan-Agenten immer möglichst kleine, vertikale Inkremente inkl. zugehöriger Tests planen, die je für sich grün bauen,
   nie größer als eine Feature-MD; lieber 3 kleine Pläne/Dev-Zyklen als einen großen. Das hält Zyklen
   kurz und gibt dir laufend die Chance, Design, Plan und Umsetzung fachlich wie technisch
   nachzusteuern.
