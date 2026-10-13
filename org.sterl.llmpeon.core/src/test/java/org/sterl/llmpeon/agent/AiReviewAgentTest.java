@@ -10,6 +10,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
@@ -91,6 +92,25 @@ class AiReviewAgentTest {
     void reviewAgentSeesBothShellMethods() {
         assertThat(agent.isToolActive(executorNamed(ShellTool.OPERATION_SYSTEM_INFORMATION))).isTrue();
         assertThat(agent.isToolActive(executorNamed(ShellTool.SHELL_RUN_COMMAND))).isTrue();
+    }
+
+    @Test
+    void reviewAgentResolvesReviewSlotNotPlan() {
+        // GIVEN a config with a plan-slot model and an empty review slot
+        var withPlan = LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", "http://localhost:9999")
+                .withModelConfig(AgentModelConfig.PLAN,
+                        new AgentModelConfig(null, null, "plan-model", null, null, null));
+        var model = withPlan.build();
+        var reviewAgent = new AiReviewAgent(model, agent.getToolService());
+
+        // WHEN the review agent sets its model name
+        var changed = reviewAgent.setAgentModelName("review-model");
+
+        // THEN it lands in the REVIEW slot — the PLAN slot is untouched (R7, Clean Break)
+        assertThat(changed).isTrue();
+        assertThat(reviewAgent.getAgentModelName()).isEqualTo("review-model");
+        assertThat(model.getConfig().modelConfigFor(AgentModelConfig.REVIEW).model()).isEqualTo("review-model");
+        assertThat(model.getConfig().modelConfigFor(AgentModelConfig.PLAN).model()).isEqualTo("plan-model");
     }
 
     // UC-TF-2

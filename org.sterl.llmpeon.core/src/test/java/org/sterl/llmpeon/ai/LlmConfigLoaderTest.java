@@ -154,6 +154,18 @@ class LlmConfigLoaderTest {
         assertThat(config.modelConfigFor(AgentModelConfig.PLAN).model()).isEqualTo("gpt-5");
     }
 
+    @Test
+    void missingReviewKeysYieldEmptySlot() {
+        var store = new MapLlmConfigStore();
+        store.put(LlmConfigKeys.agentKey(AgentModelConfig.PLAN, LlmConfigKeys.AGENT_FIELD_MODEL), "gpt-5");
+
+        var config = LlmConfigLoader.load(store);
+
+        assertThat(config.getModelConfigs()).containsKey(AgentModelConfig.REVIEW);
+        assertThat(config.modelConfigFor(AgentModelConfig.REVIEW)).isEqualTo(AgentModelConfig.empty());
+        assertThat(config.modelConfigFor(AgentModelConfig.PLAN).model()).isEqualTo("gpt-5");
+    }
+
     // UC-THINK-9
     @Test
     void loaderFallsBackToDefaultsOnMissingKeys() {

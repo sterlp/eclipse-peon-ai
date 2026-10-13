@@ -33,6 +33,7 @@ class LlmConfigTest {
                 case AgentModelConfig.DEV -> config.devAgentConfig();
                 case AgentModelConfig.PO -> config.poAgentConfig();
                 case AgentModelConfig.PLAN -> config.planAgentConfig();
+                case AgentModelConfig.REVIEW -> config.reviewAgentConfig();
                 case AgentModelConfig.SEARCH -> config.searchAgentConfig();
                 case AgentModelConfig.COMPACT -> config.compactAgentConfig();
                 default -> throw new AssertionError(id);

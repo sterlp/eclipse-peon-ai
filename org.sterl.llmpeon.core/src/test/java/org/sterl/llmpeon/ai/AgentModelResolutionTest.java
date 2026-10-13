@@ -45,6 +45,29 @@ class AgentModelResolutionTest {
     }
 
     @Test
+    void reviewFallsBackToBase() {
+        var config = config(Map.of(AgentModelConfig.REVIEW, AgentModelConfig.empty()));
+
+        var review = config.reviewAgentConfig();
+
+        assertThat(review.getUrl()).isEqualTo("http://base/v1");
+        assertThat(review.getApiKey()).isEqualTo("base-key");
+        assertThat(review.getModel()).isEqualTo("base-model");
+    }
+
+    @Test
+    void reviewIgnoresPlanSlot() {
+        var config = config(Map.of(
+                AgentModelConfig.REVIEW, AgentModelConfig.empty(),
+                AgentModelConfig.PLAN, record("http://plan/v1", null, "gpt-5", null, null)));
+
+        var review = config.reviewAgentConfig();
+
+        assertThat(review.getModel()).isEqualTo("base-model");
+        assertThat(review.getUrl()).isEqualTo("http://base/v1");
+    }
+
+    @Test
     void poOwnUrlAndKeyGiveOwnConnection() {
         var config = config(Map.of(AgentModelConfig.PO,
                 record("http://po/v1", "po-key", "claude-x", null, null)));

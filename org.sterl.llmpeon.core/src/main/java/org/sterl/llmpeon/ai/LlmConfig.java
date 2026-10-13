@@ -48,7 +48,7 @@ public class LlmConfig {
     @Default
     private final String model = null;
     /**
-     * Per-agent model configs keyed by agent id ({@code dev}/{@code po}/{@code plan}/{@code search}/{@code compact}).
+     * Per-agent model configs keyed by agent id ({@code dev}/{@code po}/{@code plan}/{@code review}/{@code search}/{@code compact}).
      * Immutable; missing entries resolve to {@link AgentModelConfig#empty()}. The dev model is the base
      * {@link #model} (no separate dev model key).
      */
@@ -228,6 +228,14 @@ public class LlmConfig {
         return agentBuilder(plan).model(resolveModel(plan.model()))
                 .id(AgentModelConfig.PLAN)
                 .think(resolveThink(plan)).build();
+    }
+
+    /** Review agent (Da Dok) — own slot; a blank model inherits the base model, not the plan slot (R7). */
+    public AgentConfig reviewAgentConfig() {
+        var review = modelConfigFor(AgentModelConfig.REVIEW);
+        return agentBuilder(review).model(resolveModel(review.model()))
+                .id(AgentModelConfig.REVIEW)
+                .think(resolveThink(review)).build();
     }
 
     /** Compactor — configuration from its own record (empty model inherits the base model, R-DEF-1). */

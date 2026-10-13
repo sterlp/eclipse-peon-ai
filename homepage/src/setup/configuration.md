@@ -19,7 +19,7 @@ The page shows the **Default for all agents** group with one connection block: *
 
 ### Model
 
-This model is the **base model**: every other agent — **PO**, **Plan**, **Search**, **Compact** and [custom agents](./custom-agents.md) — inherits it whenever its own model field is empty (see [Per-Agent Model Selection](./advanced-configuration.md#per-agent-model-selection)).
+This model is the **base model**: every other agent — **PO**, **Plan**, **Review**, **Search**, **Compact** and [custom agents](./custom-agents.md) — inherits it whenever its own model field is empty (see [Per-Agent Model Selection](./advanced-configuration.md#per-agent-model-selection)).
 
 The **Model** field is a dropdown filled from your provider's model list, **fetched once per connection** (your base URL/key). Click **Refresh** to reload the list — a failed refresh keeps the previous one. Refresh and **Ping** always use the values you have **typed in the page** — no Apply needed; Apply/OK is what saves them. A model you have already configured stays in the field even if it is missing from the fetched list; you can also type a model name that is not in the list — typed models are never added to the dropdown.
 

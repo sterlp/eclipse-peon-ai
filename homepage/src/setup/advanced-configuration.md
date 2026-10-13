@@ -17,20 +17,21 @@ Different agents can use different models to optimize for cost, speed, or capabi
 | **PO (Jon)** | Coordinating the agent team and clarifying requirements | Strong conversational and reasoning models (e.g., `Sonnet`) |
 | **Dev (default)** | Implementing the plan / code generation | Reasoning-capable models (e.g., `Sonnet`) |
 | **Plan** | Creating task plans and strategies | Reasoning-capable models (e.g., `Opus`) |
+| **Review** | Reviewing plan, code and docs (Da Dok) | Strong reasoning models (e.g., `Opus`) |
 | **Search** | Finding relevant context and information | Fast, smaller models (e.g., `Haiku`) |
 | **Compact** | Conversation compression for context management | Fast, smaller models (e.g., `Haiku`) |
 
 ### How It Works
 
 1. The **Dev agent** is the default and has **no section on this page**: its complete settings — **Provider Type**, **URL**, **API Key**, **Model**, **Think (Default)**, **Temperature** and **Extra body (JSON)** — live in the **Default for all agents** group on the main [Peon Configuration](./configuration.md) page, which is the only editor of those settings. The Dev model is your primary coding model (the base model).
-2. Every slot on this page — **PO**, **Plan**, **Search** and **Compact** — leaves its **Model** field empty to inherit the base model; pick a model from the **dropdown** (or type one) to override only that agent. Leave the slot's **URL** or **API Key** field empty to inherit it from the base configuration — those fields show only the agent's **own** override.
+2. Every slot on this page — **PO**, **Plan**, **Review**, **Search** and **Compact** — leaves its **Model** field empty to inherit the base model; pick a model from the **dropdown** (or type one) to override only that agent. Leave the slot's **URL** or **API Key** field empty to inherit it from the base configuration — those fields show only the agent's **own** override.
 3. The dropdown is filled from your provider's model list, **fetched once per connection** (the agent's effective URL/key). Click **Refresh** to reload the list — Refresh uses the values **currently typed** in the page's fields, no Apply needed (Apply/OK is what saves them). A failed refresh keeps the previous one. A model you have already configured stays in the field even if it is missing from the fetched list — typed models are never added to the dropdown.
 
-Existing installations start with an empty PO slot, which inherits the base configuration. If Jon was previously controlled through the Plan slot, configure the PO slot once after upgrading.
+Existing installations start with an empty PO slot, which inherits the base configuration. If Jon was previously controlled through the Plan slot, configure the PO slot once after upgrading. The **Review** slot is new: it used to share the Plan slot, so if the review agent ran on a model set in the Plan slot, copy those values into the Review slot once after upgrading — an empty Review slot inherits the **base** configuration, not the Plan one.
 
 ## Temperature Settings
 
-Every built-in agent — **PO (Jon)**, **Dev**, **Plan**, **Search** and **Compact** — has its own Temperature field. There is no shared default and no value is inherited between agents. The Dev agent's field lives on the main [Peon Configuration](./configuration.md#temperature) page (**Temperature** in the **Default for all agents** group) — this page has no Dev section.
+Every built-in agent — **PO (Jon)**, **Dev**, **Plan**, **Review**, **Search** and **Compact** — has its own Temperature field. There is no shared default and no value is inherited between agents. The Dev agent's field lives on the main [Peon Configuration](./configuration.md#temperature) page (**Temperature** in the **Default for all agents** group) — this page has no Dev section.
 
 - **Empty** means unset: Peon omits `temperature` and lets the provider or model choose its default. This is important for GPT-5 and o-series models, which reject non-default temperature values.
 - Search and Compact now send nothing unless their own value is set (previously they implicitly sent `0.3` and `0.2`). To keep the old values, enter them once in the corresponding fields.
@@ -42,7 +43,7 @@ Every built-in agent — **PO (Jon)**, **Dev**, **Plan**, **Search** and **Compa
 
 Thinking/reasoning is sent **per request**, so each agent resolves its own value for its provider and model. This solves mixed setups — for example planning with **GPT** (`reasoning.effort=high`) while implementing with **DeepSeek** through an OpenAI-compatible gateway that rejects `reasoning.effort`.
 
-Every override agent on this page — **PO (Jon)**, **Plan**, **Search** and **Compact** — has its own **Think** field, and every [custom agent](./custom-agents.md) sets the same via the `think` field in its `AGENT.md` frontmatter. The **Dev agent** is the default: its Think value is the **Think (Default)** field on the main [Peon Configuration](./configuration.md#thinking-support) page.
+Every override agent on this page — **PO (Jon)**, **Plan**, **Review**, **Search** and **Compact** — has its own **Think** field, and every [custom agent](./custom-agents.md) sets the same via the `think` field in its `AGENT.md` frontmatter. The **Dev agent** is the default: its Think value is the **Think (Default)** field on the main [Peon Configuration](./configuration.md#thinking-support) page.
 
 The only inheritance is the **default**: an agent with an **empty** Think field inherits the **Think (Default)** value from the main [Peon Configuration](./configuration.md#thinking-support) page. An agent's own value always wins — an explicit off included. Empty agent **and** empty default → unset, nothing is sent.
 

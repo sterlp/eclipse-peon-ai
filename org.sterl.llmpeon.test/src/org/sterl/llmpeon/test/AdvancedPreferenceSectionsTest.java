@@ -25,7 +25,7 @@ public class AdvancedPreferenceSectionsTest {
     public void devSectionIsGoneAndSlotOrderStable() {
         var sections = AiAdvancedPreferenceView.AGENT_SECTIONS;
 
-        assertEquals(List.of("po", "plan", "search", "compact"),
+        assertEquals(List.of("po", "plan", "review", "search", "compact"),
                 sections.stream().map(AiAdvancedPreferenceView.AgentSection::id).toList());
         sections.forEach(section -> assertFalse(section.title().isBlank()));
         sections.forEach(section -> assertFalse(section.title().contains("Dev")));
