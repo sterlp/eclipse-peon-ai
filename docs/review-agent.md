@@ -46,6 +46,21 @@ Delegation über [PoDelegateTool](adr/0020-po-agent-orchestration.md).
   Agent-File-Konvention `AGENTS-REVIEW.md`, `Peon-`-Präfix wird gestrippt) + Workspace-Memory-Snapshot
   über die generische `ordersFor`-Lambda.
 
+### Config
+
+- **R7 ❌ (2026-10-13) — Da Dok bekommt einen eigenen Config-Bereich (Model-Selection-Slot):**
+  statt geteilter PLAN-Slot (`Config/Model-Slot = PLAN`, R1) erhält Da Dok einen eigenen Slot
+  `REVIEW` (Store `llm.agent.review.*`, Aufnahme in `CORE_IDS`), UI-Sektion auf der
+  Advanced-Seite. Fallback = **Base** (wie PO nach [ADR-0036](adr/0036-po-own-model-slot.md)),
+  nicht mehr Plan.
+  - **Migration-Hinweis (User):** standen die Review-Werte bisher im PLAN-Slot, müssen sie nach
+    dem Update einmal in die REVIEW-Sektion kopiert werden — ein leerer REVIEW-Slot erbt Base,
+    nicht mehr Plan (kein stiller Alias).
+  - GIVEN REVIEW-Slot leer WHEN Da-Dok-Model aufgelöst THEN Base-Config (nicht PLAN)
+  - GIVEN REVIEW-Slot gefüllt WHEN Da-Dok-Model aufgelöst THEN REVIEW-Werte gewinnen
+  - GIVEN PLAN-Slot gefüllt WHEN REVIEW leer THEN Plan-Werte fließen NICHT ein (Clean Break)
+
+
 ## Out of Scope / Hinweise
 
 - AGENTS-REVIEW.md ist User-Konfiguration (Projekt), kein Feature-Doc-Gegenstand.

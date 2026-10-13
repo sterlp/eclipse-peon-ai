@@ -74,13 +74,17 @@ idPrefix: ATC
 - **Dev (Basic-Seite):** Feld „Tools" auf der Basic-Page, Store-Key `llm.agent.dev.tools` — gilt
   **nur für den Dev-Agent**, **keine Vererbung** an die anderen Slots (Paul, 2026-10-13; bewusst
   anders als die Model-Config, R-DEF).
-- **Advanced-Seite:** Feld je Agent-Slot (Plan/Compact/PO/…) im jeweiligen Agent-Bereich.
+- **Advanced-Seite:** Feld je Agent-Slot (Plan, PO, Review, Search) im jeweiligen Agent-Bereich.
+  **Compact bekommt KEIN Feld** (Empfehlung, ⏳ Paul-Rückversicherung): `CompactService` baut den
+  Request **ohne Tools** — der kompaktierende Agent (Da Scribe) ruft nie Tools auf; `compactSession`
+  ist Jons Delegate-Tool, nicht Da Scribes Werkzeug. Ein inertes Feld wäre eine Lüge
+  („tool must never lie").
 - **Custom Agents:** keine UI, Quelle bleibt das Frontmatter `tools:` — gleiche Semantik, kein
   Write-Back (Paul, 2026-10-13).
 - **Scaffold-Doku:** [scaffold-agent.md](scaffold-agent.md) R8 wird erweitert: Scaffold kennt
   das `!`-Negation-Präfix und kann es beim Generieren von AGENT.md-Frontmatter setzen (WEIL: der
   Scaffold-Agent schreibt die `tools:`-Felder, die Negation könnte sonst nie entstehen).
-- GIVEN Dev-Slot mit `*, !debugJava*` WHEN Plan/PO/Compact-Filter THEN unverändert alle Tools
+- GIVEN Dev-Slot mit `*, !debugJava*` WHEN Plan/PO-Filter THEN unverändert alle Tools
   (keine Inheritance)
 - GIVEN Plan-Slot mit eigenem Wert WHEN Filter THEN nur sein Wert zählt
 - GIVEN Custom Agent WHEN UI THEN kein Feld (Phase 1), Frontmatter bleibt Quelle
@@ -110,40 +114,46 @@ idPrefix: ATC
 - GIVEN MCP-Tool `mcp__docs__search_docs` WHEN Allowlist `mcp__docs` THEN aktiv, sonst unsichtbar
 - GIVEN MCP-Tool-Name WHEN Filter THEN derselbe Matcher wie Built-in (R-ATC-1, ein Mechanismus)
 
-### R-ATC-7 ❌ — Where to Store & Wiring
+### R-ATC-7 ❌ — Where to Store & Wiring (per-Call-Read)
+- **IST-Korrektur (Da-Dok-Verifikation 2026-10-13):** persistente Agenten werden bei Config-Änderung
+  **NICHT** neu gebaut — nur Custom Agents via `agentService.refresh`. Der Filter liest den Store
+  **per Call** (`configuredModel.getConfig().toolAllowlist(slot)`, Präzedenz Scaffold R6 „Config must
+  be re-read per call"); RAM-Sklaven erben den Slot ihres Parent-Typs.
 
 - Store-Keys: `llm.agent.<id>.tools` je Slot (`llm.agent.dev.tools` für Dev/Basic); kein Eintrag =
   absent (alle Tools). Der Wert wird als **roher String** gespeichert (User-Order), geparst beim
   Agent-Bau, Clean Break: Key entfernen = Filter weg, keine Migration.
-- Agent-Instanzen werden bei Config-Änderung neu gebaut (IST, Reload-Mechanik) — der Filter hängt
-  am Agenten, nicht am Service.
-- GIVEN Agent-Slot `plan` mit Wert WHEN PeonAiService baut Agent THEN ToolPolicy prüft gegen den
+- GIVEN Agent-Slot `plan` mit Wert WHEN PeonAiService liest THEN ToolPolicy prüft gegen den
   gespeicherten String
 - GIVEN Key entfernt WHEN Reload THEN absent → alle Tools (Clean Break, kein stale State)
 
-### R-ATC-8 ❌ — „Aktive Tools"-Preview (Button im UI)
+### R-ATC-8 ❌ — „Aktive Tools"-Preview (Button im UI, zeigt den GETIPPTEN Wert)
 
 - Neben dem Feld ein **Preview-Button**: zeigt die **aufgelöste, aktive Tool-Menge** des Agenten —
   Built-in-Specs UND MCP-Namen, bereits durch Klassen-Filter UND Allowlist geschneidet, als
   read-only Liste (Dialog). **WEIL:** ohne Vorschau rät der User im Dunkeln, was `eclipse` wirklich
   einschaltet — die Prefix-Semantik ist nicht selbsterklärend (auch die Semantik „nur Negationen =
   alles minus Ausschluss" sieht man hier).
-- Der Preview konsumiert dieselbe Resolve-Methode, die auch der Filter benutzt (`isToolActive` /
-  `isMcpToolActive` am Agenten) — keine zweite Filter-Logik (ein Mechanismus, R-ATC-1).
-- GIVEN Agent-Slot WHEN Preview-Button THEN Dialog listet aktive Tools (alle Quellen,
-  Schnittmenge), read-only
+- **Der Preview zeigt den getippten Wert** des Felds, nicht den gespeicherten (Paul, 2026-10-13):
+  dieselbe Kompositions-Logik wie der Runtime-Filter über **einen gemeinsamen Helper** (kein
+  zweiter Matcher — R-ATC-1); die gespeicherte Konfiguration wird erst mit OK wirksam.
+- GIVEN Agent-Slot WHEN Preview-Button THEN Dialog listet aktive Tools für den aktuellen
+  Feldinhalt (alle Quellen, Schnittmenge), read-only
 - GIVEN Allowlist `eclipse` WHEN Preview THEN Liste enthält `eclipse*`-Tools, keine `disk*`-,
   keine `debugJava*` (falls negiert)
 - GIVEN Da Dok WHEN Preview THEN Liste zeigt die Klassen-Filter-Schnittmenge (Shell drin,
   Write-Tools draußen — auch bei `*`)
 
-### R-ATC-9 ❌ — `!` allein: ehrlich melden, nicht still fressen
+### R-ATC-9 ❌ — `!` allein: UI speichert nicht, Matcher macht no-op
 
-- Ein `!` ohne Präfix (`!` allein oder `!` mit nur Whitespace) ist ein **Konfigurationsfehler**:
-  der Preview meldet ihn; der Filter behandelt ihn als no-op (kein Crash, kein stiller Ausschluss
-  fremder Tools). Alle anderen Tokens sind gültig (auch Umlauts-Präfixe — Prefix-Match ist String).
-- GIVEN Allowlist mit `!` allein WHEN Preview THEN Meldung „leere Negation"
-- GIVEN Allowlist mit `!` allein WHEN Filter THEN no-op (kein Tool aus, kein Fehler)
+- Ein `!` ohne Präfix (`!` allein oder `!` mit nur Whitespace) ist ein **Konfigurationsfehler**
+  (Paul, 2026-10-13): das **UI verweigert das Speichern** (Fehlermeldung am Feld, Store bleibt
+  unverändert). Der Matcher behandelt bare `!` defensiv als no-op — der Frontmatter-Pfad hat
+  keine UI-Validierung (Scaffold/LLM kann `tools:` frei schreiben), dort gilt: kein Crash, kein
+  stiller Ausschluss. Alle anderen Tokens sind gültig (auch Umlauts-Präfixe — Prefix-Match ist
+  String).
+- GIVEN Allowlist mit `!` allein WHEN UI speichern THEN Fehlermeldung, Wert wird NICHT persistiert
+- GIVEN Allowlist mit `!` allein WHEN Frontmatter-Filter THEN no-op (kein Tool aus, kein Fehler)
 - GIVEN Allowlist mit `!debugJava*` THEN gültig (Präfix `debugJava*`)
 
 ## Use-Case-Definitionen
@@ -186,7 +196,7 @@ GIVEN Plan-Agent mit `eclipse, !debugJava*` WHEN Preview-Button THEN Dialog zeig
 | R-ATC-6 | `AgentToolConfigTest` — MCP-Name-Filter über Allowlist |
 | R-ATC-7 | `AgentToolConfigTest` — Store-Key parse/reload, Clean Break |
 | R-ATC-8 | manuell (User-Smoke) — Dialog-Inhalt |
-| R-ATC-9 | `ToolPolicyTest` — `!` allein = no-op + Preview-Meldung |
+| R-ATC-9 | `ToolPolicyTest.bareBangIsNoOp` + UI-Validierungs-Test (inc4: Speichern verweigert) |
 
 ## Out of Scope
 

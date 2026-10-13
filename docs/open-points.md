@@ -2,6 +2,21 @@
 
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
 Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.md).
+
+## ⏳ Compact-Slot ohne Tools-Feld (2026-10-13, Zyklus Agent-Tool-Config)
+
+R-ATC-4 ([agent-tool-config.md](agent-tool-config.md)): Compact bekommt KEIN Tools-Feld —
+`CompactService` baut den Request ohne Tools, Da Scribe ruft nie Tools auf (`compactSession` ist
+Jons Delegate-Tool, nicht Scribes). Paul hat das IST so noch nicht bestätigt („es gibt ein Compact
+Tool und eine Compact UI-Funktion"). Rückversicherung beim nächsten Kontakt: Feld ohne Wirkung
+wäre Lüge — kein Feld dokumentiert.
+
+## ⏳ Preview zeigt den GETIPPTEN Wert + Search-Preview-Pfad (2026-10-13)
+
+R-ATC-8 präzisiert: Preview liest den Feldinhalt statt der gespeicherten Config (gemeinsamer
+Kompositions-Helper mit Runtime, kein zweiter Matcher) — Paul im Chat bestätigt, Doc-Präzision ⏳
+gegengelesen. Search-Preview läuft über `SearchAgentTool.resolveActiveTools` (kein AiAgent für
+Da Sniffa), Button enabled sobald `PeonAiService.current()` existiert — Da-Dok-Verdict: OK.
 ## ❓ Per-Agent Provider Override (2026-09-28, Paul identifiziert — Story angenommen, noch nicht geplant)
 
 IST: nur der Base besitzt einen Provider (`EffectiveConnection.java:13`, Entscheidung 2026-08-28);
