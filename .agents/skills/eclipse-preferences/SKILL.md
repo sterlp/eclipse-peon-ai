@@ -37,7 +37,7 @@ description: Eclipse JFace preference-page patterns — live widget reads instea
   the END of the parent's children** — any order-sensitive layout (binding field order 1–5) silently
   breaks after the first switch. Create all form variants **once**, then toggle via
   `GridData.exclude` + `setVisible` (GridLayout honors only `exclude` — `setVisible(false)` alone
-  keeps the row reserved).
+  keeps the row reserved). Hide-then-show pattern: initial `exclude=true` + `setVisible(false)`; on show `exclude=false` + `setVisible(true)` + `parent.layout()`.
 - **Value carry-over on a switch:** verbatim where the new form allows free input (editable combo /
   text), cleared for a fixed list without a match (**never a silent replacement value**), dropped for
   "no field". Read the value BEFORE switching forms.

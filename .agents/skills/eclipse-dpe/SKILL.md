@@ -201,3 +201,21 @@ The daily "No files found for a file that exists" was never a wildcard problem:
   `…debug.core`, `IJavaFrame` → `IJavaStackFrame`).
 - **Wrapper jars:** `org.eclipse.jdt.debug` bundle has `Bundle-ClassPath: jdimodel.jar` —
   extract the nested jar before `javap`/source reads.
+
+
+## Platform API traps (verified, don't re-derive)
+
+- `PlatformUI.getWorkbench()` never returns `null` (it throws `IllegalStateException`) — use
+  `PlatformUI.isWorkbenchRunning()`.
+- An `IProject` is never `instanceof IJavaProject` — use `JavaCore.create(project)` + `exists()`.
+- `IProject.isOpen()` already returns `false` for a project that does not exist; no extra
+  `exists()` guard needed.
+- **JDT breakpoint markers (verified 2026-09-22, I2 debugJavaListBreakpoints):** `JDTDebugConstants` does
+  NOT exist on the current target platform (jdt.launching 3.24.300 / jdt.debug 3.26.100, 2026-06/07)
+  — the ids live in the internal breakpoint classes. Line BP marker type
+  `org.eclipse.jdt.debug.javaLineBreakpointMarker`, exception BP marker type
+  `org.eclipse.jdt.debug.javaExceptionBreakpointMarker` (markers on the workspace root = workspace-wide);
+  attribute keys `org.eclipse.jdt.debug.core.typeName` / `...condition` / `...hitCount` (absent = -1 =
+  every hit); enabled state = public constant `IBreakpoint.ENABLED` (`org.eclipse.debug.core.enabled`) —
+  there is no `IMarker.ATTR_ENABLED`. `IMarker.getAttribute(String, default)` overloads (int/String/boolean)
+  do not throw; only the single-arg `getAttribute(String)` does.

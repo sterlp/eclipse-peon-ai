@@ -90,7 +90,6 @@ Hints for the dev phase, base rules `AGENTS.md`
 - Elegant, expressive modern Java (records, pattern matching, switch expressions, Lombok).
 - On macOS, sum Surefire reports with Perl rather than GNU-only `awk match(..., array)`:
   `perl -ne 'if (/Tests run: (\d+), Failures: (\d+), Errors: (\d+), Skipped: (\d+)/) {$t+=$1;$f+=$2;$e+=$3;$s+=$4} END {print "Tests=$t Failures=$f Errors=$e Skipped=$s\n"}' target/surefire-reports/*.txt`.
-- Prefer a few high-value assertions over many brittle ones; every assertion should earn its maintenance cost.
 
 ## Test honesty (learned 2026-09-03, cycles 2b-1…3b)
 
@@ -132,13 +131,6 @@ These bit us repeatedly in this repo — check them before reporting an incremen
 
 ## Repo-specific API traps (verified, don't re-derive)
 
-- `PlatformUI.getWorkbench()` never returns `null` (it throws `IllegalStateException`) — use
-  `PlatformUI.isWorkbenchRunning()`.
-- An `IProject` is never `instanceof IJavaProject` — use `JavaCore.create(project)` + `exists()`.
-- `IProject.isOpen()` already returns `false` for a project that does not exist; no extra
-  `exists()` guard needed.
-- `IResource.refreshLocal` is inherited by `IContainer`; it is long-running and throws
-  `CoreException` → run off the UI thread, log **or** throw, never both.
 - langchain4j serializes `customParameters` via `@JsonAnyGetter` **next to** the typed fields:
   the same key in the extra body produces a **duplicate JSON key**, not an override. "User body
   wins" must be implemented explicitly by clearing the typed field
@@ -146,31 +138,11 @@ These bit us repeatedly in this repo — check them before reporting an incremen
 - `CompletableFuture.get()` on a future **you cancelled yourself** throws `CancellationException`
   **unwrapped**, not wrapped in `ExecutionException` — a catch on `ExecutionException` silently
   misses it (this hid the model-list race, see `docs/adr/0040-model-list-single-flight-secret-masking.md`).
-- SWT `GridLayout` honors only `GridData.exclude` — `setVisible(false)` alone does NOT remove the
-  control's grid row (the layout still reserves its slot). Hide-then-show pattern: initial
-  `exclude=true` + `setVisible(false)`; on show `exclude=false` + `setVisible(true)` +
-  `parent.layout()`. (Origin 2026-09-12, ui-config cycle: the plan's `setVisible(false)`-only fix
-  would have left the empty label row standing — caught by the dev's SWT-source check.)
-- **JDT breakpoint markers (verified 2026-09-22, I2 debugJavaListBreakpoints):** `JDTDebugConstants` does
-  NOT exist on the current target platform (jdt.launching 3.24.300 / jdt.debug 3.26.100, 2026-06/07)
-  — the ids live in the internal breakpoint classes. Line BP marker type
-  `org.eclipse.jdt.debug.javaLineBreakpointMarker`, exception BP marker type
-  `org.eclipse.jdt.debug.javaExceptionBreakpointMarker` (markers on the workspace root = workspace-wide);
-  attribute keys `org.eclipse.jdt.debug.core.typeName` / `...condition` / `...hitCount` (absent = -1 =
-  every hit); enabled state = public constant `IBreakpoint.ENABLED` (`org.eclipse.debug.core.enabled`) —
-  there is no `IMarker.ATTR_ENABLED`. `IMarker.getAttribute(String, default)` overloads (int/String/boolean)
-  do not throw; only the single-arg `getAttribute(String)` does.
-- More Eclipse-platform know-how lives in the project skill `eclipse-dpe` (read it via skillRead
-  before guessing) — append new findings **at the end of the file** (do not split an existing bullet).
+- **Eclipse-platform traps live in the project skills, not here** — before touching PDE tests,
+  workspace/JDT resources, SWT or JFace-config code, `skillRead` the matching skill (`eclipse-dpe`,
+  `eclipse-preferences`) instead of re-deriving; append new verified findings to the end of the skill
+  file (do not split an existing bullet).
 - Skill-Evolution (experimentell): every skillRead result ends with a usefulness footer — **always
   answer it in your report** (helpful? wrong/outdated? obsolete?). If a skill you just read is wrong
   or outdated, fix it in place in the same turn (keep it short); otherwise report the gap so Jon
   routes it. Skill changes follow `skill-evolution` (evidence required, keep skills short).
-
-## Reference projects for API help
-
-1. /github-copilot-for-eclipse — the Eclipse plugin AI harness, if the API itself cannot answer
-2. /langchain4j-aggregator for langchain4j code & docs (*.md), if the API itself is not enough
-3. Opencode source - cli AI harness: /opencode -- for generall idea how AI harnesses are build
-
-Use search agents for these big repos (direct reads only); propose SKILL changes for extracted patterns/solutions.

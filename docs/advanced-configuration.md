@@ -276,7 +276,7 @@ zeigt die 3 Example-Buttons unter dem Extra-Body-Feld, WHEN gerendert, THEN ist 
 (Layout-Gruppe, kein Extra-Space). Umsetzung: 2× `marginBottom=0` (Section + TitledGroup); das
 Examples-Status-Label ist bis zum Paste layout-exklusiv (`GridData.exclude=true` +
 `setVisible(false)`, beim Paste zurück + `layout()`) — SWT-GridLayout filtert nur
-`GridData.exclude`, nicht Visibility (API-Trap in [AGENTS-DEV.md](../AGENTS-DEV.md)). Kein
+`GridData.exclude`, nicht Visibility (API-Trap: Projekt-Skill `eclipse-preferences`). Kein
 automatisierter Test (SWT-Layout-Präzedenz wie R-T5) — **User-Smoke ✅ 2026-09-12**.
 
 **R-A2 ✅ done (ui-config, `6b5c9ca`) — Native Combo statt Custom-Dropdown (beide Pages):** Das
