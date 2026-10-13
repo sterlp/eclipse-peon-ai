@@ -80,9 +80,6 @@ Code. Vor dem Einführen eines neuen fachlichen Begriffs dort nachsehen und eint
 * [Tool-Output-Disclosure](tool-output-disclosure.md) - **✅ done (2026-09-20, Paul specified 2026-09-19):** Caps ehrlich machen — `eclipseSearchFiles` (Cap **500**, Disclosure im Return), `diskSearchFiles` (Limit-Disclosure), `webFetchAsMarkdown` (paginiert + Fehlerpfad = Snippet statt Body). Ein S-Inkrement. **R-OD-6 ✅ done (2026-09-30, `d7cf6578`):** Grep-Zeilenlängen-Cap 2000 +
 Disclosure gegen Minified-Overflow (Hauptverdachtiger im 974k-Fall; UC-OD-7/8/9).
 * [Tool-Time-Disclosure](tool-time-disclosure.md) - **✅ done (2026-09-22, Paul):** Dauer + Uhrzeit am Output-Ende für langlaufende Tools (`CallStats`-Helper im core, [ADR-0053](adr/0053-call-stats-shared-helper.md)) — Shell, `eclipseRunJavaTests` (Rename 2026-09-24, `909ce05`: vormals `eclipseRunTests` — der Java-only-Guard (`JavaCore.create`+`exists()`, nicht-Java-Projekt wirft) macht den Scope explizit), `eclipseBuildProject`; PoDelegateTool migriert (Pin), Timeout-Meldungen tragen die **gemessene** Dauer. Core 916/0, Plugin 264/0. WebFetch-Zeit/Memory-Datum/Debugger-continue geparkt (open-points.md).
-* [Tool-Result-Size im onTool](tool-result-size.md) - **❌ specified (2026-09-30, Paul):** jede
-  Tool-Zeile nennt die Ergebnisgröße `(N chars)` — Overflow-Quellen im Log sichtbar machen
-  (Thinka 974k vs n_ctx 170k, Status zeigte 23k).
 * [API-Fehler ins Agent-Memory](agent-error-memory.md) - **✅ done (2026-09-30, `53e54c5e`, AiChatView-Wiring = Paul-Smoke steht aus):**
   terminale API-Fehler (nach ApiRetry erschöpft, nie Cancel) landen als kompakte `e.getMessage()`-
   Message (Dedup 1×) im Agent-Memory — der Agent sieht den Abbruch und kann reagieren
@@ -105,12 +102,9 @@ Disclosure gegen Minified-Overflow (Hauptverdachtiger im 974k-Fall; UC-OD-7/8/9)
 * [Open Ends / Memory](memory.md) - **Session-Zwischenstand only** (Ergebnis, offene User-Handlungen, Startpunkte der nächsten Session); nach jedem Plan-Zyklus aufräumen. Dauerhafte Lernings gehören nach `AGENTS.md` / `AGENTS-DEV.md` / `skills/` bzw. in die memory*-Tools, projektspezifische Fakten in die Feature-Docs und ADRs.
 * [ADRs](adr/index.md) - technical decision records (the agent's long-term memory).
 
-## Offene User-Entscheidungen (2026-09-06)
+## Offene User-Entscheidungen
 
-* **Branch `release-2026-09-06` (3 Commits, von main, nicht gemerged):** Dropdown-Klassen
-  gelöscht (`a1d8d35`) · UTF-8-Write **widerlegt** + Regression-Guard-Test (`27c09ad`) ·
-  PDE-Skip-Count im `EclipseRunTestTool`-Report (`11f34f6`). Plugin 186/0, Core 651/651.
-  Merge → main = User-Entscheidung.
+* Ehemals offen: Branch `release-2026-09-06` — die 3 Release-Commits (Dropdown-Deletion `a1d8d35` · UTF-8-Guard `27c09ad` · Skipped-Report `11f34f6`) sind seit 2026-10-13 vollständig in main, s. [resolved-points.md](resolved-points.md).
 * **❓ Glossar eager** ((b) Turn-Context-Item für Jon+Thinka+Mek) und **❓ buildWithDev-Compact**
   (Compact statt Reset, ~50 %, nur neuer Plan) — Empfehlungen in [open-points.md](open-points.md).
 * **❓ ApiRetry-Verdacht** (Null-Byte-IOException als Cancel klassifiziert?) — in

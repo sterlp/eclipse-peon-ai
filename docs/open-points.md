@@ -20,7 +20,8 @@ Fixture, `test-setup.md:29-30`), aber `pom.xml`/`Dockerfile` sind kein Test-Outp
 unklar. README L3 „nicht als echtes Projekt benutzen" ist irreführend (das Fixture ist *bewusst*
 echtes JDT-Projekt, `.project`-Nature ist der Punkt). Fragen an Paul: (a) `pom.xml`/`Dockerfile`
 behalten (dann Doc-SOLL anpassen) oder aufräumen? (b) README-Zeile ergänzen: Zweck + Property
-`peon.test.project` überschreibt den Pfad (`test-setup.md:52-53`)?
+`peon.test.project` überschreibt den Pfad (`test-setup.md:52-53`)? Da-Mek-Empfehlung (Smoke
+2026-09-27): (a) behalten + Doc-SOLL anpassen, (b) ja.
 
 ## ⏳ Standalone-Peon-Review behält memory*/askUser (2026-09-25, Jon-Entscheid aus dem Build)
 
@@ -218,22 +219,6 @@ Paul: Estimate-Pfad zusätzlich in den Roster-Refresh aufnehmen (Update auch ohn
 Provider-Usage)? Verdacht-Update („rendern wir nicht alle Agenten") damit eingeschränkt: es
 rendert alles, aber nur bei Event.
 
-## ❓ Test-Fixture-Drift: `test_project` enthält pom.xml + Dockerfile (2026-09-27, Da-Mek-Smoke)
-
-[test-setup.md](test-setup.md):20-21 sagt SOLL = „minimal" (.project, .classpath, src/), aber
-`test_project` enthält auch `pom.xml` und `Dockerfile` (Test-Output bin/, target/, data/ sind laut
-Doc legitim). README-Zeile „nicht als echtes Projekt benutzen" irreführend — es muss als echtes
-Eclipse-Projekt ladbar sein, der Punkt ist nur, dass man nicht in ihm entwickelt. Entscheidung
-offen: (a) Fixture behalten + Doc-SOLL anpassen, oder aufräumen; (b) README-Zeile korrigieren
-(„Test-Fixture — ladbar, aber nicht hier developen; `peon.test.project` überschreibt den Pfad").
-Da-Mek-Empfehlung: (a) behalten + Doc anpassen, (b) ja.
-
-## ✅ Eclipse-Installationsfehler User — Issue #142 (gefixt 2026-10-06)
-
-`includeAllDependencies` entfernt (Repo liefert nur noch Feature+Plugin), `jakarta.annotation` auf
-`[2.0.0,4.0.0)`, Target/Compatibility-Floor auf 2025-12. Details:
-[issue-142-asm-conflict.md](issue-142-asm-conflict.md). Homepage-Mindestversion 2025-12 bereits
-korrekt.
 ## ⏳ Think-BDD-Lücken (2026-09-27, Da-Dok-Provider-Think-Audit, Issue-#149-Zyklus)
 
 Aus dem Audit registriert, bewusst nicht in Inc-4 (Scope-Dispositionen):
@@ -261,15 +246,6 @@ Legacy-Frontmatter — bestätigt.
 - ⏳ **SwtUtil.setExcluded-Extract (Da-Dok G2, 2026-09-29):** SWT-Idiom `exclude`+`setVisible` 3× dupliziert (2× im Widget-Rework R-DEF-9…11 + `McpPreferenceView`) — Extraktions-Kandidat. Review-Befunde G1–G6 im Plan §11 (archiviert).
 - ⏳ **Dead Code: `ModelConfigWidget` 4-Arg-Konstruktor (Da Mek, 2026-09-29):** `labelStyle`-Parameter + SWT.END-Zweig sind seit der DEV-Sektions-Entfernung (R-DEF-10) caller-less — Cleanup-Kandidat beim nächsten Widget-Berührungs-Kontakt.
 - ⏳ **Inc-2-Zähler-Abweichung (Da Mek, 2026-09-29, akzeptiert):** Plan §5 sagte „rendered 24→28" — mit dem eigenen 2-Spalten-Grid-Wrapper (D6, Muster `addDevSection`) stehen die Page-Editors nicht mehr im gezählten Parent. IST: 14 (OLLAMA) / 17 (OpenAI, +3 Extra-Body-Kontrollen). Struktur folgt D6/ADR-0063, Zähler im Plan-Status vermerkt — keine Aktion nötig, Vermerk fürs Review.
-
-
-## API-Fehler ins Agent-Memory (✅ gebaut 2026-09-30 — [agent-error-memory.md](agent-error-memory.md))
-
-Paul: „Wenn wir mit einer Fehlermeldung rausfliegen, sollten wir diese auch dem Memory einfügen."
-Entschieden (Paul): **terminale** Fehler nach erschöpftem ApiRetry (nicht-retryable sofort), **nie
-Cancel**, Inhalt = `e.getMessage()` kompakt, **Dedup 1× pro Memory**; Einfügepunkt = `AiChatView`-
-`catch` echter Exceptions (nicht der stille Cancel-Pfad, vgl. header-state-leak/memory 29). Details
-+ BDDs im Feature-Doc.
 
 ## Toter Code: `eclipseFindImplementations` (2026-09-30, Da-Dok-Review-Nebenbefund)
 
