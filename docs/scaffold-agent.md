@@ -117,6 +117,22 @@ AND the services refresh from the new directory
 ### R7: Scaffold Agent Config ✅
 The scaffold agent uses `devAgentConfig()` — same model, temperature, think as Peon-Dev.
 
+### R8: Tool Allowlist knowledge (`tools:` + `!`-Negation) ❌
+Scaffold generates/edits AGENT.md frontmatter — it must know the `tools:` allowlist semantics
+**including the `!`-negation prefix** (R-ATC-2 in [agent-tool-config.md](agent-tool-config.md)):
+allowlist tokens (prefix, `*`, exact) decided first, then `!`-prefix tokens subtract their matches
+(denial wins). Scaffold can write `tools: *, !debugJava*` on request. (WEIL: scaffold writes the
+frontmatter fields — without this rule the negation could never come into existence via scaffold.)
+
+**BDD:**
+```
+GIVEN the user asks Peon-Scaffold to create an agent with all tools except the debug tools
+WHEN the agent writes the AGENT.md frontmatter
+THEN tools contains "*", "!debugJava*" (allowlist first, negations after)
+AND reloadConfig() makes the agent available with the resolved filter
+```
+
+
 ## ADRs
 
 - [ADR-0007](adr/0007-scaffold-agent-built-in.md) — Scaffold agent as built-in Java class with own ToolService

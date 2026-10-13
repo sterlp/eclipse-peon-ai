@@ -15,6 +15,11 @@ sind explizite Whitelist-Exceptions. Tool-Namen, die Filter oder Tests referenzi
 **statische String-Konstanten** an der Tool-Klasse gefasst — damit entfällt das „stille
 Umbenennen"-Risiko (eine Quelle für Konstante und `@Tool(name=…)`).
 
+**2026-10-13 — Feature erweitert (🚧 → ❌):** Der bestehende Mechanismus bekommt eine User-Config:
+**Tool Allowlist** als CSV pro Agent (UI + AGENT.md-Frontmatter, eine Semantik für alle Agententypen)
+samt Negation `!` und Preview. Neuer Teil-Feature: [agent-tool-config.md](agent-tool-config.md) —
+dort leben die neuen Regeln R-ATC-1…, dieser Doc bleibt Owner des Mechanismus (R-TF-*).
+
 ## Business Rules
 
 ### R-TF-1 ✅ — Da Dok erhält das ShellTool (Whitelist-Exception)
@@ -37,14 +42,14 @@ Umbenennen"-Risiko (eine Quelle für Konstante und `@Tool(name=…)`).
 - GIVEN Da Dok WHEN WriteValidator THEN `DENY_ALL` unverändert (Shell-Whitelist ≠ Schreibrecht der
   Write-Tools)
 
-### R-TF-2 ✅ — Da Sniffa (SearchAgent) sieht keine Plan-Tools
+### R-TF-2 ✅ — Da Sniffa sieht keine Plan-Tools
 
 - Der `SearchAgentTool`-Filter schließt `PlanTool` aus. **Befund 2026-09-25:** Plan-Tools sind
   `isEditTool()==false` ("READ" markiert), schreiben aber real (`planSave`/`planUpdate` →
   `peon-plan/overview.md`) — der SearchAgent sah bisher alle vier plan*-Methoden.
 - **Klarstellung (Paul, 2026-09-25, absichtlich):** `isEditTool=false` auf den Plan-Tools ist
   **Design, kein Label-Bug** — so fließen Da Thinka und Da Dok automatisch durch den
-  `!isEditTool`-Filter, ohne einen Plan-Sonderfilter. Die Alternative (PlanTools als Edit-Tools +
+  `!isEditTool`-Filter, ohne einen Plan-Sonderfall. Die Alternative (PlanTools als Edit-Tools +
   Namensfilter auf den Plan-Pfad) wäre der umgekehrte Sonderfall. Der **klassen-basierte Ausschluss
   für Da Sniffa bleibt deshalb richtig**: READ-Markierung heißt nicht "für jeden Recherche-Agenten",
   nur "nicht-grob-edit".
@@ -62,8 +67,8 @@ Umbenennen"-Risiko (eine Quelle für Konstante und `@Tool(name=…)`).
 - GIVEN ShellTool WHEN Da-Dok-Whitelist THEN Referenz = ShellTool-Konstante, kein Literal
 - GIVEN Umbenennung der Shell-Methode WHEN Konstante mitgezogen THEN Filter bleibt konsistent
   (eine Quelle)
-- GIVEN Methode wird umbenannt ohne die Konstante zu berühren THEN Compile-Fehler an der
-  Filterstelle (Compiler-Bindung über die Konstante)
+- GIVEN Methode wird umbenannt ohne die Konstante zu berühren THEN Compile-Fehler an der Filterstelle
+  (Compiler-Bindung über die Konstante)
 
 ### R-TF-4 ✅ — Tool-Matrix je Agent als Test (Erweiterung)
 
@@ -75,26 +80,6 @@ Umbenennen"-Risiko (eine Quelle für Konstante und `@Tool(name=…)`).
 - GIVEN PeonAiService WHEN Da-Dok-Toolnamen THEN obige Menge (Shell gegen die Konstanten aus
   R-TF-3; Namen ohne Konstante als Literal zulässig — Scoping R-TF-3)
 - GIVEN PeonAiService WHEN SearchAgent-Toolnamen THEN plan*-frei
-
-### Use-Case-Definitionen
-
-#### UC-TF-1 — Da Dok sieht beide Shell-Methoden
-GIVEN Da Dok (`AiReviewAgent`, RAM-Sklave wie Standalone) WHEN `toolSpecifications` THEN
-`readOperationSystemInformation` + `shellRunCommand` enthalten.
-
-#### UC-TF-2 — Da Dok (RAM-Sklave) versteckt andere Edit-Tools weiterhin
-GIVEN Da Dok als RAM-Sklave (noPrivilegedTools) WHEN Filter greift THEN Write-Tools, JavaDebugTool,
-AskUserTool, WorkspaceMemoryTool unsichtbar; WriteValidator bleibt `DENY_ALL`. Der
-Standalone-Peon-Review behält memory*/askUser wie alle Standalone-Agenten (kein neuer Mechanismus).
-
-#### UC-TF-3 — SearchAgent ohne plan*-Tools
-GIVEN Da Sniffa WHEN `toolSpecifications` THEN keine plan*-Methoden; sonstige READ-Tools
-unverändert sichtbar.
-
-#### UC-TF-4 — Da-Dok-Matrix behält die Review-Werkzeuge
-GIVEN PeonAiService WHEN Da-Dok-Toolnamen THEN `eclipseRunJavaTests`, `eclipseReadProjectProblems`,
-`eclipseBuildProject`, `lintDocs`, `lintDocsAndTests`, plan* (alle 4) enthalten — als RAM-Sklave
-**niemals** AskUserTool/WorkspaceMemoryTool/Write-Tools, nie `nextIds`.
 
 ## BDD-Test-Mapping
 
@@ -112,3 +97,5 @@ GIVEN PeonAiService WHEN Da-Dok-Toolnamen THEN `eclipseRunJavaTests`, `eclipseRe
 - Naming-Uniformität (`planUpdate`→`planEdit` …) bleibt geparkt (open-points ⏳).
 - Fassaden bleiben bestehen; neue Fälle entscheiden sich im Einzelfall: erst Filter
   (Standard-Mechanik), Fassade nur bei echtem Ownership-Split (ADR-0048 Korrektur 2026-09-25).
+- **User-Config der Tool-Sichtbarkeit** → eigenes Teil-Feature [agent-tool-config.md](agent-tool-config.md)
+  (2026-10-13 ausgegliedert).

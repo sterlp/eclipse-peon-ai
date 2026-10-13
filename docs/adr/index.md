@@ -69,4 +69,6 @@ isn't clear from a rule/BDD.
 | [0062](0062-base-inheritance-dev-default.md) | Base-Inheritance: dev = Default-Slot, alle NULL-Slots erben Base; Dev-Override-Keys Clean Break; URL → Provider-Default (ehelicher Fehler) | Accepted |
 | [0063](0063-default-config-single-owner-basic-page.md) | Default-Config hat EINEN Owner (Basic-Seite „Default for all agents"); Advanced ohne DEV-Sektion/Base-Key-Writes; versteckt ≠ löschen (extraBody/Think bleiben im Store) | Accepted |
 | [0064](0064-verbatim-think-values.md) | Verbatim-Think: String-Provider senden den gesetzten Wert as-is (auch `"true"`/`"none"`), Off-Omission + On-Mapping für String-Provider entfallen; nur Toggle-Provider (Ollama) interpretieren zu Booleans (ja/nein ergänzt) — supersedes Teile von 0059 | Accepted |
+| [0065](0065-tool-policy-negation.md) | ToolPolicy = einziger Matcher für alle Agententypen (UI-Allowlist ≡ Custom-`tools:`); Negation `!prefix` (allow-then-deny, Ausschluss gewinnt); Schnittmenge mit Klassen-Filter (UI kann nur einschränken); keine Inheritance, kein Custom-UI | Accepted |
+
 
