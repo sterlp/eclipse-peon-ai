@@ -235,7 +235,7 @@ sequenceDiagram
 
 ## 6. Inkremente (je: grün/kompilierend, eigene Tests, Docs-Nachzug)
 
-### inc1 — ToolPolicy-Semantik (core, Story 1 Fundament)
+### inc1 — ToolPolicy-Semantik (core, Story 1 Fundament) — ✅ DONE 2026-10-13 (Surefire core 1094/0/0; F10-Mutation-Check 4/4-Mutationen rot; Homepage custom-agents.md Negations-Semantik) — Abweichung von der literalen §3.2-Skizze (2×, beide durch die normative Test-Spec der Doku/Plan erzwungen): (a) Blank-Filter VOR der nur-Negationen-Regel (sonst blank-only-Liste = vacuous allow-all → bricht gepinnte `blankEntriesAreIgnored`); (b) Deny-Präfix: trailing `*` wird als Wildcard-Suffix gestrippt + leeres effektives Präfix matcht nie (sonst `!debugJava*` matcht `debugJavaSetBreakpoint` wörtlich nicht → bricht R-ATC-2-BDD L52 + eigene Test-Spec L241)
 **Änderungen:** `ToolPolicy` (D1: `enables` allow-then-deny + nur-Negationen=alle + **F1-Guards**: (a) Deny-Step `t.length() > 1` — bare `!` matcht NIE; (b) `isAllowToken = !isBlank && !startsWith("!")` + Klammern explizit im Allow-Stream; `allowlist.isEmpty()`-Guard bleibt Pflicht; neu `parseAllowlist`, `nameFilter`, `hasEmptyNegation` (UI-Validierungs-Detektor für inc4, D9b — kein Preview-Warn-Label mehr), private Token-Helfer). **Die korrigierte §3.2-Skizze ist normativ** (Da-Dok-REJECT-Grund war die alte Skizze). Javadoc: dreistufige Allow-Semantik + defensives bare-`!`-No-Op (Frontmatter-Pfad, R-ATC-9) dokumentieren.
 **Tests (`ToolPolicyTest`, echte Namen; F11: Evidenzzeilen laut §7-UC-Mapping):**
 - `wildcardMinusDebugDeniesDebugKeepsOthers` — `enables(["*","!debugJava*"], "debugJavaSetBreakpoint")` false; `"eclipseGrepFiles"` true; `"mcp__docs__search_docs"` true.

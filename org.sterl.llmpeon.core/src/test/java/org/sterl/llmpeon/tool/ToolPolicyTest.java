@@ -51,4 +51,74 @@ class ToolPolicyTest {
         assertThat(ToolPolicy.enables(List.of("  ", ""), "any")).isFalse();
         assertThat(ToolPolicy.enables(List.of("  ", "web"), "web_fetch")).isTrue();
     }
+
+    @Test
+    void wildcardMinusDebugDeniesDebugKeepsOthers() {
+        var allow = List.of("*", "!debugJava*");
+        assertThat(ToolPolicy.enables(allow, "debugJavaSetBreakpoint")).isFalse();
+        assertThat(ToolPolicy.enables(allow, "eclipseGrepFiles")).isTrue();
+        assertThat(ToolPolicy.enables(allow, "mcp__docs__search_docs")).isTrue();
+    }
+
+    // Mutation canary (F10): must go red if deny no longer wins over a matching allow token.
+    @Test
+    void denyWinsOverMatchingAllowToken() {
+        var allow = List.of("debugJava", "!debugJavaSetBreakpoint");
+        assertThat(ToolPolicy.enables(allow, "debugJavaSetBreakpoint")).isFalse();
+        assertThat(ToolPolicy.enables(allow, "debugJavaStepOver")).isTrue();
+    }
+
+    @Test
+    void prefixAllowWithNegation() {
+        var allow = List.of("eclipse", "debugJava", "!debugJava*");
+        assertThat(ToolPolicy.enables(allow, "eclipseGrepFiles")).isTrue();
+        assertThat(ToolPolicy.enables(allow, "debugJavaGetState")).isFalse();
+        assertThat(ToolPolicy.enables(allow, "shellRunCommand")).isFalse();
+    }
+
+    @Test
+    void negationOnlyMeansAllMinus() {
+        var allow = List.of("!debugJava*");
+        assertThat(ToolPolicy.enables(allow, "shellRunCommand")).isTrue();
+        assertThat(ToolPolicy.enables(allow, "debugJavaGetState")).isFalse();
+    }
+
+    // Mutation canary (F10): must go red if a bare `!` starts matching in the deny step.
+    @Test
+    void bareBangIsNoOp() {
+        assertThat(ToolPolicy.enables(List.of("!"), "anything")).isTrue();
+        assertThat(ToolPolicy.enables(List.of("*", "!"), "anything")).isTrue();
+    }
+
+    @Test
+    void parseAllowlistAbsentOrBlankYieldsNull() {
+        assertThat(ToolPolicy.parseAllowlist(null)).isNull();
+        assertThat(ToolPolicy.parseAllowlist("")).isNull();
+        assertThat(ToolPolicy.parseAllowlist("   ")).isNull();
+        assertThat(ToolPolicy.parseAllowlist(", ,")).isNull();
+    }
+
+    @Test
+    void parseAllowlistTrimsAndDropsBlanks() {
+        assertThat(ToolPolicy.parseAllowlist("eclipse, !debugJava*")).containsExactly("eclipse", "!debugJava*");
+        assertThat(ToolPolicy.parseAllowlist(" eclipse , , disk ")).containsExactly("eclipse", "disk");
+    }
+
+    @Test
+    void nameFilterAbsentOrEmptyAllowsAll() {
+        assertThat(ToolPolicy.nameFilter(null).test("anything")).isTrue();
+        assertThat(ToolPolicy.nameFilter("").test("anything")).isTrue();
+        assertThat(ToolPolicy.nameFilter("  ").test("anything")).isTrue();
+        assertThat(ToolPolicy.nameFilter("eclipse").test("eclipseGrepFiles")).isTrue();
+        assertThat(ToolPolicy.nameFilter("eclipse").test("diskReadFile")).isFalse();
+    }
+
+    @Test
+    void hasEmptyNegationDetectsBareBang() {
+        assertThat(ToolPolicy.hasEmptyNegation(List.of("!"))).isTrue();
+        assertThat(ToolPolicy.hasEmptyNegation(List.of("!", "x"))).isTrue();
+        assertThat(ToolPolicy.hasEmptyNegation(List.of("!x"))).isFalse();
+        assertThat(ToolPolicy.hasEmptyNegation(null)).isFalse();
+        assertThat(ToolPolicy.hasEmptyNegation(List.of())).isFalse();
+    }
 }
