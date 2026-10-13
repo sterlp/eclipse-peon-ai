@@ -50,3 +50,20 @@ referenced by `AiServiceStreamingEventPublisher`; core uses no AiServices — no
 whitelist-ritual in `AGENTS-DEV.md` guards future bumps). lib/ + sources/ are gitignored by
 repo convention — MANIFEST/build.properties/.classpath carry the sync, jars regenerate via
 `mvn -pl org.sterl.llmpeon clean process-resources`.
+
+## Addendum (2026-10-06, Issue #142 — Compatibility-Floor zurück auf 2025-12)
+
+Die 2026-09-Entscheidung wird für die `jakarta.annotation`-Range und das Target teilweise
+zurückgenommen:
+
+- `Import-Package: jakarta.annotation` ist jetzt **`[2.0.0,4.0.0)`** (deckt 2.1.1 auf 2025-12/2026-03
+  und 3.0.0 ab 2026-06 ab).
+- Target-Platform **2026-09 → 2025-12** (Homepage-Minimum); `ui.console`/`workbench.texteditor`-
+  Minima auf die 2025-12-Versionen abgesenkt (`[3.15.0,…)`/`[3.19.0,…)`).
+
+Anlass: Issue #142 — unser p2-Repo lieferte via `includeAllDependencies=true` Platform-Bundles
+(org.objectweb.asm 9.10.1) mit und brickte Eclipse 2026-03. Das Flag ist entfernt; unser Repo
+liefert nur noch Feature + Plugin. Die Target-Wahl folgt jetzt dem Prinzip „gegen die *älteste*
+unterstützte Platform bauen", nicht gegen die neueste. Die frühere Aussage „Building against
+< 2026-06 no longer works" gilt damit nicht mehr. Javap-verifiziert: die genutzten
+JDT-Debug-/Debug-Core-APIs sind zwischen 2025-12 und 2026-09 identisch.

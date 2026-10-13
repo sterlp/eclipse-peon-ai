@@ -45,7 +45,8 @@ export default defineConfig({
             { text: 'Voice', link: '/setup/voice-config' },
             { text: 'Which model?', link: '/model-checks' },
             { text: 'Qwen tuning', link: '/setup/qwen3627b_lmstudio_optimization' },
-            { text: 'llama.cpp', link: '/setup/llama' }
+            { text: 'llama.cpp', link: '/setup/llama' },
+            { text: 'Troubleshooting', link: '/setup/troubleshooting' }
           ]
         },
         {

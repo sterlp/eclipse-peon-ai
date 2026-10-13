@@ -11,6 +11,8 @@ on:
     paths-ignore:
       - 'docs/**'
       - 'skills/**'
+  workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -23,5 +25,33 @@ jobs:
         java-version: '21'
         distribution: 'temurin'
         cache: maven
+    # NOTE: -Dmaven.resolver.validation=MILD lives in .mvn/maven.config.
+    # Tycho injects Bundle-ClassPath entries (lib/*.jar) as Maven classifiers for
+    # system-scoped deps; Maven 3.10+ (Resolver 2.x) rejects classifiers containing
+    # '/', failing with "Invalid Collect Request" (eclipse-tycho/tycho#6399).
     - name: Build with Maven
       run: xvfb-run -a mvn -B clean verify --file pom.xml
+
+    # Issue #142 regression guard: the p2 update site must contain ONLY our own bundles.
+    # Pre-fix builds leaked the whole target platform via includeAllDependencies=true
+    # (org.objectweb.asm 9.10.1, jakarta.annotation-api 3.0.0, spifly, jsvg, ...) and
+    # bricked / blanked older Eclipses. Any plugin outside org.sterl.* is a regression.
+    - name: Assert update site ships only Peon AI bundles (issue #142)
+      run: |
+        set -euo pipefail
+        repo=releng/llmpeon-update-site/target/repository
+        echo "Plugins published by the update site:"
+        ls -1 "$repo/plugins"
+        unexpected="$(ls -1 "$repo/plugins" | grep -Ev '^org\.sterl\.' || true)"
+        if [ -n "$unexpected" ]; then
+          echo "::error::Update site ships bundles outside org.sterl.* (platform leak, issue #142):"
+          echo "$unexpected"
+          exit 1
+        fi
+
+    - name: Upload p2 update site
+      uses: actions/upload-artifact@v4
+      with:
+        name: peon-ai-update-site
+        path: releng/llmpeon-update-site/target/repository
+        if-no-files-found: error

@@ -43,5 +43,5 @@ Install directly from Eclipse:
 ## After Installation
 
 1. Go to **Window > Show View > Other...**
-2. Search for "Peon AI" or "AI Chat"
+2. Search for **"AI Peon"** (or expand the **AI** category)
 3. The chat view will appear in your workbench
