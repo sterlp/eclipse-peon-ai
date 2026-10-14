@@ -28,7 +28,7 @@ Optional frontmatter fields:
 - `name` (defaults to folder name), `model`, `temperature`
 - `think` - one think level string, e.g. `high` / `false` / `true` (absent = unset, the model decides)
 - `handover` (target agent name, e.g., Peon-Dev, Peon-Plan, or a custom agent)
-- `read-only` (true/false) OR `tools` (list of tool names/prefixes, Java startsWith)
+- `read-only` (true/false) OR `tools` (list of tool names/prefixes, Java startsWith; `*` = all; a `!`-prefix negates after the allowlist (deny wins); a negations-only list = all tools minus the exclusions; a bare `!` has no effect)
 - `include-default` (true/false) if the default system prompt should be used -- default to `true` but ask the user
 - *Markdown body is the system prompt.*
 

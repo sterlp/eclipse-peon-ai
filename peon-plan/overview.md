@@ -304,7 +304,7 @@ sequenceDiagram
 **Abnahme:** **User-Smoke** (R-ATC-8-BDD): Dialog-Inhalt bei `eclipse, !debugJava*` (nur `eclipse*`, keine `debugJava*`/`disk*`), Da-Dok-Preview (Shell drin, Write raus auch bei `*`), Search-Preview (Sniffa-Menge, plan*-frei). Bare-`!`-Validierungs-Smoke gehört zu inc4 (Speichern verweigert, Store unverändert).
 **Docs-Nachzug (Jon):** `docs/agent-tool-config.md` R-ATC-8 → ✅. (R-ATC-9 flippt bereits mit inc4; keine Release-Notes-Änderung — Q5: neu beim Merge, Jon.)
 
-### inc6 — Scaffold-Prompt R8
+### inc6 — Scaffold-Prompt R8 — ✅ DONE 2026-10-14 (Surefire core 1110/0/0; Prompt-Resource-Edit ohne Compile-/Test-Kopplung — per Grep verifiziert: kein Test referenziert `scaffold-agent.md` oder assertet Prompt-Content, `AiScaffoldAgentTest` prüft nur Name/Write-Validator/Skill-Refresh) — Abweichung: „Full Agent Example" `!`-Variante NICHT ergänzt (Plan: „nur wenn Paul will" — offen gehalten; die L31-Semantik-Zeile deckt R8 vollständig ab)
 **Änderungen:** `prompts/scaffold-agent.md` L31: `tools`-Zeile erweitern — „list of tool names/prefixes (Java startsWith); `*` = all; a `!`-prefix negates AFTER the allowlist (deny wins); negations-only = all tools minus the exclusions; a bare `!` has no effect" + „Full Agent Example" um `tools: ["*", "!debugJava*"]`-Variante ergänzen (nur wenn Paul will — optional, s. Q-Notiz im Prompt: Scaffold fragt bei Unklarheit ohnehin).
 **Tests:** Prompts-Konvention: kein Unit-Test für Prompt-Text (wie R4-R6 in scaffold-agent.md: manuelle Verifikation) — stattdessen Bestands-Scaffold-Tests grün lassen.
 **Docs-Nachzug (Jon):** `docs/scaffold-agent.md` R8 → ✅.
