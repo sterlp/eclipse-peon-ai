@@ -67,8 +67,13 @@ public class AiPlanAgent extends AbstractAgent {
     }
 
     @Override
-    protected Predicate<SmartToolExecutor> getToolFilter() {
-        return super.getToolFilter().and(t -> !t.getTool().isEditTool());
+    protected String toolAllowlistSlot() {
+        return AgentModelConfig.PLAN;
+    }
+
+    @Override
+    protected Predicate<SmartToolExecutor> classFilter() {
+        return super.classFilter().and(t -> !t.getTool().isEditTool());
     }
 
     @Override

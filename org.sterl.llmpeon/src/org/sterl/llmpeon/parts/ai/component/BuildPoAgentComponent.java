@@ -92,24 +92,24 @@ public class BuildPoAgentComponent {
         // Eager shared slaves (ADR-0025): created once here and handed — as the same NamedAgent objects —
         // to both the delegate tool (which drives them) and AiPoAgent (which exposes them via getTeam()).
         var planSlave = new AiPlanAgent(configuredModel, sharedToolService, SLAVE_COMPACT_FACTOR) {
-            @Override protected Predicate<SmartToolExecutor> getToolFilter() {
-                return super.getToolFilter().and(noPrivilegedTools);
+            @Override protected Predicate<SmartToolExecutor> classFilter() {
+                return super.classFilter().and(noPrivilegedTools);
             }
         };
         planSlave.setStaticContext(ContextItem.newList(staticContent, 
                 () -> "Your name is Da Thinka."));
         
         var reviewSlave = new AiReviewAgent(configuredModel, sharedToolService, SLAVE_COMPACT_FACTOR) {
-            @Override protected Predicate<SmartToolExecutor> getToolFilter() {
-                return super.getToolFilter().and(noPrivilegedTools);
+            @Override protected Predicate<SmartToolExecutor> classFilter() {
+                return super.classFilter().and(noPrivilegedTools);
             }
         };
         reviewSlave.setStaticContext(ContextItem.newList(staticContent, 
                 () -> "Your name is Da Dok."));
 
         var devSlave = new AiDevAgent(configuredModel, sharedToolService, SLAVE_COMPACT_FACTOR) {
-            @Override protected Predicate<SmartToolExecutor> getToolFilter() {
-                return super.getToolFilter().and(noPrivilegedTools);
+            @Override protected Predicate<SmartToolExecutor> classFilter() {
+                return super.classFilter().and(noPrivilegedTools);
             }
         };
         devSlave.setStaticContext(ContextItem.newList(staticContent, 

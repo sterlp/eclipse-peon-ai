@@ -17,6 +17,7 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.resources.ResourcesPlugin;
@@ -36,6 +37,7 @@ import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.UserContext;
 import org.sterl.llmpeon.memory.FileAgentHistoryStore;
+import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.parts.PeonConstants;
 import org.sterl.llmpeon.parts.ai.PeonAiService;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
@@ -53,6 +55,7 @@ import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.docslinter.DocsIdTool;
 import org.sterl.llmpeon.docslinter.DocsLinterTool;
+import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
@@ -64,6 +67,7 @@ import org.sterl.llmpeon.tool.tools.SkillTool;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 
@@ -960,6 +964,134 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
                 .findFirst()
                 .orElseThrow();
         assertTrue("SearchAgent keeps read tools", searchAgent.getFilter().test(grep));
+    }
+
+    // UC-ATC-4
+    @Test
+    public void dokAllowlistWildcardStillClassFiltered() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        var dok = aiService.getAgent(AiReviewAgent.NAME).orElseThrow();
+
+        // GIVEN the review slot's allowlist is the full wildcard
+        aiService.updateConfig(aiService.getConfig().toBuilder()
+                .agentTools(Map.of("review", "*")).build());
+
+        // THEN the class filter still applies: shell stays (Da Dok's only exception), write tools stay hidden
+        var names = activeToolNames(dok);
+        assertTrue("Da Dok keeps " + ShellTool.SHELL_RUN_COMMAND, names.contains(ShellTool.SHELL_RUN_COMMAND));
+        assertTrue("Da Dok keeps " + ShellTool.OPERATION_SYSTEM_INFORMATION,
+                names.contains(ShellTool.OPERATION_SYSTEM_INFORMATION));
+        var writeExecutors = dok.getToolService().getExecutors().stream()
+                .filter(e -> e.getTool() instanceof EclipseWorkspaceWriteFileTool
+                        || e.getTool() instanceof DiskFileWriteTool)
+                .toList();
+        assertFalse("shared service carries write tools to assert against", writeExecutors.isEmpty());
+        for (var exec : writeExecutors) {
+            assertFalse("Da Dok must not see " + exec.getSpec().name(), names.contains(exec.getSpec().name()));
+        }
+
+        // AND the allowlist narrows the class-filtered set (per-call read, agents are not rebuilt)
+        aiService.updateConfig(aiService.getConfig().toBuilder()
+                .agentTools(Map.of("review", "*, !readOperationSystemInformation")).build());
+        var narrowed = activeToolNames(dok);
+        assertTrue("Da Dok keeps " + ShellTool.SHELL_RUN_COMMAND, narrowed.contains(ShellTool.SHELL_RUN_COMMAND));
+        assertFalse("the negation removes " + ShellTool.OPERATION_SYSTEM_INFORMATION,
+                narrowed.contains(ShellTool.OPERATION_SYSTEM_INFORMATION));
+    }
+
+    // UC-TF-2
+    @Test
+    public void sniffaAllowlistWildcardStillPlanFree() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        var searchAgent = aiService.getSharedToolService().getTool(SearchAgentTool.class).orElseThrow();
+
+        // GIVEN the search slot's allowlist is the full wildcard
+        aiService.updateConfig(aiService.getConfig().toBuilder()
+                .agentTools(Map.of("search", "*")).build());
+
+        // THEN the sub-loop's tool set stays plan-free and keeps the read tools
+        var names = sniffaSubLoopToolNames(searchAgent);
+        for (var name : names) {
+            assertFalse("Sniffa sub-loop must not offer " + name, name.startsWith("plan"));
+        }
+        assertTrue("Sniffa keeps eclipseGrepFiles", names.contains("eclipseGrepFiles"));
+
+        // AND the search slot's allowlist narrows the sub-loop (parent-independent, not inherited)
+        aiService.updateConfig(aiService.getConfig().toBuilder()
+                .agentTools(Map.of("search", "eclipse")).build());
+        var narrowed = sniffaSubLoopToolNames(searchAgent);
+        assertFalse("sub-loop must still offer tools", narrowed.isEmpty());
+        for (var name : narrowed) {
+            assertTrue("Sniffa sub-loop restricted to eclipse*: " + name, name.startsWith("eclipse"));
+        }
+    }
+
+    /** Runs Da Sniffa's sub-loop against the mock model and returns the tool names sent to the model. */
+    private List<String> sniffaSubLoopToolNames(SearchAgentTool searchAgent) {
+        var ccm = new ConfiguredChatModel(aiService.getConfig());
+        ccm.setChatModel(streamMock.buildOkMock());
+        searchAgent.withToolRequest(ToolLoopRequest.builder()
+                .memory(new ThreadSafeMemory())
+                .chatModel(ccm)
+                .build());
+        streamMock.reset();
+        var result = searchAgent.searchAgent("find the plan file");
+        assertFalse("sub-loop failed: " + result, result.startsWith("Search agent failed"));
+        var specs = streamMock.getLastRequest().parameters().toolSpecifications();
+        assertNotNull("sub-loop request must carry tool specs", specs);
+        return specs.stream().map(ToolSpecification::name).toList();
+    }
+
+    // UC-ATC-2
+    @Test
+    public void devAllowlistNegationRemovesDebugFromMek() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        // GIVEN the dev slot's allowlist excludes the debugJava* family
+        aiService.updateConfig(aiService.getConfig().toBuilder()
+                .agentTools(Map.of("dev", "*, !debugJava*")).build());
+
+        aiService.setActiveAgent(AiPoAgent.NAME);
+        var mek = jonDelegate().getDevSlave();
+
+        // THEN Mek (a dev-slot slave) no longer sees the debug tools but keeps the read tools
+        var debugExecutors = mek.getToolService().getExecutors().stream()
+                .filter(e -> e.getTool() instanceof JavaDebugTool)
+                .toList();
+        assertFalse("shared service carries debug tools to assert against", debugExecutors.isEmpty());
+        var names = activeToolNames(mek);
+        for (var exec : debugExecutors) {
+            assertFalse("Mek must not see " + exec.getSpec().name(), names.contains(exec.getSpec().name()));
+        }
+        assertTrue("Mek keeps eclipseGrepFiles", names.contains("eclipseGrepFiles"));
+    }
+
+    /**
+     * Regression guard (R-TF-4): without a stored allowlist the tool matrix is unchanged —
+     * dev keeps shell + the debugJava* family, review keeps shell but no write tools.
+     * Green before AND after the allowlist feature (characterization, not a feature proof).
+     */
+    @Test
+    public void absentStoreLeavesMatrixUnchanged() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        var dev = aiService.getAgent(AiDevAgent.NAME).orElseThrow();
+        var devNames = activeToolNames(dev);
+        assertTrue("Dev keeps " + ShellTool.SHELL_RUN_COMMAND, devNames.contains(ShellTool.SHELL_RUN_COMMAND));
+        assertTrue("Dev keeps the debugJava* family",
+                devNames.stream().anyMatch(n -> n.startsWith("debugJava")));
+
+        var dok = aiService.getAgent(AiReviewAgent.NAME).orElseThrow();
+        var dokNames = activeToolNames(dok);
+        assertTrue("Review keeps " + ShellTool.SHELL_RUN_COMMAND, dokNames.contains(ShellTool.SHELL_RUN_COMMAND));
+        for (var exec : dok.getToolService().getExecutors()) {
+            if (exec.getTool() instanceof EclipseWorkspaceWriteFileTool
+                    || exec.getTool() instanceof DiskFileWriteTool) {
+                assertFalse("Review must not see " + exec.getSpec().name(), dokNames.contains(exec.getSpec().name()));
+            }
+        }
     }
 
     /**

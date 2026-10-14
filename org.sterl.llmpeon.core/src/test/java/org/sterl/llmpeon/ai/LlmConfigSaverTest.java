@@ -103,6 +103,20 @@ class LlmConfigSaverTest {
                 .doesNotContainKey(LlmConfigKeys.MODEL);
     }
 
+    @Test
+    void saveAgentToolsWritesAndRemoves() {
+        // GIVEN the raw CSV allowlist key for the dev slot
+        var store = new MapLlmConfigStore();
+        var key = LlmConfigKeys.agentKey(AgentModelConfig.DEV, LlmConfigKeys.AGENT_FIELD_TOOLS);
+
+        // WHEN a value is saved (trimmed, kept raw) and later cleared
+        LlmConfigSaver.saveAgentTools(store, AgentModelConfig.DEV, " eclipse , !debugJava* ");
+        assertThat(store.asMap()).containsEntry(key, "eclipse , !debugJava*");
+
+        LlmConfigSaver.saveAgentTools(store, AgentModelConfig.DEV, " ");
+        assertThat(store.asMap()).doesNotContainKey(key);
+    }
+
     // UC-THINK-2
     @Test
     void roundtripStable() {

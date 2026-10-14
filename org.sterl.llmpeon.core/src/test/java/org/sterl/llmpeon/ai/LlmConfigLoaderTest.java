@@ -179,6 +179,23 @@ class LlmConfigLoaderTest {
     }
 
     @Test
+    void loadAgentToolsRawCsvPerSlot() {
+        // GIVEN raw CSV allowlists for two slots, one of them with surrounding whitespace
+        var store = new MapLlmConfigStore();
+        store.put(LlmConfigKeys.agentKey(AgentModelConfig.PLAN, LlmConfigKeys.AGENT_FIELD_TOOLS), " eclipse , !debugJava* ");
+        store.put(LlmConfigKeys.agentKey(AgentModelConfig.REVIEW, LlmConfigKeys.AGENT_FIELD_TOOLS), "eclipse");
+
+        // WHEN the config is loaded
+        var config = LlmConfigLoader.load(store);
+
+        // THEN the raw values survive (trimmed, uninterpreted) and the other slots stay absent
+        assertThat(config.toolAllowlist(AgentModelConfig.PLAN)).isEqualTo("eclipse , !debugJava*");
+        assertThat(config.toolAllowlist(AgentModelConfig.REVIEW)).isEqualTo("eclipse");
+        assertThat(config.toolAllowlist(AgentModelConfig.DEV)).isNull();
+        assertThat(config.toolAllowlist(AgentModelConfig.PO)).isNull();
+    }
+
+    @Test
     void loaderDefaultsShowRealtimeAiResponse() {
         var config = LlmConfigLoader.load(new MapLlmConfigStore());
 

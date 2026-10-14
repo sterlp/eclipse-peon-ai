@@ -8,6 +8,7 @@ import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.tool.ToolPolicy;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
@@ -45,10 +46,14 @@ public class SearchAgentTool extends AbstractTool {
 
             var cfg = this.request.getConfig();
             var modelName = cfg.modelConfigFor(AgentModelConfig.SEARCH).model();
+            // The sub-loop is parent-independent: its allowlist comes from the SEARCH slot, not
+            // from the parent agent (toBuilder would inherit the parent's toolNameFilter, R-CC-15).
+            var allow = ToolPolicy.nameFilter(cfg.toolAllowlist(AgentModelConfig.SEARCH));
 
             var request = this.request.toBuilder()
                 .staticMessages(Arrays.asList(system))
-                .toolFilter(filter)
+                .toolFilter(filter.and(exec -> allow.test(exec.getSpec().name())))
+                .toolNameFilter(allow)
                 .memory(messages)
                 .agentConfig(cfg.searchAgentConfig())
                 // R-CC-15: never inherit the parent agent — a sub-loop compactSession would

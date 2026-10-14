@@ -54,6 +54,13 @@ public class LlmConfig {
      */
     @Default
     private final Map<String, AgentModelConfig> modelConfigs = Map.of();
+    /**
+     * Per-agent tool allowlists keyed by agent id — the raw CSV value of
+     * {@code llm.agent.<id>.tools}, kept uninterpreted (parsing lives in
+     * {@link org.sterl.llmpeon.tool.ToolPolicy}). Missing entry = key absent = all tools.
+     */
+    @Default
+    private final Map<String, String> agentTools = Map.of();
     @NonNull
     @Default
     private final Duration timeout = Duration.ofMinutes(3);
@@ -168,6 +175,14 @@ public class LlmConfig {
     /** The per-agent config for the given agent id; missing entries resolve to {@link AgentModelConfig#empty()}. */
     public AgentModelConfig modelConfigFor(String agentId) {
         return modelConfigs.getOrDefault(agentId, AgentModelConfig.empty());
+    }
+
+    /**
+     * The raw CSV tool allowlist for the given agent slot ({@code llm.agent.<id>.tools});
+     * {@code null} = key absent = all tools.
+     */
+    public String toolAllowlist(String agentId) {
+        return agentTools.get(agentId);
     }
 
     /** A copy with the given agent's model config replaced (null removes the entry). */

@@ -104,6 +104,7 @@ class CustomAgentServiceTest extends AbstractMemoryFileTest {
         assertThat(svc.isToolActive(exec("write_file"))).isFalse();
     }
 
+    // UC-ATC-6
     @Test
     void allowlistRestrictsTools() {
         var svc = agent(List.of("read_"), false, null);

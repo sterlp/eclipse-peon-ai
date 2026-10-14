@@ -258,7 +258,7 @@ sequenceDiagram
 - plugin `AdvancedPreferenceSectionsTest`: `devSectionIsGoneAndSlotOrderStable` → erwartete Liste `["po","plan","review","search","compact"]`; `everyCoreSlotHasASection` auto-grün (beide Seiten wachsen).
 **Docs-Nachzug (Jon):** `docs/review-agent.md` R7 → ✅ (R1-Zeile „Config/Model-Slot = PLAN" mit Update-Hinweis versehen: „— seit 2026-10-13 eigener REVIEW-Slot, R7"); `docs/advanced-configuration.md` Slot-Enum „plan/search/compact/po" → +review; `homepage/src/setup/advanced-configuration.md`: Per-Agent-Tabelle + Review-Zeile (Fallback Base), „How It Works" Punkt 2 Slot-Liste +Review, Migration-Hinweis (PLAN→REVIEW einmal kopieren). (Keine Release-Notes-Änderung — Q5 GELÖST: neu beim Merge, Jon.)
 
-### inc3 — Store + Wiring (Story 1 Kern)
+### inc3 — Store + Wiring (Story 1 Kern) — ✅ DONE 2026-10-14 (Surefire core 1105/0/0, +7 Tests; OSGi-Plugin 324/0/0, +4 Tests; Merge-Zonen doCall/Slaves verifiziert unverändert, kein Async-Umbau gelandet) — Abweichungen (beide Test-Honesty, AGENTS-DEV): (a) `dokAllowlistWildcardStillClassFiltered` + `sniffaAllowlistWildcardStillPlanFree` um Negations-/`eclipse`-Fälle erweitert — die Plan-literalen Wildcard-Varianten wären OHNE Feature grün (alter Base-`getToolNameFilter` = allow-all); (b) `MapLlmConfigStore` → public (Test-Infra-Wort, sonst kein Zugriff aus `agent`-Paket)
 **Änderungen:**
 - `LlmConfigKeys.AGENT_FIELD_TOOLS = "tools"`.
 - `LlmConfig`: `@Default private final Map<String,String> agentTools = Map.of();` + `public String toolAllowlist(String agentId) { return agentTools.get(agentId); }` (null = absent = alle).

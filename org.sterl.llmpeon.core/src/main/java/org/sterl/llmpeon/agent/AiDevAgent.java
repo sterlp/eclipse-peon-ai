@@ -2,6 +2,7 @@ package org.sterl.llmpeon.agent;
 
 import java.nio.file.Path;
 
+import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.memory.FileAgentHistoryStore;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
@@ -33,6 +34,11 @@ public class AiDevAgent extends AbstractAgent {
     @Override
     public String getSystemPrompt() {
         return BASE_PROMPT;
+    }
+
+    @Override
+    protected String toolAllowlistSlot() {
+        return AgentModelConfig.DEV;
     }
 
     @Override

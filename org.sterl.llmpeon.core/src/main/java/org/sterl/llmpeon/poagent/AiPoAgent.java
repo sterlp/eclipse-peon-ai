@@ -106,6 +106,11 @@ public class AiPoAgent extends AbstractAgent {
     }
 
     @Override
+    protected String toolAllowlistSlot() {
+        return AgentModelConfig.PO;
+    }
+
+    @Override
     public AgentConfig getConfig() {
         return configuredModel.getConfig().poAgentConfig();
     }

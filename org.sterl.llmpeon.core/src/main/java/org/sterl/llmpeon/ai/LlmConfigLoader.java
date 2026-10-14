@@ -41,6 +41,7 @@ public final class LlmConfigLoader {
                 .queryParams(parseCsvMap(store.get(LlmConfigKeys.QUERY_PARAMS, "")))
                 .headerParams(parseCsvMap(store.get(LlmConfigKeys.HEADER_PARAMS, "")))
                 .modelConfigs(loadModelConfigs(store))
+                .agentTools(loadAgentTools(store))
                 .build();
     }
 
@@ -71,6 +72,21 @@ public final class LlmConfigLoader {
                 StringUtil.stripToNull(store.get(LlmConfigKeys.agentKey(id, LlmConfigKeys.AGENT_FIELD_THINK), null)),
                 StringUtil.stripToNull(store.get(LlmConfigKeys.agentKey(id, LlmConfigKeys.AGENT_FIELD_EXTRA_BODY), null)),
                 StringUtil.stripToNull(store.get(LlmConfigKeys.agentKey(id, LlmConfigKeys.AGENT_FIELD_TEMPERATURE), null)));
+    }
+
+    /**
+     * The per-agent tool allowlists ({@code llm.agent.<id>.tools}): the raw CSV string is kept
+     * verbatim (trimmed) — interpretation happens in
+     * {@link org.sterl.llmpeon.tool.ToolPolicy}, not here. Missing or blank keys stay absent
+     * (= all tools).
+     */
+    private static Map<String, String> loadAgentTools(LlmConfigStore store) {
+        var map = new LinkedHashMap<String, String>();
+        for (var id : AgentModelConfig.CORE_IDS) {
+            var raw = StringUtil.stripToNull(store.get(LlmConfigKeys.agentKey(id, LlmConfigKeys.AGENT_FIELD_TOOLS), null));
+            if (raw != null) map.put(id, raw);
+        }
+        return Map.copyOf(map);
     }
 
     private static String defaultConfigDir() {

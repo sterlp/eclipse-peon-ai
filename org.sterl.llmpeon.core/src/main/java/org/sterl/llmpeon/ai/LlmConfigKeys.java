@@ -36,6 +36,7 @@ public final class LlmConfigKeys {
     public static final String AGENT_FIELD_THINK      = "think";
     public static final String AGENT_FIELD_EXTRA_BODY = "extraBody";
     public static final String AGENT_FIELD_TEMPERATURE = "temperature";
+    public static final String AGENT_FIELD_TOOLS      = "tools";
 
     /** Builds the key {@code llm.agent.<agentId>.<field>}. */
     public static String agentKey(String agentId, String field) {

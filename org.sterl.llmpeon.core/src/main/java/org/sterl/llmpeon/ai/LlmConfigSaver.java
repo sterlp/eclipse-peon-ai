@@ -29,6 +29,15 @@ public final class LlmConfigSaver {
         saveOrRemove(store, LlmConfigKeys.agentKey(agentId, LlmConfigKeys.AGENT_FIELD_TEMPERATURE), record.temperature());
     }
 
+    /**
+     * Persists the raw CSV tool allowlist for one agent slot
+     * ({@code llm.agent.<id>.tools}). A blank value removes the key (clean break: key gone =
+     * no filter = all tools).
+     */
+    public static void saveAgentTools(LlmConfigStore store, String agentId, String raw) {
+        saveOrRemove(store, LlmConfigKeys.agentKey(agentId, LlmConfigKeys.AGENT_FIELD_TOOLS), raw);
+    }
+
     private static void saveOrRemove(LlmConfigStore store, String key, String value) {
         if (StringUtil.hasValue(value)) {
             store.put(key, value.trim());

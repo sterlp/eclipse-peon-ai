@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /** Map-backed {@link LlmConfigStore} for tests. */
-class MapLlmConfigStore implements LlmConfigStore {
+public class MapLlmConfigStore implements LlmConfigStore {
 
     private final Map<String, String> map = new HashMap<>();
 
