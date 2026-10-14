@@ -3,6 +3,7 @@ package org.sterl.llmpeon.test;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.time.Duration;
@@ -13,6 +14,8 @@ import java.util.Map;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Text;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -167,13 +170,112 @@ public class AgentModelConfigSectionTest extends AbstractSwtUiTest {
         assertTrue("unset think must not be persisted, was " + store.asMap(), store.asMap().isEmpty());
     }
 
+    // UC-ATC-1
+    @Test
+    public void loadToolsAndGetToolsRoundTrip() {
+        // GIVEN a section with the tools field
+        ui(() -> {
+            section.loadTools("eclipse, !debugJava*");
+            return null;
+        });
+
+        // WHEN read back, the raw CSV roundtrips verbatim
+        assertEquals("eclipse, !debugJava*", ui(() -> section.getTools()));
+
+        // AND null loads as an empty field that reads back null (absent = all, R-ATC-3)
+        ui(() -> {
+            section.loadTools(null);
+            return null;
+        });
+        assertEquals("", ui(() -> findToolsText(section).getText()));
+        assertNull(ui(() -> section.getTools()));
+    }
+
+    // R-ATC-9
+    @Test
+    public void isToolsValidRejectsBareBang() {
+        // GIVEN the section's tools field
+        ui(() -> {
+            section.loadTools("!");
+            return null;
+        });
+        assertFalse("a bare '!' must be rejected", ui(() -> section.isToolsValid()));
+
+        ui(() -> {
+            section.loadTools("eclipse, !");
+            return null;
+        });
+        assertFalse("a bare '!' mixed into a valid list must be rejected", ui(() -> section.isToolsValid()));
+
+        ui(() -> {
+            section.loadTools("!debugJava*");
+            return null;
+        });
+        assertTrue("a prefixed negation is valid", ui(() -> section.isToolsValid()));
+
+        ui(() -> {
+            section.loadTools("eclipse");
+            return null;
+        });
+        assertTrue("a plain prefix is valid", ui(() -> section.isToolsValid()));
+
+        ui(() -> {
+            section.loadTools("");
+            return null;
+        });
+        assertTrue("empty = all is valid", ui(() -> section.isToolsValid()));
+    }
+
+    @Test
+    public void noToolsFieldSectionHasNoToolsField() {
+        // GIVEN a section built without the tools field (compact — D10: CompactService never sends tools)
+        var compact = ui(() -> newSection(AiProvider.ANTHROPIC, AgentModelConfig.COMPACT, false));
+        try {
+            // THEN there is no tools field and the API degrades to absent/valid
+            assertNull("no tools label for a field-less section", ui(() -> findToolsLabel(compact)));
+            assertNull("getTools() is null without a field", ui(() -> compact.getTools()));
+            assertTrue("isToolsValid() is trivially true without a field", ui(() -> compact.isToolsValid()));
+        } finally {
+            ui(() -> {
+                compact.dispose();
+                return null;
+            });
+        }
+    }
+
     // --- helpers ---
 
     /** UI-thread only. Builds a section for the given base provider; the mock server only supplies the URL. */
     private AgentModelConfigSection newSection(AiProvider provider) {
+        return newSection(provider, "test", true);
+    }
+
+    /** UI-thread only. Builds a section; the mock server only supplies the URL. */
+    private AgentModelConfigSection newSection(AiProvider provider, String agentId, boolean toolsField) {
         var base = LlmConfig.builder().providerType(provider).model("claude-x")
                 .url(mockLlmServer.getUrl()).timeout(Duration.ofSeconds(30)).build();
-        return new AgentModelConfigSection(shell, "test", () -> base);
+        return new AgentModelConfigSection(shell, agentId, () -> base, toolsField);
+    }
+
+    /** UI-thread only. The "Tools (CSV, empty = all):" label, or null when the section has no tools field. */
+    private static Label findToolsLabel(AgentModelConfigSection section) {
+        for (var child : section.getChildren()) {
+            if (child instanceof Label l && "Tools (CSV, empty = all):".equals(l.getText())) {
+                return l;
+            }
+        }
+        return null;
+    }
+
+    /** UI-thread only. The tools field: the Text sibling right after the tools label. */
+    private static Text findToolsText(AgentModelConfigSection section) {
+        var children = section.getChildren();
+        for (int i = 0; i < children.length - 1; i++) {
+            if (children[i] instanceof Label l && "Tools (CSV, empty = all):".equals(l.getText())) {
+                return (Text) children[i + 1];
+            }
+        }
+        throw new AssertionError("no tools field in section");
     }
 
     /**

@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.parts.config;
 
 import org.eclipse.core.runtime.preferences.InstanceScope;
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.preference.BooleanFieldEditor;
 import org.eclipse.jface.preference.ComboFieldEditor;
 import org.eclipse.jface.preference.FieldEditorPreferencePage;
@@ -13,7 +14,9 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.program.Program;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Link;
+import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
 import org.eclipse.ui.preferences.ScopedPreferenceStore;
@@ -23,10 +26,13 @@ import org.sterl.llmpeon.ai.LlmConfigSaver;
 import org.sterl.llmpeon.parts.PeonConstants;
 import org.sterl.llmpeon.parts.config.widgets.ModelConfigWidget;
 import org.sterl.llmpeon.parts.config.widgets.TitledGroup;
+import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.tool.ToolPolicy;
 
 public class AiConfigPreferenceView extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
 
     private ModelConfigWidget modelConfigWidget;
+    private Text toolsText;
 
     public AiConfigPreferenceView() {
         super(GRID);
@@ -48,6 +54,14 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
         modelConfigWidget = new ModelConfigWidget(grid, "base", LlmPreferenceInitializer::buildWithDefaults);
         modelConfigWidget.load(storeValues());
         modelConfigWidget.fetchModels();
+
+        // Tools (R-ATC-4): the dev slot's raw CSV allowlist — dev only, no inheritance
+        // (one key, one editor: ADR-0063). JFace Field-Editor label style (SWT.LEFT, no GridData).
+        var toolsLabel = new Label(grid, SWT.LEFT);
+        toolsLabel.setText("Tools (CSV, empty = all):");
+        toolsText = new Text(grid, SWT.BORDER);
+        toolsText.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+        toolsText.setText(StringUtil.stripToEmpty(LlmPreferenceInitializer.buildWithDefaults().toolAllowlist(AgentModelConfig.DEV)));
 
         addField(new IntegerFieldEditor(PeonConstants.PREF_TOKEN_WINDOW, "Auto compact after:", getFieldEditorParent()));
 
@@ -107,6 +121,12 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
         if (!super.performOk()) {
             return false;
         }
+        // R-ATC-9: a bare '!' in the tools field rejects the WHOLE save — the store stays untouched.
+        var toolsError = toolsValidationError();
+        if (toolsError != null) {
+            showToolsError(toolsError);
+            return false;
+        }
         var values = modelConfigWidget.getValues();
         var store = new EclipseLlmConfigStore(InstanceScope.INSTANCE.getNode(PeonConstants.PLUGIN_ID));
         // Single owner (R-DEF-9, ADR-0063): the basic page is the only editor of the base keys
@@ -123,7 +143,22 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
         LlmConfigSaver.saveAgentModelConfig(store, AgentModelConfig.DEV,
                 LlmPreferenceInitializer.buildWithDefaults().modelConfigFor(AgentModelConfig.DEV).withModel(values.model())
                         .withThink(values.think()).withExtraBody(values.extraBody()).withTemperature(values.temperature()));
+        // Raw CSV verbatim (R-ATC-7): blank removes the key (clean break: key gone = all tools).
+        LlmConfigSaver.saveAgentTools(store, AgentModelConfig.DEV, StringUtil.stripToNull(toolsText.getText()));
         return true;
+    }
+
+    /** R-ATC-9: null when the typed tools value is valid, otherwise the error message. */
+    private String toolsValidationError() {
+        var tools = StringUtil.stripToNull(toolsText.getText());
+        return ToolPolicy.hasEmptyNegation(ToolPolicy.parseAllowlist(tools))
+                ? "The Tools field contains a bare '!'. A '!' must be followed by a tool name or prefix (e.g. !debugJava*)."
+                : null;
+    }
+
+    /** The R-ATC-9 validation failure dialog — the seam tests record instead of opening a modal. */
+    protected void showToolsError(String message) {
+        MessageDialog.openError(getShell(), "Invalid Tools value", message);
     }
 
     private void buildGithubLogin() {

@@ -16,6 +16,7 @@ import org.sterl.llmpeon.provider.LlmProviders;
 import org.sterl.llmpeon.provider.ThinkSupport;
 import org.sterl.llmpeon.provider.ThinkValueSupport;
 import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.tool.ToolPolicy;
 
 /**
  * One per-agent model-config section (url / api-key / model / think / temperature / extra-body JSON) on the
@@ -33,6 +34,11 @@ import org.sterl.llmpeon.shared.StringUtil;
  * takes effect on the next fetch without reopening the page. The think widget form / extra-body
  * visibility are still determined from {@code base.get()} at construction (provider-level, not
  * per-fetch).</p>
+ *
+ * <p>The tools field (R-ATC-4) carries the slot's raw CSV tool allowlist
+ * ({@code llm.agent.<id>.tools}) — present only for slots whose agent can actually call tools
+ * (compact is excluded: {@code CompactService} builds its request without tools). Validation
+ * (R-ATC-9) reuses {@link ToolPolicy} — one mechanism, no second detector.</p>
  */
 public class AgentModelConfigSection extends Composite {
 
@@ -45,12 +51,13 @@ public class AgentModelConfigSection extends Composite {
     private final Text temperatureText;
     private final boolean extraBodySupported;
     private final ExtraBodyWidget extraBody;
+    private final Text toolsText; // null when the section has no tools field (compact)
 
     // exactly one of these is non-null, per thinkForm
     private Combo thinkCombo;
     private Text thinkText;
 
-    public AgentModelConfigSection(Composite parent, String agentId, Supplier<LlmConfig> base) {
+    public AgentModelConfigSection(Composite parent, String agentId, Supplier<LlmConfig> base, boolean toolsField) {
         super(parent, SWT.NONE);
         this.agentId = agentId;
         this.base = base;
@@ -68,6 +75,7 @@ public class AgentModelConfigSection extends Composite {
         buildThink();
         this.temperatureText = addLabeledText("Temperature (empty = unset):");
         this.extraBody = new ExtraBodyWidget(this, extraBodySupported);
+        this.toolsText = toolsField ? addLabeledText("Tools (CSV, empty = all):") : null;
     }
 
     public String getAgentId() {
@@ -93,6 +101,23 @@ public class AgentModelConfigSection extends Composite {
                 readThink(),
                 extraBodySupported ? extraBody.getExtraBody() : null, // construction gate (R-MCW-5): hidden → null, no R-DEF-11
                 StringUtil.stripToNull(temperatureText.getText()));
+    }
+
+    /** Populates the tools field from the stored raw CSV (null-safe; no-op without a field). */
+    public void loadTools(String csv) {
+        if (toolsText != null) {
+            toolsText.setText(StringUtil.stripToEmpty(csv));
+        }
+    }
+
+    /** The typed raw CSV (null when empty or the section has no tools field). */
+    public String getTools() {
+        return toolsText == null ? null : StringUtil.stripToNull(toolsText.getText());
+    }
+
+    /** R-ATC-9: the typed value must not contain a bare {@code !} (empty negation). */
+    public boolean isToolsValid() {
+        return !ToolPolicy.hasEmptyNegation(ToolPolicy.parseAllowlist(getTools()));
     }
 
     /** Fetches the model list for the current widget values (page open). Cached per identity. */

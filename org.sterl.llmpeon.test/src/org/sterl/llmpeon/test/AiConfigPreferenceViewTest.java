@@ -2,6 +2,7 @@ package org.sterl.llmpeon.test;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -54,9 +55,12 @@ public class AiConfigPreferenceViewTest extends AbstractSwtUiTest {
             LlmConfigKeys.AGENT_FIELD_TEMPERATURE);
     private static final String EXTRA_BODY_KEY = LlmConfigKeys.agentKey(AgentModelConfig.DEV,
             LlmConfigKeys.AGENT_FIELD_EXTRA_BODY);
+    private static final String DEV_TOOLS_KEY = LlmConfigKeys.agentKey(AgentModelConfig.DEV,
+            LlmConfigKeys.AGENT_FIELD_TOOLS);
 
     private static final List<String> KEYS = List.of(PeonConstants.PREF_PROVIDER_TYPE, PeonConstants.PREF_URL,
-            PeonConstants.PREF_API_KEY, PeonConstants.PREF_MODEL, THINK_KEY, TEMPERATURE_KEY, EXTRA_BODY_KEY);
+            PeonConstants.PREF_API_KEY, PeonConstants.PREF_MODEL, THINK_KEY, TEMPERATURE_KEY, EXTRA_BODY_KEY,
+            DEV_TOOLS_KEY);
 
     private IEclipsePreferences prefs;
     private Map<String, String> original;
@@ -109,9 +113,10 @@ public class AiConfigPreferenceViewTest extends AbstractSwtUiTest {
         var parent = ui(() -> fieldEditorParent(page));
 
         // THEN the connection fields sit in the "Default for all agents" group in the binding order
-        // 1-5 (+ Ping) — the group's grid holds only the widget (no loose connection field editors)
+        // 1-5 (+ Ping) — the group's grid holds the widget + the dev tools field (no loose
+        // connection field editors)
         var rendered = ui(() -> rendered(parent));
-        assertEquals(14, rendered.length);
+        assertEquals(16, rendered.length);
         assertEquals("Provider Type:", ((Label) rendered[0]).getText());
         var provider = (Combo) rendered[1];
         assertTrue("provider combo must be read-only", (provider.getStyle() & SWT.READ_ONLY) != 0);
@@ -141,7 +146,7 @@ public class AiConfigPreferenceViewTest extends AbstractSwtUiTest {
         // AND the binding field order survives the provider switch (think stays field 5, not reordered
         // to the page end) and the extra body (binding 7) appears live for the supporting provider
         var afterSwitch = ui(() -> rendered(parent));
-        assertEquals(17, afterSwitch.length);
+        assertEquals(19, afterSwitch.length);
         assertEquals("Think (Default):", ((Label) afterSwitch[10]).getText());
         assertTrue(afterSwitch[11] instanceof Combo);
 
@@ -238,7 +243,7 @@ public class AiConfigPreferenceViewTest extends AbstractSwtUiTest {
         assertNotNull("Default for all agents group not found", group);
         assertEquals("the widget builds into the group's grid", parent, group.getChildren()[0]);
         var rendered = ui(() -> rendered(parent));
-        assertEquals(17, rendered.length);
+        assertEquals(19, rendered.length);
         var labels = new ArrayList<String>();
         for (var c : rendered) {
             if (c instanceof Label l) {
@@ -246,7 +251,77 @@ public class AiConfigPreferenceViewTest extends AbstractSwtUiTest {
             }
         }
         assertEquals(List.of("Provider Type:", "URL (incl. port):", "API Key:", "Model:",
-                "Think (Default):", "Temperature (empty = unset):", "Extra body (JSON):"), labels);
+                "Think (Default):", "Temperature (empty = unset):", "Extra body (JSON):",
+                "Tools (CSV, empty = all):"), labels);
+    }
+
+    // UC-ATC-1
+    @Test
+    public void performOkPersistsDevTools() {
+        // GIVEN the basic page is built (fixture: no stored dev tools → empty field)
+        var page = ui(() -> buildPage());
+        var parent = ui(() -> fieldEditorParent(page));
+        assertEquals("unset tools load as an empty field", "", toolsText(parent).getText());
+
+        // WHEN the dev tools CSV is typed and OK is pressed
+        ui(() -> {
+            toolsText(parent).setText("eclipse, !debugJava*");
+            return null;
+        });
+        ui(page::performOk);
+
+        // THEN the dev tools key carries the raw CSV verbatim (R-ATC-7: raw string, no parse at save)
+        assertEquals("eclipse, !debugJava*", prefs.get(DEV_TOOLS_KEY, null));
+    }
+
+    // UC-ATC-3
+    @Test
+    public void performOkRemovesDevToolsWhenEmpty() {
+        // GIVEN the fixture stores a dev tools value
+        var store = new EclipseLlmConfigStore(prefs);
+        store.put(DEV_TOOLS_KEY, "eclipse");
+        var page = ui(() -> buildPage());
+        var parent = ui(() -> fieldEditorParent(page));
+        assertEquals("eclipse", toolsText(parent).getText());
+
+        // WHEN the field is cleared and OK is pressed
+        ui(() -> {
+            toolsText(parent).setText("");
+            return null;
+        });
+        ui(page::performOk);
+
+        // THEN the key is removed (absent = all tools, R-ATC-3 clean break)
+        assertNull("cleared tools must remove the key", prefs.get(DEV_TOOLS_KEY, null));
+    }
+
+    // R-ATC-9
+    @Test
+    public void performOkRejectsBareBangKeepsStore() {
+        // GIVEN the fixture stores a dev tools value and the page records the validation error
+        var store = new EclipseLlmConfigStore(prefs);
+        store.put(DEV_TOOLS_KEY, "eclipse");
+        final String[] error = new String[1];
+        var page = ui(() -> buildPage(new AiConfigPreferenceView() {
+            @Override
+            protected void showToolsError(String message) {
+                error[0] = message;
+            }
+        }));
+        var parent = ui(() -> fieldEditorParent(page));
+        ui(() -> {
+            toolsText(parent).setText("eclipse, !");
+            return null;
+        });
+
+        // WHEN OK is pressed with a bare '!' in the tools field
+        var ok = ui(page::performOk);
+
+        // THEN the save is refused (error reported) and the store is UNCHANGED
+        assertFalse("performOk must refuse a bare '!'", ok);
+        assertNotNull("the error must be reported", error[0]);
+        assertTrue("the error must name the bare '!', was: " + error[0], error[0].contains("bare '!'"));
+        assertEquals("eclipse", prefs.get(DEV_TOOLS_KEY, null));
     }
 
     // UC-DEF-9
@@ -351,7 +426,11 @@ public class AiConfigPreferenceViewTest extends AbstractSwtUiTest {
 
     /** UI-thread only. Builds the page into the test shell (like a preference dialog would). */
     private AiConfigPreferenceView buildPage() {
-        var page = new AiConfigPreferenceView();
+        return buildPage(new AiConfigPreferenceView());
+    }
+
+    /** UI-thread only. Builds the given page into the test shell (seam subclasses record dialogs). */
+    private AiConfigPreferenceView buildPage(AiConfigPreferenceView page) {
         page.createControl(shell);
         return page;
     }
@@ -415,6 +494,11 @@ public class AiConfigPreferenceViewTest extends AbstractSwtUiTest {
     /** UI-thread only. The widget's extra-body field (binding 7 of the order). */
     private static Text extraBodyText(Composite parent) {
         return (Text) parent.getChildren()[16];
+    }
+
+    /** UI-thread only. The dev tools field (last binding of the group's grid, after the extra body). */
+    private static Text toolsText(Composite parent) {
+        return (Text) parent.getChildren()[20];
     }
 
     /** UI-thread only. */

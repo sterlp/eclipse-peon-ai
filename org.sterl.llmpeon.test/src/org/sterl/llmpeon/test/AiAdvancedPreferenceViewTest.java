@@ -1,7 +1,9 @@
 package org.sterl.llmpeon.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.HashMap;
@@ -14,6 +16,7 @@ import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Group;
+import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
 import org.junit.After;
 import org.junit.Before;
@@ -45,11 +48,14 @@ public class AiAdvancedPreferenceViewTest extends AbstractSwtUiTest {
     private static final String PO_THINK_KEY = LlmConfigKeys.agentKey(AgentModelConfig.PO, LlmConfigKeys.AGENT_FIELD_THINK);
     private static final String PO_TEMPERATURE_KEY = LlmConfigKeys.agentKey(AgentModelConfig.PO, LlmConfigKeys.AGENT_FIELD_TEMPERATURE);
     private static final String PO_EXTRA_BODY_KEY = LlmConfigKeys.agentKey(AgentModelConfig.PO, LlmConfigKeys.AGENT_FIELD_EXTRA_BODY);
+    private static final String DEV_TOOLS_KEY = LlmConfigKeys.agentKey(AgentModelConfig.DEV, LlmConfigKeys.AGENT_FIELD_TOOLS);
+    private static final String PO_TOOLS_KEY = LlmConfigKeys.agentKey(AgentModelConfig.PO, LlmConfigKeys.AGENT_FIELD_TOOLS);
+    private static final String PLAN_TOOLS_KEY = LlmConfigKeys.agentKey(AgentModelConfig.PLAN, LlmConfigKeys.AGENT_FIELD_TOOLS);
 
     private static final List<String> KEYS = List.of(PeonConstants.PREF_PROVIDER_TYPE, PeonConstants.PREF_URL,
             PeonConstants.PREF_API_KEY, PeonConstants.PREF_MODEL, DEV_THINK_KEY, DEV_TEMPERATURE_KEY,
             DEV_EXTRA_BODY_KEY, PO_URL_KEY, PO_API_KEY_KEY, PO_MODEL_KEY, PO_THINK_KEY, PO_TEMPERATURE_KEY,
-            PO_EXTRA_BODY_KEY);
+            PO_EXTRA_BODY_KEY, DEV_TOOLS_KEY, PO_TOOLS_KEY, PLAN_TOOLS_KEY);
 
     private IEclipsePreferences prefs;
     private Map<String, String> original;
@@ -107,8 +113,8 @@ public class AiAdvancedPreferenceViewTest extends AbstractSwtUiTest {
         // GIVEN the advanced page is built (fixture: base keys + dev slot set, stale PO url)
         var page = ui(() -> buildPage());
         var grid = ui(() -> sectionGrid(page, "PO agent (Jon)"));
-        assertEquals("the PO section must carry url/key/model+refresh/think/temperature/extra body",
-                15, grid.getChildren().length);
+        assertEquals("the PO section must carry url/key/model+refresh/think/temperature/extra body/tools",
+                17, grid.getChildren().length);
         assertEquals("stale-po must be loaded into the section", "http://stale-po:11111",
                 ((Text) grid.getChildren()[1]).getText());
 
@@ -147,13 +153,85 @@ public class AiAdvancedPreferenceViewTest extends AbstractSwtUiTest {
         assertEquals("{\"dev\":true}", prefs.get(DEV_EXTRA_BODY_KEY, null));
     }
 
+    // UC-ATC-5
+    @Test
+    public void performOkPersistsToolsPerSection() {
+        // GIVEN the advanced page is built (fixture: no stored tools)
+        var page = ui(() -> buildPage());
+        var poGrid = ui(() -> sectionGrid(page, "PO agent (Jon)"));
+        var planGrid = ui(() -> sectionGrid(page, "Plan agent"));
+        var compactGrid = ui(() -> sectionGrid(page, "Compact agent"));
+
+        // THEN the compact section has no tools field (D10: CompactService never sends tools)
+        assertEquals("the compact section stays at 15 children (no tools field)",
+                15, compactGrid.getChildren().length);
+
+        // WHEN each section's tools field is typed and OK is pressed
+        ui(() -> {
+            toolsText(poGrid).setText("eclipse");
+            toolsText(planGrid).setText("*, !debugJava*");
+            return null;
+        });
+        ui(page::performOk);
+
+        // THEN each slot carries its own raw value (per-slot keys, no cross-write)
+        assertEquals("eclipse", prefs.get(PO_TOOLS_KEY, null));
+        assertEquals("*, !debugJava*", prefs.get(PLAN_TOOLS_KEY, null));
+        assertNull("dev tools are owned by the basic page", prefs.get(DEV_TOOLS_KEY, null));
+    }
+
+    // R-ATC-9
+    @Test
+    public void performOkRejectsBareBang() {
+        // GIVEN the fixture stores PO tools and the page records the validation error
+        var store = new EclipseLlmConfigStore(prefs);
+        store.put(PO_TOOLS_KEY, "eclipse");
+        final String[] error = new String[1];
+        var page = ui(() -> buildPage(new AiAdvancedPreferenceView() {
+            @Override
+            protected void showToolsError(String message) {
+                error[0] = message;
+            }
+        }));
+        var poGrid = ui(() -> sectionGrid(page, "PO agent (Jon)"));
+        ui(() -> {
+            toolsText(poGrid).setText("!");
+            return null;
+        });
+
+        // WHEN OK is pressed with a bare '!' in the PO tools field
+        var ok = ui(page::performOk);
+
+        // THEN the save is refused (the error names the section) and the store is UNCHANGED
+        assertFalse("performOk must refuse a bare '!'", ok);
+        assertNotNull("the error must be reported", error[0]);
+        assertTrue("the error must name the PO section, was: " + error[0], error[0].contains("PO agent (Jon)"));
+        assertEquals("eclipse", prefs.get(PO_TOOLS_KEY, null));
+        assertNull("no slot key may be written at all", prefs.get(PO_MODEL_KEY, null));
+    }
+
     // --- helpers ---
 
     /** UI-thread only. Builds the page into the test shell (like a preference dialog would). */
     private AiAdvancedPreferenceView buildPage() {
-        var page = new AiAdvancedPreferenceView();
+        return buildPage(new AiAdvancedPreferenceView());
+    }
+
+    /** UI-thread only. Builds the given page into the test shell (seam subclasses record dialogs). */
+    private AiAdvancedPreferenceView buildPage(AiAdvancedPreferenceView page) {
         page.createControl(shell);
         return page;
+    }
+
+    /** UI-thread only. The section's tools field: the Text sibling after the tools label. */
+    private static Text toolsText(Composite section) {
+        var children = section.getChildren();
+        for (int i = 0; i < children.length - 1; i++) {
+            if (children[i] instanceof Label l && "Tools (CSV, empty = all):".equals(l.getText())) {
+                return (Text) children[i + 1];
+            }
+        }
+        throw new AssertionError("no tools field in section");
     }
 
     /** UI-thread only. The per-agent section composite inside the given titled group. */
