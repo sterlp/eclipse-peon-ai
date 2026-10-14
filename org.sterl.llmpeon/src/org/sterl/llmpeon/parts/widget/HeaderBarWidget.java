@@ -101,7 +101,13 @@ public class HeaderBarWidget extends Composite {
         roster.refresh();
     }
 
-    /** Popup listing every tool with a ✓ for active and greyed-out for inactive tools. */
+    /**
+     * Popup listing every tool with a ✓ for active and greyed-out for inactive tools.
+     * Sister surface of the config-UI preview dialog ({@code ToolPreviewDialog}): both render
+     * one resolver's output ({@code AbstractAgent.filterFor}/{@code resolveActiveTools}) — this
+     * menu the ACTIVE chat agent with the STORED allowlist (every tool, active marked), the
+     * dialog the TYPED CSV of one config slot (filtered list only).
+     */
     private void showToolsMenu(Control anchor) {
         if (toolsMenu != null && !toolsMenu.isDisposed()) toolsMenu.dispose();
         toolsMenu = new Menu(anchor);

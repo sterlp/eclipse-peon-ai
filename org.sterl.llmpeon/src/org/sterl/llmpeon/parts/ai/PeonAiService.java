@@ -5,6 +5,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Consumer;
 
 import org.eclipse.core.resources.IFile;
@@ -408,6 +409,9 @@ public class PeonAiService {
     /** One tool with its active state for the currently selected agent/mode. */
     public record ToolStatus(String name, boolean active, boolean mcp) {}
 
+    /** One resolved preview entry (R-ATC-8): the tool name plus whether it comes from a connected MCP server. */
+    public record PreviewTool(String name, boolean mcp) {}
+
     /**
      * The agents shown in the header status widget: when Jon (Peon-PO) is active, his
      * {@link AiPoAgent#getTeam() team} (Da Boss + the orks Da Thinka/Da Mek/Da Dok); for every other
@@ -510,20 +514,35 @@ public class PeonAiService {
     }
 
     /**
-     * R-ATC-8: the active tool names for the given slot and TYPED raw CSV — the one resolution
+     * R-ATC-8: the active tools for the given slot and TYPED raw CSV — the one resolution
      * behind every preview button (dev/plan/po/review via {@link #agentForPreviewSlot(String)},
-     * search via {@link #searchAgentTool()}). {@code null} when no preview target exists.
+     * search via {@link #searchAgentTool()}). Each entry carries the MCP flag so the dialog can
+     * mark connected-MCP tools the way the header hammer does. {@code null} when no preview
+     * target exists.
      */
-    public List<String> previewToolsFor(String slotId, String rawCsv) {
+    public List<PreviewTool> previewToolsFor(String slotId, String rawCsv) {
         if (slotId == null) {
             return null;
         }
         if (AgentModelConfig.SEARCH.equals(slotId)) {
             var search = searchAgentTool();
-            return search.isEmpty() ? null : search.get().resolveActiveTools(rawCsv);
+            if (search.isEmpty()) {
+                return null;
+            }
+            // SearchAgentTool is registered on the shared service with itself as its tool service
+            // (ToolService ctor), so its connected-MCP set is the shared service's.
+            return previewEntries(search.get().resolveActiveTools(rawCsv), sharedToolService.mcpToolNames());
         }
         var agent = agentForPreviewSlot(slotId);
-        return agent instanceof AbstractAgent a ? a.resolveActiveTools(rawCsv) : null;
+        if (!(agent instanceof AbstractAgent a)) {
+            return null;
+        }
+        return previewEntries(a.resolveActiveTools(rawCsv), a.getToolService().mcpToolNames());
+    }
+
+    private static List<PreviewTool> previewEntries(List<String> names, List<String> mcpNames) {
+        var mcp = Set.copyOf(mcpNames);
+        return names.stream().map(n -> new PreviewTool(n, mcp.contains(n))).toList();
     }
     
     public boolean setActiveAgent(String agent) {
