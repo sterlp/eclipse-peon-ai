@@ -24,8 +24,10 @@ import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.LlmConfigSaver;
 import org.sterl.llmpeon.parts.PeonConstants;
+import org.sterl.llmpeon.parts.ai.PeonAiService;
 import org.sterl.llmpeon.parts.config.widgets.ModelConfigWidget;
 import org.sterl.llmpeon.parts.config.widgets.TitledGroup;
+import org.sterl.llmpeon.parts.config.widgets.ToolPreviewDialog;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolPolicy;
 
@@ -62,6 +64,7 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
         toolsText = new Text(grid, SWT.BORDER);
         toolsText.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
         toolsText.setText(StringUtil.stripToEmpty(LlmPreferenceInitializer.buildWithDefaults().toolAllowlist(AgentModelConfig.DEV)));
+        addToolsPreviewButton(grid);
 
         addField(new IntegerFieldEditor(PeonConstants.PREF_TOKEN_WINDOW, "Auto compact after:", getFieldEditorParent()));
 
@@ -159,6 +162,30 @@ public class AiConfigPreferenceView extends FieldEditorPreferencePage implements
     /** The R-ATC-9 validation failure dialog — the seam tests record instead of opening a modal. */
     protected void showToolsError(String message) {
         MessageDialog.openError(getShell(), "Invalid Tools value", message);
+    }
+
+    /**
+     * The preview button (R-ATC-8) for the dev tools field: shows the tools that would be
+     * active for the <b>typed</b> CSV. Enabled only while a live {@link PeonAiService} exists
+     * and a dev agent is resolvable.
+     */
+    private void addToolsPreviewButton(Composite grid) {
+        var button = new Button(grid, SWT.PUSH);
+        button.setText("Preview active tools…");
+        button.setToolTipText("Shows the tools that would be active for the typed value");
+        button.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+        var service = PeonAiService.current();
+        button.setEnabled(service != null && service.agentForPreviewSlot(AgentModelConfig.DEV) != null);
+        button.addListener(SWT.Selection, e -> {
+            var live = PeonAiService.current();
+            if (live == null) {
+                return;
+            }
+            var names = live.previewToolsFor(AgentModelConfig.DEV, StringUtil.stripToNull(toolsText.getText()));
+            if (names != null) {
+                ToolPreviewDialog.open(getShell(), "Active tools (dev)", names);
+            }
+        });
     }
 
     private void buildGithubLogin() {

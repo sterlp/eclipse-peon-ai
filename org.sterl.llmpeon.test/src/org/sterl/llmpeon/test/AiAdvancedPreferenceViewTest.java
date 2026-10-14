@@ -113,8 +113,8 @@ public class AiAdvancedPreferenceViewTest extends AbstractSwtUiTest {
         // GIVEN the advanced page is built (fixture: base keys + dev slot set, stale PO url)
         var page = ui(() -> buildPage());
         var grid = ui(() -> sectionGrid(page, "PO agent (Jon)"));
-        assertEquals("the PO section must carry url/key/model+refresh/think/temperature/extra body/tools",
-                17, grid.getChildren().length);
+        assertEquals("the PO section must carry url/key/model+refresh/think/temperature/extra body/tools/preview button",
+                18, grid.getChildren().length);
         assertEquals("stale-po must be loaded into the section", "http://stale-po:11111",
                 ((Text) grid.getChildren()[1]).getText());
 

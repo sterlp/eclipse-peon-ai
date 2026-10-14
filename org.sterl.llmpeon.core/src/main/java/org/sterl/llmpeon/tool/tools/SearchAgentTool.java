@@ -1,6 +1,8 @@
 package org.sterl.llmpeon.tool.tools;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.function.Predicate;
 
 import org.sterl.llmpeon.ai.AgentModelConfig;
@@ -34,6 +36,26 @@ public class SearchAgentTool extends AbstractTool {
 
     public SearchAgentTool(ToolService toolService) {
         this.toolService = toolService;
+    }
+
+    /**
+     * Preview (R-ATC-8): the sorted names of ALL tools (built-in + MCP) that would be active for the
+     * GIVEN raw CSV — the same filter the sub-loop sends, so the preview can never drift from the
+     * runtime. The CSV is the value the user typed, not necessarily the stored one.
+     */
+    public List<String> resolveActiveTools(String rawCsv) {
+        var allow = ToolPolicy.nameFilter(rawCsv);
+        var effective = filter.and(exec -> allow.test(exec.getSpec().name()));
+        var names = new ArrayList<String>();
+        toolService.getExecutors().stream()
+                .filter(effective)
+                .map(exec -> exec.getSpec().name())
+                .forEach(names::add);
+        toolService.mcpToolNames().stream()
+                .filter(allow)
+                .forEach(names::add);
+        names.sort(String::compareTo);
+        return names;
     }
 
     @Tool(name = "searchAgent", value = "Sub-agent for complex multi-step search/research - to save tokens.")

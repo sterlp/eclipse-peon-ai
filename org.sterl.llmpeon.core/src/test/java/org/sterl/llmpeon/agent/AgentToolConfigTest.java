@@ -3,6 +3,8 @@ package org.sterl.llmpeon.agent;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
@@ -15,9 +17,14 @@ import org.sterl.llmpeon.ai.MapLlmConfigStore;
 import org.sterl.llmpeon.poagent.AiPoAgent;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
+import org.sterl.llmpeon.tool.tools.AbstractTool;
 import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
+import org.sterl.llmpeon.tool.tools.SearchAgentTool;
 import org.sterl.llmpeon.tool.tools.ShellTool;
+
+import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
 
 /**
  * R-ATC-3/4/6/7: the per-agent tool allowlist stored under {@code llm.agent.<id>.tools} restricts
@@ -124,6 +131,135 @@ class AgentToolConfigTest {
             assertThat(blankDev.isToolActive(shell)).isTrue();
             assertThat(blankDev.isMcpToolActive("mcp__docs__search_docs")).isTrue();
         }
+    }
+
+    /** Preview (R-ATC-8): built-in stubs with fixed names — name only, no behaviour (never executed). */
+    static class StubTools extends AbstractTool {
+        @Tool(name = "eclipseGrepFiles", value = "stub for the allowlist tests (name only)")
+        public String eclipseGrepFiles(@P(name = "query") String query) {
+            return "";
+        }
+
+        @Tool(name = "debugJavaSetBreakpoint", value = "stub for the allowlist tests (name only)")
+        public String debugJavaSetBreakpoint(@P(name = "query") String query) {
+            return "";
+        }
+    }
+
+    /** A ToolService with a fake connected-MCP name list (unit tests have no real MCP connection). */
+    static class ToolServiceWithMcp extends ToolService {
+        private final List<String> mcpNames;
+
+        ToolServiceWithMcp(List<String> mcpNames) {
+            super(false);
+            this.mcpNames = List.copyOf(mcpNames);
+        }
+
+        @Override
+        public List<String> mcpToolNames() {
+            return mcpNames;
+        }
+    }
+
+    // UC-ATC-7
+    @Test
+    void resolveActiveToolsPlanEclipseMinusDebug() {
+        // GIVEN a plan slot with the typed allowlist "eclipse, !debugJava*"
+        var csv = "eclipse, !debugJava*";
+        var svc = new ToolServiceWithMcp(List.of("mcp__docs__search_docs", "eclipseMcp"));
+        svc.addTool(new ShellTool());
+        svc.addTool(new DiskFileReadTool(Path.of(System.getProperty("java.io.tmpdir"))));
+        svc.addTool(new StubTools());
+        var plan = new AiPlanAgent(model(Map.of(AgentModelConfig.PLAN, csv)), svc);
+
+        // WHEN the preview resolves the typed value
+        var names = plan.resolveActiveTools(csv);
+
+        // THEN the eclipse* tools stay (built-in AND MCP), everything else is out
+        assertThat(names).containsExactly("eclipseGrepFiles", "eclipseMcp");
+    }
+
+    @Test
+    void resolveActiveToolsMatchesRuntimeFilter() {
+        // GIVEN a stored allowlist and a preview of the SAME value
+        var csv = "eclipse, disk, !debugJava*";
+        var svc = new ToolServiceWithMcp(List.of("mcp__docs__search_docs", "eclipseMcp", "mcp__other__x"));
+        svc.addTool(new ShellTool());
+        svc.addTool(new DiskFileReadTool(Path.of(System.getProperty("java.io.tmpdir"))));
+        svc.addTool(new DiskFileWriteTool(Path.of(System.getProperty("java.io.tmpdir"))));
+        svc.addTool(new StubTools());
+        var plan = new AiPlanAgent(model(Map.of(AgentModelConfig.PLAN, csv)), svc);
+
+        // WHEN the preview resolves the stored CSV
+        var preview = plan.resolveActiveTools(csv);
+
+        // THEN it matches exactly what the runtime filter would send (one mechanism, R-ATC-8)
+        var runtime = new ArrayList<String>();
+        svc.getExecutors().stream()
+                .filter(plan::isToolActive)
+                .map(e -> e.getSpec().name())
+                .forEach(runtime::add);
+        svc.mcpToolNames().stream()
+                .filter(plan::isMcpToolActive)
+                .forEach(runtime::add);
+        runtime.sort(String::compareTo);
+        assertThat(preview).containsExactlyElementsOf(runtime);
+        // sanity: the set is non-trivial (allow prefixes, deny, class filter all exercised)
+        assertThat(preview).containsExactly(
+                "diskListDirectory", "diskReadFile", "diskSearchFiles", "eclipseGrepFiles", "eclipseMcp");
+    }
+
+    @Test
+    void resolveActiveToolsNegationOnlyAllMinus() {
+        // GIVEN a review slot with a negations-only allowlist (all tools minus shell*)
+        var svc = new ToolServiceWithMcp(List.of("mcp__docs__search_docs", "shellMcp"));
+        svc.addTool(new ShellTool());
+        svc.addTool(new DiskFileReadTool(Path.of(System.getProperty("java.io.tmpdir"))));
+        svc.addTool(new DiskFileWriteTool(Path.of(System.getProperty("java.io.tmpdir"))));
+        svc.addTool(new StubTools());
+        var review = new AiReviewAgent(model(Map.of(AgentModelConfig.REVIEW, "!shell*")), svc);
+
+        // WHEN the preview resolves the typed value
+        var names = review.resolveActiveTools("!shell*");
+
+        // THEN everything except shell* is active (edit tools stay out via the class filter)
+        assertThat(names).containsExactly(
+                "debugJavaSetBreakpoint", "diskListDirectory", "diskReadFile", "diskSearchFiles",
+                "eclipseGrepFiles", "mcp__docs__search_docs", "readOperationSystemInformation");
+    }
+
+    @Test
+    void resolveActiveToolsEmptyCsvAllowsAll() {
+        // GIVEN no allowlist (absent = all)
+        var svc = new ToolServiceWithMcp(List.of("mcp__docs__search_docs"));
+        svc.addTool(new ShellTool());
+        svc.addTool(new DiskFileReadTool(Path.of(System.getProperty("java.io.tmpdir"))));
+        var dev = new AiDevAgent(model(Map.of()), svc);
+
+        // WHEN the preview resolves an empty or absent value
+        assertThat(dev.resolveActiveTools("")).containsExactly(
+                "diskListDirectory", "diskReadFile", "diskSearchFiles",
+                "mcp__docs__search_docs", "readOperationSystemInformation", "shellRunCommand");
+        assertThat(dev.resolveActiveTools(null)).containsExactly(
+                "diskListDirectory", "diskReadFile", "diskSearchFiles",
+                "mcp__docs__search_docs", "readOperationSystemInformation", "shellRunCommand");
+    }
+
+    @Test
+    void searchResolveActiveToolsRespectsClassFilterAndAllowlist() {
+        // GIVEN the search slot's allowlist on the sub-loop's own tool service
+        var csv = "eclipse, !debugJava*";
+        var svc = new ToolServiceWithMcp(List.of("eclipseMcp", "mcp__other__x"));
+        svc.addTool(new ShellTool());
+        svc.addTool(new DiskFileReadTool(Path.of(System.getProperty("java.io.tmpdir"))));
+        svc.addTool(new StubTools());
+        var search = new SearchAgentTool(svc);
+
+        // WHEN the preview resolves the typed value
+        var names = search.resolveActiveTools(csv);
+
+        // THEN the sub-loop's class filter (no shell, no edit tools) AND the allowlist apply
+        assertThat(names).containsExactly("eclipseGrepFiles", "eclipseMcp");
     }
 
     @Test

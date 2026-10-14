@@ -3,9 +3,11 @@ package org.sterl.llmpeon.test;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
@@ -21,10 +23,12 @@ import org.junit.Before;
 import org.junit.Test;
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.AiProvider;
+import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.ai.LlmConfigLoader;
 import org.sterl.llmpeon.ai.LlmConfigSaver;
 import org.sterl.llmpeon.ai.LlmConfigStore;
+import org.sterl.llmpeon.parts.ai.PeonAiService;
 import org.sterl.llmpeon.parts.config.widgets.AgentModelConfigSection;
 
 /**
@@ -61,6 +65,7 @@ public class AgentModelConfigSectionTest extends AbstractSwtUiTest {
             });
         }
         ollamaSection = null;
+        PeonAiService.clearCurrent();
     }
 
     @Test
@@ -243,6 +248,68 @@ public class AgentModelConfigSectionTest extends AbstractSwtUiTest {
         }
     }
 
+    // R-ATC-8: a tools field carries its preview button; a field-less section (compact) does not.
+    @Test
+    public void previewButtonPresentOnlyWithToolsField() {
+        // GIVEN the default section has a tools field
+        var withButton = ui(() -> findPreviewButton(section));
+        assertNotNull("a tools section carries the preview button", withButton);
+        assertEquals("Preview active tools…", ui(() -> findPreviewButton(section).getText()));
+
+        // AND a field-less section (compact) has no preview button
+        var compact = ui(() -> newSection(AiProvider.ANTHROPIC, AgentModelConfig.COMPACT, false));
+        try {
+            assertNull("a field-less section has no preview button", ui(() -> findPreviewButton(compact)));
+        } finally {
+            ui(() -> {
+                compact.dispose();
+                return null;
+            });
+        }
+    }
+
+    // R-ATC-8 / Q2: the search preview button is enabled as soon as a live service exists —
+    // no AiAgent is needed (search resolves via SearchAgentTool, agentForPreviewSlot → null).
+    @Test
+    public void searchPreviewButtonEnabledWithoutAiAgent() {
+        PeonAiService.clearCurrent();
+        try {
+            // GIVEN a live service (search has no AiAgent, but the button only needs current() != null)
+            ui(() -> {
+                var ccm = new ConfiguredChatModel(LlmConfig.builder()
+                        .model("test").url("http://localhost:0")
+                        .configDir(Path.of(System.getProperty("java.io.tmpdir"), ".peon-test"))
+                        .build());
+                new PeonAiService(() -> {}, null, null, null, ccm);
+                return null;
+            });
+            var search = ui(() -> newSection(AiProvider.ANTHROPIC, AgentModelConfig.SEARCH, true));
+            try {
+                var button = ui(() -> findPreviewButton(search));
+                assertNotNull("search section carries the preview button", button);
+                assertTrue("search preview button is enabled without an AiAgent", button.isEnabled());
+                assertNull("search has no AiAgent preview target",
+                        PeonAiService.current().agentForPreviewSlot(AgentModelConfig.SEARCH));
+            } finally {
+                ui(() -> {
+                    search.dispose();
+                    return null;
+                });
+            }
+        } finally {
+            PeonAiService.clearCurrent();
+        }
+    }
+
+    // R-ATC-8: without a live service the preview button is disabled (nothing to resolve against).
+    @Test
+    public void previewButtonDisabledWithoutService() {
+        PeonAiService.clearCurrent();
+        var button = ui(() -> findPreviewButton(section));
+        assertNotNull("the tools section carries the preview button", button);
+        assertFalse("no live service → preview button disabled", button.isEnabled());
+    }
+
     // --- helpers ---
 
     /** UI-thread only. Builds a section for the given base provider; the mock server only supplies the URL. */
@@ -276,6 +343,16 @@ public class AgentModelConfigSectionTest extends AbstractSwtUiTest {
             }
         }
         throw new AssertionError("no tools field in section");
+    }
+
+    /** UI-thread only. The "Preview active tools…" button, or null when the section has no tools field. */
+    private static Button findPreviewButton(AgentModelConfigSection section) {
+        for (var child : section.getChildren()) {
+            if (child instanceof Button b && "Preview active tools…".equals(b.getText())) {
+                return b;
+            }
+        }
+        return null;
     }
 
     /**

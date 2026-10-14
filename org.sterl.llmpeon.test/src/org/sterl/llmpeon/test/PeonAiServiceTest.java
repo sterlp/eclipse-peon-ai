@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Platform;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.sterl.llmpeon.StreamMock;
@@ -89,6 +90,11 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         aiService.clearAll();
         ccm.setChatModel(streamMock.buildOkMock());
         aiService.setProject(project);
+    }
+
+    @After
+    public void clearCurrentService() {
+        PeonAiService.clearCurrent();
     }
     
     @Test
@@ -2101,6 +2107,66 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             assertEquals("alpha\n    beta\n", planTool.planRead());
         } finally {
             eclipseDeleteResource("/test_project/" + PlanTool.OVERVIEW_FILE);
+        }
+    }
+
+    // R-ATC-8: the preview target prefers the PO-Team slave (stricter class filter) over the
+    // standalone persistent agent, so the preview never claims a tool the agent cannot call.
+    @Test
+    public void agentForPreviewSlotPrefersPoSlave() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        var dev = aiService.agentForPreviewSlot(AgentModelConfig.DEV);
+        var plan = aiService.agentForPreviewSlot(AgentModelConfig.PLAN);
+        var review = aiService.agentForPreviewSlot(AgentModelConfig.REVIEW);
+
+        // THEN each dev/plan/review slot resolves to a slave of the matching class,
+        // and it is NOT the standalone persistent agent
+        assertNotNull("dev preview target", dev);
+        assertTrue("dev preview target is a dev agent", dev instanceof AiDevAgent);
+        assertNotSame("dev preview target is the PO slave, not standalone",
+                aiService.getAgent(AiDevAgent.NAME).orElseThrow(), dev);
+
+        assertNotNull("plan preview target", plan);
+        assertTrue("plan preview target is a plan agent", plan instanceof AiPlanAgent);
+        assertNotSame("plan preview target is the PO slave, not standalone",
+                aiService.getAgent(AiPlanAgent.NAME).orElseThrow(), plan);
+
+        assertNotNull("review preview target", review);
+        assertTrue("review preview target is a review agent", review instanceof AiReviewAgent);
+        assertNotSame("review preview target is the PO slave, not standalone",
+                aiService.getAgent(AiReviewAgent.NAME).orElseThrow(), review);
+
+        // AND the PO slot resolves to Jon himself (the persistent PO agent)
+        var po = aiService.agentForPreviewSlot(AgentModelConfig.PO);
+        assertNotNull("po preview target", po);
+        assertSame("po preview target is the persistent PO agent",
+                aiService.getAgent(AiPoAgent.NAME).orElseThrow(), po);
+    }
+
+    // R-ATC-8: search and compact have no AiAgent — search previews via SearchAgentTool,
+    // compact has no tools field.
+    @Test
+    public void agentForPreviewSlotSearchAndCompactReturnNull() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        assertNull("search has no AiAgent preview target",
+                aiService.agentForPreviewSlot(AgentModelConfig.SEARCH));
+        assertNull("compact has no AiAgent preview target",
+                aiService.agentForPreviewSlot(AgentModelConfig.COMPACT));
+        assertFalse("searchAgentTool is resolvable for the search preview",
+                aiService.searchAgentTool().isEmpty());
+    }
+
+    // F4 test hygiene: the static handle is the last-constructed service and reset clears it.
+    @Test
+    public void currentIsTheLastConstructedService() {
+        try {
+            assertSame("the constructed service is current", aiService, PeonAiService.current());
+            PeonAiService.clearCurrent();
+            assertNull("clearCurrent resets the static handle", PeonAiService.current());
+        } finally {
+            PeonAiService.clearCurrent();
         }
     }
 

@@ -11,9 +11,13 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.Platform;
 import org.sterl.llmpeon.AgentService;
+import org.sterl.llmpeon.agent.AbstractAgent;
 import org.sterl.llmpeon.agent.AiAgent;
+import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.agent.AiPlanAgent;
+import org.sterl.llmpeon.agent.AiReviewAgent;
 import org.sterl.llmpeon.agent.NamedAgent;
+import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.command.CommandService;
@@ -39,6 +43,7 @@ import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.skill.SkillService;
 import org.sterl.llmpeon.tool.ToolService;
+import org.sterl.llmpeon.tool.tools.SearchAgentTool;
 import org.sterl.llmpeon.tool.tools.ShellTool;
 import org.sterl.llmpeon.tool.tools.SkillTool;
 
@@ -55,6 +60,23 @@ import dev.langchain4j.model.chat.response.ChatResponse;
  *
  */
 public class PeonAiService {
+
+    /**
+     * The last-constructed service. JFace creates the preference pages without an injection point,
+     * so the config UI resolves the service statically. The last constructed service wins — the MCP
+     * connection state is per view ToolService, so a preview can show another view's MCP tool set.
+     */
+    private static volatile PeonAiService current;
+
+    /** @see #current — null before any view (or headless build) constructed a service. */
+    public static PeonAiService current() {
+        return current;
+    }
+
+    /** Test seam: reset the static handle (OSGi tests construct a service per test). */
+    public static void clearCurrent() {
+        current = null;
+    }
 
     private final UserContext userContext = new UserContext();
 
@@ -188,6 +210,7 @@ public class PeonAiService {
         for (var agent : this.getAgents()) {
             agent.setTurnContextSupplier(() -> get());
         }
+        current = this;
     }
     
     
@@ -434,6 +457,73 @@ public class PeonAiService {
 
     public Optional<AiAgent> getAgent(String agent) {
         return this.agentService.get(agent);
+    }
+
+    /**
+     * R-ATC-8: the preview target for a tool-allowlist slot. The PO-Team slave is preferred over the
+     * standalone persistent agent — it carries the stricter class filter (noPrivilegedTools), so the
+     * preview never claims a tool the agent actually cannot call. {@code search} and {@code compact}
+     * have no AiAgent (search previews via {@link #searchAgentTool()}, compact has no tools field).
+     */
+    public AiAgent agentForPreviewSlot(String slotId) {
+        if (slotId == null || AgentModelConfig.SEARCH.equals(slotId) || AgentModelConfig.COMPACT.equals(slotId)) {
+            return null;
+        }
+        var slave = agentService.get(AiPoAgent.NAME)
+                .filter(AiPoAgent.class::isInstance)
+                .map(AiPoAgent.class::cast)
+                .map(po -> po.getTeam().stream()
+                        .map(NamedAgent::agent)
+                        .filter(agent -> matchesSlot(slotId, agent))
+                        .findFirst()
+                        .orElse(null))
+                .orElse(null);
+        if (slave != null) {
+            return slave;
+        }
+        return agentService.get(standaloneName(slotId)).orElse(null);
+    }
+
+    private static boolean matchesSlot(String slotId, AiAgent agent) {
+        return switch (slotId) {
+            case AgentModelConfig.DEV -> agent instanceof AiDevAgent;
+            case AgentModelConfig.PLAN -> agent instanceof AiPlanAgent;
+            case AgentModelConfig.REVIEW -> agent instanceof AiReviewAgent;
+            case AgentModelConfig.PO -> agent instanceof AiPoAgent;
+            default -> false;
+        };
+    }
+
+    private static String standaloneName(String slotId) {
+        return switch (slotId) {
+            case AgentModelConfig.DEV -> AiDevAgent.NAME;
+            case AgentModelConfig.PLAN -> AiPlanAgent.NAME;
+            case AgentModelConfig.REVIEW -> AiReviewAgent.NAME;
+            case AgentModelConfig.PO -> AiPoAgent.NAME;
+            default -> null;
+        };
+    }
+
+    /** The shared {@link SearchAgentTool} — the preview target of the search slot (R-ATC-8). */
+    public Optional<SearchAgentTool> searchAgentTool() {
+        return sharedToolService.getTool(SearchAgentTool.class);
+    }
+
+    /**
+     * R-ATC-8: the active tool names for the given slot and TYPED raw CSV — the one resolution
+     * behind every preview button (dev/plan/po/review via {@link #agentForPreviewSlot(String)},
+     * search via {@link #searchAgentTool()}). {@code null} when no preview target exists.
+     */
+    public List<String> previewToolsFor(String slotId, String rawCsv) {
+        if (slotId == null) {
+            return null;
+        }
+        if (AgentModelConfig.SEARCH.equals(slotId)) {
+            var search = searchAgentTool();
+            return search.isEmpty() ? null : search.get().resolveActiveTools(rawCsv);
+        }
+        var agent = agentForPreviewSlot(slotId);
+        return agent instanceof AbstractAgent a ? a.resolveActiveTools(rawCsv) : null;
     }
     
     public boolean setActiveAgent(String agent) {

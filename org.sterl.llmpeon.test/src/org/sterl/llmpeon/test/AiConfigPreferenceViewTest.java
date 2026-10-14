@@ -116,7 +116,7 @@ public class AiConfigPreferenceViewTest extends AbstractSwtUiTest {
         // 1-5 (+ Ping) — the group's grid holds the widget + the dev tools field (no loose
         // connection field editors)
         var rendered = ui(() -> rendered(parent));
-        assertEquals(16, rendered.length);
+        assertEquals(17, rendered.length);
         assertEquals("Provider Type:", ((Label) rendered[0]).getText());
         var provider = (Combo) rendered[1];
         assertTrue("provider combo must be read-only", (provider.getStyle() & SWT.READ_ONLY) != 0);
@@ -146,7 +146,7 @@ public class AiConfigPreferenceViewTest extends AbstractSwtUiTest {
         // AND the binding field order survives the provider switch (think stays field 5, not reordered
         // to the page end) and the extra body (binding 7) appears live for the supporting provider
         var afterSwitch = ui(() -> rendered(parent));
-        assertEquals(19, afterSwitch.length);
+        assertEquals(20, afterSwitch.length);
         assertEquals("Think (Default):", ((Label) afterSwitch[10]).getText());
         assertTrue(afterSwitch[11] instanceof Combo);
 
@@ -243,7 +243,7 @@ public class AiConfigPreferenceViewTest extends AbstractSwtUiTest {
         assertNotNull("Default for all agents group not found", group);
         assertEquals("the widget builds into the group's grid", parent, group.getChildren()[0]);
         var rendered = ui(() -> rendered(parent));
-        assertEquals(19, rendered.length);
+        assertEquals(20, rendered.length);
         var labels = new ArrayList<String>();
         for (var c : rendered) {
             if (c instanceof Label l) {
@@ -322,6 +322,19 @@ public class AiConfigPreferenceViewTest extends AbstractSwtUiTest {
         assertNotNull("the error must be reported", error[0]);
         assertTrue("the error must name the bare '!', was: " + error[0], error[0].contains("bare '!'"));
         assertEquals("eclipse", prefs.get(DEV_TOOLS_KEY, null));
+    }
+
+    // R-ATC-8: the dev tools field carries its preview button (declaration-level, no render test).
+    @Test
+    public void devToolsFieldCarriesPreviewButton() {
+        // GIVEN the basic page is built
+        var page = ui(() -> buildPage());
+        var parent = ui(() -> fieldEditorParent(page));
+
+        // THEN the dev tools field has a preview button next to it
+        var button = ui(() -> findPreviewButton(parent));
+        assertNotNull("the dev tools field carries the preview button", button);
+        assertEquals("Preview active tools…", button.getText());
     }
 
     // UC-DEF-9
@@ -499,6 +512,16 @@ public class AiConfigPreferenceViewTest extends AbstractSwtUiTest {
     /** UI-thread only. The dev tools field (last binding of the group's grid, after the extra body). */
     private static Text toolsText(Composite parent) {
         return (Text) parent.getChildren()[20];
+    }
+
+    /** UI-thread only. The "Preview active tools…" button in the given parent grid. */
+    private static Button findPreviewButton(Composite parent) {
+        for (var child : parent.getChildren()) {
+            if (child instanceof Button b && "Preview active tools…".equals(b.getText())) {
+                return b;
+            }
+        }
+        return null;
     }
 
     /** UI-thread only. */
