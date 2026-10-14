@@ -110,6 +110,19 @@ Since the clean break, the provider no longer injects `cache_control` (Claude) o
 
 > **Note for direct Anthropic API users:** native system/tool caching (`cache_control` inside the system/tool blocks) is a build-time flag Peon no longer sets, and it cannot be re-enabled through the top-level extra body. Direct Claude API users therefore lose automatic prompt caching; the `cache_control` example works for Claude behind an OpenAI-compatible gateway instead.
 
+## Tool allowlist
+
+Every agent slot on this page — **PO (Jon)**, **Plan**, **Review** and **Search** — has a **Tools** field that restricts which tools that agent may call. The **Dev agent**'s field is the **Tools** field in the **Default for all agents** group on the main [Peon Configuration](./configuration.md#tools) page, and the **Compact** slot deliberately has **no field** — it never calls tools.
+
+The field is a **comma-separated list** of tool names or prefixes (matched with Java `startsWith`), using the same allowlist semantics as the [custom agents'](./custom-agents.md#tool-allowlist) `tools` frontmatter — one mechanism for every agent type:
+
+- **Prefix / `*` / exact:** `eclipse` enables every `eclipse*` tool, `*` enables all, an exact name enables just that tool.
+- **`!` negation (allow-then-deny):** a `!` prefix removes tools *after* the allowlist is applied, and the **exclusion always wins** (`eclipse, !eclipseWriteFile` keeps the `eclipse*` family except the write tool). A list of **negations only** means *all tools minus the exclusions* (`!debugJava*` = everything except the debug family).
+- **Empty = all tools.**
+- **Bare `!`** (no prefix) is a validation error: Peon **refuses to save** and leaves the field unchanged.
+
+The field applies to **all** tools — built-in and MCP — and is the **intersection** with the agent's own class filter: the UI can only *restrict*, never add, so **Review** still cannot write even with `*`. Click **Preview active tools…** to see the exact **read-only** list of active tools for the value you have **typed** (no Apply needed) — built-in plus MCP names, already intersected with the class filter.
+
 ## Debug Mode
 
 When enabled, logs all requests and responses to the Eclipse console.

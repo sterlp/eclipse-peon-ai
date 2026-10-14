@@ -11,7 +11,7 @@ After installation, configure the plugin via **Window > Preferences > AI Peon > 
 
 ## Provider Settings
 
-The page shows the **Default for all agents** group with one connection block: **Provider Type**, **URL (incl. port)**, **API Key**, **Model** (+ **Refresh**), **Think (Default)**, **Temperature** and **Extra body (JSON)** — plus the **Ping** button below the URL field.
+The page shows the **Default for all agents** group with one connection block: **Provider Type**, **URL (incl. port)**, **API Key**, **Model** (+ **Refresh**), **Think (Default)**, **Temperature**, **Extra body (JSON)** and a **Tools** field — plus the **Ping** button below the URL field.
 
 - **Ping** tests TCP connectivity (host and port) to the URL currently typed in the page, with a 3-second timeout. It does not validate the API key — the model **Refresh** does that implicitly.
 - All of these fields are read **live** by Refresh and Ping: you can test a new URL, key or provider without leaving the page or clicking Apply. **Cancel** discards the typed values; only **Apply/OK** saves them.
@@ -228,6 +228,17 @@ The field follows the provider **live**: it appears as soon as you switch to a p
 - **Hidden ≠ deleted:** switching to a provider without extra-body support hides the field but **never deletes** the stored JSON — switch back and it is there again. While hidden, it is simply not sent.
 - **Empty = unset** — no extra body is sent.
 - Three paste-ready **example buttons** (GPT / Claude / llama.cpp) sit under the field; clicking one **replaces** the current content (see [Extra Body / Prompt Caching](./advanced-configuration.md#examples)).
+
+### Tools
+
+The **Tools** field restricts which tools the **Dev agent** — the default agent of this page — may call. It is a **comma-separated list** of tool names or prefixes (matched with Java `startsWith`); it is **not inherited** by any other agent, which each have their own Tools field on the [Advanced Configuration](./advanced-configuration.md#tool-allowlist) page. The same allowlist semantics apply to [custom agents](./custom-agents.md#tool-allowlist) via their `tools` frontmatter — one mechanism for every agent type.
+
+- **Prefix / `*` / exact:** `eclipse` enables every `eclipse*` tool, `*` enables all tools, an exact name enables just that tool.
+- **`!` negation (allow-then-deny):** a `!` prefix removes tools *after* the allowlist is applied, and the **exclusion always wins** — `eclipse, !eclipseWriteFile` keeps the `eclipse*` family except the write tool. A list of **negations only** means *all tools minus the exclusions* (`!debugJava*` = everything except the debug family).
+- **Empty = all tools.**
+- **Bare `!`** (no prefix) is a validation error: Peon **refuses to save** and leaves the field unchanged.
+
+Click **Preview active tools…** next to the field to see the exact tool set for the value you have **typed** — no Apply needed.
 
 ## Testing the Connection
 

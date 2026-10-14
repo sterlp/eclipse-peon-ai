@@ -519,3 +519,107 @@ kann nicht schließen).
 - **F10** → Mutation-Canaries in §8 + inc1-Test-Spec. **F11** → `// UC-ATC-n`-Evidenzzeilen: Mappings in §7, Pflicht in den Test-Specs von inc1/3/4/5; `review-agent.md` hat keine UC-IDs → inc2 braucht keine.
 - **Q1** bleibt ⏳ (D10-Empfehlung steht). **Q5:** Release-Notes-File gelöscht → neu beim Merge (Jon), aus allen Inkrementen entfernt.
 - **R-ATC-9 (User-Entscheid):** bare `!` = UI-Validierungsfehler (Fehlermeldung am Feld, Speichern verweigert, Store unverändert); Matcher bleibt defensiv no-op nur für den Frontmatter-Pfad; inc4 bekommt Validierungs-Tests (`performOkRejectsBareBang*`, R-ATC-9-Flip); inc5-Warn-Label entfällt ersatzlos.
+
+---
+
+## 12. Da-Dok-Zyklus-Review (post-build, 2026-10-14) — Verdict & Befunde
+
+**Verdict: CONCERNS** — Code ist vollständig und korrekt; alle 6 Inkremente gegen SOLL (R-ATC-1…9, R7, R8)
+verifiziert, Core-Surefire selbst grün (1110/0/0/0, Ground Truth), Linter 0 findings (UC 7/7). NUR ein
+nicht-blockierender Gap: die **Homepage-Tools-Feld-Doku fehlt** (Plan inc4 L294; AGENTS.md „same
+increment für User-visible Changes"). Kein Code-Reject. Abweichungen alle dokumentiert & legitim.
+
+### Verifikation (SOLL↔IST, Code)
+- **EIN Matcher (Paul-Schwerpunkt 1):** `ToolPolicy` ist der einzige Matcher. Built-in via
+  `nameFilter`/`enables` (AbstractAgent, SearchAgentTool), **Custom via `enables`** (`CustomAgent.java:221`),
+  UI-Validierung via `hasEmptyNegation`+`parseAllowlist`. Grep über alle 8 Call-Sites: **keine zweite
+  Parse/Match-Logik** — „ein Mechanismus" strukturell (nicht aspirational). `filterFor(String)`
+  (AbstractAgent:136-140) ist die EINE Komposition, die `getToolFilter()` (L151) UND `resolveActiveTools`
+  (L176) teilen → Preview↔Runtime-Drift unmöglich (bewiesen in `resolveActiveToolsMatchesRuntimeFilter`).
+- **Per-Call-Read (nicht static):** `getToolFilter`/`getToolNameFilter` lesen `storedAllowlist()`
+  (L165-168) per Call; `doCall` (L346-358) wiring unverändert (ruft nur die Hook-Namen) — Merge-Zone
+  minimal berührt, lifecycle-agnostisch. `@EqualsAndHashCode` (LlmConfig:37, ohne exclude) nimmt
+  `agentTools` auf → Tools-only-Change durchläuft das `applyConfig`-Equality-Gate.
+- **Schnittmenge + Search explizit:** `filterFor = classFilter ∧ nameFilter`. `SearchAgentTool.searchAgent`
+  (L73-76) setzt `.toolFilter(filter.and(allow))` UND `.toolNameFilter(allow)` **beide explizit**
+  (toBuilder-Erbschaft von Jons Filtern unterbunden, R-CC-15-Kommentar). Slaves (BuildPoAgentComponent,
+  3×) nur `classFilter`-Rename, erben Slot-Allowlist automatisch (Da Mek=DEV).
+- **R-ATC-9 (UI):** beide Views validieren VOR Store-Erstellung (alle Felder), bei bare `!` →
+  `performOk` verweigert, **Store bleibt unverändert** (Tests: `performOkRejectsBareBang` Basic+Advanced,
+  Store-Assert auf alten Wert). Matcher defensiv no-op (`bareBangIsNoOp` + F1a `!prefix.isEmpty()`).
+- **D10 (Compact kein Feld):** `AgentModelConfigSection(..., !COMPACT)` (AiAdvancedPreferenceView) +
+  `noToolsFieldSectionHasNoToolsField` (getTools null, isToolsValid true).
+- **R7 (REVIEW-Slot):** `CORE_IDS` +REVIEW (nach PLAN), `reviewAgentConfig` (Fallback Base via
+  `resolveModel`, nicht Plan), AiReviewAgent 4× REVIEW, `LlmConfigTest`-Switch case REVIEW. Tests:
+  `reviewFallsBackToBase`/`reviewIgnoresPlanSlot`/`missingReviewKeysYieldEmptySlot`/`reviewAgentResolvesReviewSlotNotPlan`.
+- **R8 (Scaffold):** `scaffold-agent.md` L31 Negation-Semantik (allow-then-deny, negations-only=all-minus,
+  bare `!` no-op). Full-Example-`!`-Variante NICHT ergänzt = ink6-Abweichung (optional, „nur wenn Paul will").
+
+### Regel-zu-Test (Paul-Schwerpunkt 3) — vollständig
+R-ATC-1/2/3 → `ToolPolicyTest` (+ `CustomAgentServiceTest` für R-ATC-1-Regression) · R-ATC-4 →
+`AgentToolConfigTest.devAllowlistRestrictsDevOnly` + `AiAdvancedPreferenceViewTest.performOkPersistsToolsPerSection`
+(per-slot, DEV=null) · R-ATC-5 → `PeonAiServiceTest.dokAllowlistWildcardStillClassFiltered`/
+`sniffaAllowlistWildcardStillPlanFree`/`devAllowlistNegationRemovesDebugFromMek` · R-ATC-6 →
+`AgentToolConfigTest.mcpNameFilterAppliesToAllTools` · R-ATC-7 → `storeKeyRoundTripsAndCleanBreak` +
+`LlmConfig{Loader,Saver}Test` + `negationViaConfigRemovesTool` (class-filter-Schnittmenge) ·
+R-ATC-8 → `resolveActiveTools*` (inkl. Äquivalenz-Assert) + `PeonAiServiceTest.agentForPreviewSlot*` +
+User-Smoke (Dialog-Inhalt) · R-ATC-9 → `bareBangIsNoOp` + `hasEmptyNegationDetectsBareBang` +
+`isToolsValidRejectsBareBang` + `performOkRejectsBareBang*`. **UC-Evidenz 7/7** (11 `// UC-ATC-n`-Zeilen;
+Linter findings=0). R7 3× BDD + R8 abgedeckt.
+
+### Abweichungen (alle im Plan dokumentiert → legitim, keine Re-Review)
+1. **inc1:** §3.2-Skizze → IST (Deny-Präfix strips trailing `*` + blank-Filter VOR nur-Negationen-Regel) —
+   durch gepinnte Bestands-Tests + R-ATC-2-BDD erzwungen. ✓
+2. **inc2:** `CORE_IDS` REVIEW nach PLAN (nicht ans Ende) — keine Order-Assertion gebrochen. ✓
+3. **inc3 (a):** Plan-literalen Wildcard-Tests (`dok…Wildcard`/`sniffa…Wildcard`) um **Negations-/eclipse-
+   Fälle verhärtet** — **Doc-konform & AGENTS.md-pflichtig** (Test-Honesty): die `*`-only-Variante wäre
+   OHNE Feature grün (alter Base `getToolNameFilter`=allow-all) = kein Test. Verhärtung macht sie red
+   without feature. Nicht „weichere" Abdeckung, sondern die geforderte red-test-Eigenschaft. ✓
+4. **inc3 (b):** `MapLlmConfigStore`→public — Test-Infra (src/test), **0 Produktions-Blast-Radius**,
+   minimalste Alternative (Test läge sonst andernorts). ✓
+5. **inc4:** 4. Ctor-Param `toolsField` (Slot-Entscheidung bei der Page, nicht im Widget),
+   `showToolsError`-Seam (OSGi-Test statt Modal-Block), Child-Count-Asserts. ✓
+6. **inc5:** `clearCurrent()` public (OSGi-Tests = anderes Paket), `searchAgentTool()`→`Optional`
+   (Tycho-Null-Analyse, kein `@Nullable`). ✓
+7. **inc6:** Full-Example-`!`-Variante entfällt (optional); Semantik-Zeile deckt R8. ✓
+8. **F6:** Search-Sub-Loop parent-unabhängig für MCP (SOLL-neutrale Verbesserung). ✓
+**F4-Reset-Seam** verifiziert: `@After clearCurrentService()` → `PeonAiService.clearCurrent()`.
+
+### Gap (nicht blockierend → CONCERNS) — MUSST vor Merge
+- **Homepage-Tools-Feld-Doku fehlt** (Plan inc4 L294, AGENTS.md „User-visible → same increment"):
+  `homepage/src/setup/configuration.md` — „Default for all agents"-Gruppe hat **kein** Tools-Feld/Semantik
+  (Grep: nur ein Modellname mit „preview"). `homepage/src/setup/advanced-configuration.md` — **kein**
+  „Tool allowlist"-Abschnitt (Grep: 0 Treffer für tools/allowlist/preview). Gelandet sind NUR: inc1
+  `custom-agents.md` (Negation-Semantik für Custom) + inc2 (Review-Model-Slot-Zeilen + Migration).
+  **Inkonsistenz:** inc1/inc2-Homepage-Doku ist im Commit, inc4/inc5-Homepage-Doku fehlt. Plan hängt es
+  unter „Docs-Nachzug (Jon)"; alle R-ATC-Status-Marker sind noch ❌ (Docs-Zyklus offen). → **PO-Agent muss
+  beides (Status-Flip + Homepage-Tools-Doku) vor Merge schließen.** Kein Code-Defect — nur User-Doku.
+  **✅ CLOSED 2026-10-14 (Da Mek):** Homepage-Tools-Doku nachgezogen — `configuration.md`: „Default for all
+  agents"-Feldliste + `### Tools`-Section (CSV/Prefix/`*`/exakt, `!`-Negation allow-then-deny, nur-Negationen
+  = all-minus, leer = alle, bare `!` = Validierungsfehler, Preview-Button = getippter Wert);
+  `advanced-configuration.md`: `## Tool allowlist` (je Slot PO/Plan/Review/Search, Dev → Main-Page, Compact
+  bewusst ohne Feld, Preview = read-only Menge Built-in+MCP ∩ Klassen-Filter, getippter Wert); Fallback-Link
+  `custom-agents.md#tool-allowlist`. Offener Rest dieses Gaps = nur der Status-Flip (Docs-Zyklus, Jon).
+
+### Beobachtungen (kein Re-Work, nur notieren)
+- **F7-Residuum:** Dev-Slot-Preview zeigt den PO-Team-Slave (trägt `noPrivilegedTools`) → zeigt **2 Tools
+  weniger** als Standalone-Peon-Dev (`WorkspaceMemoryTool`, `AskUserTool`). Konservativ/sicher (Preview
+  behauptet nie ein Tool, das der Agent nicht hat), aber Under-Report für Standalone-Dev-Nutzer. Akzeptiert.
+- **SEARCH-Sonderfall 3×** (`agentForPreviewSlot`, `previewToolsFor`, `previewAvailable`) — einfache
+  Enum-Zweige (search=kein AiAgent, compact=kein Feld), kein Smear. Geringes Drift-Risiko, kein Extract-Bedarf.
+- **Contract-Tests** `absentOrBlankIsAll` + `absentStoreLeavesMatrixUnchanged` sind green-ohne-Feature
+  (Charakterisierung/Pin für „absent=all") — für ihre Rolle korrekt, ehrlich gelabelt.
+- **Uncommitted:** `M docs/agent-tool-config.md` = nur der Q1-🔒-Flip (`⏳`→`🔒 Paul bestätigt`) — legitim,
+  muss mit dem Docs-Zyklus committet werden.
+
+### Mutation-Check (F10)
+`ToolPolicy.enables` = der eine Proof-Spot; 4 Canaries (`blankEntriesAreIgnored`,
+`emptyOrNullAllowlistEnablesNothing`, `bareBangIsNoOp`, `denyWinsOverMatchingAllowToken`) im IST vorhanden
+und logisch auf jede Reihenfolge-/Guard-Mutation rot-geprägt. inc1-DONE-Claim „4/4-Mutationen rot" —
+Canary-Aufbau bestätigt, kein neuer Proof nötig.
+
+### Skill-/Instruktions-Notiz (Empfehlung, kein Befund-Item)
+AGENTS.md-Repo-Layout („homepage: User-visible Changes → same increment") vs. Plan-„Docs-Nachzug (Jon)"
+ist eine **Ambiguität** (gehört die Homepage-Doku zum Dev-Inkrement oder zum PO-Docs-Zyklus?). Sie erzwang
+hier eine Judgment-Call und erklärt, warum inc4/inc5-Homepage-Doku ausblieb. Empfehlung: in AGENTS.md/
+Jon-Skill präzisieren, dass die Homepage-User-Doku zum **Merge-Gate** gehört (egal, wer sie schreibt).
