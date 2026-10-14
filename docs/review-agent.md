@@ -48,7 +48,7 @@ Delegation über [PoDelegateTool](adr/0020-po-agent-orchestration.md).
 
 ### Config
 
-- **R7 ❌ (2026-10-13) — Da Dok bekommt einen eigenen Config-Bereich (Model-Selection-Slot):**
+- **R7 ✅ (2026-10-14) — Da Dok bekommt einen eigenen Config-Bereich (Model-Selection-Slot):**
   statt geteilter PLAN-Slot (`Config/Model-Slot = PLAN`, R1) erhält Da Dok einen eigenen Slot
   `REVIEW` (Store `llm.agent.review.*`, Aufnahme in `CORE_IDS`), UI-Sektion auf der
   Advanced-Seite. Fallback = **Base** (wie PO nach [ADR-0036](adr/0036-po-own-model-slot.md)),

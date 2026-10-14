@@ -117,7 +117,7 @@ AND the services refresh from the new directory
 ### R7: Scaffold Agent Config ✅
 The scaffold agent uses `devAgentConfig()` — same model, temperature, think as Peon-Dev.
 
-### R8: Tool Allowlist knowledge (`tools:` + `!`-Negation) ❌
+### R8: Tool Allowlist knowledge (`tools:` + `!`-Negation) ✅ (2026-10-14)
 Scaffold generates/edits AGENT.md frontmatter — it must know the `tools:` allowlist semantics
 **including the `!`-negation prefix** (R-ATC-2 in [agent-tool-config.md](agent-tool-config.md)):
 allowlist tokens (prefix, `*`, exact) decided first, then `!`-prefix tokens subtract their matches

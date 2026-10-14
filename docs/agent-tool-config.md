@@ -4,7 +4,7 @@ idPrefix: ATC
 
 # Agent-Tool-Config — Tool-Sichtbarkeit als User-Config
 
-> **Status:** ❌ specified (2026-10-13) ·
+> **Status:** ✅ done (2026-10-14, Da-Dok-Review ACCEPTED-Equivalent, Code+Tests committet) ·
 > **Fachdoc-Mechanismus:** [agent-tool-filter.md](agent-tool-filter.md) (R-TF-* bleibt Owner der
 > Filter-Mechanik) · **verwandt:** [custom-agents-design.md](custom-agents-design.md) ·
 > [advanced-configuration.md](advanced-configuration.md) · [scaffold-agent.md](scaffold-agent.md)
@@ -25,7 +25,7 @@ idPrefix: ATC
 
 ## Business Rules
 
-### R-ATC-1 ❌ — Eine Semantik für alle Agententypen (ToolPolicy als einziger Matcher)
+### R-ATC-1 ✅ — Eine Semantik für alle Agententypen (ToolPolicy als einziger Matcher)
 
 - Die Tool-Entscheidung läuft für **jeden** Agententyp über dieselbe Logik: Built-in-Agenten werten
   ihre UI-Tool-Allowlist mit **exakt demselben** Matcher aus wie Custom Agents ihr `tools:`-Frontmatter
@@ -37,7 +37,7 @@ idPrefix: ATC
 - GIVEN Custom Agent mit `tools:` WHEN Filter THEN Verhalten unverändert zum heutigen Stand
   (Regression über die bestehende `ToolPolicyTest`-/`CustomAgentServiceTest`-Abdeckung)
 
-### R-ATC-2 ❌ — Negation `!prefix` (allow-then-deny; nur Negationen = alles minus Ausschluss)
+### R-ATC-2 ✅ — Negation `!prefix` (allow-then-deny; nur Negationen = alles minus Ausschluss)
 
 - Ein Token mit `!`-Präfix entfernt Tools: erst entscheidet die Allowlist (Prefix/`*`/exakt) wie
   heute, **danach** schneiden alle `!`-Tokens ihre Präfix-Matches aus der Allow-Menge heraus.
@@ -57,7 +57,7 @@ idPrefix: ATC
 - GIVEN ToolPolicy-Test für Negation THEN echte Tool-Namen aus der Tool-Matrix (R-TF-4-Muster),
   keine erfundenen
 
-### R-ATC-3 ❌ — Absent vs. leer (Glossar: „unset" gilt nicht hier)
+### R-ATC-3 ✅ — Absent vs. leer (Glossar: „unset" gilt nicht hier)
 
 - **Absent/Feld leer** = kein Filter, alle Tools aktiv (wie Custom Agents absent `tools:`).
   Das ist der Default und der Weg, den Filter komplett auszuschalten.
@@ -69,13 +69,13 @@ idPrefix: ATC
 - GIVEN CSV mit nur Whitespace/Trennern WHEN geladen THEN = absent (kein „alles aus")
 - GIVEN CSV mit `read` WHEN Filter THEN nur `read*`-Tools aktiv (Prefix-Regel R-ATC-1)
 
-### R-ATC-4 ❌ — Config-Slots & Inheritance: KEINE (bewusst)
+### R-ATC-4 ✅ — Config-Slots & Inheritance: KEINE (bewusst)
 
 - **Dev (Basic-Seite):** Feld „Tools" auf der Basic-Page, Store-Key `llm.agent.dev.tools` — gilt
   **nur für den Dev-Agent**, **keine Vererbung** an die anderen Slots (Paul, 2026-10-13; bewusst
   anders als die Model-Config, R-DEF).
 - **Advanced-Seite:** Feld je Agent-Slot (Plan, PO, Review, Search) im jeweiligen Agent-Bereich.
-  **Compact bekommt KEIN Feld** (Empfehlung, ⏳ Paul-Rückversicherung): `CompactService` baut den
+  **Compact bekommt KEIN Feld** (🔒 Paul bestätigt, 2026-10-14): `CompactService` baut den
   Request **ohne Tools** — der kompaktierende Agent (Da Scribe) ruft nie Tools auf; `compactSession`
   ist Jons Delegate-Tool, nicht Da Scribes Werkzeug. Ein inertes Feld wäre eine Lüge
   („tool must never lie").
@@ -89,7 +89,7 @@ idPrefix: ATC
 - GIVEN Plan-Slot mit eigenem Wert WHEN Filter THEN nur sein Wert zählt
 - GIVEN Custom Agent WHEN UI THEN kein Feld (Phase 1), Frontmatter bleibt Quelle
 
-### R-ATC-5 ❌ — Klassen-Filter bleibt UND-verknüpft (UI kann nur einschränken)
+### R-ATC-5 ✅ — Klassen-Filter bleibt UND-verknüpft (UI kann nur einschränken)
 
 - Die Tool-Entscheidung ist die **Schnittmenge** aus Klassen-Filter (`getToolFilter()`:
   `isEditTool`-Split, Da-Dok-Shell-Whitelist, Sniffa-plan*-Ausschluss) und Name-Filter
@@ -103,7 +103,7 @@ idPrefix: ATC
 - GIVEN Mek mit Allowlist `!debugJava*` WHEN Filter THEN Debug-Tools aus, Rest unverändert —
   der Klassen-Filter greift zusätzlich (Schnittmenge)
 
-### R-ATC-6 ❌ — Name-Filter gilt für ALLE Tools (Built-in + MCP)
+### R-ATC-6 ✅ — Name-Filter gilt für ALLE Tools (Built-in + MCP)
 
 - Der Allowlist-Name-Filter (Tool Allowlist) wird auf **alle** Tool-Namen angewendet — die
   Built-in-Tool-Specs (`getToolFilter`-Seite) **und** die MCP-Tools (`getToolNameFilter`-Seite).
@@ -114,7 +114,7 @@ idPrefix: ATC
 - GIVEN MCP-Tool `mcp__docs__search_docs` WHEN Allowlist `mcp__docs` THEN aktiv, sonst unsichtbar
 - GIVEN MCP-Tool-Name WHEN Filter THEN derselbe Matcher wie Built-in (R-ATC-1, ein Mechanismus)
 
-### R-ATC-7 ❌ — Where to Store & Wiring (per-Call-Read)
+### R-ATC-7 ✅ — Where to Store & Wiring (per-Call-Read)
 - **IST-Korrektur (Da-Dok-Verifikation 2026-10-13):** persistente Agenten werden bei Config-Änderung
   **NICHT** neu gebaut — nur Custom Agents via `agentService.refresh`. Der Filter liest den Store
   **per Call** (`configuredModel.getConfig().toolAllowlist(slot)`, Präzedenz Scaffold R6 „Config must
@@ -127,7 +127,7 @@ idPrefix: ATC
   gespeicherten String
 - GIVEN Key entfernt WHEN Reload THEN absent → alle Tools (Clean Break, kein stale State)
 
-### R-ATC-8 ❌ — „Aktive Tools"-Preview (Button im UI, zeigt den GETIPPTEN Wert)
+### R-ATC-8 ✅ — „Aktive Tools"-Preview (Button im UI, zeigt den GETIPPTEN Wert)
 
 - Neben dem Feld ein **Preview-Button**: zeigt die **aufgelöste, aktive Tool-Menge** des Agenten —
   Built-in-Specs UND MCP-Namen, bereits durch Klassen-Filter UND Allowlist geschneidet, als
@@ -144,7 +144,7 @@ idPrefix: ATC
 - GIVEN Da Dok WHEN Preview THEN Liste zeigt die Klassen-Filter-Schnittmenge (Shell drin,
   Write-Tools draußen — auch bei `*`)
 
-### R-ATC-9 ❌ — `!` allein: UI speichert nicht, Matcher macht no-op
+### R-ATC-9 ✅ — `!` allein: UI speichert nicht, Matcher macht no-op
 
 - Ein `!` ohne Präfix (`!` allein oder `!` mit nur Whitespace) ist ein **Konfigurationsfehler**
   (Paul, 2026-10-13): das **UI verweigert das Speichern** (Fehlermeldung am Feld, Store bleibt
@@ -195,7 +195,7 @@ GIVEN Plan-Agent mit `eclipse, !debugJava*` WHEN Preview-Button THEN Dialog zeig
 | R-ATC-5 | `PeonAiServiceTest` — Da-Dok/Sniffa-Schnittmenge bei `*` |
 | R-ATC-6 | `AgentToolConfigTest` — MCP-Name-Filter über Allowlist |
 | R-ATC-7 | `AgentToolConfigTest` — Store-Key parse/reload, Clean Break |
-| R-ATC-8 | manuell (User-Smoke) — Dialog-Inhalt |
+| R-ATC-8 | `resolveActiveTools*` (Preview↔Runtime-Äquivalenz) + Dialog-Inhalt = User-Smoke (Paul) |
 | R-ATC-9 | `ToolPolicyTest.bareBangIsNoOp` + UI-Validierungs-Test (inc4: Speichern verweigert) |
 
 ## Out of Scope

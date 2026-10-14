@@ -3,20 +3,28 @@
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
 Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.md).
 
-## ⏳ Compact-Slot ohne Tools-Feld (2026-10-13, Zyklus Agent-Tool-Config)
+## 🔒 Compact-Slot ohne Tools-Feld (2026-10-13 → 🔒 2026-10-14 Paul bestätigt)
 
 R-ATC-4 ([agent-tool-config.md](agent-tool-config.md)): Compact bekommt KEIN Tools-Feld —
 `CompactService` baut den Request ohne Tools, Da Scribe ruft nie Tools auf (`compactSession` ist
-Jons Delegate-Tool, nicht Scribes). Paul hat das IST so noch nicht bestätigt („es gibt ein Compact
-Tool und eine Compact UI-Funktion"). Rückversicherung beim nächsten Kontakt: Feld ohne Wirkung
-wäre Lüge — kein Feld dokumentiert.
+Jons Delegate-Tool, nicht Scribes). **Paul 2026-10-14 bestätigt** (ink4-Go): kein Feld — ein
+inertes Feld wäre Lüge. Umsetzung inc4: `AgentModelConfigSection(..., !COMPACT)` +
+`noToolsFieldSectionHasNoToolsField`.
 
-## ⏳ Preview zeigt den GETIPPTEN Wert + Search-Preview-Pfad (2026-10-13)
+## 🔒 Preview zeigt den GETIPPTEN Wert + Search-Preview-Pfad (2026-10-13 → 🔒 2026-10-14)
 
 R-ATC-8 präzisiert: Preview liest den Feldinhalt statt der gespeicherten Config (gemeinsamer
-Kompositions-Helper mit Runtime, kein zweiter Matcher) — Paul im Chat bestätigt, Doc-Präzision ⏳
-gegengelesen. Search-Preview läuft über `SearchAgentTool.resolveActiveTools` (kein AiAgent für
+Kompositions-Helper mit Runtime, kein zweiter Matcher) — Paul bestätigt; Umsetzung inc5
+(`filterFor`-Equivalenz Preview↔Runtime bewiesen: `resolveActiveToolsMatchesRuntimeFilter`).
+Search-Preview läuft über `SearchAgentTool.resolveActiveTools` (kein AiAgent für
 Da Sniffa), Button enabled sobald `PeonAiService.current()` existiert — Da-Dok-Verdict: OK.
+
+## ⏳ Paul-Smoke R-ATC-8: Preview-Dialog-Inhalt (2026-10-14, Zyklus Agent-Tool-Config)
+
+Dialog-Inhalt manuell sichten (automatisiert ist nur die Logik): Preview-Button an einem Slot
+drücken und die aufgelöste Menge gegen die Erwartung prüfen (`eclipse` → nur `eclipse*`;
+`*, !debugJava*` → alles ohne Debug; Da Dok → Shell drin, Write-Tools draußen auch bei `*`;
+Search-Slot → Sniffa-Menge). Mit den offenen Smokes R-AEM/R-TD-5 mergen.
 ## ❓ Per-Agent Provider Override (2026-09-28, Paul identifiziert — Story angenommen, noch nicht geplant)
 
 IST: nur der Base besitzt einen Provider (`EffectiveConnection.java:13`, Entscheidung 2026-08-28);
