@@ -96,6 +96,6 @@ class ProviderCapabilitiesTest {
         // WHEN its values are read
         // THEN they are exactly the SDK's reasoning-effort levels, lowercased
         assertThat(ProviderRequestSupport.openAiFamilyThinkSupport())
-                .isEqualTo(new ThinkSupport.Values(List.of("none", "minimal", "low", "medium", "high", "xhigh")));
+                .isEqualTo(new ThinkSupport.Values(List.of("none", "minimal", "low", "medium", "high", "xhigh", "max")));
     }
 }
