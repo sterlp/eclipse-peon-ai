@@ -1,5 +1,8 @@
 package org.sterl.llmpeon.parts.ai.component;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.command.CommandService;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
@@ -34,6 +37,9 @@ public class SharedToolsComponent {
 
     private final ToolService sharedToolService = new ToolService();
 
+    /** ADR-0067: every agent-facing registry that follows the disk-tool gate (shared + registered agents). */
+    private final List<ToolService> diskGatedRegistries = new ArrayList<>();
+
     private final EclipseWorkspaceWriteFileTool workspaceWriteFilesTool = new EclipseWorkspaceWriteFileTool();
     private final EclipseWorkspaceReadFileTool workspaceReadFilesTool = new EclipseWorkspaceReadFileTool();
     private final EclipseGrepTool eclipseGrepTool = new EclipseGrepTool();
@@ -49,6 +55,8 @@ public class SharedToolsComponent {
     private final WebGetTool webGetTool = new WebGetTool();
 
     public SharedToolsComponent(SkillService skillService, CommandService commandService) {
+        diskGatedRegistries.add(sharedToolService);
+
         // filter eclipse tools from the search agents ...
         var sa = sharedToolService.getTool(SearchAgentTool.class).get();
         // R-TF-2: PlanTool reports isEditTool()==false but really writes peon-plan/overview.md —
@@ -78,21 +86,35 @@ public class SharedToolsComponent {
         sharedToolService.addTool(new EclipseConsoleLogTool());
     }
 
-    /** Adds or removes the disk tools depending on {@code config.isDiskToolsEnabled()}. */
+    /**
+     * Registers an additional agent-facing registry (ADR-0067, e.g. the Peon-PO's own tool
+     * service) that follows the disk-tool gate like the shared service.
+     */
+    public void registerDiskGatedRegistry(ToolService registry) {
+        diskGatedRegistries.add(registry);
+    }
+
+    /**
+     * Adds or removes the disk tools depending on {@code config.isDiskToolsEnabled()} — on every
+     * disk-gated registry (the shared service plus every registered agent registry, ADR-0067).
+     * The same four instances are toggled atomically per registry.
+     */
     public void updateActiveDiskTools(LlmConfig config) {
-        if (config.isDiskToolsEnabled()) {
-            if (sharedToolService.getTool(DiskFileWriteTool.class).isEmpty()) {
-                sharedToolService.addTool(diskFileWriteTool);
-                sharedToolService.addTool(diskFileReadTool);
-                sharedToolService.addTool(diskGrepTool);
-                sharedToolService.addTool(webGetTool);
-            }
-        } else {
-            if (sharedToolService.getTool(DiskFileWriteTool.class).isPresent()) {
-                sharedToolService.removeTool(diskFileWriteTool);
-                sharedToolService.removeTool(diskFileReadTool);
-                sharedToolService.removeTool(diskGrepTool);
-                sharedToolService.removeTool(webGetTool);
+        for (ToolService registry : diskGatedRegistries) {
+            if (config.isDiskToolsEnabled()) {
+                if (registry.getTool(DiskFileWriteTool.class).isEmpty()) {
+                    registry.addTool(diskFileWriteTool);
+                    registry.addTool(diskFileReadTool);
+                    registry.addTool(diskGrepTool);
+                    registry.addTool(webGetTool);
+                }
+            } else {
+                if (registry.getTool(DiskFileWriteTool.class).isPresent()) {
+                    registry.removeTool(diskFileWriteTool);
+                    registry.removeTool(diskFileReadTool);
+                    registry.removeTool(diskGrepTool);
+                    registry.removeTool(webGetTool);
+                }
             }
         }
     }

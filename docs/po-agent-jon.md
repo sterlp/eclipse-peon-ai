@@ -879,6 +879,45 @@ anfangen"-Aktion des Users, Compact ist Kontextpflege.
 - **Homepage:** das Verhalten ist user-facing und wird dort dokumentiert (**✅ done** —
   `homepage/src/usage/agents.md` inkl. Sidebar-Eintrag, Zyklus story/po-compact-2026-09-13).
 
+### R20: Jon nimmt an den dynamischen Tool-Familien teil — disk-Gate + MCP ❌ specified (2026-10-15, Paul)
+
+**IST (vermessen 2026-10-15):** Jon hat seine eigene kuratierte Registry (`BuildPoAgentComponent:
+67`, `new ToolService(false)`, 12 `addTool`) — und genau die wird von beiden dynamischen Familien
+**umgangen**: `McpConnectionService.connect` verbindet nur den `sharedToolService`
+(PeonAiService.java:200 → ToolService.connectMcp:291-298), `SharedToolsComponent.updateActiveDiskTools`
+(:82-98) touched ebenfalls nur den `sharedToolService`. Folge: Jon sieht **niemanden** seiner
+MCP-Server und **keine** disk-Tools — obwohl R2 ihm die disk read/write tools zuspricht und Pauls
+SOLL lautet: **alle** Agenten bekommen MCP-Tools. (Indirekt sieht Jon MCP/disk nur über Da Sniffa.)
+
+**SOLL:** Beide dynamischen Familien adressieren **alle** agent-facing ToolService-Registries —
+shared **und** po:
+
+1. **MCP:** `McpConnectionService` verbindet/disconnectet MCP-Server an beiden Registries; Jons
+   `mcpToolSpecs` füllt/leert sich wie beim shared-Service. Kein Filter-Change — die abwesende
+   Allowlist heißt „alle" und `getToolNameFilter` deckt MCP-Namen ab.
+2. **disk-Gate:** `updateActiveDiskTools` togglet die disk-Familie an **beiden** Registries
+   (gleiche Konfiguration `diskToolsEnabled`, Clean Break, kein zweiter Schalter). Jon's
+   Write-Validator (R3, `*/docs/*` + `*.md`) gilt am Choke-Point unverändert — auch für disk-Writes.
+
+**WEIL:** Ein Agent, dessen Registry die User-Konfiguration (MCP-Server, disk-Gate) still ignoriert,
+handelt auf der Überzeugung „Tool existiert nicht" — dieselbe teuerste Fehlerklasse wie ein
+False-Negative der Read-Tools. Die Kuratierte-Registry-Entscheidung (R2) bleibt: Jon wählt seine
+Basis-Tools, die **dynamischen** Familien kommen konfigurationsgetrieben hinzu.
+
+```
+GIVEN ein MCP-Server ist verbunden
+WHEN Jons toolSpecifications gebaut werden
+THEN sie enthalten die MCP-Tool-Specs des Servers
+AND WHEN der Server getrennt wird, THEN verschwinden sie aus Jons Specs
+
+GIVEN diskToolsEnabled = false
+WHEN Jons toolSpecifications gebaut werden
+THEN keine disk*-Tools
+AND WHEN diskToolsEnabled = true gesetzt wird, THEN enthält Jons Set die disk*-Familie
+AND ein disk-Write außerhalb von */docs/* + *.md wird weiterhin vom Write-Validator rejected
+```
+→ Tests je Richtung (Connect/Disconnect, Toggle on/off) gegen die po-Registry.
+
 ## Future Extensions (not MVP)
 
 - **Reviewer** — a dedicated agent Jon dispatches to review a plan or the changed code against the

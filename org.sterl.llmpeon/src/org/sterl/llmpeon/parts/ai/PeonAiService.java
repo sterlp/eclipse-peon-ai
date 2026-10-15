@@ -197,6 +197,10 @@ public class PeonAiService {
 
         agentService.addPersistentAgent(poAgent);
 
+        // ADR-0067 R20: Jon's own registry follows the disk-tool gate like the shared service.
+        // The persistent poAgent instance survives clearAgents/reloads — stable reference.
+        sharedTools.registerDiskGatedRegistry(poAgent.getToolService());
+
         mcpConnectionService = new McpConnectionService(sharedToolService, mcpStateChange);
 
         // Context assembly (turn context, static bake, plan/handoff state) — pure component,
