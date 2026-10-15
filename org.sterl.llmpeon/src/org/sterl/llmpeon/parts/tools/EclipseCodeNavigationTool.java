@@ -281,56 +281,6 @@ public class EclipseCodeNavigationTool extends AbstractEclipseTool {
     }
 
     // -------------------------------------------------------------------------
-    // Tool 5: Find implementations
-    // -------------------------------------------------------------------------
-
-    /*
-    @Tool("Java: Find implementations/subclasses of a type - use this before glob.")
-    public String eclipseFindImplementations(
-            @P(description = "fully qualified interface or class name", name = "typeName") String typeName,
-            @P(name = "projectName") String projectName) {
-
-        ArgsUtil.requireNonBlank(typeName, "typeName");
-
-        try {
-            var typeOpt = JdtUtil.findType(typeName, projectName);
-
-            if (typeOpt.isEmpty()) {
-                onProblem("Cannot find implementation of unknown type " + typeName);
-                return "Type not found: " + typeName + ". Use findJavaType to find the correct name.";
-            }
-            IType type = typeOpt.get();
-
-            ITypeHierarchy hierarchy = type.newTypeHierarchy(getProgressMonitor());
-            IType[] subtypes = hierarchy.getAllSubtypes(type);
-
-            
-            onTool("Reading implementations " + subtypes.length + " of " + typeName);
-            if (subtypes.length == 0) {
-                return "No implementations found for: " + typeName + ".";
-            }
-            var sb = new StringBuilder();
-            sb.append("Found ").append(subtypes.length).append(" implementation(s) of ")
-              .append(typeName).append(":\n\n");
-            for (int i = 0; i < Math.min(subtypes.length, MAX_IMPL_RESULTS); i++) {
-                IType sub = subtypes[i];
-                sb.append(JdtUtil.kindOf(sub)).append(" ")
-                  .append(sub.getFullyQualifiedName())
-                  .append(" @ ").append(JdtUtil.pathOf(sub)).append("\n");
-            }
-            if (subtypes.length > MAX_IMPL_RESULTS) {
-                sb.append("\n... ").append(subtypes.length - MAX_IMPL_RESULTS)
-                  .append(" more. Narrow with a project name.");
-            }
-
-            return sb.toString();
-        } catch (JavaModelException e) {
-            throw new RuntimeException("Hierarchy search failed: " + e.getMessage(), e);
-        }
-    }
-    */
-
-    // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 

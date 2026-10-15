@@ -49,12 +49,7 @@ public class McpConnectionService {
     public void applyConfig() {
         var desired = desiredState();
         if (desired.equals(lastApplied)) return;   // R-MCP1b: unchanged config → no reconnect
-        lastApplied = desired;
-        if (desired.enabled()) {
-            connect();
-        } else {
-            disconnect();
-        }
+        applyState(desired);
     }
 
     /**
@@ -64,6 +59,11 @@ public class McpConnectionService {
     public void toggle(boolean enabled) {
         McpPreferenceInitializer.setMcpEnabled(enabled);
         var desired = desiredState();
+        applyState(desired);
+    }
+
+    /** Remembers the state and connects or disconnects. No equals-check — the callers own it. */
+    private void applyState(McpApplied desired) {
         lastApplied = desired;
         if (desired.enabled()) {
             connect();
