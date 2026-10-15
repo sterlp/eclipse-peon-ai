@@ -3,9 +3,12 @@ package org.sterl.llmpeon.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.stream.Collectors;
 
 import org.junit.Test;
@@ -201,7 +204,8 @@ public class SharedToolsComponentTest {
     }
 
     /** ADR-0067 R20: GIVEN the po registry with disk tools enabled WHEN the shared DiskFileWriteTool
-     *  instance is invoked with the DOCS write validator THEN a write outside docs is rejected before I/O. */
+     *  instance is invoked with the DOCS write validator THEN a write outside docs is rejected
+     *  before any I/O (a write-then-reject regression would leave the file behind). */
     @Test
     public void poRegistryDiskWriteOutsideDocsRejected() {
         // GIVEN: a po registry (ToolService(false)) with the disk tools enabled via the gate
@@ -212,14 +216,24 @@ public class SharedToolsComponentTest {
         // the same DiskFileWriteTool instance the po registry now carries
         var writeTool = po.getTool(DiskFileWriteTool.class).orElseThrow();
         writeTool.withToolRequest(docsRequest());
+        Path rejected = writeTool.getWorkingDir().resolve("outside/notes.txt");
 
-        // WHEN / THEN: a write outside docs is rejected by the validator — no model call, no I/O
         try {
-            writeTool.diskWriteFile("outside/notes.txt", "nope");
-            fail("expected IllegalArgumentException for a write outside docs");
-        } catch (IllegalArgumentException e) {
+            // WHEN / THEN: a write outside docs is rejected by the validator — no model call
+            var e = assertThrows(IllegalArgumentException.class,
+                    () -> writeTool.diskWriteFile("outside/notes.txt", "nope"));
             assertTrue("expected 'Write denied' in message:\n" + e.getMessage(),
                     e.getMessage().contains("Write denied"));
+
+            // AND: the validator fired before any I/O — a write-then-reject would leave the file
+            assertFalse("a rejected write must not touch the disk", Files.exists(rejected));
+        } finally {
+            // hygiene: a "write-then-reject" mutation would have created the file
+            try {
+                Files.deleteIfExists(rejected);
+                Files.deleteIfExists(rejected.getParent());
+            } catch (IOException ignored) {
+            }
         }
     }
 

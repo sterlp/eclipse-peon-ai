@@ -150,7 +150,7 @@ public class McpConnectionServiceTest {
 
     /**
      * Recorder seam: overrides connect()/disconnect() so no real connection is opened.
-     * ToolService is null — the recorder never references it.
+     * The registry list is empty — the recorder never references it.
      */
     private static class RecordingService extends McpConnectionService {
         int connectCount;

@@ -64,6 +64,7 @@ import org.sterl.llmpeon.tool.tools.DiskGrepTool;
 import org.sterl.llmpeon.tool.tools.SearchAgentTool;
 import org.sterl.llmpeon.tool.tools.ShellTool;
 import org.sterl.llmpeon.tool.tools.SkillTool;
+import org.sterl.llmpeon.tool.tools.WebGetTool;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -1141,6 +1142,65 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
                 aiService.getSharedToolService().getTool(DiskFileReadTool.class).isEmpty());
         assertTrue("disk grep tool must be gone after toggle",
                 aiService.getSharedToolService().getTool(DiskGrepTool.class).isEmpty());
+    }
+
+    /**
+     * ADR-0067 wiring guard (production wiring, not the component seam): the PoAgent's own registry
+     * is registered with the disk gate only in PeonAiService's constructor. A regression there
+     * (registry silently dropped) would stay green in every component-level test.
+     */
+    @Test
+    public void productionWiring_poRegistryFollowsDiskGate() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        var jon = aiService.getAgents().stream().filter(AiPoAgent.class::isInstance)
+                .map(AiPoAgent.class::cast).findFirst().orElseThrow();
+
+        // WHEN: disk tools enabled through the production config path
+        aiService.updateConfig(aiService.getConfig().toBuilder().diskToolsEnabled(true).build());
+
+        // THEN: Jon's own registry carries all four disk tools
+        var po = jon.getToolService();
+        assertTrue("po registry must carry the disk write tool", po.getTool(DiskFileWriteTool.class).isPresent());
+        assertTrue("po registry must carry the disk read tool", po.getTool(DiskFileReadTool.class).isPresent());
+        assertTrue("po registry must carry the disk grep tool", po.getTool(DiskGrepTool.class).isPresent());
+        assertTrue("po registry must carry webGet", po.getTool(WebGetTool.class).isPresent());
+
+        // AND: they are the SAME instances as on the shared service (one family, no copies)
+        var shared = aiService.getSharedToolService();
+        assertSame("disk write tool must be the shared instance",
+                shared.getTool(DiskFileWriteTool.class).get(), po.getTool(DiskFileWriteTool.class).get());
+        assertSame("disk read tool must be the shared instance",
+                shared.getTool(DiskFileReadTool.class).get(), po.getTool(DiskFileReadTool.class).get());
+        assertSame("disk grep tool must be the shared instance",
+                shared.getTool(DiskGrepTool.class).get(), po.getTool(DiskGrepTool.class).get());
+        assertSame("webGet must be the shared instance",
+                shared.getTool(WebGetTool.class).get(), po.getTool(WebGetTool.class).get());
+    }
+
+    /**
+     * ADR-0067 wiring guard (production wiring, not the component seam): the McpConnectionService is
+     * constructed with BOTH agent-facing registries only in PeonAiService's constructor. Inspected
+     * without a real connect — the wired list is asserted, no MCP server is started.
+     */
+    @Test
+    public void productionWiring_mcpConnectsBothRegistries() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        var jon = aiService.getAgents().stream().filter(AiPoAgent.class::isInstance)
+                .map(AiPoAgent.class::cast).findFirst().orElseThrow();
+
+        // THEN: the production service holds exactly [shared, po] — the list MCP connects
+        var mcp = readField(aiService, "mcpConnectionService");
+        var registries = (List<?>) readField(mcp, "toolServices");
+        assertEquals(List.of(aiService.getSharedToolService(), jon.getToolService()), registries);
+    }
+
+    /** Read-only inspection of the production wiring (PeonAiService keeps mcpConnectionService private). */
+    private static Object readField(Object owner, String name) throws Exception {
+        var f = owner.getClass().getDeclaredField(name);
+        f.setAccessible(true);
+        return f.get(owner);
     }
 
 
