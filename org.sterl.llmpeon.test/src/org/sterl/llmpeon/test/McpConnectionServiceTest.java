@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 
@@ -13,11 +14,12 @@ import org.sterl.llmpeon.mcp.McpServerConfig;
 import org.sterl.llmpeon.parts.PeonConstants;
 import org.sterl.llmpeon.parts.config.McpConnectionService;
 import org.sterl.llmpeon.parts.config.McpPreferenceInitializer;
+import org.sterl.llmpeon.tool.ToolService;
 
 /**
  * R-MCP1: MCP config changes are applied live, and unchanged config does not reconnect.
  * Uses a recorder subclass as the seam so no real MCP connection / OSGi tool wiring is needed
- * (ToolService is passed as null — the recorder never touches it).
+ * (the registry list is empty — the recorder never touches it).
  */
 public class McpConnectionServiceTest {
 
@@ -105,6 +107,42 @@ public class McpConnectionServiceTest {
         assertEquals(1, service.disconnectCount);
     }
 
+    /** ADR-0067: GIVEN two registries wired into the service WHEN the connect seam runs
+     *  THEN both registries received exactly the same server list. */
+    @Test
+    public void givenTwoRegistries_whenConnected_thenBothReceiveSameServerList() {
+        // GIVEN: MCP config C1 and two registries (shared + po) wired into the service
+        var c1 = List.of(server("ctx"));
+        givenMcpConfig(c1, true);
+        var shared = new RecordingToolService();
+        var po = new RecordingToolService();
+        var service = new McpConnectionService(List.of(shared, po), state -> {});
+
+        // WHEN: the synchronous connect seam runs
+        service.connectServers();
+
+        // THEN: both registries captured the same server list (the list passed in, both directions)
+        assertEquals(c1, shared.connectedServers);
+        assertEquals(c1, po.connectedServers);
+    }
+
+    /** ADR-0067: GIVEN two registries wired into the service WHEN disconnecting
+     *  THEN both registries were disconnected. */
+    @Test
+    public void givenTwoRegistries_whenDisconnected_thenBothCleared() {
+        // GIVEN: two registries (shared + po) wired into the service
+        var shared = new RecordingToolService();
+        var po = new RecordingToolService();
+        var service = new McpConnectionService(List.of(shared, po), state -> {});
+
+        // WHEN
+        service.disconnect();
+
+        // THEN: both registries recorded the disconnect
+        assertTrue("shared registry must be disconnected", shared.disconnected);
+        assertTrue("po registry must be disconnected", po.disconnected);
+    }
+
     private McpServerConfig server(String name) {
         return new McpServerConfig(name, McpServerConfig.McpTransportType.HTTP,
                 "https://" + name + ".example.com/mcp", "", "", "", "", "");
@@ -120,7 +158,7 @@ public class McpConnectionServiceTest {
         List<McpServerConfig> lastConnectedServers;
 
         RecordingService() {
-            super(null, enabled -> {});
+            super(List.of(), enabled -> {});
         }
 
         @Override
@@ -132,6 +170,30 @@ public class McpConnectionServiceTest {
         @Override
         public void disconnect() {
             disconnectCount++;
+        }
+    }
+
+    /**
+     * Recorder registry: captures the server list handed to connectMcp() and the disconnect call,
+     * so no real MCP connection is opened.
+     */
+    private static class RecordingToolService extends ToolService {
+        List<McpServerConfig> connectedServers;
+        boolean disconnected;
+
+        RecordingToolService() {
+            super(false);
+        }
+
+        @Override
+        public void connectMcp(List<McpServerConfig> servers) {
+            connectedServers = servers;
+        }
+
+        @Override
+        public void disconnectMcp() {
+            disconnected = true;
+            connectedServers = null;
         }
     }
 }

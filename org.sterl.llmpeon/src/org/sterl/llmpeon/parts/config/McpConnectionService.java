@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.jobs.Job;
 import org.sterl.llmpeon.mcp.McpServerConfig;
 import org.sterl.llmpeon.parts.PeonConstants;
@@ -16,7 +17,8 @@ import org.sterl.llmpeon.tool.ToolService;
  */
 public class McpConnectionService {
 
-    private final ToolService toolService;
+    /** ADR-0067: every agent-facing registry MCP connects to (shared + Peon-PO's own). */
+    private final List<ToolService> toolServices;
     private final Consumer<Boolean> onStateChange;
 
     /** Last applied MCP state (server list + effective enabled flag). UI-thread confined. */
@@ -31,12 +33,12 @@ public class McpConnectionService {
     }
 
     /**
-     * @param toolService   the tool registry to connect/disconnect MCP tools on
+     * @param toolServices  the agent-facing registries to connect/disconnect MCP tools on (ADR-0067)
      * @param onStateChange called on the UI thread with {@code true} when connected,
      *                      {@code false} when disconnected or on failure
      */
-    public McpConnectionService(ToolService toolService, Consumer<Boolean> onStateChange) {
-        this.toolService = toolService;
+    public McpConnectionService(List<ToolService> toolServices, Consumer<Boolean> onStateChange) {
+        this.toolServices = List.copyOf(toolServices);
         this.onStateChange = onStateChange;
     }
 
@@ -70,30 +72,42 @@ public class McpConnectionService {
         }
     }
 
+    /**
+     * Connects to all configured MCP servers on every registry — the synchronous body of the
+     * connect job (test seam).
+     */
+    public IStatus connectServers() {
+        final AtomicBoolean connected = new AtomicBoolean(false);
+        try {
+            var servers = McpPreferenceInitializer.loadServers();
+            if (!servers.isEmpty()) {
+                for (ToolService registry : toolServices) {
+                    registry.connectMcp(servers);
+                }
+                connected.set(true);
+            }
+            return PeonConstants.okStatus("MCP connected to " + servers.size() + " server(s)");
+        } catch (Exception e) {
+            return PeonConstants.errorStatus("MCP failed to connect: " + e.getMessage(), e);
+        } finally {
+            boolean state = connected.get();
+            McpPreferenceInitializer.setMcpEnabled(state);
+            onStateChange.accept(state);
+        }
+    }
+
     /** Connects to all configured MCP servers in a background Job. */
     public void connect() {
         Job.create("Connecting MCP servers", monitor -> {
-            final AtomicBoolean connected = new AtomicBoolean(false);
-            try {
-                var servers = McpPreferenceInitializer.loadServers();
-                if (!servers.isEmpty()) {
-                    toolService.connectMcp(servers);
-                    connected.set(true);
-                }
-                return PeonConstants.okStatus("MCP connected to " + servers.size() + " server(s)");
-            } catch (Exception e) {
-                return PeonConstants.errorStatus("MCP failed to connect: " + e.getMessage(), e);
-            } finally {
-                boolean state = connected.get();
-                McpPreferenceInitializer.setMcpEnabled(state);
-                onStateChange.accept(state);
-            }
+            return connectServers();
         }).schedule();
     }
 
-    /** Synchronously disconnects all MCP servers and removes their tools. */
+    /** Synchronously disconnects all MCP servers and removes their tools — on every registry. */
     public void disconnect() {
-        toolService.disconnectMcp();
+        for (ToolService registry : toolServices) {
+            registry.disconnectMcp();
+        }
     }
 
     /**

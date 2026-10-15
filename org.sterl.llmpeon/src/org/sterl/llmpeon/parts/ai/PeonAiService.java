@@ -201,7 +201,8 @@ public class PeonAiService {
         // The persistent poAgent instance survives clearAgents/reloads — stable reference.
         sharedTools.registerDiskGatedRegistry(poAgent.getToolService());
 
-        mcpConnectionService = new McpConnectionService(sharedToolService, mcpStateChange);
+        // ADR-0067: MCP connects every agent-facing registry (shared + Peon-PO's own).
+        mcpConnectionService = new McpConnectionService(List.of(sharedToolService, poAgent.getToolService()), mcpStateChange);
 
         // Context assembly (turn context, static bake, plan/handoff state) — pure component,
         // wired with values + lazy suppliers only (no service dependency).
