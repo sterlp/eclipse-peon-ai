@@ -104,6 +104,32 @@ separat aus — „0 skipped" ist derzeit nicht maschinell verifizierbar~~ **auf
 auch für Ignored mit `Result.IGNORED`; Maven-Semantik: „Tests" = total inkl. skipped).
 Sichtbar ab dem ersten Lauf nach Eclipse-Restart (Report-Formatierung im laufenden Bundle).
 
+## R6 ❌ specified — Cap-Test ohne 120 Seed-Dateien (2026-10-15, Paul)
+
+**IST:** `EclipseBuildToolTest.buildReportCappedAt100WithDisclosure` schreibt 120 kaputte
+`.java`-Dateien ins Fixture und triggert einen echten Build, um >100 Marker zu erzeugen. In einem
+degradierten Workspace (Recovery-State nach „unsaved changes" der Vornacht) liefert derselbe Build
+nur 2 Marker → der Test rotet ohne Produktfehler (Morgen-Run 2026-10-15).
+
+**SOLL:** Der Cap-Test erzeugt seine >100 Problem-Marker **ohne** 120 Seed-Dateien und so, dass das
+Ergebnis nicht vom Zustand des Runtime-Workspaces abhängt. **Gebaute Mechanik (2026-10-15):** drei
+Seed-Dateien (`CapSeedA/B/C.java`) mit je 40 unabhängigen Fehlern (`int e<i> = missing<i>;` je Zeile
+→ ein Marker je Fehlerzeile). **ECJ-Fakt (im Bau verifiziert, CompilerOptions.java:1614):**
+`maxProblemsPerUnit = 100` — der Eclipse-Compiler cappt Probleme **pro Compilation-Unit**, deshalb
+genau 3 × 40 statt 1 × 120 (eine Datei mit 120 Fehlern lief exakt 100 Marker). Die Behauptung des
+Tests ändert sich nicht: >100 Marker → Report cappt bei 100 mit Disclosure (`showing 100 of 120`).
+
+**WEIL:** Der Test prüft die Cap-/Disclosure-Logik des Tools, nicht die Build-Engine — ein echter
+Build über 120 Dateien bindet das Ergebnis an einen fremden Zustand, den der Test nicht kontrolliert.
+
+```
+GIVEN das Fixture trägt deterministisch >100 Problem-Marker (Seed-Mechanik ohne 120 Dateien)
+WHEN der Build-Report gelesen wird
+THEN der Report zeigt genau 100 Einträge und nennt die Disclosure („showing 100 of N")
+```
+→ `EclipseBuildToolTest.buildReportCappedAt100WithDisclosure` (Seed-Mechanik ersetzt, Name bleibt
+aussagekräftig; Maven Surefire bleibt die Ground Truth für die Zählung).
+
 ## Mock-LLM-Server — verifizierte Wire-Formate (Night-Cycle A, 2026-08-30)
 
 `MockLlmServer` bildet die Provider-Drähte nach; die Formate sind gegen den **echten

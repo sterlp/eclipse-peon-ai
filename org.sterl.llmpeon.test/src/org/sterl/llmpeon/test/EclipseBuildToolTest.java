@@ -27,6 +27,9 @@ public class EclipseBuildToolTest extends AbstractIntegrationTest {
     private static final String FILE_B = "src/org/sterl/fixture/Beta.java";
     private static final String FILE_C = "src/org/sterl/fixture/GrepTarget.java";
     private static final String FILE_CLEAN = "src/org/sterl/fixture/Alphabet.java";
+    private static final String CAP_SEED_A = "src/org/sterl/fixture/cap/CapSeedA.java";
+    private static final String CAP_SEED_B = "src/org/sterl/fixture/cap/CapSeedB.java";
+    private static final String CAP_SEED_C = "src/org/sterl/fixture/cap/CapSeedC.java";
 
     private final EclipseBuildTool tool = new EclipseBuildTool();
     private final List<IFile> markerFiles = new ArrayList<>();
@@ -221,13 +224,20 @@ public class EclipseBuildToolTest extends AbstractIntegrationTest {
     @Test(timeout = 180000)
     public void buildReportCappedAt100WithDisclosure() throws Exception {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
-        var capFiles = new ArrayList<String>();
         try {
-            // GIVEN 120 broken .java files (missing closing brace → JDT error per file)
-            for (int i = 0; i < 120; i++) {
-                String file = "src/org/sterl/fixture/cap/CapErr" + i + ".java";
-                eclipseWriteFile(file, "package org.sterl.fixture.cap;\nclass CapErr" + i + " {\n");
-                capFiles.add(file);
+            // GIVEN 3 seed files × 40 independent errors (one unresolved variable per line)
+            // → deterministically >100 markers, independent of the workspace recovery state
+            // (the JDT compiler caps problems per compilation unit at 100 by default,
+            //  CompilerOptions.maxProblemsPerUnit — one 120-line file would yield exactly 100)
+            var seedFiles = List.of(CAP_SEED_A, CAP_SEED_B, CAP_SEED_C);
+            for (int f = 0; f < seedFiles.size(); f++) {
+                var seed = new StringBuilder("package org.sterl.fixture.cap;\nclass CapSeed")
+                        .append((char) ('A' + f)).append(" {\n");
+                for (int i = 0; i < 40; i++) {
+                    seed.append("int e").append(i).append(" = missing").append(i).append(";\n");
+                }
+                seed.append("}\n");
+                eclipseWriteFile(seedFiles.get(f), seed.toString());
             }
 
             // WHEN
@@ -243,9 +253,9 @@ public class EclipseBuildToolTest extends AbstractIntegrationTest {
             assertEquals(100, markerLines);
         } finally {
             // delete fixture markers before the base after() deletes the fixture files
-            for (String file : capFiles) {
+            for (String seedFile : List.of(CAP_SEED_A, CAP_SEED_B, CAP_SEED_C)) {
                 try {
-                    project.getFile(file).deleteMarkers(IMarker.PROBLEM, true, IResource.DEPTH_ZERO);
+                    project.getFile(seedFile).deleteMarkers(IMarker.PROBLEM, true, IResource.DEPTH_ZERO);
                 } catch (CoreException e) {
                     // cleanup must not mask the test outcome
                 }
