@@ -28,6 +28,7 @@ import org.sterl.llmpeon.mcp.McpServerConfig;
 import org.sterl.llmpeon.mcp.McpServerConfig.McpTransportType;
 import org.sterl.llmpeon.mcp.McpService;
 import org.sterl.llmpeon.parts.PeonConstants;
+import org.sterl.llmpeon.parts.shared.SwtUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 
 
@@ -330,10 +331,8 @@ public class McpPreferenceView extends PreferencePage implements IWorkbenchPrefe
 
         private void applyTypeVisibility(Composite container) {
             boolean stdio = cmbType.getSelectionIndex() == 2;
-            grpHttp.setVisible(!stdio);
-            ((GridData) grpHttp.getLayoutData()).exclude = stdio;
-            grpStdio.setVisible(stdio);
-            ((GridData) grpStdio.getLayoutData()).exclude = !stdio;
+            SwtUtil.setVisible(grpHttp, !stdio);
+            SwtUtil.setVisible(grpStdio, stdio);
             container.layout(true, true);
             // Resize the shell to fit the new layout
             getShell().pack();

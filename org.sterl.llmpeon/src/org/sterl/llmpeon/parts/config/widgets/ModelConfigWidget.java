@@ -6,7 +6,6 @@ import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Button;
-import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
@@ -17,6 +16,7 @@ import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.provider.LlmProviders;
 import org.sterl.llmpeon.provider.ThinkSupport;
 import org.sterl.llmpeon.provider.ThinkValueSupport;
+import org.sterl.llmpeon.parts.shared.SwtUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 
 /**
@@ -51,8 +51,7 @@ import org.sterl.llmpeon.shared.StringUtil;
  * request-level and never flows into {@link #snapshot()}.</p>
  *
  * <p><b>Constructor contract:</b> the parent is the page's 2-column grid; the widget creates its
- * own labels — JFace Field-Editor style ({@code SWT.LEFT}, no GridData) by default, or
- * right-aligned ({@code SWT.END}, GridData) via the label-style parameter.</p>
+ * own labels — JFace Field-Editor style ({@code SWT.LEFT}, no GridData).</p>
  */
 public class ModelConfigWidget {
 
@@ -69,7 +68,6 @@ public class ModelConfigWidget {
             { "GitHub Models (PAT)", AiProvider.GITHUB_MODELS.name() } };
 
     private final Composite parent;
-    private final int labelStyle;
     private final Supplier<LlmConfig> base;
     private final Combo providerCombo;
     private final Text urlText;
@@ -92,20 +90,7 @@ public class ModelConfigWidget {
      *             are overridden with the live widget values in {@link #snapshot()}
      */
     public ModelConfigWidget(Composite parent, String jobName, Supplier<LlmConfig> base) {
-        this(parent, jobName, base, SWT.LEFT); // JFace Field-Editor style (basic page)
-    }
-
-    /**
-     * @param parent the 2-column grid to build into
-     * @param jobName used in the background Job names (e.g. "base" or "dev")
-     * @param base UI-thread supplier of the store state (transport parameters); provider/url/key
-     *             are overridden with the live widget values in {@link #snapshot()}
-     * @param labelStyle the label alignment: {@code SWT.LEFT} (basic page, JFace Field-Editor
-     *             style, no GridData) or {@code SWT.END} (advanced page, GridData)
-     */
-    public ModelConfigWidget(Composite parent, String jobName, Supplier<LlmConfig> base, int labelStyle) {
         this.parent = parent;
-        this.labelStyle = labelStyle;
         this.base = base;
 
         addLabel("Provider Type:");
@@ -139,9 +124,7 @@ public class ModelConfigWidget {
         // the parent's children and break the binding field order once the page adds its own
         // field editors after the widget.
         thinkLabel = addLabel("Think (Default):");
-        if (labelStyle != SWT.END) {
-            thinkLabel.setLayoutData(new GridData()); // needs a GridData instance for the exclude toggle
-        } // SWT.END labels already carry a GridData from addLabel
+        thinkLabel.setLayoutData(new GridData()); // needs a GridData instance for the exclude toggle
         thinkCombo = newCombo();
         thinkText = new Text(parent, SWT.BORDER);
         thinkText.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
@@ -154,7 +137,7 @@ public class ModelConfigWidget {
         temperatureText.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
         // Extra body (R-DEF-9/11): live provider gate — created once, toggled via GridData.exclude.
-        extraBody = new ExtraBodyWidget(parent, LlmProviders.of(provider()).supportsExtraBody(), labelStyle);
+        extraBody = new ExtraBodyWidget(parent, LlmProviders.of(provider()).supportsExtraBody(), SWT.LEFT);
     }
 
     /** The connection values as currently shown (null fields = empty, think "" = unset). */
@@ -232,11 +215,8 @@ public class ModelConfigWidget {
     }
 
     private Label addLabel(String text) {
-        var label = new Label(parent, labelStyle);
+        var label = new Label(parent, SWT.LEFT);
         label.setText(text);
-        if (labelStyle == SWT.END) {
-            label.setLayoutData(new GridData(SWT.END, SWT.CENTER, false, false)); // agent-section style
-        }
         return label;
     }
 
@@ -288,16 +268,11 @@ public class ModelConfigWidget {
         } else if (form instanceof ThinkSupport.Values v) {
             thinkCombo.setItems(v.values().toArray(String[]::new)); // real values, no off/auto (ADR-0064)
         }
-        setThinkVisible(thinkLabel, combo || text);
-        setThinkVisible(thinkCombo, combo);
-        setThinkVisible(thinkText, text);
+        SwtUtil.setVisible(thinkLabel, combo || text);
+        SwtUtil.setVisible(thinkCombo, combo);
+        SwtUtil.setVisible(thinkText, text);
         applyThinkValue(value);
         parent.layout();
-    }
-
-    private static void setThinkVisible(Control control, boolean visible) {
-        ((GridData) control.getLayoutData()).exclude = !visible; // GridLayout honors only exclude
-        control.setVisible(visible);
     }
 
     private Combo newCombo() {

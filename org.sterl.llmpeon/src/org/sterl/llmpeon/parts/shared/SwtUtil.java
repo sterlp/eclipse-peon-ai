@@ -6,8 +6,10 @@ import org.eclipse.swt.events.MouseTrackAdapter;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Rectangle;
+import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
 
 /**
  * SWT helpers. Techniques ported from Copilot's {@code UiUtils.createIconButton}
@@ -61,5 +63,18 @@ public class SwtUtil {
         });
 
         return btn;
+    }
+
+    /**
+     * Shows or hides a control inside a GridLayout.
+     *
+     * <p><b>GridData contract:</b> the control's layout data MUST already be a
+     * {@link GridData} — GridLayout honors only {@code exclude}; {@code setVisible} alone
+     * leaves the cell's space. The SWT visibility flag is kept in sync so accessibility and
+     * state stay consistent.
+     */
+    public static void setVisible(Control control, boolean visible) {
+        ((GridData) control.getLayoutData()).exclude = !visible;
+        control.setVisible(visible);
     }
 }

@@ -5,11 +5,11 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
 
 import org.sterl.llmpeon.provider.ExtraBodyExamples;
+import org.sterl.llmpeon.parts.shared.SwtUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 
 /**
@@ -102,10 +102,10 @@ public class ExtraBodyWidget {
             }
             gateOpen = supports;
         }
-        setGateVisible(label, supports);
-        setGateVisible(jsonText, supports);
-        setGateVisible(examplesRow, supports);
-        setGateVisible(statusLabel, supports && statusShown);
+        SwtUtil.setVisible(label, supports);
+        SwtUtil.setVisible(jsonText, supports);
+        SwtUtil.setVisible(examplesRow, supports);
+        SwtUtil.setVisible(statusLabel, supports && statusShown);
         parent.layout();
     }
 
@@ -131,7 +131,7 @@ public class ExtraBodyWidget {
         jsonText.setText(example.json());
         statusLabel.setText(example.name() + " example inserted.");
         statusShown = true;
-        setGateVisible(statusLabel, true);
+        SwtUtil.setVisible(statusLabel, true);
         parent.layout();
     }
 
@@ -144,10 +144,5 @@ public class ExtraBodyWidget {
             label.setLayoutData(new GridData()); // plain GridData — the instance is needed for the exclude toggle
         }
         return label;
-    }
-
-    private static void setGateVisible(Control control, boolean visible) {
-        ((GridData) control.getLayoutData()).exclude = !visible; // GridLayout honors only exclude
-        control.setVisible(visible);
     }
 }
