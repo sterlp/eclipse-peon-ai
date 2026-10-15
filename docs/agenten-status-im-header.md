@@ -103,3 +103,36 @@ THEN gibt es keine Sklaven-Zeilen und damit keine Compact-Buttons
 - `PeonAiServiceTest.getStatusAgents()` — PO aktiv → 4, Dev aktiv → leer (`assumeTrue`-geskippt
   headless, läuft in der IDE).
 - SWT-Darstellung selbst nicht getestet (wie `TokenHeaderWidget`).
+
+
+## Theme-Robustheit — `resolveTheme` null-safe (❌ specified 2026-10-15, Paul)
+
+**IST:** `EclipseUiUtil.resolveTheme` (EclipseUiUtil.java:47-55) guardt nur `themeEngine != null` —
+`IThemeEngine.getActiveTheme()` ist laut Javadoc **nullable** („the current active theme or null"),
+der fehlende Null-Check hat beim Morgen-Run 2026-10-15 eine NPE in der Header-Initialisierung
+produziert (Environment-Trigger: Theme-Engine ohne aktives Theme im Recovered-Workspace).
+
+**SOLL:**
+1. `resolveTheme` behandelt ein `null`-Ergebnis von `getActiveTheme()` wie jeden anderen
+   Unbestimmtheitsfall → Fallback `"light"`. Kein Log-und-Throw-Doppelpfad — der Fallback ist das
+   Ergebnis.
+2. `HeaderRosterStructureTest` setzt das Theme **explizit** vor dem Widget-Bau — der Test verlässt
+   sich nicht darauf, dass die Umgebung ein aktives Theme liefert.
+3. Da Mek prüft per Grep weitere `getActiveTheme()`-Aufrufstellen auf dasselbe Muster (guardt engine,
+   nicht theme) und meldet Befunde — auch außerhalb dieses Widgets.
+
+**WEIL:** „A guard that never fires is worse than none" — hier feuert der Guard unvollständig: er
+prüft die Engine, nicht das nullable Ergebnis der API, die der Javadoc ausdrücklich als nullable
+dokumentiert.
+
+```
+GIVEN die Theme-Engine liefert kein aktives Theme (getActiveTheme() == null)
+WHEN resolveTheme aufgerufen wird
+THEN das Ergebnis ist "light" (keine NPE)
+
+GIVEN ein aktives Theme ist gesetzt
+WHEN resolveTheme aufgerufen wird
+THEN das Ergebnis ist der registrierte Theme-Wert (unchanged)
+```
+→ `EclipseUiUtilTest.resolveThemeFallsBackToLightWhenThemeNull` (core/Plugin nach Modulzuordnung)
+· `HeaderRosterStructureTest` setzt Theme vor Widget-Bau.

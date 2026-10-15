@@ -2,9 +2,12 @@ package org.sterl.llmpeon.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assume.assumeTrue;
 
 import java.util.List;
 
+import org.eclipse.e4.core.contexts.IEclipseContext;
+import org.eclipse.e4.ui.css.swt.theme.IThemeEngine;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.RGB;
@@ -12,6 +15,7 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.ui.PlatformUI;
 import org.junit.Test;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.model.CompactResult;
@@ -35,13 +39,21 @@ import dev.langchain4j.data.message.ChatMessage;
  * contract: the roster CSS class resolves to white in the light theme (css/default-styles.css).
  * They are falsifiable too — drop the CSS class assignment and the controls fall back to the
  * default background (the shell's deliberate (200,220,240) proves the white is CSS-driven,
- * not inherited).
+ * not inherited). The active E4 theme is pinned to the default (light) theme before the widget
+ * is built so the white assertions are deterministic regardless of the workbench's current theme.
  */
+@SuppressWarnings("restriction")
 public class HeaderRosterStructureTest extends AbstractSwtUiTest {
 
     @Test
     public void rosterIsFlatAndInheritsBackground() {
+        // Pin the active theme to the default (light) theme so the CSS background assertions are
+        // deterministic; skip when no theme engine is available. The Assume runs BEFORE the ui-call
+        // so an AssumptionViolatedException is not wrapped into an AssertionError by ui().
+        var engine = themeEngine();
+        assumeTrue("no E4 theme engine available", engine != null);
         ui(() -> {
+            engine.setTheme(IThemeEngine.DEFAULT_THEME_ID, false);
             // deliberately NOT white: if the controls merely inherited the shell background,
             // the white assertion below fails
             var headerBg = new Color(display, 200, 220, 240);
@@ -80,6 +92,13 @@ public class HeaderRosterStructureTest extends AbstractSwtUiTest {
             }
             return null;
         });
+    }
+
+    /** The workbench's E4 CSS theme engine (PlatformUI → IEclipseContext → IThemeEngine), or null. */
+    private static IThemeEngine themeEngine() {
+        if (!PlatformUI.isWorkbenchRunning()) return null;
+        var context = PlatformUI.getWorkbench().getService(IEclipseContext.class);
+        return context == null ? null : context.get(IThemeEngine.class);
     }
 
     private static Control firstButton(Control[] children) {

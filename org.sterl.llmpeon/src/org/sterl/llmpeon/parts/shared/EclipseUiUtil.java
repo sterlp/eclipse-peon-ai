@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.parts.shared;
 
 import org.eclipse.e4.core.contexts.IEclipseContext;
+import org.eclipse.e4.ui.css.swt.theme.ITheme;
 import org.eclipse.e4.ui.css.swt.theme.IThemeEngine;
 import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.util.PropertyChangeEvent;
@@ -43,11 +44,17 @@ public class EclipseUiUtil {
     // IThemeEngine is internal E4 CSS API. Reading the CSS engine directly is the correct source for the
     // active theme: the public IThemeManager uses a separate workbench-theme registry (its IDs can be
     // non-CSS values such as org.eclipse.ui.defaultTheme), so it is NOT provably behavior-identical here.
+    /**
+     * Package-private (visible for tests). Resolves the active E4 theme from the given context to
+     * {@code "dark"} or {@code "light"}. A missing context, theme engine, or active theme all resolve
+     * to {@link #LIGHT_THEME_NAME} — never throws.
+     */
     @SuppressWarnings("restriction")
-    private static String resolveTheme(IEclipseContext context) {
+    static String resolveTheme(IEclipseContext context) {
         if (context != null) {
             IThemeEngine themeEngine = context.get(IThemeEngine.class);
-            if (themeEngine != null && DARK_THEME_ID.equals(themeEngine.getActiveTheme().getId())) {
+            ITheme activeTheme = themeEngine == null ? null : themeEngine.getActiveTheme();
+            if (activeTheme != null && DARK_THEME_ID.equals(activeTheme.getId())) {
                 return DARK_THEME_NAME;
             }
         }
