@@ -11,11 +11,24 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.sterl.llmpeon.StreamMock;
+import org.sterl.llmpeon.ai.ConfiguredChatModel;
+import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.memory.ThreadSafeMemory;
+import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.tool.ToolLoopRequest;
+import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
+
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.response.ChatResponse;
 
 class DiskFileReadToolsTest {
 
@@ -233,5 +246,49 @@ class DiskFileReadToolsTest {
 
         // THEN
         assertThat(result).isEqualTo("   1: äüß Ö ⚡\n");
+    }
+
+    @Test
+    void readOnToolLineStartsWithScrollSymbol() throws IOException {
+        // GIVEN
+        Files.writeString(tempDir.resolve("hello.txt"), "world");
+        var lines = new ArrayList<String>();
+        tool.withToolRequest(request(monitorCapturing(lines)));
+
+        // WHEN - full read
+        String result = tool.diskReadFile("hello.txt", 0, 0);
+
+        // THEN - the done line starts with the symbol, the return stays untouched
+        assertThat(lines).hasSize(1);
+        assertThat(lines.get(0)).startsWith("📜 Reading");
+        assertThat(lines.get(0)).contains("file hello.txt");
+        assertThat(lines.get(0)).endsWith(StringUtil.charsSuffix(result));
+
+        // WHEN - range read
+        tool.diskReadFile("hello.txt", 1, 1);
+
+        // THEN
+        assertThat(lines).hasSize(2);
+        assertThat(lines.get(1)).startsWith("📜 Reading  from 1 to 1 file hello.txt");
+    }
+
+    /** Full request wiring (memory + chatModel are required fields) — the model is never called by this tool. */
+    private static ToolLoopRequest request(AiMonitor monitor) {
+        var config = LlmConfig.builder().model("test").build();
+        var cm = new StreamMock().buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("unused"))
+                .build());
+        return ToolLoopRequest.builder()
+                .memory(new ThreadSafeMemory())
+                .chatModel(new ConfiguredChatModel(config, cm))
+                .monitor(monitor)
+                .build();
+    }
+
+    private static AiMonitor monitorCapturing(List<String> lines) {
+        return new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onTool(String message) { lines.add(message); }
+        };
     }
 }

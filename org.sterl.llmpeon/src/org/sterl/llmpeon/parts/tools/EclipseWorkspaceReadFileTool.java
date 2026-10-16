@@ -114,7 +114,7 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
                 throw new IllegalArgumentException(e.getMessage(), e);
             }
             String result = FileLines.extract(content, startLine, endLine);
-            onTool("Reading eclipse" + lines + " file " + filePath + " " + StringUtil.charsSuffix(result));
+            onTool("📜 Reading eclipse" + lines + " file " + filePath + " " + StringUtil.charsSuffix(result));
             return result;
         }
         onProblem("No eclipse file found for " + filePath);

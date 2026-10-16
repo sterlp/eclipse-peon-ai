@@ -65,7 +65,7 @@ public class DiskFileReadTool extends AbstractTool {
             if (startLine > 0 && endLine > 0) lines = " from " + startLine + " to " + endLine;
             String content = Files.readString(resolved);
             String result = FileLines.extract(content, startLine, endLine);
-            onTool("Reading " + lines + " file " + filePath + " " + StringUtil.charsSuffix(result));
+            onTool("📜 Reading " + lines + " file " + filePath + " " + StringUtil.charsSuffix(result));
             return result;
         } catch (IOException e) {
             throw new RuntimeException("Failed to read " + filePath, e);
