@@ -171,3 +171,9 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   `parseAllowlist` zu null normalisiert, aber der Typ trägt die Unterscheidung nicht). Sealed
   `All`/`Filtered(allow, deny)` würde Sonderregel „nur Negationen" in eine testbare Resolve-Funktion
   ziehen. Gestaltungspunkt, kein Defekt — Revisit, falls ToolPolicy erneut angefasst wird.
+- ⏳ **EclipseGrepTool IFile-Disclosure (Da-Dok-CONCERN, 2026-10-16):** der IFile-Zweig (:68-69) wendet
+  bei Datei-Target **keinen** Extension-Filter an, aber `grepComplete` (:82-83) / onTool (:88-89)
+  disclosen die rohe Extension — dieselbe Text/Inhalt-Diskrepanz, die Inc-C-EXT auf der Disk-Seite
+  gefixt hat (AGENTS „one behaviour, one implementation", Familien-Parität). Fix = C-EXT-Muster
+  (effectiveExtension beim Datei-Target null), Details + Zeilen in peon-plan-§9 (Archiv). **Blocked
+  bis Pauls WIP an EclipseGrepTool gemerged ist** (S TABU, war im Zyklus live-editiert).

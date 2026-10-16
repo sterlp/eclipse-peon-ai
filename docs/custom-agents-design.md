@@ -28,7 +28,8 @@ tools:                        # optional; absent = all tools
 ```
 
 - `tools` accepts a YAML block list or inline CSV (`tools: grep, read_`).
-- Absent `tools` ⇒ `null` ⇒ **all** tools; empty list ⇒ nothing.
+- Absent `tools` ⇒ `null` ⇒ **all** tools; empty YAML list `tools: []` ⇒ nothing (**≠ omitted** —
+  nur im Frontmatter: das UI normalisiert ein leeres Feld zu absent ⇒ all, [agent-tool-config.md](agent-tool-config.md) R-ATC-3).
 - Keys are lower-cased during parse. `PromptYmlParser.getValue()` falls back across
   hyphen/underscore variants: `read-only` ↔ `read_only` ↔ `readonly` all resolve to the same key.
 

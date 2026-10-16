@@ -159,7 +159,7 @@ idPrefix: ATC
   werden — der Dialog ist eine read-only Liste ohne Cap; bewusst so (Vorschau soll vollständig
   sein), UX-Punkt falls er in der Praxis nervt.
 
-### R-ATC-10 ❌ — Wildcard-Semantik vereinheitlicht: trailing `*` = Präfix-Match (Allow UND Deny)
+### R-ATC-10 ✅ done (2026-10-16, `35146c40`) — Wildcard-Semantik vereinheitlicht: trailing `*` = Präfix-Match (Allow UND Deny)
 
 - **SOLL (Paul, 2026-10-16, externes Review):** ein trailing `*` auf einem Token bedeutet
   Präfix-Match — in der **Allow**- wie in der **Deny**-Liste: `eclipse*`, `debug*`, `!debugJava*`

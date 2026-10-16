@@ -105,7 +105,7 @@ THEN gibt es keine Sklaven-Zeilen und damit keine Compact-Buttons
 - SWT-Darstellung selbst nicht getestet (wie `TokenHeaderWidget`).
 
 
-## Theme-Robustheit — `resolveTheme` null-safe (❌ specified 2026-10-15, Paul)
+## Theme-Robustheit — `resolveTheme` null-safe (✅ done 2026-10-15, `a4859e4a`; specified 2026-10-15, Paul)
 
 **IST:** `EclipseUiUtil.resolveTheme` (EclipseUiUtil.java:47-55) guardt nur `themeEngine != null` —
 `IThemeEngine.getActiveTheme()` ist laut Javadoc **nullable** („the current active theme or null"),
@@ -134,5 +134,7 @@ GIVEN ein aktives Theme ist gesetzt
 WHEN resolveTheme aufgerufen wird
 THEN das Ergebnis ist der registrierte Theme-Wert (unchanged)
 ```
-→ `EclipseUiUtilTest.resolveThemeFallsBackToLightWhenThemeNull` (core/Plugin nach Modulzuordnung)
-· `HeaderRosterStructureTest` setzt Theme vor Widget-Bau.
+→ `EclipseUiUtilTest.themeNullResolvesToLight` (Plugin-Test-Bundle, Package
+`org.sterl.llmpeon.parts.shared` — das Test-Bundle ist ein Fragment-Host von `org.sterl.llmpeon`,
+package-private Access zum Host ist dadurch legal) · `HeaderRosterStructureTest` setzt Theme vor
+Widget-Bau.

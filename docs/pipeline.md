@@ -61,3 +61,9 @@ Trigger push/PR auf `main` (paths-ignore `docs/**`, `skills/**`). CI ist **headl
   werfen, das die Suite rot färbt.
 - Workflow-Namen: `maven.yml` heißt intern „build and deploy Peon AI" — Release-Gate = grüner
   Build auf main.
+
+## Lokale OSGi-Test-Läufe via Maven
+
+Wie man die OSGi-Tests lokal (headless, ohne Eclipse) per Maven startet — Befehl, erwartete
+Zahlen (350/0/44, Core 1110), die 44 by-design SWT-Skips und der „kein stiller Skip"-Nachweis:
+siehe [test-setup.md](test-setup.md) → „OSGi-Tests via Maven (headless)" (verifiziert 2026-10-15).

@@ -455,7 +455,7 @@ genau diese Klausel von R1c (Rest von R1c unverändert, siehe Notiz dort).
 wegoptimiert, doch auch danach braucht der Agent Zeilennummern für Folge-Edits. Token-Preis
 (~5–7 Zeichen/Zeile) ist kleiner als ein erneuter Range-Read oder eine falsche Edit-Position.
 
-## ℹ️ 2026-10-16 — Grep-Target darf eine einzelne Datei sein (Pauls Fix)
+## ℹ️ 2026-10-16 — Grep-Target darf eine einzelne Datei sein (Pauls Fix) — ✅ getestet (`2ff69adb`, DiskGrepToolTest 5 Fälle)
 
 - `diskGrepFiles`: ein **regulärer Dateipfad** als `path` ist jetzt ein gültiges Target — das Tool
   greppt genau diese Datei (decompose: `grepDirectory`/`grepFile`-Zweige am resolved Path, gleiche

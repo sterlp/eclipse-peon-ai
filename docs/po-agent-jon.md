@@ -879,7 +879,7 @@ anfangen"-Aktion des Users, Compact ist Kontextpflege.
 - **Homepage:** das Verhalten ist user-facing und wird dort dokumentiert (**✅ done** —
   `homepage/src/usage/agents.md` inkl. Sidebar-Eintrag, Zyklus story/po-compact-2026-09-13).
 
-### R20: Jon nimmt an den dynamischen Tool-Familien teil — disk-Gate + MCP ❌ specified (2026-10-15, Paul)
+### R20: Jon nimmt an den dynamischen Tool-Familien teil — disk-Gate + MCP ✅ done (2026-10-15, `5369372a`/`bb55d5f1`, specified 2026-10-15, Paul)
 
 **IST (vermessen 2026-10-15):** Jon hat seine eigene kuratierte Registry (`BuildPoAgentComponent:
 67`, `new ToolService(false)`, 12 `addTool`) — und genau die wird von beiden dynamischen Familien
