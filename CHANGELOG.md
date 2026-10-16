@@ -5,6 +5,29 @@ All notable changes to Peon AI are documented here. Format loosely follows
 
 Releases before `2.12.4` are documented via [GitHub Releases](https://github.com/sterlp/eclipse-peon-ai/releases).
 
+## [2.13.0] — 2026-10-16
+
+### Added
+
+- **Per-agent tool allowlists.** Every agent (built-in and custom) can be restricted to a set of
+  tools — via the preference UI for built-in agents (`llm.agent.<id>.tools`, Basic page for Dev)
+  and via a `tools:` frontmatter key for custom `AGENT.md` agents. Supports `!` negation
+  (allow-then-deny; a deny-only list is rejected in the UI), suffix wildcards (`package*` matches
+  `packageSearch`), and a preview button showing the effective tool set per agent.
+- **Dedicated REVIEW slot.** The review agent gets its own model slot instead of sharing the
+  Plan slot.
+- **Tool output symbols.** Tool progress lines now start with a role symbol — 🔍 search/grep,
+  📜 read, 🗜 compact — so a chat log can be scanned at a glance.
+- **Smarter path resolution.** The Eclipse file tools resolve paths against the selected project
+  first, then the workspace root, then all open projects (with a `src/` fallback) — fewer
+  "file not found" misses for guessed paths.
+
+### Fixed
+
+- `diskGrepFiles` on a single file target: honest error message and correct extension handling.
+- Header status widget no longer breaks when no theme is active (falls back to "light").
+
+
 ## [2.12.4] — 2026-09-30
 
 ### Added
