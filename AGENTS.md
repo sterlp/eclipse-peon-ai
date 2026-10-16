@@ -54,6 +54,11 @@ Module guides (read when working in one):
 - **Report, don't route around.** If a tool gives a surprising result, report query, scope and the
   expected file — never silently switch from `eclipse*` to `disk*`. That switch hides exactly the
   bug worth finding.
+- **Docs that describe uncommitted WIP are still committed (hit 2026-10-16, symbol-rollout close):**
+  a doc note documenting someone's WIP (e.g. the `resolveInEclipse` note in
+  `docs/eclipse-read-tools.md` marked "Pauls WIP") is SOLL-Doku — committed with the docs cycle;
+  only the code stays WIP. Likewise the skill-impact ledger (`.agents/skills/wiki/skill-impact.md`)
+  rides with the cycle it belongs to — otherwise the ledger line exists only locally.
 - **Re-read after every line-based edit.** `eclipseReplaceLines`/`diskReplaceLines` have repeatedly
   behaved as *insert* instead of *replace* — the old line stays, the new content lands below it,
   with no error. It corrupted Java sources until a whole increment had to be reset. Read the changed
