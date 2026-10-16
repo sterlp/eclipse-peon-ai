@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -37,7 +38,7 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
 
     private static final ILog LOG = Platform.getLog(EclipseWorkspaceReadFileTool.class);
 
-    private IProject currentProject;
+    private volatile IProject currentProject;
 
     public void setCurrentProject(IProject currentProject) {
         this.currentProject = currentProject;
@@ -51,7 +52,7 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
     @Tool("Open a workspace file, not directory, in the Eclipse editor to show it to the user e.g. a plan or summary.")
     public String eclipseOpenFileInEditor(@P(description = "workspace-relative path", name = "filePath") String filePath) {
         ArgsUtil.requireNonBlank(filePath, "filePath");
-        var resource = EclipseUtil.resolveInEclipse(filePath);
+        var resource = EclipseUtil.resolveInEclipse(filePath, Optional.ofNullable(currentProject));
         if (resource.isEmpty()) {
             onProblem("No eclipse file found for " + filePath);
             return "Cannot open: no file found at '" + filePath + "'. Use searchWorkspaceFiles to find the correct path.";
@@ -103,7 +104,7 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
         if (startLine == null) startLine = 0;
         if (endLine == null) endLine = 0;
 
-        var file = EclipseUtil.resolveInEclipse(filePath);
+        var file = EclipseUtil.resolveInEclipse(filePath, Optional.ofNullable(currentProject));
         if (file.isPresent() && file.get() instanceof IFile f) {
             var lines = "";
             if (startLine > 0 && endLine > 0) lines = " from " + startLine + " to " + endLine;
@@ -222,7 +223,7 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
             return t.eclipseListAllOpenProjects();
         }
 
-        var resource = EclipseUtil.resolveInEclipse(path);
+        var resource = EclipseUtil.resolveInEclipse(path, Optional.ofNullable(currentProject));
         if (resource.isEmpty()) {
             throw new IllegalArgumentException("Directory not found: " + path);
         }

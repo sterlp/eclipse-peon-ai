@@ -20,14 +20,14 @@ import org.eclipse.swt.widgets.Composite;
 import org.osgi.framework.FrameworkUtil;
 import org.sterl.llmpeon.parts.shared.EclipseUiUtil;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
-import org.sterl.llmpeon.shared.ChatMessageUtil;
-import org.sterl.llmpeon.shared.LiveStatus;
-import org.sterl.llmpeon.shared.OnPartialAiResponse;
-import org.sterl.llmpeon.shared.OnPartialAiResponse.Type;
 import org.sterl.llmpeon.parts.widget.model.HideLiveStatusCommand;
 import org.sterl.llmpeon.parts.widget.model.LiveStatusCommand;
 import org.sterl.llmpeon.parts.widget.model.ScrollToBottomCommand;
 import org.sterl.llmpeon.parts.widget.model.SetThemeCommand;
+import org.sterl.llmpeon.shared.ChatMessageUtil;
+import org.sterl.llmpeon.shared.LiveStatus;
+import org.sterl.llmpeon.shared.OnPartialAiResponse;
+import org.sterl.llmpeon.shared.OnPartialAiResponse.Type;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.model.ToSimpleMessage;
 

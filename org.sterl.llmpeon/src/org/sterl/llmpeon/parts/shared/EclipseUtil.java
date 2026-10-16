@@ -363,12 +363,19 @@ public class EclipseUtil {
      * workspace-relative first, then project-relative in each open project.
      */
     public static Optional<IResource> resolveInEclipse(String path) {
-        if (StringUtil.hasNoValue(path))
-            return Optional.empty();
+        return resolveInEclipse(path, Optional.empty());
+    }
+    
+    public static Optional<IResource> resolveInEclipse(String path, Optional<IProject> project) {
+        if (StringUtil.hasNoValue(path)) return Optional.empty();
         IPath ipath = IPath.fromPortableString(path);
+
+        if (project.isPresent()) {
+            var r = project.get().findMember(ipath);
+            if (r != null && r.exists()) return Optional.of(r);
+        }
         try {
-            var result = ResourcesPlugin.getWorkspace().getRoot()
-                    .findMember(ipath);
+            var result = ResourcesPlugin.getWorkspace().getRoot().findMember(ipath);
             if (result != null && result.exists())
                 return Optional.of(result);
         } catch (Exception e) {
@@ -377,12 +384,10 @@ public class EclipseUtil {
 
         for (var p : openProjects()) {
             var result = p.findMember(ipath);
-            if (result != null && result.exists())
-                return Optional.of(result);
+            if (result != null && result.exists()) return Optional.of(result);
             // java src fallback
             result = p.findMember("src/" + ipath);
-            if (result != null && result.exists())
-                return Optional.of(result);
+            if (result != null && result.exists()) return Optional.of(result);
         }
         return Optional.empty();
     }

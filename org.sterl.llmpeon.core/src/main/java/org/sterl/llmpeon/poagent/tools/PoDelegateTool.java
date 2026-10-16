@@ -250,7 +250,7 @@ public class PoDelegateTool extends AbstractTool {
             return result;
         } catch (IllegalStateException e) {
             onProblem(target.uiName() + " " + e.getMessage());
-            return "Failed: " + target.uiName() + e.getMessage();
+            return "Failed: " + target.uiName() + " " + e.getMessage();
         }
     }
 

@@ -3,6 +3,7 @@ package org.sterl.llmpeon.parts.tools;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import org.eclipse.core.resources.IContainer;
@@ -29,7 +30,7 @@ public class EclipseGrepTool extends AbstractEclipseTool {
 
     private static final ILog LOG = Platform.getLog(EclipseGrepTool.class);
 
-    private IProject currentProject;
+    private volatile IProject currentProject;
 
     public void setCurrentProject(IProject currentProject) {
         this.currentProject = currentProject;
@@ -57,7 +58,7 @@ public class EclipseGrepTool extends AbstractEclipseTool {
                 refreshTargets.add(currentProject);
             }
         } else {
-            var resource = EclipseUtil.resolveInEclipse(path);
+            var resource = EclipseUtil.resolveInEclipse(path, Optional.ofNullable(currentProject));
             if (resource.isEmpty()) {
                 throw new IllegalArgumentException("Path not found: " + path + " check your query or leave the path empty.");
             }
@@ -84,7 +85,7 @@ public class EclipseGrepTool extends AbstractEclipseTool {
             var searchedScope = allProjects ? "all open projects (" + containers.size() + ")" : path;
             result += System.lineSeparator() + "Searched: " + searchedScope + " · pattern: " + query;
         }
-        onTool("Eclipse grep '" + query + "' type '" + StringUtil.getOrDefault(extension, "*")
+        onTool("🔍 grep '" + query + "' type '" + StringUtil.getOrDefault(extension, "*")
                 + "' found " + hits.size() + " matched lines" + " " + StringUtil.charsSuffix(result));
         return result;
     }
