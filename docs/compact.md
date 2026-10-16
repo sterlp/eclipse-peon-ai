@@ -68,12 +68,12 @@ beim Compact verworfen.
 ### R-CC-1 — Context-Counter misst Input, nie Kosten ✅
 
 `totalTokenUsed` trägt ausschließlich Kontextgröße (Prompt-Input). Provider
-`TokenUsage.inputTokenCount()` wird verwendet (Fallback: Estimate chars×2/7); `totalTokenCount()`
+`TokenUsage.inputTokenCount()` wird verwendet (Fallback: Estimate chars/3); `totalTokenCount()`
 (Kosten) fließt **nie** in den Kontext-Zähler — Header ↑↓ bleibt Kosten (ADR-0004).
 
 - GIVEN Response `TokenUsage(input=1000, output=5000, total=6000)` WHEN `addResult` THEN
   Zähler wächst um **1000**. *(Test: `ThreadSafeMemoryInputTokenCountTest#countsInputNotTotal`)*
-- GIVEN Response ohne TokenUsage WHEN `addResult` THEN Estimate (chars×2/7). *(Test:
+- GIVEN Response ohne TokenUsage WHEN `addResult` THEN Estimate (chars/3). *(Test:
   `ThreadSafeMemoryInputTokenCountTest#fallsBackToEstimate`)*
 
 ### R-CC-2 — Reevaluate nur nach erfolgreichem Compact ✅
@@ -111,7 +111,7 @@ Hint (Stuck-Pfad) unterliegt demselben Dedup.
 
 ### R-CC-6 — Estimate als Estimate gekennzeichnet ✅
 
-Wird der Zähler als Estimate (chars×2/7) bestimmt, zeigt die Anzeige `~N (estimate)` (PoDelegateTool-
+Wird der Zähler als Estimate (chars/3) bestimmt, zeigt die Anzeige `~N (estimate)` (PoDelegateTool-
 Kontext, Roster). Provider-Werte ohne Tilde. *(Test: `ContextCounterDisplayTest#estimateIsDisclosed`)*
 
 ### R-CC-7 — Compact-Fehler sichtbar + begrenzter Retry 🚧 in design (Paul 2026-09-24)
@@ -203,7 +203,7 @@ Stack; LLM erfährt nichts, Header hängt ([header-state-leak.md](header-state-l
 
 ### R-CC-13 ✅ — Token-Mathe zentral in `ChatMessageUtil`, Trim in `ContextTrimComponent` (built `08c9a57`)
 
-- Die Formel (`chars×2/7`) wird **zentral** in `ChatMessageUtil` abgelegt/verwendet; die
+- Die Formel (`chars/3`) wird **zentral** in `ChatMessageUtil` abgelegt/verwendet; die
   Trim-Logik (Stufenkürzung, Caps, letzte User-Message voll) lebt vollständig in
   `ContextTrimComponent`. Keine Doppelhaltung der Mathe, keine Compact-Logik außerhalb der
   Component.
@@ -233,7 +233,7 @@ Response-`inputTokenCount()` → Summe läuft davon). Vor jedem Fix wird gemesse
   1. `memory` — `ThreadSafeMemory.getTotalTokenUsed()` + `isTokenEstimate()` (unser Zähler),
   2. `model` — der letzte provider-gemeldete `inputTokenCount()` (was das Modell beim letzten
      Call **tatsächlich** sah; ohne Modell-Meldung: `n/a`),
-  3. `estimate` — unsere `chars×2/7`-Schätzung über den aktuellen Context.
+  3. `estimate` — unsere `chars/3`-Schätzung über den aktuellen Context.
 - GIVEN Memory meldet 289493 WHEN Modell-Input 80k und Estimate 82k THEN die Skip-/Hint-Zeile
   zeigt alle drei Werte mit Flags (so kann Paul die Quelle der falschen Zahl bestimmen).
 - **Der Fix der Memory-Summe (falls bestätigt) ist ein EIGENER Punkt** — dieser Regel geht nur die

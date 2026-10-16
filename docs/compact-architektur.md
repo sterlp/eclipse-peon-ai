@@ -26,7 +26,7 @@
 | `ContextTrimComponent` (core `compact`) | die Stufenkürzung: Stage-Caps (Think 9000 front, Tool-Results 6000, letzte UserMessage voll, dynamisches Per-Message-Cap), Presets — pure, kein LLM/Memory |
 | `CompactResult` (core `model`) | die Antwort: `summary`, `Stats`, `resultLine()` — eine Implementierung für Log + Tool-Result + UI |
 | `ThreadSafeMemory` | die Token-Zahlen (`totalTokenUsed`, `tokenIsEstimate`, `lastProviderInputTokens`) + deren Format `tokenDiagnosis()` (R-CC-10) |
-| `ChatMessageUtil` | nur die generische Mathe (`chars×2/7`, 1× zentral) |
+| `ChatMessageUtil` | nur die generische Mathe (`chars/3`, 1× zentral) |
 
 **Emissions-Regel:** Jede Komponente emittiert nur an den Besitzer ihres Pfads — Agent am Monitor,
 Service am Log. Niemand anderes spricht zum User.

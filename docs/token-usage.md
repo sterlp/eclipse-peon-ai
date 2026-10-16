@@ -50,6 +50,9 @@ The readout is **always visible** (kept simple — no show/hide logic).
 - **GIVEN** a response arrives with usage **WHEN** the totals change **THEN** the header updates live
   to `↑ <sent>  ↓ <received>` and reflows so the wider text is visible. `received` =
   output/generated tokens.
+- **Format (R5a, 2026-10-16, Issue #154):** `StringUtil.toK` rendert **ohne Tausender-Separatoren**,
+  locale-unabhängig — `1234567 → "1234k"`. Zuvor `Locale.GERMANY`-Gruppierung (`"1.234k"`), die auf
+  Deutsch als Dezimalpunkt (33 Mio. statt 33 Tsd.) gelesen wurde.
 
 ### R5 — Per-agent stats ❌
 Each `AiAgent` owns its own `TokenStats` (its own `sent`/`received`), so a future UI can break spend

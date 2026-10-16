@@ -33,7 +33,7 @@ Ergebnisses, das in den LLM-Kontext geht (der Return-String des Tools, nicht UI-
 
 ### R-RS-2 — chars, kein Token-Estimate ✅ done (`0be9a4c5`)
 
-Die Zeile nennt **Zeichen** (deterministisch, gemessen), kein `chars×2/7`-Estimate — Estimates
+Die Zeile nennt **Zeichen** (deterministisch, gemessen), kein `chars/3`-Estimate — Estimates
 rauschen und gehören mit Tilde markiert (R-CC-6-Muster); hier gar kein Estimate.
 
 - GIVEN dieselbe Tool-Zeile WHEN gemessen THEN der `(N chars)`-Wert ist exakt die Stringlänge,

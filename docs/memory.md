@@ -1,52 +1,36 @@
-# Session-Stand — 2026-10-16 (Zyklus abgeschlossen: Review-Fixes + Symbole S1/S2 + Paul-WIP-Merge)
+# Session-Stand — 2026-10-16 Abend (Nachtzyklus 5, autonom)
 
 > docs/** — insbesondere memory.md — schreibt AUSSCHLIESSLICH Jon. Agenten liefern Facts im Chat.
+> **Nachtzyklus: keine askUser-Rückfragen, autonom bis zum Ende, Zusammenfassung für morgen früh.**
 
-## Zyklus-Ergebnis (2026-10-16, Branch `story/agent-tool-config`)
+## Auftrag (Paul, 2026-10-16, Prio-Reihenfolge)
 
-1. **Externes Review getriagt:** stale Punkte (resolved-points-Zeile, no-IO-Assertion) waren schon
-   erledigt; connectServers-Package-Private-Befund faktisch falsch (Test in anderem Package); restliche
-   validen Punkte eingebaut.
-2. **Inc A ✅ `35146c40`** — R-ATC-10 ✅ Suffix-Wildcard einheitlich (`stripWildcard` Allow+Deny),
-   4 Tests + Mutation-Nachweis, Homepage 3 Sektionen + Review-Doc-Edits. Gates 1114/0 + 350/0.
-3. **Inc B ✅ `17d1763c`** — `ToolService.activeNames(classFilter, nameFilter)` als einzige
-   Preview-Quelle; AbstractAgent + SearchAgentTool delegieren; +2 Tests. Gates 1116/0 + 350/0.
-4. **Inc C ✅ `2ff69adb`** — Pauls DiskGrepTool-Fix abgesichert: 5 Tests (Red-Nachweis), C-EXT-Decision
-   (effectiveExtension), grepDirectory List. Gates 1121/0 + 350/0. **🔍 = Search/Grep damit gebaut.**
-5. **Eclipse-Path-Resolution (Paul-WIP):** SOLL = resolveInEclipse(path, Optional<IProject>) Reihenfolge
-   1) selektiertes Projekt 2) Workspace-Root 3) offene Projekte (+`src/`-Fallback); Miss-Disclosure
-   bewusst VERWORFEN („nicht überengineieren"); `volatile currentProject` = richtiger Thread-Safety-Fix.
-6. **Tool-Output-Symbole ✅ (icons.md, Paul entschieden 2026-10-16):**
-   - 🔍 Search/Grep — gebaut (`2ff69adb` Disk + Eclipse-Seite jetzt auch committed); Da Sniffa freigegeben.
-   - 📜 Read — **S1 ✅ `2209215e`** (nur diskReadFile+eclipseReadFile, rot-erst, Hunk-Staging).
-   - 🗜 Compact — **S2 ✅ `e216f00d`** (`TOOL_MESSAGE_PREFIX`-Konstante, Start/Skip/Fail/Result-Zeilen
-     + AbstractAgent:373; AIChatView TABU-frei via Konstante). Gates 1126/0 + PDE 351/0.
-   - Da-Dok-Review: **ACCEPTED**. Präexistenter 🗜 in ToolService.java:246 (R-CC) als „präexistent" notiert.
-   - **S3 ❌ offen, JETZT UNBLOCKED:** 🗜 auch in PoDelegateTool:188-200 (3 Branches) + AgentsTool:296-300;
-     PoDelegateTest:256 anpassen.
-7. **Docs-Flips + Hausarbeiten (alle pushed):** sub-agent-timing.md 🗜-Format, index.md Z.61 „✅ gebaut",
-   icons.md komplett (`97cca6a3`); Plan archiviert `2cf725db` (`overview-done-2026-10-16-16-45.md`);
-   resolve-WIP-Note + skill-impact-Ledger `483a33c3`; AGENTS-Working-Agreement `3b6a10e8`
-   („Docs, die WIP beschreiben, werden trotzdem committed").
-8. **Paul-WIP übernommen ✅ `af658e0f`** (Paul freigegeben, Jon gegen IST geprüft, Gate grün:
-   Plugin-Compile 0 Errors, Surefire 1126/0): resolveInEclipse-Overload (SOLL-konform), volatile
-   currentProject (Grep/Read/Write), 🔍-Präfix EclipseGrepTool:88, PoDelegateTool:253 Space-Fix,
-   ChatMarkdownWidget Import-Sortierung. **Nur die 2 untracked Verzeichnisse (`agent/model/`,
-   `agent/tools/`) bleiben draußen** — Paul: „nur die neuen files nicht".
+0. Branch: alles auf EINEN Branch ab `main` (`story/night-5-2026-10-16`); immer EIN Punkt nach
+   dem anderen; memory.md/docs laufend schreiben.
+1. **Bug #154 beheben** — https://github.com/sterlp/eclipse-peon-ai/issues/154
+   (Inhalt: /tmp/issue-154.json).
+2. **Token-Schätzung zu niedrig** (~110k statt 120k): chars×2/7 → /3 — Paul-Idee, „nicht so
+   wichtig, mehr Info". Meine Einschätzung nötig, Umsetzung klein; als ⏳ dokumentieren.
+3. **Bewerten:** `feature-request-ShellTool.md` + `long-shell.log` — TrimService-Gedanke
+   („sollten wir auch bei anderen Tools einsetzen, rechtfertigt fast ein TrimService").
+4. **Review Pauls Erstentwurf Async Agents:** `agent/tools/AgentsTool.java` + `agent/tools/AsyncMonitor.java`
+   (untracked WIP) — Docs-Seite anlegen (WIP by Paul), Meinung + Top-3-Empfehlungen.
+4.1 **Spanned/Tag-Idee:** `ToolsResult.java` — feste Tags (oder XML) um Tool-Results, Compact-Ausschluss
+   via Tag, Huckepack: async Agent-Results als getaggte Nachricht ins Kontext. Meinung + Einordnung.
 
-## Offen (für Paul / nächste Zyklen)
-- **UNBLOCKED, Umsetzung offen:** S3 (🗜 in PoDelegateTool/AgentsTool) + EclipseGrepTool
-  IFile-Disclosure-Fix (C-EXT-Pendant, open-points) — beide warten nur noch auf Freigabe als Arbeit.
-- ❓ `PeonAiService.current()`-Umbau (Supplier/DI) — open-points, Entscheidung offen (Paul).
-- Merge → main + Release-Notes + Paul-Smoke (R-AEM/R-TD-5) = Paul.
-- Lint: testRoots muss BEIDE Bäume scannen (core + `org.sterl.llmpeon.test/src`); docRoots = DIRECTORY
-  `["docs"]`, root = Disk-Pfad.
+## Fortschritt
 
-## Notizen
-- eclipseEditFile verliert param oldString intermittierend; eclipseReplaceLines acted-as-insert 6×
-  heute (L6-Leftover, 🔍-Row, L99-Fragment, Z.64-Duplikat, open-points-L179-Duplikat) → IMMER
-  re-read nach line-based Edit; strukturierte Mehrfach-Edits als Ganzdatei-Write.
+- [x] #154 ✅ `bc3b70b5` — toK ohne Tausender-Separatoren (rot-erst), Gate 1127/0, token-usage.md R5a.
+- [x] Token-Estimate /3 ✅ `fbe2866f` — chars/3 + Umkehr ×3/n, Gate 1127/0, 2 Plan-Inventar-Nachzügler (D1 verifiziert), Docs gezogen (compact*, ADR-0055/56 Update-Note, index.md, tool-result-size).
+- [x] ShellTool/TrimService-Bewertung ✅ docs/output-trim-service.md (🚧 WIP by Paul) — Request code-bestätigt, TrimService als kleine shared-Komponente empfohlen (nicht Service), Q1–Q4 für morgen.
+- [x] Async-Agents Review-Doc + Top-3 ✅ docs/async-agents.md (🚧 WIP by Paul) — 5 Kernbefunde (u. a. dead asyncRunning-Counter, Same-Agent-Nebenläufigkeit, Stale-TurnContextSupplier), Top-3 + ToolsResult-Tag-Bewertung (XML-artig empfohlen), Q-Fragen für morgen.
+- [ ] Da-Dok-Review der beiden Code-Inkremente (#154 `bc3b70b5`, Estimate `fbe2866f`) → dann planImplemented + Docs-Commit + Summary.
+- [ ] End-Summary für Paul
+
+## Notizen (aus Vortag, weiter gültig)
+- eclipseEditFile/ReplaceLines-Fehlerquote hoch → line-based Edits IMMER re-readen; strukturierte
+  Edits als Ganzdatei-Write.
 - Paul arbeitet parallel im selben Tree — selektives git add; Gate-Blocker durch fremdes WIP →
-  STOP-AND-ASK.
-- Vorheriger Stand (Night-Cycle 4, 2026-10-15): abgeschlossen, alles gepusht; Offen-Punkte in
-  open-points.md „Night-Cycle 4 — Nachbefunde".
+  STOP-AND-ASK (nachtzyklus: skippen/dokumentieren statt fragen).
+- Letzter Stand Vortag: Symbol-Rollout S1/S2 ✅, S3 offen (🗜 PoDelegateTool/AgentsTool),
+  EclipseGrepTool IFile-Disclosure offen. Beide evtl. berührt von Async-Agents (AgentsTool!).

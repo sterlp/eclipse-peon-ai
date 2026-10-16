@@ -34,7 +34,7 @@ rekonstruierbar.
 
 Budget = `autoCompactAfter` (Config, Tokens), Vergleichsbasis **ohne** Toleranz; die
 **+5%-Toleranz gilt nur für den Auto-Compact-Hint** (Spielraum, damit das LLM noch Tools
-aufrufen kann). **Schätzung an EINER Stelle:** `ChatMessageUtil.estimateTokens` (chars×2/7,
+aufrufen kann). **Schätzung an EINER Stelle:** `ChatMessageUtil.estimateTokens` (chars/3,
 bewusst über-schätzend) ist der einzige Estimator — auch für den Compact-Input. Der alte
 `join/4`-Ansatz ist verworfen (schätzte niedriger → Kürzung greift später als gedacht; zwei
 Konventionen im selben Modul, F2). Werte als Estimate tragen die `~N (estimate)`-Markierung
@@ -97,7 +97,7 @@ jeder Stufe. Gilt **nur im Compacter** — der Live-Context an das LLM wird nich
    (Zeichen) auf alle drei (Arguments gehören dazu, F3 — sonst wandern 200k-Write-Args ungecappt
    bis zur Endstufe). **Log warn.**
 4. **Endstufe — dynamisches Per-Message-Cap:** immer noch drüber → Cap je Message =
-   `capChars = restTokens × 7 / 2 / n` (Token→Zeichen mit dem ×2/7-Estimator, F5), n ≥ 1
+   `capChars = restTokens × 3 / n` (Token→Zeichen mit dem ×3-Estimator, F5), n ≥ 1
    geclampt (`AiCompressorAgent.call` ist public und umgeht den `< 3`-Guard) → garantiert
    Terminierung (Summe ≤ n·cap → estimate ≤ Rest). Ersetzt fixe 3000-Stufe und „Text-only"-Stufe.
    **Log error.**
