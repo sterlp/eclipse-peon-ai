@@ -187,4 +187,15 @@ class ChatMessageUtilTest {
         // THEN a missing snippet never contributes tokens
         assertThat(tokens).isZero();
     }
+
+    /** Inverse of the chars/3 estimator — one place for the token math (R-CC-13, docs/compact.md). */
+    @Test
+    void tokensToChars_invertsTheCharsToTokensEstimator() {
+        // WHEN — tokens are converted back to chars
+        assertThat(ChatMessageUtil.tokensToChars(100)).isEqualTo(300);
+        // AND — zero stays zero
+        assertThat(ChatMessageUtil.tokensToChars(0)).isZero();
+        // AND — the multiplication is clamped against integer overflow
+        assertThat(ChatMessageUtil.tokensToChars(Integer.MAX_VALUE)).isEqualTo(Integer.MAX_VALUE);
+    }
 }

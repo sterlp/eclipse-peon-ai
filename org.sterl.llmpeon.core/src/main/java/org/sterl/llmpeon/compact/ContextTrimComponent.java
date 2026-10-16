@@ -188,7 +188,8 @@ public class ContextTrimComponent {
 
     /**
      * Per-message cap from the tokens left after the disclosure + n separators (R-CIB-4.4, F5) —
-     * tokens→chars with the ×3 estimator. The outer pass makes it a fixed point: the final
+     * tokens→chars via {@link ChatMessageUtil#tokensToChars(int)}. The outer pass makes it a fixed
+     * point: the final
      * disclosure (digits of {@code cap} ≤ digits of the inner cap) is no longer than the one the
      * cap was computed against → the final estimate never exceeds the budget.
      */
@@ -196,7 +197,7 @@ public class ContextTrimComponent {
         var nl = System.lineSeparator();
         var disclosure = DISCLOSURE_MARKER + nl + capsLine(CompactResult.Stage.PER_MESSAGE, capForDisclosure, duplicatesCollapsed);
         int restTokens = Math.max(0, budgetTokens - ChatMessageUtil.estimateTokens(disclosure + nl.repeat(n)));
-        return (int) Math.min(Integer.MAX_VALUE, (long) restTokens * 3 / n);
+        return ChatMessageUtil.tokensToChars(restTokens) / n;
     }
 
     /**

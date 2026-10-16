@@ -96,6 +96,14 @@ public class ChatMessageUtil {
         return chars / 3;
     }
 
+    /**
+     * Inverse of the central chars/3 estimator ({@link #charsToTokens(int)}) — one place for the
+     * token math (R-CC-13, docs/compact.md). The multiplication is clamped against integer overflow.
+     */
+    public static int tokensToChars(int tokens) {
+        return (int) Math.min(Integer.MAX_VALUE, (long) tokens * 3);
+    }
+
     private static int charCount(ChatMessage msg) {
         return toString(msg, Integer.MAX_VALUE).length();
     }
