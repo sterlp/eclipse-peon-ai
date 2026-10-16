@@ -52,6 +52,7 @@ class ToolPolicyTest {
         assertThat(ToolPolicy.enables(List.of("  ", "web"), "web_fetch")).isTrue();
     }
 
+    // UC-ATC-2
     @Test
     void wildcardMinusDebugDeniesDebugKeepsOthers() {
         var allow = List.of("*", "!debugJava*");
