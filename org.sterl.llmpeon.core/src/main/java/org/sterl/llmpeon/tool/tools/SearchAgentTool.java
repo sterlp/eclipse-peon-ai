@@ -1,6 +1,5 @@
 package org.sterl.llmpeon.tool.tools;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
@@ -44,18 +43,7 @@ public class SearchAgentTool extends AbstractTool {
      * runtime. The CSV is the value the user typed, not necessarily the stored one.
      */
     public List<String> resolveActiveTools(String rawCsv) {
-        var allow = ToolPolicy.nameFilter(rawCsv);
-        var effective = filter.and(exec -> allow.test(exec.getSpec().name()));
-        var names = new ArrayList<String>();
-        toolService.getExecutors().stream()
-                .filter(effective)
-                .map(exec -> exec.getSpec().name())
-                .forEach(names::add);
-        toolService.mcpToolNames().stream()
-                .filter(allow)
-                .forEach(names::add);
-        names.sort(String::compareTo);
-        return names;
+        return toolService.activeNames(filter, ToolPolicy.nameFilter(rawCsv));
     }
 
     @Tool(name = "searchAgent", value = "Sub-agent for complex multi-step search/research - to save tokens.")

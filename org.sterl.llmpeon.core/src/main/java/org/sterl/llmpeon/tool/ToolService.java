@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import org.jspecify.annotations.NonNull;
 import org.sterl.llmpeon.compact.CompactConstants;
@@ -91,6 +93,21 @@ public class ToolService {
     /** Names of the currently connected MCP tools (empty when no MCP server is connected). */
     public List<String> mcpToolNames() {
         return mcpToolSpecs.stream().map(ToolSpecification::name).toList();
+    }
+
+    /**
+     * Sorted names of all tools (built-in + MCP) active under the given filters — the single
+     * preview source (R-ATC-8): classFilter applies to the built-in executors, nameFilter to
+     * both built-in and MCP names.
+     */
+    public List<String> activeNames(Predicate<SmartToolExecutor> classFilter,
+            Predicate<String> nameFilter) {
+        var builtIns = getExecutors().stream()
+                .filter(classFilter)
+                .map(exec -> exec.getSpec().name())
+                .filter(nameFilter);
+        var mcp = mcpToolNames().stream().filter(nameFilter);
+        return Stream.concat(builtIns, mcp).sorted(String::compareTo).toList();
     }
 
     List<ToolSpecification> toolSpecifications(ToolLoopRequest req) {

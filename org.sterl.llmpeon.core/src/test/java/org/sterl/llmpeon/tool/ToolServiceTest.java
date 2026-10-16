@@ -28,6 +28,7 @@ import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
+import org.sterl.llmpeon.tool.tools.ShellTool;
 import org.sterl.llmpeon.tool.tools.WebFetchTool;
 
 import dev.langchain4j.agent.tool.Tool;
@@ -282,5 +283,29 @@ class ToolServiceTest {
         // WHEN — the loop reaches the forced compact hint (stuck > MAX_STUCK_ITERATIONS - 2)
         // THEN — it must not crash on req.getAgent().getName() (ToolService.addCompactHintIfNeeded)
         assertThatNoException().isThrownBy(() -> subject.executeLoop(req));
+    }
+
+    /**
+     * R-ATC-8 preview source: activeNames filters the built-in executors via classFilter and
+     * applies nameFilter to the names — the single composition the agent preview and the
+     * runtime filter share (inc-8: resolveActiveTools dedup).
+     */
+    @Test
+    void activeNames_filtersBuiltinsByNameAndSorts() {
+        // GIVEN — default tools: webFetchAsMarkdown, searchAgent, readOperationSystemInformation,
+        //         shellRunCommand, compactSession
+        // WHEN
+        var names = subject.activeNames(e -> true, n -> n.startsWith("s"));
+        // THEN — only the s-prefixed built-ins, sorted
+        assertThat(names).containsExactly("searchAgent", "shellRunCommand");
+    }
+
+    @Test
+    void activeNames_classFilterAppliesToExecutors() {
+        // GIVEN — classFilter drops the whole ShellTool (both executors); nameFilter keeps s-prefixed
+        // WHEN
+        var names = subject.activeNames(e -> !(e.getTool() instanceof ShellTool), n -> n.startsWith("s"));
+        // THEN — searchAgent survives both filters; shellRunCommand is gone via classFilter
+        assertThat(names).containsExactly("searchAgent");
     }
 }

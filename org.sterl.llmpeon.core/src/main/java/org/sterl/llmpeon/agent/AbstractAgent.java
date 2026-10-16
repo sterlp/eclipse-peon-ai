@@ -169,23 +169,12 @@ public abstract class AbstractAgent implements AiAgent {
 
     /**
      * Preview (R-ATC-8): the sorted names of ALL tools (built-in + MCP) that would be active for the
-     * GIVEN raw CSV — built-ins via {@link #filterFor(String)} and MCP via the name filter, the exact
+     * GIVEN raw CSV — via the shared {@link ToolService#activeNames(Predicate, Predicate)}, the exact
      * composition the runtime filter uses, so the preview can never drift from what the agent
      * actually sends. The CSV is the value the user typed, not necessarily the stored one.
      */
     public List<String> resolveActiveTools(String rawCsv) {
-        var filter = filterFor(rawCsv);
-        var allow = ToolPolicy.nameFilter(rawCsv);
-        var names = new ArrayList<String>();
-        toolService.getExecutors().stream()
-                .filter(filter)
-                .map(exec -> exec.getSpec().name())
-                .forEach(names::add);
-        toolService.mcpToolNames().stream()
-                .filter(allow)
-                .forEach(names::add);
-        names.sort(String::compareTo);
-        return names;
+        return toolService.activeNames(classFilter(), ToolPolicy.nameFilter(rawCsv));
     }
 
     /** Reuses {@link #getToolFilter()} so it matches exactly what the agent sends at runtime. */
