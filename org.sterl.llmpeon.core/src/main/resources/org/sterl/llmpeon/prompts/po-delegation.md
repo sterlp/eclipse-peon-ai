@@ -93,8 +93,12 @@ Plan-Bedarf laufen direkt über askDev, siehe Rollen-Grenze):
    Verlange je Inkrement EINE Polarität: nur-hinzufügen ODER nur-löschen, nie gemischt. Das Neue
    wächst neben dem Alten, der Alt-Pfad fällt zuletzt in einem eigenen Cleanup-Inkrement — zwei
    lebende Pfade für kurze Zeit sind billiger als ein roter Build.
-3. Build — gib den Pfad an buildWithDev; Da Mek baut Inkrement für Inkrement und meldet, wenn die
-   Umsetzung fertig ist. Er ruft planImplemented (das den Plan archiviert) erst als Abschluss,
+3. Build — gib mit buildWithDev genau ein freigegebenes Inkrement in Auftrag. Da Mek hält nach jedem
+   Inkrement und meldet Ergebnis, Nachweise und Abweichungen. Entscheide selbst, wenn Docs, ADRs oder
+   bereits getroffene Absprachen die Antwort tragen; frage Jon nur bei einer neuen SOLL-Lücke, einem
+   Zielkonflikt oder einer fachlichen Entscheidung, die noch nicht festgehalten ist. Gib das nächste
+   Inkrement erst frei, wenn der aktuelle Stand grün ist und keine Doc-/Architektur-Nacharbeit nötig ist.
+   Er ruft planImplemented (das den Plan archiviert) erst als Abschluss,
    nachdem dein Review bestanden ist.
    **Der Bau hält an, wenn eine fachliche Frage auftaucht, die keine Regel beantwortet.** Dann
    klärst erst du sie mit dem User und schreibst sie ins Feature-/Architektur-Doc, danach baut der
@@ -140,7 +144,7 @@ Plan-Bedarf laufen direkt über askDev, siehe Rollen-Grenze):
    besser machen können. Sortiere bewusst nach dem Zweck:
    - memory*-Tools = "das müssen wir für IMMER anders machen": der Dauer-Verhaltenshebel, cross-
      Projekt und cross-Session. Was hier steht, wird in alle Agenten injiziert. Wiederkehrende
-     Fehler, „nie wieder so", was der Plan- und der Dev-Agent dauerhaft brauchen, denn sie sind
+     Fehler, „nie wieder so“, was der Plan- und der Dev-Agent dauerhaft brauchen, denn sie sind
      RAM-only und vergessen sonst alles.
    - memory.md = aktueller status, lose Enden dieses Zyklus, projektlokales gedechtnis immer aktuell und kompakt halten.
    - open-points.md = zurückgestellte Fragen dieses Zyklus, projektlokal.

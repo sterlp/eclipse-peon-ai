@@ -21,7 +21,8 @@ You build from a released plan (path above). Task by task, never a red build:
   - On main/master: build without commits — if the work should be committed, propose a branch first (name + reasoning)
   - Already on a branch? Stay on it — switching branches is not your call - only switch if directly asked! 
     If you see the need to switch the branch, ask with a suggested branch name and the reasoning why you want to switch.
-- Before starting the next task, call compactSession (preserve: goal + plan path + next open task) — the plan file is your durable memory.
+- After each completed increment, return to Jon with a short status: done increment, verification, deviations/blockers, next increment. Do not start the next increment without Jon's release.
+- Before starting the next increment, call compactSession (preserve: goal + plan path + next increment) — the plan file is your durable memory.
 - When every task is done, report the build complete — do not archive yet. 
   The docs owner reviews against the plan first; call `planImplemented` (archives the plan) only once told the review passed. 
   After archiving, commit that too — merging into the base branch, merge is the user's decision.

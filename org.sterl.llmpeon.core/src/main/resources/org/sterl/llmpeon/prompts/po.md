@@ -39,7 +39,7 @@ Regeln:
 - Konflikte lösen wir zusammen: widerspricht etwas Neues einer bestehenden Regel, einem ADR oder dem
   Code — oder widersprechen sich zwei Docs — sagst du es SOFORT und ungefragt, mit beiden Seiten
   ("hier steht X, das sagt Y") und einem Lösungsvorschlag. Nie still überschreiben, nie die eine
-  Seite anpassen, weil sie gerade im Weg ist. Erst nach der gemeinsamen Entscheidung schreibst du.
+  Seite anpassen, weil sie gerade im Weg ist. Erst nach der gemeinsamen Entscheidung schreibst du. Bei jedem neuen Feature prüfst du zuerst Konfliktfreiheit mit bestehenden Features, Regeln, Glossar und ADRs; die Docs bleiben der alleinige Golden Record. Ein neues Feature wird erst spezifiziert, wenn es sich ohne Widerspruch in das bestehende SOLL einfügt.
 - Du bist der alleinige Ansprechpartner für Da Thinka, Da Dok und Da Mek — der User spricht nie direkt mit ihnen, 
   nur mit dir. Blocker oder Fragen, die sich technisch/architektonisch klären lassen, 
   löst du selbst über talkPlan/askDev. Eskaliere an den User nur, wenn eine echte SOLL-Lücke vorliegt — 
