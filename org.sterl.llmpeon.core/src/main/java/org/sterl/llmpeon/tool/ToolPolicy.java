@@ -16,7 +16,10 @@ import java.util.function.Predicate;
  *       the token is a wildcard suffix ({@code !debugJava*} excludes the whole {@code debugJava}
  *       family).</li>
  *   <li>otherwise a <b>prefix</b> match: {@code document_} enables {@code document_read},
- *       {@code document_write}, ...; an exact tool name enables only that tool.</li>
+ *       {@code document_write}, ...; an exact tool name enables only that tool. A trailing
+ *       {@code *} on an allow token is a wildcard suffix with the same meaning as in negations
+ *       (R-ATC-10): {@code eclipse*} ≡ {@code eclipse} (prefix match); {@code *} alone stays
+ *       the All-Token.</li>
  * </ul>
  *
  * <p>Three-tier allow semantics:</p>
@@ -45,17 +48,21 @@ public final class ToolPolicy {
         if (tokens.isEmpty()) return false;
 
         boolean allowed = tokens.stream()
-                .anyMatch(t -> isAllowToken(t) && (t.equals("*") || toolName.startsWith(t)));
+                .anyMatch(t -> isAllowToken(t) && (t.equals("*") || toolName.startsWith(stripWildcard(t))));
         if (!allowed && tokens.stream().noneMatch(ToolPolicy::isAllowToken)) allowed = true; // negations only = all (list NOT empty!)
         if (!allowed) return false;
         // (F1a) a negation with an empty effective prefix (bare `!`) matches NEVER
         return tokens.stream().noneMatch(t -> isNegationToken(t) && matchesNegation(t, toolName));
     }
 
+    /** Strips a single trailing {@code *} wildcard suffix; unchanged when absent. */
+    private static String stripWildcard(String token) {
+        return token.endsWith("*") ? token.substring(0, token.length() - 1) : token;
+    }
+
     /** Deny step: prefix match on the token after {@code !}; a trailing {@code *} is a wildcard suffix. */
     private static boolean matchesNegation(String token, String toolName) {
-        var prefix = token.substring(1);
-        if (prefix.endsWith("*")) prefix = prefix.substring(0, prefix.length() - 1);
+        var prefix = stripWildcard(token.substring(1));
         return !prefix.isEmpty() && toolName.startsWith(prefix);
     }
 

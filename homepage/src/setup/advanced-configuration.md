@@ -116,7 +116,7 @@ Every agent slot on this page — **PO (Jon)**, **Plan**, **Review** and **Searc
 
 The field is a **comma-separated list** of tool names or prefixes (matched with Java `startsWith`), using the same allowlist semantics as the [custom agents'](./custom-agents.md#tool-allowlist) `tools` frontmatter — one mechanism for every agent type:
 
-- **Prefix / `*` / exact:** `eclipse` enables every `eclipse*` tool, `*` enables all, an exact name enables just that tool.
+- **Prefix / `*` / exact:** `eclipse` enables every `eclipse*` tool, `*` enables all, an exact name enables just that tool. A trailing `*` on any token is an optional wildcard suffix — the same meaning in allow and deny tokens: `eclipse*` ≡ `eclipse` (prefix match); `*` alone stays the All-Token.
 - **`!` negation (allow-then-deny):** a `!` prefix removes tools *after* the allowlist is applied, and the **exclusion always wins** (`eclipse, !eclipseWriteFile` keeps the `eclipse*` family except the write tool). A list of **negations only** means *all tools minus the exclusions* (`!debugJava*` = everything except the debug family).
 - **Empty = all tools.**
 - **Bare `!`** (no prefix) is a validation error: Peon **refuses to save** and leaves the field unchanged.

@@ -155,6 +155,24 @@ idPrefix: ATC
 - GIVEN Allowlist mit `!` allein WHEN UI speichern THEN Fehlermeldung, Wert wird NICHT persistiert
 - GIVEN Allowlist mit `!` allein WHEN Frontmatter-Filter THEN no-op (kein Tool aus, kein Fehler)
 - GIVEN Allowlist mit `!debugJava*` THEN gültig (Präfix `debugJava*`)
+- **Hinweis (externes Review 2026-10-16):** bei vielen MCP-Tools kann die Preview-Liste lang
+  werden — der Dialog ist eine read-only Liste ohne Cap; bewusst so (Vorschau soll vollständig
+  sein), UX-Punkt falls er in der Praxis nervt.
+
+### R-ATC-10 ❌ — Wildcard-Semantik vereinheitlicht: trailing `*` = Präfix-Match (Allow UND Deny)
+
+- **SOLL (Paul, 2026-10-16, externes Review):** ein trailing `*` auf einem Token bedeutet
+  Präfix-Match — in der **Allow**- wie in der **Deny**-Liste: `eclipse*`, `debug*`, `!debugJava*`
+  sind dieselbe Grammatik; `*` **allein** bleibt der All-Token. **WEIL:** bisher war das
+  Suffix-`*` nur im Deny-Zweig definiert (`!foo*` → Präfix `foo`), ein Allow-Token `foo*` matchte
+  dagegen nur wörtlich — asymmetrisch und für User wie Scaffold-Agent unnötig subtil (R-ATC-4/R8:
+  der Scaffold schreibt `!`-Tokens, die Grammatik muss maschinenfreundlich sein).
+  Rückwärtskompatibel: streng mehr Fälle matchen — ein Allow-Token `foo*` war vorher wirkungslos,
+  kein Bestands-Verhalten ändert sich.
+- GIVEN Allowlist `eclipse*` WHEN Filter THEN alle Tools mit Präfix `eclipse` aktiv (identisch zu `eclipse`)
+- GIVEN Allowlist `foo*` WHEN Filter THEN alle Tools mit Präfix `foo` (vorher: wirkungslos)
+- GIVEN Allowlist `*, !debugJava*` WHEN Filter THEN unverändert (All-Token + Negation, Regression)
+- GIVEN ToolPolicy-Test THEN je Fall ein Test (Allow-Suffix, `*` allein, Deny unverändert)
 
 ## Use-Case-Definitionen
 
@@ -184,6 +202,10 @@ IST (R-ATC-1-Regression).
 GIVEN Plan-Agent mit `eclipse, !debugJava*` WHEN Preview-Button THEN Dialog zeigt aktive Tools
 (alle `eclipse*` ohne Debug), read-only.
 
+#### UC-ATC-8 — Suffix-Wildcard im Allow-Token
+GIVEN Dev-Agent mit Allowlist `eclipse*` WHEN `toolSpecifications` THEN alle Tools mit Präfix
+`eclipse` aktiv — identisch zu `eclipse` (R-ATC-10).
+
 ## BDD-Test-Mapping
 
 | Regel | Test |
@@ -197,6 +219,7 @@ GIVEN Plan-Agent mit `eclipse, !debugJava*` WHEN Preview-Button THEN Dialog zeig
 | R-ATC-7 | `AgentToolConfigTest` — Store-Key parse/reload, Clean Break |
 | R-ATC-8 | `resolveActiveTools*` (Preview↔Runtime-Äquivalenz) + Dialog-Inhalt = User-Smoke (Paul) |
 | R-ATC-9 | `ToolPolicyTest.bareBangIsNoOp` + UI-Validierungs-Test (inc4: Speichern verweigert) |
+| R-ATC-10 | `ToolPolicyTest` — Allow-Suffix-Präfix (`eclipse*`, `foo*`), `*` allein, Deny unverändert |
 
 ## Out of Scope
 

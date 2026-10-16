@@ -80,7 +80,7 @@ Double quotes on the outside would break, because the JSON itself contains doubl
 | `extra_body` | Raw JSON merged into this agent's request body — where [prompt caching](./advanced-configuration.md#extra-body--prompt-caching) is configured per agent. Omitted/blank = none. |
 | `think_send` | *(reserved)* Show the model's reasoning and resend it next turn (Qwen, Mistral, DeepSeek). Currently the global **Resend model thinking** setting applies to all agents; this per-agent key is parsed but not yet wired per request. |
 | `think` | The agent's think level (one string). **Empty/omitted = unset** — nothing is sent, the model decides. The string providers (OpenAI family, LM Studio) send the value **verbatim** — `false` goes out as `reasoning.effort=false`, `none` as `reasoning.effort=none`, any other value (e.g. `high`) exactly as typed. Ollama interprets off tokens (`false` / `off` / `no` / `nein` / `none`, case-insensitive → `think:false`, anything else → `think:true`). Anthropic keeps its own translation (off = nothing, `true` = [built-in model mapping](./advanced-configuration.md#built-in-model-mapping), a concrete value as-is). |
-| `tools` | Allowlist of tool-name prefixes, with `!` negation (see [Tool allowlist](#tool-allowlist)). **Omit it and the agent gets _all_ tools**; an empty list allows none. |
+| `tools` | Allowlist of tool-name prefixes, with `!` negation (see [Tool allowlist](#tool-allowlist)). **Omit it and the agent gets _all_ tools**; an empty list (`tools: []`) allows none — note this differs from the UI, where an empty field behaves like omitted (all tools). |
 
 ::: tip Legacy `think_*` keys
 The old keys `think_supported`, `think_enabled`, `think_on_string` and `think_off_string` are no longer written, but old files still load: they resolve to the `think` value (an on-string wins over an off-string, which wins over the support flag). The next write — e.g. changing the model in the UI — replaces them with a single `think` line.
@@ -132,13 +132,14 @@ The built-in **Peon-Plan** agent uses exactly this: it hands over to **Peon-Dev*
 
 - `'*'` — allow every tool.
 - a **prefix** — `eclipseRead` enables `eclipseReadFile`, `eclipseReadProjectProblems`, …; a full
-  name enables exactly that tool. Works for built-in **and** MCP tools (e.g. `mcp__docs__search`).
+  name enables exactly that tool. A trailing `*` on any token is an optional wildcard suffix —
+  the same meaning in allow and deny tokens: `eclipse*` ≡ `eclipse` (prefix match); `*` alone
+  stays the All-Token. Works for built-in **and** MCP tools (e.g. `mcp__docs__search`).
 - a `!` **negation** — removes tools *after* the allowlist decided: deny wins, even over a
-  matching allow token. `*, !debugJava*` = every tool except the debug family (a trailing `*`
-  on the token is a wildcard suffix).
+  matching allow token. `*, !debugJava*` = every tool except the debug family.
 - **negations only** — a list without any allow token is valid: it means *all* tools minus the
   exclusions (`!debugJava*` alone = everything except debug).
-- **field omitted** — **all tools** (an empty list allows none).
+- **field omitted** — **all tools** (an empty list allows none — frontmatter only; an empty UI field is treated as omitted).
 - a bare `!` (no prefix) has no effect — it excludes no tool and raises no error.
 
 Use the YAML block-list form (one `- entry` per line) or inline CSV (`tools: grep, read_`).

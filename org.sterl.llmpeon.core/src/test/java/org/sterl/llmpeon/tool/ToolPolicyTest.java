@@ -90,6 +90,37 @@ class ToolPolicyTest {
         assertThat(ToolPolicy.enables(List.of("*", "!"), "anything")).isTrue();
     }
 
+    // UC-ATC-8
+    @Test
+    void trailingStarAllowTokenIsPrefixMatch() {
+        var allow = List.of("eclipse*");
+        assertThat(ToolPolicy.enables(allow, "eclipseGrepFiles")).isTrue();
+        assertThat(ToolPolicy.enables(allow, "eclipse")).isTrue();
+        assertThat(ToolPolicy.enables(allow, "diskReadFile")).isFalse();
+    }
+
+    // UC-ATC-8
+    @Test
+    void suffixWildcardEquivalentToBarePrefix() {
+        for (var name : List.of("eclipseGrepFiles", "diskReadFile", "debugJavaGetState")) {
+            assertThat(ToolPolicy.enables(List.of("eclipse*"), name))
+                    .as("eclipse* must behave exactly like eclipse for %s", name)
+                    .isEqualTo(ToolPolicy.enables(List.of("eclipse"), name));
+        }
+    }
+
+    @Test
+    void suffixWildcardOnUnknownPrefix() {
+        var allow = List.of("foo*");
+        assertThat(ToolPolicy.enables(allow, "fooBar")).isTrue();
+        assertThat(ToolPolicy.enables(allow, "bar")).isFalse();
+    }
+
+    @Test
+    void doubleStarMatchesNothing() {
+        assertThat(ToolPolicy.enables(List.of("**"), "anything")).isFalse();
+    }
+
     @Test
     void parseAllowlistAbsentOrBlankYieldsNull() {
         assertThat(ToolPolicy.parseAllowlist(null)).isNull();

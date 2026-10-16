@@ -122,12 +122,13 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
 - **`eclipseBuildProject` build.properties-Warnung (seit #136):** „class folder 'resources/'
   not associated to any output library entry" bei grüner Kompilation; pre-existing (verifiziert
   2026-09-21), Mini-Fix-Kandidat.
-- **SwtUtil.setExcluded-Extract (2026-09-29, Da-Dok G2):** SWT-Idiom `exclude`+`setVisible` 3×
-  dupliziert (2× R-DEF-9…11-Widgets + `McpPreferenceView`).
-- **Dead Code: `ModelConfigWidget` 4-Arg-Konstruktor (2026-09-29):** `labelStyle` + SWT.END-Zweig
-  caller-less seit R-DEF-10 — Cleanup beim nächsten Widget-Berührungs-Kontakt.
-- **Toter Code: `eclipseFindImplementations` (2026-09-30):** `EclipseCodeNavigationTool.java:287-331`
-  liegt in einem `/* … */`-Kommentarblock — Entfernung als eigene Dead-Code-Story.
+- **`DiskFileWriteTool` 3× identischer File-Guard (Da-Mek-Kandidat 2026-10-15, geparkt):**
+  `resolve()` + `!Files.isRegularFile` + IAE wortgleich dreimal (`diskReplaceLines`:124,
+  `diskEditFile`:147, `diskInsertLines`:237) → `requireRegularFile(path, hint)`; exakte Meldungen
+  1:1 (inkl. `Use searchDiskFiles`-Hint), `exists`-Varianten bewusst draußen. Core-Change →
+  Jar-Ritual, nächster Core-Kontakt.
+- **SwtUtil.setExcluded-Extract — 🔒 gelöst 2026-10-15 (`3dfa784d`, Hyg2):** → resolved-points.md.
+- **Toter Code: `eclipseFindImplementations` — 🔒 gelöst 2026-10-15 (`b9a94195`, Hyg1):** → resolved-points.md.
 
 ## Sonstiges
 
@@ -137,3 +138,36 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   Disabled-States, Tooltip — nach Merge.
 - ⏳ **AGENTS.md-Ambiguität „Homepage-Doku: Dev-Inkrement vs. PO-Docs-Zyklus"** → Merge-Gate
   präzisieren (Da-Dok-Empfehlung, Plan §12).
+
+## Night-Cycle 4 (2026-10-15) — Nachbefunde
+
+- ⏳ **Cap-Test-Rest-Risiko (Da-Dok CONCERNS 2):** der Cap-Test hängt am Build-Erfolg aller 3
+  Seed-CUs — liefern nur 2 von 3 CUs Marker (80 < 100), rotet er erneut in degradierten
+  Recovery-States. Eskalationspfad = R6-Fallback (b) (direktes Marker-Seeding +
+  `eclipseReadProjectProblems`, gleicher Cap-Pfad). Nur melden, wenn er erneut rotet — kein
+  präventiver Umbau.
+- ⏳ **Geteilte disk-Tool-Instanzen: mutable `AbstractTool.request` (Da-Dok CONCERNS 5):** Jons
+  po-Registry teilt dieselben disk-Tool-Instanzen mit dem shared-Service; `request` wird pro Call
+  gesetzt und im `finally` genullt (`SmartToolExecutor.run:37-58`). Single-Active-Agent: kein
+  konkretes Race; bei Pauls **Async-Interface** (parallele Turns) würde ein fremder Request Jons
+  Write-Validator überschreiben/leeren → unvalidierter Write (R3 umgangen). **Merge-Check-Item**
+  für den Async-Zweig: Request-Reichweite (Parameter/ThreadLocal statt Instance-Feld) **oder** dünne
+  pro-Registry-Wrapper-Instanz, die dasselbe Backing teilt, aber Request-State lokal hält —
+  einstimmige Empfehlung aus dem externen Review (2026-10-16): nicht auf später schieben, sondern
+  einen der beiden Wege VOR dem Async-Bau festlegen, da Jons `WriteValidator.DOCS` am geteilten
+  Tool hängt.
+
+## Externes Review agent-tool-config (2026-10-16) — geparkte Punkte
+
+- ❓ **`PeonAiService.current()` statischer Last-Constructed-Handle:** Production-Call-Sites
+  `AiConfigPreferenceView:177,180` + `AgentModelConfigSection:144,155`; Risiko (Javadoc benannt):
+  bei mehreren Services zeigt das Preview u. U. die MCP-Tool-Menge eines anderen Views. Umbau-Option
+  (externes Review): Service via IEclipseContext/OSGi-Service/`Supplier<PeonAiService>` in die
+  Preference-Pages injizieren statt globaler Handle. Aufwand: 4 Call-Sites + Test-Fixture-Umbau
+  (`clearCurrent()` in 5 Methoden). Jon: reeller Nutzen erst bei mehreren Views — es gibt heute
+  genau einen aktiven Chat-View. Entscheidung offen (Paul).
+- ⏳ **`ToolSelection` sealed interface (externes Review, Vorschlag):** `enables(List.of(), x)=false`
+  vs. `nameFilter("")=alle` ist eine implizite Doppelbedeutung von „leer" (absent wird zwar im
+  `parseAllowlist` zu null normalisiert, aber der Typ trägt die Unterscheidung nicht). Sealed
+  `All`/`Filtered(allow, deny)` würde Sonderregel „nur Negationen" in eine testbare Resolve-Funktion
+  ziehen. Gestaltungspunkt, kein Defekt — Revisit, falls ToolPolicy erneut angefasst wird.

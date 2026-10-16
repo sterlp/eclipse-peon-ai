@@ -63,7 +63,7 @@ Enable the **MCP** toggle in the chat toolbar to activate the configured servers
 
 ## Notes
 
-- MCP tools are exposed to every agent on the shared registry — **developer, planner and custom agents** — and to **Peon-PO (Jon)** via his own registry, and to the search sub-agent (which does include them).
+- MCP tools are exposed to every agent on the shared registry — **developer, planner and custom agents** — and to **Peon-PO (Jon)** via his own registry, and to the search sub-agent (which does include them). Exposed does **not** mean unrestricted: the per-agent **tool allowlist** (see [Custom agents](/setup/custom-agents) / agent config) filters MCP tools exactly like built-in tools.
 - The search sub-agent (used during planning and implementation) also has access to MCP tools, so read-only MCP servers (e.g. documentation lookup, web search) are useful there too.
 - If any configured server fails to connect, all servers are disconnected and an error is shown — this prevents the agent from working with an incomplete tool set.
 - Tool names are taken directly from the server. If two servers expose a tool with the same name, the last one registered wins.

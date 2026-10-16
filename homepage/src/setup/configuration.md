@@ -233,7 +233,7 @@ The field follows the provider **live**: it appears as soon as you switch to a p
 
 The **Tools** field restricts which tools the **Dev agent** — the default agent of this page — may call. It is a **comma-separated list** of tool names or prefixes (matched with Java `startsWith`); it is **not inherited** by any other agent, which each have their own Tools field on the [Advanced Configuration](./advanced-configuration.md#tool-allowlist) page. The same allowlist semantics apply to [custom agents](./custom-agents.md#tool-allowlist) via their `tools` frontmatter — one mechanism for every agent type.
 
-- **Prefix / `*` / exact:** `eclipse` enables every `eclipse*` tool, `*` enables all tools, an exact name enables just that tool.
+- **Prefix / `*` / exact:** `eclipse` enables every `eclipse*` tool, `*` enables all tools, an exact name enables just that tool. A trailing `*` on any token is an optional wildcard suffix — the same meaning in allow and deny tokens: `eclipse*` ≡ `eclipse` (prefix match); `*` alone stays the All-Token.
 - **`!` negation (allow-then-deny):** a `!` prefix removes tools *after* the allowlist is applied, and the **exclusion always wins** — `eclipse, !eclipseWriteFile` keeps the `eclipse*` family except the write tool. A list of **negations only** means *all tools minus the exclusions* (`!debugJava*` = everything except the debug family).
 - **Empty = all tools.**
 - **Bare `!`** (no prefix) is a validation error: Peon **refuses to save** and leaves the field unchanged.

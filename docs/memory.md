@@ -1,28 +1,40 @@
-# Session-Stand — 2026-10-14 (Zyklus 3: Agent-Tool-Config + Da-Dok-Slot) — ABGESCHLOSSEN
+# Session-Stand — 2026-10-16 (Follow-up-Zyklus: externes Review + Pauls Grep-Fix, Branch `story/agent-tool-config`)
 
 > docs/** — insbesondere memory.md — schreibt AUSSCHLIESSLICH Jon. Agenten liefern Facts im Chat.
 
-## Zyklus 3 — ✅ abgeschlossen (Branch `story/agent-tool-config`)
+## Aufgabe (Paul): externes Review prüfen und richtiges einbauen + DiskGrepTool-Fix
 
-Alle 6 Inkremente + Homepage-Doku + Docs-Flips + Plan-Archiv committed (`2100bdc8`…`69d907f4`, Docs-Flips `17755c01`, Plan-Archiv `0b0a9b4d`, Preview-(MCP)-Suffix-Fix `9365e90b`). Tests: Surefire core **1110/0/0**, OSGi **339/0/0**, Lint UC-ATC 7/7, findings 0. Da-Dok-Review: CONCERNS nur Homepage-Gap (geschlossen via `69d907f4`), Abweichungen 1–8 legitim (Plan §12).
+### Triage externes Review (2026-10-16, abgeschlossen — Details im Chat)
+- **Stale (schon erledigt, Night-Cycle `d27d66f4`):** resolved-points.md Zeile getrennt ✅,
+  `poRegistryDiskWriteOutsideDocsRejected` hat `assertFalse(Files.exists)` ✅ (SharedToolsComponentTest:221-237).
+- **Falsch (abgelehnt):** `connectServers()` package-private — Test in `org.sterl.llmpeon.test`,
+  Service in `parts/config`, unterschiedliche Packages → package-private unsichtbar. Public + Javadoc bleibt.
+- **Docs erledigt (Jon, uncommitted):** agent-tool-config.md R-ATC-10 ❌ (Suffix-Wildcard einheitlich, UC-ATC-8,
+  Mapping-Zeile) + R-ATC-8 MCP-Liste-Hinweis · index.md R-ATC-9/R-ATC-10-Zeile · homepage mcp-configuration.md
+  (Allowlist-Grenze) · homepage custom-agents.md + custom-agents-design.md (empty list ≠ omitted) ·
+  eclipse-read-tools.md ℹ️ Grep-Datei-Target · open-points.md (request-Zwei-Wege + Review-Sektion:
+  `PeonAiService.current()` ❓, `ToolSelection` sealed ⏳).
+- **Code-Sichtung (Da Mek):** Packages OK, einziger Grenzfall `McpConnectionService` (parts/config) — Umzug nicht
+  empfohlen; Reflection-Tests bleiben; `resolveActiveTools`-Duplikat echt (AbstractAgent:176-189 vs SearchAgentTool:46-59).
 
-**Paul-Smoke R-ATC-8 Preview-Dialog ✅ 2026-10-14.** Rückversicherungen 🔒 (2026-10-14): Standalone-Review behält memory*/askUser · Compact kein Tools-Feld (Q1) · R-SEL-4 alle 3 Details · Compact-Doc-Split (CIB).
+### SOLL (Paul 2026-10-16)
+1. **R-ATC-10 ✅-Entscheid:** Suffix-Wildcard `*` = Präfix-Match in Allow UND Deny (❌ specified im Doc).
+2. `resolveActiveTools`-Helper extrahieren (ToolService.activeNames(Predicate, Predicate)); map/collect statt
+   forEach (Paul).
+3. **Pauls DiskGrepTool-Fix (uncommitted, decompose grepDirectory/grepFile):** Tests nachziehen (File-Zweig
+   ungetestet), Kleinigkeiten: Error-Msg "Directory not found"→"Path not found", List/ArrayList konsistent,
+   Extension-Disclosure-Discrepanz klären. Eclipse-Seite braucht NICHTS (IFile-Zweig existiert, evtl. Test
+   über test_project-Fixture). onTool `🔍` + README-Legende = Paul, behalten + committen.
 
-Docs: [agent-tool-config.md](agent-tool-config.md) R-ATC-1…9 ✅ · [review-agent.md](review-agent.md) R7 ✅ · [scaffold-agent.md](scaffold-agent.md) R8 ✅ · [ADR-0065](adr/0065-tool-policy-negation.md) · [ADR-0066](adr/0066-review-agent-own-model-slot.md) · index.md aktualisiert.
+### Nächste Schritte
+- [ ] planWithPlanAgent: 3 Inkremente (A: R-ATC-10 + homepage-Grammatik; B: activeNames-Helper; C: Grep-Tests+Kleinigkeiten)
+- [ ] Plan abnehmen → buildWithDev → Da-Dok-Review → Status-Flips (lintDocsAndTests root=/Users/sterlp/dev/workset/peon-ai, docRoots=["docs"], testRoots=["org.sterl.llmpeon.core/src/test/java"])
+- [ ] nextIds-Quirk: docRoots muss DIRECTORY sein (["docs"]), nicht die Datei — root=/Users/sterlp/dev/workset/peon-ai.
+- [ ] Danach: Merge → main + Release-Notes = Paul; Paul-Smoke R-AEM/R-TD-5.
 
-## Offen
+### Offen (für Paul)
+- ❓ `PeonAiService.current()`-Umbau (Supplier/DI) — open-points, Entscheidung offen.
+- Merge-Zonen Async-Interface (request-Race) — Merge-Check-Item, zwei Lösungspfade notiert.
 
-1. **Docs-Hygiene (Paul-Order 2026-10-14):** open-points.md aufgeräumen — gelöste Punkte nach [resolved-points.md](resolved-points.md) (Abschnitt „Aus open-points.md aufgeräumt"), Wertloses gelöscht, Rest komprimiert. ✅ 2026-10-14.
-2. **Merge branch→main** = Pauls Entscheidung; Release-Notes schreibt Jon beim Merge (neue Datei, alte gelöscht — Paul-Freigabe).
-3. **Paul-Smoke (alt):** R-AEM (terminale Fehler → 1× History, Abbruch → keine Insertion) + R-TD-5 (`… (4s, 19:54) (1234 chars)`).
-4. **Danach (Paul-Order): Context-Overflow/ContentProvider Bug-Zyklus** — Thinka 954k, Mek 431005 vs. n_ctx 170240, webFetch 500k. Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte: Auto-Compact bei Overflow, ApiRetry-Klassifikation, R-CC-7, Context-Pollution-Quellen.
-
-## Notiert
-
-- Paul baut parallel Async-Interface — Merge-Zonen (AbstractAgent.doCall, BuildPoAgentComponent, UI-Pages) beim Merge gegenprüfen.
-- AGENTS.md-Ambiguität „Homepage-Doku: Dev-Inkrement vs. PO-Docs-Zyklus" → Merge-Gate präzisieren (Da-Dok-Empfehlung, Plan §12) — Backlog.
-- Da-Mek-Deviation (6 Inkremente in 2 Build-Calls statt 6 Einzel-Calls) von Da Dok als legitim verifiziert; künftig Einzel-Dispatch.
-
-## Backlog (Auswahl)
-
-AGENTS-Trim (wartet Paul-GO, inkl. totem „komponenten-architektur"-Link AGENTS.md:43) · TrimService-Story (⏳, nächster Sprint) · Think-BDD-Lücken (a)–(g) · per-Agent-Provider-Override (❓) · Linter ☠️-Status (❓) · Homepage think-Werte-Mismatch · Homepage peon-po.md ohne Da Dok · Vollständige Liste: [open-points.md](open-points.md).
+## Vorheriger Stand (Night-Cycle 4, 2026-10-15): abgeschlossen, alles gepusht — Ergebnis siehe
+Bericht an Paul; Offen-Punkte wanderten in open-points.md „Night-Cycle 4 — Nachbefunde".
