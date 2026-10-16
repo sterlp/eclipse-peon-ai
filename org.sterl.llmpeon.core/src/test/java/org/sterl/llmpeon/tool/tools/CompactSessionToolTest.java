@@ -234,6 +234,74 @@ class CompactSessionToolTest {
         assertThat(toolResult).contains("(nothing preserved)");
     }
 
+    // S2 (icons.md 2026-10-16): every LLM-visible output of the compact operation starts with the compact symbol
+    @Test
+    void compactedToolResultStartsWithCompactSymbol() {
+        // GIVEN — an agent whose compact() stores the summary "SUMMARY-X" as an AiMessage
+        var memory = new ThreadSafeMemory();
+        memory.add(UserMessage.from("Test message"));
+        memory.add(AiMessage.from("AI response"));
+        var subject = compactSessionTool(memory, compactStub(memory));
+
+        // WHEN
+        String result = subject.compactSession(null);
+
+        // THEN — the tool result (LLM memory) starts with the compact symbol, then the stats line (R-CIB-6)
+        assertThat(result).startsWith("🗜 ");
+    }
+
+    @Test
+    void compactedOnToolLineStartsWithCompactSymbol() {
+        // GIVEN — an agent whose compact() returns COMPACTED, wired to a monitor capturing the onTool lines
+        var memory = new ThreadSafeMemory();
+        memory.add(UserMessage.from("Test message"));
+        memory.add(AiMessage.from("AI response"));
+        var tools = new ArrayList<String>();
+        var subject = compactSessionToolWithMonitor(memory, compactStub(memory), tools);
+
+        // WHEN
+        subject.compactSession(null);
+
+        // THEN — the chat line starts with the compact symbol + the done prefix (symbol = first token)
+        assertThat(tools).anySatisfy(line -> assertThat(line)
+                .startsWith("🗜 Da Scribe done ")
+                .contains("for stub-agent"));
+    }
+
+    @Test
+    void skippedOutputStartsWithCompactSymbol() {
+        // GIVEN — a small memory (2 messages < MIN_COMPACT_MESSAGES); the agent skips
+        var memory = new ThreadSafeMemory();
+        memory.add(UserMessage.from("Test message"));
+        memory.add(AiMessage.from("AI response"));
+        var tools = new ArrayList<String>();
+        var subject = compactSessionToolWithMonitor(memory, skipStub(memory), tools);
+
+        // WHEN
+        String result = subject.compactSession(null);
+
+        // THEN — the honest skip: result AND onTool line start with the compact symbol
+        assertThat(result).startsWith("🗜 ");
+        assertThat(tools).anySatisfy(line -> assertThat(line).startsWith("🗜 Compact called but skipped"));
+    }
+
+    @Test
+    void failedOutputStartsWithCompactSymbol() {
+        // GIVEN — the compressor returns no summary; the agent reports FAILED_EMPTY
+        var memory = new ThreadSafeMemory();
+        memory.add(UserMessage.from("Test message"));
+        memory.add(AiMessage.from("AI response"));
+        var tools = new ArrayList<String>();
+        var subject = compactSessionToolWithMonitor(memory, failStub(memory), tools);
+
+        // WHEN
+        String result = subject.compactSession(null);
+
+        // THEN — the honest failure: result AND onTool line start with the compact symbol
+        assertThat(result).startsWith("🗜 Compact failed");
+        assertThat(tools).anySatisfy(line -> assertThat(line).startsWith("🗜 Compact failed"));
+    }
+
     // R-CC-10
     @Test
     void skippedSmallLineCarriesTokenDiagnosis() {
@@ -287,6 +355,25 @@ class CompactSessionToolTest {
             @Override public String getSystemPrompt() { return "system"; }
             @Override public ChatResponse call(String message, AiMonitor monitor) { return null; }
             @Override public CompactResult compact(AiMonitor monitor) { return CompactResult.skippedSmall(); }
+            @Override public ThreadSafeMemory getMemory() { return memory; }
+            @Override public void clear() {}
+            @Override public boolean isToolActive(SmartToolExecutor exec) { return true; }
+            @Override public boolean isMcpToolActive(String toolName) { return true; }
+            @Override public int tokenContextUsedInPercent() { return 0; }
+            @Override public List<ChatMessage> buildStaticMessages(AiMonitor monitor) { return List.of(); }
+        };
+    }
+
+    /** An agent whose compact() returns FAILED_EMPTY without touching the memory. */
+    private static AiAgent failStub(ThreadSafeMemory memory) {
+        return new AiAgent() {
+            @Override public String getName() { return "stub-agent"; }
+            @Override public String getSystemPrompt() { return "system"; }
+            @Override public ChatResponse call(String message, AiMonitor monitor) { return null; }
+            @Override public CompactResult compact(AiMonitor monitor) {
+                return CompactResult.failedEmpty(new CompactResult.Stats(0, 0, 0, CompactResult.Stage.NONE, 0, 0,
+                        "compact-model", 0, null, true), "empty summary");
+            }
             @Override public ThreadSafeMemory getMemory() { return memory; }
             @Override public void clear() {}
             @Override public boolean isToolActive(SmartToolExecutor exec) { return true; }

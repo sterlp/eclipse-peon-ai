@@ -370,7 +370,7 @@ public abstract class AbstractAgent implements AiAgent {
             var compactCfg = configuredModel.getConfig().compactAgentConfig();
             // R-CC-14: the service is monitor-free — the start line is emitted by the agent
             // (all five triggers funnel through here), same wording as before
-            monitor.onTool("Compressing conversation " + messages.size() + " messages "
+            monitor.onTool("🗜 Compressing conversation " + messages.size() + " messages "
                     + ChatMessageUtil.estimateTokens(messages) + " tokens"
                     + (compactCfg.getModel() == null ? "" : " using " + compactCfg.getModel()));
             var result = new CompactService(configuredModel).compact(

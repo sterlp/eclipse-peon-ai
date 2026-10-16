@@ -8,7 +8,7 @@ import dev.langchain4j.agent.tool.Tool;
 
 public class CompactSessionTool extends AbstractTool {
     public static final String NAME = "compactSession";
-    public static final String TOOL_MESSAGE_PREFIX = "Da Scribe done ";
+    public static final String TOOL_MESSAGE_PREFIX = "🗜 Da Scribe done ";
 
     @Tool(name = CompactSessionTool.NAME,
             value = """
@@ -30,7 +30,7 @@ public class CompactSessionTool extends AbstractTool {
         return switch (result.status()) {
             case COMPACTED -> {
                 long elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000;
-                var toolResult = result.resultLine() + System.lineSeparator()
+                var toolResult = "🗜 " + result.resultLine() + System.lineSeparator()
                         + (StringUtil.hasValue(preserve)
                                 ? "Preserved:" + System.lineSeparator() + StringUtil.stripToEmpty(preserve)
                                 : "(nothing preserved)");
@@ -43,13 +43,13 @@ public class CompactSessionTool extends AbstractTool {
             }
             case SKIPPED_SMALL -> {
                 // R-CC-10: the diagnosis rides on the onTool LOG line only; the result string stays clean.
-                var toolResult = "Not needed only " + agent.getMemory().size() + " message in context";
-                onTool("Compact called but skipped because of small context for " + agent.getName()
+                var toolResult = "🗜 Not needed only " + agent.getMemory().size() + " message in context";
+                onTool("🗜 Compact called but skipped because of small context for " + agent.getName()
                         + agent.getMemory().tokenDiagnosis() + " " + StringUtil.charsSuffix(toolResult));
                 yield toolResult;
             }
             case FAILED_EMPTY -> {
-                var toolResult = "Compact failed: compressor returned no summary for " + agent.getName();
+                var toolResult = "🗜 Compact failed: compressor returned no summary for " + agent.getName();
                 onTool(toolResult + " " + StringUtil.charsSuffix(toolResult));
                 yield toolResult;
             }

@@ -230,7 +230,7 @@ class AbstractAgentCompactResultTest {
         // THEN — exactly ONE start line, emitted by the agent (after the guard, before the clear)
         assertThat(result.status()).isEqualTo(CompactResult.Status.COMPACTED);
         assertThat(toolLines).hasSize(1);
-        assertThat(toolLines.getFirst()).startsWith("Compressing conversation 3 messages");
+        assertThat(toolLines.getFirst()).startsWith("🗜 Compressing conversation 3 messages");
     }
 
     // R-CC-14
