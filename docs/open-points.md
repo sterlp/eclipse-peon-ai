@@ -175,5 +175,5 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   bei Datei-Target **keinen** Extension-Filter an, aber `grepComplete` (:82-83) / onTool (:88-89)
   disclosen die rohe Extension — dieselbe Text/Inhalt-Diskrepanz, die Inc-C-EXT auf der Disk-Seite
   gefixt hat (AGENTS „one behaviour, one implementation", Familien-Parität). Fix = C-EXT-Muster
-  (effectiveExtension beim Datei-Target null), Details + Zeilen in peon-plan-§9 (Archiv). **Blocked
-  bis Pauls WIP an EclipseGrepTool gemerged ist** (S TABU, war im Zyklus live-editiert).
+  (effectiveExtension beim Datei-Target null), Details + Zeilen in peon-plan-§9 (Archiv). **UNBLOCKED
+   2026-10-16:** Pauls WIP ist mit `af658e0f` gemerged (EclipseGrepTool inkl. 🔍-Präfix) — Umsetzung offen.
