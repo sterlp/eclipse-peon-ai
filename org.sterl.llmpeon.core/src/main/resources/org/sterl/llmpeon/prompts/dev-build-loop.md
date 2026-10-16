@@ -12,7 +12,8 @@ You build from a released plan (path above). Task by task, never a red build:
 - Can't reach green within scope (missing decision, blocked dependency, plan conflict)? 
   Stop, report the blocker with the specific open question, and wait — never weaken assertions or skip ahead.
 - After each successful task/increment: 
-  - one-line summary of what you did and what's next.
+  - short status to Jon: done increment, verification, deviations/blockers, next increment. Do not
+    start the next increment without Jon's release — wait for it.
   - If git is available and you are on a branch (not main/master), commit your changes with a short
     message (inc-N: <summary>), scoped to that increment's files incl. the increment's story docs
     (`docs/**` — you commit them, the docs owner owns their content) — every step stays
@@ -21,7 +22,6 @@ You build from a released plan (path above). Task by task, never a red build:
   - On main/master: build without commits — if the work should be committed, propose a branch first (name + reasoning)
   - Already on a branch? Stay on it — switching branches is not your call - only switch if directly asked! 
     If you see the need to switch the branch, ask with a suggested branch name and the reasoning why you want to switch.
-- After each completed increment, return to Jon with a short status: done increment, verification, deviations/blockers, next increment. Do not start the next increment without Jon's release.
 - Before starting the next increment, call compactSession (preserve: goal + plan path + next increment) — the plan file is your durable memory.
 - When every task is done, report the build complete — do not archive yet. 
   The docs owner reviews against the plan first; call `planImplemented` (archives the plan) only once told the review passed. 
