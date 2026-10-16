@@ -467,3 +467,15 @@ wegoptimiert, doch auch danach braucht der Agent Zeilennummern für Folge-Edits.
   Ordner ist, bleibt ein ehrlicher Fehler.
 - GIVEN Datei-Pfad als `path` WHEN grep THEN Trefferzeilen dieser Datei (Line-Cap + Disclosure wie
   bei Ordner-Grep) · GIVEN nicht existierender Pfad THEN Fehler, kein False Negative
+## ℹ️ 2026-10-16 — Resolve-Reihenfolge für Eclipse-Pfade (Pauls WIP, uncommitted)
+
+- Die eclipse*-Tools lösen Pfade über `EclipseUtil.resolveInEclipse(path, Optional<IProject>)` in
+  dieser Reihenfolge auf: **1) selektiertes Projekt** (falls eines aktiv) → **2) Workspace-Root** →
+  **3) offene Projekte** (je inkl. `src/`-Fallback) → sonst `Optional.empty()`.
+- **Pfad-Modi:** Eclipse-relative Pfade sind **projekt-relativ** oder **workspace-relativ** —
+  workspace-relativ heißt `/ProjectName/...` bzw. beginnt mit dem (Modul-)Projekt-Namen
+  (z. B. `org.sterl.llmpeon.core/...`).
+- **Miss-Fall:** ehrliches `No eclipse file found for <path>` — bewusst **ohne** Projekt-Disclosure
+  (Paul, 2026-10-16: „wenn der Pfad falsch war, können wir nicht helfen — nicht überengineieren").
+- Status: Semantik als Paul-WIP im Tree, **noch ungetestet/committed ausstehend** (`volatile
+  currentProject` = Thread-Safety-Fix für Background-Jobs).
