@@ -24,10 +24,10 @@ import dev.langchain4j.data.message.UserMessage;
  * No agent/memory/config types — a message list plus an int, testable without mocks.
  *
  * <p>Pipeline: filter SystemMessages on list level → render uncapped → dedup on the UNCAPPED
- * renders (LinkedHashSet, keep-first, before any caps — R-CIB-2) → estimate (chars×2/7, R-CIB-1)
+ * renders (LinkedHashSet, keep-first, before any caps — R-CIB-2) → estimate (chars/3, R-CIB-1)
  * → stage 1 (thinking 9000 front-cap, only the last real user message full) → re-estimate →
  * stage 2 (tool results/arguments + thinking 6000) → re-estimate → final stage (per-message cap
- * = restTokens×7/2/n, head-keep, termination guaranteed). The disclosure ("session truncated" +
+ * = restTokens×3/n, head-keep, termination guaranteed). The disclosure ("session truncated" +
  * one caps line) is appended once at the input end, only when something was truncated —
  * including a dedup-only collapse (F4, R-CIB-5).</p>
  */
@@ -106,7 +106,7 @@ public class ContextTrimComponent {
                     capsLine(CompactResult.Stage.TOOL_RESULTS, 0, duplicatesCollapsed), estimateBefore, duplicatesCollapsed);
         }
 
-        // Final stage (R-CIB-4.4): per-message cap = restTokens×7/2/n, head-keep. Termination
+        // Final stage (R-CIB-4.4): per-message cap = restTokens×3/n, head-keep. Termination
         // guaranteed: sum ≤ n·capChars → estimate ≤ restTokens + overhead = budget.
         int n = Math.max(1, nonEmptyCount(stage2));
         int cap = perMessageCap(budgetTokens, n, duplicatesCollapsed, perMessageCap(budgetTokens, n, duplicatesCollapsed, 0));
@@ -188,7 +188,7 @@ public class ContextTrimComponent {
 
     /**
      * Per-message cap from the tokens left after the disclosure + n separators (R-CIB-4.4, F5) —
-     * tokens→chars with the ×2/7 estimator. The outer pass makes it a fixed point: the final
+     * tokens→chars with the ×3 estimator. The outer pass makes it a fixed point: the final
      * disclosure (digits of {@code cap} ≤ digits of the inner cap) is no longer than the one the
      * cap was computed against → the final estimate never exceeds the budget.
      */
@@ -196,7 +196,7 @@ public class ContextTrimComponent {
         var nl = System.lineSeparator();
         var disclosure = DISCLOSURE_MARKER + nl + capsLine(CompactResult.Stage.PER_MESSAGE, capForDisclosure, duplicatesCollapsed);
         int restTokens = Math.max(0, budgetTokens - ChatMessageUtil.estimateTokens(disclosure + nl.repeat(n)));
-        return (int) Math.min(Integer.MAX_VALUE, (long) restTokens * 7 / 2 / n);
+        return (int) Math.min(Integer.MAX_VALUE, (long) restTokens * 3 / n);
     }
 
     /**

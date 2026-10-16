@@ -24,7 +24,7 @@ class ContextCounterDisplayTest {
     // R-CC-6
     @Test
     void estimateIsDisclosed() {
-        // GIVEN — a fresh memory; adding a message drives the counter with the chars×2/7 estimate
+        // GIVEN — a fresh memory; adding a message drives the counter with the chars/3 estimate
         var memory = new ThreadSafeMemory();
         memory.add(new UserMessage("some text"));
 

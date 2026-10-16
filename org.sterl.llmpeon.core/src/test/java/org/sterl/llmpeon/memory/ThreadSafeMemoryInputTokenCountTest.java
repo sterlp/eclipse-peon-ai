@@ -16,7 +16,7 @@ import dev.langchain4j.model.output.TokenUsage;
 /**
  * R-CC-1 (docs/compact-context-counter.md, ADR-0055): the token counter measures the CONTEXT
  * SIZE of the last real prompt (provider input tokens) — never the COST (input + output).
- * Without provider usage the counter falls back to the chars×2/7 estimate.
+ * Without provider usage the counter falls back to the chars/3 estimate.
  */
 class ThreadSafeMemoryInputTokenCountTest {
 
@@ -47,7 +47,7 @@ class ThreadSafeMemoryInputTokenCountTest {
                 .aiMessage(AiMessage.from("A".repeat(3000)))
                 .build(), List.of());
 
-        // THEN — the counter falls back to the chars×2/7 estimate of the actual memory
+        // THEN — the counter falls back to the chars/3 estimate of the actual memory
         assertThat(memory.getTotalTokenUsed()).isEqualTo(ChatMessageUtil.estimateTokens(memory.getCopy()));
         assertThat(memory.getTotalTokenUsed()).isGreaterThan(0);
     }

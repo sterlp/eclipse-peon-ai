@@ -174,7 +174,7 @@ class CompactServiceTest {
                 UserMessage.from("q " + "U".repeat(3000)));
 
         // WHEN/THEN — info for stage 1, warn for stage 2, error for the final stage (R-CIB-6)
-        assertThat(resultLevel(stage1, 3000)).isSameAs(CapturingLog.Level.INFO);
+        assertThat(resultLevel(stage1, 3200)).isSameAs(CapturingLog.Level.INFO);
         assertThat(resultLevel(stage2, 7000)).isSameAs(CapturingLog.Level.WARN);
         assertThat(resultLevel(finalStage, 1000)).isSameAs(CapturingLog.Level.ERROR);
     }
@@ -509,10 +509,10 @@ class CompactServiceTest {
 
     @Test
     void noDumpBetweenLimitAnd130Percent() {
-        // GIVEN — estimate at ~1.25 x budget: over the limit, below the 1.3 gate
+        // GIVEN — estimate at ~1.2 x budget: over the limit, below the 1.3 gate
         var log = new CapturingLog();
         var engine = engineWithSummary(log, 1000);
-        var messages = List.<ChatMessage>of(UserMessage.from("y".repeat(4_375)));
+        var messages = List.<ChatMessage>of(UserMessage.from("y".repeat(3_600)));
         var estimate = ChatMessageUtil.estimateTokens(messages);
         assertThat(estimate).isGreaterThan(1000).isLessThan(1300);
 

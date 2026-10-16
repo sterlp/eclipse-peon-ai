@@ -51,7 +51,7 @@ public class ChatMessageUtil {
 
     /**
      * The CONTEXT SIZE of the given prompt/response in tokens: the provider's INPUT token count
-     * when available, otherwise the chars×2/7 estimate of the messages. The total token count
+     * when available, otherwise the chars/3 estimate of the messages. The total token count
      * (input + output = COST) never flows into this value (R-CC-1, docs/adr/0055-context-counter-input-not-cost.md).
      */
     public static int getTokenCount(ChatResponse response, List<ChatMessage> messages) {
@@ -82,7 +82,7 @@ public class ChatMessageUtil {
     /**
      * Estimates the token count of a single text snippet (a streaming text delta or a
      * tool-argument slice): {@code null} or empty → 0, up to 5 chars → 1, otherwise
-     * {@code length × 2 / 7}. A coarse chars×2/7 (~3.5 chars per token) — deliberately
+     * {@code length / 3}. A coarse chars/3 (~3 chars per token) — deliberately
      * over-estimating a bit keeps the live rate honest; never a real provider count.
      */
     public static int estimateTokens(@Nullable String text) {
@@ -91,9 +91,9 @@ public class ChatMessageUtil {
         return len <= 5 ? 1 : charsToTokens(len);
     }
 
-    /** The central chars×2/7 estimator (~3.5 chars per token) — deliberately over-estimating keeps estimates honest. */
+    /** The central chars/3 estimator (~3 chars per token) — deliberately over-estimating keeps estimates honest. */
     private static int charsToTokens(int chars) {
-        return (chars * 2) / 7;
+        return chars / 3;
     }
 
     private static int charCount(ChatMessage msg) {

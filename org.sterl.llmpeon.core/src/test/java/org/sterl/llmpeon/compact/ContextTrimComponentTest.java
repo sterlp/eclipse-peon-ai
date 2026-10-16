@@ -20,7 +20,7 @@ import dev.langchain4j.data.message.UserMessage;
 
 /**
  * Pure staging tests of the compact input (R-CIB-1…5, docs/compact.md §BDD) — no agent, no LLM.
- * Budgets are tokens (chars×2/7 estimator), fixture sizes are chosen so exactly one stage wins.
+ * Budgets are tokens (chars/3 estimator), fixture sizes are chosen so exactly one stage wins.
  */
 class ContextTrimComponentTest {
 
@@ -97,14 +97,14 @@ class ContextTrimComponentTest {
         var messages = List.<ChatMessage>of(ai("result", thinking));
 
         // WHEN
-        var outcome = subject.stage(messages, 3000);
+        var outcome = subject.stage(messages, 3200);
 
         // THEN — thinking is front-capped at 9000: the anchor marks the dropped head, the end stays
         assertThat(outcome.stage()).isEqualTo(Stage.THINK_AND_USER);
         assertThat(outcome.input()).contains("Think: " + ChatMessageUtil.THINK_FRONT_CAP_ANCHOR);
         assertThat(outcome.input()).contains("CONCLUSION");
         assertThat(outcome.input()).doesNotContain("H".repeat(20000));
-        assertThat(outcome.estimateAfter()).isLessThanOrEqualTo(3000);
+        assertThat(outcome.estimateAfter()).isLessThanOrEqualTo(3200);
     }
 
     @Test
@@ -135,7 +135,7 @@ class ContextTrimComponentTest {
         var messages = List.<ChatMessage>of(earlier, ai("ok", "T".repeat(15000)), user("current question"));
 
         // WHEN
-        var outcome = subject.stage(messages, 3000);
+        var outcome = subject.stage(messages, 3200);
 
         // THEN — only the state (context item) of the earlier message survives, its real text is dropped
         assertThat(outcome.stage()).isEqualTo(Stage.THINK_AND_USER);
@@ -152,7 +152,7 @@ class ContextTrimComponentTest {
                 user(ToolService.COMPACT_HINT + " (now)"));
 
         // WHEN
-        var outcome = subject.stage(messages, 3000);
+        var outcome = subject.stage(messages, 3500);
 
         // THEN — the hint is state (constant exclusion), the earlier real message is the full one
         assertThat(outcome.stage()).isEqualTo(Stage.THINK_AND_USER);
@@ -166,7 +166,7 @@ class ContextTrimComponentTest {
         var messages = List.<ChatMessage>of(ai("a1", "T".repeat(15000)), toolResult("read", "y".repeat(3000)));
 
         // WHEN
-        var outcome = subject.stage(messages, 4000);
+        var outcome = subject.stage(messages, 4200);
 
         // THEN — stage 1 runs without a user reduction target; AI text and (uncapped) tools stay full
         assertThat(outcome.stage()).isEqualTo(Stage.THINK_AND_USER);
@@ -202,7 +202,7 @@ class ContextTrimComponentTest {
     // ---------- final stage ----------
 
     @Test
-    void finalStage_capsEachMessageToRestTokensTimes7Over2OverN() {
+    void finalStage_capsEachMessageToRestTokensTimes3OverN() {
         // GIVEN — three messages, none of the earlier stages fits a 1000-token budget
         var messages = List.<ChatMessage>of(ai("a", "T".repeat(12000)), toolResult("write", "R".repeat(12000)),
                 user("q " + "U".repeat(3000)));
@@ -210,12 +210,12 @@ class ContextTrimComponentTest {
         // WHEN
         var outcome = subject.stage(messages, 1000);
 
-        // THEN — the per-message cap (restTokens×7/2/n) is applied to every finished render:
+        // THEN — the per-message cap (restTokens×3/n) is applied to every finished render:
         // no 2000-char run of any filler survives (stage 2 alone would leave 6000-char runs),
         // but the content heads are still there
         assertThat(outcome.stage()).isEqualTo(Stage.PER_MESSAGE);
         assertThat(outcome.input()).doesNotContain("T".repeat(2000)).doesNotContain("R".repeat(2000)).doesNotContain("U".repeat(2000));
-        assertThat(outcome.input()).contains("T".repeat(1000)).contains("TOOL_EXECUTION_RESULT:").contains("USER:\nq U");
+        assertThat(outcome.input()).contains("T".repeat(900)).contains("TOOL_EXECUTION_RESULT:").contains("USER:\nq U");
     }
 
     @Test
@@ -226,7 +226,7 @@ class ContextTrimComponentTest {
         var single = List.<ChatMessage>of(toolResult("big", "Z".repeat(50000)));
 
         // WHEN/THEN — for every budget the final estimate never exceeds it (R-CIB-4.4 termination
-        // guarantee; mutation ×7/2→×7 or ×2/7 must turn this red)
+        // guarantee; mutation of the ×3 inverse (e.g. back to ×7/2) must turn this red)
         for (var budget : List.of(100, 500, 1000, 4000)) {
             var outcome = subject.stage(multi, budget);
             assertThat(outcome.stage()).as("multi, budget %d".formatted(budget)).isEqualTo(Stage.PER_MESSAGE);
@@ -308,11 +308,11 @@ class ContextTrimComponentTest {
 
     @Test
     void disclosure_appendedOnceAtEnd_whenCapped() {
-        // GIVEN — stage 1 kicks in (15k thinking, budget 3000)
+        // GIVEN — stage 1 kicks in (15k thinking, budget 3200)
         var messages = List.<ChatMessage>of(ai("a", "T".repeat(15000)));
 
         // WHEN
-        var outcome = subject.stage(messages, 3000);
+        var outcome = subject.stage(messages, 3200);
 
         // THEN — "session truncated" + one caps line, exactly once, at the input end (R-CIB-5);
         // no per-message "(trimmed)" tags in compact mode
@@ -335,7 +335,7 @@ class ContextTrimComponentTest {
                 ai("a", "T".repeat(15000)));
 
         // WHEN
-        var outcome = subject.stage(messages, 3500);
+        var outcome = subject.stage(messages, 4000);
 
         // THEN — the reinsert marker message is state (constant exclusion), the later question is the
         // full last real user message

@@ -60,7 +60,7 @@ public class ThreadSafeMemory {
     /**
      * R-CC-10: the compact-log diagnosis — the three context sizes side by side, each with its
      * source/flag. Appended by ALL three compact event lines (hint, entry, skip). One format, one
-     * implementation: {@code " | memory=<total>(estimate=<flag>) model=<input|n/a> estimate=<chars×2/7>"}.
+     * implementation: {@code " | memory=<total>(estimate=<flag>) model=<input|n/a> estimate=<chars/3>"}.
      */
     public synchronized String tokenDiagnosis() {
         String model = lastProviderInputTokens == null ? "n/a" : String.valueOf(lastProviderInputTokens);
