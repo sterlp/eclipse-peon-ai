@@ -38,4 +38,14 @@ class StringUtilTest {
         assertEquals("(0 chars)", StringUtil.charsSuffix(""));
     }
 
+    /** Issue #154: toK renders WITHOUT thousands separators — "1.234k" reads as 33 Mio in DE. */
+    @Test
+    void toK_noThousandsSeparator() {
+        assertEquals("1234k", StringUtil.toK(1234567));
+        assertEquals("131k", StringUtil.toK(131072));
+        assertEquals("1k", StringUtil.toK(1000));
+        assertEquals("0k", StringUtil.toK(999));
+        assertEquals("0k", StringUtil.toK(0));
+    }
+
 }

@@ -2,8 +2,6 @@ package org.sterl.llmpeon.shared;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.text.NumberFormat;
-import java.util.Locale;
 
 public class StringUtil {
     /** any /r/n -> /n */
@@ -89,15 +87,14 @@ public class StringUtil {
         return isEstimate ? "~" + value + " (estimate)" : value;
     }
 
-    /** Converts a token count to a "k" string, e.g. 131072 → "131k", 1234567 → "1.234k". */
+    /** Converts a token count to a "k" string without thousands separators, e.g. 131072 → "131k", 1234567 → "1234k". */
     public static String toK(int tokens) {
         return toK((long) tokens);
     }
 
-    /** Converts a token count to a "k" string, e.g. 131072 → "131k", 1234567 → "1.234k". */
+    /** Converts a token count to a "k" string without thousands separators, e.g. 131072 → "131k", 1234567 → "1234k". */
     public static String toK(long tokens) {
-        long k = tokens / 1000;
-        return NumberFormat.getIntegerInstance(Locale.GERMANY).format(k) + "k";
+        return (tokens / 1000) + "k";
     }
 
     /**
