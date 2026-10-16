@@ -189,6 +189,15 @@ Detailed documentation is available at [peon-ai-4e.sterl.org](https://peon-ai-4e
 
 🪄 📦 🔧
 ✅ ❌ 🧩 or 🛠 🎯 or ⚡ 🗜 🐞
+🔍 = Search
+🧑‍💻 = Entwickler
+📜 = Script / Source File
+⚙️ = Konfiguration / Setup
+📝 = Quelltext-Datei
+🛠 = LLM Tools
+🧩 = SKILL
+🗜 = Compact
+🐞 = Bug
 
 ## Eclipse RCP Resources
 

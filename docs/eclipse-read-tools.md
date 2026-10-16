@@ -454,3 +454,16 @@ genau diese Klausel von R1c (Rest von R1c unverändert, siehe Notiz dort).
 **WEIL:** Paul: „scheinbar sind die aber immer hilfreich" — beim Ganzdatei-Lesen hatte er sie
 wegoptimiert, doch auch danach braucht der Agent Zeilennummern für Folge-Edits. Token-Preis
 (~5–7 Zeichen/Zeile) ist kleiner als ein erneuter Range-Read oder eine falsche Edit-Position.
+
+## ℹ️ 2026-10-16 — Grep-Target darf eine einzelne Datei sein (Pauls Fix)
+
+- `diskGrepFiles`: ein **regulärer Dateipfad** als `path` ist jetzt ein gültiges Target — das Tool
+  greppt genau diese Datei (decompose: `grepDirectory`/`grepFile`-Zweige am resolved Path, gleiche
+  Ausgabe-Form). **WEIL:** vorher → `IllegalArgumentException("Directory not found")` → False
+  Negative (Agent glaubt, das File existiert nicht) — die teuerste Fehlerklasse dieser Codebasis.
+  `eclipseGrepFiles` konnte Datei-Targets schon (IFile-Zweig in `resolveInEclipse`).
+- **Semantik Datei-Target:** explizite Datei schlägt den Extension-Filter (Datei wird ungefiltert
+  gegreppt); binäre Datei → ehrlicher Fehler (kein „no matches"). Pfade-Arg, das weder Datei noch
+  Ordner ist, bleibt ein ehrlicher Fehler.
+- GIVEN Datei-Pfad als `path` WHEN grep THEN Trefferzeilen dieser Datei (Line-Cap + Disclosure wie
+  bei Ordner-Grep) · GIVEN nicht existierender Pfad THEN Fehler, kein False Negative

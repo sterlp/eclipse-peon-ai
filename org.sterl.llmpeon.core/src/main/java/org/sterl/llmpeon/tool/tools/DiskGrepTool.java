@@ -4,8 +4,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 
+import org.jspecify.annotations.NonNull;
 import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.GrepHit;
 import org.sterl.llmpeon.shared.SearchQuery;
@@ -50,10 +53,39 @@ public class DiskGrepTool extends AbstractTool {
         var searchQuery = SearchQuery.of(query);
 
         Path searchDir = (path == null || path.isBlank()) ? workingDir : workingDir.resolve(path).normalize();
-        if (!Files.isDirectory(searchDir)) {
-            throw new IllegalArgumentException("Directory not found: " + path);
+        // The extension filter is a property of the directory walk: an explicitly named file is
+        // never filtered, so the disclosure must not claim a filter that did not happen (C-EXT)
+        String effectiveExtension = Files.isDirectory(searchDir) ? extension : null;
+        List<GrepHit> hits;
+        if (Files.isDirectory(searchDir)) {
+            hits = grepDirectory(extension, searchQuery, searchDir);
+        } else if (Files.isRegularFile(searchDir)) {
+            try {
+                hits = grepFile(searchQuery, searchDir);
+            } catch (IOException e) {
+                throw new IllegalArgumentException("Grep file " + searchDir + " failed: " + e.getMessage(), e);
+            }
+        } else {
+            throw new IllegalArgumentException("Path not found: " + path + " check your query or leave the path empty.");
         }
 
+        String result = AiReponseBuilder.grepComplete(hits, searchQuery, AiReponseBuilder.MAX_GREP_FILES,
+                AiReponseBuilder.MAX_GREP_LINES, effectiveExtension);
+        onTool("🔍 disk grep '" + query + "' type '" + StringUtil.getOrDefault(effectiveExtension, "*")
+                + "' found " + hits.size() + " matched lines" + " " + StringUtil.charsSuffix(result));
+        return result;
+    }
+    
+    private @NonNull List<GrepHit> grepFile(SearchQuery searchQuery, Path file) throws IOException {
+        var content = Files.readString(file);
+        var absPath = file.toAbsolutePath().toString();
+        var lineHits = searchQuery.matchingLines(content);
+        if (lineHits.isEmpty()) return Collections.emptyList();
+        return lineHits.stream().map(lh -> new GrepHit(absPath, lh.line(), lh.text())).toList();
+    }
+
+    private @NonNull List<GrepHit> grepDirectory(String extension,
+            SearchQuery searchQuery, Path searchDir) {
         var hits = new ArrayList<GrepHit>();
         var matchedFiles = new HashSet<String>(); // distinct hit files — drives the file cap
 
@@ -82,11 +114,6 @@ public class DiskGrepTool extends AbstractTool {
         } catch (IOException e) {
             throw new RuntimeException("Failed to search in " + searchDir, e);
         }
-
-        String result = AiReponseBuilder.grepComplete(hits, searchQuery, AiReponseBuilder.MAX_GREP_FILES,
-                AiReponseBuilder.MAX_GREP_LINES, extension);
-        onTool("Grep '" + query + "' type '" + StringUtil.getOrDefault(extension, "*")
-                + "' found " + hits.size() + " matched lines" + " " + StringUtil.charsSuffix(result));
-        return result;
+        return hits;
     }
 }
