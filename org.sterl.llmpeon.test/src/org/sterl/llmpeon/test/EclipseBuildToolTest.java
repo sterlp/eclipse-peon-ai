@@ -1,6 +1,5 @@
 package org.sterl.llmpeon.test;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -27,9 +26,7 @@ public class EclipseBuildToolTest extends AbstractIntegrationTest {
     private static final String FILE_B = "src/org/sterl/fixture/Beta.java";
     private static final String FILE_C = "src/org/sterl/fixture/GrepTarget.java";
     private static final String FILE_CLEAN = "src/org/sterl/fixture/Alphabet.java";
-    private static final String CAP_SEED_A = "src/org/sterl/fixture/cap/CapSeedA.java";
-    private static final String CAP_SEED_B = "src/org/sterl/fixture/cap/CapSeedB.java";
-    private static final String CAP_SEED_C = "src/org/sterl/fixture/cap/CapSeedC.java";
+    private static final String ERROR_SEED = "src/org/sterl/fixture/ErrorSeed.java";
 
     private final EclipseBuildTool tool = new EclipseBuildTool();
     private final List<IFile> markerFiles = new ArrayList<>();
@@ -220,46 +217,29 @@ public class EclipseBuildToolTest extends AbstractIntegrationTest {
                 lines.get(lines.size() - 1).matches("\\(\\d+(?:m \\d+)?s, \\d{2}:\\d{2}\\)"));
     }
 
-    // UC-OD-5
-    @Test(timeout = 180000)
-    public void buildReportCappedAt100WithDisclosure() throws Exception {
+    // UC-OD-5, UC-OD-6
+    @Test(timeout = 30000)
+    public void buildReportShowsProjectErrors() throws Exception {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
         try {
-            // GIVEN 3 seed files × 40 independent errors (one unresolved variable per line)
-            // → deterministically >100 markers, independent of the workspace recovery state
-            // (the JDT compiler caps problems per compilation unit at 100 by default,
-            //  CompilerOptions.maxProblemsPerUnit — one 120-line file would yield exactly 100)
-            var seedFiles = List.of(CAP_SEED_A, CAP_SEED_B, CAP_SEED_C);
-            for (int f = 0; f < seedFiles.size(); f++) {
-                var seed = new StringBuilder("package org.sterl.fixture.cap;\nclass CapSeed")
-                        .append((char) ('A' + f)).append(" {\n");
-                for (int i = 0; i < 40; i++) {
-                    seed.append("int e").append(i).append(" = missing").append(i).append(";\n");
-                }
-                seed.append("}\n");
-                eclipseWriteFile(seedFiles.get(f), seed.toString());
-            }
+            // GIVEN one seed file with 2 compile errors — well below the 100-marker cap.
+            // The cap itself is tested as its own feature with fake problems
+            // (AiReponseBuilderTest#buildMarkersCappedWithDisclosure): eclipseBuildProject
+            // wipes all markers before the build, so pre-seeded markers cannot survive it.
+            eclipseWriteFile(ERROR_SEED, "package org.sterl.fixture;\nclass ErrorSeed {\n"
+                    + "int a = missingA;\nint b = missingB;\n}\n");
+            markerFiles.add(file(ERROR_SEED));
 
             // WHEN
             String result = tool.eclipseBuildProject(PeonTestFixture.PROJECT_NAME);
 
-            // THEN N = actual problem markers, disclosure names N, exactly 100 marker lines
-            int n = project.findMarkers(IMarker.PROBLEM, true, IResource.DEPTH_INFINITE).length;
-            assertTrue("expected more than 100 markers, got " + n, n > 100);
-            assertTrue("expected cap disclosure:\n" + result,
-                    result.contains("showing 100 of " + n + " markers"));
-            long markerLines = result.lines()
-                    .filter(l -> l.matches(".* @ line .* @ file .*")).count();
-            assertEquals(100, markerLines);
+            // THEN both project errors are visible in the report — nothing was cut → no disclosure
+            assertTrue("expected missingA error:\n" + result, result.contains("missingA cannot be resolved"));
+            assertTrue("expected missingB error:\n" + result, result.contains("missingB cannot be resolved"));
+            assertFalse("below the cap nothing was cut, no disclosure:\n" + result,
+                    result.contains("showing 100 of"));
         } finally {
-            // delete fixture markers before the base after() deletes the fixture files
-            for (String seedFile : List.of(CAP_SEED_A, CAP_SEED_B, CAP_SEED_C)) {
-                try {
-                    project.getFile(seedFile).deleteMarkers(IMarker.PROBLEM, true, IResource.DEPTH_ZERO);
-                } catch (CoreException e) {
-                    // cleanup must not mask the test outcome
-                }
-            }
+            deleteTestMarkers();
         }
     }
 

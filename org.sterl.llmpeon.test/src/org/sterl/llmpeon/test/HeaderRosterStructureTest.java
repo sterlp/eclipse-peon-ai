@@ -34,26 +34,76 @@ import dev.langchain4j.data.message.ChatMessage;
  * inherits the header background, so the button's paint fill equals the header color, like
  * the hammer.
  * <p>
- * Honesty: the structure assertions are the falsifiable regression guard (re-introducing a
- * wrapper composite turns them red). The background assertions are characterization of the CSS
- * contract: the roster CSS class resolves to white in the light theme (css/default-styles.css).
- * They are falsifiable too — drop the CSS class assignment and the controls fall back to the
- * default background (the shell's deliberate (200,220,240) proves the white is CSS-driven,
- * not inherited). The active E4 theme is pinned to the default (light) theme before the widget
- * is built so the white assertions are deterministic regardless of the workbench's current theme.
+ * Honesty: {@link #rosterIsFlat()} is the falsifiable regression guard (re-introducing a
+ * wrapper composite turns it red) — structure only, no theme dependency, always runs.
+ * {@link #rosterInheritsCssBackground()} is characterization of the CSS contract: the roster
+ * CSS class resolves to white in the light theme (css/default-styles.css); the shell's
+ * deliberate (200,220,240) proves the white is CSS-driven, not inherited. It is falsifiable
+ * too — drop the CSS class assignment and the controls fall back to the default background.
+ * <p>
+ * Theme pinning (verified 2026-10-17): {@link IThemeEngine#DEFAULT_THEME_ID}
+ * ("org.eclipse.e4.ui.workbench.swt.theme.default") is NOT a registered theme id on the
+ * 2026-09 platform — a setTheme with it silently stays on the dark theme (proven: active
+ * theme remained e4_dark, the widget rendered #1E1E1E instead of white). The registered id
+ * {@code org.eclipse.e4.ui.css.theme.e4_default} — the refid the plugin's plugin.xml uses for
+ * css/default-styles.css — switches synchronously on the UI thread. When the environment
+ * cannot make the light theme active at all (e.g. no registered themes in a recovered
+ * workspace), the CSS test skips itself (Assume) — the structure guard still runs.
  */
 @SuppressWarnings("restriction")
 public class HeaderRosterStructureTest extends AbstractSwtUiTest {
 
+    /** Registered light theme id — the refid the plugin's plugin.xml uses for css/default-styles.css. */
+    private static final String LIGHT_THEME_ID = "org.eclipse.e4.ui.css.theme.e4_default";
+
     @Test
-    public void rosterIsFlatAndInheritsBackground() {
-        // Pin the active theme to the default (light) theme so the CSS background assertions are
-        // deterministic; skip when no theme engine is available. The Assume runs BEFORE the ui-call
-        // so an AssumptionViolatedException is not wrapped into an AssertionError by ui().
+    public void rosterIsFlat() {
+        ui(() -> {
+            var roster = new AiAgentStatusWidget(shell, SWT.NONE,
+                    HeaderRosterStructureTest::stubTeam, agent -> { }, () -> false);
+            try {
+                roster.layout(true, true);
+                var children = roster.getChildren();
+                // 2 members (boss + slave) → boss label, slave label, slave button — nothing else
+                assertEquals(3, children.length);
+                var labels = 0;
+                var buttons = 0;
+                for (var c : children) {
+                    assertFalse("per-member wrapper composite re-introduced: " + c.getClass().getSimpleName(),
+                            c instanceof Composite);
+                    if (c instanceof Label) ++labels;
+                    if (c instanceof Button) ++buttons;
+                }
+                assertEquals(2, labels);
+                assertEquals(1, buttons);
+                var button = firstButton(children);
+                // the one button is the slave's compact button, direct child of the roster
+                assertEquals("Compact Probe Slave", button.getToolTipText());
+            } finally {
+                roster.dispose();
+            }
+            return null;
+        });
+    }
+
+    @Test
+    public void rosterInheritsCssBackground() {
+        // The Assume runs BEFORE the ui-call so an AssumptionViolatedException is not wrapped
+        // into an AssertionError by ui().
         var engine = themeEngine();
         assumeTrue("no E4 theme engine available", engine != null);
+        // Pin the registered light theme — synchronous on the UI thread (class javadoc: why
+        // IThemeEngine.DEFAULT_THEME_ID must not be used).
         ui(() -> {
-            engine.setTheme(IThemeEngine.DEFAULT_THEME_ID, false);
+            engine.setTheme(LIGHT_THEME_ID, false);
+            return null;
+        });
+        // CSS precondition: the light theme must actually be active for the white assertions.
+        // When the environment cannot provide it (e.g. no registered themes), skip the CSS
+        // characterization — the structure guard (rosterIsFlat) still runs.
+        assumeTrue("light theme not active after pin — CSS precondition unmet",
+                engine.getActiveTheme() != null && LIGHT_THEME_ID.equals(engine.getActiveTheme().getId()));
+        ui(() -> {
             // deliberately NOT white: if the controls merely inherited the shell background,
             // the white assertion below fails
             var headerBg = new Color(display, 200, 220, 240);
@@ -64,26 +114,11 @@ public class HeaderRosterStructureTest extends AbstractSwtUiTest {
                 try {
                     roster.layout(true, true);
                     var children = roster.getChildren();
-                    // 2 members (boss + slave) → boss label, slave label, slave button — nothing else
-                    assertEquals(3, children.length);
-                    var labels = 0;
-                    var buttons = 0;
-                    for (var c : children) {
-                        assertFalse("per-member wrapper composite re-introduced: " + c.getClass().getSimpleName(),
-                                c instanceof Composite);
-                        if (c instanceof Label) ++labels;
-                        if (c instanceof Button) ++buttons;
-                    }
-                    assertEquals(2, labels);
-                    assertEquals(1, buttons);
-                    var button = firstButton(children);
-                    // the one button is the slave's compact button, direct child of the roster
-                    assertEquals("Compact Probe Slave", button.getToolTipText());
                     // CSS contract: the roster class resolves to white in the light theme —
                     // the shell's deliberate (200,220,240) proves it is CSS-driven, not inherited
                     var white = new RGB(255, 255, 255);
                     assertEquals(white, label(children).getBackground().getRGB());
-                    assertEquals(white, button.getBackground().getRGB());
+                    assertEquals(white, firstButton(children).getBackground().getRGB());
                 } finally {
                     roster.dispose();
                 }
