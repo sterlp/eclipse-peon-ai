@@ -134,6 +134,10 @@ public class AIChatView implements EclipseAiMonitor {
                 this::doCompressAgent,
                 () -> inFlightTurns.get() > 0);
         headerBar.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+        // R-CG-8: the service fires from its Job thread — hop to the UI thread, then render.
+        aiService.setCodegraphStateListener(state -> EclipseUtil.runInUiThread(parent,
+                () -> headerBar.setCodegraphState(state)));
+        headerBar.setCodegraphState(aiService.getCodegraphConnectionService().state());
 
         // Borderless — a border's top edge would read as a divider against the flush header.
         chatHistory = new ChatMarkdownWidget(parent, SWT.NONE);
