@@ -92,5 +92,4 @@ Bundle-ClassPath: .,
  lib/okio.jar,
  lib/okio-jvm.jar,
  lib/kotlin-stdlib-jdk7.jar,
- lib/langchain4j-reactive-streaming.jar,
- lib/slf4j-simple.jar
+ lib/langchain4j-reactive-streaming.jar
