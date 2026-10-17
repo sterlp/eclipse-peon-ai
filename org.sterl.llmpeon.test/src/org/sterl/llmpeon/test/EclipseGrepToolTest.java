@@ -290,6 +290,50 @@ public class EclipseGrepToolTest extends AbstractIntegrationTest {
         assertContains(result, "File type filter: known text extensions and filenames only.");
     }
 
+    // UC-OD-10
+    // R-OD-7 (docs/tool-output-disclosure.md): an explicit file target is never extension-filtered,
+    // so the disclosure must not claim a filter that did not happen (C-EXT, disk-side counterpart:
+    // DiskGrepToolTest.fileTargetBeatsExtensionFilter)
+    @Test
+    public void fileTargetBeatsExtensionFilterInDisclosure() {
+        var messages = new ArrayList<String>();
+        var capturingTool = new EclipseGrepTool() {
+            @Override
+            protected void onTool(String m) {
+                messages.add(m);
+            }
+        };
+
+        // GIVEN the fixture's GrepTarget.java — an explicit file target beats the extension filter
+        // WHEN grepped via the file path with an extension that would exclude it in a container walk
+        String result = capturingTool.eclipseGrepFiles("grepMe",
+                "/" + PeonTestFixture.PROJECT_NAME + "/src/org/sterl/fixture/GrepTarget.java", ".xml");
+
+        // THEN all matches of the file come through — no extension filter was applied ...
+        assertContains(result, "GrepTarget.java:4:     String first = \"grepMe\"");
+        assertContains(result, "GrepTarget.java:5:     String second = \"grepMe\"");
+        assertContains(result, "GrepTarget.java:6:     String third = \"grepMe\"");
+        // ... and the disclosure names NO extension — nothing was filtered (C-EXT)
+        assertContains(messages.get(0), "type '*'");
+        assertFalse("file target disclosure must not claim the .xml filter:\n" + messages.get(0),
+                messages.get(0).contains("type '.xml'"));
+
+        // AND no-match case with the extension: the standard no-extension filter hint is shown —
+        // the hint must not be suppressed by a filter that never happened on a file target (C-EXT)
+        String empty = capturingTool.eclipseGrepFiles("zzz-does-not-exist",
+                "/" + PeonTestFixture.PROJECT_NAME + "/src/org/sterl/fixture/GrepTarget.java", ".xml");
+        assertContains(empty, "no matches");
+        assertContains(empty, "File type filter: known text extensions and filenames only.");
+
+        // WHEN the same query targets the project (container walk) with the .java filter
+        messages.clear();
+        String scoped = capturingTool.eclipseGrepFiles("grepMe", PeonTestFixture.PROJECT_NAME, ".java");
+
+        // THEN the disclosure names the extension like today (unchanged)
+        assertContains(scoped, "GrepTarget.java");
+        assertContains(messages.get(0), "type '.java'");
+    }
+
     private static int firstIndexContaining(List<String> lines, String value) {
         for (int i = 0; i < lines.size(); i++) {
             if (lines.get(i).contains(value)) return i;

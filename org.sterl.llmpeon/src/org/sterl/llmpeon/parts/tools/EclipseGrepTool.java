@@ -46,6 +46,9 @@ public class EclipseGrepTool extends AbstractEclipseTool {
 
         var searchQuery = SearchQuery.of(query);
         var allProjects = path == null || path.length() <= 1;
+        // The extension filter is a property of the container walk: an explicitly named file is
+        // never filtered, so the disclosure must not claim a filter that did not happen (C-EXT, R-OD-7)
+        String effectiveExtension = extension;
         var hits = new ArrayList<GrepHit>(); // matched lines, in file-processing order
         var matchedFiles = new HashSet<String>(); // distinct hit files — drives the file cap
 
@@ -66,6 +69,7 @@ public class EclipseGrepTool extends AbstractEclipseTool {
                 containers.add(c);
                 refreshTargets.add(c);
             } else if (resource.get() instanceof IFile f) {
+                effectiveExtension = null;
                 addHits(f, searchQuery, JdtUtil.pathOf(resource.get()), hits, matchedFiles);
             } else {
                 onProblem("Eclipse grep could not read " + JdtUtil.pathOf(resource.get()));
@@ -80,12 +84,12 @@ public class EclipseGrepTool extends AbstractEclipseTool {
         }
 
         String result = AiReponseBuilder.grepComplete(
-                hits, searchQuery, AiReponseBuilder.MAX_GREP_FILES, AiReponseBuilder.MAX_GREP_LINES, extension);
+                hits, searchQuery, AiReponseBuilder.MAX_GREP_FILES, AiReponseBuilder.MAX_GREP_LINES, effectiveExtension);
         if (hits.isEmpty()) {
             var searchedScope = allProjects ? "all open projects (" + containers.size() + ")" : path;
             result += System.lineSeparator() + "Searched: " + searchedScope + " · pattern: " + query;
         }
-        onTool("🔍 grep '" + query + "' type '" + StringUtil.getOrDefault(extension, "*")
+        onTool("🔍 grep '" + query + "' type '" + StringUtil.getOrDefault(effectiveExtension, "*")
                 + "' found " + hits.size() + " matched lines" + " " + StringUtil.charsSuffix(result));
         return result;
     }

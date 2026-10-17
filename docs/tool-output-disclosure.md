@@ -87,3 +87,26 @@ Historie: 2026-09-30 bis 2026-10-16 war der Wert 2000 mit Muster „N line(s) tr
 #### UC-OD-9 — grepNoMatchesUnchanged ✅
 - GIVEN Suche ohne Treffer WHEN grep THEN das kleine ehrliche „no matches"-Payload (Guard,
   Regression gegen Regression-Behandlung des Leerfalls).
+
+### R-OD-7 — Disclosure nennt nur angewandte Filter (Grep-Datei-Target) ❌
+
+`eclipseGrepFiles` mit **Datei-Target** (`instanceof IFile`) wendet den `extension`-Filter
+bewusst **nicht** an (die Datei ist selbst der Filter — Pendant: Disk-Seite C-EXT-Muster,
+`DiskGrepToolTest.fileTargetBeatsExtensionFilter`) — aber `grepComplete`/`onTool` disclose
+die rohe Extension, als wäre gefiltert worden: die Text/Inhalt-Diskrepanz, die Inc-C-EXT auf
+der Disk-Seite behoben hat (AGENTS: „one behaviour, one implementation", Da-Dok-CONCERN
+2026-10-16, unblocked seit `af658e0f`).
+
+**SOLL (C-EXT-Muster auf den IFile-Zweig):** `effectiveExtension = (Target ist Verzeichnis/
+Container) ? extension : null` — `grepComplete` + `onTool` disclose `effectiveExtension`, nie
+die rohe Extension.
+
+#### UC-OD-10 — fileTargetBeatsExtensionFilterInDisclosure ❌
+- GIVEN `eclipseGrepFiles` mit einem konkreten `.java`-File als Target und `extension=".xml"`
+  WHEN grep THEN alle Matches der Datei kommen zurück (kein Extension-Filter) **und** die
+  Disclosure nennt KEINE Extension (nichts wurde gefiltert).
+- GIVEN Ordner-Target mit `extension=".java"` WHEN grep THEN Disclosure nennt die Extension
+  wie heute (unverändert).
+
+→ `fileTargetBeatsExtensionFilterInDisclosure` (Plugin-Test-Modul, Pendant zu
+`DiskGrepToolTest.fileTargetBeatsExtensionFilter`)
