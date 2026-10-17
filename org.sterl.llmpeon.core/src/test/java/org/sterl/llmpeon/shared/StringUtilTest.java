@@ -2,6 +2,8 @@ package org.sterl.llmpeon.shared;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.util.Locale;
+
 import org.junit.jupiter.api.Test;
 
 class StringUtilTest {
@@ -38,14 +40,68 @@ class StringUtilTest {
         assertEquals("(0 chars)", StringUtil.charsSuffix(""));
     }
 
-    /** Issue #154: toK renders WITHOUT thousands separators — "1.234k" reads as 33 Mio in DE. */
+    /**
+     * R5a (docs/token-usage.md): under 1 million toK is whole thousands, no decimals, no grouping
+     * (max "999k") — plain integer division, so it never picks up a locale artifact. Pinned under
+     * GERMANY: a mutation that routed the k form through a locale NumberFormat with decimals would
+     * render 131072 as "131,07k" and go red.
+     */
     @Test
-    void toK_noThousandsSeparator() {
-        assertEquals("1234k", StringUtil.toK(1234567));
-        assertEquals("131k", StringUtil.toK(131072));
-        assertEquals("1k", StringUtil.toK(1000));
-        assertEquals("0k", StringUtil.toK(999));
-        assertEquals("0k", StringUtil.toK(0));
+    void toK_underOneMillionIsWholeThousands() {
+        withLocale(Locale.GERMANY, () -> {
+            assertEquals("131k", StringUtil.toK(131_072));
+            assertEquals("1k", StringUtil.toK(1_000));
+            assertEquals("0k", StringUtil.toK(999));           // integer division truncates
+            assertEquals("0k", StringUtil.toK(0));
+            assertEquals("999k", StringUtil.toK(999_999));     // just under the M boundary stays k
+        });
     }
 
+    /** R5a: exactly 1 million is the M boundary — "1M" (max-fraction-digits trims the trailing .00). */
+    @Test
+    void toK_oneMillionIsOneM() {
+        withLocale(Locale.GERMANY, () -> assertEquals("1M", StringUtil.toK(1_000_000)));
+        withLocale(Locale.US, () -> assertEquals("1M", StringUtil.toK(1_000_000)));
+    }
+
+    /**
+     * R5a: from 1 million up toK switches to millions with up to 2 fraction digits, the decimal
+     * separator and the integer grouping following the default locale. Issue #154: the old
+     * "1234k" read ambiguously as 1.2k or 1.2M — "1,23M" / "1.23M" is unambiguous.
+     */
+    @Test
+    void toK_aboveOneMillionUsesMillionsTwoFractionDigits() {
+        withLocale(Locale.GERMANY, () -> {
+            assertEquals("1,23M", StringUtil.toK(1_234_567));
+            assertEquals("1,84M", StringUtil.toK(1_840_000));
+            assertEquals("33,02M", StringUtil.toK(33_020_000));
+        });
+        withLocale(Locale.US, () -> {
+            assertEquals("1.23M", StringUtil.toK(1_234_567));
+            assertEquals("1.84M", StringUtil.toK(1_840_000));
+            assertEquals("33.02M", StringUtil.toK(33_020_000));
+        });
+    }
+
+    /**
+     * R5a edge: 999,999,999 rounds up over the M boundary to 1000.00 millions, grouped per locale —
+     * "1.000M" (DE) / "1,000M" (US), pinned honestly (a mutation that dropped grouping or the
+     * 2-fraction-digit rounding goes red).
+     */
+    @Test
+    void toK_justUnderABillionRoundsToGroupedThousandMillions() {
+        withLocale(Locale.GERMANY, () -> assertEquals("1.000M", StringUtil.toK(999_999_999)));
+        withLocale(Locale.US, () -> assertEquals("1,000M", StringUtil.toK(999_999_999)));
+    }
+
+    /** Pins the default locale for the body, restoring the original afterwards (JUnit 5 runs core sequentially). */
+    private static void withLocale(Locale locale, Runnable body) {
+        Locale original = Locale.getDefault();
+        Locale.setDefault(locale);
+        try {
+            body.run();
+        } finally {
+            Locale.setDefault(original);
+        }
+    }
 }

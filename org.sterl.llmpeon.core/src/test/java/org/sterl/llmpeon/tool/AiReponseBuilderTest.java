@@ -222,7 +222,7 @@ class AiReponseBuilderTest {
     // UC-OD-8
     @Test
     void grepNormalLinesUntouched() {
-        // GIVEN hits with normal lines (< 2000 chars)
+        // GIVEN hits with normal lines (< 500 chars)
         var hits = List.of(new GrepHit("A.java", 1, "short a"), new GrepHit("A.java", 2, "short b"));
 
         // WHEN the renderer runs

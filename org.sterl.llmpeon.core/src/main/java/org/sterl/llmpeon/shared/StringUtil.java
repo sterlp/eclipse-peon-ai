@@ -2,6 +2,7 @@ package org.sterl.llmpeon.shared;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.text.NumberFormat;
 
 public class StringUtil {
     /** any /r/n -> /n */
@@ -87,14 +88,26 @@ public class StringUtil {
         return isEstimate ? "~" + value + " (estimate)" : value;
     }
 
-    /** Converts a token count to a "k" string without thousands separators, e.g. 131072 → "131k", 1234567 → "1234k". */
+    /** @see #toK(long) */
     public static String toK(int tokens) {
         return toK((long) tokens);
     }
 
-    /** Converts a token count to a "k" string without thousands separators, e.g. 131072 → "131k", 1234567 → "1234k". */
+    /**
+     * Compact token-count display for the session header, the Compact button and the model-name window
+     * (R5a, docs/token-usage.md; Issue #154). Under 1 million: whole thousands, plain integer (max
+     * {@code "999k"}, grouping never needed) — 131072 → {@code "131k"}. From 1 million up: millions with
+     * up to 2 fraction digits, the decimal separator and integer grouping following the default locale —
+     * 1_000_000 → {@code "1M"}, 1_840_000 → {@code "1,84M"} (DE) / {@code "1.84M"} (US),
+     * 999_999_999 → {@code "1.000M"} (DE) / {@code "1,000M"} (US).
+     */
     public static String toK(long tokens) {
-        return (tokens / 1000) + "k";
+        if (tokens < 1_000_000) {
+            return (tokens / 1000) + "k";
+        }
+        NumberFormat format = NumberFormat.getInstance();
+        format.setMaximumFractionDigits(2);
+        return format.format(tokens / 1_000_000.0) + "M";
     }
 
     /**
