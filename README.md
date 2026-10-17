@@ -24,6 +24,7 @@ Jon and team are in the house. Single threaded for now - for best local performa
 - **Voice Chat**: Talk to your AI peon and tell him what todo - no more typing
 - **File Operations** - Read, write, search, and modify files directly from the chat
 - **Context Awareness** - Understands your current workspace and selected files
+- **Codegraph** - Auto-connects the [codegraph](https://github.com/colbymchenry/codegraph) knowledge graph when the active project is indexed — one `codegraph_explore` call instead of search loops
 - **Local LLM Support** - Works with Ollama for privacy-focused local inference
 - **Multi-Provider** - Supports Ollama, OpenAI (and compatible), Google Gemini, Mistral AI, Anthropic Claude, and GitHub Copilot
 

@@ -68,6 +68,10 @@ Enable the **MCP** toggle in the chat toolbar to activate the configured servers
 - If any configured server fails to connect, all servers are disconnected and an error is shown — this prevents the agent from working with an incomplete tool set.
 - Tool names are taken directly from the server. If two servers expose a tool with the same name, the last one registered wins.
 
+## Codegraph (built-in)
+
+Codegraph is a **built-in** feature — do not add a `codegraph` entry here. It activates automatically when the active project is indexed (`.codegraph/`); see [Codegraph](/setup/codegraph). The server name `codegraph` is reserved: if an old manual entry still exists, it is skipped (with a log line) and the built-in wins.
+
 ## Suggested MCP Servers
 
 | Server | Type | Hosting | Best for |
