@@ -8,13 +8,12 @@ import java.net.http.HttpResponse;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.sterl.llmpeon.shared.ArgsUtil;
+import org.sterl.llmpeon.shared.BoundedLruCache;
 import org.sterl.llmpeon.shared.FileLines;
 import org.sterl.llmpeon.shared.StringUtil;
 
@@ -40,14 +39,7 @@ public class WebFetchTool extends AbstractTool {
 
     private final HttpClient httpClient;
     private final FlexmarkHtmlConverter htmlToMarkdownConverter;
-    private final Map<String, String> markdownCache = new LinkedHashMap<>() {
-        private static final long serialVersionUID = 1L;
-
-        @Override
-        protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
-            return size() > CACHE_MAX_URLS;
-        }
-    };
+    private final BoundedLruCache<String, String> markdownCache = new BoundedLruCache<>(CACHE_MAX_URLS);
 
     public WebFetchTool() {
         this.httpClient = HttpClient.newBuilder()
@@ -115,11 +107,9 @@ public class WebFetchTool extends AbstractTool {
      * HTTP >= 400 is returned as a result (never cached), not thrown.
      */
     private FetchResult fetch(String url) throws IOException, InterruptedException {
-        synchronized (markdownCache) {
-            String cached = markdownCache.get(url);
-            if (cached != null) {
-                return new FetchResult(200, cached);
-            }
+        String cached = markdownCache.get(url);
+        if (cached != null) {
+            return new FetchResult(200, cached);
         }
 
         HttpRequest request = HttpRequest.newBuilder()
@@ -140,9 +130,7 @@ public class WebFetchTool extends AbstractTool {
         }
 
         onTool("Reading " + url);
-        synchronized (markdownCache) {
-            markdownCache.put(url, markdown);
-        }
+        markdownCache.put(url, markdown);
         return new FetchResult(response.statusCode(), markdown);
     }
 

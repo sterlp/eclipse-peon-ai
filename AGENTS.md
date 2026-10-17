@@ -36,6 +36,7 @@ Module guides (read when working in one):
   removed keys are ignored, never migrated or aliased. No migration chains, no stale state.
 - **Empty means unset.** An empty config value sends *no* parameter — never a default. (Reason:
   GPT-5/o reject any `temperature != 1`; a "harmless default" breaks exactly those models.)
+- **Every RAM cache is bounded.** A RAM cache without self-truncation is a leak — every new cache uses `BoundedLruCache` (or has a finite key-space and says so in its Javadoc).
 - Use a clean component architecture with proper information hiding / deep modules
 - **Thread safety:** Eclipse plugin - heavy work on a background Thread `Job.create`, UI changes
   on a UI thread `EclipseUtil.runInUiThread` as so plan/build accordingly. 

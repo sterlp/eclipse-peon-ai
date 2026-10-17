@@ -181,6 +181,39 @@ class WebFetchToolTest {
         assertThat(calls("/error")).isEqualTo(2);
     }
 
+    // R-BC-4 (docs/bounded-caches.md)
+    // Cap 5: fetch a..e, refresh a (501), fetch f -> evicts b (not a); a stays a hit (calls==1),
+    // b refetches (calls==2), c..f stay at 1.
+    // Mutation: FIFO (get does not refresh, old behavior) -> a evicted at f -> calls(a)==2 -> red.
+    // Mutation: unbounded -> b still cached -> calls(b)==1 -> red.
+    @Test
+    void webFetchCacheUsesBoundedLru() throws Exception {
+        for (char c = 'a'; c <= 'f'; c++) {
+            serve("/bc-" + c, 200, page(PAGE_1000_MARKERS).getBytes(StandardCharsets.UTF_8));
+        }
+
+        // GIVEN 5 distinct URLs fill the cap WHEN the most recent one is refreshed and a 6th arrives
+        for (char c = 'a'; c <= 'e'; c++) {
+            tool.webFetchAsMarkdown(base + "/bc-" + c, 1, null);
+        }
+        String refreshed = tool.webFetchAsMarkdown(base + "/bc-a", 501, null);
+        assertThat(refreshed).contains("501: LN501");
+        assertThat(calls("/bc-a")).isEqualTo(1);
+        tool.webFetchAsMarkdown(base + "/bc-f", 1, null);
+
+        // THEN the refresh protected a (LRU evicted b): a is still a hit, b refetches
+        String aAgain = tool.webFetchAsMarkdown(base + "/bc-a", 501, null);
+        assertThat(aAgain).contains("501: LN501");
+        assertThat(calls("/bc-a")).isEqualTo(1);
+        tool.webFetchAsMarkdown(base + "/bc-b", 1, null);
+        assertThat(calls("/bc-b")).isEqualTo(2);
+
+        // AND every other URL was fetched exactly once
+        for (char c = 'c'; c <= 'f'; c++) {
+            assertThat(calls("/bc-" + c)).as("calls(/bc-%s)", c).isEqualTo(1);
+        }
+    }
+
     @Test
     void webFetchEmptyContentIsHonest() throws Exception {
         String url = base + "/empty";

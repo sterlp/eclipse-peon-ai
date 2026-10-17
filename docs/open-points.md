@@ -110,8 +110,9 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
 - ❓ **Pauls ShellTool-WIP uncommitted (2026-10-17, im Tree):** Parameter-Rename
   `workingDirectory` → `workDir` + `@P`-Text („disk path, default current project") + Error-Message
   mit Default-Ausgabe — Tool-Schema-Change über alle `shellRunCommand`-Aufrufer (Clean Break).
-  Wir haben es NICHT committed/gebaut (2. Positional-Param-Rename in der Story). SOLL klären:
-  Rename bestätigen + shell-tool.md R3/Docs nachziehen, oder zurückrollen.
+  Wir haben es NICHT committed/gebaut (2. Positional-Param-Rename in der Story). Paul committet
+  die WIP-Änderungen selbst nach kurzem Review (2026-10-17); SOLL klären: Rename bestätigen +
+  shell-tool.md R3/Docs nachziehen, oder zurückrollen.
 
 - **Think-BDD-Lücken (a)–(g) (2026-09-27, Da-Dok-Provider-Think-Audit):** (a) Gemini
   buildModel-Thinking-Branch, (b) OpenAI-Off-Varianten `FALSE`/`No`/` Off `, (c)
@@ -119,9 +120,13 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   (e) LM Studio extra_body-Override, (f) OPEN_AI_OFFICIAL reasoningSummary=DETAILED, (g)
   custom-agent×OpenAI nur Signatur-Smoke. Plus: `ThinkModelMapping.Entry.off` geparst aber
   ungenutzt; `AiAgent.isThinkEnabled()` (deprecated Default) Sterben-Kandidat.
-- **slf4j-simple.jar wird mitgebündelt (2026-09-25):** trotz eigenem `EclipseSlf4jProvider`
-  (`MANIFEST.MF:96`, `build.properties:65`, Plugin-`pom.xml:23-27`) — Jar + Dependency bei
-  nächster Berührung raus, Build + Plugin-Lauf testen.
+- **slf4j-simple: Jar wird mitgebündelt + Multiple-Providers-Warnung live (2026-09-25 / Paul
+  2026-10-17):** trotz eigenem `EclipseSlf4jProvider` (`MANIFEST.MF:96`, `build.properties:65`,
+  Plugin-`pom.xml:23-27`) — Jar + Dependency bei nächster Berührung raus, Build + Plugin-Lauf
+  testen. Paul-Befund 2026-10-17: `SLF4J(W): Class path contains multiple SLF4J providers`
+  (unser Provider gewinnt, slf4j-simple ist zusätzlich resolved) — Fix-Richtung (Paul + Jon):
+  Version-Range `org.slf4j.api` schärfen **und** slf4j-simple aus der Resolution raus (wer simple
+  zieht — Target/Closure — verifiziert Da Mek); die Range allein entfernt simple nicht.
 - **Jackson 2 → 3 beobachten (2026-09-10):** Migration erst bei voller Entfernbarkeit
   (openai-java pinnt Jackson 2; 5 eigene Dateien; Error-Path → ApiRetry-Klassifikation prüfen).
   Revisit-Trigger: langchain4j 1.21+ / openai-Jackson-3. Dann eigene Story mit ADR.

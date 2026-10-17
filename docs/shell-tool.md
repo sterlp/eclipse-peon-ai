@@ -112,3 +112,7 @@ THEN verhält sich unverändert (Default greift nicht)
   2026-10-17 ersatzlos entfernt — kein Alias, kein Migration-Pfad (Clean Break).
 - `commandUsesShellTail`-Hint (Timeout ohne Output wegen `| tail`-Buffering) bleibt; mit dem
   `filter`-Parameter verliert `| grep` im Command zusätzlich seinen Sinn — Hint kann erweitert werden.
+- **Pfad-Dialekte (2026-10-17, Paul — Alias-Path-Idee verworfen):** Tools akzeptieren bewusst
+  **nur** ihren eigenen Dialekt (`disk*` → absoluter Disk-Pfad, `eclipse*` → `/projekt/pfad`) —
+  kein „alias path"-Input-Mapping; der Agent nutzt den in der Projekt-Info genannten Pfad des
+  jeweiligen Dialekts.
