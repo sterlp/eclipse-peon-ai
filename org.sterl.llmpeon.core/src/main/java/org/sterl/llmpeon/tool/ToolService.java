@@ -60,8 +60,10 @@ public class ToolService {
             Stop thinking and take action now: either call a tool, ask a clarifying question,
             or provide your answer directly.""";
 
-    private McpService mcpService;
-    private List<ToolSpecification> mcpToolSpecs = List.of();
+    /** ADR-0068: named MCP groups — the user-config group plus built-ins (e.g. "codegraph"). */
+    private static final String USER_GROUP = "user";
+    private final Map<String, McpService> mcpGroups = new ConcurrentHashMap<>();
+    private volatile List<ToolSpecification> mcpToolSpecs = List.of();
 
     public ToolService() {
         this(true);
@@ -285,10 +287,11 @@ public class ToolService {
         var executor = toolExecutors.get(tr.name());
         var monitor = req.getMonitor();
         String result;
-        var isMcpTool = executor == null && mcpService != null && mcpService.hasTool(tr.name());
+        var mcpGroupService = executor == null ? findMcpService(tr.name()) : null;
+        var isMcpTool = mcpGroupService != null;
         if (isMcpTool) {
             monitor.onTool("Running MCP: " + tr.name() + " - " + tr.arguments());
-            result = mcpService.executeTool(tr);
+            result = mcpGroupService.executeTool(tr);
             log.debug("MCP Tool {} result size: {}", tr.name(), result == null ? "null" : result.length());
             return ToolExecutionResultMessage.from(tr, result);
         } else if (executor == null) {
@@ -302,25 +305,74 @@ public class ToolService {
 
     /**
      * Connects to all given MCP servers and makes their tools available in the tool loop.
-     * Disconnects any previously active MCP connection first.
+     * Replaces the previous user-group connection (disconnect-first, all-or-nothing).
      * Throws if any server fails to connect.
      */
     public void connectMcp(List<McpServerConfig> servers) {
-        disconnectMcp();
-        if (servers == null || servers.isEmpty()) return;
-        var service = new McpService(servers);
-        service.connect(); // throws on failure
-        this.mcpService = service;
-        this.mcpToolSpecs = service.getToolSpecifications();
+        connectMcp(USER_GROUP, servers);
     }
 
-    /** Disconnects the active MCP service and removes its tools from the tool loop. */
+    /**
+     * Replaces the named MCP group: disconnects that group first, connects the given servers,
+     * and rebuilds the tool-spec union. Throws if any server fails to connect — the group stays
+     * empty, all other groups are untouched (failure isolation, ADR-0068).
+     */
+    public void connectMcp(String group, List<McpServerConfig> servers) {
+        disconnectMcp(group);
+        if (servers == null || servers.isEmpty()) return;
+        var service = createMcpService(servers);
+        service.connect(); // throws on failure
+        mcpGroups.put(group, service);
+        refreshMcpSpecs();
+    }
+
+    /** Convenience: connects a single server as its own named group. */
+    public void connectMcp(String group, McpServerConfig server) {
+        connectMcp(group, List.of(server));
+    }
+
+    /** Test seam (ToolServiceGroupsTest): swappable McpService factory. */
+    McpService createMcpService(List<McpServerConfig> servers) {
+        return new McpService(servers);
+    }
+
+    /** Rebuilds the tool-spec union across all groups — deterministic: group names sorted, then spec order. */
+    private void refreshMcpSpecs() {
+        var union = new ArrayList<ToolSpecification>();
+        mcpGroups.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .forEach(entry -> union.addAll(entry.getValue().getToolSpecifications()));
+        this.mcpToolSpecs = union;
+    }
+
+    /** First group (sorted by name) that owns the tool name — tool names are unique across groups. */
+    private McpService findMcpService(String toolName) {
+        return mcpGroups.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .map(Map.Entry::getValue)
+                .filter(service -> service.hasTool(toolName))
+                .findFirst()
+                .orElse(null);
+    }
+
+    /** Disconnects the user-group MCP connection and removes its tools from the tool loop. */
     public void disconnectMcp() {
-        this.mcpToolSpecs = List.of();
-        if (mcpService != null) {
-            mcpService.disconnect();
-            mcpService = null;
+        disconnectMcp(USER_GROUP);
+    }
+
+    /** Disconnects the named MCP group and rebuilds the tool-spec union. */
+    public void disconnectMcp(String group) {
+        var service = mcpGroups.remove(group);
+        if (service != null) {
+            service.disconnect();
+            refreshMcpSpecs();
         }
+    }
+
+    /** The server instructions of the named group/server (empty when the group or server is unknown). */
+    public Optional<String> mcpInstructions(String group, String serverName) {
+        var service = mcpGroups.get(group);
+        return service == null ? Optional.empty() : service.instructionsOf(serverName);
     }
 
     /**
