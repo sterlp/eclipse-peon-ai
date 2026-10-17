@@ -25,6 +25,7 @@ import org.sterl.llmpeon.command.CommandService;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.UserContext;
 import org.sterl.llmpeon.memory.StateMigration;
+import org.sterl.llmpeon.mcp.DefaultCodegraphProbe;
 import org.sterl.llmpeon.parts.AIChatView;
 import org.sterl.llmpeon.parts.PeonConstants;
 import org.sterl.llmpeon.parts.ai.component.AgentContextComponent;
@@ -92,6 +93,9 @@ public class PeonAiService {
     private CommandService commandService;
 
     private McpConnectionService mcpConnectionService;
+
+    /** ADR-0068: built-in Codegraph connection — own MCP group, failure-isolated from the user MCP group. */
+    private CodegraphConnectionService codegraph;
 
     private PlanTool planTool;
 
@@ -204,11 +208,17 @@ public class PeonAiService {
         // ADR-0067: MCP connects every agent-facing registry (shared + Peon-PO's own).
         mcpConnectionService = new McpConnectionService(List.of(sharedToolService, poAgent.getToolService()), mcpStateChange);
 
+        // ADR-0068: Codegraph built-in — same agent-facing registries, own group + probe.
+        codegraph = new CodegraphConnectionService(this::getProject,
+                List.of(sharedToolService, poAgent.getToolService()), new DefaultCodegraphProbe());
+        userContext.setCodegraphInfoLine(codegraph::projectInfoLine);
+
         // Context assembly (turn context, static bake, plan/handoff state) — pure component,
         // wired with values + lazy suppliers only (no service dependency).
         agentContext = new AgentContextComponent(this::getProject, workspaceMemoryTool, userContext,
                 scaffoldAgent, sharedToolService,
-                this::getActiveAgent, configuredModel::getConfig, this::getAgents);
+                this::getActiveAgent, configuredModel::getConfig, this::getAgents,
+                () -> codegraph.instructions());
 
         updateConfig(configuredModel.getConfig());
         // Default turn-context supplier for every agent present at construction. New custom agents
@@ -308,7 +318,9 @@ public class PeonAiService {
         } catch (IOException e) {
             throw new RuntimeException("Failed to load project skills from " + projectPath, e);
         }
-        return this.userContext.setCurrentProject(project);
+        var changed = this.userContext.setCurrentProject(project);
+        if (changed) codegraph.projectChanged();
+        return changed;
     }
 
     /** ADR-0043: the {@code .agents/skills} dir of every open project, read at validate time (R10). */
@@ -371,6 +383,7 @@ public class PeonAiService {
 
     public void disconnectMcp() {
         mcpConnectionService.disconnect();
+        codegraph.disconnect();
     }
 
     // -------------------------------------------------------------------------
@@ -379,6 +392,16 @@ public class PeonAiService {
 
     public IProject getProject() {
         return userContext.getCurrentProject();
+    }
+
+    /** ADR-0068: the built-in Codegraph connection service (icon state, context line, instructions). */
+    public CodegraphConnectionService getCodegraphConnectionService() {
+        return codegraph;
+    }
+
+    /** Header-icon state listener — the view wraps the callback in the UI thread (D9/I5). */
+    public void setCodegraphStateListener(Consumer<CodegraphConnectionService.State> listener) {
+        codegraph.setOnStateChange(listener);
     }
 
     /** R3: disk path of the active project (pin-aware) at call time; null = no project selected. */

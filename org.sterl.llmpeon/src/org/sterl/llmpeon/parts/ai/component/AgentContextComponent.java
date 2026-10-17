@@ -3,6 +3,7 @@ package org.sterl.llmpeon.parts.ai.component;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 import org.eclipse.core.resources.IFile;
@@ -44,6 +45,7 @@ public class AgentContextComponent {
     private final Supplier<AiAgent> activeAgent;
     private final Supplier<LlmConfig> config;
     private final Supplier<List<AiAgent>> agents;
+    private final Supplier<Optional<String>> codegraphInstructions;
 
     /** Last saved plan file (workspace-relative reference, not disk — avoids stale project refs). */
     private IFile plan;
@@ -58,7 +60,8 @@ public class AgentContextComponent {
             ToolService sharedToolService,
             Supplier<AiAgent> activeAgent,
             Supplier<LlmConfig> config,
-            Supplier<List<AiAgent>> agents) {
+            Supplier<List<AiAgent>> agents,
+            Supplier<Optional<String>> codegraphInstructions) {
         this.projectRef = projectRef;
         this.workspaceMemoryTool = workspaceMemoryTool;
         this.userContext = userContext;
@@ -67,6 +70,7 @@ public class AgentContextComponent {
         this.activeAgent = activeAgent;
         this.config = config;
         this.agents = agents;
+        this.codegraphInstructions = codegraphInstructions;
     }
 
     /**
@@ -139,7 +143,32 @@ public class AgentContextComponent {
             result.add(new EclipseFileContextItem("docs/index.md", projectRef));
         }
         result.addAll(userContext.get());
+
+        // R-CG-7: Codegraph server instructions — non-scaffold agents only (the scaffold has its
+        // own registry without MCP and never receives the item).
+        if (!(agent instanceof AiScaffoldAgent)) {
+            result.add(codegraphInstructionsItem());
+        }
         return result;
+    }
+
+    /** Codegraph instructions item (R-CG-7) — dedup by content: unchanged instructions are not re-injected. */
+    private ContextItem codegraphInstructionsItem() {
+        var supplier = codegraphInstructions;
+        return new ContextItem() {
+            @Override
+            public String label() {
+                return "Codegraph instructions";
+            }
+            @Override
+            public String dedupKey() {
+                return null; // dedup by rendered content (Workspace-Memory pattern)
+            }
+            @Override
+            public String render() {
+                return supplier.get().orElse(null); // null → silently skipped (ContextItem contract)
+            }
+        };
     }
 
     private void appendScaffoldContext(LinkedList<ContextItem> result) {

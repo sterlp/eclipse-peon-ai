@@ -10,6 +10,7 @@ import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.sterl.llmpeon.mcp.CodegraphServerFactory;
 import org.sterl.llmpeon.mcp.McpServerConfig;
 import org.sterl.llmpeon.parts.PeonConstants;
 import org.sterl.llmpeon.parts.config.McpConnectionService;
@@ -141,6 +142,27 @@ public class McpConnectionServiceTest {
         // THEN: both registries recorded the disconnect
         assertTrue("shared registry must be disconnected", shared.disconnected);
         assertTrue("po registry must be disconnected", po.disconnected);
+    }
+
+    /** R-CG-11: GIVEN a manual entry with the reserved built-in name WHEN connectServers()
+     *  THEN the entry is skipped (built-in wins) and only the other servers connect. */
+    @Test
+    public void givenManualCodegraphEntry_whenConnectServers_thenSkippedNoDuplicate() {
+        // GIVEN: config with the reserved built-in name plus a regular server
+        var codegraph = new McpServerConfig(CodegraphServerFactory.NAME, McpServerConfig.McpTransportType.STDIO,
+                "", "", "", "/usr/bin/true", "serve --mcp", "", "");
+        var docs = server("docs");
+        givenMcpConfig(List.of(codegraph, docs), true);
+        var shared = new RecordingToolService();
+        var po = new RecordingToolService();
+        var service = new McpConnectionService(List.of(shared, po), state -> {});
+
+        // WHEN: the synchronous connect seam runs
+        service.connectServers();
+
+        // THEN: only the non-reserved server reached both registries (no codegraph duplicate)
+        assertEquals(List.of(docs), shared.connectedServers);
+        assertEquals(List.of(docs), po.connectedServers);
     }
 
     private McpServerConfig server(String name) {

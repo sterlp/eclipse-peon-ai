@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.Test;
 import org.sterl.llmpeon.agent.AiAgent;
@@ -54,7 +55,7 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
 
         sut = new AgentContextComponent(() -> project, wmt, userContext, scaffold,
                 sharedTools.toolService(), () -> activeAgent,
-                ccm::getConfig, List::of);
+                ccm::getConfig, List::of, () -> Optional.empty());
     }
 
     /** GIVEN a set handoff line WHEN turnContext() twice THEN first call contains it, second does not. */
@@ -111,7 +112,7 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
         var sutWithAgents = new AgentContextComponent(() -> project, wmt,
                 new org.sterl.llmpeon.context.UserContext(), null, null,
                 () -> activeAgent, () -> LlmConfig.builder().model("t").url("http://x").build(),
-                () -> List.of(capturingAgent));
+                () -> List.of(capturingAgent), () -> Optional.empty());
 
         // WHEN
         sutWithAgents.initStaticContext();

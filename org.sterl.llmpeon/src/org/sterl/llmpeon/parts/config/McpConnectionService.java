@@ -4,8 +4,11 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
+import org.eclipse.core.runtime.ILog;
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.jobs.Job;
+import org.sterl.llmpeon.mcp.CodegraphServerFactory;
 import org.sterl.llmpeon.mcp.McpServerConfig;
 import org.sterl.llmpeon.parts.PeonConstants;
 import org.sterl.llmpeon.tool.ToolService;
@@ -16,6 +19,8 @@ import org.sterl.llmpeon.tool.ToolService;
  * and notifies the caller of state changes via a callback.
  */
 public class McpConnectionService {
+
+    private static final ILog LOG = Platform.getLog(McpConnectionService.class);
 
     /** ADR-0067: every agent-facing registry MCP connects to (shared + Peon-PO's own). */
     private final List<ToolService> toolServices;
@@ -79,7 +84,17 @@ public class McpConnectionService {
     public IStatus connectServers() {
         final AtomicBoolean connected = new AtomicBoolean(false);
         try {
-            var servers = McpPreferenceInitializer.loadServers();
+            var loaded = McpPreferenceInitializer.loadServers();
+            // R-CG-11: the name "codegraph" belongs to the built-in — reserved, ALWAYS filtered
+            // (decision 2026-10-17: no state coupling of the user path to the built-in).
+            var reserved = loaded.stream().filter(s -> CodegraphServerFactory.NAME.equals(s.name())).count();
+            if (reserved > 0) {
+                LOG.info("skipping reserved built-in MCP server name '" + CodegraphServerFactory.NAME
+                        + "' — managed by the Codegraph built-in, remove the entry from the MCP config");
+            }
+            var servers = loaded.stream()
+                    .filter(s -> !CodegraphServerFactory.NAME.equals(s.name()))
+                    .toList();
             if (!servers.isEmpty()) {
                 for (ToolService registry : toolServices) {
                     registry.connectMcp(servers);

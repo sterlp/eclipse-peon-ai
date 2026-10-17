@@ -6,6 +6,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
@@ -25,6 +26,9 @@ public class UserContext {
     private volatile IProject currentProject;
     private volatile boolean projectPinned = false;
 
+    /** Codegraph context line (built-in, R-CG-7) — empty supplier = no line (not connected). */
+    private volatile Supplier<String> codegraphLine = () -> "";
+
     private volatile IResource selectedResource;
     private volatile IJavaElement javaType;
     private volatile ITextSelection textSelection;
@@ -43,10 +47,10 @@ public class UserContext {
 
         var result = new LinkedList<ContextItem>();
         if (currentProject != null) {
-            result.add(new SimpleContextItem("Project info " + currentProject.getName(),
-                    PROJECT_TAG + System.lineSeparator() + EclipseUtil.projectInfo(currentProject)
-                )
-            );
+            var info = PROJECT_TAG + System.lineSeparator() + EclipseUtil.projectInfo(currentProject);
+            var line = codegraphLine.get();
+            if (line != null && !line.isBlank()) info += System.lineSeparator() + line;
+            result.add(new SimpleContextItem("Project info " + currentProject.getName(), info));
         }
         addUserSelection(result);
         synchronized (addOneTimeOrders) {
@@ -130,6 +134,11 @@ public class UserContext {
 
     public IProject getCurrentProject() {
         return currentProject;
+    }
+
+    /** Sets the codegraph info-line supplier (wired by PeonAiService; default = no line). */
+    public void setCodegraphInfoLine(Supplier<String> line) {
+        this.codegraphLine = line == null ? () -> "" : line;
     }
 
     public boolean setCurrentProject(IProject currentProject) {
