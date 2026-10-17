@@ -185,7 +185,7 @@ Common built-in prefixes:
 | `disk` | Optional file/grep tools that bypass the Eclipse workspace — only registered when **Enable disk tools** is on (see [Advanced Configuration](./advanced-configuration.md)). E.g. `diskReadFile`, `diskGrepFiles`, `diskWriteFile`. The same toggle also enables `webGet` (download a URL to a disk path — status, size and path in the context, never the content). |
 | `debugJava` | Java debugger — 15 actions (e.g. `debugJavaGetState`, `debugJavaStepOver`, `debugJavaSetBreakpoint`, `debugJavaSuspend`). An **edit tool**, so only offered to non-read-only agents (in practice Peon-Dev). You start the debug session in the Debug view; breakpoint set/remove work without one (stored as markers). See [Java debugger](#java-debugger). |
 | `web` | `webGet` (download a URL to a disk path) — only registered when **Enable disk tools** is on, like the `disk*` tools above. |
-| `shell` | `shellRunCommand` (run a shell command — mvn, npm, git; not for file I/O). |
+| `shell` | `shellRunCommand` (run a shell command — mvn, npm, git; only for build/test/git, not for file I/O — output is trimmed beyond `maxChars`, default 10 000 chars). |
 | `lintDocs`, `nextIds` | Docs tooling — `lintDocs` and `lintDocsAndTests` (the `lintDocs` prefix matches **both**) and `nextIds` (exact name, no shared prefix). A bare `docs` prefix matches nothing. |
 | `mcp__` | Every tool from a connected MCP server, e.g. `mcp__docs__search`. |
 

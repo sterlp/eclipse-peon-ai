@@ -68,50 +68,103 @@ class ShellToolTest {
         assertThrows(IllegalArgumentException.class, () -> tool.shellRunCommand("echo hi", "/no/such/dir/xyz", null, null, null));
     }
 
+    // BDD-2 e2e guard (docs/output-trim-service.md): 100 short lines, default maxChars -> whole, no note
     @Test
-    void runOsCommand_tailLinesDefaultIs60() {
-        // 100 lines, no tailLines -> last 60 (default), first 40 skipped
+    void runOsCommand_defaultMaxCharsKeepsSmallOutputWhole() {
         String result = tool.shellRunCommand(seqCommand(1, 100), tempDir.toString(), null, null, null);
-        assertTrue(result.contains("40 lines skipped"), "default should skip 40 of 100 lines, got: " + result);
         var lines = linesOf(result);
-        assertTrue(lines.contains("line 41"), "default 60 should include line 41, got: " + result);
-        assertTrue(lines.contains("line 100"));
-        assertFalse(lines.contains("line 40"), "default 60 should not include line 40, got: " + result);
+        assertTrue(lines.get(1).startsWith("line 1"), "small output must keep the first line (line 2 after cwd=), got: " + result);
+        assertTrue(lines.contains("line 100"), "small output must keep the last line, got: " + result);
+        assertFalse(result.contains("truncated:"), "100 short lines (< 10k) must not be trimmed, got: " + result);
     }
 
+    // BDD-3 (docs/output-trim-service.md): maxChars=500, ~2400-char output -> head + tail excerpt + disclosure
     @Test
-    void runOsCommand_tailLinesPositive() {
-        // 100 lines, tailLines=20 -> last 20
-        String result = tool.shellRunCommand(seqCommand(1, 100), tempDir.toString(), null, 20, null);
-        assertTrue(result.contains("80 lines skipped"), "expected 80 skipped, got: " + result);
+    void runOsCommand_maxCharsHeadTailExcerpt() {
+        String os = System.getProperty("os.name").toLowerCase();
+        String command = os.contains("win")
+                ? "for /L %i in (1,1,100) do @echo line %i padding-padding"
+                : "for i in $(seq 1 100); do echo line $i padding-padding; done";
+        String result = tool.shellRunCommand(command, tempDir.toString(), null, 500, null);
         var lines = linesOf(result);
-        assertTrue(lines.contains("line 81"), "tailLines=20 should include line 81, got: " + result);
-        assertTrue(lines.contains("line 100"));
-        assertFalse(lines.contains("line 80"), "tailLines=20 should not include line 80, got: " + result);
+        assertTrue(lines.get(1).startsWith("line 1"), "head must keep the first line, got: " + result);
+        assertTrue(result.contains("line 100 padding"), "tail must keep the last line, got: " + result);
+        assertFalse(result.contains("line 50 padding"), "middle line 50 must be dropped, got: " + result);
+        assertTrue(result.contains("truncated:"), "expected trim disclosure, got: " + result);
+        assertTrue(result.contains("chars total"), "expected total chars in the disclosure, got: " + result);
+        assertTrue(result.contains(" shown"), "expected shown chars in the disclosure, got: " + result);
     }
 
+    // (Paul) no hard cap (docs/output-trim-service.md): maxChars=100000 >> output -> whole, no note
     @Test
-    void runOsCommand_tailLinesMinusOneReturnsAll() {
-        // 100 lines so the old default-50 cap would drop the first 50
-        String result = tool.shellRunCommand(seqCommand(1, 100), tempDir.toString(), null, -1, null);
+    void runOsCommand_maxCharsLargerThanOutputNoTrim() {
+        String result = tool.shellRunCommand(seqCommand(1, 100), tempDir.toString(), null, 100000, null);
         var lines = linesOf(result);
-        // R3: first line is the cwd= disclosure now — the first output line moved to line 2 (mechanical pin shift)
-        assertTrue(lines.get(1).startsWith("line 1"),
-                "tailLines=-1 must return ALL lines starting from the first (line 2 after cwd=), got: " + result);
-        assertTrue(lines.contains("line 100"));
-        assertFalse(result.contains("lines skipped"),
-                "tailLines=-1 must not truncate 100 lines, got: " + result);
+        assertTrue(lines.get(1).startsWith("line 1"), "maxChars=100000 must keep the first line (no hard cap), got: " + result);
+        assertTrue(lines.contains("line 100"), "all lines must be present, got: " + result);
+        assertFalse(result.contains("truncated:"), "output below maxChars must not be trimmed, got: " + result);
     }
 
+    // Default total cap: 4000 lines (~28k chars) -> head + tail near the 10k default, middle dropped
     @Test
-    void runOsCommand_tailLinesAllHardCap() {
-        // 4000 lines, tailLines=-1 -> hard cap 3000, first 1000 skipped
-        String result = tool.shellRunCommand(seqCommand(1, 4000), tempDir.toString(), null, -1, null);
-        assertTrue(result.contains("1000 lines skipped"), "hard cap should skip 1000 of 4000, got: " + result);
+    void runOsCommand_defaultTotalCapTrimsLargeOutput() {
+        String result = tool.shellRunCommand(seqCommand(1, 4000), tempDir.toString(), null, null, null);
         var lines = linesOf(result);
-        assertTrue(lines.contains("line 4000"), "hard cap should include the last line, got: " + result);
-        assertTrue(lines.contains("line 1001"), "hard cap should start at line 1001, got: " + result);
-        assertFalse(lines.contains("line 1000"), "hard cap should not include line 1000, got: " + result);
+        assertTrue(lines.get(1).startsWith("line 1"), "head must keep line 1, got: " + result);
+        assertTrue(lines.contains("line 4000"), "tail must keep line 4000, got: " + result);
+        assertFalse(lines.contains("line 2000"), "middle line 2000 must be dropped, got: " + result);
+        assertTrue(result.contains("truncated:"), "expected trim disclosure, got: " + result);
+        long shownLineCount = lines.stream().filter(l -> l.startsWith("line ")).count();
+        assertTrue(shownLineCount < 1500, "only head+tail should be shown (~1000 lines), got " + shownLineCount);
+    }
+
+
+    // BDD-1 (docs/output-trim-service.md): a 3M-char minified line -> bounded to ~10k + per-line cap marker
+    @Test
+    void runOsCommand_minifiedLineCapped() {
+        String os = System.getProperty("os.name").toLowerCase();
+        String command = os.contains("win")
+                ? "powershell -NoProfile -Command \"[Console]::Out.Write(('a' * 3000000))\""
+                : "head -c 3000000 /dev/zero | tr '\\0' a";
+        String result = tool.shellRunCommand(command, tempDir.toString(), null, null, null);
+        assertTrue(result.length() <= 10_100, "3M-char line must be bounded to ~10k, got " + result.length() + " chars");
+        assertTrue(result.contains("…(+2999500 chars)"), "expected per-line cap marker with cut count, got: " + result);
+        assertTrue(result.contains("a".repeat(500)), "first 500 chars must be kept, got: " + result.substring(0, Math.min(120, result.length())));
+        var m = java.util.regex.Pattern.compile("truncated: (\\d+) chars total").matcher(result);
+        assertTrue(m.find(), "expected 'truncated: N chars total', got: " + result);
+        assertTrue(Long.parseLong(m.group(1)) >= 3_000_000, "total must be >= 3M, got " + m.group(1));
+    }
+
+    // BDD-4 (docs/output-trim-service.md): timeout on oversized output -> partial output uses the same trim
+    @Test
+    void runOsCommand_timeout_partialOutputUsesSameTrim() {
+        String os = System.getProperty("os.name").toLowerCase();
+        String command = os.contains("win")
+                ? "powershell -NoProfile -Command \"[Console]::Out.Write(('a' * 15000)); Start-Sleep 5\""
+                : "{ head -c 15000 /dev/zero | tr '\\0' a; sleep 5; }";
+        String result = tool.shellRunCommand(command, tempDir.toString(), 1, null, null);
+        assertTrue(result.contains("Command timed out after 1s"), "expected timeout, got: " + result);
+        assertTrue(result.contains("Partial output"), "expected partial output, got: " + result);
+        assertTrue(result.contains("truncated:"), "partial output must use the same trim, got: " + result);
+        assertTrue(result.length() <= 10_100, "partial output must be bounded to ~10k, got " + result.length());
+    }
+
+    // (Task) filter + maxChars: the filter runs before the trim, so all matched lines survive a small budget
+    @Test
+    void runOsCommand_filterRunsBeforeTrim() {
+        String os = System.getProperty("os.name").toLowerCase();
+        String command = os.contains("win")
+                ? "for /L %i in (1,1,100) do @echo noise %i & for /L %i in (1,1,20) do @echo ERROR %i"
+                : "for i in $(seq 1 100); do echo noise $i; done; for i in $(seq 1 20); do echo ERROR $i; done";
+        String result = tool.shellRunCommand(command, tempDir.toString(), null, 300, "ERROR");
+        assertTrue(result.contains("filter: ERROR (regex, showing 20 of 120 lines)"),
+                "expected filter disclosure (20 of 120), got: " + result);
+        var lines = linesOf(result);
+        for (int i = 1; i <= 20; i++) {
+            assertTrue(lines.contains("ERROR " + i), "ERROR line " + i + " must be present (filter before trim), got: " + result);
+        }
+        assertFalse(result.contains("truncated:"), "filtered 200 chars < 300 maxChars -> no trim, got: " + result);
+        assertFalse(result.contains("noise "), "non-matching noise lines must be excluded, got: " + result);
     }
 
     @Test
@@ -146,17 +199,18 @@ class ShellToolTest {
         assertFalse(lines.contains("other"), "non-matching line must be excluded, got: " + result);
     }
 
+    // (Task) filter + maxChars both active: filter disclosure AND trim note in the same output
     @Test
-    void runOsCommand_filterWithTail() {
-        // filter "line" matches all 100 lines; tailLines=20 -> last 20 of the filtered
+    void runOsCommand_filterWithMaxChars() {
+        // filter "line" matches all 100 lines; maxChars=20 -> head line 1 + tail line 100 only
         String result = tool.shellRunCommand(seqCommand(1, 100), tempDir.toString(), null, 20, "line");
-        assertTrue(result.contains("filter: line (regex, showing 20 of 100 lines)"),
-                "expected filter+tail disclosure, got: " + result);
-        assertTrue(result.contains("80 lines skipped"), "expected tail truncation disclosure, got: " + result);
+        assertTrue(result.contains("filter: line (regex, showing 2 of 100 lines)"),
+                "expected filter disclosure (2 of 100), got: " + result);
+        assertTrue(result.contains("truncated:"), "expected trim disclosure, got: " + result);
         var lines = linesOf(result);
-        assertTrue(lines.contains("line 100"));
-        assertTrue(lines.contains("line 81"));
-        assertFalse(lines.contains("line 80"), "tail should not include line 80, got: " + result);
+        assertTrue(lines.contains("line 1"), "head must keep line 1, got: " + result);
+        assertTrue(lines.contains("line 100"), "tail must keep line 100, got: " + result);
+        assertFalse(lines.contains("line 50"), "middle line 50 must be dropped, got: " + result);
     }
 
     @Test
