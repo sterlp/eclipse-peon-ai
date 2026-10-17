@@ -1,3 +1,21 @@
+
+
+# Resolved Points
+
+Geklärte Punkte, die in kein Feature-Doc passen. Offene Punkte: [open-points.md](open-points.md).
+
+## SLF4J Multiple Providers — gelöst (Paul gemeldet 2026-10-17, Fix `8e6bcb54`)
+
+**Punkt:** `SLF4J(W): Class path contains multiple SLF4J providers` — `EclipseSlf4jProvider`
+gewinnt, aber slf4j-simple (2.0.19) ist als zweiter Provider resolved (direkte Plugin-pom-
+Dependency → `copy-dependencies` → `lib/` → Bundle-ClassPath → ServiceLoader sieht beide).
+**Entscheidung:** slf4j-simple komplett raus (pom + MANIFEST + build.properties + Disk) —
+nur noch unser Provider; Plugin-Suite 352/0 ohne Warnung, Fix-Nachweis strukturell (exakt eine
+Provider-Registrierung im gebauten Bundle). **Pauls Annahme korrigiert:** es gibt kein
+`Require-Bundle org.slf4j.api`-Range `[2.0.0,3.0.0[` (VOLL-Grep: 0 Treffer) — slf4j-api kommt
+aus dem gebündelten `lib/`-Jar, Range-Schärfung entfällt. Falls OSGi-Resolve von slf4j-api
+gewünscht: eigene Story (open-points.md ⏳).
+
 ## Alias-Path — verworfen (Paul 2026-10-17)
 
 **Punkt:** LLM setzt immer wieder den Eclipse-Project-Path als Disk-Path — Bedarf für ein
@@ -6,9 +24,6 @@
 bewusste Trennung — Kollisionsargument `docs`/`tmp`-Projekte); nur ein Satz als Note in
 [shell-tool.md](shell-tool.md) Notes. Der Befund soll durch klare Pfad-Angaben in der
 Projekt-Info (und künftig R-CG-7) abgestellt werden.
-# Resolved Points
-
-Geklärte Punkte, die in kein Feature-Doc passen. Offene Punkte: [open-points.md](open-points.md).
 
 | Punkt | Entscheidung | Begründung | Datum |
 |---|---|---|---|

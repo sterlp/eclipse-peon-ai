@@ -120,13 +120,14 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   (e) LM Studio extra_body-Override, (f) OPEN_AI_OFFICIAL reasoningSummary=DETAILED, (g)
   custom-agent×OpenAI nur Signatur-Smoke. Plus: `ThinkModelMapping.Entry.off` geparst aber
   ungenutzt; `AiAgent.isThinkEnabled()` (deprecated Default) Sterben-Kandidat.
-- **slf4j-simple: Jar wird mitgebündelt + Multiple-Providers-Warnung live (2026-09-25 / Paul
-  2026-10-17):** trotz eigenem `EclipseSlf4jProvider` (`MANIFEST.MF:96`, `build.properties:65`,
-  Plugin-`pom.xml:23-27`) — Jar + Dependency bei nächster Berührung raus, Build + Plugin-Lauf
-  testen. Paul-Befund 2026-10-17: `SLF4J(W): Class path contains multiple SLF4J providers`
-  (unser Provider gewinnt, slf4j-simple ist zusätzlich resolved) — Fix-Richtung (Paul + Jon):
-  Version-Range `org.slf4j.api` schärfen **und** slf4j-simple aus der Resolution raus (wer simple
-  zieht — Target/Closure — verifiziert Da Mek); die Range allein entfernt simple nicht.
+- ⏳ **slf4j-simple — 🔒 gelöst 2026-10-17 (`8e6bcb54`):** Jar + Dependency aus Plugin-pom/
+  MANIFEST/build.properties entfernt — gebautes Bundle enthält exakt EINEN Provider
+  (`EclipseSlf4jProvider`), Plugin-Suite 352/0 ohne SLF4J-Warnung. **→ resolved-points.md.**
+  ⏳ Verbleibender Design-Punkt: slf4j-api ist **nicht OSGi-resolved**, sondern gebündelt
+  (`lib/slf4j-api.jar`, aktuell 2.0.19 → 2.0.18 beim nächsten clean — Patch-Drift harmlos);
+  Pauls Annahme eines `Require-Bundle`-Ranges `[2.0.0,3.0.0[` existiert im IST nicht. Falls
+  Paul slf4j-api künftig von der Platform resolved will (Bundle in Target + Require-Bundle +
+  lib-Jar weg): eigene Story, kein Bug-Anlass.
 - **Jackson 2 → 3 beobachten (2026-09-10):** Migration erst bei voller Entfernbarkeit
   (openai-java pinnt Jackson 2; 5 eigene Dateien; Error-Path → ApiRetry-Klassifikation prüfen).
   Revisit-Trigger: langchain4j 1.21+ / openai-Jackson-3. Dann eigene Story mit ADR.
@@ -196,3 +197,17 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   gefixt hat (AGENTS „one behaviour, one implementation", Familien-Parität). Fix = C-EXT-Muster
   (effectiveExtension beim Datei-Target null), Details + Zeilen in peon-plan-§9 (Archiv). **UNBLOCKED
    2026-10-16:** Pauls WIP ist mit `af658e0f` gemerged (EclipseGrepTool inkl. 🔍-Präfix) — Umsetzung offen.
+
+
+## Codegraph-Bau (2026-10-17, autonome Entscheide Jon — Rückversicherung Paul)
+
+- ⏳ **Reserved Name `codegraph` UNBEDINGT reserviert (Q1, Jon-Entscheid a):** der Name `codegraph`
+  ist im User-MCP-Pfad immer reserviert (Filter in `McpConnectionService.connectServers`), auch
+  wenn das Built-in inaktiv ist — manuelle Einträge werden gefiltert (Log-Zeile), Randwirkung: ein
+  bestehender reiner Workaround-Eintrag funktioniert NICHT mehr, sobald diese Version läuft
+  (Workaround stirbt komplett, unabhängig vom Built-in-State). Begründung: Clean Break, Name
+  gehört dem Built-in (Homepage: „Eintrag löschen"), keine State-Kopplung User-Pfad ↔ Built-in.
+  **Paul kann beim Review umwerfen** → dann State-abhängiger Filter (mehr Code, Kopplung).
+- ⏳ **Icon-Visuals (Q2, Jon-Entscheid a):** ON = `codegraph.svg`, OFF = gleiches Icon
+  disabled/gedimmt, ERROR = Platform-Icon `ImageUtil.STOP`; `codegraph_dark.svg` erzeugt Da Mek
+  nach Hammer-Muster (kein neues Design-Asset von Paul nötig — Gegencheck nach Rückkehr möglich).
