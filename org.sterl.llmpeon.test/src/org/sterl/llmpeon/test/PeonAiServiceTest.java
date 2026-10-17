@@ -40,6 +40,7 @@ import org.sterl.llmpeon.context.UserContext;
 import org.sterl.llmpeon.memory.FileAgentHistoryStore;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.parts.PeonConstants;
+import org.sterl.llmpeon.parts.ai.CodegraphConnectionService;
 import org.sterl.llmpeon.parts.ai.PeonAiService;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.tools.AskUserTool;
@@ -1761,6 +1762,34 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         // WHEN: ein Turn wird getriggert (Turn-Context-Pfad, _handoffLine == null Zweig)
         // THEN (SOLL): kein NPE — ohne Projekt läuft der Turn ohne Plan-Reference durch
         aiService.call("hello", null);
+    }
+
+    /**
+     * R-CG-7 (Negativ-Guard): das Fixture-Projekt hat keinen .codegraph-Index — die Probe
+     * ist negativ, der State OFF und die Projekt-Info-Zeile darf KEINE Codegraph-Zeile
+     * enthalten (keine Kontext-Blähung).
+     */
+    // UC-CG-7
+    @Test
+    public void givenNoCodegraphInFixture_whenTurn_thenProjectInfoHasNoCodegraphLine() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        // GIVEN: das Fixture-Projekt ohne .codegraph-Index (Probe synchron angewendet)
+        var codegraph = aiService.getCodegraphConnectionService();
+        codegraph.apply();
+        assertEquals(CodegraphConnectionService.Kind.OFF, codegraph.state().kind());
+        assertTrue("OFF reason must mention codegraph: " + codegraph.state().reason(),
+                codegraph.state().reason().contains("codegraph"));
+
+        // WHEN: der Turn-Context wird gebaut
+        var projectInfo = aiService.getUserContext().get().stream()
+                .filter(i -> ("Project info " + project.getName()).equals(i.label()))
+                .findFirst();
+
+        // THEN: die Projekt-Info existiert, aber ohne Codegraph-Zeile
+        assertTrue("project info item expected", projectInfo.isPresent());
+        assertFalse("no codegraph line without an index: " + projectInfo.get().render(),
+                projectInfo.get().render().contains("Codegraph index active"));
     }
 
     /**

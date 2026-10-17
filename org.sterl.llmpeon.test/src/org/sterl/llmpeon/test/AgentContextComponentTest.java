@@ -3,6 +3,7 @@ package org.sterl.llmpeon.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
@@ -32,6 +33,10 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
     private WorkspaceMemoryTool wmt;
     private AgentContextComponent sut;
     private AiAgent activeAgent;
+    private ConfiguredChatModel ccm;
+    private SharedToolsComponent sharedTools;
+    private org.sterl.llmpeon.context.UserContext userContext;
+    private AiScaffoldAgent scaffold;
 
     @org.junit.Before
     public void beforeEach() {
@@ -40,17 +45,17 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
 
     private void doSetup() {
         // GIVEN: a component wired with the real shared tools (no LLM involved)
-        var ccm = new ConfiguredChatModel(LlmConfig.builder()
+        ccm = new ConfiguredChatModel(LlmConfig.builder()
                 .model("test").url("http://localhost:0")
                 .configDir(java.nio.file.Path.of(System.getProperty("java.io.tmpdir"), ".peon-test")).build());
         var skillService = new SkillService();
-        var sharedTools = new SharedToolsComponent(skillService, new CommandService());
+        sharedTools = new SharedToolsComponent(skillService, new CommandService());
         wmt = sharedTools.workspaceMemoryTool();
         wmt.memoryReset();
 
-        var userContext = new org.sterl.llmpeon.context.UserContext();
+        userContext = new org.sterl.llmpeon.context.UserContext();
         userContext.setCurrentProject(project);
-        var scaffold = new AiScaffoldAgent(ccm);
+        scaffold = new AiScaffoldAgent(ccm);
         activeAgent = new org.sterl.llmpeon.agent.AiDevAgent(ccm, sharedTools.toolService());
 
         sut = new AgentContextComponent(() -> project, wmt, userContext, scaffold,
@@ -136,6 +141,66 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
 
         // THEN
         assertFalse(rendered.stream().anyMatch(t -> t.contains("workspace-memory")));
+    }
+
+    /** UC-CG-7: GIVEN a connected codegraph (supplier delivers the server instructions)
+     *  WHEN turnContext() THEN the item is present, renders the text verbatim, carries the
+     *  label and dedups by content (no dedup key). */
+    // UC-CG-7
+    @Test
+    public void test_turnContext_codegraphInstructionsItem_presentWithText() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        // GIVEN a component whose codegraph instructions supplier delivers server text
+        var sutWithInstructions = new AgentContextComponent(() -> project, wmt,
+                new org.sterl.llmpeon.context.UserContext(), null, null,
+                () -> activeAgent, () -> LlmConfig.builder().model("t").url("http://x").build(),
+                List::of, () -> Optional.of("CG-SERVER-DOCS"));
+
+        // WHEN
+        var items = sutWithInstructions.turnContext();
+
+        // THEN the item exists, renders the text verbatim and carries the label
+        var cgItem = items.stream()
+                .filter(i -> "Codegraph instructions".equals(i.label())).findFirst();
+        assertTrue("codegraph instructions item expected", cgItem.isPresent());
+        assertEquals("CG-SERVER-DOCS", cgItem.get().render());
+        assertNull("dedup by content: no dedup key", cgItem.get().dedupKey());
+    }
+
+    /** UC-CG-7: GIVEN codegraph not connected (empty supplier) WHEN turnContext()
+     *  THEN no visible codegraph instructions item (null render = silently skipped). */
+    // UC-CG-7
+    @Test
+    public void test_turnContext_codegraphInstructionsItem_absentWhenSupplierEmpty() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        // GIVEN the setup component (empty codegraph instructions supplier)
+        // WHEN
+        var items = sut.turnContext();
+
+        // THEN no item with the codegraph label has a renderable text
+        assertFalse(items.stream().anyMatch(i -> "Codegraph instructions".equals(i.label())
+                && i.render() != null));
+    }
+
+    /** UC-CG-7: GIVEN the scaffold agent WHEN turnContext() THEN the scaffold never
+     *  receives the codegraph instructions item (own registry without MCP). */
+    // UC-CG-7
+    @Test
+    public void test_turnContext_scaffoldAgent_neverGetsCodegraphInstructionsItem() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        // GIVEN a component whose ACTIVE agent is the scaffold (non-empty supplier)
+        var scaffoldSut = new AgentContextComponent(() -> project, wmt, userContext, scaffold,
+                sharedTools.toolService(), () -> scaffold, ccm::getConfig, List::of,
+                () -> Optional.of("CG-SERVER-DOCS"));
+
+        // WHEN
+        var items = scaffoldSut.turnContext();
+
+        // THEN no codegraph item at all (the scaffold branch skips it)
+        assertFalse(items.stream().anyMatch(i -> "Codegraph instructions".equals(i.label())));
     }
 
     private List<String> renderAll(List<ContextItem> items) {

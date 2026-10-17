@@ -262,6 +262,34 @@ class AgentToolConfigTest {
         assertThat(names).containsExactly("eclipseGrepFiles", "eclipseMcp");
     }
 
+    // UC-CG-6
+    @Test
+    void codegraphExploreVisibleWithoutAllowlist() {
+        // GIVEN a connected Codegraph server (default toolset: codegraph_explore only)
+        var svc = new ToolServiceWithMcp(List.of("codegraph_explore"));
+        svc.addTool(new ShellTool());
+        svc.addTool(new DiskFileReadTool(Path.of(System.getProperty("java.io.tmpdir"))));
+        var dev = new AiDevAgent(model(Map.of()), svc);
+
+        // THEN no allowlist (absent = all): the MCP tool is visible at runtime AND in the preview
+        assertThat(dev.isMcpToolActive("codegraph_explore")).isTrue();
+        assertThat(dev.resolveActiveTools(null)).contains("codegraph_explore");
+    }
+
+    // UC-CG-6
+    @Test
+    void codegraphExploreTokenPrefixMatchesAndForeignTokenDoesNot() {
+        // GIVEN a connected Codegraph server and explicit allowlists
+        var svc = new ToolServiceWithMcp(List.of("codegraph_explore"));
+        svc.addTool(new ShellTool());
+        var withToken = new AiDevAgent(model(Map.of(AgentModelConfig.DEV, "codegraph")), svc);
+        var withoutToken = new AiDevAgent(model(Map.of(AgentModelConfig.DEV, "eclipse")), svc);
+
+        // THEN the "codegraph" token matches the tool by prefix, a foreign token hides it
+        assertThat(withToken.isMcpToolActive("codegraph_explore")).isTrue();
+        assertThat(withoutToken.isMcpToolActive("codegraph_explore")).isFalse();
+    }
+
     @Test
     void storeKeyRoundTripsAndCleanBreak() {
         // GIVEN a store with a raw CSV allowlist for the plan slot
