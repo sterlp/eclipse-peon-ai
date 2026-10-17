@@ -15,7 +15,7 @@ class McpServerConfigTest {
     void givenEmptyProtocolVersion_whenConstructed_thenStaysEmpty() {
         // GIVEN a config with an empty protocolVersion
         var config = new McpServerConfig("ctx", McpTransportType.HTTP, "https://mcp.context7.com/mcp",
-                "", "", "", "", "");
+                "", "", "", "", "", "");
 
         // WHEN constructed
         // (record compact constructor normalizes)
@@ -28,7 +28,7 @@ class McpServerConfigTest {
     void givenNullProtocolVersion_whenConstructed_thenNormalizedToEmpty() {
         // GIVEN a null protocolVersion
         var config = new McpServerConfig("ctx", McpTransportType.HTTP, "https://mcp.context7.com/mcp",
-                "", null, "", "", "");
+                "", null, "", "", "", "");
 
         // THEN null is normalized to empty (Auto-Detect), never to a default version
         assertThat(config.protocolVersion()).isEmpty();
@@ -38,7 +38,7 @@ class McpServerConfigTest {
     void givenExplicitProtocolVersion_whenConstructed_thenValuePreserved() {
         // GIVEN a config with an explicit protocol version
         var config = new McpServerConfig("ctx", McpTransportType.HTTP, "https://mcp.context7.com/mcp",
-                "", "2026-07-28", "", "", "");
+                "", "2026-07-28", "", "", "", "");
 
         // THEN the value is preserved untouched (normalization only fires on empty/null)
         assertThat(config.protocolVersion()).isEqualTo("2026-07-28");
@@ -51,5 +51,24 @@ class McpServerConfigTest {
 
         // THEN it defaults to empty = Auto-Detect, not a hard-coded version
         assertThat(config.protocolVersion()).isEmpty();
+    }
+
+    @Test
+    void givenNoWorkingDirectory_whenConstructed_thenEmpty() {
+        // GIVEN the convenience 3-arg constructor (no working directory supplied)
+        var config = new McpServerConfig("ctx", McpTransportType.HTTP, "https://mcp.context7.com/mcp");
+
+        // THEN workingDirectory defaults to empty = unset (subprocess inherits the cwd)
+        assertThat(config.workingDirectory()).isEmpty();
+    }
+
+    @Test
+    void givenNullWorkingDirectory_whenConstructed_thenNormalizedToEmpty() {
+        // GIVEN a null workingDirectory
+        var config = new McpServerConfig("ctx", McpTransportType.STDIO, "", "", "",
+                "codegraph", "serve --mcp", "", null);
+
+        // THEN null is normalized to empty = unset, never to a default directory
+        assertThat(config.workingDirectory()).isEmpty();
     }
 }

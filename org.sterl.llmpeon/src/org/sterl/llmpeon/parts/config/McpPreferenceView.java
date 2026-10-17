@@ -367,7 +367,8 @@ public class McpPreferenceView extends PreferencePage implements IWorkbenchPrefe
                     protoVersion(),
                     stdio ? txtCommand.getText().trim() : "",
                     stdio ? txtArgs.getText().trim() : "",
-                    stdio ? txtEnvVars.getText() : ""
+                    stdio ? txtEnvVars.getText() : "",
+                    ""
             );
             super.okPressed();
         }

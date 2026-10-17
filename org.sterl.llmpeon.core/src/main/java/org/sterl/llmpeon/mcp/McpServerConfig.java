@@ -14,6 +14,8 @@ import org.sterl.llmpeon.shared.StringUtil;
  * @param command         executable to launch — STDIO only, e.g. "uvx"
  * @param args            space-separated arguments — STDIO only, e.g. "duckduckgo-mcp-server"
  * @param envVars         KEY=VALUE lines passed as environment variables — STDIO only
+ * @param workingDirectory working directory for the STDIO subprocess.
+ *                        Empty = unset (the subprocess inherits the current working directory)
  */
 public record McpServerConfig(
         String name,
@@ -23,7 +25,8 @@ public record McpServerConfig(
         String protocolVersion,
         String command,
         String args,
-        String envVars) {
+        String envVars,
+        String workingDirectory) {
 
     public enum McpTransportType { HTTP, HTTP_SSE, STDIO }
 
@@ -36,9 +39,10 @@ public record McpServerConfig(
         if (args == null)   args = "";
         if (envVars == null) envVars = "";
         if (StringUtil.hasNoValue(protocolVersion)) protocolVersion = "";
+        if (workingDirectory == null) workingDirectory = "";
     }
 
     public McpServerConfig(String name, McpTransportType transport, String url) {
-        this(name, transport, url, "", "", "", "", "");
+        this(name, transport, url, "", "", "", "", "", "");
     }
 }

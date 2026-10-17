@@ -145,7 +145,7 @@ public class McpConnectionServiceTest {
 
     private McpServerConfig server(String name) {
         return new McpServerConfig(name, McpServerConfig.McpTransportType.HTTP,
-                "https://" + name + ".example.com/mcp", "", "", "", "", "");
+                "https://" + name + ".example.com/mcp", "", "", "", "", "", "");
     }
 
     /**

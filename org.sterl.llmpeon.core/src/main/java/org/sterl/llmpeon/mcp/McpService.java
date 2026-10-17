@@ -1,5 +1,6 @@
 package org.sterl.llmpeon.mcp;
 
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -8,6 +9,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -30,6 +32,7 @@ public class McpService implements AutoCloseable {
     private final List<McpServerConfig> servers;
     private final List<McpClient> clients = new ArrayList<>();
     private final Map<String, McpClient> toolToClient = new HashMap<>();
+    private final Map<String, McpClient> clientsByName = new HashMap<>();
     private final List<ToolSpecification> toolSpecs = new ArrayList<>();
 
     public McpService(List<McpServerConfig> servers) {
@@ -75,6 +78,7 @@ public class McpService implements AutoCloseable {
 
                 var tools = client.listTools();
                 clients.add(client);
+                clientsByName.put(server.name(), client);
                 for (var spec : tools) {
                     toolSpecs.add(spec);
                     toolToClient.put(spec.name(), client);
@@ -98,7 +102,11 @@ public class McpService implements AutoCloseable {
         }
     }
 
-    private McpTransport buildStdioMcp(McpServerConfig server) {
+    /**
+     * Builds the STDIO transport. {@code workingDirectory} is "empty means unset": a blank value
+     * leaves the builder untouched so the subprocess inherits the current working directory.
+     */
+    McpTransport buildStdioMcp(McpServerConfig server) {
         if (server.command().isBlank()) {
             throw new IllegalArgumentException(server.name() + ": STDIO server requires a command");
         }
@@ -112,6 +120,7 @@ public class McpService implements AutoCloseable {
                 .command(cmd)
                 .logEvents(false);
         if (!envMap.isEmpty()) builder.environment(envMap);
+        if (!server.workingDirectory().isBlank()) builder.workingDirectory(Path.of(server.workingDirectory()));
         return builder.build();
     }
 
@@ -169,6 +178,15 @@ public class McpService implements AutoCloseable {
         return toolToClient.containsKey(toolName);
     }
 
+    /**
+     * Returns the server instructions captured from the initialize result of the named server —
+     * empty when the server is unknown or did not provide any.
+     */
+    public Optional<String> instructionsOf(String serverName) {
+        var client = clientsByName.get(serverName);
+        return client == null ? Optional.empty() : Optional.ofNullable(client.instructions());
+    }
+
     /** Closes all client connections and clears the tool registry. */
     public void disconnect() {
         for (var client : clients) {
@@ -178,6 +196,7 @@ public class McpService implements AutoCloseable {
         }
         clients.clear();
         toolToClient.clear();
+        clientsByName.clear();
         toolSpecs.clear();
     }
 
