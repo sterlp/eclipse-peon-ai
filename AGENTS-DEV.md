@@ -90,6 +90,13 @@ Hints for the dev phase, base rules `AGENTS.md`
   - `-Xlint`-diagnostic only (not in default build/IDE): this-escape ×10 (7 classes, none
     subclassed — intentional constructor-delegates-to-refresh pattern); opennlp-tools
     manifest `Class-Path` slf4j path quirk (upstream packaging).
+- **Docs-ID-Marker am Test: aus dem Feature-Doc kopieren, nie erfinden (hit 2026-10-17,
+  codegraph inc-19/20: Da-Dok REJECTED — 12 `// UC-CG-*`-Marker in Tests, ohne dass die UC-IDs
+  im Doc existieren; die Feature-Regeln heißen dort `R-CG-*`).** Regeln (`R-X-n`) tragen keine
+  `UC-X-n`-Überschriften — die Marker-Form muss zur Doc-Form passen (pure ID-Zeile, kein
+  Zusatztext). Sobald ein Plan ID-Marker vorsieht, gehört `lintDocsAndTests` in das
+  Inkrement-Gate: VERWAIST/UNBELEGT_ERLEDIGT blockiert, nicht erst der Review-Lauf.
+- Elegant, expressive modern Java (records, pattern matching, switch expressions, Lombok).
 - Elegant, expressive modern Java (records, pattern matching, switch expressions, Lombok).
 - On macOS, sum Surefire reports with Perl rather than GNU-only `awk match(..., array)`:
   `perl -ne 'if (/Tests run: (\d+), Failures: (\d+), Errors: (\d+), Skipped: (\d+)/) {$t+=$1;$f+=$2;$e+=$3;$s+=$4} END {print "Tests=$t Failures=$f Errors=$e Skipped=$s\n"}' target/surefire-reports/*.txt`.
