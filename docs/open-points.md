@@ -220,3 +220,17 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   (🗜 auf den compact*-Delegates) wäre machbar, halber Rollout = Inkonsistenz zwischen beiden
   Delegate-Tools. Paul entscheidet: PoDelegate-Teil vorab bauen, oder S3 komplett nach
   AgentsTool-Merge. Kontext: [icons.md](icons.md).
+
+
+## Codegraph-Toolset-Erweiterung (2026-10-17, Paul-Frage — ❓ Entscheidung ausstehend)
+
+- ❓ **Mehr Codegraph-Tools registrieren (R-CG-6-Änderung, 2026-10-17):** Paul fragte nach dem
+  Toolset (`node/search/callers/callees/impact/files/status` — per Default NICHT verbunden, nur
+  `codegraph_explore`; Re-Enable serverseitig via `CODEGRAPH_MCP_TOOLS`). Jon-Befund: `explore`
+  deckt callers/callees/impact/Source in einem Call ab; Spezialtools lohnen v. a. für billige
+  Location-Lookups. **Jon-Empfehlung: `CODEGRAPH_MCP_TOOLS=explore,search,files`** (3 Schemas
+  statt 7 — jedes Extra-Schema kostet Context in allen Agenten pro Turn), umgesetzt als kleiner
+  Slice in `CodegraphServerFactory` (Env in der Config) + R-CG-6/R-CG-10-Text-Anpassung.
+  **Nicht gebaut** — R-CG-6 ist Pauls SOLL (explore-only); Änderung erst nach Paul-Rückkehr.
+  Kein rekursiver USER_HOME-Binary-Scan (Probe deckt `which` ab: `~/.local/bin` Suchort #1 +
+  PATH-Scan, E2E-Beleg auf Pauls Maschine — Detail in codegraph.md Fakten).

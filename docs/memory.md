@@ -1,4 +1,15 @@
-# Session-Stand — 2026-10-17 (Nachtzyklus 5: Codegraph gebaut — ZYKLUS KOMPLETT)
+
+
+## Nachtrag 2026-10-17 (Paul-Feedback afk, 13:46)
+
+- ❓ **Toolset-Frage (R-CG-6) offen:** Paul fragte, ob wir mehrere Codegraph-Tools registrieren
+  sollten. Ich sehe in meiner Tool-Liste NUR `codegraph_explore` (Default-Toolset, R-CG-6 korrekt).
+  **Jon-Empfehlung in open-points.md: `CODEGRAPH_MCP_TOOLS=explore,search,files`** — NICHT gebaut
+  (R-CG-6 ist Pauls SOLL; Änderung erst nach Rückkehr). Binary-Frage geklärt: Probe deckt `which`
+  ab (~/.local/bin Suchort #1 + PATH-Scan, E2E-Beleg), kein User-Home-Scan — Klarstellung in
+  codegraph.md Fakten ergänzt.
+- Nachtrag-Docs (open-points.md, codegraph.md, memory.md) ✅ committed `95372542`.
+
 
 > docs/** — insbesondere memory.md — schreibt AUSSCHLIESSLICH Jon. Agenten liefern Facts im Chat.
 
@@ -42,7 +53,7 @@
 
 ## Notizen
 
-- **AGENTS-DEV.md neu (uncommitted — mit nächstem Commit rein):** Docs-ID-Marker aus dem
+- **AGENTS-DEV.md ✅ committed (`947e4caf`):** Docs-ID-Marker aus dem
   Feature-Doc kopieren (R-X-n hat keine UC-X-n-Definitionen) + `lintDocsAndTests` ins
   Inkrement-Gate, sobald Marker geplant sind (12 VERWAIST liefen durch 6 grüne Gates).
   Ledger-Zeile skill-impact.md ergänzt (update accepted).

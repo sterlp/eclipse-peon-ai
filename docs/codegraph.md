@@ -42,6 +42,13 @@ Feature einfach aus (kein Fehler-Spam, Tooltip weist darauf hin).
   pro workDir.
 - Index-Erkennung: `.codegraph/codegraph.db` (SQLite, WAL-Mode); das Verzeichnis allein ist ein
   Init-Transient und zählt nicht.
+- Binary-Resolution deckt `which` ab (verifiziert 2026-10-17 auf Pauls Maschine,
+  `/Users/sterlp/.local/bin/codegraph`): Suchort #1 = Install-Default `~/.local/bin/codegraph`,
+  danach kompletter PATH-Scan. **Bewusst KEIN** rekursiver User-Home-Scan (teuer,
+  false-positive-Anfällig); fehlende Install-Orte bei echtem Bedarf geordnet in
+  `DefaultCodegraphProbe` ergänzen. Windows (`.exe`/`.cmd`-Shims) = Follow-up N1.
+
+
 
 ## Business Rules
 
