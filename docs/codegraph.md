@@ -4,9 +4,9 @@ idPrefix: CG
 
 # Codegraph — Built-in-Integration (MCP, Auto-Enable)
 
-> **Status:** ❌ specified (2026-10-17, Paul specified — NICHT umgesetzt). **Architektur-Doc:**
-> `docs/codegraph-architektur.md` wird vor der Planung angelegt (Regel: ohne abgenommenes
-> Architektur-Doc kein Plan). **ADRs:** folgen bei Implementierung.
+> **Status:** ✅ done (2026-10-17, Branch `story/night-5-2026-10-16`, Surefire core 1172/0 ·
+> OSGi 376/0, Da-Dok-Review ACCEPTED nach Rework). **Architektur-Doc:**
+> [codegraph-architektur.md](codegraph-architektur.md). **ADR:** [ADR-0068](adr/0068-codegraph-builtin-connect-path.md).
 
 ## Ziel
 
@@ -16,7 +16,7 @@ kein BM25), 100 % lokal, betrieben als **MCP-Server über STDIO** (`codegraph se
 eigenem Background-Daemon pro Projekt, der den Index auto-synct (File-Watcher).
 
 Peon macht daraus ein **Built-in-Feature**: aktives Projekt mit `.codegraph`-Index → Codegraph-MCP
-verbindet sich **selbständig und automatisch** (kein Workaround-Eintrag wie das heutige
+verbindet sich **selbständig und automatisch** (kein Workaround-Eintrag wie das frühere
 `codegraph.sh`), Tools stehen allen Agenten zur Verfügung, Projekt-Info weist auf Pfade und
 Nutzung, Header-Icon zeigt den Zustand. **Vollständig unabhängig vom MCP-Toggle** (Paul):
 MCP ist User-Config, Codegraph ist built-in — sonst bräuchten die Codegraph-Settings selbst einen
@@ -45,7 +45,7 @@ Feature einfach aus (kein Fehler-Spam, Tooltip weist darauf hin).
 
 ## Business Rules
 
-### R-CG-1 — Built-in Auto-Connect (unabhängig vom MCP-Toggle) ❌
+### R-CG-1 — Built-in Auto-Connect (unabhängig vom MCP-Toggle) ✅
 
 GIVEN Codegraph installiert + `codegraph init` im aktiven Projekt
 WHEN das Projekt aktiv wird
@@ -61,7 +61,7 @@ GIVEN Binary fehlt oder kein `.codegraph`-Index
 WHEN Projekt aktiv wird
 THEN kein Verbindungsversuch, State OFF, kein wiederholter stiller Launch-Versuch.
 
-### R-CG-2 — Probe (Erkennung) ❌
+### R-CG-2 — Probe (Erkennung) ✅
 
 GIVEN das aktive Projekt hat ein `.codegraph/`-**Verzeichnis**, aber keine `codegraph.db`
 WHEN Probe läuft
@@ -71,14 +71,14 @@ GIVEN Binary ist nicht auffindbar (Install-Default + PATH)
 WHEN Probe läuft
 THEN State OFF; Probe ist rein Path-basiert (core, JUnit5-testbar, Eclipse-frei).
 
-### R-CG-3 — Failure-Isolation ❌
+### R-CG-3 — Failure-Isolation ✅
 
 GIVEN der Codegraph-Connect schlägt fehl (Launch/Timeout/Fehler)
 WHEN der Apply-Pfad läuft
 THEN trifft der Fehler **nur** Codegraph — User-MCP-Server bleiben verbunden;
      State = FEHLER, Tooltip nennt den Grund.
 
-### R-CG-4 — Lifecycle: aktives Projekt, kein Churn ❌
+### R-CG-4 — Lifecycle: aktives Projekt, kein Churn ✅
 
 GIVEN Projekt A (mit Codegraph) ist verbunden
 WHEN Projekt B aktiv wird (Navigation; Pin ist nur Selection-Freeze, keine Voraussetzung)
@@ -90,9 +90,13 @@ WHEN der letzte Apply A verbunden hat
 THEN kein zusätzlicher Reconnect (Compare).
 
 Invarianten: exakt **ein** Peon-`serve --mcp` pro workDir; der Daemon gehört Codegraph — Peon
-startet/tötet ihn nie (Index-State, lebt über Peon hinweg).
+startet/tötet ihn nie (Index-State, lebt über Peon hinweg). *(Umsetzungs-Klarstellung: Trigger
+ist der Projektwechsel (`setProject` mit changed=true). Ein bewusster Pin-ON-Reprobe entfällt —
+Pin-ON ohne Projektwechsel ist kein Zustandswechsel, der Apply-Compare würde früh zurückkehren;
+Mutations-Nachweis für den Compare: `CodegraphConnectionServiceTest`, beide Compare-Richtungen
+falsifiziert.)*
 
-### R-CG-5 — Config: KEINE UI-Config in v1 ❌
+### R-CG-5 — Config: KEINE UI-Config in v1 ✅
 
 GIVEN Codegraph-Installation + Index im aktiven Projekt
 THEN verbindet sich das Built-in **selbständig** — v1 hat **keine** UI-Config
@@ -103,14 +107,14 @@ THEN verbindet sich das Built-in **selbständig** — v1 hat **keine** UI-Config
 wenn Codegraph nicht installiert ist, ist das Feature eh aus; wer es bewusst ausschalten will,
 entfernt es. `CODEGRAPH_MCP_TOOLS` bleibt v1 ohne UI-Escape-Hatch — Follow-up falls Bedarf.)*
 
-### R-CG-6 — Toolset: nur `codegraph_explore` ❌
+### R-CG-6 — Toolset: nur `codegraph_explore` ✅
 
 WHEN Codegraph verbunden
 THEN ist das Toolset die Codegraph-Default-Liste (nur `codegraph_explore`); die weiteren
      Codegraph-Tools bleiben deaktiviert. Die Sichteauswahl folgt dem bestehenden `ToolPolicy`
      (Default-Agenten: automatisch sichtbar; explizite Tools-CSV braucht ein `codegraph`-Token).
 
-### R-CG-7 — Projekt-Info: Pfade + Nutzung (statt Pfad-Translation) ❌
+### R-CG-7 — Projekt-Info: Pfade + Nutzung (statt Pfad-Translation) ✅
 
 GIVEN Codegraph ist verbunden
 WHEN die Projekt-Info gebaut wird
@@ -131,7 +135,7 @@ hier nur als Agent-Hinweis. *(Pauls ursprüngliche Idee „Ergebnisse in Eclipse
 Bewertungs-Option S2, natives Wrapper-Tool `codegraphExplore` mit echter Übersetzung + Disclosure
 — nur bei nachgewiesenem Praxis-Problem.)*
 
-### R-CG-8 — Header-Icon ❌
+### R-CG-8 — Header-Icon ✅
 
 GIVEN aktives Projekt mit Codegraph-Zustand
 THEN zeigt der Header (neben dem Hammer) das Icon `icons/codegraph.svg` mit Zustand:
@@ -139,19 +143,19 @@ THEN zeigt der Header (neben dem Hammer) das Icon `icons/codegraph.svg` mit Zust
      Tooltip mit Projektname + Grund (bei OFF/kein Index: „installieren + `codegraph init`").
      Kein Klick-Verhalten in v1. Zustandsupdates auf dem UI-Thread.
 
-### R-CG-9 — Kein Init/Index-Trigger aus Peon ❌
+### R-CG-9 — Kein Init/Index-Trigger aus Peon ✅
 
 WHEN Codegraph fehlt (Binary oder Index)
 THEN startet Peon **keine** `codegraph install`/`init`/`index`-Aktion — User-Aufgabe,
      communicated via Tooltip + Homepage/README.
 
-### R-CG-10 — Kein Telemetry-Override ❌
+### R-CG-10 — Kein Telemetry-Override ✅
 
 WHEN Peon den Codegraph-Server spawnt
 THEN setzt Peon **kein** `CODEGRAPH_TELEMETRY` (kein Default-Env) — die Telemetry-Entscheidung
      des Users am Binary (persistiert in codegraphs Config) gilt unverändert.
 
-### R-CG-11 — Dedup: Built-in verdrängt manuellen `codegraph`-Eintrag ❌
+### R-CG-11 — Dedup: Built-in verdrängt manuellen `codegraph`-Eintrag ✅
 
 GIVEN ein manuell konfigurierter User-MCP-Server mit Name `codegraph` existiert (Workaround
      `codegraph.sh`) und das Built-in ist aktiv
@@ -159,19 +163,26 @@ WHEN Apply
 THEN gewinnt das Built-in — kein doppelter `codegraph_explore` im Toolset. Homepage/README:
      alten Eintrag entfernen. Clean Break, keine Migration.
 
+Umsetzung (Jon-Entscheid (a), 2026-10-17, ⏳-Rückversicherung in open-points.md): der Name
+`codegraph` ist im User-MCP-Pfad **unbedingt** reserviert (Filter in
+`McpConnectionService.connectServers`, Log-Zeile) — auch bei inaktivem Built-in. Randwirkung:
+ein reiner Workaround-Eintrag funktioniert nicht mehr, sobald diese Version läuft; Paul kann
+beim Review auf State-abhängigen Filter umstellen.
+
 ## Technik (WIE, ohne Architektur-Doc-Status)
 
 - `McpServerConfig` bekommt Feld `workingDirectory` (**leer = unset**, „Empty means unset" —
   erbt das Prozess-Working-Dir wie heute); `McpService.buildStdioMcp` setzt es nur bei non-blank.
 - Probe + Server-Factory im **core** (`org.sterl.llmpeon.mcp`): `CodegraphProbe` (Binary-Resolution
-  + Index-Presence) und `CodegraphServerFactory` (Probe + Checkbox → `McpServerConfig`) — rein
-  Path-basiert, JUnit5-testbar.
+  + Index-Presence) und `CodegraphServerFactory` (Name/Command/Args/workDir → `McpServerConfig`)
+  — rein Path-basiert, JUnit5-testbar.
 - Plugin: `CodegraphConnectionService` = Lifecycle-Kleber (Projekt-Events → Probe-Job → State,
-  isolierter Connect-Pfad, kein SWT); `McpConnectionService` bleibt User-MCP-Apply-Pfad.
+  isolierter Connect-Pfad über `ToolService`-MCP-Groups, kein SWT); `McpConnectionService`
+  bleibt User-MCP-Apply-Pfad (Group `"user"`).
 - Context: `AgentContextComponent` injiziert Codegraph-Info + Server-Instructions per Supplier
   (nur wenn verbunden).
 - UI: `HeaderBarWidget` Indikator-Position vor dem Hammer; Icon-Asset in `ImageUtil`
-  (Dark-Variante wie üblich).
+  (`codegraph.svg` committed, `codegraph_dark.svg` nach Hammer-Muster).
 
 ## Offene Punkte (Follow-ups, nicht v1)
 
@@ -181,3 +192,5 @@ THEN gewinnt das Built-in — kein doppelter `codegraph_explore` im Toolset. Hom
   Disclosure) — nur bei Praxis-Befund.
 - `CODEGRAPH_MCP_TOOLS`-Env-Feld / weitere Tools aktivierbar — falls Bedarf.
 - `workingDirectory` generisch im UI für User-MCP-Server exponieren — falls Bedarf.
+- Windows-Binary-Resolution (`.exe`/`.cmd`-Shims) — Probe sucht v1 nur `codegraph`
+  (macOS/Linux); eigene Story falls Bedarf.
