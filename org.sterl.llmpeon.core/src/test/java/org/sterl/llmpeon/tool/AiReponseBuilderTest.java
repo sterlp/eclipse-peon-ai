@@ -172,22 +172,51 @@ class AiReponseBuilderTest {
     }
 
     // UC-OD-7
+    // BDD-6 (docs/output-trim-service.md): minified hit -> 500-char cap on the rendered line + trim note
     @Test
     void grepClampsMinifiedLine() {
-        // GIVEN one hit whose line is 20000 chars (minified)
+        // GIVEN one hit whose text is 20000 chars (minified) -> rendered line 20013 chars
         var hits = List.of(new GrepHit("bundle.js", 1, "a".repeat(20_000)));
 
-        // WHEN the shared renderer clamps the line
+        // WHEN the shared renderer caps the rendered line at 500 chars
         String result = AiReponseBuilder.grepComplete(hits, SearchQuery.of("a"),
                 AiReponseBuilder.MAX_GREP_FILES, AiReponseBuilder.MAX_GREP_LINES, ".js");
 
-        // THEN the line is prefix + exactly 2000 chars (the 2001st is not there)
+        // THEN the rendered line is exactly 500 chars (13-char prefix + 487 'a') + the cut marker
         var hitLines = result.lines().filter(l -> l.startsWith("bundle.js:1: ")).toList();
         assertThat(hitLines).hasSize(1);
-        assertThat(hitLines.get(0)).isEqualTo("bundle.js:1: " + "a".repeat(2000));
-        assertThat(hitLines.get(0)).hasSize("bundle.js:1: ".length() + 2000);
-        // ... and the clamp is honestly disclosed
-        assertThat(result).contains("1 line(s) truncated at 2000 chars");
+        assertThat(hitLines.get(0)).isEqualTo("bundle.js:1: " + "a".repeat(487) + "…(+19513 chars)");
+        // ... the char window discloses the raw total and the shown chars (515 = 500 + 15-char marker)
+        assertThat(result).contains("… (truncated: 20014 chars total, 515 shown)");
+        // ... and the per-line cap is honestly disclosed
+        assertThat(result).contains("1 line(s) truncated at 500 chars");
+    }
+
+    // BDD-5 (docs/output-trim-service.md): 150 hits x ~120 chars -> 100-line cap + char window + note
+    @Test
+    void grepOversizedOutputTrimmedWithDisclosure() {
+        // GIVEN 150 hits of 120-char text in one file (rendered ~13.4 kB > 10k budget)
+        var hits = new ArrayList<GrepHit>();
+        for (int l = 1; l <= 150; l++) {
+            hits.add(new GrepHit("Big.java", l, "x".repeat(120)));
+        }
+
+        // WHEN the shared renderer runs the line cap + char window
+        String result = AiReponseBuilder.grepComplete(hits, SearchQuery.of("x"),
+                AiReponseBuilder.MAX_GREP_FILES, AiReponseBuilder.MAX_GREP_LINES, ".java");
+
+        // THEN the line cap discloses 100 of 150 ...
+        assertThat(result).contains("showing 100 of 150 matched lines — narrow your search");
+        // ... the char window keeps head (hit 1) + tail (hit 100) and drops the middle (hit 50) ...
+        assertThat(result)
+                .contains("Big.java:1: ")
+                .contains("Big.java:100: ")
+                .doesNotContain("Big.java:50: ");
+        // ... and discloses the exact raw total (100 rendered lines + their newlines) ...
+        assertThat(result).contains("… (truncated: 13392 chars total,");
+        // ... with no per-line cap involved (all lines < 500 chars) ...
+        assertThat(result).doesNotContain("truncated at 500");
+        assertThat(result).contains("regex search");
     }
 
     // UC-OD-8

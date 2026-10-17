@@ -161,4 +161,33 @@ class DiskGrepToolTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Grep file");
     }
+
+    // BDD-5 (docs/output-trim-service.md): 100 hits x ~127 chars (well over the 10k budget) -> char window + note
+    @Test
+    void grepOversizedOutputIsTrimmedWithDisclosure() throws IOException {
+        // GIVEN one .md file with 100 lines of "needle " + 120 x's (rendered ~19 kB with paths)
+        var sb = new StringBuilder();
+        for (int i = 1; i <= 100; i++) {
+            sb.append("needle ").append("x".repeat(120)).append('\n');
+        }
+        Files.writeString(tempDir.resolve("Oversized.md"), sb.toString());
+
+        // WHEN grepping the needle with the .md type filter
+        String result = tool.diskGrepFiles("needle", null, ".md");
+
+        // THEN the char window keeps head (hit 1) + tail (hit 100) and drops the middle (hit 50) ...
+        assertThat(result)
+                .contains("Oversized.md:1: ")
+                .contains("Oversized.md:100: ")
+                .doesNotContain("Oversized.md:50: ")
+                // ... and discloses the trim honestly ...
+                .contains("truncated:")
+                .contains("chars total")
+                .contains(" shown")
+                // ... the 100-line cap is exactly met, not exceeded -> no "showing N of M" (honest)
+                .doesNotContain("matched lines — narrow your search")
+                .contains("regex search");
+        // ... and the FULL payload stays bounded (~10k budget + framing)
+        assertThat(result.length()).isLessThan(10_300);
+    }
 }

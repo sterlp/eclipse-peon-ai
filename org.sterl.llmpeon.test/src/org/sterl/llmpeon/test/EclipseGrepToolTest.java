@@ -149,6 +149,7 @@ public class EclipseGrepToolTest extends AbstractIntegrationTest {
         hitLines.forEach(l -> assertTrue("hit must contain the query:\n" + l, l.contains("einem text")));
     }
 
+    // BDD-6 (docs/output-trim-service.md): minified hit -> 500-char cap on the full rendered line
     @Test
     public void longLineIsClampedAndDisclosed() {
         // GIVEN one .md file with a single 20013-char line containing the query (minified)
@@ -157,13 +158,14 @@ public class EclipseGrepToolTest extends AbstractIntegrationTest {
         // WHEN grepping the query with the .md type filter
         String result = tool.eclipseGrepFiles("minifiedline", PeonTestFixture.PROJECT_NAME, ".md");
 
-        // THEN the hit line is clamped to exactly 2000 chars of text (13-char token + 1987 'a', nothing more)
+        // THEN the FULL rendered hit line (path + ":1: " + text) is capped at 500 chars + cut marker
         var hitLines = result.lines().filter(l -> l.contains("grepminified.md:1: ")).toList();
         assertEquals("exactly one hit line expected:\n" + result, 1, hitLines.size());
-        assertTrue("hit line must end with exactly the clamped 2000 chars:\n" + hitLines.get(0),
-                hitLines.get(0).matches(".*grepminified\\.md:1: minifiedline a{1987}$"));
+        String hit = hitLines.get(0);
+        assertTrue("cap marker must start at char 500 (line = 500 + marker):\n" + hit,
+                hit.substring(500).matches("…\\(\\+\\d+ chars\\)"));
         // ... and the clamp is honestly disclosed (family consistency with the disk tool)
-        assertContains(result, "1 line(s) truncated at 2000 chars");
+        assertContains(result, "1 line(s) truncated at 500 chars");
     }
 
     @Test

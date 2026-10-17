@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.sterl.llmpeon.shared.GrepHit;
+import org.sterl.llmpeon.shared.OutputTrim;
 import org.sterl.llmpeon.shared.SearchQuery;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.shared.TextFileTypes;
@@ -12,8 +13,6 @@ public class AiReponseBuilder {
 
     public static final int MAX_GREP_FILES = 100;
     public static final int MAX_GREP_LINES = 100;
-    /** R-OD-6: a single hit line is clamped to this many chars (minified lines must not blow the context). */
-    public static final int MAX_GREP_LINE_CHARS = 2000;
 
     public static final int MAX_BUILD_MARKERS = 100;
 
@@ -77,25 +76,22 @@ public class AiReponseBuilder {
     /**
      * R8: renders grep hits as {@code file:line: text} (1-based, unpadded), replacing the old
      * per-file occurrence counts. Caps: {@code maxFiles} distinct files, {@code maxLines} lines
-     * total (cross-file), each line clamped to {@link #MAX_GREP_LINE_CHARS} chars (R-OD-6).
-     * Honesty stays in the output: mode hint (R2c), type-filter hint (R6a/R6b), the line-cap
-     * disclosure and the truncated-line disclosure.
+     * total (cross-file); the rendered body then goes through {@link OutputTrim} — per-line cap
+     * {@link OutputTrim#MAX_LINE_CHARS} on the FULL rendered line plus the
+     * {@link OutputTrim#DEFAULT_MAX_CHARS} head/tail window. Honesty stays in the output: mode
+     * hint (R2c), type-filter hint (R6a/R6b), the line-cap disclosure and the truncated-line
+     * disclosure.
      */
     public static String grepComplete(List<GrepHit> hits, SearchQuery query, int maxFiles, int maxLines,
             String extension) {
         int total = hits.size();
         int shown = Math.min(total, maxLines);
         var lines = new ArrayList<String>(shown);
-        int truncated = 0;
         for (int i = 0; i < shown; i++) {
             var h = hits.get(i);
-            String text = h.text();
-            if (text.length() > MAX_GREP_LINE_CHARS) {
-                text = text.substring(0, MAX_GREP_LINE_CHARS);
-                truncated++;
-            }
-            lines.add(h.file() + ":" + h.line() + ": " + text);
+            lines.add(h.file() + ":" + h.line() + ": " + h.text());
         }
+        var trim = OutputTrim.trim(lines, OutputTrim.DEFAULT_MAX_CHARS);
 
         String suffix = query.modeHint();
         if (total > maxLines) {
@@ -109,11 +105,11 @@ public class AiReponseBuilder {
             suffix += System.lineSeparator()
                     + "... result capped at " + maxFiles + " files. Narrow your search path.";
         }
-        if (truncated > 0) {
+        if (trim.truncatedLines() > 0) {
             suffix += System.lineSeparator()
-                    + truncated + " line(s) truncated at " + MAX_GREP_LINE_CHARS + " chars";
+                    + trim.truncatedLines() + " line(s) truncated at " + OutputTrim.MAX_LINE_CHARS + " chars";
         }
-        return grepComplete(lines, suffix);
+        return grepComplete(lines.isEmpty() ? List.of() : List.of(trim.text()), suffix);
     }
 
     public static String searchComplete(List<String> results, String suffix) {
