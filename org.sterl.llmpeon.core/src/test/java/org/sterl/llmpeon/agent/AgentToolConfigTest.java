@@ -262,7 +262,7 @@ class AgentToolConfigTest {
         assertThat(names).containsExactly("eclipseGrepFiles", "eclipseMcp");
     }
 
-    // UC-CG-6
+    // R-CG-6
     @Test
     void codegraphExploreVisibleWithoutAllowlist() {
         // GIVEN a connected Codegraph server (default toolset: codegraph_explore only)
@@ -276,7 +276,7 @@ class AgentToolConfigTest {
         assertThat(dev.resolveActiveTools(null)).contains("codegraph_explore");
     }
 
-    // UC-CG-6
+    // R-CG-6
     @Test
     void codegraphExploreTokenPrefixMatchesAndForeignTokenDoesNot() {
         // GIVEN a connected Codegraph server and explicit allowlists

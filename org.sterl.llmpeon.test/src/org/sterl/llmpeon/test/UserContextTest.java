@@ -385,7 +385,7 @@ public class UserContextTest {
 
     // === Codegraph info line (R-CG-7) ===
 
-    // UC-CG-7
+    // R-CG-7
     @Test
     public void givenCodegraphLineSet_whenGet_thenProjectInfoContainsLine() {
         // GIVEN a context with an active project and a non-blank codegraph line (connected)
@@ -404,7 +404,7 @@ public class UserContextTest {
         assertTrue(render.contains("Codegraph index active — use the codegraph_explore tool"));
     }
 
-    // UC-CG-7
+    // R-CG-7
     @Test
     public void givenEmptyLine_whenGet_thenProjectInfoUnchanged() {
         // GIVEN two contexts with the same project — one default, one with an EMPTY codegraph line

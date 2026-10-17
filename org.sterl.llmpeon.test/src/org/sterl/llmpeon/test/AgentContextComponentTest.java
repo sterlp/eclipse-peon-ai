@@ -143,10 +143,10 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
         assertFalse(rendered.stream().anyMatch(t -> t.contains("workspace-memory")));
     }
 
-    /** UC-CG-7: GIVEN a connected codegraph (supplier delivers the server instructions)
+    /** R-CG-7: GIVEN a connected codegraph (supplier delivers the server instructions)
      *  WHEN turnContext() THEN the item is present, renders the text verbatim, carries the
      *  label and dedups by content (no dedup key). */
-    // UC-CG-7
+    // R-CG-7
     @Test
     public void test_turnContext_codegraphInstructionsItem_presentWithText() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
@@ -168,9 +168,9 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
         assertNull("dedup by content: no dedup key", cgItem.get().dedupKey());
     }
 
-    /** UC-CG-7: GIVEN codegraph not connected (empty supplier) WHEN turnContext()
+    /** R-CG-7: GIVEN codegraph not connected (empty supplier) WHEN turnContext()
      *  THEN no visible codegraph instructions item (null render = silently skipped). */
-    // UC-CG-7
+    // R-CG-7
     @Test
     public void test_turnContext_codegraphInstructionsItem_absentWhenSupplierEmpty() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
@@ -184,9 +184,9 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
                 && i.render() != null));
     }
 
-    /** UC-CG-7: GIVEN the scaffold agent WHEN turnContext() THEN the scaffold never
+    /** R-CG-7: GIVEN the scaffold agent WHEN turnContext() THEN the scaffold never
      *  receives the codegraph instructions item (own registry without MCP). */
-    // UC-CG-7
+    // R-CG-7
     @Test
     public void test_turnContext_scaffoldAgent_neverGetsCodegraphInstructionsItem() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());

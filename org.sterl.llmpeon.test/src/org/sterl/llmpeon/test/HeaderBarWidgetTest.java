@@ -29,7 +29,7 @@ import org.sterl.llmpeon.parts.widget.TokenHeaderWidget;
  */
 public class HeaderBarWidgetTest extends AbstractSwtUiTest {
 
-    // UC-CG-8
+    // R-CG-8
     @Test
     public void headerBarHasCodegraphLabelBetweenRosterAndHammer() {
         // GIVEN a header bar in the test shell
@@ -45,7 +45,7 @@ public class HeaderBarWidgetTest extends AbstractSwtUiTest {
         assertTrue("hammer expected last", children[4] instanceof Button);
     }
 
-    // UC-CG-8
+    // R-CG-8
     @Test
     public void codegraphStateOff_dimsTheCodegraphIconWithOffTooltip() {
         // GIVEN a header bar, WHEN the state is OFF (no project)
@@ -64,7 +64,7 @@ public class HeaderBarWidgetTest extends AbstractSwtUiTest {
         assertCodegraphImage(label);
     }
 
-    // UC-CG-8
+    // R-CG-8
     @Test
     public void codegraphStateConnected_enablesTheCodegraphIconWithTooltip() {
         // GIVEN a header bar, WHEN the state is CONNECTED for a project
@@ -83,7 +83,7 @@ public class HeaderBarWidgetTest extends AbstractSwtUiTest {
         assertCodegraphImage(label);
     }
 
-    // UC-CG-8
+    // R-CG-8
     @Test
     public void codegraphStateError_showsTheStopIconEnabledWithTooltip() {
         // GIVEN a header bar, WHEN the state is ERROR for a project

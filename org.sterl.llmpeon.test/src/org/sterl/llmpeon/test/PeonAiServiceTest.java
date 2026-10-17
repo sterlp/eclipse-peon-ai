@@ -1769,7 +1769,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
      * ist negativ, der State OFF und die Projekt-Info-Zeile darf KEINE Codegraph-Zeile
      * enthalten (keine Kontext-Blähung).
      */
-    // UC-CG-7
+    // R-CG-7
     @Test
     public void givenNoCodegraphInFixture_whenTurn_thenProjectInfoHasNoCodegraphLine() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
