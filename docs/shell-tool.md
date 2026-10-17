@@ -1,46 +1,49 @@
 # Shell Tool
 
 Read-only diagnostic shell (`mvn`, `git`, `npm`, …) — **nicht** für File I/O (Read/Write-Tools
-dafür). Output-Kontrolle (tail-Limit, Filter) macht das Tool selbst, nicht Shell-Pipes
+dafür). Output-Kontrolle (Char-Cap, Filter) macht das Tool selbst, nicht Shell-Pipes
 (`| tail`, `| grep` im Command sind die Umwege, die bei Timeout den Buffer verlieren).
+
+**2026-10-17 (Output-Trim-Service Slice 1):** `tailLines` → `maxChars` (Clean Break), Kürzung
+über die geteilte Komponente `OutputTrim` (core/shared) — Details:
+[output-trim-service.md](output-trim-service.md).
 
 ## Business Rules
 
-### R1 — Tail-Limit (✅ done, 2026-09-04)
+### R1 — Char-Cap via `maxChars` (✅ done, 2026-10-17; ersetzt tailLines/60/3000)
 
-`tailLines` steuert, wie viele der **letzten** Zeilen zurückgegeben werden:
+`maxChars` steuert, wie viele **Zeichen** des Outputs zurückgegeben werden — Kürzung macht
+ausschließlich `OutputTrim` (Head 1/3 + Tail 2/3, Je-Zeile-Cap 500, Disclosure nennt total/shown):
 
-- **kein Parameter** → letzte **60** Zeilen (Default = Context-Schutz).
-- **`tailLines > 0`** → letzte N Zeilen.
-- **`tailLines <= 0`** (0 oder -1) → **alle** Zeilen (explizite Entscheidung des LLMs).
-- **Hard-Cap 3000 Zeilen** — darüber wird gekürzt und als `... (N lines skipped)` disclosed
-  (Repo-Vertrag: jede Kürzung wird benannt).
+- **kein Parameter oder `<= 0`** → Default **10.000** Zeichen (Context-Schutz).
+- **`maxChars > 0`** → genau dieses Zeichen-Budget.
+- **KEIN Hard-Cap** (Paul 2026-10-16) — ein explizites großes `maxChars` wird nicht heimlich
+  gekappt; der Hard-Cap kommt mit dem [TempFileTool](temp-file-tool.md) (🚧, Slice 2).
 
 ```
 GIVEN ein Command mit 100 Zeilen Output
-WHEN shellRunCommand ohne tailLines
-THEN die letzten 60 Zeilen werden zurückgegeben
-AND der Output benennt die Kürzung („40 lines skipped")
+WHEN shellRunCommand ohne maxChars
+THEN max. 10.000 Zeichen werden zurückgegeben
+AND Kürzung wird benannt („… (truncated: N chars total, M shown)")
+
+GIVEN ein Command mit kleinem Output (< Cap)
+WHEN shellRunCommand ohne maxChars
+THEN der volle Output kommt unverändert (kein Disclosure-Noise)
 
 GIVEN ein Command mit 100 Zeilen Output
-WHEN shellRunCommand mit tailLines=20
-THEN die letzten 20 Zeilen werden zurückgegeben
+WHEN shellRunCommand mit maxChars=20
+THEN Head/Tail-Excerpt auf 20 Zeichen AND Disclosure nennt total/shown
+→ maxCharsHeadTailExcerpt
 
-GIVEN ein Command mit 100 Zeilen Output
-WHEN shellRunCommand mit tailLines=-1 (oder 0)
-THEN alle 100 Zeilen werden zurückgegeben
-
-GIVEN ein Command mit 4000 Zeilen Output
-WHEN shellRunCommand mit tailLines=-1
-THEN 3000 Zeilen werden zurückgegeben
-AND der Output benennt die Kürzung („1000 lines skipped")
+GIVEN ein Command mit riesigem Output
+WHEN shellRunCommand mit maxChars=500000
+THEN der Output wird NICHT auf 10.000 zurückgestutzt — kein Hard-Cap
 ```
 
-**✅ fixed (Bug-Hunt #2, 2026-09-04):** `-1` wurde heute auf Default 50 gemappt (`ArgsUtil.getOrDefault`
-mappt `<= 0` auf Default) — die innere Methode, die `<= 0 = all` korrekt umsetzt, ist unerreichbar.
-Fix: `-1`/`0` als „all" durchreichen; Default wird 50 → 60.
+Tests: `maxCharsHeadTailExcerpt`, `runOsCommand_filterWithMaxChars`, `filterRunsBeforeTrim`
+(ShellToolTest, core).
 
-### R2 — Filter-Parameter (✅ done, 2026-09-04 — neu)
+### R2 — Filter-Parameter (✅ done, 2026-09-04; Pipeline 2026-10-17 präzisiert)
 
 Optionales `filter` (String) = „| grep" vom Tool selbst:
 
@@ -48,15 +51,17 @@ Optionales `filter` (String) = „| grep" vom Tool selbst:
   ([ADR-0035](adr/0035-grep-regex-first-literal-fallback.md)); der **Suchmodus** (regex/literal)
   wird im Output disclosed.
 - Filter trifft **pro Zeile** (Zeile enthält Match).
-- **Pipeline: filtern → tail-Limit auf die gefilterten Zeilen** (wie `eclipseReadConsoleLog` R3:
-  das Limit trifft das Gefilterte). Gilt für alle Pfade: Erfolg, Timeout, Fehler.
+- **Pipeline: filtern → Char-Trim auf die gefilterten Zeilen** (Filter läuft VOR dem
+  `OutputTrim`-Fenster, am Reader; `eclipseReadConsoleLog` R3 analog).
 - **Disclosure (Repo-Vertrag):** aktiver Filter wird immer im Output benannt:
   `filter: <pattern> (showing N of M lines)` — ein stummer Filter wäre ein Falsch-Negativ.
+  Filter- **und** Trim-Vermerk stehen in derselben Ausgabe, wenn beide greifen
+  (`runOsCommand_filterWithMaxChars`).
 
 ```
 GIVEN ein Command mit 100 Zeilen, 10 davon enthalten „ERROR"
 WHEN shellRunCommand mit filter="ERROR"
-THEN nur die 10 passenden Zeilen werden zurückgegeben (unter Beachtung des tail-Limits)
+THEN nur die 10 passenden Zeilen werden zurückgegeben (unter Beachtung des Char-Caps)
 AND der Output benennt Filter + Suchmodus („filter: ERROR (regex, showing 10 of 100 lines)")
 
 GIVEN ein Command mit 100 Zeilen, keine passt zum Filter
@@ -67,6 +72,11 @@ GIVEN ein Filter mit Regex-Metacharakttern, die nicht compilieren
 WHEN shellRunCommand mit filter="[ungültig"
 THEN Literal-Fallback: exakte Zeichenfolge wird gesucht
 AND der Output benennt den Modus („literal")
+
+GIVEN gefilterte Zeilen überschreiten zusammen maxChars
+WHEN shellRunCommand mit filter + maxChars
+THEN Filter-Disclosure UND Trim-Vermerk erscheinen beide („showing N of M" + „truncated:")
+→ runOsCommand_filterWithMaxChars
 ```
 
 ### R3 — workingDirectory-Default (✅ done, 2026-09-24, Paul; Review Da Dok ACCEPTED, Commit `c06efcb`)
@@ -98,7 +108,7 @@ THEN verhält sich unverändert (Default greift nicht)
 
 ## Notes
 
-- Hard-Cap 3000 bleibt auch bei `tailLines <= 0` — explizites „all" darf den Context nicht
-  sprengen; die Kürzung ist disclosed. (User-Freigabe 2026-09-04: Default 60, <=0 = all, filter = Regex.)
+- Das alte Zeilen-Modell (`tailLines`, Default 60, Hard-Cap 3000, `<=0 = all`) ist mit
+  2026-10-17 ersatzlos entfernt — kein Alias, kein Migration-Pfad (Clean Break).
 - `commandUsesShellTail`-Hint (Timeout ohne Output wegen `| tail`-Buffering) bleibt; mit dem
   `filter`-Parameter verliert `| grep` im Command zusätzlich seinen Sinn — Hint kann erweitert werden.

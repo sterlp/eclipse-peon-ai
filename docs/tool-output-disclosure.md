@@ -61,7 +61,7 @@ bleiben gedroppt (unverändert).
   Disclosure-Zeile (nichts wurde gekappt).
 
 
-### R-OD-6 — Grep: Zeilenlängen-Cap gegen Minified-Overflow ✅ done (2026-09-30, `d7cf6578`)
+### R-OD-6 — Grep: Zeilenlängen-Cap gegen Minified-Overflow ✅ done (2026-09-30, `d7cf6578`; **2026-10-17 Cap 2000 → 500 via OutputTrim**)
 
 Grep liefert pro Treffer Pfad + Zeilennummer + **die komplette Zeile** — der 100-Zeilen-Cap
 (`MAX_GREP_LINES`) ist ein **Zeilenzähler ohne Längenlimit pro Zeile**. Eine minifizierte
@@ -69,16 +69,17 @@ Grep liefert pro Treffer Pfad + Zeilennummer + **die komplette Zeile** — der 1
 LLM-Kontext — Hauptverdachtiger für den 974k-Overflow (Thinka, 2026-09-30, Grep `replace` = 850
 Treffer workspace-weit).
 
-**SOLL:** jede ausgegebene Treffer-Zeile wird auf **2000 Zeichen** gekappt (Paul 2026-09-30: ✅
-bestätigt nach Erklärung — Worst-Case 100×2000 = ~57k Tokens begrenzt statt unbegrenzt), mit
-ehrlicher Disclosure im bestehenden
-Muster („N line(s) truncated at 2000 chars") — eine Stelle im geteilten Layer
-(`AiReponseBuilder`/`LogExcerpt`-Muster), beide Grep-Familien konsistent („one behaviour, one
-implementation"). Der 0-Treffer-Fall bleibt unverändert (klein).
+**SOLL (2026-10-17, Output-Trim-Service Slice 1):** der Zeilen-Cap liegt bei **500 Zeichen**
+(Paul: „500 überall", ersetzt den R-OD-6-Wert 2000) und wird von der geteilten Komponente
+[`OutputTrim`](output-trim-service.md) ausgeführt (`capLine`, Marker `…(+N chars)`) — Cap + Kürzung +
+Disclosure an EINER Stelle, beide Grep-Familien konsistent („one behaviour, one implementation").
+Historie: 2026-09-30 bis 2026-10-16 war der Wert 2000 mit Muster „N line(s) truncated at 2000 chars"
+(d7cf6578) — Clean Break, kein Alias. Der 0-Treffer-Fall bleibt unverändert (klein).
 
 #### UC-OD-7 — grepClampsMinifiedLine ✅
 - GIVEN minifizierte Datei mit einer 2-MB-Zeile, die matcht WHEN grep THEN die Zeile kommt auf
-  2000 Zeichen gekappt zurück **und** die Disclosure nennt die Truncation.
+  500 Zeichen gekappt zurück (Marker `…(+N chars)`) **und** die Disclosure nennt die Truncation
+  („truncated: N chars total, M shown").
 
 #### UC-OD-8 — grepNormalLinesUntouched ✅
 - GIVEN normale Zeilen (< Cap) WHEN grep THEN unverändert, keine Truncation-Disclosure.

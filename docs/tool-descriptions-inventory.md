@@ -56,7 +56,7 @@ Alle `@Tool`-Beschreibungen folgen einem einheitlichen Muster:
 | # | Method | Current Description | Rating | New Description | Why |
 |---|--------|---------------------|--------|-----------------|-----|
 | 11 | `readOperationSystemInformation` | `"OS/user info (os.name, user.name, path info etc.)."` | ⚠️ zu unpräzise | `"Read environment information: OS name, Java version, user home, PATH, temp directory. No parameters needed."` | Konkrete Felder genannt, "no parameters" spart Guessing |
-| 12 | `shellRunCommand` | `"Run shell command. (mvn, npm etc.) Not for file I/O."` | ⚠️ negativ, Constraint unklar | `"Execute a shell command (mvn, npm, git etc.). Use workingDirectory for disk path, timeout in seconds, tailLines to cap output. Not for file operations — use read/write tools instead."` | Parameter-Kontext, Alternative genannt |
+| 12 | `shellRunCommand` | `"Run shell command. (mvn, npm etc.) Not for file I/O."` | ⚠️ negativ, Constraint unklar | `"Execute a shell command (mvn, npm, git etc.). Use workingDirectory for disk path, timeout in seconds, maxChars to cap output (default 10000, trimmed head+tail). Not for file operations — use read/write tools instead."` | Parameter-Kontext, Alternative genannt; **2026-10-17:** `tailLines` → `maxChars` ([output-trim-service.md](output-trim-service.md)) |
 
 ### WebFetchTool (`org.sterl.llmpeon.tool.tools`)
 

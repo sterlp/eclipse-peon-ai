@@ -4,7 +4,8 @@
   ohnehin schon „chars / 3", der Code war die Abweichung; zu niedrige Schätzung ist für die
   Kontext-Anzeige (Compact-Button used/max) die gefährliche Richtung (Overflow-Risiko), zu hoch nur kosmetisch.
 - **Rückversicherung:** Paul hat /3 vorgeschlagen („nicht so wichtig, mehr Info") — Umsetzung im
-  Nachtzyklus autonom; widerspricht Paul, zurück auf ×2/7 (Änderung ist eine Konstante).
+  Nachtzyklus autonom; widerspricht Paul, zurück auf ×2/7 (Änderung ist eine Konstante). **Umgesetzt
+  `fbe2866f` + Zentralisierung `tokensToChars` `3199f732` (Open-Q1).**
 # Open Points
 
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
@@ -99,13 +100,19 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
 
 ## ⏳ Mini-Cleanups / geparkt
 
-- **TrimService-Story (Paul 2026-09-29, nächster „Architecture & Bug Sprint"):** Head/Tail/Trim
-  wird quer repliziert (ShellTool-Tail, Compact-Stufenkürzung, Tool-Output-Caps, LogExcerpt,
-  webFetch-Paging) → gemeinsame Klasse `TrimmedResult`: eine Stelle kürzt + disclosed.
-  Konvention: Zeilen zählen/zusammensetzen im Trim-Pfad mit **literal `\n`** statt
-  `lineSeparator()` (plattformunabhängig), dokumentiert in `TrimmedResult.toString`.
-  Grundlage: `ShellTool.java` · Verwandtes: `LogExcerpt`, `TextFileTypes`, Input-Budget,
-  Tool-Output-Disclosure.
+- **TrimService-Story — 🔒 gelöst 2026-10-17 (OutputTrim Slice 1):** gemeinsame Klasse gebaut
+  (`OutputTrim`, core/shared) — Shell + Grep migriert, Details/Commits:
+  [output-trim-service.md](output-trim-service.md). Rest-Backlog unten.
+- ❓ **Read-Tools-Rollout auf `OutputTrim` (2026-10-17):** `eclipseReadFile`/`diskReadFile` clampt
+  Bereiche, aber nicht über die Trim-Komponente (Head/Tail-Disclosure) — Migration = eigenes
+  Inkrement, kein Eile (Paul). Auch Kandidat: `LogExcerpt`/webFetch-Paging auf `OutputTrim`
+  vereinheitlichen (vgl. TrimService-Bullet oben).
+- ❓ **Pauls ShellTool-WIP uncommitted (2026-10-17, im Tree):** Parameter-Rename
+  `workingDirectory` → `workDir` + `@P`-Text („disk path, default current project") + Error-Message
+  mit Default-Ausgabe — Tool-Schema-Change über alle `shellRunCommand`-Aufrufer (Clean Break).
+  Wir haben es NICHT committed/gebaut (2. Positional-Param-Rename in der Story). SOLL klären:
+  Rename bestätigen + shell-tool.md R3/Docs nachziehen, oder zurückrollen.
+
 - **Think-BDD-Lücken (a)–(g) (2026-09-27, Da-Dok-Provider-Think-Audit):** (a) Gemini
   buildModel-Thinking-Branch, (b) OpenAI-Off-Varianten `FALSE`/`No`/` Off `, (c)
   GITHUB_COPILOT/GITHUB_MODELS Request-Params, (d) Anthropic konkret-Level + unknown string,

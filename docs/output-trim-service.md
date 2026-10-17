@@ -1,69 +1,70 @@
 # Output-Trim-Service
 
-> **Status:** 🚧 in design (2026-10-16, Nachtzyklus 5 — Jon-Bewertung, **WIP by Paul**) · **Anlass:**
-> `feature-request-ShellTool.md` (us4g, 2026-10-13) + `long-shell.log` · Verwandt:
-> [Shell Tool](shell-tool.md) · [Tool-Output-Disclosure](tool-output-disclosure.md) · ADR folgt bei Freigabe.
+> **Status:** ✅ done — Slice 1 (2026-10-17, `story/night-5-2026-10-16`: I1 `f277446e` · I2
+> `22a91fed` · I3 `dc4a5594`; Surefire core 1144/0, OSGi 351/0, Da-Dok CONCERNS nur Docs-Cycle →
+> geschlossen) · **Anlass:** `feature-request-ShellTool.md` (us4g, 2026-10-13) + `long-shell.log` ·
+> Verwandt: [Shell Tool](shell-tool.md) · [Tool-Output-Disclosure](tool-output-disclosure.md)
+> (R-OD-6) · [temp-file-tool.md](temp-file-tool.md) (Slice 2 — volle Ausgabe) ·
+> [bounded-caches.md](bounded-caches.md)
 
 ## Anlass
 
 Ein Agent hat sich mit einem einzigen `shellRunCommand` (Pipeline `grep|awk` über `backend/src/test`)
-eine minifizierte Datei mit 116 Zeilen / **3.217.746 Zeichen** in den Kontext geholt — Session unbrauchbar.
-`long-shell.log` bestätigt das indirekt: Compact-Zeile mit ~1.020k geschätzten Tokens und Stage
-`tool results 6000` (Trim-Leiter musste Tool-Results auf je 6000 chars kapppen, um überhaupt zu passen).
+eine minifizierte Datei mit 116 Zeilen / **3.217.746 Zeichen** in den Kontext geholt — Session
+unbrauchbar. `long-shell.log` bestätigt indirekt (~1.020k geschätzte Tokens, Stage `tool results 6000`).
 Ein Agent sollte Shell nur für Build/Test/git nutzen (Read/Grep existieren) — trotzdem ist die
 Ausgabegrenze ein Bug, kein Erziehungsproblem.
 
-## IST (am Code verifiziert, 2026-10-16)
+## SOLL (Slice 1 — Trim-Service, abgestimmt 2026-10-16, gebaut 2026-10-17)
 
-- `ShellTool.MAX_OUTPUT_LENGTH = 3000` heißt „Length", begrenzt aber **Zeilen** (`tail()`), nicht Zeichen.
-- Keine Obergrenze pro Zeile, keine für die Gesamtausgabe — 116 Zeilen passieren ungefiltert.
-- `| head -30` in der Pipeline schützt nicht (nur Zeilenzahl).
-- Reader puffert jede Zeile ungebunden in einer `LinkedList` (auch Heap-Risiko).
-
-## Bewertung (Jon, Nachtzyklus 5)
-
-1. **Request ist valide und code-bestätigt.** Der Fall ist keine Geschmacksfrage: ein Limit, das
-   Zeichen verspricht und Zeilen zählt, verletzt direkt die AGENTS-Regel „A tool must never lie about
-   a limit". Präzedenz: R-OD-6 hat genau diese Bug-Klasse (Zeilenlängen-Cap + Disclosure) für Grep
-   gefixt — Shell ist der Nachzügler.
-2. **Pauls TrimService-Gedanke: ja, gerechtfertigt** — aber als **kleine geteilte core-Komponente**
-   (shared-Package, z. B. `OutputTrim`/`TrimmedResult`), nicht als „Service" mit Lifecycle. Das
-   Trim/Tail-Konzept (Zeilen mit literal `\n` reassemblieren) wurde schon 2026-10-01 als
-   „gehört in eine gekapselte Klasse, nicht repliziert" vermerkt (TrimService-Story, 2026-09-29).
-   „One behaviour, one implementation": Shell-Char-Cap baut die Komponente, Grep (R-OD-6, Zeilen-Cap
-   2000) und Read (Clamp) migrieren später je eigenes Inkrement — nicht alles im ersten Slice.
-3. **SOLL 3 (volle Ausgabe als Temp-Datei)** ist das eigentlich wertvolle Detail: nichts geht verloren,
-   der Kontext bleibt klein, der Agent kann per Read nachlesen. Shell schreibt nach tmpdir — kein
-   Write-Validator-Konflikt, Pfad-Disclosure reicht.
-4. **SOLL 5 (Ringpuffer)** folgt aus 2: Kopf+Ende puffern statt alles im Heap.
-5. Werte (20.000 total / 500 je Zeile) sind vernünftige Defaults — aber siehe Frage Q2 (Grep nutzt
-   2000 je Zeile; vereinheitlichen oder nicht?).
-
-## SOLL-Draft (aus dem Request, 1:1 übernommen)
-
-1. **Harte Zeichengrenze** für die Rückgabe (Vorschlag 20.000) zusätzlich zur Zeilengrenze; bei
-   Überschreitung Kopf+Ende kürzen + Vermerk `… (truncated: <total> chars total, <shown> shown)`.
-2. **Zeilen-Obergrenze** (Vorschlag 500 je Zeile), gekürzt mit `…(+N chars)`.
-3. **Volle Ausgabe als Temp-Datei** bei Kürzung, Pfad im Ergebnis nennen.
-4. **Konstante umbenennen**: `MAX_OUTPUT_LENGTH` → `MAX_OUTPUT_LINES` (der Name lügt).
-5. **Reader begrenzen**: ab der Zeichengrenze nur Kopf+Ende puffern.
-6. **Tool-Beschreibung schärfen**: „Nur für Build, Test und git. Dateien lesen/suchen → Read/Grep-Tools
+1. **Geteilte Trim-Komponente im core** (shared, neben `FileLines`/`SearchQuery`) — eine Stelle für
+   Cap + Kürzung + Disclosure; Shell und Grep nutzen sie per Komposition. Kein „Service" mit Lifecycle.
+   **IST:** `OutputTrim` (Stadt-Name von Paul nicht vetoiert) mit `capLine` / `trim` /
+   `Window` (Ringpuffer, nur Kopf+Ende im Heap) / `Result`.
+2. **Harte Zeichengrenze als Default 10.000 chars** zusätzlich zur Zeilengrenze. Kürzung **Kopf +
+   Ende** (Head 1/3, Tail 2/3 — Ende zuerst, Fehler stehen hinten in Build-Logs), Vermerk
+   `… (truncated: <total> chars total, <shown> shown)`.
+3. **`shellRunCommand`: Parameter-Switch `tailLines` → `maxChars`** (Clean Break, kein Alias).
+   `maxChars` ist **Default, kein Hard-Cap** (Paul) — größer erlaubt; der echte Cap kommt mit
+   [temp-file-tool.md](temp-file-tool.md), wenn das LLM die volle Ausgabe sicher erreichen kann.
+   Risiko (bewusst): ohne Cap kann das Modell den Kontext wieder sprengen — Disclosure fängt es.
+4. **Je-Zeile-Cap 500**, gekürzt mit `…(+N chars)` — der eigentliche Schutz gegen minifizierte Dateien.
+5. **Grep migriert im selben Slice auf die Komponente** (Paul): dasselbe 10.000-Default-Cap für die
+   Gesamt-Ausgabe; der R-OD-6-Zeilenlängen-Cap 2000 ist durch das Komponenten-Zeilen-Cap 500 ersetzt
+   ([tool-output-disclosure.md](tool-output-disclosure.md) R-OD-6 nachgezogen). **Keine TMP-Datei in
+   Slice 1** (Paul) — kürzen only.
+6. **Konstante `MAX_OUTPUT_LENGTH`** — **realisiert als Verlagerung (D9):** gelöscht, die Grenze lebt
+   in den `OutputTrim`-Konstanten (`DEFAULT_MAX_CHARS`, `MAX_LINE_CHARS`); kein `MAX_OUTPUT_CHARS`
+   im Code (0 Referenzen — die SOLL-Formulierung „umbenennen" traf den Mechanismus nicht).
+7. **Reader begrenzen**: ab der Zeichengrenze nur Kopf+Ende puffern (Ringpuffer), nicht alles im Heap.
+8. **Tool-Beschreibung schärfen**: „Nur für Build, Test und git. Dateien lesen/suchen → Read/Grep-Tools
    — Ausgabe wird ab N Zeichen gekürzt."
-7. *(Optional)* Binäre/minifizierte Zeilen nur als Hinweis (`<line 42: 3.1 MB, likely minified/binary — omitted>`).
+9. Slice 2 = [temp-file-tool.md](temp-file-tool.md) (volle Ausgabe erreichbar machen) → danach
+   Cap-Nachschärfung; Migration von Read (Clamp) bleibt eigenes Inkrement.
 
-## BDD (Draft, aus dem Request)
+## BDD (Tests: `OutputTrimTest` 8 · `ShellToolTest` · `AiReponseBuilderTest` · `DiskGrepToolTest` · `EclipseGrepToolTest`)
 
 - GIVEN ein Kommando gibt eine Zeile mit 3 Mio. Zeichen aus WHEN `shellRunCommand` läuft
-  THEN Ergebnis ≤ 20.000 Zeichen + Kürzungsvermerk mit Gesamtlänge + Pfad zur vollständigen Ausgabe.
+  THEN Ergebnis ≤ 10.000 chars + Kürzungsvermerk mit Gesamtlänge. → `maxCharsHeadTailExcerpt`
 - GIVEN 100 Zeilen à 80 Zeichen WHEN `shellRunCommand` läuft THEN unverändert, ohne Vermerk.
+  → `maxCharsUnderCapNoDisclosure`
+- GIVEN `maxChars=500` WHEN Ausgabe 2.000 chars THEN Kopf+Ende-Ausschnitt + Disclosure.
 - GIVEN der Timeout greift bei übergroßer Ausgabe WHEN die Teilausgabe gebaut wird THEN dieselben Grenzen.
+- GIVEN Grep liefert > 10.000 chars WHEN das Ergebnis gebaut wird THEN gleiche Kürzung + Disclosure.
+  → `grepCompleteManyHitsAreCappedAndDisclosed`
+- GIVEN eine minifizierte 500k-Zeile WHEN Trim THEN Zeile auf 500 gekürzt (`…(+N chars)`).
+  → `grepClampsMinifiedLine` (Pin: `20014 chars total, 515 shown` — D3 zählt Kopf+Ende inkl. Marker)
+- GIVEN Filter UND Trim greifen beide WHEN `shellRunCommand` läuft THEN beide Vermerke in einer
+  Ausgabe (`showing N of M` + `truncated:`). → `runOsCommand_filterWithMaxChars`
+- GIVEN Filter WHILE Trim THEN Filter läuft VOR dem Trim-Fenster. → `filterRunsBeforeTrim`
 
-## Offene Fragen (Paul, morgen)
+## Entscheidungen (Paul, 2026-10-16)
 
-- **Q1 Rollout-Scope:** Nur Shell im ersten Slice (Komponente entsteht neben Shell), oder sofort
-  Grep (R-OD-6) + Read mit migrieren? Empfehlung: erst Shell, Migration je eigenes Inkrement.
-- **Q2 Werte:** 20.000/500 für Shell — und Grep-Zeilen-Cap 2000 vereinheitlichen oder kontextabhängig lassen?
-- **Q3 Namensfindung:** `OutputTrim` (shared-Komponente) vs. `TrimService` vs. `TrimmedResult` —
-  Kernproblem, das die Komponente löst: ehrliche Cap-Disclosure + Zeilen-Reassembly an EINER Stelle.
-- **Q4 Temp-Datei-Detail:** Pfad im Tool-Result reicht, oder zusätzlich Zeilenbereich-Hinweis
-  („full output lines 1–116 in …")?
+- Per-Line-Cap **500 überall** (Shell + Grep; ersetzt R-OD-6-Wert 2000).
+- `maxChars` = Default, **kein** Hard-Cap (Cap kommt mit TempFileTool).
+- Naming `OutputTrim` bestätigt (kein Veto).
+
+## Offen (Slice 2 / später)
+
+- Rollout Read-Tools (Clamp) auf die Komponente = eigenes Inkrement, kein Eile
+  ([open-points.md](open-points.md)).
