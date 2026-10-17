@@ -1,13 +1,12 @@
 package org.sterl.llmpeon.shared;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 public record SearchQuery(String query, Pattern pattern, boolean literal) {
 
-    private static final Map<String, SearchQuery> CACHE = new ConcurrentHashMap<>();
+    private static final int CACHE_CAP = 128;
+    static final BoundedLruCache<String, SearchQuery> CACHE = new BoundedLruCache<>(CACHE_CAP);
     private static final String LITERAL_HINT = "literal search — query is not a valid regex";
 
     public static SearchQuery of(String query) {

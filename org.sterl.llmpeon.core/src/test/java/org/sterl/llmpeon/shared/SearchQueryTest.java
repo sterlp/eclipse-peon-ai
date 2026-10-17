@@ -35,4 +35,17 @@ class SearchQueryTest {
         assertThat(SearchQuery.of("foo(bar").matches("a FOO(BAR here")).isTrue();
         assertThat(SearchQuery.of("foo(bar").matches("foo bar")).isFalse();
     }
+
+    // R-BC-2 (docs/bounded-caches.md)
+    // 129 fresh distinct keys via of() -> the static cache holds exactly 128 (cap), robust against
+    // any pre-existing entries (129 fresh distinct puts fill the cache and evict down to the cap).
+    // Mutation: unbounded cache (old ConcurrentHashMap) -> size >= 129 -> red.
+    @Test
+    void searchQueryCacheBoundedAt128() {
+        for (int i = 0; i <= 128; i++) {
+            SearchQuery.of("bc-cap-" + i);
+        }
+
+        assertThat(SearchQuery.CACHE.size()).isEqualTo(128);
+    }
 }

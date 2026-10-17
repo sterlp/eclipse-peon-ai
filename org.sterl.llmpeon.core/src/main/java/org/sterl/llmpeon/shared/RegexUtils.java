@@ -1,14 +1,13 @@
 package org.sterl.llmpeon.shared;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 public final class RegexUtils {
 
     private RegexUtils() {}
 
-    private static final Map<String, Pattern> GLOB_CACHE = new ConcurrentHashMap<>();
+    private static final int GLOB_CACHE_CAP = 128;
+    static final BoundedLruCache<String, Pattern> GLOB_CACHE = new BoundedLruCache<>(GLOB_CACHE_CAP);
 
     /**
      * Compiles a simple glob into a cached, anchored, case-insensitive {@link Pattern}. Only {@code *}

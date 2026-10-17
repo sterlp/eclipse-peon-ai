@@ -51,4 +51,17 @@ public class RegexUtilsTest {
     void globToPattern_isCachedPerGlob() {
         assertSame(RegexUtils.globToPattern("*.md"), RegexUtils.globToPattern("*.md"));
     }
+
+    // R-BC-3 (docs/bounded-caches.md)
+    // 129 fresh distinct literal globs (no '*') via globToPattern() -> the static cache holds
+    // exactly 128 (cap), robust against any pre-existing entries.
+    // Mutation: unbounded cache (old ConcurrentHashMap) -> size >= 129 -> red.
+    @Test
+    void globCacheBoundedAt128() {
+        for (int i = 0; i <= 128; i++) {
+            RegexUtils.globToPattern("bc-cap-glob-" + i);
+        }
+
+        assertEquals(128, RegexUtils.GLOB_CACHE.size());
+    }
 }
