@@ -13,6 +13,23 @@
   clearen (`memory.clear()`) — kein Queue-Fallback. **Offen: View-Smoke M1–M6 (Paul).**
 - ✅ **Compact-Lock-Doku war stale** — Feature seit 2026-09-22 gebaut/gemerged (ADR-0052);
   `docs/compact-lock.md` jetzt ✅ mit Beleg-Tabelle, UC-CT-3/5/6 = manueller Smoke offen.
+- ✅ **Manueller Rest des Zyklus (nicht gebaut, weil nicht mehr nötig):** ein voller
+  `mvn -B clean verify` ist grün (Core 1201/0, OSGi 386/0 + 49 Bestands-`@Ignore`, Tycho/feature/
+  update-site SUCCESS). Branch `story/night-5-2026-10-16` ist releasebar; Merge = Pauls Call.
+- ✅ **Docs-ID-Sweep:** `lintDocsAndTests` (voller Scope) läuft mit **9** Befunden — genau
+  UC-CT-3/5/6 (`UNBELEGT`, manueller Smoke) + UC-DEF-6/UC-JD-2…6 (`MANUELL`). Kein
+  `UNBELEGT_ERLEDIGT`, kein `VERWAIST` mehr. Warum es vorher nicht so war: (a) `UC-TF-1…4` waren an
+  Tests markiert, im Doc aber nicht als UC definiert → jetzt in [agent-tool-filter.md](agent-tool-filter.md)
+  als UC-TF-1/2/4 definiert (`UC-TF-3` bewusst NICHT — R-TF-3 ist compiler-gebunden, kein Test),
+  Marker in den Tests korrekt zugeordnet; (b) 38 UC-DL-Ids waren ✅ ohne erkennbaren Marker, weil die
+  Tests `// --- UC-DL-N: … ---`-Kopfzeilen nutzten (kein gültiger Marker) → Marker-Zeilen ergänzt;
+  (c) `UC-DL-28` (zwei Zusicherungen) wird jetzt von zwei Tests belegt (Doc-Text nennt sie).
+- ✅ **`java-debugger-tool.md` war stale:** R-JD-13 (Breakpoints ohne Session) und der
+  `debugJava*`-Rename sind **gebaut** (`JavaDebugTool.java:66` `NO_SESSION_MARKER_OP`,
+  `DebugBreakpointNoSessionTest` ×5, `DebugJsonUnitTest` ×2, kein snake_case-Rest) — Docs standen
+  auf ❌. Jetzt ✅ mit Belegen; manuell offen: Install-Pfad Marker → laufende VM.
+- ✅ **`tool-descriptions-inventory.md`:** doppelte Nummer `67` korrigiert (Continue → 68,
+  Suspend → 69).
 - ✅ **Tagged Results komplett (R-TR-1…9)** — Commits `f8a2fc23` (I1) · `6ff4c6eb` (I2) ·
   `9b29d0c3` (I3) · `4f9b7e3e` (Nacharbeit: Windows-NL-Fix `ContextTrimComponent:177`, Test
   `perMessageStage_sizesCapAgainstKLine_staysWithinBudget` mit Mutations-Nachweis) · Archiv

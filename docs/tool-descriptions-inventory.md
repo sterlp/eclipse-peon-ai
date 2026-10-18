@@ -200,8 +200,8 @@ isEditTool=✔ (R-JD-5: Plan/Review/SearchAgent/read-only-Custom filtern es auto
 | 65 | `debugJavaStepIn` | *(neu — kein Bestand)* | ✅ | `"Step into a debug thread and wait for the next suspend; returns the new top frame."` | Synchrones Warten auf Suspend (D9) |
 | 66 | `debugJavaStepOut` | *(neu — kein Bestand)* | ✅ | `"Step out of the current frame and wait for the next suspend; returns the new top frame."` | Synchrones Warten auf Suspend (D9) |
 | 67 | `debugJavaGetException` | *(neu — kein Bestand)* | ✅ | `"Find the exception at the current suspend: scans the top frame's local variables (incl. catch parameter) for a java.lang.Throwable or subtype and returns its type, message and variable name. Limit: an uncaught throw new X(...) at the throw site has no named variable and is not found there."` | 2026-09-21 (R-JD-10, 14. Action); Recognition name-based (Throwable exakt / *Exception / *Error) in der Code-Description (G1, `348d521`) |
-| 67 | `debugJavaContinue` | *(neu — kein Bestand)* | ✅ | `"Resume a suspended debug thread and wait for the next suspend; returns the new top frame."` | Synchrones Warten auf Suspend (D9) |
-| 68 | `debugJavaSuspend` | *(neu — kein Bestand)* | ✅ | `"Suspend a running debug session; returns the suspended threads with their top frames."` | Sofort suspended, Threads im JSON |
+| 68 | `debugJavaContinue` | *(neu — kein Bestand)* | ✅ | `"Resume a suspended debug thread and wait for the next suspend; returns the new top frame."` | Synchrones Warten auf Suspend (D9) |
+| 69 | `debugJavaSuspend` | *(neu — kein Bestand)* | ✅ | `"Suspend a running debug session; returns the suspended threads with their top frames."` | Sofort suspended, Threads im JSON |
 
 ---
 
