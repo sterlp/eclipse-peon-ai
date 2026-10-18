@@ -1,5 +1,18 @@
 
 
+## Stand 2026-10-18 (Branch `story/night-5-2026-10-16`, Smoke-Nacharbeit Codegraph)
+
+- `d38c8ab4` **R-CG-7 nachgeschärft:** `CodegraphContextItem.renderConnected` mappt Disk→**echter
+  Workspace-FullPath** (`JdtUtil.pathOf`, nested projects) statt `"/"+name`; Peon-eigener
+  Nutzungssatz gestrichen (Tool-Description + Server-Instructions tragen das), Fallback-Zeile wenn
+  nichts zu sagen. Plugin-Suite 381/0, Core 1173/0.
+- Vorher: `22a77b7e` (ein ContextItem statt Supplier-Lambda, R-CG-12 via `label()`),
+  `b2273920` (Icon 24×24 + viewBox, `codegraph_off*`-Varianten), `9c2549c3` (Snapshot-Cache 16).
+- ❓ **Offen für Paul:** (1) zwei `serve --mcp`-Prozesse (ADR-0067-Dual-Registry × Connect je
+  Registry vs. R-CG-4) — Empfehlung (b) Client/Transport einmal, Registrierung fan-out;
+  (2) `codegraph` fehlt in Pauls Tool-Auswahl — welcher Agent/Slot? (3) Smoke + Merge → main.
+- Details in [open-points.md](open-points.md) („Codegraph-Smoke").
+
 ## Nachtrag 2026-10-17 (Paul-Feedback afk, 13:46)
 
 - ❓ **Toolset-Frage (R-CG-6) offen:** Paul fragte, ob wir mehrere Codegraph-Tools registrieren
