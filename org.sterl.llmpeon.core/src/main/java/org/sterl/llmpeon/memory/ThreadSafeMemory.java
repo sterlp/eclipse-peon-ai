@@ -103,11 +103,11 @@ public class ThreadSafeMemory {
                 && (!memory.isEmpty() && memory.getLast() instanceof ToolExecutionResultMessage tR)) {
             // https://github.com/sterlp/eclipse-peon-ai/issues/87
             // this can happen e.g. or rate limits or server errors...
-            log.warn("Detected tool result without AI response but a Usermessage is added! {} - {}", tR.id(), tR.toolName());
-            var repair = AiMessage.from("ok");
-            memory.add(repair);
-            memory.add(num);
-            append(List.of(repair, num));
+            log.warn("Detected tool result without AI response but a Usermessage is added! {} - {} - user message:\n{}", 
+                    tR.id(), tR.toolName(), num);
+            var toAdd = List.of(AiMessage.from("ok"), num);
+            memory.addAll(toAdd);
+            append(toAdd);
         } else {
             memory.add(message);
             append(message);
@@ -141,7 +141,7 @@ public class ThreadSafeMemory {
         if (StringUtil.hasNoValue(message)) return true;
         return memory.stream()
             .filter(m -> m instanceof UserMessage || m instanceof ToolExecutionResultMessage)
-            .map(m -> ChatMessageUtil.toString(m, 90000))
+            .map(m -> ChatMessageUtil.toString(m, Integer.MAX_VALUE))
             .anyMatch(um -> um.contains(message));
     }
     
