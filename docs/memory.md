@@ -1,87 +1,57 @@
-
-
-## Stand 2026-10-18 (Branch `story/night-5-2026-10-16`, Smoke-Nacharbeit Codegraph)
-
-- `d38c8ab4` **R-CG-7 nachgeschärft:** `CodegraphContextItem.renderConnected` mappt Disk→**echter
-  Workspace-FullPath** (`JdtUtil.pathOf`, nested projects) statt `"/"+name`; Peon-eigener
-  Nutzungssatz gestrichen (Tool-Description + Server-Instructions tragen das), Fallback-Zeile wenn
-  nichts zu sagen. Plugin-Suite 381/0, Core 1173/0.
-- Vorher: `22a77b7e` (ein ContextItem statt Supplier-Lambda, R-CG-12 via `label()`),
-  `b2273920` (Icon 24×24 + viewBox, `codegraph_off*`-Varianten), `9c2549c3` (Snapshot-Cache 16).
-- ✅ **Zwei `serve --mcp`-Prozesse GEFIXT** (`fe583895`, ADR-0069): Owner-Modell — Connection-Service
-  hält den `McpService`, Registries adoptieren (`adoptMcpGroup`), `disconnectMcp` detacht nur;
-  Leer-Pfad leak-frei + ehrlicher Status. Core 1175/0, OSGi 386/0. War ein Bug, kein Design —
-  Pauls Vermutung bestätigt.
-- 🚧 **Tagged Results (Paul-Entscheide 2026-10-18, Bau als NÄCHSTES):** Regeln in
-  [tagged-results.md](tagged-results.md) (R-TR-1…9). Kern: Liste statt Set · `TaggedResult` für ALLE
-  ContextItems · Codegraph rendert nur CONNECTED (OFF/ERROR still, Icon rot+Tooltip) · `State` trägt
-  Instructions (ein Supplier) · `INFO` einmal in der static System-Message (Wortlaut gekürzt, Doc) ·
-  Compact klassifiziert über Tags + `head`-Dedup mit Disclosure · **jedes Cap raus aus
-  `ChatMessageUtil`**, Kürzen nur im Compact · Tests: außerhalb `ChatMessageUtilTest` nur `contains`.
-  Bau in 3 Inkrementen geplant. Pauls WIP: `agent/model/TaggedResult`, `ChatMessageUtil`.
-- 📌 **Paul-Prio (2026-10-18):** Async-**Shell**-Tool ist wichtiger als async Agents.
-- ❓ **Offen für Paul:** (1) `codegraph` fehlt in Pauls Tool-Auswahl — welcher Agent/Slot?
-  (2) Smoke nach Neustart (nur noch 1 Prozess erwartet) + Merge → main.
-- Details in [open-points.md](open-points.md) („Codegraph-Smoke").
-
-## Nachtrag 2026-10-17 (Paul-Feedback afk, 13:46)
-
-- ❓ **Toolset-Frage (R-CG-6) offen:** Paul fragte, ob wir mehrere Codegraph-Tools registrieren
-  sollten. Ich sehe in meiner Tool-Liste NUR `codegraph_explore` (Default-Toolset, R-CG-6 korrekt).
-  **Jon-Empfehlung in open-points.md: `CODEGRAPH_MCP_TOOLS=explore,search,files`** — NICHT gebaut
-  (R-CG-6 ist Pauls SOLL; Änderung erst nach Rückkehr). Binary-Frage geklärt: Probe deckt `which`
-  ab (~/.local/bin Suchort #1 + PATH-Scan, E2E-Beleg), kein User-Home-Scan — Klarstellung in
-  codegraph.md Fakten ergänzt.
-- Nachtrag-Docs (open-points.md, codegraph.md, memory.md) ✅ committed `95372542`.
-
+# Open Ends / Memory — Session-Zwischenstand
 
 > docs/** — insbesondere memory.md — schreibt AUSSCHLIESSLICH Jon. Agenten liefern Facts im Chat.
 
-## Zyklus-Ergebnis (Branch `story/night-5-2026-10-16`, Pauls Nachtliste KOMPLETT abgearbeitet)
+## Stand 2026-10-18 (Branch `story/night-5-2026-10-16`)
 
-| Commit | Inhalt |
-|---|---|
-| `d8c7b8aa`/`fe5cc80e`/`966ae530`/`f6ed37c4` | **BoundedLruCache ✅** (Komponente + SearchQuery/RegexUtils Cap 128 + WebFetchTool echtes LRU + AGENTS-Regel), Da-Dok ACCEPTED |
-| `84a01345` | **EclipseGrepTool IFile-Disclosure ✅** (R-OD-7/UC-OD-10, C-EXT-Muster) |
-| `8e6bcb54` | **SLF4J-Fix ✅** — slf4j-simple raus (pom/MANIFEST/build.properties). IST-Korrektur: kein `Require-Bundle org.slf4j.api`-Range existiert — API kommt aus gebündeltem lib-Jar, Range-Schritt entfällt |
-| `e63ad98d` | **Test-Reworks ✅** — `rosterIsFlatAndInheritsBackground` = Test-Bug (`IThemeEngine.DEFAULT_THEME_ID` keine registrierte Theme-ID; registriert: e4_classic/e4_dark/e4_default) → Split + assumeTrue; Build-Cap-Test → Core (Fake-IMarker infeasibel, `eclipseBuildProject` löscht zuerst alle PROBLEM-Marker) + Plugin-E2E |
-| `79676f3d` | Skill eclipse-dpe Theme-Falle + Ledger |
-| `a506635e`…`10fcb42e` | **Codegraph I1–I5** — workingDirectory (Empty=unset), instructionsOf, Probe/Factory, generische MCP-Groups im ToolService, `CodegraphConnectionService` (Job-Koaleszenz, Failure-Isolation), Reserved-Name-Filter, Context (R-CG-7), Header-Icon (R-CG-8) |
-| `7b74b76a` | **I6a** Homepage `setup/codegraph` + Sidebar + README + `codegraph.sh` gelöscht (war getrackt) |
-| `64e04737` | Da-Dok-Rework: 12 UC-CG-Marker → R-CG-Form + Mutations-Nachweis Churn-Compare |
-| `6cf93ff5` | **I6b Docs** — codegraph.md ✅, ADR-0068 + Index, index.md-Zeilen |
-| `bf29adbb` | Rest-Docs (open/resolved-points, tool-output-disclosure, codegraph-architektur.md) |
+- ✅ **Tagged Results komplett (R-TR-1…9)** — Commits `f8a2fc23` (I1) · `6ff4c6eb` (I2) ·
+  `9b29d0c3` (I3) · `4f9b7e3e` (Nacharbeit: Windows-NL-Fix `ContextTrimComponent:177`, Test
+  `perMessageStage_sizesCapAgainstKLine_staysWithinBudget` mit Mutations-Nachweis) · Archiv
+  `ab6f46bf`. **Gates: Core Surefire 1189/0, OSGi 386/0.** Da-Dok: CONCERNS ohne Blocker.
+- **Was jetzt gilt:** `TaggedResult` ist der einzige Klassifikationsschlüssel (Compact über
+  Tag-Präfixe, kein `instanceof`); reine Context-Blöcke werden **vor** dem Compact gedroppt
+  (`context blocks dropped: K`); **kein Cap im Renderer** (`RenderOptions` gelöscht → ADR-0056
+  teilweise superseded); `INFO` einmal in der static System-Message; Bild eines Datei-Contexts ist
+  sein Block, dedupKey = Block-Startzeile (ADR-0029 teilweise superseded).
+- **Pauls WIP unangetastet** (nicht committet, nicht anfassen): `ShellTool.java`,
+  `ThreadSafeMemory.java`, `agent/tools/**`, `test/agent/model/**`, `feature-request-ShellTool.md`,
+  `AbstractAgent:375` (`"tokens (estimate)"`), `AIChatView` R-SEL-2.
+- Vorher im selben Branch: R-CG-7-Nachschärfung (`d38c8ab4`), Zwei-`serve --mcp`-Fix (`fe583895`,
+  ADR-0069), Bounded-Caches ✅, Codegraph ✅.
 
-**Finale Baseline: Core Surefire 1172/0, OSGi 376/0** (E2E-Test lief echt — Codegraph-Binary + Index vorhanden). Plan archiviert: `overview-done-2026-10-17-18-57.md`.
+## Offen für Paul (Details: [open-points.md](open-points.md))
 
-## Offen für Paul (Rückversicherungen ⏳ / Entscheidungen ❓ — Details open-points.md)
+1. ❓ **Codegraph-Smoke nach Eclipse-Neustart** — es darf nur **ein** `serve --mcp`-Prozess laufen;
+   Icon ON/OFF/FEHLER + `codegraph_explore` in Jon/Dev prüfen. Danach **Merge → main** (Pauls Call).
+2. ❓ **`codegraph` in der Tool-Auswahl** — welcher Agent/Slot soll es standardmäßig haben?
+3. ❓ **R-*-Regeln haben kein Linter-Gate** (`DocsLinter:241/254`) — R-only-Docs sind nur durch
+   Da-Dok abgesichert. Entscheidung: R-Form als Definition zulassen oder UC ergänzen?
+4. ❓ **`AIChatView.applyTextSelection`** (Pauls WIP): früher Return bei disposed parent überspringt
+   jetzt auch `setTextSelection` — bewusst oder Nebeneffekt?
+5. ❓ **Untracked** `peon-plan/codegraph-smoke-findings.md` + 2 alte `overview-done-*`: überführen
+   und löschen, oder committen.
+6. ⏳ Reserved-Name `codegraph` (ADR-0068) · ⏳ Icon-Visuals Q2=(a) · ⏳ S3 (🗜 in
+   PoDelegateTool/AgentsTool) blockiert auf Pauls WIP-Merge.
 
-1. ⏳ **Reserved-Name `codegraph` (Jon-Entscheid a):** im User-MCP-Pfad UNBEDINGT reserviert —
-   auch bei inaktivem Built-in; Workaround-Eintrag funktioniert nicht mehr (Clean Break).
-   Umwerfen möglich → dann State-abhängiger Filter.
-2. ⏳ **Icon-Visuals Q2=(a):** ON=codegraph.svg, OFF=gedimmt, ERROR=ImageUtil.STOP;
-   `codegraph_dark.svg` von Mek nach Hammer-Muster erzeugt — Gegencheck beim Smoke.
-3. ❓ **S3 (🗜 in PoDelegateTool/AgentsTool)** nur halb machbar — AgentsTool-Teil in Pauls
-   untracked WIP; PoDelegate-Teil wäre allein inkonsistent. Paul entscheidet.
-4. Paul-Smoke Codegraph (Auto-Connect + Icon + Tool in Jon/Dev) + Merge → main = Paul.
-5. Pauls WIP im Tree unverändert: ShellTool.java (M), feature-request, agent/model/, agent/tools/.
+## Backlog (nächste Session)
 
-## Backlog (nächste Session, Paul-Prio laut Report 2026-10-17)
-
-- **Async-Agents Top-3** (async-agents.md 🚧 — Paul-Entscheidung offen, daneben
-  Mutable-`request`-Merge-Check-Item VOR dem Async-Bau, open-points).
-- **TempFileTool** (Slice 2 Output-Trim 🚧 in design).
+- **Async-Shell-Tool — Paul-Prio 2026-10-18: wichtiger als async Agents.** Danach
+  **async Agents** (Top-3 in [async-agents.md](async-agents.md), Mutable-`request`-Merge-Check-Item
+  vor dem Bau).
+- **TempFileTool** — Slice 2 Output-Trim 🚧 in design.
+- **Compact-Lock** ❌ specified (baubar, Prio offen).
 - Bug-Backlog: Fehlerklassen-Tabelle R-CC-7/ApiRetry (❓), Header-State-Leak (❓, IST-Messung
-  offen), Context-Overflow-Zyklus (❓ Auto-Compact, Pollution, Memory-Snapshot).
-- Lesestoff: Compact-Lock ❌ specified (gebaut? nein — baubar, Paul-Prio offen).
+  offen), Context-Overflow-Zyklus (❓ Auto-Compact, Pollution, Memory-Snapshot), McpService
+  `connect()`-Rollback-Test (offen seit ADR-0069).
 
 ## Notizen
 
-- **AGENTS-DEV.md ✅ committed (`947e4caf`):** Docs-ID-Marker aus dem
-  Feature-Doc kopieren (R-X-n hat keine UC-X-n-Definitionen) + `lintDocsAndTests` ins
-  Inkrement-Gate, sobald Marker geplant sind (12 VERWAIST liefen durch 6 grüne Gates).
-  Ledger-Zeile skill-impact.md ergänzt (update accepted).
-- memory-Tool-Eintrag gesetzt (gleicher Inhalt, cross-projekt).
-- eclipseEditFile frisst weiterhin params (4× "oldString is required" heute) — Fallback
-  eclipseReplaceLines/diskEditFile mit Read-back funktioniert.
-- Skill-Evolution: Update-Outcome docs-linter-Gate-Empfehlung (s. o.).
+- **Riesige Tool-Args killen den Call:** Plan- und Dev-Agent liefen je einmal in Provider-400
+  „175155 > 175104 tokens". Gegenmittel: `clear*` vor dem Versuch, kurze Prompts, Agent schreibt
+  lange Pläne/Berichte als Datei.
+- **Windows-Falle im Renderer:** In mit `System.lineSeparator()` gebauten Strings **immer**
+  `indexOf('\n')` (Zeichen) suchen, nie `indexOf(System.lineSeparator())` — sonst landet das `\r` im
+  Index und `+1` schneidet mitten im Newline.
+- `eclipseEditFile` verschluckt gelegentlich Parameter („oldString is required") — Fallback
+  `eclipseReplaceLines`/`diskEditFile`, danach Read-back (AGENTS.md).
+- Ledger `.agents/skills/wiki/skill-impact.md` gehört mit dem Zyklus committed.

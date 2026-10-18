@@ -53,6 +53,25 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   Nested-Calls würden um latch/responseRef racen; heute keinen, Revisit mit
   async-agent-tools-proposal.md.
 
+## Tagged Results — Nachträge (Zyklus 2026-10-18)
+
+- ❓ **R-*-Regeln haben kein Linter-Gate (2026-10-18):** `DocsLinter:241` nimmt `R-*`-Definitionen
+  nicht in `defById` auf, `:254` überspringt sie im ✅-Check. Mit UC-only `idPattern` sind
+  `// R-…`-Testmarker unsichtbar; mit einem Muster, das sie einschließt, werden sie `VERWAIST`.
+  Folge: R-only-Docs (`tagged-results.md`, `compact-input-budget.md`, `compact.md`) haben **kein**
+  maschinelles ✅-Gate — Da-Dok-Review ist die einzige Absicherung. Optionen: (a) R-Form als
+  Definition zulassen (Überschriften `#### R-<F>-<n>`, wie bei UC), (b) solche Docs zusätzlich mit
+  UC-Use-Cases ausstatten. Ohne Entscheidung bleibt der Linter blind für einen Großteil der Docs.
+- ❓ **`AIChatView.applyTextSelection` — geändertes Verhalten bei disposed parent (Pauls WIP,
+  2026-10-18, nicht committet):** das Refactoring (`if (parent == null || parent.isDisposed()) return;`)
+  überspringt jetzt **auch** `uc.setTextSelection(ts)`; vorher lief die Selektion weiter, nur der
+  Refresh unterblieb. Wenn das bewusst ist: kein Punkt. Wenn nicht: der frühe Return muss hinter
+  `setTextSelection`.
+- 🗑 **Untracked Session-Artefakte (2026-10-18):** `peon-plan/codegraph-smoke-findings.md` und zwei
+  alte `overview-done-*`-Archive (10-17, 10-18 11:56) sind nie committet worden. Entscheiden:
+  Findings ins Feature-Doc überführen + Datei löschen, oder als Historie committen. Bis dahin
+  Arbeitsbaum nicht „clean".
+
 ## Bug-Fix-Backlog
 
 - ❓ **Fehlerklassen-Tabelle — R-CC-7 + ApiRetry, eine Tabelle zwei Verbraucher:** transient →
