@@ -12,6 +12,11 @@
   hält den `McpService`, Registries adoptieren (`adoptMcpGroup`), `disconnectMcp` detacht nur;
   Leer-Pfad leak-frei + ehrlicher Status. Core 1175/0, OSGi 386/0. War ein Bug, kein Design —
   Pauls Vermutung bestätigt.
+- 📝 **Tagged Results (Pauls WIP, 2026-10-18):** `TaggedResult` + `extractMessages` liegen
+  uncommitted im Tree (`agent/model/`, `ChatMessageUtil`); SOLL/Idee + Bewertung in
+  [tagged-results.md](tagged-results.md) (🚧), Designfragen in open-points.md. **Von mir bewertet:
+  Liste statt Set** (Set = hidden filter, falscher Dedup nach Cap-Kürzung). Vor dem Bau braucht es
+  Pauls Entscheid zu den 5 offenen Fragen.
 - ❓ **Offen für Paul:** (1) `codegraph` fehlt in Pauls Tool-Auswahl — welcher Agent/Slot?
   (2) Smoke nach Neustart (nur noch 1 Prozess erwartet) + Merge → main.
 - Details in [open-points.md](open-points.md) („Codegraph-Smoke").

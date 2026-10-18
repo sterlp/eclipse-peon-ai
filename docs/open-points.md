@@ -236,6 +236,18 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   PATH-Scan, E2E-Beleg auf Pauls Maschine — Detail in codegraph.md Fakten).
 
 
+## Tagged Results (2026-10-18, Paul) — Design offen
+
+- ❓ **`extractMessages`: Set oder Liste?** Jon-Empfehlung: **Liste** — Dedup im Compact-Consumer
+  (`LinkedHashSet` + `collapsed N duplicate(s)` in der Disclosure). Ein `Collection`-Rückgabetyp, der
+  Duplikate still schluckt, ist ein hidden filter; außerdem kollabieren nach Per-Message-Cap zwei
+  **verschiedene** Inhalte mit gleichem Kopf zu einem (Datenverlust). Details + 5 offene Fragen in
+  [tagged-results.md](tagged-results.md).
+- ❓ **`TaggedResult.INFO` Injektionsort:** System-Message (static context) oder Turn-Context-Item
+  (`dedupKey` verhindert Wiederholung)? Empfehlung ContextItem, wenn das Format je Agent gleich ist.
+- ❓ **Format-Details:** `toString()` schreibt `//-- End ` **ohne** `head` (asymmetrisch),
+  `startsWith/endsWith`-Erkennung ist trimming-anfällig. Vor dem Bau festzurren.
+
 ## Codegraph-Smoke (2026-10-18, Paul) — Befunde
 
 - 🔒 **Zwei `serve --mcp`-Prozesse — gelöst (2026-10-18, `fe583895`):** war ein **Bug**, kein Design:
