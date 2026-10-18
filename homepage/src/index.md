@@ -84,6 +84,13 @@ The AI assistant has access to several tools:
 You can also send messages with `CTRL+Enter` or `CMD+Enter` - if the AI is working, the message is added to the history - best effort to add message during a tool loop. When such a queued message is picked up, the chat discloses when it was queued — e.g. `[Queued Message] (14:32): …` — so you can see how long it waited.
 :::
 
+::: tip "Send while working"
+While the AI is working, a normal message is queued. Prefix it with `!` to skip the queue instead: the rest of the
+message goes straight into the running agent's context (visible in the chat history) and the current turn can react
+to it right away — no extra request. A `/command` or `/skill` after the `!` is resolved first. When the AI is idle the
+`!` has no special meaning and the text is sent as typed.
+:::
+
 - Drag-and-drop files from Eclipse Explorer or your file system directly into the chat input to attach them as `@path` references.
 
 ## Architecture

@@ -111,26 +111,28 @@ THEN it is still added — no dedup across context vs. payload boundaries
 
 **Tests:** `AbstractAgentTest.testQueuedMessagesChainedFifo()` demonstrates queue chaining through doCall (standing orders handled separately via ToolLoopRequest).
 
-### 8. „!“-Messages: Queued-Message-Override direkt ins Agent-Memory ❌ specified (2026-09-25, Paul)
+### 8. „!“-Messages: Queued-Message-Override direkt ins Agent-Memory ✅ done (2026-09-25 specified, gebaut 2026-10-18)
 
 - **Zweck:** Escape-Hatch, wenn der Agent bereits arbeitet. Eine Nachricht, die mit `!` beginnt,
   umgeht die Queue vollständig und wird direkt in das `ThreadSafeMemory` des aktiven Agenten
   eingefügt.
 - **Verhalten:**
-  1. Gilt **nur, während der Agent arbeitet**. Wenn der Agent idle ist, startet die Eingabe wie gewohnt
-     einen regulären Turn (keine Queue, kein Override nötig).
-  2. Das führende `!` wird von der Nachricht entfernt.
-  3. Beginnt der verbleibende Text mit `/` (Slash-Command oder Skill):
-     - Lookup nach Command/Skill.
-     - Wenn gefunden: `/command-name` wird durch den Command-Body ersetzt, der restliche User-Text
-       wird angehängt.
-     - Wenn nicht gefunden: Roher Text bleibt erhalten.
-  4. Die resultierende Nachricht landet **direkt im Agent-Memory** (`ThreadSafeMemory`) und
-     erscheint sofort in der Chat-History.
+  1. Gilt **nur, während der Agent arbeitet** — die Voraussetzung ist `active.isWorking()`. Ist der
+     Agent idle, ist `!` ein normales Zeichen: die Eingabe startet einen regulären Turn mit dem Text
+     **wie getippt** (das `!` bleibt stehen, nichts wird aufgelöst) — Entscheidung Paul 2026-10-18.
+  2. Während der Agent arbeitet, wird das führende `!` entfernt.
+  3. Beginnt der verbleibende Text mit `/` (Slash-Command oder Skill): Lookup über
+     `SlashCommandResolver` — Command-Body ersetzt `/command-name`, der restliche User-Text wird
+     angehängt; ohne Treffer bleibt der Rohtext erhalten.
+  4. Die resultierende Nachricht landet **direkt im Agent-Memory** (`AiAgent.injectUserMessage`,
+     `AbstractAgent` = `memory.add(UserMessage.from(text))`) und erscheint sofort in der
+     Chat-History (USER-Zeile).
   5. **Kein neuer Turn, kein Follow-up:** Die Nachricht liegt im Memory; die AI sieht sie im
      nächsten Modell-Aufruf / nächsten Loop-Schritt des laufenden Turns und kann direkt reagieren.
   6. Kein `Noted...`-Echo, kein Quota-Verbrauch, kein `(queued …)`-Marker.
-  7. **Homepage-Update:** Die Funktion muss auf der Homepage dokumentiert werden (user-visible).
+  7. **`!` allein** (kein Text dahinter) im laufenden Turn wird **konsumiert und verworfen** — kein
+     Queue-Eintrag, keine History-Zeile, kein Follow-up.
+  8. **Homepage-Update:** ✅ `homepage/src/index.md` („Send while working").
 
 ```
 GIVEN der Agent arbeitet aktuell
@@ -148,11 +150,20 @@ AND "instruction content rest text" landet direkt im ThreadSafeMemory
 AND es wird kein separater Turn gestartet
 
 GIVEN der Agent arbeitet NICHT
-WHEN der User gibt eine Nachricht ein, die mit "!" beginnt
-THEN startet ein normaler Agent-Turn mit der Nachricht (Regel greift nur bei laufendem Agent)
+WHEN der User gibt "!text" ein
+THEN startet ein normaler Agent-Turn mit dem Text "!text" (unverändert)
+
+GIVEN der Agent arbeitet aktuell
+WHEN der User gibt nur "!" ein
+THEN wird die Eingabe konsumiert (Input geleert, kein Queue-Eintrag, keine History-Zeile)
 ```
 
-### 9. Queued-At Disclosure — Uhrzeit in onTool + Marker ❌ specified (2026-09-23, Paul)
+**Tests:** `OverrideMessageResolverTest` (10 Fälle: idle/unbekanntes Command/Skill/Blank, Body+Rest,
+Rohtext-Fallback, `!` allein) + `AbstractAgentTest.injectUserMessage_appendsToMemory`. Die
+View-Verdrahtung (`AIChatView.resolveOutgoingMessage`) ist compile-grün, aber **nicht** automatisiert
+getestet — Smoke M1–M6 offen (Paul).
+
+### 9. Queued-At Disclosure — Uhrzeit in onTool + Marker ✅ done (2026-09-23 specified, gebaut `f059c683f`)
 
 Jeder Queue-Eintrag trägt einen **queuedAt**-Zeitstempel (Zeitpunkt des Queueings). Beim Konsum zeigt
 **beides** die Uhrzeit — onTool-Zeile im Format `(queued HH:mm)`, LLM-Marker im Format `(HH:mm)` (2026-09-26, Paul):
@@ -175,11 +186,16 @@ GIVEN ein Burst (Regel 1) fasst 3 Messages zusammen
 WHEN konsumiert THEN die Zeit des ersten Eintrags steht im Präfix
 ```
 
-**Tests:** `AbstractAgentTest` — bestehende Queue-Tests erweitern um das Präfix-Assert (Clock injiziert).
+**Tests:** `UserMessageQueueTest.queuedLabelFormatsHHmmInClockZone` (Format, injizierte Clock) +
+`AbstractAgentTest.callNullInitialWithQueuedProcessesQueueAsPayload` (Follow-up-Marker mit fixierter
+14:32-Clock und `[Queued Message] (14:32):`-Assert). Die onTool-Zeile („Reading queued User message:
+… (queued 14:32)") ist am IST vorhanden (`AbstractAgent:262-263`), aber nicht separat assertiert.
 
 ## Data Flow
 ```
-AIChatView.resolveOutgoingMessage() → active.queueMessage(trailing) [batching in core]
+AIChatView.resolveOutgoingMessage() → OverrideMessageResolver.resolve(text, working, commands, skills)
+  → present ("!" while working): injectUserMessage + USER history line, no queue, no new turn
+  → empty: active.queueMessage(trailing) [batching in core]
   → if isNewEntry: show "Noted..." echo (conditional on boolean return)
 AbstractAgent.call(initial, monitor):
   CAS working true → loop { doCall(msg) → pollNext() } while next && success && !canceled
@@ -192,6 +208,7 @@ AIChatView.handleDoneChatResponse():
 
 ## Components
 - **`UserMessageQueue`** (`llmpeon-core`): thread-safe queue handling batching, FIFO polling, bulk draining. Configurable window for fast tests.
+- **`OverrideMessageResolver`** (`llmpeon-core`, `queuedmessages`): pure function `resolve(text, agentWorking, commands, skills) → Optional<OverrideCommand>` — alleinige Stelle für die `!`-Entscheidung (Regel 8); die View führt nur aus.
 - **`AbstractAgent.messageQueue`**: core-owned instance; survives compaction (outside `AiAgent.getMemory()`).
 - **`AbstractAgent.call()`**: internal do-while loop chains queued messages atomically within a single invocation.
 - **`AIChatView`**: simplified — only locks/unlocks UI, reads `active.isWorking()`, delegates queue operations to agent.
