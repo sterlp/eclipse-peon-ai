@@ -298,8 +298,10 @@ public class ToolService {
         if (isMcpTool) {
             monitor.onTool("Running MCP: " + tr.name() + " - " + tr.arguments());
             result = mcpGroupService.executeTool(tr);
+            monitor.onTool("MCP " + tr.name() + " done. " + StringUtil.charsSuffix(result));
             log.debug("MCP Tool {} result size: {}", tr.name(), result == null ? "null" : result.length());
-            return ToolExecutionResultMessage.from(tr, result);
+            // R-RS-3: a null result is an honest empty for the LLM (langchain4j rejects null message text)
+            return ToolExecutionResultMessage.from(tr, result == null ? "" : result);
         } else if (executor == null) {
             result = "Error: unknown tool '" + tr.name() + "' check spelling";
             monitor.onProblem(result);

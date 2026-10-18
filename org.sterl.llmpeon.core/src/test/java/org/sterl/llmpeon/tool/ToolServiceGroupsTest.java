@@ -2,13 +2,17 @@ package org.sterl.llmpeon.tool;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.ArrayList;
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.mcp.McpService;
+import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.tool.model.SimpleMessage;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -150,6 +154,44 @@ class ToolServiceGroupsTest {
         assertThat(fake.executed).containsExactly("user_tool1", "user_tool2");
     }
 
+    // R-RS-3
+    @Test
+    void givenMcpGroupAdopted_whenExecutingTool_thenCompletionLineDisclosesResultChars() {
+        // GIVEN an MCP group adopted whose tool returns a 3-char string
+        var service = new ToolService(false);
+        service.adoptMcpGroup(USER, new FixedMcpService("abc"));
+        var tools = new ArrayList<String>();
+        var req = loopRequest(monitorCapturing(tools));
+
+        // WHEN the MCP tool is executed
+        var result = service.execute(request("mcp_tool"), req);
+
+        // THEN the result is untouched and the monitor got the start line plus the
+        // completion line with the exact size
+        assertThat(result.text()).isEqualTo("abc");
+        assertThat(tools).containsExactly("Running MCP: mcp_tool - {}", "MCP mcp_tool done. (3 chars)");
+    }
+
+    // R-RS-3
+    @Test
+    void givenMcpResultNullOrEmpty_whenExecutingTool_thenCompletionLineDisclosesZeroChars() {
+        // GIVEN an adopted MCP tool returning null, later re-adopted with an empty result
+        var service = new ToolService(false);
+        service.adoptMcpGroup(USER, new FixedMcpService(null));
+        var tools = new ArrayList<String>();
+        var req = loopRequest(monitorCapturing(tools));
+
+        // WHEN the tool is executed in both cases
+        service.execute(request("mcp_tool"), req);
+        service.adoptMcpGroup(USER, new FixedMcpService(""));
+        service.execute(request("mcp_tool"), req);
+
+        // THEN the completion line is an honest zero — never omitted
+        assertThat(tools).containsExactly(
+                "Running MCP: mcp_tool - {}", "MCP mcp_tool done. (0 chars)",
+                "Running MCP: mcp_tool - {}", "MCP mcp_tool done. (0 chars)");
+    }
+
     private static List<ToolSpecification> specs(String groupName) {
         return List.of(
                 ToolSpecification.builder().name(groupName + "_tool1").description(groupName + "_tool1").build(),
@@ -161,10 +203,22 @@ class ToolServiceGroupsTest {
     }
 
     private static ToolLoopRequest loopRequest() {
+        return loopRequest(AiMonitor.NULL_MONITOR);
+    }
+
+    private static ToolLoopRequest loopRequest(AiMonitor monitor) {
         return ToolLoopRequest.builder()
                 .memory(new ThreadSafeMemory())
                 .chatModel(new ConfiguredChatModel(LlmConfig.newOpenAi("foo"), Mockito.mock(StreamingChatModel.class)))
+                .monitor(monitor)
                 .build();
+    }
+
+    private static AiMonitor monitorCapturing(List<String> tools) {
+        return new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onTool(String message) { tools.add(message); }
+        };
     }
 
     /** Canned McpService: no real transport, counts connect/disconnect calls, canned specs + routing. */
@@ -205,6 +259,31 @@ class ToolServiceGroupsTest {
         @Override
         public void disconnect() {
             disconnectCalls++;
+        }
+    }
+
+    /** Canned single-tool service with a fixed (possibly null) result — R-RS-3 asserts on its exact size. */
+    private static class FixedMcpService extends McpService {
+        private final @Nullable String result;
+
+        FixedMcpService(@Nullable String result) {
+            super(List.of());
+            this.result = result;
+        }
+
+        @Override
+        public List<ToolSpecification> getToolSpecifications() {
+            return List.of(ToolSpecification.builder().name("mcp_tool").description("mcp_tool").build());
+        }
+
+        @Override
+        public boolean hasTool(String toolName) {
+            return "mcp_tool".equals(toolName);
+        }
+
+        @Override
+        public String executeTool(ToolExecutionRequest request) {
+            return result;
         }
     }
 }
