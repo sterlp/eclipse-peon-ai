@@ -10,6 +10,7 @@ import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.jobs.Job;
 import org.sterl.llmpeon.mcp.CodegraphServerFactory;
 import org.sterl.llmpeon.mcp.McpServerConfig;
+import org.sterl.llmpeon.mcp.McpService;
 import org.sterl.llmpeon.parts.PeonConstants;
 import org.sterl.llmpeon.tool.ToolService;
 
@@ -17,6 +18,11 @@ import org.sterl.llmpeon.tool.ToolService;
  * Manages the MCP server connection lifecycle for the view.
  * Reads configuration from preferences, schedules background jobs for connecting,
  * and notifies the caller of state changes via a callback.
+ *
+ * <p>ADR-0069: this service is the OWNER of the user-group {@link McpService} — it creates it,
+ * calls {@code connect()} exactly once and is its only closer (owner closes last, after
+ * detaching every registry). The registries merely ADOPT the service
+ * ({@code adoptMcpGroup}), so exactly one process exists per server configuration.
  */
 public class McpConnectionService {
 
@@ -28,6 +34,8 @@ public class McpConnectionService {
 
     /** Last applied MCP state (server list + effective enabled flag). UI-thread confined. */
     private volatile McpApplied lastApplied;
+    /** ADR-0069: the owned, currently-live user-group service (this service is its only closer). */
+    private volatile McpService liveService;
 
     private record McpApplied(List<McpServerConfig> servers, boolean enabled) {}
 
@@ -95,13 +103,18 @@ public class McpConnectionService {
             var servers = loaded.stream()
                     .filter(s -> !CodegraphServerFactory.NAME.equals(s.name()))
                     .toList();
+            // ADR-0069: detach FIRST, always — an empty list is a pure disconnect path (no leak)
+            detachUserGroup();
             if (!servers.isEmpty()) {
-                for (ToolService registry : toolServices) {
-                    registry.connectMcp(servers);
-                }
+                var service = createMcpService(servers);
+                service.connect(); // throws → group already detached, nothing adopted, liveService null
+                for (var registry : toolServices) registry.adoptMcpGroup(ToolService.USER_GROUP, service);
+                liveService = service;
                 connected.set(true);
             }
-            return PeonConstants.okStatus("MCP connected to " + servers.size() + " server(s)");
+            return PeonConstants.okStatus(servers.isEmpty()
+                    ? "MCP disconnected (no servers configured)"
+                    : "MCP connected to " + servers.size() + " server(s)");
         } catch (Exception e) {
             return PeonConstants.errorStatus("MCP failed to connect: " + e.getMessage(), e);
         } finally {
@@ -118,11 +131,10 @@ public class McpConnectionService {
         }).schedule();
     }
 
-    /** Synchronously disconnects all MCP servers and removes their tools — on every registry. */
+    /** Synchronously disconnects all MCP servers and removes their tools — on every registry.
+     *  ADR-0069: detaches the registries and closes the owned service exactly once. */
     public void disconnect() {
-        for (ToolService registry : toolServices) {
-            registry.disconnectMcp();
-        }
+        detachUserGroup();
     }
 
     /**
@@ -138,5 +150,25 @@ public class McpConnectionService {
     public static boolean isEnabled() {
         List<McpServerConfig> servers = McpPreferenceInitializer.loadServers();
         return !servers.isEmpty() && McpPreferenceInitializer.isMcpEnabled();
+    }
+
+    /** ADR-0069: the one detach sequence — the registries NEVER close, the owner closes the service. */
+    private void detachUserGroup() {
+        for (var registry : toolServices) registry.disconnectMcp();
+        closeLiveService();
+    }
+
+    /**
+     * ADR-0069 test seam: swappable McpService factory (tests adopt canned fakes).
+     */
+    public McpService createMcpService(List<McpServerConfig> servers) {
+        return new McpService(servers);
+    }
+
+    /** ADR-0069: the owner closes the previous generation — volatile read, null out, disconnect. */
+    private void closeLiveService() {
+        var s = liveService;
+        liveService = null;
+        if (s != null) s.disconnect();
     }
 }

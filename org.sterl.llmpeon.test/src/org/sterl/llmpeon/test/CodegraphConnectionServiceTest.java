@@ -2,14 +2,16 @@ package org.sterl.llmpeon.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
 import java.lang.reflect.Proxy;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -22,14 +24,17 @@ import org.sterl.llmpeon.mcp.CodegraphProbe;
 import org.sterl.llmpeon.mcp.CodegraphServerFactory;
 import org.sterl.llmpeon.mcp.DefaultCodegraphProbe;
 import org.sterl.llmpeon.mcp.McpServerConfig;
+import org.sterl.llmpeon.mcp.McpService;
 import org.sterl.llmpeon.parts.ai.CodegraphConnectionService;
 import org.sterl.llmpeon.parts.ai.CodegraphConnectionService.Kind;
 import org.sterl.llmpeon.tool.ToolService;
 
 /**
- * R-CG-1/3/4: the built-in Codegraph lifecycle owner — hermetic via a fake probe, recorder
- * registries and a proxy IProject (apply() is the synchronous seam); plus one optional real
- * end-to-end apply (assumeTrue on binary + index, CI-safe).
+ * R-CG-1/3/4 + ADR-0069: the built-in Codegraph lifecycle owner — hermetic via a fake probe,
+ * a createMcpService seam (canned fakes), recorder registries and a proxy IProject (apply() is
+ * the synchronous seam); plus one optional real end-to-end apply (assumeTrue on binary + index,
+ * CI-safe). The owner creates + connects the service exactly once and is its only closer;
+ * the registries only adopt/detach.
  */
 public class CodegraphConnectionServiceTest {
 
@@ -40,7 +45,7 @@ public class CodegraphConnectionServiceTest {
     private RecordingToolService shared;
     private RecordingToolService po;
     private AtomicReference<IProject> projectRef;
-    private CodegraphConnectionService service;
+    private RecordingService service;
 
     @Before
     public void setUp() throws Exception {
@@ -51,7 +56,7 @@ public class CodegraphConnectionServiceTest {
         shared = new RecordingToolService();
         po = new RecordingToolService();
         projectRef = new AtomicReference<>(projectProxy("projA", dirA.toString()));
-        service = new CodegraphConnectionService(projectRef::get, List.of(shared, po), probe);
+        service = new RecordingService(projectRef::get, List.of(shared, po), probe);
     }
 
     @After
@@ -62,17 +67,20 @@ public class CodegraphConnectionServiceTest {
     }
 
     /** R-CG-1: GIVEN binary + index and an active project WHEN apply THEN both registries
-     *  connect the codegraph group with the project's workDir. */
+     *  adopt the SAME connected service built with the project's workDir (one process, ADR-0069). */
     @Test
     public void givenInstalledAndIndexed_whenProjectActive_thenBothRegistriesConnectCodegraphWithWorkDir() {
         // WHEN
         service.apply();
 
-        // THEN: both registries received exactly the expected config
-        assertEquals(1, shared.connectedConfigs.size());
-        assertEquals(1, po.connectedConfigs.size());
-        assertCodegraphConfig(shared.connectedConfigs.get(0), binary, dirA);
-        assertCodegraphConfig(po.connectedConfigs.get(0), binary, dirA);
+        // THEN: exactly one service was created, connected once, and adopted into BOTH registries
+        assertEquals(1, service.createdFakes.size());
+        var fake = service.createdFakes.get(0);
+        assertEquals(1, fake.connectCalls);
+        assertSame("both registries must adopt the same service instance", fake, shared.adopted.get(CodegraphConnectionService.GROUP));
+        assertSame(fake, po.adopted.get(CodegraphConnectionService.GROUP));
+        // AND: the adopted config is the expected codegraph config
+        assertCodegraphConfig(fake.configured.get(0), binary, dirA);
         assertEquals(Kind.CONNECTED, service.state().kind());
         assertTrue(service.state().project() != null && service.state().project().getName().equals("projA"));
     }
@@ -81,7 +89,7 @@ public class CodegraphConnectionServiceTest {
      *  THEN only the user group is touched — codegraph stays connected. */
     @Test
     public void givenMcpToggleOffPath_whenApplied_thenCodegraphUntouched() {
-        // GIVEN connected (apply() itself disconnects the group first — group replace, so
+        // GIVEN connected (apply() itself detaches the group first — group replace, so
         // snapshot the disconnect counts BEFORE the user path runs)
         service.apply();
         assertEquals(Kind.CONNECTED, service.state().kind());
@@ -101,44 +109,47 @@ public class CodegraphConnectionServiceTest {
         assertEquals(Kind.CONNECTED, service.state().kind());
     }
 
-    /** R-CG-1/2: GIVEN no binary WHEN apply THEN OFF and zero connect calls. */
+    /** R-CG-1/2: GIVEN no binary WHEN apply THEN OFF and zero connects. */
     @Test
     public void givenNoBinary_whenApply_thenOffStateAndZeroConnects() {
         probe = new FakeProbe(Optional.empty(), true);
-        service = new CodegraphConnectionService(projectRef::get, List.of(shared, po), probe);
+        service = new RecordingService(projectRef::get, List.of(shared, po), probe);
 
         // WHEN
         service.apply();
 
-        // THEN
+        // THEN: no service was even created, nothing adopted
         assertEquals(Kind.OFF, service.state().kind());
-        assertTrue(shared.connectedConfigs.isEmpty());
-        assertTrue(po.connectedConfigs.isEmpty());
+        assertTrue(service.createdFakes.isEmpty());
+        assertTrue(shared.adopted.isEmpty());
+        assertTrue(po.adopted.isEmpty());
         assertFalse(service.state().tooltip().contains("codegraph init"));
     }
 
-    /** R-CG-1/2: GIVEN binary but no index WHEN apply THEN OFF and zero connect calls. */
+    /** R-CG-1/2: GIVEN binary but no index WHEN apply THEN OFF and zero connects. */
     @Test
     public void givenNoIndex_whenApply_thenOffStateAndZeroConnects() {
         probe = new FakeProbe(Optional.of(binary), false);
-        service = new CodegraphConnectionService(projectRef::get, List.of(shared, po), probe);
+        service = new RecordingService(projectRef::get, List.of(shared, po), probe);
 
         // WHEN
         service.apply();
 
-        // THEN
+        // THEN: no service was even created, nothing adopted
         assertEquals(Kind.OFF, service.state().kind());
         assertTrue("OFF tooltip must tell the user to init the index",
                 service.state().tooltip().contains("codegraph init"));
-        assertTrue(shared.connectedConfigs.isEmpty());
-        assertTrue(po.connectedConfigs.isEmpty());
+        assertTrue(service.createdFakes.isEmpty());
+        assertTrue(shared.adopted.isEmpty());
+        assertTrue(po.adopted.isEmpty());
     }
 
     /** R-CG-3: GIVEN a connect failure WHEN apply THEN ERROR with the reason, the codegraph
-     *  group is cleaned on ALL registries and the user group stays untouched. */
+     *  group is cleaned on ALL registries, the owner closes the failed service, and the user
+     *  group stays untouched. */
     @Test
     public void givenConnectFails_whenApply_thenErrorStateWithReasonCodegraphGroupCleanedOnAllRegistriesUserGroupUntouched() {
-        shared.failConnect = true;
+        service.nextConnectFailure = new RuntimeException("boom");
 
         // WHEN
         service.apply();
@@ -149,13 +160,15 @@ public class CodegraphConnectionServiceTest {
         // AND: symmetric cleanup on both registries (codegraph group only)
         assertTrue(shared.disconnectedGroups.contains(CodegraphConnectionService.GROUP));
         assertTrue(po.disconnectedGroups.contains(CodegraphConnectionService.GROUP));
+        // AND: the owner closed the failed service exactly once
+        assertEquals(1, service.createdFakes.get(0).disconnectCalls);
         // AND: the user group was never touched
         assertFalse(shared.userDisconnected);
         assertFalse(po.userDisconnected);
     }
 
-    /** R-CG-4: GIVEN connected to A WHEN the project changes to B THEN A is disconnected
-     *  and B is connected with B's workDir. */
+    /** R-CG-4: GIVEN connected to A WHEN the project changes to B THEN A is closed by the
+     *  owner and B's service is adopted on both registries (each connected once). */
     @Test
     public void givenConnectedA_whenProjectB_thenDisconnectAConnectB() {
         // GIVEN connected to A
@@ -165,12 +178,16 @@ public class CodegraphConnectionServiceTest {
         projectRef.set(projectProxy("projB", dirB.toString()));
         service.apply();
 
-        // THEN: A's connection was replaced by B's on both registries
+        // THEN: A's service was closed by the owner, B's service adopted on both registries
+        assertEquals(2, service.createdFakes.size());
+        assertEquals(1, service.createdFakes.get(0).disconnectCalls);
+        var fakeB = service.createdFakes.get(1);
+        assertEquals(1, fakeB.connectCalls);
+        assertSame(fakeB, shared.adopted.get(CodegraphConnectionService.GROUP));
+        assertSame(fakeB, po.adopted.get(CodegraphConnectionService.GROUP));
+        assertCodegraphConfig(fakeB.configured.get(0), binary, dirB);
         assertTrue(shared.disconnectedGroups.contains(CodegraphConnectionService.GROUP));
         assertTrue(po.disconnectedGroups.contains(CodegraphConnectionService.GROUP));
-        assertEquals(2, shared.connectedConfigs.size());
-        assertCodegraphConfig(shared.connectedConfigs.get(1), binary, dirB);
-        assertCodegraphConfig(po.connectedConfigs.get(1), binary, dirB);
         assertEquals(Kind.CONNECTED, service.state().kind());
         assertEquals("projB", service.state().project().getName());
     }
@@ -178,7 +195,7 @@ public class CodegraphConnectionServiceTest {
     /** R-CG-4: GIVEN a stable connected state WHEN apply runs again THEN no reconnect churn. */
     @Test
     public void givenSameState_whenApplyAgain_thenNoReconnect() {
-        // GIVEN connected (apply() disconnects the group first — group replace)
+        // GIVEN connected (apply() detaches the group first — group replace)
         service.apply();
         var sharedDisconnectsBefore = shared.disconnectedGroups.size();
         var poDisconnectsBefore = po.disconnectedGroups.size();
@@ -186,20 +203,19 @@ public class CodegraphConnectionServiceTest {
         // WHEN apply runs again with the unchanged project
         service.apply();
 
-        // THEN: exactly one connect per registry, no NEW disconnect (no churn)
-        assertEquals(1, shared.connectedConfigs.size());
-        assertEquals(1, po.connectedConfigs.size());
+        // THEN: exactly one connect() in total, no NEW disconnect (no churn)
+        assertEquals(1, service.createdFakes.size());
+        assertEquals(1, service.createdFakes.get(0).connectCalls);
         assertEquals(sharedDisconnectsBefore, shared.disconnectedGroups.size());
         assertEquals(poDisconnectsBefore, po.disconnectedGroups.size());
     }
 
     /** R-CG-4: GIVEN A, then B, then A again WHEN two applies happen THEN the final state is
-     *  A and A was reconnected exactly once during the flap (no extra churn). */
+     *  A and every generation was connected exactly once and closed exactly once (no churn). */
     @Test
     public void givenA_B_A_Flap_whenTwoApplies_thenFinalStateA_NoDoubleConnectA() {
         // GIVEN connected to A
         service.apply();
-        assertEquals(1, shared.connectedConfigs.size());
 
         // WHEN the project flaps A -> B -> A (two applies)
         projectRef.set(projectProxy("projB", dirB.toString()));
@@ -207,12 +223,16 @@ public class CodegraphConnectionServiceTest {
         projectRef.set(projectProxy("projA", dirA.toString()));
         service.apply();
 
-        // THEN: final state A, and A was connected exactly twice overall (initial + flap-back)
+        // THEN: three generations, each connected once, the two old ones closed once
+        assertEquals(3, service.createdFakes.size());
+        for (var fake : service.createdFakes) assertEquals(1, fake.connectCalls);
+        assertEquals(1, service.createdFakes.get(0).disconnectCalls);
+        assertEquals(1, service.createdFakes.get(1).disconnectCalls);
+        assertEquals(0, service.createdFakes.get(2).disconnectCalls);
+        assertCodegraphConfig(service.createdFakes.get(0).configured.get(0), binary, dirA);
+        assertCodegraphConfig(service.createdFakes.get(1).configured.get(0), binary, dirB);
+        assertCodegraphConfig(service.createdFakes.get(2).configured.get(0), binary, dirA);
         assertEquals(Kind.CONNECTED, service.state().kind());
-        assertEquals(3, shared.connectedConfigs.size());
-        assertCodegraphConfig(shared.connectedConfigs.get(0), binary, dirA);
-        assertCodegraphConfig(shared.connectedConfigs.get(1), binary, dirB);
-        assertCodegraphConfig(shared.connectedConfigs.get(2), binary, dirA);
         assertEquals("projA", service.state().project().getName());
     }
 
@@ -220,12 +240,12 @@ public class CodegraphConnectionServiceTest {
      *  for the turn context. */
     @Test
     public void givenConnectedWithInstructions_thenInstructionsCaptured() {
-        shared.cannedInstructions = "CG-INST";
+        service.cannedInstructions = "CG-INST";
 
         // WHEN
         service.apply();
 
-        // THEN: the first registry's instructions are exposed
+        // THEN: the owned service's instructions are exposed
         assertEquals(Optional.of("CG-INST"), service.instructions());
     }
 
@@ -239,7 +259,7 @@ public class CodegraphConnectionServiceTest {
 
         // OFF (index case)
         probe = new FakeProbe(Optional.of(binary), false);
-        service = new CodegraphConnectionService(projectRef::get, List.of(shared, po), probe);
+        service = new RecordingService(projectRef::get, List.of(shared, po), probe);
         service.apply();
         assertTrue(service.state().tooltip().contains("Codegraph OFF"));
         assertTrue(service.state().tooltip().contains("codegraph init"));
@@ -247,16 +267,16 @@ public class CodegraphConnectionServiceTest {
         // ERROR
         probe = new FakeProbe(Optional.of(binary), true);
         shared = new RecordingToolService();
-        shared.failConnect = true;
         po = new RecordingToolService();
-        service = new CodegraphConnectionService(projectRef::get, List.of(shared, po), probe);
+        service = new RecordingService(projectRef::get, List.of(shared, po), probe);
+        service.nextConnectFailure = new RuntimeException("boom");
         service.apply();
         assertTrue(service.state().tooltip().contains("Codegraph error"));
         assertTrue(service.state().tooltip().contains("boom"));
     }
 
-    /** Optional E2E (skipped without binary/index): a REAL ToolService connects the real
-     *  `codegraph serve --mcp` for the indexed repo — tool list AND instructions visible. */
+    /** Optional E2E (skipped without binary/index): a REAL connection (real McpService) for
+     *  the indexed repo — tool list AND instructions visible. */
     @Test
     public void givenRealBinaryAndIndexedRepo_whenApply_thenRealToolVisibleWithInstructions() throws Exception {
         var realProbe = new DefaultCodegraphProbe();
@@ -277,8 +297,27 @@ public class CodegraphConnectionServiceTest {
                     registry.mcpToolNames().contains("codegraph_explore"));
             assertTrue("instructions expected from the real server", realService.instructions().isPresent());
         } finally {
-            registry.disconnectMcp(CodegraphConnectionService.GROUP);
+            // ADR-0069: the owner closes the real process — a registry detach alone would leak it
+            realService.disconnect();
         }
+    }
+
+    /** ADR-0069 (Paul-(a)): GIVEN an active project WHEN apply THEN exactly one connect()
+     *  in total and every registry holds the same service instance. */
+    @Test
+    public void givenProjectActive_whenApply_thenOneConnectAdoptedIntoEveryRegistry() {
+        // WHEN
+        service.apply();
+
+        // THEN: one connect in total, every registry adopted the same instance
+        assertEquals(1, service.createdFakes.size());
+        assertEquals(1, service.createdFakes.get(0).connectCalls);
+        var fake = service.createdFakes.get(0);
+        for (var registry : List.of(shared, po)) {
+            assertSame("every registry must hold the same service instance",
+                    fake, registry.adopted.get(CodegraphConnectionService.GROUP));
+        }
+        assertEquals(Kind.CONNECTED, service.state().kind());
     }
 
     private static void assertCodegraphConfig(McpServerConfig cfg, Path expectedBinary, Path expectedWorkDir) {
@@ -348,24 +387,85 @@ public class CodegraphConnectionServiceTest {
     }
 
     /**
-     * Recorder registry: captures group-scoped connects/disconnects without opening a real
+     * ADR-0069 seam: the createMcpService factory is swapped for canned fakes (config
+     * captured, connect/disconnect counted, optional failure, canned instructions).
+     */
+    private static class RecordingService extends CodegraphConnectionService {
+        final List<FakeMcpService> createdFakes = new java.util.ArrayList<>();
+        RuntimeException nextConnectFailure;
+        String cannedInstructions;
+
+        RecordingService(java.util.function.Supplier<IProject> projectRef, List<ToolService> registries, CodegraphProbe probe) {
+            super(projectRef, registries, probe);
+        }
+
+        @Override
+        public McpService createMcpService(McpServerConfig config) {
+            var fake = new FakeMcpService(List.of(config));
+            fake.failure = nextConnectFailure;
+            fake.instructions = cannedInstructions;
+            createdFakes.add(fake);
+            return fake;
+        }
+    }
+
+    /** Canned McpService: no real transport, counts connect/disconnect, canned specs + instructions. */
+    private static class FakeMcpService extends McpService {
+        final List<McpServerConfig> configured;
+        RuntimeException failure;
+        String instructions;
+        int connectCalls;
+        int disconnectCalls;
+
+        FakeMcpService(List<McpServerConfig> configured) {
+            super(configured);
+            this.configured = configured;
+        }
+
+        @Override
+        public void connect() {
+            connectCalls++;
+            if (failure != null) throw failure;
+        }
+
+        @Override
+        public java.util.List<dev.langchain4j.agent.tool.ToolSpecification> getToolSpecifications() {
+            return List.of(dev.langchain4j.agent.tool.ToolSpecification.builder()
+                    .name("codegraph_explore").description("explore").build());
+        }
+
+        @Override
+        public boolean hasTool(String toolName) {
+            return "codegraph_explore".equals(toolName);
+        }
+
+        @Override
+        public Optional<String> instructionsOf(String serverName) {
+            return Optional.ofNullable(instructions);
+        }
+
+        @Override
+        public void disconnect() {
+            disconnectCalls++;
+        }
+    }
+
+    /**
+     * Recorder registry: captures group-scoped adoptions/detaches without opening a real
      * MCP connection; the no-arg disconnectMcp() models the user MCP path (toggle off).
      */
     private static class RecordingToolService extends ToolService {
-        final List<McpServerConfig> connectedConfigs = new ArrayList<>();
-        final List<String> disconnectedGroups = new ArrayList<>();
+        final Map<String, McpService> adopted = new HashMap<>();
+        final List<String> disconnectedGroups = new java.util.ArrayList<>();
         boolean userDisconnected;
-        boolean failConnect;
-        String cannedInstructions;
 
         RecordingToolService() {
             super(false);
         }
 
         @Override
-        public void connectMcp(String group, McpServerConfig server) {
-            if (failConnect) throw new RuntimeException("boom");
-            connectedConfigs.add(server);
+        public void adoptMcpGroup(String group, McpService service) {
+            adopted.put(group, service);
         }
 
         @Override
@@ -376,11 +476,6 @@ public class CodegraphConnectionServiceTest {
         @Override
         public void disconnectMcp() {
             userDisconnected = true;
-        }
-
-        @Override
-        public Optional<String> mcpInstructions(String group, String serverName) {
-            return Optional.ofNullable(cannedInstructions);
         }
     }
 }

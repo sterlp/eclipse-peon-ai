@@ -12,7 +12,6 @@ import java.util.stream.Stream;
 import org.jspecify.annotations.NonNull;
 import org.sterl.llmpeon.compact.CompactConstants;
 import org.sterl.llmpeon.exception.ExceptionUtil;
-import org.sterl.llmpeon.mcp.McpServerConfig;
 import org.sterl.llmpeon.mcp.McpService;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
@@ -41,6 +40,12 @@ import lombok.extern.slf4j.Slf4j;
  * Owns all tools and the tool registry.
  * Tools are stable instances — only the context changes when the user selects a different file/project.
  *
+ * <p>ADR-0069: MCP groups are ADOPTED, never owned — {@link #adoptMcpGroup} registers an
+ * already-connected {@link McpService} under a group name, and {@code disconnectMcp} only
+ * detaches this registry. The owner (the connection service) creates, connects and closes the
+ * service; this registry never does, so one service can be adopted into several registries
+ * without duplicating or leaking the process.
+ *
  * https://github.com/langchain4j/langchain4j/blob/main/docs/docs/tutorials/tools.md
  */
 @Slf4j
@@ -60,8 +65,9 @@ public class ToolService {
             Stop thinking and take action now: either call a tool, ask a clarifying question,
             or provide your answer directly.""";
 
-    /** ADR-0068: named MCP groups — the user-config group plus built-ins (e.g. "codegraph"). */
-    private static final String USER_GROUP = "user";
+    /** ADR-0068: named MCP groups — the user-config group plus built-ins (e.g. "codegraph").
+     *  ADR-0069: public because the connection services adopt into / detach this group by name. */
+    public static final String USER_GROUP = "user";
     private final Map<String, McpService> mcpGroups = new ConcurrentHashMap<>();
     private volatile List<ToolSpecification> mcpToolSpecs = List.of();
 
@@ -304,36 +310,14 @@ public class ToolService {
     }
 
     /**
-     * Connects to all given MCP servers and makes their tools available in the tool loop.
-     * Replaces the previous user-group connection (disconnect-first, all-or-nothing).
-     * Throws if any server fails to connect.
+     * ADR-0069: registers an already-connected McpService under the given group name.
+     * The registry ADOPTS the connection — it never closes it. disconnectMcp(group) only
+     * detaches this registry; the owner (connection service) closes the service.
+     * Re-adopting a group name replaces the previous entry WITHOUT closing it.
      */
-    public void connectMcp(List<McpServerConfig> servers) {
-        connectMcp(USER_GROUP, servers);
-    }
-
-    /**
-     * Replaces the named MCP group: disconnects that group first, connects the given servers,
-     * and rebuilds the tool-spec union. Throws if any server fails to connect — the group stays
-     * empty, all other groups are untouched (failure isolation, ADR-0068).
-     */
-    public void connectMcp(String group, List<McpServerConfig> servers) {
-        disconnectMcp(group);
-        if (servers == null || servers.isEmpty()) return;
-        var service = createMcpService(servers);
-        service.connect(); // throws on failure
+    public void adoptMcpGroup(String group, McpService service) {
         mcpGroups.put(group, service);
         refreshMcpSpecs();
-    }
-
-    /** Convenience: connects a single server as its own named group. */
-    public void connectMcp(String group, McpServerConfig server) {
-        connectMcp(group, List.of(server));
-    }
-
-    /** Test seam (ToolServiceGroupsTest): swappable McpService factory. */
-    McpService createMcpService(List<McpServerConfig> servers) {
-        return new McpService(servers);
     }
 
     /** Rebuilds the tool-spec union across all groups — deterministic: group names sorted, then spec order. */
@@ -355,24 +339,14 @@ public class ToolService {
                 .orElse(null);
     }
 
-    /** Disconnects the user-group MCP connection and removes its tools from the tool loop. */
+    /** Detaches the user-group MCP connection from this registry (never closes the service — ADR-0069). */
     public void disconnectMcp() {
         disconnectMcp(USER_GROUP);
     }
 
-    /** Disconnects the named MCP group and rebuilds the tool-spec union. */
+    /** Detaches the named group (map entry + spec union). NEVER closes the McpService (ADR-0069). */
     public void disconnectMcp(String group) {
-        var service = mcpGroups.remove(group);
-        if (service != null) {
-            service.disconnect();
-            refreshMcpSpecs();
-        }
-    }
-
-    /** The server instructions of the named group/server (empty when the group or server is unknown). */
-    public Optional<String> mcpInstructions(String group, String serverName) {
-        var service = mcpGroups.get(group);
-        return service == null ? Optional.empty() : service.instructionsOf(serverName);
+        if (mcpGroups.remove(group) != null) refreshMcpSpecs();
     }
 
     /**

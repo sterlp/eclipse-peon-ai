@@ -1,17 +1,13 @@
 package org.sterl.llmpeon.tool;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
-import org.sterl.llmpeon.mcp.McpServerConfig;
 import org.sterl.llmpeon.mcp.McpService;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -20,29 +16,22 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import org.mockito.Mockito;
 
 /**
- * ADR-0068: MCP groups in ToolService — the user group keeps its exact semantics, built-in
- * groups (e.g. "codegraph") are failure-isolated: a group connect failure or a user-group
- * disconnect never touches the other groups.
+ * ADR-0069: ToolService as adopt-only MCP registry — groups are ADOPTED (already-connected
+ * McpServices handed over by their owner), never created or closed here: disconnectMcp(group)
+ * only detaches THIS registry, the owner (connection service) closes the service. One service
+ * adopted into several registries stays one process (Paul-(b)/(c)).
  */
 class ToolServiceGroupsTest {
 
     private static final String USER = "user";
     private static final String CODEGRAPH = "codegraph";
 
-    private TestToolService serviceWith(String... groupNames) {
-        var service = new TestToolService();
-        for (var name : groupNames) {
-            service.fakes.put(name, new FakeMcpService(specs(name), null, name));
-        }
-        return service;
-    }
-
     @Test
-    void givenUserAndCodegraphConnected_whenToolNames_thenUnionDeterministic() {
-        // GIVEN both groups connected (group names sort: codegraph < user)
-        var service = serviceWith(USER, CODEGRAPH);
-        service.connectMcp(List.of(server(USER)));
-        service.connectMcp(CODEGRAPH, server(CODEGRAPH));
+    void givenUserAndCodegraphAdopted_whenToolNames_thenUnionDeterministic() {
+        // GIVEN both groups adopted (group names sort: codegraph < user)
+        var service = new ToolService(false);
+        service.adoptMcpGroup(USER, new FakeMcpService(specs(USER), USER));
+        service.adoptMcpGroup(CODEGRAPH, new FakeMcpService(specs(CODEGRAPH), CODEGRAPH));
 
         // WHEN the tool names are read
         var names = service.mcpToolNames();
@@ -52,90 +41,113 @@ class ToolServiceGroupsTest {
     }
 
     @Test
-    void givenCodegraphConnectFails_whenConnected_thenUserGroupIntact() {
-        // GIVEN a healthy user group and a codegroup whose connect throws
-        var service = serviceWith(USER, CODEGRAPH);
-        service.connectMcp(List.of(server(USER)));
-        var codegraphFake = service.fakes.get(CODEGRAPH);
-        codegraphFake.failure = new RuntimeException("spawn failed");
-
-        // WHEN the codegraph group connect fails
-        assertThatThrownBy(() -> service.connectMcp(CODEGRAPH, server(CODEGRAPH)))
-                .isInstanceOf(RuntimeException.class);
-
-        // THEN the user group is intact — specs present, no user disconnect happened (R-CG-3)
-        var userFake = service.fakes.get(USER);
-        assertThat(service.mcpToolNames()).containsExactly("user_tool1", "user_tool2");
-        assertThat(userFake.disconnectCalls).isZero();
-        assertThat(codegraphFake.connectCalls).isEqualTo(1);
-    }
-
-    @Test
-    void givenBothGroupsConnected_whenDisconnectMcpNoArg_thenOnlyUserGroupRemoved() {
-        // GIVEN both groups connected
-        var service = serviceWith(USER, CODEGRAPH);
-        service.connectMcp(List.of(server(USER)));
-        service.connectMcp(CODEGRAPH, server(CODEGRAPH));
+    void givenBothGroupsAdopted_whenDisconnectUserGroup_thenOnlyUserDetachedNotClosed() {
+        // GIVEN both groups adopted
+        var service = new ToolService(false);
+        var userFake = new FakeMcpService(specs(USER), USER);
+        var codegraphFake = new FakeMcpService(specs(CODEGRAPH), CODEGRAPH);
+        service.adoptMcpGroup(USER, userFake);
+        service.adoptMcpGroup(CODEGRAPH, codegraphFake);
 
         // WHEN the no-arg disconnect runs (the user MCP toggle-off path)
         service.disconnectMcp();
 
-        // THEN only the user group is gone — the codegraph group stays connected (R-CG-1)
+        // THEN only the user group is detached — the adopted service is NOT closed (owner
+        // closes, ADR-0069), the codegraph group stays (R-CG-1)
         assertThat(service.mcpToolNames()).containsExactly("codegraph_tool1", "codegraph_tool2");
-        assertThat(service.fakes.get(USER).disconnectCalls).isEqualTo(1);
-        assertThat(service.fakes.get(CODEGRAPH).disconnectCalls).isZero();
+        assertThat(userFake.disconnectCalls).isZero();
+        assertThat(codegraphFake.disconnectCalls).isZero();
     }
 
     @Test
-    void givenBothGroupsConnected_whenDisconnectCodegraphGroup_thenOnlyCodegraphRemoved() {
-        // GIVEN both groups connected
-        var service = serviceWith(USER, CODEGRAPH);
-        service.connectMcp(List.of(server(USER)));
-        service.connectMcp(CODEGRAPH, server(CODEGRAPH));
+    void givenBothGroupsAdopted_whenDisconnectCodegraphGroup_thenOnlyCodegraphDetached() {
+        // GIVEN both groups adopted
+        var service = new ToolService(false);
+        var userFake = new FakeMcpService(specs(USER), USER);
+        var codegraphFake = new FakeMcpService(specs(CODEGRAPH), CODEGRAPH);
+        service.adoptMcpGroup(USER, userFake);
+        service.adoptMcpGroup(CODEGRAPH, codegraphFake);
 
-        // WHEN the codegraph group is disconnected by name
+        // WHEN the codegraph group is detached by name
         service.disconnectMcp(CODEGRAPH);
 
-        // THEN only the codegraph group is gone
+        // THEN only the codegraph group is gone — neither adopted service is closed
         assertThat(service.mcpToolNames()).containsExactly("user_tool1", "user_tool2");
-        assertThat(service.fakes.get(CODEGRAPH).disconnectCalls).isEqualTo(1);
-        assertThat(service.fakes.get(USER).disconnectCalls).isZero();
+        assertThat(userFake.disconnectCalls).isZero();
+        assertThat(codegraphFake.disconnectCalls).isZero();
     }
 
     @Test
-    void givenReconnectSameGroup_whenConnectedAgain_thenNoDuplicatesInUnion() {
-        // GIVEN a user group connected once
-        var service = serviceWith(USER);
-        service.connectMcp(List.of(server(USER)));
+    void givenGroupAdopted_whenReadoptedWithOtherService_thenNoDuplicatesOldServiceNotClosed() {
+        // GIVEN a user group adopted with the first service
+        var service = new ToolService(false);
+        var oldFake = new FakeMcpService(specs(USER), USER);
+        service.adoptMcpGroup(USER, oldFake);
 
-        // WHEN the same group is reconnected (config change)
-        service.fakes.put(USER, new FakeMcpService(specs(USER), null, USER));
-        service.connectMcp(List.of(server(USER)));
+        // WHEN the same group is re-adopted with a different (already-connected) service
+        var newFake = new FakeMcpService(specs(USER), USER);
+        service.adoptMcpGroup(USER, newFake);
 
-        // THEN the union holds each tool exactly once (replace, not append)
+        // THEN the union holds each tool exactly once (replace, not append) and the old
+        // service is NOT closed by the registry (ADR-0069 re-adopt)
         assertThat(service.mcpToolNames()).containsExactly("user_tool1", "user_tool2");
+        assertThat(oldFake.disconnectCalls).isZero();
     }
 
     @Test
-    void givenBothGroupsConnected_whenExecutingTool_thenRoutedToOwningGroup() {
-        // GIVEN both groups connected
-        var service = serviceWith(USER, CODEGRAPH);
-        service.connectMcp(List.of(server(USER)));
-        service.connectMcp(CODEGRAPH, server(CODEGRAPH));
+    void givenBothGroupsAdopted_whenExecutingTool_thenRoutedToAdoptedGroup() {
+        // GIVEN both groups adopted
+        var service = new ToolService(false);
+        service.adoptMcpGroup(USER, new FakeMcpService(specs(USER), USER));
+        service.adoptMcpGroup(CODEGRAPH, new FakeMcpService(specs(CODEGRAPH), CODEGRAPH));
         var req = loopRequest();
 
         // WHEN both tool names are executed
         var userResult = service.execute(request("user_tool1"), req);
         var codegraphResult = service.execute(request("codegraph_tool1"), req);
 
-        // THEN each request reached exactly its owning group
+        // THEN each request reached exactly its adopted service
         assertThat(userResult.text()).isEqualTo("user_result:user_tool1");
         assertThat(codegraphResult.text()).isEqualTo("codegraph_result:codegraph_tool1");
     }
 
-    private static McpServerConfig server(String name) {
-        return new McpServerConfig(name, McpServerConfig.McpTransportType.HTTP,
-                "https://" + name + ".example.com/mcp");
+    @Test
+    void givenAdoptedGroupInTwoRegistries_whenDisconnectMcpOnOne_thenServiceNotClosedOtherRegistryStillExecutes() {
+        // GIVEN the same connected service adopted as one group into TWO registries
+        var fake = new FakeMcpService(specs(CODEGRAPH), CODEGRAPH);
+        var registry1 = new ToolService(false);
+        var registry2 = new ToolService(false);
+        registry1.adoptMcpGroup(CODEGRAPH, fake);
+        registry2.adoptMcpGroup(CODEGRAPH, fake);
+
+        // WHEN registry 1 detaches the group (the owner's detach loop runs per registry)
+        registry1.disconnectMcp(CODEGRAPH);
+
+        // THEN the service is NOT closed by the detach, registry 2 still lists its tools and
+        // executes through the same service
+        assertThat(fake.disconnectCalls).isZero();
+        assertThat(registry1.mcpToolNames()).isEmpty();
+        assertThat(registry2.mcpToolNames()).containsExactly("codegraph_tool1", "codegraph_tool2");
+        var result = registry2.execute(request("codegraph_tool1"), loopRequest());
+        assertThat(result.text()).isEqualTo("codegraph_result:codegraph_tool1");
+        assertThat(fake.executed).containsExactly("codegraph_tool1");
+    }
+
+    @Test
+    void givenSameServiceAdoptedInTwoRegistries_whenExecutingFromBoth_thenOneServiceReceivesBothCalls() {
+        // GIVEN one connected service adopted into two registries
+        var fake = new FakeMcpService(specs(USER), USER);
+        var registry1 = new ToolService(false);
+        var registry2 = new ToolService(false);
+        registry1.adoptMcpGroup(USER, fake);
+        registry2.adoptMcpGroup(USER, fake);
+
+        // WHEN a tool is executed through each registry
+        registry1.execute(request("user_tool1"), loopRequest());
+        registry2.execute(request("user_tool2"), loopRequest());
+
+        // THEN both calls landed on the SAME service instance (one process, two registries)
+        assertThat(fake.executed).containsExactly("user_tool1", "user_tool2");
     }
 
     private static List<ToolSpecification> specs(String groupName) {
@@ -155,42 +167,23 @@ class ToolServiceGroupsTest {
                 .build();
     }
 
-    /** ToolService with the McpService factory swapped for canned fakes (package-private seam). */
-    private static class TestToolService extends ToolService {
-        final Map<String, FakeMcpService> fakes = new HashMap<>();
-
-        TestToolService() {
-            super(false);
-        }
-
-        @Override
-        McpService createMcpService(List<McpServerConfig> servers) {
-            var fake = fakes.get(servers.get(0).name());
-            if (fake == null) throw new IllegalStateException("no fake for " + servers.get(0).name());
-            return fake;
-        }
-    }
-
-    /** Canned McpService: no real transport, counts connect/disconnect, canned specs + routing. */
+    /** Canned McpService: no real transport, counts connect/disconnect calls, canned specs + routing. */
     private static class FakeMcpService extends McpService {
         final List<ToolSpecification> canned;
         final String prefix;
-        RuntimeException failure;
         int connectCalls;
         int disconnectCalls;
         final List<String> executed = new java.util.ArrayList<>();
 
-        FakeMcpService(List<ToolSpecification> canned, RuntimeException failure, String prefix) {
+        FakeMcpService(List<ToolSpecification> canned, String prefix) {
             super(List.of());
             this.canned = canned;
-            this.failure = failure;
             this.prefix = prefix;
         }
 
         @Override
         public void connect() {
             connectCalls++;
-            if (failure != null) throw failure;
         }
 
         @Override
