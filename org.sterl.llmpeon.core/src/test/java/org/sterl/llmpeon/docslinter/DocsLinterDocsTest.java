@@ -29,6 +29,7 @@ class DocsLinterDocsTest {
         Files.createDirectories(docsDir);
     }
 
+    // UC-DL-6
     @Test
     void reportsDuplicateDefinitionWithEveryLocation() throws IOException {
         writeDoc("a.md", """
@@ -88,6 +89,7 @@ class DocsLinterDocsTest {
                     assertThat(f.extraLines()).containsExactly("docs/a.md:9");
                 });
     }
+    // UC-DL-16
     @Test
     void reportsForeignPrefixInParticipatingDoc() throws IOException {
         writeDoc("a.md", """
@@ -135,6 +137,7 @@ class DocsLinterDocsTest {
         assertThat(result.findings()).isEmpty();
     }
 
+    // UC-DL-18
     @Test
     void reportsMissingPrefixWhenDocDefinesUseCases() throws IOException {
         writeDoc("a.md", """
@@ -149,6 +152,7 @@ class DocsLinterDocsTest {
                 f.type() == FindingType.PRAEFIX_FEHLT && f.id().equals("R-DL-1"));
     }
 
+    // UC-DL-19
     @Test
     void reportsUseCaseWithoutParentRule() throws IOException {
         writeDoc("a.md", """
@@ -165,6 +169,7 @@ class DocsLinterDocsTest {
                 f.type() == FindingType.UC_OHNE_REGEL && f.id().equals("UC-DL-1"));
     }
 
+    // UC-DL-20
     @Test
     void reportsMissingEffectiveStatus() throws IOException {
         writeDoc("a.md", """
@@ -183,6 +188,7 @@ class DocsLinterDocsTest {
                 f.type() == FindingType.STATUS_FEHLT && f.id().equals("UC-DL-1"));
     }
 
+    // UC-DL-21
     @Test
     void reportsUseCaseDefinitionWrittenAsBullet() throws IOException {
         writeDoc("a.md", """
@@ -199,6 +205,7 @@ class DocsLinterDocsTest {
                 f.type() == FindingType.FORM_ABWEICHEND && f.id().equals("UC-DL-1"));
     }
 
+    // UC-DL-22
     @Test
     void skipsPlainDocAndNamesItAsNotParticipating() throws IOException {
         writeDoc("a.md", """
@@ -393,6 +400,7 @@ class DocsLinterDocsTest {
     }
 
     // --- UC-DL-42: ignoresDuplicateHeadingInsideBacktickFence ---
+    // UC-DL-42
     @Test
     void ignoresDuplicateHeadingInsideBacktickFence() throws IOException {
         writeDoc("a.md", """

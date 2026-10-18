@@ -29,6 +29,7 @@ class DocsLinterNextIdsTest {
         Files.createDirectories(docsDir);
     }
 
+    // UC-DL-24
     @Test
     void returnsNextRuleAndUseCaseNumberPerPrefix() throws IOException {
         writeDoc("a.md", """
@@ -57,6 +58,7 @@ class DocsLinterNextIdsTest {
         assertThat(r.nextUseCase()).isEqualTo(8);
     }
 
+    // UC-DL-25
     @Test
     void neverReusesNumberingGaps() throws IOException {
         writeDoc("a.md", """
@@ -79,6 +81,7 @@ class DocsLinterNextIdsTest {
         assertThat(r.nextUseCase()).isEqualTo(4);
     }
 
+    // UC-DL-26
     @Test
     void reportsUnusedCandidatePrefixAsFree() throws IOException {
         writeDoc("a.md", """
@@ -101,6 +104,7 @@ class DocsLinterNextIdsTest {
         assertThat(r.nextUseCase()).isEqualTo(1);
     }
 
+    // UC-DL-33
     @Test
     void listsAllOccupiedPrefixesWhenCandidateIsAbsent() throws IOException {
         writeDoc("a.md", """

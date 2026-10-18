@@ -906,7 +906,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         }
     }
 
-    // UC-TF-2
+    // UC-TF-1
     @Test
     public void daDokMatrixNeverPrivileged() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
@@ -954,7 +954,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
                 activeToolNames(uiStandalone).contains("askUser"));
     }
 
-    // UC-TF-3
+    // UC-TF-2
     @Test
     public void searchAgentFilterHidesPlanTools() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());

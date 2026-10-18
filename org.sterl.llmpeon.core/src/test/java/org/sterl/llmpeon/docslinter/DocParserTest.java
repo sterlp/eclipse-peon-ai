@@ -29,6 +29,7 @@ class DocParserTest {
     }
 
     // --- UC-DL-5: ignoresUseCaseReferencesOutsideHeadings ---
+    // UC-DL-5
     @Test
     void ignoresUseCaseReferencesOutsideHeadings() throws IOException {
         Files.writeString(docFile, """
@@ -51,6 +52,7 @@ class DocParserTest {
     }
 
     // --- UC-DL-7: inheritsRuleStatusWhenUseCaseHasNone ---
+    // UC-DL-7
     @Test
     void inheritsRuleStatusWhenUseCaseHasNone() throws IOException {
         Files.writeString(docFile, """
@@ -67,6 +69,7 @@ class DocParserTest {
     }
 
     // --- UC-DL-8: useCaseStatusOverridesInheritedRuleStatus ---
+    // UC-DL-8
     @Test
     void useCaseStatusOverridesInheritedRuleStatus() throws IOException {
         Files.writeString(docFile, """
@@ -83,6 +86,7 @@ class DocParserTest {
     }
 
     // --- UC-DL-32: readsIdPrefixOnlyInsideLeadingFrontmatter ---
+    // UC-DL-32
     @Test
     void readsIdPrefixOnlyInsideLeadingFrontmatter() throws IOException {
         Files.writeString(docFile, """
@@ -367,6 +371,7 @@ class DocParserTest {
     }
 
     // --- UC-DL-43: ignoresForeignPrefixHeadingAndFrontmatterExampleInsideFence ---
+    // UC-DL-43
     @Test
     void ignoresForeignPrefixHeadingAndFrontmatterExampleInsideFence() throws IOException {
         Files.writeString(docFile, """

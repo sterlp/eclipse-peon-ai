@@ -35,6 +35,7 @@ class DocsLinterMatchingTest {
     }
 
     // --- UC-DL-1: usesDefaultDocAndTestRoots ---
+    // UC-DL-1
     @Test
     void usesDefaultDocAndTestRoots() throws IOException {
         writeDoc("a.md", """
@@ -59,6 +60,7 @@ class DocsLinterMatchingTest {
     }
 
     // --- UC-DL-2: mergesMultipleDocAndTestRoots ---
+    // UC-DL-2
     @Test
     void mergesMultipleDocAndTestRoots() throws IOException {
         writeDoc("a.md", """
@@ -95,6 +97,7 @@ class DocsLinterMatchingTest {
     }
 
     // --- UC-DL-37: mergesMultipleTestGlobsAndDeduplicatesFiles ---
+    // UC-DL-37
     @Test
     void mergesMultipleTestGlobsAndDeduplicatesFiles() throws IOException {
         writeDoc("a.md", """
@@ -124,6 +127,7 @@ class DocsLinterMatchingTest {
     }
 
     // --- UC-DL-34: acceptsUnknownTestSyntaxAsCoverage ---
+    // UC-DL-34
     @Test
     void acceptsUnknownTestSyntaxAsCoverage() throws IOException {
         writeDoc("a.md", """
@@ -145,6 +149,7 @@ class DocsLinterMatchingTest {
     }
 
     // --- UC-DL-3: filtersTestSourcesByConfiguredGlob ---
+    // UC-DL-3
     @Test
     void filtersTestSourcesByConfiguredGlob() throws IOException {
         writeDoc("a.md", """
@@ -189,6 +194,7 @@ class DocsLinterMatchingTest {
     }
 
     // --- UC-DL-38: usesTextFileTypeCodeExtensionsByDefault ---
+    // UC-DL-38
     @Test
     void usesTextFileTypeCodeExtensionsByDefault() throws IOException {
         writeDoc("a.md", """
@@ -257,6 +263,7 @@ class DocsLinterMatchingTest {
     }
 
     // --- UC-DL-39: excludesDocRootsFromTestSources ---
+    // UC-DL-39
     @Test
     void excludesDocRootsFromTestSources() throws IOException {
         writeDoc("a.md", """
@@ -284,6 +291,7 @@ class DocsLinterMatchingTest {
     }
 
     // --- UC-DL-11: ignoresTestsWithoutUseCaseId ---
+    // UC-DL-11
     @Test
     void ignoresTestsWithoutUseCaseId() throws IOException {
         writeDoc("a.md", """
@@ -309,6 +317,7 @@ class DocsLinterMatchingTest {
     }
 
     // --- UC-DL-12: reportsUncoveredDoneUseCaseFirst ---
+    // UC-DL-12
     @Test
     void reportsUncoveredDoneUseCaseFirst() throws IOException {
         writeDoc("a.md", """
@@ -344,6 +353,7 @@ class DocsLinterMatchingTest {
     }
 
     // --- UC-DL-13: reportsUncoveredOpenUseCaseAsInventory ---
+    // UC-DL-13
     @Test
     void reportsUncoveredOpenUseCaseAsInventory() throws IOException {
         writeDoc("a.md", """
@@ -365,6 +375,7 @@ class DocsLinterMatchingTest {
     }
 
     // --- UC-DL-14: reportsOrphanTestIdAtCommentLocation ---
+    // UC-DL-14
     @Test
     void reportsOrphanTestIdAtCommentLocation() throws IOException {
         writeTest("OrphanTest.java", """
@@ -383,6 +394,7 @@ class DocsLinterMatchingTest {
     }
 
     // --- UC-DL-15: acceptsMultipleTestsForOneUseCase ---
+    // UC-DL-15
     @Test
     void acceptsMultipleTestsForOneUseCase() throws IOException {
         writeDoc("a.md", """

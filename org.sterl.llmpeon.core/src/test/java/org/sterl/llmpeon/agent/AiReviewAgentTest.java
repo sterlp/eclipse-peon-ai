@@ -113,7 +113,7 @@ class AiReviewAgentTest {
         assertThat(model.getConfig().modelConfigFor(AgentModelConfig.PLAN).model()).isEqualTo("plan-model");
     }
 
-    // UC-TF-2
+    // UC-TF-1
     @Test
     void reviewAgentStillHidesOtherEditTools() {
         for (var exec : agent.getToolService().getExecutors()) {

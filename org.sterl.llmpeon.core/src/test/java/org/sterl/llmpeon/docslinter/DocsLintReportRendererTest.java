@@ -51,6 +51,7 @@ class DocsLintReportRendererTest {
     }
 
     // --- UC-DL-23: 2 opt-in + 66 opt-out ---
+    // UC-DL-23
     @Test
     void listsEveryNonParticipatingDocWithoutTruncation() throws IOException {
         // 2 opt-in docs
@@ -91,6 +92,7 @@ class DocsLintReportRendererTest {
     }
 
     // --- UC-DL-27: empty vs clean populated ---
+    // UC-DL-27
     @Test
     void distinguishesEmptyInputFromCleanInput() throws IOException {
         // Create a second temp dir for the contrasting run
@@ -132,6 +134,7 @@ class DocsLintReportRendererTest {
     }
 
     // --- UC-DL-40: reports found file scope in summary ---
+    // UC-DL-40
     @Test
     void reportsFoundFileScopeInSummary() throws IOException {
         writeDoc("linted-a.md", """
@@ -170,6 +173,7 @@ class DocsLintReportRendererTest {
     }
 
     // --- UC-DL-41: distinguishes zero test source files from zero evidence ---
+    // UC-DL-41
     @Test
     void reportsZeroTestSourceFilesForEmptyTestRoot() throws IOException {
         writeDoc("a.md", """

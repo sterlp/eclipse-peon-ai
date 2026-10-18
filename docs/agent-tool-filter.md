@@ -42,6 +42,14 @@ dort leben die neuen Regeln R-ATC-1…, dieser Doc bleibt Owner des Mechanismus 
 - GIVEN Da Dok WHEN WriteValidator THEN `DENY_ALL` unverändert (Shell-Whitelist ≠ Schreibrecht der
   Write-Tools)
 
+#### UC-TF-1 — dokSeesShellHidesOtherEditTools ✅
+- GIVEN Da Dok (Standalone **und** RAM-Sklave) WHEN `toolSpecifications` THEN
+  `readOperationSystemInformation` + `shellRunCommand` sichtbar; Write-Tools, JavaDebugTool,
+  AskUserTool (Sklave), WorkspaceMemoryTool (Sklave) und `nextIds` unsichtbar.
+  *(Tests: `AiReviewAgentTest.reviewAgentSeesBothShellMethods` /
+  `reviewAgentStillHidesOtherEditTools`, `PeonAiServiceTest.daDokMatrixKeepsShellAndWorkTools` /
+  `daDokMatrixNeverPrivileged`.)*
+
 ### R-TF-2 ✅ — Da Sniffa sieht keine Plan-Tools
 
 - Der `SearchAgentTool`-Filter schließt `PlanTool` aus. **Befund 2026-09-25:** Plan-Tools sind
@@ -57,6 +65,11 @@ dort leben die neuen Regeln R-ATC-1…, dieser Doc bleibt Owner des Mechanismus 
   planImplemented)
 - GIVEN SearchAgent WHEN sonstige READ-Tools THEN unverändert sichtbar (read/grep/search…)
 - GIVEN Da Dok / Da Thinka / Da Mek WHEN Filter THEN deren plan*-Sichtbarkeit bleibt unverändert
+
+#### UC-TF-2 — sniffaSeesNoPlanTools ✅
+- GIVEN Da Sniffa (`SearchAgentTool`) WHEN `toolSpecifications` THEN keine `plan*`-Tools — auch nicht
+  bei Allowlist `*`; sonstige READ-Tools bleiben sichtbar.
+  *(Tests: `PeonAiServiceTest.searchAgentFilterHidesPlanTools` / `sniffaAllowlistWildcardStillPlanFree`.)*
 
 ### R-TF-3 ✅ — Tool-Namen für Filter/Tests als statische Konstanten
 
@@ -80,6 +93,13 @@ dort leben die neuen Regeln R-ATC-1…, dieser Doc bleibt Owner des Mechanismus 
 - GIVEN PeonAiService WHEN Da-Dok-Toolnamen THEN obige Menge (Shell gegen die Konstanten aus
   R-TF-3; Namen ohne Konstante als Literal zulässig — Scoping R-TF-3)
 - GIVEN PeonAiService WHEN SearchAgent-Toolnamen THEN plan*-frei
+
+#### UC-TF-4 — dokAndSniffaToolMatrix ✅
+- GIVEN PeonAiService (beide Registries) WHEN die aktive Tool-Menge von Da Dok und Da Sniffa
+  aufgelistet wird THEN hält Da Dok die Work-Tools (`eclipseRunJavaTests`,
+  `eclipseReadProjectProblems`, `eclipseBuildProject`, `lintDocs`, `lintDocsAndTests`) + alle 4
+  `plan*`-Methoden; Da Sniffa bleibt `plan*`-frei; Da Thinka/Da Mek behalten alle 4 `plan*`-Methoden.
+  *(Tests: `PeonAiServiceTest.daDokMatrixKeepsShellAndWorkTools` (marker UC-TF-1 + UC-TF-4).)*
 
 ## BDD-Test-Mapping
 

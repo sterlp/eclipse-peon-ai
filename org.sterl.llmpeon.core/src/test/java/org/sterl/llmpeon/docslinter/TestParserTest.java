@@ -37,6 +37,7 @@ class TestParserTest {
         assertThat(evidence).allMatch(e -> e.line() == 1);
     }
 
+    // UC-DL-10
     @Test
     void ignoresIdInNarrativeComment() throws IOException {
         // UC-DL-10 — UC-DL-1 matches the pattern and must be ignored in narrative text
@@ -155,6 +156,7 @@ class TestParserTest {
     }
 
 
+    // UC-DL-36
     @Test
     void preservesEveryConsecutiveIdCommentAndOptionalMethodContext() throws IOException {
         // UC-DL-34 / UC-DL-36: each pure ID line is independent evidence; method context
