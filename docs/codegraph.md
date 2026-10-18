@@ -149,6 +149,11 @@ THEN zeigt der Header (neben dem Hammer) das Icon `icons/codegraph.svg` mit Zust
      **ON** (verbunden) · **OFF** (nicht vorhanden/Probe negativ) · **FEHLER** (Connect-Fehler),
      Tooltip mit Projektname + Grund (bei OFF/kein Index: „installieren + `codegraph init`").
      Kein Klick-Verhalten in v1. Zustandsupdates auf dem UI-Thread.
+     **Icon-Format (2026-10-18, Paul-Smoke):** alle Header-Icons 24×24 (`width`/`height` + passende
+     `viewBox` — `32` ohne viewBox clippte beim Verkleinern). **OFF ist sichtbar gedimmt** über eine
+     eigene Farbvariante des SVGs (`codegraph_off.svg` + Dark-Pendant, Muster wie
+     `codegraph_dark.svg`), **nicht** über `setEnabled(false)` — SWT graut nur Text/Widget, nicht das
+     Image (IST-Befund: Icon blieb bei OFF voll farbig).
 
 ### R-CG-9 — Kein Init/Index-Trigger aus Peon ✅
 

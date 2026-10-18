@@ -17,6 +17,8 @@ public class ImageUtil {
     public static final String HAMMER_DARK = "platform:/plugin/org.sterl.llmpeon/icons/hammer_dark.svg";
     public static final String CODEGRAPH = "platform:/plugin/org.sterl.llmpeon/icons/codegraph.svg";
     public static final String CODEGRAPH_DARK = "platform:/plugin/org.sterl.llmpeon/icons/codegraph_dark.svg";
+    public static final String CODEGRAPH_OFF = "platform:/plugin/org.sterl.llmpeon/icons/codegraph_off.svg";
+    public static final String CODEGRAPH_OFF_DARK = "platform:/plugin/org.sterl.llmpeon/icons/codegraph_off_dark.svg";
     public static final String CLEAR = "platform:/plugin/org.sterl.llmpeon/icons/clear.svg";
     public static final String THINK = "platform:/plugin/org.sterl.llmpeon/icons/think.svg";
     public static final String COMPACT = "platform:/plugin/org.sterl.llmpeon/icons/compact.svg";

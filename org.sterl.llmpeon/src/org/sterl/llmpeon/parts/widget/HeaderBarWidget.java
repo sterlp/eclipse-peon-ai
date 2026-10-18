@@ -40,7 +40,8 @@ public class HeaderBarWidget extends Composite {
     private final TokenHeaderWidget tokens;
     private final AiAgentStatusWidget roster;
     private final Label codegraph;
-    private final Image codegraphOn;    // theme variant of codegraph.svg, preloaded — no leak on state change
+    private final Image codegraphOn;    // ON, theme variant of codegraph.svg — preloaded, no leak on state change
+    private final Image codegraphOff;   // OFF, dimmed color variant (R-CG-8) — setEnabled(false) does not dim images
     private final Image codegraphError; // platform STOP icon (R-CG-8, Q2=(a))
     private volatile Menu toolsMenu; // disposed on next open / widget dispose to avoid a native resource leak
 
@@ -77,13 +78,14 @@ public class HeaderBarWidget extends Composite {
         roster.setData(WidgetCss.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_HEADER_BAR_WIDGET);
 
         // Codegraph indicator (R-CG-8): non-clickable in v1, sits between the roster and the
-        // hammer. Both state images are preloaded here — setCodegraphState only swaps references.
+        // hammer. All state images are preloaded here — setCodegraphState only swaps references.
         codegraph = new Label(this, SWT.NONE);
         codegraph.setLayoutData(new GridData(SWT.END, SWT.CENTER, false, false));
         codegraph.setData(WidgetCss.CSS_CLASS_NAME_KEY, EclipseUiUtil.CSS_CLASS_HEADER_BAR_WIDGET);
-        codegraphOn = ImageUtil.loadImage(this, EclipseUiUtil.DARK_THEME_NAME.equals(EclipseUiUtil.resolveTheme())
-                ? ImageUtil.CODEGRAPH_DARK : ImageUtil.CODEGRAPH);
-        codegraphError = ImageUtil.loadImage(this, ImageUtil.STOP);
+        var dark = EclipseUiUtil.DARK_THEME_NAME.equals(EclipseUiUtil.resolveTheme());
+        codegraphOn = ImageUtil.loadImage(this, codegraphIcon(CodegraphConnectionService.Kind.CONNECTED, dark));
+        codegraphOff = ImageUtil.loadImage(this, codegraphIcon(CodegraphConnectionService.Kind.OFF, dark));
+        codegraphError = ImageUtil.loadImage(this, codegraphIcon(CodegraphConnectionService.Kind.ERROR, dark));
 
         Button hammer = SwtUtil.createIconButton(this,
                 ImageUtil.loadImage(this,
@@ -116,14 +118,32 @@ public class HeaderBarWidget extends Composite {
     }
 
     /**
-     * Renders the codegraph state (R-CG-8, Q2=(a)): CONNECTED = codegraph icon, OFF = the same
-     * icon dimmed via {@code enabled=false}, ERROR = the platform STOP icon. Tooltip comes from
-     * the service-built {@link CodegraphConnectionService.State#tooltip()}. UI-thread only.
+     * Renders the codegraph state (R-CG-8, Q2=(a)): CONNECTED = codegraph icon, OFF = the dimmed
+     * color variant (own SVG — SWT's {@code setEnabled(false)} greys text, not the image),
+     * ERROR = the platform STOP icon. Tooltip comes from the service-built
+     * {@link CodegraphConnectionService.State#tooltip()}. UI-thread only.
      */
     public void setCodegraphState(CodegraphConnectionService.State state) {
-        codegraph.setImage(state.kind() == CodegraphConnectionService.Kind.ERROR ? codegraphError : codegraphOn);
+        codegraph.setImage(switch (state.kind()) {
+            case ERROR -> codegraphError;
+            case OFF -> codegraphOff;
+            case CONNECTED -> codegraphOn;
+        });
         codegraph.setToolTipText(state.tooltip());
-        codegraph.setEnabled(state.kind() != CodegraphConnectionService.Kind.OFF);
+    }
+
+    /**
+     * R-CG-8: the codegraph header icon path per (state kind, dark theme) — ON/OFF own color
+     * variants (SWT's {@code setEnabled(false)} greys text only, not the image), ERROR stays the
+     * platform STOP icon. One mapping, one place: the constructor preloads all three via this,
+     * {@link #setCodegraphState} swaps the preloaded images.
+     */
+    static String codegraphIcon(CodegraphConnectionService.Kind kind, boolean darkTheme) {
+        return switch (kind) {
+            case ERROR -> ImageUtil.STOP;
+            case OFF -> darkTheme ? ImageUtil.CODEGRAPH_OFF_DARK : ImageUtil.CODEGRAPH_OFF;
+            case CONNECTED -> darkTheme ? ImageUtil.CODEGRAPH_DARK : ImageUtil.CODEGRAPH;
+        };
     }
 
     /**

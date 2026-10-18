@@ -234,3 +234,34 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   **Nicht gebaut** — R-CG-6 ist Pauls SOLL (explore-only); Änderung erst nach Paul-Rückkehr.
   Kein rekursiver USER_HOME-Binary-Scan (Probe deckt `which` ab: `~/.local/bin` Suchort #1 +
   PATH-Scan, E2E-Beleg auf Pauls Maschine — Detail in codegraph.md Fakten).
+
+
+## Codegraph-Smoke (2026-10-18, Paul) — Befunde
+
+- ❓ **Zwei `serve --mcp`-Prozesse** (verletzt die R-CG-4-Invariante „exakt ein Peon-`serve --mcp`
+  pro workDir"). Gemessen: `PeonAiService.java:212-213` verdrahtet `CodegraphConnectionService` mit
+  beiden agent-facing Registries (shared + po, [ADR-0067](adr/0067-two-registry-dynamic-tool-families.md)),
+  `CodegraphConnectionService.java:101` connectet die Gruppe auf jeder → je Registry eigener
+  STDIO-Prozess, zweimal `Connected MCP codegraph tool codegraph_explore` (Log 07:48:31.816 +
+  07:48:32.002). Deterministisch, kein Race; gilt genauso für User-MCP-Server. Optionen:
+  (a) akzeptieren → Doku-Invariante auf „ein Prozess je Registry" entschärfen (kostet doppelt RAM),
+  (b) MCP-Client einmal halten, Tool-Registrierung in beide Registries fan-outen (ein Prozess,
+  Eingriff an der ADR-0067-Naht). **Jon-Empfehlung: (b)** — „ein Prozess je workDir" war die Zusage,
+  und der Server proxyt zwar zusätzliche Clients, aber wir brauchen sie nicht. Entscheidung: Paul.
+- ❓ **`codegraph` fehlt in Pauls Tool-Auswahl** (Agent-Tool-Config), obwohl verbunden
+  (`Running MCP: codegraph_explore`). Kein struktureller MCP-Ausschluss (`ToolService.activeNames:111`,
+  `getToolStatus:465-467` enthalten MCP) — situativ: die Preview (`PeonAiService.java:568`) zeigt die
+  MCP-Menge des ToolService des jeweiligen Slot-Agenten × CSV-Filter; Codegraph ist nur auf
+  shared + po verbunden. Offen: **welcher Agent/Slot** in Pauls UI, und ob die Soll-Aussage aus
+  R-CG-6 („explizite CSV braucht ein `codegraph`-Token") dort überhaupt wählbar ist.
+- ❓ **Kein Chat-Feedback bei Connect/Disconnect** (Pauls Wunsch: onTool-Message). IST endet am
+  Header-Icon (`AIChatView.java:138-140` → `HeaderBarWidget.setCodegraphState:123-127`); im
+  State-Pfad liegt kein Monitor im Scope → neue Emit-Strecke nötig. SOLL (Text, Zeitpunkt, auch bei
+  Disconnect/Projektwechsel?) noch nicht geschrieben — Entscheidung: Paul.
+- 🔒 **Protokoll-Fallback ist kein Bug:** `Server does not support modern protocol, falling back to
+  legacy initialize` + `protocolVersion 2024-11-05` = normaler Auto-Detect-Pfad
+  ([ADR-0045](adr/0045-mcp-protocol-version-auto-detect.md), `DefaultMcpClient.java:291`,
+  log.debug); codegraph 1.6.0 spricht nur legacy.
+- 🔒 **Icon (2026-10-18 erledigt):** 32 ohne `viewBox` → auf 24×24 + `viewBox="0 0 32 32"`
+  normalisiert; `codegraph_off.svg`/`codegraph_off_dark.svg` ergänzt (gedimmte Farbe statt
+  `setEnabled(false)` — SWT graut Text, nicht das Image); R-CG-8 präzisiert.

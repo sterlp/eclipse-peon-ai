@@ -1,7 +1,6 @@
 package org.sterl.llmpeon.test;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -24,7 +23,8 @@ import org.sterl.llmpeon.parts.widget.TokenHeaderWidget;
 /**
  * Workbench-display test for the codegraph indicator in the {@link HeaderBarWidget} (R-CG-8,
  * Q2=(a)): the label sits between roster and hammer, mirrors the service state — tooltip verbatim
- * from {@link State#tooltip()}, dimmed (disabled) when OFF, platform STOP icon on ERROR.
+ * from {@link State#tooltip()}, dimmed color variant when OFF (setEnabled(false) does not dim
+ * images), platform STOP icon on ERROR.
  * Display/Shell lifecycle and UI-thread access come from {@link AbstractSwtUiTest}.
  */
 public class HeaderBarWidgetTest extends AbstractSwtUiTest {
@@ -47,7 +47,7 @@ public class HeaderBarWidgetTest extends AbstractSwtUiTest {
 
     // R-CG-8
     @Test
-    public void codegraphStateOff_dimsTheCodegraphIconWithOffTooltip() {
+    public void codegraphStateOff_keepsTheCodegraphIconWithOffTooltip() {
         // GIVEN a header bar, WHEN the state is OFF (no project)
         var bar = ui(this::newBar);
         var state = new State(Kind.OFF, null, "no active project");
@@ -56,10 +56,11 @@ public class HeaderBarWidgetTest extends AbstractSwtUiTest {
             return null;
         });
 
-        // THEN the label is dimmed, carries the service tooltip verbatim and keeps the
-        // codegraph icon (32x32 viewBox — not the 16x16 STOP icon)
+        // THEN the label stays enabled (the dimming is the OFF color variant, not
+        // setEnabled(false)), carries the service tooltip verbatim and keeps the codegraph
+        // icon (24x24 — not the 16x16 STOP icon)
         var label = codegraphLabel(bar);
-        assertFalse("OFF must dim the indicator", label.isEnabled());
+        assertTrue("OFF keeps the indicator enabled — the off image carries the dimming", label.isEnabled());
         assertEquals("Codegraph OFF: no active project", label.getToolTipText());
         assertCodegraphImage(label);
     }
@@ -95,7 +96,7 @@ public class HeaderBarWidgetTest extends AbstractSwtUiTest {
         });
 
         // THEN the label is enabled, carries the service tooltip verbatim and shows the
-        // platform STOP icon (16x16 — not the 32x32 codegraph icon)
+        // platform STOP icon (16x16 — not the 24x24 codegraph icon)
         var label = codegraphLabel(bar);
         assertTrue("ERROR must enable the indicator", label.isEnabled());
         assertEquals("Codegraph error (cgproj): spawn failed", label.getToolTipText());
@@ -115,12 +116,12 @@ public class HeaderBarWidgetTest extends AbstractSwtUiTest {
         return (Label) bar.getChildren()[3];
     }
 
-    /** codegraph.svg carries a 32x32 viewBox — the STOP elcl16 icon renders 16x16. */
+    /** codegraph.svg renders 24x24 (32x32 viewBox) — the STOP elcl16 icon renders 16x16. */
     private static void assertCodegraphImage(Label label) {
         assertNotNull("indicator must carry an image", label.getImage());
         var bounds = label.getImage().getBounds();
-        assertEquals(32, bounds.width);
-        assertEquals(32, bounds.height);
+        assertEquals(24, bounds.width);
+        assertEquals(24, bounds.height);
     }
 
     private static void assertStopImage(Label label) {
