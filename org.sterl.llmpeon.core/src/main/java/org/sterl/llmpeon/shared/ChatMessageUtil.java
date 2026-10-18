@@ -1,9 +1,13 @@
 package org.sterl.llmpeon.shared;
 
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
+import org.sterl.llmpeon.agent.model.TaggedResult;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -20,6 +24,9 @@ public class ChatMessageUtil {
 
     /** Marker of a front-capped thinking block: the head was dropped, the end (conclusion) is kept. */
     public static final String THINK_FRONT_CAP_ANCHOR = "…$ ";
+    public static final String THINK_PREFIX = "THINK:" + System.lineSeparator();
+    public static final String TOOL_REQUEST_PREFIX = "TOOL REQUEST:" + System.lineSeparator();
+    public static final String TOOL_RESULT_PREFIX = ChatMessageType.TOOL_EXECUTION_RESULT + System.lineSeparator();
 
     /**
      * Render modes for {@link #toString(ChatMessage, RenderOptions)}.
@@ -145,11 +152,77 @@ public class ChatMessageUtil {
     public static String toString(ChatMessage msg, boolean includeThink, int toolMessageSize) {
         return toString(msg, new RenderOptions(includeThink, toolMessageSize, Integer.MAX_VALUE, false, true, true));
     }
+    
+    /**
+     * Converts a ChatMessage to a unique collection of strings, keeps {@link TaggedResult}
+     * as is and adds tags for any other message.
+     * 
+     * CUSTOM messages are always ignored; SYSTEM messages are rendered like every other type
+     * unless {@link RenderOptions#renderSystemMessage()} is <code>false</code>.
+     */
+    @NonNull
+    public static Collection<String> extractMessages(@NonNull ChatMessage msg, @NonNull RenderOptions options) {
+        var result = new LinkedHashSet<String>();
+        var nl = System.lineSeparator();
+        var t = msg.type();
+        if (msg.type() == ChatMessageType.CUSTOM) return result;
+        if (msg instanceof SystemMessage sm) {
+            if (!options.renderSystemMessage()) return result;
+            result.add(ChatMessageType.SYSTEM + ":" + nl + sm.text());
+        } else {
+            if (msg instanceof UserMessage um) {
+                um.contents().stream().filter(m -> m instanceof TextContent)
+                    .map(m -> (TextContent)m)
+                    .forEach(c -> result.add(tagged(c.text(), t)));
+                
+            } else if (msg instanceof AiMessage m) {
+                if (StringUtil.hasValue(m.text())) {
+                    result.add(tagged(m.text(), t));
+                }
+                
+                if (options.includeThink() && StringUtil.hasValue(m.thinking())) {
+                    result.add(THINK_PREFIX + capThinking(m.thinking(), options));
+                }
+                
+                if (options.toolMessageSize() > 0 && m.hasToolExecutionRequests()) {
+                    for (var tr : m.toolExecutionRequests()) {
+                        result.add(TOOL_REQUEST_PREFIX
+                             + "tool name: " + tr.name() + nl
+                             + "arguments:" + StringUtil.trimToLength(tr.arguments(), options.toolMessageSize()) + nl
+                             + trimmedTag(tr.arguments(), options));
+                    }
+                }
+                
+            } else if (options.toolMessageSize() > 0 && msg instanceof ToolExecutionResultMessage tr) {
+                result.add(TOOL_RESULT_PREFIX
+                        + "tool name: " + tr.toolName() + nl
+                        + "result:" + nl + StringUtil.trimToLength(tr.text(), options.toolMessageSize()) + nl
+                        + trimmedTag(tr.text(), options));
+            }
+        }
+
+        return result;
+    }
+    
+    /**
+     * @returns build the correct info tag for a {@link ChatMessage} content taking {@link TaggedResult} in 
+     */
+    private static String messageTag(String msg, ChatMessageType type) {
+        if (StringUtil.hasNoValue(msg)) return "";
+        if (msg.startsWith(TaggedResult.PREFIX) && msg.endsWith(TaggedResult.SUFFIX)) return "";
+        return type + ":" + System.lineSeparator();
+    }
+    
+    private static String tagged(String msg, ChatMessageType type) {
+        return messageTag(msg, type) + msg;
+    }
 
     /**
      * Converts a ChatMessage to a simple string in the given render mode.
      * CUSTOM messages are always ignored; SYSTEM messages are rendered like every other type
      * unless {@link RenderOptions#renderSystemMessage()} is false.
+     * 
+     * TODO: use extractMessages and join with new line
      */
     public static String toString(ChatMessage msg, RenderOptions options) {
         var nl = System.lineSeparator();
