@@ -35,6 +35,7 @@ import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.command.SlashCommandResolver;
 import org.sterl.llmpeon.command.SlashCommandResolver.SlashResult;
+import org.sterl.llmpeon.queuedmessages.OverrideMessageResolver;
 import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.exception.ExceptionUtil;
 import org.sterl.llmpeon.memory.AgentErrorMemory;
@@ -567,6 +568,20 @@ public class AIChatView implements EclipseAiMonitor {
     }
 
     private SendDecision resolveOutgoingMessage(String text, AiAgent active) {
+        // Rule 8 override: while the agent works, a leading ! bypasses the queue — the text
+        // goes straight into the agent's memory; a lone ! (blank) is a silent no-op.
+        var override = new OverrideMessageResolver().resolve(text, active.isWorking(),
+                aiService.getCommandService(), aiService.getSkillService());
+        if (override.isPresent()) {
+            var injected = override.get().text();
+            if (StringUtil.hasValue(injected)) {
+                active.injectUserMessage(injected);
+                chatHistory.appendMessage(new SimpleMessage(Type.USER, injected));
+            }
+            chatInput.clearText();
+            chatInput.dismissSlashMenu();
+            return new SendDecision.Skip();
+        }
         var resolver = new SlashCommandResolver();
         var result = resolver.resolve(text, aiService.getCommandService(), aiService.getSkillService());
 

@@ -39,7 +39,7 @@ class OverrideMessageResolverTest extends AbstractMemoryFileTest {
         var result = resolver.resolve("!bitte abbrechen", true, new CommandService(), new SkillService());
         // THEN — the ! is stripped, the text goes to the memory as-is
         assertThat(result).isPresent();
-        assertThat(result.get()).isEqualTo("bitte abbrechen");
+        assertThat(result.get().text()).isEqualTo("bitte abbrechen");
     }
 
     @Test
@@ -50,7 +50,7 @@ class OverrideMessageResolverTest extends AbstractMemoryFileTest {
         var result = resolver.resolve("!/my-command rest text", true, commands, new SkillService());
         // THEN — the slash prefix is replaced by the body, the trailing text appended — one text
         assertThat(result).isPresent();
-        assertThat(result.get()).isEqualTo("instruction content rest text");
+        assertThat(result.get().text()).isEqualTo("instruction content rest text");
     }
 
     @Test
@@ -70,7 +70,7 @@ class OverrideMessageResolverTest extends AbstractMemoryFileTest {
         var result = resolver.resolve("!/nichtexistent rest", true, commands, new SkillService());
         // THEN — not found: the raw text (bang stripped) goes to the memory
         assertThat(result).isPresent();
-        assertThat(result.get()).isEqualTo("/nichtexistent rest");
+        assertThat(result.get().text()).isEqualTo("/nichtexistent rest");
     }
 
     @Test
@@ -86,9 +86,10 @@ class OverrideMessageResolverTest extends AbstractMemoryFileTest {
         var result = resolver.resolve("!/my-skill do it", true, new CommandService(), skills);
         // THEN — the skill body (with its execution suffix) replaces the prefix, trailing appended
         assertThat(result).isPresent();
-        assertThat(result.get()).startsWith("Skill body content");
-        assertThat(result.get()).endsWith(" do it");
-        assertThat(result.get()).doesNotContain("/my-skill");
+        var text = result.get().text();
+        assertThat(text).startsWith("Skill body content");
+        assertThat(text).endsWith(" do it");
+        assertThat(text).doesNotContain("/my-skill");
     }
 
     @Test
@@ -98,16 +99,17 @@ class OverrideMessageResolverTest extends AbstractMemoryFileTest {
         var result = resolver.resolve("!!/cmd x", true, new CommandService(), new SkillService());
         // THEN — no slash resolution, the raw remainder goes to the memory
         assertThat(result).isPresent();
-        assertThat(result.get()).isEqualTo("!/cmd x");
+        assertThat(result.get().text()).isEqualTo("!/cmd x");
     }
 
     @Test
-    void working_bangOnly_blankRest_returnsEmpty() throws Exception {
+    void working_bangOnly_consumedWithBlankText() throws Exception {
         // GIVEN — agent working, a lone ! (no payload)
         // WHEN
         var result = resolver.resolve("!", true, new CommandService(), new SkillService());
-        // THEN — silent no-op: nothing to inject, no queue entry, no turn
-        assertThat(result).isEmpty();
+        // THEN — consumed as an override (input cleared, no turn), but nothing injected
+        assertThat(result).isPresent();
+        assertThat(result.get().text()).isBlank();
     }
 
     @Test
@@ -118,7 +120,7 @@ class OverrideMessageResolverTest extends AbstractMemoryFileTest {
         var result = resolver.resolve("!/review", true, commands, new SkillService());
         // THEN — the body alone goes to the memory
         assertThat(result).isPresent();
-        assertThat(result.get()).isEqualTo("Review the code");
+        assertThat(result.get().text()).isEqualTo("Review the code");
     }
 
     @Test

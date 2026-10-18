@@ -12,37 +12,48 @@ import org.sterl.llmpeon.skill.SkillService;
  * the {@code !} is stripped and the remainder becomes ONE text injected directly into
  * the agent's memory, visible to the running turn on its next model call.
  *
+ * <p><b>Present semantics:</b> {@code isPresent()} means the input is <em>consumed as an
+ * override</em> — the view must clear the input and skip the normal send path. The
+ * {@link OverrideCommand#text()} is what gets injected: non-blank for a real override,
+ * blank for a lone {@code !} (consumed, nothing injected — a silent no-op).
+ * {@code isEmpty()} means this is not an override (no leading {@code !}, agent idle,
+ * null input) — the normal send path handles the message.
+ *
  * <p>Pure decision function: no agent, no memory, no queue. The input is expected
- * <b>trimmed</b> (the view trims before calling). A lone {@code !} (blank remainder)
- * is a silent no-op. When the remainder starts with {@code /}, the lookup reuses
- * {@link SlashCommandResolver} — a match replaces the slash prefix with the command/skill
- * body and appends the trailing text (no oneTimeOrder, unlike the normal slash path).
+ * <b>trimmed</b> (the view trims before calling). When the remainder starts with
+ * {@code /}, the lookup reuses {@link SlashCommandResolver} — a match replaces the
+ * slash prefix with the command/skill body and appends the trailing text (no
+ * oneTimeOrder, unlike the normal slash path).
  */
 public class OverrideMessageResolver {
+
+    /** The resolved override: the text to inject into the agent memory (blank = consumed, nothing injected). */
+    public record OverrideCommand(String text) {}
 
     /**
      * @param text the trimmed user input
      * @param agentWorking whether the agent is currently processing a call
      * @param commands the command service for slash lookups
      * @param skills the skill service for slash lookups
-     * @return the text to inject into the agent memory, or empty when this is not an
-     *         override (no leading {@code !}, agent idle, or a lone {@code !})
+     * @return present when the input is consumed as an override (see the class-level
+     *         present semantics); empty when the normal send path handles the message
      */
-    public Optional<String> resolve(String text, boolean agentWorking, CommandService commands, SkillService skills) {
+    public Optional<OverrideCommand> resolve(String text, boolean agentWorking, CommandService commands, SkillService skills) {
         if (text == null || !agentWorking || !text.startsWith("!")) {
             return Optional.empty();
         }
         String rest = text.substring(1);
         if (rest.isBlank()) {
-            return Optional.empty(); // lone "!" = silent no-op
+            return Optional.of(new OverrideCommand("")); // lone "!" = consumed, nothing injected
         }
         if (rest.startsWith("/")) {
             var slash = new SlashCommandResolver().resolve(rest, commands, skills);
             if (slash.isPresent()) {
                 var r = slash.get();
-                return Optional.of(r.trailingText().isBlank() ? r.body() : r.body() + " " + r.trailingText());
+                var resolved = r.trailingText().isBlank() ? r.body() : r.body() + " " + r.trailingText();
+                return Optional.of(new OverrideCommand(resolved));
             }
         }
-        return Optional.of(rest);
+        return Optional.of(new OverrideCommand(rest));
     }
 }
