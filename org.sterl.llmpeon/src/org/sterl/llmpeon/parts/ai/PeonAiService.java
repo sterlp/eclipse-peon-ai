@@ -211,14 +211,14 @@ public class PeonAiService {
         // ADR-0068: Codegraph built-in — same agent-facing registries, own group + probe.
         codegraph = new CodegraphConnectionService(this::getProject,
                 List.of(sharedToolService, poAgent.getToolService()), new DefaultCodegraphProbe());
-        userContext.setCodegraphInfoLine(codegraph::projectInfoLine);
-
         // Context assembly (turn context, static bake, plan/handoff state) — pure component,
-        // wired with values + lazy suppliers only (no service dependency).
+        // wired with values + lazy suppliers only (no service dependency). The codegraph item
+        // (R-CG-7 / R-CG-12) reads the live state + instructions and is the single codegraph line.
+        var codegraphItem = new CodegraphContextItem(codegraph::state, codegraph::instructions);
         agentContext = new AgentContextComponent(this::getProject, workspaceMemoryTool, userContext,
                 scaffoldAgent, sharedToolService,
                 this::getActiveAgent, configuredModel::getConfig, this::getAgents,
-                () -> codegraph.instructions());
+                codegraphItem);
 
         updateConfig(configuredModel.getConfig());
         // Default turn-context supplier for every agent present at construction. New custom agents

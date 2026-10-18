@@ -13,8 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.IProject;
-import org.eclipse.core.resources.IProjectDescription;
+
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.IOrdinaryClassFile;
@@ -383,45 +382,6 @@ public class UserContextTest {
         assertNull(context.getJavaType());
     }
 
-    // === Codegraph info line (R-CG-7) ===
-
-    // R-CG-7
-    @Test
-    public void givenCodegraphLineSet_whenGet_thenProjectInfoContainsLine() {
-        // GIVEN a context with an active project and a non-blank codegraph line (connected)
-        var context = new UserContext();
-        context.setCurrentProject(project("cg-proj", "/tmp/cg-proj"));
-        context.setCodegraphInfoLine(() -> "Codegraph index active — use the codegraph_explore tool");
-
-        // WHEN the context is requested
-        var item = item(context.get(), "Project info cg-proj");
-
-        // THEN the project info item carries the base info AND the appended codegraph line
-        assertNotNull(item);
-        var render = item.render();
-        assertTrue(render.contains("Project name: cg-proj"));
-        assertTrue(render.contains("/tmp/cg-proj"));
-        assertTrue(render.contains("Codegraph index active — use the codegraph_explore tool"));
-    }
-
-    // R-CG-7
-    @Test
-    public void givenEmptyLine_whenGet_thenProjectInfoUnchanged() {
-        // GIVEN two contexts with the same project — one default, one with an EMPTY codegraph line
-        var withDefault = new UserContext();
-        withDefault.setCurrentProject(project("plain-proj", "/tmp/plain-proj"));
-        var withEmpty = new UserContext();
-        withEmpty.setCurrentProject(project("plain-proj", "/tmp/plain-proj"));
-        withEmpty.setCodegraphInfoLine(() -> "");
-
-        // WHEN the context is requested
-        var defaultRender = item(withDefault.get(), "Project info plain-proj").render();
-        var emptyRender = item(withEmpty.get(), "Project info plain-proj").render();
-
-        // THEN the empty line appends nothing (no context bloat when not connected)
-        assertEquals(defaultRender, emptyRender);
-    }
-
     // === One-time orders: UI-thread add vs. background drain ===
 
     @Test
@@ -518,36 +478,6 @@ public class UserContextTest {
                     case "equals" -> proxy == args[0];
                     case "hashCode" -> System.identityHashCode(proxy);
                     case "toString" -> "file(" + fullPath + ")";
-                    default -> method.getReturnType().isPrimitive() ? primitiveDefault(method.getReturnType()) : null;
-                });
-    }
-
-    /**
-     * IProject stub — name + paths for {@code EclipseUtil.projectInfo} and a nature-free
-     * description (projectNatures only catches CoreException, so the stub must answer it).
-     */
-    private static IProject project(String name, String diskPath) {
-        var description = (IProjectDescription) Proxy.newProxyInstance(
-                UserContextTest.class.getClassLoader(),
-                new Class<?>[] { IProjectDescription.class },
-                (proxy, method, args) -> switch (method.getName()) {
-                    case "getNatureIds" -> new String[0];
-                    case "equals" -> proxy == args[0];
-                    case "hashCode" -> System.identityHashCode(proxy);
-                    case "toString" -> "description(" + name + ")";
-                    default -> method.getReturnType().isPrimitive() ? primitiveDefault(method.getReturnType()) : null;
-                });
-        return (IProject) Proxy.newProxyInstance(
-                UserContextTest.class.getClassLoader(),
-                new Class<?>[] { IProject.class },
-                (proxy, method, args) -> switch (method.getName()) {
-                    case "getName" -> name;
-                    case "getFullPath" -> IPath.fromOSString("/" + name);
-                    case "getRawLocation" -> IPath.fromOSString(diskPath);
-                    case "getDescription" -> description;
-                    case "equals" -> proxy == args[0];
-                    case "hashCode" -> System.identityHashCode(proxy);
-                    case "toString" -> "project(" + name + ")";
                     default -> method.getReturnType().isPrimitive() ? primitiveDefault(method.getReturnType()) : null;
                 });
     }

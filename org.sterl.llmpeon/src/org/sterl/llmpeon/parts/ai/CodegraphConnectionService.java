@@ -130,21 +130,6 @@ public class CodegraphConnectionService {
         return state;
     }
 
-    /**
-     * Project info line for the turn context (R-CG-7) — only when connected: the disk path of
-     * the Codegraph index, the codegraph_explore hint and the disk→Eclipse path mapping.
-     */
-    public String projectInfoLine() {
-        var current = state;
-        if (current.kind() != Kind.CONNECTED || current.project() == null) return "";
-        var project = current.project();
-        var disk = JdtUtil.diskPathOf(project);
-        if (disk == null) return "";
-        return "Codegraph index active — use the codegraph_explore tool (one call returns verbatim source; "
-                + "prefer it over search loops). Its results use disk paths under " + disk
-                + "; the eclipse*-tools use /" + project.getName() + " paths — map <" + disk + "/...> to /" + project.getName() + "/...";
-    }
-
     /** Server instructions for the turn context (empty when not connected or the server sent none). */
     public Optional<String> instructions() {
         return Optional.ofNullable(instructions);

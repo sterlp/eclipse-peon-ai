@@ -1,6 +1,6 @@
 # Codegraph Architektur
 
-> **Status:** ❌ (Design 2026-10-17, vor Planung angelegt)   **Fachdoc:** [codegraph.md](codegraph.md)
+> **Status:** ✅ (2026-10-18, gebaut; Kontext-Umbau auf `CodegraphContextItem` nach Paul-Smoke)   **Fachdoc:** [codegraph.md](codegraph.md)
 >   **ADRs:** folgen (Built-in-Enable + Failure-Isolation als eigener Connect-Pfad)
 
 ## Verantwortung & Abgrenzung
@@ -21,7 +21,7 @@
 |---|---|---|
 | nutzt | `McpService` (core) | STDIO-Connect (`workingDirectory`-Feld), `client.instructions()` |
 | nutzt | `UserContext` / `PeonAiService` | aktives Projekt + Projekt-Wechsel-Events |
-| nutzt | `AgentContextComponent` | Context-Injektion (Supplier-Pattern, wie die übrigen Dummies) |
+| nutzt | `AgentContextComponent` | Context-Injektion über **ein** `ContextItem` (`CodegraphContextItem`) |
 | nutzt | `HeaderBarWidget` | Icon-Zustand (State-Callback, UI-Thread) |
 | genutzt von | Alle Agent-Registries | `codegraph_explore` als normales MCP-Tool |
 | extern | `codegraph`-Binary/Daemon | Peon startet nie den Daemon selbst; max. 1 Peon-`serve --mcp` pro workDir |
@@ -49,7 +49,7 @@ sequenceDiagram
     M->>S: spawn STDIO (workDir=B)
     S-->>M: initialize + tools (codegraph_explore)
     M-->>C: connected (+instructions captured)
-    C-->>A: state → Instructions-ContextItem + Projekt-Info-Zeile
+    C-->>A: state → CodegraphContextItem (Zustand+Projekt als dedupKey, label = Chat-Signal)
     C-->>H: state ON
   else Probe negativ
     C-->>H: state OFF (Tooltip: installieren + codegraph init)
@@ -71,4 +71,9 @@ strukturell unmöglich zu machen.
 - [x] Klare Verantwortung — Lifecycle-Fragen haben genau einen Ort (CodegraphConnectionService)
 - [x] Encapsulation: Probe/Factory im core, rein Path-basiert, JUnit5-testbar
 - [x] Single Responsibility, keine Duplizierung (McpService generisch weitergenutzt)
-- [x] Composable: Context/Icon per Supplier/Callback (bestehende Patterns)
+- [x] Composable: Context über **ein** `ContextItem` (Muster `EclipseFileContextItem`), Icon per Callback
+
+**Besitz des Kontexts (2026-10-18, nach Pauls Smoke):** Der Codegraph-Zustand wird **einmal** als
+`ContextItem` gerendert — `label()` ist das Chat-Signal (R-CG-12), `dedupKey()` hält Zustandswechsel
+auf genau eine Injektion, `render()` trägt Info + Instructions. Der `AgentContextComponent` reicht
+nur durch; es gibt **keinen** zweiten Emit-Pfad in der View.

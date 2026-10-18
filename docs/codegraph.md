@@ -5,7 +5,9 @@ idPrefix: CG
 # Codegraph — Built-in-Integration (MCP, Auto-Enable)
 
 > **Status:** ✅ done (2026-10-17, Branch `story/night-5-2026-10-16`, Surefire core 1172/0 ·
-> OSGi 376/0, Da-Dok-Review ACCEPTED nach Rework). **Architektur-Doc:**
+> OSGi 376/0, Da-Dok-Review ACCEPTED nach Rework). **2026-10-18 (✅ nach Paul-Smoke):** Kontext auf
+> **ein** `ContextItem` umgebaut (R-CG-7/R-CG-12, Plugin-Suite 380/0); Header-Icon 24×24 + gedimmte
+> OFF-Variante. **Architektur-Doc:**
 > [codegraph-architektur.md](codegraph-architektur.md). **ADR:** [ADR-0068](adr/0068-codegraph-builtin-connect-path.md).
 
 ## Ziel
@@ -121,26 +123,53 @@ THEN ist das Toolset die Codegraph-Default-Liste (nur `codegraph_explore`); die 
      Codegraph-Tools bleiben deaktiviert. Die Sichteauswahl folgt dem bestehenden `ToolPolicy`
      (Default-Agenten: automatisch sichtbar; explizite Tools-CSV braucht ein `codegraph`-Token).
 
-### R-CG-7 — Projekt-Info: Pfade + Nutzung (statt Pfad-Translation) ✅
+### R-CG-7 — Projekt-Info als ContextItem (Pfade + Nutzung + Zustand) ✅ done (2026-10-18)
+
+Ein `ContextItem` (`CodegraphContextItem`, Muster [EclipseFileContextItem](../../org.sterl.llmpeon/src/org/sterl/llmpeon/context/EclipseFileContextItem.java))
+trägt den kompletten Codegraph-Kontext — **nicht** ein Supplier + anonymes Lambda im
+`AgentContextComponent`.
 
 GIVEN Codegraph ist verbunden
-WHEN die Projekt-Info gebaut wird
-THEN enthält sie: (a) Hinweis, dass `codegraph_explore` absolute **Disk-Pfade** liefert und für
+WHEN der Turn-Kontext gebaut wird
+THEN enthält das Item: (a) Hinweis, dass `codegraph_explore` absolute **Disk-Pfade** liefert und für
      eclipse*-Tools `<diskPath>` → `/Projektname` zu ersetzen ist (Pfade außerhalb des Projekts
      werden **nicht** übersetzt — dort disk*-Tools mit Originalpfad); (b) Hinweis auf
-     `codegraph_explore` inkl. kurzer Nutzungsinfo (ein Aufruf statt Such-Loop, verbatim source).
-     Die serverseitigen Initialize-Instructions werden zusätzlich als Context injiziert
-     (`McpClient.instructions()`).
+     `codegraph_explore` inkl. kurzer Nutzungsinfo (ein Aufruf statt Such-Loop, verbatim source);
+     (c) die serverseitigen Initialize-Instructions zusätzlich (`McpClient.instructions()`).
 
-GIVEN Codegraph aus/nicht vorhanden
-WHEN Projekt-Info gebaut
-THEN erscheint keine Codegraph-Zeile (keine Kontext-Blähung).
+GIVEN Codegraph ist aus (kein Index/Binary) oder der Connect ist fehlgeschlagen
+WHEN der Turn-Kontext gebaut wird
+THEN rendert dasselbe Item **eine kurze Zustandszeile** („Codegraph not active for <Projekt> —
+     installieren + `codegraph init`" bzw. „Codegraph failed — <Grund>").
+     **SOLL-Änderung 2026-10-18 (Paul):** die frühere Aussage „keine Codegraph-Zeile" entfällt —
+     der Zustand ist nur über das Item sichtbar (R-CG-12), und der `dedupKey` hält die Blähung auf
+     **eine** Zeile je Zustandswechsel.
+
+Item-Vertrag:
+- `label()` = `Codegraph <state> — <Projekt>` → automatisch `📋 Loading …` über den bestehenden
+  Pfad (`AbstractAgent.renderTurnContext`, `AbstractAgent.java:476-504`) — **keine** neue
+  Emit-Strecke, `AIChatView` bleibt unverändert.
+- `dedupKey()` = Zustand + Projektname (+ Hash der Instructions) → unveränderter Zustand wird
+  dedupliziert, jeder Wechsel genau **einmal** injiziert; nach einem Compact wird es wie jedes
+  Turn-Context-Item neu eingefügt.
+- `render()` = `null` nur, wenn wirklich nichts zu sagen ist (Item-Contract, `ContextItem.java:18-23`).
 
 **KEIN** Tool-Output-Postprocessing (kein Umschreiben gelieferter Pfade — Tool-Honesty). Die
 Homepage-Aussage (eclipse*-Tools übersetzen keine Pfade) bleibt unverändert gültig; Disk→Workspace
 hier nur als Agent-Hinweis. *(Pauls ursprüngliche Idee „Ergebnisse in Eclipse-Pfade ersetzen" =
 Bewertungs-Option S2, natives Wrapper-Tool `codegraphExplore` mit echter Übersetzung + Disclosure
 — nur bei nachgewiesenem Praxis-Problem.)*
+
+### R-CG-12 — Chat-Signal: Zustand über das ContextItem ✅ done (2026-10-18, Paul; Plugin-Suite 380/0)
+
+GIVEN Codegraph wechselt den Zustand (verbunden / nicht vorhanden / Fehler)
+WHEN der nächste Turn-Kontext gebaut wird
+THEN erscheint genau **eine** `📋 Loading Codegraph <state> — <Projekt>`-Zeile im Chat, abgeleitet
+     aus `label()` über den bestehenden `renderTurnContext`-Pfad.
+
+Begründung (Paul, 2026-10-18): das Signal darf **kein neues Paradigma** sein — der Item-Weg liefert
+es gratis, macht gleichzeitig sichtbar, dass/was eingefügt wurde, und überlebt den Compact. Ein
+separater Emit-Pfad in der View wäre eine zweite Wahrheit neben dem Kontext.
 
 ### R-CG-8 — Header-Icon ✅
 

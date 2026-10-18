@@ -229,36 +229,6 @@ public class CodegraphConnectionServiceTest {
         assertEquals(Optional.of("CG-INST"), service.instructions());
     }
 
-    /** R-CG-7: GIVEN connected WHEN projectInfoLine THEN it names project, disk path,
-     *  codegraph_explore and the disk→Eclipse path mapping; OFF/ERROR return "". */
-    @Test
-    public void givenConnected_whenProjectInfoLine_thenContainsProjectAndPathMapping() {
-        // WHEN connected
-        service.apply();
-
-        // THEN
-        var line = service.projectInfoLine();
-        assertTrue("line must name the project: " + line, line.contains("projA"));
-        assertTrue("line must carry the disk path: " + line, line.contains(dirA.toString()));
-        assertTrue("line must hint the tool: " + line, line.contains("codegraph_explore"));
-        assertTrue("line must show the Eclipse path mapping: " + line, line.contains("/projA"));
-
-        // AND: OFF → empty
-        probe = new FakeProbe(Optional.of(binary), false);
-        service = new CodegraphConnectionService(projectRef::get, List.of(shared, po), probe);
-        service.apply();
-        assertEquals("", service.projectInfoLine());
-
-        // AND: ERROR → empty
-        probe = new FakeProbe(Optional.of(binary), true);
-        shared = new RecordingToolService();
-        shared.failConnect = true;
-        po = new RecordingToolService();
-        service = new CodegraphConnectionService(projectRef::get, List.of(shared, po), probe);
-        service.apply();
-        assertEquals("", service.projectInfoLine());
-    }
-
     /** R-CG-8: GIVEN each state kind WHEN tooltip THEN the user-readable text matches. */
     @Test
     public void givenEachStateKind_whenTooltip_thenExpectedText() {

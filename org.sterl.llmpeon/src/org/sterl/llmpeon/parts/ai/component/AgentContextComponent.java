@@ -3,7 +3,6 @@ package org.sterl.llmpeon.parts.ai.component;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Optional;
 import java.util.function.Supplier;
 
 import org.eclipse.core.resources.IFile;
@@ -18,6 +17,7 @@ import org.sterl.llmpeon.context.EclipseFileContextItem;
 import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.context.StaticContextItem;
 import org.sterl.llmpeon.context.UserContext;
+import org.sterl.llmpeon.parts.ai.CodegraphContextItem;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.IoUtils;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
@@ -45,7 +45,7 @@ public class AgentContextComponent {
     private final Supplier<AiAgent> activeAgent;
     private final Supplier<LlmConfig> config;
     private final Supplier<List<AiAgent>> agents;
-    private final Supplier<Optional<String>> codegraphInstructions;
+    private final CodegraphContextItem codegraph;
 
     /** Last saved plan file (workspace-relative reference, not disk — avoids stale project refs). */
     private IFile plan;
@@ -61,7 +61,7 @@ public class AgentContextComponent {
             Supplier<AiAgent> activeAgent,
             Supplier<LlmConfig> config,
             Supplier<List<AiAgent>> agents,
-            Supplier<Optional<String>> codegraphInstructions) {
+            CodegraphContextItem codegraph) {
         this.projectRef = projectRef;
         this.workspaceMemoryTool = workspaceMemoryTool;
         this.userContext = userContext;
@@ -70,7 +70,7 @@ public class AgentContextComponent {
         this.activeAgent = activeAgent;
         this.config = config;
         this.agents = agents;
-        this.codegraphInstructions = codegraphInstructions;
+        this.codegraph = codegraph;
     }
 
     /**
@@ -144,31 +144,12 @@ public class AgentContextComponent {
         }
         result.addAll(userContext.get());
 
-        // R-CG-7: Codegraph server instructions — non-scaffold agents only (the scaffold has its
-        // own registry without MCP and never receives the item).
+        // R-CG-7 / R-CG-12: the codegraph context item — non-scaffold agents only (the scaffold
+        // has its own registry without MCP and never receives the item).
         if (!(agent instanceof AiScaffoldAgent)) {
-            result.add(codegraphInstructionsItem());
+            result.add(codegraph);
         }
         return result;
-    }
-
-    /** Codegraph instructions item (R-CG-7) — dedup by content: unchanged instructions are not re-injected. */
-    private ContextItem codegraphInstructionsItem() {
-        var supplier = codegraphInstructions;
-        return new ContextItem() {
-            @Override
-            public String label() {
-                return "Codegraph instructions";
-            }
-            @Override
-            public String dedupKey() {
-                return null; // dedup by rendered content (Workspace-Memory pattern)
-            }
-            @Override
-            public String render() {
-                return supplier.get().orElse(null); // null → silently skipped (ContextItem contract)
-            }
-        };
     }
 
     private void appendScaffoldContext(LinkedList<ContextItem> result) {

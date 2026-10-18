@@ -254,10 +254,12 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   MCP-Menge des ToolService des jeweiligen Slot-Agenten × CSV-Filter; Codegraph ist nur auf
   shared + po verbunden. Offen: **welcher Agent/Slot** in Pauls UI, und ob die Soll-Aussage aus
   R-CG-6 („explizite CSV braucht ein `codegraph`-Token") dort überhaupt wählbar ist.
-- ❓ **Kein Chat-Feedback bei Connect/Disconnect** (Pauls Wunsch: onTool-Message). IST endet am
-  Header-Icon (`AIChatView.java:138-140` → `HeaderBarWidget.setCodegraphState:123-127`); im
-  State-Pfad liegt kein Monitor im Scope → neue Emit-Strecke nötig. SOLL (Text, Zeitpunkt, auch bei
-  Disconnect/Projektwechsel?) noch nicht geschrieben — Entscheidung: Paul.
+- 🔒 **Chat-Feedback bei Connect/Disconnect — gelöst über das ContextItem (2026-10-18):** kein neuer
+  Emit-Pfad; `CodegraphContextItem.label()` (= `Codegraph connected|off|failed — <Projekt>`) fährt
+  den bestehenden `📋 Loading …`-Pfad (`AbstractAgent.renderTurnContext`). Siehe R-CG-7/R-CG-12.
+  Nebenbefund: die alte `UserContext.codegraphLine` + `CodegraphConnectionService.projectInfoLine()`
+  waren der zweite, verstreute Pfad — ersatzlos entfallen; die Tests dazu sind durch
+  `CodegraphContextItemTest` + das Wiring in `AgentContextComponentTest:153/:200` abgelöst.
 - 🔒 **Protokoll-Fallback ist kein Bug:** `Server does not support modern protocol, falling back to
   legacy initialize` + `protocolVersion 2024-11-05` = normaler Auto-Detect-Pfad
   ([ADR-0045](adr/0045-mcp-protocol-version-auto-detect.md), `DefaultMcpClient.java:291`,

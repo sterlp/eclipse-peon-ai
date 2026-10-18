@@ -3,7 +3,6 @@ package org.sterl.llmpeon.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
@@ -16,6 +15,9 @@ import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.command.CommandService;
 import org.sterl.llmpeon.context.ContextItem;
+import org.sterl.llmpeon.parts.ai.CodegraphConnectionService.Kind;
+import org.sterl.llmpeon.parts.ai.CodegraphConnectionService.State;
+import org.sterl.llmpeon.parts.ai.CodegraphContextItem;
 import org.sterl.llmpeon.parts.ai.component.AgentContextComponent;
 import org.sterl.llmpeon.parts.ai.component.SharedToolsComponent;
 import org.sterl.llmpeon.parts.tools.PlanTool;
@@ -60,7 +62,7 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
 
         sut = new AgentContextComponent(() -> project, wmt, userContext, scaffold,
                 sharedTools.toolService(), () -> activeAgent,
-                ccm::getConfig, List::of, () -> Optional.empty());
+                ccm::getConfig, List::of, offItem());
     }
 
     /** GIVEN a set handoff line WHEN turnContext() twice THEN first call contains it, second does not. */
@@ -117,7 +119,7 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
         var sutWithAgents = new AgentContextComponent(() -> project, wmt,
                 new org.sterl.llmpeon.context.UserContext(), null, null,
                 () -> activeAgent, () -> LlmConfig.builder().model("t").url("http://x").build(),
-                () -> List.of(capturingAgent), () -> Optional.empty());
+                () -> List.of(capturingAgent), offItem());
 
         // WHEN
         sutWithAgents.initStaticContext();
@@ -143,64 +145,74 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
         assertFalse(rendered.stream().anyMatch(t -> t.contains("workspace-memory")));
     }
 
-    /** R-CG-7: GIVEN a connected codegraph (supplier delivers the server instructions)
-     *  WHEN turnContext() THEN the item is present, renders the text verbatim, carries the
-     *  label and dedups by content (no dedup key). */
+    /** R-CG-7: GIVEN a connected codegraph WHEN turnContext() THEN the item is present for a
+     *  non-scaffold agent, renders the instructions, and carries a non-null label (R-CG-12)
+     *  and a non-null dedupKey (state-change dedup). */
     // R-CG-7
     @Test
-    public void test_turnContext_codegraphInstructionsItem_presentWithText() {
+    public void test_turnContext_codegraphItem_presentWhenConnected() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
 
-        // GIVEN a component whose codegraph instructions supplier delivers server text
-        var sutWithInstructions = new AgentContextComponent(() -> project, wmt,
+        // GIVEN a component whose codegraph item is CONNECTED with server instructions
+        var connectedItem = new CodegraphContextItem(
+                () -> new State(Kind.CONNECTED, project, null), () -> Optional.of("CG-SERVER-DOCS"));
+        var sutConnected = new AgentContextComponent(() -> project, wmt,
                 new org.sterl.llmpeon.context.UserContext(), null, null,
                 () -> activeAgent, () -> LlmConfig.builder().model("t").url("http://x").build(),
-                List::of, () -> Optional.of("CG-SERVER-DOCS"));
+                List::of, connectedItem);
 
         // WHEN
-        var items = sutWithInstructions.turnContext();
+        var items = sutConnected.turnContext();
 
-        // THEN the item exists, renders the text verbatim and carries the label
-        var cgItem = items.stream()
-                .filter(i -> "Codegraph instructions".equals(i.label())).findFirst();
-        assertTrue("codegraph instructions item expected", cgItem.isPresent());
-        assertEquals("CG-SERVER-DOCS", cgItem.get().render());
-        assertNull("dedup by content: no dedup key", cgItem.get().dedupKey());
+        // THEN the item is present, renders the instructions, and carries label + dedupKey
+        var cgItem = items.stream().filter(i -> i instanceof CodegraphContextItem).findFirst();
+        assertTrue("codegraph item expected", cgItem.isPresent());
+        assertTrue("renders the instructions: " + cgItem.get().render(),
+                cgItem.get().render().contains("CG-SERVER-DOCS"));
+        assertNotNull("label drives the R-CG-12 chat signal", cgItem.get().label());
+        assertNotNull("state-change dedup needs a key", cgItem.get().dedupKey());
     }
 
-    /** R-CG-7: GIVEN codegraph not connected (empty supplier) WHEN turnContext()
-     *  THEN no visible codegraph instructions item (null render = silently skipped). */
+    /** R-CG-7 (SOLL 2026-10-18): GIVEN codegraph OFF WHEN turnContext() THEN the item renders a
+     *  short one-line state message (the "no line when not connected" behaviour is gone — the
+     *  state is visible via the item, R-CG-12). */
     // R-CG-7
     @Test
-    public void test_turnContext_codegraphInstructionsItem_absentWhenSupplierEmpty() {
+    public void test_turnContext_codegraphItem_offRendersShortLine() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
 
-        // GIVEN the setup component (empty codegraph instructions supplier)
+        // GIVEN the setup component (OFF codegraph item, no project)
         // WHEN
         var items = sut.turnContext();
 
-        // THEN no item with the codegraph label has a renderable text
-        assertFalse(items.stream().anyMatch(i -> "Codegraph instructions".equals(i.label())
-                && i.render() != null));
+        // THEN the codegraph item is present and renders a short (one-line) state message
+        var cgItem = items.stream().filter(i -> i instanceof CodegraphContextItem).findFirst();
+        assertTrue("codegraph item expected even when OFF", cgItem.isPresent());
+        var render = cgItem.get().render();
+        assertNotNull("OFF renders a state line", render);
+        assertFalse("OFF is one short line: " + render, render.contains(System.lineSeparator()));
     }
 
     /** R-CG-7: GIVEN the scaffold agent WHEN turnContext() THEN the scaffold never
-     *  receives the codegraph instructions item (own registry without MCP). */
+     *  receives the codegraph item (own registry without MCP). */
     // R-CG-7
     @Test
-    public void test_turnContext_scaffoldAgent_neverGetsCodegraphInstructionsItem() {
+    public void test_turnContext_scaffoldAgent_neverGetsCodegraphItem() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
 
-        // GIVEN a component whose ACTIVE agent is the scaffold (non-empty supplier)
+        // GIVEN a component whose ACTIVE agent is the scaffold (a CONNECTED item would be present
+        // for a non-scaffold agent)
         var scaffoldSut = new AgentContextComponent(() -> project, wmt, userContext, scaffold,
                 sharedTools.toolService(), () -> scaffold, ccm::getConfig, List::of,
-                () -> Optional.of("CG-SERVER-DOCS"));
+                new CodegraphContextItem(
+                        () -> new State(Kind.CONNECTED, project, null), () -> Optional.of("CG-SERVER-DOCS")));
 
         // WHEN
         var items = scaffoldSut.turnContext();
 
         // THEN no codegraph item at all (the scaffold branch skips it)
-        assertFalse(items.stream().anyMatch(i -> "Codegraph instructions".equals(i.label())));
+        assertFalse("scaffold must not get the codegraph item",
+                items.stream().anyMatch(i -> i instanceof CodegraphContextItem));
     }
 
     private List<String> renderAll(List<ContextItem> items) {
@@ -210,6 +222,12 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
                     return r == null ? "" : i.dedupKey() == null ? r : i.dedupKey() + "\n" + r;
                 })
                 .toList();
+    }
+
+    /** An OFF codegraph item with no project — the default for tests that don't exercise codegraph. */
+    private static CodegraphContextItem offItem() {
+        return new CodegraphContextItem(
+                () -> new State(Kind.OFF, null, "no active project"), () -> Optional.empty());
     }
 
     @Override
