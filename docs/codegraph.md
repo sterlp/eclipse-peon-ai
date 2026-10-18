@@ -123,7 +123,7 @@ THEN ist das Toolset die Codegraph-Default-Liste (nur `codegraph_explore`); die 
      Codegraph-Tools bleiben deaktiviert. Die Sichteauswahl folgt dem bestehenden `ToolPolicy`
      (Default-Agenten: automatisch sichtbar; explizite Tools-CSV braucht ein `codegraph`-Token).
 
-### R-CG-7 — Projekt-Info als ContextItem (Pfade + Nutzung + Zustand) ✅ done (2026-10-18)
+### R-CG-7 — Projekt-Info als ContextItem (Pfade + Zustand) ✅ done (2026-10-18)
 
 Ein `ContextItem` (`CodegraphContextItem`, Muster [EclipseFileContextItem](../../org.sterl.llmpeon/src/org/sterl/llmpeon/context/EclipseFileContextItem.java))
 trägt den kompletten Codegraph-Kontext — **nicht** ein Supplier + anonymes Lambda im
@@ -132,10 +132,14 @@ trägt den kompletten Codegraph-Kontext — **nicht** ein Supplier + anonymes La
 GIVEN Codegraph ist verbunden
 WHEN der Turn-Kontext gebaut wird
 THEN enthält das Item: (a) Hinweis, dass `codegraph_explore` absolute **Disk-Pfade** liefert und für
-     eclipse*-Tools `<diskPath>` → `/Projektname` zu ersetzen ist (Pfade außerhalb des Projekts
-     werden **nicht** übersetzt — dort disk*-Tools mit Originalpfad); (b) Hinweis auf
-     `codegraph_explore` inkl. kurzer Nutzungsinfo (ein Aufruf statt Such-Loop, verbatim source);
-     (c) die serverseitigen Initialize-Instructions zusätzlich (`McpClient.instructions()`).
+     eclipse*-Tools `<diskPath>` → `<workspacePath>` zu ersetzen ist — `<workspacePath>` ist der
+     **echte Workspace-FullPath** des Projekts (`JdtUtil.pathOf`, z. B. `/peon-ai`), **nicht**
+     `"/" + project.getName()` (nested projects; 2026-10-18, Paul). Pfade außerhalb des Projekts
+     werden **nicht** übersetzt — dort disk*-Tools mit Originalpfad; (b) **keinen** eigenen
+     Nutzungshinweis — die MCP-Tool-Description plus die Initialize-Instructions (c) beschreiben
+     Syntax und Vorgehen bereits, ein Peon-Satz wäre ein Duplikat (2026-10-18, Paul; der frühere
+     „ein Aufruf statt Such-Loop"-Satz entfällt); (c) die serverseitigen Initialize-Instructions
+     (`McpClient.instructions()`).
 
 GIVEN Codegraph ist aus (kein Index/Binary) oder der Connect ist fehlgeschlagen
 WHEN der Turn-Kontext gebaut wird

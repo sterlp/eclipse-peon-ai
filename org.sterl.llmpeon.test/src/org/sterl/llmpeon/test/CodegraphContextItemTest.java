@@ -20,8 +20,8 @@ import org.sterl.llmpeon.parts.ai.CodegraphContextItem;
 /**
  * R-CG-7 / R-CG-12: the {@link CodegraphContextItem} — {@code label()} (the chat signal, non-null
  * for all three states), {@code dedupKey()} (unchanged state dedups, any change re-injects once)
- * and {@code render()} (CONNECTED = path mapping + usage hint + instructions; OFF/ERROR = one
- * short line). Pure unit test: a stub {@link IProject} supplies the name + disk path.
+ * and {@code render()} (CONNECTED = path mapping + instructions; OFF/ERROR = one short line).
+ * Pure unit test: a stub {@link IProject} supplies the name, disk path and nested workspace path.
  */
 public class CodegraphContextItemTest {
 
@@ -64,13 +64,28 @@ public class CodegraphContextItemTest {
 
     // R-CG-7
     @Test
-    public void renderConnected_hasPathMappingUsageHintAndInstructions() {
+    public void renderConnected_hasPathMappingAndInstructions() {
         var render = item(state(Kind.CONNECTED), Optional.of("CG-SERVER-DOCS")).render();
         assertNotNull(render);
         assertTrue("disk path: " + render, render.contains(DISK));
-        assertTrue("eclipse path mapping: " + render, render.contains("/cg-proj"));
-        assertTrue("usage hint: " + render, render.contains("codegraph_explore"));
+        assertTrue("real workspace path (nested project, not the name): " + render,
+                render.contains("/peon-ai/cg-proj"));
+        assertTrue("mapping names the tool: " + render, render.contains("codegraph_explore"));
         assertTrue("instructions verbatim: " + render, render.contains("CG-SERVER-DOCS"));
+    }
+
+    // R-CG-7
+    @Test
+    public void renderConnected_withoutProjectOrInstructions_fallsBackToOneLine() {
+        // GIVEN CONNECTED with no project (disk/ws null) and no server instructions
+        var render = new CodegraphContextItem(
+                () -> new State(Kind.CONNECTED, null, null), () -> Optional.empty()).render();
+
+        // THEN the fallback line is present (CONNECTED never renders empty text)
+        assertNotNull(render);
+        assertTrue("fallback line: " + render,
+                render.contains("codegraph_explore returns absolute disk paths; the eclipse*-tools use workspace paths."));
+        assertFalse("one line: " + render, render.contains(System.lineSeparator()));
     }
 
     // R-CG-7
@@ -102,7 +117,8 @@ public class CodegraphContextItemTest {
         return new State(kind, project("cg-proj", DISK), kind == Kind.ERROR ? "boom" : null);
     }
 
-    /** Minimal IProject stub — only name + location are exercised (label, diskPathOf). */
+    /** Minimal IProject stub — name, location and full path are exercised (label, diskPathOf, pathOf).
+     *  The full path is deliberately NESTED (≠ the name) so a regression to "/"+name is caught. */
     private static IProject project(String name, String disk) {
         return (IProject) Proxy.newProxyInstance(
                 IProject.class.getClassLoader(),
@@ -111,7 +127,7 @@ public class CodegraphContextItemTest {
                     case "getName" -> name;
                     case "getRawLocation" -> IPath.fromOSString(disk);
                     case "getLocation" -> IPath.fromOSString(disk);
-                    case "getFullPath" -> IPath.fromOSString("/" + name);
+                    case "getFullPath" -> IPath.fromOSString("/peon-ai/" + name);
                     case "toString" -> "IProject:" + name;
                     case "hashCode" -> System.identityHashCode(proxy);
                     case "equals" -> proxy == args[0];

@@ -8,7 +8,7 @@ import org.sterl.llmpeon.parts.shared.JdtUtil;
 
 /**
  * The Codegraph turn-context item (R-CG-7 / R-CG-12): one item carries the whole codegraph
- * context — project info + usage hint + server instructions when CONNECTED, a short state line
+ * context — project info + server instructions when CONNECTED, a short state line
  * when OFF/ERROR. The {@link #label()} is the chat signal (R-CG-12) via the existing
  * {@code renderTurnContext} path; the {@link #dedupKey()} keeps every state change to a single
  * injection.
@@ -64,7 +64,7 @@ public class CodegraphContextItem implements ContextItem {
     }
 
     /**
-     * R-CG-7: CONNECTED → project info (disk-path mapping) + usage hint + instructions;
+     * R-CG-7: CONNECTED → project info (disk-path mapping) + instructions;
      * OFF/ERROR → one short state line. {@code null} only when there is no state at all.
      */
     @Override
@@ -78,23 +78,22 @@ public class CodegraphContextItem implements ContextItem {
         };
     }
 
-    /** (a) disk→Eclipse path mapping, (b) one-call usage hint, (c) server instructions. */
+    /** (a) disk→Eclipse path mapping, (b) server instructions. */
     private String renderConnected(CodegraphConnectionService.State s) {
         var project = s.project();
-        var name = project == null ? "" : project.getName();
         var disk = project == null ? null : JdtUtil.diskPathOf(project);
+        var ws = project == null ? null : JdtUtil.pathOf(project);
         var sep = System.lineSeparator();
         var sb = new StringBuilder();
-        if (disk != null) {
+        if (disk != null && ws != null) {
             sb.append("codegraph_explore returns absolute disk paths under ").append(disk)
-              .append("; the eclipse*-tools use /").append(name)
-              .append(" paths — map <").append(disk).append("/...> to /").append(name).append("/...")
+              .append("; the eclipse*-tools use ").append(ws)
+              .append(" paths — map <").append(disk).append("/...> to ").append(ws).append("/...")
               .append(" (paths outside the project are not translated — use the disk*-tools with the original path there).");
         }
-        sb.append(disk != null ? sep : "")
-          .append("Prefer codegraph_explore: one call returns verbatim source — use it instead of a search loop.");
         var instr = instructions.get().orElse(null);
-        if (instr != null && !instr.isBlank()) sb.append(sep).append(instr);
+        if (instr != null && !instr.isBlank()) sb.append(sb.isEmpty() ? "" : sep).append(instr);
+        if (sb.isEmpty()) sb.append("codegraph_explore returns absolute disk paths; the eclipse*-tools use workspace paths.");
         return sb.toString();
     }
 
