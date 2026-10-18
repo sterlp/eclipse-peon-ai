@@ -571,6 +571,31 @@ class AbstractAgentTest {
         assertThat(streamMock.getCallCount()).isEqualTo(1);
     }
 
+    /**
+     * Rule 8 override: injectUserMessage writes directly into the memory (the running turn
+     * picks it up on its next model call) — the queue is never touched.
+     */
+    @Test
+    void test_injectUserMessage_appendsUserMessage_notQueued() {
+        // GIVEN — a fresh agent, no call in flight
+        var config = LlmConfig.builder().model("mock").build();
+        var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("OK")).build());
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+
+        // WHEN — direct injection, as the !-override performs while the agent works
+        agent.injectUserMessage("bitte abbrechen");
+
+        // THEN — the memory ends with the exact user message …
+        var memory = agent.getMemory().getCopy();
+        assertThat(memory).hasSize(1);
+        assertThat(memory.get(0)).isInstanceOf(UserMessage.class);
+        assertThat(extractUserTexts(memory)).containsExactly("bitte abbrechen");
+        // AND — … and nothing was routed through the queue
+        assertThat(agent.getQueuedMessageCount()).isZero();
+    }
+
+
 
     /** call() rebuilds systemMessage after compact cleared it. */
     @Test

@@ -204,6 +204,15 @@ public abstract class AbstractAgent implements AiAgent {
         return messageQueue.add(msg);
     }
 
+    /**
+     * Rule 8 override: direct memory write — the same path {@link #handleAbortAndDrain} uses,
+     * so the running turn sees the message on its next model call. The queue is never touched.
+     */
+    @Override
+    public void injectUserMessage(String text) {
+        memory.add(UserMessage.from(text));
+    }
+
     /** Test seam: swap the queue (fixed {@code Clock} for Rule 9 Queued-At tests). Package-private. */
     void setMessageQueue(UserMessageQueue queue) { this.messageQueue = queue; }
 
