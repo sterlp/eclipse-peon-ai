@@ -4,9 +4,13 @@ idPrefix: CT
 
 # Compact-Lock — User-getriggerter Compact verhält sich wie ein Turn
 
-> **Status:** ❌ specified (2026-09-22, Paul) — gebaut wird **nur der Lock + Follow-up-Trigger**
-> (Paul: „Bauen tun wir aber nur den fix also den ‚lock' für compact"). Anzeige bleibt auf
-> `working`. Verwandt: [chat-job-lifecycle.md](chat-job-lifecycle.md) (Backlog-Race, hier behoben),
+> **Status:** ✅ gebaut (2026-09-22, gemerged auf main) — Scope wie entschieden: **nur der Lock +
+> Follow-up-Trigger** (Paul: „Bauen tun wir aber nur den fix also den ‚lock' für compact"), Anzeige
+> bleibt auf `working`. Commits `18ae8ebee` (CAS) · `f059c683f` (Queue-Payload) · `d6b11b518`
+> (Follow-up-Trigger) · `7e6afc528` (Tests); [ADR-0052](adr/0052-compact-uses-working-flag.md).
+> **Verifikation 2026-10-18:** R-CT-1…4 und UC-CT-1/2/4 sind automatisiert (Core-Surefire 1190/0,
+> Marker in `AbstractAgentTest`); UC-CT-3/5/6 sind **manueller Smoke — offen (Paul)**.
+> Verwandt: [chat-job-lifecycle.md](chat-job-lifecycle.md) (Backlog-Race, hier behoben),
 > [queued-user-messages.md](queued-user-messages.md), [agenten-status-im-header.md](agenten-status-im-header.md).
 
 ## Ziel
@@ -28,7 +32,7 @@ gleichzeitig `memory.clear()` macht.
 
 ## Regeln
 
-### R-CT-1 — Compact belegt das `working`-Flag (CAS-bedingt) ❌
+### R-CT-1 — Compact belegt das `working`-Flag (CAS-bedingt) ✅
 
 `AbstractAgent.compact()` holt das `working`-Flag per CAS **nur, wenn es frei ist** (User-Compact-Pfad)
 und gibt es im `finally` nur zurück, wenn **es** es geholt hat. Der In-Loop-Compact (innerhalb von
@@ -45,15 +49,18 @@ State-Maschine.
 > [ADR-0017](adr/0017-atomic-ui-chaining.md)/[0018](adr/0018-abort-path-parity.md)) existiert und ist
 > getestet — ein Future würde sie doppelt bauen.
 
-#### UC-CT-1 — userCompactHoldsWorkingFlag ❌
+#### UC-CT-1 — userCompactHoldsWorkingFlag ✅
 - GIVEN idle Agent WHEN User-Compact läuft THEN `isWorking()` ist `true` während des Compacts und
   `false` danach — **auch bei fehlgeschlagenem Compact** (Release im `finally`).
+- *(Automatisiert: `AbstractAgentTest.compactHoldsWorkingFlagDuringCompressorCall` +
+  `compactFailedReleasesWorkingFlag`.)*
 
-#### UC-CT-2 — compactDoesNotStealWorkingFromCall ❌
+#### UC-CT-2 — compactDoesNotStealWorkingFromCall ✅
 - GIVEN `call()` hält `working` (In-Loop-Compact / Auto-Compact) WHEN `compact()` läuft THEN es
   akquiriert **nicht** und released **nicht** — das Flag gehört dem Turn bis zu dessen Ende.
+- *(Automatisiert: `AbstractAgentTest.inLoopCompactDoesNotReleaseTurnsWorkingFlag`.)*
 
-### R-CT-2 — Eingabe während Compact wird gequeued, nicht parallel verarbeitet ❌
+### R-CT-2 — Eingabe während Compact wird gequeued, nicht parallel verarbeitet ✅
 
 Send während des User-Compacts des aktiven Agenten: Nachricht in die `UserMessageQueue` (bestehender
 `Skip`-Pfad in `resolveOutgoingMessage` greift, weil `isWorking()` jetzt `true` ist), Ack-Message
@@ -61,11 +68,11 @@ Send während des User-Compacts des aktiven Agenten: Nachricht in die `UserMessa
 LLM, bis der Compact endet. (Die Anzeige im Chat bleibt unverändert — der User sieht den
 Compact-Stream.)
 
-#### UC-CT-3 — sendDuringCompactQueuesNoParallelTurn ❌
+#### UC-CT-3 — sendDuringCompactQueuesNoParallelTurn ❌ (manueller Smoke offen, Paul)
 - GIVEN aktiver Agent kompaktiert (User-Compact) WHEN User sendet THEN Nachricht landet in der
   Queue mit Ack, kein paralleler `call()` — verifizierbar am Roster/Job (kein zweiter Turn-Job).
 
-### R-CT-3 — Follow-up-Turn nach dem Compact — auch bei Fehler ❌
+### R-CT-3 — Follow-up-Turn nach dem Compact — auch bei Fehler ✅
 
 Endet ein User-Compact-Job (Erfolg **oder** Fehler) und hat der kompaktierte (aktive) Agent
 gequekte Nachrichten, startet das UI einen **Follow-up-Turn**, der die Queue FIFO verarbeitet (der
@@ -79,15 +86,17 @@ Drain-on-Abort-Semantik greift hier nicht.
 > „wieder aufwachen". Der Trigger ist die einzige neue Stelle; alles andere (FIFO, Ack, Drain)
 > existiert getestet.
 
-#### UC-CT-4 — queuedMessageProcessedAfterCompact ❌
+#### UC-CT-4 — queuedMessageProcessedAfterCompact ✅
 - GIVEN Nachricht während User-Compact gequeued WHEN Compact endet THEN Follow-up-Turn verarbeitet
   sie (FIFO, eine nach der anderen, `[Queued Message]`-Markierung).
+- *(Automatisiert: `AbstractAgentTest.callNullInitialWithQueuedProcessesQueueAsPayload` — Queue als
+  Payload + Marker; der UI-Trigger selbst ist Plugin-Code und nicht headless testbar.)*
 
-#### UC-CT-5 — failedCompactStillProcessesQueue ❌
+#### UC-CT-5 — failedCompactStillProcessesQueue ❌ (manueller Smoke offen, Paul)
 - GIVEN gequekte Nachricht und User-Compact schlägt fehl WHEN der Job endet THEN die gequekte
   Nachricht wird trotzdem verarbeitet — kein Verlust, kein „N queued messages preserved"-Pfad.
 
-### R-CT-4 — Anzeige: `working` bleibt der Aktivitätsindikator ❌
+### R-CT-4 — Anzeige: `working` bleibt der Aktivitätsindikator ✅
 
 Der Roster zeigt den kompaktierenden Agenten über denselben `working`-Status wie einen arbeitenden
 Agenten (🟢, Blatt-Regel unverändert — ein kompaktierender Sklave lässt Da Boss nicht leuchten).
@@ -97,7 +106,17 @@ Agenten (🟢, Blatt-Regel unverändert — ein kompaktierender Sklave lässt Da
 > separater Compact-Indikator wäre ein Mini-Improvement, ist aber **bewusst nicht gebaut** —
 > aufgenommen in [open-points.md](open-points.md).
 
-#### UC-CT-6 — compactShowsAgentActiveInRoster ❌
+#### UC-CT-6 — compactShowsAgentActiveInRoster ❌ (manueller Smoke offen, Paul)
 - GIVEN User-Compact auf einem Team-Mitglied WHEN der Roster refresht THEN die Zeile dieses
   Agenten zeigt working (🟢) — kein separater Zustand, kein neuer UI-State. *(Manuelle Verifikation —
   Roster-Pull liest das live Flag; ein SWT-Test-Harness existiert nicht.)*
+
+## Belege (Verifikation 2026-10-18)
+
+| Ort | Was |
+|---|---|
+| `AbstractAgent.compact()` :358 / :399-401 | CAS-Akquise `working.compareAndSet(false, true)`, Release nur `if (acquired)` im `finally` |
+| `AbstractAgent.call()` :235 / :277 | zweiter Akquisiteur (Turn) + bedingungsloses Release im `finally` — genau 2 Schreib-, 2 Release-, 1 Lesezugriff im ganzen Repo |
+| `AiAgentStatusModel` :42 / :62-63 | Snapshot liest `agent.isWorking()` live; `compactEnabled = !working && !turnInFlight` |
+| `AIChatView` :637-660 | ein UI-Runnable: Unlock (`inFlightTurns` → `lockWhileWorking(false)`) **und** Follow-up-`submitAiJob` bei Queue > 0 |
+| `AbstractAgent.call()` :247-249 / :309-311 | Queue-Payload wird im null-initial-Pfad mit `QUEUED_MARKER_PREFIX` markiert (In-Loop-Drain identisch) |

@@ -39,7 +39,9 @@
   **async Agents** (Top-3 in [async-agents.md](async-agents.md), Mutable-`request`-Merge-Check-Item
   vor dem Bau).
 - **TempFileTool** — Slice 2 Output-Trim 🚧 in design.
-- **Compact-Lock** ❌ specified (baubar, Prio offen).
+- **Compact-Lock ✅ (Docs waren stale):** war seit 2026-09-22 gebaut und gemerged; 2026-10-18 am
+  IST verifiziert (R-CT-1…4 + UC-CT-1/2/4 automatisiert, Core 1190/0). **Offen: Paul-Smoke
+  UC-CT-3/5/6** (Queue im UI, Fehlerfall, Roster).
 - Bug-Backlog: Fehlerklassen-Tabelle R-CC-7/ApiRetry (❓), Header-State-Leak (❓, IST-Messung
   offen), Context-Overflow-Zyklus (❓ Auto-Compact, Pollution, Memory-Snapshot), McpService
   `connect()`-Rollback-Test (offen seit ADR-0069).
