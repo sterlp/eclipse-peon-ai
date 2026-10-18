@@ -29,7 +29,7 @@ public class ShellTool extends AbstractTool {
 
     @FunctionalInterface
     public interface ShellConfirmationProvider {
-        String confirm(String command, String workingDirectory);
+        String confirm(String command, String workDir);
     }
 
     private static final int DEFAULT_TIMEOUT_S = 60;
@@ -69,8 +69,8 @@ public class ShellTool extends AbstractTool {
     public String shellRunCommand(
             @P(description = "shell command", name = "command") 
             String command,
-            @P(description = "use disk path not eclipse workspace path", name = "workingDirectory", required = false) 
-            String workingDirectory,
+            @P(description = "disk path, default current project", name = "workDir", required = false) 
+            String workDir,
             @P(description = "timeout in seconds, default=" + DEFAULT_TIMEOUT_S, required = false, name = "timeout") 
             Integer timeout,
             @P(description = "total output budget in chars (head + tail excerpt), default=" + OutputTrim.DEFAULT_MAX_CHARS + "; 0 or negative = default; no hard cap — use this instead of `| tail -50`", required = false, name = "maxChars") 
@@ -80,10 +80,10 @@ public class ShellTool extends AbstractTool {
 
         ArgsUtil.requireNonBlank(command, "command");
         if (timeout == null) timeout = DEFAULT_TIMEOUT_S;
-        if (workingDirectory == null) {
+        Path defaultDir = defaultWorkingDir != null ? defaultWorkingDir.get() : null;
+        if (workDir == null) {
             // R3: default = supplier (active project) at call time; no supplier/no project = process CWD
-            Path defaultDir = defaultWorkingDir != null ? defaultWorkingDir.get() : null;
-            workingDirectory = (defaultDir != null ? defaultDir : Path.of(".")).toAbsolutePath().toString();
+            workDir = (defaultDir != null ? defaultDir : Path.of(".")).toAbsolutePath().toString();
         }
         // maxChars is a default, not a hard cap: null/<=0 falls back, larger values are allowed
         if (maxChars == null || maxChars <= 0) maxChars = OutputTrim.DEFAULT_MAX_CHARS;
@@ -92,7 +92,7 @@ public class ShellTool extends AbstractTool {
 
 
         if (confirmationProvider != null) {
-            String updatedCommand = confirmationProvider.confirm(command, workingDirectory);
+            String updatedCommand = confirmationProvider.confirm(command, workDir);
 
             if ("No".equalsIgnoreCase(updatedCommand)) {
                 return "Shell command execution denied!";
@@ -102,9 +102,10 @@ public class ShellTool extends AbstractTool {
             }
         }
 
-        Path effectiveDir = Path.of(workingDirectory).toAbsolutePath().normalize();
+        Path effectiveDir = Path.of(workDir).toAbsolutePath().normalize();
         if (!effectiveDir.toFile().isDirectory()) {
-            throw new IllegalArgumentException("workingDirectory is not a valid directory: " + workingDirectory);
+            throw new IllegalArgumentException("workDir is not a valid directory: " 
+                    + workDir + " - set default is/was: " + defaultDir);
         }
         // R3: disclose the effective (absolute + normalized) working dir — first line of every run result
         String cwdPrefix = "cwd=" + effectiveDir + System.lineSeparator();
