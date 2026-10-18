@@ -1,6 +1,8 @@
 package org.sterl.llmpeon.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -264,6 +266,37 @@ public class McpConnectionServiceTest {
         assertTrue("status: " + status.getMessage(), status.getMessage().contains("disconnected"));
     }
 
+    /** ADR-0069 (CONCERNS-1): GIVEN a user server whose connect() throws WHEN connectServers()
+     *  THEN nothing is adopted on either registry, the state is false, the status is an error,
+     *  and the owner never took ownership (a second disconnect() finds nothing to close — the
+     *  failed service was never assigned to liveService). */
+    @Test
+    public void givenConnectFails_whenConnectServers_thenNothingAdoptedStateFalseAndNoLiveService() {
+        // GIVEN: one server whose connect() throws, wired into two registries
+        var failing = server("ctx");
+        givenMcpConfig(List.of(failing), true);
+        var states = new ArrayList<Boolean>();
+        var shared = new RecordingToolService();
+        var po = new RecordingToolService();
+        var service = new SeamRecordingService(List.of(shared, po), states::add);
+        service.nextConnectFailure = new RuntimeException("boom");
+
+        // WHEN the synchronous connect seam runs
+        var status = service.connectServers();
+
+        // THEN: nothing was adopted on either registry
+        assertNull("shared registry must not adopt a failed service", shared.adopted.get(ToolService.USER_GROUP));
+        assertNull("po registry must not adopt a failed service", po.adopted.get(ToolService.USER_GROUP));
+        // AND: the state was reported false and the status is an error
+        assertEquals(List.of(false), states);
+        assertFalse("expected an error status, got: " + status.getMessage(), status.isOK());
+        // AND: the owner never took ownership of the failed service — a second disconnect()
+        // finds nothing to close (if liveService held it, this would bump disconnectCalls to 1)
+        var fake = service.createdFakes.get(0);
+        service.disconnect();
+        assertEquals("owner must not close a service it never assigned", 0, fake.disconnectCalls);
+    }
+
     private McpServerConfig server(String name) {
         return new McpServerConfig(name, McpServerConfig.McpTransportType.HTTP,
                 "https://" + name + ".example.com/mcp", "", "", "", "", "", "");
@@ -295,11 +328,12 @@ public class McpConnectionServiceTest {
     }
 
     /**
-     * ADR-0069 seam (tests 4–9): only the createMcpService factory is swapped for canned
+     * ADR-0069 seam (tests 4–10): only the createMcpService factory is swapped for canned
      * fakes — connectServers()/disconnect()/applyConfig() run the REAL flow.
      */
     private static class SeamRecordingService extends McpConnectionService {
         final List<FakeMcpService> createdFakes = new ArrayList<>();
+        RuntimeException nextConnectFailure;
 
         SeamRecordingService(List<ToolService> toolServices, java.util.function.Consumer<Boolean> onStateChange) {
             super(toolServices, onStateChange);
@@ -308,6 +342,7 @@ public class McpConnectionServiceTest {
         @Override
         public McpService createMcpService(List<McpServerConfig> servers) {
             var fake = new FakeMcpService(servers);
+            fake.failure = nextConnectFailure;
             createdFakes.add(fake);
             return fake;
         }
@@ -316,6 +351,7 @@ public class McpConnectionServiceTest {
     /** Canned McpService: no real transport, counts connect/disconnect, keeps the config. */
     private static class FakeMcpService extends McpService {
         final List<McpServerConfig> configured;
+        RuntimeException failure;
         int connectCalls;
         int disconnectCalls;
 
@@ -327,6 +363,7 @@ public class McpConnectionServiceTest {
         @Override
         public void connect() {
             connectCalls++;
+            if (failure != null) throw failure;
         }
 
         @Override
