@@ -146,20 +146,21 @@ THEN enthält das Item: (a) Hinweis, dass `codegraph_explore` absolute **Disk-Pf
 
 GIVEN Codegraph ist aus (kein Index/Binary) oder der Connect ist fehlgeschlagen
 WHEN der Turn-Kontext gebaut wird
-THEN rendert dasselbe Item **eine kurze Zustandszeile** („Codegraph not active for <Projekt> —
-     installieren + `codegraph init`" bzw. „Codegraph failed — <Grund>").
-     **SOLL-Änderung 2026-10-18 (Paul):** die frühere Aussage „keine Codegraph-Zeile" entfällt —
-     der Zustand ist nur über das Item sichtbar (R-CG-12), und der `dedupKey` hält die Blähung auf
-     **eine** Zeile je Zustandswechsel.
+THEN rendert dasselbe Item **nichts** (`null`) — kein Text, kein Chat-Label.
+     **SOLL 2026-10-18 (Paul, [tagged-results.md](tagged-results.md) R-TR-4):** still. Der Zustand
+     ist ausschließlich am **Header-Icon + Tooltip** sichtbar (R-CG-8); der Agent muss nicht wissen,
+     warum ein Tool fehlt. Der frühere Zustandszeilen-Ansatz (und damit auch „Zustand über das Item
+     sichtbar", R-CG-12) ist damit überholt.
 
-Item-Vertrag:
-- `label()` = `Codegraph <state> — <Projekt>` → automatisch `📋 Loading …` über den bestehenden
-  Pfad (`AbstractAgent.renderTurnContext`, `AbstractAgent.java:476-504`) — **keine** neue
-  Emit-Strecke, `AIChatView` bleibt unverändert.
-- `dedupKey()` = Zustand + Projektname (+ Hash der Instructions) → unveränderter Zustand wird
-  dedupliziert, jeder Wechsel genau **einmal** injiziert; nach einem Compact wird es wie jedes
-  Turn-Context-Item neu eingefügt.
-- `render()` = `null` nur, wenn wirklich nichts zu sagen ist (Item-Contract, `ContextItem.java:18-23`).
+Item-Vertrag (seit 2026-10-18, [tagged-results.md](tagged-results.md) R-TR-3/5):
+- `render()` liefert einen `TaggedResult`-Block (Head `codegraph: <Projekt> <instrMark>`) **nur** im
+  Zustand CONNECTED; OFF/ERROR → `null`. Die Instructions reisen im `State` (beim Connect captured) —
+  **ein** Supplier, keine zweite Quelle.
+- `label()` = `Codegraph <state> — <Projekt>`; das `📋 Loading …`-Signal feuert nur bei erfolgreicher
+  Injektion (also nur CONNECTED). Kein neues Emit-Paradigma, `AIChatView` unverändert.
+- `dedupKey()` = die **Start-Zeile** des Blocks (`PREFIX + head`, enthält den Instructions-Hash) →
+  unveränderter Zustand wird dedupliziert, jeder Wechsel genau **einmal** injiziert; nach einem
+  Compact wird es wie jedes Turn-Context-Item neu eingefügt.
 
 **KEIN** Tool-Output-Postprocessing (kein Umschreiben gelieferter Pfade — Tool-Honesty). Die
 Homepage-Aussage (eclipse*-Tools übersetzen keine Pfade) bleibt unverändert gültig; Disk→Workspace
@@ -169,10 +170,18 @@ Bewertungs-Option S2, natives Wrapper-Tool `codegraphExplore` mit echter Überse
 
 ### R-CG-12 — Chat-Signal: Zustand über das ContextItem ✅ done (2026-10-18, Paul; Plugin-Suite 380/0)
 
-GIVEN Codegraph wechselt den Zustand (verbunden / nicht vorhanden / Fehler)
+> **Präzisiert 2026-10-18 (R-TR-4):** Das Label hängt an der tatsächlichen Injektion — es feuert
+> damit nur im Zustand CONNECTED. OFF/ERROR bleiben still (Header-Icon + Tooltip, R-CG-8); ein
+> Label pro Turn ohne Injektion wäre Spam.
+
+GIVEN Codegraph wechselt in den Zustand CONNECTED
 WHEN der nächste Turn-Kontext gebaut wird
-THEN erscheint genau **eine** `📋 Loading Codegraph <state> — <Projekt>`-Zeile im Chat, abgeleitet
+THEN erscheint genau **eine** `📋 Loading Codegraph connected — <Projekt>`-Zeile im Chat, abgeleitet
      aus `label()` über den bestehenden `renderTurnContext`-Pfad.
+
+GIVEN Codegraph ist OFF oder der Connect schlug fehl
+WHEN der nächste Turn-Kontext gebaut wird
+THEN erscheint **keine** Chat-Zeile (nichts wird injiziert).
 
 Begründung (Paul, 2026-10-18): das Signal darf **kein neues Paradigma** sein — der Item-Weg liefert
 es gratis, macht gleichzeitig sichtbar, dass/was eingefügt wurde, und überlebt den Compact. Ein

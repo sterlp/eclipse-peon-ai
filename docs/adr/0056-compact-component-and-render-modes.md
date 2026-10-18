@@ -1,6 +1,13 @@
 # 0056: Compact als eigene core-Komponente + Render-Modi in ChatMessageUtil
 
-**Status:** Accepted · **Datum:** 2026-09-24 · **Zyklus:** Compact-Redesign (docs/compact.md)
+**Status:** Partially superseded (Decision 2 „Render-Modi als Options-Record") · **Datum:** 2026-09-24 · **Zyklus:** Compact-Redesign (docs/compact.md)
+
+> **Superseded-Teil (2026-10-18):** Decision 2 („Render-Modi in `ChatMessageUtil` als Options-Record")
+> ist gefallen — [Tagged Results](../tagged-results.md) R-TR-8 hat **jedes Cap aus dem Renderer**
+> entfernt: `ChatMessageUtil.toString(msg, RenderOptions)` und `RenderOptions` sind gelöscht, es gibt
+> genau einen Renderpfad (`toString(msg)` = `extractMessages` + Join), und das Kürzen passiert
+> ausschließlich im Compact (`ContextTrimComponent`). Decisions 1, 3, 4 und alle Consequences gelten
+> unverändert.
 
 ## Context
 

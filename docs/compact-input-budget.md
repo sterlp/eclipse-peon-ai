@@ -113,8 +113,14 @@ nicht (es passt ja). Der statische 4000er-Blanko-Cap fällt weg.
 Wurde gekürzt: der Compact-Input endet mit **`session truncated`** plus **einer Zeile** mit den
 angewandten Caps („thinking capped 9000 (front), tool results 6000, per-message cap N,
 duplicates collapsed M") — einmal am Input-Ende, **nicht** in jeder gekappten Message (User-
-korrektur des heutigen IST). Nicht gekürzt → kein Hinweis. `compressor.md`-Prompt wird
-erweitert, damit das Modell die Disclosure-Zeile versteht.
+korrektur des heutigen IST). Ohne Kürzung **und** ohne gefilterte Blöcke → kein Hinweis.
+`compressor.md`-Prompt erklärt die Zeile.
+
+**Eigene Zeile, budgetunabhängig (2026-10-18, R-TR-9):** `context blocks dropped: K` steht als
+**eigene Zeile nach** der Cap-Zeile, sobald K > 0 — auch bei `budget <= 0` und unter Budget. Ein
+Drop ist ein **Filter**, keine Kürzung: was nicht im Input steht, muss genannt werden, sonst ist es
+ein hidden filter. Die Zeile geht in die `perMessageCap`-Mathe ein (sie ist Teil der Disclosure,
+gegen die der Endstufen-Cap gerechnet wird).
 
 ### R-CIB-6 — Compact-Logging: Log + Agent ✅ done
 
@@ -134,20 +140,25 @@ erweitert, damit das Modell die Disclosure-Zeile versteht.
 ```
 GIVEN History unter Budget (estimate ≤ autoCompactAfter)
 WHEN der Compressor baut seinen Input
-THEN keine Message wird gekürzt oder gestrichen
-AND der Input enthält alle Messages vollständig inkl. Thinking
-AND kein "session truncated"-Hinweis
+THEN keine Message wird gekürzt
+AND reine Context-Blöcke (TaggedResult, [tagged-results.md](tagged-results.md) R-TR-9) sind entfernt
+AND die Zahl der entfernten Blöcke steht als eigene Zeile `context blocks dropped: K` am Ende
+AND der Input enthält alle übrigen Messages vollständig inkl. Thinking
+AND kein "session truncated"-Hinweis (ohne Kürzung; ohne Blöcke auch keine K-Zeile)
 AND genau ein debug-Log mit Anfangswerten (agent, messageCount, estimate, budget)
 
 GIVEN autoCompactAfter ≤ 0 oder unset
 WHEN der Compact-Input gebaut wird
 THEN wird nie gekürzt, egal wie groß der Estimate ist
+AND reine Context-Blöcke sind trotzdem entfernt (Filter ≠ Kürzung) und als K genannt
 AND es gibt nur das Entry-Log
 
 GIVEN estimate > autoCompactAfter, Stufe 1 reicht (Re-Estimate ≤ Budget)
 WHEN Stufe 1 läuft
 THEN Thinking ist auf 9000 Zeichen gecappt, Front-Cap mit $-Anker — das Ende (Konklusion) bleibt
 AND die letzte User-Message mit echtem User-Text (LETZTER TextContent) ist voll, frühere nur State
+    (State = alles außer dem echten Text; ihre Context-Blöcke sind zu diesem Zeitpunkt bereits als K
+    gedroppt, [tagged-results.md](tagged-results.md) R-TR-9)
 AND die letzte User-Message ist NICHT der COMPACT_HINT / Queued-Marker (Konstanten-Ausschluss)
 AND AI-Text ist unverändert
 AND der Input endet mit "session truncated" + Cap-Zeile (einmal, am Ende)
@@ -160,9 +171,15 @@ AND es gibt ein warn-Log mit Stufe + Zahlen
 
 GIVEN estimate bleibt auch nach Stufe 2 über Budget
 WHEN die Endstufe läuft
-THEN jede Message ist auf restTokens × 7 / 2 / n Zeichen gecappt (n ≥ 1)
+THEN jede Message ist auf restTokens × 3 / n Zeichen gecappt (n ≥ 1)
 AND estimate ist danach ≤ Budget (garantiert — Mutation: Divisor/Konvertierung mutieren → rot)
 AND es gibt ein error-Log mit Stufe + Zahlen
+
+GIVEN Context-Blöcke wurden gedroppt (K > 0) UND die Endstufe läuft
+WHEN der Per-Message-Cap gerechnet wird
+THEN geht die `context blocks dropped: K`-Zeile in die Disclosure ein, gegen die der Cap
+     gerechnet wird (Fixed Point; sonst sprengt die Zeile das Budget um ihre eigene Länge)
+AND der fertige Input nennt K
 
 GIVEN eine einzige Message ist größer als das gesamte Budget
 WHEN die Endstufe läuft

@@ -405,6 +405,28 @@ class ContextTrimComponentTest {
         assertThat(outcome.input()).doesNotContain("R".repeat(6001));
     }
 
+    // R-TR-9
+    @Test
+    void perMessageStage_sizesCapAgainstKLine_staysWithinBudget() {
+        // GIVEN — a pure context block and a 12k tool result; stage 1 (4k tokens) and stage 2
+        // (2k tokens) both exceed the 1500-token budget, so the per-message stage wins
+        var block = new TaggedResult("codegraph: peon-ai #a1b2", "cg-body").toString();
+        var messages = List.<ChatMessage>of(UserMessage.from(block), toolResult("codegraph", "R".repeat(12000)));
+
+        // WHEN
+        var outcome = subject.stage(messages, 1500);
+
+        // THEN — the block is gone from the input, K is disclosed on its own line, and the cap is
+        // sized against that line (R-CIB-4.4 fixed point): estimate never exceeds the budget
+        // (mutation: drop the K line from the perMessageCap disclosure → estimate 1509 > 1500)
+        assertThat(outcome.stage()).isEqualTo(Stage.PER_MESSAGE);
+        assertThat(outcome.contextBlocksDropped()).isEqualTo(1);
+        assertThat(outcome.input()).doesNotContain("cg-body").doesNotContain(TaggedResult.PREFIX);
+        assertThat(outcome.input()).endsWith("context blocks dropped: 1");
+        assertThat(outcome.estimateAfter()).isLessThanOrEqualTo(1500);
+    }
+
+
     // ---------- helpers ----------
 
     /** System messages never enter the compact input (their SYSTEM: block is dropped silent, ADR-0030). */

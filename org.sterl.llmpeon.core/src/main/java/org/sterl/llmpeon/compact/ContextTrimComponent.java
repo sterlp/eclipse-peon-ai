@@ -174,7 +174,7 @@ public class ContextTrimComponent {
 
     /** Front cap: keep the END of the thinking (the conclusion), drop the head, mark with the anchor. */
     private static String frontCapThinking(String block, int cap) {
-        int nl = block.indexOf(System.lineSeparator());
+        int nl = block.indexOf('\n');
         if (nl < 0) return block;
         var body = block.substring(nl + 1);
         if (body.length() <= cap) return block;

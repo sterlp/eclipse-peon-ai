@@ -6,6 +6,14 @@
 > `<pfad>:\n---\n` — siehe [ADR-0031](0031-static-context-env-plus-memory.md) (Static Context trägt
 > jetzt Env+Memory; Render mit Linenumbers, dedupKey `<pfad>:` + LS + ` content with line numbers:`).
 > Das History-Prinzip (Dateien in Chat, Dedup nach Pfad-Header, fehlende Datei → skip) bleibt gültig.
+>
+> **Superseded-Teil (2026-10-18):** Der DedupKey ist **nicht mehr** die Pfad-Präambel
+> (`<pfad>:…`) — seit [Tagged Results](../tagged-results.md) ist der dedupKey die **erste Zeile des
+> Blocks** (`//-- Start <head>`), und ein Context-Item injiziert exakt seinen Block statt eines
+> Key-Prefix + Body. Grund: der Key-Prefix vor dem Block hätte `isTagged` gebrochen (der Block muss
+> die Message sein, nicht ein Fragment). Clean Break, keine Migration alter Historien — fehlt der
+> Block-Header, gilt die Datei als nicht injiziert. Das History-Prinzip selbst (Dateien in der Chat
+> History, nie im System-Prompt, fehlende Datei → `render() = null`) bleibt unverändert gültig.
 
 ## Kontext
 

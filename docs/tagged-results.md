@@ -4,8 +4,9 @@ idPrefix: TR
 
 # Tagged Results — Tool-Results und System-Infos als getaggte Blöcke
 
-> **Status:** 🚧 in design (2026-10-18, Paul). **Code:** `agent/model/TaggedResult` +
-> `ChatMessageUtil.extractMessages` (WIP im Tree), `CodegraphContextItem` (bereits live).
+> **Status:** ✅ done (2026-10-18, Branch `story/night-5-2026-10-16`, Core 1188/0, OSGi 386/0,
+> Da-Dok-Review CONCERNS ohne Blocker + Nacharbeit). **Code:** `agent/model/TaggedResult`,
+> `shared/ChatMessageUtil` (einziger Renderer, uncappt), `context/ContextItem`, `compact/ContextTrimComponent`.
 > **Verwandt:** [context-message-concept.md](context-message-concept.md) · [compact.md](compact.md) ·
 > [icons.md](icons.md) · [async-agents.md](async-agents.md)
 
@@ -59,7 +60,7 @@ WHEN er in eine Message geht
 THEN stehen `//-- Start <head>` und `//-- End <head>` **immer** — kein Trim, kein Weglassen, `head`
      in **beiden** Zeilen. Der Block ist damit für das Modell abgrenzbar und für Peon identifizierbar.
 
-### R-TR-2 — Erkennung über Start **und** Ende 🚧
+### R-TR-2 — Erkennung über Start **und** Ende ✅ (2026-10-18, I1)
 
 GIVEN ein Message-Text
 WHEN seine erste Zeile mit `TaggedResult.PREFIX` beginnt **und** seine letzte Zeile mit
@@ -76,14 +77,14 @@ THEN gilt er **nicht** als reiner Block — er bleibt vollständig im Input. Gen
 Die Prüfung ist **zeilenweise** (`startsWith` je Zeile), nicht `endsWith` über den ganzen Text —
 `//-- End <head>` trägt den `head` (R-TR-1).
 
-### R-TR-3 — Jedes `ContextItem` rendert ein `TaggedResult` 🚧
+### R-TR-3 — Jedes `ContextItem` rendert ein `TaggedResult` ✅ (2026-10-18, I2)
 
 GIVEN der Turn-Kontext wird gebaut
 WHEN ein `ContextItem` Inhalt liefert
 THEN liefert es ein `TaggedResult` mit `head` = Item-Name; `ContextItem.render()` ist für **alle**
      Implementierungen gleich. `null` = das Item hat in diesem Turn nichts beizutragen.
 
-### R-TR-4 — Codegraph rendert nur im CONNECTED-Zustand 🚧
+### R-TR-4 — Codegraph rendert nur im CONNECTED-Zustand ✅ (2026-10-18, I2)
 
 GIVEN Codegraph ist verbunden
 WHEN der Turn-Kontext gebaut wird
@@ -96,14 +97,14 @@ THEN liefert das Item **nichts** (`null`). Der Zustand ist am Header-Icon sichtb
      ContextItem sein"; das 📋-Label hängt an der erfolgreichen Injektion, sonst wäre es ein
      Spam pro Turn.)
 
-### R-TR-5 — Zustand trägt die Instructions (ein Supplier) 🚧
+### R-TR-5 — Zustand trägt die Instructions (ein Supplier) ✅ (2026-10-18, I2)
 
 GIVEN der Codegraph-Service liefert seinen Zustand
 WHEN das Item ihn liest
 THEN enthält `State` die Instructions (beim Connect captured). Das Item hat genau **einen**
      Supplier und keine zweite Quelle — `render()` ist `State.instructions` oder `null`.
 
-### R-TR-6 — `INFO` steht einmal in der static System-Message 🚧
+### R-TR-6 — `INFO` steht einmal in der static System-Message ✅ (2026-10-18, I2)
 
 GIVEN ein Agent, der getaggte Ergebnisse bekommen kann
 WHEN sein static context gebaut wird
@@ -112,7 +113,7 @@ THEN enthält die System-Message `TaggedResult.INFO` genau einmal (gecacht mit d
      Async-Tool-Results / Async-Agent-Results beschreibt `INFO` nur so weit, wie es sie heute gibt;
      die eigentliche Async-Tool-Fähigkeit (Shell!) ist eine eigene Story.
 
-### R-TR-7 — Der Compact klassifiziert über die Tags 🚧
+### R-TR-7 — Der Compact klassifiziert über die Tags ✅ (2026-10-18, I3)
 
 GIVEN der Compact baut seinen Input
 WHEN Messages gerendert werden
@@ -120,14 +121,14 @@ THEN bestimmt er Typ und Kürzungsstufe anhand der Tag-Präfixe (`THINK:`, `TOOL
      `TOOL RESULT:`, `SYSTEM:`) — **nicht** über `instanceof` über langchain4j-Message-Typen.
      Ein neuer Nachrichtentyp braucht damit keinen neuen Compact-Zweig, nur einen Tag.
 
-### R-TR-8 — Kein Cap im Renderer 🚧
+### R-TR-8 — Kein Cap im Renderer ✅ (2026-10-18, I3)
 
 GIVEN beliebiger Text
 WHEN `ChatMessageUtil` ihn rendert
 THEN wird **nichts** gekürzt (kein `toolMessageSize`, kein `thinkCapChars`, kein `maxSize`).
      Kürzen ist alleinige Aufgabe des Compact (Stufen + Disclosure am Ende, R-CIB).
 
-### R-TR-9 — Reine Context-Blöcke fliegen vor dem Compact raus 🚧
+### R-TR-9 — Reine Context-Blöcke fliegen vor dem Compact raus ✅ (2026-10-18, I3)
 
 GIVEN eine Message, deren Text ein reiner getaggter Block ist (R-TR-2) — also ein `ContextItem`
      (Memory-Snapshot, Datei-Kontext, Projekt-/Codegraph-Info), das als **eigenes** `TextContent`
