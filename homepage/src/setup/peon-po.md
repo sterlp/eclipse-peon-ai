@@ -14,6 +14,7 @@ description: Autonomous feature development with Peon-PO orchestrator
 3. **Plan & Build** — once you're happy with the design, Jon orchestrates his team:
    - **Da Thinka** (Peon-Plan) explores your project and writes a structured implementation plan.
    - **Da Mek** (Peon-Dev) reads the plan and implements the changes.
+   - **Da Dok** (Peon-Review) checks the result independently — plan, code and docs against each other — and reports deviations without fixing them.
 4. **Review & Learn** — Jon reviews the built code against the plan and docs, then captures learnings for next time.
 
 ```
@@ -41,5 +42,6 @@ When Jon is active, the header shows the status of his team members:
 - **Da Boss** (Jon) — the orchestrator
 - **Da Thinka** (Peon-Plan) — the planner
 - **Da Mek** (Peon-Dev) — the implementer
+- **Da Dok** (Peon-Review) — the independent reviewer
 
 Each shows a status indicator (idle / working / done) so you can see who's doing what.
