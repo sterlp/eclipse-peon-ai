@@ -4,6 +4,16 @@
 
 ## Stand 2026-10-18 (Branch `story/night-5-2026-10-16`)
 
+- ✅ **MCP-Ergebnisgröße (R-RS-3) gebaut** — `50be78cf`: `ToolService.execute` MCP-Zweig meldet
+  nach der Ausführung `MCP <name> done. (N chars)` (Start-Zeile bleibt). 2 Tests in
+  `ToolServiceGroupsTest` (Surefire 1203/0). **Verifiziert (Jon):** Fehlerpfad verliert nichts —
+  langchain4j wirft bei `isError=true` (`McpApplicationErrorException`/`ToolExecutionException`),
+  `McpService.executeTool` fängt und liefert `"MCP tool error (<name>): …"`; die null→`""`-Koersion
+  betrifft nur den echt leeren Fall (langchain4j nimmt keinen null-Text).
+- ✅ **Codegraph-Header-Icon = Lupe** (`50be78cf`): 4 SVGs ersetzt (on/dark/off/off_dark), gleiche
+  Dateinamen, kein Java-Wiring. Icon-Regeln (24×24 + viewBox, OFF als gedimmte SVG-Variante) in
+  [codegraph.md](codegraph.md) R-CG-8.
+
 - ✅ **Queued-User-Messages Regel 8 (`!`-Override) gebaut** — `14afd26c` (core:
   `OverrideMessageResolver` + `AiAgent.injectUserMessage`/`AbstractAgent`, 11 Tests) ·
   `42add1bd` (View: `AIChatView.resolveOutgoingMessage`, present ⇒ konsumieren, kein Queue/Turn).

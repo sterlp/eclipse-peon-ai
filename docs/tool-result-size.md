@@ -39,6 +39,29 @@ rauschen und gehören mit Tilde markiert (R-CC-6-Muster); hier gar kein Estimate
 - GIVEN dieselbe Tool-Zeile WHEN gemessen THEN der `(N chars)`-Wert ist exakt die Stringlänge,
   kein gerundeter/geschätzter Wert. *(Test: `onToolCharsAreExactLength`)*
 
+### R-RS-3 — Auch dynamische Tools (MCP) disclosen ihre Ergebnisgröße ✅ done (2026-10-18, `50be78cf`, Surefire 1203/0)
+
+MCP-Tools laufen **nicht** durch die tool-lokalen Done-Zeilen (kein `SmartToolExecutor`, kein
+Tool-eigener Code) — sie hatten nur die Start-Zeile `Running MCP: <name> - <args>`. Damit fehlte
+für genau die Werkzeuge, die fremde, unbegrenzte Inhalte in den Kontext ziehen (Codegraph, Web-
+Search …), jede Größenangabe. Der Choke-Point ist `ToolService.execute` (MCP-Zweig): nach der
+Ausführung kommt eine **Completion-Zeile** mit dem Ergebnis-Suffix.
+
+- GIVEN ein MCP-Tool-Call WHEN das Tool zurückkehrt THEN erscheint zusätzlich zur Start-Zeile eine
+  Completion-Zeile `MCP <name> done. (N chars)` mit N = exakte Länge des Ergebnis-Strings. *(Test:
+  `givenMcpGroupAdopted_whenExecutingTool_thenCompletionLineDisclosesResultChars`)*
+- GIVEN ein MCP-Ergebnis ist leer/null WHEN done THEN `(0 chars)` (kein Weglassen). *(Test:
+  `givenMcpResultNullOrEmpty_whenExecutingTool_thenCompletionLineDisclosesZeroChars` — serverseitig
+  null → `""` als Message-Text, weil langchain4j keinen null-Text annimmt; die Disclosure zählt
+  vorher und nennt ehrlich 0.)*
+- GIVEN ein nicht-MCP-Tool WHEN done THEN unverändert dessen eigene Done-Zeile (kein doppelter
+  Suffix). *(Tests: R-RS-1 `onToolLineDisclosesResultChars`)*
+
+**Fehlerpfad (verifiziert 2026-10-18):** MCP-Fehler gehen nicht über den null-Pfad — langchain4j
+wirft bei `isError=true` `McpApplicationErrorException`/`ToolExecutionException`, `McpService.executeTool`
+(`McpService.java:163-168`) fängt das und gibt `"MCP tool error (<name>): <message>"` zurück. Die
+Fehlerinfo bleibt also im Kontext; die Completion-Zeile nennt dann die Länge dieses Textes.
+
 
 
 ## Umsetzung ✅ (IST nach Bau)
@@ -56,3 +79,8 @@ wörtliches `"Success"` — Rauschen).
 `webFetch` (Option A — finale Zeile `Fetched <url> (N chars)` nach der Result-Konstruktion, nun auch
 für Cache-Hits; Overflow-Verdächtigen Nr. 1). `eclipseFindImplementations` = toter Code
 (Kommentar-Block) — kein Suffix, Entfernung separat.
+
+**MCP (R-RS-3, `50be78cf`):** einzige Ausnahme mit echter zentraler Stelle —
+`ToolService.execute` MCP-Zweig (`ToolService.java:298-304`) meldet
+`Running MCP: <name> - <args>` … `MCP <name> done. (N chars)`. Grund: der Codegraph-/MCP-Aufruf
+geht an keinem Tool-Code vorbei, der den Return kennt.
