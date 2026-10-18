@@ -37,6 +37,26 @@ The search agent reports wall-clock timing and lights a transient header chip wh
 - **GIVEN** `searchAgent` finishes **WHEN** the tool returns **THEN** `monitor.onSubAgent("Search", false)` fires and the result includes elapsed time (e.g. `done. (3s)`)
 - **Tag:** unit (verify `onSubAgent` calls; verify `StringUtil.humanElapsed` in result)
 
+## Idee — stateful Search Agent (💡 2026-10-18, Paul — bewertet, **nicht** beschlossen)
+
+**Vorschlag:** Am Ende jedes Such-Laufs legt Da Sniffa ein Tupel (User-Message = Request, finale
+AI-Antwort = das an den Aufrufer weitergegebene Ergebnis) in sein Memory — das Tupel wird bei jeder
+Suche überschrieben, **nur RAM, kein File-Appender**. Begründung: Suchen einer Session betreffen
+meist ähnliche Dateien; das letzte Ergebnis erspart dem Suchagenten die Wiederholung.
+
+**Bewertung (Jon) — nachvollziehbarer Nutzen, aber nicht in dieser Form:** Das Tupel widerspricht
+R3 (*stateless one-shot*) und macht die Suche von der Vorgeschichte abhängig — bei thematisch
+unverwandten Suchen ist das alte Ergebnis reines Rauschen im ohnehin kleinen Such-Kontext, und ein
+veraltetes Ergebnis (Datei hat sich geändert) wird stillschweigend geglaubt. Zudem trägt die
+weitergeleitete Antwort nur die *Zusammenfassung*: das billige Wiederaufsetzen käme aus den
+Fundstellen (Pfade, Zeilen), die der erste Lauf weggeworfen hat. Empfehlung, falls wir es
+verfolgen: nicht als Agent-Memory, sondern als **explizit gelabelter Continuity-Block**
+(`previous search: <request>` + Ergebnis, gedeckelt, mit Schalter) — dann bleibt R3 als
+Default-Semantik gültig, der Aufrufer sieht, dass Vorgeschichte im Spiel ist, und die Ablehnung
+eines stale Ergebnisses ist eine Regel statt einer Annahme. Priorität: **niedrig** — der
+Aufrufer hat das vorherige Ergebnis ohnehin in seinem eigenen Memory und kann seinen Prompt
+darauf aufsetzen.
+
 ## Components
 - **`SearchAgentTool`** (`llmpeon-core`): tool wrapping the one-shot agent loop.
 - **`search-agent.txt`** (`llmpeon-core`): system prompt for Da Sniffa (**no** `default.txt` prepended — `default.txt` is for full agents, not stateless tools; Da Sniffa doesn't need askUser/queue rules).

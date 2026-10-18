@@ -62,6 +62,9 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   maschinelles ✅-Gate — Da-Dok-Review ist die einzige Absicherung. Optionen: (a) R-Form als
   Definition zulassen (Überschriften `#### R-<F>-<n>`, wie bei UC), (b) solche Docs zusätzlich mit
   UC-Use-Cases ausstatten. Ohne Entscheidung bleibt der Linter blind für einen Großteil der Docs.
+  *(Nebenbefund 2026-10-18: `codegraph.md` hat `idPrefix: CG` bereits, `mcp.md` keins — beides
+  ändert an diesem Problem nichts, weil R-Definitionen im Linter grundsätzlich übersprungen werden;
+  `idPrefix` allein ist also kein Fix.)*
 - ❓ **`AIChatView.applyTextSelection` — geändertes Verhalten bei disposed parent (Pauls WIP,
   2026-10-18, nicht committet):** das Refactoring (`if (parent == null || parent.isDisposed()) return;`)
   überspringt jetzt **auch** `uc.setTextSelection(ts)`; vorher lief die Selektion weiter, nur der
@@ -112,9 +115,6 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
 - **Docs-Linter ☠️-Status (2026-09-29):** DocParser kennt nur ✅/❌/🚧 (`DocParser.java:209-216`)
   — ein `####`-UC-Heading mit ☠️ wirft STATUS_FEHLT (Fall: default-inheritance.md UC-DEF-4/5/7
   mussten zu Fließtext degradiert werden). Kandidat: ☠️ als Info-Status.
-- **Context-Noise zuerst raus (2026-09-13):** Context-Item-Messages vor dem Kürzen nehmen —
-  „Light-Version" des Input-Budgets; das Input-Budget deckt das Staging, Noise-Entfernung bleibt
-  eigener Punkt.
 - **BDD-Test Compact-Hint-Fallback:** Regel gebaut (`29a341b`), Paul: „wann anders" — Backlog.
 
 ## ⏳ Mini-Cleanups / geparkt
@@ -152,9 +152,9 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   Revisit-Trigger: langchain4j 1.21+ / openai-Jackson-3. Dann eigene Story mit ADR.
 - **Edit-Tools Naming + gemeinsame Doku (geparkt 2026-09-05):** Rename auf „Edit"
   (`eclipseUpdateOpenFile`→`eclipseEditOpenFile`, `planUpdate`→`planEdit`), gemeinsame
-  `edit-tools.md`, `planUpdate` Count-Disclosure nachziehen. **Konflikt mitfixen:**
-  eclipse-workspace-write-file-tool.md sagt noch „Errors if 0 or >1 matches" (widert Replace-All
-  + Count). Line-Ending-Normalisierung: E2E-Spec `file-edit-tools.txt`.
+  `edit-tools.md`, `planUpdate` Count-Disclosure nachziehen. Line-Ending-Normalisierung:
+  E2E-Spec `file-edit-tools.txt`. *(Der frühere Doc-Drift „Errors if 0 or >1 matches" in
+  eclipse-workspace-write-file-tool.md ist korrigiert.)*
 - **Docs-SOLL-Hygiene-Sweep (2026-09-12):** Docs = reines SOLL, keine „war:"-Narrativen;
   umgesetzt für advanced-configuration + model-loading, Rest als eigener Aufwasch (Scope von
   Paul bestätigen lassen).
@@ -210,13 +210,6 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   `parseAllowlist` zu null normalisiert, aber der Typ trägt die Unterscheidung nicht). Sealed
   `All`/`Filtered(allow, deny)` würde Sonderregel „nur Negationen" in eine testbare Resolve-Funktion
   ziehen. Gestaltungspunkt, kein Defekt — Revisit, falls ToolPolicy erneut angefasst wird.
-- ⏳ **EclipseGrepTool IFile-Disclosure (Da-Dok-CONCERN, 2026-10-16):** der IFile-Zweig (:68-69) wendet
-  bei Datei-Target **keinen** Extension-Filter an, aber `grepComplete` (:82-83) / onTool (:88-89)
-  disclosen die rohe Extension — dieselbe Text/Inhalt-Diskrepanz, die Inc-C-EXT auf der Disk-Seite
-  gefixt hat (AGENTS „one behaviour, one implementation", Familien-Parität). Fix = C-EXT-Muster
-  (effectiveExtension beim Datei-Target null), Details + Zeilen in peon-plan-§9 (Archiv). **UNBLOCKED
-   2026-10-16:** Pauls WIP ist mit `af658e0f` gemerged (EclipseGrepTool inkl. 🔍-Präfix) — Umsetzung offen.
-
 
 ## Codegraph-Bau (2026-10-17, autonome Entscheide Jon — Rückversicherung Paul)
 
@@ -255,14 +248,6 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   PATH-Scan, E2E-Beleg auf Pauls Maschine — Detail in codegraph.md Fakten).
 
 
-## Tagged Results (2026-10-18, Paul) — Design entschieden, Bau offen
-
-- 🔒 **Alle Designfragen geklärt** (Liste statt Set, `INFO` einmal in der static System-Message,
-  Prefix/Suffix immer da + Erkennung nur am Start, `TaggedResult` für **alle** ContextItems,
-  Compact filtert über Tags und dedupliziert per `head`, Cap restlos raus aus `ChatMessageUtil`) —
-  Regeln + BDD in [tagged-results.md](tagged-results.md) (R-TR-1…9, 🚧). Bau ausstehend.
-- ❓ **`TaggedResult.INFO`-Wortlaut:** Vorschlag zur Kürzung (~40 %) steht im Doc; Paul prüft im Bau.
-
 ## Codegraph-Smoke (2026-10-18, Paul) — Befunde
 
 - 🔒 **Zwei `serve --mcp`-Prozesse — gelöst (2026-10-18, `fe583895`):** war ein **Bug**, kein Design:
@@ -296,13 +281,6 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   legacy initialize` + `protocolVersion 2024-11-05` = normaler Auto-Detect-Pfad
   ([ADR-0045](adr/0045-mcp-protocol-version-auto-detect.md), `DefaultMcpClient.java:291`,
   log.debug); codegraph 1.6.0 spricht nur legacy.
-- ❓ **Lint-Gap: `codegraph.md` und `mcp.md` nehmen nicht teil** (Da Dok 2026-10-18): beide Docs
-  pflegen `R-CG-*`/`R-MCP-*`-Marker, haben aber kein `idPrefix` im Frontmatter — der Docs-Linter
-  prüft sie damit gar nicht (die 7 `VERWAIST R-CG-6/7/8/12` aus dem Lauf waren Falschmeldungen aus
-  dem Fehlen der Definitionen im Scan-Scope). Empfehlung: `idPrefix` in beiden Docs opt-in setzen und
-  `lintDocsAndTests` in den Inkrement-Gate für diese Dateien aufnehmen. Kosten: ein Docs-Edit + ein
-  Linter-Lauf; Nutzen: genau die Lücke, durch die UC-CG-12 durch 6 grüne Gates lief. Prio: nächster
-  Docs-Zyklus.
 - 🔒 **Icon (2026-10-18 erledigt):** 32 ohne `viewBox` → auf 24×24 + `viewBox="0 0 32 32"`
   normalisiert; `codegraph_off.svg`/`codegraph_off_dark.svg` ergänzt (gedimmte Farbe statt
   `setEnabled(false)` — SWT graut Text, nicht das Image); R-CG-8 präzisiert.

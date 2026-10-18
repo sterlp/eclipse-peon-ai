@@ -121,10 +121,7 @@ public class DiskFileWriteTool extends AbstractTool {
         ArgsUtil.requireNonNull(line, "line");
         ArgsUtil.requireNonNull(newContent, "newContent");
 
-        Path resolved = resolve(filePath);
-        if (resolved == null || !Files.isRegularFile(resolved)) {
-            throw new IllegalArgumentException("File not found: " + filePath);
-        }
+        Path resolved = requireRegularFile(filePath);
         try {
             String content = Files.readString(resolved);
             String newFullContent = FileLines.replaceLines(content, line, line, newContent);
@@ -144,11 +141,7 @@ public class DiskFileWriteTool extends AbstractTool {
         ArgsUtil.requireNonBlank(filePath, "filePath");
         if (newString == null) newString = "";
 
-        Path resolved = resolve(filePath);
-        if (resolved == null || !Files.isRegularFile(resolved)) {
-            throw new IllegalArgumentException(
-                    "File not found: " + filePath + ". Use searchDiskFiles to find the correct path.");
-        }
+        Path resolved = requireRegularFile(filePath, ". Use searchDiskFiles to find the correct path.");
 
         try {
             String content = Files.readString(resolved);
@@ -234,10 +227,7 @@ public class DiskFileWriteTool extends AbstractTool {
         ArgsUtil.requireNonBlank(filePath, "filePath");
         ArgsUtil.requireNonNull(newContent, "newContent");
 
-        Path resolved = resolve(filePath);
-        if (resolved == null || !Files.isRegularFile(resolved)) {
-            throw new IllegalArgumentException("File not found: " + filePath);
-        }
+        Path resolved = requireRegularFile(filePath);
         try {
             String content = Files.readString(resolved);
             String newFullContent = FileLines.insertLines(content, afterLine, newContent);
@@ -247,6 +237,18 @@ public class DiskFileWriteTool extends AbstractTool {
         } catch (IOException e) {
             throw new RuntimeException("Failed to edit " + filePath, e);
         }
+    }
+
+    private Path requireRegularFile(String filePath) {
+        return requireRegularFile(filePath, "");
+    }
+
+    private Path requireRegularFile(String filePath, String hintSuffix) {
+        Path resolved = resolve(filePath);
+        if (resolved == null || !Files.isRegularFile(resolved)) {
+            throw new IllegalArgumentException("File not found: " + filePath + hintSuffix);
+        }
+        return resolved;
     }
 
     private Path resolve(String path) {

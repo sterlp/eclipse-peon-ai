@@ -122,6 +122,29 @@ class DiskFileWriteToolTest {
         assertEquals("a\nx\ny\nc\nd", Files.readString(tempDir.resolve("rep.txt")));
     }
 
+    // ------------------------------------------------------------------ File guard: missing file → exact IAE message per method
+
+    @Test
+    void missingFile_editTools_throwExactGuardMessage() {
+        // GIVEN a path that does not exist
+        String missing = "nope.txt";
+
+        // WHEN diskReplaceLines is called THEN the guard fires with the exact message
+        var ex = assertThrows(IllegalArgumentException.class,
+                () -> tool.diskReplaceLines(missing, 1, "x"));
+        assertEquals("File not found: " + missing, ex.getMessage());
+
+        // WHEN diskEditFile is called THEN the guard fires with the message plus the search hint
+        ex = assertThrows(IllegalArgumentException.class,
+                () -> tool.diskEditFile(missing, "old", "new"));
+        assertEquals("File not found: " + missing + ". Use searchDiskFiles to find the correct path.", ex.getMessage());
+
+        // WHEN diskInsertLines is called THEN the guard fires with the exact message
+        ex = assertThrows(IllegalArgumentException.class,
+                () -> tool.diskInsertLines(missing, 0, "x"));
+        assertEquals("File not found: " + missing, ex.getMessage());
+    }
+
     private ToolLoopRequest docsRequest() {
         var model = LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", "http://localhost:9999").build();
         return ToolLoopRequest.builder()
