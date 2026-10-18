@@ -21,39 +21,17 @@ import dev.langchain4j.model.output.TokenUsage;
 
 public class ChatMessageUtil {
 
-    /** Marker of a front-capped thinking block: the head was dropped, the end (conclusion) is kept. */
-    public static final String THINK_FRONT_CAP_ANCHOR = "…$ ";
+    /** Tag prefixes — the compact stager classifies on these (R-TR-7), no instanceof for capping. */
     public static final String THINK_PREFIX = "THINK:" + System.lineSeparator();
     public static final String TOOL_REQUEST_PREFIX = "TOOL REQUEST:" + System.lineSeparator();
     public static final String TOOL_RESULT_PREFIX = "TOOL RESULT:" + System.lineSeparator();
-
-    /**
-     * Render modes for {@link #toString(ChatMessage, RenderOptions)}.
-     * Existing formats stay exactly preserved via {@link #defaults()}; {@link #uncapped()} is the stager's baseline render.
-     *
-     * @param includeThink          render the thinking block of an AI message at all
-     * @param toolMessageSize       head cap (chars) for tool arguments/results; 0 = not rendered at all
-     * @param thinkCapChars         cap (chars) for the thinking block; {@link Integer#MAX_VALUE} = no cap
-     * @param thinkKeepTail         true = front cap keeping the END of the thinking plus {@link #THINK_FRONT_CAP_ANCHOR};
-     *                              false = no capping at all (legacy behaviour)
-     * @param perMessageTrimmedTag  append "(trimmed)" to every capped tool message; false = one disclosure at the
-     *                              input end instead (compact mode, R-CIB-5)
-     * @param renderSystemMessage   render SYSTEM messages like every other type; false = dropped (the compact
-     *                              input filters them on list level instead, R-CIB-4)
-     */
-    public record RenderOptions(boolean includeThink, int toolMessageSize, int thinkCapChars,
-                                boolean thinkKeepTail, boolean perMessageTrimmedTag, boolean renderSystemMessage) {
-
-        /** Legacy defaults — the existing overloads delegate here, formats unchanged. */
-        public static RenderOptions defaults() {
-            return new RenderOptions(true, 6000, Integer.MAX_VALUE, false, true, true);
-        }
-
-        /** No caps at all — the stager's baseline render (dedup before caps, R-CIB-2). */
-        public static RenderOptions uncapped() {
-            return new RenderOptions(true, Integer.MAX_VALUE, Integer.MAX_VALUE, false, false, false);
-        }
-    }
+    public static final String SYSTEM_PREFIX = "SYSTEM:" + System.lineSeparator();
+    /** Body marker of a TOOL RESULT: block — the result text starts after the LAST occurrence. */
+    public static final String TOOL_RESULT_BODY_MARKER = "result:" + System.lineSeparator();
+    /** Body marker of a TOOL REQUEST: block — the arguments start after the (structural) occurrence. */
+    public static final String TOOL_REQUEST_BODY_MARKER = "arguments:";
+    /** Marker of a front-capped thinking block: the head was dropped, the end (conclusion) is kept. */
+    public static final String THINK_FRONT_CAP_ANCHOR = "…$ ";
 
     /**
      * The CONTEXT SIZE of the given prompt/response in tokens: the provider's INPUT token count
@@ -111,7 +89,7 @@ public class ChatMessageUtil {
     }
 
     private static int charCount(ChatMessage msg) {
-        return toString(msg, Integer.MAX_VALUE).length();
+        return toString(msg).length();
     }
 
     public static UserMessage join(UserMessage m1, UserMessage m2) {
@@ -136,38 +114,32 @@ public class ChatMessageUtil {
         return result.toString();
     }
     
-    public static String toString(ChatMessage msg) {
-        return toString(msg, RenderOptions.defaults());
-    }
-    
-    public static String toString(ChatMessage msg, int maxSize) {
-        return toString(msg, new RenderOptions(true, maxSize, Integer.MAX_VALUE, false, true, true));
-    }
-    
     /**
-     * Converts ChatMessages to a simple string.
-     * Legacy overload — SYSTEM messages are rendered (ADR-0030 landmine fix, docs/compact.md R-CIB-4).
+     * The single message renderer (R-TR-8): the {@link #extractMessages(ChatMessage)} entries
+     * joined with a line separator, UNCAPPED — capping is the stager's job. A message without
+     * renderable content renders as the empty string.
      */
-    public static String toString(ChatMessage msg, boolean includeThink, int toolMessageSize) {
-        return toString(msg, new RenderOptions(includeThink, toolMessageSize, Integer.MAX_VALUE, false, true, true));
+    public static String toString(ChatMessage msg) {
+        var entries = extractMessages(msg);
+        return entries.isEmpty() ? "" : String.join(System.lineSeparator(), entries) + System.lineSeparator();
     }
-    
+
     /**
      * Converts a ChatMessage to a unique collection of strings, keeps {@link TaggedResult}
-     * as is and adds tags for any other message.
-     * 
-     * CUSTOM messages are always ignored; SYSTEM messages are rendered like every other type
-     * unless {@link RenderOptions#renderSystemMessage()} is <code>false</code>.
+     * as is and adds tags for any other message. Entries carry NO trailing line separator.
+     *
+     * <p>CUSTOM messages are always ignored; every other type is rendered UNCAPPED (R-TR-8 —
+     * always think, always tools). SYSTEM messages are rendered like every other type — the
+     * compact stager filters them on block level (ADR-0030).</p>
      */
     @NonNull
-    public static Collection<String> extractMessages(@NonNull ChatMessage msg, @NonNull RenderOptions options) {
+    public static Collection<String> extractMessages(@NonNull ChatMessage msg) {
         var result = new LinkedList<String>();
         var nl = System.lineSeparator();
         var t = msg.type();
         if (msg.type() == ChatMessageType.CUSTOM) return result;
         if (msg instanceof SystemMessage sm) {
-            if (!options.renderSystemMessage()) return result;
-            result.add(ChatMessageType.SYSTEM + ":" + nl + sm.text());
+            result.add(SYSTEM_PREFIX + sm.text());
         } else {
             if (msg instanceof UserMessage um) {
                 um.contents().stream().filter(m -> m instanceof TextContent)
@@ -179,24 +151,22 @@ public class ChatMessageUtil {
                     result.add(tagged(m.text(), t));
                 }
                 
-                if (options.includeThink() && StringUtil.hasValue(m.thinking())) {
-                    result.add(THINK_PREFIX + capThinking(m.thinking(), options));
+                if (StringUtil.hasValue(m.thinking())) {
+                    result.add(THINK_PREFIX + m.thinking());
                 }
                 
-                if (options.toolMessageSize() > 0 && m.hasToolExecutionRequests()) {
+                if (m.hasToolExecutionRequests()) {
                     for (var tr : m.toolExecutionRequests()) {
                         result.add(TOOL_REQUEST_PREFIX
                              + "tool name: " + tr.name() + nl
-                             + "arguments:" + StringUtil.trimToLength(tr.arguments(), options.toolMessageSize())
-                             + trimmedTag(tr.arguments(), options));
+                             + "arguments:" + tr.arguments());
                     }
                 }
                 
-            } else if (options.toolMessageSize() > 0 && msg instanceof ToolExecutionResultMessage tr) {
+            } else if (msg instanceof ToolExecutionResultMessage tr) {
                 result.add(TOOL_RESULT_PREFIX
                         + "tool name: " + tr.toolName() + nl
-                        + "result:" + nl + StringUtil.trimToLength(tr.text(), options.toolMessageSize())
-                        + trimmedTag(tr.text(), options));
+                        + "result:" + nl + tr.text());
             }
         }
 
@@ -216,28 +186,6 @@ public class ChatMessageUtil {
         return messageTag(msg, type) + msg;
     }
 
-    /**
-     * Converts a ChatMessage to a simple string in the given render mode: the
-     * {@link #extractMessages(ChatMessage, RenderOptions)} entries joined with a line separator.
-     * A message without renderable content renders as the empty string.
-     */
-    public static String toString(ChatMessage msg, RenderOptions options) {
-        var entries = extractMessages(msg, options);
-        return entries.isEmpty() ? "" : String.join(System.lineSeparator(), entries) + System.lineSeparator();
-    }
-
-    /** Front cap: keep the END of the thinking (the conclusion), drop the head, mark with the anchor. */
-    private static String capThinking(String thinking, RenderOptions options) {
-        if (!options.thinkKeepTail() || thinking.length() <= options.thinkCapChars()) return thinking;
-        return THINK_FRONT_CAP_ANCHOR + thinking.substring(thinking.length() - options.thinkCapChars());
-    }
-
-    private static String trimmedTag(String value, RenderOptions options) {
-        return options.perMessageTrimmedTag() && value != null && value.length() > options.toolMessageSize()
-                ? System.lineSeparator() + "(trimmed)"
-                : "";
-    }
-    
     public static String toString(List<Content> contents) {
         var result = new StringBuilder();
         if (contents == null || contents.isEmpty()) return "";

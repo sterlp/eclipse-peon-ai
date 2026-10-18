@@ -473,7 +473,7 @@ class CompactServiceTest {
         var engine = engineWithSummary(log, 1000);
         var toolResult = ToolExecutionResultMessage.from("id", "read", "x".repeat(10_000));
         var messages = List.<ChatMessage>of(UserMessage.from("Foo"), toolResult);
-        var expected = ChatMessageUtil.toString(toolResult, ChatMessageUtil.RenderOptions.uncapped());
+        var expected = ChatMessageUtil.toString(toolResult);
         assertThat(ChatMessageUtil.estimateTokens(messages)).isGreaterThan(1300);
 
         // WHEN

@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.sterl.llmpeon.agent.model.TaggedResult;
 import org.sterl.llmpeon.model.CompactResult.Stage;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.tool.ToolService;
@@ -27,22 +28,6 @@ class ContextTrimComponentTest {
     private final ContextTrimComponent subject = new ContextTrimComponent();
 
 
-    // ---------- stage presets ----------
-
-    @Test
-    void stagePresetsOwnTheCapValues() {
-        // WHEN — the stage presets are read from the component
-        var stage1 = ContextTrimComponent.stage1Options();
-        var stage2 = ContextTrimComponent.stage2Options();
-
-        // THEN — stage 1: thinking front-capped at 9000, tools rendered uncapped
-        assertThat(stage1.thinkCapChars()).isEqualTo(9000);
-        assertThat(stage1.thinkKeepTail()).isTrue();
-        assertThat(stage1.toolMessageSize()).isEqualTo(Integer.MAX_VALUE);
-        // AND — stage 2: thinking and tools head-capped at 6000
-        assertThat(stage2.thinkCapChars()).isEqualTo(6000);
-        assertThat(stage2.toolMessageSize()).isEqualTo(6000);
-    }
     // ---------- budget off / under budget ----------
 
     @Test
@@ -344,11 +329,87 @@ class ContextTrimComponentTest {
         assertThat(outcome.input()).doesNotContain("summary text here");
     }
 
+    // ---------- R-TR-9: pure context blocks drop before the compact input ----------
+
+    // R-TR-9
+    @Test
+    void pureContextBlockIsDroppedAndCounted() {
+        // GIVEN — a user message with a pure context block and the real text as separate TextContents
+        var nl = System.lineSeparator();
+        var block = TaggedResult.PREFIX + "context: x" + nl + "block-body" + nl + TaggedResult.SUFFIX + "context: x";
+        var messages = List.<ChatMessage>of(
+                UserMessage.from(List.of(TextContent.from(block), TextContent.from("fix it"))),
+                ai("ok"));
+
+        // WHEN
+        var outcome = subject.stage(messages, 100000);
+
+        // THEN — the block flew out before the compact input (count-only disclosure, R-TR-9):
+        // gone from the input, the real text stays full, K = 1 is named
+        assertThat(outcome.input()).doesNotContain(TaggedResult.PREFIX).doesNotContain("block-body");
+        assertThat(outcome.input()).contains("USER:" + nl + "fix it");
+        assertThat(outcome.contextBlocksDropped()).isEqualTo(1);
+        assertThat(outcome.input()).endsWith("session truncated" + nl + "context blocks dropped: 1");
+    }
+
+    // R-TR-9
+    @Test
+    void droppedBlocksDisclosedEvenBudgetOff() {
+        // GIVEN — the budget is off (≤ 0) and one pure context block
+        var nl = System.lineSeparator();
+        var block = TaggedResult.PREFIX + "context: y" + nl + "y-body" + nl + TaggedResult.SUFFIX + "context: y";
+        var messages = List.<ChatMessage>of(UserMessage.from(block), user("q"));
+
+        // WHEN
+        var outcome = subject.stage(messages, 0);
+
+        // THEN — the drop is a filter, not a cap (R-CIB-1 "never truncate" stays for capping):
+        // named even with the budget off
+        assertThat(outcome.stage()).isEqualTo(Stage.NONE);
+        assertThat(outcome.input()).contains("USER:" + nl + "q").doesNotContain("y-body");
+        assertThat(outcome.contextBlocksDropped()).isEqualTo(1);
+        assertThat(outcome.input()).contains("context blocks dropped: 1");
+    }
+
+    // R-TR-2
+    @Test
+    void embeddedBlockInToolResultIsNotDropped() {
+        // GIVEN — a tool result whose text is a sender line plus an embedded tagged block
+        var nl = System.lineSeparator();
+        var block = TaggedResult.PREFIX + "async" + nl + "async-body" + nl + TaggedResult.SUFFIX + "async";
+        var messages = List.<ChatMessage>of(toolResult("shell", "sender-line" + nl + block), user("q"));
+
+        // WHEN
+        var outcome = subject.stage(messages, 100000);
+
+        // THEN — the tool result is not a pure block (the first line decides, R-TR-2): it stays whole
+        assertThat(outcome.contextBlocksDropped()).isZero();
+        assertThat(outcome.input()).contains("TOOL RESULT:").contains("sender-line")
+                .contains(TaggedResult.SUFFIX + "async");
+    }
+
+    // R-TR-7
+    @Test
+    void classificationRunsOnTagPrefixes_notInstanceof() {
+        // GIVEN — a tool result beyond the stage-2 cap; the budget forces stage 2
+        var nl = System.lineSeparator();
+        var messages = List.<ChatMessage>of(toolResult("write", "R".repeat(9000)), user("q"));
+
+        // WHEN
+        var outcome = subject.stage(messages, 2500);
+
+        // THEN — the block is classified by its TOOL RESULT: prefix (no instanceof, R-TR-7):
+        // the header survives, the body after the "result:\n" marker is head-capped at 6000
+        assertThat(outcome.stage()).isEqualTo(Stage.TOOL_RESULTS);
+        assertThat(outcome.input()).contains("TOOL RESULT:" + nl + "tool name: write" + nl + "result:" + nl + "R".repeat(6000));
+        assertThat(outcome.input()).doesNotContain("R".repeat(6001));
+    }
+
     // ---------- helpers ----------
 
-    /** System messages never enter the staging (filtered on list level, ADR-0030 landmine fix). */
+    /** System messages never enter the compact input (their SYSTEM: block is dropped silent, ADR-0030). */
     @Test
-    void systemMessagesAreFilteredOnListLevel() {
+    void systemMessagesNeverEnterTheStaging() {
         // GIVEN — a system message plus a user message
         var messages = List.<ChatMessage>of(SystemMessage.systemMessage("STATIC PROMPT"), user("q"));
 

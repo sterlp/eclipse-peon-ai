@@ -9,7 +9,6 @@ import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
-import org.sterl.llmpeon.shared.ChatMessageUtil.RenderOptions;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.model.ToSimpleMessage;
@@ -173,15 +172,16 @@ public class CompactService {
 
     /**
      * R-CC-17: one WARN dumping the single biggest message (uncapped render — the same measure
-     * as the entry log and the trim sizes). System messages render empty (uncapped drops them)
-     * and are skipped defensively; ties break to the FIRST of the largest (deterministic).
+     * as the entry log and the trim sizes). System messages are skipped defensively (the
+     * instanceof is a log diagnostic, not a capping classification — R-TR-7); ties break to the
+     * FIRST of the largest (deterministic).
      */
     private void logBiggestMessage(List<ChatMessage> messages) {
         ChatMessage biggest = null;
         String biggestRender = null;
         for (var m : messages) {
             if (m instanceof SystemMessage) continue;
-            var render = ChatMessageUtil.toString(m, RenderOptions.uncapped());
+            var render = ChatMessageUtil.toString(m);
             if (render.isEmpty()) continue;
             if (biggestRender == null || render.length() > biggestRender.length()) {
                 biggest = m;

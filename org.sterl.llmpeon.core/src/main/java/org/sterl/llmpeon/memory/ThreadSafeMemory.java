@@ -141,7 +141,7 @@ public class ThreadSafeMemory {
         if (StringUtil.hasNoValue(message)) return true;
         return memory.stream()
             .filter(m -> m instanceof UserMessage || m instanceof ToolExecutionResultMessage)
-            .map(m -> ChatMessageUtil.toString(m, Integer.MAX_VALUE))
+            .map(m -> ChatMessageUtil.toString(m))
             .anyMatch(um -> um.contains(message));
     }
     

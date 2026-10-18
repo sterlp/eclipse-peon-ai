@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.agent.model.TaggedResult;
-import org.sterl.llmpeon.compact.ContextTrimComponent;
 
 import java.util.List;
 
@@ -29,57 +28,31 @@ class ChatMessageUtilTest {
         assertThat(out).isEqualTo("SYSTEM:" + System.lineSeparator() + "SYS-RULES" + System.lineSeparator());
     }
 
-    // Render-Modi (ADR-0056.2) — Bestandsformate bleiben per Default exakt erhalten; Compact-Modi schalten nur Extras.
+    // Single render (R-TR-8) — UNCAPPED, byte-exact formats; capping is the stager's job (ContextTrimComponentTest).
 
     @Test
-    void defaultOverloadsUnchanged() {
-        // GIVEN — one message per legacy signature
+    void singleOverloadRendersUncapped() {
+        // GIVEN — one message per type
         var userMsg = UserMessage.from("USER-TEXT");
         var aiMsg = AiMessage.builder().text("AI-TEXT").thinking("AI-THINK").build();
         var toolMsg = ToolExecutionResultMessage.from("id-1", "echo", "RESULT-12345");
+        var toolReq = ToolExecutionRequest.builder().id("id-2").name("echo").arguments("ABCDEFGH").build();
+        var aiToolMsg = AiMessage.from("ANSWER", List.of(toolReq));
         var nl = System.lineSeparator();
 
-        // WHEN — the 1-arg default (includeThink=true, tool cap 6000)
+        // WHEN — the single 1-arg render (R-TR-8: uncapped — capping is the stager's job)
         // THEN — the user format is unchanged
         assertThat(ChatMessageUtil.toString(userMsg))
             .isEqualTo("USER:" + nl + "USER-TEXT" + nl);
         // THEN — the AI format carries the thinking as its own THINK: block (D1), uncapped, no anchor
         assertThat(ChatMessageUtil.toString(aiMsg))
             .isEqualTo("AI:" + nl + "AI-TEXT" + nl + "THINK:" + nl + "AI-THINK" + nl);
-        // THEN — a tool result below the 6000 default cap passes through untagged (D3: TOOL RESULT: header)
+        // THEN — a tool result is rendered in full (D3: TOOL RESULT: header, no cap, no "(trimmed)")
         assertThat(ChatMessageUtil.toString(toolMsg))
             .isEqualTo("TOOL RESULT:" + nl + "tool name: echo" + nl + "result:" + nl + "RESULT-12345" + nl);
-
-        // WHEN — the 2-arg signature applies its int cap (head-keep + tag)
-        // THEN — the format matches the legacy behaviour
-        assertThat(ChatMessageUtil.toString(toolMsg, 3))
-            .isEqualTo("TOOL RESULT:" + nl + "tool name: echo" + nl + "result:" + nl + "RES" + nl + "(trimmed)" + nl);
-
-        // WHEN — the 3-arg signature switches off thinking
-        // THEN — the THINK: block is absent and the int cap hits the tool arguments (D2: TOOL REQUEST:
-        // block, arguments: without NL)
-        var toolReq = ToolExecutionRequest.builder().id("id-2").name("echo").arguments("ABCDEFGH").build();
-        var aiToolMsg = AiMessage.from("ANSWER", List.of(toolReq));
-        assertThat(ChatMessageUtil.toString(aiToolMsg, false, 5))
-            .isEqualTo("AI:" + nl + "ANSWER" + nl + "TOOL REQUEST:" + nl + "tool name: echo" + nl + "arguments:ABCDE" + nl + "(trimmed)" + nl);
-    }
-
-    @Test
-    void thinkFrontCapKeepsTailWithAnchor() {
-        // GIVEN — a thinking longer than the compact stage-1 cap (9000)
-        var thinking = "P".repeat(8000) + "END-" + "Q".repeat(2000); // 10004 chars
-        var msg = AiMessage.builder().text("ANSWER").thinking(thinking).build();
-        var nl = System.lineSeparator();
-
-        // WHEN rendered in compact stage 1
-        String out = ChatMessageUtil.toString(msg, ContextTrimComponent.stage1Options());
-
-        // THEN the head is dropped, the end (conclusion) is kept, the anchor marks the cut
-        // (D1: the thinking is its own THINK: block)
-        assertThat(out).isEqualTo("AI:" + nl + "ANSWER" + nl + "THINK:" + nl + ChatMessageUtil.THINK_FRONT_CAP_ANCHOR
-            + thinking.substring(thinking.length() - 9000) + nl);
-        // AND no tool block is rendered at all in stage 1
-        assertThat(out).doesNotContain("tool name:");
+        // THEN — a tool request renders its arguments in full (D2: TOOL REQUEST: block, arguments: without NL)
+        assertThat(ChatMessageUtil.toString(aiToolMsg))
+            .isEqualTo("AI:" + nl + "ANSWER" + nl + "TOOL REQUEST:" + nl + "tool name: echo" + nl + "arguments:ABCDEFGH" + nl);
     }
 
     @Test
@@ -93,36 +66,6 @@ class ChatMessageUtilTest {
         // THEN the full thinking is kept in its own THINK: block (D1), no anchor
         assertThat(out).isEqualTo("AI:" + System.lineSeparator() + "A" + System.lineSeparator() + "THINK:" + System.lineSeparator() + "T-THINK" + System.lineSeparator())
             .doesNotContain(ChatMessageUtil.THINK_FRONT_CAP_ANCHOR);
-    }
-
-    @Test
-    void trimmedTagSuppressedInCompactMode() {
-        // GIVEN — a tool result beyond the compact stage-2 cap (6000)
-        var msg = ToolExecutionResultMessage.from("id-3", "big", "X".repeat(7000));
-        var nl = System.lineSeparator();
-
-        // WHEN rendered in compact stage 2
-        String out = ChatMessageUtil.toString(msg, ContextTrimComponent.stage2Options());
-
-        // THEN capped, but no per-message "(trimmed)" tag (R-CIB-5: one disclosure at the input end)
-        assertThat(out).isEqualTo("TOOL RESULT:" + nl + "tool name: big" + nl + "result:" + nl + "X".repeat(6000) + nl)
-            .doesNotContain("(trimmed)");
-        // AND the legacy default still tags
-        assertThat(ChatMessageUtil.toString(msg)).contains("(trimmed)");
-    }
-
-    @Test
-    void toolArgumentsCappedByToolMessageSize() {
-        // GIVEN — a tool request whose arguments exceed the compact stage-2 cap (6000)
-        var req = ToolExecutionRequest.builder().id("id-4").name("write").arguments("A".repeat(7000)).build();
-        var msg = AiMessage.from("WRITING", List.of(req));
-        var nl = System.lineSeparator();
-
-        // WHEN rendered in compact stage 2
-        String out = ChatMessageUtil.toString(msg, ContextTrimComponent.stage2Options());
-
-        // THEN the arguments are head-capped at 6000, no per-message tag (D2: TOOL REQUEST: block)
-        assertThat(out).isEqualTo("AI:" + nl + "WRITING" + nl + "TOOL REQUEST:" + nl + "tool name: write" + nl + "arguments:" + "A".repeat(6000) + nl);
     }
 
     // R-TR-1/2 — the tagged block: symmetric render, line-wise detection, header suppression.
@@ -178,7 +121,7 @@ class ChatMessageUtilTest {
         var msg = UserMessage.from(List.of(TextContent.from(block), TextContent.from("fix it")));
 
         // WHEN extracted
-        var entries = ChatMessageUtil.extractMessages(msg, ChatMessageUtil.RenderOptions.defaults());
+        var entries = ChatMessageUtil.extractMessages(msg);
 
         // THEN — exactly two entries: the block without header, the text with its own USER: header
         assertThat(entries).containsExactly(block, "USER:" + nl + "fix it");
