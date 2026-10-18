@@ -11,10 +11,13 @@ idPrefix: JD
 > Basis: Eclipse-Debug-Model (JDT), nicht DAP — [ADR-0050](adr/0050-debugger-jdt-not-dap-user-session.md).
 > API-Fakten 2026-09: [ADR-0049](adr/0049-jdt-debug-2026-09-api-drift.md).
 > Ursprung: CR-4 des Copilot-Vergleichs — [resolved-points.md](resolved-points.md) („Tool-Evolution-Run").
-> **2026-09-23 (❌ R-JD-13 + Rename):** Breakpoint-Actions (`debugJavaSetBreakpoint` /
-> `debugJavaSetExceptionBreakpoint` / `debugJavaRemoveBreakpoint`) arbeiten jetzt **ohne Session**
+> **2026-09-23 (✅ R-JD-13 + Rename — gebaut, Docs waren stale 2026-10-18):** Breakpoint-Actions (`debugJavaSetBreakpoint` /
+> `debugJavaSetExceptionBreakpoint` / `debugJavaRemoveBreakpoint`) arbeiten **ohne Session**
 > (Marker-Op, JDT installiert in laufende + später gestartete VMs); alle Tool-Namen snake_case →
-> `debugJava*` camelCase — [ADR-0054](adr/0054-tool-naming-camelcase-family-prefix.md).
+> `debugJava*` camelCase — [ADR-0054](adr/0054-tool-naming-camelcase-family-prefix.md). Belege:
+> `JavaDebugTool.java:66` (`NO_SESSION_MARKER_OP`), `DebugBreakpointNoSessionTest` (5 × UC-JD-15),
+> `DebugJsonUnitTest` (2 × UC-JD-15), kein snake_case-Rest im Code. **Manuell offen:** Install-Pfad
+> Marker → laufende VM + Exception-BP/HitCount-B-Pfade (Clean-State-Re-Run).
 
 ## Ziel
 
@@ -211,7 +214,7 @@ zur Beschreibung).
 - GIVEN Marker mit hitCount `-1` WHEN Response gerendert THEN `hitCount: 0`; GIVEN `hitCount = 3`
   THEN unverändert `3`. *(Automatisiert: `DebugJsonUnitTest`-Stub.)*
 
-### R-JD-13 — Breakpoints ohne Session (Marker-Op) ❌
+### R-JD-13 — Breakpoints ohne Session (Marker-Op) ✅
 
 `debugJavaSetBreakpoint`, `debugJavaSetExceptionBreakpoint` und `debugJavaRemoveBreakpoint` brauchen
 **keine** Debug-Session: Breakpoints sind persistente JDT-Marker, und JDT installiert sie automatisch
@@ -226,7 +229,7 @@ Suspend/State/Evaluate/SetVariable (R-JD-1).
 > es ohne Session nicht kann. Sichtbarkeit: `debugJavaListBreakpoints` (R-JD-11), Rückweg:
 > `debugJavaRemoveBreakpoint`.
 
-#### UC-JD-15 — breakpointsWorkWithoutSession ❌
+#### UC-JD-15 — breakpointsWorkWithoutSession ✅
 - GIVEN keine Debug-Session WHEN `debugJavaSetBreakpoint` THEN Marker existiert im gewählten Projekt,
   Response nennt „no active session … stored as marker"; WHEN `debugJavaRemoveBreakpoint(id)` THEN
   Marker entfernt, dito-Response; GIVEN Session aktiv WHEN gleiches Set THEN BP wie bisher installiert
