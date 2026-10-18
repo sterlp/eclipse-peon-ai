@@ -101,7 +101,7 @@ class ContextTrimComponentTest {
 
         // THEN — thinking is front-capped at 9000: the anchor marks the dropped head, the end stays
         assertThat(outcome.stage()).isEqualTo(Stage.THINK_AND_USER);
-        assertThat(outcome.input()).contains("Think: " + ChatMessageUtil.THINK_FRONT_CAP_ANCHOR);
+        assertThat(outcome.input()).contains(ChatMessageUtil.THINK_PREFIX + ChatMessageUtil.THINK_FRONT_CAP_ANCHOR);
         assertThat(outcome.input()).contains("CONCLUSION");
         assertThat(outcome.input()).doesNotContain("H".repeat(20000));
         assertThat(outcome.estimateAfter()).isLessThanOrEqualTo(3200);
@@ -215,7 +215,7 @@ class ContextTrimComponentTest {
         // but the content heads are still there
         assertThat(outcome.stage()).isEqualTo(Stage.PER_MESSAGE);
         assertThat(outcome.input()).doesNotContain("T".repeat(2000)).doesNotContain("R".repeat(2000)).doesNotContain("U".repeat(2000));
-        assertThat(outcome.input()).contains("T".repeat(900)).contains("TOOL_EXECUTION_RESULT:").contains("USER:\nq U");
+        assertThat(outcome.input()).contains("T".repeat(900)).contains("TOOL RESULT:").contains("USER:\nq U");
     }
 
     @Test

@@ -1,7 +1,6 @@
 package org.sterl.llmpeon.shared;
 
 import java.util.Collection;
-import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -26,7 +25,7 @@ public class ChatMessageUtil {
     public static final String THINK_FRONT_CAP_ANCHOR = "…$ ";
     public static final String THINK_PREFIX = "THINK:" + System.lineSeparator();
     public static final String TOOL_REQUEST_PREFIX = "TOOL REQUEST:" + System.lineSeparator();
-    public static final String TOOL_RESULT_PREFIX = ChatMessageType.TOOL_EXECUTION_RESULT + System.lineSeparator();
+    public static final String TOOL_RESULT_PREFIX = "TOOL RESULT:" + System.lineSeparator();
 
     /**
      * Render modes for {@link #toString(ChatMessage, RenderOptions)}.
@@ -162,7 +161,7 @@ public class ChatMessageUtil {
      */
     @NonNull
     public static Collection<String> extractMessages(@NonNull ChatMessage msg, @NonNull RenderOptions options) {
-        var result = new LinkedHashSet<String>();
+        var result = new LinkedList<String>();
         var nl = System.lineSeparator();
         var t = msg.type();
         if (msg.type() == ChatMessageType.CUSTOM) return result;
@@ -188,7 +187,7 @@ public class ChatMessageUtil {
                     for (var tr : m.toolExecutionRequests()) {
                         result.add(TOOL_REQUEST_PREFIX
                              + "tool name: " + tr.name() + nl
-                             + "arguments:" + StringUtil.trimToLength(tr.arguments(), options.toolMessageSize()) + nl
+                             + "arguments:" + StringUtil.trimToLength(tr.arguments(), options.toolMessageSize())
                              + trimmedTag(tr.arguments(), options));
                     }
                 }
@@ -196,7 +195,7 @@ public class ChatMessageUtil {
             } else if (options.toolMessageSize() > 0 && msg instanceof ToolExecutionResultMessage tr) {
                 result.add(TOOL_RESULT_PREFIX
                         + "tool name: " + tr.toolName() + nl
-                        + "result:" + nl + StringUtil.trimToLength(tr.text(), options.toolMessageSize()) + nl
+                        + "result:" + nl + StringUtil.trimToLength(tr.text(), options.toolMessageSize())
                         + trimmedTag(tr.text(), options));
             }
         }
@@ -209,7 +208,7 @@ public class ChatMessageUtil {
      */
     private static String messageTag(String msg, ChatMessageType type) {
         if (StringUtil.hasNoValue(msg)) return "";
-        if (msg.startsWith(TaggedResult.PREFIX) && msg.endsWith(TaggedResult.SUFFIX)) return "";
+        if (TaggedResult.isTagged(msg)) return "";
         return type + ":" + System.lineSeparator();
     }
     
@@ -218,54 +217,13 @@ public class ChatMessageUtil {
     }
 
     /**
-     * Converts a ChatMessage to a simple string in the given render mode.
-     * CUSTOM messages are always ignored; SYSTEM messages are rendered like every other type
-     * unless {@link RenderOptions#renderSystemMessage()} is false.
-     * 
-     * TODO: use extractMessages and join with new line
+     * Converts a ChatMessage to a simple string in the given render mode: the
+     * {@link #extractMessages(ChatMessage, RenderOptions)} entries joined with a line separator.
+     * A message without renderable content renders as the empty string.
      */
     public static String toString(ChatMessage msg, RenderOptions options) {
-        var nl = System.lineSeparator();
-        if (msg.type() == ChatMessageType.CUSTOM) return "";
-        if (msg.type() == ChatMessageType.SYSTEM) {
-            if (!options.renderSystemMessage()) return "";
-            return "SYSTEM:" + nl + ((SystemMessage) msg).text() + nl;
-        }
-
-        var result = new StringBuilder();
-        result.append(msg.type()).append(":").append(nl);
-        if (msg instanceof UserMessage um) {
-            um.contents().stream().filter(m -> m instanceof TextContent)
-              .map(m -> (TextContent)m)
-              .forEach(c -> result.append(c.text()).append(nl));
-
-        } else if (msg instanceof AiMessage m) {
-            if (StringUtil.hasValue(m.text())) {
-                result.append(m.text()).append(nl);
-            }
-
-            if (options.includeThink() && StringUtil.hasValue(m.thinking())) {
-                result.append("Think: ").append(capThinking(m.thinking(), options)).append(nl);
-            }
-
-            if (options.toolMessageSize() > 0 && m.hasToolExecutionRequests()) {
-                for (var tr : m.toolExecutionRequests()) {
-                    result.append("tool name: ").append(tr.name()).append(nl)
-                          .append("arguments:").append(nl)
-                          .append(StringUtil.trimToLength(tr.arguments(), options.toolMessageSize()))
-                          .append(nl)
-                          .append(trimmedTag(tr.arguments(), options));
-                }
-            }
-
-        } else if (options.toolMessageSize() > 0 && msg instanceof ToolExecutionResultMessage tr) {
-            result.append("tool name: ").append(tr.toolName()).append(nl)
-                  .append("result:").append(nl)
-                  .append(StringUtil.trimToLength(tr.text(), options.toolMessageSize()))
-                  .append(nl)
-                  .append(trimmedTag(tr.text(), options));
-        }
-        return result.toString();
+        var entries = extractMessages(msg, options);
+        return entries.isEmpty() ? "" : String.join(System.lineSeparator(), entries) + System.lineSeparator();
     }
 
     /** Front cap: keep the END of the thinking (the conclusion), drop the head, mark with the anchor. */
@@ -276,7 +234,7 @@ public class ChatMessageUtil {
 
     private static String trimmedTag(String value, RenderOptions options) {
         return options.perMessageTrimmedTag() && value != null && value.length() > options.toolMessageSize()
-                ? "(trimmed)" + System.lineSeparator() 
+                ? System.lineSeparator() + "(trimmed)"
                 : "";
     }
     

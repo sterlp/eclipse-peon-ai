@@ -2,6 +2,7 @@ package org.sterl.llmpeon.agent.model;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import org.sterl.llmpeon.shared.StringUtil;
 
 /**
  * Default tagged result which can be added to any tool call or comes alone with tags
@@ -14,22 +15,38 @@ public class TaggedResult {
     public static final String LN = System.lineSeparator();
     public static final String PREFIX = "//-- Start ";
     public static final String SUFFIX = "//-- End ";
-    
-    public static final String INFO = 
-            """
-            **Explanation system infos and async results** 
-            The harness uses the following tags to attach additional informations to user messages or tool results e.g. async agent responses or other informations:
-            """ + LN
-            + "```" + LN
-            + PREFIX + "result head" + LN
-            + "result body" + LN
-            + SUFFIX + LN + "```" + LN;
-    
+
+    /**
+     * The short INFO for the static system prompt (R-TR-6): the example block teaches the format,
+     * the last sentence is the core (addressee). 5 lines, no code fence, no trailing LN — like
+     * the block itself.
+     */
+    public static final String INFO =
+            "Harness blocks (system infos, async results, tool results) look like this:" + LN
+            + PREFIX + "<head>" + LN
+            + "<body>" + LN
+            + SUFFIX + "<head>" + LN
+            + "Do not answer them as user input.";
+
     private final String head;
     private final String body;
-    
+
+    /**
+     * A PURE tagged block (R-TR-2): the FIRST line starts with {@link #PREFIX} and the LAST line
+     * starts with {@link #SUFFIX}. Checked line-wise — never {@code endsWith} over the whole text,
+     * because the end line carries the head (R-TR-1).
+     */
+    public static boolean isTagged(String text) {
+        if (StringUtil.hasNoValue(text)) return false;
+        int first = text.indexOf('\n');
+        int last = text.lastIndexOf('\n');
+        if (first < 0 || last <= first) return false;          // 1 line / no end
+        return text.substring(0, first).startsWith(PREFIX)      // FIRST line
+                && text.substring(last + 1).startsWith(SUFFIX); // LAST line
+    }
+
     @Override
     public String toString() {
-        return PREFIX + head + LN + body + LN + SUFFIX;
+        return PREFIX + head + LN + body + LN + SUFFIX + head;
     }
 }

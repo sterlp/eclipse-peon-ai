@@ -3,6 +3,7 @@ package org.sterl.llmpeon.shared;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
+import org.sterl.llmpeon.agent.model.TaggedResult;
 import org.sterl.llmpeon.compact.ContextTrimComponent;
 
 import java.util.List;
@@ -10,6 +11,7 @@ import java.util.List;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 
@@ -41,24 +43,25 @@ class ChatMessageUtilTest {
         // THEN — the user format is unchanged
         assertThat(ChatMessageUtil.toString(userMsg))
             .isEqualTo("USER:" + nl + "USER-TEXT" + nl);
-        // THEN — the AI format carries the thinking uncapped, no anchor
+        // THEN — the AI format carries the thinking as its own THINK: block (D1), uncapped, no anchor
         assertThat(ChatMessageUtil.toString(aiMsg))
-            .isEqualTo("AI:" + nl + "AI-TEXT" + nl + "Think: AI-THINK" + nl);
-        // THEN — a tool result below the 6000 default cap passes through untagged
+            .isEqualTo("AI:" + nl + "AI-TEXT" + nl + "THINK:" + nl + "AI-THINK" + nl);
+        // THEN — a tool result below the 6000 default cap passes through untagged (D3: TOOL RESULT: header)
         assertThat(ChatMessageUtil.toString(toolMsg))
-            .isEqualTo("TOOL_EXECUTION_RESULT:" + nl + "tool name: echo" + nl + "result:" + nl + "RESULT-12345" + nl);
+            .isEqualTo("TOOL RESULT:" + nl + "tool name: echo" + nl + "result:" + nl + "RESULT-12345" + nl);
 
         // WHEN — the 2-arg signature applies its int cap (head-keep + tag)
         // THEN — the format matches the legacy behaviour
         assertThat(ChatMessageUtil.toString(toolMsg, 3))
-            .isEqualTo("TOOL_EXECUTION_RESULT:" + nl + "tool name: echo" + nl + "result:" + nl + "RES" + nl + "(trimmed)" + nl);
+            .isEqualTo("TOOL RESULT:" + nl + "tool name: echo" + nl + "result:" + nl + "RES" + nl + "(trimmed)" + nl);
 
         // WHEN — the 3-arg signature switches off thinking
-        // THEN — the Think line is absent and the int cap hits the tool arguments
+        // THEN — the THINK: block is absent and the int cap hits the tool arguments (D2: TOOL REQUEST:
+        // block, arguments: without NL)
         var toolReq = ToolExecutionRequest.builder().id("id-2").name("echo").arguments("ABCDEFGH").build();
         var aiToolMsg = AiMessage.from("ANSWER", List.of(toolReq));
         assertThat(ChatMessageUtil.toString(aiToolMsg, false, 5))
-            .isEqualTo("AI:" + nl + "ANSWER" + nl + "tool name: echo" + nl + "arguments:" + nl + "ABCDE" + nl + "(trimmed)" + nl);
+            .isEqualTo("AI:" + nl + "ANSWER" + nl + "TOOL REQUEST:" + nl + "tool name: echo" + nl + "arguments:ABCDE" + nl + "(trimmed)" + nl);
     }
 
     @Test
@@ -72,7 +75,8 @@ class ChatMessageUtilTest {
         String out = ChatMessageUtil.toString(msg, ContextTrimComponent.stage1Options());
 
         // THEN the head is dropped, the end (conclusion) is kept, the anchor marks the cut
-        assertThat(out).isEqualTo("AI:" + nl + "ANSWER" + nl + "Think: " + ChatMessageUtil.THINK_FRONT_CAP_ANCHOR
+        // (D1: the thinking is its own THINK: block)
+        assertThat(out).isEqualTo("AI:" + nl + "ANSWER" + nl + "THINK:" + nl + ChatMessageUtil.THINK_FRONT_CAP_ANCHOR
             + thinking.substring(thinking.length() - 9000) + nl);
         // AND no tool block is rendered at all in stage 1
         assertThat(out).doesNotContain("tool name:");
@@ -86,8 +90,8 @@ class ChatMessageUtilTest {
         // WHEN rendered with the default options
         String out = ChatMessageUtil.toString(msg);
 
-        // THEN the full thinking is kept, no anchor
-        assertThat(out).isEqualTo("AI:" + System.lineSeparator() + "A" + System.lineSeparator() + "Think: T-THINK" + System.lineSeparator())
+        // THEN the full thinking is kept in its own THINK: block (D1), no anchor
+        assertThat(out).isEqualTo("AI:" + System.lineSeparator() + "A" + System.lineSeparator() + "THINK:" + System.lineSeparator() + "T-THINK" + System.lineSeparator())
             .doesNotContain(ChatMessageUtil.THINK_FRONT_CAP_ANCHOR);
     }
 
@@ -101,7 +105,7 @@ class ChatMessageUtilTest {
         String out = ChatMessageUtil.toString(msg, ContextTrimComponent.stage2Options());
 
         // THEN capped, but no per-message "(trimmed)" tag (R-CIB-5: one disclosure at the input end)
-        assertThat(out).isEqualTo("TOOL_EXECUTION_RESULT:" + nl + "tool name: big" + nl + "result:" + nl + "X".repeat(6000) + nl)
+        assertThat(out).isEqualTo("TOOL RESULT:" + nl + "tool name: big" + nl + "result:" + nl + "X".repeat(6000) + nl)
             .doesNotContain("(trimmed)");
         // AND the legacy default still tags
         assertThat(ChatMessageUtil.toString(msg)).contains("(trimmed)");
@@ -117,11 +121,128 @@ class ChatMessageUtilTest {
         // WHEN rendered in compact stage 2
         String out = ChatMessageUtil.toString(msg, ContextTrimComponent.stage2Options());
 
-        // THEN the arguments are head-capped at 6000, no per-message tag
-        assertThat(out).isEqualTo("AI:" + nl + "WRITING" + nl + "tool name: write" + nl + "arguments:" + nl + "A".repeat(6000) + nl);
+        // THEN the arguments are head-capped at 6000, no per-message tag (D2: TOOL REQUEST: block)
+        assertThat(out).isEqualTo("AI:" + nl + "WRITING" + nl + "TOOL REQUEST:" + nl + "tool name: write" + nl + "arguments:" + "A".repeat(6000) + nl);
     }
 
+    // R-TR-1/2 — the tagged block: symmetric render, line-wise detection, header suppression.
 
+    // R-TR-1
+    @Test
+    void taggedResultRendersSymmetricBlock() {
+        // WHEN a tagged result is rendered
+        String rendered = new TaggedResult("h", "b").toString();
+
+        // THEN — the end line carries the head (symmetric block, no trailing line separator)
+        assertThat(rendered).isEqualTo(TaggedResult.PREFIX + "h" + TaggedResult.LN + "b" + TaggedResult.LN + TaggedResult.SUFFIX + "h");
+        // AND — the render is detected as a pure tagged block
+        assertThat(TaggedResult.isTagged(rendered)).isTrue();
+    }
+
+    // R-TR-2
+    @Test
+    void pureTaggedBlockContentGetsNoHeader() {
+        // GIVEN — a user message whose single TextContent is a pure tagged block
+        var nl = System.lineSeparator();
+        var block = TaggedResult.PREFIX + "ctx" + nl + "block-body" + nl + TaggedResult.SUFFIX + "ctx";
+
+        // WHEN rendered
+        String out = ChatMessageUtil.toString(UserMessage.from(block));
+
+        // THEN — no USER: header, the block is rendered untouched
+        assertThat(out).doesNotContain("USER:");
+        assertThat(out).isEqualTo(block + nl);
+    }
+
+    // R-TR-2
+    @Test
+    void blockEmbeddedInToolResultIsNotPureAndKeepsItsHeader() {
+        // GIVEN — a tool result whose text is a sender line plus an embedded tagged block
+        var nl = System.lineSeparator();
+        var block = TaggedResult.PREFIX + "async" + nl + "async-body" + nl + TaggedResult.SUFFIX + "async";
+        var msg = ToolExecutionResultMessage.from("id", "shell", "sender-line" + nl + block);
+
+        // WHEN rendered
+        String out = ChatMessageUtil.toString(msg);
+
+        // THEN — the whole text is not a pure block: the TOOL RESULT: header stays, the block stays full
+        assertThat(out).contains("TOOL RESULT:").contains(block);
+    }
+
+    // R-TR-2
+    @Test
+    void multiContentUserMessageRendersOneEntryPerTextContent() {
+        // GIVEN — a user message with a tagged block and real text as SEPARATE TextContents (D5)
+        var nl = System.lineSeparator();
+        var block = TaggedResult.PREFIX + "ctx" + nl + "block-body" + nl + TaggedResult.SUFFIX + "ctx";
+        var msg = UserMessage.from(List.of(TextContent.from(block), TextContent.from("fix it")));
+
+        // WHEN extracted
+        var entries = ChatMessageUtil.extractMessages(msg, ChatMessageUtil.RenderOptions.defaults());
+
+        // THEN — exactly two entries: the block without header, the text with its own USER: header
+        assertThat(entries).containsExactly(block, "USER:" + nl + "fix it");
+        // AND — the render is the entries joined, the block first
+        assertThat(ChatMessageUtil.toString(msg)).isEqualTo(block + nl + "USER:" + nl + "fix it" + nl);
+    }
+
+    // R-TR-2
+    @Test
+    void emptyBodyBlockIsPureAndGetsNoHeader() {
+        // GIVEN — a block with an empty body (Start line, blank line, End line)
+        var nl = System.lineSeparator();
+        var block = TaggedResult.PREFIX + "h" + nl + nl + TaggedResult.SUFFIX + "h";
+
+        // WHEN rendered as a user message
+        String out = ChatMessageUtil.toString(UserMessage.from(block));
+
+        // THEN — it is still a pure block: no header, the blank body line survives
+        assertThat(out).doesNotContain("USER:");
+        assertThat(out).isEqualTo(block + nl);
+    }
+
+    // R-TR-2
+    @Test
+    void singleLineStartWithoutEndIsNotTagged() {
+        // GIVEN — one line starting with the prefix, no end line
+        // WHEN checked
+        boolean tagged = TaggedResult.isTagged(TaggedResult.PREFIX + "x");
+
+        // THEN — no block (a block needs a first AND a last line)
+        assertThat(tagged).isFalse();
+        // AND — null and empty are never tagged
+        assertThat(TaggedResult.isTagged(null)).isFalse();
+        assertThat(TaggedResult.isTagged("")).isFalse();
+    }
+
+    // R-TR-2
+    @Test
+    void startWithoutSuffixLastLineIsNotTagged() {
+        // GIVEN — text starting with the prefix whose last line is not the suffix
+        // WHEN checked
+        boolean tagged = TaggedResult.isTagged(TaggedResult.PREFIX + "x" + TaggedResult.LN + "body" + TaggedResult.LN + "no end");
+
+        // THEN — not a pure block (the last line decides, not an endsWith over the whole text)
+        assertThat(tagged).isFalse();
+    }
+
+    // R-TR-2
+    @Test
+    void innerEndLineDoesNotBreakPurity() {
+        // GIVEN — a block whose BODY contains a line that itself starts with the suffix
+        var block = TaggedResult.PREFIX + "h" + TaggedResult.LN
+                + TaggedResult.SUFFIX + "fake" + TaggedResult.LN
+                + "real body" + TaggedResult.LN
+                + TaggedResult.SUFFIX + "h";
+
+        // WHEN checked — the first and the last line decide
+        boolean tagged = TaggedResult.isTagged(block);
+
+        // THEN — still a pure block
+        assertThat(tagged).isTrue();
+        // AND — rendered as a user message it gets no header
+        assertThat(ChatMessageUtil.toString(UserMessage.from(block))).doesNotContain("USER:");
+    }
 
     // R21 — the estimator the live status uses for per-chunk token counting.
 
