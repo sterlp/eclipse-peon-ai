@@ -318,6 +318,7 @@ class DocsLinterMatchingTest {
 
     // --- UC-DL-12: reportsUncoveredDoneUseCaseFirst ---
     // UC-DL-12
+    // UC-DL-28
     @Test
     void reportsUncoveredDoneUseCaseFirst() throws IOException {
         writeDoc("a.md", """

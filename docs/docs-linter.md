@@ -679,6 +679,10 @@ fehlerfreier Lauf aus.
 GIVEN ein beliebiger Befund WHEN das Ergebnis entsteht THEN trägt die Zeile `datei:zeile`,
 `UNBELEGT_ERLEDIGT` zuerst.
 
+*(Zwei Zusicherungen, zwei Tests — zusammen der Beleg: `DocsLinterToolTest.returnsEveryFindingWithoutTruncation`
+pinnt `datei:zeile` in der Befundzeile, `DocsLinterMatchingTest.reportsUncoveredDoneUseCaseFirst`
+pinnt, dass `UNBELEGT_ERLEDIGT` vor anderen Befundarten erscheint.)*
+
 ### R-DL-14 — Vergeben darf einer, prüfen dürfen alle ✅ done
 
 Die ID-Vergabe (`nextIds`, Tool `DocsIdTool`) liegt **allein beim PO**. Die Prüfmethoden (`lintDocs`,

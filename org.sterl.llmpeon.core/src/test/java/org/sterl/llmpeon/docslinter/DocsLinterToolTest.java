@@ -61,6 +61,7 @@ class DocsLinterToolTest {
 
     // --- UC-DL-45: every finding is returned without truncation ---
     // UC-DL-45
+    // UC-DL-28
     @Test
     void returnsEveryFindingWithoutTruncation() throws IOException {
         writeDoc("a.md", """
