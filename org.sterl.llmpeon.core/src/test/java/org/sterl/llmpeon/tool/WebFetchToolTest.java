@@ -135,14 +135,14 @@ class WebFetchToolTest {
     // UC-WEB-3
     @Test
     void webFetchCacheEvictionRefetches() throws Exception {
-        for (int i = 1; i <= 6; i++) {
+        for (int i = 1; i <= 17; i++) {
             String url = base + "/page" + i;
             serve("/page" + i, 200, page(PAGE_1000_MARKERS).getBytes(StandardCharsets.UTF_8));
             tool.webFetchAsMarkdown(url, null, null);
         }
         assertThat(calls("/page1")).isEqualTo(1);
 
-        // GIVEN the 6th URL evicted the oldest WHEN the evicted URL is requested again
+        // GIVEN the 17th URL evicted the oldest WHEN the evicted URL is requested again
         String result = tool.webFetchAsMarkdown(base + "/page1", null, null);
 
         // THEN refetch, window back to 1-500
@@ -182,24 +182,25 @@ class WebFetchToolTest {
     }
 
     // R-BC-4 (docs/bounded-caches.md)
-    // Cap 5: fetch a..e, refresh a (501), fetch f -> evicts b (not a); a stays a hit (calls==1),
-    // b refetches (calls==2), c..f stay at 1.
-    // Mutation: FIFO (get does not refresh, old behavior) -> a evicted at f -> calls(a)==2 -> red.
+    // LRU recency at the current cap (R-WEB-9): fill 16 URLs, refresh the oldest (a),
+    // fetch a 17th (q) -> evicts b (not a); a stays a hit (calls==1), b refetches (calls==2),
+    // c..q stay at 1. The exact cap size is proven by webFetchCacheHolds16Pages (UC-WEB-9).
+    // Mutation: FIFO (get does not refresh, old behavior) -> a evicted at q -> calls(a)==2 -> red.
     // Mutation: unbounded -> b still cached -> calls(b)==1 -> red.
     @Test
     void webFetchCacheUsesBoundedLru() throws Exception {
-        for (char c = 'a'; c <= 'f'; c++) {
+        for (char c = 'a'; c <= 'q'; c++) {
             serve("/bc-" + c, 200, page(PAGE_1000_MARKERS).getBytes(StandardCharsets.UTF_8));
         }
 
-        // GIVEN 5 distinct URLs fill the cap WHEN the most recent one is refreshed and a 6th arrives
-        for (char c = 'a'; c <= 'e'; c++) {
+        // GIVEN 16 distinct URLs fill the cache WHEN the oldest is refreshed and a 17th arrives
+        for (char c = 'a'; c <= 'p'; c++) {
             tool.webFetchAsMarkdown(base + "/bc-" + c, 1, null);
         }
         String refreshed = tool.webFetchAsMarkdown(base + "/bc-a", 501, null);
         assertThat(refreshed).contains("501: LN501");
         assertThat(calls("/bc-a")).isEqualTo(1);
-        tool.webFetchAsMarkdown(base + "/bc-f", 1, null);
+        tool.webFetchAsMarkdown(base + "/bc-q", 1, null);
 
         // THEN the refresh protected a (LRU evicted b): a is still a hit, b refetches
         String aAgain = tool.webFetchAsMarkdown(base + "/bc-a", 501, null);
@@ -209,9 +210,40 @@ class WebFetchToolTest {
         assertThat(calls("/bc-b")).isEqualTo(2);
 
         // AND every other URL was fetched exactly once
-        for (char c = 'c'; c <= 'f'; c++) {
+        for (char c = 'c'; c <= 'q'; c++) {
             assertThat(calls("/bc-" + c)).as("calls(/bc-%s)", c).isEqualTo(1);
         }
+    }
+
+    // UC-WEB-9
+    @Test
+    void webFetchCacheHolds16Pages() throws Exception {
+        for (int i = 1; i <= 16; i++) {
+            serve("/hold-" + i, 200, page(PAGE_1000_MARKERS).getBytes(StandardCharsets.UTF_8));
+        }
+        for (int i = 1; i <= 17; i++) {
+            serve("/evict-" + i, 200, page(PAGE_1000_MARKERS).getBytes(StandardCharsets.UTF_8));
+        }
+
+        // GIVEN 16 distinct URLs fill the cache WHEN URL 1 is requested again
+        for (int i = 1; i <= 16; i++) {
+            tool.webFetchAsMarkdown(base + "/hold-" + i, null, null);
+        }
+        String hit = tool.webFetchAsMarkdown(base + "/hold-1", null, null);
+
+        // THEN cache hit — no second HTTP call
+        assertThat(hit).startsWith("   1: LN1").contains("of 1000");
+        assertThat(calls("/hold-1")).isEqualTo(1);
+
+        // AND GIVEN 17 distinct URLs fetched in sequence WHEN URL 1 is requested again
+        for (int i = 1; i <= 17; i++) {
+            tool.webFetchAsMarkdown(base + "/evict-" + i, null, null);
+        }
+        String refetched = tool.webFetchAsMarkdown(base + "/evict-1", null, null);
+
+        // THEN refetch — URL 1 was the oldest of 17
+        assertThat(refetched).startsWith("   1: LN1").contains("of 1000");
+        assertThat(calls("/evict-1")).isEqualTo(2);
     }
 
     @Test

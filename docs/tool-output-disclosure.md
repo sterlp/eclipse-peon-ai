@@ -36,7 +36,7 @@ gleiche Regel — nur falls `limit > 0` und erreicht.
 
 ### R-OD-3 — `webFetchAsMarkdown` ✅
 
-statt byte-Cap → **paginiert** (Mini-Cache letzte 5 URLs,
+statt byte-Cap → **paginiert** (Snapshot-Cache letzte 16 Seiten — [web-tools.md](web-tools.md) R-WEB-9 ✅,
 500-Zeilen-Fenster je Call, disclosed) — Details in [web-tools.md](web-tools.md); Fehlerpfad
 (HTTP ≥ 400) gibt Status + **Snippet** statt des vollständigen Body zurück.
 

@@ -5,7 +5,8 @@ idPrefix: WEB
 # Web-Tools — Fetch (Kontext, paginiert) + Download (Disk)
 
 > **Status:** ✅ done (2026-09-20, Paul specified 2026-09-19). WebFetchTool paginiert (Cache + 500-Zeilen-Fenster),
-> `webGet` für Datei-Downloads ohne Limit.
+> `webGet` für Datei-Downloads ohne Limit. **2026-10-18 (✅ done, Paul):** Cache-Größe 5 → **16**
+> (R-WEB-9) — die Navigation in der Seite braucht mehr stabile Snapshots. Surefire core 1173/0, Paul-Smoke offen.
 
 ## Ziel
 
@@ -18,7 +19,7 @@ der Kontext sieht nur Metadaten.
 ### R-WEB-1 — paginierte `webFetchAsMarkdown` ✅
 
 `webFetchAsMarkdown(url, startLine?, endLine?)`: bei Cache-Miss fetch → Markdown im
-**Mini-Cache (letzte 5 URLs, LRU)**; Return = Zeilenfenster, **max 500 Zeilen** je Call (Start default 1;
+**Mini-Cache (LRU; Größe: R-WEB-9)**; Return = Zeilenfenster, **max 500 Zeilen** je Call (Start default 1;
 `endLine 0/null` = **Fenster-Default `start+499`, NICHT Dateiende** — bewusste Abweichung von den Read-Tools,
 Doku-Korrektur aus dem Review 2026-09-20), Disclosure **„lines X–Y of N — read on with startLine"**.
 
@@ -29,7 +30,7 @@ Doku-Korrektur aus dem Review 2026-09-20), Disclosure **„lines X–Y of N — 
 ### R-WEB-2 — Cache-Hit ohne Refetch ✅
 
 Cache-Hit = **kein Refetch**: das Fenster kommt aus dem gecachten Snapshot — Paginierung
-ist stabil (kein anderer Inhalt zwischen zwei Calls derselben URL). Cache-Verdrängung (6. URL) = beim
+ist stabil (kein anderer Inhalt zwischen zwei Calls derselben URL). Cache-Verdrängung (die (Kapazität+1)-te URL) = beim
 nächsten Call Refetch.
 
 #### UC-WEB-2 — webFetchCacheHitPaginatesWithoutRefetch ✅
@@ -37,8 +38,8 @@ nächsten Call Refetch.
   gecachten Snapshot, **kein** zweiter HTTP-Call.
 
 #### UC-WEB-3 — webFetchCacheEvictionRefetches ✅
-- GIVEN 6. URL verdrängt die älteste WHEN die verdrängte URL erneut aufgerufen wird THEN Refetch,
-  Fenster wieder 1–500.
+- GIVEN die (Kapazität+1)-te URL verdrängt die älteste WHEN die verdrängte URL erneut aufgerufen
+  wird THEN Refetch, Fenster wieder 1–500.
 
 ### R-WEB-3 — Fehlerpfad HTTP ≥ 400 ✅
 
@@ -88,3 +89,16 @@ keine Teilergebnisse, keine stillen „0 bytes"-Erfolge.
 `webGet` hängt hinter das `diskToolsEnabled`-Toggle (default **OFF**) — dieselbe Risikoklasse
 wie die Disk-Write-Tools (schreibt auf absolute Pfade); ungated würde der Toggle still umgangen
 (Paul 2026-09-19). Homepage-Doku des Toggles nennt `webGet` mit (gleiche Increment-Pflicht).
+
+### R-WEB-9 — Snapshot-Cache hält die letzten 16 Seiten ✅ done (2026-10-18, Paul — Surefire core 1173/0)
+
+Der `webFetchAsMarkdown`-Snapshot-Cache hält **16** Seiten (gebaut ist 5). Grund: die Paginierung
+lebt von stabilen Snapshots — bei 5 Seiten verdrängt eine mehrseitige Recherche ihre eigenen Seiten
+und jeder Rücksprung refetcht. Eviction bleibt **LRU** (R-BC-1), die 16 ist eine benannte Konstante
+am Tool — **keine** User-Config (unverändert zu R-BC-4, Paul 2026-09-17).
+
+#### UC-WEB-9 — webFetchCacheHolds16Pages ✅
+- GIVEN 17 verschiedene URLs nacheinander gefetcht WHEN danach URL 1 erneut aufgerufen wird THEN
+  Refetch (URL 1 war die älteste von 17) — aber nach nur 16 URLs ist der erneute Aufruf von URL 1
+  ein **Cache-Hit** (kein zweiter HTTP-Call).
+→ `webFetchCacheHolds16Pages` (ersetzt den Cap-5-Nachweis in `webFetchCacheUsesBoundedLru`)
