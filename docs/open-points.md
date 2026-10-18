@@ -236,17 +236,13 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   PATH-Scan, E2E-Beleg auf Pauls Maschine — Detail in codegraph.md Fakten).
 
 
-## Tagged Results (2026-10-18, Paul) — Design offen
+## Tagged Results (2026-10-18, Paul) — Design entschieden, Bau offen
 
-- ❓ **`extractMessages`: Set oder Liste?** Jon-Empfehlung: **Liste** — Dedup im Compact-Consumer
-  (`LinkedHashSet` + `collapsed N duplicate(s)` in der Disclosure). Ein `Collection`-Rückgabetyp, der
-  Duplikate still schluckt, ist ein hidden filter; außerdem kollabieren nach Per-Message-Cap zwei
-  **verschiedene** Inhalte mit gleichem Kopf zu einem (Datenverlust). Details + 5 offene Fragen in
-  [tagged-results.md](tagged-results.md).
-- ❓ **`TaggedResult.INFO` Injektionsort:** System-Message (static context) oder Turn-Context-Item
-  (`dedupKey` verhindert Wiederholung)? Empfehlung ContextItem, wenn das Format je Agent gleich ist.
-- ❓ **Format-Details:** `toString()` schreibt `//-- End ` **ohne** `head` (asymmetrisch),
-  `startsWith/endsWith`-Erkennung ist trimming-anfällig. Vor dem Bau festzurren.
+- 🔒 **Alle Designfragen geklärt** (Liste statt Set, `INFO` einmal in der static System-Message,
+  Prefix/Suffix immer da + Erkennung nur am Start, `TaggedResult` für **alle** ContextItems,
+  Compact filtert über Tags und dedupliziert per `head`, Cap restlos raus aus `ChatMessageUtil`) —
+  Regeln + BDD in [tagged-results.md](tagged-results.md) (R-TR-1…9, 🚧). Bau ausstehend.
+- ❓ **`TaggedResult.INFO`-Wortlaut:** Vorschlag zur Kürzung (~40 %) steht im Doc; Paul prüft im Bau.
 
 ## Codegraph-Smoke (2026-10-18, Paul) — Befunde
 

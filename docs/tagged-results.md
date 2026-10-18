@@ -1,20 +1,26 @@
+---
+idPrefix: TR
+---
+
 # Tagged Results — Tool-Results und System-Infos als getaggte Blöcke
 
-> **Status:** 🚧 in design (2026-10-18, Paul) · **Code:** `agent/model/TaggedResult` + `ChatMessageUtil.extractMessages` (Pauls WIP, nicht auf main)
-> **Verwandt:** [context-message-concept.md](context-message-concept.md) · [compact.md](compact.md) · [async-agents.md](async-agents.md)
+> **Status:** 🚧 in design (2026-10-18, Paul). **Code:** `agent/model/TaggedResult` +
+> `ChatMessageUtil.extractMessages` (WIP im Tree), `CodegraphContextItem` (bereits live).
+> **Verwandt:** [context-message-concept.md](context-message-concept.md) · [compact.md](compact.md) ·
+> [icons.md](icons.md) · [async-agents.md](async-agents.md)
 
-## Warum
+## Ziel
 
 Der Agent bekommt Text aus drei Quellen in denselben Message-Kanal: User-Input, Harness-Infos
-(Async-Ergebnisse, Fehler, Zustandswechsel) und Tool-Results. Ohne Markierung rät das Modell, wer
-spricht — es hält eine Async-Antwort für einen User-Wunsch oder umgekehrt. Tags machen den
-Absender **im Text** sichtbar, ohne die Message-Typen von langchain4j zu verbiegen.
+(Async-Ergebnisse, Fehler, Zustand) und Tool-Results. Ohne Markierung rät das Modell, wer spricht.
+Ein Tag im Text macht den Absender sichtbar, ohne die langchain4j-Message-Typen zu verbiegen — und
+er wird gleichzeitig zum **einzigen** Klassifikationsschlüssel: der Compact filtert und priorisiert
+darüber, statt über `instanceof`.
 
-Zweiter Nutzen: Ein Tag ist auch ein **Dedup-Schlüssel**. Wiederholte Reads derselben Datei, mehrfach
-identische Tool-Ausgaben oder dasselbe Async-Ergebnis sollen im Compact-Input nur einmal stehen —
-aber nur dann, und sichtbar.
+Nebennutzen: gleiche `head`-Tags kollabieren zu einem Block (Memory/Context-Items stehen im
+Compact-Input nur einmal).
 
-## Format (Vorschlag)
+## Format
 
 ```
 //-- Start <head>
@@ -22,49 +28,110 @@ aber nur dann, und sichtbar.
 //-- End <head>
 ```
 
-- `head` = Kurzbezeichnung/Kontext (z. B. `tool call: eclipseReadFile`, `async result: Da Thinka`).
-- `body` = Nutzlast.
-- `TaggedResult.INFO` beschreibt das Format selbst und gehört in die **System-Message** eines
-  Agenten (oder in die Initialize-Instructions des jeweiligen Kontexts) — sonst erkennt das Modell
-  die Tags nicht als Harness-Sprache.
+`head` = Kurzbezeichnung (z. B. `tool call: eclipseReadFile`, `context: memory`, `async result: Da Thinka`).
+`TaggedResult.INFO` beschreibt das Format und steht **einmal** in der static System-Message.
 
-## Bewertung: Set statt Liste? (Pauls Frage)
+## Regeln
 
-**Empfehlung: `extractMessages` gibt eine `List<String>` zurück; das Deduplizieren passiert beim
-Consumer (Compact) und wird dort genannt.**
+### R-TR-1 — Prefix und Suffix stehen immer 🚧
 
-Begründung:
+GIVEN ein Harness-Text wird als `TaggedResult` gerendert
+WHEN er in eine Message geht
+THEN stehen `//-- Start <head>` und `//-- End <head>` **immer** — kein Trim, kein Weglassen, `head`
+     in **beiden** Zeilen. Der Block ist damit für das Modell abgrenzbar und für Peon identifizierbar.
 
-1. **Ein Set als Rückgabetyp ist ein hidden filter.** Zwei Nachrichten mit identischem Text
-   verschwinden unsichtbar — der Compact-Input hat dann weniger Zeilen als der Verlauf, und niemand
-   (Mensch wie Agent) erfährt, dass gefiltert wurde. Repo-Regel (AGENTS.md): jede Einschränkung
-   wird in ihrem eigenen Output genannt.
-2. **Dedup ist nur an EINER Stelle semantisch gewollt.** Im Compact ist Wiederholung Ballast; im
-   normalen Render-Pfad (`toString`, Chat-Anzeige, Fehlerdiagnose) ist die **Anzahl** gleichlautender
-   Messages Information (3× gelesen, 3× gescheitert).
-3. **Falscher Dedup nach Kürzung.** Wird auf ein Per-Message-Cap gekürzt, können zwei
-   *unterschiedliche* Inhalte auf denselben String fallen (gleicher Kopf, Rest abgeschnitten) und
-   kollabieren still zu einem. Das ist Datenverlust, der wie ein Feature aussieht.
-4. **Reihenfolge** ist bei `LinkedHashSet` erhalten — das ist kein Argument gegen die Liste, sondern
-   zeigt, dass das Set ohnehin nur als Dedup-Werkzeug dient.
+### R-TR-2 — Erkennung nur am Start 🚧
 
-Konkrete Form: Consumer baut `new LinkedHashSet<>(list)`, zählt `before - after` und schreibt die
-Zahl in die bestehende Compact-Disclosure („N duplicate message(s) collapsed"). Damit ist der Filter
-sichtbar, testbar (Mutations-Nachweis: Duplikat entfernen → Zähler 0) und lokal.
+GIVEN ein Message-Text
+WHEN er mit `TaggedResult.PREFIX` beginnt
+THEN gilt er als getaggt: er bekommt **keinen** zusätzlichen `USER:`/`AI:`-Header.
+     Das Suffix ist Lesbarkeit für das Modell, **nicht** Teil der Identität — Prüfung ohne `endsWith`,
+     ohne `strip` (angehängte Disclosure wie `(trimmed)` darf die Erkennung nicht kippen).
 
-## Offene Design-Fragen (❓ vor dem Bau klären)
+### R-TR-3 — Jedes `ContextItem` rendert ein `TaggedResult` 🚧
 
-1. **Sentinel-Robustheit:** `startsWith(PREFIX) && endsWith(SUFFIX)` ist fragil — ein Body kann auf
-   `//-- End ` enden oder durch Trailing-Whitespace/Trim kippen. Prüfung auf `stripTrailing()` und
-   auf den `head` im Suffix?
-2. **Asymmetrie im Rendering:** `toString()` schreibt `SUFFIX` **ohne** `head` (`//-- End `), der
-   Start trägt ihn. Symmetrisch machen (Debugbarkeit, Matching).
-3. **Wer prüft den Tag?** Nur `messageTag` in `extractMessages` — gilt das auch für die Chat-Anzeige
-   (`toString`)? Ein getaggtes Tool-Result im UI sollte nicht „USER:" davor bekommen.
-4. **Injektionsort von `TaggedResult.INFO`:** pro Agent in die System-Message (static context) oder
-   einmal in den Turn-Kontext ([ContextItem](context-message-concept.md))? Duplikat-Gefahr bei
-   jedem Turn — der ContextItem-Dedup (`dedupKey`) existiert bereits, die System-Message wird je
-   Turn neu gebaut.
-5. **Doppel-Tagging:** Tool-Results, die Peon schon selbst markiert (🔍/📜/🗜-Symbole,
-   [icons.md](icons.md)), bekommen zusätzlich den Block-Tag — gewollt (Symbol = Werkzeug, Tag =
-   Absender) oder redundant?
+GIVEN der Turn-Kontext wird gebaut
+WHEN ein `ContextItem` Inhalt liefert
+THEN liefert es ein `TaggedResult` mit `head` = Item-Name; `ContextItem.render()` ist für **alle**
+     Implementierungen gleich. `null` = das Item hat in diesem Turn nichts beizutragen.
+
+### R-TR-4 — Codegraph rendert nur im CONNECTED-Zustand 🚧
+
+GIVEN Codegraph ist verbunden
+WHEN der Turn-Kontext gebaut wird
+THEN liefert das Item ein `TaggedResult` (Pfad-Mapping + Server-Instructions).
+
+GIVEN Codegraph ist OFF oder der Connect ist fehlgeschlagen
+WHEN der Turn-Kontext gebaut wird
+THEN liefert das Item **nichts** (`null`). Der Zustand ist am Header-Icon sichtbar (rot + Tooltip)
+     und über `label()` im Chat — kein zweiter Kontextweg. (Paul 2026-10-18: „bei Fehler muss kein
+     ContextItem sein".)
+
+### R-TR-5 — Zustand trägt die Instructions (ein Supplier) 🚧
+
+GIVEN der Codegraph-Service liefert seinen Zustand
+WHEN das Item ihn liest
+THEN enthält `State` die Instructions (beim Connect captured). Das Item hat genau **einen**
+     Supplier und keine zweite Quelle — `render()` ist `State.instructions` oder `null`.
+
+### R-TR-6 — `INFO` steht einmal in der static System-Message 🚧
+
+GIVEN ein Agent, der getaggte Ergebnisse bekommen kann
+WHEN sein static context gebaut wird
+THEN enthält die System-Message `TaggedResult.INFO` genau einmal (gecacht mit dem static context,
+     **nicht** pro Turn und **nicht** als Turn-Context-Item).
+     Async-Tool-Results / Async-Agent-Results beschreibt `INFO` nur so weit, wie es sie heute gibt;
+     die eigentliche Async-Tool-Fähigkeit (Shell!) ist eine eigene Story.
+
+### R-TR-7 — Der Compact klassifiziert über die Tags 🚧
+
+GIVEN der Compact baut seinen Input
+WHEN Messages gerendert werden
+THEN bestimmt er Typ und Kürzungsstufe anhand der Tag-Präfixe (`THINK:`, `TOOL REQUEST:`,
+     `TOOL RESULT:`, `SYSTEM:`) — **nicht** über `instanceof` über langchain4j-Message-Typen.
+     Ein neuer Nachrichtentyp braucht damit keinen neuen Compact-Zweig, nur einen Tag.
+
+### R-TR-8 — Kein Cap im Renderer 🚧
+
+GIVEN beliebiger Text
+WHEN `ChatMessageUtil` ihn rendert
+THEN wird **nichts** gekürzt (kein `toolMessageSize`, kein `thinkCapChars`, kein `maxSize`).
+     Kürzen ist alleinige Aufgabe des Compact (Stufen + Disclosure am Ende, R-CIB).
+
+### R-TR-9 — Gleicher `head` wird im Compact-Input einmal eingefügt 🚧
+
+GIVEN zwei getaggte Blöcke mit demselben `head` (z. B. das Memory-Context-Item in mehreren Turns)
+WHEN der Compact-Input gebaut wird
+THEN steht nur einer davon im Input; die Zahl der kollabierten Blöcke wird **genannt**
+     (kein hidden filter). Reihenfolge und Duplikate innerhalb eines Blocks bleiben unangetastet.
+
+## Wie sieht `INFO` aus? (Token-Budget)
+
+`TaggedResult.INFO` ist heute ~70 Wörter Prosa + Beispielblock. Für ein static-Prompt ist das
+vertretbar, aber straffbar: Beispielblock (4 Zeilen) konserviert das Format, die Prosa davor kann auf
+einen Satz plus Tag-Liste schrumpfen. Vorschlag — ein Satz, die Tag-Liste, dann das Beispiel:
+
+```
+Harness blocks (system infos, async results, tool results) look like this:
+//-- Start <head>
+<body>
+//-- End <head>
+Do not answer them as user input.
+```
+
+Der letzte Satz ist der Kern (Adressat), der Rest erklärt sich aus dem Beispiel.
+
+## Test-Konvention (gilt für den Bau)
+
+- Tests **außerhalb** von `ChatMessageUtilTest` prüfen **Inhalt** (`contains`), nicht die exakte
+  Render-Struktur. Wer die Struktur braucht, ruft `ChatMessageUtil` im Assert auf — sonst ist es ein
+  Test-Bug (Paul 2026-10-18).
+- Der Umbau von `toString` auf `extractMessages` ist formatgleich; abweichende Alt-Tests werden
+  vereinfacht, nicht nachgezogen.
+
+## Offene Punkte
+
+- Async-Tool-Results (Shell!) sind für Paul **wichtiger als async Agents** — eigene Story, `INFO`
+  hält dafür nur den Platz frei.
+- Doppel-Tagging: Tool-Results tragen schon ein Symbol (🔍/📜/🗜, [icons.md](icons.md)). Symbol =
+  Werkzeug, Tag = Absender — gewollt, aber im Smoke prüfen, ob es nicht redundant wirkt.

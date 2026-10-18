@@ -12,11 +12,14 @@
   hält den `McpService`, Registries adoptieren (`adoptMcpGroup`), `disconnectMcp` detacht nur;
   Leer-Pfad leak-frei + ehrlicher Status. Core 1175/0, OSGi 386/0. War ein Bug, kein Design —
   Pauls Vermutung bestätigt.
-- 📝 **Tagged Results (Pauls WIP, 2026-10-18):** `TaggedResult` + `extractMessages` liegen
-  uncommitted im Tree (`agent/model/`, `ChatMessageUtil`); SOLL/Idee + Bewertung in
-  [tagged-results.md](tagged-results.md) (🚧), Designfragen in open-points.md. **Von mir bewertet:
-  Liste statt Set** (Set = hidden filter, falscher Dedup nach Cap-Kürzung). Vor dem Bau braucht es
-  Pauls Entscheid zu den 5 offenen Fragen.
+- 🚧 **Tagged Results (Paul-Entscheide 2026-10-18, Bau als NÄCHSTES):** Regeln in
+  [tagged-results.md](tagged-results.md) (R-TR-1…9). Kern: Liste statt Set · `TaggedResult` für ALLE
+  ContextItems · Codegraph rendert nur CONNECTED (OFF/ERROR still, Icon rot+Tooltip) · `State` trägt
+  Instructions (ein Supplier) · `INFO` einmal in der static System-Message (Wortlaut gekürzt, Doc) ·
+  Compact klassifiziert über Tags + `head`-Dedup mit Disclosure · **jedes Cap raus aus
+  `ChatMessageUtil`**, Kürzen nur im Compact · Tests: außerhalb `ChatMessageUtilTest` nur `contains`.
+  Bau in 3 Inkrementen geplant. Pauls WIP: `agent/model/TaggedResult`, `ChatMessageUtil`.
+- 📌 **Paul-Prio (2026-10-18):** Async-**Shell**-Tool ist wichtiger als async Agents.
 - ❓ **Offen für Paul:** (1) `codegraph` fehlt in Pauls Tool-Auswahl — welcher Agent/Slot?
   (2) Smoke nach Neustart (nur noch 1 Prozess erwartet) + Merge → main.
 - Details in [open-points.md](open-points.md) („Codegraph-Smoke").
