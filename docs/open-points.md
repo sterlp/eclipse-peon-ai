@@ -238,22 +238,27 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
 
 ## Codegraph-Smoke (2026-10-18, Paul) — Befunde
 
-- ❓ **Zwei `serve --mcp`-Prozesse** (verletzt die R-CG-4-Invariante „exakt ein Peon-`serve --mcp`
-  pro workDir"). Gemessen: `PeonAiService.java:212-213` verdrahtet `CodegraphConnectionService` mit
-  beiden agent-facing Registries (shared + po, [ADR-0067](adr/0067-two-registry-dynamic-tool-families.md)),
-  `CodegraphConnectionService.java:101` connectet die Gruppe auf jeder → je Registry eigener
-  STDIO-Prozess, zweimal `Connected MCP codegraph tool codegraph_explore` (Log 07:48:31.816 +
-  07:48:32.002). Deterministisch, kein Race; gilt genauso für User-MCP-Server. Optionen:
-  (a) akzeptieren → Doku-Invariante auf „ein Prozess je Registry" entschärfen (kostet doppelt RAM),
-  (b) MCP-Client einmal halten, Tool-Registrierung in beide Registries fan-outen (ein Prozess,
-  Eingriff an der ADR-0067-Naht). **Jon-Empfehlung: (b)** — „ein Prozess je workDir" war die Zusage,
-  und der Server proxyt zwar zusätzliche Clients, aber wir brauchen sie nicht. Entscheidung: Paul.
+- 🔒 **Zwei `serve --mcp`-Prozesse — gelöst (2026-10-18, `fe583895`):** war ein **Bug**, kein Design:
+  jede Registry baute ihren eigenen `McpService` (je Server ein Prozess). Fix nach
+  [ADR-0069](adr/0069-shared-mcp-connection-per-server.md): der Connection-Service **besitzt** den
+  `McpService` (`connect()` genau einmal, einziger Schließer), alle Registries adoptieren ihn
+  (`ToolService.adoptMcpGroup`); `disconnectMcp` detacht nur noch. Gilt für Codegraph **und**
+  User-MCP; der Leer-Pfad (Server-Liste wird leer) schließt ebenfalls, Status sagt jetzt ehrlich
+  „MCP disconnected (no servers configured)". Gates: Core 1175/0, OSGi 386/0. Offen bleibt nur der
+  `McpService.connect()`-Rollback im Core als testlos (siehe unten).
 - ❓ **`codegraph` fehlt in Pauls Tool-Auswahl** (Agent-Tool-Config), obwohl verbunden
   (`Running MCP: codegraph_explore`). Kein struktureller MCP-Ausschluss (`ToolService.activeNames:111`,
   `getToolStatus:465-467` enthalten MCP) — situativ: die Preview (`PeonAiService.java:568`) zeigt die
   MCP-Menge des ToolService des jeweiligen Slot-Agenten × CSV-Filter; Codegraph ist nur auf
   shared + po verbunden. Offen: **welcher Agent/Slot** in Pauls UI, und ob die Soll-Aussage aus
   R-CG-6 („explizite CSV braucht ein `codegraph`-Token") dort überhaupt wählbar ist.
+- ❓ **`McpService.connect()`-Rollback ist testlos** (Da-Dok-Review 2026-10-18): schlägt bei User-MCP
+  Server #2 fehl, schließt der Owner den neuen Service nicht — die Leak-Freiheit hängt allein an
+  `McpService.connect()` (`:87-93`, all-or-nothing: alle Clients werden im catch geschlossen). Kein
+  Test pinnt das, und der Seam-Test kann es nicht (Fake überschreibt `connect()`). Testbar würde es
+  erst mit einem fabrizierbaren `McpClient`/Transport — dann ein Core-Test „2. Server scheitert →
+  Client 1 geschlossen, kein Handle offen". Aufwand vs. Wert: niedrig, aber bisher kein Fehlerfall
+  beobachtet. Prio: Backlog.
 - 🔒 **Chat-Feedback bei Connect/Disconnect — gelöst über das ContextItem (2026-10-18):** kein neuer
   Emit-Pfad; `CodegraphContextItem.label()` (= `Codegraph connected|off|failed — <Projekt>`) fährt
   den bestehenden `📋 Loading …`-Pfad (`AbstractAgent.renderTurnContext`). Siehe R-CG-7/R-CG-12.
@@ -264,6 +269,13 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   legacy initialize` + `protocolVersion 2024-11-05` = normaler Auto-Detect-Pfad
   ([ADR-0045](adr/0045-mcp-protocol-version-auto-detect.md), `DefaultMcpClient.java:291`,
   log.debug); codegraph 1.6.0 spricht nur legacy.
+- ❓ **Lint-Gap: `codegraph.md` und `mcp.md` nehmen nicht teil** (Da Dok 2026-10-18): beide Docs
+  pflegen `R-CG-*`/`R-MCP-*`-Marker, haben aber kein `idPrefix` im Frontmatter — der Docs-Linter
+  prüft sie damit gar nicht (die 7 `VERWAIST R-CG-6/7/8/12` aus dem Lauf waren Falschmeldungen aus
+  dem Fehlen der Definitionen im Scan-Scope). Empfehlung: `idPrefix` in beiden Docs opt-in setzen und
+  `lintDocsAndTests` in den Inkrement-Gate für diese Dateien aufnehmen. Kosten: ein Docs-Edit + ein
+  Linter-Lauf; Nutzen: genau die Lücke, durch die UC-CG-12 durch 6 grüne Gates lief. Prio: nächster
+  Docs-Zyklus.
 - 🔒 **Icon (2026-10-18 erledigt):** 32 ohne `viewBox` → auf 24×24 + `viewBox="0 0 32 32"`
   normalisiert; `codegraph_off.svg`/`codegraph_off_dark.svg` ergänzt (gedimmte Farbe statt
   `setEnabled(false)` — SWT graut Text, nicht das Image); R-CG-8 präzisiert.

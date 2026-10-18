@@ -99,7 +99,10 @@ WHEN der letzte Apply A verbunden hat
 THEN kein zusätzlicher Reconnect (Compare).
 
 Invarianten: exakt **ein** Peon-`serve --mcp` pro workDir; der Daemon gehört Codegraph — Peon
-startet/tötet ihn nie (Index-State, lebt über Peon hinweg). *(Umsetzungs-Klarstellung: Trigger
+startet/tötet ihn nie (Index-State, lebt über Peon hinweg). *Durchgesetzt seit 2026-10-18 über die
+Ownership aus [ADR-0069](adr/0069-shared-mcp-connection-per-server.md): der Connection-Service hält
+den `McpService` (`connect()` genau einmal), alle Registries adoptieren ihn. Vorher baute jede
+Registry ihre eigene Verbindung → zwei Prozesse (Bug, `fe583895`).* *(Umsetzungs-Klarstellung: Trigger
 ist der Projektwechsel (`setProject` mit changed=true). Ein bewusster Pin-ON-Reprobe entfällt —
 Pin-ON ohne Projektwechsel ist kein Zustandswechsel, der Apply-Compare würde früh zurückkehren;
 Mutations-Nachweis für den Compare: `CodegraphConnectionServiceTest`, beide Compare-Richtungen

@@ -8,9 +8,12 @@
   nichts zu sagen. Plugin-Suite 381/0, Core 1173/0.
 - Vorher: `22a77b7e` (ein ContextItem statt Supplier-Lambda, R-CG-12 via `label()`),
   `b2273920` (Icon 24×24 + viewBox, `codegraph_off*`-Varianten), `9c2549c3` (Snapshot-Cache 16).
-- ❓ **Offen für Paul:** (1) zwei `serve --mcp`-Prozesse (ADR-0067-Dual-Registry × Connect je
-  Registry vs. R-CG-4) — Empfehlung (b) Client/Transport einmal, Registrierung fan-out;
-  (2) `codegraph` fehlt in Pauls Tool-Auswahl — welcher Agent/Slot? (3) Smoke + Merge → main.
+- ✅ **Zwei `serve --mcp`-Prozesse GEFIXT** (`fe583895`, ADR-0069): Owner-Modell — Connection-Service
+  hält den `McpService`, Registries adoptieren (`adoptMcpGroup`), `disconnectMcp` detacht nur;
+  Leer-Pfad leak-frei + ehrlicher Status. Core 1175/0, OSGi 386/0. War ein Bug, kein Design —
+  Pauls Vermutung bestätigt.
+- ❓ **Offen für Paul:** (1) `codegraph` fehlt in Pauls Tool-Auswahl — welcher Agent/Slot?
+  (2) Smoke nach Neustart (nur noch 1 Prozess erwartet) + Merge → main.
 - Details in [open-points.md](open-points.md) („Codegraph-Smoke").
 
 ## Nachtrag 2026-10-17 (Paul-Feedback afk, 13:46)

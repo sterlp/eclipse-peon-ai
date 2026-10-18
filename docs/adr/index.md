@@ -72,6 +72,7 @@ isn't clear from a rule/BDD.
 | [0065](0065-tool-policy-negation.md) | ToolPolicy = einziger Matcher für alle Agententypen (UI-Allowlist ≡ Custom-`tools:`); Negation `!prefix` (allow-then-deny, Ausschluss gewinnt); Schnittmenge mit Klassen-Filter (UI kann nur einschränken); keine Inheritance, kein Custom-UI | Accepted |
 | [0066](0066-review-agent-own-model-slot.md) | Da Dok bekommt einen eigenen Model-Slot (`llm.agent.review.*`, CORE_IDS + Advanced-UI), Fallback = Base statt Plan — Clean Break | Accepted |
 | [0067](0067-two-registry-dynamic-tool-families.md) | Zwei-Registry-Wiring: dynamische Tool-Familien (MCP-Connect, disk-Gate) adressieren alle agent-facing ToolService-Registries — shared + Jon's po-Registry; Write-Validator bleibt am Choke-Point | Accepted |
+| [0069](0069-shared-mcp-connection-per-server.md) | Ein MCP-Server = **eine** Verbindung: der Connection-Service besitzt den `McpService`, alle Registries adoptieren ihn (`adoptMcpGroup`) — ein stdio-Prozess je Server-Konfig statt einer je Registry | Accepted |
 | [0068](0068-codegraph-builtin-connect-path.md) | Codegraph Built-in: isolierter MCP-Connect-Pfad — generische MCP-Groups im ToolService (User-Group + Codegraph-Group), Reserved-Name `codegraph` | Accepted |
 
 

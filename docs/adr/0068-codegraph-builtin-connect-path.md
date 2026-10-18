@@ -1,6 +1,9 @@
 # ADR-0068 — Codegraph Built-in: isolierter MCP-Connect-Pfad (Groups)
 
-**Status:** Accepted (2026-10-17)
+**Status:** Accepted (2026-10-17) — **Connect-Mechanik abgelöst durch [ADR-0069](0069-shared-mcp-connection-per-server.md)**
+(2026-10-18): die Groups und ihre Isolation bleiben, aber `ToolService` baut keine Verbindungen mehr
+selbst — der jeweilige Connection-Service besitzt den `McpService`, die Registries adoptieren ihn
+(`adoptMcpGroup`). Grund: `connectMcp` je Registry erzeugte einen Prozess je Registry (2× `serve --mcp`).
 
 **Context:** Codegraph ist als Built-in geplant ([codegraph.md](../codegraph.md)): aktives
 Projekt mit `.codegraph`-Index → Auto-Connect, unabhängig vom User-MCP-Toggle. `ToolService.connectMcp`
@@ -9,7 +12,7 @@ hätte User-Server bei Connect-Fehlern mitgerissen (R-CG-3) und der User-Toggle-
 Built-in getötet (R-CG-1).
 
 **Decision:** `ToolService` hält generische **MCP-Groups** (named `McpService`-Instanzen,
-`connectMcp(group, …)`/`disconnectMcp(group)`). Der User-MCP-Pfad (`McpConnectionService`,
+`adoptMcpGroup(group, …)`/`disconnectMcp(group)`). Der User-MCP-Pfad (`McpConnectionService`,
 Group `"user"`) und der Codegraph-Pfad (`CodegraphConnectionService`, Group `"codegraph"`)
 teilen nur `McpService` als Mechanismus — kein gemeinsamer State, keine Koppelung an den
 User-Toggle. Der Server-Name `codegraph` ist im User-Pfad reserviert (Filter in

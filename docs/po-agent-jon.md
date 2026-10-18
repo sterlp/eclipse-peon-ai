@@ -884,7 +884,9 @@ anfangen"-Aktion des Users, Compact ist Kontextpflege.
 **IST (vermessen 2026-10-15):** Jon hat seine eigene kuratierte Registry (`BuildPoAgentComponent:
 67`, `new ToolService(false)`, 12 `addTool`) — und genau die wird von beiden dynamischen Familien
 **umgangen**: `McpConnectionService.connect` verbindet nur den `sharedToolService`
-(PeonAiService.java:200 → ToolService.connectMcp:291-298), `SharedToolsComponent.updateActiveDiskTools`
+(PeonAiService.java:200 → ToolService.connectMcp:291-298 — *historisch: `connectMcp` existiert seit
+[ADR-0069](adr/0069-shared-mcp-connection-per-server.md) nicht mehr, die Registries adoptieren den
+vom Connection-Service gehaltenen `McpService`*), `SharedToolsComponent.updateActiveDiskTools`
 (:82-98) touched ebenfalls nur den `sharedToolService`. Folge: Jon sieht **niemanden** seiner
 MCP-Server und **keine** disk-Tools — obwohl R2 ihm die disk read/write tools zuspricht und Pauls
 SOLL lautet: **alle** Agenten bekommen MCP-Tools. (Indirekt sieht Jon MCP/disk nur über Da Sniffa.)
