@@ -29,6 +29,7 @@ import org.junit.Test;
 import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiDevAgent;
+import org.sterl.llmpeon.agent.model.TaggedResult;
 import org.sterl.llmpeon.agent.AiPlanAgent;
 import org.sterl.llmpeon.agent.AiReviewAgent;
 import org.sterl.llmpeon.ai.AgentModelConfig;
@@ -413,7 +414,10 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         aiService.call("Rückfrage", null);
         streamMock.assertCount(plan, 1);
         streamMock.assertCount("Handover from", 1);
-        streamMock.assertCount("peon-plan/overview.md", 1);
+        // R-TR-3: the plan path is in the handover message AND in the freshly-injected
+        // Plan-Ref block — the start-line dedupKey does not match the handover's bare-path
+        // mention (no false-positive), so the reference is re-injected on the second turn.
+        streamMock.assertCount("peon-plan/overview.md", 2);
     }
     
     @Test
@@ -1318,11 +1322,12 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             var jon = svc.getActiveAgent();
             var ctx = jon.getStaticContext();
             assertEquals(1, ctx.size());
-            assertContains(ctx.get(0).render(), "prefer eclipse*"); // Env
+            assertContains(ctx.get(0).render().body(), "prefer eclipse*"); // Env
 
             // AND: no memory snapshot and no file items in the static context
             var forbidden = List.of(memoryText, "docs/memory.md", "docs/index.md");
-            var rendered = ctx.stream().map(ContextItem::render).filter(r -> r != null).toList();
+            var rendered = ctx.stream().map(ContextItem::render).filter(r -> r != null)
+                    .map(TaggedResult::body).toList();
             forbidden.forEach(f -> assertHasNoMessageWith(rendered, f));
 
             // AND: the slaves get a COPY of Jon's context + exactly one name item (R-N1), leak-free
@@ -1346,12 +1351,13 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         assertNotSame("slaves must get a copy, not Jon's list object", jonContext, slaveContext);
         assertEquals(jonContext.size() + 1, slaveContext.size());
         for (int i = 0; i < jonContext.size(); i++) {
-            assertEquals(jonContext.get(i).render(), slaveContext.get(i).render());
+            assertEquals(jonContext.get(i).render().body(), slaveContext.get(i).render().body());
         }
-        var nameItem = slaveContext.get(jonContext.size()).render();
+        var nameItem = slaveContext.get(jonContext.size()).render().body();
         assertContains(nameItem, "Your name is " + uiName);
         assertContains(nameItem, AiPoAgent.AGENT_MODE);
-        var rendered = slaveContext.stream().map(ContextItem::render).filter(r -> r != null).toList();
+        var rendered = slaveContext.stream().map(ContextItem::render).filter(r -> r != null)
+                .map(TaggedResult::body).toList();
         forbidden.forEach(f -> assertHasNoMessageWith(rendered, f));
     }
     /**
@@ -1405,7 +1411,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             // THEN: the new custom agent carries Env in its static context (system prompt) — no memory
             var custom = svc.getAgentService().get("TestAgent").orElseThrow();
             var ctx = custom.getStaticContext();
-            assertContains(ctx.get(0).render(), "prefer eclipse*"); // Env
+            assertContains(ctx.get(0).render().body(), "prefer eclipse*"); // Env
 
             // AND: the original callback fired AFTER the re-bake
             assertEquals("baked", callbackState.get());
@@ -1789,7 +1795,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         // THEN: die Projekt-Info existiert, aber ohne Codegraph-Zeile
         assertTrue("project info item expected", projectInfo.isPresent());
         assertFalse("no codegraph line without an index: " + projectInfo.get().render(),
-                projectInfo.get().render().contains("Codegraph index active"));
+                projectInfo.get().render().body().contains("Codegraph index active"));
     }
 
     /**
@@ -1844,6 +1850,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             var devRendered = delegate.getDevSlave().getStaticContext().stream()
                     .map(ContextItem::render)
                     .filter(r -> r != null)
+                    .map(TaggedResult::body)
                     .toList();
             assertHasMessageWith(devRendered, "prefer eclipse*"); // Env
             assertHasNoMessageWith(devRendered, memoryText);

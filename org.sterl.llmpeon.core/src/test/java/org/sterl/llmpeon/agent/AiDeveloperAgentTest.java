@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.sterl.llmpeon.agent.model.TaggedResult;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.context.ContextItem;
@@ -209,7 +210,7 @@ public class AiDeveloperAgentTest {
     void test_inLoopCompact_systemMessageIsRebuilt() {
         // GIVEN — a ContextItem whose render() returns a version counter (SOLL R-ST4)
         var version = new AtomicInteger(0);
-        subject.setStaticContext(List.of(() -> "CTX-VERSION-" + version.incrementAndGet()));
+        subject.setStaticContext(List.of(() -> new TaggedResult("context", "CTX-VERSION-" + version.incrementAndGet())));
         for (int i = 0; i < 5; i++) {
             subject.addMessage(UserMessage.from("Foo " + i));
             subject.addMessage(AiMessage.from("Bar " + i));
@@ -261,15 +262,17 @@ public class AiDeveloperAgentTest {
                 new SimpleContextItem("We are all doomed!"),
                 new ContextItem() {
                     @Override
-                    public String dedupKey() { return "foo/path/bar.txt"; }
+                    public String dedupKey() { return TaggedResult.PREFIX + "context: foo/path/bar.txt"; }
                     @Override
-                    public String render() { return "some nice file text"; }
+                    public TaggedResult render() {
+                        return new TaggedResult("context: foo/path/bar.txt", "some nice file text");
+                    }
                 },
                 new ContextItem() {
                     @Override
-                    public String dedupKey() { return "foo/null.txt"; }
+                    public String dedupKey() { return TaggedResult.PREFIX + "context: foo/null.txt"; }
                     @Override
-                    public String render() { return null; }
+                    public TaggedResult render() { return null; }
                 }
             )
         );

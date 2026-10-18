@@ -17,8 +17,8 @@ Ein Tag im Text macht den Absender sichtbar, ohne die langchain4j-Message-Typen 
 er wird gleichzeitig zum **einzigen** Klassifikationsschlüssel: der Compact filtert und priorisiert
 darüber, statt über `instanceof`.
 
-Nebennutzen: gleiche `head`-Tags kollabieren zu einem Block (Memory/Context-Items stehen im
-Compact-Input nur einmal).
+Nebennutzen: ein reiner Block ist auf den ersten Blick erkennbar und kann vor dem Compact-Input
+komplett entfallen (R-TR-9) — kein head-Matching, keine Inhalts-Deduplizierung nötig.
 
 ## Format
 
@@ -31,22 +31,50 @@ Compact-Input nur einmal).
 `head` = Kurzbezeichnung (z. B. `tool call: eclipseReadFile`, `context: memory`, `async result: Da Thinka`).
 `TaggedResult.INFO` beschreibt das Format und steht **einmal** in der static System-Message.
 
+## Format-Fakten des Renderers (Bau I1, 2026-10-18)
+
+Der Renderer (`ChatMessageUtil.extractMessages`) liefert **je `TextContent` einen Eintrag**; ein
+echter `TaggedResult`-Block bleibt dabei unverändert und ohne Header, alles andere bekommt seinen
+Tag. Konkrete Renderformate (die Stufen klassifizieren später über genau diese Präfixe):
+
+| Eintrag | Format |
+|---|---|
+| Thinking | `THINK:` + NL + Text (vorher inline `Think: `) |
+| Tool-Request | `TOOL REQUEST:` + NL + `tool name: <n>` + NL + `arguments:<args>` |
+| Tool-Result | `TOOL RESULT:` + NL + `tool name: <n>` + NL + `result:` + NL + Text |
+| System | `SYSTEM:` + NL + Text |
+| reiner Block | Block unverändert, kein Header |
+| User-Text (ein TextContent) | `USER:` + NL + Text |
+
+Konsequenz für Multi-Content-User-Messages (Turn-Kontext + echter User-Text): der Block steht als
+eigener Eintrag **ohne** Header, der echte Text bekommt seinen eigenen `USER:`-Header. Erst dadurch
+ist der Block ein eigener, droppbarer String (R-TR-9) — vorher lief alles unter einem Header.
+
 ## Regeln
 
-### R-TR-1 — Prefix und Suffix stehen immer 🚧
+### R-TR-1 — Prefix und Suffix stehen immer ✅ (2026-10-18, I1)
 
 GIVEN ein Harness-Text wird als `TaggedResult` gerendert
 WHEN er in eine Message geht
 THEN stehen `//-- Start <head>` und `//-- End <head>` **immer** — kein Trim, kein Weglassen, `head`
      in **beiden** Zeilen. Der Block ist damit für das Modell abgrenzbar und für Peon identifizierbar.
 
-### R-TR-2 — Erkennung nur am Start 🚧
+### R-TR-2 — Erkennung über Start **und** Ende 🚧
 
 GIVEN ein Message-Text
-WHEN er mit `TaggedResult.PREFIX` beginnt
-THEN gilt er als getaggt: er bekommt **keinen** zusätzlichen `USER:`/`AI:`-Header.
-     Das Suffix ist Lesbarkeit für das Modell, **nicht** Teil der Identität — Prüfung ohne `endsWith`,
-     ohne `strip` (angehängte Disclosure wie `(trimmed)` darf die Erkennung nicht kippen).
+WHEN seine erste Zeile mit `TaggedResult.PREFIX` beginnt **und** seine letzte Zeile mit
+     `TaggedResult.SUFFIX`
+THEN ist er ein **reiner** getaggter Block: er bekommt **keinen** zusätzlichen `USER:`/`AI:`-Header
+     und wird vor dem Compact-Input entfernt (R-TR-9).
+
+GIVEN ein Message-Text, der nur *enthält* (z. B. Tool-Result: Absenderzeile + eingebetteter Block)
+WHEN er gerendert oder compactiert wird
+THEN gilt er **nicht** als reiner Block — er bleibt vollständig im Input. Genau das ist der Trick:
+     ein an ein Tool-Result angehängter Async-Result wird nie gedroppt, ein Context-Item immer.
+     (Paul 2026-10-18.)
+
+Die Prüfung ist **zeilenweise** (`startsWith` je Zeile), nicht `endsWith` über den ganzen Text —
+`//-- End <head>` trägt den `head` (R-TR-1).
 
 ### R-TR-3 — Jedes `ContextItem` rendert ein `TaggedResult` 🚧
 
@@ -63,9 +91,10 @@ THEN liefert das Item ein `TaggedResult` (Pfad-Mapping + Server-Instructions).
 
 GIVEN Codegraph ist OFF oder der Connect ist fehlgeschlagen
 WHEN der Turn-Kontext gebaut wird
-THEN liefert das Item **nichts** (`null`). Der Zustand ist am Header-Icon sichtbar (rot + Tooltip)
-     und über `label()` im Chat — kein zweiter Kontextweg. (Paul 2026-10-18: „bei Fehler muss kein
-     ContextItem sein".)
+THEN liefert das Item **nichts** (`null`). Der Zustand ist am Header-Icon sichtbar (rot + Tooltip) —
+     kein zweiter Kontextweg, **kein** Chat-Label. (Paul 2026-10-18: „bei Fehler muss kein
+     ContextItem sein"; das 📋-Label hängt an der erfolgreichen Injektion, sonst wäre es ein
+     Spam pro Turn.)
 
 ### R-TR-5 — Zustand trägt die Instructions (ein Supplier) 🚧
 
@@ -98,12 +127,19 @@ WHEN `ChatMessageUtil` ihn rendert
 THEN wird **nichts** gekürzt (kein `toolMessageSize`, kein `thinkCapChars`, kein `maxSize`).
      Kürzen ist alleinige Aufgabe des Compact (Stufen + Disclosure am Ende, R-CIB).
 
-### R-TR-9 — Gleicher `head` wird im Compact-Input einmal eingefügt 🚧
+### R-TR-9 — Reine Context-Blöcke fliegen vor dem Compact raus 🚧
 
-GIVEN zwei getaggte Blöcke mit demselben `head` (z. B. das Memory-Context-Item in mehreren Turns)
+GIVEN eine Message, deren Text ein reiner getaggter Block ist (R-TR-2) — also ein `ContextItem`
+     (Memory-Snapshot, Datei-Kontext, Projekt-/Codegraph-Info), das als **eigenes** `TextContent`
+     angehängt wurde
 WHEN der Compact-Input gebaut wird
-THEN steht nur einer davon im Input; die Zahl der kollabierten Blöcke wird **genannt**
-     (kein hidden filter). Reihenfolge und Duplikate innerhalb eines Blocks bleiben unangetastet.
+THEN fällt dieser Block **vollständig** weg (nicht kürzen, nicht priorisieren, nicht kollabieren) —
+     nach dem Compact hängt `renderTurnContext` die Items ohnehin frisch an.
+     Die Zahl der entfernten Blöcke wird **genannt** (kein hidden filter).
+
+Kein `head`-Matching, kein Keep-first/Rewrite nötig: „reiner Block" ist das Kriterium, `head` ist
+nur die Absenderzeile. Ein an ein Tool-Result **angehängter** Block ist kein reiner Block und bleibt
+(R-TR-2).
 
 ## Wie sieht `INFO` aus? (Token-Budget)
 

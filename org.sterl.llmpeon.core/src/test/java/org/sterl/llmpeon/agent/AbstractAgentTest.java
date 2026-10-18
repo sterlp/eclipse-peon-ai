@@ -20,6 +20,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.sterl.llmpeon.StreamMock;
+import org.sterl.llmpeon.agent.model.TaggedResult;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.model.CompactResult;
@@ -273,7 +274,7 @@ class AbstractAgentTest {
         });
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
         var content = new AtomicReference<>("old context");
-        agent.setStaticContext(List.of((ContextItem) () -> content.get()));
+        agent.setStaticContext(List.of((ContextItem) () -> new TaggedResult("context", content.get())));
 
         // WHEN — call 1 builds the system prompt with the old content
         agent.call("first", monitor -> {});
@@ -619,7 +620,7 @@ class AbstractAgentTest {
         var renderCount = new AtomicInteger();
         agent.setStaticContext(List.of((ContextItem) () -> {
             renderCount.incrementAndGet();
-            return "persistent context";
+            return new TaggedResult("context", "persistent context");
         }));
 
         agent.call("test", monitor -> {});
@@ -892,11 +893,11 @@ class AbstractAgentTest {
         AtomicInteger renderCount = new AtomicInteger();
         AtomicReference<String> content = new AtomicReference<>("memory v1");
         ContextItem keyed = new ContextItem() {
-            @Override public String render() {
+            @Override public TaggedResult render() {
                 renderCount.incrementAndGet();
-                return "C:/x/memory.md:\n---\n" + content.get();
+                return new TaggedResult("context: C:/x/memory.md", content.get());
             }
-            @Override public String dedupKey() { return "C:/x/memory.md"; }
+            @Override public String dedupKey() { return TaggedResult.PREFIX + "context: C:/x/memory.md"; }
         };
         agent.setTurnContextSupplier(() -> List.of(keyed));
 
@@ -927,9 +928,11 @@ class AbstractAgentTest {
 
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
         ContextItem keyed = new ContextItem() {
-            @Override public String render() { return "/proj/docs/memory.md:\n---\nmemory content"; }
+            @Override public TaggedResult render() {
+                return new TaggedResult("context: /proj/docs/memory.md", "memory content");
+            }
             @Override public String label() { return "/proj/docs/memory.md"; }
-            @Override public String dedupKey() { return "/proj/docs/memory.md"; }
+            @Override public String dedupKey() { return TaggedResult.PREFIX + "context: /proj/docs/memory.md"; }
         };
         agent.setTurnContextSupplier(() -> List.of(keyed));
 
@@ -960,9 +963,9 @@ class AbstractAgentTest {
 
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
         ContextItem missing = new ContextItem() {
-            @Override public String render() { return null; }
+            @Override public TaggedResult render() { return null; }
             @Override public String label() { return "/proj/docs/missing.md"; }
-            @Override public String dedupKey() { return "/proj/docs/missing.md"; }
+            @Override public String dedupKey() { return TaggedResult.PREFIX + "context: /proj/docs/missing.md"; }
         };
         agent.setTurnContextSupplier(() -> List.of(missing));
 
@@ -993,15 +996,16 @@ class AbstractAgentTest {
 
         AtomicInteger renderCount = new AtomicInteger();
         ContextItem keyed = new ContextItem() {
-            @Override public String render() {
+            @Override public TaggedResult render() {
                 renderCount.incrementAndGet();
-                return "/proj/docs/memory.md:\n---\nfile content body";
+                return new TaggedResult("context: /proj/docs/memory.md", "file content body");
             }
-            @Override public String dedupKey() { return "/proj/docs/memory.md"; }
+            @Override public String dedupKey() { return TaggedResult.PREFIX + "context: /proj/docs/memory.md"; }
         };
 
-        // Pre-add the keyed content to memory (already injected before)
-        agent.addMessage(UserMessage.from("/proj/docs/memory.md:\n---\nfile content body"));
+        // Pre-add the block to memory (already injected before)
+        agent.addMessage(UserMessage.from(
+                new TaggedResult("context: /proj/docs/memory.md", "file content body").toString()));
         agent.setTurnContextSupplier(() -> List.of(keyed));
 
         // WHEN — a turn runs restoreTurnContext without clearing memory
@@ -1014,7 +1018,7 @@ class AbstractAgentTest {
     }
 
     /** Header-Dedup (Bugfix 2026-08-16): a Memory message that only mentions the bare path
-        (e.g. a Compact message) does NOT dedupe — the exact header is missing →
+        (e.g. a Compact message) does NOT dedupe — the exact block start line is missing →
         the item is still injected. */
     @Test
     void test_restoreTurnContext_barePathInHistory_stillInjects() {
@@ -1025,13 +1029,12 @@ class AbstractAgentTest {
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
 
         AtomicInteger renderCount = new AtomicInteger();
-        String header = "C:/x/memory.md" + ":" + System.lineSeparator() + "---" + System.lineSeparator();
         ContextItem keyed = new ContextItem() {
-            @Override public String render() {
+            @Override public TaggedResult render() {
                 renderCount.incrementAndGet();
-                return header + "file content body";
+                return new TaggedResult("context: C:/x/memory.md", "file content body");
             }
-            @Override public String dedupKey() { return header; }
+            @Override public String dedupKey() { return TaggedResult.PREFIX + "context: C:/x/memory.md"; }
         };
 
         // GIVEN — history only mentions the bare path (e.g. a Compact message), no exact header
@@ -1046,7 +1049,7 @@ class AbstractAgentTest {
         assertThat(extractUserTexts(agent.getMemory().getCopy()))
                 .anyMatch(t -> t.contains("file content body"));
 
-        // AND — second call: the exact header is now in history → no re-injection
+        // AND — second call: the exact block start line is now in history → no re-injection
         agent.call("again", monitor -> {});
         assertThat(renderCount.get()).isOne();
     }
@@ -1060,8 +1063,10 @@ class AbstractAgentTest {
 
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
         ContextItem keyed = new ContextItem() {
-            @Override public String render() { return "/proj/docs/memory.md:\n---\nfile content body"; }
-            @Override public String dedupKey() { return "/proj/docs/memory.md"; }
+            @Override public TaggedResult render() {
+                return new TaggedResult("context: /proj/docs/memory.md", "file content body");
+            }
+            @Override public String dedupKey() { return TaggedResult.PREFIX + "context: /proj/docs/memory.md"; }
         };
         agent.setTurnContextSupplier(() -> List.of(keyed));
 
@@ -1089,8 +1094,10 @@ class AbstractAgentTest {
         var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
         AtomicReference<String> key = new AtomicReference<>("/projA/docs/memory.md");
         ContextItem keyed = new ContextItem() {
-            @Override public String render() { return key.get() + ":\n---\nfile content body"; }
-            @Override public String dedupKey() { return key.get(); }
+            @Override public TaggedResult render() {
+                return new TaggedResult("context: " + key.get(), "file content body");
+            }
+            @Override public String dedupKey() { return TaggedResult.PREFIX + "context: " + key.get(); }
         };
         agent.setTurnContextSupplier(() -> List.of(keyed));
 
@@ -1129,5 +1136,119 @@ class AbstractAgentTest {
 
         // THEN — no onTool calls for unlabeled items
         assertThat(toolMessages).noneMatch(m -> m.startsWith("📋 Loading "));
+    }
+
+    // R-TR-3
+    @Test
+    void test_renderTurnContext_injectsExactBlock_noKeyPrefix() {
+        // GIVEN — a keyed item; the old format prefixed the bare key line before the block
+        var config = LlmConfig.builder().model("mock").autoCompactAfter(80000).build();
+        var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("OK")).build());
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        var block = new TaggedResult("context: /proj/docs/memory.md", "memory content");
+        ContextItem keyed = new ContextItem() {
+            @Override public TaggedResult render() { return block; }
+            @Override public String dedupKey() { return TaggedResult.PREFIX + "context: /proj/docs/memory.md"; }
+        };
+        agent.setTurnContextSupplier(() -> List.of(keyed));
+
+        // WHEN
+        agent.call("hi", monitor -> {});
+
+        // THEN — the merged user message LEADS with exactly the block: no key prefix line
+        var userTexts = extractUserTexts(agent.getMemory().getCopy());
+        assertThat(userTexts).hasSize(1);
+        assertThat(userTexts.get(0)).startsWith(block.toString());
+        assertThat(userTexts.get(0).lines().toList()).doesNotContain("/proj/docs/memory.md");
+    }
+
+    // R-TR-3
+    @Test
+    void test_renderTurnContext_pureBlockIsReinjectableOnlyAfterCompact() {
+        // GIVEN — a keyed item; the block start line in history is the only dedup signal
+        var config = LlmConfig.builder().model("mock").build();
+        var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("OK")).build());
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        AtomicInteger renderCount = new AtomicInteger();
+        ContextItem keyed = new ContextItem() {
+            @Override public TaggedResult render() {
+                renderCount.incrementAndGet();
+                return new TaggedResult("context: /proj/docs/memory.md", "memory content");
+            }
+            @Override public String dedupKey() { return TaggedResult.PREFIX + "context: /proj/docs/memory.md"; }
+        };
+        agent.setTurnContextSupplier(() -> List.of(keyed));
+
+        // WHEN — Turn 1 injects the pure block
+        agent.call("hi", monitor -> {});
+        assertThat(renderCount.get()).isOne();
+
+        // AND — Turn 2 (no compact): the start line is in history → skipped
+        agent.call("again", monitor -> {});
+        assertThat(renderCount.get()).isOne();
+
+        // AND — one more message so memory reaches the R16 guard minimum of 3
+        agent.addMessage(AiMessage.from("more"));
+
+        // WHEN — compact clears memory; restore re-injects the block
+        agent.compact(monitor -> {});
+
+        // THEN — rendered again after compact, content is back
+        assertThat(renderCount.get()).isEqualTo(2);
+        assertThat(extractUserTexts(agent.getMemory().getCopy()))
+                .anyMatch(t -> t.contains("memory content"));
+    }
+
+    // R-TR-6
+    @Test
+    void test_buildSystemPrompt_containsInfoExactlyOnce() {
+        // GIVEN — agent with a labeled static context item
+        var config = LlmConfig.builder().model("mock").autoCompactAfter(80000).build();
+        List<List<ChatMessage>> sent = new ArrayList<>();
+        var mockModel = streamMock.buildMock(r -> {
+            sent.add(new ArrayList<>(r.messages()));
+            return ChatResponse.builder().aiMessage(AiMessage.aiMessage("OK")).build();
+        });
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        agent.setStaticContext(List.of(new SimpleContextItem("Static env info", "env body text")));
+
+        // WHEN
+        agent.call("test", monitor -> {});
+
+        // THEN — INFO exactly once; the static item renders body-only (no block header of its own)
+        var prompt = systemMessageOf(sent.get(0));
+        assertThat(countOccurrences(prompt, TaggedResult.INFO)).isOne();
+        assertThat(prompt).contains("env body text");
+        assertThat(prompt).doesNotContain(TaggedResult.PREFIX + "context: Static env info");
+    }
+
+    // R-TR-6
+    @Test
+    void test_buildSystemPrompt_infoSurvivesCompactRebuild() {
+        // GIVEN — agent with a static context item; a turn builds the cached prompt
+        var config = LlmConfig.builder().model("mock").build();
+        List<List<ChatMessage>> sent = new ArrayList<>();
+        var mockModel = streamMock.buildMock(r -> {
+            sent.add(new ArrayList<>(r.messages()));
+            return ChatResponse.builder().aiMessage(AiMessage.aiMessage("compressed")).build();
+        });
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        agent.setStaticContext(List.of(new SimpleContextItem("Static env info", "env body text")));
+
+        agent.call("first", monitor -> {});
+
+        // AND — one more message so memory reaches the R16 guard minimum of 3
+        agent.addMessage(AiMessage.from("more"));
+
+        // WHEN — compact clears the cached prompt; the next call rebuilds it
+        agent.compact(monitor -> {});
+        agent.call("second", monitor -> {});
+
+        // THEN — the rebuilt prompt carries INFO exactly once again
+        var prompt = systemMessageOf(sent.get(sent.size() - 1));
+        assertThat(countOccurrences(prompt, TaggedResult.INFO)).isOne();
+        assertThat(prompt).contains("env body text");
     }
 }

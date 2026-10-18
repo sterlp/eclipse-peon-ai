@@ -9,8 +9,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.osgi.service.prefs.BackingStoreException;
+import org.sterl.llmpeon.agent.model.TaggedResult;
 import org.sterl.llmpeon.context.ContextItem;
-import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.parts.tools.AbstractEclipseTool;
 import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.WorkspaceGuideline;
@@ -148,7 +148,7 @@ public class WorkspaceMemoryTool extends AbstractEclipseTool implements ContextI
     @Override
     public String dedupKey() {
         if (entries.isEmpty()) return null;
-        return "workspace-memory#" + Integer.toHexString(entries.hashCode());
+        return TaggedResult.PREFIX + "workspace-memory#" + Integer.toHexString(entries.hashCode());
     }
 
     @Override
@@ -157,7 +157,7 @@ public class WorkspaceMemoryTool extends AbstractEclipseTool implements ContextI
     }
 
     @Override
-    public String render() {
+    public TaggedResult render() {
         if (entries.isEmpty()) return null;
         var ls = System.lineSeparator();
 
@@ -170,11 +170,6 @@ public class WorkspaceMemoryTool extends AbstractEclipseTool implements ContextI
             sb.append(displayIndex).append(". [").append(g.createdAt()).append("] ").append(g.text()).append(ls);
         }
 
-        return sb.toString().trim();
-    }
-
-    public List<ContextItem> get() {
-        String rendered = render();
-        return rendered == null ? List.of() : List.of(new SimpleContextItem(label(), rendered));
+        return new TaggedResult("workspace-memory#" + Integer.toHexString(entries.hashCode()), sb.toString().trim());
     }
 }

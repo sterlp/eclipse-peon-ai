@@ -79,8 +79,11 @@ jeder Stufe. Gilt **nur im Compacter** — der Live-Context an das LLM wird nich
 
 1. **Stufe 1 — Think-Cap front + letzte echte User-Message:** Thinking wird mit **Cap 9000
    (Zeichen)** aufgenommen, Front-Cap mit `$`-Anker — **das Ende bleibt** (Konklusion steht am
-   Ende, Kopf ist Prozessgeraste). Neuer Render-Modus in `ChatMessageUtil` (Options-Record,
-   nicht wachsende Parameterliste; IST-Format `Think: `). Gleichzeitig: vom Textcontent der
+   Ende, Kopf ist Prozessgeraste). Render-Modus in `ChatMessageUtil` (Options-Record,
+   nicht wachsende Parameterliste). **Format seit 2026-10-18 (I1, Tagged Results):** Thinking ist
+   ein eigener Block `THINK:` + Zeilenumbruch + Text (vorher inline `Think: `) — die Stufen
+   klassifizieren über dieses Präfix, nicht über den Message-Typ
+   ([tagged-results.md](tagged-results.md) R-TR-7). Gleichzeitig: vom Textcontent der
    User-Messages nur die **letzte mit echtem User-Text** — frühere User-Messages sind nur
    „State" (gleiche Semantik wie die Chat-Darstellung). **Echter User-Text = letzter
    TextContent** der UserMessage — code-verifiziert (Da Thinka 2026-09-24): Turn-Context-Items

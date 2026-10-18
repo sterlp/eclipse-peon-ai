@@ -69,8 +69,9 @@ public class AiPoAgent extends AbstractAgent {
     public void setStaticContext(List<ContextItem> context) {
         super.setStaticContext(context);
         this.slaves.forEach(s -> {
-            s.agent().setStaticContext(ContextItem.newList(context, () -> "Your name is " + s.uiName() 
-                + System.lineSeparator() + AGENT_MODE));
+            s.agent().setStaticContext(ContextItem.newList(context,
+                    ContextItem.of("Your name is " + s.uiName()
+                            + System.lineSeparator() + AGENT_MODE)));
         });
     }
 

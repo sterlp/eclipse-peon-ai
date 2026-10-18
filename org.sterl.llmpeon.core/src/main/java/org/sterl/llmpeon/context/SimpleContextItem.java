@@ -3,9 +3,11 @@ package org.sterl.llmpeon.context;
 import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
+import org.sterl.llmpeon.agent.model.TaggedResult;
 
 /**
- * Plain-text context item — renders the provided text as-is.
+ * Plain-text context item — renders the provided text as a block with the head
+ * {@code context: <label>} (bare {@code context} without a label).
  */
 @RequiredArgsConstructor
 @EqualsAndHashCode(of = "text")
@@ -14,19 +16,14 @@ public class SimpleContextItem implements ContextItem {
 
     private final String label;
     private final String text;
-    
+
     public SimpleContextItem(String value) {
         this(null, value);
     }
 
     @Override
-    public String render() {
-        return text;
-    }
-
-    @Override
-    public String dedupKey() {
-        return null;
+    public TaggedResult render() {
+        return new TaggedResult(label == null ? "context" : "context: " + label, text);
     }
 
     @Override

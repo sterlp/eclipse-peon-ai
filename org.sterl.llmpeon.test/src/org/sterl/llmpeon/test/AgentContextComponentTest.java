@@ -3,14 +3,15 @@ package org.sterl.llmpeon.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
 import java.util.List;
-import java.util.Optional;
 
 import org.junit.Test;
 import org.sterl.llmpeon.agent.AiAgent;
+import org.sterl.llmpeon.agent.model.TaggedResult;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.command.CommandService;
@@ -83,7 +84,8 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
                 second.stream().anyMatch(t -> t.contains("Handover from Peon-Plan")));
     }
 
-    /** GIVEN an existing plan file WHEN turnContext() THEN an item with dedupKey = path is present; without plan none. */
+    /** GIVEN an existing plan file WHEN turnContext() THEN an item whose dedupKey (block start line)
+     *  carries the path is present; without plan none. */
     @Test
     public void test_turnContext_planReference_onlyWhenPlanExists() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
@@ -129,7 +131,7 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
         assertEquals(1, ctx.size());
         assertNotNull(ctx.get(0).render());
         assertFalse("memory snapshot must not be baked into the static context",
-                ctx.get(0).render().contains("must not appear in static context"));
+                ctx.get(0).render().body().contains("must not appear in static context"));
     }
 
     /** GIVEN empty memory WHEN turnContext() THEN no workspace-memory item is injected. */
@@ -155,7 +157,7 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
 
         // GIVEN a component whose codegraph item is CONNECTED with server instructions
         var connectedItem = new CodegraphContextItem(
-                () -> new State(Kind.CONNECTED, project, null), () -> Optional.of("CG-SERVER-DOCS"));
+                () -> new State(Kind.CONNECTED, project, null, "CG-SERVER-DOCS"));
         var sutConnected = new AgentContextComponent(() -> project, wmt,
                 new org.sterl.llmpeon.context.UserContext(), null, null,
                 () -> activeAgent, () -> LlmConfig.builder().model("t").url("http://x").build(),
@@ -168,29 +170,27 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
         var cgItem = items.stream().filter(i -> i instanceof CodegraphContextItem).findFirst();
         assertTrue("codegraph item expected", cgItem.isPresent());
         assertTrue("renders the instructions: " + cgItem.get().render(),
-                cgItem.get().render().contains("CG-SERVER-DOCS"));
+                cgItem.get().render().body().contains("CG-SERVER-DOCS"));
         assertNotNull("label drives the R-CG-12 chat signal", cgItem.get().label());
         assertNotNull("state-change dedup needs a key", cgItem.get().dedupKey());
     }
 
-    /** R-CG-7 (SOLL 2026-10-18): GIVEN codegraph OFF WHEN turnContext() THEN the item renders a
-     *  short one-line state message (the "no line when not connected" behaviour is gone — the
-     *  state is visible via the item, R-CG-12). */
-    // R-CG-7
+    /** R-TR-4 (SOLL 2026-10-18): GIVEN codegraph OFF WHEN turnContext() THEN the item renders
+     *  nothing — no chat line, the state stays visible via the icon + tooltip only. */
+    // R-TR-4
     @Test
-    public void test_turnContext_codegraphItem_offRendersShortLine() {
+    public void test_turnContext_codegraphItem_offRendersNothing() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
 
         // GIVEN the setup component (OFF codegraph item, no project)
         // WHEN
         var items = sut.turnContext();
 
-        // THEN the codegraph item is present and renders a short (one-line) state message
+        // THEN the codegraph item is present but renders nothing and carries no key
         var cgItem = items.stream().filter(i -> i instanceof CodegraphContextItem).findFirst();
         assertTrue("codegraph item expected even when OFF", cgItem.isPresent());
-        var render = cgItem.get().render();
-        assertNotNull("OFF renders a state line", render);
-        assertFalse("OFF is one short line: " + render, render.contains(System.lineSeparator()));
+        assertNull("OFF renders nothing (R-TR-4)", cgItem.get().render());
+        assertNull("OFF carries no dedup key (no block)", cgItem.get().dedupKey());
     }
 
     /** R-CG-7: GIVEN the scaffold agent WHEN turnContext() THEN the scaffold never
@@ -205,7 +205,7 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
         var scaffoldSut = new AgentContextComponent(() -> project, wmt, userContext, scaffold,
                 sharedTools.toolService(), () -> scaffold, ccm::getConfig, List::of,
                 new CodegraphContextItem(
-                        () -> new State(Kind.CONNECTED, project, null), () -> Optional.of("CG-SERVER-DOCS")));
+                        () -> new State(Kind.CONNECTED, project, null, "CG-SERVER-DOCS")));
 
         // WHEN
         var items = scaffoldSut.turnContext();
@@ -218,8 +218,8 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
     private List<String> renderAll(List<ContextItem> items) {
         return items.stream()
                 .map(i -> {
-                    String r = i.render();
-                    return r == null ? "" : i.dedupKey() == null ? r : i.dedupKey() + "\n" + r;
+                    TaggedResult r = i.render();
+                    return r == null ? "" : r.toString();
                 })
                 .toList();
     }
@@ -227,7 +227,7 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
     /** An OFF codegraph item with no project — the default for tests that don't exercise codegraph. */
     private static CodegraphContextItem offItem() {
         return new CodegraphContextItem(
-                () -> new State(Kind.OFF, null, "no active project"), () -> Optional.empty());
+                () -> new State(Kind.OFF, null, "no active project"));
     }
 
     @Override

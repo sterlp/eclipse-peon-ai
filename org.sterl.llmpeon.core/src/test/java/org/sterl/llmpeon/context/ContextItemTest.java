@@ -8,6 +8,7 @@ import java.nio.file.Path;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.sterl.llmpeon.agent.model.TaggedResult;
 
 class ContextItemTest {
 
@@ -20,9 +21,9 @@ class ContextItemTest {
         Files.writeString(file, "hello world");
 
         DiskFileContextItem item = new DiskFileContextItem(file);
-        String rendered = item.render();
+        var rendered = item.render();
 
-        assertThat(rendered).contains("hello world");
+        assertThat(rendered.body()).contains("hello world");
     }
 
     @Test
@@ -31,13 +32,13 @@ class ContextItemTest {
         Files.writeString(file, "v1");
 
         DiskFileContextItem item = new DiskFileContextItem(file);
-        String first = item.render();
+        var first = item.render();
 
         Files.writeString(file, "v2");
-        String second = item.render();
+        var second = item.render();
 
-        assertThat(first).contains("v1");
-        assertThat(second).contains("v2");
+        assertThat(first.body()).contains("v1");
+        assertThat(second.body()).contains("v2");
     }
 
     @Test
@@ -60,14 +61,13 @@ class ContextItemTest {
     }
 
     @Test
-    void dedupKey_returnsHeader() throws IOException {
+    void dedupKey_returnsBlockStartLine() throws IOException {
         Path file = tempDir.resolve("keyed.txt");
         Files.writeString(file, "content");
 
         DiskFileContextItem item = new DiskFileContextItem(file);
 
-        assertThat(item.dedupKey()).isEqualTo(
-            item.label() + ":" + System.lineSeparator() + "---" + System.lineSeparator());
+        assertThat(item.dedupKey()).isEqualTo(TaggedResult.PREFIX + "context: " + item.label());
     }
 
     @Test
@@ -79,16 +79,29 @@ class ContextItemTest {
 
     @Test
     void label_defaultReturnsNull() {
-        ContextItem item = () -> "content";
+        ContextItem item = () -> new TaggedResult("context", "content");
         assertThat(item.label()).isNull();
     }
 
     @Test
     void label_overrideReturnsCustomValue() {
         ContextItem item = new ContextItem() {
-            @Override public String render() { return "content"; }
+            @Override public TaggedResult render() { return new TaggedResult("context", "content"); }
             @Override public String label() { return "my-label"; }
         };
         assertThat(item.label()).isEqualTo("my-label");
+    }
+
+    // R-TR-3
+    @Test
+    void of_rendersBlockWithContextHead() {
+        ContextItem item = ContextItem.of("plain text");
+
+        var rendered = item.render();
+
+        assertThat(rendered.head()).isEqualTo("context");
+        assertThat(rendered.body()).isEqualTo("plain text");
+        assertThat(item.dedupKey()).isNull();
+        assertThat(item.label()).isNull();
     }
 }

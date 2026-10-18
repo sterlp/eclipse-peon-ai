@@ -245,8 +245,8 @@ public class CodegraphConnectionServiceTest {
         // WHEN
         service.apply();
 
-        // THEN: the owned service's instructions are exposed
-        assertEquals(Optional.of("CG-INST"), service.instructions());
+        // THEN: the instructions ride in the live state (captured at connect)
+        assertEquals("CG-INST", service.state().instructions());
     }
 
     /** R-CG-8: GIVEN each state kind WHEN tooltip THEN the user-readable text matches. */
@@ -295,7 +295,7 @@ public class CodegraphConnectionServiceTest {
             assertEquals(Kind.CONNECTED, realService.state().kind());
             assertTrue("expected codegraph_explore in " + registry.mcpToolNames(),
                     registry.mcpToolNames().contains("codegraph_explore"));
-            assertTrue("instructions expected from the real server", realService.instructions().isPresent());
+            assertTrue("instructions expected from the real server", realService.state().instructions() != null);
         } finally {
             // ADR-0069: the owner closes the real process — a registry detach alone would leak it
             realService.disconnect();

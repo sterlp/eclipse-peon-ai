@@ -96,24 +96,24 @@ public class BuildPoAgentComponent {
                 return super.classFilter().and(noPrivilegedTools);
             }
         };
-        planSlave.setStaticContext(ContextItem.newList(staticContent, 
-                () -> "Your name is Da Thinka."));
+        planSlave.setStaticContext(ContextItem.newList(staticContent,
+                ContextItem.of("Your name is Da Thinka.")));
         
         var reviewSlave = new AiReviewAgent(configuredModel, sharedToolService, SLAVE_COMPACT_FACTOR) {
             @Override protected Predicate<SmartToolExecutor> classFilter() {
                 return super.classFilter().and(noPrivilegedTools);
             }
         };
-        reviewSlave.setStaticContext(ContextItem.newList(staticContent, 
-                () -> "Your name is Da Dok."));
+        reviewSlave.setStaticContext(ContextItem.newList(staticContent,
+                ContextItem.of("Your name is Da Dok.")));
 
         var devSlave = new AiDevAgent(configuredModel, sharedToolService, SLAVE_COMPACT_FACTOR) {
             @Override protected Predicate<SmartToolExecutor> classFilter() {
                 return super.classFilter().and(noPrivilegedTools);
             }
         };
-        devSlave.setStaticContext(ContextItem.newList(staticContent, 
-                () -> "Your name is Da Mek."));
+        devSlave.setStaticContext(ContextItem.newList(staticContent,
+                ContextItem.of("Your name is Da Mek.")));
 
         var thinka = new NamedAgent("Da Thinka", planSlave);
         var doc = new NamedAgent("Da Dok", reviewSlave);

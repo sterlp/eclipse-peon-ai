@@ -1,6 +1,5 @@
 package org.sterl.llmpeon.agent.model;
 
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.sterl.llmpeon.shared.StringUtil;
 
@@ -9,7 +8,6 @@ import org.sterl.llmpeon.shared.StringUtil;
  * tellings the LLM that this is a tool result an no user input. 
  */
 @RequiredArgsConstructor
-@Getter
 public class TaggedResult {
 
     public static final String LN = System.lineSeparator();
@@ -30,6 +28,14 @@ public class TaggedResult {
 
     private final String head;
     private final String body;
+
+    public String head() {
+        return head;
+    }
+
+    public String body() {
+        return body;
+    }
 
     /**
      * A PURE tagged block (R-TR-2): the FIRST line starts with {@link #PREFIX} and the LAST line

@@ -10,6 +10,7 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.ILog;
 import org.eclipse.core.runtime.Platform;
 import org.sterl.llmpeon.agent.AiAgent;
+import org.sterl.llmpeon.agent.model.TaggedResult;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.context.AgentsMdContextItem;
 import org.sterl.llmpeon.context.ContextItem;
@@ -211,16 +212,18 @@ public class AgentContextComponent {
         result.add(new ContextItem() {
             @Override
             public String label() {
-                return "Plan reference " + dedupKey();
+                return "Plan reference " + JdtUtil.pathOf(planFile);
             }
             @Override
             public String dedupKey() {
-                return JdtUtil.pathOf(planFile);
+                if (!planFile.exists()) return null;
+                return TaggedResult.PREFIX + "context: plan " + JdtUtil.pathOf(planFile);
             }
             @Override
-            public String render() {
+            public TaggedResult render() {
                 if (!planFile.exists()) return null;
-                return "Existing plan found: " + JdtUtil.pathOf(planFile);
+                return new TaggedResult("context: plan " + JdtUtil.pathOf(planFile),
+                        "Existing plan found: " + JdtUtil.pathOf(planFile));
             };
         });
     }

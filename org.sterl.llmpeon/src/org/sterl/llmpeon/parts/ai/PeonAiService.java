@@ -214,7 +214,7 @@ public class PeonAiService {
         // Context assembly (turn context, static bake, plan/handoff state) — pure component,
         // wired with values + lazy suppliers only (no service dependency). The codegraph item
         // (R-CG-7 / R-CG-12) reads the live state + instructions and is the single codegraph line.
-        var codegraphItem = new CodegraphContextItem(codegraph::state, codegraph::instructions);
+        var codegraphItem = new CodegraphContextItem(codegraph::state);
         agentContext = new AgentContextComponent(this::getProject, workspaceMemoryTool, userContext,
                 scaffoldAgent, sharedToolService,
                 this::getActiveAgent, configuredModel::getConfig, this::getAgents,

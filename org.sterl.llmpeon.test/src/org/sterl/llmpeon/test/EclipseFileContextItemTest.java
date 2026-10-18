@@ -5,17 +5,19 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assume.assumeTrue;
 
 import org.junit.Test;
+import org.sterl.llmpeon.agent.model.TaggedResult;
 import org.sterl.llmpeon.context.EclipseFileContextItem;
 import org.sterl.llmpeon.shared.FileLines;
 
 /**
- * S3 (docs/context-message-concept.md): the file context item renders header + content for an
- * existing file and {@code null} (nothing to inject, no exception) for a missing file or project.
+ * S3 (docs/context-message-concept.md): the file context item renders a block whose body is the
+ * line-numbered content for an existing file and {@code null} (nothing to inject, no exception)
+ * for a missing file or project.
  */
 public class EclipseFileContextItemTest extends AbstractIntegrationTest {
 
     @Test
-    public void render_returnsHeaderAndContent_whenFileExists() {
+    public void render_returnsBlock_whenFileExists() {
         // GIVEN
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
         eclipseWriteFile("/test_project/docs/test-memory.md", "memory content");
@@ -24,11 +26,11 @@ public class EclipseFileContextItemTest extends AbstractIntegrationTest {
         // WHEN
         var item = new EclipseFileContextItem("docs/test-memory.md", () -> project);
 
-        // THEN — dedup key is the exact header (path + ":" + lineSeparator + line-number marker)
-        assertEquals(workspacePath + ":" + System.lineSeparator() + " content with line numbers:", item.dedupKey());
+        // THEN — dedup key is the block's exact start line
+        assertEquals(TaggedResult.PREFIX + "context: " + workspacePath, item.dedupKey());
         assertEquals(workspacePath, item.label());
-        // AND — render is the line-numbered content
-        assertEquals(FileLines.format("memory content"), item.render());
+        // AND — the render body is the line-numbered content
+        assertEquals(FileLines.format("memory content"), item.render().body());
     }
 
     @Test

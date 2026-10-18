@@ -9,6 +9,7 @@ import static org.junit.Assert.assertTrue;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.sterl.llmpeon.agent.model.TaggedResult;
 import org.sterl.llmpeon.parts.tools.memory.WorkspaceMemoryTool;
 
 /**
@@ -28,7 +29,7 @@ public class WorkspaceMemoryToolTest {
         wmt.memoryReset();
     }
 
-    /** GIVEN one entry WHEN render() THEN header + numbered list including the entry. */
+    /** GIVEN one entry WHEN render() THEN a block whose body is the numbered list incl. the entry. */
     @Test
     public void test_render_returnsMemorySnapshot() {
         // GIVEN
@@ -40,9 +41,9 @@ public class WorkspaceMemoryToolTest {
 
         // THEN
         assertNotNull(rendered);
-        assertContains(rendered, "Your memory of rules and guidelines and informations for your work:");
-        assertContains(rendered, "1. [");
-        assertContains(rendered, entry);
+        assertContains(rendered.body(), "Your memory of rules and guidelines and informations for your work:");
+        assertContains(rendered.body(), "1. [");
+        assertContains(rendered.body(), entry);
     }
 
     /** GIVEN an empty memory WHEN render() THEN null (item is skipped silently, BDD 4). */
@@ -58,7 +59,7 @@ public class WorkspaceMemoryToolTest {
 
     /**
      * GIVEN a dedupKey read AND memoryAdd(E2) WHEN dedupKey() is read again
-     * THEN it starts with "workspace-memory#" and differs from D1.
+     * THEN it is the block start line (carries "workspace-memory#") and differs from D1.
      */
     @Test
     public void test_dedupKey_changesOnMemoryChange() {
@@ -72,7 +73,8 @@ public class WorkspaceMemoryToolTest {
 
         // THEN
         assertNotNull(d1);
-        assertTrue("key must start with workspace-memory#: " + d1, d1.startsWith("workspace-memory#"));
+        assertTrue("key must be the block start line: " + d1,
+                d1.startsWith(TaggedResult.PREFIX + "workspace-memory#"));
         assertNotEquals(d1, d2);
 
         // AND: unchanged entries -> same key again (no duplicate on next turn)

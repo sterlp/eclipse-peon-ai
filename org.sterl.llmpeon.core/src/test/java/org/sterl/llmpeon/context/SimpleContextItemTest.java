@@ -7,10 +7,10 @@ import org.junit.jupiter.api.Test;
 class SimpleContextItemTest {
 
     @Test
-    void render_returnsPlainTextAsIs() {
+    void render_returnsPlainTextAsBlock() {
         SimpleContextItem item = new SimpleContextItem("standing order #1");
 
-        assertThat(item.render()).isEqualTo("standing order #1");
+        assertThat(item.render().body()).isEqualTo("standing order #1");
     }
 
     @Test
@@ -18,6 +18,6 @@ class SimpleContextItemTest {
         String text = "line 1\nline 2\nline 3";
         SimpleContextItem item = new SimpleContextItem(text);
 
-        assertThat(item.render()).isEqualTo(text);
+        assertThat(item.render().body()).isEqualTo(text);
     }
 }

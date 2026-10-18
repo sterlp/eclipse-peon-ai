@@ -2,7 +2,6 @@ package org.sterl.llmpeon.parts.ai;
 
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -41,8 +40,13 @@ public class CodegraphConnectionService {
 
     public enum Kind { OFF, CONNECTED, ERROR }
 
-    /** Connection state — the tooltip is built here so it stays OSGi-testable without SWT. */
-    public record State(Kind kind, IProject project, String reason) {
+    /** Connection state — the tooltip is built here so it stays OSGi-testable without SWT.
+     *  {@code instructions} is captured at connect (null otherwise) and rides in the state,
+     *  so the turn-context item reads one live object. */
+    public record State(Kind kind, IProject project, String reason, String instructions) {
+        public State(Kind kind, IProject project, String reason) {
+            this(kind, project, reason, null);
+        }
         public String tooltip() {
             var name = project == null ? "" : project.getName();
             return switch (kind) {
@@ -60,8 +64,6 @@ public class CodegraphConnectionService {
     private volatile State state = new State(Kind.OFF, null, "no active project");
     /** Identity of the live connection (churn compare, R-CG-4). */
     private volatile Path connectedWorkDir;
-    /** Server instructions captured from the initialize result (null when not connected). */
-    private volatile String instructions;
     /** ADR-0069: the owned, currently-live codegraph service (this service is its only closer). */
     private volatile McpService liveService;
 
@@ -118,7 +120,6 @@ public class CodegraphConnectionService {
             for (var registry : registries) registry.disconnectMcp(GROUP);
             LOG.info("Codegraph connect failed for " + project.getName() + ": " + e.getMessage());
             connectedWorkDir = null;
-            instructions = null;
             setState(new State(Kind.ERROR, project, e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()));
             return new Status(IStatus.ERROR, PeonConstants.PLUGIN_ID, "Codegraph connect failed: " + e.getMessage(), e);
         }
@@ -126,8 +127,7 @@ public class CodegraphConnectionService {
         // Capture the instructions BEFORE the state flip (the state callback must see the new value)
         var captured = service.instructionsOf(CodegraphServerFactory.NAME).orElse(null);
         connectedWorkDir = diskPath;
-        instructions = captured;
-        setState(new State(Kind.CONNECTED, project, null));
+        setState(new State(Kind.CONNECTED, project, null, captured));
         return Status.OK_STATUS;
     }
 
@@ -137,18 +137,12 @@ public class CodegraphConnectionService {
         for (var registry : registries) registry.disconnectMcp(GROUP);
         closeLiveService();
         connectedWorkDir = null;
-        instructions = null;
         setState(new State(Kind.OFF, project, reason));
         return Status.OK_STATUS;
     }
 
     public State state() {
         return state;
-    }
-
-    /** Server instructions for the turn context (empty when not connected or the server sent none). */
-    public Optional<String> instructions() {
-        return Optional.ofNullable(instructions);
     }
 
     /** Dispose: cancels pending applies, detaches the codegraph group on every registry and
@@ -158,7 +152,6 @@ public class CodegraphConnectionService {
         for (var registry : registries) registry.disconnectMcp(GROUP);
         closeLiveService();
         connectedWorkDir = null;
-        instructions = null;
         setState(new State(Kind.OFF, null, "disconnected"));
     }
 

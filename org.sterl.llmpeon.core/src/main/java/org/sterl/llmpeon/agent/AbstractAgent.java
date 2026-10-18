@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import org.sterl.llmpeon.agent.model.TaggedResult;
 import org.sterl.llmpeon.ai.AgentConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.compact.CompactConstants;
@@ -446,8 +447,10 @@ public abstract class AbstractAgent implements AiAgent {
     }
 
     /**
-     * Builds the full system prompt by appending rendered persistent context items
-     * to the agent's base system prompt. Cached until invalidated (e.g. after compact).
+     * Builds the full system prompt by appending the rendered persistent context items
+     * (body-only) to the agent's base system prompt, plus the harness-block format info
+     * ({@link TaggedResult#INFO}) exactly once (R-TR-6) — every agent can see tagged blocks.
+     * Cached until invalidated (e.g. after compact).
      */
     private String buildSystemPrompt(AiMonitor monitor) {
         if (systemMessage != null) return systemMessage;
@@ -455,15 +458,16 @@ public abstract class AbstractAgent implements AiAgent {
         var prompt = getSystemPrompt();
         if (staticContext != null) {
             for (var item : staticContext) {
-                String rendered = item.render();
+                var rendered = item.render();
                 if (rendered != null) {
                     if (StringUtil.hasValue(item.label())) {
                         monitor.onTool("📋 Loading " + item.label() + " (" + getName() + ")");
                     }
-                    prompt = prompt + System.lineSeparator() + System.lineSeparator() + rendered;
+                    prompt = prompt + System.lineSeparator() + System.lineSeparator() + rendered.body();
                 }
             }
         }
+        prompt = prompt + System.lineSeparator() + System.lineSeparator() + TaggedResult.INFO;
         this.systemMessage = prompt;
         return prompt;
     }
@@ -487,17 +491,13 @@ public abstract class AbstractAgent implements AiAgent {
         for (var item : items) {
             var key = item.dedupKey();
             if (key == null || !memory.containsUserMessage(key)) {
-                String rendered = item.render();
+                var rendered = item.render();
                 if (rendered == null) continue;
-                if (memory.containsMessage(rendered)) continue;
+                if (memory.containsMessage(rendered.toString())) continue;
                 if (StringUtil.hasValue(item.label())) {
                     monitor.onTool("📋 Loading " + item.label());
                 }
-                if (key == null) result.add(new TextContent(rendered));
-                else result.add(new TextContent(
-                        key + System.lineSeparator() +
-                        rendered + System.lineSeparator())
-                    );
+                result.add(TextContent.from(rendered.toString()));
             }
         }
         return result;
