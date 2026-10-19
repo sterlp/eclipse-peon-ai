@@ -44,7 +44,7 @@ class HandleToolLoopCompactComponentTest {
         var memory = seed(new ThreadSafeMemory(), 5);
         setCounter(memory, 170001);
         var compactCalls = new AtomicInteger();
-        var agent = agent(BUDGET, compactCalls, memory,
+        var agent = agent(compactCalls, memory,
                 CompactResult.compacted(new CompactResult.Stats(6, 57000, 10, CompactResult.Stage.NONE,
                         0, 30, "compact-model", 5, 170001, false), "summary"));
         var toolLines = new ArrayList<String>();
@@ -77,7 +77,7 @@ class HandleToolLoopCompactComponentTest {
             var memory = seed(new ThreadSafeMemory(), 5);
             setCounter(memory, 170001);
             var compactCalls = new AtomicInteger();
-            var agent = agent(BUDGET, compactCalls, memory, failed);
+            var agent = agent(compactCalls, memory, failed);
             var req = request(memory, agent, new ArrayList<>());
             var handler = new HandleToolLoopCompactComponent();
 
@@ -98,7 +98,7 @@ class HandleToolLoopCompactComponentTest {
         var memory = seed(new ThreadSafeMemory(), 5);
         setCounter(memory, 155000);
         var compactCalls = new AtomicInteger();
-        var agent = agent(BUDGET, compactCalls, memory, CompactResult.skippedSmall());
+        var agent = agent(compactCalls, memory, CompactResult.skippedSmall());
         var req = request(memory, agent, new ArrayList<>());
 
         // WHEN — the round ends inside the band
@@ -120,7 +120,7 @@ class HandleToolLoopCompactComponentTest {
         memory.add(UserMessage.from("Session compacted: summary"));
         memory.add(AiMessage.from("summary"));
         var compactCalls = new AtomicInteger();
-        var agent = agent(BUDGET, compactCalls, memory, CompactResult.skippedSmall());
+        var agent = agent(compactCalls, memory, CompactResult.skippedSmall());
         var sizeBefore = memory.size();
         var req = request(memory, agent, new ArrayList<>());
 
@@ -142,8 +142,8 @@ class HandleToolLoopCompactComponentTest {
         var memory = seed(new ThreadSafeMemory(), 5);
         setCounter(memory, 500000);
         var compactCalls = new AtomicInteger();
-        var agent = agent(0, compactCalls, memory, CompactResult.skippedSmall());
-        var req = request(memory, agent, new ArrayList<>());
+        var agent = agent(compactCalls, memory, CompactResult.skippedSmall());
+        var req = request(memory, agent, new ArrayList<>(), 0);
 
         // WHEN — the round ends
         new HandleToolLoopCompactComponent().handle(req, true);
@@ -164,7 +164,7 @@ class HandleToolLoopCompactComponentTest {
         var memory = seed(new ThreadSafeMemory(), 2);
         setCounter(memory, 200000);
         var compactCalls = new AtomicInteger();
-        var agent = agent(BUDGET, compactCalls, memory, CompactResult.skippedSmall());
+        var agent = agent(compactCalls, memory, CompactResult.skippedSmall());
         var req = request(memory, agent, new ArrayList<>());
 
         // WHEN — the round ends over budget with a minimal history
@@ -185,7 +185,7 @@ class HandleToolLoopCompactComponentTest {
         var memory = seed(new ThreadSafeMemory(), 5);
         setCounter(memory, BUDGET);
         var compactCalls = new AtomicInteger();
-        var agent = agent(BUDGET, compactCalls, memory, CompactResult.skippedSmall());
+        var agent = agent(compactCalls, memory, CompactResult.skippedSmall());
         var req = request(memory, agent, new ArrayList<>());
 
         // WHEN — the round ends exactly at the budget
@@ -204,7 +204,7 @@ class HandleToolLoopCompactComponentTest {
         var memory = seed(new ThreadSafeMemory(), 5);
         setCounter(memory, BUDGET + 1);
         var compactCalls = new AtomicInteger();
-        var agent = agent(BUDGET, compactCalls, memory,
+        var agent = agent(compactCalls, memory,
                 CompactResult.compacted(new CompactResult.Stats(6, 53000, 10, CompactResult.Stage.NONE,
                         0, 30, "compact-model", 5, 160001, false), "summary"));
         var req = request(memory, agent, new ArrayList<>());
@@ -231,7 +231,7 @@ class HandleToolLoopCompactComponentTest {
         // the forward-looking counter is now 155000 + estimate(appended) — over budget
         assertThat(memory.getTotalTokenUsed()).isGreaterThan(BUDGET);
         var compactCalls = new AtomicInteger();
-        var agent = agent(BUDGET, compactCalls, memory,
+        var agent = agent(compactCalls, memory,
                 CompactResult.compacted(new CompactResult.Stats(7, 57000, 10, CompactResult.Stage.NONE,
                         0, 30, "compact-model", 5, 155000, false), "summary"));
         var req = request(memory, agent, new ArrayList<>());
@@ -270,7 +270,7 @@ class HandleToolLoopCompactComponentTest {
         var memory = seed(new ThreadSafeMemory(), 5);
         setCounter(memory, 155000);
         var compactCalls = new AtomicInteger();
-        var agent = agent(BUDGET, compactCalls, memory, CompactResult.skippedSmall());
+        var agent = agent(compactCalls, memory, CompactResult.skippedSmall());
         var req = request(memory, agent, new ArrayList<>());
 
         // WHEN — the round ends inside the band with a tool set lacking compactSession
@@ -282,11 +282,78 @@ class HandleToolLoopCompactComponentTest {
         verify(agent, never()).compact(any());
     }
 
+    // R-CC-18.3 — the hint band is 95 % of the RAW config budget (Paul case: 175000 of a 250000
+    // window must NOT hint — the old agent factor fired at 70 %)
+    @Test
+    @Timeout(10)
+    void hint_band_is_95_percent_of_raw_config() {
+        // GIVEN — budget 250000, the counter sits one token above the 95 % band (237500)
+        var memory = seed(new ThreadSafeMemory(), 5);
+        setCounter(memory, 237501);
+        var compactCalls = new AtomicInteger();
+        var agent = agent(compactCalls, memory, CompactResult.skippedSmall());
+        var req = request(memory, agent, new ArrayList<>(), 250000);
+
+        // WHEN — the round ends inside the band of the raw config
+        new HandleToolLoopCompactComponent().handle(req, true);
+
+        // THEN — the hint fires and shows the raw config budget
+        verify(agent, never()).compact(any());
+        var hints = hintMessages(memory);
+        assertThat(hints).hasSize(1);
+        assertThat(hints.getFirst().singleText()).contains("237501 tokens of 250000 used");
+
+        // AND — far below the band (175000 = 70 % of the window): no hint, no compact, no fallback
+        var memory2 = seed(new ThreadSafeMemory(), 5);
+        setCounter(memory2, 175000);
+        var agent2 = agent(compactCalls, memory2, CompactResult.skippedSmall());
+        var req2 = request(memory2, agent2, new ArrayList<>(), 250000);
+        new HandleToolLoopCompactComponent().handle(req2, true);
+        verify(agent2, never()).compact(any());
+        assertThat(hintMessages(memory2)).isEmpty();
+        assertThat(fallbackMessages(memory2)).isEmpty();
+    }
+
+    // R-CC-18.1 — the direct compact fires at the RAW config budget, not at an agent factor:
+    // 175001 (70 % + 1 of 250000) is where the old factor would have compacted — nothing fires
+    @Test
+    @Timeout(10)
+    void direct_compact_at_raw_config_budget_not_agent_factor() {
+        // GIVEN — budget 250000, the counter at the old factor threshold (175001)
+        var memory = seed(new ThreadSafeMemory(), 5);
+        setCounter(memory, 175001);
+        var compactCalls = new AtomicInteger();
+        var agent = agent(compactCalls, memory, CompactResult.skippedSmall());
+        var req = request(memory, agent, new ArrayList<>(), 250000);
+
+        // WHEN — the round ends at the old factor threshold
+        new HandleToolLoopCompactComponent().handle(req, true);
+
+        // THEN — no compact, no hint
+        verify(agent, never()).compact(any());
+        assertThat(hintMessages(memory)).isEmpty();
+
+        // AND — one token over the raw budget (250001): the direct compact fires
+        var memory2 = seed(new ThreadSafeMemory(), 5);
+        setCounter(memory2, 250001);
+        var agent2 = agent(compactCalls, memory2,
+                CompactResult.compacted(new CompactResult.Stats(6, 57000, 10, CompactResult.Stage.NONE,
+                        0, 30, "compact-model", 5, 250001, false), "summary"));
+        var req2 = request(memory2, agent2, new ArrayList<>(), 250000);
+        new HandleToolLoopCompactComponent().handle(req2, true);
+        assertThat(compactCalls.get()).isEqualTo(1);
+    }
+
     private static ToolLoopRequest request(ThreadSafeMemory memory, AiAgent agent, List<String> toolLines) {
+        return request(memory, agent, toolLines, BUDGET);
+    }
+
+    private static ToolLoopRequest request(ThreadSafeMemory memory, AiAgent agent, List<String> toolLines,
+            int budget) {
         return ToolLoopRequest.builder()
                 .memory(memory)
                 .chatModel(new ConfiguredChatModel(
-                        LlmConfig.builder().model("mock").autoCompactAfter(BUDGET).build(),
+                        LlmConfig.builder().model("mock").autoCompactAfter(budget).build(),
                         new StreamMock().buildMock(r -> ChatResponse.builder()
                                 .aiMessage(AiMessage.from("never sent")).build())))
                 .monitor(new AiMonitor() {
@@ -302,11 +369,10 @@ class HandleToolLoopCompactComponentTest {
      * the memory is already cleared and re-seeded with two small messages before the result
      * is returned.
      */
-    private static AiAgent agent(int budget, AtomicInteger compactCalls, ThreadSafeMemory memory,
+    private static AiAgent agent(AtomicInteger compactCalls, ThreadSafeMemory memory,
             CompactResult compactResult) {
         var agent = mock(AiAgent.class);
         when(agent.getName()).thenReturn("Peon-Dev");
-        when(agent.compactAfterTokens()).thenReturn(budget);
         when(agent.buildStaticMessages(any())).thenReturn(List.of(SystemMessage.from("static-rebuilt")));
         doAnswer(inv -> {
             compactCalls.incrementAndGet();

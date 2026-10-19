@@ -13,7 +13,7 @@ import dev.langchain4j.data.message.UserMessage;
  * ADR-0070): one component, one decision — the hint-only event gate
  * ({@code ranTool(compactSession)} + {@code isCompactedThisTurn}) is gone.
  *
- * <p>Over the agent's own budget ({@code used > agent.compactAfterTokens()}) the conversation is
+ * <p>Over the raw config budget ({@code used > autoCompactAfter}) the conversation is
  * compacted DIRECTLY — no ask to the model, so a budget-exceeding context can no longer die at the
  * model limit. Inside the top 5 % band only the hint fires (R-CC-4 dedup, R-CC-15 fallback).
  * The consequence of a compact hangs on the one who runs it (ADR-0070): here the component, in
@@ -38,9 +38,7 @@ public class HandleToolLoopCompactComponent {
     public void handle(ToolLoopRequest req, boolean hasCompactTool) {
         var memory = req.getMemory();
         var agent = req.getAgent();
-        var budget = agent != null
-                ? agent.compactAfterTokens() // agent-own (ADR-0070): slaves compact earlier
-                : req.getConfig().getAutoCompactAfter(); // sub-loop without owning agent (R-CC-15)
+        var budget = req.getConfig().getAutoCompactAfter(); // raw config — the PO slave factor applies only before a new task
         if (budget <= 0) return; // R-CIB-1: 0 = off
 
         var used = memory.getTotalTokenUsed();
@@ -79,15 +77,14 @@ public class HandleToolLoopCompactComponent {
         if (agent == null || !hasCompactTool) {
             fallbackHint(req); // R-CC-15
         } else {
-            compactHint(req, agent, agent.compactAfterTokens()); // the gate budget, same source as handle
+            compactHint(req, agent, req.getConfig().getAutoCompactAfter()); // the gate budget, same source as handle
         }
     }
 
     /**
      * The compact hint (R-CC-4): one per memory — a cleared memory (successful compact) re-arms
-     * it. The text shows the BUDGET the gate compared against ({@code budget}), not the config
-     * value: since R-CC-18 the two diverge for slaves (compactFactor), and the hint must never
-     * lie about the limit.
+     * it. The text shows the BUDGET the gate compared against ({@code budget} — the raw config
+     * value): the hint must never lie about the limit.
      */
     private void compactHint(ToolLoopRequest req, AiAgent agent, int budget) {
         var memory = req.getMemory();

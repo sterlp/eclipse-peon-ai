@@ -189,7 +189,7 @@ class ToolServiceCompactHintTest {
                 .chatModel(new ConfiguredChatModel(
                         LlmConfig.builder().model("mock").autoCompactAfter(210000).build(), cm))
                 .monitor(monitor)
-                .agent(divergingAgent())
+                .agent(hintAgent())
                 .build();
 
         // WHEN — round 2 crosses the threshold on an estimated (no-usage) counter
@@ -266,23 +266,9 @@ class ToolServiceCompactHintTest {
     private static AiAgent hintAgent() {
         var agent = mock(AiAgent.class);
         when(agent.getName()).thenReturn("Peon-Dev");
-        // R-CC-18: the in-loop gate runs on the agent's OWN budget — without this stub the mock
-        // returns 0 (off) and the component could never fire the hint the tests assert
-        when(agent.compactAfterTokens()).thenReturn(160000);
         return agent;
     }
 
-    /**
-     * Agent stub for the diverging test: the gate budget (210000) is high enough that round 2's
-     * no-usage estimate (≈200k) lands in the HINT band (199500…210000) — not over budget, where
-     * R-CC-18.1 would fire a direct compact on the mock instead of the hint.
-     */
-    private static AiAgent divergingAgent() {
-        var agent = mock(AiAgent.class);
-        when(agent.getName()).thenReturn("Peon-Dev");
-        when(agent.compactAfterTokens()).thenReturn(210000);
-        return agent;
-    }
 
     private static ThreadSafeMemory seedMemory(ThreadSafeMemory memory, int messages) {
         for (int i = 0; i < messages; i++) {
