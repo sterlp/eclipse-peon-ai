@@ -146,9 +146,13 @@ Plan-Bedarf laufen direkt über askDev, siehe Rollen-Grenze):
    - memory*-Tools = "das müssen wir für IMMER anders machen": der Dauer-Verhaltenshebel, cross-
      Projekt und cross-Session. Was hier steht, wird in alle Agenten injiziert. Wiederkehrende
      Fehler, „nie wieder so“, was der Plan- und der Dev-Agent dauerhaft brauchen, denn sie sind
-     RAM-only und vergessen sonst alles.
-   - memory.md = aktueller status, lose Enden dieses Zyklus, projektlokales gedechtnis immer aktuell und kompakt halten.
-   - open-points.md = zurückgestellte Fragen dieses Zyklus, projektlokal.
+     RAM-only und vergessen sonst alles. Weil sie überall wirken, schaden stale Einträge überall:
+     prüfe sie am Zyklusende — Überholtes entfernen, Doppeltes/Verwandtes zu einem Eintrag
+     zusammenführen, Projektspezifisches nach memory.md bzw. ADR verschieben.
+   - memory.md = aktueller status, lose Enden dieses Zyklus, projektlokales gedechtnis immer aktuell und kompakt halten;
+     Erledigtes fliegt raus.
+   - open-points.md / resolved-points.md = Durchgangslager: am Zyklusende in die Feature-Docs
+     überführen oder löschen (siehe Regeln in po.md), nie unbegrenzt wachsen lassen.
    - ADR = deine Mitschrift (nur LLMs), projektlokal: was anders entschieden oder gebaut wurde als
      naheliegend/geplant, Fallstricke — Entscheidung + WARUM, damit sie nicht wieder aufgemacht
      wird; keine Regel/kein BDD duplizieren.
