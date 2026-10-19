@@ -201,7 +201,7 @@ Code für tot). Ein Fehler ist harmlos dagegen.
   - GIVEN doppelt sichtbare Dateien (verschachtelte Projekte), WHEN gesucht wird, THEN wird
     jeder Disk-Pfad **einmal** gezählt → `EclipseSearchFilesToolTest.dedupesNestedProjectHits`
   - *Welcher der Pfade gewinnt (das spezifischste Projekt), regelt
-    [workspace-nesting.md](workspace-nesting.md) R-WN-1 — vorher entschied die Scan-Reihenfolge.*
+    [workspace-nesting.md](workspace-nesting.md) R-WN-1.*
 - **R4a2 ✅ done — Derived-Filter gilt auch für den ersten Treffer.**
   `results.isEmpty() ||` entfällt; `bin/`-/Derived-Treffer werden nie zurückgegeben.
   → `EclipseSearchFilesToolTest.neverReturnsDerivedHits`
@@ -275,8 +275,8 @@ ist schlimmer als eine, in der beide gleich schlecht sind — der Agent kann nic
 welchem Ergebnis er trauen darf.
 
 **Ergänzung (2026-10-19):** Die Zählweise über **Disk**-Pfade bei verschachtelten Projekten regelt
-[workspace-nesting.md](workspace-nesting.md) R-WN-2 — bis 2.14.1 zählt der Grep Workspace-Pfade und
-damit eine doppelt sichtbare Datei zweimal (Treffer doppelt, Cap doppelt verbraucht).
+[workspace-nesting.md](workspace-nesting.md) R-WN-2 (2.14.1 gefixt): eine doppelt sichtbare Datei
+zählt genau einmal — Treffer einmal, Cap einmal verbraucht.
 
 - **R7a ✅** GIVEN mehrere offene Projekte, gewählt `X`, WHEN ohne `path` gegrept wird, THEN
   wird `X` zuerst durchsucht und das Cap global verbraucht

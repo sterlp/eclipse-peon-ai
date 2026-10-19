@@ -5,6 +5,20 @@ All notable changes to Peon AI are documented here. Format loosely follows
 
 Releases before `2.12.4` are documented via [GitHub Releases](https://github.com/sterlp/eclipse-peon-ai/releases).
 
+## [2.14.1] — 2026-10-19
+
+### Changed
+
+- **Nested projects (monorepos).** A file visible under several projects is now delivered
+  exactly once, under the most specific (deepest) project — before, the scan order decided.
+  An explicitly selected project scope stays authoritative. The project context now names
+  the nesting — one line per direction.
+
+### Fixed
+
+- **`eclipseGrepFiles` on nested projects.** A doubly visible file was counted twice (hits
+  doubled, file cap consumed twice) — the disk file now counts once.
+
 ## [2.14.0] — 2026-10-19
 
 ### Added

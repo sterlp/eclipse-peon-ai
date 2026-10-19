@@ -235,6 +235,21 @@ Plugin-Tests (JUnit 4, `org.junit` nur). **Fixture** (neu, test-module-only):
   (gemeinsame projectInfo) — bricht keinen Test (`testList` prüft nur Fixture-Name).
 
 ### Inc 4 — Release-Docs (kein Code)
+- **Status (2026-10-19): DONE — Gate grün, committet.**
+  - `CHANGELOG.md`: neues `## [2.14.1] — 2026-10-19` (Changed: Datei genau einmal unter
+    dem spezifischsten Projekt, vorher Scan-Reihenfolge; expliziter Scope maßgeblich;
+    Kontext nennt die Verschachtelung je Richtung. Fixed: Grep zählte doppelt sichtbare
+    Datei zweimal → jetzt einmal).
+  - `homepage/src/usage/selections.md`: neue Sektion „Nested Projects (Monorepos)" nach
+    „Name Your Project Like Its Folder" (Kontext-Zeile je Richtung, spezifischster Pfad,
+    expliziter Scope bleibt).
+  - `docs/eclipse-read-tools.md`: zwei veraltete Formulierungen angepasst — R4a1-Bullet
+    „— vorher entschied die Scan-Reihenfolge." entfernt; R7-Ergänzung „bis 2.14.1 …" →
+    „(2.14.1 gefixt): … zählt genau einmal".
+  - `lintDocs` (root docs, idPattern R-WN-\d+): 0 Findings.
+  - Commit auf `story/workspace-nesting-2026-10-19`: `inc-4` (docs only — CHANGELOG,
+    selections.md, eclipse-read-tools.md, `peon-plan/`). Status-Flips ❌→✅
+    (workspace-nesting.md, index.md) = Jon, nach Abnahme.
 - **`CHANGELOG.md`:** neuer Abschnitt `## [2.14.1]` (Datum bei Release):
   - *Changed:* verschachtelte Projekte liefern Dateien genau einmal unter dem tiefsten Projekt
     (vorher: Scan-Reihenfolge), expliziter Scope bleibt maßgeblich; Projekt-Kontext nennt die

@@ -71,6 +71,14 @@ path in *both* dialects, and a guess there could silently open the wrong file.
 
 Matching the two names removes the ambiguity entirely.
 
+## Nested Projects (Monorepos)
+
+If Eclipse projects are nested inside each other, the same file is visible under several
+projects. Your project context then names the nesting — one line per direction — and the
+tools (`eclipseSearchFiles`, `eclipseGrepFiles`) return the file exactly once, under the
+most specific project. An explicitly selected project scope stays authoritative: results
+keep the paths of the project you searched.
+
 ## Pinning Your Project
 
 If you navigate between files in different projects, the active project may change. Use the **pin button** (📌) in the status bar to lock your current project:
