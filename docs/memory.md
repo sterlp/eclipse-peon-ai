@@ -17,6 +17,8 @@
      Commits: `ef0134f1` (Inc 1) · `6ca7b0fc` (Inc 2) · `aeb9af82` (Inc 3) · `d47a8809` (56001-Boundary-
      Test + Docs) · `0d8c7faf` (Wording-Korrektur ADR 0021/0071). Neu: [ADR-0071](adr/0071-compact-policy-owned-by-delegation.md),
      ADR-0021/0070 nachgezogen (inkl. Löschung der erfundenen `isAutoCompact()`-Behauptung in 0021).
+- **Kleinigkeit auf demselben Branch:** Homepage „Which model?" entfernt (Paul) — `317a27a3`,
+  `homepage/src/model-checks.md` + Sidebar-Zeile; keine toten Links, `dist/` ist gitignored.
 - **Gates:** Core **1224/0/0** (Surefire), OSGi **398/0/0**, Plugin-Build nur die 11 known-benign
   Warnings. Vor dem Merge: `mvn -B clean verify` (Tycho/Feature/Update-Site) einmal neu.
 - **Lehre aus diesem Zyklus (schon in memory-Tools):** ein entferntes Gate muss per **Nutzung**
