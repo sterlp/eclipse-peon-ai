@@ -2,36 +2,39 @@
 
 > docs/** — insbesondere memory.md — schreibt AUSSCHLIESSLICH Jon. Agenten liefern Facts im Chat.
 
-## Stand 2026-10-19 (4) — 2.14.0 released, **2.14.1 gebaut** (Branch `story/workspace-nesting-2026-10-19`)
+## Stand 2026-10-19 (5) — 2.14.1 fertig gebaut (Branch `story/workspace-nesting-2026-10-19`, lokal)
 
-- **2.14.0 = der ganze Nachtzyklus** (78 Commits seit 2.13.0): CHANGELOG-Eintrag vollständig
-  geschrieben (inkl. 2.13.1-Nachtrag #159). Paul hat den Release **getriggert** (Merge + Tag bei ihm;
-  release.yml setzt die Version aus dem Tag, kein pom-Bump). Nächster Schritt: Paul zieht die neue
-  Plugin-Version, dann 2.14.1 bauen.
-- **2.14.1 = Workspace-Nesting gebaut (R-WN-1…3 ✅):** beide Read-Tools deduplizieren über den
-  Disk-Pfad mit einem Helfer-Satz in `EclipseUtil` (`diskDedupKey`/`mostSpecificEntry`/`projectFolder`),
-  `projectInfo` nennt die Verschachtelung (eine Zeile je Richtung). Plugin-Suite **399/0/0**, Core
-  1223/0, Da Dok CONCERNS ohne Blocker, Gates je Inkrement grün. Begleitfix `99784243`:
-  `MockLlmServer`-Portbindung (TOCTOU-Probe) — war ein präexistenter Suite-Flake.
-  Vor dem Merge: `mvn -B clean verify` neu, und Paul-Smoke im echten Monorepo.
-- **Gates (2.14.1-Branch):** Core **1223/0/0/0** (Maven), OSGi **399 run / 0 F / 0 E**, je Inkrement
-  Build 0 Errors. Vor dem Merge: `mvn -B clean verify` (Tycho/Feature/Update-Site) einmal neu.
-- **In diesem Zyklus gebaut/gefixt:** Shell-Timeout R4 (`a68b5ce2`: Tree-Kill, eingefrorene Dauer,
-  Partial Output), R-CC-19 forward-looking counter (`3b69a76e`), Codegraph R-CG-1/2
-  (`7e5c34b5`: Index = Eintritt, Binary = Hinweis, ERROR statt still OFF), Icon Graph-Glyphe
-  (`6686fc43`), PO-Prompt-Klärung (`7e1f52ef`: fachliches IST bleibt = Statusmarker, ADR nur bei
-  Abweichung von Jons Empfehlung).
-- **⏳ Rückversicherungen (open-points):** R-CC-19-Semantik + Tilde, Icon-Motiv, Windows-`cmd /c`-Fallback.
+- **2.14.0 = der ganze Nachtzyklus** (78 Commits): released von Paul (Merge + Tag bei ihm;
+  release.yml setzt die Version aus dem Tag, kein pom-Bump).
+- **2.14.1 enthält zwei Stories (Branch lokal, NICHT gepusht):**
+  1. **Workspace-Nesting (R-WN-1…3 ✅):** Dedup über den Disk-Pfad (`EclipseUtil.diskDedupKey`/
+     `mostSpecificEntry`/`projectFolder`), `projectInfo` nennt die Verschachtelung. Begleitfix
+     `99784243` (`MockLlmServer`-Portbindung, präexistenter Suite-Flake).
+  2. **Compact-Policy-Refactoring (fertig, Da Dok REJECTED → Blocker war meine stale BDD, gefixt):**
+     Faktor `0.7` lebt in `PoDelegateTool` (vor jeder Delegation), Tool-Loop rechnet nur mit roher
+     `autoCompactAfter` (Direkt > Budget, Hint > 95 %), **kein Pre-Turn-Gate** mehr;
+     `compactFactor`/`compactAfterTokens()`/3-Arg-Slave-Ctors ersatzlos gelöscht.
+     Commits: `ef0134f1` (Inc 1) · `6ca7b0fc` (Inc 2) · `aeb9af82` (Inc 3) · `d47a8809` (56001-Boundary-
+     Test + Docs) · `0d8c7faf` (Wording-Korrektur ADR 0021/0071). Neu: [ADR-0071](adr/0071-compact-policy-owned-by-delegation.md),
+     ADR-0021/0070 nachgezogen (inkl. Löschung der erfundenen `isAutoCompact()`-Behauptung in 0021).
+- **Gates:** Core **1224/0/0** (Surefire), OSGi **398/0/0**, Plugin-Build nur die 11 known-benign
+  Warnings. Vor dem Merge: `mvn -B clean verify` (Tycho/Feature/Update-Site) einmal neu.
+- **Lehre aus diesem Zyklus (schon in memory-Tools):** ein entferntes Gate muss per **Nutzung**
+  inventarisiert werden, nicht per Namen — 2 Tests fehlten im Plan (`autoCompactRetriesAfterFailure`,
+  `inLoopCompactDoesNotReleaseTurnsWorkingFlag`), weil sie das Pre-Turn-Gate als Auslöser brauchten.
+- **In diesem Zyklus außerdem gefixt:** Shell-Timeout R4 (`a68b5ce2`), R-CC-19 forward-looking counter
+  (`3b69a76e`), Codegraph R-CG-1/2 (`7e5c34b5`), Icon-Thema (`6686fc43`/`2a238ad4`), PO-Prompt-Klärung
+  (`7e1f52ef`), StateMigration ersatzlos gelöscht (`25785a3b` + Docs).
+- **⏳ Rückversicherungen (open-points):** R-CC-19-Semantik + Tilde, Icon-Motiv, Windows-`cmd /c`-Fallback,
+  **neu:** Delegations-Compact feuert pro Delegation (Kosten).
 - **❓ Doc-Aufräum-Slice (open-points):** Belege/Messungen/Vorfälle raus aus Feature-Docs nach
   `peon-plan/` — Regel im PO-Prompt bleibt, Bestand ist nicht-konform (Grep-Inventar nötig).
-- **2.14.1-Backlog (offen):** R-CG-14 (Dispose gewinnt, beide Connection-Services — Fix = Generation +
-  `disposed`, nicht Lock über den Connect) · **R-CG-15** (Monorepo-Projektwechsel: gleicher `workDir`
-  → State-Refresh aufs aktive Projekt, kein Reconnect) · R-CIB-4 Stufe 2 (erstes `result:` statt letztem),
-  R-CG-13 (Codegraph-Item nur bei sichtbarem `codegraph_explore`), R-TR-6 INFO-Text + echte Assertions
-  in `TaggedResultTest`, Reprobe-Entscheidung.
-- **Trap 2026-10-19:** `new Status(severity, pluginId, message, throwable)` setzt in
-  equinox.common 3.21 `getCode()` **immer** auf OK → `getSeverity()` lesen, nie `getCode()`.
-  Dazu in `AGENTS-DEV.md`: headless Tycho verpackt stale `bin/` (mtime gewinnt über die Quelle).
+- **2.14.1-Backlog (offen):** R-CG-14 (Generation + `disposed`, nicht Lock über den Connect) ·
+  **R-CG-15** (Monorepo-Projektwechsel: State-Refresh aufs aktive Projekt) · R-CIB-4 Stufe 2,
+  R-CG-13, R-TR-6 INFO-Text + echte Assertions in `TaggedResultTest`, Reprobe-Entscheidung.
+- **Trap 2026-10-19:** `new Status(severity, pluginId, message, throwable)` setzt in equinox.common 3.21
+  `getCode()` **immer** auf OK → `getSeverity()` lesen. Dazu in `AGENTS-DEV.md`: headless Tycho verpackt
+  stale `bin/` (mtime gewinnt über die Quelle).
 
 ### Frühere Stände — Nachtzyklus 5, Detailhistorie (2026-10-16 … 2026-10-19)
 
@@ -113,21 +116,28 @@
 
 ## Offen für Paul (Details: [open-points.md](open-points.md))
 
-1. ❓ **Codegraph-Smoke nach Eclipse-Neustart** — es darf nur **ein** `serve --mcp`-Prozess laufen;
+1. ❓ **Merge/Tag 2.14.1** — Branch `story/workspace-nesting-2026-10-19` ist lokal fertig
+   (Workspace-Nesting + Compact-Policy), nichts gepusht. Paul entscheidet Push/Merge; vorher
+   `mvn -B clean verify` einmal neu und der Monorepo-Smoke.
+2. ❓ **Smoke Compact-Verhalten (2.14.1)** — im echten Lauf prüfen: Dev/Plan/Review zeigen denselben
+   Prozentwert, den sie als Schwelle nutzen (kein Hint mehr bei ~66 %/70 %); Jons Delegation compactet
+   einen Sklaven über 70 % **vor** dem Auftrag (eine `onTool`-Zeile nennt es). ⏳ offen, ob „pro
+   Delegation" so bleiben soll (Kosten).
+3. ❓ **Codegraph-Smoke nach Eclipse-Neustart** — es darf nur **ein** `serve --mcp`-Prozess laufen;
    Icon ON/OFF/FEHLER + `codegraph_explore` in Jon/Dev prüfen. Danach **Merge → main** (Pauls Call).
-2. ❓ **`codegraph` in der Tool-Auswahl** — welcher Agent/Slot soll es standardmäßig haben?
-3. ❓ **R-*-Regeln haben kein Linter-Gate** (`DocsLinter:241/254`) — R-only-Docs sind nur durch
+4. ❓ **`codegraph` in der Tool-Auswahl** — welcher Agent/Slot soll es standardmäßig haben?
+5. ❓ **R-*-Regeln haben kein Linter-Gate** (`DocsLinter:241/254`) — R-only-Docs sind nur durch
    Da-Dok abgesichert. Entscheidung: R-Form als Definition zulassen oder UC ergänzen?
-4. ❓ **`AIChatView.applyTextSelection`** (Pauls WIP): früher Return bei disposed parent überspringt
+6. ❓ **`AIChatView.applyTextSelection`** (Pauls WIP): früher Return bei disposed parent überspringt
    jetzt auch `setTextSelection` — bewusst oder Nebeneffekt?
-5. ❓ **Untracked** `peon-plan/codegraph-smoke-findings.md` + 2 alte `overview-done-*`: überführen
-   und löschen, oder committen.
-6. ❓ **Smoke `!`-Override (M1–M6)** — working: injiziert + History-Zeile, kein Queue-Echo; idle:
+7. ❓ **Untracked** `peon-plan/codegraph-smoke-findings.md`, `peon-plan/overview.md` (Da-Doks
+   Compact-Review-Befunde) + 2 alte `overview-done-*`: überführen und löschen, oder committen.
+8. ❓ **Smoke `!`-Override (M1–M6)** — working: injiziert + History-Zeile, kein Queue-Echo; idle:
    Text wie getippt; `!` allein: nichts passiert; `!/cmd`: Body + Rest. View-Wiring ist
    compile-grün, aber nicht automatisiert getestet (`AIChatView.resolveOutgoingMessage`).
-7. ❓ **Smoke Compact-Lock UC-CT-3/5/6** — Queue im UI, Fehlerfall, Roster „working".
-8. ⏳ Reserved-Name `codegraph` (ADR-0068) · ⏳ Icon-Visuals Q2=(a) · ⏳ S3 (🗜 in
-   PoDelegateTool/AgentsTool) blockiert auf Pauls WIP-Merge.
+9. ❓ **Smoke Compact-Lock UC-CT-3/5/6** — Queue im UI, Fehlerfall, Roster „working".
+10. ⏳ Reserved-Name `codegraph` (ADR-0068) · ⏳ Icon-Visuals Q2=(a) · ⏳ S3 (🗜 in
+    PoDelegateTool/AgentsTool) blockiert auf Pauls WIP-Merge.
 
 ## Backlog (nächste Session)
 

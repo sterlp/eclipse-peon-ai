@@ -27,6 +27,13 @@ Aufgeräumt 2026-10-14 (Paul-Order): Gelöste → resolved-points.md, Wertloses 
 
 ## 2.14.1 (2026-10-19) — externes Review TOP 1–3: Jon-Entscheidungen
 
+- ⏳ **Delegations-Compact feuert pro Delegation, nicht pro Turn** ([ADR-0071](adr/0071-compact-policy-owned-by-delegation.md)):
+  Jeder Jon-Call an einen Sklaven (`askDev`, `buildWithDev`, …) compactet ihn, sobald er über 70 % liegt —
+  auch mitten in einer laufenden Story. Das ist Pauls SOLL („vor jeder neuen Aufgabe"), die **Kosten**-Folge
+  ist neu: mehrere Delegationen hintereinander können mehrere Compressor-Calls auslösen. Falls das zu
+  teuer ist: Faktor anheben (eine Konstante in `PoDelegateTool`) oder nur bei einem Themenwechsel
+  compacten. Rückversicherung Paul.
+
 - ⏳ **R-CG-15 neu (Projektwechsel im Monorepo):** Befund **bestätigt** — `CodegraphConnectionService:106`
   kehrt bei gleichem `workDir` zurück, `State.project` bleibt A, `CodegraphContextItem` mappt weiter A.
   SOLL geschrieben: Verbindung bleibt, State-Refresh auf B. Nebenwirkung, die Paul kennen sollte:
