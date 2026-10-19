@@ -25,8 +25,11 @@ MCP ist User-Config, Codegraph ist built-in — sonst bräuchten die Codegraph-S
 Workaround.
 
 **Installation/Init = User-Aufgabe** (`codegraph` installieren, `codegraph init` im Projekt);
-Peon hat **keinen** Init-Trigger. Ist es da, nutzen wir es automatisch — ist es nicht da, ist das
-Feature einfach aus (kein Fehler-Spam, Tooltip weist darauf hin).
+Peon hat **keinen** Init-Trigger. Der **Index** ist die Eintrittskarte: fehlt
+`.codegraph/codegraph.db`, ist das Feature aus (OFF, kein Spawn). Liegt ein Index vor, versucht
+Peon den Start **immer** — die Binary wird gesucht, sonst über den PATH des Prozesses aufgelöst;
+scheitert der Start, ist das ein **Fehler** (ERROR + Tooltip), kein stilles Aus
+(Paul 2026-10-19, [R-CG-2](#r-cg-2--probe-erkennung-und-start-❌-specified-2026-10-19)).
 
 ## Fakten (recherchiert 2026-10-17, Da Sniffa)
 
@@ -48,7 +51,9 @@ Feature einfach aus (kein Fehler-Spam, Tooltip weist darauf hin).
   `/Users/sterlp/.local/bin/codegraph`): Suchort #1 = Install-Default `~/.local/bin/codegraph`,
   danach kompletter PATH-Scan. **Bewusst KEIN** rekursiver User-Home-Scan (teuer,
   false-positive-Anfällig); fehlende Install-Orte bei echtem Bedarf geordnet in
-  `DefaultCodegraphProbe` ergänzen. Windows (`.exe`/`.cmd`-Shims) = Follow-up N1.
+  `DefaultCodegraphProbe` ergänzen. **Präzisiert 2026-10-19:** der PATH kommt aus derselben
+  User-Umgebung wie beim `ShellTool`; Windows (`.exe`/`.cmd`-Shims) löst der `cmd /c`-Fallback —
+  die Binärdatei ist ein *Hint*, kein Gate (R-CG-2).
 
 
 
@@ -66,19 +71,62 @@ GIVEN der MCP-Toggle (User-MCP-Server) ist aus
 WHEN Codegraph-Projekt aktiv
 THEN ist Codegraph trotzdem verbunden (Built-in ≠ User-MCP-Config).
 
-GIVEN Binary fehlt oder kein `.codegraph`-Index
+GIVEN kein `.codegraph`-Index im Projekt
 WHEN Projekt aktiv wird
 THEN kein Verbindungsversuch, State OFF, kein wiederholter stiller Launch-Versuch.
 
-### R-CG-2 — Probe (Erkennung) ✅
+GIVEN ein `.codegraph`-Index, aber keine gefundene Binary
+WHEN Projekt aktiv wird
+THEN wird der Start trotzdem versucht (Command `codegraph` über den PATH des Prozesses bzw.
+     `cmd /c` auf Windows); **scheitert** er, ist der State ERROR mit Grund im Tooltip — nicht OFF
+     (R-CG-2, Paul 2026-10-19).
 
-GIVEN das aktive Projekt hat ein `.codegraph/`-**Verzeichnis**, aber keine `codegraph.db`
-WHEN Probe läuft
-THEN gilt Codegraph als **nicht vorhanden** (Init-Transient).
+### R-CG-2 — Probe (Erkennung) und Start (❌ specified 2026-10-19)
 
-GIVEN Binary ist nicht auffindbar (Install-Default + PATH)
+**Der Index entscheidet, *ob* gestartet wird; die Binary nur noch, *wie* — nicht mehr *ob*
+(Paul 2026-10-19).**
+
+- **Index-Suche:** `.codegraph/codegraph.db` im Projektordner; fehlt sie dort, **aufwärts** bis zum
+  Git-Root (`.git`) — Modul-Projekte legen den Index oft eine Ebene höher an. Nur dort gefunden ⇒
+  dieser Ordner ist das `workDir` des Servers. Das Verzeichnis allein bleibt Init-Transient.
+- **Binary-Suche (Hint, kein Gate):** dieselbe User-Umgebung, die das `ShellTool` kennt —
+  `~/.local/bin/codegraph` zuerst, dann die PATH-Einträge der User-Umgebung (`System.getenv("PATH")`
+  reicht nicht: aus dem Dock gestartet sieht Eclipse das Homebrew-/npm-PATH oft nicht).
+- **Kein Treffer = trotzdem starten:** Command `codegraph serve --mcp` und OS-Auflösung über den
+  PATH des Prozesses; auf **Windows** `cmd /c codegraph serve --mcp` (npm installiert
+  `.cmd`-Shims, die `ProcessBuilder` nicht direkt startet).
+- **State-Semantik:** OFF bedeutet nur noch „kein Index / kein aktives Projekt". Ein Startfehler
+  ist **ERROR** mit Grund im Tooltip („codegraph konnte nicht gestartet werden: … (installiert?
+  PATH?)"). „Nicht installiert" ist kein eigener Zustand mehr.
+- Die Probe bleibt rein Path-basiert (core, JUnit5-testbar, Eclipse-frei — keine Prozessstarts,
+  R-CG-9).
+
+```
+GIVEN das aktive Projekt hat ein `.codegraph/`-Verzeichnis, aber keine `codegraph.db`
 WHEN Probe läuft
-THEN State OFF; Probe ist rein Path-basiert (core, JUnit5-testbar, Eclipse-frei).
+THEN gilt Codegraph als nicht vorhanden (Init-Transient) — kein Spawn
+
+GIVEN der Index liegt im Git-Root, das Projekt ist ein Untermodul
+WHEN Probe läuft
+THEN wird der Index gefunden AND der Server startet mit dem Git-Root als workDir
+
+GIVEN Index vorhanden, Binary nirgends auffindbar
+WHEN Apply läuft
+THEN Create mit Command `codegraph` (Windows: `cmd /c codegraph …`) — der Start wird versucht
+
+GIVEN Index vorhanden und der Start scheitert (Binary fehlt/Exit)
+WHEN Apply läuft
+THEN State ERROR mit Grund im Tooltip — nicht OFF, kein stilles Aus
+```
+
+Tests: `DefaultCodegraphProbeTest#findsIndexInGitRoot`, `#prefersProjectIndex`,
+`CodegraphServerFactoryTest#fallsBackToPathCommand`, `#windowsUsesCmdShim`,
+`CodegraphConnectionServiceTest#spawnFailureIsError` (Mutation: Index-Check weglassen → rot).
+
+**Re-Probe (❌ specified, bewusst später — Paul 2026-10-19):** ein Klick auf das Header-Icon löst
+einen neuen Probe-Lauf aus („nochmal schauen"); später darf derselbe Klick bei fehlender DB ein
+`codegraph init` im Projekt starten. **Kein** Turn-Start-Reprobe, kein Polling (Paul: „das sehe ich
+nicht so"). Bis dahin bleibt es beim Trigger Projektwechsel (`setProject` mit changed=true).
 
 ### R-CG-3 — Failure-Isolation ✅
 
@@ -199,11 +247,12 @@ THEN zeigt der Header (neben dem Hammer) das Icon `icons/codegraph.svg` mit Zust
      eigene Farbvariante des SVGs (`codegraph_off.svg` + Dark-Pendant, Muster wie
      `codegraph_dark.svg`), **nicht** über `setEnabled(false)` — SWT graut nur Text/Widget, nicht das
      Image (IST-Befund: Icon blieb bei OFF voll farbig).
-     **Motiv (2026-10-19, Paul): Lupe.** Das Codegraph-Icon im Header zeigt die Lupe — es wird ja
-     ausschließlich über `codegraph_explore` benutzt. Die Notiz „Lupe gehört zur Suche" vom
-     2026-10-18 ist damit überholt: das Tool-Output-Symbol 🔍 für Grep/Search
-     ([icons.md](icons.md)) ist eine andere Fläche als der Header. Dateinamen und Wiring bleiben
-     unverändert (`50be78cf`-Fassung der vier SVGs, Revert von `337e8e2c`).
+     **Motiv (2026-10-19, Paul — final): Codegraph-Glyphe.** Der Header im „Agent Status" zeigt das
+     Graph-Motiv aus `50be78cf`; die Lupe gehört zur **Suche** ([icons.md](icons.md) — 🔍 ist das
+     Tool-Output-Symbol für Grep/Search, eine andere Fläche). Die Lupe-Variante `2a238ad4` wird
+     zurückgenommen, Dateinamen und Wiring bleiben unverändert. *Optional später:* die Lupe
+     zusätzlich **beim Codegraph-Einsatz** — nur wenn sie keine zweite Bedeutung bekommt (heute
+     nein: `codegraph_explore` steht ohnehin im Klartext in der Tool-Zeile).
 
 ### R-CG-9 — Kein Init/Index-Trigger aus Peon ✅
 
@@ -231,6 +280,42 @@ Umsetzung (Jon-Entscheid (a), 2026-10-17, ⏳-Rückversicherung in open-points.m
 ein reiner Workaround-Eintrag funktioniert nicht mehr, sobald diese Version läuft; Paul kann
 beim Review auf State-abhängigen Filter umstellen.
 
+### R-CG-13 — ContextItem nur für Agenten, die das Tool sehen (❌ specified 2026-10-19)
+
+GIVEN Codegraph ist CONNECTED, aber die Tool-Allowlist des aktiven Agenten schließt
+     `codegraph_explore` aus (R-CG-6 / `ToolPolicy`)
+WHEN der Turn-Kontext gebaut wird
+THEN wird das Item **nicht** injiziert — kein Pfad-Mapping, keine Server-Instructions.
+     Pfad-Mapping + Instructions kosten pro Turn Tokens und verweisen auf ein Tool, das dieser
+     Agent nicht aufrufen kann (IST 2026-10-19: `AgentContextComponent.turnContext` hängt es an
+     jeden Nicht-Scaffold-Agenten, sobald CONNECTED).
+
+Umsetzung: Guard über den vorhandenen Choke-Point `AiAgent.isMcpToolActive("codegraph_explore")` —
+keine zweite Allowlist-Logik im Context-Bau.
+Test: `AgentContextComponentTest#codegraphItemOnlyForAgentsThatSeeTheTool` (Mutation: Guard
+entfernen → rot).
+
+### R-CG-14 — Dispose gewinnt: kein Adopt nach dem Shutdown (❌ specified 2026-10-19)
+
+GIVEN `apply()` verbindet gerade (`service.connect()` läuft), während `disconnect()` läuft
+     (View-Dispose, Shutdown)
+WHEN `apply()` fertig wird
+THEN adoptiert er **nicht** mehr: er schließt den eigenen `McpService` und lässt den State OFF —
+     kein verwaister `serve --mcp` nach dem Dispose.
+
+IST 2026-10-19: `disconnect()` ruft nur `applyJob.cancel()`; ein laufender `apply()` prüft keinen
+Abbruch, findet beim `closeLiveService()` nichts (der Connect ist noch nicht in `liveService`),
+adoptiert danach in alle Registries und setzt CONNECTED — nach dem Dispose. Fix: Zustandswechsel
+und Closure serialisiert (Lock + `disposed`-Flag, Prüfung **nach** dem Connect, vor dem Adopt).
+
+Dasselbe Muster gilt für den User-MCP-Pfad: `McpConnectionService.connect()` startet pro Aufruf
+einen **neuen** Job (keine Koaleszenz) — zwei Config-Saves überlappen, beide Generationen
+adoptieren, die ältere wird in `liveService` überschrieben und nie geschlossen. Fix: Generations-
+Token, veraltete Generation wird geschlossen statt adoptiert.
+
+Tests: `CodegraphConnectionServiceTest#disposeDuringConnectClosesInsteadOfAdopting`,
+`McpConnectionServiceTest#staleConnectGenerationIsClosed`.
+
 ## Technik (WIE, ohne Architektur-Doc-Status)
 
 - `McpServerConfig` bekommt Feld `workingDirectory` (**leer = unset**, „Empty means unset" —
@@ -254,5 +339,7 @@ beim Review auf State-abhängigen Filter umstellen.
   Disclosure) — nur bei Praxis-Befund.
 - `CODEGRAPH_MCP_TOOLS`-Env-Feld / weitere Tools aktivierbar — falls Bedarf.
 - `workingDirectory` generisch im UI für User-MCP-Server exponieren — falls Bedarf.
-- Windows-Binary-Resolution (`.exe`/`.cmd`-Shims) — Probe sucht v1 nur `codegraph`
-  (macOS/Linux); eigene Story falls Bedarf.
+- ~~Windows-Binary-Resolution (`.exe`/`.cmd`-Shims)~~ — **entschieden 2026-10-19** (R-CG-2:
+  `cmd /c`-Fallback statt Probe-Support).
+- **Re-Probe per Icon-Klick** (inkl. `codegraph init` bei fehlender DB) — R-CG-2, bewusst später
+  (Paul: „ich will fertig werden").

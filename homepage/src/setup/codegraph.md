@@ -32,7 +32,7 @@ Switching projects switches the connection: the previous project's server is dis
 
 - **`codegraph_explore`** — one call instead of a search loop: ask a question or name the symbols you are about to change and get the verbatim source of the relevant symbols plus the call path, grouped by file. All agents (developer, planner, custom, Jon) see it by default.
 - While connected, the active project's path and the server's instructions are added to the agent context.
-- **Paths:** `codegraph_explore` returns **disk paths**. The `eclipse*` tools expect workspace-qualified paths (`/ProjectName/path`) — Peon translates them itself, no manual conversion needed.
+- **Paths:** `codegraph_explore` returns **disk paths**; the `eclipse*` tools expect workspace-qualified paths (`/ProjectName/path`). Peon does **not** rewrite tool output — the agent gets the disk→workspace mapping as a per-turn hint and converts the paths of the files it wants to open. Paths outside the project are not translated at all (use the `disk*` tools there).
 
 ## Removing an old manual entry
 

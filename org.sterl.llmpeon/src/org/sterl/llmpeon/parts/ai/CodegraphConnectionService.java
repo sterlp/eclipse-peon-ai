@@ -20,11 +20,11 @@ import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.tool.ToolService;
 
 /**
- * Lifecycle owner of the built-in Codegraph connection (ADR-0068): probes binary + index for
- * the active project and keeps the "codegraph" MCP group in sync across all agent-facing
- * registries. Failure-isolated from the user MCP group (R-CG-3), no reconnect churn (R-CG-4),
- * no connect attempts when the probe is negative (R-CG-1). State is RAM-only — no
- * persistence, no UI config (v1).
+ * Lifecycle owner of the built-in Codegraph connection (ADR-0068): probes the index (project
+ * folder upward to the Git root, R-CG-2) and the binary hint for the active project and keeps
+ * the "codegraph" MCP group in sync across all agent-facing registries. Failure-isolated from
+ * the user MCP group (R-CG-3), no reconnect churn (R-CG-4), no connect attempts without an
+ * index (R-CG-1/2). State is RAM-only — no persistence, no UI config (v1).
  *
  * <p>ADR-0069: this service is the OWNER of the single codegraph {@link McpService} — it
  * creates it, calls {@code connect()} exactly once and is its only closer (owner closes last,
@@ -95,12 +95,15 @@ public class CodegraphConnectionService {
         var disk = JdtUtil.diskPathOf(project);
         var diskPath = disk == null ? null : Path.of(disk);
         if (diskPath == null) return applyOff(project, "no active project");
+        // The INDEX decides whether we start (R-CG-2): the project folder or an ancestor up to
+        // the Git root — the found directory is the server's workDir
+        var workDir = probe.findIndexWorkDir(diskPath).orElse(null);
+        if (workDir == null) return applyOff(project, "no .codegraph index — run codegraph init in the project");
+        // The binary is a hint, not a gate (R-CG-2): a miss falls back to the PATH command
         var binary = probe.findBinary().orElse(null);
-        if (binary == null) return applyOff(project, "codegraph binary not found — install codegraph");
-        if (!probe.hasIndex(diskPath)) return applyOff(project, "no .codegraph index — run codegraph init in the project");
 
         // Churn compare: already connected to the desired workDir → nothing to do (R-CG-4)
-        if (state.kind() == Kind.CONNECTED && connectedWorkDir != null && connectedWorkDir.equals(diskPath)) {
+        if (state.kind() == Kind.CONNECTED && connectedWorkDir != null && connectedWorkDir.equals(workDir)) {
             return Status.OK_STATUS;
         }
 
@@ -109,7 +112,7 @@ public class CodegraphConnectionService {
         // into all registries — exactly one live `serve --mcp` per workDir (R-CG-4)
         for (var registry : registries) registry.disconnectMcp(GROUP);
         closeLiveService();
-        var config = CodegraphServerFactory.create(binary, diskPath);
+        var config = CodegraphServerFactory.create(binary, workDir);
         var service = createMcpService(config);
         try {
             service.connect();
@@ -120,13 +123,14 @@ public class CodegraphConnectionService {
             for (var registry : registries) registry.disconnectMcp(GROUP);
             LOG.info("Codegraph connect failed for " + project.getName() + ": " + e.getMessage());
             connectedWorkDir = null;
-            setState(new State(Kind.ERROR, project, e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage()));
+            var detail = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+            setState(new State(Kind.ERROR, project, "codegraph could not be started: " + detail + " (installed? PATH?)"));
             return new Status(IStatus.ERROR, PeonConstants.PLUGIN_ID, "Codegraph connect failed: " + e.getMessage(), e);
         }
         liveService = service; // only after connect + full adopt
         // Capture the instructions BEFORE the state flip (the state callback must see the new value)
         var captured = service.instructionsOf(CodegraphServerFactory.NAME).orElse(null);
-        connectedWorkDir = diskPath;
+        connectedWorkDir = workDir;
         setState(new State(Kind.CONNECTED, project, null, captured));
         return Status.OK_STATUS;
     }

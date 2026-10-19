@@ -8,13 +8,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
-import java.util.stream.Stream;
 
 import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.CallStats;
 import org.sterl.llmpeon.shared.OutputTrim;
 import org.sterl.llmpeon.shared.SearchQuery;
 import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.shared.UserToolEnvironment;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -33,8 +33,6 @@ public class ShellTool extends AbstractTool {
     }
 
     private static final int DEFAULT_TIMEOUT_S = 60;
-
-    private static volatile UserToolEnvironment userToolEnvironment;
 
     private ShellConfirmationProvider confirmationProvider = null;
     private Supplier<Path> defaultWorkingDir = null; // set at construction, before first use (same as confirmationProvider)
@@ -217,41 +215,12 @@ public class ShellTool extends AbstractTool {
 
 
     private static void prepareUserToolEnvironment(java.util.Map<String, String> env) {
-        var userEnv = userToolEnvironment();
+        var userEnv = UserToolEnvironment.current();
         if (!userEnv.pathPrefix().isEmpty()) {
             env.put("PATH", userEnv.pathPrefix() + File.pathSeparator + env.getOrDefault("PATH", ""));
         }
         if (userEnv.javaHome() != null) env.putIfAbsent("JAVA_HOME", userEnv.javaHome());
     }
-
-    private static UserToolEnvironment userToolEnvironment() {
-        var result = userToolEnvironment;
-        if (result == null) {
-            result = discoverUserToolEnvironment();
-            userToolEnvironment = result;
-        }
-        return result;
-    }
-
-    private static UserToolEnvironment discoverUserToolEnvironment() {
-        var home = System.getProperty("user.home");
-        var sdkmanJava = home + "/.sdkman/candidates/java/current";
-        var pathPrefix = Stream.of(
-                home + "/.sdkman/candidates/maven/current/bin",
-                sdkmanJava + "/bin",
-                "/opt/homebrew/bin",
-                "/usr/local/bin",
-                "/usr/bin",
-                "/bin",
-                "/usr/sbin",
-                "/sbin")
-            .filter(p -> Files.isDirectory(Path.of(p)))
-            .reduce((a, b) -> a + File.pathSeparator + b)
-            .orElse("");
-        return new UserToolEnvironment(pathPrefix, Files.isDirectory(Path.of(sdkmanJava)) ? sdkmanJava : null);
-    }
-
-    private record UserToolEnvironment(String pathPrefix, String javaHome) {}
 
 
     /**

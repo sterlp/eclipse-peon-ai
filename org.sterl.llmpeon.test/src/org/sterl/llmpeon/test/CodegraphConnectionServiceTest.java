@@ -17,6 +17,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IStatus;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -52,7 +53,7 @@ public class CodegraphConnectionServiceTest {
         dirA = Files.createTempDirectory("codegraph-a");
         dirB = Files.createTempDirectory("codegraph-b");
         binary = Files.createTempFile("codegraph", "");
-        probe = new FakeProbe(Optional.of(binary), true);
+        probe = new FakeProbe(Optional.of(binary), dirA);
         shared = new RecordingToolService();
         po = new RecordingToolService();
         projectRef = new AtomicReference<>(projectProxy("projA", dirA.toString()));
@@ -109,27 +110,71 @@ public class CodegraphConnectionServiceTest {
         assertEquals(Kind.CONNECTED, service.state().kind());
     }
 
-    /** R-CG-1/2: GIVEN no binary WHEN apply THEN OFF and zero connects. */
+    /** R-CG-2: GIVEN no binary but an index WHEN apply THEN the start is STILL attempted —
+     *  the config falls back to the PATH command (the binary is a hint, not a gate). */
     @Test
-    public void givenNoBinary_whenApply_thenOffStateAndZeroConnects() {
-        probe = new FakeProbe(Optional.empty(), true);
+    public void givenNoBinary_whenApply_thenSpawnStillAttemptedWithPathCommand() {
+        probe = new FakeProbe(Optional.empty(), dirA);
         service = new RecordingService(projectRef::get, List.of(shared, po), probe);
 
         // WHEN
         service.apply();
 
-        // THEN: no service was even created, nothing adopted
+        // THEN: a service was created and connected — the spawn was attempted
+        assertEquals(1, service.createdFakes.size());
+        assertEquals(1, service.createdFakes.get(0).connectCalls);
+        // AND: the config used the PATH fallback, not a binary
+        var cfg = service.createdFakes.get(0).configured.get(0);
+        if (isWindows()) {
+            assertEquals("cmd", cfg.command());
+            assertEquals("/c codegraph serve --mcp", cfg.args());
+        } else {
+            assertEquals("codegraph", cfg.command());
+            assertEquals("serve --mcp", cfg.args());
+        }
+        assertEquals(dirA.toString(), cfg.workingDirectory());
+        assertEquals(Kind.CONNECTED, service.state().kind());
+    }
+
+    /** R-CG-2: GIVEN the index but no binary anywhere WHEN apply and the spawn fails THEN
+     *  ERROR with the reason in the tooltip — not OFF, no silent give-up. OFF only means
+     *  "no index / no active project". Mutation: remove the index check from apply() → the
+     *  no-index part below goes red. */
+    @Test
+    public void spawnFailureIsError() {
+        // GIVEN: index present, binary hint negative, the spawn will fail
+        probe = new FakeProbe(Optional.empty(), dirA);
+        service = new RecordingService(projectRef::get, List.of(shared, po), probe);
+        service.nextConnectFailure = new RuntimeException("No such file or directory");
+
+        // WHEN
+        var status = service.apply();
+
+        // THEN: ERROR (not OFF) with the failure reason in the tooltip
+        assertEquals(Kind.ERROR, service.state().kind());
+        assertTrue("ERROR tooltip must carry the start failure",
+                service.state().tooltip().contains("codegraph could not be started"));
+        assertTrue(service.state().tooltip().contains("No such file or directory"));
+        // AND: the spawn was actually attempted (create + connect), then cleaned up
+        assertEquals(1, service.createdFakes.size());
+        assertEquals(1, service.createdFakes.get(0).connectCalls);
+        assertEquals(1, service.createdFakes.get(0).disconnectCalls);
+        assertTrue(shared.disconnectedGroups.contains(CodegraphConnectionService.GROUP));
+        assertTrue(po.disconnectedGroups.contains(CodegraphConnectionService.GROUP));
+        assertEquals("apply must return an error status", IStatus.ERROR, status.getCode());
+
+        // AND: without an index the OFF path is intact — no spawn attempt at all
+        probe = new FakeProbe(Optional.empty(), null);
+        service = new RecordingService(projectRef::get, List.of(shared, po), probe);
+        service.apply();
         assertEquals(Kind.OFF, service.state().kind());
         assertTrue(service.createdFakes.isEmpty());
-        assertTrue(shared.adopted.isEmpty());
-        assertTrue(po.adopted.isEmpty());
-        assertFalse(service.state().tooltip().contains("codegraph init"));
     }
 
     /** R-CG-1/2: GIVEN binary but no index WHEN apply THEN OFF and zero connects. */
     @Test
     public void givenNoIndex_whenApply_thenOffStateAndZeroConnects() {
-        probe = new FakeProbe(Optional.of(binary), false);
+        probe = new FakeProbe(Optional.of(binary), null);
         service = new RecordingService(projectRef::get, List.of(shared, po), probe);
 
         // WHEN
@@ -156,7 +201,7 @@ public class CodegraphConnectionServiceTest {
 
         // THEN: ERROR state carrying the failure reason
         assertEquals(Kind.ERROR, service.state().kind());
-        assertEquals("boom", service.state().reason());
+        assertEquals("codegraph could not be started: boom (installed? PATH?)", service.state().reason());
         // AND: symmetric cleanup on both registries (codegraph group only)
         assertTrue(shared.disconnectedGroups.contains(CodegraphConnectionService.GROUP));
         assertTrue(po.disconnectedGroups.contains(CodegraphConnectionService.GROUP));
@@ -258,14 +303,14 @@ public class CodegraphConnectionServiceTest {
         assertTrue(service.state().tooltip().contains("codegraph_explore"));
 
         // OFF (index case)
-        probe = new FakeProbe(Optional.of(binary), false);
+        probe = new FakeProbe(Optional.of(binary), null);
         service = new RecordingService(projectRef::get, List.of(shared, po), probe);
         service.apply();
         assertTrue(service.state().tooltip().contains("Codegraph OFF"));
         assertTrue(service.state().tooltip().contains("codegraph init"));
 
         // ERROR
-        probe = new FakeProbe(Optional.of(binary), true);
+        probe = new FakeProbe(Optional.of(binary), dirA);
         shared = new RecordingToolService();
         po = new RecordingToolService();
         service = new RecordingService(projectRef::get, List.of(shared, po), probe);
@@ -282,7 +327,7 @@ public class CodegraphConnectionServiceTest {
         var realProbe = new DefaultCodegraphProbe();
         var repoRoot = repoRoot();
         assumeTrue("codegraph binary not installed", realProbe.findBinary().isPresent());
-        assumeTrue("no codegraph index at repo root", realProbe.hasIndex(repoRoot));
+        assumeTrue("no codegraph index at or above the repo root", realProbe.findIndexWorkDir(repoRoot).isPresent());
 
         var registry = new ToolService(false);
         var realService = new CodegraphConnectionService(
@@ -329,6 +374,10 @@ public class CodegraphConnectionServiceTest {
         assertEquals("no telemetry env (R-CG-10)", "", cfg.envVars());
     }
 
+    private static boolean isWindows() {
+        return System.getProperty("os.name", "").toLowerCase().contains("win");
+    }
+
     private static IProject projectProxy(String name, String diskPath) {
         return (IProject) Proxy.newProxyInstance(IProject.class.getClassLoader(),
                 new Class<?>[] { IProject.class }, (proxy, method, args) -> switch (method.getName()) {
@@ -365,14 +414,14 @@ public class CodegraphConnectionServiceTest {
         }
     }
 
-    /** Canned probe: binary/index presence configurable per case. */
+    /** Canned probe: binary hint + index workDir configurable per case (R-CG-2). */
     private static class FakeProbe implements CodegraphProbe {
         private final Optional<Path> binary;
-        private final boolean indexed;
+        private final Path indexWorkDir; // null = no index anywhere
 
-        FakeProbe(Optional<Path> binary, boolean indexed) {
+        FakeProbe(Optional<Path> binary, Path indexWorkDir) {
             this.binary = binary;
-            this.indexed = indexed;
+            this.indexWorkDir = indexWorkDir;
         }
 
         @Override
@@ -381,8 +430,8 @@ public class CodegraphConnectionServiceTest {
         }
 
         @Override
-        public boolean hasIndex(Path projectDiskPath) {
-            return indexed;
+        public Optional<Path> findIndexWorkDir(Path projectDiskPath) {
+            return indexWorkDir == null ? Optional.empty() : Optional.of(indexWorkDir);
         }
     }
 
