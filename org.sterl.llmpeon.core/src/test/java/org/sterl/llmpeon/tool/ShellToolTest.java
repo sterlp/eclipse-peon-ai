@@ -135,7 +135,10 @@ class ShellToolTest {
         assertTrue(Long.parseLong(m.group(1)) >= 3_000_000, "total must be >= 3M, got " + m.group(1));
     }
 
-    // BDD-4 (docs/output-trim-service.md): timeout on oversized output -> partial output uses the same trim
+    // R4 (docs/shell-tool.md): timeout -> tree-kill, measured "after 1s", partial output uses the
+    // same trim. 15k chars WITHOUT a trailing newline = the R4 regression case: the tree-kill's
+    // EOF makes readLine deliver the unterminated final line (before the fix a surviving writer
+    // held the pipe end open and the partial output was empty).
     @Test
     void runOsCommand_timeout_partialOutputUsesSameTrim() {
         String os = System.getProperty("os.name").toLowerCase();

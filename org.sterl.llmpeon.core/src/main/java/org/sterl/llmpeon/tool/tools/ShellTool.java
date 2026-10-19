@@ -155,12 +155,16 @@ public class ShellTool extends AbstractTool {
 
             boolean completed = process.waitFor(timeout, TimeUnit.SECONDS);
             if (!completed) {
-                process.destroyForcibly();
-                process.descendants().forEach(ProcessHandle::destroy); // kill grandchildren too
-                reader.join(3000); // ensure visibility of all buffered output
-                if (process.isAlive() && !process.waitFor(5, TimeUnit.SECONDS)) {
-                    process.destroyForcibly();
-                }
+                // R4 (shell-tool.md): freeze the measured time until the timeout fired — the
+                // cleanup below must not inflate it; the total (incl. cleanup) stays in the suffix
+                String timedOutAfter = stats.duration();
+                // R4: snapshot the tree BEFORE the kill — afterwards the children are reparented
+                // out of the subtree and a surviving writer holds the pipe end open
+                var descendants = process.descendants().toList();
+                descendants.forEach(ProcessHandle::destroyForcibly); // children first
+                process.destroyForcibly(); // then the parent
+                process.waitFor(); // reap
+                reader.join(3000); // safety net only — the kill's EOF already unblocks the reader
 
                 String partial;
                 if (totalLines[0] == 0 && commandUsesShellTail(command)) {
@@ -168,7 +172,7 @@ public class ShellTool extends AbstractTool {
                 } else {
                     partial = buildOutput(window, query, totalLines[0]).text();
                 }
-                String result = cwdPrefix + "Command timed out after " + stats.duration()
+                String result = cwdPrefix + "Command timed out after " + timedOutAfter
                     + ". Partial output:\n" + partial + System.lineSeparator() + stats.suffix();
                 onTool("Command timed out (exit killed) - " + (totalLines[0] == 0 ? "no output" : totalLines[0] + " lines captured")
                     + " " + stats.suffix() + " " + StringUtil.charsSuffix(result));

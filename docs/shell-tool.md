@@ -106,6 +106,44 @@ GIVEN shellRunCommand mit explizitem workingDirectory
 THEN verhält sich unverändert (Default greift nicht)
 ```
 
+### R4 — Timeout: Tree-Kill, ehrliche Dauer, Partial Output (❌ specified 2026-10-19)
+
+Ein Timeout beendet den **ganzen Prozessbaum** — nicht nur die Shell. Die Meldung nennt die Zeit bis
+zum **Feuern** des Timeouts, und was vorher geschrieben wurde, steht (gekürzt) im Partial Output.
+
+- **Tree-Kill:** die Descendants werden **vor** dem Parent-Kill gesnapshotet und
+  `destroyForcibly` beendet, **dann** der Parent, danach Reap (`waitFor`) und
+  `reader.join(3000)` nur noch als Sicherheitsnetz. Der Snapshot **nach** dem Kill ist zu spät:
+  die Kinder sind dann bereits reparentet und fehlen im Subtree — ein überlebender Writer hält
+  das Pipe-Ende offen, der Reader bleibt blockiert, der Join läuft in seine 3 s und der komplette
+  gepufferte Output geht verloren (2026-10-19: `Command timed out after 4s`, `Partial output:` leer).
+- **Dauer:** `Command timed out after Ns` nennt die **gemessene** Zeit bis das Timeout feuert —
+  **nicht** die Cleanup-/Drain-Zeit. Die Gesamtlaufzeit inkl. Cleanup steht unverändert im
+  Stats-Suffix `(Ns, HH:mm)` (R-TD-2, [tool-time-disclosure.md](tool-time-disclosure.md)) — beides
+  gemessen, nichts verschwiegen.
+- **Partial Output:** nach dem Tree-Kill kommt EOF, damit liefert der zeilenbasierte Reader auch
+  Text **ohne** abschließenden Zeilenumbruch. Die Partial-Ausgabe läuft durch dieselbe Kürzung
+  (`OutputTrim`, R1) wie der Erfolgsfall.
+
+```
+GIVEN ein Command schreibt 15.000 Zeichen ohne Zeilenumbruch und schläft länger als das Timeout
+WHEN shellRunCommand mit timeout=1
+THEN enthält der Partial Output die gekürzte Ausgabe mit „truncated:"
+AND die Meldung nennt „Command timed out after 1s"
+
+GIVEN das Timeout feuert nach 1s und das Aufräumen braucht 3s
+WHEN das Ergebnis gebaut wird
+THEN nennt die Timeout-Meldung „1s" AND das Stats-Suffix die gemessene Gesamtdauer
+
+GIVEN ein Command startet einen Enkelprozess, der das Pipe-Ende offenhält
+WHEN das Timeout feuert
+THEN sind Parent **und** Enkel beendet (kein verwaister Prozess)
+AND die Rückkehr erfolgt ohne die vollen 3s des Join-Sicherheitsnetzes
+```
+
+Tests: `runOsCommand_timeout_partialOutputUsesSameTrim` (newline-terminierte **und** unterminierte
+Variante), `shellRunCommand_timeout_reportsMeasuredDurationAndTime` (ShellToolTest, core).
+
 ## Notes
 
 - Das alte Zeilen-Modell (`tailLines`, Default 60, Hard-Cap 3000, `<=0 = all`) ist mit

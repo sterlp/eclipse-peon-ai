@@ -36,7 +36,10 @@ PoDelegate-Output ändert sich dabei **nicht** (Pin).
 Der Output endet nach dem `Exit code`-Teil mit dem Stats-Suffix `(N, HH:mm)`. **Auch im
 Failure-/Timeout-Pfad** wird die **gemessene** Dauer gemeldet (nie die konfigurierte
 Timeout-Sekundenzahl als Dauer) — ein Timeout ohne echte Messdauer wäre eine Lüge über den
-tatsächlichen Verlauf.
+tatsächlichen Verlauf. **Zwei Messpunkte, beide echt (2026-10-19):** das Suffix misst den ganzen
+Tool-Call bis zum Return (inkl. Cleanup/Drain), die Timeout-Meldung `Command timed out after Ns`
+die Zeit bis das Timeout **feuerte** — sie darf die Cleanup-Zeit nicht mitzählen, sonst meldet das
+Tool „4s" bei einem 1s-Timeout ([shell-tool.md](shell-tool.md) R4).
 
 - GIVEN Command läuft 2.4s THEN Output enthält `(2s, <HH:mm>)` am Ende; GIVEN Timeout THEN
   ehrlicher Fehler **mit** der gemessenen Dauer, nicht der konfigurierten. *(Automatisiert:
