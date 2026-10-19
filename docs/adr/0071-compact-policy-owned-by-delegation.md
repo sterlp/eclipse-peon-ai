@@ -39,9 +39,11 @@ beliefert. Dieses Wissen hat der Agent nicht, sein Auftraggeber hat es.
 - **Gut:** Ein Zustand, eine Zahl. Der Nutzer sieht 70 %, wenn 70 % gemeint ist, und der Hint kommt nicht
   mehr vor dem Budget.
 - **Gut:** Der Agent weiß nichts über seine Rolle; Sklaven-Wissen bleibt beim PO-Tool.
-- **Bewusst:** Ein queued Follow-up an einen Sklaven läuft **nicht** mehr durch einen Pre-Turn-Compact —
-  er wird vom In-Loop-Hint (> 95 %) aufgefangen. Wer den Sklaven zwischendurch leeren will, ruft wie
-  bisher `compactPlan`/`compactDev`/`compactReview`.
+- **Bewusst:** Ein Pre-Turn-Compact existiert nicht mehr. Für die Sklaven fällt das nicht auf — sie
+  werden ausschließlich über `PoDelegateTool.dispatch()` erreicht, also greift die 0.7-Regel bei jeder
+  neuen Nachricht. Nur **direkte** Agent-Calls (Headless, Tests) verlassen sich auf den In-Loop-Hint
+  (> 95 %). Wer einen Sklaven zwischendurch leeren will, ruft wie bisher
+  `compactPlan`/`compactDev`/`compactReview`.
 - **Bewusst:** Die 0.7-Regel feuert jetzt **pro Delegation**, nicht pro Turn (ADR-0021 hatte einen
   tool-seitigen Trigger ausdrücklich verworfen). Das ist der Punkt: jede neue Aufgabe startet mit einem
   leanen Wegwerf-Context, auch mitten in einem langen Zyklus. Ein fehlgeschlagener Compact blockiert die

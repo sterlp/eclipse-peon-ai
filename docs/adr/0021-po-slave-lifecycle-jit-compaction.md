@@ -38,8 +38,9 @@ should also run leaner than Jon himself: they are throw-away workers, he is the 
 - Reuses the existing standing-orders mechanism and compaction tooling rather than inventing a new
   pre-compaction channel.
 - **The 0.7 rule now runs per delegation, not per turn.** That is intentional: every new task starts on a
-  lean throw-away context, even in the middle of a long cycle. A queued follow-up to a slave no longer gets
-  a pre-turn compact; the in-loop hint (> 95 %) catches it.
+  lean throw-away context, even in the middle of a long cycle. Since the slaves are reached only through
+  `PoDelegateTool.dispatch()`, their queued follow-ups still pass the rule; only direct/headless calls
+  rely on the in-loop hint (> 95 %).
 - **The trigger measures fill level, not relevance.** A topic switch (new plan, unrelated task) leaves
   a team member well below 70 % while its whole context is now ballast. That case stays Jon's manual
   call via the delegate tools: `compactPlan`/`compactDev` when the same task continues but the history
