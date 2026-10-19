@@ -13,6 +13,11 @@ Releases before `2.12.4` are documented via [GitHub Releases](https://github.com
   exactly once, under the most specific (deepest) project — before, the scan order decided.
   An explicitly selected project scope stays authoritative. The project context now names
   the nesting — one line per direction.
+- **Compaction uses the configured window again.** Dev, Plan and Review no longer compact at
+  70 % of the budget — the percent shown and the threshold applied are the same number now
+  (direct compact above it, hint above 95 % of it). The PO's 70 % early-compact for its team
+  members still exists, but as a delegation rule: the slave is compacted right before a new
+  task lands. The pre-turn auto-compact is gone.
 
 ### Fixed
 

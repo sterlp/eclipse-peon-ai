@@ -22,7 +22,7 @@
 
 | Komponente | BESITZT |
 |---|---|
-| `AbstractAgent` (core `agent`) | den Vorgang: Guard/Policy (`working`-CAS, `MIN_COMPACT_MESSAGES`, Budget aus `autoCompactAfter`), `requestTokens`-Capture **vor** `clear()`, clear+reseed, Monitor-Emission (`onTool`/`onProblem`) · **Pre-Turn-Gate**: prüft den Speicher **einmal pro Turn, vor** dem ersten Call (die frische User-Message ist dort noch nicht im Memory) |
+| `AbstractAgent` (core `agent`) | den Vorgang: Guard/Policy (`working`-CAS, `MIN_COMPACT_MESSAGES`, Staging-Budget = rohe `autoCompactAfter`), `requestTokens`-Capture **vor** `clear()`, clear+reseed, Monitor-Emission (`onTool`/`onProblem`) — **kein Pre-Turn-Gate** ([ADR-0071](adr/0071-compact-policy-owned-by-delegation.md)); das frühe Compacten von Jons Sklaven besitzt `PoDelegateTool` |
 | `HandleToolLoopCompactComponent` (core `compact`) | **die Vor-Call-Entscheidung im Tool-Loop** (R-CC-18): `used > Budget` → `agent.compact()` direkt · `used > 95 %` → Hint (R-CC-4) · sonst nichts · **und die Folgen jedes Compacts** (`reevaluateTokens` + Static-Rebuild), damit sie nicht an zwei Stellen steht. Ein Zustand, eine Regel, drei Ausgänge — kein Ereignis-Gate mehr. |
 | `ToolService.executeLoop` (core `tool`) | den Loop — und **nichts** über Compact: kein `ranTool(compactSession)`, kein Turn-Merker, keine Hint-Verdrahtung. Es ruft nur `HandleToolLoopCompactComponent` vor dem Call. |
 | `CompactService` (core `compact`) | die LLM-Transformation: Compressor-Prompt, Call, log-only Monitor, „genau EIN debug-Log", `Stats` — **monitor-frei**, pure |
@@ -75,7 +75,7 @@ sequenceDiagram
         L->>L: Tools ausführen
         L->>D: handle(req)
         D->>M: getTotalTokenUsed()
-        alt used > compactAfterTokens (und size > MIN_COMPACT_MESSAGES)
+        alt used > autoCompactAfter (rohe Config; und size > MIN_COMPACT_MESSAGES)
             D->>A: compact(monitor)
             A-->>D: CompactResult
             alt COMPACTED

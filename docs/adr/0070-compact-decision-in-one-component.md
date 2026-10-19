@@ -2,7 +2,8 @@
 
 > **Status:** accepted (2026-10-18) · **Fachdoc:** [compact.md](../compact.md) R-CC-18 ·
 > **Architektur:** [compact-architektur.md](../compact-architektur.md) ·
-> **Supersedes:** Teil von [ADR-0056](0056-compact-component-and-render-modes.md) (Trigger-Funnel)
+> **Supersedes:** Teil von [ADR-0056](0056-compact-component-and-render-modes.md) (Trigger-Funnel) ·
+> **Teilweise abgelöst durch:** [ADR-0071](0071-compact-policy-owned-by-delegation.md) (Budget-Quelle, Pre-Turn-Gate)
 
 ## Context
 
@@ -25,7 +26,7 @@ nach einer Runde der Zähler re-derived und ob ein Hint angehängt wurde. Zwei B
 
 - Neue core-Komponente `HandleToolLoopCompactComponent` (`org.sterl.llmpeon.compact`), aufgerufen am
   Ende jeder Tool-Runde vor dem nächsten Call. Drei Ausgänge über **einem** Zustand
-  (`memory.getTotalTokenUsed()` gegen `agent.compactAfterTokens()`):
+  (`memory.getTotalTokenUsed()` gegen die **rohe** Config `req.getConfig().getAutoCompactAfter()`):
   1. `used > Budget` und `size > MIN_COMPACT_MESSAGES` → `agent.compact(monitor)` **direkt**
      (ein Versuch pro Turn; `SKIPPED_SMALL`/`FAILED_EMPTY` wird nicht wiederholt).
   2. `used > 95 %` und ≤ Budget → `COMPACT_HINT` (R-CC-4-Dedup unverändert).
@@ -34,18 +35,21 @@ nach einer Runde der Zähler re-derived und ob ein Hint angehängt wurde. Zwei B
   wer den Compact ausgelöst hat — die Komponente im Direkt-Pfad, `CompactSessionTool` im Tool-Pfad.
 - **`ranTool(...)`, `compactedThisTurn`, `markCompacted()`, `isCompactedThisTurn()` entfallen
   ersatzlos.** `executeLoop` ruft nur noch die Komponente.
-- Das Budget ist das **Agent-eigene** (`autoCompactAfter × compactFactor`), nicht die rohe Config —
-  sonst verlieren die PO-Sklaven ihr bewusst früheres Compacten.
-- Der **Pre-Turn-Gate in `AbstractAgent.doCall` bleibt**: dort ist die frische User-Message noch nicht
-  im Memory und darf nicht in die Zusammenfassung wandern. Gleiche Regel, anderer Zeitpunkt.
+- Das Budget ist die **rohe Config** (`autoCompactAfter`), für jeden Agenten gleich — vor der Schleife
+  hält sich kein Sklave mehr künstlich knapp; das erledigt die Delegation
+  ([ADR-0071](0071-compact-policy-owned-by-delegation.md), das diesen Punkt hier ablöst).
+- Ein **Pre-Turn-Gate gibt es nicht mehr** (`AbstractAgent` compactet nicht mehr vor einem Turn). Die
+  Schleife entscheidet nach jeder Tool-Runde; wer einen Sklaven vor einer neuen Aufgabe leeren will,
+  tut das in der Delegation ([ADR-0071](0071-compact-policy-owned-by-delegation.md)).
 
 ## Consequences
 
 - **Gut:** Ein Fehler hat einen Ort. Die drei Regeln sind ohne Loop testbar (Memory + Agent-Stub),
   die bestehenden Loop-Tests bleiben grün. Kein Sonderfall mehr für „der Agent hat gerade compacted".
 - **Gut:** Der Loop ist frei von Compact-Wissen — er führt einen Loop, sonst nichts.
-- **Preis:** `AiAgent` muss sein Budget ausweisen (`compactAfterTokens()`); heute kennt das Interface
-  nur `tokenContextUsedInPercent()` (das gegen die rohe Config rechnet).
+- **Preis (2026-10-19 entfallen):** ursprünglich musste `AiAgent` sein Budget selbst ausweisen
+  (`compactAfterTokens()`). Mit [ADR-0071](0071-compact-policy-owned-by-delegation.md) fällt das weg —
+  die Komponente liest die rohe Config, `tokenContextUsedInPercent()` rechnet ohnehin so.
 - **Grenze, ehrlich benannt:** Rule 1 vergleicht gegen das *konfigurierte* Budget, nicht gegen das
   echte Modellfenster — das kennt Peon nicht. Ein falsch gesetztes `autoCompactAfter` verschiebt den
   Schutz, ersetzt ihn aber nicht. Ebenso bleibt bei `size ≤ MIN_COMPACT_MESSAGES` R-CC-8 scharf: dann

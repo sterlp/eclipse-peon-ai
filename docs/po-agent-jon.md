@@ -845,9 +845,10 @@ blocken (diese Regel) — cancel-safe via Stop.
 `AiPoAgent.compact()` komprimiert **ausschließlich Jon selbst**. Der implizite Slave-Cascade
 (sequenziell `compactPlan` → `compactReview` → `compactDev` über `PoDelegateTool`) wird **entfernt**.
 
-**WEIL:** Die Slave-Memories sind unabhängig und self-managen ohnehin — jeder Slave auto-compactiert
-sich vor seinem nächsten Turn, wenn sein eigener Kontext über dem Budget liegt
-(`SLAVE_COMPACT_FACTOR = 0.7`). Der Cascade war 3 sequenzielle LLM-Calls ohne Nutzen, unsichtbar im
+**WEIL:** Die Slave-Memories sind unabhängig und managen sich ohnehin selbst — Jons Delegation
+compactet einen Sklaven **vor** jeder neuen Aufgabe, sobald sein Kontext über 70 % des Budgets liegt
+(`PoDelegateTool.compactSlaveBeforeDelegation`, `SLAVE_COMPACT_FACTOR = 0.7`, [ADR-0071](adr/0071-compact-policy-owned-by-delegation.md)).
+Der Cascade war 3 sequenzielle LLM-Calls ohne Nutzen, unsichtbar im
 UI („Hänger"-Gefühl, Dauer ∝ Kontextgröße) — vom User als ungewollter Seiteneffekt von Jons
 `compactSession`-Tool eingestuft.
 
@@ -863,9 +864,14 @@ WHEN compact() läuft
 THEN wird NUR Jons Memory komprimiert — Da Thinka/Da Mek/Da Dok bleiben unverändert
 AND es gibt keinen weiteren LLM-Call (kein Slave-Traffic, kein „Hänger")
 
-GIVEN ein Slave-Kontext wächst über sein eigenes Budget (0.7-Faktor)
-WHEN Jon schickt dem Slave die nächste Nachricht
-THEN komprimiert sich der Slave selbst vor dem Turn (Auto-Compact, bereits gebaut)
+GIVEN ein Slave hat über 70 % des Budgets im Kontext
+WHEN Jon delegiert ihm die nächste Aufgabe (askDev/buildWithDev/talkPlan/reviewPlanAgent)
+THEN compactet `PoDelegateTool` den Sklaven VOR dem Request (ADR-0071)
+AND unter 70 % passiert nichts; `autoCompactAfter <= 0` schaltet den Delegations-Compact aus
+
+GIVEN Jon fragt einen Sklaven ohne neue Aufgabe (nur ein Follow-up im selben Turn)
+WHEN dessen Kontext über 95 % steigt
+THEN kommt der In-Loop-Hint (R-CC-18) — ein Pre-Turn-Compact existiert nicht mehr
 ```
 
 ### R19: Clear-Cascade bleibt ✅ (IST bestätigt als SOLL, 2026-09-13, User)

@@ -365,6 +365,23 @@ class PoDelegateToolTest {
         assertThat(compactCalls.get()).isZero();
     }
 
+    /** GIVEN a slave just above 70 % of the shared budget (56 001 = 0.7 × 80 000 + 1) WHEN a delegation
+     *  THEN it compacts exactly once — pins the 0.7 boundary (at 0.72 the line moves to 57 600 → red). */
+    @Test
+    void delegate_compactsSlave_justAbove70Percent() {
+        // GIVEN — 56 001 used, the smallest counter above the 0.7 line (56 000)
+        var compactCalls = new AtomicInteger();
+        var slave = mockSlave(memoryWithCounter(2, 56001), compactCalls, compacted());
+        var tool = newTool(slave, slave, slave, () -> BUDGET);
+
+        // WHEN
+        var reply = tool.talkPlan("do the plan");
+
+        // THEN — exactly one compact at the boundary, the delegation itself still runs
+        assertThat(compactCalls.get()).isEqualTo(1);
+        assertThat(reply).contains("SLAVE REPLY");
+    }
+
     /** GIVEN autoCompactAfter = 0 (off, R-CIB-1) WHEN a delegation THEN no compact, even above 70 %. */
     @Test
     void delegate_doesNotCompact_whenAutoCompactAfterIsZero() {

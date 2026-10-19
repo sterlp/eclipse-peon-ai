@@ -359,18 +359,19 @@ Agent den Abbruch kennt und nachfolgend reagieren kann.
 **Anlass:** Der Compact-Hint (R-CC-4) ist eine *Bitte* ans Modell. Ist der Context bereits über dem
 Budget, kommt sie zu spät — der nächste Provider-Call geht unverändert raus und stirbt am
 Modell-Limit. Innerhalb der Tool-Schleife gab es **keinen harten Auslöser**; der Pre-Turn-Gate in
-`AbstractAgent.doCall` greift nur einmal pro Turn, **vor** dem ersten Call.
+`AbstractAgent.doCall` griff nur einmal pro Turn, **vor** dem ersten Call (2026-10-19 ersatzlos entfernt).
 
 **Entscheidung ist zustandsbasiert, nicht ereignisbasiert:** geprüft wird nach jeder Tool-Runde,
 unabhängig davon, ob gerade `compactSession` gerufen wurde (im Stuck-Pfad — nur-think-Runden — bleibt
 es beim erzwungenen Hint). Das ersetzt das bisherige
 Ereignis-Gate (`ranTool(compactSession)` + Turn-Merker) ersatzlos.
 
-- **R-CC-18.1 — Direkt:** `used > agent.compactAfterTokens()` (Budget = `autoCompactAfter ×
-  compactFactor`, also das Agent-eigene Budget — Sklaven compacten weiter früher) **und** Memory
-  > `MIN_COMPACT_MESSAGES` ⇒ `agent.compact(monitor)` **direkt** ausführen (R-CC-8 bleibt scharf);
+- **R-CC-18.1 — Direkt:** `used > autoCompactAfter` (die **rohe** Config; kein Agent-Faktor mehr) **und**
+  Memory > `MIN_COMPACT_MESSAGES` ⇒ `agent.compact(monitor)` **direkt** ausführen (R-CC-8 bleibt scharf);
   danach Zähler re-derived (R-CC-2) und Static neu gebaut. Eine `onTool`-Zeile nennt Anlass +
-  Zahlen, damit der User sieht, warum der Context springt.
+  Zahlen, damit der User sieht, warum der Context springt. Das frühe Compacten von Jons Sklaven ist
+  **nicht** hier verankert, sondern in der Delegation ([po-agent-jon.md](po-agent-jon.md) R18,
+  [ADR-0071](adr/0071-compact-policy-owned-by-delegation.md)).
 - **R-CC-18.2 — Hint im Band:** `used > 95 %` **und** ≤ Budget ⇒ Hint wie bisher — R-CC-4-Dedup
   unverändert (einer pro Memory; nach erfolgreichem Compact wieder scharf, weil das Memory geleert
   wird).
@@ -379,8 +380,9 @@ Ereignis-Gate (`ranTool(compactSession)` + Turn-Merker) ersatzlos.
   `Session compacted:` (R-CC-9), der `onTool`-Report die Zahlen. Ein zweiter Hinweis wäre Rauschen
   und ein neuer Sonderfall für die Stufenkürzung.
 - **Ein Versuch pro Turn:** liefert der Direkt-Compact `SKIPPED_SMALL` oder `FAILED_EMPTY`, wird er
-  im **selben** Turn nicht wiederholt (sonst ein Compressor-LLM-Call pro Iteration). R-CC-3 bleibt
-  unberührt: der Pre-Turn-Gate versucht es im **nächsten** Turn erneut.
+  im **selben** Turn nicht wiederholt (sonst ein Compressor-LLM-Call pro Iteration). Die Entscheidung
+  ist zustandsbasiert und prüft in der **nächsten** Runde bzw. beim nächsten Turn erneut; die
+  Delegations-Regel (`PoDelegateTool`) versucht es ebenfalls wieder.
 
 - GIVEN `used` 170001 und Budget 160000 WHEN der nächste Call ansteht THEN ist compactiert, **bevor**
   der Call rausgeht — der Call trägt die neue, kleine History. *(Test: `directCompactBeforeCall`)*
@@ -396,10 +398,10 @@ Ereignis-Gate (`ranTool(compactSession)` + Turn-Merker) ersatzlos.
 - GIVEN Memory ≤ `MIN_COMPACT_MESSAGES` WHEN über Budget THEN kein Direkt-Compact (R-CC-8) — der
   Provider-Fehler bleibt der ehrliche Ausgang. *(Test: `directCompactRespectsMinMessages`)*
 
-**Warum der Pre-Turn-Gate in `AbstractAgent.doCall` bleibt:** dort ist die frische User-Message noch
-**nicht** im Memory — sie darf nicht in die Zusammenfassung wandern. Der Gate deckt also den
-Turn-Start ab, R-CC-18 die Call-Folge innerhalb der Schleife. Gleiche Regel, zwei Zeitpunkte, je
-eine Begründung.
+**Kein Pre-Turn-Gate:** `AbstractAgent` compactet seit 2026-10-19 nicht mehr vor einem Turn
+([ADR-0071](adr/0071-compact-policy-owned-by-delegation.md)) — der Turn-Start wird von der Schleife
+selbst abgedeckt, sobald die erste Runde endet. Ein Sklave, der eine **neue Aufgabe** bekommt, wird
+vorher in der Delegation compactet, damit der Auftrag nicht in einem übervollen Context landet.
 
 **Struktur:** Die Entscheidung liegt in *einer* Komponente (`HandleToolLoopCompactComponent`), und
 die Folgen eines Compacts erledigt, wer ihn ausführt (Tool bzw. Komponente) — der Tool-Loop weiß
