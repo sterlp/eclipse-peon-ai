@@ -112,6 +112,12 @@ THEN enthält die System-Message `TaggedResult.INFO` genau einmal (gecacht mit d
      **nicht** pro Turn und **nicht** als Turn-Context-Item).
      Async-Tool-Results / Async-Agent-Results beschreibt `INFO` nur so weit, wie es sie heute gibt;
      die eigentliche Async-Tool-Fähigkeit (Shell!) ist eine eigene Story.
+     **Präzisiert 2026-10-19 (❌ specified):** `INFO` nennt ausschließlich, was es heute gibt —
+     Context-Blöcke (System-Info, Projekt-/Codegraph-Info, Memory-Snapshot, Datei-Kontext).
+     **Tool-Results gehen unverändert an das Modell** (kein Tag-Block) und Async-Ergebnisse
+     existieren nicht; beide Sätze kommen erst mit der jeweiligen Fähigkeit in `INFO` (sonst
+     verspricht das static Prompt ein Format, das nie ankommt). `TaggedResultTest` pinnt den Text
+     (5 Zeilen, `PREFIX`/`SUFFIX`) statt ihn nur nach stderr zu drucken.
 
 ### R-TR-7 — Der Compact klassifiziert über die Tags ✅ (2026-10-18, I3)
 

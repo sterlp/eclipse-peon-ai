@@ -119,6 +119,13 @@ Dedup.
 Wird der Zähler als Estimate (chars/3) bestimmt, zeigt die Anzeige `~N (estimate)` (PoDelegateTool-
 Kontext, Roster). Provider-Werte ohne Tilde. *(Test: `ContextCounterDisplayTest#estimateIsDisclosed`)*
 
+**Abgrenzung zu R-CC-19 (2026-10-19):** „Provider-Wert ohne Tilde" gilt für den **unveränderten**
+Provider-Wert. Sobald `addResult` Messages anhängt, trägt der Zähler einen geschätzten Anteil
+(Provider-Input + estimate der angehängten Messages) — dann ist die Tilde die ehrliche Anzeige, auch
+wenn ein Provider-Wert die Basis bildet. Die Provider-Zahl selbst bleibt unverändert der Beobachtungs-
+wert in der Diagnose (R-CC-10). *(Tests: `ContextCounterDisplayTest#estimateIsDisclosed`,
+`ToolServiceCompactResultTest#keepsRealCounterOnFailedCompact`)*
+
 ### R-CC-7 — Compact-Fehler sichtbar + begrenzter Retry 🚧 in design (Paul 2026-09-24)
 
 Compact-Call kann fehlschlagen (Evidenz: 400 `exceed_context_size_error` am Compressor-Call —

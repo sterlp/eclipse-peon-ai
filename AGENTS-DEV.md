@@ -66,6 +66,11 @@ Hints for the dev phase, base rules `AGENTS.md`
   "constructor not applicable" errors (e.g. `SimpleContextItem` 2-arg from
   `@RequiredArgsConstructor`). Fix: `mvn -pl org.sterl.llmpeon.core clean compile` (or `clean test`)
   before the gate run.
+- **Headless Tycho ships stale `bin/` (hit 2026-10-19, R-CG-2 OSGi gate):** Tycho packages
+  from the PDE output folder `bin/` — `mvn clean` never touches it, and a disk-tool source
+  write without a following `eclipseRefreshProject` leaves class-mtime > source-mtime, so JDT
+  skips the recompile and the headless build silently ships an intermediate-state class
+  (verify with `javap` on the `bin/` class). Fix: delete `bin/` or refresh + rebuild first.
 - **Known-benign warnings — do NOT re-triage every cycle** (2026-09-10, warning-cleanup cycle:
   64 → 12 problems, commits `51f43d2`/`a9124f1`/`56e9cc5`). The remaining 13 are accepted
   exceptions; fix real new ones, keep this list current:

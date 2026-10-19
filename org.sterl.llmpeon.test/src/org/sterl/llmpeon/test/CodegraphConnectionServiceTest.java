@@ -53,7 +53,7 @@ public class CodegraphConnectionServiceTest {
         dirA = Files.createTempDirectory("codegraph-a");
         dirB = Files.createTempDirectory("codegraph-b");
         binary = Files.createTempFile("codegraph", "");
-        probe = new FakeProbe(Optional.of(binary), dirA);
+        probe = new FakeProbe(Optional.of(binary), dirA, dirB);
         shared = new RecordingToolService();
         po = new RecordingToolService();
         projectRef = new AtomicReference<>(projectProxy("projA", dirA.toString()));
@@ -161,10 +161,12 @@ public class CodegraphConnectionServiceTest {
         assertEquals(1, service.createdFakes.get(0).disconnectCalls);
         assertTrue(shared.disconnectedGroups.contains(CodegraphConnectionService.GROUP));
         assertTrue(po.disconnectedGroups.contains(CodegraphConnectionService.GROUP));
-        assertEquals("apply must return an error status", IStatus.ERROR, status.getCode());
+        // getSeverity, NOT getCode: equinox.common 3.21 (Eclipse 2025-12) 4-arg Status ctor
+        // is (severity, pluginId, message, exception) and always sets code = OK
+        assertEquals("apply must return an error status", IStatus.ERROR, status.getSeverity());
 
         // AND: without an index the OFF path is intact — no spawn attempt at all
-        probe = new FakeProbe(Optional.empty(), null);
+        probe = new FakeProbe(Optional.empty());
         service = new RecordingService(projectRef::get, List.of(shared, po), probe);
         service.apply();
         assertEquals(Kind.OFF, service.state().kind());
@@ -174,7 +176,7 @@ public class CodegraphConnectionServiceTest {
     /** R-CG-1/2: GIVEN binary but no index WHEN apply THEN OFF and zero connects. */
     @Test
     public void givenNoIndex_whenApply_thenOffStateAndZeroConnects() {
-        probe = new FakeProbe(Optional.of(binary), null);
+        probe = new FakeProbe(Optional.of(binary));
         service = new RecordingService(projectRef::get, List.of(shared, po), probe);
 
         // WHEN
@@ -303,7 +305,7 @@ public class CodegraphConnectionServiceTest {
         assertTrue(service.state().tooltip().contains("codegraph_explore"));
 
         // OFF (index case)
-        probe = new FakeProbe(Optional.of(binary), null);
+        probe = new FakeProbe(Optional.of(binary));
         service = new RecordingService(projectRef::get, List.of(shared, po), probe);
         service.apply();
         assertTrue(service.state().tooltip().contains("Codegraph OFF"));
@@ -414,14 +416,15 @@ public class CodegraphConnectionServiceTest {
         }
     }
 
-    /** Canned probe: binary hint + index workDir configurable per case (R-CG-2). */
+    /** Canned probe: binary hint + indexed roots (R-CG-2): a project inside one of the roots
+     *  resolves to the nearest such root (mimics the real probe's upward walk); no hit = no index. */
     private static class FakeProbe implements CodegraphProbe {
         private final Optional<Path> binary;
-        private final Path indexWorkDir; // null = no index anywhere
+        private final List<Path> indexedRoots; // empty = no index anywhere
 
-        FakeProbe(Optional<Path> binary, Path indexWorkDir) {
+        FakeProbe(Optional<Path> binary, Path... indexedRoots) {
             this.binary = binary;
-            this.indexWorkDir = indexWorkDir;
+            this.indexedRoots = List.of(indexedRoots);
         }
 
         @Override
@@ -431,7 +434,10 @@ public class CodegraphConnectionServiceTest {
 
         @Override
         public Optional<Path> findIndexWorkDir(Path projectDiskPath) {
-            return indexWorkDir == null ? Optional.empty() : Optional.of(indexWorkDir);
+            for (var dir = projectDiskPath; dir != null; dir = dir.getParent()) {
+                if (indexedRoots.contains(dir)) return Optional.of(dir);
+            }
+            return Optional.empty();
         }
     }
 

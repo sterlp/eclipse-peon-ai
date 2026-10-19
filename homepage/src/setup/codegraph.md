@@ -16,14 +16,19 @@ Peon does **not** install or initialize Codegraph:
 
 ## How Peon enables it
 
-When the active project has a `.codegraph/codegraph.db` file **and** the `codegraph` binary is found, Peon starts the Codegraph server automatically with the project as working directory — **independent of the MCP toggle** and isolated from your configured MCP servers: a Codegraph failure never touches them, and toggling MCP never kills it.
+The index is the entry ticket: when the active project has a `.codegraph/codegraph.db` (searched
+upwards to the Git root), Peon starts the Codegraph server automatically with the indexed folder as
+working directory — **independent of the MCP toggle** and isolated from your configured MCP servers:
+a Codegraph failure never touches them, and toggling MCP never kills it. The binary is only a hint:
+Peon uses the one it finds (or plain `codegraph` from your `PATH`), and a start that fails is
+reported as an error with the reason instead of silently staying off.
 
 The state is shown by the **Codegraph icon** in the chat header:
 
 | Icon | Meaning |
 |---|---|
 | Codegraph icon (lit) | Connected — `codegraph_explore` available to all agents |
-| Codegraph icon (dimmed) | Not active — binary not found or no `.codegraph` index (the tooltip explains) |
+| Codegraph icon (dimmed) | Not active — no `.codegraph` index found (the tooltip explains) |
 | Stop icon | Connection failed (the tooltip shows the reason) |
 
 Switching projects switches the connection: the previous project's server is disconnected and the new one connected. Without an index there is no connection attempt.

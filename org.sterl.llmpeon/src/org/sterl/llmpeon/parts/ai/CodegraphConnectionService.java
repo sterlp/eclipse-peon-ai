@@ -59,7 +59,7 @@ public class CodegraphConnectionService {
 
     private final Supplier<IProject> projectRef;
     private final List<ToolService> registries;
-    private final CodegraphProbe probe;
+    private volatile CodegraphProbe probe;
 
     private volatile State state = new State(Kind.OFF, null, "no active project");
     /** Identity of the live connection (churn compare, R-CG-4). */
@@ -174,6 +174,12 @@ public class CodegraphConnectionService {
      */
     public McpService createMcpService(McpServerConfig config) {
         return new McpService(List.of(config));
+    }
+
+    /** Test seam: swaps the probe (the constructor wires the real DefaultCodegraphProbe; tests
+     *  stub it to control the index lookup — R-CG-7 negative guard). */
+    public void setProbe(CodegraphProbe probe) {
+        this.probe = probe;
     }
 
     /** ADR-0069: the owner closes the previous generation — volatile read, null out, disconnect. */

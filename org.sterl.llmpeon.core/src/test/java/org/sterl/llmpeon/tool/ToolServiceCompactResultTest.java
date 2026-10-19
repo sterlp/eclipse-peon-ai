@@ -85,8 +85,9 @@ class ToolServiceCompactResultTest {
 
         // THEN — the compressor was actually called (FAILED_EMPTY, not the < 3 small-context guard)
         assertThat(compactCalls.get()).isEqualTo(1);
-        // AND — the real counter survives the failed compact (SOLL: "bleibt 260000")
-        assertThat(memory.getTotalTokenUsed()).isEqualTo(260000);
+        // AND — no reset on the failed compact: the basis stays the real provider counter
+        // (260000) plus the chars/3 estimate of the appended compact round (54) — R-CC-19
+        assertThat(memory.getTotalTokenUsed()).isEqualTo(260054);
     }
     // R-CC-2
     @Test

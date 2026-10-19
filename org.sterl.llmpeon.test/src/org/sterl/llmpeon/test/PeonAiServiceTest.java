@@ -18,6 +18,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.eclipse.core.resources.ResourcesPlugin;
@@ -40,6 +41,7 @@ import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.UserContext;
 import org.sterl.llmpeon.memory.FileAgentHistoryStore;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
+import org.sterl.llmpeon.mcp.CodegraphProbe;
 import org.sterl.llmpeon.parts.PeonConstants;
 import org.sterl.llmpeon.parts.ai.CodegraphConnectionService;
 import org.sterl.llmpeon.parts.ai.PeonAiService;
@@ -1771,17 +1773,19 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
     }
 
     /**
-     * R-CG-7 (Negativ-Guard): das Fixture-Projekt hat keinen .codegraph-Index — die Probe
-     * ist negativ, der State OFF und die Projekt-Info-Zeile darf KEINE Codegraph-Zeile
-     * enthalten (keine Kontext-Blähung).
+     * R-CG-7 (Negativ-Guard): kein .codegraph-Index ⇒ keine Codegraph-Zeile in der Projekt-Info
+     * (keine Kontext-Blähung). Die Probe wird negativ gestubbt: unter R-CG-2 würde der
+     * Walk-up den Repo-Root-Index finden, weil das OSGi-Test-Workspace im Repo liegt
+     * (das Fixture-Projekt selbst hat keinen Index).
      */
     // R-CG-7
     @Test
     public void givenNoCodegraphInFixture_whenTurn_thenProjectInfoHasNoCodegraphLine() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
 
-        // GIVEN: das Fixture-Projekt ohne .codegraph-Index (Probe synchron angewendet)
+        // GIVEN: Fixture-Projekt ohne .codegraph-Index — Probe negativ gestubbt (synchron angewendet)
         var codegraph = aiService.getCodegraphConnectionService();
+        codegraph.setProbe(noIndexProbe());
         codegraph.apply();
         assertEquals(CodegraphConnectionService.Kind.OFF, codegraph.state().kind());
         assertTrue("OFF reason must mention codegraph: " + codegraph.state().reason(),
@@ -1796,6 +1800,21 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         assertTrue("project info item expected", projectInfo.isPresent());
         assertFalse("no codegraph line without an index: " + projectInfo.get().render(),
                 projectInfo.get().render().body().contains("Codegraph index active"));
+    }
+
+    /** Negative probe: neither binary nor index (R-CG-7 premise — the fixture has no index). */
+    private static CodegraphProbe noIndexProbe() {
+        return new CodegraphProbe() {
+            @Override
+            public Optional<Path> findBinary() {
+                return Optional.empty();
+            }
+
+            @Override
+            public Optional<Path> findIndexWorkDir(Path projectDiskPath) {
+                return Optional.empty();
+            }
+        };
     }
 
     /**

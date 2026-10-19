@@ -12,6 +12,20 @@ Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User
 Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.md).
 Aufgeräumt 2026-10-14 (Paul-Order): Gelöste → resolved-points.md, Wertloses gelöscht, Rest komprimiert.
 
+## 2.14.0 (2026-10-19) — Jon-Entscheidungen zur Rückversicherung
+
+- ⏳ **R-CC-19 (Zähler = Provider-Input + Schätzung der angehängten Messages):** von Jon entschieden
+  (Overflow-Klasse, für die R-CC-18 allein nicht reicht). Folge: R-CC-6 ist präzisiert — „Provider-
+  Wert ohne Tilde" gilt nur unverändert; nach `addResult` trägt der Zähler einen geschätzten Anteil
+  und zeigt `~`. **Rückversicherung:** Paul bestätigt Semantik + Tilde, oder wir nehmen
+  `updateTokenCounter` zurück (dann R-CC-18 wieder auf dem alten, blinden Zähler).
+- ⏳ **Codegraph-Icon-Motiv:** Paul-Entscheid 2026-10-19 — Header zeigt die **Codegraph-Glyphe**
+  (Lupe gehört zur Suche); `2a238ad4` per Datei-Restore zurückgenommen, Doku (R-CG-8) angeglichen.
+- ⏳ **Codegraph-Windows-Fallback `cmd /c codegraph serve --mcp`:** von Jon entschieden und im
+  Factory-Test gepinnt, aber **auf Windows ungetestet** (Maschine = macOS). Bei Pauls nächstem
+  Windows-Lauf prüfen: startet der Server ohne absoluten Binary-Pfad?
+
+
 ## Context-Overflow / ContentProvider Bug-Zyklus (Paul-Order 2026-10-14 — nächster Zyklus)
 
 Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
@@ -93,21 +107,6 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   tat das schon vorher. Bewusst nicht mit-gefixt (D6, sonst hätte ein Lösch-Inkrement eine
   Konstante verschoben) — Cleanup-Kandidat: Konstante nach `CompactConstants`, dann ist
   `compact`→`tool` nur noch `tool.model` (Datenmodell). Kein Verhaltensrisiko, reine Struktur.
-
-## Codegraph — SOLL/IST-Konflikt (2026-10-19, aus der Smoke-Analyse)
-
-- ❓ **R-CG-4 „exakt ein `serve --mcp` pro workDir" vs. zwei Registries:** `codegraph.md` R-CG-4 und
-  der Code-Kommentar `CodegraphConnectionService.java:97` behaupten **einen** Prozess pro workDir.
-  Der Code adressiert aber **zwei** agent-facing Registries (`PeonAiService.java:211-213`:
-  `sharedToolService` + `poAgent.getToolService()`), jede mit eigener `McpService` und eigenem
-  STDIO-Transport ⇒ deterministisch **zwei** Prozesse (auch für User-MCP-Server,
-  `PeonAiService.java:208-209`). Pauls Smoke sah einen — offen, was er damals wirklich zählte.
-  Ursache des Konflikts: R-CG-4 kennt die Registries nicht, ADR-0067 verlangt beide zu bedienen.
-  Entscheidung offen: (a) Invariante anpassen („ein Prozess je Registry"), oder (b) die zweite
-  Registry mit demselben `McpService` versorgen (`ToolService`-geteilter Service), dann stimmt R-CG-4
-  wieder. **Nicht eigenmächtig geändert** — Regeltext + Code-Kommentar widersprechen sich.
-  *(Quelle: `peon-plan/codegraph-smoke-findings.md`, ins Doc übernommen und Datei gelöscht;
-  Befunde 2–5 des Dokuments waren situativ bzw. sind mit `2a238ad4` erledigt.)*
 
 ## Bug-Fix-Backlog
 

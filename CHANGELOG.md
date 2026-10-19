@@ -5,6 +5,34 @@ All notable changes to Peon AI are documented here. Format loosely follows
 
 Releases before `2.12.4` are documented via [GitHub Releases](https://github.com/sterlp/eclipse-peon-ai/releases).
 
+## [2.14.0] — 2026-10-19
+
+### Added
+
+- **Honest shell timeouts.** A timeout now kills the whole process tree (children were reparented
+  and survived before), names the time until the timeout actually fired, and keeps the partial
+  output that was written before it — including a final line without a newline.
+
+### Changed
+
+- **Forward-looking context counter.** After a tool round the counter is the last provider input
+  **plus** an estimate of the messages appended since that request, and it is shown with `~`. The
+  compact decision therefore sees the tool results that will be in the next request instead of
+  running a request too large. One counter for header, hint and compact gate.
+- **Codegraph: the index gates the start.** The `.codegraph` index is searched upwards to the Git
+  root (monorepos work), and it alone decides whether Peon starts the server. The binary is only a
+  hint — if it is not found by path, plain `codegraph` from your `PATH` is used (Windows: `cmd /c`).
+  A start that fails is reported as an error with the reason instead of staying silently off.
+- The Codegraph icon in the chat header shows the Codegraph glyph again (the magnifier belongs to
+  search).
+
+### Fixed
+
+- Shell timeout reported `4s` instead of the configured `1s` and lost the buffered output while a
+  surviving child process held the pipe open.
+- Codegraph did not start at all when the binary was not found by the probe, even though the index
+  existed.
+
 ## [2.13.0] — 2026-10-16
 
 ### Added

@@ -219,6 +219,13 @@ The daily "No files found for a file that exists" was never a wildcard problem:
   every hit); enabled state = public constant `IBreakpoint.ENABLED` (`org.eclipse.debug.core.enabled`) —
   there is no `IMarker.ATTR_ENABLED`. `IMarker.getAttribute(String, default)` overloads (int/String/boolean)
   do not throw; only the single-arg `getAttribute(String)` does.
+- **`Status` ctor semantics changed (verified 2026-10-19, R-CG-2 OSGi gate, Eclipse 2025-12 /
+  equinox.common 3.21.0):** `new Status(int, String, String, Throwable)` is now
+  (severity, pluginId, message, exception) and **always sets code = OK** — `getCode()` returns
+  0 even for `new Status(IStatus.ERROR, …)` (severity is intact; `toString()` shows
+  "Status ERROR: … code=0"). Assert `getSeverity()` (or `matches(ERROR)`), never `getCode()`,
+  on such statuses. A test pinning `getCode() == IStatus.ERROR` fails deterministically and
+  masquerades as stale bytecode.
 
 ## E4 CSS theme pinning in PDE tests (verified 2026-10-17, test-rework)
 

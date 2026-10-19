@@ -99,6 +99,15 @@ jeder Stufe. Gilt **nur im Compacter** — der Live-Context an das LLM wird nich
 3. **Stufe 2 — Tool-Results, Tool-Arguments, Thinking auf 6000:** immer noch drüber → Cap 6000
    (Zeichen) auf alle drei (Arguments gehören dazu, F3 — sonst wandern 200k-Write-Args ungecappt
    bis zur Endstufe). **Log warn.**
+   **Body-Marker (❌ specified 2026-10-19):** gekappt wird ab dem **ersten** `result:`-Marker eines
+   TOOL-RESULT-Blocks — genau wie `arguments:` beim TOOL-REQUEST. Der Marker enthält einen
+   Zeilenumbruch und der Tool-Name keinen, das erste Vorkommen ist damit **immer** das strukturelle.
+   Enthält der Body selbst `result:` (verschachtelte Agent-Transkripte, Testlogs, JSON), darf das
+   den Cap nicht aushebeln: `lastIndexOf` misst dann im Body, die Länge fällt unter den Cap und der
+   Block bleibt **ungekappt** — der Compressor bekommt mehr abgeschnittenen Kontext als nötig.
+   GIVEN ein Tool-Result mit 20k-Body, der `result:` enthält WHEN Stufe 2 läuft THEN ist der Block
+   bei 6000 gekappt (nicht ungekappt). *(Test:
+   `ContextTrimComponentTest#toolResultBodyContainingMarkerIsStillCapped`)*
 4. **Endstufe — dynamisches Per-Message-Cap:** immer noch drüber → Cap je Message =
    `capChars = restTokens × 3 / n` (Token→Zeichen mit dem ×3-Estimator, F5), n ≥ 1
    geclampt (`AiCompressorAgent.call` ist public und umgeht den `< 3`-Guard) → garantiert
