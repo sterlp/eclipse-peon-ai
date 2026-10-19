@@ -11,6 +11,7 @@ import java.util.stream.Stream;
 
 import org.jspecify.annotations.NonNull;
 import org.sterl.llmpeon.compact.CompactConstants;
+import org.sterl.llmpeon.compact.HandleToolLoopCompactComponent;
 import org.sterl.llmpeon.exception.ExceptionUtil;
 import org.sterl.llmpeon.mcp.McpService;
 import org.sterl.llmpeon.shared.AiMonitor;
@@ -150,15 +151,23 @@ public class ToolService {
         int iterations = 0;
         boolean shouldLoop = true;
         int stuck = 0;
+        // R-CC-18: one compact-decision component per loop — the per-turn flag must not leak
+        // into sub-loops or the next turn (ADR-0070)
+        var compactHandler = new HandleToolLoopCompactComponent();
 
         do {
             var messages = new ArrayList<ChatMessage>(toOneSystemMessage(req.staticMessages));
             req.getMemory().addMemoryTo(messages);
 
             var agentConfig = req.getAgentConfig();
+            var specs = toolSpecifications(req);
+            // R-CC-15: the honest fallback binds to "this tool set does not offer compactSession"
+            // — a non-empty set WITHOUT it must take the fallback, not the hint
+            var hasCompactTool = specs.stream()
+                    .anyMatch(spec -> CompactSessionTool.NAME.equals(spec.name()));
             var builder = ChatRequest.builder()
                     .messages(messages)
-                    .parameters(agentConfig.newRequestParameters(toolSpecifications(req)));
+                    .parameters(agentConfig.newRequestParameters(specs));
 
             req.getMonitor().onChatMessage(++iterations, builder);
             response = req.call(builder.build());
@@ -194,7 +203,7 @@ public class ToolService {
                         }
                     }
                     // SKIPPED_SMALL / FAILED_EMPTY: the real counter value stays (R-CC-2)
-                } else addCompactHintIfNeeded(req, response, false);
+                } else compactHandler.handle(req, hasCompactTool); // R-CC-18: state-based decision
 
             } else if (hasResponseMessage) {
                 stuck = 0; // reset on productive response

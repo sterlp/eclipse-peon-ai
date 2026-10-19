@@ -223,10 +223,12 @@ public abstract class AbstractAgent implements AiAgent {
     }
 
     /**
-     * Token count at which this agent auto-compacts before a turn: the shared
+     * Token count at which this agent auto-compacts before a turn (R-CC-3) and directly inside
+     * the tool loop (R-CC-18): the shared
      * {@link org.sterl.llmpeon.ai.LlmConfig#getAutoCompactAfter() budget} scaled by this agent's
      * {@code compactFactor} (1.0 = full budget; slaves use less, so they compact earlier).
      */
+    @Override
     public int compactAfterTokens() {
         return (int) Math.round(configuredModel.getConfig().getAutoCompactAfter() * compactFactor);
     }

@@ -8,7 +8,9 @@ idPrefix: CC
 > · R-CC-8/9 **✅ done** (2026-09-25, Inc 3/3.1, Da Dok Review ACCEPTED)
 > · R-CC-10 **✅ done** (2026-09-26, `138a2ea`) · R-CC-11…14 **✅ done** (2026-09-26,
 > Nachbau-Review, `414edf4`→`d3e8833`)
-> · R-CC-7 **🚧 in design** (Retry/Fehlerklassen, zusammen mit ApiRetry-Tabelle).
+> · R-CC-7 **🚧 in design** (Retry/Fehlerklassen, zusammen mit ApiRetry-Tabelle)
+> · R-CC-18 **❌ specified** (2026-10-18, Paul: vollen Context direkt compacten statt auf den Hint
+> zu warten — siehe unten).
 > **Input-Budget-Regeln (Präfix CIB):** eigenes Doc
 > [compact-input-budget.md](compact-input-budget.md) — ✅ done (2026-09-25, Da Dok ACCEPTED).
 > **Komponente:** eigens core-Package `compact` ([ADR-0056](adr/0056-compact-component-and-render-modes.md)) —
@@ -340,6 +342,58 @@ Compact wird nicht zusätzlich instrumentiert (kein Eingriff in den Fehlerpfad).
 Compact-only. Sichtbarkeit für den 400-Fall kommt stattdessen über ein neues Feature (🚧 in design,
 [open-points.md](open-points.md)): **API-Fehler werden ins Agent-Memory eingefügt**, damit der
 Agent den Abbruch kennt und nachfolgend reagieren kann.
+
+
+### R-CC-18 — Voller Context: Compact direkt statt auf den Hint warten ❌ specified (Paul 2026-10-18)
+
+**Anlass:** Der Compact-Hint (R-CC-4) ist eine *Bitte* ans Modell. Ist der Context bereits über dem
+Budget, kommt sie zu spät — der nächste Provider-Call geht unverändert raus und stirbt am
+Modell-Limit. Innerhalb der Tool-Schleife gab es **keinen harten Auslöser**; der Pre-Turn-Gate in
+`AbstractAgent.doCall` greift nur einmal pro Turn, **vor** dem ersten Call.
+
+**Entscheidung ist zustandsbasiert, nicht ereignisbasiert:** geprüft wird vor jedem Provider-Call,
+unabhängig davon, ob gerade `compactSession` gerufen wurde. Das ersetzt das bisherige
+Ereignis-Gate (`ranTool(compactSession)` + Turn-Merker) ersatzlos.
+
+- **R-CC-18.1 — Direkt:** `used > agent.compactAfterTokens()` (Budget = `autoCompactAfter ×
+  compactFactor`, also das Agent-eigene Budget — Sklaven compacten weiter früher) **und** Memory
+  > `MIN_COMPACT_MESSAGES` ⇒ `agent.compact(monitor)` **direkt** ausführen (R-CC-8 bleibt scharf);
+  danach Zähler re-derived (R-CC-2) und Static neu gebaut. Eine `onTool`-Zeile nennt Anlass +
+  Zahlen, damit der User sieht, warum der Context springt.
+- **R-CC-18.2 — Hint im Band:** `used > 95 %` **und** ≤ Budget ⇒ Hint wie bisher — R-CC-4-Dedup
+  unverändert (einer pro Memory; nach erfolgreichem Compact wieder scharf, weil das Memory geleert
+  wird).
+- **R-CC-18.3 — Sonst nichts:** kein Text, keine Message, kein Log.
+- **R-CC-18.4 — Kein zusätzlicher Text ins LLM-Memory:** die Reinsert-Message trägt bereits
+  `Session compacted:` (R-CC-9), der `onTool`-Report die Zahlen. Ein zweiter Hinweis wäre Rauschen
+  und ein neuer Sonderfall für die Stufenkürzung.
+- **Ein Versuch pro Turn:** liefert der Direkt-Compact `SKIPPED_SMALL` oder `FAILED_EMPTY`, wird er
+  im **selben** Turn nicht wiederholt (sonst ein Compressor-LLM-Call pro Iteration). R-CC-3 bleibt
+  unberührt: der Pre-Turn-Gate versucht es im **nächsten** Turn erneut.
+
+- GIVEN `used` 170001 und Budget 160000 WHEN der nächste Call ansteht THEN ist compactiert, **bevor**
+  der Call rausgeht — der Call trägt die neue, kleine History. *(Test: `directCompactBeforeCall`)*
+- GIVEN der Direkt-Compact liefert `SKIPPED_SMALL`/`FAILED_EMPTY` WHEN die nächste Runde beginnt
+  THEN kein zweiter Direkt-Versuch in diesem Turn. *(Test: `failedDirectCompactIsNotRetriedInTurn`)*
+- GIVEN `used` 155000 (96,9 % von 160000) WHEN die Runde endet THEN Hint, kein Direkt-Compact.
+  *(Test: `hintOnlyInTheBandBelowBudget`)*
+- GIVEN `compactSession` lief in dieser Runde erfolgreich WHEN danach geprüft wird THEN greift keine
+  weitere Regel — der Speicher ist klein (kein Sonder-Gate mehr nötig). *(Test:
+  `afterSuccessfulToolCompactNoRuleFires`)*
+- GIVEN `autoCompactAfter <= 0` (Feature aus) WHEN über Budget THEN kein Direkt-Compact
+  (R-CIB-1-Semantik: 0 = off). *(Test: `directCompactRespectsOffSwitch`)*
+- GIVEN Memory ≤ `MIN_COMPACT_MESSAGES` WHEN über Budget THEN kein Direkt-Compact (R-CC-8) — der
+  Provider-Fehler bleibt der ehrliche Ausgang. *(Test: `directCompactRespectsMinMessages`)*
+
+**Warum der Pre-Turn-Gate in `AbstractAgent.doCall` bleibt:** dort ist die frische User-Message noch
+**nicht** im Memory — sie darf nicht in die Zusammenfassung wandern. Der Gate deckt also den
+Turn-Start ab, R-CC-18 die Call-Folge innerhalb der Schleife. Gleiche Regel, zwei Zeitpunkte, je
+eine Begründung.
+
+**Struktur:** Die Entscheidung liegt in *einer* Komponente (`HandleToolLoopCompactComponent`), und
+die Folgen eines Compacts erledigt, wer ihn ausführt (Tool bzw. Komponente) — der Tool-Loop weiß
+nichts mehr über Compact. Siehe [compact-architektur.md](compact-architektur.md) und
+[ADR-0070](adr/0070-compact-decision-in-one-component.md).
 
 
 ## Info (2026-09-25, Paul — „China API leak", nur notiert, kein Bau)

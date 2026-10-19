@@ -1,8 +1,9 @@
 # Compact Architektur
 
 > **Status:** ✅ (2026-09-26, gebaut `414edf4`→`d3e8833`, Da-Dok-Review) ·
-> **Fachdocs:** [compact.md](compact.md) (R-CC-1…14) · [compact-input-budget.md](compact-input-budget.md) (R-CIB-1…6) ·
-> **ADRs:** [ADR-0055](adr/0055-context-counter-input-not-cost.md) · [ADR-0056](adr/0056-compact-component-and-render-modes.md)
+> **Δ 2026-10-18:** R-CC-18 ❌ specified (Tool-Loop-Entscheidung, Abschnitt „Tool-Loop-Auslöser" unten) ·
+> **Fachdocs:** [compact.md](compact.md) (R-CC-1…14, R-CC-18) · [compact-input-budget.md](compact-input-budget.md) (R-CIB-1…6) ·
+> **ADRs:** [ADR-0055](adr/0055-context-counter-input-not-cost.md) · [ADR-0056](adr/0056-compact-component-and-render-modes.md) · [ADR-0070](adr/0070-compact-decision-in-one-component.md)
 
 ## Verantwortung & Abgrenzung
 
@@ -21,7 +22,9 @@
 
 | Komponente | BESITZT |
 |---|---|
-| `AbstractAgent` (core `agent`) | den Vorgang: Guard/Policy (`working`-CAS, `MIN_COMPACT_MESSAGES`, Budget aus `autoCompactAfter`), `requestTokens`-Capture **vor** `clear()`, clear+reseed, Monitor-Emission (`onTool`/`onProblem`) |
+| `AbstractAgent` (core `agent`) | den Vorgang: Guard/Policy (`working`-CAS, `MIN_COMPACT_MESSAGES`, Budget aus `autoCompactAfter`), `requestTokens`-Capture **vor** `clear()`, clear+reseed, Monitor-Emission (`onTool`/`onProblem`) · **Pre-Turn-Gate**: prüft den Speicher **einmal pro Turn, vor** dem ersten Call (die frische User-Message ist dort noch nicht im Memory) |
+| `HandleToolLoopCompactComponent` (core `compact`) | **die Vor-Call-Entscheidung im Tool-Loop** (R-CC-18): `used > Budget` → `agent.compact()` direkt · `used > 95 %` → Hint (R-CC-4) · sonst nichts · **und die Folgen jedes Compacts** (`reevaluateTokens` + Static-Rebuild), damit sie nicht an zwei Stellen steht. Ein Zustand, eine Regel, drei Ausgänge — kein Ereignis-Gate mehr. |
+| `ToolService.executeLoop` (core `tool`) | den Loop — und **nichts** über Compact: kein `ranTool(compactSession)`, kein Turn-Merker, keine Hint-Verdrahtung. Es ruft nur `HandleToolLoopCompactComponent` vor dem Call. |
 | `CompactService` (core `compact`) | die LLM-Transformation: Compressor-Prompt, Call, log-only Monitor, „genau EIN debug-Log", `Stats` — **monitor-frei**, pure |
 | `ContextTrimComponent` (core `compact`) | die Stufenkürzung: Stage-Caps (Think 9000 front, Tool-Results 6000, letzte UserMessage voll, dynamisches Per-Message-Cap), Presets — pure, kein LLM/Memory |
 | `CompactResult` (core `model`) | die Antwort: `summary`, `Stats`, `resultLine()` — eine Implementierung für Log + Tool-Result + UI |
@@ -44,6 +47,50 @@ Service am Log. Niemand anderes spricht zum User.
 
 Input: `List<ChatMessage>` + Budget + `tokenDiagnosis`-String + `requestTokens/requestIsEstimate` ·
 Output: `CompactResult` (model) — Plugin sieht **keinen** core-`compact`-Typ.
+
+## Tool-Loop-Auslöser (R-CC-18, Δ 2026-10-18)
+
+**Wer besitzt diesen Vorgang?** Die Entscheidung „vor dem nächsten Call compacten" — nicht der Loop,
+nicht der Agent. Zwei Zeitpunkte, eine Komponente, kein Sonderfall:
+
+- **Turn-Start:** `AbstractAgent.doCall` (Memory ohne die frische User-Message).
+- **Jede weitere Runde:** `HandleToolLoopCompactComponent` am Ende einer Tool-Runde.
+
+Die Folgen eines Compacts (`reevaluateTokens`, Static-Rebuild) hängen **am Ausführenden**: der
+Direkt-Pfad in der Komponente, der Tool-Pfad in `CompactSessionTool`. Deshalb fällt der Turn-Merker
+`isCompactedThisTurn` samt `ranTool(...)`-Verzweigung ersatzlos weg — ein Ereignis-Merker für eine
+Zustandsfrage.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant L as ToolService.executeLoop
+    participant D as HandleToolLoopCompactComponent
+    participant A as AiAgent
+    participant M as ThreadSafeMemory
+
+    loop jede Runde
+        L->>A: call(request)
+        A-->>L: response (Text oder Tool-Calls)
+        L->>L: Tools ausführen
+        L->>D: handle(req)
+        D->>M: getTotalTokenUsed()
+        alt used > compactAfterTokens (und size > MIN_COMPACT_MESSAGES)
+            D->>A: compact(monitor)
+            A-->>D: CompactResult
+            alt COMPACTED
+                D->>M: reevaluateTokens()
+                D->>A: buildStaticMessages() → req.staticMessages
+            else SKIPPED_SMALL / FAILED_EMPTY
+                Note over D: kein zweiter Versuch in diesem Turn (R-CC-18.1)
+            end
+        else used > 95 % des Budgets
+            D->>M: Hint vorhanden? nein → COMPACT_HINT als UserMessage
+        else
+            Note over D: nichts (R-CC-18.3)
+        end
+    end
+```
 
 ## Diagramm (Sequenz)
 
@@ -87,3 +134,5 @@ sequenceDiagram
       importiert nur `CompactResult`
 - [x] Single Responsibility, keine Duplizierung (Formel 1×, resultLine 1×, Entry-Log 1×)
 - [x] Composable: Service pure & monitor-frei — Tests brauchen kein LLM/keinen Monitor
+- [x] **Der Loop kennt keinen Compact** (Δ 2026-10-18): Entscheidung in einer Komponente, Folgen beim
+      Ausführenden, kein Turn-Merker/kein `ranTool`-Sonderfall in `executeLoop`
