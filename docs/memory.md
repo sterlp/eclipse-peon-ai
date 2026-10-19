@@ -2,7 +2,20 @@
 
 > docs/** — insbesondere memory.md — schreibt AUSSCHLIESSLICH Jon. Agenten liefern Facts im Chat.
 
-## Stand 2026-10-18 (Branch `story/night-5-2026-10-16`)
+## Stand 2026-10-19 (Branch `story/night-5-2026-10-16`)
+
+- ✅ **R-CC-18 — Direct Compact in der Tool-Loop gebaut** (`26a0007c` Inc 1, `c9463119` Inc 2):
+  `compact/HandleToolLoopCompactComponent` entscheidet zustandsbasiert nach jeder Tool-Runde (über
+  Agent-Budget ⇒ `agent.compact()` direkt, ein Versuch pro Turn; 95-%-Band ⇒ Hint; Stuck ⇒
+  `forceHint`). Ereignis-Gate `ranTool`/`isCompactedThisTurn` + `addCompactHintIfNeeded` ersatzlos
+  weg; `ThreadSafeMemory.providerUsageStale` (D3) verhindert, dass der Pre-Compact-Provider-Wert den
+  re-derived Zähler überschreibt. Surefire core 1214/0, Plugin-Build grün, Linter 9 pre-existing
+  (kein `UNBELEGT_ERLEDIGT`). Da Dok CONCERNS ohne Blocker (Plan §10). R-CC-18 ✅ in `compact.md` +
+  `index.md`; stale Methoden-Referenzen nachgezogen ([compact.md](compact.md) R-CC-4,
+  [context-message-concept.md](context-message-concept.md)). **Merge = Pauls Call** (voller
+  `clean verify` vor Merge einmal neu).
+- ❓ **Messung offen:** nach einem Compact `memory=`/`estimate=` gegen `n_prompt_tokens` stellen —
+  live gesehen: Report `~18772`, echter Request 175555 (Details: [open-points.md](open-points.md)).
 
 - ✅ **MCP-Ergebnisgröße (R-RS-3) gebaut** — `50be78cf`: `ToolService.execute` MCP-Zweig meldet
   nach der Ausführung `MCP <name> done. (N chars)` (Start-Zeile bleibt). 2 Tests in

@@ -39,7 +39,8 @@ neu gebaut, nachdem ich eine Nachricht sende."
   flushed der Prefix-Cache bei jedem Compact ohnehin, weil System-Prompt + Memory vor dem Rest
   der History stehen. Ein Datumswechsel ändert nur zusätzlich die gerenderten Static-Context-Zeilen
   (Env/Datum im Prompt-Body). Verifizieren: Refresh der System-Message direkt nach In-Loop-Compact
-  (im executeLoop-Zweig `ranTool(CompactSessionTool.NAME)`) — Aufwand klein, aber Änderung im
+  (der Tool-Pfad `CompactSessionTool`, seit R-CC-18 merkerfrei — die Folgen hängen am Ausführenden) —
+  Aufwand klein, aber Änderung im
   Loop-Request-Path → erst bewerten.
 
 **Entscheidung (User 2026-09-11): Fix gebaut — R-ST4 „System-Message-Rebuild nach In-Loop-Compact" — ✅ done (`a89cdc6`)**
@@ -435,7 +436,8 @@ Marker-Asserts), Button-Render manuell (SWT, R-UI1-Präzedenz).
 
 ## Compact-Hint für Agenten ohne CompactSessionTool (2026-09-16, Paul, `29a341b`)
 
-**Regel: Ein Fast-voll-Hinweis bricht nie still ab.** In `ToolService.addCompactHintIfNeeded`
+**Regel: Ein Fast-voll-Hinweis bricht nie still ab.** In
+`HandleToolLoopCompactComponent.fallbackHint` (seit R-CC-18; vorher `ToolService.addCompactHintIfNeeded`)
 bekommen Agenten **ohne** `CompactSessionTool` (z. B. Sklaven ohne Compact-Zugang) beim Erreichen
 der Hinweis-Schwelle die explizite Meldung „Your context window is almost full and cannot be
 compacted. Stop calling tools now…" — vorher wurde dort stillschweigend `return`t (kein Signal,

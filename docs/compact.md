@@ -9,8 +9,9 @@ idPrefix: CC
 > · R-CC-10 **✅ done** (2026-09-26, `138a2ea`) · R-CC-11…14 **✅ done** (2026-09-26,
 > Nachbau-Review, `414edf4`→`d3e8833`)
 > · R-CC-7 **🚧 in design** (Retry/Fehlerklassen, zusammen mit ApiRetry-Tabelle)
-> · R-CC-18 **❌ specified** (2026-10-18, Paul: vollen Context direkt compacten statt auf den Hint
-> zu warten — siehe unten).
+> · R-CC-18 **✅ done** (2026-10-18 specified / 2026-10-19 gebaut: vollen Context direkt compacten
+> statt auf den Hint zu warten — siehe unten; `26a0007c` + `c9463119`, Surefire core 1214/0,
+> Da Dok CONCERNS ohne Blocker).
 > **Input-Budget-Regeln (Präfix CIB):** eigenes Doc
 > [compact-input-budget.md](compact-input-budget.md) — ✅ done (2026-09-25, Da Dok ACCEPTED).
 > **Komponente:** eigens core-Package `compact` ([ADR-0056](adr/0056-compact-component-and-render-modes.md)) —
@@ -102,9 +103,10 @@ stillen Auto-Compact — nie stiller Abbruch.
 
 ### R-CC-4 — Compact-Hint nur einmal ✅
 
-`addCompactHintIfNeeded` fügt den `COMPACT_HINT` nur hinzu, wenn er nicht bereits in der Memory
-steht (`containsMessage`); nach erfolgreichem Compact (Memory geleert) wieder scharf; forced
-Hint (Stuck-Pfad) unterliegt demselben Dedup.
+`HandleToolLoopCompactComponent` (seit R-CC-18, vorher `ToolService.addCompactHintIfNeeded`) fügt
+den `COMPACT_HINT` nur hinzu, wenn er nicht bereits in der Memory steht (`containsMessage`); nach
+erfolgreichem Compact (Memory geleert) wieder scharf; forced Hint (Stuck-Pfad) unterliegt demselben
+Dedup.
 
 - GIVEN Hint bereits in Memory WHEN erneut feuert THEN genau einmal. *(Test:
   `ToolServiceCompactHintTest#hintIsAddedOnce`)*
@@ -344,15 +346,16 @@ Compact-only. Sichtbarkeit für den 400-Fall kommt stattdessen über ein neues F
 Agent den Abbruch kennt und nachfolgend reagieren kann.
 
 
-### R-CC-18 — Voller Context: Compact direkt statt auf den Hint warten ❌ specified (Paul 2026-10-18)
+### R-CC-18 — Voller Context: Compact direkt statt auf den Hint warten ✅ done (Paul 2026-10-18)
 
 **Anlass:** Der Compact-Hint (R-CC-4) ist eine *Bitte* ans Modell. Ist der Context bereits über dem
 Budget, kommt sie zu spät — der nächste Provider-Call geht unverändert raus und stirbt am
 Modell-Limit. Innerhalb der Tool-Schleife gab es **keinen harten Auslöser**; der Pre-Turn-Gate in
 `AbstractAgent.doCall` greift nur einmal pro Turn, **vor** dem ersten Call.
 
-**Entscheidung ist zustandsbasiert, nicht ereignisbasiert:** geprüft wird vor jedem Provider-Call,
-unabhängig davon, ob gerade `compactSession` gerufen wurde. Das ersetzt das bisherige
+**Entscheidung ist zustandsbasiert, nicht ereignisbasiert:** geprüft wird nach jeder Tool-Runde,
+unabhängig davon, ob gerade `compactSession` gerufen wurde (im Stuck-Pfad — nur-think-Runden — bleibt
+es beim erzwungenen Hint). Das ersetzt das bisherige
 Ereignis-Gate (`ranTool(compactSession)` + Turn-Merker) ersatzlos.
 
 - **R-CC-18.1 — Direkt:** `used > agent.compactAfterTokens()` (Budget = `autoCompactAfter ×

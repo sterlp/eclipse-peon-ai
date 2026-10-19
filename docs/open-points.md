@@ -75,6 +75,22 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   Findings ins Feature-Doc überführen + Datei löschen, oder als Historie committen. Bis dahin
   Arbeitsbaum nicht „clean".
 
+## R-CC-18 — Nachträge (Zyklus 2026-10-19)
+
+- ❓ **Estimate vs. gesendetes Payload (2026-10-19, live gemessen):** `compactDev` meldete
+  `~18772 (estimate)`, der nächste Delegate-Call ging mit **175555** Tokens raus und starb am
+  `n_ctx` 175104 (2×). D3/`providerUsageStale` erklärt den **Zähler** (stale Provider-Wert
+  überschreibt den re-derived Wert) — ob damit auch das Payload wieder zur Anzeige passt, ist
+  **nicht** gemessen. Nach dem Merge reproduzieren: nach einem Compact den `memory=`/`estimate=`-
+  Diagnose-Dreiklang gegen `n_prompt_tokens` des Fehlers stellen. Wenn die Divergenz bleibt, liegt
+  sie außerhalb des Zählers (per-Turn-Injektion, Static, Sub-Loop) → zurück in den
+  [Context-Overflow-Zyklus](#context-overflow--contentprovider-bug-zyklus-paul-order-2026-10-14--nächster-zyklus).
+- ⏳ **Klassen-Zyklus `compact` ↔ `tool` über die `COMPACT_HINT`-Konstante (2026-10-19):** die neue
+  Komponente sitzt in `compact` (richtig) und liest `ToolService.COMPACT_HINT`; `ContextTrimComponent`
+  tat das schon vorher. Bewusst nicht mit-gefixt (D6, sonst hätte ein Lösch-Inkrement eine
+  Konstante verschoben) — Cleanup-Kandidat: Konstante nach `CompactConstants`, dann ist
+  `compact`→`tool` nur noch `tool.model` (Datenmodell). Kein Verhaltensrisiko, reine Struktur.
+
 ## Bug-Fix-Backlog
 
 - ❓ **Fehlerklassen-Tabelle — R-CC-7 + ApiRetry, eine Tabelle zwei Verbraucher:** transient →
