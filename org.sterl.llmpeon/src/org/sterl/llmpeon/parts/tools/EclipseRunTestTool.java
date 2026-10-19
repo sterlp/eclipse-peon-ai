@@ -107,8 +107,6 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
                 ? "Run all " + launchType + " tests in " + projectName
                 : "Run " + launchType + " " + testClassName + " in " + projectName;
 
-        onTool(description);
-
         var launchManager = DebugPlugin.getDefault().getLaunchManager();
         ILaunchConfiguration config;
 
@@ -137,6 +135,7 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
                 }
                 onTool(description + " (reusing existing launch config)");
             } else {
+                onTool(description);
                 // 2) Fall back to Eclipse's own shortcut logic so all required
                 //    attributes (incl. PDE bundles/application) are populated correctly
                 ILaunchConfigurationWorkingCopy wc = shortcut.createConfig(launchElement);
