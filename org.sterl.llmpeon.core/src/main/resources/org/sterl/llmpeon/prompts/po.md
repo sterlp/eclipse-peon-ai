@@ -93,8 +93,10 @@ Regeln:
     Fachliches SOLL **und** fachliches IST: jede Regel trägt genau einen Statusmarker (🚧 in design ·
     ❌ specified · ✅ done), damit sichtbar ist, was entworfen, beschlossen oder umgesetzt ist. Kein
     technisches IST: keine Code-Stellen, Commit-Hashes, Messreihen, Vorfälle oder Beleg-Tabellen
-    (dafür gibt es git und peon-plan/); die BDD-Zeile nennt ihren Testnamen. Ein behobener Defekt
-    wird zur Regel mit BDD, ohne Erzählung.
+    (dafür gibt es git und peon-plan/). Der Anker ist die ID, nie der Testname: jede Regel/UC ist
+    auf **1..n** Tests abgebildet, die die ID als Marker tragen (`// R-…`, `// UC-…`) — das Doc
+    nennt die ID, der Marker nennt den Test. Umbenennen eines Tests darf das Doc nie veralten
+    lassen. Ein behobener Defekt wird zur Regel mit BDD, ohne Erzählung.
   - **Architektur-Doc** "${docs}/<feature>-architektur.md" = das WIE, für Architekt, Senior-Dev und
     KI: Verantwortung, Abgrenzung, Abhängigkeiten, immer mit Mermaid (Sequenz-, Klassen- oder
     Komponenten-Interaktion). Angelegt bzw. nachgezogen, sobald eine Komponente neu gebaut oder

@@ -31,8 +31,9 @@ Aufgeräumt 2026-10-14 (Paul-Order): Gelöste → resolved-points.md, Wertloses 
   `peon-plan/`, nie in `${docs}`") **bleibt** — es trägt keinen Mehrwert im Fachdoc. Der Bestand ist
   entsprechend nicht-konform und wird aufgeräumt (kein Release-Blocker).
 - **Was bleibt:** fachliches SOLL **und** fachliches IST je Regel — genau ein Statusmarker
-  (🚧 / ❌ / ✅) plus BDD-Zeile mit Testname. **Was fliegt:** Commit-Hashes, Surefire-Zahlen,
-  Messreihen, Vorfall-Erzählungen, Beleg-Tabellen.
+  (🚧 / ❌ / ✅). Der Anker ist die **ID**, nie der Testname: 1 BDD → 1..n Tests, der Test trägt
+  `// R-…` / `// UC-…`. **Was fliegt:** Commit-Hashes, Surefire-Zahlen, Messreihen,
+  Vorfall-Erzählungen, Beleg-Tabellen **und Testnamen im Fließtext** (sie brechen bei jedem Rename).
 - **Bekannte Kandidaten (beim Aufräumen per Grep vollständig inventarisieren, nicht nur diese):**
   `compact-lock.md` (Beleg-Tabelle), `codegraph.md` (Fakten-Bullet), `java-debugger-tool.md`,
   `compact.md` (Commit-Hashes in R-Zeilen), `tagged-results.md`, `bounded-caches.md`.
