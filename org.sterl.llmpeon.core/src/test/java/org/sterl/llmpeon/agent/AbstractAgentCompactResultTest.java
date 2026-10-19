@@ -79,8 +79,7 @@ class AbstractAgentCompactResultTest {
     void autoCompactRetriesAfterFailure() {
         // GIVEN — the auto-compact gate below the counter the compact request reports (260000),
         // a compressor that always fails with an empty summary, and a small pre-compact memory
-        // (the counter crosses the gate via the compact request's own usage — a pre-set addResult
-        // would fire the gate before turn 1 and muddy the retry count)
+        // (the counter crosses the gate via the compact request's own usage)
         var config = LlmConfig.builder()
                 .model("main-model")
                 .autoCompactAfter(200000)
@@ -120,13 +119,13 @@ class AbstractAgentCompactResultTest {
 
         // WHEN — turn 1: the model calls compactSession, the compressor fails (call 1), and the
         // over-budget state (260000 > 200000) fires the direct in-loop attempt (call 2, R-CC-18,
-        // FAILED_EMPTY); turn 2: the real counter must re-fire the pre-turn auto-compact gate (call 3)
+        // FAILED_EMPTY); turn 2 runs with no pre-turn gate (removed) — no further attempt
         agent.call("start", monitor);
         agent.call("next", monitor);
 
-        // THEN — the failed compact did not silence the gate: 3 attempts — turn 1 tool attempt +
-        // turn 1 direct attempt (R-CC-18, FAILED_EMPTY) + turn 2 pre-turn gate (R-CC-3)
-        assertThat(compactCalls.get()).isEqualTo(3);
+        // THEN — the failed compact did not silence the in-loop gate: 2 attempts — turn 1 tool
+        // attempt + turn 1 direct attempt (R-CC-18, FAILED_EMPTY)
+        assertThat(compactCalls.get()).isEqualTo(2);
         // AND — the failure was reported, not swallowed
         assertThat(problems).anyMatch(p -> p.contains("Compact failed: compressor returned no summary for " + AiDevAgent.NAME));
     }

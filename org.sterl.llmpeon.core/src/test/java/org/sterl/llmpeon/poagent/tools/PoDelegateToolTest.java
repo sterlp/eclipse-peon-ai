@@ -434,4 +434,40 @@ class PoDelegateToolTest {
         assertThat(reviewCalls.get()).isEqualTo(1);
         assertThat(devCalls.get()).isEqualTo(1);
     }
+
+    /**
+     * A slave at 0.9 × the shared budget compacts ONLY via the PoDelegateTool 0.7 rule (pre-delegation) —
+     * the removed per-agent compactFactor / pre-turn gate no longer fires. Real slave, real compact.
+     */
+    @Test
+    void slave_doesNotCompactViaCompactFactor_anymore() {
+        // GIVEN — Da Mek at 72 000 (0.9 × 80 000), above the 0.7 rule line (56 000)
+        var dev = devSlave();
+        var memory = dev.getMemory();
+        for (int i = 0; i < 2; i++) {
+            memory.add(UserMessage.from("seed " + i));
+            memory.add(AiMessage.from("seed reply " + i));
+        }
+        setCounter(memory, 72000);
+        var tool = newTool(planSlave(), reviewSlave(), dev, () -> BUDGET);
+        var toolLines = new ArrayList<String>();
+        tool.withToolRequest(ToolLoopRequest.builder()
+                .memory(new ThreadSafeMemory())
+                .chatModel(model)
+                .monitor(new AiMonitor() {
+                    @Override public void onChatResponse(SimpleMessage m) {}
+                    @Override public void onTool(String message) { toolLines.add(message); }
+                })
+                .build());
+
+        // WHEN
+        var reply = tool.askDev("build it");
+
+        // THEN — the 0.7 pre-delegation rule compacted the real slave (old history gone)
+        assertThat(reply).contains("SLAVE REPLY");
+        assertThat(toolLines).anyMatch(l -> l.contains("auto-compact before delegation"));
+        assertThat(memory.containsUserMessage("seed 0")).isFalse();
+        // AND — no compact came from the removed per-agent pre-turn gate (compactFactor)
+        assertThat(toolLines).noneMatch(l -> l.contains("Auto Compact before execution"));
+    }
 }

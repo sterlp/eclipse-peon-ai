@@ -27,11 +27,6 @@ public class AiReviewAgent extends AbstractAgent {
         super(configuredModel, toolService);
     }
 
-    /** RAM-only Plan slave with an earlier compaction budget (see {@link AbstractAgent#compactAfterTokens()}). */
-    public AiReviewAgent(ConfiguredChatModel configuredModel, ToolService toolService, double compactFactor) {
-        super(configuredModel, toolService, new ThreadSafeMemory(), compactFactor);
-    }
-
     public AiReviewAgent(ConfiguredChatModel configuredModel, ToolService toolService, Path historyStateDir) {
         super(configuredModel, toolService,
                 historyStateDir == null ? new ThreadSafeMemory() : new ThreadSafeMemory(new FileAgentHistoryStore(historyFile(historyStateDir, NAME))));

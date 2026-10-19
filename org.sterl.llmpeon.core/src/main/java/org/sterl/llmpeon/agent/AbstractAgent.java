@@ -57,28 +57,14 @@ public abstract class AbstractAgent implements AiAgent {
     private List<ContextItem> staticContext;
     private Supplier<List<ContextItem>> turnContextSupplier;
 
-    /**
-     * Fraction of the shared auto-compact budget at which THIS agent compacts (1.0 = the full
-     * {@link org.sterl.llmpeon.ai.LlmConfig#getAutoCompactAfter() budget}). Jon's RAM-only slaves set it
-     * below 1.0 so they compact earlier and keep their throw-away context lean.
-     */
-    private final double compactFactor;
-
     protected AbstractAgent(ConfiguredChatModel configuredModel, ToolService toolService) {
         this(configuredModel, toolService, new ThreadSafeMemory());
     }
 
     protected AbstractAgent(ConfiguredChatModel configuredModel, ToolService toolService, ThreadSafeMemory memory) {
-        this(configuredModel, toolService, memory, 1.0);
-    }
-
-    protected AbstractAgent(ConfiguredChatModel configuredModel, ToolService toolService, ThreadSafeMemory memory,
-            double compactFactor) {
         this.toolService = toolService;
         this.configuredModel = configuredModel;
         this.memory = Objects.requireNonNull(memory, "ThreadSafeMemory cannot be null");
-        // Clamp to (0,1]; a nonsense factor falls back to the full budget rather than compacting forever.
-        this.compactFactor = compactFactor > 0 && compactFactor <= 1.0 ? compactFactor : 1.0;
 
         Objects.requireNonNull(this.configuredModel, "ConfiguredChatModel cannot be null");
         Objects.requireNonNull(this.toolService, "ToolService cannot be null");
@@ -222,17 +208,6 @@ public abstract class AbstractAgent implements AiAgent {
         return Math.round(100f * used / configuredModel.getConfig().getAutoCompactAfter());
     }
 
-    /**
-     * Token count at which this agent auto-compacts before a turn (R-CC-3) and directly inside
-     * the tool loop (R-CC-18): the shared
-     * {@link org.sterl.llmpeon.ai.LlmConfig#getAutoCompactAfter() budget} scaled by this agent's
-     * {@code compactFactor} (1.0 = full budget; slaves use less, so they compact earlier).
-     */
-    @Override
-    public int compactAfterTokens() {
-        return (int) Math.round(configuredModel.getConfig().getAutoCompactAfter() * compactFactor);
-    }
-
     public boolean hasUserText(String message) {
         if (StringUtil.hasNoValue(message)) return true;
         return this.memory.containsUserMessage(message);
@@ -325,17 +300,6 @@ public abstract class AbstractAgent implements AiAgent {
     protected ChatResponse doCall(String message, AiMonitor monitor) {
         monitor = AiMonitor.nullSafety(monitor);
         monitor.onCallStart(message);
-        // auto compress if we are close to full before we start (slaves trigger earlier via
-        // compactFactor). R-CC-8: only above MIN_COMPACT_MESSAGES — below that a compact skips/fails.
-        // R-CIB-1: autoCompactAfter <= 0 means "off" (like the Hint) — without this the gate would
-        // fire every turn (0 < tokens) while the Stager never caps.
-        if (configuredModel.getConfig().getAutoCompactAfter() > 0
-                && compactAfterTokens() < memory.getTotalTokenUsed()
-                && memory.size() > CompactConstants.MIN_COMPACT_MESSAGES) {
-            monitor.onTool("Auto Compact before execution, context to full " + compactAfterTokens() + "/" + memory.getTotalTokenUsed());
-            compact(monitor);
-        }
-
         // Inject turn-scoped context on every turn (idempotent via contains-check)
         var userMessages = renderTurnContext(memory, turnContextSupplier, monitor);
 
@@ -374,7 +338,7 @@ public abstract class AbstractAgent implements AiAgent {
             // summary) — with < 2 a direct re-compact would fire a real LLM call on those 2 (R16)
             if (memory.size() < CompactConstants.MIN_COMPACT_MESSAGES) return CompactResult.skippedSmall();
 
-            // R-CIB-1: the staging budget is the raw config value — compactFactor scales only the trigger
+            // R-CIB-1: the staging budget is the raw config value
             // R-CC-12: capture the last provider-reported input tokens BEFORE the clear below —
             // after it the value is gone (async-state-safety)
             var requestTokens = memory.getLastProviderInputTokens();

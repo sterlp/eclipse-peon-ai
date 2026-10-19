@@ -23,10 +23,15 @@ import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.SimpleContextItem;
+import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
+import org.sterl.llmpeon.tool.SmartTool;
+import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
+import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 
+import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -67,6 +72,20 @@ public class AiDeveloperAgentTest {
             this.request = request;
         }
     }*/
+
+    /** A harmless tool to drive a loop round without touching network or filesystem. */
+    static class ProbeTool implements SmartTool {
+        @Tool(name = "probe")
+        public String probe() { return "probed"; }
+        @Override public void withToolRequest(ToolLoopRequest request) {}
+    }
+
+    /** Captures the onTool lines the loop emits. */
+    static class CapturingMonitor implements AiMonitor {
+        final List<String> toolLines = new ArrayList<>();
+        @Override public void onChatResponse(SimpleMessage m) {}
+        @Override public void onTool(String message) { toolLines.add(message); }
+    }
     
     @BeforeEach
     void beforeEach() {
@@ -178,9 +197,9 @@ public class AiDeveloperAgentTest {
 
     @Test
     void test_inLoopCompact_noHintAfterCompact() {
-        // GIVEN — realistic budget (80k) and the slave compact factor (0.7 -> 56k pre-turn trigger)
+        // GIVEN — realistic budget (80k); the model compacts in-loop and the post-compact counter stays small
         var config = LlmConfig.newOllama("foo").toBuilder().autoCompactAfter(80000).build();
-        subject = new AiDevAgent(new ConfiguredChatModel(config, cm), toolService, 0.7);
+        subject = new AiDevAgent(new ConfiguredChatModel(config, cm), toolService);
         for (int i = 0; i < 5; i++) {
             subject.addMessage(UserMessage.from("Foo " + i));
             subject.addMessage(AiMessage.from("Bar " + i));
@@ -204,6 +223,50 @@ public class AiDeveloperAgentTest {
         assertThat(subject.getMemory().containsUserMessage("CONTEXT LIMIT WARNING")).isFalse();
         // AND — the compressor ran exactly once (turn 1: request, compact, final; turn 2: final)
         verify(cm, times(4)).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+    }
+
+    /**
+     * Queued follow-up after a high-context turn: the removed 0.7 pre-turn gate no longer compacts
+     * before the request — the in-loop hint catches the 95 % band instead.
+     */
+    @Test
+    void queuedFollowUp_noPreTurnCompact_inLoopHintCatches() {
+        // GIVEN — realistic budget (80k); turn 1 ends below the 95 % hint band (72k)
+        var config = LlmConfig.newOllama("foo").toBuilder().autoCompactAfter(80000).build();
+        subject = new AiDevAgent(new ConfiguredChatModel(config, cm), toolService);
+        toolService.addTool(new ProbeTool());
+        var monitor = new CapturingMonitor();
+        var callCount = new AtomicInteger(0);
+        fn.set(req -> {
+            switch (callCount.incrementAndGet()) {
+                case 1: // turn 1 — final, context at 72k (below the 76k band)
+                    return ChatResponse.builder()
+                            .aiMessage(AiMessage.aiMessage("First task done"))
+                            .tokenUsage(new TokenUsage(72000, 0, 72000))
+                            .build();
+                case 2: // turn 2 round 1 — probe tool call, context at 77k (inside the 95 % band)
+                    return ChatResponse.builder()
+                            .aiMessage(AiMessage.builder()
+                                    .toolExecutionRequests(List.of(ToolExecutionRequest.builder().name("probe").build()))
+                                    .build())
+                            .tokenUsage(new TokenUsage(77000, 0, 77000))
+                            .build();
+                default: // turn 2 round 2 — final
+                    return ChatResponse.builder().aiMessage(AiMessage.aiMessage("Okay thats good")).build();
+            }
+        });
+
+        // WHEN — turn 1 runs; a queued follow-up (turn 2) crosses into the hint band
+        subject.call("first task", monitor);
+        subject.call("follow-up", monitor);
+
+        // THEN — the in-loop hint fired (context inside the 95 % band after the tool round)
+        assertThat(subject.getMemory().containsUserMessage("CONTEXT LIMIT WARNING")).isTrue();
+        // AND — no pre-turn auto-compact ran (the old 0.7 gate is gone; turn-1 text is intact)
+        assertThat(monitor.toolLines).noneMatch(l -> l.contains("Auto Compact before execution"));
+        assertThat(subject.getMemory().containsMessage("first task")).isTrue();
+        // AND — no direct in-loop compact (77k < 80k budget — the band only hints)
+        assertThat(monitor.toolLines).noneMatch(l -> l.contains("Compressing conversation"));
     }
 
     @Test

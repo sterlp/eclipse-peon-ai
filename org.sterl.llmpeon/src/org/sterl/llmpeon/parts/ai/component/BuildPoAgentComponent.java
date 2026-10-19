@@ -33,8 +33,6 @@ import org.sterl.llmpeon.tool.tools.SkillTool;
 
 public class BuildPoAgentComponent {
     
-    /** Jon's RAM-only slaves compact at 70% of the shared budget so their throw-away context stays lean. */
-    private static final double SLAVE_COMPACT_FACTOR = 0.7;
     private final ConfiguredChatModel configuredModel;
     private final Supplier<IProject> projectRef;
     private final SharedToolsComponent sharedTools;
@@ -91,7 +89,7 @@ public class BuildPoAgentComponent {
                 && !(t.getTool() instanceof AskUserTool);
         // Eager shared slaves (ADR-0025): created once here and handed — as the same NamedAgent objects —
         // to both the delegate tool (which drives them) and AiPoAgent (which exposes them via getTeam()).
-        var planSlave = new AiPlanAgent(configuredModel, sharedToolService, SLAVE_COMPACT_FACTOR) {
+        var planSlave = new AiPlanAgent(configuredModel, sharedToolService) {
             @Override protected Predicate<SmartToolExecutor> classFilter() {
                 return super.classFilter().and(noPrivilegedTools);
             }
@@ -99,7 +97,7 @@ public class BuildPoAgentComponent {
         planSlave.setStaticContext(ContextItem.newList(staticContent,
                 ContextItem.of("Your name is Da Thinka.")));
         
-        var reviewSlave = new AiReviewAgent(configuredModel, sharedToolService, SLAVE_COMPACT_FACTOR) {
+        var reviewSlave = new AiReviewAgent(configuredModel, sharedToolService) {
             @Override protected Predicate<SmartToolExecutor> classFilter() {
                 return super.classFilter().and(noPrivilegedTools);
             }
@@ -107,7 +105,7 @@ public class BuildPoAgentComponent {
         reviewSlave.setStaticContext(ContextItem.newList(staticContent,
                 ContextItem.of("Your name is Da Dok.")));
 
-        var devSlave = new AiDevAgent(configuredModel, sharedToolService, SLAVE_COMPACT_FACTOR) {
+        var devSlave = new AiDevAgent(configuredModel, sharedToolService) {
             @Override protected Predicate<SmartToolExecutor> classFilter() {
                 return super.classFilter().and(noPrivilegedTools);
             }
@@ -123,6 +121,7 @@ public class BuildPoAgentComponent {
         // PeonAiService.initStaticContext); the turn orders below carry the plan file
         // + AGENTS.md (base + agent-specific AGENTS-<agent>.md, ADR-0029)
         // + the live Workspace-Memory snapshot (ADR-0032).
+        // Slaves compact at 70 % via PoDelegateTool before a new task.
         var jonDelegateTool = new PoDelegateTool(thinka, doc, mek, target -> {
             var orders = new LinkedList<ContextItem>();
             orders.add(new EclipseFileContextItem(PlanTool.OVERVIEW_FILE, projectRef));
