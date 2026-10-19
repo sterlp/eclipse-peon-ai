@@ -44,7 +44,6 @@ export default defineConfig({
             { text: 'MCP', link: '/setup/mcp-configuration' },
             { text: 'Codegraph', link: '/setup/codegraph' },
             { text: 'Voice', link: '/setup/voice-config' },
-            { text: 'Qwen tuning', link: '/setup/qwen3627b_lmstudio_optimization' },
             { text: 'llama.cpp', link: '/setup/llama' },
             { text: 'Troubleshooting', link: '/setup/troubleshooting' }
           ]
