@@ -16,6 +16,16 @@
   `clean verify` vor Merge einmal neu).
 - ❓ **Messung offen:** nach einem Compact `memory=`/`estimate=` gegen `n_prompt_tokens` stellen —
   live gesehen: Report `~18772`, echter Request 175555 (Details: [open-points.md](open-points.md)).
+- ✅ **Nacht-Abschluss (2026-10-19, 03:46):** Branch **gepusht** (`origin/story/night-5-2026-10-16`
+  = HEAD). `mvn -B clean verify` grün: Core **1214/0/0/0**, OSGi **386/0/0 + 49 Skipped**,
+  Tycho/Feature/Update-Site SUCCESS. Codegraph-Header-Icon wieder **Lupe** (`2a238ad4`, Paul-Order
+  „icon wieder rein" — die Graphen-Glyphe war meine Fehlannahme). Alte Plan-Archive gelöscht
+  (`a2970053`), README-Korrekturen (Shell read-only, Surefire-Ground-Truth, Tippfehler) + Homepage
+  „after every tool round" + Codegraph-Prozess-❓ (`68caddb3`). Linter: **9 erwartete** Befunde,
+  keine neuen. **Merge = Pauls Call.**
+  *Lokal ungetrackt geblieben:* Pauls WIP (`AbstractAgent.java`, `AIChatView.java`, `agent/tools/`,
+  `feature-request-ShellTool.md`) und `peon-plan/overview-done-2026-10-19-03-37.md` (R-CC-18-Plan,
+  für Pauls Durchsicht).
 
 - ✅ **MCP-Ergebnisgröße (R-RS-3) gebaut** — `50be78cf`: `ToolService.execute` MCP-Zweig meldet
   nach der Ausführung `MCP <name> done. (N chars)` (Start-Zeile bleibt). 2 Tests in

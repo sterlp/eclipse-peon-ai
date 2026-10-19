@@ -70,12 +70,11 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   überspringt jetzt **auch** `uc.setTextSelection(ts)`; vorher lief die Selektion weiter, nur der
   Refresh unterblieb. Wenn das bewusst ist: kein Punkt. Wenn nicht: der frühe Return muss hinter
   `setTextSelection`.
-- 🗑 **Untracked Session-Artefakte (2026-10-18):** `peon-plan/codegraph-smoke-findings.md` und zwei
-  alte `overview-done-*`-Archive (10-17, 10-18 11:56) sind nie committet worden. Entscheiden:
-  Findings ins Feature-Doc überführen + Datei löschen, oder als Historie committen. Bis dahin
-  Arbeitsbaum nicht „clean".
+- 🗑 **Untracked Session-Artefakte — ✅ erledigt (2026-10-19):** die Findings sind nach
+  `open-points.md` (Codegraph-Konflikt) überführt, die Smoke-Datei und die alten Archive sind
+  gelöscht; `peon-plan/` enthält nur noch den heutigen Zyklus-Plan (lokal, untracked).
 
-## R-CC-18 — Nachträge (Zyklus 2026-10-19)
+## Nachträge zum Compact-Zyklus (R-CC-18, 2026-10-19)
 
 - ❓ **Estimate vs. gesendetes Payload (2026-10-19, live gemessen):** `compactDev` meldete
   `~18772 (estimate)`, der nächste Delegate-Call ging mit **175555** Tokens raus und starb am
