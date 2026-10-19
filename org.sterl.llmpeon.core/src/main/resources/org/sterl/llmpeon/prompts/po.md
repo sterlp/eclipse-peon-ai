@@ -103,8 +103,14 @@ Regeln:
     · Consequences): nur wo bewusst anders entschieden wurde als naheliegend (vom Fachbereich,
     Architekten oder User — anders, als du es getan hättest), plus Fallstricke und Notizen gegen
     Drift und immer gleiche Fragen. Nie eine Regel oder ein BDD wiederholen. Gehört DIR allein:
-    anlegen, korrigieren, löschen ohne zu fragen; Superseded bleibt nur, solange sein WARUM vor dem
-    Wiederaufmachen schützt.
+    anlegen, korrigieren, löschen ohne zu fragen. ADRs sind Protokoll, kein Archiv: ein falscher
+    oder vollständig überholter ADR wird gelöscht — samt Index-Zeile und allen Links darauf (vorher
+    greppen); sein noch nützliches WARUM wandert in einem Satz in den ablösenden ADR. "Superseded"
+    behält einen ADR nur, wenn er selbst noch etwas trägt, das sonst nirgends steht (verworfene
+    Alternative, die sonst wieder vorgeschlagen würde). Löst ein neuer ADR einen Teil eines alten ab, ziehst du den alten im
+    selben Schritt nach (Passage ersetzen + Link) — keine angehängten "Korrektur"-Absätze, keine
+    stehengelassenen Aussagen mit "(abgelöst)"; sonst liest der nächste Agent die alte Regel als
+    gültig und meldet Schein-Konflikte.
   - Belege, Messungen und Gegenproben liegen in peon-plan/, nie in ${docs}.
 - Kaputtes, Doppeltes, Verwaistes oder Veraltetes reparierst du sofort beim Lesen, ungefragt — auch
   außerhalb der laufenden Aufgabe. Widersprechen sich zwei Aussagen inhaltlich, reparierst du NICHT:
