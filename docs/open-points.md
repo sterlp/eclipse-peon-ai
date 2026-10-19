@@ -34,6 +34,15 @@ Aufgeräumt 2026-10-14 (Paul-Order): Gelöste → resolved-points.md, Wertloses 
   teuer ist: Faktor anheben (eine Konstante in `PoDelegateTool`) oder nur bei einem Themenwechsel
   compacten. Rückversicherung Paul.
 
+- ⏳ **Kein Compact-Check vor einem neuen Turn** (Folge von [ADR-0071](adr/0071-compact-policy-owned-by-delegation.md)):
+  mit dem gelöschten Pre-Turn-Gate prüft niemand mehr, bevor ein Prompt angenommen wird — der In-Loop-Check
+  greift **nur nach einer Tool-Runde** (`ToolService.executeLoop:189-195`). Ein gequeueter Follow-up oder eine
+  frische Aufgabe, die der Agent direkt beantwortet, läuft also auch über Budget ungeprüft in den nächsten
+  Call. Bewusst so entschieden (Paul: die 0,7-Regel gehört zur Delegation, „sonst nirgends"): bei roher
+  `autoCompactAfter` wäre ein Gate fast immer tot, weil die Tool-Runde davor schon compactet — Ausnahme ist
+  genau der Turn ohne Tool-Runde. Im Smoke beobachten; falls real relevant, EIN zusätzlicher Check am selben
+  Component-Stil (Budget = rohe Config), nicht zurück in den Agenten.
+
 - ⏳ **R-CG-15 neu (Projektwechsel im Monorepo):** Befund **bestätigt** — `CodegraphConnectionService:106`
   kehrt bei gleichem `workDir` zurück, `State.project` bleibt A, `CodegraphContextItem` mappt weiter A.
   SOLL geschrieben: Verbindung bleibt, State-Refresh auf B. Nebenwirkung, die Paul kennen sollte:
