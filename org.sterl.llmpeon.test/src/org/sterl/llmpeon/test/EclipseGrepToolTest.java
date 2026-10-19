@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.eclipse.core.resources.IContainer;
+import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.NullProgressMonitor;
@@ -21,6 +22,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
+import org.sterl.llmpeon.tool.AiReponseBuilder;
 
 public class EclipseGrepToolTest extends AbstractIntegrationTest {
 
@@ -63,6 +65,19 @@ public class EclipseGrepToolTest extends AbstractIntegrationTest {
         } finally {
             super.after();
         }
+    }
+
+    private NestedProjectFixture nested;
+
+    @Before
+    public void createNestedFixture() {
+        nested = new NestedProjectFixture();
+        nested.create();
+    }
+
+    @After
+    public void destroyNestedFixture() {
+        if (nested != null) nested.destroy();
     }
 
     @Test
@@ -332,6 +347,94 @@ public class EclipseGrepToolTest extends AbstractIntegrationTest {
         // THEN the disclosure names the extension like today (unchanged)
         assertContains(scoped, "GrepTarget.java");
         assertContains(messages.get(0), "type '.java'");
+    }
+
+    // R-WN-1
+    // R-WN-2
+    @Test
+    public void nestedFileHitsOnceUnderMostSpecificPath() {
+        // GIVEN - one Disk file visible under three nested projects, three marker lines each
+        // WHEN - workspace-wide grep for the marker
+        String result = tool.eclipseGrepFiles(NestedProjectFixture.MARKER, null, ".java");
+
+        // THEN - the three hits appear exactly once, all under the deepest project
+        var leafHits = result.lines().filter(l -> l.startsWith(leafViewPrefix())).toList();
+        assertEquals("Expected exactly the 3 nested marker hits under the leaf project:\n" + result,
+                3, leafHits.size());
+        // ... and no hit under any shallower view of the same Disk file
+        var shallowerHits = result.lines()
+                .filter(l -> l.startsWith(rootViewPrefix()) || l.startsWith(midViewPrefix())).toList();
+        assertTrue("No hit may carry a shallower view of the same Disk file:\n" + shallowerHits,
+                shallowerHits.isEmpty());
+    }
+
+    // R-WN-2
+    @Test
+    public void nestedFileCountsOnceAgainstFileCap() throws Exception {
+        // GIVEN - 97 filler files with one marker line each in the nesting root (root view only):
+        // 97 + 1 Disk file = 98 files, 97 + 3 = 100 lines — exactly at the line cap
+        var created = new ArrayList<IFile>();
+        try {
+            for (int i = 0; i < 97; i++) {
+                var filler = nested.root().getFile(String.format("WnFiller%03d.java", i));
+                filler.create(new ByteArrayInputStream(
+                        String.format("public class WnFiller%03d { // %s }", i, NestedProjectFixture.MARKER)
+                                .getBytes(StandardCharsets.UTF_8)), true, new NullProgressMonitor());
+                created.add(filler);
+            }
+
+            // WHEN - workspace-wide grep for the marker
+            String result = tool.eclipseGrepFiles(NestedProjectFixture.MARKER, null, ".java");
+
+            // THEN - the nested file counts once: 98 files stay under the file cap
+            assertFalse("98 distinct Disk files must not trigger the file cap:\n" + result,
+                    result.contains("result capped at " + AiReponseBuilder.MAX_GREP_FILES + " files"));
+            // ... its 3 hits are under the deepest project ...
+            var leafHits = result.lines().filter(l -> l.startsWith(leafViewPrefix())).toList();
+            assertEquals("Expected exactly the 3 nested marker hits under the leaf project:\n" + result,
+                    3, leafHits.size());
+            // ... and exactly 100 hit lines: at the line cap nothing was cropped, no disclosure
+            var hitLines = result.lines().filter(l -> l.matches(".*\\.java:\\d+: .*")).toList();
+            assertEquals("Expected exactly 100 hit lines (97 fillers + 3 nested):\n" + result,
+                    100, hitLines.size());
+            assertFalse("exactly at the line cap nothing was cropped — no disclosure:\n" + result,
+                    result.contains("matched lines — narrow your search"));
+        } finally {
+            for (var filler : created) {
+                if (filler.exists()) filler.delete(true, new NullProgressMonitor());
+            }
+        }
+    }
+
+    // R-WN-1
+    @Test
+    public void explicitPathScopeStaysAuthoritative() {
+        // Regressionsschutz (D6): an explicit scope stays authoritative — green pre-fix
+        // WHEN - grep scoped to the nesting root
+        String result = tool.eclipseGrepFiles(
+                NestedProjectFixture.MARKER, NestedProjectFixture.ROOT_NAME, ".java");
+
+        // THEN - the 3 hits under the searched root view, no re-translation to a deeper view
+        var rootHits = result.lines().filter(l -> l.startsWith(rootViewPrefix())).toList();
+        assertEquals("Expected the 3 nested marker hits under the explicit root scope:\n" + result,
+                3, rootHits.size());
+        var deeperHits = result.lines()
+                .filter(l -> l.startsWith(midViewPrefix()) || l.startsWith(leafViewPrefix())).toList();
+        assertTrue("No re-translation to a deeper view:\n" + deeperHits, deeperHits.isEmpty());
+    }
+
+    private static String rootViewPrefix() {
+        return "/" + NestedProjectFixture.ROOT_NAME + "/" + NestedProjectFixture.MID_NAME + "/"
+                + NestedProjectFixture.LEAF_NAME + "/" + NestedProjectFixture.MARKER_FILE + ":";
+    }
+
+    private static String midViewPrefix() {
+        return "/" + NestedProjectFixture.MID_NAME + "/" + NestedProjectFixture.LEAF_NAME
+                + "/" + NestedProjectFixture.MARKER_FILE + ":";
+    }
+
+    private static String leafViewPrefix() {
+        return "/" + NestedProjectFixture.LEAF_NAME + "/" + NestedProjectFixture.MARKER_FILE + ":";
     }
 
     private static int firstIndexContaining(List<String> lines, String value) {

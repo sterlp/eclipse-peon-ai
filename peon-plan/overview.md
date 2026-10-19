@@ -161,6 +161,20 @@ Plugin-Tests (JUnit 4, `org.junit` nur). **Fixture** (neu, test-module-only):
 - **BDD-Abdeckung:** R-WN-1 (Suche) + Bullet „expliziter Scope". **Gate** wie oben.
 
 ### Inc 2 — R-WN-1 + R-WN-2 für `eclipseGrepFiles` (Bugfix: Disk-Datei zählt einmal)
+- **Status (2026-10-19): DONE — Gate grün, committet.**
+  - Pre-Fix-Red (gezielter Lauf `EclipseGrepToolTest`, 19 Tests / 2 Failures):
+    `nestedFileHitsOnceUnderMostSpecificPath` ROT (6 Treffer unter flacheren Sichten: 3× root + 3× mid),
+    `nestedFileCountsOnceAgainstFileCap` ROT (100 Dateien → File-Cap-Disclosure + „showing 100 of 106“);
+    Guard `explicitPathScopeStaysAuthoritative` grün (D6, by design).
+  - Post-Fix: `EclipseGrepToolTest` 19/19; GANZES OSGi-Suite: 393/0/0, zweimal consecutiv grün.
+  - Lint: exakt 7× VERWAIST — R-WN-1 ×5 (`EclipseGrepToolTest:352/409`,
+    `EclipseSearchFilesToolTest:230/246/263`), R-WN-2 ×2 (`EclipseGrepToolTest:353/371`), keine weiteren Findings.
+  - Filler (97× `WnFiller*.java`) werden test-lokal im Cap-Test angelegt/geräumt (nicht in
+    `NestedProjectFixture.create()`), damit workspace-weite Grep-Tests anderer Klassen/Tests
+    (z. B. `selectedProjectComesFirst`) nicht 97 Fremd-Treffer sehen — Plan-§4-Location (root-Projekt) bleibt.
+  - Commit auf `story/workspace-nesting-2026-10-19`: `inc-2` (Code + Tests + `peon-plan/`).
+    Ausgeschlossen: `README.md` (Codegraph-Zeile `v2.4.0` — Versionsnummer falsch, Codegraph = 2.14.0
+    laut CHANGELOG; an Jon gemeldet, Korrekturentwurf `v2.14.0`).
 - **Ziel:** `EclipseGrepTool` dedupliziert über Disk-Pfad mit demselben Helfer; `matchedFiles`→`diskEntries`;
   Hit-Pfade bei Tausch in-place ersetzt; Cap-Checks semantisch gleich (D3).
 - **Dateien:** `org.sterl.llmpeon/src/org/sterl/llmpeon/parts/tools/EclipseGrepTool.java`

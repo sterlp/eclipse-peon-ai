@@ -1,10 +1,10 @@
 package org.sterl.llmpeon.parts.tools;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
@@ -50,7 +50,8 @@ public class EclipseGrepTool extends AbstractEclipseTool {
         // never filtered, so the disclosure must not claim a filter that did not happen (C-EXT, R-OD-7)
         String effectiveExtension = extension;
         var hits = new ArrayList<GrepHit>(); // matched lines, in file-processing order
-        var matchedFiles = new HashSet<String>(); // distinct hit files — drives the file cap
+        // R-WN-1/R-WN-2: one entry per Disk file (key = diskDedupKey) — drives the file cap
+        var diskEntries = new LinkedHashMap<String, EclipseUtil.ProjectPathEntry>();
 
         // Determine containers to search
         var containers = new ArrayList<IContainer>();
@@ -70,17 +71,17 @@ public class EclipseGrepTool extends AbstractEclipseTool {
                 refreshTargets.add(c);
             } else if (resource.get() instanceof IFile f) {
                 effectiveExtension = null;
-                addHits(f, searchQuery, JdtUtil.pathOf(resource.get()), hits, matchedFiles);
+                addHits(f, searchQuery, hits, diskEntries);
             } else {
                 onProblem("Eclipse grep could not read " + JdtUtil.pathOf(resource.get()));
                 return "Couldn't read " + JdtUtil.pathOf(resource.get());
             }
         }
 
-        searchScope(containers, extension, searchQuery, hits, matchedFiles);
+        searchScope(containers, extension, searchQuery, hits, diskEntries);
         if (hits.isEmpty() && !refreshTargets.isEmpty()) {
             refreshScope(refreshTargets);
-            searchScope(containers, extension, searchQuery, hits, matchedFiles);
+            searchScope(containers, extension, searchQuery, hits, diskEntries);
         }
 
         String result = AiReponseBuilder.grepComplete(
@@ -95,13 +96,13 @@ public class EclipseGrepTool extends AbstractEclipseTool {
     }
 
     private void searchScope(List<IContainer> scope, String extension, SearchQuery searchQuery,
-            List<GrepHit> hits, Set<String> matchedFiles) {
+            List<GrepHit> hits, Map<String, EclipseUtil.ProjectPathEntry> diskEntries) {
         for (IContainer container : scope) {
             try {
                 container.accept(new IResourceVisitor() {
                     @Override
                     public boolean visit(IResource resource) {
-                        if (matchedFiles.size() >= AiReponseBuilder.MAX_GREP_FILES) return false;
+                        if (diskEntries.size() >= AiReponseBuilder.MAX_GREP_FILES) return false;
                         if (resource.isDerived()) return false;
                         if (!isNotDerived(JdtUtil.pathOf(resource))) return false;
 
@@ -109,7 +110,7 @@ public class EclipseGrepTool extends AbstractEclipseTool {
                             if (StringUtil.hasValue(extension)
                                     ? file.getName().toLowerCase().endsWith(extension.trim().toLowerCase())
                                     : TextFileTypes.isTextFile(file.getName())) {
-                                addHits(file, searchQuery, JdtUtil.pathOf(file), hits, matchedFiles);
+                                addHits(file, searchQuery, hits, diskEntries);
                             }
                         }
                         return true;
@@ -118,17 +119,33 @@ public class EclipseGrepTool extends AbstractEclipseTool {
             } catch (CoreException e) {
                 // skip container on error
             }
-            if (matchedFiles.size() >= AiReponseBuilder.MAX_GREP_FILES) break;
+            if (diskEntries.size() >= AiReponseBuilder.MAX_GREP_FILES) break;
         }
     }
 
-    private void addHits(IFile file, SearchQuery query, String path, List<GrepHit> hits,
-            Set<String> matchedFiles) {
+    private void addHits(IFile file, SearchQuery query, List<GrepHit> hits,
+            Map<String, EclipseUtil.ProjectPathEntry> diskEntries) {
         try {
             var lineHits = query.matchingLines(file.readString());
             if (lineHits.isEmpty()) return;
-            matchedFiles.add(path);
-            lineHits.forEach(lh -> hits.add(new GrepHit(path, lh.line(), lh.text())));
+            // R-WN-1/R-WN-2: one Disk file = one entry and its lines are recorded once —
+            // the deepest project view wins (plan D2/D3)
+            var key = EclipseUtil.diskDedupKey(file);
+            var candidate = new EclipseUtil.ProjectPathEntry(JdtUtil.pathOf(file), file.getProject());
+            var existing = diskEntries.get(key);
+            var winner = EclipseUtil.mostSpecificEntry(existing, candidate);
+            diskEntries.put(key, winner);
+            if (existing == null) {
+                lineHits.forEach(lh -> hits.add(new GrepHit(winner.path(), lh.line(), lh.text())));
+            } else if (winner == candidate) {
+                // a deeper view was found after a shallower one was delivered: rewrite the
+                // already recorded hits of this Disk file in place — no new hits (same lines)
+                for (int i = 0; i < hits.size(); i++) {
+                    if (hits.get(i).file().equals(existing.path())) {
+                        hits.set(i, new GrepHit(winner.path(), hits.get(i).line(), hits.get(i).text()));
+                    }
+                }
+            }
         } catch (CoreException e) {
             // skip unreadable file
         }
