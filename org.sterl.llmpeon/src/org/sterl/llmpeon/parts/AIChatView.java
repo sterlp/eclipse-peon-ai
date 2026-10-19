@@ -250,11 +250,10 @@ public class AIChatView implements EclipseAiMonitor {
     private void applyTextSelection(ITextSelection ts) {
         var uc = aiService.getUserContext();
         boolean changed = false;
-        if (parent != null && !parent.isDisposed()) {
-            // R-SEL-2: open file = known resource (UI-thread path of EclipseUtil.getOpenFile)
-            changed |= uc.setSelectedResource(EclipseUtil.getOpenFile().orElse(null));
-        }
-        changed |= uc.setTextSelection(ts);   // nachher: Resource-Wechsel hat alte Selektion bereits geräumt
+        if (parent == null || parent.isDisposed()) return;
+        // R-SEL-2: open file = known resource (UI-thread path of EclipseUtil.getOpenFile)
+        changed |= uc.setSelectedResource(EclipseUtil.getOpenFile().orElse(null));
+        changed |= uc.setTextSelection(ts); 
         if (changed) EclipseUtil.runInUiThread(parent, this::refreshStatusLine);
     }
 
