@@ -199,9 +199,11 @@ THEN zeigt der Header (neben dem Hammer) das Icon `icons/codegraph.svg` mit Zust
      eigene Farbvariante des SVGs (`codegraph_off.svg` + Dark-Pendant, Muster wie
      `codegraph_dark.svg`), **nicht** über `setEnabled(false)` — SWT graut nur Text/Widget, nicht das
      Image (IST-Befund: Icon blieb bei OFF voll farbig).
-     **Motiv (2026-10-18, Paul):** **Graphen-Glyphe** — die Lupe gehört zur *Suche* (Tool-Output-
-     Symbol 🔍, [icons.md](icons.md)), nicht zum Codegraph-Icon im Header. Dateinamen und Wiring
-     bleiben unverändert.
+     **Motiv (2026-10-19, Paul): Lupe.** Das Codegraph-Icon im Header zeigt die Lupe — es wird ja
+     ausschließlich über `codegraph_explore` benutzt. Die Notiz „Lupe gehört zur Suche" vom
+     2026-10-18 ist damit überholt: das Tool-Output-Symbol 🔍 für Grep/Search
+     ([icons.md](icons.md)) ist eine andere Fläche als der Header. Dateinamen und Wiring bleiben
+     unverändert (`50be78cf`-Fassung der vier SVGs, Revert von `337e8e2c`).
 
 ### R-CG-9 — Kein Init/Index-Trigger aus Peon ✅
 
