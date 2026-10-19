@@ -3,7 +3,6 @@ package org.sterl.llmpeon.mock;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -41,6 +40,8 @@ public class MockLlmServer {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private HttpServer server;
+
+    /** Explicit bind port, or 0 → OS-assigned; after {@link #start()} always equals the bound server's port. */
     private int port = 0;
     private final ConcurrentLinkedQueue<Object> responseQueue = new ConcurrentLinkedQueue<>();
     private final List<ChatMessage> capturedMessages = new ArrayList<>();
@@ -58,16 +59,14 @@ public class MockLlmServer {
     // -------------------------------------------------------------------------
 
     public void start() {
-        if (port == 0) {
-            try (var s = new ServerSocket(0)) {
-                port = s.getLocalPort();
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
-        }
         try {
         	long time = System.currentTimeMillis();
+            // Bind once — with port 0 the OS assigns a free port atomically, and the bound server is
+            // the single source of truth for the port. The former probe-socket (bind, close, rebind)
+            // raced with the test JVM's own client connections drawing ephemeral ports from the same
+            // range (TOCTOU → BindException flake in PeonAiServiceTest, 2026-10-19).
             server = HttpServer.create(new InetSocketAddress(port), 0);
+            port = server.getAddress().getPort();
             server.createContext("/v1/chat/completions", this::handleChatCompletions);
             server.createContext("/v1/models", this::handleModels);
             server.createContext("/v1/messages", this::handleAnthropicMessages);
