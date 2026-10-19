@@ -193,6 +193,25 @@ Plugin-Tests (JUnit 4, `org.junit` nur). **Fixture** (neu, test-module-only):
   R-WN-1 (Grep-Flanke). **Gate** wie oben.
 
 ### Inc 3 — R-WN-3: Projekt-Info nennt die Verschachtelung
+- **Status (2026-10-19): DONE — Gate grün, committet.**
+  - Pre-Fix-Red (ganze Suite: 399 Tests / 5 Failures, alle `NestedProjectInfoTest`):
+    `turnContextCarriesNestingLine` ROT (keine „Nested in"-Zeile in projectInfo),
+    `projectInfoNamesDeepestAncestorForNestedProject` ROT (0 statt 1 Zeile),
+    `projectInfoNamesContainedProjectsForAggregator` ROT (0 statt 1 Zeile),
+    `projectInfoListsBothDirectionsForMiddleProject` ROT (beide Zeilen fehlen),
+    `closedProjectsAreNotListed` ROT (keine „Contains"-Zeile);
+    Guard `projectInfoHasNoNestingLinesWithoutNesting` grün (D6, by design).
+  - Post-Fix: GANZES OSGi-Suite: 399/0/0, zweimal consecutiv grün.
+  - Lint: exakt 13× VERWAIST — 7 Baseline (R-WN-1 ×5: `EclipseGrepToolTest:352/409`,
+    `EclipseSearchFilesToolTest:230/246/263`; R-WN-2 ×2: `EclipseGrepToolTest:353/371`) +
+    6× R-WN-3 (`NestedProjectInfoTest:33/49/62/76/91/104`), keine weiteren Findings.
+  - Implementierung: `EclipseUtil.appendNestingLines` (private, via `projectFolder`/`openProjects`,
+    D4-Kanonisierung) — „Nested in" = tiefster offener Ancestor (lokales `Ancestor`-Record),
+    „Contains" = alle offenen enthaltenen Projekte, alphabetisch; Text wortgetreu aus D5/Doc,
+    `System.lineSeparator()`. UserContext/EclipseBuildTool unangetastet.
+  - Commit auf `story/workspace-nesting-2026-10-19`: `inc-3` (Code + Test + `README.md`
+    (Jon-Fix Codegraph `v2.4.0` → `v2.14.0`) + `peon-plan/`).
+    Ausgeschlossen: Pauls WIP (`AbstractAgent.java`, `agent/tools/`).
 - **Ziel:** `EclipseUtil.projectInfo` hängt je Richtung max. eine Zeile an (D5, via `projectFolder`),
   sonst unverändert. UserContext/Build-Tool bleiben unangetastet (Zeile kommt mit der projectInfo).
 - **Dateien:** `org.sterl.llmpeon/src/org/sterl/llmpeon/parts/shared/EclipseUtil.java`

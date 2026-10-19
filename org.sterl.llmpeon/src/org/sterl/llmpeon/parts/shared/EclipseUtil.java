@@ -1,7 +1,9 @@
 package org.sterl.llmpeon.parts.shared;
 
+import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -355,7 +357,50 @@ public class EclipseUtil {
         m = findMember(p, "package.json");
         if (m.isPresent()) result.append(System.lineSeparator()).append(JdtUtil.pathOf(m.get()));
 
+        appendNestingLines(result, p);
+
         return result.toString();
+    }
+
+    /**
+     * R-WN-3 (docs/workspace-nesting.md): the nesting context of a project — at most one
+     * extra projectInfo line per direction, only for real nesting of open projects,
+     * compared via the canonical project folders (projectFolder). Appends nothing when
+     * the project is not nested.
+     */
+    private static void appendNestingLines(StringBuilder sb, IProject p) {
+        var own = projectFolder(p);
+        if (own == null) return;
+
+        record Ancestor(IProject project, Path folder) {
+        }
+        Ancestor nestedIn = null;
+        var contained = new ArrayList<String>();
+        for (var other : openProjects()) {
+            if (other.getName().equals(p.getName())) continue;
+            var folder = projectFolder(other);
+            if (folder == null) continue;
+            if (own.startsWith(folder) && !own.equals(folder)) {
+                // a strict ancestor of p — all such folders form a chain, keep the deepest
+                if (nestedIn == null || folder.startsWith(nestedIn.folder())) nestedIn = new Ancestor(other, folder);
+            } else if (folder.startsWith(own) && !folder.equals(own)) {
+                // strictly contained in p, any depth
+                contained.add(other.getName());
+            }
+        }
+        if (nestedIn != null) {
+            var subPath = nestedIn.folder().relativize(own).toString().replace(File.separatorChar, '/');
+            sb.append(System.lineSeparator())
+                .append("Nested in Eclipse project /").append(nestedIn.project().getName())
+                .append(" — the same files are also visible under /").append(nestedIn.project().getName())
+                .append('/').append(subPath).append("/…; tools return the most specific project path.");
+        }
+        if (!contained.isEmpty()) {
+            Collections.sort(contained);
+            sb.append(System.lineSeparator())
+                .append("Contains Eclipse projects: ").append(String.join(", ", contained))
+                .append(" — their files are also visible under this path; tools return the most specific project path.");
+        }
     }
 
     /**
