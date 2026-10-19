@@ -146,6 +146,9 @@ GIVEN A→B→A-Flap
 WHEN der letzte Apply A verbunden hat
 THEN kein zusätzlicher Reconnect (Compare).
 
+Gleicher `workDir` für zwei Projekte (Monorepo unter einem Git-Root): auch hier kein Reconnect —
+aber der Kontext (Mapping/Label) folgt dem **aktiven** Projekt, siehe R-CG-15.
+
 Invarianten: exakt **ein** Peon-`serve --mcp` pro workDir; der Daemon gehört Codegraph — Peon
 startet/tötet ihn nie (Index-State, lebt über Peon hinweg). *Durchgesetzt seit 2026-10-18 über die
 Ownership aus [ADR-0069](adr/0069-shared-mcp-connection-per-server.md): der Connection-Service hält
@@ -305,16 +308,45 @@ THEN adoptiert er **nicht** mehr: er schließt den eigenen `McpService` und läs
 
 IST 2026-10-19: `disconnect()` ruft nur `applyJob.cancel()`; ein laufender `apply()` prüft keinen
 Abbruch, findet beim `closeLiveService()` nichts (der Connect ist noch nicht in `liveService`),
-adoptiert danach in alle Registries und setzt CONNECTED — nach dem Dispose. Fix: Zustandswechsel
-und Closure serialisiert (Lock + `disposed`-Flag, Prüfung **nach** dem Connect, vor dem Adopt).
+adoptiert danach in alle Registries und setzt CONNECTED — nach dem Dispose.
+
+**Fix — Generation statt Lock über dem Connect (Entscheidung Jon 2026-10-19):** ein Lock, das den
+blockierenden `service.connect()` umschließt, macht Dispose und View-Schließen von einem
+Serverstart abhängig — das ist bei einem 5–10-Sekunden-Spawn nicht vertretbar. Stattdessen:
+`volatile long generation` + `disposed`-Flag. `apply()` merkt sich die Generation **vor**
+`connect()` und prüft sie **danach, vor dem Adopt** (sowie nach dem Probe-Schritt); veraltet ⇒
+der eigene Service wird geschlossen, State bleibt OFF, kein Adopt. Der Lock schützt nur den kurzen
+Zustandswechsel (Generation erhöhen, `liveService` tauschen), nie eine blockierende Operation.
 
 Dasselbe Muster gilt für den User-MCP-Pfad: `McpConnectionService.connect()` startet pro Aufruf
 einen **neuen** Job (keine Koaleszenz) — zwei Config-Saves überlappen, beide Generationen
-adoptieren, die ältere wird in `liveService` überschrieben und nie geschlossen. Fix: Generations-
-Token, veraltete Generation wird geschlossen statt adoptiert.
+adoptieren, die ältere wird in `liveService` überschrieben und nie geschlossen. **Zusatz:** der
+`finally`-Block schreibt mit `setMcpEnabled(state)` in die Preferences — eine veraltete Generation
+würde damit nach einem Toggle-OFF das Flag wieder auf ihren eigenen Wert setzen. Eine veraltete
+Generation schreibt **keinen** State: nicht adoptieren, nicht `setMcpEnabled`, nicht
+`onStateChange`; sie schließt ihren Service und endet still.
 
-Tests: `CodegraphConnectionServiceTest#disposeDuringConnectClosesInsteadOfAdopting`,
-`McpConnectionServiceTest#staleConnectGenerationIsClosed`.
+GIVEN ein User-MCP-Connect der Generation G läuft
+WHEN der User den Toggle ausschaltet (oder ein neuer Connect G+1 startet)
+THEN adoptiert G nichts, schließt ihren Service und lässt den Toggle-Wert OFF stehen.
+
+### R-CG-15 — Projektwechsel im Monorepo aktualisiert den Kontext (❌ specified 2026-10-19)
+
+Der Churn-Compare (R-CG-4) vergleicht die **Verbindungsidentität** (`workDir`). Das aktive Projekt
+ist eine zweite, unabhängige Größe: in einem Monorepo (mehrere Eclipse-Projekte, ein Index am
+Git-Root) liefert `findIndexWorkDir` für A und B dasselbe `workDir` — der Compare kehrt vorzeitig
+zurück und `State.project` bleibt auf A. Label, Tooltip, Dedup-Key und vor allem das
+Disk→Workspace-Mapping des `CodegraphContextItem` nennen damit weiter A, während B aktiv ist.
+
+GIVEN Codegraph ist CONNECTED für `workDir` W, das aktive Projekt ist A
+WHEN der User auf Projekt B wechselt und `findIndexWorkDir(B)` ebenfalls W liefert
+THEN wird **nicht** neu verbunden (kein Disconnect/Connect, kein neuer Prozess, Instructions
+     unverändert) — aber der State trägt Projekt B: Label, Tooltip und Mapping folgen B, der
+     Dedup-Key ändert sich und der Kontext wird genau einmal neu injiziert.
+
+Umsetzung: im Churn-Zweig statt `return` ein State-Refresh mit dem bestehenden
+`state.instructions()` — `State.project` heißt „Projekt, für das der Kontext gilt", die Verbindung
+hängt allein an `connectedWorkDir`. Kein neuer Connect, keine zweite Wahrheit im ContextItem.
 
 ## Technik (WIE, ohne Architektur-Doc-Status)
 

@@ -18,7 +18,9 @@
 - **⏳ Rückversicherungen (open-points):** R-CC-19-Semantik + Tilde, Icon-Motiv, Windows-`cmd /c`-Fallback.
 - **❓ Doc-Aufräum-Slice (open-points):** Belege/Messungen/Vorfälle raus aus Feature-Docs nach
   `peon-plan/` — Regel im PO-Prompt bleibt, Bestand ist nicht-konform (Grep-Inventar nötig).
-- **2.14.1-Backlog:** R-CG-14 (Dispose gewinnt, beide Connection-Services), R-CIB-4 Stufe 2 (erstes
+- **2.14.1-Backlog:** R-CG-14 (Dispose gewinnt, beide Connection-Services — Fix = Generation +
+  `disposed`, nicht Lock über den Connect) · **R-CG-15** (Monorepo-Projektwechsel: gleicher `workDir`
+  → State-Refresh aufs aktive Projekt, kein Reconnect) · R-CIB-4 Stufe 2 (erstes
   `result:` statt letztem), R-CG-13 (Codegraph-Item nur bei sichtbarem `codegraph_explore`),
   R-TR-6 INFO-Text + echte Assertions in `TaggedResultTest`, Reprobe-Entscheidung.
 - **Trap 2026-10-19:** `new Status(severity, pluginId, message, throwable)` setzt in

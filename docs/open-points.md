@@ -25,6 +25,21 @@ Aufgeräumt 2026-10-14 (Paul-Order): Gelöste → resolved-points.md, Wertloses 
   Factory-Test gepinnt, aber **auf Windows ungetestet** (Maschine = macOS). Bei Pauls nächstem
   Windows-Lauf prüfen: startet der Server ohne absoluten Binary-Pfad?
 
+## 2.14.1 (2026-10-19) — externes Review TOP 1–3: Jon-Entscheidungen
+
+- ⏳ **R-CG-15 neu (Projektwechsel im Monorepo):** Befund **bestätigt** — `CodegraphConnectionService:106`
+  kehrt bei gleichem `workDir` zurück, `State.project` bleibt A, `CodegraphContextItem` mappt weiter A.
+  SOLL geschrieben: Verbindung bleibt, State-Refresh auf B. Nebenwirkung, die Paul kennen sollte:
+  jeder Projektwechsel mit gemeinsamem Index erzeugt **eine neue Chat-Zeile** (Dedup-Key ändert sich);
+  Alternative wäre ein Live-Projekt im Item (dann zwei Wahrheiten: State + Supplier).
+- ⏳ **R-CG-14 Fix-Mechanik präzisiert:** der Reviewer schlug „Adopt und Disconnect über denselben
+  Lock" vor — Jon: **nein**, ein Lock über `service.connect()` lässt Dispose auf einen 5–10-s-Spawn
+  warten. Spezifiziert: Generation + `disposed`-Flag, Prüfung nach dem Connect, Lock nur um den
+  kurzen Zustandswechsel. Ergänzt: eine stale Generation schreibt auch **kein** `setMcpEnabled`
+  (der `finally` in `McpConnectionService.connectServers` würde sonst einen Toggle-OFF überschreiben).
+- ✅ **TOP 3 (Compact `result:`-Marker):** kein neuer Befund — identisch mit R-CIB-4 Stufe 2
+  (❌ specified 2026-10-19: `lastOccurrence` raus, das erste Vorkommen ist immer strukturell).
+
 ## ❓ Doc-Aufräum-Slice: Belege, Messungen, Vorfälle raus aus den Feature-Docs (Paul 2026-10-19)
 
 - **Paul-Entscheid:** Die Regel im PO-Prompt („Belege, Messungen und Gegenproben liegen in
