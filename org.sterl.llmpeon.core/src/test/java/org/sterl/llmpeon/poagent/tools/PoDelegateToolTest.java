@@ -1,9 +1,16 @@
 package org.sterl.llmpeon.poagent.tools;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.function.IntSupplier;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,11 +24,18 @@ import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.SimpleContextItem;
+import org.sterl.llmpeon.memory.ThreadSafeMemory;
+import org.sterl.llmpeon.model.CompactResult;
+import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.shared.ChatMessageUtil;
+import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolService;
+import org.sterl.llmpeon.tool.model.SimpleMessage;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.TokenUsage;
 
 class PoDelegateToolTest {
 
@@ -45,9 +59,21 @@ class PoDelegateToolTest {
     }
 
     private PoDelegateTool newTool(Function<NamedAgent, List<ContextItem>> ordersFor) {
+        return newTool(ordersFor, () -> 80000);
+    }
+
+    private PoDelegateTool newTool(Function<NamedAgent, List<ContextItem>> ordersFor,
+            IntSupplier autoCompactAfter) {
         return new PoDelegateTool(new NamedAgent("Da Thinka", planSlave()),
                 new NamedAgent("Da Dok", reviewSlave()),
-                new NamedAgent("Da Mek", devSlave()), ordersFor);
+                new NamedAgent("Da Mek", devSlave()), ordersFor, autoCompactAfter);
+    }
+
+    private PoDelegateTool newTool(AiAgent plan, AiAgent review, AiAgent dev, IntSupplier autoCompactAfter) {
+        return new PoDelegateTool(new NamedAgent("Da Thinka", plan),
+                new NamedAgent("Da Dok", review),
+                new NamedAgent("Da Mek", dev),
+                t -> List.of(), autoCompactAfter);
     }
 
     @Test
@@ -256,5 +282,156 @@ class PoDelegateToolTest {
         assertThat(reply).isEqualTo("Nothing to compact (2 messages)");
         assertThat(streamMock.getCallCount()).isZero();
         assertThat(dev.getMemory().getCopy()).isEqualTo(before);
+    }
+
+    // ---------- pre-delegation slave compact: 0.7 × the shared budget ----------
+
+    private static final int BUDGET = 80000;
+
+    /** A Mockito slave around a real memory: compact() is counted and returns the prepared result. */
+    private static AiAgent mockSlave(ThreadSafeMemory memory, AtomicInteger compactCalls,
+            CompactResult compactResult) {
+        var slave = mock(AiAgent.class);
+        when(slave.getName()).thenReturn("Peon-Dev");
+        when(slave.getMemory()).thenReturn(memory);
+        when(slave.tokenContextUsedInPercent()).thenReturn(0);
+        when(slave.call(any(), any())).thenReturn(ChatResponse.builder()
+                .aiMessage(AiMessage.from("SLAVE REPLY")).build());
+        doAnswer(inv -> {
+            compactCalls.incrementAndGet();
+            return compactResult;
+        }).when(slave).compact(any());
+        return slave;
+    }
+
+    /** A real memory with the counter at exactly {@code tokens} and {@code seedMessages} seed pairs. */
+    private static ThreadSafeMemory memoryWithCounter(int seedMessages, int tokens) {
+        var memory = new ThreadSafeMemory();
+        for (int i = 0; i < seedMessages; i++) {
+            memory.add(UserMessage.from("seed " + i));
+            memory.add(AiMessage.from("seed reply " + i));
+        }
+        setCounter(memory, tokens);
+        return memory;
+    }
+
+    /**
+     * Sets the counter to EXACTLY {@code tokens} — R-CC-19 makes addResult forward-looking
+     * (provider input + chars/3 estimate of the appended message), so the appended AI message's
+     * estimate is netted out of the provider input.
+     */
+    private static void setCounter(ThreadSafeMemory memory, int tokens) {
+        var ai = AiMessage.from("counter seed");
+        var input = tokens - ChatMessageUtil.estimateTokens(List.of(ai));
+        memory.addResult(ChatResponse.builder()
+                .aiMessage(ai)
+                .tokenUsage(new TokenUsage(input, 0, input))
+                .build(), List.of());
+    }
+
+    private static CompactResult compacted() {
+        return CompactResult.compacted(new CompactResult.Stats(
+                3, 60000, 50, CompactResult.Stage.NONE, 0, 100, "mock", 5, null, false), "summary");
+    }
+
+    /** GIVEN a slave above 70 % of the shared budget WHEN a delegation THEN it compacts before the request. */
+    @Test
+    void delegate_compactsSlave_whenUsedAbove70PercentOfBudget() {
+        // GIVEN — 60 000 used > 56 000 (0.7 × 80 000)
+        var compactCalls = new AtomicInteger();
+        var slave = mockSlave(memoryWithCounter(2, 60000), compactCalls, compacted());
+        var tool = newTool(slave, slave, slave, () -> BUDGET);
+
+        // WHEN
+        var reply = tool.talkPlan("do the plan");
+
+        // THEN — one compact before the request, the delegation itself still runs
+        assertThat(compactCalls.get()).isEqualTo(1);
+        assertThat(reply).contains("SLAVE REPLY");
+    }
+
+    /** GIVEN a slave at exactly 70 % of the budget WHEN a delegation THEN no compact (strict >). */
+    @Test
+    void delegate_doesNotCompact_whenUsedAtOrBelow70Percent() {
+        // GIVEN — exactly 56 000 = 0.7 × 80 000
+        var compactCalls = new AtomicInteger();
+        var slave = mockSlave(memoryWithCounter(2, 56000), compactCalls, compacted());
+        var tool = newTool(slave, slave, slave, () -> BUDGET);
+
+        // WHEN
+        tool.talkPlan("do the plan");
+
+        // THEN
+        assertThat(compactCalls.get()).isZero();
+    }
+
+    /** GIVEN autoCompactAfter = 0 (off, R-CIB-1) WHEN a delegation THEN no compact, even above 70 %. */
+    @Test
+    void delegate_doesNotCompact_whenAutoCompactAfterIsZero() {
+        // GIVEN — 60 000 used, but the budget is off
+        var compactCalls = new AtomicInteger();
+        var slave = mockSlave(memoryWithCounter(2, 60000), compactCalls, compacted());
+        var tool = newTool(slave, slave, slave, () -> 0);
+
+        // WHEN
+        tool.talkPlan("do the plan");
+
+        // THEN
+        assertThat(compactCalls.get()).isZero();
+    }
+
+    /**
+     * GIVEN a slave below MIN_COMPACT_MESSAGES WHEN a delegation THEN compact() IS called — no second
+     * guard in PoDelegateTool, R-CC-8 stays inside compact() — and a SKIPPED_SMALL is not disclosed.
+     */
+    @Test
+    void delegate_noCompactEffect_whenSlaveBelowMinCompactMessages() {
+        // GIVEN — 1 message < MIN_COMPACT_MESSAGES (3), counter above the 70 % line
+        var compactCalls = new AtomicInteger();
+        var memory = memoryWithCounter(0, 60000);
+        var slave = mockSlave(memory, compactCalls, CompactResult.skippedSmall());
+        var tool = newTool(slave, slave, slave, () -> BUDGET);
+        var toolLines = new ArrayList<String>();
+        tool.withToolRequest(ToolLoopRequest.builder()
+                .memory(new ThreadSafeMemory())
+                .chatModel(model)
+                .monitor(new AiMonitor() {
+                    @Override public void onChatResponse(SimpleMessage m) {}
+                    @Override public void onTool(String message) { toolLines.add(message); }
+                })
+                .build());
+        var before = memory.getCopy();
+
+        // WHEN
+        tool.talkPlan("do the plan");
+
+        // THEN — the gate still decided (compact called), the skip is not disclosed, memory untouched
+        assertThat(compactCalls.get()).isEqualTo(1);
+        assertThat(toolLines).noneMatch(l -> l.contains("auto-compact"));
+        assertThat(memory.getCopy()).isEqualTo(before);
+    }
+
+    /** Plan, Review and Dev all get the same pre-delegation compact rule. */
+    @Test
+    void delegate_compacts_allThreeSlaves() {
+        // GIVEN — all three above the 70 % line
+        var planCalls = new AtomicInteger();
+        var reviewCalls = new AtomicInteger();
+        var devCalls = new AtomicInteger();
+        var tool = newTool(
+                mockSlave(memoryWithCounter(2, 60000), planCalls, compacted()),
+                mockSlave(memoryWithCounter(2, 60000), reviewCalls, compacted()),
+                mockSlave(memoryWithCounter(2, 60000), devCalls, compacted()),
+                () -> BUDGET);
+
+        // WHEN
+        tool.talkPlan("plan it");
+        tool.reviewPlanAgent("review it", null);
+        tool.askDev("build it");
+
+        // THEN — each slave compacted exactly once
+        assertThat(planCalls.get()).isEqualTo(1);
+        assertThat(reviewCalls.get()).isEqualTo(1);
+        assertThat(devCalls.get()).isEqualTo(1);
     }
 }

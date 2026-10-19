@@ -54,29 +54,10 @@ genau eine Instanz → Totalschaden-Szenario konstruktiv weg). Zielort:
   behält `configDir/state` als Default (Layer-Injektion wie beim Slave-Factory-Muster).
 - **GIVEN** zwei Projekte in einem Workspace **WHEN** beide Agenten-History schreiben **THEN**
   teilen sie eine History (workspace-scoped, nicht projekt-scoped — bewusst)
-- **GIVEN** Plugin-Start **WHEN** `~/.peon/state/` existiert mit State-Dateien **THEN**
-  Migration (R3) läuft, Agent-Histories laden danach aus dem Metadata-State
+- **GIVEN** Plugin-Start **WHEN** ein `~/.peon/state/` aus einer Vor-2.x-Installation existiert **THEN**
+  wird es **nicht** übernommen — Clean Break: Agent-Histories starten leer (kein Migrations-Code)
 - **GIVEN** headless Core (Tests/CLI) **WHEN** Store gebaut wird **THEN** weiter
   `configDir/state` (kein Eclipse-Dependency im Core)
-
-### R3: One-Shot-Migration `.peon/state` → Workspace-Metadata ✅
-
-Beim Plugin-/Service-Start verschiebt Peon eventuell vorhandene `~/.peon/state/**`-Dateien
-(alle: Built-in- **und** Custom-Agent-Histories) per **File-I/O** in den Metadata-State.
-
-- **GIVEN** `~/.peon/state/Dev-history.jsonl` existiert, Metadata-State hat keine Datei **WHEN**
-  Peon startet **THEN** die Datei wird dorthin **verschoben** (move; Cross-Volume-Fallback:
-  copy + delete), Original ist weg → Migration ist idempotent (nächster Start: Quelle leer, no-op)
-- **GIVEN** Ziel-Datei existiert bereits (Partiel-Migration/Konflikt) **WHEN** Migration läuft
-  **THEN** Quelle bleibt unangetastet, Migration meldet den Skip (kein stiller Datenverlust)
-  — ⏳ Rückversicherung User: Ziel gewinnt
-- **GIVEN** `~/.peon/state/` existiert nicht **WHEN** Peon startet **THEN** kein no-op-Fehler,
-  Migration übersprungen
-- **GIVEN** Migration scheitert (Rechte/IO) **WHEN** Peon startet **THEN** Log-Warnung, Start
-  läuft mit leerem State weiter (Migration blockiert nie den Start)
-
-**Homepage:** Anpassung ist **Inkrement-Pflicht** (Shared-Config-Sektion + History-Pfad +
-Migrations-Hinweis) — gehört ins gleiche Inkrement wie der Store-Umzug.
 
 ## Side Quest (bestätigt, eigene Story später)
 

@@ -3,11 +3,13 @@ package org.sterl.llmpeon.poagent.tools;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.IntSupplier;
 
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.SimpleContextItem;
+import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.prompt.PeonPaths;
 import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.shared.ArgsUtil;
@@ -75,8 +77,20 @@ public class PoDelegateTool extends AbstractTool {
     private static final String PLAN_WRITE_LOOP = PeonPaths
             .resolve(PromptLoader.load("plan-write-loop.md"));
 
+    /**
+     * Paul: the slaves compact at 70 % of the shared budget — before a new task lands, so the
+     * throw-away context never chokes the delegation (A-0021 factor, now owned by this tool).
+     */
+    private static final double SLAVE_COMPACT_FACTOR = 0.7;
+
     /** Base turn orders, resolved per slave (e.g. the agent-specific AGENTS-<agent>.md). */
     private final Function<NamedAgent, List<ContextItem>> ordersFor;
+
+    /**
+     * Live supplier for the shared staging budget ({@code autoCompactAfter}) — read per
+     * delegation so a config reload changes the threshold without a rebuild (0 = off, R-CIB-1).
+     */
+    private final IntSupplier autoCompactAfter;
 
     private final NamedAgent plan; // "Da Thinka" — the Peon-Plan slave
     private final NamedAgent review; // "Da Dok" — the Peon-Review slave
@@ -89,11 +103,12 @@ public class PoDelegateTool extends AbstractTool {
     private String planPath;
 
     public PoDelegateTool(NamedAgent plan, NamedAgent review, NamedAgent dev,
-            Function<NamedAgent, List<ContextItem>> ordersFor) {
+            Function<NamedAgent, List<ContextItem>> ordersFor, IntSupplier autoCompactAfter) {
         this.plan = plan;
         this.dev = dev;
         this.review = review;
         this.ordersFor = ordersFor;
+        this.autoCompactAfter = autoCompactAfter;
     }
 
     @Tool(name = PoDelegateTool.TALK_PLAN, value = "Ask your Peon-Plan team member (Da Thinka) a direct question or discuss an approach — no plan is written. Use planWithPlanAgent when you want the plan itself. Returns the team member's reply.")
@@ -228,6 +243,7 @@ public class PoDelegateTool extends AbstractTool {
         ArgsUtil.requireNonBlank(prompt, "prompt");
         AiAgent slave = target.agent();
         slave.setTurnContextSupplier(() -> orders);
+        compactSlaveBeforeDelegation(slave);
 
         // TODO custom style for the UI as agent message ...
         onTool(target.uiName() + " start: " + System.lineSeparator() + prompt);
@@ -252,6 +268,16 @@ public class PoDelegateTool extends AbstractTool {
             onProblem(target.uiName() + " " + e.getMessage());
             return "Failed: " + target.uiName() + " " + e.getMessage();
         }
+    }
+
+    /** Paul: 0.7 des geteilten Budgets — vor der Delegation compacten, sonst stirbt der Task. */
+    private void compactSlaveBeforeDelegation(AiAgent slave) {
+        var budget = autoCompactAfter.getAsInt();
+        if (budget <= 0) return;                                   // R-CIB-1: 0 = off
+        if (slave.getMemory().getTotalTokenUsed() <= (int) (budget * SLAVE_COMPACT_FACTOR)) return;
+        var result = slave.compact(monitor);                       // R-CC-8-Status folgt aus compact()
+        if (result.status() != CompactResult.Status.COMPACTED) return;
+        onTool(slave.getName() + " auto-compact before delegation: " + result.resultLine());
     }
 
     private void reportAction(NamedAgent target, String action) {

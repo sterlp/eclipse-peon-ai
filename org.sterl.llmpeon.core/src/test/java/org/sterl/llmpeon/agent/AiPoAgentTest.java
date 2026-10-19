@@ -151,7 +151,7 @@ class AiPoAgentTest {
         var dev = new AiDevAgent(config, new ToolService());
         var delegate = new PoDelegateTool(new NamedAgent("Da Thinka", plan),
                 new NamedAgent("Da Dok", review),
-                new NamedAgent("Da Mek", dev), t -> List.of());
+                new NamedAgent("Da Mek", dev), t -> List.of(), () -> 80000);
         var toolService = new ToolService(false);
         toolService.addTool(delegate);
         return new PoSetup(new AiPoAgent(config, toolService), plan, review, dev);

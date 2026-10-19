@@ -14,14 +14,14 @@ Commands, alles was der Scaffold-Agent verwaltet. Runtime State (Agent-History) 
 und ist **workspace-scoped**: `.metadata/.plugins/org.sterl.llmpeon/state/<agent>-history.jsonl`
 via `Platform.getStateLocation()` (Plugin-Layer; Core headless behält `configDir/state` als
 Default, Layer-Injektion). Kein State im Projekt-Verzeichnis als Ausweg — dasselbe Projekt in
-zwei Instanzen kollidiert erneut. Migration: One-Shot-Move von `~/.peon/state/**` beim Start
-(idempotent, Cross-Volume-Fallback copy+delete, Ziel-existiert → Quelle bleibt + Skip-Meldung,
-Fehler blockiert den Start nie). Kein Migration-Chain-Gedöns — ein Zielort, ein Move.
+zwei Instanzen kollidiert erneut. **Keine Migration:** der zwischenzeitlich gebaute One-Shot-Move
+aus `~/.peon/state` ist 2026-10-19 ersatzlos entfernt worden (Clean Break, Paul) — eine
+Vor-2.x-History wird nicht übernommen, der Agent startet leer.
 
 **Consequences:**
 - `FileAgentHistoryStore` bekommt den State-Pfad injiziert statt ihn aus `configDir` abzuleiten.
-- `~/.peon/state/` wird nach erfolgreicher Migration leer; der Ordner bleibt nicht zurück,
-  `.peon` ist danach wirklich config-only.
+- `~/.peon` ist wirklich config-only; ein zurückgebliebenes `state/` aus einer Vor-2.x-Installation
+  wird ignoriert und darf vom User gelöscht werden.
 - Skills/Commands/AGENT.md bleiben geteilt — das ist gewollt (eine Pflege, alle Instanzen).
 - Zwei Eclipse-Instanzen (verschiedene Workspaces) sind wieder voll unabhängig.
-- Homepage-Anpassung (History-Pfad + Migrations-Hinweis) ist Teil des Inkrements.
+- Homepage nennt den History-Pfad; einen Migrations-Hinweis gibt es seit dem Entfall nicht mehr.

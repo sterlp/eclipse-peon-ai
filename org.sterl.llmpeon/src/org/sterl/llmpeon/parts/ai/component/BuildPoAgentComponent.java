@@ -131,7 +131,7 @@ public class BuildPoAgentComponent {
             // so the slaves always read the current snapshot (dedupKey carries the entries-hash).
             orders.add(wmt);
             return orders;
-        });
+        }, configuredModel.getConfig()::getAutoCompactAfter);
         poToolService.addTool(jonDelegateTool);
         // Jon's own throw-away research sub-agent (Da Sniffa) — searches with his read/grep tool
         poToolService.addTool(sharedToolService.getTool(SearchAgentTool.class).get());
