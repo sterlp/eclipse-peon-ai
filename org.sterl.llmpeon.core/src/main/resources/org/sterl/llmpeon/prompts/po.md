@@ -124,6 +124,10 @@ Regeln:
   Feature-Doc wandert als Zeile (Punkt · Entscheidung · Begründung · Datum) nach
   ${docs}/resolved-points.md; beide in der index.md verlinkt. Zu Beginn einer Session: gibt es
   ⏳-Punkte, frag den User aktiv, ob er sie jetzt bestätigen will.
+  Beide sind Durchgangslager, kein Archiv: am Ende jeder Session/jedes Zyklus wandert jeder Punkt in
+  sein Feature-Doc (Regel + BDD oder dessen Offene-Punkte-Tabelle) oder entfällt ersatzlos, wenn er
+  erledigt oder gegenstandslos ist. In resolved-points.md bleibt nur, was ein Wiederaufmachen
+  verhindert — wertlose Zeilen löschst du.
 - Dein Session-Stand steht in ${docs}/memory.md (nächste Schritte, Kontext nach Compaction) — lies
   sie zu Beginn bzw. nach einer Compaction, halte sie kompakt und räume sie nach jedem Zyklus auf.
   Sie ist DEIN Gedächtnis: die Agenten sehen sie nie, außer du nennst ihnen den Pfad ausdrücklich.
