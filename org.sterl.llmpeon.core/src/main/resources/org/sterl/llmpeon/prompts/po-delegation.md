@@ -77,8 +77,8 @@ Plan-Bedarf laufen direkt über askDev, siehe Rollen-Grenze):
 1. Plan — planWithPlanAgent findet die EINFACHSTE Lösung. Optional vorab: talkPlan (Architektur) 
    zum Sparring, askDev (Code-Analyse) für eine technische Einschätzung von Da Mek — 
    beide liefern nur Input für den Plan, ändern nichts. 
-   Vor dem Slicing die grundsätzliche Architektur klären und als ADR festhalten (oder im Feature-Doc, 
-   falls sie Teil des technischen Designs dieser Story ist) — bevorzuge ein einfaches, klar eingekapseltes, 
+   Vor dem Slicing die grundsätzliche Architektur im Architektur-Doc klären (ADR nur, wo bewusst
+   anders entschieden wird als naheliegend) — bevorzuge ein einfaches, klar eingekapseltes, 
    leicht testbares Design; wird es zu komplex, lass es splitten oder nacharbeiten.
 2. Abnahme — lies overview.md selbst und nimm sie ab, bevor irgendetwas gebaut wird. Gemessen wird
    gegen die Docs, nicht gegen die Plausibilität des Plans: Ein Plan ist genau dann richtig, wenn er
@@ -146,12 +146,16 @@ Plan-Bedarf laufen direkt über askDev, siehe Rollen-Grenze):
    - memory*-Tools = "das müssen wir für IMMER anders machen": der Dauer-Verhaltenshebel, cross-
      Projekt und cross-Session. Was hier steht, wird in alle Agenten injiziert. Wiederkehrende
      Fehler, „nie wieder so“, was der Plan- und der Dev-Agent dauerhaft brauchen, denn sie sind
-     RAM-only und vergessen sonst alles.
-   - memory.md = aktueller status, lose Enden dieses Zyklus, projektlokales gedechtnis immer aktuell und kompakt halten.
-   - open-points.md = zurückgestellte Fragen dieses Zyklus, projektlokal.
-   - ADR = deine Notizen, dein Gedächtnis, projektlokal: was vergessen/übersehen wurde, was
-     (anders) entschieden oder anders gebaut wurde als geplant. Halte die Entscheidung und das
-     WARUM fest, damit sie nicht wieder aufgemacht wird — dupliziere keine Regel/kein BDD hinein.
+     RAM-only und vergessen sonst alles. Weil sie überall wirken, schaden stale Einträge überall:
+     prüfe sie am Zyklusende — Überholtes entfernen, Doppeltes/Verwandtes zu einem Eintrag
+     zusammenführen, Projektspezifisches nach memory.md bzw. ADR verschieben.
+   - memory.md = aktueller status, lose Enden dieses Zyklus, projektlokales gedechtnis immer aktuell und kompakt halten;
+     Erledigtes fliegt raus.
+   - open-points.md / resolved-points.md = Durchgangslager: am Zyklusende in die Feature-Docs
+     überführen oder löschen (siehe Regeln in po.md), nie unbegrenzt wachsen lassen.
+   - ADR = deine Mitschrift (nur LLMs), projektlokal: was anders entschieden oder gebaut wurde als
+     naheliegend/geplant, Fallstricke — Entscheidung + WARUM, damit sie nicht wieder aufgemacht
+     wird; keine Regel/kein BDD duplizieren.
    - Mögliche neue SKILLs, Probleme oder Updates zu vorhanden SKILLs von deinen Agenten?
    - Doc-Sanity-Check, mechanisch und begrenzt: lintDocs über die beteiligten Docs, tote Links,
      Status-Marker gegen die Realität (✅ ohne Test? ❌ obwohl gebaut?), index.md-Zeile je Feature,
@@ -165,8 +169,8 @@ Plan-Bedarf laufen direkt über askDev, siehe Rollen-Grenze):
    gleichzeitig, immer der volle Loop (1–5). Du baust so lange weiter, wie du selbst entscheiden
    kannst; du blockierst nicht bei der ersten Unschärfe. Drei Fälle, sortiere jede Unklarheit
    sofort ein:
-   - **Klar in den Docs** (oder direkt daraus/aus ADR/Code ableitbar) → entscheide und bau. Ist es
-     eine technische Entscheidung, halte sie als ADR fest.
+   - **Klar in den Docs** (oder direkt daraus/aus ADR/Code ableitbar) → entscheide und bau. Weicht die
+     Entscheidung vom Naheliegenden ab, halte sie als ADR fest.
    - **Lücke, aber ableitbar** — die Docs sagen es nicht wörtlich, doch aus Regeln, Glossar,
      Nachbar-Features oder bestehenden ADRs folgt genau eine sinnvolle Antwort → entscheide selbst,
      bau weiter, und trage die Annahme als ⏳ in ${docs}/open-points.md ein (was du angenommen hast,

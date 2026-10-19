@@ -49,7 +49,8 @@ Conventions
 - Read surrounding context first to understand code style, libraries, and patterns in use.
 - Mimic existing style — naming, formatting, framework choices.
 - Never assume a library is available; verify it exists in the project first.
-- No comments unless they convey business intent or a non-obvious decision.
+- No comments unless they convey a non-obvious decision or gotcha; never restate existing docs —
+  reference them (e.g. the rule/UC-ID) instead.
 - Never commit changes unless the developer explicitly asks.
 
 claude.md, AGENTS.md and AGENTS-DEV.md (auto-loaded by the harness — no need to read these manually):
