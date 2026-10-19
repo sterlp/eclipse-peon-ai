@@ -2,7 +2,32 @@
 
 > docs/** — insbesondere memory.md — schreibt AUSSCHLIESSLICH Jon. Agenten liefern Facts im Chat.
 
-## Stand 2026-10-19 (Branch `story/night-5-2026-10-16`)
+## Stand 2026-10-19 (2) — 2.14.0 release-fertig (Branch `story/night-5-2026-10-16`, gepusht `7e1f52ef`)
+
+- **2.14.0 = der ganze Nachtzyklus** (78 Commits seit 2.13.0): CHANGELOG-Eintrag vollständig
+  geschrieben (inkl. 2.13.1-Nachtrag #159). `origin/main` (2.13.1) ist gemergt, Branch gepusht.
+  **Merge nach main + Tag `2.14.0` = Paul** (er released immer selbst; release.yml setzt die Version
+  aus dem Tag, kein pom-Bump).
+- **Gates:** Core **1223/0/0/0**, OSGi **387 run / 0 F / 0 E / 49 skipped**, Tycho/Feature/
+  Update-Site SUCCESS.
+- **In diesem Zyklus gebaut/gefixt:** Shell-Timeout R4 (`a68b5ce2`: Tree-Kill, eingefrorene Dauer,
+  Partial Output), R-CC-19 forward-looking counter (`3b69a76e`), Codegraph R-CG-1/2
+  (`7e5c34b5`: Index = Eintritt, Binary = Hinweis, ERROR statt still OFF), Icon Graph-Glyphe
+  (`6686fc43`), PO-Prompt-Klärung (`7e1f52ef`: fachliches IST bleibt = Statusmarker, ADR nur bei
+  Abweichung von Jons Empfehlung).
+- **⏳ Rückversicherungen (open-points):** R-CC-19-Semantik + Tilde, Icon-Motiv, Windows-`cmd /c`-Fallback.
+- **❓ Doc-Aufräum-Slice (open-points):** Belege/Messungen/Vorfälle raus aus Feature-Docs nach
+  `peon-plan/` — Regel im PO-Prompt bleibt, Bestand ist nicht-konform (Grep-Inventar nötig).
+- **2.14.1-Backlog:** R-CG-14 (Dispose gewinnt, beide Connection-Services), R-CIB-4 Stufe 2 (erstes
+  `result:` statt letztem), R-CG-13 (Codegraph-Item nur bei sichtbarem `codegraph_explore`),
+  R-TR-6 INFO-Text + echte Assertions in `TaggedResultTest`, Reprobe-Entscheidung.
+- **Trap 2026-10-19:** `new Status(severity, pluginId, message, throwable)` setzt in
+  equinox.common 3.21 `getCode()` **immer** auf OK → `getSeverity()` lesen, nie `getCode()`.
+  Dazu in `AGENTS-DEV.md`: headless Tycho verpackt stale `bin/` (mtime gewinnt über die Quelle).
+
+### Frühere Stände — Nachtzyklus 5, Detailhistorie (2026-10-16 … 2026-10-19)
+
+#### Stand 2026-10-19 (03:46) — R-CC-18, Docs-Sweep, Branch gepusht
 
 - ✅ **R-CC-18 — Direct Compact in der Tool-Loop gebaut** (`26a0007c` Inc 1, `c9463119` Inc 2):
   `compact/HandleToolLoopCompactComponent` entscheidet zustandsbasiert nach jeder Tool-Runde (über
