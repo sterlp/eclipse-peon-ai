@@ -281,3 +281,107 @@ Plugin-Tests (JUnit 4, `org.junit` nur). **Fixture** (neu, test-module-only):
 Keine — alle SOLL-Entscheidungen sind im Feature-Doc oder hier als D1–D6 getroffen.
 Einziger Review-Haken für Jon/Da-Dok: D3 (Kap-Edge) ist die einzige Stelle, an der der Plan eine
 im Doc nicht explizit geregelte Interaktion (vollsteh Cap × most-specific) selbst klärt.
+
+## 8. Da-Dok-Review (2026-10-19) — Verdict: **CONCERNS**
+
+Scope: Commits `99784243`, `c0e67db0`, `8a376332`, `93044157`, `8ab53d8c` (Branch
+`story/workspace-nesting-2026-10-19`). Nur gelesen, keine Testläufe. Lint-Gate: 13× VERWAIST
+(exakt die geplanten Marker, 0 UNBELEGT_ERLEDIGT) — grün nach Jon-Decision.
+
+### BDD-/Regel-Abdeckung (Docs↔Code): alle BDDs gebaut und getestet
+| SOLL | Code | Test |
+|---|---|---|
+| R-WN-1 deepest wins | `EclipseUtil.mostSpecificEntry:444-453` (strict-descendant via `Path.startsWith`+`!equals`), beide Tools | Search: `EclipseSearchFilesToolTest:230/246`; Grep: `EclipseGrepToolTest:352` |
+| R-WN-1 unabhängig v. Scan-Reihenfolge/gewähltem Projekt | LinkedHashMap-Insertion-Order bleibt (In-place-`put`) | `selectedProjectChangesOrderNotWins`→`:246` |
+| R-WN-1 gleiche Tiefe → first-wins | `EclipseUtil.java:449` (nicht-strikter Abkömmling → existing, inkl. gleicher Ordner) | **keiner auf Pfad-Ebene → F1** |
+| R-WN-1 expliziter Scope maßgeblich | Scope=1 Projekt → keine fremden Sichten im Map | Guards `EclipseSearchFilesToolTest:263`, `EclipseGrepToolTest:409` (inkl. Folder-Scope `/wna_root/wnb_mid`) |
+| R-WN-2 Treffer einmal + Datei zählt einmal | `EclipseGrepTool.addHits:126-152` (Key=`diskDedupKey`, In-place-Rewrite `:140-147`, Cap `:105`/`:122` semantisch unverändert) | `EclipseGrepToolTest:353` (3 Hits, 0 flache Pfade), `:371` (98 Dateien < Cap, exakt 100 Zeilen, keine Disclosures) — Strings gegen `AiReponseBuilder.grepComplete:97-107` verifiziert |
+| R-WN-3 eine Zeile/Richtung, tiefster Ancestor, alle Contained sortiert, nur offen, kanonisch, wortgetreu | `EclipseUtil.appendNestingLines:371-404` (via `openProjects()` = `isOpen()`-Filter `:300-309`; Text=Doc vorlaut) | `NestedProjectInfoTest` 6/6 (Turn-Kontext-Pfad `:33`, deepest `:49`, contained `:62`, beide Richtungen `:76`, Negativ-Guard `:91`, closed `:104`) |
+
+### Ein-Helfer-Check (Plan↔Code, Kapselung): PASS
+`mostSpecificEntry`/`diskDedupKey`/`projectFolder` genau einmal definiert (`EclipseUtil`),
+Call-Sites: beide Tools + `appendNestingLines`/`mostSpecificEntry` selbst — nichts weiter.
+Einzigste Pfad-Kanonisierung: `EclipseUtil.java:431` (`toAbsolutePath().normalize()`, kein
+`toRealPath` = D4). Keine Tool-Interna in `EclipseUtil` oder umgekehrt. Core unverändert
+(ausser dem separaten, Jon-freigegebenen MockLlmServer-Fix).
+
+### F2 — D3 (Kap-Edge): **zu dokumentierende Präzisierung, blockt den ✅-Flip NICHT**
+Bei vollem Cap stoppt der Visitor (`EclipseGrepTool.java:105`, `EclipseWorkspaceReadFileTool.java:195`):
+eine schon gelieferte flache Sicht bleibt stehen. Das Doc-Bullet `workspace-nesting.md:35`
+(„Unabhängig von Scan-Reihenfolge") ist unqualifiziert — streng gelesen greift die Edge.
+Bewertung: (a) R4a1 ist bereits abgenommene SOLL, dass Cap-Ergebnisse scan-reihenfolge-abhängig
+sind (erste N in Scan-Order) — D3 ist die konsistente Interaktion zweier akzeptierter Regeln,
+kein Widerspruch; (b) R-WN-2 bleibt auch am Cap intakt (Datei zählt weiterhin einmal, Dedup via
+Key wirkt weiter); (c) das Cap-Ergebnis wird explizit deklariert („result capped at 100 files",
+`AiReponseBuilder.java:104-107`) — das Tool lügt nicht über sein Limit; (d) kein BDD-Szenario
+beinhalten volles Cap → kein testbares SOLL verletzt. **Aber:** der eine Satz gehört mit dem
+Flip in das Feature-Doc (R-WN-1-Bullet oder Offene Punkte), sonst wird die Edge beim ersten
+capped Grep in einem großen Monorepo als Bug neu aufgerollt.
+
+### F1 — R-WN-1-Bullet „gleiche Tiefe → zuerst gefundener Pfad bleibt" (`workspace-nesting.md:37`): keine Pfad-Ebene-Test
+Implementiert (`EclipseUtil.java:449`), aber `EclipseSearchFilesToolTest.dedupesNestedProjectHits:211`
+assertet nur Count-Uniqueheit (keine Sichtung des überlebenden Pfaids) und läuft bei Eclipse-Verbot
+des Duplicate-Projekts auf der Fallback-Branch (Javadoc `:205-209`), die Cross-Project-Dedup gar
+nicht prüft. Naming des fehlenden Tests: Duplicate-Project auf gleicher Location → assert, dass der
+zuerst gescannten Sicht-Pfad überlebt. (Gleichzeitig Plan-Coverage-Gap, s.u.)
+
+### F3 — Feature-Doc-Hygiene: `docs/workspace-nesting.md:49-53` (R-WN-2 „IST 2026-10-19"-Block)
+Technisches IST in der Feature-Doc (PO-Regel: kein technisches IST in Feature-Docs) — Befund für
+Jon mit der Klammer: falls Jon selbst in diesem Zyklus gesetzt → seine Entscheidung. Zusätzlich:
+der Block ist **nach dem Fix stale** („addHits dedupliziert über JdtUtil.pathOf" ist seit Inc-2
+falsch) — der Flip muss ihn in „vorher" umformulieren oder löschen. Ebenso stale bei Flip:
+`docs/index.md:27` („Grep dedupliziert heute gar nicht" — Präsens).
+
+### F4 — Fixture-Wiring 3× (regelmäßig, plan-gebilligt)
+`EclipseSearchFilesToolTest.java:83-93`, `EclipseGrepToolTest.java:70-80`,
+`NestedProjectInfoTest.java:25-35`: identisches @Before/@After-Block (create/destroy).
+Plan §4 ordnet diese Wiring an → kein Verstoß; optionaler Extraktions-Kandidat (gemeinsame
+Basis-Klasse o. JUnit-Rule) — nur optisch.
+
+### F5 — Inc-1 Pre-Fix-Red: Evidenz indirekt
+Im Plan-Status kein dedizierter Pre-Fix-Red-Run für Inc-1 dokumentiert (Inc-2/Inc-3 ja, namentlich).
+Red-Logik steht trotzdem: Fixture-Reihenfolge root→mid→leaf (erst root erzeugt → root zuerst
+gescannt → `putIfAbsent` lässt Root-Sicht gewinnen ≠ Leaf-Assertion). Die Scan-Order root→mid→leaf
+bestätigt der protokollierte Inc-2-Red-Run („3× root + 3× mid"). Akzeptabel; für künftige Zyklen:
+Pre-Fix-Red pro Inkrement protokollieren.
+
+### Abweichungen vom Plan (alle legitim, nur notiert)
+- `docs/memory.md` (inc-1): PO-Stand-Update, reitet mit dem Zyklus (AGENTS-Muster). Kopf der Datei
+  sagt „schreibt AUSSCHLIESSLICH Jon" — Commit trägt Paul-Autor; Inhalt ist PO-Bookkeeping.
+- `docs/codegraph.md` (~`:149-153`, inc-1): R-CG-Invarianten-Klarstellung (Kindprozess-Close bei
+  workDir-Wechsel) — nicht im R-WN-Scope; gegen `CodegraphConnectionService.java:110-114`
+  (`closeLiveService()` beim Wechsel) verifiziert, korrekt. Gehört zum R-CG-14/15-Spec-Teil des
+  2.14.1-Docs-Zykls (memory.md).
+- `docs/index.md:27` (inc-1): neuer ❌-Eintrag für das neue Doc — nötig, KEIN Status-Flip
+  (Flips `workspace-nesting.md` + `index.md` stehen bei Jon nach Abnahme — korrekt nicht
+  vorgegriffen, alle Status im Doc sind noch ❌).
+- `README.md` (inc-3): +1 Zeile `v2.14.0 Codegraph` (Jon-Fix, im Plan-Dateilisting) — korrekt,
+  kein `v2.4.0`-Rest im README.
+
+### MockLlmServer-Fix (`99784243`): echte Ursachenbehebung
+Probe-Socket (bind→close→rebind, TOCTOU) entfernt; einmaliger atomarer Bind (port 0 = OS-Port),
+`port = server.getAddress().getPort()` als Single Source of Truth. Kein Retry/Sleep/assume/Ignore.
+
+### Plan-Coverage-Gap (nicht als Rework gegen die Implementation)
+Der Bullet „gleiche Tiefe → first-wins" (R-WN-1) hatte im Plan keinen Test zugewiesen (Inc-1
+listet 3 Tests; der Bullet fehlt). Implementation korrekt — Lücke im Plan, nicht bei Da Mek.
+
+### Mutation-Check-Empfehlung (an PO)
+`EclipseUtil.mostSpecificEntry:449` — der `!candidateFolder.equals(existingFolder)`-Guard:
+Mutation „equals-Prüfung entfernen" (gleicher Ordner → Kandidat ersetzt) ist mit dem
+aktuellen Testbestand **unbeobachtbar** (kein Duplicate-Location-Test). Der fehlende Test aus F1
+macht genau diese Mutation rot — F1 und Mutation-Proof sind ein einziger Schritt.
+
+### Skill/Instruktion-Gap: keiner
+Kein Skill/Fehldokumentation hat den Zyklus blockiert oder zum Raten gezwungen (R-Form-VERWAIST
+ist in `docs/open-points.md` dokumentiert und im Plan vorab geklärt, Jon-Decision).
+Skill-Evolution-Outcome: **kein Outcome** — keine `.agents/`-Änderung in den 5 Commits, kein
+R-WN-Eintrag in `.agents/skills/wiki/skill-impact.md`.
+
+### Risk line
+Most likely reason this breaks later: die D3-Kap-Edge trifft den ersten großen Monorepo-Grep, der
+gegen 100 Dateien läuft — Ergebnis zeigt den flachen Pfad, Agent/User liest das als „Dedup kaputt",
+und weil `workspace-nesting.md:35` unqualifiziert formuliert ist, wird es als Bug statt als
+dokumentierte Edge aufgerollt. — Change that most reduces that risk: den einen D3-Satz mit dem
+✅-Flip in `docs/workspace-nesting.md` (R-WN-1-Bullet oder Offene Punkte) + F1-Test (gleiche
+Tiefe) — beides klein, beides schließt die Lücke.

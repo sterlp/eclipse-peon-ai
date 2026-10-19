@@ -4,7 +4,7 @@ idPrefix: WN
 
 # Workspace-Sicht — verschachtelte Eclipse-Projekte
 
-> **Status:** ❌ specified (2026-10-19, für 2.14.1) · **Architektur:** keine neue Komponente —
+> **Status:** ✅ done (2026-10-19, 2.14.1) · **Architektur:** keine neue Komponente —
 > Erweiterung von `EclipseUtil` + `EclipseWorkspaceReadFileTool`/`EclipseGrepTool`
 
 ## Ziel
@@ -24,7 +24,7 @@ flowchart TD
     D -- nein --> F["verwerfen"]
 ```
 
-## R-WN-1 — Dedup: der spezifischste Projekt-Pfad gewinnt (❌ specified)
+## R-WN-1 — Dedup: der spezifischste Projekt-Pfad gewinnt (✅ done)
 
 GIVEN eine Datei ist über zwei Projekte sichtbar (`/llmpeon-core/src/A.java` und
      `/llmpeon-parent/org.sterl.llmpeon.core/src/A.java` — gleicher Disk-Pfad)
@@ -34,25 +34,24 @@ THEN wird sie **einmal** geliefert, unter dem Pfad des Projekts mit dem **tiefst
 
 - Unabhängig von Scan-Reihenfolge und gewähltem Projekt; das gewählte Projekt bestimmt weiterhin nur
   die **Reihenfolge** der Treffer (R4a1 in [eclipse-read-tools.md](eclipse-read-tools.md)).
-- Gleich tiefe Projekte (kein Nesting) → wie bisher: der zuerst gefundene Pfad bleibt.
+- **Bei erreichtem Ergebnis-Limit bleibt die Scan-Reihenfolge maßgeblich:** ein bereits gelieferter
+  Duplikat-Eintrag wird dann nicht mehr auf die tiefere Sicht umgeschrieben. Die Datei zählt weiterhin
+  nur **einmal**, und das Limit ist im Ergebnis benannt.
+- Gleich tiefe Projekte (kein Nesting) → wie bisher: der zuerst gefundene Pfad bleibt. Praktisch
+  betrifft das nur eine Datei, die über **denselben** Ordner zweimal sichtbar ist (gleicher
+  Disk-Pfad); ein anderer Disk-Pfad ist eine andere Datei und kein Dedup-Fall.
 - **Ein expliziter Scope bleibt maßgeblich:** `path=/llmpeon-parent` liefert Parent-Pfade — dort wurde
   gesucht. Keine Rückübersetzung außerhalb des angefragten Scopes, sonst liefert das Tool Pfade, die
   der Agent nicht angefragt hat.
 
-## R-WN-2 — Grep zählt Disk-Pfade, nicht Workspace-Pfade (❌ specified)
+## R-WN-2 — Grep zählt Disk-Pfade, nicht Workspace-Pfade (✅ done)
 
 GIVEN dieselbe doppelt sichtbare Datei enthält drei Treffer
 WHEN `eclipseGrepFiles` workspace-weit sucht
 THEN erscheinen die drei Treffer **einmal** (unter dem spezifischsten Pfad), und die Datei zählt
      **einmal** gegen das Datei-Limit (`MAX_GREP_FILES`).
 
-IST 2026-10-19: `EclipseGrepTool.addHits` dedupliziert über `JdtUtil.pathOf(file)` — den
-**Workspace**-Pfad. Dieselbe Disk-Datei unter zwei Projekten gilt damit als zweite Datei: Treffer
-doppelt, Limit doppelt verbraucht. `eclipseSearchFiles` dedupliziert bereits über den Disk-Pfad
-(R4a1), aber nach Scan-Reihenfolge („first wins") — dort ist R-WN-1 eine Verhaltensänderung, hier
-behebt es einen Fehler gegen die bestehende Regel.
-
-## R-WN-3 — Projekt-Info nennt die Verschachtelung (❌ specified)
+## R-WN-3 — Projekt-Info nennt die Verschachtelung (✅ done)
 
 GIVEN das aktive Projekt ist Teil einer Verschachtelung — ein offenes Projekt ist Vorfahr seines
      Ordners, oder sein Ordner ist Vorfahr offener Projekte

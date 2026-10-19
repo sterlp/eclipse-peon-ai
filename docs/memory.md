@@ -2,17 +2,20 @@
 
 > docs/** — insbesondere memory.md — schreibt AUSSCHLIESSLICH Jon. Agenten liefern Facts im Chat.
 
-## Stand 2026-10-19 (3) — 2.14.0 **Release getriggert** (Paul), 2.14.1 spezifiziert
+## Stand 2026-10-19 (4) — 2.14.0 released, **2.14.1 gebaut** (Branch `story/workspace-nesting-2026-10-19`)
 
 - **2.14.0 = der ganze Nachtzyklus** (78 Commits seit 2.13.0): CHANGELOG-Eintrag vollständig
   geschrieben (inkl. 2.13.1-Nachtrag #159). Paul hat den Release **getriggert** (Merge + Tag bei ihm;
   release.yml setzt die Version aus dem Tag, kein pom-Bump). Nächster Schritt: Paul zieht die neue
   Plugin-Version, dann 2.14.1 bauen.
-- **2.14.1-Docs stehen (❌):** R-CG-14 (Mechanik präzisiert: Generation statt Lock über den Connect) ·
-  **R-CG-15** neu · **R-WN-1…3** neu ([workspace-nesting.md](workspace-nesting.md)) — Details im
-  Backlog unten.
-- **Gates:** Core **1223/0/0/0**, OSGi **387 run / 0 F / 0 E / 49 skipped**, Tycho/Feature/
-  Update-Site SUCCESS.
+- **2.14.1 = Workspace-Nesting gebaut (R-WN-1…3 ✅):** beide Read-Tools deduplizieren über den
+  Disk-Pfad mit einem Helfer-Satz in `EclipseUtil` (`diskDedupKey`/`mostSpecificEntry`/`projectFolder`),
+  `projectInfo` nennt die Verschachtelung (eine Zeile je Richtung). Plugin-Suite **399/0/0**, Core
+  1223/0, Da Dok CONCERNS ohne Blocker, Gates je Inkrement grün. Begleitfix `99784243`:
+  `MockLlmServer`-Portbindung (TOCTOU-Probe) — war ein präexistenter Suite-Flake.
+  Vor dem Merge: `mvn -B clean verify` neu, und Paul-Smoke im echten Monorepo.
+- **Gates (2.14.1-Branch):** Core **1223/0/0/0** (Maven), OSGi **399 run / 0 F / 0 E**, je Inkrement
+  Build 0 Errors. Vor dem Merge: `mvn -B clean verify` (Tycho/Feature/Update-Site) einmal neu.
 - **In diesem Zyklus gebaut/gefixt:** Shell-Timeout R4 (`a68b5ce2`: Tree-Kill, eingefrorene Dauer,
   Partial Output), R-CC-19 forward-looking counter (`3b69a76e`), Codegraph R-CG-1/2
   (`7e5c34b5`: Index = Eintritt, Binary = Hinweis, ERROR statt still OFF), Icon Graph-Glyphe
@@ -21,13 +24,11 @@
 - **⏳ Rückversicherungen (open-points):** R-CC-19-Semantik + Tilde, Icon-Motiv, Windows-`cmd /c`-Fallback.
 - **❓ Doc-Aufräum-Slice (open-points):** Belege/Messungen/Vorfälle raus aus Feature-Docs nach
   `peon-plan/` — Regel im PO-Prompt bleibt, Bestand ist nicht-konform (Grep-Inventar nötig).
-- **2.14.1-Backlog:** R-CG-14 (Dispose gewinnt, beide Connection-Services — Fix = Generation +
+- **2.14.1-Backlog (offen):** R-CG-14 (Dispose gewinnt, beide Connection-Services — Fix = Generation +
   `disposed`, nicht Lock über den Connect) · **R-CG-15** (Monorepo-Projektwechsel: gleicher `workDir`
-  → State-Refresh aufs aktive Projekt, kein Reconnect) · **R-WN-1…3**
-  ([workspace-nesting.md](workspace-nesting.md): spezifischster Projekt-Pfad gewinnt, Grep zählt
-  Disk-Pfade statt Workspace-Pfade, Projekt-Info nennt Parent/enthaltene Projekte) · R-CIB-4 Stufe 2 (erstes
-  `result:` statt letztem), R-CG-13 (Codegraph-Item nur bei sichtbarem `codegraph_explore`),
-  R-TR-6 INFO-Text + echte Assertions in `TaggedResultTest`, Reprobe-Entscheidung.
+  → State-Refresh aufs aktive Projekt, kein Reconnect) · R-CIB-4 Stufe 2 (erstes `result:` statt letztem),
+  R-CG-13 (Codegraph-Item nur bei sichtbarem `codegraph_explore`), R-TR-6 INFO-Text + echte Assertions
+  in `TaggedResultTest`, Reprobe-Entscheidung.
 - **Trap 2026-10-19:** `new Status(severity, pluginId, message, throwable)` setzt in
   equinox.common 3.21 `getCode()` **immer** auf OK → `getSeverity()` lesen, nie `getCode()`.
   Dazu in `AGENTS-DEV.md`: headless Tycho verpackt stale `bin/` (mtime gewinnt über die Quelle).
