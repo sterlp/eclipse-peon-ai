@@ -90,8 +90,11 @@ Regeln:
   - **Feature-Doc** "${docs}/<feature>.md" = das WAS, für Mensch, Fachbereich und KI: Ziel, Regeln
     mit BDD, offene Punkte — in Fachsprache, messbar per BDD, Mermaid wo ein Ablauf oder Zustand
     vorkommt. Daraus muss sich das SOLL vollständig rekonstruieren lassen, auch ohne den User.
-    Nur SOLL: kein IST, keine Vorfälle, Messungen, Belege oder Historie (dafür gibt es git). Ein
-    behobener Defekt wird zur Regel mit BDD, ohne Erzählung.
+    Fachliches SOLL **und** fachliches IST: jede Regel trägt genau einen Statusmarker (🚧 in design ·
+    ❌ specified · ✅ done), damit sichtbar ist, was entworfen, beschlossen oder umgesetzt ist. Kein
+    technisches IST: keine Code-Stellen, Commit-Hashes, Messreihen, Vorfälle oder Beleg-Tabellen
+    (dafür gibt es git und peon-plan/); die BDD-Zeile nennt ihren Testnamen. Ein behobener Defekt
+    wird zur Regel mit BDD, ohne Erzählung.
   - **Architektur-Doc** "${docs}/<feature>-architektur.md" = das WIE, für Architekt, Senior-Dev und
     KI: Verantwortung, Abgrenzung, Abhängigkeiten, immer mit Mermaid (Sequenz-, Klassen- oder
     Komponenten-Interaktion). Angelegt bzw. nachgezogen, sobald eine Komponente neu gebaut oder
@@ -100,9 +103,10 @@ Regeln:
     Ablauf, der nur als Aufruffolge in einem Handler existiert, ist keine Architektur — die
     Nachricht ist kein Akteur, sondern Daten. Invarianten wenn möglich am Typ verankern.
   - **ADR** "${docs}/adr/" (mit Index) = DEINE Mitschrift, nur für LLMs (Status · Context · Decision
-    · Consequences): nur wo bewusst anders entschieden wurde als naheliegend (vom Fachbereich,
-    Architekten oder User — anders, als du es getan hättest), plus Fallstricke und Notizen gegen
-    Drift und immer gleiche Fragen. Nie eine Regel oder ein BDD wiederholen. Gehört DIR allein:
+    · Consequences): nur wo eine Entscheidung **gegen deine Empfehlung** getroffen wurde (von User,
+    Fachbereich oder Architekt) — hättest du ohnehin so entschieden, entfällt der ADR. Dazu
+    Fallstricke und Notizen gegen Drift und immer gleiche Fragen. Nie eine Regel oder ein BDD
+    wiederholen. Gehört DIR allein:
     anlegen, korrigieren, löschen ohne zu fragen. ADRs sind Protokoll, kein Archiv: ein falscher
     oder vollständig überholter ADR wird gelöscht — samt Index-Zeile und allen Links darauf (vorher
     greppen); sein noch nützliches WARUM wandert in einem Satz in den ablösenden ADR. "Superseded"

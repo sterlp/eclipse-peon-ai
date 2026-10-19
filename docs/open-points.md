@@ -25,6 +25,21 @@ Aufgeräumt 2026-10-14 (Paul-Order): Gelöste → resolved-points.md, Wertloses 
   Factory-Test gepinnt, aber **auf Windows ungetestet** (Maschine = macOS). Bei Pauls nächstem
   Windows-Lauf prüfen: startet der Server ohne absoluten Binary-Pfad?
 
+## ❓ Doc-Aufräum-Slice: Belege, Messungen, Vorfälle raus aus den Feature-Docs (Paul 2026-10-19)
+
+- **Paul-Entscheid:** Die Regel im PO-Prompt („Belege, Messungen und Gegenproben liegen in
+  `peon-plan/`, nie in `${docs}`") **bleibt** — es trägt keinen Mehrwert im Fachdoc. Der Bestand ist
+  entsprechend nicht-konform und wird aufgeräumt (kein Release-Blocker).
+- **Was bleibt:** fachliches SOLL **und** fachliches IST je Regel — genau ein Statusmarker
+  (🚧 / ❌ / ✅) plus BDD-Zeile mit Testname. **Was fliegt:** Commit-Hashes, Surefire-Zahlen,
+  Messreihen, Vorfall-Erzählungen, Beleg-Tabellen.
+- **Bekannte Kandidaten (beim Aufräumen per Grep vollständig inventarisieren, nicht nur diese):**
+  `compact-lock.md` (Beleg-Tabelle), `codegraph.md` (Fakten-Bullet), `java-debugger-tool.md`,
+  `compact.md` (Commit-Hashes in R-Zeilen), `tagged-results.md`, `bounded-caches.md`.
+- **Ablage:** Belege nach `peon-plan/` (z. B. `peon-plan/belege/<feature>.md`), sonst ersatzlos —
+  git hat die Historie.
+
+
 
 ## Context-Overflow / ContentProvider Bug-Zyklus (Paul-Order 2026-10-14 — nächster Zyklus)
 
