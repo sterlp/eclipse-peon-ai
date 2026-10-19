@@ -118,13 +118,15 @@ class AbstractAgentCompactResultTest {
             @Override public boolean isCanceled() { return canceled.get(); }
         };
 
-        // WHEN — turn 1: the model calls compactSession, the compressor fails (call 1);
-        // turn 2: the real counter (260000 > 200000) must re-fire the auto-compact gate
+        // WHEN — turn 1: the model calls compactSession, the compressor fails (call 1), and the
+        // over-budget state (260000 > 200000) fires the direct in-loop attempt (call 2, R-CC-18,
+        // FAILED_EMPTY); turn 2: the real counter must re-fire the pre-turn auto-compact gate (call 3)
         agent.call("start", monitor);
         agent.call("next", monitor);
 
-        // THEN — the failed compact did not silence the gate: the compressor is tried again
-        assertThat(compactCalls.get()).isEqualTo(2);
+        // THEN — the failed compact did not silence the gate: 3 attempts — turn 1 tool attempt +
+        // turn 1 direct attempt (R-CC-18, FAILED_EMPTY) + turn 2 pre-turn gate (R-CC-3)
+        assertThat(compactCalls.get()).isEqualTo(3);
         // AND — the failure was reported, not swallowed
         assertThat(problems).anyMatch(p -> p.contains("Compact failed: compressor returned no summary for " + AiDevAgent.NAME));
     }

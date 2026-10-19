@@ -281,7 +281,7 @@ class ToolServiceTest {
                 .build();
 
         // WHEN — the loop reaches the forced compact hint (stuck > MAX_STUCK_ITERATIONS - 2)
-        // THEN — it must not crash on req.getAgent().getName() (ToolService.addCompactHintIfNeeded)
+        // THEN — it must not crash on req.getAgent().getName() (HandleToolLoopCompactComponent)
         assertThatNoException().isThrownBy(() -> subject.executeLoop(req));
     }
 

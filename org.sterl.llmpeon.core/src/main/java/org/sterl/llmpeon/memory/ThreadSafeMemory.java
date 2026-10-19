@@ -47,9 +47,27 @@ public class ThreadSafeMemory {
      */
     private volatile @Nullable Integer lastProviderInputTokens = null;
 
+    /**
+     * R-CC-18 (D3): one-shot mark that the NEXT {@code addResult}'s provider
+     * {@code inputTokenCount} describes the PRE-compact context. Volatile like the sibling
+     * flags — the memory is read from UI threads. Deliberately NOT set by {@code clear()}/
+     * {@code replaceAll()} (too coarse — those are followed by a FRESH provider value, e.g.
+     * after the pre-turn compact, which must be consumed as usual).
+     */
+    private volatile boolean providerUsageStale = false;
+
     /** @return true if the current token counter value contains an estimate component. */
     public boolean isTokenEstimate() {
         return tokenIsEstimate;
+    }
+
+    /**
+     * Next {@code addResult}'s provider {@code inputTokenCount} describes the PRE-compact context
+     * — derive from estimate instead. Set by {@code CompactSessionTool} on COMPACTED; consumed by
+     * the next {@code addResult}.
+     */
+    public void markProviderUsageStale() {
+        providerUsageStale = true;
     }
 
     /** R-CC-10: the last provider-reported input token count, or null when never reported/reset. */
@@ -206,9 +224,16 @@ public class ThreadSafeMemory {
         appended.add(aiMessage);
         appended.addAll(toolResult);
         var usage = ChatMessageUtil.tokenUsage(response);
-        totalTokenUsed = ChatMessageUtil.getTokenCount(response, memory);
-        tokenIsEstimate = usage == null || usage.inputTokenCount() == null;
-        if (usage != null && usage.inputTokenCount() != null) lastProviderInputTokens = usage.inputTokenCount();
+        if (providerUsageStale) {
+            // R-CC-18 (D3): this response's provider value describes the PRE-compact context —
+            // keep the small post-compact estimate; lastProviderInputTokens stays cleared
+            providerUsageStale = false;
+            reevaluateTokens();
+        } else {
+            totalTokenUsed = ChatMessageUtil.getTokenCount(response, memory);
+            tokenIsEstimate = usage == null || usage.inputTokenCount() == null;
+            if (usage != null && usage.inputTokenCount() != null) lastProviderInputTokens = usage.inputTokenCount();
+        }
         append(appended);
     }
 
@@ -216,9 +241,16 @@ public class ThreadSafeMemory {
         var message = response.aiMessage();
         memory.add(message);
         var usage = ChatMessageUtil.tokenUsage(response);
-        totalTokenUsed = ChatMessageUtil.getTokenCount(response, memory);
-        tokenIsEstimate = usage == null || usage.inputTokenCount() == null;
-        if (usage != null && usage.inputTokenCount() != null) lastProviderInputTokens = usage.inputTokenCount();
+        if (providerUsageStale) {
+            // R-CC-18 (D3): this response's provider value describes the PRE-compact context —
+            // keep the small post-compact estimate; lastProviderInputTokens stays cleared
+            providerUsageStale = false;
+            reevaluateTokens();
+        } else {
+            totalTokenUsed = ChatMessageUtil.getTokenCount(response, memory);
+            tokenIsEstimate = usage == null || usage.inputTokenCount() == null;
+            if (usage != null && usage.inputTokenCount() != null) lastProviderInputTokens = usage.inputTokenCount();
+        }
         append(message);
     }
 

@@ -32,9 +32,12 @@ class ToolServiceCompactResultTest {
     @Timeout(10)
     void keepsRealCounterOnFailedCompact() {
         // GIVEN — a context whose counter holds the real provider value (260000), and a
-        // compressor that answers with an empty summary (FAILED_EMPTY, not the small-context guard)
+        // compressor that answers with an empty summary (FAILED_EMPTY, not the small-context guard).
+        // autoCompactAfter(0): the R-CC-18 direct attempt is OFF — this test isolates the R-CC-2
+        // tool path (without it the over-budget round would add a second compressor call)
         var config = LlmConfig.builder()
                 .model("main-model")
+                .autoCompactAfter(0)
                 .modelConfigs(Map.of(AgentModelConfig.COMPACT,
                         new AgentModelConfig(null, null, "compact-model", null, null, null)))
                 .build();
@@ -91,7 +94,8 @@ class ToolServiceCompactResultTest {
     void secondCompactInSameTurnStillDerivesOnce() {
         // GIVEN — one model round issues TWO compactSession calls: the first compacts (COMPACTED,
         // marks the turn), the second sees the small post-compact memory (SKIPPED_SMALL).
-        // D3 sticky-OR: the flag must survive the skip, so the re-derive still runs exactly once.
+        // D3: the providerUsageStale flag must survive the skip, so the addResult re-derive
+        // still runs exactly once.
         var config = LlmConfig.builder()
                 .model("main-model")
                 .modelConfigs(Map.of(AgentModelConfig.COMPACT,
@@ -147,7 +151,7 @@ class ToolServiceCompactResultTest {
         // THEN — only the first call reached the compressor; the second was an honest SKIPPED_SMALL
         assertThat(compactCalls.get()).isEqualTo(1);
         // AND — the re-derive ran: the counter is the small post-compact estimate, not the 260000
-        // AddResult value a flag reset on the skip would leave behind
+        // AddResult value a providerUsageStale reset on the skip would leave behind
         assertThat(memory.getTotalTokenUsed()).isEqualTo(ChatMessageUtil.estimateTokens(memory.getCopy()));
         assertThat(memory.getTotalTokenUsed()).isLessThan(260000);
         // AND — the static messages were rebuilt exactly once (both directions of "genau einmal")

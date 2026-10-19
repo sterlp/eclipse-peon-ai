@@ -36,7 +36,12 @@ public class CompactSessionTool extends AbstractTool {
                                 : "(nothing preserved)");
                 onTool(TOOL_MESSAGE_PREFIX + " for " + agent.getName()
                     + ". (" + StringUtil.humanElapsed(elapsedMillis) + ")" + " " + StringUtil.charsSuffix(toolResult));
-                request.markCompacted();
+                // R-CC-18 (ADR-0070): the consequences of the compact hang on the runner — this
+                // tool. The next addResult's provider inputTokenCount describes the PRE-compact
+                // context, so the counter must be derived from the (small) post-compact memory
+                request.getMemory().markProviderUsageStale();
+                request.getMemory().reevaluateTokens();
+                request.staticMessages(agent.buildStaticMessages(monitor));
                 // R-CIB-6: the tool result carries the same numbers as the log (resultLine), so the
                 // LLM knows in the next turn what the compact did.
                 yield toolResult;
