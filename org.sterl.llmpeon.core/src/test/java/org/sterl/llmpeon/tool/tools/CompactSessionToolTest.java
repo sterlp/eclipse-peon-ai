@@ -322,7 +322,7 @@ class CompactSessionToolTest {
         assertThat(tools).anySatisfy(line -> assertThat(line)
                 .contains("skipped because of small context")
                 .contains("memory=")
-                .contains("(estimate=false)")
+                .contains("(estimate=true)")
                 .contains("model=80211")
                 .contains(" estimate="));
     }

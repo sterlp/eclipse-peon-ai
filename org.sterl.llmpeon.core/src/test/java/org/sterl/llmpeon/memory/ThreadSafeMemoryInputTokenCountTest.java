@@ -9,31 +9,41 @@ import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 
 /**
- * R-CC-1 (docs/compact-context-counter.md, ADR-0055): the token counter measures the CONTEXT
- * SIZE of the last real prompt (provider input tokens) — never the COST (input + output).
- * Without provider usage the counter falls back to the chars/3 estimate.
+ * R-CC-1 (docs/compact-context-counter.md, ADR-0055) + R-CC-19 (docs/compact.md): the token
+ * counter measures the CONTEXT SIZE — the provider input tokens of the last request PLUS the
+ * chars/3 estimate of the messages appended since (forward-looking), never the COST
+ * (input + output). Without provider usage the counter falls back to the chars/3 estimate of
+ * the whole memory.
  */
 class ThreadSafeMemoryInputTokenCountTest {
 
-    // R-CC-1
+    // R-CC-19 (R-CC-1: the value is input + appended estimate, never the cost)
     @Test
-    void countsInputNotTotal() {
-        // GIVEN — a fresh memory and a provider response that reports input and total separately
+    void countsInputPlusAppended() {
+        // GIVEN — a fresh memory; the provider reports input=100000 and the round appends a
+        // 100k-char tool result that the provider value does NOT include
         var memory = new ThreadSafeMemory();
+        var toolResult = ToolExecutionResultMessage.from("1", "readFile", "X".repeat(100000));
+        var aiMessage = AiMessage.from("calling readFile");
 
         // WHEN — the response result is added
         memory.addResult(ChatResponse.builder()
-                .aiMessage(AiMessage.from("done"))
-                .tokenUsage(new TokenUsage(1000, 5000, 6000))
-                .build(), List.of());
+                .aiMessage(aiMessage)
+                .tokenUsage(new TokenUsage(100000, 5000, 105000))
+                .build(), List.of(toolResult));
 
-        // THEN — the counter holds the context size (input), not the cost (input + output)
-        assertThat(memory.getTotalTokenUsed()).isEqualTo(1000);
+        // THEN — the counter is the provider input PLUS the chars/3 estimate of the appended
+        // messages (≈ 100000 + 33333), not the input alone
+        assertThat(memory.getTotalTokenUsed())
+                .isEqualTo(100000 + ChatMessageUtil.estimateTokens(List.of(aiMessage, toolResult)));
+        assertThat(memory.getTotalTokenUsed()).isGreaterThan(100000);
+        assertThat(memory.isTokenEstimate()).isTrue();
     }
 
     // R-CC-1
@@ -50,6 +60,22 @@ class ThreadSafeMemoryInputTokenCountTest {
         // THEN — the counter falls back to the chars/3 estimate of the actual memory
         assertThat(memory.getTotalTokenUsed()).isEqualTo(ChatMessageUtil.estimateTokens(memory.getCopy()));
         assertThat(memory.getTotalTokenUsed()).isGreaterThan(0);
+    }
+
+    // R-CC-19
+    @Test
+    void estimateFallbackDoesNotDoubleCount() {
+        // GIVEN — multiple rounds without provider usage (local model)
+        var memory = new ThreadSafeMemory();
+
+        // WHEN — two rounds append messages, each re-deriving the fallback estimate
+        memory.addResult(ChatResponse.builder().aiMessage(AiMessage.from("A".repeat(3000))).build(), List.of());
+        memory.addResult(ChatResponse.builder().aiMessage(AiMessage.from("B".repeat(3000))).build(), List.of());
+
+        // THEN — the counter is the chars/3 estimate of the WHOLE memory (recomputed, not added
+        // on top of the previous estimate — no double counting)
+        assertThat(memory.getTotalTokenUsed()).isEqualTo(ChatMessageUtil.estimateTokens(memory.getCopy()));
+        assertThat(memory.isTokenEstimate()).isTrue();
     }
 
     // R-CC-10

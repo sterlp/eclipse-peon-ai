@@ -92,9 +92,10 @@ class ThreadSafeMemoryTest extends AbstractMemoryFileTest {
                 .aiMessage(AiMessage.from("C"))
                 .tokenUsage(new TokenUsage(9000, 100, 9100))
                 .build());
-        // R-CC-1
-        // counter = provider INPUT tokens (context size), not total (cost)
-        assertThat(subject.getTotalTokenUsed()).isEqualTo(9000);
+        // R-CC-19
+        // counter = provider input + chars/3 estimate of the appended message (forward-looking)
+        assertThat(subject.getTotalTokenUsed())
+                .isEqualTo(9000 + ChatMessageUtil.estimateTokens(List.of(AiMessage.from("C"))));
 
         // WHEN
         subject.reevaluateTokens();

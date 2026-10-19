@@ -21,11 +21,13 @@ import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
@@ -214,6 +216,33 @@ class HandleToolLoopCompactComponentTest {
         assertThat(compactCalls.get()).isEqualTo(1);
     }
 
+    // R-CC-19
+    @Test
+    @Timeout(10)
+    void countsAppendedMessagesOfTheFinishedRound() {
+        // GIVEN — the provider input (155000) is under budget (160000), but the round appends a
+        // large tool result (30k chars ≈ 10k tokens) that the provider value does not include
+        var memory = seed(new ThreadSafeMemory(), 5);
+        var bigResult = ToolExecutionResultMessage.from("1", "readFile", "X".repeat(30000));
+        memory.addResult(ChatResponse.builder()
+                .aiMessage(AiMessage.from("calling readFile"))
+                .tokenUsage(new TokenUsage(155000, 0, 155000))
+                .build(), List.of(bigResult));
+        // the forward-looking counter is now 155000 + estimate(appended) — over budget
+        assertThat(memory.getTotalTokenUsed()).isGreaterThan(BUDGET);
+        var compactCalls = new AtomicInteger();
+        var agent = agent(BUDGET, compactCalls, memory,
+                CompactResult.compacted(new CompactResult.Stats(7, 57000, 10, CompactResult.Stage.NONE,
+                        0, 30, "compact-model", 5, 155000, false), "summary"));
+        var req = request(memory, agent, new ArrayList<>());
+
+        // WHEN — the round ends
+        new HandleToolLoopCompactComponent().handle(req, true);
+
+        // THEN — the direct compact fires: the appended tool result pushed the counter over budget
+        assertThat(compactCalls.get()).isEqualTo(1);
+    }
+
     // R-CC-18
     @Test
     @Timeout(10)
@@ -298,11 +327,17 @@ class HandleToolLoopCompactComponentTest {
         return memory;
     }
 
-    /** Sets the counter to a real provider value (adds one AI message to the history). */
+    /**
+     * Sets the counter to EXACTLY {@code tokens} — R-CC-19 makes addResult forward-looking
+     * (provider input + chars/3 estimate of the appended message), so the appended AI message's
+     * estimate is netted out of the provider input. The gate tests assert on the exact value.
+     */
     private static void setCounter(ThreadSafeMemory memory, int tokens) {
+        var ai = AiMessage.from("counter seed");
+        var input = tokens - ChatMessageUtil.estimateTokens(List.of(ai));
         memory.addResult(ChatResponse.builder()
-                .aiMessage(AiMessage.from("counter seed"))
-                .tokenUsage(new TokenUsage(tokens, 0, tokens))
+                .aiMessage(ai)
+                .tokenUsage(new TokenUsage(input, 0, input))
                 .build(), List.of());
     }
 

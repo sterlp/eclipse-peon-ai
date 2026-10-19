@@ -75,7 +75,8 @@ beim Compact verworfen.
 (Kosten) fließt **nie** in den Kontext-Zähler — Header ↑↓ bleibt Kosten (ADR-0004).
 
 - GIVEN Response `TokenUsage(input=1000, output=5000, total=6000)` WHEN `addResult` THEN
-  Zähler wächst um **1000**. *(Test: `ThreadSafeMemoryInputTokenCountTest#countsInputNotTotal`)*
+  Zähler = **1000** + Schätzung der angehängten Messages (R-CC-19) — die 5000 Ausgabe-Tokens
+  fließen **nie** ein. *(Test: `ThreadSafeMemoryInputTokenCountTest#countsInputPlusAppended`)*
 - GIVEN Response ohne TokenUsage WHEN `addResult` THEN Estimate (chars/3). *(Test:
   `ThreadSafeMemoryInputTokenCountTest#fallsBackToEstimate`)*
 
@@ -398,6 +399,33 @@ die Folgen eines Compacts erledigt, wer ihn ausführt (Tool bzw. Komponente) —
 nichts mehr über Compact. Siehe [compact-architektur.md](compact-architektur.md) und
 [ADR-0070](adr/0070-compact-decision-in-one-component.md).
 
+
+### R-CC-19 — Der Zähler ist vorausschauend: Provider-Input **plus** angehängte Messages ✅ done (2026-10-19)
+
+`totalTokenUsed` beschreibt die Kontextgröße **so wie sie jetzt aussieht**, nicht nur den letzten
+Provider-Call: Provider-`inputTokenCount()` des letzten Requests **plus** die chars/3-Schätzung aller
+seither angehängten Messages (AI-Message mit den Tool-Calls — sie geht beim nächsten Request wieder
+mit — und die Tool-Results dieser Runde). `addResult` setzt den Wert nach dem Append,
+`tokenIsEstimate` ist danach `true`; `lastProviderInputTokens`/die Diagnose bleiben unverändert
+(reiner Beobachtungswert, R-CC-10).
+
+**Warum:** der Provider-Wert ist per Definition der **vorige** Request — die Ergebnisse der gerade
+beendeten Tool-Runde fehlen darin. Ein einzelnes großes Tool-Result (200k-`readFile`, breiter
+`grep`) hebt den **nächsten** Request über das Limit, während der Zähler noch unter dem Budget
+steht: der Direkt-Compact (R-CC-18.1) feuert nicht und der Call stirbt am Modell-Limit
+(`exceed_context_size_error`). Dieselbe Fehlerklasse, gegen die R-CC-18 gebaut wurde — R-CC-18
+allein heilt sie nicht, weil es den veralteten Wert liest.
+
+- GIVEN Provider meldet `input=100000` und die Runde hängt 100.000 Zeichen an
+  WHEN danach ein Gate prüft THEN ist `used` ≈ 100.000 + 33.333 (chars/3), nicht 100.000.
+  *(Test: `ThreadSafeMemoryInputTokenCountTest#countsInputPlusAppended`)*
+- GIVEN `used` noch unter Budget, aber `used + angehängte Schätzung` darüber
+  WHEN die Tool-Runde endet THEN kompaktiert R-CC-18.1 direkt.
+  *(Test: `HandleToolLoopCompactComponentTest#countsAppendedMessagesOfTheFinishedRound`)*
+- GIVEN mehrere Runden ohne Provider-Usage (lokales Modell)
+  WHEN `addResult` läuft THEN bleibt der Fallback Estimate über die **ganze** Memory (kein
+  Doppelzählen der bereits geschätzten Messages).
+  *(Test: `ThreadSafeMemoryInputTokenCountTest#estimateFallbackDoesNotDoubleCount`)*
 
 ## Info (2026-09-25, Paul — „China API leak", nur notiert, kein Bau)
 
