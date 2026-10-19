@@ -149,8 +149,9 @@ THEN kein zusätzlicher Reconnect (Compare).
 Gleicher `workDir` für zwei Projekte (Monorepo unter einem Git-Root): auch hier kein Reconnect —
 aber der Kontext (Mapping/Label) folgt dem **aktiven** Projekt, siehe R-CG-15.
 
-Invarianten: exakt **ein** Peon-`serve --mcp` pro workDir; der Daemon gehört Codegraph — Peon
-startet/tötet ihn nie (Index-State, lebt über Peon hinweg). *Durchgesetzt seit 2026-10-18 über die
+Invarianten: exakt **ein** Peon-`serve --mcp` pro workDir. Peon beendet beim Wechsel des workDir
+den **eigenen** Kindprozess (Client-Close → Transport-Close → `process.destroy()`), führt aber nie
+`install`/`init`/`index` aus (R-CG-9) — der Index-State gehört Codegraph. *Durchgesetzt seit 2026-10-18 über die
 Ownership aus [ADR-0069](adr/0069-shared-mcp-connection-per-server.md): der Connection-Service hält
 den `McpService` (`connect()` genau einmal), alle Registries adoptieren ihn. Vorher baute jede
 Registry ihre eigene Verbindung → zwei Prozesse (Bug, `fe583895`).* *(Umsetzungs-Klarstellung: Trigger

@@ -138,7 +138,7 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
 
         query = FileUtils.normalizePath(query);
         final var matcher = StringMatcher.wildCardMatcher(query);
-        final Map<String, String> matches = new LinkedHashMap<>();
+        final Map<String, EclipseUtil.ProjectPathEntry> matches = new LinkedHashMap<>();
 
         var project = EclipseUtil.findOpenProject(projectName);
         var scope = project.map(List::of)
@@ -160,14 +160,16 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
             suffix = "Searched: " + searchedScope + " · pattern: " + matcher.getPattern() + "\n"
                     + "Use findJavaType for Java classes or " + LIST_WORKSPACE_NAME + " to explore the project structure. Try a wildcard e.g. *folder*FileName*.java or grepWorkspaceFiles for content search.";
         }
-        String result = AiReponseBuilder.searchComplete(new ArrayList<>(matches.values()), limit, suffix);
+        var paths = new ArrayList<String>(matches.size());
+        for (var entry : matches.values()) paths.add(entry.path());
+        String result = AiReponseBuilder.searchComplete(paths, limit, suffix);
         onTool("Search workspace " + StringUtil.trimToEmpty(projectName) + " for " + query 
                 + " returned " + matches.size() + " results." + " " + StringUtil.charsSuffix(result));
         return result;
     }
 
     private void searchScope(List<IProject> scope, StringMatcher matcher, int limit,
-            Map<String, String> results) {
+            Map<String, EclipseUtil.ProjectPathEntry> results) {
         for (IProject project : scope) {
             searchProjectFor(project, matcher, limit, results);
             if (results.size() >= limit) break;
@@ -185,7 +187,7 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
     }
 
     private void searchProjectFor(IProject project, StringMatcher matcher, int limit,
-            Map<String, String> results) {
+            Map<String, EclipseUtil.ProjectPathEntry> results) {
         try {
             project.accept(new IResourceVisitor() {
                 @Override
@@ -198,8 +200,9 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
                                 || matcher.match(resource.getName());
 
                         if (match && isNotDerived(file)) {
-                            var diskPath = JdtUtil.diskPathOf(resource);
-                            results.putIfAbsent(diskPath == null ? file : diskPath, file);
+                            var key = EclipseUtil.diskDedupKey(resource);
+                            results.put(key, EclipseUtil.mostSpecificEntry(
+                                    results.get(key), new EclipseUtil.ProjectPathEntry(file, project)));
                         }
                     }
                     return true;

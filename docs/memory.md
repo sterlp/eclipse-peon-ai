@@ -2,12 +2,15 @@
 
 > docs/** — insbesondere memory.md — schreibt AUSSCHLIESSLICH Jon. Agenten liefern Facts im Chat.
 
-## Stand 2026-10-19 (2) — 2.14.0 release-fertig (Branch `story/night-5-2026-10-16`, gepusht `7e1f52ef`)
+## Stand 2026-10-19 (3) — 2.14.0 **Release getriggert** (Paul), 2.14.1 spezifiziert
 
 - **2.14.0 = der ganze Nachtzyklus** (78 Commits seit 2.13.0): CHANGELOG-Eintrag vollständig
-  geschrieben (inkl. 2.13.1-Nachtrag #159). `origin/main` (2.13.1) ist gemergt, Branch gepusht.
-  **Merge nach main + Tag `2.14.0` = Paul** (er released immer selbst; release.yml setzt die Version
-  aus dem Tag, kein pom-Bump).
+  geschrieben (inkl. 2.13.1-Nachtrag #159). Paul hat den Release **getriggert** (Merge + Tag bei ihm;
+  release.yml setzt die Version aus dem Tag, kein pom-Bump). Nächster Schritt: Paul zieht die neue
+  Plugin-Version, dann 2.14.1 bauen.
+- **2.14.1-Docs stehen (❌):** R-CG-14 (Mechanik präzisiert: Generation statt Lock über den Connect) ·
+  **R-CG-15** neu · **R-WN-1…3** neu ([workspace-nesting.md](workspace-nesting.md)) — Details im
+  Backlog unten.
 - **Gates:** Core **1223/0/0/0**, OSGi **387 run / 0 F / 0 E / 49 skipped**, Tycho/Feature/
   Update-Site SUCCESS.
 - **In diesem Zyklus gebaut/gefixt:** Shell-Timeout R4 (`a68b5ce2`: Tree-Kill, eingefrorene Dauer,
@@ -20,7 +23,9 @@
   `peon-plan/` — Regel im PO-Prompt bleibt, Bestand ist nicht-konform (Grep-Inventar nötig).
 - **2.14.1-Backlog:** R-CG-14 (Dispose gewinnt, beide Connection-Services — Fix = Generation +
   `disposed`, nicht Lock über den Connect) · **R-CG-15** (Monorepo-Projektwechsel: gleicher `workDir`
-  → State-Refresh aufs aktive Projekt, kein Reconnect) · R-CIB-4 Stufe 2 (erstes
+  → State-Refresh aufs aktive Projekt, kein Reconnect) · **R-WN-1…3**
+  ([workspace-nesting.md](workspace-nesting.md): spezifischster Projekt-Pfad gewinnt, Grep zählt
+  Disk-Pfade statt Workspace-Pfade, Projekt-Info nennt Parent/enthaltene Projekte) · R-CIB-4 Stufe 2 (erstes
   `result:` statt letztem), R-CG-13 (Codegraph-Item nur bei sichtbarem `codegraph_explore`),
   R-TR-6 INFO-Text + echte Assertions in `TaggedResultTest`, Reprobe-Entscheidung.
 - **Trap 2026-10-19:** `new Status(severity, pluginId, message, throwable)` setzt in

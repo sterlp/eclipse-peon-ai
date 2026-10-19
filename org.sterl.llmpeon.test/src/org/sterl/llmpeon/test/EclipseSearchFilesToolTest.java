@@ -80,6 +80,19 @@ public class EclipseSearchFilesToolTest extends AbstractIntegrationTest {
         }
     }
 
+    private NestedProjectFixture nested;
+
+    @Before
+    public void createNestedFixture() {
+        nested = new NestedProjectFixture();
+        nested.create();
+    }
+
+    @After
+    public void destroyNestedFixture() {
+        if (nested != null) nested.destroy();
+    }
+
     @Test
     public void searchAndReadFixture() throws Exception {
         var tool = new EclipseWorkspaceReadFileTool();
@@ -212,6 +225,56 @@ public class EclipseSearchFilesToolTest extends AbstractIntegrationTest {
         } finally {
             deleteDuplicateFixtureView(duplicate);
         }
+    }
+
+    // R-WN-1
+    @Test
+    public void mostSpecificProjectPathWins() {
+        // GIVEN - one Disk file visible under three nested projects, Fixture project selected
+        var tool = selectedProjectTool();
+
+        // WHEN - workspace-wide search
+        List<String> results = resultLines(tool.eclipseSearchFiles(
+                NestedProjectFixture.MARKER_FILE, null, 0));
+
+        // THEN - delivered exactly once, under the deepest project
+        assertEquals("Expected the nested marker file exactly once under the leaf project: " + results,
+                List.of("/" + NestedProjectFixture.LEAF_NAME + "/" + NestedProjectFixture.MARKER_FILE),
+                results);
+    }
+
+    // R-WN-1
+    @Test
+    public void selectedProjectChangesOrderNotWinner() {
+        // GIVEN - the nesting root is the selected project, so it is scanned first
+        var tool = new EclipseWorkspaceReadFileTool();
+        tool.setCurrentProject(nested.root());
+
+        // WHEN - workspace-wide search
+        List<String> results = resultLines(tool.eclipseSearchFiles(
+                NestedProjectFixture.MARKER_FILE, null, 0));
+
+        // THEN - the deepest project still wins, the selection only reorders hits
+        assertEquals("Expected the leaf path although the root is scanned first: " + results,
+                List.of("/" + NestedProjectFixture.LEAF_NAME + "/" + NestedProjectFixture.MARKER_FILE),
+                results);
+    }
+
+    // R-WN-1
+    @Test
+    public void explicitProjectScopeStaysAuthoritative() {
+        // Regressionsschutz (D6): an explicit scope stays authoritative — green pre-fix
+        var tool = new EclipseWorkspaceReadFileTool();
+
+        // WHEN - search scoped to the nesting root
+        List<String> results = resultLines(tool.eclipseSearchFiles(
+                NestedProjectFixture.MARKER_FILE, NestedProjectFixture.ROOT_NAME, 0));
+
+        // THEN - the searched scope is returned as-is, no re-translation
+        assertEquals("Expected the root-scoped path without re-translation: " + results,
+                List.of("/" + NestedProjectFixture.ROOT_NAME + "/" + NestedProjectFixture.MID_NAME + "/"
+                        + NestedProjectFixture.LEAF_NAME + "/" + NestedProjectFixture.MARKER_FILE),
+                results);
     }
 
     @Test
