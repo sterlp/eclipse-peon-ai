@@ -65,6 +65,10 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   *(Nebenbefund 2026-10-18: `codegraph.md` hat `idPrefix: CG` bereits, `mcp.md` keins — beides
   ändert an diesem Problem nichts, weil R-Definitionen im Linter grundsätzlich übersprungen werden;
   `idPrefix` allein ist also kein Fix.)*
+  **Falle (2026-10-19, 2 Findings im eigenen Lauf):** eine Überschrift, die **mit einer Regel-ID
+  beginnt** (`## R-CC-18 — Nachträge …` in dieser Datei), wird als Definition geparst →
+  `PRAEFIX_FEHLT` bzw. `DOPPELT_DEFINIERT`. Punkt-Überschriften neutral formulieren (ID erst nach
+  dem ersten Wort), sonst „definiert" man eine Regel in einer Notizdatei.
 - ❓ **`AIChatView.applyTextSelection` — geändertes Verhalten bei disposed parent (Pauls WIP,
   2026-10-18, nicht committet):** das Refactoring (`if (parent == null || parent.isDisposed()) return;`)
   überspringt jetzt **auch** `uc.setTextSelection(ts)`; vorher lief die Selektion weiter, nur der
