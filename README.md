@@ -12,7 +12,7 @@ A lightweight, context-aware LLM assistant that integrates directly into your Ec
 
 ![Example](./homepage/src/assets/example.png)
 
-## Autonomus mode is back
+## Autonomous mode is back
 
 Jon and team are in the house. Single threaded for now - for best local performance.
 
@@ -96,8 +96,8 @@ Example workflows:
 - [x] **Search Files** - Find files by name across the workspace
 - [x] **Grep** - Full-text content search across all open projects
 - [x] **Build Project** - Trigger Eclipse builds and report errors/warnings
-- [x] **Run Tests** - Execute JUnit 5 tests and report failures with stack traces
-- [x] **Shell Command** - Run OS commands (git, mvn, npm, etc.)
+- [x] **Run Tests** - Run JUnit 5 tests of a Java project and report failures with stack traces (CI numbers come from Maven Surefire)
+- [x] **Shell Command** - Read-only diagnostic shell (git, mvn, npm …) with tool-side output control (char cap, regex filter) instead of shell pipes
 - [x] **Web Fetch** - Fetch URLs and convert to markdown for reading docs
 - [x] **List Projects** - Discover open projects with their type (java, maven, gradle)
 - [ ] **Git Tool** - Dedicated git operations (status, diff, commit, log) with structured output

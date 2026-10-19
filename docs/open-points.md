@@ -91,6 +91,21 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   Konstante verschoben) — Cleanup-Kandidat: Konstante nach `CompactConstants`, dann ist
   `compact`→`tool` nur noch `tool.model` (Datenmodell). Kein Verhaltensrisiko, reine Struktur.
 
+## Codegraph — SOLL/IST-Konflikt (2026-10-19, aus der Smoke-Analyse)
+
+- ❓ **R-CG-4 „exakt ein `serve --mcp` pro workDir" vs. zwei Registries:** `codegraph.md` R-CG-4 und
+  der Code-Kommentar `CodegraphConnectionService.java:97` behaupten **einen** Prozess pro workDir.
+  Der Code adressiert aber **zwei** agent-facing Registries (`PeonAiService.java:211-213`:
+  `sharedToolService` + `poAgent.getToolService()`), jede mit eigener `McpService` und eigenem
+  STDIO-Transport ⇒ deterministisch **zwei** Prozesse (auch für User-MCP-Server,
+  `PeonAiService.java:208-209`). Pauls Smoke sah einen — offen, was er damals wirklich zählte.
+  Ursache des Konflikts: R-CG-4 kennt die Registries nicht, ADR-0067 verlangt beide zu bedienen.
+  Entscheidung offen: (a) Invariante anpassen („ein Prozess je Registry"), oder (b) die zweite
+  Registry mit demselben `McpService` versorgen (`ToolService`-geteilter Service), dann stimmt R-CG-4
+  wieder. **Nicht eigenmächtig geändert** — Regeltext + Code-Kommentar widersprechen sich.
+  *(Quelle: `peon-plan/codegraph-smoke-findings.md`, ins Doc übernommen und Datei gelöscht;
+  Befunde 2–5 des Dokuments waren situativ bzw. sind mit `2a238ad4` erledigt.)*
+
 ## Bug-Fix-Backlog
 
 - ❓ **Fehlerklassen-Tabelle — R-CC-7 + ApiRetry, eine Tabelle zwei Verbraucher:** transient →
