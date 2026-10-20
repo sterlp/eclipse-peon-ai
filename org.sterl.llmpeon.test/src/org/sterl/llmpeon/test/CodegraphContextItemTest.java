@@ -21,8 +21,8 @@ import org.sterl.llmpeon.parts.ai.CodegraphContextItem;
 /**
  * R-CG-7 / R-CG-12 / R-TR-4/5: the {@link CodegraphContextItem} — {@code label()} (the chat
  * signal, non-null for all three states), {@code dedupKey()} (block start line; CONNECTED only)
- * and {@code render()} (CONNECTED = path mapping + instructions; OFF/ERROR = {@code null},
- * R-TR-4 — visibility stays with the icon + tooltip).
+ * and {@code render()} (CONNECTED = path mapping only — the instructions stay in the State as
+ * the dedup marker; OFF/ERROR = {@code null}, R-TR-4 — visibility stays with the icon + tooltip).
  * Pure unit test: a stub {@link IProject} supplies the name, disk path and nested workspace path.
  */
 public class CodegraphContextItemTest {
@@ -67,15 +67,20 @@ public class CodegraphContextItemTest {
 
     // R-CG-7
     @Test
-    public void renderConnected_hasPathMappingAndInstructions() {
-        var render = item(state(Kind.CONNECTED, "CG-SERVER-DOCS")).render();
+    public void renderConnected_hasPathMapping_notTheInstructions() {
+        // GIVEN CONNECTED with server instructions — they stay in the State (dedup marker), never in the body
+        var sut = item(state(Kind.CONNECTED, "CG-SERVER-DOCS"));
+        var render = sut.render();
         assertNotNull(render);
         var body = render.body();
         assertTrue("disk path: " + body, body.contains(DISK));
         assertTrue("real workspace path (nested project, not the name): " + body,
                 body.contains("/peon-ai/cg-proj"));
         assertTrue("mapping names the tool: " + body, body.contains("codegraph_explore"));
-        assertTrue("instructions verbatim: " + body, body.contains("CG-SERVER-DOCS"));
+        assertFalse("instructions never rendered (R-CG-7(c)): " + body, body.contains("CG-SERVER-DOCS"));
+        // AND the dedup marker still changes with the instructions (the real guarantee)
+        assertNotEquals("instructions change → new dedup key",
+                sut.dedupKey(), item(state(Kind.CONNECTED, "OTHER-DOCS")).dedupKey());
     }
 
     // R-CG-7

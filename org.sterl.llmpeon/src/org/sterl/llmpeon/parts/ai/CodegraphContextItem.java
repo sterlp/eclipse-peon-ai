@@ -9,7 +9,8 @@ import org.sterl.llmpeon.parts.shared.JdtUtil;
 
 /**
  * The Codegraph turn-context item (R-CG-7 / R-CG-12 / R-TR-4/5): one item carries the whole
- * codegraph context — project info + server instructions, but ONLY when CONNECTED.
+ * codegraph context — the disk→Eclipse path mapping, but ONLY when CONNECTED; the server
+ * instructions stay in the State as the dedup marker (R-CG-7(c)) and are never rendered.
  * OFF/ERROR render {@code null} (R-TR-4): no chat line, the state stays visible via the
  * icon + tooltip only. The {@link #label()} is the chat signal (R-CG-12) via the existing
  * {@code renderTurnContext} path; the {@link #dedupKey()} (block start line) keeps every
@@ -61,8 +62,9 @@ public class CodegraphContextItem implements ContextItem {
     }
 
     /**
-     * R-TR-4: CONNECTED → project info (disk-path mapping) + the server instructions captured at
-     * connect. OFF/ERROR and no state render {@code null} — no chat line.
+     * R-TR-4: CONNECTED → the disk-path mapping line only — the server instructions stay in the
+     * State as the dedup marker (R-CG-7(c)) and are never rendered. OFF/ERROR and no state render
+     * {@code null} — no chat line.
      */
     @Override
     @Nullable
@@ -80,23 +82,19 @@ public class CodegraphContextItem implements ContextItem {
         return "codegraph: " + name + " " + instrMark;
     }
 
-    /** (a) disk→Eclipse path mapping, (b) server instructions. */
+    /** The disk→Eclipse path mapping — the server instructions stay in the State as the dedup
+     *  marker (R-CG-7(c)) and are never rendered. */
     private String renderBody(CodegraphConnectionService.State s) {
         var project = s.project();
         var disk = project == null ? null : JdtUtil.diskPathOf(project);
         var ws = project == null ? null : JdtUtil.pathOf(project);
-        var sep = System.lineSeparator();
-        var sb = new StringBuilder();
         if (disk != null && ws != null) {
-            sb.append("codegraph_explore returns absolute disk paths under ").append(disk)
-              .append("; the eclipse*-tools use ").append(ws)
-              .append(" paths — map <").append(disk).append("/...> to ").append(ws).append("/...")
-              .append(" (paths outside the project are not translated — use the disk*-tools with the original path there).");
+            return "codegraph_explore returns absolute disk paths under " + disk
+                   + "; the eclipse*-tools use " + ws
+                   + " paths — map <" + disk + "/...> to " + ws + "/..."
+                   + " (paths outside the project are not translated — use the disk*-tools with the original path there).";
         }
-        var instr = s.instructions();
-        if (instr != null && !instr.isBlank()) sb.append(sb.isEmpty() ? "" : sep).append(instr);
-        if (sb.isEmpty()) sb.append("codegraph_explore returns absolute disk paths; the eclipse*-tools use workspace paths.");
-        return sb.toString();
+        return "codegraph_explore returns absolute disk paths; the eclipse*-tools use workspace paths.";
     }
 
     @Override

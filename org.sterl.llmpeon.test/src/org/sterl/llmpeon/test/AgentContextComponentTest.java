@@ -148,8 +148,9 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
     }
 
     /** R-CG-7: GIVEN a connected codegraph WHEN turnContext() THEN the item is present for a
-     *  non-scaffold agent, renders the instructions, and carries a non-null label (R-CG-12)
-     *  and a non-null dedupKey (state-change dedup). */
+     *  non-scaffold agent, renders the path mapping (NOT the instructions — they stay in the
+     *  State as the dedup marker), and carries a non-null label (R-CG-12) and a non-null
+     *  dedupKey (state-change dedup). */
     // R-CG-7
     @Test
     public void test_turnContext_codegraphItem_presentWhenConnected() {
@@ -166,10 +167,10 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
         // WHEN
         var items = sutConnected.turnContext();
 
-        // THEN the item is present, renders the instructions, and carries label + dedupKey
+        // THEN the item is present, does NOT render the instructions (dedup marker only), and carries label + dedupKey
         var cgItem = items.stream().filter(i -> i instanceof CodegraphContextItem).findFirst();
         assertTrue("codegraph item expected", cgItem.isPresent());
-        assertTrue("renders the instructions: " + cgItem.get().render(),
+        assertFalse("instructions never rendered (R-CG-7(c)): " + cgItem.get().render(),
                 cgItem.get().render().body().contains("CG-SERVER-DOCS"));
         assertNotNull("label drives the R-CG-12 chat signal", cgItem.get().label());
         assertNotNull("state-change dedup needs a key", cgItem.get().dedupKey());
