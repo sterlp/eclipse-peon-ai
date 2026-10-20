@@ -405,7 +405,7 @@ Ereignis-Gate (`ranTool(compactSession)` + Turn-Merker) ersatzlos.
 die 0.7-Regel lebt allein in der Delegation ([ADR-0071](adr/0071-compact-policy-owned-by-delegation.md)).
 Der Check vor dem Turn selbst ist zurück und rechnet roh: **R-CC-20**.
 
-### R-CC-20 — Vor dem Turn prüfen, bevor die frische Meldung angenommen wird ✅ done (2026-10-20, `98a0a5be` + Ordering-Pin `19340dbf`)
+### R-CC-20 — Vor dem Turn prüfen, bevor die frische Meldung angenommen wird ✅ done (2026-10-20, `98a0a5be` + Ordering-Pin `19340dbf` + Schwelle 95 % `ad3684db`)
 
 **Anlass:** R-CC-18 prüft nur **nach** einer Tool-Runde (`ToolService.executeLoop`,
 `isToolrequest`-Zweig). Ein Turn, der ohne Tools antwortet — der erste Call, ein reiner Chat-Turn,
@@ -417,10 +417,10 @@ ungeprüft in den nächsten Provider-Call. Der In-Loop-Hint fängt nur, wer wied
   darf nie durch einen Compact verschwinden — dieselbe Garantie wie für Standing Orders
   ([ADR-0010](adr/0010-standing-orders-setactiveagent-hook.md)). `call()` schickt jede gequeute
   Message als eigenen `doCall`-Turn durch, also greift der Check auch dort.
-- **R-CC-20.2 — Entscheidung:** `used > autoCompactAfter` (**rohe** Config) und Memory >
-  `MIN_COMPACT_MESSAGES` (R-CC-8) ⇒ `agent.compact(monitor)` direkt, **ein** Versuch pro Turn, kein
-  - **R-CC-20.2 — Entscheidung:** Ab 2026-10-20 (Paul): der Pre-Turn-Compact feuert bei **`used > 95 %`**
-  des rohen Budgets (`used > budget * 0.95`), strikt größer — exakt 95 % feuert nicht. Gleiche Schwelle
+- **R-CC-20.2 — Entscheidung:** Ab 2026-10-20 (Paul): der Pre-Turn-Compact feuert bei **`used > 95 %`**
+  des rohen Budgets (Integer-Mathe `budget * 95 / 100` — exakte, deterministische Schwelle ohne
+  Floating-Point), strikt
+  größer — exakt 95 % feuert nicht. Gleiche Schwelle
   wie der In-Loop-Hint, zwei Fronten, ein Wert: im Tool-Loop weiß das System nicht, was wichtig ist
   (Hint → der Agent compactet selbst), vor dem Turn wissen wir es (die frische Message) — deshalb wird
   da direkt compactiert, kein Hint am Turn-Anfang, für niemanden. Der Zähler ist vorausschauend
@@ -458,8 +458,8 @@ ungeprüft in den nächsten Provider-Call. Der In-Loop-Hint fängt nur, wer wied
   *(Test: `preTurnCompactRespectsOffSwitch`)*
 - GIVEN Memory ≤ `MIN_COMPACT_MESSAGES` WHEN über Budget THEN kein Compact (R-CC-8).
   *(Test: `preTurnCompactRespectsMinMessages`)*
-- GIVEN `used == budget * 0.95` WHEN ein Turn startet THEN kein Compact (strikt >).
-  *(Test: `preTurnCompact_atExactBudget_noFire` — Seed jetzt exakt 95 %)*
+- GIVEN `used == budget * 95 / 100` WHEN ein Turn startet THEN kein Compact (strikt >).
+  *(Test: `preTurnCompact_atExact95Percent_noFire`)*
 - GIVEN `used` zwischen 95 % und 100 % WHEN ein Turn startet THEN Compact (Schwelle seit
   2026-10-20 = 95 %, nicht 100 %). *(Test: `preTurnCompact_compactsBetween95And100`)*
 - GIVEN der Compressor wirft (z. B. `null`-Response) WHEN der Pre-Turn-Check feuert THEN `onProblem`,

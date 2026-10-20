@@ -8,7 +8,8 @@
   1. **B — stale Supplier** (`e5fa3c41`): `BuildPoAgentComponent:133` Bound-Ref → Lambda
      `() -> configuredModel.getConfig().getAutoCompactAfter()`; Test
      `delegateCompactThresholdFollowsConfigUpdate` (Live-Update nach Agent-Bau + 0 = off).
-  2. **A — R-CC-20 ✅ Pre-Turn-Check** (`98a0a5be` + Ordering-Pin `19340dbf`): `overRawBudget`
+  2. **A — R-CC-20 ✅ Pre-Turn-Check** (`98a0a5be` + Ordering-Pin `19340dbf` + **Schwelle 95 % `ad3684db`**,
+     Paul 2026-10-20: gleiche Zahl wie der In-Loop-Hint, Compact statt Hint am Turn-Anfang): `overRawBudget`
      statisch in `HandleToolLoopCompactComponent` (EINE Regel, zwei Zeitpunkte), `preTurnCompact`
      in `AbstractAgent.doCall` vor `renderTurnContext`/frischer Message. `autoCompactRetriesAfterFailure`
      2 → 3 Versuche (Turn-2-Pre-Turn-Versuch ist jetzt SOLL). Ordering-Pin: Request-Payload beweist
