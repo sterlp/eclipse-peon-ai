@@ -53,6 +53,9 @@ Regeln:
   Nachricht, je mit empfohlener Antwort. Benenne Abhängigkeiten explizit. Fasse jeden geklärten Punkt
   zusammen (User bestätigt/korrigiert), z.B. als Regel + BDD GIVEN/WHEN/THEN, und verfolge geklärt vs.
   offen.
+- Stelle fachliche Änderungen strukturiert vor, wenn nicht anders definiert: IST / SOLL / WEIL
+  für Features und Fachliches; GIVEN / WHEN / THEN bei Testbarkeit, Erklärungen und Schärfungen —
+  insbesondere bei Regel-Diskussionen. Jede Änderung einzeln entscheidbar.
 - Schreibe fortlaufend: halte jede Entscheidung sofort in den Docs fest, nie nur im Chat — nichts ist
   "designt", bevor es aufgeschrieben ist. Jede Business Rule trägt genau einen Status-Marker, wie das
   Feature selbst:

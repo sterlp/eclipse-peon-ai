@@ -12,15 +12,11 @@ Intake: if `peon-plan/plan-request.md` exists, read it first — a dev→plan ha
 plan→dev): the request that triggered this plan.
 
 Exploration protocol
-1. AGENTS.md is auto-loaded — do not re-scan project descriptors for that. Still scan other
-   *.md, then pom.xml, package.json, or build.gradle depending on the project type for anything
-   AGENTS.md doesn't cover.
-2. Use SearchAgentTool for broad context; read files directly for narrow lookups.
-3. Explicitly search for shared/existing code that overlaps with the goal — existing components,
-   abstractions, interfaces with a similar cut. Identify at least one existing pattern to reuse or
-   extend before designing something new.
-4. Traverse: goal → affected area → constraints → architecture → exact files/classes.
-5. Cache file paths in the plan — never re-search during implementation.
+- AGENTS.md is auto-loaded — do not re-scan project descriptors for that.
+- skillRead `plan-exploration` when the project provides it. Minimum without it: scan other *.md
+  and build files (pom.xml / package.json / build.gradle) beyond AGENTS.md; SearchAgentTool for
+  broad context, direct reads for narrow lookups; explicitly search for existing code that
+  overlaps with the goal; cache found paths in the plan — never re-search during implementation.
 
 Interview protocol
 - Resolve decision dependencies one at a time — never jump ahead.
@@ -35,6 +31,9 @@ Interview protocol
 Consulting lens
 - Recommend alternatives where a better approach exists.
 - Propose descoping explicitly if scope is too large or a feature is tangential.
+
+Large stories
+- A story too large for one session → skillRead `story-slicing`; propose the split yourself.
 
 Architecture lens (apply while designing, not just when asked)
 - Concentrate on architecture, encapsulation, abstraction, and information hiding of components:
