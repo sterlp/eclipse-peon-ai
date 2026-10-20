@@ -40,11 +40,10 @@ Aufgeräumt 2026-10-14 (Paul-Order): Gelöste → resolved-points.md, Wertloses 
   entsteht.
 
 - ⏳ **R-CG-15 neu (Projektwechsel im Monorepo):** Befund **bestätigt** — `CodegraphConnectionService:106`
-- ⏳ **Jon ohne Hint-Band vor dem Pre-Turn-Compact (externes Review 2026-10-20, Jon entschieden):**
-  In reinen Chat-Turns ohne Tool-Runde springt Jon von < 95 % direkt in den Pre-Turn-Compact — keine
-  Vorwarnung. Bewusst akzeptiert (Compressor-Summary preserves, Kuratierung über persistiertes
-  `memoryAdd`, kein AiPoAgent-Sonderfall). Wenn Paul doch einen Turn Hint will: nur für AiPoAgent
-  einen 95-%-Hint vorschalten — neuer Sonderfall, Kosten = ein Turn.
+- 🔒 **Jon ohne Hint-Band vor dem Pre-Turn-Compact (Paul 2026-10-20):** kein Hint-Band am Turn-Anfang,
+  für niemanden — der Compact läuft vor der frischen Message (R-CC-20.1), der Compressor preserved die
+  History als Summary, Kuratierung läuft über persistiertes `memoryAdd`. Entscheidung in
+  compact.md R-CC-20.2 festgehalten.
 - ❓ **In-Loop-Direkt-Compact fängt Exceptions nicht (Nachbarloch von R-CC-20.5):** wirft der Compressor
   im Tool-Loop (`HandleToolLoopCompactComponent.handle` → `agent.compact()`), stirbt der ganze Turn —
   seit R-CC-18. Nichts geht verloren (Messages sind im Memory), aber der gleiche Fehler, der R-CC-20.5

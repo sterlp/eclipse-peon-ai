@@ -419,12 +419,19 @@ ungeprüft in den nächsten Provider-Call. Der In-Loop-Hint fängt nur, wer wied
   Message als eigenen `doCall`-Turn durch, also greift der Check auch dort.
 - **R-CC-20.2 — Entscheidung:** `used > autoCompactAfter` (**rohe** Config) und Memory >
   `MIN_COMPACT_MESSAGES` (R-CC-8) ⇒ `agent.compact(monitor)` direkt, **ein** Versuch pro Turn, kein
-  Hint. `autoCompactAfter <= 0` = off (R-CIB-1). Danach Zähler re-derived (R-CC-2) und Static neu
-  gebaut — wie beim Direkt-Compact der Schleife (R-CC-18.1). **Kein Hint-Band vor dem Pre-Turn-Compact
-  (externes Review 2026-10-20, Jon):** ein reiner Chat-Turn ohne Tool-Runde springt von < 95 % direkt in
-  den Compact — bewusst akzeptiert, kein Sonderfall „Hint nur für AiPoAgent". Der Compressor preserves
-  den Inhalt als Summary; Jons Kuratierung läuft über `memoryAdd` (persistiert). ⏳ Rückversicherung
-  Paul: wenn Jon doch erst einen Turn Vorwarnung bekommen soll ([open-points.md](open-points.md)).
+  - **R-CC-20.2 — Entscheidung:** Ab 2026-10-20 (Paul): der Pre-Turn-Compact feuert bei **`used > 95 %`**
+  des rohen Budgets (`used > budget * 0.95`), strikt größer — exakt 95 % feuert nicht. Gleiche Schwelle
+  wie der In-Loop-Hint, zwei Fronten, ein Wert: im Tool-Loop weiß das System nicht, was wichtig ist
+  (Hint → der Agent compactet selbst), vor dem Turn wissen wir es (die frische Message) — deshalb wird
+  da direkt compactiert, kein Hint am Turn-Anfang, für niemanden. Der Zähler ist vorausschauend
+  (R-CC-19), eine höhere Schwelle (z. B. 98 %) läge unterhalb der Schätz-Drift — ein 97-%-Turn kann am
+  Provider trotzdem sterben. **Bis 2026-10-20 lautete die Schwelle `> 100 %`** (rohe Budget). Memory >
+  `MIN_COMPACT_MESSAGES` (R-CC-8), Budget > 0 (R-CIB-1). Danach Zähler re-derived (R-CC-2) und Static
+  neu gebaut — wie beim Direkt-Compact der Schleife (R-CC-18.1). **Kein Hint-Band am Turn-Anfang, für
+  niemanden:** ein reiner Chat-Turn springt von < 95 % direkt in den Pre-Turn-Compact — bewusst, denn
+  der Compact läuft **vor** der frischen Message (R-CC-20.1) und der Compressor preserved die History
+  als Summary; die dauerhafte Kuratierung läuft über `memoryAdd` (persistiert, nach dem Compact wieder
+  injiziert). Verlust-Rest = Chat-History-Details, die noch nicht persistiert sind.
 - **R-CC-20.3 — Tool-Results werden bewusst nicht vorgezogen:** geprüft wird nie *vor* dem Einfügen
   eines Tool-Results, sondern nur nach der Runde (R-CC-18.1, mit dem vorausschauenden Zähler aus
   R-CC-19). Begründung (Paul 2026-10-19): ein stark überschießendes Tool-Result (z. B. 200k) sieht man
@@ -451,13 +458,18 @@ ungeprüft in den nächsten Provider-Call. Der In-Loop-Hint fängt nur, wer wied
   *(Test: `preTurnCompactRespectsOffSwitch`)*
 - GIVEN Memory ≤ `MIN_COMPACT_MESSAGES` WHEN über Budget THEN kein Compact (R-CC-8).
   *(Test: `preTurnCompactRespectsMinMessages`)*
+- GIVEN `used == budget * 0.95` WHEN ein Turn startet THEN kein Compact (strikt >).
+  *(Test: `preTurnCompact_atExactBudget_noFire` — Seed jetzt exakt 95 %)*
+- GIVEN `used` zwischen 95 % und 100 % WHEN ein Turn startet THEN Compact (Schwelle seit
+  2026-10-20 = 95 %, nicht 100 %). *(Test: `preTurnCompact_compactsBetween95And100`)*
 - GIVEN der Compressor wirft (z. B. `null`-Response) WHEN der Pre-Turn-Check feuert THEN `onProblem`,
   der Turn läuft **ohne** Compact weiter und die frische Message steht im Memory.
   *(Test: `preTurnCompactFailureDoesNotKillTurn`)*
 
 **Ein Ort, zwei Zeitpunkte:** die Entscheidung selbst bleibt in `HandleToolLoopCompactComponent`
-(ADR-0070) — der Pre-Turn-Fall ruft dieselbe `used > budget`-Regel, nur mit frischer, nicht
-kompaktierbarer Meldung im Anflug.
+(ADR-0070) — der Pre-Turn-Fall ruft dieselbe Schwelle wie der In-Loop-Hint (95 % des rohen Budgets),
+nur mit frischer, nicht kompaktierbarer Meldung im Anflug; im Loop ist der 95-%-Fall der Hint, am
+Turn-Anfang der direkte Compact.
 
 **Struktur:** Die Entscheidung liegt in *einer* Komponente (`HandleToolLoopCompactComponent`), und
 die Folgen eines Compacts erledigt, wer ihn ausführt (Tool bzw. Komponente) — der Tool-Loop weiß
