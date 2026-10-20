@@ -12,3 +12,5 @@ description: Context exploration before planning a new story — descriptors (*.
 - **Broad context via search; narrow lookups by reading files directly** — breit suchen, eng lesen.
 - **Traverse goal → affected area → constraints → architecture → exact files/classes.**
 - **Cache file paths in the plan** — never re-search during implementation.
+- **Explicitly search for shared/existing code that overlaps with the goal — identify at least one
+  existing pattern to reuse or extend before designing something new.**
