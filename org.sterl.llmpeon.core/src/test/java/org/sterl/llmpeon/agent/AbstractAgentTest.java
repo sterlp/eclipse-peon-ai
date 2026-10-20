@@ -34,6 +34,7 @@ import org.sterl.llmpeon.queuedmessages.UserMessageQueue;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.tool.ToolService;
+import org.sterl.llmpeon.tool.model.SimpleMessage;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -631,7 +632,8 @@ class AbstractAgentTest {
 
     /**
      * R-CC-8: with no history (0 messages) the auto-gate skips on message count even though the
-     * token threshold is exceeded — the system prompt is still built exactly once for the turn.
+     * token threshold is exceeded — the MIN guard also catches the pre-turn check (R-CC-20), so
+     * nothing compacts and the system prompt is still built exactly once for the turn.
      */
     @Test
     void systemPromptBuiltOnceWhenAutoCompactSkipsOnMessageCount() {
@@ -658,12 +660,13 @@ class AbstractAgentTest {
     }
 
     /**
-     * R-CC-8: exactly MIN_COMPACT_MESSAGES (3) messages with the token threshold exceeded — the
-     * auto-gate must NOT fire (it needs MORE than 3), so no compressor call: only the turn's LLM call.
+     * R-CC-8: exactly MIN_COMPACT_MESSAGES (3) messages with the token threshold exceeded (101 > 100)
+     * — the pre-turn gate (R-CC-20) must NOT fire (it needs MORE than 3): no compressor call, no
+     * event line, and the fresh message lands in the memory untouched.
      */
     @Test
     void autoGateNeedsMoreThanMinCompactMessages() {
-        // GIVEN — exactly 3 messages, token threshold exceeded
+        // GIVEN — exactly 3 messages, token threshold exceeded (101 > 100)
         var config = LlmConfig.builder().model("mock").autoCompactAfter(100).build();
         var callCount = new AtomicInteger();
         var mockModel = streamMock.buildMock(r -> {
@@ -675,23 +678,32 @@ class AbstractAgentTest {
         };
         memory.add(UserMessage.from("m1"));
         memory.add(AiMessage.from("m2"));
-        memory.add(UserMessage.from("m3"));
+        memory.add(AiMessage.from("m3"));
         var agent = new AbstractAgent(
                 new ConfiguredChatModel(config, mockModel), new ToolService(), memory) {
             @Override public String getName() { return "test"; }
             @Override public String getSystemPrompt() { return "test"; }
         };
+        var toolLines = new ArrayList<String>();
 
         // WHEN — one turn
-        agent.call("test", monitor -> {});
+        agent.call("test", new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onTool(String message) { toolLines.add(message); }
+        });
 
-        // THEN — the auto-gate did not fire (3 is not > 3): only the turn's LLM call, no compressor
+        // THEN — the pre-turn gate did not fire (3 is not > 3): only the turn's LLM call …
         assertThat(callCount.get()).isEqualTo(1);
+        // AND — no compact event line …
+        assertThat(toolLines).noneMatch(l -> l.contains("Pre-turn compact"));
+        // AND — the fresh message and the full history are untouched in the memory
+        assertThat(agent.hasUserText("test")).isTrue();
+        assertThat(memory.size()).isEqualTo(5); // 3 seeded + the fresh message + the turn's AI response
     }
     /**
-     * R-CIB-1: autoCompactAfter <= 0 means "off" (like the Hint) — even with more than
-     * MIN_COMPACT_MESSAGES and the token threshold exceeded, the auto-gate must NOT fire:
-     * only the turn's LLM call, no compressor call.
+     * R-CIB-1: autoCompactAfter <= 0 means "off" — even with more than MIN_COMPACT_MESSAGES and
+     * the token threshold exceeded (101 > 0), the pre-turn gate (R-CC-20) must NOT fire: no
+     * compressor call, no event line, and the fresh message lands in the memory untouched.
      */
     @Test
     void compactWithZeroBudget_gateOff() {
@@ -714,12 +726,21 @@ class AbstractAgentTest {
             @Override public String getName() { return "test"; }
             @Override public String getSystemPrompt() { return "test"; }
         };
+        var toolLines = new ArrayList<String>();
 
         // WHEN — one turn
-        agent.call("test", monitor -> {});
+        agent.call("test", new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onTool(String message) { toolLines.add(message); }
+        });
 
-        // THEN — the auto-gate is off (budget <= 0): only the turn's LLM call, no compressor
+        // THEN — the pre-turn gate is off (budget <= 0): only the turn's LLM call …
         assertThat(callCount.get()).isEqualTo(1);
+        // AND — no compact event line …
+        assertThat(toolLines).noneMatch(l -> l.contains("Pre-turn compact"));
+        // AND — the fresh message and the full history are untouched in the memory
+        assertThat(agent.hasUserText("test")).isTrue();
+        assertThat(memory.size()).isEqualTo(6); // 4 seeded + the fresh message + the turn's AI response
     }
 
 
