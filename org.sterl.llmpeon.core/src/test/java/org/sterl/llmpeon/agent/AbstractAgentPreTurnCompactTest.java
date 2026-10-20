@@ -146,29 +146,45 @@ class AbstractAgentPreTurnCompactTest {
 
     // R-CC-20
     @Test
-    void preTurnCompact_atExactBudget_noFire() {
-        // GIVEN — the counter sits EXACTLY on the budget (80 000 = 80 000): the rule is a strict >
-        var memory = new ThreadSafeMemory() {
-            @Override public int getTotalTokenUsed() { return 80_000; }
-        };
-        memory.add(UserMessage.from("m1"));
-        memory.add(AiMessage.from("m2"));
-        memory.add(UserMessage.from("m3"));
-        memory.add(AiMessage.from("m4"));
-        var agent = new AbstractAgent(new ConfiguredChatModel(config(80_000), mockModel()), new ToolService(), memory) {
-            @Override public String getName() { return "test"; }
-            @Override public String getSystemPrompt() { return "test"; }
-        };
+    void preTurnCompact_atExact95Percent_noFire() {
+        // GIVEN — the counter sits EXACTLY on the 95 % band (76 000 = 95 % of 80 000): the rule is a strict >
+        var agent = agentWithCounter(80_000, 76_000);
         var toolLines = new ArrayList<String>();
         var monitor = monitor(toolLines);
 
         // WHEN
         agent.call("fresh message", monitor);
 
-        // THEN — nothing fired (strict >), no event line
+        // THEN — nothing fired (strict >), no event line, the fresh message is in the memory
         assertThat(compactCalls.get()).isZero();
-        assertThat(toolLines).noneMatch(l -> l.contains("Pre-turn compact"));
+        assertThat(toolLines).noneMatch(l -> l.contains("Pre-turn compact") || l.contains("🗜 Compressing"));
         assertThat(agent.hasUserText("fresh message")).isTrue();
+    }
+
+    // R-CC-20
+    @Test
+    void preTurnCompact_compactsBetween95And100() {
+        // GIVEN — the counter is just over the 95 % band (76 001 > 95 % of 80 000), still under 100 %
+        var agent = agentWithCounter(80_000, 76_001);
+        var toolLines = new ArrayList<String>();
+        var monitor = monitor(toolLines);
+
+        // WHEN
+        agent.call("fresh message", monitor);
+
+        // THEN — the pre-turn compact fired once …
+        assertThat(compactCalls.get()).isEqualTo(1);
+        // AND — the event line names the agent and the reason (R-CC-10)
+        assertThat(toolLines).anyMatch(l -> l.startsWith("🗜 Pre-turn compact for"));
+        // AND — the fresh message survived the compact
+        assertThat(agent.hasUserText("fresh message")).isTrue();
+        // AND — compacted BEFORE the provider call: the main-model request no longer carries the seed
+        //      (RED under the old 100 % threshold — 76 001 < 80 000 would not have fired)
+        var userTexts = firstMainRequest().messages().stream()
+                .filter(m -> m instanceof UserMessage)
+                .map(m -> ChatMessageUtil.toString(((UserMessage) m).contents()).stripTrailing())
+                .toList();
+        assertThat(userTexts).noneMatch("m1"::equals);
     }
 
     // R-CC-20
@@ -214,6 +230,21 @@ class AbstractAgentPreTurnCompactTest {
                 .tokenUsage(new TokenUsage(90_000, 0, 90_000))
                 .build());
         return agent;
+    }
+
+    /** A 4-message history (m1–m4) whose token counter is pinned to {@code used}, budget {@code budget}. */
+    private AbstractAgent agentWithCounter(int budget, int used) {
+        var memory = new ThreadSafeMemory() {
+            @Override public int getTotalTokenUsed() { return used; }
+        };
+        memory.add(UserMessage.from("m1"));
+        memory.add(AiMessage.from("m2"));
+        memory.add(UserMessage.from("m3"));
+        memory.add(AiMessage.from("m4"));
+        return new AbstractAgent(new ConfiguredChatModel(config(budget), mockModel()), new ToolService(), memory) {
+            @Override public String getName() { return "test"; }
+            @Override public String getSystemPrompt() { return "test"; }
+        };
     }
 
     private LlmConfig config(int budget) {

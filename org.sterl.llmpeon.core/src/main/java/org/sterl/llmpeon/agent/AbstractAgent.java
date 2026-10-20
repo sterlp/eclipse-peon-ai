@@ -302,7 +302,7 @@ public abstract class AbstractAgent implements AiAgent {
     protected ChatResponse doCall(String message, AiMonitor monitor) {
         monitor = AiMonitor.nullSafety(monitor);
         monitor.onCallStart(message);
-        preTurnCompact(monitor); // R-CC-20: over the raw budget — compact BEFORE the fresh message enters
+        preTurnCompact(monitor); // R-CC-20.2: over 95 % of the raw budget, before the fresh message enters
         // Inject turn-scoped context on every turn (idempotent via contains-check)
         var userMessages = renderTurnContext(memory, turnContextSupplier, monitor);
 
@@ -330,12 +330,14 @@ public abstract class AbstractAgent implements AiAgent {
     }
 
     /**
-     * R-CC-20: the pre-turn over-budget check — the same rule as the in-loop direct compact
-     * (R-CC-18.1), run before the fresh user message enters the memory, so a fresh message is
-     * never lost to a compact (ADR-0010). One attempt per turn, no hint, no retry.
+     * R-CC-20.2: the pre-turn over-budget check — over the 95 % band of the raw budget
+     * ({@link HandleToolLoopCompactComponent#overHintBand(int, int, int)}), run before the fresh
+     * user message enters the memory, so a fresh message is never lost to a compact (ADR-0010).
+     * One attempt per turn, no hint, no retry. The in-loop direct compact keeps its own 100 % rule
+     * (R-CC-18.1).
      */
     private void preTurnCompact(AiMonitor monitor) {
-        if (!HandleToolLoopCompactComponent.overRawBudget(memory.getTotalTokenUsed(),
+        if (!HandleToolLoopCompactComponent.overHintBand(memory.getTotalTokenUsed(),
                 configuredModel.getConfig().getAutoCompactAfter(), memory.size())) return;
         CompactResult result;
         try {

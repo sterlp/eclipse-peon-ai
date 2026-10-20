@@ -23,9 +23,10 @@ import dev.langchain4j.data.message.UserMessage;
  * {@code attemptedDirect} flag gives "one direct attempt per turn" (R-CC-18.1) without leaking
  * into sub-loops or the next turn.</p>
  *
- * <p><b>One decision, two time points</b> (R-CC-20): the over-budget rule
- * {@link #overRawBudget(int, int, int)} is the same in the tool loop and in the pre-turn check
- * at the start of {@code AbstractAgent.doCall} — the two callers never diverge.</p>
+ * <p><b>Two rules, two time points</b>: the in-loop direct compact applies
+ * {@link #overRawBudget(int, int, int)} (over the raw config budget, R-CC-18.1), the pre-turn check
+ * at the start of {@code AbstractAgent.doCall} applies {@link #overHintBand(int, int, int)} (over the
+ * 95 % band, R-CC-20.2) — each caller uses its own rule, they never share a threshold.</p>
  */
 public class HandleToolLoopCompactComponent {
 
@@ -33,14 +34,25 @@ public class HandleToolLoopCompactComponent {
     private boolean attemptedDirect = false;
 
     /**
-     * The ONE over-budget rule, shared by the in-loop direct compact (R-CC-18.1) and the
-     * pre-turn check (R-CC-20): over the RAW config budget with a compactable history
-     * (R-CC-8) and the switch on (R-CIB-1: 0 = off). The caller runs the consequences
-     * (ADR-0070).
+     * The in-loop over-budget rule (R-CC-18.1): over the RAW config budget with a compactable
+     * history (R-CC-8) and the switch on (R-CIB-1: 0 = off). The caller runs the consequences
+     * (ADR-0070). The pre-turn check uses {@link #overHintBand(int, int, int)} (R-CC-20.2).
      */
     public static boolean overRawBudget(int used, int budget, int messageCount) {
         return budget > 0 // R-CIB-1: 0 = off
                 && used > budget // raw config — the PO slave factor applies only before a new task
+                && messageCount > CompactConstants.MIN_COMPACT_MESSAGES; // R-CC-8
+    }
+
+    /**
+     * R-CC-20.2: the 95 % band of the raw budget — the same percentage the in-loop hint uses
+     * (R-CC-18.2), strict: exactly 95 % does not fire. Integer math on purpose:
+     * {@code budget * 95L / 100} is the exact floor of 95 % with no floating-point rounding,
+     * so the threshold is deterministic for every budget.
+     */
+    public static boolean overHintBand(int used, int budget, int messageCount) {
+        return budget > 0 // R-CIB-1: 0 = off
+                && used > budget * 95L / 100 // strict >, exact — not the double band below
                 && messageCount > CompactConstants.MIN_COMPACT_MESSAGES; // R-CC-8
     }
 
