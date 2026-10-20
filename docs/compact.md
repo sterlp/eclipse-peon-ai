@@ -405,7 +405,7 @@ Ereignis-Gate (`ranTool(compactSession)` + Turn-Merker) ersatzlos.
 die 0.7-Regel lebt allein in der Delegation ([ADR-0071](adr/0071-compact-policy-owned-by-delegation.md)).
 Der Check vor dem Turn selbst ist zurück und rechnet roh: **R-CC-20**.
 
-### R-CC-20 — Vor dem Turn prüfen, bevor die frische Meldung angenommen wird ❌ specified (Paul 2026-10-19)
+### R-CC-20 — Vor dem Turn prüfen, bevor die frische Meldung angenommen wird ✅ done (2026-10-20, `98a0a5be` + Ordering-Pin `19340dbf`)
 
 **Anlass:** R-CC-18 prüft nur **nach** einer Tool-Runde (`ToolService.executeLoop`,
 `isToolrequest`-Zweig). Ein Turn, der ohne Tools antwortet — der erste Call, ein reiner Chat-Turn,

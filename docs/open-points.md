@@ -33,6 +33,11 @@ Aufgeräumt 2026-10-14 (Paul-Order): Gelöste → resolved-points.md, Wertloses 
   ist neu: mehrere Delegationen hintereinander können mehrere Compressor-Calls auslösen. Falls das zu
   teuer ist: Faktor anheben (eine Konstante in `PoDelegateTool`) oder nur bei einem Themenwechsel
   compacten. Rückversicherung Paul.
+- ❓ **Test-Fixture-Duplikat (Da-Dok CONCERNS 2, 2026-10-20):** StreamMock/monitor/ProbeTool-Fixture
+  in ≥3 core-Testklassen nur namentlich dupliziert (`AbstractAgentPreTurnCompactTest`,
+  `AbstractAgentCompactResultTest`, `AiDeveloperAgentTest`). Bagatelle — eigener Micro-Zyklus
+  (gemeinsame Test-Fixture im core) oder weiterleben? Jon-Empfehlung: erst wenn die vierte Kopie
+  entsteht.
 
 - ⏳ **R-CG-15 neu (Projektwechsel im Monorepo):** Befund **bestätigt** — `CodegraphConnectionService:106`
   kehrt bei gleichem `workDir` zurück, `State.project` bleibt A, `CodegraphContextItem` mappt weiter A.
