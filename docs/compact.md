@@ -420,7 +420,11 @@ ungeprüft in den nächsten Provider-Call. Der In-Loop-Hint fängt nur, wer wied
 - **R-CC-20.2 — Entscheidung:** `used > autoCompactAfter` (**rohe** Config) und Memory >
   `MIN_COMPACT_MESSAGES` (R-CC-8) ⇒ `agent.compact(monitor)` direkt, **ein** Versuch pro Turn, kein
   Hint. `autoCompactAfter <= 0` = off (R-CIB-1). Danach Zähler re-derived (R-CC-2) und Static neu
-  gebaut — wie beim Direkt-Compact der Schleife (R-CC-18.1).
+  gebaut — wie beim Direkt-Compact der Schleife (R-CC-18.1). **Kein Hint-Band vor dem Pre-Turn-Compact
+  (externes Review 2026-10-20, Jon):** ein reiner Chat-Turn ohne Tool-Runde springt von < 95 % direkt in
+  den Compact — bewusst akzeptiert, kein Sonderfall „Hint nur für AiPoAgent". Der Compressor preserves
+  den Inhalt als Summary; Jons Kuratierung läuft über `memoryAdd` (persistiert). ⏳ Rückversicherung
+  Paul: wenn Jon doch erst einen Turn Vorwarnung bekommen soll ([open-points.md](open-points.md)).
 - **R-CC-20.3 — Tool-Results werden bewusst nicht vorgezogen:** geprüft wird nie *vor* dem Einfügen
   eines Tool-Results, sondern nur nach der Runde (R-CC-18.1, mit dem vorausschauenden Zähler aus
   R-CC-19). Begründung (Paul 2026-10-19): ein stark überschießendes Tool-Result (z. B. 200k) sieht man
@@ -428,6 +432,15 @@ ungeprüft in den nächsten Provider-Call. Der In-Loop-Hint fängt nur, wer wied
   Ein Tool-Result darf also ins Compact laufen; sein Inhalt ist nicht verloren.
 - **R-CC-20.4 — Queued Messages:** keine Sonderbehandlung. Eine während des Laufs injizierte
   `!`-Message ist nicht geschützt — dieser Fall wird bewusst ignoriert.
+- **R-CC-20.5 — Ein Compact-Fehler killt den Turn nicht (externes Review 2026-10-20):** Der Compressor
+  kann werfen — Netz-/API-Fehler aus `chatModel.callBlocking` propagieren, eine `null`-Response wirft
+  `IllegalStateException` (`CompactService.compact`). Nur eine leere Summary ist ein `FAILED_EMPTY`-Status.
+  Fängt `preTurnCompact` nichts, bricht `doCall` ab, **bevor** die frische Message ins Memory geht, und
+  `call()` rettet nur die Queue — die Meldung ist weg. SOLL: der Pre-Turn-Compact läuft in try/catch; bei
+  einem Fehler `onProblem` melden und **ohne Compact weitermachen** (der Kontext ist nur über Budget, das
+  Modellfenster ist noch nicht voll — der Provider-Call ist der ehrliche Ausgang, wie beim FAILED_EMPTY).
+  Dasselbe Loch existiert seit R-CC-18 auch im In-Loop-Direkt-Compact (Turn stirbt, nichts verloren) —
+  bewusst nicht in diesem Fix ([open-points.md](open-points.md)).
 
 - GIVEN `used` 90 000 und Budget 80 000 WHEN ein neuer Turn startet THEN ist compactiert, **bevor**
   der Provider-Call rausgeht, und die frische User-Message steht danach im Memory.
@@ -438,6 +451,9 @@ ungeprüft in den nächsten Provider-Call. Der In-Loop-Hint fängt nur, wer wied
   *(Test: `preTurnCompactRespectsOffSwitch`)*
 - GIVEN Memory ≤ `MIN_COMPACT_MESSAGES` WHEN über Budget THEN kein Compact (R-CC-8).
   *(Test: `preTurnCompactRespectsMinMessages`)*
+- GIVEN der Compressor wirft (z. B. `null`-Response) WHEN der Pre-Turn-Check feuert THEN `onProblem`,
+  der Turn läuft **ohne** Compact weiter und die frische Message steht im Memory.
+  *(Test: `preTurnCompactFailureDoesNotKillTurn`)*
 
 **Ein Ort, zwei Zeitpunkte:** die Entscheidung selbst bleibt in `HandleToolLoopCompactComponent`
 (ADR-0070) — der Pre-Turn-Fall ruft dieselbe `used > budget`-Regel, nur mit frischer, nicht

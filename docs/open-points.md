@@ -40,6 +40,15 @@ Aufgeräumt 2026-10-14 (Paul-Order): Gelöste → resolved-points.md, Wertloses 
   entsteht.
 
 - ⏳ **R-CG-15 neu (Projektwechsel im Monorepo):** Befund **bestätigt** — `CodegraphConnectionService:106`
+- ⏳ **Jon ohne Hint-Band vor dem Pre-Turn-Compact (externes Review 2026-10-20, Jon entschieden):**
+  In reinen Chat-Turns ohne Tool-Runde springt Jon von < 95 % direkt in den Pre-Turn-Compact — keine
+  Vorwarnung. Bewusst akzeptiert (Compressor-Summary preserves, Kuratierung über persistiertes
+  `memoryAdd`, kein AiPoAgent-Sonderfall). Wenn Paul doch einen Turn Hint will: nur für AiPoAgent
+  einen 95-%-Hint vorschalten — neuer Sonderfall, Kosten = ein Turn.
+- ❓ **In-Loop-Direkt-Compact fängt Exceptions nicht (Nachbarloch von R-CC-20.5):** wirft der Compressor
+  im Tool-Loop (`HandleToolLoopCompactComponent.handle` → `agent.compact()`), stirbt der ganze Turn —
+  seit R-CC-18. Nichts geht verloren (Messages sind im Memory), aber der gleiche Fehler, der R-CC-20.5
+  heilt, gehört auch hier hin. Scope bewusst nicht im R-CC-20.5-Fix erweitert.
   kehrt bei gleichem `workDir` zurück, `State.project` bleibt A, `CodegraphContextItem` mappt weiter A.
   SOLL geschrieben: Verbindung bleibt, State-Refresh auf B. Nebenwirkung, die Paul kennen sollte:
   jeder Projektwechsel mit gemeinsamem Index erzeugt **eine neue Chat-Zeile** (Dedup-Key ändert sich);
