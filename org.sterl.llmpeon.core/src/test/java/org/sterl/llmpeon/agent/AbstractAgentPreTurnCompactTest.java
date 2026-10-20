@@ -24,6 +24,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 
@@ -36,11 +37,13 @@ class AbstractAgentPreTurnCompactTest {
 
     private StreamMock streamMock;
     private AtomicInteger compactCalls;
+    private List<ChatRequest> requests;
 
     @BeforeEach
     void beforeEach() {
         streamMock = new StreamMock();
         compactCalls = new AtomicInteger();
+        requests = new ArrayList<>();
     }
 
     // R-CC-20
@@ -54,10 +57,26 @@ class AbstractAgentPreTurnCompactTest {
         // WHEN — a new turn starts with a fresh message
         agent.call("fresh message", monitor);
 
-        // THEN — compacted BEFORE the provider call (the compressor ran once) …
+        // THEN — the compressor ran once …
         assertThat(compactCalls.get()).isEqualTo(1);
         // AND — the event line names the agent, the reason and the numbers (R-CC-10)
-        assertThat(toolLines).anyMatch(l -> l.startsWith("🗜 Pre-turn compact for Peon-Dev (context over budget):"));
+        assertThat(toolLines).anyMatch(l -> l.startsWith("🗜 Pre-turn compact for Peon-Dev (context over budget): compressed")
+                && l.contains(" | memory="));
+        // AND — compacted BEFORE the provider call: the main-model request no longer carries the seed …
+        var request = firstMainRequest();
+        var userTexts = request.messages().stream()
+                .filter(m -> m instanceof UserMessage)
+                .map(m -> ChatMessageUtil.toString(((UserMessage) m).contents()).stripTrailing())
+                .toList();
+        var aiTexts = request.messages().stream()
+                .filter(m -> m instanceof AiMessage)
+                .map(m -> ((AiMessage) m).text())
+                .toList();
+        assertThat(userTexts).noneMatch(t -> "m1".equals(t) || "m3".equals(t));
+        assertThat(aiTexts).noneMatch(t -> "m2".equals(t) || "m4".equals(t));
+        // … carries the summary instead, and the fresh message
+        assertThat(aiTexts).anyMatch(t -> t != null && t.contains("Summary of the session"));
+        assertThat(userTexts).anyMatch(t -> t.contains("fresh message"));
         // AND — the fresh message survived the compact and is in the memory
         assertThat(agent.hasUserText("fresh message")).isTrue();
         // AND — the summary reseeded the history
@@ -180,12 +199,23 @@ class AbstractAgentPreTurnCompactTest {
 
     private StreamingChatModel mockModel() {
         return streamMock.buildMock(r -> {
+            requests.add(r);
             if ("compact-model".equals(r.modelName())) {
                 compactCalls.incrementAndGet();
                 return ChatResponse.builder().aiMessage(AiMessage.from("Summary of the session")).build();
             }
-            return ChatResponse.builder().aiMessage(AiMessage.from("OK")).build();
+            // the provider reports the (over-budget) input tokens of the request it just saw
+            return ChatResponse.builder().aiMessage(AiMessage.from("OK"))
+                    .tokenUsage(new TokenUsage(85_000, 100, 85_100)).build();
         });
+    }
+
+    /** The first main-model request (not the compressor) — the actual provider payload. */
+    private ChatRequest firstMainRequest() {
+        return requests.stream()
+                .filter(r -> !"compact-model".equals(r.modelName()))
+                .findFirst()
+                .orElseThrow();
     }
 
     private AiMonitor monitor(List<String> toolLines) {
