@@ -171,13 +171,41 @@ class AbstractAgentPreTurnCompactTest {
         assertThat(agent.hasUserText("fresh message")).isTrue();
     }
 
+    // R-CC-20
+    @Test
+    void preTurnCompactFailureDoesNotKillTurn() {
+        // GIVEN — over the raw budget and a compressor that fails on its provider call
+        var agent = overBudgetAgent(80_000, mockModelFailingCompact());
+        var toolLines = new ArrayList<String>();
+        var problems = new ArrayList<String>();
+        var monitor = monitor(toolLines, problems);
+
+        // WHEN — the turn starts with a fresh message
+        var response = agent.call("fresh message", monitor);
+
+        // THEN — the compact was attempted and reported, the turn itself completed
+        assertThat(compactCalls.get()).isEqualTo(1);
+        assertThat(problems).containsExactly("Pre-turn compact failed: provider unavailable");
+        assertThat(response).isNotNull();
+        assertThat(response.aiMessage().text()).isEqualTo("OK");
+        // AND — no compact happened: no result line, history intact, fresh message in the memory
+        assertThat(toolLines).noneMatch(l -> l.startsWith("🗜 Pre-turn compact for"));
+        assertThat(agent.hasUserText("m1")).isTrue();
+        assertThat(agent.hasUserText("fresh message")).isTrue();
+        assertThat(agent.getMemory().size()).isEqualTo(6); // 4 seeded + fresh message + the turn's AI response
+    }
+
     /** Budget 80 000 and a 4-message history whose counter is over it (90 000 + estimate). */
     private AiDevAgent overBudgetAgent() {
         return overBudgetAgent(80_000);
     }
 
     private AiDevAgent overBudgetAgent(int budget) {
-        var agent = new AiDevAgent(new ConfiguredChatModel(config(budget), mockModel()), new ToolService());
+        return overBudgetAgent(budget, mockModel());
+    }
+
+    private AiDevAgent overBudgetAgent(int budget, StreamingChatModel model) {
+        var agent = new AiDevAgent(new ConfiguredChatModel(config(budget), model), new ToolService());
         agent.addMessage(UserMessage.from("m1"));
         agent.addMessage(AiMessage.from("m2"));
         agent.addMessage(UserMessage.from("m3"));
@@ -210,6 +238,18 @@ class AbstractAgentPreTurnCompactTest {
         });
     }
 
+    private StreamingChatModel mockModelFailingCompact() {
+        return streamMock.buildMock(r -> {
+            requests.add(r);
+            if ("compact-model".equals(r.modelName())) {
+                compactCalls.incrementAndGet();
+                throw new RuntimeException("provider unavailable"); // the compressor call fails
+            }
+            return ChatResponse.builder().aiMessage(AiMessage.from("OK"))
+                    .tokenUsage(new TokenUsage(85_000, 100, 85_100)).build();
+        });
+    }
+
     /** The first main-model request (not the compressor) — the actual provider payload. */
     private ChatRequest firstMainRequest() {
         return requests.stream()
@@ -222,6 +262,14 @@ class AbstractAgentPreTurnCompactTest {
         return new AiMonitor() {
             @Override public void onChatResponse(SimpleMessage m) {}
             @Override public void onTool(String message) { toolLines.add(message); }
+        };
+    }
+
+    private AiMonitor monitor(List<String> toolLines, List<String> problems) {
+        return new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onTool(String message) { toolLines.add(message); }
+            @Override public void onProblem(String message) { problems.add(message); }
         };
     }
 

@@ -17,6 +17,7 @@ import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.compact.CompactConstants;
 import org.sterl.llmpeon.compact.CompactService;
 import org.sterl.llmpeon.compact.HandleToolLoopCompactComponent;
+import org.sterl.llmpeon.exception.ExceptionUtil;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
@@ -336,7 +337,16 @@ public abstract class AbstractAgent implements AiAgent {
     private void preTurnCompact(AiMonitor monitor) {
         if (!HandleToolLoopCompactComponent.overRawBudget(memory.getTotalTokenUsed(),
                 configuredModel.getConfig().getAutoCompactAfter(), memory.size())) return;
-        var result = compact(monitor); // in-turn: the CAS leaves the turn's working flag untouched
+        CompactResult result;
+        try {
+            result = compact(monitor); // in-turn: the CAS leaves the turn's working flag untouched
+        } catch (RuntimeException e) {
+            // R-CC-20.5: a failing compressor must not kill the turn before the fresh message enters.
+            // Cancellation is not a failure — a Stop still aborts the turn (R-CC-7 owns retry/classes).
+            if (ExceptionUtil.isCanceled(e)) throw e;
+            AiMonitor.nullSafety(monitor).onProblem("Pre-turn compact failed: " + e.getMessage());
+            return; // over budget only: the provider call is the honest outcome (same as FAILED_EMPTY)
+        }
         if (result.status() != CompactResult.Status.COMPACTED) return; // SKIPPED_SMALL/FAILED_EMPTY: no retry, no hint
         memory.reevaluateTokens(); // R-CC-2
         AiMonitor.nullSafety(monitor).onTool("🗜 Pre-turn compact for " + getName()
