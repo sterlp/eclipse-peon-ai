@@ -74,6 +74,8 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.TokenUsage;
 
 public class PeonAiServiceTest extends AbstractIntegrationTest {
 
@@ -433,6 +435,72 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
 
         // THEN
         assertEquals(4000, aiService.getConfig().getAutoCompactAfter());
+    }
+
+    /**
+     * Stale-supplier regression (plan B): the pre-delegation compact threshold must follow a live
+     * {@code updateConfig} — the supplier reads the volatile {@code LlmConfig}, not the instance
+     * captured when Jon's team was built. Under a bound method ref the default 80000 survived the
+     * 4000 update (threshold 56000) and the 3500-token slave was never compacted.
+     */
+    @Test
+    public void delegateCompactThresholdFollowsConfigUpdate() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        aiService.setActiveAgent(AiPoAgent.NAME);
+        var delegate = jonDelegate();
+        var slave = delegate.getPlanSlave();
+
+        // GIVEN: the LLM points at the mock server (updateConfig rebuilds the base model)
+        aiService.updateConfig(aiService.getConfig().toBuilder()
+                .providerType(AiProvider.OPEN_AI)
+                .url(mockLlmServer.getUrl()).build());
+
+        // AND: the slave holds 3500 used tokens in 5 messages (above the 3-message compact minimum)
+        seedSlaveMemoryWithCounter(slave, 3500);
+
+        // WHEN: after the agent was built the budget drops to 4000 — 0.7 × 4000 = 2800 < 3500
+        aiService.updateConfig(aiService.getConfig().toBuilder().autoCompactAfter(4000).build());
+        assertEquals(4000, aiService.getConfig().getAutoCompactAfter());
+
+        // THEN: the delegation compacts the slave BEFORE the request — the compressor's queued
+        // summary is consumed into the slave's memory and the seed is gone (stale 80000 budget:
+        // no compact → seed survives → red)
+        mockLlmServer.queueResponse(AiMessage.aiMessage("compressed summary")); // the compressor
+        mockLlmServer.queueResponse(AiMessage.aiMessage("plan done"));          // the delegation itself
+        var reply = delegate.talkPlan("make a plan");
+
+        assertTrue("the delegation must still run: " + reply, reply.contains("plan done"));
+        assertFalse("seed must be gone after the pre-delegation compact",
+                slave.getMemory().containsUserMessage("seed 0"));
+        assertTrue("the compressor response must have been consumed by the compact",
+                slave.getMemory().getCopy().stream()
+                        .anyMatch(m -> m instanceof AiMessage ai && ai.text().contains("compressed summary")));
+
+        // AND: autoCompactAfter = 0 (off, R-CIB-1) → no compact, even above the old threshold
+        aiService.updateConfig(aiService.getConfig().toBuilder().autoCompactAfter(0).build());
+        seedSlaveMemoryWithCounter(slave, 3500);
+        mockLlmServer.queueResponse(AiMessage.aiMessage("plan done again"));
+        var reply2 = delegate.talkPlan("make a plan");
+
+        assertTrue("the delegation must still run: " + reply2, reply2.contains("plan done again"));
+        assertTrue("0 = off: the seed must survive", slave.getMemory().containsUserMessage("seed 0"));
+    }
+
+    /** Seeds the slave's memory with 4 seed messages and sets the token counter to exactly {@code tokens}. */
+    private static void seedSlaveMemoryWithCounter(AiAgent slave, int tokens) {
+        var memory = slave.getMemory();
+        for (int i = 0; i < 2; i++) {
+            memory.add(UserMessage.from("seed " + i));
+            memory.add(AiMessage.from("seed reply " + i));
+        }
+        // R-CC-19: addResult is forward-looking (provider input + chars/3 of the appended message),
+        // so net the appended message's estimate out of the provider input to land at exactly `tokens`.
+        var ai = AiMessage.from("counter seed");
+        var input = tokens - ChatMessageUtil.estimateTokens(List.of(ai));
+        memory.addResult(ChatResponse.builder()
+                .aiMessage(ai)
+                .tokenUsage(new TokenUsage(input, 0, input))
+                .build(), List.of());
     }
     
     @Test
