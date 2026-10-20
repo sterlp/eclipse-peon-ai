@@ -34,15 +34,6 @@ Aufgeräumt 2026-10-14 (Paul-Order): Gelöste → resolved-points.md, Wertloses 
   teuer ist: Faktor anheben (eine Konstante in `PoDelegateTool`) oder nur bei einem Themenwechsel
   compacten. Rückversicherung Paul.
 
-- ⏳ **Kein Compact-Check vor einem neuen Turn** (Folge von [ADR-0071](adr/0071-compact-policy-owned-by-delegation.md)):
-  mit dem gelöschten Pre-Turn-Gate prüft niemand mehr, bevor ein Prompt angenommen wird — der In-Loop-Check
-  greift **nur nach einer Tool-Runde** (`ToolService.executeLoop:189-195`). Ein gequeueter Follow-up oder eine
-  frische Aufgabe, die der Agent direkt beantwortet, läuft also auch über Budget ungeprüft in den nächsten
-  Call. Bewusst so entschieden (Paul: die 0,7-Regel gehört zur Delegation, „sonst nirgends"): bei roher
-  `autoCompactAfter` wäre ein Gate fast immer tot, weil die Tool-Runde davor schon compactet — Ausnahme ist
-  genau der Turn ohne Tool-Runde. Im Smoke beobachten; falls real relevant, EIN zusätzlicher Check am selben
-  Component-Stil (Budget = rohe Config), nicht zurück in den Agenten.
-
 - ⏳ **R-CG-15 neu (Projektwechsel im Monorepo):** Befund **bestätigt** — `CodegraphConnectionService:106`
   kehrt bei gleichem `workDir` zurück, `State.project` bleibt A, `CodegraphContextItem` mappt weiter A.
   SOLL geschrieben: Verbindung bleibt, State-Refresh auf B. Nebenwirkung, die Paul kennen sollte:
@@ -376,25 +367,4 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
 - 🔒 **Icon (2026-10-18 erledigt):** 32 ohne `viewBox` → auf 24×24 + `viewBox="0 0 32 32"`
   normalisiert; `codegraph_off.svg`/`codegraph_off_dark.svg` ergänzt (gedimmte Farbe statt
   `setEnabled(false)` — SWT graut Text, nicht das Image); R-CG-8 präzisiert.
-
-## ❓ Codegraph-Injection = Server-Instructions (Paul 2026-10-19) — „Ende von allem"
-
-Pauls Befund: der injizierte Codegraph-Block ist ~6.600 Zeichen (~2.200 Tokens) lang, wirkt wie
-Werbung/Lehrtext (TypeScript/React/JSX-Beispiele), und der Text stammt nicht aus unseren Docs
-(`bad-context-codegraph.md`). **Herkunft gemessen:** unser eigener Anteil ist **ein** Satz
-Disk→Workspace-Pfad-Mapping (~330 Zeichen, `CodegraphContextItem.renderBody`); alles danach ist
-das **`instructions`-Feld des MCP-Servers** aus dem Initialize-Result (`CodegraphConnectionService:132`
-→ `McpService.instructionsOf` → `State.instructions`). Nicht von uns geschrieben, nicht besprochen —
-aber so spezifiziert (R-CG-7, `codegraph.md:194-197`, R-TR-4/5).
-
-**Kosten:** einmal pro Connect, nicht pro Turn — der `dedupKey` trägt den Instructions-Hash, ein
-unveränderter Zustand wird nicht erneut injiziert. Also kein Turn-Overflow, aber ~2,2k Tokens
-Grundrauschen plus Text, der auf ein Java/Eclipse-Projekt nicht passt.
-
-**Optionen:** (a) so lassen (heutiges SOLL) · (b) **nur** unser Pfad-Mapping-Satz injizieren, die
-Server-Instructions verwerfen — die Tool-Description lehrt die Benutzung ohnehin, das Mapping ist das
-einzige, was der Server nicht weiß (Empfehlung Jon) · (c) Instructions kappen — abgelehnt, ein
-abgeschnittener Hinweis ist eine stille Halbwahrheit. Entscheidung Paul; Umsetzung wäre ein
-Ein-Zeilen-Schnitt in `CodegraphContextItem.renderBody` + Testanpassung (IST prüfen: `instructions`
-wird heute auch für den Dedup-Hash gebraucht → dann entfällt der Hash aus dem Kopf).
 

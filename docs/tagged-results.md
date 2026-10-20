@@ -88,7 +88,10 @@ THEN liefert es ein `TaggedResult` mit `head` = Item-Name; `ContextItem.render()
 
 GIVEN Codegraph ist verbunden
 WHEN der Turn-Kontext gebaut wird
-THEN liefert das Item ein `TaggedResult` (Pfad-Mapping + Server-Instructions).
+THEN liefert das Item ein `TaggedResult` mit **genau einer** Zeile: dem Disk→Workspace-Pfad-Mapping.
+     Die **Server-Instructions werden nicht mehr injiziert** (Paul 2026-10-19): sie waren ~6,6k Zeichen
+     Werbetext, duplizierten die MCP-Tool-Description und passten nicht zu einem Java/Eclipse-Projekt.
+     Unser Satz ist das Einzige, was der Server nicht selbst liefert.
 
 GIVEN Codegraph ist OFF oder der Connect ist fehlgeschlagen
 WHEN der Turn-Kontext gebaut wird
@@ -97,12 +100,14 @@ THEN liefert das Item **nichts** (`null`). Der Zustand ist am Header-Icon sichtb
      ContextItem sein"; das 📋-Label hängt an der erfolgreichen Injektion, sonst wäre es ein
      Spam pro Turn.)
 
-### R-TR-5 — Zustand trägt die Instructions (ein Supplier) ✅ (2026-10-18, I2)
+### R-TR-5 — Zustand trägt die Instructions (ein Supplier) ✅ (2026-10-18, I2) — Injection seit 2026-10-19 entfallen
 
 GIVEN der Codegraph-Service liefert seinen Zustand
 WHEN das Item ihn liest
-THEN enthält `State` die Instructions (beim Connect captured). Das Item hat genau **einen**
-     Supplier und keine zweite Quelle — `render()` ist `State.instructions` oder `null`.
+THEN enthält `State` die beim Connect eingefangenen Instructions. Das Item hat genau **einen**
+     Supplier und keine zweite Quelle. **Präzisiert 2026-10-19 (Paul):** die Instructions reisen
+     weiter im `State` (und im Dedup-Marker) — **gerendert** wird nur noch das Pfad-Mapping
+     (R-TR-4). Kein zweiter Zustands-Supplier, keine Text-Durchreichung.
 
 ### R-TR-6 — `INFO` steht einmal in der static System-Message ✅ (2026-10-18, I2)
 

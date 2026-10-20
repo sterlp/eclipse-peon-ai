@@ -17,7 +17,20 @@ Releases before `2.12.4` are documented via [GitHub Releases](https://github.com
   70 % of the budget — the percent shown and the threshold applied are the same number now
   (direct compact above it, hint above 95 % of it). The PO's 70 % early-compact for its team
   members still exists, but as a delegation rule: the slave is compacted right before a new
-  task lands. The pre-turn auto-compact is gone.
+  task lands.
+- **A turn without tool calls is checked again.** Before a new message is accepted, an over-budget
+  context is compacted — before the message lands, so a fresh prompt is never compacted away.
+  Compaction still happens only *after* a tool round inside the loop (a huge tool result is seen,
+  then compacted).
+- **Codegraph context is one line.** The injected block no longer carries the MCP server's own
+  instruction text (~6,6k characters of generic tutorial prose) — only the disk→workspace path
+  mapping stays. The MCP tool description already teaches the tool.
+
+### Removed
+
+- **The one-shot state migration.** Chat histories are no longer copied from `~/.peon/state` into
+  the workspace state; old files are ignored (clean break, no migration). Only affects
+  installations that skipped 2.x entirely.
 
 ### Fixed
 

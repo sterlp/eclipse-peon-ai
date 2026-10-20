@@ -359,7 +359,10 @@ Agent den Abbruch kennt und nachfolgend reagieren kann.
 **Anlass:** Der Compact-Hint (R-CC-4) ist eine *Bitte* ans Modell. Ist der Context bereits über dem
 Budget, kommt sie zu spät — der nächste Provider-Call geht unverändert raus und stirbt am
 Modell-Limit. Innerhalb der Tool-Schleife gab es **keinen harten Auslöser**; der Pre-Turn-Gate in
-`AbstractAgent.doCall` griff nur einmal pro Turn, **vor** dem ersten Call (2026-10-19 ersatzlos entfernt).
+`AbstractAgent.doCall` griff nur einmal pro Turn, **vor** dem ersten Call. Dieser Gate wurde am
+2026-10-19 zuerst ersatzlos entfernt — und am selben Tag als **R-CC-20** wieder eingeführt, weil
+ohne ihn Turns ohne Tool-Runde ungeprüft blieben (externes Review, 2026-10-19; Faktor und Gate sind
+getrennte Entscheidungen, [ADR-0071](adr/0071-compact-policy-owned-by-delegation.md)).
 
 **Entscheidung ist zustandsbasiert, nicht ereignisbasiert:** geprüft wird nach jeder Tool-Runde,
 unabhängig davon, ob gerade `compactSession` gerufen wurde (im Stuck-Pfad — nur-think-Runden — bleibt
@@ -398,10 +401,47 @@ Ereignis-Gate (`ranTool(compactSession)` + Turn-Merker) ersatzlos.
 - GIVEN Memory ≤ `MIN_COMPACT_MESSAGES` WHEN über Budget THEN kein Direkt-Compact (R-CC-8) — der
   Provider-Fehler bleibt der ehrliche Ausgang. *(Test: `directCompactRespectsMinMessages`)*
 
-**Kein Pre-Turn-Gate:** `AbstractAgent` compactet seit 2026-10-19 nicht mehr vor einem Turn
-([ADR-0071](adr/0071-compact-policy-owned-by-delegation.md)) — der Turn-Start wird von der Schleife
-selbst abgedeckt, sobald die erste Runde endet. Ein Sklave, der eine **neue Aufgabe** bekommt, wird
-vorher in der Delegation compactet, damit der Auftrag nicht in einem übervollen Context landet.
+**Kein Pre-Turn-Gate für den Faktor:** `AbstractAgent` compactet nie nach einer Agent-Eigenschaft —
+die 0.7-Regel lebt allein in der Delegation ([ADR-0071](adr/0071-compact-policy-owned-by-delegation.md)).
+Der Check vor dem Turn selbst ist zurück und rechnet roh: **R-CC-20**.
+
+### R-CC-20 — Vor dem Turn prüfen, bevor die frische Meldung angenommen wird ❌ specified (Paul 2026-10-19)
+
+**Anlass:** R-CC-18 prüft nur **nach** einer Tool-Runde (`ToolService.executeLoop`,
+`isToolrequest`-Zweig). Ein Turn, der ohne Tools antwortet — der erste Call, ein reiner Chat-Turn,
+jeder gequeute Follow-up — lief damit **gar nicht** durch eine Prüfung: ein Context über Budget ging
+ungeprüft in den nächsten Provider-Call. Der In-Loop-Hint fängt nur, wer wieder Tools ruft.
+
+- **R-CC-20.1 — Zeitpunkt:** Der Check läuft am Anfang von `AbstractAgent.doCall`, **vor**
+  `renderTurnContext` und **bevor** die frische User-Message ins Memory geht. Eine frische Meldung
+  darf nie durch einen Compact verschwinden — dieselbe Garantie wie für Standing Orders
+  ([ADR-0010](adr/0010-standing-orders-setactiveagent-hook.md)). `call()` schickt jede gequeute
+  Message als eigenen `doCall`-Turn durch, also greift der Check auch dort.
+- **R-CC-20.2 — Entscheidung:** `used > autoCompactAfter` (**rohe** Config) und Memory >
+  `MIN_COMPACT_MESSAGES` (R-CC-8) ⇒ `agent.compact(monitor)` direkt, **ein** Versuch pro Turn, kein
+  Hint. `autoCompactAfter <= 0` = off (R-CIB-1). Danach Zähler re-derived (R-CC-2) und Static neu
+  gebaut — wie beim Direkt-Compact der Schleife (R-CC-18.1).
+- **R-CC-20.3 — Tool-Results werden bewusst nicht vorgezogen:** geprüft wird nie *vor* dem Einfügen
+  eines Tool-Results, sondern nur nach der Runde (R-CC-18.1, mit dem vorausschauenden Zähler aus
+  R-CC-19). Begründung (Paul 2026-10-19): ein stark überschießendes Tool-Result (z. B. 200k) sieht man
+  **nach** dem Einfügen — compacten davor gewinnt nichts, weil das Result danach trotzdem hineinläuft.
+  Ein Tool-Result darf also ins Compact laufen; sein Inhalt ist nicht verloren.
+- **R-CC-20.4 — Queued Messages:** keine Sonderbehandlung. Eine während des Laufs injizierte
+  `!`-Message ist nicht geschützt — dieser Fall wird bewusst ignoriert.
+
+- GIVEN `used` 90 000 und Budget 80 000 WHEN ein neuer Turn startet THEN ist compactiert, **bevor**
+  der Provider-Call rausgeht, und die frische User-Message steht danach im Memory.
+  *(Test: `preTurnCompactKeepsFreshMessage`)*
+- GIVEN `used` über Budget WHEN ein gequeuter Follow-up als eigener Turn läuft THEN greift derselbe
+  Check. *(Test: `preTurnCompactAppliesToQueuedFollowUp`)*
+- GIVEN `autoCompactAfter <= 0` WHEN über Budget THEN kein Compact (R-CIB-1).
+  *(Test: `preTurnCompactRespectsOffSwitch`)*
+- GIVEN Memory ≤ `MIN_COMPACT_MESSAGES` WHEN über Budget THEN kein Compact (R-CC-8).
+  *(Test: `preTurnCompactRespectsMinMessages`)*
+
+**Ein Ort, zwei Zeitpunkte:** die Entscheidung selbst bleibt in `HandleToolLoopCompactComponent`
+(ADR-0070) — der Pre-Turn-Fall ruft dieselbe `used > budget`-Regel, nur mit frischer, nicht
+kompaktierbarer Meldung im Anflug.
 
 **Struktur:** Die Entscheidung liegt in *einer* Komponente (`HandleToolLoopCompactComponent`), und
 die Folgen eines Compacts erledigt, wer ihn ausführt (Tool bzw. Komponente) — der Tool-Loop weiß

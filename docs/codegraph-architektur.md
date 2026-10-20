@@ -10,8 +10,8 @@
   workDir = Projekt-Disk-Path) wird automatisch verbunden, für alle Agenten; unabhängig vom
   MCP-Toggle und von der User-MCP-Config, **Failure-isoliert**.
 - **In-Scope:** Probe (Binary + Index-Erkennung), Server-Factory, Lifecycle am aktiven Projekt,
-  isolierter Connect-Pfad, Context-Injektion (Projekt-Info-Zeile + Server-Instructions),
-  Header-Indikator.
+  isolierter Connect-Pfad, Context-Injektion (Projekt-Info-Zeile; Server-Instructions werden
+  **nicht** injiziert, R-CG-7/Paul 2026-10-19), Header-Indikator.
 - **Out-of-Scope (v1):** UI-Config (Checkbox/Command/Env — R-CG-5), Init/Index-Trigger (R-CG-9),
   Telemetry-Override (R-CG-10), Pfad-Translation/Wrapper-Tool S2, weitere Codegraph-Tools.
 
@@ -75,5 +75,7 @@ strukturell unmöglich zu machen.
 
 **Besitz des Kontexts (2026-10-18, nach Pauls Smoke):** Der Codegraph-Zustand wird **einmal** als
 `ContextItem` gerendert — `label()` ist das Chat-Signal (R-CG-12), `dedupKey()` hält Zustandswechsel
-auf genau eine Injektion, `render()` trägt Info + Instructions. Der `AgentContextComponent` reicht
+auf genau eine Injektion, `render()` trägt **nur** die Pfad-Mapping-Zeile (die Server-Instructions
+bleiben als Capture im `State` und im Dedup-Marker, gehen aber nicht mehr ins Modell). Der
+`AgentContextComponent` reicht
 nur durch; es gibt **keinen** zweiten Emit-Pfad in der View.

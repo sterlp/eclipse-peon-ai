@@ -3,7 +3,7 @@
 > **Status:** accepted (2026-10-18) · **Fachdoc:** [compact.md](../compact.md) R-CC-18 ·
 > **Architektur:** [compact-architektur.md](../compact-architektur.md) ·
 > **Supersedes:** Teil von [ADR-0056](0056-compact-component-and-render-modes.md) (Trigger-Funnel) ·
-> **Teilweise abgelöst durch:** [ADR-0071](0071-compact-policy-owned-by-delegation.md) (Budget-Quelle, Pre-Turn-Gate)
+> **Teilweise abgelöst durch:** [ADR-0071](0071-compact-policy-owned-by-delegation.md) (Budget-Quelle, Agent-Faktor statt Pre-Turn-Faktor)
 
 ## Context
 
@@ -38,9 +38,10 @@ nach einer Runde der Zähler re-derived und ob ein Hint angehängt wurde. Zwei B
 - Das Budget ist die **rohe Config** (`autoCompactAfter`), für jeden Agenten gleich — vor der Schleife
   hält sich kein Sklave mehr künstlich knapp; das erledigt die Delegation
   ([ADR-0071](0071-compact-policy-owned-by-delegation.md), das diesen Punkt hier ablöst).
-- Ein **Pre-Turn-Gate gibt es nicht mehr** (`AbstractAgent` compactet nicht mehr vor einem Turn). Die
-  Schleife entscheidet nach jeder Tool-Runde; wer einen Sklaven vor einer neuen Aufgabe leeren will,
-  tut das in der Delegation ([ADR-0071](0071-compact-policy-owned-by-delegation.md)).
+- Ein Pre-Turn-Check existiert **wieder**, seit 2026-10-19 (R-CC-20, [ADR-0071](0071-compact-policy-owned-by-delegation.md)):
+  am Anfang von `doCall`, **vor** der frischen User-Message, gegen das rohe Budget. Er ist kein
+  Agent-Faktor und keine zweite Regel — dieselbe `used > budget`-Entscheidung, nur mit der Meldung
+  im Anflug. Ohne ihn blieb jeder Turn ohne Tool-Runde ungeprüft.
 
 ## Consequences
 

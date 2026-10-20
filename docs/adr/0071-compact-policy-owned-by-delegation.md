@@ -28,9 +28,15 @@ beliefert. Dieses Wissen hat der Agent nicht, sein Auftraggeber hat es.
 - **In der Tool-Schleife gilt genau eine Schwelle: die rohe Config.** `HandleToolLoopCompactComponent`
   liest ausschließlich `req.getConfig().getAutoCompactAfter()` — Direkt-Compact `used > budget`,
   Hint `used > 95 % von budget`.
-- **Kein Pre-Turn-Gate mehr.** `AbstractAgent` compactet nicht mehr heimlich vor einem Turn; damit
-  entfallen `compactFactor`, `compactAfterTokens()` und die 3-Arg-Ctor-Kette der Sklaven. Die Anzeige
-  (`tokenContextUsedInPercent`) und beide Entscheidungen rechnen jetzt auf derselben Skala.
+- **Kein Agent-Faktor, aber ein Pre-Turn-Check.** `AbstractAgent` compactet **nicht** nach einer
+  Agent-Eigenschaft; geprüft wird am Anfang von `doCall` aber sehr wohl — **bevor** die frische
+  User-Message ins Memory geht, gegen das **rohe** Budget, ein Versuch pro Turn, kein Hint
+  (R-CC-20 in [compact.md](../compact.md)). Der Unterschied ist der Punkt: die Schwelle gehört
+  niemandem persönlich, der Zeitpunkt „vor einer neuen Meldung" ist dagegen richtig.
+  (Nachtrag 2026-10-19 nach externem Review: ohne diesen Check blieb jeder Turn ohne Tool-Runde
+  ungeprüft — R-CC-18 greift nur im `isToolrequest`-Zweig.)
+  Damit entfallen `compactFactor`, `compactAfterTokens()` und die 3-Arg-Ctor-Kette der Sklaven. Die
+  Anzeige (`tokenContextUsedInPercent`) und alle Entscheidungen rechnen auf derselben Skala.
 - **Der Delegations-Compact ist keine zweite Implementierung:** er ruft `agent.compact(monitor)` und
   wertet den `CompactResult` — `MIN_COMPACT_MESSAGES` (R-CC-8) bleibt allein in `compact()` scharf.
 
@@ -39,11 +45,9 @@ beliefert. Dieses Wissen hat der Agent nicht, sein Auftraggeber hat es.
 - **Gut:** Ein Zustand, eine Zahl. Der Nutzer sieht 70 %, wenn 70 % gemeint ist, und der Hint kommt nicht
   mehr vor dem Budget.
 - **Gut:** Der Agent weiß nichts über seine Rolle; Sklaven-Wissen bleibt beim PO-Tool.
-- **Bewusst:** Ein Pre-Turn-Compact existiert nicht mehr. Für die Sklaven fällt das nicht auf — sie
-  werden ausschließlich über `PoDelegateTool.dispatch()` erreicht, also greift die 0.7-Regel bei jeder
-  neuen Nachricht. Nur **direkte** Agent-Calls (Headless, Tests) verlassen sich auf den In-Loop-Hint
-  (> 95 %). Wer einen Sklaven zwischendurch leeren will, ruft wie bisher
-  `compactPlan`/`compactDev`/`compactReview`.
+- **Bewusst:** Der Pre-Turn-Check prüft **vor** der neuen Meldung, nie vor einem Tool-Result. Ein
+  stark überschießendes Tool-Result soll man nach dem Einfügen sehen und dann compacten — davor zu
+  compacten gewinnt nichts, weil es danach trotzdem in den Context läuft (Paul 2026-10-19).
 - **Bewusst:** Die 0.7-Regel feuert jetzt **pro Delegation**, nicht pro Turn (ADR-0021 hatte einen
   tool-seitigen Trigger ausdrücklich verworfen). Das ist der Punkt: jede neue Aufgabe startet mit einem
   leanen Wegwerf-Context, auch mitten in einem langen Zyklus. Ein fehlgeschlagener Compact blockiert die

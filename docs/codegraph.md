@@ -191,10 +191,13 @@ THEN enthält das Item: (a) Hinweis, dass `codegraph_explore` absolute **Disk-Pf
      **echte Workspace-FullPath** des Projekts (`JdtUtil.pathOf`, z. B. `/peon-ai`), **nicht**
      `"/" + project.getName()` (nested projects; 2026-10-18, Paul). Pfade außerhalb des Projekts
      werden **nicht** übersetzt — dort disk*-Tools mit Originalpfad; (b) **keinen** eigenen
-     Nutzungshinweis — die MCP-Tool-Description plus die Initialize-Instructions (c) beschreiben
-     Syntax und Vorgehen bereits, ein Peon-Satz wäre ein Duplikat (2026-10-18, Paul; der frühere
-     „ein Aufruf statt Such-Loop"-Satz entfällt); (c) die serverseitigen Initialize-Instructions
-     (`McpClient.instructions()`).
+     Nutzungshinweis — die MCP-Tool-Description beschreibt Syntax und Vorgehen bereits, ein
+     Peon-Satz wäre ein Duplikat (2026-10-18, Paul; der frühere „ein Aufruf statt Such-Loop"-Satz
+     entfällt); (c) **keine** Server-Instructions im Block — Paul 2026-10-19: das
+     `instructions`-Feld des MCP-Servers war ~6,6k Zeichen Lehr-/Werbetext (TypeScript/React), ein
+     Duplikat der Tool-Description und für dieses Projekt unpassend. Nur der Pfad-Mapping-Satz (a)
+     wird injiziert, weil er das Einzige ist, was der Server nicht weiß. `State.instructions` bleibt
+     der Capture-Punkt für den Dedup-Marker (R-TR-5).
 
 GIVEN Codegraph ist aus (kein Index/Binary) oder der Connect ist fehlgeschlagen
 WHEN der Turn-Kontext gebaut wird
