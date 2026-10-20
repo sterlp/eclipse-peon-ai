@@ -16,6 +16,7 @@ import org.sterl.llmpeon.ai.AgentConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.compact.CompactConstants;
 import org.sterl.llmpeon.compact.CompactService;
+import org.sterl.llmpeon.compact.HandleToolLoopCompactComponent;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
@@ -300,6 +301,7 @@ public abstract class AbstractAgent implements AiAgent {
     protected ChatResponse doCall(String message, AiMonitor monitor) {
         monitor = AiMonitor.nullSafety(monitor);
         monitor.onCallStart(message);
+        preTurnCompact(monitor); // R-CC-20: over the raw budget — compact BEFORE the fresh message enters
         // Inject turn-scoped context on every turn (idempotent via contains-check)
         var userMessages = renderTurnContext(memory, turnContextSupplier, monitor);
 
@@ -324,6 +326,21 @@ public abstract class AbstractAgent implements AiAgent {
 
         monitor.onCallCompleted(response, Duration.between(start, Instant.now()));
         return response;
+    }
+
+    /**
+     * R-CC-20: the pre-turn over-budget check — the same rule as the in-loop direct compact
+     * (R-CC-18.1), run before the fresh user message enters the memory, so a fresh message is
+     * never lost to a compact (ADR-0010). One attempt per turn, no hint, no retry.
+     */
+    private void preTurnCompact(AiMonitor monitor) {
+        if (!HandleToolLoopCompactComponent.overRawBudget(memory.getTotalTokenUsed(),
+                configuredModel.getConfig().getAutoCompactAfter(), memory.size())) return;
+        var result = compact(monitor); // in-turn: the CAS leaves the turn's working flag untouched
+        if (result.status() != CompactResult.Status.COMPACTED) return; // SKIPPED_SMALL/FAILED_EMPTY: no retry, no hint
+        memory.reevaluateTokens(); // R-CC-2
+        AiMonitor.nullSafety(monitor).onTool("🗜 Pre-turn compact for " + getName()
+                + " (context over budget): " + result.resultLine() + memory.tokenDiagnosis()); // R-CC-10
     }
 
     @Override

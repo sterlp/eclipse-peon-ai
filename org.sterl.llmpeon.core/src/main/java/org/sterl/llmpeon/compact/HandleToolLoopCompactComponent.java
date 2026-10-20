@@ -22,11 +22,27 @@ import dev.langchain4j.data.message.UserMessage;
  * <p><b>One instance per tool loop</b> ({@code ToolService.executeLoop}): the
  * {@code attemptedDirect} flag gives "one direct attempt per turn" (R-CC-18.1) without leaking
  * into sub-loops or the next turn.</p>
+ *
+ * <p><b>One decision, two time points</b> (R-CC-20): the over-budget rule
+ * {@link #overRawBudget(int, int, int)} is the same in the tool loop and in the pre-turn check
+ * at the start of {@code AbstractAgent.doCall} — the two callers never diverge.</p>
  */
 public class HandleToolLoopCompactComponent {
 
     /** One direct attempt per turn (R-CC-18.1): a SKIPPED_SMALL/FAILED_EMPTY is not retried in-loop. */
     private boolean attemptedDirect = false;
+
+    /**
+     * The ONE over-budget rule, shared by the in-loop direct compact (R-CC-18.1) and the
+     * pre-turn check (R-CC-20): over the RAW config budget with a compactable history
+     * (R-CC-8) and the switch on (R-CIB-1: 0 = off). The caller runs the consequences
+     * (ADR-0070).
+     */
+    public static boolean overRawBudget(int used, int budget, int messageCount) {
+        return budget > 0 // R-CIB-1: 0 = off
+                && used > budget // raw config — the PO slave factor applies only before a new task
+                && messageCount > CompactConstants.MIN_COMPACT_MESSAGES; // R-CC-8
+    }
 
     /**
      * The state-based decision, run after every tool round's {@code addResult}, before the next
@@ -42,9 +58,8 @@ public class HandleToolLoopCompactComponent {
         if (budget <= 0) return; // R-CIB-1: 0 = off
 
         var used = memory.getTotalTokenUsed();
-        if (used > budget) { // R-CC-18.1 — over budget: compact directly, no hint
-            if (agent != null && memory.size() > CompactConstants.MIN_COMPACT_MESSAGES // R-CC-8
-                    && !attemptedDirect) {
+        if (overRawBudget(used, budget, memory.size())) { // R-CC-18.1 — over budget: compact directly, no hint
+            if (agent != null && !attemptedDirect) {
                 attemptedDirect = true;
                 var result = agent.compact(req.getMonitor()); // AbstractAgent.compact null-safes the monitor itself
                 if (result.status() == CompactResult.Status.COMPACTED) {
@@ -55,7 +70,7 @@ public class HandleToolLoopCompactComponent {
                             + memory.tokenDiagnosis()); // reason + numbers, R-CC-10
                 }
                 // SKIPPED_SMALL / FAILED_EMPTY: no retry (flag), no hint (over budget) — R-CC-18.1
-            } else if (agent == null && memory.size() > CompactConstants.MIN_COMPACT_MESSAGES) {
+            } else if (agent == null) { // R-CC-8 already checked in overRawBudget
                 fallbackHint(req); // R-CC-15: no owning agent to compact — honest out
             }
             return;

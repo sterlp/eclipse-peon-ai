@@ -490,9 +490,11 @@ class AbstractAgentTest {
      */
     @Test
     void inLoopCompactDoesNotReleaseTurnsWorkingFlag() {
-        // GIVEN — the counter is over the raw budget (101 > 100) so the in-loop direct compact fires
-        // after the tool round; call 1 is a tool round (unknown "probe" — same pattern as
-        // ToolServiceDirectCompactTest), call 2 is the turn's own LLM call where isWorking() is read
+        // GIVEN — the counter starts BELOW the raw budget (50 ≤ 100: the pre-turn check R-CC-20
+        // does not fire) and the tool round's response sets it over (101 > 100) so the in-loop
+        // direct compact fires after the tool round; call 1 is a tool round (unknown "probe" —
+        // same pattern as ToolServiceDirectCompactTest), call 2 is the turn's own LLM call
+        // where isWorking() is read
         var config = LlmConfig.builder()
                 .model("mock")
                 .autoCompactAfter(100)
@@ -501,6 +503,7 @@ class AbstractAgentTest {
                 .build();
         var callCount = new AtomicInteger();
         var compactCalls = new AtomicInteger();
+        var counter = new AtomicInteger(50); // below budget: the pre-turn check must not fire
         var workingDuringTurnCall = new AtomicReference<Boolean>();
         var agentRef = new AtomicReference<AbstractAgent>();
         var mockModel = streamMock.buildMock(r -> {
@@ -510,6 +513,7 @@ class AbstractAgentTest {
             }
             if (callCount.incrementAndGet() == 1) {
                 // tool round -> after it the state-based decision fires the direct in-loop compact
+                counter.set(101); // the provider usage pushes the counter over the raw budget
                 return ChatResponse.builder()
                         .aiMessage(AiMessage.builder()
                                 .toolExecutionRequests(List.of(ToolExecutionRequest.builder()
@@ -522,7 +526,7 @@ class AbstractAgentTest {
             return ChatResponse.builder().aiMessage(AiMessage.from("OK")).build();
         });
         var memory = new ThreadSafeMemory() {
-            @Override public int getTotalTokenUsed() { return 101; }
+            @Override public int getTotalTokenUsed() { return counter.get(); }
         };
         // 4 messages — R-CC-8: the auto-gate fires only above MIN_COMPACT_MESSAGES (3)
         memory.add(UserMessage.from("m1"));

@@ -74,6 +74,7 @@ class AbstractAgentCompactResultTest {
     }
 
     // R-CC-3
+    // R-CC-20
     @Test
     @Timeout(10)
     void autoCompactRetriesAfterFailure() {
@@ -119,13 +120,14 @@ class AbstractAgentCompactResultTest {
 
         // WHEN — turn 1: the model calls compactSession, the compressor fails (call 1), and the
         // over-budget state (260000 > 200000) fires the direct in-loop attempt (call 2, R-CC-18,
-        // FAILED_EMPTY); turn 2 runs with no pre-turn gate (removed) — no further attempt
+        // FAILED_EMPTY); the over-budget state persists, so turn 2's pre-turn check (R-CC-20 —
+        // one attempt per turn) makes the third attempt (call 3, FAILED_EMPTY)
         agent.call("start", monitor);
         agent.call("next", monitor);
 
-        // THEN — the failed compact did not silence the in-loop gate: 2 attempts — turn 1 tool
-        // attempt + turn 1 direct attempt (R-CC-18, FAILED_EMPTY)
-        assertThat(compactCalls.get()).isEqualTo(2);
+        // THEN — the failed compacts did not silence the gates: 3 attempts — turn 1 tool attempt +
+        // turn 1 direct attempt (R-CC-18) + turn 2 pre-turn attempt (R-CC-20), all FAILED_EMPTY
+        assertThat(compactCalls.get()).isEqualTo(3);
         // AND — the failure was reported, not swallowed
         assertThat(problems).anyMatch(p -> p.contains("Compact failed: compressor returned no summary for " + AiDevAgent.NAME));
     }
