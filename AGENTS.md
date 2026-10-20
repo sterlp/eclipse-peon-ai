@@ -36,32 +36,31 @@ Module guides (read when working in one):
   removed keys are ignored, never migrated or aliased. No migration chains, no stale state.
 - **Empty means unset.** An empty config value sends *no* parameter — never a default. (Reason:
   GPT-5/o reject any `temperature != 1`; a "harmless default" breaks exactly those models.)
-- **Every RAM cache is bounded.** A RAM cache without self-truncation is a leak — every new cache uses `BoundedLruCache` (or has a finite key-space and says so in its Javadoc).
+- **Every RAM cache is bounded.** A RAM cache without self-truncation is a leak — every new cache
+  uses `BoundedLruCache` (or has a finite key-space and says so in its Javadoc).
 - Use a clean component architecture with proper information hiding / deep modules
-- **Thread safety:** Eclipse plugin - heavy work on a background Thread `Job.create`, UI changes
-  on a UI thread `EclipseUtil.runInUiThread` as so plan/build accordingly. 
+  (skill `komponenten-architektur`).
+- **Thread safety:** Eclipse plugin — heavy work on a background Thread `Job.create`, UI changes
+  on a UI thread `EclipseUtil.runInUiThread` as so plan/build accordingly.
   No single-threaded assumptions.
-- Code structure komponenten-architektur SKILL
 
 ## Working agreements that cost us the most to learn
 
-- **Maven Surefire is the ground truth for test numbers**, not `eclipseRunJavaTests` — the Eclipse
-  runner counts higher (parameterized artefacts) and has repeatedly produced wrong report numbers.
+- **Maven Surefire is the ground truth for test numbers**, not `eclipseRunJavaTests` — build &
+  test recipes: skill `peon-build-test`.
 - **Read the API contract in the source, never guess it.** Dead guards survived here for months
   because they *looked* defensive (`PlatformUI.getWorkbench() == null`,
   `IProject instanceof IJavaProject`). A guard that never fires is worse than none.
-- **A test that would also be green without the feature is not a test.** Details and the recurring
-  shapes: `AGENTS-DEV.md` → "Test honesty".
+- **A test that would also be green without the feature is not a test.** Recurring shapes:
+  skill `test-honesty`.
 - **Report, don't route around.** If a tool gives a surprising result, report query, scope and the
   expected file — never silently switch from `eclipse*` to `disk*`. That switch hides exactly the
   bug worth finding.
-- **Docs that describe uncommitted WIP are still committed (hit 2026-10-16, symbol-rollout close):**
-  a doc note documenting someone's WIP (e.g. the `resolveInEclipse` note in
-  `docs/eclipse-read-tools.md` marked "Pauls WIP") is SOLL-Doku — committed with the docs cycle;
+- **Docs that describe uncommitted WIP are still committed** with the docs cycle they belong to —
   only the code stays WIP. Likewise the skill-impact ledger (`.agents/skills/wiki/skill-impact.md`)
-  rides with the cycle it belongs to — otherwise the ledger line exists only locally.
+  rides with its cycle. (Hit 2026-10-16, symbol-rollout close.)
 - **Re-read after every line-based edit.** `eclipseReplaceLines`/`diskReplaceLines` have repeatedly
   behaved as *insert* instead of *replace* — the old line stays, the new content lands below it,
-  with no error. It corrupted Java sources until a whole increment had to be reset. Read the changed
-  range back before trusting it; for larger rewrites prefer writing the whole file.
+  with no error. Read the changed range back before trusting it; for larger rewrites prefer
+  writing the whole file.
 - Shell is for read-only diagnosis (`xxd`, `file`, `wc`), never for file I/O.
