@@ -18,6 +18,12 @@
      UserMessage-Join in `ThreadSafeMemory.add` dokumentiert.
   4. **D — Codegraph-Context = eine Zeile** (`58afd828`): `renderBody` ohne Server-Instructions,
      Capture/`State.instructions`/`head()`-Hash bleiben (Dedup unverändert); Tests auf Abwesenheit.
+  - **Externes Review #2 (2026-10-20) → R-CC-20.5** (`b34485c6` + Docs `4a2363d6`): wirft der Compressor,
+     fängt `preTurnCompact` (RuntimeException, Cancel re-thrown via `ExceptionUtil.isCanceled`), meldet
+     `onProblem` und läuft **ohne Compact** weiter — die frische Message geht nicht mehr verloren
+     (Rot-vor-grün bewiesen). ⏳ **Jon ohne Hint-Band vor dem Pre-Turn-Compact** — bewusst akzeptiert,
+     Rückversicherung Paul (open-points). ❓ Nachbarloch: In-Loop-Direkt-Compact fängt Exceptions nicht
+     (Turn stirbt, nichts verloren) — bewusst nicht mitgefixt.
   - **Docs-Commit:** `20ebbdfb` (R-CC-20 specified, codegraph R-CG-7(c), ADR-0070/0071 angepasst,
     CHANGELOG Removed-StateMigration, open-points bereinigt). Status-Flips (compact.md R-CC-20 ✅,
     index.md) liegen noch **uncommitted** → mit dem Archivierungs-Commit mitkommen.
