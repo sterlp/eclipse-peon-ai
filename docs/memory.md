@@ -2,14 +2,15 @@
 
 > docs/** — insbesondere memory.md — schreibt AUSSCHLIESSLICH Jon. Agenten liefern Facts im Chat.
 
-## Stand 2026-10-21 — final (Branch `story/workspace-nesting-2026-10-19`, HEAD `b888f25d`)
+## Stand 2026-10-21 — final (Branch `story/workspace-nesting-2026-10-19`)
 
-- **Branch fertig, 2 Commits ahead of origin** (`2634140f` Externe-Review-Fixes, `b888f25d` finaler
-  Docs-Cleanup) — origin steht bei `89aafcb` (Pauls Sync ~08:13); die 2 Commits sind **unpushed**.
+- **Branch fertig, Review/Smoke ausstehend (Paul).** Alle Cleanup-Commits ab `2634140f`
+  liegen nur lokal — origin steht bei `89aafcb` (Pauls Sync ~08:13); alles danach ist
+  **unpushed** (aktuelle Zahl: `git rev-list --count origin/story/workspace-nesting-2026-10-19..HEAD`).
   Paul macht das finale Review lokal.
   Inhalt: Housekeeping (6 Skills + AGENTS-Straffung `35c5219f`) · Prompt-Trims po/planner (`ce3beb93`)
   · Restore (`440304c7`) · Release-Doku-Auflösung (`636f5e26`, ADR-0072) · Docs-Cleanup
-  (`89aafcb`) · Externe-Review-Fixes (`2634140f`).
+  (`89aafcb`) · Externe-Review-Fixes + finaler Docs-Cleanup (`2634140f`, `b888f25d`, `d60b00a1`).
 - **Zyklus vollständig abgeschlossen:** resolved-points-Links gefixt, Skill `peon-release`
   (Build-Guard, Update-Site = `https://sterlp.github.io/eclipse-peon-ai/`), Homepage-Install-URLs,
   compressor.md Disclosure-Rewording (Paul „passt"), lintDocs über docs/: 0 findings.
