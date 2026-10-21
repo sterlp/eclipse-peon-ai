@@ -37,7 +37,7 @@ The culprits are leftover `org.objectweb.asm 9.10.1` and `jakarta.annotation-api
    *Available Software Sites*, remove any old Peon AI site so it cannot be used again.
 
 A ready-to-run PowerShell script does steps 2–3 for you (with backups): see
-`docs/clear-stale-platform-bundles.ps1` in the repository.
+`scripts/clear-stale-platform-bundles.ps1` in the repository.
 
 ```powershell
 # preview, then apply (point -EclipseHome at the folder containing eclipse.exe)

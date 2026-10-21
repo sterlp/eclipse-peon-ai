@@ -55,8 +55,8 @@ with no log entry.
   not — confirmed via the debugger stack `ReflectionContributionFactory → make`).
 
 Removal + guide for affected users:
-[troubleshooting-stale-platform-bundles.md](troubleshooting-stale-platform-bundles.md) +
-script `docs/clear-stale-platform-bundles.ps1`.
+[Homepage Troubleshooting](https://peon-ai-4e.sterl.org/setup/troubleshooting) +
+script `scripts/clear-stale-platform-bundles.ps1`.
 
 > Note: the wide range `[2.0.0,4.0.0)` is required (2026-03 has only 2.1.1, 2026-09 only 3.0.0);
 > the divergence occurs only with **two** providers (a leftover). Protection therefore lives in the
@@ -66,5 +66,5 @@ script `docs/clear-stale-platform-bundles.ps1`.
 
 - [ ] Public correcting comment on issue #142 (I cannot post it).
 - [x] Homepage minimum version = 2025-12 (already correct).
-- [x] User guide + script for stale platform bundles (`docs/troubleshooting-stale-platform-bundles.md`).
+- [x] User guide + script for stale platform bundles (Homepage: `setup/troubleshooting`).
 - [x] CI assert: update site ships only `org.sterl.*` plugins.

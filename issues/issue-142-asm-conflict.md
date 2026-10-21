@@ -53,8 +53,8 @@ Eclipse startet, aber die View bleibt leer, ohne Log-Eintrag.
   läuft, Lifecycle nicht — per Debugger-Stack `ReflectionContributionFactory → make` bestätigt).
 
 Beseitigung + Anleitung für betroffene Nutzer:
-[troubleshooting-stale-platform-bundles.md](troubleshooting-stale-platform-bundles.md) +
-Skript `docs/clear-stale-platform-bundles.ps1`.
+[Homepage Troubleshooting](https://peon-ai-4e.sterl.org/setup/troubleshooting) +
+Skript `scripts/clear-stale-platform-bundles.ps1`.
 
 > Hinweis: Der breite Bereich `[2.0.0,4.0.0)` ist nötig (2026-03 nur 2.1.1, 2026-09 nur 3.0.0);
 > die Divergenz tritt nur bei **zwei** Providern (Leftover) auf. Absicherung daher über die
@@ -64,5 +64,5 @@ Skript `docs/clear-stale-platform-bundles.ps1`.
 
 - [ ] Öffentlicher Korrektur-Kommentar auf Issue #142 (kann ich nicht posten).
 - [x] Homepage-Mindestversion = 2025-12 (bereits korrekt).
-- [x] Nutzer-Anleitung + Skript für Stale-Platform-Bundles (`docs/troubleshooting-stale-platform-bundles.md`).
+- [x] Nutzer-Anleitung + Skript für Stale-Platform-Bundles (Homepage: `setup/troubleshooting`).
 - [x] CI-Assert: Update-Site liefert nur `org.sterl.*`-Plugins.
