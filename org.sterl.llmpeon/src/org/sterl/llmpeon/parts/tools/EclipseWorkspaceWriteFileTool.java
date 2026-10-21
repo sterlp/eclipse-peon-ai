@@ -2,7 +2,6 @@ package org.sterl.llmpeon.parts.tools;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
@@ -82,11 +81,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
                 
         });
         
-        try {
-            return result.get(2, TimeUnit.MINUTES);
-        } catch (Exception e) {
-            throw new IllegalStateException("Timeout or failure while editing the open editor", e);
-        }
+        return EclipseUtil.await(result, EclipseUtil.UI_CALL_TIMEOUT, "editing the open editor");
 
     }
 

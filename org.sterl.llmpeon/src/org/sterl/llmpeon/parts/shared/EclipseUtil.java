@@ -2,11 +2,15 @@ package org.sterl.llmpeon.parts.shared;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -39,6 +43,7 @@ import org.jspecify.annotations.Nullable;
 import org.eclipse.ui.texteditor.IDocumentProvider;
 import org.eclipse.ui.texteditor.ITextEditor;
 import org.jspecify.annotations.NonNull;
+import org.sterl.llmpeon.exception.ExceptionUtil;
 import org.sterl.llmpeon.shared.AiMonitor.AiFileUpdate;
 import org.sterl.llmpeon.shared.FileUtils;
 import org.sterl.llmpeon.shared.StringUtil;
@@ -78,6 +83,36 @@ public class EclipseUtil {
         } catch (Exception e) {
             result.completeExceptionally(e);
         }
+    }
+
+    /** One behaviour, one implementation: the single UI-call time limit of the plugin. */
+    public static final Duration UI_CALL_TIMEOUT = Duration.ofMinutes(2);
+
+    /**
+     * Waits for a UI-thread result and rethrows the real cause — a failed future yields the
+     * throwable the UI runnable threw (future envelopes stripped), and "Timeout" is claimed
+     * only for a genuine {@link TimeoutException}. A {@link java.util.concurrent.CancellationException}
+     * passes through unwrapped (never swallowed).
+     */
+    public static <T> T await(CompletableFuture<T> future, Duration timeout, String what) {
+        try {
+            return future.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
+        } catch (ExecutionException e) {
+            var cause = ExceptionUtil.unwrap(e);
+            if (cause == null) cause = e; // envelope-only chain — the envelope is all there is (checked, so re-wrapped)
+            if (cause instanceof Error err) throw err;
+            if (cause instanceof RuntimeException re) throw re;
+            throw new IllegalStateException(what + " failed: " + cause, cause);
+        } catch (TimeoutException e) {
+            throw new IllegalStateException("Timeout after " + format(timeout) + " while " + what, e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while " + what, e);
+        }
+    }
+
+    private static String format(Duration d) {
+        return d.toMillis() >= 1000 ? d.toSeconds() + " s" : d.toMillis() + " ms";
     }
 
     public static Path workspacePath() {

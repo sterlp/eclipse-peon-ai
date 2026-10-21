@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
@@ -84,11 +83,7 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
             IDocument document = provider.getDocument(text.getEditorInput());
             return document.get();
         });
-        try {
-            return result.get(2, TimeUnit.MINUTES);
-        } catch (Exception e) {
-            throw new IllegalStateException("Timeout during eclipse editor read", e);
-        }
+        return EclipseUtil.await(result, EclipseUtil.UI_CALL_TIMEOUT, "reading the open editor");
 
     }
 

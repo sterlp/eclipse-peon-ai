@@ -3,8 +3,11 @@ package org.sterl.llmpeon.exception;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import dev.langchain4j.exception.RateLimitException;
 
@@ -58,5 +61,61 @@ class ExceptionUtilTest {
     @Test
     void isRateLimit_returns_false_for_null() {
         assertThat(ExceptionUtil.isRateLimit(null)).isFalse();
+    }
+
+    // ------------------------------------------------------------------ unwrap (R5, docs/write-path-validator.md)
+
+    @Test
+    void unwrap_returns_the_cause_of_an_execution_exception() {
+        // GIVEN an ExecutionException wrapping the validator's denial
+        var denial = new IllegalArgumentException("Write denied: x");
+        var envelope = new ExecutionException(denial);
+
+        // WHEN
+        var unwrapped = ExceptionUtil.unwrap(envelope);
+
+        // THEN the very same denial instance comes out
+        assertThat(unwrapped).isSameAs(denial);
+    }
+
+    @Test
+    void unwrap_strips_stacked_future_envelopes() {
+        // GIVEN two stacked future envelopes around the real cause
+        var deep = new IllegalStateException("deep");
+        var top = new ExecutionException(new CompletionException(deep));
+
+        // WHEN
+        var unwrapped = ExceptionUtil.unwrap(top);
+
+        // THEN all envelopes are stripped
+        assertThat(unwrapped).isSameAs(deep);
+    }
+
+    @Test
+    void unwrap_returns_the_throwable_itself_when_not_enveloped() {
+        // GIVEN a plain throwable
+        var boom = new RuntimeException("boom");
+
+        // WHEN/THEN it is returned as-is
+        assertThat(ExceptionUtil.unwrap(boom)).isSameAs(boom);
+    }
+
+    @Test
+    void unwrap_is_null_safe() {
+        assertThat(ExceptionUtil.unwrap(null)).isNull();
+    }
+
+    @Test
+    @Timeout(2)
+    void unwrap_terminates_on_a_cyclic_cause_chain() {
+        // GIVEN two envelopes whose causes point at each other — anonymous subclasses, because
+        // the no-arg constructors of both envelope types are protected
+        var a = new ExecutionException() {};
+        var b = new CompletionException() {};
+        a.initCause(b);
+        b.initCause(a);
+
+        // WHEN/THEN it terminates and returns a non-null throwable
+        assertThat(ExceptionUtil.unwrap(a)).isNotNull();
     }
 }

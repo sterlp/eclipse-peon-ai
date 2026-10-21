@@ -2,6 +2,7 @@ package org.sterl.llmpeon.test;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -9,11 +10,20 @@ import static org.junit.Assume.assumeTrue;
 
 import java.nio.file.Files;
 import java.time.OffsetDateTime;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
+import org.eclipse.ui.PlatformUI;
 import org.junit.Test;
+import org.sterl.llmpeon.ai.AiProvider;
+import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.memory.ThreadSafeMemory;
+import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceWriteFileTool;
+import org.sterl.llmpeon.tool.ToolLoopRequest;
+import org.sterl.llmpeon.tool.WriteValidator;
 
 public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
 
@@ -459,4 +469,88 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
         tool.eclipseDeleteResource(dst); // the rename target is not auto-tracked by eclipseWriteFile
     }
 
+    // ------------------------------------------------------------------ R5: validator denial reaches the caller verbatim
+
+    // No @Test(timeout): the PDE suite runs on the workbench UI thread; the timeout would move the
+    // body to an executor thread where runInUiThread (asyncExec) never runs (Jon, decision A, 2026-10-21).
+    // Red proof (2026-10-21): old try/catch state → "Timeout or failure while editing the open editor".
+    @Test
+    public void test_updateOpenFile_denied_reachesCallerVerbatim() {
+        // R5 (docs/write-path-validator.md): a WriteValidator denial on the editor path must
+        // arrive as the plain IllegalArgumentException — no "Timeout", no "ExecutionException"
+        // GIVEN a workspace file, open and ACTIVE in the editor; the tool is restricted to docs paths
+        var name = "updateDenied_" + System.nanoTime() + ".txt";
+        var fileName = "/test_project/" + name;
+        eclipseWriteFile(fileName, "alpha\nbeta");
+        var file = project.getFile(name);
+
+        // open in the editor on the UI thread, then poll (bounded) until it is the active editor
+        ui(() -> {
+            EclipseUtil.openInEditor(file);
+            return null;
+        });
+        var deadline = System.currentTimeMillis() + 5_000;
+        var active = false;
+        while (System.currentTimeMillis() < deadline) {
+            active = ui(() -> EclipseUtil.isOpenInEditor(file));
+            if (active) break;
+            sleep(100);
+        }
+        assertTrue("editor for " + fileName + " never became active", active);
+
+        try {
+            // WHEN the validator denies the write
+            var denied = new EclipseWorkspaceWriteFileTool();
+            denied.withToolRequest(docsRequest());
+            var e = assertThrows(IllegalArgumentException.class,
+                    () -> denied.eclipseUpdateOpenFile("alpha", "gamma"));
+
+            // THEN the denial message reaches the caller verbatim — no timeout claim, no envelope
+            assertTrue(e.getMessage(), e.getMessage().startsWith("Write denied: "));
+            assertFalse(e.getMessage(), e.getMessage().contains("Timeout"));
+            assertFalse(e.getMessage(), e.getMessage().contains("ExecutionException"));
+
+            // and the file is untouched
+            assertEquals("   1: alpha\n   2: beta\n", readTool.eclipseReadFile(fileName, 0, 0));
+        } finally {
+            // close the editor on the UI thread BEFORE the fixture cleanup deletes the file
+            ui(() -> {
+                var page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
+                var editor = page.getActiveEditor();
+                if (editor != null) page.closeEditor(editor, false);
+                return null;
+            });
+        }
+    }
+
+    /** Runs the given code on the workbench UI thread and returns its result (or throws). */
+    private <T> T ui(Supplier<T> fn) {
+        try {
+            return EclipseUtil.runInUiThread(fn).get(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError("interrupted waiting for UI thread", e);
+        } catch (Exception e) {
+            throw new AssertionError("UI thread call failed", e);
+        }
+    }
+
+    private static void sleep(long ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError("interrupted", e);
+        }
+    }
+
+    /** A tool request restricted to docs paths (WriteValidator.DOCS) — same shape as EclipseWriteValidatorUnitTest. */
+    private ToolLoopRequest docsRequest() {
+        var model = LlmConfig.newConfig(AiProvider.OLLAMA, "test-model", "http://localhost:9999").build();
+        return ToolLoopRequest.builder()
+                .memory(new ThreadSafeMemory())
+                .chatModel(model)
+                .writeValidator(WriteValidator.DOCS)
+                .build();
+    }
 }

@@ -39,6 +39,12 @@ model better than a wrapping decorator.
   both paths of rename). Read tools are never gated.
 - Allowed patterns are also stated in Jon's system prompt so he self-restricts; the pattern set is a
   constant today and becomes user-editable config later.
+- **Fehler-Transport (R5):** Das Ergebnis eines UI-Thread-Aufrufs wird über den geteilten Helfer
+  `EclipseUtil.await(future, timeout, what)` entpackt — `ExecutionException`/`CompletionException`
+  werden auf die echte Ursache zurückgeführt und diese wird weitergeworfen. Nur ein echtes
+  `TimeoutException` erzeugt den „Timeout"-Text; `InterruptedException` setzt das Interrupt-Flag.
+  Zweite Verteidigungslinie: `SmartToolExecutor` behandelt ein `IllegalArgumentException` **an
+  beliebiger Stelle** der Cause-Kette als Tool-Error.
 
 **Dynamische Roots (❌ 2026-09-08, [project-skills.md](project-skills.md) + [ADR-0043](adr/0043-scaffold-write-validator.md)):**
 der Scaffold-Agent bekommt als zweiter Validator-Nutzer **dynamische Roots** (Supplier auf
@@ -85,6 +91,26 @@ Projekt-Root nur gesetzt, wenn ein Projekt gewählt ist.
 * GIVEN the `DOCS` validator used across many writes
   WHEN it validates repeatedly
   THEN each glob is compiled to a regex exactly once (cached in `RegexUtils`).
+
+### R5 — Eine Ablehnung erreicht das Modell unverfälscht (❌ specified, 2026-10-21)
+
+Ein abgelehnter Write ist eine **erwartete Antwort** an das Modell — kein Fehlerfall und erst recht kein
+Timeout. Die Begründung des Validators erreicht den LLM als Tool-Ergebnis **wörtlich**, also auch dann,
+wenn sie über Wrapper gelaufen ist (Future/UI-Thread, `ToolExecutionException`, `ExecutionException`).
+
+* GIVEN ein Agent mit `DOCS` (`*/docs/*`, `*.md`)
+  WHEN der Editor-Write (`eclipseUpdateOpenFile`) auf `/ui-automate/config.toml` läuft
+  THEN lautet das Tool-Ergebnis `Write denied: '/ui-automate/config.toml' is outside this agent's
+  allowed paths …`, die Datei ist unverändert, und weder „Timeout" noch
+  `java.util.concurrent.ExecutionException` kommen darin vor.
+* GIVEN dieselbe Ablehnung, verpackt als `IllegalStateException` → `ExecutionException` →
+  `IllegalArgumentException`
+  WHEN der Tool-Loop sie ausführt
+  THEN erkennt er das `IllegalArgumentException` **irgendwo** in der Cause-Kette als Tool-Error und
+  gibt dessen Message zurück — kein generisches `Tool failed - check why`.
+* GIVEN der UI-Thread antwortet wirklich nicht innerhalb des Timeouts (2 min)
+  WHEN der Tool-Aufruf darauf wartet
+  THEN nennt der Fehler das Timeout — „Timeout" wird nur bei einem echten Timeout behauptet.
 
 ## Notes
 
