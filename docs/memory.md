@@ -2,7 +2,7 @@
 
 > docs/** — insbesondere memory.md — schreibt AUSSCHLIESSLICH Jon. Agenten liefern Facts im Chat.
 
-## Stand 2026-10-21 (1) — Release-Doku-Auflösung fertig (uncommitted)
+## Stand 2026-10-21 (1) — Release-Doku-Auflösung fertig (Commit `636f5e26`)
 
 - **github-eclipse-repo.md gelöscht** (Repo-Root, Mischdokument) — Prozedur → Skill, Install →
   Homepage, Ideen → open-points. Protokolliert in [ADR-0072](adr/0072-github-eclipse-repo-cleanup.md).
@@ -21,10 +21,49 @@
   (vor dem H1) ans Dateiende verschoben.
 - **homepage/installation.md:30:** Update-Site-URL korrigiert (`https://peon-ai-4e.sterl.org/`).
 - **Temp-Files gelöscht:** `docs/tmp-peon-4e-root.txt` (Mess-Beleg).
-- **Offen:** Commit auf `story/agents-skill-dedup` — Dateien: `.agents/skills/peon-release/`,
-  `docs/adr/0072-…` (+ Löschung `0001-repo-cleanup.md`), `docs/system-prompts.md`, `AGENTS-DEV.md`,
-  `docs/open-points.md`, `docs/memory.md`, `homepage/src/setup/installation.md`,
-  Löschung `github-eclipse-repo.md` + `docs/tmp-peon-4e-root.txt`, Löschung `docs/skills/peon-release/`. Pauls WIP ausgeschlossen.
+- **Commit `636f5e26`** (2026-10-21, `story/agents-skill-dedup`): alle obigen Änderungen
+  committed — 8 Dateien (skill, ADR-0072, system-prompts.md, AGENTS-DEV.md, open-points.md,
+  memory.md, installation.md, Löschung github-eclipse-repo.md). Pauls WIP unangetastet.
+  Zweig insgesamt 4 Commits (35c5219f, ce3beb93, 440304c7, 636f5e26) — Merge/Smoke wie oben.
+
+## Stand 2026-10-21 (2) — Merge + Docs-Cleanup-Zyklus fertig (Branch `story/workspace-nesting-2026-10-19`, lokal)
+
+- **Merge:** `story/agents-skill-dedup` → `story/workspace-nesting-2026-10-19` (Fast-Forward,
+  HEAD `636f5e26`). Zweig ist 8 Commits ahead of origin — **kein Push**, Paul macht das finale
+  Review lokal.
+- **Commit `89aafcb`** (Docs cleanup):
+  - `scripts/` neu: `clear-stale-platform-bundles.ps1` (aus `docs/`) + `setup-ssh-windows.ps1`
+    (aus Repo-Root) — Scripts sind kein Doc.
+  - `docs/issue-142-asm-conflict.md` + `-en.md` → `issues/` (Forensik-Docs wohnen bei den
+    IST-Issue-Docs `issues/issue-01..06.md`); Links darin aktualisiert (Homepage-URL +
+    `scripts/`-Pfad).
+  - `docs/troubleshooting-stale-platform-bundles.md` **gelöscht** — `homepage/src/setup/troubleshooting.md`
+    ist die Nutzer-Quelle, die Tiefe lebt in `issues/issue-142-asm-conflict.md`. Kein Verlust.
+  - `docs/index.md` Notes-Zeile repointet: Homepage-Troubleshooting-URL + `scripts/`-Pfad,
+    alter Issue-142-Eintrag (Duplikat) entfernt.
+  - `homepage/src/setup/troubleshooting.md`: Script-Pfad `docs/…` → `scripts/…`.
+- **Lesson (Tool-Trap):** `diskRenameResource` meldete bei `docs/issue-142-asm-conflict.md` Erfolg,
+  die Datei blieb aber in `docs/` (nur `-en.md` wurde wirklich verschoben). Bei Renames: immer mit
+  `diskListDirectory`/`diskSearchFiles` verifizieren, nicht dem Erfolgs-Report vertrauen.
+- **Offen aus dem Zyklus:** nichts — Pauls finaler Review steht aus.
+## Stand 2026-10-21 (3) — Externer Review bearbeitet
+
+- **Externer Review, 2 Befunde, beide abgearbeitet:**
+  1. `docs/resolved-points.md` (Issue-142-Zeile): tote Links gefixt — `issues/issue-142-asm-conflict.md`
+     (statt alte docs/-Referenz), Homepage-Troubleshooting-URL statt gelöschtem Doc,
+     `scripts/clear-stale-platform-bundles.ps1` (statt bare Name).
+  2. Skill `peon-release`: Guard-Satz „Deploy schlägt fehl" → „Der **Build** schlägt fehl"
+     (Widerspruch zu „maven.yml deployt nicht" gelöst); p2-Bullet neu — **Update-Site =
+     `https://sterlp.github.io/eclipse-peon-ai/`** (Paul bestätigt 2026-10-21; p2.index dort 200,
+     gemessen 2026-10-19; sterl.org/p2.index 404, 2026-10-20). Offen: wohin `deploy-pages` die
+     Update-Site nach dem nächsten Release legt (SKILL-Bullet hält das fest).
+  3. **Dritter Befund (Review-Addon):** Homepage widersprach sich selbst — `installation.md:30`
+     nannte sterl.org (404!), `index.md:35` die Repo-URL. Beide → github.io korrigiert.
+     Übersteuert die „installation.md URL zu sterl.org"-Zeile in Stand (1) — die war falsch.
+- **lintDocs über docs/: 0 findings** — keine toten Links mehr.
+- **Compressor-Disclosure reworded** (Freigabe Paul „passt"): „filtered out of this input /
+  re-injected fresh" statt „removed before you saw the input"; Lead-in „what was cut" statt
+  „cut before you saw it". Tests pinnen nur den Präfix, kein Test-Lauf nötig.
 
 ## Stand 2026-10-20 (3) — Housekeeping-Zyklus `agents-skill-dedup` fertig (Branch `story/agents-skill-dedup`, 2 Commits, lokal)
 

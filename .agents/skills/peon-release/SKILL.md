@@ -32,6 +32,6 @@ description: Release & Deploy-Prozedur — build, lokaler p2-Test, Tag-Release v
 
 ## Bekannte Fallen
 
-- **p2-Root-Pfad verifizieren (2026-10-20):** `https://peon-ai-4e.sterl.org/p2.index` lieferte beim letzten Check 404 (Root ist die VitePress-Homepage). Vermutlich liegt die Update-Site unter einem Pfad (z.B. `/update/`). Nach dem nächsten Release-Smoke prüfen und den Pfad hier + in der Homepage-Installation eintragen. Pauls These zur alten URL: `https://sterlp.github.io/eclipse-peon-ai/` liefert 404, weil die Repo-Root keine `index.html` mehr hat — die Site-Struktur ist jetzt reine p2-Struktur.
+- **Update-Site (bestätigt, Paul 2026-10-21):** `https://sterlp.github.io/eclipse-peon-ai/` — `p2.index` dort 200 (2026-10-19 gemessen). Die Homepage-Installation verweist darauf. `https://peon-ai-4e.sterl.org/p2.index` lieferte 404 (2026-10-20): Root ist die VitePress-Homepage. Nach dem nächsten Release prüfen, wohin `deploy-pages` die Update-Site legt (sterl.org oder github.io), und SKILL + Homepage-Installation abgleichen.
 - **p2-Content vor dem Push verifizieren:** `plugins/` + `features/` müssen gefüllt sein.
-- **Issue-142-Guard** (`maven.yml`): Deploy schlägt fehl, wenn Tycho Bundles außerhalb `org.sterl.*` in den Build zieht — gewolltes Verhalten, nicht umgehen.
+- **Issue-142-Guard** (`maven.yml`): Der **Build** schlägt fehl, wenn Tycho Bundles außerhalb `org.sterl.*` in den Build zieht — gewolltes Verhalten, nicht umgehen. (`maven.yml` deployt nicht, siehe oben.)

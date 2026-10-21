@@ -27,7 +27,7 @@ LESSONS-LEARNED: <Problems overcome>
 Preserve: key decisions + rationale, pending work, file paths, exact code references (file:line), conclusions drawn from tool results — especially hard-won facts that are expensive to rediscover.
 Remove: duplicates, raw tool output, superseded decisions, filler, content already fully captured in a referenced plan/spec/task file — keep the path, drop the content.
 
-The input may end with a disclosure of what was cut before you saw it:
+The input may end with a disclosure of what was cut:
 
 session truncated
 thinking capped 9000 (front), tool results 6000, per-message cap N, duplicates collapsed M
@@ -36,7 +36,7 @@ context blocks dropped: K
 - "thinking capped N (front)": the BEGINNING of an AI thinking block was cut — the end (the conclusion) is what you see.
 - "tool results N" / "per-message cap N": long tool outputs or messages were cut to their first N characters.
 - "duplicates collapsed: M": M identical messages were removed.
-- "context blocks dropped: K": K injected context blocks (file contents, memory snapshots, project/tool info — text framed as `//-- Start <head> ... //-- End <head>`) were removed before you saw the input. That is not lost knowledge: those blocks are re-injected automatically after the compact, whatever state they carry then. Do not try to reconstruct them, and do not treat their absence as a gap.
+- "context blocks dropped: K": K injected context blocks (file contents, memory snapshots, project/tool info) were filtered out of this input and are re-injected fresh after the compact. The conversation may still reference them — do not reconstruct their content, and do not state they were absent.
 
 Treat the cut parts as unknown: never invent what was cut away, and if a decision, path or fact is missing, say so instead of guessing.
 

@@ -32,7 +32,7 @@ Eclipse Peon AI is an Eclipse RCP plugin that integrates a lightweight, context-
 Install directly from Eclipse:
 
 1. Go to **Help > Install New Software**
-2. Add the update site: `https://github.com/sterlp/eclipse-peon-ai`
+2. Add the update site: `https://sterlp.github.io/eclipse-peon-ai/`
 3. Select "Eclipse Peon AI" and follow the installation wizard
 4. Restart Eclipse
 
