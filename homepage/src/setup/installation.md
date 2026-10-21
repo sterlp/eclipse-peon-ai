@@ -27,7 +27,7 @@ Install directly from Eclipse:
 
 1. Go to **Help > Install New Software**
 2. Click **Add...** to add a new repository
-3. Enter the update site URL: `https://github.com/sterlp/eclipse-peon-ai`
+3. Enter the update site URL: `https://peon-ai-4e.sterl.org/`
 4. Select "Eclipse Peon AI" from the list
 5. Click **Next** and follow the installation wizard
 6. Restart Eclipse when prompted

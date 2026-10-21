@@ -8,6 +8,9 @@ Base: `AGENTS.md`. System prompt: `developer.md`.
 - Writing a test / reporting an increment green / mutation check → skill `test-honesty`
 - langchain4j / CompletableFuture / JSON extra body → skill `repo-api-traps`
 - PDE / JDT / SWT / Preferences → skills `eclipse-dpe` / `eclipse-preferences`
+- Release / Update-Site / gh-pages / deploy / Version bump → skill `peon-release`
+- System-Prompts / Agent-Wiring / Docs-Übersicht → [docs/system-prompts.md](docs/system-prompts.md)
+
 
 ## Always-on rules (fail silently when violated — never trigger-gated)
 

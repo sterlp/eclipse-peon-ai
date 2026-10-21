@@ -1,16 +1,14 @@
-## ⏳ Nachtzyklus 5 (2026-10-16) — Token-Schätzung chars×2/7 → chars/3
-- **Punkt:** Estimator `ChatMessageUtil.charsToTokens` (chars×2/7 ≈ /3.5) unterschätzt systematisch
-  (~110k statt ~120k gemessen). Paul-Idee: /3. Jon: **umgesetzt** — R1 in token-usage.md sagt
-  ohnehin schon „chars / 3", der Code war die Abweichung; zu niedrige Schätzung ist für die
-  Kontext-Anzeige (Compact-Button used/max) die gefährliche Richtung (Overflow-Risiko), zu hoch nur kosmetisch.
-- **Rückversicherung:** Paul hat /3 vorgeschlagen („nicht so wichtig, mehr Info") — Umsetzung im
-  Nachtzyklus autonom; widerspricht Paul, zurück auf ×2/7 (Änderung ist eine Konstante). **Umgesetzt
-  `fbe2866f` + Zentralisierung `tokensToChars` `3199f732` (Open-Q1).**
 # Open Points
 
 Status je Punkt: ❓ offen · ⏳ selbst entschieden (Rückversicherung mit User steht aus) · 🔒 geklärt.
 Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.md).
 Aufgeräumt 2026-10-14 (Paul-Order): Gelöste → resolved-points.md, Wertloses gelöscht, Rest komprimiert.
+## Release-Doku-Auflösung (2026-10-20) — github-eclipse-repo.md aufgelöst (ADR-0072)
+
+- ❓ **JAR-Signing:** Update-Site-Plugins sind unsigniert — Eclipse warnt beim Install. Sign-Zertifikat besorgen und release.yml erweitern? Aufwand vs. Nutzen klären.
+- ❓ **Auto-Create GitHub Releases:** `release.yml` deployt nur die Pages-Site, erzeugt aber kein GitHub Release (Changelog/Asset). Soll ein Release-Step (Tag → Release, Binary-Attach) dazu?
+- ⏳ **p2-Pfad-Verifikation auf peon-ai-4e.sterl.org:** `https://peon-ai-4e.sterl.org/p2.index` → 404 (Root = VitePress-Homepage; auch `/update-site/`, `/repository/`, `/updates/`, `/eclipse/` → 404). Pauls These: die alte URL `https://sterlp.github.io/eclipse-peon-ai/` liefert 404, weil die Repo-Root keine `index.html` mehr hat (reine p2-Struktur ohne Landing-Page). **Rückversicherung:** nach dem nächsten Release-Smoke den tatsächlichen p2-Pfad messen und in Skill `peon-release` + Homepage-Installation eintragen.
+
 
 ## 2.14.0 (2026-10-19) — Jon-Entscheidungen zur Rückversicherung
 
@@ -381,3 +379,13 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   normalisiert; `codegraph_off.svg`/`codegraph_off_dark.svg` ergänzt (gedimmte Farbe statt
   `setEnabled(false)` — SWT graut Text, nicht das Image); R-CG-8 präzisiert.
 
+
+
+## ⏳ Nachtzyklus 5 (2026-10-16) — Token-Schätzung chars×2/7 → chars/3
+- **Punkt:** Estimator `ChatMessageUtil.charsToTokens` (chars×2/7 ≈ /3.5) unterschätzt systematisch
+  (~110k statt ~120k gemessen). Paul-Idee: /3. Jon: **umgesetzt** — R1 in token-usage.md sagt
+  ohnehin schon „chars / 3", der Code war die Abweichung; zu niedrige Schätzung ist für die
+  Kontext-Anzeige (Compact-Button used/max) die gefährliche Richtung (Overflow-Risiko), zu hoch nur kosmetisch.
+- **Rückversicherung:** Paul hat /3 vorgeschlagen („nicht so wichtig, mehr Info") — Umsetzung im
+  Nachtzyklus autonom; widerspricht Paul, zurück auf ×2/7 (Änderung ist eine Konstante). **Umgesetzt
+  `fbe2866f` + Zentralisierung `tokensToChars` `3199f732` (Open-Q1).**

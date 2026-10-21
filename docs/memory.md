@@ -2,76 +2,79 @@
 
 > docs/** — insbesondere memory.md — schreibt AUSSCHLIESSLICH Jon. Agenten liefern Facts im Chat.
 
-## Stand 2026-10-20 (2) — R-CC-20-Zyklus fertig gebaut + reviewed (Branch `story/workspace-nesting-2026-10-19`, lokal, NICHT gepusht)
+## Stand 2026-10-21 (1) — Release-Doku-Auflösung fertig (uncommitted)
 
-- **Vier Slices + Delta-Fix, alle abgenommen (Da Dok CONCERNS → CONCERNS 1 behoben):**
-  1. **B — stale Supplier** (`e5fa3c41`): `BuildPoAgentComponent:133` Bound-Ref → Lambda
-     `() -> configuredModel.getConfig().getAutoCompactAfter()`; Test
-     `delegateCompactThresholdFollowsConfigUpdate` (Live-Update nach Agent-Bau + 0 = off).
-  2. **A — R-CC-20 ✅ Pre-Turn-Check** (`98a0a5be` + Ordering-Pin `19340dbf` + **Schwelle 95 % `ad3684db`**,
-     Paul 2026-10-20: gleiche Zahl wie der In-Loop-Hint, Compact statt Hint am Turn-Anfang): `overRawBudget`
-     statisch in `HandleToolLoopCompactComponent` (EINE Regel, zwei Zeitpunkte), `preTurnCompact`
-     in `AbstractAgent.doCall` vor `renderTurnContext`/frischer Message. `autoCompactRetriesAfterFailure`
-     2 → 3 Versuche (Turn-2-Pre-Turn-Versuch ist jetzt SOLL). Ordering-Pin: Request-Payload beweist
-     „Compact VOR Provider-Call" (Mutation rot am Payload-Pin).
-  3. **C — 3 Tests honest** (`1ba66623`): `autoGateNeedsMoreThanMinCompactMessages` (MIN-Guard-Fall),
-     `compactWithZeroBudget_gateOff` (Off-Fall), `systemPromptBuiltOnce…` Javadoc; Seed-Fix wegen
-     UserMessage-Join in `ThreadSafeMemory.add` dokumentiert.
-  4. **D — Codegraph-Context = eine Zeile** (`58afd828`): `renderBody` ohne Server-Instructions,
-     Capture/`State.instructions`/`head()`-Hash bleiben (Dedup unverändert); Tests auf Abwesenheit.
-  - **Externes Review #2 (2026-10-20) → R-CC-20.5** (`b34485c6` + Docs `4a2363d6`): wirft der Compressor,
-     fängt `preTurnCompact` (RuntimeException, Cancel re-thrown via `ExceptionUtil.isCanceled`), meldet
-     `onProblem` und läuft **ohne Compact** weiter — die frische Message geht nicht mehr verloren
-     (Rot-vor-grün bewiesen). 🔒 **Kein Hint-Band am Turn-Anfang, für niemanden** (Paul 2026-10-20) —
-     der Pre-Turn-Compact läuft vor der frischen Message, Compressor-Summary preserved; festgehalten in
-     compact.md R-CC-20.2. ❓ Nachbarloch: In-Loop-Direkt-Compact fängt Exceptions nicht
-     (Turn stirbt, nichts verloren) — bewusst nicht mitgefixt.
-  - **Docs-Commit:** `20ebbdfb` (R-CC-20 specified, codegraph R-CG-7(c), ADR-0070/0071 angepasst,
-    CHANGELOG Removed-StateMigration, open-points bereinigt). Status-Flips (compact.md R-CC-20 ✅,
-    index.md) liegen noch **uncommitted** → mit dem Archivierungs-Commit mitkommen.
-- **Gates:** Surefire core **1229/0/0**, OSGi **399/0/0**, Da Dok CONCERNS (nur CONCERNS 1 → behoben;
-  CONCERNS 2 Fixture-Duplikat → open-points ❓). Lint: R-Form-VERWAIST = by-design-Baseline
-  (DocsLinter.java:241-243 indexiert nur UC-Definitionen), kein `UNBELEGT_ERLEDIGT`.
-- **Nächster Schritt (Da Mek):** `planImplemented` (archiviert `peon-plan/overview.md`) + Commit der
-  offenen Docs-Edits (compact.md-Flip, index.md, memory.md, open-points.md). Danach Session schließen.
-- **Homepage auf diesem Branch:** „Which model?" (`317a27a3`) + „Qwen tuning" (`e8fb390c`) entfernt.
+- **github-eclipse-repo.md gelöscht** (Repo-Root, Mischdokument) — Prozedur → Skill, Install →
+  Homepage, Ideen → open-points. Protokolliert in [ADR-0072](adr/0072-github-eclipse-repo-cleanup.md).
+- **Skill `peon-release` verschoben:** `docs/skills/peon-release/` → `.agents/skills/peon-release/`
+  (war mein Fehler, falsch platziert — Whitelist hat den Rename blockiert, per Copy+Delete gelöst).
+- **ADR-Nummer korrigiert:** `0001-repo-cleanup.md` → `0072-github-eclipse-repo-cleanup.md`
+  (nextIds: 0071 war der höchste belegte; ADR-0001 existiert bereits — meins war ein Kollision).
+- **system-prompts.md fertig:** `reviewer.md` → `review-agent.md` korrigiert, alle 13 Prompt-Dateien
+  mit Wann/Warum ergänzt (compressor, default, dev-build-loop, developer, plan-write-loop, planner,
+  po, po-delegation, po-tutorial, review-agent, scaffold-agent, scaffold-tutorial, search-agent).
+- **AGENTS-DEV.md:** Trigger-Zeilen ergänzt — Release/Update-Site → Skill `peon-release`,
+  System-Prompts → [docs/system-prompts.md](system-prompts.md).
+- **open-points.md:** neuer Abschnitt „Release-Doku-Auflösung" — ❓ JAR-Signing, ❓ Auto-Create
+  GitHub-Releases, ⏳ p2-Pfad-Verifikation auf peon-ai-4e.sterl.org (404 überall; Pauls These:
+  alte gh-pages-URL 404, weil Repo-Root keine `index.html` mehr hat). Stray „Nachtzyklus 5"-Sektion
+  (vor dem H1) ans Dateiende verschoben.
+- **homepage/installation.md:30:** Update-Site-URL korrigiert (`https://peon-ai-4e.sterl.org/`).
+- **Temp-Files gelöscht:** `docs/tmp-peon-4e-root.txt` (Mess-Beleg).
+- **Offen:** Commit auf `story/agents-skill-dedup` — Dateien: `.agents/skills/peon-release/`,
+  `docs/adr/0072-…` (+ Löschung `0001-repo-cleanup.md`), `docs/system-prompts.md`, `AGENTS-DEV.md`,
+  `docs/open-points.md`, `docs/memory.md`, `homepage/src/setup/installation.md`,
+  Löschung `github-eclipse-repo.md` + `docs/tmp-peon-4e-root.txt`, Löschung `docs/skills/peon-release/`. Pauls WIP ausgeschlossen.
+
+## Stand 2026-10-20 (3) — Housekeeping-Zyklus `agents-skill-dedup` fertig (Branch `story/agents-skill-dedup`, 2 Commits, lokal)
+
+- **`35c5219f`** — 6 neue Skills unter `.agents/skills/` (`peon-build-test`, `test-honesty`,
+  `repo-api-traps`, `architecture-doc`, `plan-exploration`, `story-slicing`) + 6 Ledger-Zeilen
+  (`skill-impact.md`); `AGENTS.md` gestrafft (Einzeiler + Skill-Verweise; GPT-5/o-Begründung und
+  `FileLines`-Klassenliste bewusst behalten), `AGENTS-DEV.md` 184→21 Zeilen (Core→Plugin-Regel,
+  ID-Marker, Scope-Drift bleiben **always-on** — bewusst NICHT in Skills, Silent-Gap-Risiko),
+  `AGENTS-PO.md` 85→24 (Architektur-Template → Skill `architecture-doc`).
+- **`ce3beb93`** — Prompt-Trims: `po.md` P0 (Änderungsvorschläge strukturiert: IST/SOLL/WEIL für
+  Features/Fachliches, GIVEN/WHEN/THEN bei Testbarkeit/Erklärungen/Schärfungen, einzeln
+  entscheidbar) · `planner.md` P3 (Exploration → Skill `plan-exploration` + Fallback-Minima) +
+  P4 (Large stories → Skill `story-slicing`). Prompts greifen ab der nächsten Agent-Session.
+- **Verworben:** P1 (Skill-Verweis in `developer.md` — System-Prompts sind generisch, kein
+  repo-Skill-Verweis, Paul). Kein eigener `docs-id-markers`-Skill (Gate-Regel, always-on).
+- **P5-Befund:** `po-delegation.md` ist ein eingefügtes Fragment von `po.md`
+  (`${plan}`/`${docs}`-Platzhalter), kein Duplikat — keine Änderung nötig.
+- **P2-Entscheid (A):** ID-Marker-Regel bleibt zweischichtig — `developer.md` = generische Syntax,
+  `AGENTS-DEV.md` = R-Form-Trap + Gate. Kein weiterer Eingriff.
+- Keine Docs-/Homepage-Änderung nötig (repo-interne Agent-Infrastruktur).
+- `non-peon-ai-agents-md/` ist veraltet — **Paul löscht sie selbst**; die Inhalte leben jetzt in
+  den Skills `plan-exploration`/`story-slicing`.
 
 ## Offen für Paul (Details: [open-points.md](open-points.md))
 
-1. ❓ **Merge/Tag 2.14.1** — Branch lokal fertig (Workspace-Nesting + Compact-Policy + R-CC-20 + Codegraph
-   eine Zeile + Homepage-Cleanup). Vorher `mvn -B clean verify` einmal neu; Merge/Tag = Pauls Call.
-2. ⏳ **Delegations-Compact feuert pro Delegation** (Kosten, ADR-0071) — Faktor anheben oder nur bei
-   Themenwechsel? Rückversicherung steht aus.
-3. ❓ **Fixture-Duplikat** in ≥3 core-Testklassen (Da-Dok CONCERNS 2) — Micro-Zyklus oder weiterleben?
-4. ❓ **R-Regeln haben kein Linter-Gate** (`DocsLinter:241/254`) — wie gehabt; 30 VERWAIST-Baseline.
-5. Smokes: `!`-Override M1–M6 · Compact-Lock UC-CT-3/5/6 · Compact 2.14.1 (Dev/Plan/Review gleicher
-   Prozent; Delegation compactet Sklave > 70 % vor Auftrag — jetzt zusätzlich: Pre-Turn-Zeile
-   „🗜 Pre-turn compact for …" bei über Budget ohne Tool-Runde) · Codegraph-Smoke nach Neustart.
-6. ⏳ Reserved-Name `codegraph` (ADR-0068) · ⏳ R-CG-15 Monorepo-State-Refresh · ⏳ R-CC-19-Semantik+Tilde ·
-   ⏳ Windows-`cmd /c`-Fallback · 🔒 S3 (🗜 in PoDelegateTool) blockiert auf Pauls WIP-Merge.
+1. ❓ **Merge/Tag 2.14.1** — `story/workspace-nesting-2026-10-19` lokal fertig (Core 1231/0,
+   OSGi 399/0); vorher `mvn -B clean verify`. Smokes: Dev/Plan/Review gleicher Prozentsatz ·
+   Delegation-Compact > 70 % vor Auftrag · Monorepo · Codegraph nach Neustart.
+2. ⏳ **Delegations-Compact feuert pro Delegation** (Kosten, ADR-0071) — Faktor anheben oder nur
+   bei Themenwechsel? Rückversicherung steht aus.
+3. ❓ Fixture-Duplikat in ≥3 core-Testklassen · ❓ R-Regeln ohne Linter-Gate (`DocsLinter:241/254`)
+   · ❓ In-Loop-Direkt-Compact fängt Exceptions nicht (R-CC-20.5-Nachbarloch) · ⏳ Reserved-Name
+   `codegraph` · ⏳ R-CG-15 Monorepo-State-Refresh · ⏳ R-CC-19-Semantik+Tilde · ⏳ Windows-
+   `cmd /c`-Fallback · 🔒 S3 (🗜 in PoDelegateTool) blockiert auf Pauls WIP-Merge.
 
 ## Backlog (nächste Session)
 
 - **Async-Shell-Tool — Paul-Prio** (wichtiger als async Agents). Danach async Agents (Top-3 in
   [async-agents.md](async-agents.md)).
 - **TempFileTool** — Slice 2 Output-Trim 🚧 in design.
-- R-CG-14 (Generation + `disposed` statt Lock über den Connect) · R-CIB-4 Stufe 2 · R-CG-13 ·
-  R-TR-6 INFO-Text + echte Assertions in `TaggedResultTest` · Reprobe-Entscheidung.
-- Bug-Backlog: R-CC-7 Fehlerklassen-Tabelle/ApiRetry (❓) · Header-State-Leak (❓) ·
-  Context-Overflow-Zyklus (❓) · McpService `connect()`-Rollback-Test (ADR-0069).
+- R-CG-14 (Generation + `disposed` statt Lock) · R-CIB-4 Stufe 2 · R-CC-7 Fehlerklassen-Tabelle
+  ApiRetry (❓) · Header-State-Leak (❓) · Context-Overflow-Zyklus (❓) · McpService
+  `connect()`-Rollback-Test (ADR-0069).
 
 ## Notizen
 
-- **Riesige Tool-Args killen den Call** (~28k Zeichen Provider-JSON-Limit): Agenten schreiben lange
-  Pläne/Berichte als Datei oder kompakt in mehreren kleinen Calls.
-- **Windows-Falle im Renderer:** in `lineSeparator()`-Strings immer `indexOf('\n')` suchen, nie
-  `indexOf(System.lineSeparator())`.
-- `eclipseEditFile` verschluckt gelegentlich Parameter — Fallback `eclipseReplaceLines`/`diskEditFile`,
-  danach Read-back. Nach jedem Line-Edit Read-back (AGENTS.md).
-- Ledger `.agents/skills/wiki/skill-impact.md` gehört mit dem Zyklus committed.
+- **System-Prompts generisch halten** (Paul 2026-10-20): nichts Repo-Spezifisches, minimale
+  Änderungen, keine Docs-Inhalte — nur Verweise; Best Practice für alle Projekte (ABAB, C++, Java …).
 - **Untracked, NICHT committen:** Pauls WIP (`org.sterl.llmpeon.core/…/agent/tools/**`,
-  `bad-context-codegraph.md`). `peon-plan/overview.md` wird durch `planImplemented` archiviert.
-- **UserMessage-Join in `ThreadSafeMemory.add`:** aufeinanderfolgende UserMessages werden gemergt —
-  Seed-Fixtures müssen deshalb ggf. eine `AiMessage` als Trenner setzen (Fall Inc 3).
-- **Surefire-Ground-Truth + Commit-Hash aktiv einfordern** — Da Meks DONE-Claims gegen den IST prüfen
-  (Fall Inc 1: erster Build-Lauf war nur Zusammenfassung, kein Code).
+  `bad-context-codegraph.md`).
+- **Windows-Falle im Renderer:** in `lineSeparator()`-Strings immer `indexOf('\n')` suchen.
+- **UserMessage-Join in `ThreadSafeMemory.add`:** Seed-Fixtures ggf. `AiMessage` als Trenner.
+- **Surefire-Ground-Truth + Commit-Hash aktiv einfordern** — DONE-Claims gegen den IST prüfen.
