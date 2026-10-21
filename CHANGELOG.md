@@ -5,7 +5,7 @@ All notable changes to Peon AI are documented here. Format loosely follows
 
 Releases before `2.12.4` are documented via [GitHub Releases](https://github.com/sterlp/eclipse-peon-ai/releases).
 
-## [2.14.1] — 2026-10-19
+## [2.14.1] — 2026-10-21
 
 ### Changed
 
