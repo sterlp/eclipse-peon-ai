@@ -2,9 +2,11 @@
 
 > docs/** — insbesondere memory.md — schreibt AUSSCHLIESSLICH Jon. Agenten liefern Facts im Chat.
 
-## Stand 2026-10-21 — final (Branch `story/workspace-nesting-2026-10-19`, HEAD `2634140f`)
+## Stand 2026-10-21 — final (Branch `story/workspace-nesting-2026-10-19`, HEAD `b888f25d`)
 
-- **Branch fertig, ~10 Commits ahead of origin, KEIN Push** — Paul macht das finale Review lokal.
+- **Branch fertig, 2 Commits ahead of origin** (`2634140f` Externe-Review-Fixes, `b888f25d` finaler
+  Docs-Cleanup) — origin steht bei `89aafcb` (Pauls Sync ~08:13); die 2 Commits sind **unpushed**.
+  Paul macht das finale Review lokal.
   Inhalt: Housekeeping (6 Skills + AGENTS-Straffung `35c5219f`) · Prompt-Trims po/planner (`ce3beb93`)
   · Restore (`440304c7`) · Release-Doku-Auflösung (`636f5e26`, ADR-0072) · Docs-Cleanup
   (`89aafcb`) · Externe-Review-Fixes (`2634140f`).
