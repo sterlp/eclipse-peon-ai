@@ -7,7 +7,10 @@ Aufgeräumt 2026-10-14 (Paul-Order): Gelöste → resolved-points.md, Wertloses 
 
 - ❓ **JAR-Signing:** Update-Site-Plugins sind unsigniert — Eclipse warnt beim Install. Sign-Zertifikat besorgen und release.yml erweitern? Aufwand vs. Nutzen klären.
 - ❓ **Auto-Create GitHub Releases:** `release.yml` deployt nur die Pages-Site, erzeugt aber kein GitHub Release (Changelog/Asset). Soll ein Release-Step (Tag → Release, Binary-Attach) dazu?
-- ⏳ **p2-Pfad-Verifikation auf peon-ai-4e.sterl.org:** `https://peon-ai-4e.sterl.org/p2.index` → 404 (Root = VitePress-Homepage; auch `/update-site/`, `/repository/`, `/updates/`, `/eclipse/` → 404). Pauls These: die alte URL `https://sterlp.github.io/eclipse-peon-ai/` liefert 404, weil die Repo-Root keine `index.html` mehr hat (reine p2-Struktur ohne Landing-Page). **Rückversicherung:** nach dem nächsten Release-Smoke den tatsächlichen p2-Pfad messen und in Skill `peon-release` + Homepage-Installation eintragen.
+- ⏳ **p2-Pfad-Verifikation:** **Update-Site bestätigt (Paul 2026-10-21): `https://sterlp.github.io/eclipse-peon-ai/`** — `p2.index` dort 200 (2026-10-19 gemessen); `https://peon-ai-4e.sterl.org/p2.index` → 404 (Root = VitePress-Homepage). Homepage-Installation + Skill `peon-release` sind darauf umgestellt. **Rückversicherung:** nach dem nächsten Release messen, wohin `deploy-pages` die Update-Site tatsächlich legt (sterl.org oder github.io), und SKILL + Homepage-Installation abgleichen.
+- ⏳ **Compact-Briefing-Schema (compressor.md):** 3 Ergänzungen vorgeschlagen — STANDING-RULES-Slot
+  (Pauls dauerhafte Verhaltensregeln als eigener Block), preserve-Pfade erweitern, memory.md =
+  complement-not-replace (Briefing ergänzt memory.md, ersetzt es nicht). Freigabe Paul steht aus.
 
 
 ## 2.14.0 (2026-10-19) — Jon-Entscheidungen zur Rückversicherung
