@@ -67,7 +67,3 @@ Module guides (read when working in one):
   back before trusting it (plus a duplicate check, `grep -c`); for larger rewrites prefer
   writing the whole file.
 - Shell is for read-only diagnosis (`xxd`, `file`, `wc`), never for file I/O.
-
-
-
-
