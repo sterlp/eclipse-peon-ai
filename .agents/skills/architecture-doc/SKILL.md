@@ -9,7 +9,7 @@ description: Regeln und Template für Architektur-Docs (docs/<feature>-architekt
 
 ## Regeln
 
-- **Projektweite Konventionen:** `docs/component-architecture-java.md` (Layering, Suffixe,
+- **Projektweite Konventionen:** Skill `component-architecture` (Layering, Suffixe,
   Konverter) — vierter Ort neben Fachdoc / Architektur-Doc / ADR.
 - **Granularität:** ein Architektur-Doc je Feature-Doc (= je Service-Fassade).
   Triviales CRUD ohne eigene Struktur bekommt keins.
