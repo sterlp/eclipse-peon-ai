@@ -4,7 +4,7 @@ import java.nio.file.Path;
 import java.util.function.Predicate;
 
 /**
- * R5 (docs/file-copy-tool.md): copy/rename paths must be fully qualified —
+ * R5 (org.sterl.llmpeon.core/docs/file-copy-tool.md): copy/rename paths must be fully qualified —
  * disk paths absolute, eclipse paths workspace-qualified as {@code /project/path}.
  * One implementation for both tool families; the eclipse project check is
  * supplied by the caller because project existence is an environment concern.

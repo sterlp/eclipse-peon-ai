@@ -35,7 +35,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
 /**
- * R-CC-15 / UC-CC-1 (docs/compact.md): the nested search-agent loop must be isolated from the
+ * R-CC-15 / UC-CC-1 (org.sterl.llmpeon.core/docs/compact.md): the nested search-agent loop must be isolated from the
  * parent agent — no inherited owning agent, no compact on the parent memory, no
  * parent-attributed compact hint.
  */

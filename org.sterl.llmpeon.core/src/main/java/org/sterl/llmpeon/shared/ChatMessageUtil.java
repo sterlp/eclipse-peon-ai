@@ -82,7 +82,7 @@ public class ChatMessageUtil {
 
     /**
      * Inverse of the central chars/3 estimator ({@link #charsToTokens(int)}) — one place for the
-     * token math (R-CC-13, docs/compact.md). The multiplication is clamped against integer overflow.
+     * token math (R-CC-13, org.sterl.llmpeon.core/docs/compact.md). The multiplication is clamped against integer overflow.
      */
     public static int tokensToChars(int tokens) {
         return (int) Math.min(Integer.MAX_VALUE, (long) tokens * 3);

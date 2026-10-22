@@ -746,7 +746,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
     }
 
     /**
-     * Inc 2 (docs/sklaven-kontext-plan.md): the static context (date/OS + file-access rules) must reach
+     * Inc 2 (org.sterl.llmpeon.core/docs/sklaven-kontext-plan.md): the static context (date/OS + file-access rules) must reach
      * Jon's RAM slaves too — they are not in agentService, so setStaticContext applies it directly.
      */
     @Test
@@ -870,7 +870,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         assertTrue("Jon needs nextIds", names.contains("nextIds"));
     }
 
-    // --- Agent-Tool-Filter matrix (docs/agent-tool-filter.md) ----------------
+    // --- Agent-Tool-Filter matrix (org.sterl.llmpeon.core/docs/agent-tool-filter.md) ----------------
 
     // UC-TF-1
     // UC-TF-4
@@ -2094,7 +2094,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         }
     }
 
-    // --- ADR-0042: Project Skill Slot (docs/project-skills.md R2a/R2b/R2c) -------
+    // --- ADR-0042: Project Skill Slot (org.sterl.llmpeon.core/docs/project-skills.md R2a/R2b/R2c) -------
 
     /**
      * ADR-0042 (R2a/R2b): switching the project replaces ONLY the project skill slot — the config

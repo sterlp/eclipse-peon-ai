@@ -33,7 +33,7 @@ public class WebFetchTool extends AbstractTool {
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(30);
     private static final Pattern CHARSET_PATTERN = Pattern.compile("charset=([^;\\s]+)", Pattern.CASE_INSENSITIVE);
 
-    /** Snapshot-cache cap — R-WEB-9 (docs/web-tools.md): 16 pages, named constant, no user config. */
+    /** Snapshot-cache cap — R-WEB-9 (org.sterl.llmpeon.core/docs/web-tools.md): 16 pages, named constant, no user config. */
     static final int CACHE_MAX_URLS = 16;
     static final int MAX_WINDOW_LINES = 500;
     static final int SNIPPET_LINES = 10;

@@ -13,7 +13,7 @@ import lombok.extern.slf4j.Slf4j;
  * "Earned patience" retry around a single AI request. Wraps only the AI call (never tool execution),
  * so it lives at the {@code bridge.call} choke-point and applies to all agents and contexts.
  * <p>
- * Two counters (see docs/agents-retry.md):
+ * Two counters (see org.sterl.llmpeon.core/docs/agents-retry.md):
  * <ul>
  *   <li>{@code credit} — earned patience: starts at 0, +1 per successful call, capped at
  *       {@link #MAX_CREDIT}. The very first error (credit 0) bubbles immediately.</li>

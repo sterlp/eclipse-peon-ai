@@ -10,7 +10,7 @@ import org.sterl.llmpeon.context.EclipseFileContextItem;
 import org.sterl.llmpeon.shared.FileLines;
 
 /**
- * S3 (docs/context-message-concept.md): the file context item renders a block whose body is the
+ * S3 (org.sterl.llmpeon.core/docs/context-message-concept.md): the file context item renders a block whose body is the
  * line-numbered content for an existing file and {@code null} (nothing to inject, no exception)
  * for a missing file or project.
  */

@@ -11,7 +11,7 @@ import java.time.ZoneOffset;
 import org.junit.jupiter.api.Test;
 
 /**
- * Unit tests for the generic {@link Timer}. See docs/streaming-display.md R18.
+ * Unit tests for the generic {@link Timer}. See org.sterl.llmpeon/docs/streaming-display.md R18.
  */
 class TimerTest {
 

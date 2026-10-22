@@ -162,7 +162,7 @@ class DiskGrepToolTest {
                 .hasMessageContaining("Grep file");
     }
 
-    // BDD-5 (docs/output-trim-service.md): 100 hits x ~127 chars (well over the 10k budget) -> char window + note
+    // BDD-5 (org.sterl.llmpeon.core/docs/output-trim-service.md): 100 hits x ~127 chars (well over the 10k budget) -> char window + note
     @Test
     void grepOversizedOutputIsTrimmedWithDisclosure() throws IOException {
         // GIVEN one .md file with 100 lines of "needle " + 120 x's (rendered ~19 kB with paths)

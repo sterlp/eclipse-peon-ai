@@ -252,7 +252,7 @@ class ChatMessageUtilTest {
         assertThat(tokens).isZero();
     }
 
-    /** Inverse of the chars/3 estimator — one place for the token math (R-CC-13, docs/compact.md). */
+    /** Inverse of the chars/3 estimator — one place for the token math (R-CC-13, org.sterl.llmpeon.core/docs/compact.md). */
     @Test
     void tokensToChars_invertsTheCharsToTokensEstimator() {
         // WHEN — tokens are converted back to chars

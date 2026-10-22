@@ -10,7 +10,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.RateLimitException;
 
 /**
- * R-AEM-1/2 (docs/agent-error-memory.md): a terminal API error lands in the agent's memory
+ * R-AEM-1/2 (org.sterl.llmpeon.core/docs/agent-error-memory.md): a terminal API error lands in the agent's memory
  * exactly once; a cancellation never inserts.
  */
 class AgentErrorMemoryTest {

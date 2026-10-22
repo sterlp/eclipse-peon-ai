@@ -19,10 +19,10 @@ import dev.langchain4j.model.output.TokenUsage;
  * Cache extraction is provider-specific: OpenAI reports {@code prompt_tokens_details.cached_tokens}
  * ({@link OpenAiTokenUsage}), Anthropic reports {@code cache_read_input_tokens} /
  * {@code cache_creation_input_tokens} ({@link AnthropicTokenUsage}); all other providers leave the
- * cache counters untouched (see {@code docs/caching.md} R5).
+ * cache counters untouched (see {@code org.sterl.llmpeon.core/docs/caching.md} R5).
  * <p>
  * Used session-wide by the header readout; designed to be reused per-agent later (see
- * {@code docs/token-usage.md} R5).
+ * {@code org.sterl.llmpeon.core/docs/token-usage.md} R5).
  */
 public class TokenStats {
 

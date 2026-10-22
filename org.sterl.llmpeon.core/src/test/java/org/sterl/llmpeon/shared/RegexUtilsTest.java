@@ -52,7 +52,7 @@ public class RegexUtilsTest {
         assertSame(RegexUtils.globToPattern("*.md"), RegexUtils.globToPattern("*.md"));
     }
 
-    // R-BC-3 (docs/bounded-caches.md)
+    // R-BC-3 (org.sterl.llmpeon.core/docs/bounded-caches.md)
     // 129 fresh distinct literal globs (no '*') via globToPattern() -> the static cache holds
     // exactly 128 (cap), robust against any pre-existing entries.
     // Mutation: unbounded cache (old ConcurrentHashMap) -> size >= 129 -> red.

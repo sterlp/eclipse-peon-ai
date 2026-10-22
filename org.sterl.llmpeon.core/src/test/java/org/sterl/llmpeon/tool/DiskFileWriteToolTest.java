@@ -200,7 +200,7 @@ class DiskFileWriteToolTest {
                 "LLM-visible result should report the delete count, was: " + result.text());
     }
 
-    // --- Edit-Guard (docs/disk-file-write-tool.md): oldString is a required anchor, min 3 non-whitespace chars ---
+    // --- Edit-Guard (org.sterl.llmpeon.core/docs/disk-file-write-tool.md): oldString is a required anchor, min 3 non-whitespace chars ---
 
     @Test
     void diskEditFile_nullOldStringRejectsNamingRequirement() throws IOException {

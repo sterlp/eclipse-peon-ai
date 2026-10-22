@@ -10,7 +10,7 @@ import org.junit.Test;
 import org.sterl.llmpeon.parts.tools.debug.JavaDebugTool;
 
 /**
- * Java debug tool (docs/java-debugger-tool.md R-JD-1…5, UC-JD-1…6).
+ * Java debug tool (org.sterl.llmpeon/docs/java-debugger-tool.md R-JD-1…5, UC-JD-1…6).
  * Automated coverage is session-free: the honest no-session message of every
  * session-bound action (UC-JD-1) plus the DebugJson walker (DebugJsonUnitTest).
  * The breakpoint marker ops work without a session (R-JD-13,

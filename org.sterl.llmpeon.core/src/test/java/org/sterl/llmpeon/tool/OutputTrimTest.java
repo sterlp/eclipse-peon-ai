@@ -10,7 +10,7 @@ import org.sterl.llmpeon.shared.OutputTrim.Result;
 
 class OutputTrimTest {
 
-    // BDD-2 (docs/output-trim-service.md)
+    // BDD-2 (org.sterl.llmpeon.core/docs/output-trim-service.md)
     // 100 lines x 80 chars (joined 8099 <= 10000) -> bit-identical, no note.
     // Mutation: any drop or cap -> text differs or note appears -> red.
     @Test
@@ -45,7 +45,7 @@ class OutputTrimTest {
         assertThat(r.shownLines()).isEqualTo(6);
     }
 
-    // BDD-3 (docs/output-trim-service.md)
+    // BDD-3 (org.sterl.llmpeon.core/docs/output-trim-service.md)
     // 20 lines x 99 chars (total 2000), maxChars=500 -> head=1 + tail=3 = 4 shown, line 18 kept.
     // Mutation: tail-only (head dropped) -> line 1 missing; split flip 3/1 -> tail keeps 4+ -> red.
     @Test
@@ -64,7 +64,7 @@ class OutputTrimTest {
         assertThat(r.text()).contains("truncated: 2000 chars total, 399 shown");
     }
 
-    // BDD-6 (docs/output-trim-service.md)
+    // BDD-6 (org.sterl.llmpeon.core/docs/output-trim-service.md)
     // 500_000 'a' -> line = 'a'x500 + …(+499500 chars), note at end, totalChars=500001, shownChars=516.
     // Mutation: cap at 2000 (old R-OD-6) -> marker and shownChars differ -> red.
     @Test
@@ -81,7 +81,7 @@ class OutputTrimTest {
         assertThat(r.shownLines()).isEqualTo(1);
     }
 
-    // BDD-1 component twin (docs/output-trim-service.md)
+    // BDD-1 component twin (org.sterl.llmpeon.core/docs/output-trim-service.md)
     // 3M-char line -> bounded result, totalChars=3000001, first 500 'a' kept.
     // Mutation: no per-line cap -> text ~3M chars -> red.
     @Test

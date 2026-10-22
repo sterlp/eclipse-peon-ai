@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Unit tests for {@link CallStats} — the shared duration/time disclosure helper
- * for tool outputs. See docs/tool-time-disclosure.md R-TD-1, ADR-0053.
+ * for tool outputs. See org.sterl.llmpeon.core/docs/tool-time-disclosure.md R-TD-1, ADR-0053.
  */
 class CallStatsTest {
 

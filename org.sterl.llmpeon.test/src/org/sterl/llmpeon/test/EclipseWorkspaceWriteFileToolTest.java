@@ -474,7 +474,7 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
     // Red proof (2026-10-21): old try/catch state → "Timeout or failure while editing the open editor".
     @Test
     public void test_updateOpenFile_denied_reachesCallerVerbatim() {
-        // R5 (docs/write-path-validator.md): a WriteValidator denial on the editor path must
+        // R5 (org.sterl.llmpeon.core/docs/write-path-validator.md): a WriteValidator denial on the editor path must
         // arrive as the plain IllegalArgumentException — no "Timeout", no "ExecutionException"
         // GIVEN a workspace file, open and ACTIVE in the editor; the tool is restricted to docs paths
         var name = "updateDenied_" + System.nanoTime() + ".txt";

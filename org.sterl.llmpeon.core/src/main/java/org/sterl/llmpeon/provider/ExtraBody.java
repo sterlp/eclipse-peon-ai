@@ -24,7 +24,7 @@ public final class ExtraBody {
     /**
      * Top-level keys that must never be overridden via extraBody — they belong to the provider's
      * own request shape (a duplicate would silently win over the declared field, see
-     * docs/provider.md / docs/caching.md).
+     * org.sterl.llmpeon.core/docs/provider.md / org.sterl.llmpeon.core/docs/caching.md).
      */
     private static final Set<String> RESERVED_KEYS = Set.of("model", "messages", "tools");
 

@@ -18,7 +18,7 @@ import org.junit.Test;
 import org.sterl.llmpeon.parts.tools.EclipseBuildTool;
 
 /**
- * eclipseReadProjectProblems file/severity filters (docs/project-problems-tool.md R-PP-1…4).
+ * eclipseReadProjectProblems file/severity filters (org.sterl.llmpeon/docs/project-problems-tool.md R-PP-1…4).
  */
 public class EclipseBuildToolTest extends AbstractIntegrationTest {
 

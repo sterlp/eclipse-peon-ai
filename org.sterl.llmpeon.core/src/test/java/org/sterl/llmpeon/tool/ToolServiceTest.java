@@ -251,7 +251,7 @@ class ToolServiceTest {
     }
 
     /**
-     * R5 bullet 2 (docs/write-path-validator.md): an IllegalArgumentException ANYWHERE in the
+     * R5 bullet 2 (org.sterl.llmpeon.core/docs/write-path-validator.md): an IllegalArgumentException ANYWHERE in the
      * ToolExecutionException cause chain becomes the model-facing message — verbatim, not the
      * generic "Tool failed - check why" fallback.
      */

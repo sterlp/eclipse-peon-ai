@@ -172,7 +172,7 @@ class AiReponseBuilderTest {
     }
 
     // UC-OD-7
-    // BDD-6 (docs/output-trim-service.md): minified hit -> 500-char cap on the rendered line + trim note
+    // BDD-6 (org.sterl.llmpeon.core/docs/output-trim-service.md): minified hit -> 500-char cap on the rendered line + trim note
     @Test
     void grepClampsMinifiedLine() {
         // GIVEN one hit whose text is 20000 chars (minified) -> rendered line 20013 chars
@@ -192,7 +192,7 @@ class AiReponseBuilderTest {
         assertThat(result).contains("1 line(s) truncated at 500 chars");
     }
 
-    // BDD-5 (docs/output-trim-service.md): 150 hits x ~120 chars -> 100-line cap + char window + note
+    // BDD-5 (org.sterl.llmpeon.core/docs/output-trim-service.md): 150 hits x ~120 chars -> 100-line cap + char window + note
     @Test
     void grepOversizedOutputTrimmedWithDisclosure() {
         // GIVEN 150 hits of 120-char text in one file (rendered ~13.4 kB > 10k budget)

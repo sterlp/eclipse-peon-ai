@@ -17,7 +17,7 @@ import org.sterl.llmpeon.shared.StringUtil;
  * <p>
  * The public {@link #rows(List)} reads each member's live {@code isWorking()}/context; the pure
  * {@link #build(List)} core takes a value snapshot so the leaf-rule + formatting logic is unit-testable
- * without SWT or a live agent. See {@code docs/agenten-status-im-header-mvp-plan.md} / ADR-0025.
+ * without SWT or a live agent. See {@code org.sterl.llmpeon/docs/agenten-status-im-header-mvp-plan.md} / ADR-0025.
  */
 public final class AiAgentStatusModel {
 

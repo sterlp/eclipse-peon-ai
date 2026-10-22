@@ -20,7 +20,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 
 /**
- * Pure staging tests of the compact input (R-CIB-1…5, docs/compact.md §BDD) — no agent, no LLM.
+ * Pure staging tests of the compact input (R-CIB-1…5, org.sterl.llmpeon.core/docs/compact.md §BDD) — no agent, no LLM.
  * Budgets are tokens (chars/3 estimator), fixture sizes are chosen so exactly one stage wins.
  */
 class ContextTrimComponentTest {

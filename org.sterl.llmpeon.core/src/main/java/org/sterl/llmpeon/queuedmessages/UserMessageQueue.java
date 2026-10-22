@@ -10,7 +10,7 @@ public class UserMessageQueue {
 
     /**
      * Prefix of the Rule 9 LLM marker — the single home of this literal. The compact stage-1
-     * "last real user message" check excludes messages starting with it (docs/compact.md R-CIB-4).
+     * "last real user message" check excludes messages starting with it (org.sterl.llmpeon.core/docs/compact.md R-CIB-4).
      */
     public static final String QUEUED_MARKER_PREFIX = "[Queued Message] ";
 

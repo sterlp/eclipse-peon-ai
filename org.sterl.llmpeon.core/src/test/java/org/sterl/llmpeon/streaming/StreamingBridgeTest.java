@@ -38,7 +38,7 @@ import dev.langchain4j.model.chat.response.StreamingHandle;
  * One {@link StreamingBridge} is created per turn and reused across all tool-loop
  * iterations, so {@code startedAt} must span the whole turn — the UI "working since Xs"
  * must not jump on every tool-loop LLM call. The per-call {@code tokenPhaseStart} and the
- * four {@link org.sterl.llmpeon.shared.Timer}s must reset per call. See docs/streaming-display.md.
+ * four {@link org.sterl.llmpeon.shared.Timer}s must reset per call. See org.sterl.llmpeon/docs/streaming-display.md.
  */
 class StreamingBridgeTest {
 

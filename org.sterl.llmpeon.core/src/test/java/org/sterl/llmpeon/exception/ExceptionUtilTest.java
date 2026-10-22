@@ -64,7 +64,7 @@ class ExceptionUtilTest {
         assertThat(ExceptionUtil.isRateLimit(null)).isFalse();
     }
 
-    // ------------------------------------------------------------------ unwrap (R5, docs/write-path-validator.md)
+    // ------------------------------------------------------------------ unwrap (R5, org.sterl.llmpeon.core/docs/write-path-validator.md)
 
     @Test
     void unwrap_returns_the_cause_of_an_execution_exception() {
@@ -124,7 +124,7 @@ class ExceptionUtilTest {
         assertThat(probe.result()).isNotNull();
     }
 
-    // ------------------------------------------------------------------ findCause (R5, docs/write-path-validator.md)
+    // ------------------------------------------------------------------ findCause (R5, org.sterl.llmpeon.core/docs/write-path-validator.md)
 
     @Test
     void findCause_returns_a_deeply_nested_instance() {

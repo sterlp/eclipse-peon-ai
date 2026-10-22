@@ -31,7 +31,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
 /**
- * R-RS-1 / R-RS-2 (docs/tool-result-size.md): every tool completion line ends with the exact
+ * R-RS-1 / R-RS-2 (org.sterl.llmpeon.core/docs/tool-result-size.md): every tool completion line ends with the exact
  * character count of the tool's return string; the return string itself stays untouched.
  */
 class ToolResultSizeTest {

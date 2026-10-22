@@ -16,7 +16,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 
 /**
- * R-CC-6 (docs/compact.md): the displayed context counter must DISCLOSE whether
+ * R-CC-6 (org.sterl.llmpeon.core/docs/compact.md): the displayed context counter must DISCLOSE whether
  * it is an estimate — estimate values render as {@code ~N (estimate)}, exact values
  * render plain. One disclosure format for every surface (PoDelegateTool, roster).
  *

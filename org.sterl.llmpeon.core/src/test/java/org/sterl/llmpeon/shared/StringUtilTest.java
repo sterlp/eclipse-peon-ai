@@ -16,7 +16,7 @@ class StringUtilTest {
                 """, 1));
     }
 
-    /** SAT3 (docs/sub-agent-timing.md): whole seconds, truncated, minutes when >= 60s. */
+    /** SAT3 (org.sterl.llmpeon.core/docs/sub-agent-timing.md): whole seconds, truncated, minutes when >= 60s. */
     @Test
     void humanElapsed_formatsCompactly() {
         assertEquals("0s", StringUtil.humanElapsed(400));      // sub-second -> 0s
@@ -27,7 +27,7 @@ class StringUtilTest {
         assertEquals("0s", StringUtil.humanElapsed(-5));       // negative counts as zero
     }
 
-    /** R-RS-1 (docs/tool-result-size.md): the exact character count as a suffix. */
+    /** R-RS-1 (org.sterl.llmpeon.core/docs/tool-result-size.md): the exact character count as a suffix. */
     @Test
     void charsSuffix_basic() {
         assertEquals("(3 chars)", StringUtil.charsSuffix("abc"));
@@ -41,7 +41,7 @@ class StringUtilTest {
     }
 
     /**
-     * R5a (docs/token-usage.md): under 1 million toK is whole thousands, no decimals, no grouping
+     * R5a (org.sterl.llmpeon.core/docs/token-usage.md): under 1 million toK is whole thousands, no decimals, no grouping
      * (max "999k") — plain integer division, so it never picks up a locale artifact. Pinned under
      * GERMANY: a mutation that routed the k form through a locale NumberFormat with decimals would
      * render 131072 as "131,07k" and go red.

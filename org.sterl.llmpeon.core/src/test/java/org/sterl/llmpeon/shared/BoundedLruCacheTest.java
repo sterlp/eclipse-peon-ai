@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Timeout;
 
 class BoundedLruCacheTest {
 
-    // R-BC-1 (docs/bounded-caches.md)
+    // R-BC-1 (org.sterl.llmpeon.core/docs/bounded-caches.md)
     // Cap 3: put a,b,c then d -> the least recently used (a) is evicted, size stays 3.
     // Mutation: unbounded map (no removeEldestEntry) -> size 4, get(a) != null -> red.
     @Test
@@ -29,7 +29,7 @@ class BoundedLruCacheTest {
         assertThat(cache.size()).isEqualTo(3);
     }
 
-    // R-BC-1 (docs/bounded-caches.md)
+    // R-BC-1 (org.sterl.llmpeon.core/docs/bounded-caches.md)
     // Cap 3: put a,b,c, get(a) refreshes a, put d -> b (now least recently used) is evicted, a survives.
     // Mutation: FIFO (old WebFetchTool behavior, get does not refresh) -> a evicted instead of b -> red.
     @Test
@@ -48,7 +48,7 @@ class BoundedLruCacheTest {
         assertThat(cache.size()).isEqualTo(3);
     }
 
-    // R-BC-1 (docs/bounded-caches.md)
+    // R-BC-1 (org.sterl.llmpeon.core/docs/bounded-caches.md)
     // 8 threads x 2000 ops (put/get/computeIfAbsent) over 64 keys > cap 16: no exception, no
     // inconsistent value, size <= cap after join.
     // Mutation: unsynchronized LinkedHashMap -> ConcurrentModificationException or size > 16 -> red.

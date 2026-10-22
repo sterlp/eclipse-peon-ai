@@ -1,4 +1,4 @@
-# MCP Servers — docs/mcp.md
+# MCP Servers — org.sterl.llmpeon.core/docs/mcp.md
 
 Zweck: Anbindung externer MCP-Server (STDIO-Prozess oder Streamable-HTTP): Konfiguration
 (`McpServerConfig`, Preferences), Verbindung (`McpService`), Protocol-Version-Semantik,

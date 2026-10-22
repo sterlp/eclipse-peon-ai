@@ -6,7 +6,7 @@ import java.time.format.DateTimeFormatter;
 
 /**
  * Measures the wall-clock duration of a tool call for end-of-output disclosure
- * (docs/tool-time-disclosure.md, ADR-0053). The start is captured at creation;
+ * (org.sterl.llmpeon.core/docs/tool-time-disclosure.md, ADR-0053). The start is captured at creation;
  * the suffixes report the measured duration and — for {@link #suffix()} — the
  * local wall time at the moment of the call, never at the start.
  *

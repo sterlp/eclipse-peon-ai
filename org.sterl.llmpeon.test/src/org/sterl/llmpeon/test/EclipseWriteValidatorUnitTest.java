@@ -14,7 +14,7 @@ import org.sterl.llmpeon.tool.WriteValidator;
 /**
  * Headless unit test (no Eclipse workspace needed) for the write-path validator on the Eclipse
  * workspace write tool: the {@code DOCS} validator rejects a non-docs path <em>before</em> any
- * Eclipse API is touched. Feature: docs/write-path-validator.md — Rule R1.
+ * Eclipse API is touched. Feature: org.sterl.llmpeon.core/docs/write-path-validator.md — Rule R1.
  */
 public class EclipseWriteValidatorUnitTest {
 

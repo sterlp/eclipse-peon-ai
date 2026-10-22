@@ -16,7 +16,7 @@ import dev.langchain4j.model.output.TokenUsage;
  * Self-contained readout of cumulative session token spend ({@code ↑ sent  ↓ received  ⇄ cache-read}).
  * <p>
  * Owns its own {@link TokenStats} — the widget's lifecycle equals the chat view's, so the totals are
- * cross-agent and never reset while the view is open (see {@code docs/token-usage.md} R3). Always
+ * cross-agent and never reset while the view is open (see {@code org.sterl.llmpeon.core/docs/token-usage.md} R3). Always
  * visible (shows {@code ↑ 0k  ↓ 0k} before any usage). Painted on the native white background so it
  * blends into the header strip. All methods assume the SWT UI thread.
  */

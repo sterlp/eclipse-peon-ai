@@ -30,7 +30,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 
 /**
- * webFetchAsMarkdown pagination (docs/web-tools.md R-WEB-1…3): first window, cache hit
+ * webFetchAsMarkdown pagination (org.sterl.llmpeon.core/docs/web-tools.md R-WEB-1…3): first window, cache hit
  * without refetch, LRU eviction, honest HTTP error path.
  */
 @Timeout(30)
@@ -181,7 +181,7 @@ class WebFetchToolTest {
         assertThat(calls("/error")).isEqualTo(2);
     }
 
-    // R-BC-4 (docs/bounded-caches.md)
+    // R-BC-4 (org.sterl.llmpeon.core/docs/bounded-caches.md)
     // LRU recency at the current cap (R-WEB-9): fill 16 URLs, refresh the oldest (a),
     // fetch a 17th (q) -> evicts b (not a); a stays a hit (calls==1), b refetches (calls==2),
     // c..q stay at 1. The exact cap size is proven by webFetchCacheHolds16Pages (UC-WEB-9).

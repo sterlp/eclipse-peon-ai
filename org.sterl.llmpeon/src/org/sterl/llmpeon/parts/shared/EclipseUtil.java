@@ -404,7 +404,7 @@ public class EclipseUtil {
     }
 
     /**
-     * R-WN-3 (docs/workspace-nesting.md): the nesting context of a project — at most one
+     * R-WN-3 (org.sterl.llmpeon/docs/workspace-nesting.md): the nesting context of a project — at most one
      * extra projectInfo line per direction, only for real nesting of open projects,
      * compared via the canonical project folders (projectFolder). Appends nothing when
      * the project is not nested.
@@ -445,14 +445,14 @@ public class EclipseUtil {
     }
 
     /**
-     * R-WN-1 (docs/workspace-nesting.md): the workspace path of a file visible under several
+     * R-WN-1 (org.sterl.llmpeon/docs/workspace-nesting.md): the workspace path of a file visible under several
      * projects, plus the project that owns that view.
      */
     public record ProjectPathEntry(String path, IProject project) {
     }
 
     /**
-     * R-WN-1 (docs/workspace-nesting.md): the deduplication identity of a file visible under
+     * R-WN-1 (org.sterl.llmpeon/docs/workspace-nesting.md): the deduplication identity of a file visible under
      * several projects — the textual Disk path; falls back to the workspace path when the
      * resource has no known filesystem location. (Symlinks are out of scope.)
      */
@@ -462,7 +462,7 @@ public class EclipseUtil {
     }
 
     /**
-     * D4 (docs/workspace-nesting.md): the canonical absolute, normalized project folder —
+     * D4 (org.sterl.llmpeon/docs/workspace-nesting.md): the canonical absolute, normalized project folder —
      * no symlink resolution. {@code null} when the project has no known location.
      */
     @Nullable
@@ -473,7 +473,7 @@ public class EclipseUtil {
     }
 
     /**
-     * R-WN-1 (docs/workspace-nesting.md): the entry representing a file visible under
+     * R-WN-1 (org.sterl.llmpeon/docs/workspace-nesting.md): the entry representing a file visible under
      * several projects. The project with the deepest canonical folder — a strict descendant
      * of the other one — wins; equal depth or no nesting keeps the existing (first found)
      * entry. A {@code null} existing entry takes the candidate.
@@ -527,7 +527,7 @@ public class EclipseUtil {
         return Optional.empty();
     }
 
-    /** R5 (docs/file-copy-tool.md): whether {@code name} is an existing project name in this workspace (closed included). */
+    /** R5 (org.sterl.llmpeon.core/docs/file-copy-tool.md): whether {@code name} is an existing project name in this workspace (closed included). */
     public static boolean isExistingProject(String name) {
         for (IProject project : ResourcesPlugin.getWorkspace().getRoot().getProjects()) {
             if (project.getName().equals(name) && project.exists())

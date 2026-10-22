@@ -6,7 +6,7 @@ import java.util.function.Function;
 
 /**
  * Bounded LRU cache shared by the RAM caches of this codebase
- * (docs/bounded-caches.md, R-BC-5): a RAM cache without self-truncation is a leak — every new
+ * (org.sterl.llmpeon.core/docs/bounded-caches.md, R-BC-5): a RAM cache without self-truncation is a leak — every new
  * cache uses this class (or has a finite key-space and says so in its Javadoc).
  *
  * <p>True LRU: every access ({@link #get}, {@link #put}, {@link #computeIfAbsent} on an existing

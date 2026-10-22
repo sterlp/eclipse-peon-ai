@@ -33,7 +33,7 @@ public class ThreadSafeMemory {
 
     /**
      * Whether {@link #totalTokenUsed} currently contains an estimate component (R-CC-6,
-     * docs/compact-context-counter.md). Set by every write site: estimate-driven writes
+     * org.sterl.llmpeon.core/docs/compact.md). Set by every write site: estimate-driven writes
      * (constructor restore, {@code add}, {@code reevaluateTokens}, {@code addResult}) mark it
      * true — after {@code addResult} the value is the provider input plus the chars/3 estimate of
      * the appended messages (R-CC-19), so it always carries an estimate component. The reset to 0
@@ -251,7 +251,7 @@ public class ThreadSafeMemory {
     }
 
     /**
-     * R-CC-19 (docs/compact.md): the counter is forward-looking — the provider
+     * R-CC-19 (org.sterl.llmpeon.core/docs/compact.md): the counter is forward-looking — the provider
      * {@code inputTokenCount} of the last request plus the chars/3 estimate of everything
      * appended since it (the AI message with the tool calls goes out again on the next request,
      * and so do this round's tool results). The provider value alone is the PREVIOUS request —

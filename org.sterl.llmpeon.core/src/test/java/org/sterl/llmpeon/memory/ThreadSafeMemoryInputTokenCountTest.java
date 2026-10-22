@@ -15,7 +15,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 
 /**
- * R-CC-1 (docs/compact-context-counter.md, ADR-0055) + R-CC-19 (docs/compact.md): the token
+ * R-CC-1 (org.sterl.llmpeon.core/docs/compact.md, ADR-0055) + R-CC-19 (org.sterl.llmpeon.core/docs/compact.md): the token
  * counter measures the CONTEXT SIZE — the provider input tokens of the last request PLUS the
  * chars/3 estimate of the messages appended since (forward-looking), never the COST
  * (input + output). Without provider usage the counter falls back to the chars/3 estimate of

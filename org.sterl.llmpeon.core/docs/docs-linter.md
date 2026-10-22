@@ -267,7 +267,7 @@ nicht, wenn sie syntaktisch wie eine Überschrift aussehen. Der Block endet am s
 gleicher Art; ein unterschiedlicher Zauntyp innerhalb eines Blocks schließt ihn nicht.
 
 > **WEIL** — Dogfooding-Befund vom 2026-09-15, gefunden beim allerersten Lauf gegen das eigene Repo:
-> `docs/docs-linter.md` erklärt das Doc-Format und zeigt dazu Beispiel-Überschriften in
+> `org.sterl.llmpeon.core/docs/docs-linter.md` erklärt das Doc-Format und zeigt dazu Beispiel-Überschriften in
 > ` ```markdown `-Blöcken. Der Linter las sie als echte Definitionen und meldete
 > `DOPPELT_DEFINIERT` + zweimal `PRAEFIX_FREMD` für `R-READTOOLS-4` — drei Falschbefunde aus reinen
 > Illustrationen. Betroffen ist jedes Doc, das Doc-Struktur dokumentiert: Templates, Meta-Docs,

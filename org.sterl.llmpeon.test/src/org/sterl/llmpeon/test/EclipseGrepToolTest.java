@@ -164,7 +164,7 @@ public class EclipseGrepToolTest extends AbstractIntegrationTest {
         hitLines.forEach(l -> assertTrue("hit must contain the query:\n" + l, l.contains("einem text")));
     }
 
-    // BDD-6 (docs/output-trim-service.md): minified hit -> 500-char cap on the full rendered line
+    // BDD-6 (org.sterl.llmpeon.core/docs/output-trim-service.md): minified hit -> 500-char cap on the full rendered line
     @Test
     public void longLineIsClampedAndDisclosed() {
         // GIVEN one .md file with a single 20013-char line containing the query (minified)
@@ -306,7 +306,7 @@ public class EclipseGrepToolTest extends AbstractIntegrationTest {
     }
 
     // UC-OD-10
-    // R-OD-7 (docs/tool-output-disclosure.md): an explicit file target is never extension-filtered,
+    // R-OD-7 (org.sterl.llmpeon.core/docs/tool-output-disclosure.md): an explicit file target is never extension-filtered,
     // so the disclosure must not claim a filter that did not happen (C-EXT, disk-side counterpart:
     // DiskGrepToolTest.fileTargetBeatsExtensionFilter)
     @Test

@@ -26,7 +26,7 @@ public class StringUtil {
     }
 
     /**
-     * Compact human duration for the sub-agent tool progress lines (see docs/sub-agent-timing.md):
+     * Compact human duration for the sub-agent tool progress lines (see org.sterl.llmpeon.core/docs/sub-agent-timing.md):
      * whole seconds under a minute ({@code "3s"}, sub-second {@code "0s"}), minutes + seconds from a
      * minute up ({@code "1m 5s"}). Seconds are truncated, not rounded. Negative input counts as zero.
      */
@@ -37,7 +37,7 @@ public class StringUtil {
     }
 
     /**
-     * Size disclosure for tool completion lines (R-RS-1, docs/tool-result-size.md):
+     * Size disclosure for tool completion lines (R-RS-1, org.sterl.llmpeon.core/docs/tool-result-size.md):
      * the exact character count of the tool's return string as {@code "(N chars)"}.
      * A {@code null} result counts as zero — honest, never omitted.
      */
@@ -81,7 +81,7 @@ public class StringUtil {
     }
 
     /**
-     * One disclosure format for every context-counter surface (R-CC-6, docs/compact-context-counter.md):
+     * One disclosure format for every context-counter surface (R-CC-6, org.sterl.llmpeon.core/docs/compact.md):
      * estimate values render as {@code ~N (estimate)}, exact provider values render plain.
      */
     public static String estimateAware(boolean isEstimate, String value) {
@@ -95,7 +95,7 @@ public class StringUtil {
 
     /**
      * Compact token-count display for the session header, the Compact button and the model-name window
-     * (R5a, docs/token-usage.md; Issue #154). Under 1 million: whole thousands, plain integer (max
+     * (R5a, org.sterl.llmpeon.core/docs/token-usage.md; Issue #154). Under 1 million: whole thousands, plain integer (max
      * {@code "999k"}, grouping never needed) — 131072 → {@code "131k"}. From 1 million up: millions with
      * up to 2 fraction digits, the decimal separator and integer grouping following the default locale —
      * 1_000_000 → {@code "1M"}, 1_840_000 → {@code "1,84M"} (DE) / {@code "1.84M"} (US),

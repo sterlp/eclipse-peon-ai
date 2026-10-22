@@ -25,7 +25,7 @@ import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.tools.ShellTool;
 
 /**
- * ShellApprovalService — R-TC-6/7/8 (docs/tool-confirmation.md). Headless: a fake
+ * ShellApprovalService — R-TC-6/7/8 (org.sterl.llmpeon.core/docs/tool-confirmation.md). Headless: a fake
  * QuestionPresenter captures the prompt calls, the ShellTool runs harmless `echo` commands.
  */
 public class ShellApprovalServiceTest extends AbstractUnitTest {

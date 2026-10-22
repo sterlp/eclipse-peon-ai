@@ -16,7 +16,7 @@ import org.junit.Test;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 
 /**
- * R5 (docs/write-path-validator.md): {@code await} must surface the real cause of a failed
+ * R5 (org.sterl.llmpeon.core/docs/write-path-validator.md): {@code await} must surface the real cause of a failed
  * UI-thread call — a denial arrives verbatim, "Timeout" is claimed only for a genuine timeout,
  * cancellation passes through unwrapped. No workbench needed: plain CompletableFutures.
  */

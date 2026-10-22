@@ -127,7 +127,7 @@ class FileUtilsTest {
         assertThat(error.getMessage()).contains("test.txt");
     }
 
-    // --- Edit-Guard (docs/disk-file-write-tool.md): oldString is a required anchor, min 3 non-whitespace chars ---
+    // --- Edit-Guard (org.sterl.llmpeon.core/docs/disk-file-write-tool.md): oldString is a required anchor, min 3 non-whitespace chars ---
 
     @Test
     void applyEdit_nullOldStringRejects() {

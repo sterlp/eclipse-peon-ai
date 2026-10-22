@@ -25,7 +25,7 @@ import org.sterl.llmpeon.tool.tools.WebGetTool;
 import com.sun.net.httpserver.HttpServer;
 
 /**
- * webGet (docs/web-tools.md R-WEB-4…8): download to disk, metadata only in the return,
+ * webGet (org.sterl.llmpeon.core/docs/web-tools.md R-WEB-4…8): download to disk, metadata only in the return,
  * same guards as diskWriteFile, honest zero-byte and HTTP-error behaviour.
  */
 @Timeout(30)

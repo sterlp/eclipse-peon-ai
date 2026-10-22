@@ -68,7 +68,7 @@ class ShellToolTest {
         assertThrows(IllegalArgumentException.class, () -> tool.shellRunCommand("echo hi", "/no/such/dir/xyz", null, null, null));
     }
 
-    // BDD-2 e2e guard (docs/output-trim-service.md): 100 short lines, default maxChars -> whole, no note
+    // BDD-2 e2e guard (org.sterl.llmpeon.core/docs/output-trim-service.md): 100 short lines, default maxChars -> whole, no note
     @Test
     void runOsCommand_defaultMaxCharsKeepsSmallOutputWhole() {
         String result = tool.shellRunCommand(seqCommand(1, 100), tempDir.toString(), null, null, null);
@@ -78,7 +78,7 @@ class ShellToolTest {
         assertFalse(result.contains("truncated:"), "100 short lines (< 10k) must not be trimmed, got: " + result);
     }
 
-    // BDD-3 (docs/output-trim-service.md): maxChars=500, ~2400-char output -> head + tail excerpt + disclosure
+    // BDD-3 (org.sterl.llmpeon.core/docs/output-trim-service.md): maxChars=500, ~2400-char output -> head + tail excerpt + disclosure
     @Test
     void runOsCommand_maxCharsHeadTailExcerpt() {
         String os = System.getProperty("os.name").toLowerCase();
@@ -95,7 +95,7 @@ class ShellToolTest {
         assertTrue(result.contains(" shown"), "expected shown chars in the disclosure, got: " + result);
     }
 
-    // (Paul) no hard cap (docs/output-trim-service.md): maxChars=100000 >> output -> whole, no note
+    // (Paul) no hard cap (org.sterl.llmpeon.core/docs/output-trim-service.md): maxChars=100000 >> output -> whole, no note
     @Test
     void runOsCommand_maxCharsLargerThanOutputNoTrim() {
         String result = tool.shellRunCommand(seqCommand(1, 100), tempDir.toString(), null, 100000, null);
@@ -119,7 +119,7 @@ class ShellToolTest {
     }
 
 
-    // BDD-1 (docs/output-trim-service.md): a 3M-char minified line -> bounded to ~10k + per-line cap marker
+    // BDD-1 (org.sterl.llmpeon.core/docs/output-trim-service.md): a 3M-char minified line -> bounded to ~10k + per-line cap marker
     @Test
     void runOsCommand_minifiedLineCapped() {
         String os = System.getProperty("os.name").toLowerCase();
@@ -135,7 +135,7 @@ class ShellToolTest {
         assertTrue(Long.parseLong(m.group(1)) >= 3_000_000, "total must be >= 3M, got " + m.group(1));
     }
 
-    // R4 (docs/shell-tool.md): timeout -> tree-kill, measured "after 1s", partial output uses the
+    // R4 (org.sterl.llmpeon.core/docs/shell-tool.md): timeout -> tree-kill, measured "after 1s", partial output uses the
     // same trim. 15k chars WITHOUT a trailing newline = the R4 regression case: the tree-kill's
     // EOF makes readLine deliver the unterminated final line (before the fix a surviving writer
     // held the pipe end open and the partial output was empty).

@@ -21,7 +21,7 @@ import org.sterl.llmpeon.parts.tools.debug.JavaDebugTool;
 
 /**
  * debugJavaSetBreakpoint / debugJavaSetExceptionBreakpoint / debugJavaRemoveBreakpoint without a
- * debug session (docs/java-debugger-tool.md R-JD-13, UC-JD-15) — the persistent JDT markers are
+ * debug session (org.sterl.llmpeon/docs/java-debugger-tool.md R-JD-13, UC-JD-15) — the persistent JDT markers are
  * created or removed and the response carries the honest no-session note instead of a VM-install
  * status. Real markers are created and must appear; cleanup in finally so no cross-run leeks.
  * The install path (marker → running VM) is verified manually (UC-JD-15).

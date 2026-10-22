@@ -16,7 +16,7 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
 
 /**
- * R-WN fixture (docs/workspace-nesting.md): a 3-level nested project chain
+ * R-WN fixture (org.sterl.llmpeon/docs/workspace-nesting.md): a 3-level nested project chain
  * {@code wna_root/wnb_mid/wnc_leaf} in a temp directory outside the workspace. The marker
  * file is written to disk BEFORE the projects exist, so one Disk path is visible under
  * three workspace paths:

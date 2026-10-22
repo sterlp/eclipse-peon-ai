@@ -26,7 +26,7 @@ import dev.langchain4j.model.output.TokenUsage;
 
 /**
  * The session token totals are fed from the single {@code StreamingBridge} choke point via
- * {@link AiMonitor#onTokenUsage}. See docs/token-usage.md R1/R2.
+ * {@link AiMonitor#onTokenUsage}. See org.sterl.llmpeon.core/docs/token-usage.md R1/R2.
  */
 class TokenUsageAccumulationTest {
 

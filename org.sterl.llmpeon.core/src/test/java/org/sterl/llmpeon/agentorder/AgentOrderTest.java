@@ -178,7 +178,7 @@ class AgentOrderTest extends AbstractMemoryFileTest {
     }
 
     /**
-     * R4 (docs/agent-ordering.md, User-SOLL 2026-09-12): two distinct agent instances with the same
+     * R4 (org.sterl.llmpeon.core/docs/agent-ordering.md, User-SOLL 2026-09-12): two distinct agent instances with the same
      * name yield exactly ONE dropdown entry — the first wins, the collision is surfaced via warn.
      */
     @Test
@@ -208,7 +208,7 @@ class AgentOrderTest extends AbstractMemoryFileTest {
     }
 
     /**
-     * R4 (docs/agent-ordering.md): an agent matched by several pattern lines appears once (group
+     * R4 (org.sterl.llmpeon.core/docs/agent-ordering.md): an agent matched by several pattern lines appears once (group
      * of the first line, R2) and the later match is surfaced via log.warn — not silent.
      */
     @Test
@@ -228,7 +228,7 @@ class AgentOrderTest extends AbstractMemoryFileTest {
     }
 
     /**
-     * R4 (docs/agent-ordering.md): two distinct agent instances sharing a name collapse into one
+     * R4 (org.sterl.llmpeon.core/docs/agent-ordering.md): two distinct agent instances sharing a name collapse into one
      * dropdown entry and the collision is surfaced via log.warn — not a silent drop.
      */
     @Test

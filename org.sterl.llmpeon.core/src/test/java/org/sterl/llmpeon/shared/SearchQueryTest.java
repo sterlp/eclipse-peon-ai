@@ -36,7 +36,7 @@ class SearchQueryTest {
         assertThat(SearchQuery.of("foo(bar").matches("foo bar")).isFalse();
     }
 
-    // R-BC-2 (docs/bounded-caches.md)
+    // R-BC-2 (org.sterl.llmpeon.core/docs/bounded-caches.md)
     // 129 fresh distinct keys via of() -> the static cache holds exactly 128 (cap), robust against
     // any pre-existing entries (129 fresh distinct puts fill the cache and evict down to the cap).
     // Mutation: unbounded cache (old ConcurrentHashMap) -> size >= 129 -> red.

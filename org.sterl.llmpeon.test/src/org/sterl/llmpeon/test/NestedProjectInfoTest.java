@@ -12,7 +12,7 @@ import org.sterl.llmpeon.context.UserContext;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 
 /**
- * R-WN-3 (docs/workspace-nesting.md): the project info carries the nesting — at most one extra
+ * R-WN-3 (org.sterl.llmpeon/docs/workspace-nesting.md): the project info carries the nesting — at most one extra
  * line per direction, only for real nesting of open projects, compared via canonical folders.
  */
 public class NestedProjectInfoTest extends AbstractIntegrationTest {
