@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -25,6 +24,7 @@ import java.util.function.Function;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.sterl.llmpeon.StreamMock;
+import org.sterl.llmpeon.TerminationProbe;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
@@ -326,29 +326,15 @@ class ToolServiceTest {
         var memory = new ThreadSafeMemory();
         memory.add(UserMessage.from("go"));
 
-        // WHEN — executeLoop on a daemon probe thread, so a spinning loop cannot hang the suite
-        var thrown = new AtomicReference<Throwable>();
-        var probe = new Thread(() -> {
-            try {
-                subject.executeLoop(ToolLoopRequest.builder()
-                        .memory(memory)
-                        .chatModel(new ConfiguredChatModel(LlmConfig.newOpenAi("foo"), cm))
-                        .build());
-            } catch (Throwable t) {
-                thrown.set(t);
-            }
-        }, "cancel-probe");
-        probe.setDaemon(true);
-        probe.start();
-        try {
-            probe.join(10_000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        // WHEN — bounded daemon probe (TerminationProbe), so a spinning loop cannot hang the suite
+        var probe = TerminationProbe.run("cancel-probe", 10_000, () -> subject.executeLoop(ToolLoopRequest.builder()
+                .memory(memory)
+                .chatModel(new ConfiguredChatModel(LlmConfig.newOpenAi("foo"), cm))
+                .build()));
 
         // THEN — the loop aborts with the CancellationException, as before the denial mapping
-        assertFalse(probe.isAlive(), "the loop must abort on cancellation, not spin");
-        assertThat(thrown.get()).isInstanceOf(ToolExecutionException.class)
+        assertTrue(probe.terminated(), "the loop must abort on cancellation, not spin");
+        assertThat(probe.thrown()).isInstanceOf(ToolExecutionException.class)
                 .hasCauseInstanceOf(CancellationException.class);
         // AND — only one model round; the nested IAE did NOT turn the cancel into a tool error
         assertThat(round.get()).isEqualTo(1);

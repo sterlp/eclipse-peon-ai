@@ -10,8 +10,6 @@ import static org.junit.Assume.assumeTrue;
 
 import java.nio.file.Files;
 import java.time.OffsetDateTime;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
 
 import org.eclipse.ui.PlatformUI;
 import org.junit.Test;
@@ -485,16 +483,16 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
         var file = project.getFile(name);
 
         // open in the editor on the UI thread, then poll (bounded) until it is the active editor
-        ui(() -> {
+        SwtUi.ui(() -> {
             EclipseUtil.openInEditor(file);
             return null;
         });
         var deadline = System.currentTimeMillis() + 5_000;
         var active = false;
         while (System.currentTimeMillis() < deadline) {
-            active = ui(() -> EclipseUtil.isOpenInEditor(file));
+            active = SwtUi.ui(() -> EclipseUtil.isOpenInEditor(file));
             if (active) break;
-            sleep(100);
+            SwtUi.sleep(100);
         }
         assertTrue("editor for " + fileName + " never became active", active);
 
@@ -514,33 +512,12 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
             assertEquals("   1: alpha\n   2: beta\n", readTool.eclipseReadFile(fileName, 0, 0));
         } finally {
             // close the editor on the UI thread BEFORE the fixture cleanup deletes the file
-            ui(() -> {
+            SwtUi.ui(() -> {
                 var page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
                 var editor = page.getActiveEditor();
                 if (editor != null) page.closeEditor(editor, false);
                 return null;
             });
-        }
-    }
-
-    /** Runs the given code on the workbench UI thread and returns its result (or throws). */
-    private <T> T ui(Supplier<T> fn) {
-        try {
-            return EclipseUtil.runInUiThread(fn).get(10, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new AssertionError("interrupted waiting for UI thread", e);
-        } catch (Exception e) {
-            throw new AssertionError("UI thread call failed", e);
-        }
-    }
-
-    private static void sleep(long ms) {
-        try {
-            Thread.sleep(ms);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new AssertionError("interrupted", e);
         }
     }
 

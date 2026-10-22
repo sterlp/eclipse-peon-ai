@@ -50,7 +50,7 @@ Derselbe **Edit-Guard** wie `eclipseEditFile` — auch hier entfällt das `oldSt
 Erfolgsmeldung nennt Pfad + `replaced/deleted N occurrence(s)`; bei Save-Fehler:
 `Save failed! Ask user to save editor.`
 
-**Fehler-Transport (❌ specified, 2026-10-21):** Das Ergebnis des UI-Thread-Aufrufs wird über den
+**Fehler-Transport (✅ done, 2026-10-21, `fix/write-denied-wrapped`):** Das Ergebnis des UI-Thread-Aufrufs wird über den
 geteilten Helfer `EclipseUtil.await(...)` entpackt — `ExecutionException`/`CompletionException` werden
 auf die echte Ursache zurückgeführt und diese weitergeworfen. „Timeout" nennt nur ein echtes Timeout
 (2 min). Eine Validator-Ablehnung (z. B. `Write denied: …`) erreicht das Modell dadurch wörtlich; kein

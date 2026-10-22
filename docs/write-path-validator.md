@@ -92,7 +92,7 @@ Projekt-Root nur gesetzt, wenn ein Projekt gewählt ist.
   WHEN it validates repeatedly
   THEN each glob is compiled to a regex exactly once (cached in `RegexUtils`).
 
-### R5 — Eine Ablehnung erreicht das Modell unverfälscht (❌ specified, 2026-10-21)
+### R5 — Eine Ablehnung erreicht das Modell unverfälscht (✅ done, 2026-10-21, `fix/write-denied-wrapped`)
 
 Ein abgelehnter Write ist eine **erwartete Antwort** an das Modell — kein Fehlerfall und erst recht kein
 Timeout. Die Begründung des Validators erreicht den LLM als Tool-Ergebnis **wörtlich**, also auch dann,

@@ -1,14 +1,14 @@
 package org.sterl.llmpeon.exception;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
+import org.sterl.llmpeon.TerminationProbe;
 
 import dev.langchain4j.exception.RateLimitException;
 
@@ -115,21 +115,13 @@ class ExceptionUtilTest {
         a.initCause(b);
         b.initCause(a);
 
-        // WHEN — on a daemon probe with a bounded join: a non-terminating regression must fail
-        // the test, not hang the suite (@Timeout cannot kill a non-interruptible loop)
-        var result = new AtomicReference<Throwable>();
-        var probe = new Thread(() -> result.set(ExceptionUtil.unwrap(a)), "unwrap-cycle-probe");
-        probe.setDaemon(true);
-        probe.start();
-        try {
-            probe.join(2_000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        // WHEN — on a daemon probe with a bounded join (TerminationProbe): a non-terminating
+        // regression must fail the test, not hang the suite
+        var probe = TerminationProbe.run("unwrap-cycle-probe", 2_000, () -> ExceptionUtil.unwrap(a));
 
         // THEN it terminated within the bound and returned a non-null throwable
-        assertFalse(probe.isAlive(), "unwrap must terminate on a cyclic cause chain");
-        assertThat(result.get()).isNotNull();
+        assertTrue(probe.terminated(), "unwrap must terminate on a cyclic cause chain");
+        assertThat(probe.result()).isNotNull();
     }
 
     // ------------------------------------------------------------------ findCause (R5, docs/write-path-validator.md)
@@ -165,21 +157,14 @@ class ExceptionUtilTest {
         a.initCause(b);
         b.initCause(a);
 
-        // WHEN — on a daemon probe with a bounded join: a non-terminating regression must fail
-        // the test, not hang the suite (@Timeout cannot kill a non-interruptible loop)
-        var result = new AtomicReference<Throwable>();
-        var probe = new Thread(() -> result.set(ExceptionUtil.findCause(a, IllegalArgumentException.class)), "findCause-cycle-probe");
-        probe.setDaemon(true);
-        probe.start();
-        try {
-            probe.join(2_000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        // WHEN — on a daemon probe with a bounded join (TerminationProbe): a non-terminating
+        // regression must fail the test, not hang the suite
+        var probe = TerminationProbe.run("findCause-cycle-probe", 2_000,
+                () -> ExceptionUtil.findCause(a, IllegalArgumentException.class));
 
         // THEN it terminated within the bound and reported the absence
-        assertFalse(probe.isAlive(), "findCause must terminate on a cyclic cause chain");
-        assertThat(result.get()).isNull();
+        assertTrue(probe.terminated(), "findCause must terminate on a cyclic cause chain");
+        assertThat(probe.result()).isNull();
     }
 
     @Test

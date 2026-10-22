@@ -1,6 +1,5 @@
 package org.sterl.llmpeon.test;
 
-import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 import org.eclipse.swt.widgets.Display;
@@ -56,22 +55,10 @@ public abstract class AbstractSwtUiTest extends AbstractUnitTest {
 
     /** Runs the given code on the workbench UI thread and returns its result (or throws). */
     protected <T> T ui(Supplier<T> fn) {
-        try {
-            return EclipseUtil.runInUiThread(fn).get(10, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new AssertionError("interrupted waiting for UI thread", e);
-        } catch (Exception e) {
-            throw new AssertionError("UI thread call failed", e);
-        }
+        return SwtUi.ui(fn);
     }
 
     protected static void sleep(long ms) {
-        try {
-            Thread.sleep(ms);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new AssertionError("interrupted", e);
-        }
+        SwtUi.sleep(ms);
     }
 }

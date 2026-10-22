@@ -39,15 +39,17 @@ public class SmartToolExecutor {
             tool.withToolRequest(req);
             return executor.execute(request, request.id());
         } catch (IllegalArgumentException e) {
-            reportProblem(request, req, messageOf(e));
-            return messageOf(e);
+            var msg = messageOf(e);
+            reportProblem(request, req, msg);
+            return msg;
         } catch (ToolExecutionException e) {
             if (ExceptionUtil.isCanceled(e)) throw e; // cancellation wins — not a tool error
             // R5: a denial anywhere in the cause chain is a tool error — the model gets its message verbatim
             var denial = ExceptionUtil.findCause(e, IllegalArgumentException.class);
             if (denial != null) {
-                reportProblem(request, req, messageOf(denial));
-                return messageOf(denial);
+                var msg = messageOf(denial);
+                reportProblem(request, req, msg);
+                return msg;
             }
             throw e;
         } catch (Exception e) {
