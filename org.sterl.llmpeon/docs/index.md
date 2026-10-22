@@ -5,7 +5,7 @@ Workspace-Integration, OSGi-Tests (`org.sterl.llmpeon.test`). 24 Docs · Build/T
 
 * Register (pro Turn auto-geladen, nur Titel + Status): [Root index](../../docs/index.md)
 * ADRs (globaler Nummernraum): [adr/index.md](../../docs/adr/index.md)
-* **Nicht hier:** Core — Agent-Loop, Tool-Familien (`disk*`/`web*`/`shell`), Prompts, Compact/Context, Provider-Mapping → [Peon-Dev](../../org.sterl.llmpeon.core/docs/index.md)
+* **Nicht hier:** Core — Agent-Loop, Tool-Familien (`disk*`/`web*`/`shell`), Prompts, Compact/Context, Provider-Mapping → [Core-Docs](../../org.sterl.llmpeon.core/docs/index.md)
 
 Nur der Root-Index wird auto-geladen — dieses Modul-Doc enthält die vollständigen Einträge (Story,
 Trail, ADR-Links). Status: ✅ done · 🚧 design/WIP · ❌ not done · ⏳ geparkt · 📝 Studie.

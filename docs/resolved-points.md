@@ -120,3 +120,13 @@ Mapping-Datei (feature-change-request-copilot.md) wurden aufgelöst. Verbleibend
 | User-Smoke Issue #149 (Think) | **✅ 2026-09-30** (gemeinsamer Smoke aller Zyklen) | Ollama-Dropdown (""/true/false), Basis-Checkbox weg, `think:false` im Debug-Log, Custom-Agent Legacy-Frontmatter bestätigt | 2026-09-30 |
 | Unbegrenzte Query-Caches | **Überholt 2026-10-17 (Paul specified):** [bounded-caches.md](../org.sterl.llmpeon.core/docs/bounded-caches.md) — `SearchQuery.CACHE` + `RegexUtils.GLOB_CACHE` auf geteilten `BoundedLruCache` (Cap 128), `WebFetchTool` echtes LRU | 2026-10-14 Rückversicherung „Einträge winzig" galt, bis der Cache-Audit (Nachtzyklus 5) LLM-kontrollierte Keys als echtes Leak einstufte | 2026-10-14 → 2026-10-17 |
 | Compressor-Dedup-Subtext-Edge / ThreadSafeMemory RAM-only | **Keine Aktion** — Dedup ist lossy (Compact akzeptiert), RAM-only nach Persist-IOException präexistierend | Keine Blocker; Revisit nur bei Beschwerden/Datenverlust-Meldungen | 2026-10-14 |
+
+## handovers-and-plans-BETA-Block — verworfen (Jon 2026-10-22, Docs-Restrukturierung)
+
+**Punkt:** `context-architecture.md` enthielt einen BETA-Block „`docs/handovers-and-plans.md` — sobald
+stabil, als `EclipseFileContextItem`/`persistentContext`-Item integrieren". Das Doc existierte nie;
+der Block wurde bei der Referenz-Hygiene (INC-3/4) entfernt.
+**Entscheidung:** Konzept verworfen — Handover-/Plan-Doku lebt in `peon-plan/overview.md`
+(archiviert pro Zyklus) + `docs/memory.md` (Session-Zwischenstand). Kein Context-Item nötig.
+**Begründung:** Der Mechanismus, den der BETA-Block vorantreiben wollte, ist durch den
+Plan-Archiv-Fluss (planImplemented) und memory.md seit 2026-10 realisiert.

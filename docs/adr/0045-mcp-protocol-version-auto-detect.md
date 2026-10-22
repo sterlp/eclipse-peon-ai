@@ -19,7 +19,7 @@ entscheidet die Ära. Unser Probe-Envelope lockt MODERN, die Probe scheitert (`s
 fehlt), der Legacy-Fallback auf derselben Verbindung bekommt `-32022`. Also nicht „Client zu neu".
 Unser alter Default `2025-06-18` war „andere Version" und damit exakt der Auslöser; der User-Test
 mit `2024-11-05` (force-legacy, wäre korrekt) kam nie an, weil MCP-Config-Änderungen nicht live
-angewandt wurden (AIChatView-Gate → R-MCP1, docs/mcp.md).
+angewandt wurden (AIChatView-Gate → R-MCP1, org.sterl.llmpeon.core/docs/mcp.md).
 
 **Decision:**
 1. Default = **leer** = Auto-Detect (langchain4j-Verhalten). Kein stiller Default:

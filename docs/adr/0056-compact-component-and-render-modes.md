@@ -1,6 +1,6 @@
 # 0056: Compact als eigene core-Komponente + Render-Modi in ChatMessageUtil
 
-**Status:** Partially superseded (Decision 2 „Render-Modi als Options-Record") · **Datum:** 2026-09-24 · **Zyklus:** Compact-Redesign (docs/compact.md)
+**Status:** Partially superseded (Decision 2 „Render-Modi als Options-Record") · **Datum:** 2026-09-24 · **Zyklus:** Compact-Redesign (org.sterl.llmpeon.core/docs/compact.md)
 
 > **Superseded-Teil (2026-10-18):** Decision 2 („Render-Modi in `ChatMessageUtil` als Options-Record")
 > ist gefallen — [Tagged Results](../../org.sterl.llmpeon.core/docs/tagged-results.md) R-TR-8 hat **jedes Cap aus dem Renderer**

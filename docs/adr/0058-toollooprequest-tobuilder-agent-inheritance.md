@@ -1,6 +1,6 @@
 # ADR-0058: ToolLoopRequest.toBuilder — Behalten, aber Nested-Requests müssen agent/memory explizit setzen
 
-**Status:** Accepted · **Datum:** 2026-09-27 · **Anlass:** R-CC-15 (docs/compact.md) —
+**Status:** Accepted · **Datum:** 2026-09-27 · **Anlass:** R-CC-15 (org.sterl.llmpeon.core/docs/compact.md) —
 Search-Agent-Loop erbt den Parent-Agenten, Sniffas compactSession clearte Jons Memory.
 
 ## Context

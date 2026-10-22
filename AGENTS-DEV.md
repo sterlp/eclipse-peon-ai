@@ -26,5 +26,9 @@ Base: `AGENTS.md`. System prompt: `developer.md`.
   VERWAIST/UNBELEGT_ERLEDIGT blockiert, nicht erst der Review-Lauf.
 - **Never widen scope silently.** Fixes outside the released plan — even correct ones, even
   one-liners — get reported to the PO first. TABU lists in a plan are binding.
+- **Doc-Referenzen in Code/Javadoc tragen den Modul-Pfad** (`org.sterl.llmpeon.core/docs/x.md`,
+  `org.sterl.llmpeon/docs/x.md`) — Root-`docs/`-Pfade sind nach der Restrukturierung (2026-10-22)
+  tot für Feature-Docs; nur ADRs/Root-Docs bleiben dort. Referenzen gehören in Kommentare,
+  nie in String-Literale von Tests (C2-Gate des Docs-Restrukturierungs-Zyklus).
 - Elegant, expressive modern Java (records, pattern matching, switch expressions, Lombok).
 - Skill-Footer beantworten; falschen Skill im selben Turn fixen.

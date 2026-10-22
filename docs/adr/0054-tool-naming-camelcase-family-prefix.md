@@ -8,7 +8,7 @@ Die Java-Debug-Tools waren die einzige snake_case-Familie (`get_state`, `set_bre
 trugen kein Präfix — alle anderen Tool-Familien folgen de-facto **camelCase + Familien-Prefix**
 (`eclipseReadFile`, `diskGrepFiles`, `webGet`, `memoryAdd`, `planRead`, `skillList`,
 `shellRunCommand`). Paul kritisierte am 2026-09-23 die Inkonsistenz („Tool-Namen folgen nicht
-unserer Konvention"). Zudem dokumentierte `docs/tool-descriptions-inventory.md` eine nie gebaute
+unserer Konvention"). Zudem dokumentierte `org.sterl.llmpeon.core/docs/tool-descriptions-inventory.md` eine nie gebaute
 „`workspace-`-Prefix"-Konvention (veraltet, korrigiert).
 
 ## Decision
@@ -27,5 +27,5 @@ Java-only; zukunftssicher für z. B. `debugPython*`). Allowlist-Präfix für Cus
 - **Clean Break:** alte snake_case-Namen werden nicht migriert und nicht gealiast (AGENTS:
   „Clean break over migration") — Feature ist 2 Tage alt, externe Allowlisten existieren noch nicht.
 - `continue` ist Java-Keyword — der Prefix löst auch das.
-- Umgestellt im selben Inkrement: `@Tool`-Namen, Tests, `docs/java-debugger-tool.md`,
+- Umgestellt im selben Inkrement: `@Tool`-Namen, Tests, `org.sterl.llmpeon/docs/java-debugger-tool.md`,
   E2E-Doc, Prompts (falls referenzierend), `tool-descriptions-inventory.md`, Homepage-Tabellen.

@@ -5,7 +5,8 @@ Not published — user-facing docs live in `homepage/`.
 Auto-loaded every turn: **this file** + [memory.md](memory.md). The module indexes below are **not**
 auto-loaded — they carry the full entry text (trail, ADR links, Surefire numbers).
 
-Status: ✅ done · 🚧 design/WIP · ❌ not done · ⏳ geparkt · 📝 Studie. Backlog = every ❌/🚧 item.
+Status: ✅ done · 🚧 design/WIP · ❌ not done · ⏳ geparkt/historisch (superseded) · 📝 Studie. Backlog = every ❌/🚧 item.
+Der vollständige Eintragstext je Feature (mit konkretem Status-Grund) steht im jeweiligen Modul-Index.
 
 ## Where the knowledge lives
 

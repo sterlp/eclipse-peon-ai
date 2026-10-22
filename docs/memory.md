@@ -2,19 +2,23 @@
 
 > docs/** — insbesondere memory.md — schreibt AUSSCHLIESSLICH Jon. Agenten liefern Facts im Chat.
 
-## Stand 2026-10-21 — final (Branch `story/workspace-nesting-2026-10-19`)
+## Stand 2026-10-22 — Docs-Restrukturierung (`story/docs-restructure-2026-10-22`)
 
-- **Branch fertig, Review/Smoke ausstehend (Paul).** Alle Cleanup-Commits ab `2634140f`
-  liegen nur lokal — origin steht bei `89aafcb` (Pauls Sync ~08:13); alles danach ist
-  **unpushed** (aktuelle Zahl: `git rev-list --count origin/story/workspace-nesting-2026-10-19..HEAD`).
-  Paul macht das finale Review lokal.
-  Inhalt: Housekeeping (6 Skills + AGENTS-Straffung `35c5219f`) · Prompt-Trims po/planner (`ce3beb93`)
-  · Restore (`440304c7`) · Release-Doku-Auflösung (`636f5e26`, ADR-0072) · Docs-Cleanup
-  (`89aafcb`) · Externe-Review-Fixes + finaler Docs-Cleanup (`2634140f`, `b888f25d`, `d60b00a1`).
-- **Zyklus vollständig abgeschlossen:** resolved-points-Links gefixt, Skill `peon-release`
-  (Build-Guard, Update-Site = `https://sterlp.github.io/eclipse-peon-ai/`), Homepage-Install-URLs,
-  compressor.md Disclosure-Rewording (Paul „passt"), lintDocs über docs/: 0 findings.
-- **Nach Pauls Review/Smoke:** Merge/Tag 2.14.1 (siehe Offen für Paul) + Push.
+- **INC-1 Linter-Discovery** (`942390f6`) · **INC-2 Doc-Move + Indexe** (`a2616fc9`) ·
+  **INC-3 Referenz-Hygiene** (`ba1b2712` + follow-up `e82f8d8d`) — Gates grün:
+  Core Surefire 1252/0/0/0, Lint 9 Findings = Baseline, Jar-Check 0 `docs/`-Einträge,
+  79 Renames + dokumentierte Ausnahme (eclipse-read-tools-Split).
+- **Neue Struktur:** Root `docs/index.md` = Register (nur Titel + Statusmarker, 7.272 Zeichen,
+  Budget ≤ 8.000) · Sub-Indexe `org.sterl.llmpeon.core/docs/index.md` (58 Docs) und
+  `org.sterl.llmpeon/docs/index.md` (25 Docs) tragen die vollständigen Einträge ·
+  ADRs global am Root (0001–0072). Linter auto-discovered (INC-1), Disclosure im Report.
+- **INC-4 (meine Edits, ~uncommitted):** ADR-Pfadstrings repointet (0045/0054×2/0056/0058),
+  `AGENTS.md:42` Skill-Name → `component-architecture`, AGENTS-DEV.md-Regel
+  „Doc-Referenzen in Code tragen Modul-Pfad, in Kommentaren nie Test-String-Literalen",
+  toter `docs/handovers-and-plans.md`-Block aus context-architecture.md entfernt.
+  Prompts (po.md/dev-build-loop.md/po-tutorial.md): grep-clean, keine Anpassung nötig.
+- **Nächste Schritte:** Da-Dok-Review des Gesamtumbaus → bei ACCEPTED `planImplemented`
+  (archiviert Plan) → Commit meiner Docs-Edits → Pauls Merge/Smoke.
 
 ## Offen für Paul (Details: [open-points.md](open-points.md))
 
@@ -50,3 +54,7 @@
 - **Windows-Falle im Renderer:** in `lineSeparator()`-Strings immer `indexOf('\n')` suchen.
 - **UserMessage-Join in `ThreadSafeMemory.add`:** Seed-Fixtures ggf. `AiMessage` als Trenner.
 - **Surefire-Ground-Truth + Commit-Hash aktiv einfordern** — DONE-Claims gegen den IST prüfen.
+- **Docs-Restrukturierung (2026-10-22):** Feature-Doc-Pfade sind modul-qualifiziert
+  (`org.sterl.llmpeon.core/docs/x.md`, `org.sterl.llmpeon/docs/x.md`); ADRs + Root-Docs
+  (Glossar, memory, open-/resolved-points, Notes) bleiben in `docs/`. Code-Referenzen folgen
+  AGENTS-DEV.md-Regel. Linter-Discovery findet Modul-Roots automatisch.

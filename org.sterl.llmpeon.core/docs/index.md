@@ -5,7 +5,7 @@ Compact/Context, Provider-Mapping, Skills, MCP. 57 Docs · Build/Test: `mvn -f p
 
 * Register (pro Turn auto-geladen, nur Titel + Status): [Root index](../../docs/index.md)
 * ADRs (globaler Nummernraum): [adr/index.md](../../docs/adr/index.md)
-* **Nicht hier:** Eclipse/OSGi — SWT/JFace-Views & Widgets, Preference-Pages, Header/Roster, `eclipse*`-Adapter, OSGi-Tests → [Peon-Dev](../../org.sterl.llmpeon/docs/index.md)
+* **Nicht hier:** Eclipse/OSGi — SWT/JFace-Views & Widgets, Preference-Pages, Header/Roster, `eclipse*`-Adapter, OSGi-Tests → [Plugin-Docs](../../org.sterl.llmpeon/docs/index.md)
 
 Nur der Root-Index wird auto-geladen — dieses Modul-Doc enthält die vollständigen Einträge (Story,
 Trail, ADR-Links). Status: ✅ done · 🚧 design/WIP · ❌ not done · ⏳ geparkt · 📝 Studie.

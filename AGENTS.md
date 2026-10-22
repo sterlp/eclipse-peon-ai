@@ -39,7 +39,7 @@ Module guides (read when working in one):
 - **Every RAM cache is bounded.** A RAM cache without self-truncation is a leak — every new cache
   uses `BoundedLruCache` (or has a finite key-space and says so in its Javadoc).
 - Use a clean component architecture with proper information hiding / deep modules
-  (skill `komponenten-architektur`).
+  (skill `component-architecture`).
 - **Thread safety:** Eclipse plugin — heavy work on a background Thread `Job.create`, UI changes
   on a UI thread `EclipseUtil.runInUiThread` as so plan/build accordingly.
   No single-threaded assumptions.
@@ -61,6 +61,13 @@ Module guides (read when working in one):
   rides with its cycle. (Hit 2026-10-16, symbol-rollout close.)
 - **Re-read after every line-based edit.** `eclipseReplaceLines`/`diskReplaceLines` have repeatedly
   behaved as *insert* instead of *replace* — the old line stays, the new content lands below it,
-  with no error. Read the changed range back before trusting it; for larger rewrites prefer
+  with no error. Same trap for `diskEditFile`/`eclipseEditFile` deletions: an oldString that
+  matches only part of a line deletes just that part and leaves the rest as an orphan fragment,
+  with no error — deletions need the full line or a unique end anchor. Read the changed range
+  back before trusting it (plus a duplicate check, `grep -c`); for larger rewrites prefer
   writing the whole file.
 - Shell is for read-only diagnosis (`xxd`, `file`, `wc`), never for file I/O.
+
+
+
+
