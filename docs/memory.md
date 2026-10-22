@@ -2,34 +2,36 @@
 
 > docs/** — insbesondere memory.md — schreibt AUSSCHLIESSLICH Jon. Agenten liefern Facts im Chat.
 
-## Stand 2026-10-22 — Docs-Restrukturierung (`story/docs-restructure-2026-10-22`)
+## Stand 2026-10-22 — Zyklus ABGESCHLOSSEN: Docs-Restrukturierung
 
-- **INC-1 Linter-Discovery** (`942390f6`) · **INC-2 Doc-Move + Indexe** (`a2616fc9`) ·
-  **INC-3 Referenz-Hygiene** (`ba1b2712` + follow-up `e82f8d8d`) — Gates grün:
-  Core Surefire 1252/0/0/0, Lint 9 Findings = Baseline, Jar-Check 0 `docs/`-Einträge,
-  79 Renames + dokumentierte Ausnahme (eclipse-read-tools-Split).
-- **Neue Struktur:** Root `docs/index.md` = Register (nur Titel + Statusmarker, 7.272 Zeichen,
-  Budget ≤ 8.000) · Sub-Indexe `org.sterl.llmpeon.core/docs/index.md` (58 Docs) und
-  `org.sterl.llmpeon/docs/index.md` (25 Docs) tragen die vollständigen Einträge ·
-  ADRs global am Root (0001–0072). Linter auto-discovered (INC-1), Disclosure im Report.
-- **INC-4 (meine Edits, ~uncommitted):** ADR-Pfadstrings repointet (0045/0054×2/0056/0058),
-  `AGENTS.md:42` Skill-Name → `component-architecture`, AGENTS-DEV.md-Regel
-  „Doc-Referenzen in Code tragen Modul-Pfad, in Kommentaren nie Test-String-Literalen",
-  toter `docs/handovers-and-plans.md`-Block aus context-architecture.md entfernt.
-  Prompts (po.md/dev-build-loop.md/po-tutorial.md): grep-clean, keine Anpassung nötig.
-- **Nächste Schritte:** Da-Dok-Review des Gesamtumbaus → bei ACCEPTED `planImplemented`
-  (archiviert Plan) → Commit meiner Docs-Edits → Pauls Merge/Smoke.
+`story/docs-restructure-2026-10-22` (Basis `0a54c996`) — Da-Dok-Final-Review: CONCERNS, alle
+F1–F9 aufgelöst. Gates grün: Surefire 1252/0/0/0, Lint 9 Findings = Baseline, Jar 0 `docs/`.
+Plan archiviert: `peon-plan/overview-done-2026-10-22-17-38.md` (nicht committet).
+
+- `942390f6` INC-1 Linter-Discovery (`DocRootDiscovery`, auto `docs/` + `*/docs/` + `*/*/docs/`)
+- `a2616fc9` INC-2 Doc-Move: Root-Index = Register (Titel + Status, ~7.3k Zeichen), Sub-Indexe
+  `org.sterl.llmpeon.core/docs/index.md` (58) + `org.sterl.llmpeon/docs/index.md` (25) mit
+  Volltext; ADRs global am Root (0001–0072); 79 Renames, einzige Split-Ausnahme
+  eclipse-read-tools.
+- `ba1b2712` + `e82f8d8d` INC-3 Referenz-Hygiene (nur Kommentarzeilen, 68 Refs in 53 Dateien).
+- `8f5e67f5` INC-4 (Jon): ADR-Pfadstrings repointet, AGENTS.md:42 `component-architecture`,
+  AGENTS-DEV.md Doc-Pfad-Regel, Handovers-Block verworfen → resolved-points.md, Sub-Index-
+  Linktexte, Root-Legende ⏳, Re-read-Regel um diskEditFile-Teil-Löschung erweitert.
+- Follow-up (Jon) `406dcb45`: Root-Legende auf 2 Zeilen (Budget 120), AGENTS.md-Blank-Zeilen
+  am Ende entfernt; dieser Commit = memory.md cycle-close.
 
 ## Offen für Paul (Details: [open-points.md](open-points.md))
 
-1. ❓ **Merge/Tag 2.14.1** — `story/workspace-nesting-2026-10-19` lokal fertig (Core 1231/0,
+1. ❓ **Merge/Squash** `story/docs-restructure-2026-10-22` → main + Smoke (Docs-Linter-Report,
+   Root-Index auto-load). Danach Branch löschen.
+2. ❓ **Merge/Tag 2.14.1** — `story/workspace-nesting-2026-10-19` lokal fertig (Core 1231/0,
    OSGi 399/0); vorher `mvn -B clean verify`. Smokes: Dev/Plan/Review gleicher Prozentsatz ·
    Delegation-Compact > 70 % vor Auftrag · Monorepo · Codegraph nach Neustart.
-2. ⏳ **Delegations-Compact feuert pro Delegation** (Kosten, ADR-0071) — Faktor anheben oder nur
+3. ⏳ **Delegations-Compact feuert pro Delegation** (Kosten, ADR-0071) — Faktor anheben oder nur
    bei Themenwechsel? Rückversicherung steht aus.
-3. ⏳ **Compact-Briefing-Schema** für `compressor.md`: 3 Ergänzungen vorgeschlagen (STANDING-RULES-Slot,
+4. ⏳ **Compact-Briefing-Schema** für `compressor.md`: 3 Ergänzungen vorgeschlagen (STANDING-RULES-Slot,
    preserve-Pfade erweitern, memory.md = complement-not-replace) — Freigabe steht aus.
-4. ❓ Fixture-Duplikat in ≥3 core-Testklassen · ❓ R-Regeln ohne Linter-Gate (`DocsLinter:241/254`)
+5. ❓ Fixture-Duplikat in ≥3 core-Testklassen · ❓ R-Regeln ohne Linter-Gate (`DocsLinter:241/254`)
    · ❓ In-Loop-Direkt-Compact fängt Exceptions nicht (R-CC-20.5-Nachbarloch) · ⏳ Reserved-Name
    `codegraph` · ⏳ R-CG-15 Monorepo-State-Refresh · ⏳ R-CC-19-Semantik+Tilde · ⏳ Windows-
    `cmd /c`-Fallback · 🔒 S3 (🗜 in PoDelegateTool) blockiert auf Pauls WIP-Merge.
@@ -42,6 +44,7 @@
 - R-CG-14 (Generation + `disposed` statt Lock) · R-CIB-4 Stufe 2 · R-CC-7 Fehlerklassen-Tabelle
   ApiRetry (❓) · Header-State-Leak (❓) · Context-Overflow-Zyklus (❓) · McpService
   `connect()`-Rollback-Test (ADR-0069).
+- Root-Index Commit-SHAs (Zeilen ~145–170) im nächsten Docs-Zyklus entfernen (Da-Dok F6).
 
 ## Notizen
 
