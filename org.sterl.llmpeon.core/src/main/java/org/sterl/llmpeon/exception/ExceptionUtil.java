@@ -32,17 +32,27 @@ public final class ExceptionUtil {
     }
 
     /**
+     * Returns the first throwable of the given type anywhere in the cause chain — the throwable
+     * itself or one of its nested causes. Cycle-safe, null-safe; {@code null} when absent.
+     */
+    public static <T extends Throwable> T findCause(Throwable throwable, Class<T> type) {
+        if (throwable == null) return null;
+        var seen = new IdentityHashMap<Throwable, Boolean>();
+        var current = throwable;
+        while (current != null) {
+            if (seen.putIfAbsent(current, Boolean.TRUE) != null) return null; // cycle without a match
+            if (type.isInstance(current)) return type.cast(current);
+            current = current.getCause();
+        }
+        return null;
+    }
+
+    /**
      * Returns {@code true} when the given throwable or any of its nested causes
      * is a {@link CancellationException}.
      */
     public static boolean isCanceled(Throwable throwable) {
-        if (throwable == null) return false;
-        Throwable current = throwable;
-        do {
-            if (current instanceof CancellationException) return true;
-            current = current.getCause();
-        } while (current != null && current != throwable);
-        return false;
+        return findCause(throwable, CancellationException.class) != null;
     }
 
     /**
@@ -50,12 +60,6 @@ public final class ExceptionUtil {
      * is a {@link RateLimitException}.
      */
     public static boolean isRateLimit(Throwable throwable) {
-        if (throwable == null) return false;
-        Throwable current = throwable;
-        do {
-            if (current instanceof RateLimitException) return true;
-            current = current.getCause();
-        } while (current != null && current != throwable);
-        return false;
+        return findCause(throwable, RateLimitException.class) != null;
     }
 }

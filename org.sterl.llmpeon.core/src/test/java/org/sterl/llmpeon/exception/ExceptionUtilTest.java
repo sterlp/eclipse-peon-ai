@@ -1,13 +1,14 @@
 package org.sterl.llmpeon.exception;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Timeout;
 
 import dev.langchain4j.exception.RateLimitException;
 
@@ -106,7 +107,6 @@ class ExceptionUtilTest {
     }
 
     @Test
-    @Timeout(2)
     void unwrap_terminates_on_a_cyclic_cause_chain() {
         // GIVEN two envelopes whose causes point at each other — anonymous subclasses, because
         // the no-arg constructors of both envelope types are protected
@@ -115,7 +115,86 @@ class ExceptionUtilTest {
         a.initCause(b);
         b.initCause(a);
 
-        // WHEN/THEN it terminates and returns a non-null throwable
-        assertThat(ExceptionUtil.unwrap(a)).isNotNull();
+        // WHEN — on a daemon probe with a bounded join: a non-terminating regression must fail
+        // the test, not hang the suite (@Timeout cannot kill a non-interruptible loop)
+        var result = new AtomicReference<Throwable>();
+        var probe = new Thread(() -> result.set(ExceptionUtil.unwrap(a)), "unwrap-cycle-probe");
+        probe.setDaemon(true);
+        probe.start();
+        try {
+            probe.join(2_000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        // THEN it terminated within the bound and returned a non-null throwable
+        assertFalse(probe.isAlive(), "unwrap must terminate on a cyclic cause chain");
+        assertThat(result.get()).isNotNull();
+    }
+
+    // ------------------------------------------------------------------ findCause (R5, docs/write-path-validator.md)
+
+    @Test
+    void findCause_returns_a_deeply_nested_instance() {
+        // GIVEN a denial nested two levels below the outer exception
+        var denial = new IllegalArgumentException("Write denied: x");
+        var top = new IllegalStateException("outer", new ExecutionException(denial));
+
+        // WHEN
+        var found = ExceptionUtil.findCause(top, IllegalArgumentException.class);
+
+        // THEN the very same instance comes out
+        assertThat(found).isSameAs(denial);
+    }
+
+    @Test
+    void findCause_returns_null_when_absent() {
+        assertThat(ExceptionUtil.findCause(new RuntimeException("boom"), CancellationException.class)).isNull();
+    }
+
+    @Test
+    void findCause_is_null_safe() {
+        assertThat(ExceptionUtil.findCause(null, CancellationException.class)).isNull();
+    }
+
+    @Test
+    void findCause_terminates_on_a_cyclic_cause_chain_without_a_match() {
+        // GIVEN a cycle of two exceptions, neither of them the searched type
+        var a = new RuntimeException("a");
+        var b = new RuntimeException("b");
+        a.initCause(b);
+        b.initCause(a);
+
+        // WHEN — on a daemon probe with a bounded join: a non-terminating regression must fail
+        // the test, not hang the suite (@Timeout cannot kill a non-interruptible loop)
+        var result = new AtomicReference<Throwable>();
+        var probe = new Thread(() -> result.set(ExceptionUtil.findCause(a, IllegalArgumentException.class)), "findCause-cycle-probe");
+        probe.setDaemon(true);
+        probe.start();
+        try {
+            probe.join(2_000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        // THEN it terminated within the bound and reported the absence
+        assertFalse(probe.isAlive(), "findCause must terminate on a cyclic cause chain");
+        assertThat(result.get()).isNull();
+    }
+
+    @Test
+    void findCause_finds_the_match_above_a_cyclic_tail() {
+        // GIVEN the denial above a cycle that never contains it
+        var c = new RuntimeException("c");
+        var d = new RuntimeException("d");
+        var denial = new IllegalArgumentException("Write denied: x");
+        var top = new RuntimeException("top");
+        denial.initCause(c);
+        c.initCause(d);
+        d.initCause(c);
+        top.initCause(denial);
+
+        // WHEN/THEN the match wins over the cycle below
+        assertThat(ExceptionUtil.findCause(top, IllegalArgumentException.class)).isSameAs(denial);
     }
 }

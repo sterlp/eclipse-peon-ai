@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -91,15 +92,20 @@ public class EclipseUtil {
     /**
      * Waits for a UI-thread result and rethrows the real cause — a failed future yields the
      * throwable the UI runnable threw (future envelopes stripped), and "Timeout" is claimed
-     * only for a genuine {@link TimeoutException}. A {@link java.util.concurrent.CancellationException}
-     * passes through unwrapped (never swallowed).
+     * only for a genuine {@link TimeoutException}. A pure envelope chain without a bottom cause
+     * yields an {@link IllegalStateException} that names the waited action — never an envelope
+     * class name. A {@link java.util.concurrent.CancellationException} passes through unwrapped
+     * (never swallowed).
      */
     public static <T> T await(CompletableFuture<T> future, Duration timeout, String what) {
         try {
             return future.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
         } catch (ExecutionException e) {
             var cause = ExceptionUtil.unwrap(e);
-            if (cause == null) cause = e; // envelope-only chain — the envelope is all there is (checked, so re-wrapped)
+            if (cause == null || cause instanceof ExecutionException || cause instanceof CompletionException) {
+                // pure envelope chain — nothing real to surface; no envelope class name may reach the caller
+                throw new IllegalStateException(what + " failed: the UI call ended without a root cause", e);
+            }
             if (cause instanceof Error err) throw err;
             if (cause instanceof RuntimeException re) throw re;
             throw new IllegalStateException(what + " failed: " + cause, cause);

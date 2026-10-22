@@ -2,12 +2,14 @@ package org.sterl.llmpeon.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.time.Duration;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 import org.junit.Test;
@@ -89,5 +91,22 @@ public class EclipseUtilAwaitTest {
 
         // WHEN/THEN the result arrives untouched
         assertEquals("Saved!", EclipseUtil.await(f, Duration.ofSeconds(1), "editing the open editor"));
+    }
+
+    @Test
+    public void test_await_never_leaks_an_envelope_class_name() {
+        // GIVEN a future whose whole failure is a future envelope — no real cause at the bottom
+        // anonymous subclass: ExecutionException's constructors are protected (same as ExceptionUtilTest's cycle case)
+        var f = CompletableFuture.<String>failedFuture(new ExecutionException("envelope only") {});
+
+        // WHEN
+        var e = assertThrows(IllegalStateException.class,
+                () -> EclipseUtil.await(f, Duration.ofSeconds(1), "editing the open editor"));
+
+        // THEN the message names the waited action but no envelope class — the chain stays in the cause
+        assertTrue(e.getMessage(), e.getMessage().contains("editing the open editor"));
+        assertFalse(e.getMessage(), e.getMessage().contains("ExecutionException"));
+        assertFalse(e.getMessage(), e.getMessage().contains("java.util.concurrent"));
+        assertNotNull("the original exception must stay the cause", e.getCause());
     }
 }
