@@ -44,4 +44,4 @@ Fallback. Wer literal will, escaped (`\Q…\E`).
 - `RegexUtils.isRegexPattern` entfällt (bzw. wird nur noch intern zur Modus-Meldung genutzt).
 - Kompilierung pro Query, nicht pro Datei — Pattern einmal bauen, dann wiederverwenden.
 - Kein Eclipse-Search-Bundle in `MANIFEST.MF` nötig; keine UI-Kopplung.
-- Regeln + BDD: [eclipse-read-tools.md](../eclipse-read-tools.md) R2/R3.
+- Regeln + BDD: [eclipse-read-tools.md](../../org.sterl.llmpeon/docs/eclipse-read-tools.md) R2/R3.

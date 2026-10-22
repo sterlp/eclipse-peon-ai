@@ -1,7 +1,7 @@
 # ADR-0062 — Base-Inheritance: Dev = Default, alle NULL-Slots erben Base
 
 **Status:** Accepted (2026-09-28, mit Paul)
-**Kontext:** [default-inheritance.md](../default-inheritance.md) · supersedes teilweise die
+**Kontext:** [default-inheritance.md](../../org.sterl.llmpeon/docs/default-inheritance.md) · supersedes teilweise die
 „model null = provider default"-Semantik aus dem Per-Agent-Slot-Umbau ([ADR-0036](0036-po-own-model-slot.md))
 
 ## Context

@@ -28,5 +28,5 @@ Jon braucht Auto-Load von `memory.md` + `docs/index.md` bei Session-Start und na
 
 ## Verwandt
 
-- [Jon (Peon-PO)](../po-agent-jon.md) — Auto-Load memory.md + docs/index.md
-- [Queued User Messages](../queued-user-messages.md) — Compact-Abbruch + Queue-Drain
+- [Jon (Peon-PO)](../../org.sterl.llmpeon.core/docs/po-agent-jon.md) — Auto-Load memory.md + docs/index.md
+- [Queued User Messages](../../org.sterl.llmpeon.core/docs/queued-user-messages.md) — Compact-Abbruch + Queue-Drain

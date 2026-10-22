@@ -33,7 +33,7 @@
 ## Backlog (nächste Session)
 
 - **Async-Shell-Tool — Paul-Prio** (wichtiger als async Agents). Danach async Agents (Top-3 in
-  [async-agents.md](async-agents.md)).
+  [async-agents.md](../org.sterl.llmpeon.core/docs/async-agents.md)).
 - **TempFileTool** — Slice 2 Output-Trim 🚧 in design.
 - R-CG-14 (Generation + `disposed` statt Lock) · R-CIB-4 Stufe 2 · R-CC-7 Fehlerklassen-Tabelle
   ApiRetry (❓) · Header-State-Leak (❓) · Context-Overflow-Zyklus (❓) · McpService

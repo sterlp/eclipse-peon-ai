@@ -1,6 +1,6 @@
 # ADR-0050: Debugger-Basis JDT-Debug-Model statt DAP — User-managte Session, keine Confirmations
 
-> **Status:** ✅ accepted (2026-09-19/21, Paul) · **Fachdoc:** [java-debugger-tool.md](../java-debugger-tool.md)
+> **Status:** ✅ accepted (2026-09-19/21, Paul) · **Fachdoc:** [java-debugger-tool.md](../../org.sterl.llmpeon/docs/java-debugger-tool.md)
 
 ## Context
 
@@ -18,7 +18,7 @@ Protocol). Zusätzlich die Frage Confirmations für mutierende Actions.
    kein Auto-Disconnect — R-JD-1/2).
 3. **Keine Confirmations.** Weil die Session User-Property ist, sieht Paul jede Änderung unmittelbar
    im Debug-UI — eine Bestätigungsrunde wäre Zeremonie ohne Schutzgewinn. (Konsistent mit
-   [tool-confirmation.md](../tool-confirmation.md): Bestätigungen bleiben generell aus.)
+   [tool-confirmation.md](../../org.sterl.llmpeon.core/docs/tool-confirmation.md): Bestätigungen bleiben generell aus.)
 
 ## Consequences
 

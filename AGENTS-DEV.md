@@ -9,7 +9,7 @@ Base: `AGENTS.md`. System prompt: `developer.md`.
 - langchain4j / CompletableFuture / JSON extra body → skill `repo-api-traps`
 - PDE / JDT / SWT / Preferences → skills `eclipse-dpe` / `eclipse-preferences`
 - Release / Update-Site / gh-pages / deploy / Version bump → skill `peon-release`
-- System-Prompts / Agent-Wiring / Docs-Übersicht → [docs/system-prompts.md](docs/system-prompts.md)
+- System-Prompts / Agent-Wiring / Docs-Übersicht → [docs/system-prompts.md](org.sterl.llmpeon.core/docs/system-prompts.md)
 
 
 ## Always-on rules (fail silently when violated — never trigger-gated)

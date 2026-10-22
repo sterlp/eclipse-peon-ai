@@ -1,7 +1,7 @@
 # ADR-0020: Peon-PO orchestrates Plan/Dev as sub-agents with `planComplete` / `planImplemented` completion signals
 
 **Status** · Proposed — **superseded** by the shipped design in
-[po-agent-jon.md](../po-agent-jon.md) (§I2.x) and [ADR-0024](0024-po-slaves-ram-only.md) /
+[po-agent-jon.md](../../org.sterl.llmpeon.core/docs/po-agent-jon.md) (§I2.x) and [ADR-0024](0024-po-slaves-ram-only.md) /
 [ADR-0021](0021-po-slave-lifecycle-jit-compaction.md). The tool set below (`jonCreateDevPlan`,
 `jonAskQuestion`, `jonAskDev`, `jonAskScaffold` + `planComplete`/`planImplemented` latches) was **not
 built as written**: it became four intent-named delegate tools — `talkPlan`, `planWithPlanAgent`,
@@ -9,7 +9,7 @@ built as written**: it became four intent-named delegate tools — `talkPlan`, `
 deciding done-ness from the reply text. This ADR is kept as the original proposal record.
 
 ## Context
-The current plan→dev flow ([plan-dev-agent-design.md](../plan-dev-agent-design.md)) is a **one-shot
+The current plan→dev flow ([plan-dev-agent-design.md](../../org.sterl.llmpeon.core/docs/plan-dev-agent-design.md)) is a **one-shot
 handoff**: the plan agent finishes, a "Give Peon-Dev" button transfers context once, and the dev
 agent runs independently. There is no agent that stays in control across the whole feature and reviews
 the intermediate results.

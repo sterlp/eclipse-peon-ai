@@ -8,7 +8,7 @@ PLAN"). Paul will Da Dok getrennt von Da Thinka konfigurieren können — eigene
 Reviews (gerade mit Blick auf die Tool-Allowlist-Story, wo Da Dok eine eigene Tool-Menge bekommt).
 
 **Decision:** Eigenes Slot-Präfix `llm.agent.review.*`, Aufnahme in `CORE_IDS`, eigene UI-Sektion
-auf der Advanced-Seite. Fallback bei leerem Slot = **Base** (Muster [ADR-0036](adr/0036-po-own-model-slot.md)),
+auf der Advanced-Seite. Fallback bei leerem Slot = **Base** (Muster [ADR-0036](0036-po-own-model-slot.md)),
 nicht mehr Plan. Clean Break: kein Alias, keine Migration — User kopieren ggf. einmal die
 PLAN-Werte in die REVIEW-Sektion.
 

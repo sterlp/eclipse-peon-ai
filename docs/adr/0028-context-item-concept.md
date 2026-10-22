@@ -24,4 +24,4 @@ Drift. KV-Cache wurde bei jedem Compact invalidiert, weil System-Prompt sofort n
 - Plan/Dev Agenten bekommen memory.md/AGENTS.md nicht automatisch (nur Jon)
 - Eclipse Resource Listeners für Echtzeit-Update sind Low-Priority (lastModified ausreichend für MVP)
 
-**Related:** [Context Message Concept](../context-message-concept.md), [po-agent-jon.md](../po-agent-jon.md)
+**Related:** [Context Message Concept](../../org.sterl.llmpeon.core/docs/context-message-concept.md), [po-agent-jon.md](../../org.sterl.llmpeon.core/docs/po-agent-jon.md)

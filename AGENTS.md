@@ -28,7 +28,7 @@ Module guides (read when working in one):
   in its own output (`showing N of M`, `regex search` / `literal search`, "filtered by file type").
   A false negative — the tool says "not found" for something that exists — is the most expensive
   bug in this codebase: the agent then acts on the belief that the thing does not exist. An error
-  is harmless by comparison. See `docs/eclipse-read-tools.md`.
+  is harmless by comparison. See `org.sterl.llmpeon.core/docs/read-tools.md`.
 - **One behaviour, one implementation.** The `eclipse*` and `disk*` tool families must not
   diverge; shared logic lives in core (`FileLines`, `SearchQuery`, `TextFileTypes`, `LogExcerpt`,
   `AiReponseBuilder`). A silently differing whitelist is a false negative waiting to happen.

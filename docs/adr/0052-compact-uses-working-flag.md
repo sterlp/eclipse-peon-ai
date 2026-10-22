@@ -1,6 +1,6 @@
 # ADR-0052 — Compact-Lock: `working`-Flag statt Future-Chain oder eigenem Zustand
 
-**Status:** Accepted (2026-09-22) · **Feature-Doc:** [compact-lock.md](../compact-lock.md)
+**Status:** Accepted (2026-09-22) · **Feature-Doc:** [compact-lock.md](../../org.sterl.llmpeon.core/docs/compact-lock.md)
 
 ## Context
 

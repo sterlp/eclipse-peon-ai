@@ -5,7 +5,7 @@
 selbst — der jeweilige Connection-Service besitzt den `McpService`, die Registries adoptieren ihn
 (`adoptMcpGroup`). Grund: `connectMcp` je Registry erzeugte einen Prozess je Registry (2× `serve --mcp`).
 
-**Context:** Codegraph ist als Built-in geplant ([codegraph.md](../codegraph.md)): aktives
+**Context:** Codegraph ist als Built-in geplant ([codegraph.md](../../org.sterl.llmpeon.core/docs/codegraph.md)): aktives
 Projekt mit `.codegraph`-Index → Auto-Connect, unabhängig vom User-MCP-Toggle. `ToolService.connectMcp`
 war disconnect-first/all-or-nothing über die gesamte MCP-Connection: ein Built-in-Server darin
 hätte User-Server bei Connect-Fehlern mitgerissen (R-CG-3) und der User-Toggle-Off hätte das

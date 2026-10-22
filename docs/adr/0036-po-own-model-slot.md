@@ -32,4 +32,4 @@ unterschiedlichem Modellprofil — sie teilen sich zu Unrecht eine Einstellung.
   PO-Slot einmalig neu setzen (dokumentiert auf der Homepage).
 - Der Connection-Cache profitiert: gleiche Identität → weiterhin geteilte Verbindung, ein
   eigener Slot erzeugt also nur dann eine zusätzliche Connection, wenn er wirklich abweicht.
-- Regeln + BDD: [advanced-configuration.md](../advanced-configuration.md) R-PO1…R-PO4.
+- Regeln + BDD: [advanced-configuration.md](../../org.sterl.llmpeon/docs/advanced-configuration.md) R-PO1…R-PO4.

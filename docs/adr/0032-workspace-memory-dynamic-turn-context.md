@@ -24,7 +24,7 @@ für den Grundstock), aber `WorkspaceMemoryTool` wird zusätzlich zum `ContextIt
 (`PoDelegateTool`; Sklaven, drittes Item nach Plan + AGENTS.md) in die nächste Nachricht gerendert
 wird. Dedup über festen Key, geänderter Inhalt → neuer Snapshot; alte Snapshots bleiben bis zum Compact.
 
-Regeln + BDD: [context-architecture.md](../context-architecture.md) (Abschnitt „Workspace-Memory
+Regeln + BDD: [context-architecture.md](../../org.sterl.llmpeon.core/docs/context-architecture.md) (Abschnitt „Workspace-Memory
 zusätzlich dynamisch").
 
 ## Consequences

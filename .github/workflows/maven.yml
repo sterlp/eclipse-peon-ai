@@ -4,13 +4,13 @@ on:
   push:
     branches: [ "main" ]
     paths-ignore:
-      - 'docs/**'
-      - 'skills/**'
+      - '**/docs/**'
+      - '.agents/skills/**'
   pull_request:
     branches: [ "main" ]
     paths-ignore:
-      - 'docs/**'
-      - 'skills/**'
+      - '**/docs/**'
+      - '.agents/skills/**'
   workflow_dispatch:
 
 jobs:

@@ -1,6 +1,6 @@
 # ADR-0053 — CallStats: geteilter Stats-Suffix-Helper im core
 
-**Status:** ❌ accepted (2026-09-22)   **Feature:** [tool-time-disclosure.md](../tool-time-disclosure.md)
+**Status:** ❌ accepted (2026-09-22)   **Feature:** [tool-time-disclosure.md](../../org.sterl.llmpeon.core/docs/tool-time-disclosure.md)
 
 ## Context
 

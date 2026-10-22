@@ -85,7 +85,7 @@ entschieden · 🔒 geklärt.
 | **Skill-Component** | Eine vom `SkillService` gehaltene Component mit **immer einem Pfad** (Config- oder Projekt-Skills-Dir); lädt Discover+Parse+Swap selbst — Service tauscht Projekt-Component als Instanz, kein `@Nullable` dir | Skill-Slot (alt), Skill-Dir, Skill-Root |
 | **Tool Allowlist** | Die CSV-Datenliste eines Agenten, die entscheidet, welche Tools aktiv sind — Quelle: UI-Feld (Built-ins, `llm.agent.<id>.tools`) oder `tools:`-Frontmatter (Custom); Matcher ist immer `ToolPolicy` (Prefix, `*`, Negation `!`) | Tool-Filter (als UI-Config), Tool-Auswahl, Tool-Liste |
 | **Negation** | `!`-Präfix auf einem Allowlist-Token: entfernt nach der Allow-Bewertung alle Präfix-Matches — `*, !debugJava*` = alles außer Debug; Ausschluss gewinnt; **nur Negationen** = valide (alles minus Ausschluss) | Exclude, Blacklist, Deny-Liste |
-| **Codegraph** | Lokaler Knowledge-Graph-Server (tree-sitter + SQLite-FTS5, MCP-STDIO, Daemon mit Auto-Sync) — Peon-Built-in-Integration mit Auto-Enable im aktiven Projekt ([codegraph.md](codegraph.md)) | BM25-Suche (technisch falsch), Knowledge-Index, Code-Index |
+| **Codegraph** | Lokaler Knowledge-Graph-Server (tree-sitter + SQLite-FTS5, MCP-STDIO, Daemon mit Auto-Sync) — Peon-Built-in-Integration mit Auto-Enable im aktiven Projekt ([codegraph.md](../org.sterl.llmpeon.core/docs/codegraph.md)) | BM25-Suche (technisch falsch), Knowledge-Index, Code-Index |
 
 
 ## Offen

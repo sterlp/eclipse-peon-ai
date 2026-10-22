@@ -1,6 +1,6 @@
 # ADR 0061 — Think-Default: leerer Agent-Think erbt den Base-Think (Dev-Slot)
 
-**Status:** Accepted (2026-09-28, Paul) · **Fachdoc:** [per-agent-think.md](../per-agent-think.md) (R-THINK-10) · **Verwandt:** [ADR-0059](0059-think-dropdown-empty-unset.md) (leer = unset, Issue #149), [ADR-0060](0060-model-config-widget-live-widget-reads.md) (Basic-Page-Widget)
+**Status:** Accepted (2026-09-28, Paul) · **Fachdoc:** [per-agent-think.md](../../org.sterl.llmpeon.core/docs/per-agent-think.md) (R-THINK-10) · **Verwandt:** [ADR-0059](0059-think-dropdown-empty-unset.md) (leer = unset, Issue #149), [ADR-0060](0060-model-config-widget-live-widget-reads.md) (Basic-Page-Widget)
 
 ## Context
 

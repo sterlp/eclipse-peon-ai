@@ -5,7 +5,7 @@
 ## Context
 
 Peon-PO (Jon) drives his **own** Peon-Plan and Peon-Dev instances as Da Thinka and Da Mek (see
-[po-agent-jon.md](../po-agent-jon.md), Increment 2). Every persisted agent in Peon writes a
+[po-agent-jon.md](../../org.sterl.llmpeon.core/docs/po-agent-jon.md), Increment 2). Every persisted agent in Peon writes a
 `FileAgentHistoryStore` (one JSONL per agent `NAME`, [ADR-0019](0019-jsonl-agent-history-store.md)).
 Naively giving Da Thinka and Da Mek the same treatment raises two problems:
 

@@ -1,7 +1,7 @@
 # ADR-0071 — Compact-Policy: der Faktor gehört zur Delegation, die Schleife rechnet roh
 
-> **Status:** accepted (2026-10-19, Paul) · **Fachdoc:** [compact.md](../compact.md) R-CC-18 ·
-> **Architektur:** [compact-architektur.md](../compact-architektur.md) ·
+> **Status:** accepted (2026-10-19, Paul) · **Fachdoc:** [compact.md](../../org.sterl.llmpeon.core/docs/compact.md) R-CC-18 ·
+> **Architektur:** [compact-architektur.md](../../org.sterl.llmpeon.core/docs/compact-architektur.md) ·
 > **Supersedes:** Teile von [ADR-0021](0021-po-slave-lifecycle-jit-compaction.md) (Faktor + Pre-Turn-Gate)
 > und [ADR-0070](0070-compact-decision-in-one-component.md) (Budget-Quelle, Pre-Turn-Gate)
 
@@ -31,7 +31,7 @@ beliefert. Dieses Wissen hat der Agent nicht, sein Auftraggeber hat es.
 - **Kein Agent-Faktor, aber ein Pre-Turn-Check.** `AbstractAgent` compactet **nicht** nach einer
   Agent-Eigenschaft; geprüft wird am Anfang von `doCall` aber sehr wohl — **bevor** die frische
   User-Message ins Memory geht, gegen das **rohe** Budget, ein Versuch pro Turn, kein Hint
-  (R-CC-20 in [compact.md](../compact.md)). Der Unterschied ist der Punkt: die Schwelle gehört
+  (R-CC-20 in [compact.md](../../org.sterl.llmpeon.core/docs/compact.md)). Der Unterschied ist der Punkt: die Schwelle gehört
   niemandem persönlich, der Zeitpunkt „vor einer neuen Meldung" ist dagegen richtig.
   (Nachtrag 2026-10-19 nach externem Review: ohne diesen Check blieb jeder Turn ohne Tool-Runde
   ungeprüft — R-CC-18 greift nur im `isToolrequest`-Zweig.)

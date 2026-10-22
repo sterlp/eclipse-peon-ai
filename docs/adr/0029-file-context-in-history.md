@@ -8,7 +8,7 @@
 > Das History-Prinzip (Dateien in Chat, Dedup nach Pfad-Header, fehlende Datei → skip) bleibt gültig.
 >
 > **Superseded-Teil (2026-10-18):** Der DedupKey ist **nicht mehr** die Pfad-Präambel
-> (`<pfad>:…`) — seit [Tagged Results](../tagged-results.md) ist der dedupKey die **erste Zeile des
+> (`<pfad>:…`) — seit [Tagged Results](../../org.sterl.llmpeon.core/docs/tagged-results.md) ist der dedupKey die **erste Zeile des
 > Blocks** (`//-- Start <head>`), und ein Context-Item injiziert exakt seinen Block statt eines
 > Key-Prefix + Body. Grund: der Key-Prefix vor dem Block hätte `isTagged` gebrochen (der Block muss
 > die Message sein, nicht ein Fragment). Clean Break, keine Migration alter Historien — fehlt der
@@ -67,6 +67,6 @@ AgentsMdContextItem) — Review OK, alle Tests grün (Core 418/0, Plugin grün).
 
 ## Verwandt
 
-- [Context Message Konzept](../context-message-concept.md) — Regeln + BDD
-- [Context Architecture](../context-architecture.md) — Static vs. Dynamic-Kategorisierung
-- [AGENTS.md Support](../agents-md-support.md) — File-Resolution (welcher Name, Fallback)
+- [Context Message Konzept](../../org.sterl.llmpeon.core/docs/context-message-concept.md) — Regeln + BDD
+- [Context Architecture](../../org.sterl.llmpeon.core/docs/context-architecture.md) — Static vs. Dynamic-Kategorisierung
+- [AGENTS.md Support](../../org.sterl.llmpeon.core/docs/agents-md-support.md) — File-Resolution (welcher Name, Fallback)

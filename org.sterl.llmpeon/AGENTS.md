@@ -1,4 +1,5 @@
 See parent: `/llmpeon-parent/AGENTS.md` (Global Rules, Thread Safety).
+Module docs index: [docs/index.md](docs/index.md) — feature stories of this module (Eclipse plugin).
 
 # Plugin Specifics
 

@@ -66,4 +66,4 @@ Trigger push/PR auf `main` (paths-ignore `docs/**`, `skills/**`). CI ist **headl
 
 Wie man die OSGi-Tests lokal (headless, ohne Eclipse) per Maven startet — Befehl, erwartete
 Zahlen (350/0/44, Core 1110), die 44 by-design SWT-Skips und der „kein stiller Skip"-Nachweis:
-siehe [test-setup.md](test-setup.md) → „OSGi-Tests via Maven (headless)" (verifiziert 2026-10-15).
+siehe [test-setup.md](../org.sterl.llmpeon/docs/test-setup.md) → „OSGi-Tests via Maven (headless)" (verifiziert 2026-10-15).

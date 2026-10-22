@@ -5,7 +5,7 @@
 
 ## Context
 
-Zwei Fehler im Modell-Listen-Pfad ([model-loading.md](../model-loading.md),
+Zwei Fehler im Modell-Listen-Pfad ([model-loading.md](../../org.sterl.llmpeon/docs/model-loading.md),
 [ADR-0034](0034-connection-cache-by-identity.md)), beide erst im Mehr-Agenten-Betrieb sichtbar:
 
 1. **Race:** `SharedHttpClient` hielt ein **globales** `pendingRequest` und verwendete
@@ -15,7 +15,7 @@ Zwei Fehler im Modell-Listen-Pfad ([model-loading.md](../model-loading.md),
    schlicht falsch.
 2. **Secret-Leak:** `ConnectionIdentity.toString()` und `EffectiveConnection.toString()` gaben
    `apiKey` und extra body im Klartext aus — und landeten damit im Log
-   ([secure-credentials.md](../secure-credentials.md)).
+   ([secure-credentials.md](../../org.sterl.llmpeon/docs/secure-credentials.md)).
 
 Nicht-offensichtlicher Nebenbefund, der den Bug-Pfad erklärte: `CompletableFuture.get()` auf einem
 **selbst gecancelten** Future wirft `CancellationException` **unwrapped**, nicht verpackt in
@@ -36,6 +36,6 @@ Nicht-offensichtlicher Nebenbefund, der den Bug-Pfad erklärte: `CompletableFutu
   Ergebnis — Verhalten ist unabhängig von der Zahl gleichzeitig offener Config-Seiten.
 - Der Cache bleibt „cache on success" (ADR-0034); ein Fehlschlag wird an alle Wartenden
   durchgereicht und nicht gecacht.
-- Regeln + BDD: [model-loading.md](../model-loading.md) (Single-Flight pro Identität, inc-24).
+- Regeln + BDD: [model-loading.md](../../org.sterl.llmpeon/docs/model-loading.md) (Single-Flight pro Identität, inc-24).
   Der zugehörige Nebenbefund zum flakigen `concurrentFailure_…`-Test steht in
   [resolved-points.md](../resolved-points.md).

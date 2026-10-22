@@ -53,4 +53,4 @@ Referenz der Schlüssel:
   Repos, braucht CI die Property `peon.test.project`.
 - Assertions gegen Fixture-Inhalte sind stabil (keine Produktcode-Drift mehr).
 - Silent-Skips verschwinden: die Suite meldet ehrlich, wenn das Setup fehlt.
-- Regeln + BDD: [test-setup.md](../test-setup.md).
+- Regeln + BDD: [test-setup.md](../../org.sterl.llmpeon/docs/test-setup.md).

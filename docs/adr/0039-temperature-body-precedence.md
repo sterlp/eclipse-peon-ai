@@ -4,7 +4,7 @@
 
 ## Context
 
-[advanced-configuration.md](../advanced-configuration.md) R-T3 verlangt: setzt der User
+[advanced-configuration.md](../../org.sterl.llmpeon/docs/advanced-configuration.md) R-T3 verlangt: setzt der User
 `temperature` **sowohl** im Temperature-Feld **als auch** im per-agent extra body, gewinnt der
 Body — konsistent zur bestehenden Merge-Regel „User-Body gewinnt".
 
@@ -52,4 +52,4 @@ es gerade dürfen und gewinnen.
 - Die Regel gilt nur für `temperature`. Andere typisierte Felder (`maxTokens`, `think`) haben
   dasselbe Doppelkey-Problem, sind aber nicht Teil dieser Story. Wenn sie auftauchen, ist
   `effectiveTemperature` das Muster, das verallgemeinert wird.
-- Regeln + BDD: [advanced-configuration.md](../advanced-configuration.md) R-T3.
+- Regeln + BDD: [advanced-configuration.md](../../org.sterl.llmpeon/docs/advanced-configuration.md) R-T3.

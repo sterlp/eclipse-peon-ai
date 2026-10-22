@@ -1,6 +1,6 @@
 # ADR-0051: Debugger — automatisierte Live-Session-Tests gestoppt, Smoke statt Flaky
 
-> **Status:** ✅ accepted (2026-09-20/21, Paul) · **Fachdoc:** [java-debugger-tool.md](../java-debugger-tool.md)
+> **Status:** ✅ accepted (2026-09-20/21, Paul) · **Fachdoc:** [java-debugger-tool.md](../../org.sterl.llmpeon/docs/java-debugger-tool.md)
 
 ## Context
 

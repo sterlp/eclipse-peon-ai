@@ -2,7 +2,7 @@
 
 **Status** · Accepted
 
-**Context:** The first cut of [Session Token Usage](../token-usage.md) built the header strip, the
+**Context:** The first cut of [Session Token Usage](../../org.sterl.llmpeon.core/docs/token-usage.md) built the header strip, the
 tools-menu popup logic, *and* held the cumulative session `TokenStats` directly inside
 `AIChatView.buildHeaderToolbar`/`showToolsMenu`/`updateTokenHeader`. That is a responsibility bleed:
 `AIChatView` is the `AiMonitor` sink for a chat session — it should not know how the header is laid

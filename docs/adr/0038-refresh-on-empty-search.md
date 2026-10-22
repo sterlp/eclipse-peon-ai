@@ -24,7 +24,7 @@ wenn kein expliziter Scope angegeben ist — nicht alle offenen Projekte. Mit ex
 genau diesen; ohne gewähltes Projekt gar nicht. Die ursprüngliche Entscheidung hat den Refresh
 zeitlich begrenzt (nur im Leerfall), aber räumlich offen gelassen; das führte zu
 `DEPTH_INFINITE` über fremde Großprojekte. Gilt für `eclipseSearchFiles` **und**
-`eclipseGrepFiles`. → [eclipse-read-tools.md](../eclipse-read-tools.md) R7d
+`eclipseGrepFiles`. → [eclipse-read-tools.md](../../org.sterl.llmpeon/docs/eclipse-read-tools.md) R7d
 
 ## Consequences
 
@@ -36,5 +36,5 @@ zeitlich begrenzt (nur im Leerfall), aber räumlich offen gelassen; das führte 
   Tool-Calls reagiert — die teurer sind als der Refresh.
 - Der Refresh ist ein Seiteneffekt in einem lesenden Tool. Bewusst in Kauf genommen: er
   synchronisiert nur den Workspace mit der Disk, er ändert keine Inhalte.
-- Regeln + BDD: [eclipse-read-tools.md](../eclipse-read-tools.md) R4b (Suche), R7b/R7c (Grep),
+- Regeln + BDD: [eclipse-read-tools.md](../../org.sterl.llmpeon/docs/eclipse-read-tools.md) R4b (Suche), R7b/R7c (Grep),
   R7d (Refresh-Scope).

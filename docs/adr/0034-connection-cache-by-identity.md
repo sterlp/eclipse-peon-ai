@@ -3,7 +3,7 @@
 **Status:** Accepted (2026-08-28)
 
 **Context:** Per-agent-Model-Config (URL, Key, extra JSON body) —
-[advanced-configuration.md](../advanced-configuration.md). Heute: ein geteilter
+[advanced-configuration.md](../../org.sterl.llmpeon/docs/advanced-configuration.md). Heute: ein geteilter
 `StreamingChatModel`, per-request `modelName`-Override (Issue #82). Mit per-agent-URL/Key/Body
 werden mehrere echte Verbindungen nötig; `StreamingChatModel` pro Request neu zu bauen ist zu
 teuer, und der Provider-KV-Cache lebt nur mit stabilen Instanzen.
@@ -26,7 +26,7 @@ teuer, und der Provider-KV-Cache lebt nur mit stabilen Instanzen.
   (Simplification, 2026-08-28 User-Entscheidung).
 - Base-URL-Wechsel → neue Identität für Agenten ohne eigene URL → neuer (einmaliger)
   List-Fetch; konfiguriertes Modell bleibt gesetzt (kein Auto-Switch — Abweichung von B2 in
-  [model-loading.md](../model-loading.md)).
+  [model-loading.md](../../org.sterl.llmpeon/docs/model-loading.md)).
 - langchain4j 1.18.1: **keine** per-request Headers bei keinem Provider; Gemini/Mistral/Ollama/
   OpenAiOfficial-Responses haben **keinen** Extra-Body-Escape-Hook →
   `supportsExtraBody() = false` (UI-Gate, caching.md R2).

@@ -1,7 +1,7 @@
 # ADR-0070 — Compact-Entscheidung in einer Komponente, Folgen beim Ausführenden
 
-> **Status:** accepted (2026-10-18) · **Fachdoc:** [compact.md](../compact.md) R-CC-18 ·
-> **Architektur:** [compact-architektur.md](../compact-architektur.md) ·
+> **Status:** accepted (2026-10-18) · **Fachdoc:** [compact.md](../../org.sterl.llmpeon.core/docs/compact.md) R-CC-18 ·
+> **Architektur:** [compact-architektur.md](../../org.sterl.llmpeon.core/docs/compact-architektur.md) ·
 > **Supersedes:** Teil von [ADR-0056](0056-compact-component-and-render-modes.md) (Trigger-Funnel) ·
 > **Teilweise abgelöst durch:** [ADR-0071](0071-compact-policy-owned-by-delegation.md) (Budget-Quelle, Agent-Faktor statt Pre-Turn-Faktor)
 

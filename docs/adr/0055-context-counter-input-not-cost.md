@@ -1,7 +1,7 @@
 # ADR-0055: Context-Counter misst Input, nicht Kosten
 
 **Status:** Accepted · 2026-09-23 · Hotfix „Ehrlicher Compact" · Feature:
-[compact.md](../compact.md)
+[compact.md](../../org.sterl.llmpeon.core/docs/compact.md)
 
 ## Context
 

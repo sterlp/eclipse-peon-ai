@@ -35,4 +35,4 @@ The persistence side matches: `LlmPreferenceInitializer.saveModel` / `saveThinkS
   `PREF_PO_MODEL` slot — a deliberate follow-up, not an accident.
 - No third model preference is introduced; the config surface stays Dev + Plan.
 - Regression covered by `PeonAiServiceTest.test_po_model_uses_plan_slot_and_defaults_to_dev_model`.
-- Realised in [Jon — Peon-PO](../po-agent-jon.md) (feature doc with the BDD rules).
+- Realised in [Jon — Peon-PO](../../org.sterl.llmpeon.core/docs/po-agent-jon.md) (feature doc with the BDD rules).

@@ -109,7 +109,7 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   (b) `docs/index.md` + `docs/memory.md` + AGENTS.md **pro Turn** in Jons System-Context
   (`AgentContextComponent.java:130-140`, index.md wächst ungebremst), (c) Workspace-Memory-Snapshot
   ohne Cap. Frage: Caps an der Quelle oder bewusst offen, weil der Compact-Input budgetiert ist
-  ([compact-input-budget.md](compact-input-budget.md))?
+  ([compact-input-budget.md](../org.sterl.llmpeon.core/docs/compact-input-budget.md))?
 - ❓ **Workspace-Memory-Snapshot Vollkopie je `memoryAdd` (2026-09-23):** Snapshot-Key = entries-Hash
   (ADR-0032) — jede Mutation erzeugt eine frische Vollkopie aller Einträge bis zum Compact. By
   design, skaliert aber schlecht. Eigener Design-Punkt (inkrementeller Snapshot / Dedup /
@@ -184,8 +184,8 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   (Null-Byte als Cancel klassifiziert?), llama.cpp-Crash 3× buildWithDev-Abbruch (2026-09-20) —
   **Pauls Idee:** mindestens 1 Retry nach ~10s auch bei Connect-Level-Failures. R-CC-7-Seite:
   Compact-Fehler ans LLM + onProblem, Retry 1× nach 20s nur transient
-  ([compact.md](compact.md), Evidenz header-state-leak.md Fall 1+2).
-- ❓ **Header-State-Leak** ([header-state-leak.md](header-state-leak.md)): onProblem rendert den
+  ([compact.md](../org.sterl.llmpeon.core/docs/compact.md), Evidenz header-state-leak.md Fall 1+2).
+- ❓ **Header-State-Leak** ([header-state-leak.md](../org.sterl.llmpeon/docs/header-state-leak.md)): onProblem rendert den
   Header-State neu (🟢/Zähler/Working-Hint hängen nach Fehlerpfaden); IST-Messung vor der
   SOLL-Härtung offen (letzter gültiger Wert vs. aktiv falsch gesetzt).
 - ❓ **Live-Status im Retry-Backoff-Fenster (2026-09-10):** `StreamingBridge.onError` versteckt die
@@ -200,8 +200,8 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   (`EffectiveConnection.java:13`); Custom-Agent mit URL-Override läuft gegen Base-API-Semantik
   (bricht bei inkompatiblen APIs). Eigener Zyklus beschlossen, nach ModelConfigWidget. Offen bei
   Planung: Advanced-Feld, Frontmatter-Key `provider`, oder beides. Kontext:
-  [model-config-widget.md](model-config-widget.md) R-MCW-5.
-- **test_project-Fixture SOLL vs. IST (2026-09-27):** [test-setup.md](test-setup.md) sagt minimal,
+  [model-config-widget.md](../org.sterl.llmpeon/docs/model-config-widget.md) R-MCW-5.
+- **test_project-Fixture SOLL vs. IST (2026-09-27):** [test-setup.md](../org.sterl.llmpeon/docs/test-setup.md) sagt minimal,
   IST enthält u. a. `pom.xml`/`Dockerfile` (Herkunft unklar, kein Test-Output). Da-Mek-Empfehlung:
   behalten + Doc-SOLL anpassen, README-Zeile ergänzen (Zweck + `peon.test.project`-Override).
 - **Gelber Compact-Indikator 🟡 (2026-09-22):** zweiter Anzeige-Zustand `compacting` +
@@ -220,7 +220,7 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
 
 - **TrimService-Story — 🔒 gelöst 2026-10-17 (OutputTrim Slice 1):** gemeinsame Klasse gebaut
   (`OutputTrim`, core/shared) — Shell + Grep migriert, Details/Commits:
-  [output-trim-service.md](output-trim-service.md). Rest-Backlog unten.
+  [output-trim-service.md](../org.sterl.llmpeon.core/docs/output-trim-service.md). Rest-Backlog unten.
 - ❓ **Read-Tools-Rollout auf `OutputTrim` (2026-10-17):** `eclipseReadFile`/`diskReadFile` clampt
   Bereiche, aber nicht über die Trim-Komponente (Head/Tail-Disclosure) — Migration = eigenes
   Inkrement, kein Eile (Paul). Auch Kandidat: `LogExcerpt`/webFetch-Paging auf `OutputTrim`
@@ -328,7 +328,7 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   Pauls untracked WIP (`agent/tools/` — TABU, 🚧 Async-Review offen). PoDelegateTool-Teil
   (🗜 auf den compact*-Delegates) wäre machbar, halber Rollout = Inkonsistenz zwischen beiden
   Delegate-Tools. Paul entscheidet: PoDelegate-Teil vorab bauen, oder S3 komplett nach
-  AgentsTool-Merge. Kontext: [icons.md](icons.md).
+  AgentsTool-Merge. Kontext: [icons.md](../org.sterl.llmpeon/docs/icons.md).
 
 
 ## Codegraph-Toolset-Erweiterung (2026-10-17, Paul-Frage — ❓ Entscheidung ausstehend)

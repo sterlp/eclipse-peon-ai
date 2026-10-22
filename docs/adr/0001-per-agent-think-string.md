@@ -8,4 +8,4 @@
 
 > **2026-09-27 (Issue #149):** der support-Boolean-Teil dieser Entscheidung ist **superseded** durch [ADR-0059](0059-think-dropdown-empty-unset.md) — es gibt nur noch einen Think-Level-String pro Agent, leer = unset. Der String-Kern (Think resolved to per-agent String, Provider-Mapping) bleibt gültig.
 
-**Consequences:** No global think enum. Adding a provider means adding one translation branch, not a new config axis. The value is computed fresh for each request, so mixed-provider setups never share a think value (no inheritance — see [per-agent-think.md](../per-agent-think.md)).
+**Consequences:** No global think enum. Adding a provider means adding one translation branch, not a new config axis. The value is computed fresh for each request, so mixed-provider setups never share a think value (no inheritance — see [per-agent-think.md](../../org.sterl.llmpeon.core/docs/per-agent-think.md)).

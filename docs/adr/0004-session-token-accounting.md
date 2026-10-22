@@ -2,7 +2,7 @@
 
 **Status** · Accepted
 
-**Context:** [Session Token Usage](../token-usage.md) needs a cumulative, cross-agent, never-reset
+**Context:** [Session Token Usage](../../org.sterl.llmpeon.core/docs/token-usage.md) needs a cumulative, cross-agent, never-reset
 token counter that includes the main tool loop, the search sub-agent and every compaction. These are
 three different call paths, but they all pass through one method:
 `StreamingBridge.onCompleteResponse(ChatResponse)` (the search sub-agent reuses

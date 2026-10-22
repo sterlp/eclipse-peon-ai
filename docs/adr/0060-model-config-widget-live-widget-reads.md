@@ -1,6 +1,6 @@
 # ADR 0060 — Model Config Widget: Ping/Reload lesen Live-Widget-Werte, Reload persistiert nicht
 
-**Status:** Accepted (2026-09-28, Paul) · **Fachdoc:** [model-config-widget.md](../model-config-widget.md) · **Löst ab:** R-ML2-Entscheidung vom 2026-09-12 (Refresh liest Store)
+**Status:** Accepted (2026-09-28, Paul) · **Fachdoc:** [model-config-widget.md](../../org.sterl.llmpeon/docs/model-config-widget.md) · **Löst ab:** R-ML2-Entscheidung vom 2026-09-12 (Refresh liest Store)
 
 ## Context
 

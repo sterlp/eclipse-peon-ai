@@ -1,6 +1,6 @@
 # ADR-0064: Verbatim-Think — String-Provider senden exakt was gesetzt ist, nur Toggle-Provider interpretieren
 
-> **Status:** Accepted (Paul, 2026-09-29) · **Supersedes:** Teile von [ADR-0059](0059-think-dropdown-empty-unset.md) (Off-Token-Semantik für String-Provider) · Feature-Doc: [per-agent-think.md](../per-agent-think.md) (R-THINK-11/12)
+> **Status:** Accepted (Paul, 2026-09-29) · **Supersedes:** Teile von [ADR-0059](0059-think-dropdown-empty-unset.md) (Off-Token-Semantik für String-Provider) · Feature-Doc: [per-agent-think.md](../../org.sterl.llmpeon.core/docs/per-agent-think.md) (R-THINK-11/12)
 
 ## Context
 

@@ -1,6 +1,6 @@
 # ADR-0042 — Skill-Slots als Components mit disunkten Maps
 
-**Status:** Accepted — Revision 2 (2026-09-08) · Umsetzung: ausstehend — Story [project-skills.md](../project-skills.md)
+**Status:** Accepted — Revision 2 (2026-09-08) · Umsetzung: ausstehend — Story [project-skills.md](../../org.sterl.llmpeon.core/docs/project-skills.md)
 
 ## Context
 

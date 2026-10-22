@@ -1,7 +1,7 @@
 # ADR-0063 — Default-Config hat einen Owner: die Basic-Seite
 
 **Status:** Accepted (2026-09-29, Paul)
-**Kontext:** [default-inheritance.md](../default-inheritance.md) Rework R-DEF-9…11 · supersedes die
+**Kontext:** [default-inheritance.md](../../org.sterl.llmpeon/docs/default-inheritance.md) Rework R-DEF-9…11 · supersedes die
 Advanced-DEV-Sektion aus [ADR-0062](0062-base-inheritance-dev-default.md) (R-DEF-4/5/7) ·
 Nachtrag zu [ADR-0060](0060-model-config-widget-live-widget-reads.md) (Live-Widget-Reads)
 

@@ -38,7 +38,7 @@ als Marker interpretiert; `{#custom-id}` funktioniert nicht in `.mdx` (JSX-Konfl
 ## Was wir dafür heute schon richtig machen
 
 - **`idPrefix` steht im Frontmatter**, nicht als Blockquote im Text
-  ([docs-linter.md](docs-linter.md) Q7) — Blume-Format ohne Extra-Migration.
+  ([docs-linter.md](../org.sterl.llmpeon.core/docs/docs-linter.md) Q7) — Blume-Format ohne Extra-Migration.
 - **Überschriften-Hierarchie** `## Business Rules` → `### R-…` → `#### UC-…` passt bereits exakt in
   Blumes Erwartung (Content ab `##`, `##`/`###` landen im TOC).
 

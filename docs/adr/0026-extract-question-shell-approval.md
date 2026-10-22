@@ -18,7 +18,7 @@ hat** (grep-verifiziert 2026-09-24, Da-Dok-Review R-TC-9). Tatsächlicher Stand:
 - `showQuestion()`/`hideQuestion()` manipulieren 4+ Widgets direkt (exclude/visible/layout)
 - `applyShellCommandConfirmation()` las Preferences, erstellte CountDownLatch, rief
   `showQuestion()` auf — mit **eingefrorenem** autonomous-Flag (Stale-Provider-Bug, Befund 1 in
-  [tool-confirmation.md](../tool-confirmation.md))
+  [tool-confirmation.md](../../org.sterl.llmpeon.core/docs/tool-confirmation.md))
 - Beide Pfade teilten sich Widget-Kenntnisse → doppelte Abhängigkeiten, schwer zu testen
 
 ## Decision
@@ -44,5 +44,5 @@ hat** (grep-verifiziert 2026-09-24, Da-Dok-Review R-TC-9). Tatsächlicher Stand:
 
 ## See Also
 
-- [Ask User Tool Design](../user-question-tool-design.md)
-- [Tool-Confirmation](../tool-confirmation.md) (R-TC-6…9, IST + SOLL + BDD)
+- [Ask User Tool Design](../../org.sterl.llmpeon/docs/user-question-tool-design.md)
+- [Tool-Confirmation](../../org.sterl.llmpeon.core/docs/tool-confirmation.md) (R-TC-6…9, IST + SOLL + BDD)

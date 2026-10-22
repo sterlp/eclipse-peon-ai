@@ -1,7 +1,7 @@
 # ADR-0049: JDT-Debug-API-Drift 2026-09 — Faktenbestand des Debugger-Tools
 
 > **Status:** ✅ accepted (2026-09-21) · **Kontext:** Story C Java-Debugger-Tool ·
-> **Fachdoc:** [java-debugger-tool.md](../java-debugger-tool.md) · **Target:** 2026-09
+> **Fachdoc:** [java-debugger-tool.md](../../org.sterl.llmpeon/docs/java-debugger-tool.md) · **Target:** 2026-09
 > (debug.core 3.24.0, jdt.debug 3.26.100, jdt.launching 3.24.300)
 
 ## Context

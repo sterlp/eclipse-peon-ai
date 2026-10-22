@@ -47,5 +47,5 @@ des Memory (`memoryAdd/Replace/Remove`) wirken erst beim nächsten Rebuild — d
 ## Verwandt
 
 - [ADR-0029](0029-file-context-in-history.md) — History-Prinzip bleibt gültig, "100% statisch" superseded
-- [Context Architecture](../context-architecture.md) — Static/Dynamic-Kategorisierung
-- [Standing Orders Design](../standing-orders-design.md) — historisch (superseded 2026-08-21)
+- [Context Architecture](../../org.sterl.llmpeon.core/docs/context-architecture.md) — Static/Dynamic-Kategorisierung
+- [Standing Orders Design](../../org.sterl.llmpeon.core/docs/standing-orders-design.md) — historisch (superseded 2026-08-21)

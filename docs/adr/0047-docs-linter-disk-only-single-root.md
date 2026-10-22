@@ -1,14 +1,14 @@
 # ADR-0047 — Docs-Linter liest nur das Dateisystem, mit einem `root`-Parameter
 
 **Status:** Accepted (2026-09-15)
-**Bezug:** [docs-linter.md](../docs-linter.md) R-DL-1, R-DL-1b
+**Bezug:** [docs-linter.md](../../org.sterl.llmpeon.core/docs/docs-linter.md) R-DL-1, R-DL-1b
 
 ## Context
 
-Der [Docs-Linter](../docs-linter.md) walkt zwei Dateibäume (Docs + Testquellen) rekursiv. Für jede
+Der [Docs-Linter](../../org.sterl.llmpeon.core/docs/docs-linter.md) walkt zwei Dateibäume (Docs + Testquellen) rekursiv. Für jede
 andere lesende Funktion gilt in diesem Repo die Regel *„One behaviour, one implementation"*: es gibt
 ein `eclipse*`- und ein `disk*`-Gegenstück, die sich nie unterscheiden dürfen
-([AGENTS.md](../../AGENTS.md), [eclipse-read-tools.md](../eclipse-read-tools.md)).
+([AGENTS.md](../../AGENTS.md), [eclipse-read-tools.md](../../org.sterl.llmpeon/docs/eclipse-read-tools.md)).
 
 Die naheliegende Lesart wäre also ein Tool-Paar. Die Analyse des IST (Da Mek, 2026-09-15) ergab:
 es existiert **kein** gemeinsames Lese-Interface. `FileLines`, `SearchQuery`, `TextFileTypes`,

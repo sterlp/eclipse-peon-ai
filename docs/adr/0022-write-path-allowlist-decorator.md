@@ -43,4 +43,4 @@ field** is a later increment. Reads are **not** gated. Glob semantics:
   once the pattern set moves from constant to user-editable (later increment).
 - The underlying write tool keeps auto-creating missing sub-paths, so an allowed `docs/` path
   materialises on the first write — no explicit "create the docs root" step is needed.
-- Realised in [Write-Path Validator](../write-path-validator.md) (feature doc with the BDD rules).
+- Realised in [Write-Path Validator](../../org.sterl.llmpeon.core/docs/write-path-validator.md) (feature doc with the BDD rules).

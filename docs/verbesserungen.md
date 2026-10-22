@@ -32,7 +32,7 @@ Provider-Quirk oder -URL schon Code + Release.
 optionales Peon-Katalog-JSON (gleiche Form wie `AiModel`), gecached im Plugin-Metadaten-Ordner,
 Fallback auf die eingebaute `listAiModels()`-Logik. Der Katalog liefert Metadaten (Kosten,
 Kontext-Limit, Reasoning-Flags), die heute fehlen — z. B. für Auto-Compact-Grenzen.
-**Abhängigkeit:** baut sinnvoll erst nach dem Provider-Refactoring ([provider.md](provider.md)) auf.
+**Abhängigkeit:** baut sinnvoll erst nach dem Provider-Refactoring ([provider.md](../org.sterl.llmpeon.core/docs/provider.md)) auf.
 
 ---
 
@@ -86,7 +86,7 @@ aus der Modell-Sicht (nicht nur Runtime-Ablehnung — spart Token). Bestätigte 
 der Session gelernt („always allow") und lösen andere Pending-Requests derselben Regel automatisch.
 
 **Peon heute:** Globales Shell-Confirmation-Combo (3 Modi) auf der Preference-Page; Write-Validator
-per Agent ([write-path-validator.md](write-path-validator.md)). Alles oder nichts — kein
+per Agent ([write-path-validator.md](../org.sterl.llmpeon.core/docs/write-path-validator.md)). Alles oder nichts — kein
 Pattern-Matching, kein Lernen.
 
 **Übernehmen würde ich:** Wildcard-Rule-Set pro Tool-Klasse (Shell, Disk-Write, Eclipse-Write) mit
@@ -107,8 +107,8 @@ erst advertised wird.
 
 ## Relationship
 
-* [Provider (AiProvider)](provider.md) — Punkte 1, 2 landen im geplanten Provider-Package
-* [Advanced Configuration](advanced-configuration.md) / [caching.md](caching.md) — Extra-Body
+* [Provider (AiProvider)](../org.sterl.llmpeon.core/docs/provider.md) — Punkte 1, 2 landen im geplanten Provider-Package
+* [Advanced Configuration](../org.sterl.llmpeon/docs/advanced-configuration.md) / [caching.md](../org.sterl.llmpeon.core/docs/caching.md) — Extra-Body
   betrifft die Provider-Klassen
-* [Write-Path Validator](write-path-validator.md) — bleibt fachliche Prüfung unter dem
+* [Write-Path Validator](../org.sterl.llmpeon.core/docs/write-path-validator.md) — bleibt fachliche Prüfung unter dem
   Permission-Layer aus Punkt 4
