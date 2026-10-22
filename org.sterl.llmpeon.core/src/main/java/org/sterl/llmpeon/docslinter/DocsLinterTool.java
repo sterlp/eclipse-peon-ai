@@ -55,18 +55,18 @@ public class DocsLinterTool extends AbstractTool {
             @P(required = false, name = "idPattern", description = ID_PATTERN_DESCRIPTION) String idPattern) {
 
         Path effectiveRoot = resolveRoot(root);
-        if (docRoots == null || docRoots.isEmpty()) {
-            docRoots = List.of(DEFAULT_DOC_ROOT);
-        }
+        var resolved = resolveDocRoots(effectiveRoot, docRoots);
         Pattern pattern = compilePattern(idPattern);
 
-        validateChildRoots(effectiveRoot, docRoots);
+        validateChildRoots(effectiveRoot, resolved.roots());
 
         DocsLinter linter = new DocsLinter();
         DocsLintReportRenderer renderer = new DocsLintReportRenderer();
         try {
-            DocsLintResult result = linter.lint(effectiveRoot, docRoots, pattern);
-            String summary = renderer.summary(result);
+            DocsLintResult result = resolved.fallbackWithMissingDefault()
+                    ? emptyDocsResult()
+                    : linter.lint(effectiveRoot, resolved.roots(), pattern);
+            String summary = renderer.summary(result, resolved.disclosure());
             onTool(renderer.statusLine("lintDocs", result) + " " + StringUtil.charsSuffix(summary));
             return summary;
         } catch (IOException e) {
@@ -83,12 +83,10 @@ public class DocsLinterTool extends AbstractTool {
             @P(required = false, name = "idPattern", description = ID_PATTERN_DESCRIPTION) String idPattern) {
 
         Path effectiveRoot = resolveRoot(root);
-        if (docRoots == null || docRoots.isEmpty()) {
-            docRoots = List.of(DEFAULT_DOC_ROOT);
-        }
+        var resolved = resolveDocRoots(effectiveRoot, docRoots);
         Pattern pattern = compilePattern(idPattern);
 
-        validateChildRoots(effectiveRoot, docRoots);
+        validateChildRoots(effectiveRoot, resolved.roots());
         if (testRoots != null) {
             validateChildRoots(effectiveRoot, testRoots);
         }
@@ -96,9 +94,11 @@ public class DocsLinterTool extends AbstractTool {
         DocsLinter linter = new DocsLinter();
         DocsLintReportRenderer renderer = new DocsLintReportRenderer();
         try {
-            DocsLintResult result = linter.lintWithTests(
-                    effectiveRoot, docRoots, testRoots, testGlobs, pattern);
-            String summary = renderer.summary(result);
+            DocsLintResult result = resolved.fallbackWithMissingDefault()
+                    ? emptyDocsResult()
+                    : linter.lintWithTests(
+                            effectiveRoot, resolved.roots(), testRoots, testGlobs, pattern);
+            String summary = renderer.summary(result, resolved.disclosure());
             onTool(renderer.statusLine("lintDocsAndTests", result) + " " + StringUtil.charsSuffix(summary));
             return summary;
         } catch (IOException e) {
@@ -110,11 +110,9 @@ public class DocsLinterTool extends AbstractTool {
     String nextIds(String root, List<String> docRoots, String prefix) {
 
         Path effectiveRoot = resolveRoot(root);
-        if (docRoots == null || docRoots.isEmpty()) {
-            docRoots = List.of(DEFAULT_DOC_ROOT);
-        }
+        var resolved = resolveDocRoots(effectiveRoot, docRoots);
         Pattern pattern = Pattern.compile(DEFAULT_ID_PATTERN);
-        validateChildRoots(effectiveRoot, docRoots);
+        validateChildRoots(effectiveRoot, resolved.roots());
 
         // Input normalization at the boundary; validation lives in DocsLinter.requireValidPrefix (R-DL-23).
         if (prefix != null) {
@@ -123,8 +121,10 @@ public class DocsLinterTool extends AbstractTool {
 
         DocsLinter linter = new DocsLinter();
         try {
-            NextIdsResult result = linter.nextIds(effectiveRoot, docRoots, pattern, prefix);
-            return formatNextIds(result);
+            NextIdsResult result = resolved.fallbackWithMissingDefault()
+                    ? new NextIdsResult(List.of(), 0, 0, List.of())
+                    : linter.nextIds(effectiveRoot, resolved.roots(), pattern, prefix);
+            return formatNextIds(result, resolved.disclosure());
         } catch (IOException e) {
             throw new RuntimeException("Failed to compute next IDs: " + e.getMessage(), e);
         }
@@ -132,11 +132,42 @@ public class DocsLinterTool extends AbstractTool {
 
     // --- package-private helpers visible for tests ---
 
-    private String formatNextIds(NextIdsResult result) {
+    /**
+     * R-DL-26: one choke point replacing the three default copies — explicit roots always win;
+     * without them {@link DocRootDiscovery} finds every module {@code docs} directory. An empty
+     * discovery falls back to the default root with a warning instead of an exception; if that
+     * directory does not exist either, {@link #fallbackWithMissingDefault()} marks the honest
+     * empty scan (a missing docs dir must never throw on the default path).
+     */
+    private record ResolvedRoots(List<String> roots, String disclosure, boolean fallbackWithMissingDefault) {
+    }
+
+    private ResolvedRoots resolveDocRoots(Path effectiveRoot, List<String> explicit) {
+        if (explicit != null && !explicit.isEmpty()) {
+            return new ResolvedRoots(explicit,
+                    "Doc roots: " + String.join(", ", explicit) + " (explicit)", false);
+        }
+        var found = DocRootDiscovery.discover(effectiveRoot);
+        if (found.roots().isEmpty()) {
+            return new ResolvedRoots(List.of(DEFAULT_DOC_ROOT),
+                    "Doc roots: " + DEFAULT_DOC_ROOT
+                            + " (fallback — auto-discovery found no docs directory)",
+                    !java.nio.file.Files.isDirectory(effectiveRoot.resolve(DEFAULT_DOC_ROOT)));
+        }
+        return new ResolvedRoots(found.roots(),
+                "Doc roots: " + String.join(", ", found.roots()) + " (auto-discovered)", false);
+    }
+
+    /** Honest zero scan for the fallback case where even the default root is absent (UC-DL-82). */
+    private static DocsLintResult emptyDocsResult() {
+        return new DocsLintResult(List.of(), List.of(), List.of(), List.of(), 0);
+    }
+
+    private String formatNextIds(NextIdsResult result, String docRootsLine) {
         var renderer = new DocsLintReportRenderer();
         StringBuilder sb = new StringBuilder();
         sb.append(renderer.docScanSummary(
-                result.lintedDocCount(), result.skippedDocCount()));
+                result.lintedDocCount(), result.skippedDocCount(), docRootsLine));
         for (var r : result.nextIds()) {
             sb.append("\n");
             if (!r.occupied()) {

@@ -5,8 +5,19 @@ import java.util.List;
 class DocsLintReportRenderer {
 
     String docScanSummary(int lintedDocCount, int skippedDocCount) {
+        return docScanSummary(lintedDocCount, skippedDocCount, null);
+    }
+
+    /**
+     * R-DL-26: the optional doc-roots disclosure line sits between the disk-read notice and
+     * {@code Scanned:} — every participating root is named with its origin, never silently.
+     */
+    String docScanSummary(int lintedDocCount, int skippedDocCount, String docRootsLine) {
         StringBuilder sb = new StringBuilder();
         sb.append("Disk read — unsaved editor changes are not included.");
+        if (docRootsLine != null && !docRootsLine.isBlank()) {
+            sb.append("\n").append(docRootsLine);
+        }
         sb.append("\n\nScanned: ").append(lintedDocCount + skippedDocCount).append(" doc file(s): ");
         sb.append(lintedDocCount).append(" linted, ");
         sb.append(skippedDocCount).append(" not participating");
@@ -14,8 +25,12 @@ class DocsLintReportRenderer {
     }
 
     String summary(DocsLintResult result) {
+        return summary(result, null);
+    }
+
+    String summary(DocsLintResult result, String docRootsLine) {
         StringBuilder sb = new StringBuilder();
-        sb.append(docScanSummary(result.lintedDocs().size(), result.skippedDocs().size()));
+        sb.append(docScanSummary(result.lintedDocs().size(), result.skippedDocs().size(), docRootsLine));
 
         if (result.testsRead()) {
             sb.append("; ").append(result.testSourceFileCount()).append(" test source file(s), ");

@@ -322,6 +322,96 @@ class DocsLinterToolTest {
                 .hasMessageContaining("Invalid idPattern");
     }
 
+    // --- R-DL-26: doc-root auto-discovery and disclosure ---
+
+    // UC-DL-79
+    @Test
+    void explicitDocRootsWin() throws IOException {
+        // GIVEN participating docs under docs/ and under mod/docs/
+        writeDoc("root.md", doc("R-DL-1 Root Rule", "UC-DL-1"));
+        writeModuleDoc("module.md", doc("R-DL-2 Module Rule", "UC-DL-2"));
+
+        // WHEN lintDocs runs with explicit docRoots
+        String output = tool.lintDocs(null, List.of("mod/docs"), null);
+
+        // THEN only the explicit root is scanned and the disclosure names its origin
+        assertThat(output).contains("1 doc file(s): 1 linted, 0 not participating");
+        assertThat(output).contains("Doc roots: mod/docs (explicit)");
+        assertThat(output).contains("Sources: mod/docs");
+    }
+
+    // UC-DL-80
+    @Test
+    void disclosesAutoDiscoveredDocRoots() throws IOException {
+        // GIVEN participating docs under docs/ and under mod/docs/
+        writeDoc("root.md", doc("R-DL-1 Root Rule", "UC-DL-1"));
+        writeModuleDoc("module.md", doc("R-DL-2 Module Rule", "UC-DL-2"));
+
+        // WHEN lintDocs runs without docRoots
+        String output = tool.lintDocs(null, null, null);
+
+        // THEN both roots are named with their origin and both docs appear in the numbers —
+        // a silent partial scan would show 1 here
+        assertThat(output).contains("Doc roots: docs, mod/docs (auto-discovered)");
+        assertThat(output).contains("2 doc file(s): 2 linted, 0 not participating");
+        assertThat(output).contains("UC definitions: 2 / 2");
+    }
+
+    // UC-DL-81
+    @Test
+    void defaultRunMatchesExplicitRun() throws IOException {
+        // GIVEN the same two-root fixture
+        writeDoc("root.md", doc("R-DL-1 Root Rule", "UC-DL-1"));
+        writeModuleDoc("module.md", doc("R-DL-2 Module Rule", "UC-DL-2"));
+
+        // WHEN a default run and a run with all discovered roots explicit are compared
+        String auto = tool.lintDocs(null, null, null);
+        String explicit = tool.lintDocs(null, List.of("docs", "mod/docs"), null);
+
+        // THEN scan numbers, definitions and findings are identical — only the origin label differs
+        assertThat(withoutDocRootsLine(auto)).isEqualTo(withoutDocRootsLine(explicit));
+    }
+
+    // UC-DL-82
+    @Test
+    void emptyDiscoveryWarnsAndKeepsDefault() throws IOException {
+        // GIVEN a root without any docs directory
+        Path bare = rootDir.resolve("bare");
+        Files.createDirectories(bare);
+        var bareTool = new DocsLinterTool(bare);
+
+        // WHEN the default run starts — THEN no exception; the report warns about the fallback
+        String output = bareTool.lintDocs(null, null, null);
+
+        assertThat(output).contains(
+                "Doc roots: docs (fallback — auto-discovery found no docs directory)");
+        assertThat(output).contains("0 doc file(s): 0 linted, 0 not participating");
+    }
+
+    private static String withoutDocRootsLine(String report) {
+        return report.lines()
+                .filter(l -> !l.startsWith("Doc roots:"))
+                .collect(java.util.stream.Collectors.joining("\n"));
+    }
+
+    private static String doc(String ruleTitle, String ucId) {
+        return """
+                ---
+                idPrefix: DL
+                ---
+
+                # %s ✅ done
+
+                ## %s Covered UC ✅
+                """.formatted(ruleTitle, ucId);
+    }
+
+    private void writeModuleDoc(String name, String content) throws IOException {
+        Path modDocs = rootDir.resolve("mod/docs");
+        Files.createDirectories(modDocs);
+        Files.writeString(modDocs.resolve(name), content);
+    }
+
     @Test
     void rejectsAbsoluteOrEscapingChildRoots() {
         assertThatThrownBy(() ->

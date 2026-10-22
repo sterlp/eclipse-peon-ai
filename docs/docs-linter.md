@@ -581,6 +581,72 @@ Datei („Not participating (no idPrefix)") mit Pfad auf, nicht nur die Zählzei
 GIVEN ein Lauf mit nicht teilnehmenden Docs WHEN `nextIds` zurückkehrt THEN listet der Output jede
 dieser Dateien mit Pfad — analog zum „Nicht teilnehmend"-Abschnitt des Lint-Reports (UC-DL-23).
 
+### R-DL-26 — Doc-Roots werden automatisch gefunden und offengelegt ❌
+
+Ohne explizite `docRoots` scannt der Linter **alle** Verzeichnisse, die unter dem Root literal
+`docs` heißen und mindestens eine `.md`-Datei enthalten — bis zwei Ebenen unter dem Root
+(`docs/`, `*/docs/`, `*/*/docs/`). Fremde Bäume (`node_modules`, `target`, `bin`, `build`, `out`,
+`.git`, `.settings`, `.gradle`) werden nie betreten; ein `docs` ohne `.md` ist keine Wurzel.
+Die Liste ist sortiert und `docs` steht zuerst; aufgelöst wird an **einem** Choke-Point für
+`lintDocs`, `lintDocsAndTests` und `nextIds` (Fortsetzung von R-DL-18, nicht eine vierte Kopie).
+
+**Explizite `docRoots` gewinnen immer** — die Discovery ersetzt nur den alten Default `docs`.
+Jeder Report nennt die aktiven Wurzeln und ihre Herkunft in einer Zeile vor `Scanned:`
+(`Doc roots: … (auto-discovered)` bzw. `… (explicit)`). Findet die Discovery nichts, nennt der
+Report den Fallback `docs` mit Warnung und liefert einen sauberen 0-Bestand — keine Exception.
+Kein Root, der mitmacht, bleibt im Report unerwähnt.
+
+> **WEIL:** Nach der Modul-Reorganisation liegen Feature-Docs in `docs/` **und** in den
+> Modul-Verzeichnissen. Bliebe der Default bei `docs/`, wären Modul-Docs still nicht
+> teilnehmend — ein False Negative, der teuerste Fehler dieses Codes (AGENTS.md). Eine
+> Discovery, die jeder Report ausweist, schließt das Fenster mechanisch statt per Disziplin.
+
+#### UC-DL-74 — Discovery findet Modul-Doc-Wurzeln ❌
+
+GIVEN `docs/`, `a/docs/` und `b/c/docs/`, je mit mindestens einer `.md` WHEN die Discovery läuft
+THEN liefert sie alle drei Wurzeln — sortiert, mit `docs` zuerst.
+
+#### UC-DL-75 — Die Root-Wurzel steht zuerst ❌
+
+GIVEN `docs/` und `a/docs/` WHEN die Discovery läuft THEN ist `docs` der erste Eintrag der Liste.
+
+#### UC-DL-76 — Fremde Bäume werden nie betreten ❌
+
+GIVEN `node_modules/docs`, `target/docs` und `bin/docs`, je mit `.md` WHEN die Discovery läuft
+THEN enthält die Wurzelliste keinen dieser Pfade.
+
+#### UC-DL-77 — Leere docs-Verzeichnisse sind keine Wurzeln ❌
+
+GIVEN `x/docs/` ohne einzige `.md` WHEN die Discovery läuft THEN ist `x/docs` keine Wurzel,
+sondern auf der ignorierten Liste.
+
+#### UC-DL-78 — Tiefengrenze der Discovery ❌
+
+GIVEN ein `docs/`-Verzeichnis drei Ebenen unter dem Root (`x/y/z/docs/`) WHEN die Discovery läuft
+THEN wird es nicht gefunden.
+
+#### UC-DL-79 — Explizite docRoots gewinnen ❌
+
+GIVEN teilnehmende Docs in `docs/` und in `mod/docs/` WHEN `lintDocs` mit `docRoots=["mod/docs"]`
+läuft THEN scannt der Report nur `mod/docs` und die Wurzelzeile endet auf `(explicit)`.
+
+#### UC-DL-80 — Auto-Discovery wird offengelegt ❌
+
+GIVEN teilnehmende Docs in `docs/` und in `mod/docs/` WHEN `lintDocs` ohne `docRoots` läuft
+THEN nennt der Report beide Wurzeln mit `(auto-discovered)` und beide Docs in den Scan-Zahlen —
+kein Root bleibt still unerwähnt.
+
+#### UC-DL-81 — Default-Lauf findet, was der explizite Lauf findet ❌
+
+GIVEN derselbe Baum WHEN ein Default-Lauf und ein Lauf mit allen entdeckten Wurzeln als
+`docRoots` verglichen werden THEN sind Scan-Zahlen, Definitionszahlen und Findings identisch
+(nur die Herkunftskennzeichnung in der Wurzelzeile unterscheidet sich).
+
+#### UC-DL-82 — Leere Discovery warnt und fällt zurück ❌
+
+GIVEN ein Root ohne jedes `docs`-Verzeichnis WHEN `lintDocs` ohne `docRoots` läuft THEN gibt es
+keine Exception; der Report nennt den Fallback `docs` mit Warnung und meldet 0 Dateien.
+
 
 ### R-DL-16 — `nextIds` ist zustandslos; vergeben ist erst, was gespeichert im Doc steht ✅ done
 

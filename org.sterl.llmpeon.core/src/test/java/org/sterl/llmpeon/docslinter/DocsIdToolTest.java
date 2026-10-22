@@ -70,13 +70,15 @@ class DocsIdToolTest {
         String oneSkippedOutput = tool.nextIds(null, List.of("docs"), null);
 
         assertThat(emptyOutput)
-                .startsWith("Disk read — unsaved editor changes are not included.\n\n"
+                .startsWith("Disk read — unsaved editor changes are not included.\n"
+                        + "Doc roots: docs (explicit)\n\n"
                         + "Scanned: 0 doc file(s): 0 linted, 0 not participating")
                 .doesNotContain("occupied")
                 .doesNotContain("free");
 
         assertThat(oneSkippedOutput)
-                .startsWith("Disk read — unsaved editor changes are not included.\n\n"
+                .startsWith("Disk read — unsaved editor changes are not included.\n"
+                        + "Doc roots: docs (explicit)\n\n"
                         + "Scanned: 1 doc file(s): 0 linted, 1 not participating")
                 .doesNotContain("occupied")
                 .doesNotContain("free");
