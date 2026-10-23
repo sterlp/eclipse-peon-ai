@@ -35,6 +35,12 @@ Base: `AGENTS.md`. System prompt: `developer.md`.
   Story-2-Review G1: ein Plan las „compact.md ist bereits revidiert" aus dem Working Tree — die
   Revision war uncommitted, HEAD widersprach dem gebauten Code). Vor Abnahme/Bau: `git status`/
   `git log` gegen die zitierte Doc-Stelle; sonst wird der Doc-Input selbst zum Inkrement.
+- **Root-/Allowlist-Mengen an der Composition Root testen, nicht nur den Mechanismus am Seam** (hit
+  2026-10-23, Story-3-Review F1: Core-Tests injizierten den User-Root per Setter — `roots.add(agentsSkillsDir)`
+  in `PeonAiService` konnte ersatzlos verschwinden, ohne dass ein Test rot wurde). Ein PDE-Test auf den
+  tatsächlichen Validator-Roots des realen Wirings (validate-only, keine I/O) ist die Mutations-Beweispflicht;
+  `AgentService.get(name)` sieht dabei NUR geladene Custom-Agents, nicht `persistentAgents` — Scaffold/Jon/PO
+  sind über `getAgents()` + Filter erreichbar.
 - **Doc-Referenzen in Code/Javadoc tragen den Modul-Pfad** (`org.sterl.llmpeon.core/docs/x.md`,
   `org.sterl.llmpeon/docs/x.md`) — Root-`docs/`-Pfade sind nach der Restrukturierung (2026-10-22)
   tot für Feature-Docs; nur ADRs/Root-Docs bleiben dort. Referenzen gehören in Kommentare,

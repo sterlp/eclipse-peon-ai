@@ -1,6 +1,6 @@
 ---
 name: peon-build-test
-description: llmpeon repo build & test procedure — core→plugin jar trap (reactor vs ~/.m2 store model, when install is required), plugin/OSGi test runs, headless Tycho, stale artifacts (bin/, m2e, Lombok), dependency whitelist ritual, Surefire number summing, accepted warning list in known-benign-warnings.md.
+description: llmpeon repo build & test procedure — core→plugin jar trap (reactor vs ~/.m2 store model, when install is required), plugin/OSGi test runs (persistent agents only via getAgents(), not get(name)), headless Tycho, stale artifacts (bin/, m2e, Lombok), dependency whitelist ritual, Surefire number summing, accepted warning list in known-benign-warnings.md.
 ---
 
 # Build & test — llmpeon repo (migrated from AGENTS-DEV.md, 2026-10-20)
@@ -68,6 +68,14 @@ description: llmpeon repo build & test procedure — core→plugin jar trap (rea
   display, so every `AbstractSwtUiTest` subclass is `Assume`-skipped (visible as ~50 skips). A widget
   test is therefore only *compiled* by `mvn … verify` — run it once with `eclipseRunJavaTests` against
   the live workbench and prove its mutation there; never count headless skips as coverage.
+- **Persistent agents are invisible to `getAgent(name)` (hit 2026-10-24, Story 3):** `AgentService.get(name)`
+  reads only the `agents` map of *loaded custom* agents (`AgentService.java:227-230`), never `persistentAgents`
+  — the built-ins (Scaffold, PO, Dev/Plan/Review) come back `Optional.empty()`, which reads like "not wired"
+  and invites a false STOP-AND-ASK. Reach them through the public list, which unions both maps
+  (`AgentService.java:119-121`) — `getAgents().stream().filter(AiScaffoldAgent.class::isInstance)
+  .findFirst().orElseThrow()`. Evidence: `PeonAiServiceTest.scaffoldWriteValidator_acceptsHomeUserAgentsRoot`
+  (`d9c703cd`) — the first attempt via `get(name)` was a non-finding, the `getAgents()` filter is what proves
+  the wiring.
 - **Maven Surefire is the ground truth for test numbers**, not `eclipseRunJavaTests` — the Eclipse
   runner counts higher (parameterized artefacts) and has repeatedly produced wrong report numbers.
 
