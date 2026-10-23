@@ -46,11 +46,13 @@ model better than a wrapping decorator.
   Zweite Verteidigungslinie: `SmartToolExecutor` behandelt ein `IllegalArgumentException` **an
   beliebiger Stelle** der Cause-Kette als Tool-Error.
 
-**Dynamische Roots (❌ 2026-09-08, [project-skills.md](project-skills.md) + [ADR-0043](../../docs/adr/0043-scaffold-write-validator.md)):**
-der Scaffold-Agent bekommt als zweiter Validator-Nutzer **dynamische Roots** (Supplier auf
-`configDir` + `<aktuelles Projekt>/.agents/skills` — zur Call-Zeit aufgelöst), kein statisches
-Glob-Set. `AllowlistWriteValidator` wird dafür erweitert (statische Globs von Jon bleiben unverändert);
-Projekt-Root nur gesetzt, wenn ein Projekt gewählt ist.
+**Dynamische Roots (✅ 2026-09-08, erweitert 2026-10-23 — [project-skills.md](project-skills.md) R10/R17 +
+[ADR-0043](../../docs/adr/0043-scaffold-write-validator.md)):** der Scaffold-Agent bekommt als zweiter
+Validator-Nutzer **dynamische Roots** (Supplier auf `configDir` + `~/.agents/skills` + `.agents/skills` der
+offenen Projekte — zur Call-Zeit aufgelöst), kein statisches Glob-Set. `AllowlistWriteValidator` wird dafür
+erweitert (statische Globs von Jon bleiben unverändert). Wiring-Nachweis an der Composition Root:
+`PeonAiServiceTest.scaffoldWriteValidator_acceptsHomeUserAgentsRoot` (User-Root + Projekt-Root akzeptiert,
+fremde Home-Pfade abgelehnt — Mutations-Nachweis `roots.add(agentsSkillsDir)`).
 
 ## Use Case: an agent may only write where its validator allows
 

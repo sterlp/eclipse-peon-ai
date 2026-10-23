@@ -8,22 +8,17 @@
 - **Issue-163-Doc:** `docs/issue-163-tool-calls-retten.md` ✅ geschrieben (Ticket-Entwurf, ohne Links); open-points.md verlinkt.
 - **✅ Story 1 webSearch FERTIG (2026-10-23 Nachtzyklus):** 4 Inkremente — `ba6db4dc` (Engine+Parser), `8873d6c6` (Tool), `b5e7cd17` (Registrierung+Homepage), `6f309afc` (Review-Fixes F1–F5). Core 1294/0/0/0, Plugin 408/0/0, Lint WEB-Scope sauber. Da-Dok CONCERNS → alle Findings behoben (Bot-Check an Selektor gebunden — echter Selektor `div.anomaly-modal__modal[data-testid=anomaly-modal]`, Live-Smoke 202). Docs geflippt ✅ (web-tools.md, -architektur.md, core/docs/index.md). ADR-0074. Offen für Paul: ⏳ Snippet-Disclosure-Zeile (open-points). planImplemented/Archivierung durch Da Mek im Close-Commit.
 - **✅ Story 2 Compact-UI-Sichtbarkeit FERTIG (2026-10-23 Nachtzyklus):** 5 Inkremente — `de21ba97` (🟡 Roster-Status, Blatt-Regel `working || compacting`), `aece6f1e` (Caller-Monitor), `0bf44ac6` (Agent-Name via CompactFeedback), `59ff96d5` (Event-Reset onCompactCompleted), `6382e808` (Da-Dok-REJECTED-F1: Deferred-Reset für Turn-Compacts, onCallStart hinter Memory-Add, resetTiming-Policy, M1-Mutation). Core 1312/0/0/0, Plugin 410/0/0, Lint 2 UNBELEGT (UC-CT-3/5 = Pauls Smoke). Docs geflippt ✅ (R-CT-4…7, UC-CT-6…12). Offen für Paul: ⏳ Deferred-Timing-Rückversicherung (open-points), manueller Smoke §8. AGENTS-DEV-Regel ergänzt (committed-Doc-Input prüfen).
+- **✅ Story 3 Skill-Roots FERTIG (2026-10-23 Nachtzyklus):** 3 Inkremente + Review-Fix — `03f2f54e` (SkillService 3. Root, Ctor-Streichung, 5 R17-Tests), `c7f2595a` (Wiring PeonAiService + Scaffold-Writeroots + Homepage), `4a215831` (Scaffold-Prompt `.agents`-Empfehlung + Migration — Diff von Jon abgenommen, Paul sieht ihn im Morgen-Bericht), `d9c703cd` (Da-Dok-F1: PDE-Test `scaffoldWriteValidator_acceptsHomeUserAgentsRoot` auf Composition-Root-Wiring, Mutation `roots.add(agentsSkillsDir)` rot). Core 1320/0/0/0, PDE 412/0/0/52, Lint Baseline. Docs geflippt ✅ (R17 + write-path-validator + scaffold-agent-Nachtrag). Close-Commit committet project-skills.md & Co. (meine Docs-Änderungen; README = Pauls WIP bleibt). Offen für Paul: ⏳ First-Launch-Dir (open-points).
+- **NACHTZYKLUS ABGESCHLOSSEN** — alle 3 Stories gebaut + gereviewt + geflippt. Merge von `story/night-2026-10-23` = Pauls Entscheidung (Squash bevorzugt — danach memory#53 beachten).
 - **Story-Reihenfolge** (je Voll-Loop: plan → Jon-Abnahme → build → Da-Dok-Review → ❌→✅ + lintDocsAndTests-Gate):
   1. **webSearch** — R-WEB-10…12, `org.sterl.llmpeon.core/docs/web-tools.md` + `-architektur.md`. Details: Sektion "Story 3" unten. Plan-Risiko: community-DDG-Modul zu langchain4j 1.22.0 passen (pom.xml:14); im Aggregator-Checkout nur google/tavily/searchapi → Fallback dünner eigener DDG-Client.
   2. **Compact-UI-Sichtbarkeit** — R-CT-4…7 (`compact-lock.md`) + R-CC-14 (`compact.md`). 🟡 Compact-Status Roster; onChatMessage→Caller-Monitor (Tests `compressorRequestStartReachesCallerMonitor`/`compressorStreamingStaysLogOnly` — alt ersetzt, Inc 2 `aece6f1e`); Agent-Name in AbstractAgent.java:406-408; Chat-Reset bei aktivem Agent bei ALLEN Triggern (heute nur AIChatView.java:499 Button-Pfad); stale Kommentar AIChatView.java:512-513 im Inkrement fixen.
   3. **Skill-Roots** — R17 (`project-skills.md`), 3 Roots, Präzedenz Projekt > `~/.agents/skills` > `~/.peon/skills`; `.peon/skills` deprecated aber gelesen+SCHREIBBAR; Scaffold `.agents`-Empfehlung; Scaffold-Migration auf User-Wunsch; Homepage `setup/agents-and-skills.md:78` im Inkrement.
 - Paul nicht erreichbar → Abnahme durch Jon (memory#39, Inkrement-Gating). Bericht nach jeder Story.
 
-## Stand 2026-10-23 — Story 3: Web-Suche (webSearch) — Docs fertig, NICHT gebaut · Issue #163 recherchiert
+## Stand 2026-10-23 — Story 1 webSearch ✅ gebaut · Issue #163 recherchiert (Backlog)
 
-- **webSearch (Paul 2026-10-23):** Docs stehen — web-tools.md R-WEB-10…12 ❌ + web-tools-architektur.md
-  (WebSearchTool-Zeile, DDG über langchain4j `WebSearchEngine`-Interface, Community-Modul
-  `langchain4j-community-web-search-engine-duckduckgo`). Design: Trefferliste (Titel/URL/Snippet)
-  max 8 in den Kontext, Disclosure „showing N of M", Seiteninhalte nie in den Kontext (Nachlesen via
-  webFetchAsMarkdown), NICHT isEditTool → alle Agenten (Paul „allen geben"), kein Toggle.
-- **Plan-Risiko:** Community-Modul muss zu langchain4j 1.22.0 passen (im Aggregator-Checkout
-  /langchain4j existiert NUR google-custom/searchapi/tavily — DuckDuckGo liegt im community-Repo);
-  Fallback = dünner eigener DDG-Client. DDG-Tutorial: langchain4j docs/docs/integrations/web-search-engines/duckduckgo.md.
+- **webSearch:** ✅ fertig — Details unter "Story 1 webSearch FERTIG" oben (ADR-0074: eigener DDG-Client statt Community-Modul).
 - **Issue #163 („Tool Calls retten") — recherchiert, Backlog (open-points.md 2026-10-23):**
   langchain4j NICHT das Problem (Provider mappen nur strukturierte Felder — kein Upstream-Issue).
   Gegenmittel wäre Rescue-Heuristik im ToolService-Loop („function=<Name>"-Text → ToolExecutionRequest,

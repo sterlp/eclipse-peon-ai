@@ -1,8 +1,10 @@
 # Project Skills
 
 **Ziel:** Skills projekt-lokal in `<Projekt>/.agents/skills` (Disk-Pfad) ablegen und gemeinsam mit
-den geteilten Config-Skills (`~/.peon/skills`) nutzen — Namenskollision gewinnt die Projekt-Variante.
-Technische Basis: [ADR-0042](../../docs/adr/0042-project-skill-slot.md) (ein Service, zwei Slots),
+den geteilten User-Skills nutzen — Namenskollision gewinnt die engste Variante (R17). User-Roots
+seit 2026-10-23: `~/.agents/skills` (neuer Default, APM-Kompatibilität, empfohlen) und
+`~/.peon/skills` (deprecated, gelesen und schreibbar — Support, nicht empfohlen).
+Technische Basis: [ADR-0042](../../docs/adr/0042-project-skill-slot.md) (ein Service, Slots),
 [ADR-0043](../../docs/adr/0043-scaffold-write-validator.md) (Scaffold-Write-Scoping).
 
 **Begriffe:** Config-Skills · Projekt-Skills · Skill-Slot — siehe [Glossar](../../docs/glossary.md).
@@ -13,12 +15,12 @@ Technische Basis: [ADR-0042](../../docs/adr/0042-project-skill-slot.md) (ein Ser
 
 - **R2 ✅** Skill-Slot-Component (deep module): definiert sich über den **verantwortlichen Pfad**
   und kapselt das heutige Laden (Discover + Parse + atomarer Swap) + **eine eigene Map**. Der
-  `SkillService` hält eine **Liste** dieser Components — heute genau zwei: Config-Slot
-  (`<configDir>/skills`, statisch) und Projekt-Slot (`<Projekt-Disk-Pfad>/.agents/skills`,
-  dynamisch). Die effektive Skill-View ist die Komposition (siehe R4); beliebig viele Slots
-  möglich, ADR-0042.
-  - GIVEN zwei Components (Config + Projekt) WHEN der Service die effektive View berechnet THEN
-    beide Maps sind vertreten, kein Name doppelt
+  `SkillService` hält eine **Liste** dieser Components — mit R17 (2026-10-23) drei: User-Root
+  `~/.agents/skills` (neuer Default) + `<configDir>/skills` (deprecated, Kompatibilität) auf der
+  Config-Seite, Projekt-Slot (`<Projekt-Disk-Pfad>/.agents/skills`, dynamisch). Die effektive
+  Skill-View ist die Komposition (siehe R4/R17); beliebig viele Slots möglich, ADR-0042.
+  - GIVEN alle Components (Config-Roots + Projekt) WHEN der Service die effektive View berechnet
+    THEN alle Maps sind vertreten, kein Name doppelt
 - **R2a ✅** Projektwechsel ersetzt **ausschließlich** die Projekt-Component (neue Skills des
   ausgewählten Projekts ersetzen die des vorherigen); die Config-Component bleibt unberührt.
   - GIVEN Projekt A mit Skill `alpha` und Projekt B mit Skill `beta` WHEN Projekt B gewählt wird
@@ -55,6 +57,34 @@ Technische Basis: [ADR-0042](../../docs/adr/0042-project-skill-slot.md) (ein Ser
     geliefert wird die Projekt-Variante (Quelle `PROJECT`)
   - GIVEN nur Config-Skill `deploy` WHEN View berechnet THEN sichtbar mit Quelle `CONFIG`
 
+### User-Roots (2026-10-23, Paul)
+
+- **R17 ✅ done (2026-10-23, Nachtzyklus)** Der `SkillService` liest **drei** Roots mit fester Präzedenz — bei
+  Namenskollision gewinnt die engste Variante: **Projekt > `~/.agents/skills` > `~/.peon/skills`**.
+  `~/.agents/skills` ist der neue Default-User-Root — Kompatibilität mit dem Microsoft Agent
+  Package Manager (APM), der Skills nach `.agents/skills` deployt (auch auf der Homepage zu
+  dokumentieren). `~/.peon/skills` bleibt **deprecated gelesen** (Bestand bleibt sichtbar) und
+  **schreibbar** (Support fällt nicht weg) — Empfehlung (Homepage-Warnung + Scaffold) ist aber
+  `.agents`: User-Root oder Projekt. Beide User-Roots tragen die Quelle `CONFIG` — UI (R9/R13)
+  bleibt unverändert; ein `.agents`-Skill, der einen `.peon`-Skill überdeckt, ist ein Config-internes
+  Override. **Keine automatische Migration** (Clean Break) — aber auf User-Wunsch kann der
+  **Scaffold die Migration ausführen**: er hat beide User-Roots als Validator-Roots (R10) und
+  zieht Skills auf Bitte von `~/.peon/skills` nach `~/.agents/skills` um (User fragt im Chat).
+  - GIVEN Skill `deploy` in allen drei Roots WHEN die View berechnet wird THEN gewinnt die
+    Projekt-Variante
+  - GIVEN Skill `deploy` in `~/.agents/skills` und `~/.peon/skills` WHEN die View berechnet wird
+    THEN gewinnt die `.agents`-Variante
+  - GIVEN Skill `deploy` nur in `~/.peon/skills` WHEN die View berechnet wird THEN sichtbar als
+    `CONFIG`
+  - GIVEN der User bittet den Scaffold, seine Skills umzuziehen WHEN der Scaffold die Dateien nach
+    `~/.agents/skills` überführt THEN werden sie dort sichtbar und gewinnen künftig per Präzedenz
+    über die `.peon`-Originale
+  - GIVEN `~/.agents/skills` existiert nicht WHEN geladen wird THEN leer, kein Fehler (wie heute
+    bei fehlendem Dir)
+  - GIVEN `configDir`-Preference auf eigenes Verzeichnis gesetzt WHEN geladen wird THEN alle drei
+    Roots gelten weiterhin (User-Root `~/.agents/skills` fix, `<configDir>/skills` folgt der
+    Preference als Kompatibilitätspfad)
+
 ### State & Konsistenz
 
 - **R1 ✅** Enabled-Toggles sind **name-keyed im SkillService** gespeichert und überleben jeden
@@ -80,9 +110,12 @@ Technische Basis: [ADR-0042](../../docs/adr/0042-project-skill-slot.md) (ein Ser
 
 ### Scaffold (Placement)
 
-- **R10 ✅** Scaffold darf in `.agents/skills` **aller offenen Projekte** schreiben (Validator-Roots:
-  `configDir` + `<offenes Projekt>/.agents/skills` je Projekt, dynamisch zur Call-Zeit — siehe
-  ADR-0043). Kein allgemeines Projekt-Schreibrecht — nur die Skills-Dirs.
+- **R10 ✅** Scaffold darf in `.agents/skills` **aller offenen Projekte**, in den User-Root
+  `~/.agents/skills` und weiterhin in `<configDir>/skills` schreiben (Validator-Roots dynamisch zur
+  Call-Zeit — siehe ADR-0043). Kein allgemeines Projekt-Schreibrecht — nur die Skills-Dirs.
+  **Empfehlung des Scaffolds ist immer `.agents`** (User-Root oder Projekt, je nach Skill-Inhalt) —
+  `<configDir>/skills` (`~/.peon/skills`) bleibt schreibbarer Support-Bestand (deprecated, R17 —
+  amendiert 2026-10-23).
   - GIVEN Projekte X (aktuell) und Y offen WHEN Scaffold schreibt `Y/.agents/skills/skill.md`
     THEN erlaubt; `Y/src/...` THEN rejected (Tool-Error + onProblem)
   - GIVEN Skill für Projekt Y angelegt während X aktuell THEN sichtbar erst, wenn Y currentProject
@@ -95,7 +128,9 @@ Technische Basis: [ADR-0042](../../docs/adr/0042-project-skill-slot.md) (ein Ser
   - GIVEN Antwort „Projekt" WHEN mehrere Projekte offen THEN Scaffold wählt das gemeinte Projekt
     aus der Liste (R2d) und schreibt in dessen `.agents/skills`
   - GIVEN Antwort „Projekt" WHEN Scaffold schreibt THEN Ziel ist `<Projekt>/.agents/skills`
-  - GIVEN Antwort „Config" WHEN Scaffold schreibt THEN Ziel ist `<configDir>/skills`
+  - GIVEN Antwort „Config" WHEN Scaffold schreibt THEN Ziel ist `~/.agents/skills` (Empfehlung;
+    2026-10-23). `~/.peon/skills` bleibt schreibbar (Support-Bestand, R17), wird aber vom Scaffold
+    nicht mehr empfohlen
 - **R12 ✅** Scaffold-Write-Scoping hart über `WriteValidator` (dynamische Roots), nicht via
   Instanz-Merge mit den Shared-Tools (ADR-0043).
 
@@ -116,6 +151,8 @@ Technische Basis: [ADR-0042](../../docs/adr/0042-project-skill-slot.md) (ein Ser
   **Instanz-Tausch im Service** ausgedrückt: der Service setzt eine leere Component ein. Die
   Config- und Projekt-Positionen bleiben als zwei Service-Felder erhalten; getauscht wird nur die
   Projekt-Component (kein Component-Cache pro Pfad — Reload ist billig, Staleness-Risiko unbezahlbar).
+  *(2026-10-23, R17: die Config-Seite wird zur Liste — zwei User-Roots; die Felder-Struktur ist
+  Plan-Detail des Umsetzungs-Inkrements.)*
   - GIVEN kein Projekt gewählt WHEN View berechnet THEN die eingesetzte Projekt-Component liefert
     leer, `path()` gibt nie null
   - GIVEN Projekt A THEN B THEN A WHEN gewechselt THEN je Wechsel eine frisch geladene
@@ -154,6 +191,7 @@ Technische Basis: [ADR-0042](../../docs/adr/0042-project-skill-slot.md) (ein Ser
 | R16 | `PeonAiServiceTest.test_jon_gets_shared_skill_tool` (assertSame: geteilte Instanz) |
 | R2a (Plugin) | `setProject_replacesProjectSlotOnly` (Name historisch, „Slot" = alte Begriffswelt) |
 | R2c (Plugin) | `pinnedProject_keepsSkillComponent_untilSetProject` |
+| R17 | `SkillServiceTest.threeRoots_precedenceProjectOverAgentsOverPeon` · `agentsRootWinsOverPeonRoot` · `peonOnlySkillVisibleAsConfig` · `agentsRootMissingLoadsEmpty` · `customConfigDirKeepsAllThreeRoots` · `AiScaffoldAgentTest.scaffoldWriteIntoUserAgentsRootWinsOverPeonOriginal` (Migration) · `AiScaffoldAgentTest.writeValidatorAllowsUserAgentsRoot` · `PeonAiServiceTest.scaffoldWriteValidator_acceptsHomeUserAgentsRoot` (Composition-Root-Wiring, Mutation `roots.add(agentsSkillsDir)`) · Prompt-Guard `AiScaffoldAgentTest.systemPromptRecommendsAgentsUserRoot` |
 
 ## Skill-relativer Lesepfad (SkillPromptFile) — ✅ done (2026-09-11, core-cleanup)
 

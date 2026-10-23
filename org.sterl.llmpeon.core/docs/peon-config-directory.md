@@ -14,7 +14,7 @@ laufenden Instanz).
 
 | Artifact | Ort | Klassifikation | Bewertung |
 |---|---|---|---|
-| Skills | `~/.peon/skills/**` | Shared Config | ✅ ok |
+| Skills | `~/.peon/skills/**` | Shared Config — **deprecated** (2026-10-23): weiter gelesen **und schreibbar** (Support), Empfehlung ist `~/.agents/skills` bzw. Projekt `.agents/skills` ([project-skills.md](project-skills.md) R17/R10) | ✅ ok |
 | Commands | `~/.peon/commands/**` | Shared Config | ✅ ok |
 | Custom Agents | `~/.peon/agents/<name>/AGENT.md` | Shared Config | ✅ ok |
 | **Agent-History** | `~/.peon/state/<AgentName>-history.jsonl` (`FileAgentHistoryStore`: `append`/`persist`/`clear`) | **Runtime State** | ❌ Verstoß gegen R1 |
