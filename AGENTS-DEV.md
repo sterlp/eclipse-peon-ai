@@ -31,6 +31,10 @@ Base: `AGENTS.md`. System prompt: `developer.md`.
   Schein-VERWAIST für dessen Scope (hit 2026-10-23: 84 Schein-VERWAIST ohne `org.sterl.llmpeon/docs`).
 - **Never widen scope silently.** Fixes outside the released plan — even correct ones, even
   one-liners — get reported to the PO first. TABU lists in a plan are binding.
+- **Doc-Input, der als erledigt zitiert wird, gegen den COMMITTED Stand prüfen** (hit 2026-10-23,
+  Story-2-Review G1: ein Plan las „compact.md ist bereits revidiert" aus dem Working Tree — die
+  Revision war uncommitted, HEAD widersprach dem gebauten Code). Vor Abnahme/Bau: `git status`/
+  `git log` gegen die zitierte Doc-Stelle; sonst wird der Doc-Input selbst zum Inkrement.
 - **Doc-Referenzen in Code/Javadoc tragen den Modul-Pfad** (`org.sterl.llmpeon.core/docs/x.md`,
   `org.sterl.llmpeon/docs/x.md`) — Root-`docs/`-Pfade sind nach der Restrukturierung (2026-10-22)
   tot für Feature-Docs; nur ADRs/Root-Docs bleiben dort. Referenzen gehören in Kommentare,

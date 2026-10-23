@@ -36,6 +36,17 @@ Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.
   `snippets truncated to 200 characters` (gebaut, getestet, `// R-WEB-10`). **Rückversicherung:**
   Paul bestätigt die Zeile — oder will sie wieder raus (dann wäre `…` die alleinige Kennzeichnung).
 
+## 2026-10-23 — Compact-UI: Deferred-Reset für Turn-Compacts (Story 2, Nachtzyklus)
+
+- ⏳ **Turn-Compacts bauen die Chat-View erst beim nächsten Turn-Event neu** (nicht sofort):
+  Da-Dok-Review-F1 zeigte, dass der sofortige Reset bei Pre-Turn-/In-Loop-Compacts die frisch
+  getippte User-Nachricht aus dem Chat fegt (sie ist noch nicht im Memory). Entscheidung von Jon
+  aus dem Regel-Intent abgeleitet (Chat = Abbild des Memorys): Trigger MIT laufendem Turn →
+  DEFERRED (Pending-Reset, Flush am `onCallStart` desselben Agenten), Trigger OHNE Turn (Buttons)
+  → NOW, Sklaven → NONE. `CompactFeedback.resetTiming`, gebaut + gemutiert (Inc 5 `6382e808`).
+  **Rückversicherung:** Paul bestätigt das Deferred-Timing (Smoke-Punkt 3 in memory.md §8) — oder
+  will Sofort-Rebuild mit Re-Append des User-Echos.
+
 ## 2.14.0 (2026-10-19) — Jon-Entscheidungen zur Rückversicherung
 
 - ⏳ **R-CC-19 (Zähler = Provider-Input + Schätzung der angehängten Messages):** von Jon entschieden
