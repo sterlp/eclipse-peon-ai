@@ -481,6 +481,91 @@ class AbstractAgentTest {
         assertThat(agent.isWorking()).isFalse();
     }
 
+    // UC-CT-6
+    @Test
+    void isCompactingDuringCompressorCall() {
+        // GIVEN — 3 messages so the compact really runs
+        var agentRef = new AtomicReference<AiDevAgent>();
+        var compactingDuringCompressor = new AtomicReference<Boolean>();
+        var workingDuringCompressor = new AtomicReference<Boolean>();
+        var config = LlmConfig.builder().model("mock").build();
+        var mockModel = streamMock.buildMock(r -> {
+            compactingDuringCompressor.set(agentRef.get().isCompacting());
+            workingDuringCompressor.set(agentRef.get().isWorking());
+            return ChatResponse.builder().aiMessage(AiMessage.aiMessage("compressed summary")).build();
+        });
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        agentRef.set(agent);
+        agent.addMessage(UserMessage.from("m1"));
+        agent.addMessage(AiMessage.from("m2"));
+        agent.addMessage(UserMessage.from("m3"));
+
+        // WHEN
+        var compacted = agent.compact(monitor -> {});
+
+        // THEN — own Compact-Status for the duration of the compressor call (R-CT-4), and the
+        // working lock (R-CT-1) untouched by it
+        assertThat(compacted.status()).isEqualTo(CompactResult.Status.COMPACTED);
+        assertThat(compactingDuringCompressor.get()).as("compacting during the compressor call").isTrue();
+        assertThat(workingDuringCompressor.get()).as("still working, too — the lock stays").isTrue();
+        assertThat(agent.isCompacting()).as("cleared after the compact").isFalse();
+    }
+
+    // UC-CT-6
+    /**
+     * Companion pin to {@link #isCompactingDuringCompressorCall}: alone it would be green without
+     * the feature (a compact that never flags has nothing to clear). Together the two pin the
+     * finally-clear — the mutation here is dropping that finally, which turns this test red.
+     */
+    @Test
+    void compactingClearedOnFailedCompact() {
+        // GIVEN — 3 messages; the compressor call throws
+        var config = LlmConfig.builder().model("mock").build();
+        var mockModel = streamMock.buildMock(r -> {
+            throw new IllegalStateException("compressor exploded");
+        });
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        agent.addMessage(UserMessage.from("m1"));
+        agent.addMessage(AiMessage.from("m2"));
+        agent.addMessage(UserMessage.from("m3"));
+
+        // WHEN — the compact fails
+        assertThatThrownBy(() -> agent.compact(monitor -> {}))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("compressor exploded");
+
+        // THEN — no dangling 🟡: the agent is usable again (R-CT-4)
+        assertThat(agent.isCompacting()).isFalse();
+    }
+
+    // UC-CT-6
+    /**
+     * The R16 skip must never show a Compact-Status: the 🟡 flag is set only behind the
+     * MIN_COMPACT_MESSAGES guard. Mutation guard: setting the flag before the guard return (so no
+     * clear runs for the skip) turns the roster assertion red.
+     */
+    @Test
+    void skipDoesNotFlagCompacting() {
+        // GIVEN — 2 messages, the state right after a compact: the guard returns before any LLM call
+        var agent = new AiDevAgent(new ConfiguredChatModel(LlmConfig.builder().model("mock").build(),
+                streamMock.buildMock(r -> ChatResponse.builder()
+                        .aiMessage(AiMessage.aiMessage("must not be called")).build())),
+                new ToolService());
+        agent.addMessage(UserMessage.from("m1"));
+        agent.addMessage(AiMessage.from("m2"));
+
+        // WHEN
+        var result = agent.compact(monitor -> {});
+
+        // THEN — skipped, no LLM call, and no 🟡 anywhere (flag nor roster row)
+        assertThat(result.status()).isEqualTo(CompactResult.Status.SKIPPED_SMALL);
+        assertThat(streamMock.getCallCount()).isZero();
+        assertThat(agent.isCompacting()).isFalse();
+        assertThat(AiAgentStatusModel.rows(List.of(new NamedAgent("Da Mek", agent))))
+                .as("a skipped compact never renders a Compact-Status")
+                .noneMatch(AiAgentStatusModel.Entry::compacting);
+    }
+
     // UC-CT-2
     /**
      * Regression pin (green before the CAS change — the in-loop compact already kept the

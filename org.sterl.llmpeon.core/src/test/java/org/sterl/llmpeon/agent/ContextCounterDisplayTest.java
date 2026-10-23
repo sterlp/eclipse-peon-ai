@@ -60,8 +60,8 @@ class ContextCounterDisplayTest {
         assertThat(memory.getTotalTokenUsed()).isEqualTo(ChatMessageUtil.estimateTokens(memory.getCopy()));
 
         // GIVEN — roster rows: one estimate row, one exact row
-        var estimated = AiAgentStatusModel.build(List.of(new Row("Da Mek", 15_000, false, true)));
-        var exact = AiAgentStatusModel.build(List.of(new Row("Da Mek", 15_000, false, false)));
+        var estimated = AiAgentStatusModel.build(List.of(new Row("Da Mek", 15_000, false, false, true)));
+        var exact = AiAgentStatusModel.build(List.of(new Row("Da Mek", 15_000, false, false, false)));
 
         // THEN — the label format follows the SOLL: `~N (estimate)` vs plain
         assertThat(estimated.get(0).text()).isEqualTo("Da Mek (~15k (estimate))");

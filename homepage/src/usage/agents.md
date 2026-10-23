@@ -18,10 +18,11 @@ When **Jon** (Peon-PO) is the active agent, the header shows his team with each 
 | **Da Mek** | Peon-Dev — the implementer |
 | **Da Dok** | Peon-Review — the reviewer |
 
-The number in parentheses is the agent's **current context size** in tokens. A **🟢** marks the member that is working right now. If Jon delegates to a worker, only that worker glows — Jon stays calm:
+The number in parentheses is the agent's **current context size** in tokens. A **🟢** marks the member that is working right now, a **🟡** the member that is currently **compacting** its context. If Jon delegates to a worker, only that worker glows — Jon stays calm:
 
 ```
 ↑12k ↓8k  ·  Da Boss (12k) · Da Thinka (8k) · 🟢 Da Mek (45k) · Da Dok (3k)
+↑12k ↓8k  ·  Da Boss (12k) · Da Thinka (8k) · 🟡 Da Mek (45k) · Da Dok (3k)   ← compacting
 ```
 
 ::: tip
@@ -32,9 +33,9 @@ With a non-Jon agent active (e.g. plain Peon-Dev), the team roster is not shown 
 
 Each of the three worker rows (**Da Thinka**, **Da Mek**, **Da Dok**) carries a small **compact icon button** (tooltip: `Compact Da X`). Clicking it compresses **exactly that one agent's** context:
 
-- The compression runs quietly in the background — the compressor's request and summary never appear in the chat (log only) — then the status line reports the result with its numbers — **`Compacted Da Mek: compressed 61 messages ~114k → input ~40k, result 2k, stage: tool results 6000, request 80211 (provider)`** — and the roster shows the reduced context size.
-- If the agent has fewer than 3 messages (right after a compact, exactly 2 remain), nothing is sent to the model — the status line simply reports **`Nothing to compact`**.
-- The button is **disabled** while that agent is working (🟢) or while any turn is in flight.
+- The compression runs quietly in the background — the compressor's request and summary never appear in the chat (log only) — while it runs, that worker's row shows **🟡**. The status line then reports the result with its numbers — **`Compacted Da Mek: compressed 61 messages ~114k → input ~40k, result 2k, stage: tool results 6000, request 80211 (provider)`** — and the roster shows the reduced context size.
+- If the agent has fewer than 3 messages (right after a compact, exactly 2 remain), nothing is sent to the model — the status line simply reports **`Nothing to compact`**, and no 🟡 appears.
+- The button is **disabled** while that agent is working (🟢) or compacting (🟡), or while any turn is in flight.
 
 **Da Boss has no such button** — Jon is the active agent and uses the regular **Compact** button in the action bar.
 

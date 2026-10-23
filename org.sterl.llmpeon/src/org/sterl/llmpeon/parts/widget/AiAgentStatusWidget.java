@@ -23,7 +23,8 @@ import org.sterl.llmpeon.parts.shared.SwtUtil;
  * Header status of the active orchestrator's team: one row per {@link NamedAgent} it exposes (e.g.
  * {@code Da Boss (12k)} · {@code Da Thinka (0k)} · {@code Da Mek (0k)}). A green ball 🟢 marks the
  * working leaf — a busy slave glows, while Da Boss glows only when he works with nothing delegated
- * (the leaf rule lives in {@link AiAgentStatusModel}). Each slave row carries a flat compact
+ * (the leaf rule lives in {@link AiAgentStatusModel}). A member that is compacting its context shows
+ * 🟡 instead (R-CT-4). Each slave row carries a flat compact
  * button (tooltip {@code Compact Da X}); clicking it compresses exactly that agent via the
  * {@code onSlaveCompactClick} callback — Da Boss has none (the action bar owns his compact).
  * An empty team (any non-PO agent) renders nothing.
@@ -43,6 +44,8 @@ public class AiAgentStatusWidget extends Composite {
 
     private static final String SEP = "   ·   ";
     private static final String WORKING = "🟢 ";
+    /** R-CT-4 — a compacting member gets its own dot, never the generic 🟢. */
+    private static final String COMPACTING = "🟡 ";
 
     /** One rendered team member: its label and (slaves only) compact button + icon — all direct
      *  children of this composite (flat structure, see class javadoc). */
@@ -100,12 +103,13 @@ public class AiAgentStatusWidget extends Composite {
         requestReflow();
     }
 
-    /** Label text for row {@code i}: the "·" prefix separates it from the row before it, 🟢 leads
-     *  while the row works — the former single-label format, now per row. */
+    /** Label text for row {@code i}: the "·" prefix separates it from the row before it, then the
+     *  dot — 🟡 while the row compacts (R-CT-4, wins over 🟢), 🟢 while it works, none when idle. */
     private static String text(int i, Entry e) {
         var sb = new StringBuilder();
         if (i > 0) sb.append(SEP);
-        if (e.working()) sb.append(WORKING);
+        if (e.compacting()) sb.append(COMPACTING);
+        else if (e.working()) sb.append(WORKING);
         sb.append(e.text());
         return sb.toString();
     }

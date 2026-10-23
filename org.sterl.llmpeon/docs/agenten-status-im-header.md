@@ -17,6 +17,9 @@ Jon (Peon-PO) aktiv, idle:
 Jon delegiert an Da Mek → der Sklave glüht, Da Boss bleibt ruhig (Blatt-Regel):
 │ ↑12k ↓8k  ·  Da Boss (12k) · Da Thinka (8k) · 🟢 Da Mek (45k) · Da Dok (3k)   🔨 │
 
+Da Mek kompaktiert → eigener Compact-Status 🟡 statt 🟢, Da Boss bleibt weiter ruhig (R-CT-4):
+│ ↑12k ↓8k  ·  Da Boss (12k) · Da Thinka (8k) · 🟡 Da Mek (45k) · Da Dok (3k)   🔨 │
+
 Nicht-PO-Agent aktiv:
 │ ↑12k ↓8k  ·                                                                     🔨 │
 ```
@@ -30,13 +33,16 @@ Nicht-PO-Agent aktiv:
   `getActiveAgent() instanceof AiPoAgent po ? po.getTeam() : List.of()`. Kein Orchestrierungs-State
   in der UI, kein Roster-Leak über Agenten-Wechsel (die Doppel-Anzeige-Bugs des alten
   Roster/Chip-Designs sind damit konstruktiv tot; `onSubAgent` ist ein ruhender No-op-Default).
-- **`AiAgentStatusWidget`** (`Composite` mit einem `Label`, kein SWT-Test): rendert die Zeilen mit
-  `   ·   ` getrennt, Präfix `🟢 ` bei `working`; Text `uiName (Xk)` mit
+- **`AiAgentStatusWidget`** (`Composite`, ein Label + Button je Zeile, SWT-Tests über
+  `AbstractSwtUiTest`): rendert die Zeilen mit `   ·   ` getrennt, Präfix `🟢 ` bei `working` und
+  `🟡 ` bei `compacting` (R-CT-4 — eigener Compact-Status, 🟡 gewinnt über 🟢); Text `uiName (Xk)` mit
   `getMemory().getTotalTokenUsed()`. State-los — jeder `refresh()` zieht live.
 - **Blatt-Regel** (in `AiAgentStatusModel`, headless getestet): Sklave glüht bei eigenem
-  `isWorking()`; **Da Boss** nur, wenn er arbeitet **und kein Sklave arbeitet**.
+  `isWorking()`; **Da Boss** nur, wenn er arbeitet **und kein Sklave arbeitet**. Ein kompaktierender
+  Sklave ist dabei beschäftigt (er hält `working`): er zeigt 🟡 und hält Da Boss dunkel.
 - **Refresh-Trigger:** `onChatMessage` (🟢 an), `lockWhileWorking(false)`/Turn-Ende (🟢 aus),
-  Agenten-Wechsel, Token/Response — idempotente Live-Pulls.
+  Agenten-Wechsel, Token/Response — idempotente Live-Pulls. Compact: die Start-Zeile
+  (`onTool` → `onChatResponse`) zieht den 🟡, das Job-Ende (`lockWhileWorking(false)`) löscht ihn.
 
 ## Per-Agent Compact-Buttons — ✅ done (2026-09-14; Decision 2026-09-13, User)
 
@@ -98,11 +104,13 @@ THEN gibt es keine Sklaven-Zeilen und damit keine Compact-Buttons
 ## Tests (gebaut)
 
 - `AiAgentStatusModelTest` (headless): Blatt-Regel — alle-idle → kein Ball · Boss arbeitet allein →
-  nur Boss · Da Mek arbeitet → nur Da Mek, Boss ruhig · leere Liste → keine Zeilen.
+  nur Boss · Da Mek arbeitet → nur Da Mek, Boss ruhig · Da Mek kompaktiert → 🟡, Boss ruhig ·
+  leere Liste → keine Zeilen.
 - `AiPoAgentTest.getTeam()` — genau 4 Einträge (Da Boss + 3 Sklaven) auf die geteilten Instanzen.
 - `PeonAiServiceTest.getStatusAgents()` — PO aktiv → 4, Dev aktiv → leer (`assumeTrue`-geskippt
   headless, läuft in der IDE).
-- SWT-Darstellung selbst nicht getestet (wie `TokenHeaderWidget`).
+- **SWT-Darstellung** (Plugin-Test-Bundle, `AbstractSwtUiTest`): `HeaderRosterStructureTest`
+  (flache Struktur, CSS-Hintergrund) · `CompactRosterStatusTest` (🟡 auf der kompaktierenden Zeile).
 
 
 ## Theme-Robustheit — `resolveTheme` null-safe (✅ done 2026-10-15; specified 2026-10-15, Paul)

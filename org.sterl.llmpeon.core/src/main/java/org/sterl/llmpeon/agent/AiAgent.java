@@ -110,6 +110,15 @@ public interface AiAgent {
     }
 
     /**
+     * @return true while a compact of this agent is actually running (never for a skip) — the
+     *         roster's own Compact-Status 🟡 (R-CT-4, org.sterl.llmpeon.core/docs/compact-lock.md).
+     *         Display state only: {@link #isWorking()} stays the lock. Default false.
+     */
+    default boolean isCompacting() {
+        return false;
+    }
+
+    /**
      * Queue a message for follow-up while the agent is working.
      * @param msg the message to queue
      * @return true if a new queue entry was created, false if silently merged into existing batch

@@ -51,6 +51,9 @@ public abstract class AbstractAgent implements AiAgent {
 
     private UserMessageQueue messageQueue = new UserMessageQueue();
     private final AtomicBoolean working = new AtomicBoolean(false);
+    /** R-CT-4: own compact indicator for the roster 🟡 — display only, the lock stays {@code working}.
+     *  Volatile: the header reads it from the UI thread while a compact job sets it. */
+    private volatile boolean compacting = false;
 
     private volatile String systemMessage = null;
     /**
@@ -181,6 +184,12 @@ public abstract class AbstractAgent implements AiAgent {
     @Override
     public boolean isWorking() {
         return working.get();
+    }
+
+    /** R-CT-4: true only while a compact actually runs (never for the R16 skip) — the roster 🟡. */
+    @Override
+    public boolean isCompacting() {
+        return compacting;
     }
 
     /**
@@ -390,11 +399,21 @@ public abstract class AbstractAgent implements AiAgent {
         boolean acquired = working.compareAndSet(false, true);
         try {
             // nullSafety before the guard: the FAILED_EMPTY onProblem path must never have a null monitor
-            monitor = AiMonitor.nullSafety(monitor);
-            // < MIN_COMPACT_MESSAGES: a compact leaves exactly 2 messages (Session-compacted user +
-            // summary) — with < 2 a direct re-compact would fire a real LLM call on those 2 (R16)
-            if (memory.size() < CompactConstants.MIN_COMPACT_MESSAGES) return CompactResult.skippedSmall();
+            return doCompact(AiMonitor.nullSafety(monitor));
+        } finally {
+            if (acquired) working.set(false);
+        }
+    }
 
+    /** The compact run itself — {@code monitor} is already null-safe. */
+    private CompactResult doCompact(AiMonitor monitor) {
+        // < MIN_COMPACT_MESSAGES: a compact leaves exactly 2 messages (Session-compacted user +
+        // summary) — with < 2 a direct re-compact would fire a real LLM call on those 2 (R16).
+        // The compacting flag is set only behind this guard: a skip shows no 🟡 (R-CT-4).
+        if (memory.size() < CompactConstants.MIN_COMPACT_MESSAGES) return CompactResult.skippedSmall();
+
+        compacting = true;
+        try {
             // R-CIB-1: the staging budget is the raw config value
             // R-CC-12: capture the last provider-reported input tokens BEFORE the clear below —
             // after it the value is gone (async-state-safety)
@@ -429,7 +448,7 @@ public abstract class AbstractAgent implements AiAgent {
 
             return result;
         } finally {
-            if (acquired) working.set(false);
+            compacting = false;
         }
     }
 

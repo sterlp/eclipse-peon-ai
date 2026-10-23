@@ -26,6 +26,12 @@ alternativ eine `CompletableFuture`-Chain (Send wartet auf das Compact-Job-Ende)
    „jede Aktivität" — Paul 2026-09-22: „während ein Agent ein Compact macht ist er working!". Ein
    gelber Ball wäre Kosmetik, bewusst nicht gebaut.
 
+   > **Nachtrag 2026-10-23 — Punkt 4 überholt:** [R-CT-4](../../org.sterl.llmpeon.core/docs/compact-lock.md)
+   > revidiert diese Entscheidung (Paul: „Wir wollen den Status vom Compact setzen.") — der Compact
+   > bekommt einen eigenen Roster-Status 🟡 (`AiAgent.isCompacting()`). **Punkte 1–3 bleiben
+   > gültig:** `working` ist weiter der Lock (CAS, Queue-Guard, Button-Disable); der 🟡 ist reine
+   > Anzeige darüber und ersetzt keinen dieser Mechanismen.
+
 ## Consequences
 
 - Der Memory-Race ist per CAS **strukturell unmöglich** (zweiter `call()` wird gequeued), nicht per
