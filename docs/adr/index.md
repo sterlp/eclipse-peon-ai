@@ -76,6 +76,8 @@ isn't clear from a rule/BDD.
 | [0069](0069-shared-mcp-connection-per-server.md) | Ein MCP-Server = **eine** Verbindung: der Connection-Service besitzt den `McpService`, alle Registries adoptieren ihn (`adoptMcpGroup`) — ein stdio-Prozess je Server-Konfig statt einer je Registry | Accepted |
 | [0070](0070-compact-decision-in-one-component.md) | Compact-Entscheidung zustandsbasiert in EINER Komponente (`HandleToolLoopCompactComponent`: >Budget direkt, >95 % Hint, sonst nichts), Folgen beim Ausführenden — `ranTool`/`isCompactedThisTurn` entfallen; Pre-Turn-Gate bleibt (frische User-Message) — supersedes Teile von 0056 · Budget-Quelle/Pre-Turn-Gate abgelöst durch 0071 | Accepted |
 | [0071](0071-compact-policy-owned-by-delegation.md) | Compact-Policy gehört zur Delegation: 0.7-Faktor lebt in `PoDelegateTool` (vor jeder neuen Sklaven-Aufgabe), der Tool-Loop rechnet nur mit der rohen `autoCompactAfter`; kein Pre-Turn-Gate — Ablösung von Teilen aus 0021/0070 | Accepted |
+| [0072](0072-github-eclipse-repo-cleanup.md) | GitHub/Eclipse-Repo-Cleanup | Accepted |
+| [0073](0073-slf4j-api-stays-bundled.md) | slf4j-api bleibt gebündelt — Platform-Resolve (Require-Bundle + ServiceLoader-Mediator) negativ bewiesen (NOP-Logger für alles slf4j-Logging), Provider-Fund braucht einen Classloader | Accepted |
 
 
 

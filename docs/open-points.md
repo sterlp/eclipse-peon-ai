@@ -247,14 +247,15 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   (e) LM Studio extra_body-Override, (f) OPEN_AI_OFFICIAL reasoningSummary=DETAILED, (g)
   custom-agent×OpenAI nur Signatur-Smoke. Plus: `ThinkModelMapping.Entry.off` geparst aber
   ungenutzt; `AiAgent.isThinkEnabled()` (deprecated Default) Sterben-Kandidat.
-- ⏳ **slf4j-simple — 🔒 gelöst 2026-10-17:** Jar + Dependency aus Plugin-pom/
+- 🔒 **slf4j-simple — 🔒 gelöst 2026-10-17:** Jar + Dependency aus Plugin-pom/
   MANIFEST/build.properties entfernt — gebautes Bundle enthält exakt EINEN Provider
   (`EclipseSlf4jProvider`), Plugin-Suite ohne SLF4J-Warnung. **→ resolved-points.md.**
-  ⏳ Verbleibender Design-Punkt: slf4j-api ist **nicht OSGi-resolved**, sondern gebündelt
-  (`lib/slf4j-api.jar`, aktuell 2.0.19 → 2.0.18 beim nächsten clean — Patch-Drift harmlos);
-  Pauls Annahme eines `Require-Bundle`-Ranges `[2.0.0,3.0.0[` existiert im IST nicht. Falls
-  Paul slf4j-api künftig von der Platform resolved will (Bundle in Target + Require-Bundle +
-  lib-Jar weg): eigene Story, kein Bug-Anlass.
+  🔒 **slf4j-api bleibt gebündelt (ADR-0073, 2026-10-23):** Platform-Resolve
+  (`Require-Bundle slf4j.api [2.0.0,3.0.0)` + lib-Jar weg) getestet und verworfen — slf4j 2.x
+  suchtden Provider mit dem Classloader des API-Bundles, unsere `META-INF/services`-Registrierung
+  war unsichtbar → NOP-Logger für ALLES slf4j-Logging (langchain4j wie core). Auch der
+  ServiceLoader-Mediator (`Provide-Capability`, Extender aktiv) webt nicht. copy-deps liefert
+  2.0.18 deterministisch; Revisit nur mit echtem Anlass, dann Fragment-Ansatz.
 - **Jackson 2 → 3 beobachten (2026-09-10):** Migration erst bei voller Entfernbarkeit
   (openai-java pinnt Jackson 2; 5 eigene Dateien; Error-Path → ApiRetry-Klassifikation prüfen).
   Revisit-Trigger: langchain4j 1.21+ / openai-Jackson-3. Dann eigene Story mit ADR.

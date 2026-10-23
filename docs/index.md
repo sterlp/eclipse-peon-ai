@@ -17,7 +17,7 @@ Backlog = every ❌/🚧 item. Vollständige Einträge (mit Status-Grund) stehen
   infra (Docs-Linter, MCP, Codegraph, Caches).
 * **[Plugin docs](../org.sterl.llmpeon/docs/index.md)** — Eclipse/OSGi: chat view & widgets ·
   header/roster · configuration & models · `eclipse*` tools & workspace · OSGi test setup.
-* **[ADRs](adr/index.md)** (global 0001–0072) · [Glossary](glossary.md) · [Configuration](configuration.md)
+* **[ADRs](adr/index.md)** (global 0001–0073) · [Glossary](glossary.md) · [Configuration](configuration.md)
 * [Architecture rules](architecture.md) · [Open Points](open-points.md) · [Resolved](resolved-points.md)
   · [Open to Discuss](open-to-discuss.md)
 
