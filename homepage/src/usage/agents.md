@@ -33,7 +33,7 @@ With a non-Jon agent active (e.g. plain Peon-Dev), the team roster is not shown 
 
 Each of the three worker rows (**Da Thinka**, **Da Mek**, **Da Dok**) carries a small **compact icon button** (tooltip: `Compact Da X`). Clicking it compresses **exactly that one agent's** context:
 
-- The compression runs quietly in the background — the compressor's request and summary never appear in the chat (log only) — while it runs, that worker's row shows **🟡**. The status line then reports the result with its numbers — **`Compacted Da Mek: compressed 61 messages ~114k → input ~40k, result 2k, stage: tool results 6000, request 80211 (provider)`** — and the roster shows the reduced context size.
+- While it runs the chat shows the usual **waiting-for-AI** working state and that worker's row shows **🟡** — but the compressor's own streaming and its summary never appear in the chat (log only). The status line then reports the result with its numbers — **`Compacted Da Mek: compressed 61 messages ~114k → input ~40k, result 2k, stage: tool results 6000, request 80211 (provider)`** — and the roster shows the reduced context size.
 - If the agent has fewer than 3 messages (right after a compact, exactly 2 remain), nothing is sent to the model — the status line simply reports **`Nothing to compact`**, and no 🟡 appears.
 - The button is **disabled** while that agent is working (🟢) or compacting (🟡), or while any turn is in flight.
 
@@ -46,6 +46,14 @@ Compact never cascades. Whatever you compact, only that one agent's memory is co
 - **Jon's Compact** (action bar button) compresses **Jon alone** — Da Thinka, Da Mek and Da Dok are untouched.
 - **A worker's compact button** compresses **that worker alone**.
 - The workers also manage their own memory: each one compacts itself automatically when its own context grows large, independent of Jon.
+
+## What the chat shows after a compact
+
+When the agent **you are talking to** finishes a successful compact — its own action-bar **Compact** button or an automatic compact during a turn — the chat rebuilds from the compacted memory: the new summary stays visible, the old transcript leaves the view (condensed, not lost — the agent still works from it).
+
+A **worker's** compact never rebuilds the chat: that memory is not what you are reading. Feedback there is the status line (`Compacted Da Mek: …`) and the row's **🟡**.
+
+A **failed** compact (the compressor answered with nothing) leaves the chat exactly as it was — nothing is thrown away — and reports a problem line instead.
 
 ## Clear removes the whole team
 

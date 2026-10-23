@@ -395,15 +395,23 @@ public abstract class AbstractAgent implements AiAgent {
 
     @Override
     public CompactResult compact(AiMonitor monitor) {
+        // nullSafety up front: the FAILED_EMPTY onProblem path must never have a null monitor
+        var mon = AiMonitor.nullSafety(monitor);
         // User-triggered compact acquires the working flag (R-CT-1); an in-loop compact runs
         // inside a turn that already holds it, so the CAS fails and the flag is left untouched.
         boolean acquired = working.compareAndSet(false, true);
+        CompactResult result;
         try {
-            // nullSafety before the guard: the FAILED_EMPTY onProblem path must never have a null monitor
-            return doCompact(AiMonitor.nullSafety(monitor));
+            result = doCompact(mon);
         } finally {
             if (acquired) working.set(false);
         }
+        // R-CT-7: the one reset channel for every trigger, fired after the release. A skip ran
+        // nothing, and a throw never reaches this line (it propagates out of the try above).
+        if (result.status() != CompactResult.Status.SKIPPED_SMALL) {
+            mon.onCompactCompleted(getName(), result);
+        }
+        return result;
     }
 
     /** The compact run itself — {@code monitor} is already null-safe. */

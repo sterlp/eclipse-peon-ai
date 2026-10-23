@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.compact;
 
 import org.jspecify.annotations.Nullable;
+import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.shared.StringUtil;
 
 /**
@@ -26,5 +27,20 @@ public final class CompactFeedback {
                                    @Nullable String model) {
         return START_PREFIX + agentName + ": " + messageCount + " messages " + estimatedTokens
                 + " tokens (estimate)" + (StringUtil.hasValue(model) ? " using " + model : "");
+    }
+
+    /**
+     * R-CT-7: only a successful compact of the agent the view is showing rebuilds it. A slave's
+     * memory is not the chat's content (its compact shows in the roster instead), and a failure left
+     * the memory untouched — a rebuild would only throw away a transcript that never changed.
+     *
+     * @param result              the compact's outcome; {@code null} when the run died before one
+     * @param compactedAgentName  the agent that compacted, as carried by the event
+     * @param activeAgentName     the agent the view renders, {@code null} when there is none
+     */
+    public static boolean resetsChatView(CompactResult result, String compactedAgentName,
+                                         @Nullable String activeAgentName) {
+        return result != null && result.status() == CompactResult.Status.COMPACTED
+                && activeAgentName != null && activeAgentName.equals(compactedAgentName);
     }
 }

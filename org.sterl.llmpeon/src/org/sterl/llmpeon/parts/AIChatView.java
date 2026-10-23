@@ -30,6 +30,7 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.ui.IWorkingSet;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.AiAgentStatusModel;
+import org.sterl.llmpeon.compact.CompactFeedback;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.agent.NamedAgent;
 import org.sterl.llmpeon.ai.LlmConfig;
@@ -62,7 +63,6 @@ import org.sterl.llmpeon.skill.SkillSource;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.model.SimpleMessage.Type;
 import org.sterl.llmpeon.parts.shell.ShellApprovalService;
-import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 import org.sterl.llmpeon.voice.VoiceConfig;
 import org.sterl.llmpeon.voice.VoiceInputService;
 
@@ -319,10 +319,6 @@ public class AIChatView implements EclipseAiMonitor {
             var ai = aiService.getActiveAgent();
 
             if (m.role() == Type.TOOL) {
-                if (m.message().startsWith(CompactSessionTool.TOOL_MESSAGE_PREFIX)
-                        && m.message().contains(ai.getName()) ) {
-                    refreshChat();
-                }
                 chatHistory.updateLiveResponse(m.message(), 0, "");
             }
 
@@ -330,6 +326,18 @@ public class AIChatView implements EclipseAiMonitor {
             actionsBar.updateCompact(ai.getMemory().getTotalTokenUsed(), aiService.getConfig().getAutoCompactAfter());
             headerBar.refreshRoster();
         });
+    }
+
+    /**
+     * R-CT-7: the compact's chat reset is this one event channel, not a per-trigger special case.
+     * The decision (active agent + COMPACTED) is core policy in {@code CompactFeedback.resetsChatView};
+     * here is only the UI-thread hop — the event arrives on the compact's Job/turn thread.
+     */
+    @Override
+    public void onCompactCompleted(String agentName, CompactResult result) {
+        var active = aiService.getActiveAgent();
+        if (!CompactFeedback.resetsChatView(result, agentName, active == null ? null : active.getName())) return;
+        EclipseUtil.runInUiThread(parent, this::refreshChat);
     }
 
     @Override
@@ -495,8 +503,8 @@ public class AIChatView implements EclipseAiMonitor {
             Exception ex = null;
             CompactResult result = null; // captured before the finally's monitorRef reset (async-state safety)
             try {
+                // the chat rebuild for the active agent comes from onCompactCompleted (R-CT-7)
                 result = active.compact(this);
-                if (result.status() == CompactResult.Status.COMPACTED) EclipseUtil.runInUiThread(parent, this::refreshChat);
             } catch (Exception e) {
                 ex = handleChatException(e);
             } finally {
@@ -508,11 +516,11 @@ public class AIChatView implements EclipseAiMonitor {
     }
 
     /** Per-slave compact from the header roster: compresses exactly the clicked slave (R18 — no
-     *  cascade). Job mechanics mirror {@link #doCompressContext} except the chat is NOT rebuilt —
-     *  the compressor summary streams into the chat live via the monitor and stays; a rebuild
-     *  would replace it with the active agent's (uncompacted-here) memory. Only the roster
-     *  refreshes (context size visibly drops); the R16 skip (< 3 messages) surfaces as
-     *  "Nothing to compact" instead of a silent no-op. */
+     *  cascade). Job mechanics mirror {@link #doCompressContext}, but the chat is NOT rebuilt: the
+     *  summary lives in the slave's memory, not the active agent's, so {@code onCompactCompleted}
+     *  (R-CT-7) keeps its reset for the active agent only. Only the roster refreshes (context size
+     *  visibly drops); the R16 skip (< 3 messages) surfaces as "Nothing to compact" instead of a
+     *  silent no-op. */
     private void doCompressAgent(NamedAgent slave) {
         var agent = slave.agent();
         if (agent.isWorking() || inFlightTurns.get() > 0) return; // defensive — buttons are disabled
@@ -525,9 +533,8 @@ public class AIChatView implements EclipseAiMonitor {
             CompactResult result = null; // captured before the finally's monitorRef reset (async-state safety)
             try {
                 result = agent.compact(this);
-                // NO refreshChat here — a rebuild from the ACTIVE agent's memory would wipe the
-                // streamed slave summary (it lives in the slave's memory, not the active one).
-                // Jon's own compact (doCompressContext / CompactSessionTool) still rebuilds.
+                // no chat rebuild for a slave (R-CT-7) — the reset only fires for the active agent;
+                // the roster refresh makes the context drop visible
                 EclipseUtil.runInUiThread(parent, headerBar::refreshRoster); // context size visibly drops
             } catch (Exception e) {
                 ex = handleChatException(e);

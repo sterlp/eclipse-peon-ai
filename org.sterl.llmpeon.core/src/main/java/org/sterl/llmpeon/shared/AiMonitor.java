@@ -2,6 +2,7 @@ package org.sterl.llmpeon.shared;
 
 import java.time.Duration;
 
+import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.model.SimpleMessage.Type;
 
@@ -42,6 +43,17 @@ public interface AiMonitor {
      * Default is a no-op.
      */
     default void onTokenUsage(TokenUsage usage) {}
+
+    /**
+     * Fired exactly once after a compact that ran — {@code COMPACTED} or {@code FAILED_EMPTY}. Never
+     * for {@code SKIPPED_SMALL} (nothing ran) and never when the compact throws, and always after the
+     * agent released its working state, so a refresh in the reaction sees an idle agent (R-CT-7).
+     * <p>
+     * The agent <b>name</b> (not the instance) is all a listener needs to decide whether it is
+     * affected — e.g. the chat view rebuilds only for its active agent. Arrives on the caller's
+     * thread: UI updates need the UI-thread hop.
+     */
+    default void onCompactCompleted(String agentName, CompactResult result) {}
 
     default void onTool(String message) {
         onChatResponse(new SimpleMessage(Type.TOOL, message));

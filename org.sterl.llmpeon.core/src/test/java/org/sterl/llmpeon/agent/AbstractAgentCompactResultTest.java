@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.agent;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,6 +13,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.sterl.llmpeon.StreamMock;
+import org.sterl.llmpeon.ai.AgentConfig;
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
@@ -272,6 +274,63 @@ class AbstractAgentCompactResultTest {
                 .contains(" tokens (estimate)");
     }
 
+    // R-CT-7
+    // UC-CT-10
+    @Test
+    @Timeout(10)
+    void compactCompletedEventCarriesAgentAndResult() {
+        // GIVEN — a compact that runs and succeeds, its events captured with the working state
+        var succeeded = devAgent(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("WHAT: summary")).build());
+        addThreeMessages(succeeded);
+        var events = new ArrayList<String>();
+
+        // WHEN
+        var result = succeeded.compact(completionMonitor(events, succeeded));
+
+        // THEN — exactly one event naming the agent and its status: the view's reset decision keys on
+        // the name (R-CT-7), and it fires only after the working flag is released
+        assertThat(result.status()).isEqualTo(CompactResult.Status.COMPACTED);
+        assertThat(events).containsExactly(AiDevAgent.NAME + "=COMPACTED working=false");
+
+        // WHEN — a compact that runs but gets no summary
+        var failed = devAgent(r -> ChatResponse.builder().aiMessage(AiMessage.aiMessage("")).build());
+        addThreeMessages(failed);
+        var failedEvents = new ArrayList<String>();
+        failed.compact(completionMonitor(failedEvents, failed));
+
+        // THEN — the failure completes too: its caller has a working state to leave (UC-CT-12 keeps
+        // the chat, the reset policy reads this status)
+        assertThat(failedEvents).containsExactly(AiDevAgent.NAME + "=FAILED_EMPTY working=false");
+    }
+
+    @Test
+    @Timeout(10)
+    void noCompactCompletedOnSkipOrThrow() {
+        // GIVEN — a compact below the minimum: nothing runs
+        var small = devAgent();
+        small.addMessage(UserMessage.from("m1"));
+        small.addMessage(AiMessage.from("m2"));
+        var events = new ArrayList<String>();
+
+        // WHEN
+        assertThat(small.compact(completionMonitor(events, small)).status())
+                .isEqualTo(CompactResult.Status.SKIPPED_SMALL);
+
+        // THEN — no event for a compact that never ran: it would rebuild an untouched chat
+        assertThat(events).isEmpty();
+
+        // WHEN — a compressor call that dies without a response (Log OR throw, R-CC-3)
+        var dying = dyingAgent();
+        assertThatThrownBy(() -> dying.compact(completionMonitor(events, dying)))
+                .isInstanceOf(IllegalStateException.class);
+
+        // THEN — the throw propagates past the event, so no half-run compact reports completion
+        assertThat(events).isEmpty();
+        // AND — the throw still released the working flag: the agent stays usable
+        assertThat(dying.isWorking()).isFalse();
+    }
+
     // R-CC-14
     @Test
     @Timeout(10)
@@ -364,5 +423,35 @@ class AbstractAgentCompactResultTest {
             @Override public void onProblem(String message) { problem.set(message); }
             @Override public boolean isCanceled() { return canceled.get(); }
         };
+    }
+
+    /** Collects every {@code onCompactCompleted} as {@code <agent>=<status> working=<flag at event>}. */
+    private AiMonitor completionMonitor(ArrayList<String> events, AiAgent agent) {
+        return new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onCompactCompleted(String agentName, CompactResult result) {
+                events.add(agentName + "=" + result.status() + " working=" + agent.isWorking());
+            }
+        };
+    }
+
+    private void addThreeMessages(AiDevAgent agent) {
+        agent.addMessage(UserMessage.from("m1"));
+        agent.addMessage(AiMessage.from("m2"));
+        agent.addMessage(UserMessage.from("m3"));
+    }
+
+    /** An agent over three messages whose model call returns null — the service throws (R-CC-3). */
+    private AiDevAgent dyingAgent() {
+        var dyingModel = new ConfiguredChatModel(LlmConfig.builder().model("mock").build(),
+                new StreamMock().buildMock(r -> null)) {
+            @Override
+            public ChatResponse callBlocking(ChatRequest req, AgentConfig agent, AiMonitor monitor) {
+                return null;
+            }
+        };
+        var agent = new AiDevAgent(dyingModel, new ToolService());
+        addThreeMessages(agent);
+        return agent;
     }
 }

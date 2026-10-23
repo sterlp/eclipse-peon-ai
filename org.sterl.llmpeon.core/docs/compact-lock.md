@@ -195,4 +195,13 @@ sichtbar. Sklaven-Compact: **kein** Reset (fremdes Memory — der Roster zeigt d
 - GIVEN der Compact des aktiven Agenten scheitert WHEN der Job endet THEN kein Rebuild und der
   `onProblem`-Hinweis ist sichtbar.
 
+> Umsetzungshinweis: **ein** Kanal statt Trigger-Sonderfälle — `AiMonitor.onCompactCompleted(agentName,
+> result)` feuert genau einmal pro gelaufenem Compact (COMPACTED **und** FAILED_EMPTY, nie bei
+> SKIPPED_SMALL, nie auf Throw) und liegt nach der Freigabe des Arbeits-Flags, damit ein Refresh in
+> der Reaktion den Agenten als idle sieht. Die Entscheidung selbst ist Core-Policy
+> (`CompactFeedback.resetsChatView(result, compactedAgentName, activeAgentName)` = aktiv + COMPACTED),
+> die View tut nur noch den UI-Thread-Hop. Headless getrennt durch `CompactFeedbackTest`
+> (UC-CT-10/11/12) und `AbstractAgentCompactResultTest` (`compactCompletedEventCarriesAgentAndResult`,
+> `noCompactCompletedOnSkipOrThrow`); der eigentliche Chat-Rebuild ist manueller Smoke (unten).
+
 
