@@ -106,6 +106,10 @@ public class DuckDuckGoWebSearchEngine implements WebSearchEngine {
             throw new WebSearchException("rejected (HTTP " + status + " — rate limit or bot check)");
         if (status >= 400) throw new WebSearchException("request failed (HTTP " + status + ")");
         if (status < 200 || status >= 300) throw new WebSearchException("unexpected response (HTTP " + status + ")");
-        return response.body();
+        String body = response.body();
+        // an empty answer is its own cause — calling it a layout drift would make the agent suspect
+        // its own parser for a failure of the transport (R-WEB-12)
+        if (body == null || body.isBlank()) throw new WebSearchException("empty response (HTTP " + status + ")");
+        return body;
     }
 }

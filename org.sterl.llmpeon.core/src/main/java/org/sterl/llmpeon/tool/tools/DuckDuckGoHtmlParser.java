@@ -45,10 +45,24 @@ final class DuckDuckGoHtmlParser {
      * reporting "0 results" for a blocked request is exactly the false negative R-WEB-12 forbids.
      */
     private static List<Hit> classifyEmptyPage(Document doc, String lowerCasedHtml) {
-        if (!doc.select(".anomaly-modal").isEmpty() || lowerCasedHtml.contains("anomaly"))
-            throw new WebSearchException("bot-check page");
+        if (isBotCheck(doc)) throw new WebSearchException("bot-check page");
         if (lowerCasedHtml.contains("no results")) return List.of();
         throw new WebSearchException("layout not recognized (0 parseable results)");
+    }
+
+    /**
+     * The bot check is its modal element, never the word "anomaly" somewhere in the answer: the
+     * endpoint echoes the query into the no-results page, so searching for "anomaly detection" would
+     * otherwise end as a bot-check error instead of the honest zero R-WEB-12 asks for. The live
+     * challenge names it {@code .anomaly-modal__mask} / {@code [data-testid=anomaly-modal]} and puts
+     * "anomaly" only in attributes besides — a bare {@code .anomaly-modal} class selector would never
+     * fire. Only a modal with text is evidence: a shell shipped empty with every page must not kill
+     * the zero path either. HTTP 202 remains the primary bot-check signal, classified on status in
+     * the engine before any parsing.
+     */
+    private static boolean isBotCheck(Document doc) {
+        Element modal = doc.selectFirst("[class*=anomaly-modal], [data-testid=anomaly-modal]");
+        return modal != null && !modal.text().isBlank();
     }
 
     /** A hit without title or without an absolute http(s) target is skipped, not fatal (R-WEB-10). */

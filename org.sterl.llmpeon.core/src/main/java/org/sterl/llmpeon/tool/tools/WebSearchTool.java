@@ -90,13 +90,16 @@ public class WebSearchTool extends AbstractTool {
     /** The numbered blocks, then only the disclosures that apply — each on its own line. */
     private static String render(List<WebSearchOrganicResult> shown, long total, Integer requested) {
         List<String> lines = new ArrayList<>();
+        boolean snippetTruncated = false;
         for (int i = 0; i < shown.size(); i++) {
             WebSearchOrganicResult hit = shown.get(i);
             lines.add((i + 1) + ". " + oneLine(hit.title()));
             lines.add("   " + hit.url());
             String snippet = oneLineOrNull(hit.snippet());
             if (snippet != null) {
-                lines.add("   " + truncate(snippet, SNIPPET_MAX_CHARS));
+                String limited = truncate(snippet, SNIPPET_MAX_CHARS);
+                snippetTruncated |= limited.length() < snippet.length();
+                lines.add("   " + limited);
             }
         }
         if (requested != null && requested > HARD_MAX_RESULTS) {
@@ -104,6 +107,10 @@ public class WebSearchTool extends AbstractTool {
         }
         if (shown.size() < total) {
             lines.add("showing " + shown.size() + " of " + total + " results");
+        }
+        // AGENTS.md: a cut the agent cannot see is a silent limit — the ellipsis alone is not a name
+        if (snippetTruncated) {
+            lines.add("snippets truncated to " + SNIPPET_MAX_CHARS + " characters");
         }
         return String.join(System.lineSeparator(), lines);
     }

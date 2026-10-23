@@ -139,7 +139,8 @@ class WebSearchToolTest {
         String result = tool.webSearch(QUERY, null);
 
         // GIVEN web content hits WHEN rendered THEN one line per field, whitespace collapsed, snippet
-        // capped at 200 chars total (199 + ellipsis), and a hit without snippet simply has no third line
+        // capped at 200 chars total (199 + ellipsis), a hit without snippet simply has no third line,
+        // and the cut itself is named as the last line
         assertThat(result).isEqualTo(String.join(NL, //
                 "1. Eclipse Peon", //
                 "   https://example.org/a", //
@@ -148,8 +149,41 @@ class WebSearchToolTest {
                 "   https://example.org/b", //
                 "   " + "x".repeat(199) + "…", //
                 "3. NoSnippet", //
-                "   https://example.org/c"));
+                "   https://example.org/c", //
+                "snippets truncated to 200 characters"));
         assertThat(result).doesNotContain("x".repeat(200));
+    }
+
+    // R-WEB-10
+    @Test
+    void webSearchDisclosesSnippetTruncation() {
+        List<WebSearchOrganicResult> hits = List.of( //
+                new WebSearchOrganicResult("Over the limit", URI.create("https://example.org/a"), "y".repeat(201), null),
+                new WebSearchOrganicResult("Within the limit", URI.create("https://example.org/b"), "short one", null));
+        tool = new WebSearchTool(new StubEngine(hits, 4));
+
+        String result = tool.webSearch(QUERY, null);
+
+        // GIVEN one snippet beyond 200 characters WHEN rendered THEN the ellipsis is named as a limit
+        // of its own (AGENTS.md: every truncation appears in its own output), after the count footer
+        assertThat(result).endsWith("showing 2 of 4 results" + NL + "snippets truncated to 200 characters");
+    }
+
+    // R-WEB-10
+    @Test
+    void webSearchOmitsTruncationLineWhenAllSnippetsShort() {
+        List<WebSearchOrganicResult> hits = List.of( //
+                new WebSearchOrganicResult("Exactly at the limit", URI.create("https://example.org/a"), "z".repeat(200), null),
+                new WebSearchOrganicResult("Short", URI.create("https://example.org/b"), "short one", null),
+                new WebSearchOrganicResult("No snippet", URI.create("https://example.org/c"), null, null));
+        tool = new WebSearchTool(new StubEngine(hits, 3));
+
+        String result = tool.webSearch(QUERY, null);
+
+        // GIVEN nothing was cut — 200 characters is still whole — WHEN rendered THEN no line claims a
+        // limit that never happened, and no ellipsis appears anywhere
+        assertThat(result).doesNotContain("snippets truncated").doesNotContain("…");
+        assertThat(result).endsWith("   https://example.org/c");
     }
 
     // UC-WEB-10

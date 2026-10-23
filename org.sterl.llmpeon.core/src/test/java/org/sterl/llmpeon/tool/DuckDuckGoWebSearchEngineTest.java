@@ -222,9 +222,12 @@ class DuckDuckGoWebSearchEngineTest {
     void engineReportsBrokenRedirectAsError() {
         serve(302, ""); // no Location — nothing to follow
 
+        // THEN classified by class and cause context — the JDK's own wording of the redirect failure
+        // is not ours to pin, it changes with the JDK
         assertThatThrownBy(() -> engine.search(QUERY))
                 .isInstanceOf(WebSearchException.class)
-                .hasMessageContaining("Invalid redirection");
+                .hasMessageContaining("network")
+                .hasCauseInstanceOf(IOException.class);
     }
 
     // R-WEB-12
@@ -254,11 +257,47 @@ class DuckDuckGoWebSearchEngineTest {
     // R-WEB-12
     @Test
     void engineTreatsBotCheckPageAsError() {
-        serve(200, page("<div class=\"anomaly-modal\"><p>No results — please enter the characters you see</p></div>"));
+        // GIVEN the challenge markup exactly as the live endpoint serves it (verified 2026-10-23): BEM
+        // classes plus data-testid, no bare `.anomaly-modal` class, "anomaly" also in the form action —
+        // and a no-results marker on the same page, so the bot check must still win (R-WEB-12 order)
+        serve(200, page("""
+                <form id="challenge-form" action="//duckduckgo.com/anomaly.js?q=eclipse+peon+ai" method="POST">
+                  <div class="anomaly-modal__mask"><div class="anomaly-modal__modal" data-testid="anomaly-modal">
+                    <div class="anomaly-modal__title">Unfortunately, bots use DuckDuckGo too.</div>
+                  </div></div>
+                </form>
+                <div class="no-results">No results found</div>"""));
 
         assertThatThrownBy(() -> engine.search(QUERY))
                 .isInstanceOf(WebSearchException.class)
                 .hasMessageContaining("bot-check page");
+    }
+
+    // R-WEB-12
+    @Test
+    void zeroResultsPageEchoingAnomalyQueryStaysEmpty() {
+        // GIVEN an honest zero whose echoed query contains the word "anomaly"
+        serve(200, page("<div class=\"no-results\">No results for <b>anomaly detection</b></div>"));
+
+        // WHEN
+        WebSearchResults results = engine.search("anomaly detection");
+
+        // THEN the zero stays a zero — a word the page echoes back is not a bot check
+        assertThat(results.results()).isEmpty();
+        assertThat(results.searchInformation().totalResults()).isZero();
+    }
+
+    // R-WEB-12
+    @Test
+    void engineReportsEmptyBodyAsError() {
+        // GIVEN a 2xx answer with nothing in it WHEN searched THEN the named cause is the empty
+        // answer, not a layout we failed to read
+        serve(200, "");
+
+        assertThatThrownBy(() -> engine.search(QUERY))
+                .isInstanceOf(WebSearchException.class)
+                .hasMessageContaining("empty response (HTTP 200)")
+                .hasMessageNotContaining("layout");
     }
 
     // R-WEB-12
