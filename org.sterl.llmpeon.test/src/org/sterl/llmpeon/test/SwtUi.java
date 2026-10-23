@@ -3,6 +3,8 @@ package org.sterl.llmpeon.test;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
+import org.eclipse.ui.PlatformUI;
+import org.junit.Assume;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 
 /**
@@ -10,6 +12,23 @@ import org.sterl.llmpeon.parts.shared.EclipseUtil;
  * ({@link AbstractSwtUiTest}) and integration tests that deliberately do not extend it.
  */
 public final class SwtUi {
+
+    /**
+     * Skips the calling test (JUnit Assume) when no workbench display is reachable. Headless CI
+     * runs the test bundle with <code>useUIHarness=false</code>, where {@code PlatformUI} has no
+     * workbench and {@link #ui} can only fail — the assumption turns that into a skip. In a PDE-UI
+     * launch it holds and the test stays fully effective.
+     */
+    public static void assumeUiAvailable() {
+        try {
+            var workbench = PlatformUI.getWorkbench();
+            if (workbench == null || workbench.getDisplay() == null) {
+                throw new IllegalStateException("no workbench instance or display");
+            }
+        } catch (RuntimeException noWorkbench) {
+            Assume.assumeNoException("no workbench display available — SWT test skipped", noWorkbench);
+        }
+    }
 
     /** Runs the given code on the workbench UI thread and returns its result (or throws). */
     public static <T> T ui(Supplier<T> fn) {
@@ -19,7 +38,7 @@ public final class SwtUi {
             Thread.currentThread().interrupt();
             throw new AssertionError("interrupted waiting for UI thread", e);
         } catch (Exception e) {
-            throw new AssertionError("UI thread call failed", e);
+            throw new AssertionError("UI thread call failed: " + e.getMessage(), e);
         }
     }
 

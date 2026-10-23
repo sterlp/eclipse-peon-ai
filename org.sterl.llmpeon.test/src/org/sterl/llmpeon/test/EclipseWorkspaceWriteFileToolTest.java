@@ -476,6 +476,8 @@ public class EclipseWorkspaceWriteFileToolTest extends AbstractIntegrationTest {
     public void test_updateOpenFile_denied_reachesCallerVerbatim() {
         // R5 (org.sterl.llmpeon.core/docs/write-path-validator.md): a WriteValidator denial on the editor path must
         // arrive as the plain IllegalArgumentException — no "Timeout", no "ExecutionException"
+        // guards every SwtUi.ui call below — headless CI has no workbench (see SwtUi.assumeUiAvailable)
+        SwtUi.assumeUiAvailable();
         // GIVEN a workspace file, open and ACTIVE in the editor; the tool is restricted to docs paths
         var name = "updateDenied_" + System.nanoTime() + ".txt";
         var fileName = "/test_project/" + name;
