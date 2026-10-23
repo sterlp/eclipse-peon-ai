@@ -14,6 +14,7 @@ import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.compact.CompactFeedback;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
@@ -157,7 +158,7 @@ class AbstractAgentPreTurnCompactTest {
 
         // THEN — nothing fired (strict >), no event line, the fresh message is in the memory
         assertThat(compactCalls.get()).isZero();
-        assertThat(toolLines).noneMatch(l -> l.contains("Pre-turn compact") || l.contains("🗜 Compressing"));
+        assertThat(toolLines).noneMatch(l -> l.contains("Pre-turn compact") || l.contains(CompactFeedback.START_PREFIX));
         assertThat(agent.hasUserText("fresh message")).isTrue();
     }
 

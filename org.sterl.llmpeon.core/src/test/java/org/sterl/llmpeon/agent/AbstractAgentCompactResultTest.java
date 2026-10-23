@@ -16,6 +16,7 @@ import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.compact.CompactConstants;
+import org.sterl.llmpeon.compact.CompactFeedback;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
@@ -243,10 +244,11 @@ class AbstractAgentCompactResultTest {
         assertThat(responses).noneMatch(m -> m.message() != null && m.message().contains("WHAT: compressor summary"));
     }
 
-    // R-CC-14
+    // R-CT-6
+    // UC-CT-9
     @Test
     @Timeout(10)
-    void startLineEmittedByAgent() {
+    void compactStartLineNamesAgent() {
         // GIVEN — a real history (the guard passes) and a monitor capturing the tool lines
         var agent = devAgent();
         agent.addMessage(UserMessage.from("m1"));
@@ -264,7 +266,10 @@ class AbstractAgentCompactResultTest {
         // THEN — exactly ONE start line, emitted by the agent (after the guard, before the clear)
         assertThat(result.status()).isEqualTo(CompactResult.Status.COMPACTED);
         assertThat(toolLines).hasSize(1);
-        assertThat(toolLines.getFirst()).startsWith("🗜 Compressing conversation 3 messages");
+        // AND — it names the agent, so a compact of any trigger is attributable (R-CT-6)
+        assertThat(toolLines.getFirst())
+                .startsWith(CompactFeedback.START_PREFIX + AiDevAgent.NAME + ": 3 messages ")
+                .contains(" tokens (estimate)");
     }
 
     // R-CC-14

@@ -9,7 +9,7 @@
 - **✅ Story 1 webSearch FERTIG (2026-10-23 Nachtzyklus):** 4 Inkremente — `ba6db4dc` (Engine+Parser), `8873d6c6` (Tool), `b5e7cd17` (Registrierung+Homepage), `6f309afc` (Review-Fixes F1–F5). Core 1294/0/0/0, Plugin 408/0/0, Lint WEB-Scope sauber. Da-Dok CONCERNS → alle Findings behoben (Bot-Check an Selektor gebunden — echter Selektor `div.anomaly-modal__modal[data-testid=anomaly-modal]`, Live-Smoke 202). Docs geflippt ✅ (web-tools.md, -architektur.md, core/docs/index.md). ADR-0074. Offen für Paul: ⏳ Snippet-Disclosure-Zeile (open-points). planImplemented/Archivierung durch Da Mek im Close-Commit.
 - **Story-Reihenfolge** (je Voll-Loop: plan → Jon-Abnahme → build → Da-Dok-Review → ❌→✅ + lintDocsAndTests-Gate):
   1. **webSearch** — R-WEB-10…12, `org.sterl.llmpeon.core/docs/web-tools.md` + `-architektur.md`. Details: Sektion "Story 3" unten. Plan-Risiko: community-DDG-Modul zu langchain4j 1.22.0 passen (pom.xml:14); im Aggregator-Checkout nur google/tavily/searchapi → Fallback dünner eigener DDG-Client.
-  2. **Compact-UI-Sichtbarkeit** — R-CT-4…7 (`compact-lock.md`) + R-CC-14 (`compact.md`). 🟡 Compact-Status Roster; onChatMessage→Caller-Monitor (Test `compressorChatEventsDoNotReachAgentMonitor` verschärfen); Agent-Name in AbstractAgent.java:406-408; Chat-Reset bei aktivem Agent bei ALLEN Triggern (heute nur AIChatView.java:499 Button-Pfad); stale Kommentar AIChatView.java:512-513 im Inkrement fixen.
+  2. **Compact-UI-Sichtbarkeit** — R-CT-4…7 (`compact-lock.md`) + R-CC-14 (`compact.md`). 🟡 Compact-Status Roster; onChatMessage→Caller-Monitor (Tests `compressorRequestStartReachesCallerMonitor`/`compressorStreamingStaysLogOnly` — alt ersetzt, Inc 2 `aece6f1e`); Agent-Name in AbstractAgent.java:406-408; Chat-Reset bei aktivem Agent bei ALLEN Triggern (heute nur AIChatView.java:499 Button-Pfad); stale Kommentar AIChatView.java:512-513 im Inkrement fixen.
   3. **Skill-Roots** — R17 (`project-skills.md`), 3 Roots, Präzedenz Projekt > `~/.agents/skills` > `~/.peon/skills`; `.peon/skills` deprecated aber gelesen+SCHREIBBAR; Scaffold `.agents`-Empfehlung; Scaffold-Migration auf User-Wunsch; Homepage `setup/agents-and-skills.md:78` im Inkrement.
 - Paul nicht erreichbar → Abnahme durch Jon (memory#39, Inkrement-Gating). Bericht nach jeder Story.
 
@@ -72,7 +72,7 @@
   - `compact-lock.md` R-CT-5 (Compressor working sichtbar, UC-CT-7/8) · R-CT-6 (Agent-Name,
     UC-CT-9) · R-CT-7 (Chat-Reset aktiver Agent, UC-CT-10/11/12).
   - open-points ❓ „Compact-Button ohne Monitor" (2026-09-29) — als Spezifikation aufgelöst, entfernt.
-- **Nächster Schritt:** Plan + Build über Da Thinka/Da Mek (Tests: `compressorChatEventsDoNotReachAgentMonitor`
+- **Nächster Schritt:** Plan + Build über Da Thinka/Da Mek (Tests: `compressorRequestStartReachesCallerMonitor`
   verschärfen, UI-Trigger teilweise manuell). Kein ADR — Entscheidung folgt meiner Empfehlung.
 - **Status (Paul 2026-10-23):** 🟡-Roster-Status BESTÄTIGT. **NICHT bauen** — Paul hat noch
   2 weitere Stories, danach Planung dieses Inkrements.

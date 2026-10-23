@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.agent.model.TaggedResult;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.compact.CompactFeedback;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.SimpleContextItem;
 import org.sterl.llmpeon.shared.AiMonitor;
@@ -266,7 +267,7 @@ public class AiDeveloperAgentTest {
         assertThat(monitor.toolLines).noneMatch(l -> l.contains("Auto Compact before execution"));
         assertThat(subject.getMemory().containsMessage("first task")).isTrue();
         // AND — no direct in-loop compact (77k < 80k budget — the band only hints)
-        assertThat(monitor.toolLines).noneMatch(l -> l.contains("Compressing conversation"));
+        assertThat(monitor.toolLines).noneMatch(l -> l.contains(CompactFeedback.START_PREFIX));
     }
 
     @Test

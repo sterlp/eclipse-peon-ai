@@ -20,7 +20,7 @@ Token, dann ein Leerzeichen, dann der bestehende Text.
 |---|---|---|---|
 | 🔍 | Search/Grep | `🔍 grep '…'` / `🔍 disk grep '…'` | ✅ gebaut (Paul + WIP Eclipse-Seite) |
 | 📜 | Read (Datei lesen) — **Scope: exakt `diskReadFile` + `eclipseReadFile`** (List/Console/WebFetch bewusst symbol-frei, Plan §3.6) | `📜 Reading …` | ✅ gebaut (S1, rot-erst core+PDE) |
-| 🗜 | Compact | Compact-Session (Result + onTool, COMPACTED/SKIPPED/FAILED) + Start-Zeile `🗜 Compressing conversation …` | ✅ gebaut (S2); **S3 offen:** PoDelegate/AgentsTool-Compact-Pfade erst nach Pauls WIP-Merge; präexistent: `ToolService:246` „🗜 Compact hint" (R-CC-Ära) |
+| 🗜 | Compact | Compact-Session (Result + onTool, COMPACTED/SKIPPED/FAILED) + Start-Zeile `🗜 Compressing <Agent>: 3 messages 124 tokens (estimate)` — Name seit R-CT-6 (2026-10-23), eine Implementierung in `CompactFeedback.startLine` | ✅ gebaut (S2); **S3 offen:** PoDelegate/AgentsTool-Compact-Pfade erst nach Pauls WIP-Merge; präexistent: `ToolService:246` „🗜 Compact hint" (R-CC-Ära) |
 
 **Regeln:**
 - Ein Symbol nur für EINE Operation; Operationen ohne Symbol (z. B. Write) bleiben symbol-frei,

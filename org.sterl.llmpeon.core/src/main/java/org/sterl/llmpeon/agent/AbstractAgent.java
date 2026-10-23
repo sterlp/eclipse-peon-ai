@@ -15,6 +15,7 @@ import org.sterl.llmpeon.agent.model.TaggedResult;
 import org.sterl.llmpeon.ai.AgentConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.compact.CompactConstants;
+import org.sterl.llmpeon.compact.CompactFeedback;
 import org.sterl.llmpeon.compact.CompactService;
 import org.sterl.llmpeon.compact.HandleToolLoopCompactComponent;
 import org.sterl.llmpeon.exception.ExceptionUtil;
@@ -423,9 +424,8 @@ public abstract class AbstractAgent implements AiAgent {
             // R-CC-14: the service emits no lines itself — the start line is emitted by the agent
             // (all triggers funnel through here); the service mirrors only the compressor's request
             // start to this monitor so the caller's UI shows its working state (R-CT-5)
-            monitor.onTool("🗜 Compressing conversation " + messages.size() + " messages "
-                    + ChatMessageUtil.estimateTokens(messages) + " tokens (estimate)"
-                    + (compactCfg.getModel() == null ? "" : " using " + compactCfg.getModel()));
+            monitor.onTool(CompactFeedback.startLine(getName(), messages.size(),
+                    ChatMessageUtil.estimateTokens(messages), compactCfg.getModel())); // R-CT-6
             var result = new CompactService(configuredModel).compact(
                     getName(), messages, memory.tokenDiagnosis(), requestTokens, monitor);
 
