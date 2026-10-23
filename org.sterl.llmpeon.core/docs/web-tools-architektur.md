@@ -1,7 +1,6 @@
 # Web-Tools Architektur
 
-> **Status:** ❌   **Fachdoc:** [web-tools.md](web-tools.md)   **ADRs:** — (keine besondere Wahl nötig;
-> Cache = schlichte LRU im Tool-Instanz-Feld)
+> **Status:** ✅ (webSearch 2026-10-23, Nachtzyklus)   **Fachdoc:** [web-tools.md](web-tools.md)   **ADRs:** [0074](../../docs/adr/adr-0074-websearch-eigener-ddg-client.md) (eigener DDG-Client statt Community-Modul)
 
 ## Verantwortung & Abgrenzung
 
@@ -21,7 +20,7 @@
 |---|---|---|
 | `WebFetchTool` (bestehend) | fetch→Markdown→Cache→Zeilenfenster; Cache als Instanz-Feld (LRU 16) | nein |
 | `WebGetTool` (bestehend) | URL→Disk-Download; `QualifiedPathValidator.requireQualifiedDisk` + `validateWrite`; Return = Status/Größe/Pfad; **gated hinter `diskToolsEnabled`** (R-WEB-8) | **ja** (Sub-Agent-Filter greift) |
-| `WebSearchTool` (NEU, R-WEB-10) | Query→DuckDuckGo→Trefferliste (Titel/URL/Snippet, max 8, ehrliche Disclosure) in den Kontext; **besitzt den Such-Vorgang** — der Page-Inhalt bleibt draußen, Nachlesen via WebFetchTool | nein |
+| `WebSearchTool` (R-WEB-10) | Query→DuckDuckGo→Trefferliste (Titel/URL/Snippet, max 8, ehrliche Disclosure) in den Kontext; **besitzt den Such-Vorgang** — der Page-Inhalt bleibt draußen, Nachlesen via WebFetchTool | nein |
 
 | Richtung | Gegenüber | Wofür |
 |---|---|---|

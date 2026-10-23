@@ -19,3 +19,11 @@ Leerergebnissen unterscheidbar, „showing N of M").
   null neue JARs, null OSGi-Änderung.
 - Späterer Wechsel auf das Modul bleibt möglich (Interface-Implementierung trennt
   Tool von Transport).
+
+**Fallstricke (im Bau 2026-10-23 verifiziert, gegen Vergessen):**
+- JDK `HttpClient.send` wirft `InterruptedException`, wenn das Interrupt-Flag schon **vor** dem
+  Call gesetzt ist — der Interrupt-Guard ist kein toter Zweig.
+- Redirect-Loop wird vom JDK-Client nach 5 Hops als 302-Response zurückgegeben (keine Exception)
+  → Engine braucht einen eigenen „unexpected response (HTTP n)"-Zweig.
+- 302 ohne Location verlässt den JDK-Client als `IOException: Invalid redirection` → Netzfehler-Zweig,
+  kein eigener Case nötig.

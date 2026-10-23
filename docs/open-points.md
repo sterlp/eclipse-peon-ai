@@ -28,6 +28,14 @@ Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.
   optional dahinter, aber unzuverlässig. **Paul entscheidet, ob/wann gebaut wird.**
   Ticket-Entwurf (kopierbar, ohne interne Links): [issue-163-tool-calls-retten.md](issue-163-tool-calls-retten.md)
 
+## 2026-10-23 — webSearch: Snippet-Kappungs-Disclosure (Story 1, Nachtzyklus)
+
+- ⏳ **Snippet-Kürzung ohne extra Disclosure:** Da-Dok-Review (F5) fragte an, ob das `…` allein
+  genügt. Ich habe als PO aus der AGENTS.md-Regel („jede Truncation ist im eigenen Output
+  benannt") abgeleitet: bei mindestens einer gekürzten Snippet-Zeile kommt eine Footer-Zeile
+  `snippets truncated to 200 characters` (gebaut, getestet, `// R-WEB-10`). **Rückversicherung:**
+  Paul bestätigt die Zeile — oder will sie wieder raus (dann wäre `…` die alleinige Kennzeichnung).
+
 ## 2.14.0 (2026-10-19) — Jon-Entscheidungen zur Rückversicherung
 
 - ⏳ **R-CC-19 (Zähler = Provider-Input + Schätzung der angehängten Messages):** von Jon entschieden
