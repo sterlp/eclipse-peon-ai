@@ -18,6 +18,7 @@ import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 import org.sterl.llmpeon.tool.tools.DiskGrepTool;
 import org.sterl.llmpeon.tool.tools.WebFetchTool;
+import org.sterl.llmpeon.tool.tools.WebSearchTool;
 
 import dev.langchain4j.model.chat.response.ChatResponse;
 
@@ -71,6 +72,7 @@ public class AiScaffoldAgent extends org.sterl.llmpeon.agent.AbstractAgent {
         toolService.addTool(diskFileWriteTool);
         toolService.addTool(diskGrepTool);
         toolService.addTool(new WebFetchTool());
+        toolService.addTool(new WebSearchTool());
     }
 
     @Override

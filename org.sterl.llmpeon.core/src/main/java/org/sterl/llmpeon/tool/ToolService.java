@@ -21,6 +21,7 @@ import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 import org.sterl.llmpeon.tool.tools.SearchAgentTool;
 import org.sterl.llmpeon.tool.tools.ShellTool;
 import org.sterl.llmpeon.tool.tools.WebFetchTool;
+import org.sterl.llmpeon.tool.tools.WebSearchTool;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -75,11 +76,13 @@ public class ToolService {
     }
 
     /**
-     * @param withDefaults if true, auto-registers WebFetchTool, SearchAgentTool, ShellTool, CompactSessionTool
+     * @param withDefaults if true, auto-registers the always-on tool set: WebFetchTool,
+     *        WebSearchTool, SearchAgentTool, ShellTool, CompactSessionTool
      */
     public ToolService(boolean withDefaults) {
         if (withDefaults) {
             addTool(new WebFetchTool());
+            addTool(new WebSearchTool());
             addTool(new SearchAgentTool(this));
             addTool(new ShellTool());
             addTool(new CompactSessionTool());
