@@ -28,6 +28,11 @@ description: llmpeon repo build & test procedure — core→plugin jar trap, plu
   `org.sterl.llmpeon.test` in Eclipse so they pick up the changed jar. Without `-am` the copy
   resolves core from a stale `~/.m2` copy → phantom "cannot be resolved" errors for brand-new core
   symbols. (A full `mvn clean install` at the root also works but is much slower.)
+- **Core single-class gate works offline WITHOUT `-am` (hit 2026-10-23, docs-slim cycle):** core is
+  plain Maven — `mvn -o -B clean test -pl org.sterl.llmpeon.core -Dtest='ClassA,ClassB'` runs exactly
+  those classes (evidence: `DocRootDiscoveryTest,DocsLinterToolTest` → BUILD SUCCESS, 27/0). No
+  `-am`, no reactor needed. KEEP `clean` — without it the m2e auto-build/Lombok trap below yields
+  phantom testCompile failures.
 
 ## Plugin tests (OSGi, JUnit 4)
 
