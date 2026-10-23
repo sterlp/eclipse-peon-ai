@@ -74,21 +74,23 @@ The first matching file in the project root is used, checked in this order:
 
 ## Skills
 
-Skills are reusable instruction sets shared across all your projects.
-They live in the `skills` subfolder of your config directory (default `~/.peon/skills`); set the
-base directory in **Window > Preferences > AI Peon > Peon Configuration** → *Config directory*.
-A separate Eclipse project works fine — just point the preference at the folder.
-
-Structure:
+Skills are reusable instruction sets shared across all your projects. Put them in
+**`~/.agents/skills`** — one folder for your whole user account, the same location other agent
+tools use. Create it and you are done, there is nothing to configure:
 
 ```
-my-skills/
+~/.agents/skills/
 ├── eclipse-ifile-paths/
 │   └── SKILL.md
 ├── spring-boot-patterns/
 │   └── SKILL.md
 └── ...
 ```
+
+Skills in the `skills` subfolder of your config directory (default `~/.peon/skills`) are still
+loaded, but that location is **deprecated**: existing skills keep working, new ones belong in
+`~/.agents/skills`. Its base directory is **Window > Preferences > AI Peon > Peon Configuration**
+→ *Config directory*. A separate Eclipse project works fine — just point the preference at the folder.
 
 At startup, Peon AI reads only the `name` and `description` from each skill (~100 tokens
 per skill). The full content is loaded only when the LLM decides the task matches.
@@ -122,12 +124,24 @@ my-project/
 
 Good for knowledge that belongs to one project only: its build quirks, its conventions.
 
-A project skill with the same name as a config skill overrides the config one — in that
-project only. Switch to a project without the skill and the config version comes back.
+Skill names are unique — the closest location wins:
 
-When you ask Peon AI to create a skill, it asks in chat where it should live — the
-project or the shared config — and recommends based on the skill's scope. Skills it
-creates for a project land in that project's `.agents/skills`.
+```
+my-project/.agents/skills   ← wins over both user roots
+~/.agents/skills
+~/.peon/skills              ← deprecated, still read
+```
+
+A project skill with the same name as a user skill overrides the user one — in that
+project only. Switch to a project without the skill and the user version comes back.
+
+When you ask Peon AI to create a skill, it asks in chat where it should live — your
+`~/.agents/skills` or the open project's `.agents/skills` — and recommends based on the skill's
+scope. It offers the deprecated `~/.peon/skills` only if you name it.
+
+You can also ask it to migrate a skill out of `~/.peon/skills`: it copies it to
+`~/.agents/skills`, leaving the original in place, and picks the new one up right away — so the
+copy takes precedence while both folders stay readable.
 
 In the UI, project skills are easy to spot: the status line counter reads
 `5 skills (2 project)`, the skills menu lists them in their own section under the

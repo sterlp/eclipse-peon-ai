@@ -2,6 +2,7 @@ package org.sterl.llmpeon.parts.ai;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -88,6 +89,12 @@ public class PeonAiService {
     private ToolService sharedToolService;
     private AiScaffoldAgent scaffoldAgent;
 
+    /**
+     * R17: the user skills root {@code ~/.agents/skills}. Fixed at the home dir (never a
+     * preference) — the deprecated {@code <configDir>/skills} root follows the preference.
+     */
+    private final Path agentsSkillsDir = Path.of(System.getProperty("user.home")).resolve(SkillService.USER_SKILLS_DIR);
+
     private SkillService skillService;
     private CommandService commandService;
 
@@ -143,8 +150,7 @@ public class PeonAiService {
 
         var config              = configuredModel.getConfig();
         this.configuredModel    = configuredModel;
-        // transitional until inc 2: no user root yet
-        skillService            = new SkillService();
+        skillService            = newSkillService(agentsSkillsDir);
         commandService          = new CommandService();
         sharedTools             = new SharedToolsComponent(skillService, commandService);
         sharedToolService       = sharedTools.toolService();
@@ -173,9 +179,9 @@ public class PeonAiService {
 
         // R15: a successful scaffold disk write deterministically refreshes the skill view.
         scaffoldAgent = new AiScaffoldAgent(configuredModel, skillService);
-        // ADR-0043: the scaffold may write into the .agents/skills dir of every open project
-        // (read at validate time, R10) — in addition to the config dir.
-        scaffoldAgent.setProjectSkillsRootsSupplier(this::projectSkillsRoots);
+        // ADR-0043: the scaffold may write into the user skills root and into the .agents/skills
+        // dir of every open project (read at validate time, R10/R17) — in addition to the config dir.
+        scaffoldAgent.setAdditionalWriteRootsSupplier(this::additionalSkillsWriteRoots);
         scaffoldAgent.addTool(new SkillTool(skillService));
         // ReloadConfigTool needs agentService (already created) + skillService + commandService + config.
         // Its callback fires after the reloadAgents() inside the tool, so wrap it: re-bake the Env
@@ -319,6 +325,18 @@ public class PeonAiService {
         return changed;
     }
 
+    /**
+     * ADR-0043 + R17: the writable skill roots at validate time — the user root, then the
+     * {@code .agents/skills} dir of every open project. The scaffold only learns which roots are
+     * writable, never where they came from.
+     */
+    private List<Path> additionalSkillsWriteRoots() {
+        var roots = new ArrayList<Path>();
+        roots.add(agentsSkillsDir);
+        roots.addAll(projectSkillsRoots());
+        return roots;
+    }
+
     /** ADR-0043: the {@code .agents/skills} dir of every open project, read at validate time (R10). */
     private List<Path> projectSkillsRoots() {
         return EclipseUtil.openProjects().stream()
@@ -326,6 +344,15 @@ public class PeonAiService {
                 .filter(Objects::nonNull)
                 .map(diskPath -> Path.of(diskPath).resolve(SkillService.PROJECT_SKILLS_DIR))
                 .toList();
+    }
+
+    /** R17: the user root loads eagerly with the service — an I/O failure is fatal, reported like {@link #updateConfig(LlmConfig)}. */
+    private static SkillService newSkillService(Path userSkillsDir) {
+        try {
+            return new SkillService(userSkillsDir);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load skills from " + userSkillsDir, e);
+        }
     }
 
     // -------------------------------------------------------------------------

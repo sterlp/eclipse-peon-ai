@@ -2150,6 +2150,29 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
     }
 
     /**
+     * R17 wiring guard (production wiring, not the component seam): PeonAiService as the composition
+     * root injects the user skills root {@code ~/.agents/skills} and keeps the deprecated
+     * {@code <configDir>/skills} plus the project root — all three, in ascending precedence.
+     * Paths only: the real {@code ~/.agents/skills} is never read or written.
+     */
+    // R17
+    @Test
+    public void skillService_wiresThreeRoots() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        // GIVEN the deprecated root set through the config path, the project root through setProject
+        aiService.updateConfig(aiService.getConfig());
+        aiService.setProject(project);
+
+        // THEN skillRoot() carries exactly the three responsible roots, ascending precedence
+        var legacyRoot = aiService.getConfig().getConfigDir().resolve(LlmConfig.SKILL_DIRECTORY);
+        var userRoot = Path.of(System.getProperty("user.home")).resolve(SkillService.USER_SKILLS_DIR);
+        var projectRoot = Path.of(JdtUtil.diskPathOf(project)).resolve(SkillService.PROJECT_SKILLS_DIR);
+
+        assertEquals(List.of(legacyRoot, userRoot, projectRoot), aiService.getSkillService().skillRoots());
+    }
+
+    /**
      * ADR-0042 (R2c, pinning) — service-level contract: the project skill slot is replaced ONLY by
      * {@code setProject}. The pin action itself never calls it (AIChatView.onPinChange only flips
      * the pin flag) and a selection while pinned is guarded in the view (manual UI territory), so
