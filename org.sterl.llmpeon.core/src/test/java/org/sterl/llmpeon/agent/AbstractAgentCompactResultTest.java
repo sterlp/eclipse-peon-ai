@@ -218,6 +218,37 @@ class AbstractAgentCompactResultTest {
         assertThat(toolLines).hasSize(1);
     }
 
+    // R-CT-5
+    // UC-CT-7
+    @Test
+    @Timeout(10)
+    void requestStartSeenBeforeCompressorCall() {
+        // GIVEN — a caller monitor that flags the request start, and a compressor mock reading that
+        // flag at the moment its own call starts
+        var startSeen = new AtomicBoolean();
+        var seenAtCallTime = new AtomicReference<Boolean>();
+        var cm = new StreamMock().buildMock(r -> {
+            seenAtCallTime.set(startSeen.get());
+            return ChatResponse.builder().aiMessage(AiMessage.aiMessage("WHAT: summary")).build();
+        });
+        var agent = new AiDevAgent(
+                new ConfiguredChatModel(LlmConfig.builder().model("mock").build(), cm), new ToolService());
+        var monitor = new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onChatMessage(int iteration, ChatRequest.Builder request) { startSeen.set(true); }
+        };
+        addThreeMessages(agent);
+
+        // WHEN
+        var result = agent.compact(monitor);
+
+        // THEN — the mirror happens BEFORE the blocking call: the caller's working state is up while
+        // the (minutes-long) compressor call is still ahead. The count-based test above stays green
+        // when the mirror moves behind the call — this one is what pins the order.
+        assertThat(result.status()).isEqualTo(CompactResult.Status.COMPACTED);
+        assertThat(seenAtCallTime.get()).isTrue();
+    }
+
     // R-CC-14
     // UC-CT-8
     @Test
@@ -289,9 +320,10 @@ class AbstractAgentCompactResultTest {
         var result = succeeded.compact(completionMonitor(events, succeeded));
 
         // THEN — exactly one event naming the agent and its status: the view's reset decision keys on
-        // the name (R-CT-7), and it fires only after the working flag is released
+        // the name (R-CT-7), it fires only after the working flag is released, and it reports no turn
+        // — this compact ran standalone, so the view rebuilds immediately
         assertThat(result.status()).isEqualTo(CompactResult.Status.COMPACTED);
-        assertThat(events).containsExactly(AiDevAgent.NAME + "=COMPACTED working=false");
+        assertThat(events).containsExactly(AiDevAgent.NAME + "=COMPACTED working=false within=false");
 
         // WHEN — a compact that runs but gets no summary
         var failed = devAgent(r -> ChatResponse.builder().aiMessage(AiMessage.aiMessage("")).build());
@@ -301,7 +333,41 @@ class AbstractAgentCompactResultTest {
 
         // THEN — the failure completes too: its caller has a working state to leave (UC-CT-12 keeps
         // the chat, the reset policy reads this status)
-        assertThat(failedEvents).containsExactly(AiDevAgent.NAME + "=FAILED_EMPTY working=false");
+        assertThat(failedEvents).containsExactly(AiDevAgent.NAME + "=FAILED_EMPTY working=false within=false");
+    }
+
+    // R-CT-7
+    // UC-CT-10
+    @Test
+    @Timeout(10)
+    void inTurnCompactReportsTurnFlag() {
+        // GIVEN — a turn whose model call compacts the same agent while the turn holds the working
+        // flag: that is exactly where the pre-turn, in-loop and tool triggers run
+        var events = new ArrayList<String>();
+        var agentRef = new AtomicReference<AiDevAgent>();
+        var monitor = new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onCompactCompleted(String agentName, CompactResult result, boolean withinTurn) {
+                events.add(agentName + "=" + result.status() + " within=" + withinTurn);
+            }
+        };
+        var compactedFromTheCall = new AtomicBoolean();
+        var agent = devAgent(r -> {
+            if (compactedFromTheCall.compareAndSet(false, true)) {
+                agentRef.get().compact(monitor); // nested — the turn already owns the flag (R-CT-2)
+            }
+            return ChatResponse.builder().aiMessage(AiMessage.aiMessage("summary")).build();
+        });
+        agentRef.set(agent);
+        addThreeMessages(agent);
+
+        // WHEN — one turn
+        agent.call("go", AiMonitor.NULL_MONITOR);
+
+        // THEN — the event reports the turn: the compact's CAS failed against the turn's flag, and the
+        // view defers its rebuild on this very flag, because until that turn's onCallStart the fresh
+        // message is not in the memory a rebuild would read (F1)
+        assertThat(events).containsExactly(AiDevAgent.NAME + "=COMPACTED within=true");
     }
 
     @Test
@@ -425,12 +491,13 @@ class AbstractAgentCompactResultTest {
         };
     }
 
-    /** Collects every {@code onCompactCompleted} as {@code <agent>=<status> working=<flag at event>}. */
+    /** Collects every {@code onCompactCompleted} as {@code <agent>=<status> working=<flag at event> within=<turn flag>}. */
     private AiMonitor completionMonitor(ArrayList<String> events, AiAgent agent) {
         return new AiMonitor() {
             @Override public void onChatResponse(SimpleMessage m) {}
-            @Override public void onCompactCompleted(String agentName, CompactResult result) {
-                events.add(agentName + "=" + result.status() + " working=" + agent.isWorking());
+            @Override public void onCompactCompleted(String agentName, CompactResult result, boolean withinTurn) {
+                events.add(agentName + "=" + result.status() + " working=" + agent.isWorking()
+                        + " within=" + withinTurn);
             }
         };
     }

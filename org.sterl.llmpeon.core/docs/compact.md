@@ -220,15 +220,21 @@ Stack; LLM erfährt nichts, Header hängt ([header-state-leak.md](../../org.ster
 - Die größere Konsolidierung (Memory-Zähler vs. Estimate — R-CC-10-Messwerte als Grundlage) folgt
   nach den Messwerten als eigener Punkt.
 
-### R-CC-14 ✅ — Monitor-freier `CompactService`, Emission gehört den Tools/Callern
+### R-CC-14 ✅ — Monitor-freier `CompactService`, Emission gehört den Tools/Callern (Feedback-Teil 2026-10-23 revidiert → R-CT-5…7)
 
 - `CompactService.compact(...)` wird **monitor-frei** — pure Service-Call, Return = `CompactResult`.
   Der Service ist entsprechend „offen", dass die Tools sauber reporten können (auch fürs Testing).
 - Die Engine feuert kein `onTool` mehr; **Start- und Ergebnis-Emission macht der jeweilige Caller**
   über die bestehende Tool-/Monitor-Mechanik (Button, `compactSession`, PoDelegateTool,
-  Auto-Compact — alle funneln durch `AbstractAgent.compact`).
-- Interne Chat-Events des Compressor-Calls (`onChatMessage`/`onChatResponse`) gehen **nur ins Log**
-  — die UI braucht die Streaming-Preview des internen Calls nicht.
+  Auto-Compact — alle funneln durch `AbstractAgent.compact`) — **mit Agent-Namen**
+  ([R-CT-6](compact-lock.md)).
+- Streaming-Chunks und Response-Text des Compressor-Calls (`onChatResponse`) gehen **nur ins Log** —
+  keine interne Streaming-Preview im Chat. **Aber:** das Request-Start-Event (`onChatMessage`)
+  erreicht den Caller-Monitor — die UI sieht, dass der Compressor arbeitet
+  ([R-CT-5](compact-lock.md)).
+  > **Korrektur 2026-10-23 (Paul):** „die UI braucht das nicht" galt nur für den Streaming-Text,
+  > nicht für die Sichtbarkeit der Compact-Arbeit — ohne Feedback wirkt der Compact wie ein Hänger
+  > (Feedback-Loch, ex open-points „Compact-Button ohne Monitor").
 
 ### R-CC-10 ✅ — Diagnose-Dreiklang im Compact-Log: Memory vs. Modell vs. Schätzung (Da-Dok-Review: Code-Seite sauber)
 

@@ -178,6 +178,14 @@ Pre-Turn, In-Loop-Direct) — baut die Chat-View nach erfolgreichem Compact aus 
 der alte Verlauf verlässt das Chat-HTML (es läuft nicht voll), die re-geseedete Summary bleibt
 sichtbar. Sklaven-Compact: **kein** Reset (fremdes Memory — der Roster zeigt den Kontext-Drop).
 
+Läuft der Compact **innerhalb** eines Turns (Pre-Turn, In-Loop-Direct, `compactSession`, Self-Compact
+aus einem Tool), schiebt die View den Rebuild auf das nächste Turn-Start-Event (`onCallStart`)
+desselben Agenten: R-CC-20.2 legt den Pre-Turn-Compact **vor** den Memory-Add der frischen Nachricht,
+ein sofortiger Rebuild aus dem Memory würde die bereits im Chat stehende, dort aber noch nicht
+gespeicherte User-Frage verschlucken. Bei Pre-Turn ist das derselbe Turn (`onCallStart` liegt direkt
+nach dem Memory-Add), bei den In-Loop-Triggern der nächste — aufgeschoben ist hier nie falsch, die
+frische Frage ist dann in jedem Fall im Memory. Button-Compacts laufen ohne Turn und rebuilden sofort.
+
 - GIVEN der aktive Agent kompaktiert erfolgreich WHEN der Compact endet THEN Rebuild der Chat-View
   aus dem Memory (Summary sichtbar, alter Verlauf weg). *(UC-CT-10)*
 - GIVEN ein Sklave kompaktiert WHEN der Compact endet THEN kein Rebuild der Chat-View. *(UC-CT-11)*
@@ -187,6 +195,13 @@ sichtbar. Sklaven-Compact: **kein** Reset (fremdes Memory — der Roster zeigt d
 #### UC-CT-10 — mainAgentCompactResetsChatView ❌
 - GIVEN der aktive Agent kompaktiert erfolgreich WHEN der Compact endet THEN wird die Chat-View aus
   dem Memory neu aufgebaut.
+- GIVEN der aktive Agent kompaktiert während eines laufenden Turns (Pre-Turn, die frische Frage ist
+  noch nicht im Memory) WHEN der Compact endet THEN bleibt die Chat-View zuerst unverändert und wird
+  beim Turn-Start-Event desselben Agenten neu aufgebaut — die frisch gestellte Frage verschwindet
+  nicht.
+  *(Automatisiert: die Policy-Entscheidung — `CompactFeedbackTest` (Sofort und Aufschub) und
+  `AbstractAgentCompactResultTest` (`withinTurn` am Event). Der Flush selbst ist manueller Smoke:
+  Pre-Turn-Compact in einer langen Session — die gerade gestellte Frage muss im Chat stehen bleiben.)*
 
 #### UC-CT-11 — slaveCompactDoesNotResetChatView ❌
 - GIVEN ein Sklave kompaktiert WHEN der Compact endet THEN bleibt die Chat-View unverändert.
@@ -196,12 +211,19 @@ sichtbar. Sklaven-Compact: **kein** Reset (fremdes Memory — der Roster zeigt d
   `onProblem`-Hinweis ist sichtbar.
 
 > Umsetzungshinweis: **ein** Kanal statt Trigger-Sonderfälle — `AiMonitor.onCompactCompleted(agentName,
-> result)` feuert genau einmal pro gelaufenem Compact (COMPACTED **und** FAILED_EMPTY, nie bei
-> SKIPPED_SMALL, nie auf Throw) und liegt nach der Freigabe des Arbeits-Flags, damit ein Refresh in
-> der Reaktion den Agenten als idle sieht. Die Entscheidung selbst ist Core-Policy
-> (`CompactFeedback.resetsChatView(result, compactedAgentName, activeAgentName)` = aktiv + COMPACTED),
-> die View tut nur noch den UI-Thread-Hop. Headless getrennt durch `CompactFeedbackTest`
-> (UC-CT-10/11/12) und `AbstractAgentCompactResultTest` (`compactCompletedEventCarriesAgentAndResult`,
-> `noCompactCompletedOnSkipOrThrow`); der eigentliche Chat-Rebuild ist manueller Smoke (unten).
+> result, withinTurn)` feuert genau einmal pro gelaufenem Compact (COMPACTED **und** FAILED_EMPTY, nie
+> bei SKIPPED_SMALL, nie auf Throw) und liegt nach der Freigabe des Arbeits-Flags, damit ein Refresh in
+> der Reaktion den Agenten als idle sieht. `withinTurn` heißt: das Arbeits-Flag war beim Compact schon
+> belegt, der Compact lief also in einem Turn — genau der Fall, in dem ein sofortiger Rebuild die
+> frische Frage verschluckt. Die Entscheidung ist Core-Policy
+> `CompactFeedback.resetTiming(result, compactedAgentName, activeAgentName, withinTurn)` →
+> `NONE | NOW | DEFERRED`; die View hält einen `DEFERRED`-Reset nur auf dem UI-Thread offen und flusht
+> ihn im `onCallStart`-Runnable desselben Agenten (ein voller `refreshChat()` verwirft einen offenen
+> Pending). Damit das ein sicherer Flush-Punkt ist, liegt `onCallStart` **nach** dem Memory-Add der
+> Turn-Nachricht. Headless getrennt durch `CompactFeedbackTest` (UC-CT-10/11/12 inkl. Deferred) und
+> `AbstractAgentCompactResultTest` (`compactCompletedEventCarriesAgentAndResult`,
+> `inTurnCompactReportsTurnFlag`, `noCompactCompletedOnSkipOrThrow`) sowie
+> `AbstractAgentTest.onCallStartSeesUserMessageInMemory` (sichert den Flush-Punkt gegen Rückbau); der
+> eigentliche Chat-Rebuild inkl. Pending/Flush ist manueller Smoke (unten).
 
 

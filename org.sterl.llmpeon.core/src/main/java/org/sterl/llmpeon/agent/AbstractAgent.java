@@ -312,12 +312,14 @@ public abstract class AbstractAgent implements AiAgent {
     protected ChatResponse doCall(String message, AiMonitor monitor) {
         monitor = AiMonitor.nullSafety(monitor);
         preTurnCompact(monitor); // R-CC-20.2: over 95 % of the raw budget, before the fresh message enters
-        monitor.onCallStart(message);
         // Inject turn-scoped context on every turn (idempotent via contains-check)
         var userMessages = renderTurnContext(memory, turnContextSupplier, monitor);
 
         if (StringUtil.hasValue(message)) userMessages.add(TextContent.from(message));
         if (!userMessages.isEmpty()) addMessage(UserMessage.from(userMessages));
+        // R-CT-7: onCallStart only after the memory add — from here a listener rebuilding the UI from
+        // the memory (a deferred compact reset) cannot lose this turn's message.
+        monitor.onCallStart(message);
 
         var start = Instant.now();
         var staticMessages = buildStaticMessages(monitor);
@@ -342,12 +344,14 @@ public abstract class AbstractAgent implements AiAgent {
     /** Execute a single LLM+tool turn for the given message. */
     protected ChatResponse asyncCall(String message, AiMonitor monitor) {
         preTurnCompact(monitor); // R-CC-20.2: over 95 % of the raw budget, before the fresh message enters
-        monitor.onCallStart(message);
         // Inject turn-scoped context on every turn (idempotent via contains-check)
         var userMessages = renderTurnContext(memory, turnContextSupplier, monitor);
 
         if (StringUtil.hasValue(message)) userMessages.add(TextContent.from(message));
         if (!userMessages.isEmpty()) addMessage(UserMessage.from(userMessages));
+        // R-CT-7: onCallStart only after the memory add — from here a listener rebuilding the UI from
+        // the memory (a deferred compact reset) cannot lose this turn's message.
+        monitor.onCallStart(message);
 
         var staticMessages = buildStaticMessages(monitor);
         var response = toolService.executeLoop(
@@ -408,8 +412,9 @@ public abstract class AbstractAgent implements AiAgent {
         }
         // R-CT-7: the one reset channel for every trigger, fired after the release. A skip ran
         // nothing, and a throw never reaches this line (it propagates out of the try above).
+        // !acquired = a turn already held the flag, so this compact ran inside it (withinTurn).
         if (result.status() != CompactResult.Status.SKIPPED_SMALL) {
-            mon.onCompactCompleted(getName(), result);
+            mon.onCompactCompleted(getName(), result, !acquired);
         }
         return result;
     }

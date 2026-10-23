@@ -116,6 +116,14 @@ public class AIChatView implements EclipseAiMonitor {
     private UserInputWidget chatInput;
     private UserQuestionResponseWidget questionWidget;
 
+    /**
+     * R-CT-7: a chat rebuild deferred by a compact that ran inside a turn, keyed by agent name —
+     * flushed at that agent's next {@code onCallStart}, the first point whose memory already holds
+     * the turn's message. UI thread only: written, read and cleared inside {@code runInUiThread}
+     * runnables, never from a Job, so no volatile is needed.
+     */
+    private String pendingChatReset;
+
     private final IPreferenceChangeListener prefListener = event -> {
         EclipseUtil.runInUiThread(parent, this::applyConfig);
     };
@@ -330,14 +338,38 @@ public class AIChatView implements EclipseAiMonitor {
 
     /**
      * R-CT-7: the compact's chat reset is this one event channel, not a per-trigger special case.
-     * The decision (active agent + COMPACTED) is core policy in {@code CompactFeedback.resetsChatView};
-     * here is only the UI-thread hop — the event arrives on the compact's Job/turn thread.
+     * The decision is core policy in {@code CompactFeedback.resetTiming}; the event arrives on the
+     * compact's Job/turn thread, so even the active-agent read belongs in the UI runnable — the
+     * rebuild itself compares against the agent shown when it actually runs.
      */
     @Override
-    public void onCompactCompleted(String agentName, CompactResult result) {
-        var active = aiService.getActiveAgent();
-        if (!CompactFeedback.resetsChatView(result, agentName, active == null ? null : active.getName())) return;
-        EclipseUtil.runInUiThread(parent, this::refreshChat);
+    public void onCompactCompleted(String agentName, CompactResult result, boolean withinTurn) {
+        EclipseUtil.runInUiThread(parent, () -> {
+            var active = aiService.getActiveAgent();
+            switch (CompactFeedback.resetTiming(result, agentName,
+                    active == null ? null : active.getName(), withinTurn)) {
+                case NOW -> refreshChat();
+                // the turn of this agent is still running: its fresh message is not in the memory yet
+                case DEFERRED -> pendingChatReset = agentName;
+                case NONE -> {}
+            }
+        });
+    }
+
+    /**
+     * R-CT-7: flush point for a chat reset deferred by a compact inside a turn — core fires this only
+     * after the turn's message entered the memory, so the rebuild can no longer swallow it. A pending
+     * reset for another agent is dropped: the chat shows a different memory by now.
+     */
+    @Override
+    public void onCallStart(String userMessage) {
+        EclipseUtil.runInUiThread(parent, () -> {
+            var pending = pendingChatReset;
+            pendingChatReset = null;
+            if (pending == null) return;
+            var active = aiService.getActiveAgent();
+            if (active != null && pending.equals(active.getName())) refreshChat();
+        });
     }
 
     @Override
@@ -405,6 +437,7 @@ public class AIChatView implements EclipseAiMonitor {
      * Also calls refresh refreshStatusLine.
      */
     private void refreshChat() {
+        pendingChatReset = null; // a full rebuild overtakes any deferred compact reset (R-CT-7)
         var memory = aiService.getActiveAgent().getMemory();
         chatHistory.clear();
         memory.forEach(chatHistory::appendMessage);

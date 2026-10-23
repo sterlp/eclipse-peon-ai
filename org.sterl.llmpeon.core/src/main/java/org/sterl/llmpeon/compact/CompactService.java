@@ -36,8 +36,10 @@ public class CompactService {
     private final CompactLog log;
 
     /**
-     * R-CC-14: the compressor call's chat events (request, response, usage) go to the log only —
-     * the UI never gets a streaming preview of the internal call.
+     * R-CC-14: the compressor call's response text, streaming chunks and token usage go to the log
+     * only — the UI never gets a streaming preview of the internal call. The <b>request start is the
+     * one event mirrored to the caller</b> (R-CT-5, see {@code callerMonitor}): without it a
+     * minutes-long compact shows no working state at all.
      */
     private final AiMonitor logMonitor = new AiMonitor() {
         @Override

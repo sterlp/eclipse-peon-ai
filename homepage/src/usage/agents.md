@@ -51,6 +51,8 @@ Compact never cascades. Whatever you compact, only that one agent's memory is co
 
 When the agent **you are talking to** finishes a successful compact — its own action-bar **Compact** button or an automatic compact during a turn — the chat rebuilds from the compacted memory: the new summary stays visible, the old transcript leaves the view (condensed, not lost — the agent still works from it).
 
+An automatic compact that runs **inside** a turn waits a moment with that rebuild — until your question is part of the compacted memory. What you just asked stays on screen instead of disappearing with the old transcript.
+
 A **worker's** compact never rebuilds the chat: that memory is not what you are reading. Feedback there is the status line (`Compacted Da Mek: …`) and the row's **🟡**.
 
 A **failed** compact (the compressor answered with nothing) leaves the chat exactly as it was — nothing is thrown away — and reports a problem line instead.

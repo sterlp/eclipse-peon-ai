@@ -636,6 +636,37 @@ class AbstractAgentTest {
         assertThat(agent.isWorking()).isFalse();
     }
 
+    /**
+     * Flush-point pin for the deferred chat reset (R-CT-7): {@code onCallStart} must fire AFTER the
+     * turn's message entered the memory — it is the event a view rebuilds on, and a rebuild before
+     * the add loses the question the user just sent. Mutation guard: moving the emission back in
+     * front of the memory add leaves the memory empty here and turns this red.
+     */
+    @Test
+    void onCallStartSeesUserMessageInMemory() {
+        // GIVEN — a monitor reading the agent's memory from inside onCallStart
+        var config = LlmConfig.builder().model("mock").build();
+        var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("OK")).build());
+        var agentRef = new AtomicReference<AbstractAgent>();
+        var userMessagesAtCallStart = new ArrayList<String>();
+        var monitor = new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onCallStart(String userMessage) {
+                userMessagesAtCallStart.addAll(extractUserTexts(agentRef.get().getMemory().getCopy()));
+            }
+        };
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        agentRef.set(agent);
+
+        // WHEN — one turn
+        agent.call("the fresh question", monitor);
+
+        // THEN — the event sees the fresh question in the memory: rebuilding from the memory at this
+        // point cannot lose it
+        assertThat(userMessagesAtCallStart).containsExactly("the fresh question");
+    }
+
     // UC-CT-4
     @Test
     void callNullInitialWithQueuedProcessesQueueAsPayload() {
