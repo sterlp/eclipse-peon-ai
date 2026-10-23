@@ -1,6 +1,6 @@
 # Agent Ordering — `agent-order.txt`
 
-**Status: ✅ done (2026-09-06, Feature #128, gebaut vom User, merged mit `18525db`).**
+**Status: ✅ done (2026-09-06, Feature #128, gebaut vom User, gemerged).**
 Eine Java-Regex pro Zeile steuert die Reihenfolge **aller** Agenten (Custom + Built-ins) im
 Chat-Dropdown. Implementierung: `agentorder.AgentOrder` (core), geladen in
 `AgentService.reloadAgents()`, angewandt in `AgentService.getAgents()`.
@@ -52,7 +52,7 @@ Custom- und Built-in-Agenten.
 - GIVEN eine Zeile ist kein gültiger Regex, WHEN geparst, THEN Zeile übersprungen mit
   log.warn, Rest bleibt wirksam → `AgentOrderTest.sortSkipsInvalidRegexInTheOrderFile`
 
-## R4 — Ein Agent, ein Dropdown-Eintrag + Warnung **✅ done (2026-09-12, `cc28aac` — rot-first bewiesen, User-SOLL)
+## R4 — Ein Agent, ein Dropdown-Eintrag + Warnung **✅ done (2026-09-12 — rot-first bewiesen, User-SOLL)
 
 User 2026-09-12: „Jeder Agent darf nur einmal im Dropdown sein. Das Feature erlaubt **nur** die
 Sortierung anzupassen — sonst nichts." Das seen-Set ist **namensbasiert** (das Dropdown ist

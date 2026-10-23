@@ -207,7 +207,7 @@ Token-Zählung: Estimator `chars × 2 / 7` (~3,5 chars/token), konsistent an bei
 `estimateTokens(List<ChatMessage>)`). **⚠️ bewusst leichte Über-Schätzung** (WEIL User
 2026-09-06: Rate lieber etwas zu hoch als zu niedrig; real ~4–5 chars/token Fließtext).
 Kalibrier-Historie: `chars/3` (bis 2.7.x, ~30–50 % über llama.cpp toc/s) → `×2/7`
-(2026-09-06, Branch `toc-estimate-2026-09-06`, `89a83d1`).
+(2026-09-06, Branch `toc-estimate-2026-09-06`).
 Nicht: Callback-Count (jeder `onPartialResponse` = 1 Token — war der zweite Bug).
 
 `OnPartialAiResponse` bekommt ein Feld `tokenPhaseStart` (epoch millis, `0` = Token-Phase

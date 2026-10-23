@@ -63,7 +63,7 @@ gezielt einen Sklaven-Kontext freigeben kann, gibt es den **expliziten** Button.
 5. Reuse: `SwtUtil.createIconButton` (SwtUtil.java:30, Flat-Icon-Pattern wie der Header-Hammer).
    Dafür wird die Widget-Struktur von einem Label pro Roster auf **Zeilen-Composites** (Label +
    Button je Sklave) umgestellt; Nicht-PO-Modus bleibt ohne Roster.
-   **UI-Detail (2026-09-14, `e46eab2`):** beide RowLayouts mit `wrap=false` (in der aktuellen
+   **UI-Detail (2026-09-14):** beide RowLayouts mit `wrap=false` (in der aktuellen
    SWT-Generation ist `wrap` per Default `true` — deshalb umbrauchte das Roster bei schmalem
    Fenster; jetzt wird rechts **geclippt**, Da Dok fällt zuerst weg) und `center=true` (Label und
    Button sitzen mittig — das Icon liegt exakt auf der Hammer-Mittelachse, auch in der 🟢-Zeile).
@@ -105,7 +105,7 @@ THEN gibt es keine Sklaven-Zeilen und damit keine Compact-Buttons
 - SWT-Darstellung selbst nicht getestet (wie `TokenHeaderWidget`).
 
 
-## Theme-Robustheit — `resolveTheme` null-safe (✅ done 2026-10-15, `a4859e4a`; specified 2026-10-15, Paul)
+## Theme-Robustheit — `resolveTheme` null-safe (✅ done 2026-10-15; specified 2026-10-15, Paul)
 
 **IST:** `EclipseUiUtil.resolveTheme` (EclipseUiUtil.java:47-55) guardt nur `themeEngine != null` —
 `IThemeEngine.getActiveTheme()` ist laut Javadoc **nullable** („the current active theme or null"),

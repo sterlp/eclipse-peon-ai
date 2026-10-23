@@ -4,8 +4,7 @@ idPrefix: AEM
 
 # API-Fehler ins Agent-Memory
 
-> **Status:** ✅ done (2026-09-30, Paul; `53e54c5e` + Delta `f77cbef0` nach Da-Dok-REJECTED, core
-> Surefire 1085/0/0). **Anlass:** Turn stirbt still an API-Fehlern
+> **Status:** ✅ done (2026-09-30, Paul; Delta nach Da-Dok-REJECTED). **Anlass:** Turn stirbt still an API-Fehlern
 > (400 `exceed_context_size_error`, Thinka 974k vs n_ctx 170240) — die History enthält den Abbruch
 > nicht; der Agent (und Paul) wissen beim nächsten Turn nicht, warum Schluss war. Verwandt:
 > [agents-retry.md](agents-retry.md) (ApiRetry — erst nach erschöpftem Retry),
@@ -15,7 +14,7 @@ idPrefix: AEM
 
 ## Business Rules
 
-### R-AEM-1 — Terminaler Fehler wird zur Memory-Message ✅ done (`53e54c5e`; AiChatView-Wiring manuell)
+### R-AEM-1 — Terminaler Fehler wird zur Memory-Message ✅ done (AiChatView-Wiring manuell)
 
 Fliegt ein Turn mit einer **echten Exception** raus (der `catch`-Pfad in `AiChatView` — nicht der
 stille Cancel-Pfad), wird die Fehlermeldung als **kompakte Message ins Agent-Memory** eingefügt:
@@ -38,10 +37,10 @@ stille Cancel-Pfad), wird die Fehlermeldung als **kompakte Message ins Agent-Mem
 
 - GIVEN der User drückt Stop (Cancellation) WHEN der Turn abbricht THEN **keine** Memory-Message.
 
-### R-AEM-2 — Dedup: genau einmal pro Memory ✅ done (`53e54c5e`)
+### R-AEM-2 — Dedup: genau einmal pro Memory ✅ done
 
 Dieselbe Fehler-Message wird **nur einmal** ins Memory eingefügt (`containsMessage`-Muster wie
-COMPACT_HINT/Spam-Guard `8fb7baf`) — aufeinanderfolgende identische Fehler füttern den Kontext
+COMPACT_HINT/Spam-Guard) — aufeinanderfolgende identische Fehler füttern den Kontext
 nicht.
 
 #### UC-AEM-3 — duplicateErrorInsertedOnce ✅

@@ -4,7 +4,7 @@ idPrefix: SEL
 
 # User-Context Selection
 
-> **Status:** ✅ done (2026-09-16, Branch `bugfix/user-context-selection`: `2e51a16`/`5ceb3aa`/`c958d78`, Plugin 216/0 · Core 866/0, Review CONCERNS → abgenommen; User-Smoke ✅ 2026-09-30) · **Architektur:** kein eigenes
+> **Status:** ✅ done (2026-09-16, Branch `bugfix/user-context-selection`, Review CONCERNS → abgenommen; User-Smoke ✅ 2026-09-30) · **Architektur:** kein eigenes
 > Architektur-Doc — Bestandskomponenten `UserContext` + `AIChatView`, Regeln siehe `docs/architecture.md`
 
 ## Ziel
@@ -16,7 +16,7 @@ jeder Chat-Nachricht (Snippet mit Zeilennummern + Pfad der Datei). Die Statuszei
 
 Selektierter Text fehlt im gesendeten Kontext **und** in der Statuszeile (README.md, Zeilen 9-10
 selektiert) — Regression gegenüber dem vorletzten Release. Diagnose (Da Mek): Verdächtiger ist
-Commit `0a998ec` („fixed smaller UI issues due to updates", 13.09.). Jedes Nicht-Text-Selektions-Event
+Jedes Nicht-Text-Selektions-Event
 (`AIChatView.onSelection(Object)`, `AIChatView.java:255`: erst `setTextSelection(null)`, dann
 `setSelectedResource(...)`) räumt die Editor-Selektion weg, bevor sie gesendet werden kann.
 **Live-Beweis (2026-09-16):** Selektion in README.md kommt als Snippet an, aber mit „selected
@@ -106,4 +106,4 @@ resolveResource im View-Pfad) ist manuell im User-Smoke verifiziert — headless
 
 ## Nebenfunde
 
-- 🐞 **`SimpleDiff.lcsDiff` OOM (Crash 2026-09-16):** `eclipseEditFile` → `AIChatView.onFileUpdate:329` → `SimpleDiff.unifiedDiff:21` → `OutOfMemoryError: Java heap space` — **behoben:** Size-Guard in `SimpleDiff.unifiedDiff` (`MAX_LCS_CELLS = 5_000_000`), darüber summarische Meldung statt LCS (`2e51a16`). Details: `open-points.md`. **Nachfassung (2026-09-23, `a2abace`):** Prefix/Suffix-Trim vor dem Guard (1-Zeilen-Änderung in großem File gibt jetzt einen echten Diff), Limit **5 MB = 1_250_000 Zellen** auf der Trim-Region, zweiter Guard `MAX_DIFF_LINES = 100_000` gegen den Output (Trim begrenzt die Matrix, nicht das Diff-Ergebnis), Skip-Summary nennt den Dateinamen.
+- 🐞 **`SimpleDiff.lcsDiff` OOM (Crash 2026-09-16):** `eclipseEditFile` → `AIChatView.onFileUpdate:329` → `SimpleDiff.unifiedDiff:21` → `OutOfMemoryError: Java heap space` — **behoben:** Size-Guard in `SimpleDiff.unifiedDiff` (`MAX_LCS_CELLS = 5_000_000`), darüber summarische Meldung statt LCS). Details: `open-points.md`. **Nachfassung (2026-09-23):** Prefix/Suffix-Trim vor dem Guard (1-Zeilen-Änderung in großem File gibt jetzt einen echten Diff), Limit **5 MB = 1_250_000 Zellen** auf der Trim-Region, zweiter Guard `MAX_DIFF_LINES = 100_000` gegen den Output (Trim begrenzt die Matrix, nicht das Diff-Ergebnis), Skip-Summary nennt den Dateinamen.

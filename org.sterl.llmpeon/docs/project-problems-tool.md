@@ -52,7 +52,7 @@ bleiben unverändert grün.
 
 Ein nicht-leerer, unbekannter Severity-Wert ist ein Fehler mit Nennung des Werts und der erlaubten
 Werte (IAE) — nie stiller No-Filter, nie stiller projektweiter Fallback („A tool must never lie";
-Review-Consensus 2026-09-20, Fix `a721313`).
+Review-Consensus 2026-09-20).
 
 #### UC-PP-5 — invalidSeverityFailsHonest ✅
 - GIVEN `severity="bogus"` WHEN gefilterter Aufruf THEN IAE mit Wert + erlaubten Werten (Mutation
@@ -61,7 +61,7 @@ Review-Consensus 2026-09-20, Fix `a721313`).
 ### R-PP-6 — Severity case-insensitive ✅
 
 Der Severity-Wert wird case-insensitive akzeptiert (`toUpperCase(Locale.ROOT)`), der Header nennt den
-kanonischen Namen. Gemessen, nicht nur angenommen (Fix `a721313`).
+kanonischen Namen. Gemessen, nicht nur angenommen.
 
 #### UC-PP-6 — severityValueIsCaseInsensitive ✅
 - GIVEN `severity="error"` WHEN gefilterter Aufruf THEN filtert wie `ERROR`, Header zeigt `severity ERROR`.

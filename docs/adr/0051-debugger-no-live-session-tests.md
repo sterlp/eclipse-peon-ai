@@ -27,7 +27,7 @@ unzuverlässig feuert: Iteration 3 grün, Iteration 4 rot. Flaky, nicht determin
 
 - Die Lint-UNBELEGT-Befunde für UC-JD-2…6 sind **erwarteter Bestand**, kein Mangel — manuelle
   Verifikation ist hier die vereinbarte Beweisform.
-- `diagnose_sessions` (TEMP-Diagnose-Tool, `15e50d0`) wurde nach dem Fund entfernt (`2efaaf6`).
+- `diagnose_sessions` (TEMP-Diagnose-Tool) wurde nach dem Fund entfernt.
 - Wer die Fixture später deterministisch machen will (z. B. suspend=n per explizitem VM-Argument,
   VM-Install-Modell `ATTR_VM_INSTALL_NAME/TYPE` statt obsoletem `VM_ATTR_ID`), startet bei
   ADR-0049s Fakten — nicht beim Plan-§6-Stand.

@@ -4,7 +4,7 @@ idPrefix: OD
 
 # Tool-Output-Disclosure — Caps ehrlich machen
 
-> **Status:** ✅ done (2026-09-20, Paul specified 2026-09-19; R-OD-7 2026-10-17, R-OD-5-Rework 2026-10-17 `e63ad98d`).
+> **Status:** ✅ done (2026-09-20, Paul specified 2026-09-19; R-OD-7 2026-10-17, R-OD-5-Rework 2026-10-17).
 
 ## Ziel
 
@@ -45,7 +45,7 @@ statt byte-Cap → **paginiert** (Snapshot-Cache letzte 16 Seiten — [web-tools
 Disclosure-Zeilen folgen dem bestehenden `AiReponseBuilder`-Muster (eine Stelle, beide
 Such-Tools konsistent).
 
-### R-OD-5 — `eclipseBuildProject` ✅ done (2026-09-24, Paul; Review Da Dok ACCEPTED, Commit `5d74aab`; **Test-Rework 2026-10-17, `e63ad98d`**)
+### R-OD-5 — `eclipseBuildProject` ✅ done (2026-09-24, Paul; Review Da Dok ACCEPTED; **Test-Rework 2026-10-17**)
 
 Marker-Output wird auf **100** gecappt (Errors zuerst, dann Warnings) — vorher: unlimitiert
 (`EclipseBuildTool.java:241-254` druckt alle ERROR+WARNING-Marker). Wird der Cap erreicht, nennt
@@ -66,7 +66,7 @@ dass Projekt-Errors sichtbar sind** (kurzer Timeout statt 180s).
 - GIVEN Fixture-File mit 2 echten JDT-Fehlern WHEN `eclipseBuildProject` THEN die Errors erscheinen
   im Report **und** unter Cap keine Disclosure-Zeile (nichts wurde gekappt).
 
-### R-OD-6 — Grep: Zeilenlängen-Cap gegen Minified-Overflow ✅ done (2026-09-30, `d7cf6578`; **2026-10-17 Cap 2000 → 500 via OutputTrim**)
+### R-OD-6 — Grep: Zeilenlängen-Cap gegen Minified-Overflow ✅ done (2026-09-30; **2026-10-17 Cap 2000 → 500 via OutputTrim**)
 
 Grep liefert pro Treffer Pfad + Zeilennummer + **die komplette Zeile** — der 100-Zeilen-Cap
 (`MAX_GREP_LINES`) ist ein **Zeilenzähler ohne Längenlimit pro Zeile**. Eine minifizierte
@@ -93,14 +93,14 @@ Historie: 2026-09-30 bis 2026-10-16 war der Wert 2000 mit Muster „N line(s) tr
 - GIVEN Suche ohne Treffer WHEN grep THEN das kleine ehrliche „no matches"-Payload (Guard,
   Regression gegen Regression-Behandlung des Leerfalls).
 
-### R-OD-7 — Disclosure nennt nur angewandte Filter (Grep-Datei-Target) ✅ done (2026-10-17, `84a01345`, Plugin-Suite 352/0)
+### R-OD-7 — Disclosure nennt nur angewandte Filter (Grep-Datei-Target) ✅ done (2026-10-17)
 
 `eclipseGrepFiles` mit **Datei-Target** (`instanceof IFile`) wendet den `extension`-Filter
 bewusst **nicht** an (die Datei ist selbst der Filter — Pendant: Disk-Seite C-EXT-Muster,
 `DiskGrepToolTest.fileTargetBeatsExtensionFilter`) — aber `grepComplete`/`onTool` disclose
 die rohe Extension, als wäre gefiltert worden: die Text/Inhalt-Diskrepanz, die Inc-C-EXT auf
 der Disk-Seite behoben hat (AGENTS: „one behaviour, one implementation", Da-Dok-CONCERN
-2026-10-16, unblocked seit `af658e0f`).
+2026-10-16, unblocked).
 
 **SOLL (C-EXT-Muster auf den IFile-Zweig):** `effectiveExtension = (Target ist Verzeichnis/
 Container) ? extension : null` — `grepComplete` + `onTool` disclose `effectiveExtension`, nie

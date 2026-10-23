@@ -51,7 +51,7 @@ Agenten, kein Auto-Disconnect.
 #### UC-JD-1 — noSessionFailsHonest ✅
 - GIVEN keine Debug-Session WHEN irgendeine Action THEN ehrlicher Fehler mit Hinweis, kein Auto-Start
   (Launch-Zähler unverändert). *(Automatisiert: `JavaDebugToolTest.noSessionFailsHonest` über alle
-  11 session-gebundenen Actions — debugJavaGetException seit R-JD-10, `348d521`.)*
+  11 session-gebundenen Actions — debugJavaGetException seit R-JD-10.)*
 
 ### R-JD-2 — Session-Lifecycle gehört dem User ✅
 
@@ -103,7 +103,7 @@ debuggte App. Allowlist-Präfix für Custom Agents: `debugJava` (Naming: ADR-005
 Session-Lookup filtert Targets, deren Process terminiert ist oder keine Threads mehr hat
 (`IProcess.isTerminated()` / `!hasThreads()`) — eine **selbst beendete** VM (Programm lief durch)
 zählt als „no active debug session", genau wie eine UI-Terminierung; `debugJavaContinue` pollt dann nicht
-in die Deadline. Kollateral aus dem E2E-Smoke (F7, 2026-09-21, Fix `2efaaf6`).
+in die Deadline. Kollateral aus dem E2E-Smoke (F7, 2026-09-21, Fix).
 
 #### UC-JD-7 — deadVMSelfExitFailsHonest ✅
 - GIVEN VM endete von selbst (kein UI-Terminate) WHEN irgendeine Action THEN ehrlicher
@@ -115,7 +115,7 @@ in die Deadline. Kollateral aus dem E2E-Smoke (F7, 2026-09-21, Fix `2efaaf6`).
 
 Breakpoint-Erstellung löst das File zuerst über JDT auf (`JavaCore.createCompilationUnitFrom` →
 `findPrimaryType`) und legt den Marker nur bei geladener CU an; sonst ehrlicher Fehler mit Datei +
-Projekt + Grund (E2E F1: rohes `IFile` → „not a Java compilation unit", Fix `2efaaf6`).
+Projekt + Grund (E2E F1: rohes `IFile` → „not a Java compilation unit", Fix).
 
 #### UC-JD-8 — breakpointRequiresCompilationUnit ✅
 - GIVEN Datei im Projekt WHEN `debugJavaSetBreakpoint` THEN CU-Auflösung vor Marker-Factory; Nicht-Source-

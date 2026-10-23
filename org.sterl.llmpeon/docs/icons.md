@@ -1,7 +1,7 @@
 # Icons — UI-Rollen & Tool-Output-Symbole
 
 **Status:** 🚧 in Umsetzung — UI-Icons ❌ specified (2026-08-30/31, Night-Cycle C); **Tool-Output-Symbole
-✅ entschieden (2026-10-16, Paul) + Rollout gebaut (S1 `2209215e`, S2 `e216f00d`, Da-Dok ACCEPTED);
+✅ entschieden (2026-10-16, Paul) + Rollout gebaut (S1, S2, Da-Dok ACCEPTED);
 S3 (PoDelegate/AgentsTool) offen bis Pauls WIP-Merge.**
 
 ## Zweck
@@ -18,9 +18,9 @@ Token, dann ein Leerzeichen, dann der bestehende Text.
 
 | Symbol | Operation | LLM sichtbar in | Status |
 |---|---|---|---|
-| 🔍 | Search/Grep | `🔍 grep '…'` / `🔍 disk grep '…'` | ✅ gebaut (Paul, `2ff69adb` + WIP Eclipse-Seite) |
-| 📜 | Read (Datei lesen) — **Scope: exakt `diskReadFile` + `eclipseReadFile`** (List/Console/WebFetch bewusst symbol-frei, Plan §3.6) | `📜 Reading …` | ✅ gebaut (S1 `2209215e`, rot-erst core+PDE) |
-| 🗜 | Compact | Compact-Session (Result + onTool, COMPACTED/SKIPPED/FAILED) + Start-Zeile `🗜 Compressing conversation …` | ✅ gebaut (S2 `e216f00d`); **S3 offen:** PoDelegate/AgentsTool-Compact-Pfade erst nach Pauls WIP-Merge; präexistent: `ToolService:246` „🗜 Compact hint" (R-CC-Ära) |
+| 🔍 | Search/Grep | `🔍 grep '…'` / `🔍 disk grep '…'` | ✅ gebaut (Paul + WIP Eclipse-Seite) |
+| 📜 | Read (Datei lesen) — **Scope: exakt `diskReadFile` + `eclipseReadFile`** (List/Console/WebFetch bewusst symbol-frei, Plan §3.6) | `📜 Reading …` | ✅ gebaut (S1, rot-erst core+PDE) |
+| 🗜 | Compact | Compact-Session (Result + onTool, COMPACTED/SKIPPED/FAILED) + Start-Zeile `🗜 Compressing conversation …` | ✅ gebaut (S2); **S3 offen:** PoDelegate/AgentsTool-Compact-Pfade erst nach Pauls WIP-Merge; präexistent: `ToolService:246` „🗜 Compact hint" (R-CC-Ära) |
 
 **Regeln:**
 - Ein Symbol nur für EINE Operation; Operationen ohne Symbol (z. B. Write) bleiben symbol-frei,
@@ -94,7 +94,7 @@ Token, dann ein Leerzeichen, dann der bestehende Text.
 
 ## Umsetzung (SOLL)
 
-- Tool-Output-Symbole: **S1 (📜) + S2 (🗜) gebaut** (`2209215e`/`e216f00d`, Da-Dok ACCEPTED 2026-10-16,
-  Gates Surefire 1126/0 + PDE 351/0); S3 = Follow-up nach Pauls WIP-Commit (PoDelegateTool/AgentsTool).
+- Tool-Output-Symbole: **S1 (📜) + S2 (🗜) gebaut** (Da-Dok ACCEPTED 2026-10-16); S3 = Follow-up
+  nach Pauls WIP-Commit (PoDelegateTool/AgentsTool).
 - UI-Icons (Header/Status-Leiste): eigener Build-Zyklus (UI-Widgets)
   (`AiAgentStatusWidget`/`ActionsBarWidget`-Erweiterung) — NICHT im Symbol-Rollout.

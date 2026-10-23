@@ -51,7 +51,7 @@ Built-in-Prompts (User 2026-09-09) — dort kann er billig iterieren, bis er sic
 
 ## Umsetzungshinweise
 
-- R1 ✅ = `SkillTool`-Footer (inc-1, `b4e918d`).
+- R1 ✅ = `SkillTool`-Footer (inc-1).
 - R2–R7 ✅ = AGENTS-PO.md (neu, 2026-09-09) + AGENTS-DEV.md-Ergänzung — kein Java.
 - Ledger-Pfad konventionsgetreu: `<repo>/.agents/skills/wiki/skill-impact.md` (seit Story B
   tatsächlich dort; `wiki/` hat kein SKILL.md → wird vom Scan ignoriert, bleibt als Ledger-Dir).

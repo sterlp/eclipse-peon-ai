@@ -4,14 +4,12 @@ idPrefix: CC
 
 # Compact (core) — ehrlicher Compact: Zähler, Result, Logging
 
-> **Status:** R-CC-1…6 **✅ done** (2026-09-23, Hotfix Paul, Surefire core 930, Mutations-Nachweis)
+> **Status:** R-CC-1…6 **✅ done** (2026-09-23, Hotfix Paul, Mutations-Nachweis)
 > · R-CC-8/9 **✅ done** (2026-09-25, Inc 3/3.1, Da Dok Review ACCEPTED)
-> · R-CC-10 **✅ done** (2026-09-26, `138a2ea`) · R-CC-11…14 **✅ done** (2026-09-26,
-> Nachbau-Review, `414edf4`→`d3e8833`)
+> · R-CC-10 **✅ done** (2026-09-26) · R-CC-11…14 **✅ done** (2026-09-26, Nachbau-Review)
 > · R-CC-7 **🚧 in design** (Retry/Fehlerklassen, zusammen mit ApiRetry-Tabelle)
 > · R-CC-18 **✅ done** (2026-10-18 specified / 2026-10-19 gebaut: vollen Context direkt compacten
-> statt auf den Hint zu warten — siehe unten; `26a0007c` + `c9463119`, Surefire core 1214/0,
-> Da Dok CONCERNS ohne Blocker).
+> statt auf den Hint zu warten — siehe unten; Da Dok CONCERNS ohne Blocker).
 > **Input-Budget-Regeln (Präfix CIB):** eigenes Doc
 > [compact-input-budget.md](compact-input-budget.md) — ✅ done (2026-09-25, Da Dok ACCEPTED).
 > **Komponente:** eigens core-Package `compact` ([ADR-0056](../../docs/adr/0056-compact-component-and-render-modes.md)) —
@@ -190,7 +188,7 @@ Stack; LLM erfährt nichts, Header hängt ([header-state-leak.md](../../org.ster
 
 ## Compact-Nachbau-Review (Paul, 2026-09-26 — 6 Punkte, einzeln entschieden; ✅ gebaut & reviewed 2026-09-26)
 
-### R-CC-11 ✅ — Benennung & Architektur des `compact`-Packages (built `414edf4`)
+### R-CC-11 ✅ — Benennung & Architektur des `compact`-Packages
 
 - `CompactEngine` → **`CompactService`** (Einstiegs-Component, Name = Aufgabe).
 - `CompactStager` → **`ContextTrimComponent`** (budgetierte Stufenkürzung; bleibt im
@@ -203,7 +201,7 @@ Stack; LLM erfährt nichts, Header hängt ([header-state-leak.md](../../org.ster
 - `CompactConstants`: **bleibt final class mit privatem Konstruktor** (Konstanten-Interfaces sind
   Anti-Pattern; Paul 2026-09-26 bestätigt).
 
-### R-CC-12 ✅ — `CompactResult` trägt den letzten Modell-Wert (built `9cf99c3`)
+### R-CC-12 ✅ — `CompactResult` trägt den letzten Modell-Wert
 
 - `Stats` + `resultLine()` zeigen **beide** Zahlen: unser Estimate **und** den letzten
   provider-gemeldeten `inputTokenCount()` als `requestTokens` + `requestIsEstimate`.
@@ -213,7 +211,7 @@ Stack; LLM erfährt nichts, Header hängt ([header-state-leak.md](../../org.ster
 - GIVEN Memory hat letzten Modell-Input 80k WHEN Compact läuft THEN `resultLine()` zeigt Estimate
   und `requestTokens=80k` nebeneinander.
 
-### R-CC-13 ✅ — Token-Mathe zentral in `ChatMessageUtil`, Trim in `ContextTrimComponent` (built `08c9a57`)
+### R-CC-13 ✅ — Token-Mathe zentral in `ChatMessageUtil`, Trim in `ContextTrimComponent`
 
 - Die Formel (`chars/3`) wird **zentral** in `ChatMessageUtil` abgelegt/verwendet; die
   Trim-Logik (Stufenkürzung, Caps, letzte User-Message voll) lebt vollständig in
@@ -222,7 +220,7 @@ Stack; LLM erfährt nichts, Header hängt ([header-state-leak.md](../../org.ster
 - Die größere Konsolidierung (Memory-Zähler vs. Estimate — R-CC-10-Messwerte als Grundlage) folgt
   nach den Messwerten als eigener Punkt.
 
-### R-CC-14 ✅ — Monitor-freier `CompactService`, Emission gehört den Tools/Callern (built `d3e8833`)
+### R-CC-14 ✅ — Monitor-freier `CompactService`, Emission gehört den Tools/Callern
 
 - `CompactService.compact(...)` wird **monitor-frei** — pure Service-Call, Return = `CompactResult`.
   Der Service ist entsprechend „offen", dass die Tools sauber reporten können (auch fürs Testing).
@@ -232,7 +230,7 @@ Stack; LLM erfährt nichts, Header hängt ([header-state-leak.md](../../org.ster
 - Interne Chat-Events des Compressor-Calls (`onChatMessage`/`onChatResponse`) gehen **nur ins Log**
   — die UI braucht die Streaming-Preview des internen Calls nicht.
 
-### R-CC-10 ✅ — Diagnose-Dreiklang im Compact-Log: Memory vs. Modell vs. Schätzung (built `138a2ea`, Da-Dok-Review: Code-Seite sauber, Da-Dok-Verifikation QUEUED_MARKER-Hunk: nicht im Commit)
+### R-CC-10 ✅ — Diagnose-Dreiklang im Compact-Log: Memory vs. Modell vs. Schätzung (Da-Dok-Review: Code-Seite sauber)
 
 **Anlass (2026-09-25, Paul, Main-Log):** `Compact hint … 289493 tokens of 240000 used` bei einem
 Agenten mit **256k-Modell-Limit**, danach `Compact called but skipped because of small context` —
@@ -253,28 +251,27 @@ Response-`inputTokenCount()` → Summe läuft davon). Vor jedem Fix wird gemesse
 - Verwandt: R-CC-1 (Zähler = `inputTokenCount()`), Punkt 4 des
   Compact-Nachbau-Reviews (beide Zahlen im `CompactResult` sichtbar machen).
 
-### R-CC-15 ✅ — Nested-Agent-Usage darf nicht ins Parent-Memory (2026-09-27, gebaut `4cb2783`, Paul-Smoke ✅ 2026-09-30)
+### R-CC-15 ✅ — Nested-Agent-Usage darf nicht ins Parent-Memory (2026-09-27, Paul-Smoke ✅ 2026-09-30)
 
 **Fix:** Nested-Request in `SearchAgentTool` mit `.agent(null)` (alle 3 `getAgent()`-Reader
 null-safe: `CompactSessionTool:23-26` ehrlicher Fehler, `ToolService:166-169`/`:221` guarded) +
 `compactSession` aus dem Sniffa-Filter + **per-request** Hint-Check (`toolSpecifications(req)`
 statt Registry — Custom Agents ohne Allowlist bekommen denselben ehrlichen Fallback) +
-`ToolLoopRequest`-Klassenkopf-Warnung (toBuilder erbt `agent`/`memory`). Surefire 1026/0/0/0
-(3 neue UC-CC-1-Tests, rot vor dem Fix). Tests: `shouldNotExposeParentAgentToNestedLoop` ·
-`subCompactMustNotClearParentMemory` · `subLoopHintAttributesToSubAgent` (Lint: 3 IDs auf
-UC-CC-1, 0 Befunde).
+`ToolLoopRequest`-Klassenkopf-Warnung (toBuilder erbt `agent`/`memory`). Tests:
+`shouldNotExposeParentAgentToNestedLoop` ·
+`subCompactMustNotClearParentMemory` · `subLoopHintAttributesToSubAgent` (3 Tests auf
+UC-CC-1).
 
 **Hotfix Paul (2026-09-27, ToolService:216):** `agent == null || !hasCompactTool` → Fallback-Hint
 („cannot be compacted") — **Compact geht nur mit Agent**; `agent == null` ist damit die
 ausdrückliche Semantik „dieser Loop kann nicht kompaktieren" (statt nur der Sniffa-Sonderfall).
 Damit hat sich der ehrliche Fallback von „ohne Compact-Tool" auf „ohne Compact-Tool **oder** ohne
-Agent" erweitert. **Spam-Guard (Bug A, `8fb7baf`):** der Fallback-Hint kommt **genau einmal pro
+Agent" erweitert. **Spam-Guard (Bug A):** der Fallback-Hint kommt **genau einmal pro
 Memory** (`!memory.containsMessage(msg)`, ToolService:220 — Pauls Ersteinbau war invertiert, Da Mek
-hat die Negation gefixt). Test: `fallbackHintIsAddedOnce`. Nebenbefund: der
-agent==null-Zweig lenkte 4 bestehende Hint-Tests in den Fallback — diese fahren jetzt mit
-minimalen Mock-Agenten (`hintAgent()`) und testen wie beabsichtigt den COMPACT_HINT-Zweig
-(R-CC-4/R-CC-10). Test-Dedup: 1026 → **1022 Tests** (4 Doppeltester gestrichen/merge, je
-Begründung im Commit `8fb7baf`), Surefire 1022/0/0/0, Lint 0.
+hat die Negation gefixt). Test: `fallbackHintIsAddedOnce`. Nebenbefund: der agent==null-Zweig
+lenkte bestehende Hint-Tests in den Fallback — diese fahren jetzt mit minimalen Mock-Agenten
+(`hintAgent()`) und testen wie beabsichtigt den COMPACT_HINT-Zweig (R-CC-4/R-CC-10);
+Doppeltester gestrichen/merged.
 
 **toBuilder-Entscheid (Da-Mek-Analyse, ADR-0058):** nur **1** Prod-Call-Site (`SearchAgentTool:47`);
 Sklaven bauen fresh (`PoDelegateTool:239` → `AbstractAgent:286-297` mit `.agent(this)` = Sklave) —
@@ -332,7 +329,7 @@ LLM-Größe.
 - GIVEN der Compact-LLM meldet keine Usage WHEN done THEN fällt die Zeile auf die Estimate allein
   zurück (kein `n/a`-Rauschen nötig — ehrliche Abwesenheit).
 
-### R-CC-17 ✅ done — „Log biggest overflow": größte Message beim Compact loggen (2026-09-30, Paul; `4f7cab05`, U1–U4)
+### R-CC-17 ✅ done — „Log biggest overflow": größte Message beim Compact loggen (2026-09-30, Paul; U1–U4)
 
 Anlass: Thinka-Overflow `974105 tokens` vs `n_ctx 170240` — der Status zeigte 23k; die Ursache
 (eine Riesen-Message in der History, vermutlich ein Tool-Result) ist im Log unsichtbar. **Das
@@ -405,7 +402,7 @@ Ereignis-Gate (`ranTool(compactSession)` + Turn-Merker) ersatzlos.
 die 0.7-Regel lebt allein in der Delegation ([ADR-0071](../../docs/adr/0071-compact-policy-owned-by-delegation.md)).
 Der Check vor dem Turn selbst ist zurück und rechnet roh: **R-CC-20**.
 
-### R-CC-20 — Vor dem Turn prüfen, bevor die frische Meldung angenommen wird ✅ done (2026-10-20, `98a0a5be` + Ordering-Pin `19340dbf` + Schwelle 95 % `ad3684db`)
+### R-CC-20 — Vor dem Turn prüfen, bevor die frische Meldung angenommen wird ✅ done (2026-10-20, Schwelle 95 %)
 
 **Anlass:** R-CC-18 prüft nur **nach** einer Tool-Runde (`ToolService.executeLoop`,
 `isToolrequest`-Zweig). Ein Turn, der ohne Tools antwortet — der erste Call, ein reiner Chat-Turn,

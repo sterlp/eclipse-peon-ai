@@ -170,7 +170,7 @@ war die Quelle des Formatierungs-Bugs).
 - GIVEN Query `foo(bar`, WHEN `diskGrepFiles` läuft, THEN literal gesucht, Modus benannt
   → `DiskGrepToolTest.invalidPatternFallsBackToLiteral`
 
-## R8 ✅ done (2026-09-19, `e0538fa`) — Grep liefert Trefferzeilen mit Zeilennummern
+## R8 ✅ done (2026-09-19) — Grep liefert Trefferzeilen mit Zeilennummern
 
 **IST (verifiziert, SearchAgent 2026-09-17):** Beide Grep-Familien (`EclipseGrepTool.java:46,126`,
 `DiskGrepTool.java:55,72`, Output via `AiReponseBuilder.grepComplete`) listen **keine** Trefferzeilen —
@@ -195,7 +195,7 @@ vor der Token-Bombe bei häufigen Begriffen — counts-only war der bisherige, u
 - GIVEN 500 Treffer über 20 Dateien, WHEN grep läuft, THEN werden die ersten 100 Zeilen geliefert
   mit `showing 100 of 500 matched lines`
 
-## R9 ✅ done (2026-09-19, `e0538fa`) — Zeilennummern immer, auch beim Ganzdatei-Lesen
+## R9 ✅ done (2026-09-19) — Zeilennummern immer, auch beim Ganzdatei-Lesen
 
 **SOLL:** Alle Datei-Reads liefern Zeilennummern — **auch** bei `startLine<=0 && endLine<=0`
 (Ganzdatei). Die Wegoptimierung „Ganzdatei ohne Zeilennummern" wird zurückgenommen; das supersedet
@@ -205,7 +205,7 @@ genau diese Klausel von R1c (Rest von R1c unverändert, siehe Notiz dort).
 wegoptimiert, doch auch danach braucht der Agent Zeilennummern für Folge-Edits. Token-Preis
 (~5–7 Zeichen/Zeile) ist kleiner als ein erneuter Range-Read oder eine falsche Edit-Position.
 
-## ℹ️ 2026-10-16 — Grep-Target darf eine einzelne Datei sein (Pauls Fix) — ✅ getestet (`2ff69adb`, DiskGrepToolTest 5 Fälle)
+## ℹ️ 2026-10-16 — Grep-Target darf eine einzelne Datei sein (Pauls Fix) — ✅ getestet (DiskGrepToolTest)
 
 - `diskGrepFiles`: ein **regulärer Dateipfad** als `path` ist jetzt ein gültiges Target — das Tool
   greppt genau diese Datei (decompose: `grepDirectory`/`grepFile`-Zweige am resolved Path, gleiche

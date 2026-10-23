@@ -12,8 +12,7 @@ Wie eine UserMessage aufgebaut wird (kein Raten mehr, Grundlage für R-CIB-4 in 
   TextContent — nie den ersten. Compact-Restore-Messages (Summary/Marker) sind State und
   konstanten-erkennbar ([compact.md](compact.md) R-CC-9).
 
-## Stale System-Message im Compact-Turn (SOLL 2026-09-11, R-ST4) — ✅ done (`a89cdc6`)
-## Stale System-Message im Compact-Turn (SOLL 2026-09-11, R-ST4) — ✅ done (`a89cdc6`)
+## Stale System-Message im Compact-Turn (SOLL 2026-09-11, R-ST4) — ✅ done
 
 Auslöser: User-Smoke-Test 1 („rufe das compact tool auf") — nach dem Compact lief der Turn
 weiter und der Compact-Briefing wurde verständlich fortgesetzt. User-Erkenntnis: „nach dem
@@ -43,7 +42,7 @@ neu gebaut, nachdem ich eine Nachricht sende."
   Aufwand klein, aber Änderung im
   Loop-Request-Path → erst bewerten.
 
-**Entscheidung (User 2026-09-11): Fix gebaut — R-ST4 „System-Message-Rebuild nach In-Loop-Compact" — ✅ done (`a89cdc6`)**
+**Entscheidung (User 2026-09-11): Fix gebaut — R-ST4 „System-Message-Rebuild nach In-Loop-Compact" — ✅ done**
 (Da-Thinka-Bewertung: Status quo hat einen echten Divergenz-Fall — Jons Static-Context enthält die
 Plan-Datei; Rest-Turn arbeitet nach Compact mit dem alten Plan-Snapshot, den der Sub-Agent gerade
 geändert hat. `compact()`-Invariante „force rebuild" wird vom Loop bis Turn-Ende ignoriert.
@@ -343,7 +342,7 @@ THEN nichts wird injiziert (kein Error, kein Status-Eintrag)
   sonst gerendeter Content bei `dedupKey() = null`); nur einmal injiziert, nie nachträglich
   angepasst (KV Cache!).
 
-## Compact-Tool-Result: preserve only (SOLL 2026-09-10) — ✅ done (`1f2d0b0`)
+## Compact-Tool-Result: preserve only (SOLL 2026-09-10) — ✅ done
 
 Auslöser: User-Befund „Es wird doppelt eingefügt". Die Compressor-Summary stand **zweimal** im
 Kontext: (1) als AiMessage — `AbstractAgent.compact()` → `memory.add(response.aiMessage())`;
@@ -376,12 +375,12 @@ THEN das Result ist der Marker „Session compacted." (nicht leer)
 Test: `CompactSessionToolTest` — Red-Nachweis VOR dem Fix (alter Code fügt SUMMARY-X ins Result
 ein), Fix, dann grün.
 
-**✅ done (2026-09-10, `1f2d0b0`):** Red-Evidenz: Result trug `SUMMARY-X\nPreserved:\nKEEP-1` →
+**✅ done (2026-09-10):** Red-Evidenz: Result trug `SUMMARY-X\nPreserved:\nKEEP-1` →
 Fix: Result = `Preserved:\n<preserve>` / Marker `Session compacted.` (nie leer), Summary-Return
 entfernt, `onTool("Da Scribe done…")` unverändert. Zwei Alt-Assertions, die den Bug pinnnten,
 angepasst (`CompactSessionToolTest` delegiert → `doesNotContain`, `AiDeveloperAgentTest
-.test_clear_memory` → `isEqualTo("Session compacted.")`). Core Surefire 702/0.
-## Compact-Result genau einmal (SOLL 2026-09-11) — ✅ done (`1f2d0b0`/`ce3483d`)
+.test_clear_memory` → `isEqualTo("Session compacted.")`).
+## Compact-Result genau einmal (SOLL 2026-09-11) — ✅ done
 
 Auslöser: User-Befund 2026-09-11 — Compact-Result 2× sichtbar. Zwei unabhängige Duplikate:
 
@@ -434,7 +433,7 @@ Tests: `AiDeveloperAgentTest.test_clear_memory` (Count über alle Messages == 1,
 dem Fix: Zählung = 2), `CompactSessionToolTest` (Summary-Count über alle Typen generalisiert,
 Marker-Asserts), Button-Render manuell (SWT, R-UI1-Präzedenz).
 
-## Compact-Hint für Agenten ohne CompactSessionTool (2026-09-16, Paul, `29a341b`)
+## Compact-Hint für Agenten ohne CompactSessionTool (2026-09-16, Paul)
 
 **Regel: Ein Fast-voll-Hinweis bricht nie still ab.** In
 `HandleToolLoopCompactComponent.fallbackHint` (seit R-CC-18; vorher `ToolService.addCompactHintIfNeeded`)

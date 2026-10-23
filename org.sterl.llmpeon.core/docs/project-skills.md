@@ -155,7 +155,7 @@ Technische Basis: [ADR-0042](../../docs/adr/0042-project-skill-slot.md) (ein Ser
 | R2a (Plugin) | `setProject_replacesProjectSlotOnly` (Name historisch, „Slot" = alte Begriffswelt) |
 | R2c (Plugin) | `pinnedProject_keepsSkillComponent_untilSetProject` |
 
-## Skill-relativer Lesepfad (SkillPromptFile) — ✅ done (2026-09-11, core-cleanup, `f85156a`)
+## Skill-relativer Lesepfad (SkillPromptFile) — ✅ done (2026-09-11, core-cleanup)
 
 - GIVEN ein Pfad mit `../`-Segments (`../escape.txt`, `./sub/../../out.txt`), WHEN ein Skill seine
   Datei liest, THEN IAE „Path traversal not allowed" — der **Roh-Pfad** wird normalisiert

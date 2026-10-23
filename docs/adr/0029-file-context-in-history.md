@@ -63,7 +63,7 @@ nicht re-injiziert. Fix: Dedup prüft **`ContextItem.dedupKey()`** = exakter Hea
 Content-Dedup). Eine Summary kann den Pfad erwähnen, aber praktisch nie den exakten Header.
 
 **Umgesetzt ✅ (2026-08-16):** Core (3 Inkremente) + Plugin-Delta (EclipseFileContextItem,
-AgentsMdContextItem) — Review OK, alle Tests grün (Core 418/0, Plugin grün).
+AgentsMdContextItem) — Review OK, alle Tests grün.
 
 ## Verwandt
 

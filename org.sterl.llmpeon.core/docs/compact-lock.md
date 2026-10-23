@@ -6,10 +6,9 @@ idPrefix: CT
 
 > **Status:** ✅ gebaut (2026-09-22, gemerged auf main) — Scope wie entschieden: **nur der Lock +
 > Follow-up-Trigger** (Paul: „Bauen tun wir aber nur den fix also den ‚lock' für compact"), Anzeige
-> bleibt auf `working`. Commits `18ae8ebee` (CAS) · `f059c683f` (Queue-Payload) · `d6b11b518`
-> (Follow-up-Trigger) · `7e6afc528` (Tests); [ADR-0052](../../docs/adr/0052-compact-uses-working-flag.md).
-> **Verifikation 2026-10-18:** R-CT-1…4 und UC-CT-1/2/4 sind automatisiert (Core-Surefire 1190/0,
-> Marker in `AbstractAgentTest`); UC-CT-3/5/6 sind **manueller Smoke — offen (Paul)**.
+> bleibt auf `working`; [ADR-0052](../../docs/adr/0052-compact-uses-working-flag.md).
+> **Verifikation 2026-10-18:** R-CT-1…4 und UC-CT-1/2/4 sind automatisiert (Marker in
+> `AbstractAgentTest`); UC-CT-3/5/6 sind **manueller Smoke — offen (Paul)**.
 > Verwandt: [chat-job-lifecycle.md](../../org.sterl.llmpeon/docs/chat-job-lifecycle.md) (Backlog-Race, hier behoben),
 > [queued-user-messages.md](queued-user-messages.md), [agenten-status-im-header.md](../../org.sterl.llmpeon/docs/agenten-status-im-header.md).
 
@@ -111,12 +110,3 @@ Agenten (🟢, Blatt-Regel unverändert — ein kompaktierender Sklave lässt Da
   Agenten zeigt working (🟢) — kein separater Zustand, kein neuer UI-State. *(Manuelle Verifikation —
   Roster-Pull liest das live Flag; ein SWT-Test-Harness existiert nicht.)*
 
-## Belege (Verifikation 2026-10-18)
-
-| Ort | Was |
-|---|---|
-| `AbstractAgent.compact()` :358 / :399-401 | CAS-Akquise `working.compareAndSet(false, true)`, Release nur `if (acquired)` im `finally` |
-| `AbstractAgent.call()` :235 / :277 | zweiter Akquisiteur (Turn) + bedingungsloses Release im `finally` — genau 2 Schreib-, 2 Release-, 1 Lesezugriff im ganzen Repo |
-| `AiAgentStatusModel` :42 / :62-63 | Snapshot liest `agent.isWorking()` live; `compactEnabled = !working && !turnInFlight` |
-| `AIChatView` :637-660 | ein UI-Runnable: Unlock (`inFlightTurns` → `lockWhileWorking(false)`) **und** Follow-up-`submitAiJob` bei Queue > 0 |
-| `AbstractAgent.call()` :247-249 / :309-311 | Queue-Payload wird im null-initial-Pfad mit `QUEUED_MARKER_PREFIX` markiert (In-Loop-Drain identisch) |

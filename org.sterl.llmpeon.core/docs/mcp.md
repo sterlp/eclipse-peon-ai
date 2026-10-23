@@ -8,7 +8,7 @@ Code: core `org.sterl.llmpeon.mcp` (`McpService`, `McpServerConfig`), Plugin
 
 **✅ done (2026-09-10, Zyklus mcp-fixes)** — R-MCP1–R-MCP3 gebaut und reviewed (Verdict CONCERNS
 ohne Rework, Findings C1–C4 abgearbeitet: C1-Test, C2-Homepage-Drift raus, C3-Dedup; C4 Hinweis).
-Commits: inc-1 `cec9ebf` · inc-2 `fb86226` · Delta `eb12072`. R-MCP3 manuell verifiziert
+R-MCP3 manuell verifiziert
 (Code-Review Da Dok; Live-Bestätigung im User-Smoke-Test). Auslöser: duckduckgo-mcp (`uvx`, stdio)
 stirbt mit JSON-RPC `-32022 UNSUPPORTED_PROTOCOL_VERSION` — Analyse in
 [ADR-0045](../../docs/adr/0045-mcp-protocol-version-auto-detect.md).

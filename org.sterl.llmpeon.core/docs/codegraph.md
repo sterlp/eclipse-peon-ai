@@ -4,9 +4,8 @@ idPrefix: CG
 
 # Codegraph — Built-in-Integration (MCP, Auto-Enable)
 
-> **Status:** ✅ done (2026-10-17, Branch `story/night-5-2026-10-16`, Surefire core 1172/0 ·
-> OSGi 376/0, Da-Dok-Review ACCEPTED nach Rework). **2026-10-18 (✅ nach Paul-Smoke):** Kontext auf
-> **ein** `ContextItem` umgebaut (R-CG-7/R-CG-12, Plugin-Suite 380/0); Header-Icon 24×24 + gedimmte
+> **Status:** ✅ done (2026-10-17, Branch `story/night-5-2026-10-16`, Da-Dok-Review ACCEPTED nach Rework). **2026-10-18 (✅ nach Paul-Smoke):** Kontext auf
+> **ein** `ContextItem` umgebaut (R-CG-7/R-CG-12); Header-Icon 24×24 + gedimmte
 > OFF-Variante. **Architektur-Doc:**
 > [codegraph-architektur.md](codegraph-architektur.md). **ADR:** [ADR-0068](../../docs/adr/0068-codegraph-builtin-connect-path.md).
 
@@ -154,7 +153,7 @@ den **eigenen** Kindprozess (Client-Close → Transport-Close → `process.destr
 `install`/`init`/`index` aus (R-CG-9) — der Index-State gehört Codegraph. *Durchgesetzt seit 2026-10-18 über die
 Ownership aus [ADR-0069](../../docs/adr/0069-shared-mcp-connection-per-server.md): der Connection-Service hält
 den `McpService` (`connect()` genau einmal), alle Registries adoptieren ihn. Vorher baute jede
-Registry ihre eigene Verbindung → zwei Prozesse (Bug, `fe583895`).* *(Umsetzungs-Klarstellung: Trigger
+Registry ihre eigene Verbindung → zwei Prozesse (Bug).* *(Umsetzungs-Klarstellung: Trigger
 ist der Projektwechsel (`setProject` mit changed=true). Ein bewusster Pin-ON-Reprobe entfällt —
 Pin-ON ohne Projektwechsel ist kein Zustandswechsel, der Apply-Compare würde früh zurückkehren;
 Mutations-Nachweis für den Compare: `CodegraphConnectionServiceTest`, beide Compare-Richtungen
@@ -223,7 +222,7 @@ hier nur als Agent-Hinweis. *(Pauls ursprüngliche Idee „Ergebnisse in Eclipse
 Bewertungs-Option S2, natives Wrapper-Tool `codegraphExplore` mit echter Übersetzung + Disclosure
 — nur bei nachgewiesenem Praxis-Problem.)*
 
-### R-CG-12 — Chat-Signal: Zustand über das ContextItem ✅ done (2026-10-18, Paul; Plugin-Suite 380/0)
+### R-CG-12 — Chat-Signal: Zustand über das ContextItem ✅ done (2026-10-18, Paul)
 
 > **Präzisiert 2026-10-18 (R-TR-4):** Das Label hängt an der tatsächlichen Injektion — es feuert
 > damit nur im Zustand CONNECTED. OFF/ERROR bleiben still (Header-Icon + Tooltip, R-CG-8); ein
@@ -255,8 +254,8 @@ THEN zeigt der Header (neben dem Hammer) das Icon `icons/codegraph.svg` mit Zust
      `codegraph_dark.svg`), **nicht** über `setEnabled(false)` — SWT graut nur Text/Widget, nicht das
      Image (IST-Befund: Icon blieb bei OFF voll farbig).
      **Motiv (2026-10-19, Paul — final): Codegraph-Glyphe.** Der Header im „Agent Status" zeigt das
-     Graph-Motiv aus `50be78cf`; die Lupe gehört zur **Suche** ([icons.md](../../org.sterl.llmpeon/docs/icons.md) — 🔍 ist das
-     Tool-Output-Symbol für Grep/Search, eine andere Fläche). Die Lupe-Variante `2a238ad4` wird
+     Graph-Motiv; die Lupe gehört zur **Suche** ([icons.md](../../org.sterl.llmpeon/docs/icons.md) — 🔍 ist das
+     Tool-Output-Symbol für Grep/Search, eine andere Fläche). Die Lupe-Variante wird
      zurückgenommen, Dateinamen und Wiring bleiben unverändert. *Optional später:* die Lupe
      zusätzlich **beim Codegraph-Einsatz** — nur wenn sie keine zweite Bedeutung bekommt (heute
      nein: `codegraph_explore` steht ohnehin im Klartext in der Tool-Zeile).

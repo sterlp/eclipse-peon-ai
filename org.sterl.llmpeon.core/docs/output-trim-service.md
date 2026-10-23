@@ -1,7 +1,6 @@
 # Output-Trim-Service
 
-> **Status:** ✅ done — Slice 1 (2026-10-17, `story/night-5-2026-10-16`: I1 `f277446e` · I2
-> `22a91fed` · I3 `dc4a5594`; Surefire core 1144/0, OSGi 351/0, Da-Dok CONCERNS nur Docs-Cycle →
+> **Status:** ✅ done — Slice 1 (2026-10-17, `story/night-5-2026-10-16`; Da-Dok CONCERNS nur Docs-Cycle →
 > geschlossen) · **Anlass:** `feature-request-ShellTool.md` (us4g, 2026-10-13) + `long-shell.log` ·
 > Verwandt: [Shell Tool](shell-tool.md) · [Tool-Output-Disclosure](tool-output-disclosure.md)
 > (R-OD-6) · [temp-file-tool.md](temp-file-tool.md) (Slice 2 — volle Ausgabe) ·

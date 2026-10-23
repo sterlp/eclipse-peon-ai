@@ -3,7 +3,7 @@
 UI-seitiger Lifecycle eines Agent-Turns: Job-Submit → Lock → `monitorRef` → Job-`finally`
 → Unlock. Stop-Button-Semantik._owner: AIChatView-Job-Mechanik (plugin).
 
-**Status: ✅ gebaut (2026-09-10, `ff69a3d`/`9cbb355`)** — R-ST1 (In-Flight-Counter statt
+**Status: ✅ gebaut (2026-09-10)** — R-ST1 (In-Flight-Counter statt
 Ticket), R-ST2 (Graceful Stop, kein Code-Change — Design-Decision bewusst), R-ST3
 (Turn-INFO-Logging) inkl. Counter-Invarianten; Design-Review Da Thinka + Da-Dok-Review
 (verifiziert gegen Code). Verifikation manuell (SWT-Präzedenz R-UI1/R-MCP3/R-ML1a) —

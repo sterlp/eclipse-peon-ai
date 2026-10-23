@@ -15,7 +15,7 @@ beim Port portiert werden?
    heute erneut). Web-App-Port der Business-Logik ist damit grundsätzlich möglich.
 2. **Kontrakte UI-agnostisch** ✓: `AiMonitor`, `ToolLoopRequest`, `ConfiguredChatModel`,
    `LlmConfigStore`; `QualifiedPathValidator` sauber injiziert.
-3. **Moves Inc-2 (`b7f67e0`):** `SimpleDiff`, `WorkspaceGuideline` (Jackson-Record) →
+3. **Moves Inc-2:** `SimpleDiff`, `WorkspaceGuideline` (Jackson-Record) →
    `shared`; `ThinkValueSupport` → `provider`; `AiAgentStatusModel` → `agent` — je 1 Import-Fix im
    Plugin, verhaltenstreu, je 1 Core-Test dort wo Tests existierten.
 4. **Dokumentierte Moves, NICHT in diesem Zyklus:** `AskUserTool` → core (braucht

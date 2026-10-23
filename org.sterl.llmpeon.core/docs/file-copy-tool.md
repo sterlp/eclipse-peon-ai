@@ -11,8 +11,7 @@ Familien. Ein Verhalten, eine Implementierung, konsistent in beiden Familien (AG
 
 ## Status
 
-✅ done (2026-09-06, Zyklus `file-copy-e2e-fixes-2026-09-06` auf `release-2026-09-06`,
-Commits `b011576`/`f14371a`/`402b922` + Review-Fix `7d224ec`). R1–R6 komplett umgesetzt,
+✅ done (2026-09-06, Zyklus `file-copy-e2e-fixes-2026-09-06` auf `release-2026-09-06`). R1–R6 komplett umgesetzt,
 Mutations-Nachweis für R5-Validator (`projectExists`-Klausel → `eclipse_unknownProjectRejected` rot).
 E2E-Befunde behoben: Erfolgsmeldung LLM-sichtbar (`Copied/Renamed <s> -> <t>` statt langchain4j-`"Success"`),
 Ziel-Pfad-Resolution projekt-qualifiziert (kein Workspace-Root-Fallback), relativer Pfad = Vertrags-Fehler.

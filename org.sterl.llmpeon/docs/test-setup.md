@@ -104,7 +104,7 @@ separat aus — „0 skipped" ist derzeit nicht maschinell verifizierbar~~ **auf
 auch für Ignored mit `Result.IGNORED`; Maven-Semantik: „Tests" = total inkl. skipped).
 Sichtbar ab dem ersten Lauf nach Eclipse-Restart (Report-Formatierung im laufenden Bundle).
 
-## R6 ✅ done — Cap-Test ohne 120 Seed-Dateien (2026-10-15, Paul; `9cec5945` — ECJ-Cap-Fakt im Bau verifiziert)
+## R6 ✅ done — Cap-Test ohne 120 Seed-Dateien (2026-10-15, Paul; ECJ-Cap-Fakt im Bau verifiziert)
 
 **IST:** `EclipseBuildToolTest.buildReportCappedAt100WithDisclosure` schreibt 120 kaputte
 `.java`-Dateien ins Fixture und triggert einen echten Build, um >100 Marker zu erzeugen. In einem
@@ -166,28 +166,20 @@ Befehl (Repo-Root):
 - lokal (macOS, mit Display): `mvn -B clean verify --file pom.xml`
 - CI (Linux, ohne Display): `xvfb-run -a mvn -B clean verify --file pom.xml`
   ([pipeline.md](../../docs/pipeline.md); xvfb ist für SWT-Pfade nötig, die ein X-Display anfordern —
-  nicht für die 44 Skips unten)
+  nicht für die Skips unten)
 
 Der Tycho-`verify` baut Plugin + Test-Bundle und startet den OSGi-Test-Run (tycho-surefire,
 `useUIHarness=false` → headless OSGi **ohne Workbench**). Das Fixture `test_project` kommt über
 die System-Property `peon.test.project` (im Test-Pom gesetzt).
 
-Erwartete Zahlen (verifiziert 2026-10-15, ~45 s warm):
+**Kein stiller Skip (by-design geprüft):** kein `skipTests`/`excludes`/`testFailureIgnore`
+in irgendeinem pom; die `TEST-*.xml` unter `org.sterl.llmpeon.test/target/surefire-reports`
+belegen die Ausführung im echten OSGi-Framework. „Skipped" zählt **in** „Tests run".
 
-| Modul | Tests run | Fail | Err | Skipped |
-|---|---|---|---|---|
-| llmpeon-core (surefire) | 1110 | 0 | 0 | 0 |
-| org.sterl.llmpeon.test (Tycho-OSGi) | 350 | 0 | 0 | 44 |
-
-**Kein stiller Skip (verifiziert 2026-10-15):** kein `skipTests`/`excludes`/`testFailureIgnore`
-in irgendeinem pom; 44 × `TEST-*.xml` unter `org.sterl.llmpeon.test/target/surefire-reports`
-belegen die Ausführung im echten OSGi-Framework. „Skipped" zählt **in** „Tests run" — real
-executed = 306.
-
-**Bekannte Skips (44, by-design):** die 6 SWT-UI-Klassen extenden `AbstractSwtUiTest`
+**Bekannte Skips (by-design):** die SWT-UI-Klassen extenden `AbstractSwtUiTest`
 (`setUpDisplay` fängt `IllegalStateException: Workbench has not been created yet` →
 `Assume.assumeNoException`) und laufen **nur im PDE-Runner** (echte Workbench):
-AiConfigPreferenceViewTest (13) · AgentModelConfigSectionTest (11) · ModelConfigWidgetTest (9) ·
-ModelComboWidgetTest (7) · AiAdvancedPreferenceViewTest (3) · HeaderRosterStructureTest (1).
+AiConfigPreferenceViewTest · AgentModelConfigSectionTest · ModelConfigWidgetTest ·
+ModelComboWidgetTest · AiAdvancedPreferenceViewTest · HeaderRosterStructureTest.
 Workspace-Assumes (`EclipseBuildToolTest`, `PeonAiServiceTest`) skippen unter Maven **nicht** —
 das Fixture wird auch im OSGi-Run importiert.

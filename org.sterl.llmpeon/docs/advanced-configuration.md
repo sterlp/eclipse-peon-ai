@@ -24,7 +24,7 @@ Request-Bau an.
 - **Alle anderen Slots** (plan/search/compact/po + Custom Agents): eigene Werte, wenn gesetzt;
   leere Felder erben die **Base-Connection** (URL, Key, Modell)
 - **Kein Slot fällt auf einen anderen Agent-Slot zurück** (R-PO2: PO-Fallback = Base, nie Plan)
-- **✅ Compact-Slot steuert den realen Call (2026-09-13, `efa22df`, Zyklus `fix/compact-slot-model`).**
+- **✅ Compact-Slot steuert den realen Call (2026-09-13, Zyklus `fix/compact-slot-model`).**
   Vorher gingen nur die Request-Parameter (Temp/Think/Body) aus dem COMPACT-Slot in den Call —
   die **Verbindung** (URL/Key) und das Modell kamen immer vom BASE-Modell
   (`callBlocking` → `getChatModel()`); ein konfiguriertes Compact-Modell (z.B. lokales
@@ -34,7 +34,7 @@ Request-Bau an.
   Base** („Empty means unset", free über `EffectiveConnection.isBase`). Tests:
   `AiCompressorAgentTest.compactSlotRoutesCallToCompactConnection` /
   `emptyCompactSlotFallsBackToBaseConnection` (MockLlmServer-Duo, Captured-Body-Asserts);
-  **Think/extra body pro Slot auf der Leitung** (`3977a8d`): COMPACT `reasoning_effort` +
+  **Think/extra body pro Slot auf der Leitung**: COMPACT `reasoning_effort` +
   Anthropic `thinking{type=enabled}` + extra body (User-wins, Reserved-Keys gestrippt, Key 1×)
   sowie Custom-Agent-End-to-End via AGENT.md-Frontmatter
   (`CustomAgentConnectionE2ETest.frontmatterAgent_reachesOwnStub_withFullPayloadOnTheWire`).
@@ -85,7 +85,7 @@ Mechanik: [ADR-0034](../../docs/adr/0034-connection-cache-by-identity.md).**
   Connection-Cache in `ConfiguredChatModel` pro `ConnectionIdentity` (Provider+URL+Key, +Body
   nur Build-time-Provider); per-request Body-Merge (provider-Entries zuerst, **User-Body
   gewinnt**, Reserved-Keys `model`/`messages`/`tools` gestrichen); invalides JSON → warn +
-  ignoriert. Core 483/483 grün, Branch `new-config` (Commits `inc-1`…`inc-8`, NICHT gemerged).
+  ignoriert. Branch `new-config` (NICHT gemerged).
 - **Core/UI-Trennung (2026-08-28, User):** die Konfig-Domäne (Model-Config-Record, Speicherung,
   effektive Auflösung, Verbindungs-Identität) lebt in **core**; die Eclipse-Config-Seite ist
   reine View/Editor darüber — „sauber trennen, nah halten“ (das Plugin trägt keine
@@ -101,7 +101,7 @@ Mechanik: [ADR-0034](../../docs/adr/0034-connection-cache-by-identity.md).**
 - **URL-Wechsel in der Base-Config ✅ (2b, 2026-08-30):** GIVEN die Base-URL/-Key ändert sich,
   WHEN die Modell-Auswahl eines beliebigen Agenten geladen/angezeigt wird, THEN folgt sie der
   neuen effektiven Verbindung (kompletter Config-Rebuild bei jedem Load).
-- **Modell-Listen-Fetch UI-Thread-safe ✅ (2b, inc-17 `60b494e`):**
+- **Modell-Listen-Fetch UI-Thread-safe ✅ (2b, inc-17):**
   GIVEN Config-Seite geöffnet, Modell-Dropdown eines Agents lädt die Liste
   WHEN der Fetch-Job die aktuelle Config liest
   THEN alle SWT-Zugriffe laufen auf dem UI-Thread — der Job arbeitet ausschließlich mit dem
@@ -270,7 +270,7 @@ Modell-Listen-Refresh liest **Live-Widget-Werte** (R-ML2, 2026-09-28 — siehe
 [model-loading.md](model-loading.md) / [model-config-widget.md](model-config-widget.md)).
 ## Config-Page UI — R-A1/R-A2/R-A3/R-A4 (2026-09-12, User-Smoke „Seite sieht altbacken aus")
 
-**R-A1 ✅ done (ui-config, `66ce4fe`) — Abstand unter den Examples:** GIVEN die Advanced-Page
+**R-A1 ✅ done (ui-config) — Abstand unter den Examples:** GIVEN die Advanced-Page
 zeigt die 3 Example-Buttons unter dem Extra-Body-Feld, WHEN gerendert, THEN ist der Abstand
 **unterhalb** der Gruppe gleich klein wie oberhalb — keine Leerraum-Zeile, kein Extra-Fußraum
 (Layout-Gruppe, kein Extra-Space). Umsetzung: 2× `marginBottom=0` (Section + TitledGroup); das
@@ -279,7 +279,7 @@ Examples-Status-Label ist bis zum Paste layout-exklusiv (`GridData.exclude=true`
 `GridData.exclude`, nicht Visibility (API-Trap: Projekt-Skill `eclipse-preferences`). Kein
 automatisierter Test (SWT-Layout-Präzedenz wie R-T5) — **User-Smoke ✅ 2026-09-12**.
 
-**R-A2 ✅ done (ui-config, `6b5c9ca`) — Native Combo statt Custom-Dropdown (beide Pages):** Das
+**R-A2 ✅ done (ui-config) — Native Combo statt Custom-Dropdown (beide Pages):** Das
 Model-Feld nutzt auf **Basic** und **Advanced** (geteilte Logik) das **native SWT-Combo** wie
 Provider/Shell-Command — gleicher Dropdown-Button. Label und Combo erscheinen exakt wie die
 übrigen Label/Feld-Paare derselben Page: Label in der Label-Spalte der Page (gleiche Ausrichtung

@@ -163,7 +163,7 @@ Rohtext-Fallback, `!` allein) + `AbstractAgentTest.injectUserMessage_appendsToMe
 View-Verdrahtung (`AIChatView.resolveOutgoingMessage`) ist compile-grün, aber **nicht** automatisiert
 getestet — Smoke M1–M6 offen (Paul).
 
-### 9. Queued-At Disclosure — Uhrzeit in onTool + Marker ✅ done (2026-09-23 specified, gebaut `f059c683f`)
+### 9. Queued-At Disclosure — Uhrzeit in onTool + Marker ✅ done (2026-09-23 specified, gebaut)
 
 Jeder Queue-Eintrag trägt einen **queuedAt**-Zeitstempel (Zeitpunkt des Queueings). Beim Konsum zeigt
 **beides** die Uhrzeit — onTool-Zeile im Format `(queued HH:mm)`, LLM-Marker im Format `(HH:mm)` (2026-09-26, Paul):

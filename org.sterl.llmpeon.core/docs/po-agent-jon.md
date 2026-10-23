@@ -396,7 +396,7 @@ WHEN Jon attempts to write <project>/sub/docs/x.md
 THEN the decorator rejects it, because docs/ is not at the project root
 ```
 
-### R16: Compact-Guard — < 3 Messages → Skip, kein LLM-Call ✅ done (2026-09-15, R16-Schärfung `16e9e47`; 2026-09-05, User; SOLL-Korrektur 2026-09-13: Skip statt Reset)
+### R16: Compact-Guard — < 3 Messages → Skip, kein LLM-Call ✅ done (2026-09-15; 2026-09-05, User; SOLL-Korrektur 2026-09-13: Skip statt Reset)
 
 `AbstractAgent.compact()` bricht, wenn das Memory **weniger als 3 Nachrichten** enthält.
 
@@ -885,7 +885,7 @@ anfangen"-Aktion des Users, Compact ist Kontextpflege.
 - **Homepage:** das Verhalten ist user-facing und wird dort dokumentiert (**✅ done** —
   `homepage/src/usage/agents.md` inkl. Sidebar-Eintrag, Zyklus story/po-compact-2026-09-13).
 
-### R20: Jon nimmt an den dynamischen Tool-Familien teil — disk-Gate + MCP ✅ done (2026-10-15, `5369372a`/`bb55d5f1`, specified 2026-10-15, Paul)
+### R20: Jon nimmt an den dynamischen Tool-Familien teil — disk-Gate + MCP ✅ done (2026-10-15, specified 2026-10-15, Paul)
 
 **IST (vermessen 2026-10-15):** Jon hat seine eigene kuratierte Registry (`BuildPoAgentComponent:
 67`, `new ToolService(false)`, 12 `addTool`) — und genau die wird von beiden dynamischen Familien

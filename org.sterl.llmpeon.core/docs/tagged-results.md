@@ -4,7 +4,7 @@ idPrefix: TR
 
 # Tagged Results — Tool-Results und System-Infos als getaggte Blöcke
 
-> **Status:** ✅ done (2026-10-18, Branch `story/night-5-2026-10-16`, Core 1188/0, OSGi 386/0,
+> **Status:** ✅ done (2026-10-18, Branch `story/night-5-2026-10-16`,
 > Da-Dok-Review CONCERNS ohne Blocker + Nacharbeit). **Code:** `agent/model/TaggedResult`,
 > `shared/ChatMessageUtil` (einziger Renderer, uncappt), `context/ContextItem`, `compact/ContextTrimComponent`.
 > **Verwandt:** [context-message-concept.md](context-message-concept.md) · [compact.md](compact.md) ·

@@ -57,4 +57,4 @@ Außerdem: `join/4` (alter Budget-Entwurf) schätzt niedriger als die bestehende
   migrieren (Plan-Detail, eigener Aufräumschritt oder nächster Kontakt).
 - Risiko: ChatMessageUtil ist breit genutzt — Render-Modus muss default-kompatibel bleiben
   (alte Aufrufe unverändert), Tests decken die Bestandsformate ab.
-**Update 2026-10-16:** Estimate-Faktor `chars×2/7` → `chars/3`, Umkehr `capChars = restTokens×3/n` synchron (Terminationsgarantie R-CIB-4.4 bleibt, `fbe2866f`) — „eine Schätzkonvention, eine Stelle" bleibt unverändert.
+**Update 2026-10-16:** Estimate-Faktor `chars×2/7` → `chars/3`, Umkehr `capChars = restTokens×3/n` synchron (Terminationsgarantie R-CIB-4.4 bleibt) — „eine Schätzkonvention, eine Stelle" bleibt unverändert.

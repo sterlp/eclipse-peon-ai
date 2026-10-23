@@ -114,7 +114,7 @@ unabhängig vom per-agent Think-Wert.
 
 - **GIVEN** think unset **AND** globales send-thinking enabled **WHEN** Config geprüft **THEN** Thinking wird weiterhin zurückgesendet
 
-### R-THINK-10: Base-Think-Default — leerer Agent-Think erbt den Base-Think ✅ done (2026-09-28, `c90debfb`, Surefire core 1040/0)
+### R-THINK-10: Base-Think-Default — leerer Agent-Think erbt den Base-Think ✅ done (2026-09-28)
 
 **WEIL (Paul):** „Offline local default — ich will mit der einfachen Config durchkommen; nur für
 Compact und Search definiere ich ein anderes Think." Die einfache Config (Basic-Page) ist der
@@ -138,7 +138,7 @@ Explizites off gewinnt **immer** — trotz Base-Default kann ein Agent Thinking 
 - **GIVEN** Base-Think = leer, Agent-Think = leer **WHEN** Request **THEN** nichts gesendet (R-THINK-1 unverändert)
 - **GIVEN** Custom-Agent-Frontmatter ohne `think`, Base-Think = `true` **WHEN** Custom-Request **THEN** Base-Wert geerbt (ein Verhalten, eine Implementierung — auch für Custom)
 - **GIVEN** Dev-Think = leer **WHEN** Dev-Request **THEN** nichts gesendet (Dev erbt nicht von sich selbst)
-→ `LlmConfigTest` (Slot-Parität + off-gewinnt + Dev-verbatim) + `CustomAgentServiceTest` (Frontmatter erbt Base) — Surefire core 1040/0
+→ `LlmConfigTest` (Slot-Parität + off-gewinnt + Dev-verbatim) + `CustomAgentServiceTest` (Frontmatter erbt Base)
 
 ---
 
@@ -151,7 +151,7 @@ aber die Prämisse „OpenAI kennt kein off" widerspricht dem SDK (`ReasoningEff
 `none`), und der Off-Set/On-Mapping-Resolver war Checkbox-Erbe (ADR-0059 hat die Checkbox schon
 entfernt). → [ADR-0064](../../docs/adr/0064-verbatim-think-values.md).
 
-### R-THINK-11 — String-Provider: verbatim, kein Resolver ✅ done (2026-09-29, `3b7d5df4`…`b7f175e6`, Surefire core 1051/0, PDE 313/0)
+### R-THINK-11 — String-Provider: verbatim, kein Resolver ✅ done (2026-09-29)
 
 #### UC-THINK-11 — verbatimThinkStringProviders
 
@@ -172,7 +172,7 @@ für String-Provider; die `Off/Auto`-Pseudo-Entries fliegen aus den Combos.
 - **GIVEN** Custom-Agent-Frontmatter `think: false` **WHEN** String-Provider-Request **THEN** `"false"` wörtlich gesendet (Garbage in, sichtbar im Request-Log, garbage out — Dropdowns sind der Guard)
 - Tests: `AiProviderRequestParametersTest` (OPEN_AI none/xhigh/true verbatim, LM_STUDIO verbatim, Ollama unverändert) + E2E Body-Capture (`CustomAgentConnectionE2ETest`/`PerAgentConnectionE2ETest`) — Memory-Regel 30: Payload capturen, nicht nur „ein Call kam"
 
-### R-THINK-12 — Toggle-Provider (OLLAMA): Boolean-Interpretation bleibt ✅ done (2026-09-29, `3b7d5df4`…`b7f175e6`)
+### R-THINK-12 — Toggle-Provider (OLLAMA): Boolean-Interpretation bleibt ✅ done (2026-09-29)
 
 #### UC-THINK-12 — toggleBooleanInterpretation
 

@@ -72,7 +72,7 @@ statt auf den aktiven Sklaven (Jon→`PO`). Mehr als ein Einzeiler (eigener Reso
   `AiAgent`-Interface + Override in `AbstractAgent` ergänzt.
 
 
-## Agenten-Namen im System-Prompt + Agent Mode (2026-09-16, Paul, `29a341b`)
+## Agenten-Namen im System-Prompt + Agent Mode (2026-09-16, Paul)
 
 **IST/SOLL identisch gebaut.** Jon gibt seinen Sklaven ihren Namen (so wie das Header-Widget sie
 zeigt) in den System-Prompt — zentral, nicht pro Prompt-Datei.

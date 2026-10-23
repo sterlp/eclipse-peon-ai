@@ -1,6 +1,6 @@
 # Tool Descriptions — Inventory & Optimization Plan
 
-**Status:** ✅ **done** — 25/25 `@Tool`-Descriptions optimiert (Runde 2: kurze Version 10-17 Wörter), `buildWithAgent` → `buildWithDev` rename, static tool-name constants in JonDelegateTool, Test auf structural checks umgestellt. Build grün, verifiziert. **Sync 2026-09-30 (`0be24315`):** #7/#28 auf den Paul-verbatim-Text aktualisiert (beide Familien identisch), #6/#27 verifiziert (Runde-2-Text ist IST; Out-of-Range-Fehler ändert nur Verhalten, Description bleibt wahr).
+**Status:** ✅ **done** — 25/25 `@Tool`-Descriptions optimiert (Runde 2: kurze Version 10-17 Wörter), `buildWithAgent` → `buildWithDev` rename, static tool-name constants in JonDelegateTool, Test auf structural checks umgestellt. Build grün, verifiziert. **Sync 2026-09-30:** #7/#28 auf den Paul-verbatim-Text aktualisiert (beide Familien identisch), #6/#27 verifiziert (Runde-2-Text ist IST; Out-of-Range-Fehler ändert nur Verhalten, Description bleibt wahr).
 
 ## IST
 
@@ -40,8 +40,8 @@ Alle `@Tool`-Beschreibungen folgen einem einheitlichen Muster:
 |---|--------|---------------------|--------|-----------------|-----|
 | 4 | `diskWriteFile` | `"Write file. Creates parent dirs and overwrites if exists."` | ✅ gut | *(kein Change)* | - |
 | 5 | `diskDeleteFile` | `"Delete file or directory recursively."` | ✅ gut | *(kein Change)* | - |
-| 6 | `diskReplaceLines` | `"Replace a single line in a file by 1-based line number. newContent may span multiple lines."` | ✅ (aktuell) | *(kein Change)* | Runde 2 ist IST; **Out-of-Range → ehrlicher Fehler** seit 2026-09-30 (`e97ef512`) — nur Verhalten, Description bleibt wahr ([disk-file-write-tool.md](disk-file-write-tool.md)) |
-| 7 | `diskEditFile` | ✅ **umgesetzt (Inc 2, 2026-09-30, `0be24315`, Paul verbatim):** `"Replace exact, whitespace-sensitive occurrences in a file. oldString must uniquely identify the target in its line context; if it matches multiple locations, all are replaced. Min 3 non-whitespace chars; reports count. newString=null deletes."` | ✅ done | — | Paul-Text 1:1; altes „first occurrence" war Drift (Replace-All seit 2026-09-04); gestrichenes „Error if not found or identical." = bewusste Textentscheidung, Verhalten unverändert (applyEdit-IAEs bestehen) |
+| 6 | `diskReplaceLines` | `"Replace a single line in a file by 1-based line number. newContent may span multiple lines."` | ✅ (aktuell) | *(kein Change)* | Runde 2 ist IST; **Out-of-Range → ehrlicher Fehler** seit 2026-09-30 — nur Verhalten, Description bleibt wahr ([disk-file-write-tool.md](disk-file-write-tool.md)) |
+| 7 | `diskEditFile` | ✅ **umgesetzt (Inc 2, 2026-09-30, Paul verbatim):** `"Replace exact, whitespace-sensitive occurrences in a file. oldString must uniquely identify the target in its line context; if it matches multiple locations, all are replaced. Min 3 non-whitespace chars; reports count. newString=null deletes."` | ✅ done | — | Paul-Text 1:1; altes „first occurrence" war Drift (Replace-All seit 2026-09-04); gestrichenes „Error if not found or identical." = bewusste Textentscheidung, Verhalten unverändert (applyEdit-IAEs bestehen) |
 | 8 | `diskRenameResource` | `"Rename or move a file or directory. Creates target parent folders."` | ✅ gut | *(kein Change)* | - |
 | 9 | `diskInsertLines` | `"Insert text into a file at a specific position. Omit afterLine to append at end. 0 inserts before the first line (prepend). 1..n inserts after that line."` | ✅ gut | *(kein Change)* | - |
 
@@ -107,8 +107,8 @@ Alle `@Tool`-Beschreibungen folgen einem einheitlichen Muster:
 
 | # | Method | Current Description | Rating | New Description | Why |
 |---|--------|---------------------|--------|-----------------|-----|
-| 27 | `eclipseReplaceLines` | `"Replace a single line in a workspace file by 1-based line number. newContent may span multiple lines."` | ✅ (aktuell) | *(kein Change)* | Runde 2 ist IST; **Out-of-Range → ehrlicher Fehler** seit 2026-09-30 (`e97ef512`) — nur Verhalten, Description bleibt wahr |
-| 28 | `eclipseEditFile` | ✅ **umgesetzt (Inc 2, 2026-09-30, `0be24315`, Paul verbatim):** `"Replace exact, whitespace-sensitive occurrences in a file. oldString must uniquely identify the target in its line context; if it matches multiple locations, all are replaced. Min 3 non-whitespace chars; reports count. newString=null deletes."` | ✅ done | — | **identisch zu #7** — „one behaviour, one implementation" auch im Text |
+| 27 | `eclipseReplaceLines` | `"Replace a single line in a workspace file by 1-based line number. newContent may span multiple lines."` | ✅ (aktuell) | *(kein Change)* | Runde 2 ist IST; **Out-of-Range → ehrlicher Fehler** seit 2026-09-30 — nur Verhalten, Description bleibt wahr |
+| 28 | `eclipseEditFile` | ✅ **umgesetzt (Inc 2, 2026-09-30, Paul verbatim):** `"Replace exact, whitespace-sensitive occurrences in a file. oldString must uniquely identify the target in its line context; if it matches multiple locations, all are replaced. Min 3 non-whitespace chars; reports count. newString=null deletes."` | ✅ done | — | **identisch zu #7** — „one behaviour, one implementation" auch im Text |
 | 29 | `eclipseWriteFile` | `"Write file to workspace. Creates parent dirs and overwrites if exists."` | ✅ gut | *(kein Change)* | - |
 | 30 | `eclipseInsertLines` | *(1 line, ausführlich)* | ✅ gut | *(kein Change)* | - |
 | 31 | `eclipseRenameResource` | `"Rename or move a workspace file or directory. Creates target parent folders."` | ✅ gut | *(kein Change)* | - |
@@ -199,7 +199,7 @@ isEditTool=✔ (R-JD-5: Plan/Review/SearchAgent/read-only-Custom filtern es auto
 | 64 | `debugJavaStepOver` | *(neu — kein Bestand)* | ✅ | `"Step over in a debug thread and wait for the next suspend; returns the new top frame."` | Synchrones Warten auf Suspend (D9) |
 | 65 | `debugJavaStepIn` | *(neu — kein Bestand)* | ✅ | `"Step into a debug thread and wait for the next suspend; returns the new top frame."` | Synchrones Warten auf Suspend (D9) |
 | 66 | `debugJavaStepOut` | *(neu — kein Bestand)* | ✅ | `"Step out of the current frame and wait for the next suspend; returns the new top frame."` | Synchrones Warten auf Suspend (D9) |
-| 67 | `debugJavaGetException` | *(neu — kein Bestand)* | ✅ | `"Find the exception at the current suspend: scans the top frame's local variables (incl. catch parameter) for a java.lang.Throwable or subtype and returns its type, message and variable name. Limit: an uncaught throw new X(...) at the throw site has no named variable and is not found there."` | 2026-09-21 (R-JD-10, 14. Action); Recognition name-based (Throwable exakt / *Exception / *Error) in der Code-Description (G1, `348d521`) |
+| 67 | `debugJavaGetException` | *(neu — kein Bestand)* | ✅ | `"Find the exception at the current suspend: scans the top frame's local variables (incl. catch parameter) for a java.lang.Throwable or subtype and returns its type, message and variable name. Limit: an uncaught throw new X(...) at the throw site has no named variable and is not found there."` | 2026-09-21 (R-JD-10, 14. Action); Recognition name-based (Throwable exakt / *Exception / *Error) in der Code-Description (G1) |
 | 68 | `debugJavaContinue` | *(neu — kein Bestand)* | ✅ | `"Resume a suspended debug thread and wait for the next suspend; returns the new top frame."` | Synchrones Warten auf Suspend (D9) |
 | 69 | `debugJavaSuspend` | *(neu — kein Bestand)* | ✅ | `"Suspend a running debug session; returns the suspended threads with their top frames."` | Sofort suspended, Threads im JSON |
 

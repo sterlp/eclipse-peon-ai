@@ -4,7 +4,7 @@ idPrefix: MCW
 
 # Model Config Widget — Verbindungsfelder live testbar
 
-> **Status:** ✅ done (2026-09-28, `story/model-config-widget` — Inc-0 `c90debfb` · Inc-1 `df4293fe` · Inc-2 `a9691449` · Inc-3 `99c5aecb` · Inc-4 `5fd04c42`; Surefire core 1040/0, OSGi 301/0 + 20 Headless-Skips (bestehendes „Workbench not created"-Muster); SWT-Tests laufen im PDE-Runner, Mutations-Nachweis applyThinkValue). User-Smoke ✅ 2026-09-30.
+> **Status:** ✅ done (2026-09-28, `story/model-config-widget`; SWT-Tests laufen im PDE-Runner — 20 Headless-Skips (bestehendes „Workbench not created"-Muster), Mutations-Nachweis applyThinkValue). User-Smoke ✅ 2026-09-30.
 > **Heimat der Reload-Fetch-Mechanik:** [model-loading.md](model-loading.md) (R-ML2, neu entschieden)
 > · **Cache je Verbindungs-Identität:** [ADR-0034](../../docs/adr/0034-connection-cache-by-identity.md)
 > · **Warum:** [ADR-0060](../../docs/adr/0060-model-config-widget-live-widget-reads.md)
@@ -34,7 +34,7 @@ ist der Reload fällig. Und: „Es hilft uns nichts, wenn ich die Eingabe mache 
 Config-Seite verlassen muss, um das Modell zu testen." Heute liest Reload den Preference-Store
 (R-ML2 alt: erst Apply) — das Widget liest **live**.
 
-### R-MCW-1 — Feldset — ✅ done (2026-09-28, `df4293fe`)
+### R-MCW-1 — Feldset — ✅ done (2026-09-28)
 
 Widget owns: Provider, URL, API Key, Think-Level, Model-Combo, Ping-Button, Reload-Button.
 **Bewusst NICHT im Widget:** JSON extra body (kein Teil der Connection-Identity, eigene
@@ -47,7 +47,7 @@ WHEN der User es betrachtet
 THEN es trägt genau Provider/URL/Key/Think/Model + Ping + Reload (extra body außerhalb)
 → `ModelConfigWidgetTest` (OSGi/PDE-Runner)
 
-### R-MCW-2 — Ping & Reload lesen Live-Widget-Werte — ✅ done (2026-09-28, `df4293fe`)
+### R-MCW-2 — Ping & Reload lesen Live-Widget-Werte — ✅ done (2026-09-28)
 
 Beide Buttons bauen ihre Verbindungs-Identity zur Klick-Zeit aus den **aktuellen Widget-Werten** —
 nie aus dem Preference-Store. Apply-los geänderte Eingaben sind sofort testbar (Parität zum
@@ -60,7 +60,7 @@ WHEN er Reload (oder Ping) klickt
 THEN der Fetch nutzt die **Widget-Identität**, nicht den Store-Stand
 → `ModelConfigWidgetTest.reloadUsesLiveWidgetValues`
 
-### R-MCW-3 — Reload persistiert nicht — ✅ done (2026-09-28, `a9691449`)
+### R-MCW-3 — Reload persistiert nicht — ✅ done (2026-09-28)
 
 Reload = **nur Fetch** (Test/Preview). Speichern ausschließlich über Apply/OK; Cancel verwirft
 die Eingaben — der Store bleibt unangetastet. Die geholte Liste wird unter der
@@ -79,7 +79,7 @@ WHEN der Store danach gelesen wird
 THEN die Connection-Felder enthalten die zuletzt gespeicherten (nicht die getippten) Werte
 → `AiConfigPreferenceViewTest.reloadDoesNotTouchStore`
 
-### R-MCW-4 — Ping-Semantik — ✅ done (2026-09-28, `df4293fe`)
+### R-MCW-4 — Ping-Semantik — ✅ done (2026-09-28)
 
 Ping = Host+Port-Erreichbarkeit (Semantik des heutigen „Check Host and Port", unverändert).
 Die **API-Key-Validität** testet implizit der Reload (fehlender/falscher Key → sichtbarer
@@ -91,7 +91,7 @@ WHEN er Ping klickt
 THEN der Check läuft gegen die Widget-URL (nicht den Store) und meldet wie heute Erreichbarkeit
 → `ModelConfigWidgetTest.pingUsesLiveWidgetUrl`
 
-### R-MCW-5 — Scope: Basic-Page; Advanced-Reuse zurückgestellt — ✅ done (2026-09-28, `a9691449`)
+### R-MCW-5 — Scope: Basic-Page; Advanced-Reuse zurückgestellt — ✅ done (2026-09-28)
 
 Dieser Bau umbaut **nur die Basic-Page** (eine Widget-Instanz, Base-Verbindung — der
 `providerEditor` wandert in das Widget). Die Wiederverwendung in der Advanced-Page
@@ -113,7 +113,7 @@ THEN stehen sie im ModelConfigWidget in der Reihenfolge 1 Provider · 2 URL · 3
 4 Model+Refresh · 5 Think (vertikal untereinander), plus Ping; keine losen Field-Editors mehr
 → `AiConfigPreferenceViewTest.performOkPersistsWidgetValues`
 
-### R-MCW-6 — Think-Feld ist provider-abhängig, LIVE beim Provider-Wechsel — ✅ done (2026-09-28, `df4293fe`)
+### R-MCW-6 — Think-Feld ist provider-abhängig, LIVE beim Provider-Wechsel — ✅ done (2026-09-28)
 
 Das Think-Feld (5) rendert die Form des aktuell gewählten Providers — gleiches Muster wie die
 Advanced-Page (`provider.thinkSupport()`: Boolean→Toggle, Values→Combo-Liste, FreeString→Text,

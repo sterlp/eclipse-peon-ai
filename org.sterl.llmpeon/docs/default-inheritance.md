@@ -4,7 +4,7 @@ idPrefix: DEF
 
 # Default-Inheritance — der Dev-Slot als Default
 
-> **Status:** ✅ done (R-DEF-1…3/6/8, 2026-09-28, `story/issue-149-think`) · **🚧 Rework in design (R-DEF-9…11, 2026-09-29, Paul)** · Surefire core **1054/0**, OSGi Tycho **307/0** · Da Dok CONCERNS→Nacharbeiten `a3320aa8` · **Verwandt:** [advanced-configuration.md](advanced-configuration.md)
+> **Status:** ✅ done (R-DEF-1…3/6/8, 2026-09-28, `story/issue-149-think`) · **🚧 Rework in design (R-DEF-9…11, 2026-09-29, Paul)** · Da Dok CONCERNS→Nacharbeiten · **Verwandt:** [advanced-configuration.md](advanced-configuration.md)
 > (per-Agent-Slots, [ADR-0036](../../docs/adr/0036-po-own-model-slot.md)) · [per-agent-think.md](../../org.sterl.llmpeon.core/docs/per-agent-think.md)
 > ([ADR-0061](../../docs/adr/0061-think-default-base-think-fallback.md) — Think-Fallback als Vorbild) ·
 > [model-config-widget.md](model-config-widget.md) (Basic-Seite)
@@ -60,7 +60,7 @@ ist; der Runtime-Load liest nur den rohen InstanceScope (`LlmConfigLoader.java:3
 verschwand → Runtime null. Der Advanced-Model-Refresh starb am selben Bug (Base-URL null im
 `effectiveConnectionFor`-Fetch) — der Widget-Umbau (Inc-2) hat diese Klassen nicht angefasst.
 
-**Write-Path-Fix (2026-09-28, Nachreview `a3320aa8`):** `performOk` beider Pages schreibt
+**Write-Path-Fix (2026-09-28, Nachreview):** `performOk` beider Pages schreibt
 Provider/URL/API-Key jetzt direkt via `EclipseLlmConfigStore.putOrRemove` (neu, geteilt) —
 `s`chreibt den sichtbaren Wert explizit statt ihn still zu entfernen; damit ist der JFace-Trap für
 URL/Key auf dem Schreibpfad geschlossen (lesseitig unverändert). Zugleich Fix des präexistierenden
@@ -137,7 +137,7 @@ gegen Advanced-Stale**; fehlender Provider-Key materialisierte den DefaultScope-
 → Pauls Entscheidung: **Ein Owner für die Default-Config = Basic-Seite**; Advanced nur Overrides.
 Supersedes R-DEF-4/5/7 (Advanced-DEV-Sektion) — [ADR-0063](../../docs/adr/0063-default-config-single-owner-basic-page.md).
 
-### R-DEF-9 — Basic-Seite = „Default for all agents" mit komplettem Slot ✅ done (2026-09-29, `c7d4e71d`/`af27674b`)
+### R-DEF-9 — Basic-Seite = „Default for all agents" mit komplettem Slot ✅ done (2026-09-29)
 
 #### UC-DEF-9 — Default-for-all-agents-Gruppe
 
@@ -146,7 +146,7 @@ GIVEN die Basic-Config-Seite ist offen WHEN sie gerendert wird THEN trägt sie d
 Model+Refresh · Think · Temperature · **Extra body (JSON)** via `ExtraBodyWidget` (Input + 3
 Example-Buttons, Bindung 7). Temperature-Label bleibt „Temperature (empty = unset):" (R-DEF-8).
 
-### R-DEF-10 — Advanced ohne DEV-Sektion, ohne Base-Key-Writes ✅ done (2026-09-29, `43c91fb2`)
+### R-DEF-10 — Advanced ohne DEV-Sektion, ohne Base-Key-Writes ✅ done (2026-09-29)
 
 #### UC-DEF-10 — Single Owner
 
@@ -157,7 +157,7 @@ ausschließlich die Basic-Seite. Damit sind Stale-Überschreibung, Default-Mater
 Copilot-Login-Überschreibung strukturell weg. `LlmConfigLoader`-Clean-Break (dev.url/apiKey nie
 gelesen) bleibt unverändert.
 
-### R-DEF-11 — Extra body/Think folgen dem Provider live; versteckt ≠ löschen ✅ done (2026-09-29, `af27674b`/`6c275676`)
+### R-DEF-11 — Extra body/Think folgen dem Provider live; versteckt ≠ löschen ✅ done (2026-09-29)
 
 #### UC-DEF-11 — Live-Gate ohne stille Löschung
 

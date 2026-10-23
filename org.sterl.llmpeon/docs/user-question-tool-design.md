@@ -30,7 +30,7 @@ On submit the normal input reappears and the LLM receives the answer string.
 
 ## UI Rules
 
-### R-UI1: Frage vollständig sichtbar ✅ (User 2026-09-06, E2E-Regression — gebaut inc-3 `402b922`)
+### R-UI1: Frage vollständig sichtbar ✅ (User 2026-09-06, E2E-Regression — gebaut inc-3)
 Wenn das Question-Widget erscheint, ist die Frage-Nachricht im Chat **vollständig sichtbar** —
 nichts davon wird vom (potenziell höheren) Widget verdeckt.
 

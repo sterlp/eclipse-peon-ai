@@ -79,7 +79,7 @@ THEN Filter-Disclosure UND Trim-Vermerk erscheinen beide („showing N of M" + �
 → runOsCommand_filterWithMaxChars
 ```
 
-### R3 — workingDirectory-Default (✅ done, 2026-09-24, Paul; Review Da Dok ACCEPTED, Commit `c06efcb`)
+### R3 — workingDirectory-Default (✅ done, 2026-09-24, Paul; Review Da Dok ACCEPTED)
 
 Fehlende `workingDirectory` darf **nicht** in den Process-CWD laufen (heute `ShellTool.java:74`:
 `Path.of(".")` → `/Applications/Eclipse.app/.../MacOS/.` — der Prompt zeigte genau das). Stattdessen:

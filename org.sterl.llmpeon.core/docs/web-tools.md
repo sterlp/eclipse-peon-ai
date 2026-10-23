@@ -6,7 +6,7 @@ idPrefix: WEB
 
 > **Status:** ✅ done (2026-09-20, Paul specified 2026-09-19). WebFetchTool paginiert (Cache + 500-Zeilen-Fenster),
 > `webGet` für Datei-Downloads ohne Limit. **2026-10-18 (✅ done, Paul):** Cache-Größe 5 → **16**
-> (R-WEB-9) — die Navigation in der Seite braucht mehr stabile Snapshots. Surefire core 1173/0, Paul-Smoke offen.
+> (R-WEB-9) — die Navigation in der Seite braucht mehr stabile Snapshots. Paul-Smoke offen.
 
 ## Ziel
 
@@ -90,7 +90,7 @@ keine Teilergebnisse, keine stillen „0 bytes"-Erfolge.
 wie die Disk-Write-Tools (schreibt auf absolute Pfade); ungated würde der Toggle still umgangen
 (Paul 2026-09-19). Homepage-Doku des Toggles nennt `webGet` mit (gleiche Increment-Pflicht).
 
-### R-WEB-9 — Snapshot-Cache hält die letzten 16 Seiten ✅ done (2026-10-18, Paul — Surefire core 1173/0)
+### R-WEB-9 — Snapshot-Cache hält die letzten 16 Seiten ✅ done (2026-10-18, Paul)
 
 Der `webFetchAsMarkdown`-Snapshot-Cache hält **16** Seiten (gebaut ist 5). Grund: die Paginierung
 lebt von stabilen Snapshots — bei 5 Seiten verdrängt eine mehrseitige Recherche ihre eigenen Seiten

@@ -4,9 +4,7 @@ idPrefix: RS
 
 # Tool-Result-Size im onTool — Ergebnisgröße sichtbar machen
 
-> **Status:** ✅ done (2026-09-30, Paul specified; `0be9a4c5` + Delta `f77cbef0` nach Da-Dok-REJECTED,
-> core Surefire 1085/0/0). **Anlass:** Thinka-Context-Overflow `974105 tokens`
-> vs `n_ctx 170240` — der Status zeigte 23k; welche Message/Tool-Result den Kontext sprengt, ist im
+> **Status:** ✅ done (2026-09-30, Paul specified; Delta nach Da-Dok-REJECTED). **Anlass:** Context-Overflow — welche Message/Tool-Result den Kontext sprengt, ist im
 > Log unsichtbar. Verwandt: [compact.md](compact.md) R-CC-17 (Biggest-Message-Dump),
 > [tool-output-disclosure.md](tool-output-disclosure.md) R-OD-6 (Grep-Zeilen-Cap).
 
@@ -18,7 +16,7 @@ nicht welches Tool es erzeugte. Ohne Größe ist die Overflow-Diagnose Raten.
 
 ## Business Rules
 
-### R-RS-1 — Tool-Zeile nennt die Ergebnisgröße ✅ done (`0be9a4c5`/`f77cbef0`)
+### R-RS-1 — Tool-Zeile nennt die Ergebnisgröße ✅ done
 
 Jede Tool-Completion-Zeile (onTool-Report in Chat/Log) endet mit **`(N chars)`** — N = Größe des
 Ergebnisses, das in den LLM-Kontext geht (der Return-String des Tools, nicht UI-Rendering).
@@ -31,7 +29,7 @@ Ergebnisses, das in den LLM-Kontext geht (der Return-String des Tools, nicht UI-
   WHEN done THEN beide Angaben nebeneinander: `(3s) (N chars)`. *(Test:
   `subAgentTimingAndCharsCoexist`)*
 
-### R-RS-2 — chars, kein Token-Estimate ✅ done (`0be9a4c5`)
+### R-RS-2 — chars, kein Token-Estimate ✅ done
 
 Die Zeile nennt **Zeichen** (deterministisch, gemessen), kein `chars/3`-Estimate — Estimates
 rauschen und gehören mit Tilde markiert (R-CC-6-Muster); hier gar kein Estimate.
@@ -39,7 +37,7 @@ rauschen und gehören mit Tilde markiert (R-CC-6-Muster); hier gar kein Estimate
 - GIVEN dieselbe Tool-Zeile WHEN gemessen THEN der `(N chars)`-Wert ist exakt die Stringlänge,
   kein gerundeter/geschätzter Wert. *(Test: `onToolCharsAreExactLength`)*
 
-### R-RS-3 — Auch dynamische Tools (MCP) disclosen ihre Ergebnisgröße ✅ done (2026-10-18, `50be78cf`, Surefire 1203/0)
+### R-RS-3 — Auch dynamische Tools (MCP) disclosen ihre Ergebnisgröße ✅ done (2026-10-18)
 
 MCP-Tools laufen **nicht** durch die tool-lokalen Done-Zeilen (kein `SmartToolExecutor`, kein
 Tool-eigener Code) — sie hatten nur die Start-Zeile `Running MCP: <name> - <args>`. Damit fehlte
@@ -80,7 +78,7 @@ wörtliches `"Success"` — Rauschen).
 für Cache-Hits; Overflow-Verdächtigen Nr. 1). `eclipseFindImplementations` = toter Code
 (Kommentar-Block) — kein Suffix, Entfernung separat.
 
-**MCP (R-RS-3, `50be78cf`):** einzige Ausnahme mit echter zentraler Stelle —
+**MCP (R-RS-3):** einzige Ausnahme mit echter zentraler Stelle —
 `ToolService.execute` MCP-Zweig (`ToolService.java:298-304`) meldet
 `Running MCP: <name> - <args>` … `MCP <name> done. (N chars)`. Grund: der Codegraph-/MCP-Aufruf
 geht an keinem Tool-Code vorbei, der den Return kennt.

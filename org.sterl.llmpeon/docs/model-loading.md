@@ -32,7 +32,7 @@ THEN die Liste wird neu geholt und ersetzt den Cache
 AND bei Fetch-Fehler bleibt der alte Cache bestehen
 ```
 
-## R-ML1 — Fetch-Identity ist live (2026-09-10) ✅ done (lib-update Zyklus, `fcb5339`)
+## R-ML1 — Fetch-Identity ist live (2026-09-10) ✅ done (lib-update Zyklus)
 
 Der Identity-Key für den Listen-Fetch (`ModelListCache.getOrFetch`) wird zur **Fetch-Zeit** aus
 der aktuellen Konfiguration gebaut (live-Supplier) — nie aus einem Snapshot, der beim
@@ -48,7 +48,7 @@ Page-Neuöffnung wirken.
 - **BDD R-ML1b** GIVEN ein Agent mit eigener URL WHEN die Agent-URL wird geändert THEN der Fetch
   nutzt die neue Agent-URL (Regression-Guard via Review).
 
-Umsetzung (`fcb5339`): `AgentModelConfigSection.base` ist `Supplier<LlmConfig>`,
+Umsetzung: `AgentModelConfigSection.base` ist `Supplier<LlmConfig>`,
 `prepareFetch()` baut die Identity zur Fetch-Zeit via
 `base.get().effectiveConnectionFor(getRecord())`; `AiAdvancedPreferenceView` hält keinen stale
 config-Field mehr (Supplier = `LlmPreferenceInitializer::buildWithDefaults`).
@@ -69,7 +69,7 @@ persistiert nicht (Apply bleibt einziger Save-Pfad, Cancel verwirft). Die Regeln
 jetzt im Widget-Doc: [model-config-widget.md](model-config-widget.md) (R-MCW-2/R-MCW-3, Präfix
 `MCW`). Der gelieferte Umbau ist das `ModelConfigWidget`.
 
-## R-ML3 — Model-Auswahl = natives SWT Combo auf beiden Pages — ✅ done (ui-config, `6b5c9ca`, 2026-09-12)
+## R-ML3 — Model-Auswahl = natives SWT Combo auf beiden Pages — ✅ done (ui-config, 2026-09-12)
 
 Das Model-Feld nutzt auf **Basic** und **Advanced** (geteilte Logik in `ModelComboWidget`) das
 **native SWT-Combo** wie die übrigen Dropdowns — gleicher Dropdown-Button. Label und Combo
@@ -83,7 +83,7 @@ Eingabe erlaubt, konfiguriertes Modell bleibt erhalten (Feld-Text, R-ML4) auch w
 Liste steht, Single-Flight pro Identität + Secret-Masking (ADR-0040). Danach erst Design-Studie github-copilot-for-eclipse
 (separater Schritt, advanced-configuration.md R-A3).
 
-## R-ML4 — Liste = Server-Liste, Eingabe bleibt Feld-Text — ✅ done (ui-config Inc-5 `985b244`, User-Re-Smoke ✅ 2026-09-13; 2026-09-12 User-Entscheidung nach Smoke — ersetzt die 2b-Append-Regel)
+## R-ML4 — Liste = Server-Liste, Eingabe bleibt Feld-Text — ✅ done (ui-config Inc-5, User-Re-Smoke ✅ 2026-09-13; 2026-09-12 User-Entscheidung nach Smoke — ersetzt die 2b-Append-Regel)
 
 Die Combo-Liste besteht **ausschließlich aus Server-Einträgen** — die getippte Eingabe wird
 **nicht** als Eintrag aufgenommen (User 2026-09-12: „den Code entfernen, wo die aktuelle Auswahl

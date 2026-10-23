@@ -58,7 +58,7 @@ Errors if 0 matches. Errors if oldString equals newString.
 „first occurrence" — das Tool log über seine eigene Semantik. SOLL (User): Replace-All + Count-Disclosure;
 identisch in beiden Tool-Familien (ein Verhalten, eine Implementierung).
 
-### Edit-Guard: `oldString` ist Pflicht-Anker ✅ done (2026-09-19, `7800a56`)
+### Edit-Guard: `oldString` ist Pflicht-Anker ✅ done (2026-09-19)
 
 `oldString` ist in **allen** Edit-Tools beider Familien (`diskEditFile`, `eclipseEditFile`,
 `eclipseUpdateOpenFile`) ein verpflichtender Anker mit Mindestlänge. Der Check läuft **explizit und
@@ -76,7 +76,7 @@ Anker unter 3 Zeichen ist fast immer ein Agentenfehler; Mikro-Edits haben Ausweg
 entschied der User bewusst für **eine einfache Schwelle ohne Trim-Sonderfälle** („schwierig" —
 Einfachheit schlägt Randfall-Intelligenz).
 
-> **Umsetzung (2026-09-19, `7800a56`):** Guard ist jetzt die **erste** Prüflinie in
+> **Umsetzung (2026-09-19):** Guard ist jetzt die **erste** Prüflinie in
 > `applyEdit` mit der exakten BDD-Message; der Count-Schutz bleibt als zweite Schranke.
 > Der vorherige IST-Zustand (Schutz nur zufällig via `countOccurrences`) ist damit abgelöst.
 
@@ -101,7 +101,7 @@ THEN Replace-All + Count-Disclosure wie gehabt
 > Normalfall. Selbstwachstum über Ketten-Edits (`abc` → `abcd` → …, jeder Call wächst um
 > `Treffer × Anhang`) ist damit möglich, aber explizite Agenten-Absicht, kein stilles Tool-Versagen;
 > der SimpleDiff-Guard fängt die Anzeige-Kippe. Ein fertiger Guard liegt auf
-> `bugfix/edit-tool-insert` (`FileUtils.applyEdit`, Commit `a3e8ce1`) — nur mergen, falls er doch
+> `bugfix/edit-tool-insert` (`FileUtils.applyEdit`) — nur mergen, falls er doch
 > wieder gebraucht wird.
 
 ### `diskRenameResource(sourcePath, targetPath)`

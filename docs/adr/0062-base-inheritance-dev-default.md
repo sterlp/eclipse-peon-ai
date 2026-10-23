@@ -8,7 +8,7 @@
 
 Im Per-Agent-Slot-Modell (ADR-0036) war `model=null` je Slot bewusst „provider default" — nur PO
 erbt das Base-Model. Paul erwartete nach dem Widget-Zyklus: Default setzen → alle Agenten laufen.
-Zusätzlich Regression aus #125 (`1e6aa745`): Runtime-Load liest nur InstanceScope, die JFace-Page
+Zusätzlich Regression aus #125: Runtime-Load liest nur InstanceScope, die JFace-Page
 entfernt Instance-Keys, die dem DefaultScope-Default entsprechen → Base-URL null →
 „baseUrl cannot be null or blank" (langchain4j), Advanced-Refresh tot.
 

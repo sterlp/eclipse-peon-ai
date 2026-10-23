@@ -21,7 +21,7 @@ Aufgeräumt 2026-10-14 (Paul-Order): Gelöste → resolved-points.md, Wertloses 
   und zeigt `~`. **Rückversicherung:** Paul bestätigt Semantik + Tilde, oder wir nehmen
   `updateTokenCounter` zurück (dann R-CC-18 wieder auf dem alten, blinden Zähler).
 - ⏳ **Codegraph-Icon-Motiv:** Paul-Entscheid 2026-10-19 — Header zeigt die **Codegraph-Glyphe**
-  (Lupe gehört zur Suche); `2a238ad4` per Datei-Restore zurückgenommen, Doku (R-CG-8) angeglichen.
+  (Lupe gehört zur Suche); per Datei-Restore zurückgenommen, Doku (R-CG-8) angeglichen.
 - ⏳ **Codegraph-Windows-Fallback `cmd /c codegraph serve --mcp`:** von Jon entschieden und im
   Factory-Test gepinnt, aber **auf Windows ungetestet** (Maschine = macOS). Bei Pauls nächstem
   Windows-Lauf prüfen: startet der Server ohne absoluten Binary-Pfad?
@@ -214,7 +214,7 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
 - **Docs-Linter ☠️-Status (2026-09-29):** DocParser kennt nur ✅/❌/🚧 (`DocParser.java:209-216`)
   — ein `####`-UC-Heading mit ☠️ wirft STATUS_FEHLT (Fall: default-inheritance.md UC-DEF-4/5/7
   mussten zu Fließtext degradiert werden). Kandidat: ☠️ als Info-Status.
-- **BDD-Test Compact-Hint-Fallback:** Regel gebaut (`29a341b`), Paul: „wann anders" — Backlog.
+- **BDD-Test Compact-Hint-Fallback:** Regel gebaut, Paul: „wann anders" — Backlog.
 
 ## ⏳ Mini-Cleanups / geparkt
 
@@ -238,9 +238,9 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   (e) LM Studio extra_body-Override, (f) OPEN_AI_OFFICIAL reasoningSummary=DETAILED, (g)
   custom-agent×OpenAI nur Signatur-Smoke. Plus: `ThinkModelMapping.Entry.off` geparst aber
   ungenutzt; `AiAgent.isThinkEnabled()` (deprecated Default) Sterben-Kandidat.
-- ⏳ **slf4j-simple — 🔒 gelöst 2026-10-17 (`8e6bcb54`):** Jar + Dependency aus Plugin-pom/
+- ⏳ **slf4j-simple — 🔒 gelöst 2026-10-17:** Jar + Dependency aus Plugin-pom/
   MANIFEST/build.properties entfernt — gebautes Bundle enthält exakt EINEN Provider
-  (`EclipseSlf4jProvider`), Plugin-Suite 352/0 ohne SLF4J-Warnung. **→ resolved-points.md.**
+  (`EclipseSlf4jProvider`), Plugin-Suite ohne SLF4J-Warnung. **→ resolved-points.md.**
   ⏳ Verbleibender Design-Punkt: slf4j-api ist **nicht OSGi-resolved**, sondern gebündelt
   (`lib/slf4j-api.jar`, aktuell 2.0.19 → 2.0.18 beim nächsten clean — Patch-Drift harmlos);
   Pauls Annahme eines `Require-Bundle`-Ranges `[2.0.0,3.0.0[` existiert im IST nicht. Falls
@@ -265,8 +265,8 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   `diskEditFile`:147, `diskInsertLines`:237) → `requireRegularFile(path, hint)`; exakte Meldungen
   1:1 (inkl. `Use searchDiskFiles`-Hint), `exists`-Varianten bewusst draußen. Core-Change →
   Jar-Ritual, nächster Core-Kontakt.
-- **SwtUtil.setExcluded-Extract — 🔒 gelöst 2026-10-15 (`3dfa784d`, Hyg2):** → resolved-points.md.
-- **Toter Code: `eclipseFindImplementations` — 🔒 gelöst 2026-10-15 (`b9a94195`, Hyg1):** → resolved-points.md.
+- **SwtUtil.setExcluded-Extract — 🔒 gelöst 2026-10-15, Hyg2:** → resolved-points.md.
+- **Toter Code: `eclipseFindImplementations` — 🔒 gelöst 2026-10-15, Hyg1:** → resolved-points.md.
 
 ## Sonstiges
 
@@ -347,13 +347,13 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
 
 ## Codegraph-Smoke (2026-10-18, Paul) — Befunde
 
-- 🔒 **Zwei `serve --mcp`-Prozesse — gelöst (2026-10-18, `fe583895`):** war ein **Bug**, kein Design:
+- 🔒 **Zwei `serve --mcp`-Prozesse — gelöst (2026-10-18):** war ein **Bug**, kein Design:
   jede Registry baute ihren eigenen `McpService` (je Server ein Prozess). Fix nach
   [ADR-0069](adr/0069-shared-mcp-connection-per-server.md): der Connection-Service **besitzt** den
   `McpService` (`connect()` genau einmal, einziger Schließer), alle Registries adoptieren ihn
   (`ToolService.adoptMcpGroup`); `disconnectMcp` detacht nur noch. Gilt für Codegraph **und**
   User-MCP; der Leer-Pfad (Server-Liste wird leer) schließt ebenfalls, Status sagt jetzt ehrlich
-  „MCP disconnected (no servers configured)". Gates: Core 1175/0, OSGi 386/0. Offen bleibt nur der
+  „MCP disconnected (no servers configured)". Offen bleibt nur der
   `McpService.connect()`-Rollback im Core als testlos (siehe unten).
 - ❓ **`codegraph` fehlt in Pauls Tool-Auswahl** (Agent-Tool-Config), obwohl verbunden
   (`Running MCP: codegraph_explore`). Kein struktureller MCP-Ausschluss (`ToolService.activeNames:111`,
@@ -391,4 +391,4 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
   Kontext-Anzeige (Compact-Button used/max) die gefährliche Richtung (Overflow-Risiko), zu hoch nur kosmetisch.
 - **Rückversicherung:** Paul hat /3 vorgeschlagen („nicht so wichtig, mehr Info") — Umsetzung im
   Nachtzyklus autonom; widerspricht Paul, zurück auf ×2/7 (Änderung ist eine Konstante). **Umgesetzt
-  `fbe2866f` + Zentralisierung `tokensToChars` `3199f732` (Open-Q1).**
+  (Open-Q1).**

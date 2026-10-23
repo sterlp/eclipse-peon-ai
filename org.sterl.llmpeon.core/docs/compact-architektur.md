@@ -1,6 +1,6 @@
 # Compact Architektur
 
-> **Status:** ✅ (2026-09-26, gebaut `414edf4`→`d3e8833`, Da-Dok-Review) ·
+> **Status:** ✅ (2026-09-26, Da-Dok-Review) ·
 > **Δ 2026-10-18:** R-CC-18 ❌ specified (Tool-Loop-Entscheidung, Abschnitt „Tool-Loop-Auslöser" unten) ·
 > **Fachdocs:** [compact.md](compact.md) (R-CC-1…14, R-CC-18) · [compact-input-budget.md](compact-input-budget.md) (R-CIB-1…6) ·
 > **ADRs:** [ADR-0055](../../docs/adr/0055-context-counter-input-not-cost.md) · [ADR-0056](../../docs/adr/0056-compact-component-and-render-modes.md) · [ADR-0070](../../docs/adr/0070-compact-decision-in-one-component.md)

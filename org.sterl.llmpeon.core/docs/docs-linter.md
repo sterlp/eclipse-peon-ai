@@ -489,7 +489,7 @@ gemeldet (nächste IDs wären `R-FOO-1` / `UC-FOO-1`).
 #### UC-DL-33 — Ohne `prefix` listet `nextIds` alle belegten Kürzel ✅ done
 GIVEN kein `prefix`-Parameter WHEN `nextIds` läuft THEN werden alle in den Docs belegten Kürzel mit
 ihrer jeweils nächsten freien Regel- und UC-Nummer gemeldet.
-### R-DL-23 — `prefix` erlaubt Bindestriche im Präfix ✅ done (2026-09-24, `d477820`)
+### R-DL-23 — `prefix` erlaubt Bindestriche im Präfix ✅ done (2026-09-24)
 
 `prefix` akzeptiert `[A-Z]+(?:-[A-Z0-9]+)*` — Bindestriche und Ziffern **innen**, nicht am Rand.
 Bestands-Präfixe (`ORD`, `CUST`, `TS`) verhalten sich unverändert. Das Splitten von `R-`/`UC-`-IDs
@@ -513,7 +513,7 @@ Präfix-Suche läuft über `O-TEST` als ganzes Kürzel.
 GIVEN `prefix=OP-`, `prefix=-OP` oder `prefix=op` WHEN `nextIds` läuft THEN klarer Fehler
 („not am Rand" bzw. uppercase only), keine stille Normalisierung.
 
-### R-DL-24 — `nextIds` schreibt die gefundene Form fort; „free" nur bei echtem Nichts ✅ done (2026-09-24, `887d301` + `2235dba`)
+### R-DL-24 — `nextIds` schreibt die gefundene Form fort; „free" nur bei echtem Nichts ✅ done (2026-09-24)
 
 Bei gesetztem `prefix` durchsucht `nextIds` zusätzlich zu den Definitionen der Opt-in-Docs den
 **rohen Text** aller gescannten MD-Dateien der `docRoots` nach Vorkommen von
@@ -566,7 +566,7 @@ GIVEN `prefix=FOO` und **kein** Vorkommen von `FOO-<Nr>` in irgendeiner gescannt
 `nextIds` läuft THEN erst dann meldet es `free` mit `R-FOO-1` / `UC-FOO-1` (UC-DL-26 bleibt, mit
 schärferer Vorbedingung).
 
-### R-DL-25 — `nextIds` nennt die nicht teilnehmenden Docs namentlich ✅ done (2026-09-24, `7933301`)
+### R-DL-25 — `nextIds` nennt die nicht teilnehmenden Docs namentlich ✅ done (2026-09-24)
 
 Der `nextIds`-Rückgabewert listet — wie der Lint-Report (R-DL-11) — **jede** nicht teilnehmende
 Datei („Not participating (no idPrefix)") mit Pfad auf, nicht nur die Zählzeile.
@@ -581,7 +581,7 @@ Datei („Not participating (no idPrefix)") mit Pfad auf, nicht nur die Zählzei
 GIVEN ein Lauf mit nicht teilnehmenden Docs WHEN `nextIds` zurückkehrt THEN listet der Output jede
 dieser Dateien mit Pfad — analog zum „Nicht teilnehmend"-Abschnitt des Lint-Reports (UC-DL-23).
 
-### R-DL-26 — Doc-Roots werden automatisch gefunden und offengelegt ❌
+### R-DL-26 — Doc-Roots werden automatisch gefunden und offengelegt ✅ done (2026-10-22, Docs-Restrukturierungs-Zyklus)
 
 Ohne explizite `docRoots` scannt der Linter **alle** Verzeichnisse, die unter dem Root literal
 `docs` heißen und mindestens eine `.md`-Datei enthalten — bis zwei Ebenen unter dem Root
@@ -695,7 +695,7 @@ Editor-Änderungen nicht enthalten sind, sowie **wie viele Doc-Dateien** gescann
 > veralteter Stand zu einem Falschbefund, den man sieht. Bei `nextIds` führt er zu einer
 > **wiederverwendeten ID**, die man nicht sieht — der gefährlichere der beiden Fälle.
 >
-> **Umgesetzt (2026-09-15, `934ea7c`):** `DocsLinter.nextIds` gibt statt `List<NextIds>` einen
+> **Umgesetzt (2026-09-15):** `DocsLinter.nextIds` gibt statt `List<NextIds>` einen
 > `NextIdsResult` zurück, der die Zahlen **aus der Discovery** (`DocParseData.lintedDocs()` /
 > `skippedDocs()`) mitführt — nie aus den Allokationen abgeleitet. Die Wortwahl liegt genau einmal
 > vor: `DocsLintReportRenderer.docScanSummary(...)` bedient Lint-Methoden **und** `nextIds`.
@@ -912,7 +912,7 @@ GIVEN `root` existiert weder als Verzeichnis noch ohne führenden `/` relativ zu
 eine der drei Methoden läuft THEN Fehlermeldung nennt **beide** probierten Pfade — kein stiller
 leerer Report.
 
-### R-DL-19 — Scan-Quellen werden relativ zum Root benannt ✅ done (2026-09-19, `15e3eab`)
+### R-DL-19 — Scan-Quellen werden relativ zum Root benannt ✅ done (2026-09-19)
 
 Der Report nennt die gescannten Verzeichnisse **relativ zum Root** (`docs`, `src/test/java`, …),
 nicht als absolute Disk-Pfade — der User sieht auf einen Blick, welche Wurzeln aktiv waren, ohne
@@ -923,7 +923,7 @@ absolute Pfade mental gegen die Parameter auflösen zu müssen.
 GIVEN ein Lauf mit `docRoots=["docs"]`, `testRoots=["src/test/java"]` WHEN der Report entsteht
 THEN nennt die Quellliste `docs`, `src/test/java` (relativ zum Root), nicht die absoluten Pfade.
 
-### R-DL-20 — Lint-Läufe sind per `onTool` sichtbar — compact, mit Zahlen ✅ done (2026-09-19, `15e3eab`/`73bb156`)
+### R-DL-20 — Lint-Läufe sind per `onTool` sichtbar — compact, mit Zahlen ✅ done (2026-09-19)
 
 Jeder Lauf meldet per `onTool` **eine Zeile** an die UI: Tool-Name + Scan-Zahl + Befundzahlen,
 z. B. `lintDocs: 3 docs, 2 findings (1 UNBELEGT_ERLEDIGT)`. Der vollständige Report bleibt
