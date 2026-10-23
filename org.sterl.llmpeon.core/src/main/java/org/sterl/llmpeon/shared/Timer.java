@@ -33,22 +33,25 @@ public class Timer {
     }
 
     /** Records the start instant and (re)starts the timer. */
-    public void start() {
+    public Timer start() {
         this.start = clock.millis();
+        return this;
     }
 
     /** Freezes the elapsed duration. A no-op when the timer is not running. */
-    public void stop() {
+    public Timer stop() {
         if (start != 0) {
             this.elapsed = clock.millis() - start;
             this.start = 0;
         }
+        return this;
     }
 
     /** Resets the timer: not running and {@link #millis()} returns {@code 0}. */
-    public void reset() {
+    public Timer reset() {
         this.start = 0;
         this.elapsed = 0;
+        return this;
     }
 
     /** The live duration while running, otherwise the last frozen duration. */

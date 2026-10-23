@@ -301,8 +301,8 @@ public abstract class AbstractAgent implements AiAgent {
     /** Execute a single LLM+tool turn for the given message. */
     protected ChatResponse doCall(String message, AiMonitor monitor) {
         monitor = AiMonitor.nullSafety(monitor);
-        monitor.onCallStart(message);
         preTurnCompact(monitor); // R-CC-20.2: over 95 % of the raw budget, before the fresh message enters
+        monitor.onCallStart(message);
         // Inject turn-scoped context on every turn (idempotent via contains-check)
         var userMessages = renderTurnContext(memory, turnContextSupplier, monitor);
 
@@ -326,6 +326,34 @@ public abstract class AbstractAgent implements AiAgent {
                 );
 
         monitor.onCallCompleted(response, Duration.between(start, Instant.now()));
+        return response;
+    }
+    
+    /** Execute a single LLM+tool turn for the given message. */
+    protected ChatResponse asyncCall(String message, AiMonitor monitor) {
+        preTurnCompact(monitor); // R-CC-20.2: over 95 % of the raw budget, before the fresh message enters
+        monitor.onCallStart(message);
+        // Inject turn-scoped context on every turn (idempotent via contains-check)
+        var userMessages = renderTurnContext(memory, turnContextSupplier, monitor);
+
+        if (StringUtil.hasValue(message)) userMessages.add(TextContent.from(message));
+        if (!userMessages.isEmpty()) addMessage(UserMessage.from(userMessages));
+
+        var staticMessages = buildStaticMessages(monitor);
+        var response = toolService.executeLoop(
+                ToolLoopRequest.builder()
+                    .memory(memory)
+                    .chatModel(configuredModel)
+                    .staticMessages(staticMessages)
+                    .monitor(monitor)
+                    .toolFilter(getToolFilter())
+                    .toolNameFilter(getToolNameFilter())
+                    .writeValidator(getWriteValidator())
+                    .agentConfig(getConfig())
+                    .agent(this)
+                    .build()
+                );
+
         return response;
     }
 

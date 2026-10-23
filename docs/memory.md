@@ -2,28 +2,24 @@
 
 > docs/** — insbesondere memory.md — schreibt AUSSCHLIESSLICH Jon. Agenten liefern Facts im Chat.
 
-## Stand 2026-10-23 — Zyklus: Docs-Slim (Task „Docs-Cleanup & schlanker Index")
+## Stand 2026-10-23 — Zyklus: Docs-Slim ABGESCHLOSSEN (Task „Docs-Cleanup & schlanker Index")
 
 Branch `story/docs-slim-2026-10-22` (Basis = INC-A auf `story/docs-restructure-2026-10-22`).
+**Zyklus fertig — Review bestanden, alle Commits auf dem Branch. Warten auf Pauls Merge/Squash.**
 
-- **INC-A committed:** Root-Index = Link-Dokument (~3.2k Zeichen, Register raus) + AGENTS-DEV
-  Gate-Evidenz-Regel. A8-Paritäts-Gate existiert NICHT im Code (Da-Thinka-VOLL-Grep: 0 Treffer).
-- **INC-B (Evidence-Sweep) committed** (2 Commits nach INC-A): alle Commit-Hashes,
-  Surefire-/Test-Zahlen und Messwerte aus `docs/**` entfernt (Root-Docs, beide Sub-Indexe,
-  ~40 Feature-Docs, 9 ADRs + Index, AGENTS-DEV-Präzision „nur tatsächlich gefahrene Gates").
-  Struktur-Entscheidungen (D1–D6) siehe Compact-Zusammenfassung: Root-Index = Link-Doc,
-  `nachweise/` verworfen (Paul 2026-10-22), Variante B prospektiv, Branch = slim auf restructure.
-- **Da-Dok-Review: CONCERNS → aufgelöst.** F1 memory.md-Stand (dieser Block) · F2 zwei abgehackte
-  „Fix)."-Sätze java-debugger · F3 Sub-Index-Köpfe „Register → Link-Doc" + Legende vereinheitlicht ·
-  F4 Evidenz-Reste 2. Welle (test-setup 141/519, tool-descriptions 25/25↔21/55, open-to-discuss
-  Messwerte, agent-error 974k, adr/0048+docs-linter 5.942-Zeichen, output-trim 3.2M, R-OD-6 974k)
-  · F5 UC-DL-74…82 ❌→✅ (Marker+Tests verifiziert, 27/0 grün).
-- **Lint nach Flip:** Baseline unverändert (9); kein VERWAIST/UNBELEGT_ERLEDIGT für DL-26/74…82.
-- **Offen aus dem Review (open-points.md):** Testnamen-im-Fließtext-Slice (Paul-Entscheid 2026-10-19,
-  noch nicht gefahren) · Linter-Guard gegen Evidenz-Drift (❓, positiv nachweisen) · R-CC-18-/
-  R-DEF-Doppedefinitionen (vorbestehend).
-- **Nächster Schritt:** Nachzieh-Commit der Review-Fixes (Da Mek, explizite Pfadliste), dann
-  Sub-Index-Abnahme bei Paul („arbeite ich ohne Register?"), dann Merge/Squash beider Branches.
+- **Commits:** `01d538ae` INC-A (Root-Index = Link-Doc ~3.2k Zeichen + AGENTS-DEV Gate-Evidenz-Regel) ·
+  `b6d27472` INC-B Evidence-Sweep (Hashes/Surefire-Zahlen/Messwerte aus `docs/**` entfernt) ·
+  `89273a15` 2 Rest-Hashes · `916c8311` Da-Dok-Review-Fixes F1–F5 · `67113bcc` Skill-Evolution
+  (`peon-build-test` patched + Ledger Accepted).
+- **Da-Dok-Review: CONCERNS → alle Findings aufgelöst** (F1 memory.md-Stand, F2 java-debugger
+  Satzreste, F3 Sub-Index-Köpfe/Legende, F4 Evidenz-Reste 2. Welle, F5 UC-DL-74…82 ❌→✅ —
+  Marker+Tests verifiziert, 27/0 grün). Lint-Baseline unverändert (9).
+- **Skill-Evolution:** `peon-build-test` gepatcht — Core-Single-Class-Gate läuft offline OHNE
+  `-am`/Reactor (`mvn -o -B clean test -pl org.sterl.llmpeon.core -Dtest='A,B'`); `clean` zwingend
+  (m2e/Lombok-Stale-Falle). Evidence 27/0. Ledger `.agents/skills/wiki/skill-impact.md` = Accepted.
+- **Offen aus dem Review (open-points.md):** Testnamen-im-Fließtext-Slice (Paul-Entscheid
+  2026-10-19, noch nicht gefahren) · Linter-Guard gegen Evidenz-Drift (❓, positiv nachweisen) ·
+  R-CC-18-/R-DEF-Doppedefinitionen (vorbestehend).
 
 ## Offen für Paul (Details: [open-points.md](open-points.md))
 

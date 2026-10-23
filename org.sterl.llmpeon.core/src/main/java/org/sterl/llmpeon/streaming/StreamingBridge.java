@@ -40,6 +40,8 @@ import dev.langchain4j.model.chat.response.StreamingHandle;
  * <p>
  * Cancel: every partial callback checks {@link AiMonitor#isCanceled()} and calls
  * {@link StreamingHandle#cancel()} immediately when true.
+ * 
+ * @deprecated will be replaced by {@link AsyncStreamingBridge}
  */
 public class StreamingBridge implements StreamingChatResponseHandler {
 

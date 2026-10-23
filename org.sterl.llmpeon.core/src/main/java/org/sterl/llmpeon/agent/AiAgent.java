@@ -3,6 +3,7 @@ package org.sterl.llmpeon.agent;
 import java.util.List;
 import java.util.function.Supplier;
 
+import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.Nullable;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.context.ContextItem;
@@ -21,6 +22,10 @@ public interface AiAgent {
 
     @Nullable
     ChatResponse call(String message, AiMonitor monitor);
+    
+    //@NotNull
+    //ChatResponse asyncCall(String message, AiMonitor monitor);
+    
     /** Compacts the agent's memory via the compressor.
      * @return {@link CompactResult.Status#COMPACTED} — the memory is already reset and re-seeded
      *         with the summary; {@link CompactResult.Status#SKIPPED_SMALL} — the memory is too

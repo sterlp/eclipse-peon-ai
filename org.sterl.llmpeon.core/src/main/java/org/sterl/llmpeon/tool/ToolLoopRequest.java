@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.tool;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
 
 import org.jspecify.annotations.Nullable;
@@ -11,6 +12,8 @@ import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.streaming.ApiRetry;
+import org.sterl.llmpeon.streaming.AsyncStreamingBridge;
+import org.sterl.llmpeon.streaming.AsyncStreamingBridge.SteamHandler;
 import org.sterl.llmpeon.streaming.StreamingBridge;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
@@ -48,8 +51,12 @@ public class ToolLoopRequest {
     @Getter
     @NonNull
     private final ConfiguredChatModel chatModel;
+
     @Default
     private final StreamingBridge bridge = new StreamingBridge();
+    @Default
+    private final AsyncStreamingBridge asyncBridge = new AsyncStreamingBridge();
+    
     /** Earned-patience retry around the AI call; fresh per turn (this object is rebuilt per message). */
     @Default
     private final ApiRetry retry = new ApiRetry();
@@ -106,6 +113,13 @@ public class ToolLoopRequest {
     
     public ChatResponse call(ChatRequest chatRequest) {
         return retry.call(monitor, () -> bridge.call(chatModel.modelFor(getAgentConfig()), chatRequest, monitor));
+    }
+    
+    public CompletableFuture<SteamHandler> asyncCall(ChatRequest chatRequest) {
+        // TODO build on retry ... if steam handler has an error ...
+        // but here we add the partial response, if any received, to the chat history
+        // we have to test if this is valid of course, AI, message after AI message guess we have to merge or add a User message "retry x/y?" 
+        return asyncBridge.call(chatModel.modelFor(getAgentConfig()), chatRequest, monitor);
     }
 
     /**
