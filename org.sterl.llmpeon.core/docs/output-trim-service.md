@@ -9,8 +9,8 @@
 ## Anlass
 
 Ein Agent hat sich mit einem einzigen `shellRunCommand` (Pipeline `grep|awk` über `backend/src/test`)
-eine minifizierte Datei mit 116 Zeilen / **3.217.746 Zeichen** in den Kontext geholt — Session
-unbrauchbar. `long-shell.log` bestätigt indirekt (~1.020k geschätzte Tokens, Stage `tool results 6000`).
+eine minifizierte Datei mit Megabyte-Umfang in den Kontext geholt — Session
+unbrauchbar. `long-shell.log` bestätigt indirekt (geschätzt weit über dem Context-Budget).
 Ein Agent sollte Shell nur für Build/Test/git nutzen (Read/Grep existieren) — trotzdem ist die
 Ausgabegrenze ein Bug, kein Erziehungsproblem.
 

@@ -71,8 +71,7 @@ dass Projekt-Errors sichtbar sind** (kurzer Timeout statt 180s).
 Grep liefert pro Treffer Pfad + Zeilennummer + **die komplette Zeile** — der 100-Zeilen-Cap
 (`MAX_GREP_LINES`) ist ein **Zeilenzähler ohne Längenlimit pro Zeile**. Eine minifizierte
 `.js`/Bundle-Datei (eine einzige Megabyte-Zeile) schiebt damit faktisch die ganze Datei in den
-LLM-Kontext — Hauptverdachtiger für den 974k-Overflow (Thinka, 2026-09-30, Grep `replace` = 850
-Treffer workspace-weit).
+LLM-Kontext — Hauptverdachtiger für den Context-Overflow (Thinka, 2026-09-30, Grep `replace` workspace-weit).
 
 **SOLL (2026-10-17, Output-Trim-Service Slice 1):** der Zeilen-Cap liegt bei **500 Zeichen**
 (Paul: „500 überall", ersetzt den R-OD-6-Wert 2000) und wird von der geteilten Komponente

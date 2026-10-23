@@ -601,48 +601,48 @@ Kein Root, der mitmacht, bleibt im Report unerwähnt.
 > teilnehmend — ein False Negative, der teuerste Fehler dieses Codes (AGENTS.md). Eine
 > Discovery, die jeder Report ausweist, schließt das Fenster mechanisch statt per Disziplin.
 
-#### UC-DL-74 — Discovery findet Modul-Doc-Wurzeln ❌
+#### UC-DL-74 — Discovery findet Modul-Doc-Wurzeln ✅
 
 GIVEN `docs/`, `a/docs/` und `b/c/docs/`, je mit mindestens einer `.md` WHEN die Discovery läuft
 THEN liefert sie alle drei Wurzeln — sortiert, mit `docs` zuerst.
 
-#### UC-DL-75 — Die Root-Wurzel steht zuerst ❌
+#### UC-DL-75 — Die Root-Wurzel steht zuerst ✅
 
 GIVEN `docs/` und `a/docs/` WHEN die Discovery läuft THEN ist `docs` der erste Eintrag der Liste.
 
-#### UC-DL-76 — Fremde Bäume werden nie betreten ❌
+#### UC-DL-76 — Fremde Bäume werden nie betreten ✅
 
 GIVEN `node_modules/docs`, `target/docs` und `bin/docs`, je mit `.md` WHEN die Discovery läuft
 THEN enthält die Wurzelliste keinen dieser Pfade.
 
-#### UC-DL-77 — Leere docs-Verzeichnisse sind keine Wurzeln ❌
+#### UC-DL-77 — Leere docs-Verzeichnisse sind keine Wurzeln ✅
 
 GIVEN `x/docs/` ohne einzige `.md` WHEN die Discovery läuft THEN ist `x/docs` keine Wurzel,
 sondern auf der ignorierten Liste.
 
-#### UC-DL-78 — Tiefengrenze der Discovery ❌
+#### UC-DL-78 — Tiefengrenze der Discovery ✅
 
 GIVEN ein `docs/`-Verzeichnis drei Ebenen unter dem Root (`x/y/z/docs/`) WHEN die Discovery läuft
 THEN wird es nicht gefunden.
 
-#### UC-DL-79 — Explizite docRoots gewinnen ❌
+#### UC-DL-79 — Explizite docRoots gewinnen ✅
 
 GIVEN teilnehmende Docs in `docs/` und in `mod/docs/` WHEN `lintDocs` mit `docRoots=["mod/docs"]`
 läuft THEN scannt der Report nur `mod/docs` und die Wurzelzeile endet auf `(explicit)`.
 
-#### UC-DL-80 — Auto-Discovery wird offengelegt ❌
+#### UC-DL-80 — Auto-Discovery wird offengelegt ✅
 
 GIVEN teilnehmende Docs in `docs/` und in `mod/docs/` WHEN `lintDocs` ohne `docRoots` läuft
 THEN nennt der Report beide Wurzeln mit `(auto-discovered)` und beide Docs in den Scan-Zahlen —
 kein Root bleibt still unerwähnt.
 
-#### UC-DL-81 — Default-Lauf findet, was der explizite Lauf findet ❌
+#### UC-DL-81 — Default-Lauf findet, was der explizite Lauf findet ✅
 
 GIVEN derselbe Baum WHEN ein Default-Lauf und ein Lauf mit allen entdeckten Wurzeln als
 `docRoots` verglichen werden THEN sind Scan-Zahlen, Definitionszahlen und Findings identisch
 (nur die Herkunftskennzeichnung in der Wurzelzeile unterscheidet sich).
 
-#### UC-DL-82 — Leere Discovery warnt und fällt zurück ❌
+#### UC-DL-82 — Leere Discovery warnt und fällt zurück ✅
 
 GIVEN ein Root ohne jedes `docs`-Verzeichnis WHEN `lintDocs` ohne `docRoots` läuft THEN gibt es
 keine Exception; der Report nennt den Fallback `docs` mit Warnung und meldet 0 Dateien.
@@ -847,8 +847,8 @@ und keinen Datei-Report.
 
 > **WEIL** (User 2026-09-15, Clean Break): Der Nutzer ist ein Agent, kein Mensch am Terminal. Er
 > bekommt den Rückgabewert ohnehin direkt in den Context — der Umweg über eine Datei liefert ihm
-> nichts Neues und kostet einen zweiten Read. Gemessen am eigenen Repo: **5.942 Zeichen, 149
-> Zeilen, 35 Befunde, ungekappt** — das passt in ein Tool-Result. Der Datei-Report enthielt nur
+> nichts Neues und kostet einen zweiten Read. Gemessen am eigenen Repo: das ungekappte Summary
+> passt als Tool-Result in den Kontext. Der Datei-Report enthielt nur
 > Aufbereitung (Tabellen, Gruppierung, Methodennamen), keine zusätzliche Information.
 >
 > **Der Gewinn ist die Abwesenheit:** Ohne Schreibpfad ist das Tool *echt* read-only. Damit

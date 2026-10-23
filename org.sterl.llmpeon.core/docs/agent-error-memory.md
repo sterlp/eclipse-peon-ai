@@ -5,7 +5,7 @@ idPrefix: AEM
 # API-Fehler ins Agent-Memory
 
 > **Status:** ✅ done (2026-09-30, Paul; Delta nach Da-Dok-REJECTED). **Anlass:** Turn stirbt still an API-Fehlern
-> (400 `exceed_context_size_error`, Thinka 974k vs n_ctx 170240) — die History enthält den Abbruch
+> (400 `exceed_context_size_error`) — die History enthält den Abbruch
 > nicht; der Agent (und Paul) wissen beim nächsten Turn nicht, warum Schluss war. Verwandt:
 > [agents-retry.md](agents-retry.md) (ApiRetry — erst nach erschöpftem Retry),
 > [compact.md](compact.md) R-CC-7 (Fehlerklassen-Tabelle, ein Bestand zwei Verbraucher) und

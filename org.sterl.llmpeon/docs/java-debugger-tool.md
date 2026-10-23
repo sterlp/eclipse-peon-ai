@@ -103,7 +103,7 @@ debuggte App. Allowlist-Präfix für Custom Agents: `debugJava` (Naming: ADR-005
 Session-Lookup filtert Targets, deren Process terminiert ist oder keine Threads mehr hat
 (`IProcess.isTerminated()` / `!hasThreads()`) — eine **selbst beendete** VM (Programm lief durch)
 zählt als „no active debug session", genau wie eine UI-Terminierung; `debugJavaContinue` pollt dann nicht
-in die Deadline. Kollateral aus dem E2E-Smoke (F7, 2026-09-21, Fix).
+in die Deadline. Kollateral aus dem E2E-Smoke (F7, 2026-09-21, behoben).
 
 #### UC-JD-7 — deadVMSelfExitFailsHonest ✅
 - GIVEN VM endete von selbst (kein UI-Terminate) WHEN irgendeine Action THEN ehrlicher
@@ -115,7 +115,7 @@ in die Deadline. Kollateral aus dem E2E-Smoke (F7, 2026-09-21, Fix).
 
 Breakpoint-Erstellung löst das File zuerst über JDT auf (`JavaCore.createCompilationUnitFrom` →
 `findPrimaryType`) und legt den Marker nur bei geladener CU an; sonst ehrlicher Fehler mit Datei +
-Projekt + Grund (E2E F1: rohes `IFile` → „not a Java compilation unit", Fix).
+Projekt + Grund (E2E F1: rohes `IFile` → „not a Java compilation unit", behoben).
 
 #### UC-JD-8 — breakpointRequiresCompilationUnit ✅
 - GIVEN Datei im Projekt WHEN `debugJavaSetBreakpoint` THEN CU-Auflösung vor Marker-Factory; Nicht-Source-

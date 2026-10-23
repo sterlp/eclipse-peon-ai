@@ -293,7 +293,7 @@ je Caller (Basic raw `Label` SWT.LEFT, Advanced `addLabel` SWT.END),
 `EclipseUtil.runInUiThread(Composite→Widget)`, Stale-Guard-Anker `modelCombo`. Tests:
 `ModelComboWidgetTest` (inkl. READ_ONLY-Assert) + `AgentModelConfigFetchTest` — **User-Smoke
 beide Pages ✅ 2026-09-12** ([resolved-points.md](../../docs/resolved-points.md)). Bekannte Lücke (Plan §11):
-Stale-Guard-Mutation lässt alle 5 Tests grün — Follow-up-Test offen.
+Stale-Guard-Mutation lässt die bestehenden Tests grün — Follow-up-Test offen.
 
 **R-A3 — Design-Studie github-copilot-for-eclipse (separat, NACH R-A1/R-A2):** Gruppen-/Label-Gestaltung
 im Copilot-Plugin abschauen (alle Labels bündig, auch Extra Body) — Inspiration, kein Copy; nur

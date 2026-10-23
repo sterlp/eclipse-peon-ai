@@ -8,19 +8,22 @@ Branch `story/docs-slim-2026-10-22` (Basis = INC-A auf `story/docs-restructure-2
 
 - **INC-A committed:** Root-Index = Link-Dokument (~3.2k Zeichen, Register raus) + AGENTS-DEV
   Gate-Evidenz-Regel. A8-Paritäts-Gate existiert NICHT im Code (Da-Thinka-VOLL-Grep: 0 Treffer).
-- **INC-B (Evidence-Sweep) fertig im Working Tree, UNCOMMITTED:** alle Commit-Hashes,
+- **INC-B (Evidence-Sweep) committed** (2 Commits nach INC-A): alle Commit-Hashes,
   Surefire-/Test-Zahlen und Messwerte aus `docs/**` entfernt (Root-Docs, beide Sub-Indexe,
-  ~40 Feature-Docs, 8 ADRs + Index, AGENTS-DEV-Präzision „nur tatsächlich gefahrene Gates").
+  ~40 Feature-Docs, 9 ADRs + Index, AGENTS-DEV-Präzision „nur tatsächlich gefahrene Gates").
   Struktur-Entscheidungen (D1–D6) siehe Compact-Zusammenfassung: Root-Index = Link-Doc,
   `nachweise/` verworfen (Paul 2026-10-22), Variante B prospektiv, Branch = slim auf restructure.
-- Spezial-Fixes im Sweep: compact-lock Beleg-Tabelle raus · test-setup Zahlen-Tabelle raus
-  (by-design-Skip-Liste bleibt, ohne Stückzahlen) · R-DL-26 ❌→✅ (DocRootDiscovery, gebaut im
-  Restrukturierungs-Zyklus) · icons.md Inc-Hash-Ketten raus, S1/S2-Labels bleiben.
-- **Lint nach Flip:** keine DL-26-Findings; 14 UNBELEGT_ERLEDIGT + 9 VERWAIST = Baseline-Bestand
-  unberührter Docs (agent-tool-config, agent-tool-filter, docs-linter:778+, tool-output-disclosure,
-  tool-time-disclosure, UC-DEF-Test-Marker) — Vorab-Kandidaten für den nächsten Docs-Zyklus.
-- **Nächster Schritt:** INC-B committen (Da Mek, explizite Pfadliste, Pauls WIP-Dateien NICHT),
-  danach Da-Dok-Review des Slim-Zyklus, dann Sub-Index-Abnahme bei Paul.
+- **Da-Dok-Review: CONCERNS → aufgelöst.** F1 memory.md-Stand (dieser Block) · F2 zwei abgehackte
+  „Fix)."-Sätze java-debugger · F3 Sub-Index-Köpfe „Register → Link-Doc" + Legende vereinheitlicht ·
+  F4 Evidenz-Reste 2. Welle (test-setup 141/519, tool-descriptions 25/25↔21/55, open-to-discuss
+  Messwerte, agent-error 974k, adr/0048+docs-linter 5.942-Zeichen, output-trim 3.2M, R-OD-6 974k)
+  · F5 UC-DL-74…82 ❌→✅ (Marker+Tests verifiziert, 27/0 grün).
+- **Lint nach Flip:** Baseline unverändert (9); kein VERWAIST/UNBELEGT_ERLEDIGT für DL-26/74…82.
+- **Offen aus dem Review (open-points.md):** Testnamen-im-Fließtext-Slice (Paul-Entscheid 2026-10-19,
+  noch nicht gefahren) · Linter-Guard gegen Evidenz-Drift (❓, positiv nachweisen) · R-CC-18-/
+  R-DEF-Doppedefinitionen (vorbestehend).
+- **Nächster Schritt:** Nachzieh-Commit der Review-Fixes (Da Mek, explizite Pfadliste), dann
+  Sub-Index-Abnahme bei Paul („arbeite ich ohne Register?"), dann Merge/Squash beider Branches.
 
 ## Offen für Paul (Details: [open-points.md](open-points.md))
 

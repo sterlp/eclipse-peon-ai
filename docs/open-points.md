@@ -87,8 +87,17 @@ Aufgeräumt 2026-10-14 (Paul-Order): Gelöste → resolved-points.md, Wertloses 
 - **Bekannte Kandidaten (beim Aufräumen per Grep vollständig inventarisieren, nicht nur diese):**
   `compact-lock.md` (Beleg-Tabelle), `codegraph.md` (Fakten-Bullet), `java-debugger-tool.md`,
   `compact.md` (Commit-Hashes in R-Zeilen), `tagged-results.md`, `bounded-caches.md`.
-- **Ablage:** Belege nach `peon-plan/` (z. B. `peon-plan/belege/<feature>.md`), sonst ersatzlos —
-  git hat die Historie.
+- **Stand 2026-10-23 (Docs-Slim-Zyklus):** Hashes, Surefire-/Test-Zahlen, Messwerte und
+  Beleg-Tabellen sind aus allen drei Docs-Bäumen entfernt (Da-Dok-Review: Hash-Grep 0 Treffer).
+  **Offen:** **Testnamen im Fließtext** (dieser Entscheidung folgend — überall, nicht nur die
+  Kandidatenliste unten) und Zeilen-Anker (`File.java:24`, gleiche Drift-Klasse).
+- **Ablage:** ersatzlos — Evidenz lebt in **Commit-Messages** (je Inkrement 1–2 Zeilen, nur
+  tatsächlich gefahrene Gates) + memory-Tools (Paul 2026-10-22: `nachweise/`/`peon-plan/belege`
+  verworfen); git hat die Historie.
+- ❓ **Linter-Guard gegen Drift (Da-Dok-Review 2026-10-23):** Evidenz-Muster (Commit-Hashes,
+  Test-Zahlen) als Linter-FindingType oder Gate-Grep über `docs/**`, damit der Bestand nicht
+  wieder schleichend wächst. Positiv nachweisen: eine Testzahl in ein teilnehmendes Doc setzen
+  ⇒ neue Regel muss rot.
 
 
 

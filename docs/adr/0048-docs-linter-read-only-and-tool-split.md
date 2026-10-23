@@ -30,7 +30,7 @@ Zwei Fragen standen zur Entscheidung: (1) Wie kommt das Tool an die richtigen Ag
 ### 1. `reportPath` ersatzlos streichen — Clean Break
 
 Messung gegen das eigene Repo: Der Rückgabewert (`summary`) enthält **alle** Befunde einzeln mit
-`datei:zeile`, ungekappt — 5.942 Zeichen, 149 Zeilen, 35 Befunde. Der Datei-Report enthielt
+`datei:zeile`, ungekappt — kompakt genug, um als Tool-Result zu passen. Der Datei-Report enthielt
 ausschließlich **Aufbereitung** (Überschriften, Tabellen, Gruppierung nach Datei, Methodennamen,
 den Disk-Read-Hinweis), keine zusätzliche Information.
 

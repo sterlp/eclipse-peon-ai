@@ -1,6 +1,6 @@
 # Tool Descriptions — Inventory & Optimization Plan
 
-**Status:** ✅ **done** — 25/25 `@Tool`-Descriptions optimiert (Runde 2: kurze Version 10-17 Wörter), `buildWithAgent` → `buildWithDev` rename, static tool-name constants in JonDelegateTool, Test auf structural checks umgestellt. Build grün, verifiziert. **Sync 2026-09-30:** #7/#28 auf den Paul-verbatim-Text aktualisiert (beide Familien identisch), #6/#27 verifiziert (Runde-2-Text ist IST; Out-of-Range-Fehler ändert nur Verhalten, Description bleibt wahr).
+**Status:** ✅ **done** — alle `@Tool`-Descriptions der Runde optimiert (Runde 2: kurze Version 10-17 Wörter), `buildWithAgent` → `buildWithDev` rename, static tool-name constants in JonDelegateTool, Test auf structural checks umgestellt. Build grün, verifiziert. **Sync 2026-09-30:** #7/#28 auf den Paul-verbatim-Text aktualisiert (beide Familien identisch), #6/#27 verifiziert (Runde-2-Text ist IST; Out-of-Range-Fehler ändert nur Verhalten, Description bleibt wahr).
 
 ## IST
 

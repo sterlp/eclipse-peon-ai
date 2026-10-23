@@ -6,7 +6,7 @@ Auto-loaded every turn: **this file** + [memory.md](memory.md). The module index
 auto-loaded — read the one for the module you work in; read both when a change crosses module
 borders (eclipse*/disk*-Parität, Wiring, shared classes).
 
-Status: ✅ done · 🚧 design/WIP · ❌ not done · ⏳ geparkt/historisch (superseded) · 📝 Studie.
+Status: ✅ done · 🚧 design/WIP · ❌ not done · ⏳ geparkt/historisch · 📝 Studie.
 Backlog = every ❌/🚧 item. Vollständige Einträge (mit Status-Grund) stehen in den Modul-Indexen.
 
 ## Where the knowledge lives

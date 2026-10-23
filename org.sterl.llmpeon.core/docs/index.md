@@ -3,12 +3,12 @@
 Business-Logik ohne Eclipse: Agent-Loop, Tool-Familien (`disk*`/`web*`/`shell`/`docs*`), Prompts,
 Compact/Context, Provider-Mapping, Skills, MCP. 57 Docs · Build/Test: `mvn -f pom.xml -pl org.sterl.llmpeon.core clean test` (vom Repo-Root).
 
-* Register (pro Turn auto-geladen, nur Titel + Status): [Root index](../../docs/index.md)
+* Register: [Root index](../../docs/index.md) (pro Turn auto-geladen, Link-Doc)
 * ADRs (globaler Nummernraum): [adr/index.md](../../docs/adr/index.md)
 * **Nicht hier:** Eclipse/OSGi — SWT/JFace-Views & Widgets, Preference-Pages, Header/Roster, `eclipse*`-Adapter, OSGi-Tests → [Plugin-Docs](../../org.sterl.llmpeon/docs/index.md)
 
 Nur der Root-Index wird auto-geladen — dieses Modul-Doc enthält die vollständigen Einträge (Story,
-Trail, ADR-Links). Status: ✅ done · 🚧 design/WIP · ❌ not done · ⏳ geparkt · 📝 Studie.
+Trail, ADR-Links). Status: ✅ done · 🚧 design/WIP · ❌ not done · ⏳ geparkt/historisch · 📝 Studie.
 
 
 ## agents
@@ -60,7 +60,7 @@ Trail, ADR-Links). Status: ✅ done · 🚧 design/WIP · ❌ not done · ⏳ ge
   sichtbar machen (Thinka-974k-Fall). **R-RS-3 ✅ done (2026-10-18):** auch MCP-Tools disclosen — `MCP <name> done. (N chars)` im Choke-Point
   `ToolService.execute`; Fehlerpfad bleibt als Text erhalten (kein null-Verlust).
 * [Tool-Confirmation](tool-confirmation.md) - **⏳ geparkt (2026-09-19, Paul):** kategorisiertes Bestätigungsmodell mit Scope-Cache Once/Session/Global — Bestätigungen selbst nicht gewünscht (immer aus); Bedarf erst mit Debugger/Background-Shell.
-* [Tool Descriptions Inventory](tool-descriptions-inventory.md) - **✅ done.** 21/55 `@Tool`-Descriptions optimiert (Konsistenz, Token-Effizienz, LLM-Tool-Auswahl).
+* [Tool Descriptions Inventory](tool-descriptions-inventory.md) - **✅ done.** `@Tool`-Descriptions der Runde optimiert (Konsistenz, Token-Effizienz, LLM-Tool-Auswahl).
 * [Agent-Tool-Config](agent-tool-config.md) - Tool-Sichtbarkeit als User-Config: Tool Allowlist (CSV) pro Agent — Built-ins via UI (`llm.agent.<id>.tools`, Dev = Basic-Seite), Custom via `tools:`-Frontmatter, ein Matcher (`ToolPolicy`) für alle. **✅ done (2026-10-14, `story/agent-tool-config`, 6 Inkremente):** R-ATC-1 eine Semantik für alle · R-ATC-2 Negation `!` (allow-then-deny) · R-ATC-3 absent = alle · R-ATC-4 keine Inheritance (Dev-Filter bleibt Dev) · R-ATC-5 Schnittmenge mit Klassen-Filter (nur einschränken) · R-ATC-6 Name-Filter über alle Tools · R-ATC-7 Store + Clean Break · R-ATC-8 Preview-Button (aktive Tool-Menge; Dialog-Inhalt = Paul-Smoke) · R-ATC-9 `!` allein: **UI verweigert das Speichern**, Matcher no-op (Frontmatter) · **R-ATC-10 ✅ done (2026-10-16):** Suffix-Wildcard `*` = Präfix-Match in Allow UND Deny (`stripWildcard` gemeinsam), `*` allein bleibt All-Token — Mutation-Nachweis + Da-Dok-CONCERNS ohne Blocker; Follow-up: EclipseGrepTool IFile-Disclosure (open-points, nach Pauls WIP-Merge). **Daneben (Story 2):** Da Dok eigener REVIEW-Slot ([review-agent.md](review-agent.md) R7 ✅) · Scaffold kennt `!` ([scaffold-agent.md](scaffold-agent.md) R8 ✅). [ADR-0065](../../docs/adr/0065-tool-policy-negation.md).
 * [Agent-Tool-Filter](agent-tool-filter.md) - Tool-Sichtbarkeit je Agent über den Filter statt Klassen-Split; Tool-Namen als statische Konstanten. **✅ done (2026-09-26, `story/agent-tool-filter`):** R-TF-1 Da Dok bekommt ShellTool (Whitelist-Exception, [review-agent.md](review-agent.md) R5 präzisiert) · R-TF-2 SearchAgent ohne plan*-Tools (🐞 Befund: sah planSave/planUpdate) · R-TF-3 NAME-Konstanten für Filter/Tests · R-TF-4 Tool-Matrix-Tests (inkl. Thinka/Mek plan*-Assertion). Option A (Jon, 2026-09-25): UC-TF-2 nur RAM-Sklave, Standalone-Review behält memory*/askUser (⏳ Rückversicherung Paul). ADR-0048 ergänzt. **2026-10-13:** User-Config ausgegliedert → [agent-tool-config.md](agent-tool-config.md).
 * [Disk File Write Tool](disk-file-write-tool.md) - real filesystem write/edit tools, configurable workingDir, disabled by default. **2026-09-04 (✅):** `diskEditFile` = Replace-All + Count-Disclosure („replaced/deleted N occurrence(s)"), `newString=null` = Delete — disk+eclipse konsistent. **2026-09-06 (✅ E5):** Success-Messages nennen den **absoluten Pfad** (workingDir aufgelöst) — im Sync mit den Eclipse-Tools.

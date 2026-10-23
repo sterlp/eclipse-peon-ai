@@ -4,7 +4,6 @@
 Fixture `/llmpeon-parent/test_project` versioniert, `AbstractIntegrationTest` importiert es
 statt sich selbst, `PeonTestFixture` löst den Pfad auf, fehlendes Fixture failt,
 `PdeTestLaunchConfig` macht den PDE-Launch unattended (beide Config-Pfade).
-Plugin-Suite 126 → **141 Tests, 0 Fehler**; Core 519/519. Nicht committet (User committet).
 
 **Ziel:** Die Plugin-Suite läuft **unattended** und **deterministisch** — kein Dialog, kein
 Skip, kein Zufallsergebnis je nach Arbeitsverzeichnis. Voraussetzung für Night-Cycles und CI.
@@ -47,7 +46,7 @@ Bundle-Location des Testbundles (`<repo-parent>/test_project`). Kein `./`.
 
 ## R3 ✅ done — Fehlendes Fixture ist ein Fehler, kein Skip
 
-**IST:** `assumeTrue(false, …)` → die Suite meldet „grün", obwohl 15 Tests nie liefen.
+**IST:** `assumeTrue(false, …)` → die Suite meldet „grün", obwohl keine Tests liefen.
 
 **SOLL:** Fehlt `test_project` oder seine `.project`, **failt** das Setup mit einer Meldung,
 die den erwarteten Pfad und die Property nennt.
@@ -96,7 +95,7 @@ Ein fester, wiederverwendeter Workspace macht den Lauf zusätzlich deutlich schn
 
 Die Suite meldet am Ende `gelaufen / skipped / rot`. Ein Skip ist nur zulässig mit
 technischem Grund (kein Display); jeder andere Skip gilt als Bug.
-→ Referenz-Zahlen 2026-09-03 nach dem Zyklus: Plugin **141/141** grün.
+→ Die Suite meldet nach dem Zyklus komplett grün.
 
 **Einschränkung (Werkzeug, nicht SOLL, 2026-09-03):** ~~Der PDE-Runner weist Skips nicht
 separat aus — „0 skipped" ist derzeit nicht maschinell verifizierbar~~ **aufgelöst
