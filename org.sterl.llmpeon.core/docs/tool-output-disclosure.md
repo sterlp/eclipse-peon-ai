@@ -79,7 +79,7 @@ Treffer workspace-weit).
 [`OutputTrim`](output-trim-service.md) ausgeführt (`capLine`, Marker `…(+N chars)`) — Cap + Kürzung +
 Disclosure an EINER Stelle, beide Grep-Familien konsistent („one behaviour, one implementation").
 Historie: 2026-09-30 bis 2026-10-16 war der Wert 2000 mit Muster „N line(s) truncated at 2000 chars"
-(d7cf6578) — Clean Break, kein Alias. Der 0-Treffer-Fall bleibt unverändert (klein).
+— Clean Break, kein Alias. Der 0-Treffer-Fall bleibt unverändert (klein).
 
 #### UC-OD-7 — grepClampsMinifiedLine ✅
 - GIVEN minifizierte Datei mit einer 2-MB-Zeile, die matcht WHEN grep THEN die Zeile kommt auf

@@ -384,7 +384,7 @@ angepasst (`CompactSessionToolTest` delegiert → `doesNotContain`, `AiDeveloper
 
 Auslöser: User-Befund 2026-09-11 — Compact-Result 2× sichtbar. Zwei unabhängige Duplikate:
 
-1. **Memory (Tool-Pfad):** Der 1f2d0b0-Marker `Session compacted.` (CompactSessionTool, kein
+1. **Memory (Tool-Pfad):** Der `Session compacted.`-Marker (CompactSessionTool, kein
    preserve) kollidiert mit der Resume-UserMessage `Session compacted:`
    (AbstractAgent.compact:290) → `contains("Session compacted")` über alle
    Messages = 2 (ToolExecutionResultMessage + UserMessage).
