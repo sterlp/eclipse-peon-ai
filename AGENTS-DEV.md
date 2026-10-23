@@ -30,5 +30,9 @@ Base: `AGENTS.md`. System prompt: `developer.md`.
   `org.sterl.llmpeon/docs/x.md`) — Root-`docs/`-Pfade sind nach der Restrukturierung (2026-10-22)
   tot für Feature-Docs; nur ADRs/Root-Docs bleiben dort. Referenzen gehören in Kommentare,
   nie in String-Literale von Tests (C2-Gate des Docs-Restrukturierungs-Zyklus).
+- **Commit-Message trägt das Gate-Ergebnis** (Paul 2026-10-22): je Inkrement 1–2 Zeilen mit
+  Surefire-/Lint-Ergebnis (z. B. `Core Surefire 1252/0/0/0 · Lint 9 Findings = Baseline`).
+  Docs und ADRs tragen KEINE Test-/Mess-Zahlen — historische Werte sind stale und irreführen;
+  Evidenz lebt im Commit und ggf. in den memory-Tools, nie in `docs/**`.
 - Elegant, expressive modern Java (records, pattern matching, switch expressions, Lombok).
 - Skill-Footer beantworten; falschen Skill im selben Turn fixen.
