@@ -21,7 +21,7 @@ import org.sterl.llmpeon.parts.ai.CodegraphContextItem;
 /**
  * R-CG-7 / R-CG-12 / R-TR-4/5: the {@link CodegraphContextItem} — {@code label()} (the chat
  * signal, non-null for all three states), {@code dedupKey()} (block start line; CONNECTED only)
- * and {@code render()} (CONNECTED = path mapping only — the instructions stay in the State as
+ * and {@code render()} (CONNECTED = path mapping and the R-CG-16 markdown limit — the instructions stay in the State as
  * the dedup marker; OFF/ERROR = {@code null}, R-TR-4 — visibility stays with the icon + tooltip).
  * Pure unit test: a stub {@link IProject} supplies the name, disk path and nested workspace path.
  */
@@ -108,6 +108,25 @@ public class CodegraphContextItemTest {
     @Test
     public void render_returnsNull_whenError() {
         assertNull(item(new State(Kind.ERROR, project("cg-proj", DISK), "spawn failed", null)).render());
+    }
+
+    // R-CG-16
+    @Test
+    public void renderConnected_namesMarkdownLimit_withPathMapping() {
+        var body = item(state(Kind.CONNECTED, "CG-SERVER-DOCS")).render().body();
+
+        assertTrue("markdown limit named: " + body,
+                body.contains("Codegraph indexiert keine *.md files"));
+    }
+
+    // R-CG-16
+    @Test
+    public void renderConnected_namesMarkdownLimit_withoutPathMapping() {
+        var body = new CodegraphContextItem(
+                () -> new State(Kind.CONNECTED, null, null, null)).render().body();
+
+        assertTrue("markdown limit named: " + body,
+                body.contains("Codegraph indexiert keine *.md files"));
     }
 
     // --- helpers ---

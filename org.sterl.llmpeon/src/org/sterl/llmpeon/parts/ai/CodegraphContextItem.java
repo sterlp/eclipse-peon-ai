@@ -24,6 +24,10 @@ import org.sterl.llmpeon.parts.shared.JdtUtil;
  */
 public class CodegraphContextItem implements ContextItem {
 
+    /** R-CG-16: codegraph indexes code only — naming the limit keeps a markdown miss from
+     *  reading as "that doc does not exist". */
+    private static final String NO_MARKDOWN_HINT = "Codegraph indexiert keine *.md files.";
+
     private final Supplier<CodegraphConnectionService.State> state;
 
     public CodegraphContextItem(Supplier<CodegraphConnectionService.State> state) {
@@ -82,8 +86,8 @@ public class CodegraphContextItem implements ContextItem {
         return "codegraph: " + name + " " + instrMark;
     }
 
-    /** The disk→Eclipse path mapping — the server instructions stay in the State as the dedup
-     *  marker (R-CG-7(c)) and are never rendered. */
+    /** The disk→Eclipse path mapping plus the markdown limit (R-CG-16) — the server instructions
+     *  stay in the State as the dedup marker (R-CG-7(c)) and are never rendered. */
     private String renderBody(CodegraphConnectionService.State s) {
         var project = s.project();
         var disk = project == null ? null : JdtUtil.diskPathOf(project);
@@ -92,9 +96,11 @@ public class CodegraphContextItem implements ContextItem {
             return "codegraph_explore returns absolute disk paths under " + disk
                    + "; the eclipse*-tools use " + ws
                    + " paths — map <" + disk + "/...> to " + ws + "/..."
-                   + " (paths outside the project are not translated — use the disk*-tools with the original path there).";
+                   + " (paths outside the project are not translated — use the disk*-tools with the original path there)."
+                   + " " + NO_MARKDOWN_HINT;
         }
-        return "codegraph_explore returns absolute disk paths; the eclipse*-tools use workspace paths.";
+        return "codegraph_explore returns absolute disk paths; the eclipse*-tools use workspace paths."
+               + " " + NO_MARKDOWN_HINT;
     }
 
     @Override

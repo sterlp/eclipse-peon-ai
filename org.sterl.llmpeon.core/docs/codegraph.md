@@ -351,6 +351,18 @@ Umsetzung: im Churn-Zweig statt `return` ein State-Refresh mit dem bestehenden
 `state.instructions()` — `State.project` heißt „Projekt, für das der Kontext gilt", die Verbindung
 hängt allein an `connectedWorkDir`. Kein neuer Connect, keine zweite Wahrheit im ContextItem.
 
+### R-CG-16 — ContextItem nennt die Markdown-Grenze ✅ done (2026-10-23)
+
+Der Body des `CodegraphContextItem` nennt explizit, dass Codegraph **keine `*.md`-Files
+indexiert** („Codegraph indexiert keine *.md files"). Sonst sucht der Agent Markdown-Docs über
+`codegraph_explore`, bekommt „nicht gefunden" und glaubt das Doc existiere nicht — die teuerste
+Fehlerklasse in dieser Codebasis (false negative, vgl. AGENTS.md „A tool must never lie about a
+limit"). Markdown-Docs sind mit `disk*`/`eclipse*` Read/Grep-Tools zu lesen.
+
+GIVEN Codegraph ist CONNECTED
+WHEN das `CodegraphContextItem` rendert
+THEN enthält der Body den Hinweis, dass Codegraph keine `*.md`-Files indexiert.
+
 ## Technik (WIE, ohne Architektur-Doc-Status)
 
 - `McpServerConfig` bekommt Feld `workingDirectory` (**leer = unset**, „Empty means unset" —
