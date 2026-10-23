@@ -9,7 +9,10 @@ Geklärte Punkte, die in kein Feature-Doc passen. Offene Punkte: [open-points.md
 **Punkt:** `SLF4J(W): Class path contains multiple SLF4J providers` — `EclipseSlf4jProvider`
 gewinnt, aber slf4j-simple (2.0.19) ist als zweiter Provider resolved (direkte Plugin-pom-
 Dependency → `copy-dependencies` → `lib/` → Bundle-ClassPath → ServiceLoader sieht beide).
-**Entscheidung:** slf4j-simple komplett raus (pom + MANIFEST + build.properties + Disk) —
+**Entscheidung:** slf4j-simple komplett raus (pom + MANIFEST + build.properties + Disk —
+Nachzug 2026-10-23: auch die `.classpath`-Zeile, die beim ersten Sweep entfiel und den
+PDE-Bau mit „missing required library `lib/slf4j-simple.jar`" blockierte; Paul: im core
+soll er sein, das Plugin hat die eigene `EclipseSlf4jProvider`-Bridge) —
 nur noch unser Provider; Fix-Nachweis strukturell (exakt eine
 Provider-Registrierung im gebauten Bundle). **Pauls Annahme korrigiert:** es gibt kein
 `Require-Bundle org.slf4j.api`-Range `[2.0.0,3.0.0[` (VOLL-Grep: 0 Treffer) — slf4j-api kommt

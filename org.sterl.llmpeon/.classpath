@@ -69,7 +69,6 @@
 	<classpathentry exported="true" kind="lib" path="lib/okio-jvm.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/kotlin-stdlib-jdk7.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/langchain4j-reactive-streaming.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/slf4j-simple.jar"/>
 	<classpathentry kind="con" path="org.eclipse.m2e.MAVEN2_CLASSPATH_CONTAINER">
 		<attributes>
 			<attribute name="maven.pomderived" value="true"/>
