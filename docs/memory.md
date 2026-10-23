@@ -4,10 +4,16 @@
 
 ## Stand 2026-10-23 — Docs-Slim-Zyklus ABGESCHLOSSEN
 
-- Branch `story/docs-restructure-2026-10-22` @ `cb458f0f` — **einziger Docs-Branch** (slim per FF
-  hineingemerged + gelöscht, Paul-Wunsch: nur EIN Merge nach main). Alle Gates grün (Core-Suite +
-  Plugin-Fragment, PDE-Bau), Da-Dok-Review bestanden — **Merge nach main FREI** (Paul).
-  Danach: `releng/llmpeon-target` wieder installen, Branch löschen.
+- **Paul hat den Branch per SQUASH gemerged** (`2a094b5d` #164, Inhalt byte-identisch bis `56d3cc65`)
+  — mein Weiterbauen auf dem alten Branch erzeugte Pseudo-Konflikte; Da Mek hat `b9259ed5`–`4ce61a1d`
+  (+ Pauls Code-Commits, 7 Commits) per `git rebase --onto main 56d3cc65` auf main gehoben:
+  Branch `0a5bc5b8`, **0 Konflikte**, alle Gates grün (Lint = Baseline, PDE-Suite grün).
+  main kann jetzt FF-mergen.
+  Backup: `backup/docs-restructure-prerebase-2026-10-23` (= alter `4ce61a1d`, danach löschen).
+  Remote `origin/story/docs-restructure-2026-10-22` divergiert (24/8) — Push nur mit
+  `--force-with-lease`, Pauls Entscheidung. Danach: `releng/llmpeon-target` installen, Branch löschen.
+- Danach auf Branch: Cycle-Close-Commits `b9259ed5` (docs clean) + `4ce61a1d` (R-CG-16:
+  CodegraphContextItem nennt „Codegraph indexiert keine *.md files", 2 Tests, Plugin-Suite grün).
 - Branch trägt auch **Pauls Code-WIP** (`fb66b8b4`: AgentsTool/AsyncStreamingBridge/AsyncMonitor +
   AbstractAgent/AiAgent/Timer/ToolLoopRequest; `573eb601`: `org.sterl.llmpeon/pom.xml` −1 Zeile) —
   für diese Teile lief kein Core-Suite-/Plugin-Build.
