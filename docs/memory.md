@@ -4,8 +4,14 @@
 
 ## Stand 2026-10-23 — Zyklus: Docs-Slim ABGESCHLOSSEN (Task „Docs-Cleanup & schlanker Index")
 
-Branch `story/docs-slim-2026-10-22` (Basis = INC-A auf `story/docs-restructure-2026-10-22`).
-**Zyklus fertig — Review bestanden, alle Commits auf dem Branch. Warten auf Pauls Merge/Squash.**
+Branch `story/docs-restructure-2026-10-22` @ `12ae029b` — **einziger Docs-Branch** (slim wurde
+per FF hineingemerged + gelöscht, Paul-Wunsch 2026-10-23: nur EIN Merge nach main).
+**Zyklus fertig — Review bestanden, 16 Commits auf dem Branch. Warten auf Pauls Merge nach main.**
+
+⚠️ Der Branch trägt jetzt auch **Pauls Code** (`fb66b8b4`: AgentsTool/AsyncStreamingBridge/
+AsyncMonitor + AbstractAgent/AiAgent/Timer/ToolLoopRequest; `573eb601`: `org.sterl.llmpeon/pom.xml`
+−1 Zeile) — dafür lief in diesem Zyklus **kein** Core-Suite-/Plugin-Build. Vor dem main-Merge:
+`mvn -o -B clean test -pl org.sterl.llmpeon.core` + Plugin-Bau als Mindest-Evidenz.
 
 - **Commits:** `01d538ae` INC-A (Root-Index = Link-Doc ~3.2k Zeichen + AGENTS-DEV Gate-Evidenz-Regel) ·
   `b6d27472` INC-B Evidence-Sweep (Hashes/Surefire-Zahlen/Messwerte aus `docs/**` entfernt) ·

@@ -3,11 +3,10 @@ package org.sterl.llmpeon.agent;
 import java.util.List;
 import java.util.function.Supplier;
 
-import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.Nullable;
-import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
+import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.WriteValidator;
