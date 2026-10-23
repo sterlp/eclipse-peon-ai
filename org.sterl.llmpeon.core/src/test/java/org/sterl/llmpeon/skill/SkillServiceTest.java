@@ -263,27 +263,32 @@ class SkillServiceTest extends AbstractMemoryFileTest {
 
     @Test
     void reloadRefreshesEveryComponent() throws Exception {
-        // GIVEN both slots loaded
-        var service = new SkillService();
+        // GIVEN all three roots loaded (R3, incl. the R17 user root)
         var configDir = Files.createDirectory(tmp.resolve("r3-config"));
+        var agentsDir = Files.createDirectory(tmp.resolve("r3-agents"));
         var projDir = Files.createDirectory(tmp.resolve("r3-proj"));
         writeSkill(configDir, "cfg-old", "cfg-old", "c");
+        writeSkill(agentsDir, "agents-old", "agents-old", "a");
         writeSkill(projDir, "prj-old", "prj-old", "p");
+        var service = new SkillService(agentsDir);
         service.refresh(configDir);
         service.setProjectSkillsDir(projDir);
 
-        // WHEN a config reload runs after both roots gained new skills
+        // WHEN a config reload runs after every root gained and lost a skill
         Files.delete(configDir.resolve("cfg-old.md"));
         writeSkill(configDir, "cfg-new", "cfg-new", "c");
+        Files.delete(agentsDir.resolve("agents-old.md"));
+        writeSkill(agentsDir, "agents-new", "agents-new", "a");
         Files.delete(projDir.resolve("prj-old.md"));
         writeSkill(projDir, "prj-new", "prj-new", "p");
         service.refreshAll();
 
-        // THEN both components reloaded, project slot still on its path
+        // THEN every component reloaded, project slot still on its path
         assertThat(service.getSkills())
                 .extracting(SkillPromptFile::getName)
-                .containsExactlyInAnyOrder("cfg-new", "prj-new");
+                .containsExactlyInAnyOrder("cfg-new", "agents-new", "prj-new");
         assertThat(service.get("prj-new").orElseThrow().getSource()).isEqualTo(SkillSource.PROJECT);
+        assertThat(service.get("agents-new").orElseThrow().getSource()).isEqualTo(SkillSource.CONFIG);
     }
 
     /**
@@ -509,6 +514,121 @@ class SkillServiceTest extends AbstractMemoryFileTest {
             Files.deleteIfExists(projDir);
             Files.deleteIfExists(base);
         }
+    }
+
+    // ---------------------------------------------------------------------
+    // User roots (R17) — three roots, precedence project > ~/.agents/skills >
+    // ~/.peon/skills. The user root is injected, so the real home dir is never
+    // read; every root here is a local tmp subdir.
+    // ---------------------------------------------------------------------
+
+    // R17
+    @Test
+    void threeRoots_precedenceProjectOverAgentsOverPeon() throws Exception {
+        // GIVEN the same skill name deployed in all three roots
+        var peonRoot = Files.createDirectory(tmp.resolve("r17all-peon"));
+        var agentsRoot = Files.createDirectory(tmp.resolve("r17all-agents"));
+        var projectRoot = Files.createDirectory(tmp.resolve("r17all-project"));
+        writeSkill(peonRoot, "deploy", "deploy", "peon-version");
+        writeSkill(agentsRoot, "deploy", "deploy", "agents-version");
+        writeSkill(projectRoot, "deploy", "deploy", "project-version");
+        var service = new SkillService(agentsRoot);
+        service.refresh(peonRoot);
+        service.setProjectSkillsDir(projectRoot);
+
+        // WHEN the view is computed
+        var deploy = service.get("deploy").orElseThrow();
+
+        // THEN the closest variant wins, counted once
+        assertThat(deploy.getSource()).isEqualTo(SkillSource.PROJECT);
+        assertThat(deploy.getBody()).isEqualTo("project-version");
+        assertThat(service.loadedSkillCount()).isEqualTo(1);
+
+        // AND all three paths are responsible roots, ascending precedence
+        assertThat(service.skillRoots()).containsExactly(peonRoot, agentsRoot, projectRoot);
+    }
+
+    // R17
+    @Test
+    void agentsRootWinsOverPeonRoot() throws Exception {
+        // GIVEN the same skill in both user roots, no project selected
+        var peonRoot = Files.createDirectory(tmp.resolve("r17two-peon"));
+        var agentsRoot = Files.createDirectory(tmp.resolve("r17two-agents"));
+        writeSkill(peonRoot, "deploy", "deploy", "peon-version");
+        writeSkill(agentsRoot, "deploy", "deploy", "agents-version");
+        var service = new SkillService(agentsRoot);
+        service.refresh(peonRoot);
+
+        // WHEN the view is computed
+        var deploy = service.get("deploy").orElseThrow();
+
+        // THEN the .agents variant wins — as a CONFIG skill, so the UI stays unchanged (R9/R13)
+        assertThat(deploy.getSource()).isEqualTo(SkillSource.CONFIG);
+        assertThat(deploy.getBody()).isEqualTo("agents-version");
+        assertThat(deploy.getPromptFile()).startsWith(agentsRoot.resolve("deploy.md"));
+        assertThat(service.loadedSkillCount()).isEqualTo(1);
+
+        // AND the .peon original is untouched in its own component (override only at read time, R2b/R4)
+        assertThat(service.skillRoots()).containsExactly(peonRoot, agentsRoot, SkillComponent.EMPTY_PATH);
+    }
+
+    // R17
+    @Test
+    void peonOnlySkillVisibleAsConfig() throws Exception {
+        // GIVEN a skill only in the deprecated configDir root, user root set but empty
+        var peonRoot = Files.createDirectory(tmp.resolve("r17peon-peon"));
+        var agentsRoot = Files.createDirectory(tmp.resolve("r17peon-agents"));
+        writeSkill(peonRoot, "deploy", "deploy", "peon-version");
+        var service = new SkillService(agentsRoot);
+        service.refresh(peonRoot);
+
+        // THEN the existing skill stays visible and readable as CONFIG (deprecated, not dropped)
+        var deploy = service.get("deploy").orElseThrow();
+        assertThat(deploy.getSource()).isEqualTo(SkillSource.CONFIG);
+        assertThat(deploy.getBody()).isEqualTo("peon-version");
+        assertThat(service.skillNames()).contains("deploy [config]");
+    }
+
+    // R17
+    @Test
+    void agentsRootMissingLoadsEmpty() throws Exception {
+        // GIVEN a user root whose directory does not exist
+        var peonRoot = Files.createDirectory(tmp.resolve("r17missing-peon"));
+        var missingAgentsRoot = tmp.resolve("r17missing-agents/skills");
+        writeSkill(peonRoot, "cfg", "cfg", "c");
+
+        // WHEN the service is built on it
+        var service = new SkillService(missingAgentsRoot);
+        service.refresh(peonRoot);
+
+        // THEN loading is empty with no error and the existing skills are unaffected
+        assertThat(service.getSkills()).extracting(SkillPromptFile::getName).containsExactly("cfg");
+
+        // AND the path stays a responsible root, so a later write there becomes visible on reload
+        assertThat(service.skillRoots()).containsExactly(peonRoot, missingAgentsRoot, SkillComponent.EMPTY_PATH);
+        service.refreshAll();
+        assertThat(service.getSkills()).extracting(SkillPromptFile::getName).containsExactly("cfg");
+    }
+
+    // R17
+    @Test
+    void customConfigDirKeepsAllThreeRoots() throws Exception {
+        // GIVEN a configDir of its own (skills under <configDir>/skills), plus user root and project
+        var customConfigSkills = Files.createDirectories(tmp.resolve("r17custom/config/skills"));
+        var agentsRoot = Files.createDirectory(tmp.resolve("r17custom-agents"));
+        var projectRoot = Files.createDirectory(tmp.resolve("r17custom-project"));
+        writeSkill(customConfigSkills, "from-config", "from-config", "c");
+        writeSkill(agentsRoot, "from-agents", "from-agents", "a");
+        writeSkill(projectRoot, "from-project", "from-project", "p");
+        var service = new SkillService(agentsRoot);
+        service.refresh(customConfigSkills);
+        service.setProjectSkillsDir(projectRoot);
+
+        // THEN all three roots still hold and each one contributes
+        assertThat(service.skillRoots()).containsExactly(customConfigSkills, agentsRoot, projectRoot);
+        assertThat(service.getSkills())
+                .extracting(SkillPromptFile::getName)
+                .containsExactlyInAnyOrder("from-config", "from-agents", "from-project");
     }
 
     private static void deleteIfExists(Path dir, String... names) throws IOException {

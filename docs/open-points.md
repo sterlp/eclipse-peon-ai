@@ -47,6 +47,13 @@ Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.
   **Rückversicherung:** Paul bestätigt das Deferred-Timing (Smoke-Punkt 3 in memory.md §8) — oder
   will Sofort-Rebuild mit Re-Append des User-Echos.
 
+## 2026-10-23 — Skill-Roots: First-Launch-Verzeichnis (Story 3, Nachtzyklus)
+
+- ⏳ **First-Launch legt weiter `~/.peon/skills` an:** `LlmPreferenceInitializer.buildConfigDirs()`
+  bleibt unverändert (Story-3-Entscheid, Q2 — Doc sagt „fehlendes Dir = leer, kein Fehler", `diskWriteFile`
+  legt Elternordner selbst an). **Rückversicherung:** Soll der First-Launch stattdessen (oder zusätzlich)
+  `~/.agents/skills` anlegen, oder gar kein Skills-Dir mehr vorsorglich erzeugen?
+
 ## 2.14.0 (2026-10-19) — Jon-Entscheidungen zur Rückversicherung
 
 - ⏳ **R-CC-19 (Zähler = Provider-Input + Schätzung der angehängten Messages):** von Jon entschieden

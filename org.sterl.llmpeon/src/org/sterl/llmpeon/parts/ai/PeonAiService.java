@@ -143,6 +143,7 @@ public class PeonAiService {
 
         var config              = configuredModel.getConfig();
         this.configuredModel    = configuredModel;
+        // transitional until inc 2: no user root yet
         skillService            = new SkillService();
         commandService          = new CommandService();
         sharedTools             = new SharedToolsComponent(skillService, commandService);

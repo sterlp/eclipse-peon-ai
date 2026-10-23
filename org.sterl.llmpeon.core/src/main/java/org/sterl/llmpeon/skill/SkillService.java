@@ -10,40 +10,67 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.jspecify.annotations.Nullable;
 
 /**
- * Composes the skill components (ADR-0042) into one effective view: the
- * config component first, the project component overrides by lowercase name
- * — the override happens <b>only at read time</b>, the config map is never
- * touched by project switches.
+ * Composes the skill components (ADR-0042) into one effective view — three
+ * roots with fixed precedence (R17): the deprecated {@code <configDir>/skills}
+ * root, the user root {@code ~/.agents/skills} and the project root. Each one
+ * overrides the previous by lowercase name; the override happens <b>only at
+ * read time</b>, no component map is ever touched by project switches.
+ *
+ * <p>The service knows <b>no</b> environment paths: the composition root
+ * resolves {@code ~/.agents/skills} and injects it (R17). A no-arg instance
+ * therefore has no user root at all — what is not set stays empty.</p>
  *
  * <p>Owns the name-keyed enabled state (R1): toggles survive every refresh
  * and project switch, are override-aware by name, and new names start
  * enabled. State is decorated onto the view instances at view build so
  * consumers reading {@link SkillPromptFile#isEnabled()} stay consistent.</p>
  *
- * <p>API note: {@link #refresh(Path)} sets + refreshes the <b>config</b> component
- * (kept for the existing config-dir callers); {@link #setProjectSkillsDir(Path)}
- * replaces only the project component; {@link #refreshAll()} refreshes every component.</p>
+ * <p>API note: {@link #refresh(Path)} sets + refreshes <b>only</b> the deprecated
+ * configDir component (kept for the existing config-dir callers);
+ * {@link #setProjectSkillsDir(Path)} replaces only the project component;
+ * {@link #refreshAll()} refreshes every component (R3); {@link #skillRoots()}
+ * lists every responsible path in ascending precedence.</p>
  */
 public class SkillService {
 
     /** Project-local skills root, relative to the project disk path (ADR-0042). */
     public static final String PROJECT_SKILLS_DIR = ".agents/skills";
 
-    private volatile SkillComponent configComponent = new SkillComponent(SkillSource.CONFIG);
+    /**
+     * User-home skills root, relative to the home dir (R17 — APM deploys skills
+     * there). Resolved by the composition root; the service never reads the
+     * home directory itself.
+     */
+    public static final String USER_SKILLS_DIR = ".agents/skills";
+
+    /** Deprecated {@code ~/.peon/skills} root (= {@code <configDir>/skills}), set via {@link #refresh(Path)}. */
+    private volatile SkillComponent legacyComponent = new SkillComponent(SkillSource.CONFIG);
+    /** User root {@code ~/.agents/skills} (R17) — path fixed at construction, never swapped. */
+    private final SkillComponent userAgentsComponent;
     private volatile SkillComponent projectComponent = new SkillComponent(SkillSource.PROJECT);
 
     private final Map<String, Boolean> enabledByName = new ConcurrentHashMap<>();
     private volatile boolean enabled = true;
 
+    /** No user root: exactly the roots given by {@link #refresh(Path)} and {@link #setProjectSkillsDir(Path)}. */
     public SkillService() {
+        userAgentsComponent = new SkillComponent(SkillSource.CONFIG);
     }
 
-    public SkillService(Path skillsDirectory) throws IOException {
-        refresh(skillsDirectory);
+    /**
+     * @param userSkillsDir the {@code ~/.agents/skills} root (R17); {@code null} = no user root.
+     *                      A missing directory loads empty — it is not an error (R17).
+     */
+    public SkillService(@Nullable Path userSkillsDir) throws IOException {
+        this();
+        if (userSkillsDir != null) {
+            userAgentsComponent.setPath(userSkillsDir);
+        }
     }
 
     public void setEnabled(boolean enabled) {
@@ -54,23 +81,23 @@ public class SkillService {
         return enabled;
     }
 
-    /** Sets/refreshes the config component (compat: the old single-directory refresh). */
+    /** Sets/refreshes ONLY the deprecated configDir root (compat: the old single-directory refresh). */
     public boolean refresh(String newPath) throws IOException {
         return this.refresh(newPath == null ? null : Path.of(newPath));
     }
 
-    public boolean refresh(@Nullable Path newPath) throws IOException {
-        if (newPath == null) {
-            if (SkillComponent.EMPTY_PATH.equals(configComponent.path())) return false;
-            configComponent = new SkillComponent(SkillSource.CONFIG);
+    public boolean refresh(@Nullable Path legacyDir) throws IOException {
+        if (legacyDir == null) {
+            if (SkillComponent.EMPTY_PATH.equals(legacyComponent.path())) return false;
+            legacyComponent = new SkillComponent(SkillSource.CONFIG);
             return true;
         }
-        configComponent.setPath(newPath);
+        legacyComponent.setPath(legacyDir);
         return true;
     }
 
     /**
-     * Replaces ONLY the project component (R2a, R14) — the config component is
+     * Replaces ONLY the project component (R2a, R14) — the config components are
      * untouched. Null = no project: a fresh empty component. Every non-null
      * switch is a fresh instance + load — no per-path cache (staleness risk
      * outweighs load cost).
@@ -86,15 +113,40 @@ public class SkillService {
         return projectComponent;
     }
 
-    /** Refreshes every component (R3). A failed refresh keeps the previous state and rethrows. */
+    /** The config-side components in ascending precedence (R17): deprecated root, then user root. */
+    private List<SkillComponent> configComponents() {
+        return List.of(legacyComponent, userAgentsComponent);
+    }
+
+    /**
+     * Refreshes every component (R3) — both config roots and the project root.
+     * A failed refresh keeps the previous state and rethrows.
+     */
     public void refreshAll() throws IOException {
-        configComponent.refresh();
+        for (var component : configComponents()) {
+            component.refresh();
+        }
         projectComponent.refresh();
     }
 
-    /** Effective view: config first, project overrides by lowercase name. */
+    /**
+     * Every responsible path in ascending precedence (deprecated configDir, user
+     * {@code .agents}, project); {@link SkillComponent#EMPTY_PATH} for a root that
+     * is not set. A path is listed even when the directory does not exist.
+     */
+    public List<Path> skillRoots() {
+        return Stream.concat(
+                configComponents().stream().map(SkillComponent::path),
+                Stream.of(projectComponent.path()))
+                .toList();
+    }
+
+    /** Effective view: ascending precedence putAll — project overrides user root, that the deprecated root. */
     private Map<String, SkillPromptFile> effectiveView() {
-        var merged = new LinkedHashMap<String, SkillPromptFile>(configComponent.skills());
+        var merged = new LinkedHashMap<String, SkillPromptFile>();
+        for (var component : configComponents()) {
+            merged.putAll(component.skills());
+        }
         merged.putAll(projectComponent.skills());
         return merged;
     }
@@ -143,7 +195,7 @@ public class SkillService {
     }
 
     /**
-     * Return the skill -- also the disabled ones; project variant wins on name collision.
+     * Return the skill -- also the disabled ones; the closest variant wins on name collision (R17).
      * Accepts tagged names as echoed from {@link #skillNames()} (e.g. {@code "review [project]"})
      * — the trailing source tag is stripped before the lookup, so an echo never misses.
      */
