@@ -36,6 +36,19 @@ Plan archiviert: `peon-plan/overview-done-2026-10-22-17-38.md` (nicht committet)
    `codegraph` · ⏳ R-CG-15 Monorepo-State-Refresh · ⏳ R-CC-19-Semantik+Tilde · ⏳ Windows-
    `cmd /c`-Fallback · 🔒 S3 (🗜 in PoDelegateTool) blockiert auf Pauls WIP-Merge.
 
+## Task (Paul 2026-10-22) — Docs-Cleanup & Schlanker Index
+
+1. **Root-Index verschlanken:** Register raus → je Modul Link zum Sub-Index + Stichwort-Zeile
+   je Abschnitts-Gruppe; Repo-Docs/Notes bleiben (Root-eigen). A8-Paritäts-Gate entfällt.
+   Abnahme: Jon muss danach ohne Register arbeiten können (Sub-Index lazy je Arbeitsort;
+   beide Indexe nur bei Modulgrenzen-Änderungen).
+2. **Docs inhaltlich cleanen (Variante B):** Surefire-/Trail-/Beleg-Referenzen aus Docs
+   ERSATZLOS löschen — kein Backfill, kein `nachweise/`-Verzeichnis (verworfen, Paul 2026-10-22).
+   Evidenz-Kanäle: Commit-Messages (je Inkrement 1–2 Zeilen Surefire-Ergebnis, → AGENTS-DEV.md-
+   Regel) + memory-Tools (alle Agenten sehen sie). Docs = fachliches SOLL (Paul + Jon);
+   Entscheidungen „anders als naheliegend" → ADR.
+3. **Paul arbeitet parallel am Code** — seine Edits ignorieren, nie committen, nicht wundern.
+
 ## Backlog (nächste Session)
 
 - **Async-Shell-Tool — Paul-Prio** (wichtiger als async Agents). Danach async Agents (Top-3 in
@@ -44,14 +57,15 @@ Plan archiviert: `peon-plan/overview-done-2026-10-22-17-38.md` (nicht committet)
 - R-CG-14 (Generation + `disposed` statt Lock) · R-CIB-4 Stufe 2 · R-CC-7 Fehlerklassen-Tabelle
   ApiRetry (❓) · Header-State-Leak (❓) · Context-Overflow-Zyklus (❓) · McpService
   `connect()`-Rollback-Test (ADR-0069).
-- Root-Index Commit-SHAs (Zeilen ~145–170) im nächsten Docs-Zyklus entfernen (Da-Dok F6).
+- Root-Index Commit-SHAs (Zeilen ~145–170) im nächsten Docs-Zyklus entfernen (Da-Dok F6)
+  — überholt: entfernt im Slim-Zyklus (siehe Task 1/2).
 
 ## Notizen
 
 - **System-Prompts generisch halten** (Paul 2026-10-20): nichts Repo-Spezifisches, minimale
   Änderungen, keine Docs-Inhalte — nur Verweise; Best Practice für alle Projekte (ABAB, C++, Java …).
-- **Untracked, NICHT committen:** Pauls WIP (`org.sterl.llmpeon.core/…/agent/tools/**`,
-  `bad-context-codegraph.md`, `peon-plan/`); `non-peon-ai-agents-md/` veraltet — Paul löscht selbst.
+- **Untracked, NICHT committen:** Pauls WIP (`org.sterl.llmpeon.core/…/agent/tools/**` —
+  AgentsTool.java, AsyncMonitor.java, `peon-plan/`); `non-peon-ai-agents-md/` veraltet — Paul löscht selbst.
 - **Tool-Trap:** `diskRenameResource` kann Erfolg melden ohne zu verschieben — nach Renames immer
   mit `diskListDirectory`/`diskSearchFiles` verifizieren.
 - **Windows-Falle im Renderer:** in `lineSeparator()`-Strings immer `indexOf('\n')` suchen.
@@ -61,3 +75,4 @@ Plan archiviert: `peon-plan/overview-done-2026-10-22-17-38.md` (nicht committet)
   (`org.sterl.llmpeon.core/docs/x.md`, `org.sterl.llmpeon/docs/x.md`); ADRs + Root-Docs
   (Glossar, memory, open-/resolved-points, Notes) bleiben in `docs/`. Code-Referenzen folgen
   AGENTS-DEV.md-Regel. Linter-Discovery findet Modul-Roots automatisch.
+- **`bad-context-codegraph.md` existiert nicht** (Da-Mek-Check 2026-10-23) — alter Notiz-Eintrag war stale, entfernt.
