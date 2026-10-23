@@ -105,7 +105,8 @@ Während ein Agent kompaktiert, zeigt seine Roster-Zeile einen **eigenen Compact
 in `AiAgentStatusWidget.text()`, zweiter Anzeige-Zustand `compacting`) — nicht nur das generische
 🟢 `working`. Der Compact ist damit im Roster direkt erkennbar und vom regulären Turn unterscheidbar.
 Die Blatt-Regel bleibt unverändert: ein kompaktierender Sklave lässt Da Boss nicht leuchten
-(🟡 zählt nicht als `working` für das Glow-Decision).
+(🟡 zählt für die Blatt-Regel als **busy** — hält Da Boss dunkel —, aber nicht als `working`:
+kein 🟢 durch Compact; die kompaktierende Zeile selbst zeigt 🟡 statt 🟢).
 
 > **WEIL** (Paul 2026-10-23): „Wir wollen den Status vom Compact setzen." Die alte Entscheidung
 > (2026-09-22: „Grün ist vollkommen okay — er arbeitet ja", **kein** separater Compact-State) hat
@@ -144,8 +145,10 @@ log-only (kein Chat-Spam durch interne Tokens — R-CC-14 bleibt für den Text b
 - GIVEN ein Compact läuft WHEN der Compressor streamt THEN erscheinen keine Chunks und kein
   Response-Text im Chat (nur Log). *(UC-CT-8)*
 
-> Umsetzungshinweis: der Test `compressorChatEventsDoNotReachAgentMonitor` trennt heute ALLE
-> Events — er wird auf „nur `onChatMessage` erreicht den Caller-Monitor" verschärft.
+> Umsetzungshinweis: die Richtung trennen zwei Tests — `compressorRequestStartReachesCallerMonitor`
+> (UC-CT-7: genau ein `onChatMessage` am Caller-Monitor, kein zusätzliches `onTool`) und
+> `compressorStreamingStaysLogOnly` (UC-CT-8, Guard: keine Chunks, kein Response-Text). Der alte
+> `compressorChatEventsDoNotReachAgentMonitor` trennte alle Events und ist damit ersetzt.
 
 #### UC-CT-7 — compressorShowsWorkingInUi ❌
 - GIVEN der aktive Agent kompaktiert WHEN der Compressor-Call läuft THEN zeigt die Chat-View den

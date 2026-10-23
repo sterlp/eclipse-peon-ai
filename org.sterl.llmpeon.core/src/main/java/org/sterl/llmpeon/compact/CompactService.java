@@ -22,9 +22,10 @@ import dev.langchain4j.model.output.TokenUsage;
 /**
  * The compact component (ADR-0056): stages the input (R-CIB-4), calls the COMPACT slot exactly
  * like the legacy path (COMPRESS_SYSTEM prompt, slot routing, no tools), and logs the entry line
- * (R-CIB-3) plus the result line (R-CIB-6). Monitor-free (R-CC-14): the emission belongs to the
- * callers, the compressor call's chat events go to the log only. Stateless per call — safe from
- * any thread.
+ * (R-CIB-3) plus the result line (R-CIB-6). No caller monitor is wired into the streaming call
+ * (R-CC-14) — chunks, response text and usage stay on the log monitor; the one event mirrored to
+ * the caller is the request start (R-CT-5), so its UI can show a working state. The emission of
+ * start/result lines belongs to the callers. Stateless per call — safe from any thread.
  */
 public class CompactService {
 
@@ -70,6 +71,17 @@ public class CompactService {
     }
 
     /**
+     * Log-only variant — no caller feedback. Kept as an overload on purpose: the compact's chat
+     * visibility (R-CT-5) is a caller concern, and the service tests assert the request payload and
+     * the log contract rather than a monitor, so they stay on this entry point instead of threading
+     * a monitor through all 20 call sites.
+     */
+    public CompactResult compact(String agentName, List<ChatMessage> messages, String tokenDiagnosis,
+                                 @Nullable Integer requestTokens) {
+        return compact(agentName, messages, tokenDiagnosis, requestTokens, null);
+    }
+
+    /**
      * One compact attempt: entry debug log (exactly once, initial values, before any truncation),
      * staged input, COMPACT slot call, result line (log level matches the stage). With a
      * non-positive budget the entry log is the only log (R-CIB-1). Returns the
@@ -81,11 +93,14 @@ public class CompactService {
      * @param requestTokens R-CC-12: the last provider-reported input tokens, captured by the
      *                      caller BEFORE its memory clear — {@code null} when never reported
      *                      (then the result line reads {@code request n/a (no provider value)})
+     * @param callerMonitor R-CT-5: receives the compressor's request start only (working state in
+     *                      the caller's UI) — {@code null} = log only
      * @throws IllegalStateException when the LLM call returns null — Log OR throw: the throw stays
      *             in the call path, the result line is no exception substitute
      */
     public CompactResult compact(String agentName, List<ChatMessage> messages, String tokenDiagnosis,
-                                 @Nullable Integer requestTokens) {
+                                 @Nullable Integer requestTokens, @Nullable AiMonitor callerMonitor) {
+        var caller = AiMonitor.nullSafety(callerMonitor);
         var budgetTokens = chatModel.getConfig().getAutoCompactAfter();
         var requestIsEstimate = requestTokens == null;
         var compactCfg = chatModel.getConfig().compactAgentConfig();
@@ -112,6 +127,9 @@ public class CompactService {
                 .messages(COMPRESS_SYSTEM, UserMessage.from(outcome.input()))
                 .parameters(compactCfg.newRequestParameters(null));
         logMonitor.onChatMessage(1, request);
+        // R-CT-5: the request start alone mirrors to the caller — chunks, response text and usage
+        // stay on the log monitor, so no internal compressor token reaches the chat (R-CC-14).
+        caller.onChatMessage(1, request);
 
         long startMillis = System.currentTimeMillis();
         var response = chatModel.callBlocking(request.build(), compactCfg, logMonitor);

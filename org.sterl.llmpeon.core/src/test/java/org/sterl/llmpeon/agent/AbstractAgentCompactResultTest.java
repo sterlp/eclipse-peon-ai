@@ -19,6 +19,7 @@ import org.sterl.llmpeon.compact.CompactConstants;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
+import org.sterl.llmpeon.shared.OnPartialAiResponse;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 
@@ -185,30 +186,60 @@ class AbstractAgentCompactResultTest {
         assertThat(agent.getMemory().getLastProviderInputTokens()).isNull();
     }
 
-    // R-CC-14
+    // R-CT-5
+    // UC-CT-7
     @Test
     @Timeout(10)
-    void compressorChatEventsDoNotReachAgentMonitor() {
-        // GIVEN — a real history and a compressor answering with a summary; the monitor captures
-        // every chat event the agent's monitor would see
+    void compressorRequestStartReachesCallerMonitor() {
+        // GIVEN — a real history and a monitor capturing every caller-side chat event
         var agent = devAgent(r -> ChatResponse.builder()
                 .aiMessage(AiMessage.aiMessage("WHAT: compressor summary")).build());
         agent.addMessage(UserMessage.from("m1"));
         agent.addMessage(AiMessage.from("m2"));
         agent.addMessage(UserMessage.from("m3"));
-        var responses = new ArrayList<SimpleMessage>();
+        var toolLines = new ArrayList<String>();
         var chatRequests = new ArrayList<Integer>();
         var monitor = new AiMonitor() {
-            @Override public void onChatResponse(SimpleMessage m) { responses.add(m); }
+            @Override public void onChatResponse(SimpleMessage m) {}
             @Override public void onChatMessage(int iteration, ChatRequest.Builder request) { chatRequests.add(iteration); }
+            @Override public void onTool(String message) { toolLines.add(message); }
         };
 
         // WHEN
         var result = agent.compact(monitor);
 
-        // THEN — no compressor chat event reaches the agent's monitor (the internal call goes to the log only)
+        // THEN — the compressor's request start reaches the caller: its UI shows the working state
         assertThat(result.status()).isEqualTo(CompactResult.Status.COMPACTED);
-        assertThat(chatRequests).isEmpty();
+        assertThat(chatRequests).containsExactly(1);
+        // AND — the service adds no line of its own: the compact stays visible through the single start line
+        assertThat(toolLines).hasSize(1);
+    }
+
+    // R-CC-14
+    // UC-CT-8
+    @Test
+    @Timeout(10)
+    void compressorStreamingStaysLogOnly() {
+        // GIVEN — a compact that runs; the caller monitor captures streaming chunks and chat messages
+        var agent = devAgent(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("WHAT: compressor summary")).build());
+        agent.addMessage(UserMessage.from("m1"));
+        agent.addMessage(AiMessage.from("m2"));
+        agent.addMessage(UserMessage.from("m3"));
+        var chunks = new ArrayList<String>();
+        var responses = new ArrayList<SimpleMessage>();
+        var monitor = new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) { responses.add(m); }
+            @Override public void onStreamingChunk(OnPartialAiResponse r) { chunks.add(r.type() + ":" + r.value()); }
+        };
+
+        // WHEN
+        var result = agent.compact(monitor);
+
+        // THEN — no streaming preview of the internal call in the chat: neither a chunk ...
+        assertThat(result.status()).isEqualTo(CompactResult.Status.COMPACTED);
+        assertThat(chunks).isEmpty();
+        // AND ... nor the compressor's response text
         assertThat(responses).noneMatch(m -> m.message() != null && m.message().contains("WHAT: compressor summary"));
     }
 

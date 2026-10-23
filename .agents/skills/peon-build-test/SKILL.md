@@ -64,6 +64,10 @@ description: llmpeon repo build & test procedure — core→plugin jar trap (rea
   not a Maven dependency) → stale local-p2 host → phantom `NoSuchMethodError` on green code
   (2026-09-17 R-SEL-4, `UserContext.setTextSelection`). Correct: `-pl
   org.sterl.llmpeon,org.sterl.llmpeon.test -am verify`.
+- **SWT tests are skipped headless (hit 2026-10-23):** Tycho-surefire runs without a workbench
+  display, so every `AbstractSwtUiTest` subclass is `Assume`-skipped (visible as ~50 skips). A widget
+  test is therefore only *compiled* by `mvn … verify` — run it once with `eclipseRunJavaTests` against
+  the live workbench and prove its mutation there; never count headless skips as coverage.
 - **Maven Surefire is the ground truth for test numbers**, not `eclipseRunJavaTests` — the Eclipse
   runner counts higher (parameterized artefacts) and has repeatedly produced wrong report numbers.
 
