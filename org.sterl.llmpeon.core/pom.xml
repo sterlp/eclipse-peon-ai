@@ -96,6 +96,14 @@
             <version>0.64.8</version>
         </dependency>
 
+        <!-- Used directly by DuckDuckGoWebSearchEngine — declared explicitly (ADR-0074) instead of
+             relying on flexmark dragging it in transitively. -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.15.4</version>
+        </dependency>
+
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>

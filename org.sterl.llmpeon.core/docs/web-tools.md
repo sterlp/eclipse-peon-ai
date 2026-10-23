@@ -7,6 +7,7 @@ idPrefix: WEB
 > **Status:** ✅ done (2026-09-20, Paul specified 2026-09-19). WebFetchTool paginiert (Cache + 500-Zeilen-Fenster),
 > `webGet` für Datei-Downloads ohne Limit. **2026-10-18 (✅ done, Paul):** Cache-Größe 5 → **16**
 > (R-WEB-9) — die Navigation in der Seite braucht mehr stabile Snapshots. Paul-Smoke offen.
+> **2026-10-23:** R-WEB-10…12 ❌ specified — `webSearch` (DuckDuckGo, alle Agenten).
 
 ## Ziel
 
@@ -102,3 +103,47 @@ am Tool — **keine** User-Config (unverändert zu R-BC-4, Paul 2026-09-17).
   Refetch (URL 1 war die älteste von 17) — aber nach nur 16 URLs ist der erneute Aufruf von URL 1
   ein **Cache-Hit** (kein zweiter HTTP-Call).
 → `webFetchCacheHolds16Pages` (ersetzt den Cap-5-Nachweis in `webFetchCacheUsesBoundedLru`)
+
+### R-WEB-10 — `webSearch`: Web-Suche als Tool (DuckDuckGo) ❌ specified (2026-10-23, Paul)
+
+`webSearch(query, maxResults?)`: neue Tool-Klasse `WebSearchTool` (core) — sucht via
+**DuckDuckGo** (HTTP, kostenlos, kein API-Key) mit einem dünnen eigenen Client, der das
+langchain4j `WebSearchEngine`-Interface implementiert (kein Community-Modul — ADR-0074).
+Return = **nummerierte
+Trefferliste in den Kontext** (Titel, URL, Snippet), max **8 Treffer** je Call (`maxResults`
+überschreibbar, hartes Maximum 10); bei mehr verfügbaren Treffern ehrliche Disclosure
+(„showing N of M"). **Seiteninhalte gehen nie in den Kontext** — Nachlesen läuft über das
+bestehende `webFetchAsMarkdown` (R-WEB-1…3, Snapshots/Paginierung). Kein eigener Cache (die Suche
+ist nicht paginiert, jede Call frisch). Snippets werden auf **200 Zeichen** gekürzt (`…`);
+  Treffer ohne Titel oder ohne absolute http(s)-URL werden übersprungen (die Suche wirft dafür
+  keinen Fehler).
+
+- GIVEN eine Query mit 20 Treffern WHEN `webSearch(query)` THEN 8 Treffer (Titel + URL + Snippet)
+  mit Disclosure „showing 8 of 20". *(UC-WEB-10)*
+- GIVEN eine Query mit 3 Treffern WHEN `webSearch(query)` THEN genau 3 Treffer, keine erfundenen
+  Auffüllung. *(UC-WEB-10)*
+
+#### UC-WEB-10 — webSearchReturnsCappedResultList ❌
+- GIVEN eine Query WHEN `webSearch` läuft THEN nummerierte Trefferliste (Titel/URL/Snippet),
+  max 8, ehrliche Disclosure bei Kappung, nie mehr als das Maximum.
+
+### R-WEB-11 — `webSearch` für alle Agenten ❌ specified (2026-10-23, Paul)
+
+`webSearch` ist **nicht** `isEditTool` → er wird allen Agenten gegeben (Paul: „allen geben"),
+inklusive Search-Sub-Agenten — dieselbe Verteilung wie `webFetchAsMarkdown` (wörtlich: der
+Peon-PO hat `webFetchAsMarkdown` nicht und bekommt `webSearch` ebenfalls nicht). Kein Toggle: die
+Risikoklasse ist Lesen im Web (wie webFetch), kein Schreiben.
+
+#### UC-WEB-11 — webSearchAvailableToAllAgents ❌
+- GIVEN SearchAgent-Tool-Filter WHEN die Tool-Matrix gebaut wird THEN `webSearch` verfügbar
+  (anders als `webGet`, UC-WEB-8).
+
+### R-WEB-12 — `webSearch`: ehrliche Fehler und Leerergebnisse ❌ specified
+
+Ehrlich in beiden Richtungen: **0 Treffer ist eine Meldung** („0 results for …"), kein stiller
+Erfolg mit leerem Body; Rate-Limit/Timeout/Blockierung des DDG-Endpunkts → Fehlermeldung mit
+Ursache, keine Teilergebnisse, keine erfundenen Treffer.
+
+#### UC-WEB-12 — webSearchHonestEmptyAndErrors ❌
+- GIVEN DDG liefert 0 Treffer WHEN `webSearch(query)` THEN ehrliche „0 results"-Meldung.
+- GIVEN DDG antwortet mit Rate-Limit WHEN `webSearch(query)` THEN Fehlermeldung mit Ursache.

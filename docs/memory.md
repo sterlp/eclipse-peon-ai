@@ -2,6 +2,80 @@
 
 > docs/** — insbesondere memory.md — schreibt AUSSCHLIESSLICH Jon. Agenten liefern Facts im Chat.
 
+## NACHTZYKLUS 2026-10-23 — läuft (Paul-Order: "compact und nachtzyklus - wir sind auf main -- alles andere bauen was wir aufgenommen haben")
+
+- **Branch:** `story/night-2026-10-23` von aktuellem main (Da Mek anlegen lassen; vorher Git-IST prüfen — memory#53). Pauls WIP NIE committen; explizite git add-Pfadliste.
+- **Issue-163-Doc:** `docs/issue-163-tool-calls-retten.md` ✅ geschrieben (Ticket-Entwurf, ohne Links); open-points.md:29 verlinkt. Nicht committen an Paul überlassen? → Gehört zum Nachtzyklus-Commit (docs/**).
+- **Story-Reihenfolge** (je Voll-Loop: plan → Jon-Abnahme → build → Da-Dok-Review → ❌→✅ + lintDocsAndTests-Gate):
+  1. **webSearch** — R-WEB-10…12, `org.sterl.llmpeon.core/docs/web-tools.md` + `-architektur.md`. Details: Sektion "Story 3" unten. Plan-Risiko: community-DDG-Modul zu langchain4j 1.22.0 passen (pom.xml:14); im Aggregator-Checkout nur google/tavily/searchapi → Fallback dünner eigener DDG-Client.
+  2. **Compact-UI-Sichtbarkeit** — R-CT-4…7 (`compact-lock.md`) + R-CC-14 (`compact.md`). 🟡 Compact-Status Roster; onChatMessage→Caller-Monitor (Test `compressorChatEventsDoNotReachAgentMonitor` verschärfen); Agent-Name in AbstractAgent.java:406-408; Chat-Reset bei aktivem Agent bei ALLEN Triggern (heute nur AIChatView.java:499 Button-Pfad); stale Kommentar AIChatView.java:512-513 im Inkrement fixen.
+  3. **Skill-Roots** — R17 (`project-skills.md`), 3 Roots, Präzedenz Projekt > `~/.agents/skills` > `~/.peon/skills`; `.peon/skills` deprecated aber gelesen+SCHREIBBAR; Scaffold `.agents`-Empfehlung; Scaffold-Migration auf User-Wunsch; Homepage `setup/agents-and-skills.md:78` im Inkrement.
+- Paul nicht erreichbar → Abnahme durch Jon (memory#39, Inkrement-Gating). Bericht nach jeder Story.
+
+## Stand 2026-10-23 — Story 3: Web-Suche (webSearch) — Docs fertig, NICHT gebaut · Issue #163 recherchiert
+
+- **webSearch (Paul 2026-10-23):** Docs stehen — web-tools.md R-WEB-10…12 ❌ + web-tools-architektur.md
+  (WebSearchTool-Zeile, DDG über langchain4j `WebSearchEngine`-Interface, Community-Modul
+  `langchain4j-community-web-search-engine-duckduckgo`). Design: Trefferliste (Titel/URL/Snippet)
+  max 8 in den Kontext, Disclosure „showing N of M", Seiteninhalte nie in den Kontext (Nachlesen via
+  webFetchAsMarkdown), NICHT isEditTool → alle Agenten (Paul „allen geben"), kein Toggle.
+- **Plan-Risiko:** Community-Modul muss zu langchain4j 1.22.0 passen (im Aggregator-Checkout
+  /langchain4j existiert NUR google-custom/searchapi/tavily — DuckDuckGo liegt im community-Repo);
+  Fallback = dünner eigener DDG-Client. DDG-Tutorial: langchain4j docs/docs/integrations/web-search-engines/duckduckgo.md.
+- **Issue #163 („Tool Calls retten") — recherchiert, Backlog (open-points.md 2026-10-23):**
+  langchain4j NICHT das Problem (Provider mappen nur strukturierte Felder — kein Upstream-Issue).
+  Gegenmittel wäre Rescue-Heuristik im ToolService-Loop („function=<Name>"-Text → ToolExecutionRequest,
+  nur registrierte Namen). Paul entscheidet, ob/wann.
+
+## Stand 2026-10-23 — Story 2: Skill-Roots (~/.agents/skills) — Docs fertig, NICHT gebaut
+
+- **Paul-SOLL:** Skill-Service liest 3 Roots: `~/.agents/skills` (NEUER Default, APM-/MS-Agent-
+  Package-Manager-Kompatibilität, auch auf Homepage) · `~/.peon/skills` (deprecated, gelesen UND
+  schreibbar — Support fällt NICHT weg) · `<Projekt>/.agents/skills` (unverändert). Präzedenz:
+  Projekt > ~/.agents > ~/.peon (Paul „ja"). Scaffold: Empfehlung IMMER `.agents` (User-Root oder
+  Projekt, nach Nachfrage R11) — `.peon/skills` schreibbar aber nicht empfohlen. Homepage:
+  Info/Warnung — `.agents` (User + Projekt) empfehlen. **Migration:** keine automatische (Clean
+  Break) — auf User-Wunsch führt der SCAFFOLD die Migration aus (beide User-Roots = seine
+  Validator-Roots). Commands/prompts folgen SPÄTER evtl.
+  (nicht Teil dieser Story).
+- **Docs geschrieben:** project-skills.md (Ziel, R2, R17 ❌ + 5 BDD, R10/R11 amendiert, R14-Note,
+  BDD-Tabelle R17) · glossary.md Config-Skills · configuration.md Skills-Zeile ·
+  peon-config-directory.md Skills-Zeile · ADR-0041 Consequence-Zeile (Skills-Default zieht um).
+- **Stale entfernt:** advanced-configuration.md „First-Launch Directory Resolution"
+  (`~/.claude/skills` → `~/.llmpeon/skills`) — existiert NICHT im Code (verifiziert: keine
+  `.claude/skills`-Resolution in Java; configDir = `~/.peon` via LlmPreferenceInitializer/LlmConfigLoader).
+- **Homepage** (setup/agents-and-skills.md:78 nennt ~/.peon/skills) — Update gehört ins Build-Inkrement
+  (AGENTS-Regel: user-facing im selben Increment). Da Mek erhält die Pfadliste im Plan.
+- **Tests-Neu:** `SkillServiceTest.threeRoots_precedenceProjectOverAgentsOverPeon`,
+  `agentsRootMissingLoadsEmpty`. Betroffene IST-Stellen: SkillService (configComponent → Liste),
+  PeonAiService-Wiring, Scaffold-Validator-Roots (ADR-0043 — bleibt mit configDir-Root), Scaffold-
+  Prompt-Empfehlung (`.agents` statt configDir), Homepage-Warnung (setup/agents-and-skills.md:78).
+- **Nächster Schritt:** Plan + Build (nach Pauls Stories).
+
+## Stand 2026-10-23 — Compact-UI-Sichtbarkeit (Docs, Paul-WTF-Meldung)
+
+- **Anlass:** Paul sieht beim Compact nichts im UI — `CompactService` ist monitor-frei (R-CC-14).
+  IST-Verifikation: Chat-Reset existiert NUR beim Button-Pfad (`AIChatView.java:499`);
+  `compactSession`/Pre-Turn/In-Loop-Direct bauen die View NICHT neu (HTML läuft voll).
+  Start-Zeile `AbstractAgent.java:406` nennt keinen Agent. Stale Kommentar
+  `doCompressAgent:512-513` („summary streams into the chat live") — stimmt seit R-CC-14 nicht mehr.
+- **Pauls SOLL (2026-10-23):** UI zeigt, dass der Compressor arbeitet · Compact-Ereignisse nennen
+  den Agent · Main-Agent-Compact → Chat-View-Reset (HTML läuft nicht voll). Async-Hinweis bewusst
+  NICHT aufgeschrieben („das haben wir gar nicht").
+- **Revision 2 (Paul, 19:24):** alte Entscheidung R-CT-4 (2026-09-22 „working reicht, kein separater
+  Compact-State") GELÖSCHT und ersetzt: **eigener Compact-Status** (🟡 `compacting` im Roster,
+  `AiAgentStatusWidget.text()`-Präfix) — Blatt-Regel unverändert. 🟡-Zeile aus open-points entfernt.
+- **Docs geschrieben (❌ specified, kein Code):**
+  - `compact.md` R-CC-14: Feedback-Teil revidiert — `onChatMessage` erreicht Caller-Monitor,
+    Streaming-Text bleibt log-only.
+  - `compact-lock.md` R-CT-5 (Compressor working sichtbar, UC-CT-7/8) · R-CT-6 (Agent-Name,
+    UC-CT-9) · R-CT-7 (Chat-Reset aktiver Agent, UC-CT-10/11/12).
+  - open-points ❓ „Compact-Button ohne Monitor" (2026-09-29) — als Spezifikation aufgelöst, entfernt.
+- **Nächster Schritt:** Plan + Build über Da Thinka/Da Mek (Tests: `compressorChatEventsDoNotReachAgentMonitor`
+  verschärfen, UI-Trigger teilweise manuell). Kein ADR — Entscheidung folgt meiner Empfehlung.
+- **Status (Paul 2026-10-23):** 🟡-Roster-Status BESTÄTIGT. **NICHT bauen** — Paul hat noch
+  2 weitere Stories, danach Planung dieses Inkrements.
+
 ## Stand 2026-10-23 — Docs-Slim-Zyklus ABGESCHLOSSEN
 
 - **Paul hat den Branch per SQUASH gemerged** (`2a094b5d` #164, Inhalt byte-identisch bis `56d3cc65`)
