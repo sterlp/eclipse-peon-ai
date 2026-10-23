@@ -254,3 +254,24 @@ jeder Call setzt `tokenPhaseStart` neu, also spikt jeder Call-Start (im Tool-Loo
 - **GIVEN** der 2. Token desselben Calls ist angekommen **WHEN** Statusleiste rendert **THEN** toc/s = Tokens / Token-Phase-Dauer (wie R19)
 - **GIVEN** ein Tool-Loop mit mehreren Calls **WHEN** jeder Call startet **THEN** nur der 1. Token jedes Calls ohne Rate, ab 2. Token Rate (kein Spike pro Call)
 - **Tag:** unit (verify first token of a call → rate 0; 2nd token → rate; per-call reset)
+
+## Offene Punkte
+
+### OP-STREAM-1 — Hänger bei Verbindungsverlust / Notebook-Sleep ❓ offen (2026-10-23, Paul)
+
+**Beobachtung (reproduzierbar):** Verliert das Notebook die Verbindung oder geht es schlafen,
+hängt der laufende Turn endlos — nur ein **Cancel im UI** stoppt den Hänger. Die Bridge wartet
+weiter auf Chunks, die nie kommen.
+
+**Pauls Verdacht:** Wir prüfen **nicht**, ob die Stream-Connection noch alive ist — es gibt keine
+Activity-/Timeout-Erkennung („kein Chunk seit N s" → Verbindung als tot behandeln, Fehlerpfad wie
+`PartialStreamError`).
+
+**Zusätzliche Sorge (Async):** Mit der `AsyncStreamingBridge` (WIP, `agent/tools`-Zyklus) bekommen
+wir vermutlich **gar keine Info** mehr — es braucht einen Weg, den UI-Cancel in den asynchronen
+Call / das `CompletableFuture` zu transportieren (heute pollt `StreamingBridge` das
+`isCanceled()`-Flag direkt, siehe [chat-job-lifecycle.md](chat-job-lifecycle.md)).
+
+Verwandt: [agents-retry.md](../../org.sterl.llmpeon.core/docs/agents-retry.md) (Cancel-Klassifikation,
+Retry-Backoff mit Poll-Intervall) — ein toter Stream, der nur Cancel stirbt, hat die gleiche
+Wurzel wie der ApiRetry-Verdacht aus open-points.md (Null-Byte-IOException als Cancel).
