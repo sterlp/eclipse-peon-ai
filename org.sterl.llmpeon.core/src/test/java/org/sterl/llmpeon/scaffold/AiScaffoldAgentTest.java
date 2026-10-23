@@ -209,6 +209,46 @@ class AiScaffoldAgentTest {
         }
     }
 
+    // R10/R11/R17
+    /**
+     * Content guard for the shipped prompt resource: the recommended placement is the {@code .agents}
+     * user root, and a migration happens only on request. Honest scope — it proves the text is there,
+     * not that the LLM follows it (that is not automatable).
+     */
+    @Test
+    void systemPromptRecommendsAgentsUserRoot() throws Exception {
+        // GIVEN the system prompt the scaffold agent actually sends
+        var config = LlmConfig.builder()
+                .providerType(AiProvider.OLLAMA)
+                .model("qwen3")
+                .url("http://localhost:9999")
+                .configDir(Files.createTempDirectory("scaffold-prompt"))
+                .build();
+        var prompt = new AiScaffoldAgent(config.build()).getSystemPrompt();
+
+        // THEN the write scope names the user root and the placement rule recommends it over the
+        // deprecated config skills dir
+        assertThat(bullet(prompt, "**Write scope")).contains("~/.agents/skills");
+        assertThat(bullet(prompt, "**Placement question for new skills.**"))
+                .contains("~/.agents/skills")
+                .contains("deprecated");
+
+        // AND migration is a copy into the user root, ending in a reload, leaving the original in place
+        assertThat(bullet(prompt, "**Migration (only on request).**"))
+                .contains("~/.peon/skills")
+                .contains("copy")
+                .contains("stay in place")
+                .contains("reloadConfig()");
+    }
+
+    /** Prompt-guard helper: the text of one bullet, from its marker to the start of the next one. */
+    private static String bullet(String prompt, String marker) {
+        var start = prompt.indexOf(marker);
+        if (start < 0) throw new AssertionError("prompt has no bullet: " + marker);
+        var end = prompt.indexOf("\n- ", start);
+        return prompt.substring(start, end < 0 ? prompt.length() : end);
+    }
+
     private static String skillFile(String body) {
         return """
                 ---
