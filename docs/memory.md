@@ -16,7 +16,13 @@ AsyncMonitor + AbstractAgent/AiAgent/Timer/ToolLoopRequest; `573eb601`: `org.ste
 - **Commits:** `01d538ae` INC-A (Root-Index = Link-Doc ~3.2k Zeichen + AGENTS-DEV Gate-Evidenz-Regel) ·
   `b6d27472` INC-B Evidence-Sweep (Hashes/Surefire-Zahlen/Messwerte aus `docs/**` entfernt) ·
   `89273a15` 2 Rest-Hashes · `916c8311` Da-Dok-Review-Fixes F1–F5 · `67113bcc` Skill-Evolution
-  (`peon-build-test` patched + Ledger Accepted).
+  (`peon-build-test` patched + Ledger Accepted) · `fb66b8b4`–`12ae029b` Pauls Code-WIP (AgentsTool/
+  AsyncStreamingBridge/AsyncMonitor) · `2ab1a869` SwtUi-UI-Guard (CI-Failure behoben, Test skippt
+  headless) · `88c499fd` OP-STREAM-1 (Stream-Hänger bei Verbindungsverlust, streaming-display.md) ·
+  `4fe02f02` slf4j-simple-Stale-Ref (.classpath) · `b8a91f4f` ADR-0073 slf4j-api bleibt gebündelt.
+- **Merge-Status:** ALLE Gates grün (Core-Suite + Plugin-Fragment, PDE-Bau repariert, slf4j
+  ex-vorher-Stand via ADR-0073) — **Merge nach main frei** (Paul, 1 Merge, --no-ff optional).
+  Danach: `releng/llmpeon-target` wieder installen (Datei/`~/.m2` gleichziehen), Branch löschen.
 - **Da-Dok-Review: CONCERNS → alle Findings aufgelöst** (F1 memory.md-Stand, F2 java-debugger
   Satzreste, F3 Sub-Index-Köpfe/Legende, F4 Evidenz-Reste 2. Welle, F5 UC-DL-74…82 ❌→✅ —
   Marker+Tests verifiziert, 27/0 grün). Lint-Baseline unverändert (9).
