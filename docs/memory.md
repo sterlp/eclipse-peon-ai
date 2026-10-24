@@ -105,12 +105,11 @@ Quelle: Paul-Chat + [org.sterl.llmpeon.test/ai-e2e-test/webtools-test-issues.md]
 ## Offen für Paul (Details: [open-points.md](open-points.md))
 
 1. ❓ **Merge/Squash** Nachtzyklus-Branch + Smoke. Danach Branch löschen.
-2. ❓ **P6 externes Review:** `docs/issue-163-tool-calls-retten.md` als Issue-Body nach GitHub #163, dann Datei löschen (Tripel-Duplikat auflösen).
-3. ⏳ Delegations-Compact pro Delegation (Kosten, ADR-0071) · ⏳ Compact-Briefing-Schema
+2. ⏳ Delegations-Compact pro Delegation (Kosten, ADR-0071) · ⏳ Compact-Briefing-Schema
    (compressor.md) · ❓ Fixture-Duplikat · ❓ R-Regeln ohne Linter-Gate · ❓ In-Loop-Direkt-Compact
    fängt Exceptions nicht · ⏳ Reserved-Name `codegraph` · ⏳ R-CG-15 Monorepo-State-Refresh ·
    ⏳ R-CC-19-Semantik+Tilde · ⏳ Windows-`cmd /c`-Fallback · 🔒 S3 (🗜 in PoDelegateTool).
-4. ❓ Testnamen-im-Fließtext-Slice · ❓ Linter-Guard gegen Evidenz-Drift ·
+3. ❓ Testnamen-im-Fließtext-Slice · ❓ Linter-Guard gegen Evidenz-Drift ·
    vorbestehende R-CC-18-/R-DEF-Doppedefinitionen.
 
 ## EXTERNES REVIEW 2026-10-24 (Paul: „mit Vorsicht genießen, nachbessern bei echten Problemen")
@@ -122,7 +121,7 @@ Quelle: peon-plan/external-review-1.md (Plan-Tool + Docs-Konsistenz). Alle Punkt
 3. **P3 (planUpdate stale) → kein Fix nötig** (verifiziert): `IoUtils.writeFile` ist Workspace-Operation (IFile.setContents/create) — als Klarstellung in UC-PT-2 dokumentiert.
 4. **P4 (Evidenz in docs) → ✅ aufgeräumt:** Surefire-Zahlen + Commit-Hashes aus memory.md/web-tools.md/tool-output-disclosure.md/plan-tool.md entfernt.
 5. **P5 (ADR-0074) → ✅ umbenannt** + alle Links (Index, Architektur-Doc, 4 Javadocs) angeglichen.
-6. **P6 (issue-163 im Root-docs) → OFFEN für Paul:** Inhalt soll als Issue-Body nach #163, Datei dann löschen; Tripel-Duplikat mit open-points/memory.md. Ich kann das GitHub-Issue nicht setzen.
+6. **P6 (issue-163 im Root-docs) → ✅ erledigt (2026-10-24, Paul):** Datei gelöscht — Paul: „machen wir nicht aktuell", Issue #163 bleibt als Backlog-Zeile; GitHub-Issue-Body schreibt ggf. Paul selbst.
 7. **P7 (stale R-CT-8-Aussagen) → ✅ korrigiert:** Core-Index-Compact-Zeile + R-CC-16-Formulierung, sub-agent-timing-Satz.
 8. **P8 (R-CT-8 ↔ R-CC-16) → ✅ Doc-Kante geschlossen:** R-CC-16 folgt als Erweiterung der EINE End-Zeile (kein drittes Format); Feld wird heute noch nirgends erfasst (❌ backlog).
 9. **P9 (compact ohne Monitor) → ✅ gebaut (Paul-Zustimmung):** 4-Arg-Overload + „Log-only"-Javadoc gelöscht (Clean Break), 19 CompactServiceTest-Sites → 5-Arg mit NULL_MONITOR, Monitor = Pflichtparameter.
@@ -130,13 +129,24 @@ Quelle: peon-plan/external-review-1.md (Plan-Tool + Docs-Konsistenz). Alle Punkt
 
 Gates grün (Zahlen je Commit-Message) · Plan archiviert.
 
+## Aufgeräumt (2026-10-24, Paul-Wunsch)
+
+- **Issue-Files gelöscht:** change-agent-issue.txt (T-1b-Stack, Archiv `/tmp/change-agent-issue-archiv-2026-10-24.txt`),
+  close-build-issue.md, compact-agents-issue.md, job-issue.md — Inhalte in der Triage-Sektion oben gesichert.
+- **docs/issue-163-tool-calls-retten.md gelöscht** (Paul: „machen wir nicht aktuell") — Backlog-Zeile bleibt.
+- **T-1 bleibt offen** (Skill-Routes nach Reload) — braucht Details von Paul; T-1a (per-Root-Reload-Output)
+  Ja/Nein ausstehend.
+- Klein offen: known-benign-Warnings-Doc für 2 neue Null-Type-Safety-Warnings (PlanFileView/PlanTool) —
+  mit nächstem Inkrement miterledigen.
+
 ## Backlog (nächste Session)
 
 - **Async-Shell-Tool — Paul-Prio** (wichtiger als async Agents). Danach async Agents (Top-3 in
   [async-agents.md](../org.sterl.llmpeon.core/docs/async-agents.md)).
 - **TempFileTool** — Slice 2 Output-Trim 🚧 in design.
-- **Issue #163 („Tool Calls retten")** — recherchiert: langchain4j NICHT das Problem; Gegenmittel =
-  Rescue-Heuristik im ToolService-Loop (~60–100 Zeilen). Paul entscheidet, ob/wann.
+- **Issue #163 („Tool Calls retten")** — ⏳ von Paul geparkt („machen wir nicht aktuell", 2026-10-24);
+  recherchiert: langchain4j NICHT das Problem; Gegenmittel = Rescue-Heuristik im ToolService-Loop
+  (~60–100 Zeilen).
 - Lint-Baseline-Befunde in einen Docs-Zyklus aufnehmen.
 - R-CG-14 (Generation + `disposed` statt Lock) · R-CIB-4 Stufe 2 · R-CC-7 Fehlerklassen-Tabelle
   ApiRetry (❓) · Header-State-Leak (❓) · Context-Overflow-Zyklus (❓) · McpService
