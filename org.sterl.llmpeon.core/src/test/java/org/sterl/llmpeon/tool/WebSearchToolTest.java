@@ -300,6 +300,62 @@ class WebSearchToolTest {
         assertThat(stub.callCount).isEqualTo(1);
     }
 
+    // R-WEB-14
+    // UC-WEB-14
+    @Test
+    void webSearchBotCheckOnlyCauseStillGetsGuidance() {
+        // GIVEN a rejection naming only the bot check — no rate-limit words, no status
+        failingEngine("blocked by bot check");
+
+        // THEN the `bot check` branch alone carries the guidance
+        assertThat(tool.webSearch(QUERY, null)) //
+                .startsWith("webSearch failed for '" + QUERY + "': blocked by bot check") //
+                .contains("Do not retry immediately") //
+                .doesNotContain("0 results");
+    }
+
+    // R-WEB-14
+    // UC-WEB-14
+    @Test
+    void webSearchStatus202AloneStillGetsGuidance() {
+        // GIVEN the UC-WEB-14 case: the status is all the engine reported
+        failingEngine("rejected (HTTP 202)");
+
+        // THEN the `HTTP 202` branch alone carries the guidance
+        assertThat(tool.webSearch(QUERY, null)) //
+                .startsWith("webSearch failed for '" + QUERY + "': rejected (HTTP 202)") //
+                .contains("Do not retry immediately") //
+                .doesNotContain("0 results");
+    }
+
+    // R-WEB-14
+    // UC-WEB-14
+    @Test
+    void webSearchRateLimitInAnyCaseStillGetsGuidance() {
+        // GIVEN a foreign engine's wording: `HTTP 503` is no branch of its own, so only the
+        // case-insensitive match of "Rate Limit or Bot Check" can produce the guidance
+        failingEngine("rejected (HTTP 503 — Rate Limit or Bot Check)");
+
+        // THEN a differently cased cause does not silently drop the way forward
+        assertThat(tool.webSearch(QUERY, null)) //
+                .startsWith("webSearch failed for '" + QUERY + "': rejected (HTTP 503") //
+                .contains("Do not retry immediately") //
+                .doesNotContain("0 results");
+    }
+
+    // R-WEB-14
+    // UC-WEB-14
+    @Test
+    void webSearchWithoutACauseStaysAnHonestError() {
+        // GIVEN an engine whose exception carries no message at all
+        failingEngine(null);
+
+        // THEN the plain honest line — no guidance invented, no exception escaping the catch block
+        assertThat(tool.webSearch(QUERY, null)) //
+                .startsWith("webSearch failed for '" + QUERY + "': null") //
+                .endsWith(". No results were returned — this is an error, not an empty result set.") //
+                .doesNotContain("Do not retry", "webFetchAsMarkdown", "0 results");
+    }
 
     // R-WEB-14
     // UC-WEB-14
@@ -320,7 +376,6 @@ class WebSearchToolTest {
                 .contains("max 8") //
                 .contains("webFetchAsMarkdown");
     }
-
 
     // UC-WEB-12
     @Test

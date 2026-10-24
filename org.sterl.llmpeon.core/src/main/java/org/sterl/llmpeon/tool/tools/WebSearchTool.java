@@ -37,8 +37,12 @@ public class WebSearchTool extends AbstractTool {
 
     private static final Pattern WHITESPACE = Pattern.compile("\\s+");
 
-    /** R-WEB-14: the engine names the cause (DuckDuckGoWebSearchEngine#bodyOrThrow); the guidance rides on that name. */
-    private static final Pattern RATE_LIMIT = Pattern.compile("rate limit|bot check|HTTP (202|429)");
+    /**
+     * R-WEB-14: the engine names the cause (DuckDuckGoWebSearchEngine#bodyOrThrow); the guidance rides
+     * on that name. Case-insensitive — a foreign engine writes "Rate Limit", and a cause we only
+     * recognise in one spelling would drop the way forward without a word.
+     */
+    private static final Pattern RATE_LIMIT = Pattern.compile("rate limit|bot check|HTTP (202|429)", Pattern.CASE_INSENSITIVE);
 
     /** R-WEB-14: no retry — the observed block outlasted every immediate retry and lasted minutes. */
     static final String RATE_LIMIT_GUIDANCE = "Do not retry immediately: a DuckDuckGo block lasts minutes, "
@@ -104,8 +108,9 @@ public class WebSearchTool extends AbstractTool {
         return isRateLimit(cause) ? line + " " + RATE_LIMIT_GUIDANCE : line;
     }
 
+    /** An engine may name nothing at all (ADR-0074 keeps the swap open) — a null cause stays honest, it just gets no guidance. */
     private static boolean isRateLimit(String cause) {
-        return RATE_LIMIT.matcher(cause).find();
+        return cause != null && RATE_LIMIT.matcher(cause).find();
     }
 
     /** The numbered blocks, then only the disclosures that apply — each on its own line. */
