@@ -47,7 +47,7 @@ Base: `AGENTS.md`. System prompt: `developer.md`.
   nie in String-Literale von Tests (C2-Gate des Docs-Restrukturierungs-Zyklus).
 - **Commit-Message trägt das Gate-Ergebnis** (Paul 2026-10-22): je Inkrement 1–2 Zeilen mit
   dem Ergebnis der **tatsächlich gefahrenen** Gates (z. B. `Core Surefire 1252/0/0/0 · Lint
-  9 Findings = Baseline`) — kein Surefire gefahren → Surefire-Zeile weglassen, nie angerechnet.
+  <n> Findings = Baseline`) — kein Surefire gefahren → Surefire-Zeile weglassen, nie angerechnet.
   Docs und ADRs tragen KEINE Test-/Mess-Zahlen — historische Werte sind stale und irreführen;
   Evidenz lebt im Commit und ggf. in den memory-Tools, nie in `docs/**`.
 - Elegant, expressive modern Java (records, pattern matching, switch expressions, Lombok).

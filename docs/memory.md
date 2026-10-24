@@ -50,10 +50,15 @@ Quelle: Paul-Chat + [org.sterl.llmpeon.test/ai-e2e-test/webtools-test-issues.md]
   `/llmpeon-parent/org.sterl.llmpeon.core/docs/web-tools.md`, eclipseReadFile mit exakt diesem Pfad
   → „No eclipse file found" (nested modules). False-Negative-Klasse + Paritätsverstoß.
   Bewusst nicht im Web-Run geändert.
-- **T-8 (Da-Mek-Befund 2026-10-24):** `PlanTool.planImplemented` (PlanTool.java:90) →
-  `ResourceException` beim `move`, wenn der Plan zuletzt per Disk-Tool geschrieben wurde (stale
-  Workspace-Tree, eclipseRefreshProject half). Fix-Idee: `refreshLocal` vor dem `move`. Noch nicht
-  gebaut.
+- **T-8 ✅ GEBAUT (2026-10-24):** PlanTool — R-PT-1 Archivierung toleriert disk-geschriebene Pläne
+  (refreshLocal auf peon-plan vor exists/move, beide Fallen: stiller Return + ResourceException,
+  Fehler nie still, Cancellation läuft ungefangen) + R-PT-2 planRead/hasPlan/planUpdate sehen
+  disk-geschriebene Pläne (kein „No plan exists"-False-Negative, gemeinsamer Helfer refreshPlanDir,
+  tote Guards raus). PlanToolTest 6 Tests, alle mutationsgepinnt (inkl. Move-Failure via
+  read-only-Ordner). Neue Feature-Docs: org.sterl.llmpeon/docs/plan-tool.md (✅) + index.md-Zeile.
+  Commits `28ae9fed`/`4e563e11`/`411bc3b6`. PDE-Suite **418/0**. ⏳ AgentContextComponent.readPlan
+  Injection-Klasse erst bei Befund (Doc-Offener-Punkt); Befund: Stop wirft nackte
+  OperationCanceledException — bewusst ungefangen (Regel im Doc).
 - **T-1a OFFEN (Paul):** Reload-Output per-Root-Skill-Zählung — mein Vorschlag gestellt
   („Skills: N effective — <root>: n, …", leere Roots entfallen), Ja/Nein steht aus.
 - **T-6 (Paul-Smoke compact-agents-issue.md, Story-2-Abnahme fehlteilig):** Compressor-Streaming
