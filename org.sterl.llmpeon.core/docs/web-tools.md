@@ -147,3 +147,22 @@ Ursache, keine Teilergebnisse, keine erfundenen Treffer.
 #### UC-WEB-12 — webSearchHonestEmptyAndErrors ✅
 - GIVEN DDG liefert 0 Treffer WHEN `webSearch(query)` THEN ehrliche „0 results"-Meldung.
 - GIVEN DDG antwortet mit Rate-Limit WHEN `webSearch(query)` THEN Fehlermeldung mit Ursache.
+
+### R-WEB-13 — `webFetchAsMarkdown`: Nur HTML wird konvertiert ❌ specified (2026-10-24, Bug-Triage T-2)
+
+Der HTML→Markdown-Konverter läuft **nur** bei Media-Type `text/html` oder `application/xhtml+xml`
+(und XML-Abkömmlingen `+xml`); jeder andere Inhalt (text/plain, application/json, …) wird als
+**roher Text** übergeben — kein Newline-Collapse, kein Markdown-Escaping, kein Footer-Traum.
+Der Footer benennt den Pfad („converted from HTML" / „raw text"), damit der Agent weiß, was er
+vor sich hat (R-WEB-2: kein Werkzeug lügt über eine Einschränkung). Die @Tool-Beschreibung erwähnt
+das Verhalten. Der Cache hält Pfad-Label und Inhalt zusammen — ein Cache-Hit meldet denselben
+Pfad wie der erste Abruf.
+
+#### UC-WEB-13 — webFetchRawForNonHtml ❌
+- GIVEN der Server antwortet mit `text/plain` WHEN `webFetchAsMarkdown(url)` THEN der Body wird
+  unverändert (raw) als Text übergeben und der Footer benennt „raw text".
+- GIVEN der Server antwortet mit `text/html` WHEN `webFetchAsMarkdown(url)` THEN der Body wird
+  zu Markdown konvertiert und der Footer benennt „converted from HTML".
+- GIVEN ein `text/plain`-Ergebnis liegt im Cache WHEN der gleiche URL erneut abgerufen wird THEN
+  kommt der gecachte Raw-Text mit „raw text"-Label (kein nachträglicher Konverter-Lauf).
+
