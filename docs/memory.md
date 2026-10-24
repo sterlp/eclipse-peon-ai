@@ -86,6 +86,19 @@ Quelle: Paul-Chat + [org.sterl.llmpeon.test/ai-e2e-test/webtools-test-issues.md]
   **Neuer Befund:** `PlanTool.planImplemented` (:90) schlägt fehl, wenn der Plan per Disk-Tool
   geschrieben wurde (stale Workspace-Tree) — vor dem `move` fehlt refresh/`IResource.refreshLocal`
   → als T-8 triagiert.
+- **T-10 ✅ GEBAUT (2026-10-24, close-build-issue.md):** R-OD-8/UC-OD-11 — onProblem-Zeile nennt Tool-Name,
+  Uhrzeit (HH:mm, StringUtil.HH_MM), Exception-Klasse + Cause-Chain (Wrapper-Glieder, die nur die Cause
+  wiederkäuen, entfallen; Stack-Frame-Zeilen aus mehrzeiligen Messages entfernt, Whitespace normalisiert,
+  null/blank → `(no message)`); Stack bleibt in Log + Tool-Ergebnis (LLM). Helfer `StringUtil.toolFailureLine/
+  exceptionChain`, CallStats nutzt StringUtil.HH_MM, `exceptionChain(null)`-Dead-Guard entfernt (F5).
+  Commits `7f0435d2`+`3b56ac2b`, Surefire **1347/0/0/0**, Lint Baseline 8, Da-Dok CONCERNS aufgelöst.
+  Ursache des konkreten „closed" selbst: nicht rekonstruierbar — gleiche Klasse wie OP-STREAM-1/ApiRetry.
+  Backlog-Nebenbefund: `HH:mm` dreifach im Core (StringUtil/LiveStatus/UserMessageQueue) — Folge-Inkrement.
+- **T-9 ⏳ GEPARKT (Paul 2026-10-24):** Shutdown vs. laufende Jobs (job-issue.md) — Plattform cancelt Jobs beim
+  Shutdown (~300 ms Toleranz), unser Poll (`StreamingBridge` 1500 ms, `ApiRetry`-Backoff 1-s-Chunks) bemerkt
+  den Cancel zu spät → „Job found still running after platform shutdown". Kein Datenverlust. Ausgearbeitete
+  Lösung (Core-Poll verkürzen + preShutdown/dispose-Cancel, geräuschlos) parkt Paul — Analyse steht in
+  [chat-job-lifecycle.md](../org.sterl.llmpeon/docs/chat-job-lifecycle.md) „Offener Punkt". Kein Fix.
 - **T-1b erledigt (kein Bug):** TeamException im change-agent-issue.txt = Egit-Provider-
   Instanziierung, von Eclipse Core geschluckt (getProvider fängt, loggt, markAsUnshared) —
   Agent-Wechsel ohne Schaden; Root-Cause steht im !ENTRY oberhalb des Stacks (Pauls Eclipse/EGit).

@@ -4,7 +4,7 @@ idPrefix: OD
 
 # Tool-Output-Disclosure — Caps ehrlich machen
 
-> **Status:** ✅ done (2026-09-20, Paul specified 2026-09-19; R-OD-7 2026-10-17, R-OD-5-Rework 2026-10-17).
+> **Status:** ✅ done (2026-09-20, Paul specified 2026-09-19; R-OD-7 2026-10-17, R-OD-5-Rework 2026-10-17, R-OD-8 2026-10-24).
 
 ## Ziel
 
@@ -114,3 +114,42 @@ die rohe Extension.
 
 → `fileTargetBeatsExtensionFilterInDisclosure` (Plugin-Test-Modul, Pendant zu
 `DiskGrepToolTest.fileTargetBeatsExtensionFilter`)
+
+### R-OD-8 — Tool-Fehler-Meldung nennt Tool, Zeit, Exception-Klasse + Cause-Chain ✅ done (2026-10-24, Paul; Commits `7f0435d2`+`3b56ac2b`, Da-Dok CONCERNS aufgelöst F1/F2/F5)
+
+Fängt der Tool-Loop eine Tool-Exception (`ToolService.runAllTools`), bekommt `onProblem` heute
+nur `"<Tool> failed: <e.getMessage()> details logged."` — oft wäre das `buildWithDev failed:
+closed details logged.`: nicht triagierbar, ohne ins Error Log zu gehen. Der volle Stack geht
+bereits an Log + Tool-Ergebnis (LLM), nur der Mensch sieht die Details nicht.
+
+**SOLL:** die `onProblem`-Zeile nennt **Tool-Name, Uhrzeit (`HH:mm` lokal, Muster
+[R-TD-1](tool-time-disclosure.md)), Exception-Klasse + Message und die komplette Cause-Chain**
+(je Kettenglied `Klasse: message`, verbunden mit ` ← `):
+
+    buildWithDev failed (14:32): IllegalStateException: closed ← IOException: Connection reset — details logged.
+
+- Message `null`/leer → `(no message)` statt `null`.
+- **Wrapper-Glieder entfallen:** ein Kettenglied, das nur seine Cause wiederkäut (Message ist
+  die Cause-Message oder das Cause-`toString()` — z. B. der `ToolExecutionException`-Wrapper
+  des Tool-Executors), wird nicht als eigenes Glied gerendert — es trägt keine Information
+  (Präzisierung 2026-10-24, Da-Mek-IST-Befund; die Beispielzeile oben gilt damit auch real).
+- **Mehrzeilige Messages:** Whitespace wird normalisiert (einzeilig) und Zeilen im
+  Stack-Frame-Muster (`^\s*at …`) werden aus der Message entfernt — der übrige Inhalt bleibt
+  vollständig, der Stack flutet den Chat nicht (Präzisierung 2026-10-24).
+- **Kein Stack in der Zeile** — der Stack bleibt im Log (`log.error`) und im Tool-Ergebnis
+  für den LLM; der Chat flutet nicht.
+- **LLM-Sink (Entscheidung Jon, Paul überlassen):** das Tool-Ergebnis trägt den vollen Stack
+  bereits heute („Tool failed - check why and inform user" + Stack) — das deckt „mindestens
+  das Gleiche wie der User" ab und der Stack hat für die Diagnose des Agenten Mehrwert →
+  Tool-Ergebnis bleibt unverändert.
+- Format-Hilfsmittel lebt im Core, eine Implementation (AGENTS „one behaviour, one
+  implementation") — inkl. Uhrzeit-Muster wie `CallStats` (HH:mm), Clock testbar.
+
+#### UC-OD-11 — toolFailureReportsFullException ✅
+
+- GIVEN ein Tool wirft `Exception` mit Message und Cause-Chain WHEN `onProblem` feuert THEN
+  die Zeile enthält Tool-Name, `HH:mm`, `Klasse: message` je Kettenglied (verbunden mit ` ← `)
+  und endet mit „details logged.".
+- GIVEN Message ist `null` WHEN `onProblem` THEN `(no message)` statt `null`.
+- GIVEN der Stack WHEN Reporting THEN Stack nur in Log + Tool-Ergebnis, nie in der
+  `onProblem`-Zeile.
