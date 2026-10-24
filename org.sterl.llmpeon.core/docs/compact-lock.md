@@ -168,13 +168,13 @@ Root-/Sklaven-Sonderweg, kein Responsibility-Bleed):
   (das Response-/Chunk-Logging im Compact-Pfad entfällt; der R-CIB-3-Entry-Debuglog bleibt,
   Level DEBUG).
 
-#### UC-CT-13 — compactEndLineNamesAgentOnce ✅
+#### UC-CT-13 — endLineNamesAgentNumbersTimeAndChars ✅
 - GIVEN ein Compact eines anderen Agenten läuft WHEN er erfolgreich endet THEN erscheint im
   Caller-Chat genau EINE End-Zeile mit Agent-Name, Dauer/Uhrzeit (CallStats-`suffix()`) und chars —
   keine zweite `<Agent> compact.`-Meldung. *(Tests: `CompactFeedbackTest.endLineNamesAgentNumbersTimeAndChars`,
   `PoDelegateToolTest.compactDevEmitsExactlyOneEndLine`)*
 
-#### UC-CT-14 — compressorStreamsToCallerNotToLog ✅
+#### UC-CT-14 — compressorEventsStreamToCallerAndStayOutOfTheLog ✅
 - GIVEN ein Compact läuft WHEN der Compressor streamt THEN erscheinen die Tokens live in der
   Chat-View des Callers und nichts davon im Log. *(Tests: `CompactServiceTest.compressorEventsStreamToCallerAndStayOutOfTheLog`,
   `AbstractAgentCompactResultTest.compressorStreamingReachesCallerMonitor`)*

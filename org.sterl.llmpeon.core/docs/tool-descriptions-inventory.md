@@ -62,7 +62,7 @@ Alle `@Tool`-Beschreibungen folgen einem einheitlichen Muster:
 
 | # | Method | Current Description | Rating | New Description | Why |
 |---|--------|---------------------|--------|-----------------|-----|
-| 13 | `webFetchAsMarkdown` | `"Fetch a URL as cached Markdown. startLine/endLine (1-based, 0 = default) page the result; max 500 lines per call, disclosed. HTTP 4xx/5xx: status plus snippet."` | ✅ (aktuell, 2026-09-20, Story A inc 3) | *(kein Change)* | Paginiert: 500-Zeilen-Fenster + LRU-Cache 5 URLs + Disclosure, Fehlerpfad = Status + Snippet (R-WEB-1…3) |
+| 13 | `webFetchAsMarkdown` | `"Fetch a URL as cached text, paginated. HTML is converted to Markdown; any other content type (text/plain, JSON, …) is returned as raw text — the footer names which. startLine/endLine (1-based, 0 = default) page the result; max 500 lines per call, disclosed. HTTP 4xx/5xx: status plus snippet."` | ✅ (aktuell, 2026-10-24, Bug-Triage T-2; zuvor 2026-09-20 Story A inc 3) | *(kein Change)* | Media-Type-Gate + Pfad-Label im Footer (R-WEB-13); sonst Paginierung/Disclosure wie zuvor (R-WEB-1…3) |
 | 13a | `webGet` (WebGetTool, neu 2026-09-20, Story A) | *(neu — kein Bestand)* | ✅ | `"Download a URL to a file on disk. Absolute path required; overwrites existing. Returns status, size and path — never the content."` | Inhalt geht auf Disk, nie in den Kontext; Guards wie `diskWriteFile` (QualifiedPath + WriteValidator) |
 
 ### CompactSessionTool (`org.sterl.llmpeon.tool.tools`)

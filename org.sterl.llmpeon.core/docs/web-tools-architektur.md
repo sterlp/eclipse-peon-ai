@@ -7,7 +7,8 @@
 - **Zweck:** HTTP-GET-Inhalte agentenfähig machen — `webFetchAsMarkdown` (kleine Ausschnitte in den
   Kontext, paginiert über Mini-Cache), `webGet` (Dateien auf Disk, Metadaten im Kontext) und
   `webSearch` (Web-Suche, Trefferliste in den Kontext).
-- **In-Scope:** GET, Markdown-Konvertierung (Flexmark, bestehend), LRU-Cache (16 URLs), Zeilenfenster,
+- **In-Scope:** GET, Media-Type-Gate + Markdown-Konvertierung (Flexmark: nur text/html & *+xml,
+  sonst raw — R-WEB-13, Δ 2026-10-24), LRU-Cache (16 URLs), Zeilenfenster,
   Guard-geprüfte Disk-Downloads, DuckDuckGo-Suche über das langchain4j `WebSearchEngine`-Interface.
 - **Out-of-Scope:** Auth/Custom-Header, POST/PUT, Redirect-Politik über bestehendes Verhalten hinaus,
   beliebiges Pagination-Backend.
@@ -18,7 +19,7 @@
 
 | Klasse (core) | Rolle | isEditTool |
 |---|---|---|
-| `WebFetchTool` (bestehend) | fetch→Markdown→Cache→Zeilenfenster; Cache als Instanz-Feld (LRU 16) | nein |
+| `WebFetchTool` (bestehend) | fetch→Media-Type-Gate (HTML→Markdown \| raw, Label im FetchedPage)→Cache→Zeilenfenster; Cache als Instanz-Feld (LRU 16, Value = Text + Pfad-Label) | nein |
 | `WebGetTool` (bestehend) | URL→Disk-Download; `QualifiedPathValidator.requireQualifiedDisk` + `validateWrite`; Return = Status/Größe/Pfad; **gated hinter `diskToolsEnabled`** (R-WEB-8) | **ja** (Sub-Agent-Filter greift) |
 | `WebSearchTool` (R-WEB-10) | Query→DuckDuckGo→Trefferliste (Titel/URL/Snippet, max 8, ehrliche Disclosure) in den Kontext; **besitzt den Such-Vorgang** — der Page-Inhalt bleibt draußen, Nachlesen via WebFetchTool | nein |
 

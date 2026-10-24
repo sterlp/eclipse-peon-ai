@@ -28,10 +28,15 @@ Quelle: Paul-Chat + [org.sterl.llmpeon.test/ai-e2e-test/webtools-test-issues.md]
   5 Agents, 18 Skills, 6 Commands", aber vermutlich falsche/unvollständige Routes zurück.
   `change-agent-issue.txt` ist LEER (nur Leerzeile) — Details fehlen. → Erst IST klären
   (ReloadCommand/ChangeAgent), ggf. Paul nach Details fragen.
-- **T-2 = I-1 (hoch):** `webFetchAsMarkdown` zerstört Nicht-HTML-Inhalte — FlexmarkHtmlConverter
-  läuft auf text/plain & application/json → Newline-Collapse + Markdown-Escaping, Footer behauptet
-  „lines 1–2 of 2" (False-Negative-Klasse, R-WEB-1/2). Vorschlag im Issue-Doc: Content-Type-Gate
-  (html/+xml → Converter, sonst raw Text) + Footer-Pfad-Disclosure.
+- **T-2 = I-1 ✅ GEBAUT (2026-10-24):** R-WEB-13/UC-WEB-13 — Content-Type-Gate in WebFetchTool
+  (text/html & *+xml → Flexmark, sonst raw), Pfad-Label im Footer (`(converted from HTML)` /
+  `(raw text)`), Cache-Value = Text+Label (`FetchedPage`), neuer @Tool-Text. 10 neue/angepasste
+  Tests inkl. Null-Header/uppercase/UTF-8-Default-Mutation-Guards. Commits `8964fcc8` (Code+Tests+
+  Homepage+web-tools.md), `520ab5fd` (+xhtml-Test), `f90406f5` (+3 Zweig-Tests). Surefire
+  **1334/0/0/0**, Lint baseline (UC-WEB-13 belegt). Da-Dok CONCERNS → alle aufgelöst.
+  Offen für Paul: ⏳ `+xml` bewusst BREIT (SVG/RSS werden konvertiert + „converted from HTML" gelabelt,
+  Pauls Issue-Vorschlag) — Verengung auf text/html+xhtml wäre Doc-Änderung; ⏳ Paul-Smoke
+  (JSON/plain raw, Webseite konvertiert, Cache-Label stabil).
 - **T-3 = I-2 (mittel):** `webSearch` nach wenigen Calls minutenlang blockiert (HTTP 202, korrekt
   gemeldet per R-WEB-12) — aber kein Backoff/Retry, keine Handlungsoption in der Meldung,
   @Tool-Text nennt Rate-Limit nicht, parallele Calls im selben Turn provozieren Bot-Check.
@@ -41,6 +46,12 @@ Quelle: Paul-Chat + [org.sterl.llmpeon.test/ai-e2e-test/webtools-test-issues.md]
   `/llmpeon-parent/org.sterl.llmpeon.core/docs/web-tools.md`, eclipseReadFile mit exakt diesem Pfad
   → „No eclipse file found" (nested modules). False-Negative-Klasse + Paritätsverstoß.
   Bewusst nicht im Web-Run geändert.
+- **T-8 (Da-Mek-Befund 2026-10-24):** `PlanTool.planImplemented` (PlanTool.java:90) →
+  `ResourceException` beim `move`, wenn der Plan zuletzt per Disk-Tool geschrieben wurde (stale
+  Workspace-Tree, eclipseRefreshProject half). Fix-Idee: `refreshLocal` vor dem `move`. Noch nicht
+  gebaut.
+- **T-1a OFFEN (Paul):** Reload-Output per-Root-Skill-Zählung — mein Vorschlag gestellt
+  („Skills: N effective — <root>: n, …", leere Roots entfallen), Ja/Nein steht aus.
 - **T-6 (Paul-Smoke compact-agents-issue.md, Story-2-Abnahme fehlteilig):** Compressor-Streaming
   unsichtbar — schwarzer Balken „Waiting for AI…" ohne ankommende Tokens (UC-CT-8 „log-only").
   Paul: „Zumindest das Streaming der token sollte ich sehen — das hatten wir schon viel besser."
@@ -49,6 +60,20 @@ Quelle: Paul-Chat + [org.sterl.llmpeon.test/ai-e2e-test/webtools-test-issues.md]
   Peon-Plan: 6 messages 969 tokens …" kommt nur „📋 Loading Agent Memory", nie done/success +
   Ergebnisgröße (messages/tokens). Compact des Agenten selbst: „Session compacted:"-Ergebnis
   sichtbar — das ist laut Paul gut so.
+- **T-6 + T-7 ✅ GEBAUT (2026-10-24, Story-2-Follow-up R-CT-8):** Commits `2d55eba0` (Code+Tests+
+  Homepage), `14857b8c` (Review-F1: Sequenz-Test End-Zeile-nach-onCompactCompleted + Cancellation-
+  Test, 2 Mutationen bewiesen), `00dbbb6f` (Docs-Flips ✅ + planImplemented-Archiv
+  `peon-plan/overview-done-2026-10-24-10-21.md`). Surefire 1324/0/0/0. Docs: compact-lock R-CT-8 ✅
+  (+ revidierte R-CT-5, UC-CT-8 entfallen), compact.md R-CC-14/16/18.1, compact-architektur Δ,
+  compact-input-budget R-CIB-3, sub-agent-timing, tool-result-size R-RS-1, agenten-status-im-header,
+  context-message-concept. **Neue Nebeneffekte (gewollt, dokumentiert):** Header zählt Compressor-
+  Tokens mit; Stop bricht den laufenden Compressor-Call ab. Naming: End-Zeile nutzt `getName()`
+  („Peon-Dev compacted", konsistent mit Start-Zeile) — Paul in Summary nennen. Offen: manueller
+  Smoke Paul (Button aktiv/Sklave, compactSession im Loop). ❓ F3: AgentsTool.subAgentCompact hat
+  keinen Test-File — Regression der gestrichenen reportAction fände keinen Wächter (zurückgestellt).
+  **Neuer Befund:** `PlanTool.planImplemented` (:90) schlägt fehl, wenn der Plan per Disk-Tool
+  geschrieben wurde (stale Workspace-Tree) — vor dem `move` fehlt refresh/`IResource.refreshLocal`
+  → als T-8 triagiert.
 - **T-1b erledigt (kein Bug):** TeamException im change-agent-issue.txt = Egit-Provider-
   Instanziierung, von Eclipse Core geschluckt (getProvider fängt, loggt, markAsUnshared) —
   Agent-Wechsel ohne Schaden; Root-Cause steht im !ENTRY oberhalb des Stacks (Pauls Eclipse/EGit).

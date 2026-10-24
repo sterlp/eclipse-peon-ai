@@ -22,11 +22,12 @@ der Kontext sieht nur Metadaten.
 `webFetchAsMarkdown(url, startLine?, endLine?)`: bei Cache-Miss fetch → Markdown im
 **Mini-Cache (LRU; Größe: R-WEB-9)**; Return = Zeilenfenster, **max 500 Zeilen** je Call (Start default 1;
 `endLine 0/null` = **Fenster-Default `start+499`, NICHT Dateiende** — bewusste Abweichung von den Read-Tools,
-Doku-Korrektur aus dem Review 2026-09-20), Disclosure **„lines X–Y of N — read on with startLine"**.
+Doku-Korrektur aus dem Review 2026-09-20), Disclosure **„lines X–Y of N (<Pfad-Label>) — read on
+with startLine"** (Pfad-Label: R-WEB-13).
 
 #### UC-WEB-1 — webFetchFirstCallReturnsFirstWindow ✅
 - GIVEN URL erstmals gefetcht, Markdown mit 3000 Zeilen WHEN `webFetchAsMarkdown(url)` ohne Range
-  THEN Zeilen 1–500, Disclosure „lines 1–500 of 3000 — read on with startLine=501".
+  THEN Zeilen 1–500, Disclosure „lines 1–500 of 3000 (converted from HTML) — read on with startLine=501".
 
 ### R-WEB-2 — Cache-Hit ohne Refetch ✅
 
@@ -44,7 +45,8 @@ nächsten Call Refetch.
 
 ### R-WEB-3 — Fehlerpfad HTTP ≥ 400 ✅
 
-Fehlerpfad HTTP ≥ 400 → Status + **Snippet** (Anfang des Mark downs), nie der volle Body.
+Fehlerpfad HTTP ≥ 400 → Status + **Snippet** (Anfang des Seiteninhalts — konvertiert oder raw, je
+nach Pfad-Label R-WEB-13), nie der volle Body.
 
 #### UC-WEB-4 — webFetchHttpErrorReturnsStatusAndSnippet ✅
 - GIVEN HTTP 500 WHEN `webFetchAsMarkdown(url)` THEN Status + Snippet (kein voller Body im Kontext).
@@ -148,7 +150,7 @@ Ursache, keine Teilergebnisse, keine erfundenen Treffer.
 - GIVEN DDG liefert 0 Treffer WHEN `webSearch(query)` THEN ehrliche „0 results"-Meldung.
 - GIVEN DDG antwortet mit Rate-Limit WHEN `webSearch(query)` THEN Fehlermeldung mit Ursache.
 
-### R-WEB-13 — `webFetchAsMarkdown`: Nur HTML wird konvertiert ❌ specified (2026-10-24, Bug-Triage T-2)
+### R-WEB-13 — `webFetchAsMarkdown`: Nur HTML wird konvertiert ✅ done (2026-10-24, Bug-Triage T-2, Commits 8964fcc8/520ab5fd/f90406f5)
 
 Der HTML→Markdown-Konverter läuft **nur** bei Media-Type `text/html` oder `application/xhtml+xml`
 (und XML-Abkömmlingen `+xml`); jeder andere Inhalt (text/plain, application/json, …) wird als
@@ -158,7 +160,7 @@ vor sich hat (R-WEB-2: kein Werkzeug lügt über eine Einschränkung). Die @Tool
 das Verhalten. Der Cache hält Pfad-Label und Inhalt zusammen — ein Cache-Hit meldet denselben
 Pfad wie der erste Abruf.
 
-#### UC-WEB-13 — webFetchRawForNonHtml ❌
+#### UC-WEB-13 — webFetchRawForNonHtml ✅
 - GIVEN der Server antwortet mit `text/plain` WHEN `webFetchAsMarkdown(url)` THEN der Body wird
   unverändert (raw) als Text übergeben und der Footer benennt „raw text".
 - GIVEN der Server antwortet mit `text/html` WHEN `webFetchAsMarkdown(url)` THEN der Body wird
