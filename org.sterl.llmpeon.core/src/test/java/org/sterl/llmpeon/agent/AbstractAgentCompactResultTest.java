@@ -2,10 +2,15 @@ package org.sterl.llmpeon.agent;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -19,6 +24,7 @@ import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.compact.CompactConstants;
 import org.sterl.llmpeon.compact.CompactFeedback;
+import org.sterl.llmpeon.exception.ExceptionUtil;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
@@ -29,8 +35,13 @@ import org.sterl.llmpeon.tool.model.SimpleMessage;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialResponse;
+import dev.langchain4j.model.chat.response.PartialResponseContext;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.TokenUsage;
 
 class AbstractAgentCompactResultTest {
@@ -342,6 +353,58 @@ class AbstractAgentCompactResultTest {
         assertThat(toolLines).noneMatch(l -> l.contains(CompactFeedback.END_MARKER));
     }
 
+    // UC-CT-15
+    @Test
+    @Timeout(10)
+    void canceledCompressorCallPropagatesAndEmitsNoEndLine() {
+        // GIVEN — a canceled caller (a Stop) and a provider that streams one partial and then reports
+        // its post-cancel error: the stored cancellation must win over that error, and the compact
+        // never gets a response (StreamingBridgeTest.bug_onErrorAfterCancelMasksCancellation)
+        var canceled = new AtomicBoolean(true);
+        var cm = mock(StreamingChatModel.class);
+        doAnswer(inv -> {
+            var handler = inv.getArgument(1, StreamingChatResponseHandler.class);
+            handler.onPartialResponse(new PartialResponse("WHAT: "),
+                    new PartialResponseContext(mock(StreamingHandle.class)));
+            handler.onError(new RuntimeException("provider error after cancel"));
+            return null;
+        }).when(cm).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+        var agent = new AiDevAgent(
+                new ConfiguredChatModel(LlmConfig.builder().model("mock").build(), cm), new ToolService());
+        addThreeMessages(agent);
+        var sizeBefore = agent.getMemory().size();
+        var toolLines = new ArrayList<String>();
+        var events = new ArrayList<String>();
+        var problems = new ArrayList<String>();
+        var monitor = new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onTool(String message) { toolLines.add(message); }
+            @Override public void onCompactCompleted(String agentName, CompactResult result, boolean withinTurn) { events.add(agentName); }
+            @Override public void onProblem(String message) { problems.add(message); }
+            @Override public boolean isCanceled() { return canceled.get(); }
+        };
+
+        // WHEN
+        var thrown = catchThrowable(() -> agent.compact(monitor));
+
+        // THEN — the Stop stays a cancellation (R-CC-7 owns it): it propagates out of the compact
+        // instead of turning into a failure result
+        assertThat(thrown).isInstanceOf(CancellationException.class);
+        assertThat(ExceptionUtil.isCanceled(thrown)).isTrue();
+        // AND — the agent is usable again and the history untouched: the clear happens only after a
+        // response, so an aborted compact keeps every message
+        assertThat(agent.isWorking()).isFalse();
+        assertThat(agent.getMemory().size()).isEqualTo(sizeBefore);
+        // AND — the start line is the only line and no event/problem follows: an aborted compact has no
+        // result to close, and a Stop is not a failure to report
+        assertThat(toolLines).hasSize(1);
+        assertThat(toolLines.getFirst()).startsWith(CompactFeedback.START_PREFIX);
+        assertThat(toolLines).noneMatch(l -> l.contains(CompactFeedback.END_MARKER));
+        assertThat(events).isEmpty();
+        assertThat(problems).isEmpty();
+    }
+
+
     // R-CT-7
     // UC-CT-10
     @Test
@@ -372,6 +435,35 @@ class AbstractAgentCompactResultTest {
         // the chat, the reset policy reads this status)
         assertThat(failedEvents).containsExactly(AiDevAgent.NAME + "=FAILED_EMPTY working=false within=false");
     }
+
+    // UC-CT-13
+    @Test
+    @Timeout(10)
+    void compactEndLineEmittedAfterCompactCompletedEvent() {
+        // GIVEN — a compact whose completion event and end line land in ONE ordered list
+        var agent = devAgent();
+        addThreeMessages(agent);
+        var order = new ArrayList<String>();
+        var monitor = new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onTool(String message) {
+                order.add(message.contains(CompactFeedback.END_MARKER) ? "end" : "start");
+            }
+            @Override public void onCompactCompleted(String agentName, CompactResult result, boolean withinTurn) {
+                order.add("completed");
+            }
+        };
+
+        // WHEN
+        var result = agent.compact(monitor);
+
+        // THEN — the end line goes out AFTER the completion event: that event enqueues the chat rebuild
+        // of the shown agent (R-CT-7 NOW) and the display queue runs FIFO, so only this order lets the
+        // line survive the rebuild instead of being reset away with it (R-CT-8)
+        assertThat(result.status()).isEqualTo(CompactResult.Status.COMPACTED);
+        assertThat(order).containsExactly("start", "completed", "end");
+    }
+
 
     // R-CT-7
     // UC-CT-10
