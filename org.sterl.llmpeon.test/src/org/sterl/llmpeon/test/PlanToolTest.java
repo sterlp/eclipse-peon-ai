@@ -10,20 +10,29 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.Status;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.parts.ai.PeonAiService;
+import org.sterl.llmpeon.parts.shared.JdtUtil;
+import org.sterl.llmpeon.parts.tools.PlanFileView;
 import org.sterl.llmpeon.parts.tools.PlanTool;
+import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.tool.ToolLoopRequest;
+import org.sterl.llmpeon.tool.model.SimpleMessage;
 
 /**
  * Plan file handling of {@link PlanTool} (org.sterl.llmpeon/docs/plan-tool.md): plans written past the
@@ -188,8 +197,82 @@ public class PlanToolTest extends AbstractIntegrationTest {
         assertContains(Files.readString(overview, StandardCharsets.UTF_8), "beta");
     }
 
+    // R-PT-2
+    // UC-PT-2a
+    @Test
+    public void queryPathsFailHonestOnRefreshError() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        deletePlanDir();
+
+        // GIVEN a plan tool whose workspace refresh is refused. exists() can never produce this —
+        // refreshLocal's one documented CoreException is a blocked resource change — so the refresh
+        // itself has to be injected for the failure path to be testable at all.
+        var problems = new ArrayList<String>();
+        var planTool = planTool((resource, depth, monitor) -> {
+            throw new CoreException(new Status(IStatus.ERROR, "test", "refresh blocked"));
+        }, problems);
+
+        // WHEN the turn path asks whether a plan exists (onAgentChange -> preloadPlanIfNeeded)
+        assertFalse("a failed refresh must not claim a plan", planTool.hasPlan());
+
+        // THEN the turn survives and the chat names path and cause — an honest problem, never a
+        // silent no and never an exception after the agent switch already happened
+        assertEquals(problems.toString(), 1, problems.size());
+        assertContains(problems.get(0), "/" + PeonTestFixture.PROJECT_NAME + "/" + PlanTool.OVERVIEW_FILE);
+        assertContains(problems.get(0), "refresh blocked");
+
+        // AND reading answers the same way: honest text, one further problem, no throw
+        assertContains(planTool.planRead(), "No plan exists yet");
+        assertEquals(problems.toString(), 2, problems.size());
+        assertContains(problems.get(1), "refresh blocked");
+    }
+
+    // R-PT-2
+    // UC-PT-2a
+    @Test
+    public void queryPathRefreshesOnlyThePlanFileDepthZero() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        deletePlanDir();
+
+        // GIVEN a disk-written plan and a refresh spy that still performs the real refresh
+        givenDiskWrittenPlan("# disk written plan\n");
+        var refreshed = new ArrayList<String>();
+        var planTool = planTool((resource, depth, monitor) -> {
+            resource.refreshLocal(depth, monitor);
+            refreshed.add(JdtUtil.pathOf(resource) + " depth=" + depth);
+        }, new ArrayList<>());
+
+        // WHEN both query paths run
+        assertContains(planTool.planRead(), "disk written plan");
+        assertTrue(planTool.hasPlan());
+
+        // THEN each query refreshes exactly the plan file — the plan is visible without the folder,
+        // and the per-turn cost stays a single file (DEPTH_INFINITE on the folder would re-read every
+        // archive on every turn, and is only right for the archive path)
+        var planOnly = "/" + PeonTestFixture.PROJECT_NAME + "/" + PlanTool.OVERVIEW_FILE
+                + " depth=" + IResource.DEPTH_ZERO;
+        assertEquals(List.of(planOnly, planOnly), refreshed);
+    }
+
     private PlanTool planTool() {
         return aiService.getSharedToolService().getTool(PlanTool.class).orElseThrow();
+    }
+
+    /**
+     * A tool with an injected workspace refresh: neither the failure nor the refresh depth is
+     * reachable through the real API, and both are exactly what UC-PT-2a pins.
+     */
+    private PlanTool planTool(PlanFileView.Refresh refresh, List<String> problems) {
+        var tool = new PlanTool(aiService, refresh);
+        tool.withToolRequest(ToolLoopRequest.builder()
+                .memory(new ThreadSafeMemory())
+                .chatModel(chatModel)
+                .monitor(new AiMonitor() {
+                    @Override public void onChatResponse(SimpleMessage m) {}
+                    @Override public void onProblem(String message) { problems.add(message); }
+                })
+                .build());
+        return tool;
     }
 
     /** Writes the plan past the workspace tree and proves the fixture really left the tree stale. */

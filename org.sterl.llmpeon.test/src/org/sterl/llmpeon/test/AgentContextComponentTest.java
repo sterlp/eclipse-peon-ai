@@ -7,8 +7,15 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.junit.Test;
 import org.sterl.llmpeon.agent.AiAgent;
 import org.sterl.llmpeon.agent.model.TaggedResult;
@@ -21,6 +28,7 @@ import org.sterl.llmpeon.parts.ai.CodegraphConnectionService.State;
 import org.sterl.llmpeon.parts.ai.CodegraphContextItem;
 import org.sterl.llmpeon.parts.ai.component.AgentContextComponent;
 import org.sterl.llmpeon.parts.ai.component.SharedToolsComponent;
+import org.sterl.llmpeon.parts.tools.PlanFileView;
 import org.sterl.llmpeon.parts.tools.PlanTool;
 import org.sterl.llmpeon.parts.tools.memory.WorkspaceMemoryTool;
 import org.sterl.llmpeon.skill.SkillService;
@@ -40,6 +48,8 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
     private SharedToolsComponent sharedTools;
     private org.sterl.llmpeon.context.UserContext userContext;
     private AiScaffoldAgent scaffold;
+    private final PlanFileView planView = new PlanFileView();
+    private final List<String> planProblems = new ArrayList<>();
 
     @org.junit.Before
     public void beforeEach() {
@@ -61,9 +71,17 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
         scaffold = new AiScaffoldAgent(ccm);
         activeAgent = new org.sterl.llmpeon.agent.AiDevAgent(ccm, sharedTools.toolService());
 
-        sut = new AgentContextComponent(() -> project, wmt, userContext, scaffold,
+        sut = new AgentContextComponent(() -> project, planFile(), wmt, userContext, scaffold,
                 sharedTools.toolService(), () -> activeAgent,
                 ccm::getConfig, List::of, offItem());
+    }
+
+    /**
+     * The production plan supplier (R-PT-3): PeonAiService wires the same view through
+     * PlanTool.visiblePlan() — refreshed, so a disk-written plan is visible in the turn.
+     */
+    private Supplier<IFile> planFile() {
+        return () -> planView.visible(project, null, planProblems::add);
     }
 
     /** GIVEN a set handoff line WHEN turnContext() twice THEN first call contains it, second does not. */
@@ -107,6 +125,43 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
                 && i.dedupKey().contains(PlanTool.OVERVIEW_FILE)));
     }
 
+    /**
+     * R-PT-3: GIVEN a plan written past the workspace tree WHEN a turn context is assembled THEN the
+     * plan reference appears anyway — the turn path answers with the same refreshed state as the
+     * query paths, so a disk-written plan is never silently missing.
+     */
+    // R-PT-3
+    // UC-PT-3
+    @Test
+    public void diskWrittenPlanVisibleInTurnContext() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        var planDir = PeonTestFixture.dir().toPath().resolve(PlanTool.PLAN_DIR);
+        Files.createDirectories(planDir);
+        var overview = planDir.resolve("overview.md");
+        Files.writeString(overview, "# disk written plan\n", StandardCharsets.UTF_8);
+        try {
+            // GIVEN the tree does not know the file — with a bare exists() there is nothing to find
+            assertFalse("fixture must leave the workspace tree stale, otherwise the refresh is not proven here",
+                    project.getFile(PlanTool.OVERVIEW_FILE).exists());
+
+            // WHEN
+            var items = sut.turnContext();
+
+            // THEN
+            var planItem = items.stream().filter(i -> StringUtil.hasValue(i.dedupKey())
+                    && i.dedupKey().contains(PlanTool.OVERVIEW_FILE)).findAny();
+            assertTrue("plan reference expected for a disk-written plan", planItem.isPresent());
+            assertContains(planItem.get().render().body(), PlanTool.OVERVIEW_FILE);
+            assertTrue("a refresh problem would be a false negative, not an answer: " + planProblems,
+                    planProblems.isEmpty());
+        } finally {
+            Files.deleteIfExists(overview);
+            Files.deleteIfExists(planDir);
+            project.getFolder(PlanTool.PLAN_DIR).refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
+        }
+    }
+
     /** GIVEN agents WHEN initStaticContext THEN static context is exactly Env — never the memory. */
     @Test
     public void test_initStaticContext_envOnly() {
@@ -118,7 +173,7 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
                 new ConfiguredChatModel(LlmConfig.builder()
                         .model("test").url("http://localhost:0").build()),
                 new org.sterl.llmpeon.tool.ToolService());
-        var sutWithAgents = new AgentContextComponent(() -> project, wmt,
+        var sutWithAgents = new AgentContextComponent(() -> project, () -> null, wmt,
                 new org.sterl.llmpeon.context.UserContext(), null, null,
                 () -> activeAgent, () -> LlmConfig.builder().model("t").url("http://x").build(),
                 () -> List.of(capturingAgent), offItem());
@@ -159,7 +214,7 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
         // GIVEN a component whose codegraph item is CONNECTED with server instructions
         var connectedItem = new CodegraphContextItem(
                 () -> new State(Kind.CONNECTED, project, null, "CG-SERVER-DOCS"));
-        var sutConnected = new AgentContextComponent(() -> project, wmt,
+        var sutConnected = new AgentContextComponent(() -> project, () -> null, wmt,
                 new org.sterl.llmpeon.context.UserContext(), null, null,
                 () -> activeAgent, () -> LlmConfig.builder().model("t").url("http://x").build(),
                 List::of, connectedItem);
@@ -203,7 +258,7 @@ public class AgentContextComponentTest extends AbstractIntegrationTest {
 
         // GIVEN a component whose ACTIVE agent is the scaffold (a CONNECTED item would be present
         // for a non-scaffold agent)
-        var scaffoldSut = new AgentContextComponent(() -> project, wmt, userContext, scaffold,
+        var scaffoldSut = new AgentContextComponent(() -> project, () -> null, wmt, userContext, scaffold,
                 sharedTools.toolService(), () -> scaffold, ccm::getConfig, List::of,
                 new CodegraphContextItem(
                         () -> new State(Kind.CONNECTED, project, null, "CG-SERVER-DOCS")));

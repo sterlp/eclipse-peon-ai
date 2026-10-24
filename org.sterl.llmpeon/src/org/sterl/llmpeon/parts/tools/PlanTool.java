@@ -3,6 +3,7 @@ package org.sterl.llmpeon.parts.tools;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
@@ -30,17 +31,24 @@ public class PlanTool extends AbstractEclipseTool {
     public static final String PROBLEM_FILE = PLAN_DIR + "/problem.md";
 
     private final PeonAiService peonAiService;
+    private final PlanFileView view;
 
     public PlanTool(PeonAiService peonAiService) {
+        this(peonAiService, IResource::refreshLocal);
+    }
+
+    public PlanTool(PeonAiService peonAiService, PlanFileView.Refresh refresh) {
         this.peonAiService = peonAiService;
+        this.view = new PlanFileView(refresh);
     }
     
     @Tool("Reads the current saved plan, if one exists.")
     public String planRead() {
-        var project = getProject();
-        var plan = project.getFile(OVERVIEW_FILE);
-        refreshPlanDir(project);
-        if (!plan.exists()) return "No plan exists yet for project: " + JdtUtil.pathOf(plan);
+        var plan = visiblePlan();
+        if (plan == null) {
+            // getProject() keeps the existing contract: no project selected stays an error
+            return "No plan exists yet for project: " + JdtUtil.pathOf(getProject().getFile(OVERVIEW_FILE));
+        }
         return IoUtils.readString(plan);
     }
 
@@ -96,11 +104,18 @@ public class PlanTool extends AbstractEclipseTool {
     }
 
     public boolean hasPlan() {
-        if (peonAiService.getProject() == null) return false;
-        var project = getProject();
-        var planFile = project.getFile(OVERVIEW_FILE);
-        refreshPlanDir(project);
-        return planFile.exists();
+        return visiblePlan() != null;
+    }
+
+    /**
+     * R-PT-3: the plan as the workspace currently sees it — refreshed, never throwing for a failed
+     * refresh, and {@code null} when no project is selected. That makes it usable as the per-turn
+     * plan supplier of {@link org.sterl.llmpeon.parts.ai.component.AgentContextComponent}, so the
+     * turn context and {@link #hasPlan()} cannot drift apart (same view, same depth).
+     */
+    public IFile visiblePlan() {
+        if (peonAiService.getProject() == null) return null;
+        return view.visible(getProject(), getProgressMonitor(), this::onProblem);
     }
 /*
     @Tool("Call this method to indicate that the plan is ready. Call only after all design decisions are resolved.")
@@ -128,7 +143,7 @@ public class PlanTool extends AbstractEclipseTool {
     private void refreshPlanDir(IProject project) {
         var dir = project.getFolder(PLAN_DIR);
         try {
-            dir.refreshLocal(IResource.DEPTH_INFINITE, getProgressMonitor());
+            view.refreshDir(project, getProgressMonitor());
         } catch (CoreException e) {
             throw new RuntimeException("Failed to refresh " + JdtUtil.pathOf(dir) + " " + e.getMessage(), e);
         }

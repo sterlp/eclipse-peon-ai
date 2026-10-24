@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Platform;
@@ -2289,6 +2290,39 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             assertEquals("alpha\n    beta\n", planTool.planRead());
         } finally {
             eclipseDeleteResource("/test_project/" + PlanTool.OVERVIEW_FILE);
+        }
+    }
+
+    /**
+     * R-PT-3: GIVEN a plan that exists only on disk WHEN a turn runs through the real service THEN
+     * the plan reference reaches the LLM request — pins the wiring of the refreshed plan supplier
+     * (PeonAiService -> PlanTool.visiblePlan), not just the mechanism in the component.
+     */
+    // R-PT-3
+    // UC-PT-3
+    @Test
+    public void diskWrittenPlanVisibleInTurnContextThroughTheService() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        var planDir = PeonTestFixture.dir().toPath().resolve(PlanTool.PLAN_DIR);
+        Files.createDirectories(planDir);
+        var overview = planDir.resolve("overview.md");
+        Files.writeString(overview, "# disk written plan\n", StandardCharsets.UTF_8);
+        try {
+            // GIVEN the workspace tree does not know the plan
+            assertFalse("fixture must leave the workspace tree stale, otherwise the refresh is not proven here",
+                    project.getFile(PlanTool.OVERVIEW_FILE).exists());
+
+            // WHEN
+            aiService.call("Ping", null);
+
+            // THEN the turn context carried the plan reference — once, and not from the tree
+            streamMock.assertCount("context: plan /" + PeonTestFixture.PROJECT_NAME + "/"
+                    + PlanTool.OVERVIEW_FILE, 1);
+        } finally {
+            Files.deleteIfExists(overview);
+            Files.deleteIfExists(planDir);
+            project.getFolder(PlanTool.PLAN_DIR).refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
         }
     }
 
