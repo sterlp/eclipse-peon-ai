@@ -24,6 +24,13 @@ Recurring shapes here (2026-09-03, cycles 2b-1…3b):
 
 - **Prove falsifiability per test, naming the path the mutation hits** — not "all red under mutation
   X". A mutation that only flips the filter says nothing about the cropping.
+- **New branch in the production code ⇒ one test per branch** — the plan's test inventory derives
+  from the *branching of the NEW code* (null guard, case normalisation, default fallback, suffix
+  match), not only from the doc's BDD bullets. Mutation proof per branch: each mutation (drop the
+  null guard, drop `toLowerCase`, change the charset default, `endsWith` → `equals`) must turn
+  **exactly its own test** red — a branch whose mutation leaves the suite green is unpinned,
+  whatever the doc said. (Origin 2026-10-24, bug-triage T-2 R-WEB-13: 4 of 6 new branches unpinned,
+  all green under mutation; Da-Dok review F1.)
 
 ## Surface format changed → pin inventory
 
