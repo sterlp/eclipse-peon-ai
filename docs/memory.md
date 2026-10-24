@@ -128,7 +128,7 @@ Quelle: peon-plan/external-review-1.md (Plan-Tool + Docs-Konsistenz). Alle Punkt
 9. **P9 (compact ohne Monitor) → ✅ gebaut (Paul-Zustimmung):** 4-Arg-Overload + „Log-only"-Javadoc gelöscht (Clean Break), 19 CompactServiceTest-Sites → 5-Arg mit NULL_MONITOR, Monitor = Pflichtparameter.
 10. **Nebeneffekte:** Depth-Mutations-Nachweis für `refreshDir` (UC-PT-1-Pflicht), `PlanTool.refreshPlanDir` bleibt (lebt als CoreException-Übersetzung, nicht tot), 2 neue Null-Type-Safety-Warnings (PlanFileView/PlanTool) → known-benign-Warnings-Doc nachziehen (klein, offen).
 
-Gates: Core/PDE grün (Zahlen je Commit-Message), Lint Baseline 8 (UC 195/195). Plan archiviert.
+Gates grün (Zahlen je Commit-Message) · Plan archiviert.
 
 ## Backlog (nächste Session)
 
