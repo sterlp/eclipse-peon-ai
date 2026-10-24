@@ -22,7 +22,7 @@ import dev.langchain4j.web.search.WebSearchResults;
 
 /**
  * DuckDuckGo engine transport (org.sterl.llmpeon.core/docs/web-tools.md R-WEB-10/R-WEB-12,
- * docs/adr/adr-0074-websearch-eigener-ddg-client.md): layout mapping, the honest zero, and the
+ * docs/adr/0074-websearch-eigener-ddg-client.md): layout mapping, the honest zero, and the
  * error classes that must never degrade into "0 results". Served by a local HttpServer — never the
  * real endpoint.
  */

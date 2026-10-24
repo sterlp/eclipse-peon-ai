@@ -49,17 +49,6 @@ public class CompactService {
     }
 
     /**
-     * Log-only variant — no caller feedback. Kept as an overload on purpose: the compact's chat
-     * visibility (R-CT-5) is a caller concern, and the service tests assert the request payload and
-     * the log contract rather than a monitor, so they stay on this entry point instead of threading
-     * a monitor through all 20 call sites.
-     */
-    public CompactResult compact(String agentName, List<ChatMessage> messages, String tokenDiagnosis,
-                                 @Nullable Integer requestTokens) {
-        return compact(agentName, messages, tokenDiagnosis, requestTokens, null);
-    }
-
-    /**
      * One compact attempt: entry debug log (exactly once, initial values, before any truncation),
      * staged input, COMPACT slot call, result line (log level matches the stage). With a
      * non-positive budget the entry log is the only log (R-CIB-1). Returns the
@@ -71,15 +60,15 @@ public class CompactService {
      * @param requestTokens R-CC-12: the last provider-reported input tokens, captured by the
      *                      caller BEFORE its memory clear — {@code null} when never reported
      *                      (then the result line reads {@code request n/a (no provider value)})
-     * @param callerMonitor R-CT-5 + R-CT-8: receives the compressor's request start and its live
-     *                      streaming tokens (working state and token counter in the caller's UI),
-     *                      never a chat response — {@code null} = headless, nothing to the UI
+     * @param callerMonitor R-CT-5 + R-CT-8: a compact always has a caller monitor — it receives the
+     *                      compressor's request start and its live streaming tokens (working state
+     *                      and token counter in the caller's UI), never a chat response
      * @throws IllegalStateException when the LLM call returns null — Log OR throw: the throw stays
      *             in the call path, the result line is no exception substitute
      */
     public CompactResult compact(String agentName, List<ChatMessage> messages, String tokenDiagnosis,
-                                 @Nullable Integer requestTokens, @Nullable AiMonitor callerMonitor) {
-        var caller = AiMonitor.nullSafety(callerMonitor);
+                                 @Nullable Integer requestTokens, AiMonitor callerMonitor) {
+        var caller = callerMonitor;
         var budgetTokens = chatModel.getConfig().getAutoCompactAfter();
         var requestIsEstimate = requestTokens == null;
         var compactCfg = chatModel.getConfig().compactAgentConfig();

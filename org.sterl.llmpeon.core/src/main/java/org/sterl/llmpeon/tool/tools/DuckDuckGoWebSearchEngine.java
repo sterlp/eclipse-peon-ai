@@ -20,7 +20,7 @@ import dev.langchain4j.web.search.WebSearchResults;
 
 /**
  * Thin DuckDuckGo client behind the langchain4j {@link WebSearchEngine} contract
- * (org.sterl.llmpeon.core/docs/web-tools.md R-WEB-10, docs/adr/adr-0074-websearch-eigener-ddg-client.md):
+ * (org.sterl.llmpeon.core/docs/web-tools.md R-WEB-10, docs/adr/0074-websearch-eigener-ddg-client.md):
  * the endpoint is free and key-less, and implementing the interface keeps a later engine swap a
  * one-liner in the tool.
  * <p>

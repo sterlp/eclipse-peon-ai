@@ -22,7 +22,7 @@ import dev.langchain4j.web.search.WebSearchResults;
  * pagination and cache.
  * <p>
  * The tool owns the caps, the rendering and the error wording; the transport lives behind the
- * langchain4j {@link WebSearchEngine} contract (docs/adr/adr-0074-websearch-eigener-ddg-client.md),
+ * langchain4j {@link WebSearchEngine} contract (docs/adr/0074-websearch-eigener-ddg-client.md),
  * so a swap is one constructor argument. The cap is applied here <em>authoritatively</em> — the
  * value sent to the engine is only a hint, a foreign engine can never push more than
  * {@value #HARD_MAX_RESULTS} hits into the context. A rate-limited failure keeps its error wording
