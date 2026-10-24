@@ -1,6 +1,5 @@
 package org.sterl.llmpeon.tool.tools;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -15,6 +14,7 @@ import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import lombok.Getter;
@@ -30,6 +30,12 @@ public class SearchAgentTool extends AbstractTool {
             && !(e.getTool() instanceof ShellTool)
             // R-CC-15: a sub-loop has no owning agent — compactSession would hit the parent
             && !(e.getTool() instanceof CompactSessionTool);
+
+    /**
+     * The rolling hot block of this chat view — one tool instance per view (R-LSR-6). Rendered as a
+     * snapshot <b>before</b> the sub-loop, so a search never sees its own question (R-LSR-5).
+     */
+    private final RollingSearchContext rolling = new RollingSearchContext();
 
     private final ToolService toolService;
 
@@ -60,8 +66,13 @@ public class SearchAgentTool extends AbstractTool {
             // from the parent agent (toBuilder would inherit the parent's toolNameFilter, R-CC-15).
             var allow = ToolPolicy.nameFilter(cfg.toolAllowlist(AgentModelConfig.SEARCH));
 
+            var history = rolling.render();
+            var staticMessages = history.isEmpty()
+                    ? List.<ChatMessage>of(system)
+                    : List.<ChatMessage>of(system, SystemMessage.from(history));
+
             var request = this.request.toBuilder()
-                .staticMessages(Arrays.asList(system))
+                .staticMessages(staticMessages)
                 .toolFilter(filter.and(exec -> allow.test(exec.getSpec().name())))
                 .toolNameFilter(allow)
                 .memory(messages)
@@ -79,6 +90,11 @@ public class SearchAgentTool extends AbstractTool {
             long elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000;
 
             String answer = response != null ? response.aiMessage().text() : null;
+            // R-LSR-1/2: only a complete search earns a pair — a cancel leaves a partial answer, and
+            // the "no result" fallback must never enter the block.
+            if (response != null && StringUtil.hasValue(answer) && !monitor.isCanceled()) {
+                rolling.append(prompt, answer);
+            }
             String result = StringUtil.hasValue(answer) ? answer : "Search completed but returned no result";
             onTool("Da Sniffa done. (" + StringUtil.humanElapsed(elapsedMillis) + ")" + " " + StringUtil.charsSuffix(result));
             return result;

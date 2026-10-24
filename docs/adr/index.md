@@ -79,6 +79,7 @@ isn't clear from a rule/BDD.
 | [0072](0072-github-eclipse-repo-cleanup.md) | GitHub/Eclipse-Repo-Cleanup | Accepted |
 | [0073](0073-slf4j-api-stays-bundled.md) | slf4j-api bleibt gebündelt — Platform-Resolve (Require-Bundle + ServiceLoader-Mediator) negativ bewiesen (NOP-Logger für alles slf4j-Logging), Provider-Fund braucht einen Classloader | Accepted |
 | [0074](0074-websearch-eigener-ddg-client.md) | webSearch: eigener dünner DDG-Client statt Community-Modul — Modul verletzt Ehrlichkeits-Regeln strukturell (erfundene Treffer, geschluckte Exceptions, „showing N of M" unmöglich) | Accepted |
+| [0075](0075-last-search-rolling-rohschnitt.md) | Last-Search-Rolling (Da Sniffa): Hot-Block roh auf 10k Zeichen kappen — Fragmente bewusst akzeptiert statt Paar-Grenzen; kein Schalter | Accepted |
 
 
 
