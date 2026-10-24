@@ -105,12 +105,30 @@ Quelle: Paul-Chat + [org.sterl.llmpeon.test/ai-e2e-test/webtools-test-issues.md]
 ## Offen für Paul (Details: [open-points.md](open-points.md))
 
 1. ❓ **Merge/Squash** Nachtzyklus-Branch + Smoke. Danach Branch löschen.
-2. ⏳ Delegations-Compact pro Delegation (Kosten, ADR-0071) · ⏳ Compact-Briefing-Schema
+2. ❓ **P6 externes Review:** `docs/issue-163-tool-calls-retten.md` als Issue-Body nach GitHub #163, dann Datei löschen (Tripel-Duplikat auflösen).
+3. ⏳ Delegations-Compact pro Delegation (Kosten, ADR-0071) · ⏳ Compact-Briefing-Schema
    (compressor.md) · ❓ Fixture-Duplikat · ❓ R-Regeln ohne Linter-Gate · ❓ In-Loop-Direkt-Compact
    fängt Exceptions nicht · ⏳ Reserved-Name `codegraph` · ⏳ R-CG-15 Monorepo-State-Refresh ·
    ⏳ R-CC-19-Semantik+Tilde · ⏳ Windows-`cmd /c`-Fallback · 🔒 S3 (🗜 in PoDelegateTool).
-3. ❓ Testnamen-im-Fließtext-Slice · ❓ Linter-Guard gegen Evidenz-Drift ·
+4. ❓ Testnamen-im-Fließtext-Slice · ❓ Linter-Guard gegen Evidenz-Drift ·
    vorbestehende R-CC-18-/R-DEF-Doppedefinitionen.
+
+## EXTERNES REVIEW 2026-10-24 (Paul: „mit Vorsicht genießen, nachbessern bei echten Problemen")
+
+Quelle: peon-plan/external-review-1.md (Plan-Tool + Docs-Konsistenz). Alle Punkte verifiziert (Da-Mek-IST + Da-Dok-Review, CONCERNS aufgelöst):
+
+1. **P1 (hasPlan I/O/Werfen) → ✅ gebaut** (R-PT-2-Nachschärfung): Query-Pfade DEPTH_ZERO nur die Datei (`PlanFileView`, injizierbarer Refresh-Seam), `CoreException` → ehrlich `false`/„No plan exists" + onProblem, kein Throw. IST-Korrektur: `hasPlan` läuft nicht pro Turn (nur Agent-Wechsel + Tool) — Review-These zum Turn-Abbruch falsch, aber Halb-Aktivierung bei Fehler war real.
+2. **P2 (R-PT-2 „nie" vs offener Punkt) → ✅ gebaut** (R-PT-3 + R-PT-4, verschärfter IST-Befund): ohne `setPlan` wird gar nicht gelesen (Lücke nicht konstruierbar); das ECHTE Risiko war der Ghost-Handoff — nach `planImplemented` blieb die Referenz leben → nächster Handoff löscht Dev-Memory + Erfolg ohne Plan-Inhalt. Fix: `onPlanArchived()` → `clearPlan()` + Härtung „leerer Plan-Text wie kein Plan" (Jon-Entscheidung) + Da-Dok-F2 (Guard prüft Rohtext, nicht readPlan-Ausgabe — leere overview.md deckt der Tail-Guard allein nicht). Per-Turn-`appendPlanReference` nutzt jetzt denselben refreshten Stand (Supplier-Wiring `planTool::visiblePlan`).
+3. **P3 (planUpdate stale) → kein Fix nötig** (verifiziert): `IoUtils.writeFile` ist Workspace-Operation (IFile.setContents/create) — als Klarstellung in UC-PT-2 dokumentiert.
+4. **P4 (Evidenz in docs) → ✅ aufgeräumt:** Surefire-Zahlen + Commit-Hashes aus memory.md/web-tools.md/tool-output-disclosure.md/plan-tool.md entfernt.
+5. **P5 (ADR-0074) → ✅ umbenannt** + alle Links (Index, Architektur-Doc, 4 Javadocs) angeglichen.
+6. **P6 (issue-163 im Root-docs) → OFFEN für Paul:** Inhalt soll als Issue-Body nach #163, Datei dann löschen; Tripel-Duplikat mit open-points/memory.md. Ich kann das GitHub-Issue nicht setzen.
+7. **P7 (stale R-CT-8-Aussagen) → ✅ korrigiert:** Core-Index-Compact-Zeile + R-CC-16-Formulierung, sub-agent-timing-Satz.
+8. **P8 (R-CT-8 ↔ R-CC-16) → ✅ Doc-Kante geschlossen:** R-CC-16 folgt als Erweiterung der EINE End-Zeile (kein drittes Format); Feld wird heute noch nirgends erfasst (❌ backlog).
+9. **P9 (compact ohne Monitor) → ✅ gebaut (Paul-Zustimmung):** 4-Arg-Overload + „Log-only"-Javadoc gelöscht (Clean Break), 19 CompactServiceTest-Sites → 5-Arg mit NULL_MONITOR, Monitor = Pflichtparameter.
+10. **Nebeneffekte:** Depth-Mutations-Nachweis für `refreshDir` (UC-PT-1-Pflicht), `PlanTool.refreshPlanDir` bleibt (lebt als CoreException-Übersetzung, nicht tot), 2 neue Null-Type-Safety-Warnings (PlanFileView/PlanTool) → known-benign-Warnings-Doc nachziehen (klein, offen).
+
+Gates: Core/PDE grün (Zahlen je Commit-Message), Lint Baseline 8 (UC 195/195). Plan archiviert.
 
 ## Backlog (nächste Session)
 
