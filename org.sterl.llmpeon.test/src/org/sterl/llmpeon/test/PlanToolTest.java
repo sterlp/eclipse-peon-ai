@@ -58,11 +58,7 @@ public class PlanToolTest extends AbstractIntegrationTest {
         deletePlanDir();
 
         // GIVEN overview.md written straight to disk, so the workspace tree does not know the file
-        Path overview = Files.createDirectories(planDir()).resolve("overview.md");
-        Files.writeString(overview, "# disk written plan", StandardCharsets.UTF_8);
-        var plan = project.getFile(PlanTool.OVERVIEW_FILE);
-        assertFalse("fixture must leave the workspace tree stale, otherwise R-PT-1 is not proven here",
-                plan.exists());
+        Path overview = givenDiskWrittenPlan("# disk written plan\n");
 
         // WHEN the agent reports the plan as implemented
         aiService.getSharedToolService().getTool(PlanTool.class).orElseThrow().planImplemented();
@@ -104,6 +100,67 @@ public class PlanToolTest extends AbstractIntegrationTest {
         assertEquals("expected exactly one archive in " + planDir(), 1, archives.size());
         assertFalse(Files.exists(overview));
         assertContains(Files.readString(archives.get(0), StandardCharsets.UTF_8), "rewritten on disk");
+    }
+
+    // R-PT-2
+    // UC-PT-2
+    @Test
+    public void planReadSeesDiskWrittenPlan() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        deletePlanDir();
+
+        // GIVEN overview.md on disk, unknown to the workspace tree
+        var planTool = aiService.getSharedToolService().getTool(PlanTool.class).orElseThrow();
+        givenDiskWrittenPlan("# disk written plan\n");
+
+        // WHEN the agent reads its plan
+        String content = planTool.planRead();
+
+        // THEN the real content — never the false negative the agent would act on
+        assertContains(content, "disk written plan");
+        assertFalse("must not report a missing plan, but got: " + content, content.contains("No plan exists"));
+    }
+
+    // R-PT-2
+    // UC-PT-2
+    @Test
+    public void hasPlanSeesDiskWrittenPlan() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        deletePlanDir();
+
+        // GIVEN
+        var planTool = aiService.getSharedToolService().getTool(PlanTool.class).orElseThrow();
+        givenDiskWrittenPlan("# disk written plan\n");
+
+        // WHEN / THEN the path is offered to buildWithDev instead of "No plan exists yet."
+        assertTrue("a disk-written plan must never be reported as missing", planTool.hasPlan());
+    }
+
+    // R-PT-2
+    // UC-PT-2
+    @Test
+    public void planUpdateEditsDiskWrittenPlan() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        deletePlanDir();
+
+        // GIVEN a plan the tree has never seen
+        var planTool = aiService.getSharedToolService().getTool(PlanTool.class).orElseThrow();
+        Path overview = givenDiskWrittenPlan("# alpha\n");
+
+        // WHEN a refinement is applied
+        planTool.planUpdate("alpha", "beta");
+
+        // THEN it lands on the disk plan instead of failing on a plan it claims not to have
+        assertContains(Files.readString(overview, StandardCharsets.UTF_8), "beta");
+    }
+
+    /** Writes the plan past the workspace tree and proves the fixture really left the tree stale. */
+    private static Path givenDiskWrittenPlan(String content) throws Exception {
+        Path overview = Files.createDirectories(planDir()).resolve("overview.md");
+        Files.writeString(overview, content, StandardCharsets.UTF_8);
+        assertFalse("fixture must leave the workspace tree stale, otherwise the refresh is not proven here",
+                project.getFile(PlanTool.OVERVIEW_FILE).exists());
+        return overview;
     }
 
     private static Path planDir() {

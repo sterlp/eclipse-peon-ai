@@ -30,7 +30,18 @@ fehlgeschlagener Archiv-Versuch wirft nie still — der Fehler wird mit Pfad ben
 - GIVEN der Move schlägt dennoch fehl WHEN `planImplemented()` THEN ein Fehler mit Pfad und Ursache
   wird geworfen (kein stiller Abbruch).
 
+### R-PT-2 — `planRead`/`hasPlan`/`planUpdate` sehen disk-geschriebene Pläne ❌ specified (2026-10-24, T-8b)
+
+Auch die Lese-Pfade aktualisieren den Workspace-Baum, bevor sie `exists()` prüfen oder lesen —
+ein per Disk-Tool geschriebener Plan darf nie als „No plan exists yet" erscheinen (False-Negative:
+das teuerste Ergebnis dieser Codebasis — der Agent handelt auf der Annahme, der Plan existiere
+nicht). Der tote `plan == null`-Guard entfällt (`IProject.getFile` liefert nie null).
+
+#### UC-PT-2 — planReadSeesDiskWrittenPlan ❌
+- GIVEN `peon-plan/overview.md` existiert auf Disk, ist dem Workspace-Tree aber unbekannt WHEN
+  `planRead()`/`hasPlan()` THEN der Inhalt wird gelesen bzw. `true` gemeldet — niemals „No plan
+  exists yet" für eine vorhandene Datei.
+
 ## Offene Punkte
 
-- ⏳ Ob auch `planRead`/`hasPlan` bei disk-geschriebenen Plänen stale sind (False-Negative-Klasse:
-  „No plan exists" trotz Datei) — nicht beobachtet, erst bei Befund prüfen.
+- (keine — der frühere ⏳-Punkt „planRead stale?" ist als R-PT-2 entschieden und gebaut.)
