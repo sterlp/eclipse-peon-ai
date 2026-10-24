@@ -3,6 +3,7 @@ package org.sterl.llmpeon.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
 
 import java.nio.charset.StandardCharsets;
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.junit.After;
 import org.junit.Before;
@@ -24,22 +26,23 @@ import org.sterl.llmpeon.parts.ai.PeonAiService;
 import org.sterl.llmpeon.parts.tools.PlanTool;
 
 /**
- * Archive behaviour of {@link PlanTool} (org.sterl.llmpeon/docs/plan-tool.md R-PT-1): a plan written
- * past the workspace tree by the disk tools must still archive, because the agent gets no second
- * signal that the tree never learned about the file.
+ * Plan file handling of {@link PlanTool} (org.sterl.llmpeon/docs/plan-tool.md): plans written past the
+ * workspace tree by the disk tools must still be read and archived, and a failing archive must never
+ * pass silently — the agent gets no second signal either way.
  */
 public class PlanToolTest extends AbstractIntegrationTest {
 
     private PeonAiService aiService;
+    private ConfiguredChatModel chatModel;
 
     @Before
     public void wirePlanTool() {
-        var ccm = new ConfiguredChatModel(LlmConfig.builder()
+        chatModel = new ConfiguredChatModel(LlmConfig.builder()
                 .model("test")
                 .url("http://localhost:0")
                 .configDir(Path.of(System.getProperty("java.io.tmpdir"), ".peon-test"))
                 .build());
-        aiService = new PeonAiService(() -> {}, null, null, null, ccm);
+        aiService = new PeonAiService(() -> {}, null, null, null, chatModel);
         aiService.setProject(project);
         aiService.clearAll();
     }
@@ -61,7 +64,7 @@ public class PlanToolTest extends AbstractIntegrationTest {
         Path overview = givenDiskWrittenPlan("# disk written plan\n");
 
         // WHEN the agent reports the plan as implemented
-        aiService.getSharedToolService().getTool(PlanTool.class).orElseThrow().planImplemented();
+        planTool().planImplemented();
 
         // THEN it is archived under overview-done-<stamp>.md — no ResourceException, overview.md gone
         var archives = archives();
@@ -93,13 +96,44 @@ public class PlanToolTest extends AbstractIntegrationTest {
                 plan.isSynchronized(IResource.DEPTH_ZERO));
 
         // WHEN
-        aiService.getSharedToolService().getTool(PlanTool.class).orElseThrow().planImplemented();
+        planTool().planImplemented();
 
         // THEN archived with its current disk content, and no RuntimeException around the move
         var archives = archives();
         assertEquals("expected exactly one archive in " + planDir(), 1, archives.size());
         assertFalse(Files.exists(overview));
         assertContains(Files.readString(archives.get(0), StandardCharsets.UTF_8), "rewritten on disk");
+    }
+
+    // R-PT-1
+    // UC-PT-1
+    @Test
+    public void planImplementedNamesPathAndCauseWhenTheMoveFails() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        deletePlanDir();
+
+        // GIVEN a plan whose archive directory refuses writes, so move() has to fail with a CoreException.
+        // A user Stop is deliberately not the fixture here: it aborts with OperationCanceledException,
+        // which is a RuntimeException and never reaches the CoreException handler under test
+        Path overview = givenDiskWrittenPlan("# disk written plan\n");
+        var archiveDir = planDir().toFile();
+        assumeTrue("needs a file store where a read-only directory blocks the move",
+                archiveDir.setWritable(false, false) && !archiveDir.canWrite());
+        try {
+            // WHEN
+            planTool().planImplemented();
+            fail("a failed archive must never pass silently");
+        } catch (RuntimeException e) {
+            // THEN path and cause are named, so the agent can act instead of guessing
+            String info = e + " | cause: " + e.getCause();
+            assertTrue(info, info.contains("/" + PeonTestFixture.PROJECT_NAME + "/" + PlanTool.OVERVIEW_FILE));
+            assertTrue(info, e.getCause() instanceof CoreException);
+            // AND the plan survives — a half-done archive has to stay recoverable
+            assertTrue("a failed archive must leave the plan in place for a retry", Files.exists(overview));
+            assertTrue("nothing may be half-archived, but found " + archives(), archives().isEmpty());
+        } finally {
+            archiveDir.setWritable(true, false);
+        }
     }
 
     // R-PT-2
@@ -110,7 +144,7 @@ public class PlanToolTest extends AbstractIntegrationTest {
         deletePlanDir();
 
         // GIVEN overview.md on disk, unknown to the workspace tree
-        var planTool = aiService.getSharedToolService().getTool(PlanTool.class).orElseThrow();
+        var planTool = planTool();
         givenDiskWrittenPlan("# disk written plan\n");
 
         // WHEN the agent reads its plan
@@ -129,7 +163,7 @@ public class PlanToolTest extends AbstractIntegrationTest {
         deletePlanDir();
 
         // GIVEN
-        var planTool = aiService.getSharedToolService().getTool(PlanTool.class).orElseThrow();
+        var planTool = planTool();
         givenDiskWrittenPlan("# disk written plan\n");
 
         // WHEN / THEN the path is offered to buildWithDev instead of "No plan exists yet."
@@ -144,7 +178,7 @@ public class PlanToolTest extends AbstractIntegrationTest {
         deletePlanDir();
 
         // GIVEN a plan the tree has never seen
-        var planTool = aiService.getSharedToolService().getTool(PlanTool.class).orElseThrow();
+        var planTool = planTool();
         Path overview = givenDiskWrittenPlan("# alpha\n");
 
         // WHEN a refinement is applied
@@ -152,6 +186,10 @@ public class PlanToolTest extends AbstractIntegrationTest {
 
         // THEN it lands on the disk plan instead of failing on a plan it claims not to have
         assertContains(Files.readString(overview, StandardCharsets.UTF_8), "beta");
+    }
+
+    private PlanTool planTool() {
+        return aiService.getSharedToolService().getTool(PlanTool.class).orElseThrow();
     }
 
     /** Writes the plan past the workspace tree and proves the fixture really left the tree stale. */
@@ -181,6 +219,7 @@ public class PlanToolTest extends AbstractIntegrationTest {
         }
         Path dir = planDir();
         if (!Files.exists(dir)) return;
+        dir.toFile().setWritable(true, false);
         try (Stream<Path> files = Files.walk(dir)) {
             for (Path file : files.sorted(Comparator.reverseOrder()).toList()) {
                 Files.deleteIfExists(file);

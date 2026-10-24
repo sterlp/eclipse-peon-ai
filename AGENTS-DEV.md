@@ -25,8 +25,8 @@ Base: `AGENTS.md`. System prompt: `developer.md`.
   Sobald ein Plan ID-Marker vorsieht, gehört `lintDocsAndTests` in das Inkrement-Gate:
   VERWAIST/UNBELEGT_ERLEDIGT blockiert, nicht erst der Review-Lauf.
   Invokation: `idPattern` ist **UC-only** (`UC-[A-Z]+-\d+[a-z]?`) — Regel-Marker `R-*` sind keine
-  UC-IDs; ein Pattern, das auch `R-*` matcht, liefert ~120 Schein-VERWAIST statt der Baseline
-  (3 UNBELEGT + 6 MANUELL). `docRoots` immer ALLE DREI Roots explizit setzen (`docs`,
+  UC-IDs; ein Pattern, das auch `R-*` matcht, liefert eine Masse Schein-VERWAIST statt der kleinen
+  Baseline aus UNBELEGT- und MANUELL-Findings. `docRoots` immer ALLE DREI Roots explizit setzen (`docs`,
   `org.sterl.llmpeon.core/docs`, `org.sterl.llmpeon/docs`) — fehlt einer, liefert der Linter
   Schein-VERWAIST für dessen Scope (hit 2026-10-23: 84 Schein-VERWAIST ohne `org.sterl.llmpeon/docs`).
 - **Never widen scope silently.** Fixes outside the released plan — even correct ones, even
