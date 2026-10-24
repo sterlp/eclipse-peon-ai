@@ -2,6 +2,7 @@ package org.sterl.llmpeon.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
@@ -15,6 +16,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.sterl.llmpeon.parts.shared.EclipseUtil;
 import org.sterl.llmpeon.parts.tools.EclipseBuildTool;
+import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
 import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
 
 /**
@@ -22,6 +24,9 @@ import org.sterl.llmpeon.parts.tools.EclipseWorkspaceReadFileTool;
  * stays readable — also the aggregator folder form while the aggregator itself is closed, resolved through
  * its Disk location and disclosed as such — and a lookup that really cannot resolve names its cause instead
  * of a bare "not found".
+ * <p>
+ * The promise covers every tool that consumes a path, so it is checked on read, open, list and grep — a
+ * wiring that only exists on the read path would otherwise pass unnoticed (review finding F3).
  */
 public class EclipsePathRoundTripTest extends AbstractIntegrationTest {
 
@@ -34,6 +39,9 @@ public class EclipsePathRoundTripTest extends AbstractIntegrationTest {
     /** The aggregator folder form: segments 2+ are folder names, not the project name. */
     private static final String ROOT_VIEW = "/" + ROOT_NAME + "/" + MID_NAME + "/" + LEAF_NAME + "/" + FILE;
     private static final String LEAF_VIEW = "/" + LEAF_NAME + "/" + FILE;
+    /** The same two views of the folder itself — open and list are asked for a folder, not a file. */
+    private static final String ROOT_FOLDER_VIEW = "/" + ROOT_NAME + "/" + MID_NAME + "/" + LEAF_NAME;
+    private static final String MID_FOLDER_VIEW = "/" + MID_NAME + "/" + LEAF_NAME;
 
     private NestedProjectFixture nested;
 
@@ -214,6 +222,102 @@ public class EclipsePathRoundTripTest extends AbstractIntegrationTest {
         } finally {
             openAgain(nested.leaf());
         }
+    }
+
+    // R-WN-4
+    @Test
+    public void openingTheAggregatorViewDisclosesTheResolvedView() throws Exception {
+        SwtUi.assumeUiAvailable();
+        // GIVEN - the aggregator is closed: its folder form is not part of the workspace tree
+        nested.root().close(MONITOR);
+        try {
+            // WHEN - the editor tool is asked for that view. The editor itself opens asynchronously
+            // (asyncExec) and the PDE suite runs on the UI thread, so what is asserted is the tool's
+            // own contract: the line it answers with.
+            String result = new EclipseWorkspaceReadFileTool().eclipseOpenFileInEditor(ROOT_VIEW);
+
+            // THEN - it opened something, and names the view the path resolved to
+            assertTrue("expected a successful open in:\n" + result, result.startsWith("Opened: " + ROOT_VIEW));
+            assertTrue("expected the resolved view to be disclosed in:\n" + result,
+                    result.contains("resolved via /" + MID_NAME + "/" + LEAF_NAME + "/" + FILE));
+        } finally {
+            openAgain(nested.root());
+        }
+    }
+
+    // R-WN-4
+    @Test
+    public void listingTheAggregatorViewDisclosesTheResolvedView() throws Exception {
+        // GIVEN - the aggregator is closed, its folder form is asked for
+        nested.root().close(MONITOR);
+        try {
+            // WHEN
+            String result = new EclipseWorkspaceReadFileTool().eclipseList(ROOT_FOLDER_VIEW);
+
+            // THEN - the listing is of the resolved view, and that is named on top of it
+            assertTrue("expected the resolved view to be disclosed in:\n" + result,
+                    result.contains("resolved via " + MID_FOLDER_VIEW));
+            assertTrue("expected the marker file of the resolved view in:\n" + result,
+                    result.contains("[FILE] " + MID_FOLDER_VIEW + "/" + FILE));
+        } finally {
+            openAgain(nested.root());
+        }
+    }
+
+    // R-WN-5
+    @Test
+    public void grepOnADiskOnlyPathNamesTheRefreshCandidate() throws Exception {
+        // GIVEN - a file on disk under the open aggregator that the workspace tree does not know
+        var diskFile = nested.rootDir().resolve("WnDiskOnlyGrep.txt");
+        Files.writeString(diskFile, MARKER, StandardCharsets.UTF_8);
+        try {
+            // WHEN - grep is scoped to exactly that path
+            var failure = assertThrows(IllegalArgumentException.class, () -> new EclipseGrepTool()
+                    .eclipseGrepFiles(MARKER, "/" + ROOT_NAME + "/WnDiskOnlyGrep.txt", null));
+
+            // THEN - the leading line stays, and the refresh candidate is named with it
+            assertTrue("expected the scope failure in:\n" + failure.getMessage(),
+                    failure.getMessage().contains("Path not found"));
+            assertTrue("expected the disk-only cause in:\n" + failure.getMessage(),
+                    failure.getMessage().contains("exists on disk"));
+            assertTrue("expected the refresh hint in:\n" + failure.getMessage(),
+                    failure.getMessage().contains("eclipseRefreshProject"));
+        } finally {
+            Files.deleteIfExists(diskFile);
+        }
+    }
+
+    // R-WN-5
+    @Test
+    public void grepOnAProjectRelativeScopeNeverNamesAProject() {
+        // GIVEN - a project-relative scope: its first segment is a folder of the scoped project
+        var grepper = new EclipseGrepTool();
+        grepper.setCurrentProject(nested.root());
+
+        // WHEN - that folder does not exist
+        var failure = assertThrows(IllegalArgumentException.class,
+                () -> grepper.eclipseGrepFiles(MARKER, "src/" + LEAF_NAME + "-missing", null));
+
+        // THEN - the diagnosis stays with the path instead of blaming a project nobody named
+        assertTrue("expected the generic path diagnosis in:\n" + failure.getMessage(),
+                failure.getMessage().contains("No resource at that path"));
+        assertFalse("a project-relative first segment is a folder, not a project name:\n" + failure.getMessage(),
+                failure.getMessage().contains("No project named"));
+    }
+
+    // R-WN-5
+    @Test
+    public void anUnknownProjectNameIsAnsweredWithTheOpenProjects() {
+        // WHEN - a project name that exists nowhere
+        String result = new EclipseBuildTool().eclipseBuildProject("wnNoSuchProject");
+
+        // THEN - not a bare not-found: the name is declared unknown and the open projects answer
+        assertTrue("expected the unknown-project cause in:\n" + result,
+                result.contains("No project named 'wnNoSuchProject'"));
+        assertTrue("expected the open projects to be listed in:\n" + result,
+                result.contains("Open projects:"));
+        assertTrue("expected the open fixture project among them in:\n" + result,
+                result.contains(ROOT_NAME));
     }
 
     private static String read(String path) {

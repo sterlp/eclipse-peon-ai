@@ -306,6 +306,10 @@ public class EclipseUtil {
     /**
      * Resolves an absolute disk location back to a workspace resource when
      * Eclipse knows it.
+     * <p>
+     * Answers the first existing view, which is right for an OS drop — no requested workspace path has to
+     * be honoured. Resolving a path the agent was given is {@link #resolveInEclipse(String)}: it owes the
+     * deepest view (R-WN-4/D3) and must not reuse this method.
      */
     public static Optional<IResource> resolveResourceFromLocation(String path) {
         if (StringUtil.hasNoValue(path))
@@ -335,6 +339,9 @@ public class EclipseUtil {
      * R-WN-5: why a path could not be resolved, as a sentence to append to the tool's own "not found"
      * line. Never throws, and never empty for a real path — a diagnosis must not turn an error into a
      * crash, and a bare "not found" is a lie when the file does exist.
+     * <p>
+     * Only a workspace-absolute path is read as naming a project in segment 1 — a project-relative path
+     * starts inside a folder of the scope's project, which the resolver cannot know.
      */
     public static String unresolvedHint(String path) {
         if (StringUtil.hasNoValue(path))
@@ -386,6 +393,10 @@ public class EclipseUtil {
             " No resource at that path in the workspace tree — check the path or search for the file name with eclipseSearchFiles.";
 
     private static String diagnoseUnresolved(String path) {
+        if (!path.startsWith("/"))
+            // project-relative scope: segment 1 is a folder of the scope's project, and naming it as a
+            // project would be a reason the caller cannot check — the same rule resolvedViaNote applies
+            return GENERIC_UNRESOLVED;
         var name = projectNameOf(path);
         if (StringUtil.hasNoValue(name))
             return GENERIC_UNRESOLVED;
@@ -679,6 +690,8 @@ public class EclipseUtil {
     }
 
     private static IResource deeperThan(IResource current, IResource candidate) {
+        // the firewall between R-WN-4 and R-WN-5: a resource in a closed project does not exist, so the
+        // last resort must never hand out a view the caller cannot read
         if (!candidate.exists())
             return current;
         if (current == null || candidate.getFullPath().segmentCount() > current.getFullPath().segmentCount())
