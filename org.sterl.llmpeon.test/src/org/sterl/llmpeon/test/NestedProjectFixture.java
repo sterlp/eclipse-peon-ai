@@ -109,6 +109,12 @@ public class NestedProjectFixture {
         return leaf;
     }
 
+    /** Disk folder of the aggregator project — for disk-only fixtures that must stay unrefreshed. */
+    public Path rootDir() {
+        return tempRoot.resolve(ROOT_NAME);
+    }
+
+
     private IProject createProject(String name, Path location) throws CoreException {
         var workspace = ResourcesPlugin.getWorkspace();
         var project = workspace.getRoot().getProject(name);

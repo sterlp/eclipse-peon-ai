@@ -54,7 +54,7 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
         var resource = EclipseUtil.resolveInEclipse(filePath, Optional.ofNullable(currentProject));
         if (resource.isEmpty()) {
             onProblem("No eclipse file found for " + filePath);
-            return "Cannot open: no file found at '" + filePath + "'. Use searchWorkspaceFiles to find the correct path.";
+            return "Cannot open: no file found at '" + filePath + "'." + EclipseUtil.unresolvedHint(filePath);
         }
         var r = resource.get();
         if (!(r instanceof IFile file)) {
@@ -114,7 +114,7 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
             return result;
         }
         onProblem("No eclipse file found for " + filePath);
-        return "No eclipse file found for '" + filePath + "' use searchWorkspaceFiles to find the correct file name and path.";
+        return "No eclipse file found for '" + filePath + "'." + EclipseUtil.unresolvedHint(filePath);
     }
 
     @Tool("Find any files workspace-wide by name (*, ? wildcard supported). Default file-path finder.")
@@ -223,7 +223,7 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
 
         var resource = EclipseUtil.resolveInEclipse(path, Optional.ofNullable(currentProject));
         if (resource.isEmpty()) {
-            throw new IllegalArgumentException("Directory not found: " + path);
+            throw new IllegalArgumentException("Directory not found: " + path + EclipseUtil.unresolvedHint(path));
         }
 
         var res = resource.get();

@@ -73,8 +73,7 @@ public class EclipseRunTestTool extends AbstractEclipseTool {
 
         var project = EclipseUtil.findOpenProject(projectName);
         if (project.isEmpty()) {
-            throw new IllegalArgumentException("Project not found: " + projectName
-                    + ". Known: " + EclipseUtil.openProjectsNames());
+            throw new IllegalArgumentException(EclipseUtil.projectHint(projectName));
         }
 
         IJavaProject javaProject = JavaCore.create(project.get());

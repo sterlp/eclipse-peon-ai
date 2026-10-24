@@ -98,7 +98,8 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
 
         var inFile = EclipseUtil.resolveInEclipse(filePath, Optional.ofNullable(currentProject));
         if (inFile.isEmpty() || !(inFile.get() instanceof IFile eclipseFile)) {
-            throw new IllegalArgumentException("Cannot write unknown file in eclipse " + filePath);
+            throw new IllegalArgumentException("Cannot write unknown file in eclipse " + filePath
+                    + EclipseUtil.unresolvedHint(filePath));
         }
         String content = readFile(eclipseFile);
         String newFullContent = FileLines.replaceLines(content, line, line, newContent);
@@ -126,7 +127,8 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
 
         var inFile = EclipseUtil.resolveInEclipse(filePath, Optional.ofNullable(currentProject));
         if (inFile.isEmpty() || !(inFile.get() instanceof IFile eclipseFile)) {
-            throw new IllegalArgumentException("Cannot write unknown file in eclipse " + filePath);
+            throw new IllegalArgumentException("Cannot write unknown file in eclipse " + filePath
+                    + EclipseUtil.unresolvedHint(filePath));
         } else {
             String content = readFile(eclipseFile);
             var edit = FileUtils.applyEdit(filePath, content, oldString, newString);
@@ -173,12 +175,9 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         }
 
         if (targetProject.isEmpty()) {
-            String openProjects = EclipseUtil.openProjects().stream()
-                    .map(p -> "/" + p.getName())
-                    .collect(java.util.stream.Collectors.joining(", "));
             throw new IllegalArgumentException(
-                    "Cannot determine target project for path: " + filePath 
-                    + ". Open projects: [" + openProjects + "]");
+                    "Cannot determine target project for path: " + filePath
+                    + EclipseUtil.projectHint(filePath));
         }
 
         IFile file = writeFileToProject(targetProject.get(), projectRelativePath, content);
@@ -198,7 +197,8 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
 
         var inFile = EclipseUtil.resolveInEclipse(filePath, Optional.ofNullable(currentProject));
         if (inFile.isEmpty() || !(inFile.get() instanceof IFile eclipseFile)) {
-            throw new IllegalArgumentException("Cannot write unknown file in eclipse " + filePath);
+            throw new IllegalArgumentException("Cannot write unknown file in eclipse " + filePath
+                    + EclipseUtil.unresolvedHint(filePath));
         }
         String content = readFile(eclipseFile);
         String newFullContent = FileLines.insertLines(content, afterLine, newContent);
@@ -219,7 +219,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         validateWrite(targetPath);
 
         var source = EclipseUtil.resolveInEclipse(sourcePath, Optional.ofNullable(currentProject));
-        if (source.isEmpty()) throw new IllegalArgumentException("Not found: " + sourcePath);
+        if (source.isEmpty()) throw new IllegalArgumentException("Not found: " + sourcePath + EclipseUtil.unresolvedHint(sourcePath));
 
         var resource = source.get();
         if (EclipseUtil.resolveInEclipse(targetPath, Optional.ofNullable(currentProject)).isPresent()) {
@@ -252,7 +252,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         validateWrite(targetPath);
 
         var source = EclipseUtil.resolveInEclipse(sourcePath, Optional.ofNullable(currentProject));
-        if (source.isEmpty()) throw new IllegalArgumentException("Not found: " + sourcePath);
+        if (source.isEmpty()) throw new IllegalArgumentException("Not found: " + sourcePath + EclipseUtil.unresolvedHint(sourcePath));
 
         var resource = source.get();
         if (!(resource instanceof IFile)) throw new IllegalArgumentException("Not a file: " + sourcePath);
@@ -294,7 +294,7 @@ public class EclipseWorkspaceWriteFileTool extends AbstractEclipseTool {
         validateWrite(filePath);
 
         var file = EclipseUtil.resolveInEclipse(filePath, Optional.ofNullable(currentProject));
-        if (file.isEmpty()) return "Not found: " + filePath;
+        if (file.isEmpty()) return "Not found: " + filePath + EclipseUtil.unresolvedHint(filePath);
 
         try {
             try {

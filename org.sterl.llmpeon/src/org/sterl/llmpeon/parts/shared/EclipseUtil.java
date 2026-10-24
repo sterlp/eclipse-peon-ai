@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.parts.shared;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -322,20 +323,119 @@ public class EclipseUtil {
         return Optional.empty();
     }
 
+    /**
+     * R-WN-5 (org.sterl.llmpeon/docs/workspace-nesting.md): the first segment of a path is the project
+     * name and it is matched <em>exactly</em> — a substring match silently hands back the wrong project.
+     */
     public static Optional<IProject> findOpenProject(String path) {
-        if (StringUtil.hasNoValue(path))
-            return Optional.empty();
-        var name = Path.of(path).normalize().getName(0).toString();
+        return findProject(projectNameOf(path)).filter(project -> project.isOpen());
+    }
 
-        for (var p : ResourcesPlugin.getWorkspace().getRoot().getProjects()) {
-            if (!p.isOpen())
-                continue;
-            if (p.getName().equalsIgnoreCase(name)
-                    || p.getFullPath().toPortableString().contains(path)) {
-                return Optional.of(p);
-            }
+    /**
+     * R-WN-5: why a path could not be resolved, as a sentence to append to the tool's own "not found"
+     * line. Never throws, and never empty for a real path — a diagnosis must not turn an error into a
+     * crash, and a bare "not found" is a lie when the file does exist.
+     */
+    public static String unresolvedHint(String path) {
+        if (StringUtil.hasNoValue(path))
+            return "";
+        try {
+            return diagnoseUnresolved(path);
+        } catch (Exception e) {
+            return GENERIC_UNRESOLVED;
         }
-        return Optional.empty();
+    }
+
+    /**
+     * R-WN-5: why a project name cannot be used — empty when the project is open, so callers may append
+     * it unconditionally. A closed project is reported as closed, not as missing.
+     */
+    public static String projectHint(String nameOrPath) {
+        var name = projectNameOf(nameOrPath);
+        if (StringUtil.hasNoValue(name))
+            return "";
+        var project = findProject(name);
+        if (project.isEmpty())
+            return unknownProjectMessage(name);
+        if (project.get().isOpen())
+            return "";
+        return "Project '" + project.get().getName() + "' exists but is closed — open it in the Project Explorer first.";
+    }
+
+    private static final String GENERIC_UNRESOLVED =
+            " No resource at that path in the workspace tree — check the path or search for the file name with eclipseSearchFiles.";
+
+    private static String diagnoseUnresolved(String path) {
+        var name = projectNameOf(path);
+        if (StringUtil.hasNoValue(name))
+            return GENERIC_UNRESOLVED;
+        var project = findProject(name);
+        if (project.isEmpty())
+            return " " + unknownProjectMessage(name);
+
+        var workspacePath = IPath.fromPortableString(path);
+        var hints = new ArrayList<String>();
+        if (!project.get().isOpen())
+            hints.add("The path is inside project '" + name
+                    + "', which exists but is closed — its files are not part of the workspace tree."
+                    + " Ask the user to open the project (or read the file with the disk tools).");
+
+        var disk = diskLocationOf(project.get(), workspacePath);
+        if (disk.isPresent()) {
+            var views = otherViewsOf(disk.get(), workspacePath);
+            if (!views.isEmpty())
+                hints.add("The same file is readable as: " + String.join(", ", views) + ".");
+            else if (Files.isReadable(disk.get()))
+                hints.add("The path exists on disk ('" + disk.get()
+                        + "') but is not in the workspace tree — run eclipseRefreshProject for '" + name
+                        + "', or read it with the disk tools.");
+        }
+        if (hints.isEmpty())
+            hints.add(GENERIC_UNRESOLVED.strip());
+        return " " + String.join(" ", hints);
+    }
+
+    /** The disk file a workspace path points at, when its project has a known absolute location. */
+    private static Optional<Path> diskLocationOf(IProject project, IPath workspacePath) {
+        var location = project.getLocation();
+        if (location == null || !location.isAbsolute())
+            return Optional.empty();
+        var rest = workspacePath.removeFirstSegments(1);
+        var disk = rest.segmentCount() == 0 ? location : location.append(rest);
+        return Optional.of(Path.of(disk.toOSString()));
+    }
+
+    /** The other workspace paths for the same disk file that are really readable, in stable order. */
+    private static List<String> otherViewsOf(Path disk, IPath requested) {
+        var requestedPath = requested.makeAbsolute().toPortableString();
+        var views = new ArrayList<String>();
+        for (var file : ResourcesPlugin.getWorkspace().getRoot().findFilesForLocationURI(disk.toUri())) {
+            var view = file.getFullPath().toPortableString();
+            if (file.exists() && !view.equals(requestedPath))
+                views.add(view);
+        }
+        Collections.sort(views);
+        return views;
+    }
+
+    private static String unknownProjectMessage(String name) {
+        return "No project named '" + name + "' exists in this workspace. Open projects: " //
+                + openProjectsNames() + ".";
+    }
+
+    /** Project for an exact project name; empty when no such project exists (closed included). */
+    private static Optional<IProject> findProject(String name) {
+        if (StringUtil.hasNoValue(name))
+            return Optional.empty();
+        var project = ResourcesPlugin.getWorkspace().getRoot().getProject(name);
+        return project.exists() ? Optional.of(project) : Optional.empty();
+    }
+
+    /** First path segment — the only form {@code IWorkspaceRoot.getProject(String)} accepts, null if none. */
+    private static String projectNameOf(String nameOrPath) {
+        if (StringUtil.hasNoValue(nameOrPath))
+            return null;
+        return IPath.fromPortableString(nameOrPath).segment(0);
     }
 
     public static List<IProject> openProjects() {
