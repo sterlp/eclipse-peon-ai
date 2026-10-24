@@ -116,6 +116,18 @@ public class AgentContextComponent {
     }
 
     /**
+     * The plan body exactly as the file holds it — {@code ""} without a reference, without a file and
+     * for an empty file. R-PT-4 (org.sterl.llmpeon/docs/plan-tool.md): this raw view is what decides
+     * whether a handoff has a plan; {@link #readPlan()} prefixes a header and would make even an
+     * empty overview.md look like one.
+     */
+    public String planContent() {
+        if (this.plan == null || !this.plan.exists()) return "";
+        var content = IoUtils.readString(this.plan);
+        return content == null ? "" : content;
+    }
+
+    /**
      * Assembles the per-turn context items (injected after compact or on first call):
      * plan reference or handoff line, AGENTS.md, live workspace memory, Jon's docs, user context.
      * Scaffold agents get their own env/tool listing instead.

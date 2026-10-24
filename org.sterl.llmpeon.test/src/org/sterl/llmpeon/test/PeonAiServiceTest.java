@@ -486,6 +486,38 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         assertHasNoUserMessageWith(devAgent.getMemory().getCopy(), PlanTool.OVERVIEW_FILE);
     }
 
+    /**
+     * R-PT-4 hardening: the reference header of readPlan() must not turn an empty plan into a real
+     * one — the raw file body decides, so an empty overview.md hands off like "no plan" too.
+     */
+    // R-PT-4
+    // UC-PT-4
+    @Test
+    public void emptyPlanFileHandoffsLikeNoPlan() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        // GIVEN: a live plan reference whose file exists but holds nothing but whitespace
+        aiService.setActiveAgent(AiPlanAgent.NAME);
+        var planTool = aiService.getToolService().getTool(PlanTool.class).orElseThrow();
+        planTool.planSave("# Test Plan\nnever delivered\n");
+        var devAgent = aiService.getAgents().stream()
+                .filter(a -> AiDevAgent.NAME.equals(a.getName())).findFirst().orElseThrow();
+        devAgent.getMemory().add(UserMessage.from("KEEP ME"));
+        eclipseWriteFile("/" + PeonTestFixture.PROJECT_NAME + "/" + PlanTool.OVERVIEW_FILE, "   \n");
+        var planRef = ((AgentContextComponent) readField(aiService, "agentContext")).planRef();
+        assertTrue("the file must exist and be blank, otherwise the header case is not the one under test",
+                planRef.exists() && planRef.readString().isBlank());
+
+        // WHEN
+        boolean handedOff = aiService.onHandoff();
+
+        // THEN: "no plan" — dev memory untouched, agent unchanged
+        assertFalse("an empty plan file must never report a successful handoff", handedOff);
+        assertEquals(AiPlanAgent.NAME, aiService.getActiveAgent().getName());
+        assertHasUserMessageWith(devAgent.getMemory().getCopy(), "KEEP ME");
+        assertHasNoUserMessageWith(devAgent.getMemory().getCopy(), PlanTool.OVERVIEW_FILE);
+    }
+
+
     
     @Test
     public void test_update_token_limit() throws IOException {

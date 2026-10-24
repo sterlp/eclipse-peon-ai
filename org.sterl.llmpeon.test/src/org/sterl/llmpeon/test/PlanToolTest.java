@@ -254,6 +254,37 @@ public class PlanToolTest extends AbstractIntegrationTest {
         assertEquals(List.of(planOnly, planOnly), refreshed);
     }
 
+    /**
+     * R-PT-1: the recursive folder refresh belongs to the archive alone — it needs the whole plan dir
+     * in sync (plan plus the archive names already taken). Pinned with the query depth (UC-PT-2a) as
+     * the contrast: DEPTH_INFINITE here, DEPTH_ZERO on the file there.
+     */
+    // R-PT-1
+    // UC-PT-1
+    @Test
+    public void archiveRefreshesThePlanFolderRecursively() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        deletePlanDir();
+
+        // GIVEN a disk-written plan and a refresh spy that still performs the real refresh
+        givenDiskWrittenPlan("# disk written plan\n");
+        var refreshed = new ArrayList<String>();
+        var planTool = planTool((resource, depth, monitor) -> {
+            resource.refreshLocal(depth, monitor);
+            refreshed.add(JdtUtil.pathOf(resource) + " depth=" + depth);
+        }, new ArrayList<>());
+
+        // WHEN the agent reports the plan as implemented
+        planTool.planImplemented();
+
+        // THEN exactly one refresh, on the folder, recursive — DEPTH_ZERO or the file would leave the
+        // archive target out of sync and re-introduce the ResourceException of R-PT-1
+        assertEquals(List.of("/" + PeonTestFixture.PROJECT_NAME + "/" + PlanTool.PLAN_DIR
+                + " depth=" + IResource.DEPTH_INFINITE), refreshed);
+        // AND the archive really ran, so the call above is the archive path and not an early return
+        assertEquals(archives().toString(), 1, archives().size());
+    }
+
     private PlanTool planTool() {
         return aiService.getSharedToolService().getTool(PlanTool.class).orElseThrow();
     }

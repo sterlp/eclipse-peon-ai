@@ -375,7 +375,9 @@ public class PeonAiService {
         String planPath;
         var plan = agentContext.planRef();
         if (plan != null) { // workspace plan ref — not disk, avoids stale project reference
-            planText = agentContext.readPlan();
+            // R-PT-4: the raw file body decides — readPlan() prefixes its header, so an empty
+            // overview.md would never look empty when judged through it
+            planText = agentContext.planContent().isBlank() ? null : agentContext.readPlan();
             planPath = JdtUtil.pathOf(plan);
         } else {
             var chatPlan = getActiveAgent().getMemory().getLastOf(AiMessage.class);
