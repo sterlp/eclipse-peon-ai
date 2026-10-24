@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.tool;
 
 import java.lang.reflect.Method;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -227,7 +228,7 @@ public class ToolService {
             } catch (Exception e) {
                 if (ExceptionUtil.isCanceled(e)) throw e;
                 log.error("Tool {} with args {} failed", tr.name(), tr.arguments(), e);
-                req.getMonitor().onProblem(tr.name() + " failed: " + e.getMessage() + " details logged.");
+                req.getMonitor().onProblem(StringUtil.toolFailureLine(tr.name(), e, Clock.systemDefaultZone()));
                 toolResults.add(ToolExecutionResultMessage.from(tr.id(), tr.name(),
                         "Tool failed - check why and inform user " + StringUtil.getStackTrace(e)));
             }
