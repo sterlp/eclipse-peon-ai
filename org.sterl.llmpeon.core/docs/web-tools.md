@@ -168,3 +168,20 @@ Pfad wie der erste Abruf.
 - GIVEN ein `text/plain`-Ergebnis liegt im Cache WHEN der gleiche URL erneut abgerufen wird THEN
   kommt der gecachte Raw-Text mit „raw text"-Label (kein nachträglicher Konverter-Lauf).
 
+### R-WEB-14 — `webSearch` Rate-Limit: ehrliche Handlungsoption, kein Auto-Retry ✅ done (2026-10-24, Bug-Triage T-3, Commits 81b4a2dc/5edfffbf/062d43ae)
+
+Bei Rate-Limit/Bot-Check (HTTP 202/429) bleibt die Meldung ein Fehler (R-WEB-12) und nennt eine
+**Handlungsoption**: nicht sofort wiederholen (die Sperre dauert Minuten — E2E-Run 2026-10-24,
+3 Folgeversuche über Minuten alle rejected), Suchen im Turn abstehen oder eine bekannte URL direkt
+mit `webFetchAsMarkdown` lesen. **Kein Auto-Retry im Engine/Tool:** ein sofortiger oder
+Sekunden-Backoff-Retry hat die beobachtete Minuten-Sperre nie überstanden, verlängert den Turn und
+verschärft den Bot-Check. Die `@Tool`-Beschreibung nennt das Rate-Limit, damit der Agent Suchen
+von vornherein staffelt — mehrere Suchen parallel im selben Turn provozieren den Bot-Check.
+
+#### UC-WEB-14 — webSearchRateLimitGuidance ✅
+- GIVEN DDG antwortet mit HTTP 202 WHEN `webSearch(query)` THEN Fehlermeldung mit Ursache UND dem
+  Hinweis, nicht sofort zu wiederholen bzw. eine bekannte URL via `webFetchAsMarkdown` zu lesen —
+  ohne dass ein Retry-Call an den Endpunkt geht.
+- GIVEN die `@Tool`-Beschreibung WHEN ein Agent das Tool-Schema liest THEN nennt sie das
+  Rate-Limit-Risiko und rät zum Staffeln der Suchen.
+

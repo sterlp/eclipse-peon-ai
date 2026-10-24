@@ -37,9 +37,13 @@ Quelle: Paul-Chat + [org.sterl.llmpeon.test/ai-e2e-test/webtools-test-issues.md]
   Offen für Paul: ⏳ `+xml` bewusst BREIT (SVG/RSS werden konvertiert + „converted from HTML" gelabelt,
   Pauls Issue-Vorschlag) — Verengung auf text/html+xhtml wäre Doc-Änderung; ⏳ Paul-Smoke
   (JSON/plain raw, Webseite konvertiert, Cache-Label stabil).
-- **T-3 = I-2 (mittel):** `webSearch` nach wenigen Calls minutenlang blockiert (HTTP 202, korrekt
-  gemeldet per R-WEB-12) — aber kein Backoff/Retry, keine Handlungsoption in der Meldung,
-  @Tool-Text nennt Rate-Limit nicht, parallele Calls im selben Turn provozieren Bot-Check.
+- **T-3 = I-2 ✅ GEBAUT (2026-10-24):** R-WEB-14/UC-WEB-14 — Rate-Limit-Meldung nennt Handlungsoption
+  (nicht sofort retryen, webFetchAsMarkdown-Alternative), KEIN Auto-Retry (evidenzbasiert: Sperre hielt
+  Minuten), @Tool-Text warnt + rät zum Staffeln. Pattern-Erkennung (rate limit|bot check|HTTP 202/429,
+  CASE_INSENSITIVE) + Null-Cause-Guard; 5 Tests, alle Zweige mutationsgepinnt, callCount==1 = Retry-Beweis.
+  Commits `81b4a2dc`, `5edfffbf`, `062d43ae`. Surefire **1341/0/0/0**. Offen für Paul: ⏳ Paul-Smoke gegen
+  echtes DDG-Rate-Limit; ⏳ Engine-Seite „kein Retry" untestbar in diesem Inkrement (Request-Zähler im
+  Engine-Test = Follow-up); Cleanup-Kandidat typisierte `WebSearchRateLimitException`.
 - **T-4 = I-3 (niedrig):** HTML→Markdown läßt `<pre>`/Code-Blöcke zerfließen (Zahlen-Gutter,
   Leerzeilen je Code-Zeile) → Zeilennummern wertlos, Token-Ballast.
 - **T-5 = I-4 (niedrig, außerhalb Web-Tools):** eclipseSearchFiles liefert Pfad
