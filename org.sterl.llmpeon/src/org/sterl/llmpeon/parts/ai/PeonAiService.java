@@ -377,8 +377,6 @@ public class PeonAiService {
         if (plan != null) { // workspace plan ref — not disk, avoids stale project reference
             planText = agentContext.readPlan();
             planPath = JdtUtil.pathOf(plan);
-
-            agentContext.armHandoffLine(getActiveAgent().getName(), planPath);
         } else {
             var chatPlan = getActiveAgent().getMemory().getLastOf(AiMessage.class);
             if (chatPlan == null) planText = null;
@@ -387,14 +385,17 @@ public class PeonAiService {
             planPath = "Handover from " + getActiveAgent().getName() + ":";
         }
 
-        if (planText != null) {
-            // and directly add the plan too ...
-            toAgent.get().clear();
-            toAgent.get().getMemory().add(UserMessage.from(planPath + System.lineSeparator() + planText));
-            this.agentService.setActiveAgent(toAgent.get());
-        }
+        // R-PT-4: an archived or deleted plan reads back empty — that is "no plan", never a handoff
+        // that clears the target memory and reports success on nothing.
+        if (planText == null || planText.isBlank()) return false;
+
+        if (plan != null) agentContext.armHandoffLine(getActiveAgent().getName(), planPath);
+        // and directly add the plan too ...
+        toAgent.get().clear();
+        toAgent.get().getMemory().add(UserMessage.from(planPath + System.lineSeparator() + planText));
+        this.agentService.setActiveAgent(toAgent.get());
         
-        return planText != null;
+        return true;
     }
 
     // -------------------------------------------------------------------------
@@ -651,6 +652,15 @@ public class PeonAiService {
 
     public void onPlanSaved(IFile planFile) {
         agentContext.setPlan(planFile);
+    }
+
+    /**
+     * R-PT-4 (org.sterl.llmpeon/docs/plan-tool.md): the archive moved the file away, so the
+     * reference is released here — same release as {@code clear()} via {@code agentContext.clearPlan()}
+     * — and a following handoff cannot see a plan that no longer exists.
+     */
+    public void onPlanArchived() {
+        agentContext.clearPlan();
     }
 
     public void clear() {

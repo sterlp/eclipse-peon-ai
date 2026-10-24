@@ -98,6 +98,7 @@ public class PlanTool extends AbstractEclipseTool {
             var target = project.getFile(PLAN_DIR + "/" + freeName);
             onTool("Plan finished: " + target.getFullPath());
             plan.move(target.getFullPath(), IResource.KEEP_HISTORY, getProgressMonitor());
+            peonAiService.onPlanArchived();
         } catch (CoreException e) {
             throw new RuntimeException("Failed to mark file as done. " + JdtUtil.pathOf(plan) + " " + e.getMessage(), e);
         }

@@ -45,6 +45,7 @@ import org.sterl.llmpeon.mcp.CodegraphProbe;
 import org.sterl.llmpeon.parts.PeonConstants;
 import org.sterl.llmpeon.parts.ai.CodegraphConnectionService;
 import org.sterl.llmpeon.parts.ai.PeonAiService;
+import org.sterl.llmpeon.parts.ai.component.AgentContextComponent;
 import org.sterl.llmpeon.parts.shared.JdtUtil;
 import org.sterl.llmpeon.parts.tools.AskUserTool;
 import org.sterl.llmpeon.parts.tools.EclipseGrepTool;
@@ -423,6 +424,68 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         // mention (no false-positive), so the reference is re-injected on the second turn.
         streamMock.assertCount("peon-plan/overview.md", 2);
     }
+
+    /**
+     * R-PT-4: archiving releases the in-memory plan reference, so the next handoff cannot see the
+     * moved file as "plan exists" and clear the dev memory for an empty plan.
+     */
+    // R-PT-4
+    // UC-PT-4
+    @Test
+    public void archivedPlanReleasesReferenceNoGhostHandoff() {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        // GIVEN: plan agent active with a saved plan, its memory empty (no chat-plan fallback)
+        aiService.setActiveAgent(AiPlanAgent.NAME);
+        var planTool = aiService.getToolService().getTool(PlanTool.class).orElseThrow();
+        planTool.planSave("# Test Plan\nhandoff must stay honest\n");
+        var devAgent = aiService.getAgents().stream()
+                .filter(a -> AiDevAgent.NAME.equals(a.getName())).findFirst().orElseThrow();
+        devAgent.getMemory().add(UserMessage.from("KEEP ME"));
+        try {
+            // WHEN: the plan is archived and the next handoff runs
+            planTool.planImplemented();
+
+            // THEN: no handoff on an archived plan — and the dev memory survives
+            assertFalse("an archived plan must not hand off", aiService.onHandoff());
+            assertEquals(AiPlanAgent.NAME, aiService.getActiveAgent().getName());
+            assertHasUserMessageWith(devAgent.getMemory().getCopy(), "KEEP ME");
+            assertHasNoUserMessageWith(devAgent.getMemory().getCopy(), PlanTool.OVERVIEW_FILE);
+        } finally {
+            eclipseDeleteResource("/" + PeonTestFixture.PROJECT_NAME + "/" + PlanTool.PLAN_DIR);
+        }
+    }
+
+    /**
+     * R-PT-4 hardening: a plan file deleted outside planImplemented is the same ghost — empty plan
+     * text counts as "no plan", so the dev memory stays and the handoff reports no success.
+     */
+    // R-PT-4
+    // UC-PT-4
+    @Test
+    public void deletedPlanFileHandoffsLikeNoPlan() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        // GIVEN: a live plan reference whose file is then deleted without planImplemented
+        aiService.setActiveAgent(AiPlanAgent.NAME);
+        var planTool = aiService.getToolService().getTool(PlanTool.class).orElseThrow();
+        planTool.planSave("# Test Plan\nnever delivered\n");
+        var devAgent = aiService.getAgents().stream()
+                .filter(a -> AiDevAgent.NAME.equals(a.getName())).findFirst().orElseThrow();
+        devAgent.getMemory().add(UserMessage.from("KEEP ME"));
+        eclipseDeleteResource("/" + PeonTestFixture.PROJECT_NAME + "/" + PlanTool.OVERVIEW_FILE);
+        var planRef = ((AgentContextComponent) readField(aiService, "agentContext")).planRef();
+        assertNotNull("the reference must still be live, otherwise the ghost is not the case under test", planRef);
+        assertFalse("the plan file must be gone", planRef.exists());
+
+        // WHEN
+        boolean handedOff = aiService.onHandoff();
+
+        // THEN: reported as "no plan" — dev memory untouched, agent unchanged
+        assertFalse("an empty plan must never report a successful handoff", handedOff);
+        assertEquals(AiPlanAgent.NAME, aiService.getActiveAgent().getName());
+        assertHasUserMessageWith(devAgent.getMemory().getCopy(), "KEEP ME");
+        assertHasNoUserMessageWith(devAgent.getMemory().getCopy(), PlanTool.OVERVIEW_FILE);
+    }
+
     
     @Test
     public void test_update_token_limit() throws IOException {
