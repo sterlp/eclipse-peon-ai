@@ -282,6 +282,28 @@ class WebSearchToolTest {
     // R-WEB-14
     // UC-WEB-14
     @Test
+    void webSearchStatusOnlyCauseStillGetsGuidance() {
+        // GIVEN a rejection whose message names only the status — neither "rate limit" nor "bot check"
+        var stub = failingEngine("rejected (HTTP 429)");
+
+        // WHEN
+        String result = tool.webSearch(QUERY, null);
+
+        // THEN — the status alone is enough: the guidance is there, so an engine that rewords its
+        // message cannot silently drop the way forward
+        assertThat(result) //
+                .startsWith("webSearch failed for '" + QUERY + "': rejected (HTTP 429)") //
+                .contains(". No results were returned — this is an error, not an empty result set.") //
+                .contains("Do not retry immediately") //
+                .contains("webFetchAsMarkdown") //
+                .doesNotContain("0 results");
+        assertThat(stub.callCount).isEqualTo(1);
+    }
+
+
+    // R-WEB-14
+    // UC-WEB-14
+    @Test
     void webSearchToolDescriptionWarnsAboutRateLimit() throws NoSuchMethodException {
         // GIVEN the tool schema an agent reads before its first call
         var annotation = WebSearchTool.class //
