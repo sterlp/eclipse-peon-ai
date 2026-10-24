@@ -14,7 +14,7 @@ Exactly the tools that dispatch a nested agent get the timing; ordinary tools do
 | --- | --- | --- | --- |
 | `JonDelegateTool` (`talkPlan` / `planWithPlanAgent` / `askDev` / `buildWithDev`) | Jon's Da Thinka / Da Mek | **Da Thinka** / **Da Mek** | `Da Thinka done. (3s)` / `Da Mek done. (12s)` |
 | `SearchAgentTool` (`searchAgent`) | the search sub-agent | **Da Sniffa** | `Da Sniffa done. (12s)` |
-| `CompactSessionTool` (`compactSession`) | the `AiCompressorAgent` | **Da Scribe** | `🗜 Da Scribe done for <agent>. (1m 5s) (N chars)` — 🗜-Präfix seit 2026-10-16 (S2, [icons.md](../../org.sterl.llmpeon/docs/icons.md)) |
+| `CompactSessionTool` (`compactSession`) | the `AiCompressorAgent` | **Da Scribe** | seit R-CT-8 (2026-10-24) entfallen: die alte `🗜 Da Scribe done for <agent>. (1m 5s) (N chars)`-Zeile ist durch die uniforme Compact-End-Zeile `🗜 <Agent> compacted: … (Ns, HH:mm) (N chars)` ersetzt ([compact-lock.md](compact-lock.md) R-CT-8) — das Tool emittiert selbst nichts mehr |
 
 `CompactSessionTool` has **no** progress line today (it only returns the summary). Timing adds a new
 **done line** for it, so a compaction is no longer invisible.
@@ -50,7 +50,9 @@ The elapsed time is appended to the tool's **done** progress line as ` (<elapsed
 - `JonDelegateTool`: `"<display name> done. (3s)"` (display name = `Da Thinka` / `Da Mek`).
 - `SearchAgentTool`: `"Da Sniffa done. (12s)"` — timing is reported only on the **success** path; a
   failed search still reports via `onProblem` (unchanged), no timing.
-- `CompactSessionTool`: `"🗜 Da Scribe done for <agent>. (1m 5s) (N chars)"` — 🗜-Präfix + Ziel-Agent + Ergebnisgröße seit 2026-10-16 (S2, [icons.md](../../org.sterl.llmpeon/docs/icons.md)).
+- `CompactSessionTool`: **keine eigene Done-Zeile mehr** — die uniforme Compact-End-Zeile
+  (R-CT-8, [compact-lock.md](compact-lock.md)) übernimmt Dauer, Uhrzeit, Ergebnisgröße und
+  Agent-Namen; 🗜-Präfix bleibt über die Start-/End-Zeilen erhalten ([icons.md](../../org.sterl.llmpeon/docs/icons.md)).
 
 **BDD:**
 ```
@@ -61,7 +63,8 @@ GIVEN the search agent finishes after ~12 seconds
 THEN the progress line reads "Da Sniffa done. (12s)"
 
 GIVEN a compaction finishes after ~65 seconds
-THEN a "🗜 Da Scribe done for <agent>. (1m 5s) (N chars)" line is emitted (compaction is no longer invisible)
+THEN the uniform compact end line "🗜 <agent> compacted: … (1m 5s, HH:mm) (N chars)" is emitted
+     (R-CT-8 — compaction is no longer invisible; no separate "Da Scribe done" line)
 
 GIVEN the search agent fails
 THEN it reports the problem as before, with no timing line

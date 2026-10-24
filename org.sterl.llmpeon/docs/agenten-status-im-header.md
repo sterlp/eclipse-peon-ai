@@ -60,9 +60,9 @@ gezielt einen Sklaven-Kontext freigeben kann, gibt es den **expliziten** Button.
    den Compact-Button in der Action Bar (der nach R18 nur noch Jon selbst komprimiert).
 2. Klick → Eclipse `Job` (gleiche Mechanik wie `AIChatView.doCompressContext`:
    `inFlightTurns`/`monitorRef`/`lockWhileWorking`): `agent.compact(viewMonitor)` für **diesen einen**
-   Agenten. Der Compressor streamt **nicht** in den Chat (R-CC-14) — Feedback ist der
-   Working-Zustand der Statuszeile („waiting for AI…", R-CT-5) plus 🟡 im Roster (R-CT-4); sichtbar
-   im Chat sind nur Start- und Ergebnis-Zeile des Callers.
+   Agenten. Der Compressor streamt **live in den Chat** (Tokens sichtbar, nie im Log — R-CT-8,
+   Revision 2026-10-24); Feedback sind Streaming, der Working-Zustand der Statuszeile („waiting
+   for AI…", R-CT-5), 🟡 im Roster (R-CT-4) und die uniforme End-Zeile `🗜 <Agent> compacted: …`.
 3. **Disabled**, während der Agent `isWorking()` oder ein Turn/Compact in-flight ist
    (`inFlightTurns > 0`) — kein Concurrent-Compact auf einem Agenten, der gerade arbeitet.
 4. **Feedback:** Job-Ergebnis in der Statuszeile (`Compacted Da Mek`); Skip (< 3 Messages, R16 —

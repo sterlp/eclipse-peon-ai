@@ -151,29 +151,37 @@ Chat-View zeigt während des Compact denselben Working-Zustand wie vor jedem and
 - GIVEN der aktive Agent kompaktiert WHEN der Compressor-Call läuft THEN zeigt die Chat-View den
   Working-Zustand (`onChatMessage` am Caller-Monitor).
 
-### R-CT-8 — Compact meldet Start und Ende wie ein langlaufendes Tool; Streaming sichtbar, nie im Log ❌ specified (2026-10-24, Paul-Smoke)
+### R-CT-8 — Compact meldet Start und Ende wie ein langlaufendes Tool; Streaming sichtbar, nie im Log ✅ done (2026-10-24, Paul-Smoke)
 
 Der Compact verhält sich im UI wie jeder langlaufende Tool-Call (ShellTool-Muster: Start-`onTool`,
 End-`onTool` mit Dauer und chars) — **ohne** Wissen davon, für welchen Agenten er läuft (kein
 Root-/Sklaven-Sonderweg, kein Responsibility-Bleed):
 
 - **Start-Zeile** (existiert, R-CT-6): `🗜 Compressing <Agent>: …` via `onTool`.
-- **End-Zeile** via `onTool` — die EINE Abschlussmeldung mit Agent-Namen, Ergebnisgröße, Dauer und
-  chars (CallStats-Muster), z. B. `🗜 Da Mek compacted: 6 → 1 messages, 969 → 210 tokens, 4.2 s,
-  1.2k chars`. Die doppelte Meldung `<Agent> compact.` (AgentsTool `reportAction` nach
-  `subAgentCompact`) entfällt; die Pre-Turn-Abschlusszeile nutzt dieselbe End-Zeile.
+- **End-Zeile** via `onTool` — die EINE Abschlussmeldung mit Agent-Namen, Ergebnisgröße, Dauer,
+  Uhrzeit und chars (CallStats-`suffix()`-Muster, ADR-0053), z. B. `🗜 Da Mek compacted: 6 → 2
+  messages, ~969 → ~210 tokens (4s, 09:40) (1200 chars)`. Die doppelte Meldung `<Agent> compact.`
+  (AgentsTool `reportAction` nach `subAgentCompact`) entfällt; die Pre-Turn-Abschlusszeile nutzt
+  dieselbe End-Zeile.
 - **Streaming:** Compressor-Tokens erscheinen live in der Chat-View des Callers — wie beim
   normalen Agent-Streaming; Chunks und Response-Text werden **nicht** ins Log geschrieben
   (das Response-/Chunk-Logging im Compact-Pfad entfällt; der R-CIB-3-Entry-Debuglog bleibt,
   Level DEBUG).
 
+#### UC-CT-13 — compactEndLineNamesAgentOnce ✅
 - GIVEN ein Compact eines anderen Agenten läuft WHEN er erfolgreich endet THEN erscheint im
-  Caller-Chat genau EINE End-Zeile mit Agent-Name, Dauer und chars — keine zweite
-  `<Agent> compact.`-Meldung. *(UC-CT-13)*
-- GIVEN ein Compact läuft WHEN der Compressor streamt THEN erscheinen die Tokens live im Chat und
-  nichts davon im Log. *(UC-CT-14)*
+  Caller-Chat genau EINE End-Zeile mit Agent-Name, Dauer/Uhrzeit (CallStats-`suffix()`) und chars —
+  keine zweite `<Agent> compact.`-Meldung. *(Tests: `CompactFeedbackTest.endLineNamesAgentNumbersTimeAndChars`,
+  `PoDelegateToolTest.compactDevEmitsExactlyOneEndLine`)*
+
+#### UC-CT-14 — compressorStreamsToCallerNotToLog ✅
+- GIVEN ein Compact läuft WHEN der Compressor streamt THEN erscheinen die Tokens live in der
+  Chat-View des Callers und nichts davon im Log. *(Tests: `CompactServiceTest.compressorEventsStreamToCallerAndStayOutOfTheLog`,
+  `AbstractAgentCompactResultTest.compressorStreamingReachesCallerMonitor`)*
+
+#### UC-CT-15 — failedCompactEmitsNoEndLine ✅
 - GIVEN ein Compact scheitert oder bricht ab WHEN der Lauf endet THEN erscheint die
-  Problem-Meldung wie heute und keine Erfolgs-End-Zeile. *(UC-CT-15)*
+  Problem-Meldung wie heute und keine Erfolgs-End-Zeile. *(Test: `AbstractAgentCompactResultTest.failedCompactEmitsNoEndLine`)*
 
 ### R-CT-6 — Compact-Ereignisse nennen den Agenten ✅ done (2026-10-23, Nachtzyklus)
 
