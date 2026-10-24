@@ -3,6 +3,7 @@ package org.sterl.llmpeon.shared;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.io.IOException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalTime;
@@ -134,6 +135,26 @@ class StringUtilTest {
                 .isEqualTo(String.format(
                         "buildWithDev failed (%02d:%02d): IllegalStateException: closed — details logged.",
                         localTime.getHour(), localTime.getMinute()));
+    }
+
+    /**
+     * R-OD-8: a chain link that only restates its cause is dropped — both restatement shapes, on the
+     * helper itself and without any tool loop in between: the JDK wrapper (message is the cause's whole
+     * toString) and the langchain4j wrapper (message is the cause's message verbatim).
+     */
+    // UC-OD-11
+    @Test
+    void exceptionChain_dropsLinksThatOnlyRestateTheirCause() {
+        // GIVEN — JDK shape: RuntimeException(cause) prints the cause into its own message
+        var jdkWrapper = new RuntimeException(new IOException("closed"));
+        assertThat(jdkWrapper.getMessage()).isEqualTo("java.io.IOException: closed");
+
+        // THEN — one link: the wrapper said nothing the cause does not
+        assertThat(StringUtil.exceptionChain(jdkWrapper)).isEqualTo("IOException: closed");
+
+        // AND — langchain4j shape: same message in wrapper and cause
+        var lc4jWrapper = new IllegalStateException("closed", new IOException("closed"));
+        assertThat(StringUtil.exceptionChain(lc4jWrapper)).isEqualTo("IOException: closed");
     }
 
     /** Pins the default locale for the body, restoring the original afterwards (JUnit 5 runs core sequentially). */

@@ -159,7 +159,6 @@ public class StringUtil {
      * wrapper would only double the line (that is how tool exceptions reach us).
      */
     public static String exceptionChain(Throwable e) {
-        if (e == null) return "(no exception)";
         var chain = new ArrayList<Throwable>();
         for (var current = e; current != null; current = current.getCause()) {
             chain.add(current);
