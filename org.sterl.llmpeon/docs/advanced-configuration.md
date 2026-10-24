@@ -242,17 +242,6 @@ API-Fehler ab — das würde exakt die Modelle brechen, die im Plan-/PO-Slot lau
   abgesichert durch den als **Charakterisierungstest** deklarierten
   `AgentModelResolutionTest.poExtraBodyMergesLikeOtherAgents`.
 
-## First-Launch Directory Resolution
-
-On first launch, AI Peon resolves skills and commands directories:
-
-1. Check if `~/.claude/skills` exists → use it (Claude Desktop compatibility)
-2. Otherwise create and use `~/.llmpeon/skills`
-
-Same logic applies to commands directory (`~/.claude/commands` → `~/.llmpeon/commands`).
-
-This one-time resolution ensures deterministic behavior without filesystem I/O on every config load.
-
 ## Basis-URL vs. per-Agent Override — Klartext (2026-09-12, User-Rückfrage; Update 2026-09-28)
 
 Die URL der **Basic-Page** (`llm.url`) ist die Basis für **alle** Agenten ohne eigenen Override —

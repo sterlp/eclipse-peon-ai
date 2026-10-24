@@ -7,6 +7,7 @@ import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
 
 import java.io.ByteArrayInputStream;
@@ -2148,6 +2149,70 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             if (otherProject.exists()) otherProject.delete(true, true, new NullProgressMonitor());
         }
     }
+
+    /**
+     * R17 wiring guard (production wiring, not the component seam): PeonAiService as the composition
+     * root injects the user skills root {@code ~/.agents/skills} and keeps the deprecated
+     * {@code <configDir>/skills} plus the project root — all three, in ascending precedence.
+     * Paths only: the real {@code ~/.agents/skills} is never read or written.
+     */
+    // R17
+    @Test
+    public void skillService_wiresThreeRoots() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        // GIVEN the deprecated root set through the config path, the project root through setProject
+        aiService.updateConfig(aiService.getConfig());
+        aiService.setProject(project);
+
+        // THEN skillRoot() carries exactly the three responsible roots, ascending precedence
+        var legacyRoot = aiService.getConfig().getConfigDir().resolve(LlmConfig.SKILL_DIRECTORY);
+        var userRoot = Path.of(System.getProperty("user.home")).resolve(SkillService.USER_SKILLS_DIR);
+        var projectRoot = Path.of(JdtUtil.diskPathOf(project)).resolve(SkillService.PROJECT_SKILLS_DIR);
+
+        assertEquals(List.of(legacyRoot, userRoot, projectRoot), aiService.getSkillService().skillRoots());
+    }
+
+    /**
+     * R10/R17 wiring proof on the production seam: the write validator the {@link AiScaffoldAgent}
+     * gets from {@code PeonAiService} carries the real home dir's user skills root. Core tests inject
+     * the root through the setter, so only this one fails if the composition root stops handing it
+     * over. Validator calls only — no file is written, nothing under the home dir is touched.
+     */
+    // R10/R17
+    @Test
+    public void scaffoldWriteValidator_acceptsHomeUserAgentsRoot() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+
+        // GIVEN the scaffold agent of the real wiring (persistent agent — not in getAgent(name))
+        var validator = aiService.getAgents().stream()
+                .filter(AiScaffoldAgent.class::isInstance)
+                .findFirst()
+                .orElseThrow()
+                .getWriteValidator();
+        var home = Path.of(System.getProperty("user.home"));
+
+        // THEN the user skills root is writable — the R17 migration target, and the open project's
+        // skills dir proves the additional-roots supplier is wired at all (R10)
+        validator.validate(home.resolve(SkillService.USER_SKILLS_DIR).resolve("x").resolve("SKILL.md").toString());
+        validator.validate(Path.of(JdtUtil.diskPathOf(project)).resolve(SkillService.PROJECT_SKILLS_DIR)
+                .resolve("x").resolve("SKILL.md").toString());
+
+        // BUT a root is a root, not the home dir: a foreign tool dir and a loose file stay denied
+        try {
+            validator.validate(home.resolve(".claude").resolve("skills").resolve("x.md").toString());
+            fail("a foreign home dir must stay denied");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().startsWith("Write denied"));
+        }
+        try {
+            validator.validate(home.resolve("notes.md").toString());
+            fail("a loose file in the home dir must stay denied");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage().startsWith("Write denied"));
+        }
+    }
+
 
     /**
      * ADR-0042 (R2c, pinning) — service-level contract: the project skill slot is replaced ONLY by

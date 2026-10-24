@@ -25,17 +25,29 @@ Base: `AGENTS.md`. System prompt: `developer.md`.
   Sobald ein Plan ID-Marker vorsieht, gehört `lintDocsAndTests` in das Inkrement-Gate:
   VERWAIST/UNBELEGT_ERLEDIGT blockiert, nicht erst der Review-Lauf.
   Invokation: `idPattern` ist **UC-only** (`UC-[A-Z]+-\d+[a-z]?`) — Regel-Marker `R-*` sind keine
-  UC-IDs; ein Pattern, das auch `R-*` matcht, liefert ~120 Schein-VERWAIST statt der Baseline 9
-  (3 UNBELEGT + 6 MANUELL, Roots: `docs` + beide Modul-`docs`).
+  UC-IDs; ein Pattern, das auch `R-*` matcht, liefert eine Masse Schein-VERWAIST statt der kleinen
+  Baseline aus UNBELEGT- und MANUELL-Findings. `docRoots` immer ALLE DREI Roots explizit setzen (`docs`,
+  `org.sterl.llmpeon.core/docs`, `org.sterl.llmpeon/docs`) — fehlt einer, liefert der Linter
+  Schein-VERWAIST für dessen Scope (hit 2026-10-23: 84 Schein-VERWAIST ohne `org.sterl.llmpeon/docs`).
 - **Never widen scope silently.** Fixes outside the released plan — even correct ones, even
   one-liners — get reported to the PO first. TABU lists in a plan are binding.
+- **Doc-Input, der als erledigt zitiert wird, gegen den COMMITTED Stand prüfen** (hit 2026-10-23,
+  Story-2-Review G1: ein Plan las „compact.md ist bereits revidiert" aus dem Working Tree — die
+  Revision war uncommitted, HEAD widersprach dem gebauten Code). Vor Abnahme/Bau: `git status`/
+  `git log` gegen die zitierte Doc-Stelle; sonst wird der Doc-Input selbst zum Inkrement.
+- **Root-/Allowlist-Mengen an der Composition Root testen, nicht nur den Mechanismus am Seam** (hit
+  2026-10-23, Story-3-Review F1: Core-Tests injizierten den User-Root per Setter — `roots.add(agentsSkillsDir)`
+  in `PeonAiService` konnte ersatzlos verschwinden, ohne dass ein Test rot wurde). Ein PDE-Test auf den
+  tatsächlichen Validator-Roots des realen Wirings (validate-only, keine I/O) ist die Mutations-Beweispflicht;
+  `AgentService.get(name)` sieht dabei NUR geladene Custom-Agents, nicht `persistentAgents` — Scaffold/Jon/PO
+  sind über `getAgents()` + Filter erreichbar.
 - **Doc-Referenzen in Code/Javadoc tragen den Modul-Pfad** (`org.sterl.llmpeon.core/docs/x.md`,
   `org.sterl.llmpeon/docs/x.md`) — Root-`docs/`-Pfade sind nach der Restrukturierung (2026-10-22)
   tot für Feature-Docs; nur ADRs/Root-Docs bleiben dort. Referenzen gehören in Kommentare,
   nie in String-Literale von Tests (C2-Gate des Docs-Restrukturierungs-Zyklus).
 - **Commit-Message trägt das Gate-Ergebnis** (Paul 2026-10-22): je Inkrement 1–2 Zeilen mit
   dem Ergebnis der **tatsächlich gefahrenen** Gates (z. B. `Core Surefire 1252/0/0/0 · Lint
-  9 Findings = Baseline`) — kein Surefire gefahren → Surefire-Zeile weglassen, nie angerechnet.
+  <n> Findings = Baseline`) — kein Surefire gefahren → Surefire-Zeile weglassen, nie angerechnet.
   Docs und ADRs tragen KEINE Test-/Mess-Zahlen — historische Werte sind stale und irreführen;
   Evidenz lebt im Commit und ggf. in den memory-Tools, nie in `docs/**`.
 - Elegant, expressive modern Java (records, pattern matching, switch expressions, Lombok).

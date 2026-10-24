@@ -11,6 +11,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -144,6 +145,28 @@ class ToolServiceTest {
         @Override public void withToolRequest(ToolLoopRequest request) {}
     }
 
+    /** A tool failing like the real case in org.sterl.llmpeon.core/docs/tool-output-disclosure.md: class, message, cause. */
+    static class FailingTool implements SmartTool {
+        @Tool("always fails with a cause")
+        public String boom() {
+            throw new IllegalStateException("closed", new IOException("Connection reset"));
+        }
+        @Override public void withToolRequest(ToolLoopRequest request) {}
+    }
+
+    /** A tool whose message carries a stack trace — the chat line must still stay one clean line. */
+    static class StackMessageTool implements SmartTool {
+        @Tool("fails with a stack in its message")
+        public String boom() {
+            throw new RuntimeException("""
+                    build failed
+                    \tat org.sterl.Fake.call(Fake.java:1)
+                    \tat org.sterl.Fake.main(Fake.java:9)\
+                    """);
+        }
+        @Override public void withToolRequest(ToolLoopRequest request) {}
+    }
+
     /** A tool that cancels — used to prove cancellation aborts the loop immediately. */
     static class CancelTool implements SmartTool {
         @Tool("cancels immediately")
@@ -216,6 +239,107 @@ class ToolServiceTest {
         assertThat(problems).noneMatch(p -> p.contains("API error — attempt"));
         assertThat(round.get()).isEqualTo(2);
     }
+
+    /**
+     * R-OD-8: the human line names the tool, the local time, the exception class + message and the whole
+     * cause chain. The wrapper langchain4j puts around tool exceptions only restates its cause, so it is
+     * not repeated as a link of its own.
+     */
+    // UC-OD-11
+    @Test
+    @Timeout(10)
+    void toolFailureReportsFullException() {
+        // GIVEN — the boom tool fails with a two-link cause chain
+        var problems = new ArrayList<String>();
+
+        // WHEN
+        runFailingToolLoop(new FailingTool(), problems, new ArrayList<>());
+
+        // THEN — the doc example, exactly, with the machine's own clock time
+        assertThat(failureLine(problems)).matches("^boom failed \\(\\d{2}:\\d{2}\\): IllegalStateException: closed"
+                + " ← IOException: Connection reset — details logged\\.$");
+    }
+
+    /**
+     * R-OD-8 bullet 3: a message that carries stack frames is still reported as ONE line without them —
+     * the stack stays in the log and in the tool result, the chat does not flood.
+     */
+    // UC-OD-11
+    @Test
+    @Timeout(10)
+    void toolFailureLine_hasNoStackFrames() {
+        // GIVEN — a tool whose message embeds a stack trace
+        var problems = new ArrayList<String>();
+
+        // WHEN
+        runFailingToolLoop(new StackMessageTool(), problems, new ArrayList<>());
+
+        // THEN — one line, the prose of the message, no frame anywhere
+        var line = failureLine(problems);
+        assertThat(line).contains("build failed");
+        assertThat(line).doesNotContain("\n", "\r", "\tat ", "at org.sterl");
+        assertThat(line.lines()).hasSize(1);
+    }
+
+    /**
+     * R-OD-8 (LLM-Sink): the tool result fed back to the model keeps carrying the full stack — the chat
+     * line got richer, the model did not get poorer.
+     */
+    // UC-OD-11
+    @Test
+    @Timeout(10)
+    void toolResult_stillCarriesFullStack() {
+        // GIVEN
+        var problems = new ArrayList<String>();
+        var requests = new ArrayList<ChatRequest>();
+
+        // WHEN — the second round's request is the one carrying the tool result
+        runFailingToolLoop(new FailingTool(), problems, requests);
+
+        // THEN — model-facing text keeps the marker AND the stack frames
+        var toolResult = requests.get(requests.size() - 1).messages().stream()
+                .filter(ToolExecutionResultMessage.class::isInstance)
+                .map(ToolExecutionResultMessage.class::cast)
+                .findFirst().orElseThrow();
+        assertThat(toolResult.text()).contains("Tool failed - check why and inform user");
+        assertThat(toolResult.text()).contains("\tat ");
+    }
+
+    /** The one tool-failure problem line reported to the monitor. */
+    private static String failureLine(List<String> problems) {
+        return problems.stream().filter(p -> p.startsWith("boom failed")).findFirst().orElseThrow();
+    }
+
+    /**
+     * The real loop with a failing tool in round 1 and a plain text answer in round 2 — collecting every
+     * problem line and every ChatRequest sent.
+     */
+    private void runFailingToolLoop(SmartTool tool, List<String> problems, List<ChatRequest> requests) {
+        subject.replaceTool(tool);
+        var round = new AtomicInteger();
+        var cm = mockWithHandler(req -> {
+            requests.add(req);
+            if (round.incrementAndGet() == 1) {
+                return ChatResponse.builder().aiMessage(AiMessage.builder()
+                        .toolExecutionRequests(List.of(ToolExecutionRequest.builder()
+                                .id("1").name("boom").arguments("{}").build()))
+                        .build()).build();
+            }
+            return ChatResponse.builder().aiMessage(AiMessage.from("done")).build();
+        });
+        var memory = new ThreadSafeMemory();
+        memory.add(UserMessage.from("go"));
+
+        subject.executeLoop(ToolLoopRequest.builder()
+                .memory(memory)
+                .chatModel(new ConfiguredChatModel(LlmConfig.newOpenAi("foo"), cm))
+                .monitor(new AiMonitor() {
+                    @Override public void onChatResponse(SimpleMessage m) {}
+                    @Override public void onProblem(String message) { problems.add(message); }
+                })
+                .build());
+    }
+
 
     /**
      * A canceling tool aborts the entire loop — the exception propagates through SmartToolExecutor

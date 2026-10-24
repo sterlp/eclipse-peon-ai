@@ -24,4 +24,8 @@ Vor-2.x-History wird nicht übernommen, der Agent startet leer.
   wird ignoriert und darf vom User gelöscht werden.
 - Skills/Commands/AGENT.md bleiben geteilt — das ist gewollt (eine Pflege, alle Instanzen).
 - Zwei Eclipse-Instanzen (verschiedene Workspaces) sind wieder voll unabhängig.
+- 2026-10-23: Der Skills-Default zieht auf `~/.agents/skills` um (APM-Kompatibilität) —
+  `.peon/skills` bleibt deprecated **gelesen und schreibbar** (Support), Empfehlung (Homepage-Warnung
+  + Scaffold) ist `.agents`: User-Root oder Projekt ([project-skills.md](../../org.sterl.llmpeon.core/docs/project-skills.md) R17/R10).
+  Commands/Agenten bleiben vorerst in `.peon`.
 - Homepage nennt den History-Pfad; einen Migrations-Hinweis gibt es seit dem Entfall nicht mehr.

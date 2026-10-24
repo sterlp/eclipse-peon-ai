@@ -4,7 +4,7 @@ idPrefix: WN
 
 # Workspace-Sicht — verschachtelte Eclipse-Projekte
 
-> **Status:** ✅ done (2026-10-19, 2.14.1) · **Architektur:** keine neue Komponente —
+> **Status:** ✅ done (2026-10-19, 2.14.1) · Δ 2026-10-24 (T-5/I-4): R-WN-4 Pfad-Vertrag + R-WN-5 Diagnose ✅ done · **Architektur:** keine neue Komponente —
 > Erweiterung von `EclipseUtil` + `EclipseWorkspaceReadFileTool`/`EclipseGrepTool`
 
 ## Ziel
@@ -74,11 +74,51 @@ also visible under this path; tools return the most specific project path.
 - **WEIL:** ohne die Zeile wundert sich der Agent über einen Pfad, der nicht die Projektwurzel ist,
   die er im Kopf hat — und über eine Datei, die er „schon gesehen" hat.
 
+## R-WN-4 — Pfad-Vertrag: ein gelieferter Pfad ist wieder lesbar ✅ done (2026-10-24, T-5/I-4, Commits b2d30906; Da-Mek-Messung S1–S5)
+
+Jedes `eclipse*`-Tool liefert Workspace-Pfade der Form `/projekt/…` (nie Disk, nie relativ), und
+jedes `eclipse*`-Tool, das einen Pfad konsumiert, akzeptiert **jede** Form, die ein `eclipse*`-Tool
+geliefert haben kann — ein Round-Trip `eclipseSearchFiles → eclipseReadFile` darf nie scheitern.
+Der Resolver löst als letzten Versuch über die **Disk-Lokation** (`resolveByLocation`: Projekt aus
+Segment 1 → `getRawLocation()` + Rest → `deepestResourceAt`, tiefster `fullPath` gewinnt, `.exists()`
+filtert Phantom-Ressourcen geschlossener Projekte), damit auch Aggregator-Ordner-Pfade
+(`/llmpeon-parent/org.sterl.llmpeon.core/…`, Segment 2 ist ein
+Ordnername, nicht der Projektname) und Zustände mit geschlossenen Projekten lesbar bleiben.
+Bei abweichender Auflösung offen gelegt: „resolved via <pfad>".
+
+### UC-WN-4 — searchReadRoundTrip ✅ done
+- GIVEN der Aggregator (oder das Projekt, dessen Ordner-Form der Agent hält) ist **geschlossen**,
+  die Module darunter offen — die Aggregator-Ordner-Form `/root/mid/leaf/…` ist dann nicht über den
+  Baum auflösbar (S4-Matrix, Da-Mek-Messung 2026-10-24) WHEN `eclipseReadFile` mit diesem Pfad
+  aufgerufen wird THEN die Datei wird über die Disk-Lokation aufgelöst und gelesen, mit Disclosure
+  „resolved via <pfad>", wenn die Auflösung von der angefragten Form abweicht.
+
+## R-WN-5 — Diagnose statt nacktem „not found" ✅ done (2026-10-24, T-5/I-4, Commits 0a3ab0c9/b2d30906)
+
+Ein fehlgeschlagener `eclipse*`-Pfad-Aufruf mit **absolutem Workspace-Pfad** benennt den **Grund**,
+nie nur „not found": Projekt
+existiert, ist aber **geschlossen**; oder (bei offenem Projekt) Datei liegt auf Disk, ist aber nicht
+im Workspace-Baum (→ Hinweis auf `eclipseRefreshProject`); sonst unbekanntes Projekt/generisch.
+**Projekt-relativer Scope** (kein führendes `/`) bekommt nur den generischen Satz — der Scope ist
+dem Resolver nicht als Projekt bekannt, eine closed-/disk-only-Diagnose wäre geraten.
+Eine lesbarere Sicht derselben Datei ist keine Diagnose mehr, sondern die **Auflösung** selbst
+(`resolved via <pfad>`, R-WN-4). `findOpenProject` matcht **exakt** (Name oder `/name`) — kein
+Substring-Fehltarget (`llmpeon-core` darf nicht `llmpeon-core-extra` treffen); ein importiertes,
+aber geschlossenes Projekt bekommt eine eigene „exists but is closed"-Meldung statt „not found".
+
+### UC-WN-5 — eclipsePathFailureNamesTheCause ✅ done
+- GIVEN ein `eclipse*`-Tool erhält einen Pfad, der auch über die Disk-Lokation nicht auflösbar ist,
+  in einem geschlossenen Projekt WHEN die Auflösung scheitert THEN die Meldung nennt „project … is
+  closed" (nicht „not found").
+- GIVEN ein Projekt `llmpeon-core-extra` ist offen WHEN `findOpenProject("llmpeon-core")` aufgerufen
+  wird THEN kein Substring-Match — exakter Name oder `/name` gewinnt, sonst leer.
+
 ## Offene Punkte
 
 | Punkt | Status |
 |---|---|
 | Zwei Disk-Pfade, eine Datei (Symlink/Workspace-Link) | ❓ nicht abgedeckt — Dedup bleibt der textuelle Disk-Pfad |
+| `src/`-Magic im Resolver (kann falsch-positiv treffen: gleicher Relativpfad unter `src/` eines anderen Projekts) | ⏳ Entfernen = eigener Follow-up, erst Inventar wer davon abhängt |
 
 ## Umsetzung
 

@@ -25,6 +25,7 @@ import org.sterl.llmpeon.agent.model.TaggedResult;
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.compact.CompactFeedback;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.SimpleContextItem;
@@ -481,6 +482,91 @@ class AbstractAgentTest {
         assertThat(agent.isWorking()).isFalse();
     }
 
+    // UC-CT-6
+    @Test
+    void isCompactingDuringCompressorCall() {
+        // GIVEN — 3 messages so the compact really runs
+        var agentRef = new AtomicReference<AiDevAgent>();
+        var compactingDuringCompressor = new AtomicReference<Boolean>();
+        var workingDuringCompressor = new AtomicReference<Boolean>();
+        var config = LlmConfig.builder().model("mock").build();
+        var mockModel = streamMock.buildMock(r -> {
+            compactingDuringCompressor.set(agentRef.get().isCompacting());
+            workingDuringCompressor.set(agentRef.get().isWorking());
+            return ChatResponse.builder().aiMessage(AiMessage.aiMessage("compressed summary")).build();
+        });
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        agentRef.set(agent);
+        agent.addMessage(UserMessage.from("m1"));
+        agent.addMessage(AiMessage.from("m2"));
+        agent.addMessage(UserMessage.from("m3"));
+
+        // WHEN
+        var compacted = agent.compact(monitor -> {});
+
+        // THEN — own Compact-Status for the duration of the compressor call (R-CT-4), and the
+        // working lock (R-CT-1) untouched by it
+        assertThat(compacted.status()).isEqualTo(CompactResult.Status.COMPACTED);
+        assertThat(compactingDuringCompressor.get()).as("compacting during the compressor call").isTrue();
+        assertThat(workingDuringCompressor.get()).as("still working, too — the lock stays").isTrue();
+        assertThat(agent.isCompacting()).as("cleared after the compact").isFalse();
+    }
+
+    // UC-CT-6
+    /**
+     * Companion pin to {@link #isCompactingDuringCompressorCall}: alone it would be green without
+     * the feature (a compact that never flags has nothing to clear). Together the two pin the
+     * finally-clear — the mutation here is dropping that finally, which turns this test red.
+     */
+    @Test
+    void compactingClearedOnFailedCompact() {
+        // GIVEN — 3 messages; the compressor call throws
+        var config = LlmConfig.builder().model("mock").build();
+        var mockModel = streamMock.buildMock(r -> {
+            throw new IllegalStateException("compressor exploded");
+        });
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        agent.addMessage(UserMessage.from("m1"));
+        agent.addMessage(AiMessage.from("m2"));
+        agent.addMessage(UserMessage.from("m3"));
+
+        // WHEN — the compact fails
+        assertThatThrownBy(() -> agent.compact(monitor -> {}))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("compressor exploded");
+
+        // THEN — no dangling 🟡: the agent is usable again (R-CT-4)
+        assertThat(agent.isCompacting()).isFalse();
+    }
+
+    // UC-CT-6
+    /**
+     * The R16 skip must never show a Compact-Status: the 🟡 flag is set only behind the
+     * MIN_COMPACT_MESSAGES guard. Mutation guard: setting the flag before the guard return (so no
+     * clear runs for the skip) turns the roster assertion red.
+     */
+    @Test
+    void skipDoesNotFlagCompacting() {
+        // GIVEN — 2 messages, the state right after a compact: the guard returns before any LLM call
+        var agent = new AiDevAgent(new ConfiguredChatModel(LlmConfig.builder().model("mock").build(),
+                streamMock.buildMock(r -> ChatResponse.builder()
+                        .aiMessage(AiMessage.aiMessage("must not be called")).build())),
+                new ToolService());
+        agent.addMessage(UserMessage.from("m1"));
+        agent.addMessage(AiMessage.from("m2"));
+
+        // WHEN
+        var result = agent.compact(monitor -> {});
+
+        // THEN — skipped, no LLM call, and no 🟡 anywhere (flag nor roster row)
+        assertThat(result.status()).isEqualTo(CompactResult.Status.SKIPPED_SMALL);
+        assertThat(streamMock.getCallCount()).isZero();
+        assertThat(agent.isCompacting()).isFalse();
+        assertThat(AiAgentStatusModel.rows(List.of(new NamedAgent("Da Mek", agent))))
+                .as("a skipped compact never renders a Compact-Status")
+                .noneMatch(AiAgentStatusModel.Entry::compacting);
+    }
+
     // UC-CT-2
     /**
      * Regression pin (green before the CAS change — the in-loop compact already kept the
@@ -549,6 +635,37 @@ class AbstractAgentTest {
         assertThat(compactCalls.get()).isEqualTo(1);
         assertThat(workingDuringTurnCall.get()).isTrue();
         assertThat(agent.isWorking()).isFalse();
+    }
+
+    /**
+     * Flush-point pin for the deferred chat reset (R-CT-7): {@code onCallStart} must fire AFTER the
+     * turn's message entered the memory — it is the event a view rebuilds on, and a rebuild before
+     * the add loses the question the user just sent. Mutation guard: moving the emission back in
+     * front of the memory add leaves the memory empty here and turns this red.
+     */
+    @Test
+    void onCallStartSeesUserMessageInMemory() {
+        // GIVEN — a monitor reading the agent's memory from inside onCallStart
+        var config = LlmConfig.builder().model("mock").build();
+        var mockModel = streamMock.buildMock(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("OK")).build());
+        var agentRef = new AtomicReference<AbstractAgent>();
+        var userMessagesAtCallStart = new ArrayList<String>();
+        var monitor = new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onCallStart(String userMessage) {
+                userMessagesAtCallStart.addAll(extractUserTexts(agentRef.get().getMemory().getCopy()));
+            }
+        };
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+        agentRef.set(agent);
+
+        // WHEN — one turn
+        agent.call("the fresh question", monitor);
+
+        // THEN — the event sees the fresh question in the memory: rebuilding from the memory at this
+        // point cannot lose it
+        assertThat(userMessagesAtCallStart).containsExactly("the fresh question");
     }
 
     // UC-CT-4
@@ -694,8 +811,9 @@ class AbstractAgentTest {
 
         // THEN — the pre-turn gate did not fire (3 is not > 3): only the turn's LLM call …
         assertThat(callCount.get()).isEqualTo(1);
-        // AND — no compact event line …
-        assertThat(toolLines).noneMatch(l -> l.contains("Pre-turn compact"));
+        // AND — no compact line of any kind (gate did not fire) …
+        assertThat(toolLines).noneMatch(l -> l.contains(CompactFeedback.START_PREFIX)
+                || l.contains(CompactFeedback.END_MARKER));
         // AND — the fresh message and the full history are untouched in the memory
         assertThat(agent.hasUserText("test")).isTrue();
         assertThat(memory.size()).isEqualTo(5); // 3 seeded + the fresh message + the turn's AI response
@@ -736,8 +854,9 @@ class AbstractAgentTest {
 
         // THEN — the pre-turn gate is off (budget <= 0): only the turn's LLM call …
         assertThat(callCount.get()).isEqualTo(1);
-        // AND — no compact event line …
-        assertThat(toolLines).noneMatch(l -> l.contains("Pre-turn compact"));
+        // AND — no compact line of any kind (gate did not fire) …
+        assertThat(toolLines).noneMatch(l -> l.contains(CompactFeedback.START_PREFIX)
+                || l.contains(CompactFeedback.END_MARKER));
         // AND — the fresh message and the full history are untouched in the memory
         assertThat(agent.hasUserText("test")).isTrue();
         assertThat(memory.size()).isEqualTo(6); // 4 seeded + the fresh message + the turn's AI response

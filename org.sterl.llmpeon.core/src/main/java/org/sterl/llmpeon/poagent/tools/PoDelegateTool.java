@@ -204,8 +204,8 @@ public class PoDelegateTool extends AbstractTool {
         AiAgent slave = agent.agent();
         return switch (slave.compact(monitor).status()) {
             case COMPACTED -> {
+                // R-CT-8: no own line — the slave's compact already sent the one end line via onTool
                 var toolResult = agent.uiName() + " compacted. " + contextUsed(slave);
-                onTool(agent.uiName() + " compacted." + " " + StringUtil.charsSuffix(toolResult));
                 yield toolResult;
             }
             // honest skip (R16 guard) — memory untouched, so N is exact
@@ -275,9 +275,8 @@ public class PoDelegateTool extends AbstractTool {
         var budget = autoCompactAfter.getAsInt();
         if (budget <= 0) return;                                   // R-CIB-1: 0 = off
         if (slave.getMemory().getTotalTokenUsed() <= (int) (budget * SLAVE_COMPACT_FACTOR)) return;
-        var result = slave.compact(monitor);                       // R-CC-8-Status folgt aus compact()
+        var result = slave.compact(monitor);                       // R-CT-8: its compact sends the one end line
         if (result.status() != CompactResult.Status.COMPACTED) return;
-        onTool(slave.getName() + " auto-compact before delegation: " + result.resultLine());
     }
 
     private void reportAction(NamedAgent target, String action) {

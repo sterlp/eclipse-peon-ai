@@ -65,9 +65,9 @@ an der Quelle gefixt („Compact-Result genau einmal" + R-ST4). Dedup läuft **v
 Kürzung, mit den Anfangswerten: `agent, messageCount, estimatedInputTokens, budget,
 thinkingEnabled` — damit Paul die Werte mit der UI (Token-Header) abgleichen kann. Bei
 Budget „off" (≤ 0) ist das Entry-Log der einzige *Compact*-Log. **Klarstellung (Nachbau-Review
-2026-09-26, [compact.md](compact.md)):** seit dem monitor-freien Service schreiben die internen
-Compressor-Chat-Events zusätzlich `log.debug`-Zeilen (log-only Monitor) — der Entry-Log bleibt
-die EINE *Compact-Ereignis*-Zeile; die Compressor-Debug-Zeilen sind kein Verstoß gegen dieses BDD.
+2026-09-26, [compact.md](compact.md); Revision 2026-10-24, R-CT-8):** der log-only Monitor für die
+internen Compressor-Chat-Events ist entfallen — die Tokens streamen an den Caller-Monitor (UI) und
+werden **nicht** geloggt; der Entry-Log bleibt die EINE *Compact-Ereignis*-Zeile (Level DEBUG).
 
 ### R-CIB-4 — Stufen-Kürzung über Budget ✅ done
 

@@ -48,8 +48,9 @@ public class EclipseBuildTool extends AbstractEclipseTool {
         ArgsUtil.requireNonBlank(projectName, "projectName");
         var project = EclipseUtil.findOpenProject(projectName);
         if (project.isEmpty()) {
-            onProblem("Cannot read problems of unknown project " + projectName);
-            return projectName + " not found.\n" + eclipseListAllOpenProjects();
+            var hint = EclipseUtil.projectHint(projectName);
+            onProblem("Cannot read problems of unknown project " + projectName + ": " + hint);
+            return hint + "\n" + eclipseListAllOpenProjects();
         }
         var projectRef = project.get();
         return readProblems(projectRef, files, severity);
@@ -199,8 +200,9 @@ public class EclipseBuildTool extends AbstractEclipseTool {
 
         var project = EclipseUtil.findOpenProject(projectName);
         if (project.isEmpty()) {
-            onProblem("Cannot build unknown project " + projectName);
-            return projectName + " not found. " + eclipseListAllOpenProjects();
+            var hint = EclipseUtil.projectHint(projectName);
+            onProblem("Cannot build unknown project " + projectName + ": " + hint);
+            return hint + " " + eclipseListAllOpenProjects();
         }
         IProject projectRef = project.get();
         try {
@@ -224,8 +226,9 @@ public class EclipseBuildTool extends AbstractEclipseTool {
 
         var project = EclipseUtil.findOpenProject(projectName);
         if (project.isEmpty()) {
-            onProblem("Cannot build unknown project " + projectName);
-            return projectName + " not found. " + eclipseListAllOpenProjects();
+            var hint = EclipseUtil.projectHint(projectName);
+            onProblem("Cannot refresh unknown project " + projectName + ": " + hint);
+            return hint + " " + eclipseListAllOpenProjects();
         }
         IProject projectRef = project.get();
         try {

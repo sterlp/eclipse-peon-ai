@@ -7,6 +7,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.sterl.llmpeon.agent.AiAgentStatusModel.Entry;
 import org.sterl.llmpeon.agent.AiAgentStatusModel.Row;
+import org.sterl.llmpeon.agent.AiAgentStatusModel.State;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.shared.StringUtil;
 
@@ -18,7 +19,7 @@ import org.sterl.llmpeon.shared.StringUtil;
 class AiAgentStatusModelTest {
 
     private static Row row(String uiName, long tokens, boolean working) {
-        return new Row(uiName, tokens, working, false); // exact counter, not an estimate
+        return new Row(uiName, tokens, working, false, false); // not compacting, exact counter
     }
 
     private static String label(String uiName, long tokens) {
@@ -70,6 +71,52 @@ class AiAgentStatusModelTest {
                 .as("leaf rule: Da Boss must NOT glow during delegation").isFalse();
         assertThat(entries.get(1).working()).as("idle slave stays calm").isFalse();
         assertThat(entries.get(2).working()).as("the busy Da Mek glows").isTrue();
+    }
+
+    // UC-CT-6
+    @Test
+    void compactShowsDedicatedStatusInRoster() {
+        // GIVEN — Da Mek compacts (he holds `working` while he does, R-CT-1), Da Boss works on his own
+        var entries = AiAgentStatusModel.build(List.of(
+                new Row("Da Boss", 12_000, true, false, false),
+                new Row("Da Thinka", 0, false, false, false),
+                new Row("Da Mek", 45_000, true, true, false)));
+
+        // THEN — the compacting row gets its own state instead of the generic working dot
+        assertThat(entries.get(2).state()).as("Da Mek carries the Compact-Status").isEqualTo(State.COMPACTING);
+        assertThat(entries.get(2).working()).as("🟡 replaces 🟢, never both").isFalse();
+
+        // AND — leaf rule unchanged: the compacting slave keeps Da Boss dark, the idle slave stays calm
+        assertThat(entries.get(0).state())
+                .as("leaf rule: a compacting slave keeps Da Boss dark").isEqualTo(State.IDLE);
+        assertThat(entries.get(1).state()).isEqualTo(State.IDLE);
+    }
+
+    // UC-CT-6
+    @Test
+    void compactingBeatsWorkingOnTheBossRow() {
+        // GIVEN — Da Boss compacts himself (action bar) while idle below
+        var entries = AiAgentStatusModel.build(List.of(
+                new Row("Da Boss", 12_000, true, true, false),
+                new Row("Da Mek", 0, false, false, false)));
+
+        // THEN — COMPACTING wins over WORKING on every row, not just slave rows
+        assertThat(entries.get(0).state()).isEqualTo(State.COMPACTING);
+        assertThat(entries.get(0).working()).isFalse();
+    }
+
+    // UC-CT-6
+    @Test
+    void compactingWithoutWorkingStillKeepsTheBossDark() {
+        // GIVEN — the leaf rule reads 🟡 as busy, not as working: a slave row flagged compacting
+        // without the working flag (the prod invariant keeps both set — R-CT-1 — this row pins the
+        // rule itself) must still hold Da Boss back
+        var entries = AiAgentStatusModel.build(List.of(
+                new Row("Da Boss", 12_000, true, false, false),
+                new Row("Da Mek", 45_000, false, true, false)));
+
+        assertThat(entries.get(1).state()).isEqualTo(State.COMPACTING);
+        assertThat(entries.get(0).state()).as("🟡 counts as busy for the leaf rule").isEqualTo(State.IDLE);
     }
 
     @Test

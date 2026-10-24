@@ -7,6 +7,7 @@ idPrefix: WEB
 > **Status:** ✅ done (2026-09-20, Paul specified 2026-09-19). WebFetchTool paginiert (Cache + 500-Zeilen-Fenster),
 > `webGet` für Datei-Downloads ohne Limit. **2026-10-18 (✅ done, Paul):** Cache-Größe 5 → **16**
 > (R-WEB-9) — die Navigation in der Seite braucht mehr stabile Snapshots. Paul-Smoke offen.
+> **2026-10-23 (✅ done, Nachtzyklus):** R-WEB-10…12 — `webSearch` (DuckDuckGo, alle Agenten).
 
 ## Ziel
 
@@ -21,11 +22,12 @@ der Kontext sieht nur Metadaten.
 `webFetchAsMarkdown(url, startLine?, endLine?)`: bei Cache-Miss fetch → Markdown im
 **Mini-Cache (LRU; Größe: R-WEB-9)**; Return = Zeilenfenster, **max 500 Zeilen** je Call (Start default 1;
 `endLine 0/null` = **Fenster-Default `start+499`, NICHT Dateiende** — bewusste Abweichung von den Read-Tools,
-Doku-Korrektur aus dem Review 2026-09-20), Disclosure **„lines X–Y of N — read on with startLine"**.
+Doku-Korrektur aus dem Review 2026-09-20), Disclosure **„lines X–Y of N (<Pfad-Label>) — read on
+with startLine"** (Pfad-Label: R-WEB-13).
 
 #### UC-WEB-1 — webFetchFirstCallReturnsFirstWindow ✅
 - GIVEN URL erstmals gefetcht, Markdown mit 3000 Zeilen WHEN `webFetchAsMarkdown(url)` ohne Range
-  THEN Zeilen 1–500, Disclosure „lines 1–500 of 3000 — read on with startLine=501".
+  THEN Zeilen 1–500, Disclosure „lines 1–500 of 3000 (converted from HTML) — read on with startLine=501".
 
 ### R-WEB-2 — Cache-Hit ohne Refetch ✅
 
@@ -43,7 +45,8 @@ nächsten Call Refetch.
 
 ### R-WEB-3 — Fehlerpfad HTTP ≥ 400 ✅
 
-Fehlerpfad HTTP ≥ 400 → Status + **Snippet** (Anfang des Mark downs), nie der volle Body.
+Fehlerpfad HTTP ≥ 400 → Status + **Snippet** (Anfang des Seiteninhalts — konvertiert oder raw, je
+nach Pfad-Label R-WEB-13), nie der volle Body.
 
 #### UC-WEB-4 — webFetchHttpErrorReturnsStatusAndSnippet ✅
 - GIVEN HTTP 500 WHEN `webFetchAsMarkdown(url)` THEN Status + Snippet (kein voller Body im Kontext).
@@ -102,3 +105,83 @@ am Tool — **keine** User-Config (unverändert zu R-BC-4, Paul 2026-09-17).
   Refetch (URL 1 war die älteste von 17) — aber nach nur 16 URLs ist der erneute Aufruf von URL 1
   ein **Cache-Hit** (kein zweiter HTTP-Call).
 → `webFetchCacheHolds16Pages` (ersetzt den Cap-5-Nachweis in `webFetchCacheUsesBoundedLru`)
+
+### R-WEB-10 — `webSearch`: Web-Suche als Tool (DuckDuckGo) ✅ done (2026-10-23, Nachtzyklus)
+
+`webSearch(query, maxResults?)`: neue Tool-Klasse `WebSearchTool` (core) — sucht via
+**DuckDuckGo** (HTTP, kostenlos, kein API-Key) mit einem dünnen eigenen Client, der das
+langchain4j `WebSearchEngine`-Interface implementiert (kein Community-Modul — ADR-0074).
+Return = **nummerierte
+Trefferliste in den Kontext** (Titel, URL, Snippet), max **8 Treffer** je Call (`maxResults`
+überschreibbar, hartes Maximum 10); bei mehr verfügbaren Treffern ehrliche Disclosure
+(„showing N of M"). **Seiteninhalte gehen nie in den Kontext** — Nachlesen läuft über das
+bestehende `webFetchAsMarkdown` (R-WEB-1…3, Snapshots/Paginierung). Kein eigener Cache (die Suche
+ist nicht paginiert, jede Call frisch). Snippets werden auf **200 Zeichen** gekürzt (`…`);
+  Treffer ohne Titel oder ohne absolute http(s)-URL werden übersprungen (die Suche wirft dafür
+  keinen Fehler).
+
+- GIVEN eine Query mit 20 Treffern WHEN `webSearch(query)` THEN 8 Treffer (Titel + URL + Snippet)
+  mit Disclosure „showing 8 of 20". *(UC-WEB-10)*
+- GIVEN eine Query mit 3 Treffern WHEN `webSearch(query)` THEN genau 3 Treffer, keine erfundenen
+  Auffüllung. *(UC-WEB-10)*
+
+#### UC-WEB-10 — webSearchReturnsCappedResultList ✅
+- GIVEN eine Query WHEN `webSearch` läuft THEN nummerierte Trefferliste (Titel/URL/Snippet),
+  max 8, ehrliche Disclosure bei Kappung, nie mehr als das Maximum.
+
+### R-WEB-11 — `webSearch` für alle Agenten ✅ done (2026-10-23, Nachtzyklus)
+
+`webSearch` ist **nicht** `isEditTool` → er wird allen Agenten gegeben (Paul: „allen geben"),
+inklusive Search-Sub-Agenten — dieselbe Verteilung wie `webFetchAsMarkdown` (wörtlich: der
+Peon-PO hat `webFetchAsMarkdown` nicht und bekommt `webSearch` ebenfalls nicht). Kein Toggle: die
+Risikoklasse ist Lesen im Web (wie webFetch), kein Schreiben.
+
+#### UC-WEB-11 — webSearchAvailableToAllAgents ✅
+- GIVEN SearchAgent-Tool-Filter WHEN die Tool-Matrix gebaut wird THEN `webSearch` verfügbar
+  (anders als `webGet`, UC-WEB-8).
+
+### R-WEB-12 — `webSearch`: ehrliche Fehler und Leerergebnisse ✅ done (2026-10-23, Nachtzyklus)
+
+Ehrlich in beiden Richtungen: **0 Treffer ist eine Meldung** („0 results for …"), kein stiller
+Erfolg mit leerem Body; Rate-Limit/Timeout/Blockierung des DDG-Endpunkts → Fehlermeldung mit
+Ursache, keine Teilergebnisse, keine erfundenen Treffer.
+
+#### UC-WEB-12 — webSearchHonestEmptyAndErrors ✅
+- GIVEN DDG liefert 0 Treffer WHEN `webSearch(query)` THEN ehrliche „0 results"-Meldung.
+- GIVEN DDG antwortet mit Rate-Limit WHEN `webSearch(query)` THEN Fehlermeldung mit Ursache.
+
+### R-WEB-13 — `webFetchAsMarkdown`: Nur HTML wird konvertiert ✅ done (2026-10-24, Bug-Triage T-2, Commits 8964fcc8/520ab5fd/f90406f5)
+
+Der HTML→Markdown-Konverter läuft **nur** bei Media-Type `text/html` oder `application/xhtml+xml`
+(und XML-Abkömmlingen `+xml`); jeder andere Inhalt (text/plain, application/json, …) wird als
+**roher Text** übergeben — kein Newline-Collapse, kein Markdown-Escaping, kein Footer-Traum.
+Der Footer benennt den Pfad („converted from HTML" / „raw text"), damit der Agent weiß, was er
+vor sich hat (R-WEB-2: kein Werkzeug lügt über eine Einschränkung). Die @Tool-Beschreibung erwähnt
+das Verhalten. Der Cache hält Pfad-Label und Inhalt zusammen — ein Cache-Hit meldet denselben
+Pfad wie der erste Abruf.
+
+#### UC-WEB-13 — webFetchRawForNonHtml ✅
+- GIVEN der Server antwortet mit `text/plain` WHEN `webFetchAsMarkdown(url)` THEN der Body wird
+  unverändert (raw) als Text übergeben und der Footer benennt „raw text".
+- GIVEN der Server antwortet mit `text/html` WHEN `webFetchAsMarkdown(url)` THEN der Body wird
+  zu Markdown konvertiert und der Footer benennt „converted from HTML".
+- GIVEN ein `text/plain`-Ergebnis liegt im Cache WHEN der gleiche URL erneut abgerufen wird THEN
+  kommt der gecachte Raw-Text mit „raw text"-Label (kein nachträglicher Konverter-Lauf).
+
+### R-WEB-14 — `webSearch` Rate-Limit: ehrliche Handlungsoption, kein Auto-Retry ✅ done (2026-10-24, Bug-Triage T-3, Commits 81b4a2dc/5edfffbf/062d43ae)
+
+Bei Rate-Limit/Bot-Check (HTTP 202/429) bleibt die Meldung ein Fehler (R-WEB-12) und nennt eine
+**Handlungsoption**: nicht sofort wiederholen (die Sperre dauert Minuten — E2E-Run 2026-10-24,
+3 Folgeversuche über Minuten alle rejected), Suchen im Turn abstehen oder eine bekannte URL direkt
+mit `webFetchAsMarkdown` lesen. **Kein Auto-Retry im Engine/Tool:** ein sofortiger oder
+Sekunden-Backoff-Retry hat die beobachtete Minuten-Sperre nie überstanden, verlängert den Turn und
+verschärft den Bot-Check. Die `@Tool`-Beschreibung nennt das Rate-Limit, damit der Agent Suchen
+von vornherein staffelt — mehrere Suchen parallel im selben Turn provozieren den Bot-Check.
+
+#### UC-WEB-14 — webSearchRateLimitGuidance ✅
+- GIVEN DDG antwortet mit HTTP 202 WHEN `webSearch(query)` THEN Fehlermeldung mit Ursache UND dem
+  Hinweis, nicht sofort zu wiederholen bzw. eine bekannte URL via `webFetchAsMarkdown` zu lesen —
+  ohne dass ein Retry-Call an den Endpunkt geht.
+- GIVEN die `@Tool`-Beschreibung WHEN ein Agent das Tool-Schema liest THEN nennt sie das
+  Rate-Limit-Risiko und rät zum Staffeln der Suchen.
+

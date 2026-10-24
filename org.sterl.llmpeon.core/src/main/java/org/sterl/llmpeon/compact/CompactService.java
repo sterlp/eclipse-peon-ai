@@ -10,21 +10,21 @@ import org.sterl.llmpeon.prompt.PromptLoader;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.shared.StringUtil;
-import org.sterl.llmpeon.tool.model.SimpleMessage;
-import org.sterl.llmpeon.tool.model.ToSimpleMessage;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.output.TokenUsage;
 
 /**
  * The compact component (ADR-0056): stages the input (R-CIB-4), calls the COMPACT slot exactly
  * like the legacy path (COMPRESS_SYSTEM prompt, slot routing, no tools), and logs the entry line
- * (R-CIB-3) plus the result line (R-CIB-6). Monitor-free (R-CC-14): the emission belongs to the
- * callers, the compressor call's chat events go to the log only. Stateless per call — safe from
- * any thread.
+ * (R-CIB-3) plus the result line (R-CIB-6). The caller monitor is the one monitor of the call
+ * (R-CT-8): it gets the request start (R-CT-5) and the compressor's live streaming tokens, so the
+ * caller's UI shows a real working state. What it never gets is the response text as a chat
+ * response — the summary reaches the caller only through {@link CompactResult#summary()}
+ * (R-CC-14). Nothing of the call is logged as text: no request, no response, no usage. The
+ * emission of the start/end lines belongs to the callers. Stateless per call — safe from any thread.
  */
 public class CompactService {
 
@@ -33,27 +33,6 @@ public class CompactService {
     private final ConfiguredChatModel chatModel;
     private final ContextTrimComponent stager;
     private final CompactLog log;
-
-    /**
-     * R-CC-14: the compressor call's chat events (request, response, usage) go to the log only —
-     * the UI never gets a streaming preview of the internal call.
-     */
-    private final AiMonitor logMonitor = new AiMonitor() {
-        @Override
-        public void onChatMessage(int iteration, ChatRequest.Builder request) {
-            log.debug("Compressor request: {} messages", request.build().messages().size());
-        }
-
-        @Override
-        public void onChatResponse(SimpleMessage message) {
-            log.debug("Compressor response: {}", message.message());
-        }
-
-        @Override
-        public void onTokenUsage(TokenUsage usage) {
-            log.debug("Compressor usage: {}", usage);
-        }
-    };
 
     public CompactService(ConfiguredChatModel chatModel) {
         this(chatModel, new ContextTrimComponent(), CompactLog.slf4j());
@@ -70,22 +49,37 @@ public class CompactService {
     }
 
     /**
+     * Log-only variant — no caller feedback. Kept as an overload on purpose: the compact's chat
+     * visibility (R-CT-5) is a caller concern, and the service tests assert the request payload and
+     * the log contract rather than a monitor, so they stay on this entry point instead of threading
+     * a monitor through all 20 call sites.
+     */
+    public CompactResult compact(String agentName, List<ChatMessage> messages, String tokenDiagnosis,
+                                 @Nullable Integer requestTokens) {
+        return compact(agentName, messages, tokenDiagnosis, requestTokens, null);
+    }
+
+    /**
      * One compact attempt: entry debug log (exactly once, initial values, before any truncation),
      * staged input, COMPACT slot call, result line (log level matches the stage). With a
      * non-positive budget the entry log is the only log (R-CIB-1). Returns the
-     * {@link CompactResult} carrying the summary (R-CC-14) — the caller emits the start/result
-     * lines and re-seeds the memory.
+     * {@link CompactResult} carrying the summary (R-CC-14) — the caller emits the start/end lines
+     * and re-seeds the memory.
      *
      * The staging budget is the config's {@code autoCompactAfter} (R-CIB-1) — not a parameter.
      *
      * @param requestTokens R-CC-12: the last provider-reported input tokens, captured by the
      *                      caller BEFORE its memory clear — {@code null} when never reported
      *                      (then the result line reads {@code request n/a (no provider value)})
+     * @param callerMonitor R-CT-5 + R-CT-8: receives the compressor's request start and its live
+     *                      streaming tokens (working state and token counter in the caller's UI),
+     *                      never a chat response — {@code null} = headless, nothing to the UI
      * @throws IllegalStateException when the LLM call returns null — Log OR throw: the throw stays
      *             in the call path, the result line is no exception substitute
      */
     public CompactResult compact(String agentName, List<ChatMessage> messages, String tokenDiagnosis,
-                                 @Nullable Integer requestTokens) {
+                                 @Nullable Integer requestTokens, @Nullable AiMonitor callerMonitor) {
+        var caller = AiMonitor.nullSafety(callerMonitor);
         var budgetTokens = chatModel.getConfig().getAutoCompactAfter();
         var requestIsEstimate = requestTokens == null;
         var compactCfg = chatModel.getConfig().compactAgentConfig();
@@ -111,15 +105,17 @@ public class CompactService {
         var request = ChatRequest.builder()
                 .messages(COMPRESS_SYSTEM, UserMessage.from(outcome.input()))
                 .parameters(compactCfg.newRequestParameters(null));
-        logMonitor.onChatMessage(1, request);
+        // R-CT-5 + R-CT-8: one monitor for the whole call — the request start gives the caller its
+        // working state, and the compressor's tokens stream live into it. The response text never
+        // becomes a chat response: it reaches the chat only through those chunks (R-CC-14).
+        caller.onChatMessage(1, request);
 
         long startMillis = System.currentTimeMillis();
-        var response = chatModel.callBlocking(request.build(), compactCfg, logMonitor);
+        var response = chatModel.callBlocking(request.build(), compactCfg, caller);
         long millis = System.currentTimeMillis() - startMillis;
         if (response == null) {
             throw new IllegalStateException("AI call returned null — streaming failed without a response");
         }
-        ToSimpleMessage.INSTANCE.convert(response.aiMessage()).forEach(logMonitor::onChatResponse);
 
         if (StringUtil.hasNoValue(response.aiMessage().text())) {
             var result = CompactResult.failedEmpty(

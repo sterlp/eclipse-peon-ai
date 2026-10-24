@@ -355,7 +355,9 @@ AiMessage in der Memory (eine Quelle, kein Duplikat).
 
 * Result = `Preserved:\n<preserve>` wenn preserve gesetzt; sonst der Marker `Session compacted.`
   (Tool-Results sind nie leer — das Tool sagt, was passiert ist).
-* Die `Da Scribe done (Xs)`-Zeile bleibt UI-only (`onTool`) und wandert nicht ins Result.
+* Die Compact-Abschlussmeldung bleibt UI-only (`onTool`) und wandert nicht ins Result — seit
+  [R-CT-8](compact-lock.md) (2026-10-24) ist das die uniforme End-Zeile `🗜 <Agent> compacted: …`;
+  die alte „Da Scribe done (Xs)"-Zeile ist entfallen.
 * Das Re-Add der Pre-Compact-Assistant-Message (ToolService `addResult`) bleibt **bewusst** — das
   Tool-Result braucht seine Assistant-Message mit toolCalls (Message-Contract, issue-87-Repair).
 * `AbstractAgent.compact()` / `AiCompressorAgent` bleiben unverändert.

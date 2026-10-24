@@ -5,10 +5,14 @@ idPrefix: CT
 # Compact-Lock — User-getriggerter Compact verhält sich wie ein Turn
 
 > **Status:** ✅ gebaut (2026-09-22, gemerged auf main) — Scope wie entschieden: **nur der Lock +
-> Follow-up-Trigger** (Paul: „Bauen tun wir aber nur den fix also den ‚lock' für compact"), Anzeige
-> bleibt auf `working`; [ADR-0052](../../docs/adr/0052-compact-uses-working-flag.md).
-> **Verifikation 2026-10-18:** R-CT-1…4 und UC-CT-1/2/4 sind automatisiert (Marker in
-> `AbstractAgentTest`); UC-CT-3/5/6 sind **manueller Smoke — offen (Paul)**.
+> Follow-up-Trigger** (Paul: „Bauen tun wir aber nur den fix also den ‚lock' für compact");
+> [ADR-0052](../../docs/adr/0052-compact-uses-working-flag.md). Die damals mitentschiedene Anzeige
+> („bleibt auf `working`") ist 2026-10-23 revidiert — siehe R-CT-4 und den ADR-0052-Nachtrag.
+> **Verifikation 2026-10-18:** R-CT-1…3 und UC-CT-1/2/4 sind automatisiert (Marker in
+> `AbstractAgentTest`); UC-CT-3/5 sind **manueller Smoke — offen (Paul)**.
+> **2026-10-23 (✅ done, Nachtzyklus):** R-CT-4 revidiert (eigener Compact-Status 🟡 statt „working reicht") und
+> R-CT-5…7 gebaut — Compact-UI-Sichtbarkeit (unten). UC-CT-6 ist mit dem R-CT-4-Bau
+> automatisiert (Marker in `AiAgentStatusModelTest`, `AbstractAgentTest`, `CompactRosterStatusTest`).
 > Verwandt: [chat-job-lifecycle.md](../../org.sterl.llmpeon/docs/chat-job-lifecycle.md) (Backlog-Race, hier behoben),
 > [queued-user-messages.md](queued-user-messages.md), [agenten-status-im-header.md](../../org.sterl.llmpeon/docs/agenten-status-im-header.md).
 
@@ -95,18 +99,156 @@ Drain-on-Abort-Semantik greift hier nicht.
 - GIVEN gequekte Nachricht und User-Compact schlägt fehl WHEN der Job endet THEN die gequekte
   Nachricht wird trotzdem verarbeitet — kein Verlust, kein „N queued messages preserved"-Pfad.
 
-### R-CT-4 — Anzeige: `working` bleibt der Aktivitätsindikator ✅
+### R-CT-4 — Eigener Compact-Status im Roster ✅ done (2026-10-23, Nachtzyklus — revidiert die 2026-09-22-Entscheidung)
 
-Der Roster zeigt den kompaktierenden Agenten über denselben `working`-Status wie einen arbeitenden
-Agenten (🟢, Blatt-Regel unverändert — ein kompaktierender Sklave lässt Da Boss nicht leuchten).
-**Kein** separates „compacting"-UI-State, kein neuer Parameter.
+Während ein Agent kompaktiert, zeigt seine Roster-Zeile einen **eigenen Compact-Status** (🟡-Präfix
+in `AiAgentStatusWidget.text()`, zweiter Anzeige-Zustand `compacting`) — nicht nur das generische
+🟢 `working`. Der Compact ist damit im Roster direkt erkennbar und vom regulären Turn unterscheidbar.
+Die Blatt-Regel bleibt unverändert: ein kompaktierender Sklave lässt Da Boss nicht leuchten
+(🟡 zählt für die Blatt-Regel als **busy** — hält Da Boss dunkel —, aber nicht als `working`:
+kein 🟢 durch Compact; die kompaktierende Zeile selbst zeigt 🟡 statt 🟢).
 
-> **WEIL** (Paul 2026-09-22): „Grün ist vollkommen okay — er arbeitet ja." Ein gelber Ball (🟡) als
-> separater Compact-Indikator wäre ein Mini-Improvement, ist aber **bewusst nicht gebaut** —
-> aufgenommen in [open-points.md](../../docs/open-points.md).
+> **WEIL** (Paul 2026-10-23): „Wir wollen den Status vom Compact setzen." Die alte Entscheidung
+> (2026-09-22: „Grün ist vollkommen okay — er arbeitet ja", **kein** separater Compact-State) hat
+> den Compact unsichtbar gemacht — genau deshalb wurde sie falsch abgebogen (R-CC-14-Konsequenz:
+> minutenlang kein UI-Feedback). Der Compact ist ein eigener Vorgang und bekommt einen eigenen
+> Status. Löst die 🟡-Offene-Punkte-Zeile (2026-09-22) ein.
 
-#### UC-CT-6 — compactShowsAgentActiveInRoster ❌ (manueller Smoke offen, Paul)
-- GIVEN User-Compact auf einem Team-Mitglied WHEN der Roster refresht THEN die Zeile dieses
-  Agenten zeigt working (🟢) — kein separater Zustand, kein neuer UI-State. *(Manuelle Verifikation —
-  Roster-Pull liest das live Flag; ein SWT-Test-Harness existiert nicht.)*
+#### UC-CT-6 — compactShowsDedicatedStatusInRoster ✅ (SWT-Visual: manueller Smoke offen, Paul)
+- GIVEN ein Team-Mitglied kompaktiert WHEN der Roster refresht THEN zeigt die Zeile dieses
+  Agenten den Compact-Status (🟡) statt nur working (🟢). *(Automatisiert: der Roster-Pull liest das
+  live Flag — `AiAgentStatusModelTest.compactShowsDedicatedStatusInRoster` (Blatt-Regel),
+  `AbstractAgentTest` (`isCompactingDuringCompressorCall`, `compactingClearedOnFailedCompact`,
+  `skipDoesNotFlagCompacting`), SWT-Darstellung `CompactRosterStatusTest` auf dem bestehenden
+  `AbstractSwtUiTest`-Harness.)*
+
+---
+
+## Compact-UI-Sichtbarkeit (2026-10-23, Paul)
+
+> Anlass: R-CC-14 machte `CompactService` monitor-frei — Konsequenz war, dass während des
+> (u. U. minutenlangen) Compressor-Calls **kein** UI-Feedback kommt und die Start-Zeile den
+> Agenten nicht nennt („WTF, ich sehe beim Compact nichts mehr"). Der Service bleibt monitor-frei;
+> der Feedback-Kanal läuft über den Caller-Monitor. Verwandt: [compact.md R-CC-14](compact.md)
+> (Korrektur 2026-10-23), [chat-job-lifecycle.md](../../org.sterl.llmpeon/docs/chat-job-lifecycle.md).
+
+### R-CT-5 — Der Compressor ist im UI als arbeitend sichtbar ✅ done (2026-10-23, Nachtzyklus; Streaming-Teil 2026-10-24 revidiert → [R-CT-8](#r-ct-8--compact-meldet-start-und-ende-wie-ein-langlaufendes-tool-streaming-sichtbar-nie-im-log--specified-2026-10-24-paul-smoke))
+
+Der Caller-Monitor erhält das Request-Start-Event (`onChatMessage`) des Compressor-Calls — die
+Chat-View zeigt während des Compact denselben Working-Zustand wie vor jedem anderen Modell-Call
+(„waiting for AI…"); der Roster zeigt den eigenen Compact-Status (R-CT-4).
+
+> **Revision 2026-10-24 (Paul-Smoke, compact-agents-issue.md):** die 2026-10-23-Klausel
+> „Streaming-Chunks und Response-Text bleiben log-only" ist gestrichen — der minutenlange stille
+> Balken liest sich als Hänger („das hatten wir schon viel besser"). Tokens streamen sichtbar ins
+> UI und gehen nie ins Log: R-CT-8. Das alte UC-CT-8 (`compressorStreamingStaysLogOnly`) entfällt
+> mit der Klausel; sein Test wird im R-CT-8-Inkrement ersetzt.
+
+- GIVEN ein Compact läuft WHEN der Compressor-Call startet THEN zeigt die Chat-View den
+  Working-Zustand, bis der Compact endet. *(UC-CT-7)*
+
+#### UC-CT-7 — compressorShowsWorkingInUi ✅
+- GIVEN der aktive Agent kompaktiert WHEN der Compressor-Call läuft THEN zeigt die Chat-View den
+  Working-Zustand (`onChatMessage` am Caller-Monitor).
+
+### R-CT-8 — Compact meldet Start und Ende wie ein langlaufendes Tool; Streaming sichtbar, nie im Log ✅ done (2026-10-24, Paul-Smoke)
+
+Der Compact verhält sich im UI wie jeder langlaufende Tool-Call (ShellTool-Muster: Start-`onTool`,
+End-`onTool` mit Dauer und chars) — **ohne** Wissen davon, für welchen Agenten er läuft (kein
+Root-/Sklaven-Sonderweg, kein Responsibility-Bleed):
+
+- **Start-Zeile** (existiert, R-CT-6): `🗜 Compressing <Agent>: …` via `onTool`.
+- **End-Zeile** via `onTool` — die EINE Abschlussmeldung mit Agent-Namen, Ergebnisgröße, Dauer,
+  Uhrzeit und chars (CallStats-`suffix()`-Muster, ADR-0053), z. B. `🗜 Da Mek compacted: 6 → 2
+  messages, ~969 → ~210 tokens (4s, 09:40) (1200 chars)`. Die doppelte Meldung `<Agent> compact.`
+  (AgentsTool `reportAction` nach `subAgentCompact`) entfällt; die Pre-Turn-Abschlusszeile nutzt
+  dieselbe End-Zeile.
+- **Streaming:** Compressor-Tokens erscheinen live in der Chat-View des Callers — wie beim
+  normalen Agent-Streaming; Chunks und Response-Text werden **nicht** ins Log geschrieben
+  (das Response-/Chunk-Logging im Compact-Pfad entfällt; der R-CIB-3-Entry-Debuglog bleibt,
+  Level DEBUG).
+
+#### UC-CT-13 — endLineNamesAgentNumbersTimeAndChars ✅
+- GIVEN ein Compact eines anderen Agenten läuft WHEN er erfolgreich endet THEN erscheint im
+  Caller-Chat genau EINE End-Zeile mit Agent-Name, Dauer/Uhrzeit (CallStats-`suffix()`) und chars —
+  keine zweite `<Agent> compact.`-Meldung. *(Tests: `CompactFeedbackTest.endLineNamesAgentNumbersTimeAndChars`,
+  `PoDelegateToolTest.compactDevEmitsExactlyOneEndLine`)*
+
+#### UC-CT-14 — compressorEventsStreamToCallerAndStayOutOfTheLog ✅
+- GIVEN ein Compact läuft WHEN der Compressor streamt THEN erscheinen die Tokens live in der
+  Chat-View des Callers und nichts davon im Log. *(Tests: `CompactServiceTest.compressorEventsStreamToCallerAndStayOutOfTheLog`,
+  `AbstractAgentCompactResultTest.compressorStreamingReachesCallerMonitor`)*
+
+#### UC-CT-15 — failedCompactEmitsNoEndLine ✅
+- GIVEN ein Compact scheitert oder bricht ab WHEN der Lauf endet THEN erscheint die
+  Problem-Meldung wie heute und keine Erfolgs-End-Zeile. *(Test: `AbstractAgentCompactResultTest.failedCompactEmitsNoEndLine`)*
+
+### R-CT-6 — Compact-Ereignisse nennen den Agenten ✅ done (2026-10-23, Nachtzyklus)
+
+Start- und Ergebnis-Emission JEDES Compact-Triggers (Button aktiv, Button Sklave, `compactSession`,
+Pre-Turn, In-Loop-Direct) enthält den Agent-Namen. Heute nennen Pre-Turn, Direct-Compact und
+`compactSession` ihn — die Start-Zeile aus `AbstractAgent.compact` nicht.
+
+- GIVEN ein Compact über einen beliebigen Trigger startet WHEN die Start-Zeile emittiert wird THEN
+  nennt sie den Agent-Namen („🗜 Compressing \<Agent\> …"). *(UC-CT-9)*
+
+#### UC-CT-9 — compactStartLineNamesAgent ✅
+- GIVEN ein Compact startet über einen beliebigen Trigger WHEN die Start-Zeile emittiert wird THEN
+  enthält sie den Agent-Namen.
+
+### R-CT-7 — Chat-View-Reset bei Compact des aktiven Agenten ✅ done (2026-10-23, Nachtzyklus)
+
+Kompaktiert der im UI **aktive** Agent — egal welcher Trigger (Button, `compactSession` im Loop,
+Pre-Turn, In-Loop-Direct) — baut die Chat-View nach erfolgreichem Compact aus dem Memory neu auf:
+der alte Verlauf verlässt das Chat-HTML (es läuft nicht voll), die re-geseedete Summary bleibt
+sichtbar. Sklaven-Compact: **kein** Reset (fremdes Memory — der Roster zeigt den Kontext-Drop).
+
+Läuft der Compact **innerhalb** eines Turns (Pre-Turn, In-Loop-Direct, `compactSession`, Self-Compact
+aus einem Tool), schiebt die View den Rebuild auf das nächste Turn-Start-Event (`onCallStart`)
+desselben Agenten: R-CC-20.2 legt den Pre-Turn-Compact **vor** den Memory-Add der frischen Nachricht,
+ein sofortiger Rebuild aus dem Memory würde die bereits im Chat stehende, dort aber noch nicht
+gespeicherte User-Frage verschlucken. Bei Pre-Turn ist das derselbe Turn (`onCallStart` liegt direkt
+nach dem Memory-Add), bei den In-Loop-Triggern der nächste — aufgeschoben ist hier nie falsch, die
+frische Frage ist dann in jedem Fall im Memory. Button-Compacts laufen ohne Turn und rebuilden sofort.
+
+- GIVEN der aktive Agent kompaktiert erfolgreich WHEN der Compact endet THEN Rebuild der Chat-View
+  aus dem Memory (Summary sichtbar, alter Verlauf weg). *(UC-CT-10)*
+- GIVEN ein Sklave kompaktiert WHEN der Compact endet THEN kein Rebuild der Chat-View. *(UC-CT-11)*
+- GIVEN der Compact scheitert (FAILED_EMPTY) WHEN der Job endet THEN kein Rebuild (Memory
+  unverändert), der `onProblem`-Hinweis ist sichtbar. *(UC-CT-12)*
+
+#### UC-CT-10 — mainAgentCompactResetsChatView ✅
+- GIVEN der aktive Agent kompaktiert erfolgreich WHEN der Compact endet THEN wird die Chat-View aus
+  dem Memory neu aufgebaut.
+- GIVEN der aktive Agent kompaktiert während eines laufenden Turns (Pre-Turn, die frische Frage ist
+  noch nicht im Memory) WHEN der Compact endet THEN bleibt die Chat-View zuerst unverändert und wird
+  beim Turn-Start-Event desselben Agenten neu aufgebaut — die frisch gestellte Frage verschwindet
+  nicht.
+  *(Automatisiert: die Policy-Entscheidung — `CompactFeedbackTest` (Sofort und Aufschub) und
+  `AbstractAgentCompactResultTest` (`withinTurn` am Event). Der Flush selbst ist manueller Smoke:
+  Pre-Turn-Compact in einer langen Session — die gerade gestellte Frage muss im Chat stehen bleiben.)*
+
+#### UC-CT-11 — slaveCompactDoesNotResetChatView ✅
+- GIVEN ein Sklave kompaktiert WHEN der Compact endet THEN bleibt die Chat-View unverändert.
+
+#### UC-CT-12 — failedCompactKeepsChatView ✅
+- GIVEN der Compact des aktiven Agenten scheitert WHEN der Job endet THEN kein Rebuild und der
+  `onProblem`-Hinweis ist sichtbar.
+
+> Umsetzungshinweis: **ein** Kanal statt Trigger-Sonderfälle — `AiMonitor.onCompactCompleted(agentName,
+> result, withinTurn)` feuert genau einmal pro gelaufenem Compact (COMPACTED **und** FAILED_EMPTY, nie
+> bei SKIPPED_SMALL, nie auf Throw) und liegt nach der Freigabe des Arbeits-Flags, damit ein Refresh in
+> der Reaktion den Agenten als idle sieht. `withinTurn` heißt: das Arbeits-Flag war beim Compact schon
+> belegt, der Compact lief also in einem Turn — genau der Fall, in dem ein sofortiger Rebuild die
+> frische Frage verschluckt. Die Entscheidung ist Core-Policy
+> `CompactFeedback.resetTiming(result, compactedAgentName, activeAgentName, withinTurn)` →
+> `NONE | NOW | DEFERRED`; die View hält einen `DEFERRED`-Reset nur auf dem UI-Thread offen und flusht
+> ihn im `onCallStart`-Runnable desselben Agenten (ein voller `refreshChat()` verwirft einen offenen
+> Pending). Damit das ein sicherer Flush-Punkt ist, liegt `onCallStart` **nach** dem Memory-Add der
+> Turn-Nachricht. Headless getrennt durch `CompactFeedbackTest` (UC-CT-10/11/12 inkl. Deferred) und
+> `AbstractAgentCompactResultTest` (`compactCompletedEventCarriesAgentAndResult`,
+> `inTurnCompactReportsTurnFlag`, `noCompactCompletedOnSkipOrThrow`) sowie
+> `AbstractAgentTest.onCallStartSeesUserMessageInMemory` (sichert den Flush-Punkt gegen Rückbau); der
+> eigentliche Chat-Rebuild inkl. Pending/Flush ist manueller Smoke (unten).
+
 

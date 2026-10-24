@@ -78,6 +78,7 @@ isn't clear from a rule/BDD.
 | [0071](0071-compact-policy-owned-by-delegation.md) | Compact-Policy gehört zur Delegation: 0.7-Faktor lebt in `PoDelegateTool` (vor jeder neuen Sklaven-Aufgabe), der Tool-Loop rechnet nur mit der rohen `autoCompactAfter`; kein Pre-Turn-Gate — Ablösung von Teilen aus 0021/0070 | Accepted |
 | [0072](0072-github-eclipse-repo-cleanup.md) | GitHub/Eclipse-Repo-Cleanup | Accepted |
 | [0073](0073-slf4j-api-stays-bundled.md) | slf4j-api bleibt gebündelt — Platform-Resolve (Require-Bundle + ServiceLoader-Mediator) negativ bewiesen (NOP-Logger für alles slf4j-Logging), Provider-Fund braucht einen Classloader | Accepted |
+| [0074](0074-websearch-eigener-ddg-client.md) | webSearch: eigener dünner DDG-Client statt Community-Modul — Modul verletzt Ehrlichkeits-Regeln strukturell (erfundene Treffer, geschluckte Exceptions, „showing N of M" unmöglich) | Accepted |
 
 
 

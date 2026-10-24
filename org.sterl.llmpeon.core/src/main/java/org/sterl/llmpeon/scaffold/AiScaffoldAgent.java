@@ -18,6 +18,7 @@ import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 import org.sterl.llmpeon.tool.tools.DiskGrepTool;
 import org.sterl.llmpeon.tool.tools.WebFetchTool;
+import org.sterl.llmpeon.tool.tools.WebSearchTool;
 
 import dev.langchain4j.model.chat.response.ChatResponse;
 
@@ -36,8 +37,8 @@ public class AiScaffoldAgent extends org.sterl.llmpeon.agent.AbstractAgent {
     private final DiskFileReadTool diskFileReadTool;
     private final DiskFileWriteTool diskFileWriteTool;
     private final DiskGrepTool diskGrepTool;
-    /** ADR-0043: additional write roots — the {@code .agents/skills} dirs of the open projects, read at validate time. */
-    private volatile Supplier<List<Path>> projectSkillsRoots = List::of;
+    /** ADR-0043: additional write roots — the user skills root + the {@code .agents/skills} dirs of the open projects, read at validate time. */
+    private volatile Supplier<List<Path>> additionalWriteRoots = List::of;
 
     public AiScaffoldAgent(ConfiguredChatModel configuredModel) {
         this(configuredModel, null);
@@ -71,6 +72,7 @@ public class AiScaffoldAgent extends org.sterl.llmpeon.agent.AbstractAgent {
         toolService.addTool(diskFileWriteTool);
         toolService.addTool(diskGrepTool);
         toolService.addTool(new WebFetchTool());
+        toolService.addTool(new WebSearchTool());
     }
 
     @Override
@@ -87,18 +89,19 @@ public class AiScaffoldAgent extends org.sterl.llmpeon.agent.AbstractAgent {
     }
 
     /**
-     * ADR-0043: supplier for the additional write roots — the {@code .agents/skills} dir of
-     * every open project (read at validate time, R10). Default: empty → writes restricted to
-     * the config dir.
+     * ADR-0043: supplier for the additional write roots (R10) — the user skills root
+     * {@code ~/.agents/skills} (R17, the migration target) plus the {@code .agents/skills} dir of
+     * every open project. Read at validate time, so the set may change between calls.
+     * Default: empty → writes restricted to the config dir.
      */
-    public void setProjectSkillsRootsSupplier(Supplier<List<Path>> supplier) {
-        this.projectSkillsRoots = supplier == null ? List::of : supplier;
+    public void setAdditionalWriteRootsSupplier(Supplier<List<Path>> supplier) {
+        this.additionalWriteRoots = supplier == null ? List::of : supplier;
     }
 
-    /** R10/R12: hard write gate — config dir + the open projects' skill dirs. */
+    /** R10/R12/R17: hard write gate — config dir + the user skills root + the open projects' skill dirs. */
     @Override
     public WriteValidator getWriteValidator() {
-        return new DynamicRootsWriteValidator(configuredModel.getConfig().getConfigDir(), projectSkillsRoots);
+        return new DynamicRootsWriteValidator(configuredModel.getConfig().getConfigDir(), additionalWriteRoots);
     }
 
     @Override

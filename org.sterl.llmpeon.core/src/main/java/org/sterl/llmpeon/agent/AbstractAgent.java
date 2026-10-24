@@ -15,6 +15,7 @@ import org.sterl.llmpeon.agent.model.TaggedResult;
 import org.sterl.llmpeon.ai.AgentConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.compact.CompactConstants;
+import org.sterl.llmpeon.compact.CompactFeedback;
 import org.sterl.llmpeon.compact.CompactService;
 import org.sterl.llmpeon.compact.HandleToolLoopCompactComponent;
 import org.sterl.llmpeon.exception.ExceptionUtil;
@@ -23,6 +24,7 @@ import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.queuedmessages.UserMessageQueue;
 import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.shared.CallStats;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
@@ -51,6 +53,9 @@ public abstract class AbstractAgent implements AiAgent {
 
     private UserMessageQueue messageQueue = new UserMessageQueue();
     private final AtomicBoolean working = new AtomicBoolean(false);
+    /** R-CT-4: own compact indicator for the roster 🟡 — display only, the lock stays {@code working}.
+     *  Volatile: the header reads it from the UI thread while a compact job sets it. */
+    private volatile boolean compacting = false;
 
     private volatile String systemMessage = null;
     /**
@@ -183,6 +188,12 @@ public abstract class AbstractAgent implements AiAgent {
         return working.get();
     }
 
+    /** R-CT-4: true only while a compact actually runs (never for the R16 skip) — the roster 🟡. */
+    @Override
+    public boolean isCompacting() {
+        return compacting;
+    }
+
     /**
      * Queue a message for follow-up while the agent is working.
      * @return true if a new queue entry was created, false if silently merged into existing batch
@@ -302,12 +313,14 @@ public abstract class AbstractAgent implements AiAgent {
     protected ChatResponse doCall(String message, AiMonitor monitor) {
         monitor = AiMonitor.nullSafety(monitor);
         preTurnCompact(monitor); // R-CC-20.2: over 95 % of the raw budget, before the fresh message enters
-        monitor.onCallStart(message);
         // Inject turn-scoped context on every turn (idempotent via contains-check)
         var userMessages = renderTurnContext(memory, turnContextSupplier, monitor);
 
         if (StringUtil.hasValue(message)) userMessages.add(TextContent.from(message));
         if (!userMessages.isEmpty()) addMessage(UserMessage.from(userMessages));
+        // R-CT-7: onCallStart only after the memory add — from here a listener rebuilding the UI from
+        // the memory (a deferred compact reset) cannot lose this turn's message.
+        monitor.onCallStart(message);
 
         var start = Instant.now();
         var staticMessages = buildStaticMessages(monitor);
@@ -332,12 +345,14 @@ public abstract class AbstractAgent implements AiAgent {
     /** Execute a single LLM+tool turn for the given message. */
     protected ChatResponse asyncCall(String message, AiMonitor monitor) {
         preTurnCompact(monitor); // R-CC-20.2: over 95 % of the raw budget, before the fresh message enters
-        monitor.onCallStart(message);
         // Inject turn-scoped context on every turn (idempotent via contains-check)
         var userMessages = renderTurnContext(memory, turnContextSupplier, monitor);
 
         if (StringUtil.hasValue(message)) userMessages.add(TextContent.from(message));
         if (!userMessages.isEmpty()) addMessage(UserMessage.from(userMessages));
+        // R-CT-7: onCallStart only after the memory add — from here a listener rebuilding the UI from
+        // the memory (a deferred compact reset) cannot lose this turn's message.
+        monitor.onCallStart(message);
 
         var staticMessages = buildStaticMessages(monitor);
         var response = toolService.executeLoop(
@@ -378,36 +393,64 @@ public abstract class AbstractAgent implements AiAgent {
             return; // over budget only: the provider call is the honest outcome (same as FAILED_EMPTY)
         }
         if (result.status() != CompactResult.Status.COMPACTED) return; // SKIPPED_SMALL/FAILED_EMPTY: no retry, no hint
-        memory.reevaluateTokens(); // R-CC-2
-        AiMonitor.nullSafety(monitor).onTool("🗜 Pre-turn compact for " + getName()
-                + " (context over budget): " + result.resultLine() + memory.tokenDiagnosis()); // R-CC-10
+        memory.reevaluateTokens(); // R-CC-2 — R-CT-8: `compact(...)` already sent the one end line
     }
 
     @Override
     public CompactResult compact(AiMonitor monitor) {
+        // ADR-0053: the shared duration/wall-time helper, started at the compact's visible start so
+        // the end line measures everything the user waits for — staging, call and re-seed.
+        var callStats = CallStats.start();
+        // nullSafety up front: the FAILED_EMPTY onProblem path must never have a null monitor
+        var mon = AiMonitor.nullSafety(monitor);
         // User-triggered compact acquires the working flag (R-CT-1); an in-loop compact runs
         // inside a turn that already holds it, so the CAS fails and the flag is left untouched.
         boolean acquired = working.compareAndSet(false, true);
+        CompactResult result;
         try {
-            // nullSafety before the guard: the FAILED_EMPTY onProblem path must never have a null monitor
-            monitor = AiMonitor.nullSafety(monitor);
-            // < MIN_COMPACT_MESSAGES: a compact leaves exactly 2 messages (Session-compacted user +
-            // summary) — with < 2 a direct re-compact would fire a real LLM call on those 2 (R16)
-            if (memory.size() < CompactConstants.MIN_COMPACT_MESSAGES) return CompactResult.skippedSmall();
+            result = doCompact(mon);
+        } finally {
+            if (acquired) working.set(false);
+        }
+        // R-CT-7: the one reset channel for every trigger, fired after the release. A skip ran
+        // nothing, and a throw never reaches this line (it propagates out of the try above).
+        // !acquired = a turn already held the flag, so this compact ran inside it (withinTurn).
+        if (result.status() != CompactResult.Status.SKIPPED_SMALL) {
+            mon.onCompactCompleted(getName(), result, !acquired);
+        }
+        // R-CT-8: the one end line, for every trigger and every agent alike. It goes out after the
+        // event on purpose — the event enqueues the chat rebuild of the shown agent (R-CT-7 NOW),
+        // and SWT runs the queued display FIFO, so the line survives that rebuild instead of being
+        // reset away with it.
+        if (result.status() == CompactResult.Status.COMPACTED) {
+            mon.onTool(CompactFeedback.endLine(getName(), result, memory.size(),
+                    memory.getTotalTokenUsed(), callStats));
+        }
+        return result;
+    }
 
+    /** The compact run itself — {@code monitor} is already null-safe. */
+    private CompactResult doCompact(AiMonitor monitor) {
+        // < MIN_COMPACT_MESSAGES: a compact leaves exactly 2 messages (Session-compacted user +
+        // summary) — with < 2 a direct re-compact would fire a real LLM call on those 2 (R16).
+        // The compacting flag is set only behind this guard: a skip shows no 🟡 (R-CT-4).
+        if (memory.size() < CompactConstants.MIN_COMPACT_MESSAGES) return CompactResult.skippedSmall();
+
+        compacting = true;
+        try {
             // R-CIB-1: the staging budget is the raw config value
             // R-CC-12: capture the last provider-reported input tokens BEFORE the clear below —
             // after it the value is gone (async-state-safety)
             var requestTokens = memory.getLastProviderInputTokens();
             var messages = memory.getCopy();
             var compactCfg = configuredModel.getConfig().compactAgentConfig();
-            // R-CC-14: the service is monitor-free — the start line is emitted by the agent
-            // (all five triggers funnel through here), same wording as before
-            monitor.onTool("🗜 Compressing conversation " + messages.size() + " messages "
-                    + ChatMessageUtil.estimateTokens(messages) + " tokens (estimate)"
-                    + (compactCfg.getModel() == null ? "" : " using " + compactCfg.getModel()));
+            // R-CC-14: the service emits no lines itself — the start line is emitted by the agent
+            // (all triggers funnel through here), and this monitor is the one the compressor streams
+            // its tokens into, so the caller sees a real working state (R-CT-5, R-CT-8)
+            monitor.onTool(CompactFeedback.startLine(getName(), messages.size(),
+                    ChatMessageUtil.estimateTokens(messages), compactCfg.getModel())); // R-CT-6
             var result = new CompactService(configuredModel).compact(
-                    getName(), messages, memory.tokenDiagnosis(), requestTokens);
+                    getName(), messages, memory.tokenDiagnosis(), requestTokens, monitor);
 
             if (result.status() == CompactResult.Status.FAILED_EMPTY) {
                 monitor.onProblem("Compact failed: " + result.cause());
@@ -429,7 +472,7 @@ public abstract class AbstractAgent implements AiAgent {
 
             return result;
         } finally {
-            if (acquired) working.set(false);
+            compacting = false;
         }
     }
 

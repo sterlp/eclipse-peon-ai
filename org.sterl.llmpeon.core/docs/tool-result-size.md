@@ -26,8 +26,10 @@ Ergebnisses, das in den LLM-Kontext geht (der Return-String des Tools, nicht UI-
 - GIVEN leerer Result WHEN done THEN `(0 chars)` (ehrlich, kein Weglassen). *(Test:
   `onToolEmptyResultDisclosesZeroChars`)*
 - GIVEN Sub-Agent-Tool mit bestehender Dauer-Angabe (`(3s)`, [sub-agent-timing.md](sub-agent-timing.md))
-  WHEN done THEN beide Angaben nebeneinander: `(3s) (N chars)`. *(Test:
-  `subAgentTimingAndCharsCoexist`)*
+  WHEN done THEN beide Angaben nebeneinander: `(3s) (N chars)`. *(Tests: die verbliebenen
+  onTool-Zeilen-Tests der Sub-Agent-Tools; für den Compact deckt R-CT-8 die Coexistenz über die
+  uniforme End-Zeile ab — der Alt-Test `subAgentTimingAndCharsCoexist` pinnte die entfallene
+  „Da Scribe done"-Zeile und ist mit R-CT-8 entfallen.)*
 
 ### R-RS-2 — chars, kein Token-Estimate ✅ done
 

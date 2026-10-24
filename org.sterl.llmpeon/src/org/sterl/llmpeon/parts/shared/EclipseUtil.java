@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.parts.shared;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -305,6 +306,10 @@ public class EclipseUtil {
     /**
      * Resolves an absolute disk location back to a workspace resource when
      * Eclipse knows it.
+     * <p>
+     * Answers the first existing view, which is right for an OS drop — no requested workspace path has to
+     * be honoured. Resolving a path the agent was given is {@link #resolveInEclipse(String)}: it owes the
+     * deepest view (R-WN-4/D3) and must not reuse this method.
      */
     public static Optional<IResource> resolveResourceFromLocation(String path) {
         if (StringUtil.hasNoValue(path))
@@ -322,20 +327,131 @@ public class EclipseUtil {
         return Optional.empty();
     }
 
+    /**
+     * R-WN-5 (org.sterl.llmpeon/docs/workspace-nesting.md): the first segment of a path is the project
+     * name and it is matched <em>exactly</em> — a substring match silently hands back the wrong project.
+     */
     public static Optional<IProject> findOpenProject(String path) {
-        if (StringUtil.hasNoValue(path))
-            return Optional.empty();
-        var name = Path.of(path).normalize().getName(0).toString();
+        return findProject(projectNameOf(path)).filter(project -> project.isOpen());
+    }
 
-        for (var p : ResourcesPlugin.getWorkspace().getRoot().getProjects()) {
-            if (!p.isOpen())
-                continue;
-            if (p.getName().equalsIgnoreCase(name)
-                    || p.getFullPath().toPortableString().contains(path)) {
-                return Optional.of(p);
-            }
+    /**
+     * R-WN-5: why a path could not be resolved, as a sentence to append to the tool's own "not found"
+     * line. Never throws, and never empty for a real path — a diagnosis must not turn an error into a
+     * crash, and a bare "not found" is a lie when the file does exist.
+     * <p>
+     * Only a workspace-absolute path is read as naming a project in segment 1 — a project-relative path
+     * starts inside a folder of the scope's project, which the resolver cannot know.
+     */
+    public static String unresolvedHint(String path) {
+        if (StringUtil.hasNoValue(path))
+            return "";
+        try {
+            return diagnoseUnresolved(path);
+        } catch (Exception e) {
+            return GENERIC_UNRESOLVED;
         }
-        return Optional.empty();
+    }
+
+    /**
+     * R-WN-5: why a project name cannot be used — empty when the project is open, so callers may append
+     * it unconditionally. A closed project is reported as closed, not as missing.
+     */
+    public static String projectHint(String nameOrPath) {
+        var name = projectNameOf(nameOrPath);
+        if (StringUtil.hasNoValue(name))
+            return "";
+        var project = findProject(name);
+        if (project.isEmpty())
+            return unknownProjectMessage(name);
+        if (project.get().isOpen())
+            return "";
+        return "Project '" + project.get().getName() + "' exists but is closed — open it in the Project Explorer first.";
+    }
+
+    /**
+     * R-WN-4 (org.sterl.llmpeon/docs/workspace-nesting.md): resolving a workspace path into another project's
+     * view of the same file has to be named — R-WN-1 forbids a silent re-translation. Empty for an exact hit
+     * and for project-relative requests, where another root is the normal case.
+     */
+    public static String resolvedViaNote(String requestedPath, IResource resolved) {
+        if (StringUtil.hasNoValue(requestedPath) || !requestedPath.startsWith("/"))
+            return "";
+        try {
+            var requested = IPath.fromPortableString(requestedPath).makeAbsolute();
+            var actual = resolved.getFullPath();
+            if (requested.segmentCount() < 2 || requested.equals(actual))
+                return "";
+            return "resolved via " + actual.toPortableString() + " (the same file seen from another project — "
+                    + "the requested path is not in the workspace tree).";
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private static final String GENERIC_UNRESOLVED =
+            " No resource at that path in the workspace tree — check the path or search for the file name with eclipseSearchFiles.";
+
+    private static String diagnoseUnresolved(String path) {
+        if (!path.startsWith("/"))
+            // project-relative scope: segment 1 is a folder of the scope's project, and naming it as a
+            // project would be a reason the caller cannot check — the same rule resolvedViaNote applies
+            return GENERIC_UNRESOLVED;
+        var name = projectNameOf(path);
+        if (StringUtil.hasNoValue(name))
+            return GENERIC_UNRESOLVED;
+        var project = findProject(name);
+        if (project.isEmpty())
+            return " " + unknownProjectMessage(name);
+
+        var hints = new ArrayList<String>();
+        if (!project.get().isOpen()) {
+            hints.add("The path is inside project '" + name
+                    + "', which exists but is closed — its files are not part of the workspace tree."
+                    + " Ask the user to open the project (or read the file with the disk tools).");
+        } else {
+            // R-WN-4: a readable view of the same Disk file is now resolved instead of being reported here,
+            // so what can be left for an open project is a Disk file the tree does not know yet. For a
+            // closed project refresh is not the fix — its files are only hidden.
+            var disk = diskLocationOf(project.get(), IPath.fromPortableString(path));
+            if (disk.isPresent() && Files.isReadable(disk.get()))
+                hints.add("The path exists on disk ('" + disk.get()
+                        + "') but is not in the workspace tree — run eclipseRefreshProject for '" + name
+                        + "', or read it with the disk tools.");
+        }
+        if (hints.isEmpty())
+            hints.add(GENERIC_UNRESOLVED.strip());
+        return " " + String.join(" ", hints);
+    }
+
+    /** The disk file a workspace path points at, when its project has a known absolute location. */
+    private static Optional<Path> diskLocationOf(IProject project, IPath workspacePath) {
+        var location = projectRootLocation(project);
+        if (location == null)
+            return Optional.empty();
+        var rest = workspacePath.removeFirstSegments(1);
+        var disk = rest.segmentCount() == 0 ? location : location.append(rest);
+        return Optional.of(Path.of(disk.toOSString()));
+    }
+
+    private static String unknownProjectMessage(String name) {
+        return "No project named '" + name + "' exists in this workspace. Open projects: " //
+                + openProjectsNames() + ".";
+    }
+
+    /** Project for an exact project name; empty when no such project exists (closed included). */
+    private static Optional<IProject> findProject(String name) {
+        if (StringUtil.hasNoValue(name))
+            return Optional.empty();
+        var project = ResourcesPlugin.getWorkspace().getRoot().getProject(name);
+        return project.exists() ? Optional.of(project) : Optional.empty();
+    }
+
+    /** First path segment — the only form {@code IWorkspaceRoot.getProject(String)} accepts, null if none. */
+    private static String projectNameOf(String nameOrPath) {
+        if (StringUtil.hasNoValue(nameOrPath))
+            return null;
+        return IPath.fromPortableString(nameOrPath).segment(0);
     }
 
     public static List<IProject> openProjects() {
@@ -495,7 +611,8 @@ public class EclipseUtil {
 
     /**
      * Resolves a path to a workspace resource (file or folder). Tries
-     * workspace-relative first, then project-relative in each open project.
+     * workspace-relative first, then project-relative in each open project, and as a
+     * last resort the Disk location of the project named in segment 1 (R-WN-4).
      */
     public static Optional<IResource> resolveInEclipse(String path) {
         return resolveInEclipse(path, Optional.empty());
@@ -524,7 +641,62 @@ public class EclipseUtil {
             result = p.findMember("src/" + ipath);
             if (result != null && result.exists()) return Optional.of(result);
         }
-        return Optional.empty();
+        return resolveByLocation(ipath);
+    }
+
+    /**
+     * R-WN-4 (org.sterl.llmpeon/docs/workspace-nesting.md): the last resort for a path an {@code eclipse*}
+     * tool delivered — resolve it through its Disk location, so it stays readable even when the project that
+     * delivered it is closed. Segment 1 is always a project name (those tools deliver {@code /project/…}),
+     * segments 2+ are the folder names of an aggregator view.
+     */
+    private static Optional<IResource> resolveByLocation(IPath workspacePath) {
+        if (workspacePath.segmentCount() < 2)
+            return Optional.empty();
+        var project = findProject(workspacePath.segment(0));
+        if (project.isEmpty())
+            return Optional.empty();
+        var projectRoot = projectRootLocation(project.get());
+        if (projectRoot == null)
+            return Optional.empty();
+        return deepestResourceAt(projectRoot.append(workspacePath.removeFirstSegments(1)));
+    }
+
+    /** The absolute Disk folder of a project — {@code getRawLocation()} also answers while it is closed. */
+    private static IPath projectRootLocation(IProject project) {
+        var location = project.getRawLocation();
+        if (location != null && location.isAbsolute())
+            return location;
+        var workspaceRoot = ResourcesPlugin.getWorkspace().getRoot().getLocation();
+        return workspaceRoot == null ? null : workspaceRoot.append(project.getName());
+    }
+
+    /**
+     * The workspace resource at a Disk location. Several projects can show the same file, so the deepest
+     * project path wins — R-WN-1's rule — which keeps the result independent of the order Eclipse returns
+     * the candidates in. Resources in closed projects do not exist and never win.
+     */
+    private static Optional<IResource> deepestResourceAt(IPath diskLocation) {
+        var root = ResourcesPlugin.getWorkspace().getRoot();
+        var uri = diskLocation.toFile().toURI();
+        IResource deepest = null;
+        for (var file : root.findFilesForLocationURI(uri)) {
+            deepest = deeperThan(deepest, file);
+        }
+        for (var container : root.findContainersForLocationURI(uri)) {
+            deepest = deeperThan(deepest, container);
+        }
+        return Optional.ofNullable(deepest);
+    }
+
+    private static IResource deeperThan(IResource current, IResource candidate) {
+        // the firewall between R-WN-4 and R-WN-5: a resource in a closed project does not exist, so the
+        // last resort must never hand out a view the caller cannot read
+        if (!candidate.exists())
+            return current;
+        if (current == null || candidate.getFullPath().segmentCount() > current.getFullPath().segmentCount())
+            return candidate;
+        return current;
     }
 
     /** R5 (org.sterl.llmpeon.core/docs/file-copy-tool.md): whether {@code name} is an existing project name in this workspace (closed included). */

@@ -274,7 +274,14 @@ Modell sieht den Fehler und korrigiert.
 - **Pfad-Modi:** Eclipse-relative Pfade sind **projekt-relativ** oder **workspace-relativ** —
   workspace-relativ heißt `/ProjectName/...` bzw. beginnt mit dem (Modul-)Projekt-Namen
   (z. B. `org.sterl.llmpeon.core/...`).
-- **Miss-Fall:** ehrliches `No eclipse file found for <path>` — bewusst **ohne** Projekt-Disclosure
-  (Paul, 2026-10-16: „wenn der Pfad falsch war, können wir nicht helfen — nicht überengineieren").
+- **Miss-Fall:** ehrliches `No eclipse file found for <path>` **mit Diagnose-Hint** (Grund benennen:
+  Projekt geschlossen / auf Disk nicht im Baum → `eclipseRefreshProject` / unbekanntes Projekt) —
+  [workspace-nesting.md](workspace-nesting.md) R-WN-5 (2026-10-24, T-5/I-4). **Supersedes** die
+  Paul-Entscheidung 2026-10-16 „bewusst ohne Projekt-Disclosure": die False-Negative-Klasse
+  (Agent glaubt „existiert nicht") hat sich als teurer erwiesen als die Extra-Zeile; Pauls
+  Triage T-5 forderte die Diagnose ausdrücklich.
+- Resolution-Reihenfolge heute (R-WN-4, 2026-10-24): **1) selektiertes Projekt** → **2) Workspace-Root**
+  → **3) offene Projekte** (inkl. `src/`-Fallback, ⏳ Entfernung) → **4) Disk-Lokation Last-Resort**
+  (`resolveByLocation`, Disclosure `resolved via <pfad>` bei abweichender Auflösung).
 - Status: Semantik als Paul-WIP im Tree, **noch ungetestet/committed ausstehend** (`volatile
   currentProject` = Thread-Safety-Fix für Background-Jobs).

@@ -12,7 +12,7 @@ den verlinkten Stories.
 | Prompt-Caching | per-Agent JSON extra body (auch `AGENT.md`-Frontmatter) | [caching.md](../org.sterl.llmpeon.core/docs/caching.md) |
 | Think-Support | per-Agent, Provider-Mapping-Files | [per-agent-think.md](../org.sterl.llmpeon.core/docs/per-agent-think.md) |
 | Custom Agents | `~/.peon/agents/<name>/AGENT.md` (Frontmatter + Body) | [custom-agents-design.md](../org.sterl.llmpeon.core/docs/custom-agents-design.md) |
-| Skills & Commands | `~/.peon/skills/**`, `~/.peon/commands/**` (+ `<project>/.agents/skills`, Override, siehe Story) | [scaffold-agent.md](../org.sterl.llmpeon.core/docs/scaffold-agent.md) · [project-skills.md](../org.sterl.llmpeon.core/docs/project-skills.md) |
+| Skills & Commands | Skills: `~/.agents/skills/**` (Default + Empfehlung), `~/.peon/skills/**` (deprecated, schreibbarer Support), `<project>/.agents/skills` (Override) · Commands: `~/.peon/commands/**` — Details siehe Story | [scaffold-agent.md](../org.sterl.llmpeon.core/docs/scaffold-agent.md) · [project-skills.md](../org.sterl.llmpeon.core/docs/project-skills.md) |
 | Shared-Config-Verzeichnis + State-Trennung | `~/.peon` = config-only, History = workspace-scoped | [peon-config-directory.md](../org.sterl.llmpeon.core/docs/peon-config-directory.md) |
 | Workspace Memory (memory*-Tools) | Eclipse Instance-Preferences, user-global | [context-architecture.md](../org.sterl.llmpeon.core/docs/context-architecture.md) |
 | Agent-History | `.metadata/.plugins/org.sterl.llmpeon/state/<agent>-history.jsonl` (kein State in `~/.peon`; Altbestand wird nicht übernommen) | [peon-config-directory.md](../org.sterl.llmpeon.core/docs/peon-config-directory.md) |

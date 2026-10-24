@@ -13,6 +13,47 @@ Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.
   complement-not-replace (Briefing ergänzt memory.md, ersetzt es nicht). Freigabe Paul steht aus.
 
 
+## 2026-10-23 — Issue #163 „Tool Calls retten" (low prio, Backlog)
+
+- ❓ **Rescue-Heuristik für „Tool-Call als Text":** Recherche (2026-10-23) bestätigt: **langchain4j
+  ist nicht das Problem** — alle drei Provider mappen ausschließlich strukturierte Tool-Call-Felder
+  (OpenAI `OpenAiUtils.java:514-534`, Anthropic `AnthropicMapper.java:392-406`, Ollama
+  `InternalOllamaHelper.java:92-100`); ein Call, der als Fließtext mit XML-artigen Function-Tags
+  ankommt, ist korrekt verarbeiteter Text — das Modell hat das Protokoll nicht benutzt (schwache/
+  lokale Modelle, Unicode-fragil — exakt Pauls ASCII-vs-Unicode-Beobachtung). **Kein Upstream-Issue.**
+  Gegenmittel bei uns: Rescue-Heuristik im `ToolService`-Loop (vor dem „nur Text"-Exit
+  `ToolService.java:197-200`): erkennt `function=<registrierterName>`-Text, baut daraus
+  `ToolExecutionRequest` und führt ihn regulär aus (nur registrierte Tool-Namen = kein
+  False-Positive-Risiko). Aufwand klein–mittel (~60–100 Zeilen + Tests). System-Prompt-Stabilisierung
+  optional dahinter, aber unzuverlässig. **Paul entscheidet, ob/wann gebaut wird.**
+  Ticket-Entwurf (kopierbar, ohne interne Links): [issue-163-tool-calls-retten.md](issue-163-tool-calls-retten.md)
+
+## 2026-10-23 — webSearch: Snippet-Kappungs-Disclosure (Story 1, Nachtzyklus)
+
+- ⏳ **Snippet-Kürzung ohne extra Disclosure:** Da-Dok-Review (F5) fragte an, ob das `…` allein
+  genügt. Ich habe als PO aus der AGENTS.md-Regel („jede Truncation ist im eigenen Output
+  benannt") abgeleitet: bei mindestens einer gekürzten Snippet-Zeile kommt eine Footer-Zeile
+  `snippets truncated to 200 characters` (gebaut, getestet, `// R-WEB-10`). **Rückversicherung:**
+  Paul bestätigt die Zeile — oder will sie wieder raus (dann wäre `…` die alleinige Kennzeichnung).
+
+## 2026-10-23 — Compact-UI: Deferred-Reset für Turn-Compacts (Story 2, Nachtzyklus)
+
+- ⏳ **Turn-Compacts bauen die Chat-View erst beim nächsten Turn-Event neu** (nicht sofort):
+  Da-Dok-Review-F1 zeigte, dass der sofortige Reset bei Pre-Turn-/In-Loop-Compacts die frisch
+  getippte User-Nachricht aus dem Chat fegt (sie ist noch nicht im Memory). Entscheidung von Jon
+  aus dem Regel-Intent abgeleitet (Chat = Abbild des Memorys): Trigger MIT laufendem Turn →
+  DEFERRED (Pending-Reset, Flush am `onCallStart` desselben Agenten), Trigger OHNE Turn (Buttons)
+  → NOW, Sklaven → NONE. `CompactFeedback.resetTiming`, gebaut + gemutiert (Inc 5 `6382e808`).
+  **Rückversicherung:** Paul bestätigt das Deferred-Timing (Smoke-Punkt 3 in memory.md §8) — oder
+  will Sofort-Rebuild mit Re-Append des User-Echos.
+
+## 2026-10-23 — Skill-Roots: First-Launch-Verzeichnis (Story 3, Nachtzyklus)
+
+- ⏳ **First-Launch legt weiter `~/.peon/skills` an:** `LlmPreferenceInitializer.buildConfigDirs()`
+  bleibt unverändert (Story-3-Entscheid, Q2 — Doc sagt „fehlendes Dir = leer, kein Fehler", `diskWriteFile`
+  legt Elternordner selbst an). **Rückversicherung:** Soll der First-Launch stattdessen (oder zusätzlich)
+  `~/.agents/skills` anlegen, oder gar kein Skills-Dir mehr vorsorglich erzeugen?
+
 ## 2.14.0 (2026-10-19) — Jon-Entscheidungen zur Rückversicherung
 
 - ⏳ **R-CC-19 (Zähler = Provider-Input + Schätzung der angehängten Messages):** von Jon entschieden
@@ -120,9 +161,6 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
 - ⏳ **compactSession trotz agent == null exponiert (2026-09-27):** Hint sagt „cannot be compacted",
   Tool wirft erst beim Call — `toolSpecifications` lässt es weg bei agent == null. Mit Bug B
   zusammen behandelbar.
-- ❓ **Compact-Button ohne Monitor (2026-09-29):** User-getriggerter Compact übergibt scheinbar
-  keinen Monitor — UI zeigt nichts während der Compressor läuft (Feedback-Loch). Verwandt:
-  compact-lock / agenten-status-im-header.
 - ❓ **Header: Jon-Context-Größe bleibt „0k estimate" (2026-09-27):** Roster-Refresh ist
   event-getrieben (`AIChatView:336-340` via onTokenUsage) — Turn ohne Provider-Usage feuert nicht.
   SOLL-Frage: Estimate-Pfad zusätzlich in den Roster-Refresh?
@@ -198,8 +236,6 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
 - **test_project-Fixture SOLL vs. IST (2026-09-27):** [test-setup.md](../org.sterl.llmpeon/docs/test-setup.md) sagt minimal,
   IST enthält u. a. `pom.xml`/`Dockerfile` (Herkunft unklar, kein Test-Output). Da-Mek-Empfehlung:
   behalten + Doc-SOLL anpassen, README-Zeile ergänzen (Zweck + `peon.test.project`-Override).
-- **Gelber Compact-Indikator 🟡 (2026-09-22):** zweiter Anzeige-Zustand `compacting` +
-  🟡-Präfix in `AiAgentStatusWidget.text()`; Mini-Increment. Kontext: compact-lock.md.
 - **buildWithDev-Compact (2026-09-03):** Compact statt Reset bei nennenswertem Kontext (~50 %),
   nur bei neuem Plan. Eigene kleine Story, „da brauchen wir kein Test".
 - **Tool-Time-Disclosure Restkandidaten (2026-09-22):** webFetch-Cache-Frische,

@@ -1,7 +1,13 @@
 package org.sterl.llmpeon.shared;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Locale;
 
 import org.junit.jupiter.api.Test;
@@ -92,6 +98,42 @@ class StringUtilTest {
     void toK_justUnderABillionRoundsToGroupedThousandMillions() {
         withLocale(Locale.GERMANY, () -> assertEquals("1.000M", StringUtil.toK(999_999_999)));
         withLocale(Locale.US, () -> assertEquals("1,000M", StringUtil.toK(999_999_999)));
+    }
+
+    /**
+     * R-OD-8 bullet 2: a null or blank message renders as "(no message)" — never the word "null",
+     * which the human cannot tell apart from a real message.
+     */
+    // UC-OD-11
+    @Test
+    void exceptionChain_nullOrBlankMessageIsNoMessage() {
+        assertThat(StringUtil.exceptionChain(new RuntimeException()))
+                .isEqualTo("RuntimeException: (no message)")
+                .doesNotContain("null");
+        assertThat(StringUtil.exceptionChain(new RuntimeException("   ")))
+                .isEqualTo("RuntimeException: (no message)");
+    }
+
+    /**
+     * R-OD-8: the failure line is the doc example, and its time comes from the injected Clock — pinned in
+     * UTC for the exact doc text, and in the machine zone with hour/minute derived from the same instant,
+     * so the pin holds in every timezone without binding the format to one of them.
+     */
+    // UC-OD-11
+    @Test
+    void toolFailureLine_usesInjectedClock() {
+        var instant = Instant.parse("2026-10-24T14:32:00Z");
+        var failure = new IllegalStateException("closed");
+
+        assertThat(StringUtil.toolFailureLine("buildWithDev", failure, Clock.fixed(instant, ZoneOffset.UTC)))
+                .isEqualTo("buildWithDev failed (14:32): IllegalStateException: closed — details logged.");
+
+        var zone = ZoneId.systemDefault();
+        var localTime = LocalTime.ofInstant(instant, zone);
+        assertThat(StringUtil.toolFailureLine("buildWithDev", failure, Clock.fixed(instant, zone)))
+                .isEqualTo(String.format(
+                        "buildWithDev failed (%02d:%02d): IllegalStateException: closed — details logged.",
+                        localTime.getHour(), localTime.getMinute()));
     }
 
     /** Pins the default locale for the body, restoring the original afterwards (JUnit 5 runs core sequentially). */

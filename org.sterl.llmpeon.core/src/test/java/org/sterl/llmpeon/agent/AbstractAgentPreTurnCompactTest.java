@@ -14,6 +14,7 @@ import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.compact.CompactFeedback;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
@@ -59,9 +60,10 @@ class AbstractAgentPreTurnCompactTest {
 
         // THEN — the compressor ran once …
         assertThat(compactCalls.get()).isEqualTo(1);
-        // AND — the event line names the agent, the reason and the numbers (R-CC-10)
-        assertThat(toolLines).anyMatch(l -> l.startsWith("🗜 Pre-turn compact for Peon-Dev (context over budget): compressed")
-                && l.contains(" | memory="));
+        // AND — R-CT-8: it shows as the uniform start/end pair, not a pre-turn wording
+        assertThat(toolLines).anyMatch(l -> l.startsWith("🗜 Peon-Dev" + CompactFeedback.END_MARKER));
+        assertThat(toolLines.stream().filter(l -> l.contains(CompactFeedback.END_MARKER)).toList()).hasSize(1);
+        assertThat(toolLines).noneMatch(l -> l.contains("Pre-turn compact"));
         // AND — compacted BEFORE the provider call: the main-model request no longer carries the seed …
         var request = firstMainRequest();
         var userTexts = request.messages().stream()
@@ -114,9 +116,10 @@ class AbstractAgentPreTurnCompactTest {
         // WHEN
         agent.call("fresh message", monitor);
 
-        // THEN — no compact, no event line, the history is untouched
+        // THEN — no compact, no compact line at all, the history is untouched
         assertThat(compactCalls.get()).isZero();
-        assertThat(toolLines).noneMatch(l -> l.contains("Pre-turn compact"));
+        assertThat(toolLines).noneMatch(l -> l.contains(CompactFeedback.START_PREFIX)
+                || l.contains(CompactFeedback.END_MARKER));
         assertThat(agent.getMemory().size()).isEqualTo(6); // 4 seeded + the fresh message + the turn's AI response
         assertThat(agent.hasUserText("fresh message")).isTrue();
     }
@@ -138,9 +141,10 @@ class AbstractAgentPreTurnCompactTest {
         // WHEN
         agent.call("fresh message", monitor);
 
-        // THEN — no compact (R-CC-8), no event line
+        // THEN — no compact (R-CC-8), no compact line at all
         assertThat(compactCalls.get()).isZero();
-        assertThat(toolLines).noneMatch(l -> l.contains("Pre-turn compact"));
+        assertThat(toolLines).noneMatch(l -> l.contains(CompactFeedback.START_PREFIX)
+                || l.contains(CompactFeedback.END_MARKER));
         assertThat(agent.hasUserText("fresh message")).isTrue();
     }
 
@@ -155,9 +159,10 @@ class AbstractAgentPreTurnCompactTest {
         // WHEN
         agent.call("fresh message", monitor);
 
-        // THEN — nothing fired (strict >), no event line, the fresh message is in the memory
+        // THEN — nothing fired (strict >), no compact line at all, the fresh message is in the memory
         assertThat(compactCalls.get()).isZero();
-        assertThat(toolLines).noneMatch(l -> l.contains("Pre-turn compact") || l.contains("🗜 Compressing"));
+        assertThat(toolLines).noneMatch(l -> l.contains(CompactFeedback.START_PREFIX)
+                || l.contains(CompactFeedback.END_MARKER));
         assertThat(agent.hasUserText("fresh message")).isTrue();
     }
 
@@ -174,8 +179,9 @@ class AbstractAgentPreTurnCompactTest {
 
         // THEN — the pre-turn compact fired once …
         assertThat(compactCalls.get()).isEqualTo(1);
-        // AND — the event line names the agent and the reason (R-CC-10)
-        assertThat(toolLines).anyMatch(l -> l.startsWith("🗜 Pre-turn compact for"));
+        // AND — R-CT-8: the uniform end line names the compacting agent (no "Pre-turn compact" wording)
+        assertThat(toolLines).anyMatch(l -> l.startsWith("🗜 test" + CompactFeedback.END_MARKER));
+        assertThat(toolLines.stream().filter(l -> l.contains(CompactFeedback.END_MARKER)).toList()).hasSize(1);
         // AND — the fresh message survived the compact
         assertThat(agent.hasUserText("fresh message")).isTrue();
         // AND — compacted BEFORE the provider call: the main-model request no longer carries the seed
@@ -204,8 +210,9 @@ class AbstractAgentPreTurnCompactTest {
         assertThat(problems).containsExactly("Pre-turn compact failed: provider unavailable");
         assertThat(response).isNotNull();
         assertThat(response.aiMessage().text()).isEqualTo("OK");
-        // AND — no compact happened: no result line, history intact, fresh message in the memory
-        assertThat(toolLines).noneMatch(l -> l.startsWith("🗜 Pre-turn compact for"));
+        // AND — no compact happened: no end line (the attempt did announce its start), history intact,
+        // fresh message in the memory
+        assertThat(toolLines).noneMatch(l -> l.contains(CompactFeedback.END_MARKER));
         assertThat(agent.hasUserText("m1")).isTrue();
         assertThat(agent.hasUserText("fresh message")).isTrue();
         assertThat(agent.getMemory().size()).isEqualTo(6); // 4 seeded + fresh message + the turn's AI response

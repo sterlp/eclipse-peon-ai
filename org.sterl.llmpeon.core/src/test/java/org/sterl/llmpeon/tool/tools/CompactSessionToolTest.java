@@ -251,24 +251,6 @@ class CompactSessionToolTest {
     }
 
     @Test
-    void compactedOnToolLineStartsWithCompactSymbol() {
-        // GIVEN — an agent whose compact() returns COMPACTED, wired to a monitor capturing the onTool lines
-        var memory = new ThreadSafeMemory();
-        memory.add(UserMessage.from("Test message"));
-        memory.add(AiMessage.from("AI response"));
-        var tools = new ArrayList<String>();
-        var subject = compactSessionToolWithMonitor(memory, compactStub(memory), tools);
-
-        // WHEN
-        subject.compactSession(null);
-
-        // THEN — the chat line starts with the compact symbol + the done prefix (symbol = first token)
-        assertThat(tools).anySatisfy(line -> assertThat(line)
-                .startsWith("🗜 Da Scribe done ")
-                .contains("for stub-agent"));
-    }
-
-    @Test
     void skippedOutputStartsWithCompactSymbol() {
         // GIVEN — a small memory (2 messages < MIN_COMPACT_MESSAGES); the agent skips
         var memory = new ThreadSafeMemory();

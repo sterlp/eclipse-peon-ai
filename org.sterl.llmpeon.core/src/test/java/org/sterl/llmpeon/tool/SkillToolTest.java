@@ -29,7 +29,9 @@ class SkillToolTest extends AbstractMemoryFileTest {
         var barDir = Files.createDirectory(skillDir.resolve("refs"));
         Files.writeString(barDir.resolve("bar.md"), "foo in bar");
 
-        var subject = new SkillTool(new SkillService(tmp));
+        var skillService = new SkillService();
+        skillService.refresh(tmp);
+        var subject = new SkillTool(skillService);
         // WHEN
         assertThat(subject.skillRead("foo")).contains("body haha");
         // THEN
@@ -54,7 +56,9 @@ class SkillToolTest extends AbstractMemoryFileTest {
                 """);
         Files.createDirectory(skillDir.resolve("refs"));
         Files.writeString(skillDir.resolve("refs/bar.md"), "foo in bar");
-        var subject = new SkillTool(new SkillService(tmp));
+        var skillService = new SkillService();
+        skillService.refresh(tmp);
+        var subject = new SkillTool(skillService);
         // WHEN an agent reads the skill and reads a file from it
         var read = subject.skillRead("useful");
         var readFile = subject.skillReadFile("useful", "refs/bar.md");

@@ -1,6 +1,7 @@
 package org.sterl.llmpeon.tool;
 
 import java.lang.reflect.Method;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,7 @@ import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 import org.sterl.llmpeon.tool.tools.SearchAgentTool;
 import org.sterl.llmpeon.tool.tools.ShellTool;
 import org.sterl.llmpeon.tool.tools.WebFetchTool;
+import org.sterl.llmpeon.tool.tools.WebSearchTool;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -75,11 +77,13 @@ public class ToolService {
     }
 
     /**
-     * @param withDefaults if true, auto-registers WebFetchTool, SearchAgentTool, ShellTool, CompactSessionTool
+     * @param withDefaults if true, auto-registers the always-on tool set: WebFetchTool,
+     *        WebSearchTool, SearchAgentTool, ShellTool, CompactSessionTool
      */
     public ToolService(boolean withDefaults) {
         if (withDefaults) {
             addTool(new WebFetchTool());
+            addTool(new WebSearchTool());
             addTool(new SearchAgentTool(this));
             addTool(new ShellTool());
             addTool(new CompactSessionTool());
@@ -224,7 +228,7 @@ public class ToolService {
             } catch (Exception e) {
                 if (ExceptionUtil.isCanceled(e)) throw e;
                 log.error("Tool {} with args {} failed", tr.name(), tr.arguments(), e);
-                req.getMonitor().onProblem(tr.name() + " failed: " + e.getMessage() + " details logged.");
+                req.getMonitor().onProblem(StringUtil.toolFailureLine(tr.name(), e, Clock.systemDefaultZone()));
                 toolResults.add(ToolExecutionResultMessage.from(tr.id(), tr.name(),
                         "Tool failed - check why and inform user " + StringUtil.getStackTrace(e)));
             }

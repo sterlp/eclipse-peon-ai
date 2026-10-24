@@ -2,7 +2,6 @@ package org.sterl.llmpeon.shared;
 
 import java.time.Clock;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 
 /**
  * Measures the wall-clock duration of a tool call for end-of-output disclosure
@@ -15,8 +14,6 @@ import java.time.format.DateTimeFormatter;
  * {@link Timer}) so tests are deterministic.
  */
 public final class CallStats {
-
-    private static final DateTimeFormatter HH_MM = DateTimeFormatter.ofPattern("HH:mm");
 
     private final Clock clock;
     private final long startedAtMillis;
@@ -43,6 +40,6 @@ public final class CallStats {
 
     /** Duration plus local wall time at the call moment, e.g. {@code (3s, 14:32)}. */
     public String suffix() {
-        return "(" + duration() + ", " + LocalTime.now(clock).format(HH_MM) + ")";
+        return "(" + duration() + ", " + LocalTime.now(clock).format(StringUtil.HH_MM) + ")";
     }
 }

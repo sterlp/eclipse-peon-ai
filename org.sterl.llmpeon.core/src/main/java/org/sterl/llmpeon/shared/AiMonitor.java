@@ -2,6 +2,7 @@ package org.sterl.llmpeon.shared;
 
 import java.time.Duration;
 
+import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.model.SimpleMessage.Type;
 
@@ -24,7 +25,11 @@ public interface AiMonitor {
     /** Fired on every streaming token (thinking, answer, or tool). Default is a no-op. */
     default void onStreamingChunk(OnPartialAiResponse r) {}
 
-    /** Called once before the tool loop starts. userMessage may be null (autonomous re-trigger). */
+    /**
+     * Called once per turn, <b>after</b> the turn's user message entered the memory and before the tool
+     * loop starts — the earliest point at which a rebuild from the memory cannot lose that message (the
+     * pre-turn compact R-CC-20.2 runs before it). userMessage may be null (autonomous re-trigger).
+     */
     default void onCallStart(String userMessage) {}
 
     /** Called before each LLM request within the tool loop. iteration starts at 1. The builder can be mutated. */
@@ -42,6 +47,23 @@ public interface AiMonitor {
      * Default is a no-op.
      */
     default void onTokenUsage(TokenUsage usage) {}
+
+    /**
+     * Fired exactly once after a compact that ran — {@code COMPACTED} or {@code FAILED_EMPTY}. Never
+     * for {@code SKIPPED_SMALL} (nothing ran) and never when the compact throws, and always after the
+     * agent released its working state, so a refresh in the reaction sees an idle agent (R-CT-7).
+     * <p>
+     * The agent <b>name</b> (not the instance) is all a listener needs to decide whether it is
+     * affected — e.g. the chat view rebuilds only for its active agent. Arrives on the caller's
+     * thread: UI updates need the UI-thread hop.
+     * <p>
+     * {@code withinTurn} says the agent's working flag was already held when the compact ran — a turn
+     * owned it, so the compact ran inside that turn (pre-turn, in-loop, from a tool). A listener that
+     * rebuilds from the memory must then wait for that turn's {@link #onCallStart}: before it, the
+     * turn's fresh message is not in the memory yet and a rebuild would drop it (R-CT-7). The flag
+     * could also mean a parallel compact of the same agent; the UI excludes that case.
+     */
+    default void onCompactCompleted(String agentName, CompactResult result, boolean withinTurn) {}
 
     default void onTool(String message) {
         onChatResponse(new SimpleMessage(Type.TOOL, message));

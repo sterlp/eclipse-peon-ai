@@ -64,7 +64,8 @@ public class EclipseGrepTool extends AbstractEclipseTool {
         } else {
             var resource = EclipseUtil.resolveInEclipse(path, Optional.ofNullable(currentProject));
             if (resource.isEmpty()) {
-                throw new IllegalArgumentException("Path not found: " + path + " check your query or leave the path empty.");
+                throw new IllegalArgumentException("Path not found: " + path + EclipseUtil.unresolvedHint(path)
+                        + " Check your query or leave the path empty.");
             }
             if (resource.get() instanceof IContainer c) {
                 containers.add(c);
