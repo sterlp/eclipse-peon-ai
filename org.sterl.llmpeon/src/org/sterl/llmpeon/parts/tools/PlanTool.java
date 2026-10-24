@@ -79,9 +79,14 @@ public class PlanTool extends AbstractEclipseTool {
     public void planImplemented() {
         var project = getProject();
         var plan = project.getFile(OVERVIEW_FILE);
-        if (plan == null || !plan.exists()) return;
 
         try {
+            // R-PT-1 (org.sterl.llmpeon/docs/plan-tool.md): a plan written by the disk tools is unknown to
+            // the workspace tree — without this refresh exists() below is a false negative (silent return)
+            // and move() fails because the file is out of sync with the local file system.
+            project.getFolder(PLAN_DIR).refreshLocal(IResource.DEPTH_INFINITE, getProgressMonitor());
+            if (!plan.exists()) return;
+
             var stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm"));
             String stem = "overview-done-" + stamp;
             String freeName = ArchiveName.firstFreeName(stem, n -> project.getFile(PLAN_DIR + "/" + n).exists());
