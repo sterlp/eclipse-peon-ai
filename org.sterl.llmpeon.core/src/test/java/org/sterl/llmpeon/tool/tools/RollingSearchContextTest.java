@@ -29,7 +29,6 @@ class RollingSearchContextTest {
         return block.substring(head.length(), block.length() - tail.length());
     }
 
-    // R-LSR-5
     @Test
     @Timeout(10)
     void givenEmptyContext_whenRendering_thenNothingIsInjected() {
@@ -38,10 +37,8 @@ class RollingSearchContextTest {
 
         // THEN — no block, so the sub-loop's static messages stay exactly as they are today
         assertThat(ctx.render()).isEmpty();
-        assertThat(ctx.isEmpty()).isTrue();
     }
 
-    // R-LSR-1
     @Test
     @Timeout(10)
     void givenCompletePair_whenAppending_thenBlockCarriesPromptAndAnswer() {
@@ -60,7 +57,6 @@ class RollingSearchContextTest {
         assertThat(block.indexOf("Frage: q1")).isLessThan(block.indexOf("Frage: q2"));
     }
 
-    // R-LSR-2
     @Test
     @Timeout(10)
     void givenBlankAnswer_whenAppending_thenBlockStaysEmpty() {
@@ -71,11 +67,9 @@ class RollingSearchContextTest {
         ctx.append("q", "   ");
 
         // THEN — nothing landed, the block still injects nothing
-        assertThat(ctx.isEmpty()).isTrue();
         assertThat(ctx.render()).isEmpty();
     }
 
-    // R-LSR-3
     // UC-LSR-3
     @Test
     @Timeout(10)
@@ -95,7 +89,6 @@ class RollingSearchContextTest {
         assertThat(content).contains("02799").doesNotContain("00000").doesNotContain("00799");
     }
 
-    // R-LSR-4
     // UC-LSR-4
     @Test
     @Timeout(10)
@@ -118,7 +111,6 @@ class RollingSearchContextTest {
         assertThat(pairContent(exact.render(), false)).hasSize(RollingSearchContext.MAX_CHARS);
     }
 
-    // R-LSR-6
     @Test
     @Timeout(10)
     void givenConcurrentAppends_whenRendering_thenNoPairIsLost() throws InterruptedException {

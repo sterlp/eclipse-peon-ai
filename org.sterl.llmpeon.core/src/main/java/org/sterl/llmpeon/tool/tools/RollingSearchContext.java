@@ -38,17 +38,13 @@ final class RollingSearchContext {
         }
     }
 
-    synchronized boolean isEmpty() {
-        return pairs.isEmpty();
-    }
-
     /**
      * R-LSR-3/4/5: the snapshot one sub-loop call sees — {@code ""} while empty (never null), else the
      * pair content (already cut to the cap, so the decoration never shifts the limit) framed by the
      * headers, plus the disclosure line only where a cut actually happened.
      */
     synchronized String render() {
-        if (isEmpty()) return "";
+        if (pairs.isEmpty()) return "";
         return START + "\n" + pairs + (trimmed ? DISCLOSURE + "\n" : "") + END;
     }
 }

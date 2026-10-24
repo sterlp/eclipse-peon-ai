@@ -147,7 +147,6 @@ class SearchAgentToolRollingContextTest {
         return count;
     }
 
-    // R-LSR-1
     // UC-LSR-1
     @Test
     @Timeout(10)
@@ -170,14 +169,14 @@ class SearchAgentToolRollingContextTest {
         assertThat(third.indexOf("Frage: q-1")).isLessThan(third.indexOf("Frage: q-2"));
     }
 
-    // R-LSR-2
     // UC-LSR-2
     @Test
     @Timeout(10)
     void failedSearchLeavesBlockUnchanged() {
-        // GIVEN — one complete search, so the block is not trivially empty
+        // GIVEN — one complete search plus a near-cap pair: 9.950 chars, so nothing is cut yet
         var fixture = new Fixture();
         fixture.search("q-1", "answer-1");
+        fixture.search("q-0", "near-cap-head" + "x".repeat(9_887));
 
         // WHEN (a) — the provider throws
         assertThat(fixture.searchFailing("q-2")).startsWith("Search agent failed");
@@ -190,16 +189,22 @@ class SearchAgentToolRollingContextTest {
         fixture.search("q-4", "partial answer after stop");
         fixture.monitor.canceled = false;
 
-        // THEN — the next search still sees the one good pair exactly once, none of the three failures
+        // THEN — the next search still sees the two good pairs, none of the three failures
         fixture.search("q-5", "answer-5");
         var sent = fixture.sentSystemText.get("q-5");
+        assertThat(countOccurrences(sent, "Frage: ")).isEqualTo(2);
         assertThat(countOccurrences(sent, "Frage: q-1")).isEqualTo(1);
         assertThat(sent).doesNotContain("q-2", "q-3", "q-4", "provider exploded",
                 "Search completed but returned no result", "Search agent failed", "partial answer after stop");
+
+        // AND — still the uncut block: a raw cut always eats from the front, so the first pair and the
+        //       head of the near-cap pair prove nothing was dropped and no disclosure appeared
+        assertThat(sent).contains("Frage: q-1\nAntwort: answer-1\n", "Frage: q-0\nAntwort: near-cap-head")
+                .doesNotContain("(older context dropped to fit cap)");
     }
 
-    // R-LSR-5
     // UC-LSR-5
+    // UC-LSR-4
     @Test
     @Timeout(10)
     void subLoopSeesRollingBlockAsStaticMessage() {
@@ -224,9 +229,21 @@ class SearchAgentToolRollingContextTest {
 
         // AND — the first search of the view had nothing to inject
         assertThat(fixture.sentSystemText.get("q-1")).doesNotContain(RollingSearchContext.START);
+
+        // GIVEN — a search whose answer pushes the pair content over the cap
+        fixture.search("q-3", "y".repeat(12_000));
+
+        // WHEN — the next search runs on the trimmed block
+        fixture.search("q-4", "answer-4");
+
+        // THEN — the injected message names its own cut, so the sub-loop cannot read a fragment as the
+        //        whole history (UC-LSR-4 at the injection point, not only in the holder)
+        var trimmed = fixture.streamMock.getLast(SystemMessage.class);
+        assertThat(trimmed).isPresent();
+        assertThat(trimmed.get().text()).contains(RollingSearchContext.START, RollingSearchContext.END,
+                "(older context dropped to fit cap)");
     }
 
-    // R-LSR-6
     // UC-LSR-6
     @Test
     @Timeout(10)

@@ -55,6 +55,9 @@ public class SearchAgentTool extends AbstractTool {
     @Tool(name = "searchAgent", value = "Sub-agent for complex multi-step search/research - to save tokens.")
     public String searchAgent(@P(name = "prompt") String prompt) {
         ArgsUtil.requireNonBlank(prompt, "prompt");
+        // the field is re-set per tool call — read it once, so a parallel call's cancel state can never
+        // decide this search's append (B7)
+        var monitor = this.monitor;
 
         try {
             var messages = new ThreadSafeMemory();
