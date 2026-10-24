@@ -37,6 +37,11 @@ Base: `AGENTS.md`. System prompt: `developer.md`.
   Story-2-Review G1: ein Plan las „compact.md ist bereits revidiert" aus dem Working Tree — die
   Revision war uncommitted, HEAD widersprach dem gebauten Code). Vor Abnahme/Bau: `git status`/
   `git log` gegen die zitierte Doc-Stelle; sonst wird der Doc-Input selbst zum Inkrement.
+- **Docs und ADR-Renames ride mit dem Zyklus-Commit** (hit 2026-10-24, 2× R-OD-8/Plan-Tool-Review
+  F1: Code committed, zugehörige Spec nur im Working Tree — frischer Checkout hat tote Javadoc-Pfade
+  bzw. HEAD ohne Regel). Vor JEDEM Commit-Report: `git status --porcelain` auf modifizierte/neue
+  `docs/**`, `AGENTS*.md` und ADR-Renames prüfen — fehlen sie in der Pfadliste, PO melden statt
+  schweigend drüber zu committen.
 - **Root-/Allowlist-Mengen an der Composition Root testen, nicht nur den Mechanismus am Seam** (hit
   2026-10-23, Story-3-Review F1: Core-Tests injizierten den User-Root per Setter — `roots.add(agentsSkillsDir)`
   in `PeonAiService` konnte ersatzlos verschwinden, ohne dass ein Test rot wurde). Ein PDE-Test auf den
