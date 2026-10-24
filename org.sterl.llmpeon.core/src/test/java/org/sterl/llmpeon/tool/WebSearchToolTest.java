@@ -19,6 +19,7 @@ import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.tools.WebSearchException;
 import org.sterl.llmpeon.tool.tools.WebSearchTool;
 
+import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.web.search.WebSearchEngine;
@@ -30,7 +31,8 @@ import dev.langchain4j.web.search.WebSearchResults;
 /**
  * {@code webSearch} rendering and honesty (org.sterl.llmpeon.core/docs/web-tools.md R-WEB-10/R-WEB-12):
  * numbered title/URL/snippet blocks, the caps with their disclosures, the honest zero and the error
- * wording that never degrades into "0 results". Stub engine only — never the network.
+ * wording that never degrades into "0 results" — plus the rate-limit way forward that never retries
+ * (R-WEB-14). Stub engine only — never the network.
  */
 @Timeout(30)
 class WebSearchToolTest {
@@ -251,9 +253,52 @@ class WebSearchToolTest {
 
         assertThat(result).startsWith("webSearch failed for '" + QUERY + "': rejected (HTTP 429") //
                 .contains("rate limit") //
-                .endsWith(". No results were returned — this is an error, not an empty result set.");
+                .contains(". No results were returned — this is an error, not an empty result set.");
         assertThat(result).doesNotContain("0 results");
     }
+
+    // R-WEB-14
+    // UC-WEB-14
+    @Test
+    void webSearchRateLimitErrorExplainsTheWayForward() {
+        // GIVEN DuckDuckGo rejects the search with a bot-check status
+        var stub = failingEngine("rejected (HTTP 202 — rate limit or bot check)");
+
+        // WHEN
+        String result = tool.webSearch(QUERY, null);
+
+        // THEN — cause, the R-WEB-12 honesty tail and the way forward, still never a zero
+        assertThat(result) //
+                .startsWith("webSearch failed for '" + QUERY + "': rejected (HTTP 202") //
+                .contains(". No results were returned — this is an error, not an empty result set.") //
+                .contains("Do not retry immediately") //
+                .contains("webFetchAsMarkdown") //
+                .doesNotContain("0 results");
+
+        // AND exactly one call reached the endpoint — the guidance must not be paid for with a retry
+        assertThat(stub.callCount).isEqualTo(1);
+    }
+
+    // R-WEB-14
+    // UC-WEB-14
+    @Test
+    void webSearchToolDescriptionWarnsAboutRateLimit() throws NoSuchMethodException {
+        // GIVEN the tool schema an agent reads before its first call
+        var annotation = WebSearchTool.class //
+                .getMethod("webSearch", String.class, Integer.class) //
+                .getAnnotation(Tool.class);
+        String description = String.join(" ", annotation.value());
+
+        // THEN — rate limit and pacing are named, and the existing caps survive the extension
+        assertThat(description) //
+                .contains("rate-limits") //
+                .contains("one at a time") //
+                .contains("not several in the same turn") //
+                .contains("don't retry") //
+                .contains("max 8") //
+                .contains("webFetchAsMarkdown");
+    }
+
 
     // UC-WEB-12
     @Test
@@ -315,8 +360,10 @@ class WebSearchToolTest {
         assertThat(tools).isEmpty();
     }
 
-    private void failingEngine(String cause) {
-        tool = new WebSearchTool(new StubEngine(List.of(), 0, new WebSearchException(cause)));
+    private StubEngine failingEngine(String cause) {
+        var stub = new StubEngine(List.of(), 0, new WebSearchException(cause));
+        tool = new WebSearchTool(stub);
+        return stub;
     }
 
     private static List<WebSearchOrganicResult> hits(int count) {
@@ -361,6 +408,8 @@ class WebSearchToolTest {
         private final long total;
         private final RuntimeException failure;
         WebSearchRequest lastRequest;
+        /** R-WEB-14: "no retry reached the endpoint" is only provable if the stub counts its calls. */
+        int callCount;
 
         StubEngine(List<WebSearchOrganicResult> hits, long total) {
             this(hits, total, null);
@@ -374,6 +423,7 @@ class WebSearchToolTest {
 
         @Override
         public WebSearchResults search(WebSearchRequest request) {
+            callCount++;
             lastRequest = request;
             if (failure != null) throw failure;
             return WebSearchResults.from(WebSearchInformationResult.from(total), hits);

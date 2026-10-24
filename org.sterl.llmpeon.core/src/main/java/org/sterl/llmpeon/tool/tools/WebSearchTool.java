@@ -25,7 +25,8 @@ import dev.langchain4j.web.search.WebSearchResults;
  * langchain4j {@link WebSearchEngine} contract (docs/adr/adr-0074-websearch-eigener-ddg-client.md),
  * so a swap is one constructor argument. The cap is applied here <em>authoritatively</em> — the
  * value sent to the engine is only a hint, a foreign engine can never push more than
- * {@value #HARD_MAX_RESULTS} hits into the context.
+ * {@value #HARD_MAX_RESULTS} hits into the context. A rate-limited failure keeps its error wording
+ * and gains the way forward — the tool never retries on its own (R-WEB-14).
  */
 public class WebSearchTool extends AbstractTool {
 
@@ -35,6 +36,14 @@ public class WebSearchTool extends AbstractTool {
     static final int SNIPPET_MAX_CHARS = 200;
 
     private static final Pattern WHITESPACE = Pattern.compile("\\s+");
+
+    /** R-WEB-14: the engine names the cause (DuckDuckGoWebSearchEngine#bodyOrThrow); the guidance rides on that name. */
+    private static final Pattern RATE_LIMIT = Pattern.compile("rate limit|bot check|HTTP (202|429)");
+
+    /** R-WEB-14: no retry — the observed block outlasted every immediate retry and lasted minutes. */
+    static final String RATE_LIMIT_GUIDANCE = "Do not retry immediately: a DuckDuckGo block lasts minutes, "
+            + "and repeat calls make it worse. Either continue this turn without searching, "
+            + "or read a known URL directly with webFetchAsMarkdown.";
 
     private final WebSearchEngine engine;
 
@@ -55,7 +64,9 @@ public class WebSearchTool extends AbstractTool {
      */
     @Tool("Search the web via DuckDuckGo. Returns a numbered hit list (title, URL, snippet) — "
             + "max 8 results (maxResults overrides, hard max 10), disclosed when capped. "
-            + "Page content is not included: read a hit with webFetchAsMarkdown.")
+            + "Page content is not included: read a hit with webFetchAsMarkdown. "
+            + "DuckDuckGo rate-limits and bot-checks: run searches one at a time, not several in the same turn; "
+            + "a rejection is a minutes-long block — don't retry it immediately.")
     public String webSearch(@P(name = "query") String query,
             @P(name = "maxResults", description = "hits to return, 1-10; default 8", required = false) Integer maxResults) {
         ArgsUtil.requireNonBlank(query, "query");
@@ -70,8 +81,7 @@ public class WebSearchTool extends AbstractTool {
         } catch (WebSearchException failed) {
             // R-WEB-12: a failure must stay a failure — "0 results" would tell the agent the topic has no hits
             onProblem("webSearch failed for '" + query + "' - " + failed.getMessage());
-            return "webSearch failed for '" + query + "': " + failed.getMessage()
-                    + ". No results were returned — this is an error, not an empty result set.";
+            return failureLine(query, failed.getMessage());
         }
 
         List<WebSearchOrganicResult> returned = results.results();
@@ -85,6 +95,17 @@ public class WebSearchTool extends AbstractTool {
                 : render(shown, honestTotal(results), maxResults);
         onTool("Searched '" + query + "': " + shown.size() + " results " + StringUtil.charsSuffix(result));
         return result;
+    }
+
+    /** R-WEB-12 tail always; R-WEB-14 adds the way forward — only for a rate limit / bot check. */
+    private static String failureLine(String query, String cause) {
+        String line = "webSearch failed for '" + query + "': " + cause
+                + ". No results were returned — this is an error, not an empty result set.";
+        return isRateLimit(cause) ? line + " " + RATE_LIMIT_GUIDANCE : line;
+    }
+
+    private static boolean isRateLimit(String cause) {
+        return RATE_LIMIT.matcher(cause).find();
     }
 
     /** The numbered blocks, then only the disclosures that apply — each on its own line. */
