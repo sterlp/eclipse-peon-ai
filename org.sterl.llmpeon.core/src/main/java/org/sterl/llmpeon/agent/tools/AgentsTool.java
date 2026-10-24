@@ -305,9 +305,8 @@ public class AgentsTool extends AbstractTool {
     
     @Tool("Compact Agent — the SAME task continues but the history got long. Keeps the gist, frees context.")
     public void subAgentCompact(@P("Exact name of the subagent") String agentName) {
-        var agent = getAgent(agentName);
-        agent.agent().compact(monitor); // todo this should be async too ...
-        reportAction(agent, "compact", monitor);
+        // R-CT-8: no own line — the sub-agent's compact already sent the one end line via onTool
+        getAgent(agentName).agent().compact(monitor); // todo this should be async too ...
     }
 
     private void reportAction(NamedAgent target, String action, AiMonitor monitor) {

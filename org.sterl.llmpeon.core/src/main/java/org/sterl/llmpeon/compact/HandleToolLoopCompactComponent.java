@@ -77,9 +77,7 @@ public class HandleToolLoopCompactComponent {
                 if (result.status() == CompactResult.Status.COMPACTED) {
                     memory.reevaluateTokens(); // R-CC-2: the counter holds the small post-compact estimate
                     req.staticMessages(agent.buildStaticMessages(req.getMonitor()));
-                    AiMonitor.nullSafety(req.getMonitor()).onTool("🗜 Direct compact for " + agent.getName()
-                            + " (tool loop over budget): " + result.resultLine()
-                            + memory.tokenDiagnosis()); // reason + numbers, R-CC-10
+                    // R-CT-8: no own line — `AbstractAgent.compact` sent the one end line for it
                 }
                 // SKIPPED_SMALL / FAILED_EMPTY: no retry (flag), no hint (over budget) — R-CC-18.1
             } else if (agent == null) { // R-CC-8 already checked in overRawBudget

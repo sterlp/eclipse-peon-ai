@@ -2,144 +2,96 @@
 
 > docs/** — insbesondere memory.md — schreibt AUSSCHLIESSLICH Jon. Agenten liefern Facts im Chat.
 
-## NACHTZYKLUS 2026-10-23 — läuft (Paul-Order: "compact und nachtzyklus - wir sind auf main -- alles andere bauen was wir aufgenommen haben")
+## NACHTZYKLUS 2026-10-23 — ABGESCHLOSSEN (Details kompakt)
 
-- **Branch:** `story/night-2026-10-23` von aktuellem main (Da Mek anlegen lassen; vorher Git-IST prüfen — memory#53). Pauls WIP NIE committen; explizite git add-Pfadliste.
-- **Issue-163-Doc:** `docs/issue-163-tool-calls-retten.md` ✅ geschrieben (Ticket-Entwurf, ohne Links); open-points.md verlinkt.
-- **✅ Story 1 webSearch FERTIG (2026-10-23 Nachtzyklus):** 4 Inkremente — `ba6db4dc` (Engine+Parser), `8873d6c6` (Tool), `b5e7cd17` (Registrierung+Homepage), `6f309afc` (Review-Fixes F1–F5). Core 1294/0/0/0, Plugin 408/0/0, Lint WEB-Scope sauber. Da-Dok CONCERNS → alle Findings behoben (Bot-Check an Selektor gebunden — echter Selektor `div.anomaly-modal__modal[data-testid=anomaly-modal]`, Live-Smoke 202). Docs geflippt ✅ (web-tools.md, -architektur.md, core/docs/index.md). ADR-0074. Offen für Paul: ⏳ Snippet-Disclosure-Zeile (open-points). planImplemented/Archivierung durch Da Mek im Close-Commit.
-- **✅ Story 2 Compact-UI-Sichtbarkeit FERTIG (2026-10-23 Nachtzyklus):** 5 Inkremente — `de21ba97` (🟡 Roster-Status, Blatt-Regel `working || compacting`), `aece6f1e` (Caller-Monitor), `0bf44ac6` (Agent-Name via CompactFeedback), `59ff96d5` (Event-Reset onCompactCompleted), `6382e808` (Da-Dok-REJECTED-F1: Deferred-Reset für Turn-Compacts, onCallStart hinter Memory-Add, resetTiming-Policy, M1-Mutation). Core 1312/0/0/0, Plugin 410/0/0, Lint 2 UNBELEGT (UC-CT-3/5 = Pauls Smoke). Docs geflippt ✅ (R-CT-4…7, UC-CT-6…12). Offen für Paul: ⏳ Deferred-Timing-Rückversicherung (open-points), manueller Smoke §8. AGENTS-DEV-Regel ergänzt (committed-Doc-Input prüfen).
-- **✅ Story 3 Skill-Roots FERTIG (2026-10-23 Nachtzyklus):** 3 Inkremente + Review-Fix — `03f2f54e` (SkillService 3. Root, Ctor-Streichung, 5 R17-Tests), `c7f2595a` (Wiring PeonAiService + Scaffold-Writeroots + Homepage), `4a215831` (Scaffold-Prompt `.agents`-Empfehlung + Migration — Diff von Jon abgenommen, Paul sieht ihn im Morgen-Bericht), `d9c703cd` (Da-Dok-F1: PDE-Test `scaffoldWriteValidator_acceptsHomeUserAgentsRoot` auf Composition-Root-Wiring, Mutation `roots.add(agentsSkillsDir)` rot). Core 1320/0/0/0, PDE 412/0/0/52, Lint Baseline. Docs geflippt ✅ (R17 + write-path-validator + scaffold-agent-Nachtrag). Close-Commit committet project-skills.md & Co. (meine Docs-Änderungen; README = Pauls WIP bleibt). Offen für Paul: ⏳ First-Launch-Dir (open-points).
-- **NACHTZYKLUS ABGESCHLOSSEN** — alle 3 Stories gebaut + gereviewt + geflippt. Merge von `story/night-2026-10-23` = Pauls Entscheidung (Squash bevorzugt — danach memory#53 beachten).
-- **Story-Reihenfolge** (je Voll-Loop: plan → Jon-Abnahme → build → Da-Dok-Review → ❌→✅ + lintDocsAndTests-Gate):
-  1. **webSearch** — R-WEB-10…12, `org.sterl.llmpeon.core/docs/web-tools.md` + `-architektur.md`. Details: Sektion "Story 3" unten. Plan-Risiko: community-DDG-Modul zu langchain4j 1.22.0 passen (pom.xml:14); im Aggregator-Checkout nur google/tavily/searchapi → Fallback dünner eigener DDG-Client.
-  2. **Compact-UI-Sichtbarkeit** — R-CT-4…7 (`compact-lock.md`) + R-CC-14 (`compact.md`). 🟡 Compact-Status Roster; onChatMessage→Caller-Monitor (Tests `compressorRequestStartReachesCallerMonitor`/`compressorStreamingStaysLogOnly` — alt ersetzt, Inc 2 `aece6f1e`); Agent-Name in AbstractAgent.java:406-408; Chat-Reset bei aktivem Agent bei ALLEN Triggern (heute nur AIChatView.java:499 Button-Pfad); stale Kommentar AIChatView.java:512-513 im Inkrement fixen.
-  3. **Skill-Roots** — R17 (`project-skills.md`), 3 Roots, Präzedenz Projekt > `~/.agents/skills` > `~/.peon/skills`; `.peon/skills` deprecated aber gelesen+SCHREIBBAR; Scaffold `.agents`-Empfehlung; Scaffold-Migration auf User-Wunsch; Homepage `setup/agents-and-skills.md:78` im Inkrement.
-- Paul nicht erreichbar → Abnahme durch Jon (memory#39, Inkrement-Gating). Bericht nach jeder Story.
+- Alle 3 Stories gebaut + gereviewt + geflippt: **webSearch** (ADR-0074, eigener DDG-Client),
+  **Compact-UI-Sichtbarkeit** (🟡 Roster, Caller-Monitor, Agent-Name, Deferred-Reset),
+  **Skill-Roots** (3 Roots, Präzedenz Projekt > `~/.agents` > `~/.peon`).
+  Gates: Core 1320/0/0/0 · PDE 412/0/0/52 · Lint Baseline. Branch `story/night-2026-10-23`
+  (von main `703916ce`), Close-Commit `4cecbd8c`, Retro `db93698a`. Merge = Pauls Entscheidung
+  (Squash bevorzugt — danach memory#53 beachten).
+- **Offen für Paul aus dem Zyklus** (Details: [open-points.md](open-points.md)):
+  1. ⏳ Snippet-Disclosure-Zeile webSearch · ⏳ Deferred-Timing-Rückversicherung ·
+     ⏳ First-Launch-Dir (`~/.agents/skills` anlegen?) · manueller Smoke §8 (Roster-🟡,
+     Chat-Rebuild, Sklaven-Pfad, FAILED_EMPTY, Pre-Turn pending/flush).
+  2. Scaffold-Prompt-Diff (Inc 3 `4a215831`) — 4-Augen by Paul.
+  3. FF-Merge `story/docs-restructure-2026-10-22` → main (falls noch offen);
+     `--force-with-lease`-Push; Update-Site-Konflikt README L48 vs. memory-Tool #46.
 
-## Stand 2026-10-23 — Story 1 webSearch ✅ gebaut · Issue #163 recherchiert (Backlog)
+## BUG-TRIAGE 2026-10-24 (Paul: "speichern, einen nach dem anderen anarbeiten")
 
-- **webSearch:** ✅ fertig — Details unter "Story 1 webSearch FERTIG" oben (ADR-0074: eigener DDG-Client statt Community-Modul).
-- **Issue #163 („Tool Calls retten") — recherchiert, Backlog (open-points.md 2026-10-23):**
-  langchain4j NICHT das Problem (Provider mappen nur strukturierte Felder — kein Upstream-Issue).
-  Gegenmittel wäre Rescue-Heuristik im ToolService-Loop („function=<Name>"-Text → ToolExecutionRequest,
-  nur registrierte Namen). Paul entscheidet, ob/wann.
+Quelle: Paul-Chat + [org.sterl.llmpeon.test/ai-e2e-test/webtools-test-issues.md](../org.sterl.llmpeon.test/ai-e2e-test/webtools-test-issues.md)
+(E2E-Run 2026-10-24: webSearch, webFetchAsMarkdown, webGet). Ablauf je Issue: IST-Verifikation
+(rot wo möglich) → Triage → Fix. Docs erst bei bestätigtem Bug.
 
-## Stand 2026-10-23 — Story 2: Skill-Roots (~/.agents/skills) — Docs fertig, NICHT gebaut
-
-- **Paul-SOLL:** Skill-Service liest 3 Roots: `~/.agents/skills` (NEUER Default, APM-/MS-Agent-
-  Package-Manager-Kompatibilität, auch auf Homepage) · `~/.peon/skills` (deprecated, gelesen UND
-  schreibbar — Support fällt NICHT weg) · `<Projekt>/.agents/skills` (unverändert). Präzedenz:
-  Projekt > ~/.agents > ~/.peon (Paul „ja"). Scaffold: Empfehlung IMMER `.agents` (User-Root oder
-  Projekt, nach Nachfrage R11) — `.peon/skills` schreibbar aber nicht empfohlen. Homepage:
-  Info/Warnung — `.agents` (User + Projekt) empfehlen. **Migration:** keine automatische (Clean
-  Break) — auf User-Wunsch führt der SCAFFOLD die Migration aus (beide User-Roots = seine
-  Validator-Roots). Commands/prompts folgen SPÄTER evtl.
-  (nicht Teil dieser Story).
-- **Docs geschrieben:** project-skills.md (Ziel, R2, R17 ❌ + 5 BDD, R10/R11 amendiert, R14-Note,
-  BDD-Tabelle R17) · glossary.md Config-Skills · configuration.md Skills-Zeile ·
-  peon-config-directory.md Skills-Zeile · ADR-0041 Consequence-Zeile (Skills-Default zieht um).
-- **Stale entfernt:** advanced-configuration.md „First-Launch Directory Resolution"
-  (`~/.claude/skills` → `~/.llmpeon/skills`) — existiert NICHT im Code (verifiziert: keine
-  `.claude/skills`-Resolution in Java; configDir = `~/.peon` via LlmPreferenceInitializer/LlmConfigLoader).
-- **Homepage** (setup/agents-and-skills.md:78 nennt ~/.peon/skills) — Update gehört ins Build-Inkrement
-  (AGENTS-Regel: user-facing im selben Increment). Da Mek erhält die Pfadliste im Plan.
-- **Tests-Neu:** `SkillServiceTest.threeRoots_precedenceProjectOverAgentsOverPeon`,
-  `agentsRootMissingLoadsEmpty`. Betroffene IST-Stellen: SkillService (configComponent → Liste),
-  PeonAiService-Wiring, Scaffold-Validator-Roots (ADR-0043 — bleibt mit configDir-Root), Scaffold-
-  Prompt-Empfehlung (`.agents` statt configDir), Homepage-Warnung (setup/agents-and-skills.md:78).
-- **Nächster Schritt:** Plan + Build (nach Pauls Stories).
-
-## Stand 2026-10-23 — Compact-UI-Sichtbarkeit (Docs, Paul-WTF-Meldung)
-
-- **Anlass:** Paul sieht beim Compact nichts im UI — `CompactService` ist monitor-frei (R-CC-14).
-  IST-Verifikation: Chat-Reset existiert NUR beim Button-Pfad (`AIChatView.java:499`);
-  `compactSession`/Pre-Turn/In-Loop-Direct bauen die View NICHT neu (HTML läuft voll).
-  Start-Zeile `AbstractAgent.java:406` nennt keinen Agent. Stale Kommentar
-  `doCompressAgent:512-513` („summary streams into the chat live") — stimmt seit R-CC-14 nicht mehr.
-- **Pauls SOLL (2026-10-23):** UI zeigt, dass der Compressor arbeitet · Compact-Ereignisse nennen
-  den Agent · Main-Agent-Compact → Chat-View-Reset (HTML läuft nicht voll). Async-Hinweis bewusst
-  NICHT aufgeschrieben („das haben wir gar nicht").
-- **Revision 2 (Paul, 19:24):** alte Entscheidung R-CT-4 (2026-09-22 „working reicht, kein separater
-  Compact-State") GELÖSCHT und ersetzt: **eigener Compact-Status** (🟡 `compacting` im Roster,
-  `AiAgentStatusWidget.text()`-Präfix) — Blatt-Regel unverändert. 🟡-Zeile aus open-points entfernt.
-- **Docs geschrieben (❌ specified, kein Code):**
-  - `compact.md` R-CC-14: Feedback-Teil revidiert — `onChatMessage` erreicht Caller-Monitor,
-    Streaming-Text bleibt log-only.
-  - `compact-lock.md` R-CT-5 (Compressor working sichtbar, UC-CT-7/8) · R-CT-6 (Agent-Name,
-    UC-CT-9) · R-CT-7 (Chat-Reset aktiver Agent, UC-CT-10/11/12).
-  - open-points ❓ „Compact-Button ohne Monitor" (2026-09-29) — als Spezifikation aufgelöst, entfernt.
-- **Nächster Schritt:** Plan + Build über Da Thinka/Da Mek (Tests: `compressorRequestStartReachesCallerMonitor`
-  verschärfen, UI-Trigger teilweise manuell). Kein ADR — Entscheidung folgt meiner Empfehlung.
-- **Status (Paul 2026-10-23):** 🟡-Roster-Status BESTÄTIGT. **NICHT bauen** — Paul hat noch
-  2 weitere Stories, danach Planung dieses Inkrements.
-
-## Stand 2026-10-23 — Docs-Slim-Zyklus ABGESCHLOSSEN
-
-- **Paul hat den Branch per SQUASH gemerged** (`2a094b5d` #164, Inhalt byte-identisch bis `56d3cc65`)
-  — mein Weiterbauen auf dem alten Branch erzeugte Pseudo-Konflikte; Da Mek hat `b9259ed5`–`4ce61a1d`
-  (+ Pauls Code-Commits, 7 Commits) per `git rebase --onto main 56d3cc65` auf main gehoben:
-  Branch `0a5bc5b8`, **0 Konflikte**, alle Gates grün (Lint = Baseline, PDE-Suite grün).
-  main kann jetzt FF-mergen.
-  Backup: `backup/docs-restructure-prerebase-2026-10-23` (= alter `4ce61a1d`, danach löschen).
-  Remote `origin/story/docs-restructure-2026-10-22` divergiert (24/8) — Push nur mit
-  `--force-with-lease`, Pauls Entscheidung. Danach: `releng/llmpeon-target` installen, Branch löschen.
-- Danach auf Branch: Cycle-Close-Commits `b9259ed5` (docs clean) + `4ce61a1d` (R-CG-16:
-  CodegraphContextItem nennt „Codegraph indexiert keine *.md files", 2 Tests, Plugin-Suite grün).
-- Branch trägt auch **Pauls Code-WIP** (`fb66b8b4`: AgentsTool/AsyncStreamingBridge/AsyncMonitor +
-  AbstractAgent/AiAgent/Timer/ToolLoopRequest; `573eb601`: `org.sterl.llmpeon/pom.xml` −1 Zeile) —
-  für diese Teile lief kein Core-Suite-/Plugin-Build.
-- **Skill-Evolution:** `peon-build-test` gepatcht (Core-Single-Class-Gate offline OHNE `-am`/Reactor,
-  `clean` zwingend). Ledger `.agents/skills/wiki/skill-impact.md` = Accepted.
-- **Neu im Zyklus:** OP-STREAM-1 (Stream-Hänger bei Verbindungsverlust/Notebook-Sleep, keine
-  Aliveness-Erkennung → streaming-display.md) · ADR-0073 (slf4j-api bleibt gebündelt, OSGi-Resolve
-  negativ bewiesen) · SwtUi-Guard (Tests skippen headless statt NPE).
-- **README-Befund (Paul fragen, nicht selbst ändern):** Update-Site-Konflikt — README L48 +
-  open-points sagen `https://sterlp.github.io/eclipse-peon-ai/` (2026-10-21), memory-Tool #46 sagt
-  `https://peon-ai-4e.sterl.org/` (ebenfalls 2026-10-21). Beide datieren denselben Tag — Konflikt,
-  hängt am offenen ⏳ p2-Pfad-Verifikation. Plus Proposal-only: doppelte „## Links"-Sektionen,
-  Emoji-Legende, „very old stuff" in README.
+- **T-1 (Paul, chat):** Skill-Routes nach Reload-Command — Meldung „Neu geladen aus /Users/sterlp/.peon:
+  5 Agents, 18 Skills, 6 Commands", aber vermutlich falsche/unvollständige Routes zurück.
+  `change-agent-issue.txt` ist LEER (nur Leerzeile) — Details fehlen. → Erst IST klären
+  (ReloadCommand/ChangeAgent), ggf. Paul nach Details fragen.
+- **T-2 = I-1 (hoch):** `webFetchAsMarkdown` zerstört Nicht-HTML-Inhalte — FlexmarkHtmlConverter
+  läuft auf text/plain & application/json → Newline-Collapse + Markdown-Escaping, Footer behauptet
+  „lines 1–2 of 2" (False-Negative-Klasse, R-WEB-1/2). Vorschlag im Issue-Doc: Content-Type-Gate
+  (html/+xml → Converter, sonst raw Text) + Footer-Pfad-Disclosure.
+- **T-3 = I-2 (mittel):** `webSearch` nach wenigen Calls minutenlang blockiert (HTTP 202, korrekt
+  gemeldet per R-WEB-12) — aber kein Backoff/Retry, keine Handlungsoption in der Meldung,
+  @Tool-Text nennt Rate-Limit nicht, parallele Calls im selben Turn provozieren Bot-Check.
+- **T-4 = I-3 (niedrig):** HTML→Markdown läßt `<pre>`/Code-Blöcke zerfließen (Zahlen-Gutter,
+  Leerzeilen je Code-Zeile) → Zeilennummern wertlos, Token-Ballast.
+- **T-5 = I-4 (niedrig, außerhalb Web-Tools):** eclipseSearchFiles liefert Pfad
+  `/llmpeon-parent/org.sterl.llmpeon.core/docs/web-tools.md`, eclipseReadFile mit exakt diesem Pfad
+  → „No eclipse file found" (nested modules). False-Negative-Klasse + Paritätsverstoß.
+  Bewusst nicht im Web-Run geändert.
+- **T-6 (Paul-Smoke compact-agents-issue.md, Story-2-Abnahme fehlteilig):** Compressor-Streaming
+  unsichtbar — schwarzer Balken „Waiting for AI…" ohne ankommende Tokens (UC-CT-8 „log-only").
+  Paul: „Zumindest das Streaming der token sollte ich sehen — das hatten wir schon viel besser."
+  → revidiert R-CT-5/R-CC-14-Streaming-Klausel (SOLL-Revision durch Owner im Smoke erklärt).
+- **T-7 (dito):** Sub-Agent-Compact-Ergebnis fehlt im Caller-Chat — nach „🗜 Compressing
+  Peon-Plan: 6 messages 969 tokens …" kommt nur „📋 Loading Agent Memory", nie done/success +
+  Ergebnisgröße (messages/tokens). Compact des Agenten selbst: „Session compacted:"-Ergebnis
+  sichtbar — das ist laut Paul gut so.
+- **T-1b erledigt (kein Bug):** TeamException im change-agent-issue.txt = Egit-Provider-
+  Instanziierung, von Eclipse Core geschluckt (getProvider fängt, loggt, markAsUnshared) —
+  Agent-Wechsel ohne Schaden; Root-Cause steht im !ENTRY oberhalb des Stacks (Pauls Eclipse/EGit).
+  Kein Fix in peon-ai.
 
 ## Offen für Paul (Details: [open-points.md](open-points.md))
 
-1. ❓ **Merge/Squash** Docs-Branch → main + Smoke (Docs-Linter-Report, Root-Index auto-load). Danach Branch löschen.
-2. ❓ **Merge/Tag 2.14.1** — `story/workspace-nesting-2026-10-19` lokal fertig; vorher
-   `mvn -B clean verify`. Smokes: Dev/Plan/Review gleicher Prozentsatz ·
-   Delegation-Compact > 70 % vor Auftrag · Monorepo · Codegraph nach Neustart.
-3. ⏳ **Delegations-Compact feuert pro Delegation** (Kosten, ADR-0071) — Faktor anheben oder nur
-   bei Themenwechsel? Rückversicherung steht aus.
-4. ⏳ **Compact-Briefing-Schema** für `compressor.md`: 3 Ergänzungen vorgeschlagen (STANDING-RULES-Slot,
-   preserve-Pfade erweitern, memory.md = complement-not-replace) — Freigabe steht aus.
-5. ❓ Fixture-Duplikat in ≥3 core-Testklassen · ❓ R-Regeln ohne Linter-Gate (`DocsLinter:241/254`)
-   · ❓ In-Loop-Direkt-Compact fängt Exceptions nicht (R-CC-20.5-Nachbarloch) · ⏳ Reserved-Name
-   `codegraph` · ⏳ R-CG-15 Monorepo-State-Refresh · ⏳ R-CC-19-Semantik+Tilde · ⏳ Windows-
-   `cmd /c`-Fallback · 🔒 S3 (🗜 in PoDelegateTool) blockiert auf Pauls WIP-Merge.
-6. ❓ **Testnamen-im-Fließtext-Slice** (Paul-Entscheid 2026-10-19, noch nicht gefahren) ·
-   ❓ Linter-Guard gegen Evidenz-Drift (positiv nachweisen) · vorbestehende R-CC-18-/R-DEF-Doppedefinitionen.
+1. ❓ **Merge/Squash** Nachtzyklus-Branch + Smoke. Danach Branch löschen.
+2. ⏳ Delegations-Compact pro Delegation (Kosten, ADR-0071) · ⏳ Compact-Briefing-Schema
+   (compressor.md) · ❓ Fixture-Duplikat · ❓ R-Regeln ohne Linter-Gate · ❓ In-Loop-Direkt-Compact
+   fängt Exceptions nicht · ⏳ Reserved-Name `codegraph` · ⏳ R-CG-15 Monorepo-State-Refresh ·
+   ⏳ R-CC-19-Semantik+Tilde · ⏳ Windows-`cmd /c`-Fallback · 🔒 S3 (🗜 in PoDelegateTool).
+3. ❓ Testnamen-im-Fließtext-Slice · ❓ Linter-Guard gegen Evidenz-Drift ·
+   vorbestehende R-CC-18-/R-DEF-Doppedefinitionen.
 
 ## Backlog (nächste Session)
 
 - **Async-Shell-Tool — Paul-Prio** (wichtiger als async Agents). Danach async Agents (Top-3 in
   [async-agents.md](../org.sterl.llmpeon.core/docs/async-agents.md)).
 - **TempFileTool** — Slice 2 Output-Trim 🚧 in design.
+- **Issue #163 („Tool Calls retten")** — recherchiert: langchain4j NICHT das Problem; Gegenmittel =
+  Rescue-Heuristik im ToolService-Loop (~60–100 Zeilen). Paul entscheidet, ob/wann.
 - Lint-Baseline-Befunde in einen Docs-Zyklus aufnehmen.
 - R-CG-14 (Generation + `disposed` statt Lock) · R-CIB-4 Stufe 2 · R-CC-7 Fehlerklassen-Tabelle
   ApiRetry (❓) · Header-State-Leak (❓) · Context-Overflow-Zyklus (❓) · McpService
   `connect()`-Rollback-Test (ADR-0069).
+- **OP-STREAM-1:** Stream-Hänger bei Verbindungsverlust/Notebook-Sleep, keine Aliveness-Erkennung
+  → [streaming-display.md](../org.sterl.llmpeon/docs/streaming-display.md).
 
 ## Notizen
 
 - **System-Prompts generisch halten** (Paul 2026-10-20): nichts Repo-Spezifisches, minimale
-  Änderungen, keine Docs-Inhalte — nur Verweise; Best Practice für alle Projekte.
+  Änderungen, keine Docs-Inhalte — nur Verweise. Übersicht: docs/system-prompts.md.
 - **Commit-Regel:** immer EXPLIZITE Pfadliste (`git add -- docs/ ...`), nie `git add -u`;
   Pauls WIP nie committen; Surefire-Ground-Truth + Commit-Hash aktiv einfordern, DONE-Claims
-  gegen den IST prüfen.
-- **Tool-Trap:** `diskRenameResource` kann Erfolg melden ohne zu verschieben — nach Renames immer
+  gegen den IST prüfen. Evidenz (Surefire-Nummern, Messreihen) nie in docs — Commit-Messages +
+  memory-Tools (memory#52).
+- **Tool-Trap:** `diskRenameResource` Erfolg melden ohne zu verschieben — nach Renames
   verifizieren. Edit-Fallen (replaceLines-Insert, Edit-Deletion-Teil-Match): nach JEDEM Edit
   Zielbereich zurücklesen + Dubletten-Check; Ganzdatei-Rewrites via `diskWriteFile` bevorzugen.
 - **Windows-Falle im Renderer:** in `lineSeparator()`-Strings immer `indexOf('\n')` suchen.
 - **UserMessage-Join in `ThreadSafeMemory.add`:** Seed-Fixtures ggf. `AiMessage` als Trenner.
 - **Docs-Restrukturierung (2026-10-22):** Feature-Doc-Pfade sind modul-qualifiziert
   (`org.sterl.llmpeon.core/docs/x.md`, `org.sterl.llmpeon/docs/x.md`); ADRs + Root-Docs
-  (Glossar, memory, open-/resolved-points, Notes) bleiben in `docs/`. Linter-Discovery findet
-  Modul-Roots automatisch.
+  bleiben in `docs/`. Linter-Discovery findet Modul-Roots automatisch.
 - **Issues/**: asm-Versions-Tabellen (issue-142) sind Fachinhalt, keine Evidenz — bewusst behalten.

@@ -176,7 +176,7 @@ The **Token Window** setting controls how many tokens of conversation history ar
 | **Token Window** | Max token window a model supports | ~256.000 (configurable) | Yes - via this setting |
 | **Max output tokens** | Max amount of token a model may generate | 0 (none) | see advanced configuration |
 
-**Explanation:** The token window limits what context is *sent to the LLM* for each request. Peon checks it at two points, same threshold (95 % of the budget): **before every turn** the conversation is compacted *before* your new message enters the history (`🗜 Pre-turn compact …`) — the new message is never lost; **after every tool round** the LLM gets a hint to use the `compact session tool` itself, and above the full budget it is compacted directly (`🗜 Direct compact …`). A failing compressor is reported and the turn continues without compacting.
+**Explanation:** The token window limits what context is *sent to the LLM* for each request. Peon checks it at two points, same threshold (95 % of the budget): **before every turn** the conversation is compacted *before* your new message enters the history (`🗜 <agent> compacted: 6 → 2 messages, ~969 → ~210 tokens (4s, 09:40) (1200 chars)`) — the new message is never lost; **after every tool round** the LLM gets a hint to use the `compact session tool` itself, and above the full budget it is compacted directly (it closes with the same `🗜 <agent> compacted: …` line). A failing compressor is reported and the turn continues without compacting.
 
 ---
 

@@ -228,13 +228,16 @@ Stack; LLM erfährt nichts, Header hängt ([header-state-leak.md](../../org.ster
   über die bestehende Tool-/Monitor-Mechanik (Button, `compactSession`, PoDelegateTool,
   Auto-Compact — alle funneln durch `AbstractAgent.compact`) — **mit Agent-Namen**
   ([R-CT-6](compact-lock.md)).
-- Streaming-Chunks und Response-Text des Compressor-Calls (`onChatResponse`) gehen **nur ins Log** —
-  keine interne Streaming-Preview im Chat. **Aber:** das Request-Start-Event (`onChatMessage`)
-  erreicht den Caller-Monitor — die UI sieht, dass der Compressor arbeitet
+- Streaming-Chunks und Response-Text des Compressor-Calls werden **nicht geloggt** — sie streamen
+  live in die Chat-View des Callers ([R-CT-8](compact-lock.md)). **Aber:** das Request-Start-Event
+  (`onChatMessage`) erreicht den Caller-Monitor — die UI sieht, dass der Compressor arbeitet
   ([R-CT-5](compact-lock.md)).
   > **Korrektur 2026-10-23 (Paul):** „die UI braucht das nicht" galt nur für den Streaming-Text,
   > nicht für die Sichtbarkeit der Compact-Arbeit — ohne Feedback wirkt der Compact wie ein Hänger
   > (Feedback-Loch, ex open-points „Compact-Button ohne Monitor").
+  > **Revision 2026-10-24 (Paul-Smoke, compact-agents-issue.md):** die 2026-10-23-Klausel
+  > „nur ins Log" ist gestrichen — Tokens streamen ins UI und gehen nie ins Log; der Compact
+  > meldet Start/Ende wie ein langlaufendes Tool (R-CT-8).
 
 ### R-CC-10 ✅ — Diagnose-Dreiklang im Compact-Log: Memory vs. Modell vs. Schätzung (Da-Dok-Review: Code-Seite sauber)
 
@@ -322,18 +325,18 @@ post-Compact-Re-Seed neben Pre-Compact-Call-Input. Selbe Wurzel erklärt: Hint-F
 rot) · `subCompactMustNotClearParentMemory` (heute rot) · `subLoopHintAttributesToSubAgent`.
 Roboter-Smoke danach durch Paul (Branch bleibt `story/compact-input-budget`).
 
-### R-CC-16 ❌ — Da Scribe schreibt die neue Context-Größe ins onTool (2026-09-27, Paul)
+### R-CC-16 ❌ — Da Scribe schreibt die neue Context-Größe in die Compact-End-Zeile (2026-09-27, Paul; Ziel-Zeile 2026-10-24 auf R-CT-8 nachgezogen)
 
-Der Compact (Da Scribe / `compactSession`) emittiert zusätzlich zum Ergebnis die **vom
-Compressor-LLM gemeldete Input-Größe** (was der Compact-Call selbst an Context sah — ohne die
-Static-Inhalte) in seiner onTool-Zeile. Die bisherige Estimate-Anzeige bleibt unverändert
+Der Compact (Da Scribe / `compactSession`) ergänzt in der uniformen Compact-End-Zeile
+([R-CT-8](compact-lock.md)) die **vom Compressor-LLM gemeldete Input-Größe** (was der Compact-Call
+selbst an Context sah — ohne die Static-Inhalte). Die bisherige Estimate-Anzeige bleibt unverändert
 (nebeneinander): die Schätzung zählt ContextItems mit und liegt dadurch bewusst über der nackten
 LLM-Größe.
 
-- GIVEN der Compact-LLM meldet `usage.inputTokenCount = N` WHEN Da Scribe done THEN die onTool-Zeile
-  enthält die LLM-Context-Größe (ohne Static) **und** die bisherige Estimate.
-- GIVEN der Compact-LLM meldet keine Usage WHEN done THEN fällt die Zeile auf die Estimate allein
-  zurück (kein `n/a`-Rauschen nötig — ehrliche Abwesenheit).
+- GIVEN der Compact-LLM meldet `usage.inputTokenCount = N` WHEN die End-Zeile emittiert wird THEN
+  enthält sie die LLM-Context-Größe (ohne Static) **und** die bisherige Estimate.
+- GIVEN der Compact-LLM meldet keine Usage WHEN die End-Zeile emittiert wird THEN fällt sie auf die
+  Estimate allein zurück (kein `n/a`-Rauschen nötig — ehrliche Abwesenheit).
 
 ### R-CC-17 ✅ done — „Log biggest overflow": größte Message beim Compact loggen (2026-09-30, Paul; U1–U4)
 
@@ -374,8 +377,9 @@ Ereignis-Gate (`ranTool(compactSession)` + Turn-Merker) ersatzlos.
 
 - **R-CC-18.1 — Direkt:** `used > autoCompactAfter` (die **rohe** Config; kein Agent-Faktor mehr) **und**
   Memory > `MIN_COMPACT_MESSAGES` ⇒ `agent.compact(monitor)` **direkt** ausführen (R-CC-8 bleibt scharf);
-  danach Zähler re-derived (R-CC-2) und Static neu gebaut. Eine `onTool`-Zeile nennt Anlass +
-  Zahlen, damit der User sieht, warum der Context springt. Das frühe Compacten von Jons Sklaven ist
+  danach Zähler re-derived (R-CC-2) und Static neu gebaut. Der Compact meldet sich über die uniforme
+  Start-/End-Zeile ([R-CT-8](compact-lock.md), Revision 2026-10-24 — keine eigene „Direct compact for
+  …"-Zeile mehr; der Anlass ist aus den Zahlen ablesbar). Das frühe Compacten von Jons Sklaven ist
   **nicht** hier verankert, sondern in der Delegation ([po-agent-jon.md](po-agent-jon.md) R18,
   [ADR-0071](../../docs/adr/0071-compact-policy-owned-by-delegation.md)).
 - **R-CC-18.2 — Hint im Band:** `used > 95 %` **und** ≤ Budget ⇒ Hint wie bisher — R-CC-4-Dedup

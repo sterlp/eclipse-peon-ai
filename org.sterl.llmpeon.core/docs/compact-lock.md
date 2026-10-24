@@ -132,31 +132,48 @@ kein 🟢 durch Compact; die kompaktierende Zeile selbst zeigt 🟡 statt 🟢).
 > der Feedback-Kanal läuft über den Caller-Monitor. Verwandt: [compact.md R-CC-14](compact.md)
 > (Korrektur 2026-10-23), [chat-job-lifecycle.md](../../org.sterl.llmpeon/docs/chat-job-lifecycle.md).
 
-### R-CT-5 — Der Compressor ist im UI als arbeitend sichtbar ✅ done (2026-10-23, Nachtzyklus)
+### R-CT-5 — Der Compressor ist im UI als arbeitend sichtbar ✅ done (2026-10-23, Nachtzyklus; Streaming-Teil 2026-10-24 revidiert → [R-CT-8](#r-ct-8--compact-meldet-start-und-ende-wie-ein-langlaufendes-tool-streaming-sichtbar-nie-im-log--specified-2026-10-24-paul-smoke))
 
 Der Caller-Monitor erhält das Request-Start-Event (`onChatMessage`) des Compressor-Calls — die
 Chat-View zeigt während des Compact denselben Working-Zustand wie vor jedem anderen Modell-Call
-(„waiting for AI…"); der Roster zeigt den eigenen Compact-Status (R-CT-4). Streaming-Chunks und
-Response-Text des Compressors bleiben
-log-only (kein Chat-Spam durch interne Tokens — R-CC-14 bleibt für den Text bestehen).
+(„waiting for AI…"); der Roster zeigt den eigenen Compact-Status (R-CT-4).
+
+> **Revision 2026-10-24 (Paul-Smoke, compact-agents-issue.md):** die 2026-10-23-Klausel
+> „Streaming-Chunks und Response-Text bleiben log-only" ist gestrichen — der minutenlange stille
+> Balken liest sich als Hänger („das hatten wir schon viel besser"). Tokens streamen sichtbar ins
+> UI und gehen nie ins Log: R-CT-8. Das alte UC-CT-8 (`compressorStreamingStaysLogOnly`) entfällt
+> mit der Klausel; sein Test wird im R-CT-8-Inkrement ersetzt.
 
 - GIVEN ein Compact läuft WHEN der Compressor-Call startet THEN zeigt die Chat-View den
   Working-Zustand, bis der Compact endet. *(UC-CT-7)*
-- GIVEN ein Compact läuft WHEN der Compressor streamt THEN erscheinen keine Chunks und kein
-  Response-Text im Chat (nur Log). *(UC-CT-8)*
-
-> Umsetzungshinweis: die Richtung trennen zwei Tests — `compressorRequestStartReachesCallerMonitor`
-> (UC-CT-7: genau ein `onChatMessage` am Caller-Monitor, kein zusätzliches `onTool`) und
-> `compressorStreamingStaysLogOnly` (UC-CT-8, Guard: keine Chunks, kein Response-Text). Der alte
-> `compressorChatEventsDoNotReachAgentMonitor` trennte alle Events und ist damit ersetzt.
 
 #### UC-CT-7 — compressorShowsWorkingInUi ✅
 - GIVEN der aktive Agent kompaktiert WHEN der Compressor-Call läuft THEN zeigt die Chat-View den
   Working-Zustand (`onChatMessage` am Caller-Monitor).
 
-#### UC-CT-8 — compressorStreamingStaysLogOnly ✅
-- GIVEN ein Compact läuft WHEN der Compressor streamt THEN landet kein Chunk und kein
-  Response-Text im Chat.
+### R-CT-8 — Compact meldet Start und Ende wie ein langlaufendes Tool; Streaming sichtbar, nie im Log ❌ specified (2026-10-24, Paul-Smoke)
+
+Der Compact verhält sich im UI wie jeder langlaufende Tool-Call (ShellTool-Muster: Start-`onTool`,
+End-`onTool` mit Dauer und chars) — **ohne** Wissen davon, für welchen Agenten er läuft (kein
+Root-/Sklaven-Sonderweg, kein Responsibility-Bleed):
+
+- **Start-Zeile** (existiert, R-CT-6): `🗜 Compressing <Agent>: …` via `onTool`.
+- **End-Zeile** via `onTool` — die EINE Abschlussmeldung mit Agent-Namen, Ergebnisgröße, Dauer und
+  chars (CallStats-Muster), z. B. `🗜 Da Mek compacted: 6 → 1 messages, 969 → 210 tokens, 4.2 s,
+  1.2k chars`. Die doppelte Meldung `<Agent> compact.` (AgentsTool `reportAction` nach
+  `subAgentCompact`) entfällt; die Pre-Turn-Abschlusszeile nutzt dieselbe End-Zeile.
+- **Streaming:** Compressor-Tokens erscheinen live in der Chat-View des Callers — wie beim
+  normalen Agent-Streaming; Chunks und Response-Text werden **nicht** ins Log geschrieben
+  (das Response-/Chunk-Logging im Compact-Pfad entfällt; der R-CIB-3-Entry-Debuglog bleibt,
+  Level DEBUG).
+
+- GIVEN ein Compact eines anderen Agenten läuft WHEN er erfolgreich endet THEN erscheint im
+  Caller-Chat genau EINE End-Zeile mit Agent-Name, Dauer und chars — keine zweite
+  `<Agent> compact.`-Meldung. *(UC-CT-13)*
+- GIVEN ein Compact läuft WHEN der Compressor streamt THEN erscheinen die Tokens live im Chat und
+  nichts davon im Log. *(UC-CT-14)*
+- GIVEN ein Compact scheitert oder bricht ab WHEN der Lauf endet THEN erscheint die
+  Problem-Meldung wie heute und keine Erfolgs-End-Zeile. *(UC-CT-15)*
 
 ### R-CT-6 — Compact-Ereignisse nennen den Agenten ✅ done (2026-10-23, Nachtzyklus)
 

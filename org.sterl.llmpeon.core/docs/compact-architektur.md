@@ -2,6 +2,8 @@
 
 > **Status:** ✅ (2026-09-26, Da-Dok-Review) ·
 > **Δ 2026-10-18:** R-CC-18 ❌ specified (Tool-Loop-Entscheidung, Abschnitt „Tool-Loop-Auslöser" unten) ·
+> **Δ 2026-10-24:** R-CT-8 ❌ specified (Paul-Smoke) — Compressor-Streaming an den Caller-Monitor
+> (UI, nie Log), log-only-Monitor-Konzept entfallen ·
 > **Fachdocs:** [compact.md](compact.md) (R-CC-1…14, R-CC-18) · [compact-input-budget.md](compact-input-budget.md) (R-CIB-1…6) ·
 > **ADRs:** [ADR-0055](../../docs/adr/0055-context-counter-input-not-cost.md) · [ADR-0056](../../docs/adr/0056-compact-component-and-render-modes.md) · [ADR-0070](../../docs/adr/0070-compact-decision-in-one-component.md)
 
@@ -25,14 +27,15 @@
 | `AbstractAgent` (core `agent`) | den Vorgang: Guard/Policy (`working`-CAS, `MIN_COMPACT_MESSAGES`, Staging-Budget = rohe `autoCompactAfter`), `requestTokens`-Capture **vor** `clear()`, clear+reseed, Monitor-Emission (`onTool`/`onProblem`); den **Pre-Turn-Check** vor der frischen User-Message (R-CC-20, rohes Budget, kein Faktor) — kein Agent-Faktor ([ADR-0071](../../docs/adr/0071-compact-policy-owned-by-delegation.md)); das frühe Compacten von Jons Sklaven besitzt `PoDelegateTool` |
 | `HandleToolLoopCompactComponent` (core `compact`) | **die Compact-Entscheidung — beide Fronten, ein Ort:** im Tool-Loop (R-CC-18) `used > Budget` → `agent.compact()` direkt · `used > 95 %` → Hint (R-CC-4) · sonst nichts; und die Pre-Turn-Schwelle (R-CC-20: `used > 95 %`, Compact statt Hint — vor dem Turn wissen wir, was wichtig ist: die frische Message). Statische Regeln (`overRawBudget`/`nearBudget`), die Folgen jedes Compacts (`reevaluateTokens` + Static-Rebuild) am Ausführenden. Ein Zustand, ein Wert (95 %), zwei Zeitpunkte — kein Ereignis-Gate. |
 | `ToolService.executeLoop` (core `tool`) | den Loop — und **nichts** über Compact: kein `ranTool(compactSession)`, kein Turn-Merker, keine Hint-Verdrahtung. Es ruft nur `HandleToolLoopCompactComponent` vor dem Call. |
-| `CompactService` (core `compact`) | die LLM-Transformation: Compressor-Prompt, Call, log-only Monitor, „genau EIN debug-Log", `Stats` — **monitor-frei**, pure |
+| `CompactService` (core `compact`) | die LLM-Transformation: Compressor-Prompt, Call mit Caller-Monitor-Streaming (Chunks → Caller-Monitor, nie Log — R-CT-8), „genau EIN debug-Log", `Stats` |
 | `ContextTrimComponent` (core `compact`) | die Stufenkürzung: Stage-Caps (Think 9000 front, Tool-Results 6000, letzte UserMessage voll, dynamisches Per-Message-Cap), Presets — pure, kein LLM/Memory |
 | `CompactResult` (core `model`) | die Antwort: `summary`, `Stats`, `resultLine()` — eine Implementierung für Log + Tool-Result + UI |
 | `ThreadSafeMemory` | die Token-Zahlen (`totalTokenUsed`, `tokenIsEstimate`, `lastProviderInputTokens`) + deren Format `tokenDiagnosis()` (R-CC-10) |
 | `ChatMessageUtil` | nur die generische Mathe (`chars/3`, 1× zentral) |
 
 **Emissions-Regel:** Jede Komponente emittiert nur an den Besitzer ihres Pfads — Agent am Monitor,
-Service am Log. Niemand anderes spricht zum User.
+Service spiegelt die Compressor-Events (Request-Start R-CT-5, Streaming R-CT-8) an den
+übergebenen Caller-Monitor. Niemand anderes spricht zum User.
 
 ## Schnittstellen & Abhängigkeiten
 
@@ -40,7 +43,7 @@ Service am Log. Niemand anderes spricht zum User.
 |---|---|---|
 | nutzt | `ThreadSafeMemory` (Agent-seitig) | getCopy, Capture vor clear, tokenDiagnosis |
 | nutzt | `CompactService` → `ContextTrimComponent` | stage(input, budget) → Outcome |
-| nutzt | `CompactService` → `ConfiguredChatModel` | Compressor-Call (`callBlocking`, log-only Monitor) |
+| nutzt | `CompactService` → `ConfiguredChatModel` | Compressor-Call (Streaming an den Caller-Monitor — R-CT-8) |
 | nutzt | `CompactService` → `ChatMessageUtil` | `estimateTokens` (Formel) |
 | genutzt von | Trigger: AIChatView-Button, `CompactSessionTool`, `PoDelegateTool`, Auto-Compact | alle funneln `AiAgent.compact(monitor)` |
 | genutzt von | Plugin `AIChatView`/`AiAgentStatusModel` | lesen nur `CompactResult` (model) |
@@ -115,9 +118,9 @@ sequenceDiagram
     A->>S: compact(name, msgs, budget, diagnosis, reqTokens, reqIsEst)
     S->>C: stage(messages, budget)
     C-->>S: Outcome(input, before/after, stage, capsLine)
-    S->>S: log.debug (Entry-Log + Diagnostic — log-only)
-    S->>L: callBlocking(Compress-Request, logMonitor)
-    Note over L: Compressor-Events → nur logMonitor, nie zum Agent-Monitor
+    S->>S: log.debug (Entry-Log + Diagnostic — Level DEBUG)
+    S->>L: call(Compress-Request) — Compressor-Tokens streamen an den Caller-Monitor (R-CT-8)
+    Note over L: Chunks/Response → Caller-Monitor (UI), nie ins Log
     L-->>S: response
     alt Text leer
         S-->>A: FAILED_EMPTY(stats, cause)

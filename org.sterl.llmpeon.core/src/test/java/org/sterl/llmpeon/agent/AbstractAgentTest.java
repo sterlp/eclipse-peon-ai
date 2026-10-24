@@ -25,6 +25,7 @@ import org.sterl.llmpeon.agent.model.TaggedResult;
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.compact.CompactFeedback;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.context.SimpleContextItem;
@@ -810,8 +811,9 @@ class AbstractAgentTest {
 
         // THEN — the pre-turn gate did not fire (3 is not > 3): only the turn's LLM call …
         assertThat(callCount.get()).isEqualTo(1);
-        // AND — no compact event line …
-        assertThat(toolLines).noneMatch(l -> l.contains("Pre-turn compact"));
+        // AND — no compact line of any kind (gate did not fire) …
+        assertThat(toolLines).noneMatch(l -> l.contains(CompactFeedback.START_PREFIX)
+                || l.contains(CompactFeedback.END_MARKER));
         // AND — the fresh message and the full history are untouched in the memory
         assertThat(agent.hasUserText("test")).isTrue();
         assertThat(memory.size()).isEqualTo(5); // 3 seeded + the fresh message + the turn's AI response
@@ -852,8 +854,9 @@ class AbstractAgentTest {
 
         // THEN — the pre-turn gate is off (budget <= 0): only the turn's LLM call …
         assertThat(callCount.get()).isEqualTo(1);
-        // AND — no compact event line …
-        assertThat(toolLines).noneMatch(l -> l.contains("Pre-turn compact"));
+        // AND — no compact line of any kind (gate did not fire) …
+        assertThat(toolLines).noneMatch(l -> l.contains(CompactFeedback.START_PREFIX)
+                || l.contains(CompactFeedback.END_MARKER));
         // AND — the fresh message and the full history are untouched in the memory
         assertThat(agent.hasUserText("test")).isTrue();
         assertThat(memory.size()).isEqualTo(6); // 4 seeded + the fresh message + the turn's AI response

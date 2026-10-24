@@ -60,9 +60,9 @@ class HandleToolLoopCompactComponentTest {
         // AND — the static messages were rebuilt for the next call
         assertThat(req.staticMessages).hasSize(1);
         assertThat(((SystemMessage) req.staticMessages.get(0)).text()).isEqualTo("static-rebuilt");
-        // AND — the onTool line names the agent and carries the numbers (reason + what happened)
-        assertThat(toolLines).anyMatch(l -> l.contains("Direct compact for Peon-Dev")
-                && l.contains("compressed 6 messages") && l.contains("request 170001 (provider)"));
+        // AND — the component emits no line of its own any more (R-CT-8): the one end line belongs
+        // to AbstractAgent.compact, which this stub agent does not run
+        assertThat(toolLines).isEmpty();
     }
 
     // R-CC-18

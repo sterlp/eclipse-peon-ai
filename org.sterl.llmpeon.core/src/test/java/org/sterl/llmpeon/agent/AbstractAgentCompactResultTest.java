@@ -214,8 +214,10 @@ class AbstractAgentCompactResultTest {
         // THEN — the compressor's request start reaches the caller: its UI shows the working state
         assertThat(result.status()).isEqualTo(CompactResult.Status.COMPACTED);
         assertThat(chatRequests).containsExactly(1);
-        // AND — the service adds no line of its own: the compact stays visible through the single start line
-        assertThat(toolLines).hasSize(1);
+        // AND — the service adds no line of its own: the compact is the one start line plus its end line
+        assertThat(toolLines).hasSize(2);
+        assertThat(toolLines.getFirst()).startsWith(CompactFeedback.START_PREFIX);
+        assertThat(toolLines.getLast()).contains(CompactFeedback.END_MARKER);
     }
 
     // R-CT-5
@@ -250,16 +252,15 @@ class AbstractAgentCompactResultTest {
     }
 
     // R-CC-14
-    // UC-CT-8
+    // UC-CT-14
     @Test
     @Timeout(10)
-    void compressorStreamingStaysLogOnly() {
-        // GIVEN — a compact that runs; the caller monitor captures streaming chunks and chat messages
-        var agent = devAgent(r -> ChatResponse.builder()
-                .aiMessage(AiMessage.aiMessage("WHAT: compressor summary")).build());
-        agent.addMessage(UserMessage.from("m1"));
-        agent.addMessage(AiMessage.from("m2"));
-        agent.addMessage(UserMessage.from("m3"));
+    void compressorStreamingReachesCallerMonitor() {
+        // GIVEN — a compact whose compressor streams its summary in two chunks; the caller captures
+        // streaming chunks and chat responses
+        var agent = streamingDevAgent(r -> ChatResponse.builder()
+                .aiMessage(AiMessage.aiMessage("WHAT: compressor summary")).build(), "WHAT: ", "compressor summary");
+        addThreeMessages(agent);
         var chunks = new ArrayList<String>();
         var responses = new ArrayList<SimpleMessage>();
         var monitor = new AiMonitor() {
@@ -270,11 +271,16 @@ class AbstractAgentCompactResultTest {
         // WHEN
         var result = agent.compact(monitor);
 
-        // THEN — no streaming preview of the internal call in the chat: neither a chunk ...
+        // THEN — the compressor streams live into the caller's monitor, in order (R-CT-8): without the
+        // pass-through only the START of the blocking call arrives
         assertThat(result.status()).isEqualTo(CompactResult.Status.COMPACTED);
-        assertThat(chunks).isEmpty();
-        // AND ... nor the compressor's response text
-        assertThat(responses).noneMatch(m -> m.message() != null && m.message().contains("WHAT: compressor summary"));
+        assertThat(chunks).containsExactly(
+                "START:null", "ANSWER:WHAT: ", "ANSWER:compressor summary", "END:null");
+        // AND — the text never arrives as a chat response, only as those chunks: the only messages
+        // here are the two compact lines the default onTool forwards (R-CC-14)
+        assertThat(responses).noneMatch(m -> String.valueOf(m.message()).contains("compressor summary"));
+        assertThat(responses).extracting(SimpleMessage::message)
+                .allSatisfy(m -> assertThat((String) m).startsWith("🗜 "));
     }
 
     // R-CT-6
@@ -296,13 +302,44 @@ class AbstractAgentCompactResultTest {
         // WHEN
         var result = agent.compact(monitor);
 
-        // THEN — exactly ONE start line, emitted by the agent (after the guard, before the clear)
+        // THEN — one start line and one end line, both emitted by the agent (R-CT-8)
         assertThat(result.status()).isEqualTo(CompactResult.Status.COMPACTED);
-        assertThat(toolLines).hasSize(1);
-        // AND — it names the agent, so a compact of any trigger is attributable (R-CT-6)
+        assertThat(toolLines).hasSize(2);
+        // AND — the start names the agent, so a compact of any trigger is attributable (R-CT-6)
         assertThat(toolLines.getFirst())
                 .startsWith(CompactFeedback.START_PREFIX + AiDevAgent.NAME + ": 3 messages ")
                 .contains(" tokens (estimate)");
+        // AND — the end names it too, and shows the re-seeded memory: 2 messages left
+        assertThat(toolLines.getLast())
+                .startsWith("🗜 " + AiDevAgent.NAME + CompactFeedback.END_MARKER + "3 → 2 messages, ")
+                .endsWith(") " + org.sterl.llmpeon.shared.StringUtil.charsSuffix("summary"));
+    }
+
+    // UC-CT-15
+    @Test
+    @Timeout(10)
+    void failedCompactEmitsNoEndLine() {
+        // GIVEN — a compact that runs but whose compressor returns no summary
+        var agent = devAgent(r -> ChatResponse.builder().aiMessage(AiMessage.aiMessage("")).build());
+        addThreeMessages(agent);
+        var toolLines = new ArrayList<String>();
+        var problems = new ArrayList<String>();
+        var monitor = new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onTool(String message) { toolLines.add(message); }
+            @Override public void onProblem(String message) { problems.add(message); }
+        };
+
+        // WHEN
+        var result = agent.compact(monitor);
+
+        // THEN — the failure is reported as a problem, and the start line stays the only tool line:
+        // nothing was compacted, so there is nothing to close (R-CT-8)
+        assertThat(result.status()).isEqualTo(CompactResult.Status.FAILED_EMPTY);
+        assertThat(problems).hasSize(1);
+        assertThat(toolLines).hasSize(1);
+        assertThat(toolLines.getFirst()).startsWith(CompactFeedback.START_PREFIX);
+        assertThat(toolLines).noneMatch(l -> l.contains(CompactFeedback.END_MARKER));
     }
 
     // R-CT-7
@@ -481,6 +518,15 @@ class AbstractAgentCompactResultTest {
     private AiDevAgent devAgent(java.util.function.Function<dev.langchain4j.model.chat.request.ChatRequest, ChatResponse> fn) {
         var config = LlmConfig.builder().model("mock").build();
         return new AiDevAgent(new ConfiguredChatModel(config, new StreamMock().buildMock(fn)), new ToolService());
+    }
+
+    /** The same, but the answer arrives as streaming chunks first — what the real model does. */
+    private AiDevAgent streamingDevAgent(
+            java.util.function.Function<dev.langchain4j.model.chat.request.ChatRequest, ChatResponse> fn,
+            String... chunks) {
+        var config = LlmConfig.builder().model("mock").build();
+        return new AiDevAgent(new ConfiguredChatModel(config, new StreamMock().buildStreamingMock(fn, chunks)),
+                new ToolService());
     }
 
     private AiMonitor capturingMonitor(AtomicReference<String> problem, AtomicBoolean canceled) {

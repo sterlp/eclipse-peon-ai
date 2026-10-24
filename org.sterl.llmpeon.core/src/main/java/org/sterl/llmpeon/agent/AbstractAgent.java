@@ -24,6 +24,7 @@ import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.queuedmessages.UserMessageQueue;
 import org.sterl.llmpeon.shared.AiMonitor;
+import org.sterl.llmpeon.shared.CallStats;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
@@ -392,13 +393,14 @@ public abstract class AbstractAgent implements AiAgent {
             return; // over budget only: the provider call is the honest outcome (same as FAILED_EMPTY)
         }
         if (result.status() != CompactResult.Status.COMPACTED) return; // SKIPPED_SMALL/FAILED_EMPTY: no retry, no hint
-        memory.reevaluateTokens(); // R-CC-2
-        AiMonitor.nullSafety(monitor).onTool("🗜 Pre-turn compact for " + getName()
-                + " (context over budget): " + result.resultLine() + memory.tokenDiagnosis()); // R-CC-10
+        memory.reevaluateTokens(); // R-CC-2 — R-CT-8: `compact(...)` already sent the one end line
     }
 
     @Override
     public CompactResult compact(AiMonitor monitor) {
+        // ADR-0053: the shared duration/wall-time helper, started at the compact's visible start so
+        // the end line measures everything the user waits for — staging, call and re-seed.
+        var callStats = CallStats.start();
         // nullSafety up front: the FAILED_EMPTY onProblem path must never have a null monitor
         var mon = AiMonitor.nullSafety(monitor);
         // User-triggered compact acquires the working flag (R-CT-1); an in-loop compact runs
@@ -415,6 +417,14 @@ public abstract class AbstractAgent implements AiAgent {
         // !acquired = a turn already held the flag, so this compact ran inside it (withinTurn).
         if (result.status() != CompactResult.Status.SKIPPED_SMALL) {
             mon.onCompactCompleted(getName(), result, !acquired);
+        }
+        // R-CT-8: the one end line, for every trigger and every agent alike. It goes out after the
+        // event on purpose — the event enqueues the chat rebuild of the shown agent (R-CT-7 NOW),
+        // and SWT runs the queued display FIFO, so the line survives that rebuild instead of being
+        // reset away with it.
+        if (result.status() == CompactResult.Status.COMPACTED) {
+            mon.onTool(CompactFeedback.endLine(getName(), result, memory.size(),
+                    memory.getTotalTokenUsed(), callStats));
         }
         return result;
     }
@@ -435,8 +445,8 @@ public abstract class AbstractAgent implements AiAgent {
             var messages = memory.getCopy();
             var compactCfg = configuredModel.getConfig().compactAgentConfig();
             // R-CC-14: the service emits no lines itself — the start line is emitted by the agent
-            // (all triggers funnel through here); the service mirrors only the compressor's request
-            // start to this monitor so the caller's UI shows its working state (R-CT-5)
+            // (all triggers funnel through here), and this monitor is the one the compressor streams
+            // its tokens into, so the caller sees a real working state (R-CT-5, R-CT-8)
             monitor.onTool(CompactFeedback.startLine(getName(), messages.size(),
                     ChatMessageUtil.estimateTokens(messages), compactCfg.getModel())); // R-CT-6
             var result = new CompactService(configuredModel).compact(

@@ -14,6 +14,7 @@ import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.compact.CompactFeedback;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
@@ -94,7 +95,12 @@ class ToolServiceDirectCompactTest {
         // AND — no COMPACT_HINT landed in the memory (the direct path replaces the ask)
         assertThat(memory.getCopy()).noneMatch(m ->
                 ChatMessageUtil.toString(m).contains("CONTEXT LIMIT WARNING"));
-        // AND — the onTool line announces the direct compact with the numbers
-        assertThat(toolLines).anyMatch(l -> l.contains("Direct compact for Peon-Dev"));
+        // AND — R-CT-8: exactly one end line for the direct compact, with the re-seeded numbers and
+        // the shared duration/wall-time suffix — no "Direct compact for …" line of its own
+        var endLines = toolLines.stream().filter(l -> l.contains(CompactFeedback.END_MARKER)).toList();
+        assertThat(endLines).hasSize(1);
+        assertThat(endLines.getFirst()).matches(
+                "🗜 Peon-Dev compacted: \\d+ → 2 messages, ~\\d+ → ~\\d+ tokens \\(\\d+(?:m \\d+)?s, \\d{2}:\\d{2}\\) \\(\\d+ chars\\)");
+        assertThat(toolLines).noneMatch(l -> l.contains("Direct compact for"));
     }
 }

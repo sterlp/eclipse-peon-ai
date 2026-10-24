@@ -8,7 +8,6 @@ import dev.langchain4j.agent.tool.Tool;
 
 public class CompactSessionTool extends AbstractTool {
     public static final String NAME = "compactSession";
-    public static final String TOOL_MESSAGE_PREFIX = "🗜 Da Scribe done ";
 
     @Tool(name = CompactSessionTool.NAME,
             value = """
@@ -25,17 +24,15 @@ public class CompactSessionTool extends AbstractTool {
             throw new IllegalStateException("compactSession requires an owning agent");
         }
 
-        long startNanos = System.nanoTime();
         var result = agent.compact(monitor);
         return switch (result.status()) {
             case COMPACTED -> {
-                long elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000;
+                // R-CT-8: no own UI line — the agent's compact already sent the one end line; the
+                // tool result below is what the LLM reads.
                 var toolResult = "🗜 " + result.resultLine() + System.lineSeparator()
                         + (StringUtil.hasValue(preserve)
                                 ? "Preserved:" + System.lineSeparator() + StringUtil.stripToEmpty(preserve)
                                 : "(nothing preserved)");
-                onTool(TOOL_MESSAGE_PREFIX + " for " + agent.getName()
-                    + ". (" + StringUtil.humanElapsed(elapsedMillis) + ")" + " " + StringUtil.charsSuffix(toolResult));
                 // R-CC-18 (ADR-0070): the consequences of the compact hang on the runner — this
                 // tool. The next addResult's provider inputTokenCount describes the PRE-compact
                 // context, so the counter must be derived from the (small) post-compact memory

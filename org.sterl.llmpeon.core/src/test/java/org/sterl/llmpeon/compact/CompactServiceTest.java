@@ -21,6 +21,7 @@ import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.mock.MockLlmServer;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
+import org.sterl.llmpeon.shared.OnPartialAiResponse;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -214,20 +215,46 @@ class CompactServiceTest {
         assertThat(errors.getFirst()).contains("compact failed");
     }
 
-    // R-CC-14
+    // UC-CT-14
     @Test
-    void compressorCallEventsAreLogged() {
-        // GIVEN — the compressor answers with a summary, capturing log
+    void compressorEventsStreamToCallerAndStayOutOfTheLog() {
+        // GIVEN — a compressor that streams its summary in two chunks, with a capturing log and a caller
         var log = new CapturingLog();
-        var engine = engineWithSummary(log, 100000);
+        var streamMock = new StreamMock();
+        var cm = streamMock.buildStreamingMock(
+                r -> ChatResponse.builder().aiMessage(AiMessage.aiMessage("WHAT: summary")).build(),
+                "WHAT: ", "summary");
+        var engine = new CompactService(new ConfiguredChatModel(
+                LlmConfig.builder().model("test").autoCompactAfter(100_000).build(), cm), log);
+        var chunks = new ArrayList<OnPartialAiResponse>();
+        var responses = new ArrayList<String>();
+        var caller = new AiMonitor() {
+            @Override public void onStreamingChunk(OnPartialAiResponse chunk) { chunks.add(chunk); }
+            @Override public void onChatResponse(org.sterl.llmpeon.tool.model.SimpleMessage message) {
+                responses.add(String.valueOf(message.message()));
+            }
+        };
 
         // WHEN
-        engine.compact("dev-agent", List.of(UserMessage.from("Foo"), AiMessage.from("Bar")), "", null);
+        var result = engine.compact("dev-agent",
+                List.of(UserMessage.from("Foo"), AiMessage.from("Bar")), "", null, caller);
 
-        // THEN — the internal call's request and response events are in the log (debug), not the monitor
-        var debugs = log.lines(CapturingLog.Level.DEBUG);
-        assertThat(debugs).anySatisfy(l -> assertThat(l).contains("Compressor request: 2 messages"));
-        assertThat(debugs).anySatisfy(l -> assertThat(l).contains("Compressor response: WHAT: Test summary"));
+        // THEN — the caller gets the compressor live: START, both answer chunks, END, in order
+        assertThat(chunks).extracting(OnPartialAiResponse::type).containsExactly(
+                OnPartialAiResponse.Type.START, OnPartialAiResponse.Type.ANSWER,
+                OnPartialAiResponse.Type.ANSWER, OnPartialAiResponse.Type.END);
+        // AND — the chunks carry the text itself, so the chat shows what the compressor is writing
+        assertThat(chunks).filteredOn(c -> c.type() == OnPartialAiResponse.Type.ANSWER)
+                .extracting(OnPartialAiResponse::value).containsExactly("WHAT: ", "summary");
+
+        // AND — nothing of the call is logged: no request line, no response text, no usage line
+        assertThat(log.allLines()).noneSatisfy(l -> assertThat(l.message()).contains("Compressor "));
+        assertThat(log.allLines()).noneSatisfy(l -> assertThat(l.message()).contains("WHAT: summary"));
+        // AND — and it never becomes a chat response either: the text arrives as chunks only (R-CC-14)
+        assertThat(responses).isEmpty();
+        // AND — the one entry log (R-CIB-3) survives unchanged, and the summary still reaches the result
+        assertThat(log.entryLine()).contains("agent=dev-agent");
+        assertThat(result.summary()).isEqualTo("WHAT: summary");
     }
 
     // ---------- request payload (both directions) ----------
@@ -257,11 +284,8 @@ class CompactServiceTest {
         assertThat(count(compacted.singleText(), "Foo")).isEqualTo(1);
         assertThat(compacted.singleText()).contains("session truncated").contains("duplicates collapsed: 1");
 
-        // AND — R-CC-14: the compressor output never reaches the agent's monitor — the received
-        // summary is carried in the result, the chat events stay in the log
+        // AND — R-CC-14: the summary the compressor produced reaches the caller through the result
         assertThat(result.summary()).isEqualTo("WHAT: Test summary");
-        assertThat(log.lines(CapturingLog.Level.DEBUG))
-                .anySatisfy(l -> assertThat(l).contains("Compressor response: WHAT: Test summary"));
 
         // AND — the result carries the stats (dedup is in duplicatesCollapsed, not droppedChars)
         assertThat(result.status()).isEqualTo(CompactResult.Status.COMPACTED);

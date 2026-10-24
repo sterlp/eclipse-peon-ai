@@ -15,7 +15,10 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialResponse;
+import dev.langchain4j.model.chat.response.PartialResponseContext;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import lombok.Getter;
 
 /**
@@ -44,11 +47,42 @@ public class StreamMock {
             }
         };
     }
-    
+
+    /**
+     * Like {@link #buildMock}, but the answer arrives as streaming chunks first: every text becomes an
+     * {@code onPartialResponse} before the response completes. The two-argument callback is the one
+     * {@link org.sterl.llmpeon.streaming.StreamingBridge} implements — the one-argument default
+     * would never reach it.
+     */
+    public StreamingChatModel buildStreamingMock(Function<ChatRequest, ChatResponse> fn, String... chunks) {
+        return new StreamingChatModel() {
+            @Override
+            public void chat(ChatRequest request, StreamingChatResponseHandler handler) {
+                callCount.incrementAndGet();
+                lastRequest = request;
+                try {
+                    for (var chunk : chunks) {
+                        handler.onPartialResponse(new PartialResponse(chunk), NOOP_CONTEXT);
+                    }
+                    handler.onCompleteResponse(fn.apply(request));
+                } catch (Exception e) {
+                    handler.onError(e);
+                }
+            }
+        };
+    }
+
+    /** The bridge only cancels through it when the monitor is canceled — a test never gets there. */
+    private static final StreamingHandle NOOP_HANDLE = new StreamingHandle() {
+        @Override public void cancel() {}
+        @Override public boolean isCancelled() { return false; }
+    };
+    private static final PartialResponseContext NOOP_CONTEXT = new PartialResponseContext(NOOP_HANDLE);
+
     public int getCallCount() {
         return callCount.get();
     }
-    
+
     public void reset() {
         callCount.set(0);
         lastRequest = null;
