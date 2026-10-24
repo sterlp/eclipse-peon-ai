@@ -1,6 +1,6 @@
 # Web-Tools Architektur
 
-> **Status:** ✅ (webSearch 2026-10-23, Nachtzyklus)   **Fachdoc:** [web-tools.md](web-tools.md)   **ADRs:** [0074](../../docs/adr/adr-0074-websearch-eigener-ddg-client.md) (eigener DDG-Client statt Community-Modul)
+> **Status:** ✅ (webSearch 2026-10-23, Nachtzyklus)   **Fachdoc:** [web-tools.md](web-tools.md)   **ADRs:** [0074](../../docs/adr/0074-websearch-eigener-ddg-client.md) (eigener DDG-Client statt Community-Modul)
 
 ## Verantwortung & Abgrenzung
 

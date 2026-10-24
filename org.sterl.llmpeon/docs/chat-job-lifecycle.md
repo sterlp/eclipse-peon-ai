@@ -154,3 +154,33 @@ THEN INFO-Skip-Zeile mit Agent + in-flight-Wert, kein Reset/Unlock
   gemeinsamen `submitTurnJob(...)`-Helper dedupen (acquire+lock+schedule+finally-Guard).
   Nicht im ersten Schritt vermischen.
 - Log-Rotation-Retention (nur 10 Backups) — falls Evidence-Bedarf entsteht, separat.
+
+## Offener Punkt: Shutdown vs. laufende Jobs (⏳ geparkt, Paul 2026-10-24 — T-9)
+
+**Beobachtung:** Beim Eclipse-Shutdown hing ein Button-Compact-Job im `StreamingBridge`-Poll
+(`CompactService.compact` → `StreamingBridge.call`, CountDownLatch-Poll) und erzeugte
+„Job found still running after platform shutdown".
+
+**IST (Diagnose 2026-10-24):**
+- Die Plattform cancelt beim Shutdown alle Jobs (`JobManager.doShutdown`) und gibt ihnen
+  **~300 ms** zum Beenden — danach loggt sie den o. g. Eintrag und räumt. Der erste
+  Cancel-Impuls, den unser Code überhaupt bekommt, kommt also *vom* JobManager.
+- Unser Poll bemerkt den Cancel aber erst nach dem vollen Poll-Intervall
+  (`StreamingBridge` 1500 ms; `ApiRetry`-Backoff wartet in 1-s-Chunks bis 5 min) — jeder
+  zur Shutdownzeit laufende AI-Call erzeugt damit den Log-Eintrag und verlängert das
+  Schließen. Kein Cancel-Pfad auf Shutdown existiert: kein Bundle-Activator/Shutdown-Listener
+  im Plugin, `AIChatView.dispose()` cancelt weder Job noch `monitorRef`; R-ST1/R-ST2
+  regeln nur den Stop-Button.
+- **Kein Datenverlust:** Compact cleared die Memory erst nach erfolgreichem Summary — ein
+  Abbruch mitten im Compact ist memory-sicher. Folge ist Log-Eintrag + trägeres Schließen
+  (dieselbe Latenz macht auch den Stop-Button träge, wenn keine Partials fließen).
+
+**Ausgearbeitete Lösung (parked, nicht gebaut):**
+- **Core (klein):** Poll-Intervall `StreamingBridge` und Backoff-Chunk `ApiRetry` verkürzen
+  (~200 ms) — Cancel-Latenz sinkt systematisch, auch für Stop; Core-testbar.
+- **Plugin (klein):** `IWorkbenchListener.preShutdown` + `AIChatView.dispose()` canceln
+  laufende Jobs (`setCanceled(true)` auf `monitorRef`, optional Job-Familie + `JobManager.cancel`),
+  damit der Cancel vor den 300 ms der Plattform ankommt.
+- **Geräuschlos** — kein Hinweis-Dialog beim Shutdown.
+- BDD: GIVEN laufender Compact-Job WHEN Workbench-preShutdown THEN Monitor ist canceled,
+  Call endet kurz darauf, kein Log-Eintrag.
