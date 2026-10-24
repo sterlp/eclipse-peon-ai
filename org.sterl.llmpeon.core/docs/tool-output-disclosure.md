@@ -115,7 +115,7 @@ die rohe Extension.
 → `fileTargetBeatsExtensionFilterInDisclosure` (Plugin-Test-Modul, Pendant zu
 `DiskGrepToolTest.fileTargetBeatsExtensionFilter`)
 
-### R-OD-8 — Tool-Fehler-Meldung nennt Tool, Zeit, Exception-Klasse + Cause-Chain ✅ done (2026-10-24, Paul; Commits `7f0435d2`+`3b56ac2b`, Da-Dok CONCERNS aufgelöst F1/F2/F5)
+### R-OD-8 — Tool-Fehler-Meldung nennt Tool, Zeit, Exception-Klasse + Cause-Chain ✅ done (2026-10-24, Paul; Da-Dok CONCERNS aufgelöst F1/F2/F5)
 
 Fängt der Tool-Loop eine Tool-Exception (`ToolService.runAllTools`), bekommt `onProblem` heute
 nur `"<Tool> failed: <e.getMessage()> details logged."` — oft wäre das `buildWithDev failed:

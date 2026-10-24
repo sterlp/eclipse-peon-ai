@@ -162,7 +162,10 @@ Root-/Sklaven-Sonderweg, kein Responsibility-Bleed):
   Uhrzeit und chars (CallStats-`suffix()`-Muster, ADR-0053), z. B. `🗜 Da Mek compacted: 6 → 2
   messages, ~969 → ~210 tokens (4s, 09:40) (1200 chars)`. Die doppelte Meldung `<Agent> compact.`
   (AgentsTool `reportAction` nach `subAgentCompact`) entfällt; die Pre-Turn-Abschlusszeile nutzt
-  dieselbe End-Zeile.
+  dieselbe End-Zeile. **Kante zu [R-CC-16](compact.md)** (externes Review 2026-10-24): R-CC-16
+  (❌ specified) ergänzt die End-Zeile um die vom Compressor-LLM gemeldete Input-Größe (nullable,
+  neben der Stager-Estimate) — die End-Zeile ist damit bewusst **erweiterbar**; R-CC-16 wird als
+  Erweiterung derselben Zeile umgesetzt, nicht als zweite Meldung (kein drittes Format).
 - **Streaming:** Compressor-Tokens erscheinen live in der Chat-View des Callers — wie beim
   normalen Agent-Streaming; Chunks und Response-Text werden **nicht** ins Log geschrieben
   (das Response-/Chunk-Logging im Compact-Pfad entfällt; der R-CIB-3-Entry-Debuglog bleibt,

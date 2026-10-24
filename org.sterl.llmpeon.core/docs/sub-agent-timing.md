@@ -16,8 +16,9 @@ Exactly the tools that dispatch a nested agent get the timing; ordinary tools do
 | `SearchAgentTool` (`searchAgent`) | the search sub-agent | **Da Sniffa** | `Da Sniffa done. (12s)` |
 | `CompactSessionTool` (`compactSession`) | the `AiCompressorAgent` | **Da Scribe** | seit R-CT-8 (2026-10-24) entfallen: die alte `🗜 Da Scribe done for <agent>. (1m 5s) (N chars)`-Zeile ist durch die uniforme Compact-End-Zeile `🗜 <Agent> compacted: … (Ns, HH:mm) (N chars)` ersetzt ([compact-lock.md](compact-lock.md) R-CT-8) — das Tool emittiert selbst nichts mehr |
 
-`CompactSessionTool` has **no** progress line today (it only returns the summary). Timing adds a new
-**done line** for it, so a compaction is no longer invisible.
+Compaction is no longer invisible since R-CT-8 (2026-10-24): the uniform Compact-End-Zeile
+([compact-lock.md](compact-lock.md)) reports start, end and duration — `CompactSessionTool`
+emits nothing itself.
 
 ### Display names are UI-only
 

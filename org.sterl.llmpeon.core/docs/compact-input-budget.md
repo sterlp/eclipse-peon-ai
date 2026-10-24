@@ -68,6 +68,9 @@ Budget „off" (≤ 0) ist das Entry-Log der einzige *Compact*-Log. **Klarstellu
 2026-09-26, [compact.md](compact.md); Revision 2026-10-24, R-CT-8):** der log-only Monitor für die
 internen Compressor-Chat-Events ist entfallen — die Tokens streamen an den Caller-Monitor (UI) und
 werden **nicht** geloggt; der Entry-Log bleibt die EINE *Compact-Ereignis*-Zeile (Level DEBUG).
+**Ergänzung 2026-10-24 (externes Review, Punkt 9):** `CompactService.compact` hat **keinen**
+monitorlosen Pfad mehr — der Caller-Monitor ist Pflichtparameter (R-CT-5/R-CT-8); auch Service-Tests
+übergeben einen Monitor.
 
 ### R-CIB-4 — Stufen-Kürzung über Budget ✅ done
 

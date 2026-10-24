@@ -7,14 +7,14 @@
 - Alle 3 Stories gebaut + gereviewt + geflippt: **webSearch** (ADR-0074, eigener DDG-Client),
   **Compact-UI-Sichtbarkeit** (🟡 Roster, Caller-Monitor, Agent-Name, Deferred-Reset),
   **Skill-Roots** (3 Roots, Präzedenz Projekt > `~/.agents` > `~/.peon`).
-  Gates: Core 1320/0/0/0 · PDE 412/0/0/52 · Lint Baseline. Branch `story/night-2026-10-23`
-  (von main `703916ce`), Close-Commit `4cecbd8c`, Retro `db93698a`. Merge = Pauls Entscheidung
+  Gates: Core/PDE/Lint-Baseline grün (Zahlen je Commit-Message). Branch `story/night-2026-10-23`
+  (von main), Close-Commit + Retro im Git-Log. Merge = Pauls Entscheidung
   (Squash bevorzugt — danach memory#53 beachten).
 - **Offen für Paul aus dem Zyklus** (Details: [open-points.md](open-points.md)):
   1. ⏳ Snippet-Disclosure-Zeile webSearch · ⏳ Deferred-Timing-Rückversicherung ·
      ⏳ First-Launch-Dir (`~/.agents/skills` anlegen?) · manueller Smoke §8 (Roster-🟡,
      Chat-Rebuild, Sklaven-Pfad, FAILED_EMPTY, Pre-Turn pending/flush).
-  2. Scaffold-Prompt-Diff (Inc 3 `4a215831`) — 4-Augen by Paul.
+  2. Scaffold-Prompt-Diff (Inc 3, Nachtzyklus-Branch) — 4-Augen by Paul.
   3. FF-Merge `story/docs-restructure-2026-10-22` → main (falls noch offen);
      `--force-with-lease`-Push; Update-Site-Konflikt README L48 vs. memory-Tool #46.
 
@@ -31,9 +31,8 @@ Quelle: Paul-Chat + [org.sterl.llmpeon.test/ai-e2e-test/webtools-test-issues.md]
 - **T-2 = I-1 ✅ GEBAUT (2026-10-24):** R-WEB-13/UC-WEB-13 — Content-Type-Gate in WebFetchTool
   (text/html & *+xml → Flexmark, sonst raw), Pfad-Label im Footer (`(converted from HTML)` /
   `(raw text)`), Cache-Value = Text+Label (`FetchedPage`), neuer @Tool-Text. 10 neue/angepasste
-  Tests inkl. Null-Header/uppercase/UTF-8-Default-Mutation-Guards. Commits `8964fcc8` (Code+Tests+
-  Homepage+web-tools.md), `520ab5fd` (+xhtml-Test), `f90406f5` (+3 Zweig-Tests). Surefire
-  **1334/0/0/0**, Lint baseline (UC-WEB-13 belegt). Da-Dok CONCERNS → alle aufgelöst.
+  Tests inkl. Null-Header/uppercase/UTF-8-Default-Mutation-Guards. Surefire grün (Commit-Message),
+  Lint baseline (UC-WEB-13 belegt). Da-Dok CONCERNS → alle aufgelöst.
   Offen für Paul: ⏳ `+xml` bewusst BREIT (SVG/RSS werden konvertiert + „converted from HTML" gelabelt,
   Pauls Issue-Vorschlag) — Verengung auf text/html+xhtml wäre Doc-Änderung; ⏳ Paul-Smoke
   (JSON/plain raw, Webseite konvertiert, Cache-Label stabil).
@@ -41,7 +40,7 @@ Quelle: Paul-Chat + [org.sterl.llmpeon.test/ai-e2e-test/webtools-test-issues.md]
   (nicht sofort retryen, webFetchAsMarkdown-Alternative), KEIN Auto-Retry (evidenzbasiert: Sperre hielt
   Minuten), @Tool-Text warnt + rät zum Staffeln. Pattern-Erkennung (rate limit|bot check|HTTP 202/429,
   CASE_INSENSITIVE) + Null-Cause-Guard; 5 Tests, alle Zweige mutationsgepinnt, callCount==1 = Retry-Beweis.
-  Commits `81b4a2dc`, `5edfffbf`, `062d43ae`. Surefire **1341/0/0/0**. Offen für Paul: ⏳ Paul-Smoke gegen
+  Surefire grün (Commit-Message). Offen für Paul: ⏳ Paul-Smoke gegen
   echtes DDG-Rate-Limit; ⏳ Engine-Seite „kein Retry" untestbar in diesem Inkrement (Request-Zähler im
   Engine-Test = Follow-up); Cleanup-Kandidat typisierte `WebSearchRateLimitException`.
 - **T-4 = I-3 (niedrig):** HTML→Markdown läßt `<pre>`/Code-Blöcke zerfließen (Zahlen-Gutter,
@@ -51,15 +50,14 @@ Quelle: Paul-Chat + [org.sterl.llmpeon.test/ai-e2e-test/webtools-test-issues.md]
   S1–S5), Diagnose statt nacktem „not found" (closed/disk-only/unbekannt), `findOpenProject` exakt
   (Substring-`contains` raus). Supersedes Paul 2026-10-16 „ohne Projekt-Disclosure" (False-Negative-Klasse
   teurer — in eclipse-read-tools.md dokumentiert, in Summary melden). `src/`-Magic-Entfernung ⏳ (falsch-positiv,
-  Inventar erst). Commits `0a3ab0c9` (R-WN-5), `b2d30906` (R-WN-4; korrigiert Da-Meks Halluzination in
-  0a3ab0c9s Message). PDE 431/0 (letzte Zahl: Commit-Message). ⏳ T-1/T-1a brauchen Paul; T-4 offen (niedrig).
+  Inventar erst). PDE grün (Commit-Message). ⏳ T-1/T-1a brauchen Paul; T-4 offen (niedrig).
 - **T-8 ✅ GEBAUT (2026-10-24):** PlanTool — R-PT-1 Archivierung toleriert disk-geschriebene Pläne
   (refreshLocal auf peon-plan vor exists/move, beide Fallen: stiller Return + ResourceException,
   Fehler nie still, Cancellation läuft ungefangen) + R-PT-2 planRead/hasPlan/planUpdate sehen
   disk-geschriebene Pläne (kein „No plan exists"-False-Negative, gemeinsamer Helfer refreshPlanDir,
   tote Guards raus). PlanToolTest 6 Tests, alle mutationsgepinnt (inkl. Move-Failure via
   read-only-Ordner). Neue Feature-Docs: org.sterl.llmpeon/docs/plan-tool.md (✅) + index.md-Zeile.
-  Commits `28ae9fed`/`4e563e11`/`411bc3b6`. PDE-Suite **418/0**. ⏳ AgentContextComponent.readPlan
+  PDE-Suite grün (Commit-Message). ⏳ AgentContextComponent.readPlan
   Injection-Klasse erst bei Befund (Doc-Offener-Punkt); Befund: Stop wirft nackte
   OperationCanceledException — bewusst ungefangen (Regel im Doc).
 - **T-1a OFFEN (Paul):** Reload-Output per-Root-Skill-Zählung — mein Vorschlag gestellt
@@ -72,10 +70,10 @@ Quelle: Paul-Chat + [org.sterl.llmpeon.test/ai-e2e-test/webtools-test-issues.md]
   Peon-Plan: 6 messages 969 tokens …" kommt nur „📋 Loading Agent Memory", nie done/success +
   Ergebnisgröße (messages/tokens). Compact des Agenten selbst: „Session compacted:"-Ergebnis
   sichtbar — das ist laut Paul gut so.
-- **T-6 + T-7 ✅ GEBAUT (2026-10-24, Story-2-Follow-up R-CT-8):** Commits `2d55eba0` (Code+Tests+
-  Homepage), `14857b8c` (Review-F1: Sequenz-Test End-Zeile-nach-onCompactCompleted + Cancellation-
-  Test, 2 Mutationen bewiesen), `00dbbb6f` (Docs-Flips ✅ + planImplemented-Archiv
-  `peon-plan/overview-done-2026-10-24-10-21.md`). Surefire 1324/0/0/0. Docs: compact-lock R-CT-8 ✅
+- **T-6 + T-7 ✅ GEBAUT (2026-10-24, Story-2-Follow-up R-CT-8):** Code+Tests+Homepage, Review-F1
+  (Sequenz-Test End-Zeile-nach-onCompactCompleted + Cancellation-Test, 2 Mutationen bewiesen),
+  Docs-Flips ✅ + planImplemented-Archiv (`peon-plan/overview-done-2026-10-24-10-21.md`).
+  Surefire grün (Commit-Message). Docs: compact-lock R-CT-8 ✅
   (+ revidierte R-CT-5, UC-CT-8 entfallen), compact.md R-CC-14/16/18.1, compact-architektur Δ,
   compact-input-budget R-CIB-3, sub-agent-timing, tool-result-size R-RS-1, agenten-status-im-header,
   context-message-concept. **Neue Nebeneffekte (gewollt, dokumentiert):** Header zählt Compressor-
@@ -91,7 +89,7 @@ Quelle: Paul-Chat + [org.sterl.llmpeon.test/ai-e2e-test/webtools-test-issues.md]
   wiederkäuen, entfallen; Stack-Frame-Zeilen aus mehrzeiligen Messages entfernt, Whitespace normalisiert,
   null/blank → `(no message)`); Stack bleibt in Log + Tool-Ergebnis (LLM). Helfer `StringUtil.toolFailureLine/
   exceptionChain`, CallStats nutzt StringUtil.HH_MM, `exceptionChain(null)`-Dead-Guard entfernt (F5).
-  Commits `7f0435d2`+`3b56ac2b`, Surefire **1347/0/0/0**, Lint Baseline 8, Da-Dok CONCERNS aufgelöst.
+  Surefire/Lint grün (Commit-Message), Da-Dok CONCERNS aufgelöst.
   Ursache des konkreten „closed" selbst: nicht rekonstruierbar — gleiche Klasse wie OP-STREAM-1/ApiRetry.
   Backlog-Nebenbefund: `HH:mm` dreifach im Core (StringUtil/LiveStatus/UserMessageQueue) — Folge-Inkrement.
 - **T-9 ⏳ GEPARKT (Paul 2026-10-24):** Shutdown vs. laufende Jobs (job-issue.md) — Plattform cancelt Jobs beim

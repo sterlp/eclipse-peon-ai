@@ -150,7 +150,7 @@ Ursache, keine Teilergebnisse, keine erfundenen Treffer.
 - GIVEN DDG liefert 0 Treffer WHEN `webSearch(query)` THEN ehrliche „0 results"-Meldung.
 - GIVEN DDG antwortet mit Rate-Limit WHEN `webSearch(query)` THEN Fehlermeldung mit Ursache.
 
-### R-WEB-13 — `webFetchAsMarkdown`: Nur HTML wird konvertiert ✅ done (2026-10-24, Bug-Triage T-2, Commits 8964fcc8/520ab5fd/f90406f5)
+### R-WEB-13 — `webFetchAsMarkdown`: Nur HTML wird konvertiert ✅ done (2026-10-24, Bug-Triage T-2)
 
 Der HTML→Markdown-Konverter läuft **nur** bei Media-Type `text/html` oder `application/xhtml+xml`
 (und XML-Abkömmlingen `+xml`); jeder andere Inhalt (text/plain, application/json, …) wird als
@@ -168,7 +168,7 @@ Pfad wie der erste Abruf.
 - GIVEN ein `text/plain`-Ergebnis liegt im Cache WHEN der gleiche URL erneut abgerufen wird THEN
   kommt der gecachte Raw-Text mit „raw text"-Label (kein nachträglicher Konverter-Lauf).
 
-### R-WEB-14 — `webSearch` Rate-Limit: ehrliche Handlungsoption, kein Auto-Retry ✅ done (2026-10-24, Bug-Triage T-3, Commits 81b4a2dc/5edfffbf/062d43ae)
+### R-WEB-14 — `webSearch` Rate-Limit: ehrliche Handlungsoption, kein Auto-Retry ✅ done (2026-10-24, Bug-Triage T-3)
 
 Bei Rate-Limit/Bot-Check (HTTP 202/429) bleibt die Meldung ein Fehler (R-WEB-12) und nennt eine
 **Handlungsoption**: nicht sofort wiederholen (die Sperre dauert Minuten — E2E-Run 2026-10-24,
