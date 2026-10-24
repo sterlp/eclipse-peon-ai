@@ -64,10 +64,13 @@ class WebFetchToolTest {
         serve(context, status, body, "text/html; charset=UTF-8");
     }
 
+    /** {@code contentType == null} means the response carries no Content-Type header at all. */
     private void serve(String context, int status, byte[] body, String contentType) {
         server.createContext(context, exchange -> {
             callCounters.computeIfAbsent(context, k -> new AtomicInteger()).incrementAndGet();
-            exchange.getResponseHeaders().set("Content-Type", contentType);
+            if (contentType != null) {
+                exchange.getResponseHeaders().set("Content-Type", contentType);
+            }
             exchange.sendResponseHeaders(status, body.length == 0 ? -1 : body.length);
             if (body.length > 0) {
                 try {
@@ -431,6 +434,58 @@ class WebFetchToolTest {
         // THEN — raw, no "unknown means convert like before" fallback
         assertThat(result).contains("   2: b<b>c</b>").contains("lines 1–2 of 2 (raw text)");
     }
+
+    // R-WEB-13
+    // UC-WEB-13
+    @Test
+    void webFetchMissingContentTypeStaysRaw() throws Exception {
+        // GIVEN a response carrying no Content-Type header at all
+        String url = base + "/no-type";
+        serve("/no-type", 200, "a\nb<b>c</b>".getBytes(StandardCharsets.UTF_8), null);
+
+        // WHEN
+        String result = tool.webFetchAsMarkdown(url, null, null);
+
+        // THEN — a missing header is no converter call and no crash: it is the raw path
+        assertThat(result).contains("   2: b<b>c</b>").contains("lines 1–2 of 2 (raw text)");
+    }
+
+    // R-WEB-13
+    // UC-WEB-13
+    @Test
+    void webFetchUppercaseMediaTypeIsConverted() throws Exception {
+        // GIVEN the media type written in upper case, as senders may send it
+        String url = base + "/upper";
+        serve("/upper", 200, "<html><body><h1>Title</h1><p>hello <b>world</b></p></body></html>"
+                .getBytes(StandardCharsets.UTF_8), "TEXT/HTML; CHARSET=UTF-8");
+
+        // WHEN
+        String result = tool.webFetchAsMarkdown(url, null, null);
+
+        // THEN — the match is case-insensitive, so this is the converter path with the same label
+        assertThat(result)
+                .doesNotContain("<h1>")
+                .contains("   1: Title")
+                .contains("   2: =====")
+                .contains("**world**")
+                .contains("(converted from HTML)");
+    }
+
+    // R-WEB-13
+    // UC-WEB-13
+    @Test
+    void webFetchMissingCharsetDecodesAsUtf8() throws Exception {
+        // GIVEN text/plain without a charset parameter and non-ASCII content
+        String url = base + "/no-charset";
+        serve("/no-charset", 200, "prüfung äöü\n".getBytes(StandardCharsets.UTF_8), "text/plain");
+
+        // WHEN
+        String result = tool.webFetchAsMarkdown(url, null, null);
+
+        // THEN — UTF-8 is the default, so the umlauts arrive whole instead of as mojibake
+        assertThat(result).startsWith("   1: prüfung äöü").contains("lines 1–2 of 2 (raw text)");
+    }
+
 
 
     /** Full request wiring (memory + chatModel are required fields) — the model is never called by this tool. */
