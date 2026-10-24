@@ -29,9 +29,8 @@ Base: `AGENTS.md`. System prompt: `developer.md`.
   Baseline aus UNBELEGT- und MANUELL-Findings. `docRoots` immer ALLE DREI Roots explizit setzen (`docs`,
   `org.sterl.llmpeon.core/docs`, `org.sterl.llmpeon/docs`) — fehlt einer, liefert der Linter
   Schein-VERWAIST für dessen Scope (hit 2026-10-23: 84 Schein-VERWAIST ohne `org.sterl.llmpeon/docs`).
-  Melden: die echte `findings: N`-Zeile aus dem Output (Baseline heute: 8) — nie die `Scanned: N doc
-  file(s)`-Anzahl als „Findings" (hit 2026-10-24, R-OD-8: „58 Findings" war die Datei-Anzahl des
-  Core-only-Scans, F3 im Da-Dok-Review).
+  Melden: die echte `findings: N`-Zeile aus dem Output — nie die `Scanned: N doc file(s)`-Anzahl als
+  „Findings" (hit 2026-10-24, R-OD-8 F3).
 - **Never widen scope silently.** Fixes outside the released plan — even correct ones, even
   one-liners — get reported to the PO first. TABU lists in a plan are binding.
 - **Doc-Input, der als erledigt zitiert wird, gegen den COMMITTED Stand prüfen** (hit 2026-10-23,
