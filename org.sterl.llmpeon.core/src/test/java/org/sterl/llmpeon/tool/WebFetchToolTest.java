@@ -337,6 +337,31 @@ class WebFetchToolTest {
     // R-WEB-13
     // UC-WEB-13
     @Test
+    void webFetchXhtmlIsConvertedToMarkdown() throws Exception {
+        // GIVEN the same markup served as a +xml descendant — the media type is the only difference
+        // to webFetchHtmlIsConvertedToMarkdown
+        String url = base + "/xhtml";
+        serve("/xhtml", 200, ("<html xmlns=\"http://www.w3.org/1999/xhtml\"><body><h1>Title</h1>"
+                + "<p>hello <b>world</b></p></body></html>").getBytes(StandardCharsets.UTF_8),
+                "application/xhtml+xml");
+
+        // WHEN
+        String result = tool.webFetchAsMarkdown(url, null, null);
+
+        // THEN — the +xml suffix takes the converter: same Markdown form as text/html, same label
+        assertThat(result)
+                .doesNotContain("<h1>")
+                .doesNotContain("<p>")
+                .contains("   1: Title")
+                .contains("   2: =====")
+                .contains("**world**")
+                .contains("(converted from HTML)");
+    }
+
+
+    // R-WEB-13
+    // UC-WEB-13
+    @Test
     void webFetchCacheHitKeepsRawTextAndLabel() throws Exception {
         // GIVEN a text/plain page cached by a first call
         String url = base + "/plain-cached";
