@@ -5,6 +5,43 @@ All notable changes to Peon AI are documented here. Format loosely follows
 
 Releases before `2.12.4` are documented via [GitHub Releases](https://github.com/sterlp/eclipse-peon-ai/releases).
 
+## [2.15.0] — 2026-10-24
+
+### Added
+
+- **`webSearch` tool (DuckDuckGo).** All agents can search the web: a numbered hit list
+  (title, URL, snippet, max 10) with honest sizes (`showing N of M`), capped snippets and a
+  disclosure when a snippet was truncated. Built on a thin dedicated DuckDuckGo client.
+- **Search agent remembers its research.** The search sub-agent now carries a rolling
+  `last-search-rolling` context block — the prompts and final answers of recent searches in the
+  same chat view, trimmed to the last 10,000 characters with a disclosure when trimmed.
+  Follow-up searches start informed instead of blind; failed or cancelled searches never
+  corrupt the block.
+- **Skill roots.** Skills load from three roots with precedence project > `~/.agents` > `~/.peon`.
+
+### Changed
+
+- **Compact is visible again.** Compressing a session streams into the chat and ends with one
+  clear "… compacted" line (message/token counts); stopping the agent also cancels the running
+  compression.
+- **`webFetchAsMarkdown` converts pages by content type.** HTML (and `*+xml`) responses are
+  converted to Markdown and labelled `(converted from HTML)`; anything else is delivered as raw
+  text `(raw text)`. The label is stable across cache hits.
+- **Rate-limited searches are reported honestly.** A DuckDuckGo rate limit / bot check is named
+  with guidance (don't retry immediately, use `webFetchAsMarkdown` on known URLs instead) —
+  no automatic retry that would extend the block.
+- **Tool failures are named.** The problem line now carries tool name, time (HH:mm), exception
+  class and the cause chain instead of an anonymous message.
+- **Plan tool survives disk-written plans.** Plans saved outside the workspace are refreshed and
+  seen (`planRead`/`hasPlan` no longer report a false "No plan exists"); archiving clears the
+  plan reference, so a following agent handoff can no longer wipe the dev memory on a stale plan.
+
+### Fixed
+
+- **Nested projects (monorepos) resolve by disk location.** A file that is not reachable through
+  the workspace tree is resolved via its disk location and disclosed as such (`resolved via …`)
+  instead of a bare "not found"; open-project lookups match exactly, not by substring.
+
 ## [2.14.1] — 2026-10-21
 
 ### Changed

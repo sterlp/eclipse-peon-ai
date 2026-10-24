@@ -20,7 +20,8 @@ Tool-Call und manchmal eine falsche Entscheidung.
 | **Peon-PO** / **Jon** | Der Business-Owner-Agent; besitzt `docs/` (das SOLL), orchestriert Plan + Dev | PO-Agent, Owner, Boss |
 | **Peon-Plan** / **Da Thinka** | Plan-Agent; schreibt ausschließlich `peon-plan/overview.md`, berät verbal | Planner, Architekt |
 | **Peon-Dev** / **Da Mek** | Dev-Agent; schreibt ausschließlich Code | Developer, Coder, Sklave (nur informell) |
-| **Da Sniffa** | Such-Agent (`searchAgent`), read-only, zustandslos, einmalig | Research-Agent, Scout |
+| **Da Sniffa** | Such-Agent (`searchAgent`), read-only; der Loop ist zustandslos (einmalig), Kontinuität nur über den `last-search-rolling`-Block | Research-Agent, Scout |
+| **last-search-rolling** | Rollender Hot-Kontext-Block des Such-Agenten: Frage+finale Antwort der letzten Suchen derselben Chat-View, append-only, 10k-Cap Rohschnitt; Static Message, nie Memory | Such-Historie, Search-Memory |
 | **Da Dok** | Review-Agent (`reviewPlanAgent`), dritter PO-RAM-Sklave (`Peon-Review`), read-only im Code, Verdict ACCEPTED/CONCERNS/REJECTED | Reviewer, QA-Agent, Peon-Review (nur als Agent-ID) |
 | **Da Scribe** | Compact-Agent (`compactSession`) | Compressor, Summarizer |
 | **Custom Agent** | Nutzerdefinierter Agent aus `AGENT.md` mit Frontmatter | User-Agent, eigener Agent |

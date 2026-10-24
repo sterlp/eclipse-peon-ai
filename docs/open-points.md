@@ -383,3 +383,14 @@ Logs nur mit searchAgent (`.metadata/.log`, GROSS). Passende offene Punkte:
 - **Rückversicherung:** Paul hat /3 vorgeschlagen („nicht so wichtig, mehr Info") — Umsetzung im
   Nachtzyklus autonom; widerspricht Paul, zurück auf ×2/7 (Änderung ist eine Konstante). **Umgesetzt
   (Open-Q1).**
+
+
+## 2026-10-24 — last-search-rolling-Zyklus (Nachbefunde)
+
+- ❓ **CapturingMonitor 6× / RecordingToolService 2× dupliziert** (Da-Dok-Review-B4, last-search-rolling):
+  gemeinsamer Test-Support im Tool-Test-Package (`CapturingAiMonitor` mit canceled-Flag +
+  `RecordingToolService`) als eigener Micro-Cleanup-Zyklus — Da-Dok-Empfehlung: extrahieren, bewusst
+  NICHT als Rework des Feature-Inkrements. Verwandt: bestehender ❓ Fixture-Duplikat-Punkt (2026-10-20).
+- ⏳ **Homepage-Update für 2.15.0 steht aus** (webSearch, Compact-Sichtbarkeit, Skill-Roots,
+  last-search-rolling wirkt nur im Agenten — evtl. kurz erwähnen): AGENTS.md verlangt User-Updates
+  im selben Inkrement, der Nachtzyklus hat sie ausgelassen. Nachholen vor/vom Release.

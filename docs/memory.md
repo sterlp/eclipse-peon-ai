@@ -102,6 +102,28 @@ Quelle: Paul-Chat + [org.sterl.llmpeon.test/ai-e2e-test/webtools-test-issues.md]
   Agent-Wechsel ohne Schaden; Root-Cause steht im !ENTRY oberhalb des Stacks (Pauls Eclipse/EGit).
   Kein Fix in peon-ai.
 
+## 2026-10-24 — LAST-SEARCH-ROLLING ✅ (Paul: „letztes Feature — danach nur noch bugs")
+
+- **Gebaut + gereviewt + geflippt:** R-LSR-1…6 (search-agent-tool.md, jetzt idPrefix LSR/linted) —
+  Rolling-Hot-Block `last-search-rolling` am `SearchAgentTool`: append-only Frage+finale Antwort
+  erfolgreicher Suchen derselben Chat-View, 10k-Cap **roher** Tail-Schnitt (ADR-0075, gegen meine
+  Paar-Grenzen-Empfehlung), Disclosure nur bei Kappung, Injektion als Static Message (leer = exakt
+  altes Verhalten), R3 bleibt (Carry-over nie im Memory). Commits: `c10a65fd` (I-1) · `5fa6f153`
+  (I-2) · `6798f994` (Da-Dok-Delta: Sub-Loop-Testtiefe, tote isEmpty() raus, lokaler Monitor-Capture,
+  UC-only-Marker) · `a34d516c` (Docs-Flip + Architektur-Doc). Surefire 1357 grün (Commit-Message),
+  Lint 0, UC 201/201. Plan archiviert (`overview-done-2026-10-24-21-55.md`).
+  Neue Architektur-Doc: `org.sterl.llmpeon.core/docs/search-agent-tool-architektur.md`.
+  Proposal v2 ist damit umgesetzt; Hook lag — anders als im Proposal — in `searchAgent()` nach dem
+  Loop, nicht in `webSearch` (Proposal-IST-Fehler, im Zyklus korrigiert).
+- **CHANGELOG.md: 2.15.0-Eintrag** geschrieben (Englisch, kompakt — Feature+Changed+Fixed seit 2.14.1).
+- **E2E-Prompts erweitert** (Pauls WIP, nicht committed): webtools-test.md (Content-Type-Labels +
+  Cache-Stabilität + Rate-Limit-Hinweis), NEU search-agent-e2e-test.md (Folgesuchen mit Kontext),
+  compact-e2e.md §4 (R-CT-8-Sichtbarkeit: Streaming sichtbar, EINE End-Zeile, Stop bricht ab).
+  Alle: nur Probleme melden (Issues-Datei).
+- **Nachbefunde:** CapturingMonitor-Duplikate + Homepage-2.15.0-Update → open-points.md.
+- Stale-Fixes nebenbei: `search-agent.txt`→`search-agent.md` (search-agent-tool.md + prompts.md),
+  Glossar: Da Sniffa-Zeile + `last-search-rolling`-Begriff.
+
 ## Offen für Paul (Details: [open-points.md](open-points.md))
 
 1. ❓ **Merge/Squash** Nachtzyklus-Branch + Smoke. Danach Branch löschen.
