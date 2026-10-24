@@ -95,9 +95,12 @@ Bei abweichender Auflösung offen gelegt: „resolved via <pfad>".
 
 ## R-WN-5 — Diagnose statt nacktem „not found" ✅ done (2026-10-24, T-5/I-4, Commits 0a3ab0c9/b2d30906)
 
-Ein fehlgeschlagener `eclipse*`-Pfad-Aufruf benennt den **Grund**, nie nur „not found": Projekt
+Ein fehlgeschlagener `eclipse*`-Pfad-Aufruf mit **absolutem Workspace-Pfad** benennt den **Grund**,
+nie nur „not found": Projekt
 existiert, ist aber **geschlossen**; oder (bei offenem Projekt) Datei liegt auf Disk, ist aber nicht
 im Workspace-Baum (→ Hinweis auf `eclipseRefreshProject`); sonst unbekanntes Projekt/generisch.
+**Projekt-relativer Scope** (kein führendes `/`) bekommt nur den generischen Satz — der Scope ist
+dem Resolver nicht als Projekt bekannt, eine closed-/disk-only-Diagnose wäre geraten.
 Eine lesbarere Sicht derselben Datei ist keine Diagnose mehr, sondern die **Auflösung** selbst
 (`resolved via <pfad>`, R-WN-4). `findOpenProject` matcht **exakt** (Name oder `/name`) — kein
 Substring-Fehltarget (`llmpeon-core` darf nicht `llmpeon-core-extra` treffen); ein importiertes,

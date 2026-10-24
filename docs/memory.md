@@ -52,7 +52,7 @@ Quelle: Paul-Chat + [org.sterl.llmpeon.test/ai-e2e-test/webtools-test-issues.md]
   (Substring-`contains` raus). Supersedes Paul 2026-10-16 „ohne Projekt-Disclosure" (False-Negative-Klasse
   teurer — in eclipse-read-tools.md dokumentiert, in Summary melden). `src/`-Magic-Entfernung ⏳ (falsch-positiv,
   Inventar erst). Commits `0a3ab0c9` (R-WN-5), `b2d30906` (R-WN-4; korrigiert Da-Meks Halluzination in
-  0a3ab0c9s Message). PDE **426/0**. ⏳ T-1/T-1a brauchen Paul; T-4 offen (niedrig).
+  0a3ab0c9s Message). PDE 431/0 (letzte Zahl: Commit-Message). ⏳ T-1/T-1a brauchen Paul; T-4 offen (niedrig).
 - **T-8 ✅ GEBAUT (2026-10-24):** PlanTool — R-PT-1 Archivierung toleriert disk-geschriebene Pläne
   (refreshLocal auf peon-plan vor exists/move, beide Fallen: stiller Return + ResourceException,
   Fehler nie still, Cancellation läuft ungefangen) + R-PT-2 planRead/hasPlan/planUpdate sehen
