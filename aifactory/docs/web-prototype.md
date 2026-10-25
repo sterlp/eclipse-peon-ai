@@ -31,6 +31,22 @@ Views, nie ein weiterer View.
 - GIVEN die App WHEN der Nutzer navigiert THEN gibt es genau *Projects*, *Chat* und *Einstellungen*;
   der Datei-Bereich und die Team-Kacheln liegen im Chat-View.
 
+### R-WP-22 — Die App wird unter `/ui/` ausgeliefert ❌
+
+Die Factory ist ein Browser-Produkt: wer `http://<host>/ui/` öffnet, sieht die App. `index.html` und
+die gebauten Assets (JS, CSS mit Hash im Namen) kommen als das an, was sie sind — `/api/**` bleibt
+davon unberührt, und `/` führt nach `/ui/`. Eine Adresse, die niemand bedienen kann, ist ein Fehler
+und keine Weiterleitung: kein Request darf in einer Schleife aus Weiterleitungen enden.
+
+#### UC-WP-34 — indexHtmlServedAtUiRoot ❌
+- GIVEN der laufende Server WHEN `GET /ui/` oder `GET /ui` THEN kommt `200` mit `text/html` und dem
+  Inhalt der gebauten `index.html`; `GET /` leitet nach `/ui/` weiter.
+
+#### UC-WP-35 — hashedAssetsServedAsThemselves ❌
+- GIVEN die gebauten Assets liegen im Klassenpfad WHEN `GET /ui/assets/<name>.js` oder
+  `/ui/assets/<name>.css` THEN kommt `200` mit dem Dateiinhalt und dem passenden `Content-Type`
+  (`text/javascript` bzw. `text/css`) — nie JSON, nie `text/plain`, kein `500`.
+
 ### R-WP-2 — Ein Projekt kommt ausschließlich über eine Git-URL ✅
 
 Kein Upload, keine Ordner-Auswahl, kein Import eines bestehenden Verzeichnisses: Projekt hinzufügen

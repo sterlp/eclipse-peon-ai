@@ -49,6 +49,16 @@ Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entf�
   das Schreib-Pinning fängt `disk*`-Schreibzugriffe ab, **nicht** was `shell` in einem Prozess tut.
   Akzeptiertes Risiko für einen Prototyp im internen Netz; vor externem Zugriff ist eine Zusage oder
   eine Sandbox nötig.
+* **⏳ Auslieferung ist Teil des Inkrements, nicht des Deployments** — eine View, die im Browser 500
+  liefert, gilt als nicht gebaut, auch wenn alle Unit-Tests grün sind. Deshalb
+  [R-WP-22/UC-WP-34/UC-WP-35](web-prototype.md) mit echten HTTP-Tests auf einem zufälligen Port.
+  Anlass: seit einem Hand-Commit (`8c7dec24`, `@Controller` auf `SpaForwardController`) beantwortete
+  dieser Mapping-Pfad **jeden** `/ui/**`-Request — Assets wurden nie ausgeliefert, `/ui/` endete in
+  ~6 000 Weiterleitungen und einem `StackOverflowError` pro Aufruf. Die API war grün, die App tot.
+* **⏳ Kein SPA-Routing im MVP** — die Views sind Tabs, es gibt keine Adressen pro View. `/ui/` liefert
+  `index.html`, Assets laufen über den Resource-Handler; eine Weiterleitungs-„History-Fallback"-
+  Maschine braucht es erst, wenn der Router kommt. *Andersfall:* mit Router wird eine Regel für
+  unbekannte Pfade nötig (die dann **nie** vom Asset-Pfad geschluckt werden darf).
 * **⏳ Chat-Nachrichten tragen im MVP keinen Autorennamen** — geteilter Chat je Projekt
   ([R-WP-16](web-prototype.md)), aber „wer hat das geschrieben?" ist offen gelassen. *Andersfall:*
   Autor gehört in die History-Zeile und damit in ein Core-Format.
