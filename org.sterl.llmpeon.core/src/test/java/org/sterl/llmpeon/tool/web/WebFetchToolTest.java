@@ -313,6 +313,39 @@ class WebFetchToolTest {
                 .contains("lines 1–4 of 4 (raw text)");
     }
 
+    /**
+     * The footer is tool framing, never page content — it has to open its own line, whatever line
+     * ending the fetched document uses. The separator comes from {@code FileLines.extract}, i.e. from
+     * the document itself, so the pin is the document's ending and stays deterministic on every host
+     * (a {@code System.lineSeparator()} expectation here would test the host, not the tool).
+     */
+    // UC-WEB-13
+    @Test
+    void webFetchFooterStartsOnItsOwnLine() throws Exception {
+        // GIVEN an LF page whose last content line carries no trailing line ending — tightest case
+        String lfUrl = base + "/footerLf";
+        serve("/footerLf", 200, "line one\nline two\nlast content line".getBytes(StandardCharsets.UTF_8),
+                "text/plain; charset=UTF-8");
+
+        // WHEN the whole document is read
+        String result = tool.webFetchAsMarkdown(lfUrl, null, null);
+
+        // THEN the footer opens its own line instead of gluing onto the content above it
+        assertThat(result).endsWith("\nlines 1–3 of 3 (raw text)");
+
+        // AND the same for the read-on variant, where the hint is the last token
+        assertThat(tool.webFetchAsMarkdown(lfUrl, 1, 2))
+                .endsWith("\nlines 1–2 of 3 (raw text) — read on with startLine=3");
+
+        // AND for a CRLF document, where the emitted separator is the document's, never the host's
+        String crlfUrl = base + "/footerCrlf";
+        serve("/footerCrlf", 200,
+                "line one\r\nline two\r\nlast content line".getBytes(StandardCharsets.UTF_8),
+                "text/plain; charset=UTF-8");
+
+        assertThat(tool.webFetchAsMarkdown(crlfUrl, null, null)).endsWith("\r\nlines 1–3 of 3 (raw text)");
+    }
+
     // R-WEB-13
     // UC-WEB-13
     @Test
