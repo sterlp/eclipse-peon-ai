@@ -15,6 +15,7 @@ import org.sterl.llmpeon.agent.AiDevAgent;
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.compact.CompactConstants;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.tool.tools.CompactSessionTool;
@@ -102,11 +103,15 @@ class ToolServiceToolCompactTest {
         var second = sent.get(1).messages();
         var aiTexts = second.stream().filter(AiMessage.class::isInstance).map(AiMessage.class::cast)
                 .map(AiMessage::text).toList();
+        var userTexts = second.stream().filter(UserMessage.class::isInstance)
+                .map(ChatMessageUtil::toString).toList();
         var toolResults = second.stream().filter(ToolExecutionResultMessage.class::isInstance)
                 .map(ToolExecutionResultMessage.class::cast).toList();
 
-        // AND — the summary is in the next request as the agent's own AiMessage
-        assertThat(aiTexts).contains(SUMMARY);
+        // AND — the summary reaches the next request inside the ONE re-seed UserMessage, behind its
+        // marker (R-CC-9), and no AiMessage carries it any more
+        assertThat(userTexts).anyMatch(t -> t.contains(CompactConstants.REINSERT_MARKER) && t.contains(SUMMARY));
+        assertThat(aiTexts).noneMatch(t -> t != null && t.contains(SUMMARY));
         // AND — the round's tool result survived the cleared memory and carries the preserved
         // instructions; it names the compact by its numbers, never by the summary text (R-CT-8)
         assertThat(toolResults).hasSize(1);

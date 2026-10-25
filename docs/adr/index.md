@@ -80,6 +80,8 @@ isn't clear from a rule/BDD.
 | [0073](0073-slf4j-api-stays-bundled.md) | slf4j-api bleibt gebündelt — Platform-Resolve (Require-Bundle + ServiceLoader-Mediator) negativ bewiesen (NOP-Logger für alles slf4j-Logging), Provider-Fund braucht einen Classloader | Accepted |
 | [0074](0074-websearch-eigener-ddg-client.md) | webSearch: eigener dünner DDG-Client statt Community-Modul — Modul verletzt Ehrlichkeits-Regeln strukturell (erfundene Treffer, geschluckte Exceptions, „showing N of M" unmöglich) | Accepted |
 | [0075](0075-last-search-rolling-rohschnitt.md) | Last-Search-Rolling (Da Sniffa): Hot-Block roh auf 10k Zeichen kappen — Fragmente bewusst akzeptiert statt Paar-Grenzen; kein Schalter | Accepted |
+| [0076](0076-compact-reseed-marker-in-user-message.md) | Compact-Reseed ist **eine** UserMessage (Turn-Context zuerst, Marker `Session compacted:` + Summary als letzter Content); die AiMessage-Form ist verworfen — sie ließe den Folge-Request auf einer Assistant-Message enden (Prefill statt Antwort) | Accepted |
+| [0077](0077-factory-shares-core-disk-only.md) | AI Factory teilt den Core: Factory-Fähigkeiten entstehen möglichst im Core (Plugin profitiert), Factory nutzt nur die Disk-Familie, Core bleibt Eclipse-frei — supersedet Jons „Core unangetastet"-Empfehlung, schreibt 0046 fort | Accepted |
 
 
 

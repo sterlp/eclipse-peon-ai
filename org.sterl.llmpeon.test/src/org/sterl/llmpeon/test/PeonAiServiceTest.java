@@ -76,6 +76,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
@@ -569,9 +570,8 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         assertTrue("the delegation must still run: " + reply, reply.contains("plan done"));
         assertFalse("seed must be gone after the pre-delegation compact",
                 slave.getMemory().containsUserMessage("seed 0"));
-        assertTrue("the compressor response must have been consumed by the compact",
-                slave.getMemory().getCopy().stream()
-                        .anyMatch(m -> m instanceof AiMessage ai && ai.text().contains("compressed summary")));
+        // THEN (R-CC-9): the summary rides in the reseed UserMessage, never as an AiMessage
+        assertHasUserMessageWith(slave.getMemory().getCopy(), "compressed summary");
 
         // AND: autoCompactAfter = 0 (off, R-CIB-1) → no compact, even above the old threshold
         aiService.updateConfig(aiService.getConfig().toBuilder().autoCompactAfter(0).build());
@@ -633,37 +633,41 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
 
         aiService.updateConfig(config);
         aiService.setActiveAgent(AiDevAgent.NAME);
-        aiService.getActiveAgent().getMemory().add(UserMessage.from("Text 1"));
-        aiService.getActiveAgent().getMemory().add(UserMessage.from("Text 2"));
+        // der bereits injizierte Kontext steht als gerenderter Block in der History — nur diese
+        // Form findet der contains-Check wieder (Produktionsform, kein nackter Text)
+        aiService.getActiveAgent().getMemory().add(UserMessage.from(renderedBlock("Text 1")));
+        aiService.getActiveAgent().getMemory().add(UserMessage.from(renderedBlock("Text 2")));
 
-        // WHEN — set turn context supplier and compact to inject items into memory
+        // WHEN — der call(...) ist die einzige Injektionsquelle; ein compact(...) wäre hier ein
+        // SKIPPED_SMALL-No-op (2 Blocks < MIN_COMPACT_MESSAGES) und würde nur eine Wirkung vortäuschen
         aiService.getActiveAgent().setTurnContextSupplier(() -> List.of(
                 new org.sterl.llmpeon.context.SimpleContextItem("Text 1"),
                 new org.sterl.llmpeon.context.SimpleContextItem("Text 2"),
                 new org.sterl.llmpeon.context.SimpleContextItem("Text 3"),
                 new org.sterl.llmpeon.context.SimpleContextItem("Text 3"),
                 new org.sterl.llmpeon.context.SimpleContextItem("Unique")));
-        mockLlmServer.queueResponse(AiMessage.aiMessage("compressed"));
-        aiService.getActiveAgent().compact(null);
+        mockLlmServer.queueResponse(AiMessage.aiMessage("dedup reply"));
         aiService.getActiveAgent().call("Text 1", null);
         
         // THEN — verify turn context items reached memory and duplicates were handled
         var memory = aiService.getActiveAgent().getMemory().getCopy();
-        var allTexts = memory.stream()
-                .map(m -> org.sterl.llmpeon.shared.ChatMessageUtil.toString(m))
-                .toList();
+        var blocks = blocksOf(memory);
 
         // Text 1 appears at least once (from turn context + call message)
-        assertTrue("Text 1 should appear in memory", allTexts.stream().anyMatch(t -> t.contains("Text 1")));
-        
-        // Text 2 appears once from turn context
-        assertEquals("Text 2 should appear once", 1, allTexts.stream().filter(t -> t.contains("Text 2")).count());
-        
-        // Text 3 was dedupped by restoreTurnContext: only one occurrence despite supplier providing it twice
+        assertTrue("Text 1 should appear in memory", blocks.stream().anyMatch(t -> t.contains("Text 1")));
+
+        // Text 2 steht in genau EINEM Block: der zweite Render darf ihn nicht erneut injizieren
+        // (contains-Check) — mit kaputtem Check wären es zwei Blöcke.
+        assertEquals("Text 2 should appear once", 1, blocks.stream().filter(t -> t.contains("Text 2")).count());
+
+        // Text 3: Message-Granularität, weil die Doppelung aus der Supplier-Liste kommt und
+        // renderTurnContext nur gegen die Memory deduppt — auf Block-Ebene wären es 2.
+        // PO-Entscheidung offen (siehe Bericht), daher hier nicht neu gepinnt.
+        var allTexts = memory.stream().map(ChatMessageUtil::toString).toList();
         assertEquals("Text 3 should appear once (dedupped)", 1, allTexts.stream().filter(t -> t.contains("Text 3")).count());
-        
+
         // Unique appears once
-        assertEquals("Unique should appear once", 1, allTexts.stream().filter(t -> t.contains("Unique")).count());
+        assertEquals("Unique should appear once", 1, blocks.stream().filter(t -> t.contains("Unique")).count());
     }
     
     /** Jon must be the first entry in the agent dropdown. */
@@ -1362,6 +1366,21 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
                 .toList();
     }
 
+    /** Der gerenderte Block eines Turn-Context-Items — die Form, die in der History steht. */
+    private static String renderedBlock(String text) {
+        return new org.sterl.llmpeon.context.SimpleContextItem(text).render().toString();
+    }
+
+    /**
+     * Block-Granularitaet (TextContent) des Memory: seit R-CC-9 traegt EINE UserMessage mehrere
+     * Bloecke, zaehlt eine Injektion pro Message nicht mehr, was pro Block injiziert wurde.
+     */
+    private static List<String> blocksOf(List<ChatMessage> memory) {
+        return memory.stream()
+                .flatMap(m -> ChatMessageUtil.extractMessages(m).stream())
+                .toList();
+    }
+
     private PoDelegateTool jonDelegate() {
         return aiService.getActiveAgent().getToolService().getTool(PoDelegateTool.class).orElseThrow();
     }
@@ -1723,9 +1742,8 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         assertHasUserMessageWith(memory, "# Docs Index");
         assertHasUserMessageWith(memory, "User selected project:");
 
-        // AND: Summary ist in Memory (als AiMessage)
-        assertTrue("AI summary should be in memory", memory.stream()
-                .anyMatch(m -> m instanceof AiMessage ai && ai.text().contains("WHAT: Compressed summary")));
+        // AND: Summary ist im Memory — letzter TextContent der Reseed-UserMessage (R-CC-9)
+        assertHasUserMessageWith(memory, "WHAT: Compressed summary");
 
         // AND: alte Konversation ist weg (check all message texts)
         var allTexts = memory.stream()
@@ -1764,9 +1782,8 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         assertHasUserMessageWith(memory, "order1: be concise");
         assertHasUserMessageWith(memory, "order2: no filler");
 
-        // AND: Summary (als AiMessage)
-        assertTrue("AI summary should be in memory", memory.stream()
-                .anyMatch(m -> m instanceof AiMessage ai && ai.text().contains("compressed")));
+        // AND: Summary — letzter TextContent der Reseed-UserMessage (R-CC-9)
+        assertHasUserMessageWith(memory, "compressed");
 
         // AND: alte Konversation ist weg
         var allTexts = memory.stream()
@@ -1775,18 +1792,23 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         assertHasNoMessageWith(allTexts, "old talk");
     }
 
-    /** Compact does not duplicate existing context (contains-Check). */
+    /**
+     * Compact + der naechste Turn duplizieren einen bestehenden Kontext nicht (contains-Check,
+     * context-architecture.md Lazy-Verhalten). Der naechste Turn ist Teil des Tests: er rendert
+     * denselben Turn-Context erneut — ohne den Check stuende er in zwei Bloecken.
+     */
     @Test
     public void test_compactNoDuplicates() {
         assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
 
-        // GIVEN: Kontext bereits in Memory
+        // GIVEN: Kontext bereits in Memory — 3 Messages, sonst skippt der Compact (R16)
         aiService.setActiveAgent(AiDevAgent.NAME);
         aiService.getActiveAgent().getMemory().clear();
 
         String existingContext = "already in memory";
         aiService.getActiveAgent().getMemory().add(UserMessage.from(existingContext));
         aiService.getActiveAgent().getMemory().add(AiMessage.from("reply"));
+        aiService.getActiveAgent().getMemory().add(AiMessage.from("reply 2"));
 
         aiService.getActiveAgent().setTurnContextSupplier(() -> List.of(new org.sterl.llmpeon.context.SimpleContextItem(existingContext)));
 
@@ -1795,17 +1817,13 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
                 .url(mockLlmServer.getUrl()).build());
         mockLlmServer.queueResponse(AiMessage.aiMessage("compressed"));
 
-        // WHEN: Compact
+        // WHEN: compact re-seedet den Turn-Context, der naechste Turn rendert ihn erneut
         aiService.getActiveAgent().compact(null);
+        mockLlmServer.queueResponse(AiMessage.aiMessage("ok"));
+        aiService.getActiveAgent().call("next turn", null);
 
-        // THEN: Kontext erscheint NUR EINMAL (contains-Check)
-        var memory = aiService.getActiveAgent().getMemory().getCopy();
-        var allTexts = memory.stream()
-                .map(m -> org.sterl.llmpeon.shared.ChatMessageUtil.toString(m))
-                .toList();
-
-        // Count occurrences across all messages
-        long count = allTexts.stream()
+        // THEN: der Kontext steht in genau EINEM Block
+        long count = blocksOf(aiService.getActiveAgent().getMemory().getCopy()).stream()
                 .filter(t -> t.contains(existingContext))
                 .count();
         assertEquals("Context should appear exactly once (no duplicate after compact)", 1, count);
@@ -1840,8 +1858,7 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
         var memory = aiService.getActiveAgent().getMemory().getCopy();
         assertHasUserMessageWith(memory, UserContext.PROJECT_TAG);
         assertHasUserMessageWith(memory, "# Delegation Test");
-        assertTrue("AI summary should be in memory", memory.stream()
-                .anyMatch(m -> m instanceof AiMessage ai && ai.text().contains("WHAT: Delegated summary")));
+        assertHasUserMessageWith(memory, "WHAT: Delegated summary");
     }
     // --- Replica tests: issue-01 / issue-02 / KV-cache (append-only) ------------
 
@@ -2108,9 +2125,10 @@ public class PeonAiServiceTest extends AbstractIntegrationTest {
             assertHasUserMessageWith(memory, e2);
             assertHasUserMessageWith(memory, e1);
 
-            // AND: der alte Snapshot S1 bleibt unangetastet — genau eine Message mit E1 OHNE E2
-            long oldSnapshotCount = memory.stream()
-                    .map(m -> ChatMessageUtil.toString(m))
+            // AND: der alte Snapshot S1 bleibt unangetastet — genau EIN Block mit E1 OHNE E2.
+            // Block- statt Message-Granularität (R-CC-9): die Reseed-UserMessage trägt den
+            // nächsten User-Turn mit, S1 und S2 leben danach in derselben Message.
+            long oldSnapshotCount = blocksOf(memory).stream()
                     .filter(t -> t.contains(e1) && !t.contains(e2))
                     .count();
             assertEquals("old snapshot must stay exactly once", 1, oldSnapshotCount);

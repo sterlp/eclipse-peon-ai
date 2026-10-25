@@ -181,7 +181,7 @@ public class AIChatView implements EclipseAiMonitor {
             this::onClear,
             this::onHandoff,
             this::onAgentChange,
-            this::doCompressContext
+            this::doCompactAgent
         );
 
         statusLine = new StatusLineWidget(inputBlock, SWT.NONE,
@@ -525,7 +525,7 @@ public class AIChatView implements EclipseAiMonitor {
         }
     }
 
-    private void doCompressContext() {
+    private void doCompactAgent() {
         var active = aiService.getActiveAgent();
         if (active.getMemory().size() < 3) return;
         inFlightTurns.incrementAndGet();

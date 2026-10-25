@@ -54,6 +54,10 @@ description: llmpeon repo build & test procedure — core→plugin jar trap (rea
   `mvn -o -B clean test -pl org.sterl.llmpeon.core -Dtest='ClassA,ClassB'` runs exactly those classes;
   no reactor needed. KEEP `clean` — without it the m2e auto-build/Lombok trap below yields phantom
   testCompile failures.
+- **Der ganze Reactor ist der billige Gate (hit 2026-10-25):** `mvn -o -B clean verify` offline dauert ~50 s
+   (Target-Platform gecacht) und ist damit billiger als jede Scoped-Variante. Wer trotzdem scoped
+   (`-pl … -am -Dtest=<Klasse>`), muss für Core `-Dsurefire.failIfNoSpecifiedTests=false` mitgeben —
+   sonst bricht Core mit „No tests matching pattern".
 
 ## Plugin tests (OSGi, JUnit 4)
 

@@ -26,7 +26,8 @@ Geklärte Punkte ohne eigenes Feature-Doc: [resolved-points.md](resolved-points.
   `ToolExecutionRequest` und führt ihn regulär aus (nur registrierte Tool-Namen = kein
   False-Positive-Risiko). Aufwand klein–mittel (~60–100 Zeilen + Tests). System-Prompt-Stabilisierung
   optional dahinter, aber unzuverlässig. **Paul entscheidet, ob/wann gebaut wird.**
-  Ticket-Entwurf (kopierbar, ohne interne Links): [issue-163-tool-calls-retten.md](issue-163-tool-calls-retten.md)
+  Ticket-Beschreibung gehört ins GitHub-Issue #163 (Body schreibt Paul selbst; das frühere
+  Datei-Draft ist gelöscht).
 
 ## 2026-10-23 — webSearch: Snippet-Kappungs-Disclosure (Story 1, Nachtzyklus)
 

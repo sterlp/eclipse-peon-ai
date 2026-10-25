@@ -31,9 +31,11 @@ import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.shared.OnPartialAiResponse;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
+import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -50,7 +52,8 @@ class AbstractAgentCompactResultTest {
     @Test
     @Timeout(10)
     void skipsSmallContextHonestly() {
-        // GIVEN — only 2 messages: a compact leaves exactly 2 behind, so this is a legitimate no-op
+        // GIVEN — only 2 messages, below MIN_COMPACT_MESSAGES: nothing can be summarized, so this is
+        // a legitimate no-op
         var agent = devAgent();
         agent.addMessage(UserMessage.from("m1"));
         agent.addMessage(AiMessage.from("m2"));
@@ -86,6 +89,9 @@ class AbstractAgentCompactResultTest {
         assertThat(problem.get()).isEqualTo("Compact failed: compressor returned no summary for " + agent.getName());
         // AND — the history is preserved (not cleared on failure)
         assertThat(agent.getMemory().size()).isEqualTo(sizeBefore);
+        // AND — no reinsert marker was written: a failed compact must not claim a compacted state (R-CC-9)
+        assertThat(agent.getMemory().getCopy())
+                .noneMatch(m -> ChatMessageUtil.toString(m).contains(CompactConstants.REINSERT_MARKER));
     }
 
     // R-CC-3
@@ -152,8 +158,8 @@ class AbstractAgentCompactResultTest {
     @Timeout(10)
     void compact_delegatesToEngineAndReseeds() {
         // GIVEN — a real history and a compressor that answers with a summary
-        var agent = devAgent(r -> ChatResponse.builder()
-                .aiMessage(AiMessage.aiMessage("WHAT: Build a Java Hello world application")).build());
+        var summary = "WHAT: Build a Java Hello world application";
+        var agent = devAgent(r -> ChatResponse.builder().aiMessage(AiMessage.aiMessage(summary)).build());
         agent.addMessage(UserMessage.from("Build a Hello world"));
         agent.addMessage(AiMessage.from("In which language?"));
         agent.addMessage(UserMessage.from("In java"));
@@ -163,16 +169,101 @@ class AbstractAgentCompactResultTest {
         // WHEN
         var result = agent.compact(AiMonitor.NULL_MONITOR);
 
-        // THEN — the compact succeeded and the memory is re-seeded to exactly two messages
+        // THEN — the compact succeeded and left exactly ONE message: the re-seeded UserMessage, no
+        // AiMessage — a history ending on an AiMessage would be a prefill stub, not an open turn
         assertThat(result.status()).isEqualTo(CompactResult.Status.COMPACTED);
         var copy = agent.getMemory().getCopy();
-        assertThat(copy).hasSize(2);
-        // AND — the first is the resume UserMessage carrying the re-insert marker (R-CC-9)
+        assertThat(copy).hasSize(1);
         assertThat(copy.get(0)).isInstanceOf(UserMessage.class);
-        assertThat(ChatMessageUtil.toString(copy.get(0))).contains(CompactConstants.REINSERT_MARKER);
-        // AND — the second is the summary as an AI message
-        assertThat(copy.get(1)).isInstanceOf(AiMessage.class);
-        assertThat(((AiMessage) copy.get(1)).text()).contains("WHAT: Build a Java Hello world application");
+        // AND — its LAST TextContent is the marker block: marker, blank line, summary (the one
+        // re-seed form the compact produces)
+        assertThat(UserMessages.lastText((UserMessage) copy.get(0))).isEqualTo(
+                CompactConstants.REINSERT_MARKER + System.lineSeparator() + System.lineSeparator() + summary);
+        // AND — the marker exists exactly once over all message types (ADR-0076)
+        assertThat(copy).filteredOn(m -> ChatMessageUtil.toString(m).contains(CompactConstants.REINSERT_MARKER))
+                .hasSize(1);
+    }
+
+    /**
+     * Paul's E2E check (compact-e2e-issues.md B2): a compact called FROM the tool loop must re-seed
+     * the summary alone — no tool request, no running user text riding on the marker block.
+     */
+    @Test
+    @Timeout(10)
+    void toolTriggeredCompactReseedsMarkerBlockWithItsSummaryOnly() {
+        // GIVEN — a turn whose model calls compactSession; the same mock answers the compressor's
+        // round 2 with the summary and the follow-up round 3 with the final answer
+        var summary = "WHAT: compacted state of the running task";
+        var rounds = new AtomicInteger();
+        var cm = new StreamMock().buildMock(r -> switch (rounds.incrementAndGet()) {
+            case 1 -> ChatResponse.builder().aiMessage(AiMessage.builder()
+                    .toolExecutionRequests(List.of(ToolExecutionRequest.builder()
+                            .id("1").name(CompactSessionTool.NAME).arguments("{}").build()))
+                    .build()).build();
+            case 2 -> ChatResponse.builder().aiMessage(AiMessage.aiMessage(summary)).build();
+            default -> ChatResponse.builder().aiMessage(AiMessage.aiMessage("done")).build();
+        });
+        var agent = new AiDevAgent(new ConfiguredChatModel(LlmConfig.builder().model("mock").build(), cm),
+                new ToolService());
+        agent.addMessage(UserMessage.from("earlier work 1"));
+        agent.addMessage(AiMessage.from("earlier reply 1"));
+        agent.addMessage(UserMessage.from("earlier work 2"));
+        agent.addMessage(AiMessage.from("earlier reply 2"));
+        // the re-seeded memory as it stands the moment the compact reports COMPACTED — before the
+        // tool round's own AiMessage/tool result are added
+        var reseeded = new AtomicReference<List<ChatMessage>>();
+        var monitor = new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onCompactCompleted(String agentName, CompactResult result, boolean withinTurn) {
+                if (result.status() == CompactResult.Status.COMPACTED) reseeded.set(agent.getMemory().getCopy());
+            }
+        };
+
+        // WHEN — one turn that compacts through the tool
+        agent.call("run the compact now", monitor);
+
+        // THEN — the re-seed is exactly one UserMessage, and its LAST TextContent is marker + summary
+        assertThat(reseeded.get()).hasSize(1);
+        var reseed = (UserMessage) reseeded.get().get(0);
+        assertThat(UserMessages.lastText(reseed)).isEqualTo(CompactConstants.REINSERT_MARKER
+                + System.lineSeparator() + System.lineSeparator() + summary);
+        // AND — nothing of the calling turn is in it: neither the tool request nor the live user text
+        // (B2: a marker alone, the running turn passing for the memory)
+        assertThat(ChatMessageUtil.toString(reseed))
+                .doesNotContain(ChatMessageUtil.TOOL_REQUEST_PREFIX)
+                .doesNotContain("run the compact now")
+                .doesNotContain("earlier work");
+        // AND — the tool round itself still lands BEHIND the re-seed (re-seed + tool request + tool
+        // result + the follow-up answer): the turn is not lost, it just never stands inside the
+        // re-seed message
+        assertThat(agent.getMemory().getCopy()).hasSize(4);
+    }
+
+    /**
+     * A one-word summary is a real compact: the summary reaches the re-seed, and the rounded
+     * `result 0k` in the result line is rounding (chars/1000), never evidence of an empty result.
+     */
+    @Test
+    @Timeout(10)
+    void veryShortSummaryCompactsIntoTheReseedAndReportsResult0k() {
+        // GIVEN — a compressor answering with two characters
+        var agent = devAgent(r -> ChatResponse.builder().aiMessage(AiMessage.aiMessage("ok")).build());
+        addThreeMessages(agent);
+
+        // WHEN
+        var result = agent.compact(AiMonitor.NULL_MONITOR);
+
+        // THEN — COMPACTED with the short summary, and the re-seed carries it
+        assertThat(result.status()).isEqualTo(CompactResult.Status.COMPACTED);
+        assertThat(result.summary()).isEqualTo("ok");
+        var copy = agent.getMemory().getCopy();
+        assertThat(copy).hasSize(1);
+        assertThat(UserMessages.lastText((UserMessage) copy.get(0))).isEqualTo(
+                CompactConstants.REINSERT_MARKER + System.lineSeparator() + System.lineSeparator() + "ok");
+        // AND — the honest IST of the report line: 2 chars render as `result 0k` (StringUtil.toK
+        // rounds down), so `0k` proves nothing about the summary being there
+        assertThat(result.stats().resultChars()).isEqualTo(2);
+        assertThat(result.resultLine()).contains("result 0k");
     }
 
     // R-CC-12
@@ -320,9 +411,9 @@ class AbstractAgentCompactResultTest {
         assertThat(toolLines.getFirst())
                 .startsWith(CompactFeedback.START_PREFIX + AiDevAgent.NAME + ": 3 messages ")
                 .contains(" tokens (estimate)");
-        // AND — the end names it too, and shows the re-seeded memory: 2 messages left
+        // AND — the end names it too, and shows the re-seeded memory: 1 message left
         assertThat(toolLines.getLast())
-                .startsWith("🗜 " + AiDevAgent.NAME + CompactFeedback.END_MARKER + "3 → 2 messages, ")
+                .startsWith("🗜 " + AiDevAgent.NAME + CompactFeedback.END_MARKER + "3 → 1 messages, ")
                 .endsWith(") " + org.sterl.llmpeon.shared.StringUtil.charsSuffix("summary"));
     }
 
@@ -562,7 +653,7 @@ class AbstractAgentCompactResultTest {
     @Test
     @Timeout(10)
     void reinsertedMessagesDoNotTriggerImmediateReCompact() {
-        // GIVEN — a successful compact re-seeds the memory to exactly two messages
+        // GIVEN — a successful compact re-seeds the memory to exactly one message
         var agent = devAgent(r -> ChatResponse.builder()
                 .aiMessage(AiMessage.aiMessage("WHAT: summary")).build());
         agent.addMessage(UserMessage.from("m1"));
@@ -570,9 +661,9 @@ class AbstractAgentCompactResultTest {
         agent.addMessage(UserMessage.from("m3"));
         var first = agent.compact(AiMonitor.NULL_MONITOR);
         assertThat(first.status()).isEqualTo(CompactResult.Status.COMPACTED);
-        assertThat(agent.getMemory().size()).isEqualTo(2);
+        assertThat(agent.getMemory().size()).isEqualTo(1);
 
-        // WHEN — an immediate re-compact: the two reinserted messages are below the minimum
+        // WHEN — an immediate re-compact: the re-seeded message is below the minimum
         var second = agent.compact(AiMonitor.NULL_MONITOR);
 
         // THEN — honestly skipped, not a looping/failed compact

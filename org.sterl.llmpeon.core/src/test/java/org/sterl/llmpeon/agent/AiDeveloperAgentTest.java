@@ -142,24 +142,23 @@ public class AiDeveloperAgentTest {
 
         // THEN
         verify(cm, times(3)).chat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
-        // AND — memory structure after delegated compact:
-        // [0] UserMessage "Session compacted..." (resume message)
-        // [1] AiMessage "Okay thats good" (compressor's summary, added by compressContext)
-        // [2] CALL_ME (tool request, added by tool loop)
-        // [3] ToolExecutionResultMessage (tool result, added by tool loop — marker only, no summary;
-        //     the summary lives exclusively as the AiMessage at [1], SOLL 2026-09-10)
-        // [4] AiMessage "Okay thats good" (final response, second iteration)
+        // AND — memory structure after the delegated compact (R-CC-9, ADR-0076):
+        // [0] UserMessage — the one re-seed: marker block "Session compacted:" + the compressor's summary
+        // [1] CALL_ME (tool request, added by the tool loop once the tool ran)
+        // [2] ToolExecutionResultMessage (tool result — marker only, no summary; the summary lives
+        //     exclusively in the re-seed at [0], SOLL 2026-09-10)
+        // [3] AiMessage "Okay thats good" (final response, second iteration)
         var mem = subject.getMemory().getCopy();
-        assertThat(((UserMessage)mem.get(0)).singleText()).contains("Session compacted");
-        assertThat(mem.get(1)).isInstanceOf(AiMessage.class);
-        assertThat(((AiMessage)mem.get(1)).text()).contains("Okay thats good");
-        assertThat(mem.get(2)).isEqualTo(CALL_ME);
-        assertThat(mem.get(3)).isInstanceOf(ToolExecutionResultMessage.class);
+        assertThat(((UserMessage)mem.get(0)).singleText())
+                .startsWith("Session compacted:")
+                .contains("Okay thats good");
+        assertThat(mem.get(1)).isEqualTo(CALL_ME);
+        assertThat(mem.get(2)).isInstanceOf(ToolExecutionResultMessage.class);
         // no-preserve marker: present, and NOT a duplicate of the resume text (SOLL 2026-09-11);
         // the stats line (R-CIB-6) precedes it
-        assertThat(((ToolExecutionResultMessage)mem.get(3)).text()).contains("(nothing preserved)");
-        // AND — the compact-result text appears EXACTLY ONCE over ALL messages (SOLL 2026-09-11):
-        // only the resume UserMessage carries "Session compacted"; the no-preserve tool result
+        assertThat(((ToolExecutionResultMessage)mem.get(2)).text()).contains("(nothing preserved)");
+        // AND — the compact marker text appears EXACTLY ONCE over ALL messages (SOLL 2026-09-11):
+        // only the re-seed UserMessage carries "Session compacted"; the no-preserve tool result
         // must be a non-colliding marker, never a duplicate of the resume text.
         long compactMarkerCount = mem.stream()
                 .filter(m -> textOf(m).contains("Session compacted"))

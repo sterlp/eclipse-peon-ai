@@ -103,10 +103,10 @@ mit contains-Check (`memory.containsUserMessage(rendered)`).
 | Active Skill | Aktiver Agent | One-time via `addOneTimeOrder()` |
 | AGENTS.md | Alle | `AgentsMdContextItem.itemsFor(agentName, project)` |
 | AGENTS-\<agent\>.md | Alle (falls existiert) | `AgentsMdContextItem.itemsFor(agentName, project)` |
-| Workspace-Memory (live, dedupKey = `workspace-memory#` + entries-hash) | Alle inkl. Jons Slaven | `PeonAiService.get()` / `JonDelegateTool`-Orders |
+| Workspace-Memory (live, dedupKey = `workspace-memory#` + entries-hash) | Alle inkl. Jons Slaven | `PeonAiService.get()` / `PoDelegateTool`-Orders |
 | docs/memory.md | Jon | `EclipseFileContextItem("docs/memory.md")` |
 | docs/index.md | Jon | `EclipseFileContextItem("docs/index.md")` |
-| Plan-Path (sticky) | Dev Slave | `JonDelegateTool` |
+| Plan-Path (sticky) | Dev Slave | `PoDelegateTool` |
 | Handoff-Line (einmalig) | Dev Agent | `PeonAiService.get()` |
 
 **Lazy-Verhalten:** `restoreTurnContext()` läuft bei jedem `doCall()` — Dedup-Check verhindert
@@ -250,7 +250,7 @@ THEN nichts wird injiziert und keine Exception / kein Status-Eintrag
 > - `PeonAiService`-Konstruktor (~200 Zeilen) verdrahtet alles in einem Rutsch
 > - `PeonAiService.get()` (ContextItemProvider) mischt Scaffold-Spezialfall + Default
 > - `standing-orders-design.md` beschreibt noch den alten ToolLoopRequest-Flow
-> - `setStaticContext()` + `turnContextSupplier` + `JonDelegateTool` supplier überschneiden sich
+> - `setStaticContext()` + `turnContextSupplier` + `PoDelegateTool` supplier überschneiden sich
 >
 > **Nicht jetzt aufräumen** — nur wenn wir drin sind (siehe [architecture.md](../../docs/architecture.md),
 > Extrahieren-Regel >10 lines + testbar).

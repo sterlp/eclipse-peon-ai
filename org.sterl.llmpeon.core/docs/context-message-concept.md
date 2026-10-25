@@ -5,12 +5,16 @@ Wie eine UserMessage aufgebaut wird (kein Raten mehr, Grundlage für R-CIB-4 in 
 - **Turn-Context-Items zuerst, User-Text zuletzt:** `AbstractAgent.doCall:271-274` hängt die
   Turn-Context-Items (`renderTurnContext`) zuerst in die Contents, der echte User-Text als
   **letzter** TextContent (`TextContent.from(message)`). Dasselbe Bild bei
-  `ThreadSafeMemory.add:73-77` (Join hängt neu hinten an) und beim Compact-Restore
-  (`AbstractAgent:320-326`).
+  `ThreadSafeMemory.add` (Join hängt neu hinten an) und beim Compact-Restore
+  (`AbstractAgent.doCompact` — dort Turn-Context und als **letzter** Content der Marker-Block).
 - **Regel:** „Echter User-Text" einer UserMessage = **letzter TextContent**; alles davor ist
   State (ContextItems). Wer User-Text erkennt (Compact, Darstellung), liest das letzte
-  TextContent — nie den ersten. Compact-Restore-Messages (Summary/Marker) sind State und
-  konstanten-erkennbar ([compact.md](compact.md) R-CC-9).
+  TextContent — nie den ersten. Der **Compact-Restore** besteht aus **einer** UserMessage: erst die
+  Turn-Context-Blöcke, als **letzter** Content der Marker-Block `Session compacted:` + Leerzeile +
+  Summary ([compact.md](compact.md) R-CC-9, [ADR-0076](../../docs/adr/0076-compact-reseed-marker-in-user-message.md)).
+  Weil der Marker der letzte TextContent ist, zählt er wie `COMPACT_HINT` und der Queued-Marker als
+  **State**, nie als User-Text — eine Code-Stelle (`ContextTrimComponent.hasRealUserText`) für alle
+  drei Marker.
 
 ## Stale System-Message im Compact-Turn (SOLL 2026-09-11, R-ST4) — ✅ done
 
@@ -387,9 +391,9 @@ angepasst (`CompactSessionToolTest` delegiert → `doesNotContain`, `AiDeveloper
 Auslöser: User-Befund 2026-09-11 — Compact-Result 2× sichtbar. Zwei unabhängige Duplikate:
 
 1. **Memory (Tool-Pfad):** Der `Session compacted.`-Marker (CompactSessionTool, kein
-   preserve) kollidiert mit der Resume-UserMessage `Session compacted:`
-   (AbstractAgent.compact:290) → `contains("Session compacted")` über alle
-   Messages = 2 (ToolExecutionResultMessage + UserMessage).
+   preserve) kollidiert mit dem Resume-Marker `Session compacted:` der Reinsert-UserMessage
+   → `contains("Session compacted")` über alle Messages = 2
+   (ToolExecutionResultMessage + UserMessage).
 2. **Chat-Render (Button-Pfad):** `doCompressContext` leert `chatHistory` nur VOR dem Job
    (AIChatView.java:483); der Compressor postet die Summary live (AiCompressorAgent:51 →
    `onChatResponse`), und das finally re-rendert die komplette Memory inkl. Summary erneut
@@ -397,8 +401,9 @@ Auslöser: User-Befund 2026-09-11 — Compact-Result 2× sichtbar. Zwei unabhän
 
 **Regel: Der Compact-Result-Text steht genau einmal — in der Memory UND im Chat-Render.**
 
-* **Memory:** kanonische Quelle ist die Resume-UserMessage (`Session compacted:`, AbstractAgent.compact:290) — sie
-  existiert in BEIDEN Pfaden (Button ruft `compact()` direkt, ohne Tool-Result). Das
+* **Memory:** kanonische Quelle ist der **Marker-Block der Reinsert-UserMessage** (letzter
+  TextContent beginnt mit `Session compacted:`, R-CC-9) — sie existiert in BEIDEN Pfaden (Button
+  ruft `compact()` direkt, ohne Tool-Result). Das
   no-preserve-Tool-Result trägt deshalb den Marker `(nothing preserved)` — nicht leer, aber ohne
   Duplikat des Resume-Texts. Mit preserve: `Preserved:\n<preserve>` (unverändert).
 * **Render:** nach Button-Compact ist das Voll-Re-Render der Memory autoritativ. Bei **echtem
@@ -415,7 +420,7 @@ Auslöser: User-Befund 2026-09-11 — Compact-Result 2× sichtbar. Zwei unabhän
 GIVEN ein In-Loop-Compact (Agent ruft compactSession ohne preserve)
 WHEN der Turn abgeschlossen ist
 THEN enthält contains(„Session compacted") über ALLE Messages der Memory genau 1 Treffer
-     (die Resume-UserMessage)
+     (der Marker-Block der Reinsert-UserMessage, letzter TextContent)
 AND das Tool-Result ist „(nothing preserved)" (nicht leer, kein Duplikat)
 
 GIVEN ein Agent, dessen compact() die Summary „SUMMARY-X" in die Memory legt

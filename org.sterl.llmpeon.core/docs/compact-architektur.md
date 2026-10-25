@@ -4,6 +4,9 @@
 > **Δ 2026-10-18:** R-CC-18 ❌ specified (Tool-Loop-Entscheidung, Abschnitt „Tool-Loop-Auslöser" unten) ·
 > **Δ 2026-10-24:** R-CT-8 ✅ done (Paul-Smoke) — Compressor-Streaming an den Caller-Monitor
 > (UI, nie Log), log-only-Monitor-Konzept entfallen ·
+> **Δ 2026-10-25:** Reseed-Form (R-CC-9, [ADR-0076](../../docs/adr/0076-compact-reseed-marker-in-user-message.md)) —
+> **eine** UserMessage: Turn-Context-Blöcke zuerst, als **letzter** TextContent der Marker
+> `Session compacted:` + Summary (die AiMessage-Form ist verworfen) ·
 > **Fachdocs:** [compact.md](compact.md) (R-CC-1…14, R-CC-18) · [compact-input-budget.md](compact-input-budget.md) (R-CIB-1…6) ·
 > **ADRs:** [ADR-0055](../../docs/adr/0055-context-counter-input-not-cost.md) · [ADR-0056](../../docs/adr/0056-compact-component-and-render-modes.md) · [ADR-0070](../../docs/adr/0070-compact-decision-in-one-component.md)
 
@@ -127,7 +130,7 @@ sequenceDiagram
         A-->>T: monitor.onProblem(cause)
     else
         S-->>A: COMPACTED(stats, summary)
-        A->>M: clear() + reseed (REINSERT + summary, user-first, thinking raus)
+        A->>M: clear() + reseed (1 Msg: User=turn-context + REINSERT+summary, thinking raus)
         A-->>T: CompactResult → resultLine() → Log / Tool-Result / UI
     end
 ```

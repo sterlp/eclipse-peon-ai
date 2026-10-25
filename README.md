@@ -212,8 +212,3 @@ Detailed documentation is available at [peon-ai-4e.sterl.org](https://peon-ai-4e
 - https://www.vogella.com/tutorials/Eclipse4Services/article.html
 - https://www.vogella.com/tutorials/Eclipse4CSS/article.html
 - https://www.vogella.com/tutorials/Eclipse4EventSystem/article.html
-
-very old stuff
-https://eclipsesource.com/blogs/2012/05/10/eclipse-4-final-sprint-part-1-the-e4-application-model/
-https://eclipsesource.com/blogs/2012/06/12/eclipse-4-e4-tutorial-part-2/
-https://eclipsesource.com/blogs/2012/06/26/eclipse-4-e4-tutorial-part-3-extending-the-application-model/

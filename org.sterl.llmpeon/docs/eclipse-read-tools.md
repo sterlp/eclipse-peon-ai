@@ -283,5 +283,28 @@ Modell sieht den Fehler und korrigiert.
 - Resolution-Reihenfolge heute (R-WN-4, 2026-10-24): **1) selektiertes Projekt** → **2) Workspace-Root**
   → **3) offene Projekte** (inkl. `src/`-Fallback, ⏳ Entfernung) → **4) Disk-Lokation Last-Resort**
   (`resolveByLocation`, Disclosure `resolved via <pfad>` bei abweichender Auflösung).
-- Status: Semantik als Paul-WIP im Tree, **noch ungetestet/committed ausstehend** (`volatile
-  currentProject` = Thread-Safety-Fix für Background-Jobs).
+- Status: ✅ gebaut (2026-10-24, T-5): R-WN-4/R-WN-5 umgesetzt, `volatile currentProject` =
+  Thread-Safety-Fix für Background-Jobs. Die Auflösung semantisch final; der ⏳-Punkt `src/`-Fallback
+  bleibt in workspace-nesting.md geführt.
+
+## R10 ✅ done (2026-10-25, E2E-Triage B1) — `eclipseList`: Refresh vor dem Listing
+
+**IST (E2E-Befund, `ai-e2e-test/search-agent-e2e-issues.md` Issue 1):** `eclipseList` mappete den
+Workspace-Resource-Tree ohne Refresh — eine frisch auf der Platte erzeugte Datei fehlte
+stillschweigend, während `eclipseSearchFiles`/`eclipseGrepFiles`/`eclipseReadFile` sie finden
+(Familien-Bruch + False Negative).
+
+**SOLL:** Vor dem `members()`-Mapping wird der gelistete Container mit `refreshLocal(DEPTH_ONE)`
+aktualisiert — DEPTH_ONE, weil die Liste nicht-rekursiv ist. Ein Refresh-Fehler ist nie still:
+Disclosure-Zeile in der Ausgabe **und** `onProblem` mit Pfad und Ursache. Der Refresh läuft über
+einen injizierbaren Seam (Muster `PlanFileView`), Cancellation wird ungefangen durchgereicht.
+
+**WEIL:** „A tool must never lie" — eine veraltete Liste liest sich als „existiert nicht", die
+teuerste Fehlerklasse des Repos. ADR-0038 (Refresh nur im Leerfall) gilt für die Such-Tools;
+`eclipseList` refresht **immer**, weil sein Ergebnis die Behauptung „das ist der Inhalt" trägt.
+
+- GIVEN eine Datei wurde per java.io in den Projektordner geschrieben (am Workspace-Tree vorbei),
+  WHEN `eclipseList` auf den Ordner läuft, THEN ist die Datei gelistet
+  → `eclipseListSeesFileWrittenOutsideEclipse` (PDE)
+- GIVEN der Refresh schlägt fehl, WHEN `eclipseList` läuft, THEN Disclosure + onProblem, nie eine
+  still veraltete Liste → Mutation „stiller Refresh-Fehler" rot (PDE-Suite)

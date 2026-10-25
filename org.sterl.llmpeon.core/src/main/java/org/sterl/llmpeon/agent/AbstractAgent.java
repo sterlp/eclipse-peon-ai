@@ -32,7 +32,6 @@ import org.sterl.llmpeon.tool.ToolPolicy;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.component.SmartToolExecutor;
 
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
@@ -431,8 +430,9 @@ public abstract class AbstractAgent implements AiAgent {
 
     /** The compact run itself — {@code monitor} is already null-safe. */
     private CompactResult doCompact(AiMonitor monitor) {
-        // < MIN_COMPACT_MESSAGES: a compact leaves exactly 2 messages (Session-compacted user +
-        // summary) — with < 2 a direct re-compact would fire a real LLM call on those 2 (R16).
+        // < MIN_COMPACT_MESSAGES: a successful compact re-seeds exactly ONE UserMessage whose last
+        // TextContent is the reinsert marker + summary (R-CC-9) — a direct re-compact would compress
+        // its own summary, so the guard has to stay above 1 (R16).
         // The compacting flag is set only behind this guard: a skip shows no 🟡 (R-CT-4).
         if (memory.size() < CompactConstants.MIN_COMPACT_MESSAGES) return CompactResult.skippedSmall();
 
@@ -464,12 +464,12 @@ public abstract class AbstractAgent implements AiAgent {
             // DON'T use addResult -> as the totalTokenUsed is from the compressor here which is to large
             // we only take the compacted new message!
             // and we remove the thinking, if any, from the result
-            data.add(TextContent.from(CompactConstants.REINSERT_MARKER));
             // Ensure memory starts with a user message (many LLMs require this)
+            data.add(TextContent.from(CompactConstants.REINSERT_MARKER
+                    + System.lineSeparator() + System.lineSeparator()
+                    + result.summary())
+            );
             memory.add(UserMessage.from(data));
-            // we add the compact message as AI message
-            memory.add(AiMessage.from(result.summary()));
-
             return result;
         } finally {
             compacting = false;

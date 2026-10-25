@@ -86,10 +86,10 @@ class ToolServiceDirectCompactTest {
         // THEN — exactly one compressor call: the direct compact fired, no hint was asked
         assertThat(compactCalls.get()).isEqualTo(1);
         // AND — the SECOND request (the sent payload) carries the new small history: 1 system +
-        // the 2 re-seeded messages, NO seed messages (without the feature this request would
+        // the 1 re-seeded message, NO seed messages (without the feature this request would
         // carry the full 7-message history and this test is red)
         assertThat(sent).hasSize(2);
-        assertThat(sent.get(1).messages()).hasSize(3);
+        assertThat(sent.get(1).messages()).hasSize(2);
         sent.get(1).messages().forEach(m ->
                 assertThat(ChatMessageUtil.toString(m)).doesNotContain("seed"));
         // AND — no COMPACT_HINT landed in the memory (the direct path replaces the ask)
@@ -100,7 +100,7 @@ class ToolServiceDirectCompactTest {
         var endLines = toolLines.stream().filter(l -> l.contains(CompactFeedback.END_MARKER)).toList();
         assertThat(endLines).hasSize(1);
         assertThat(endLines.getFirst()).matches(
-                "🗜 Peon-Dev compacted: \\d+ → 2 messages, ~\\d+ → ~\\d+ tokens \\(\\d+(?:m \\d+)?s, \\d{2}:\\d{2}\\) \\(\\d+ chars\\)");
+                "🗜 Peon-Dev compacted: \\d+ → 1 messages, ~\\d+ → ~\\d+ tokens \\(\\d+(?:m \\d+)?s, \\d{2}:\\d{2}\\) \\(\\d+ chars\\)");
         assertThat(toolLines).noneMatch(l -> l.contains("Direct compact for"));
     }
 }

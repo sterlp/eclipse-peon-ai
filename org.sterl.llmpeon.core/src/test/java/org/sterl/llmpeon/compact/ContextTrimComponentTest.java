@@ -312,7 +312,9 @@ class ContextTrimComponentTest {
 
     @Test
     void reinsertedSummaryAndMarkerAreStateNeverRealUserText() {
-        // GIVEN — a reinserted "Session compacted:" user message, then a later real question
+        // GIVEN — a RELOAD shape: a history line read back from the store, marker alone in its
+        // UserMessage (the pre-ADR-0076 form — production now writes marker + summary as the last
+        // content of one message, see the test below; both must stay state)
         var messages = List.<ChatMessage>of(
                 user(CompactConstants.REINSERT_MARKER + " summary text here"),
                 ai("summary"),
@@ -327,6 +329,28 @@ class ContextTrimComponentTest {
         assertThat(outcome.stage()).isEqualTo(Stage.THINK_AND_USER);
         assertThat(outcome.input()).contains("E".repeat(2000));
         assertThat(outcome.input()).doesNotContain("summary text here");
+    }
+
+    @Test
+    void reseededMarkerBlockIsStateAndDropsItsSummaryWhenStaged() {
+        // GIVEN — the PRODUCTION re-seed shape (ADR-0076): turn-context text, then the marker block
+        // (marker + lineSeparators + summary) as the LAST TextContent of that one UserMessage
+        var nl = System.lineSeparator();
+        var messages = List.<ChatMessage>of(
+                UserMessage.from(List.of(
+                        TextContent.from("project rule: keep it small"),
+                        TextContent.from(CompactConstants.REINSERT_MARKER + nl + nl + "OLD SUMMARY THAT MUST GO"))),
+                ai("a", "T".repeat(15000)));
+
+        // WHEN
+        var outcome = subject.stage(messages, 4000);
+
+        // THEN — the re-seed never claims the last-real-user slot, so its marker block (and with it
+        // the old summary) falls out of the staged input while the context text stays (R-CC-9)
+        assertThat(outcome.stage()).isEqualTo(Stage.THINK_AND_USER);
+        assertThat(outcome.input()).doesNotContain("OLD SUMMARY THAT MUST GO");
+        assertThat(outcome.input()).doesNotContain(CompactConstants.REINSERT_MARKER);
+        assertThat(outcome.input()).contains("project rule: keep it small");
     }
 
     // ---------- R-TR-9: pure context blocks drop before the compact input ----------

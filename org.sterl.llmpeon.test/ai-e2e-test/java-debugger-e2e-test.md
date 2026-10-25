@@ -102,9 +102,9 @@ Erwartung steht hier.
 >
 > **Phase 3b — Exception-Breakpoint (Paul: Relaunch mit Programm-Arg `throw` nötig) — NACH Phase 4 ausführen!**
 > (Begründung F6: nach dem Exception-Suspend beendet jeder Resume die VM — Phase 4 wäre danach nicht mehr möglich.)
-> **Clean-State-Pflicht (2026-09-22, nach E2E-Befunden):** Paul leert vorher die Breakpoints-View
-> (alle alten Marker weg), damit kein Phantom-BP die Phasen 3b/3.2 verfälscht — solange
-> `debugJavaListBreakpoints` (R-JD-11) nicht gebaut ist, ist die View die einzige Sicht.
+> **Clean-State-Pflicht (2026-09-22, nach E2E-Befunden):** keine alten Marker, damit kein Phantom-BP
+> die Phasen 3b/3.2 verfälscht. Prüfe das vorher selbst mit `debugJavaListBreakpoints` (R-JD-11) —
+> findet es Marker, obwohl Pauls Breakpoints-View leer ist, ist das ein Befund.
 > 1. `debugJavaSetExceptionBreakpoint("java.lang.IllegalArgumentException")` → `debugJavaContinue` → Suspend,
 >    sobald `IllegalArgumentException` geworfen wird.
 > 2. `debugJavaGetException` im Suspend → **Ehrlicher Fehler** in der Art „no exception variable in top
@@ -160,6 +160,6 @@ Erwartung steht hier.
 
 ---
 
-**SOLL-Quelle:** `docs/java-debugger-tool.md` (R-JD-1…10). Weicht diese Anleitung vom SOLL ab,
+**SOLL-Quelle:** `org.sterl.llmpeon/docs/java-debugger-tool.md` (R-JD-1…13). Weicht diese Anleitung vom SOLL ab,
 gilt das SOLL — und die Abweichung ist selbst ein Befund. Keine Code-Änderungen, keine
 Ursachen-Vermutungen — du testest, du reparierst nicht.

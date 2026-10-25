@@ -228,6 +228,10 @@ public class ContextTrimComponent {
      * Real user text = the LAST TextContent of a UserMessage (context-message-concept.md —
      * turn-context items first, the user text last). Compact hint, queued marker and reinsert
      * marker are state, referenced via their named constants (ADR-0056.4) — never literals.
+     * The reinsert case is live production, not history only: since ADR-0076 the compact's single
+     * re-seed message ends on the marker block, so it never claims the "last real user message"
+     * slot and its old summary drops out of the staged input from stage 1 on
+     * (org.sterl.llmpeon.core/docs/compact.md R-CC-9).
      */
     private static boolean hasRealUserText(UserMessage um) {
         var texts = um.contents().stream().filter(c -> c instanceof TextContent).map(c -> (TextContent) c).toList();

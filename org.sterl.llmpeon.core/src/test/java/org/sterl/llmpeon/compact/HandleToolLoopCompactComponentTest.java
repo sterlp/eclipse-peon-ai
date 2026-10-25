@@ -115,10 +115,11 @@ class HandleToolLoopCompactComponentTest {
     @Test
     @Timeout(10)
     void afterSuccessfulToolCompactNoRuleFires() {
-        // GIVEN — the post-compact memory: exactly the two re-seeded messages, a small counter
+        // GIVEN — the post-compact memory: the one re-seeded message (marker + summary as its last
+        // content, ADR-0076), a small counter
         var memory = new ThreadSafeMemory();
-        memory.add(UserMessage.from("Session compacted: summary"));
-        memory.add(AiMessage.from("summary"));
+        memory.add(UserMessage.from(CompactConstants.REINSERT_MARKER + System.lineSeparator()
+                + System.lineSeparator() + "summary"));
         var compactCalls = new AtomicInteger();
         var agent = agent(compactCalls, memory, CompactResult.skippedSmall());
         var sizeBefore = memory.size();
@@ -365,9 +366,9 @@ class HandleToolLoopCompactComponentTest {
     }
 
     /**
-     * A Mockito owning agent. On COMPACTED the answer mirrors {@code AbstractAgent.compact}:
-     * the memory is already cleared and re-seeded with two small messages before the result
-     * is returned.
+     * A Mockito owning agent. On COMPACTED the answer mirrors {@code AbstractAgent.compact}: the
+     * memory is already cleared and re-seeded with the one marker-block message (ADR-0076) before
+     * the result is returned.
      */
     private static AiAgent agent(AtomicInteger compactCalls, ThreadSafeMemory memory,
             CompactResult compactResult) {
@@ -378,8 +379,8 @@ class HandleToolLoopCompactComponentTest {
             compactCalls.incrementAndGet();
             if (compactResult.status() == CompactResult.Status.COMPACTED) {
                 memory.clear();
-                memory.add(UserMessage.from("Session compacted: summary"));
-                memory.add(AiMessage.from("summary"));
+                memory.add(UserMessage.from(CompactConstants.REINSERT_MARKER + System.lineSeparator()
+                        + System.lineSeparator() + "summary"));
             }
             return compactResult;
         }).when(agent).compact(any());

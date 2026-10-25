@@ -400,11 +400,12 @@ THEN the decorator rejects it, because docs/ is not at the project root
 
 `AbstractAgent.compact()` bricht, wenn das Memory **weniger als 3 Nachrichten** enthält.
 
-**WEIL (< 2 → < 3):** Ein Compact hinterlässt **exakt 2 Messages** (deterministisch, alle Agenten:
-Turn-Context-UserMessage mit `Session compacted:` + Summary-AiMessage). Bei Guard `< 2` war ein
-Re-Compact direkt nach jedem Compact ein echter LLM-Call auf genau diese 2 Messages (User-Smoke
-2026-09-15: „Compressing conversation 2 messages 124 tokens") — der Guard war strukturell tot.
-`< 3` macht **jeden Compact direkt nach einem Compact zum Noop**.
+**WEIL (< 2 → < 3):** Ein Compact hinterlässt **genau 1 Message** (deterministisch, alle Agenten:
+eine UserMessage mit den Turn-Context-Blöcken, deren **letzter** Content der Marker-Block
+`Session compacted:` + Summary ist — R-CC-9). Bei Guard `< 2` war ein Re-Compact direkt nach jedem
+Compact ein echter LLM-Call auf die Reseed-Historie (User-Smoke 2026-09-15: „Compressing
+conversation 2 messages 124 tokens") — der Guard war strukturell tot. `< 3` macht **jeden Compact
+direkt nach einem Compact zum Noop** (1 Message < 3).
 
 **SOLL:** `memory.size() < 3` → **Skip** (`false` zurückgeben) — kein LLM-Call, **kein** Clear
 (Memory bleibt unverändert). Gilt für **alle** Agenten inkl. Jon und seine Sklaven (Da Thinka,

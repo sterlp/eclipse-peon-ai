@@ -76,14 +76,15 @@ class AbstractAgentPreTurnCompactTest {
                 .toList();
         assertThat(userTexts).noneMatch(t -> "m1".equals(t) || "m3".equals(t));
         assertThat(aiTexts).noneMatch(t -> "m2".equals(t) || "m4".equals(t));
-        // … carries the summary instead, and the fresh message
-        assertThat(aiTexts).anyMatch(t -> t != null && t.contains("Summary of the session"));
+        // … carries the summary instead — in the one re-seed UserMessage (R-CC-9) — and the fresh message
+        assertThat(userTexts).anyMatch(t -> t.contains("Summary of the session"));
         assertThat(userTexts).anyMatch(t -> t.contains("fresh message"));
         // AND — the fresh message survived the compact and is in the memory
         assertThat(agent.hasUserText("fresh message")).isTrue();
-        // AND — the summary reseeded the history
+        // AND — the summary re-seeded the history as the marker block of a UserMessage
         assertThat(agent.getMemory().getCopy()).anyMatch(m ->
-                m instanceof AiMessage ai && ai.text() != null && ai.text().contains("Summary of the session"));
+                m instanceof UserMessage um
+                        && ChatMessageUtil.toString(um).contains("Summary of the session"));
     }
 
     // R-CC-20

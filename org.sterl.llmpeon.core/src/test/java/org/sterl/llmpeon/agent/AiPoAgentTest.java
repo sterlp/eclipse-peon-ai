@@ -197,13 +197,14 @@ class AiPoAgentTest {
         // WHEN
         setup.po().compact(null);
 
-        // THEN — Jon is compacted: old history gone, summary present
+        // THEN — Jon is compacted: old history gone, the summary present in his one re-seed message
         assertThat(setup.po().getMemory().containsUserMessage("jon old")).isFalse();
-        assertThat(setup.po().getMemory().getCopy())
-                .anyMatch(m -> m instanceof AiMessage ai && "COMPRESSED".equals(ai.text()));
+        assertThat(setup.po().getMemory().containsUserMessage("COMPRESSED")).isTrue();
+        assertThat(setup.po().getMemory().getCopy()).hasSize(1);
         // AND — every slave is unchanged: old history kept, no summary inserted
         for (var slave : List.of(setup.plan(), setup.review(), setup.dev())) {
             assertThat(slave.getMemory().containsUserMessage("old " + slave.getName())).isTrue();
+            assertThat(slave.getMemory().containsUserMessage("COMPRESSED")).isFalse();
             assertThat(slave.getMemory().getCopy())
                     .noneMatch(m -> m instanceof AiMessage ai && "COMPRESSED".equals(ai.text()));
         }
@@ -212,7 +213,7 @@ class AiPoAgentTest {
     }
 
     /** R16 (sharpened): below 3 messages Jon's compact skips without an LLM call — a compact
-     *  leaves exactly 2 messages, so a direct re-compact must be a no-op, not a new LLM call. */
+     *  leaves exactly 1 message, so a direct re-compact must be a no-op, not a new LLM call. */
     @ParameterizedTest
     @ValueSource(ints = {0, 1, 2})
     void compact_skipsWithoutLlmCall_whenBelowThreeMessages(int messageCount) {

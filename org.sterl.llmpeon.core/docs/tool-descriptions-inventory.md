@@ -1,6 +1,6 @@
 # Tool Descriptions — Inventory & Optimization Plan
 
-**Status:** ✅ **done** — alle `@Tool`-Descriptions der Runde optimiert (Runde 2: kurze Version 10-17 Wörter), `buildWithAgent` → `buildWithDev` rename, static tool-name constants in JonDelegateTool, Test auf structural checks umgestellt. Build grün, verifiziert. **Sync 2026-09-30:** #7/#28 auf den Paul-verbatim-Text aktualisiert (beide Familien identisch), #6/#27 verifiziert (Runde-2-Text ist IST; Out-of-Range-Fehler ändert nur Verhalten, Description bleibt wahr).
+**Status:** ✅ **done** — alle `@Tool`-Descriptions der Runde optimiert (Runde 2: kurze Version 10-17 Wörter), `buildWithAgent` → `buildWithDev` rename, static tool-name constants in PoDelegateTool, Test auf structural checks umgestellt. Build grün, verifiziert. **Sync 2026-09-30:** #7/#28 auf den Paul-verbatim-Text aktualisiert (beide Familien identisch), #6/#27 verifiziert (Runde-2-Text ist IST; Out-of-Range-Fehler ändert nur Verhalten, Description bleibt wahr).
 
 ## IST
 
@@ -69,7 +69,7 @@ Alle `@Tool`-Beschreibungen folgen einem einheitlichen Muster:
 
 | # | Method | Current Description | Rating | New Description | Why |
 |---|--------|---------------------|--------|-----------------|-----|
-| 13b | `webSearch` (neu 2026-10-23, Nachtzyklus) | `"Search the web via DuckDuckGo. Returns a numbered hit list (title, URL, snippet) — max 8 results (maxResults overrides, hard max 10), disclosed when capped. Page content is not included: read a hit with webFetchAsMarkdown. DuckDuckGo rate-limits and bot-checks: run searches one at a time, not several in the same turn; a rejection is a minutes-long block — don't retry it immediately."` | ✅ (aktuell, 2026-10-24, Bug-Triage T-3) | *(kein Change)* | Caps/Disclosure (R-WEB-10), Rate-Limit-Warnung mit Staffelungsempfehlung (R-WEB-14) |
+| 13b | `webSearch` (neu 2026-10-23, Nachtzyklus) | `"Search the web via DuckDuckGo. Returns a numbered hit list (title, URL, snippet) — max 8 results (maxResults overrides, hard max 10), disclosed when capped. Page content is not included: read a hit with webFetchAsMarkdown. Rate-limited: the failure says why; do not retry in the same turn."` | ✅ (aktuell, 2026-10-25: 385→212 Zeichen, Paul — Guidance-Kurzform, Details trägt die Failure-Line R-WEB-14; zuvor 2026-10-24 Bug-Triage T-3) | *(kein Change)* | Caps/Disclosure (R-WEB-10), Rate-Limit-Warnung mit Staffelungsempfehlung (R-WEB-14) |
 
 ### CompactSessionTool (`org.sterl.llmpeon.tool.tools`)
 

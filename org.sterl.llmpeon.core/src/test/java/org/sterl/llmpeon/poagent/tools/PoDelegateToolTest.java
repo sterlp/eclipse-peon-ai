@@ -265,8 +265,9 @@ class PoDelegateToolTest {
         assertThat(tool.getReviewSlave().getMemory().containsUserMessage("second review")).isFalse();
     }
 
-    /** R16 (sharpened): with exactly 2 messages (the deterministic post-compact state) compactDev
-     *  is an honest no-op — "Nothing to compact (2 messages)", no "compacted.", no LLM call. */
+    /** R16 (sharpened): below MIN_COMPACT_MESSAGES compactDev is an honest no-op —
+     *  "Nothing to compact (2 messages)", no "compacted.", no LLM call. A successful compact leaves
+     *  only 1 message (R-CC-9), so the guard also covers the direct re-compact case. */
     @Test
     void compactDev_skipsWithHonestMessage_whenSlaveBelowThreeMessages() {
         // GIVEN — Da Mek with exactly 2 messages
@@ -525,7 +526,7 @@ class PoDelegateToolTest {
         // AND — the end line names the agent, its before/after numbers, the shared duration+wall-time
         // suffix and the result size (system clock ⇒ pattern, not a literal)
         assertThat(endLines.getFirst()).matches("🗜 " + AiDevAgent.NAME + CompactFeedback.END_MARKER
-                + "\\d+ → 2 messages, ~\\d+ → ~\\d+ tokens \\(\\d+(?:m \\d+)?s, \\d{2}:\\d{2}\\) \\(\\d+ chars\\)");
+                + "\\d+ → 1 messages, ~\\d+ → ~\\d+ tokens \\(\\d+(?:m \\d+)?s, \\d{2}:\\d{2}\\) \\(\\d+ chars\\)");
         // AND — the removed "Da Mek compacted." onTool line never returns as a second success message
         assertThat(toolLines).noneMatch(l -> l.startsWith("Da Mek compacted."));
     }

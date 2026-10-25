@@ -20,6 +20,7 @@ import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.agent.AiAgent;
+import org.sterl.llmpeon.compact.CompactConstants;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.shared.AiMonitor;
@@ -112,10 +113,12 @@ class SearchAgentToolTest {
         var parent = mock(AiAgent.class);
         when(parent.getName()).thenReturn("Peon-PO");
         when(parent.buildStaticMessages(any())).thenReturn(List.of());
-        // the mock honors the AiAgent.compact contract: clear + re-seed the agent's own memory
+        // the mock honors the AiAgent.compact contract: clear + re-seed the agent's own memory with
+        // the one marker-block message (ADR-0076)
         doAnswer(inv -> {
             parentMemory.clear();
-            parentMemory.add(UserMessage.from("Session compacted: sub summary"));
+            parentMemory.add(UserMessage.from(CompactConstants.REINSERT_MARKER + System.lineSeparator()
+                    + System.lineSeparator() + "sub summary"));
             return CompactResult.compacted(
                     new CompactResult.Stats(3, 100, 50, CompactResult.Stage.NONE, 0, 10, "model", 1, null, true),
                     "sub summary");

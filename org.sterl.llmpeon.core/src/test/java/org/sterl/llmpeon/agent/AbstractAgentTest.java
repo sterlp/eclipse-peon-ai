@@ -25,6 +25,7 @@ import org.sterl.llmpeon.agent.model.TaggedResult;
 import org.sterl.llmpeon.ai.AgentModelConfig;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
+import org.sterl.llmpeon.compact.CompactConstants;
 import org.sterl.llmpeon.compact.CompactFeedback;
 import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.context.ContextItem;
@@ -365,7 +366,8 @@ class AbstractAgentTest {
         return Clock.fixed(Instant.parse("2026-09-23T14:32:00Z"), ZoneOffset.UTC);
     }
 
-    /** compactContext clears memory, invalidates systemMessage, restores turn context, then adds summary. */
+    /** compactContext clears memory, invalidates systemMessage, restores turn context, then re-seeds
+     *  the one marker-block message (R-CC-9). */
     @Test
     void test_compactContext_clearsMemoryAndRestoresTurnContext() {
         // GIVEN
@@ -385,17 +387,19 @@ class AbstractAgentTest {
         // WHEN
         agent.compact(monitor -> {});
 
-        // THEN — memory cleared, turn context restored, summary added
+        // THEN — memory cleared and re-seeded to exactly ONE message: the turn context first, the
+        // marker block (marker + summary) as its last TextContent
         var memory = agent.getMemory().getCopy();
-        assertThat(memory).hasSize(2);
+        assertThat(memory).hasSize(1);
         assertThat(memory.get(0)).isInstanceOf(UserMessage.class);
         assertThat(ChatMessageUtil.toString(memory.get(0))).contains("turn context item");
-        assertThat(memory.get(1)).isInstanceOf(AiMessage.class);
-        assertThat(ChatMessageUtil.toString(memory.get(1))).contains("compressed summary");
+        assertThat(UserMessages.lastText((UserMessage) memory.get(0)))
+                .startsWith(CompactConstants.REINSERT_MARKER)
+                .endsWith("compressed summary");
     }
 
-    /** R16 (sharpened): a compact leaves exactly 2 messages — a direct re-compact is a no-op
-     *  with no second LLM call (mutation guard: guard back to < 2 ⇒ second call fires the LLM). */
+    /** A compact leaves exactly 1 message — a direct re-compact is a no-op with no second LLM call
+     *  (mutation guard: MIN_COMPACT_MESSAGES back to 1 ⇒ the second call fires the LLM). */
     @Test
     void compact_secondCallDirectlyAfterCompact_isNoop() {
         // GIVEN — 3 messages so the first compact actually runs
@@ -414,11 +418,10 @@ class AbstractAgentTest {
         // AND — second compact directly after
         var second = agent.compact(monitor -> {});
 
-        // THEN — first compacted to exactly 2 (Session-compacted user + summary), second is a no-op
+        // THEN — first compacted to exactly 1 (the marker block + summary), second is a no-op
         assertThat(first.status()).isEqualTo(CompactResult.Status.COMPACTED);
-        assertThat(afterFirst).hasSize(2);
+        assertThat(afterFirst).hasSize(1);
         assertThat(afterFirst.get(0)).isInstanceOf(UserMessage.class);
-        assertThat(afterFirst.get(1)).isInstanceOf(AiMessage.class);
         assertThat(second.status()).isEqualTo(CompactResult.Status.SKIPPED_SMALL);
         assertThat(agent.getMemory().getCopy()).isEqualTo(afterFirst);
         // AND — exactly one LLM call (the first compact's compressor), none for the no-op
@@ -885,14 +888,15 @@ class AbstractAgentTest {
         // WHEN — compress triggers restoreTurnContext
         agent.compact(monitor -> {});
 
-        // THEN — turn context appears only once (skipped on restore), plus compressed AI message
+        // THEN — turn context appears only once (skipped on restore), in the one re-seeded message
         var memory = agent.getMemory().getCopy();
         List<String> userTexts = extractUserTexts(memory);
         assertThat(userTexts).hasSize(1);
         assertThat(userTexts.get(0)).contains("unique turn context");
-        // AND the AI summary is present
-        assertThat(memory).anyMatch(m -> m instanceof AiMessage ai
-                && ChatMessageUtil.toString(ai).contains("compressed"));
+        // AND the summary rides in that same message behind the marker (R-CC-9)
+        assertThat(UserMessages.lastText((UserMessage) memory.get(0)))
+                .startsWith(CompactConstants.REINSERT_MARKER)
+                .endsWith("compressed");
     }
 
     /** compressContext restores only turnContextSupplier (no double-restore). */
@@ -914,16 +918,18 @@ class AbstractAgentTest {
         // WHEN
         agent.compact(monitor -> {});
 
-        // THEN — memory has the shimmed item (via turnContextSupplier), resume message, AI summary
+        // THEN — memory has ONE message: the shimmed item (via turnContextSupplier) plus the marker
+        // block carrying the summary
         var memory = agent.getMemory().getCopy();
+        assertThat(memory).hasSize(1);
         List<String> userTexts = extractUserTexts(memory);
-        assertThat(userTexts).hasSize(1);
         var mergedUserText = userTexts.get(0);
         assertThat(mergedUserText).contains("AGENTS.md: Rule 1 — be concise");
-        assertThat(mergedUserText).contains("Session compacted");
-        // AND the AI summary is present
-        assertThat(memory).anyMatch(m -> m instanceof AiMessage ai
-                && ChatMessageUtil.toString(ai).contains("compressed summary"));
+        assertThat(mergedUserText).contains(CompactConstants.REINSERT_MARKER);
+        // AND the summary rides behind the marker in the same message (R-CC-9)
+        assertThat(UserMessages.lastText((UserMessage) memory.get(0)))
+                .startsWith(CompactConstants.REINSERT_MARKER)
+                .endsWith("compressed summary");
     }
 
     /** compressContext skips duplicates in turnContextSupplier (contains-check). */
@@ -949,17 +955,18 @@ class AbstractAgentTest {
         // WHEN
         agent.compact(monitor -> {});
 
-        // THEN — context item appears only once (skipped on restore), plus resume message
+        // THEN — context item appears only once (skipped on restore), in the one re-seeded message
         var memory = agent.getMemory().getCopy();
+        assertThat(memory).hasSize(1);
         List<String> userTexts = extractUserTexts(memory);
-        assertThat(userTexts).hasSize(1);
         var mergedText = userTexts.get(0);
         // Count occurrences — should appear exactly once
         assertThat(countOccurrences(mergedText, "existing turn context")).isOne();
-        assertThat(mergedText).contains("Session compacted");
-        // AND the AI summary is present
-        assertThat(memory).anyMatch(m -> m instanceof AiMessage ai
-                && ChatMessageUtil.toString(ai).contains("compressed"));
+        assertThat(mergedText).contains(CompactConstants.REINSERT_MARKER);
+        // AND the summary rides behind the marker in the same message (R-CC-9)
+        assertThat(UserMessages.lastText((UserMessage) memory.get(0)))
+                .startsWith(CompactConstants.REINSERT_MARKER)
+                .endsWith("compressed");
     }
 
     private int countOccurrences(String text, String substring) {

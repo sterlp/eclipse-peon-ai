@@ -52,19 +52,34 @@ die Konstante.
 
 ### R-CC-9 — Compact-Reinsert: keine Rekursion ✅ done (Paul 2026-09-24)
 
-Nach dem Compact legt die Compact-Komponente die Zusammenfassung + Marker **wieder ins Memory**
-(`ThreadSafeMemory`-Add, Compact-Restore `AbstractAgent:320-326`). Diese **vom Compact
-wiedereingefügten Messages** (a) werden über **Konstanten** erkennbar gemacht (wie `COMPACT_HINT`),
-(b) dürfen **keinen erneuten Compact triggern** — weder Auto-Gate noch Hint feuern auf das
-grade kompaktierte Ergebnis (R-CC-2-Reevaluate + R-CC-8-Messages-Gate decken das ab), und (c)
-dürfen beim nächsten Compact nicht **rekursiv** wieder komprimiert werden, ohne dass neue
-Messages dazukamen. So wird nie aus Versehen die frische Summary (oder eine echte User-Message)
-beim Compact verworfen.
+Nach dem Compact legt die Compact-Komponente **genau eine** Message wieder ins Memory
+(`ThreadSafeMemory`-Add, Compact-Restore in `AbstractAgent.doCompact`): eine **UserMessage**, die
+zuerst die **Turn-Context-Blöcke** trägt und deren **letzter TextContent** der Marker
+`Session compacted:` ist, gefolgt von einer **Leerzeile** (`lineSeparator` ×2) und der Summary
+(`marker ⏎⏎ summary`). Damit bleibt es bei **einer**
+Marker-Stelle (kein Resume-Text im Tool-Result) — und der Reseed endet auf einem offenen
+User-Turn: eine History, die mit einer AiMessage endet, wäre im Folge-Request ein Prefill-Stub
+statt einer Antwort, denn der Tool-Loop baut den nächsten Request ohne neue User-Message
+([ADR-0076](../../docs/adr/0076-compact-reseed-marker-in-user-message.md)). Diese **vom Compact
+wiedereingefügte Message** (a) wird über **Konstanten** erkennbar gemacht (wie `COMPACT_HINT`),
+(b) darf **keinen erneuten Compact triggern** — mit `size()` 1 liegt sie unter
+`MIN_COMPACT_MESSAGES`, weder Auto-Gate noch Hint feuern also, und (c) gilt beim nächsten Compact
+wie jede frühere UserMessage: unter dem Budget geht sie voll ein, sobald gekürzt werden muss
+(Stufe 1+) rendert sie **state-only** — der Marker-Block mit der alten Summary fällt dann heraus.
+**Bewusst so (Paul 2026-10-25):** der Vor-Compact-Zustand IST die Summary; eine Summary ihrer
+selbst trägt nichts bei, was der neue Compressor-Lauf nicht ohnehin aus dem Zustand zieht. Keine
+Ausnahme für den Reseed, keine Kappungs-Sonderregel — die Stufe-1+-Regel gilt für jede Message
+gleich.
+Diese Reseed-Message ist eine UserMessage wie jede andere: die **nächste User-Nachricht joint
+sich daran** (`ThreadSafeMemory.add` joint aufeinanderfolgende UserMessages), der Reseed lebt
+danach als State-Block **in** dieser Message weiter (Block-Granularität, nicht Message-Granularität
+— wer „steht der alte Snapshot noch drin?" prüft, zählt **Blöcke**, nicht Messages).
 
-- GIVEN Compact erfolgreich, Memory = Summary + Marker WHEN das Auto-Gate/Hint erneut prüft THEN
-  kein sofortiger Re-Compact ohne neue Messages.
-- GIVEN die wiedereingefügten Summary-Messages WHEN ein Compact läuft THEN sie werden als
-  State behandelt (nie als „echter User-Text"), erkennbar über die Konstante.
+- GIVEN Compact erfolgreich WHEN die neue Memory aufgebaut ist THEN hat sie genau **1** Message:
+  eine UserMessage, deren **letzter** TextContent mit `Session compacted:` beginnt und die Summary
+  enthält (Marker exakt einmal, über alle Message-Typen).
+- GIVEN die wiedereingefügte Message WHEN ein Compact läuft THEN wird sie als State behandelt
+  (nie als „echter User-Text", erkennbar über die Konstante) und trägt nur ihren Turn-Context bei.
 
 ### R-CC-1 — Context-Counter misst Input, nie Kosten ✅
 
@@ -386,9 +401,9 @@ Ereignis-Gate (`ranTool(compactSession)` + Turn-Merker) ersatzlos.
   unverändert (einer pro Memory; nach erfolgreichem Compact wieder scharf, weil das Memory geleert
   wird).
 - **R-CC-18.3 — Sonst nichts:** kein Text, keine Message, kein Log.
-- **R-CC-18.4 — Kein zusätzlicher Text ins LLM-Memory:** die Reinsert-Message trägt bereits
-  `Session compacted:` (R-CC-9), der `onTool`-Report die Zahlen. Ein zweiter Hinweis wäre Rauschen
-  und ein neuer Sonderfall für die Stufenkürzung.
+- **R-CC-18.4 — Kein zusätzlicher Text ins LLM-Memory:** die Reinsert-UserMessage endet bereits
+  mit dem Marker-Block `Session compacted:` + Summary (R-CC-9), der `onTool`-Report trägt die Zahlen. Ein zweiter Hinweis wäre
+  Rauschen und ein neuer Sonderfall für die Stufenkürzung.
 - **Ein Versuch pro Turn:** liefert der Direkt-Compact `SKIPPED_SMALL` oder `FAILED_EMPTY`, wird er
   im **selben** Turn nicht wiederholt (sonst ein Compressor-LLM-Call pro Iteration). Die Entscheidung
   ist zustandsbasiert und prüft in der **nächsten** Runde bzw. beim nächsten Turn erneut; die

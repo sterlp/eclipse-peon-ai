@@ -60,8 +60,8 @@ die Erwartung steht hier.
 |---|---|---|
 | 3.1 | `eclipseCopyFile(copy-e2e/sub → copy-e2e/sub-copy)` | **Fehler** — Quelle ist ein Verzeichnis, Copy ist file-only. Meldung sagt es, kein Crash. |
 | 3.2 | `diskCopyFile(copy-e2e/sub → copy-e2e/sub-copy)` | Derselbe Fehler wie 3.1. |
-| 3.3 | `diskRenameFile(copy-e2e/sub → copy-e2e/sub-renamed)` | **Erfolg** — Rename ist atomic und akzeptiert Verzeichnisse (R4). |
-| 3.4 | `diskRenameFile(copy-e2e/sub-renamed → copy-e2e/sub)` | Erfolg — Zustand zurück. |
+| 3.3 | `diskRenameResource(copy-e2e/sub → copy-e2e/sub-renamed)` | **Erfolg** — Rename/Move ist atomic und akzeptiert Verzeichnisse (R4). |
+| 3.4 | `diskRenameResource(copy-e2e/sub-renamed → copy-e2e/sub)` | Erfolg — Zustand zurück. |
 
 ## 4 — Fehlende Quelle & neue Ziel-Parents
 
@@ -108,6 +108,6 @@ Keine Vermutungen zur Ursache und **keine Code-Änderungen** — du testest, du 
 
 ---
 
-**SOLL-Quelle:** `docs/file-copy-tool.md` (R1–R4) + E5 in `docs/disk-file-write-tool.md`
-(absolute Pfade in Disk-Erfolgsmeldungen). Weicht diese Anleitung vom SOLL ab, gilt das SOLL —
-und die Abweichung ist selbst ein Befund.
+**SOLL-Quelle:** `org.sterl.llmpeon.core/docs/file-copy-tool.md` (R1–R4) + E5 in
+`org.sterl.llmpeon.core/docs/disk-file-write-tool.md` (absolute Pfade in Disk-Erfolgsmeldungen).
+Weicht diese Anleitung vom SOLL ab, gilt das SOLL — und die Abweichung ist selbst ein Befund.

@@ -12,7 +12,7 @@ Exactly the tools that dispatch a nested agent get the timing; ordinary tools do
 
 | Tool | Sub-agent | UI display name | Done line |
 | --- | --- | --- | --- |
-| `JonDelegateTool` (`talkPlan` / `planWithPlanAgent` / `askDev` / `buildWithDev`) | Jon's Da Thinka / Da Mek | **Da Thinka** / **Da Mek** | `Da Thinka done. (3s)` / `Da Mek done. (12s)` |
+| `PoDelegateTool` (`talkPlan` / `planWithPlanAgent` / `askDev` / `buildWithDev`) | Jon's Da Thinka / Da Mek | **Da Thinka** / **Da Mek** | `Da Thinka done. (3s)` / `Da Mek done. (12s)` |
 | `SearchAgentTool` (`searchAgent`) | the search sub-agent | **Da Sniffa** | `Da Sniffa done. (12s)` |
 | `CompactSessionTool` (`compactSession`) | the `AiCompressorAgent` | **Da Scribe** | seit R-CT-8 (2026-10-24) entfallen: die alte `🗜 Da Scribe done for <agent>. (1m 5s) (N chars)`-Zeile ist durch die uniforme Compact-End-Zeile `🗜 <Agent> compacted: … (Ns, HH:mm) (N chars)` ersetzt ([compact-lock.md](compact-lock.md) R-CT-8) — das Tool emittiert selbst nichts mehr |
 
@@ -48,7 +48,7 @@ THEN the elapsed wall-clock of that call is measured (monotonic clock)
 
 The elapsed time is appended to the tool's **done** progress line as ` (<elapsed>)`.
 
-- `JonDelegateTool`: `"<display name> done. (3s)"` (display name = `Da Thinka` / `Da Mek`).
+- `PoDelegateTool`: `"<display name> done. (3s)"` (display name = `Da Thinka` / `Da Mek`).
 - `SearchAgentTool`: `"Da Sniffa done. (12s)"` — timing is reported only on the **success** path; a
   failed search still reports via `onProblem` (unchanged), no timing.
 - `CompactSessionTool`: **keine eigene Done-Zeile mehr** — die uniforme Compact-End-Zeile

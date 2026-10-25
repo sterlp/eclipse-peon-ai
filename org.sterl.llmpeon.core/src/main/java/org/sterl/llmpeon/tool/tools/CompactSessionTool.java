@@ -16,7 +16,8 @@ public class CompactSessionTool extends AbstractTool {
             Loads them directly after the compact instead of preserving through the compact.
             """)
     public String compactSession(
-            @P(description = "Short instructions or next steps to keep and echo back after compression.", required = false, name = "preserve") String preserve) {
+            @P(description = "Short instructions or next steps to keep and echo back after compression.", required = false, name = "preserve") 
+            String preserve) {
         // Delegate to the owning agent — it owns the full compress+clear+restore lifecycle.
         // A missing agent is a mis-wiring (AbstractAgent.doCall always sets it) — surface it.
         AiAgent agent = request.getAgent();

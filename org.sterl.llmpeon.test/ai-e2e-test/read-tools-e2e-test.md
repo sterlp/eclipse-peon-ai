@@ -105,5 +105,5 @@ Keine Vermutungen zur Ursache und **keine Code-Änderungen** — du testest, du 
 
 ---
 
-**SOLL-Quelle:** `docs/eclipse-read-tools.md` (R1–R7). Weicht diese Anleitung vom SOLL ab, gilt
+**SOLL-Quelle:** `org.sterl.llmpeon/docs/eclipse-read-tools.md` (R1–R10). Weicht diese Anleitung vom SOLL ab, gilt
 das SOLL — und die Abweichung ist selbst ein Befund.
