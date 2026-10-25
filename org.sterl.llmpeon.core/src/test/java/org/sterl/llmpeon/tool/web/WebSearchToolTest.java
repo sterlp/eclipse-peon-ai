@@ -366,12 +366,10 @@ class WebSearchToolTest {
                 .getAnnotation(Tool.class);
         String description = String.join(" ", annotation.value());
 
-        // THEN — rate limit and pacing are named, and the existing caps survive the extension
+        // THEN — rate limit and pacing are named, and the existing caps survive the shortening
         assertThat(description) //
-                .contains("rate-limits") //
-                .contains("one at a time") //
-                .contains("not several in the same turn") //
-                .contains("don't retry") //
+                .contains("Rate-limited") //
+                .contains("do not retry in the same turn") //
                 .contains("max 8") //
                 .contains("webFetchAsMarkdown");
     }

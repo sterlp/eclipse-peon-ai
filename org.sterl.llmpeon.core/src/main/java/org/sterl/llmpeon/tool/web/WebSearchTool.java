@@ -70,8 +70,7 @@ public class WebSearchTool extends AbstractTool {
     @Tool("Search the web via DuckDuckGo. Returns a numbered hit list (title, URL, snippet) — "
             + "max 8 results (maxResults overrides, hard max 10), disclosed when capped. "
             + "Page content is not included: read a hit with webFetchAsMarkdown. "
-            + "DuckDuckGo rate-limits and bot-checks: run searches one at a time, not several in the same turn; "
-            + "a rejection is a minutes-long block — don't retry it immediately.")
+            + "Rate-limited: the failure says why; do not retry in the same turn.")
     public String webSearch(@P(name = "query") String query,
             @P(name = "maxResults", description = "hits to return, 1-10; default 8", required = false) Integer maxResults) {
         ArgsUtil.requireNonBlank(query, "query");
