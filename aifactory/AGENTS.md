@@ -1,0 +1,2 @@
+code structure should follow skill: component architecture.
+JavaDoc must earn its tokens: document only non-obvious invariants, constraints, and rationale. Never duplicate existing docs—link to them instead.
