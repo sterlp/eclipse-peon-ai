@@ -60,6 +60,12 @@ description: llmpeon repo build & test procedure — core→plugin jar trap (rea
 - `org.sterl.llmpeon.test` runs via the Eclipse test runner. A NEW test class needs the user's manual
   workspace approval once and may time out if he is not watching → prefer running the whole plugin
   test project, which is already approved.
+- **`usePluginTest` is a real boolean (hit 2026-10-25):** `eclipseRunJavaTests` rejects the string
+  `"True"` with "is not convertable to java.lang.Boolean" — pass `true`.
+- **A single-class PDE run of an ALREADY-approved class is trust-free (hit 2026-10-25):**
+  `testClassName=<existing class>` finishes in ~6 s and is enough to prove a red/green cycle; the
+  manual workspace approval above applies only to a NEW test class — so adding a test method to an
+  existing class is how to get a fast red test without waiting for the user.
 - Before EVERY test run: `eclipseBuildProject` on all changed projects — stale bundle classes in `bin/`
   cause `ClassNotFoundException` / unresolved-compilation failures, and stale Surefire reports under
   `target/` mislead result reading.
