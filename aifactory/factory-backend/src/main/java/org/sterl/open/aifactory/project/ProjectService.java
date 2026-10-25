@@ -2,6 +2,8 @@ package org.sterl.open.aifactory.project;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
@@ -32,14 +34,16 @@ import org.sterl.open.aifactory.shared.FactoryHome;
 /**
  * The project registry — the single writer of {@code <home>/projects.json}. A project only ever
  * enters the registry after its clone succeeded, and {@link #remove(String)} deletes entry and
- * checkout together (⏳ open point "remove = entry + clone").
+ * checkout together (R-WP-19).
  *
  * <p>The file is the state: every operation reads it, so nothing can drift and a moved home dir is
  * picked up immediately. Mutations are serialized by a lock (not by holding the monitor across a
  * clone) so a long clone never blocks a read.</p>
  *
- * <p>Same normalized URL twice → the existing entry, git is not called again (R-WP-3). The clone
- * target is {@code <home>/projects/<name>}, so a name that could escape that folder is rejected.</p>
+ * <p>Identity is the normalized URL — the same URL twice returns the existing project without
+ * touching git (R-WP-2). The folder name comes from the URL, so two different repositories that
+ * would share a folder are a conflict (R-WP-18), and only {@code https} urls without credentials are
+ * accepted at all (R-WP-20).</p>
  */
 @Service
 public class ProjectService {
@@ -48,6 +52,19 @@ public class ProjectService {
 
     /** Folder-name shape we are willing to create below the projects dir — nothing else. */
     private static final Pattern SAFE_NAME = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._-]{0,63}");
+
+    private static final String HTTPS = "https";
+
+    /**
+     * R-WP-20 — v1 clones public repositories over {@code https} only. Static text on purpose: this
+     * is what the 400 body, the log line and the UI alert show, so it can never repeat a credential.
+     */
+    static final String HTTPS_ONLY_HINT =
+            "only public https:// git urls are supported — no ssh, no scp-like urls, no local paths";
+
+    /** R-WP-20 — names no user, no host, no token, so echoing it anywhere stays safe. */
+    static final String CREDENTIAL_HINT =
+            "git urls must not carry credentials — public https repositories only";
 
     private final FactoryHome home;
     private final GitService git;
@@ -71,15 +88,19 @@ public class ProjectService {
     }
 
     /**
-     * @throws IllegalArgumentException blank/unsupported URL, a name that must not become a folder,
-     *         a URL that is already registered (message names that project), or a failed clone
-     *         (message is the git output)
+     * @return the fresh project, or the already registered one when the normalized url is known —
+     *         then git is not called and nothing is written (R-WP-2 / UC-WP-3)
+     * @throws IllegalArgumentException blank url, a url outside public {@code https} or carrying
+     *         credentials (UC-WP-30 / UC-WP-33, the message never repeats the url), a name that must
+     *         not become a folder, a name another project already occupies (message names that
+     *         project, R-WP-18), or a failed clone (message is the git output)
      */
-    public Project add(String gitUrl) {
+    public AddProjectResult add(String gitUrl) {
         if (gitUrl == null || gitUrl.isBlank()) {
             throw new IllegalArgumentException("gitUrl must not be empty");
         }
         String url = gitUrl.trim();
+        requirePublicHttpsUrl(url); // before any normalization, lock or git call — nothing may be stored
         String normalized = normalizeUrl(url);
         if (normalized.isEmpty()) {
             throw new IllegalArgumentException("not a git url: " + url);
@@ -94,42 +115,60 @@ public class ProjectService {
         writeLock.lock();
         try {
             List<Project> entries = read();
-            findByUrl(entries, normalized).ifPresent(existing -> {
-                throw new IllegalArgumentException("Project \"" + existing.name()
-                        + "\" is already present (" + existing.gitUrl() + ")");
-            } );
-            entries.stream().filter(entry -> entry.name().equalsIgnoreCase(name)).findFirst().ifPresent(present -> {
-                throw new IllegalArgumentException("Project \"" + present.name()
-                        + "\" is already present in " + present.localPath());
-            } );
+            Optional<Project> present = findByUrl(entries, normalized);
+            if (present.isPresent()) {
+                LOG.info("project {} already registered, reusing its clone", present.get().id());
+                return new AddProjectResult(present.get(), false);
+            }
+            entries.stream().filter(entry -> entry.name().equalsIgnoreCase(name)).findFirst()
+                    .ifPresent(occupant -> {
+                        throw new IllegalArgumentException("Project \"" + occupant.name()
+                                + "\" is already present in " + occupant.localPath());
+                    } );
 
             git.clone(url, target); // throws CloneFailedException (400) / IllegalStateException (409)
 
             List<Project> updated = new ArrayList<>(entries);
-            updated.add(new Project(idOf(name, normalized), name, url, target, ProjectState.READY));
+            Project added = new Project(idOf(name, normalized), name, url, target, ProjectState.READY);
+            updated.add(added);
             write(updated);
-            Project added = updated.getLast();
             LOG.info("added project {} at {}", added.id(), target);
-            return added;
+            return new AddProjectResult(added, true);
         } finally {
             writeLock.unlock();
         }
     }
 
-    /** Deletes the registry entry and its checkout — runtime state below the home has no keepers. */
+    /**
+     * Deletes the registry entry and its checkout (UC-WP-28). The path stored in the registry is only
+     * ever <em>compared</em>, never obeyed: what gets deleted is {@code <home>/projects/<name>} and
+     * nothing else (UC-WP-29).
+     */
     public void remove(String id) {
         writeLock.lock();
-        Project project;
+        Path checkout;
         try {
             List<Project> entries = new ArrayList<>(read());
-            project = entries.stream().filter(entry -> entry.id().equals(id)).findFirst()
+            Project project = entries.stream().filter(entry -> entry.id().equals(id)).findFirst()
                     .orElseThrow(() -> new ProjectNotFoundException(id));
+            checkout = requireOwnCheckout(project);
             entries.remove(project);
             write(entries);
         } finally {
             writeLock.unlock();
         }
-        deleteTree(project.localPath());
+        deleteTree(checkout);
+    }
+
+    /** The stored path must be exactly the projects-dir path of that project's name. */
+    private Path requireOwnCheckout(Project project) {
+        Path allowed = ProjectPaths.requireInsideProjectsDir(home.projectsDir(), project.localPath());
+        Path expected = home.projectDir(project.name()).toAbsolutePath().normalize();
+        if (!allowed.equals(expected)) {
+            throw new IllegalStateException("refusing to delete " + allowed + " — project \""
+                    + project.id() + "\" should live in " + expected);
+        }
+        return allowed;
     }
 
     // ---------------------------------------------------------------- registry file
@@ -143,7 +182,7 @@ public class ProjectService {
                     new TypeReference<List<StoredProject>>() {
                     });
             return stored == null ? List.of()
-                    : stored.stream().map(entry -> entry.toProject(home.root())).toList();
+                    : stored.stream().map(entry -> entry.toProject(home.root(), home.projectsDir())).toList();
         } catch (IOException e) {
             throw new UncheckedIOException("could not read " + registryFile, e);
         }
@@ -174,6 +213,31 @@ public class ProjectService {
     }
 
     // ---------------------------------------------------------------- url / naming
+
+    /**
+     * R-WP-20: {@code https} without credentials, nothing else — checked before {@link #normalizeUrl}
+     * so a rejected url can never reach git, the registry file or a folder (UC-WP-30 / UC-WP-33).
+     * The scp-like form ({@code git@host:org/repo.git}) is not a parsable URI and falls into the
+     * {@code https} hint as well.
+     */
+    static void requirePublicHttpsUrl(String url) {
+        URI uri = parseQuietly(url);
+        if (uri != null && uri.getUserInfo() != null) {
+            throw new IllegalArgumentException(CREDENTIAL_HINT);
+        }
+        if (uri == null || !HTTPS.equalsIgnoreCase(uri.getScheme())) {
+            throw new IllegalArgumentException(HTTPS_ONLY_HINT);
+        }
+    }
+
+    /** An unparsable url is user input, not a bug — answered by the hint, never by its syntax error. */
+    private static URI parseQuietly(String url) {
+        try {
+            return new URI(url);
+        } catch (URISyntaxException e) {
+            return null;
+        }
+    }
 
     /** lowercase host, no scheme/credentials, no trailing slash, no trailing {@code .git}. */
     static String normalizeUrl(String gitUrl) {
@@ -230,8 +294,9 @@ public class ProjectService {
 
     // ---------------------------------------------------------------- paths
 
-    static void deleteTree(Path dir) {
-        if (dir == null || !Files.exists(dir)) {
+    /** Reachable only behind {@link ProjectPaths#requireInsideProjectsDir} — never on a raw stored path. */
+    private static void deleteTree(Path dir) {
+        if (!Files.exists(dir)) {
             return;
         }
         try (Stream<Path> tree = Files.walk(dir)) {

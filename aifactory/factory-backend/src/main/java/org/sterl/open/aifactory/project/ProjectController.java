@@ -38,8 +38,10 @@ public class ProjectController {
 
     @PostMapping
     public ResponseEntity<ProjectDto> add(@RequestBody(required = false) AddProjectRequest request) {
-        Project project = projects.add(request == null ? null : request.gitUrl());
-        return ResponseEntity.status(HttpStatus.CREATED).body(ProjectDto.of(project));
+        AddProjectResult result = projects.add(request == null ? null : request.gitUrl());
+        // a url that is already registered is reused, not rejected — 200, nothing new was created (UC-WP-3)
+        return ResponseEntity.status(result.created() ? HttpStatus.CREATED : HttpStatus.OK)
+                .body(ProjectDto.of(result.project()));
     }
 
     @DeleteMapping("/{id}")

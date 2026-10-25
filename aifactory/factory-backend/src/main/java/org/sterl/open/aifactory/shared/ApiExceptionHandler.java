@@ -8,12 +8,14 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
 
-import org.sterl.open.aifactory.project.ProjectNotFoundException;
-
 /**
- * Turns the domain exceptions into the single {@link ApiError} body. Deliberately no catch-all —
- * anything else keeps Spring's own status and the {@code /ui/**} static handling. Log <em>or</em>
- * throw, never both: the 400s are the caller's fault and travel up untouched.
+ * Turns the JDK and framework exceptions into the single {@link ApiError} body. Deliberately no
+ * catch-all — anything else keeps Spring's own status and the {@code /ui/**} static handling. Log
+ * <em>or</em> throw, never both: the 400s are the caller's fault and travel up untouched.
+ *
+ * <p>JDK and framework types only. A component's own exceptions are mapped by an advice in that
+ * component's package — {@code shared} must not know a component
+ * ({@code aifactory/docs/aifactory-architektur.md}).</p>
  */
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -33,11 +35,6 @@ public class ApiExceptionHandler {
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ApiError> conflict(IllegalStateException e) {
         return body(HttpStatus.CONFLICT, e.getMessage());
-    }
-
-    @ExceptionHandler(ProjectNotFoundException.class)
-    public ResponseEntity<ApiError> notFound(ProjectNotFoundException e) {
-        return body(HttpStatus.NOT_FOUND, e.getMessage());
     }
 
     @ExceptionHandler(ResponseStatusException.class)

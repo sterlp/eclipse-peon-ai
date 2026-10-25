@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -15,8 +16,8 @@ import org.junit.jupiter.api.io.TempDir;
 import org.sterl.open.aifactory.shared.FactoryHome;
 
 /**
- * Registry behaviour: entry only after a successful clone, one entry per normalized url, remove
- * = entry + checkout.
+ * Registry behaviour: entry only after a successful clone, identity over the normalized url, conflict
+ * over the folder name, remove = entry + checkout and never anything outside the projects dir.
  */
 class ProjectServiceTest {
 
@@ -24,6 +25,10 @@ class ProjectServiceTest {
 
     @TempDir
     Path homeDir;
+
+    /** Stands in for anything outside the factory home that must survive a remove. */
+    @TempDir
+    Path outside;
 
     private final RecordingGit git = new RecordingGit();
 
@@ -34,7 +39,7 @@ class ProjectServiceTest {
     @Test
     // UC-WP-15
     void entrySurvivesReload() throws IOException {
-        Project added = newService().add(URL);
+        Project added = newService().add(URL).project();
 
         Project reloaded = newService().projects().getFirst();
         assertThat(reloaded.id()).isEqualTo(added.id());
@@ -48,29 +53,132 @@ class ProjectServiceTest {
 
     @Test
     // UC-WP-3
-    void sameNormalizedUrlReusesExistingDescriptor() {
-        Project first = newService().add(URL);
+    void sameUrlReusesExistingClone() {
+        Project first = newService().add(URL).project();
 
-        assertThatThrownBy(() -> newService().add("https://git.example.com/acme/demo/"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("demo")
-                .hasMessageContaining("already present");
+        AddProjectResult again = newService().add("https://git.example.com/acme/demo/");
 
+        assertThat(again.created()).isFalse();
+        assertThat(again.project().id()).isEqualTo(first.id());
         assertThat(git.cloneTargets).hasSize(1);
         assertThat(newService().projects()).singleElement()
                 .extracting(Project::id).isEqualTo(first.id());
     }
 
     @Test
-    void removeDeletesEntryAndCloneFolder() {
+    // UC-WP-26
+    void sameNameDifferentUrlRejected() throws IOException {
+        newService().add("https://git.example.com/a/demo.git");
+
+        assertThatThrownBy(() -> newService().add("https://git.example.com/b/demo.git"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("demo");
+
+        assertThat(git.cloneTargets).hasSize(1);
+        assertThat(newService().projects()).hasSize(1);
+        assertThat(projectFolders()).containsExactly(homeDir.resolve("projects").resolve("demo"));
+    }
+
+    @Test
+    void blankOrUnparsableUrlIsRejectedWithoutAnyClone() {
+        assertThatThrownBy(() -> newService().add("   "))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("must not be empty");
+        assertThatThrownBy(() -> newService().add("https://.git"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("not a git url");
+
+        assertThat(git.cloneTargets).isEmpty();
+        assertThat(homeDir.resolve("projects.json")).doesNotExist();
+    }
+
+    @Test
+    // UC-WP-30
+    void credentialUrlRejectedAndNothingStored() {
+        List<String> credentialUrls = List.of(
+                "https://user:token@git.example.com/a/demo.git",
+                "https://user@git.example.com/a/demo.git");
+
+        for (String url : credentialUrls) {
+            assertThatThrownBy(() -> newService().add(url))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("credentials")
+                    .hasMessageNotContaining("user")
+                    .hasMessageNotContaining("token");
+        }
+
+        assertThat(git.cloneTargets).isEmpty();
+        assertThat(homeDir.resolve("projects.json")).doesNotExist();
+        assertThat(homeDir.resolve("projects")).doesNotExist();
+    }
+
+    @Test
+    // UC-WP-33
+    void nonHttpsUrlRejectedNothingStored() {
+        for (String url : List.of("git@github.com:acme/demo.git",
+                "ssh://git.example.com/acme/demo.git",
+                "file:///tmp/demo",
+                "http://git.example.com/acme/demo.git")) {
+            assertThatThrownBy(() -> newService().add(url))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("https");
+        }
+
+        assertThat(git.cloneTargets).isEmpty();
+        assertThat(homeDir.resolve("projects.json")).doesNotExist();
+        assertThat(homeDir.resolve("projects")).doesNotExist();
+    }
+
+    @Test
+    // UC-WP-28
+    void removeDeletesEntryAndCheckout() {
         ProjectService service = newService();
-        Project added = service.add(URL);
+        Project added = service.add(URL).project();
         Path checkout = homeDir.resolve("projects").resolve("demo");
 
         service.remove(added.id());
 
         assertThat(service.projects()).isEmpty();
         assertThat(checkout).doesNotExist();
+    }
+
+    @Test
+    // UC-WP-29
+    void removeNeverDeletesOutsideProjectDir() throws IOException {
+        Path victim = outside.resolve("checkout");
+        Files.createDirectories(victim);
+        Files.writeString(victim.resolve("victim.txt"), "do not delete me");
+
+        assertPoisonedEntryIsRefusedAndNothingIsDeleted(homeDir.relativize(victim).toString());
+
+        // the prefix trap: <home>twins shares a string prefix with <home>, but is not below it
+        Path twin = Files.createDirectories(homeDir.resolveSibling(homeDir.getFileName() + "twins"));
+        Path twinCheckout = twin.resolve("projects").resolve("demo");
+        Files.createDirectories(twinCheckout);
+        Files.writeString(twinCheckout.resolve("victim.txt"), "do not delete me");
+        assertPoisonedEntryIsRefusedAndNothingIsDeleted(
+                homeDir.relativize(twinCheckout).toString());
+
+        // an absolute path is never obeyed, no matter how plausible it looks
+        assertPoisonedEntryIsRefusedAndNothingIsDeleted(victim.toAbsolutePath().toString());
+
+        assertThat(victim.resolve("victim.txt")).exists();
+        assertThat(twinCheckout.resolve("victim.txt")).exists();
+    }
+
+    @Test
+    void deleteTreeRefusesTheProjectsDirItselfAndItsNeighbours() {
+        Path projectsDir = homeDir.resolve("projects");
+
+        assertThatThrownBy(() -> ProjectPaths.requireInsideProjectsDir(projectsDir, projectsDir))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("checkouts live below");
+        assertThatThrownBy(() -> ProjectPaths.requireInsideProjectsDir(projectsDir,
+                homeDir.resolve("state").resolve("demo")))
+                        .isInstanceOf(IllegalStateException.class);
+
+        assertThat(ProjectPaths.requireInsideProjectsDir(projectsDir, projectsDir.resolve("demo")))
+                .isEqualTo(projectsDir.resolve("demo").toAbsolutePath().normalize());
     }
 
     @Test
@@ -103,6 +211,37 @@ class ProjectServiceTest {
                 .hasMessageContaining("unsupported project name");
 
         assertThat(git.cloneTargets).isEmpty();
+    }
+
+    /** Writes the registry by hand, removes the entry and demands that nothing left the projects dir. */
+    private void assertPoisonedEntryIsRefusedAndNothingIsDeleted(String storedLocalPath)
+            throws IOException {
+        Path registry = homeDir.resolve("projects.json");
+        Files.writeString(registry, """
+                [ {
+                  "id" : "demo-1234567",
+                  "name" : "demo",
+                  "gitUrl" : "https://git.example.com/acme/demo.git",
+                  "localPath" : "%s",
+                  "state" : "READY"
+                } ]""".formatted(storedLocalPath));
+        String before = Files.readString(registry);
+
+        assertThatThrownBy(() -> newService().remove("demo-1234567"))
+                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> newService().projects()).isInstanceOf(IllegalStateException.class);
+
+        assertThat(Files.readString(registry)).isEqualTo(before);
+    }
+
+    private List<Path> projectFolders() throws IOException {
+        Path projectsDir = homeDir.resolve("projects");
+        if (!Files.isDirectory(projectsDir)) {
+            return List.of();
+        }
+        try (Stream<Path> children = Files.list(projectsDir)) {
+            return children.filter(Files::isDirectory).toList();
+        }
     }
 
     /**

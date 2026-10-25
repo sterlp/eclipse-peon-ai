@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 
 import App from '../App'
 import { ProjectsView } from './ProjectsView'
@@ -112,11 +112,9 @@ test('showsGitErrorAtInputAndKeepsList', async () => {
 })
 
 // UC-WP-3
-test('reusesExistingProjectWhenUrlAlreadyCloned', async () => {
-  stubServer({
-    GET: [project()],
-    POST: new Error('Project "demo" is already present (https://git.example.com/acme/demo.git)'),
-  })
+test('sameUrlReusesExistingClone', async () => {
+  const existing = project()
+  const server = stubServer({ GET: [existing], POST: existing })
   render(<ProjectsView onOpen={() => undefined} />)
   await screen.findByText('demo')
 
@@ -125,10 +123,34 @@ test('reusesExistingProjectWhenUrlAlreadyCloned', async () => {
   })
   fireEvent.click(screen.getByRole('button', { name: 'Hinzufügen' }))
 
-  expect(await screen.findByRole('alert')).toHaveTextContent('already present')
+  await waitFor(() => expect(server.calls.filter(call => call.method === 'POST')).toHaveLength(1))
+  expect(screen.queryByRole('alert')).toBeNull() // reuse is not an error (R-WP-2)
   expect(screen.getAllByText('demo')).toHaveLength(1)
+  expect(screen.getByLabelText('Git-URL')).toHaveValue('')
 })
 
+// UC-WP-30
+test('credentialUrlRejectedAndNothingStored', async () => {
+  stubServer({
+    GET: [],
+    POST: new Error('git urls must not carry credentials — public https repositories only'),
+  })
+  render(<ProjectsView onOpen={() => undefined} />)
+  await screen.findByText('Kein Projekt')
+
+  fireEvent.change(screen.getByLabelText('Git-URL'), {
+    target: { value: 'https://user:token@git.example.com/acme/demo.git' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Hinzufügen' }))
+
+  const alert = await screen.findByRole('alert')
+  expect(alert).toHaveTextContent('credentials')
+  expect(alert.textContent).not.toContain('user')
+  expect(alert.textContent).not.toContain('token')
+  expect(screen.getByText('Kein Projekt')).toBeInTheDocument()
+})
+
+// UC-WP-28
 test('asksForConfirmationBeforeDelete', async () => {
   stubServer({ GET: [project()] })
   const confirmed = vi.spyOn(window, 'confirm').mockImplementation(() => false)

@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import org.sterl.open.aifactory.project.CommandRunner.CommandResult;
+import org.sterl.open.aifactory.shared.FactoryHome;
 
 /**
  * Git through the {@link CommandRunner} CLI — no Jgit on purpose (AF-ADR-001 keeps
@@ -25,11 +26,13 @@ public class GitCommandService implements GitService {
     private static final Logger LOG = LoggerFactory.getLogger(GitCommandService.class);
 
     private final CommandRunner commands;
+    private final FactoryHome home;
     private final Duration cloneTimeout;
 
-    public GitCommandService(CommandRunner commands,
+    public GitCommandService(CommandRunner commands, FactoryHome home,
             @Value("${aifactory.git.timeout:PT5M}") String cloneTimeout) {
         this.commands = commands;
+        this.home = home;
         this.cloneTimeout = Duration.parse(cloneTimeout);
     }
 
@@ -79,16 +82,21 @@ public class GitCommandService implements GitService {
         return String.join(System.lineSeparator(), lines.subList(from, lines.size()));
     }
 
-    private static void deleteQuietly(Path target) {
-        if (!Files.exists(target)) {
+    /**
+     * A partial clone is ours to remove, so this walks nothing the containment rule does not vouch
+     * for — refusing loudly beats deleting a directory the registry never claimed (UC-WP-29).
+     */
+    private void deleteQuietly(Path target) {
+        Path checkout = ProjectPaths.requireInsideProjectsDir(home.projectsDir(), target);
+        if (!Files.exists(checkout)) {
             return;
         }
-        try (Stream<Path> tree = Files.walk(target)) {
+        try (Stream<Path> tree = Files.walk(checkout)) {
             for (Path path : tree.sorted(Comparator.reverseOrder()).toList()) {
                 Files.deleteIfExists(path);
             }
         } catch (IOException e) {
-            LOG.info("could not remove partial clone {}", target);
+            LOG.info("could not remove partial clone {}", checkout);
         }
     }
 }
