@@ -1,11 +1,15 @@
 package org.sterl.open.aifactory;
 
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.belongToAnyOf;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.modulith.core.ApplicationModules;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
+
+import org.sterl.llmpeon.ai.FileLlmConfigStore;
+import org.sterl.llmpeon.ai.LlmConfigLoader;
 
 /**
  * The component rules of {@code aifactory/AGENTS.md} (skill: component-architecture) as executable
@@ -39,6 +43,23 @@ class ComponentArchitectureTest {
                 .resideOutsideOfPackages("java..", "javax..", "jdk..", "org.springframework..",
                         "com.fasterxml.jackson..", ArchitectureGuardTest.BASE_PACKAGE + ".shared..")
                 .because("shared is importable from every component but may know no component itself")
+                .check(productionClasses);
+    }
+
+    /**
+     * Reading the factory's config is the {@code config} component's alone: {@code LlmConfigLoader}
+     * answers an unpinned {@code LlmConfig}, and {@code FileLlmConfigStore} is the file itself — so a
+     * second user of either builds a model around the two values the factory decides for itself
+     * (config dir UC-WP-36, disk tools UC-WP-37). Increment 3's runtime therefore takes the config
+     * from {@code FactoryConfigService}, it does not load one.
+     */
+    @Test
+    void onlyConfigReadsTheFactorysOwnConfig() {
+        JavaClasses productionClasses = ArchitectureGuardTest.productionClasses();
+
+        noClasses().that().resideOutsideOfPackage(ArchitectureGuardTest.BASE_PACKAGE + ".config..")
+                .should().dependOnClassesThat(belongToAnyOf(LlmConfigLoader.class, FileLlmConfigStore.class))
+                .because("only config loads the factory's own config — anywhere else the pinning is bypassed")
                 .check(productionClasses);
     }
 }

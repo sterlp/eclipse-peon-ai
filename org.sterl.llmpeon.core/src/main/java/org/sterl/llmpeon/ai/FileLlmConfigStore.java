@@ -38,9 +38,11 @@ import org.sterl.llmpeon.shared.StringUtil;
  * <p><b>A blank value removes the key</b> — parity with {@link LlmConfigSaver}'s
  * {@code saveOrRemove} (blank means unset), which is also why no caller ever sends a blank here.</p>
  *
- * <p><b>Single writer by contract:</b> {@code synchronized} guards one instance and the factory
- * serialises its own writes; there is no cross-process lock, so a concurrent external editor loses
- * against the last whole-file rewrite.</p>
+ * <p><b>Single writer by contract:</b> every access to the snapshot — {@link #get} included, so a
+ * reader can never meet a concurrent {@code put} mid-rewrite — holds the instance monitor, which is
+ * what {@code synchronized} guards: <em>one</em> instance. The factory still serialises its own
+ * writes, and there is no cross-process lock, so a concurrent external editor loses against the last
+ * whole-file rewrite.</p>
  */
 public class FileLlmConfigStore implements LlmConfigStore {
 
@@ -60,7 +62,7 @@ public class FileLlmConfigStore implements LlmConfigStore {
     }
 
     @Override
-    public String get(String key, String defaultValue) {
+    public synchronized String get(String key, String defaultValue) {
         var value = values.get(key);
         return StringUtil.hasNoValue(value) ? defaultValue : value;
     }

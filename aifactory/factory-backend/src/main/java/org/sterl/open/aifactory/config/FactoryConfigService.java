@@ -11,6 +11,7 @@ import org.sterl.llmpeon.ai.FileLlmConfigStore;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.ai.LlmConfigLoader;
+import org.sterl.llmpeon.ai.LlmConfigStore;
 import org.sterl.open.aifactory.shared.FactoryHome;
 
 /**
@@ -51,16 +52,16 @@ public class FactoryConfigService {
      * restart, and reading never writes.
      */
     public LlmConfig load() {
-        return pin(LlmConfigLoader.load(readStore()));
+        return pin(LlmConfigLoader.load(store()));
     }
 
     /** The masked read model: the one place that ever sees {@link LlmConfig#getApiKey()}. */
     public SettingsSnapshot snapshot() {
-        EnvFallbackLlmConfigStore store = readStore();
-        LlmConfig config = pin(LlmConfigLoader.load(store));
+        EnvFallbackLlmConfigStore connector = store();
+        LlmConfig config = pin(LlmConfigLoader.load(connector));
         return new SettingsSnapshot(config.getProviderType().name(), config.getModel(), config.getUrl(),
                 config.getAutoCompactAfter(), config.getTimeout().getSeconds(), config.isSendThinkingEnabled(),
-                present(config.getApiKey()), store.apiKeySource());
+                present(config.getApiKey()), connector.apiKeySource());
     }
 
     /**
@@ -71,19 +72,23 @@ public class FactoryConfigService {
      * <p>Validation runs before the first write, so a rejected request leaves the file untouched, and
      * the answer is a fresh masked read rather than the submitted body — the next delivery therefore
      * shows what is really stored (UC-WP-24 GIVEN 1).</p>
+     *
+     * <p>The write uses the same connector as the read: that connector is the single write owner, so a
+     * saved value lands in the factory's own file and never in the environment, and a hand edit made
+     * since the last read is respected instead of overwritten.</p>
      */
     public SettingsSnapshot update(SettingsUpdate update) {
         writeLock.lock();
         try {
             validate(update);
-            FileLlmConfigStore store = new FileLlmConfigStore(home.configFile());
-            putIfPresent(store, LlmConfigKeys.PROVIDER_TYPE, update.provider());
-            putIfPresent(store, LlmConfigKeys.MODEL, update.model());
-            putIfPresent(store, LlmConfigKeys.URL, update.url());
-            putIfPresent(store, LlmConfigKeys.API_KEY, update.apiKey());
-            putIfPresent(store, LlmConfigKeys.TOKEN_WINDOW, update.tokenWindow());
-            putIfPresent(store, LlmConfigKeys.TIMEOUT, update.timeoutSeconds());
-            putIfPresent(store, LlmConfigKeys.SEND_THINKING_ENABLED, update.sendThinking());
+            LlmConfigStore connector = store();
+            putIfPresent(connector, LlmConfigKeys.PROVIDER_TYPE, update.provider());
+            putIfPresent(connector, LlmConfigKeys.MODEL, update.model());
+            putIfPresent(connector, LlmConfigKeys.URL, update.url());
+            putIfPresent(connector, LlmConfigKeys.API_KEY, update.apiKey());
+            putIfPresent(connector, LlmConfigKeys.TOKEN_WINDOW, update.tokenWindow());
+            putIfPresent(connector, LlmConfigKeys.TIMEOUT, update.timeoutSeconds());
+            putIfPresent(connector, LlmConfigKeys.SEND_THINKING_ENABLED, update.sendThinking());
             return snapshot();
         } finally {
             writeLock.unlock();
@@ -114,7 +119,7 @@ public class FactoryConfigService {
     }
 
     /** Trimmed, and only when a value was actually submitted — absent and blank both write nothing. */
-    private static void putIfPresent(FileLlmConfigStore store, String key, Object value) {
+    private static void putIfPresent(LlmConfigStore store, String key, Object value) {
         if (value == null) {
             return;
         }
@@ -131,7 +136,11 @@ public class FactoryConfigService {
                 .build();
     }
 
-    private EnvFallbackLlmConfigStore readStore() {
+    /**
+     * The one store seam for both directions — {@code load}, {@code snapshot} and {@code update} all
+     * open it fresh, so a hand edit is seen without a restart and reading never writes.
+     */
+    private EnvFallbackLlmConfigStore store() {
         return new EnvFallbackLlmConfigStore(new FileLlmConfigStore(home.configFile()), environment);
     }
 

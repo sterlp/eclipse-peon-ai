@@ -18,6 +18,11 @@ import org.sterl.llmpeon.ai.LlmConfigStore;
  * <p>Only these four keys have an environment name. {@code llm.configDirectory} and
  * {@code llm.diskToolsEnabled} are named here <em>not at all</em> and are pinned after the load
  * ({@link FactoryConfigService#load()}) — the two values the factory alone decides.</p>
+ *
+ * <p><b>The one write path.</b> The environment is a read-only start value: {@code put} and
+ * {@code remove} always delegate to the factory's own file store and are never answered from, or
+ * written to, the environment. That is why {@link FactoryConfigService} opens <em>this</em> connector
+ * for its writes as well — a second, file-only path would be a second owner of where a save lands.</p>
  */
 final class EnvFallbackLlmConfigStore implements LlmConfigStore {
 

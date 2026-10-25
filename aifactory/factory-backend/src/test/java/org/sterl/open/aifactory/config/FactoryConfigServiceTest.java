@@ -32,6 +32,7 @@ class FactoryConfigServiceTest {
 
     private static final String KEY = "sk-file-secret-0123456789";
     private static final String WRITTEN_KEY = "sk-written-secret-2468013579";
+    private static final String AGENT_KEY = "sk-agent-secret-9876543210";
 
     @TempDir
     Path home;
@@ -39,6 +40,14 @@ class FactoryConfigServiceTest {
     /** The directory a hand-written {@code llm.configDirectory} tries to move agent state into. */
     @TempDir
     Path other;
+
+    /**
+     * Stands in for the plugin's own state location. The doc's literal {@code ~/.peon} is no usable
+     * GIVEN — the core resolves with {@code Path.of}, which never expands a tilde — so this is the
+     * same threat as a real absolute path that the pin could actually fail to defeat.
+     */
+    @TempDir
+    Path pluginHome;
 
     @Test
     // UC-WP-36
@@ -50,11 +59,11 @@ class FactoryConfigServiceTest {
         // nothing was read from or written to the directory the file asked for
         assertThat(other).isEmptyDirectory();
 
-        // GIVEN 2: the same key with the plugin's own directory as value (doc's example)
-        writeConfig("%s=~/.peon%n".formatted(LlmConfigKeys.CONFIG_DIRECTORY));
+        // GIVEN 2: the value is the plugin's own location, absolute and one level below a real home
+        writeConfig("%s=%s%n".formatted(LlmConfigKeys.CONFIG_DIRECTORY, pluginHome.resolve(".peon")));
 
         assertThat(service().load().getConfigDir()).isEqualTo(home.toAbsolutePath().normalize());
-        assertThat(other).isEmptyDirectory();
+        assertThat(pluginHome).isEmptyDirectory();
     }
 
     @Test
@@ -102,6 +111,29 @@ class FactoryConfigServiceTest {
                 "tokenWindow", "timeoutSeconds", "sendThinking", "keySet", "keySource");
 
         assertThat(snapshot.toString()).doesNotContain(KEY, KEY.substring(0, 6), KEY.substring(KEY.length() - 6));
+    }
+
+    /**
+     * {@code LlmConfig} is the one value-bearing object the factory hands out — the masked snapshot is
+     * derived from it, and Inc 3's runtime will hold it. This pins the redaction of its declared
+     * {@code apiKey} <b>and</b> the one a per-agent record carries, which {@code LlmConfig.toString()}
+     * renders through {@code AgentModelConfig.toString()}: a future field that stringifies a key, on
+     * either type, turns this red.
+     */
+    @Test
+    void loadedConfigNeverStringsEitherKey() {
+        writeConfig("""
+                %s=%s
+                %s=%s
+                """.formatted(LlmConfigKeys.API_KEY, KEY,
+                        LlmConfigKeys.agentKey("po", LlmConfigKeys.AGENT_FIELD_API_KEY), AGENT_KEY));
+
+        String rendered = service().load().toString();
+
+        // head and tail too — a redaction that prints "sk-…9876" would pass a whole-value check
+        assertThat(rendered).doesNotContain(KEY, AGENT_KEY)
+                .doesNotContain(KEY.substring(0, 6), AGENT_KEY.substring(0, 6))
+                .doesNotContain(KEY.substring(KEY.length() - 6), AGENT_KEY.substring(AGENT_KEY.length() - 6));
     }
 
     @Test
@@ -274,6 +306,22 @@ class FactoryConfigServiceTest {
         assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.API_KEY, null)).isNull();
     }
 
+    /**
+     * The whole-tree assertion of UC-WP-24 ("config.properties is the one file that changed") is only
+     * as strong as this helper: a save that <em>deletes</em> something must count as a change.
+     */
+    @Test
+    void theWholeTreeComparisonAlsoFlagsADisappearingFile() throws IOException {
+        writeConfig("%s=old-model%n".formatted(LlmConfigKeys.MODEL));
+        Path doomed = home.resolve("doomed.txt");
+        Files.writeString(doomed, "hand-made");
+        Map<Path, byte[]> before = treeBytes();
+
+        Files.delete(doomed);
+
+        assertThat(differingPaths(before, treeBytes())).containsExactly(doomed);
+    }
+
 
     /** The four names the environment may supply (R-WP-9) — everything else is file-only. */
     private static MockEnvironment environment() {
@@ -321,11 +369,16 @@ class FactoryConfigServiceTest {
         return tree;
     }
 
+    /**
+     * Every path that is not the same afterwards — added, changed <b>or gone</b>. The disappearance
+     * half is named out loud rather than left to {@code Arrays.equals(content, null)} happening to be
+     * false, so "config.properties was the only file touched" cannot quietly stop meaning that.
+     */
     private static List<Path> differingPaths(Map<Path, byte[]> before, Map<Path, byte[]> after) {
         List<Path> differing = new ArrayList<>(after.keySet());
         differing.removeAll(before.keySet());
         before.forEach((file, content) -> {
-            if (!Arrays.equals(content, after.get(file))) {
+            if (!after.containsKey(file) || !Arrays.equals(content, after.get(file))) {
                 differing.add(file);
             }
         });
