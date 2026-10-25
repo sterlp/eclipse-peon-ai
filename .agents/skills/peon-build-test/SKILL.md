@@ -10,6 +10,10 @@ description: llmpeon repo build & test procedure — core→plugin jar trap (rea
 - Full build at the repo root (`llmpeon-parent`): `mvn clean verify`; `install` only when `~/.m2` must
   hold the modules (route B below). Maven is for code/artefact changes — afterwards refresh +
   clean-build the Eclipse projects.
+- **Eclipse project name for core is `llmpeon-core`, not `org.sterl.llmpeon.core`** —
+  `eclipseBuildProject`/`eclipseRenameResource` need `/llmpeon-core/...`. The neighbouring modules *do*
+  carry their artifact name (`org.sterl.llmpeon`, `org.sterl.llmpeon.test`), so the pattern is not
+  guessable; Maven still uses `-pl org.sterl.llmpeon.core`.
 
 ## Core → Plugin jar trap (the big one)
 
