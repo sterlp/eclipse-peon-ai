@@ -1,19 +1,24 @@
 package org.sterl.open.aifactory.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.reflect.RecordComponent;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.mock.env.MockEnvironment;
 
+import org.sterl.llmpeon.ai.FileLlmConfigStore;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.ai.LlmConfigStore;
 import org.sterl.open.aifactory.shared.FactoryHome;
@@ -26,6 +31,7 @@ import org.sterl.open.aifactory.shared.FactoryHome;
 class FactoryConfigServiceTest {
 
     private static final String KEY = "sk-file-secret-0123456789";
+    private static final String WRITTEN_KEY = "sk-written-secret-2468013579";
 
     @TempDir
     Path home;
@@ -157,6 +163,118 @@ class FactoryConfigServiceTest {
         assertThat(store.apiKeySource()).isEqualTo(KeySource.ENV);
     }
 
+    /**
+     * UC-WP-24 GIVEN 1 + GIVEN 2. GIVEN 3 ("der nächste Turn nutzt den neuen Wert") is <b>not</b>
+     * covered here — there is no runtime and no turn in the MVP yet, so this UC is partially covered
+     * and finished in Increment 3.
+     */
+    @Test
+    // UC-WP-24
+    void settingsOverrideNeverWritesSharedStore() throws Exception {
+        writeConfig("""
+                %s=OLLAMA
+                %s=old-model
+                %s=https://old.example
+                %s=40000
+                %s=agent-model
+                custom.key=hand-made
+                """.formatted(LlmConfigKeys.PROVIDER_TYPE, LlmConfigKeys.MODEL, LlmConfigKeys.URL,
+                        LlmConfigKeys.TOKEN_WINDOW,
+                        LlmConfigKeys.agentKey("plan", LlmConfigKeys.AGENT_FIELD_MODEL)));
+        Map<Path, byte[]> before = treeBytes();
+
+        SettingsSnapshot saved = service().update(new SettingsUpdate(null, "new-model", "https://new.example",
+                WRITTEN_KEY, null, null, null));
+
+        // the answer of a save is the stored state, masked — never the submitted body
+        assertThat(saved.model()).isEqualTo("new-model");
+        assertThat(saved.keySet()).isTrue();
+        assertThat(saved.keySource()).isEqualTo(KeySource.FILE);
+
+        FileLlmConfigStore stored = new FileLlmConfigStore(config());
+        assertThat(stored.get(LlmConfigKeys.MODEL, null)).isEqualTo("new-model");
+        assertThat(stored.get(LlmConfigKeys.URL, null)).isEqualTo("https://new.example");
+        assertThat(stored.get(LlmConfigKeys.API_KEY, null)).isEqualTo(WRITTEN_KEY);
+        // everything the request did not name is still there, unknown keys included
+        assertThat(stored.get(LlmConfigKeys.PROVIDER_TYPE, null)).isEqualTo("OLLAMA");
+        assertThat(stored.get(LlmConfigKeys.TOKEN_WINDOW, null)).isEqualTo("40000");
+        assertThat(stored.get(LlmConfigKeys.agentKey("plan", LlmConfigKeys.AGENT_FIELD_MODEL), null))
+                .isEqualTo("agent-model");
+        assertThat(stored.get("custom.key", null)).isEqualTo("hand-made");
+
+        // the plugin's preference store is not even on this classpath — the executable half of
+        // "the shared plugin config stays byte-identical"
+        assertThatThrownBy(() -> Class.forName("org.sterl.llmpeon.parts.config.EclipseLlmConfigStore"))
+                .isInstanceOf(ClassNotFoundException.class);
+
+        // byte level over the whole home: config.properties is the one file that changed, no temp file
+        assertThat(differingPaths(before, treeBytes())).containsExactly(config());
+        // and the next read sees it without a restart
+        assertThat(service().load().getModel()).isEqualTo("new-model");
+
+        // GIVEN 2: a blank key field and nothing else submitted — not one byte moves (the store would
+        // have read that blank as removal, which is exactly why it is never called with one)
+        byte[] storedBytes = Files.readAllBytes(config());
+        service().update(new SettingsUpdate(null, null, null, "   ", null, null, null));
+        assertThat(Files.readAllBytes(config())).containsExactly(storedBytes);
+        assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.API_KEY, null)).isEqualTo(WRITTEN_KEY);
+
+        // submitting the value that is already stored is a no-op on disk as well
+        service().update(new SettingsUpdate(null, "new-model", null, null, null, null, null));
+        assertThat(Files.readAllBytes(config())).containsExactly(storedBytes);
+        assertThat(differingPaths(before, treeBytes())).containsExactly(config());
+    }
+
+    @Test
+    void updateCannotPinTheConfigDirOrTheDiskTools() {
+        // every field the write model can carry, including the two keys the factory pins for itself
+        service().update(new SettingsUpdate("OLLAMA", "some-model", "https://example", "sk-some-key",
+                4000, 60L, false));
+
+        FileLlmConfigStore stored = new FileLlmConfigStore(config());
+        assertThat(stored.get(LlmConfigKeys.MODEL, null)).isEqualTo("some-model");
+        assertThat(stored.get(LlmConfigKeys.CONFIG_DIRECTORY, null)).isNull();
+        assertThat(stored.get(LlmConfigKeys.DISK_TOOLS_ENABLED, null)).isNull();
+
+        // and both stay what the factory decided, not what a caller asked for
+        assertThat(service().load().getConfigDir()).isEqualTo(home.toAbsolutePath().normalize());
+        assertThat(service().load().isDiskToolsEnabled()).isTrue();
+    }
+
+    @Test
+    void nonPositiveTokenWindowOrTimeoutIsRejectedAndNothingIsWritten() throws IOException {
+        writeConfig("%s=old-model%n".formatted(LlmConfigKeys.MODEL));
+        byte[] untouched = Files.readAllBytes(config());
+
+        assertThatThrownBy(() -> service().update(new SettingsUpdate(null, null, null, null, 0, null, null)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("tokenWindow");
+        assertThatThrownBy(() -> service().update(new SettingsUpdate(null, null, null, null, null, -1L, null)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("timeoutSeconds");
+
+        // rejected before the first write — and the message carries no submitted value
+        assertThat(Files.readAllBytes(config())).containsExactly(untouched);
+    }
+
+    @Test
+    void anUnknownProviderIsRejectedWithoutTouchingTheFile() throws IOException {
+        writeConfig("%s=OLLAMA%n".formatted(LlmConfigKeys.PROVIDER_TYPE));
+        byte[] untouched = Files.readAllBytes(config());
+
+        // AiProvider.parse would have answered 200 and stored OLLAMA — garbage accepted, typo invisible
+        assertThatThrownBy(() -> service().update(new SettingsUpdate("NOPE", null, null, WRITTEN_KEY,
+                null, null, null)))
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessageContaining("provider")
+                        .hasMessageNotContaining(WRITTEN_KEY)
+                        .hasMessageNotContaining("NOPE");
+
+        assertThat(Files.readAllBytes(config())).containsExactly(untouched);
+        assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.API_KEY, null)).isNull();
+    }
+
+
     /** The four names the environment may supply (R-WP-9) — everything else is file-only. */
     private static MockEnvironment environment() {
         return new MockEnvironment()
@@ -185,6 +303,38 @@ class FactoryConfigServiceTest {
     private void deleteConfig() {
         try {
             Files.deleteIfExists(home.resolve(FactoryHome.CONFIG_FILE));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    private Path config() {
+        return home.resolve(FactoryHome.CONFIG_FILE);
+    }
+
+    /** Every file below the home with its bytes — so a stray temp file or a second target cannot hide. */
+    private Map<Path, byte[]> treeBytes() throws IOException {
+        Map<Path, byte[]> tree = new LinkedHashMap<>();
+        try (var files = Files.walk(home)) {
+            files.filter(Files::isRegularFile).sorted().forEach(file -> tree.put(file, read(file)));
+        }
+        return tree;
+    }
+
+    private static List<Path> differingPaths(Map<Path, byte[]> before, Map<Path, byte[]> after) {
+        List<Path> differing = new ArrayList<>(after.keySet());
+        differing.removeAll(before.keySet());
+        before.forEach((file, content) -> {
+            if (!Arrays.equals(content, after.get(file))) {
+                differing.add(file);
+            }
+        });
+        return differing;
+    }
+
+    private static byte[] read(Path file) {
+        try {
+            return Files.readAllBytes(file);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }

@@ -7,14 +7,21 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
+import java.util.EnumSet;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -25,8 +32,10 @@ import org.springframework.web.client.RestTemplate;
 
 import com.jayway.jsonpath.JsonPath;
 
+import org.sterl.llmpeon.ai.FileLlmConfigStore;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.open.aifactory.config.dto.SettingsDto;
+import org.sterl.open.aifactory.config.dto.SettingsUpdateRequest;
 import org.sterl.open.aifactory.shared.FactoryHome;
 
 /**
@@ -160,6 +169,117 @@ class SettingsControllerTest {
         assertThat(field(fromDefaults, "$.keySource")).isEqualTo("NONE");
         assertThat(config()).doesNotExist();
     }
+
+    /**
+     * UC-WP-24 GIVEN 1 + GIVEN 2 over real HTTP. GIVEN 3 ("der nächste Turn nutzt den neuen Wert") is
+     * <b>not</b> covered — no runtime, no turn in the MVP yet; the UC is partially covered and finished
+     * in Increment 3.
+     */
+    @Test
+    // UC-WP-24
+    void settingsOverrideNeverWritesSharedStore() throws IOException {
+        writeConfig("""
+                %s=OLLAMA
+                %s=old-model
+                %s=40000
+                %s=agent-model
+                custom.key=hand-made
+                """.formatted(LlmConfigKeys.PROVIDER_TYPE, LlmConfigKeys.MODEL, LlmConfigKeys.TOKEN_WINDOW,
+                        LlmConfigKeys.agentKey("plan", LlmConfigKeys.AGENT_FIELD_MODEL)));
+        List<String> filesBefore = fileNames();
+
+        ResponseEntity<String> saved = put("""
+                {"model":"put-model","url":"https://put.example","apiKey":"%s"}
+                """.formatted(KEY).trim());
+        String body = saved.getBody();
+
+        assertThat(saved.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(field(body, "$.model")).isEqualTo("put-model");
+        assertThat(field(body, "$.url")).isEqualTo("https://put.example");
+        assertThat(field(body, "$.keySet")).isEqualTo(true);
+        assertThat(field(body, "$.keySource")).isEqualTo("FILE");
+        // the answer is the stored state and not the submitted body: a field that was never sent still
+        // reads as stored, which an echo of the request cannot produce
+        assertThat(field(body, "$.provider")).isEqualTo("OLLAMA");
+        assertThat(field(body, "$.tokenWindow")).isEqualTo(40000);
+        // a save answers masked, exactly like a read: no field, no character
+        assertThat(body).doesNotContain(KEY, KEY.substring(0, 6), KEY.substring(KEY.length() - 6), "sk-");
+        assertThat(componentNamesOf(SettingsDto.class)).containsExactly("provider", "model", "url", "tokenWindow",
+                "timeoutSeconds", "sendThinking", "keySet", "keySource");
+
+        FileLlmConfigStore stored = new FileLlmConfigStore(config());
+        assertThat(stored.get(LlmConfigKeys.MODEL, null)).isEqualTo("put-model");
+        assertThat(stored.get(LlmConfigKeys.API_KEY, null)).isEqualTo(KEY); // the store holds it, the wire never does
+        assertThat(stored.get(LlmConfigKeys.PROVIDER_TYPE, null)).isEqualTo("OLLAMA");
+        assertThat(stored.get(LlmConfigKeys.TOKEN_WINDOW, null)).isEqualTo("40000");
+        assertThat(stored.get(LlmConfigKeys.agentKey("plan", LlmConfigKeys.AGENT_FIELD_MODEL), null))
+                .isEqualTo("agent-model");
+        assertThat(stored.get("custom.key", null)).isEqualTo("hand-made");
+
+        // the file that now holds a key is owner-only — also when the factory wrote it (R-WP-16)
+        Assumptions.assumeTrue(config().getFileSystem().supportedFileAttributeViews().contains("posix"),
+                "no posix view on this file system — the mode is the operating system's promise there");
+        assertThat(Files.getPosixFilePermissions(config())).isEqualTo(
+                EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
+
+        // GIVEN 2: an empty field is no value — the file keeps every byte it had
+        byte[] unchanged = Files.readAllBytes(config());
+        ResponseEntity<String> emptied = put("{\"model\":\"\"}");
+        assertThat(emptied.getStatusCode()).isEqualTo(HttpStatus.OK);
+        // an empty field did not clear the stored value — the answer re-read it instead of echoing
+        assertThat(field(emptied.getBody(), "$.model")).isEqualTo("put-model");
+        assertThat(Files.readAllBytes(config())).containsExactly(unchanged);
+        assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.API_KEY, null)).isEqualTo(KEY);
+
+        // a wire field the request model does not know stays unreachable, whatever it is called
+        assertThat(put("""
+                {"model":"other-model","configDirectory":"/tmp/aifactory-never","diskToolsEnabled":false}
+                """).getStatusCode()).isEqualTo(HttpStatus.OK);
+        FileLlmConfigStore pinned = new FileLlmConfigStore(config());
+        assertThat(pinned.get(LlmConfigKeys.MODEL, null)).isEqualTo("other-model");
+        assertThat(pinned.get(LlmConfigKeys.CONFIG_DIRECTORY, null)).isNull();
+        assertThat(pinned.get(LlmConfigKeys.DISK_TOOLS_ENABLED, null)).isNull();
+
+        // the request model has no component for the two pinned values either
+        assertThat(componentNamesOf(SettingsUpdateRequest.class)).containsExactly("provider", "model", "url",
+                "apiKey", "tokenWindow", "timeoutSeconds", "sendThinking");
+
+        // and the home still holds exactly the one file — no temp file survived the atomic move
+        assertThat(fileNames()).isEqualTo(filesBefore);
+    }
+
+    @Test
+    void unknownProviderIsRejectedAndTheKeyNeverAppears() throws IOException {
+        writeConfig("%s=OLLAMA%n".formatted(LlmConfigKeys.PROVIDER_TYPE));
+        byte[] untouched = Files.readAllBytes(config());
+
+        ResponseEntity<String> rejected = put("{\"provider\":\"NOPE\",\"apiKey\":\"sk-secret-value\"}");
+
+        assertThat(rejected.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        String body = rejected.getBody();
+        assertThat(field(body, "$.message").toString()).contains("provider");
+        // UC-WP-23's "auch nicht in einem Fehlerfall": the whole body, not only a field, stays clean
+        assertThat(body).doesNotContain("sk-secret-value", "secret", "NOPE");
+
+        // rejected before the first write — neither the provider nor the key reached the file
+        assertThat(Files.readAllBytes(config())).containsExactly(untouched);
+        assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.API_KEY, null)).isNull();
+        assertThat(new FileLlmConfigStore(config()).get(LlmConfigKeys.PROVIDER_TYPE, null)).isEqualTo("OLLAMA");
+    }
+
+    /** The raw wire is the point: the body is sent exactly as written here, unknown fields included. */
+    private ResponseEntity<String> put(String json) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        return http.exchange(url("/api/settings"), HttpMethod.PUT, new HttpEntity<>(json, headers), String.class);
+    }
+
+    private static List<String> fileNames() throws IOException {
+        try (var files = Files.list(home)) {
+            return files.map(file -> file.getFileName().toString()).sorted().toList();
+        }
+    }
+
 
     private String bodyOfSettings() {
         ResponseEntity<String> response = http.getForEntity(url("/api/settings"), String.class);
