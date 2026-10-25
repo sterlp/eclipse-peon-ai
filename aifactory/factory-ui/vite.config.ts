@@ -1,6 +1,6 @@
+import { defineConfig } from 'vitest/config'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import babel from '@rolldown/plugin-babel'
-import { defineConfig } from 'vite'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -9,4 +9,14 @@ export default defineConfig({
     react(),
     babel({ presets: [reactCompilerPreset()] })
   ],
+  server: {
+    // dev loop against the running backend (mvn -pl factory-backend spring-boot:run)
+    proxy: { '/api': 'http://localhost:8080' },
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: './src/test/setup.ts',
+    css: false,
+  },
 })

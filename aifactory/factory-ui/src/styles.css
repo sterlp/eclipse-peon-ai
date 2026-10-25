@@ -1,0 +1,127 @@
+/* Prototype styling — plain and narrow on purpose (see the "Look" note in the docs). */
+
+.app {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+.app-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.app-title {
+  font-weight: 650;
+  color: var(--text-h);
+}
+
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.tab {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 0.4rem;
+  padding: 0.3rem 0.7rem;
+  color: var(--text);
+  cursor: pointer;
+
+  &.active {
+    border-color: var(--border);
+    background: var(--code-bg);
+    color: var(--text-h);
+  }
+}
+
+.view h1 {
+  font-size: 1.25rem;
+  margin: 0 0 0.75rem;
+  color: var(--text-h);
+}
+
+.add-project {
+  display: flex;
+  gap: 0.5rem;
+
+  input {
+    flex: 1;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+    background: var(--bg);
+    color: var(--text-h);
+  }
+}
+
+button {
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  background: var(--code-bg);
+  color: var(--text-h);
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+}
+
+.form-error {
+  color: #b3261e;
+  border: 1px solid currentColor;
+  border-radius: 0.4rem;
+  padding: 0.4rem 0.6rem;
+  white-space: pre-wrap;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+
+.empty-state {
+  color: var(--text);
+  font-style: italic;
+}
+
+.hint {
+  color: var(--text);
+}
+
+.project-list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+    padding: 0.45rem 0.6rem;
+  }
+
+  .project-name {
+    border: none;
+    background: none;
+    padding: 0;
+    font-weight: 600;
+    color: var(--text-h);
+  }
+
+  .project-url {
+    flex: 1;
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--text);
+    overflow-wrap: anywhere;
+  }
+
+  .remove {
+    font-size: 0.85rem;
+  }
+}
