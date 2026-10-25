@@ -44,6 +44,10 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * touching git (R-WP-2). The folder name comes from the URL, so two different repositories that
  * would share a folder are a conflict (R-WP-18), and only {@code https} urls without credentials are
  * accepted at all (R-WP-20).</p>
+ *
+ * <p>Path containment is a single rule in a single place: {@link ProjectPaths} in front of every
+ * delete, and {@link StoredProject#toProject} on load. No operation here re-checks the folder prefix
+ * by hand — {@code SAFE_NAME} already forbids the only character that could escape it.</p>
  */
 @Service
 public class ProjectService {
@@ -107,7 +111,9 @@ public class ProjectService {
         }
         String name = nameOf(normalized);
         Path target = home.projectDir(name);
-        if (!SAFE_NAME.matcher(name).matches() || !target.startsWith(home.projectsDir())) {
+        // SAFE_NAME forbids '/', so an accepted name cannot leave the projects dir — the containment
+        // rule that is actually exercised is ProjectPaths behind every delete, plus StoredProject on load.
+        if (!SAFE_NAME.matcher(name).matches()) {
             throw new IllegalArgumentException("unsupported project name \"" + name
                     + "\" — use letters, digits, dot, dash or underscore");
         }

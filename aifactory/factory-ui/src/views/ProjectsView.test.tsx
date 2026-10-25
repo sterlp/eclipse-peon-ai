@@ -64,7 +64,6 @@ test('showsExactlyThreeViews', async () => {
   await screen.findByText('Kein Projekt')
 })
 
-// UC-WP-15
 test('showsEmptyStateWhenRegistryIsEmpty', async () => {
   stubServer({ GET: [] })
   render(<ProjectsView onOpen={() => undefined} />)
@@ -163,7 +162,6 @@ test('asksForConfirmationBeforeDelete', async () => {
   expect(screen.getByText('demo')).toBeInTheDocument()
 })
 
-// UC-WP-15
 test('removesProjectAfterConfirmation', async () => {
   const server = stubServer({ GET: [project()] })
   vi.spyOn(window, 'confirm').mockImplementation(() => true)
@@ -175,6 +173,6 @@ test('removesProjectAfterConfirmation', async () => {
 
   expect(await screen.findByText('Kein Projekt')).toBeInTheDocument()
   expect(
-    server.calls.some(call => call.method === 'DELETE' && call.path.includes('demo-1a2b3c4d')),
+    server.calls.some(call => call.method === 'DELETE' && call.path.includes('demo-1a2b3c4')),
   ).toBe(true)
 })

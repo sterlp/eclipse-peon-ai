@@ -23,8 +23,9 @@ export function ProjectsView({ onOpen }: Props) {
   }, [])
 
   useEffect(() => {
-    reload().catch(showError)
-  }, [reload, showError])
+    // mount = synchronize with the registry, an external system; the update lands after the await
+    listProjects().then(setProjects).catch(showError)
+  }, [showError])
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()

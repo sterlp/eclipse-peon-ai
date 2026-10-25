@@ -41,7 +41,7 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * <em>when</em> it ran, which is what makes "201 only after the clone" and "reused url never clones"
  * provable. Every test starts from an empty factory home.
  */
-@SpringBootTest(classes = { AifactoryApplication.class, FakeGitConfig.class })
+@SpringBootTest(classes = AifactoryApplication.class)
 @Import(FakeGitConfig.class)
 @AutoConfigureMockMvc
 class ProjectControllerTest {

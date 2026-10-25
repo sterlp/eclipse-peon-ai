@@ -8,7 +8,6 @@ beforeEach(() => {
   cleanup()
 })
 
-// UC-WP-6
 test('chatHasNoAgentSwitcherAndGoesToJon', () => {
   const { container } = render(<ChatView project={project()} />)
 

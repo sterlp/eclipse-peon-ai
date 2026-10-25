@@ -52,7 +52,7 @@ public class GitCommandService implements GitService {
             deleteQuietly(target); // no partial clone may survive (R-WP-4)
             String output = result.timedOut()
                     ? "git clone timed out after " + cloneTimeout
-                    : firstLines(result.output());
+                    : lastLines(result.output());
             LOG.info("clone of {} into {} failed: {}", gitUrl, target, output);
             throw new CloneFailedException(gitUrl, target, output);
         }
@@ -73,7 +73,7 @@ public class GitCommandService implements GitService {
     }
 
     /** git writes the reason on its last lines; the head is the progress noise nobody reads. */
-    private static String firstLines(String output) {
+    private static String lastLines(String output) {
         if (output == null || output.isBlank()) {
             return "git clone produced no output";
         }
