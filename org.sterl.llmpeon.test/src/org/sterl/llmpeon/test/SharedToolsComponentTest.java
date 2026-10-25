@@ -36,7 +36,7 @@ import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 import org.sterl.llmpeon.tool.tools.DiskGrepTool;
 import org.sterl.llmpeon.tool.tools.SearchAgentTool;
-import org.sterl.llmpeon.tool.tools.WebGetTool;
+import org.sterl.llmpeon.tool.web.WebGetTool;
 
 /**
  * Inc 1 (PeonAiService-Struktur-Aufräumen): SharedToolsComponent — tool registration,

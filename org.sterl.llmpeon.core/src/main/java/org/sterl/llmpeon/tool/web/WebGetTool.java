@@ -1,4 +1,4 @@
-package org.sterl.llmpeon.tool.tools;
+package org.sterl.llmpeon.tool.web;
 
 import java.io.IOException;
 import java.net.URI;
@@ -14,6 +14,7 @@ import org.sterl.llmpeon.shared.AiMonitor.AiFileUpdate;
 import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.QualifiedPathValidator;
 import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.tool.tools.AbstractTool;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;

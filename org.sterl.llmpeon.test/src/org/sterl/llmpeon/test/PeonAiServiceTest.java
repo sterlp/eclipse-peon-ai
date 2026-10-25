@@ -69,7 +69,7 @@ import org.sterl.llmpeon.tool.tools.DiskGrepTool;
 import org.sterl.llmpeon.tool.tools.SearchAgentTool;
 import org.sterl.llmpeon.tool.tools.ShellTool;
 import org.sterl.llmpeon.tool.tools.SkillTool;
-import org.sterl.llmpeon.tool.tools.WebGetTool;
+import org.sterl.llmpeon.tool.web.WebGetTool;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 

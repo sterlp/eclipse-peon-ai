@@ -1,4 +1,4 @@
-package org.sterl.llmpeon.tool;
+package org.sterl.llmpeon.tool.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -13,8 +13,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.sterl.llmpeon.tool.tools.DuckDuckGoWebSearchEngine;
-import org.sterl.llmpeon.tool.tools.WebSearchException;
 
 import com.sun.net.httpserver.HttpServer;
 import dev.langchain4j.web.search.WebSearchRequest;

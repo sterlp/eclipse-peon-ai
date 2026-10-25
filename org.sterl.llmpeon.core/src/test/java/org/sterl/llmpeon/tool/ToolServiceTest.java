@@ -32,7 +32,7 @@ import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 import org.sterl.llmpeon.tool.tools.ShellTool;
-import org.sterl.llmpeon.tool.tools.WebFetchTool;
+import org.sterl.llmpeon.tool.web.WebFetchTool;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;

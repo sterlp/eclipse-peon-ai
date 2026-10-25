@@ -12,7 +12,8 @@ import org.sterl.llmpeon.agent.model.TaggedResult;
 /**
  * R-LSR-1…6 (org.sterl.llmpeon.core/docs/search-agent-tool.md § Rolling Search Context): the rolling
  * hot block on its own — pair format, the raw 10.000-char tail cut (ADR-0075), the disclosure line
- * only after a real cut, and no lost update across threads. Wiring it into the sub-loop is I-2.
+ * only after a real cut, and no lost update across threads. Injecting the block into the sub-loop is
+ * {@link SearchAgentToolRollingContextTest}.
  */
 class RollingSearchContextTest {
 
@@ -58,6 +59,8 @@ class RollingSearchContextTest {
         var block = ctx.render();
         assertThat(block).startsWith(TaggedResult.PREFIX + HEAD + TaggedResult.LN)
                 .endsWith(TaggedResult.LN + TaggedResult.SUFFIX + HEAD);
+        // the pair's own newline is the only one before the end line — a second would mean a blank line
+        assertThat(block).doesNotContain(TaggedResult.LN + TaggedResult.LN);
         assertThat(block).contains("Frage: q1\nAntwort: a1\n", "Frage: q2\nAntwort: a2\n");
         assertThat(block.indexOf("Frage: q1")).isLessThan(block.indexOf("Frage: q2"));
     }

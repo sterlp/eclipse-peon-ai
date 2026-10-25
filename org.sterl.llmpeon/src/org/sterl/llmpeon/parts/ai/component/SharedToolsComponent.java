@@ -25,8 +25,8 @@ import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 import org.sterl.llmpeon.tool.tools.DiskGrepTool;
 import org.sterl.llmpeon.tool.tools.SearchAgentTool;
-import org.sterl.llmpeon.tool.tools.WebGetTool;
 import org.sterl.llmpeon.tool.tools.SkillTool;
+import org.sterl.llmpeon.tool.web.WebGetTool;
 
 /**
  * Builds and owns the shared {@link ToolService}: every Eclipse tool, the WorkspaceMemoryTool,

@@ -1,4 +1,4 @@
-package org.sterl.llmpeon.tool;
+package org.sterl.llmpeon.tool.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -15,9 +15,8 @@ import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
-import org.sterl.llmpeon.tool.tools.WebSearchException;
-import org.sterl.llmpeon.tool.tools.WebSearchTool;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.data.message.AiMessage;

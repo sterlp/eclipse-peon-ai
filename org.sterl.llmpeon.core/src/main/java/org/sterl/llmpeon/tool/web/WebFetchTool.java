@@ -1,4 +1,4 @@
-package org.sterl.llmpeon.tool.tools;
+package org.sterl.llmpeon.tool.web;
 
 import java.io.IOException;
 import java.net.URI;
@@ -17,6 +17,7 @@ import org.sterl.llmpeon.shared.ArgsUtil;
 import org.sterl.llmpeon.shared.BoundedLruCache;
 import org.sterl.llmpeon.shared.FileLines;
 import org.sterl.llmpeon.shared.StringUtil;
+import org.sterl.llmpeon.tool.tools.AbstractTool;
 
 import com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter;
 

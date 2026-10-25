@@ -1,4 +1,4 @@
-package org.sterl.llmpeon.tool.tools;
+package org.sterl.llmpeon.tool.web;
 
 import java.net.URI;
 import java.net.URISyntaxException;

@@ -17,8 +17,8 @@ import org.sterl.llmpeon.tool.WriteValidator;
 import org.sterl.llmpeon.tool.tools.DiskFileReadTool;
 import org.sterl.llmpeon.tool.tools.DiskFileWriteTool;
 import org.sterl.llmpeon.tool.tools.DiskGrepTool;
-import org.sterl.llmpeon.tool.tools.WebFetchTool;
-import org.sterl.llmpeon.tool.tools.WebSearchTool;
+import org.sterl.llmpeon.tool.web.WebFetchTool;
+import org.sterl.llmpeon.tool.web.WebSearchTool;
 
 import dev.langchain4j.model.chat.response.ChatResponse;
 

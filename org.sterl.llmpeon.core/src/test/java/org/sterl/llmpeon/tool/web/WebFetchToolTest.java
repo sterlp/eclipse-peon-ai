@@ -1,4 +1,4 @@
-package org.sterl.llmpeon.tool;
+package org.sterl.llmpeon.tool.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -23,7 +23,6 @@ import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
-import org.sterl.llmpeon.tool.tools.WebFetchTool;
 
 import com.sun.net.httpserver.HttpServer;
 import dev.langchain4j.data.message.AiMessage;

@@ -21,8 +21,8 @@ import org.sterl.llmpeon.tool.tools.AbstractTool;
 import org.sterl.llmpeon.tool.tools.CompactSessionTool;
 import org.sterl.llmpeon.tool.tools.SearchAgentTool;
 import org.sterl.llmpeon.tool.tools.ShellTool;
-import org.sterl.llmpeon.tool.tools.WebFetchTool;
-import org.sterl.llmpeon.tool.tools.WebSearchTool;
+import org.sterl.llmpeon.tool.web.WebFetchTool;
+import org.sterl.llmpeon.tool.web.WebSearchTool;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;

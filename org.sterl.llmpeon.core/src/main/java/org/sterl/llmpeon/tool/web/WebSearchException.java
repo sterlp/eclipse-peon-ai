@@ -1,4 +1,4 @@
-package org.sterl.llmpeon.tool.tools;
+package org.sterl.llmpeon.tool.web;
 
 /**
  * The single error channel of a web search engine (org.sterl.llmpeon.core/docs/web-tools.md
