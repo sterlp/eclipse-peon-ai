@@ -1,11 +1,19 @@
 package org.sterl.llmpeon.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.Status;
 import org.junit.Test;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
@@ -175,5 +183,68 @@ public class EclipseWorkspaceReadFileToolTest extends AbstractIntegrationTest {
         assertEquals(1, lines.size());
         assertTrue("onTool line should start with the scroll symbol: " + lines.get(0),
                 lines.get(0).startsWith("📜 "));
+    }
+
+    /**
+     * A file written past the workspace tree (disk tool, shell, another editor) has to show up in
+     * the listing: {@code eclipseList} is a claim about what exists, and a silent miss is the most
+     * expensive tool error of this repo — the agent then acts on "does not exist".
+     */
+    @Test
+    public void eclipseListSeesFileWrittenOutsideEclipse() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        var tool = new EclipseWorkspaceReadFileTool();
+        String name = "eclipse-list-fresh.txt";
+        Path fresh = PeonTestFixture.dir().toPath().resolve(name);
+
+        try {
+            // GIVEN a file written straight into the project folder, unknown to the workspace tree
+            Files.writeString(fresh, "written past the workspace tree\n");
+            assertFalse("fixture must leave the tree stale, otherwise the refresh is not proven here",
+                    project.getFile(name).exists());
+
+            // WHEN the agent lists the project folder
+            String result = tool.eclipseList(JdtUtil.pathOf(project));
+
+            // THEN the file is named — never a listing that quietly omits what is on disk
+            assertContains(result, name);
+        } finally {
+            Files.deleteIfExists(fresh);
+            project.refreshLocal(IResource.DEPTH_ONE, new NullProgressMonitor());
+        }
+    }
+
+    /**
+     * A refused refresh must not leave the listing claiming completeness: the result names the
+     * limitation, the problem line names path and cause. Neither is reachable through the real API,
+     * so the refresh is injected (PlanToolTest.queryPathsFailHonestOnRefreshError pattern).
+     */
+    @Test
+    public void eclipseListReportsAFailedRefreshHonestly() throws Exception {
+        assumeTrue("Eclipse workspace not available", isWorkspaceAvailable());
+        var problems = new ArrayList<String>();
+        var tool = new EclipseWorkspaceReadFileTool((resource, depth, monitor) -> {
+            throw new CoreException(new Status(IStatus.ERROR, "test", "refresh blocked"));
+        });
+        tool.withToolRequest(ToolLoopRequest.builder()
+                .memory(new ThreadSafeMemory())
+                .chatModel(new ConfiguredChatModel(LlmConfig.newOpenAi("foo")))
+                .monitor(new AiMonitor() {
+                    @Override public void onChatResponse(SimpleMessage m) {}
+                    @Override public void onProblem(String message) { problems.add(message); }
+                })
+                .build());
+
+        // GIVEN a listing whose workspace refresh is refused
+        String result = tool.eclipseList(JdtUtil.pathOf(project));
+
+        // THEN the listing still answers, but says it may be incomplete — never a silent "this is all"
+        assertContains(result, "refresh failed");
+        assertContains(result, "/src");
+
+        // AND the chat names path and cause of the failed refresh
+        assertEquals(problems.toString(), 1, problems.size());
+        assertContains(problems.get(0), JdtUtil.pathOf(project));
+        assertContains(problems.get(0), "refresh blocked");
     }
 }

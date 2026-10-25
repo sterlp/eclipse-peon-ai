@@ -15,6 +15,7 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IResourceVisitor;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.ILog;
+import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.ui.PlatformUI;
@@ -37,7 +38,23 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
 
     private static final ILog LOG = Platform.getLog(EclipseWorkspaceReadFileTool.class);
 
+    /** Seam for the workspace refresh of {@code eclipseList}, production is {@code IResource::refreshLocal}. */
+    @FunctionalInterface
+    public interface Refresh {
+        void apply(IResource resource, int depth, IProgressMonitor monitor) throws CoreException;
+    }
+
     private volatile IProject currentProject;
+    private final Refresh refresh;
+
+    public EclipseWorkspaceReadFileTool() {
+        this(IResource::refreshLocal);
+    }
+
+    /** Test seam — the refresh failure of {@code eclipseList} is unreachable through the real API. */
+    public EclipseWorkspaceReadFileTool(Refresh refresh) {
+        this.refresh = refresh;
+    }
 
     public void setCurrentProject(IProject currentProject) {
         this.currentProject = currentProject;
@@ -236,6 +253,7 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
         }
 
         try {
+            var refreshNote = refreshListing(container);
             var entries = new ArrayList<String>();
             for (IResource member : container.members()) {
                 if (member.isDerived()) continue;
@@ -245,13 +263,40 @@ public class EclipseWorkspaceReadFileTool extends AbstractEclipseTool {
                     entries.add(prefix + pathToAdd);
                 }
             }
+            var header = new ArrayList<String>();
             var via = EclipseUtil.resolvedViaNote(path, container);
+            if (!via.isEmpty()) header.add(via);
+            refreshNote.ifPresent(header::add);
             var entriesText = entries.isEmpty() ? "Directory is empty: " + path : String.join("\n", entries);
-            String result = via.isEmpty() ? entriesText : via + System.lineSeparator() + entriesText;
+            String result = header.isEmpty()
+                    ? entriesText
+                    : String.join(System.lineSeparator(), header) + System.lineSeparator() + entriesText;
             onTool("List directories for " + path + " found " + entries.size() + " elements." + " " + StringUtil.charsSuffix(result));
             return result;
         } catch (CoreException e) {
             throw new RuntimeException("Failed to list " + path, e);
+        }
+    }
+
+    /**
+     * A file written past the workspace tree (disk tool, shell, another editor) is invisible to
+     * {@code members()} until the folder is refreshed — listing without it is a false negative, the
+     * most expensive tool error of this repo. DEPTH_ONE: the listing is non-recursive, so the
+     * immediate children are exactly what has to be in sync.
+     * <p>
+     * A failed refresh never passes silently: the returned note names the limitation in the result
+     * (the listing may be incomplete) and {@code onProblem} carries path and cause. A user Stop is
+     * deliberately not covered here — {@code OperationCanceledException} is a RuntimeException and
+     * runs through untouched.
+     */
+    private Optional<String> refreshListing(IContainer container) {
+        try {
+            refresh.apply(container, IResource.DEPTH_ONE, getProgressMonitor());
+            return Optional.empty();
+        } catch (CoreException e) {
+            onProblem("Refresh failed for " + JdtUtil.pathOf(container) + " " + e.getMessage());
+            return Optional.of(
+                    "(refresh failed — files written outside Eclipse may be missing from this listing)");
         }
     }
 }
