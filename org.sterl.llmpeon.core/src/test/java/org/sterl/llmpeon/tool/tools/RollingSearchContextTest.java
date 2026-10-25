@@ -59,8 +59,9 @@ class RollingSearchContextTest {
         var block = ctx.render();
         assertThat(block).startsWith(TaggedResult.PREFIX + HEAD + TaggedResult.LN)
                 .endsWith(TaggedResult.LN + TaggedResult.SUFFIX + HEAD);
-        // the pair's own newline is the only one before the end line — a second would mean a blank line
-        assertThat(block).doesNotContain(TaggedResult.LN + TaggedResult.LN);
+        // the pair's own newline is the only one before the end line — a second would mean a blank line;
+        // literal \n\n too, because the body newlines stay LF even where the framing follows the platform
+        assertThat(block).doesNotContain(TaggedResult.LN + TaggedResult.LN, "\n\n");
         assertThat(block).contains("Frage: q1\nAntwort: a1\n", "Frage: q2\nAntwort: a2\n");
         assertThat(block.indexOf("Frage: q1")).isLessThan(block.indexOf("Frage: q2"));
     }

@@ -41,6 +41,11 @@ import dev.langchain4j.model.chat.response.ChatResponse;
  */
 class SearchAgentToolRollingContextTest {
 
+    /** Framing comes from {@link TaggedResult}. The disclosure needle keeps its R-LSR-4 text without the
+     *  leading <tt>//</tt>: a shorter needle is the stronger contains-check. */
+    private static final String HEAD = "last-search-rolling";
+    private static final String DISCLOSURE = "(older context dropped to fit cap)";
+
     /** Records every request handed to executeLoop — the sub-loop request carries the static messages. */
     static class RecordingToolService extends ToolService {
         final List<ToolLoopRequest> loops = new ArrayList<>();
@@ -201,7 +206,7 @@ class SearchAgentToolRollingContextTest {
         // AND — still the uncut block: a raw cut always eats from the front, so the first pair and the
         //       head of the near-cap pair prove nothing was dropped and no disclosure appeared
         assertThat(sent).contains("Frage: q-1\nAntwort: answer-1\n", "Frage: q-0\nAntwort: near-cap-head")
-                .doesNotContain("(older context dropped to fit cap)");
+                .doesNotContain(DISCLOSURE);
     }
 
     // UC-LSR-5
@@ -219,8 +224,8 @@ class SearchAgentToolRollingContextTest {
         // THEN — the block reaches the sub-loop as its (merged) SystemMessage
         var system = fixture.streamMock.getLast(SystemMessage.class);
         assertThat(system).isPresent();
-        assertThat(system.get().text()).contains(TaggedResult.PREFIX + "last-search-rolling",
-                TaggedResult.SUFFIX + "last-search-rolling", "Frage: q-1", "Antwort: answer-1");
+        assertThat(system.get().text()).contains(TaggedResult.PREFIX + HEAD,
+                TaggedResult.SUFFIX + HEAD, "Frage: q-1", "Antwort: answer-1");
 
         // AND — the sub-memory stays clean: its own question, never the earlier answer
         var subMemory = fixture.service.loops.get(1).getMemory().getCopy();
@@ -229,7 +234,7 @@ class SearchAgentToolRollingContextTest {
         assertThat(subMemory).noneMatch(m -> ChatMessageUtil.toString(m).contains("answer-1"));
 
         // AND — the first search of the view had nothing to inject
-        assertThat(fixture.sentSystemText.get("q-1")).doesNotContain(TaggedResult.PREFIX + "last-search-rolling");
+        assertThat(fixture.sentSystemText.get("q-1")).doesNotContain(TaggedResult.PREFIX + HEAD);
 
         // GIVEN — a search whose answer pushes the pair content over the cap
         fixture.search("q-3", "y".repeat(12_000));
@@ -241,8 +246,8 @@ class SearchAgentToolRollingContextTest {
         //        whole history (UC-LSR-4 at the injection point, not only in the holder)
         var trimmed = fixture.streamMock.getLast(SystemMessage.class);
         assertThat(trimmed).isPresent();
-        assertThat(trimmed.get().text()).contains(TaggedResult.PREFIX + "last-search-rolling",
-                TaggedResult.SUFFIX + "last-search-rolling", "(older context dropped to fit cap)");
+        assertThat(trimmed.get().text()).contains(TaggedResult.PREFIX + HEAD,
+                TaggedResult.SUFFIX + HEAD, DISCLOSURE);
     }
 
     // UC-LSR-6
