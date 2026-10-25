@@ -59,3 +59,26 @@ Base: `AGENTS.md`. System prompt: `developer.md`.
   Evidenz lebt im Commit und ggf. in den memory-Tools, nie in `docs/**`.
 - Elegant, expressive modern Java (records, pattern matching, switch expressions, Lombok).
 - Skill-Footer beantworten; falschen Skill im selben Turn fixen.
+
+## aifactory (Spring-Boot-Reaktor) — Build-Fakten (inc-1, 2026-10-25)
+
+- **`mvn -f aifactory/pom.xml …` braucht pnpm auf dem PATH** (factory-ui fährt pnpm-install/-build via
+  exec-maven-plugin): `export PATH=~/.nvm/versions/node/v22.12.0/bin:$PATH`, sonst `factory-ui FAILURE:
+  Cannot run program "pnpm"` vor jedem Backend-Modul.
+- **Kein `-parameters` im aifactory-Build** (Parent ist `llmpeon-parent`, nicht
+  `spring-boot-starter-parent`): `@PathVariable`/`@RequestParam` ohne expliziten Namen schlagen in
+  Boot 4 fehl — der Fehler ist eine `IllegalArgumentException` und landet damit im 400-Handler, nicht
+  als 500. Immer Namen explizit schreiben (`@PathVariable("id")`) oder dem aifactory-pom
+  `<parameters>true</parameters>` geben.
+- **`mvn clean`, wenn ein Test `NoClassDefFoundError: <SimpleTypeName>` (ohne Paket) meldet**: Eclipse
+  JDT schreibt nach `target/classes` und hinterlässt bei Auflösungsfehlern Class-Files mit
+  unqualifizierten Typ-Namen; der Maven-Incremental-Compile hält sie für aktuell.
+- **Boot 4 behandelt `ResponseStatusException` vor dem `@ControllerAdvice`** → eigener Exception-Typ
+  (z. B. `ProjectNotFoundException`) + `@ExceptionHandler`, sonst wird aus dem 404 ein 500/400.
+- **UI-Test-Setup:** jsdom auf 26.1.0 gepinnt (jsdom 30 verlangt Node ≥22.22.2 → undici-Crash
+  „reading 'bind'"); `vite.config.ts` importiert `defineConfig` aus `vitest/config`, sonst findet
+  `tsc -b` das `test`-Feld nicht.
+- **`gitea.sterl.co` löst auf dieser Maschine nicht auf** (DNS; github/maven-central gehen) —
+  Clone-Beweise gegen das interne Gitea nur mit aktivem VPN, sonst gleichwertigen öffentlichen Repo
+  benutzen und im Report ausweisen.
+
