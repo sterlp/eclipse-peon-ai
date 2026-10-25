@@ -1,4 +1,4 @@
-# ADR-0077 — AI Factory: geteilter Core statt Web-only-Schicht
+# AF-ADR-001 — AI Factory: geteilter Core statt Web-only-Schicht
 
 **Status:** Accepted (2026-10-25, User-Entscheid)
 
@@ -15,9 +15,10 @@ Factory als reine Web-Schicht darüber. Der User entscheidet bewusst anders.
    Core-Kontrakten in der Factory, keine Web-only-Zweitimplementierung der Agent-Logik.
 2. **Die Factory nutzt nur die Disk-Familie** (`disk*`, `web*`, `shell`, `docs*`). `eclipse*`-Tools
    und OSGi existieren in der Web-App nicht.
-3. **Der Core bleibt Eclipse-frei** (Regel aus [ADR-0046](0046-core-portability-review.md):
-   0 `import org.eclipse` in `src/main`) — jetzt mit einem zweiten realen Consumer, der die Regel
-   dauerhaft erzwingt statt sie nur theoretisch zu behalten.
+3. **Der Core bleibt Eclipse-frei** (Regel aus
+   [ADR-0046](../../../docs/adr/0046-core-portability-review.md): 0 `import org.eclipse` in
+   `src/main`) — jetzt mit einem zweiten realen Consumer, der die Regel dauerhaft erzwingt statt sie
+   nur theoretisch zu behalten.
 4. **Grenze:** in den Core gehört, was *beide* Consumer brauchen (Agenten, Tools, Context/Compact,
    Provider/Config). Was nur ein Consumer braucht — HTTP/SSE und Server-Session auf der einen,
    SWT/OSGi auf der anderen Seite — bleibt im jeweiligen Consumer.
