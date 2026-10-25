@@ -7,13 +7,18 @@ Agent-Logik kommt unverändert aus `llmpeon-core`, kein Eclipse/OSGi.
 Dieser Index ist die Karte **dieses** Produkts: Links + Feature-Zeilen + Produktregeln.
 Kein Protokoll, kein Code-Bestand.
 
-Status: ✅ done · 🚧 in design · ❌ specified (nicht gebaut) · ⏳ geparkt · 📝 Studie.
-Backlog = jedes ❌/🚧.
+Status: ✅ done · ◐ teilweise gebaut (Regeln mit ✅/❌ darunter) · 🚧 in design · ❌ specified (nicht
+gebaut) · ⏳ geparkt · 📝 Studie.
+Backlog = jedes ❌/🚧/◐.
 
 ## Wo das Wissen liegt
 
 * **[Architektur](aifactory-architektur.md)** — das WIE: Komponenten, Turn-Besitz, Core-Abbildung,
   Invarianten. **Vor jedem Plan** zu lesen.
+* **[Pauls Produktvision](../pauls-product-vision.md)** — Richtungsinput des Users (*für Agenten nur zu
+  lesen*): Rollen und Rechte, Slide-outs je Agent, Config-Fenster (MCP, Agenten, System-Prompt),
+  Docs als Website. **Kein SOLL** — was daraus Regel wird, entscheiden wir und es steht dann in einem
+  Feature-Doc. Abweichungen davon stehen als ❓ in [Open Points](open-points.md).
 * **[Peon-AI Root-Docs](../../docs/index.md)** — Register des `llmpeon-parent`-Repos: globale ADRs,
   Glossary, Architektur-Regeln, Open/Resolved Points.
 * **[Core-Docs](../../org.sterl.llmpeon.core/docs/index.md)** — `llmpeon-core` (plain Maven,
@@ -42,7 +47,8 @@ Nicht hier: alles Eclipse-/OSGi-spezifische (SWT-Views, Widgets, Preference-Page
 ## Features
 
 * [Web-Prototype](web-prototype.md) — Projects · Chat · Einstellungen; Git-Clone als Projekt,
-  Jon mit Team, Schreib-Pinning auf Projekt-Root + TMP, Kacheln je Agent. 🚧 in design
+  Jon mit Team, Schreib-Pinning auf Projekt-Root + TMP, Kacheln je Agent. ◐ teilweise gebaut
+  (Registry · Clone · Auslieferung ✅; Chat, Einstellungen, Schreib-Pinning, Kacheln ❌)
 * [Jon Light & Stories](jon-light-stories.md) — read-only Jon je Nutzer, Stories in `stories/`,
   konfliktfrei oder mit benanntem Konflikt. ❌ specified (nach dem MVP)
 

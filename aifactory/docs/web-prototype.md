@@ -3,8 +3,8 @@ idPrefix: WP
 ---
 # Web-Prototype — Jon im Browser
 
-> **Status:** 🚧 in design (2026-10-25) — Anforderungen des Users aufgeschrieben, drei Punkte offen
-> (Tabelle am Ende). **Kein Code, kein Plan** bis die offenen Punkte entschieden sind.
+> **Status:** ◐ teilweise gebaut (2026-10-25) — SOLL ist vereinbart; der Marker je Regel sagt, was
+> schon gebaut ist. Offene fachliche Punkte stehen in [Open Points](open-points.md), nicht hier.
 
 ## Ziel
 
@@ -16,8 +16,15 @@ liefert nur Transport, Session und die zwei Views.
 **Nicht-Ziel des Prototyps:** Authentifizierung, Multi-User-Verwaltung, Build-/Test-Runner,
 Java-Navigation, Projektverwaltung über Git hinaus, Deployment-Härtung.
 
-**Look:** Orientierung ist `stara-web` (Chat-Optik), aber mit deutlich kleineren linken/rechten
-Rändern als dort.
+**Look:** Orientierung ist **stara-web** — Eclipse-Projekt `/stara-web`, auf der Platte
+`/Users/sterlp/dev/workset/Strata/apps/host` (React 19 + Vite + TypeScript, eigenes CSS, kein
+Bootstrap, `prismjs` für Code, `katex` für Formeln). Übernehmen wollen wir die Chat-Optik: schmale
+Spalte, Nachricht = Kopf (Name/Zeit) + Rumpf, abgesetzte Tool-/Statuszeilen, eigener Block für Code.
+**Bootstrap ist als Mittel erlaubt, aber nicht Vorgabe** — was zählt, ist die Wirkung, nicht der
+Stapel. Und: stara-web ist eine **Referenz, kein Abhängigkeitsziel** — nichts wird von dort kopiert,
+was wir nicht selbst verstehen und pflegen (das Projekt ist als Hilfe gedacht, mehr nicht).
+**Abweichung von dort:** deutlich kleinere linke/rechte Ränder als in stara-web — die Spalte darf
+breiter sein.
 
 ## Regeln
 
@@ -31,18 +38,18 @@ Views, nie ein weiterer View.
 - GIVEN die App WHEN der Nutzer navigiert THEN gibt es genau *Projects*, *Chat* und *Einstellungen*;
   der Datei-Bereich und die Team-Kacheln liegen im Chat-View.
 
-### R-WP-22 — Die App wird unter `/ui/` ausgeliefert ❌
+### R-WP-22 — Die App wird unter `/ui/` ausgeliefert ✅
 
 Die Factory ist ein Browser-Produkt: wer `http://<host>/ui/` öffnet, sieht die App. `index.html` und
 die gebauten Assets (JS, CSS mit Hash im Namen) kommen als das an, was sie sind — `/api/**` bleibt
 davon unberührt, und `/` führt nach `/ui/`. Eine Adresse, die niemand bedienen kann, ist ein Fehler
 und keine Weiterleitung: kein Request darf in einer Schleife aus Weiterleitungen enden.
 
-#### UC-WP-34 — indexHtmlServedAtUiRoot ❌
+#### UC-WP-34 — indexHtmlServedAtUiRoot ✅
 - GIVEN der laufende Server WHEN `GET /ui/` oder `GET /ui` THEN kommt `200` mit `text/html` und dem
   Inhalt der gebauten `index.html`; `GET /` leitet nach `/ui/` weiter.
 
-#### UC-WP-35 — hashedAssetsServedAsThemselves ❌
+#### UC-WP-35 — hashedAssetsServedAsThemselves ✅
 - GIVEN die gebauten Assets liegen im Klassenpfad WHEN `GET /ui/assets/<name>.js` oder
   `/ui/assets/<name>.css` THEN kommt `200` mit dem Dateiinhalt und dem passenden `Content-Type`
   (`text/javascript` bzw. `text/css`) — nie JSON, nie `text/plain`, kein `500`.
@@ -198,17 +205,33 @@ Umschaltung sind in **R-WP-14** festgelegt.
 ### R-WP-9 — Konfiguration: eigene Datei der Factory, nie der Plugin-Bestand ❌
 
 Der Server liest Provider, Modelle und Keys aus **seiner eigenen** Config
-(`~/.aifactory/config.properties`, Keys zusätzlich aus Umgebungsvariablen). Der Config-Bestand des
-Plugins wird **nicht** gelesen und **nie** geschrieben — er liegt in Eclipse-Präferenzen und ist damit
-keine Datei (Konflikt und Begründung:
+(`~/.aifactory/config.properties`, zusätzlich aus Umgebungsvariablen als Startwert, wenn die Datei den
+Wert nicht trägt). Der Config-Bestand des Plugins wird **nicht** gelesen und **nie** geschrieben — er
+liegt in Eclipse-Präferenzen und ist damit keine Datei (Konflikt und Begründung:
 [Architektur](aifactory-architektur.md#konflikt-dokumentiert-2026-10-25)). Überschreibungen aus dem
 Einstellungen-View landen in derselben Datei der Factory (R-WP-16).
+
+Zwei Angaben kennt die Factory **nur selbst** und liest sie nie aus der Datei: das
+**Konfigurationsverzeichnis** (Skills, Agents, Commands und der History-Ordner des Cores) ist immer
+das Verzeichnis der Factory — sonst lägen Agent-Zustand und Agenten-Ordner im Bestand des Plugins
+(`~/.peon`), was dieser Regel widerspricht — und **`diskToolsEnabled`** ist immer an (R-WP-12). Wer die
+beiden Angaben trotzdem von Hand in die Datei schreibt, ändert damit nichts.
+
+Die Datei enthält einen API-Key im Klartext: sie wird mit Eigentümer-Rechten (`600`) angelegt und ihr
+Inhalt erscheint **nirgends** unmaskiert (R-WP-16) — weder in einer Antwort noch in einem Log.
 
 #### UC-WP-20 — configReadFromFactoryOwnStore ❌
 - GIVEN ein laufender Server WHEN Jon gebaut wird THEN stammen Provider/Modell/Keys aus der Config der
   Factory; der Plugin-Bestand bleibt byte-identisch.
 - GIVEN eine fehlende oder unvollständige Config WHEN der Nutzer eine Nachricht sendet THEN sagt die
   App knapp, welche Angabe fehlt, statt mit einer Werkzeugfehler-Meldung zu enden.
+- GIVEN ein Provider, der einen Key braucht (alle außer Ollama und LM Studio) WHEN kein Key gesetzt ist
+  THEN lehnt die Factory **bevor** ein Modell gebaut wird, und nennt das fehlende Feld.
+
+#### UC-WP-36 — configDirIsAlwaysTheFactoryHome ❌
+- GIVEN die Config-Datei trägt von Hand eingetragen ein anderes Konfigurationsverzeichnis (z. B.
+  `~/.peon`) WHEN der Server die Config lädt THEN ist das Konfigurationsverzeichnis trotzdem das
+  Verzeichnis der Factory, und es wird nichts aus einem anderen Verzeichnis gelesen oder geschrieben.
 
 ### R-WP-10 — Ein Turn je Projekt, weitere Eingaben in der Queue 🚧
 
@@ -246,6 +269,11 @@ Jon und sein Team bekommen **alle** Core-Werkzeuge inklusive Shell (`disk*`, `we
 - GIVEN ein Projekt als Arbeitsordner WHEN die Tool-Liste des Jons gebaut wird THEN sind die
   Core-Familien vollständig enthalten (auch Shell) und **kein** Werkzeug mit `eclipse`-Präfix.
 
+#### UC-WP-37 — diskToolsAreAlwaysOn ❌
+- GIVEN eine Config-Datei ohne jede Angabe WHEN der Server die Config lädt THEN sind die
+  Disk-Werkzeuge an — die Factory könnte sonst ihre eigentliche Arbeit nicht tun; eine von Hand
+  eingetragene `false` ändert daran nichts.
+
 ### R-WP-13 — Temporäres Verzeichnis ist der System-TMP der Instanz ❌
 
 Zweite Schreibwurzel ist `System.getProperty("java.io.tmpdir")` — **nicht** je Projekt ein
@@ -282,23 +310,53 @@ Jons, nie in eine private Kopie. Andere Projekte laufen unabhängig und parallel
 
 ### R-WP-16 — Dritter View: Einstellungen ❌
 
-Die App hat **Projects · Chat · Einstellungen**. Der Einstellungen-View zeigt Provider, Modell,
-Temp/Think und die Key-Anzeige (maskiert) aus dem bestehenden geteilten Bestand und darf Werte
-**überschreiben** — die Überschreibung liegt im eigenen Verzeichnis der Factory
-(`~/.aifactory/`), der geteilte Bestand wird **nie** geschrieben.
+Die App hat **Projects · Chat · Einstellungen**. Der Einstellungen-View zeigt **Provider, Modell,
+URL, Token-Fenster, Timeout, Think senden** und den **Key-Status** aus der Config der Factory (R-WP-9)
+und darf diese Werte **überschreiben** — die Überschreibung liegt in der Datei der Factory, der
+Bestand des Plugins wird **nie** geschrieben und nie gelesen.
+
+**Feldliste statt Wunschkonzert:** eine Temperatur je Agent existiert im geteilten Bestand **nur je
+Agent**, nicht global — ein globales „Temp"-Feld gibt es nicht und wird im MVP nicht erfunden. Was es
+nicht gibt, ist nicht ausgegraut, sondern nicht vorhanden. ⏳ Rückversicherung in
+[Open Points](open-points.md).
+
+**Maskieren heißt: kein Zeichen nach draußen.** Geliefert wird nur, ob ein Key gesetzt ist und woher er
+kommt (Datei oder Umgebungsvariable) — nie auch nur ein Zeichen des Keys, auch nicht in Fehlern, Logs
+oder der Projektliste. **WEIL** die App keinen Login kennt (R-WP-17), wäre sonst jeder Key für jeden
+Betrachter lesbar; ein Key-Auszug ist kein Anzeigefehler, sondern der Fehler.
+
+**Leeres Feld = unverändert.** Ein leeres Eingabefeld beim Speichern löscht nichts; ein Key lässt sich
+über den View im MVP nur setzen, nicht löschen (Löschen = Datei von Hand). Eine Datei, die neu
+geschrieben wird, behält ihre Rechte `600` (R-WP-9).
+
+**Reihenfolge der Werte:** was in der Datei steht, gewinnt gegen die Umgebungsvariable — die Variable
+ist der Startwert für den ersten Start, die Datei ist der vom Menschen gepflegte Stand. Woher ein
+Wert kommt, zeigt der View.
 
 **WEIL** (User 2026-10-25): „der Rest kann aus der config kommen von den files — aber ich mag die im
 UI später auch bearbeiten können". Eine Überschreibungsdatei statt Rückschreiben hält den Bestand des
-Plugins unverändert, den die Factory nur liest (R-WP-9).
+Plugins unberührt, den die Factory weder liest noch schreibt (R-WP-9).
 
 #### UC-WP-23 — settingsShowsMaskedConfig ❌
-- GIVEN der Einstellungen-View WHEN er geöffnet wird THEN stehen Provider, Modell und Key; der Key
-  ist maskiert und wird nie im Klartext ausgeliefert.
+- GIVEN der Einstellungen-View WHEN er geöffnet wird THEN stehen Provider, Modell, URL, Token-Fenster,
+  Timeout und Think senden, dazu der Key-Status.
+- GIVEN ein gesetzter Key WHEN der View geladen wird THEN enthält die Antwort die Info „gesetzt" und
+  die Quelle, aber **kein** Zeichen des Keys — auch nicht maskiert mit Auszug, auch nicht in einem
+  Fehlerfall.
 
 #### UC-WP-24 — settingsOverrideNeverWritesSharedStore ❌
-- GIVEN der Nutzer überschreibt ein Feld WHEN er speichert THEN liegt der Wert im Verzeichnis der
-  Factory, der geteilte Bestand ist byte-identisch wie vorher, und der nächste Turn nutzt den
-  überschriebenen Wert.
+- GIVEN der Nutzer überschreibt ein Feld WHEN er speichert THEN liegt der Wert in der Datei der
+  Factory, der Bestand des Plugins ist byte-identisch wie vorher, und die nächste Config-Auslieferung
+  zeigt den neuen Wert.
+- GIVEN ein leeres Feld WHEN der Nutzer speichert THEN bleibt der bisherige Wert unangetastet.
+- GIVEN ein laufender Turn-Bestand WHEN der Wert gesetzt wurde THEN nutzt der **nächste** Turn den
+  neuen Wert (Nachweis mit dem ersten echten Turn, R-WP-4).
+
+#### UC-WP-38 — configFileWinsOverEnvironment ❌
+- GIVEN die Umgebungsvariable und die Datei tragen unterschiedliche Werte WHEN die Config geladen wird
+  THEN gilt der Wert aus der Datei, und der Einstellungen-View nennt die Datei als Quelle.
+- GIVEN die Datei trägt keinen Wert WHEN die Umgebungsvariable gesetzt ist THEN gilt der Wert aus der
+  Umgebungsvariable und die Quelle wird als solche angezeigt.
 
 ### R-WP-17 — Nutzer ohne Login, aber mit Namen ❌
 
@@ -317,7 +375,7 @@ Keine. Was hier offen war, ist seit 2026-10-25 Regel: Ablage von Registry und Cl
 R-WP-18), öffentliche Repos ohne Zugangsdaten (R-WP-20), Entfernen inkl. Checkout mit Rückfrage
 (R-WP-19).
 
-**Erledigt:** Konfiguration — keine Config-UI, Quelle ist der bestehende Config-Bestand
-(R-WP-9); *Keys/Modelle im UI pflegen* ist zurückgestellt und als ⏳ in
-[Open Points](open-points.md) notiert. TMP-Direktwahl, Shell-Zusage und die zwei Datei-Wurzeln sind
-seit 2026-10-25 entschieden (R-WP-12…R-WP-14).
+**Erledigt:** Konfiguration — die Quelle ist **die eigene Datei der Factory**, nie der
+Plugin-Bestand (R-WP-9); der Einstellungen-View zeigt sie maskiert und **darf Werte überschreiben**
+(R-WP-16, User-Entscheid 2026-10-25 — die frühere Feststellung „keine Config-UI" ist damit überholt).
+TMP-Direktwahl, Shell-Zusage und die zwei Datei-Wurzeln sind seit 2026-10-25 entschieden (R-WP-12…R-WP-14).
