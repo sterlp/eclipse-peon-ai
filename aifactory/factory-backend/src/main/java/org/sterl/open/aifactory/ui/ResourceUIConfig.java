@@ -5,13 +5,11 @@ import java.util.concurrent.TimeUnit;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.CacheControl;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
-import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
-public class SpringPersistentTasksUIConfig implements WebMvcConfigurer {
+public class ResourceUIConfig implements WebMvcConfigurer {
     private static final String BASE = "/ui";
-    private static final String INDEX_HTML = "forward:/ui/index.html";
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
