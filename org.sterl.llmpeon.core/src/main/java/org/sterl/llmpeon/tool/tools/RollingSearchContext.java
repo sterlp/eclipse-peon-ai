@@ -1,35 +1,29 @@
 package org.sterl.llmpeon.tool.tools;
 
+import org.sterl.llmpeon.agent.model.TaggedResult;
 import org.sterl.llmpeon.shared.StringUtil;
 
 /**
- * The rolling hot block `last-search-rolling` (R-LSR-1…6,
- * org.sterl.llmpeon.core/docs/search-agent-tool.md § Rolling Search Context): the prompts and final
- * answers of the previous complete searches of one chat view, append-only and raw-cut to the last
- * {@value #MAX_CHARS} characters (ADR-0075 — a mechanical char cut, fragments accepted).
+ * The rolling hot block of the search agent — its content, limits and disclosure are the SOLL of
+ * R-LSR-1…6 (org.sterl.llmpeon.core/docs/search-agent-tool.md, ADR-0075); this class only implements it.
  *
- * <p>One instance per {@link SearchAgentTool}, which is one per chat view (R-LSR-6). Every access is
- * synchronized: the block is shared by all agents of the view and no single-threaded assumption holds.
+ * <p>Every access is synchronized: one instance belongs to one {@link SearchAgentTool}, hence to one
+ * chat view, and all agents of that view reach it — no single-threaded assumption holds here.
  *
- * <p>Lines are built with literal {@code "\n"} — this is model-facing text, not file output, so it
- * renders identically on every platform (same decision as the trim/tail reassembly).
+ * <p>The block is framed by {@link TaggedResult} like every other block the models are shown, so the
+ * start/end format has exactly one implementation in the repo.
  */
 final class RollingSearchContext {
 
-    static final String START = "//-- Start last-search-rolling";
-    static final String END = "//-- End last-search-rolling";
-    static final String DISCLOSURE = "//(older context dropped to fit cap)";
     static final int MAX_CHARS = 10_000;
 
     private final StringBuilder pairs = new StringBuilder();
     private boolean trimmed;
 
-    /**
-     * R-LSR-1/2: one pair per completed search — a blank side never touches the block, so a failed,
-     * canceled or empty search cannot leave a half entry behind.
-     */
+    /** Appends one search pair; a blank side leaves the block untouched. */
     synchronized void append(String prompt, String answer) {
         if (StringUtil.hasNoValue(prompt) || StringUtil.hasNoValue(answer)) return;
+        // literal \n: pair text the cap counts char-wise, so the block must not follow the platform
         pairs.append("Frage: ").append(prompt.strip()).append('\n')
                 .append("Antwort: ").append(answer.strip()).append('\n');
         if (pairs.length() > MAX_CHARS) {
@@ -38,13 +32,12 @@ final class RollingSearchContext {
         }
     }
 
-    /**
-     * R-LSR-3/4/5: the snapshot one sub-loop call sees — {@code ""} while empty (never null), else the
-     * pair content (already cut to the cap, so the decoration never shifts the limit) framed by the
-     * headers, plus the disclosure line only where a cut actually happened.
-     */
+    /** The snapshot one sub-loop call sees — {@code ""} while empty (never null), else the framed block. */
     synchronized String render() {
         if (pairs.isEmpty()) return "";
-        return START + "\n" + pairs + (trimmed ? DISCLOSURE + "\n" : "") + END;
+        var body = new StringBuilder(pairs);
+        body.setLength(body.length() - 1);           // TaggedResult places the newline before its end line
+        if (trimmed) body.append(TaggedResult.LN).append("//(older context dropped to fit cap)");
+        return new TaggedResult("last-search-rolling", body.toString()).toString();
     }
 }

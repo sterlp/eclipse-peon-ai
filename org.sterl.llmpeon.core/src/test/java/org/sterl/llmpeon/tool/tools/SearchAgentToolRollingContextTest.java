@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.sterl.llmpeon.StreamMock;
 import org.sterl.llmpeon.agent.AiAgent;
+import org.sterl.llmpeon.agent.model.TaggedResult;
 import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.memory.ThreadSafeMemory;
@@ -218,8 +219,8 @@ class SearchAgentToolRollingContextTest {
         // THEN — the block reaches the sub-loop as its (merged) SystemMessage
         var system = fixture.streamMock.getLast(SystemMessage.class);
         assertThat(system).isPresent();
-        assertThat(system.get().text()).contains(RollingSearchContext.START, RollingSearchContext.END,
-                "Frage: q-1", "Antwort: answer-1");
+        assertThat(system.get().text()).contains(TaggedResult.PREFIX + "last-search-rolling",
+                TaggedResult.SUFFIX + "last-search-rolling", "Frage: q-1", "Antwort: answer-1");
 
         // AND — the sub-memory stays clean: its own question, never the earlier answer
         var subMemory = fixture.service.loops.get(1).getMemory().getCopy();
@@ -228,7 +229,7 @@ class SearchAgentToolRollingContextTest {
         assertThat(subMemory).noneMatch(m -> ChatMessageUtil.toString(m).contains("answer-1"));
 
         // AND — the first search of the view had nothing to inject
-        assertThat(fixture.sentSystemText.get("q-1")).doesNotContain(RollingSearchContext.START);
+        assertThat(fixture.sentSystemText.get("q-1")).doesNotContain(TaggedResult.PREFIX + "last-search-rolling");
 
         // GIVEN — a search whose answer pushes the pair content over the cap
         fixture.search("q-3", "y".repeat(12_000));
@@ -240,8 +241,8 @@ class SearchAgentToolRollingContextTest {
         //        whole history (UC-LSR-4 at the injection point, not only in the holder)
         var trimmed = fixture.streamMock.getLast(SystemMessage.class);
         assertThat(trimmed).isPresent();
-        assertThat(trimmed.get().text()).contains(RollingSearchContext.START, RollingSearchContext.END,
-                "(older context dropped to fit cap)");
+        assertThat(trimmed.get().text()).contains(TaggedResult.PREFIX + "last-search-rolling",
+                TaggedResult.SUFFIX + "last-search-rolling", "(older context dropped to fit cap)");
     }
 
     // UC-LSR-6

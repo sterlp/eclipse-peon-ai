@@ -7,6 +7,7 @@ import java.util.concurrent.CountDownLatch;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.sterl.llmpeon.agent.model.TaggedResult;
 
 /**
  * R-LSR-1…6 (org.sterl.llmpeon.core/docs/search-agent-tool.md § Rolling Search Context): the rolling
@@ -14,6 +15,10 @@ import org.junit.jupiter.api.Timeout;
  * only after a real cut, and no lost update across threads. Wiring it into the sub-loop is I-2.
  */
 class RollingSearchContextTest {
+
+    /** Framing comes from {@link TaggedResult}; the disclosure word is the documented R-LSR-4 text. */
+    private static final String HEAD = "last-search-rolling";
+    private static final String DISCLOSURE = "//(older context dropped to fit cap)";
 
     /** The 5-digit blocks 00000.. — a cut position then reads as the surviving block number. */
     private static String digits(int blocks) {
@@ -24,8 +29,8 @@ class RollingSearchContextTest {
 
     /** The pair content of a rendered block — everything the cap counts, decoration cut away. */
     private static String pairContent(String block, boolean cut) {
-        var head = RollingSearchContext.START + "\n";
-        var tail = (cut ? RollingSearchContext.DISCLOSURE + "\n" : "") + RollingSearchContext.END;
+        var head = TaggedResult.PREFIX + HEAD + TaggedResult.LN;
+        var tail = (cut ? DISCLOSURE + TaggedResult.LN : "") + TaggedResult.SUFFIX + HEAD;
         return block.substring(head.length(), block.length() - tail.length());
     }
 
@@ -51,8 +56,8 @@ class RollingSearchContextTest {
 
         // THEN — both pairs, in append order, framed by the block headers
         var block = ctx.render();
-        assertThat(block).startsWith(RollingSearchContext.START + "\n")
-                .endsWith("\n" + RollingSearchContext.END);
+        assertThat(block).startsWith(TaggedResult.PREFIX + HEAD + TaggedResult.LN)
+                .endsWith(TaggedResult.LN + TaggedResult.SUFFIX + HEAD);
         assertThat(block).contains("Frage: q1\nAntwort: a1\n", "Frage: q2\nAntwort: a2\n");
         assertThat(block.indexOf("Frage: q1")).isLessThan(block.indexOf("Frage: q2"));
     }
