@@ -957,6 +957,68 @@ Laufender Nachweis: Server starten, Modellname in den Einstellungen ändern, zwe
 Anbieter-Log/der Antwort sehen, daß der neue Wert benutzt wird; `~/.peon` vorher/nachher vergleichen
 (`diff -r` byte-identisch) und das Ergebnis im Report nennen — das ist GIVEN 1s echtes Gegenstück, kein Test
 darf diese Datei lesen. Commit: `feat(chat): Konfiguration pro Turn — der nächste Turn nutzt den neuen Wert (UC-WP-24)`.
+### 3e-E — Ausführungsnachweis (gebaut 2026-10-26, Commit `eacf02ac`, Baseline `86360177`, 3d = `565ec1b9`)
+
+**Kein neuer Mechanismus, nur der Beweis.** Der Leser pro Turn stand seit 3a in
+`ProjectRuntime.submit`; neu sind genau zwei Dinge: der paketprivate Leser `ProjectRuntime.model()`
+(+8 Zeilen, Vorbild `jon()`) als Test-Naht für „dasselbe Modell-Objekt", und `chat/ChatConfigTurnTest`
+(1 Test, Marker `// UC-WP-24`, `settingsOverrideNeverWritesSharedStore`). Kein UI, kein neuer Pfad, kein
+Core-Quellcode, keine Abhängigkeit.
+
+Messwerte des Tests (derselbe laufende Kontext, kein Neu-Start): Turn 1 → Draht `model=inc3e-first`;
+`PUT /api/settings` 200 in 11 ms mit vollständigem Wert → Antwort der Route ist der frisch gelesene Stand
+(`model=inc3e-second`, `keySet=true`) und die Datei der Fabrik trägt den neuen Wert; Turn 2 → Draht
+`model=inc3e-second`, `runtime` **isSameAs**, `ConfiguredChatModel` **isSameAs**, gebautes Modell
+**isNotSameAs** (genau einmal getauscht); Turn 3 ohne Änderung → gleicher Wert, **dasselbe** gebaute Modell
+(kein Dauer-Neubau); Verlauf sechs Zeilen in einer Reihenfolge, `runtimeCount` 1, gleiche
+`ApplicationContext`. GIVEN 1+2 sind zitiert, nicht dupliziert; `~/.peon` liest kein Test.
+
+Gates: `mvn -f aifactory/pom.xml clean verify` → **80 Tests, 0 Fehler, 0 Fehlermeldungen, BUILD SUCCESS**
+(79 → 80; vorbestehender Surefire-Hinweis bleibt). `pnpm -C aifactory/factory-ui test` → **19 passed
+(3 files)**, `lint` → „Found 0 warnings and 0 errors.", `build` ✓. `lintDocsAndTests` (docRoots
+`aifactory/docs`; testRoots backend/src/test + ui/src/test + ui/src/views; idPattern wie §3.9) →
+`UC definitions: 50 / 50; test IDs: 60 / 29; findings: 21`, **VERWAIST 0** (3d: 50/50; 59/29; 21 — **+1 id**);
+mit den §3.9-Doc-Wurzeln → `UC definitions: 251 / 251; test IDs: 60 / 29; findings: 222`, ebenso VERWAIST 0.
+**UC-WP-24 ist nicht mehr UNBELEGT — keine id von Increment 3 steht damit ohne Test.** Offen und nicht
+Inc-3-Stoff: UC-WP-8/9/10, 11/12/13, 18/19, 25, **39/40 (= 3f, Jons Plan)**, zehn UC-JL.
+
+Mutationsbatterie, jede einzeln rot auf dem geplanten Punkt, alle zurück (grep `MUTATION` = leer):
+Konfiguration je Runtime statt je Turn (`updateConfig(model.getConfig())`) → GIVEN 3, erwartet
+`inc3e-second`, erhalten `inc3e-first` · `updateConfig` weggelassen (gelesen, niemandem gegeben) → derselbe
+Punkt · nach `updateConfig` `setChatModel(null)` → „kein Dauer-Neubau" (Zeile 183) · cachelose Runtime
+(jeder Zugriff baut einen eigenen Jon) → „dieselbe Runtime" (Zeile 163) — **die gefährliche Mutation**, denn
+eine zweite Runtime liest den neuen Wert beim Bau und ließe GIVEN 3 grün aussehen; getroffen wird sie nur
+durch die Instanz-Identität · Route nimmt das Modell nicht an → Antwort der Route (Zeile 145).
+**Verworfen nach Messung:** `runtimes.get(id)` verfehlt immer — bei einer `putIfAbsent`-Map keine Mutation
+(die Map trifft trotzdem), sie blieb grün und zählt nicht als Nachweis.
+
+Laufender Nachweis mit **echtem Modell** (Ollama, Home `/tmp/aifactory-inc3e`, **Port 8099**, Projekt
+`spring-petclinic-c2cea48`). Gemacht sichtbar durch einen mitschreibenden Vorbeilasser auf
+`127.0.0.1:11555`, der unverändert an Ollama weiterreicht und das `model`-Feld mitloggt (Skript nur in
+`/tmp`, nichts comittet, er antwortet nie selbst): Turn 1 `POST` 202 in 0,22 s, Antwort nach 40 s
+(„Apfel."), Anfrage `model='inc3e-alpha'` · Einstellung über die Route, `PUT` 200 in 0,012 s, DateiZeile 2
+danach `llm.model=inc3e-beta`, **derselbe Prozess** (PID 47096 durchgehend, kein Neu-Start) · Turn 2 `POST`
+202 in 0,004 s, Antwort nach 3,9 s („Birne"), Anfrage `model='inc3e-beta'` · Turn 3 unveränderte
+Konfiguration → wieder `inc3e-beta`. Home danach `config.properties`, `projects`, `projects.json`,
+`state/<id>/Peon-PO-history.jsonl` (1 691 byte); Ports 8099/11555/8080 frei; `~/.peon` byte-identisch
+(124 Dateien, Sammel-Prüfsumme `eeb6ca9c88720ef4` vor dem Start = nach dem Stop). Die beiden Modell-Namen
+waren Alias-Namen **eines** echten Modells (`ollama cp qwen3.5:4b`, beide wieder entfernt) — bewiesen wird
+der Wert auf dem Draht, nicht ein zweiter Verstand.
+
+Abweichungen, keine ändert eine UC-Aussage: (a) `ProjectRuntime.model()` neu — ohne diesen Leser wäre
+„dasselbe `ConfiguredChatModel`" nur über Reflection ans eigene Feld prüfbar; (b) der Lauf-Nachweis braucht
+einen Beobachter für das `"model"`-Feld, weil die Fabrik den Anbieter-Namen bewußt nicht nach außen gibt
+(wertfreie Fehlerzeile, Q1); (c) der `~/.peon`-Gesamtwert unterscheidet sich vom 3c/3d-Wert
+(`d85195f2…`) — das Plugin schreibt zwischen den Sessions daran; verglichen wird das Paar vor/nach diesem
+Increment, und das ist identisch. Build-Falle wieder gemessen: `eclipseEditFile` an einer Hauptquelle
+hinterläßt Lombok-Stümpfe in `target/classes` → Maven ohne `clean` läuft sie und der Server gibt POST 500
+„Unresolved compilation problems"; jeder Lauf hier mit `clean`.
+
+**Increment 3 ist damit durch (3a–3e, je eigener Commit, jedes Gate gemeldet). Nicht gebaut: UC-WP-39/40
+(= 3f, auf Jons eigenen Plan wartend), UC-WP-8/9/10 (Inc 4), 11/12/13 + Kacheln/Clear (Inc 5), UC-WP-25
+(Inc 6).**
+
+
 
 ## 3.9 Gates, Beweispflichten, TABU (für alle fünf Increments)
 
