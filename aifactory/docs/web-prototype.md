@@ -59,6 +59,11 @@ und keine Weiterleitung: kein Request darf in einer Schleife aus Weiterleitungen
 Kein Upload, keine Ordner-Auswahl, kein Import eines bestehenden Verzeichnisses: Projekt hinzufügen
 heißt Git-URL eintragen und klonen.
 
+Ein **bereits ausgecheckter** Ordner von der Platte wird im MVP **nicht** adoptiert — Entscheidung
+2026-10-26 („nicht wichtig, erstmal nur über den Checkout"): wer einen Arbeitsstand in der Factory
+sehen will, trägt die URL ein und arbeitet in der Kopie. Eine spätere Adoption bräuchte eine Änderung
+an dieser Regel **und** an R-WP-19 (Entfernen dürfte einen fremden Ordner nie löschen).
+
 #### UC-WP-2 — addProjectClonesBeforeListing ✅
 - GIVEN die Projects-View WHEN der Nutzer eine Git-URL einträgt THEN wird geklont und das Projekt
   erscheint **erst nach erfolgreichem Clone** in der Liste.
@@ -148,9 +153,37 @@ Keine Agent-Auswahl, keine weiteren Built-in- oder Custom-Agenten
 ([PR-1](index.md)). Delegationen an Da Thinka/Da Mek/Da Dok/Da Sniffa sind als Tool-Zeilen im Chat
 sichtbar — Parität zum Plugin.
 
+**Herkunft je Zeile.** Der Core liefert die Herkunft einer Nachricht mit (Agenten-Name im
+Message-Modell, Proposal `agent-origin-proposal.md`): Jon-Zeilen und die finalen Antworten von
+Team-Mitgliedern tragen den Namen dessen, der sie erzeugt hat; eine Zeile ohne Agenten-Bezug trägt
+**keinen** Namen statt eines erfundenen (kein „System", kein „Peon"). Nutzer-Zeilen tragen den Namen
+des Menschen, sobald es ihn gibt (R-WP-17).
+
+**Man sieht nur Jon und die finalen Antworten seines Teams** — nicht die Unterhaltung eines
+Teammitglieds mit sich selbst: dessen Denk-, Werkzeug- und Zwischenschritte erscheinen im Chat
+**nie**, weder live noch im Verlauf. Es gibt genau **einen** Gesprächsstrang.
+
 #### UC-WP-6 — chatAlwaysGoesToJon ❌
 - GIVEN der Chat-View WHEN der Nutzer eine Nachricht sendet THEN antwortet Jon; ein Agenten-Wechsel
   ist nirgends möglich.
+
+#### UC-WP-39 — everyLineCarriesItsAuthor ❌
+- GIVEN eine Antwort von Jon oder von einem Team-Mitglied WHEN sie im Chat erscheint THEN nennt die
+  Zeile den Agenten-Namen, der sie erzeugt hat; hat eine Zeile keinen Agenten-Bezug, trägt sie keinen
+  Namen statt eines erfundenen.
+- GIVEN ein Neustart WHEN der Verlauf wieder gelesen wird THEN trägt jede Zeile weiterhin ihre
+  Herkunft (die Herkunft der wiederhergestellten Zeilen folgt aus dem Besitzer des Verlaufs, nicht aus
+  einer zweiten Ablage).
+
+#### UC-WP-40 — onlyFinalAnswersFromTheTeam ❌
+- GIVEN Jon delegiert an ein Team-Mitglied WHEN der Chat die Delegation zeigt THEN steht die **finale**
+  Antwort dieses Mitglieds als Zeile mit seinem Namen im Chat.
+- GIVEN dieselbe Delegation WHEN man den Chat betrachtet THEN sind die Zwischenschritte des
+  Teammitglieds (Denken, Werkzeug-Aufrufe, Teilantworten) **nicht** sichtbar — es gibt genau einen
+  Gesprächsstrang, keinen zweiten Verlauf und keinen Mitschnitt je Agent.
+- GIVEN ein Reload nach einer Delegation WHEN der Chat neu aufgebaut wird THEN ist die finale Antwort
+  des Team-Mitglieds weiterhin Teil des Verlaufs (Live-Zeilen ausgenommen, R-WP-11) — ⏳ Mechanismus
+  offen ([Open Points](open-points.md)).
 
 ### R-WP-5 — Antworten erscheinen laufend ❌
 

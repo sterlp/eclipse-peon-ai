@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 
 import App from '../App'
 import { ChatView } from './ChatView'
@@ -237,4 +237,44 @@ test('droppedStreamReopensAndReadsHistory', async () => {
   expect(chat.countOf('/messages', 'GET')).toBeGreaterThanOrEqual(2)
   expect(screen.getAllByTestId('chat-line-user')).toHaveLength(1)
   expect(screen.getByText('wo liegen die Dateien?')).toBeInTheDocument()
+})
+
+
+// UC-WP-16
+test('oneChatPerProject', async () => {
+  const chat = stubChat({ messages: [QUESTION, ANSWER], projects: [project()] })
+  render(<App />)
+  expect(await screen.findByLabelText('Git-URL')).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: 'demo' }))
+  const opened = await screen.findByRole('region', { name: 'Chat' })
+  await screen.findByText(ANSWER.text)
+
+  // the only control the chat has is the one that writes into THIS conversation
+  const controls = within(opened)
+    .queryAllByRole('button')
+    .map(control => control.textContent?.trim() ?? '')
+  expect(controls).toEqual(['Senden'])
+  expect(controls.filter(label => /neue|gespräch|dialog|verlauf|wechseln|öffnen|clear|lösch/i.test(label))).toEqual(
+    [],
+  )
+
+  fireEvent.click(screen.getByRole('tab', { name: 'Projekte' }))
+  expect(screen.queryByTestId('chat-log')).toBeNull()
+
+  // the list re-reads itself on mount, so the project has to be found again before it can be opened
+  fireEvent.click(await screen.findByRole('button', { name: 'demo' }))
+  const again = await screen.findByRole('region', { name: 'Chat' })
+  await screen.findByText(ANSWER.text)
+
+  // the same conversation, not a second one: one log, both lines once, one single read path
+  expect(screen.getAllByTestId('chat-log')).toHaveLength(1)
+  expect(within(again).getAllByTestId('chat-line-user')).toHaveLength(1)
+  expect(within(again).getAllByTestId('chat-line-jon')).toHaveLength(1)
+  expect(within(again).getByText(QUESTION.text)).toBeInTheDocument()
+  const reads = chat.calls
+    .filter(call => call.method === 'GET' && call.path.endsWith('/messages'))
+    .map(call => call.path)
+  expect(reads.length).toBeGreaterThanOrEqual(2)
+  expect([...new Set(reads)]).toEqual(['/api/projects/demo-1a2b3c4/messages'])
 })

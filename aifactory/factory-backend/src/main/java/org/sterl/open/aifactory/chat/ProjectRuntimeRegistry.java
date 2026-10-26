@@ -6,11 +6,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import org.sterl.open.aifactory.config.FactoryConfigService;
 import org.sterl.open.aifactory.project.ProjectNotFoundException;
+import org.sterl.open.aifactory.project.ProjectRemoved;
 import org.sterl.open.aifactory.project.ProjectService;
 import org.sterl.open.aifactory.project.Project;
 import org.sterl.open.aifactory.shared.FactoryHome;
@@ -66,6 +68,17 @@ public class ProjectRuntimeRegistry {
 
     public List<ChatLine> history(String projectId) {
         return runtime(projectId).history();
+    }
+
+    /**
+     * A removed project loses its runtime: an agent of a project that no longer exists would keep his
+     * memory and his queue alive for nothing. Only the registration goes — {@code state/<id>} stays,
+     * because R-WP-19 names exactly two things a removal deletes, and the chat of a project added again
+     * is still that one project's chat (R-WP-11).
+     */
+    @EventListener
+    void onProjectRemoved(ProjectRemoved removed) {
+        runtimes.remove(removed.projectId());
     }
 
     /** The runtime of one project, built on first use; for tests and the team view of Inc 5. */

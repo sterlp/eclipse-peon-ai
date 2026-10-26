@@ -23,6 +23,7 @@ import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -72,13 +73,15 @@ public class ProjectService {
 
     private final FactoryHome home;
     private final GitService git;
+    private final ApplicationEventPublisher events;
     private final ObjectMapper mapper;
     private final Path registryFile;
     private final ReentrantLock writeLock = new ReentrantLock();
 
-    public ProjectService(FactoryHome home, GitService git) {
+    public ProjectService(FactoryHome home, GitService git, ApplicationEventPublisher events) {
         this.home = home;
         this.git = git;
+        this.events = events;
         this.registryFile = home.registryFile();
         this.mapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
     }
@@ -149,6 +152,9 @@ public class ProjectService {
      * Deletes the registry entry and its checkout (UC-WP-28). The path stored in the registry is only
      * ever <em>compared</em>, never obeyed: what gets deleted is {@code <home>/projects/<name>} and
      * nothing else (UC-WP-29).
+     *
+     * <p>Once both are gone it publishes {@link ProjectRemoved} — a fact about itself and nothing more.
+     * Last, so nobody can rebuild what was just dropped from a request that still saw the entry.</p>
      */
     public void remove(String id) {
         writeLock.lock();
@@ -164,6 +170,7 @@ public class ProjectService {
             writeLock.unlock();
         }
         deleteTree(checkout);
+        events.publishEvent(new ProjectRemoved(id));
     }
 
     /** The stored path must be exactly the projects-dir path of that project's name. */

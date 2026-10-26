@@ -32,8 +32,11 @@ class ProjectServiceTest {
 
     private final RecordingGit git = new RecordingGit();
 
+    /** Stands in for the application context: records what a removal announces to the factory. */
+    private final List<Object> published = new ArrayList<>();
+
     private ProjectService newService() {
-        return new ProjectService(FactoryHome.of(homeDir), git);
+        return new ProjectService(FactoryHome.of(homeDir), git, published::add);
     }
 
     @Test
@@ -140,6 +143,21 @@ class ProjectServiceTest {
 
         assertThat(service.projects()).isEmpty();
         assertThat(checkout).doesNotExist();
+    }
+
+    /**
+     * The removal is a fact the registry announces, not a call into whoever happens to keep per-project
+     * state — one event for one removal, and none at all for a removal that never happened.
+     */
+    @Test
+    void removeAnnouncesTheFactAndNothingElse() {
+        ProjectService service = newService();
+        Project added = service.add(URL).project();
+
+        service.remove(added.id());
+        assertThatThrownBy(() -> service.remove(added.id())).isInstanceOf(ProjectNotFoundException.class);
+
+        assertThat(published).containsExactly(new ProjectRemoved(added.id()));
     }
 
     @Test

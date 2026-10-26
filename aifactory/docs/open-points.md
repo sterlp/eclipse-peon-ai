@@ -4,6 +4,14 @@ Status: ❓ offen · ⏳ selbst entschieden (Rückversicherung steht aus) · �
 Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entfällt.
 
 ## ⏳ im Nachtzyklus entschieden (2026-10-25) — bitte überfliegen
+* **⏳ Finale Team-Antworten müssen den Reload überleben** ([UC-WP-40](web-prototype.md), Entscheidung
+  2026-10-26: „wir sehen nur die finalen Antworten der Slaves") — der Core liefert die Herkunft je
+  Nachricht, aber `PoDelegateTool` gibt das Ergebnis als Werkzeug-Ergebnis in Jons Memory zurück, nicht
+  als eigene Nachricht. Damit die finale Antwort nach einem Reload noch da ist, muß sie aus Jons Verlauf
+  rekonstruierbar sein (Werkzeug-Ergebnis der Delegation mit Agenten-Zuordnung) oder der Core legt sie
+  mit Herkunft ab. Abgeleitet aus R-WP-11 („kein zweiter Speicher"); entschieden wird der Weg in Inc 3f,
+  nicht durch den Dev-Agenten. *Andersfall:* nur live sichtbar ⇒ UC-WP-40 GIVEN 3 wird gestrichen.
+
 
 * **⏳ Config-Quelle ist eine eigene Datei der Factory** (`~/.aifactory/config.properties`, Keys auch
   aus Env) — die Annahme "wir lesen den Bestand aus `~/.peon`" war **falsch**: der Plugin-Bestand liegt
@@ -100,6 +108,12 @@ Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entf�
   Regel. *Andersfall:* „Entfernen heißt Tabula rasa" ⇒ `state/<id>` mitlöschen, dann aber mit Rückfrage.
 * **⏳ Wiederhergestellte Verlaufszeilen tragen keine Zeit** — der Core-History-Bestand kennt keinen
   Zeitstempel; eine eigene Zeit-Datei wäre ein zweiter Speicher
+* **⏳ Kein Deep-Link in eine Ansicht** — es gibt genau drei Views ohne Adresse (R-WP-1/PR-1, kein
+  SPA-Routing): ein Browser-Reload landet in der Projects-View, der Nutzer öffnet das Projekt erneut und
+  sieht den vollständigen Verlauf. Das ist mit [R-WP-11](web-prototype.md) vereinbar (der **Chat** überlebt,
+  die offene Ansicht nicht). *Andersfall:* „Reload soll im Chat bleiben" ⇒ Router + Regel für unbekannte
+  Pfade (eigene Story).
+
   ([R-WP-11](web-prototype.md)). Live-Zeilen zeigen die Zeit, der wiederhergestellte Verlauf nicht.
   *Andersfall:* Zeit im Core-History-Format = Core-Story.
 
@@ -126,14 +140,6 @@ Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entf�
   den Chat dieses Agenten, **nur lesbar**) — [R-WP-7](web-prototype.md) kennt die Kachel mit Kontext,
   Status, Clear, Compact, aber keinen Slide-out. Empfehlung: Inkrement 5 baut die Kacheln wie spezifiziert,
   der Slide-out folgt direkt danach als eigenes Inkrement (er braucht die History-Zugriffe je Agent).
-* **❓ Projekt, das schon ausgecheckt ist** (2026-10-25, vom User angestoßen) — „1 Projekt = 1 Git-URL,
-  das kann auch schon ausgecheckt sein". Gemeint sein kann (a) *von der Factory* geklont → wiederverwenden
-  (ist gebaut: UC-WP-3) oder (b) ein **Checkout, der schon woanders auf der Platte liegt** (z. B. seine
-  eigene Arbeitskopie) → dann bräuchte es einen Weg, diesen Ordner anzugeben, und
-  [R-WP-2](web-prototype.md) („kein Import eines bestehenden Verzeichnisses") müsste weichen.
-  **Nichts daran ist entschieden; Inc 2 wird dadurch nicht blockiert.** Folge bei (b): Identität bleibt
-  die URL, und `Entfernen` dürfte einen fremden Checkout **niemals** löschen (R-WP-19 gilt nur für
-  Clone der Factory).
 * **❓ „jonkolo / Openclaw" (2026-10-25 17:11)** — eine hereingekommene Nachricht nannte
   `/Users/sterlp/sideProjects/jonkolo` („Openclaw JS, fast alles da, nur die Tools fehlen"); der Pfad
   existiert nicht und der User kennt den Namen nicht. Quelle der Nachricht ungeklärt → **Punkt liegt,
