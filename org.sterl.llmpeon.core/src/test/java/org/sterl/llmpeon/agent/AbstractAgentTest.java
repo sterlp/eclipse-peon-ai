@@ -111,6 +111,65 @@ class AbstractAgentTest {
     }
 
     /**
+     * The fire-and-forget queue path: a call() arriving while a turn is running must queue and must
+     * leave that turn's working flag alone — a shared agent (web front-end, delegate) sends from its
+     * own thread per input and never through queueMessage(). Mutation guard: a finally that releases
+     * the flag without the acquired check clears the running turn's flag, so the next caller wins
+     * the CAS and overtakes it with a second provider request on the same memory; both the
+     * still-working assertion and the no-overtake assertion below go red.
+     */
+    @Test
+    void callWhileWorkingKeepsRunningTurnsWorkingFlag() throws InterruptedException {
+        // GIVEN — a turn parked inside the provider call, so the flag is provably held
+        CountDownLatch firstRequest = new CountDownLatch(1);
+        CountDownLatch furtherRequest = new CountDownLatch(1);
+        CountDownLatch canProceed = new CountDownLatch(1);
+
+        var config = LlmConfig.builder().model("mock").build();
+        var mockModel = streamMock.buildMock(r -> {
+            if (streamMock.getCallCount() == 1) firstRequest.countDown();
+            else furtherRequest.countDown();
+            try {
+                canProceed.await(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return ChatResponse.builder().aiMessage(AiMessage.aiMessage("OK")).build();
+        });
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+
+        var runningTurn = new Thread(() -> agent.call("first input", monitor -> {}));
+        runningTurn.start();
+        assertThat(firstRequest.await(5, TimeUnit.SECONDS)).isTrue();
+
+        // WHEN — a second input arrives while the first turn still holds the flag
+        assertThat(agent.call("second input", monitor -> {})).isNull();
+
+        // THEN — it waited instead of running: the turn still owns the flag
+        assertThat(agent.isWorking()).isTrue();
+        assertThat(agent.getQueuedMessageCount()).isEqualTo(1);
+
+        // AND — a further input joins the same queue instead of overtaking the running turn
+        var third = new Thread(() -> agent.call("third input", monitor -> {}));
+        third.start();
+        third.join(2_000);
+        assertThat(furtherRequest.await(250, TimeUnit.MILLISECONDS))
+                .as("no provider request overtakes the running turn").isFalse();
+        assertThat(streamMock.getCallCount()).as("still exactly one request at the provider")
+                .isEqualTo(1);
+        assertThat(agent.isWorking()).isTrue();
+
+        // AND — after its turn the same agent answers what waited, marked as queued (Rule 9)
+        canProceed.countDown();
+        runningTurn.join(10_000);
+        assertThat(streamMock.getCallCount()).as("the queued burst is answered in one follow-up")
+                .isEqualTo(2);
+        assertThat(extractUserTexts(agent.getMemory().getCopy()))
+                .anySatisfy(text -> assertThat(text).contains("[Queued Message]", "second input",
+                        "third input"));
+    }
+
+    /**
      * Rule 4: Abort — doCall adds message to memory before LLM call, so the failing message
      * is already in memory. handleAbortAndDrain only drains messages still sitting in queue.
      */

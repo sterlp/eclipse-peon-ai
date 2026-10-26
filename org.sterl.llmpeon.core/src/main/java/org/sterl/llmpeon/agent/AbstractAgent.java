@@ -228,9 +228,13 @@ public abstract class AbstractAgent implements AiAgent {
     @Override
     public ChatResponse call(String initialMessage, AiMonitor monitor) {
         monitor = AiMonitor.nullSafety(monitor);
+        // Self-enforcing guard: prevents concurrent invocations regardless of caller thread.
+        // Same acquired-guard as compact(): a queued call must not release the working flag of
+        // the turn that already holds it, else the next caller wins the CAS and runs parallel
+        // on the same memory instead of queueing.
+        boolean acquired = working.compareAndSet(false, true);
         try {
-            // Self-enforcing guard: prevents concurrent invocations regardless of caller thread
-            if (!working.compareAndSet(false, true)) {
+            if (!acquired) {
                 messageQueue.add(initialMessage); // already running: queue it
                 return null;
             }
@@ -272,7 +276,7 @@ public abstract class AbstractAgent implements AiAgent {
 
             return lastResponse;
         } finally {
-            working.set(false);
+            if (acquired) working.set(false);
         }
     }
 
