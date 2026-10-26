@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { AppTabs, type ViewName } from './app.tabs'
 import { ChatPage } from '../chat/chat.page'
 import { ConfigPage } from '../config/config.page'
+import { ProjectFiles } from '../project/project.files'
 import { ProjectPage } from '../project/project.page'
 import type { Project } from '../shared/dto'
 import '../styles.css'
@@ -27,7 +28,13 @@ export default function AppShell() {
             }}
           />
         )}
-        {view === 'chat' && <ChatPage project={selected} />}
+        {view === 'chat' && (
+          <ChatPage
+            project={selected}
+            // keyed: another project is another checkout, so the file area starts closed at its own root
+            files={selected !== null ? <ProjectFiles key={selected.id} project={selected} /> : undefined}
+          />
+        )}
         {view === 'settings' && <ConfigPage />}
       </main>
     </div>

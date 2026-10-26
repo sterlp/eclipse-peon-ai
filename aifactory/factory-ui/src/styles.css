@@ -185,3 +185,98 @@ button {
   color: #b3261e;
   margin: 0 0 0.75rem;
 }
+
+
+/* Datei-Bereich: Slide-Over über Checkout und TMP — lesen, sonst nichts (R-WP-14). */
+.chat-files {
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: min(24rem, 92vw);
+  padding: 1rem 1.25rem 2rem;
+  overflow-y: auto;
+  background: var(--bg);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--shadow);
+
+  .chat-files-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .chat-files-project {
+    font-weight: 650;
+    color: var(--text-h);
+    overflow-wrap: anywhere;
+  }
+
+  .chat-files-roots {
+    display: flex;
+    gap: 0.25rem;
+
+    button {
+      border: 1px solid transparent;
+      border-radius: 0.4rem;
+      padding: 0.2rem 0.5rem;
+      background: none;
+      color: var(--text);
+      cursor: pointer;
+
+      &.active {
+        border-color: var(--border);
+        background: var(--code-bg);
+        color: var(--text-h);
+      }
+    }
+  }
+
+  .chat-files-path {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--text);
+    margin: 0 0 0.5rem;
+    overflow-wrap: anywhere;
+  }
+
+  .chat-files-list {
+    list-style: none;
+    margin: 0 0 0.75rem;
+    padding: 0;
+
+    button {
+      border: none;
+      background: none;
+      padding: 0.15rem 0;
+      color: var(--text-h);
+      cursor: pointer;
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      text-align: left;
+      overflow-wrap: anywhere;
+
+      &.directory {
+        color: var(--accent);
+      }
+    }
+  }
+
+  .chat-files-text {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+    padding: 0.5rem 0.6rem;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .chat-files-error {
+    color: #b3261e;
+    margin: 0 0 0.75rem;
+    overflow-wrap: anywhere;
+  }
+}

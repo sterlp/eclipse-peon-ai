@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { FormEvent } from 'react'
+import type { FormEvent, ReactNode } from 'react'
 
 import { listMessages, sendMessage, type ChatMessage, type ChatStreamEvent } from './chat.client'
 import { ChatComposer } from './chat.composer'
@@ -10,6 +10,12 @@ import type { Project } from '../shared/dto'
 
 interface Props {
   project: Project | null
+  /**
+   * Anything the shell wants beside the chat — today the file area of `project`. It is drawn outside
+   * the chat region and this component knows nothing about it, so `chat` keeps not importing
+   * `project` (§4.3.4 of the increment).
+   */
+  files?: ReactNode
 }
 
 /** How long the view waits before it asks again — long enough not to hammer a restarting server. */
@@ -26,7 +32,7 @@ const RECONNECT_MS = 500
  *
  * The page holds the state; {@link ChatLog} and {@link ChatComposer} only draw it.
  */
-export function ChatPage({ project }: Props) {
+export function ChatPage({ project, files }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [outgoing, setOutgoing] = useState<string[]>([])
   const [teamAnswers, setTeamAnswers] = useState<ChatMessage[]>([])
@@ -149,17 +155,20 @@ export function ChatPage({ project }: Props) {
   }
 
   return (
-    <section className="view" aria-label="Chat">
-      <h1>Chat</h1>
-      <p className="hint">Projekt: {project.name}</p>
-      <ChatLog messages={messages} outgoing={outgoing} teamAnswers={teamAnswers} live={live} toolLines={toolLines} />
-      {error !== null && (
-        <p className="chat-error" data-testid="chat-error" role="alert">
-          {error}
-        </p>
-      )}
-      <ChatComposer draft={draft} inputRef={input} onDraftChange={setDraft} onSubmit={submit} />
-    </section>
+    <>
+      <section className="view" aria-label="Chat">
+        <h1>Chat</h1>
+        <p className="hint">Projekt: {project.name}</p>
+        <ChatLog messages={messages} outgoing={outgoing} teamAnswers={teamAnswers} live={live} toolLines={toolLines} />
+        {error !== null && (
+          <p className="chat-error" data-testid="chat-error" role="alert">
+            {error}
+          </p>
+        )}
+        <ChatComposer draft={draft} inputRef={input} onDraftChange={setDraft} onSubmit={submit} />
+      </section>
+      {files}
+    </>
   )
 }
 

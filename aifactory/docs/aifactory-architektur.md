@@ -94,7 +94,7 @@ sequenceDiagram
 * **Ein `ProjectRuntime` je Projekt**, `ChatStreamRegistry` hält **keine** Nachrichten — nur die
   Zuhörer je Projekt und den Broadcast. Wer den Verlauf braucht, liest ihn aus dem Core-History-Store
   (`home.stateDir(id)`), nicht aus einem zweiten Speicher.
-* **Vier Ereignis-Namen, jeder mit Besitzer:** `partial` (ein Token-Delta), `tool` (eine Werkzeug-/
+* **Fünf Ereignis-Namen, jeder mit Besitzer:** `partial` (ein Token-Delta), `tool` (eine Werkzeug-/
   Problem-Zeile), `delegated` (die **finale** Antwort eines Team-Mitglieds, live), `done`, `error`. Der
   Core stempelt die Herkunft am Ort der Erzeugung (`origin`, Kern-Id); die Fabrik filtert und benennt.
   `delegated` existiert, weil nach dem Filter die Team-Antwort über keinen anderen Kanal live erreichbar
@@ -110,8 +110,34 @@ sequenceDiagram
   `config` und `project` fragen; `config` liefert die `LlmConfig` pro Turn (UC-WP-24 GIVEN 3), `project`
   den Pfad. Niemand sonst hält Agenten-Instanzen.
 
+### Datei-Bereich: eine Lese-Kante im `project`, kein vierter Chat-Pfad (Design für Inc 4b)
 
-## Abbildung Core → Factory
+```mermaid
+sequenceDiagram
+  participant B as Browser (Slide-out im Chat-View)
+  participant F as ProjectFilesController<br/>(External Facade, Package project)
+  participant P as ProjectService
+  participant T as TmpRoots (shared)
+  participant D as Disk
+  B->>F: GET /projects/{id}/files?root=checkout|tmp&path=rel
+  F->>P: Checkout-Wurzel
+  F->>T: System-TMP-Wurzel
+  F->>D: Listing oder Datei lesen (real path geprüft)
+  F-->>B: JSON — Einträge bzw. Text + Größe, nie ein Schreibweg
+```
+
+* **Nur `GET`, zwei Wurzeln, ein Endpunkt.** `root=checkout` (Default) oder `root=tmp`; `path` ist
+  **relativ** zur Wurzel, leer heißt Wurzel selbst. Antwort ist eine Verzeichnisliste oder der Text
+  einer Datei (binär/zu groß ⇒ Kennzeichnung statt Inhalt). Es gibt **kein** `PUT`/`POST` in diesem
+  Bereich — geschrieben wird dort nie (R-WP-14, UC-WP-19).
+* **Der Guard sitzt in der Fassade.** Der Controller löst Pfad und Wurzel auf, normalisiert und
+  vergleicht **real path gegen real path** (`toRealPath`); `..`, absolute Pfade und hinausführende
+  Symlinks enden damit als Fehler, nicht als Leck (UC-WP-42). Kein Agent und kein Tool ist beteiligt:
+  Lesen ist keine Agenten-Fähigkeit, deshalb wird auch kein `WriteValidator` gefragt.
+* **Die Chat-Kanten bleiben drei.** Dieser Endpunkt gehört `project` (es besitzt die Pfade), nicht
+  `chat`; die Chat-Oberfläche hängt ihn nur ein. Im UI heißt die Komponente `project`
+  (`project.files.tsx` + `files.client.ts`), der Chat-View bekommt sie als Slot von `app` — die
+  Abhängigkeitsrichtung bleibt `app` → `chat` · `project`, `chat` kennt `project` nicht.
 
 
 ## UI-Aufbau — dieselben Komponenten wie im Backend (Entscheidung 2026-10-26)
@@ -149,6 +175,8 @@ factory-ui/
   ausgeliefert wird, und beides wird beim Lesen verwechselt.
 * **Abhängigkeitsrichtung wie im Backend:** `app` kennt die Komponenten, `shared` kennt keine; eine
   Komponente importiert nie aus einer anderen außer `shared` (Ausnahme: `app` als Verdrahtung).
+
+## Abbildung Core → Factory
 
 | Braucht die Factory | nutzt sie |
 |---|---|
