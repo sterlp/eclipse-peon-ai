@@ -1,2 +1,4 @@
-code structure should follow skill: component architecture.
-JavaDoc must earn its tokens: document only non-obvious invariants, constraints, and rationale. Never duplicate existing docs—link to them instead.
+- code structure should follow skill: component architecture.
+- JavaDoc must earn its tokens: document only non-obvious invariants, constraints, and rationale. Never duplicate existing docs—link to them instead.
+- Write large files in chunks of about 5,000 tokens each. Insert a placeholder marker at the end of each chunk, then replace it with the next chunk.
+- Plans are structured as vertical increments, each resulting in running software.
