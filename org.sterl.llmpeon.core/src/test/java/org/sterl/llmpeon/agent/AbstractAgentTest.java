@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -35,6 +36,7 @@ import org.sterl.llmpeon.memory.ThreadSafeMemory;
 import org.sterl.llmpeon.queuedmessages.UserMessageQueue;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
+import org.sterl.llmpeon.shared.OnPartialAiResponse;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 
@@ -1486,4 +1488,37 @@ class AbstractAgentTest {
         assertThat(countOccurrences(prompt, TaggedResult.INFO)).isOne();
         assertThat(prompt).contains("env body text");
     }
+    /**
+     * The monitor handed to an agent is wrapped at once, so a listener never guesses who spoke: every
+     * streaming chunk of the turn carries the agents core id, and the completion names the agent that
+     * finished while the unnamed one still fires (plugin parity).
+     */
+    @Test
+    void doCallStampsMonitorWithAgentName() {
+        var config = LlmConfig.builder().model("mock").build();
+        var mockModel = streamMock.buildStreamingMock(
+                r -> ChatResponse.builder().aiMessage(AiMessage.from("ANTWORT")).build(), "ANT", "WORT");
+        var agent = new AiDevAgent(new ConfiguredChatModel(config, mockModel), new ToolService());
+
+        List<OnPartialAiResponse> chunks = new ArrayList<>();
+        List<String> announcements = new ArrayList<>();
+        List<Duration> completions = new ArrayList<>();
+        AiMonitor monitor = new AiMonitor() {
+            @Override public void onChatResponse(SimpleMessage m) {}
+            @Override public void onStreamingChunk(OnPartialAiResponse r) { chunks.add(r); }
+            @Override public void onCallCompleted(ChatResponse response, Duration duration) { completions.add(duration); }
+            @Override public void onAgentCallCompleted(String agentName, ChatResponse response, Duration duration) { announcements.add(agentName); }
+        };
+
+        // WHEN
+        agent.call("hello", monitor);
+
+        // THEN
+        assertThat(chunks).isNotEmpty();
+        assertThat(chunks).allSatisfy(chunk -> assertThat(chunk.origin()).isEqualTo(AiDevAgent.NAME));
+        assertThat(chunks).anySatisfy(chunk -> assertThat(chunk.type()).isEqualTo(OnPartialAiResponse.Type.ANSWER));
+        assertThat(announcements).containsExactly(AiDevAgent.NAME);
+        assertThat(completions).as("onCallCompleted stays, nobody has to migrate").hasSize(1);
+    }
+
 }

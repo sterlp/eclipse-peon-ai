@@ -26,6 +26,7 @@ import org.sterl.llmpeon.queuedmessages.UserMessageQueue;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.CallStats;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
+import org.sterl.llmpeon.shared.OriginMonitor;
 import org.sterl.llmpeon.shared.StringUtil;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
 import org.sterl.llmpeon.tool.ToolPolicy;
@@ -314,7 +315,7 @@ public abstract class AbstractAgent implements AiAgent {
 
     /** Execute a single LLM+tool turn for the given message. */
     protected ChatResponse doCall(String message, AiMonitor monitor) {
-        monitor = AiMonitor.nullSafety(monitor);
+        monitor = OriginMonitor.of(monitor, getName()); // every line of this turn carries its author; a viewer decides
         preTurnCompact(monitor); // R-CC-20.2: over 95 % of the raw budget, before the fresh message enters
         // Inject turn-scoped context on every turn (idempotent via contains-check)
         var userMessages = renderTurnContext(memory, turnContextSupplier, monitor);
@@ -341,12 +342,17 @@ public abstract class AbstractAgent implements AiAgent {
                     .build()
                 );
 
-        monitor.onCallCompleted(response, Duration.between(start, Instant.now()));
+        var duration = Duration.between(start, Instant.now());
+        monitor.onCallCompleted(response, duration);
+        // Named, so a nested member's completion is never read as the outer agent's: the one that
+        // finished says so itself. onCallCompleted keeps firing unchanged for every existing listener.
+        monitor.onAgentCallCompleted(getName(), response, duration);
         return response;
     }
     
     /** Execute a single LLM+tool turn for the given message. */
     protected ChatResponse asyncCall(String message, AiMonitor monitor) {
+        monitor = OriginMonitor.of(monitor, getName()); // same stamp as doCall — the paths are duplicates on purpose (F2)
         preTurnCompact(monitor); // R-CC-20.2: over 95 % of the raw budget, before the fresh message enters
         // Inject turn-scoped context on every turn (idempotent via contains-check)
         var userMessages = renderTurnContext(memory, turnContextSupplier, monitor);
@@ -404,8 +410,9 @@ public abstract class AbstractAgent implements AiAgent {
         // ADR-0053: the shared duration/wall-time helper, started at the compact's visible start so
         // the end line measures everything the user waits for — staging, call and re-seed.
         var callStats = CallStats.start();
-        // nullSafety up front: the FAILED_EMPTY onProblem path must never have a null monitor
-        var mon = AiMonitor.nullSafety(monitor);
+        // null-safe and stamped up front: the FAILED_EMPTY onProblem path must never have a null
+        // monitor, and a slave's compact line must not read as the delegating agent's
+        var mon = OriginMonitor.of(monitor, getName());
         // User-triggered compact acquires the working flag (R-CT-1); an in-loop compact runs
         // inside a turn that already holds it, so the CAS fails and the flag is left untouched.
         boolean acquired = working.compareAndSet(false, true);

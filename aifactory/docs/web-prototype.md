@@ -187,7 +187,7 @@ genau **einen** Gesprächsstrang.
   des Team-Mitglieds weiterhin Teil des Verlaufs (Live-Zeilen ausgenommen, R-WP-11) — ⏳ Mechanismus
   offen ([Open Points](open-points.md)).
 
-### R-WP-5 — Antworten erscheinen laufend ❌
+### R-WP-5 — Antworten erscheinen laufend ✅
 
 Der Turn streamt in den Chat, ohne dass der Nutzer aktualisieren muss. Nebenläufigkeit, Cancel und
 Queue sind die des Cores — die Web-Schicht erfindet keinen zweiten Turn-Pfad.
@@ -196,7 +196,7 @@ Queue sind die des Cores — die Web-Schicht erfindet keinen zweiten Turn-Pfad.
 - GIVEN eine sendete Nachricht WHEN Jon antwortet THEN wächst die Antwort sichtbar und der
   Tool-Fortschritt erscheint als Zeile.
 
-#### UC-WP-41 — slowReaderNeverStopsTheTurn ❌
+#### UC-WP-41 — slowReaderNeverStopsTheTurn ✅
 - GIVEN ein Zuschauer, der seine Verbindung nicht mehr liest WHEN ein Turn läuft THEN wird der Turn
   dadurch nicht aufgehalten und alle anderen Zuschauer sehen die Zeilen weiter — ein Zuschauer ist
   keine Bremse für das Projekt.

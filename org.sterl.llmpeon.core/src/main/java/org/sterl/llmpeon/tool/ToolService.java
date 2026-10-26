@@ -270,7 +270,20 @@ public class ToolService {
         } else {
             result = executor.run(tr, req);
         }
-        return ToolExecutionResultMessage.from(tr, result);
+        var message = ToolExecutionResultMessage.from(tr, result);
+        var attributes = resultAttributes(executor);
+        return attributes.isEmpty() ? message : message.toBuilder().attributes(attributes).build();
+    }
+
+    /**
+     * What the tool attached for the model-facing result
+     * ({@link org.sterl.llmpeon.tool.tools.AbstractTool#attachResultAttribute}) — read after the run,
+     * which is the only point where the call's own values are still in reach. Empty for every tool
+     * that attaches nothing, so those results stay exactly the object they always were.
+     */
+    private static Map<String, Object> resultAttributes(SmartToolExecutor executor) {
+        if (executor == null) return Map.of();
+        return executor.getTool() instanceof AbstractTool tool ? tool.resultAttributes() : Map.of();
     }
 
     /**

@@ -82,7 +82,7 @@ sequenceDiagram
   C->>K: subscribe(projectId)
   R->>J: call(text, monitor)
   J-->>K: Monitor-Events
-  K-->>B: SSE (partial · tool · done)
+  K-->>B: SSE (partial · tool · delegated · done)
 ```
 
 * **Drei Kanten, kein vierter Pfad:** `GET …/messages` (Verlauf), `POST …/messages` (Turn anstoßen,
@@ -94,6 +94,18 @@ sequenceDiagram
 * **Ein `ProjectRuntime` je Projekt**, `ChatStreamRegistry` hält **keine** Nachrichten — nur die
   Zuhörer je Projekt und den Broadcast. Wer den Verlauf braucht, liest ihn aus dem Core-History-Store
   (`home.stateDir(id)`), nicht aus einem zweiten Speicher.
+* **Vier Ereignis-Namen, jeder mit Besitzer:** `partial` (ein Token-Delta), `tool` (eine Werkzeug-/
+  Problem-Zeile), `delegated` (die **finale** Antwort eines Team-Mitglieds, live), `done`, `error`. Der
+  Core stempelt die Herkunft am Ort der Erzeugung (`origin`, Kern-Id); die Fabrik filtert und benennt.
+  `delegated` existiert, weil nach dem Filter die Team-Antwort über keinen anderen Kanal live erreichbar
+  wäre — die Alternative (Mitglieder-Denken durchreichen) verletzt R-WP-4, die andere (Antwort erst nach
+  `done` aus dem Verlauf) verletzt UC-WP-40 GIVEN 1.
+* **Die finale Team-Antwort ist eine eigene Tatsache, kein „letzte Antwort eines Agenten".** Sie entsteht
+  dort, wo das Delegations-Werkzeug sie an Jon zurückgibt, und liegt als Attribut am Werkzeug-Ergebnis in
+  **Jons** History-Datei (`attributes` gehen nicht ans Modell) — derselbe Store, kein Sidecar, und damit
+  auch nach einem Neustart lesbar. `done` kommt **nur** vom äußersten Agenten (`onAgentCallCompleted`);
+  ein Mitglieds-Ende ist kein Turn-Ende.
+
 * **Komponentenzuschnitt:** `chat` besitzt Controller + `ProjectRuntime` + `ChatStreamRegistry` und darf
   `config` und `project` fragen; `config` liefert die `LlmConfig` pro Turn (UC-WP-24 GIVEN 3), `project`
   den Pfad. Niemand sonst hält Agenten-Instanzen.

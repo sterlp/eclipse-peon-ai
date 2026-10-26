@@ -30,9 +30,11 @@ import org.sterl.llmpeon.model.CompactResult;
 import org.sterl.llmpeon.shared.AiMonitor;
 import org.sterl.llmpeon.shared.ChatMessageUtil;
 import org.sterl.llmpeon.tool.ToolLoopRequest;
+import org.sterl.llmpeon.tool.ToolResultAttributes;
 import org.sterl.llmpeon.tool.ToolService;
 import org.sterl.llmpeon.tool.model.SimpleMessage;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -530,4 +532,70 @@ class PoDelegateToolTest {
         // AND — the removed "Da Mek compacted." onTool line never returns as a second success message
         assertThat(toolLines).noneMatch(l -> l.startsWith("Da Mek compacted."));
     }
+
+    /**
+     * The delegation says out loud what it handed back: the pure answer with the member's core id as a
+     * callback for a live viewer, and the same pair as result attributes — while the model text keeps
+     * its status line untouched.
+     */
+    @Test
+    void delegationAnnouncesFinalAnswerAndCarriesItInResult() {
+        // GIVEN — the delegate tool on a ToolService, so the result is built the way a turn builds it
+        var tool = newTool();
+        var service = new ToolService(false);
+        service.replaceTool(tool);
+        var delegated = new ArrayList<String>();
+        var request = ToolLoopRequest.builder() //
+                .memory(new ThreadSafeMemory()) //
+                .chatModel(model) //
+                .monitor(new AiMonitor() {
+                    @Override public void onChatResponse(SimpleMessage m) {}
+                    @Override public void onDelegatedAnswer(String agentName, String answer) {
+                        delegated.add(agentName + ": " + answer);
+                    }
+                }) //
+                .build();
+
+        // WHEN
+        var result = service.execute(ToolExecutionRequest.builder() //
+                .id("1").name("askDev").arguments("{\"prompt\":\"what did you build?\"}").build(), request);
+
+        // THEN — the fact, not a paraphrase: core id and pure answer
+        assertThat(delegated).containsExactly(AiDevAgent.NAME + ": SLAVE REPLY");
+        assertThat(result.attributes()) //
+                .containsEntry(ToolResultAttributes.DELEGATED_AGENT, AiDevAgent.NAME)
+                .containsEntry(ToolResultAttributes.DELEGATED_ANSWER, "SLAVE REPLY");
+        // AND — what the model reads is unchanged: answer plus its own status line
+        assertThat(result.text()).startsWith("SLAVE REPLY").contains("Da Mek done. Context:");
+    }
+
+    /** An empty member answer is not an answer: no announcement, no attributes — only the tool line. */
+    @Test
+    void delegationWithoutAnswerAnnouncesNothingAndCarriesNoAttributes() {
+        var silent = mock(AiAgent.class);
+        when(silent.getName()).thenReturn("Peon-Dev");
+        when(silent.getMemory()).thenReturn(new ThreadSafeMemory());
+        when(silent.call(any(), any())).thenReturn(ChatResponse.builder().aiMessage(AiMessage.from("  ")).build());
+        var tool = newTool(planSlave(), reviewSlave(), silent, () -> 80000);
+        var service = new ToolService(false);
+        service.replaceTool(tool);
+        var delegated = new ArrayList<String>();
+        var request = ToolLoopRequest.builder() //
+                .memory(new ThreadSafeMemory()) //
+                .chatModel(model) //
+                .monitor(new AiMonitor() {
+                    @Override public void onChatResponse(SimpleMessage m) {}
+                    @Override public void onDelegatedAnswer(String agentName, String answer) { delegated.add(answer); }
+                }) //
+                .build();
+
+        // WHEN
+        var result = service.execute(ToolExecutionRequest.builder() //
+                .id("1").name("askDev").arguments("{\"prompt\":\"go\"}").build(), request);
+
+        // THEN
+        assertThat(delegated).isEmpty();
+        assertThat(result.attributes()).isEmpty();
+    }
+
 }
