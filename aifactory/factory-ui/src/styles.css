@@ -152,6 +152,12 @@ button {
     }
   }
 
+  .chat-line-author {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text);
+  }
+
   .chat-tool-line {
     font-family: var(--mono);
     font-size: 0.78rem;

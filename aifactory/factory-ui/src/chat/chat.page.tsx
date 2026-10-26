@@ -18,7 +18,7 @@ const RECONNECT_MS = 500
 /**
  * The chat of one project (R-WP-4, R-WP-5): the history is the only truth for finished text, the
  * stream only adds live lines, and there is nothing here to switch — no agent picker, no second
- * conversation, no author name, no time on a restored line.
+ * conversation, no time on a restored line. A line is named by its author when the server names one.
  *
  * One rule covers connection and reload: <em>(re-)connect ⇒ read the history, live events only
  * append</em>. So a dropped stream and a browser reload lose exactly the live lines and nothing else
@@ -29,6 +29,7 @@ const RECONNECT_MS = 500
 export function ChatPage({ project }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [outgoing, setOutgoing] = useState<string[]>([])
+  const [teamAnswers, setTeamAnswers] = useState<ChatMessage[]>([])
   const [live, setLive] = useState('')
   const [toolLines, setToolLines] = useState<string[]>([])
   const [draft, setDraft] = useState('')
@@ -39,6 +40,7 @@ export function ChatPage({ project }: Props) {
   /** The finished text arrives here, never as an event — so live lines give way to it (§3.3.3). */
   const applyHistory = useCallback((loaded: ChatMessage[]) => {
     setMessages(loaded)
+    setTeamAnswers([])
     setLive('')
     setToolLines([])
     setOutgoing(previous => withoutSent(previous, loaded))
@@ -59,6 +61,11 @@ export function ChatPage({ project }: Props) {
           if (!event.thinking) {
             setLive(previous => previous + event.text)
           }
+          break
+        case 'delegated':
+          // the final answer of a team member is a line of its own, named and buffered until the
+          // history carries it — the reload after `done` then replaces the buffer (Q8)
+          setTeamAnswers(previous => [...previous, { role: 'jon', origin: event.origin, text: event.text }])
           break
         case 'tool':
           setToolLines(previous => [...previous, event.text])
@@ -145,7 +152,7 @@ export function ChatPage({ project }: Props) {
     <section className="view" aria-label="Chat">
       <h1>Chat</h1>
       <p className="hint">Projekt: {project.name}</p>
-      <ChatLog messages={messages} outgoing={outgoing} live={live} toolLines={toolLines} />
+      <ChatLog messages={messages} outgoing={outgoing} teamAnswers={teamAnswers} live={live} toolLines={toolLines} />
       {error !== null && (
         <p className="chat-error" data-testid="chat-error" role="alert">
           {error}

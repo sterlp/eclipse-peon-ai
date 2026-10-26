@@ -1,17 +1,25 @@
 import { request } from '../shared/api.client'
 
-/** One line of the shared history — `jon` is the only author on the agent side, roles carry no name. */
+/**
+ * One line of the shared history. `origin` names the agent that spoke — set for Jon's own line and
+ * for a team member's final answer, absent for the user's line, because a line without an agent
+ * relationship carries no name (R-WP-4). It is never guessed: what the server does not name, the
+ * screen leaves unnamed.
+ */
 export interface ChatMessage {
   role: 'user' | 'jon'
   text: string
+  origin?: string | null
 }
 
 /**
- * A live event of the running turn (§3.3.3): `partial` is a <em>delta</em>, `done` closes one
- * answered input and `error` is a turn failure — the composer stays usable either way.
+ * A live event of the running turn (§3.3.3): `partial` is a <em>delta</em>, `delegated` is one team
+ * member's <em>final</em> answer (§3f.3.6), `done` closes one answered input and `error` is a turn
+ * failure — the composer stays usable either way.
  */
 export type ChatStreamEvent =
   | { kind: 'partial'; thinking: boolean; text: string }
+  | { kind: 'delegated'; origin: string; text: string }
   | { kind: 'tool'; text: string }
   | { kind: 'done'; millis: number }
   | { kind: 'error'; message: string }

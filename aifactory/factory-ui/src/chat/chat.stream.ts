@@ -133,6 +133,8 @@ function toEvent(name: string, payload: string): ChatStreamEvent | null {
   switch (name) {
     case 'partial':
       return { kind: 'partial', thinking: fields.kind === 'think', text: String(fields.text ?? '') }
+    case 'delegated':
+      return { kind: 'delegated', origin: String(fields.origin ?? ''), text: String(fields.text ?? '') }
     case 'tool':
       return { kind: 'tool', text: String(fields.text ?? '') }
     case 'done':
