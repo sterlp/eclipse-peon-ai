@@ -14,6 +14,18 @@ public interface WriteValidator {
      */
     void validate(String path);
 
+    /**
+     * How this validator's scope is worded for the agent's system prompt. Empty (the default) means
+     * there is nothing to say and the prompt gains no scope paragraph.
+     *
+     * <p>Invariant: whoever enforces the boundary also words the claim, so a prompt can never promise
+     * a scope its own {@link #validate(String)} would deny
+     * (docs/write-path-validator.md R6).</p>
+     */
+    default String pathScopePrompt() {
+        return "";
+    }
+
     /** No restriction — the default for every agent except Jon. */
     WriteValidator ALLOW_ALL = path -> { /* everything is allowed */ };
 
@@ -21,8 +33,5 @@ public interface WriteValidator {
     WriteValidator DOCS = new AllowlistWriteValidator("*/docs/*", "*.md");
 
     /** Denies every write — for read-only agents like Da Dok. */
-    WriteValidator DENY_ALL = path -> {
-        if (path == null) throw new IllegalArgumentException("path must not be null");
-        throw new IllegalArgumentException("Write denied: read-only agent does not allow writing to '" + path + "'.");
-    };
+    WriteValidator DENY_ALL = new DenyAllWriteValidator();
 }

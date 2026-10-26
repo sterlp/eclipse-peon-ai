@@ -37,8 +37,9 @@ model better than a wrapping decorator.
   its single choke-point `resolve(String)`; the Eclipse workspace write tool has no single resolve, so
   it calls `validateWrite(path)` at the top of each write method (write/edit/replace/insert/delete, and
   both paths of rename). Read tools are never gated.
-- Allowed patterns are also stated in Jon's system prompt so he self-restricts; the pattern set is a
-  constant today and becomes user-editable config later.
+- Allowed patterns are also stated in Jon's system prompt so he self-restricts — **der Text kommt aus
+  dem Validator** (R6), nie aus einer zweiten Konstante; die Muster selbst werden später
+  benutzer-editierbar.
 - **Fehler-Transport (R5):** Das Ergebnis eines UI-Thread-Aufrufs wird über den geteilten Helfer
   `EclipseUtil.await(future, timeout, what)` entpackt — `ExecutionException`/`CompletionException`
   werden auf die echte Ursache zurückgeführt und diese wird weitergeworfen. Nur ein echtes
@@ -113,6 +114,24 @@ wenn sie über Wrapper gelaufen ist (Future/UI-Thread, `ToolExecutionException`,
 * GIVEN der UI-Thread antwortet wirklich nicht innerhalb des Timeouts (2 min)
   WHEN der Tool-Aufruf darauf wartet
   THEN nennt der Fehler das Timeout — „Timeout" wird nur bei einem echten Timeout behauptet.
+
+### R6 — Der Pfad-Scope im Prompt stammt aus dem Validator ❌
+
+Wer den Scope erzwingt, formuliert ihn auch. Sonst sagen Prompt und Prüfung zwei verschiedene Dinge:
+die Factory erlaubt den Projekt-Root, der Prompt behauptet „nur `docs/`" — der Agent schränkt sich
+selbst dort ein, wo er schreiben dürfte.
+
+`WriteValidator` trägt dafür `String pathScopePrompt()` (Default: leer). `DOCS` liefert den bisherigen
+Text (`JON_PATH_SCOPE_PROMPT`), `DENY_ALL` sagt „nur lesen", `DynamicRootsWriteValidator` nennt seine
+Roots zur Prompt-Zeit aus derselben Quelle wie `validate`. `AiPoAgent.getSystemPrompt()` fügt **nur
+noch** `getWriteValidator().pathScopePrompt()` ein.
+
+* GIVEN ein Agent mit `DOCS` WHEN sein System-Prompt gebaut wird THEN enthält er den docs-Text und
+  keinen anderen Scope.
+* GIVEN ein Agent mit `DynamicRootsWriteValidator` auf zwei Roots WHEN sein System-Prompt gebaut wird
+  THEN nennt er genau diese zwei Roots — Prompt und Prüfung sind derselbe Stand.
+* GIVEN ein Agent, dessen Validator keinen Scope formuliert (Default `ALLOW_ALL`) WHEN sein Prompt
+  gebaut wird THEN kommt kein Scope-Absatz hinzu — Plugin-Agenten bleiben unverändert.
 
 ## Notes
 

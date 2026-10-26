@@ -38,6 +38,16 @@ public class DynamicRootsWriteValidator implements WriteValidator {
                         + allowedRoots() + ". You may only write to those roots.");
     }
 
+    /**
+     * Rendered from {@link #allowedRoots()} at prompt time — the same method and the same supplier
+     * {@link #validate(String)} consults, so the prompt cannot age behind the check when roots are
+     * opened or closed between turns (docs/write-path-validator.md R6).
+     */
+    @Override
+    public String pathScopePrompt() {
+        return "You may only write to these roots: " + allowedRoots() + ".";
+    }
+
     private boolean underAnyAdditionalRoot(Path resolved) {
         return additionalRoots().stream().anyMatch(root -> isUnderRoot(resolved, root));
     }

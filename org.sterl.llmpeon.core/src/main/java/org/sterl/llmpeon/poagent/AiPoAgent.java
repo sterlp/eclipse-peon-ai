@@ -96,9 +96,10 @@ public class AiPoAgent extends AbstractAgent {
 
     @Override
     public String getSystemPrompt() {
+        String scope = getWriteValidator().pathScopePrompt();
         return BASE_PROMPT + System.lineSeparator()
-            + System.lineSeparator() + WriteValidator.JON_PATH_SCOPE_PROMPT
-            + System.lineSeparator() + DELEGATION_PROMPT;
+            + (scope.isEmpty() ? "" : System.lineSeparator() + scope + System.lineSeparator())
+            + DELEGATION_PROMPT;
     }
 
     @Override
