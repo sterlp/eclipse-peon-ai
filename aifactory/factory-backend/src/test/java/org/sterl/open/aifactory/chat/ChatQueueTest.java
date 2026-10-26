@@ -106,7 +106,9 @@ class ChatQueueTest {
 
     @AfterAll
     static void stopStreams() {
-        STREAMS.shutdownNow();
+        // close(), not shutdownNow(): only close() releases the client's selector thread — shutdownNow
+        // leaves it, and a live non-daemon selector thread is what makes the test fork wait for its exit
+        STREAMS.close();
     }
 
     @BeforeEach

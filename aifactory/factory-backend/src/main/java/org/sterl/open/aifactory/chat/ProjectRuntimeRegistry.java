@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -71,14 +72,26 @@ public class ProjectRuntimeRegistry {
     }
 
     /**
-     * A removed project loses its runtime: an agent of a project that no longer exists would keep his
-     * memory and his queue alive for nothing. Only the registration goes — {@code state/<id>} stays,
-     * because R-WP-19 names exactly two things a removal deletes, and the chat of a project added again
-     * is still that one project's chat (R-WP-11).
+     * A removed project loses its runtime and its listeners: an agent of a project that no longer exists
+     * would keep his memory and his queue alive for nothing, and a stream of a gone project would keep
+     * publishing. Only the registration goes — {@code state/<id>} stays, because R-WP-19 names exactly two
+     * things a removal deletes, and the chat of a project added again is still that one project's chat
+     * (R-WP-11).
      */
     @EventListener
     void onProjectRemoved(ProjectRemoved removed) {
         runtimes.remove(removed.projectId());
+        streams.closeProject(removed.projectId());
+    }
+
+    /**
+     * The registry owns the executor, so it closes it. On the same event as {@code ChatStreamRegistry}
+     * (see the note there about {@code @PreDestroy} being too late): a turn that is still running when
+     * the factory stops is cut short, not waited for — there is nobody left to read its answer.
+     */
+    @EventListener(ContextClosedEvent.class)
+    void shutdownTurns() {
+        turns.shutdownNow();
     }
 
     /** The runtime of one project, built on first use; for tests and the team view of Inc 5. */

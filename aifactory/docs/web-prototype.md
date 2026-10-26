@@ -138,20 +138,20 @@ einer festen Frist mit Fehler, und git wird so aufgerufen, dass es gar nicht ers
   niemals nach Benutzer, Passwort oder Host-Bestätigung fragt, sondern sofort fehlschlägt.
 
 
-### R-WP-3 — Projekt öffnen setzt den Arbeitsordner ❌
+### R-WP-3 — Projekt öffnen setzt den Arbeitsordner ✅
 
 Das angeklickte Projekt ist der Arbeitsordner des Jons und seines Teams — Ersatz für den
 Workspace-/Projektbegriff des Eclipse-Plugins (siehe [Open Points](open-points.md)).
 
-#### UC-WP-5 — openProjectBindsWorkDir ❌
+#### UC-WP-5 — openProjectBindsWorkDir ✅
 - GIVEN ein Projekt in der Liste WHEN der Nutzer es öffnet THEN öffnet der Chat-View und alle
   Werkzeuge dieses Jons arbeiten auf dem Root dieses Projekts.
 
 ### R-WP-4 — Der Nutzer spricht immer mit Jon 🚧
 
 Keine Agent-Auswahl, keine weiteren Built-in- oder Custom-Agenten
-([PR-1](index.md)). Delegationen an Da Thinka/Da Mek/Da Dok/Da Sniffa sind als Tool-Zeilen im Chat
-sichtbar — Parität zum Plugin.
+([PR-1](index.md)). Eine Delegation an Da Thinka/Da Mek/Da Dok/Da Sniffa erscheint als **eine**
+Werkzeug-Zeile im Chat, die das Mitglied nennt — Parität zum Plugin.
 
 **Herkunft je Zeile.** Der Core liefert die Herkunft einer Nachricht mit (Agenten-Name im
 Message-Modell, Proposal `agent-origin-proposal.md`): Jon-Zeilen und die finalen Antworten von
@@ -160,10 +160,11 @@ Team-Mitgliedern tragen den Namen dessen, der sie erzeugt hat; eine Zeile ohne A
 des Menschen, sobald es ihn gibt (R-WP-17).
 
 **Man sieht nur Jon und die finalen Antworten seines Teams** — nicht die Unterhaltung eines
-Teammitglieds mit sich selbst: dessen Denk-, Werkzeug- und Zwischenschritte erscheinen im Chat
-**nie**, weder live noch im Verlauf. Es gibt genau **einen** Gesprächsstrang.
+Teammitglieds mit sich selbst: dessen **Denk- und Zwischenschritte** erscheinen im Chat **nie**,
+weder live noch im Verlauf; sichtbar sind nur die Delegations-Zeile und die finale Antwort. Es gibt
+genau **einen** Gesprächsstrang.
 
-#### UC-WP-6 — chatAlwaysGoesToJon ❌
+#### UC-WP-6 — chatAlwaysGoesToJon ✅
 - GIVEN der Chat-View WHEN der Nutzer eine Nachricht sendet THEN antwortet Jon; ein Agenten-Wechsel
   ist nirgends möglich.
 
@@ -179,8 +180,9 @@ Teammitglieds mit sich selbst: dessen Denk-, Werkzeug- und Zwischenschritte ersc
 - GIVEN Jon delegiert an ein Team-Mitglied WHEN der Chat die Delegation zeigt THEN steht die **finale**
   Antwort dieses Mitglieds als Zeile mit seinem Namen im Chat.
 - GIVEN dieselbe Delegation WHEN man den Chat betrachtet THEN sind die Zwischenschritte des
-  Teammitglieds (Denken, Werkzeug-Aufrufe, Teilantworten) **nicht** sichtbar — es gibt genau einen
-  Gesprächsstrang, keinen zweiten Verlauf und keinen Mitschnitt je Agent.
+  Teammitglieds (Denken, eigene Werkzeug-Aufrufe, Teilantworten) **nicht** sichtbar — sichtbar sind nur
+  die Delegations-Zeile und die finale Antwort, es gibt genau einen Gesprächsstrang, keinen zweiten
+  Verlauf und keinen Mitschnitt je Agent.
 - GIVEN ein Reload nach einer Delegation WHEN der Chat neu aufgebaut wird THEN ist die finale Antwort
   des Team-Mitglieds weiterhin Teil des Verlaufs (Live-Zeilen ausgenommen, R-WP-11) — ⏳ Mechanismus
   offen ([Open Points](open-points.md)).
@@ -190,9 +192,14 @@ Teammitglieds mit sich selbst: dessen Denk-, Werkzeug- und Zwischenschritte ersc
 Der Turn streamt in den Chat, ohne dass der Nutzer aktualisieren muss. Nebenläufigkeit, Cancel und
 Queue sind die des Cores — die Web-Schicht erfindet keinen zweiten Turn-Pfad.
 
-#### UC-WP-7 — streamingUpdatesChatWithoutReload ❌
+#### UC-WP-7 — streamingUpdatesChatWithoutReload ✅
 - GIVEN eine sendete Nachricht WHEN Jon antwortet THEN wächst die Antwort sichtbar und der
   Tool-Fortschritt erscheint als Zeile.
+
+#### UC-WP-41 — slowReaderNeverStopsTheTurn ❌
+- GIVEN ein Zuschauer, der seine Verbindung nicht mehr liest WHEN ein Turn läuft THEN wird der Turn
+  dadurch nicht aufgehalten und alle anderen Zuschauer sehen die Zeilen weiter — ein Zuschauer ist
+  keine Bremse für das Projekt.
 
 ### R-WP-6 — Schreiben nur im Projekt und im temporären Verzeichnis ❌
 
@@ -235,7 +242,7 @@ dieselbe Zahl wie im Plugin-Header: genutzte Tokens gegen das Auto-Compact-Budge
 Lesender Blick auf die Dateien; geschrieben wird über diesen Bereich nie. Die zwei Wurzeln und ihre
 Umschaltung sind in **R-WP-14** festgelegt.
 
-### R-WP-9 — Konfiguration: eigene Datei der Factory, nie der Plugin-Bestand ❌
+### R-WP-9 — Konfiguration: eigene Datei der Factory, nie der Plugin-Bestand ✅
 
 Der Server liest Provider, Modelle und Keys aus **seiner eigenen** Config
 (`~/.aifactory/config.properties`, zusätzlich aus Umgebungsvariablen als Startwert, wenn die Datei den
@@ -253,7 +260,7 @@ beiden Angaben trotzdem von Hand in die Datei schreibt, ändert damit nichts.
 Die Datei enthält einen API-Key im Klartext: sie wird mit Eigentümer-Rechten (`600`) angelegt und ihr
 Inhalt erscheint **nirgends** unmaskiert (R-WP-16) — weder in einer Antwort noch in einem Log.
 
-#### UC-WP-20 — configReadFromFactoryOwnStore ❌
+#### UC-WP-20 — configReadFromFactoryOwnStore ✅
 - GIVEN ein laufender Server WHEN Jon gebaut wird THEN stammen Provider/Modell/Keys aus der Config der
   Factory; der Plugin-Bestand bleibt byte-identisch.
 - GIVEN eine fehlende oder unvollständige Config WHEN der Nutzer eine Nachricht sendet THEN sagt die
@@ -267,16 +274,16 @@ Inhalt erscheint **nirgends** unmaskiert (R-WP-16) — weder in einer Antwort no
   lädt THEN ist das Konfigurationsverzeichnis trotzdem das Verzeichnis der Factory, und es wird nichts
   aus einem anderen Verzeichnis gelesen oder geschrieben.
 
-### R-WP-10 — Ein Turn je Projekt, weitere Eingaben in der Queue 🚧
+### R-WP-10 — Ein Turn je Projekt, weitere Eingaben in der Queue ✅
 
 Eingaben während eines laufenden Turns gehen in die Queue des Cores; verschiedene Projekte dürfen
 parallel laufen.
 
-#### UC-WP-14 — secondInputDuringTurnQueues ❌
+#### UC-WP-14 — secondInputDuringTurnQueues ✅
 - GIVEN ein laufender Turn WHEN der Nutzer erneut sendet THEN wird die Nachricht gequeued und erst
   nach dem Turn verarbeitet — kein zweiter paralleler Turn auf derselben Memory.
 
-### R-WP-11 — Projekte und ihr Chat überleben einen Neustart ❌
+### R-WP-11 — Projekte und ihr Chat überleben einen Neustart ✅
 
 Projekt-Registry, Clone und **genau ein** Chat je Projekt sind persistent. Ein Projekt hat genau ein
 Gespräch — es gibt keine Chat-Auswahl und kein zweites Gespräch neben dem einen. Nach dem Neustart
@@ -285,21 +292,21 @@ sind live-only — die Factory führt dafür **keinen** zweiten Speicher. Nach d
 ist Jons Gespräch wieder da; **sein Team beginnt leer** (RAM-only-Parität zum Plugin, globales
 ADR-0024) — ⏳ Rückversicherung in [Open Points](open-points.md).
 
-#### UC-WP-15 — registryAndChatSurviveRestart ❌
+#### UC-WP-15 — registryAndChatSurviveRestart ✅
 - GIVEN ein Projekt mit geführtem Chat WHEN der Server neu startet THEN ist das Projekt in der Liste
   und der Chat enthält wieder dieselben Nachrichten (Wiederherstellung aus dem bestehenden
   History-Bestand des Cores, kein zweiter Speicher).
 
-#### UC-WP-16 — oneChatPerProject ❌
+#### UC-WP-16 — oneChatPerProject ✅
 - GIVEN ein offenes Projekt WHEN der Nutzer den Chat-View betritt THEN gibt es genau dieses eine
   Gespräch; es existiert keine Möglichkeit, ein zweites Gespräch zum selben Projekt zu beginnen.
 
-### R-WP-12 — Alle Core-Werkzeuge, kein Eclipse-Werkzeug ❌
+### R-WP-12 — Alle Core-Werkzeuge, kein Eclipse-Werkzeug ✅
 
 Jon und sein Team bekommen **alle** Core-Werkzeuge inklusive Shell (`disk*`, `web*`, `shell`,
 `docs*`) — User-Entscheid 2026-10-25. `eclipse*`-Werkzeuge existieren nicht ([PR-2](index.md)).
 
-#### UC-WP-17 — allCoreToolsNoEclipseTools ❌
+#### UC-WP-17 — allCoreToolsNoEclipseTools ✅
 - GIVEN ein Projekt als Arbeitsordner WHEN die Tool-Liste des Jons gebaut wird THEN sind die
   Core-Familien vollständig enthalten (auch Shell) und **kein** Werkzeug mit `eclipse`-Präfix.
 
@@ -328,21 +335,21 @@ Standard ist der **Git-Checkout** des Projekts; umschaltbar dazu: das **temporä
   Standard-Wurzel bereit und das temporäre Verzeichnis ist als zweite Wurzel erreichbar; beide
   Angebote sind lesend.
 
-### R-WP-15 — Je Projekt genau ein Jon, ein Chat für alle ❌
+### R-WP-15 — Je Projekt genau ein Jon, ein Chat für alle ✅
 
 Ein Projekt hat genau **eine** Jon-Instanz und genau **ein** Gespräch. Jeder Nutzer, der das Projekt
 öffnet, sieht und schreibt in **denselben** Chat — Nachrichteneingaben laufen in die Queue *dieses*
 Jons, nie in eine private Kopie. Andere Projekte laufen unabhängig und parallel.
 
-#### UC-WP-21 — secondUserSeesSameProjectChat ❌
+#### UC-WP-21 — secondUserSeesSameProjectChat ✅
 - GIVEN Nutzer A hat mit dem Projekt chatet WHEN Nutzer B dasselbe Projekt öffnet THEN sieht B
   dieselben Nachrichten und sendet in denselben Gesprächsverlauf.
 
-#### UC-WP-22 — inputOnBusyProjectQueuesNotParallel ❌
+#### UC-WP-22 — inputOnBusyProjectQueuesNotParallel ✅
 - GIVEN im Projekt läuft ein Turn WHEN ein anderer Nutzer sendet THEN geht die Nachricht in die
   Queue genau dieses Jons — kein zweiter paralleler Turn auf derselben Memory.
 
-### R-WP-16 — Dritter View: Einstellungen ❌
+### R-WP-16 — Dritter View: Einstellungen ✅
 
 Die App hat **Projects · Chat · Einstellungen**. Der Einstellungen-View zeigt **Provider, Modell,
 URL, Token-Fenster, Timeout, Think senden** und den **Key-Status** aus der Config der Factory (R-WP-9)
@@ -378,7 +385,7 @@ Plugins unberührt, den die Factory weder liest noch schreibt (R-WP-9).
   die Quelle, aber **kein** Zeichen des Keys — auch nicht maskiert mit Auszug, auch nicht in einem
   Fehlerfall.
 
-#### UC-WP-24 — settingsOverrideNeverWritesSharedStore ❌
+#### UC-WP-24 — settingsOverrideNeverWritesSharedStore ✅
 - GIVEN der Nutzer überschreibt ein Feld WHEN er speichert THEN liegt der Wert in der Datei der
   Factory, der Bestand des Plugins ist byte-identisch wie vorher, und die nächste Config-Auslieferung
   zeigt den neuen Wert.

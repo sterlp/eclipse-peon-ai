@@ -1,6 +1,7 @@
 package org.sterl.open.aifactory.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -32,6 +33,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.client.NoOpResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import com.jayway.jsonpath.JsonPath;
 
@@ -70,6 +72,9 @@ class ProjectRemovalTest {
 
     @Autowired
     private ProjectRuntimeRegistry runtimes;
+
+    @Autowired
+    private ChatStreamRegistry streams;
 
     @Autowired
     private FactoryHome factoryHome;
@@ -150,6 +155,28 @@ class ProjectRemovalTest {
         assertThat(runtimes.runtime(again.id()))
                 .as("die verworfene Runtime ist weg, eine neue liest denselben Bestand")
                 .isNotSameAs(before);
+    }
+
+    /**
+     * The live line belongs to the project, not to a browser tab: with the project it is gone as well,
+     * and gone closed — the client notices and reads the history again instead of hanging on a line
+     * nobody serves any more (R-WP-5, R-WP-11).
+     */
+    @Test
+    void closingAProjectEndsItsLiveLines() throws Exception {
+        writeFactoryConfig("inc3h2-removal-streams");
+        CreatedProject project = createProject();
+        SseEmitter live = runtimes.subscribe(project.id());
+        assertThat(streams.listenerCount(project.id())).as("eine offene Leitung zählt").isOne();
+
+        assertThat(delete(project.id())).isEqualTo(HttpStatus.NO_CONTENT);
+
+        assertThat(streams.listenerCount(project.id()))
+                .as("mit dem Projekt ist auch seine Live-Leitung abgemeldet")
+                .isZero();
+        assertThatThrownBy(() -> live.send(SseEmitter.event().name("partial").data("{}")))
+                .as("und sie ist geschlossen, nicht nur ignoriert")
+                .isInstanceOf(IllegalStateException.class);
     }
 
     // ------------------------------------------------------------------ edges
