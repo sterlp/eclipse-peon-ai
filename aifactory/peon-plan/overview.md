@@ -1088,3 +1088,46 @@ von Inc 3 und bleiben, wie sie sind; der Schlussreport führt sie als offen auf,
 **STATUS: AWAITING_ANSWERS** — der Plan steht (Schritt 3.0–3.9), die Antwort auf mindestens Q1, Q2, Q3 und Q4
 braucht der Dev-Slave, bevor 3a beginnt.
 
+
+## 3.11 Härtung nach Inc 3 — 3-H1 (UI-Komponenten) und 3-H2 (Backend)
+
+Freigabe 2026-10-26 mündlich von Jon, **nach** dem Inc-3-Review (Da Dok: CONCERNS, kein Blocker).
+Beide Increments sind **Umbau, kein neues Verhalten**. Bindend für 3-H1:
+`aifactory/docs/aifactory-architektur.md` §UI-Aufbau (Zeilen 105-149) und `factory-ui/AGENTS.md`.
+3-H2 trägt die neue Regel **UC-WP-41** `slowReaderNeverStopsTheTurn`
+(`aifactory/docs/web-prototype.md:199`). Staging-Freigabe für Jons uncommittete Doc-Stände
+(`web-prototype.md`, `index.md`, `open-points.md`, `aifactory-architektur.md`, `memory.md`) —
+Inhalt nicht angefasst. TABU wie §3.9.3.
+
+### 3H1-E — Ausführungsnachweis (gebaut 2026-10-26, Commit `eb642e3e`, Baseline `6acfc2f1`)
+
+Umgezogen wie vorgegeben: `app/app.shell.tsx` + `app/app.tabs.tsx`,
+`project/project.page.tsx` + `project.client.ts`, `config/config.page.tsx` + `config.client.ts`,
+`chat/chat.page.tsx` + `chat.log.tsx` + `chat.composer.tsx` + `chat.client.ts` + `chat.stream.ts`,
+`shared/api.client.ts` (+ `errorMessage` dorthin) + `shared/dto.ts` (`Project`, brauchen mehrere).
+Tests 1:1 nach `test/<komponente>/<komponente>.<rolle>.test.tsx`, Helfer nach `test/shared/`;
+mitgezogen: `vite.config.ts` (setupFiles), `tsconfig.app.json` (`include: ["src","test"]`).
+Richtung geprüft: `shared` importiert nichts, die drei Komponenten nur `shared` + sich, `app` kennt alle.
+
+Gates: UI `Test Files 3 passed (3)` / `Tests 19 passed (19)` (vorher 19), lint
+„Found 0 warnings and 0 errors." (20 files), build ✓ 30 modules (`index-CMQaxmnl.js` 233,64 kB);
+`mvn -f aifactory/pom.xml clean verify` → `Tests run: 80, Failures: 0, Errors: 0`, BUILD SUCCESS.
+Flake-Prüfung: Chat-Datei 5× allein grün, ganzer Satz 2× grün.
+Laufender Nachweis (headless Chrome 155, Home `/tmp/aifactory-inc3h1`, Port 8099): `/` → 302 → `/ui/`,
+`/ui/` 200, ausgeliefertes Bundle 200 (233 649 byte), CSS 200; drei Tabs + Projekt-Knopf; Klick öffnet
+den Chat (Log da, Composer fokussiert, Hinweis „Projekt: spring-petclinic", Liste weg, 0 `select`);
+Eingabe aktiviert „Senden". `~/.peon` nicht angefasst, Port danach frei.
+
+Abweichungen, keine ändert eine Aussage: (a) Komponenten-**Namen** mitgezogen
+(`App`→`AppShell`, `ViewTabs`→`AppTabs`, `ProjectsView`→`ProjectPage`, `SettingsView`→`ConfigPage`,
+`ChatView`→`ChatPage`), sonst hießen Datei und Rolle verschränkt; (b) Log und Composer aus der
+Chat-Seite gelöst (Seite hält den Zustand, die beiden zeichnen) — die Doc-Tafel nennt beide Rollen;
+(c) **keine** `.list`/`.add`-/`.form`-Fragmente: `project.page.tsx` (101) und `config.page.tsx` (214,
+die ganze Datei *ist* das Formular) bleiben ganz — Fragmentierung wäre hier Umbau ohne Gewinn;
+(d) `styles.css`/`index.css` bleiben auf `src/` (CSS ist keine Komponente); (e) `index.html` zeigt
+weiter auf `src/main.tsx` (Vite-Einstieg, keine Komponenten-Datei); (f) Test-Race aus dem Review
+mitgenommen: zwei `getByRole('button', …)` → `await findByRole` ( Assertions unverändert).
+Beobachtung für später: `showsExactlyThreeViews` (UC-WP-1) rendert die Shell und läge richtiger in
+`test/app/`; Marker blieben, wo sie sind.
+
+
