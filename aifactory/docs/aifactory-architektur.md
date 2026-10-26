@@ -1,13 +1,15 @@
 # Architektur — AI Factory (Web)
 
-> **Status:** ❌ specified (2026-10-25) — gilt vor dem ersten Plan. Regeln und BDD stehen in
-> [web-prototype.md](web-prototype.md) und [jon-light-stories.md](jon-light-stories.md); hier nur das WIE.
+> **Status:** ◐ teilweise gebaut (2026-10-25) — `ui` (Auslieferung), `project` (Registry/Clone) und
+> `config` (Config + Einstellungen) stehen; `ProjectRuntime`, SSE und Jon Light sind SOLL. Regeln und BDD
+> stehen in [web-prototype.md](web-prototype.md) und [jon-light-stories.md](jon-light-stories.md); hier
+> nur das WIE.
 
 ## Grundgedanke
 
-Die Factory ist ein **düner HTTP/Transport-Ring um den Core**. Alles, was ein Agent ist (Memory,
-Tool-Loop, Compact, Delegation, Prompts), gehört `llmpeon-core` und wird unverwendet gelassen, wenn
-die Factory es selbst bauen würde ([AF-ADR-001](adr/001-factory-shares-core-disk-only.md)).
+Die Factory ist ein **dünner HTTP/Transport-Ring um den Core**. Alles, was ein Agent ist (Memory,
+Tool-Loop, Compact, Delegation, Prompts), gehört `llmpeon-core` und wird dort gebaut, nie in der Factory
+nachgebaut ([AF-ADR-001](adr/001-factory-shares-core-disk-only.md)).
 
 **Besitzer des Turn:** `ProjectRuntime` (Factory). Es hält genau einen Jon je Projekt, serialisiert
 Zugriffe und ist die einzige Stelle, die den Core aufruft. HTTP-Handler rufen den Core **nie** direkt.
@@ -42,7 +44,7 @@ flowchart LR
 | `ProjectService` (Package `project`) | Projektliste, Klonen, Entfernen, Pfad je Projekt | den Core kennen |
 | `ProjectRuntime` | Jon + Team je Projekt, Serialisierung der Turns, Clear/Compact je Agent, Tool- und Write-Roots | HTTP, JSON, Browser-Formate |
 | `ChatStreamRegistry` | Events des `AiMonitor` als SSE je Projekt verteilen, Replay des Verlaufs | eigene Nachrichten halten (Memory ist im Core) |
-| `FactoryConfig` | Lesen/Schreiben der Factory-Config, Maskierung der Keys, Auflösung pro Turn | den geteilten Config-Bestand des Plugins schreiben |
+| `FactoryConfig` (Package `config`) | Lesen/Schreiben der Factory-Config, Maskierung der Keys, Auflösung pro Turn | den geteilten Config-Bestand des Plugins schreiben **oder lesen** |
 | `JonLightRuntime` | ein read-only Jon je Nutzer, Write-Liste `stories/*` | Team, Delegation, Projekt-Jon-Memory |
 | Core (`AiPoAgent` …) | Agent-Logik, Tools, Memory, History-Store | Eclipse, HTTP, Factory-Klassen |
 
@@ -63,6 +65,40 @@ sequenceDiagram
   RUN-->>UI: done + Context-Zahlen je Agent (Kacheln)
 ```
 
+### Chat: HTTP-Kanten und SSE (Design für Inc 3)
+
+```mermaid
+sequenceDiagram
+  participant B as Browser
+  participant C as ChatController<br/>(External Facade)
+  participant R as ProjectRuntime<br/>(je Projekt eine Instanz)
+  participant K as ChatStreamRegistry
+  participant J as AiPoAgent
+  B->>C: GET /projects/{id}/messages
+  C->>J: History gelesen (nur Nutzer-/Jon-Texte)
+  B->>C: POST /projects/{id}/messages
+  C->>R: submit(text) — antwortet 202, prüft nichts über den Turn hinaus
+  B->>C: GET /projects/{id}/events (SSE, offen)
+  C->>K: subscribe(projectId)
+  R->>J: call(text, monitor)
+  J-->>K: Monitor-Events
+  K-->>B: SSE (partial · tool · done)
+```
+
+* **Drei Kanten, kein vierter Pfad:** `GET …/messages` (Verlauf), `POST …/messages` (Turn anstoßen,
+  `202`), `GET …/events` (SSE). Die Oberfläche spricht nur mit diesen dreien.
+* **Der Turn gehört dem Projekt, nicht der Verbindung.** `POST` kehrt sofort zurück; ohne Zuhörer
+  läuft nichts ins Leere und nichts blockiert (`ProjectRuntime` serialisiert, der Core queued).
+  Ein Browser-Reload verliert **nur** Live-Zeilen (R-WP-11): der Verlauf wird neu gelesen, alles
+  Weitere kommt ab dem Moment der neuen Verbindung.
+* **Ein `ProjectRuntime` je Projekt**, `ChatStreamRegistry` hält **keine** Nachrichten — nur die
+  Zuhörer je Projekt und den Broadcast. Wer den Verlauf braucht, liest ihn aus dem Core-History-Store
+  (`home.stateDir(id)`), nicht aus einem zweiten Speicher.
+* **Komponentenzuschnitt:** `chat` besitzt Controller + `ProjectRuntime` + `ChatStreamRegistry` und darf
+  `config` und `project` fragen; `config` liefert die `LlmConfig` pro Turn (UC-WP-24 GIVEN 3), `project`
+  den Pfad. Niemand sonst hält Agenten-Instanzen.
+
+
 ## Abbildung Core → Factory
 
 | Braucht die Factory | nutzt sie |
@@ -74,6 +110,32 @@ sequenceDiagram
 | Chat-Persistenz | `FileAgentHistoryStore` über `historyStateDir` — ein Verzeichnis je Projekt |
 | Streaming/Status | `AiMonitor` → SSE; Compact/Clear über die bestehenden Core-Pfade |
 
+## Config — wer liest, wer schreibt (Package `config`, gebaut 2026-10-25)
+
+```mermaid
+flowchart LR
+  UI[Einstellungen-View] -->|"GET / PUT /api/settings"| SC[SettingsController<br/>External Facade: nur DTO]
+  SC --> FS[FactoryConfigService<br/>Internal Facade: pin · validate · lock]
+  FS --> ENV[EnvFallbackLlmConfigStore<br/>Connector: Datei → Umgebung]
+  ENV --> FILE[(~/.aifactory/config.properties<br/>Properties-Format · Rechte 600)]
+  FS --> CORE["LlmConfigLoader.load(store)<br/>+ Pinnen: configDir · diskToolsEnabled"]
+```
+
+* **Datei-Store im Core** (`org.sterl.llmpeon.ai.FileLlmConfigStore` auf der SPI `LlmConfigStore`) —
+  deterministisch (sortierte `key=value`, LF, kein Kommentar, kein Zeitstempel), atomar geschrieben,
+  `600`. Ein Kommentar in einer von Hand gepflegten Datei überlebt das Speichern **nicht**.
+* **Lesen:** Datei → Umgebung (`AIFACTORY_LLM_{PROVIDER,MODEL,URL,API_KEY}`) → Core-Default; die **Datei
+  gewinnt**. `configDir` und `diskToolsEnabled` setzt `FactoryConfigService` **nach** dem Laden (auf das
+  Factory-Home bzw. `true`) — was dazu in der Datei steht, ist wirkungslos (UC-WP-36, UC-WP-37).
+* **Schreiben:** nur die gesendeten, nicht-leeren Felder; die Antwort ist ein frischer maskierter Read,
+  nie das gesendete Objekt. Ein Key lässt sich setzen, **nie** löschen — Löschen heißt Datei von Hand.
+* **Maskierung ist eine Typ-Frage, kein Filter:** `SettingsSnapshot` und `SettingsDto` haben kein Feld, in
+  das ein Key passt (nur `keySet` + `keySource`), die Feldliste ist per Test fixiert. Ein `LlmConfig`
+  verlässt die Komponente nur Richtung `ProjectRuntime` und trägt keinen Key in `toString`.
+* **Alleiniger Config-Besitzer:** nur `config` darf `LlmConfigLoader` und `FileLlmConfigStore` benutzen
+  (ArchUnit-Regel `onlyConfigReadsTheFactorysOwnConfig`) — sonst lädt jemand am Pinning vorbei und
+  Agent-Zustand landet wieder in `~/.peon`.
+
 ## Fehlende Teile — Entscheidung je Teil
 
 Steht hier "Factory", baut es die Factory; "Core" heißt: der Port nützt auch dem Plugin und wird als
@@ -81,7 +143,7 @@ eigene Story im Core gemacht (mit globalem ADR, wenn das Plugin dadurch angefass
 
 | Teil | Stand | Entscheidung |
 |---|---|---|
-| `LlmConfigStore` für Dateien | fehlt (nur Eclipse-Prefs + Test-Double) | **Core**: `FileLlmConfigStore` — verhaltenstreu, vom Plugin weiterverwendbar, testbar |
+| `LlmConfigStore` für Dateien | ✅ gebaut 2026-10-25 (Inc 2): `FileLlmConfigStore` im Core, benutzt von `config` | **Core** (bleibt dort: verhaltenstreu, vom Plugin weiterverwendbar, testbar) |
 | `askUser` ohne Eclipse | `AskUserTool` hängt an einer Eclipse-Basisklasse | **Factory** (MVP): eigener Frage-Werkzeug-Kern + Presenter über SSE; Core-Port folgt, wenn das Plugin denselben Kern nutzt |
 | Workspace-Memory (memory*-Tools) | Plugin, Eclipse-Prefs | **Core-Port** als eigene Story; bis dahin hat der Factory-Jon keine memory*-Tools |
 | Static Context (Env-Text) | Plugin-Klasse mit Eclipse-Guidance | **Factory**: eigene `ContextItem`-Texte (OS, Pfade, Regeln) |

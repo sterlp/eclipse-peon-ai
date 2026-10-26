@@ -18,7 +18,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.mock.env.MockEnvironment;
 
+import org.sterl.llmpeon.ai.AiProvider;
 import org.sterl.llmpeon.ai.FileLlmConfigStore;
+import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.ai.LlmConfigKeys;
 import org.sterl.llmpeon.ai.LlmConfigStore;
 import org.sterl.open.aifactory.shared.FactoryHome;
@@ -320,6 +322,62 @@ class FactoryConfigServiceTest {
         Files.delete(doomed);
 
         assertThat(differingPaths(before, treeBytes())).containsExactly(doomed);
+    }
+
+
+    /**
+     * The turn read of the same config (UC-WP-20 GIVEN 2+3, unit half). The integration half — that the
+     * value actually reaches the model — is {@code chat.ChatTurnTest}.
+     */
+    @Test
+    void aTurnNeedsAModelAndAKeyUnlessTheProviderIsKeyFree() {
+        MockEnvironment noStartValue = new MockEnvironment();
+
+        // GIVEN a complete OPEN_AI config — served with the file's own values and the factory's own pins
+        writeConfig("""
+                %s=OPEN_AI
+                %s=gpt-demo
+                %s=https://api.example.com/v1
+                %s=%s
+                """.formatted(LlmConfigKeys.PROVIDER_TYPE, LlmConfigKeys.MODEL, LlmConfigKeys.URL,
+                        LlmConfigKeys.API_KEY, KEY));
+        LlmConfig forTurn = service(noStartValue).loadForTurn();
+        assertThat(forTurn.getModel()).isEqualTo("gpt-demo");
+        assertThat(forTurn.getProviderType()).isEqualTo(AiProvider.OPEN_AI);
+        assertThat(forTurn.getConfigDir()).isEqualTo(home.toAbsolutePath().normalize());
+        assertThat(forTurn.isDiskToolsEnabled()).isTrue();
+
+        // GIVEN the two key-free providers of R-WP-9 — a missing key is no reason to refuse the turn
+        writeConfig("%s=OLLAMA%n%s=llama-demo%n".formatted(LlmConfigKeys.PROVIDER_TYPE, LlmConfigKeys.MODEL));
+        assertThat(service(noStartValue).loadForTurn().getModel()).isEqualTo("llama-demo");
+        writeConfig("%s=LM_STUDIO%n%s=studio-demo%n".formatted(LlmConfigKeys.PROVIDER_TYPE, LlmConfigKeys.MODEL));
+        assertThat(service(noStartValue).loadForTurn().getModel()).isEqualTo("studio-demo");
+
+        // GIVEN a key-requiring provider without a key — refused before any model is built, field named
+        writeConfig("%s=OPEN_AI%n%s=gpt-demo%n".formatted(LlmConfigKeys.PROVIDER_TYPE, LlmConfigKeys.MODEL));
+        assertThatThrownBy(() -> service(noStartValue).loadForTurn())
+                .isInstanceOf(TurnNotConfiguredException.class)
+                .hasMessageContaining("apiKey");
+
+        // GIVEN any provider and no model — no provider answers a turn without one
+        writeConfig("%s=OPEN_AI%n%s=%s%n".formatted(LlmConfigKeys.PROVIDER_TYPE, LlmConfigKeys.API_KEY, KEY));
+        assertThatThrownBy(() -> service(noStartValue).loadForTurn())
+                .isInstanceOf(TurnNotConfiguredException.class)
+                .hasMessageContaining("model");
+    }
+
+    @Test
+    void aTurnNeverAcceptsAProviderTheCoreCannotBuild() {
+        // AiProvider.parse turns this into OLLAMA — key-free, so a key check alone would have waved the
+        // typo through and the turn would have gone to a provider nobody configured
+        writeConfig("%s=OPEN_AIDI%n%s=gpt-demo%n%s=%s%n".formatted(LlmConfigKeys.PROVIDER_TYPE,
+                LlmConfigKeys.MODEL, LlmConfigKeys.API_KEY, KEY));
+
+        assertThatThrownBy(() -> service(new MockEnvironment()).loadForTurn())
+                .isInstanceOf(TurnNotConfiguredException.class)
+                .hasMessageContaining("provider")
+                .hasMessageNotContaining("OPEN_AIDI")
+                .hasMessageNotContaining(KEY);
     }
 
 

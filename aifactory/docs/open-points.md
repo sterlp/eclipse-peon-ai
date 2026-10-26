@@ -90,6 +90,23 @@ Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entf�
   brauchen einen Key; ohne Key lehnt die Factory, bevor ein Modell gebaut wird. Abgeleitet aus dem
   Bestand des Cores (nur diese beiden ersetzen den Key durch einen Platzhalter). *Andersfall:*
   GitHub-Provider brauchen in der Praxis auch einen Token — dann mit in die Liste.
+* **⏳ Provider-Liste steht doppelt (UI + Server)** — der Server validiert gegen `AiProvider` (9 Namen),
+  die Einstellungen-Auswahl im UI führt dieselben neun Namen als eigene Liste
+  (`factory-ui/src/api/settings.ts`). Abgeleitet: die Alternative wäre, die Liste über die API
+* **⏳ Entfernen lässt den Chat-Bestand liegen** — `Entfernen` löscht Eintrag und Checkout, wie
+  [R-WP-19](web-prototype.md) es aufzählt, aber **nicht** `state/<id>`. Folge: wer dieselbe URL erneut
+  anlegt, findet das alte Gespräch wieder (Identität ist die URL). Abgeleitet aus „genau ein Chat je
+  Projekt" + [R-WP-11](web-prototype.md); ein Verlauf, der mit dem Projekt sterben soll, wäre eine eigene
+  Regel. *Andersfall:* „Entfernen heißt Tabula rasa" ⇒ `state/<id>` mitlöschen, dann aber mit Rückfrage.
+* **⏳ Wiederhergestellte Verlaufszeilen tragen keine Zeit** — der Core-History-Bestand kennt keinen
+  Zeitstempel; eine eigene Zeit-Datei wäre ein zweiter Speicher
+  ([R-WP-11](web-prototype.md)). Live-Zeilen zeigen die Zeit, der wiederhergestellte Verlauf nicht.
+  *Andersfall:* Zeit im Core-History-Format = Core-Story.
+
+  auszuliefern — das würde [`SettingsDto`](web-prototype.md) um ein Feld verbreitern, obwohl R-WP-16 die
+  Antwortfläche bewusst klein hält (acht Angaben). *Andersfall:* ein neuer Provider im Core ⇒ zwei
+  Stellen anfassen; dann eigene Regel „ein Provider-Katalog je Instanz".
+
 
 ## ❓ offen
 

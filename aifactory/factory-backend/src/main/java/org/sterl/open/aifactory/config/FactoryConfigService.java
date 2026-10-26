@@ -1,6 +1,7 @@
 package org.sterl.open.aifactory.config;
 
 import java.util.Arrays;
+import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.springframework.core.env.Environment;
@@ -31,6 +32,12 @@ public class FactoryConfigService {
     private static final String PROVIDER_HINT = "provider must name one of the supported providers";
     private static final String TOKEN_WINDOW_HINT = "tokenWindow must be a positive number of tokens";
     private static final String TIMEOUT_HINT = "timeoutSeconds must be a positive number of seconds";
+    /** Value-free for the same reason — a turn's failure reaches the browser as a live line (Q1). */
+    private static final String TURN_MODEL_HINT = "turn needs a model — set model in the factory config";
+    private static final String TURN_API_KEY_HINT = "turn needs an api key — set apiKey in the factory config, or choose a provider that needs none";
+
+    /** Key-free is factory knowledge (R-WP-9 names exactly these two); the core has no such flag. */
+    private static final Set<AiProvider> KEY_FREE_PROVIDERS = Set.of(AiProvider.OLLAMA, AiProvider.LM_STUDIO);
 
     private final FactoryHome home;
     private final Environment environment;
@@ -54,6 +61,32 @@ public class FactoryConfigService {
     public LlmConfig load() {
         return pin(LlmConfigLoader.load(store()));
     }
+
+    /**
+     * {@link #load()} plus what a turn needs to reach a model at all — R-WP-9's "bereit für den Turn".
+     * Checked here and not inside the provider: {@code OpenAiProvider} hands an unset key straight to
+     * langchain4j, so the turn would fail provider-internal and never name the field (UC-WP-20 GIVEN 3).
+     *
+     * <p>The provider name is read from the store and compared by name. {@code AiProvider.parse} is
+     * unusable for this: it coerces an unknown name to OLLAMA, which is one of the two key-free
+     * providers, so a typo would have been waved through the key check instead of answered.</p>
+     *
+     * @throws TurnNotConfiguredException a field the turn needs is missing; the message names the field
+     *                                    and never a value
+     */
+    public LlmConfig loadForTurn() {
+        EnvFallbackLlmConfigStore connector = store();
+        LlmConfig config = pin(LlmConfigLoader.load(connector));
+        AiProvider provider = providerForTurn(connector, config);
+        if (!present(config.getModel())) {
+            throw new TurnNotConfiguredException(TURN_MODEL_HINT);
+        }
+        if (!KEY_FREE_PROVIDERS.contains(provider) && !present(config.getApiKey())) {
+            throw new TurnNotConfiguredException(TURN_API_KEY_HINT);
+        }
+        return config;
+    }
+
 
     /** The masked read model: the one place that ever sees {@link LlmConfig#getApiKey()}. */
     public SettingsSnapshot snapshot() {
@@ -116,6 +149,22 @@ public class FactoryConfigService {
 
     private static boolean isProviderName(String value) {
         return Arrays.stream(AiProvider.values()).anyMatch(name -> name.name().equals(value));
+    }
+
+    /**
+     * The provider a turn is built for, from the raw stored name — the loaded {@link LlmConfig} has
+     * already been through the core's silent coercion, so it cannot answer whether the name was real.
+     */
+    private static AiProvider providerForTurn(LlmConfigStore store, LlmConfig loaded) {
+        String rawName = store.get(LlmConfigKeys.PROVIDER_TYPE, null);
+        if (rawName == null) {
+            return loaded.getProviderType(); // absent everywhere = the core default, never a typo
+        }
+        rawName = rawName.trim();
+        if (!isProviderName(rawName)) {
+            throw new TurnNotConfiguredException(PROVIDER_HINT);
+        }
+        return AiProvider.valueOf(rawName);
     }
 
     /** Trimmed, and only when a value was actually submitted — absent and blank both write nothing. */

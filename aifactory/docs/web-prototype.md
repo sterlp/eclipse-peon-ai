@@ -228,10 +228,11 @@ Inhalt erscheint **nirgends** unmaskiert (R-WP-16) — weder in einer Antwort no
 - GIVEN ein Provider, der einen Key braucht (alle außer Ollama und LM Studio) WHEN kein Key gesetzt ist
   THEN lehnt die Factory **bevor** ein Modell gebaut wird, und nennt das fehlende Feld.
 
-#### UC-WP-36 — configDirIsAlwaysTheFactoryHome ❌
+#### UC-WP-36 — configDirIsAlwaysTheFactoryHome ✅
 - GIVEN die Config-Datei trägt von Hand eingetragen ein anderes Konfigurationsverzeichnis (z. B.
-  `~/.peon`) WHEN der Server die Config lädt THEN ist das Konfigurationsverzeichnis trotzdem das
-  Verzeichnis der Factory, und es wird nichts aus einem anderen Verzeichnis gelesen oder geschrieben.
+  `<plugin-home>/.peon` als absoluter Pfad — die Factory expandiert kein `~`) WHEN der Server die Config
+  lädt THEN ist das Konfigurationsverzeichnis trotzdem das Verzeichnis der Factory, und es wird nichts
+  aus einem anderen Verzeichnis gelesen oder geschrieben.
 
 ### R-WP-10 — Ein Turn je Projekt, weitere Eingaben in der Queue 🚧
 
@@ -269,7 +270,7 @@ Jon und sein Team bekommen **alle** Core-Werkzeuge inklusive Shell (`disk*`, `we
 - GIVEN ein Projekt als Arbeitsordner WHEN die Tool-Liste des Jons gebaut wird THEN sind die
   Core-Familien vollständig enthalten (auch Shell) und **kein** Werkzeug mit `eclipse`-Präfix.
 
-#### UC-WP-37 — diskToolsAreAlwaysOn ❌
+#### UC-WP-37 — diskToolsAreAlwaysOn ✅
 - GIVEN eine Config-Datei ohne jede Angabe WHEN der Server die Config lädt THEN sind die
   Disk-Werkzeuge an — die Factory könnte sonst ihre eigentliche Arbeit nicht tun; eine von Hand
   eingetragene `false` ändert daran nichts.
@@ -337,7 +338,7 @@ Wert kommt, zeigt der View.
 UI später auch bearbeiten können". Eine Überschreibungsdatei statt Rückschreiben hält den Bestand des
 Plugins unberührt, den die Factory weder liest noch schreibt (R-WP-9).
 
-#### UC-WP-23 — settingsShowsMaskedConfig ❌
+#### UC-WP-23 — settingsShowsMaskedConfig ✅
 - GIVEN der Einstellungen-View WHEN er geöffnet wird THEN stehen Provider, Modell, URL, Token-Fenster,
   Timeout und Think senden, dazu der Key-Status.
 - GIVEN ein gesetzter Key WHEN der View geladen wird THEN enthält die Antwort die Info „gesetzt" und
@@ -352,7 +353,7 @@ Plugins unberührt, den die Factory weder liest noch schreibt (R-WP-9).
 - GIVEN ein laufender Turn-Bestand WHEN der Wert gesetzt wurde THEN nutzt der **nächste** Turn den
   neuen Wert (Nachweis mit dem ersten echten Turn, R-WP-4).
 
-#### UC-WP-38 — configFileWinsOverEnvironment ❌
+#### UC-WP-38 — configFileWinsOverEnvironment ✅
 - GIVEN die Umgebungsvariable und die Datei tragen unterschiedliche Werte WHEN die Config geladen wird
   THEN gilt der Wert aus der Datei, und der Einstellungen-View nennt die Datei als Quelle.
 - GIVEN die Datei trägt keinen Wert WHEN die Umgebungsvariable gesetzt ist THEN gilt der Wert aus der

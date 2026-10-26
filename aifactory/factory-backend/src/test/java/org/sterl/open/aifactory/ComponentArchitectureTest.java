@@ -10,6 +10,11 @@ import com.tngtech.archunit.core.domain.JavaClasses;
 
 import org.sterl.llmpeon.ai.FileLlmConfigStore;
 import org.sterl.llmpeon.ai.LlmConfigLoader;
+import org.sterl.llmpeon.agent.AiDevAgent;
+import org.sterl.llmpeon.agent.AiPlanAgent;
+import org.sterl.llmpeon.agent.AiReviewAgent;
+import org.sterl.llmpeon.ai.ConfiguredChatModel;
+import org.sterl.llmpeon.poagent.AiPoAgent;
 
 /**
  * The component rules of {@code aifactory/AGENTS.md} (skill: component-architecture) as executable
@@ -60,6 +65,27 @@ class ComponentArchitectureTest {
         noClasses().that().resideOutsideOfPackage(ArchitectureGuardTest.BASE_PACKAGE + ".config..")
                 .should().dependOnClassesThat(belongToAnyOf(LlmConfigLoader.class, FileLlmConfigStore.class))
                 .because("only config loads the factory's own config — anywhere else the pinning is bypassed")
+                .check(productionClasses);
+    }
+
+    /**
+     * A turn belongs to a project, so an agent instance belongs to exactly one component: {@code chat}.
+     * Anywhere else it would be a second runtime of its own — a second Jon per project, a second memory
+     * and a second serialization point, which is what R-WP-10 and R-WP-15 rule out. The guard names the
+     * agent types and the model wrapper, because the wrapper is what a hand-built agent starts with.
+     */
+    @Test
+    void onlyChatHoldsAgentInstances() {
+        JavaClasses productionClasses = ArchitectureGuardTest.productionClasses();
+
+        noClasses().that().resideOutsideOfPackage(ArchitectureGuardTest.BASE_PACKAGE + ".chat..")
+                .should().dependOnClassesThat().areAssignableTo(AiPoAgent.class)
+                .orShould().dependOnClassesThat().areAssignableTo(AiPlanAgent.class)
+                .orShould().dependOnClassesThat().areAssignableTo(AiDevAgent.class)
+                .orShould().dependOnClassesThat().areAssignableTo(AiReviewAgent.class)
+                .orShould().dependOnClassesThat().areAssignableTo(ConfiguredChatModel.class)
+                .because("only chat builds and owns the agents of a project — anyone else holding one "
+                        + "is a second Jon on the same memory")
                 .check(productionClasses);
     }
 }

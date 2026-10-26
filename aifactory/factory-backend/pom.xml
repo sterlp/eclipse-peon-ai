@@ -38,7 +38,7 @@
             <artifactId>factory-ui</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <!-- the only agent implementation (AF-ADR-001); used from the `agent` and `config` packages -->
+        <!-- the only agent implementation (AF-ADR-001); used from the `config` and `chat` packages -->
         <dependency>
             <groupId>org.sterl</groupId>
             <artifactId>llmpeon-core</artifactId>
