@@ -166,28 +166,27 @@ public class ChatStreamRegistry {
      * Event name + JSON data, both from the architecture doc's table. The payload is built by hand so
      * the field set of a live line is visible here and cannot grow by accident — a key would reach the
      * browser through this map and nothing else (R-WP-16).
+     *
+     * <p>Exhaustive switch over the sealed {@link ChatEvent}, deliberately without {@code default}: a
+     * fifth event type has to fail the build here. An {@code if}-chain ending in a thrown
+     * IllegalStateException compiled either way, and at runtime that exception ended the delivery thread
+     * of every watching connection mid-turn — from then on not even {@code done} got through (measured by
+     * 3f-3's mutation battery, and the reason the chain is gone).</p>
      */
     private SseEmitter.SseEventBuilder toSse(ChatEvent event) throws IOException {
-        if (event instanceof ChatEvent.Partial partial) {
-            return SseEmitter.event().name("partial").data(payload("kind", partial.kind(), "text", partial.text()),
-                    MediaType.APPLICATION_JSON);
-        }
-        if (event instanceof ChatEvent.ToolLine toolLine) {
-            return SseEmitter.event().name("tool").data(payload("text", toolLine.text()), MediaType.APPLICATION_JSON);
-        }
-        if (event instanceof ChatEvent.Delegated delegated) {
-            return SseEmitter.event().name("delegated")
+        return switch (event) {
+            case ChatEvent.Partial partial -> SseEmitter.event().name("partial")
+                    .data(payload("kind", partial.kind(), "text", partial.text()), MediaType.APPLICATION_JSON);
+            case ChatEvent.ToolLine toolLine -> SseEmitter.event().name("tool")
+                    .data(payload("text", toolLine.text()), MediaType.APPLICATION_JSON);
+            case ChatEvent.Delegated delegated -> SseEmitter.event().name("delegated")
                     .data(payload("origin", delegated.origin(), "text", delegated.text()),
                             MediaType.APPLICATION_JSON);
-        }
-        if (event instanceof ChatEvent.Done done) {
-            return SseEmitter.event().name("done").data(payload("millis", done.millis()), MediaType.APPLICATION_JSON);
-        }
-        if (event instanceof ChatEvent.Failed failed) {
-            return SseEmitter.event().name("error").data(payload("message", failed.message()),
-                    MediaType.APPLICATION_JSON);
-        }
-        throw new IllegalStateException("unmapped chat event " + event.getClass());
+            case ChatEvent.Done done -> SseEmitter.event().name("done")
+                    .data(payload("millis", done.millis()), MediaType.APPLICATION_JSON);
+            case ChatEvent.Failed failed -> SseEmitter.event().name("error")
+                    .data(payload("message", failed.message()), MediaType.APPLICATION_JSON);
+        };
     }
 
     private String payload(Object... nameAndValue) throws IOException {

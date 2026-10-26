@@ -251,6 +251,13 @@ public class ToolService {
 
     public static record ToolResult(boolean clearMemory, ToolExecutionResultMessage message) {}
 
+    /**
+     * Runs one tool call and builds the result the model reads. The attributes the tool attached
+     * ({@link org.sterl.llmpeon.tool.tools.AbstractTool#attachResultAttribute}) are collected here,
+     * <b>after</b> the run — the second half of the pair whose first half is
+     * {@code AbstractTool.withToolRequest} emptying that map when the invocation is entered. One call
+     * after the other ({@code runAllTools} iterates sequentially), never two of the same tool at once.
+     */
     public ToolExecutionResultMessage execute(ToolExecutionRequest tr, ToolLoopRequest req) {
         var executor = toolExecutors.get(tr.name());
         var monitor = req.getMonitor();

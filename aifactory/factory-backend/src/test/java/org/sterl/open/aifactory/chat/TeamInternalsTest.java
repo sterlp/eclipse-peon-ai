@@ -65,8 +65,9 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * <p>The member's <em>final</em> answer is the one member text the wire does carry, and it carries it as a
  * {@code delegated} event — that is what UC-WP-40 GIVEN 1 and R-WP-4 demand („sichtbar sind nur die
  * Delegations-Zeile und die finale Antwort"). The assertions below therefore run <b>per channel</b>: what
- * must stay away from {@code partial} and {@code tool} is named, and {@code delegated} is asserted
- * positively, so every event name on the wire is accounted for and no channel stays unnamed.</p>
+ * must stay away from {@code partial} and {@code tool} is named, {@code delegated} is asserted
+ * positively, and the set of names the whole turn used is pinned to the four known ones — so a leak
+ * cannot hide under a name nobody looked at.</p>
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(FakeGitConfig.class)
@@ -177,6 +178,10 @@ class TeamInternalsTest {
                     .hasSize(2);
             assertThat(toolLines.get(0)).contains("Da Mek start:").contains(MEMBER_PROMPT);
             assertThat(toolLines.get(1)).contains("Da Mek done.");
+            assertThat(stream.eventNames())
+                    .as("the wire speaks exactly the four known names — a member line leaking under a "
+                            + "fifth name is red here, not merely unnamed")
+                    .containsOnly("partial", "tool", "delegated", "done");
             assertThat(stream.countOf("done"))
                     .as("one answered input is one done")
                     .isEqualTo(1);
@@ -351,6 +356,11 @@ class TeamInternalsTest {
 
         int countOf(String name) {
             return (int) names.stream().filter(name::equals).count();
+        }
+
+        /** Every {@code event:} name seen, in arrival order — duplicates kept, the name set is asserted. */
+        List<String> eventNames() {
+            return List.copyOf(names);
         }
 
         List<String> payloads(String name) {

@@ -79,6 +79,9 @@ class DelegatedAnswerTest {
     private static final String MEMBER_COMMAND_MARKER = "mitglieds-kommando";
     /** What the member hands back — the final answer, and the only member text allowed to show. */
     private static final String MEMBER_ANSWER = "MITGLIEDS-ANTWORT: Birne";
+    /** Two delegations of one turn answer differently — each answer is a line of its own. */
+    private static final String MEMBER_ANSWER_FIRST = "MITGLIEDS-ANTWORT-ERST: Birne";
+    private static final String MEMBER_ANSWER_SECOND = "MITGLIEDS-ANTWORT-ZWEIT: Banane";
     /** What the member "answers" when it answers nothing at all — blank is no answer (no line, no event). */
     private static final String MEMBER_NO_ANSWER = "   ";
     /** Jon's own follow-up answer — it stays his line, after the team's. */
@@ -179,6 +182,63 @@ class DelegatedAnswerTest {
                         new ChatMessageDto("jon", JON_ANSWER, "Jon"));
     }
 
+    /**
+     * Two delegations of one turn are two lines (internal, no own id — it sharpens UC-WP-40's rule): the
+     * final answer is a fact of one delegation call, not „the last answer a member gave". A second
+     * delegation must therefore neither overwrite the first answer on the wire nor in the history, and
+     * the per-invocation attribute hand-over has to keep the two apart.
+     */
+    @Test
+    @Timeout(60)
+    void twoDelegationsInOneTurnProduceOneLineEach() throws Exception {
+        writeFactoryConfig("inc3f5-twice");
+        CreatedProject project = createProject("delegated-twice");
+
+        try (LiveStream stream = new LiveStream(project.id())) {
+            scriptTwoDelegations();
+            assertThat(send(project.id(), QUESTION).getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+            stream.awaitEvent("done", 1);
+
+            List<String> delegated = stream.payloads("delegated");
+            assertThat(delegated)
+                    .as("two delegations are two team lines, none swallowed by the other")
+                    .hasSize(2);
+            assertThat(delegated.stream().map(payload -> (String) JsonPath.read(payload, "$.text")).toList())
+                    .as("each delegation's own pure answer, in the order Jon asked for it")
+                    .containsExactly(MEMBER_ANSWER_FIRST, MEMBER_ANSWER_SECOND);
+            assertThat(delegated.stream().map(payload -> (String) JsonPath.read(payload, "$.origin")).toList())
+                    .as("each line names the member that handed it back")
+                    .containsExactly("Da Mek", "Da Mek");
+
+            List<String> toolLines = stream.payloads("tool");
+            assertThat(toolLines)
+                    .as("Jon's trace grows with the delegations — one start line and one done line each")
+                    .hasSize(4);
+            assertThat(toolLines.get(0)).contains("Da Mek start:").contains("(erste)");
+            assertThat(toolLines.get(1)).contains("Da Mek done.");
+            assertThat(toolLines.get(2)).contains("Da Mek start:").contains("(zweite)");
+            assertThat(toolLines.get(3)).contains("Da Mek done.");
+            assertThat(stream.partialsBetween("(erste)", "Da Mek done."))
+                    .as("the first member still thought to itself — a second delegation changes nothing")
+                    .isZero();
+            assertThat(stream.answerText())
+                    .as("Jon's own answer stays one answer over two delegations")
+                    .isEqualTo(JON_ANSWER);
+            assertThat(stream.countOf("done"))
+                    .as("two delegations stay one answered input")
+                    .isEqualTo(1);
+            assertThat(stream.countOf("error")).isZero();
+        }
+
+        assertThat(messages(project.id()))
+                .as("the history holds both team lines in the order of Jon's memory, his own answer last")
+                .containsExactly(
+                        new ChatMessageDto("user", QUESTION, null),
+                        new ChatMessageDto("jon", MEMBER_ANSWER_FIRST, "Da Mek"),
+                        new ChatMessageDto("jon", MEMBER_ANSWER_SECOND, "Da Mek"),
+                        new ChatMessageDto("jon", JON_ANSWER, "Jon"));
+    }
+
     @Test
     @Timeout(60)
     void delegationWithoutAnswerProducesNoLine() throws Exception {
@@ -247,6 +307,22 @@ class DelegatedAnswerTest {
         model.queueResponse(toolCall("call_shell", "shellRunCommand",
                 "{\"command\":\"echo " + MEMBER_COMMAND_MARKER + "\",\"timeout\":20}"));
         model.queueResponse(MEMBER_ANSWER);
+        model.queueResponse(JON_ANSWER);
+    }
+
+    /**
+     * Jon asks for two delegations in one answer of his own. Both calls name the same tool, so the same
+     * member runs twice one after the other — its second answer is what a „last answer of a member" rule
+     * alone would show twice, and the first answer would vanish.
+     */
+    private void scriptTwoDelegations() {
+        model.queueResponse(new AiMessage(null, List.of(
+                ToolExecutionRequest.builder().id("call_dev_first").name("askDev")
+                        .arguments("{\"prompt\":\"" + MEMBER_PROMPT + " (erste)\"}").build(),
+                ToolExecutionRequest.builder().id("call_dev_second").name("askDev")
+                        .arguments("{\"prompt\":\"" + MEMBER_PROMPT + " (zweite)\"}").build())));
+        model.queueResponse(MEMBER_ANSWER_FIRST);
+        model.queueResponse(MEMBER_ANSWER_SECOND);
         model.queueResponse(JON_ANSWER);
     }
 

@@ -51,7 +51,16 @@ public class AbstractTool implements SmartTool {
         resultAttributes.put(key, value);
     }
 
-    /** The current call's attributes, empty when the tool attached none; never null. */
+    /**
+     * The current call's attributes, empty when the tool attached none; never null.
+     * <p>
+     * Read together with {@link #withToolRequest}: the map is emptied when an invocation is
+     * <b>entered</b> and read only <b>after</b> that invocation returned
+     * ({@link org.sterl.llmpeon.tool.ToolService#execute}) — one pair, one sequence. Both halves sit on
+     * the shared tool instance and rely on {@code ToolService.runAllTools} working one call after the
+     * other, so this is not thread-safe for concurrent invocations of one tool; whoever moves either
+     * half has to move the other with it.
+     */
     public final Map<String, Object> resultAttributes() {
         return Map.copyOf(resultAttributes);
     }
