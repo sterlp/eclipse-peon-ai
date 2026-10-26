@@ -147,28 +147,30 @@ Workspace-/Projektbegriff des Eclipse-Plugins (siehe [Open Points](open-points.m
 - GIVEN ein Projekt in der Liste WHEN der Nutzer es öffnet THEN öffnet der Chat-View und alle
   Werkzeuge dieses Jons arbeiten auf dem Root dieses Projekts.
 
-### R-WP-4 — Der Nutzer spricht immer mit Jon 🚧
+### R-WP-4 — Der Nutzer spricht immer mit Jon ✅
 
 Keine Agent-Auswahl, keine weiteren Built-in- oder Custom-Agenten
-([PR-1](index.md)). Eine Delegation an Da Thinka/Da Mek/Da Dok/Da Sniffa erscheint als **eine**
-Werkzeug-Zeile im Chat, die das Mitglied nennt — Parität zum Plugin.
+([PR-1](index.md)). Eine Delegation an Da Thinka/Da Mek/Da Dok/Da Sniffa erscheint als
+Werkzeug-Zeilen im Chat, die das Mitglied nennen — Start und Abschluss, Parität zum Plugin.
 
 **Herkunft je Zeile.** Der Core liefert die Herkunft einer Nachricht mit (Agenten-Name im
 Message-Modell, Proposal `agent-origin-proposal.md`): Jon-Zeilen und die finalen Antworten von
 Team-Mitgliedern tragen den Namen dessen, der sie erzeugt hat; eine Zeile ohne Agenten-Bezug trägt
 **keinen** Namen statt eines erfundenen (kein „System", kein „Peon"). Nutzer-Zeilen tragen den Namen
-des Menschen, sobald es ihn gibt (R-WP-17).
+des Menschen, sobald es ihn gibt (R-WP-17). Gemeint ist die **dauerhafte** Zeile (der Verlauf); das
+wachsende Fragment eines laufenden Turns trägt keinen Namen, weil live nur Jon spricht und damit
+nichts zu verwechseln ist.
 
 **Man sieht nur Jon und die finalen Antworten seines Teams** — nicht die Unterhaltung eines
 Teammitglieds mit sich selbst: dessen **Denk- und Zwischenschritte** erscheinen im Chat **nie**,
-weder live noch im Verlauf; sichtbar sind nur die Delegations-Zeile und die finale Antwort. Es gibt
+weder live noch im Verlauf; sichtbar sind nur die Delegations-Zeilen und die finale Antwort. Es gibt
 genau **einen** Gesprächsstrang.
 
 #### UC-WP-6 — chatAlwaysGoesToJon ✅
 - GIVEN der Chat-View WHEN der Nutzer eine Nachricht sendet THEN antwortet Jon; ein Agenten-Wechsel
   ist nirgends möglich.
 
-#### UC-WP-39 — everyLineCarriesItsAuthor ❌
+#### UC-WP-39 — everyLineCarriesItsAuthor ✅
 - GIVEN eine Antwort von Jon oder von einem Team-Mitglied WHEN sie im Chat erscheint THEN nennt die
   Zeile den Agenten-Namen, der sie erzeugt hat; hat eine Zeile keinen Agenten-Bezug, trägt sie keinen
   Namen statt eines erfundenen.
@@ -176,16 +178,17 @@ genau **einen** Gesprächsstrang.
   Herkunft (die Herkunft der wiederhergestellten Zeilen folgt aus dem Besitzer des Verlaufs, nicht aus
   einer zweiten Ablage).
 
-#### UC-WP-40 — onlyFinalAnswersFromTheTeam ❌
+#### UC-WP-40 — onlyFinalAnswersFromTheTeam ✅
 - GIVEN Jon delegiert an ein Team-Mitglied WHEN der Chat die Delegation zeigt THEN steht die **finale**
   Antwort dieses Mitglieds als Zeile mit seinem Namen im Chat.
 - GIVEN dieselbe Delegation WHEN man den Chat betrachtet THEN sind die Zwischenschritte des
   Teammitglieds (Denken, eigene Werkzeug-Aufrufe, Teilantworten) **nicht** sichtbar — sichtbar sind nur
-  die Delegations-Zeile und die finale Antwort, es gibt genau einen Gesprächsstrang, keinen zweiten
+  die Delegations-Zeilen und die finale Antwort, es gibt genau einen Gesprächsstrang, keinen zweiten
   Verlauf und keinen Mitschnitt je Agent.
 - GIVEN ein Reload nach einer Delegation WHEN der Chat neu aufgebaut wird THEN ist die finale Antwort
-  des Team-Mitglieds weiterhin Teil des Verlaufs (Live-Zeilen ausgenommen, R-WP-11) — ⏳ Mechanismus
-  offen ([Open Points](open-points.md)).
+  des Team-Mitglieds weiterhin Teil des Verlaufs (Live-Zeilen ausgenommen, R-WP-11) — sie liegt als
+  Attribut am Delegations-Ergebnis in Jons Verlauf, nicht in einer zweiten Ablage
+  ([Architektur](aifactory-architektur.md)).
 
 ### R-WP-5 — Antworten erscheinen laufend ✅
 
@@ -213,7 +216,11 @@ Factory übergibt nur die zwei Wurzeln.
 
 #### UC-WP-9 — writeOutsideBothRootsRejected ❌
 - GIVEN derselbe Agent WHEN er außerhalb von Projekt-Root **und** temporärem Verzeichnis schreiben
-  will THEN wird abgelehnt und die Ablehnung steht als Tool-Zeile im Chat.
+  will THEN wird abgelehnt und **Jons** Ablehnung steht als Tool-Zeile im Chat.
+- GIVEN dasselbe Verlangen eines **Team-Mitglieds** WHEN es abgelehnt wird THEN erreicht die Ablehnung
+  als Werkzeug-Ergebnis das Modell, die Datei entsteht nicht und im Chat erscheint **keine** Zeile —
+  Mitglieder-Interna sind unsichtbar (R-WP-4, UC-WP-40). Ein Mitglied hinterlässt also nie eine
+  sichtbare Ablehnung; der sichtbare Fall ist immer Jons eigener Schreibversuch.
 
 #### UC-WP-10 — traversalDoesNotEscapePinning ❌
 - GIVEN ein Pfad mit `..` oder ein absoluter Pfad, der nach der Normalisierung außerhalb beider
@@ -334,6 +341,11 @@ Standard ist der **Git-Checkout** des Projekts; umschaltbar dazu: das **temporä
 - GIVEN der Chat-View WHEN der Datei-Bereich geöffnet wird THEN steht der Projekt-Checkout als
   Standard-Wurzel bereit und das temporäre Verzeichnis ist als zweite Wurzel erreichbar; beide
   Angebote sind lesend.
+
+#### UC-WP-42 — fileAreaNeverEscapesItsRoot ❌
+- GIVEN der Datei-Bereich WHEN ein Pfad gelesen werden soll, der nach Normalisierung außerhalb der
+  gewählten Wurzel liegt (`..`, absoluter Pfad, oder ein Symlink, der aus der Wurzel hinausführt)
+  THEN antwortet der Server mit einem Fehler und liefert keinen Inhalt.
 
 ### R-WP-15 — Je Projekt genau ein Jon, ein Chat für alle ✅
 

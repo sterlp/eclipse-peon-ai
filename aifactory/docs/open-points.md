@@ -3,14 +3,19 @@
 Status: ❓ offen · ⏳ selbst entschieden (Rückversicherung steht aus) · 🔒 geklärt.
 Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entfällt.
 
-## ⏳ im Nachtzyklus entschieden (2026-10-25) — bitte überfliegen
-* **⏳ Finale Team-Antworten müssen den Reload überleben** ([UC-WP-40](web-prototype.md), Entscheidung
-  2026-10-26: „wir sehen nur die finalen Antworten der Slaves") — der Core liefert die Herkunft je
-  Nachricht, aber `PoDelegateTool` gibt das Ergebnis als Werkzeug-Ergebnis in Jons Memory zurück, nicht
-  als eigene Nachricht. Damit die finale Antwort nach einem Reload noch da ist, muß sie aus Jons Verlauf
-  rekonstruierbar sein (Werkzeug-Ergebnis der Delegation mit Agenten-Zuordnung) oder der Core legt sie
-  mit Herkunft ab. Abgeleitet aus R-WP-11 („kein zweiter Speicher"); entschieden wird der Weg in Inc 3f,
-  nicht durch den Dev-Agenten. *Andersfall:* nur live sichtbar ⇒ UC-WP-40 GIVEN 3 wird gestrichen.
+## ⏳ selbst entschieden (2026-10-25/26) — bitte überfliegen
+
+* **⏳ UC-WP-9 klargestellt: die sichtbare Ablehnung ist immer Jons** (2026-10-26, Abnahmefrage A1 von
+  Inc 4) — [UC-WP-9](web-prototype.md) trägt jetzt zwei GIVEN: Jons eigener Schreibversuch hinterlässt die
+  Werkzeug-Zeile im Chat, die Ablehnung eines **Team-Mitglieds** endet beim Modell (Werkzeug-Ergebnis,
+  keine Datei, **keine** Chat-Zeile), weil [R-WP-4/UC-WP-40](web-prototype.md) Mitglieder-Interna unsichtbar
+  hält. Klarstellung, keine Bedeutungsänderung. *Andersfall:* soll eine Mitglieds-Ablehnung doch im Chat
+  erscheinen, ist das eine Ausnahme zu R-WP-4 und braucht eine eigene Regel.
+* **⏳ Der Urheber-Name gehört zur dauerhaften Zeile, nicht zum Live-Fragment**
+  ([UC-WP-39](web-prototype.md), so gebaut 2026-10-26: Verlaufszeilen tragen „Jon" / „Da Mek", `user`
+  keinen Namen) — die Live-Zeile eines laufenden Turns trägt **keinen** Namen, weil live nur Jon spricht
+  und damit nichts zu verwechseln ist. *Andersfall:* soll auch das wachsende Live-Fragment ein Label
+  tragen, ist das eine kleine UI-Zeile — dann sagt das Doc es ausdrücklich.
 
 
 * **⏳ Config-Quelle ist eine eigene Datei der Factory** (`~/.aifactory/config.properties`, Keys auch
@@ -101,25 +106,23 @@ Durchgangslager: jeder Punkt wandert am Zyklusende in ein Feature-Doc oder entf�
 * **⏳ Provider-Liste steht doppelt (UI + Server)** — der Server validiert gegen `AiProvider` (9 Namen),
   die Einstellungen-Auswahl im UI führt dieselben neun Namen als eigene Liste
   (`factory-ui/src/api/settings.ts`). Abgeleitet: die Alternative wäre, die Liste über die API
+  auszuliefern — das würde [`SettingsDto`](web-prototype.md) um ein Feld verbreitern, obwohl R-WP-16 die
+  Antwortfläche bewusst klein hält (acht Angaben). *Andersfall:* ein neuer Provider im Core ⇒ zwei
+  Stellen anfassen; dann eigene Regel „ein Provider-Katalog je Instanz".
 * **⏳ Entfernen lässt den Chat-Bestand liegen** — `Entfernen` löscht Eintrag und Checkout, wie
   [R-WP-19](web-prototype.md) es aufzählt, aber **nicht** `state/<id>`. Folge: wer dieselbe URL erneut
   anlegt, findet das alte Gespräch wieder (Identität ist die URL). Abgeleitet aus „genau ein Chat je
   Projekt" + [R-WP-11](web-prototype.md); ein Verlauf, der mit dem Projekt sterben soll, wäre eine eigene
   Regel. *Andersfall:* „Entfernen heißt Tabula rasa" ⇒ `state/<id>` mitlöschen, dann aber mit Rückfrage.
 * **⏳ Wiederhergestellte Verlaufszeilen tragen keine Zeit** — der Core-History-Bestand kennt keinen
-  Zeitstempel; eine eigene Zeit-Datei wäre ein zweiter Speicher
+  Zeitstempel; eine eigene Zeit-Datei wäre ein zweiter Speicher ([R-WP-11](web-prototype.md)). Live-Zeilen
+  zeigen die Zeit, der wiederhergestellte Verlauf nicht. *Andersfall:* Zeit im Core-History-Format =
+  Core-Story.
 * **⏳ Kein Deep-Link in eine Ansicht** — es gibt genau drei Views ohne Adresse (R-WP-1/PR-1, kein
   SPA-Routing): ein Browser-Reload landet in der Projects-View, der Nutzer öffnet das Projekt erneut und
   sieht den vollständigen Verlauf. Das ist mit [R-WP-11](web-prototype.md) vereinbar (der **Chat** überlebt,
   die offene Ansicht nicht). *Andersfall:* „Reload soll im Chat bleiben" ⇒ Router + Regel für unbekannte
   Pfade (eigene Story).
-
-  ([R-WP-11](web-prototype.md)). Live-Zeilen zeigen die Zeit, der wiederhergestellte Verlauf nicht.
-  *Andersfall:* Zeit im Core-History-Format = Core-Story.
-
-  auszuliefern — das würde [`SettingsDto`](web-prototype.md) um ein Feld verbreitern, obwohl R-WP-16 die
-  Antwortfläche bewusst klein hält (acht Angaben). *Andersfall:* ein neuer Provider im Core ⇒ zwei
-  Stellen anfassen; dann eigene Regel „ein Provider-Katalog je Instanz".
 
 
 ## ❓ offen

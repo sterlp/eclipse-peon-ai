@@ -69,14 +69,21 @@ final class ProjectRuntime {
         this.model = new ConfiguredChatModel(initialConfig.get());
 
         JonToolSet toolSet = JonToolSet.forProject(projectRoot);
+        WriteValidator writeValidator = toolSet.writeValidator();
         NamedAgent plan = new NamedAgent("Da Thinka", new AiPlanAgent(model, toolSet.tools()));
         NamedAgent review = new NamedAgent("Da Dok", new AiReviewAgent(model, toolSet.tools()));
-        NamedAgent dev = new NamedAgent("Da Mek", new AiDevAgent(model, toolSet.tools()));
+        NamedAgent dev = new NamedAgent("Da Mek", new AiDevAgent(model, toolSet.tools()) {
+            @Override
+            public WriteValidator getWriteValidator() {
+                // UC-WP-8/9 name the team too, and the core default is ALLOW_ALL — Da Mek gets exactly
+                // Jon's two roots, from the same instance, so one rule has one source (R-WP-6)
+                return writeValidator;
+            }
+        });
         // registered before the agent is built, otherwise Jon cannot delegate in his first turn; the
         // budget is a supplier so a changed config takes effect without a rebuild
         toolSet.addDelegateTool(plan, review, dev, () -> model.getConfig().getAutoCompactAfter());
 
-        WriteValidator writeValidator = toolSet.writeValidator();
         // the team in the core's lifecycle order: Da Thinka, Da Mek, Da Dok (AiPoAgent.getTeam())
         this.jon = new AiPoAgent(model, toolSet.tools(), stateDir, List.of(plan, dev, review)) {
             @Override
