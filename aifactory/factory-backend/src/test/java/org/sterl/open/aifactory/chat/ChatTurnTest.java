@@ -245,14 +245,20 @@ class ChatTurnTest {
                     .isZero();
 
             early.awaitEvent("partial", 2);
-            assertThat(early.answerText())
-                    .as("the answer grows chunk by chunk while the turn is still running")
-                    .isEqualTo(LONG_ANSWER);
+            // a prefix, not the whole text: the reader lags on purpose, so what is provable at this point
+            // is that the answer arrives piece by piece on this connection — the complete text is
+            // asserted at its deterministic anchor, after the done of this very input
+            assertThat(LONG_ANSWER)
+                    .as("the answer grows chunk by chunk on the open connection")
+                    .startsWith(early.answerText());
             assertThat(early.payloads("tool"))
                     .as("a tool line is its own line, not part of the answer")
                     .isNotEmpty();
 
             early.awaitEvent("done", 1);
+            assertThat(early.answerText())
+                    .as("every piece of the answer came live — no reload, no second source")
+                    .isEqualTo(LONG_ANSWER);
             assertThat(early.names())
                     .as("one answered input is one done, and nothing is replayed")
                     .filteredOn("done"::equals).hasSize(1);
