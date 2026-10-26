@@ -38,6 +38,9 @@ final class ProjectRuntime {
 
     private static final Logger LOG = LoggerFactory.getLogger(ProjectRuntime.class);
 
+    /** What the browser is told to call the agent the conversation belongs to; the core calls him {@code Peon-PO}. */
+    private static final String JON_DISPLAY_NAME = "Jon";
+
     private final String projectId;
     private final Supplier<LlmConfig> configForTurn;
     private final ConfiguredChatModel model;
@@ -59,7 +62,6 @@ final class ProjectRuntime {
         this.configForTurn = configForTurn;
         this.streams = streams;
         this.turns = turns;
-        this.monitor = new SseTurnMonitor(projectId, streams);
         this.model = new ConfiguredChatModel(initialConfig.get());
 
         JonToolSet toolSet = JonToolSet.forProject(projectRoot);
@@ -81,6 +83,13 @@ final class ProjectRuntime {
         };
         // the slaves' own naming is the core's job, this one line is the factory's (D6)
         this.jon.setStaticContext(List.of(ContextItem.of("Your name is Da Boss.")));
+
+        // built from the pairs this factory made, so the product's names live in exactly one table (D1)
+        AgentNames names = AgentNames.ofJon(jon.getName(), JON_DISPLAY_NAME);
+        for (NamedAgent member : List.of(plan, dev, review)) {
+            names = names.add(member.agent().getName(), member.uiName());
+        }
+        this.monitor = new SseTurnMonitor(projectId, streams, names);
     }
 
     /**
