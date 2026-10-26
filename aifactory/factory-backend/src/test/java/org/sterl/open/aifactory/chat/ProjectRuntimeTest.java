@@ -73,9 +73,9 @@ class ProjectRuntimeTest {
 
         assertThat(runtime.history()).containsExactly(
                 ChatLine.user("first question"),
-                ChatLine.jon("the answer"),
+                ChatLine.jon("the answer", "Jon"),
                 ChatLine.user("[Queued Message] (10:15): later question"),
-                ChatLine.jon("second answer"));
+                ChatLine.jon("second answer", "Jon"));
     }
 
     private ProjectRuntime runtime(Path stateDir) {

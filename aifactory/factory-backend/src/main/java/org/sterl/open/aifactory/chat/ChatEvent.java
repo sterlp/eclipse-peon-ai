@@ -16,6 +16,19 @@ public sealed interface ChatEvent {
     record ToolLine(String text) implements ChatEvent {
     }
 
+    /**
+     * The <b>final</b> answer a team member handed back to Jon — the one member line the wire may show,
+     * and it is named because the conversation belongs to Jon and this text does not (R-WP-4, UC-WP-39).
+     *
+     * <p>It comes through its own core callback and not through the {@code SseTurnMonitor} filter: a
+     * member's answer is not a line of the conversation, and its thinking and its tool lines are
+     * filtered away — so without this event no channel could carry it live. The same text is in the
+     * history, which is why the view shows it once: reloading replaces the live lines (one truth, two
+     * channels).</p>
+     */
+    record Delegated(String origin, String text) implements ChatEvent {
+    }
+
     /** One answered input — {@code AbstractAgent.doCall} fires it per input, not per {@code call(…)}. */
     record Done(long millis) implements ChatEvent {
     }

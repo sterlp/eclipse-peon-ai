@@ -3,6 +3,7 @@ package org.sterl.open.aifactory.chat;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
 
@@ -16,6 +17,7 @@ import org.sterl.llmpeon.ai.ConfiguredChatModel;
 import org.sterl.llmpeon.ai.LlmConfig;
 import org.sterl.llmpeon.context.ContextItem;
 import org.sterl.llmpeon.poagent.AiPoAgent;
+import org.sterl.llmpeon.tool.ToolResultAttributes;
 import org.sterl.llmpeon.tool.WriteValidator;
 import org.sterl.open.aifactory.config.TurnNotConfiguredException;
 
@@ -23,6 +25,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 
 /**
@@ -48,6 +51,7 @@ final class ProjectRuntime {
     private final ChatStreamRegistry streams;
     private final ExecutorService turns;
     private final SseTurnMonitor monitor;
+    private final AgentNames names;
 
     /**
      * @param initialConfig the config the model is built with — the plain read, because a project must
@@ -85,11 +89,12 @@ final class ProjectRuntime {
         this.jon.setStaticContext(List.of(ContextItem.of("Your name is Da Boss.")));
 
         // built from the pairs this factory made, so the product's names live in exactly one table (D1)
-        AgentNames names = AgentNames.ofJon(jon.getName(), JON_DISPLAY_NAME);
+        AgentNames table = AgentNames.ofJon(jon.getName(), JON_DISPLAY_NAME);
         for (NamedAgent member : List.of(plan, dev, review)) {
-            names = names.add(member.agent().getName(), member.uiName());
+            table = table.add(member.agent().getName(), member.uiName());
         }
-        this.monitor = new SseTurnMonitor(projectId, streams, names);
+        this.names = table;
+        this.monitor = new SseTurnMonitor(projectId, streams, table);
     }
 
     /**
@@ -113,9 +118,14 @@ final class ProjectRuntime {
     }
 
     /**
-     * The chat as the memory has it: user text and Jon's answers, everything else skipped — a system
-     * prompt, a tool call, a tool result and an empty message are not chat lines (D4). A queued input
-     * keeps the core's {@code [Queued Message]} marker, it is reality and not the factory's to hide (Q6).
+     * The chat as the memory has it: user text, Jon's answers, and the final answer of a team member —
+     * everything else skipped, so a system prompt, a tool call, an ordinary tool result and an empty
+     * message are not chat lines (D4). A queued input keeps the core's {@code [Queued Message]} marker,
+     * it is reality and not the factory's to hide (Q6).
+     *
+     * <p>Every line states its author (R-WP-4, UC-WP-39): Jon by name, the member by name, the typed
+     * input by none. So the team's answer is read back out of the one history file the core already
+     * keeps — no second store, no parsing of the text the model sees (R-WP-11).</p>
      */
     List<ChatLine> history() {
         List<ChatLine> lines = new ArrayList<>();
@@ -123,14 +133,39 @@ final class ProjectRuntime {
             if (message instanceof UserMessage user) {
                 String text = textOf(user);
                 if (!text.isBlank()) {
-                    lines.add(new ChatLine(ChatLine.ROLE_USER, text));
+                    lines.add(ChatLine.user(text));
+                }
+            } else if (message instanceof ToolExecutionResultMessage result) {
+                ChatLine memberAnswer = finalTeamAnswerOf(result);
+                if (memberAnswer != null) {
+                    lines.add(memberAnswer);
                 }
             } else if (message instanceof AiMessage answer && !answer.hasToolExecutionRequests()
                     && answer.text() != null && !answer.text().isBlank()) {
-                lines.add(new ChatLine(ChatLine.ROLE_JON, answer.text()));
+                lines.add(ChatLine.jon(answer.text(), names.display(jon.getName())));
             }
         }
         return List.copyOf(lines);
+    }
+
+    /**
+     * The final answer a member handed Jon, read from the two attributes the core attached to its own
+     * tool result: the <b>pure</b> text, not the status line the model additionally receives, and the
+     * member as this factory names him. Any other tool result stays no chat line, and so does a result
+     * naming an agent this factory never built — it could not be named honestly (D9).
+     */
+    private ChatLine finalTeamAnswerOf(ToolExecutionResultMessage result) {
+        Map<String, Object> attributes = result.attributes();
+        if (attributes == null) {
+            return null;
+        }
+        Object agent = attributes.get(ToolResultAttributes.DELEGATED_AGENT);
+        Object answer = attributes.get(ToolResultAttributes.DELEGATED_ANSWER);
+        if (!(agent instanceof String coreId) || !(answer instanceof String text) || text.isBlank()) {
+            return null;
+        }
+        String origin = names.display(coreId);
+        return origin == null ? null : ChatLine.jon(text, origin);
     }
 
     /** Jon himself — reachable without a rebuild for the team view and {@code clear()} of Inc 5. */

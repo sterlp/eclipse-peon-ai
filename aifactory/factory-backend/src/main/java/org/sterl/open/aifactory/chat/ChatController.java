@@ -39,7 +39,7 @@ public class ChatController {
     @GetMapping("/api/projects/{id}/messages")
     public List<ChatMessageDto> messages(@PathVariable("id") String projectId) {
         return runtimes.history(projectId).stream()
-                .map(line -> new ChatMessageDto(line.role(), line.text()))
+                .map(line -> new ChatMessageDto(line.role(), line.text(), line.origin()))
                 .toList();
     }
 

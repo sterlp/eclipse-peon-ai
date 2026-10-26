@@ -62,9 +62,11 @@ import org.sterl.open.aifactory.shared.FactoryHome;
  * included — before the outer agent's own {@code done}, so waiting for that one event is a
  * deterministic anchor, and the member finishes strictly before Jon anyway.</p>
  *
- * <p>What is <b>deliberately still missing</b> after this increment: the member's <em>final</em> answer
- * is nowhere on the wire either. That gap is documented, not hidden — it is closed by the
- * {@code delegated} event and the history reading of increment 3f-3.</p>
+ * <p>The member's <em>final</em> answer is the one member text the wire does carry, and it carries it as a
+ * {@code delegated} event — that is what UC-WP-40 GIVEN 1 and R-WP-4 demand („sichtbar sind nur die
+ * Delegations-Zeile und die finale Antwort"). The assertions below therefore run <b>per channel</b>: what
+ * must stay away from {@code partial} and {@code tool} is named, and {@code delegated} is asserted
+ * positively, so every event name on the wire is accounted for and no channel stays unnamed.</p>
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(FakeGitConfig.class)
@@ -75,7 +77,7 @@ class TeamInternalsTest {
     private static final String MEMBER_PROMPT = "MITGLIEDS-AUFGABE: nenne genau eine Frucht";
     /** Only the member's own shell line can carry this; no line of Jon's ever mentions it. */
     private static final String MEMBER_COMMAND_MARKER = "mitglieds-kommando";
-    /** What the member hands back — a member text, so it may not appear on the wire. */
+    /** What the member hands back — a member text, so it may appear on the wire only as {@code delegated}. */
     private static final String MEMBER_ANSWER = "MITGLIEDS-ANTWORT: Birne";
     /** Jon's own follow-up answer — it has to arrive live, chunk by chunk. */
     private static final String JON_ANSWER = "JONS-FOLGE-ANTWORT: die Birne";
@@ -145,10 +147,24 @@ class TeamInternalsTest {
                     .anySatisfy(result -> assertThat(result).contains(MEMBER_COMMAND_MARKER))
                     .anySatisfy(result -> assertThat(result).contains(MEMBER_ANSWER));
 
-            assertThat(stream.wireText())
-                    .as("neither the member's thinking, nor its tool line, nor its answer (R-WP-4)")
+            List<String> toolLines = stream.payloads("tool");
+            assertThat(String.join("|", stream.payloads("partial")))
+                    .as("no partial carries the member's thinking, its tool run or its answer (R-WP-4)")
                     .doesNotContain(MEMBER_ANSWER)
                     .doesNotContain(MEMBER_COMMAND_MARKER);
+            assertThat(String.join("|", toolLines))
+                    .as("no tool line of Jon's quotes the member's tool run or answer either (R-WP-4)")
+                    .doesNotContain(MEMBER_ANSWER)
+                    .doesNotContain(MEMBER_COMMAND_MARKER);
+            assertThat(stream.payloads("delegated"))
+                    .as("the member's final answer arrives live as the one event allowed to carry it (UC-WP-40 "
+                            + "GIVEN 1) — partial, tool, delegated and done are each asserted by name, so the "
+                            + "wire has no unnamed channel left")
+                    .singleElement()
+                    .satisfies(payload -> {
+                        assertThat((String) JsonPath.read(payload, "$.origin")).isEqualTo("Da Mek");
+                        assertThat((String) JsonPath.read(payload, "$.text")).isEqualTo(MEMBER_ANSWER);
+                    });
             assertThat(stream.partialsBetween("Da Mek start:", "Da Mek done."))
                     .as("while the member works, the wire is silent — its conversation with itself")
                     .isZero();
@@ -156,7 +172,6 @@ class TeamInternalsTest {
                     .as("Jon's own answer still grows live, thinking included (UC-WP-7)")
                     .isEqualTo(JON_ANSWER);
 
-            List<String> toolLines = stream.payloads("tool");
             assertThat(toolLines)
                     .as("the member's tool line is gone; Jon keeps his own two delegation lines")
                     .hasSize(2);
@@ -346,11 +361,6 @@ class TeamInternalsTest {
                 }
             }
             return result;
-        }
-
-        /** Every data line of every event, concatenated — the haystack the member's texts must not be in. */
-        String wireText() {
-            return String.join("|", payloads);
         }
 
         /** The {@code answer} chunks in order — what the user reads. */

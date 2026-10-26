@@ -133,18 +133,19 @@ class SharedProjectChatTest {
         assertThat(messages(userA, projectId))
                 .as("A sieht Bs Eingabe und Jons Antwort darauf in seinem eigenen Verlauf")
                 .containsExactly(
-                        new ChatMessageDto("user", QUESTION_A),
-                        new ChatMessageDto("jon", ANSWER_A),
-                        new ChatMessageDto("user", QUESTION_B),
-                        new ChatMessageDto("jon", ANSWER_B));
+                        new ChatMessageDto("user", QUESTION_A, null),
+                        new ChatMessageDto("jon", ANSWER_A, "Jon"),
+                        new ChatMessageDto("user", QUESTION_B, null),
+                        new ChatMessageDto("jon", ANSWER_B, "Jon"));
         assertThat(messages(userB, projectId)).isEqualTo(messages(userA, projectId));
         assertThat(runtimes.runtime(projectId))
                 .as("beide Anfragen liefen auf dieselbe Runtime — dieselbe Memory, kein zweiter Jon")
                 .isSameAs(shared);
 
         assertThat(fieldNames(ChatMessageDto.class))
-                .as("nichts in einer Antwort kann einen Nutzer nennen")
-                .containsExactly("role", "text");
+                .as("nichts in einer Antwort kann einen Nutzer nennen — 'origin' ist die Herkunft der"
+                        + " Zeile (R-WP-4), kein Nutzerfeld; das prüft die Verbotliste unten")
+                .containsExactly("role", "text", "origin");
         assertThat(fieldNames(SendMessageRequest.class))
                 .as("nichts in einer Eingabe kann einen Nutzer nennen")
                 .containsExactly("text");

@@ -189,12 +189,12 @@ class ChatConfigTurnTest {
         assertThat(messages(projectId))
                 .as("drei Eingaben, drei Antworten, in einer Reihenfolge")
                 .containsExactly(
-                        new ChatMessageDto("user", "erste Frage"),
-                        new ChatMessageDto("jon", "erste Antwort"),
-                        new ChatMessageDto("user", "zweite Frage"),
-                        new ChatMessageDto("jon", "zweite Antwort"),
-                        new ChatMessageDto("user", "dritte Frage"),
-                        new ChatMessageDto("jon", "dritte Antwort"));
+                        new ChatMessageDto("user", "erste Frage", null),
+                        new ChatMessageDto("jon", "erste Antwort", "Jon"),
+                        new ChatMessageDto("user", "zweite Frage", null),
+                        new ChatMessageDto("jon", "zweite Antwort", "Jon"),
+                        new ChatMessageDto("user", "dritte Frage", null),
+                        new ChatMessageDto("jon", "dritte Antwort", "Jon"));
     }
 
     // ------------------------------------------------------------------

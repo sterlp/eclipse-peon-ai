@@ -19,16 +19,20 @@ import dev.langchain4j.model.chat.response.ChatResponse;
  * member's thinking, tool lines and half answers are its conversation with itself and are dropped here,
  * while the delegation's own trace lines stay because Jon's tool produced them. The rule is policy and
  * therefore lives in the factory, not in the core: the Eclipse plugin hands the same callback stream to
- * its views and goes on showing every member line.</p>
+ * its views and goes on showing every member line. The one member line that does reach the browser is
+ * the <b>final</b> answer, and it comes on {@link #onDelegatedAnswer} — its own fact, outside the
+ * filter.</p>
  *
  * <p><b>Where {@code done} comes from</b>: {@link #onAgentCallCompleted}, never
  * {@link #onCallCompleted}. A member's completion is announced to the wrapper chain and stops in the
  * innermost wrapper, so the callback that arrives here is the outer agent's — one answered input stays
  * one {@code done} even when a member finished first.</p>
  *
- * <p>What is deliberately not forwarded: the finished answer text. It arrives in the history, and a
- * second copy on the wire would be a second truth (R-WP-11). {@code START}/{@code END} carry no value,
- * {@code TOOL} chunks duplicate the {@code tool} line that {@link #onChatResponse} already sends.</p>
+ * <p>What is deliberately not forwarded: the conversation agent's own finished answer text. It arrives in
+ * the history, and a second copy on the wire would be a second truth (R-WP-11) — the team's answer is the
+ * named exception, because the filter above leaves it no other live channel. {@code START}/{@code END}
+ * carry no value, {@code TOOL} chunks duplicate the {@code tool} line that {@link #onChatResponse}
+ * already sends.</p>
  */
 class SseTurnMonitor implements AiMonitor {
 
@@ -63,6 +67,21 @@ class SseTurnMonitor implements AiMonitor {
         }
         if (message.role() == SimpleMessage.Type.TOOL || message.role() == SimpleMessage.Type.PROBLEM) {
             streams.publish(projectId, new ChatEvent.ToolLine(message.message()));
+        }
+    }
+
+    /**
+     * A member's final answer is not a line of the conversation, so it never comes through
+     * {@link #isTheConversation} — the core says so on a callback of its own, and this is the only place
+     * that turns it into a live line (UC-WP-40). An origin this factory never built gets no name and
+     * therefore no line at all: an unnamed member answer would read as Jon's, which is exactly what
+     * R-WP-4 forbids (D9).
+     */
+    @Override
+    public void onDelegatedAnswer(String agentName, String answer) {
+        String origin = names.display(agentName);
+        if (origin != null) {
+            streams.publish(projectId, new ChatEvent.Delegated(origin, answer));
         }
     }
 

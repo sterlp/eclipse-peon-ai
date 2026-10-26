@@ -180,7 +180,7 @@ class ChatQueueTest {
         List<ChatMessageDto> history = messages(project.id());
         assertThat(history)
                 .as("die erste Eingabe ist ein normaler Turn ohne Wartungs-Marke")
-                .contains(new ChatMessageDto("user", "erste Frage"));
+                .contains(new ChatMessageDto("user", "erste Frage", null));
         assertThat(history)
                 .as("die gewartete Eingabe trägt den Core-Marker, so wie der Core sie schreibt (Q6)")
                 .anySatisfy(line -> {

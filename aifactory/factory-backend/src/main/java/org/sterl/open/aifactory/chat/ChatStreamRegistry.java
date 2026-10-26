@@ -175,6 +175,11 @@ public class ChatStreamRegistry {
         if (event instanceof ChatEvent.ToolLine toolLine) {
             return SseEmitter.event().name("tool").data(payload("text", toolLine.text()), MediaType.APPLICATION_JSON);
         }
+        if (event instanceof ChatEvent.Delegated delegated) {
+            return SseEmitter.event().name("delegated")
+                    .data(payload("origin", delegated.origin(), "text", delegated.text()),
+                            MediaType.APPLICATION_JSON);
+        }
         if (event instanceof ChatEvent.Done done) {
             return SseEmitter.event().name("done").data(payload("millis", done.millis()), MediaType.APPLICATION_JSON);
         }

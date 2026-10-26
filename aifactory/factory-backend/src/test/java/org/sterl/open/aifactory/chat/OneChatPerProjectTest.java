@@ -132,7 +132,9 @@ class OneChatPerProjectTest {
         assertThat(modelFields)
                 .as("die Verlaufslesung und die Eingabe sind die ganze Gesprächs-Sprache")
                 .containsOnlyKeys(ChatMessageDto.class, SendMessageRequest.class);
-        assertThat(modelFields.get(ChatMessageDto.class)).containsExactly("role", "text");
+        // the third field is the author R-WP-4 asks for — the guard below is what this list is for: a
+        // fourth field, whatever it is called, is a second conversation or a user concept
+        assertThat(modelFields.get(ChatMessageDto.class)).containsExactly("role", "text", "origin");
         assertThat(modelFields.get(SendMessageRequest.class)).containsExactly("text");
         Set<String> everyFieldOfATransportedType = new TreeSet<>();
         modelFields.values().forEach(everyFieldOfATransportedType::addAll);
