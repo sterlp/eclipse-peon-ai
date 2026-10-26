@@ -1131,3 +1131,82 @@ Beobachtung für später: `showsExactlyThreeViews` (UC-WP-1) rendert die Shell u
 `test/app/`; Marker blieben, wo sie sind.
 
 
+
+### 3H2-E — Ausführungsnachweis (gebaut 2026-10-26, Commit `ec13b2e4`, Baseline `d72385d1`)
+
+Produktionscode: **zwei Dateien**. `chat/ChatStreamRegistry.java` — kein Projekt-Lock mehr, je Zuschauer
+ein eigener Virtual-Thread-Zusteller mit Outbox (`ArrayBlockingQueue`, Grenze 256 Zeilen, Überlauf =
+Zeile verlieren statt Turn bremsen), `publish` bietet nur noch an und wirft nie nach außen,
+`closeProject(id)` meldet alle Leitungen eines Projekts ab, leere Projekte werden aus der Karte geräumt
+(`projectCount()` als Test-Naht). `chat/ProjectRuntimeRegistry.java` — `onProjectRemoved` schließt jetzt
+auch die Leitungen; `closeAll()` und `shutdownTurns()` laufen auf `@EventListener(ContextClosedEvent)`
+statt `@PreDestroy`. Kein neuer Pfad, kein neues Feld, kein Core-Quellcode, keine Abhängigkeit.
+
+**Der 30-s-Hinweis ist gemessen, nicht geraten.** jstack auf dem hängenden Surefire-Fork
+(`-Dsurefire.exitTimeout=40`, wiederholte Dumps): der `SpringApplicationShutdownHook` hing in
+`DefaultLifecycleProcessor$LifecycleGroup.stop` → `org.springframework.boot.tomcat.GracefulShutdown.awaitInactiveOrAborted`
+— Boots Graceful-Shutdown wartete auf die noch offene SSE-Anfrage (Emitter-Timeout 0) und kostete genau
+`spring.lifecycle.timeout-per-shutdown-phase` = 30 s. `ContextClosedEvent` läuft **vor** dem Lifecycle-Stop,
+`@PreDestroy` (Bean-Zerstörung) ist **nach** dem Webserver-Stop also zu spät. Bisect: der Hinweis kam nur bei
+`ChatTurnTest` und `ChatQueueTest` allein (den Klassen mit offener SSE-Leitung), nie bei
+`ChatRestartTest`/`ChatConfigTurnTest`/`ChatFirstTouchTest`/`ProjectRemovalTest` oder der Nicht-Chat-Hälfte.
+**Irrweg, sauber gemeldet:** `MockLlmServer.stop()` fährt seinen `cachedThreadPool` nicht herunter und
+hinterlässt einen nicht-daemon `pool-2-thread-1` (im Dump gesehen) — **nicht** der Blocker
+(`ChatFirstTouchTest` hinterlässt ihn ebenfalls, ohne Hinweis). Fund für den Core-Eigentümer: eine Zeile
+`executor.shutdownNow()` in `MockLlmServer.stop()`. Die Wegwerf-Messklasse für diesen Nachweis ist gelöscht.
+
+Neue Tests: `chat/ChatFirstTouchTest` (Erstkontakt-Renne: 8 Threads auf `runtime(id)` ⇒ alle `isSameAs`,
+`runtimeCount` 1, `jon().getName()` = `AiPoAgent.NAME`; zwei gleichzeitige erste Turns ⇒ eine Runtime, beide
+Texte im Verlauf und beim Anbieter, **eine** `-history.jsonl` unter `state/<id>`);
+`ChatStreamRegistryTest` auf fünf Tests erweitert (`twoDeadListenersLeaveNoProjectBehind`,
+`slowReaderNeverStopsTheTurn` mit Marker `// UC-WP-41`); `ProjectRemovalTest` um
+`closingAProjectEndsItsLiveLines` (echt abonniert ⇒ `DELETE` ⇒ `listenerCount` 0 **und** die Leitung ist
+geschlossen). Fallnote für künftige SSE-Tests: ein Test-Emitter muß `send(SseEmitter.SseEventBuilder)`
+überschreiben — `SseEmitter` hat diese speziellere Überladung, der Registry schreibt genau die, ein
+Override von `send(Object)` greift nicht.
+
+Gates: `mvn -f aifactory/pom.xml clean verify` → **`Tests run: 86, Failures: 0, Errors: 0, Skipped: 0`**,
+`BUILD SUCCESS`, `Total time: 49.959 s` (Baseline 80 Tests und 1 m 2 s; der Hinweis „The exit has elapsed
+30 seconds after System.exit(0)" ist **weg**, auch im Einzel-Surefire-Lauf der beiden Klassen).
+`pnpm -C aifactory/factory-ui test` → `Test Files 3 passed (3)` / `Tests 19 passed (19)`, `lint` →
+„Found 0 warnings and 0 errors." (20 files), `build` ✓ 30 modules (`index-CMQaxmnl.js` 233,64 kB).
+`lintDocsAndTests` (root Repo; docRoots `aifactory/docs`; testRoots backend/src/test + ui/test;
+idPattern `UC-[A-Z]+-\d+[a-z]?`) → `UC definitions: 51 / 51; test IDs: 61 / 30; findings: 21`, **VERWAIST 0**
+(3-H1: 50/50; 60/29; 21 — **+1 id** = UC-WP-41, durch den Marker belegt); mit den §3.9-Doc-Wurzeln →
+`UC definitions: 252 / 252; test IDs: 61 / 30; findings: 222`, ebenso VERWAIST 0. Offen und nicht
+H2-Stoff: UC-WP-8/9/10, 11/12/13, 18/19, 25, 39/40 (= 3f), zehn UC-JL. *Randnotiz:* die §3.9-Testwurzeln
+`aifactory/factory-ui/src/test` und `src/views` gibt es seit 3-H1 nicht mehr (Tests liegen in
+`aifactory/factory-ui/test`), der Läufer bricht mit „Doc root not found" — Wurzeln für künftige Läufe
+anpassen, Doc-Inhalt nicht angefaßt.
+
+Laufender Nachweis mit **echtem Modell** (Ollama `qwen3.5:4b`, Home `/tmp/aifactory-inc3h2`, **Port 8099**,
+Projekt `spring-petclinic-c2cea48`): ein Zuschauer liest **nie** (Roh-Socket, Empfangspuffer 4 kB), ein
+zweiter liest mit. `POST` **202 in 0,213 s**; der lesende Zuschauer zählt **177 `partial`
+(63 `think` + 114 `answer`) und genau ein `done{millis:36295}`** nach 36,3 s; Verlauf danach genau
+`user` + `jon` (382 Zeichen); dem wartenden Zuschauer standen am Ende 10,2 kB nach — er war deutlich im
+Rückstand, hat aber nichts gebremst. `state/<id>/Peon-PO-history.jsonl` = einzige Datei (981 byte), Home =
+`config.properties`, `projects`, `projects.json`, `state`. **SIGTERM bei offener SSE-Leitung**: Graceful
+Shutdown nach **2,02 s** beendet, JVM weg nach **2,65 s** (vor dem Fix derselbe Vorgang als 30-s-Warten
+gemessen). Ports 8099/8080 frei, `~/.peon` byte-identisch (124 Dateien, Sammel-Prüfsumme
+`e5843e6b926af061c5284cf29ffd5c1d1fc80f00` vor dem Start = nach dem Stop).
+
+Mutationsbatterie, jede einzeln rot auf dem geplanten Punkt, alle zurück (grep `MUTATION` = leer):
+`putIfAbsent` → `put` (Erstkontakt-Renne) ⇒ **beide** `ChatFirstTouchTest`-Tests rot; `publish` schreibt
+synchron auf den Emitter ⇒ `slowReaderNeverStopsTheTurn` („publish must not wait for the slow reader
+(19858 ms)"); `closeProject` in `onProjectRemoved` weg ⇒ `closingAProjectEndsItsLiveLines` (1 statt 0);
+`outbox.clear()` beim Schließen weg ⇒ `slowReaderNeverStopsTheTurn` (7 Zeilen hängen noch in der Leitung);
+Aufräumen leerer Projekte weg ⇒ `twoDeadListenersLeaveNoProjectBehind`. **Verworfen nach Messung:** die
+`MockLlmServer`-Thread-Korrektur — sie änderte am Hinweis nichts und ist kein Nachweis, sondern ein Fund.
+
+Abweichungen, keine ändert eine UC-Aussage: (a) `@PreDestroy` → `@EventListener(ContextClosedEvent)`
+(begründet oben, ohne diese Umstellung bliebe der 30-s-Fix wirkungslos); (b) in `ChatTurnTest`/`ChatQueueTest`
+`STREAMS.shutdownNow()` → `STREAMS.close()` — der JDK-HttpClient-Selector-Thread ist ein Daemon, die Änderung
+war gemessen **ohne** Auswirkung auf den Hinweis und bleibt als dokumentierte Ressourcen-Freigabe;
+(c) `ProjectRuntimeRegistry.shutdownTurns()` ruft `turns.shutdownNow()` — ein laufender Turn darf einen
+Herunterfahr-Prozess nicht aufhalten; (d) Jons Doc-Zusage `aifactory/docs/web-prototype.md` (UC-WP-41) ritt
+mit ausdrücklicher Freigabe in diesem Commit, `AGENTS*.md`/`CHANGELOG.md` unangetastet; (e) Beobachtung,
+nicht geändert: eine SSE-Leitung sendet erst mit dem ersten Ereignis Bytes (kein Keep-Alive-Kommentar beim
+Öffnen) — die View aus 3-H1 hängt nicht daran (ihre Reconnect-Regel ignoriert Kommentarzeilen).
+
+**Härtung 3-H1 + 3-H2 damit durch; danach Stopp wie verabredet. Nicht gebaut: UC-WP-39/40 (= 3f, Jons
+eigener Plan), UC-WP-8/9/10 (Inc 4), 11/12/13 + Kacheln/Clear (Inc 5), UC-WP-25 (Inc 6).**
