@@ -18,7 +18,15 @@ export default function App() {
         <ViewTabs active={view} onSelect={setView} />
       </header>
       <main>
-        {view === 'projects' && <ProjectsView onOpen={setSelected} />}
+        {view === 'projects' && (
+          <ProjectsView
+            // opening a project opens its chat — the conversation is the project's, not the tab's
+            onOpen={opened => {
+              setSelected(opened)
+              setView('chat')
+            }}
+          />
+        )}
         {view === 'chat' && <ChatView project={selected} />}
         {view === 'settings' && <SettingsView />}
       </main>

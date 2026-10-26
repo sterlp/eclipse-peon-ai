@@ -125,3 +125,57 @@ button {
     font-size: 0.85rem;
   }
 }
+
+
+.chat-log {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+
+  .chat-line {
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+    padding: 0.45rem 0.6rem;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+
+    &.jon {
+      background: var(--code-bg);
+    }
+
+    &.pending,
+    &.live {
+      color: var(--text);
+      border-style: dashed;
+    }
+  }
+
+  .chat-tool-line {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--text);
+    padding-left: 0.6rem;
+    overflow-wrap: anywhere;
+  }
+}
+
+.chat-composer {
+  display: flex;
+  gap: 0.5rem;
+
+  input {
+    flex: 1;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+    background: var(--bg);
+    color: var(--text-h);
+  }
+}
+
+.chat-error {
+  color: #b3261e;
+  margin: 0 0 0.75rem;
+}

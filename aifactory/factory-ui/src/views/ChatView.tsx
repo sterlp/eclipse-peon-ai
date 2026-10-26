@@ -1,25 +1,215 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+
+import {
+  listMessages,
+  openChatStream,
+  sendMessage,
+  type ChatMessage,
+  type ChatStreamEvent,
+} from '../api/chat'
+import { errorMessage } from '../api/projects'
 import type { Project } from '../api/projects'
 
 interface Props {
   project: Project | null
 }
 
+/** How long the view waits before it asks again — long enough not to hammer a restarting server. */
+const RECONNECT_MS = 500
+
 /**
- * Chat placeholder — the runtime and the shared chat arrive with the next increment. What is fixed
- * here: there is exactly one agent per project and no agent switcher.
+ * The chat of one project (R-WP-4, R-WP-5): the history is the only truth for finished text, the
+ * stream only adds live lines, and there is nothing here to switch — no agent picker, no second
+ * conversation, no author name, no time on a restored line.
+ *
+ * One rule covers connection and reload: <em>(re-)connect ⇒ read the history, live events only
+ * append</em>. So a dropped stream and a browser reload lose exactly the live lines and nothing else
+ * (R-WP-11), and the reconnect path needs no second buffer and no event memory.
  */
 export function ChatView({ project }: Props) {
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [outgoing, setOutgoing] = useState<string[]>([])
+  const [live, setLive] = useState('')
+  const [toolLines, setToolLines] = useState<string[]>([])
+  const [draft, setDraft] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const input = useRef<HTMLInputElement>(null)
+  const projectId = project?.id ?? null
+
+  /** The finished text arrives here, never as an event — so live lines give way to it (§3.3.3). */
+  const applyHistory = useCallback((loaded: ChatMessage[]) => {
+    setMessages(loaded)
+    setLive('')
+    setToolLines([])
+    setOutgoing(previous => withoutSent(previous, loaded))
+  }, [])
+
+  const refresh = useCallback((): Promise<void> => {
+    if (projectId === null) {
+      return Promise.resolve()
+    }
+    return listMessages(projectId).then(applyHistory).catch(reason => setError(errorMessage(reason)))
+  }, [applyHistory, projectId])
+
+  const applyEvent = useCallback(
+    (event: ChatStreamEvent) => {
+      switch (event.kind) {
+        case 'partial':
+          // thinking deltas stay invisible: the chat shows the answer, and R-WP-5 promises that text
+          if (!event.thinking) {
+            setLive(previous => previous + event.text)
+          }
+          break
+        case 'tool':
+          setToolLines(previous => [...previous, event.text])
+          break
+        case 'done':
+          // one reload per answered input; the live line is dropped by the history that lands
+          void refresh()
+          break
+        case 'error':
+          // the reason is a line in the chat, the composer stays usable (Q1)
+          setError(event.message)
+          break
+      }
+    },
+    [refresh],
+  )
+
+  useEffect(() => {
+    if (projectId === null) {
+      return
+    }
+    const controller = new AbortController()
+    let reconnect: ReturnType<typeof setTimeout> | undefined
+    let mounted = true
+
+    const connect = () => {
+      void openChatStream(
+        projectId,
+        {
+          onEvent: applyEvent,
+          onEnd: retry => {
+            if (!mounted || !retry) {
+              return
+            }
+            void refresh()
+            reconnect = setTimeout(connect, RECONNECT_MS)
+          },
+        },
+        controller.signal,
+      )
+    }
+
+    void refresh()
+    connect()
+    input.current?.focus()
+    return () => {
+      mounted = false
+      controller.abort()
+      if (reconnect !== undefined) {
+        clearTimeout(reconnect)
+      }
+    }
+  }, [applyEvent, projectId, refresh])
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault()
+    const text = draft.trim()
+    if (text === '' || projectId === null) {
+      return
+    }
+    // shown before the server has it: a turn writes the user line into the memory only when it starts,
+    // so a queued input would vanish from the screen until the next history read
+    setOutgoing(previous => [...previous, text])
+    setDraft('')
+    setError(null)
+    try {
+      await sendMessage(projectId, text)
+    } catch (reason) {
+      setOutgoing(previous => previous.slice(0, -1))
+      setError(errorMessage(reason))
+    }
+  }
+
+  if (project === null) {
+    return (
+      <section className="view" aria-label="Chat">
+        <h1>Chat</h1>
+        <p className="empty-state">Kein Projekt geöffnet</p>
+      </section>
+    )
+  }
+
+  const empty = messages.length === 0 && outgoing.length === 0 && live === ''
   return (
     <section className="view" aria-label="Chat">
       <h1>Chat</h1>
-      {project === null ? (
-        <p className="empty-state">Kein Projekt geöffnet</p>
-      ) : (
-        <>
-          <p className="hint">Projekt: {project.name}</p>
-          <p className="empty-state">Noch kein Agent — Chat folgt im nächsten Inkrement.</p>
-        </>
+      <p className="hint">Projekt: {project.name}</p>
+      <ul className="chat-log" data-testid="chat-log" aria-label="Verlauf">
+        {messages.map((message, index) => (
+          <li key={`history-${index}`} className={`chat-line ${message.role}`} data-testid={`chat-line-${message.role}`}>
+            <span className="chat-text">{message.text}</span>
+          </li>
+        ))}
+        {outgoing.map((text, index) => (
+          <li key={`outgoing-${index}`} className="chat-line user pending" data-testid="chat-line-user">
+            <span className="chat-text">{text}</span>
+          </li>
+        ))}
+        {live !== '' && (
+          <li className="chat-line jon live" data-testid="chat-live">
+            <span className="chat-text">{live}</span>
+          </li>
+        )}
+        {toolLines.map((line, index) => (
+          <li key={`tool-${index}`} className="chat-tool-line" data-testid="chat-tool-line">
+            {line}
+          </li>
+        ))}
+        {empty && <li className="empty-state">Noch keine Nachrichten</li>}
+      </ul>
+      {error !== null && (
+        <p className="chat-error" data-testid="chat-error" role="alert">
+          {error}
+        </p>
       )}
+      <form className="chat-composer" onSubmit={event => void submit(event)}>
+        <input
+          ref={input}
+          type="text"
+          aria-label="Nachricht"
+          data-testid="chat-input"
+          placeholder="Nachricht an Jon"
+          value={draft}
+          onChange={event => setDraft(event.target.value)}
+        />
+        <button type="submit" data-testid="chat-send" disabled={draft.trim() === ''}>
+          Senden
+        </button>
+      </form>
     </section>
   )
+}
+
+/**
+ * A sent text is dropped as soon as the history carries a user line with it — the screen never shows
+ * the same input twice. Repeating an identical text twice in a row is the known limit: the second
+ * one appears with the history that contains it, not before.
+ */
+function withoutSent(pending: string[], history: ChatMessage[]): string[] {
+  if (pending.length === 0) {
+    return pending
+  }
+  const rest = [...pending]
+  for (const message of history) {
+    if (message.role !== 'user') {
+      continue
+    }
+    const at = rest.indexOf(message.text)
+    if (at >= 0) {
+      rest.splice(at, 1)
+    }
+  }
+  return rest.length === pending.length ? pending : rest
 }

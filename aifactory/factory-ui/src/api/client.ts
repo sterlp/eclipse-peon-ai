@@ -17,10 +17,13 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!response.ok) {
     throw new ApiRequestError(`request to ${path} failed (${response.status})`, await readError(response))
   }
-  if (response.status === 204 || response.headers.get('content-length') === '0') {
+  // an empty body is read as text, not parsed: a 202 carries neither content nor a length header,
+  // and a POST that only fires a turn must not fail on the way to saying "accepted"
+  const body = await response.text()
+  if (body === '') {
     return undefined as T
   }
-  return (await response.json()) as T
+  return (JSON.parse(body) as T)
 }
 
 export class ApiRequestError extends Error {
