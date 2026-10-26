@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 
-import { SettingsView } from './SettingsView'
-import type { Settings } from '../api/settings'
+import { ConfigPage } from '../../src/config/config.page'
+import type { Settings } from '../../src/config/config.client'
 
 const KEY = 'sk-file-secret-0123456789'
 
@@ -93,7 +93,7 @@ function controlValues(container: HTMLElement): string[] {
 // UC-WP-23
 test('settingsShowsMaskedConfig', async () => {
   const server = stubServer({ GET: settingsAnswer() })
-  const { container } = render(<SettingsView />)
+  const { container } = render(<ConfigPage />)
 
   expect(await valueOf('Provider')).toBe('OPEN_AI')
   expect(await valueOf('Modell')).toBe('gpt-demo')
@@ -114,7 +114,7 @@ test('settingsShowsMaskedConfig', async () => {
   // the source is named as what it is (R-WP-16 "Woher ein Wert kommt, zeigt der View")
   cleanup()
   stubServer({ GET: settingsAnswer({ keySource: 'ENV', model: 'env-model' }) })
-  render(<SettingsView />)
+  render(<ConfigPage />)
 
   expect(await valueOf('Modell')).toBe('env-model')
   expect(screen.getByText('Quelle: Umgebungsvariable')).toBeInTheDocument()
@@ -123,7 +123,7 @@ test('settingsShowsMaskedConfig', async () => {
 // UC-WP-23
 test('showsKeyStatusOfAnUnsetKey', async () => {
   stubServer({ GET: settingsAnswer({ keySet: false, keySource: 'NONE', model: null, url: null }) })
-  const { container } = render(<SettingsView />)
+  const { container } = render(<ConfigPage />)
 
   // an unknown value is an empty field, never the word "null" — and empty means "unchanged"
   expect(await valueOf('Modell')).toBe('')
@@ -138,7 +138,7 @@ test('settingsOverrideNeverWritesSharedStore', async () => {
     GET: settingsAnswer({ keySet: false, keySource: 'NONE', url: null }),
     PUT: settingsAnswer({ model: 'new-model', keySet: true, keySource: 'FILE' }),
   })
-  const { container } = render(<SettingsView />)
+  const { container } = render(<ConfigPage />)
   await screen.findByDisplayValue('gpt-demo')
 
   fireEvent.change(screen.getByLabelText('Modell'), { target: { value: 'new-model' } })
@@ -170,7 +170,7 @@ test('settingsOverrideNeverWritesSharedStore', async () => {
 
 test('showsErrorMessageWhenSettingsCannotLoad', async () => {
   stubServer({ GET: new Error('could not read /tmp/home/config.properties') })
-  render(<SettingsView />)
+  render(<ConfigPage />)
 
   expect(await screen.findByRole('alert')).toHaveTextContent('config.properties')
 })

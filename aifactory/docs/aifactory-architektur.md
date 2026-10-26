@@ -43,7 +43,7 @@ flowchart LR
 |---|---|---|
 | `ProjectService` (Package `project`) | Projektliste, Klonen, Entfernen, Pfad je Projekt | den Core kennen |
 | `ProjectRuntime` | Jon + Team je Projekt, Serialisierung der Turns, Clear/Compact je Agent, Tool- und Write-Roots | HTTP, JSON, Browser-Formate |
-| `ChatStreamRegistry` | Events des `AiMonitor` als SSE je Projekt verteilen, Replay des Verlaufs | eigene Nachrichten halten (Memory ist im Core) |
+| `ChatStreamRegistry` | Events des `AiMonitor` als SSE je Projekt verteilen, tote Zuschauer abmelden | eigene Nachrichten halten (Memory ist im Core), **kein** Replay des Verlaufs, kein Emitter-I/O unter dem Projekt-Lock (ein langsamer Leser darf den Turn nicht bremsen, UC-WP-41) |
 | `FactoryConfig` (Package `config`) | Lesen/Schreiben der Factory-Config, Maskierung der Keys, Auflösung pro Turn | den geteilten Config-Bestand des Plugins schreiben **oder lesen** |
 | `JonLightRuntime` | ein read-only Jon je Nutzer, Write-Liste `stories/*` | Team, Delegation, Projekt-Jon-Memory |
 | Core (`AiPoAgent` …) | Agent-Logik, Tools, Memory, History-Store | Eclipse, HTTP, Factory-Klassen |
@@ -57,7 +57,7 @@ sequenceDiagram
   participant RUN as ProjectRuntime
   participant JON as core AiPoAgent
   UI->>REST: POST /projects/{id}/messages
-  REST->>RUN: submit(projectId, user, text)
+  REST->>RUN: submit(projectId, text)
   Note over RUN: Sperrserialisierung: ein Turn je Projekt<br/>weitere Eingaben in die Queue des Agenten
   RUN->>JON: call(text, monitor)
   JON-->>RUN: AiMonitor-Events (partial, tool, done)
@@ -100,6 +100,43 @@ sequenceDiagram
 
 
 ## Abbildung Core → Factory
+
+
+## UI-Aufbau — dieselben Komponenten wie im Backend (Entscheidung 2026-10-26)
+
+Die SPA spiegelt die Backend-Komponenten: **ein Ordner je Komponente, gleicher Name**, und darin je
+Datei die Rolle im Namen (`<komponente>.<rolle>.tsx`). Kein Sammelordner für Views, keine
+`components/`-Schublade, keine Tests unter `src/`.
+
+```
+factory-ui/
+  src/
+    app/      app.shell.tsx          Tabs, Auswahl des Projekts
+    project/  project.page.tsx       Liste + Hinzufügen
+              project.list.tsx
+              project.add.tsx
+    chat/     chat.page.tsx          Verlauf, Composer, Live-Zeilen
+              chat.log.tsx
+              chat.composer.tsx
+              chat.stream.ts         SSE-Lesen/Parser
+    config/   config.page.tsx        Einstellungen
+              config.form.tsx
+    shared/   api.client.ts          HTTP + Fehlertyp, von allen benutzt
+              dto.ts
+  test/
+    project/project.page.test.tsx
+    chat/chat.page.test.tsx
+```
+
+* **Gleicher Name wie im Backend** (`project`, `chat`, `config`, `shared`): wer den Server versteht,
+  findet die Oberfläche — und umgekehrt. Ein neues Feature legt in beiden Bäumen dieselbe Komponente an.
+* **Rolle im Dateinamen** statt in der Tiefe: `.page` = das, was eine Route/Ansicht füllt, `.log`,
+  `.composer`, `.form`, `.list` = Fragmente, `.stream`, `.client` = Nicht-UI-Teile der Komponente.
+* **Tests liegen außerhalb von `src/`** unter `test/<komponente>/` mit demselben Dateinamen plus
+  `.test`. Ein Test neben dem Code ist im UI-Baum verboten — sonst wandert Build-Code in das, was
+  ausgeliefert wird, und beides wird beim Lesen verwechselt.
+* **Abhängigkeitsrichtung wie im Backend:** `app` kennt die Komponenten, `shared` kennt keine; eine
+  Komponente importiert nie aus einer anderen außer `shared` (Ausnahme: `app` als Verdrahtung).
 
 | Braucht die Factory | nutzt sie |
 |---|---|

@@ -1,4 +1,4 @@
-import { request } from './client'
+import { request } from '../shared/api.client'
 
 /** Where the effective value came from — the file wins, the environment is the start value (R-WP-9). */
 export type KeySource = 'FILE' | 'ENV' | 'NONE'

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-import { errorMessage } from '../api/projects'
+import { errorMessage } from '../shared/api.client'
 import {
   getSettings,
   PROVIDERS,
@@ -8,7 +8,7 @@ import {
   type KeySource,
   type Settings,
   type SettingsPatch,
-} from '../api/settings'
+} from './config.client'
 
 const SOURCE_LABEL: Record<KeySource, string> = {
   FILE: 'Datei',
@@ -69,7 +69,7 @@ function numberOf(text: string): number | undefined {
  * The key row shows a status because the server sends no field that could carry one — its input is
  * write-only, so a saved key stays stored and an empty input leaves it alone.
  */
-export function SettingsView() {
+export function ConfigPage() {
   const [settings, setSettings] = useState<Settings | null>(null)
   const [draft, setDraft] = useState<Draft | null>(null)
   const [message, setMessage] = useState<string | null>(null)

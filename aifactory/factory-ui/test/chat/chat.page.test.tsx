@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 
-import App from '../App'
-import { ChatView } from './ChatView'
-import { project } from '../test/fixtures'
-import type { ChatMessage } from '../api/chat'
+import AppShell from '../../src/app/app.shell'
+import { ChatPage } from '../../src/chat/chat.page'
+import { project } from '../shared/fixtures'
+import type { ChatMessage } from '../../src/chat/chat.client'
 
 interface Chat {
   calls: { method: string; path: string; body?: string }[]
@@ -120,7 +120,7 @@ afterEach(async () => {
 })
 
 test('chatAsksForAProjectWhenNoneIsOpen', () => {
-  render(<ChatView project={null} />)
+  render(<ChatPage project={null} />)
 
   expect(screen.getByText('Kein Projekt geöffnet')).toBeInTheDocument()
   expect(screen.queryByTestId('chat-input')).toBeNull()
@@ -129,10 +129,10 @@ test('chatAsksForAProjectWhenNoneIsOpen', () => {
 // UC-WP-5
 test('openProjectBindsWorkDir', async () => {
   const chat = stubChat({ messages: [QUESTION], projects: [project()] })
-  render(<App />)
+  render(<AppShell />)
   expect(await screen.findByLabelText('Git-URL')).toBeInTheDocument()
 
-  fireEvent.click(screen.getByRole('button', { name: 'demo' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'demo' }))
 
   expect(screen.getByTestId('chat-log')).toBeInTheDocument()
   await flush()
@@ -147,7 +147,7 @@ test('openProjectBindsWorkDir', async () => {
 // UC-WP-6
 test('chatAlwaysGoesToJon', async () => {
   const chat = stubChat({ messages: [] })
-  const { container } = render(<ChatView project={project()} />)
+  const { container } = render(<ChatPage project={project()} />)
   await flush()
 
   fireEvent.change(screen.getByTestId('chat-input'), { target: { value: 'fängst du mich auf?' } })
@@ -170,7 +170,7 @@ test('chatAlwaysGoesToJon', async () => {
 // UC-WP-7
 test('streamingUpdatesChatWithoutReload', async () => {
   const chat = stubChat({ messages: [QUESTION] })
-  render(<ChatView project={project()} />)
+  render(<ChatPage project={project()} />)
   await flush()
   expect(chat.countOf('/events', 'GET')).toBe(1)
   const readsBefore = chat.countOf('/messages', 'GET')
@@ -211,7 +211,7 @@ test('streamingUpdatesChatWithoutReload', async () => {
 
 test('turnFailureIsALineAndTheComposerStaysUsable', async () => {
   const chat = stubChat({ messages: [QUESTION] })
-  render(<ChatView project={project()} />)
+  render(<ChatPage project={project()} />)
   await flush()
 
   await chat.push(event('error', { message: 'Es fehlt ein Modellschlüssel für OPEN_AI' }))
@@ -226,7 +226,7 @@ test('turnFailureIsALineAndTheComposerStaysUsable', async () => {
 
 test('droppedStreamReopensAndReadsHistory', async () => {
   const chat = stubChat({ messages: [QUESTION] })
-  render(<ChatView project={project()} />)
+  render(<ChatPage project={project()} />)
   await flush()
   expect(chat.countOf('/events', 'GET')).toBe(1)
 
@@ -243,10 +243,10 @@ test('droppedStreamReopensAndReadsHistory', async () => {
 // UC-WP-16
 test('oneChatPerProject', async () => {
   const chat = stubChat({ messages: [QUESTION, ANSWER], projects: [project()] })
-  render(<App />)
+  render(<AppShell />)
   expect(await screen.findByLabelText('Git-URL')).toBeInTheDocument()
 
-  fireEvent.click(screen.getByRole('button', { name: 'demo' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'demo' }))
   const opened = await screen.findByRole('region', { name: 'Chat' })
   await screen.findByText(ANSWER.text)
 

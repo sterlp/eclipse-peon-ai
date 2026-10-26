@@ -29,17 +29,18 @@ Nicht hier: alles Eclipse-/OSGi-spezifische (SWT-Views, Widgets, Preference-Page
 ## Produktregeln (SOLL)
 
 * **PR-1 · Ein Agent, volles Team.** Pro Projekt genau ein Jon mit unverändertem Team (Da Thinka,
-  Da Mek, Da Dok, Da Sniffa). ❌
+  Da Mek, Da Dok; Da Sniffa bleibt wie im Plugin das Such-Werkzeug). ✅
 * **PR-2 · Nur Disk-Werkzeuge.** Die Factory betreibt die Core-Familien `disk*`, `web*`, `shell`,
-  `docs*`; `eclipse*`-Tools und OSGi gibt es hier nicht. ❌
+  `docs*`; `eclipse*`-Tools und OSGi gibt es hier nicht. ✅ — [R-WP-12](web-prototype.md).
 * **PR-3 · Geteilter Core.** Was beide Consumer brauchen, entsteht im Core und das Plugin profitiert;
   Web-only-Schichten (HTTP/SSE, Server-Session, SPA) bleiben in der Factory. Duplikate der
-  Agent-Logik in der Factory sind verboten. ❌ — Begründung:
+  Agent-Logik in der Factory sind verboten. ✅ — Begründung:
   [AF-ADR-001](adr/001-factory-shares-core-disk-only.md).
 * **PR-4 · Core bleibt Eclipse-frei.** Keine `org.eclipse`-Importe im Core; der Factory-Port ist der
-  Beweis, nicht nur die Absicht. ❌ — fortschreitend [ADR-0046](../../docs/adr/0046-core-portability-review.md).
+  Beweis, nicht nur die Absicht. ✅ — der Port läuft, `ArchitectureGuardTest` hält die Grenze;
+  fortschreitend [ADR-0046](../../docs/adr/0046-core-portability-review.md).
 * **PR-5 · Je Projekt ein Jon, ein Chat für alle.** Inputs aller Nutzer laufen in die Queue *eines*
-  Agenten; verschiedene Projekte laufen parallel. ❌ — Details
+  Agenten; verschiedene Projekte laufen parallel. ✅ — Details
   [Web-Prototype R-WP-15](web-prototype.md).
 * **PR-6 · parallele Vorarbeit ohne Baurisiko.** Nutzer dürfen über **Jon Light** (read-only) Stories
   liefern, ohne den bauenden Jon zu stören. ❌ — [Jon Light & Stories](jon-light-stories.md).
@@ -48,7 +49,8 @@ Nicht hier: alles Eclipse-/OSGi-spezifische (SWT-Views, Widgets, Preference-Page
 
 * [Web-Prototype](web-prototype.md) — Projects · Chat · Einstellungen; Git-Clone als Projekt,
   Jon mit Team, Schreib-Pinning auf Projekt-Root + TMP, Kacheln je Agent. ◐ teilweise gebaut
-  (Registry · Clone · Auslieferung ✅; Chat, Einstellungen, Schreib-Pinning, Kacheln ❌)
+  (Registry · Clone · Auslieferung · Einstellungen · Chat mit Queue, Verlauf und SSE ✅;
+  Herkunft/Team-Antworten, Schreib-Pinning, Datei-Bereich, Kacheln ❌)
 * [Jon Light & Stories](jon-light-stories.md) — read-only Jon je Nutzer, Stories in `stories/`,
   konfliktfrei oder mit benanntem Konflikt. ❌ specified (nach dem MVP)
 

@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 
-import App from '../App'
-import { ProjectsView } from './ProjectsView'
-import { project } from '../test/fixtures'
+import AppShell from '../../src/app/app.shell'
+import { ProjectPage } from '../../src/project/project.page'
+import { project } from '../shared/fixtures'
 
 beforeEach(() => {
   cleanup()
@@ -56,7 +56,7 @@ function response(status: number, body: unknown): Response {
 // UC-WP-1
 test('showsExactlyThreeViews', async () => {
   stubServer({ GET: [] })
-  render(<App />)
+  render(<AppShell />)
 
   const tabs = screen.getAllByRole('tab')
   expect(tabs.map(tab => tab.textContent)).toEqual(['Projekte', 'Chat', 'Einstellungen'])
@@ -66,7 +66,7 @@ test('showsExactlyThreeViews', async () => {
 
 test('showsEmptyStateWhenRegistryIsEmpty', async () => {
   stubServer({ GET: [] })
-  render(<ProjectsView onOpen={() => undefined} />)
+  render(<ProjectPage onOpen={() => undefined} />)
 
   expect(await screen.findByText('Kein Projekt')).toBeInTheDocument()
 })
@@ -75,7 +75,7 @@ test('showsEmptyStateWhenRegistryIsEmpty', async () => {
 test('listsProjectAfterSuccessfulAdd', async () => {
   const added = project()
   const server = stubServer({ GET: [] })
-  render(<ProjectsView onOpen={() => undefined} />)
+  render(<ProjectPage onOpen={() => undefined} />)
   await screen.findByText('Kein Projekt')
 
   server.script = { GET: [added], POST: added, DELETE: undefined }
@@ -97,7 +97,7 @@ test('showsGitErrorAtInputAndKeepsList', async () => {
     GET: [],
     POST: new Error('fatal: repository not found'),
   })
-  render(<ProjectsView onOpen={() => undefined} />)
+  render(<ProjectPage onOpen={() => undefined} />)
   await screen.findByText('Kein Projekt')
 
   fireEvent.change(screen.getByLabelText('Git-URL'), {
@@ -114,7 +114,7 @@ test('showsGitErrorAtInputAndKeepsList', async () => {
 test('sameUrlReusesExistingClone', async () => {
   const existing = project()
   const server = stubServer({ GET: [existing], POST: existing })
-  render(<ProjectsView onOpen={() => undefined} />)
+  render(<ProjectPage onOpen={() => undefined} />)
   await screen.findByText('demo')
 
   fireEvent.change(screen.getByLabelText('Git-URL'), {
@@ -134,7 +134,7 @@ test('credentialUrlRejectedAndNothingStored', async () => {
     GET: [],
     POST: new Error('git urls must not carry credentials — public https repositories only'),
   })
-  render(<ProjectsView onOpen={() => undefined} />)
+  render(<ProjectPage onOpen={() => undefined} />)
   await screen.findByText('Kein Projekt')
 
   fireEvent.change(screen.getByLabelText('Git-URL'), {
@@ -153,7 +153,7 @@ test('credentialUrlRejectedAndNothingStored', async () => {
 test('asksForConfirmationBeforeDelete', async () => {
   stubServer({ GET: [project()] })
   const confirmed = vi.spyOn(window, 'confirm').mockImplementation(() => false)
-  render(<ProjectsView onOpen={() => undefined} />)
+  render(<ProjectPage onOpen={() => undefined} />)
   await screen.findByText('demo')
 
   fireEvent.click(screen.getByRole('button', { name: 'Entfernen' }))
@@ -165,7 +165,7 @@ test('asksForConfirmationBeforeDelete', async () => {
 test('removesProjectAfterConfirmation', async () => {
   const server = stubServer({ GET: [project()] })
   vi.spyOn(window, 'confirm').mockImplementation(() => true)
-  render(<ProjectsView onOpen={() => undefined} />)
+  render(<ProjectPage onOpen={() => undefined} />)
   await screen.findByText('demo')
 
   server.script = { GET: [], POST: undefined, DELETE: undefined }

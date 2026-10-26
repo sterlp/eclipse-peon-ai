@@ -46,3 +46,16 @@ async function readError(response: Response): Promise<ApiError | undefined> {
     return undefined
   }
 }
+
+
+/**
+ * What the user gets to read when a call fails: the server's own text — the git output of a failed
+ * clone, the named field of a rejected setting — or the transport error. A false negative ("added")
+ * would be the expensive bug here, so nothing is swallowed.
+ */
+export function errorMessage(error: unknown): string {
+  if (error instanceof ApiRequestError) {
+    return error.apiError?.message ?? error.message
+  }
+  return error instanceof Error ? error.message : String(error)
+}

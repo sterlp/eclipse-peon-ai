@@ -1,4 +1,4 @@
-import type { Project } from '../api/projects'
+import type { Project } from '../../src/shared/dto'
 
 export function project(overrides: Partial<Project> = {}): Project {
   return {

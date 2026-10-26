@@ -1,13 +1,13 @@
 import { useState } from 'react'
 
-import { ViewTabs, type ViewName } from './components/ViewTabs'
-import type { Project } from './api/projects'
-import { ChatView } from './views/ChatView'
-import { ProjectsView } from './views/ProjectsView'
-import { SettingsView } from './views/SettingsView'
-import './styles.css'
+import { AppTabs, type ViewName } from './app.tabs'
+import { ChatPage } from '../chat/chat.page'
+import { ConfigPage } from '../config/config.page'
+import { ProjectPage } from '../project/project.page'
+import type { Project } from '../shared/dto'
+import '../styles.css'
 
-export default function App() {
+export default function AppShell() {
   const [view, setView] = useState<ViewName>('projects')
   const [selected, setSelected] = useState<Project | null>(null)
 
@@ -15,11 +15,11 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <span className="app-title">Open AI Factory</span>
-        <ViewTabs active={view} onSelect={setView} />
+        <AppTabs active={view} onSelect={setView} />
       </header>
       <main>
         {view === 'projects' && (
-          <ProjectsView
+          <ProjectPage
             // opening a project opens its chat — the conversation is the project's, not the tab's
             onOpen={opened => {
               setSelected(opened)
@@ -27,8 +27,8 @@ export default function App() {
             }}
           />
         )}
-        {view === 'chat' && <ChatView project={selected} />}
-        {view === 'settings' && <SettingsView />}
+        {view === 'chat' && <ChatPage project={selected} />}
+        {view === 'settings' && <ConfigPage />}
       </main>
     </div>
   )

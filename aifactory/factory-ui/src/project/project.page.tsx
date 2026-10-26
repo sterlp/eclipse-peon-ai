@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 
-import { addProject, errorMessage, listProjects, removeProject, type Project } from '../api/projects'
+import { addProject, listProjects, removeProject } from './project.client'
+import { errorMessage } from '../shared/api.client'
+import type { Project } from '../shared/dto'
 
 interface Props {
   onOpen: (project: Project) => void
 }
 
-export function ProjectsView({ onOpen }: Props) {
+export function ProjectPage({ onOpen }: Props) {
   const [projects, setProjects] = useState<Project[]>([])
   const [gitUrl, setGitUrl] = useState('')
   const [busy, setBusy] = useState(false)

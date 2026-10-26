@@ -11,7 +11,7 @@ interface Props {
   onSelect: (view: ViewName) => void
 }
 
-export function ViewTabs({ active, onSelect }: Props) {
+export function AppTabs({ active, onSelect }: Props) {
   return (
     <nav className="tabs" role="tablist" aria-label="Ansichten">
       {TABS.map(tab => (

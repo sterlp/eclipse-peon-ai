@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { FormEvent } from 'react'
 
-import {
-  listMessages,
-  openChatStream,
-  sendMessage,
-  type ChatMessage,
-  type ChatStreamEvent,
-} from '../api/chat'
-import { errorMessage } from '../api/projects'
-import type { Project } from '../api/projects'
+import { listMessages, sendMessage, type ChatMessage, type ChatStreamEvent } from './chat.client'
+import { ChatComposer } from './chat.composer'
+import { ChatLog } from './chat.log'
+import { openChatStream } from './chat.stream'
+import { errorMessage } from '../shared/api.client'
+import type { Project } from '../shared/dto'
 
 interface Props {
   project: Project | null
@@ -25,8 +23,10 @@ const RECONNECT_MS = 500
  * One rule covers connection and reload: <em>(re-)connect ⇒ read the history, live events only
  * append</em>. So a dropped stream and a browser reload lose exactly the live lines and nothing else
  * (R-WP-11), and the reconnect path needs no second buffer and no event memory.
+ *
+ * The page holds the state; {@link ChatLog} and {@link ChatComposer} only draw it.
  */
-export function ChatView({ project }: Props) {
+export function ChatPage({ project }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [outgoing, setOutgoing] = useState<string[]>([])
   const [live, setLive] = useState('')
@@ -113,7 +113,7 @@ export function ChatView({ project }: Props) {
     }
   }, [applyEvent, projectId, refresh])
 
-  async function submit(event: React.FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault()
     const text = draft.trim()
     if (text === '' || projectId === null) {
@@ -141,53 +141,17 @@ export function ChatView({ project }: Props) {
     )
   }
 
-  const empty = messages.length === 0 && outgoing.length === 0 && live === ''
   return (
     <section className="view" aria-label="Chat">
       <h1>Chat</h1>
       <p className="hint">Projekt: {project.name}</p>
-      <ul className="chat-log" data-testid="chat-log" aria-label="Verlauf">
-        {messages.map((message, index) => (
-          <li key={`history-${index}`} className={`chat-line ${message.role}`} data-testid={`chat-line-${message.role}`}>
-            <span className="chat-text">{message.text}</span>
-          </li>
-        ))}
-        {outgoing.map((text, index) => (
-          <li key={`outgoing-${index}`} className="chat-line user pending" data-testid="chat-line-user">
-            <span className="chat-text">{text}</span>
-          </li>
-        ))}
-        {live !== '' && (
-          <li className="chat-line jon live" data-testid="chat-live">
-            <span className="chat-text">{live}</span>
-          </li>
-        )}
-        {toolLines.map((line, index) => (
-          <li key={`tool-${index}`} className="chat-tool-line" data-testid="chat-tool-line">
-            {line}
-          </li>
-        ))}
-        {empty && <li className="empty-state">Noch keine Nachrichten</li>}
-      </ul>
+      <ChatLog messages={messages} outgoing={outgoing} live={live} toolLines={toolLines} />
       {error !== null && (
         <p className="chat-error" data-testid="chat-error" role="alert">
           {error}
         </p>
       )}
-      <form className="chat-composer" onSubmit={event => void submit(event)}>
-        <input
-          ref={input}
-          type="text"
-          aria-label="Nachricht"
-          data-testid="chat-input"
-          placeholder="Nachricht an Jon"
-          value={draft}
-          onChange={event => setDraft(event.target.value)}
-        />
-        <button type="submit" data-testid="chat-send" disabled={draft.trim() === ''}>
-          Senden
-        </button>
-      </form>
+      <ChatComposer draft={draft} inputRef={input} onDraftChange={setDraft} onSubmit={submit} />
     </section>
   )
 }
