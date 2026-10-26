@@ -129,6 +129,14 @@ final class ProjectRuntime {
         return jon;
     }
 
+    /**
+     * The one model of this project — the same instance every agent was built with, so "the next turn
+     * uses the changed value" is a statement about this object staying alive (UC-WP-24 GIVEN 3).
+     */
+    ConfiguredChatModel model() {
+        return model;
+    }
+
     /** Only the text parts of a user message, joined as the core joins them; image parts are no chat line. */
     private static String textOf(UserMessage user) {
         StringBuilder text = new StringBuilder();
